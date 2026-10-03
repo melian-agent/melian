@@ -68,8 +68,9 @@ export async function upsertFinding(
 	finding: Finding,
 	revision: string,
 ): Promise<void> {
-	const { status: _, ...properties } = parseFinding(finding).properties;
-	const producer: ProducerFinding = { ...finding, properties };
+	const valid = parseFinding(finding);
+	const { status: _, ...properties } = valid.properties;
+	const producer: ProducerFinding = { ...valid, properties };
 	const { items } = await tx.doc(FindingsDocument, conversationId);
 	const previous = items[properties.id];
 	if (previous === undefined) {

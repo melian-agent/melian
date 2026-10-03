@@ -109,7 +109,7 @@ A `Finding` is a SARIF 2.1.0 `result`. SARIF forbids unknown keys on a result, s
 
 - Build findings with `createFinding`, which derives the level and the ID, and validate any finding read from outside with `parseFinding`. It rejects a level or an ID that disagrees with the rest of the finding.
 - A region may not end before it starts: an `endLine` before `startLine`, or on one line an `endColumn` before `startColumn`, throws `FindingError` `invalidRegion`.
-- Never store `undefined` in a finding. JSON drops it, so a round trip would change the value. `createFinding` leaves absent optional fields out.
+- Never store `undefined` in a finding. JSON drops it, so a round trip would change the value. `parseFinding`, and so `createFinding`, returns a copy with every `undefined`-valued key removed at any depth, so a nested `trigger.snippet: undefined` neither fails as a `TypeError` in storage nor makes the stored copy differ from the value in hand.
 - `trigger` names the hunk that caused the finding by its `file` and `index`, as a `Hunk` names itself, rather than copying its line ranges. It is optional: a pre-existing finding has no triggering hunk. Its optional `snippet` is the changed code as the producer saw it; the pipeline reopens a dismissed finding when that code's `normaliseSnippet` changes.
 
 ### Paths and URIs

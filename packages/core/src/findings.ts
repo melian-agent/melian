@@ -384,8 +384,15 @@ export interface FindingInput {
 	readonly source: FindingSource;
 }
 
-function defined<T extends object>(value: T): T {
-	return Object.fromEntries(Object.entries(value).filter(([, each]) => each !== undefined)) as T;
+// A JSON round trip drops undefined-valued keys; dropping them first keeps a finding equal to its stored copy.
+function withoutUndefined(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(withoutUndefined);
+	if (value === null || typeof value !== "object") return value;
+	return Object.fromEntries(
+		Object.entries(value)
+			.filter(([, each]) => each !== undefined)
+			.map(([key, each]) => [key, withoutUndefined(each)]),
+	);
 }
 
 /**
@@ -412,17 +419,17 @@ export function createFinding(input: FindingInput): Finding {
 			{
 				physicalLocation: {
 					artifactLocation: { uri: repositoryUri(file) },
-					region: defined({
+					region: {
 						startLine: input.startLine,
 						endLine: input.endLine,
 						startColumn: input.startColumn,
 						endColumn: input.endColumn,
 						snippet: snippet === undefined ? undefined : { text: snippet },
-					}),
+					},
 				},
 			},
 		],
-		properties: defined({
+		properties: {
 			id,
 			path: file,
 			occurrence: hasSnippet ? occurrence : undefined,
@@ -436,12 +443,13 @@ export function createFinding(input: FindingInput): Finding {
 			status: input.status ?? "new",
 			explanation: input.explanation,
 			source: input.source,
-		}),
+		},
 	});
 }
 
 /**
- * Checks that `value` is a valid finding and returns it.
+ * Checks that `input` is a valid finding and returns a copy without keys whose value is `undefined`, at any depth, so
+ * the copy equals what a JSON round trip stores.
  *
  * Throws {@link FindingError}: `invalidFinding` when it does not match {@link findingSchema}, `levelMismatch` when its
  * level is not {@link levelForSeverity} of its severity, `invalidRegion` when its region ends before it starts,
@@ -450,7 +458,8 @@ export function createFinding(input: FindingInput): Finding {
  * `missingDiscriminator` when it lacks the occurrence or
  * discriminator its snippet calls for, and `idMismatch` when its ID is not {@link findingId} of its first location.
  */
-export function parseFinding(value: unknown): Finding {
+export function parseFinding(input: unknown): Finding {
+	const value = withoutUndefined(input);
 	const errors = Value.Errors(findingSchema, value);
 	const unknown = errors.find((error) => error.keyword === "additionalProperties");
 	if (unknown !== undefined) {

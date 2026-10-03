@@ -237,6 +237,14 @@ describe("createFinding", () => {
 		expect(createFinding({ ...evalInput, startLine: 12, endLine: 13, startColumn: 9, endColumn: 2 })).toBeDefined();
 	});
 
+	it("drops undefined-valued keys at any depth", () => {
+		const finding = createFinding({ ...evalInput, trigger: { file: "src/run.ts", index: 0, snippet: undefined } });
+		expect(Object.keys(finding.properties.trigger!)).toEqual(["file", "index"]);
+		const nested = { ...finding, message: { text: "eval runs request input", markdown: undefined } };
+		expect(parseFinding(nested)).toEqual(JSON.parse(JSON.stringify(nested)));
+		expect(parseFinding(nested).message).not.toHaveProperty("markdown");
+	});
+
 	it("rejects an input the schema would not accept", () => {
 		expect(() => createFinding({ ...evalInput, startLine: 0 })).toThrow(FindingError);
 		expect(() => createFinding({ ...evalInput, confidence: 1.5 })).toThrow(FindingError);
