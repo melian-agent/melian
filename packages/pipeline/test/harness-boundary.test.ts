@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -7,12 +7,12 @@ const root = fileURLToPath(new URL("../../..", import.meta.url));
 const wrapper = "packages/pipeline/src/harness.ts";
 const piImport = /["']@earendil-works\/(?:pi-durable|chord)(?:\/[^"']*)?["']/;
 
+// Repository-relative posix paths, so the filters and the wrapper's path match on Windows too.
 function sources(): string[] {
-	const packages = join(root, "packages");
-	return readdirSync(packages, { recursive: true, encoding: "utf8" })
+	return readdirSync(join(root, "packages"), { recursive: true, encoding: "utf8" })
+		.map((path) => `packages/${path.split(sep).join("/")}`)
 		.filter((path) => /\.[cm]?tsx?$/.test(path))
-		.filter((path) => !/(^|\/)(node_modules|dist)\//.test(path))
-		.map((path) => relative(root, join(packages, path)));
+		.filter((path) => !/(^|\/)(node_modules|dist)\//.test(path));
 }
 
 describe("harness boundary", () => {
