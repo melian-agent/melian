@@ -1,6 +1,6 @@
 # Spike: Pi Durable against the design
 
-Step 2 of milestone 1, tracked in [issue #2](https://github.com/melian-agent/melian/issues/2). The design assumes `@earendil-works/pi-durable` 1.0.0 behaves as its announcement describes. This spike tested that assumption against the package itself: its README, its type declarations, and twelve Vitest tests that run it on the fake model with no credentials.
+Step 2 of milestone 1, tracked in [issue #2](https://github.com/melian-agent/melian/issues/2). The design assumes `@earendil-works/pi-durable` 1.0.0 behaves as its announcement describes. This spike tested that assumption against the package itself: its README, its type declarations, and eleven Vitest tests that run it on the fake model with no credentials, plus a test that guards the wrapper boundary.
 
 ## Verdict
 
