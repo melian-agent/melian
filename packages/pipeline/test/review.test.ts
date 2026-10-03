@@ -345,6 +345,25 @@ describe("reviewChangeset", () => {
 		expect(fake.provider.state.callCount).toBe(0);
 	});
 
+	it("refuses a finding outside the paths a lens covers", async () => {
+		const narrow = lenses.map((lens) => (lens.name === "correctness" ? { ...lens, paths: ["src/user.ts"] } : lens));
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("report_finding", { ...nullDeref, file: "src/report.ts", line: 2 }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		expect(await review({ lenses: narrow })).toEqual([]);
+		expect(toolResults(requests[correctness]![1]!)[0]).toContain(
+			"src/report.ts is outside the paths lens correctness reviews",
+		);
+	});
+
 	it("keeps the first lens's finding when another lens reports the same ID", async () => {
 		const shared = lenses.map((lens) =>
 			lens.name === "contracts"

@@ -4,6 +4,7 @@ import {
 	defaultConfig,
 	type Lens,
 	LensError,
+	lensCovers,
 	lensToolNames,
 	loadLenses,
 	type MelianConfig,
@@ -269,11 +270,25 @@ describe("selectLenses", () => {
 		expect(selectLenses([scoped], defaultConfig, ["services/pay/a.ts"])).toHaveLength(1);
 	});
 
+	it("gives a folder's files to the nearest lens of a name, and each lens only the files it covers", () => {
+		const root = lens({});
+		const pay = lens({ scope: "services/pay", paths: ["services/pay/**"], version: "111111111111" });
+		const paths = ["src/a.ts", "services/pay/api.ts", "services/pay/db.ts"];
+		const selected = selectLenses([root, pay], defaultConfig, paths);
+		expect(selected.map(({ lens, files }) => [lens.scope, files])).toEqual([
+			["", ["src/a.ts"]],
+			["services/pay", ["services/pay/api.ts", "services/pay/db.ts"]],
+		]);
+		expect(selected[0]!.coverage).toEqual({ scope: "", paths: ["**"], nearer: ["services/pay"] });
+		expect(lensCovers(selected[0]!.coverage, "services/pay/api.ts")).toBe(false);
+		expect(lensCovers(selected[0]!.coverage, "lib/other.ts")).toBe(true);
+	});
+
 	it("applies configuration: disabled, retiered, narrowed", () => {
 		expect(selectLenses([lens({})], config({ security: { enabled: false } }), ["src/a.ts"])).toEqual([]);
 		const [retiered] = selectLenses([lens({})], config({ security: { tier: "heavy" } }), ["src/a.ts"]);
-		expect(retiered!.tier).toBe("heavy");
-		expect(retiered!.version).not.toBe("000000000000");
+		expect(retiered!.lens.tier).toBe("heavy");
+		expect(retiered!.lens.version).not.toBe("000000000000");
 		expect(selectLenses([lens({})], config({ security: { paths: ["docs/**"] } }), ["src/a.ts"])).toEqual([]);
 	});
 });

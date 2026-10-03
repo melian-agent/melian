@@ -323,11 +323,43 @@ export async function loadLenses(
 }
 
 /**
- * Picks the lenses to run on a changeset: those `config` leaves enabled whose scope and `paths` select at least one of
- * `paths`. Configuration overrides a lens's `tier` and replaces its `paths`, so a `melian.yaml` can retier a lens,
- * narrow it, or switch it off without touching its `LENS.md`.
+ * Where a lens may look: beneath its `scope`, selected by its `paths`, and outside every `nearer` scope, where a nearer
+ * definition of the same name replaces it.
  */
-export function selectLenses(lenses: readonly Lens[], config: MelianConfig, paths: readonly string[]): Lens[] {
+export interface LensCoverage {
+	readonly scope: string;
+	readonly paths: readonly string[];
+	readonly nearer: readonly string[];
+}
+
+/** A lens chosen to run, where it may look, and the changed files it reviews. */
+export interface LensSelection {
+	readonly lens: Lens;
+	readonly coverage: LensCoverage;
+	readonly files: readonly string[];
+}
+
+function beneath(scope: string, path: string): boolean {
+	return scope === "" || path.startsWith(`${scope}/`);
+}
+
+/** Whether `path`, repository-relative, lies where a lens with `coverage` may look. */
+export function lensCovers(coverage: LensCoverage, path: string): boolean {
+	return (
+		beneath(coverage.scope, path) &&
+		!coverage.nearer.some((scope) => beneath(scope, path)) &&
+		selectedBy(coverage.paths, path)
+	);
+}
+
+/**
+ * Picks the lenses to run on a changeset and the changed files each reviews: a lens runs when `config` leaves it
+ * enabled and it covers at least one of `paths`. A lens covers a path beneath its scope that its `paths` select,
+ * unless a nearer folder defines a lens of the same name, which replaces it there. Configuration overrides a lens's
+ * `tier` and replaces its `paths`, so a `melian.yaml` can retier a lens, narrow it, or switch it off without touching
+ * its `LENS.md`.
+ */
+export function selectLenses(lenses: readonly Lens[], config: MelianConfig, paths: readonly string[]): LensSelection[] {
 	return lenses.flatMap((lens) => {
 		const settings = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name] : undefined;
 		if (settings?.enabled === false) return [];
@@ -339,8 +371,12 @@ export function selectLenses(lenses: readonly Lens[], config: MelianConfig, path
 						tier: settings.tier ?? lens.tier,
 						paths: settings.paths ?? lens.paths,
 					});
-		const inScope = (path: string) => tuned.scope === "" || path.startsWith(`${tuned.scope}/`);
-		return paths.some((path) => inScope(path) && selectedBy(tuned.paths, path)) ? [tuned] : [];
+		const nearer = lenses
+			.filter((other) => other.name === lens.name && other.scope !== lens.scope && beneath(lens.scope, other.scope))
+			.map((other) => other.scope);
+		const coverage = { scope: tuned.scope, paths: tuned.paths, nearer: [...new Set(nearer)] };
+		const files = paths.filter((path) => lensCovers(coverage, path));
+		return files.length > 0 ? [{ lens: tuned, coverage, files }] : [];
 	});
 }
 

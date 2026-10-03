@@ -2,6 +2,7 @@ import {
 	type Changeset,
 	type Finding,
 	type Lens,
+	type LensCoverage,
 	type LensRule,
 	type LensToolName,
 	type MelianConfig,
@@ -48,12 +49,14 @@ interface LensRun {
 	readonly severities: readonly Severity[];
 	readonly rules: readonly LensRule[];
 	readonly budget: number;
+	readonly coverage: LensCoverage;
+	/** The change as this lens sees it: only the files it covers. */
+	readonly prompt: string;
 }
 
 interface LensTaskInput {
 	readonly root: ConversationId;
 	readonly revision: ReviewState;
-	readonly prompt: string;
 	readonly lenses: readonly LensRun[];
 }
 
@@ -85,6 +88,11 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, Record<string, LensOu
 						severities: [...lens.severities],
 						rules: lens.rules.map((rule) => ({ ...rule })),
 						budget: lens.budget,
+						coverage: {
+							scope: lens.coverage.scope,
+							paths: [...lens.coverage.paths],
+							nearer: [...lens.coverage.nearer],
+						},
 					};
 					children[lens.key] = created.id;
 				}
@@ -96,7 +104,8 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, Record<string, LensOu
 			const outcomes = await Promise.all(
 				Object.entries(children).map(async ([key, id]): Promise<[string, LensOutcome]> => {
 					const child = (await runtime.conversation(id, context))!;
-					const request = { type: "input", content: task.input.prompt, requestId: `lens:${key}` } as const;
+					const lens = task.input.lenses.find((each) => each.key === key)!;
+					const request = { type: "input", content: lens.prompt, requestId: `lens:${key}` } as const;
 					const settled = await (await child.submit(request, context)).wait(context);
 					if (settled.status === "done") return [key, { status: "done" }];
 					return [key, { status: "unanswered", reason: settled.reason ?? "unanswered" }];
@@ -148,9 +157,13 @@ async function findingsAt(harness: Harness, root: ConversationId, head: string, 
 
 const maxPromptBytes = 200 * 1024;
 
-/** The input every lens receives: the revision, the files it changes, and its zero-context diff, bounded. */
-export function renderChangePrompt(changeset: Changeset): string {
-	const { base, head, files } = changeset.revision;
+/**
+ * The input a lens receives: the revision, the files it changes, and its zero-context diff, bounded. `only` limits it
+ * to the files a lens covers.
+ */
+export function renderChangePrompt(changeset: Changeset, only?: readonly string[]): string {
+	const { base, head } = changeset.revision;
+	const files = changeset.revision.files.filter((file) => only === undefined || only.includes(file.path));
 	const header = [
 		`Review the change from ${base.slice(0, 12)} to ${head.slice(0, 12)}.`,
 		"",
@@ -224,7 +237,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 	const selected = selectLenses(options.lenses, config, paths);
 	if (selected.length === 0) return findingsAt(harness, root.id, changeset.revision.head, context);
 	const lenses: LensRun[] = [];
-	for (const [index, lens] of selected.entries()) {
+	for (const [index, { lens, coverage, files }] of selected.entries()) {
 		lenses.push({
 			key: `${index}-${lens.name}-${lens.version}`,
 			name: lens.name,
@@ -235,6 +248,8 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 			severities: lens.severities,
 			rules: lens.rules,
 			budget: lens.budget.findings,
+			coverage,
+			prompt: renderChangePrompt(changeset, files),
 		});
 	}
 	const { repoRoot, revision } = changeset;
@@ -247,11 +262,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 	};
 	const taskId = await root.commit(
 		(tx) =>
-			tx.createTask(
-				LensTask,
-				{ root: root.id, revision: state, prompt: renderChangePrompt(changeset), lenses },
-				{ ownership: { kind: "conversation" } },
-			),
+			tx.createTask(LensTask, { root: root.id, revision: state, lenses }, { ownership: { kind: "conversation" } }),
 		context,
 	);
 	harness.resume();

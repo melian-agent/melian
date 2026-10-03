@@ -40,10 +40,10 @@ There is no credential pool yet; one credential per provider.
 
 `reviewChangeset({ harness, changeset, config, lenses, standards, models })` runs the lens step and returns the root conversation's findings. The harness must hold `lensExtension`; open it with `openReviewHarness`, or install the extension in your own registry. Without it the lens task would sit blocked forever, so `reviewChangeset` checks `harness.inspect()` and throws `ReviewError` `notInstalled`.
 
-1. `selectLenses` picks the lenses the changed paths and configuration call for. No model is asked.
+1. `selectLenses` picks the lenses the changed paths and configuration call for, and the changed files each covers. No model is asked.
 2. Each lens's tier resolves through `resolveModelForTier` to the first model the collection knows and holds credentials for.
 3. One root commit creates the lens task, whose input carries the revision under review: the repository, base, head, changed files, and resolution.
-4. The task's first phase creates every lens conversation in one commit, configured with its model, its instructions (`renderLensInstructions`), and an explicit tool list, and records the lens's policy and that revision in its `LensDocument`. Each lens carries its own revision, never a shared record on the root: a crashed review's lens task resumes alongside the next push's, and a shared record would move the old lenses to the new head mid-review. The second phase submits the change, rendered by `renderChangePrompt`, to each lens in parallel, with a request ID per lens so a rerun does not submit twice.
+4. The task's first phase creates every lens conversation in one commit, configured with its model, its instructions (`renderLensInstructions`), and an explicit tool list, and records the lens's policy and that revision in its `LensDocument`. Each lens carries its own revision, never a shared record on the root: a crashed review's lens task resumes alongside the next push's, and a shared record would move the old lenses to the new head mid-review. The second phase submits the change, rendered by `renderChangePrompt` with only the files that lens covers, to each lens in parallel, with a request ID per lens so a rerun does not submit twice.
 5. A lens that does not finish is a `ReviewError` `lensFailed` naming it and carrying what was reported.
 
 ### Lens tools
@@ -56,7 +56,7 @@ There is no credential pool yet; one credential per provider.
 - Cause comes from `classifyCause`. Code inside a hunk is `introduced`; anywhere else it is `pre-existing`, unless the lens gave evidence, the changed line that breaks it, which makes it `affected` and is stored as the finding's `evidence`.
 - Resolution comes from the configuration, source from the lens's name and version, and status from the document.
 
-It upserts into the root conversation's findings document at the head revision, never the lens's own, so one review has one document. A trigger carries the hunk's added lines as its snippet, so a dismissal reopens only when that code changes.
+It refuses a file outside the lens's coverage, its folder and `paths` less any folder a nearer lens of its name covers. It upserts into the root conversation's findings document at the head revision, never the lens's own, so one review has one document. A trigger carries the hunk's added lines as its snippet, so a dismissal reopens only when that code changes.
 
 ### The policy hook
 

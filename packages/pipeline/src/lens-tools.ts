@@ -6,6 +6,7 @@ import {
 	type FindingSource,
 	type LensRule,
 	type LensToolName,
+	lensCovers,
 	listRevisionFiles,
 	type Resolution,
 	type RevisionEntry,
@@ -94,6 +95,8 @@ export type LensPolicy = {
 	severities: Severity[];
 	rules: LensRule[];
 	budget: number;
+	/** Where the lens may report: its folder and paths, less any folder a nearer lens of its name covers. */
+	coverage: { scope: string; paths: string[]; nearer: string[] };
 };
 
 export const LensDocument = defineDoc<{ lens?: LensPolicy }>({
@@ -256,6 +259,9 @@ async function findingFromCall(
 	review: ReviewState,
 ): Promise<Finding> {
 	const path = repositoryPath(args.file);
+	if (!lensCovers(lens.coverage, path)) {
+		throw new Error(`${path} is outside the paths lens ${lens.name} reviews; report only within them`);
+	}
 	const endLine = args.endLine ?? args.line;
 	if (endLine < args.line) throw new Error(`endLine ${endLine} is before line ${args.line}`);
 	const { content } = await readRevisionFile(review.repoRoot, review.head, path);

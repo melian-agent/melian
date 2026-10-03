@@ -81,9 +81,12 @@ export {
 } from "./findings.ts";
 export {
 	type Lens,
+	type LensCoverage,
 	type LensFrontMatter,
 	type LensRule,
+	type LensSelection,
 	type LensToolName,
+	lensCovers,
 	lensFrontMatterSchema,
 	lensLimits,
 	lensRuleSchema,
