@@ -124,6 +124,7 @@ async function forbiddenPaths(
 // one name, and neither may hide the other.
 async function requiredFiles(paths: readonly string[], configFor: ConfigLookup): Promise<Hit[]> {
 	const hits = new Map<string, Hit>();
+	const judged = new Set<string>();
 	for (const path of paths) {
 		const config = await configFor(path);
 		const guardrail = config.guardrails["required-files"];
@@ -132,7 +133,9 @@ async function requiredFiles(paths: readonly string[], configFor: ConfigLookup):
 			if (!matchesGlobs(rule.when, path)) continue;
 			const declaredIn = await configFor.ruleFile(path, "required-files", name);
 			const key = `${declaredIn}\0${name}`;
-			if (hits.has(key)) continue;
+			// A rule's require set depends only on the touched paths, so each rule is judged once.
+			if (judged.has(key)) continue;
+			judged.add(key);
 			const missing = rule.require.filter((glob) => !paths.some((each) => matchesGlobs([glob], each)));
 			if (missing.length === 0) continue;
 			hits.set(key, {

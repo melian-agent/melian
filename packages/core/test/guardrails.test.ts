@@ -253,6 +253,16 @@ describe("required-files", () => {
 		]);
 	});
 
+	it("judges each rule once, however many paths it covers", { timeout: 60_000 }, async () => {
+		const many = Object.fromEntries(
+			Array.from({ length: 2_000 }, (_, index) => [`db/migrations/${index}.sql`, lines("x")]),
+		);
+		const started = performance.now();
+		const { findings } = await guardrails({ "melian.yaml": config, "db/schema.sql": lines("create table a;") }, many);
+		expect(findings).toHaveLength(1);
+		expect(performance.now() - started).toBeLessThan(20_000);
+	});
+
 	it("is satisfied when the change touches the required path too", async () => {
 		const { findings } = await guardrails(
 			{ "melian.yaml": config, "db/schema.sql": lines("create table a;") },

@@ -475,6 +475,18 @@ const notSlash: Node = { kind: "char", test: (code) => code !== 47 };
  * `loadConfig` compiles every glob when it reads the file, so a review never meets one.
  */
 export function compileGlob(glob: string): LinearPattern {
+	let compiled = globs.get(glob);
+	if (compiled === undefined) {
+		compiled = buildGlob(glob);
+		globs.set(glob, compiled);
+	}
+	return compiled;
+}
+
+// Globs come from configuration, so there are few; a guardrail matches each against every touched path.
+const globs = new Map<string, LinearPattern>();
+
+function buildGlob(glob: string): LinearPattern {
 	const items: Node[] = [{ kind: "assert", at: "start" }];
 	for (let index = 0; index < glob.length; ) {
 		if (glob.startsWith("**/", index) && (index === 0 || glob[index - 1] === "/")) {
