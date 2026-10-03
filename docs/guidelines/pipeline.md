@@ -13,6 +13,15 @@ It quarantines import paths, not churn. It re-exports Pi's API unchanged, so cal
 - Keep test helpers in `src/testing.ts`, published as `@melian-agent/pipeline/testing`. `src/index.ts` exports runtime API only.
 - When upgrading Pi, read the changelog and the type declarations, run the spike tests, and update the spike report where behaviour moved.
 
+## The findings document
+
+`FindingsDocument` in `src/findings.ts` holds a conversation's findings keyed by stable ID. It is rewindable and forks `asOf`, so a fork taken at a revision's entry sees that revision's findings and nothing reported after it.
+
+- Write findings only through `upsertFinding(tx, conversationId, finding)`. It validates with core's `parseFinding`, then stores the finding under its ID, replacing any finding with that ID. A replayed or retried call writes the same value again, so a tool that calls it is an idempotent upsert and can be marked `replay: "safe"`. An invalid finding throws `FindingError` and aborts the whole transaction.
+- Read with `readFindings`, which returns findings in ID order and treats an absent document as empty.
+- Both take and return core's `Finding`. The document token stays inside the package. `upsertFinding` takes Pi's transaction, so its callers, such as step 5's `report_finding` tool, live in the pipeline.
+- Replacing is right while every finding is `new`. Cross-revision diffing will need an upsert that keeps a finding's status, such as `dismissed`, when a later revision reports it again.
+
 ## Contracts that read like mistakes
 
 - A task phase reruns from its start after a crash. Work before the phase's checkpoint commit must be safe to repeat, or guarded by a durable record.
