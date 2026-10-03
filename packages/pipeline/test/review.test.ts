@@ -1,11 +1,15 @@
-import { rmSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
+	type CheckRecord,
 	defaultConfig,
 	type Finding,
 	type Lens,
 	loadLenses,
 	type MelianConfig,
 	ModelRoutingError,
+	type RepositorySource,
 	resolveRange,
 } from "@melian-agent/core";
 import {
@@ -16,7 +20,10 @@ import {
 	type Harness,
 	type Message,
 	openHarness,
+	openSqliteStorage,
+	type Review,
 	ReviewError,
+	readVerdict,
 	reviewChangeset,
 } from "@melian-agent/pipeline";
 import {
@@ -79,7 +86,9 @@ afterEach(async () => {
 	rmSync(repo, { recursive: true, force: true });
 });
 
-async function review(options: { lenses?: Lens[]; config?: MelianConfig } = {}): Promise<readonly Finding[]> {
+type ReviewWith = { lenses?: Lens[]; config?: MelianConfig; checks?: CheckRecord[]; policy?: RepositorySource };
+
+async function reviewed(options: ReviewWith = {}): Promise<Review> {
 	return reviewChangeset({
 		harness,
 		changeset: await resolveRange(repo, "main...feature"),
@@ -87,7 +96,13 @@ async function review(options: { lenses?: Lens[]; config?: MelianConfig } = {}):
 		lenses: options.lenses ?? lenses,
 		standards: [{ path: "AGENTS.md", content: "Never use the non-null assertion operator." }],
 		models: fake.models,
+		...(options.checks === undefined ? {} : { checks: options.checks }),
+		...(options.policy === undefined ? {} : { policy: options.policy }),
 	});
+}
+
+async function review(options: ReviewWith = {}): Promise<readonly Finding[]> {
+	return (await reviewed(options)).findings;
 }
 
 type Arguments = Parameters<typeof fauxToolCall>[1];
@@ -408,6 +423,15 @@ describe("reviewChangeset", () => {
 		expect(error).toBeInstanceOf(ReviewError);
 		expect(error).toMatchObject({ code: "lensFailed", lenses: ["correctness"] });
 		expect((error as ReviewError).findings).toHaveLength(1);
+		const { verdict } = error as ReviewError;
+		expect(verdict).toMatchObject({
+			status: "not-reviewed",
+			blocking: true,
+			notRun: [{ name: "lens.correctness", status: "failed", reason: "the lens did not finish" }],
+		});
+		const root = (await harness.root(context)).id;
+		const head = gitIn(repo, "rev-parse", "feature");
+		expect(await readVerdict(harness, root, head, context)).toEqual(verdict);
 	});
 
 	it("refuses a tier with no model, or none with credentials", async () => {
@@ -433,5 +457,95 @@ describe("reviewChangeset", () => {
 		await harness.close(context);
 		harness = await openHarness(createMemoryStorage(), { models: fake.models, registry: createRegistry() });
 		await expect(review()).rejects.toMatchObject({ code: "notInstalled" });
+	});
+});
+
+describe("adjudication", () => {
+	const head = () => gitIn(repo, "rev-parse", "feature");
+	const rootId = async () => (await harness.root(context)).id;
+
+	it("records the verdict on the root under the head and returns it with the findings", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { findings, verdict } = await reviewed();
+
+		expect(verdict).toMatchObject({ status: "findings", blocking: true, notRun: [] });
+		expect(verdict.findings.block.map((each) => each.properties.id)).toEqual([findings[0]!.properties.id]);
+		expect(await readVerdict(harness, await rootId(), head(), context)).toEqual(verdict);
+		expect(await readVerdict(harness, await rootId(), gitIn(repo, "rev-parse", "main"), context)).toBeUndefined();
+	});
+
+	it("resolves each finding under the policy's configuration for its path", async () => {
+		writeFiles(repo, { "src/melian.yaml": lines("resolution:", "  P1: advisory") });
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { findings, verdict } = await reviewed({ policy: { kind: "worktree" } });
+
+		expect(findings[0]!.properties.resolution).toBe("block");
+		expect(verdict).toMatchObject({ status: "findings", blocking: false });
+		expect(verdict.findings.advisory).toHaveLength(1);
+	});
+
+	it("caps a pre-existing finding at advisory", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{
+				match: contracts,
+				replies: [
+					call("report_finding", { ...nullDeref, rule: "changed-return", severity: "P0", line: 2 }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+
+		const { verdict } = await reviewed();
+
+		expect(verdict.findings.advisory.map((each) => each.properties.cause)).toEqual(["pre-existing"]);
+		expect(verdict.blocking).toBe(false);
+	});
+
+	it("is not reviewed when another check failed, even with no findings", async () => {
+		const off = { ...config, lenses: { correctness: { enabled: false }, contracts: { enabled: false } } };
+		const failed: CheckRecord = { name: "static.biome", status: "failed", reason: "biome exited 2" };
+
+		const { verdict } = await reviewed({ config: off, checks: [failed] });
+
+		expect(verdict).toMatchObject({ status: "not-reviewed", blocking: false, notRun: [failed] });
+		expect(await reviewed({ config: off })).toMatchObject({ verdict: { status: "passed" } });
+	});
+
+	it("keeps the verdict across a reopen of the storage", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "melian-verdict-"));
+		try {
+			const path = join(dir, "review.sqlite");
+			const open = async () =>
+				openHarness(await openSqliteStorage(path), {
+					models: fake.models,
+					registry: createReviewRegistry(),
+					settings: { retry: { enabled: false } },
+				});
+			await harness.close(context);
+			harness = await open();
+			await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+			scriptConversations(fake, [
+				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+			const { verdict } = await reviewed();
+			await harness.close(context);
+
+			harness = await open();
+
+			expect(await readVerdict(harness, await rootId(), head(), context)).toEqual(verdict);
+		} finally {
+			await harness.close(context);
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });

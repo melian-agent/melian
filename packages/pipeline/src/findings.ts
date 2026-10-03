@@ -148,3 +148,16 @@ export async function readFindings(
 			return structuredClone({ ...producer, properties: { ...producer.properties, status: lifecycle.status } });
 		});
 }
+
+// The root's document holds every review of the changeset; a finding the lenses did not report at `head` is not this
+// review's, even if an earlier revision's review reported it.
+export async function findingsAt(
+	reader: Pick<Harness, "snapshot">,
+	rootConversationId: ConversationId,
+	head: string,
+	context: Context,
+): Promise<Finding[]> {
+	const document = await reader.snapshot(FindingsDocument, rootConversationId, context);
+	const seen = (id: string) => document?.items[id]?.lifecycle.lastSeenRevision === head;
+	return (await readFindings(reader, rootConversationId, context)).filter((finding) => seen(finding.properties.id));
+}

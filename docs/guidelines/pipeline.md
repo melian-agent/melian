@@ -40,13 +40,15 @@ There is no credential pool yet; one credential per provider.
 
 ## Reviewing a changeset
 
-`reviewChangeset({ harness, changeset, config, lenses, standards, models })` runs the lens step and returns the root conversation's findings. The harness must hold `lensExtension`; open it with `openReviewHarness`, or install the extension in your own registry. Without it the lens task would sit blocked forever, so `reviewChangeset` checks `harness.inspect()` and throws `ReviewError` `notInstalled`.
+`reviewChangeset({ harness, changeset, config, lenses, standards, models, policy, checks })` runs the lens step, then adjudication, and returns a `Review`: the root conversation's findings at the head and the `Verdict`. The harness must hold `lensExtension`, which carries both tasks; open it with `openReviewHarness`, or install the extension in your own registry. Without it a task would sit blocked forever, so `reviewChangeset` checks `harness.inspect()` after creating each task and throws `ReviewError` `notInstalled`.
 
 1. `selectLenses` picks the lenses the changed paths and configuration call for, and the changed files each covers. No model is asked.
 2. Each lens's tier resolves through `resolveModelForTier` to the first model the collection knows and holds credentials for.
 3. One root commit creates the lens task, whose input carries the revision under review: the repository, base, head, changed files, and resolution.
 4. The task's first phase creates every lens conversation in one commit, configured with its model, its instructions (`renderLensInstructions`), and an explicit tool list, and records the lens's policy and that revision in its `LensDocument`. Each lens carries its own revision, never a shared record on the root: a crashed review's lens task resumes alongside the next push's, and a shared record would move the old lenses to the new head mid-review. The second phase submits the change, rendered by `renderChangePrompt` with only the files that lens covers, to each lens in parallel, with a request ID per lens so a rerun does not submit twice.
-5. A lens that does not finish is a `ReviewError` `lensFailed` naming it and carrying what was reported.
+5. Each lens becomes a `CheckRecord` named `lens.<name>`: `ran`, or `failed` with the reason it did not finish. They join `options.checks`, the records of the review's other checks.
+6. The adjudication task decides the verdict and records it, as [Adjudication](#adjudication) describes.
+7. A lens that did not finish is still a `ReviewError` `lensFailed` naming it, carrying what was reported and the `not-reviewed` verdict already recorded. A host that publishes catches it and publishes that verdict.
 
 ### Lens tools
 
@@ -68,9 +70,18 @@ The hook sees only committed findings, and a round's tool calls run in parallel,
 
 One storage holds every review of a changeset, so the root's findings document accumulates across pushes. The budget counts only findings the lens reported at its own head, and `reviewChangeset` returns only findings reported at the head it reviewed. Without that, a lens that used its budget on the first push could report nothing on the second, and a fixed finding would come back as current.
 
-A finding's ID names no lens, so two lenses that share a rule ID can report one ID. The first lens to report it at a head keeps it; `report_finding` refuses the second, which would otherwise replace the first lens's severity and source and free a slot in the first lens's budget. Merging the two is adjudication's job, step 7.
+A finding's ID names no lens, so two lenses that share a rule ID can report one ID. The first lens to report it at a head keeps it; `report_finding` refuses the second, which would otherwise replace the first lens's severity and source and free a slot in the first lens's budget. Merging the two is adjudication's job.
 
-## Contracts that read like mistakes
+## Adjudication
+
+The adjudication task, `melian.adjudication`, reads the root conversation's findings at the head under review, runs core's `adjudicate`, and writes the verdict into `VerdictDocument` on the root under that head. Like the findings document, the verdict document belongs to the root, is rewindable, and forks `asOf`, so a fork of the root at a revision carries that revision's verdict. Read it with `readVerdict(reader, rootConversationId, revision, context)`, which returns a copy or `undefined`.
+
+The task has one phase. It reads, decides, and commits the verdict and the task's terminal outcome together, so a crash before that commit reruns the phase, which reads the same findings and writes the same verdict; a second review of the same head replaces the verdict with the new one. Everything it decides from is in its input, fixed when `reviewChangeset` creates it: the root, the repository, the head, the check records, and the configuration.
+
+Resolution is per path. With `options.policy`, the source `config` was loaded from, the task calls `loadConfig` for each finding's path, so a nested `melian.yaml` that lowers `P2` to `advisory` for `docs/` applies there. Without it, `config`'s `resolution` and `ruleAliases` apply everywhere. The resolution a lens stored at report time came from `config`; the verdict's is the one that counts, and `Review.findings` keeps the stored one.
+
+Check records are the seam with static analysis and guardrails, step 6. A step that runs a check passes `{ name, status, reason?, error? }` in `options.checks`; nothing else about its records matters to adjudication. A check that failed or was skipped makes the verdict `not-reviewed`, so a host must record every check the tier called for, including the ones that never started.
+
 
 - A task phase reruns from its start after a crash. Work before the phase's checkpoint commit must be safe to repeat, or guarded by a durable record.
 - A tool's own commit and its result land in separate durable commits, so a crash between them reruns a replay-safe tool and has the model retry an unsafe one. A tool with a durable side effect is therefore an idempotent upsert keyed by a stable ID, such as a finding's, and marked `replay: "safe"`. Otherwise it is not replay-safe, and a durable record guards its side effect. Never guard it with a memo.

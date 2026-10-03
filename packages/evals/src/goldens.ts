@@ -234,7 +234,15 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			...(mode.kind === "scripted" ? { settings: { retry: { enabled: false } } } : {}),
 		});
 		try {
-			const findings = await reviewChangeset({ harness, changeset, config, lenses, standards, models });
+			const { findings } = await reviewChangeset({
+				harness,
+				changeset,
+				config,
+				lenses,
+				standards,
+				models,
+				policy: source,
+			});
 			return { golden, findings, rendered: renderFindingsTerminal(createFindingsLog([...findings])) };
 		} finally {
 			await harness.close(backgroundContext);
