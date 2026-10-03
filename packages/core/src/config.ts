@@ -455,6 +455,13 @@ function anchorPaths(site: Site, layer: MelianYaml): MelianYaml {
 				{ key },
 			);
 		}
+		// A gitignore habit: `secrets/` reads as the directory, but a glob matches whole paths, so it would match nothing.
+		if (path.endsWith("/")) {
+			const suggestion = `${path.replace(/\/+$/, "")}/**`;
+			throw configError("invalidValue", site, `"${key}" has ${path}, which matches no file; write ${suggestion}`, {
+				key,
+			});
+		}
 		const negated = path.startsWith("!");
 		const pattern = (negated ? path.slice(1) : path).replace(/^\/+/, "");
 		const anchored = posix.normalize(posix.join(directory, pattern));

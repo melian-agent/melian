@@ -166,6 +166,13 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		expect(error.message).toMatch(/do not support braces or character classes/);
 	});
 
+	it("refuses a glob ending in a slash, suggesting the glob that matches the directory's files", async () => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", "  security:", "    paths: [secrets/]") });
+		const error = await rejection(load("a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", key: "lenses.security.paths" });
+		expect(error.message).toMatch(/matches no file; write secrets\/\*\*/);
+	});
+
 	it("compiles every glob when it reads the file, refusing one too long to run", async () => {
 		writeFiles(repo, { "melian.yaml": lines("lenses:", "  security:", `    paths: ['${"a".repeat(2_001)}']`) });
 		const error = await rejection(load("a.ts"));
