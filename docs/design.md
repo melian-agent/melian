@@ -177,7 +177,7 @@ Front matter is routing; the body is the system prompt for the lens's child conv
 - `extends` lets a repository override parts of a built-in lens, such as its tier or an appended paragraph, without copying the body.
 - `standards: true` injects the shared standards section. Default true; opt out for lenses where conventions are noise.
 
-Layering follows Pi's resource rules. Built-in lenses ship inside the Melian package. Repository lenses live under `.melian/lenses/`. Folder-level configuration can disable a lens, change its tier, narrow its paths, or add one. Lens packs for a language or framework ship as Pi packages with a `melian.lenses` manifest key mirroring `pi.skills`, pinned in project settings.
+Layering follows Pi's resource rules. Built-in lenses ship inside the Melian package. Repository lenses live under `.melian/lenses/`, which is canonical and keeps them beside `melian.yaml`, standards, and knowledge. Lenses are also discovered under `.agents/lenses/`, for repositories that keep everything agent-facing under the Agent Skills directory, mirroring Pi's own dual discovery of `.pi/` and `.agents/skills/`. Skill loaders only load directories containing `SKILL.md`, so a `LENS.md` directory is invisible to them wherever it lives. We do not own the `.agents/` namespace; if the spec defines that path for something else, the spec wins. Both locations resolve nearest-first in a monorepo. Folder-level configuration can disable a lens, change its tier, narrow its paths, or add one. Lens packs for a language or framework ship as Pi packages with a `melian.lenses` manifest key mirroring `pi.skills`, pinned in project settings.
 
 Findings leave a lens through a `report_finding` tool with a TypeBox schema. Prose is never parsed for findings.
 
@@ -202,6 +202,8 @@ stages:
 Melian exposes `melian run <tier>` and `melian run --stage <name>`. It never installs git hooks. Recipes ship for lefthook, pre-commit, husky, and Pi.
 
 The fast tier must finish in seconds. It runs guardrails, static tools, and decision-model questions such as "does this diff disable a test", "does this change a public contract", "does this touch auth or billing". No LLM runs in the fast tier.
+
+The decision-model questions ship enabled by default. When no decision provider is configured, the fast tier degrades silently to guardrails and static tools and prints one line saying semantic checks are off and how to enable them; `melian doctor` reports the same. Bundling a local decision model is not an option for a default, since even Clef-flash is a 9B-parameter model, and the LLM fallback provider is never used in the fast tier because the tier's contract is that nothing slow runs in it.
 
 ## Configuration and layering
 
@@ -268,7 +270,9 @@ The lenses, the explanation, anything beyond the 64k-token state window, anythin
 - Question sets are versioned, typed units in code with their own golden evals. Every answer records the question-set version.
 - Every decision is a replay-safe task that stores the full probability distribution, not just the chosen option. Thresholds live in configuration and can be retuned from stored data.
 - Thresholds are bands: below drops, above accepts, inside escalates to an LLM pass.
-- Calls are batched: one state, many questions, within each vendor's limits.
+- Vendor limits are data, not code. Each provider exposes a capability descriptor: context tokens, per-question token limit, maximum questions per call, maximum options per choice. A generic packer in core fills calls against whichever descriptor it is handed. Jev documents its 64k state and 32k per-question limits but not a questions-per-call limit, so its descriptor is confirmed by a test call rather than copied from docs.
+- Finding triage asks four questions per finding: cause, severity, probability it is real, and duplicate-of. Against Clef's 64-question limit that packs 16 findings per call, grouped by file so they share context.
+- Duplicate detection is pairwise and would explode, so findings are hash-deduplicated first, then each remaining finding gets one choice question over candidate IDs from the same file and rule, capped well under the 255-option limit.
 
 ### Invariants
 
@@ -300,11 +304,34 @@ A long-lived harness receiving webhooks, SQLite on disk, many changesets reviewe
 
 ### GitHub Actions
 
-Ephemeral runners make durability the feature rather than a nicety. Each job restores state, works until done or until its time budget runs out, checkpoints, and re-dispatches itself. State lives in the state branch by default. Untrusted head code never runs with secrets; the `pull_request_target` footgun is avoided by never executing head code in the privileged job.
+Ephemeral runners make durability the feature rather than a nicety. Untrusted head code never runs with secrets; the `pull_request_target` footgun is avoided by never executing head code in the privileged job.
+
+**The common case needs nothing special.** A push triggers the job, it restores the state branch, runs the pipeline, pushes state, and posts the review within its timeout. Most runs end here.
+
+**Continuation when a review outruns the job.** The harness is given a budget a few minutes short of the job timeout. At the deadline it stops dispatching tasks, lets in-flight tasks reach their next checkpoint, pushes state, and dispatches a continuation of the same workflow through `workflow_dispatch` with the changeset ID as input. The continuation restores and resumes: finished lenses are not re-run, and the interrupted one resumes from its last checkpoint. `workflow_dispatch` is chosen over `repository_dispatch` because it targets one named workflow with typed inputs rather than a repository-wide event; the token permissions are the same either way, since the state branch already needs `contents: write`. The job token needs `contents: write`, `pull-requests: write`, `checks: write`, and `actions: write`.
+
+**Recovery when a job dies.** A runner failure, eviction, or cancellation kills the job before it can dispatch a continuation. State up to the last checkpoint survives on the branch. Two things recover it, neither costing anything while idle:
+
+- The next push on the pull request starts a normal run, which resumes rather than restarts.
+- A small recovery workflow listens on `workflow_run` for the review workflow completing with a cancelled, failed, or timed-out conclusion. It reads the state index, and if the changeset is still marked in progress it dispatches a continuation. This catches runner death within a minute and runs only when a review run ends badly.
+
+**The state index.** Every job maintains one small file on the state branch at each checkpoint, with one record per in-progress changeset: changeset ID, revision, the run ID working on it, a heartbeat, an attempt count, and an optional earliest-resume time. The recovery workflow reads it through the contents API in one request, never a checkout.
+
+**Loop guard.** A continuation that fails the same way every time would dispatch forever. The attempt count caps continuations per revision at three. Past the cap, the check is set to not reviewed with the last error. A new push resets the count.
+
+**Concurrency.** A `concurrency` group keyed by changeset, without cancel-in-progress, queues a comment-triggered job behind a running review. The durable submission admits the comment exactly once when the queued job runs. The group also makes a double dispatch harmless.
+
+**Waits and garbage collection are not automated.** A lens that hits a rate limit sleeps if the wait fits the remaining budget. If it does not, the job checkpoints with an earliest-resume time and stops; the next push, a comment command, or `melian review` resumes it. State for a closed or merged pull request is disposed by the `pull_request` closed event. There is no scheduled job.
+
+**A scheduled sweep is designed but not shipped.** A periodic workflow could read the index and recover changesets the event path missed, honour earliest-resume times, reconcile dangling check runs, and delete expired state. It would cost runner minutes on every tick to cover a rare case, so it is deliberately not enabled. The index carries what it would need, so it can be added without changing the state format if the event path proves insufficient. Two GitHub constraints apply if it is: scheduled workflows run only from the default branch, and GitHub disables them after sixty days of repository inactivity.
 
 ### Slack and others (later)
 
 Another trigger adapter and publisher over the same pipeline.
+
+### Other git providers (later)
+
+The changeset abstraction already hides where a change came from. The provider-specific surface is small and known: fetching the change, posting the review and threads, receiving comment commands, and setting check status. All of it lives in `packages/github` behind a provider port defined in core. GitHub is the only implementation until a real user asks for another; a second provider is then a new package, not a refactor. Building GitLab or Bitbucket speculatively would contradict the minimal-core rule.
 
 ## State storage
 
@@ -430,11 +457,12 @@ docs/
 | Write-back | Always by pull request; Melian copy disposed on merge; tombstone on decline | Reviewed like code; no re-proposals |
 | Decision models | Advisory signals into deterministic policy; stored distributions; banded thresholds | Cheap, fast, calibrated; never authority |
 | License | MIT, same as Pi | Alignment with Pi and Earendil |
+| Fast-tier decisions | Enabled by default; degrade silently to guardrails and static when no provider is configured | Semantic pre-commit checks are the point; the tier must never wait on an LLM |
+| Decision batching | Vendor limits as capability descriptors; generic packer; hash-dedupe then choice over candidates | Limits change per vendor and over time; code should not |
+| Lens locations | `.melian/lenses/` canonical, `.agents/lenses/` also discovered, nearest-first | Mirrors Pi's dual discovery; `LENS.md` is invisible to skill loaders |
+| Actions continuation | `workflow_dispatch` with changeset input; `workflow_run` recovery workflow; state index with attempt cap; no scheduled sweep | Event-driven recovery costs nothing idle; a sweep burns minutes for a rare case and can be added later without changing state |
+| Git providers | GitHub only behind a provider port in core | Second provider is a package, not a refactor; nothing speculative |
 
 ## Open questions
 
-- Whether the fast tier's decision-model questions ship enabled by default, given they require a configured decision provider.
-- The exact per-vendor batching strategy for finding triage, given Jev's 32k-token per-question limit.
-- Whether lens packs are discovered from `.agents/`-style locations as well as `.melian/lenses/`.
-- How the Actions host re-dispatches itself with the least permission: `workflow_dispatch`, a repository dispatch event, or a scheduled sweep.
-- Whether the server host should also accept GitLab and Bitbucket webhooks in the first iteration, or whether the git provider abstraction waits.
+None at present. The scheduled sweep for the Actions host is the one deferred decision: it is designed in the hosts section and will be revisited if event-driven recovery proves insufficient in practice.
