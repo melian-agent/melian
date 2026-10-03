@@ -4,7 +4,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
 	ssr: {
 		resolve: {
-			conditions: ["source", ...defaultServerConditions],
+			conditions: ["@melian-agent/source", ...defaultServerConditions],
 		},
 	},
 	test: {

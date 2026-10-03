@@ -14,10 +14,16 @@
 	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
-			"source": "./src/index.ts",
+			"@melian-agent/source": "./src/index.ts",
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js",
 			"default": "./dist/index.js"
+		},
+		"./testing": {
+			"@melian-agent/source": "./src/testing.ts",
+			"types": "./dist/testing.d.ts",
+			"import": "./dist/testing.js",
+			"default": "./dist/testing.js"
 		},
 		"./package.json": "./package.json"
 	},
