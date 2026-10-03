@@ -4,6 +4,7 @@ import Value from "typebox/value";
 import { parseDocument } from "yaml";
 import { ConfigError, type ConfigErrorCode } from "./errors.ts";
 import { directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
+import { compilePattern } from "./pattern.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 
 const strict = { additionalProperties: false } as const;
@@ -34,6 +35,23 @@ const band = Type.Object(
 	},
 	strict,
 );
+
+const globs = Type.Array(name, { minItems: 1 });
+const staticTool = {
+	enabled: Type.Optional(Type.Boolean()),
+	timeout: Type.Optional(Type.Integer({ minimum: 1, maximum: 3600 })),
+	severity: Type.Optional(Type.Record(Type.String(), severitySchema)),
+};
+// Every field of a rule is optional in one file, so a nearer file can restate one; the merged rule must have them all.
+const guardrail = <Rule extends Record<string, TSchema>>(rule: Rule) =>
+	Type.Object(
+		{
+			enabled: Type.Optional(Type.Boolean()),
+			severity: Type.Optional(severitySchema),
+			rules: Type.Optional(Type.Record(Type.String(), Type.Object(rule, strict))),
+		},
+		strict,
+	);
 
 /** The JSON Schema of one `melian.yaml`. Every key is optional, and unknown keys are rejected. */
 export const melianYamlSchema = Type.Object(
@@ -72,6 +90,45 @@ export const melianYamlSchema = Type.Object(
 					medium: Type.Optional(modelRoute),
 					heavy: Type.Optional(modelRoute),
 					decision: Type.Optional(modelRoute),
+				},
+				strict,
+			),
+		),
+		static: Type.Optional(
+			Type.Object(
+				{
+					biome: Type.Optional(Type.Object(staticTool, strict)),
+					tsc: Type.Optional(Type.Object({ ...staticTool, project: Type.Optional(name) }, strict)),
+				},
+				strict,
+			),
+		),
+		guardrails: Type.Optional(
+			Type.Object(
+				{
+					"forbidden-paths": Type.Optional(
+						guardrail({ paths: Type.Optional(globs), message: Type.Optional(name) }),
+					),
+					"required-files": Type.Optional(
+						guardrail({
+							when: Type.Optional(globs),
+							require: Type.Optional(globs),
+							message: Type.Optional(name),
+						}),
+					),
+					"forbidden-patterns": Type.Optional(
+						guardrail({
+							pattern: Type.Optional(name),
+							paths: Type.Optional(globs),
+							message: Type.Optional(name),
+						}),
+					),
+					"policy-change-review": Type.Optional(
+						Type.Object(
+							{ enabled: Type.Optional(Type.Boolean()), severity: Type.Optional(severitySchema) },
+							strict,
+						),
+					),
 				},
 				strict,
 			),
@@ -118,6 +175,65 @@ export interface Band {
 	readonly accept: number;
 }
 
+/**
+ * How Melian runs one static tool. `timeout` is in seconds. `severity` overrides the default severity of a rule, keyed
+ * by its Melian rule ID, such as `biome/suspicious/noDebugger`.
+ */
+export interface StaticToolSettings {
+	readonly enabled: boolean;
+	readonly timeout: number;
+	readonly severity: Readonly<Record<string, Severity>>;
+}
+
+/** How Melian runs tsc. `project` is the tsconfig to check, relative to the repository root. */
+export interface TscSettings extends StaticToolSettings {
+	readonly project: string;
+}
+
+/** The static tools Melian runs, read from the repository root's configuration. */
+export interface StaticSettings {
+	readonly biome: StaticToolSettings;
+	readonly tsc: TscSettings;
+}
+
+/** A `forbidden-paths` rule: no change may touch a path matching `paths`, repository-relative globs once loaded. */
+export interface ForbiddenPathRule {
+	readonly paths: readonly string[];
+	readonly message: string;
+}
+
+/** A `required-files` rule: a change touching a path matching `when` must also touch a path matching each of `require`. */
+export interface RequiredFileRule {
+	readonly when: readonly string[];
+	readonly require: readonly string[];
+	readonly message: string;
+}
+
+/**
+ * A `forbidden-patterns` rule: no line a change adds, in a file matching `paths`, or in any file when `paths` is absent,
+ * may match `pattern`, a regular expression run by a linear-time engine.
+ */
+export interface ForbiddenPatternRule {
+	readonly pattern: string;
+	readonly paths?: readonly string[];
+	readonly message: string;
+}
+
+/** One guardrail: whether it runs, the severity of its findings, and its named rules. */
+export interface Guardrail<Rule> {
+	readonly enabled: boolean;
+	readonly severity: Severity;
+	readonly rules: Readonly<Record<string, Rule>>;
+}
+
+/** The deterministic policies Melian evaluates. Each reports under the rule ID `guardrail/<name>`. */
+export interface GuardrailSettings {
+	readonly "forbidden-paths": Guardrail<ForbiddenPathRule>;
+	readonly "required-files": Guardrail<RequiredFileRule>;
+	readonly "forbidden-patterns": Guardrail<ForbiddenPatternRule>;
+	readonly "policy-change-review": { readonly enabled: boolean; readonly severity: Severity };
+}
+
 /** The effective configuration for one path: built-in defaults with every applicable `melian.yaml` merged on top. */
 export interface MelianConfig {
 	readonly tiers: Readonly<Record<string, readonly string[]>>;
@@ -125,6 +241,8 @@ export interface MelianConfig {
 	readonly resolution: Readonly<Record<Severity, Resolution>>;
 	readonly lenses: Readonly<Record<string, LensSettings>>;
 	readonly models: Readonly<Partial<Record<LensTier | "decision", ModelRoute>>>;
+	readonly static: StaticSettings;
+	readonly guardrails: GuardrailSettings;
 	readonly knowledge: { readonly writeBack: boolean };
 	readonly decisions: { readonly provider?: string; readonly thresholds: Readonly<Record<string, Band>> };
 }
@@ -140,6 +258,16 @@ export const defaultConfig: MelianConfig = {
 	resolution: { P0: "block", P1: "block", P2: "acknowledge", P3: "advisory", nit: "silent" },
 	lenses: {},
 	models: {},
+	static: {
+		biome: { enabled: true, timeout: 300, severity: {} },
+		tsc: { enabled: true, timeout: 300, severity: {}, project: "tsconfig.json" },
+	},
+	guardrails: {
+		"forbidden-paths": { enabled: true, severity: "P1", rules: {} },
+		"required-files": { enabled: true, severity: "P2", rules: {} },
+		"forbidden-patterns": { enabled: true, severity: "P2", rules: {} },
+		"policy-change-review": { enabled: true, severity: "P2" },
+	},
 	knowledge: { writeBack: false },
 	decisions: { thresholds: {} },
 };
@@ -245,30 +373,76 @@ async function readLayer(source: SourceReader, site: Site): Promise<MelianYaml |
 	}
 	rejectReservedKeys(site, value);
 	validate(site, value, melianYamlSchema);
-	return anchorLensPaths(site, value as MelianYaml);
+	checkPatterns(site, value as MelianYaml);
+	return anchorPaths(site, value as MelianYaml);
 }
 
-// A lens's paths are written relative to their melian.yaml; merging would lose which file that was.
-function anchorLensPaths(site: Site, layer: MelianYaml): MelianYaml {
-	if (layer.lenses === undefined) return layer;
+// A pattern is refused when its file is read, so the error names the file rather than failing a review later.
+function checkPatterns(site: Site, layer: MelianYaml): void {
+	for (const [rule, { pattern }] of Object.entries(layer.guardrails?.["forbidden-patterns"]?.rules ?? {})) {
+		if (pattern === undefined) continue;
+		const compiled = compilePattern(pattern);
+		if (compiled.ok) continue;
+		const key = `guardrails.forbidden-patterns.rules.${rule}.pattern`;
+		throw configError("invalidValue", site, `"${key}" is not a safe pattern: ${compiled.reason}`, { key });
+	}
+}
+
+// Every glob list a melian.yaml holds, as a key path; `*` stands for any name.
+const globLists: readonly (readonly string[])[] = [
+	["lenses", "*", "paths"],
+	["guardrails", "forbidden-paths", "rules", "*", "paths"],
+	["guardrails", "required-files", "rules", "*", "when"],
+	["guardrails", "required-files", "rules", "*", "require"],
+	["guardrails", "forbidden-patterns", "rules", "*", "paths"],
+];
+
+// Globs are written relative to their melian.yaml; merging would lose which file that was.
+function anchorPaths(site: Site, layer: MelianYaml): MelianYaml {
 	const directory = posix.dirname(site.file);
-	const anchor = (lens: string) => (path: string) => {
+	const anchor = (key: string, path: string) => {
 		const negated = path.startsWith("!");
 		const pattern = (negated ? path.slice(1) : path).replace(/^\/+/, "");
 		const anchored = posix.normalize(posix.join(directory, pattern));
 		if (anchored === ".." || anchored.startsWith("../")) {
-			const key = `lenses.${lens}.paths`;
 			throw configError("invalidValue", site, `"${key}" has ${path}, which leaves the repository`, { key });
 		}
 		return `${negated ? "!" : ""}${anchored}`;
 	};
-	const lenses = Object.fromEntries(
-		Object.entries(layer.lenses).map(([lens, settings]) => [
-			lens,
-			settings.paths === undefined ? settings : { ...settings, paths: settings.paths.map(anchor(lens)) },
-		]),
-	);
-	return { ...layer, lenses };
+	const rewrite = (value: unknown, keys: readonly string[], at: readonly string[]): unknown => {
+		if (keys.length === 0) return (value as string[]).map((glob) => anchor(at.join("."), glob));
+		if (!isPlain(value)) return value;
+		const [key, ...rest] = keys;
+		const copy: Plain = { ...value };
+		for (const name of key === "*" ? Object.keys(copy) : [key!]) {
+			if (copy[name] !== undefined) copy[name] = rewrite(copy[name], rest, [...at, name]);
+		}
+		return copy;
+	};
+	return globLists.reduce<unknown>((value, keys) => rewrite(value, keys, []), layer) as MelianYaml;
+}
+
+const requiredRuleKeys = {
+	"forbidden-paths": ["paths", "message"],
+	"required-files": ["when", "require", "message"],
+	"forbidden-patterns": ["pattern", "message"],
+} as const;
+
+function checkGuardrailRules(config: MelianConfig, layers: readonly { site: Site; layer: MelianYaml }[]): void {
+	for (const [guardrail, keys] of Object.entries(requiredRuleKeys) as [
+		keyof typeof requiredRuleKeys,
+		readonly string[],
+	][]) {
+		for (const [rule, settings] of Object.entries(config.guardrails[guardrail].rules)) {
+			const missing = keys.find((key) => (settings as Record<string, unknown>)[key] === undefined);
+			if (missing === undefined) continue;
+			const site = layers.find(({ layer }) => layer.guardrails?.[guardrail]?.rules?.[rule] !== undefined)!.site;
+			const key = `guardrails.${guardrail}.rules.${rule}`;
+			throw configError("invalidValue", site, `"${key}" sets no ${missing}, and no farther file does`, {
+				key: `${key}.${missing}`,
+			});
+		}
+	}
 }
 
 function checkBands(config: MelianConfig, layers: readonly { site: Site; layer: MelianYaml }[]): void {
@@ -293,6 +467,21 @@ function checkBands(config: MelianConfig, layers: readonly { site: Site; layer: 
 			{ key },
 		);
 	}
+}
+
+// The effective configuration for each path a check visits. Layering depends only on a file's directory, so each
+// directory is loaded once.
+export function configLookup(repoRoot: string, source: RepositorySource): (path: string) => Promise<MelianConfig> {
+	const loaded = new Map<string, Promise<MelianConfig>>();
+	return (path) => {
+		const directory = posix.dirname(path);
+		let config = loaded.get(directory);
+		if (config === undefined) {
+			config = loadConfig(repoRoot, source, path).then(({ config }) => config);
+			loaded.set(directory, config);
+		}
+		return config;
+	};
 }
 
 /**
@@ -320,5 +509,6 @@ export async function loadConfig(repoRoot: string, source: RepositorySource, pat
 	const defaults = merge({}, structuredClone(defaultConfig) as unknown as Plain);
 	const config = layers.reduceRight((merged, { layer }) => merge(merged, layer), defaults) as unknown as MelianConfig;
 	checkBands(config, layers);
+	checkGuardrailRules(config, layers);
 	return { config, sources: layers.map(({ site }) => site.file) };
 }

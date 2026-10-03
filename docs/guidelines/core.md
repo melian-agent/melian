@@ -92,8 +92,12 @@ The keys a `melian.yaml` accepts, all optional:
 | `resolution` | `P0` to `P3` and `nit`, each `block`, `acknowledge`, `advisory`, or `silent` | `P0` and `P1` block, `P2` acknowledge, `P3` advisory, `nit` silent |
 | `lenses` | lens name to `enabled`, `tier` (`light`, `medium`, `heavy`), and `paths` | none |
 | `models` | `light`, `medium`, `heavy`, or `decision` to `model` and `fallbacks` | none |
+| `static` | `biome` and `tsc`, each with `enabled`, `timeout` in seconds, and `severity` from a Melian rule ID to a severity; `tsc` also takes `project` | both enabled, 300 seconds, no overrides, `project: tsconfig.json` |
+| `guardrails` | `forbidden-paths`, `required-files`, `forbidden-patterns`, each with `enabled`, `severity`, and `rules` by name; `policy-change-review` with `enabled` and `severity` | all enabled, no rules; severity `P1` for forbidden-paths, `P2` for the others |
 | `knowledge` | `writeBack`, a boolean | `false` |
 | `decisions` | `provider`, and `thresholds` from question name to a `drop` and `accept` band between 0 and 1 | no provider, no thresholds |
+
+Guardrail rules follow lenses: a map keyed by rule name, each field optional in one file, so a nearer file can restate one field of a root rule. A merged rule missing a field is an error naming the nearest file that set the rule. Guardrail globs anchor to their file like a lens's `paths`: `forbidden-paths.rules.*.paths`, `required-files.rules.*.when` and `require`, and `forbidden-patterns.rules.*.paths`. `static` is read from the configuration the host passes for the repository root, since each tool runs once over the whole tree.
 
 Lenses are a map keyed by name rather than `enable` and `disable` lists, so that layering works per lens: a service can disable one lens without restating the root's list. A band layers like any object, so a nearer file may restate only `drop` or only `accept`. A merged band missing either end, or whose `drop` exceeds its `accept`, is an error naming the nearest file that set it.
 
@@ -161,6 +165,23 @@ The cost is the other direction: a renamed parameter that breaks a caller is `pr
 `renderFindingsJson` writes the SARIF log; `renderFindingsTerminal` writes plain text grouped by file in path order, and within a file by severity, then line, then ID. The terminal output carries no escape codes unless `color` is set, so a pipe or a log file receives plain text. Hosts decide whether to colour; core never reads `isTTY` or `NO_COLOR`.
 
 Everything the renderer prints is untrusted. A lens writes finding text after reading the change under review, which anyone opening a pull request controls, and that author also chooses the file paths. Example: a file named `src/run.ts` followed by ESC `[2J` clears the reviewer's screen, a newline in a path or rule ID forges a second header, and a right-to-left override makes `gnp.ts` read as `ts.png`. The terminal renderer therefore prints every control character, C1 control, line or paragraph separator, and bidi control in every string, paths and rule IDs included, as a visible `\uXXXX`, with colour on or off. Prose keeps its newlines as indented continuation lines, so a multi-line explanation stays inside its block; a newline anywhere else is escaped. Any new renderer for a terminal does the same.
+
+## Guardrails
+
+`evaluateGuardrails({ repoRoot, revision, source })` runs four deterministic policies in the Melian process. It never runs the repository's code: it reads the changeset, each path's layered `melian.yaml` from `source`, and, for forbidden-patterns, the changed files at head through git's object store. Each guardrail reports under `guardrail/<name>` at the severity its configuration sets, with the resolution the path's configuration gives that severity, and every finding is `introduced`, because a guardrail judges the change itself.
+
+| Guardrail | Fires when | Default severity | Where the finding sits |
+|---|---|---|---|
+| `forbidden-paths` | a touched path, on either side of a rename, matches a rule's `paths` | `P1` | the path, line 1 |
+| `required-files` | a touched path matches a rule's `when`, and no touched path matches one of its `require` | `P2` | the first such path, line 1, once per rule |
+| `forbidden-patterns` | a line the change adds, in a file matching the rule's `paths` or any file when `paths` is absent, matches its `pattern` | `P2` | the added line, with its hunk as the trigger |
+| `policy-change-review` | the revision changes one of `revision.policyFiles` | `P2` | the policy file, line 1 |
+
+Each path is judged by its own configuration, so a rule in `services/payments/melian.yaml` covers only that service. Several rules of one guardrail that fire on one path or one line give one finding, whose message joins theirs: they would share a finding ID, and the second would replace the first. Findings without code to hash take a discriminator: `path`, the rule name, `policy`, or for a blank or unreadable line, `line <n>`.
+
+Problem: forbidden-patterns runs a pattern from configuration over lines the head's author wrote, and JavaScript's `RegExp` backtracks. Example: `.*foo.*bar` over a line of 20,000 `foo`s takes cubic time, and a pull request chooses the line. Solution: `src/pattern.ts` compiles a pattern to a Thompson NFA and runs every thread in step, so a line costs at most its length times the program size. It supports literals, `.`, classes, `\d \w \s` and their negations, `\b \B`, `^ $`, groups, alternation, and greedy or lazy quantifiers, and it refuses backreferences and lookaround, which no linear-time engine runs. `loadConfig` compiles every pattern when it reads the file, so a refused pattern is a `ConfigError` `invalidValue` naming the file and key rather than a failed review. Repetition counts stop at 100 and programs at 2,000 steps. Globs compile to the same engine, so a path cannot make a glob backtrack either: `*` and `?` stay within a segment, `**` crosses segments, and `**/` matches zero or more whole directories.
+
+What forbidden-patterns cannot read, it says. A line over 10,000 characters is not scanned, and a file whose name is not UTF-8 is skipped; each adds a sentence to the report's `notes`. A file over 4 MiB at head is still scanned, but its findings are identified by line number, since its text cannot be read whole to count occurrences.
 
 ## Tests
 

@@ -12,6 +12,10 @@ export {
 export {
 	type Band,
 	defaultConfig,
+	type ForbiddenPathRule,
+	type ForbiddenPatternRule,
+	type Guardrail,
+	type GuardrailSettings,
 	type LensSettings,
 	type LensTier,
 	type LoadedConfig,
@@ -21,15 +25,21 @@ export {
 	type ModelRoute,
 	maxConfigBytes,
 	melianYamlSchema,
+	type RequiredFileRule,
 	type Resolution,
 	resolutionSchema,
 	type Severity,
+	type StaticSettings,
+	type StaticToolSettings,
 	severitySchema,
+	type TscSettings,
 } from "./config.ts";
 export type { ChangedFile, FileKind, FileStatus, Hunk } from "./diff.ts";
 export {
 	ChangesetError,
 	type ChangesetErrorCode,
+	CheckError,
+	type CheckErrorCode,
 	ConfigError,
 	type ConfigErrorCode,
 	FindingError,
@@ -75,6 +85,13 @@ export {
 	sarifSchemaUri,
 	snippetOccurrence,
 } from "./findings.ts";
+export {
+	type CheckReport,
+	evaluateGuardrails,
+	type GuardrailInput,
+	type GuardrailName,
+	guardrailLimits,
+} from "./guardrails.ts";
 export { melianPaths } from "./paths.ts";
 export { renderFindingsJson, renderFindingsTerminal, type TerminalRenderOptions } from "./render.ts";
 export type { RepositorySource } from "./source.ts";
