@@ -196,7 +196,9 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 		.map((resolution) => `${verdict.findings[resolution].length} ${resolution}`);
 	const shown = verdict.findings.block.length + verdict.findings.acknowledge.length + verdict.findings.advisory.length;
 	const summary = [
-		shown === 0 ? "No findings need attention." : `${plural(shown, "finding")} need attention: ${counts.join(", ")}.`,
+		shown === 0
+			? "No findings need attention."
+			: `${plural(shown, "finding")} ${shown === 1 ? "needs" : "need"} attention: ${counts.join(", ")}.`,
 		...(draft.stillOpen > 0
 			? [`${draft.stillOpen} of them ${draft.stillOpen === 1 ? "was" : "were"} posted on an earlier revision.`]
 			: []),

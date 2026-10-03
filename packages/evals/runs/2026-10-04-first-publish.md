@@ -77,4 +77,4 @@ The one finding is right. The policy-change guardrail saw that the change edits 
 
 Every check ran, so the verdict covers the whole change. The marker, the nearest-line placement, the status, and the second publish that posted nothing all behaved as designed on GitHub itself, not only on the fake in the tests.
 
-One wording fault: the body said "1 finding need attention", because the template did not make the verb agree with the count.
+One wording fault: the body said "1 finding need attention", because the template did not make the verb agree with the count. [Pull request #29](https://github.com/melian-agent/melian/pull/29), which records this run, fixed it to read "1 finding needs attention".
