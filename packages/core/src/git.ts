@@ -39,7 +39,7 @@ function subcommand(args: readonly string[]): string {
 	return "";
 }
 
-/** Runs git and returns stdout, or throws `gitFailed` with git's own message. */
+// Throws `gitFailed` with git's own message.
 export async function gitOutput(cwd: string, args: readonly string[]): Promise<string> {
 	const result = await git(cwd, args);
 	if (result.code !== 0) {
