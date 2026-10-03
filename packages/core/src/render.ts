@@ -57,7 +57,12 @@ function block(finding: Finding, paint: (code: string, text: string) => string):
 		`  ${prose(finding.message.text, "  ")}`,
 		`    What: ${prose(explanation.what, "      ")}`,
 		`    Why here: ${prose(explanation.whyHere, "      ")}`,
-		...(evidence === undefined ? [] : [`    Evidence: ${prose(evidence, "      ")}`]),
+		...(evidence === undefined
+			? []
+			: [
+					`    Evidence: ${visible(evidence.file)}:${evidence.startLine}${evidence.endLine === undefined || evidence.endLine === evidence.startLine ? "" : `-${evidence.endLine}`}`,
+					`      ${prose(evidence.snippet, "      ")}`,
+				]),
 		`    What to do: ${prose(explanation.whatToDo, "      ")}`,
 	].join("\n");
 }

@@ -22,7 +22,8 @@
   The write's result is ignored
     What: fs.write can write fewer bytes than asked.
     Why here: The new caller passes larger buffers than before.
-    Evidence: src/run.ts:12 now passes buffers of up to 1 MiB to write().
+    Evidence: src/run.ts:12
+        const chunk = Buffer.alloc(1 << 20);
     What to do: Loop until every byte is written, or use fs.writeFile.
 
 [1msrc/total.ts[0m

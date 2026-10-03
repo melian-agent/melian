@@ -55,7 +55,11 @@
             "path": "src/run.ts",
             "occurrence": 0,
             "cause": "affected",
-            "evidence": "src/run.ts:12 now passes buffers of up to 1 MiB to write().",
+            "evidence": {
+              "file": "src/run.ts",
+              "startLine": 12,
+              "snippet": "\tconst chunk = Buffer.alloc(1 << 20);"
+            },
             "severity": "P3",
             "confidence": 0.9,
             "resolution": "advisory",

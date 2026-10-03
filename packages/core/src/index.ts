@@ -1,4 +1,4 @@
-export { type CodeLocation, classifyCause } from "./cause.ts";
+export { type CodeLocation, checkEvidence, classifyCause } from "./cause.ts";
 export {
 	type Changeset,
 	parseRangeSpec,
@@ -51,6 +51,7 @@ export {
 	createFinding,
 	createFindingsLog,
 	type Finding,
+	type FindingEvidence,
 	type FindingExplanation,
 	type FindingIdInput,
 	type FindingInput,
@@ -60,6 +61,7 @@ export {
 	type FindingStatus,
 	type FindingsLog,
 	type FindingTrigger,
+	findingEvidenceSchema,
 	findingExplanationSchema,
 	findingId,
 	findingLocationSchema,

@@ -1,5 +1,6 @@
 import {
 	type ChangedFile,
+	checkEvidence,
 	classifyCause,
 	createFinding,
 	type Finding,
@@ -214,13 +215,8 @@ function overlapping(file: ReviewFile | undefined, startLine: number, endLine: n
  * Builds the finding a `report_finding` call describes. The snippet comes from the head revision at the reported
  * lines, never from the model, so a finding's ID does not depend on how the model quoted the code.
  */
-async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, review: ReviewState): Promise<Finding> {
-	const path = repositoryPath(args.file);
-	if (!lensCovers(lens.coverage, path)) {
-		throw new Error(`${path} is outside the paths lens ${lens.name} reviews; report only within them`);
-	}
-	const endLine = args.endLine ?? args.line;
-	if (endLine < args.line) throw new Error(`endLine ${endLine} is before line ${args.line}`);
+async function headLines(review: ReviewState, path: string, line: number, endLine: number) {
+	if (endLine < line) throw new Error(`endLine ${endLine} is before line ${line}`);
 	const { content, truncated } = await readRevisionFile(review.repoRoot, review.head, path);
 	const lines = content.split("\n");
 	// A cut file's last line may be partial, and a whole file's final newline leaves an empty element that is no line.
@@ -229,11 +225,37 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 		const known = truncated ? `only its first ${lines.length} lines can be read` : `it has ${lines.length} lines`;
 		throw new Error(`${path}:${endLine} is past what Melian can read at the head revision; ${known}`);
 	}
-	const snippet = lines.slice(args.line - 1, endLine).join("\n");
-	if (snippet.trim() === "") throw new Error(`${path}:${args.line} is blank; point at the code itself`);
+	const snippet = lines.slice(line - 1, endLine).join("\n");
+	if (snippet.trim() === "") throw new Error(`${path}:${line} is blank; point at the code itself`);
+	return { content, snippet };
+}
+
+const proseEvidence =
+	"evidence must be a location, { file, line, endLine }, naming lines this change added or modified that break the reported code. Prose is not evidence: put the reasoning in explanation.why, and leave evidence out for a finding inside the change";
+
+// Evidence must name changed code; Melian reads its snippet from the head, so prose can never make a finding affected.
+async function evidenceFrom(args: NonNullable<ReportFindingInput["evidence"]>, review: ReviewState) {
+	const file = repositoryPath(args.file);
+	const endLine = args.endLine ?? args.line;
+	checkEvidence({ file, startLine: args.line, endLine }, { files: changedFiles(review) });
+	const { snippet } = await headLines(review, file, args.line, endLine);
+	return { file, startLine: args.line, ...(args.endLine === undefined ? {} : { endLine }), snippet };
+}
+
+// The snippet comes from the head revision at the reported lines, never from the model, so a finding's ID does not
+// depend on how the model quoted the code.
+async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, review: ReviewState): Promise<Finding> {
+	const path = repositoryPath(args.file);
+	if (!lensCovers(lens.coverage, path)) {
+		throw new Error(`${path} is outside the paths lens ${lens.name} reviews; report only within them`);
+	}
+	const endLine = args.endLine ?? args.line;
+	const { content, snippet } = await headLines(review, path, args.line, endLine);
 	const located = classifyCause({ file: path, startLine: args.line, endLine }, { files: changedFiles(review) });
 	const changed = review.files.find((file) => file.path === path);
 	const hunk = located === "introduced" ? overlapping(changed, args.line, endLine) : undefined;
+	const evidence =
+		located === "introduced" || args.evidence === undefined ? undefined : await evidenceFrom(args.evidence, review);
 	const { severity } = args;
 	return createFinding({
 		rule: args.rule,
@@ -243,7 +265,7 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 		...(args.endLine === undefined ? {} : { endLine }),
 		snippet,
 		occurrence: snippetOccurrence(content, snippet, { startLine: args.line, endLine }),
-		cause: located === "introduced" || args.evidence === undefined ? located : { evidence: args.evidence },
+		cause: evidence === undefined ? located : { evidence },
 		...(hunk === undefined
 			? {}
 			: {
@@ -271,6 +293,11 @@ export const reportFinding = defineTool({
 	description:
 		"Report one finding at the head revision: the file and lines of the flagged code, one of your rules, a severity, and an explanation. Call once per finding; never report findings in prose.",
 	parameters: reportFindingInputSchema,
+	// Runs before validation, so prose evidence gets a reply saying what evidence must be, not a schema error.
+	prepareArguments: (args) => {
+		if (typeof (args as { evidence?: unknown } | undefined)?.evidence === "string") throw new Error(proseEvidence);
+		return args as ReportFindingInput;
+	},
 	replay: "safe",
 	execute: async (args, api, context) => {
 		const lens = await lensOf(api, api.conversationId, context);

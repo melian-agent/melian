@@ -114,7 +114,7 @@ Pi Durable is pinned to an exact version and imported by one internal module, be
 A finding is a SARIF `result` plus Melian extension properties. SARIF because semgrep, gitleaks, and eslint emit it natively, GitHub code scanning ingests it, and it forces a stable schema from the first commit. Extensions:
 
 - `id`: stable hash of file, rule, a normalised snippet, and the snippet's occurrence: its zero-based ordinal among identical normalised snippets in that file at head, in line order. Survives line shifts and edits elsewhere in the file; inserting an identical snippet earlier renumbers the ones after it. A finding with no snippet supplies its own discriminator, such as the enclosing symbol or the hunk index. Used for cross-revision diffing and dismissal matching.
-- `cause`: `introduced`, `affected`, or `pre-existing`. Location proves `introduced` only; `affected` needs the lens's evidence; everything else is `pre-existing`. See below.
+- `cause`: `introduced`, `affected`, or `pre-existing`. Location proves `introduced` only; `affected` needs evidence, a location in changed code that the pipeline checks against the hunks; everything else is `pre-existing`. See below.
 - `trigger`: the diff hunk that caused the finding, named by its file and its index within that file.
 - `severity`: `P0` to `P3` plus `nit`. The rubric is fixed in version one, so `resolution` maps a closed set and a typo in configuration is an error. A repository-defined rubric is deferred until a user needs one.
 - `confidence`: calibrated probability that the finding is real.
@@ -132,7 +132,9 @@ Example: a pull request renames a function parameter. A caller in another file n
 Solution: classify by cause, not location. Location can prove only that a finding is in the diff; it cannot prove that a finding outside the diff was caused by it.
 
 - `introduced`: inside the diff. In scope, can block. The only cause a location alone establishes.
-- `affected`: outside the diff, provably caused by it. In scope, can block. Only evidence makes a finding `affected`: the lens cites, as `cause.evidence`, the specific changed code that breaks the location. No heuristic produces it.
+- `affected`: outside the diff, provably caused by it. In scope, can block. Only evidence makes a finding `affected`, and evidence is structured, never prose: the lens names the changed code that breaks the location as `{ file, line, endLine }`. Melian accepts it only when the file is one the change modifies and the lines overlap a hunk's new lines, then reads the snippet at those lines from the head and stores it with the location as `evidence`. No heuristic produces it.
+
+Problem: evidence was free text, so a sentence promoted a finding to `affected`, which can block. Example: a lens wrote "`src/api.ts:3` renames `id`" for a file the change never touched, and an old defect blocked the merge. Solution: evidence is a location Melian checks against the diff and quotes itself, so prose cannot cross the cause boundary.
 - `pre-existing`: outside the diff, with no evidence that the change caused it. The default for anything outside the diff. Never blocks. Appears once in a capped "noticed" section, is recorded in Melian's store, and is never raised again on that repository.
 
 Static analysis gets the same split for free by running on base and head and diffing results.
@@ -510,6 +512,7 @@ docs/
 | Cause by location | Location proves introduced only; affected needs lens evidence; pre-existing otherwise | A location heuristic must never make an old defect block |
 | Lens-reported findings | Lens supplies location, rule from its declared list, severity, explanation, evidence; Melian derives snippet from the head revision and everything else | Identity must not depend on the model's wording |
 | Findings ownership | The changeset's root conversation, never a lens's child conversation | A fork of the root at any revision must carry the findings; a lens conversation ends with its task |
+| Evidence for affected | A changed-code location overlapping a hunk, snippet derived from head | Prose cannot cross the cause boundary |
 | Finding sightings | Immutable per head, lens, and ID; adjudication merges deterministically | No first-writer-wins across lenses or pushes |
 
 ## Open questions

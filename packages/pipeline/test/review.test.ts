@@ -350,7 +350,7 @@ describe("reviewChangeset", () => {
 								file: "src/report.ts",
 								line: 2,
 								rule: "broken-caller",
-								evidence: "src/user.ts:7 now throws for a user without a manager",
+								evidence: { file: "src/user.ts", line: 7 },
 							},
 						],
 					),
@@ -368,9 +368,34 @@ describe("reviewChangeset", () => {
 		expect(byFile["src/user.ts"]!.properties.resolution).toBe("acknowledge");
 		expect(byFile["src/report.ts"]!.properties).toMatchObject({
 			cause: "affected",
-			evidence: "src/user.ts:7 now throws for a user without a manager",
+			evidence: { file: "src/user.ts", startLine: 7, snippet: "\treturn user.manager.name;" },
 		});
 		expect(byFile["src/user.ts"]!.properties.evidence).toBeUndefined();
+	});
+
+	it("refuses prose evidence and evidence outside every hunk, saying what evidence must be", async () => {
+		const broken = { ...nullDeref, file: "src/report.ts", line: 2, rule: "broken-caller" };
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{
+				match: contracts,
+				replies: [
+					calls(
+						["report_finding", { ...broken, evidence: "src/user.ts:7 now throws for a user without a manager" }],
+						["report_finding", { ...broken, evidence: { file: "src/user.ts", line: 6 } }],
+						["report_finding", { ...broken, evidence: { file: "src/report.ts", line: 1 } }],
+					),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+
+		expect(await review()).toEqual([]);
+
+		const [prose, outside, unchanged] = toolResults(requests[contracts]![1]!);
+		expect(prose).toContain("evidence must be a location, { file, line, endLine }");
+		expect(outside).toContain("src/user.ts:6-6 is not a line this change added or modified");
+		expect(unchanged).toContain("src/report.ts is not a file this change modifies");
 	});
 
 	it("runs no lens that configuration switches off", async () => {

@@ -17,7 +17,7 @@
               "why": "This change made currency a required second parameter of formatPrice, and summary was not updated.",
               "fix": "Pass the cart's currency to formatPrice, or give currency a default."
             },
-            "evidence": "src/price.ts:1 now declares formatPrice(cents: number, currency: string)"
+            "evidence": { "file": "src/price.ts", "line": 1 }
           }
         }
       ]

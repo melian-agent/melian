@@ -69,7 +69,7 @@ There is no credential pool yet; one credential per provider.
 `report_finding` takes a file, a line, an optional end line, a rule, a severity, an explanation (what, why, fix), and optional evidence. The model supplies nothing else:
 
 - The snippet is the head revision's text at those lines, read by Melian, so the finding's ID does not depend on how the model quoted the code. Its occurrence among identical snippets in the file comes from core's `snippetOccurrence`.
-- Cause comes from `classifyCause`. Code inside a hunk is `introduced`; anywhere else it is `pre-existing`, unless the lens gave evidence, the changed line that breaks it, which makes it `affected` and is stored as the finding's `evidence`.
+- Cause comes from `classifyCause`. Code inside a hunk is `introduced`; anywhere else it is `pre-existing`, unless the lens gave evidence, `{ file, line, endLine }` naming the changed lines that break it. Core's `checkEvidence` refuses evidence outside every hunk's new lines or in a file the change does not modify; accepted evidence makes the finding `affected` and is stored as its `evidence`, with the snippet read from the head. Prose evidence is refused in `prepareArguments`, before schema validation, so the model reads what evidence must be rather than a schema error.
 - Resolution comes from the configuration, source from the lens's name and version, and status from the document.
 
 It refuses a file outside the lens's coverage, its folder and `paths` less any folder a nearer lens of its name covers. It upserts into the root conversation's findings document at the head revision, never the lens's own, so one review has one document. A trigger carries the hunk's added lines as its snippet, so a dismissal reopens only when that code changes.
