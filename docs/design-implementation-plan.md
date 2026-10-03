@@ -8,6 +8,8 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done. Each step names
 
 A pull request on melian-agent/melian is reviewed by `melian review` run against the branch, findings are posted to the pull request through the CLI, and the author fixes or dismisses them before merge. Local CLI only, maintainer pull requests only, no Actions host.
 
+Open, pending one real publication through the CLI. On 2026-10-03 Melian reviewed its own unmerged stack through the CLI on real models and found the defect that kept its own skill from running here; [packages/evals/runs/2026-10-03-first-self-review.md](../packages/evals/runs/2026-10-03-first-self-review.md) records the run. But the milestone requires findings posted to the pull request through the CLI, and `melian publish` has never run against GitHub. The maintainer closes it by running `melian review "#21" --model <provider/id>`, then `melian publish "#21"`, on [pull request #21](https://github.com/melian-agent/melian/pull/21); `--model` is needed because a pull request review reads its base's `melian.yaml`, which routes no model. The record of that run goes in `packages/evals/runs/`. The golden-fixtures track remains open.
+
 ### Critical path
 
 1. `[x]` **Scaffold.** npm workspaces, Biome, Vitest, TypeScript configuration, package skeletons from the layout in design.md, and `npm run check` running Biome, type checking, dependency audit, and tests. Unblocks everything landing as commits that pass the gate.
@@ -15,10 +17,10 @@ A pull request on melian-agent/melian is reviewed by `melian review` run against
 3. `[x]` **Changeset and configuration.** Resolve a git range to base, head, files, hunks. Load `melian.yaml` with nearest-first layering. Load `AGENTS.md` as the standards section. Ranges only; no pull request fetching yet.
 4. `[x]` **Findings.** SARIF-plus-extensions schema, stable IDs, the findings document, terminal and JSON rendering. Cause by location for now: location proves `introduced` only, `affected` needs the lens's evidence, and everything else is `pre-existing`.
 5. `[x]` **Lenses.** `LENS.md` loader, two built-in lenses (correctness, contracts), the `report_finding` tool, one child conversation per lens with read-only tools. Model routing from config tiers; credentials from environment variables and Pi's credential store. Three golden fixtures written alongside: one per lens, one clean change.
-6. `[ ]` **Static and guardrails.** Biome and tsc runners normalised to SARIF on base and head, diffed. Guardrails as the path and pattern rules the Melian repository itself needs. May trail step 5 by a week if time is short.
+6. `[x]` **Static and guardrails.** Biome and tsc runners normalised to SARIF on base and head, diffed. Guardrails as the path and pattern rules the Melian repository itself needs. May trail step 5 by a week if time is short.
 7. `[x]` **Adjudication, minimal.** Dedupe by ID, severity to resolution from config.
-8. `[ ]` **Publish from the CLI.** `melian publish` posting a review with inline comments through Octokit using the gh token.
-9. `[ ]` **Claude Code skill.** Thin wrapper over the CLI, so the agent writing Melian asks Melian for review before committing.
+8. `[x]` **Publish from the CLI.** `melian publish` posting a review with inline comments through Octokit using the gh token.
+9. `[x]` **Claude Code skill.** Thin wrapper over the CLI, so the agent writing Melian asks Melian for review after committing and before pushing.
 
 ### Parallel tracks
 
@@ -38,7 +40,6 @@ Each is a differentiator; none is needed to review a pull request once. Resist p
 - Actions host and the state branch backend
 - Container isolation
 - The full evals corpus
-- Codex and Pi skills (Claude Code first; the others are the same wrapper)
 
 ## Milestone 2: Melian reviews pull requests on GitHub Actions
 
@@ -58,7 +59,7 @@ Steps to be written when milestone 2 closes.
 |---|---|---|
 | Pi Durable API changes under us | Steps 2, 5, 7 | Exact pin, one wrapper module, core stays harness-free |
 | Subscription auth terms for automated use | Step 5 onward | API keys default; subscriptions opt-in; stated in docs |
-| Biome lacks a SARIF reporter | Step 6 | Normalise from its JSON reporter |
+| Biome's SARIF reporter changes shape | Step 6 | Biome 2.5 ships one, and Melian reads it; it writes absolute paths and no version, so the normaliser fills both in, and output it cannot read fails the check rather than reading as clean |
 | Lens prompt edits regress silently | Step 5 onward | Golden fixtures run in `npm run check` |
 | Phantom dependencies through npm hoisting | Any package | Move to pnpm when strict isolation is needed; the switch is one pull request |
 

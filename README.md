@@ -43,7 +43,7 @@ Melian is our answer. It is built in the open, on [Pi](https://github.com/earend
 
 **Locally, before a pull request exists.** Melian ships as a command-line tool with named tiers of checks. A fast tier runs in seconds and suits a pre-commit hook. A standard tier suits pre-push. The full review suits a pull request. Which tier runs at which point in your workflow is yours to configure, with sensible defaults, and Melian never installs hooks for you.
 
-**From your coding agent.** Melian is available as a skill for Claude Code, Codex, and Pi, so an agent that has just written code can ask for a review before committing. The skill drives the same command-line tool, so you get the same review you would get anywhere else.
+**From your coding agent.** Melian is available as a skill for Claude Code, Codex, and Pi, so an agent that has just committed code can ask for a review before pushing it. The skill drives the same command-line tool, so you get the same review you would get anywhere else.
 
 **On pull requests, as a colleague.** Melian posts a review, replies in threads, and takes instructions in comments: re-review, explain this finding, dismiss it with a reason, focus on a path, remember this for next time. A dismissal with a reason teaches it.
 

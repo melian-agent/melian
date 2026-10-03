@@ -21,3 +21,13 @@ export function modelsOf(handle: ReviewModels): Models {
 	if (models === undefined) throw new TypeError("models must come from createReviewModels");
 	return models;
 }
+
+/** The IDs of the providers in `models` that hold credentials, sorted, for a host that reports readiness. */
+export async function providersWithCredentials(models: ReviewModels): Promise<string[]> {
+	const collection = modelsOf(models);
+	const configured: string[] = [];
+	for (const provider of collection.getProviders()) {
+		if ((await collection.checkAuth(provider.id).catch(() => undefined)) !== undefined) configured.push(provider.id);
+	}
+	return configured.sort();
+}

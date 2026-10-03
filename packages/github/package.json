@@ -32,5 +32,12 @@
 	},
 	"engines": {
 		"node": ">=22.19.0"
+	},
+	"dependencies": {
+		"@melian-agent/core": "*",
+		"@octokit/rest": "22.0.1"
+	},
+	"devDependencies": {
+		"@melian-agent/pipeline": "*"
 	}
 }

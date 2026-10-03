@@ -16,6 +16,37 @@ export class PiCredentialsError extends Error {
 	}
 }
 
+/** Why a review could not be published. */
+export type PublishErrorCode =
+	| "staleReview"
+	| "staleTarget"
+	| "notReviewed"
+	| "notPublishable"
+	| "notInstalled"
+	| "publishFailed";
+
+/**
+ * A review could not be published. `pullRequest` names the pull request and `revision` the head commit involved. What
+ * was posted before a `publishFailed` is recorded, so publishing again resumes rather than repeats.
+ */
+export class PublishError extends Error {
+	readonly code: PublishErrorCode;
+	readonly pullRequest: number;
+	readonly revision: string;
+
+	constructor(
+		code: PublishErrorCode,
+		message: string,
+		options: { pullRequest: number; revision: string; cause?: unknown },
+	) {
+		super(message, { cause: options.cause });
+		this.name = "PublishError";
+		this.code = code;
+		this.pullRequest = options.pullRequest;
+		this.revision = options.revision;
+	}
+}
+
 /** Why a review could not run or finish. */
 export type ReviewErrorCode =
 	| "noAvailableModel"

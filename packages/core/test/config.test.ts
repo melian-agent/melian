@@ -150,6 +150,36 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		});
 	});
 
+	it.each([
+		["lenses:", "  security:", "    paths: ['*.{ts,js}']", "lenses.security.paths"],
+		[
+			"guardrails:",
+			"  forbidden-paths:",
+			"    rules: { keys: { paths: ['[ab].pem'], message: m } }",
+			"guardrails.forbidden-paths.rules.keys.paths",
+		],
+	])("refuses a brace or class in a glob, which would match nothing: %s %s", async (...rows) => {
+		const key = rows.pop()!;
+		writeFiles(repo, { "services/melian.yaml": lines(...rows) });
+		const error = await rejection(load("services/a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", file: "services/melian.yaml", key });
+		expect(error.message).toMatch(/do not support braces or character classes/);
+	});
+
+	it("refuses a glob ending in a slash, suggesting the glob that matches the directory's files", async () => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", "  security:", "    paths: [secrets/]") });
+		const error = await rejection(load("a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", key: "lenses.security.paths" });
+		expect(error.message).toMatch(/matches no file; write secrets\/\*\*/);
+	});
+
+	it("compiles every glob when it reads the file, refusing one too long to run", async () => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", "  security:", `    paths: ['${"a".repeat(2_001)}']`) });
+		const error = await rejection(load("a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", file: "melian.yaml", key: "lenses.security.paths" });
+		expect(error.message).toMatch(/not a safe glob: the pattern compiles to more than 2000 steps/);
+	});
+
 	it("names a melian.yaml it cannot read", async () => {
 		writeFiles(repo, { "melian.yaml/inside": "" });
 		expect(await rejection(load("a.ts"))).toMatchObject({ code: "unreadable", file: "melian.yaml" });
@@ -359,5 +389,48 @@ describe("loadConfig from a revision", () => {
 		writeFiles(repo, { "src/a.ts": "" });
 		const error = await rejection(loadConfig(join(repo, "src"), { kind: "revision", commit: "HEAD" }, "a.ts"));
 		expect(error.code).toBe("notARepository");
+	});
+});
+
+describe("melian.local.yaml", () => {
+	beforeEach(() => {
+		writeFiles(repo, {
+			"melian.yaml": lines("models:", "  heavy:", "    model: root/heavy", "    fallbacks: [root/fallback]"),
+			"services/pay/melian.yaml": lines("models:", "  heavy:", "    model: service/heavy"),
+		});
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "policy");
+	});
+
+	const commitLocalFile = () => {
+		writeFiles(repo, { "melian.local.yaml": lines("resolution:", "  P0: silent") });
+		gitIn(repo, "add", "--force", "melian.local.yaml");
+		gitIn(repo, "commit", "--quiet", "-m", "the head supplies a local file");
+	};
+
+	it("applies from the working tree over every melian.yaml, a nested one included", async () => {
+		writeFiles(repo, { "melian.local.yaml": lines("models:", "  heavy:", "    model: mine/heavy") });
+		const { config, sources } = await loadConfig(repo, { kind: "worktree" }, "services/pay/a.ts");
+		expect(config.models.heavy).toEqual({ model: "mine/heavy", fallbacks: ["root/fallback"] });
+		expect(sources).toEqual(["melian.local.yaml", "services/pay/melian.yaml", "melian.yaml"]);
+	});
+
+	it("is never read from a revision, even one that commits it", async () => {
+		commitLocalFile();
+		const { config, sources } = await loadConfig(repo, { kind: "revision", commit: "HEAD" }, "a.ts");
+		expect(config.resolution.P0).toBe("block");
+		expect(sources).toEqual(["melian.yaml"]);
+	});
+
+	it("is a policy file, so a change that commits one is reviewed as policy", async () => {
+		commitLocalFile();
+		const { revision } = await resolveRange(repo, "HEAD~1..HEAD");
+		expect(revision.policyFiles).toEqual(["melian.local.yaml"]);
+	});
+
+	it("names itself in an error", async () => {
+		writeFiles(repo, { "melian.local.yaml": lines("tier: fast") });
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
+		expect(error).toMatchObject({ code: "unknownKey", file: "melian.local.yaml" });
 	});
 });

@@ -4,21 +4,47 @@ import { OutsideRepositoryError } from "./errors.ts";
 /**
  * Where Melian's files live, relative to a directory in the repository. `melian.yaml` and `.melian/` may sit in any
  * directory; `standards` and `lenses` resolve nearest-first like `melian.yaml`. `knowledge` is read only at the root.
+ * `localConfig`, beside the root `melian.yaml`, is a maintainer's own and is read only from the working tree.
  */
 export const melianPaths = {
 	config: "melian.yaml",
+	localConfig: "melian.local.yaml",
 	home: ".melian",
 	lenses: ".melian/lenses",
 	standards: ".melian/standards",
 	knowledge: ".melian/knowledge",
 } as const;
 
-const policyNames = new Set([melianPaths.config, "AGENTS.md", "CLAUDE.md"]);
+const policyNames = new Set([melianPaths.config, melianPaths.localConfig, "AGENTS.md", "CLAUDE.md"]);
 
-// Whether a repository-relative path steers Melian: a melian.yaml, a standards file, or anything under a .melian/.
+/**
+ * The names of the files that configure a static tool, in any directory. The head's copy drives the tool's run on the
+ * head, so a change to one is a change to what judges the head.
+ */
+export const analyserConfigNames = [
+	"biome.json",
+	"biome.jsonc",
+	"tsconfig*.json",
+	"package.json",
+	"package-lock.json",
+	".eslintrc*",
+	"eslint.config.*",
+] as const;
+
+const analyserConfig = /^(?:biome\.jsonc?|tsconfig.*\.json|package(?:-lock)?\.json|\.eslintrc.*|eslint\.config\..*)$/;
+
+// Whether a repository-relative path configures a static tool, by its name alone.
+export function isAnalyserConfig(path: string): boolean {
+	return analyserConfig.test(path.split("/").at(-1)!);
+}
+
+// Whether a repository-relative path steers Melian: a melian.yaml, a standards file, anything under a .melian/, or a
+// static tool's configuration.
 export function isPolicyFile(path: string): boolean {
 	const segments = path.split("/");
-	return policyNames.has(segments.at(-1)!) || segments.slice(0, -1).includes(melianPaths.home);
+	return (
+		policyNames.has(segments.at(-1)!) || segments.slice(0, -1).includes(melianPaths.home) || isAnalyserConfig(path)
+	);
 }
 
 // A path given to a loader, absolute or relative to the root, as a repository-relative path with forward slashes.

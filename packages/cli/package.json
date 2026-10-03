@@ -12,6 +12,9 @@
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"bin": {
+		"melian": "./bin/melian.js"
+	},
 	"exports": {
 		".": {
 			"@melian-agent/source": "./src/index.ts",
@@ -22,6 +25,7 @@
 		"./package.json": "./package.json"
 	},
 	"files": [
+		"bin",
 		"dist",
 		"README.md"
 	],
@@ -32,5 +36,13 @@
 	},
 	"engines": {
 		"node": ">=22.19.0"
+	},
+	"dependencies": {
+		"@melian-agent/core": "*",
+		"@melian-agent/github": "*",
+		"@melian-agent/pipeline": "*"
+	},
+	"devDependencies": {
+		"@melian-agent/evals": "*"
 	}
 }

@@ -24,8 +24,10 @@ import {
 	AdjudicationTask,
 	type AdjudicationTaskInput,
 	adjudicationInput,
+	type ReviewOrigin,
 	readVerdict,
 } from "./adjudication.ts";
+import { checksExtension } from "./checks.ts";
 import { ReviewError } from "./errors.ts";
 import { findingsVersion, readFindings, recordRevision, revisionKey } from "./findings.ts";
 import {
@@ -33,6 +35,7 @@ import {
 	type Context,
 	type ConversationId,
 	configure,
+	createNodeExecutionEnv,
 	createRegistry,
 	defineExtension,
 	defineTask,
@@ -210,15 +213,23 @@ export function createReviewRegistry(): Registry {
 /**
  * Opens a harness over `storage` that can run reviews: {@link lensExtension} installed, models from `models`. Pass
  * `retry: false` to fail a model request at once rather than retry it with backoff, as tests and scripted evals do.
+ * Pass `checkout`, the repository's working directory, to run the deterministic checks too: it installs
+ * `checksExtension` and a Node execution environment there, which `runChecks` needs for the static tools.
  */
 export function openReviewHarness(
 	storage: Storage,
 	models: ReviewModels,
-	options: { readonly retry?: boolean } = {},
+	options: { readonly retry?: boolean; readonly checkout?: string } = {},
 	context: Context = backgroundContext,
 ): Promise<Harness> {
 	const settings = options.retry === false ? { settings: { retry: { enabled: false } } } : {};
-	return openHarness(storage, { models: modelsOf(models), registry: createReviewRegistry(), ...settings }, context);
+	const registry = createReviewRegistry();
+	const { checkout } = options;
+	if (checkout === undefined)
+		return openHarness(storage, { models: modelsOf(models), registry, ...settings }, context);
+	registry.install(checksExtension);
+	const env = () => createNodeExecutionEnv(checkout);
+	return openHarness(storage, { models: modelsOf(models), registry, env, ...settings }, context);
 }
 
 const maxPromptBytes = 200 * 1024;
@@ -308,6 +319,11 @@ export interface ReviewOptions {
 	 * repeat review attaches to the finished task and reports the same failure, so it spends no tokens unasked.
 	 */
 	readonly rerun?: boolean;
+	/**
+	 * Where the revision came from, recorded with the verdict. Only a `pull-request` review whose policy came from a
+	 * revision can be published. A range by default.
+	 */
+	readonly origin?: ReviewOrigin;
 	readonly context?: Context;
 }
 
@@ -584,6 +600,8 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		findingsVersion: await findingsVersion(harness, root, reviewed, context),
 		allowSkip,
 		producers,
+		origin: options.origin ?? { kind: "range" },
+		lenses: lenses.map((lens) => lens.key),
 	});
 	const adjudication = await startAdjudication(harness, input, lenses, context);
 	const forget = (index: ReviewIndexState) => {

@@ -194,6 +194,39 @@ export async function upsertFinding(
 	state.items[properties.id] = { lifecycle, sightings };
 }
 
+/**
+ * Makes `findings` the whole of what `check` sights at `revision`, a {@link revisionKey}: removes the check's earlier sightings there, of any
+ * version, then upserts each. A finding left with no sighting at any revision is removed too, unless it was dismissed,
+ * so its dismissal survives if it returns. Call it in the commit that records the check's outcome, with no findings for
+ * a check that failed, so a failed rerun leaves nothing of an earlier run behind.
+ */
+export async function replaceCheckFindings(
+	tx: Tx,
+	rootConversationId: ConversationId,
+	check: string,
+	revision: string,
+	findings: readonly Finding[],
+): Promise<void> {
+	const state = await tx.doc(FindingsDocument, rootConversationId);
+	const { items } = state;
+	let removed = false;
+	for (const [id, record] of Object.entries(items)) {
+		const atRevision = record.sightings[revision];
+		if (atRevision === undefined) continue;
+		const left = Object.fromEntries(
+			Object.entries(atRevision).filter(([, sighting]) => sighting.properties.source.check !== check),
+		);
+		if (Object.keys(left).length === Object.keys(atRevision).length) continue;
+		removed = true;
+		const sightings = { ...record.sightings, [revision]: left };
+		if (Object.keys(left).length === 0) delete sightings[revision];
+		if (Object.keys(sightings).length === 0 && record.lifecycle.status !== "dismissed") delete items[id];
+		else items[id] = { ...record, sightings };
+	}
+	if (removed) bump(state, [revision]);
+	for (const finding of findings) await upsertFinding(tx, rootConversationId, finding, revision);
+}
+
 /** Marks a finding dismissed. Throws core's `FindingError` `unknownFinding` if no finding has the ID. */
 export async function dismissFinding(
 	tx: Tx,
