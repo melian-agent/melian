@@ -116,8 +116,8 @@ function unanswered(state: PublishedState, head: string): Record<string, StoredF
 	return owed;
 }
 
-// The round to post for `verdict` at `head`: against the head's own open findings if it was published before, else
-// against the previous head's, with any resolution an earlier head still owes.
+// The round to post for `verdict` at `head`: against the head's own open findings if a review of it was posted, else
+// against those of the latest head that has one, with any resolution an earlier head still owes.
 function planRound(
 	state: PublishedState,
 	head: string,
@@ -125,8 +125,11 @@ function planRound(
 	verdict: Verdict,
 	lines: Record<string, [number, number][]>,
 ): PendingRound {
-	const own = state.revisions[head];
-	const previous = state.order.filter((each) => each !== head).at(-1);
+	// Only a head with a recorded post has an open set. One whose rounds all failed or were abandoned holds an empty
+	// placeholder, and planning against it reposted every open finding and never replied to the fixed ones.
+	const postedAt = (each: string) => (state.revisions[each]?.reviews.length ?? 0) > 0;
+	const own = postedAt(head) ? state.revisions[head] : undefined;
+	const previous = state.order.filter((each) => each !== head && postedAt(each)).at(-1);
 	const base = own?.open ?? (previous === undefined ? {} : state.revisions[previous]!.open);
 	const plan = planPublication(verdict, base, lines, head);
 	const resolved: Record<string, StoredFinding> = Object.fromEntries(

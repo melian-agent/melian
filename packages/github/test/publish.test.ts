@@ -387,6 +387,47 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(await publish(github, fourth.changeset)).toMatchObject({ resolved: 0, replies: 0 });
 	});
 
+	it("plans against the last head whose review was posted, past a head whose round failed", async () => {
+		const { fake, github, changeset, state } = await reviewedRevisionOne();
+		await publish(github, changeset);
+		pushRevisionTwo(repo);
+		const second = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries, trimmedGreeting));
+		await second.review;
+		moveTo(state, second.changeset);
+		state.failReviews = true;
+		await expect(publish(github, second.changeset)).rejects.toBeInstanceOf(PublishError);
+		state.failReviews = false;
+
+		pushRevisionThree(repo);
+		const third = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries));
+		await third.review;
+		moveTo(state, third.changeset);
+		const result = await publish(github, third.changeset);
+
+		expect(result).toMatchObject({ posted: 0, stillOpen: 2, resolved: 1, replies: 1 });
+		expect(state.reviews).toHaveLength(2);
+		const threads = state.comments.filter((comment) => comment.in_reply_to_id === undefined);
+		expect(threads).toHaveLength(2);
+	});
+
+	it("does not repost open findings after a head's round was abandoned", async () => {
+		const { fake, github, changeset, state } = await reviewedRevisionOne();
+		await publish(github, changeset);
+		pushRevisionTwo(repo);
+		const second = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries, trimmedGreeting));
+		await second.review;
+		moveTo(state, second.changeset);
+		state.failReviews = true;
+		for (let attempt = 0; attempt < 3; attempt++) await publish(github, second.changeset).catch(() => {});
+		state.failReviews = false;
+
+		const result = await publish(github, second.changeset);
+
+		expect(result).toMatchObject({ posted: 1, stillOpen: 2, resolved: 1, replies: 1 });
+		const posted = state.comments.filter((comment) => comment.pull_request_review_id === state.reviews[1]!.id);
+		expect(posted.map((comment) => comment.line)).toEqual([11]);
+	});
+
 	it("sets an error status naming what did not run when the review did not complete", async () => {
 		const script = lensScript(unsafeManager);
 		const { github, changeset, state } = await reviewedRevisionOne({ correctness: script.correctness! });

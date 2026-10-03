@@ -541,6 +541,7 @@ docs/
 | Review identity | Base plus head, in the index, the tasks, the verdict, and the sightings | A retargeted pull request has a new diff and the same head |
 | Marker trust | Markers signed with a durable per-changeset secret; author is a filter, never the proof | Recovery must not depend on the token knowing who it is |
 | Publishable provenance | Only a pull-request-kind verdict with provider-fetched base and head and a revision policy source can be published | A working-tree verdict must never reach GitHub |
+| Publication open set | Defined only by recorded posts; unposted rounds leave no placeholder | A failed round must not repost or drop replies |
 | Stale publish tasks | Superseded before resume when the target changed; target revalidated before every side effect | A retargeted pull request must never receive a pre-retarget review |
 
 ## Open questions
