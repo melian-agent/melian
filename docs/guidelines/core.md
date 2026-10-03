@@ -113,6 +113,8 @@ A pure deletion has no new lines, so nothing is inside it. Code beside a deletio
 
 `renderFindingsJson` writes the SARIF log; `renderFindingsTerminal` writes plain text grouped by file in path order, and within a file by severity, then line, then ID. The terminal output carries no escape codes unless `color` is set, so a pipe or a log file receives plain text. Hosts decide whether to colour; core never reads `isTTY` or `NO_COLOR`.
 
+Finding text is untrusted: a lens writes it after reading the change under review, which anyone opening a pull request controls. The terminal renderer strips control characters, so a finding cannot clear the author's screen or retitle their terminal, and indents continuation lines so a multi-line explanation stays inside its block. Any new renderer for a terminal does the same.
+
 ## Tests
 
 - Run the package's tests with `npm test --workspace @melian-agent/core`, or one file with `npx vitest --run packages/core/test/changeset.test.ts` from the repository root.

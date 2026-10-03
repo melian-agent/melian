@@ -83,6 +83,18 @@ describe("renderFindingsTerminal", () => {
 		await expect(renderFindingsTerminal(log, { color: true })).toMatchFileSnapshot("./golden/findings.ansi.txt");
 	});
 
+	it("strips control characters from finding text and indents its continuation lines", () => {
+		const hostile = createFinding({
+			...evalInput,
+			message: "eval runs request input\u001b]0;pwned\u0007\u001b[2J",
+			explanation: { ...evalInput.explanation, what: "The handler passes the body to eval.\nThat runs any code." },
+		});
+		const text = renderFindingsTerminal(createFindingsLog([hostile]));
+		expect(text).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/);
+		expect(text).toContain("  eval runs request input]0;pwned[2J\n");
+		expect(text).toContain("    What: The handler passes the body to eval.\n      That runs any code.\n");
+	});
+
 	it("says so when there are no findings", () => {
 		expect(renderFindingsTerminal(createFindingsLog([]))).toBe("No findings.\n");
 	});

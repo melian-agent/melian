@@ -15,6 +15,19 @@ export function renderFindingsJson(log: FindingsLog): string {
 const rank: Readonly<Record<Severity, number>> = { P0: 0, P1: 1, P2: 2, P3: 3, nit: 4 };
 const severityColor: Readonly<Record<Severity, string>> = { P0: "31", P1: "31", P2: "33", P3: "36", nit: "2" };
 
+function ordinal(a: string, b: string): number {
+	return a < b ? -1 : a > b ? 1 : 0;
+}
+
+// Finding text comes from models that read the change under review, so it may carry escape sequences that would
+// rewrite the author's terminal. Drop control characters, and indent continuation lines to keep each block intact.
+function clean(text: string, indent: string): string {
+	return text
+		.replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g, "")
+		.replace(/\t/g, "  ")
+		.replace(/\n/g, `\n${indent}`);
+}
+
 function region(finding: Finding) {
 	return finding.locations[0]!.physicalLocation.region;
 }
@@ -26,7 +39,7 @@ function fileOf(finding: Finding): string {
 function compare(a: Finding, b: Finding): number {
 	const { severity: left, id: leftId } = a.properties;
 	const { severity: right, id: rightId } = b.properties;
-	return rank[left] - rank[right] || region(a).startLine - region(b).startLine || (leftId < rightId ? -1 : 1);
+	return rank[left] - rank[right] || region(a).startLine - region(b).startLine || ordinal(leftId, rightId);
 }
 
 function lineSpan(finding: Finding): string {
@@ -37,11 +50,11 @@ function lineSpan(finding: Finding): string {
 function block(finding: Finding, paint: (code: string, text: string) => string): string {
 	const { severity, cause, status, explanation } = finding.properties;
 	return [
-		`  ${paint(severityColor[severity], severity)}  ${lineSpan(finding)}  ${finding.ruleId}  (${cause}, ${status})`,
-		`  ${finding.message.text}`,
-		`    What: ${explanation.what}`,
-		`    Why here: ${explanation.whyHere}`,
-		`    What to do: ${explanation.whatToDo}`,
+		`  ${paint(severityColor[severity], severity)}  ${lineSpan(finding)}  ${clean(finding.ruleId, "")}  (${cause}, ${status})`,
+		`  ${clean(finding.message.text, "  ")}`,
+		`    What: ${clean(explanation.what, "      ")}`,
+		`    Why here: ${clean(explanation.whyHere, "      ")}`,
+		`    What to do: ${clean(explanation.whatToDo, "      ")}`,
 	].join("\n");
 }
 
@@ -62,7 +75,7 @@ export function renderFindingsTerminal(log: FindingsLog, options: TerminalRender
 		const file = fileOf(finding);
 		byFile.set(file, [...(byFile.get(file) ?? []), finding]);
 	}
-	const files = [...byFile.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+	const files = [...byFile.keys()].sort(ordinal);
 	const sections = files.map((file) =>
 		[
 			paint("1", file),
