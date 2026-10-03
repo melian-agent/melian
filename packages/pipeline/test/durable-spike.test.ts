@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
+import { findingId } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
 	AssistantEntry,
@@ -39,7 +40,6 @@ import {
 	type Event,
 	evalFinding,
 	Findings,
-	findingId,
 	offeredTools,
 	openSpikeHarness,
 	readEvents,
@@ -73,7 +73,8 @@ function tracked(harness: Harness): Harness {
 async function crashWhen(scenario: Scenario, reached: (events: readonly Event[]) => boolean) {
 	const database = join(dir, `${scenario}.sqlite`);
 	const log = join(dir, `${scenario}.jsonl`);
-	const child = spawn(process.execPath, [crashScript, scenario, database, log], {
+	// The condition resolves workspace packages to their sources, as Vitest does, rather than to a stale or absent build.
+	const child = spawn(process.execPath, ["--conditions=@melian-agent/source", crashScript, scenario, database, log], {
 		stdio: ["ignore", "ignore", "pipe"],
 	});
 	let stderr = "";

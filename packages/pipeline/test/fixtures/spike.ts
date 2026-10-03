@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { findingId } from "@melian-agent/core";
 import {
 	type AssistantMessage,
 	createRegistry,
@@ -109,7 +109,7 @@ export function memoTool(mode: Mode, log: string) {
 	});
 }
 
-export type Finding = { path: string; rule: string; snippet: string; title: string };
+export type Finding = { file: string; rule: string; snippet: string; title: string };
 
 export const Findings = defineDoc<{ items: Record<string, Finding> }>({
 	kind: "melian.spike.findings",
@@ -121,17 +121,11 @@ export const Findings = defineDoc<{ items: Record<string, Finding> }>({
 });
 
 export const evalFinding: Finding = {
-	path: "src/run.ts",
+	file: "src/run.ts",
 	rule: "no-eval",
 	snippet: "eval(input)",
 	title: "P1: eval runs user input",
 };
-
-// The design's stable ID: file, rule, and normalised snippet. The title is not part of it.
-export function findingId({ path, rule, snippet }: Finding): string {
-	const normalised = snippet.trim().replace(/\s+/g, " ");
-	return createHash("sha256").update([path, rule, normalised].join("\0")).digest("hex").slice(0, 16);
-}
 
 // The commit and the tool result are separate durable commits, so a crash between them reruns the call or has the
 // model retry it. An upsert by finding ID makes either harmless, which is why it is replay-safe.
@@ -140,7 +134,7 @@ export function reportFinding(mode: Mode, log: string) {
 		name: "report_finding",
 		description: "Report one finding",
 		parameters: Type.Object({
-			path: Type.String({ minLength: 1 }),
+			file: Type.String({ minLength: 1 }),
 			rule: Type.String({ minLength: 1 }),
 			snippet: Type.String(),
 			title: Type.String({ minLength: 1 }),
