@@ -246,7 +246,7 @@ The status has three states, because a check that reports green while the review
 
 `ReviewProvider` is the whole surface a code host offers Melian: read a pull request's base, head, and metadata; post one review; reply in a thread; set a status; and read back Melian's markers. A second host is a second implementation of these five calls.
 
-`planPublication(verdict, previous, lines, revision)` decides what one revision posts. A finding that resolves to `block`, `acknowledge`, or `advisory` and was not open after the previous revision is posted; one already open is not posted again; an open finding the verdict no longer holds, in any group, is resolved. A dismissed finding is neither posted nor resolved, since dismissing it answered it.
+`planPublication(verdict, previous, lines, revision)` decides what one revision posts. A finding that resolves to `block`, `acknowledge`, or `advisory` and was not open after the previous revision is posted; one already open is not posted again; an open finding the verdict no longer holds, in any group, is resolved. A dismissed finding is neither posted nor resolved, since dismissing it answered it. An open finding that turns silent or is dismissed stays in the plan's `open` set. Problem: a lens that wavers on severity reports one ID as `P3`, then `nit`, then `P3` again; dropping it while silent made the third revision post it in a second thread and leave the first unanswered. Solution: it keeps its thread while quiet.
 
 `placeFinding(finding, lines)` decides where a finding goes, given `diffLines(files)`, the lines each changed file adds at head:
 

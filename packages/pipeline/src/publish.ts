@@ -102,6 +102,7 @@ function publishTask(provider: ReviewProvider) {
 							lines,
 							head,
 						);
+						result.stillOpen = plan.stillOpen.length;
 						const found = await marked();
 						let posted: PostedReview;
 						if (found.review === undefined) {
@@ -134,7 +135,6 @@ function publishTask(provider: ReviewProvider) {
 						state = await read();
 					}
 					const record = state.revisions[head]!;
-					result.stillOpen = Object.values(record.open).filter((entry) => entry.revision !== head).length;
 					result.resolved = Object.keys(record.resolved).length;
 					for (const id of Object.keys(record.resolved).sort()) {
 						const entry = record.resolved[id]!;

@@ -100,7 +100,10 @@ export interface PublicationPlan {
 	readonly stillOpen: readonly string[];
 	/** Findings an earlier revision posted that this revision no longer reports, dismissed ones excepted. */
 	readonly resolved: readonly ResolvedFinding[];
-	/** Every finding open on the pull request once this revision is published, by ID. Threads come from the post. */
+	/**
+	 * Every finding with a thread or a place on the pull request once this revision is published, by ID, quiet ones
+	 * included. Threads for the findings this revision posts come from the post.
+	 */
 	readonly open: Readonly<Record<string, PublishedFinding>>;
 }
 
@@ -111,6 +114,8 @@ export interface PublicationPlan {
  * Findings that resolve to `block`, `acknowledge`, or `advisory` need attention. One not already open is posted; one
  * already open is not posted again. An open finding the verdict no longer holds in any group, silent and dismissed
  * included, is resolved. A dismissed finding is never posted and never called resolved: dismissing it answered it.
+ * An open finding that turned silent or was dismissed stays in `open`, so if it needs attention again it returns to
+ * its own thread rather than starting a second one.
  */
 export function planPublication(
 	verdict: Verdict,
@@ -135,6 +140,9 @@ export function planPublication(
 		const placement = placeFinding(finding, lines);
 		post.push({ finding, placement });
 		open[id] = { ruleId: finding.ruleId, path, line: span(finding)[0], revision };
+	}
+	for (const id of held) {
+		if (!Object.hasOwn(open, id) && Object.hasOwn(previous, id)) open[id] = previous[id]!;
 	}
 	const resolved = Object.keys(previous)
 		.sort()

@@ -135,7 +135,20 @@ describe("planPublication", () => {
 		const dismissed: Finding = { ...fixed, properties: { ...fixed.properties, status: "dismissed" } };
 		const plan = planPublication(verdictOf([dismissed]), { [fixed.properties.id]: posted("102") }, lines, head);
 
-		expect(plan).toMatchObject({ post: [], stillOpen: [], resolved: [], open: {} });
+		expect(plan).toMatchObject({ post: [], stillOpen: [], resolved: [] });
+		expect(plan.open).toEqual({ [fixed.properties.id]: posted("102") });
+	});
+
+	it("keeps a finding that turned silent on its thread, so it never gets a second one", () => {
+		const quiet = finding({ severity: "nit" });
+		const loud = finding({ severity: "P3" });
+		const previous = { [loud.properties.id]: posted("101") };
+
+		const silent = planPublication(verdictOf([quiet]), previous, lines, head);
+		const again = planPublication(verdictOf([loud]), silent.open, lines, head);
+
+		expect(silent).toMatchObject({ post: [], resolved: [], open: previous });
+		expect(again).toMatchObject({ post: [], stillOpen: [loud.properties.id], resolved: [] });
 	});
 
 	it("posts nothing for silent findings", () => {
