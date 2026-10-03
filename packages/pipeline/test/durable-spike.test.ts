@@ -23,6 +23,7 @@ import {
 	type EntryRecord,
 	fauxAssistantMessage,
 	fauxToolCall,
+	type Harness,
 	hook,
 	type Message,
 	openHarness,
@@ -53,12 +54,21 @@ import {
 const crashScript = fileURLToPath(new URL("./fixtures/crash.ts", import.meta.url));
 
 let dir: string;
+let opened: Harness[];
 beforeEach(() => {
 	dir = mkdtempSync(join(tmpdir(), "melian-durable-spike-"));
+	opened = [];
 });
-afterEach(() => {
+// A failed assertion skips a test's own close, so close everything before deleting the SQLite files. Closing twice is a no-op.
+afterEach(async () => {
+	await Promise.all(opened.map((harness) => harness.close(context)));
 	rmSync(dir, { recursive: true, force: true });
 });
+
+function tracked(harness: Harness): Harness {
+	opened.push(harness);
+	return harness;
+}
 
 async function crashWhen(scenario: Scenario, reached: (events: readonly Event[]) => boolean) {
 	const database = join(dir, `${scenario}.sqlite`);
@@ -117,14 +127,14 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		const registry = createRegistry();
 		fake.provider.setResponses([fauxAssistantMessage("Canberra")]);
 
-		const first = await openHarness(await openSqliteStorage(path), { models: fake.models, registry });
+		const first = tracked(await openHarness(await openSqliteStorage(path), { models: fake.models, registry }));
 		const root = await first.root(context, { agent: { model: fake.ref() } });
 		const settled = await ask(root, "What is the capital of Australia?");
 		expect(settled.status).toBe("done");
 		const before = await transcript(root);
 		await first.close(context);
 
-		const second = await openHarness(await openSqliteStorage(path), { models: fake.models, registry });
+		const second = tracked(await openHarness(await openSqliteStorage(path), { models: fake.models, registry }));
 		const reopened = await second.root(context);
 		expect(reopened.id).toBe(root.id);
 		expect((await second.conversation(root.id, context))?.id).toBe(root.id);
@@ -132,7 +142,6 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		expect(before).toEqual(["pi.user: What is the capital of Australia?", "pi.assistant: Canberra"]);
 		expect((await (await second.submission(settled.id, context))?.status(context))?.status).toBe("done");
 		expect((await reopened.agent(context)).model).toEqual(fake.ref());
-		await second.close(context);
 	});
 
 	it("b. resumes a task after SIGKILL without rerunning the phase that checkpointed", async () => {
@@ -140,10 +149,13 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		expect(count(readEvents(log), "phase-one")).toBe(1);
 		expect(count(readEvents(log), "phase-two-done")).toBe(0);
 
-		const harness = await openSpikeHarness(database, spikeRegistry("task", "resume", log), createFakeModels());
+		const harness = tracked(
+			await openSpikeHarness(database, spikeRegistry("task", "resume", log), createFakeModels()),
+		);
 		const taskId = field<TaskId<{ first: string; second: string }>>(readEvents(log), "task-created", "taskId");
 		harness.resume();
 		const settled = await harness.waitForTask(taskId, context);
+		// The task settles at its terminal commit; closing joins the phase, so its last log line is on disk.
 		await harness.close(context);
 
 		expect(settled.state.outcome).toEqual({ status: "completed", result: { first: "one", second: "two" } });
@@ -162,7 +174,7 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		const fake = createFakeModels();
 		const requests: Message[][] = [];
 		fake.provider.setResponses([captured(requests, fauxAssistantMessage("One probe ran, one was interrupted."))]);
-		const harness = await openSpikeHarness(database, spikeRegistry("replay", "resume", log), fake);
+		const harness = tracked(await openSpikeHarness(database, spikeRegistry("replay", "resume", log), fake));
 		const submissionId = field<SubmissionId>(readEvents(log), "submitted", "submissionId");
 		const submission = await harness.submission(submissionId, context);
 		const settled = await submission!.wait(context);
@@ -232,7 +244,7 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		});
 		const registry = createRegistry();
 		registry.install(defineExtension({ name: "lenses", tools: [lens] }));
-		const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry });
+		const harness = tracked(await openHarness(createMemoryStorage(), { models: fake.models, registry }));
 		const root = await harness.root(context, { agent: { model: fake.ref("reviewer") } });
 		const settled = await ask(root, "Review this change.");
 
@@ -258,7 +270,6 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 			"pi.user: Is this eval safe?",
 			"pi.assistant: P1: eval runs user input.",
 		]);
-		await harness.close(context);
 	});
 
 	it("d2. a pipeline task fans lenses out as child conversations it owns, with no model choosing the topology", async () => {
@@ -319,7 +330,7 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		});
 		const registry = createRegistry();
 		registry.install(defineExtension({ name: "pipeline", tasks: [LensStep] }));
-		const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry });
+		const harness = tracked(await openHarness(createMemoryStorage(), { models: fake.models, registry }));
 		const root = await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
 		const taskId = await root.commit(
 			(tx) => tx.createTask(LensStep, { change: "diff --git a/src/a.ts" }, { ownership: { kind: "conversation" } }),
@@ -338,7 +349,6 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		}
 		const owned = await harness.commit((tx) => tx.scanConversations({ ownerTaskId: taskId }, 10), context);
 		expect(owned.items).toHaveLength(2);
-		await harness.close(context);
 	});
 
 	it("e. validates TypeBox tool arguments before execute runs, after coercing what it can", async () => {
@@ -365,7 +375,7 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 			captured(requests, call({ path: 42, line: "12" })),
 			captured(requests, fauxAssistantMessage("Located.")),
 		]);
-		const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry });
+		const harness = tracked(await openHarness(createMemoryStorage(), { models: fake.models, registry }));
 		const root = await harness.root(context, { agent: { model: fake.ref() } });
 		const settled = await ask(root, "Where is the bug?");
 		await harness.close(context);
@@ -410,12 +420,12 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 			fauxAssistantMessage("One finding."),
 		]);
 		const path = join(dir, "docs.sqlite");
-		const first = await openHarness(await openSqliteStorage(path), { models: fake.models, registry });
+		const first = tracked(await openHarness(await openSqliteStorage(path), { models: fake.models, registry }));
 		const firstRoot = await first.root(context, { agent: { model: fake.ref() } });
 		expect((await ask(firstRoot, "Review this change.")).status).toBe("done");
 		await first.close(context);
 
-		const harness = await openHarness(await openSqliteStorage(path), { models: fake.models, registry });
+		const harness = tracked(await openHarness(await openSqliteStorage(path), { models: fake.models, registry }));
 		const root = await harness.root(context);
 		expect(await harness.snapshot(Findings, root.id, context)).toEqual({ items: ["P1: eval runs user input"] });
 
@@ -435,14 +445,13 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		expect((await harness.snapshotAsOf(Findings, root.id, result.id, context))?.items).toEqual([
 			"P1: eval runs user input",
 		]);
-		await harness.close(context);
 	});
 
 	it("g. api.memo is first-write-wins across SIGKILL and is dropped once its task ends", async () => {
 		const { database, log } = await crashWhen("memo", (events) => count(events, "memo") === 1);
 		const fake = createFakeModels();
 		fake.provider.setResponses([fauxAssistantMessage("Published once.")]);
-		const harness = await openSpikeHarness(database, spikeRegistry("memo", "resume", log), fake);
+		const harness = tracked(await openSpikeHarness(database, spikeRegistry("memo", "resume", log), fake));
 		const submissionId = field<SubmissionId>(readEvents(log), "submitted", "submissionId");
 		const settled = await (await harness.submission(submissionId, context))!.wait(context);
 		expect(settled.status).toBe("done");
@@ -458,7 +467,6 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		const task = await harness.getTask(resumed!.taskId as TaskId, context);
 		expect(task?.state.status).toBe("terminal");
 		expect(task?.memos).toBeUndefined();
-		await harness.close(context);
 	});
 
 	it("h. a repeated requestId returns the existing submission, before and after reopen", async () => {
@@ -468,7 +476,7 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		const registry = createRegistry();
 		const delivery = { type: "input", content: "Review revision abc123.", requestId: "delivery-7f3a" } as const;
 
-		const first = await openHarness(await openSqliteStorage(path), { models: fake.models, registry });
+		const first = tracked(await openHarness(await openSqliteStorage(path), { models: fake.models, registry }));
 		const root = await first.root(context, { agent: { model: fake.ref() } });
 		const original = await root.submit(delivery, context);
 		const retried = await root.submit(delivery, context);
@@ -476,7 +484,7 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		expect((await original.wait(context)).status).toBe("done");
 		await first.close(context);
 
-		const second = await openHarness(await openSqliteStorage(path), { models: fake.models, registry });
+		const second = tracked(await openHarness(await openSqliteStorage(path), { models: fake.models, registry }));
 		const reopened = await second.root(context);
 		const redelivered = await reopened.submit(delivery, context);
 		expect(redelivered.id).toBe(original.id);
@@ -484,7 +492,6 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		await second.waitForIdle(context);
 		expect(await transcript(reopened)).toEqual(["pi.user: Review revision abc123.", "pi.assistant: Reviewed."]);
 		expect(fake.provider.state.callCount).toBe(1);
-		await second.close(context);
 	});
 
 	it("i. a section that reads a file is re-rendered after the file changes, and the transcript records it", async () => {
@@ -500,7 +507,7 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 			captured(requests, fauxAssistantMessage("First.")),
 			captured(requests, fauxAssistantMessage("Second.")),
 		]);
-		const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry });
+		const harness = tracked(await openHarness(createMemoryStorage(), { models: fake.models, registry }));
 		const root = await harness.root(context, { agent: { model: fake.ref() } });
 
 		expect((await ask(root, "Review the first revision.")).status).toBe("done");
@@ -514,7 +521,6 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		expect(system).toHaveLength(2);
 		expect(textOf(system[0]!.model?.[0])).not.toContain("Prefer early returns.");
 		expect(textOf(system[1]!.model?.[0])).toContain("Prefer early returns.");
-		await harness.close(context);
 	});
 
 	it("hook(ToolTask) beforeTool blocks a call before it executes", async () => {
@@ -546,7 +552,7 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 			fauxAssistantMessage(fauxToolCall("write_file", { path: "src/a.ts" }), { stopReason: "toolUse" }),
 			captured(requests, fauxAssistantMessage("Could not write.")),
 		]);
-		const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry });
+		const harness = tracked(await openHarness(createMemoryStorage(), { models: fake.models, registry }));
 		const root = await harness.root(context, { agent: { model: fake.ref() } });
 		expect((await ask(root, "Fix it.")).status).toBe("done");
 		await harness.close(context);
