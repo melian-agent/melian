@@ -428,23 +428,30 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 	for (const each of head.values()) {
 		const { region } = each.result.locations[0]!.physicalLocation;
 		const endLine = Math.max(region.endLine ?? region.startLine, region.startLine);
-		const cause = base.has(each.id) ? "pre-existing" : "introduced";
+		const before = base.get(each.id);
 		const severity = staticSeverity(tool, each.rule, each.result.level, input.settings.severity);
 		const config = await configFor(each.path);
-		const more = each.count > 1 ? ` (and ${each.count - 1} more on these lines)` : "";
 		const sameLine = endLine === region.startLine;
-		findings.push(
-			createFinding({
+		// Results of one rule on one set of lines share an ID, so presence alone would hide a second error added beside
+		// an old one. What the head has beyond the base's count is introduced.
+		const added = before === undefined ? 0 : each.count - before.count;
+		const findingOf = (cause: "introduced" | "pre-existing", count: number, extra?: { discriminator: string }) => {
+			const more = count > 1 ? ` (and ${count - 1} more on these lines)` : "";
+			const message =
+				extra === undefined
+					? `${each.result.message.text}${more}`
+					: `${count} more ${each.rule} result(s) on these lines than at the base: ${each.result.message.text}`;
+			return createFinding({
 				rule: each.rule,
-				message: `${each.result.message.text}${more}`,
+				message,
 				file: each.path,
 				startLine: region.startLine,
 				endLine,
 				startColumn: region.startColumn,
 				endColumn: sameLine && (region.endColumn ?? 0) < (region.startColumn ?? 1) ? undefined : region.endColumn,
-				snippet: each.snippet,
-				occurrence: each.occurrence,
-				discriminator: each.discriminator,
+				snippet: extra === undefined ? each.snippet : undefined,
+				occurrence: extra === undefined ? each.occurrence : undefined,
+				discriminator: extra?.discriminator ?? each.discriminator,
 				cause,
 				trigger: cause === "introduced" ? triggerFor(revision, each.path, region.startLine, endLine) : undefined,
 				severity,
@@ -458,8 +465,11 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 					whatToDo: `Change the code so ${tool} no longer reports ${each.rule}.`,
 				},
 				source: { check: checkOf(tool), version },
-			}),
-		);
+			});
+		};
+		if (before === undefined) findings.push(findingOf("introduced", each.count));
+		else findings.push(findingOf("pre-existing", Math.min(each.count, before.count)));
+		if (added > 0) findings.push(findingOf("introduced", added, { discriminator: `beyond the base at ${each.id}` }));
 	}
 	return { findings, notes: [] };
 }

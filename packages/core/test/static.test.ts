@@ -280,6 +280,25 @@ describe("staticFindings", () => {
 		]);
 	});
 
+	it("reports a second result added beside an old one on the same lines as introduced", async () => {
+		const base = commit({ "a.ts": lines("f(1, 2);") });
+		const head = commit({ "a.ts": lines("f(1, 2);", "") });
+		const { revision } = await resolveRange(repo, `${base}..${head}`);
+		const { findings } = await staticFindings({
+			repoRoot: repo,
+			revision,
+			source: { kind: "revision", commit: base },
+			tool: "tsc",
+			settings: defaultConfig.static.tsc,
+			base: log(["a.ts", 1, "TS2345"]),
+			head: log(["a.ts", 1, "TS2345"], ["a.ts", 1, "TS2345"]),
+		});
+		expect(findings.map((finding) => [finding.properties.cause, finding.message.text])).toEqual([
+			["pre-existing", "TS2345 at a.ts:1"],
+			["introduced", "1 more tsc/TS2345 result(s) on these lines than at the base: TS2345 at a.ts:1"],
+		]);
+	});
+
 	it("takes resolution from each path's configuration and severity overrides from the tool's settings", async () => {
 		const base = commit({ "melian.yaml": lines("resolution:", "  P0: advisory"), "a.ts": lines("a") });
 		const head = commit({ "a.ts": lines("b") });
