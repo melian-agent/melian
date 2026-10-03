@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
@@ -302,6 +302,18 @@ describe("runStaticTool with the repository's own tools", () => {
 		);
 		expect((error as CheckError).code).toBe("toolFailed");
 		expect((error as CheckError).message).toMatch(/no report: bad config/);
+	});
+});
+
+describe("runStaticTool and the user's worktrees", () => {
+	it("leaves a stale worktree of the user's own registered", { timeout: 60_000 }, async () => {
+		const head = commit(repo, { "src/a.ts": lines("export const a = 1;") });
+		const mine = `${repo}-mine`;
+		gitIn(repo, "worktree", "add", "--quiet", "--detach", mine);
+		rmSync(mine, { recursive: true, force: true });
+		await log("biome", head);
+		expect(gitIn(repo, "worktree", "list", "--porcelain")).toContain(`worktree ${mine}`);
+		gitIn(repo, "worktree", "remove", "--force", mine);
 	});
 });
 

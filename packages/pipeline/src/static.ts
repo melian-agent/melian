@@ -442,13 +442,13 @@ const lockReason = `melian-static pid ${process.pid}`;
 // command return at once, and the worktree would stay registered.
 async function removeWorktree(env: ExecutionEnv, repoRoot: string, scratch: string): Promise<void> {
 	const root = posix.join(scratch, "tree");
-	// Twice forced, because the worktree is locked.
+	// Twice forced, because the worktree is locked. Never `git worktree prune`, which would also drop the user's own
+	// stale worktrees; removing by path works even when the directory is already gone.
 	await env.exec(
 		git(repoRoot, `worktree remove --force --force ${quote(root)}`),
 		{ ...toolEnvironment(), timeout: 60 },
 		backgroundContext,
 	);
-	await env.exec(git(repoRoot, "worktree prune"), { ...toolEnvironment(), timeout: 60 }, backgroundContext);
 	await env.remove(scratch, { recursive: true, force: true }, backgroundContext);
 }
 
