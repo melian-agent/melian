@@ -69,13 +69,11 @@ export async function review(io: Io, argument: string, options: { readonly model
 	const target = parseTarget(argument);
 	let changeset: Changeset;
 	let source: RepositorySource;
-	const registry = createReviewRegistry();
 	if (target.kind === "pullRequest") {
 		const provider = await gitHubFor(io.cwd, io.env);
 		const fetched = await fetchedPullRequest(io.cwd, provider, target.number);
 		changeset = fetched.changeset;
 		source = { kind: "revision", commit: fetched.pullRequest.base.sha };
-		registry.install(publishExtension(provider));
 	} else {
 		changeset = await resolveRange(io.cwd, target.spec);
 		const own = (await headCommit(changeset.repoRoot)) === changeset.revision.head;
@@ -88,11 +86,9 @@ export async function review(io: Io, argument: string, options: { readonly model
 	const { config: loaded } = await loadConfig(repoRoot, source, ".");
 	const { models, config, settings } = await reviewModels(io.env, loaded, lenses, options.model);
 	const path = await storagePath(repoRoot, changeset.id, isScripted(io.env));
-	const harness = await openStorageHarness(path, {
-		models,
-		registry,
-		...(settings === undefined ? {} : { settings }),
-	});
+	// Without the publish extension, so a publication a crash interrupted waits for melian publish rather than posting
+	// from a review.
+	const harness = await openStorageHarness(path, { models, ...(settings === undefined ? {} : { settings }) });
 	try {
 		let verdict: Verdict;
 		try {
