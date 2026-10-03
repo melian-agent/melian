@@ -1,0 +1,28 @@
+# Melian's policy for its own repository. A pull request is reviewed under the base commit's copy of this file.
+tiers:
+  fast: [guardrails, static.biome, static.tsc]
+
+guardrails:
+  forbidden-paths:
+    rules:
+      build-output:
+        paths: ["**/dist/**", "**/*.tsbuildinfo"]
+        message: npm run build writes this; change the source instead
+
+  required-files:
+    rules:
+      config-key-table:
+        when: [packages/core/src/config.ts]
+        require: [docs/guidelines/core.md]
+        message: a melian.yaml key goes into the schema, the defaults, and the key table in docs/guidelines/core.md together
+
+  forbidden-patterns:
+    rules:
+      focused-test:
+        pattern: '^\s*(?:describe|it|test)\.only\('
+        paths: ["**/*.test.ts"]
+        message: a focused test skips the rest of the suite
+      dynamic-import:
+        pattern: 'await import\(|import\(["'']'
+        paths: ["packages/*/src/**"]
+        message: AGENTS.md allows top-level imports only
