@@ -270,7 +270,10 @@ describe("runStaticTool after a cancellation", () => {
 		const controller = new AbortController();
 		const cancellable = { abortSignal: controller.signal, value: () => undefined, toString: () => "cancellable" };
 		setTimeout(() => controller.abort(), 2_000);
-		await expect(runStaticTool(input("tsc", head), cancellable)).rejects.toBeInstanceOf(CheckError);
+		await expect(runStaticTool(input("tsc", head), cancellable)).rejects.toMatchObject({
+			name: "CheckError",
+			code: "aborted",
+		});
 		expectCheckoutUntouched();
 	});
 });

@@ -140,6 +140,7 @@ export type CheckErrorCode =
 	| "toolMissing"
 	| "toolFailed"
 	| "timeout"
+	| "aborted"
 	| "outputTooLarge"
 	| "invalidOutput"
 	| "unreadable"

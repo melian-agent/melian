@@ -122,6 +122,9 @@ class Run {
 					result.error,
 				);
 			}
+			if (result.error.code === "aborted") {
+				throw this.fail("aborted", `${this.input.tool} was cancelled before it finished`, result.error);
+			}
 			throw this.fail("toolFailed", `${this.input.tool} could not be run: ${result.error.message}`, result.error);
 		}
 		return { code: result.value.exitCode, output: output.trim() };
@@ -321,7 +324,7 @@ async function runTsc(
  * `settings.project`.
  *
  * Throws core's `CheckError`: `worktreeFailed`, `toolMissing`, `toolFailed` for a crash or an unexpected exit,
- * `timeout`, `outputTooLarge`, or `invalidOutput`. A failure never returns an empty log.
+ * `aborted` when `context` is cancelled, `timeout`, `outputTooLarge`, or `invalidOutput`. A failure never returns an empty log.
  */
 export async function runStaticTool(input: StaticRunInput, context: Context): Promise<StaticRun> {
 	const run = new Run(input, context);
