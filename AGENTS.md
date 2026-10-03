@@ -6,7 +6,7 @@ Melian is a TypeScript monorepo built on Pi Durable. It follows Pi's conventions
 
 ## Guidance files
 
-Root `AGENTS.md` covers cross-cutting material: style, workflow, commits, and review. Package-level `AGENTS.md` files import the guideline that applies to that package from `docs/guidelines/`, so an agent working in one package loads only what it needs. Every `AGENTS.md` has a one-line `CLAUDE.md` beside it containing `@AGENTS.md`, so Claude Code and other agents read the same instructions.
+Root `AGENTS.md` covers cross-cutting material: style, workflow, commits, and review. Package-level `AGENTS.md` files arrive with the first domain code in each package. Each imports the guideline for its package from `docs/guidelines/`, so an agent working in one package loads only what it needs. Every `AGENTS.md` has a one-line `CLAUDE.md` beside it containing `@AGENTS.md`, so Claude Code and other agents read the same instructions.
 
 Before designing or planning a change, read the guideline for every layer involved. Do not rely on defaults.
 
