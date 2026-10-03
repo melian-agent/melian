@@ -113,7 +113,7 @@ Pi Durable is pinned to an exact version and imported by one internal module, be
 A finding is a SARIF `result` plus Melian extension properties. SARIF because semgrep, gitleaks, and eslint emit it natively, GitHub code scanning ingests it, and it forces a stable schema from the first commit. Extensions:
 
 - `id`: stable hash of file, rule, a normalised snippet, and the snippet's occurrence: its zero-based ordinal among identical normalised snippets in that file at head, in line order. Survives line shifts and edits elsewhere in the file; inserting an identical snippet earlier renumbers the ones after it. A finding with no snippet supplies its own discriminator, such as the enclosing symbol or the hunk index. Used for cross-revision diffing and dismissal matching.
-- `cause`: `introduced`, `affected`, or `pre-existing`. See below.
+- `cause`: `introduced`, `affected`, or `pre-existing`. Location proves `introduced` only; `affected` needs the lens's evidence; everything else is `pre-existing`. See below.
 - `trigger`: the diff hunk that caused the finding.
 - `severity`: the repository's rubric, default `P0` to `P3` plus `nit`.
 - `confidence`: calibrated probability that the finding is real.
@@ -128,11 +128,11 @@ Problem: a change inside the diff can break code outside it, and a lens reading 
 
 Example: a pull request renames a function parameter. A caller in another file now passes the wrong argument. Meanwhile, that other file also has an unrelated SQL injection that predates the pull request.
 
-Solution: classify by cause, not location.
+Solution: classify by cause, not location. Location can prove only that a finding is in the diff; it cannot prove that a finding outside the diff was caused by it.
 
-- `introduced`: inside the diff. In scope, can block.
-- `affected`: outside the diff, provably caused by it. In scope, can block. The lens must cite the specific code the change breaks.
-- `pre-existing`: outside the diff, not caused by it. Never blocks. Appears once in a capped "noticed" section, is recorded in Melian's store, and is never raised again on that repository.
+- `introduced`: inside the diff. In scope, can block. The only cause a location alone establishes.
+- `affected`: outside the diff, provably caused by it. In scope, can block. Only evidence makes a finding `affected`: the lens cites, as `cause.evidence`, the specific changed code that breaks the location. No heuristic produces it.
+- `pre-existing`: outside the diff, with no evidence that the change caused it. The default for anything outside the diff. Never blocks. Appears once in a capped "noticed" section, is recorded in Melian's store, and is never raised again on that repository.
 
 Static analysis gets the same split for free by running on base and head and diffing results.
 
@@ -474,6 +474,7 @@ docs/
 | Conversation keying | One storage per changeset; Melian maps changeset to storage | Pi mints conversation IDs; matches per-changeset state layout; one writer per changeset |
 | Publication idempotency | Durable published document plus marker check, not memos | Memos are task-scoped and temporary |
 | Finding identity | file, rule, normalised snippet, and occurrence ordinal | Identical snippets in one file must not collide; line shifts must not change the ID |
+| Cause by location | Location proves introduced only; affected needs lens evidence; pre-existing otherwise | A location heuristic must never make an old defect block |
 
 ## Open questions
 

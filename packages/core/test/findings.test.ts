@@ -183,6 +183,15 @@ describe("createFinding", () => {
 		);
 	});
 
+	it("makes a finding affected only through evidence", () => {
+		const evidence = "src/api.ts:3 renames the id parameter to userId, which this call still passes positionally.";
+		const affected = createFinding({ ...evalInput, cause: { evidence } });
+		expect(affected.properties.cause).toBe("affected");
+		expect(affected.properties.evidence).toBe(evidence);
+		expect(createFinding(evalInput).properties).not.toHaveProperty("evidence");
+		expect(() => createFinding({ ...evalInput, cause: { evidence: "" } })).toThrow(FindingError);
+	});
+
 	it("rejects an input the schema would not accept", () => {
 		expect(() => createFinding({ ...evalInput, startLine: 0 })).toThrow(FindingError);
 		expect(() => createFinding({ ...evalInput, confidence: 1.5 })).toThrow(FindingError);
@@ -291,6 +300,15 @@ describe("parseFinding", () => {
 		const error = rejection(value);
 		expect(error.code).toBe("invalidFinding");
 		expect(error.path).toBe(path);
+	});
+
+	it("rejects an affected finding without evidence, and evidence on any other", () => {
+		const affected = createFinding({ ...evalInput, cause: { evidence: "src/api.ts:3 renames id." } });
+		const { evidence: _, ...bare } = affected.properties;
+		expect(rejection({ ...affected, properties: bare }).code).toBe("missingEvidence");
+		const stray = rejection({ ...finding, properties: { ...finding.properties, evidence: "src/api.ts:3" } });
+		expect(stray.code).toBe("invalidFinding");
+		expect(stray.path).toBe("/properties/evidence");
 	});
 
 	it("rejects a finding without a location", () => {

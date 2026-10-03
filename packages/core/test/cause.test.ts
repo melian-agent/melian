@@ -52,13 +52,13 @@ describe("classifyCause", () => {
 		expect(classifyCause({ file: "added.ts", startLine: 1 }, changeset.revision)).toBe("introduced");
 	});
 
-	it("calls a location elsewhere in a changed file affected, including beside a deletion", () => {
+	it("calls a location elsewhere in a changed file pre-existing, including beside a deletion", () => {
 		const cause = (startLine: number, endLine?: number) =>
 			classifyCause({ file: "app.ts", startLine, endLine }, changeset.revision);
-		expect(cause(2)).toBe("affected");
-		expect(cause(4, 7)).toBe("affected");
-		expect(cause(10)).toBe("affected");
-		expect(cause(11)).toBe("affected");
+		expect(cause(2)).toBe("pre-existing");
+		expect(cause(4, 7)).toBe("pre-existing");
+		expect(cause(10)).toBe("pre-existing");
+		expect(cause(11)).toBe("pre-existing");
 	});
 
 	it("calls a location in an unchanged file pre-existing", () => {

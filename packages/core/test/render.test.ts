@@ -20,7 +20,7 @@ const log = createFindingsLog([
 		startColumn: undefined,
 		endColumn: undefined,
 		snippet: "fs.write(fd, data)",
-		cause: "affected",
+		cause: { evidence: "src/run.ts:12 now passes buffers of up to 1 MiB to write()." },
 		trigger: undefined,
 		severity: "P3",
 		resolution: "advisory",

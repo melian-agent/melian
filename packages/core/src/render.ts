@@ -55,12 +55,13 @@ function lineSpan(finding: Finding): string {
 }
 
 function block(finding: Finding, paint: (code: string, text: string) => string): string {
-	const { severity, cause, status, explanation } = finding.properties;
+	const { severity, cause, evidence, status, explanation } = finding.properties;
 	return [
 		`  ${paint(severityColor[severity], severity)}  ${lineSpan(finding)}  ${visible(finding.ruleId)}  (${cause}, ${status})`,
 		`  ${prose(finding.message.text, "  ")}`,
 		`    What: ${prose(explanation.what, "      ")}`,
 		`    Why here: ${prose(explanation.whyHere, "      ")}`,
+		...(evidence === undefined ? [] : [`    Evidence: ${prose(evidence, "      ")}`]),
 		`    What to do: ${prose(explanation.whatToDo, "      ")}`,
 	].join("\n");
 }
@@ -71,7 +72,8 @@ function plural(count: number, noun: string): string {
 
 /**
  * Renders a findings log as plain text for a terminal: grouped by file in path order, and within a file by severity,
- * then line. Each finding is one block with its rule, cause, status, message, and the explanation's three parts.
+ * then line. Each finding is one block with its rule, cause, status, message, the explanation's three parts, and the
+ * evidence of an `affected` finding.
  */
 export function renderFindingsTerminal(log: FindingsLog, options: TerminalRenderOptions = {}): string {
 	const paint = (code: string, text: string) => (options.color ? `\u001b[${code}m${text}\u001b[0m` : text);

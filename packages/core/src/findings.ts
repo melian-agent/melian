@@ -48,6 +48,7 @@ export const findingPropertiesSchema = Type.Object(
 		occurrence: Type.Optional(count),
 		discriminator: Type.Optional(text),
 		cause: causeSchema,
+		evidence: Type.Optional(text),
 		trigger: Type.Optional(findingTriggerSchema),
 		severity: severitySchema,
 		confidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
@@ -131,10 +132,13 @@ export type SarifLevel = Static<typeof sarifLevelSchema>;
  * Why a finding is in scope.
  *
  * - `introduced`: in the code the changeset added or changed. Can block.
- * - `affected`: outside the changed code, but broken by it. Can block.
- * - `pre-existing`: outside the changed code and not caused by it. Never blocks.
+ * - `affected`: outside the changed code, but broken by it, as `properties.evidence` shows. Can block.
+ * - `pre-existing`: outside the changed code and not shown to be caused by it. Never blocks.
  */
 export type Cause = Static<typeof causeSchema>;
+
+/** The causes a location alone can prove. Only evidence makes a finding `affected`. */
+export type LocationCause = Exclude<Cause, "affected">;
 
 /** Where a finding stands across revisions. Only `new` is assigned until cross-revision diffing exists. */
 export type FindingStatus = Static<typeof findingStatusSchema>;
@@ -332,7 +336,11 @@ export interface FindingInput {
 	readonly occurrence?: number;
 	/** Required without a snippet: what tells this finding apart, such as the enclosing symbol or the hunk index. */
 	readonly discriminator?: string;
-	readonly cause: Cause;
+	/**
+	 * `introduced` or `pre-existing`, usually from {@link classifyCause}, or `{ evidence }` for an `affected` finding:
+	 * the changed code that provably breaks this location, as the lens cites it.
+	 */
+	readonly cause: LocationCause | { readonly evidence: string };
 	readonly trigger?: FindingTrigger;
 	readonly severity: Severity;
 	readonly confidence?: number;
@@ -356,6 +364,7 @@ export function createFinding(input: FindingInput): Finding {
 	const { file, rule, snippet, occurrence, discriminator } = input;
 	const id = findingId({ file, rule, snippet: snippet ?? "", occurrence, discriminator });
 	const hasSnippet = normalise(snippet ?? "") !== "";
+	const evidence = typeof input.cause === "object" ? input.cause.evidence : undefined;
 	return parseFinding({
 		ruleId: rule,
 		level: levelForSeverity(input.severity),
@@ -379,7 +388,8 @@ export function createFinding(input: FindingInput): Finding {
 			path: file,
 			occurrence: hasSnippet ? occurrence : undefined,
 			discriminator: hasSnippet ? undefined : discriminator,
-			cause: input.cause,
+			cause: evidence === undefined ? input.cause : "affected",
+			evidence,
 			trigger: input.trigger,
 			severity: input.severity,
 			confidence: input.confidence,
@@ -396,7 +406,8 @@ export function createFinding(input: FindingInput): Finding {
  *
  * Throws {@link FindingError}: `invalidFinding` when it does not match {@link findingSchema}, `levelMismatch` when its
  * level is not {@link levelForSeverity} of its severity, `invalidPath` when its path is absolute or escapes the
- * repository or its URI does not encode that path, `missingDiscriminator` when it lacks the occurrence or
+ * repository or its URI does not encode that path, `missingEvidence` when it is `affected` without evidence,
+ * `missingDiscriminator` when it lacks the occurrence or
  * discriminator its snippet calls for, and `idMismatch` when its ID is not {@link findingId} of its first location.
  */
 export function parseFinding(value: unknown): Finding {
@@ -428,6 +439,17 @@ export function parseFinding(value: unknown): Finding {
 		});
 	}
 	if (trigger !== undefined) repositoryUri(trigger.file, "/properties/trigger/file");
+	const { cause, evidence } = finding.properties;
+	if (cause === "affected" && evidence === undefined) {
+		throw new FindingError("missingEvidence", "an affected finding must cite the change that breaks it", {
+			path: "/properties/evidence",
+		});
+	}
+	if (cause !== "affected" && evidence !== undefined) {
+		throw new FindingError("invalidFinding", `an ${cause} finding carries evidence only an affected one needs`, {
+			path: "/properties/evidence",
+		});
+	}
 	const snippet = region.snippet?.text ?? "";
 	const { occurrence, discriminator } = finding.properties;
 	const extra = normalise(snippet) === "" ? occurrence : discriminator;

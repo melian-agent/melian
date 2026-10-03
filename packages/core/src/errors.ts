@@ -69,6 +69,7 @@ export type FindingErrorCode =
 	| "invalidFinding"
 	| "levelMismatch"
 	| "invalidPath"
+	| "missingEvidence"
 	| "missingDiscriminator"
 	| "snippetNotFound"
 	| "idMismatch";

@@ -113,11 +113,11 @@ The normalisation is a stored contract. Changing it orphans every recorded findi
 
 ### Cause by location, for now
 
-`classifyCause` decides a finding's cause from where it sits. A location overlapping any hunk's new lines is `introduced`; one elsewhere in a changed file is `affected`; one in an unchanged file is `pre-existing`.
+`classifyCause` decides from where a finding sits whether location alone proves its cause. A location overlapping any hunk's new lines is `introduced`. Every other location is `pre-existing`: elsewhere in a changed file, in an unchanged file, or beside a pure deletion, which has no new lines.
 
-This is a placeholder. The design classifies cause by evidence through the decision model, which arrives later. Until then the heuristic is wrong in both directions: a renamed parameter breaks a caller in an unchanged file, which the heuristic calls `pre-existing`, and an old bug three lines below a hunk is called `affected`. A lens that cites the change it broke, or shows that it did not, may override the heuristic's answer.
+Location never proves `affected`. Problem: an earlier heuristic called anything in a changed file but outside its hunks `affected`, and `affected` can block. Example: a pull request fixes a typo on line 3 of `src/db.ts`, and a lens notices a SQL injection on line 80 that predates it. The heuristic made the old injection a blocker on an unrelated typo fix. Solution: `affected` needs evidence. `createFinding` makes a finding `affected` only through `cause: { evidence }`, where `evidence` names the changed code that provably breaks the location, such as "`src/api.ts:3` renames `id` to `userId`, which this call still passes positionally". It stores the citation in `properties.evidence`, and `parseFinding` throws `missingEvidence` for an `affected` finding without it and `invalidFinding` for evidence on any other cause. No heuristic produces evidence.
 
-A pure deletion has no new lines, so nothing is inside it. Code beside a deletion is `affected`, and the lens must say why.
+The cost is the other direction: a renamed parameter that breaks a caller is `pre-existing` until the lens cites the rename. Missing breakage is recoverable; blocking on an old defect teaches authors to ignore Melian. The design classifies cause through the decision model later, which may promote a finding with evidence but never without.
 
 ### Rendering
 

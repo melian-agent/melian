@@ -59,6 +59,7 @@ export {
 	findingStatusSchema,
 	findingsLogSchema,
 	findingTriggerSchema,
+	type LocationCause,
 	levelForSeverity,
 	parseFinding,
 	type SarifLevel,

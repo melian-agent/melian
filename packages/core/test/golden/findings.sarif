@@ -37,6 +37,7 @@
             "path": "src/run.ts",
             "occurrence": 0,
             "cause": "affected",
+            "evidence": "src/run.ts:12 now passes buffers of up to 1 MiB to write().",
             "severity": "P3",
             "confidence": 0.9,
             "resolution": "advisory",
