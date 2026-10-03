@@ -1,0 +1,8 @@
+# Routes every lens tier, so `melian review` runs in this repository without --model.
+models:
+  light:
+    model: anthropic/claude-sonnet-5-5
+  medium:
+    model: anthropic/claude-sonnet-5-5
+  heavy:
+    model: anthropic/claude-opus-5-5
