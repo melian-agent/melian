@@ -4,14 +4,14 @@ Step 2 of milestone 1, tracked in [issue #2](https://github.com/melian-agent/mel
 
 ## Verdict
 
-The design holds. Pi Durable 1.0.0 did everything the spike asked of it, and nothing needed a workaround inside the harness. Four rows of the "Mapping onto Pi Durable" table in [design.md](../design.md) say something the package does not, and need rewording before steps 5 and 7 build on them:
+The design holds. Pi Durable 1.0.0 did everything the spike asked of it, and nothing needed a workaround inside the harness. Four rows of the "Mapping onto Pi Durable" table in [design.md](../design.md) said something the package does not. [Pull request #11](https://github.com/melian-agent/melian/pull/11) rewords them:
 
 1. A changeset's conversation cannot be keyed by repository and changeset. Pi mints conversation IDs.
 2. A lens should be a conversation owned by the lens task, not a subagent tool the model chooses to call.
 3. `api.memo()` belongs to one task and is deleted when that task ends. It cannot deduplicate publication across runs on its own.
 4. The `Storage` interface is larger than "one atomic `commit(writes)` plus reads", and has no cross-process locking.
 
-No row needs a different harness. The proposed wording is under [Proposed changes to design.md](#proposed-changes-to-designmd).
+No row needs a different harness. The proposals and what was applied are under [Proposed changes to design.md](#proposed-changes-to-designmd).
 
 ## What each test proved
 
@@ -80,7 +80,13 @@ These rows or features exist in the 1.0.0 types but no test touched them: `whenB
 
 ## Proposed changes to design.md
 
-These are proposals; [design.md](../design.md) is unchanged by this spike.
+Applied to [design.md](../design.md) in [pull request #11](https://github.com/melian-agent/melian/pull/11), after review. The proposals are kept below as written. The applied text differs from them in three places:
+
+- Conversation keying: one storage per changeset, not a session document family. It matches the per-changeset state layout, and the Actions concurrency group already gives each changeset one writer.
+- Publication: no memo. A durable `published` document, written in the same commit that records the post, plus the marker check, because a memo cannot outlive its task.
+- Phases and tools: each phase and each tool with a durable side effect is safe to repeat or guarded by a durable record, never by a memo. See the crash surprise under [Surprises](#surprises).
+
+The wrapper sentence under the mapping table changed too: the wrapper quarantines import paths, not churn.
 
 **Mapping table, first row.** From "One conversation, keyed by repository and changeset identity, persisted by ID across restarts" to: "One conversation per changeset. Pi mints conversation IDs, so Melian keeps the map from changeset to conversation: one storage per changeset whose root conversation is its history, or a session document family keyed by changeset in a shared storage." Step 3 or step 7 picks one. Per-changeset storage matches the per-changeset subdirectories in "State storage".
 

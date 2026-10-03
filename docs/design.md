@@ -73,7 +73,7 @@ Why the split: Pi has two extension systems. The coding agent uses `ExtensionAPI
 
 ### The pipeline
 
-Each step is a Pi Durable task. Each task checkpoints before moving on. Replay policy is noted per step.
+Each step is a Pi Durable task. Each task checkpoints before moving on. Replay policy is noted per step. A task phase reruns from its start after a crash, so each phase is safe to repeat or guards its side effect with a durable record.
 
 A tool with a durable side effect is written as an idempotent upsert keyed by a stable ID and marked replay-safe. Otherwise it is not replay-safe, and its side effect is guarded by a durable record, never by a task memo. A tool's commit and its result are separate durable commits, so a crash between them reruns the tool or has the model call it again.
 
@@ -81,10 +81,10 @@ A tool with a durable side effect is written as an idempotent upsert keyed by a 
 2. **Triage.** One decision-model call over the diff summary: is this docs-only, generated, a dependency bump, test-only; which lenses apply; what is the risk score. Output selects the effective tier. Replay safe.
 3. **Static analysis.** Run configured tools on base and head inside the execution environment. Diff the SARIF results to separate introduced from pre-existing. Replay safe.
 4. **Guardrails.** Evaluate deterministic policies. Replay safe.
-5. **Lenses.** Spawn one child conversation per selected lens, in parallel, each with its own model, instructions, and read-only tools. Each lens reports findings through a tool call, never through prose. Replay safe per lens; a crashed lens reruns from its last checkpoint.
+5. **Lenses.** The lens task creates and owns one child conversation per selected lens and runs them in parallel, each with its own model, instructions, and an explicit list of read-only tools. Each lens reports findings through a tool call, never through prose. Replay safe per lens; a crashed lens reruns from its last checkpoint.
 6. **Adjudication.** Dedupe across lenses. Classify each finding's cause. Score severity and confidence through the decision model. Apply thresholds: drop, accept, or escalate to an LLM verification pass. Apply per-path resolution. Diff against the previous revision's findings: new, still open, resolved, dismissed. Replay safe.
-7. **Publish.** Post the review, inline comments, and check status. The status is passed, findings, or not reviewed, derived from task state. Not replay safe. Guarded by memos keyed on revision and finding ID so a crash between posting and checkpointing cannot double-post.
-8. **Knowledge.** Propose write-backs. Open or update the knowledge pull request. Not replay safe; memo-guarded like publish.
+7. **Publish.** Post the review, inline comments, and check status. The status is passed, findings, or not reviewed, derived from task state. Not replay safe. Memos are task-scoped and discarded when the task ends, so they cannot deduplicate publication across runs. Instead a durable `published` document, keyed by revision and finding ID, records each post in the same commit that checkpoints it. A crash can still fall between posting and that commit, and GitHub reviews take no idempotency key, so before posting the task also checks the pull request for Melian's marker.
+8. **Knowledge.** Propose write-backs. Open or update the knowledge pull request. Not replay safe; guarded like publish, by a durable record of each write-back and a check for Melian's marker on the knowledge pull request before writing.
 
 Only the publish and knowledge tasks hold write credentials. Lenses never see them.
 
@@ -92,19 +92,19 @@ Only the publish and knowledge tasks hold write credentials. Lenses never see th
 
 | Melian | Pi Durable |
 |---|---|
-| A changeset's review history | One conversation, keyed by repository and changeset identity, persisted by ID across restarts |
+| A changeset's review history | One storage per changeset, whose root conversation is that changeset's history. Pi mints conversation IDs, so Melian keeps the map from changeset to storage |
 | A new revision, a comment, a command | A `submit()` into that conversation; comments while busy use `whenBusy: "steer"` |
 | A pipeline step | A `defineTask()` with phases and checkpoints |
-| A lens | A child conversation via the subagent pattern, configured with `configure()` |
+| A lens | A child conversation created and owned by the lens task, configured with `configure()` with its own model, instructions, and an explicit tool list, because an owned conversation otherwise inherits its owner's tools. Never a subagent tool the model chooses to call |
 | Findings, triage decisions, knowledge proposals | `defineDoc()` documents, rewindable, committed atomically with the transcript |
 | Standards and lens bodies | `section()` prompt sections rebuilt from files before every request, so edits take effect immediately and the transcript records what the model saw |
-| Idempotent publication | `api.memo()` with first-write-wins semantics |
-| Webhook delivery deduplication | `requestId` on submission, exactly-once |
+| Idempotent publication | A durable `published` document keyed by revision and finding ID, written in the same commit that records the post, plus a check for Melian's marker on the pull request before posting. Not `api.memo()`: memos are task-scoped and discarded when the task ends |
+| Webhook delivery deduplication | `requestId` on submission, exactly-once. A `requestId` is scoped to one conversation, so the changeset's storage and conversation are resolved before deduplication |
 | Tool restriction and command guardrails | `hook(ToolTask)` with `beforeTool` |
-| Storage | The `Storage` interface: one atomic `commit(writes)` plus reads |
+| Storage | The `Storage` interface: one atomic `commit(writes)`, ID minting, a set of reads, and `close()`, with no cross-process locking. The state-branch backend wraps Pi's JSONL storage and relies on one writer per changeset |
 | Where tools run | The `ExecutionEnv` interface: a `FileSystem` plus a `Shell` |
 
-Pi Durable is pinned to an exact version and wrapped behind one internal module, because its API is declared experimental. Churn upstream should land in one file.
+Pi Durable is pinned to an exact version and imported by one internal module, because its API is declared experimental. That module re-exports Pi's API, so it quarantines import paths, not churn: a changed signature upstream still reaches its callers. A narrow Melian-owned facade grows in front of it as the pipeline gains callers, and Pi's types stay inside the pipeline package.
 
 ## Findings
 
@@ -294,7 +294,7 @@ Caveat to state in user documentation: automated use of consumer subscriptions i
 
 ### CLI
 
-The primary host and the only thing the skills call. `melian run`, `melian review <changeset>`, `melian explain <finding>`, `melian dismiss <finding> --reason`. Embeds the durable harness with SQLite storage under `.git/melian/`. Uses the developer's own credentials.
+The primary host and the only thing the skills call. `melian run`, `melian review <changeset>`, `melian explain <finding>`, `melian dismiss <finding> --reason`. Embeds the durable harness with SQLite storage under `.git/melian/`, one file per changeset. Uses the developer's own credentials.
 
 ### Skills
 
@@ -302,7 +302,7 @@ Thin wrappers for Claude Code, Codex, and Pi that invoke the CLI and relay findi
 
 ### Server and devcontainer
 
-A long-lived harness receiving webhooks, SQLite on disk, many changesets reviewed concurrently. The natural home for Pi Durable and the first host after the CLI.
+A long-lived process receiving webhooks, with one SQLite storage per changeset on disk, many changesets reviewed concurrently. The natural home for Pi Durable and the first host after the CLI.
 
 ### GitHub Actions
 
@@ -321,7 +321,7 @@ Ephemeral runners make durability the feature rather than a nicety. Untrusted he
 
 **Loop guard.** A continuation that fails the same way every time would dispatch forever. The attempt count caps continuations per revision at three. Past the cap, the check is set to not reviewed with the last error. A new push resets the count.
 
-**Concurrency.** A `concurrency` group keyed by changeset, without cancel-in-progress, queues a comment-triggered job behind a running review. The durable submission admits the comment exactly once when the queued job runs. The group also makes a double dispatch harmless.
+**Concurrency.** A `concurrency` group keyed by changeset, without cancel-in-progress, queues a comment-triggered job behind a running review. The durable submission admits the comment exactly once when the queued job runs. The group also makes a double dispatch harmless, and gives each changeset's storage the single writer Pi Durable requires.
 
 **Waits and garbage collection are not automated.** A lens that hits a rate limit sleeps if the wait fits the remaining budget. If it does not, the job checkpoints with an earliest-resume time and stops; the next push, a comment command, or `melian review` resumes it. State for a closed or merged pull request is disposed by the `pull_request` closed event. There is no scheduled job.
 
@@ -337,9 +337,9 @@ The changeset abstraction already hides where a change came from. The provider-s
 
 ## State storage
 
-Pi Durable's `Storage` interface is one atomic `commit(writes)` plus reads. The shipped JSONL backend writes an append-only `main.jsonl` with sidecars over a `FileSystem` abstraction.
+Pi Durable's `Storage` interface is one atomic `commit(writes)`, ID minting, a set of reads, and `close()`. It does no cross-process locking, so one process owns a storage at a time. Melian keeps one storage per changeset, whose root conversation is that changeset's history. The shipped JSONL backend writes an append-only `main.jsonl` with sidecars over a `FileSystem` abstraction.
 
-The orphan-branch backend, the default for Actions, is JSONL storage on a worktree of a `melian/state` branch. Each durable commit becomes a git commit and push. `--force-with-lease` is the compare-and-swap that keeps concurrent runners honest. Per-changeset subdirectories avoid conflicts and make disposal on close a directory delete. Push latency of about a second is acceptable against reviews that take minutes.
+The orphan-branch backend, the default for Actions, wraps Pi's JSONL storage on a worktree of a `melian/state` branch rather than implementing the interface itself, and runs Pi's storage conformance suite. Each durable commit becomes a git commit and push. Each changeset's storage lives in its own subdirectory, which avoids conflicts and makes disposal on close a directory delete. The Actions concurrency group gives each changeset one writer. `--force-with-lease` detects a second writer that slips past it, but cannot merge that writer's commits into a harness already open. Push latency of about a second is acceptable against reviews that take minutes.
 
 Alternative backends behind the same interface: SQLite in the Actions cache, object storage, Postgres, Cloudflare Durable Objects.
 
@@ -471,6 +471,8 @@ docs/
 | Lens locations | `.melian/lenses/` canonical, `.agents/lenses/` also discovered, nearest-first | Mirrors Pi's dual discovery; `LENS.md` is invisible to skill loaders |
 | Actions continuation | `workflow_dispatch` with changeset input; `workflow_run` recovery workflow; state index with attempt cap; no scheduled sweep | Event-driven recovery costs nothing idle; a sweep burns minutes for a rare case and can be added later without changing state |
 | Git providers | GitHub only behind a provider port in core | Second provider is a package, not a refactor; nothing speculative |
+| Conversation keying | One storage per changeset; Melian maps changeset to storage | Pi mints conversation IDs; matches per-changeset state layout; one writer per changeset |
+| Publication idempotency | Durable published document plus marker check, not memos | Memos are task-scoped and temporary |
 
 ## Open questions
 
