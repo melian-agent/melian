@@ -339,7 +339,7 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		await harness.close(context);
 	});
 
-	it("e. validates TypeBox tool arguments before execute runs", async () => {
+	it("e. validates TypeBox tool arguments before execute runs, after coercing what it can", async () => {
 		const executed: { path: string; line: number }[] = [];
 		const locate = defineTool({
 			name: "locate",
@@ -355,12 +355,12 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		registry.install(defineExtension({ name: "spike", tools: [locate] }));
 		const fake = createFakeModels();
 		const requests: Message[][] = [];
+		const call = (args: Parameters<typeof fauxToolCall>[1]) =>
+			fauxAssistantMessage(fauxToolCall("locate", args), { stopReason: "toolUse" });
 		fake.provider.setResponses([
-			fauxAssistantMessage(fauxToolCall("locate", { path: 42, line: 0 }), { stopReason: "toolUse" }),
-			captured(
-				requests,
-				fauxAssistantMessage(fauxToolCall("locate", { path: "src/a.ts", line: 12 }), { stopReason: "toolUse" }),
-			),
+			call({ path: "src/a.ts", line: 0 }),
+			captured(requests, call({ line: 3 })),
+			captured(requests, call({ path: 42, line: "12" })),
 			captured(requests, fauxAssistantMessage("Located.")),
 		]);
 		const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry });
@@ -369,12 +369,13 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		await harness.close(context);
 
 		expect(settled.status).toBe("done");
-		expect(executed).toEqual([{ path: "src/a.ts", line: 12 }]);
-		const rejected = toolResult(requests[0]!, "locate");
-		expect(rejected?.isError).toBe(true);
-		expect(textOf(rejected)).toMatch(/path/);
-		expect(textOf(rejected)).toMatch(/line/);
-		expect(textOf(toolResult(requests[1]!.slice(requests[0]!.length), "locate"))).toBe("src/a.ts:12");
+		const results = (index: number) => toolResult(requests[index]!.slice(requests[index - 1]?.length ?? 0), "locate");
+		expect(results(0)?.isError).toBe(true);
+		expect(textOf(results(0))).toContain("line: must be >= 1");
+		expect(results(1)?.isError).toBe(true);
+		expect(textOf(results(1))).toMatch(/path/);
+		expect(executed).toEqual([{ path: "42", line: 12 }]);
+		expect(textOf(results(2))).toBe("42:12");
 	});
 
 	it("f. a document written in a tool commit survives reopen, and an asOf fork sees it only after the write", async () => {
