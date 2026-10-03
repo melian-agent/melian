@@ -1,3 +1,4 @@
+export { parseJsonc } from "./analyser.ts";
 export { type CodeLocation, classifyCause } from "./cause.ts";
 export {
 	type Changeset,

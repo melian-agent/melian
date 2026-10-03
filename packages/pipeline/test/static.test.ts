@@ -100,6 +100,28 @@ describe("runStaticTool with Melian's own tools", () => {
 		expectCheckoutUntouched();
 	});
 
+	it("checks each project a solution-style tsconfig references, and refuses one that checks nothing", {
+		timeout: 60_000,
+	}, async () => {
+		const project = JSON.stringify({ compilerOptions: { strict: true, noEmit: true, composite: true } });
+		const head = commit(repo, {
+			"tsconfig.json": JSON.stringify({ files: [], references: [{ path: "./a" }, { path: "./b" }] }),
+			"a/tsconfig.json": project,
+			"a/index.ts": lines("export const n: number = 'a';"),
+			"b/tsconfig.json": project,
+			"b/index.ts": lines("export const m: number = 'b';"),
+		});
+		const result = await runStaticTool(input("tsc", head), context);
+		if (result.status !== "ran") throw new Error(result.reason);
+		expect(results(result.log)).toEqual([
+			["TS2322", "a/index.ts", 1],
+			["TS2322", "b/index.ts", 1],
+		]);
+		expect(result.notes).toEqual(["tsc checked a/tsconfig.json, b/tsconfig.json, which tsconfig.json references."]);
+		const nothing = commit(repo, { "tsconfig.json": JSON.stringify({ files: [] }) });
+		await expect(runStaticTool(input("tsc", nothing), context)).rejects.toMatchObject({ code: "nothingToCheck" });
+	});
+
 	it("skips tsc on a commit with no tsconfig.json", { timeout: 60_000 }, async () => {
 		const head = commit(repo, { "src/a.ts": lines("export const a = 1;") });
 		expect(await runStaticTool(input("tsc", head), context)).toEqual({
@@ -226,7 +248,7 @@ describe("runStaticTool with the repository's own tools", () => {
 			(caught: unknown) => caught,
 		);
 		expect((error as CheckError).code).toBe("toolFailed");
-		expect((error as CheckError).message).toMatch(/exited with code 134: out of memory/);
+		expect((error as CheckError).message).toMatch(/exited with code 134 on tsconfig.json: out of memory/);
 		expectCheckoutUntouched();
 	});
 
@@ -237,7 +259,7 @@ describe("runStaticTool with the repository's own tools", () => {
 		fakeTool(
 			repo,
 			"tsc",
-			'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nrm -f ../tsc.out\nmkfifo ../tsc.out',
+			'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nrm -f ../tsc-0.out\nmkfifo ../tsc-0.out',
 		);
 		const error = await runStaticTool(input("tsc", head), context).then(
 			() => undefined,

@@ -11,7 +11,10 @@ export function analyserOf(path: string): string | undefined {
 	return undefined;
 }
 
-// JSON with comments and trailing commas, as tsconfig.json and biome.jsonc allow. Undefined when it is not even that.
+/**
+ * Parses JSON with comments and trailing commas, as `tsconfig.json` and `biome.jsonc` allow. Returns undefined when
+ * the text is not even that.
+ */
 export function parseJsonc(text: string): unknown {
 	let plain = "";
 	for (let index = 0; index < text.length; index++) {

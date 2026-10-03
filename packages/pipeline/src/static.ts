@@ -3,6 +3,7 @@ import { dirname, posix } from "node:path";
 import {
 	CheckError,
 	normaliseBiomeSarif,
+	parseJsonc,
 	parseTscDiagnostics,
 	type StaticTool,
 	type StaticToolSettings,
@@ -288,6 +289,35 @@ async function runBiome(run: Run, root: string, scratch: string, binary: string,
 	return normaliseBiomeSarif(text, { root, version });
 }
 
+// The projects a tsconfig asks tsc to check. A solution-style tsconfig, with `references` and an empty `files` and no
+// `include`, checks nothing itself, so each referenced project is checked in its place; a tsconfig with an empty
+// `files`, no `include`, and no references checks nothing at all. With neither `files` nor `include`, tsc checks every
+// file below the tsconfig, so it is checked as it is.
+async function tscProjects(run: Run, root: string, project: string, seen = new Set<string>()): Promise<string[]> {
+	if (seen.has(project)) return [];
+	seen.add(project);
+	const text = await run.input.env.readTextFile(posix.join(root, project), run.context);
+	const config = text.ok ? parseJsonc(text.value) : undefined;
+	if (typeof config !== "object" || config === null) return [project];
+	const { files, include, references } = config as { files?: unknown; include?: unknown; references?: unknown };
+	const empty = (value: unknown) => Array.isArray(value) && value.length === 0;
+	const own = !(empty(files) && (include === undefined || empty(include)));
+	const referenced = Array.isArray(references)
+		? references.flatMap((reference: { path?: unknown }) =>
+				typeof reference?.path === "string" ? [reference.path] : [],
+			)
+		: [];
+	if (own) return [project];
+	const projects: string[] = [];
+	for (const reference of referenced) {
+		const resolved = posix.normalize(posix.join(posix.dirname(project), reference));
+		if (resolved.startsWith("..") || posix.isAbsolute(resolved)) continue;
+		const file = resolved.endsWith(".json") ? resolved : posix.join(resolved, "tsconfig.json");
+		projects.push(...(await tscProjects(run, root, file, seen)));
+	}
+	return projects;
+}
+
 async function runTsc(
 	run: Run,
 	root: string,
@@ -298,17 +328,36 @@ async function runTsc(
 	notes: string[],
 ): Promise<ToolLog> {
 	const { project } = run.input.settings as TscSettings;
-	const out = posix.join(scratch, "tsc.out");
-	const { code, output } = await run.shell(
-		`cd ${quote(root)} && ${fileLimit} && ${quote(binary)} --noEmit --pretty false -p ${quote(project)} > ${quote(out)} 2>&1`,
-	);
-	const text = (await run.readOutput(out)) ?? "";
-	// A diagnostic names its file by a prefix of its line; the revision's own file list says which prefix is a file.
+	const projects = await tscProjects(run, root, project);
+	if (projects.length === 0) {
+		throw run.fail("nothingToCheck", `${project} has no files, no include, and no references, so tsc checks nothing`);
+	}
+	if (projects.length > 1 || projects[0] !== project)
+		notes.push(`tsc checked ${projects.join(", ")}, which ${project} references.`);
 	const dropped: string[] = [];
-	const log = parseTscDiagnostics(text, { root, version, project, exists: (path) => tracked.has(path) }, dropped);
-	// tsc exits 1 or 2 when it reports diagnostics; a non-zero exit with none at all is a crash.
-	if (code !== 0 && ((log.runs[0].results.length === 0 && dropped.length === 0) || (code !== 1 && code !== 2))) {
-		throw run.fail("toolFailed", `tsc exited with code ${code}: ${(text || output).slice(0, 4096).trim()}`);
+	const results: ToolLog["runs"][0]["results"] = [];
+	for (const [index, each] of projects.entries()) {
+		const out = posix.join(scratch, `tsc-${index}.out`);
+		const { code, output } = await run.shell(
+			`cd ${quote(root)} && ${fileLimit} && ${quote(binary)} --noEmit --pretty false -p ${quote(each)} > ${quote(out)} 2>&1`,
+		);
+		const text = (await run.readOutput(out)) ?? "";
+		// A diagnostic names its file by a prefix of its line; the revision's own file list says which prefix is a file.
+		const before = dropped.length;
+		const log = parseTscDiagnostics(
+			text,
+			{ root, version, project: each, exists: (path) => tracked.has(path) },
+			dropped,
+		);
+		// tsc exits 1 or 2 when it reports diagnostics; a non-zero exit with none at all is a crash.
+		const none = log.runs[0].results.length === 0 && dropped.length === before;
+		if (code !== 0 && (none || (code !== 1 && code !== 2))) {
+			throw run.fail(
+				"toolFailed",
+				`tsc exited with code ${code} on ${each}: ${(text || output).slice(0, 4096).trim()}`,
+			);
+		}
+		results.push(...log.runs[0].results);
 	}
 	if (dropped.length > 0) {
 		const dependencies = dropped.filter((path) => path.split(/[\\/]/).includes("node_modules")).length;
@@ -317,7 +366,7 @@ async function runTsc(
 			`tsc reported ${dropped.length} diagnostic(s) Melian does not review: ${dependencies} in node_modules and ${outside} outside the repository.`,
 		);
 	}
-	return log;
+	return { version: "2.1.0", runs: [{ tool: { driver: { name: "tsc", version } }, results }] };
 }
 
 /**
