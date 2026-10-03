@@ -16,7 +16,7 @@ goldens/correctness-null-deref/
 └── scripted.txt    # the scripted run's terminal output, compared by the gate
 ```
 
-`buildGoldenRepository` commits `base/` on `main`, replaces the tree with `head/` on `feature`, and the runner reviews `main...feature`. A file in `base/` and missing from `head/` is deleted; a file that moves is a rename. Keep the trees small enough to read in one sitting, and write them as working code apart from the seeded defect, so a live model is not distracted by unrelated breakage.
+`buildGoldenRepository` commits `base/` on `main`, replaces the tree with `head/` on `feature`, and the runner reviews `main...feature`. A file in `base/` and missing from `head/` is deleted; a file that moves is a rename. Keep the trees small enough to read in one sitting, and write them as working code apart from the declared defects, so a live model is not distracted by unrelated breakage.
 
 `expected.json` uses Martian's golden-comment shape, so Martian's judge reads it unchanged, with Melian's fields added to each comment:
 
@@ -62,8 +62,8 @@ File and rule is a coarse match. Two findings under one rule in one file count a
 
 ## Adding a golden
 
-1. Write `base/` and `head/` so the change carries exactly one defect, or none for a clean golden.
-2. Write `expected.json`, naming the lens rule that should catch it.
+1. Write `base/` and `head/` so the change carries only the declared defects, or none for a clean golden. One change may carry more than one, as real changes do: `contracts-breaking-signature` breaks a caller and gets yen wrong. Declare every real defect, because a lens that finds an undeclared one is right and would score as noise.
+2. Write `expected.json`, naming for each defect the lens rule that should catch it.
 3. Write `script.json` with the tool calls a good lens would make, each with the `expectToolResult` that proves its tool worked, ending each lens with a final answer.
 4. Run `npx vitest --run -u packages/evals/` to write `scripted.txt`, read it, and commit all of it.
 5. Run the live eval if you have credentials, and record a miss as a learning about the lens, not by loosening the golden.
