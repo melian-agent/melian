@@ -117,7 +117,7 @@ A pure deletion has no new lines, so nothing is inside it. Code beside a deletio
 
 `renderFindingsJson` writes the SARIF log; `renderFindingsTerminal` writes plain text grouped by file in path order, and within a file by severity, then line, then ID. The terminal output carries no escape codes unless `color` is set, so a pipe or a log file receives plain text. Hosts decide whether to colour; core never reads `isTTY` or `NO_COLOR`.
 
-Finding text is untrusted: a lens writes it after reading the change under review, which anyone opening a pull request controls. The terminal renderer strips control characters, so a finding cannot clear the author's screen or retitle their terminal, and indents continuation lines so a multi-line explanation stays inside its block. Any new renderer for a terminal does the same.
+Everything the renderer prints is untrusted. A lens writes finding text after reading the change under review, which anyone opening a pull request controls, and that author also chooses the file paths. Example: a file named `src/run.ts` followed by ESC `[2J` clears the reviewer's screen, a newline in a path or rule ID forges a second header, and a right-to-left override makes `gnp.ts` read as `ts.png`. The terminal renderer therefore prints every control character, C1 control, line or paragraph separator, and bidi control in every string, paths and rule IDs included, as a visible `\uXXXX`, with colour on or off. Prose keeps its newlines as indented continuation lines, so a multi-line explanation stays inside its block; a newline anywhere else is escaped. Any new renderer for a terminal does the same.
 
 ## Tests
 

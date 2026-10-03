@@ -19,13 +19,20 @@ function ordinal(a: string, b: string): number {
 	return a < b ? -1 : a > b ? 1 : 0;
 }
 
-// Finding text comes from models that read the change under review, so it may carry escape sequences that would
-// rewrite the author's terminal. Drop control characters, and indent continuation lines to keep each block intact.
-function clean(text: string, indent: string): string {
+// Finding text and paths come from the change under review, which its author controls, so they may carry escape
+// sequences that rewrite the terminal or bidi overrides that reorder what it shows. Print each as a visible \uXXXX.
+const unsafe = /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g;
+
+function visible(text: string): string {
+	return text.replace(unsafe, (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`);
+}
+
+// Prose keeps its line breaks as indented continuation lines, so a multi-line explanation stays inside its block.
+function prose(text: string, indent: string): string {
 	return text
-		.replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g, "")
-		.replace(/\t/g, "  ")
-		.replace(/\n/g, `\n${indent}`);
+		.split(/\r?\n/)
+		.map((line) => visible(line.replace(/\t/g, "  ")))
+		.join(`\n${indent}`);
 }
 
 function region(finding: Finding) {
@@ -50,11 +57,11 @@ function lineSpan(finding: Finding): string {
 function block(finding: Finding, paint: (code: string, text: string) => string): string {
 	const { severity, cause, status, explanation } = finding.properties;
 	return [
-		`  ${paint(severityColor[severity], severity)}  ${lineSpan(finding)}  ${clean(finding.ruleId, "")}  (${cause}, ${status})`,
-		`  ${clean(finding.message.text, "  ")}`,
-		`    What: ${clean(explanation.what, "      ")}`,
-		`    Why here: ${clean(explanation.whyHere, "      ")}`,
-		`    What to do: ${clean(explanation.whatToDo, "      ")}`,
+		`  ${paint(severityColor[severity], severity)}  ${lineSpan(finding)}  ${visible(finding.ruleId)}  (${cause}, ${status})`,
+		`  ${prose(finding.message.text, "  ")}`,
+		`    What: ${prose(explanation.what, "      ")}`,
+		`    Why here: ${prose(explanation.whyHere, "      ")}`,
+		`    What to do: ${prose(explanation.whatToDo, "      ")}`,
 	].join("\n");
 }
 
@@ -78,7 +85,7 @@ export function renderFindingsTerminal(log: FindingsLog, options: TerminalRender
 	const files = [...byFile.keys()].sort(ordinal);
 	const sections = files.map((file) =>
 		[
-			paint("1", file),
+			paint("1", visible(file)),
 			...byFile
 				.get(file)!
 				.sort(compare)
