@@ -54,6 +54,8 @@ If you create or modify a test, run it and iterate until it passes. Tests use Vi
 - Conventional commits, concise. Say what value the commit creates, not a catalogue of changes.
 - One pull request per issue; stack commits inside it. A pull request for a later step may be based on the previous step's unmerged branch, opened with `--base <that branch>` and retargeted as the stack lands, so work never waits on a merge.
 - Run a code review on the branch diff before opening a pull request, and land each fix as its own commit.
+- Open every pull request as a draft (`gh pr create --draft`). Mark it ready (`gh pr ready`) only after the external reviews are applied and CI passes on the result. A draft is never queued for merge; a ready pull request means the reviewer can merge without reading the review state.
+- `main` uses a merge queue. Merge with "Merge when ready" or `gh pr merge --merge --auto`, which has GitHub test the merged result before landing it, so a stacked pull request never needs `main` merged into it by hand after its base lands. Branch protection does not require branches to be up to date.
 - After opening, track CI, read every review comment, and commit each fix separately. Check for fresh comments after each push.
 - Update documentation in the same change whenever behaviour diverges from what is documented.
 - Do not publish online artifacts for project deliverables such as reports, audits, or plans. Write them under `tmp/` or another agreed location and give the file path.
