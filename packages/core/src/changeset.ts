@@ -141,6 +141,8 @@ const diffFlags = [
 	"--find-renames",
 	"--diff-algorithm=myers",
 	"--indent-heuristic",
+	"--inter-hunk-context=0",
+	"--submodule=short",
 ];
 
 async function diff(repoRoot: string, base: string, head: string): Promise<ChangedFile[]> {

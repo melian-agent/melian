@@ -158,6 +158,21 @@ describe("resolveRange", () => {
 		]);
 	});
 
+	it("ignores diff settings in the user's git configuration", async () => {
+		const plain = await resolveRange(repo, "main...feature");
+		for (const [key, value] of [
+			["diff.interHunkContext", "10"],
+			["diff.algorithm", "patience"],
+			["diff.renames", "copies"],
+			["diff.submodule", "log"],
+			["diff.noprefix", "true"],
+			["color.diff", "always"],
+		]) {
+			gitIn(repo, "config", key!, value!);
+		}
+		expect(await resolveRange(repo, "main...feature")).toEqual(plain);
+	});
+
 	it("resolves an empty diff to no files", async () => {
 		const changeset = await resolveRange(repo, "main...main");
 		expect(changeset.revision.files).toEqual([]);
