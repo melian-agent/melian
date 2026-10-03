@@ -243,9 +243,9 @@ function publishTask(provider: ReviewProvider) {
 							delete record.pending;
 							return undefined;
 						}, context);
+						result.resolved += Object.keys(pending.resolved).length;
 					}
 					const record = (await read()).revisions[head]!;
-					result.resolved = Object.keys(record.resolved).length;
 					// The status comes before the replies, so a thread that cannot take a reply never holds back the check.
 					const status = reviewStatus(verdict);
 					if (record.status?.state !== status.state || record.status.description !== status.description) {
@@ -354,11 +354,15 @@ export interface PublishOptions {
 	readonly context?: Context;
 }
 
-/** What {@link publishReview} did. Counts cover this run; a second publish of one revision posts nothing. */
+/**
+ * What {@link publishReview} did. Counts cover this run, so a second publish of one revision counts nothing; only
+ * `abandoned` covers the head.
+ */
 export interface Publication {
 	readonly review: string;
 	readonly posted: number;
 	readonly stillOpen: number;
+	/** Findings an earlier revision posted that the reviews this run posted no longer report. */
 	readonly resolved: number;
 	readonly replies: number;
 	readonly status: ReviewStatus;

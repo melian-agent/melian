@@ -215,6 +215,8 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			description: "2 findings, none blocking",
 			context: statusContext,
 		});
+		// Counts cover the run: publishing the head again resolves nothing more.
+		expect(await publish(github, second.changeset)).toMatchObject({ posted: 0, resolved: 0, replies: 0 });
 	});
 
 	it("sets the status and finishes when a resolved finding's thread was deleted", async () => {
