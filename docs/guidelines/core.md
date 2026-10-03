@@ -13,9 +13,9 @@ Problem: a domain rule written against the harness can only be tested through th
 Core reads repositories by running the `git` executable through `src/git.ts`. It never uses a JavaScript reimplementation of git, which drifts from git on renames, merge bases, and configuration.
 
 - Run git with an argument array, never a shell string. Refuse a ref beginning with `-` before it reaches the argument list, as `checkRange` does.
-- Pass diff flags explicitly. A user's `diff.algorithm`, `diff.renames`, `diff.external`, or `color.diff` must not change what Melian sees. `src/changeset.ts` pins them.
+- Pass diff flags explicitly. A user's `diff.algorithm`, `diff.renames`, `diff.interHunkContext`, `diff.submodule`, or `color.diff` must not change what Melian sees. `src/changeset.ts` pins them, and a test in `test/changeset.test.ts` resolves a range under each setting and expects the same changeset. Add a setting there when you pin a flag.
 - Ask git for machine formats: `-z` for paths, `--numstat` and `--name-status` for file lists. Parse the unified diff only for hunks, and only the `@@ -a,b +c,d @@` headers and the lines under them.
-- Git emits the name-status, numstat, and patch views of one diff in the same file order. The parser joins them by position and fails if the counts disagree.
+- Git emits the name-status, numstat, and patch views of one diff in the same file order. The parser joins them by position and fails if the counts disagree. One exception reads like a bug: a type change, such as a file becoming a symlink, is one name-status entry but two patch sections, a deletion and an addition.
 - Report failures as `ChangesetError` codes, never as thrown strings.
 
 Two-dot and three-dot ranges differ. `main..feature` diffs `main` against `feature` directly, so anything `main` gained after `feature` branched shows up reversed. `main...feature` diffs from their merge base, which is what a pull request shows. A bare ref means three dots against `HEAD`, the default for the CLI.
