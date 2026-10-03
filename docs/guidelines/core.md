@@ -19,7 +19,7 @@ Core reads repositories by running the `git` executable through `src/git.ts`. It
 - Ask git for machine formats: `-z` for paths, `--raw` for status and modes, `--numstat` for binary detection. Parse the unified diff only for hunks, and only the `@@ -a,b +c,d @@` headers and the lines under them.
 - Read modes from `--raw`, never from the patch. A file made executable, a file that became a symlink, and a moved submodule pointer all change what a reviewer must look at, and `--name-status` reports the first as a bare `M`. `ChangedFile` carries `oldMode` and `newMode` and the `FileKind` each names.
 - Git emits the raw, numstat, and patch views of one diff in the same file order. The parser joins them by position and fails if the counts disagree. One exception reads like a bug: a type change, such as a file becoming a symlink, is one raw entry but two patch sections, a deletion and an addition.
-- Report failures as `ChangesetError` codes, never as thrown strings.
+- Report failures as `ChangesetError` codes, never as thrown strings. Give a specific code only when git's output confirms it: "not a git repository" on stderr, or a silent exit from `rev-parse --verify --quiet` or `merge-base`. Anything else is `gitFailed` carrying git's stderr, because a refusal over dubious ownership that reads as "not a repository" sends the user looking in the wrong place.
 
 Two-dot and three-dot ranges differ. `main..feature` diffs `main` against `feature` directly, so anything `main` gained after `feature` branched shows up reversed. `main...feature` diffs from their merge base, which is what a pull request shows. A bare ref means three dots against `HEAD`, the default for the CLI.
 

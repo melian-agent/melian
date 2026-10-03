@@ -95,8 +95,14 @@ export function requireGitVersion(cwd: string): Promise<void> {
 // Throws `gitFailed` with git's own message.
 export async function gitOutput(cwd: string, args: readonly string[]): Promise<string> {
 	const result = await git(cwd, args);
-	if (result.code !== 0) {
-		throw new ChangesetError("gitFailed", `git ${subcommand(args)} failed: ${result.stderr.trim()}`);
-	}
+	if (result.code !== 0) throw gitFailure(args, result);
 	return result.stdout;
+}
+
+export function gitFailure(args: readonly string[], result: GitResult): ChangesetError {
+	return new ChangesetError("gitFailed", `git ${subcommand(args)} failed: ${result.stderr.trim()}`);
+}
+
+export function isNotARepository(stderr: string): boolean {
+	return /not a git repository/i.test(stderr);
 }

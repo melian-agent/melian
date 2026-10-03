@@ -321,6 +321,13 @@ describe("loadConfig from a revision", () => {
 		});
 	});
 
+	it("passes on git's own complaint rather than guessing it means no repository", async () => {
+		writeFiles(repo, { ".git/config": lines("[core", "not valid") });
+		const error = await rejection(loadConfig(repo, { kind: "revision", commit: "main" }, "a.ts"));
+		expect(error.code).toBe("unreadable");
+		expect(error.message).toMatch(/bad config/);
+	});
+
 	it("refuses a root that is not the top of a repository", async () => {
 		writeFiles(repo, { "src/a.ts": "" });
 		const error = await rejection(loadConfig(join(repo, "src"), { kind: "revision", commit: "HEAD" }, "a.ts"));

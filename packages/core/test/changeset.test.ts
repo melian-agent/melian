@@ -386,6 +386,13 @@ describe("resolveRange", () => {
 		}
 	});
 
+	it("passes on git's own complaint rather than guessing it means no repository", async () => {
+		writeFiles(repo, { ".git/config": lines("[core", "not valid") });
+		const error = await rejection(resolveRange(repo, "main...feature"));
+		expect(error.code).toBe("gitFailed");
+		expect(error.message).toMatch(/bad config/);
+	});
+
 	it("names an unknown ref", async () => {
 		const error = await rejection(resolveRange(repo, "main...no-such-branch"));
 		expect(error.code).toBe("unknownRef");

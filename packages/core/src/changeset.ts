@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { stat } from "node:fs/promises";
 import { type ChangedFile, joinDiff, parseNumstatBinary, parsePatchHunks, parseRaw } from "./diff.ts";
 import { ChangesetError } from "./errors.ts";
-import { git, gitOutput, requireGitVersion } from "./git.ts";
+import { git, gitFailure, gitOutput, isNotARepository, requireGitVersion } from "./git.ts";
 import { isPolicyFile } from "./paths.ts";
 
 /**
@@ -98,14 +98,21 @@ async function repositoryRoot(path: string): Promise<string> {
 	const notARepository = new ChangesetError("notARepository", `${path} is not inside a git working tree`);
 	const info = await stat(path).catch(() => undefined);
 	if (!info?.isDirectory()) throw notARepository;
-	const result = await git(path, ["rev-parse", "--show-toplevel"]);
-	if (result.code !== 0) throw notARepository;
+	const args = ["rev-parse", "--show-toplevel"];
+	const result = await git(path, args);
+	// Only git's own words mean no repository. Dubious ownership or a broken config also fail here, and need saying.
+	if (result.code !== 0) throw isNotARepository(result.stderr) ? notARepository : gitFailure(args, result);
 	return result.stdout.trim();
 }
 
+// --quiet silences an unknown ref, so anything on stderr is a different failure.
 async function commitOf(repoRoot: string, ref: string): Promise<string> {
-	const result = await git(repoRoot, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]);
-	if (result.code !== 0) throw new ChangesetError("unknownRef", `${ref} does not name a commit`, { ref });
+	const args = ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`];
+	const result = await git(repoRoot, args);
+	if (result.code !== 0 && result.stderr.trim() === "") {
+		throw new ChangesetError("unknownRef", `${ref} does not name a commit`, { ref });
+	}
+	if (result.code !== 0) throw gitFailure(args, result);
 	return result.stdout.trim();
 }
 
@@ -118,12 +125,15 @@ async function canonicalName(repoRoot: string, ref: string, commit: string): Pro
 }
 
 async function mergeBase(repoRoot: string, spec: RangeSpec, base: string, head: string): Promise<string> {
-	const result = await git(repoRoot, ["merge-base", base, head]);
-	if (result.code !== 0) {
+	const args = ["merge-base", base, head];
+	const result = await git(repoRoot, args);
+	// git exits 1 without a word when the sides share no history, and 128 with a message for anything else.
+	if (result.code === 1 && result.stderr.trim() === "") {
 		throw new ChangesetError("noMergeBase", `${spec.base} and ${spec.head} share no history`, {
 			ref: `${spec.base}...${spec.head}`,
 		});
 	}
+	if (result.code !== 0) throw gitFailure(args, result);
 	return result.stdout.trim();
 }
 
