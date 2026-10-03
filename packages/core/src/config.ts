@@ -154,7 +154,7 @@ export interface MelianConfig {
 /** The built-in defaults every `melian.yaml` layers onto. */
 export const defaultConfig: MelianConfig = {
 	tiers: {
-		fast: ["guardrails", "static"],
+		fast: ["guardrails", "static", "decisions.fast"],
 		standard: ["fast", "lens.correctness"],
 		full: ["standard", "lens.contracts"],
 	},
