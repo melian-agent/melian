@@ -83,6 +83,8 @@ models:
 
 The last line is the trap: a nearer file that changes a model keeps the farther file's fallbacks. Restate `fallbacks` when they should change too. `test/config.test.ts` pins this example.
 
+`melian.local.yaml`, beside the root `melian.yaml`, is where a maintainer keeps personal model routes and provider choices. It takes the same keys and merges last, over every `melian.yaml`, a nested one included. The loader reads it only when the source is the working tree, never from a revision. Problem: a repository that commits model routes chooses each contributor's provider and spend. Example: the root `melian.yaml` routed every tier to Anthropic, so a contributor with only Bedrock credentials saw `melian doctor` pass and every review exit 2. Solution: the repository commits no routes, and each maintainer keeps theirs in a file git ignores. Reading it from a revision would let a head that commits one, `git add --force` defeats `.gitignore`, set its own review's policy, so a pull request never reads it; `isPolicyFile` also counts it, so a change that commits one is reviewed as policy.
+
 The keys a `melian.yaml` accepts, all optional:
 
 | Key | Shape | Default |
