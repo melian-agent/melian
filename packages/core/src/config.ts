@@ -154,9 +154,9 @@ export interface MelianConfig {
 /** The built-in defaults every `melian.yaml` layers onto. */
 export const defaultConfig: MelianConfig = {
 	tiers: {
-		fast: ["guardrails", "static", "decisions.fast"],
+		fast: ["guardrails", "static"],
 		standard: ["fast", "lens.correctness"],
-		full: ["standard", "lens.security", "lens.contracts", "lens.conventions"],
+		full: ["standard", "lens.contracts"],
 	},
 	stages: { "pre-commit": "fast", "pre-push": "standard", "pull-request": "full", comment: "standard" },
 	resolution: { P0: "block", P1: "block", P2: "acknowledge", P3: "advisory", nit: "silent" },

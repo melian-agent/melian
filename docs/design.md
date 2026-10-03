@@ -203,15 +203,17 @@ Checks are named. Tiers are named sets of checks. Stages map workflow points to 
 
 ```yaml
 tiers:
-  fast: [guardrails, static, decisions.fast]
+  fast: [guardrails, static]
   standard: [fast, lens.correctness]
-  full: [standard, lens.security, lens.contracts, lens.conventions]
+  full: [standard, lens.contracts]
 stages:
   pre-commit: fast
   pre-push: standard
   pull-request: full
   comment: standard
 ```
+
+These are the defaults, and they name only checks that ship: a lens, or the decision-model questions, joins them when it ships.
 
 A review's tier is its manifest. Every check the tier names records whether it ran, was skipped, or failed, and a check with no record makes the review not reviewed, so nothing reads as passed because it was never counted. Only lenses the tier names run.
 

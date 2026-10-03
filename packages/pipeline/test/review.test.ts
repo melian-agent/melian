@@ -92,8 +92,6 @@ beforeEach(async () => {
 	const heavy = fake.ref("heavy");
 	config = {
 		...defaultConfig,
-		// The lenses alone: nothing on this branch runs guardrails or static tools, so their checks would leave no record.
-		tiers: { ...defaultConfig.tiers, full: ["lens.correctness", "lens.contracts"] },
 		models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
 	};
 	harness = await openHarness(createMemoryStorage(), {
@@ -120,6 +118,12 @@ type ReviewWith = {
 	range?: string;
 };
 
+// The default tiers' checks that run without a model, recorded as ran, as pull request #18's runChecks will record them.
+const deterministicRan: CheckRecord[] = [
+	{ name: "guardrails", status: "ran" },
+	{ name: "static", status: "ran" },
+];
+
 async function reviewed(options: ReviewWith = {}): Promise<Review> {
 	return reviewChangeset({
 		harness,
@@ -128,7 +132,7 @@ async function reviewed(options: ReviewWith = {}): Promise<Review> {
 		lenses: options.lenses ?? lenses,
 		standards: [{ path: "AGENTS.md", content: "Never use the non-null assertion operator." }],
 		models: fake.review,
-		...(options.checks === undefined ? {} : { checks: options.checks }),
+		checks: [...deterministicRan, ...(options.checks ?? [])],
 		...(options.policy === undefined ? {} : { policy: options.policy }),
 		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
 	});
@@ -1052,7 +1056,7 @@ describe("adjudication", () => {
 		const tiered = (...checks: string[]) => ({ ...config, tiers: { ...config.tiers, full: checks } });
 		const lensesOnly = ["lens.correctness", "lens.contracts"];
 
-		it("passes when the manifest names only lenses, every one ran, and none found anything", async () => {
+		it("passes under the default tiers when every check ran and none found anything", async () => {
 			done();
 			const { verdict } = await reviewed();
 			expect(verdict).toMatchObject({ status: "passed", blocking: false, notRun: [] });
