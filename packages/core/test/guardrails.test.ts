@@ -23,7 +23,7 @@ afterEach(() => {
 	removeDirectory(repo);
 });
 
-function commit(files: Record<string, string>, message: string): string {
+function commit(files: Record<string, string | Buffer>, message: string): string {
 	writeFiles(repo, files);
 	gitIn(repo, "add", "--all");
 	gitIn(repo, "commit", "--quiet", "--allow-empty", "-m", message);
@@ -31,7 +31,11 @@ function commit(files: Record<string, string>, message: string): string {
 }
 
 // Commits `base`, then `head` on top, and evaluates the guardrails with policy read from the base commit.
-async function guardrails(base: Record<string, string>, head: Record<string, string>, remove: string[] = []) {
+async function guardrails(
+	base: Record<string, string | Buffer>,
+	head: Record<string, string | Buffer>,
+	remove: string[] = [],
+) {
 	const baseCommit = commit(base, "base");
 	for (const path of remove) gitIn(repo, "rm", "--quiet", path);
 	const headCommit = commit(head, "head");
@@ -252,6 +256,27 @@ describe("forbidden-patterns", () => {
 		expect(error.file).toBe("melian.yaml");
 		expect(error.key).toBe("guardrails.forbidden-patterns.rules.repeated.pattern");
 		expect(error.message).toMatch(/not a safe pattern: backreferences cannot run in linear time/);
+	});
+
+	it("scans a file git calls binary when it is text, skipping lines the base had", async () => {
+		const { findings, notes } = await guardrails(
+			{ "melian.yaml": config, "b.test.ts": lines("it.only(old)", "\0") },
+			{
+				"a.test.ts": lines("\0", "it(a)", "it.only(hidden)"),
+				"b.test.ts": lines("it.only(old)", "\0", "it.only(new)"),
+				"c.test.ts": Buffer.from([0xff, 0x00, 0x0a]),
+			},
+		);
+		expect(
+			findings.map((finding) => [finding.properties.path, finding.locations[0]!.physicalLocation.region.startLine]),
+		).toEqual([
+			["a.test.ts", 3],
+			["b.test.ts", 3],
+		]);
+		expect(findings[0]!.properties.trigger).toBeUndefined();
+		expect(notes).toEqual([
+			"forbidden-patterns did not scan c.test.ts, which git treats as binary and is not UTF-8 text.",
+		]);
 	});
 
 	it("notes a line too long to scan rather than skipping it silently", async () => {

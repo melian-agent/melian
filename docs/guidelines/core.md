@@ -187,6 +187,8 @@ Problem: forbidden-patterns runs a pattern from configuration over lines the hea
 
 What forbidden-patterns cannot read, it says. A line over 10,000 characters is not scanned, and a file whose name is not UTF-8 is skipped; each adds a sentence to the report's `notes`. A file over 4 MiB at head is still scanned, but its findings are identified by line number, since its text cannot be read whole to count occurrences.
 
+A file git calls binary has no hunks, and one NUL byte is enough to make git call it that. Problem: forbidden-patterns read only hunks, so a head could add a NUL to any file and nothing in it was scanned. Solution: a binary file at head that is UTF-8 and within 4 MiB is scanned line by line, skipping lines its base version already had, and its findings carry no trigger. Any other binary file adds a note naming it and why.
+
 ## Static analysis
 
 Static tools report through SARIF. A runner, which lives in the pipeline because it executes repository code, produces one SARIF log per tool per revision; core turns the base and head logs into findings.

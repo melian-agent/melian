@@ -1,6 +1,6 @@
 import type { Revision } from "./changeset.ts";
 import { configLookup, type MelianConfig, type Severity } from "./config.ts";
-import type { ChangedFile } from "./diff.ts";
+import type { ChangedFile, Hunk } from "./diff.ts";
 import { CheckError } from "./errors.ts";
 import {
 	createFinding,
@@ -10,6 +10,7 @@ import {
 	normaliseSnippet,
 	snippetOccurrence,
 } from "./findings.ts";
+import { git } from "./git.ts";
 import { compilePattern, type LinearPattern, matchesGlobs } from "./pattern.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 
@@ -188,6 +189,46 @@ async function headText(reader: SourceReader, path: string): Promise<string | un
 	}
 }
 
+const utf8 = new TextDecoder("utf-8", { fatal: true });
+
+// A blob's text, or why it has none: absent at that commit, past the file limit, or not UTF-8.
+async function blobText(repoRoot: string, commit: string, path: string): Promise<{ text?: string; why?: string }> {
+	const object = `${commit}:${path}`;
+	const size = await git(repoRoot, ["cat-file", "-s", object]);
+	if (size.code !== 0) return { why: "absent" };
+	if (Number(size.stdout.trim()) > guardrailLimits.fileBytes) {
+		return { why: `larger than ${guardrailLimits.fileBytes} bytes` };
+	}
+	const blob = await git(repoRoot, ["cat-file", "blob", object]);
+	if (blob.code !== 0) throw new CheckError("unreadable", check, `${object}: ${blob.stderr.trim()}`);
+	try {
+		return { text: utf8.decode(blob.stdoutBytes) };
+	} catch {
+		return { why: "not UTF-8 text" };
+	}
+}
+
+// git shows no hunks for a file it calls binary, and one NUL byte is enough. Such a file is scanned whole at head when
+// it is text, skipping lines the base already had.
+async function binaryLines(
+	input: GuardrailInput,
+	file: ChangedFile,
+	notes: string[],
+): Promise<{ line: number; text: string }[]> {
+	const { repoRoot, revision } = input;
+	const head = await blobText(repoRoot, revision.head, file.path);
+	if (head.text === undefined) {
+		notes.push(`forbidden-patterns did not scan ${file.path}, which git treats as binary and is ${head.why}.`);
+		return [];
+	}
+	const base = file.status === "added" ? {} : await blobText(repoRoot, revision.base, file.oldPath ?? file.path);
+	const before = new Set(base.text?.split("\n"));
+	return head.text
+		.split("\n")
+		.map((text, index) => ({ line: index + 1, text }))
+		.filter(({ text }, index, all) => !before.has(text) && !(index === all.length - 1 && text === ""));
+}
+
 async function forbiddenPatterns(
 	input: GuardrailInput,
 	configFor: (path: string) => Promise<MelianConfig>,
@@ -206,7 +247,7 @@ async function forbiddenPatterns(
 	const hits: Hit[] = [];
 	let reader: SourceReader | undefined;
 	for (const file of input.revision.files) {
-		if (file.status === "deleted" || file.hunks.length === 0) continue;
+		if (file.status === "deleted" || (file.hunks.length === 0 && !file.binary)) continue;
 		if (file.newKind !== "file" && file.newKind !== "executable") continue;
 		const config = await configFor(file.path);
 		const guardrail = config.guardrails["forbidden-patterns"];
@@ -219,16 +260,17 @@ async function forbiddenPatterns(
 			continue;
 		}
 		let skipped = 0;
-		const matches = file.hunks.flatMap((hunk) =>
-			addedLines(hunk.text, hunk.newStart).flatMap((added) => {
-				if (added.text.length > guardrailLimits.lineLength) {
-					skipped++;
-					return [];
-				}
-				const matched = rules.filter(([, rule]) => patternFor(rule.pattern).test(added.text));
-				return matched.length === 0 ? [] : [{ hunk, added, matched }];
-			}),
-		);
+		const added: { line: number; text: string; hunk?: Hunk }[] = file.binary
+			? await binaryLines(input, file, notes)
+			: file.hunks.flatMap((hunk) => addedLines(hunk.text, hunk.newStart).map((each) => ({ ...each, hunk })));
+		const matches = added.flatMap((each) => {
+			if (each.text.length > guardrailLimits.lineLength) {
+				skipped++;
+				return [];
+			}
+			const matched = rules.filter(([, rule]) => patternFor(rule.pattern).test(each.text));
+			return matched.length === 0 ? [] : [{ hunk: each.hunk, added: each, matched }];
+		});
 		if (skipped > 0) {
 			notes.push(
 				`forbidden-patterns did not scan ${skipped} line(s) of ${file.path} longer than ${guardrailLimits.lineLength} characters.`,
@@ -248,7 +290,7 @@ async function forbiddenPatterns(
 				snippet: byCode ? added.text : undefined,
 				occurrence: byCode ? snippetOccurrence(text, added.text, { startLine: added.line }) : undefined,
 				discriminator: byCode ? undefined : `line ${added.line}`,
-				trigger: { file: file.path, index: hunk.index, snippet: added.text },
+				trigger: hunk === undefined ? undefined : { file: file.path, index: hunk.index, snippet: added.text },
 				config,
 				severity: guardrail.severity,
 				message: sentences(messages),
