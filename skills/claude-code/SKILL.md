@@ -36,7 +36,7 @@ melian review origin/main...HEAD
 
 Use the base the user names in place of `origin/main`. Melian reviews the commits on the branch, never uncommitted changes. When the user asks you to commit, commit as asked, then review before pushing or opening a pull request. If the working tree still has changes, say they are not in the review.
 
-A review runs the deterministic checks first, guardrails, Biome, and tsc on the base and the head, then the lenses on models. It can take several minutes: run it with the Bash tool's `timeout` at 600000.
+A review runs the deterministic checks first, guardrails, Biome, and tsc on the base and the head, then the lenses on models. It can take several minutes: run it with the Bash tool's timeout set to 600000 milliseconds.
 
 ## Review a pull request
 
@@ -44,7 +44,7 @@ A review runs the deterministic checks first, guardrails, Biome, and tsc on the 
 melian review "#N"
 ```
 
-`N` is the pull request number. Keep the quotes: an unquoted `#` starts a shell comment. A bare number is not a pull request. Melian fetches the pull request and reviews it under the policy of its base, so its findings can differ from a review of the same commits as a branch.
+Replace N with the pull request number. Keep the quotes: an unquoted `#` starts a shell comment. A bare number is not a pull request. Melian fetches the pull request and reviews it under the policy of its base, so its findings can differ from a review of the same commits as a branch.
 
 ## Relay the result
 
@@ -64,7 +64,7 @@ melian review "#N"
 
 Two kinds of exit `2` are not a verdict on the code:
 
-- Setup. Standard error says `no model is configured for the heavy tier`, or names another tier, because no `melian.yaml` routes a model to it. Tell the user to set `models.<tier>.model` in `melian.yaml`, or to name a model you then pass as `--model provider/id`.
+- Setup. Standard error says "no model is configured for the heavy tier", or names another tier, because no `melian.yaml` routes a model to it. Tell the user to set `models.<tier>.model` in `melian.yaml`, or to name a model you then pass as `--model provider/id`.
 - A transient failure. The output lists checks that did not run, and an error names a timeout, a rate limit, or a provider outage. Offer to run only what failed again, and run it when the user says to, with the same range or `"#N"`:
 
   ```sh
