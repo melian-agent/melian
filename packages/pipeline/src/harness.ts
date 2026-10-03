@@ -7,7 +7,12 @@
  */
 import type { Context } from "@earendil-works/chord";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { fauxProvider, type Model, type RegisterFauxProviderOptions } from "@earendil-works/pi-ai";
+import {
+	type FauxProviderHandle,
+	fauxProvider,
+	type Model,
+	type RegisterFauxProviderOptions,
+} from "@earendil-works/pi-ai";
 import { createModels } from "@earendil-works/pi-ai/models";
 import {
 	type Harness,
@@ -25,16 +30,11 @@ export {
 	type AssistantMessage,
 	type FauxProviderHandle,
 	fauxAssistantMessage,
-	fauxText,
 	fauxToolCall,
 	type Message,
-	type Static,
-	type TSchema,
 	Type,
 } from "@earendil-works/pi-ai";
 export {
-	type Agent,
-	type AgentChange,
 	AssistantEntry,
 	type Conversation,
 	type ConversationId,
@@ -44,30 +44,20 @@ export {
 	defineExtension,
 	defineTask,
 	defineTool,
-	type EntryId,
 	type EntryRecord,
-	type Extension,
-	GenerationTask,
 	type Harness,
 	type HarnessOptions,
 	hook,
 	type ModelRef,
 	type Registry,
-	ROOT_CONVERSATION_ID,
-	type RunningTask,
 	type Storage,
 	type SubmissionId,
 	SystemEntry,
 	section,
 	type TaskId,
-	type TaskRecord,
-	type TaskRuntime,
-	type ToolExecutionApi,
 	type ToolRegistration,
 	ToolResultEntry,
 	ToolTask,
-	type Tx,
-	UserEntry,
 } from "@earendil-works/pi-durable";
 
 /** A context that is never cancelled, for work with no caller to cancel it. */
@@ -95,7 +85,7 @@ export function createMemoryStorage(): Storage {
 /** A scripted model provider for tests, registered in its own model collection. */
 export type FakeModels = {
 	readonly models: HarnessOptions["models"];
-	readonly provider: ReturnType<typeof fauxProvider>;
+	readonly provider: FauxProviderHandle;
 	/** The reference a conversation's agent uses to select `modelId`, or the first model. */
 	ref(modelId?: string): ModelRef;
 };
