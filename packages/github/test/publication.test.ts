@@ -1,5 +1,6 @@
 import { adjudicate, createFinding, defaultConfig, type FindingInput } from "@melian-agent/core";
 import {
+	blobUrl,
 	marker,
 	markersIn,
 	maxBodyLength,
@@ -28,6 +29,16 @@ const input: FindingInput = {
 	explanation: { what: "eval runs request input", whyHere: "It is new.", whatToDo: "Parse it." },
 	source: { check: "lens.security", version: "1" },
 };
+
+describe("links", () => {
+	it("percent-encodes every character of a path outside the unreserved set, so a link cannot end early", () => {
+		const url = blobUrl(links, revision, "src/a)b (c)/it's*!.ts", 3, 5);
+		expect(url).toBe(`${links.web}/blob/${revision}/src/a%29b%20%28c%29/it%27s%2A%21.ts#L3-L5`);
+		const finding = createFinding({ ...input, file: "src/a)b.ts" });
+		const comment = renderComment({ finding, placement: { kind: "nearest", line: 1 } }, revision, links, secret);
+		expect(comment).toContain(`(${links.web}/blob/${revision}/src/a%29b.ts#L12)`);
+	});
+});
 
 describe("markers", () => {
 	it("parses a review's marker, a finding's, and a reply's, each with its signature", () => {

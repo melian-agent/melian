@@ -124,7 +124,10 @@ function span(finding: Finding): [number, number] {
 
 /** A link to `path` at `revision`, on lines `start` to `end`. */
 export function blobUrl(links: RepositoryLinks, revision: string, path: string, start: number, end = start): string {
-	const encoded = path.split("/").map(encodeURIComponent).join("/");
+	// encodeURIComponent leaves `!'()*`, and a `)` ends a markdown link's destination; only unreserved characters stay.
+	const segment = (part: string) =>
+		encodeURIComponent(part).replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
+	const encoded = path.split("/").map(segment).join("/");
 	return `${links.web}/blob/${revision}/${encoded}#L${start}${end === start ? "" : `-L${end}`}`;
 }
 
