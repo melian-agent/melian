@@ -150,6 +150,22 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		});
 	});
 
+	it.each([
+		["lenses:", "  security:", "    paths: ['*.{ts,js}']", "lenses.security.paths"],
+		[
+			"guardrails:",
+			"  forbidden-paths:",
+			"    rules: { keys: { paths: ['[ab].pem'], message: m } }",
+			"guardrails.forbidden-paths.rules.keys.paths",
+		],
+	])("refuses a brace or class in a glob, which would match nothing: %s %s", async (...rows) => {
+		const key = rows.pop()!;
+		writeFiles(repo, { "services/melian.yaml": lines(...rows) });
+		const error = await rejection(load("services/a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", file: "services/melian.yaml", key });
+		expect(error.message).toMatch(/do not support braces or character classes/);
+	});
+
 	it("names a melian.yaml it cannot read", async () => {
 		writeFiles(repo, { "melian.yaml/inside": "" });
 		expect(await rejection(load("a.ts"))).toMatchObject({ code: "unreadable", file: "melian.yaml" });

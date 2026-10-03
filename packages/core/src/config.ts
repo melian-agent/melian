@@ -432,6 +432,15 @@ const globLists: readonly (readonly string[])[] = [
 function anchorPaths(site: Site, layer: MelianYaml): MelianYaml {
 	const directory = posix.dirname(site.file);
 	const anchor = (key: string, path: string) => {
+		// The glob engine reads these literally, so `*.{ts,js}` would silently match nothing.
+		if (/[{}[\]]/.test(path)) {
+			throw configError(
+				"invalidValue",
+				site,
+				`"${key}" has ${path}; globs do not support braces or character classes, so list each glob`,
+				{ key },
+			);
+		}
 		const negated = path.startsWith("!");
 		const pattern = (negated ? path.slice(1) : path).replace(/^\/+/, "");
 		const anchored = posix.normalize(posix.join(directory, pattern));
