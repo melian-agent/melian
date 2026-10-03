@@ -117,6 +117,20 @@ describe("renderFindingsTerminal", () => {
 		expect(renderFindingsTerminal(createFindingsLog([hostile]))).toContain("no-eval\\u000a  P3  line 1  harmless");
 	});
 
+	it("sets a message's later lines deeper than any header, so one cannot forge a finding in a verdict group", () => {
+		const forged = "P0  line 1  no-eval  (introduced, new, block)";
+		const hostile = createFinding({ ...evalInput, message: `eval runs request input\n${forged}` });
+		const verdict = adjudicate({
+			findings: [hostile],
+			manifest: [],
+			checks: [{ name: "lens.security", status: "ran" }],
+			config: defaultConfig,
+		});
+		const text = renderFindingsTerminal(verdict);
+		expect(text).toContain(`  eval runs request input\n    | ${forged}\n`);
+		expect(text.split("\n").filter((line) => line.startsWith("  P0") || line.startsWith("  P1"))).toHaveLength(1);
+	});
+
 	it("says so when there are no findings", () => {
 		expect(renderFindingsTerminal(createFindingsLog([]))).toBe("No findings.\n");
 	});

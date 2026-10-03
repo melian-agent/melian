@@ -56,11 +56,15 @@ function lineSpan(finding: Finding): string {
 	return endLine === undefined || endLine === startLine ? `line ${startLine}` : `lines ${startLine}-${endLine}`;
 }
 
+// A message's first line sits at a finding header's indent, so its later lines sit deeper, behind a marker: a line
+// reading `P0  line 1  forged` must not pass for another finding's header.
+const messageContinuation = "    | ";
+
 function block(finding: Finding, paint: (code: string, text: string) => string): string {
 	const { severity, cause, evidence, status, explanation, resolution } = finding.properties;
 	return [
 		`  ${paint(severityColor[severity], severity)}  ${lineSpan(finding)}  ${visibleText(finding.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"})`,
-		`  ${prose(finding.message.text, "  ")}`,
+		`  ${prose(finding.message.text, messageContinuation)}`,
 		`    What: ${prose(explanation.what, "      ")}`,
 		`    Why here: ${prose(explanation.whyHere, "      ")}`,
 		...(evidence === undefined
