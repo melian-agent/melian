@@ -1,0 +1,23 @@
+import type { Models } from "./harness.ts";
+
+/**
+ * The models a review runs on: an opaque handle over pi-ai's model collection, so callers outside the pipeline never
+ * hold a Pi type. `createReviewModels` builds one; so does the testing entry's `createFakeModels`.
+ */
+export interface ReviewModels {
+	readonly kind: "melian.reviewModels";
+}
+
+const collections = new WeakMap<ReviewModels, Models>();
+
+export function wrapModels(models: Models): ReviewModels {
+	const handle: ReviewModels = Object.freeze({ kind: "melian.reviewModels" });
+	collections.set(handle, models);
+	return handle;
+}
+
+export function modelsOf(handle: ReviewModels): Models {
+	const models = collections.get(handle);
+	if (models === undefined) throw new TypeError("models must come from createReviewModels");
+	return models;
+}

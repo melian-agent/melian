@@ -1,4 +1,4 @@
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { isAbsolute, posix, relative, resolve, sep } from "node:path";
 import { OutsideRepositoryError } from "./errors.ts";
 
 /**
@@ -59,4 +59,15 @@ export function directoriesUpToRoot(path: string, isDirectory: boolean): string[
 	const segments = path === "" ? [] : path.split("/");
 	if (!isDirectory) segments.pop();
 	return segments.map((_, index) => segments.slice(0, segments.length - index).join("/")).concat("");
+}
+
+// A lens path glob written relative to `directory`, made repository-relative: `./src/**` from `services/pay` is
+// `services/pay/src/**`, a leading `/` is relative to `directory` too, and a leading `!` is kept. Undefined when `..`
+// climbs out of the repository, so each caller can name the file and field in its own error.
+export function anchorGlob(directory: string, glob: string): string | undefined {
+	const negated = glob.startsWith("!");
+	const pattern = (negated ? glob.slice(1) : glob).replace(/^\/+/, "");
+	const anchored = posix.normalize(posix.join(directory, pattern));
+	if (anchored === ".." || anchored.startsWith("../")) return undefined;
+	return `${negated ? "!" : ""}${anchored}`;
 }

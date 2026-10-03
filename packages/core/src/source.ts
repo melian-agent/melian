@@ -49,6 +49,13 @@ export interface SourceReader {
 	// Undefined when the directory does not exist. Throws `symlink` for a symlinked directory.
 	list(directory: string): Promise<readonly Entry[] | undefined>;
 	exists(path: string): Promise<EntryKind | undefined>;
+	// Every file or symlink path in the source that `pattern` matches, from one listing of the whole tree.
+	findPaths(pattern: RegExp): Promise<string[]>;
+}
+
+// Splits `-z` output into paths; a path may hold a newline but never a NUL.
+function nulSeparated(output: string): string[] {
+	return output.split("\0").filter((path) => path !== "");
 }
 
 export async function openSource(repoRoot: string, source: RepositorySource): Promise<SourceReader> {
@@ -130,10 +137,16 @@ function worktreeSource(root: string): SourceReader {
 			const entries = await readdir(join(root, directory), { withFileTypes: true }).catch(unreadable(directory));
 			return entries.map((entry) => ({ name: entry.name, kind: kindOfStats(entry) }));
 		},
+		// Tracked and untracked files git does not ignore, so an uncommitted lens counts and node_modules is not walked.
+		async findPaths(pattern) {
+			const result = await git(root, ["ls-files", "-z", "--cached", "--others", "--exclude-standard"]);
+			if (result.code !== 0) throw new SourceError("unreadable", root, `${root}: ${result.stderr.trim()}`);
+			return [...new Set(nulSeparated(result.stdout))].filter((path) => pattern.test(path));
+		},
 	};
 }
 
-interface TreeEntry {
+export interface TreeEntry {
 	readonly kind: EntryKind;
 	readonly object: string;
 	readonly size: number;
@@ -147,7 +160,7 @@ function treeKind(mode: string): EntryKind {
 }
 
 // `git ls-tree -l -z`: `<mode> <type> <object> <size>\t<path>`, the size padded and `-` for a tree.
-function parseTree(output: string): TreeEntry[] {
+export function parseTree(output: string): TreeEntry[] {
 	return output
 		.split("\0")
 		.filter((line) => line !== "")
@@ -209,6 +222,10 @@ async function revisionSource(repoRoot: string, commit: string): Promise<SourceR
 			if (kind !== "directory") return undefined;
 			const entries = await lsTree(directory, directory === "" ? [] : [`${directory}/`]);
 			return entries.map((found) => ({ name: posix.basename(found.path), kind: found.kind }));
+		},
+		async findPaths(pattern) {
+			const output = await run("", ["ls-tree", "-r", "-z", "--name-only", "--full-tree", sha]);
+			return nulSeparated(output).filter((path) => pattern.test(path));
 		},
 	};
 }

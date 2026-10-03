@@ -3,7 +3,7 @@ import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import { parseDocument } from "yaml";
 import { ConfigError, type ConfigErrorCode } from "./errors.ts";
-import { directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
+import { anchorGlob, directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
 import { compileGlob, compilePattern, Refused } from "./pattern.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 
@@ -25,7 +25,8 @@ export const severitySchema = Type.Union([
 	Type.Literal("P3"),
 	Type.Literal("nit"),
 ]);
-const lensTier = Type.Union([Type.Literal("light"), Type.Literal("medium"), Type.Literal("heavy")]);
+/** The JSON Schema of a {@link LensTier}. */
+export const lensTierSchema = Type.Union([Type.Literal("light"), Type.Literal("medium"), Type.Literal("heavy")]);
 const modelRoute = Type.Object({ model: name, fallbacks: Type.Optional(Type.Array(name)) }, strict);
 // Each end is optional in one file so that a nearer file can restate one; the merged band must have both.
 const band = Type.Object(
@@ -76,7 +77,7 @@ export const melianYamlSchema = Type.Object(
 				Type.Object(
 					{
 						enabled: Type.Optional(Type.Boolean()),
-						tier: Type.Optional(lensTier),
+						tier: Type.Optional(lensTierSchema),
 						paths: Type.Optional(Type.Array(name)),
 					},
 					strict,
@@ -160,7 +161,7 @@ export type Resolution = Static<typeof resolutionSchema>;
 export type Severity = Static<typeof severitySchema>;
 
 /** A model tier a lens can name. Model routing also has a `decision` tier for decision models. */
-export type LensTier = Static<typeof lensTier>;
+export type LensTier = Static<typeof lensTierSchema>;
 
 /** A model and the models to try, in order, when it fails. */
 export type ModelRoute = Static<typeof modelRoute>;
@@ -467,21 +468,19 @@ function anchorPaths(site: Site, layer: MelianYaml): MelianYaml {
 				key,
 			});
 		}
-		const negated = path.startsWith("!");
-		const pattern = (negated ? path.slice(1) : path).replace(/^\/+/, "");
-		const anchored = posix.normalize(posix.join(directory, pattern));
-		if (anchored === ".." || anchored.startsWith("../")) {
+		const anchored = anchorGlob(directory, path);
+		if (anchored === undefined) {
 			throw configError("invalidValue", site, `"${key}" has ${path}, which leaves the repository`, { key });
 		}
 		try {
-			compileGlob(anchored);
+			compileGlob(anchored.replace(/^!/, ""));
 		} catch (error) {
 			if (!(error instanceof Refused)) throw error;
 			throw configError("invalidValue", site, `"${key}" has ${path}, which is not a safe glob: ${error.reason}`, {
 				key,
 			});
 		}
-		return `${negated ? "!" : ""}${anchored}`;
+		return anchored;
 	};
 	const rewrite = (value: unknown, keys: readonly string[], at: readonly string[]): unknown => {
 		if (keys.length === 0) return (value as string[]).map((glob) => anchor(at.join("."), glob));

@@ -1,0 +1,11 @@
+src/cart.ts
+
+  P0  line 10  broken-caller  (affected, new, unresolved)
+  summary calls formatPrice with the amount alone.
+    What: summary calls formatPrice with the amount alone.
+    Why here: This change made currency a required second parameter of formatPrice, and summary was not updated.
+    Evidence: src/price.ts:1
+      export function formatPrice(cents: number, currency: string): string {
+    What to do: Pass the cart's currency to formatPrice, or give currency a default.
+
+1 finding in 1 file.

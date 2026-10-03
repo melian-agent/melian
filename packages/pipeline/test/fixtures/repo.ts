@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { vi } from "vitest";
 
 // Isolates git from the developer's own configuration, such as commit signing.
-const isolatedGitEnv = {
+export const isolatedGitEnv = {
 	GIT_CONFIG_GLOBAL: "/dev/null",
 	GIT_CONFIG_NOSYSTEM: "1",
 	GIT_AUTHOR_NAME: "Melian Test",
@@ -14,17 +14,8 @@ const isolatedGitEnv = {
 	GIT_COMMITTER_EMAIL: "test@melian.invalid",
 };
 
-/** A git repository in a temporary directory, resolved through symlinks, with git isolated from the user's config. */
-export function createRepository(): string {
-	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
-	const root = realpathSync(mkdtempSync(join(tmpdir(), "melian-pipeline-")));
-	gitIn(root, "init", "--quiet", "--initial-branch=main");
-	return root;
-}
-
-export function removeRepository(root: string): void {
-	vi.unstubAllEnvs();
-	rmSync(root, { recursive: true, force: true });
+export function lines(...content: string[]): string {
+	return `${content.join("\n")}\n`;
 }
 
 export function gitIn(root: string, ...args: string[]): string {
@@ -38,8 +29,31 @@ export function writeFiles(root: string, files: Record<string, string>): void {
 	}
 }
 
-export function lines(...content: string[]): string {
-	return `${content.join("\n")}\n`;
+// A repository with a `main` commit holding `base` and a `feature` commit on top holding `head`.
+export function baseAndHead(base: Record<string, string>, head: Record<string, string>): string {
+	const repo = realpathSync(mkdtempSync(join(tmpdir(), "melian-review-")));
+	gitIn(repo, "init", "--quiet", "--initial-branch=main");
+	writeFiles(repo, base);
+	gitIn(repo, "add", "--all");
+	gitIn(repo, "commit", "--quiet", "-m", "base");
+	gitIn(repo, "checkout", "--quiet", "-b", "feature");
+	writeFiles(repo, head);
+	gitIn(repo, "add", "--all");
+	gitIn(repo, "commit", "--quiet", "-m", "head");
+	return repo;
+}
+
+/** A git repository in a temporary directory, resolved through symlinks, with git isolated from the user's config. */
+export function createRepository(): string {
+	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
+	const root = realpathSync(mkdtempSync(join(tmpdir(), "melian-pipeline-")));
+	gitIn(root, "init", "--quiet", "--initial-branch=main");
+	return root;
+}
+
+export function removeRepository(root: string): void {
+	vi.unstubAllEnvs();
+	rmSync(root, { recursive: true, force: true });
 }
 
 /** Writes `files`, deleting `remove`, commits everything, and returns the commit. */

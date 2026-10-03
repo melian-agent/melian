@@ -1,0 +1,58 @@
+{
+  "correctness": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "contracts": [
+    {
+      "calls": [
+        {
+          "name": "search",
+          "arguments": {
+            "pattern": "formatPrice("
+          },
+          "expectToolResult": "src/cart.ts:10:"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/cart.ts",
+            "startLine": 8
+          },
+          "expectToolResult": "formatPrice(total)"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "src/cart.ts",
+            "line": 10,
+            "rule": "broken-caller",
+            "severity": "P0",
+            "explanation": {
+              "what": "summary calls formatPrice with the amount alone.",
+              "why": "This change made currency a required second parameter of formatPrice, and summary was not updated.",
+              "fix": "Pass the cart's currency to formatPrice, or give currency a default."
+            },
+            "evidence": {
+              "file": "src/price.ts",
+              "line": 1
+            }
+          },
+          "expectToolResult": "recorded finding"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ]
+}

@@ -41,6 +41,12 @@ export const findingTriggerSchema = Type.Object(
 /** The JSON Schema of a {@link FindingExplanation}. */
 export const findingExplanationSchema = Type.Object({ what: text, whyHere: text, whatToDo: text }, strict);
 
+/** The JSON Schema of {@link FindingEvidence}. */
+export const findingEvidenceSchema = Type.Object(
+	{ file: text, startLine: line, endLine: Type.Optional(line), snippet: text },
+	strict,
+);
+
 /** The JSON Schema of a {@link FindingSource}. */
 export const findingSourceSchema = Type.Object({ check: text, version: Type.Optional(text) }, strict);
 
@@ -52,14 +58,15 @@ export const findingPropertiesSchema = Type.Object(
 		occurrence: Type.Optional(count),
 		discriminator: Type.Optional(text),
 		cause: causeSchema,
-		evidence: Type.Optional(text),
+		evidence: Type.Optional(findingEvidenceSchema),
 		trigger: Type.Optional(findingTriggerSchema),
 		severity: severitySchema,
 		confidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
-		resolution: resolutionSchema,
+		resolution: Type.Optional(resolutionSchema),
 		status: findingStatusSchema,
 		explanation: findingExplanationSchema,
 		source: findingSourceSchema,
+		reportedBy: Type.Optional(Type.Array(findingSourceSchema, { minItems: 1 })),
 	},
 	strict,
 );
@@ -122,10 +129,23 @@ export const reportFindingInputSchema = Type.Object(
 			strict,
 		),
 		evidence: Type.Optional(
-			Type.String({
-				minLength: 1,
-				description: "For a location outside the change: the changed code that provably breaks it",
-			}),
+			Type.Object(
+				{
+					file: Type.String({
+						minLength: 1,
+						description: "Repository-relative path of a file this change modifies",
+					}),
+					line: Type.Integer({ minimum: 1, description: "First line, at head, of the changed code" }),
+					endLine: Type.Optional(
+						Type.Integer({ minimum: 1, description: "Last line, at head, of the changed code" }),
+					),
+				},
+				{
+					...strict,
+					description:
+						"For a location outside the change: the lines this change added or modified that provably break it. A location, never prose",
+				},
+			),
 		),
 	},
 	strict,
@@ -198,6 +218,12 @@ export type FindingStatus = Static<typeof findingStatusSchema>;
  * {@link normaliseSnippet} changes, not when the hunk moves.
  */
 export type FindingTrigger = Static<typeof findingTriggerSchema>;
+
+/**
+ * What makes a finding `affected`: the changed code that breaks its location, as lines at head that overlap a hunk's
+ * new lines, with `snippet` read from the head revision at those lines, never written by the producer.
+ */
+export type FindingEvidence = Static<typeof findingEvidenceSchema>;
 
 /** A finding's explanation for the author: what is wrong, why it matters in this change, and what to do. */
 export type FindingExplanation = Static<typeof findingExplanationSchema>;
@@ -423,13 +449,14 @@ export interface FindingInput {
 	readonly discriminator?: string;
 	/**
 	 * `introduced` or `pre-existing`, usually from {@link classifyCause}, or `{ evidence }` for an `affected` finding:
-	 * the changed code that provably breaks this location, as the lens cites it.
+	 * the changed code that provably breaks this location, which {@link checkEvidence} confirms is in the change.
 	 */
-	readonly cause: LocationCause | { readonly evidence: string };
+	readonly cause: LocationCause | { readonly evidence: FindingEvidence };
 	readonly trigger?: FindingTrigger;
 	readonly severity: Severity;
 	readonly confidence?: number;
-	readonly resolution: Resolution;
+	/** What the finding requires. Only adjudication sets it; a producer leaves it out, and the finding is unresolved. */
+	readonly resolution?: Resolution;
 	/** Defaults to `new`. */
 	readonly status?: FindingStatus;
 	readonly explanation: FindingExplanation;
@@ -462,7 +489,9 @@ export function createFinding(input: FindingInput): Finding {
 			: { ...input.trigger, file: canonicalPath(input.trigger.file, "/properties/trigger/file") };
 	const id = findingId({ file, rule, snippet: snippet ?? "", occurrence, discriminator });
 	const hasSnippet = normaliseSnippet(snippet ?? "") !== "";
-	const evidence = typeof input.cause === "object" ? input.cause.evidence : undefined;
+	const cited = typeof input.cause === "object" ? input.cause.evidence : undefined;
+	const evidence =
+		cited === undefined ? undefined : { ...cited, file: canonicalPath(cited.file, "/properties/evidence/file") };
 	return parseFinding({
 		ruleId: rule,
 		level: levelForSeverity(input.severity),
@@ -558,6 +587,14 @@ export function parseFinding(input: unknown): Finding {
 		throw new FindingError("invalidFinding", `an ${cause} finding carries evidence only an affected one needs`, {
 			path: "/properties/evidence",
 		});
+	}
+	if (evidence !== undefined) {
+		requireCanonical(evidence.file, "/properties/evidence/file");
+		if ((evidence.endLine ?? evidence.startLine) < evidence.startLine) {
+			throw new FindingError("invalidRegion", "the finding's evidence ends before it starts", {
+				path: "/properties/evidence",
+			});
+		}
 	}
 	const snippet = region.snippet?.text ?? "";
 	const { occurrence, discriminator } = finding.properties;

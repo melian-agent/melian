@@ -1,5 +1,5 @@
 export { parseJsonc } from "./analyser.ts";
-export { type CodeLocation, classifyCause } from "./cause.ts";
+export { type CodeLocation, checkEvidence, classifyCause } from "./cause.ts";
 export {
 	type Changeset,
 	parseRangeSpec,
@@ -21,6 +21,7 @@ export {
 	type LensSettings,
 	type LensTier,
 	type LoadedConfig,
+	lensTierSchema,
 	loadConfig,
 	type MelianConfig,
 	type MelianYaml,
@@ -47,7 +48,13 @@ export {
 	type ConfigErrorCode,
 	FindingError,
 	type FindingErrorCode,
+	LensError,
+	type LensErrorCode,
+	ModelRoutingError,
+	type ModelRoutingErrorCode,
 	OutsideRepositoryError,
+	RevisionError,
+	type RevisionErrorCode,
 	StandardsError,
 	type StandardsErrorCode,
 } from "./errors.ts";
@@ -57,6 +64,7 @@ export {
 	createFinding,
 	createFindingsLog,
 	type Finding,
+	type FindingEvidence,
 	type FindingExplanation,
 	type FindingIdInput,
 	type FindingInput,
@@ -66,6 +74,7 @@ export {
 	type FindingStatus,
 	type FindingsLog,
 	type FindingTrigger,
+	findingEvidenceSchema,
 	findingExplanationSchema,
 	findingId,
 	findingLocationSchema,
@@ -95,8 +104,38 @@ export {
 	type GuardrailName,
 	guardrailLimits,
 } from "./guardrails.ts";
+export {
+	type Lens,
+	type LensCoverage,
+	type LensFrontMatter,
+	type LensRule,
+	type LensSelection,
+	type LensToolName,
+	lensCovers,
+	lensFrontMatterSchema,
+	lensLimits,
+	lensRuleSchema,
+	lensToolNames,
+	loadLenses,
+	parseLensFile,
+	renderLensInstructions,
+	selectLenses,
+} from "./lens.ts";
+export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
 export { analyserConfigNames, melianPaths } from "./paths.ts";
-export { renderFindingsJson, renderFindingsTerminal, type TerminalRenderOptions } from "./render.ts";
+export { renderFindingsJson, renderFindingsTerminal, type TerminalRenderOptions, visibleText } from "./render.ts";
+export {
+	listRevisionFiles,
+	type RevisionEntry,
+	type RevisionEntryKind,
+	type RevisionFile,
+	type RevisionMatch,
+	type RevisionSearch,
+	readRevisionFile,
+	repositoryPath,
+	revisionLimits,
+	searchRevision,
+} from "./revision.ts";
 export type { RepositorySource } from "./source.ts";
 export { loadStandards, type StandardsSection, standardsLimits } from "./standards.ts";
 export {

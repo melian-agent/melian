@@ -96,7 +96,7 @@ describe("runChecks", () => {
 			{ check: "static.biome", status: "ran", findings: 2, notes: [] },
 			{ check: "static.tsc", status: "ran", findings: 2, notes: [] },
 		]);
-		const findings = await readFindings(harness, root.id, context);
+		const findings = await readFindings(harness, root.id, head, context);
 		expect(summary(findings)).toEqual([
 			{ rule: "tsc/TS2322", file: "src/old.ts", line: 1, cause: "introduced", severity: "P1" },
 			{ rule: "biome/suspicious/noDoubleEquals", file: "src/old.ts", line: 2, cause: "introduced", severity: "P2" },
@@ -144,7 +144,7 @@ describe("runChecks", () => {
 			["static.biome", "failed", "timeout"],
 			["static.tsc", "failed", "toolFailed"],
 		]);
-		const findings = await readFindings(harness, root.id, context);
+		const findings = await readFindings(harness, root.id, head, context);
 		expect(findings.map((finding) => finding.ruleId)).toEqual(["guardrail/forbidden-paths"]);
 		// Asking again finds the run already done instead of running the tools a second time.
 		expect((await runChecks(harness, input, context)).records).toEqual(records);
@@ -214,12 +214,12 @@ describe("runChecks", () => {
 		const head = commit(repo, { "dist/a.js": lines("built") });
 		const broken = commit(repo, { "melian.yaml": lines(rule, "unknown: key") });
 		const { harness, root, input } = await checks(base, head);
-		expect((await readFindings(harness, root.id, context)).map((finding) => finding.ruleId)).toEqual([
+		expect((await readFindings(harness, root.id, head, context)).map((finding) => finding.ruleId)).toEqual([
 			"guardrail/forbidden-paths",
 		]);
 		const failed = await runChecks(harness, { ...input, source: { kind: "revision", commit: broken } }, context);
 		expect(failed.records.map((record) => record.status)).toEqual(["failed"]);
-		expect(await readFindings(harness, root.id, context)).toEqual([]);
+		expect(await readFindings(harness, root.id, head, context)).toEqual([]);
 	});
 
 	it("records checks it does not run, and fails a name that is no check", { timeout: 60_000 }, async () => {
