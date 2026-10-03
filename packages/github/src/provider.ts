@@ -96,14 +96,19 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 		...(options.fetch === undefined ? {} : { request: { fetch: options.fetch } }),
 	});
 	const links = { web: `${options.webUrl ?? "https://github.com"}/${owner}/${repo}` };
-	// Who Melian posts as: from /user, or from the author of a review it posted. A failed lookup is not remembered, so a
-	// passing outage does not stick.
+	// Who Melian posts as: from /user, or from the author of a review it posted. /user is asked once per provider, its
+	// failure remembered too: an installation token always fails it, and asking again for every marker cost one request
+	// each. A review posted later still teaches the viewer.
 	let viewer: string | undefined;
+	let asked: Promise<void> | undefined;
 	const login = async () => {
-		viewer ??= await octokit.rest.users.getAuthenticated().then(
-			({ data }) => data.login,
-			() => undefined,
+		asked ??= octokit.rest.users.getAuthenticated().then(
+			({ data }) => {
+				viewer ??= data.login;
+			},
+			() => {},
 		);
+		await asked;
 		return viewer;
 	};
 	// A filter, never the proof: the signature is. An installation token cannot read /user, and a crash between a post

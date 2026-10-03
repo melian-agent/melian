@@ -102,11 +102,15 @@ describe("reading markers back", () => {
 		state.comments.push(comment(2, state.login, marker(head, "finding", finding, secret)));
 		state.comments.push(comment(3, state.login, marker(head, "resolved", finding, secret), 2));
 
-		expect(await providerFor(state).findPublished(7, head, fingerprint, secret)).toEqual({
+		const github = providerFor(state);
+		expect(await github.findPublished(7, head, fingerprint, secret)).toEqual({
 			review: "1",
 			threads: { [finding]: "2" },
 			replies: { [finding]: "3" },
 		});
+		await github.findPublished(7, head, fingerprint, secret);
+		// One refused /user for the provider, not one for every marker.
+		expect(state.calls.filter((call) => call.path === "/user")).toHaveLength(1);
 	});
 
 	it("counts no marker whose signature does not verify, however right its text", async () => {
