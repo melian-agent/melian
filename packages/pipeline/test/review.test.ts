@@ -1,11 +1,16 @@
-import { rmSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
+	type CheckRecord,
+	createFinding,
 	defaultConfig,
 	type Finding,
 	type Lens,
 	loadLenses,
 	type MelianConfig,
 	ModelRoutingError,
+	type RepositorySource,
 	resolveRange,
 } from "@melian-agent/core";
 import {
@@ -13,11 +18,18 @@ import {
 	createMemoryStorage,
 	createRegistry,
 	createReviewRegistry,
+	dismissFinding,
 	type Harness,
 	type Message,
 	openHarness,
+	openSqliteStorage,
+	type Review,
 	ReviewError,
+	readVerdict,
 	reviewChangeset,
+	revisionKey,
+	type TaskId,
+	upsertFinding,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -29,7 +41,22 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AdjudicationTask, adjudicationInput } from "../src/adjudication.ts";
+import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
+
+const staticFinding = {
+	rule: "lint/style/noNonNullAssertion",
+	message: "a static tool flags the dereference",
+	file: "src/user.ts",
+	startLine: 7,
+	snippet: "\treturn user.manager.name;",
+	occurrence: 0,
+	cause: "introduced",
+	severity: "P0",
+	explanation: { what: "w", whyHere: "y", whatToDo: "t" },
+	source: { check: "static.biome", version: "2.2.0" },
+} as const;
 
 const correctness = "You are the correctness reviewer";
 const contracts = "You are the contracts reviewer";
@@ -63,7 +90,10 @@ beforeEach(async () => {
 	);
 	fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "backup" }] });
 	const heavy = fake.ref("heavy");
-	config = { ...defaultConfig, models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } } };
+	config = {
+		...defaultConfig,
+		models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
+	};
 	harness = await openHarness(createMemoryStorage(), {
 		models: fake.models,
 		registry: createReviewRegistry(),
@@ -79,14 +109,44 @@ afterEach(async () => {
 	rmSync(repo, { recursive: true, force: true });
 });
 
-async function review(options: { lenses?: Lens[]; config?: MelianConfig } = {}): Promise<readonly Finding[]> {
+type ReviewWith = {
+	lenses?: Lens[];
+	config?: MelianConfig;
+	checks?: CheckRecord[];
+	policy?: RepositorySource;
+	rerun?: boolean;
+	range?: string;
+};
+
+// The default tiers' checks that run without a model, recorded as ran, as pull request #18's runChecks will record them.
+const deterministicRan: CheckRecord[] = [
+	{ name: "guardrails", status: "ran" },
+	{ name: "static", status: "ran" },
+];
+
+async function reviewed(options: ReviewWith = {}): Promise<Review> {
 	return reviewChangeset({
 		harness,
-		changeset: await resolveRange(repo, "main...feature"),
+		changeset: await resolveRange(repo, options.range ?? "main...feature"),
 		config: options.config ?? config,
 		lenses: options.lenses ?? lenses,
 		standards: [{ path: "AGENTS.md", content: "Never use the non-null assertion operator." }],
 		models: fake.review,
+		checks: [...deterministicRan, ...(options.checks ?? [])],
+		...(options.policy === undefined ? {} : { policy: options.policy }),
+		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
+	});
+}
+
+async function review(options: ReviewWith = {}): Promise<readonly Finding[]> {
+	return (await reviewed(options)).findings;
+}
+
+// The revision `main...feature` reviews, as the findings, verdict, and review index documents key it.
+function reviewedRevision(): string {
+	return revisionKey({
+		base: gitIn(repo, "merge-base", "main", "feature"),
+		head: gitIn(repo, "rev-parse", "feature"),
 	});
 }
 
@@ -689,6 +749,14 @@ describe("reviewChangeset", () => {
 		expect(error).toBeInstanceOf(ReviewError);
 		expect(error).toMatchObject({ code: "lensFailed", lenses: ["correctness"] });
 		expect((error as ReviewError).findings).toHaveLength(1);
+		const { verdict } = error as ReviewError;
+		expect(verdict).toMatchObject({
+			status: "not-reviewed",
+			blocking: true,
+			notRun: [{ name: "lens.correctness", status: "failed", reason: "the lens did not finish" }],
+		});
+		const root = (await harness.root(context)).id;
+		expect(await readVerdict(harness, root, reviewedRevision(), context)).toEqual(verdict);
 	});
 
 	it("refuses a tier with no model, or none with credentials", async () => {
@@ -782,5 +850,525 @@ describe("reviewChangeset", () => {
 		await harness.close(context);
 		harness = await openHarness(createMemoryStorage(), { models: fake.models, registry: createRegistry() });
 		await expect(review()).rejects.toMatchObject({ code: "notInstalled" });
+	});
+});
+
+describe("adjudication", () => {
+	const revision = reviewedRevision;
+	const rootId = async () => (await harness.root(context)).id;
+
+	it("records the verdict on the root under the head and returns it with the findings", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { findings, verdict } = await reviewed();
+
+		expect(verdict).toMatchObject({ status: "findings", blocking: true, notRun: [] });
+		expect(verdict.findings.block.map((each) => each.properties.id)).toEqual([findings[0]!.properties.id]);
+		expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
+		expect(await readVerdict(harness, await rootId(), gitIn(repo, "rev-parse", "main"), context)).toBeUndefined();
+	});
+
+	it("resolves each finding under the policy's configuration for its path", async () => {
+		writeFiles(repo, { "src/melian.yaml": lines("resolution:", "  P1: advisory") });
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { findings, verdict } = await reviewed({ policy: { kind: "worktree" } });
+
+		expect(findings[0]!.properties.resolution).toBeUndefined();
+		expect(verdict).toMatchObject({ status: "findings", blocking: false });
+		expect(verdict.findings.advisory).toHaveLength(1);
+	});
+
+	it("fails the review, rather than wait, when the policy cannot be read", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const missing = { kind: "revision", commit: "0".repeat(40) } as const;
+
+		const error = await reviewed({ policy: missing }).catch((caught: unknown) => caught);
+
+		expect(error).toMatchObject({ code: "adjudicationFailed" });
+		expect((error as ReviewError).findings).toHaveLength(1);
+		expect(await readVerdict(harness, await rootId(), revision(), context)).toBeUndefined();
+	});
+
+	it("runs a failed adjudication again on the next call, so a policy fixed since then decides", async () => {
+		writeFiles(repo, { "src/melian.yaml": "resolution: [" });
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		await expect(reviewed({ policy: { kind: "worktree" } })).rejects.toMatchObject({ code: "adjudicationFailed" });
+		writeFiles(repo, { "src/melian.yaml": lines("resolution:", "  P1: advisory") });
+
+		const { verdict } = await reviewed({ policy: { kind: "worktree" } });
+
+		expect(verdict).toMatchObject({ status: "findings", blocking: false });
+		expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
+	});
+
+	it("runs a failed lens again only when asked to", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		await expect(reviewed()).rejects.toMatchObject({ code: "lensFailed" });
+		const calls = fake.provider.state.callCount;
+		await expect(reviewed()).rejects.toMatchObject({ code: "lensFailed" });
+		expect(fake.provider.state.callCount).toBe(calls);
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { verdict } = await reviewed({ rerun: true });
+
+		expect(verdict).toMatchObject({ status: "passed", notRun: [] });
+	});
+
+	it("decides again after a dismissal rather than return the verdict from before it", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const first = await reviewed();
+		expect(first.verdict).toMatchObject({ status: "findings", blocking: true });
+		const root = await harness.root(context);
+		const at = "2026-10-03T00:00:00Z";
+		const dismissal = { by: "tal", reason: "the manager is always set here", at };
+		await root.commit((tx) => dismissFinding(tx, root.id, first.findings[0]!.properties.id, dismissal), context);
+
+		const { verdict } = await reviewed();
+
+		expect(verdict).toMatchObject({ status: "passed", blocking: false });
+		expect(verdict.dismissed).toHaveLength(1);
+		expect(await readVerdict(harness, root.id, revision(), context)).toEqual(verdict);
+	});
+
+	it("caps a pre-existing finding at advisory", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{
+				match: contracts,
+				replies: [
+					call("report_finding", { ...nullDeref, rule: "changed-return", severity: "P0", line: 2 }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+
+		const { verdict } = await reviewed();
+
+		expect(verdict.findings.advisory.map((each) => each.properties.cause)).toEqual(["pre-existing"]);
+		expect(verdict.blocking).toBe(false);
+	});
+
+	it("leaves out the sightings of a lens that configuration has since disabled", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+			{
+				match: contracts,
+				replies: [
+					call("report_finding", { ...nullDeref, file: "src/report.ts", line: 2, rule: "changed-return" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+		await reviewed();
+		const off = { ...config, lenses: { contracts: { enabled: false } } };
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+		]);
+
+		const { verdict } = await reviewed({ config: off });
+
+		const judged = [...Object.values(verdict.findings).flat(), ...verdict.dismissed];
+		expect(judged.map((finding) => finding.ruleId)).toEqual(["null-dereference"]);
+		expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
+	});
+
+	describe("on a repeat review of a head", () => {
+		const adjudicationTask = async () =>
+			(await harness.snapshot(ReviewIndex, await rootId(), context))?.reviews[revision()]?.adjudication?.task;
+		const failed: CheckRecord = { name: "static.biome", status: "failed", reason: "biome exited 2" };
+
+		beforeEach(() => {
+			scriptConversations(fake, [
+				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+		});
+
+		it("attaches to the adjudication task when the input is the same, and starts another when it is not", async () => {
+			const first = await reviewed();
+			const task = await adjudicationTask();
+
+			expect(await reviewed()).toEqual(first);
+			expect(await adjudicationTask()).toBe(task);
+
+			const { verdict } = await reviewed({ checks: [failed] });
+			expect(await adjudicationTask()).not.toBe(task);
+			expect(verdict).toMatchObject({ status: "not-reviewed", notRun: [failed] });
+			expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
+		});
+
+		it("records nothing from an adjudication task the index no longer names", async () => {
+			const { verdict, findings } = await reviewed();
+			const producers = findings[0]!.properties.reportedBy!;
+			const stale = adjudicationInput({
+				root: await rootId(),
+				repoRoot: repo,
+				base: gitIn(repo, "merge-base", "main", "feature"),
+				head: gitIn(repo, "rev-parse", "feature"),
+				policy: undefined,
+				config,
+				manifest: [],
+				findingsVersion: 0,
+				checks: [failed],
+				allowSkip: [],
+				producers,
+			});
+
+			const task = await (await harness.root(context)).commit(
+				(tx) => tx.createTask(AdjudicationTask, stale, { ownership: { kind: "conversation" } }),
+				context,
+			);
+			const settled = await harness.waitForTask(task, context);
+
+			expect(settled.state.outcome).toEqual({ status: "completed", result: "superseded" });
+			expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
+		});
+	});
+
+	describe("against the tier's checks, its manifest", () => {
+		const done = () =>
+			scriptConversations(fake, [
+				{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+		const tiered = (...checks: string[]) => ({ ...config, tiers: { ...config.tiers, full: checks } });
+		const lensesOnly = ["lens.correctness", "lens.contracts"];
+
+		it("passes under the default tiers when every check ran and none found anything", async () => {
+			done();
+			const { verdict } = await reviewed();
+			expect(verdict).toMatchObject({ status: "passed", blocking: false, notRun: [] });
+		});
+
+		it("is not reviewed when a check the manifest names recorded nothing, even with no findings", async () => {
+			done();
+			const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.biome") });
+			expect(verdict).toMatchObject({
+				status: "not-reviewed",
+				blocking: false,
+				notRun: [{ name: "static.biome", status: "skipped", reason: "no record" }],
+			});
+		});
+
+		it("is not reviewed when another check failed, even with no findings", async () => {
+			done();
+			const failed: CheckRecord = { name: "static.biome", status: "failed", reason: "biome exited 2" };
+			const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.biome"), checks: [failed] });
+			expect(verdict).toMatchObject({ status: "not-reviewed", blocking: false, notRun: [failed] });
+		});
+
+		it("counts a static tool's stored sighting, merged with a lens's report of the same line", async () => {
+			const ran: CheckRecord = { name: "static.biome", status: "ran", version: "2.2.0" };
+			const root = await harness.root(context);
+			const atHead = createFinding(staticFinding);
+			await root.commit((tx) => upsertFinding(tx, root.id, atHead, reviewedRevision()), context);
+			scriptConversations(fake, [
+				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+			const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.biome"), checks: [ran] });
+
+			expect(verdict).toMatchObject({ status: "findings", blocking: true, notRun: [] });
+			expect(verdict.findings.block).toHaveLength(1);
+			expect(verdict.findings.block[0]!.properties).toMatchObject({
+				severity: "P0",
+				source: { check: "static.biome" },
+				alsoReportedAs: [{ ruleId: "null-dereference", check: "lens.correctness" }],
+			});
+		});
+
+		it("leaves out a static tool's sighting from another version than its record names", async () => {
+			const root = await harness.root(context);
+			const stale = createFinding({
+				...staticFinding,
+				source: { check: "static.biome", version: "1.0.0" },
+			});
+			await root.commit((tx) => upsertFinding(tx, root.id, stale, reviewedRevision()), context);
+			done();
+			const ran: CheckRecord = { name: "static.biome", status: "ran", version: "2.2.0" };
+			const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.biome"), checks: [ran] });
+			expect(verdict.status).toBe("passed");
+		});
+
+		it("is not reviewed when configuration switches every lens off, as an exclusion", async () => {
+			const off = { ...config, lenses: { correctness: { enabled: false }, contracts: { enabled: false } } };
+			const { verdict } = await reviewed({ config: off });
+			expect(fake.provider.state.callCount).toBe(0);
+			expect(verdict).toMatchObject({
+				status: "not-reviewed",
+				notRun: [
+					{ name: "lens.correctness", status: "skipped", reason: "lenses.correctness.enabled is false" },
+					{ name: "lens.contracts", status: "skipped", reason: "lenses.contracts.enabled is false" },
+				],
+			});
+		});
+
+		it("passes with a lens switched off or a check skipped when melian.yaml allows the skip", async () => {
+			scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
+			const skipped: CheckRecord = { name: "static.tsc", status: "skipped", reason: "no tsconfig.json" };
+			const allowing = {
+				...tiered(...lensesOnly, "static.tsc"),
+				lenses: { contracts: { enabled: false } },
+				checks: { allowSkip: ["lens.contracts", "static.tsc"] },
+			};
+
+			const { verdict } = await reviewed({ config: allowing, checks: [skipped] });
+
+			expect(verdict).toMatchObject({
+				status: "passed",
+				notRun: [skipped, { name: "lens.contracts", status: "skipped" }],
+			});
+		});
+
+		it("is not reviewed when no lens covers the changed paths, and passes when one does", async () => {
+			const nowhere = lenses.map((lens) => ({ ...lens, paths: ["docs/**"] }));
+			const { verdict } = await reviewed({ lenses: nowhere });
+			expect(verdict).toMatchObject({
+				status: "not-reviewed",
+				notRun: [
+					{ name: "lens.correctness", status: "skipped", reason: "no lens covers these paths" },
+					{ name: "lens.contracts", status: "skipped", reason: "no lens covers these paths" },
+				],
+			});
+
+			scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
+			const one = lenses.map((lens) => (lens.name === "contracts" ? { ...lens, paths: ["docs/**"] } : lens));
+			const { verdict: covered } = await reviewed({ lenses: one });
+			expect(covered).toMatchObject({
+				status: "passed",
+				notRun: [{ name: "lens.contracts", status: "skipped", reason: "no changed file is in its paths" }],
+			});
+		});
+
+		it("runs only the lenses the manifest names, and fails a lens it names that does not exist", async () => {
+			scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
+			const { verdict } = await reviewed({ config: tiered("lens.correctness", "lens.security") });
+			expect(fake.provider.state.callCount).toBe(1);
+			expect(verdict).toMatchObject({
+				status: "not-reviewed",
+				notRun: [{ name: "lens.security", status: "failed", reason: "no lens is named security" }],
+			});
+		});
+
+		it("lets decision questions skip when no decision provider is configured", async () => {
+			done();
+			const { verdict } = await reviewed({ config: tiered(...lensesOnly, "decisions.fast") });
+			expect(verdict).toMatchObject({
+				status: "passed",
+				notRun: [{ name: "decisions.fast", status: "skipped", reason: "no decision provider is configured" }],
+			});
+		});
+	});
+
+	it("keeps the verdict across a reopen of the storage", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "melian-verdict-"));
+		try {
+			const path = join(dir, "review.sqlite");
+			const open = async () =>
+				openHarness(await openSqliteStorage(path), {
+					models: fake.models,
+					registry: createReviewRegistry(),
+					settings: { retry: { enabled: false } },
+				});
+			await harness.close(context);
+			harness = await open();
+			await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+			scriptConversations(fake, [
+				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+			const { verdict } = await reviewed();
+			await harness.close(context);
+
+			harness = await open();
+
+			expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
+		} finally {
+			await harness.close(context);
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("a stacked pull request retargeted onto another base", () => {
+	// `parent` changes src/report.ts; `child`, stacked on it, changes src/user.ts as `feature` does.
+	beforeEach(() => {
+		gitIn(repo, "checkout", "--quiet", "-b", "parent", "main");
+		writeFiles(repo, {
+			"src/report.ts": lines(
+				'import { managerName } from "./user.ts";',
+				"export const line = managerName(me).toUpperCase();",
+			),
+		});
+		gitIn(repo, "commit", "--quiet", "--all", "-m", "parent");
+		gitIn(repo, "checkout", "--quiet", "-b", "child");
+		writeFiles(repo, { "src/user.ts": user("\treturn user.manager.name;") });
+		gitIn(repo, "commit", "--quiet", "--all", "-m", "child");
+	});
+
+	const atReport = { ...nullDeref, file: "src/report.ts", line: 2 };
+	const reporting = () =>
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", atReport), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+	it("reviews the wider diff afresh when retargeted from its parent onto main", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const narrow = await reviewed({ range: "parent...child" });
+		expect(narrow.verdict.status).toBe("passed");
+		const calls = fake.provider.state.callCount;
+		reporting();
+
+		const { verdict } = await reviewed({ range: "main...child" });
+
+		expect(fake.provider.state.callCount).toBeGreaterThan(calls);
+		expect(verdict).toMatchObject({ status: "findings", blocking: true });
+		expect(verdict.findings.block[0]!.properties).toMatchObject({ path: "src/report.ts", cause: "introduced" });
+	});
+
+	it("stops blocking on its parent's code once the parent lands", async () => {
+		reporting();
+		const wide = await reviewed({ range: "main...child" });
+		expect(wide.verdict).toMatchObject({ blocking: true });
+		gitIn(repo, "checkout", "--quiet", "main");
+		gitIn(repo, "merge", "--quiet", "--no-ff", "-m", "land parent", "parent");
+		reporting();
+
+		const { verdict, findings } = await reviewed({ range: "main...child" });
+
+		expect(findings.map((finding) => finding.properties.cause)).toEqual(["pre-existing"]);
+		expect(verdict).toMatchObject({ status: "findings", blocking: false });
+		expect(verdict.findings.advisory.map((finding) => finding.properties.path)).toEqual(["src/report.ts"]);
+	});
+});
+
+describe("on a repeat review after a task ended without deciding", () => {
+	let dir: string;
+	let path: string;
+	const revision = reviewedRevision;
+	const rootId = async () => (await harness.root(context)).id;
+	const noLenses = () => ({ ...config, lenses: { correctness: { enabled: false }, contracts: { enabled: false } } });
+	const open = async (registry = createReviewRegistry()) => {
+		await harness.close(context);
+		harness = await openHarness(await openSqliteStorage(path), {
+			models: fake.models,
+			registry,
+			settings: { retry: { enabled: false } },
+		});
+		await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+	};
+	const entry = async () => (await harness.snapshot(ReviewIndex, await rootId(), context))?.reviews[revision()];
+	const bothDone = () =>
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+	beforeEach(async () => {
+		dir = mkdtempSync(join(tmpdir(), "melian-aborted-"));
+		path = join(dir, "review.sqlite");
+		await open();
+	});
+
+	afterEach(async () => {
+		await harness.close(context);
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it("starts a lens task in place of an aborted one", async () => {
+		let release = () => {};
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		scriptConversations(fake, [
+			{ match: correctness, replies: [async () => held.then(() => fauxAssistantMessage("Done."))] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const first = reviewed().catch((caught: unknown) => caught);
+		let aborted: number | undefined;
+		try {
+			while (aborted === undefined) {
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				aborted = (await entry())?.task;
+			}
+			await harness.abortTask(aborted as TaskId, context);
+		} finally {
+			// The lens's request holds the task until it settles; the abort mark refuses whatever it commits next.
+			release();
+		}
+		expect((await harness.waitForTask(aborted as TaskId, context)).state.outcome.status).toBe("aborted");
+		expect(await first).toMatchObject({ code: "lensFailed" });
+		bothDone();
+
+		const { verdict } = await reviewed();
+
+		expect((await entry())?.task).not.toBe(aborted);
+		expect(verdict.notRun.filter((check) => check.name.startsWith("lens."))).toEqual([]);
+	});
+
+	it("starts an adjudication task in place of an aborted one when no lens runs", async () => {
+		await reviewed({ config: noLenses() });
+		const input = (await entry())!.adjudication!.input;
+		await open();
+		const root = await harness.root(context);
+		// Nothing has resumed the scheduler yet, so the copy is aborted before it can run.
+		const copy = await root.commit(async (tx) => {
+			const created = await tx.createTask(AdjudicationTask, JSON.parse(input), {
+				ownership: { kind: "conversation" },
+			});
+			(await tx.doc(ReviewIndex, root.id)).reviews[revision()]!.adjudication = { task: created, input };
+			return created;
+		}, context);
+		await harness.abortTask(copy, context);
+		expect((await harness.waitForTask(copy, context)).state.outcome.status).toBe("aborted");
+
+		const { verdict } = await reviewed({ config: noLenses() });
+
+		expect((await entry())?.adjudication?.task).not.toBe(copy);
+		expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
+	});
+
+	it.each([
+		["a lens task", () => config],
+		["an adjudication task", noLenses],
+	])("forgets %s it aborted for want of the lens extension", async (_kind, configured) => {
+		await open(createRegistry());
+		await expect(reviewed({ config: configured() })).rejects.toMatchObject({ code: "notInstalled" });
+		const forgotten = await entry();
+		expect(forgotten?.task).toBeUndefined();
+		expect(forgotten?.adjudication).toBeUndefined();
+		await open();
+		bothDone();
+
+		const { verdict } = await reviewed({ config: configured() });
+
+		expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
 	});
 });

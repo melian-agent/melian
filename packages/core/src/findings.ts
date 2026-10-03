@@ -50,6 +50,9 @@ export const findingEvidenceSchema = Type.Object(
 /** The JSON Schema of a {@link FindingSource}. */
 export const findingSourceSchema = Type.Object({ check: text, version: Type.Optional(text) }, strict);
 
+/** The JSON Schema of an {@link AlsoReportedAs}. */
+export const alsoReportedAsSchema = Type.Object({ id: idSchema, ruleId: text, check: text }, strict);
+
 /** The JSON Schema of {@link FindingProperties}. Unknown keys are rejected, so a misspelt optional key is not lost. */
 export const findingPropertiesSchema = Type.Object(
 	{
@@ -67,6 +70,7 @@ export const findingPropertiesSchema = Type.Object(
 		explanation: findingExplanationSchema,
 		source: findingSourceSchema,
 		reportedBy: Type.Optional(Type.Array(findingSourceSchema, { minItems: 1 })),
+		alsoReportedAs: Type.Optional(Type.Array(alsoReportedAsSchema)),
 	},
 	strict,
 );
@@ -230,6 +234,9 @@ export type FindingExplanation = Static<typeof findingExplanationSchema>;
 
 /** The check that produced a finding, and the version of the lens or question set it ran. */
 export type FindingSource = Static<typeof findingSourceSchema>;
+
+/** A finding adjudication merged into another: its ID, its rule, and the check that reported it. */
+export type AlsoReportedAs = Static<typeof alsoReportedAsSchema>;
 
 /** Melian's extensions to a SARIF `result`, carried in its property bag. */
 export type FindingProperties = Static<typeof findingPropertiesSchema>;

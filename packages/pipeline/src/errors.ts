@@ -1,4 +1,4 @@
-import type { Finding } from "@melian-agent/core";
+import type { Finding, Verdict } from "@melian-agent/core";
 
 /** Why Pi's credential store could not serve a credential. */
 export type PiCredentialsErrorCode = "unreadable" | "invalid" | "readOnly";
@@ -17,17 +17,24 @@ export class PiCredentialsError extends Error {
 }
 
 /** Why a review could not run or finish. */
-export type ReviewErrorCode = "noAvailableModel" | "notInstalled" | "lensFailed" | "allModelsFailed";
+export type ReviewErrorCode =
+	| "noAvailableModel"
+	| "notInstalled"
+	| "lensFailed"
+	| "allModelsFailed"
+	| "adjudicationFailed";
 
 /**
  * A review could not run or finish. `lenses` names the lenses involved, `models` the models tried when every model of
- * a tier failed, and `findings` what was reported anyway.
+ * a tier failed, and `findings` what was reported anyway. `verdict`, when adjudication ran, is the `not-reviewed`
+ * verdict it recorded.
  */
 export class ReviewError extends Error {
 	readonly code: ReviewErrorCode;
 	readonly lenses: readonly string[];
 	readonly models: readonly string[];
 	readonly findings: readonly Finding[];
+	readonly verdict?: Verdict;
 
 	constructor(
 		code: ReviewErrorCode,
@@ -36,6 +43,7 @@ export class ReviewError extends Error {
 			lenses: readonly string[];
 			models?: readonly string[];
 			findings?: readonly Finding[];
+			verdict?: Verdict;
 			cause?: unknown;
 		},
 	) {
@@ -45,5 +53,6 @@ export class ReviewError extends Error {
 		this.lenses = options.lenses;
 		this.models = options.models ?? [];
 		this.findings = options.findings ?? [];
+		if (options.verdict !== undefined) this.verdict = options.verdict;
 	}
 }

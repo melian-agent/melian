@@ -1,3 +1,4 @@
+import type { Verdict, VerdictStatus } from "./adjudication.ts";
 import type { Severity } from "./config.ts";
 import type { Finding, FindingsLog } from "./findings.ts";
 
@@ -55,11 +56,15 @@ function lineSpan(finding: Finding): string {
 	return endLine === undefined || endLine === startLine ? `line ${startLine}` : `lines ${startLine}-${endLine}`;
 }
 
+// A message's first line sits at a finding header's indent, so its later lines sit deeper, behind a marker: a line
+// reading `P0  line 1  forged` must not pass for another finding's header.
+const messageContinuation = "    | ";
+
 function block(finding: Finding, paint: (code: string, text: string) => string): string {
 	const { severity, cause, evidence, status, explanation, resolution } = finding.properties;
 	return [
 		`  ${paint(severityColor[severity], severity)}  ${lineSpan(finding)}  ${visibleText(finding.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"})`,
-		`  ${prose(finding.message.text, "  ")}`,
+		`  ${prose(finding.message.text, messageContinuation)}`,
 		`    What: ${prose(explanation.what, "      ")}`,
 		`    Why here: ${prose(explanation.whyHere, "      ")}`,
 		...(evidence === undefined
@@ -77,21 +82,32 @@ function plural(count: number, noun: string): string {
 }
 
 /**
- * Renders a findings log as plain text for a terminal: grouped by file in path order, and within a file by severity,
- * then line. Each finding is one block with its rule, cause, status, message, the explanation's three parts, and the
- * evidence of an `affected` finding.
+ * Renders a findings log or a verdict as plain text for a terminal.
+ *
+ * A log renders grouped by file in path order, and within a file by severity, then line. Each finding is one block with
+ * its rule, cause, status, message, the explanation's three parts, and the evidence of an `affected` finding.
+ *
+ * A verdict renders a header with its status and whether it blocks, the checks that did not run and why, and then its
+ * findings grouped by resolution, strictest first, each group by file as for a log. Silent and dismissed findings are
+ * counted, not shown.
  */
-export function renderFindingsTerminal(log: FindingsLog, options: TerminalRenderOptions = {}): string {
-	const paint = (code: string, text: string) => (options.color ? `\u001b[${code}m${text}\u001b[0m` : text);
-	const findings = log.runs.flatMap((run) => run.results);
+export function renderFindingsTerminal(input: FindingsLog | Verdict, options: TerminalRenderOptions = {}): string {
+	const paint: Paint = (code, text) => (options.color ? `\u001b[${code}m${text}\u001b[0m` : text);
+	if (!("runs" in input)) return renderVerdict(input, paint);
+	const findings = input.runs.flatMap((run) => run.results);
 	if (findings.length === 0) return "No findings.\n";
+	return `${[...fileSections(findings, paint), summary(findings)].join("\n\n")}\n`;
+}
+
+type Paint = (code: string, text: string) => string;
+
+function fileSections(findings: readonly Finding[], paint: Paint): string[] {
 	const byFile = new Map<string, Finding[]>();
 	for (const finding of findings) {
 		const file = finding.properties.path;
 		byFile.set(file, [...(byFile.get(file) ?? []), finding]);
 	}
-	const files = [...byFile.keys()].sort(ordinal);
-	const sections = files.map((file) =>
+	return [...byFile.keys()].sort(ordinal).map((file) =>
 		[
 			paint("1", visibleText(file)),
 			...byFile
@@ -100,6 +116,54 @@ export function renderFindingsTerminal(log: FindingsLog, options: TerminalRender
 				.map((finding) => block(finding, paint)),
 		].join("\n\n"),
 	);
-	const summary = `${plural(findings.length, "finding")} in ${plural(files.length, "file")}.`;
-	return `${[...sections, summary].join("\n\n")}\n`;
+}
+
+function summary(findings: readonly Finding[]): string {
+	const files = new Set(findings.map((finding) => finding.properties.path)).size;
+	return `${plural(findings.length, "finding")} in ${plural(files, "file")}.`;
+}
+
+const statusLabel: Readonly<Record<VerdictStatus, [color: string, label: string]>> = {
+	passed: ["32", "passed"],
+	findings: ["33", "findings"],
+	"not-reviewed": ["31", "not reviewed"],
+};
+
+const shownResolutions = ["block", "acknowledge", "advisory"] as const;
+
+function capitalised(text: string): string {
+	return `${text[0]!.toUpperCase()}${text.slice(1)}`;
+}
+
+function renderVerdict(verdict: Verdict, paint: Paint): string {
+	const [color, label] = statusLabel[verdict.status];
+	const parts = [`Verdict: ${paint(color, label)}${verdict.blocking ? `, ${paint("31", "blocking")}` : ""}`];
+	if (verdict.notRun.length > 0) {
+		const checks = verdict.notRun.map(({ name, status, reason, error }) =>
+			[
+				`  ${visibleText(name)}  ${status}${reason === undefined ? "" : `: ${prose(reason, "    ")}`}`,
+				...(error === undefined ? [] : [`    Error: ${prose(error, "      ")}`]),
+			].join("\n"),
+		);
+		parts.push([`${plural(verdict.notRun.length, "check")} did not run:`, ...checks].join("\n"));
+	}
+	for (const resolution of shownResolutions) {
+		const findings = verdict.findings[resolution];
+		if (findings.length === 0) continue;
+		parts.push(paint("1", `${capitalised(resolution)}: ${plural(findings.length, "finding")}`));
+		parts.push(...fileSections(findings, paint));
+	}
+	const hidden = [
+		...(verdict.findings.silent.length > 0 ? [`${plural(verdict.findings.silent.length, "silent finding")}`] : []),
+		...(verdict.dismissed.length > 0 ? [`${plural(verdict.dismissed.length, "dismissed finding")}`] : []),
+	];
+	if (hidden.length > 0) parts.push(`${capitalised(hidden.join(" and "))} not shown.`);
+	const shown = shownResolutions.flatMap((resolution) => verdict.findings[resolution]);
+	parts.push(shown.length === 0 ? "No findings." : summary(shown));
+	return `${parts.join("\n\n")}\n`;
+}
+
+/** Renders a verdict as JSON, indented by two spaces and ending in a newline. Its findings are SARIF results. */
+export function renderVerdictJson(verdict: Verdict): string {
+	return `${JSON.stringify(verdict, null, 2)}\n`;
 }

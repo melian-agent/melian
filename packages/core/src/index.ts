@@ -1,3 +1,19 @@
+export {
+	type AdjudicationInput,
+	adjudicate,
+	applyResolutions,
+	type CheckRecord,
+	type CheckStatus,
+	type ConfigFor,
+	dedupeFindings,
+	noRecord,
+	type ResolvedFinding,
+	resolutionOrder,
+	resolveFinding,
+	strongestCause,
+	type Verdict,
+	type VerdictStatus,
+} from "./adjudication.ts";
 export { type CodeLocation, checkEvidence, classifyCause } from "./cause.ts";
 export {
 	type Changeset,
@@ -9,6 +25,7 @@ export {
 	type Revision,
 	resolveRange,
 } from "./changeset.ts";
+export { checksOfTier } from "./checks.ts";
 export {
 	type Band,
 	defaultConfig,
@@ -23,6 +40,7 @@ export {
 	maxConfigBytes,
 	melianYamlSchema,
 	type Resolution,
+	type RuleAlias,
 	resolutionSchema,
 	type Severity,
 	severitySchema,
@@ -31,6 +49,8 @@ export type { ChangedFile, FileKind, FileStatus, Hunk } from "./diff.ts";
 export {
 	ChangesetError,
 	type ChangesetErrorCode,
+	CheckError,
+	type CheckErrorCode,
 	ConfigError,
 	type ConfigErrorCode,
 	FindingError,
@@ -46,6 +66,8 @@ export {
 	type StandardsErrorCode,
 } from "./errors.ts";
 export {
+	type AlsoReportedAs,
+	alsoReportedAsSchema,
 	type Cause,
 	causeSchema,
 	createFinding,
@@ -103,7 +125,13 @@ export {
 } from "./lens.ts";
 export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
 export { melianPaths } from "./paths.ts";
-export { renderFindingsJson, renderFindingsTerminal, type TerminalRenderOptions, visibleText } from "./render.ts";
+export {
+	renderFindingsJson,
+	renderFindingsTerminal,
+	renderVerdictJson,
+	type TerminalRenderOptions,
+	visibleText,
+} from "./render.ts";
 export {
 	listRevisionFiles,
 	type RevisionEntry,
