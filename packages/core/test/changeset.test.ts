@@ -2,7 +2,15 @@ import { mkdirSync, renameSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { ChangesetError, parseRangeSpec, resolveRange } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { gitIn, isolatedGitEnv, lines, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
+import {
+	gitIn,
+	isolatedGitEnv,
+	lines,
+	rejection as rejectionOf,
+	removeDirectory,
+	temporaryDirectory,
+	writeFiles,
+} from "./fixtures/repo.ts";
 
 // main:    base ── main-only
 //             \
@@ -44,14 +52,7 @@ afterEach(() => {
 	removeDirectory(repo);
 });
 
-async function rejection(promise: Promise<unknown>): Promise<ChangesetError> {
-	const error = await promise.then(
-		() => undefined,
-		(error: unknown) => error,
-	);
-	expect(error).toBeInstanceOf(ChangesetError);
-	return error as ChangesetError;
-}
+const rejection = (promise: Promise<unknown>) => rejectionOf(promise, ChangesetError);
 
 describe("parseRangeSpec", () => {
 	it("keeps git's two-dot and three-dot meanings", () => {

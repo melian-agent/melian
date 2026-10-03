@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { ConfigError, defaultConfig, loadConfig, OutsideRepositoryError } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { lines, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
+import { lines, rejection as rejectionOf, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
 
 let repo: string;
 
@@ -14,14 +14,7 @@ afterEach(() => {
 	removeDirectory(repo);
 });
 
-async function rejection(promise: Promise<unknown>): Promise<ConfigError> {
-	const error = await promise.then(
-		() => undefined,
-		(error: unknown) => error,
-	);
-	expect(error).toBeInstanceOf(ConfigError);
-	return error as ConfigError;
-}
+const rejection = (promise: Promise<unknown>) => rejectionOf(promise, ConfigError);
 
 describe("loadConfig", () => {
 	it("returns the design's defaults when no melian.yaml exists", async () => {
