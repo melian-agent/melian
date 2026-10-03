@@ -133,7 +133,7 @@ export class PiCredentialStore implements CredentialStore {
 	}
 }
 
-/** Opens Pi's credential store at `path`, as `new PiCredentialStore(path)` does. */
+/** Creates a {@link PiCredentialStore} over `path`, as `new PiCredentialStore(path)` does. */
 export function piCredentialStore(path: string = piAuthPath()): PiCredentialStore {
 	return new PiCredentialStore(path);
 }
