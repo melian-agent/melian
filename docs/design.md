@@ -63,9 +63,9 @@ Melian follows Pi's philosophy: a minimal core, extensible by design, small enou
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Core** is harness-free TypeScript. It imports pi-ai types and nothing else from Pi. It holds the finding schema and stable IDs, finding diffing across revisions, guardrail evaluation, static tool runners and SARIF normalisation, lens loading, configuration layering, standards and knowledge loaders, the decision-model port, and the GitHub and git clients. All of it is unit-testable without a harness.
+**Core** is harness-free TypeScript. It imports pi-ai types and nothing else from Pi. It holds the finding schema and stable IDs, finding diffing across revisions, guardrail evaluation, SARIF normalisation of static tool output, lens loading, configuration layering, standards and knowledge loaders, the decision-model port, and the GitHub and git clients. All of it is unit-testable without a harness.
 
-**Pipeline** is the only place review flow lives. It is written once against Pi Durable: tasks, child conversations, documents, memos, hooks. Every host embeds this layer; none reimplements it.
+**Pipeline** is the only place review flow lives. It is written once against Pi Durable: tasks, child conversations, documents, memos, hooks. It also holds the static tool runners, because running a tool executes repository code and so goes through Pi Durable's `ExecutionEnv`, which core may not import. Every host embeds this layer; none reimplements it.
 
 **Hosts** adapt triggers, storage, credentials, execution environment, and time budget. The CLI is the primary host. The skills for Claude Code, Codex, and Pi invoke the CLI and relay its output; they never run a review with the host agent's own model. The server host receives webhooks and runs a long-lived harness. The Actions host is ephemeral and self-rescheduling.
 
@@ -356,6 +356,7 @@ Existing code on the base branch is trusted. Submitted changes and comments are 
 
 - Read-only analysis of the head is fine anywhere.
 - Anything that executes head code runs in a sandbox with no secrets. That includes static tools that load repository-controlled plugins, such as eslint configurations.
+- Static tools, such as Biome and tsc, execute in the execution environment, never in the Melian process, because they load the repository's configuration and plugins. Each runs in a temporary worktree of the revision it analyses, never in the user's checkout.
 - Comment commands require write permission on the repository. Comment bodies enter prompts as quoted data behind an injection guard section.
 - Lenses are read-only in version one and never hold write credentials.
 - The `ExecutionEnv` interface, a `FileSystem` plus a `Shell`, is the seam for a container-backed environment. Pi's own repository carries Anthropic's sandbox-runtime as a development dependency; it is a candidate for local isolation.
