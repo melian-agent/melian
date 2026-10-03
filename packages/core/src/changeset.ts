@@ -31,8 +31,9 @@ export interface Revision {
 /**
  * A branch range under review.
  *
- * `id` is stable across revisions and unique within a repository: it hashes the range's refs by name, so new commits
- * on the head branch give a new revision of the same changeset.
+ * `id` is unique within a repository and stable across revisions: it hashes the range's refs by full name, so new
+ * commits on the head branch give a new revision of the same changeset. A side with no ref name, such as a detached
+ * `HEAD` or a commit hash, is hashed by its commit, so every new commit there starts a new changeset.
  */
 export interface RangeChangeset {
 	readonly kind: "range";
@@ -47,10 +48,7 @@ export type Changeset = RangeChangeset;
 
 /** Options for {@link resolveRange}. */
 export interface ResolveRangeOptions {
-	/**
-	 * Throw `dirtyWorktree` when the working tree has uncommitted or untracked changes. Set it when a later step reads
-	 * the head from the working tree rather than from git, so the review cannot silently cover different code.
-	 */
+	/** Throw `dirtyWorktree` when the working tree has uncommitted or untracked changes. */
 	readonly requireClean?: boolean;
 }
 
@@ -171,8 +169,7 @@ export async function resolveRange(
 ): Promise<RangeChangeset> {
 	const spec = typeof range === "string" ? parseRangeSpec(range) : checkRange(range);
 	const root = await repositoryRoot(repoRoot);
-	const baseRef = await commitOf(root, spec.base);
-	const head = await commitOf(root, spec.head);
+	const [baseRef, head] = await Promise.all([commitOf(root, spec.base), commitOf(root, spec.head)]);
 	const base = spec.mode === "threeDot" ? await mergeBase(root, spec, baseRef, head) : baseRef;
 	if (options.requireClean) {
 		const paths = await dirtyPaths(root);
@@ -182,12 +179,8 @@ export async function resolveRange(
 			});
 		}
 	}
-	const identity = [
-		"range",
-		spec.mode,
-		await canonicalName(root, spec.base, baseRef),
-		await canonicalName(root, spec.head, head),
-	].join("\0");
+	const names = await Promise.all([canonicalName(root, spec.base, baseRef), canonicalName(root, spec.head, head)]);
+	const identity = ["range", spec.mode, ...names].join("\0");
 	return {
 		kind: "range",
 		id: `range-${createHash("sha256").update(identity).digest("hex").slice(0, 16)}`,
