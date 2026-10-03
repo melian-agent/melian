@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { stat } from "node:fs/promises";
-import { type ChangedFile, joinDiff, parseNameStatus, parseNumstatBinary, parsePatchHunks } from "./diff.ts";
+import { type ChangedFile, joinDiff, parseNumstatBinary, parsePatchHunks, parseRaw } from "./diff.ts";
 import { ChangesetError } from "./errors.ts";
-import { git, gitOutput } from "./git.ts";
+import { git, gitFailure, gitOutput, gitOutputBytes, isNotARepository, requireGitVersion } from "./git.ts";
+import { isPolicyFile } from "./paths.ts";
 
 /**
  * How a range picks its base.
@@ -21,11 +22,19 @@ export interface RangeSpec {
 	readonly mode: RangeMode;
 }
 
-/** One version of a changeset, identified by its head commit. Base and head are full commit hashes. */
+/**
+ * One version of a changeset, identified by its head commit. Base and head are full commit hashes.
+ *
+ * `policyFiles` lists, sorted, every path in `files` that steers Melian itself: a `melian.yaml`, an `AGENTS.md` or
+ * `CLAUDE.md`, or anything under a `.melian/` directory, at any depth, on either side of a rename. A review reads
+ * policy from the base, so these changes are reviewed as code rather than obeyed; a lens can be handed them as quoted
+ * data. A file such a standard imports with `@` is not listed, because only loading the standards reveals it.
+ */
 export interface Revision {
 	readonly head: string;
 	readonly base: string;
 	readonly files: readonly ChangedFile[];
+	readonly policyFiles: readonly string[];
 }
 
 /**
@@ -78,7 +87,8 @@ export function parseRangeSpec(spec: string): RangeSpec {
 // Refuses anything git could read as an option or a second range before it reaches a git argument list.
 function checkRange(spec: RangeSpec): RangeSpec {
 	for (const side of [spec.base, spec.head]) {
-		if (side === "" || side.includes("..") || side.startsWith("-") || /\s/.test(side)) {
+		// `^ref` is a negation: rev-parse answers `^<sha>`, which is not a commit.
+		if (side === "" || side.includes("..") || side.startsWith("-") || side.startsWith("^") || /\s/.test(side)) {
 			throw new ChangesetError("invalidRange", `"${side}" is not a ref`, { ref: side });
 		}
 	}
@@ -89,14 +99,21 @@ async function repositoryRoot(path: string): Promise<string> {
 	const notARepository = new ChangesetError("notARepository", `${path} is not inside a git working tree`);
 	const info = await stat(path).catch(() => undefined);
 	if (!info?.isDirectory()) throw notARepository;
-	const result = await git(path, ["rev-parse", "--show-toplevel"]);
-	if (result.code !== 0) throw notARepository;
+	const args = ["rev-parse", "--show-toplevel"];
+	const result = await git(path, args);
+	// Only git's own words mean no repository. Dubious ownership or a broken config also fail here, and need saying.
+	if (result.code !== 0) throw isNotARepository(result.stderr) ? notARepository : gitFailure(args, result);
 	return result.stdout.trim();
 }
 
+// --quiet silences an unknown ref, so anything on stderr is a different failure.
 async function commitOf(repoRoot: string, ref: string): Promise<string> {
-	const result = await git(repoRoot, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]);
-	if (result.code !== 0) throw new ChangesetError("unknownRef", `${ref} does not name a commit`, { ref });
+	const args = ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`];
+	const result = await git(repoRoot, args);
+	if (result.code !== 0 && result.stderr.trim() === "") {
+		throw new ChangesetError("unknownRef", `${ref} does not name a commit`, { ref });
+	}
+	if (result.code !== 0) throw gitFailure(args, result);
 	return result.stdout.trim();
 }
 
@@ -109,17 +126,26 @@ async function canonicalName(repoRoot: string, ref: string, commit: string): Pro
 }
 
 async function mergeBase(repoRoot: string, spec: RangeSpec, base: string, head: string): Promise<string> {
-	const result = await git(repoRoot, ["merge-base", base, head]);
-	if (result.code !== 0) {
+	const args = ["merge-base", base, head];
+	const result = await git(repoRoot, args);
+	// git exits 1 without a word when the sides share no history, and 128 with a message for anything else.
+	if (result.code === 1 && result.stderr.trim() === "") {
 		throw new ChangesetError("noMergeBase", `${spec.base} and ${spec.head} share no history`, {
 			ref: `${spec.base}...${spec.head}`,
 		});
 	}
+	if (result.code !== 0) throw gitFailure(args, result);
 	return result.stdout.trim();
 }
 
 async function dirtyPaths(repoRoot: string): Promise<string[]> {
-	const output = await gitOutput(repoRoot, ["status", "--porcelain=v1", "-z", "--untracked-files=normal"]);
+	const output = await gitOutput(repoRoot, [
+		"status",
+		"--porcelain=v1",
+		"-z",
+		"--untracked-files=normal",
+		"--ignore-submodules=none",
+	]);
 	const paths: string[] = [];
 	const fields = output.split("\0");
 	for (let i = 0; i < fields.length && fields[i] !== ""; i++) {
@@ -143,28 +169,43 @@ const diffFlags = [
 	"--indent-heuristic",
 	"--inter-hunk-context=0",
 	"--submodule=short",
+	// Overrides diff.ignoreSubmodules and the ignore setting in .gitmodules, which a head commit controls.
+	"--ignore-submodules=none",
 	// Cancels diff.orderFile, so files come in git's path order.
 	"-O/dev/null",
 ];
 
 async function diff(repoRoot: string, base: string, head: string): Promise<ChangedFile[]> {
 	// diff.renames=copies would report copies, whose hunks are against the copy's source.
-	const run = (format: string[]) =>
-		gitOutput(repoRoot, ["-c", "diff.renames=true", "diff", ...diffFlags, ...format, base, head, "--"]);
-	const [nameStatus, numstat, patch] = await Promise.all([
-		run(["--name-status", "-z"]),
-		run(["--numstat", "-z"]),
-		run(["--unified=0"]),
+	// The working tree's .gitattributes belong to whatever is checked out, often the head; `*.ts -diff` there would
+	// turn the head's own changes into a binary file with no hunks.
+	const args = (format: string[]) => [
+		`--attr-source=${base}`,
+		"-c",
+		"diff.renames=true",
+		"diff",
+		...diffFlags,
+		...format,
+		base,
+		head,
+		"--",
+	];
+	// Paths come from the raw view as bytes; the other two views only need counting.
+	const [raw, numstat, patch] = await Promise.all([
+		gitOutputBytes(repoRoot, args(["--raw", "-z", "--no-abbrev"])),
+		gitOutput(repoRoot, args(["--numstat", "-z"])),
+		gitOutput(repoRoot, args(["--unified=0"])),
 	]);
-	return joinDiff(parseNameStatus(nameStatus), parseNumstatBinary(numstat), parsePatchHunks(patch));
+	return joinDiff(parseRaw(raw), parseNumstatBinary(numstat), parsePatchHunks(patch));
 }
 
 /**
  * Resolves a range in the repository containing `repoRoot` to a changeset with one revision.
  *
  * Shells out to `git`. Throws {@link ChangesetError}: `notARepository`, `invalidRange`, `unknownRef`, `noMergeBase`
- * when a three-dot range has unrelated sides, `dirtyWorktree` under `requireClean`, and `gitUnavailable` or `gitFailed`
- * when git itself fails.
+ * when a three-dot range has unrelated sides, `dirtyWorktree` under `requireClean`, `gitTooOld` before git 2.40, and
+ * `gitUnavailable` or `gitFailed` when git itself fails. Diff attributes come from the base commit, never from the
+ * working tree.
  */
 export async function resolveRange(
 	repoRoot: string,
@@ -173,6 +214,7 @@ export async function resolveRange(
 ): Promise<RangeChangeset> {
 	const spec = typeof range === "string" ? parseRangeSpec(range) : checkRange(range);
 	const root = await repositoryRoot(repoRoot);
+	await requireGitVersion(root);
 	const [baseRef, head] = await Promise.all([commitOf(root, spec.base), commitOf(root, spec.head)]);
 	const base = spec.mode === "threeDot" ? await mergeBase(root, spec, baseRef, head) : baseRef;
 	if (options.requireClean) {
@@ -185,11 +227,13 @@ export async function resolveRange(
 	}
 	const names = await Promise.all([canonicalName(root, spec.base, baseRef), canonicalName(root, spec.head, head)]);
 	const identity = ["range", spec.mode, ...names].join("\0");
+	const files = await diff(root, base, head);
+	const touched = files.flatMap((file) => (file.oldPath === undefined ? [file.path] : [file.oldPath, file.path]));
 	return {
 		kind: "range",
 		id: `range-${createHash("sha256").update(identity).digest("hex").slice(0, 16)}`,
 		repoRoot: root,
 		spec,
-		revision: { head, base, files: await diff(root, base, head) },
+		revision: { head, base, files, policyFiles: [...new Set(touched.filter(isPolicyFile))].sort() },
 	};
 }

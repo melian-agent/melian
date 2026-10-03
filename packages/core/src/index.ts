@@ -19,13 +19,14 @@ export {
 	type MelianConfig,
 	type MelianYaml,
 	type ModelRoute,
+	maxConfigBytes,
 	melianYamlSchema,
 	type Resolution,
 	resolutionSchema,
 	type Severity,
 	severitySchema,
 } from "./config.ts";
-export type { ChangedFile, FileStatus, Hunk } from "./diff.ts";
+export type { ChangedFile, FileKind, FileStatus, Hunk } from "./diff.ts";
 export {
 	ChangesetError,
 	type ChangesetErrorCode,
@@ -34,6 +35,8 @@ export {
 	FindingError,
 	type FindingErrorCode,
 	OutsideRepositoryError,
+	StandardsError,
+	type StandardsErrorCode,
 } from "./errors.ts";
 export {
 	type Cause,
@@ -71,6 +74,7 @@ export {
 } from "./findings.ts";
 export { melianPaths } from "./paths.ts";
 export { renderFindingsJson, renderFindingsTerminal, type TerminalRenderOptions } from "./render.ts";
-export { loadStandards, type StandardsSection } from "./standards.ts";
+export type { RepositorySource } from "./source.ts";
+export { loadStandards, type StandardsSection, standardsLimits } from "./standards.ts";
 
 export const packageName = "@melian-agent/core";

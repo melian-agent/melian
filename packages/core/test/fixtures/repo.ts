@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import type { RepositorySource } from "@melian-agent/core";
 import { expect } from "vitest";
 
 // Isolates git from the developer's own configuration, such as commit signing or a different diff algorithm.
@@ -35,6 +36,16 @@ export function lines(...content: string[]): string {
 
 export function gitIn(root: string, ...args: string[]): string {
 	return execFileSync("git", args, { cwd: root, env: { ...process.env, ...isolatedGitEnv }, encoding: "utf8" }).trim();
+}
+
+export const sourceKinds = ["worktree", "revision"] as const;
+
+// The working tree, or a commit of everything in it, so that one test body exercises both sources on the same files.
+export function sourceFor(root: string, kind: (typeof sourceKinds)[number]): RepositorySource {
+	if (kind === "worktree") return { kind };
+	gitIn(root, "add", "--all");
+	gitIn(root, "commit", "--quiet", "--allow-empty", "-m", "snapshot");
+	return { kind: "revision", commit: gitIn(root, "rev-parse", "HEAD") };
 }
 
 // Resolves to the error a promise rejects with, failing the test unless it rejects with an instance of `type`.

@@ -1,10 +1,9 @@
-import { stat } from "node:fs/promises";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import { OutsideRepositoryError } from "./errors.ts";
 
 /**
- * Where Melian's files live, relative to a directory in the repository. `melian.yaml` may sit in any directory. The
- * `.melian/` directory at the repository root holds lenses, standards, and knowledge.
+ * Where Melian's files live, relative to a directory in the repository. `melian.yaml` and `.melian/` may sit in any
+ * directory; `standards` and `lenses` resolve nearest-first like `melian.yaml`. `knowledge` is read only at the root.
  */
 export const melianPaths = {
 	config: "melian.yaml",
@@ -14,20 +13,26 @@ export const melianPaths = {
 	knowledge: ".melian/knowledge",
 } as const;
 
-export function repoRelative(repoRoot: string, path: string): string {
-	return relative(repoRoot, path).split(sep).join("/");
+const policyNames = new Set([melianPaths.config, "AGENTS.md", "CLAUDE.md"]);
+
+// Whether a repository-relative path steers Melian: a melian.yaml, a standards file, or anything under a .melian/.
+export function isPolicyFile(path: string): boolean {
+	const segments = path.split("/");
+	return policyNames.has(segments.at(-1)!) || segments.slice(0, -1).includes(melianPaths.home);
 }
 
-// A path that does not exist, such as a file the changeset deleted, counts as a file.
-export async function directoriesUpToRoot(repoRoot: string, path: string): Promise<string[]> {
+// A path given to a loader, absolute or relative to the root, as a repository-relative path with forward slashes.
+export function repoPath(repoRoot: string, path: string): string {
 	const root = resolve(repoRoot);
-	const target = resolve(root, path);
-	const fromRoot = relative(root, target);
+	const fromRoot = relative(root, resolve(root, path));
 	if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`) || isAbsolute(fromRoot))
 		throw new OutsideRepositoryError(path, root);
-	const segments = fromRoot === "" ? [] : fromRoot.split(sep);
-	const isDirectory = segments.length === 0 || ((await stat(target).catch(() => undefined))?.isDirectory() ?? false);
+	return fromRoot.split(sep).join("/");
+}
+
+// Nearest first, ending with "" for the root. Walking segments, never the filesystem, always ends.
+export function directoriesUpToRoot(path: string, isDirectory: boolean): string[] {
+	const segments = path === "" ? [] : path.split("/");
 	if (!isDirectory) segments.pop();
-	// Walking segments rather than calling dirname until it reaches the root ends even when the root does not exist.
-	return segments.map((_, index) => join(root, ...segments.slice(0, segments.length - index))).concat(root);
+	return segments.map((_, index) => segments.slice(0, segments.length - index).join("/")).concat("");
 }
