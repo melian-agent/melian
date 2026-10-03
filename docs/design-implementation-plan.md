@@ -8,7 +8,7 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done. Each step names
 
 A pull request on melian-agent/melian is reviewed by `melian review` run against the branch, findings are posted to the pull request through the CLI, and the author fixes or dismisses them before merge. Local CLI only, maintainer pull requests only, no Actions host.
 
-Open, pending one real publication through the CLI. On 2026-10-03 Melian reviewed its own unmerged stack through the CLI on real models and found the defect that kept its own skill from running here; [packages/evals/runs/2026-10-03-first-self-review.md](../packages/evals/runs/2026-10-03-first-self-review.md) records the run. But the milestone requires findings posted to the pull request through the CLI, and `melian publish` has never run against GitHub. The maintainer closes it by running `melian review "#21" --model <provider/id>`, then `melian publish "#21"`, on [pull request #21](https://github.com/melian-agent/melian/pull/21); `--model` is needed because a pull request review reads its base's `melian.yaml`, which routes no model. The record of that run goes in `packages/evals/runs/`. The golden-fixtures track remains open.
+Closed on 2026-10-04 with the first real publication. The maintainer ran `melian review "#28" --model anthropic/claude-opus-5-5`, then `melian publish "#28"`, on [pull request #28](https://github.com/melian-agent/melian/pull/28), and the review, its inline comment, and the `melian/review` status reached GitHub; a second publish posted nothing. [packages/evals/runs/2026-10-04-first-publish.md](../packages/evals/runs/2026-10-04-first-publish.md) records the run. The [first self-review](../packages/evals/runs/2026-10-03-first-self-review.md) on 2026-10-03 had reviewed through the CLI but posted nothing. The golden-fixtures track remains open.
 
 ### Critical path
 
@@ -25,7 +25,7 @@ Open, pending one real publication through the CLI. On 2026-10-03 Melian reviewe
 ### Parallel tracks
 
 - `[x]` **Comparison reviews.** Every Melian pull request is also reviewed by Claude Code's review skill and by Codex review through its skill, for as long as the comparison is informative. Each finding that one reviewer raised and another did not is adjudicated by a maintainer and, if valid, added to the golden corpus. Each finding that was raised and judged noise is recorded as a negative golden. This is the first eval and it costs nothing to run.
-- `[ ]` **Golden fixtures.** Start with the three from step 5. Grow by one golden per comparison difference. Keep Martian's golden format as the base so their judge runs unchanged.
+- `[~]` **Golden fixtures.** Start with the three from step 5. Grow by one golden per comparison difference. Keep Martian's golden format as the base so their judge runs unchanged. Four goldens exist in Martian's format, the step 5 three and `injection-in-comment`, and three live runs are recorded. The comparison records mark about 150 differences as goldens, and only `injection-in-comment` has been written.
 - `[x]` **Contributing guide.** States that Melian reviews maintainer pull requests only until container isolation exists.
 
 ### Explicitly deferred from milestone 1
