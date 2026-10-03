@@ -8,6 +8,7 @@ describe("checksOfTier", () => {
 			"guardrails",
 			"static.biome",
 			"static.tsc",
+			"decisions.fast",
 			"lens.correctness",
 			"lens.contracts",
 		]);
@@ -28,9 +29,10 @@ describe("checksOfTier", () => {
 		]);
 	});
 
-	it("names in the default tiers only checks that ship", () => {
+	it("names in the default tiers only checks that ship, and decisions.fast", () => {
 		const builtinLens = (name: string) => existsSync(new URL(`../lenses/${name}/LENS.md`, import.meta.url));
-		const deterministic: readonly string[] = deterministicChecks;
+		// decisions.fast is an allowed skip until a decision provider is configured.
+		const deterministic: readonly string[] = [...deterministicChecks, "decisions.fast"];
 		for (const tier of Object.keys(defaultConfig.tiers)) {
 			for (const check of checksOfTier(defaultConfig, tier)) {
 				const lens = check.startsWith("lens.") ? check.slice("lens.".length) : undefined;

@@ -309,10 +309,16 @@ describe("runChecks feeding reviewChangeset", () => {
 			});
 		};
 
-		expect((await review(clean)).verdict).toMatchObject({ status: "passed", blocking: false, notRun: [] });
+		// The default fast tier names decisions.fast, an allowed skip while no decision provider is configured.
+		const decisions = {
+			name: "decisions.fast",
+			status: "skipped",
+			reason: "decision-model questions are not built yet",
+		};
+		expect((await review(clean)).verdict).toMatchObject({ status: "passed", blocking: false, notRun: [decisions] });
 
 		const { verdict } = await review(dirty);
-		expect(verdict).toMatchObject({ status: "findings", notRun: [] });
+		expect(verdict).toMatchObject({ status: "findings", notRun: [decisions] });
 		expect(verdict.findings.acknowledge.map((finding) => finding.ruleId)).toEqual([
 			"biome/suspicious/noDoubleEquals",
 		]);
