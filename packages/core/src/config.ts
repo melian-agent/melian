@@ -147,14 +147,29 @@ function isPlain(value: unknown): value is Plain {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// Objects merge key by key; anything else, arrays included, is replaced by the nearer value.
+// Objects merge key by key; anything else, arrays included, is replaced by the nearer value. Merged objects have no
+// prototype, so a lens named `constructor` or `toString` is looked up like any other.
 function merge(under: Plain, over: Plain): Plain {
-	const merged: Plain = { ...under };
+	const merged: Plain = Object.assign(Object.create(null), under);
 	for (const [key, value] of Object.entries(over)) {
 		const below = merged[key];
-		merged[key] = isPlain(below) && isPlain(value) ? merge(below, value) : value;
+		merged[key] = isPlain(below) && isPlain(value) ? merge(below, value) : isPlain(value) ? merge({}, value) : value;
 	}
 	return merged;
+}
+
+// `__proto__` as a key would replace a merged object's prototype wherever a later step copies it.
+function rejectReservedKeys(file: string, value: unknown, path: string[] = []): void {
+	if (!isPlain(value)) return;
+	for (const [key, child] of Object.entries(value)) {
+		const at = [...path, key];
+		if (key === "__proto__") {
+			throw new ConfigError("reservedKey", file, `${file}: "${at.join(".")}" uses a reserved key`, {
+				key: at.join("."),
+			});
+		}
+		rejectReservedKeys(file, child, at);
+	}
 }
 
 function dotted(instancePath: string): string {
@@ -193,6 +208,7 @@ async function readLayer(repoRoot: string, file: string): Promise<MelianYaml | u
 		throw new ConfigError("invalidYaml", file, `${file}: ${problem.message}`, { cause: problem });
 	}
 	const value: unknown = document.toJS() ?? {};
+	rejectReservedKeys(file, value);
 	validate(file, value, melianYamlSchema);
 	return anchorLensPaths(repoRelative(repoRoot, dirname(file)), value as MelianYaml);
 }
@@ -253,7 +269,7 @@ export async function loadConfig(repoRoot: string, path: string): Promise<Loaded
 		const layer = await readLayer(repoRoot, file);
 		if (layer !== undefined) layers.push({ file, layer });
 	}
-	const defaults = structuredClone(defaultConfig) as unknown as Plain;
+	const defaults = merge({}, structuredClone(defaultConfig) as unknown as Plain);
 	const config = layers.reduceRight((merged, { layer }) => merge(merged, layer), defaults) as unknown as MelianConfig;
 	checkBands(config, layers);
 	return { config, sources: layers.map(({ file }) => file) };

@@ -136,6 +136,27 @@ describe("loadConfig", () => {
 		expect(error.message).toContain(key);
 	});
 
+	it.each([
+		["lenses:\n  __proto__:\n    tier: heavy", "lenses.__proto__"],
+		["decisions:\n  thresholds:\n    __proto__:\n      drop: 0.1", "decisions.thresholds.__proto__"],
+		["__proto__:\n  polluted: true", "__proto__"],
+	])("rejects __proto__ as a key in %j", async (yaml, key) => {
+		writeFiles(repo, { "melian.yaml": yaml });
+		expect(await rejection(loadConfig(repo, "a.ts"))).toMatchObject({ code: "reservedKey", key });
+	});
+
+	it("looks up a lens named like an Object method as any other lens", async () => {
+		const { config: defaults } = await loadConfig(repo, "a.ts");
+		expect(defaults.lenses.toString).toBeUndefined();
+		writeFiles(repo, {
+			"melian.yaml": lines("lenses:", "  constructor:", "    tier: heavy", "  toString:", "    enabled: false"),
+		});
+		const { config } = await loadConfig(repo, "a.ts");
+		expect(config.lenses.constructor).toEqual({ tier: "heavy" });
+		expect(config.lenses.toString).toEqual({ enabled: false });
+		expect(config.stages.hasOwnProperty).toBeUndefined();
+	});
+
 	it("rejects a value outside its set, listing the allowed values", async () => {
 		writeFiles(repo, { "melian.yaml": lines("resolution:", "  P0: blocker") });
 		const error = await rejection(loadConfig(repo, "a.ts"));

@@ -79,6 +79,8 @@ Lenses are a map keyed by name rather than `enable` and `disable` lists, so that
 
 Unknown keys are errors that name the key and the file, because a misspelt key otherwise falls back to a default without a word.
 
+A `__proto__` key anywhere is a `reservedKey` error. Problem: `lenses: { __proto__: { tier: heavy } }` merged into a plain object replaces its prototype, so every lens no file configures appears to have `tier: heavy`. Solution: the loader refuses the key, and builds merged objects with no prototype, so a lens named `constructor` or `toString` is looked up like any other.
+
 ## Tests
 
 - Run the package's tests with `npm test --workspace @melian-agent/core`, or one file with `npx vitest --run packages/core/test/changeset.test.ts` from the repository root.
