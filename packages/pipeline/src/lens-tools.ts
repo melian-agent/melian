@@ -115,7 +115,34 @@ export const LensDocument = defineDoc<{ lens?: LensPolicy }>({
 	initial: () => ({}),
 });
 
+// What one read_file call returns, at most. The file itself is read whole, so any line can be reached by startLine.
 const maxReadLines = 2000;
+
+// Pi Durable cuts a tool's result at 50 KB or 2000 lines unless the tool says otherwise, which would drop a boundary's
+// closing tag and Melian's notes. Each tool bounds the body it quotes below that, and sets Pi's limit above it.
+const maxShownBytes = 48 * 1024;
+const outputLimits = { maxBytes: 64 * 1024, maxLines: maxReadLines + 50 } as const;
+
+// The leading rows that fit in `maxShownBytes`, joined by newlines; a first row too long alone is cut to fit.
+function fitting(rows: readonly string[]): { body: string; count: number } {
+	const shown: string[] = [];
+	let size = 0;
+	for (const row of rows) {
+		const bytes = Buffer.byteLength(row) + 1;
+		if (size + bytes > maxShownBytes) {
+			if (shown.length === 0)
+				shown.push(
+					`${Buffer.from(row)
+						.subarray(0, maxShownBytes - 64)
+						.toString()} [line cut]`,
+				);
+			break;
+		}
+		shown.push(row);
+		size += bytes;
+	}
+	return { body: shown.join("\n"), count: shown.length };
+}
 
 async function lensOf(reader: DocumentReader, conversationId: ConversationId, context: Context): Promise<LensPolicy> {
 	const lens = (await reader.snapshot(LensDocument, conversationId, context))?.lens;
@@ -134,25 +161,27 @@ function text(content: string) {
 const readFile = defineTool({
 	name: "read_file",
 	description:
-		"Read a file as it is at the head revision under review, with line numbers. Reads up to 2000 lines from startLine.",
+		"Read a file as it is at the head revision under review, with line numbers: up to maxLines lines, at most 2000, from startLine. Any line of the file can be reached by startLine.",
 	parameters: Type.Object({
 		path: Type.String({ minLength: 1, description: "Repository-relative path" }),
-		startLine: Type.Optional(Type.Integer({ minimum: 1 })),
-		endLine: Type.Optional(Type.Integer({ minimum: 1 })),
+		startLine: Type.Optional(Type.Integer({ minimum: 1, description: "First line to read; 1 when absent" })),
+		maxLines: Type.Optional(Type.Integer({ minimum: 1, maximum: maxReadLines, description: "At most 2000" })),
 	}),
 	replay: "safe",
+	outputLimits,
 	execute: async (args, api, context) => {
 		const review = await headOf(api, api.conversationId, context);
 		const file = await readRevisionFile(review.repoRoot, review.head, args.path);
 		const lines = file.content.split("\n");
 		if (lines.at(-1) === "" && !file.truncated) lines.pop();
 		const start = args.startLine ?? 1;
-		const end = Math.min(args.endLine ?? lines.length, start + maxReadLines - 1, lines.length);
-		const width = String(end).length;
-		const body = lines
-			.slice(start - 1, end)
-			.map((line, index) => `${String(start + index).padStart(width)}\t${line}`)
-			.join("\n");
+		const last = Math.min(start + (args.maxLines ?? maxReadLines) - 1, lines.length);
+		const width = String(last).length;
+		const window = lines
+			.slice(start - 1, last)
+			.map((line, index) => `${String(start + index).padStart(width)}\t${line}`);
+		const { body, count } = fitting(window);
+		const end = start - 1 + count;
 		const notes = [
 			end < lines.length ? `[lines ${end + 1} onward not shown; read again with startLine ${end + 1}]` : undefined,
 			file.truncated ? `[the file is ${file.size} bytes; only the first part was read]` : undefined,
@@ -173,6 +202,7 @@ const search = defineTool({
 		path: Type.Optional(Type.String({ description: "Search only this file or directory" })),
 	}),
 	replay: "safe",
+	outputLimits,
 	execute: async (args, api, context) => {
 		const review = await headOf(api, api.conversationId, context);
 		// The base's attributes decide what is binary, as they do for the diff, so a head cannot hide its files.
@@ -183,8 +213,9 @@ const search = defineTool({
 			return text("[matches found, but their lines are too long to show; narrow the search with path]");
 		if (matches.length === 0) return text("No matches.");
 		const lines = matches.map((match) => `${visibleText(match.path)}:${match.line}: ${match.text}`);
-		const notes = truncated ? ["[more matches not shown; narrow the search]"] : [];
-		return text([quoteUntrusted("search", lines.join("\n"), review.nonce), ...notes].join("\n"));
+		const { body, count } = fitting(lines);
+		const notes = truncated || count < lines.length ? ["[more matches not shown; narrow the search]"] : [];
+		return text([quoteUntrusted("search", body, review.nonce), ...notes].join("\n"));
 	},
 });
 
@@ -203,12 +234,14 @@ const listFiles = defineTool({
 		recursive: Type.Optional(Type.Boolean()),
 	}),
 	replay: "safe",
+	outputLimits,
 	execute: async (args, api, context) => {
 		const review = await headOf(api, api.conversationId, context);
 		const { entries, truncated } = await listRevisionFiles(review.repoRoot, review.head, args);
 		if (entries.length === 0) return text("Empty.");
-		const listing = quoteUntrusted("listing", entries.map(describeEntry).join("\n"), review.nonce);
-		return text([listing, ...(truncated ? ["[more entries not shown]"] : [])].join("\n"));
+		const { body, count } = fitting(entries.map(describeEntry));
+		const listing = quoteUntrusted("listing", body, review.nonce);
+		return text([listing, ...(truncated || count < entries.length ? ["[more entries not shown]"] : [])].join("\n"));
 	},
 });
 

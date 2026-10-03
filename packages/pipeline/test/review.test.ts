@@ -210,7 +210,7 @@ describe("reviewChangeset", () => {
 			{
 				match: correctness,
 				replies: [
-					calls(["read_file", { path: "src/user.ts", startLine: 7, endLine: 7 }], ["list_files", {}]),
+					calls(["read_file", { path: "src/user.ts", startLine: 7, maxLines: 1 }], ["list_files", {}]),
 					fauxAssistantMessage("Done."),
 				],
 			},
@@ -325,6 +325,42 @@ describe("reviewChangeset", () => {
 		);
 		expect(offered(requests[contracts]![0]!)).toEqual(["read_file", "report_finding"]);
 		expect(toolResults(requests[contracts]![1]!)[0]).not.toContain("src/report.ts:1");
+	});
+
+	it("reads and reports any line of a file far longer than one read returns", async () => {
+		const long = Array.from({ length: 10_000 }, (_, index) => `export const value${index + 1} = ${"x".repeat(30)};`);
+		writeFiles(repo, { "src/long.ts": lines(...long) });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "a long file");
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					calls(["read_file", { path: "src/long.ts" }], ["read_file", { path: "src/long.ts", startLine: 9998 }]),
+					call("report_finding", { ...nullDeref, file: "src/long.ts", line: 9999, rule: "wrong-result" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const findings = await review({ lenses: lenses.map((lens) => ({ ...lens, paths: ["**"] })) });
+
+		const nonce = nonceOf(requests[correctness]![0]!);
+		const [first, tail] = toolResults(requests[correctness]![1]!);
+		// Each line is about 60 bytes, so a read stops at the per-call bound, well short of 2000 lines, and says where.
+		const firstLines = quoted(first!, nonce, "file")[0]!.split("\n");
+		expect(firstLines.length).toBeGreaterThan(500);
+		expect(firstLines.length).toBeLessThan(2000);
+		const next = firstLines.length + 1;
+		expect(first!.endsWith(`[lines ${next} onward not shown; read again with startLine ${next}]`)).toBe(true);
+		expect(
+			quoted(tail!, nonce, "file")[0]!
+				.split("\n")
+				.map((line) => line.split("\t")[0]!.trim()),
+		).toEqual(["9998", "9999", "10000"]);
+		expect(toolResults(requests[correctness]![2]!).at(-1)).toMatch(/^recorded finding/);
+		expect(findings.map((finding) => finding.locations[0]!.physicalLocation.region.startLine)).toContain(9999);
 	});
 
 	it("refuses lines past the end of the file", async () => {

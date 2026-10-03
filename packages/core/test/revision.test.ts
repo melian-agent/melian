@@ -76,6 +76,16 @@ describe("readRevisionFile", () => {
 		expect((await readRevisionFile(repo, head, "src/sub/*.ts")).content).toBe("literal star\n");
 	});
 
+	it("reads a file far past what one tool call shows, whole", async () => {
+		gitIn(repo, "checkout", "--quiet", "--", ".");
+		writeFiles(repo, { "big.ts": "const line = 0;\n".repeat(30_000) });
+		gitIn(repo, "add", ".");
+		gitIn(repo, "commit", "--quiet", "-m", "big");
+		const file = await readRevisionFile(repo, gitIn(repo, "rev-parse", "HEAD"), "big.ts");
+		expect(file).toMatchObject({ size: 480_000, truncated: false });
+		expect(file.content.split("\n")).toHaveLength(30_001);
+	});
+
 	it("cuts a file at the byte limit", async () => {
 		const file = await readRevisionFile(repo, head, "src/total.ts", 10);
 		expect(file).toMatchObject({ content: "export fun", truncated: true });

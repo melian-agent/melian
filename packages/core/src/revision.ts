@@ -44,9 +44,12 @@ export interface RevisionSearch {
 	readonly path?: string;
 }
 
-/** The bounds every revision read applies, so a model's tool call cannot pull an unbounded answer into its context. */
+/**
+ * The bounds every revision read applies. `fileBytes` caps one blob read, high enough that a lens reaches every line of
+ * any file it should review; a tool bounds what it shows per call, not what it reads.
+ */
 export const revisionLimits = {
-	fileBytes: 256 * 1024,
+	fileBytes: 8 * 1024 * 1024,
 	searchMatches: 200,
 	matchChars: 300,
 	listEntries: 1000,

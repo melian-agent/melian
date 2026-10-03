@@ -76,7 +76,9 @@ Everything that originates from the head revision reaches a lens inside a bounda
 
 ### Lens tools
 
-`read_file`, `search`, and `list_files` read the head commit through core's `readRevisionFile`, `searchRevision`, and `listRevisionFiles`, never the working tree. They find the head through the calling conversation's `LensDocument`. All three are replay-safe because they only read.
+`read_file`, `search`, and `list_files` read the head commit through core's `readRevisionFile`, `searchRevision`, and `listRevisionFiles`, never the working tree. They bound output per call, never the file: `read_file` takes `startLine` and `maxLines`, at most 2000, reads the window from the whole blob, and ends with a note naming the next `startLine`, so any line is reachable. `report_finding` checks a line against the file's true line count.
+
+Pi Durable cuts a tool's result at 50 KB or 2000 lines unless the tool sets `outputLimits`, keeping the head. That cut dropped a boundary's closing tag and Melian's notes. Each lens tool therefore bounds the body it quotes at 48 KiB and sets `outputLimits` above it, so Pi never cuts. A new tool that returns head content does the same. They find the head through the calling conversation's `LensDocument`. All three are replay-safe because they only read.
 
 `report_finding` takes a file, a line, an optional end line, a rule, a severity, an explanation (what, why, fix), and optional evidence. The model supplies nothing else:
 
