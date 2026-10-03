@@ -15,6 +15,7 @@ export {
 	type LensSettings,
 	type LensTier,
 	type LoadedConfig,
+	lensTierSchema,
 	loadConfig,
 	type MelianConfig,
 	type MelianYaml,
@@ -34,6 +35,8 @@ export {
 	type ConfigErrorCode,
 	FindingError,
 	type FindingErrorCode,
+	LensError,
+	type LensErrorCode,
 	ModelRoutingError,
 	type ModelRoutingErrorCode,
 	OutsideRepositoryError,
@@ -72,6 +75,20 @@ export {
 	sarifLevelSchema,
 	sarifSchemaUri,
 } from "./findings.ts";
+export {
+	type Lens,
+	type LensFrontMatter,
+	type LensRule,
+	type LensToolName,
+	lensFrontMatterSchema,
+	lensLimits,
+	lensRuleSchema,
+	lensToolNames,
+	loadLenses,
+	parseLensFile,
+	renderLensInstructions,
+	selectLenses,
+} from "./lens.ts";
 export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
 export { melianPaths } from "./paths.ts";
 export { renderFindingsJson, renderFindingsTerminal, type TerminalRenderOptions } from "./render.ts";

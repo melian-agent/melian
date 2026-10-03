@@ -159,8 +159,11 @@ A lens is a directory containing `LENS.md`, modelled on the Agent Skills layout 
 name: security
 description: Injection, authz, secrets, unsafe deserialisation, SSRF, crypto misuse.
 tier: heavy
-tools: [read, grep, find]
+tools: [read_file, search, list_files]
 severities: [P0, P1, P2]
+rules:
+  - id: injection
+    description: Request input reaches a query, command, or template unescaped.
 paths: ["**"]
 budget: { findings: 8, tokens: 200k }
 extends: ~
@@ -174,12 +177,14 @@ Report through the finding tool.
 Front matter is routing; the body is the system prompt for the lens's child conversation.
 
 - `tier` names a model tier, never a model ID. Tiers resolve through model routing, which is overridable per path.
-- `tools` is a read-only allowlist by default. The hook layer enforces it.
+- `tools` is a read-only allowlist: `read_file`, `search`, and `list_files`, each reading the head revision through git rather than the filesystem. The hook layer enforces it. `report_finding` is always offered and never listed.
 - `severities` bounds what the lens may report. The hook layer rejects findings outside it.
+- `rules` lists the rule IDs the lens reports under, each with a one-line description. The hook layer rejects a finding under any other rule and tells the model which rules exist, so rule IDs stay stable enough to key findings and dismissals.
+- `budget.findings` caps how many findings the lens may report; past it the hook layer refuses more and says why. `budget.tokens` is recorded but not yet enforced.
 - `extends` lets a repository override parts of a built-in lens, such as its tier or an appended paragraph, without copying the body.
 - `standards: true` injects the shared standards section. Default true; opt out for lenses where conventions are noise.
 
-Layering follows Pi's resource rules. Built-in lenses ship inside the Melian package. Repository lenses live under `.melian/lenses/`, which is canonical and keeps them beside `melian.yaml`, standards, and knowledge. Lenses are also discovered under `.agents/lenses/`, for repositories that keep everything agent-facing under the Agent Skills directory, mirroring Pi's own dual discovery of `.pi/` and `.agents/skills/`. Skill loaders only load directories containing `SKILL.md`, so a `LENS.md` directory is invisible to them wherever it lives. We do not own the `.agents/` namespace; if the spec defines that path for something else, the spec wins. Both locations resolve nearest-first in a monorepo. Folder-level configuration can disable a lens, change its tier, narrow its paths, or add one. Lens packs for a language or framework ship as Pi packages with a `melian.lenses` manifest key mirroring `pi.skills`, pinned in project settings.
+Layering follows Pi's resource rules. Built-in lenses ship inside the core package, under `packages/core/lenses/`. Repository lenses live under `.melian/lenses/`, which is canonical and keeps them beside `melian.yaml`, standards, and knowledge. Lenses are also discovered under `.agents/lenses/`, for repositories that keep everything agent-facing under the Agent Skills directory, mirroring Pi's own dual discovery of `.pi/` and `.agents/skills/`. Skill loaders only load directories containing `SKILL.md`, so a `LENS.md` directory is invisible to them wherever it lives. We do not own the `.agents/` namespace; if the spec defines that path for something else, the spec wins. Both locations resolve nearest-first in a monorepo, and a lens defined in a folder applies only beneath it. Repository lenses are read from the revision the host chooses, as policy and standards are, so a pull request cannot rewrite the lenses that review it. Folder-level configuration can disable a lens, change its tier, narrow its paths, or add one. Lens packs for a language or framework ship as Pi packages with a `melian.lenses` manifest key mirroring `pi.skills`, pinned in project settings.
 
 Findings leave a lens through a `report_finding` tool with a TypeBox schema. Prose is never parsed for findings. The tool upserts by the finding's stable ID and is replay-safe, so a crash mid-call never stores a finding twice.
 
@@ -442,6 +447,7 @@ Packages publish under the `@melian-agent` npm scope. The Node floor is 22.19.0,
 ```text
 packages/
   core/          harness-free domain
+    lenses/      built-in lenses, shipped in the package
   pipeline/      Pi Durable orchestration
   github/        Octokit client, review publication, state branch helpers
   state-git/     orphan-branch storage backend
@@ -453,7 +459,6 @@ skills/
   claude-code/
   codex/
   pi/
-lenses/          built-in lenses
 docs/
 ```
 

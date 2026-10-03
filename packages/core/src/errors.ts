@@ -136,6 +136,39 @@ export class RevisionError extends Error {
 	}
 }
 
+/** Why a lens could not be loaded. */
+export type LensErrorCode =
+	| "missingRoot"
+	| "notARepository"
+	| "unknownCommit"
+	| "symlink"
+	| "tooLarge"
+	| "unreadable"
+	| "missingFrontMatter"
+	| "invalidYaml"
+	| "unknownField"
+	| "invalidValue"
+	| "missingField"
+	| "unknownLens";
+
+/**
+ * A lens could not be loaded. `file` names its `LENS.md`, repository-relative, or `builtin:<name>` for a lens shipped
+ * with Melian. `field` is the offending front matter field, where there is one.
+ */
+export class LensError extends Error {
+	readonly code: LensErrorCode;
+	readonly file: string;
+	readonly field: string | undefined;
+
+	constructor(code: LensErrorCode, file: string, message: string, options: { field?: string; cause?: unknown } = {}) {
+		super(message, { cause: options.cause });
+		this.name = "LensError";
+		this.code = code;
+		this.file = file;
+		this.field = options.field;
+	}
+}
+
 /** Why a tier could not be routed to a model. */
 export type ModelRoutingErrorCode = "noModelForTier" | "invalidModel";
 

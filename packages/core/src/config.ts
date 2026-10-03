@@ -24,7 +24,8 @@ export const severitySchema = Type.Union([
 	Type.Literal("P3"),
 	Type.Literal("nit"),
 ]);
-const lensTier = Type.Union([Type.Literal("light"), Type.Literal("medium"), Type.Literal("heavy")]);
+/** The JSON Schema of a {@link LensTier}. */
+export const lensTierSchema = Type.Union([Type.Literal("light"), Type.Literal("medium"), Type.Literal("heavy")]);
 const modelRoute = Type.Object({ model: name, fallbacks: Type.Optional(Type.Array(name)) }, strict);
 // Each end is optional in one file so that a nearer file can restate one; the merged band must have both.
 const band = Type.Object(
@@ -58,7 +59,7 @@ export const melianYamlSchema = Type.Object(
 				Type.Object(
 					{
 						enabled: Type.Optional(Type.Boolean()),
-						tier: Type.Optional(lensTier),
+						tier: Type.Optional(lensTierSchema),
 						paths: Type.Optional(Type.Array(name)),
 					},
 					strict,
@@ -97,7 +98,7 @@ export type Resolution = Static<typeof resolutionSchema>;
 export type Severity = Static<typeof severitySchema>;
 
 /** A model tier a lens can name. Model routing also has a `decision` tier for decision models. */
-export type LensTier = Static<typeof lensTier>;
+export type LensTier = Static<typeof lensTierSchema>;
 
 /** A model and the models to try, in order, when it fails. */
 export type ModelRoute = Static<typeof modelRoute>;

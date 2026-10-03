@@ -96,6 +96,39 @@ Unknown keys are errors that name the key and the file, because a misspelt key o
 
 A `__proto__` key anywhere is a `reservedKey` error. Problem: `lenses: { __proto__: { tier: heavy } }` merged into a plain object replaces its prototype, so every lens no file configures appears to have `tier: heavy`. Solution: the loader refuses the key, and builds merged objects with no prototype, so a lens named `constructor` or `toString` is looked up like any other.
 
+## Lenses
+
+A lens is a directory holding `LENS.md`: YAML front matter between `---` lines, then the body, which becomes the lens conversation's instructions. `lensFrontMatterSchema` is the contract; an unknown field is a `LensError` naming the file and the field.
+
+| Field | Meaning | Default |
+|---|---|---|
+| `name` | Must match the directory name | required |
+| `description` | One line | required, or inherited through `extends` |
+| `tier` | `light`, `medium`, or `heavy` | required, or inherited |
+| `tools` | Read-only tools from `lensToolNames`: `read_file`, `search`, `list_files` | all three |
+| `severities` | The severities the lens may report | all five |
+| `rules` | `id` and one-line `description` for each rule the lens reports under | required, or inherited |
+| `paths` | Globs relative to the directory holding the lens's `.melian/` or `.agents/`; `!` excludes | `**` |
+| `budget` | `findings`, a count; `tokens`, a number or `200k`, recorded but not enforced | `findings: 10` |
+| `extends` | A lens to override, as layered so far | none |
+| `standards` | Append the repository's standards to the instructions | `true` |
+
+`loadLenses(repoRoot, source, paths)` layers built-ins, from `packages/core/lenses/`, under every `.agents/lenses/` and then `.melian/lenses/` from the root down to each path, and returns the union over `paths`. The nearest definition of a name wins. A definition with `extends` overrides the fields it sets on the named lens and appends its body; one without replaces any farther lens of that name. Repository lenses are read through `src/source.ts`, like configuration, so a symlinked lens directory or `LENS.md` is refused and a `LENS.md` over 64 KiB is an error.
+
+A lens defined in a folder applies only beneath it. Problem: `services/pay/.melian/lenses/security/` extends the root's `security` and inherits its `paths: ["**"]`, which would make the payments variant review the whole repository. Solution: every lens carries a `scope`, the directory that defined it, and `selectLenses` never selects a file outside it. Two variants of one name can then run on one changeset, each over its own folder; `version`, a hash of everything that shapes the lens, tells their findings apart.
+
+`selectLenses(lenses, config, paths)` applies `melian.yaml`'s `lenses` settings: `enabled: false` drops a lens, `tier` retiers it, and `paths` replaces its globs. `**` matches dotfiles, unlike Node's `path.matchesGlob`, so a lens over `**` sees `.github/workflows/`.
+
+## Reading the head revision for lenses
+
+`readRevisionFile`, `listRevisionFiles`, and `searchRevision` in `src/revision.ts` back the lens tools. They read a commit through `git ls-tree`, `git cat-file`, and `git grep`, never the working tree, so an uncommitted edit or untracked file is invisible to a lens. Each refuses a path outside the repository with `OutsideRepositoryError`, refuses symlinks, passes `--literal-pathspecs` so a `*` in a file name is that character, and bounds its output by `revisionLimits`.
+
+Unlike the policy source, these truncate rather than fail at a bound. A lens asked to read a 2 MB generated file should see its first 256 KiB and a note, not an error it cannot recover from; policy, by contrast, must never be silently cut.
+
+## Model routing
+
+`resolveModelForTier(tier, config.models)` returns the tier's model and fallbacks as `{ provider, modelId }` references, splitting `provider/model-id` at the first slash so an OpenRouter ID such as `openrouter/anthropic/claude-sonnet-4-5` keeps its own slash. A tier with no model is a `ModelRoutingError` naming the tier. Choosing among the fallbacks needs credentials, so the pipeline does it.
+
 ## Findings
 
 ### Schema
