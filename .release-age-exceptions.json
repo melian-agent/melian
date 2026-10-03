@@ -1,0 +1,26 @@
+[
+	{
+		"name": "@earendil-works/pi-durable",
+		"version": "1.0.0",
+		"reason": "Melian is designed against Pi 1.0.0; the install was reviewed.",
+		"added": "2026-10-03"
+	},
+	{
+		"name": "@earendil-works/pi-ai",
+		"version": "1.0.0",
+		"reason": "Melian is designed against Pi 1.0.0; the install was reviewed.",
+		"added": "2026-10-03"
+	},
+	{
+		"name": "@earendil-works/chord",
+		"version": "1.0.0",
+		"reason": "Melian is designed against Pi 1.0.0; the install was reviewed.",
+		"added": "2026-10-03"
+	},
+	{
+		"name": "@earendil-works/pi-telemetry",
+		"version": "1.0.0",
+		"reason": "Melian is designed against Pi 1.0.0; the install was reviewed.",
+		"added": "2026-10-03"
+	}
+]
