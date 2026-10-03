@@ -44,6 +44,8 @@ export const findingSourceSchema = Type.Object({ check: text, version: Type.Opti
 export const findingPropertiesSchema = Type.Object(
 	{
 		id: Type.String({ pattern: "^[0-9a-f]{16}$" }),
+		occurrence: Type.Optional(count),
+		discriminator: Type.Optional(text),
 		cause: causeSchema,
 		trigger: Type.Optional(findingTriggerSchema),
 		severity: severitySchema,
@@ -130,7 +132,7 @@ export type FindingLocation = Static<typeof findingLocationSchema>;
  * One objection, as a SARIF 2.1.0 `result`.
  *
  * `level` follows `properties.severity` by {@link levelForSeverity}, and `properties.id` is {@link findingId} of the
- * first location's file, the rule, and that location's snippet. {@link createFinding} derives both, and
+ * first location's file, the rule, that location's snippet, and `properties.occurrence` or `properties.discriminator`. {@link createFinding} derives both, and
  * {@link parseFinding} rejects a finding where either disagrees.
  */
 export type Finding = Static<typeof findingSchema>;
@@ -143,21 +145,111 @@ export interface FindingIdInput {
 	/** The repository-relative path, with forward slashes. */
 	readonly file: string;
 	readonly rule: string;
-	/** The flagged code. Whitespace is collapsed before hashing. */
+	/** The flagged code, or empty when the finding has none. Whitespace is collapsed before hashing. */
 	readonly snippet: string;
+	/**
+	 * With a snippet: the zero-based ordinal of this snippet among identical normalised snippets in the file at head,
+	 * in line order. {@link snippetOccurrence} counts it.
+	 */
+	readonly occurrence?: number;
+	/**
+	 * Without a snippet: what tells this finding apart from others with the same file and rule, such as the enclosing
+	 * symbol or the hunk index.
+	 */
+	readonly discriminator?: string;
+}
+
+function normalise(snippet: string): string {
+	return snippet.trim().replace(/\s+/g, " ");
 }
 
 /**
- * The stable ID of a finding: the first 16 hex characters of a sha256 over the file, the rule, and the snippet with
- * leading and trailing whitespace removed and every run of whitespace collapsed to one space.
+ * The stable ID of a finding: the first 16 hex characters of a sha256 over the file, the rule, the snippet with
+ * leading and trailing whitespace removed and every run of whitespace collapsed to one space, and the occurrence or
+ * discriminator.
  *
  * Line numbers are not an input, so a finding keeps its ID when an edit above it shifts its lines, or when the flagged
  * code is reindented or rewrapped. Changing one token of the flagged code, such as `eval(input)` to `eval(body)`,
- * changes the ID, and so does moving the code to another file or reporting it under another rule.
+ * changes the ID, and so does moving the code to another file or reporting it under another rule. Inserting an
+ * identical snippet earlier in the file renumbers the occurrences after it.
+ *
+ * Throws {@link FindingError} `missingDiscriminator` when a finding with a snippet has no occurrence, or one without a
+ * snippet has no discriminator.
  */
-export function findingId({ file, rule, snippet }: FindingIdInput): string {
-	const normalised = snippet.trim().replace(/\s+/g, " ");
-	return createHash("sha256").update([file, rule, normalised].join("\0")).digest("hex").slice(0, 16);
+export function findingId({ file, rule, snippet, occurrence, discriminator }: FindingIdInput): string {
+	const normalised = normalise(snippet);
+	let distinguisher: string;
+	if (normalised !== "") {
+		if (occurrence === undefined || !Number.isInteger(occurrence) || occurrence < 0) {
+			throw new FindingError("missingDiscriminator", "a finding with a snippet needs its occurrence in the file", {
+				path: "/properties/occurrence",
+			});
+		}
+		distinguisher = String(occurrence);
+	} else {
+		if (discriminator === undefined || discriminator === "") {
+			throw new FindingError("missingDiscriminator", "a finding without a snippet needs a discriminator", {
+				path: "/properties/discriminator",
+			});
+		}
+		distinguisher = discriminator;
+	}
+	return createHash("sha256").update([file, rule, normalised, distinguisher].join("\0")).digest("hex").slice(0, 16);
+}
+
+/** Where a snippet sits in a file: its first line and, optionally, its first column and last line. 1-based. */
+export interface SnippetRegion {
+	readonly startLine: number;
+	readonly startColumn?: number;
+	readonly endLine?: number;
+}
+
+function lineStarts(source: string): number[] {
+	const starts = [0];
+	for (let index = source.indexOf("\n"); index !== -1; index = source.indexOf("\n", index + 1)) starts.push(index + 1);
+	return starts;
+}
+
+/**
+ * The zero-based ordinal of the snippet at `region` among identical normalised snippets in `source`, the file's text at
+ * head, counted in line order. This is a finding's `occurrence`.
+ *
+ * Throws {@link FindingError} `snippetNotFound` when the snippet is empty or does not start inside the region.
+ */
+export function snippetOccurrence(source: string, snippet: string, region: SnippetRegion): number {
+	const target = normalise(snippet);
+	const chars: string[] = [];
+	const offsets: number[] = [];
+	let space = false;
+	for (let index = 0; index < source.length; index++) {
+		const char = source[index]!;
+		if (/\s/.test(char)) {
+			space = chars.length > 0;
+			continue;
+		}
+		if (space) {
+			chars.push(" ");
+			offsets.push(index);
+			space = false;
+		}
+		chars.push(char);
+		offsets.push(index);
+	}
+	const text = chars.join("");
+	const starts = lineStarts(source);
+	const from = (starts[region.startLine - 1] ?? source.length) + (region.startColumn ?? 1) - 1;
+	const last = region.endLine ?? region.startLine;
+	const until = starts[last] ?? source.length + 1;
+	let ordinal = 0;
+	for (let match = target === "" ? -1 : text.indexOf(target); match !== -1; match = text.indexOf(target, match + 1)) {
+		const offset = offsets[match]!;
+		if (offset >= until) break;
+		if (offset >= from) return ordinal;
+		ordinal++;
+	}
+	throw new FindingError("snippetNotFound", `the snippet does not start on lines ${region.startLine}-${last}`, {
+		path: "/locations/0/physicalLocation/region/snippet",
+	});
 }
 
 const levels: Readonly<Record<Severity, SarifLevel>> = {
@@ -189,8 +281,12 @@ export interface FindingInput {
 	readonly endLine?: number;
 	readonly startColumn?: number;
 	readonly endColumn?: number;
-	/** The flagged code, as it appears at head. Part of the ID; an absent snippet hashes as empty. */
+	/** The flagged code, as it appears at head. Part of the ID. */
 	readonly snippet?: string;
+	/** Required with a snippet: its ordinal among identical snippets in the file, from {@link snippetOccurrence}. */
+	readonly occurrence?: number;
+	/** Required without a snippet: what tells this finding apart, such as the enclosing symbol or the hunk index. */
+	readonly discriminator?: string;
 	readonly cause: Cause;
 	readonly trigger?: FindingTrigger;
 	readonly severity: Severity;
@@ -206,9 +302,14 @@ function defined<T extends object>(value: T): T {
 	return Object.fromEntries(Object.entries(value).filter(([, each]) => each !== undefined)) as T;
 }
 
-/** Builds a finding, deriving its level and ID. Throws {@link FindingError} `invalidFinding` if the result is invalid. */
+/**
+ * Builds a finding, deriving its level and ID. Throws {@link FindingError}: `missingDiscriminator` when a finding with a
+ * snippet has no occurrence or one without a snippet has no discriminator, and `invalidFinding` if the result is invalid.
+ */
 export function createFinding(input: FindingInput): Finding {
-	const { file, rule, snippet } = input;
+	const { file, rule, snippet, occurrence, discriminator } = input;
+	const id = findingId({ file, rule, snippet: snippet ?? "", occurrence, discriminator });
+	const hasSnippet = normalise(snippet ?? "") !== "";
 	return parseFinding({
 		ruleId: rule,
 		level: levelForSeverity(input.severity),
@@ -228,7 +329,9 @@ export function createFinding(input: FindingInput): Finding {
 			},
 		],
 		properties: defined({
-			id: findingId({ file, rule, snippet: snippet ?? "" }),
+			id,
+			occurrence: hasSnippet ? occurrence : undefined,
+			discriminator: hasSnippet ? undefined : discriminator,
 			cause: input.cause,
 			trigger: input.trigger,
 			severity: input.severity,
@@ -245,8 +348,8 @@ export function createFinding(input: FindingInput): Finding {
  * Checks that `value` is a valid finding and returns it.
  *
  * Throws {@link FindingError}: `invalidFinding` when it does not match {@link findingSchema}, `levelMismatch` when its
- * level is not {@link levelForSeverity} of its severity, and `idMismatch` when its ID is not {@link findingId} of its
- * first location.
+ * level is not {@link levelForSeverity} of its severity, `missingDiscriminator` when it lacks the occurrence or
+ * discriminator its snippet calls for, and `idMismatch` when its ID is not {@link findingId} of its first location.
  */
 export function parseFinding(value: unknown): Finding {
 	const errors = Value.Errors(findingSchema, value);
@@ -270,11 +373,16 @@ export function parseFinding(value: unknown): Finding {
 		});
 	}
 	const { artifactLocation, region } = finding.locations[0]!.physicalLocation;
-	const expected = findingId({
-		file: artifactLocation.uri,
-		rule: finding.ruleId,
-		snippet: region.snippet?.text ?? "",
-	});
+	const snippet = region.snippet?.text ?? "";
+	const { occurrence, discriminator } = finding.properties;
+	const extra = normalise(snippet) === "" ? occurrence : discriminator;
+	if (extra !== undefined) {
+		const key = normalise(snippet) === "" ? "occurrence" : "discriminator";
+		throw new FindingError("invalidFinding", `finding has a ${key} its snippet does not call for`, {
+			path: `/properties/${key}`,
+		});
+	}
+	const expected = findingId({ file: artifactLocation.uri, rule: finding.ruleId, snippet, occurrence, discriminator });
 	if (id !== expected) {
 		throw new FindingError("idMismatch", `finding ${id} should have ID ${expected}`, { path: "/properties/id" });
 	}

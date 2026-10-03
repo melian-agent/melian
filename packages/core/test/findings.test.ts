@@ -8,6 +8,7 @@ import {
 	findingsLogSchema,
 	levelForSeverity,
 	parseFinding,
+	snippetOccurrence,
 } from "@melian-agent/core";
 import Schema from "typebox/schema";
 import Value from "typebox/value";
@@ -19,7 +20,7 @@ const sarifSchema = JSON.parse(
 	readFileSync(new URL("./fixtures/sarif-schema-2.1.0.json", import.meta.url), "utf8"),
 ) as Schema.XSchema;
 
-const evalCall = { file: "src/run.ts", rule: "no-eval", snippet: "eval(input)" };
+const evalCall = { file: "src/run.ts", rule: "no-eval", snippet: "eval(input)", occurrence: 0 };
 
 function rejection(value: unknown): FindingError {
 	try {
@@ -37,8 +38,8 @@ describe("findingId", () => {
 	});
 
 	// Pinned so that a change to the normalisation, which would orphan every stored finding, fails here first.
-	it("hashes the file, rule, and normalised snippet", () => {
-		expect(findingId(evalCall)).toBe("8dd0822422207e29");
+	it("hashes the file, rule, normalised snippet, and occurrence", () => {
+		expect(findingId(evalCall)).toBe("1f6a6710b234ec5a");
 	});
 
 	it("ignores reindenting and rewrapping the flagged code", () => {
@@ -57,9 +58,68 @@ describe("findingId", () => {
 	});
 
 	it("keeps fields apart, so text cannot move from one field to the next", () => {
-		expect(findingId({ file: "a", rule: "bc", snippet: "d" })).not.toBe(
-			findingId({ file: "ab", rule: "c", snippet: "d" }),
+		expect(findingId({ file: "a", rule: "bc", snippet: "d", occurrence: 0 })).not.toBe(
+			findingId({ file: "ab", rule: "c", snippet: "d", occurrence: 0 }),
 		);
+	});
+
+	it("tells identical snippets in one file apart by occurrence", () => {
+		expect(findingId({ ...evalCall, occurrence: 1 })).not.toBe(findingId(evalCall));
+	});
+
+	it("needs an occurrence with a snippet and a discriminator without one", () => {
+		const missing = (input: Parameters<typeof findingId>[0]) => {
+			try {
+				findingId(input);
+			} catch (error) {
+				expect(error).toBeInstanceOf(FindingError);
+				return (error as FindingError).code;
+			}
+			throw new Error("findingId accepted a finding it cannot tell apart");
+		};
+		expect(missing({ ...evalCall, occurrence: undefined })).toBe("missingDiscriminator");
+		expect(missing({ ...evalCall, occurrence: -1 })).toBe("missingDiscriminator");
+		expect(missing({ file: "src/total.ts", rule: "prefer-const", snippet: "  " })).toBe("missingDiscriminator");
+		expect(findingId({ file: "src/total.ts", rule: "prefer-const", snippet: "", discriminator: "total" })).toMatch(
+			/^[0-9a-f]{16}$/,
+		);
+	});
+});
+
+describe("snippetOccurrence", () => {
+	const source = ["function run(input) {", "  eval(input);", "  log();", "  return eval(input);", "}"].join("\n");
+	const shifted = `import { log } from "./log";\n\n${source}`;
+
+	function id(text: string, startLine: number): string {
+		const occurrence = snippetOccurrence(text, "eval(input)", { startLine });
+		return createFinding({ ...evalInput, startLine, occurrence, trigger: undefined }).properties.id;
+	}
+
+	it("counts identical normalised snippets above the region", () => {
+		expect(snippetOccurrence(source, "eval(input)", { startLine: 2 })).toBe(0);
+		expect(snippetOccurrence(source, " eval(input)\n", { startLine: 4 })).toBe(1);
+	});
+
+	it("gives identical snippets at two lines different IDs", () => {
+		expect(id(source, 2)).not.toBe(id(source, 4));
+	});
+
+	it("keeps both IDs when lines are inserted above them", () => {
+		expect([id(shifted, 4), id(shifted, 6)]).toEqual([id(source, 2), id(source, 4)]);
+	});
+
+	it("tells two snippets on one line apart by column", () => {
+		const twice = "f(x); f(x);";
+		expect(snippetOccurrence(twice, "f(x)", { startLine: 1 })).toBe(0);
+		expect(snippetOccurrence(twice, "f(x)", { startLine: 1, startColumn: 7 })).toBe(1);
+	});
+
+	it("refuses a snippet that does not start in the region", () => {
+		expect(() => snippetOccurrence(source, "eval(input)", { startLine: 3 })).toThrow(
+			expect.objectContaining({ code: "snippetNotFound" }),
+		);
+		expect(() => snippetOccurrence(source, "eval(body)", { startLine: 2 })).toThrow(FindingError);
+		expect(() => snippetOccurrence(source, " ", { startLine: 2 })).toThrow(FindingError);
 	});
 });
 
@@ -92,6 +152,7 @@ describe("createFinding", () => {
 			],
 			properties: {
 				id: findingId(evalCall),
+				occurrence: 0,
 				cause: "introduced",
 				trigger: { file: "src/run.ts", oldStart: 11, oldLines: 1, newStart: 12, newLines: 1 },
 				severity: "P1",
@@ -108,9 +169,17 @@ describe("createFinding", () => {
 		const finding = createFinding(minimalInput);
 		expect(finding.locations[0]!.physicalLocation.region).toEqual({ startLine: 4 });
 		expect(Object.keys(finding.properties).sort()).toEqual(
-			["cause", "explanation", "id", "resolution", "severity", "source", "status"].sort(),
+			["cause", "discriminator", "explanation", "id", "resolution", "severity", "source", "status"].sort(),
 		);
-		expect(finding.properties.id).toBe(findingId({ file: "src/total.ts", rule: "prefer-const", snippet: "" }));
+		expect(finding.properties.id).toBe(
+			findingId({ file: "src/total.ts", rule: "prefer-const", snippet: "", discriminator: "total" }),
+		);
+	});
+
+	it("refuses a finding without a snippet or a discriminator", () => {
+		expect(() => createFinding({ ...minimalInput, discriminator: undefined })).toThrow(
+			expect.objectContaining({ code: "missingDiscriminator" }),
+		);
 	});
 
 	it("rejects an input the schema would not accept", () => {

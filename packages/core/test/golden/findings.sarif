@@ -33,7 +33,8 @@
             }
           ],
           "properties": {
-            "id": "dd745adeb9e0dec3",
+            "id": "2de4ddbbdbf7cd15",
+            "occurrence": 0,
             "cause": "affected",
             "severity": "P3",
             "confidence": 0.9,
@@ -69,7 +70,8 @@
             }
           ],
           "properties": {
-            "id": "8ab237381b63870d",
+            "id": "3de0bdc88a0488a9",
+            "discriminator": "total",
             "cause": "pre-existing",
             "severity": "nit",
             "resolution": "silent",
@@ -109,7 +111,8 @@
             }
           ],
           "properties": {
-            "id": "e8f560ed82f71025",
+            "id": "d8fbb7744f3d71aa",
+            "occurrence": 0,
             "cause": "introduced",
             "trigger": {
               "file": "src/run.ts",
@@ -158,7 +161,8 @@
             }
           ],
           "properties": {
-            "id": "d4ff4e749f40d02c",
+            "id": "ca63cf1ea8a3dd6f",
+            "occurrence": 0,
             "cause": "introduced",
             "trigger": {
               "file": "src/run.ts",
@@ -207,7 +211,8 @@
             }
           ],
           "properties": {
-            "id": "8dd0822422207e29",
+            "id": "1f6a6710b234ec5a",
+            "occurrence": 0,
             "cause": "introduced",
             "trigger": {
               "file": "src/run.ts",

@@ -65,7 +65,12 @@ export class OutsideRepositoryError extends Error {
 }
 
 /** Why a value is not a valid finding. */
-export type FindingErrorCode = "invalidFinding" | "levelMismatch" | "idMismatch";
+export type FindingErrorCode =
+	| "invalidFinding"
+	| "levelMismatch"
+	| "missingDiscriminator"
+	| "snippetNotFound"
+	| "idMismatch";
 
 /** A value is not a valid finding. `path` is the JSON pointer of the offending field, empty for the whole value. */
 export class FindingError extends Error {

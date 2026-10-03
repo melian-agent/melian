@@ -62,8 +62,10 @@ export {
 	levelForSeverity,
 	parseFinding,
 	type SarifLevel,
+	type SnippetRegion,
 	sarifLevelSchema,
 	sarifSchemaUri,
+	snippetOccurrence,
 } from "./findings.ts";
 export { melianPaths } from "./paths.ts";
 export { renderFindingsJson, renderFindingsTerminal, type TerminalRenderOptions } from "./render.ts";
