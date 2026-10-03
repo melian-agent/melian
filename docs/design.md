@@ -542,6 +542,7 @@ docs/
 | Marker trust | Markers signed with a durable per-changeset secret; author is a filter, never the proof | Recovery must not depend on the token knowing who it is |
 | Publishable provenance | Only a pull-request-kind verdict with provider-fetched base and head and a revision policy source can be published | A working-tree verdict must never reach GitHub |
 | Publication open set | Defined only by recorded posts; unposted rounds leave no placeholder | A failed round must not repost or drop replies |
+| Status before review | Commit status set first, error on abandonment, review degrades to body-only before giving up | A head must always carry a status |
 | Stale publish tasks | Superseded before resume when the target changed; target revalidated before every side effect | A retargeted pull request must never receive a pre-retarget review |
 
 ## Open questions

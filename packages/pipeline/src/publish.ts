@@ -71,6 +71,10 @@ type StoredRevision = {
 
 type PublishedState = { order: string[]; revisions: Record<string, StoredRevision> };
 
+function unpublished(): StoredRevision {
+	return { reviews: [], open: {}, resolved: {}, replies: {} };
+}
+
 // Keeps its latest value and forks as it stands: a post is a fact about the pull request, and a fork that forgot one
 // would post it twice.
 export const PublishedDocument = defineDoc<PublishedState>({
@@ -254,6 +258,16 @@ function publishTask(provider: ReviewProvider) {
 				};
 				const read = async () =>
 					(await runtime.snapshot(PublishedDocument, root, context)) ?? { order: [], revisions: {} };
+				const postStatus = async (status: ReviewStatus) => {
+					await revalidate();
+					await provider.setStatus(head, status);
+					await runtime.commit(async (tx) => {
+						const document = await tx.doc(PublishedDocument, root);
+						if (!document.order.includes(head)) document.order = [...document.order, head];
+						document.revisions[head] = { ...(document.revisions[head] ?? unpublished()), status: { ...status } };
+						return undefined;
+					}, context);
+				};
 				const result = { posted: 0, stillOpen: 0, resolved: 0, replies: 0, recovered: 0 };
 				// Set while the provider is asked to post a round, so a refusal counts against that round.
 				let posting = false;
@@ -282,6 +296,13 @@ function publishTask(provider: ReviewProvider) {
 							return undefined;
 						}, context);
 					}
+					// The status comes first, so the head carries one even when its review cannot be posted, and before the
+					// replies, so a thread that cannot take a reply never holds back the check.
+					const status = reviewStatus(verdict);
+					const shown = (await read()).revisions[head]?.status;
+					if (shown?.state !== status.state || shown.description !== status.description) {
+						await postStatus(status);
+					}
 					// A pending round left by a failed run is posted as planned, under its own verdict. If the head's verdict
 					// changed since, a second round then posts the current one, so the last review matches the status.
 					for (let round = 0; round < 2; round++) {
@@ -293,13 +314,7 @@ function publishTask(provider: ReviewProvider) {
 							await runtime.commit(async (tx) => {
 								const document = await tx.doc(PublishedDocument, root);
 								document.order = [...document.order.filter((each) => each !== head), head];
-								const existing = document.revisions[head] ?? {
-									reviews: [],
-									open: {},
-									resolved: {},
-									replies: {},
-								};
-								document.revisions[head] = { ...existing, pending: planned };
+								document.revisions[head] = { ...(document.revisions[head] ?? unpublished()), pending: planned };
 								return undefined;
 							}, context);
 						}
@@ -346,16 +361,6 @@ function publishTask(provider: ReviewProvider) {
 						result.resolved += Object.keys(pending.resolved).length;
 					}
 					const record = (await read()).revisions[head]!;
-					// The status comes before the replies, so a thread that cannot take a reply never holds back the check.
-					const status = reviewStatus(verdict);
-					if (record.status?.state !== status.state || record.status.description !== status.description) {
-						await revalidate();
-						await provider.setStatus(head, status);
-						await runtime.commit(async (tx) => {
-							(await tx.doc(PublishedDocument, root)).revisions[head]!.status = { ...status };
-							return undefined;
-						}, context);
-					}
 					for (const id of Object.keys(record.resolved).sort()) {
 						const entry = record.resolved[id]!;
 						if (entry.thread === undefined || Object.hasOwn(record.replies, id)) continue;
@@ -405,6 +410,21 @@ function publishTask(provider: ReviewProvider) {
 					// the provider keeps refusing, such as one whose comment GitHub rejects with a 422, would block every later
 					// publish of the head, so its third refusal abandons it and the next publish plans a new round.
 					let message = error instanceof Error ? error.message : String(error);
+					const refused = posting ? (await read()).revisions[head]?.pending : undefined;
+					// An abandoned round leaves the head without a review, so its status says so: not reviewed, with why. The
+					// status is best effort here, since the provider has just refused a post.
+					let shown: ReviewStatus | undefined;
+					if (refused !== undefined && (refused.refusals ?? 0) + 1 >= maxRefusals) {
+						const failed: ReviewStatus = {
+							state: "error",
+							description: `review could not be posted: ${message}`,
+						};
+						try {
+							await revalidate();
+							await provider.setStatus(head, failed);
+							shown = failed;
+						} catch {}
+					}
 					await runtime.commit(async (tx) => {
 						const record = posting ? (await tx.doc(PublishedDocument, root)).revisions[head] : undefined;
 						const pending = record?.pending;
@@ -417,7 +437,8 @@ function publishTask(provider: ReviewProvider) {
 									{ fingerprint: refused, refusals, error: message },
 								];
 								delete record.pending;
-								message = `the provider refused the review of verdict ${refused} ${refusals} times, so Melian abandoned it and the next publish plans a new one: ${message}`;
+								if (shown !== undefined) record.status = { ...shown };
+								message = `the provider refused the review of verdict ${refused} ${refusals} times, so Melian abandoned it and set the status to error; the next publish plans a new one: ${message}`;
 							}
 						}
 						return { status: "terminal", outcome: { status: "failed", error: { message } } };

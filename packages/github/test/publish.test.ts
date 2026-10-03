@@ -342,7 +342,14 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const refusals = [];
 		for (let attempt = 0; attempt < 3; attempt++) {
 			refusals.push(await publish(github, changeset).catch((error: unknown) => error));
+			// The head carries a status from the first attempt, though no review could be posted.
+			if (attempt === 0) expect(state.statuses).toEqual([expect.objectContaining({ state: "failure" })]);
 		}
+		expect(state.statuses.at(-1)).toMatchObject({
+			sha: changeset.revision.head,
+			state: "error",
+			description: expect.stringMatching(/^review could not be posted: GitHub refused to post a review/),
+		});
 		state.failReviews = false;
 
 		const result = await publish(github, changeset);
@@ -353,6 +360,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(result).toMatchObject({ posted: 3 });
 		expect(result.abandoned).toEqual([{ fingerprint: expect.any(String), refusals: 3, error: expect.any(String) }]);
 		expect(state.reviews).toHaveLength(1);
+		expect(state.statuses.at(-1)).toMatchObject({ state: "failure", description: "3 findings, 1 blocking" });
 	});
 
 	it("replies for a pushed-over revision whose replies failed when the next one is published", async () => {

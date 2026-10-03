@@ -136,7 +136,8 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			});
 
 			expect(state.reviews).toHaveLength(1);
-			expect(posts(state).map((call) => call.path)).toEqual([`/repos/melian-agent/example/statuses/${head}`]);
+			// The child set the status before it posted the review, and recorded it.
+			expect(posts(state)).toEqual([]);
 			expect(result).toMatchObject({ review: String(state.reviews[0]!.id), posted: 0 });
 			const recorded = await readPublished(harness, (await harness.root(context)).id, head, context);
 			expect(recorded?.review).toBe(String(state.reviews[0]!.id));
@@ -197,9 +198,17 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 		expect(state.reviews).toHaveLength(1);
 		expect(state.comments.map((comment) => /`([a-z-]+)`/.exec(comment.body)?.[1])).toEqual(["null-dereference"]);
 		expect(result).toMatchObject({ posted: 1, recovered: 0 });
+		// The crashed run set the old verdict's status before its post; the new verdict's replaces it.
 		const head = changeset.revision.head;
-		expect(state.statuses).toEqual([
-			{ sha: head, state: "failure", description: "1 finding, 1 blocking", context: statusContext },
+		expect(state.statuses.map(({ description }) => description)).toEqual([
+			"3 findings, 1 blocking",
+			"1 finding, 1 blocking",
 		]);
+		expect(state.statuses.at(-1)).toEqual({
+			sha: head,
+			state: "failure",
+			description: "1 finding, 1 blocking",
+			context: statusContext,
+		});
 	});
 });
