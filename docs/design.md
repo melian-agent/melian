@@ -112,7 +112,7 @@ Pi Durable is pinned to an exact version and imported by one internal module, be
 
 A finding is a SARIF `result` plus Melian extension properties. SARIF because semgrep, gitleaks, and eslint emit it natively, GitHub code scanning ingests it, and it forces a stable schema from the first commit. Extensions:
 
-- `id`: stable hash of file, rule, and a normalised snippet. Survives line shifts. Used for cross-revision diffing and dismissal matching.
+- `id`: stable hash of file, rule, a normalised snippet, and the snippet's occurrence: its zero-based ordinal among identical normalised snippets in that file at head, in line order. Survives line shifts and edits elsewhere in the file; inserting an identical snippet earlier renumbers the ones after it. A finding with no snippet supplies its own discriminator, such as the enclosing symbol or the hunk index. Used for cross-revision diffing and dismissal matching.
 - `cause`: `introduced`, `affected`, or `pre-existing`. See below.
 - `trigger`: the diff hunk that caused the finding.
 - `severity`: the repository's rubric, default `P0` to `P3` plus `nit`.
@@ -498,6 +498,7 @@ docs/
 | Publication idempotency | Durable published document plus marker check, not memos | Memos are task-scoped and temporary |
 | Policy and standards source | Read from a git revision chosen by the host: base for pull requests, worktree for maintainer local runs | A head must not rewrite the policy or prompts of its own review |
 | Repository content bounds | Typed errors over size limits, no silent truncation | Unbounded reads are a resource hazard from untrusted input |
+| Finding identity | file, rule, normalised snippet, and occurrence ordinal | Identical snippets in one file must not collide; line shifts must not change the ID |
 
 ## Open questions
 

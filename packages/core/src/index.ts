@@ -72,8 +72,10 @@ export {
 	levelForSeverity,
 	parseFinding,
 	type SarifLevel,
+	type SnippetRegion,
 	sarifLevelSchema,
 	sarifSchemaUri,
+	snippetOccurrence,
 } from "./findings.ts";
 export {
 	type Lens,

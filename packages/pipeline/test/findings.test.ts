@@ -22,6 +22,7 @@ const input: FindingInput = {
 	file: "src/run.ts",
 	startLine: 12,
 	snippet: "eval(input)",
+	occurrence: 0,
 	cause: "introduced",
 	severity: "P1",
 	resolution: "block",

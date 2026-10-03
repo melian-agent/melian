@@ -5,7 +5,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { findingId } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
 	AssistantEntry,
@@ -45,6 +44,7 @@ import {
 	readEvents,
 	reportFindingReply,
 	type Scenario,
+	spikeFindingId,
 	spikeRegistry,
 	systemPrompt,
 	textOf,
@@ -401,7 +401,7 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		expect((await ask(firstRoot, "Review this change.")).status).toBe("done");
 		await first.close(context);
 
-		const reported = { items: { [findingId(evalFinding)]: evalFinding } };
+		const reported = { items: { [spikeFindingId(evalFinding)]: evalFinding } };
 		const harness = tracked(await openHarness(await openSqliteStorage(path), { models: fake.models, registry }));
 		const root = await harness.root(context);
 		expect(await harness.snapshot(Findings, root.id, context)).toEqual(reported);
@@ -413,7 +413,7 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		const after = await root.fork(result.id, { ownership: { kind: "ownerless" } }, context);
 		const late = { ...evalFinding, rule: "no-implicit-any", title: "P2: added after the fork" };
 		await root.commit(async (tx) => {
-			(await tx.doc(Findings, root.id)).items[findingId(late)] = late;
+			(await tx.doc(Findings, root.id)).items[spikeFindingId(late)] = late;
 		}, context);
 
 		expect(await harness.snapshot(Findings, before.id, context)).toBeUndefined();
@@ -512,7 +512,7 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		const settled = await (await harness.submission(submissionId, context))!.wait(context);
 		expect(settled.status).toBe("done");
 
-		const id = findingId(evalFinding);
+		const id = spikeFindingId(evalFinding);
 		const root = await harness.root(context);
 		expect(await harness.snapshot(Findings, root.id, context)).toEqual({ items: { [id]: evalFinding } });
 		expect(count(readEvents(log), "finding-committed")).toBe(3);

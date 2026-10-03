@@ -120,6 +120,11 @@ export const Findings = defineDoc<{ items: Record<string, Finding> }>({
 	initial: () => ({ items: {} }),
 });
 
+// The spike reports each snippet once per file, so its first occurrence is the only one.
+export function spikeFindingId(finding: Finding): string {
+	return findingId({ ...finding, occurrence: 0 });
+}
+
 export const evalFinding: Finding = {
 	file: "src/run.ts",
 	rule: "no-eval",
@@ -141,7 +146,7 @@ export function reportFinding(mode: Mode, log: string) {
 		}),
 		replay: "safe",
 		execute: async (args, api, context) => {
-			const id = findingId(args);
+			const id = spikeFindingId(args);
 			await api.commit(async (tx) => {
 				(await tx.doc(Findings, api.conversationId)).items[id] = { ...args };
 			}, context);
