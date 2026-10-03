@@ -62,6 +62,8 @@ Replace N with the pull request number. Keep the quotes: an unquoted `#` starts 
    | `3` | findings, none blocking |
    | `64` | Melian could not read the command line; show its message as-is |
 
+   Any other exit, such as `127` when the shell cannot find `melian`, means Melian never ran. It is not a verdict; go back to checking readiness.
+
 3. List the blocking findings first, then the rest, each with its file, line, rule, and what Melian says is wrong.
 4. Stop. A nonzero exit is a verdict, not a tool failure, so do not rerun the review to change it. The exceptions are a review killed before it exited, above, and an environment failure, below.
 
@@ -83,7 +85,7 @@ Three kinds of exit `2` are not a verdict on the code:
 melian findings origin/main...HEAD
 ```
 
-Prints the stored review exactly as `melian review` printed it, without running a new review. Pass the same range or `"#N"` the review used. It exits `0` whatever the verdict, so read the verdict from its first line, not from the exit code.
+Prints the stored review exactly as `melian review` printed it, without running a new review. Pass the same range or `"#N"` the review used. When a review is stored it exits `0` whatever the verdict, so read the verdict from its first line, not from the exit code. It exits `1` when nothing is stored for that range or pull request: run `melian review` with it first.
 
 ## Publish to a pull request
 
