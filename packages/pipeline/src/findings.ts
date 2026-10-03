@@ -195,7 +195,7 @@ export async function upsertFinding(
 }
 
 /**
- * Makes `findings` the whole of what `check` sights at `revision`: removes the check's earlier sightings there, of any
+ * Makes `findings` the whole of what `check` sights at `revision`, a {@link revisionKey}: removes the check's earlier sightings there, of any
  * version, then upserts each. A finding left with no sighting at any revision is removed too, unless it was dismissed,
  * so its dismissal survives if it returns. Call it in the commit that records the check's outcome, with no findings for
  * a check that failed, so a failed rerun leaves nothing of an earlier run behind.
@@ -207,18 +207,23 @@ export async function replaceCheckFindings(
 	revision: string,
 	findings: readonly Finding[],
 ): Promise<void> {
-	const { items } = await tx.doc(FindingsDocument, rootConversationId);
+	const state = await tx.doc(FindingsDocument, rootConversationId);
+	const { items } = state;
+	let removed = false;
 	for (const [id, record] of Object.entries(items)) {
 		const atRevision = record.sightings[revision];
 		if (atRevision === undefined) continue;
 		const left = Object.fromEntries(
 			Object.entries(atRevision).filter(([, sighting]) => sighting.properties.source.check !== check),
 		);
+		if (Object.keys(left).length === Object.keys(atRevision).length) continue;
+		removed = true;
 		const sightings = { ...record.sightings, [revision]: left };
 		if (Object.keys(left).length === 0) delete sightings[revision];
 		if (Object.keys(sightings).length === 0 && record.lifecycle.status !== "dismissed") delete items[id];
 		else items[id] = { ...record, sightings };
 	}
+	if (removed) bump(state, [revision]);
 	for (const finding of findings) await upsertFinding(tx, rootConversationId, finding, revision);
 }
 

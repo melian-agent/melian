@@ -14,7 +14,7 @@ import {
 	staticFindings,
 	type ToolLog,
 } from "@melian-agent/core";
-import { replaceCheckFindings } from "./findings.ts";
+import { replaceCheckFindings, revisionKey } from "./findings.ts";
 import {
 	type Context,
 	type ConversationId,
@@ -139,8 +139,8 @@ function failure(check: string, error: unknown): CheckRecord {
 }
 
 // One check on one revision. Rerunning it after a crash runs the tools again on the same commits and writes the same
-// findings, so the task is safe to replay. The check's findings at this head are replaced, not added to, in the commit
-// that records it, so a failed rerun leaves none of an earlier run's findings behind.
+// findings, so the task is safe to replay. The check's findings at this base and head are replaced, not added to, in
+// the commit that records it, so a failed rerun leaves none of an earlier run's findings behind.
 const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRecord>({
 	name: "melian.check",
 	version: 1,
@@ -164,10 +164,10 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRecord>({
 			} catch (error) {
 				record = failure(check, error);
 			}
-			const head = changeset.revision.head;
+			const revision = revisionKey(changeset.revision);
 			await runtime.commit(async (tx) => {
 				const findings = outcome?.status === "ran" ? outcome.report.findings : [];
-				await replaceCheckFindings(tx, runtime.conversationId, check, head, findings);
+				await replaceCheckFindings(tx, runtime.conversationId, check, revision, findings);
 				const { runs } = await tx.doc(ChecksDocument, runtime.conversationId);
 				runs[run] = { ...runs[run], [check]: record };
 				return { status: "terminal", outcome: { status: "completed", result: record } };
@@ -347,7 +347,7 @@ function rerunOf(outcome: { status: string; result?: readonly CheckRecord[] }): 
 
 /**
  * Runs a tier's checks on the changeset's revision as durable tasks in its root conversation: one task per check,
- * waited on together, each replacing its findings at the head in the root's findings document and recording its status
+ * waited on together, each replacing its findings at the revision in the root's findings document and recording its status
  * under the run's identity, in one commit. Resolves with the run's identity and one record per check the tier names, in
  * the tier's order.
  *
