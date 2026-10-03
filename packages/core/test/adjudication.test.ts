@@ -335,6 +335,38 @@ describe("adjudicate", () => {
 		expect(verdict).toMatchObject({ status: "passed", blocking: false, dismissed: [resolvedAs(dismissed, "block")] });
 	});
 
+	describe("when one report of a defect is dismissed and another is not", () => {
+		const fromEslint = (severity: FindingInput["severity"], status?: "dismissed") =>
+			finding({
+				rule: "detect-eval",
+				severity,
+				source: { check: "static.eslint" },
+				...(status === undefined ? {} : { status }),
+			});
+		const lensAt = (severity: FindingInput["severity"], status?: "dismissed") =>
+			finding({ severity, ...(status === undefined ? {} : { status }) });
+
+		it("keeps the live blocker live and blocking, naming the dismissed report, with no alias", () => {
+			const dismissedKeeper = fromEslint("P0", "dismissed");
+			const live = lensAt("P1");
+			const verdict = adjudicate({ findings: [dismissedKeeper, live], manifest, checks, config: defaultConfig });
+			expect(verdict).toMatchObject({ status: "findings", blocking: true });
+			expect(verdict.findings.block.map((each) => each.properties.id)).toEqual([live.properties.id]);
+			expect(verdict.findings.block[0]!.properties.alsoReportedAs).toEqual([reportOf(dismissedKeeper)]);
+			expect(verdict.dismissed.map((each) => each.properties.id)).toEqual([dismissedKeeper.properties.id]);
+		});
+
+		it("keeps a live P0 blocking when the alias's owner is a dismissed P3", () => {
+			const owned = { ...defaultConfig, ruleAliases: { "no-eval": ["detect-eval"] } };
+			const dismissedOwner = lensAt("P3", "dismissed");
+			const live = fromEslint("P0");
+			const verdict = adjudicate({ findings: [dismissedOwner, live], manifest, checks, config: owned });
+			expect(verdict).toMatchObject({ status: "findings", blocking: true });
+			expect(verdict.findings.block.map((each) => each.properties.id)).toEqual([live.properties.id]);
+			expect(verdict.findings.block[0]!.properties.alsoReportedAs).toEqual([reportOf(dismissedOwner)]);
+		});
+	});
+
 	it("resolves per path and dedupes across sources", () => {
 		const docs = finding({ file: "docs/guide.md", severity: "P1" });
 		const eslint = finding({ rule: "detect-eval", severity: "P2", source: { check: "static.eslint" } });

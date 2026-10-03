@@ -522,6 +522,7 @@ docs/
 | Evidence for affected | A changed-code location overlapping a hunk, snippet derived from head | Prose cannot cross the cause boundary |
 | Finding sightings | Immutable per head, lens, and ID; adjudication merges deterministically | No first-writer-wins across lenses or pushes |
 | Check manifest | The tier's check list is the review manifest; a check with no record is skipped and the verdict is not-reviewed | A verdict must never read passed because something was not counted |
+| Dedupe and lifecycle | Only same-status findings merge; a dismissal never absorbs an open blocker | A dismissed advisory must not hide a live P0 |
 
 ## Open questions
 

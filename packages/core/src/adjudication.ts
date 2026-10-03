@@ -155,36 +155,48 @@ function speakFor(keeper: Finding, defect: readonly Finding[], alsoReportedAs: A
  * contracts lens. Otherwise the most severe stays, the lower ID on a tie. The finding that stays takes the highest
  * severity among them and the strongest cause with its evidence ({@link strongestCause}), so a merge never lowers what
  * blocks, and lists each other's ID, rule, and check in `properties.alsoReportedAs`. A finding without a snippet is
- * never merged. Returns the findings that stay, in input order.
+ * never merged.
+ *
+ * Only findings with the same lifecycle status merge. A dismissed finding never absorbs a live one: a live finding
+ * beside a dismissed report of the same defect stays live, and blocks if it blocks, listing the dismissed one in
+ * `alsoReportedAs`. Returns the findings that stay, in input order.
  */
 export function dedupeFindings(
 	findings: readonly Finding[],
 	configFor: (path: string) => Pick<MelianConfig, "ruleAliases">,
 ): Finding[] {
+	// Whether `finding` reports the defect `defect` holds, whatever the statuses.
+	const joins = (defect: readonly Finding[], finding: Finding) => {
+		const site = siteOf(finding);
+		const aliases = configFor(finding.properties.path).ruleAliases;
+		return (
+			site !== undefined &&
+			siteOf(defect[0]!) === site &&
+			defect.every(
+				(member) =>
+					member.properties.source.check !== finding.properties.source.check &&
+					!distinct(aliases, member.ruleId, finding.ruleId),
+			) &&
+			defect.some((member) => overlap(member, finding))
+		);
+	};
 	const defects: Finding[][] = [];
 	for (const finding of [...findings].sort(strongerFirst)) {
-		const site = siteOf(finding);
-		const check = finding.properties.source.check;
-		const aliases = configFor(finding.properties.path).ruleAliases;
-		const into =
-			site === undefined
-				? undefined
-				: defects.find(
-						(defect) =>
-							siteOf(defect[0]!) === site &&
-							defect.every(
-								(member) =>
-									member.properties.source.check !== check &&
-									!distinct(aliases, member.ruleId, finding.ruleId),
-							) &&
-							defect.some((member) => overlap(member, finding)),
-					);
+		const into = defects.find(
+			(defect) => defect[0]!.properties.status === finding.properties.status && joins(defect, finding),
+		);
 		if (into === undefined) defects.push([finding]);
 		else into.push(finding);
 	}
+	const dismissed = findings.filter((finding) => finding.properties.status === "dismissed");
 	const speakers = new Map<Finding, Finding>();
 	for (const defect of defects) {
-		if (defect.length === 1) {
+		// A live defect names the dismissed reports of it, for context, and is never absorbed by them.
+		const context =
+			defect[0]!.properties.status === "dismissed"
+				? []
+				: dismissed.filter((other) => joins(defect, other)).map(reportOf);
+		if (defect.length === 1 && context.length === 0) {
 			speakers.set(defect[0]!, defect[0]!);
 			continue;
 		}
@@ -194,6 +206,7 @@ export function dedupeFindings(
 			...defect
 				.filter((member) => member !== keeper)
 				.flatMap((member) => [reportOf(member), ...(member.properties.alsoReportedAs ?? [])]),
+			...context,
 		];
 		speakers.set(keeper, speakFor(keeper, defect, alsoReportedAs));
 	}
