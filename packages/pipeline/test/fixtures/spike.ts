@@ -1,0 +1,180 @@
+import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import {
+	type AssistantMessage,
+	createRegistry,
+	defineExtension,
+	defineTask,
+	defineTool,
+	type FakeModels,
+	fauxAssistantMessage,
+	fauxToolCall,
+	type Harness,
+	type Message,
+	openHarness,
+	openSqliteStorage,
+	type Registry,
+	Type,
+} from "../../src/harness.ts";
+
+/** `crash` parks the second half of each scenario so the parent can kill the process there; `resume` finishes it. */
+export type Mode = "crash" | "resume";
+
+export type Scenario = "task" | "replay" | "memo";
+
+export type Event = { readonly event: string; readonly [field: string]: unknown };
+
+/** Append one event to the log the parent reads. Synchronous, so it is on disk before the next step runs. */
+export function record(log: string, event: Event): void {
+	appendFileSync(log, `${JSON.stringify(event)}\n`);
+}
+
+export function readEvents(log: string): Event[] {
+	if (!existsSync(log)) return [];
+	return readFileSync(log, "utf8")
+		.split("\n")
+		.filter((line) => line !== "")
+		.map((line) => JSON.parse(line) as Event);
+}
+
+export function count(events: readonly Event[], name: string): number {
+	return events.filter((each) => each.event === name).length;
+}
+
+/** Never settles, and holds a timer so Node keeps the process alive until it is killed. */
+function park(): Promise<never> {
+	return new Promise(() => setInterval(() => {}, 60_000));
+}
+
+type PhasedCheckpoint = { phase: "first" } | { phase: "second"; first: string };
+
+export function phasedTask(mode: Mode, log: string) {
+	return defineTask<Record<string, never>, PhasedCheckpoint, { first: string; second: string }>({
+		name: "spike.phased",
+		version: 1,
+		initial: () => ({ phase: "first" }),
+		phases: {
+			first: async (_task, runtime, context) => {
+				record(log, { event: "phase-one" });
+				await runtime.commit(() => ({ status: "running", checkpoint: { phase: "second", first: "one" } }), context);
+			},
+			second: async (task, runtime, context) => {
+				record(log, { event: "phase-two-start" });
+				if (mode === "crash") await park();
+				const result = { first: task.state.checkpoint.first, second: "two" };
+				await runtime.commit(() => ({ status: "terminal", outcome: { status: "completed", result } }), context);
+				record(log, { event: "phase-two-done" });
+			},
+		},
+		abort: async (_task, runtime, context) => {
+			await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+		},
+	});
+}
+
+export function replayTools(mode: Mode, log: string) {
+	const probe = (name: string, replay: "safe" | "unsafe") =>
+		defineTool({
+			name,
+			description: `Records that ${name} ran`,
+			parameters: Type.Object({}),
+			replay,
+			execute: async () => {
+				record(log, { event: `${name}-start` });
+				if (mode === "crash") await park();
+				record(log, { event: `${name}-done` });
+				return { content: [{ type: "text", text: `${name} finished` }] };
+			},
+		});
+	return [probe("safe_probe", "safe"), probe("unsafe_probe", "unsafe")];
+}
+
+const memoKey = "publish:revision-1";
+
+export function memoTool(mode: Mode, log: string) {
+	return defineTool({
+		name: "publish_once",
+		description: "Publishes a review at most once",
+		parameters: Type.Object({}),
+		replay: "safe",
+		execute: async (_args, api, context) => {
+			const candidate = `${mode}-${process.pid}`;
+			const winner = await api.memo<string>(memoKey, candidate, context);
+			record(log, { event: "memo", candidate, winner, taskId: api.taskId });
+			if (mode === "crash") await park();
+			const again = await api.memo<string>(memoKey, `${mode}-again`, context);
+			record(log, { event: "memo", candidate: `${mode}-again`, winner: again, taskId: api.taskId });
+			return { content: [{ type: "text", text: `published as ${winner}` }] };
+		},
+	});
+}
+
+export function spikeRegistry(scenario: Scenario, mode: Mode, log: string): Registry {
+	const registry = createRegistry();
+	if (scenario === "task") registry.install(defineExtension({ name: "spike", tasks: [phasedTask(mode, log)] }));
+	if (scenario === "replay") registry.install(defineExtension({ name: "spike", tools: replayTools(mode, log) }));
+	if (scenario === "memo") registry.install(defineExtension({ name: "spike", tools: [memoTool(mode, log)] }));
+	return registry;
+}
+
+export function toolCallReply(...names: string[]): AssistantMessage {
+	return fauxAssistantMessage(
+		names.map((name) => fauxToolCall(name, {})),
+		{ stopReason: "toolUse" },
+	);
+}
+
+/** A scripted reply that also keeps the messages the model was shown, so a test can assert on them. */
+export function captured(requests: Message[][], reply: AssistantMessage) {
+	return (context: { readonly messages: readonly Message[] }): AssistantMessage => {
+		requests.push(structuredClone([...context.messages]));
+		return reply;
+	};
+}
+
+export async function openSpikeHarness(path: string, registry: Registry, fake: FakeModels): Promise<Harness> {
+	return openHarness(await openSqliteStorage(path), {
+		models: fake.models,
+		registry,
+		settings: { toolExecution: "parallel" },
+	});
+}
+
+/** The plain text of one message, with tool calls written as `name(arguments)`. */
+export function textOf(message: Message | undefined): string {
+	if (message === undefined) return "";
+	if (message.role === "system") {
+		const content =
+			typeof message.content === "string" ? message.content : message.content.map((each) => each.text).join("");
+		return [content, ...Object.values(message.sections ?? {})].join("\n");
+	}
+	if (typeof message.content === "string") return message.content;
+	return message.content
+		.map((block) => {
+			if (block.type === "text") return block.text;
+			if (block.type === "toolCall") return `${block.name}(${JSON.stringify(block.arguments)})`;
+			return "";
+		})
+		.join("");
+}
+
+/** Every system message's text in one request, which is the system prompt the model saw. */
+export function systemPrompt(messages: readonly Message[]): string {
+	return messages
+		.filter((message) => message.role === "system")
+		.map(textOf)
+		.join("\n");
+}
+
+export function toolResult(messages: readonly Message[], toolName: string) {
+	return messages.find(
+		(message): message is Extract<Message, { role: "toolResult" }> =>
+			message.role === "toolResult" && message.toolName === toolName,
+	);
+}
+
+/** Names of the tools a request offered the model. */
+export function offeredTools(messages: readonly Message[]): string[] {
+	return messages.flatMap((message) =>
+		message.role === "system" ? (message.toolsAdded ?? []).map((tool) => tool.name) : [],
+	);
+}
