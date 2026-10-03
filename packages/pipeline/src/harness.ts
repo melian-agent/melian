@@ -1,8 +1,8 @@
 /**
- * The import quarantine for Pi Durable, pi-ai, and Chord: with `testing.ts`, the only module in Melian that imports
- * them. It re-exports Pi's API under Pi's names, so Pi's README stays the reference, and callers compile against Pi's
- * experimental contracts. An upstream rename moves one import here; a changed signature still reaches every caller.
- * A narrow Melian-owned facade grows in front of this module as the pipeline gains callers.
+ * The import quarantine for Pi Durable, pi-ai, and Chord. It and `testing.ts` are the only modules in Melian that
+ * import them. It re-exports Pi's API under Pi's names, so Pi's README stays the reference, and callers compile
+ * against Pi's experimental contracts. An upstream rename moves one import here; a changed signature still reaches
+ * every caller. A narrow Melian-owned facade grows in front of this module as the pipeline gains callers.
  *
  * @module
  */
