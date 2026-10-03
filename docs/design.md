@@ -96,7 +96,8 @@ Only the publish and knowledge tasks hold write credentials. Lenses never see th
 | A new revision, a comment, a command | A `submit()` into that conversation; comments while busy use `whenBusy: "steer"` |
 | A pipeline step | A `defineTask()` with phases and checkpoints |
 | A lens | A child conversation created and owned by the lens task, configured with `configure()` with its own model, instructions, and an explicit tool list, because an owned conversation otherwise inherits its owner's tools. Never a subagent tool the model chooses to call |
-| Findings, triage decisions, knowledge proposals | `defineDoc()` documents, rewindable, committed atomically with the transcript |
+| Findings | A `defineDoc()` document, rewindable, committed atomically with the transcript, and owned by the changeset's root conversation so a fork of the root at any revision carries them. A lens's tool writes to the root through the ID it is constructed with, never to its own child conversation |
+| Triage decisions, knowledge proposals | `defineDoc()` documents, rewindable, committed atomically with the transcript |
 | Standards and lens bodies | `section()` prompt sections rebuilt from files before every request, so edits take effect immediately and the transcript records what the model saw |
 | Idempotent publication | A durable `published` document keyed by revision and finding ID, written in the same commit that records the post, plus a check for Melian's marker on the pull request before posting. Not `api.memo()`: memos are task-scoped and discarded when the task ends |
 | Webhook delivery deduplication | `requestId` on submission, exactly-once. A `requestId` is scoped to one conversation, so the changeset's storage and conversation are resolved before deduplication |
@@ -112,8 +113,8 @@ Pi Durable is pinned to an exact version and imported by one internal module, be
 
 A finding is a SARIF `result` plus Melian extension properties. SARIF because semgrep, gitleaks, and eslint emit it natively, GitHub code scanning ingests it, and it forces a stable schema from the first commit. Extensions:
 
-- `id`: stable hash of file, rule, and a normalised snippet. Survives line shifts. Used for cross-revision diffing and dismissal matching.
-- `cause`: `introduced`, `affected`, or `pre-existing`. See below.
+- `id`: stable hash of file, rule, a normalised snippet, and the snippet's occurrence: its zero-based ordinal among identical normalised snippets in that file at head, in line order. Survives line shifts and edits elsewhere in the file; inserting an identical snippet earlier renumbers the ones after it. A finding with no snippet supplies its own discriminator, such as the enclosing symbol or the hunk index. Used for cross-revision diffing and dismissal matching.
+- `cause`: `introduced`, `affected`, or `pre-existing`. Location proves `introduced` only; `affected` needs the lens's evidence; everything else is `pre-existing`. See below.
 - `trigger`: the diff hunk that caused the finding, named by its file and its index within that file.
 - `severity`: `P0` to `P3` plus `nit`. The rubric is fixed in version one, so `resolution` maps a closed set and a typo in configuration is an error. A repository-defined rubric is deferred until a user needs one.
 - `confidence`: calibrated probability that the finding is real.
@@ -128,17 +129,19 @@ Problem: a change inside the diff can break code outside it, and a lens reading 
 
 Example: a pull request renames a function parameter. A caller in another file now passes the wrong argument. Meanwhile, that other file also has an unrelated SQL injection that predates the pull request.
 
-Solution: classify by cause, not location.
+Solution: classify by cause, not location. Location can prove only that a finding is in the diff; it cannot prove that a finding outside the diff was caused by it.
 
-- `introduced`: inside the diff. In scope, can block.
-- `affected`: outside the diff, provably caused by it. In scope, can block. The lens must cite the specific code the change breaks.
-- `pre-existing`: outside the diff, not caused by it. Never blocks. Appears once in a capped "noticed" section, is recorded in Melian's store, and is never raised again on that repository.
+- `introduced`: inside the diff. In scope, can block. The only cause a location alone establishes.
+- `affected`: outside the diff, provably caused by it. In scope, can block. Only evidence makes a finding `affected`: the lens cites, as `cause.evidence`, the specific changed code that breaks the location. No heuristic produces it.
+- `pre-existing`: outside the diff, with no evidence that the change caused it. The default for anything outside the diff. Never blocks. Appears once in a capped "noticed" section, is recorded in Melian's store, and is never raised again on that repository.
 
 Static analysis gets the same split for free by running on base and head and diffing results.
 
 ### Cross-revision diffing
 
-Each revision's findings are diffed against the previous revision's by `id`. New findings are posted. Still-open findings are not reposted. Resolved findings get a short resolution note on their thread. Dismissed findings stay dismissed unless the triggering hunk changes materially.
+Each revision's findings are diffed against the previous revision's by `id`. New findings are posted. Still-open findings are not reposted. Resolved findings get a short resolution note on their thread. Dismissed findings stay dismissed unless the triggering hunk changes materially, which for now means the normalised code of the finding's trigger differs; a reopened finding keeps its old dismissal in its history.
+
+The findings document keeps what a producer reports apart from Melian's lifecycle state: status, who dismissed a finding and why, and the first and last revisions that reported it. A lens or tool reporting a finding again replaces only its own record, so a dismissal survives every rerun.
 
 Local findings persist in the clone's `.git/melian/` directory, uncommitted. When a pull request opens, the server or Actions host imports them so the author is not told the same thing twice.
 
@@ -161,6 +164,7 @@ description: Injection, authz, secrets, unsafe deserialisation, SSRF, crypto mis
 tier: heavy
 tools: [read, grep, find]
 severities: [P0, P1, P2]
+rules: [injection, authz, secrets, deserialisation, ssrf, crypto]
 paths: ["**"]
 budget: { findings: 8, tokens: 200k }
 extends: ~
@@ -176,12 +180,13 @@ Front matter is routing; the body is the system prompt for the lens's child conv
 - `tier` names a model tier, never a model ID. Tiers resolve through model routing, which is overridable per path.
 - `tools` is a read-only allowlist by default. The hook layer enforces it.
 - `severities` bounds what the lens may report. The hook layer rejects findings outside it.
+- `rules` lists the rule IDs the lens may report. The hook layer rejects any other, so a model cannot coin a new rule name, and with it a new finding ID, on each run.
 - `extends` lets a repository override parts of a built-in lens, such as its tier or an appended paragraph, without copying the body.
 - `standards: true` injects the shared standards section. Default true; opt out for lenses where conventions are noise.
 
 Layering follows Pi's resource rules. Built-in lenses ship inside the Melian package. Repository lenses live under `.melian/lenses/`, which is canonical and keeps them beside `melian.yaml`, standards, and knowledge. Lenses are also discovered under `.agents/lenses/`, for repositories that keep everything agent-facing under the Agent Skills directory, mirroring Pi's own dual discovery of `.pi/` and `.agents/skills/`. Skill loaders only load directories containing `SKILL.md`, so a `LENS.md` directory is invisible to them wherever it lives. We do not own the `.agents/` namespace; if the spec defines that path for something else, the spec wins. Both locations resolve nearest-first in a monorepo. Folder-level configuration can disable a lens, change its tier, narrow its paths, or add one. Lens packs for a language or framework ship as Pi packages with a `melian.lenses` manifest key mirroring `pi.skills`, pinned in project settings.
 
-Findings leave a lens through a `report_finding` tool with a TypeBox schema. Prose is never parsed for findings. The tool upserts by the finding's stable ID and is replay-safe, so a crash mid-call never stores a finding twice.
+Findings leave a lens through a `report_finding` tool with a TypeBox schema. Prose is never parsed for findings. The lens supplies location, rule, severity, explanation, and evidence; Melian derives the rest, including the snippet, so identity never depends on the model's wording. The tool upserts by the finding's stable ID and is replay-safe, so a crash mid-call never stores a finding twice.
 
 What stays out of a lens: topology, concurrency, deadlines, publication, and verdict rules. Those are tiers and resolution configuration.
 
@@ -496,6 +501,10 @@ docs/
 | Severity rubric | Fixed `P0` to `P3` plus `nit` in version one; custom rubrics deferred | A closed set lets configuration be validated and resolution stay deterministic; nobody has asked for another |
 | Finding triggers | A hunk carries its file and a stable index within it | A finding can name the hunk that caused it without copying it |
 | `.melian/` placement | Any folder level for standards and lenses, nearest-first; knowledge and lens-pack settings at the root only | Per-path content layers like `melian.yaml`; repository-wide state has one home |
+| Finding identity | file, rule, normalised snippet, and occurrence ordinal | Identical snippets in one file must not collide; line shifts must not change the ID |
+| Cause by location | Location proves introduced only; affected needs lens evidence; pre-existing otherwise | A location heuristic must never make an old defect block |
+| Lens-reported findings | Lens supplies location, rule from its declared list, severity, explanation, evidence; Melian derives snippet from the head revision and everything else | Identity must not depend on the model's wording |
+| Findings ownership | The changeset's root conversation, never a lens's child conversation | A fork of the root at any revision must carry the findings; a lens conversation ends with its task |
 
 ## Open questions
 

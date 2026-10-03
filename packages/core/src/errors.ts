@@ -98,3 +98,32 @@ export class OutsideRepositoryError extends Error {
 		this.repoRoot = repoRoot;
 	}
 }
+
+/** Why a value is not a valid finding. */
+export type FindingErrorCode =
+	| "invalidFinding"
+	| "levelMismatch"
+	| "invalidPath"
+	| "invalidRegion"
+	| "deletedFile"
+	| "missingEvidence"
+	| "missingDiscriminator"
+	| "snippetNotFound"
+	| "idMismatch"
+	| "unknownFinding";
+
+/**
+ * A value is not a valid finding, or an ID names no finding. `path` is the JSON pointer of the offending field, empty
+ * for the whole value.
+ */
+export class FindingError extends Error {
+	readonly code: FindingErrorCode;
+	readonly path: string;
+
+	constructor(code: FindingErrorCode, message: string, options: { path: string }) {
+		super(message);
+		this.name = "FindingError";
+		this.code = code;
+		this.path = options.path;
+	}
+}

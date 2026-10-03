@@ -39,12 +39,12 @@ import {
 	type Event,
 	evalFinding,
 	Findings,
-	findingId,
 	offeredTools,
 	openSpikeHarness,
 	readEvents,
 	reportFindingReply,
 	type Scenario,
+	spikeFindingId,
 	spikeRegistry,
 	systemPrompt,
 	textOf,
@@ -73,7 +73,8 @@ function tracked(harness: Harness): Harness {
 async function crashWhen(scenario: Scenario, reached: (events: readonly Event[]) => boolean) {
 	const database = join(dir, `${scenario}.sqlite`);
 	const log = join(dir, `${scenario}.jsonl`);
-	const child = spawn(process.execPath, [crashScript, scenario, database, log], {
+	// The condition resolves workspace packages to their sources, as Vitest does, rather than to a stale or absent build.
+	const child = spawn(process.execPath, ["--conditions=@melian-agent/source", crashScript, scenario, database, log], {
 		stdio: ["ignore", "ignore", "pipe"],
 	});
 	let stderr = "";
@@ -400,7 +401,7 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		expect((await ask(firstRoot, "Review this change.")).status).toBe("done");
 		await first.close(context);
 
-		const reported = { items: { [findingId(evalFinding)]: evalFinding } };
+		const reported = { items: { [spikeFindingId(evalFinding)]: evalFinding } };
 		const harness = tracked(await openHarness(await openSqliteStorage(path), { models: fake.models, registry }));
 		const root = await harness.root(context);
 		expect(await harness.snapshot(Findings, root.id, context)).toEqual(reported);
@@ -412,7 +413,7 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		const after = await root.fork(result.id, { ownership: { kind: "ownerless" } }, context);
 		const late = { ...evalFinding, rule: "no-implicit-any", title: "P2: added after the fork" };
 		await root.commit(async (tx) => {
-			(await tx.doc(Findings, root.id)).items[findingId(late)] = late;
+			(await tx.doc(Findings, root.id)).items[spikeFindingId(late)] = late;
 		}, context);
 
 		expect(await harness.snapshot(Findings, before.id, context)).toBeUndefined();
@@ -511,7 +512,7 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		const settled = await (await harness.submission(submissionId, context))!.wait(context);
 		expect(settled.status).toBe("done");
 
-		const id = findingId(evalFinding);
+		const id = spikeFindingId(evalFinding);
 		const root = await harness.root(context);
 		expect(await harness.snapshot(Findings, root.id, context)).toEqual({ items: { [id]: evalFinding } });
 		expect(count(readEvents(log), "finding-committed")).toBe(3);

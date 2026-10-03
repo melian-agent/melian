@@ -44,6 +44,7 @@ export {
 	type ToolRegistration,
 	ToolResultEntry,
 	ToolTask,
+	type Tx,
 } from "@earendil-works/pi-durable";
 
 /** A context that is never cancelled, for work with no caller to cancel it. */

@@ -13,4 +13,4 @@
 
 - Whole package: `npm test --workspace @melian-agent/pipeline`.
 - The spike alone: `npx vitest --run packages/pipeline/test/durable-spike.test.ts` from the repository root.
-- The crash script by hand: `node packages/pipeline/test/fixtures/crash.ts <task|replay|memo|finding> <file.sqlite> <log.jsonl>`. It parks once the scenario's first half is done; kill it with `kill -9` and read the log.
+- The crash script by hand: `node --conditions=@melian-agent/source packages/pipeline/test/fixtures/crash.ts <task|replay|memo|finding> <file.sqlite> <log.jsonl>`. It parks once the scenario's first half is done; kill it with `kill -9` and read the log.

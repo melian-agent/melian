@@ -1,0 +1,36 @@
+src/run.ts
+
+  P0  line 40  sql-injection  (introduced, new)
+  The query interpolates the user's name
+    What: The query splices the name into SQL text.
+    Why here: This change passes the name straight from the request.
+    What to do: Pass the name as a bound parameter.
+
+  P1  line 12  no-eval  (introduced, new)
+  eval runs request input
+    What: The handler passes the request body to eval.
+    Why here: This change routes the body into run() without parsing it.
+    What to do: Parse the body with JSON.parse and validate it.
+
+  P1  line 50  no-eval  (introduced, new)
+  eval runs a stored template
+    What: The renderer evaluates a template from the database.
+    Why here: This change lets users edit that template.
+    What to do: Render the template with a sandboxed engine.
+
+  P3  lines 30-32  unchecked-result  (affected, new)
+  The write's result is ignored
+    What: fs.write can write fewer bytes than asked.
+    Why here: The new caller passes larger buffers than before.
+    Evidence: src/run.ts:12 now passes buffers of up to 1 MiB to write().
+    What to do: Loop until every byte is written, or use fs.writeFile.
+
+src/total.ts
+
+  nit  line 4  prefer-const  (pre-existing, new)
+  total is never reassigned
+    What: total is declared with let but never reassigned.
+    Why here: The file is open in this change, but the line predates it.
+    What to do: Declare it with const.
+
+5 findings in 2 files.
