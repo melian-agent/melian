@@ -388,7 +388,23 @@ async function readLayer(source: SourceReader, site: Site): Promise<MelianYaml |
 	rejectReservedKeys(site, value);
 	validate(site, value, melianYamlSchema);
 	checkPatterns(site, value as MelianYaml);
+	checkRequire(site, value as MelianYaml);
 	return anchorPaths(site, value as MelianYaml);
+}
+
+// Each `require` glob must be matched on its own, so an exclusion there would always count as missing.
+function checkRequire(site: Site, layer: MelianYaml): void {
+	for (const [rule, { require }] of Object.entries(layer.guardrails?.["required-files"]?.rules ?? {})) {
+		const negated = require?.find((glob) => glob.startsWith("!"));
+		if (negated === undefined) continue;
+		const key = `guardrails.required-files.rules.${rule}.require`;
+		throw configError(
+			"invalidValue",
+			site,
+			`"${key}" has ${negated}; each require glob must be touched, so it cannot exclude. Narrow the glob instead`,
+			{ key },
+		);
+	}
 }
 
 // A pattern is refused when its file is read, so the error names the file rather than failing a review later.

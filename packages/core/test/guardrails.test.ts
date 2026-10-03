@@ -185,6 +185,26 @@ describe("required-files", () => {
 		expect(findings[0]!.properties.explanation.what).toContain("nothing matching db/schema.sql");
 	});
 
+	it("refuses an exclusion in require, which would always count as missing", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines(
+				"guardrails:",
+				"  required-files:",
+				"    rules:",
+				"      docs:",
+				"        when: [src/**]",
+				"        require: [docs/**, '!docs/drafts/**']",
+				"        message: document it",
+			),
+		});
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"), ConfigError);
+		expect([error.code, error.file, error.key]).toEqual([
+			"invalidValue",
+			"melian.yaml",
+			"guardrails.required-files.rules.docs.require",
+		]);
+	});
+
 	it("is satisfied when the change touches the required path too", async () => {
 		const { findings } = await guardrails(
 			{ "melian.yaml": config, "db/schema.sql": lines("create table a;") },
