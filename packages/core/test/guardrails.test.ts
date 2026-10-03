@@ -146,6 +146,26 @@ describe("forbidden-paths", () => {
 		expect(findings.map((finding) => finding.properties.path)).toEqual(["server.pem"]);
 	});
 
+	it("names the file that set an incomplete rule named constructor, not a nearer file with other rules", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines(
+				"guardrails:",
+				"  forbidden-paths:",
+				"    rules:",
+				"      constructor:",
+				"        paths: [a]",
+			),
+			"services/melian.yaml": lines(
+				"guardrails:",
+				"  forbidden-paths:",
+				"    rules:",
+				"      other: { paths: [b], message: m }",
+			),
+		});
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "services/a.ts"), ConfigError);
+		expect([error.file, error.key]).toEqual(["melian.yaml", "guardrails.forbidden-paths.rules.constructor.message"]);
+	});
+
 	it("refuses a rule that the merged files leave without its message", async () => {
 		writeFiles(repo, {
 			"melian.yaml": lines("guardrails:", "  forbidden-paths:", "    rules:", "      x:", "        paths: [a]"),

@@ -330,6 +330,16 @@ function merge(under: Plain, over: Plain): Plain {
 	return merged;
 }
 
+// YAML's objects inherit from Object.prototype, so `rules.constructor` would be found in every file. Records built
+// from YAML have no prototype, and a name is looked up only among the keys a file wrote.
+function withoutPrototypes(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(withoutPrototypes);
+	if (!isPlain(value)) return value;
+	const bare: Plain = Object.create(null);
+	for (const [key, child] of Object.entries(value)) bare[key] = withoutPrototypes(child);
+	return bare;
+}
+
 // `__proto__` as a key would replace a merged object's prototype wherever a later step copies it.
 function rejectReservedKeys(site: Site, value: unknown, path: string[] = []): void {
 	if (!isPlain(value)) return;
@@ -386,6 +396,7 @@ async function readLayer(source: SourceReader, site: Site): Promise<MelianYaml |
 		throw configError("invalidYaml", site, (cause as Error).message, { cause });
 	}
 	rejectReservedKeys(site, value);
+	value = withoutPrototypes(value);
 	validate(site, value, melianYamlSchema);
 	checkPatterns(site, value as MelianYaml);
 	checkRequire(site, value as MelianYaml);
@@ -453,7 +464,7 @@ function anchorPaths(site: Site, layer: MelianYaml): MelianYaml {
 		if (keys.length === 0) return (value as string[]).map((glob) => anchor(at.join("."), glob));
 		if (!isPlain(value)) return value;
 		const [key, ...rest] = keys;
-		const copy: Plain = { ...value };
+		const copy: Plain = Object.assign(Object.create(null), value);
 		for (const name of key === "*" ? Object.keys(copy) : [key!]) {
 			if (copy[name] !== undefined) copy[name] = rewrite(copy[name], rest, [...at, name]);
 		}
