@@ -5,13 +5,15 @@ import { describe, expect, it } from "vitest";
 
 const root = fileURLToPath(new URL("../../..", import.meta.url));
 const permitted = ["packages/pipeline/src/harness.ts", "packages/pipeline/src/testing.ts"];
-const piImport = /["']@earendil-works\/(?:pi-durable|pi-ai|chord)(?:\/[^"']*)?["']/;
+// Every way a module names another: `from "x"`, a side-effect `import "x"`, `import("x")` with any quote, and require.
+const piImport =
+	/(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)["'`]@earendil-works\/(?:pi-durable|pi-ai|chord)(?:\/[^"'`]*)?["'`]/;
 
 // Repository-relative posix paths, so the filters and the permitted paths match on Windows too.
 function sources(): string[] {
 	return readdirSync(join(root, "packages"), { recursive: true, encoding: "utf8" })
 		.map((path) => `packages/${path.split(sep).join("/")}`)
-		.filter((path) => /\.[cm]?tsx?$/.test(path))
+		.filter((path) => /\.[cm]?[jt]sx?$/.test(path))
 		.filter((path) => !/(^|\/)(node_modules|dist)\//.test(path));
 }
 
