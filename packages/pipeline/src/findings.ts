@@ -198,6 +198,15 @@ export async function dismissFinding(
 	items[id] = { ...record, lifecycle };
 }
 
+/** Which sightings {@link readFindings} merges. */
+export interface ReadFindingsOptions {
+	/**
+	 * Only these producers' sightings, such as the lenses and versions selected for the review being read. A lens that
+	 * configuration has since disabled or retiered then leaves nothing behind. Every producer when absent.
+	 */
+	readonly producers?: readonly FindingSource[];
+}
+
 /**
  * The findings sighted at `head`, one per ID in ID order, each with its lifecycle status. Where several producers
  * sighted one ID, the highest severity wins and a tie goes to the producer whose check sorts first, and
@@ -209,14 +218,18 @@ export async function readFindings(
 	rootConversationId: ConversationId,
 	head: string,
 	context: Context,
+	options: ReadFindingsOptions = {},
 ): Promise<readonly Finding[]> {
 	const items = (await reader.snapshot(FindingsDocument, rootConversationId, context))?.items ?? {};
+	const wanted = options.producers === undefined ? undefined : new Set(options.producers.map(producerKey));
 	return Object.keys(items)
 		.sort()
 		.flatMap((id) => {
 			const { lifecycle, sightings } = items[id]!;
-			const atHead = sightings[head];
-			if (atHead === undefined || Object.keys(atHead).length === 0) return [];
+			const atHead = Object.fromEntries(
+				Object.entries(sightings[head] ?? {}).filter(([key]) => wanted === undefined || wanted.has(key)),
+			);
+			if (Object.keys(atHead).length === 0) return [];
 			const { winner, reportedBy } = adjudicate(atHead);
 			return [
 				structuredClone({ ...winner, properties: { ...winner.properties, status: lifecycle.status, reportedBy } }),

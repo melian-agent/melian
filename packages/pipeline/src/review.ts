@@ -303,7 +303,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 	const root = await harness.root(context);
 	const paths = changeset.revision.files.map((file) => file.path);
 	const selected = selectLenses(options.lenses, config, paths);
-	if (selected.length === 0) return readFindings(harness, root.id, changeset.revision.head, context);
+	if (selected.length === 0) return [];
 	const nonce = reviewNonce();
 	const lenses: LensRun[] = [];
 	for (const { lens, coverage, files } of selected) {
@@ -365,7 +365,9 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 		);
 	}
 	const settled = await harness.waitForTask(taskId, context);
-	const findings = await readFindings(harness, root.id, changeset.revision.head, context);
+	// Only the lenses this review ran: one that configuration has since disabled or retiered leaves nothing behind.
+	const producers = lenses.map((lens) => ({ check: `lens.${lens.name}`, version: lens.version }));
+	const findings = await readFindings(harness, root.id, changeset.revision.head, context, { producers });
 	const outcome = settled.state.outcome;
 	const exhausted = lenses.flatMap((lens) => {
 		const result = outcome.status === "completed" ? outcome.result[lens.key] : undefined;

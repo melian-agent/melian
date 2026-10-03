@@ -499,6 +499,64 @@ describe("reviewChangeset", () => {
 		expect(fake.provider.state.callCount).toBe(calls);
 	});
 
+	describe("returns only the findings of the lenses this review ran", () => {
+		const both = () =>
+			scriptConversations(fake, [
+				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+				{
+					match: contracts,
+					replies: [
+						call("report_finding", { ...nullDeref, file: "src/report.ts", line: 2, rule: "changed-return" }),
+						fauxAssistantMessage("Done."),
+					],
+				},
+			]);
+
+		it("drops a lens that configuration has since disabled", async () => {
+			both();
+			expect((await review()).map((finding) => finding.ruleId)).toEqual(
+				expect.arrayContaining(["null-dereference", "changed-return"]),
+			);
+			const off = { ...config, lenses: { contracts: { enabled: false } } };
+			scriptConversations(fake, [
+				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+			]);
+			expect((await review({ config: off })).map((finding) => finding.ruleId)).toEqual(["null-dereference"]);
+		});
+
+		it("lets a retiered lens report again and drops its old version's sighting", async () => {
+			both();
+			await review();
+			const heavy = fake.ref("heavy");
+			const retiered = {
+				...config,
+				models: { ...config.models, medium: { model: `${heavy.provider}/${heavy.modelId}` } },
+				lenses: { correctness: { tier: "medium" as const } },
+			};
+			const requests = scriptConversations(fake, [
+				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+			const tight = lenses.map((lens) => ({ ...lens, budget: { findings: 1 } }));
+
+			const findings = await review({ config: retiered, lenses: tight });
+
+			expect(toolResults(requests[correctness]![1]!)[0]).toMatch(/^recorded finding/);
+			const [nullDereference] = findings.filter((finding) => finding.ruleId === "null-dereference");
+			expect(nullDereference!.properties.reportedBy).toHaveLength(1);
+			expect(nullDereference!.properties.reportedBy![0]!.version).not.toBe(
+				lenses.find((lens) => lens.name === "correctness")!.version,
+			);
+		});
+
+		it("returns the same findings when the same lenses review the same head again", async () => {
+			both();
+			const first = await review();
+			expect(first).toHaveLength(2);
+			expect(await review()).toEqual(first);
+		});
+	});
+
 	it("runs no lens that configuration switches off", async () => {
 		const off = { ...config, lenses: { correctness: { enabled: false }, contracts: { enabled: false } } };
 		expect(await review({ config: off })).toEqual([]);
