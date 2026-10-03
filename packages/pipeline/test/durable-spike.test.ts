@@ -426,10 +426,10 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 			(await tx.doc(Findings, root.id)).items.push("P2: added after the fork");
 		}, context);
 
-		expect((await harness.snapshot(Findings, before.id, context))?.items ?? []).toEqual([]);
+		expect(await harness.snapshot(Findings, before.id, context)).toBeUndefined();
 		expect(await harness.snapshot(Findings, after.id, context)).toEqual({ items: ["P1: eval runs user input"] });
 		expect((await harness.snapshot(Findings, root.id, context))?.items).toHaveLength(2);
-		expect((await harness.snapshotAsOf(Findings, root.id, call.id, context))?.items ?? []).toEqual([]);
+		expect(await harness.snapshotAsOf(Findings, root.id, call.id, context)).toBeUndefined();
 		expect((await harness.snapshotAsOf(Findings, root.id, result.id, context))?.items).toEqual([
 			"P1: eval runs user input",
 		]);
