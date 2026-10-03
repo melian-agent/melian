@@ -39,10 +39,6 @@ function region(finding: Finding) {
 	return finding.locations[0]!.physicalLocation.region;
 }
 
-function fileOf(finding: Finding): string {
-	return finding.properties.path;
-}
-
 function compare(a: Finding, b: Finding): number {
 	const { severity: left, id: leftId } = a.properties;
 	const { severity: right, id: rightId } = b.properties;
@@ -81,7 +77,7 @@ export function renderFindingsTerminal(log: FindingsLog, options: TerminalRender
 	if (findings.length === 0) return "No findings.\n";
 	const byFile = new Map<string, Finding[]>();
 	for (const finding of findings) {
-		const file = fileOf(finding);
+		const file = finding.properties.path;
 		byFile.set(file, [...(byFile.get(file) ?? []), finding]);
 	}
 	const files = [...byFile.keys()].sort(ordinal);
