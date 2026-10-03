@@ -86,6 +86,11 @@ export interface Lens {
 	readonly version: string;
 	/** The nearest `LENS.md` that defined or extended it. */
 	readonly file: string;
+	/**
+	 * Folders beneath `scope` whose own lens of this name replaces this one there, found by {@link loadLenses} across
+	 * the whole source, whether or not a changed path reaches them. Not part of `version`.
+	 */
+	readonly nearer?: readonly string[];
 }
 
 /** The largest `LENS.md` the loader reads, and the findings budget of a lens that sets none. */
@@ -175,7 +180,7 @@ function required<T>(file: string, field: string, value: T | undefined): T {
 }
 
 function versioned(lens: Omit<Lens, "version">): Lens {
-	const { file: _, ...behaviour } = lens;
+	const { file: _, nearer: __, ...behaviour } = lens;
 	const version = createHash("sha256").update(JSON.stringify(behaviour)).digest("hex").slice(0, 12);
 	return { ...lens, version };
 }
@@ -333,12 +338,22 @@ export async function loadLenses(
 			.filter((scope) => defined.has(scope));
 		chains.set(scopes.join("\0"), scopes);
 	}
+	// Where a nearer folder defines a lens's name, that folder is not the lens's to review, even if no path reaches it.
+	const withNearer = (lens: Lens): Lens => {
+		const nearer = [...defined.entries()]
+			.filter(([scope, names]) => names.has(lens.name) && scope !== lens.scope && beneath(lens.scope, scope))
+			.map(([scope]) => scope)
+			.sort();
+		return nearer.length === 0 ? lens : { ...lens, nearer };
+	};
 	const union = new Map<string, Lens>();
 	for (const scopes of chains.values()) {
 		const repository = (await Promise.all(scopes.map(definitionsIn))).flat();
-		for (const lens of layer([...builtins, ...repository])) union.set(`${lens.name}\0${lens.version}`, lens);
+		for (const lens of layer([...builtins, ...repository]))
+			union.set(`${lens.name}\0${lens.version}`, withNearer(lens));
 	}
-	if (paths.length === 0) for (const lens of layer(builtins)) union.set(`${lens.name}\0${lens.version}`, lens);
+	if (paths.length === 0)
+		for (const lens of layer(builtins)) union.set(`${lens.name}\0${lens.version}`, withNearer(lens));
 	return [...union.values()].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
@@ -393,7 +408,8 @@ export function selectLenses(lenses: readonly Lens[], config: MelianConfig, path
 					});
 		const nearer = lenses
 			.filter((other) => other.name === lens.name && other.scope !== lens.scope && beneath(lens.scope, other.scope))
-			.map((other) => other.scope);
+			.map((other) => other.scope)
+			.concat(lens.nearer ?? []);
 		const coverage = { scope: tuned.scope, paths: tuned.paths, nearer: [...new Set(nearer)] };
 		const files = paths.filter((path) => lensCovers(coverage, path));
 		return files.length > 0 ? [{ lens: tuned, coverage, files }] : [];
