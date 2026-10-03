@@ -1,0 +1,60 @@
+import {
+	type Changeset,
+	ChangesetError,
+	type PullRequest,
+	type ReviewProvider,
+	resolveRange,
+} from "@melian-agent/core";
+import { createGitHubProvider, GitHubError, parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
+import { CliError, fetchPullRequest, git, pullRequestRefs } from "./repository.ts";
+
+/** What a command names: a pull request, written `#12`, or a git range, such as `main` or `main...feature`. */
+export type Target =
+	| { readonly kind: "pullRequest"; readonly number: number }
+	| { readonly kind: "range"; readonly spec: string };
+
+/** Reads a command's target. A pull request is `#` and its number; anything else is a range. */
+export function parseTarget(argument: string): Target {
+	const match = /^#(\d+)$/.exec(argument);
+	return match === null ? { kind: "range", spec: argument } : { kind: "pullRequest", number: Number(match[1]) };
+}
+
+const remote = "origin";
+
+/** The provider for the repository `origin` names on GitHub, with a token from the environment or gh. */
+export async function gitHubFor(cwd: string, env: NodeJS.ProcessEnv): Promise<ReviewProvider> {
+	const url = await git(cwd, ["remote", "get-url", remote]).catch(() => {
+		throw new CliError(
+			`this repository has no ${remote} remote, so Melian cannot tell which GitHub repository it is`,
+		);
+	});
+	const { owner, repo } = parseGitHubRemote(url);
+	const found = await resolveGitHubToken(env);
+	if (found === undefined) {
+		throw new GitHubError("noToken", "no GitHub token: set GITHUB_TOKEN or GH_TOKEN, or log in with gh auth login");
+	}
+	return createGitHubProvider({ owner, repo, token: found.token });
+}
+
+/** A pull request's changeset from the refs a review fetched, or a hint to run the review when they are missing. */
+export async function pullRequestChangeset(cwd: string, number: number): Promise<Changeset> {
+	try {
+		return await resolveRange(cwd, pullRequestRefs(number).range);
+	} catch (error) {
+		if (error instanceof ChangesetError && error.code === "unknownRef") {
+			throw new CliError(`Melian has not reviewed pull request #${number} here; run melian review #${number} first`);
+		}
+		throw error;
+	}
+}
+
+/** Fetches a pull request's commits and resolves its changeset at the head the provider reports. */
+export async function fetchedPullRequest(
+	cwd: string,
+	provider: ReviewProvider,
+	number: number,
+): Promise<{ pullRequest: PullRequest; changeset: Changeset }> {
+	const pullRequest = await provider.pullRequest(number);
+	await fetchPullRequest(cwd, remote, pullRequest);
+	return { pullRequest, changeset: await resolveRange(cwd, pullRequestRefs(number).range) };
+}

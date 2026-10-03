@@ -306,6 +306,8 @@ Caveat to state in user documentation: automated use of consumer subscriptions i
 
 The primary host and the only thing the skills call. `melian run`, `melian review <changeset>`, `melian explain <finding>`, `melian dismiss <finding> --reason`. Embeds the durable harness with SQLite storage under `.git/melian/`, one file per changeset. Uses the developer's own credentials.
 
+Built so far: `melian review <range|#pr>` prints the verdict and exits `0` passed, `1` findings with one blocking, `2` not reviewed, or `3` findings with none blocking, so a hook or a script can act on it; `melian publish <#pr>` posts the stored review of the pull request's current head and refuses a head the stored review does not cover; `melian findings <range|#pr> [--open] [--json]` reads the findings document; and `melian doctor` checks the tools and names where credentials come from. A pull request is reviewed under the policy of its base commit, and a range on the checked-out branch under the working tree's. Publication never posts a review of a range or a working tree. [docs/guidelines/cli.md](guidelines/cli.md) holds the detail.
+
 Publishing from the CLI sets a commit status, context `melian/review`, not a check run, because a user's token cannot create check runs; check runs arrive with the GitHub App on the server and Actions hosts. `passed`, and `findings` with nothing blocking, map to `success` with a description counting the findings; `findings` with a blocking finding maps to `failure`; `not-reviewed` maps to `error` with what did not run. The review itself is posted with the event `COMMENT`, never `APPROVE` or `REQUEST_CHANGES`: Melian never approves, and the status alone says whether anything blocks.
 
 ### Skills
