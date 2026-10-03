@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { stat } from "node:fs/promises";
 import { type ChangedFile, joinDiff, parseNumstatBinary, parsePatchHunks, parseRaw } from "./diff.ts";
 import { ChangesetError } from "./errors.ts";
-import { git, gitOutput } from "./git.ts";
+import { git, gitOutput, requireGitVersion } from "./git.ts";
 import { isPolicyFile } from "./paths.ts";
 
 /**
@@ -166,8 +166,20 @@ const diffFlags = [
 
 async function diff(repoRoot: string, base: string, head: string): Promise<ChangedFile[]> {
 	// diff.renames=copies would report copies, whose hunks are against the copy's source.
+	// The working tree's .gitattributes belong to whatever is checked out, often the head; `*.ts -diff` there would
+	// turn the head's own changes into a binary file with no hunks.
 	const run = (format: string[]) =>
-		gitOutput(repoRoot, ["-c", "diff.renames=true", "diff", ...diffFlags, ...format, base, head, "--"]);
+		gitOutput(repoRoot, [
+			`--attr-source=${base}`,
+			"-c",
+			"diff.renames=true",
+			"diff",
+			...diffFlags,
+			...format,
+			base,
+			head,
+			"--",
+		]);
 	const [raw, numstat, patch] = await Promise.all([
 		run(["--raw", "-z", "--no-abbrev"]),
 		run(["--numstat", "-z"]),
@@ -180,8 +192,9 @@ async function diff(repoRoot: string, base: string, head: string): Promise<Chang
  * Resolves a range in the repository containing `repoRoot` to a changeset with one revision.
  *
  * Shells out to `git`. Throws {@link ChangesetError}: `notARepository`, `invalidRange`, `unknownRef`, `noMergeBase`
- * when a three-dot range has unrelated sides, `dirtyWorktree` under `requireClean`, and `gitUnavailable` or `gitFailed`
- * when git itself fails.
+ * when a three-dot range has unrelated sides, `dirtyWorktree` under `requireClean`, `gitTooOld` before git 2.40, and
+ * `gitUnavailable` or `gitFailed` when git itself fails. Diff attributes come from the base commit, never from the
+ * working tree.
  */
 export async function resolveRange(
 	repoRoot: string,
@@ -190,6 +203,7 @@ export async function resolveRange(
 ): Promise<RangeChangeset> {
 	const spec = typeof range === "string" ? parseRangeSpec(range) : checkRange(range);
 	const root = await repositoryRoot(repoRoot);
+	await requireGitVersion(root);
 	const [baseRef, head] = await Promise.all([commitOf(root, spec.base), commitOf(root, spec.head)]);
 	const base = spec.mode === "threeDot" ? await mergeBase(root, spec, baseRef, head) : baseRef;
 	if (options.requireClean) {

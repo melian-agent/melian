@@ -6,6 +6,7 @@ export type ChangesetErrorCode =
 	| "noMergeBase"
 	| "dirtyWorktree"
 	| "gitUnavailable"
+	| "gitTooOld"
 	| "gitFailed";
 
 /** A changeset could not be resolved. `code` says why; `ref` and `paths` carry the offending input where there is one. */

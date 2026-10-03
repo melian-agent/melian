@@ -65,6 +65,33 @@ function subcommand(args: readonly string[]): string {
 	return "";
 }
 
+// 2.40 added --attr-source, without which a checked-out head's .gitattributes decides what its own diff shows.
+const minimumVersion = [2, 40] as const;
+let versionCheck: Promise<void> | undefined;
+
+// Takes `git --version` output; throws `gitTooOld` for anything older than the minimum, or unrecognised.
+export function checkGitVersion(output: string): void {
+	const match = /^git version (\d+)\.(\d+)/.exec(output.trim());
+	const [major, minor] = minimumVersion;
+	if (match !== null && (Number(match[1]) > major || (Number(match[1]) === major && Number(match[2]) >= minor)))
+		return;
+	throw new ChangesetError(
+		"gitTooOld",
+		`Melian needs git ${major}.${minor} or later to read diff attributes from the base; found "${output.trim()}"`,
+	);
+}
+
+export function requireGitVersion(cwd: string): Promise<void> {
+	versionCheck ??= git(cwd, ["--version"]).then(
+		(result) => checkGitVersion(result.stdout),
+		(error: unknown) => {
+			versionCheck = undefined;
+			throw error;
+		},
+	);
+	return versionCheck;
+}
+
 // Throws `gitFailed` with git's own message.
 export async function gitOutput(cwd: string, args: readonly string[]): Promise<string> {
 	const result = await git(cwd, args);

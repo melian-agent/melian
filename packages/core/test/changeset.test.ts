@@ -281,6 +281,35 @@ describe("resolveRange", () => {
 		});
 	});
 
+	describe("when the checked-out head controls git's own settings", () => {
+		beforeEach(() => {
+			gitIn(repo, "checkout", "--quiet", "feature");
+		});
+
+		it("reads diff attributes from the base, so the head cannot hide its hunks", async () => {
+			const before = await resolveRange(repo, "main...feature");
+			writeFiles(repo, { ".gitattributes": lines("*.txt -diff") });
+			gitIn(repo, "add", ".gitattributes");
+			gitIn(repo, "commit", "--quiet", "-m", "hide text changes");
+			const after = await resolveRange(repo, "main...feature");
+			const poem = (files: readonly { path: string }[]) => files.find(({ path }) => path === "poem.txt");
+			expect(poem(after.revision.files)).toEqual(poem(before.revision.files));
+			expect(poem(after.revision.files)).toMatchObject({ binary: false });
+		});
+
+		it("reports a submodule pointer the head moves while telling git to ignore it", async () => {
+			commitGitlink(repo, "vendor/lib", gitIn(repo, "rev-parse", "main"));
+			writeFiles(repo, {
+				".gitmodules": lines('[submodule "lib"]', "\tpath = vendor/lib", "\turl = ./lib", "\tignore = all"),
+			});
+			gitIn(repo, "add", ".gitmodules");
+			gitIn(repo, "update-index", "--cacheinfo", `160000,${gitIn(repo, "rev-parse", "main~1")},vendor/lib`);
+			gitIn(repo, "commit", "--quiet", "-m", "move the pointer and hide it");
+			const changeset = await resolveRange(repo, "feature~1..feature");
+			expect(changeset.revision.files.map(({ path }) => path)).toEqual([".gitmodules", "vendor/lib"]);
+		});
+	});
+
 	it("resolves an empty diff to no files", async () => {
 		const changeset = await resolveRange(repo, "main...main");
 		expect(changeset.revision.files).toEqual([]);
