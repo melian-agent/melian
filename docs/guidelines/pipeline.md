@@ -66,6 +66,8 @@ The hook sees only committed findings, and a round's tool calls run in parallel,
 
 One storage holds every review of a changeset, so the root's findings document accumulates across pushes. The budget counts only findings the lens reported at its own head, and `reviewChangeset` returns only findings reported at the head it reviewed. Without that, a lens that used its budget on the first push could report nothing on the second, and a fixed finding would come back as current.
 
+A finding's ID names no lens, so two lenses that share a rule ID can report one ID. The first lens to report it at a head keeps it; `report_finding` refuses the second, which would otherwise replace the first lens's severity and source and free a slot in the first lens's budget. Merging the two is adjudication's job, step 7.
+
 ## Contracts that read like mistakes
 
 - A task phase reruns from its start after a crash. Work before the phase's checkpoint commit must be safe to repeat, or guarded by a durable record.

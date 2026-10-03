@@ -311,6 +311,16 @@ export const reportFinding = defineTool({
 		await api.commit(async (tx) => {
 			const { items } = await tx.doc(FindingsDocument, lens.review);
 			const current = items[id]?.lifecycle.lastSeenRevision === review.head;
+			// A finding's ID does not name its lens, so two lenses sharing a rule ID can land on one ID. Replacing the
+			// other lens's record would change its severity and source, and hand that lens back a slot of its budget.
+			const owner = items[id]?.producer.properties.source;
+			if (
+				current &&
+				owner !== undefined &&
+				(owner.check !== `lens.${lens.name}` || owner.version !== lens.version)
+			) {
+				throw new Error(`${owner.check} already reported this finding; it is recorded, so move on`);
+			}
 			if (!current && countFor(items, lens) >= lens.budget) {
 				throw new Error(`budget reached: this lens may report ${lens.budget} findings; stop reporting and finish`);
 			}

@@ -345,6 +345,28 @@ describe("reviewChangeset", () => {
 		expect(fake.provider.state.callCount).toBe(0);
 	});
 
+	it("keeps the first lens's finding when another lens reports the same ID", async () => {
+		const shared = lenses.map((lens) =>
+			lens.name === "contracts"
+				? { ...lens, rules: [...lens.rules, { id: "null-dereference", description: "d" }] }
+				: lens,
+		);
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+			{
+				match: contracts,
+				replies: [call("report_finding", { ...nullDeref, severity: "P2" }), fauxAssistantMessage("Done.")],
+			},
+		]);
+
+		const findings = await review({ lenses: shared });
+
+		const results = [correctness, contracts].map((lens) => toolResults(requests[lens]![1]!)[0]!);
+		expect(results.filter((result) => result.startsWith("recorded finding"))).toHaveLength(1);
+		expect(results.join("\n")).toContain("already reported this finding");
+		expect(findings).toHaveLength(1);
+	});
+
 	it("names the lens when it did not finish, and keeps what it reported", async () => {
 		scriptConversations(fake, [
 			{ match: correctness, replies: [call("report_finding", nullDeref)] },
