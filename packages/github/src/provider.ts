@@ -207,7 +207,8 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 			for (const comment of comments) {
 				const found = parseMarker(firstLine(comment.body));
 				if (found?.revision !== revision || found.finding === undefined || !(await ours(comment.user))) continue;
-				(comment.in_reply_to_id === undefined ? threads : replies)[found.finding] = String(comment.id);
+				// GitHub may send a top-level comment's in_reply_to_id as null rather than leave it out.
+				(typeof comment.in_reply_to_id === "number" ? replies : threads)[found.finding] = String(comment.id);
 			}
 			return { ...(review === undefined ? {} : { review }), threads, replies };
 		},
