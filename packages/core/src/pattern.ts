@@ -213,6 +213,12 @@ class Parser {
 
 	// The code unit a single-character escape names, such as \t, \x41, or \. for a literal dot.
 	private escapedCode(char: string): number {
+		// RegExp reads \01 as an octal escape; this engine would read NUL and then 1.
+		if (char === "0" && isDigit(this.source.charCodeAt(this.position))) {
+			throw this.refuse(
+				"\\0 followed by a digit is an octal escape in RegExp; write \\x01 for that, or \\x00 and the digit",
+			);
+		}
 		const control = controlEscapes[char];
 		if (control !== undefined) return control;
 		if (char === "x" || char === "u") {

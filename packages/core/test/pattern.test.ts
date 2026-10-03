@@ -103,6 +103,9 @@ describe("compilePattern", () => {
 		expect(refusal("[z-a]")).toMatch(/backwards/);
 		expect(refusal("a**")).toMatch(/cannot follow a quantifier/);
 		expect(refusal("^*")).toMatch(/cannot follow an anchor/);
+		expect(refusal("\\01")).toMatch(/octal escape/);
+		expect(refusal("[\\07]")).toMatch(/octal escape/);
+		expect(compiled("\\0a").test("\0a")).toBe(true);
 	});
 
 	it("refuses groups nested deeper than 100, rather than overflowing the stack", () => {
