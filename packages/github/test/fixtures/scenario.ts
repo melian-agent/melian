@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
 	type Changeset,
+	type CheckRecord,
 	diffLines,
 	loadConfig,
 	loadLenses,
@@ -158,6 +159,8 @@ export interface ScenarioReview {
 	readonly range?: string;
 	readonly origin?: "range";
 	readonly policy?: "worktree";
+	/** The records of the checks that run without a model; all `ran` by default. */
+	readonly checks?: CheckRecord[];
 }
 
 // Opens a harness that only reviews, as the CLI's review does, so a publish task a crash left stays put.
@@ -213,7 +216,7 @@ export async function reviewScenario(
 		rerun,
 		origin,
 		// The default tiers' checks that run without a model, recorded as ran, as runChecks records them.
-		checks: [
+		checks: how.checks ?? [
 			{ name: "guardrails", status: "ran" },
 			{ name: "static.biome", status: "ran" },
 			{ name: "static.tsc", status: "ran" },

@@ -40,6 +40,8 @@ type StoredFinding = { ruleId: string; path: string; line: number; revision: str
 type PendingRound = {
 	// The revisionKey of the review the round publishes: a retarget keeps the head and changes it.
 	revision: string;
+	// The round's number at the head, from the head's `rounds`, which only grows. Its review's marker carries it.
+	round: number;
 	fingerprint: string;
 	verdict: StoredVerdict;
 	post: { finding: Finding; placement: Placement }[];
@@ -60,6 +62,8 @@ type StoredRevision = {
 	reviews: string[];
 	// The fingerprint of the verdict the last review posted.
 	verdict?: string;
+	// How many rounds were ever planned at this head, so each round has a number of its own.
+	rounds?: number;
 	pending?: PendingRound;
 	abandoned?: AbandonedRound[];
 	open: Record<string, StoredFinding>;
@@ -149,6 +153,7 @@ function planRound(
 	}
 	return {
 		revision,
+		round: (state.revisions[head]?.rounds ?? 0) + 1,
 		fingerprint: fingerprint(verdict),
 		verdict: structuredClone(verdict) as StoredVerdict,
 		post: structuredClone(plan.post.map(({ finding, placement }) => ({ finding, placement }))),
@@ -275,10 +280,12 @@ function publishTask(provider: ReviewProvider) {
 					const secret = publisher?.secret;
 					if (secret === undefined) throw new Error("the changeset has no publisher secret");
 					const markers = new Map<string, PublishedMarkers>();
-					const marked = async (verdict: string) => {
-						if (!markers.has(verdict))
-							markers.set(verdict, await provider.findPublished(pullRequest, head, verdict, secret));
-						return markers.get(verdict)!;
+					// What the pull request shows of a round: its review, and every thread and reply at the head.
+					const marked = async ({ fingerprint, round }: { fingerprint: string; round: number }) => {
+						const key = `${fingerprint} ${round}`;
+						if (!markers.has(key))
+							markers.set(key, await provider.findPublished(pullRequest, head, { fingerprint, round }, secret));
+						return markers.get(key)!;
 					};
 					const verdict = await readVerdict(runtime, root, revision, context);
 					if (verdict === undefined) throw new Error(`no verdict is recorded for ${revision}`);
@@ -286,11 +293,7 @@ function publishTask(provider: ReviewProvider) {
 					// A pending round planned for another revision of this head, such as the pull request before a retarget,
 					// is dropped unless the provider already shows it, in which case the loop below records it as posted.
 					const left = (await read()).revisions[head]?.pending;
-					if (
-						left !== undefined &&
-						left.revision !== revision &&
-						(await marked(left.fingerprint)).review === undefined
-					) {
+					if (left !== undefined && left.revision !== revision && (await marked(left)).review === undefined) {
 						await runtime.commit(async (tx) => {
 							delete (await tx.doc(PublishedDocument, root)).revisions[head]!.pending;
 							return undefined;
@@ -314,13 +317,17 @@ function publishTask(provider: ReviewProvider) {
 							await runtime.commit(async (tx) => {
 								const document = await tx.doc(PublishedDocument, root);
 								document.order = [...document.order.filter((each) => each !== head), head];
-								document.revisions[head] = { ...(document.revisions[head] ?? unpublished()), pending: planned };
+								document.revisions[head] = {
+									...(document.revisions[head] ?? unpublished()),
+									rounds: planned.round,
+									pending: planned,
+								};
 								return undefined;
 							}, context);
 						}
 						const pending = (await read()).revisions[head]!.pending!;
 						result.stillOpen = pending.stillOpen;
-						const found = await marked(pending.fingerprint);
+						const found = await marked(pending);
 						let posted: PostedReview;
 						if (found.review === undefined) {
 							await revalidate();
@@ -329,6 +336,7 @@ function publishTask(provider: ReviewProvider) {
 								pullRequest,
 								revision: head,
 								fingerprint: pending.fingerprint,
+								round: pending.round,
 								verdict: pending.verdict,
 								findings: pending.post,
 								stillOpen: pending.stillOpen,
@@ -364,7 +372,9 @@ function publishTask(provider: ReviewProvider) {
 					for (const id of Object.keys(record.resolved).sort()) {
 						const entry = record.resolved[id]!;
 						if (entry.thread === undefined || Object.hasOwn(record.replies, id)) continue;
-						const found = (await marked(record.verdict ?? "")).replies[id];
+						// Replies do not depend on the round, so any round's lookup serves; the last one is likely cached.
+						const found = (await marked({ fingerprint: record.verdict ?? "", round: record.rounds ?? 0 }))
+							.replies[id];
 						let recorded: string | null;
 						if (found === undefined) {
 							await revalidate();

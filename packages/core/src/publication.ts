@@ -196,6 +196,11 @@ export interface ReviewDraft {
 	 * published at a head is its own review, so the marker that finds a review names the verdict as well as the head.
 	 */
 	readonly fingerprint: string;
+	/**
+	 * The review's round at this head, counting from 1 and never reused. A verdict can recur, A then B then A, and only
+	 * the round tells the third review from the first.
+	 */
+	readonly round: number;
 	readonly verdict: Verdict;
 	/** The findings to post, each with its placement. */
 	readonly findings: readonly PlacedFinding[];
@@ -216,7 +221,7 @@ export interface PostedReview {
 
 /** What a pull request already shows of one revision's publication, read from Melian's markers. */
 export interface PublishedMarkers {
-	/** The review posted for the revision's verdict. */
+	/** The review posted for the revision's verdict in the round asked about. */
 	readonly review?: string;
 	/** The comment that starts each finding's thread, by finding ID. */
 	readonly threads: Readonly<Record<string, string>>;
@@ -254,7 +259,13 @@ export interface ReviewProvider {
 	setStatus(revision: string, status: ReviewStatus): Promise<void>;
 	/**
 	 * What the pull request already shows of `revision`'s publication, from posts that carry Melian's markers signed
-	 * with `secret`: the review for the verdict `fingerprint` names, and every thread and reply at `revision`.
+	 * with `secret`: the review of `review`'s round, posting the verdict its fingerprint names, and every thread and
+	 * reply at `revision`.
 	 */
-	findPublished(pullRequest: number, revision: string, fingerprint: string, secret: string): Promise<PublishedMarkers>;
+	findPublished(
+		pullRequest: number,
+		revision: string,
+		review: { readonly fingerprint: string; readonly round: number },
+		secret: string,
+	): Promise<PublishedMarkers>;
 }

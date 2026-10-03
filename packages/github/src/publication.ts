@@ -15,45 +15,53 @@ export interface Marker {
 	readonly kind: MarkerKind;
 	/** The finding's ID, or for `verdict` the verdict's fingerprint. */
 	readonly id: string;
+	/** On a review's body, the review's round at the revision. */
+	readonly round?: number;
 	readonly sig: string;
 }
 
-function signature(secret: string, revision: string, kind: MarkerKind, id: string): string {
-	return createHmac("sha256", Buffer.from(secret, "hex"))
-		.update(`${revision}|${kind}=${id}`)
-		.digest("hex")
-		.slice(0, 32);
+// What a marker says, as it is signed.
+function claim(kind: MarkerKind, id: string, round: number | undefined): string {
+	return `${kind}=${id}${round === undefined ? "" : ` round=${round}`}`;
+}
+
+function signature(secret: string, revision: string, carries: string): string {
+	return createHmac("sha256", Buffer.from(secret, "hex")).update(`${revision}|${carries}`).digest("hex").slice(0, 32);
 }
 
 /**
  * The hidden marker that opens every post: `<!-- melian:revision=<sha> <kind>=<id> sig=<signature> -->`, where kind is
- * `finding` on a finding's comment, `verdict` on a review's body, and `resolved` on a reply. The signature is the first
- * 32 hex digits of HMAC-SHA256, keyed with the changeset's publisher secret, over `<sha>|<kind>=<id>`. A rerun reads
- * markers back to find what it already posted, and trusts one only when its signature verifies.
+ * `finding` on a finding's comment, `verdict` on a review's body, and `resolved` on a reply. A review's marker also
+ * carries its round, `verdict=<fingerprint> round=<n>`, since one verdict can recur at a head. The signature is the
+ * first 32 hex digits of HMAC-SHA256, keyed with the changeset's publisher secret, over `<sha>|` and everything between
+ * the revision and `sig=`. A rerun reads markers back to find what it already posted, and trusts one only when its
+ * signature verifies.
  */
-export function marker(revision: string, kind: MarkerKind, id: string, secret: string): string {
-	return `<!-- melian:revision=${revision} ${kind}=${id} sig=${signature(secret, revision, kind, id)} -->`;
+export function marker(revision: string, kind: MarkerKind, id: string, secret: string, round?: number): string {
+	const carries = claim(kind, id, round);
+	return `<!-- melian:revision=${revision} ${carries} sig=${signature(secret, revision, carries)} -->`;
 }
 
 const markerLine =
-	/^<!-- melian:revision=([0-9a-f]{40,64}) (finding|verdict|resolved)=([0-9a-f]{16}) sig=([0-9a-f]{32}) -->$/;
+	/^<!-- melian:revision=([0-9a-f]{40,64}) (finding|verdict|resolved)=([0-9a-f]{16})(?: round=([1-9][0-9]{0,8}))? sig=([0-9a-f]{32}) -->$/;
 
 /**
- * The marker on a line of its own, or `undefined`. Untrusted text cannot start a line with one; see {@link renderProse}. A
- * parsed marker proves nothing until {@link verifyMarker} accepts it.
+ * The marker on a line of its own, or `undefined`. Untrusted text cannot start a line with one; see
+ * {@link renderProse}. A parsed marker proves nothing until {@link verifyMarker} accepts it.
  */
 export function parseMarker(line: string): Marker | undefined {
 	const match = markerLine.exec(line.trim());
 	if (match === null) return undefined;
-	return { revision: match[1]!, kind: match[2] as MarkerKind, id: match[3]!, sig: match[4]! };
+	const round = match[4] === undefined ? {} : { round: Number(match[4]) };
+	return { revision: match[1]!, kind: match[2] as MarkerKind, id: match[3]!, ...round, sig: match[5]! };
 }
 
 /**
  * Whether `secret` signed `found`. Anyone who can read a post can copy its marker, but a copy names only what Melian
- * already posted, under the same kind, so it cannot hide anything Melian has yet to post.
+ * already posted, under the same kind and round, so it cannot hide anything Melian has yet to post.
  */
 export function verifyMarker(found: Marker, secret: string): boolean {
-	const expected = Buffer.from(signature(secret, found.revision, found.kind, found.id), "hex");
+	const expected = Buffer.from(signature(secret, found.revision, claim(found.kind, found.id, found.round)), "hex");
 	return timingSafeEqual(expected, Buffer.from(found.sig, "hex"));
 }
 
@@ -178,7 +186,7 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	const limit = options.limit ?? maxBodyLength;
 	const status = `**${statusWords[verdict.status]}${verdict.blocking ? ", blocking" : ""}**`;
 	const parts = [
-		`${marker(revision, "verdict", draft.fingerprint, secret)}\nMelian reviewed ${code(short(revision))}: ${status}.`,
+		`${marker(revision, "verdict", draft.fingerprint, secret, draft.round)}\nMelian reviewed ${code(short(revision))}: ${status}.`,
 	];
 	const counts = (["block", "acknowledge", "advisory"] as const)
 		.filter((resolution) => verdict.findings[resolution].length > 0)

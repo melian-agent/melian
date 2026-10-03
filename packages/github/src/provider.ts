@@ -241,7 +241,7 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 		async findPublished(
 			pullRequest: number,
 			revision: string,
-			fingerprint: string,
+			wanted: { readonly fingerprint: string; readonly round: number },
 			secret: string,
 		): Promise<PublishedMarkers> {
 			const page = { owner, repo, pull_number: pullRequest, per_page: 100 };
@@ -257,7 +257,8 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 			let review: string | undefined;
 			for (const each of reviews) {
 				const opening = signedMarker(each.body, "verdict", revision, secret);
-				if (opening?.id === fingerprint && (await ours(each.user))) {
+				// The round as well as the verdict: a verdict that recurs at a head must not find its earlier review.
+				if (opening?.id === wanted.fingerprint && opening.round === wanted.round && (await ours(each.user))) {
 					review = String(each.id);
 					break;
 				}
