@@ -11,7 +11,7 @@ beforeEach(async () => {
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 	repo = temporaryDirectory();
 	gitIn(repo, "init", "--quiet", "--initial-branch=main");
-	writeFiles(repo, { "app.ts": lines(...original), "untouched.ts": lines("u1", "u2") });
+	writeFiles(repo, { "app.ts": lines(...original), "untouched.ts": lines("u1", "u2"), "gone.ts": lines("g1") });
 	gitIn(repo, "add", ".");
 	gitIn(repo, "commit", "--quiet", "-m", "base");
 	gitIn(repo, "checkout", "--quiet", "-b", "feature");
@@ -19,7 +19,9 @@ beforeEach(async () => {
 	writeFiles(repo, {
 		"app.ts": lines("l1", "l2", "L3", "l4", "l5", "l6", "l7", "n1", "n2", "l8", "l10"),
 		"added.ts": lines("a1"),
+		"logo.png": Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0x00, 0x0d, 0x0a]),
 	});
+	gitIn(repo, "rm", "--quiet", "gone.ts");
 	gitIn(repo, "add", ".");
 	gitIn(repo, "commit", "--quiet", "-m", "feature");
 	changeset = await resolveRange(repo, "main...feature");
@@ -59,6 +61,22 @@ describe("classifyCause", () => {
 		expect(cause(4, 7)).toBe("pre-existing");
 		expect(cause(10)).toBe("pre-existing");
 		expect(cause(11)).toBe("pre-existing");
+	});
+
+	it("calls a location in an added binary file introduced", () => {
+		const logo = changeset.revision.files.find((file) => file.path === "logo.png");
+		expect(logo).toMatchObject({ status: "added", binary: true, hunks: [] });
+		expect(classifyCause({ file: "logo.png", startLine: 1 }, changeset.revision)).toBe("introduced");
+	});
+
+	it("calls a range straddling a pure deletion pre-existing", () => {
+		expect(classifyCause({ file: "app.ts", startLine: 10, endLine: 11 }, changeset.revision)).toBe("pre-existing");
+	});
+
+	it("refuses a location in a file deleted at head", () => {
+		expect(() => classifyCause({ file: "gone.ts", startLine: 1 }, changeset.revision)).toThrow(
+			expect.objectContaining({ name: "FindingError", code: "deletedFile" }),
+		);
 	});
 
 	it("compares canonical paths", () => {
