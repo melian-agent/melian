@@ -256,7 +256,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(replies).toHaveLength(1);
 		const [reply] = replies;
 		expect(greeting).toMatchObject({ path: "src/user.ts", line: 11, side: "RIGHT" });
-		expect(greeting!.body).toContain("trim() changes the greeting.");
+		expect(greeting!.body).toContain("trim\\(\\) changes the greeting.");
 		expect(state.reviews[1]!.body).not.toContain("src/config.ts");
 		expect(state.reviews[1]!.body).toContain("1 of them was posted on an earlier revision.");
 		expect(reply).toMatchObject({ in_reply_to_id: Number(thread) });

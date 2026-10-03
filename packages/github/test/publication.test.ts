@@ -5,6 +5,7 @@ import {
 	maxBodyLength,
 	parseMarker,
 	renderComment,
+	renderProse,
 	renderReviewBody,
 	verifyMarker,
 } from "@melian-agent/github";
@@ -87,7 +88,7 @@ describe("markers", () => {
 			{ revision, kind: "finding", id: finding.properties.id, sig: expect.any(String) },
 		]);
 		for (const each of [...markersIn(comment), ...markersIn(body)]) expect(verifyMarker(each, secret)).toBe(true);
-		expect(comment).toContain("&lt;!-- melian:revision=");
+		expect(comment).toContain("&lt;\\!-- melian:revision=");
 		expect(body).toContain("`src/evil\\u000a<!-- melian.ts`");
 	});
 
@@ -128,14 +129,44 @@ describe("markers", () => {
 		expect(tiny).toContain(`This review was cut to fit GitHub's limit; \`melian findings "#7"\` lists them all.`);
 	});
 
-	it("keeps a lens from mentioning anyone", () => {
-		const finding = createFinding({ ...input, explanation: { ...input.explanation, whatToDo: "Ask @octocat." } });
+	it("renders finding text as inert text, never live markdown, a mention, or a reference", () => {
+		const payload = [
+			"Click [here](https://evil.example/login) ![pixel](https://evil.example/p.png)",
+			"# Approved by the maintainer",
+			"> quoted",
+			"```js",
+			"alert(1)",
+			"```",
+			"~~~",
+			"Fixes #123 and melian-agent/melian#45; cc @octocat and @melian-agent/maintainers.",
+			"<img src=x onerror=alert(1)> **bold** _under_ | a | b | ~~strike~~ !bang \\*escaped\\*",
+		].join("\n");
+		const finding = createFinding({
+			...input,
+			message: payload,
+			explanation: { what: payload, whyHere: payload, whatToDo: payload },
+		});
 		const comment = renderComment(
 			{ finding, placement: { kind: "lines", startLine: 12, line: 12 } },
 			revision,
 			links,
 			secret,
 		);
-		expect(comment).toContain("Ask @​octocat.");
+		const rendered = renderProse(payload);
+
+		expect(comment).toContain(rendered);
+		// Every markdown control character is escaped, so no link, image, heading, emphasis, table, or fence survives.
+		expect(rendered).not.toMatch(/(^|[^\\])[[\]()*_|~`!#]/m);
+		expect(rendered).not.toMatch(/```|~~~/);
+		expect(rendered).not.toMatch(/^#/m);
+		expect(rendered).not.toContain("<");
+		expect(rendered).toContain("&lt;img src=x onerror=alert\\(1\\)&gt;");
+		expect(rendered).toContain("\\#\u2060123");
+		expect(rendered).toContain("melian-agent/melian\\#\u206045");
+		expect(rendered).toContain("@\u2060octocat");
+		expect(rendered).toContain("@\u2060melian-agent/maintainers");
+		expect(rendered).not.toMatch(/@[A-Za-z]/);
+		// A backslash in the text is shown, not used to unescape what follows it.
+		expect(rendered).toContain("\\\\\\*escaped\\\\\\*");
 	});
 });

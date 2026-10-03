@@ -19,6 +19,7 @@ export {
 	type RepositoryLinks,
 	type ReviewBodyOptions,
 	renderComment,
+	renderProse,
 	renderResolvedReply,
 	renderReviewBody,
 	verifyMarker,

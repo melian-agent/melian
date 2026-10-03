@@ -39,7 +39,7 @@ const markerLine =
 	/^<!-- melian:revision=([0-9a-f]{40,64}) (finding|verdict|resolved)=([0-9a-f]{16}) sig=([0-9a-f]{32}) -->$/;
 
 /**
- * The marker on a line of its own, or `undefined`. Untrusted text cannot start a line with one; see {@link prose}. A
+ * The marker on a line of its own, or `undefined`. Untrusted text cannot start a line with one; see {@link renderProse}. A
  * parsed marker proves nothing until {@link verifyMarker} accepts it.
  */
 export function parseMarker(line: string): Marker | undefined {
@@ -65,15 +65,24 @@ export function markersIn(body: string): Marker[] {
 	});
 }
 
-// Finding text and paths come from the change under review, which its author controls. Escaping `<` and `>` keeps any
-// HTML, and so any forged marker, inert; a zero-width space after `@` keeps a lens from mentioning, and so notifying,
-// anyone. Line breaks stay, since an explanation may run over several lines.
-function prose(text: string): string {
+/**
+ * Finding text as inert text: never live markdown or HTML. Finding text comes from a lens that read a change its author
+ * controls, and Melian posts it from the maintainer's account, so a link, an image, a heading, a fence, a mention, or
+ * an issue reference in it would render as the maintainer's own. HTML is escaped, so no marker can be forged; every
+ * markdown control character is backslash-escaped, after runs of three or more backticks or tildes collapse to one; and
+ * a word joiner (U+2060) follows `@` and precedes the digits of `#123` and `owner/repo#123`, so nobody is notified and
+ * nothing is cross-referenced. Line breaks stay, since an explanation may run over several lines.
+ */
+export function renderProse(text: string): string {
 	return text
+		.replace(/(`{3,}|~{3,})/g, (run) => run[0]!)
+		.replace(/\\/g, "\\\\")
 		.replace(/&/g, "&amp;")
 		.replace(/</g, "&lt;")
 		.replace(/>/g, "&gt;")
-		.replace(/@(?=\w)/g, "@\u200b");
+		.replace(/[*_[\]()#!|~`]/g, "\\$&")
+		.replace(/@(?=[\p{L}\p{N}_-])/gu, "@\u2060")
+		.replace(/\\#(?=\d)/g, "\\#\u2060");
 }
 
 const controls = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
@@ -126,13 +135,13 @@ function findingText(finding: Finding, revision: string, links: RepositoryLinks)
 		`**${severity}** ${code(finding.ruleId)} (${cause}, ${resolution ?? "unresolved"})`,
 		"",
 		// A lens's message is its explanation's first part, which would otherwise print twice.
-		...(finding.message.text === explanation.what ? [] : [prose(finding.message.text), ""]),
-		`**What:** ${prose(explanation.what)}`,
+		...(finding.message.text === explanation.what ? [] : [renderProse(finding.message.text), ""]),
+		`**What:** ${renderProse(explanation.what)}`,
 		"",
-		`**Why here:** ${prose(explanation.whyHere)}`,
+		`**Why here:** ${renderProse(explanation.whyHere)}`,
 		...evidenceText(finding, revision, links),
 		"",
-		`**What to do:** ${prose(explanation.whatToDo)}`,
+		`**What to do:** ${renderProse(explanation.whatToDo)}`,
 	];
 }
 
@@ -186,7 +195,7 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	if (verdict.notRun.length > 0) {
 		const checks = verdict.notRun.map(
 			({ name, status: ran, reason }) =>
-				`- ${code(name)} ${ran}${reason === undefined ? "" : `: ${prose(reason).replace(/\r?\n/g, " ")}`}`,
+				`- ${code(name)} ${ran}${reason === undefined ? "" : `: ${renderProse(reason).replace(/\r?\n/g, " ")}`}`,
 		);
 		parts.push(["Checks that did not run:", "", ...checks].join("\n"));
 	}
