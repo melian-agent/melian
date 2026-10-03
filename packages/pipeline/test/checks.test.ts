@@ -1,16 +1,24 @@
 import { rmSync } from "node:fs";
 import { join } from "node:path";
-import { CheckError, type Finding, loadConfig, type RepositorySource, resolveRange } from "@melian-agent/core";
+import {
+	CheckError,
+	defaultConfig,
+	type Finding,
+	loadConfig,
+	type RepositorySource,
+	resolveRange,
+} from "@melian-agent/core";
 import {
 	checksExtension,
 	backgroundContext as context,
 	createMemoryStorage,
 	createNodeExecutionEnv,
-	createRegistry,
+	createReviewRegistry,
 	type Harness,
 	openHarness,
 	readCheckRecords,
 	readFindings,
+	reviewChangeset,
 	revisionKey,
 	runChecks,
 } from "@melian-agent/pipeline";
@@ -34,7 +42,8 @@ afterEach(async () => {
 
 async function open(options: { env?: boolean } = {}) {
 	const fake = createFakeModels();
-	const registry = createRegistry();
+	// The review registry too, so a test can review a changeset with the records its checks left.
+	const registry = createReviewRegistry();
 	registry.install(checksExtension);
 	const harness = await openHarness(createMemoryStorage(), {
 		models: fake.models,
@@ -42,17 +51,17 @@ async function open(options: { env?: boolean } = {}) {
 		env: options.env === false ? undefined : () => createNodeExecutionEnv(repo),
 	});
 	opened.push(harness);
-	return { harness, root: await harness.root(context, { agent: { model: fake.ref() } }) };
+	return { harness, fake, root: await harness.root(context, { agent: { model: fake.ref() } }) };
 }
 
 async function checks(base: string, head: string, tier?: string, options: { env?: boolean } = {}) {
-	const { harness, root } = await open(options);
+	const { harness, fake, root } = await open(options);
 	const changeset = await resolveRange(repo, `${base}..${head}`);
 	const source: RepositorySource = { kind: "revision", commit: base };
 	const { config } = await loadConfig(repo, source, "");
 	const input = { rootConversationId: root.id, changeset, config, source, tier };
 	const run = await runChecks(harness, input, context);
-	return { harness, root, input, run, records: run.records };
+	return { harness, fake, root, input, run, records: run.records };
 }
 
 function summary(findings: readonly Finding[]) {
@@ -93,12 +102,15 @@ describe("runChecks", () => {
 			"src/fixed.ts": lines("export const fixed: number = 1;"),
 		});
 		const { harness, root, run, records } = await checks(base, head);
-		expect(records).toEqual([
-			{ check: "guardrails", status: "ran", findings: 0, notes: [] },
-			{ check: "static.biome", status: "ran", findings: 2, notes: [] },
-			{ check: "static.tsc", status: "ran", findings: 2, notes: [] },
-		]);
 		const findings = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+		// Each static record names the tool version its findings name, so a review counts only that version's sightings.
+		const versionOf = (prefix: string) =>
+			findings.find((finding) => finding.ruleId.startsWith(prefix))!.properties.source.version;
+		expect(records).toEqual([
+			{ name: "guardrails", status: "ran", findings: 0, notes: [] },
+			{ name: "static.biome", status: "ran", version: "2.5.15", findings: 2, notes: [] },
+			{ name: "static.tsc", status: "ran", version: versionOf("tsc/"), findings: 2, notes: [] },
+		]);
 		expect(summary(findings)).toEqual([
 			{ rule: "tsc/TS2322", file: "src/old.ts", line: 1, cause: "introduced", severity: "P1" },
 			{ rule: "biome/suspicious/noDoubleEquals", file: "src/old.ts", line: 2, cause: "introduced", severity: "P2" },
@@ -108,7 +120,7 @@ describe("runChecks", () => {
 		const biome = findings.find((finding) => finding.ruleId.startsWith("biome/"))!;
 		expect(biome.properties.source).toEqual({ check: "static.biome", version: "2.5.15" });
 		expect(await readCheckRecords(harness, root.id, run.identity, context)).toEqual(
-			Object.fromEntries(records.map((record) => [record.check, record])),
+			Object.fromEntries(records.map((record) => [record.name, record])),
 		);
 	});
 
@@ -140,7 +152,7 @@ describe("runChecks", () => {
 		fakeTool(repo, "biome", 'if [ "$1" = "--version" ]; then echo "Version: 0.0.1"; exit 0; fi\nsleep 30');
 		const { harness, root, input, records } = await checks(base, head);
 		expect(
-			records.map((record) => [record.check, record.status, record.status === "failed" ? record.error.code : ""]),
+			records.map((record) => [record.name, record.status, record.status === "failed" ? record.reason : ""]),
 		).toEqual([
 			["guardrails", "ran", ""],
 			["static.biome", "failed", "timeout"],
@@ -153,7 +165,7 @@ describe("runChecks", () => {
 		// Asking for a rerun repeats only the failed checks; with the broken tools gone, Melian's own run.
 		rmSync(join(repo, "node_modules"), { recursive: true, force: true });
 		const { records: rerun } = await runChecks(harness, { ...input, rerunFailed: true }, context);
-		expect(rerun.map((record) => [record.check, record.status])).toEqual([
+		expect(rerun.map((record) => [record.name, record.status])).toEqual([
 			["guardrails", "ran"],
 			["static.biome", "ran"],
 			["static.tsc", "ran"],
@@ -181,7 +193,7 @@ describe("runChecks", () => {
 		const { harness, input } = await checks(base, head);
 		const stricter = { ...input, source: { kind: "revision" as const, commit: policy } };
 		expect((await runChecks(harness, stricter, context)).records).toEqual([
-			{ check: "guardrails", status: "ran", findings: 1, notes: [] },
+			{ name: "guardrails", status: "ran", findings: 1, notes: [] },
 		]);
 	});
 
@@ -237,10 +249,10 @@ describe("runChecks", () => {
 		const head = commit(repo, { "a.ts": lines("a") });
 		const { records } = await checks(base, head, "mine");
 		expect(records).toEqual([
-			{ check: "guardrails", status: "ran", findings: 0, notes: [] },
-			{ check: "lens.security", status: "skipped", reason: "lenses run in the lens step, not as a check task" },
-			{ check: "decisions.fast", status: "skipped", reason: "decision-model questions are not built yet" },
-			{ check: "statik", status: "failed", error: { code: "unknownCheck", message: "no check is named statik" } },
+			{ name: "guardrails", status: "ran", findings: 0, notes: [] },
+			{ name: "lens.security", status: "skipped", reason: "lenses run in the lens step, not as a check task" },
+			{ name: "decisions.fast", status: "skipped", reason: "decision-model questions are not built yet" },
+			{ name: "statik", status: "failed", reason: "unknownCheck", error: "no check is named statik" },
 		]);
 	});
 
@@ -249,7 +261,7 @@ describe("runChecks", () => {
 		const head = commit(repo, { "a.ts": lines("a") });
 		const { records } = await checks(base, head, "fast", { env: false });
 		expect(
-			records.map((record) => [record.check, record.status === "failed" ? record.error.code : record.status]),
+			records.map((record) => [record.name, record.status === "failed" ? record.reason : record.status]),
 		).toEqual([
 			["guardrails", "ran"],
 			["static.biome", "noEnvironment"],
@@ -271,5 +283,38 @@ describe("runChecks", () => {
 			expect(error).toBeInstanceOf(CheckError);
 			expect((error as CheckError).code).toBe(code);
 		}
+	});
+});
+
+describe("runChecks feeding reviewChangeset", () => {
+	it("passes a clean change under the default fast tier and counts a static finding once the head adds one", {
+		timeout: 120_000,
+	}, async () => {
+		const base = commit(repo, { "tsconfig.json": tsconfig, "src/a.ts": lines("export const a: number = 1;") });
+		const clean = commit(repo, { "src/b.ts": lines("export const b: number = 2;") });
+		const dirty = commit(repo, { "src/c.ts": lines("export const c = (x: number) => x == 1;") });
+		const review = async (head: string) => {
+			const { harness, fake, input, run } = await checks(base, head);
+			expect(input.config.tiers).toEqual(defaultConfig.tiers);
+			return reviewChangeset({
+				harness,
+				changeset: input.changeset,
+				config: input.config,
+				policy: input.source,
+				lenses: [],
+				standards: [],
+				models: fake.review,
+				tier: "fast",
+				checks: run.records,
+			});
+		};
+
+		expect((await review(clean)).verdict).toMatchObject({ status: "passed", blocking: false, notRun: [] });
+
+		const { verdict } = await review(dirty);
+		expect(verdict).toMatchObject({ status: "findings", notRun: [] });
+		expect(verdict.findings.acknowledge.map((finding) => finding.ruleId)).toEqual([
+			"biome/suspicious/noDoubleEquals",
+		]);
 	});
 });

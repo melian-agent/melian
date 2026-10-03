@@ -30,14 +30,15 @@ import { runStaticTool } from "./static.ts";
 // Type aliases, not interfaces: a document's value must satisfy Pi's JsonObject, which an interface never does.
 
 /**
- * What became of one check on one revision: it ran, with how many findings it wrote and anything it could not look at;
- * it was skipped, and why; or it failed, with the error's code and message. A failed check wrote no findings, so
- * adjudication reports the revision as not reviewed by it rather than as clean.
+ * What became of one check on one revision, in the shape of core's `CheckRecord`, so a review takes it as it is: it
+ * ran, with the tool version its findings name, how many findings it wrote, and anything it could not look at; it was
+ * skipped, and why; or it failed, with the error's code as `reason` and its message as `error`. A failed check wrote no
+ * findings, so adjudication reports the revision as not reviewed by it rather than as clean.
  */
-export type CheckRecord =
-	| { check: string; status: "ran"; findings: number; notes: string[] }
-	| { check: string; status: "skipped"; reason: string }
-	| { check: string; status: "failed"; error: { code: string; message: string } };
+export type CheckRunRecord =
+	| { name: string; status: "ran"; version?: string; findings: number; notes: string[] }
+	| { name: string; status: "skipped"; reason: string }
+	| { name: string; status: "failed"; reason: string; error: string };
 
 /**
  * What identifies one run of a tier: both commits, the tier, a hash of the configuration and source it ran under, and
@@ -48,19 +49,19 @@ export type RunIdentity = { base: string; head: string; tier: string; policy: st
 /** One run of a tier: its identity, and one record per check the tier names, in the tier's order. */
 export interface CheckRun {
 	readonly identity: RunIdentity;
-	readonly records: readonly CheckRecord[];
+	readonly records: readonly CheckRunRecord[];
 }
 
 type Runs = {
 	// Each run's check records, keyed by its whole identity, then by check.
-	runs: Record<string, Record<string, CheckRecord>>;
+	runs: Record<string, Record<string, CheckRunRecord>>;
 	// The latest task for each identity short of its task, so asking again finds it rather than starting another.
 	tasks: Record<string, number>;
 };
 
 export const ChecksDocument = defineDoc<Runs>({
 	kind: "melian.checks",
-	version: 2,
+	version: 3,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
@@ -81,7 +82,7 @@ interface CheckInput {
 }
 
 type Outcome =
-	| { readonly status: "ran"; readonly report: CheckReport }
+	| { readonly status: "ran"; readonly report: CheckReport; readonly version?: string }
 	| { readonly status: "skipped"; readonly reason: string };
 
 const toolOf: Readonly<Record<Exclude<DeterministicCheck, "guardrails">, StaticTool>> = {
@@ -116,7 +117,11 @@ async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, conte
 		head: head.log,
 	});
 	const notes = [...report.notes, ...head.notes, ...(base.status === "ran" ? base.notes : [])];
-	return { status: "ran", report: { findings: report.findings, notes } };
+	return {
+		status: "ran",
+		report: { findings: report.findings, notes },
+		version: head.log.runs[0].tool.driver.version,
+	};
 }
 
 async function runCheck(
@@ -131,33 +136,34 @@ async function runCheck(
 	return runStatic(input, await env(), context);
 }
 
-function failure(check: string, error: unknown): CheckRecord {
+function failure(name: string, error: unknown): CheckRunRecord {
 	const code =
 		typeof (error as { code?: unknown })?.code === "string" ? (error as { code: string }).code : "unexpected";
 	const message = error instanceof Error ? error.message : String(error);
-	return { check, status: "failed", error: { code, message } };
+	return { name, status: "failed", reason: code, error: message };
 }
 
 // One check on one revision. Rerunning it after a crash runs the tools again on the same commits and writes the same
 // findings, so the task is safe to replay. The check's findings at this base and head are replaced, not added to, in
 // the commit that records it, so a failed rerun leaves none of an earlier run's findings behind.
-const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRecord>({
+const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 	name: "melian.check",
-	version: 1,
+	version: 2,
 	initial: () => ({ phase: "run" }),
 	phases: {
 		run: async (task, runtime, context) => {
 			const { check, changeset, run } = task.input;
 			let outcome: Outcome | undefined;
-			let record: CheckRecord;
+			let record: CheckRunRecord;
 			try {
 				outcome = await runCheck(task.input, () => runtime.env(context), context);
 				record =
 					outcome.status === "skipped"
-						? { check, status: "skipped", reason: outcome.reason }
+						? { name: check, status: "skipped", reason: outcome.reason }
 						: {
-								check,
+								name: check,
 								status: "ran",
+								...(outcome.version === undefined ? {} : { version: outcome.version }),
 								findings: outcome.report.findings.length,
 								notes: [...outcome.report.notes],
 							};
@@ -186,7 +192,7 @@ interface ChecksInput {
 	readonly source: RepositorySource;
 	readonly tier: string;
 	// A rerun runs only `checks`, and keeps the earlier run's records for the rest.
-	readonly rerun?: { readonly checks: readonly string[]; readonly kept: Readonly<Record<string, CheckRecord>> };
+	readonly rerun?: { readonly checks: readonly string[]; readonly kept: Readonly<Record<string, CheckRunRecord>> };
 }
 
 type ChecksState = { phase: "start" } | { phase: "collect"; checks: string[]; tasks: Record<string, number> };
@@ -198,9 +204,9 @@ function skippedReason(check: string): string | undefined {
 }
 
 // A tier's checks on one revision: one child task per deterministic check, waited on together.
-const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRecord[]>({
+const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 	name: "melian.checks",
-	version: 1,
+	version: 2,
 	initial: () => ({ phase: "start" }),
 	phases: {
 		start: async (task, runtime, context) => {
@@ -217,7 +223,7 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRecord[]>({
 			}
 			await runtime.commit(async (tx) => {
 				const { runs } = await tx.doc(ChecksDocument, runtime.conversationId);
-				const records: Record<string, CheckRecord> = {};
+				const records: Record<string, CheckRunRecord> = {};
 				const tasks: Record<string, number> = {};
 				for (const check of checks) {
 					const kept = rerun?.checks.includes(check) === false ? rerun.kept[check] : undefined;
@@ -236,12 +242,8 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRecord[]>({
 					const reason = skippedReason(check);
 					records[check] =
 						reason === undefined
-							? {
-									check,
-									status: "failed",
-									error: { code: "unknownCheck", message: `no check is named ${check}` },
-								}
-							: { check, status: "skipped", reason };
+							? { name: check, status: "failed", reason: "unknownCheck", error: `no check is named ${check}` }
+							: { name: check, status: "skipped", reason };
 				}
 				runs[run] = records;
 				const ids = Object.values(tasks) as TaskId[];
@@ -263,7 +265,7 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRecord[]>({
 			const { checks, tasks } = task.state.checkpoint;
 			const names = Object.keys(tasks);
 			const outcomes = await runtime.outcomes(
-				names.map((name) => tasks[name] as TaskId<CheckRecord>),
+				names.map((name) => tasks[name] as TaskId<CheckRunRecord>),
 				context,
 			);
 			const run = identityKey({ ...task.input.identity, task: runtime.taskId });
@@ -276,7 +278,7 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRecord[]>({
 					if (outcome.status === "completed") return;
 					const message =
 						"error" in outcome && outcome.error !== undefined ? outcome.error.message : outcome.status;
-					records[name] = { check: name, status: "failed", error: { code: outcome.status, message } };
+					records[name] = { name, status: "failed", reason: outcome.status, error: message };
 				});
 				runs[run] = records;
 				return {
@@ -335,12 +337,15 @@ function runIdentity(input: RunChecksInput, tier: string): Omit<RunIdentity, "ta
 }
 
 // What a rerun repeats: the checks that failed, or the whole tier when the run did not complete.
-function rerunOf(outcome: { status: string; result?: readonly CheckRecord[] }): ChecksInput["rerun"] | "none" | "all" {
+function rerunOf(outcome: {
+	status: string;
+	result?: readonly CheckRunRecord[];
+}): ChecksInput["rerun"] | "none" | "all" {
 	if (outcome.status !== "completed" || outcome.result === undefined) return "all";
-	const failed = outcome.result.filter((record) => record.status === "failed").map((record) => record.check);
+	const failed = outcome.result.filter((record) => record.status === "failed").map((record) => record.name);
 	if (failed.length === 0) return "none";
 	const kept = Object.fromEntries(
-		outcome.result.filter((record) => record.status !== "failed").map((record) => [record.check, record]),
+		outcome.result.filter((record) => record.status !== "failed").map((record) => [record.name, record]),
 	);
 	return { checks: failed, kept };
 }
@@ -378,7 +383,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 		root.commit(async (tx) => {
 			const runs = await tx.doc(ChecksDocument, root.id);
 			const existing = runs.tasks[key];
-			if (existing !== undefined && existing !== stale) return existing as TaskId<CheckRecord[]>;
+			if (existing !== undefined && existing !== stale) return existing as TaskId<CheckRunRecord[]>;
 			const created = await tx.createTask(ChecksTask, rerun === undefined ? task : { ...task, rerun }, {
 				ownership: { kind: "conversation" },
 			});
@@ -388,7 +393,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 	let taskId = await start();
 	let settled = await harness.waitForTask(taskId, context);
 	if (input.rerunFailed) {
-		const rerun = rerunOf(settled.state.outcome as { status: string; result?: readonly CheckRecord[] });
+		const rerun = rerunOf(settled.state.outcome as { status: string; result?: readonly CheckRunRecord[] });
 		if (rerun !== "none") {
 			taskId = await start(rerun === "all" ? undefined : rerun, taskId);
 			settled = await harness.waitForTask(taskId, context);
@@ -410,7 +415,7 @@ export async function readCheckRecords(
 	rootConversationId: ConversationId,
 	identity: RunIdentity,
 	context: Context,
-): Promise<Readonly<Record<string, CheckRecord>>> {
+): Promise<Readonly<Record<string, CheckRunRecord>>> {
 	const document = await harness.snapshot(ChecksDocument, rootConversationId, context);
 	return structuredClone(document?.runs[identityKey(identity)] ?? {});
 }

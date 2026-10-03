@@ -1,7 +1,7 @@
 export { readVerdict } from "./adjudication.ts";
 export {
-	type CheckRecord,
 	type CheckRun,
+	type CheckRunRecord,
 	checksExtension,
 	type RunChecksInput,
 	type RunIdentity,
