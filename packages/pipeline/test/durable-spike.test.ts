@@ -10,6 +10,7 @@ import {
 	AssistantEntry,
 	type AssistantMessage,
 	type Conversation,
+	type ConversationId,
 	configure,
 	backgroundContext as context,
 	createFakeModels,
@@ -17,6 +18,7 @@ import {
 	createRegistry,
 	defineDoc,
 	defineExtension,
+	defineTask,
 	defineTool,
 	type EntryRecord,
 	fauxAssistantMessage,
@@ -255,6 +257,85 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 			"pi.user: Is this eval safe?",
 			"pi.assistant: P1: eval runs user input.",
 		]);
+		await harness.close(context);
+	});
+
+	it("d2. a pipeline task fans lenses out as child conversations it owns, with no model choosing the topology", async () => {
+		const lenses = { correctness: "You are the correctness lens.", contracts: "You are the contracts lens." };
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "correctness" }, { id: "contracts" }] });
+		const seen: { model: string; prompt: string }[] = [];
+		const respond = (
+			request: { readonly messages: readonly Message[] },
+			_options: unknown,
+			_state: unknown,
+			model: { id: string },
+		) => {
+			seen.push({ model: model.id, prompt: systemPrompt(request.messages) });
+			return fauxAssistantMessage(`${model.id}: no findings`);
+		};
+		fake.provider.setResponses([respond, respond]);
+
+		type Checkpoint = { phase: "spawn" } | { phase: "review"; children: Record<string, ConversationId> };
+		const LensStep = defineTask<{ change: string }, Checkpoint, Record<string, string>>({
+			name: "spike.lenses",
+			version: 1,
+			initial: () => ({ phase: "spawn" }),
+			phases: {
+				spawn: async (_task, runtime, taskContext) => {
+					await runtime.commit(async (tx) => {
+						const children: Record<string, ConversationId> = {};
+						for (const [name, instructions] of Object.entries(lenses)) {
+							const created = await tx.createConversation({
+								ownership: { kind: "task", taskId: runtime.taskId },
+							});
+							await configure(tx, created.id, { model: fake.ref(name), instructions, tools: [] });
+							children[name] = created.id;
+						}
+						return { status: "running", checkpoint: { phase: "review", children } };
+					}, taskContext);
+				},
+				review: async (task, runtime, taskContext) => {
+					const answers = await Promise.all(
+						Object.entries(task.state.checkpoint.children).map(async ([name, id]) => {
+							const child = (await runtime.conversation(id, taskContext))!;
+							const request = { type: "input", content: task.input.change, requestId: `lens:${name}` } as const;
+							await (await child.submit(request, taskContext)).wait(taskContext);
+							const { entries } = await runtime.context(id, taskContext);
+							return [name, textOf(entries.at(-1)?.model?.[0])] as const;
+						}),
+					);
+					const result = Object.fromEntries(answers);
+					await runtime.commit(
+						() => ({ status: "terminal", outcome: { status: "completed", result } }),
+						taskContext,
+					);
+				},
+			},
+			abort: async (_task, runtime, taskContext) => {
+				await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), taskContext);
+			},
+		});
+		const registry = createRegistry();
+		registry.install(defineExtension({ name: "pipeline", tasks: [LensStep] }));
+		const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry });
+		const root = await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+		const taskId = await root.commit(
+			(tx) => tx.createTask(LensStep, { change: "diff --git a/src/a.ts" }, { ownership: { kind: "conversation" } }),
+			context,
+		);
+		const settled = await harness.waitForTask(taskId, context);
+
+		expect(settled.state.outcome).toEqual({
+			status: "completed",
+			result: { correctness: "correctness: no findings", contracts: "contracts: no findings" },
+		});
+		expect(seen.map((each) => each.model).sort()).toEqual(["contracts", "correctness"]);
+		for (const { model, prompt } of seen) {
+			expect(prompt).toContain(lenses[model as keyof typeof lenses]);
+			expect(prompt).not.toContain(model === "correctness" ? lenses.contracts : lenses.correctness);
+		}
+		const owned = await harness.commit((tx) => tx.scanConversations({ ownerTaskId: taskId }, 10), context);
+		expect(owned.items).toHaveLength(2);
 		await harness.close(context);
 	});
 
