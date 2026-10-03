@@ -20,7 +20,9 @@ export {
 	type ModelRoute,
 	melianYamlSchema,
 	type Resolution,
+	resolutionSchema,
 	type Severity,
+	severitySchema,
 } from "./config.ts";
 export type { ChangedFile, FileStatus, Hunk } from "./diff.ts";
 export {
@@ -28,9 +30,40 @@ export {
 	type ChangesetErrorCode,
 	ConfigError,
 	type ConfigErrorCode,
+	FindingError,
+	type FindingErrorCode,
 	OutsideRepositoryError,
 } from "./errors.ts";
-export { type FindingIdInput, findingId } from "./findings.ts";
+export {
+	type Cause,
+	causeSchema,
+	createFinding,
+	createFindingsLog,
+	type Finding,
+	type FindingExplanation,
+	type FindingIdInput,
+	type FindingInput,
+	type FindingLocation,
+	type FindingProperties,
+	type FindingSource,
+	type FindingStatus,
+	type FindingsLog,
+	type FindingTrigger,
+	findingExplanationSchema,
+	findingId,
+	findingLocationSchema,
+	findingPropertiesSchema,
+	findingSchema,
+	findingSourceSchema,
+	findingStatusSchema,
+	findingsLogSchema,
+	findingTriggerSchema,
+	levelForSeverity,
+	parseFinding,
+	type SarifLevel,
+	sarifLevelSchema,
+	sarifSchemaUri,
+} from "./findings.ts";
 export { melianPaths } from "./paths.ts";
 export { loadStandards, type StandardsSection } from "./standards.ts";
 

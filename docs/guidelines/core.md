@@ -81,6 +81,18 @@ Unknown keys are errors that name the key and the file, because a misspelt key o
 
 ## Findings
 
+### Schema
+
+A `Finding` is a SARIF 2.1.0 `result`. SARIF forbids unknown keys on a result, so Melian's extensions (`id`, `cause`, `trigger`, `severity`, `confidence`, `resolution`, `status`, `explanation`, `source`) live in its `properties` bag. The bag rejects unknown keys too, so a misspelt optional key such as `confidance` fails instead of vanishing. `test/findings.test.ts` validates a log against the OASIS schema in `test/fixtures/sarif-schema-2.1.0.json`; keep that test passing whenever the schema changes.
+
+- Build findings with `createFinding`, which derives the level and the ID, and validate any finding read from outside with `parseFinding`. It rejects a level or an ID that disagrees with the rest of the finding.
+- Never store `undefined` in a finding. JSON drops it, so a round trip would change the value. `createFinding` leaves absent optional fields out.
+- `trigger` is optional: a pre-existing finding has no triggering hunk.
+
+### Level mapping
+
+`levelForSeverity` maps `P0` and `P1` to `error`, `P2` to `warning`, and `P3` and `nit` to `note`. Melian never emits `none`, which SARIF reserves for results that are not failures. The mapping follows the default resolution, so GitHub code scanning shows blocking findings as errors. It ignores a repository's resolution configuration on purpose: `level` says how serious a finding is, and `properties.resolution` says what it requires.
+
 ### Stable IDs
 
 `findingId` hashes the repository-relative path, the rule ID, and the snippet, joined by NUL, with sha256, and keeps the first 16 hex characters. Before hashing it trims the snippet and collapses every run of whitespace to one space. Line numbers are not an input.

@@ -9,11 +9,20 @@ import { directoriesUpToRoot, melianPaths, repoRelative } from "./paths.ts";
 const strict = { additionalProperties: false } as const;
 
 const name = Type.String({ minLength: 1 });
-const resolutionValue = Type.Union([
+/** The JSON Schema of a {@link Resolution}. */
+export const resolutionSchema = Type.Union([
 	Type.Literal("block"),
 	Type.Literal("acknowledge"),
 	Type.Literal("advisory"),
 	Type.Literal("silent"),
+]);
+/** The JSON Schema of a {@link Severity}. */
+export const severitySchema = Type.Union([
+	Type.Literal("P0"),
+	Type.Literal("P1"),
+	Type.Literal("P2"),
+	Type.Literal("P3"),
+	Type.Literal("nit"),
 ]);
 const lensTier = Type.Union([Type.Literal("light"), Type.Literal("medium"), Type.Literal("heavy")]);
 const modelRoute = Type.Object({ model: name, fallbacks: Type.Optional(Type.Array(name)) }, strict);
@@ -30,11 +39,11 @@ export const melianYamlSchema = Type.Object(
 		resolution: Type.Optional(
 			Type.Object(
 				{
-					P0: Type.Optional(resolutionValue),
-					P1: Type.Optional(resolutionValue),
-					P2: Type.Optional(resolutionValue),
-					P3: Type.Optional(resolutionValue),
-					nit: Type.Optional(resolutionValue),
+					P0: Type.Optional(resolutionSchema),
+					P1: Type.Optional(resolutionSchema),
+					P2: Type.Optional(resolutionSchema),
+					P3: Type.Optional(resolutionSchema),
+					nit: Type.Optional(resolutionSchema),
 				},
 				strict,
 			),
@@ -78,10 +87,10 @@ export const melianYamlSchema = Type.Object(
 export type MelianYaml = Static<typeof melianYamlSchema>;
 
 /** What a finding at a given severity requires before merge. */
-export type Resolution = Static<typeof resolutionValue>;
+export type Resolution = Static<typeof resolutionSchema>;
 
 /** A severity in the default rubric. */
-export type Severity = "P0" | "P1" | "P2" | "P3" | "nit";
+export type Severity = Static<typeof severitySchema>;
 
 /** A model tier a lens can name. Model routing also has a `decision` tier for decision models. */
 export type LensTier = Static<typeof lensTier>;
