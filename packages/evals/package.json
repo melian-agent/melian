@@ -26,8 +26,8 @@
 		"README.md"
 	],
 	"scripts": {
-		"build": "tsc -p tsconfig.build.json",
-		"clean": "rm -rf dist",
+		"build": "tsc -b tsconfig.build.json",
+		"clean": "rm -rf dist tsconfig.build.tsbuildinfo",
 		"test": "vitest --run --root ../.. --passWithNoTests packages/evals/"
 	},
 	"engines": {

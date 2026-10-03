@@ -10,7 +10,7 @@
 		"lint": "biome check --error-on-warnings .",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest --run",
-		"build": "npm run build --workspaces --if-present",
+		"build": "tsc -b tsconfig.build.json",
 		"clean": "npm run clean --workspaces --if-present"
 	},
 	"engines": {
