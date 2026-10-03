@@ -1,6 +1,6 @@
 # Working in Melian
 
-Read [docs/design.md](docs/design.md) before changing anything. It holds the decisions and the reasons for them. If you change a decision, change the document in the same commit. [docs/design-implementation-plan.md](docs/design-implementation-plan.md) tracks what is built and what is deferred; update its status and progress log in the same commit as the work.
+Read [docs/design.md](docs/design.md) before changing anything. It holds the decisions and the reasons for them. If you change a decision, change the document in the same commit and append a row to [docs/decisions.md](docs/decisions.md), the decision log. [docs/design-implementation-plan.md](docs/design-implementation-plan.md) tracks what is built and what is deferred; update its status and progress log in the same commit as the work.
 
 Melian is a TypeScript monorepo built on Pi Durable. It follows Pi's conventions wherever it has no reason to differ, so a contributor moving between the two repositories finds nothing surprising.
 
