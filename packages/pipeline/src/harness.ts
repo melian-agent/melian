@@ -25,6 +25,8 @@ import {
 	type Storage,
 	type ToolRegistration,
 } from "@earendil-works/pi-durable";
+import type { ExecutionEnv } from "@earendil-works/pi-durable/env";
+import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
 
 export type { Context } from "@earendil-works/chord";
@@ -67,6 +69,7 @@ export {
 	ToolTask,
 	type Tx,
 } from "@earendil-works/pi-durable";
+export type { ExecutionEnv } from "@earendil-works/pi-durable/env";
 
 // pi-ai has no classifier for authentication failures, so match what its providers and credential resolution report:
 // a missing key, a failed OAuth refresh, Melian's read-only store refusing one, or a provider's 401 or 403.
@@ -97,6 +100,15 @@ export function openHarness<Tool extends ToolRegistration>(
 /** Durable storage in one SQLite file, created when absent. One process may own it at a time. */
 export function openSqliteStorage(path: string): Promise<Storage> {
 	return openNodeSqliteStorage(path);
+}
+
+/**
+ * An execution environment on this machine, with `cwd` as its working directory: a `FileSystem` and a `Shell` over the
+ * local disk and processes. Static tools run through it; a container environment implementing the same interface can
+ * replace it.
+ */
+export function createNodeExecutionEnv(cwd: string): ExecutionEnv {
+	return new NodeExecutionEnv({ cwd });
 }
 
 /**

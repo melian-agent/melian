@@ -15,10 +15,34 @@ export const melianPaths = {
 
 const policyNames = new Set([melianPaths.config, "AGENTS.md", "CLAUDE.md"]);
 
-// Whether a repository-relative path steers Melian: a melian.yaml, a standards file, or anything under a .melian/.
+/**
+ * The names of the files that configure a static tool, in any directory. The head's copy drives the tool's run on the
+ * head, so a change to one is a change to what judges the head.
+ */
+export const analyserConfigNames = [
+	"biome.json",
+	"biome.jsonc",
+	"tsconfig*.json",
+	"package.json",
+	"package-lock.json",
+	".eslintrc*",
+	"eslint.config.*",
+] as const;
+
+const analyserConfig = /^(?:biome\.jsonc?|tsconfig.*\.json|package(?:-lock)?\.json|\.eslintrc.*|eslint\.config\..*)$/;
+
+// Whether a repository-relative path configures a static tool, by its name alone.
+export function isAnalyserConfig(path: string): boolean {
+	return analyserConfig.test(path.split("/").at(-1)!);
+}
+
+// Whether a repository-relative path steers Melian: a melian.yaml, a standards file, anything under a .melian/, or a
+// static tool's configuration.
 export function isPolicyFile(path: string): boolean {
 	const segments = path.split("/");
-	return policyNames.has(segments.at(-1)!) || segments.slice(0, -1).includes(melianPaths.home);
+	return (
+		policyNames.has(segments.at(-1)!) || segments.slice(0, -1).includes(melianPaths.home) || isAnalyserConfig(path)
+	);
 }
 
 // A path given to a loader, absolute or relative to the root, as a repository-relative path with forward slashes.

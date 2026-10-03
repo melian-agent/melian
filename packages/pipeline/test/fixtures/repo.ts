@@ -1,7 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { vi } from "vitest";
 
 // Isolates git from the developer's own configuration, such as commit signing.
 export const isolatedGitEnv = {
@@ -40,4 +41,33 @@ export function baseAndHead(base: Record<string, string>, head: Record<string, s
 	gitIn(repo, "add", "--all");
 	gitIn(repo, "commit", "--quiet", "-m", "head");
 	return repo;
+}
+
+/** A git repository in a temporary directory, resolved through symlinks, with git isolated from the user's config. */
+export function createRepository(): string {
+	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
+	const root = realpathSync(mkdtempSync(join(tmpdir(), "melian-pipeline-")));
+	gitIn(root, "init", "--quiet", "--initial-branch=main");
+	return root;
+}
+
+export function removeRepository(root: string): void {
+	vi.unstubAllEnvs();
+	rmSync(root, { recursive: true, force: true });
+}
+
+/** Writes `files`, deleting `remove`, commits everything, and returns the commit. */
+export function commit(root: string, files: Record<string, string>, remove: string[] = []): string {
+	writeFiles(root, files);
+	for (const path of remove) gitIn(root, "rm", "--quiet", path);
+	gitIn(root, "add", "--all");
+	gitIn(root, "commit", "--quiet", "--allow-empty", "-m", "commit");
+	return gitIn(root, "rev-parse", "HEAD");
+}
+
+/** Installs a fake tool as the checkout's `node_modules/.bin/<name>`, a shell script. */
+export function fakeTool(root: string, name: string, script: string): void {
+	const path = join(root, "node_modules", ".bin", name);
+	writeFiles(root, { [`node_modules/.bin/${name}`]: `#!/bin/sh\n${script}\n` });
+	chmodSync(path, 0o755);
 }

@@ -63,9 +63,9 @@ Melian follows Pi's philosophy: a minimal core, extensible by design, small enou
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Core** is harness-free TypeScript. It imports pi-ai types and nothing else from Pi. It holds the finding schema and stable IDs, finding diffing across revisions, guardrail evaluation, static tool runners and SARIF normalisation, lens loading, configuration layering, standards and knowledge loaders, the decision-model port, and the GitHub and git clients. All of it is unit-testable without a harness.
+**Core** is harness-free TypeScript. It imports pi-ai types and nothing else from Pi. It holds the finding schema and stable IDs, finding diffing across revisions, guardrail evaluation, SARIF normalisation of static tool output, lens loading, configuration layering, standards and knowledge loaders, the decision-model port, and the GitHub and git clients. All of it is unit-testable without a harness.
 
-**Pipeline** is the only place review flow lives. It is written once against Pi Durable: tasks, child conversations, documents, memos, hooks. Every host embeds this layer; none reimplements it.
+**Pipeline** is the only place review flow lives. It is written once against Pi Durable: tasks, child conversations, documents, memos, hooks. It also holds the static tool runners, because running a tool executes repository code and so goes through Pi Durable's `ExecutionEnv`, which core may not import. Every host embeds this layer; none reimplements it.
 
 **Hosts** adapt triggers, storage, credentials, execution environment, and time budget. The CLI is the primary host. The skills for Claude Code, Codex, and Pi invoke the CLI and relay its output; they never run a review with the host agent's own model. The server host receives webhooks and runs a long-lived harness. The Actions host is ephemeral and self-rescheduling.
 
@@ -219,6 +219,8 @@ A review's tier is its manifest. Every check the tier names records whether it r
 
 Melian exposes `melian run <tier>` and `melian run --stage <name>`. It never installs git hooks. Recipes ship for lefthook, pre-commit, husky, and Pi.
 
+A change to an analyser's configuration, such as `tsconfig.json` or `biome.json`, is a blocking policy finding: the head's configuration still drives the head's run, and the finding stops a switched-off check reading as clean.
+
 The fast tier must finish in seconds. It runs guardrails, static tools, and decision-model questions such as "does this diff disable a test", "does this change a public contract", "does this touch auth or billing". No LLM runs in the fast tier.
 
 The decision-model questions ship enabled by default. When no decision provider is configured, the fast tier degrades silently to guardrails and static tools and prints one line saying semantic checks are off and how to enable them; `melian doctor` reports the same. Bundling a local decision model is not an option for a default, since even Clef-flash is a 9B-parameter model, and the LLM fallback provider is never used in the fast tier because the tier's contract is that nothing slow runs in it.
@@ -367,6 +369,9 @@ Existing code on the base branch is trusted. Submitted changes and comments are 
 
 - Read-only analysis of the head is fine anywhere.
 - Anything that executes head code runs in a sandbox with no secrets. That includes static tools that load repository-controlled plugins, such as eslint configurations.
+- Static tools, such as Biome and tsc, execute in the execution environment, never in the Melian process, because they load the repository's configuration and plugins. Each runs in a temporary worktree of the revision it analyses, never in the user's checkout.
+- A static tool's configuration is policy: the head's copy still drives the head's run, and policy-change-review reports every change to it as blocking, from a default list a `melian.yaml` can extend.
+- A static tool's binary never comes from the revision's tree: it is the checkout's lockfile install or Melian's own, and a `node_modules` the revision tracks is ignored and noted.
 - Comment commands require write permission on the repository. Comment bodies enter prompts as quoted data behind an injection guard section.
 - Lenses are read-only in version one and never hold write credentials.
 - The `ExecutionEnv` interface, a `FileSystem` plus a `Shell`, is the seam for a container-backed environment. Pi's own repository carries Anthropic's sandbox-runtime as a development dependency; it is a candidate for local isolation.
@@ -389,7 +394,7 @@ Solution: core reads policy (`melian.yaml`) and standards (`AGENTS.md`, `CLAUDE.
 
 Lenses and knowledge, when their loaders arrive, follow the same rule.
 
-Reading from the base does not hide the head's changes. Each revision lists the policy and standards files it changes: every `melian.yaml`, `AGENTS.md`, `CLAUDE.md`, and file under a `.melian/` directory. A lens can be handed those changes as quoted data, "the standards this pull request changes", and review them like any other code.
+Reading from the base does not hide the head's changes. Each revision lists the policy and standards files it changes: every `melian.yaml`, `AGENTS.md`, `CLAUDE.md`, file under a `.melian/` directory, and static tool configuration file, such as `biome.json`, `tsconfig*.json`, or `package.json`. A lens can be handed those changes as quoted data, "the standards this pull request changes", and review them like any other code.
 
 ## Interaction model
 
@@ -523,6 +528,8 @@ docs/
 | Prompt boundaries | Head content only inside nonce-delimited labelled boundaries, with an injection policy section first in every lens | Content must be data, never instructions |
 | Evidence for affected | A changed-code location overlapping a hunk, snippet derived from head | Prose cannot cross the cause boundary |
 | Finding sightings | Immutable per head, lens, and ID; adjudication merges deterministically | No first-writer-wins across lenses or pushes |
+| Static tool binaries | Never from the revision's tree; checkout's lockfile install or Melian's own | A head must not supply the tool that judges it |
+| Analyser configuration changes | Blocking policy finding, head config still runs | A head must not switch off the checks reviewing it |
 | Check manifest | The tier's check list is the review manifest; a check with no record is skipped and the verdict is not-reviewed | A verdict must never read passed because something was not counted |
 | Dedupe and lifecycle | Only same-status findings merge; a dismissal never absorbs an open blocker | A dismissed advisory must not hide a live P0 |
 | Review identity | Base plus head, in the index, the tasks, the verdict, and the sightings | A retargeted pull request has a new diff and the same head |

@@ -113,15 +113,18 @@ type ReviewWith = {
 	lenses?: Lens[];
 	config?: MelianConfig;
 	checks?: CheckRecord[];
+	// Checks of `deterministicRan` to leave without a record.
+	unrecorded?: string[];
 	policy?: RepositorySource;
 	rerun?: boolean;
 	range?: string;
 };
 
-// The default tiers' checks that run without a model, recorded as ran, as pull request #18's runChecks will record them.
+// The default tiers' checks that run without a model, recorded as ran: `static` expands to each static tool.
 const deterministicRan: CheckRecord[] = [
 	{ name: "guardrails", status: "ran" },
-	{ name: "static", status: "ran" },
+	{ name: "static.biome", status: "ran" },
+	{ name: "static.tsc", status: "ran" },
 ];
 
 // The default fast tier names decisions.fast, and with no decision provider configured its skip is allowed.
@@ -132,6 +135,9 @@ const allowedDecisionSkip: CheckRecord = {
 };
 
 async function reviewed(options: ReviewWith = {}): Promise<Review> {
+	const supplied = options.checks ?? [];
+	const left = [...supplied.map((check) => check.name), ...(options.unrecorded ?? [])];
+	const ran = deterministicRan.filter((check) => !left.includes(check.name));
 	return reviewChangeset({
 		harness,
 		changeset: await resolveRange(repo, options.range ?? "main...feature"),
@@ -139,7 +145,7 @@ async function reviewed(options: ReviewWith = {}): Promise<Review> {
 		lenses: options.lenses ?? lenses,
 		standards: [{ path: "AGENTS.md", content: "Never use the non-null assertion operator." }],
 		models: fake.review,
-		checks: [...deterministicRan, ...(options.checks ?? [])],
+		checks: [...ran, ...supplied],
 		...(options.policy === undefined ? {} : { policy: options.policy }),
 		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
 	});
@@ -1074,7 +1080,10 @@ describe("adjudication", () => {
 
 		it("is not reviewed when a check the manifest names recorded nothing, even with no findings", async () => {
 			done();
-			const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.biome") });
+			const { verdict } = await reviewed({
+				config: tiered(...lensesOnly, "static.biome"),
+				unrecorded: ["static.biome"],
+			});
 			expect(verdict).toMatchObject({
 				status: "not-reviewed",
 				blocking: false,

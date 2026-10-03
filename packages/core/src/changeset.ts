@@ -26,7 +26,8 @@ export interface RangeSpec {
  * One version of a changeset, identified by its head commit. Base and head are full commit hashes.
  *
  * `policyFiles` lists, sorted, every path in `files` that steers Melian itself: a `melian.yaml`, an `AGENTS.md` or
- * `CLAUDE.md`, or anything under a `.melian/` directory, at any depth, on either side of a rename. A review reads
+ * `CLAUDE.md`, anything under a `.melian/` directory, or a static tool's configuration such as `biome.json`,
+ * `tsconfig*.json`, or `package.json`, at any depth, on either side of a rename. A review reads
  * policy from the base, so these changes are reviewed as code rather than obeyed; a lens can be handed them as quoted
  * data. A file such a standard imports with `@` is not listed, because only loading the standards reveals it.
  */
