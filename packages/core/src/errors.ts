@@ -80,6 +80,29 @@ export class FindingError extends Error {
 	}
 }
 
+/** Why a revision could not be read. */
+export type RevisionErrorCode =
+	| "invalidRevision"
+	| "notFound"
+	| "notAFile"
+	| "symlink"
+	| "binary"
+	| "invalidPattern"
+	| "gitFailed";
+
+/** A path could not be read at a revision. `path` names it, where there is one. */
+export class RevisionError extends Error {
+	readonly code: RevisionErrorCode;
+	readonly path: string | undefined;
+
+	constructor(code: RevisionErrorCode, message: string, options: { path?: string; cause?: unknown } = {}) {
+		super(message, { cause: options.cause });
+		this.name = "RevisionError";
+		this.code = code;
+		this.path = options.path;
+	}
+}
+
 /** Why a tier could not be routed to a model. */
 export type ModelRoutingErrorCode = "noModelForTier" | "invalidModel";
 

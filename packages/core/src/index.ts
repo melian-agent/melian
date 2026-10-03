@@ -36,6 +36,8 @@ export {
 	ModelRoutingError,
 	type ModelRoutingErrorCode,
 	OutsideRepositoryError,
+	RevisionError,
+	type RevisionErrorCode,
 } from "./errors.ts";
 export {
 	type Cause,
@@ -70,6 +72,18 @@ export {
 export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
 export { melianPaths } from "./paths.ts";
 export { renderFindingsJson, renderFindingsTerminal, type TerminalRenderOptions } from "./render.ts";
+export {
+	listRevisionFiles,
+	type RevisionEntry,
+	type RevisionEntryKind,
+	type RevisionFile,
+	type RevisionMatch,
+	type RevisionSearch,
+	readRevisionFile,
+	repositoryPath,
+	revisionLimits,
+	searchRevision,
+} from "./revision.ts";
 export { loadStandards, type StandardsSection } from "./standards.ts";
 
 export const packageName = "@melian-agent/core";
