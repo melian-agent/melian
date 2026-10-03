@@ -36,6 +36,8 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AdjudicationTask, adjudicationInput } from "../src/adjudication.ts";
+import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 
 const correctness = "You are the correctness reviewer";
@@ -895,6 +897,55 @@ describe("adjudication", () => {
 		const judged = [...Object.values(verdict.findings).flat(), ...verdict.dismissed];
 		expect(judged.map((finding) => finding.ruleId)).toEqual(["null-dereference"]);
 		expect(await readVerdict(harness, await rootId(), head(), context)).toEqual(verdict);
+	});
+
+	describe("on a repeat review of a head", () => {
+		const adjudicationTask = async () =>
+			(await harness.snapshot(ReviewIndex, await rootId(), context))?.reviews[head()]?.adjudication?.task;
+		const failed: CheckRecord = { name: "static.biome", status: "failed", reason: "biome exited 2" };
+
+		beforeEach(() => {
+			scriptConversations(fake, [
+				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+		});
+
+		it("attaches to the adjudication task when the input is the same, and starts another when it is not", async () => {
+			const first = await reviewed();
+			const task = await adjudicationTask();
+
+			expect(await reviewed()).toEqual(first);
+			expect(await adjudicationTask()).toBe(task);
+
+			const { verdict } = await reviewed({ checks: [failed] });
+			expect(await adjudicationTask()).not.toBe(task);
+			expect(verdict).toMatchObject({ status: "not-reviewed", notRun: [failed] });
+			expect(await readVerdict(harness, await rootId(), head(), context)).toEqual(verdict);
+		});
+
+		it("records nothing from an adjudication task the index no longer names", async () => {
+			const { verdict, findings } = await reviewed();
+			const producers = findings[0]!.properties.reportedBy!;
+			const stale = adjudicationInput({
+				root: await rootId(),
+				repoRoot: repo,
+				head: head(),
+				policy: undefined,
+				config,
+				checks: [failed],
+				producers,
+			});
+
+			const task = await (await harness.root(context)).commit(
+				(tx) => tx.createTask(AdjudicationTask, stale, { ownership: { kind: "conversation" } }),
+				context,
+			);
+			const settled = await harness.waitForTask(task, context);
+
+			expect(settled.state.outcome).toEqual({ status: "completed", result: "superseded" });
+			expect(await readVerdict(harness, await rootId(), head(), context)).toEqual(verdict);
+		});
 	});
 
 	it("is not reviewed when another check failed, even with no findings", async () => {

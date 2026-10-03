@@ -17,7 +17,13 @@ import {
 	type Verdict,
 	visibleText,
 } from "@melian-agent/core";
-import { AdjudicationTask, adjudicationInput, readVerdict } from "./adjudication.ts";
+import {
+	type AdjudicationResult,
+	AdjudicationTask,
+	type AdjudicationTaskInput,
+	adjudicationInput,
+	readVerdict,
+} from "./adjudication.ts";
 import { ReviewError } from "./errors.ts";
 import { readFindings, recordRevision } from "./findings.ts";
 import {
@@ -26,7 +32,6 @@ import {
 	type ConversationId,
 	configure,
 	createRegistry,
-	defineDoc,
 	defineExtension,
 	defineTask,
 	type Harness,
@@ -46,6 +51,7 @@ import {
 	reviewFiles,
 } from "./lens-tools.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
+import { ReviewIndex } from "./review-index.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
 
 // One lens as the lens task runs it: everything resolved, nothing left to look up.
@@ -87,17 +93,6 @@ type ReviewCheckpoint = {
 type LensCheckpoint = { phase: "spawn" } | ReviewCheckpoint;
 
 type LensResult = Record<string, LensOutcome>;
-
-// Which lens task reviewed each head, and with which lenses, by `name@version`. Kept on the root conversation, so a
-// later call for the same head and lenses finds the task, whether it finished, is running, or crashed.
-const ReviewIndex = defineDoc<{ reviews: Record<string, { task: number; lenses: string[] }> }>({
-	kind: "melian.reviews",
-	version: 1,
-	scope: "conversation",
-	history: "latest",
-	fork: "current",
-	initial: () => ({ reviews: {} }),
-});
 
 function modelName(model: ModelReference): string {
 	return `${model.provider}/${model.modelId}`;
@@ -338,7 +333,7 @@ async function runLenses(harness: Harness, input: LensTaskInput, context: Contex
 	const taskId = await root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const known = index.reviews[head];
-		if (known !== undefined && known.lenses.join("\n") === selection.join("\n"))
+		if (known?.task !== undefined && known.lenses.join("\n") === selection.join("\n"))
 			return known.task as TaskId<LensResult>;
 		await recordRevision(tx, root.id, head);
 		const created = await tx.createTask(LensTask, input, { ownership: { kind: "conversation" } });
@@ -353,6 +348,30 @@ async function runLenses(harness: Harness, input: LensTaskInput, context: Contex
 	);
 	const { outcome } = (await harness.waitForTask(taskId, context)).state;
 	return outcome.status === "completed" ? outcome.result : undefined;
+}
+
+// One adjudication task per head and input. A repeat call with the same input, such as a rerun after a crash, attaches
+// to the task the first call created. A call with other input, such as a static check that has since run, creates a
+// task and records it as the head's, and a task an earlier call created then records no verdict.
+async function startAdjudication(
+	harness: Harness,
+	input: AdjudicationTaskInput,
+	lenses: readonly LensRun[],
+	context: Context,
+): Promise<TaskId<AdjudicationResult>> {
+	const root = await harness.root(context);
+	const key = JSON.stringify(input);
+	const selection = lenses.map((lens) => lens.key).sort();
+	return root.commit(async (tx) => {
+		const index = await tx.doc(ReviewIndex, root.id);
+		const known = index.reviews[input.head];
+		if (known?.adjudication?.input === key) return known.adjudication.task as TaskId<AdjudicationResult>;
+		const created = await tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } });
+		const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
+		const entry = same ? known : { lenses: selection };
+		index.reviews[input.head] = { ...entry, adjudication: { task: created, input: key } };
+		return created;
+	}, context);
 }
 
 function lensCheck(lens: LensRun, result: LensResult | undefined): CheckRecord {
@@ -421,16 +440,19 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	// Only the lenses this review ran: one that configuration has since disabled or retiered leaves nothing behind.
 	const producers = lenses.map((lens) => ({ check: `lens.${lens.name}`, version: lens.version }));
 	const input = adjudicationInput({ root, repoRoot, head, policy: options.policy, config, checks, producers });
-	const adjudication = await (await harness.root(context)).commit(
-		(tx) => tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } }),
-		context,
-	);
+	const adjudication = await startAdjudication(harness, input, lenses, context);
 	await refuseIfBlocked(harness, adjudication, [], context);
 	const adjudicated = (await harness.waitForTask(adjudication, context)).state.outcome;
 	const findings = await readFindings(harness, root, head, context, { producers });
 	const verdict = await readVerdict(harness, root, head, context);
-	if (adjudicated.status !== "completed" || verdict === undefined) {
-		const why = adjudicated.status === "failed" ? `: ${adjudicated.error.message}` : "";
+	const superseded = adjudicated.status === "completed" && adjudicated.result === "superseded";
+	if (adjudicated.status !== "completed" || superseded || verdict === undefined) {
+		const why =
+			adjudicated.status === "failed"
+				? `: ${adjudicated.error.message}`
+				: superseded
+					? ": a later review of the head with other input replaced it"
+					: "";
 		throw new ReviewError("adjudicationFailed", `adjudication of ${head} did not complete${why}`, {
 			lenses: [],
 			findings,

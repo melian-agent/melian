@@ -16,6 +16,7 @@ import {
 } from "@melian-agent/core";
 import { readFindings } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
+import { ReviewIndex } from "./review-index.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
 type StoredCheck = { name: string; status: CheckStatus; reason?: string; error?: string };
@@ -60,12 +61,16 @@ async function configsFor(repoRoot: string, policy: RepositorySource, paths: rea
 	return (path) => loaded.get(path)!;
 }
 
+/** `superseded` when a later review of the head created another adjudication task before this one recorded. */
+export type AdjudicationResult = "recorded" | "superseded";
+
 /**
  * Adjudicates the findings the root conversation holds at the head under review and records the verdict in
  * {@link VerdictDocument} under that head. It reads, decides, and writes in one phase that ends in one commit, so a
- * rerun after a crash writes the same verdict again.
+ * rerun after a crash writes the same verdict again. It records nothing once the review index names another task for
+ * the head, so a crashed task that resumes late cannot overwrite a newer review's verdict.
  */
-export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adjudicate" }, null>({
+export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adjudicate" }, AdjudicationResult>({
 	name: "melian.adjudication",
 	version: 1,
 	initial: () => ({ phase: "adjudicate" }),
@@ -89,8 +94,12 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 				return;
 			}
 			await runtime.commit(async (tx) => {
+				const current = (await tx.doc(ReviewIndex, root)).reviews[head]?.adjudication?.task;
+				if (current !== undefined && current !== runtime.taskId) {
+					return { status: "terminal", outcome: { status: "completed", result: "superseded" } };
+				}
 				(await tx.doc(VerdictDocument, root)).verdicts[head] = structuredClone(verdict) as StoredVerdict;
-				return { status: "terminal", outcome: { status: "completed", result: null } };
+				return { status: "terminal", outcome: { status: "completed", result: "recorded" } };
 			}, context);
 		},
 	},
