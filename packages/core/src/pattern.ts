@@ -39,9 +39,12 @@ export const maxProgram = 2000;
 /** The deepest groups may nest. The parser and compiler recurse once per level. */
 export const maxDepth = 100;
 
-class Refused {
+// Why a pattern or glob is refused. An Error, so that one escaping a caller still carries a stack and a message.
+export class Refused extends Error {
 	readonly reason: string;
 	constructor(reason: string) {
+		super(reason);
+		this.name = "Refused";
 		this.reason = reason;
 	}
 }
@@ -445,7 +448,8 @@ const notSlash: Node = { kind: "char", test: (code) => code !== 47 };
 /**
  * Compiles a path glob that must match a whole repository-relative path: `*` and `?` stay within one segment, `**`
  * crosses segments, and `**` followed by `/` matches zero or more whole directories, so `**` + `/*.ts` matches `a.ts`
- * and `src/a.ts`. Every other character is literal.
+ * and `src/a.ts`. Every other character is literal. Throws {@link Refused} for a glob past {@link maxProgram} steps;
+ * `loadConfig` compiles every glob when it reads the file, so a review never meets one.
  */
 export function compileGlob(glob: string): LinearPattern {
 	const items: Node[] = [{ kind: "assert", at: "start" }];

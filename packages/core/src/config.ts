@@ -4,7 +4,7 @@ import Value from "typebox/value";
 import { parseDocument } from "yaml";
 import { ConfigError, type ConfigErrorCode } from "./errors.ts";
 import { directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
-import { compilePattern } from "./pattern.ts";
+import { compileGlob, compilePattern, Refused } from "./pattern.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 
 const strict = { additionalProperties: false } as const;
@@ -460,6 +460,14 @@ function anchorPaths(site: Site, layer: MelianYaml): MelianYaml {
 		const anchored = posix.normalize(posix.join(directory, pattern));
 		if (anchored === ".." || anchored.startsWith("../")) {
 			throw configError("invalidValue", site, `"${key}" has ${path}, which leaves the repository`, { key });
+		}
+		try {
+			compileGlob(anchored);
+		} catch (error) {
+			if (!(error instanceof Refused)) throw error;
+			throw configError("invalidValue", site, `"${key}" has ${path}, which is not a safe glob: ${error.reason}`, {
+				key,
+			});
 		}
 		return `${negated ? "!" : ""}${anchored}`;
 	};
