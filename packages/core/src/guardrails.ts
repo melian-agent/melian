@@ -251,12 +251,14 @@ async function blobText(repoRoot: string, commit: string, path: string): Promise
 	}
 }
 
-// git shows no hunks for a file it calls binary, and one NUL byte is enough. Such a file is scanned whole at head when
-// it is text, skipping lines the base already had.
-async function binaryLines(
+// The head's lines of a file, read whole, skipping lines the base already had unless `all`. git shows no hunks for a
+// file it calls binary, and one NUL byte is enough, so such a file is read this way when it is text; so is a file a
+// rename moved into a rule's scope, whose every line is new to that rule.
+async function headLines(
 	input: GuardrailInput,
 	file: ChangedFile,
 	notes: string[],
+	all = false,
 ): Promise<{ line: number; text: string }[] | "unscannable"> {
 	const { repoRoot, revision } = input;
 	const head = await blobText(repoRoot, revision.head, file.path);
@@ -266,7 +268,8 @@ async function binaryLines(
 		notes.push(`forbidden-patterns did not scan ${file.path}, which git treats as binary and is ${head.why}.`);
 		return [];
 	}
-	const base = file.status === "added" ? {} : await blobText(repoRoot, revision.base, file.oldPath ?? file.path);
+	const base =
+		file.status === "added" || all ? {} : await blobText(repoRoot, revision.base, file.oldPath ?? file.path);
 	const before = new Set(base.text?.split("\n"));
 	return head.text
 		.split("\n")
@@ -318,13 +321,23 @@ async function forbiddenPatterns(
 			hits.push(unscannable(1, `${file.path}, whose name is not UTF-8`));
 			continue;
 		}
-		const added: { line: number; text: string; hunk?: Hunk }[] | "unscannable" = file.binary
-			? await binaryLines(input, file, notes)
+		const changed: { line: number; text: string; hunk?: Hunk }[] | "unscannable" = file.binary
+			? await headLines(input, file, notes)
 			: file.hunks.flatMap((hunk) => addedLines(hunk.text, hunk.newStart).map((each) => ({ ...each, hunk })));
-		if (added === "unscannable") {
+		// A rename that moves a file into a rule's paths brings every line into that rule's scope, not only those it adds.
+		const { oldPath } = file;
+		const moved =
+			oldPath === undefined
+				? []
+				: rules.filter(([, rule]) => rule.paths !== undefined && !matchesGlobs(rule.paths, oldPath));
+		const whole = moved.length > 0 && changed !== "unscannable" ? await headLines(input, file, notes, true) : [];
+		if (changed === "unscannable" || whole === "unscannable") {
 			hits.push(unscannable(1, `${file.path}, over ${guardrailLimits.fileBytes} bytes`));
 			continue;
 		}
+		const byLine = new Map(changed.map((each) => [each.line, { ...each, rules }]));
+		for (const each of whole) if (!byLine.has(each.line)) byLine.set(each.line, { ...each, rules: moved });
+		const added = [...byLine.values()].sort((a, b) => a.line - b.line);
 		// Every line is scanned whole, however long, until the file's scan budget runs out.
 		let scanned = 0;
 		const unscanned = added.find((each) => {
@@ -344,7 +357,7 @@ async function forbiddenPatterns(
 		const matches = within.flatMap((each) => {
 			// A CRLF file's lines end in "\r", which `$` would otherwise have to match past.
 			const line = each.text.endsWith("\r") ? each.text.slice(0, -1) : each.text;
-			const matched = rules.filter(([, rule]) => patternFor(rule.pattern).test(line));
+			const matched = each.rules.filter(([, rule]) => patternFor(rule.pattern).test(line));
 			return matched.length === 0 ? [] : [{ hunk: each.hunk, added: each, matched }];
 		});
 		if (matches.length === 0) continue;

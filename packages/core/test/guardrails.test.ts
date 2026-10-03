@@ -334,6 +334,15 @@ describe("forbidden-patterns", () => {
 		expect(summary(findings).map(({ file, line }) => [file, line])).toEqual([["a.test.ts", 2]]);
 	});
 
+	it("scans every line of a file a rename moves into a rule's paths", async () => {
+		const { findings } = await guardrails(
+			{ "melian.yaml": config, "a.ts": lines("it.only(old)", "it(a)") },
+			{ "a.test.ts": lines("it.only(old)", "it(a)", "it(b)") },
+			["a.ts"],
+		);
+		expect(summary(findings).map(({ file, line }) => [file, line])).toEqual([["a.test.ts", 1]]);
+	});
+
 	it("matches $ at the end of a CRLF line", async () => {
 		const todo = lines(
 			quiet,

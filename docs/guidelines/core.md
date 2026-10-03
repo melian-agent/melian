@@ -191,6 +191,8 @@ Problem: forbidden-patterns runs a pattern from configuration over lines the hea
 
 forbidden-patterns fails closed. Problem: a line over 10,000 characters was skipped with only a note, so a head padded `it.only(` with spaces and the rule never saw it. Solution: every line is scanned whole by the linear engine, up to 4 MiB of added text per file (`guardrailLimits.scanBytes`). What it still cannot scan becomes a finding at the rule's severity with the message "line could not be scanned": the first line past the budget, a binary file that is text but over 4 MiB, or a file whose name is not UTF-8. A binary file that is not UTF-8 holds no line a pattern is about, so it gets a note instead. A file over 4 MiB at head is still scanned, but its findings are identified by line number, since its text cannot be read whole to count occurrences.
 
+A rename can move a file into a rule's scope. Problem: forbidden-patterns scanned only added lines, so `git mv a.ts a.test.ts` brought an old `it.only(` under the focused-test rule unflagged. Solution: for a renamed file, a rule whose `paths` match the new path but not the old one scans every line at head, under the same limits; other rules scan only added lines.
+
 A file git calls binary has no hunks, and one NUL byte is enough to make git call it that; so is a `-diff` attribute in the base's `.gitattributes`, which the diff reads on purpose. Problem: forbidden-patterns read only hunks, so a head could add a NUL to any file and nothing in it was scanned. Solution: a binary file at head that is UTF-8 and within 4 MiB is scanned line by line, skipping lines its base version already had, and its findings carry no trigger. Any other binary file adds a note naming it and why.
 
 ## Static analysis
