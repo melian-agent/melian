@@ -79,6 +79,16 @@ Lenses are a map keyed by name rather than `enable` and `disable` lists, so that
 
 Unknown keys are errors that name the key and the file, because a misspelt key otherwise falls back to a default without a word.
 
+## Findings
+
+### Stable IDs
+
+`findingId` hashes the repository-relative path, the rule ID, and the snippet, joined by NUL, with sha256, and keeps the first 16 hex characters. Before hashing it trims the snippet and collapses every run of whitespace to one space. Line numbers are not an input.
+
+Problem: cross-revision diffing and dismissals match findings by ID, so the ID must survive edits that leave the flagged code alone. Example: a commit adds an import at the top of `src/run.ts`, and `eval(input)` moves from line 12 to line 13. A line-keyed ID would call that a new finding and reopen a dismissed one. Solution: hash what the finding is about, not where it sits. Reindenting or rewrapping the snippet keeps the ID; changing one token, such as `eval(input)` to `eval(body)`, changes it, and so does moving the code to another file.
+
+The normalisation is a stored contract. Changing it orphans every recorded finding and dismissal, so `test/findings.test.ts` pins one ID by value. Change that value only in a change that migrates stored findings.
+
 ## Tests
 
 - Run the package's tests with `npm test --workspace @melian-agent/core`, or one file with `npx vitest --run packages/core/test/changeset.test.ts` from the repository root.
