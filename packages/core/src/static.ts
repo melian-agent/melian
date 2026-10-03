@@ -352,8 +352,13 @@ async function identify(
 		let text = texts.get(path);
 		if (text === undefined) {
 			text = reader.readText(path, guardrailLimits.fileBytes).catch((error: unknown) => {
-				// Too large, a symlink, or unreadable: identified by message rather than code.
-				if (error instanceof SourceError) return undefined;
+				// Too large or a symlink: identified by message rather than code. Absence is already undefined; any other
+				// failure would silently change identities, so the check fails instead.
+				if (error instanceof SourceError && (error.code === "tooLarge" || error.code === "symlink"))
+					return undefined;
+				if (error instanceof SourceError) {
+					throw new CheckError("unreadable", checkOf(tool), error.message, { cause: error });
+				}
 				throw error;
 			});
 			texts.set(path, text);

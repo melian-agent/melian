@@ -280,6 +280,26 @@ describe("staticFindings", () => {
 		]);
 	});
 
+	it("fails rather than guess when a result's file cannot be read", async () => {
+		const base = commit({ "src/a.ts": lines("a") });
+		const head = commit({ "src/a.ts": lines("b") });
+		const { revision } = await resolveRange(repo, `${base}..${head}`);
+		const error = await staticFindings({
+			repoRoot: repo,
+			revision,
+			source: { kind: "revision", commit: base },
+			tool: "tsc",
+			settings: defaultConfig.static.tsc,
+			base: log(),
+			head: log(["src", 1, "TS2307"]),
+		}).then(
+			() => undefined,
+			(caught: unknown) => caught,
+		);
+		expect(error).toBeInstanceOf(CheckError);
+		expect((error as CheckError).code).toBe("unreadable");
+	});
+
 	it("reports a second result added beside an old one on the same lines as introduced", async () => {
 		const base = commit({ "a.ts": lines("f(1, 2);") });
 		const head = commit({ "a.ts": lines("f(1, 2);", "") });
