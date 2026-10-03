@@ -38,7 +38,7 @@ Both sources implement one interface, `readText`, `list`, and `exists`, over rep
 - Paths stay repository-relative. `ConfigError.file`, `LoadedConfig.sources`, and `StandardsSection.path` carry them; messages about a revision name the file as git does, `<commit>:<path>`.
 - `@` imports follow Claude Code: an `@path` token anywhere in the text, after whitespace or at the start of a line, outside code spans and code blocks fenced with ``` or ~~~. They resolve lexically against the importing file and are dropped if they climb out of the repository or name anything but a file, since `@docs` in prose is not an import. Nothing calls `realpath`.
 
-`.melian/` may sit in any directory, as `melian.yaml` may. For each directory from the path's up to the root, `loadStandards` reads `AGENTS.md`, `CLAUDE.md`, then `.melian/standards/*.md` in name order, so a service's own standards come before the root's. Lenses will resolve the same way; knowledge is read from the root `.melian/` only.
+`.melian/` may sit in any directory, as `melian.yaml` may. For each directory from the path's up to the root, `loadStandards` reads `AGENTS.md`, `CLAUDE.md`, then `.melian/standards/*.md` in name order, so a service's own standards come before the root's. Lenses resolve the same way, as [Lenses](#lenses) describes; knowledge is read from the root `.melian/` only.
 
 ## Layering precedence
 
@@ -113,7 +113,7 @@ A lens is a directory holding `LENS.md`: YAML front matter between `---` lines, 
 | `tools` | Read-only tools from `lensToolNames`: `read_file`, `search`, `list_files` | all three |
 | `severities` | The severities the lens may report | all five |
 | `rules` | `id` and one-line `description` for each rule the lens reports under | required, or inherited |
-| `paths` | Globs relative to the directory holding the lens's `.melian/` or `.agents/`; `!` excludes | `**` |
+| `paths` | Globs relative to the directory holding the lens's `.melian/` or `.agents/`, normalised like a `melian.yaml`'s; `!` excludes, and one that leaves the repository is an error | `**` |
 | `budget` | `findings`, a count; `tokens`, a number or `200k`, recorded but not enforced | `findings: 10` |
 | `extends` | A lens to override, as layered so far | none |
 | `standards` | Append the repository's standards to the instructions | `true` |

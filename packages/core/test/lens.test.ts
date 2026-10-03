@@ -192,6 +192,25 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		expect(missing).toMatchObject({ code: "missingField", field: "description" });
 	});
 
+	it("normalises paths and refuses one that leaves the repository", async () => {
+		writeFiles(repo, {
+			"services/pay/api.ts": lines("export {};"),
+			"services/pay/.melian/lenses/security/LENS.md": lensFile([...security, "paths: [./api.ts, '!../pay/x/**']"]),
+		});
+		const [scoped] = named(await load(["services/pay/api.ts"]), "security");
+		expect(scoped!.paths).toEqual(["services/pay/api.ts", "!services/pay/x/**"]);
+
+		writeFiles(repo, {
+			"services/pay/.melian/lenses/security/LENS.md": lensFile([...security, "paths: [../../../x]"]),
+		});
+		const error = await rejection(load(["services/pay/api.ts"]), LensError);
+		expect(error).toMatchObject({
+			code: "invalidValue",
+			field: "paths",
+			file: "services/pay/.melian/lenses/security/LENS.md",
+		});
+	});
+
 	it("refuses a lens whose name differs from its directory", async () => {
 		writeFiles(repo, { ".melian/lenses/sec/LENS.md": lensFile(security) });
 		expect(await rejection(load(["src/index.ts"]), LensError)).toMatchObject({ code: "invalidValue", field: "name" });

@@ -150,10 +150,17 @@ function tokens(value: number | string | undefined): number | undefined {
 }
 
 // Paths are relative to the directory holding the lens's `.melian/` or `.agents/`, like a melian.yaml's.
-function anchor(scope: string, path: string): string {
+// Normalised like a melian.yaml's lens paths, so `./src/**` is `src/**`, and refused if `..` leaves the repository.
+function anchor(file: string, scope: string, path: string): string {
 	const negated = path.startsWith("!");
 	const pattern = (negated ? path.slice(1) : path).replace(/^\/+/, "");
-	return `${negated ? "!" : ""}${scope === "" ? pattern : posix.join(scope, pattern)}`;
+	const anchored = posix.normalize(posix.join(scope, pattern));
+	if (anchored === ".." || anchored.startsWith("../")) {
+		throw new LensError("invalidValue", file, `${file}: "paths" has ${path}, which leaves the repository`, {
+			field: "paths",
+		});
+	}
+	return `${negated ? "!" : ""}${anchored}`;
 }
 
 function required<T>(file: string, field: string, value: T | undefined): T {
@@ -192,7 +199,7 @@ function resolve(definition: Definition, base: Lens | undefined): Lens {
 		tools: own.tools ?? base?.tools ?? lensToolNames,
 		severities: own.severities ?? base?.severities ?? ["P0", "P1", "P2", "P3", "nit"],
 		rules,
-		paths: own.paths?.map((path) => anchor(scope, path)) ?? base?.paths ?? [anchor(scope, "**")],
+		paths: own.paths?.map((path) => anchor(file, scope, path)) ?? base?.paths ?? [anchor(file, scope, "**")],
 		scope,
 		budget: {
 			findings: own.budget?.findings ?? base?.budget.findings ?? lensLimits.defaultFindings,
