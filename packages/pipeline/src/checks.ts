@@ -110,7 +110,6 @@ async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, conte
 	const report = await staticFindings({
 		repoRoot,
 		revision,
-		source: input.source,
 		tool,
 		settings,
 		base: base.status === "ran" ? base.log : empty,

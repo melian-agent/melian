@@ -222,7 +222,6 @@ describe("staticFindings", () => {
 		const { findings } = await staticFindings({
 			repoRoot: repo,
 			revision,
-			source: { kind: "revision", commit: base },
 			tool: "tsc",
 			settings: defaultConfig.static.tsc,
 			base: log(["a.ts", 1, "TS2322"], ["a.ts", 2, "TS2322"]),
@@ -250,7 +249,6 @@ describe("staticFindings", () => {
 		const { findings } = await staticFindings({
 			repoRoot: repo,
 			revision,
-			source: { kind: "revision", commit: base },
 			tool: "tsc",
 			settings: defaultConfig.static.tsc,
 			base: log(["src/a.ts", 1, "TS2322"]),
@@ -268,7 +266,6 @@ describe("staticFindings", () => {
 		const { findings } = await staticFindings({
 			repoRoot: repo,
 			revision,
-			source: { kind: "revision", commit: base },
 			tool: "tsc",
 			settings: defaultConfig.static.tsc,
 			base: log(),
@@ -287,7 +284,6 @@ describe("staticFindings", () => {
 		const error = await staticFindings({
 			repoRoot: repo,
 			revision,
-			source: { kind: "revision", commit: base },
 			tool: "tsc",
 			settings: defaultConfig.static.tsc,
 			base: log(),
@@ -307,7 +303,6 @@ describe("staticFindings", () => {
 		const { findings } = await staticFindings({
 			repoRoot: repo,
 			revision,
-			source: { kind: "revision", commit: base },
 			tool: "tsc",
 			settings: defaultConfig.static.tsc,
 			base: log(["a.ts", 1, "TS2345"]),
@@ -319,21 +314,20 @@ describe("staticFindings", () => {
 		]);
 	});
 
-	it("takes resolution from each path's configuration and severity overrides from the tool's settings", async () => {
+	it("takes severity overrides from the tool's settings, and stores no resolution", async () => {
 		const base = commit({ "melian.yaml": lines("resolution:", "  P0: advisory"), "a.ts": lines("a") });
 		const head = commit({ "a.ts": lines("b") });
 		const { revision } = await resolveRange(repo, `${base}..${head}`);
 		const { findings } = await staticFindings({
 			repoRoot: repo,
 			revision,
-			source: { kind: "revision", commit: base },
 			tool: "tsc",
 			settings: { ...defaultConfig.static.tsc, severity: { "tsc/TS2322": "P0" } },
 			base: log(),
 			head: log(["a.ts", 1, "TS2322"]),
 		});
 		expect(findings.map((finding) => [finding.properties.severity, finding.properties.resolution])).toEqual([
-			["P0", "advisory"],
+			["P0", undefined],
 		]);
 	});
 });

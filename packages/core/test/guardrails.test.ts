@@ -80,7 +80,7 @@ describe("forbidden-paths", () => {
 				line: 1,
 				severity: "P1",
 				cause: "introduced",
-				resolution: "block",
+				resolution: undefined,
 			})),
 		);
 		expect(findings[0]!.message.text).toBe("dist is built by CI; change the source instead.");
@@ -108,7 +108,7 @@ describe("forbidden-paths", () => {
 				line: 1,
 				severity: "P3",
 				cause: "introduced",
-				resolution: "advisory",
+				resolution: undefined,
 			},
 		]);
 	});
@@ -199,7 +199,7 @@ describe("required-files", () => {
 				line: 1,
 				severity: "P2",
 				cause: "introduced",
-				resolution: "acknowledge",
+				resolution: undefined,
 			},
 		]);
 		expect(findings[0]!.properties.explanation.what).toContain("nothing matching db/schema.sql");
@@ -299,7 +299,7 @@ describe("forbidden-patterns", () => {
 				line: 3,
 				severity: "P2",
 				cause: "introduced",
-				resolution: "acknowledge",
+				resolution: undefined,
 			},
 		]);
 		const [finding] = findings;
@@ -445,7 +445,7 @@ describe("policy-change-review", () => {
 				line: 1,
 				severity: "P2",
 				cause: "introduced",
-				resolution: "acknowledge",
+				resolution: undefined,
 			})),
 		);
 		expect(findings[0]!.message.text).toBe("Review policy and standards changed in this revision.");
@@ -503,9 +503,9 @@ describe("policy-change-review", () => {
 				finding.message.text,
 			]),
 		).toEqual([
-			["tsconfig.build.json", "P1", "block", "Review the change to tsconfig.build.json, which configures tsc."],
-			["tsconfig.json", "P1", "block", "Review the change to tsconfig.json, which configures tsc."],
-			["web/biome.jsonc", "P1", "block", "Review the change to web/biome.jsonc, which configures Biome."],
+			["tsconfig.build.json", "P1", undefined, "Review the change to tsconfig.build.json, which configures tsc."],
+			["tsconfig.json", "P1", undefined, "Review the change to tsconfig.json, which configures tsc."],
+			["web/biome.jsonc", "P1", undefined, "Review the change to web/biome.jsonc, which configures Biome."],
 		]);
 		expect(policy.map((finding) => finding.properties.explanation.what)).toEqual([
 			"This revision changes tsconfig.build.json, which configures tsc. The head deletes tsconfig.build.json.",
@@ -523,7 +523,7 @@ describe("policy-change-review", () => {
 			{ "melian.yaml": lines("resolution:", "  P1: silent"), "docs/CLAUDE.md": lines("@AGENTS.md") },
 		);
 		expect(summary(findings).map(({ file, severity, resolution }) => ({ file, severity, resolution }))).toEqual([
-			{ file: "melian.yaml", severity: "P1", resolution: "block" },
+			{ file: "melian.yaml", severity: "P1", resolution: undefined },
 		]);
 	});
 });

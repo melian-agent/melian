@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import type { Revision } from "./changeset.ts";
-import { configLookup, type Severity, type StaticToolSettings } from "./config.ts";
+import type { Severity, StaticToolSettings } from "./config.ts";
 import { CheckError } from "./errors.ts";
 import {
 	canonicalPath,
@@ -17,7 +17,7 @@ import {
 	snippetOccurrence,
 } from "./findings.ts";
 import { type CheckReport, guardrailLimits } from "./guardrails.ts";
-import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
+import { openSource, SourceError, type SourceReader } from "./source.ts";
 
 /** The static tools Melian runs. */
 export type StaticTool = "biome" | "tsc";
@@ -316,8 +316,6 @@ export function staticSeverity(
 export interface StaticFindingsInput {
 	readonly repoRoot: string;
 	readonly revision: Revision;
-	/** Where `melian.yaml` is read from, for each finding's resolution. */
-	readonly source: RepositorySource;
 	readonly tool: StaticTool;
 	readonly settings: StaticToolSettings;
 	readonly base: ToolLog;
@@ -411,7 +409,7 @@ function triggerFor(revision: Revision, path: string, startLine: number, endLine
  * line. A result's snippet is the full text of its lines at its own revision, read through git's object store, and its
  * occurrence is counted there, so code an edit above moved keeps its ID. A result at head absent at base is
  * `introduced`; one at both is `pre-existing`, which never blocks; one only at base was resolved and is not reported.
- * Severity follows {@link staticSeverity}, and resolution each path's configuration from `source`.
+ * Severity follows {@link staticSeverity}. A finding carries no resolution: only adjudication writes one.
  */
 export async function staticFindings(input: StaticFindingsInput): Promise<CheckReport> {
 	const { repoRoot, revision, tool } = input;
@@ -427,7 +425,6 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 		identify(tool, input.base, baseReader, (path) => renamed.get(path) ?? path),
 		identify(tool, input.head, headReader, (path) => path),
 	]);
-	const configFor = configLookup(repoRoot, input.source);
 	const version = input.head.runs[0].tool.driver.version;
 	const findings: Finding[] = [];
 	for (const each of head.values()) {
@@ -435,7 +432,6 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 		const endLine = Math.max(region.endLine ?? region.startLine, region.startLine);
 		const before = base.get(each.id);
 		const severity = staticSeverity(tool, each.rule, each.result.level, input.settings.severity);
-		const config = await configFor(each.path);
 		const sameLine = endLine === region.startLine;
 		// Results of one rule on one set of lines share an ID, so presence alone would hide a second error added beside
 		// an old one. What the head has beyond the base's count is introduced.
@@ -460,7 +456,6 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 				cause,
 				trigger: cause === "introduced" ? triggerFor(revision, each.path, region.startLine, endLine) : undefined,
 				severity,
-				resolution: config.resolution[severity],
 				explanation: {
 					what: each.result.message.text,
 					whyHere:

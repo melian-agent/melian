@@ -211,7 +211,7 @@ Everything the renderer prints is untrusted. A lens writes finding text after re
 
 ## Guardrails
 
-`evaluateGuardrails({ repoRoot, revision, source })` runs four deterministic policies in the Melian process. It never runs the repository's code: it reads the changeset, each path's layered `melian.yaml` from `source`, and, for forbidden-patterns, the changed files at head through git's object store. Each guardrail reports under `guardrail/<name>` at the severity its configuration sets, with the resolution the path's configuration gives that severity, and every finding is `introduced`, because a guardrail judges the change itself.
+`evaluateGuardrails({ repoRoot, revision, source })` runs four deterministic policies in the Melian process. It never runs the repository's code: it reads the changeset, each path's layered `melian.yaml` from `source`, and, for forbidden-patterns, the changed files at head through git's object store. Each guardrail reports under `guardrail/<name>` at the severity its configuration sets, and every finding is `introduced`, because a guardrail judges the change itself. Like every producer, a guardrail or static check stores no resolution; only adjudication writes one.
 
 | Guardrail | Fires when | Default severity | Where the finding sits |
 |---|---|---|---|

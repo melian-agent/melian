@@ -54,7 +54,6 @@ interface Hit {
 	readonly occurrence?: number;
 	readonly discriminator?: string;
 	readonly trigger?: FindingTrigger;
-	readonly config: MelianConfig;
 	readonly severity: Severity;
 	readonly message: string;
 	readonly explanation: FindingExplanation;
@@ -73,7 +72,6 @@ function finding(hit: Hit): Finding {
 		cause: "introduced",
 		trigger: hit.trigger,
 		severity: hit.severity,
-		resolution: hit.config.resolution[hit.severity],
 		explanation: hit.explanation,
 		source: { check },
 	});
@@ -107,7 +105,6 @@ async function forbiddenPaths(
 			file: path,
 			line: 1,
 			discriminator: "path",
-			config,
 			severity: guardrail.severity,
 			message: sentences(messages),
 			explanation: {
@@ -143,7 +140,6 @@ async function requiredFiles(paths: readonly string[], configFor: ConfigLookup):
 				file: path,
 				line: 1,
 				discriminator: `${name} in ${declaredIn}`,
-				config,
 				severity: guardrail.severity,
 				message: sentences([rule.message]),
 				explanation: {
@@ -189,7 +185,6 @@ function policyChanges(
 					file: path,
 					line: 1,
 					discriminator: "analyser",
-					config,
 					severity: guardrail.analyserSeverity,
 					message: `Review the change to ${path}, which configures ${analyser}.`,
 					explanation: {
@@ -205,7 +200,6 @@ function policyChanges(
 				file: path,
 				line: 1,
 				discriminator: "policy",
-				config,
 				severity: guardrail.severity,
 				message: "Review policy and standards changed in this revision.",
 				explanation: {
@@ -319,7 +313,6 @@ async function forbiddenPatterns(
 			file: file.path,
 			line,
 			discriminator: "unscanned",
-			config,
 			severity: guardrail.severity,
 			message: "line could not be scanned.",
 			explanation: {
@@ -386,7 +379,6 @@ async function forbiddenPatterns(
 				occurrence: byCode ? snippetOccurrence(text, added.text, { startLine: added.line }) : undefined,
 				discriminator: byCode ? undefined : `line ${added.line}`,
 				trigger: hunk === undefined ? undefined : { file: file.path, index: hunk.index, snippet: added.text },
-				config,
 				severity: guardrail.severity,
 				message: sentences(messages),
 				explanation: {
