@@ -1,5 +1,5 @@
 import { stat } from "node:fs/promises";
-import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { OutsideRepositoryError } from "./errors.ts";
 
 /**
@@ -25,10 +25,9 @@ export async function directoriesUpToRoot(repoRoot: string, path: string): Promi
 	const fromRoot = relative(root, target);
 	if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`) || isAbsolute(fromRoot))
 		throw new OutsideRepositoryError(path, root);
-	const isDirectory = (await stat(target).catch(() => undefined))?.isDirectory() ?? false;
-	const directories: string[] = [];
-	for (let directory = isDirectory ? target : dirname(target); ; directory = dirname(directory)) {
-		directories.push(directory);
-		if (directory === root) return directories;
-	}
+	const segments = fromRoot === "" ? [] : fromRoot.split(sep);
+	const isDirectory = segments.length === 0 || ((await stat(target).catch(() => undefined))?.isDirectory() ?? false);
+	if (!isDirectory) segments.pop();
+	// Walking segments rather than calling dirname until it reaches the root ends even when the root does not exist.
+	return segments.map((_, index) => join(root, ...segments.slice(0, segments.length - index))).concat(root);
 }

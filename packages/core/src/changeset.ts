@@ -137,10 +137,14 @@ const diffFlags = [
 	"--no-textconv",
 	"--no-relative",
 	"--find-renames",
+	// git's default; a lower diff.renameLimit turns an edited rename into a deletion and an addition.
+	"-l1000",
 	"--diff-algorithm=myers",
 	"--indent-heuristic",
 	"--inter-hunk-context=0",
 	"--submodule=short",
+	// Cancels diff.orderFile, so files come in git's path order.
+	"-O/dev/null",
 ];
 
 async function diff(repoRoot: string, base: string, head: string): Promise<ChangedFile[]> {

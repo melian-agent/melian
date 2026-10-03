@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { dirname, join, posix } from "node:path";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
@@ -26,8 +26,12 @@ export const severitySchema = Type.Union([
 ]);
 const lensTier = Type.Union([Type.Literal("light"), Type.Literal("medium"), Type.Literal("heavy")]);
 const modelRoute = Type.Object({ model: name, fallbacks: Type.Optional(Type.Array(name)) }, strict);
+// Each end is optional in one file so that a nearer file can restate one; the merged band must have both.
 const band = Type.Object(
-	{ drop: Type.Number({ minimum: 0, maximum: 1 }), accept: Type.Number({ minimum: 0, maximum: 1 }) },
+	{
+		drop: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
+		accept: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
+	},
 	strict,
 );
 
@@ -105,8 +109,14 @@ export interface LensSettings {
 	readonly paths?: readonly string[];
 }
 
-/** A decision threshold: below `drop` drops, above `accept` accepts, between escalates to an LLM pass. */
-export type Band = Static<typeof band>;
+/**
+ * A decision threshold: below `drop` drops, above `accept` accepts, between escalates to an LLM pass. One `melian.yaml`
+ * may set either end; the merged band has both.
+ */
+export interface Band {
+	readonly drop: number;
+	readonly accept: number;
+}
 
 /** The effective configuration for one path: built-in defaults with every applicable `melian.yaml` merged on top. */
 export interface MelianConfig {
@@ -146,14 +156,29 @@ function isPlain(value: unknown): value is Plain {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// Objects merge key by key; anything else, arrays included, is replaced by the nearer value.
+// Objects merge key by key; anything else, arrays included, is replaced by the nearer value. Merged objects have no
+// prototype, so a lens named `constructor` or `toString` is looked up like any other.
 function merge(under: Plain, over: Plain): Plain {
-	const merged: Plain = { ...under };
+	const merged: Plain = Object.assign(Object.create(null), under);
 	for (const [key, value] of Object.entries(over)) {
 		const below = merged[key];
-		merged[key] = isPlain(below) && isPlain(value) ? merge(below, value) : value;
+		merged[key] = isPlain(below) && isPlain(value) ? merge(below, value) : isPlain(value) ? merge({}, value) : value;
 	}
 	return merged;
+}
+
+// `__proto__` as a key would replace a merged object's prototype wherever a later step copies it.
+function rejectReservedKeys(file: string, value: unknown, path: string[] = []): void {
+	if (!isPlain(value)) return;
+	for (const [key, child] of Object.entries(value)) {
+		const at = [...path, key];
+		if (key === "__proto__") {
+			throw new ConfigError("reservedKey", file, `${file}: "${at.join(".")}" uses a reserved key`, {
+				key: at.join("."),
+			});
+		}
+		rejectReservedKeys(file, child, at);
+	}
 }
 
 function dotted(instancePath: string): string {
@@ -192,6 +217,7 @@ async function readLayer(repoRoot: string, file: string): Promise<MelianYaml | u
 		throw new ConfigError("invalidYaml", file, `${file}: ${problem.message}`, { cause: problem });
 	}
 	const value: unknown = document.toJS() ?? {};
+	rejectReservedKeys(file, value);
 	validate(file, value, melianYamlSchema);
 	return anchorLensPaths(repoRelative(repoRoot, dirname(file)), value as MelianYaml);
 }
@@ -215,9 +241,19 @@ function anchorLensPaths(directory: string, layer: MelianYaml): MelianYaml {
 
 function checkBands(config: MelianConfig, layers: readonly { file: string; layer: MelianYaml }[]): void {
 	for (const [question, { drop, accept }] of Object.entries(config.decisions.thresholds)) {
-		if (drop <= accept) continue;
 		const file = layers.find(({ layer }) => layer.decisions?.thresholds?.[question] !== undefined)!.file;
 		const key = `decisions.thresholds.${question}`;
+		for (const [end, value] of [
+			["drop", drop],
+			["accept", accept],
+		] as const) {
+			if (value === undefined) {
+				throw new ConfigError("invalidValue", file, `${file}: "${key}" sets no ${end}, and no farther file does`, {
+					key: `${key}.${end}`,
+				});
+			}
+		}
+		if (drop <= accept) continue;
 		throw new ConfigError(
 			"invalidValue",
 			file,
@@ -236,13 +272,16 @@ function checkBands(config: MelianConfig, layers: readonly { file: string; layer
  * {@link OutsideRepositoryError} when `path` is outside `repoRoot`.
  */
 export async function loadConfig(repoRoot: string, path: string): Promise<LoadedConfig> {
+	if (!(await stat(repoRoot).catch(() => undefined))?.isDirectory()) {
+		throw new ConfigError("missingRoot", repoRoot, `${repoRoot} is not a directory`);
+	}
 	const layers: { file: string; layer: MelianYaml }[] = [];
 	for (const directory of await directoriesUpToRoot(repoRoot, path)) {
 		const file = join(directory, melianPaths.config);
 		const layer = await readLayer(repoRoot, file);
 		if (layer !== undefined) layers.push({ file, layer });
 	}
-	const defaults = structuredClone(defaultConfig) as unknown as Plain;
+	const defaults = merge({}, structuredClone(defaultConfig) as unknown as Plain);
 	const config = layers.reduceRight((merged, { layer }) => merge(merged, layer), defaults) as unknown as MelianConfig;
 	checkBands(config, layers);
 	return { config, sources: layers.map(({ file }) => file) };

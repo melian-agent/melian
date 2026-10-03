@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { ConfigError, defaultConfig, loadConfig, OutsideRepositoryError } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { lines, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
+import { lines, rejection as rejectionOf, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
 
 let repo: string;
 
@@ -14,14 +14,7 @@ afterEach(() => {
 	removeDirectory(repo);
 });
 
-async function rejection(promise: Promise<unknown>): Promise<ConfigError> {
-	const error = await promise.then(
-		() => undefined,
-		(error: unknown) => error,
-	);
-	expect(error).toBeInstanceOf(ConfigError);
-	return error as ConfigError;
-}
+const rejection = (promise: Promise<unknown>) => rejectionOf(promise, ConfigError);
 
 describe("loadConfig", () => {
 	it("returns the design's defaults when no melian.yaml exists", async () => {
@@ -143,6 +136,27 @@ describe("loadConfig", () => {
 		expect(error.message).toContain(key);
 	});
 
+	it.each([
+		["lenses:\n  __proto__:\n    tier: heavy", "lenses.__proto__"],
+		["decisions:\n  thresholds:\n    __proto__:\n      drop: 0.1", "decisions.thresholds.__proto__"],
+		["__proto__:\n  polluted: true", "__proto__"],
+	])("rejects __proto__ as a key in %j", async (yaml, key) => {
+		writeFiles(repo, { "melian.yaml": yaml });
+		expect(await rejection(loadConfig(repo, "a.ts"))).toMatchObject({ code: "reservedKey", key });
+	});
+
+	it("looks up a lens named like an Object method as any other lens", async () => {
+		const { config: defaults } = await loadConfig(repo, "a.ts");
+		expect(defaults.lenses.toString).toBeUndefined();
+		writeFiles(repo, {
+			"melian.yaml": lines("lenses:", "  constructor:", "    tier: heavy", "  toString:", "    enabled: false"),
+		});
+		const { config } = await loadConfig(repo, "a.ts");
+		expect(config.lenses.constructor).toEqual({ tier: "heavy" });
+		expect(config.lenses.toString).toEqual({ enabled: false });
+		expect(config.stages.hasOwnProperty).toBeUndefined();
+	});
+
 	it("rejects a value outside its set, listing the allowed values", async () => {
 		writeFiles(repo, { "melian.yaml": lines("resolution:", "  P0: blocker") });
 		const error = await rejection(loadConfig(repo, "a.ts"));
@@ -158,6 +172,15 @@ describe("loadConfig", () => {
 		expect(await rejection(loadConfig(repo, "a.ts"))).toMatchObject({ code: "invalidYaml" });
 	});
 
+	it("lets a nearer file restate one end of a threshold band", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("decisions:", "  thresholds:", "    real:", "      drop: 0.2", "      accept: 0.8"),
+			"services/melian.yaml": lines("decisions:", "  thresholds:", "    real:", "      drop: 0.3"),
+		});
+		const { config } = await loadConfig(repo, "services/a.ts");
+		expect(config.decisions.thresholds).toEqual({ real: { drop: 0.3, accept: 0.8 } });
+	});
+
 	it("rejects a threshold band whose merge drops above where it accepts, naming the nearer file", async () => {
 		writeFiles(repo, {
 			"melian.yaml": lines("decisions:", "  thresholds:", "    real:", "      drop: 0.2", "      accept: 0.8"),
@@ -169,9 +192,21 @@ describe("loadConfig", () => {
 			key: "decisions.thresholds.real",
 			file: join(repo, "services/melian.yaml"),
 		});
+		expect(error.message).toContain("drop must not exceed accept");
+	});
+
+	it("rejects a threshold band that no file completes", async () => {
+		writeFiles(repo, { "melian.yaml": lines("decisions:", "  thresholds:", "    real:", "      drop: 0.2") });
+		const error = await rejection(loadConfig(repo, "a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", key: "decisions.thresholds.real.accept" });
 	});
 
 	it("refuses a path outside the repository", async () => {
 		await expect(loadConfig(repo, "../elsewhere/a.ts")).rejects.toBeInstanceOf(OutsideRepositoryError);
+	});
+
+	it.each([".", "a.ts"])("refuses a repository root that does not exist, given %j", async (path) => {
+		const missing = join(repo, "missing");
+		expect(await rejection(loadConfig(missing, path))).toMatchObject({ code: "missingRoot", file: missing });
 	});
 });

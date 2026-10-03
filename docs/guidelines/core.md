@@ -13,7 +13,7 @@ Problem: a domain rule written against the harness can only be tested through th
 Core reads repositories by running the `git` executable through `src/git.ts`. It never uses a JavaScript reimplementation of git, which drifts from git on renames, merge bases, and configuration.
 
 - Run git with an argument array, never a shell string. Refuse a ref beginning with `-` before it reaches the argument list, as `checkRange` does.
-- Pass diff flags explicitly. A user's `diff.algorithm`, `diff.renames`, `diff.interHunkContext`, `diff.submodule`, or `color.diff` must not change what Melian sees. `src/changeset.ts` pins them, and a test in `test/changeset.test.ts` resolves a range under each setting and expects the same changeset. Add a setting there when you pin a flag.
+- Pass diff flags explicitly. A user's `diff.algorithm`, `diff.renames`, `diff.renameLimit`, `diff.interHunkContext`, `diff.submodule`, `diff.orderFile`, or `color.diff` must not change what Melian sees. `src/changeset.ts` pins them, and a test in `test/changeset.test.ts` resolves a range under each setting and expects the same changeset. Add a setting there when you pin a flag.
 - Ask git for machine formats: `-z` for paths, `--numstat` and `--name-status` for file lists. Parse the unified diff only for hunks, and only the `@@ -a,b +c,d @@` headers and the lines under them.
 - Git emits the name-status, numstat, and patch views of one diff in the same file order. The parser joins them by position and fails if the counts disagree. One exception reads like a bug: a type change, such as a file becoming a symlink, is one name-status entry but two patch sections, a deletion and an addition.
 - Report failures as `ChangesetError` codes, never as thrown strings.
@@ -75,9 +75,11 @@ The keys a `melian.yaml` accepts, all optional:
 | `knowledge` | `writeBack`, a boolean | `false` |
 | `decisions` | `provider`, and `thresholds` from question name to a `drop` and `accept` band between 0 and 1 | no provider, no thresholds |
 
-Lenses are a map keyed by name rather than `enable` and `disable` lists, so that layering works per lens: a service can disable one lens without restating the root's list. A band whose merged `drop` exceeds its `accept` is an error naming the nearest file that set it.
+Lenses are a map keyed by name rather than `enable` and `disable` lists, so that layering works per lens: a service can disable one lens without restating the root's list. A band layers like any object, so a nearer file may restate only `drop` or only `accept`. A merged band missing either end, or whose `drop` exceeds its `accept`, is an error naming the nearest file that set it.
 
 Unknown keys are errors that name the key and the file, because a misspelt key otherwise falls back to a default without a word.
+
+A `__proto__` key anywhere is a `reservedKey` error. Problem: `lenses: { __proto__: { tier: heavy } }` merged into a plain object replaces its prototype, so every lens no file configures appears to have `tier: heavy`. Solution: the loader refuses the key, and builds merged objects with no prototype, so a lens named `constructor` or `toString` is looked up like any other.
 
 ## Findings
 

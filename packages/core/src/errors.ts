@@ -28,7 +28,13 @@ export class ChangesetError extends Error {
 }
 
 /** Why configuration could not be loaded. */
-export type ConfigErrorCode = "unreadable" | "invalidYaml" | "unknownKey" | "invalidValue";
+export type ConfigErrorCode =
+	| "missingRoot"
+	| "unreadable"
+	| "invalidYaml"
+	| "unknownKey"
+	| "reservedKey"
+	| "invalidValue";
 
 /** A `melian.yaml` could not be loaded. `file` names it; `key` is the dotted path of the offending key, where there is one. */
 export class ConfigError extends Error {

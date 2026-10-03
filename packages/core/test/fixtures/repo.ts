@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { expect } from "vitest";
 
 // Isolates git from the developer's own configuration, such as commit signing or a different diff algorithm.
 export const isolatedGitEnv = {
@@ -34,4 +35,17 @@ export function lines(...content: string[]): string {
 
 export function gitIn(root: string, ...args: string[]): string {
 	return execFileSync("git", args, { cwd: root, env: { ...process.env, ...isolatedGitEnv }, encoding: "utf8" }).trim();
+}
+
+// Resolves to the error a promise rejects with, failing the test unless it rejects with an instance of `type`.
+export async function rejection<E extends Error>(
+	promise: Promise<unknown>,
+	type: abstract new (...args: never[]) => E,
+): Promise<E> {
+	const error = await promise.then(
+		() => undefined,
+		(error: unknown) => error,
+	);
+	expect(error).toBeInstanceOf(type);
+	return error as E;
 }
