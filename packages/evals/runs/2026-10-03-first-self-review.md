@@ -73,3 +73,11 @@ packages/pipeline/src/publish.ts
 
 3 findings in 2 files.
 ```
+
+## Fixed since
+
+Recorded after [pull request #19](https://github.com/melian-agent/melian/pull/19) merged. All three findings are fixed.
+
+- The P1 in `skills/claude-code/SKILL.md` was fixed on the `skill` branch, [pull request #21](https://github.com/melian-agent/melian/pull/21). `08d5f89` routes every lens tier in the root `melian.yaml`, and `f30792d` has the skill report an unrouted tier as setup rather than as a verdict. [#19](https://github.com/melian-agent/melian/pull/19) then made `melian doctor` warn when `melian.yaml` routes no tier, as the finding suggested, in `a7644b5`, and `54ffa39` has the skills read that warning before the first review.
+- The first P2 was fixed in [#19](https://github.com/melian-agent/melian/pull/19) by `fa18dca`. A publish round keeps the verdict it renders, so a replayed round no longer posts its comments under the current verdict's body, and the third refusal of a round abandons it, so a round GitHub always refuses no longer blocks the head.
+- The second P2 was fixed in [#19](https://github.com/melian-agent/melian/pull/19) by `5755eea`. `Publication.resolved` counts only this run's resolutions, as the other counts do, so a repeat publish no longer prints the head's earlier ones.
