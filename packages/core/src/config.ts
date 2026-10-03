@@ -236,21 +236,27 @@ async function readLayer(source: SourceReader, site: Site): Promise<MelianYaml |
 	}
 	rejectReservedKeys(site, value);
 	validate(site, value, melianYamlSchema);
-	return anchorLensPaths(posix.dirname(site.file), value as MelianYaml);
+	return anchorLensPaths(site, value as MelianYaml);
 }
 
 // A lens's paths are written relative to their melian.yaml; merging would lose which file that was.
-function anchorLensPaths(directory: string, layer: MelianYaml): MelianYaml {
+function anchorLensPaths(site: Site, layer: MelianYaml): MelianYaml {
 	if (layer.lenses === undefined) return layer;
-	const anchor = (path: string) => {
+	const directory = posix.dirname(site.file);
+	const anchor = (lens: string) => (path: string) => {
 		const negated = path.startsWith("!");
 		const pattern = (negated ? path.slice(1) : path).replace(/^\/+/, "");
-		return `${negated ? "!" : ""}${directory === "." ? pattern : posix.join(directory, pattern)}`;
+		const anchored = posix.normalize(posix.join(directory, pattern));
+		if (anchored === ".." || anchored.startsWith("../")) {
+			const key = `lenses.${lens}.paths`;
+			throw configError("invalidValue", site, `"${key}" has ${path}, which leaves the repository`, { key });
+		}
+		return `${negated ? "!" : ""}${anchored}`;
 	};
 	const lenses = Object.fromEntries(
 		Object.entries(layer.lenses).map(([lens, settings]) => [
 			lens,
-			settings.paths === undefined ? settings : { ...settings, paths: settings.paths.map(anchor) },
+			settings.paths === undefined ? settings : { ...settings, paths: settings.paths.map(anchor(lens)) },
 		]),
 	);
 	return { ...layer, lenses };

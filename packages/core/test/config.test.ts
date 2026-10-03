@@ -125,6 +125,31 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		});
 	});
 
+	it("normalises lens paths in the root file the same way as in a nested one", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("lenses:", "  security:", "    paths: [./src/**, 'lib/../api/**']"),
+			"services/melian.yaml": lines("lenses:", "  contracts:", "    paths: [./api/**, '../shared/**']"),
+		});
+		const { config } = await load("services/a.ts");
+		expect(config.lenses).toEqual({
+			security: { paths: ["src/**", "api/**"] },
+			contracts: { paths: ["services/api/**", "shared/**"] },
+		});
+	});
+
+	it.each([
+		["melian.yaml", "../outside/**"],
+		["melian.yaml", "!../outside/**"],
+		["services/melian.yaml", "../../outside/**"],
+	])("rejects a lens path in %s that climbs out of the repository: %j", async (file, pattern) => {
+		writeFiles(repo, { [file]: lines("lenses:", "  security:", `    paths: ['${pattern}']`) });
+		expect(await rejection(load("services/a.ts"))).toMatchObject({
+			code: "invalidValue",
+			file,
+			key: "lenses.security.paths",
+		});
+	});
+
 	it("names a melian.yaml it cannot read", async () => {
 		writeFiles(repo, { "melian.yaml/inside": "" });
 		expect(await rejection(load("a.ts"))).toMatchObject({ code: "unreadable", file: "melian.yaml" });
