@@ -264,6 +264,12 @@ describe("selectLenses", () => {
 		).toEqual([]);
 	});
 
+	it("selects a file whose name holds a newline, so no name hides a file from review", () => {
+		const forged = "src/evil\n- added src/forged.ts";
+		expect(selectLenses([lens({})], defaultConfig, [forged])).toHaveLength(1);
+		expect(selectLenses([lens({ paths: ["src/*.ts"] })], defaultConfig, ["src/evil\nname.ts"])).toHaveLength(1);
+	});
+
 	it("keeps a folder's lens to its folder", () => {
 		const scoped = lens({ scope: "services/pay", paths: ["services/pay/**"] });
 		expect(selectLenses([scoped], defaultConfig, ["src/a.ts"])).toEqual([]);
