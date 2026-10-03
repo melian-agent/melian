@@ -22,6 +22,9 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
+      # Node 22 bundles npm 10, which silently ignores min-release-age in .npmrc.
+      - if: matrix.node == 22
+        run: npm install -g npm@11.19.0
       - run: npm ci --ignore-scripts
       - run: npm run check
       - name: Fail if check rewrote files
