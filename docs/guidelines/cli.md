@@ -9,7 +9,7 @@ The cli package is the `melian` command. It is the primary host and the only thi
 | `melian review <range\|#pr> [--rerun]` | Reviews a range of the checkout, or fetches a pull request and reviews it, then prints the verdict's terminal rendering. `--rerun` runs again the lenses that failed in the last review of the same base and head | `0` passed, `1` findings with one blocking, `2` not reviewed, `3` findings with none blocking |
 | `melian publish <#pr>` | Posts the stored review of the pull request's current head to GitHub | `0` published, `1` refused or failed |
 | `melian findings <range\|#pr> [--open] [--json]` | Prints the stored verdict, or with `--open` the findings that still need attention, as text or JSON | `0`, or `1` when nothing is stored |
-| `melian doctor` | Checks Node, git and `--attr-source`, Pi's login, which providers have credentials, the GitHub token's source, gh, and the repository | `0`, or `1` when Node or git cannot run a review |
+| `melian doctor` | Checks Node, git and `--attr-source`, Pi's login, which providers have credentials, the GitHub token's source, gh, the repository, and which tiers `melian.yaml` routes to a model, warning when it routes none | `0`, or `1` when Node or git cannot run a review |
 
 A command line Melian cannot read exits `64`. A review that fails before it has a verdict, such as on a `melian.yaml` that does not parse, exits `2`: nothing was reviewed. `--model provider/id` routes every tier `melian.yaml` leaves unrouted, as `MELIAN_EVAL_MODEL` does for live evals.
 

@@ -161,6 +161,17 @@ describe("melian doctor", () => {
 		expect(doctor.stdout).not.toContain(token);
 		expect(readFileSync(bin, "utf8")).toMatch(/^#!\/usr\/bin\/env node\n/);
 	});
+
+	it("warns when melian.yaml routes no tier to a model, and names the routes when it does", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+
+		const unrouted = melian(repo, ["doctor"]);
+		writeFileSync(join(repo, "melian.yaml"), "models:\n  heavy:\n    model: anthropic/claude-opus-5-5\n");
+		const routed = melian(repo, ["doctor"]);
+
+		expect(unrouted.stdout).toMatch(/^warn {2}routes {6}melian\.yaml routes no tier to a model; .*--model/m);
+		expect(routed.stdout).toMatch(/^ok {4}routes {6}heavy to anthropic\/claude-opus-5-5$/m);
+	});
 });
 
 describe("melian's command line", () => {

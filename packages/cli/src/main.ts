@@ -12,7 +12,7 @@ Commands:
                          Exits 0 passed, 1 blocking findings, 2 not reviewed, 3 findings with none blocking.
   publish <#pr>          Post the stored review of the pull request's current head to GitHub.
   findings <range|#pr>   Print the stored review. --open prints only findings that need attention; --json prints JSON.
-  doctor                 Check Node, git, credentials, and GitHub access.
+  doctor                 Check Node, git, credentials, model routes, and GitHub access.
 
 Options:
   --model <provider/id>  Route every tier melian.yaml leaves unrouted to this model (review).

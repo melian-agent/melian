@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
+import { type LensTier, loadConfig } from "@melian-agent/core";
 import { parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
 import { createReviewModels, piAuthPath, providersWithCredentials } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
@@ -45,6 +46,31 @@ async function credentialsCheck(): Promise<Check> {
 		: { name: "models", state: "ok", detail: `credentials for ${configured.join(", ")}` };
 }
 
+const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
+
+// A lens runs on the model its tier routes to. With none routed, every review without --model stops with "no model is
+// configured", so doctor reports it before a review does.
+async function routesCheck(cwd: string): Promise<Check | undefined> {
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return undefined;
+	try {
+		const { config } = await loadConfig(root, { kind: "worktree" }, ".");
+		const routed = tiers.filter((tier) => config.models[tier] !== undefined);
+		if (routed.length === 0) {
+			return {
+				name: "routes",
+				state: "warn",
+				detail:
+					"melian.yaml routes no tier to a model; set models.light, medium, and heavy, or pass --model to review",
+			};
+		}
+		const routes = routed.map((tier) => `${tier} to ${config.models[tier]!.model}`);
+		return { name: "routes", state: "ok", detail: routes.join(", ") };
+	} catch (error) {
+		return { name: "routes", state: "warn", detail: error instanceof Error ? error.message : String(error) };
+	}
+}
+
 async function repositoryCheck(cwd: string): Promise<Check> {
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return { name: "repository", state: "warn", detail: "not inside a git repository" };
@@ -82,6 +108,7 @@ export async function doctor(io: Io): Promise<number> {
 			? { name: "gh", state: "warn", detail: "not found on PATH" }
 			: { name: "gh", state: "ok", detail: gh.split("\n")[0]! },
 		await repositoryCheck(io.cwd),
+		...[await routesCheck(io.cwd)].filter((check) => check !== undefined),
 	];
 	const width = Math.max(...checks.map((check) => check.name.length));
 	for (const check of checks) io.stdout(`${check.state.padEnd(4)}  ${check.name.padEnd(width)}  ${check.detail}\n`);
