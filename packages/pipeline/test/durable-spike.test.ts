@@ -60,7 +60,6 @@ afterEach(() => {
 	rmSync(dir, { recursive: true, force: true });
 });
 
-/** Run a scenario's first half in a child process and SIGKILL it once `reached` holds for its event log. */
 async function crashWhen(scenario: Scenario, reached: (events: readonly Event[]) => boolean) {
 	const database = join(dir, `${scenario}.sqlite`);
 	const log = join(dir, `${scenario}.jsonl`);

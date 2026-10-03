@@ -16,14 +16,14 @@ import {
 	Type,
 } from "../../src/harness.ts";
 
-/** `crash` parks the second half of each scenario so the parent can kill the process there; `resume` finishes it. */
+// `crash` parks the second half of each scenario so the parent can kill the process there; `resume` finishes it.
 export type Mode = "crash" | "resume";
 
 export type Scenario = "task" | "replay" | "memo";
 
 export type Event = { readonly event: string; readonly [field: string]: unknown };
 
-/** Append one event to the log the parent reads. Synchronous, so it is on disk before the next step runs. */
+// Synchronous, so the event is on disk before the next step runs and the parent can kill at it.
 export function record(log: string, event: Event): void {
 	appendFileSync(log, `${JSON.stringify(event)}\n`);
 }
@@ -40,7 +40,7 @@ export function count(events: readonly Event[], name: string): number {
 	return events.filter((each) => each.event === name).length;
 }
 
-/** Never settles, and holds a timer so Node keeps the process alive until it is killed. */
+// The timer keeps Node alive until the parent kills the process.
 function park(): Promise<never> {
 	return new Promise(() => setInterval(() => {}, 60_000));
 }
@@ -123,7 +123,6 @@ export function toolCallReply(...names: string[]): AssistantMessage {
 	);
 }
 
-/** A scripted reply that also keeps the messages the model was shown, so a test can assert on them. */
 export function captured(requests: Message[][], reply: AssistantMessage) {
 	return (context: { readonly messages: readonly Message[] }): AssistantMessage => {
 		requests.push(structuredClone([...context.messages]));
@@ -139,7 +138,6 @@ export async function openSpikeHarness(path: string, registry: Registry, fake: F
 	});
 }
 
-/** The plain text of one message, with tool calls written as `name(arguments)`. */
 export function textOf(message: Message | undefined): string {
 	if (message === undefined) return "";
 	if (message.role === "system") {
@@ -157,7 +155,6 @@ export function textOf(message: Message | undefined): string {
 		.join("");
 }
 
-/** Every system message's text in one request, which is the system prompt the model saw. */
 export function systemPrompt(messages: readonly Message[]): string {
 	return messages
 		.filter((message) => message.role === "system")
@@ -172,7 +169,6 @@ export function toolResult(messages: readonly Message[], toolName: string) {
 	);
 }
 
-/** Names of the tools a request offered the model. */
 export function offeredTools(messages: readonly Message[]): string[] {
 	return messages.flatMap((message) =>
 		message.role === "system" ? (message.toolsAdded ?? []).map((tool) => tool.name) : [],
