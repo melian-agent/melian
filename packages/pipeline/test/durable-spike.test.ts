@@ -91,6 +91,7 @@ async function crashWhen(scenario: Scenario, reached: (events: readonly Event[])
 function field<T>(events: readonly Event[], event: string, name: string): T {
 	const found = events.find((each) => each.event === event);
 	if (found === undefined) throw new Error(`no ${event} event`);
+	if (!(name in found)) throw new Error(`${event} event has no ${name} field`);
 	return found[name] as T;
 }
 
