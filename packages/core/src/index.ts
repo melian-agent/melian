@@ -1,6 +1,7 @@
 export {
 	applyResolutions,
 	type ConfigFor,
+	dedupeFindings,
 	resolutionOrder,
 	resolveFinding,
 } from "./adjudication.ts";
@@ -52,6 +53,8 @@ export {
 	type StandardsErrorCode,
 } from "./errors.ts";
 export {
+	type AlsoReportedAs,
+	alsoReportedAsSchema,
 	type Cause,
 	causeSchema,
 	createFinding,

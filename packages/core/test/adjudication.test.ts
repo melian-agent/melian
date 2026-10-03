@@ -1,10 +1,12 @@
 import {
 	applyResolutions,
 	createFinding,
+	dedupeFindings,
 	defaultConfig,
 	type FindingInput,
 	loadConfig,
 	type MelianConfig,
+	parseFinding,
 	resolveFinding,
 } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -79,5 +81,45 @@ describe("applyResolutions under layered configuration", () => {
 			"block",
 		]);
 		expect(findings[1]!.properties.resolution).toBe("block");
+	});
+});
+
+describe("dedupeFindings", () => {
+	const lens = finding({ severity: "P1" });
+	const eslintInput: Partial<FindingInput> = {
+		rule: "security/detect-eval-with-expression",
+		severity: "P2",
+		message: "eval with a non-literal argument",
+		source: { check: "static.eslint" },
+	};
+	const eslint = finding(eslintInput);
+	const aliases = { ruleAliases: { "no-eval": ["security/detect-eval-with-expression"] } };
+
+	it("keeps the higher-severity finding when a static tool and a lens report one problem under aliased rules", () => {
+		const [kept, ...rest] = dedupeFindings([eslint, lens], () => aliases);
+
+		expect(rest).toEqual([]);
+		expect(kept!.properties.id).toBe(lens.properties.id);
+		expect(kept!.properties.alsoReportedAs).toEqual([
+			{ id: eslint.properties.id, ruleId: "security/detect-eval-with-expression", check: "static.eslint" },
+		]);
+		expect(parseFinding(kept)).toEqual(kept);
+	});
+
+	it("keeps the static tool's finding when it is the more severe", () => {
+		const severe = finding({ ...eslintInput, severity: "P0" });
+		const deduped = dedupeFindings([lens, severe], () => aliases);
+		expect(deduped.map((each) => each.properties.source.check)).toEqual(["static.eslint"]);
+		expect(deduped[0]!.properties.alsoReportedAs).toEqual([
+			{ id: lens.properties.id, ruleId: "no-eval", check: "lens.security" },
+		]);
+	});
+
+	it("keeps both without an alias, at another occurrence, or from the same check", () => {
+		expect(dedupeFindings([eslint, lens], () => defaultConfig)).toHaveLength(2);
+		const second = finding({ ...eslintInput, occurrence: 1 });
+		expect(dedupeFindings([second, lens], () => aliases)).toHaveLength(2);
+		const sameCheck = finding({ ...eslintInput, source: { check: "lens.security" } });
+		expect(dedupeFindings([sameCheck, lens], () => aliases)).toHaveLength(2);
 	});
 });

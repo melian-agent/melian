@@ -94,6 +94,7 @@ The keys a `melian.yaml` accepts, all optional:
 | `models` | `light`, `medium`, `heavy`, or `decision` to `model` and `fallbacks` | none |
 | `knowledge` | `writeBack`, a boolean | `false` |
 | `decisions` | `provider`, and `thresholds` from question name to a `drop` and `accept` band between 0 and 1 | no provider, no thresholds |
+| `ruleAliases` | rule ID to the rule IDs other checks report the same problem under | none |
 
 Lenses are a map keyed by name rather than `enable` and `disable` lists, so that layering works per lens: a service can disable one lens without restating the root's list. A band layers like any object, so a nearer file may restate only `drop` or only `accept`. A merged band missing either end, or whose `drop` exceeds its `accept`, is an error naming the nearest file that set it.
 
@@ -206,6 +207,17 @@ Adjudication turns the findings a review collected into what the change requires
 A finding the change did not cause is never above `advisory`. Problem: severity says how bad a defect is, not whether this change made it. Example: a lens notices a `P0` SQL injection on line 80 of a file whose typo on line 3 the change fixed; at the configured `block`, the typo fix could not merge. Solution: a `pre-existing` finding resolves to the lesser of its configured resolution and `advisory`, so a `nit` stays `silent`. An `introduced` finding keeps its configured resolution, and so does an `affected` one, only because it carries evidence; `affected` without evidence is treated as `pre-existing`.
 
 The resolution a lens stores at report time comes from the configuration the review started with. Adjudication's is the one that counts.
+
+### Dedupe across sources
+
+The findings document already holds one finding per ID. A static tool and a lens can still report one problem under two IDs, because the rule is part of the ID. Example: ESLint reports `eval(input)` under `security/detect-eval-with-expression` and the security lens reports the same call under `no-eval`; the author would see it twice. `dedupeFindings(findings, configFor)` merges two findings when different checks report them in the same file, on the same normalised snippet at the same occurrence, under one rule or rules that `ruleAliases` lists together:
+
+```yaml
+ruleAliases:
+  no-eval: [security/detect-eval-with-expression, lint/security/noGlobalEval]
+```
+
+A key and its list form one group; any two rules in a group match. The finding of higher severity stays, the lower ID on a tie, and lists each merged finding's ID, rule, and check in `properties.alsoReportedAs`. A finding without a snippet never merges. There is no fuzzy matching: a static tool that flags line 12 and a lens that flags lines 12 to 14 stay two findings.
 
 ## Tests
 

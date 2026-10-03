@@ -84,6 +84,7 @@ export const melianYamlSchema = Type.Object(
 				strict,
 			),
 		),
+		ruleAliases: Type.Optional(Type.Record(Type.String(), Type.Array(name))),
 	},
 	strict,
 );
@@ -128,6 +129,8 @@ export interface MelianConfig {
 	readonly models: Readonly<Partial<Record<LensTier | "decision", ModelRoute>>>;
 	readonly knowledge: { readonly writeBack: boolean };
 	readonly decisions: { readonly provider?: string; readonly thresholds: Readonly<Record<string, Band>> };
+	/** Rule ID to the rule IDs other checks report the same problem under, so adjudication can merge their findings. */
+	readonly ruleAliases: Readonly<Record<string, readonly string[]>>;
 }
 
 /** The built-in defaults every `melian.yaml` layers onto. */
@@ -143,6 +146,7 @@ export const defaultConfig: MelianConfig = {
 	models: {},
 	knowledge: { writeBack: false },
 	decisions: { thresholds: {} },
+	ruleAliases: {},
 };
 
 /**
