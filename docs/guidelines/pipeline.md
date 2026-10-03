@@ -33,6 +33,34 @@ The store is read-only, and that has two consequences that read like bugs:
 
 There is no credential pool yet; one credential per provider.
 
+## Reviewing a changeset
+
+`reviewChangeset({ harness, changeset, config, lenses, standards, models })` runs the lens step and returns the root conversation's findings. The harness must hold `lensExtension`; open it with `openReviewHarness`, or install the extension in your own registry. Without it the lens task would sit blocked forever, so `reviewChangeset` checks `harness.inspect()` and throws `ReviewError` `notInstalled`.
+
+1. `selectLenses` picks the lenses the changed paths and configuration call for. No model is asked.
+2. Each lens's tier resolves through `resolveModelForTier` to the first model the collection knows and holds credentials for.
+3. One root commit records the review in `ReviewDocument`, the repository, base, head, changed files, and resolution, and creates the lens task.
+4. The task's first phase creates every lens conversation in one commit, configured with its model, its instructions (`renderLensInstructions`), and an explicit tool list, and records the lens's policy in its `LensDocument`. The second phase submits the change, rendered by `renderChangePrompt`, to each lens in parallel, with a request ID per lens so a rerun does not submit twice.
+5. A lens that does not finish is a `ReviewError` `lensFailed` naming it and carrying what was reported.
+
+### Lens tools
+
+`read_file`, `search`, and `list_files` read the head commit through core's `readRevisionFile`, `searchRevision`, and `listRevisionFiles`, never the working tree. They find the head through the calling conversation's `LensDocument`, which names the root, whose `ReviewDocument` names the commit. All three are replay-safe because they only read.
+
+`report_finding` takes a file, a line, an optional end line, a rule, a severity, an explanation (what, why, fix), and optional evidence. The model supplies nothing else:
+
+- The snippet is the head revision's text at those lines, read by Melian, so the finding's ID does not depend on how the model quoted the code. Its occurrence among identical snippets in the file comes from core's `snippetOccurrence`.
+- Cause comes from `classifyCause`. Code inside a hunk is `introduced`; anywhere else it is `pre-existing`, unless the lens gave evidence, the changed line that breaks it, which makes it `affected`. The evidence is appended to the explanation's "why here".
+- Resolution comes from the configuration, source from the lens's name and version, and status from the document.
+
+It upserts into the root conversation's findings document, never the lens's own, so one review has one document.
+
+### The policy hook
+
+`lensPolicyHook` runs before every tool call in a conversation that has a `LensDocument`, and passes every other call untouched. It blocks a tool the lens did not list, a severity outside its `severities`, a rule outside its `rules`, listing the rules that exist, and any finding once the lens has reported `budget.findings`. The model reads the reason as the tool result and can correct itself.
+
+The hook sees only committed findings, and a round's tool calls run in parallel, so two calls in one round can both pass it. `report_finding` checks the budget again inside its commit. A finding already stored passes that check, so a replayed call still succeeds.
+
 ## Contracts that read like mistakes
 
 - A task phase reruns from its start after a crash. Work before the phase's checkpoint commit must be safe to repeat, or guarded by a durable record.
@@ -49,6 +77,8 @@ There is no credential pool yet; one credential per provider.
 ## Tests
 
 - Use the fake model from `createFakeModels()` in `src/testing.ts`. Never a real provider, key, or paid token.
+- Script parallel conversations, such as lenses, with `scriptConversations()`, which answers each request from the script whose `match` appears in its system prompt. A plain response queue would hand the replies out in whatever order the harness calls the model.
+- Open review harnesses with `settings: { retry: { enabled: false } }` in tests, so a scripted error reply fails the lens at once instead of retrying with backoff.
 - Use memory storage unless the test is about surviving a reopen or a crash. Then use SQLite in a temporary directory and delete it afterwards.
 - Close every harness in `afterEach`, before deleting its directory, so a failed assertion does not leave a live SQLite handle. `close()` is idempotent.
 - Test a crash with a real process kill. Run the first half in `test/fixtures/crash.ts`, have it append events to a log synchronously, SIGKILL it at a known event, and resume in the test process against the same file. Count reruns from the log.

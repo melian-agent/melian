@@ -37,6 +37,7 @@ export {
 	type ConversationId,
 	configure,
 	createRegistry,
+	type DocumentReader,
 	defineDoc,
 	defineExtension,
 	defineTask,

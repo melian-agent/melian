@@ -1,3 +1,5 @@
+import type { Finding } from "@melian-agent/core";
+
 /** Why Pi's credential store could not serve a credential. */
 export type PiCredentialsErrorCode = "unreadable" | "invalid" | "readOnly";
 
@@ -11,5 +13,27 @@ export class PiCredentialsError extends Error {
 		this.name = "PiCredentialsError";
 		this.code = code;
 		this.path = path;
+	}
+}
+
+/** Why a review could not run or finish. */
+export type ReviewErrorCode = "noAvailableModel" | "notInstalled" | "lensFailed";
+
+/** A review could not run or finish. `lenses` names the lenses involved; `findings` holds what was reported anyway. */
+export class ReviewError extends Error {
+	readonly code: ReviewErrorCode;
+	readonly lenses: readonly string[];
+	readonly findings: readonly Finding[];
+
+	constructor(
+		code: ReviewErrorCode,
+		message: string,
+		options: { lenses: readonly string[]; findings?: readonly Finding[]; cause?: unknown },
+	) {
+		super(message, { cause: options.cause });
+		this.name = "ReviewError";
+		this.code = code;
+		this.lenses = options.lenses;
+		this.findings = options.findings ?? [];
 	}
 }
