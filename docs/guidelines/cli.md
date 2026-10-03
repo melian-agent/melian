@@ -43,6 +43,8 @@ Each changeset has one SQLite file, `melian/<changeset-id>.sqlite` in the clone'
 
 `bin/melian.js` is committed, executable, and imports `dist/bin.js`. npm links a package's bin only when the target exists at install time, and `npm ci` runs before any build; a bin pointing into `dist/` was never linked, and `npx melian` then asked the registry for a package named `melian` instead. Build with `npm run build`, then run `npx melian` from the repository.
 
+Node 22 prints `ExperimentalWarning: SQLite is an experimental feature` on every run that opens storage, and a test that expects an empty stderr fails on Node 22 alone. `src/warnings.ts`, imported first by `src/bin.ts`, drops that one warning and passes every other to Node's own printer. Keep it the first import: ES modules evaluate in import order, and the warning fires as `node:sqlite` loads.
+
 ## Tests
 
 `test/cli.test.ts` builds the CLI with `tsc -b` and runs `bin/melian.js` with plain Node against golden repositories from `@melian-agent/evals` in scripted mode. It checks exit codes, and that `review` prints exactly `renderFindingsTerminal` of the verdict `findings --json` reads back. Publication is tested in `packages/github` against a fake GitHub; nothing here calls the network.
