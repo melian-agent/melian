@@ -70,4 +70,4 @@ When you learn something non-obvious while working on Melian, such as a trap, a 
 
 Add important learnings here, newest last. Each entry names the symptom, the cause, and what to do.
 
-- Nothing yet. The code does not exist.
+- `npm install` fails with `ETARGET ... No matching version found for <pkg>@<version> with a date before <date>`, or with `ERESOLVE ... Found: <pkg>@undefined`. Cause: `.npmrc` sets `min-release-age=2`, so npm hides releases younger than two days. Pick the newest release older than that, or wait. To take a fresh release anyway, pass `--min-release-age=0` to that one install, never in `.npmrc`, and check the lockfile for anything else younger than two days. `npm ci` installs from the lockfile and does not apply the check.
