@@ -43,8 +43,13 @@ export function createFakeModels(options?: RegisterFauxProviderOptions): FakeMod
 	};
 }
 
-/** One scripted reply: a message, or a function of the messages the model was sent and the model's ID. */
-export type ScriptedReply = AssistantMessage | ((messages: readonly Message[], modelId: string) => AssistantMessage);
+/**
+ * One scripted reply: a message, or a function of the messages the model was sent and the model's ID, which may return
+ * a promise, such as one that never settles to hold a request open.
+ */
+export type ScriptedReply =
+	| AssistantMessage
+	| ((messages: readonly Message[], modelId: string) => AssistantMessage | Promise<AssistantMessage>);
 
 /** The replies for every conversation whose system prompt contains `match`, in order. */
 export type ConversationScript = { readonly match: string; readonly replies: readonly ScriptedReply[] };
@@ -88,7 +93,7 @@ export function scriptConversations(
 		_options: unknown,
 		_state: unknown,
 		model: Model<string>,
-	): AssistantMessage => {
+	): AssistantMessage | Promise<AssistantMessage> => {
 		const prompt = systemPromptOf(context.messages);
 		const script = scripts.find((each) => prompt.includes(each.match));
 		if (script === undefined) return fauxAssistantMessage("", { stopReason: "error", errorMessage: "no script" });

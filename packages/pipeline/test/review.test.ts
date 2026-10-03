@@ -487,6 +487,18 @@ describe("reviewChangeset", () => {
 		expect(unchanged).toContain("src/report.ts is not a file this change modifies");
 	});
 
+	it("reviews a head once: a repeat call with the same lenses returns its findings without asking a model", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const first = await review();
+		const calls = fake.provider.state.callCount;
+
+		expect(await review()).toEqual(first);
+		expect(fake.provider.state.callCount).toBe(calls);
+	});
+
 	it("runs no lens that configuration switches off", async () => {
 		const off = { ...config, lenses: { correctness: { enabled: false }, contracts: { enabled: false } } };
 		expect(await review({ config: off })).toEqual([]);

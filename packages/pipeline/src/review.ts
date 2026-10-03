@@ -22,6 +22,7 @@ import {
 	type ConversationId,
 	configure,
 	createRegistry,
+	defineDoc,
 	defineExtension,
 	defineTask,
 	type Harness,
@@ -30,6 +31,7 @@ import {
 	openHarness,
 	type Registry,
 	type Storage,
+	type TaskId,
 } from "./harness.ts";
 import {
 	injectionPolicySection,
@@ -80,6 +82,19 @@ type ReviewCheckpoint = {
 
 type LensCheckpoint = { phase: "spawn" } | ReviewCheckpoint;
 
+type LensResult = Record<string, LensOutcome>;
+
+// Which lens task reviewed each head, and with which lenses, by `name@version`. Kept on the root conversation, so a
+// later call for the same head and lenses finds the task, whether it finished, is running, or crashed.
+const ReviewIndex = defineDoc<{ reviews: Record<string, { task: number; lenses: string[] }> }>({
+	kind: "melian.reviews",
+	version: 1,
+	scope: "conversation",
+	history: "latest",
+	fork: "current",
+	initial: () => ({ reviews: {} }),
+});
+
 function modelName(model: ModelReference): string {
 	return `${model.provider}/${model.modelId}`;
 }
@@ -89,7 +104,7 @@ const continuePrompt =
 
 // Spawns every lens conversation in one commit, so a crash leaves all of them or none; then runs them in parallel.
 // The orchestrating conversation's model is never asked which lenses to run.
-const LensTask = defineTask<LensTaskInput, LensCheckpoint, Record<string, LensOutcome>>({
+const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 	name: "melian.lenses",
 	version: 1,
 	initial: () => ({ phase: "spawn" }),
@@ -291,9 +306,9 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 	if (selected.length === 0) return readFindings(harness, root.id, changeset.revision.head, context);
 	const nonce = reviewNonce();
 	const lenses: LensRun[] = [];
-	for (const [index, { lens, coverage, files }] of selected.entries()) {
+	for (const { lens, coverage, files } of selected) {
 		lenses.push({
-			key: `${index}-${lens.name}-${lens.version}`,
+			key: `${lens.name}@${lens.version}`,
 			name: lens.name,
 			version: lens.version,
 			route: await chooseRoute(lens, config, models),
@@ -318,13 +333,22 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 		files: reviewFiles(revision.files),
 		resolution: { ...config.resolution },
 	};
+	const selection = lenses.map((lens) => lens.key).sort();
+	// One lens task per head and selection. A repeat call, such as a rerun after a crash, attaches to the task the first
+	// call created, which the harness resumes, rather than running every lens a second time.
 	const taskId = await root.commit(async (tx) => {
+		const index = await tx.doc(ReviewIndex, root.id);
+		const known = index.reviews[revision.head];
+		if (known !== undefined && known.lenses.join("\n") === selection.join("\n"))
+			return known.task as TaskId<LensResult>;
 		await recordRevision(tx, root.id, revision.head);
-		return tx.createTask(
+		const created = await tx.createTask(
 			LensTask,
 			{ root: root.id, revision: state, lenses },
 			{ ownership: { kind: "conversation" } },
 		);
+		index.reviews[revision.head] = { task: created, lenses: selection };
+		return created;
 	}, context);
 	harness.resume();
 	const blocked = (await harness.inspect(context)).tasks.find(

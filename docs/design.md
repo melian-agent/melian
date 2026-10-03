@@ -94,7 +94,7 @@ Only the publish and knowledge tasks hold write credentials. Lenses never see th
 |---|---|
 | A changeset's review history | One storage per changeset, whose root conversation is that changeset's history. Pi mints conversation IDs, so Melian keeps the map from changeset to storage |
 | A new revision, a comment, a command | A `submit()` into that conversation; comments while busy use `whenBusy: "steer"` |
-| A pipeline step | A `defineTask()` with phases and checkpoints |
+| A pipeline step | A `defineTask()` with phases and checkpoints. A root document indexes the lens task of each head and lens selection, so a repeat call for that head attaches to the task rather than starting another |
 | A lens | A child conversation created and owned by the lens task, configured with `configure()` with its own model, instructions, and an explicit tool list, because an owned conversation otherwise inherits its owner's tools. Never a subagent tool the model chooses to call |
 | Findings | A `defineDoc()` document, rewindable, committed atomically with the transcript, and owned by the changeset's root conversation so a fork of the root at any revision carries them. It holds immutable sightings keyed by head, lens and version, and finding ID, plus one lifecycle record per ID; reading a head merges its sightings. A lens's tool writes to the root through the ID it is constructed with, never to its own child conversation |
 | Triage decisions, knowledge proposals | `defineDoc()` documents, rewindable, committed atomically with the transcript |
@@ -514,6 +514,7 @@ docs/
 | Cause by location | Location proves introduced only; affected needs lens evidence; pre-existing otherwise | A location heuristic must never make an old defect block |
 | Lens-reported findings | Lens supplies location, rule from its declared list, severity, explanation, evidence; Melian derives snippet from the head revision and everything else | Identity must not depend on the model's wording |
 | Findings ownership | The changeset's root conversation, never a lens's child conversation | A fork of the root at any revision must carry the findings; a lens conversation ends with its task |
+| Review attachment | One lens task per head, recorded in a root index; a repeat call attaches, never duplicates | A crash must not double the model spend |
 | Prompt boundaries | Head content only inside nonce-delimited labelled boundaries, with an injection policy section first in every lens | Content must be data, never instructions |
 | Evidence for affected | A changed-code location overlapping a hunk, snippet derived from head | Prose cannot cross the cause boundary |
 | Finding sightings | Immutable per head, lens, and ID; adjudication merges deterministically | No first-writer-wins across lenses or pushes |
