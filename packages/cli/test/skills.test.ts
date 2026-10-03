@@ -1,4 +1,4 @@
-import { readFileSync, realpathSync } from "node:fs";
+import { lstatSync, readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -305,10 +305,15 @@ it("gives Codex and Pi the same skill", () => {
 });
 
 describe("skill installation", () => {
-	it("installs the Claude Code skill in this repository", () => {
-		expect(realpathSync(join(root, ".claude/skills/melian/SKILL.md"))).toBe(
-			realpathSync(join(root, "skills/claude-code/SKILL.md")),
-		);
+	// A copy, not a symlink: git writes a symlink as a text file where symlinks are off, and the skill does not load.
+	it("installs a copy of the Claude Code skill in this repository, identical to the source", () => {
+		const installed = join(root, ".claude/skills/melian");
+		expect(lstatSync(installed).isDirectory()).toBe(true);
+		expect(lstatSync(join(installed, "SKILL.md")).isFile()).toBe(true);
+		expect(
+			readFileSync(join(installed, "SKILL.md"), "utf8"),
+			"run cp skills/claude-code/SKILL.md .claude/skills/melian/SKILL.md",
+		).toBe(readFileSync(join(root, "skills/claude-code/SKILL.md"), "utf8"));
 	});
 
 	it("declares the Pi skill in its package manifest", () => {

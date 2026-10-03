@@ -67,7 +67,7 @@ A skill runs only the `melian` on the user's `PATH`. It never builds, installs, 
 
 To install a skill, first put `melian` on `PATH`: in a clone of Melian, `npm ci --ignore-scripts && npm run build`, then `npm link` in `packages/cli`.
 
-- Claude Code: symlink `skills/claude-code` to `~/.claude/skills/melian`, or to `.claude/skills/melian` in a project. This repository does the latter, so a Claude Code session here can ask Melian to review its own work. That works because the maintainer has linked the CLI onto `PATH` once. The root `melian.yaml` routes no model, so each maintainer routes the tiers in `melian.local.yaml` or passes `--model`.
+- Claude Code: symlink `skills/claude-code` to `~/.claude/skills/melian`, or copy `skills/claude-code/SKILL.md` to `.claude/skills/melian/SKILL.md` in a project. This repository does the latter, so a Claude Code session here can ask Melian to review its own work. It copies rather than links because git writes a symlink as a text file where symlinks are off, and the skill would not load; `test/skills.test.ts` fails when the copy drifts from the source, and copying the source over fixes it. That works because the maintainer has linked the CLI onto `PATH` once. The root `melian.yaml` routes no model, so each maintainer routes the tiers in `melian.local.yaml` or passes `--model`.
 - Codex: symlink `skills/codex` to `~/.agents/skills/melian`, or to `.agents/skills/melian` in a repository.
 - Pi: `pi install ./skills/pi` from the clone. `skills/pi/package.json` declares the skill under `pi.skills`.
 
