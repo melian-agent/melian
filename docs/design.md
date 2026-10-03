@@ -357,6 +357,7 @@ Existing code on the base branch is trusted. Submitted changes and comments are 
 - Read-only analysis of the head is fine anywhere.
 - Anything that executes head code runs in a sandbox with no secrets. That includes static tools that load repository-controlled plugins, such as eslint configurations.
 - Static tools, such as Biome and tsc, execute in the execution environment, never in the Melian process, because they load the repository's configuration and plugins. Each runs in a temporary worktree of the revision it analyses, never in the user's checkout.
+- A static tool's configuration is policy: the head's copy still drives the head's run, and policy-change-review reports every change to it, from a default list a `melian.yaml` can extend.
 - A static tool's binary never comes from the revision's tree: it is the checkout's lockfile install or Melian's own, and a `node_modules` the revision tracks is ignored and noted.
 - Comment commands require write permission on the repository. Comment bodies enter prompts as quoted data behind an injection guard section.
 - Lenses are read-only in version one and never hold write credentials.
@@ -378,7 +379,7 @@ Solution: core reads policy (`melian.yaml`) and standards (`AGENTS.md`, `CLAUDE.
 
 Lenses and knowledge, when their loaders arrive, follow the same rule.
 
-Reading from the base does not hide the head's changes. Each revision lists the policy and standards files it changes: every `melian.yaml`, `AGENTS.md`, `CLAUDE.md`, and file under a `.melian/` directory. A lens can be handed those changes as quoted data, "the standards this pull request changes", and review them like any other code.
+Reading from the base does not hide the head's changes. Each revision lists the policy and standards files it changes: every `melian.yaml`, `AGENTS.md`, `CLAUDE.md`, file under a `.melian/` directory, and static tool configuration file, such as `biome.json`, `tsconfig*.json`, or `package.json`. A lens can be handed those changes as quoted data, "the standards this pull request changes", and review them like any other code.
 
 ## Interaction model
 

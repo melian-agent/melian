@@ -93,7 +93,7 @@ The keys a `melian.yaml` accepts, all optional:
 | `lenses` | lens name to `enabled`, `tier` (`light`, `medium`, `heavy`), and `paths` | none |
 | `models` | `light`, `medium`, `heavy`, or `decision` to `model` and `fallbacks` | none |
 | `static` | `biome` and `tsc`, each with `enabled`, `timeout` in seconds, and `severity` from a Melian rule ID to a severity; `tsc` also takes `project` | both enabled, 300 seconds, no overrides, `project: tsconfig.json` |
-| `guardrails` | `forbidden-paths`, `required-files`, `forbidden-patterns`, each with `enabled`, `severity`, and `rules` by name; `policy-change-review` with `enabled` and `severity` | all enabled, no rules; severity `P1` for forbidden-paths, `P2` for the others |
+| `guardrails` | `forbidden-paths`, `required-files`, `forbidden-patterns`, each with `enabled`, `severity`, and `rules` by name; `policy-change-review` with `enabled`, `severity`, and `files`, globs added to the built-in policy and tool configuration files | all enabled, no rules, no extra files; severity `P1` for forbidden-paths, `P2` for the others |
 | `knowledge` | `writeBack`, a boolean | `false` |
 | `decisions` | `provider`, and `thresholds` from question name to a `drop` and `accept` band between 0 and 1 | no provider, no thresholds |
 
@@ -179,7 +179,9 @@ Everything the renderer prints is untrusted. A lens writes finding text after re
 | `forbidden-paths` | a touched path, on either side of a rename, matches a rule's `paths` | `P1` | the path, line 1 |
 | `required-files` | a touched path matches a rule's `when`, and no touched path matches one of its `require` | `P2` | the first such path, line 1, once per rule |
 | `forbidden-patterns` | a line the change adds, in a file matching the rule's `paths` or any file when `paths` is absent, matches its `pattern` | `P2` | the added line, with its hunk as the trigger |
-| `policy-change-review` | the revision changes one of `revision.policyFiles` | `P2` | the policy file, line 1 |
+| `policy-change-review` | the revision changes one of `revision.policyFiles`, or a touched path matches the path's `files` | `P2` | the policy file, line 1 |
+
+Policy includes the static tools' configuration. Problem: the static tools run on the head with the head's own configuration, so the head decides how its own results are judged. Example: a head adds `"noCheck": true` to `tsconfig.json` and tsc reports nothing. Solution: `revision.policyFiles` lists, besides `melian.yaml` and the standards files, every file named `biome.json`, `biome.jsonc`, `tsconfig*.json`, `package.json`, `.eslintrc*`, or `eslint.config.*`, at any depth, and policy-change-review reports each one changed. `policy-change-review.files` adds globs to that list, anchored to their file like any guardrail glob; layering replaces a farther file's list, never the built-in names.
 
 Each path is judged by its own configuration, so a rule in `services/payments/melian.yaml` covers only that service. That configuration is the configuration of the directory holding the path, loaded as a directory whatever the path itself is. Problem: the lookup cached by directory but loaded the changed path, and a path that is a directory in the source includes its own `melian.yaml`. Example: a head replaces directory `legacy/`, whose `melian.yaml` disables forbidden-paths, with a file named `legacy`; the root's lookup then inherited `legacy/melian.yaml`, and `server.pem` at the root went unreported. Solution: the changed path's kind never enters the lookup. Several rules of one guardrail that fire on one path or one line give one finding, whose message joins theirs: they would share a finding ID, and the second would replace the first. Findings without code to hash take a discriminator: `path`, the rule name, `policy`, or for a blank or unreadable line, `line <n>`.
 

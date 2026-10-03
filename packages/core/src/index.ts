@@ -26,6 +26,7 @@ export {
 	type ModelRoute,
 	maxConfigBytes,
 	melianYamlSchema,
+	type PolicyChangeReview,
 	type RequiredFileRule,
 	type Resolution,
 	resolutionSchema,
@@ -93,7 +94,7 @@ export {
 	type GuardrailName,
 	guardrailLimits,
 } from "./guardrails.ts";
-export { melianPaths } from "./paths.ts";
+export { analyserConfigNames, melianPaths } from "./paths.ts";
 export { renderFindingsJson, renderFindingsTerminal, type TerminalRenderOptions } from "./render.ts";
 export type { RepositorySource } from "./source.ts";
 export { loadStandards, type StandardsSection, standardsLimits } from "./standards.ts";

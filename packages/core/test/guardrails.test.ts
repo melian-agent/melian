@@ -312,6 +312,23 @@ describe("policy-change-review", () => {
 		expect(findings[0]!.message.text).toBe("Review policy and standards changed in this revision.");
 	});
 
+	it("covers tool configuration and the files a melian.yaml adds, anchored to its directory", async () => {
+		const { findings } = await guardrails(
+			{ "web/melian.yaml": lines("guardrails:", "  policy-change-review:", "    files: [.babelrc]") },
+			{
+				"tsconfig.json": lines("{}"),
+				"web/package.json": lines("{}"),
+				"web/.babelrc": lines("{}"),
+				".babelrc": lines("{}"),
+			},
+		);
+		expect(findings.map((finding) => finding.properties.path)).toEqual([
+			"tsconfig.json",
+			"web/.babelrc",
+			"web/package.json",
+		]);
+	});
+
 	it("follows the configured severity and can be turned off", async () => {
 		const { findings } = await guardrails(
 			{

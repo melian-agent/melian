@@ -142,12 +142,18 @@ async function requiredFiles(
 	return [...hits.values()];
 }
 
-function policyChanges(revision: Revision, configFor: (path: string) => Promise<MelianConfig>): Promise<Hit[]> {
+// Every policy file the revision lists, and every touched path its own configuration adds to the list.
+function policyChanges(
+	revision: Revision,
+	paths: readonly string[],
+	configFor: (path: string) => Promise<MelianConfig>,
+): Promise<Hit[]> {
 	return Promise.all(
-		revision.policyFiles.map(async (path): Promise<Hit | undefined> => {
+		paths.map(async (path): Promise<Hit | undefined> => {
 			const config = await configFor(path);
 			const guardrail = config.guardrails["policy-change-review"];
 			if (!guardrail.enabled) return undefined;
+			if (!revision.policyFiles.includes(path) && !matchesGlobs(guardrail.files, path)) return undefined;
 			return {
 				guardrail: "policy-change-review",
 				file: path,
@@ -313,7 +319,8 @@ async function forbiddenPatterns(
  * - `forbidden-paths`: a touched path, on either side of a rename, matches a rule's `paths`.
  * - `required-files`: a touched path matches a rule's `when`, and no touched path matches one of its `require`.
  * - `forbidden-patterns`: an added line matches a rule's pattern, run by a linear-time engine.
- * - `policy-change-review`: the revision changes a policy or standards file, one of `revision.policyFiles`.
+ * - `policy-change-review`: the revision changes a policy, standards, or tool configuration file, one of
+ *   `revision.policyFiles` or a path the configuration's `files` adds.
  *
  * Every finding is `introduced`. Several rules of one guardrail that fire on one path or line give one finding. Throws
  * `ConfigError` when a `melian.yaml` cannot be loaded, and {@link CheckError} `unreadable` when a file at head cannot be read.
@@ -326,7 +333,7 @@ export async function evaluateGuardrails(input: GuardrailInput): Promise<CheckRe
 		...(await forbiddenPaths(paths, configFor)),
 		...(await requiredFiles(paths, configFor)),
 		...(await forbiddenPatterns(input, configFor, notes)),
-		...(await policyChanges(input.revision, configFor)),
+		...(await policyChanges(input.revision, paths, configFor)),
 	];
 	return { findings: hits.map(finding), notes };
 }

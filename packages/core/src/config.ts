@@ -125,7 +125,11 @@ export const melianYamlSchema = Type.Object(
 					),
 					"policy-change-review": Type.Optional(
 						Type.Object(
-							{ enabled: Type.Optional(Type.Boolean()), severity: Type.Optional(severitySchema) },
+							{
+								enabled: Type.Optional(Type.Boolean()),
+								severity: Type.Optional(severitySchema),
+								files: Type.Optional(globs),
+							},
 							strict,
 						),
 					),
@@ -231,7 +235,17 @@ export interface GuardrailSettings {
 	readonly "forbidden-paths": Guardrail<ForbiddenPathRule>;
 	readonly "required-files": Guardrail<RequiredFileRule>;
 	readonly "forbidden-patterns": Guardrail<ForbiddenPatternRule>;
-	readonly "policy-change-review": { readonly enabled: boolean; readonly severity: Severity };
+	readonly "policy-change-review": PolicyChangeReview;
+}
+
+/**
+ * Which policy changes ask for a maintainer's review. `files` are repository-relative globs once loaded, added to the
+ * policy and tool configuration files every revision lists in `policyFiles`.
+ */
+export interface PolicyChangeReview {
+	readonly enabled: boolean;
+	readonly severity: Severity;
+	readonly files: readonly string[];
 }
 
 /** The effective configuration for one path: built-in defaults with every applicable `melian.yaml` merged on top. */
@@ -266,7 +280,7 @@ export const defaultConfig: MelianConfig = {
 		"forbidden-paths": { enabled: true, severity: "P1", rules: {} },
 		"required-files": { enabled: true, severity: "P2", rules: {} },
 		"forbidden-patterns": { enabled: true, severity: "P2", rules: {} },
-		"policy-change-review": { enabled: true, severity: "P2" },
+		"policy-change-review": { enabled: true, severity: "P2", files: [] },
 	},
 	knowledge: { writeBack: false },
 	decisions: { thresholds: {} },
@@ -395,6 +409,7 @@ const globLists: readonly (readonly string[])[] = [
 	["guardrails", "required-files", "rules", "*", "when"],
 	["guardrails", "required-files", "rules", "*", "require"],
 	["guardrails", "forbidden-patterns", "rules", "*", "paths"],
+	["guardrails", "policy-change-review", "files"],
 ];
 
 // Globs are written relative to their melian.yaml; merging would lose which file that was.
