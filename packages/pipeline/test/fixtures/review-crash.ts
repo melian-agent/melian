@@ -71,5 +71,5 @@ await reviewChangeset({
 	config: { ...defaultConfig, models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } } },
 	lenses: crashLenses(await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"])),
 	standards: [],
-	models: fake.models,
+	models: fake.review,
 });

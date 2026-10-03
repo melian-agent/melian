@@ -143,7 +143,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			config: { ...defaultConfig, models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } } },
 			lenses: crashLenses(await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
-			models: fake.models,
+			models: fake.review,
 		});
 
 		expect(requests["You are the correctness reviewer"]).toHaveLength(1);

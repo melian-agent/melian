@@ -27,7 +27,6 @@ import {
 	defineTask,
 	type Harness,
 	isFailoverError,
-	type Models,
 	openHarness,
 	type Registry,
 	type Storage,
@@ -42,6 +41,7 @@ import {
 	reportFinding,
 	reviewFiles,
 } from "./lens-tools.ts";
+import { modelsOf, type ReviewModels } from "./models.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
 
 /** One lens as the lens task runs it: everything resolved, nothing left to look up. */
@@ -204,13 +204,18 @@ export function createReviewRegistry(): Registry {
 	return registry;
 }
 
-/** Opens a harness over `storage` that can run reviews: {@link lensExtension} installed, models from `models`. */
+/**
+ * Opens a harness over `storage` that can run reviews: {@link lensExtension} installed, models from `models`. Pass
+ * `retry: false` to fail a model request at once rather than retry it with backoff, as tests and scripted evals do.
+ */
 export function openReviewHarness(
 	storage: Storage,
-	models: Models,
+	models: ReviewModels,
+	options: { readonly retry?: boolean } = {},
 	context: Context = backgroundContext,
 ): Promise<Harness> {
-	return openHarness(storage, { models, registry: createReviewRegistry() }, context);
+	const settings = options.retry === false ? { settings: { retry: { enabled: false } } } : {};
+	return openHarness(storage, { models: modelsOf(models), registry: createReviewRegistry(), ...settings }, context);
 }
 
 const maxPromptBytes = 200 * 1024;
@@ -251,7 +256,8 @@ export function renderChangePrompt(changeset: Changeset, nonce: string, only?: r
 }
 
 // The tier's model and fallbacks, keeping those the collection knows and holds credentials for, in routing order.
-async function chooseRoute(lens: Lens, config: MelianConfig, models: Models): Promise<ModelReference[]> {
+async function chooseRoute(lens: Lens, config: MelianConfig, review: ReviewModels): Promise<ModelReference[]> {
+	const models = modelsOf(review);
 	const route = resolveModelForTier(lens.tier, config.models);
 	const available: ModelReference[] = [];
 	for (const candidate of [route.model, ...route.fallbacks]) {
@@ -277,7 +283,7 @@ export interface ReviewOptions {
 	readonly lenses: readonly Lens[];
 	readonly standards: readonly StandardsSection[];
 	/** The collection the harness was opened with, used to pick each tier's first model with credentials. */
-	readonly models: Models;
+	readonly models: ReviewModels;
 	readonly context?: Context;
 }
 

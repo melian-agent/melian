@@ -14,6 +14,7 @@ export {
 	upsertFinding,
 } from "./findings.ts";
 export * from "./harness.ts";
+export type { ReviewModels } from "./models.ts";
 export {
 	createReviewRegistry,
 	lensExtension,
@@ -22,7 +23,6 @@ export {
 	renderChangePrompt,
 	reviewChangeset,
 } from "./review.ts";
-
 export {
 	injectionAttemptRule,
 	quoteUntrusted,

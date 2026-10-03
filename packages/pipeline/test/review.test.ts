@@ -86,7 +86,7 @@ async function review(options: { lenses?: Lens[]; config?: MelianConfig } = {}):
 		config: options.config ?? config,
 		lenses: options.lenses ?? lenses,
 		standards: [{ path: "AGENTS.md", content: "Never use the non-null assertion operator." }],
-		models: fake.models,
+		models: fake.review,
 	});
 }
 

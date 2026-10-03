@@ -15,6 +15,7 @@ import {
 } from "@earendil-works/pi-ai";
 import { createModels } from "@earendil-works/pi-ai/models";
 import type { HarnessOptions, ModelRef } from "./harness.ts";
+import { type ReviewModels, wrapModels } from "./models.ts";
 
 export { type FauxProviderHandle, fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
 
@@ -22,6 +23,8 @@ export { type FauxProviderHandle, fauxAssistantMessage, fauxToolCall } from "@ea
 export type FakeModels = {
 	readonly models: HarnessOptions["models"];
 	readonly provider: FauxProviderHandle;
+	/** The same collection as `models`, as the handle `reviewChangeset` and `openReviewHarness` take. */
+	readonly review: ReviewModels;
 	/** The reference a conversation's agent uses to select `modelId`, or the first model. */
 	ref(modelId?: string): ModelRef;
 };
@@ -34,6 +37,7 @@ export function createFakeModels(options?: RegisterFauxProviderOptions): FakeMod
 	return {
 		models,
 		provider,
+		review: wrapModels(models),
 		ref(modelId) {
 			const model: Model<string> | undefined =
 				modelId === undefined ? provider.getModel() : provider.getModel(modelId);

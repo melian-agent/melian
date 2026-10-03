@@ -20,10 +20,9 @@ import {
 import {
 	backgroundContext,
 	createMemoryStorage,
-	createReviewRegistry,
 	type Message,
-	type Models,
-	openHarness,
+	openReviewHarness,
+	type ReviewModels,
 	reviewChangeset,
 } from "@melian-agent/pipeline";
 import {
@@ -176,7 +175,7 @@ export type GoldenMode =
 	| { readonly kind: "scripted" }
 	| {
 			readonly kind: "live";
-			readonly models: Models;
+			readonly models: ReviewModels;
 			/** `provider/model-id` for every tier the golden's `melian.yaml` leaves unrouted. */
 			readonly model?: string;
 	  };
@@ -249,14 +248,14 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 		const lenses = await loadLenses(repo, source, paths);
 		const standards = await loadStandards(repo, source, ".");
 		const { config: loaded } = await loadConfig(repo, source, ".");
-		let models: Models;
+		let models: ReviewModels;
 		let config: MelianConfig;
 		const toolMismatches: string[] = [];
 		if (mode.kind === "scripted") {
 			const fake = createFakeModels({ models: [{ id: "scripted" }] });
 			const ref = fake.ref("scripted");
 			config = routeEveryTier(loaded, `${ref.provider}/${ref.modelId}`, true);
-			models = fake.models;
+			models = fake.review;
 			// The longest instructions first, so a lens extending another is not answered from the other's script.
 			const scripts = Object.entries(golden.script)
 				.map(([name, steps]) => {
@@ -271,11 +270,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false);
 			models = mode.models;
 		}
-		const harness = await openHarness(createMemoryStorage(), {
-			models,
-			registry: createReviewRegistry(),
-			...(mode.kind === "scripted" ? { settings: { retry: { enabled: false } } } : {}),
-		});
+		const harness = await openReviewHarness(createMemoryStorage(), models, { retry: mode.kind !== "scripted" });
 		try {
 			const findings = await reviewChangeset({ harness, changeset, config, lenses, standards, models });
 			const rendered = renderFindingsTerminal(createFindingsLog([...findings]));
