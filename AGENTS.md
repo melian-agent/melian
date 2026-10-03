@@ -69,7 +69,7 @@ A delegated agent shares your checkout. Do not `git checkout`, `git pull`, `git 
 
 When you learn something non-obvious while working on Melian, such as a trap, a contract, a tooling gotcha, or a verification technique that actually works, record it in this repository as part of the same change: in this file, in `docs/`, or in the closest relevant document. Agent memory is private and goes stale. The repository is reviewed and inherited by everyone who touches it.
 
-The decision log, [docs/decisions/](docs/decisions/), and the progress log, [docs/progress-log/](docs/progress-log/), are append-only and merged by union, so git keeps every branch's additions instead of reporting a conflict. Add a row or an entry on a line of its own; never edit one in place. To change a decision, append a row that names the one it replaces.
+The decision log, [docs/decisions/](docs/decisions/), and the progress log, [docs/progress-log/](docs/progress-log/), hold one file per entry, so parallel pull requests never conflict on them. A new entry is a new file; never edit another entry's file. To change a decision, add a file whose `Supersedes:` line names the one it replaces. A git merge driver such as `merge=union` is no substitute: GitHub ignores merge drivers, so a pull request still shows as conflicting and a queue merge still fails.
 
 ## Learnings
 
