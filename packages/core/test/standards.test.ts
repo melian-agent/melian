@@ -1,8 +1,8 @@
-import { rmSync, symlinkSync } from "node:fs";
+import { chmodSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { loadStandards, OutsideRepositoryError } from "@melian-agent/core";
+import { loadStandards, OutsideRepositoryError, StandardsError } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { lines, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
+import { lines, rejection, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
 
 let parent: string;
 let repo: string;
@@ -82,5 +82,24 @@ describe("loadStandards", () => {
 
 	it("refuses a path outside the repository", async () => {
 		await expect(loadStandards(repo, "../private.md")).rejects.toBeInstanceOf(OutsideRepositoryError);
+	});
+
+	it.each([".", "src/a.ts"])("refuses a repository root that does not exist, given %j", async (path) => {
+		const missing = join(parent, "missing");
+		const error = await rejection(loadStandards(missing, path), StandardsError);
+		expect(error).toMatchObject({ code: "missingRoot", path: missing });
+	});
+
+	it("names a standards file it cannot read rather than skipping it", async () => {
+		rmSync(join(repo, "packages/app/AGENTS.md"));
+		mkdirSync(join(repo, "packages/app/AGENTS.md"));
+		const error = await rejection(loadStandards(repo, "packages/app"), StandardsError);
+		expect(error).toMatchObject({ code: "unreadable", path: join(repo, "packages/app/AGENTS.md") });
+	});
+
+	it.skipIf(process.getuid?.() === 0)("names a standards file it has no permission to read", async () => {
+		chmodSync(join(repo, ".melian/standards/naming.md"), 0o000);
+		const error = await rejection(loadStandards(repo, "README.md"), StandardsError);
+		expect(error).toMatchObject({ code: "unreadable", path: join(repo, ".melian/standards/naming.md") });
 	});
 });

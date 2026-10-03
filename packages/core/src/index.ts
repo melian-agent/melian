@@ -29,6 +29,8 @@ export {
 	ConfigError,
 	type ConfigErrorCode,
 	OutsideRepositoryError,
+	StandardsError,
+	type StandardsErrorCode,
 } from "./errors.ts";
 export { melianPaths } from "./paths.ts";
 export { loadStandards, type StandardsSection } from "./standards.ts";

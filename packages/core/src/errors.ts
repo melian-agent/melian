@@ -51,6 +51,25 @@ export class ConfigError extends Error {
 	}
 }
 
+/** Why standards could not be collected. */
+export type StandardsErrorCode = "missingRoot" | "unreadable";
+
+/**
+ * A standards file could not be read. `path` names it, or the repository root for `missingRoot`. A file that does not
+ * exist is absence, not an error.
+ */
+export class StandardsError extends Error {
+	readonly code: StandardsErrorCode;
+	readonly path: string;
+
+	constructor(code: StandardsErrorCode, path: string, message: string, options: { cause?: unknown } = {}) {
+		super(message, { cause: options.cause });
+		this.name = "StandardsError";
+		this.code = code;
+		this.path = path;
+	}
+}
+
 /** A path given to a loader lies outside the repository it was asked about. */
 export class OutsideRepositoryError extends Error {
 	readonly path: string;

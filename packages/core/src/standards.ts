@@ -1,5 +1,6 @@
 import { readdir, readFile, realpath } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
+import { StandardsError } from "./errors.ts";
 import { directoriesUpToRoot, melianPaths, repoRelative } from "./paths.ts";
 
 /** One standards file, ready to render into a prompt. `path` is repository-relative with forward slashes. */
@@ -27,9 +28,17 @@ function imports(content: string): { paths: string[]; onlyImports: boolean } {
 	return { paths, onlyImports: onlyImports && paths.length > 0 };
 }
 
+// Only a path that does not exist is absence; any other failure would silently drop a standard from every review.
+function absentOrThrow(path: string) {
+	return (error: NodeJS.ErrnoException): undefined => {
+		if (error.code === "ENOENT" || error.code === "ENOTDIR") return undefined;
+		throw new StandardsError("unreadable", path, `${path}: ${error.message}`, { cause: error });
+	};
+}
+
 async function standardsFiles(directory: string): Promise<string[]> {
 	const standards = join(directory, melianPaths.standards);
-	const entries = await readdir(standards).catch(() => []);
+	const entries = (await readdir(standards).catch(absentOrThrow(standards))) ?? [];
 	return [
 		join(directory, "AGENTS.md"),
 		join(directory, "CLAUDE.md"),
@@ -47,23 +56,27 @@ async function standardsFiles(directory: string): Promise<string[]> {
  * in that order. A file's `@path` import lines are followed one level, each imported file placed after its importer;
  * imports reaching outside the repository are skipped. A file holding nothing but imports, such as a `CLAUDE.md` that
  * reads `@AGENTS.md`, contributes only what it imports. A file reached twice, through a symlink or a second import,
- * appears once, at its nearest position.
+ * appears once, at its nearest position. A missing file is skipped; any other read failure throws
+ * {@link StandardsError}, as does a `repoRoot` that does not exist.
  */
 export async function loadStandards(repoRoot: string, path: string): Promise<StandardsSection[]> {
-	const root = await realpath(repoRoot);
+	const root = await realpath(repoRoot).catch((cause: unknown) => {
+		throw new StandardsError("missingRoot", repoRoot, `${repoRoot} does not exist`, { cause });
+	});
 	const sections: StandardsSection[] = [];
 	const included = new Set<string>();
 	const expanded = new Set<string>();
 	const insideRoot = async (file: string): Promise<string | undefined> => {
-		const real = await realpath(file).catch(() => undefined);
+		const real = await realpath(file).catch(absentOrThrow(file));
 		return real === root || real?.startsWith(`${root}${sep}`) ? real : undefined;
 	};
+	const read = (file: string) => readFile(file, "utf8").catch(absentOrThrow(file));
 	for (const directory of await directoriesUpToRoot(repoRoot, path)) {
 		for (const file of await standardsFiles(directory)) {
 			// A file already imported from a nearer directory keeps that position, but its own imports still apply.
 			const real = await insideRoot(file);
 			if (real === undefined || expanded.has(real)) continue;
-			const content = await readFile(real, "utf8").catch(() => undefined);
+			const content = await read(real);
 			if (content === undefined) continue;
 			expanded.add(real);
 			const found = imports(content);
@@ -74,7 +87,7 @@ export async function loadStandards(repoRoot: string, path: string): Promise<Sta
 				const target = resolve(dirname(file), imported);
 				const realTarget = await insideRoot(target);
 				if (realTarget === undefined || included.has(realTarget)) continue;
-				const importedContent = await readFile(realTarget, "utf8").catch(() => undefined);
+				const importedContent = await read(realTarget);
 				if (importedContent === undefined) continue;
 				included.add(realTarget);
 				sections.push({ path: repoRelative(repoRoot, target), content: importedContent, importedBy: source });
