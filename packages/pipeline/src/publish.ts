@@ -483,7 +483,10 @@ export class PublishHarness {
 		this.harness = harness;
 	}
 
-	/** Opens one over `storage` that publishes through `provider`, with {@link publishExtension} alone installed. */
+	/**
+	 * Opens one over `storage` that publishes through `provider`, with {@link publishExtension} alone installed. A failed
+	 * open closes `storage`.
+	 */
 	static async open(
 		storage: Storage,
 		models: ReviewModels,
@@ -492,7 +495,14 @@ export class PublishHarness {
 	): Promise<PublishHarness> {
 		const registry = createRegistry();
 		registry.install(publishExtension(provider));
-		return new PublishHarness(await openHarness(storage, { models: modelsOf(models), registry }, context));
+		const harness = await openHarness(storage, { models: modelsOf(models), registry }, context).catch(
+			async (error: unknown) => {
+				// Pi closes the storage only once it has built a harness; an open refused before that leaves it to us.
+				await storage.close(backgroundContext).catch(() => undefined);
+				throw error;
+			},
+		);
+		return new PublishHarness(harness);
 	}
 
 	/** Closes the harness and its storage. Idempotent. */

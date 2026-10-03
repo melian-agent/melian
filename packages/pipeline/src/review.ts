@@ -226,7 +226,7 @@ export class ReviewHarness {
 	 * Opens one over `storage`, with models from `models`. Pass `retry: false` to fail a model request at once rather
 	 * than retry it with backoff, as tests and scripted evals do. Pass `checkout`, the repository's working directory, to
 	 * run the deterministic checks too: it installs `checksExtension` and a Node execution environment there, which
-	 * `runChecks` needs for the static tools.
+	 * `runChecks` needs for the static tools. A failed open closes `storage`.
 	 */
 	static async open(
 		storage: Storage,
@@ -239,9 +239,16 @@ export class ReviewHarness {
 		const { checkout } = options;
 		if (checkout !== undefined) registry.install(checksExtension);
 		const env = checkout === undefined ? {} : { env: () => createNodeExecutionEnv(checkout) };
-		return new ReviewHarness(
-			await openHarness(storage, { models: modelsOf(models), registry, ...env, ...settings }, context),
-		);
+		const harness = await openHarness(
+			storage,
+			{ models: modelsOf(models), registry, ...env, ...settings },
+			context,
+		).catch(async (error: unknown) => {
+			// Pi closes the storage only once it has built a harness; an open refused before that leaves it to us.
+			await storage.close(backgroundContext).catch(() => undefined);
+			throw error;
+		});
+		return new ReviewHarness(harness);
 	}
 
 	/** Closes the harness and its storage. Idempotent. */
