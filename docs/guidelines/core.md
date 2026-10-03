@@ -120,6 +120,18 @@ SARIF's `artifactLocation.uri` is a URI reference, not a path. Problem: git allo
 
 A path is canonical: repository-relative, posix, with no empty or `.` segments. Problem: IDs, the findings document, and `classifyCause` compare paths as strings, so `./src/run.ts` and `src/run.ts` were two files with two IDs, and a finding at `./src/run.ts` never matched the changeset's `src/run.ts`. Solution: `createFinding` canonicalises the location's and the trigger's file, so `./src//run.ts` becomes `src/run.ts`, and `classifyCause` canonicalises before comparing. Both throw `FindingError` `invalidPath` for an empty or absolute path, one with a `..` segment, or one with a backslash, which is a Windows separator more often than a file name character. `parseFinding` refuses a stored path that is not already canonical.
 
+### What a lens reports
+
+`reportFindingInputSchema` is the lens-facing schema for step 5's `report_finding` tool, and holds exactly `file`, `line`, an optional `endLine`, `rule`, `severity`, `explanation` (`what`, `why`, `fix`), and an optional `evidence`. Every object in it rejects other keys. `FindingInput` stays the internal type that `createFinding` takes.
+
+Problem: a finding's ID hashes its rule and snippet, so if the model supplies them, identity depends on its wording. Example: one run reports `eval(input)` under `no-eval`, the next copies the snippet as `eval( input );` under `unsafe-eval`, and the dismissed finding returns as new. A lens that also chose `resolution`, `cause`, or `status` could unblock its own findings. Solution: the lens supplies only what needs judgement, and Melian derives the rest.
+
+- The snippet is the head revision's text at the reported lines, read through the revision source with `git show`, never taken from the model. `snippetOccurrence` on that file then gives the occurrence.
+- `rule` must be one of the rules the lens declares in its front matter's `rules` list, which step 5 adds; the hook rejects any other.
+- `source` is the lens's identity and version.
+- `cause` is `classifyCause` of the location, made `affected` only by `evidence`, the changed code that provably breaks the location.
+- `resolution` comes from configuration, and `status` from the findings document.
+
 ### Level mapping
 
 `levelForSeverity` maps `P0` and `P1` to `error`, `P2` to `warning`, and `P3` and `nit` to `note`. Melian never emits `none`, which SARIF reserves for results that are not failures. The mapping follows the default resolution, so GitHub code scanning shows blocking findings as errors. It ignores a repository's resolution configuration on purpose: `level` says how serious a finding is, and `properties.resolution` says what it requires.

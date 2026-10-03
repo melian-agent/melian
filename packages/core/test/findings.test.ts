@@ -9,6 +9,7 @@ import {
 	levelForSeverity,
 	normaliseSnippet,
 	parseFinding,
+	reportFindingInputSchema,
 	snippetOccurrence,
 } from "@melian-agent/core";
 import Schema from "typebox/schema";
@@ -152,6 +153,27 @@ describe("snippetOccurrence", () => {
 		);
 		expect(() => snippetOccurrence(source, "eval(body)", { startLine: 2 })).toThrow(FindingError);
 		expect(() => snippetOccurrence(source, " ", { startLine: 2 })).toThrow(FindingError);
+	});
+});
+
+describe("reportFindingInputSchema", () => {
+	const report = {
+		file: "src/run.ts",
+		line: 12,
+		rule: "no-eval",
+		severity: "P1",
+		explanation: { what: "eval runs input", why: "this change routes input to it", fix: "parse it" },
+	};
+
+	it("accepts a location, rule, severity, explanation, and optional evidence", () => {
+		expect(Value.Check(reportFindingInputSchema, report)).toBe(true);
+		expect(
+			Value.Check(reportFindingInputSchema, { ...report, endLine: 14, evidence: "src/api.ts:3 renames id" }),
+		).toBe(true);
+	});
+
+	it.each(["snippet", "cause", "resolution", "status", "source"])("refuses a lens-chosen %s", (key) => {
+		expect(Value.Check(reportFindingInputSchema, { ...report, [key]: "x" })).toBe(false);
 	});
 });
 

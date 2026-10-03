@@ -67,6 +67,8 @@ export {
 	levelForSeverity,
 	normaliseSnippet,
 	parseFinding,
+	type ReportFindingInput,
+	reportFindingInputSchema,
 	type SarifLevel,
 	type SnippetRegion,
 	sarifLevelSchema,

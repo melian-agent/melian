@@ -164,6 +164,7 @@ description: Injection, authz, secrets, unsafe deserialisation, SSRF, crypto mis
 tier: heavy
 tools: [read, grep, find]
 severities: [P0, P1, P2]
+rules: [injection, authz, secrets, deserialisation, ssrf, crypto]
 paths: ["**"]
 budget: { findings: 8, tokens: 200k }
 extends: ~
@@ -179,12 +180,13 @@ Front matter is routing; the body is the system prompt for the lens's child conv
 - `tier` names a model tier, never a model ID. Tiers resolve through model routing, which is overridable per path.
 - `tools` is a read-only allowlist by default. The hook layer enforces it.
 - `severities` bounds what the lens may report. The hook layer rejects findings outside it.
+- `rules` lists the rule IDs the lens may report. The hook layer rejects any other, so a model cannot coin a new rule name, and with it a new finding ID, on each run.
 - `extends` lets a repository override parts of a built-in lens, such as its tier or an appended paragraph, without copying the body.
 - `standards: true` injects the shared standards section. Default true; opt out for lenses where conventions are noise.
 
 Layering follows Pi's resource rules. Built-in lenses ship inside the Melian package. Repository lenses live under `.melian/lenses/`, which is canonical and keeps them beside `melian.yaml`, standards, and knowledge. Lenses are also discovered under `.agents/lenses/`, for repositories that keep everything agent-facing under the Agent Skills directory, mirroring Pi's own dual discovery of `.pi/` and `.agents/skills/`. Skill loaders only load directories containing `SKILL.md`, so a `LENS.md` directory is invisible to them wherever it lives. We do not own the `.agents/` namespace; if the spec defines that path for something else, the spec wins. Both locations resolve nearest-first in a monorepo. Folder-level configuration can disable a lens, change its tier, narrow its paths, or add one. Lens packs for a language or framework ship as Pi packages with a `melian.lenses` manifest key mirroring `pi.skills`, pinned in project settings.
 
-Findings leave a lens through a `report_finding` tool with a TypeBox schema. Prose is never parsed for findings. The tool upserts by the finding's stable ID and is replay-safe, so a crash mid-call never stores a finding twice.
+Findings leave a lens through a `report_finding` tool with a TypeBox schema. Prose is never parsed for findings. The lens supplies location, rule, severity, explanation, and evidence; Melian derives the rest, including the snippet, so identity never depends on the model's wording. The tool upserts by the finding's stable ID and is replay-safe, so a crash mid-call never stores a finding twice.
 
 What stays out of a lens: topology, concurrency, deadlines, publication, and verdict rules. Those are tiers and resolution configuration.
 
@@ -501,6 +503,7 @@ docs/
 | `.melian/` placement | Any folder level for standards and lenses, nearest-first; knowledge and lens-pack settings at the root only | Per-path content layers like `melian.yaml`; repository-wide state has one home |
 | Finding identity | file, rule, normalised snippet, and occurrence ordinal | Identical snippets in one file must not collide; line shifts must not change the ID |
 | Cause by location | Location proves introduced only; affected needs lens evidence; pre-existing otherwise | A location heuristic must never make an old defect block |
+| Lens-reported findings | Lens supplies location, rule from its declared list, severity, explanation, evidence; Melian derives snippet from the head revision and everything else | Identity must not depend on the model's wording |
 | Findings ownership | The changeset's root conversation, never a lens's child conversation | A fork of the root at any revision must carry the findings; a lens conversation ends with its task |
 
 ## Open questions

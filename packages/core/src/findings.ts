@@ -102,6 +102,35 @@ export const findingSchema = Type.Object(
 
 const logResultSchema = Type.Object({ ...findingSchema.properties, ruleIndex: count }, strict);
 
+/**
+ * The JSON Schema of a {@link ReportFindingInput}: what a lens supplies through its `report_finding` tool, and nothing
+ * else. Melian derives the rest of the finding.
+ */
+export const reportFindingInputSchema = Type.Object(
+	{
+		file: Type.String({ minLength: 1, description: "Repository-relative path of the flagged file at head" }),
+		line: Type.Integer({ minimum: 1, description: "First flagged line at head" }),
+		endLine: Type.Optional(Type.Integer({ minimum: 1, description: "Last flagged line at head" })),
+		rule: Type.String({ minLength: 1, description: "One of the rules this lens declares" }),
+		severity: severitySchema,
+		explanation: Type.Object(
+			{
+				what: Type.String({ minLength: 1, description: "What is wrong" }),
+				why: Type.String({ minLength: 1, description: "Why it matters in this change" }),
+				fix: Type.String({ minLength: 1, description: "What the author should do" }),
+			},
+			strict,
+		),
+		evidence: Type.Optional(
+			Type.String({
+				minLength: 1,
+				description: "For a location outside the change: the changed code that provably breaks it",
+			}),
+		),
+	},
+	strict,
+);
+
 /** The URI of the SARIF 2.1.0 JSON Schema, as `$schema` in a {@link FindingsLog}. */
 export const sarifSchemaUri = "https://json.schemastore.org/sarif-2.1.0.json";
 
@@ -135,6 +164,15 @@ export const findingsLogSchema = Type.Object(
 	},
 	strict,
 );
+
+/**
+ * What a lens reports for one finding: a location, a rule from those the lens declares, a severity, an explanation, and
+ * optionally evidence. Melian derives the rest so that a finding's identity never depends on the model's wording: the
+ * snippet is read from the head revision at the reported lines, never taken from the model; `source` is the lens and
+ * its version; `cause` is {@link classifyCause} of the location, made `affected` only by `evidence`; `resolution` comes
+ * from configuration; and `status` from the findings document. {@link FindingInput} is the full internal input.
+ */
+export type ReportFindingInput = Static<typeof reportFindingInputSchema>;
 
 /** A SARIF `level`. */
 export type SarifLevel = Static<typeof sarifLevelSchema>;
