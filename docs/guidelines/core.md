@@ -101,6 +101,14 @@ Problem: cross-revision diffing and dismissals match findings by ID, so the ID m
 
 The normalisation is a stored contract. Changing it orphans every recorded finding and dismissal, so `test/findings.test.ts` pins one ID by value. Change that value only in a change that migrates stored findings.
 
+### Cause by location, for now
+
+`classifyCause` decides a finding's cause from where it sits. A location overlapping any hunk's new lines is `introduced`; one elsewhere in a changed file is `affected`; one in an unchanged file is `pre-existing`.
+
+This is a placeholder. The design classifies cause by evidence through the decision model, which arrives later. Until then the heuristic is wrong in both directions: a renamed parameter breaks a caller in an unchanged file, which the heuristic calls `pre-existing`, and an old bug three lines below a hunk is called `affected`. A lens that cites the change it broke, or shows that it did not, may override the heuristic's answer.
+
+A pure deletion has no new lines, so nothing is inside it. Code beside a deletion is `affected`, and the lens must say why.
+
 ## Tests
 
 - Run the package's tests with `npm test --workspace @melian-agent/core`, or one file with `npx vitest --run packages/core/test/changeset.test.ts` from the repository root.
