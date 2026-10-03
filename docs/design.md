@@ -324,7 +324,7 @@ Publishing from the CLI sets a commit status, context `melian/review`, not a che
 
 Thin wrappers for Claude Code, Codex, and Pi that invoke the CLI and relay findings. They never run a review with the host agent's model. The Pi skill is a Pi package; the Pi extension adds a `/melian` command over the same CLI.
 
-Built so far: one `SKILL.md` per host under `skills/`, each telling the agent when to ask Melian for a review, to run `melian review` on the branch or on a pull request, to relay the terminal rendering verbatim, to fix nothing it was not asked to fix, and to publish only on the user's say-so. `melian doctor` is the only command a skill runs without a trigger. The repository installs its own Claude Code skill, `.claude/skills/melian`, as a symlink to `skills/claude-code`, so the agent writing Melian asks Melian for review. [docs/guidelines/cli.md](guidelines/cli.md#skills) says how to install each.
+Built so far: one `SKILL.md` per host under `skills/`, each telling the agent when to ask Melian for a review, to run `melian review` on the branch or on a pull request, to relay the terminal rendering verbatim, to fix nothing it was not asked to fix, and to publish only on the user's say-so. `melian doctor` is the only command a skill runs without a trigger, and the only one Claude Code's skill pre-approves. A skill runs only the `melian` on the user's path. It never builds, installs, or runs Melian from the checkout, because the checkout is what Melian reviews and must not supply its reviewer; without `melian` on the path it tells the user to install it from a source they trust and stops. `melian doctor` names the executable that ran and warns when it lies inside the checkout. The repository installs its own Claude Code skill, `.claude/skills/melian`, as a symlink to `skills/claude-code`, so the agent writing Melian asks Melian for review. [docs/guidelines/cli.md](guidelines/cli.md#skills) says how to install each.
 
 ### Server and devcontainer
 
@@ -547,6 +547,7 @@ docs/
 | Status before review | Commit status set first, error on abandonment, review degrades to body-only before giving up | A head must always carry a status |
 | Finding prose | Never live markdown; escaped and reference-neutralised; only Melian's template carries markdown | Lens text is head-steerable |
 | Stale publish tasks | Superseded before resume when the target changed; target revalidated before every side effect | A retargeted pull request must never receive a pre-retarget review |
+| The skill's `melian` | Only the one on the user's path; never built, installed, or run from the checkout; only `melian doctor` pre-approved | A repository under review must not supply its reviewer |
 
 ## Open questions
 

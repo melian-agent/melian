@@ -37,6 +37,8 @@ export interface Io {
 	readonly stderr: (text: string) => void;
 	/** Whether standard output takes colour: a terminal, with `NO_COLOR` unset. */
 	readonly color: boolean;
+	/** The path the shell ran `melian` from, which `doctor` reports. */
+	readonly executable?: string;
 }
 
 /**

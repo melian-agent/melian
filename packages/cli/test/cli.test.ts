@@ -210,6 +210,10 @@ describe("melian doctor", () => {
 		expect(doctor.stdout).toMatch(/^ok {4}static {6}biome from the checkout, tsc from the checkout$/m);
 		expect(doctor.stdout).not.toContain(token);
 		expect(readFileSync(bin, "utf8")).toMatch(/^#!\/usr\/bin\/env node\n/);
+		// The test runs this checkout's own binary, so the code under review would be its reviewer.
+		expect(doctor.stdout).toContain(
+			`warn  melian      ${bin}, inside this checkout, so the change can alter its reviewer`,
+		);
 	});
 
 	it("warns when melian.yaml routes no tier, names the routes when it does, and runs Melian's own Biome and tsc without an install", () => {
@@ -222,6 +226,7 @@ describe("melian doctor", () => {
 		expect(unrouted.stdout).toMatch(/^warn {2}routes {6}melian\.yaml routes no tier to a model; .*--model/m);
 		expect(routed.stdout).toMatch(/^ok {4}routes {6}heavy to anthropic\/claude-opus-5-5$/m);
 		expect(routed.stdout).toMatch(/^ok {4}static {6}biome from Melian's own copy, tsc from Melian's own copy$/m);
+		expect(routed.stdout).toMatch(/^ok {4}melian {6}.*, outside this checkout$/m);
 	});
 });
 

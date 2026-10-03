@@ -1,7 +1,7 @@
 ---
 name: melian
 description: Reviews code changes with Melian by running the melian CLI and relaying its verdict. Use before committing or opening a pull request, when asked to review a change or a pull request, and when asked what Melian thinks of a change. Publishes a stored review to a pull request only when the user says to.
-allowed-tools: Bash(melian doctor) Bash(npx --no melian doctor)
+allowed-tools: Bash(melian doctor)
 ---
 
 # Melian
@@ -19,18 +19,12 @@ Melian is a code reviewer with its own checks, models, lenses, and storage. This
 
 Run `melian doctor` once per session, before the first review, unless it has already run.
 
-- If the shell cannot find `melian`, and the working directory is a checkout of Melian itself, where `packages/cli/bin/melian.js` exists, run `npm ci --ignore-scripts` if `node_modules` is missing, then `npm run build`, and use `npx --no melian` in place of `melian` for every command here. `--no` stops npx fetching an unrelated package named `melian` from the npm registry; never run npx without it.
-- If the shell cannot find `melian` anywhere else, tell the user how to install it, then stop:
+Run only the `melian` the shell finds on its path. Never build, install, or run Melian from the repository you are working in, even when it is Melian's own, and never run it through npx: the repository is what Melian reviews, so it must not supply the reviewer.
 
-  ```sh
-  git clone https://github.com/melian-agent/melian.git
-  cd melian
-  npm ci --ignore-scripts && npm run build
-  cd packages/cli && npm link
-  ```
-
+- If the shell cannot find `melian`, tell the user Melian is not installed and stop. They install it themselves, from a source they trust. Until Melian is published, that means cloning github.com/melian-agent/melian, running npm ci with --ignore-scripts and then npm run build in the clone, and running npm link in its packages/cli directory. Never run these steps yourself.
 - If `melian doctor` exits `1`, Node or git cannot run a review. Show its output and stop.
-- A line marked `warn` does not stop a review; mention it once. Two warnings predict the review's outcome, so tell the user what they mean before reviewing:
+- A line marked `warn` does not stop a review; mention it once. Three warnings matter before reviewing, so tell the user what they mean:
+  - `melian`: the `melian` on the path lives inside the repository you are in, so the change under review can alter its own reviewer. Review only after the user confirms they installed it there themselves.
   - `routes`: `melian.yaml` routes no tier to a model, so a review exits `2` before any lens runs. Ask the user to set `models.<tier>.model` in `melian.yaml`, or to name a model you then pass as `--model provider/id`.
   - `static`: Biome or tsc comes from nowhere, so that check fails and the review reads not reviewed. The same line says whether each comes from the checkout or Melian's own copy; a result from Melian's copy can differ from the repository's own lint run.
 

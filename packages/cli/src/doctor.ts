@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
+import { sep } from "node:path";
 import { type LensTier, loadConfig, type StaticTool } from "@melian-agent/core";
 import { parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
 import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSource } from "@melian-agent/pipeline";
@@ -87,6 +88,24 @@ async function staticCheck(cwd: string): Promise<Check | undefined> {
 	};
 }
 
+// A melian the checkout provides runs code the change under review can rewrite.
+async function executableCheck(cwd: string, executable: string | undefined): Promise<Check | undefined> {
+	if (executable === undefined) return undefined;
+	const real = realpathSync(executable);
+	const shown = real === executable ? executable : `${executable}, which is ${real}`;
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return { name: "melian", state: "ok", detail: shown };
+	const checkouts = [root, realpathSync(root)].map((path) => `${path}${sep}`);
+	const inside = [executable, real].some((path) => checkouts.some((checkout) => path.startsWith(checkout)));
+	return inside
+		? {
+				name: "melian",
+				state: "warn",
+				detail: `${shown}, inside this checkout, so the change can alter its reviewer`,
+			}
+		: { name: "melian", state: "ok", detail: `${shown}, outside this checkout` };
+}
+
 async function repositoryCheck(cwd: string): Promise<Check> {
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return { name: "repository", state: "warn", detail: "not inside a git repository" };
@@ -124,7 +143,9 @@ export async function doctor(io: Io): Promise<number> {
 			? { name: "gh", state: "warn", detail: "not found on PATH" }
 			: { name: "gh", state: "ok", detail: gh.split("\n")[0]! },
 		await repositoryCheck(io.cwd),
-		...[await routesCheck(io.cwd), await staticCheck(io.cwd)].filter((check) => check !== undefined),
+		...[await executableCheck(io.cwd, io.executable), await routesCheck(io.cwd), await staticCheck(io.cwd)].filter(
+			(check) => check !== undefined,
+		),
 	];
 	const width = Math.max(...checks.map((check) => check.name.length));
 	for (const check of checks) io.stdout(`${check.state.padEnd(4)}  ${check.name.padEnd(width)}  ${check.detail}\n`);

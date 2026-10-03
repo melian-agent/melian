@@ -9,7 +9,7 @@ The cli package is the `melian` command. It is the primary host and the only thi
 | `melian review <range\|#pr> [--rerun]` | Reviews a range of the checkout, or fetches a pull request and reviews it, then prints the verdict's terminal rendering. `--rerun` runs again the checks and lenses that failed in the last review of the same base and head | `0` passed, `1` findings with one blocking, `2` not reviewed, `3` findings with none blocking |
 | `melian publish <#pr>` | Posts the stored review of the pull request's current head to GitHub | `0` published, `1` refused or failed |
 | `melian findings <range\|#pr> [--open] [--json]` | Prints the stored verdict, or with `--open` the findings that still need attention, as text or JSON | `0`, or `1` when nothing is stored |
-| `melian doctor` | Checks Node, git and `--attr-source`, Pi's login, which providers have credentials, the GitHub token's source, gh, the repository, which tiers `melian.yaml` routes to a model, warning when it routes none, and whether Biome and tsc come from the checkout or Melian's own copy | `0`, or `1` when Node or git cannot run a review |
+| `melian doctor` | Checks Node, git and `--attr-source`, Pi's login, which providers have credentials, the GitHub token's source, gh, the repository, which `melian` ran and whether it lies inside the checkout, warning when it does, which tiers `melian.yaml` routes to a model, warning when it routes none, and whether Biome and tsc come from the checkout or Melian's own copy | `0`, or `1` when Node or git cannot run a review |
 
 A command line Melian cannot read exits `64`. A review that fails before it has a verdict, such as on a `melian.yaml` that does not parse, exits `2`: nothing was reviewed. `--model provider/id` routes every tier `melian.yaml` leaves unrouted, as `MELIAN_EVAL_MODEL` does for live evals.
 
@@ -57,13 +57,15 @@ Node 22 prints `ExperimentalWarning: SQLite is an experimental feature` on every
 
 ## Skills
 
-The skills under `skills/` are how a coding agent calls Melian: `skills/claude-code/`, `skills/codex/`, and `skills/pi/`, each an Agent Skills directory whose `SKILL.md` runs `melian` and relays what it prints. They never review with the host's own model, reimplement a check, or read storage. `melian doctor` is the only command a skill runs without a trigger, and `melian publish` runs only when the user says to. The three files differ only where their hosts do: Claude Code's pre-approves `melian doctor` and sets the Bash tool's timeout.
+The skills under `skills/` are how a coding agent calls Melian: `skills/claude-code/`, `skills/codex/`, and `skills/pi/`, each an Agent Skills directory whose `SKILL.md` runs `melian` and relays what it prints. They never review with the host's own model, reimplement a check, or read storage. `melian doctor` is the only command a skill runs without a trigger, and `melian publish` runs only when the user says to. The three files differ only where their hosts do: Claude Code's pre-approves `melian doctor`, and nothing else, and sets the Bash tool's timeout.
+
+A skill runs only the `melian` on the user's `PATH`. It never builds, installs, or runs Melian from the checkout, not even Melian's own, and never through npx. Problem: the checkout is what Melian reviews. Example: an earlier skill, finding no `melian`, ran `npm run build` and `npx --no melian` in any checkout holding `packages/cli/bin/melian.js`, pre-approved, so a repository could ship that file and have the agent run it. Solution: without `melian` on `PATH` the skill tells the user how to install it from a source they trust and stops. `melian doctor` prints the path that ran and its real path, and warns when either lies inside the checkout, since a change could then alter its own reviewer; the skill reviews only after the user confirms they put it there.
 
 `test/skills.test.ts` checks each skill's front matter, that every `melian <command>` in it and every option it passes is one `usage` lists, that its exit-code table matches `review`'s, and that the Codex and Pi skills are identical. A renamed command or option fails the gate rather than a skill.
 
 To install a skill, first put `melian` on `PATH`: in a clone of Melian, `npm ci --ignore-scripts && npm run build`, then `npm link` in `packages/cli`.
 
-- Claude Code: symlink `skills/claude-code` to `~/.claude/skills/melian`, or to `.claude/skills/melian` in a project. This repository does the latter, so a Claude Code session here can ask Melian to review its own work; in this checkout the skill falls back to `npx --no melian`, and the root `melian.yaml` routes every tier, so the skill's command needs no `--model`.
+- Claude Code: symlink `skills/claude-code` to `~/.claude/skills/melian`, or to `.claude/skills/melian` in a project. This repository does the latter, so a Claude Code session here can ask Melian to review its own work. That works because the maintainer has linked the CLI onto `PATH` once; the root `melian.yaml` routes every tier, so the skill's command needs no `--model`.
 - Codex: symlink `skills/codex` to `~/.agents/skills/melian`, or to `.agents/skills/melian` in a repository.
 - Pi: `pi install ./skills/pi` from the clone. `skills/pi/package.json` declares the skill under `pi.skills`.
 
