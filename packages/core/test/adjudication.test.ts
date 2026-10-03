@@ -1,4 +1,5 @@
 import {
+	adjudicate,
 	applyResolutions,
 	createFinding,
 	dedupeFindings,
@@ -121,5 +122,79 @@ describe("dedupeFindings", () => {
 		expect(dedupeFindings([second, lens], () => aliases)).toHaveLength(2);
 		const sameCheck = finding({ ...eslintInput, source: { check: "lens.security" } });
 		expect(dedupeFindings([sameCheck, lens], () => aliases)).toHaveLength(2);
+	});
+});
+
+describe("adjudicate", () => {
+	const ran = (name: string) => ({ name, status: "ran" }) as const;
+	const checks = [ran("lens.correctness"), ran("static.biome")];
+	const blocker = finding({ severity: "P1" });
+	const advisory = finding({ severity: "P3", rule: "naming", resolution: "advisory" });
+	const silent = finding({ severity: "nit", rule: "prefer-const", resolution: "silent" });
+
+	it("passes when every check ran and nothing is above silent", () => {
+		const verdict = adjudicate({ findings: [silent], checks, config: defaultConfig });
+		expect(verdict).toMatchObject({ status: "passed", blocking: false, notRun: [] });
+		expect(verdict.findings.silent).toEqual([silent]);
+	});
+
+	it("reports findings without blocking when nothing resolves to block", () => {
+		const verdict = adjudicate({ findings: [advisory, silent], checks, config: defaultConfig });
+		expect(verdict).toMatchObject({ status: "findings", blocking: false });
+		expect(verdict.findings.advisory).toEqual([advisory]);
+	});
+
+	it("blocks when a finding resolves to block, and groups by resolution", () => {
+		const verdict = adjudicate({ findings: [silent, advisory, blocker], checks, config: defaultConfig });
+		expect(verdict).toMatchObject({ status: "findings", blocking: true });
+		expect(Object.keys(verdict.findings)).toEqual(["block", "acknowledge", "advisory", "silent"]);
+		expect(verdict.findings.block).toEqual([blocker]);
+		expect(verdict.findings.acknowledge).toEqual([]);
+	});
+
+	it("is not reviewed when a check failed, even with no findings", () => {
+		const failed = { name: "lens.security", status: "failed", reason: "the lens did not finish" } as const;
+		const verdict = adjudicate({ findings: [], checks: [...checks, failed], config: defaultConfig });
+		expect(verdict).toEqual({
+			status: "not-reviewed",
+			blocking: false,
+			findings: { block: [], acknowledge: [], advisory: [], silent: [] },
+			dismissed: [],
+			notRun: [failed],
+		});
+	});
+
+	it("is not reviewed when a check was skipped without leave, and still says whether it blocks", () => {
+		const skipped = { name: "static.tsc", status: "skipped", reason: "no tsconfig.json" } as const;
+		const input = { findings: [blocker], checks: [...checks, skipped], config: defaultConfig };
+		expect(adjudicate(input)).toMatchObject({ status: "not-reviewed", blocking: true, notRun: [skipped] });
+		expect(adjudicate({ ...input, allowSkip: ["static.tsc"] })).toMatchObject({
+			status: "findings",
+			notRun: [skipped],
+		});
+		expect(adjudicate({ ...input, findings: [], allowSkip: ["static.tsc"] }).status).toBe("passed");
+	});
+
+	it("counts a dismissed finding toward neither status nor blocking", () => {
+		const dismissed = createFinding({ ...evalInput, status: "dismissed" });
+		const verdict = adjudicate({ findings: [dismissed], checks, config: defaultConfig });
+		expect(verdict).toMatchObject({ status: "passed", blocking: false, dismissed: [dismissed] });
+	});
+
+	it("resolves per path and dedupes across sources", () => {
+		const docs = finding({ file: "docs/guide.md", severity: "P1" });
+		const eslint = finding({ rule: "detect-eval", severity: "P2", source: { check: "static.eslint" } });
+		const lowered = { ...defaultConfig.resolution, P1: "advisory" } as const;
+		const configFor = (path: string) => ({
+			resolution: path.startsWith("docs/") ? lowered : defaultConfig.resolution,
+			ruleAliases: { "no-eval": ["detect-eval"] },
+		});
+		const verdict = adjudicate({ findings: [docs, eslint, blocker], checks, config: configFor });
+		expect(verdict.findings.advisory.map((each) => each.properties.path)).toEqual(["docs/guide.md"]);
+		expect(verdict.findings.block).toHaveLength(1);
+		expect(verdict.findings.block[0]!.properties.alsoReportedAs).toEqual([
+			{ id: eslint.properties.id, ruleId: "detect-eval", check: "static.eslint" },
+		]);
+		expect(verdict.findings.acknowledge).toEqual([]);
 	});
 });

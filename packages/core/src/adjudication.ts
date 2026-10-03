@@ -99,3 +99,92 @@ export function dedupeFindings(
 		return [{ ...finding, properties: { ...finding.properties, alsoReportedAs } }];
 	});
 }
+
+/** Whether a check ran to completion, was skipped, or failed. */
+export type CheckStatus = "ran" | "skipped" | "failed";
+
+/**
+ * What one check of a review did, such as a lens, a static tool, or a guardrail. `reason` says why a check was skipped
+ * or failed, for the author; `error` carries the failure's own message, for the maintainer.
+ */
+export interface CheckRecord {
+	/** The check's name as the tiers name it, such as `lens.security` or `static.biome`. */
+	readonly name: string;
+	readonly status: CheckStatus;
+	readonly reason?: string;
+	readonly error?: string;
+}
+
+/**
+ * A review's outcome, as a pull request's check reports it: `passed` when every check ran and nothing needs
+ * attention, `findings` when every check ran and something does, and `not-reviewed` when a check failed or was skipped
+ * without leave. A review that did not complete is never `passed`.
+ */
+export type VerdictStatus = "passed" | "findings" | "not-reviewed";
+
+/** What a review concluded. */
+export interface Verdict {
+	readonly status: VerdictStatus;
+	/** Whether any finding resolves to `block`, whatever the status. */
+	readonly blocking: boolean;
+	/** The findings that count, deduplicated and grouped by resolution, each group in path, severity, and line order. */
+	readonly findings: Readonly<Record<Resolution, readonly Finding[]>>;
+	/** Findings dismissed with a reason. They neither block nor need attention. */
+	readonly dismissed: readonly Finding[];
+	/** The checks that were skipped or failed, with their reasons, in input order. */
+	readonly notRun: readonly CheckRecord[];
+}
+
+/** What {@link adjudicate} decides from. */
+export interface AdjudicationInput {
+	/** Findings at the head under review, at most one per ID. */
+	readonly findings: readonly Finding[];
+	/** Every check the review called for, and what it did. */
+	readonly checks: readonly CheckRecord[];
+	/** The configuration for every path, or a function returning the configuration at a path. */
+	readonly config: Pick<MelianConfig, "resolution" | "ruleAliases"> | ConfigFor;
+	/** Names of checks whose skip still lets a review pass, such as a tool with no files in its language to check. */
+	readonly allowSkip?: readonly string[];
+}
+
+function startLine(finding: Finding): number {
+	return finding.locations[0]!.physicalLocation.region.startLine;
+}
+
+function readingOrder(a: Finding, b: Finding): number {
+	const order = (left: string, right: string) => (left < right ? -1 : left > right ? 1 : 0);
+	return (
+		order(a.properties.path, b.properties.path) ||
+		rank[a.properties.severity] - rank[b.properties.severity] ||
+		startLine(a) - startLine(b) ||
+		order(a.properties.id, b.properties.id)
+	);
+}
+
+/**
+ * Decides a review: merges findings two checks reported for one problem ({@link dedupeFindings}), resolves each under
+ * its path's configuration ({@link applyResolutions}), and derives the status. A failed check, or a skipped one not in
+ * `allowSkip`, makes the review `not-reviewed`, even with no findings. Otherwise a finding above `silent` makes it
+ * `findings`, and nothing does `passed`. A dismissed finding counts toward neither.
+ */
+export function adjudicate({ findings, checks, config, allowSkip = [] }: AdjudicationInput): Verdict {
+	const configFor = typeof config === "function" ? config : () => config;
+	const resolved = applyResolutions(dedupeFindings(findings, configFor), configFor).sort(readingOrder);
+	const counted = resolved.filter((finding) => finding.properties.status !== "dismissed");
+	const grouped = Object.fromEntries(
+		resolutionOrder.map((resolution) => [
+			resolution,
+			counted.filter((finding) => finding.properties.resolution === resolution),
+		]),
+	) as Record<Resolution, Finding[]>;
+	const notRun = checks.filter((check) => check.status !== "ran").map((check) => ({ ...check }));
+	const incomplete = notRun.some((check) => check.status === "failed" || !allowSkip.includes(check.name));
+	const attention = counted.some((finding) => finding.properties.resolution !== "silent");
+	return {
+		status: incomplete ? "not-reviewed" : attention ? "findings" : "passed",
+		blocking: grouped.block.length > 0,
+		findings: grouped,
+		dismissed: resolved.filter((finding) => finding.properties.status === "dismissed"),
+		notRun,
+	};
+}

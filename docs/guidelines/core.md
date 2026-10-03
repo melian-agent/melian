@@ -219,6 +219,20 @@ ruleAliases:
 
 A key and its list form one group; any two rules in a group match. The finding of higher severity stays, the lower ID on a tie, and lists each merged finding's ID, rule, and check in `properties.alsoReportedAs`. A finding without a snippet never merges. There is no fuzzy matching: a static tool that flags line 12 and a lens that flags lines 12 to 14 stay two findings.
 
+### The verdict
+
+`adjudicate({ findings, checks, config, allowSkip })` dedupes, resolves, and returns a `Verdict`: a `status`, a `blocking` flag, the findings grouped by resolution (`block`, `acknowledge`, `advisory`, `silent`), the `dismissed` findings, and `notRun`, every check that was skipped or failed with its reason. `config` is one configuration for every path or a `ConfigFor` function.
+
+The status has three states, because a check that reports green while the review never ran is the incumbent failure the design names:
+
+- `not-reviewed` when any check failed, or was skipped and is not in `allowSkip`. This holds with zero findings: a lens that crashed found nothing because it looked at nothing.
+- `findings` when every check ran and a finding resolves above `silent`.
+- `passed` otherwise. An allowed skip does not stop a pass.
+
+`blocking` is true whenever a finding resolves to `block`, in every status, so a host can say a review both blocks and is incomplete. A dismissed finding counts toward neither: dismissing with a reason is how an author answers an `acknowledge`.
+
+`checks` is a list of `CheckRecord`s, `{ name, status: "ran" | "skipped" | "failed", reason?, error? }`, with names as the tiers spell them, such as `lens.security` or `static.biome`. The lens task writes one per lens; static analysis and guardrails, step 6, write theirs in the same shape. `allowSkip` names checks whose skip is expected, such as a type checker on a change with no TypeScript; nothing sets it from configuration yet.
+
 ## Tests
 
 - Run the package's tests with `npm test --workspace @melian-agent/core`, or one file with `npx vitest --run packages/core/test/changeset.test.ts` from the repository root.

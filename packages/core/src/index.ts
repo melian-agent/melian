@@ -1,9 +1,15 @@
 export {
+	type AdjudicationInput,
+	adjudicate,
 	applyResolutions,
+	type CheckRecord,
+	type CheckStatus,
 	type ConfigFor,
 	dedupeFindings,
 	resolutionOrder,
 	resolveFinding,
+	type Verdict,
+	type VerdictStatus,
 } from "./adjudication.ts";
 export { type CodeLocation, classifyCause } from "./cause.ts";
 export {
