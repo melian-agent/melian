@@ -8,7 +8,14 @@
  */
 import type { Context } from "@earendil-works/chord";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import { type AuthContext, type CredentialStore, defaultProviderAuthContext, type Models } from "@earendil-works/pi-ai";
+import {
+	type AssistantMessage,
+	type AuthContext,
+	type CredentialStore,
+	defaultProviderAuthContext,
+	isRetryableAssistantError,
+	type Models,
+} from "@earendil-works/pi-ai";
 import { builtinModels } from "@earendil-works/pi-ai/providers/all";
 import {
 	type Harness,
@@ -60,6 +67,20 @@ export {
 	ToolTask,
 	type Tx,
 } from "@earendil-works/pi-durable";
+
+// pi-ai has no classifier for authentication failures, so match what its providers and credential resolution report:
+// a missing key, a failed OAuth refresh, Melian's read-only store refusing one, or a provider's 401 or 403.
+const authenticationFailure =
+	/no api key|api key auth failed|oauth|credential|run pi to refresh|authenticat|unauthori[sz]ed|forbidden|\b40[13]\b|invalid[ _-]?(x-)?(api[ _-]?key|token)/i;
+
+/**
+ * Whether a model failure, by its message, should move a lens to its tier's next model: a transient provider failure,
+ * which pi-ai's own retries have already given up on, or a failed authentication.
+ */
+export function isFailoverError(message: string): boolean {
+	const failed = { role: "assistant", stopReason: "error", errorMessage: message } as AssistantMessage;
+	return authenticationFailure.test(message) || isRetryableAssistantError(failed);
+}
 
 /** A context that is never cancelled, for work with no caller to cancel it. */
 export const backgroundContext: Context = BACKGROUND_CONTEXT;

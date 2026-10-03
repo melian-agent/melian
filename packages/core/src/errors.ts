@@ -107,6 +107,7 @@ export type FindingErrorCode =
 	| "invalidRegion"
 	| "deletedFile"
 	| "missingEvidence"
+	| "invalidEvidence"
 	| "missingDiscriminator"
 	| "snippetNotFound"
 	| "idMismatch"
@@ -181,6 +182,22 @@ export class LensError extends Error {
 		this.code = code;
 		this.file = file;
 		this.field = options.field;
+	}
+}
+
+/** Why a tier's checks could not be named. */
+export type CheckErrorCode = "unknownTier" | "tierCycle";
+
+/** A tier's checks could not be named. `check` names the tier: one configuration does not define, or one that includes itself. */
+export class CheckError extends Error {
+	readonly code: CheckErrorCode;
+	readonly check: string;
+
+	constructor(code: CheckErrorCode, check: string, message: string, options: { cause?: unknown } = {}) {
+		super(message, { cause: options.cause });
+		this.name = "CheckError";
+		this.code = code;
+		this.check = check;
 	}
 }
 

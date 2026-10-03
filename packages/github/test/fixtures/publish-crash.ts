@@ -20,9 +20,11 @@ const fetch = fakeGitHub(state, async (call) => {
 });
 const provider = createGitHubProvider({ owner: state.owner, repo: state.repo, token: "test-token", fetch });
 const harness = await openPublishHarness(await openSqliteStorage(database), scenarioModels(), provider);
+const changeset = await resolveRange(repo, "main...feature");
 await publishReview({
 	harness,
 	provider,
-	changeset: await resolveRange(repo, "main...feature"),
+	changeset,
+	base: changeset.revision.base,
 	pullRequest: await provider.pullRequest(state.pull.number),
 });

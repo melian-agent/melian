@@ -1,4 +1,4 @@
-import type { Finding, PlacedFinding, ResolvedFinding, ReviewDraft, Verdict } from "@melian-agent/core";
+import type { ClosedFinding, Finding, PlacedFinding, ReviewDraft, Verdict } from "@melian-agent/core";
 
 /** Where a revision's posts link to: the repository's web address, such as `https://github.com/owner/repo`. */
 export interface RepositoryLinks {
@@ -85,8 +85,17 @@ export function blobUrl(links: RepositoryLinks, revision: string, path: string, 
 	return `${links.web}/blob/${revision}/${encoded}#L${start}${end === start ? "" : `-L${end}`}`;
 }
 
-function findingText(finding: Finding): string[] {
-	const { severity, cause, resolution, explanation, evidence } = finding.properties;
+// An affected finding's evidence is the changed code that breaks it, linked at the revision.
+function evidenceText(finding: Finding, revision: string, links: RepositoryLinks): string[] {
+	const { evidence } = finding.properties;
+	if (evidence === undefined) return [];
+	const { file, startLine, endLine = startLine } = evidence;
+	const link = `[${code(file)} ${lineSpan(startLine, endLine)}](${blobUrl(links, revision, file, startLine, endLine)})`;
+	return ["", `**Evidence:** the change at ${link} breaks it.`];
+}
+
+function findingText(finding: Finding, revision: string, links: RepositoryLinks): string[] {
+	const { severity, cause, resolution, explanation } = finding.properties;
 	return [
 		`**${severity}** ${code(finding.ruleId)} (${cause}, ${resolution ?? "unresolved"})`,
 		"",
@@ -95,7 +104,7 @@ function findingText(finding: Finding): string[] {
 		`**What:** ${prose(explanation.what)}`,
 		"",
 		`**Why here:** ${prose(explanation.whyHere)}`,
-		...(evidence === undefined ? [] : ["", `**Evidence:** ${prose(evidence)}`]),
+		...evidenceText(finding, revision, links),
 		"",
 		`**What to do:** ${prose(explanation.whatToDo)}`,
 	];
@@ -112,7 +121,11 @@ export function renderComment(placed: PlacedFinding, revision: string, links: Re
 					"",
 				]
 			: [];
-	return [marker(revision, { finding: finding.properties.id }), ...where, ...findingText(finding)].join("\n");
+	return [
+		marker(revision, { finding: finding.properties.id }),
+		...where,
+		...findingText(finding, revision, links),
+	].join("\n");
 }
 
 const statusWords: Readonly<Record<Verdict["status"], string>> = {
@@ -157,7 +170,12 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks): st
 			const [start, end] = span(finding);
 			const link = `[${code(finding.properties.path)} ${lineSpan(start, end)}](${blobUrl(links, revision, finding.properties.path, start, end)})`;
 			parts.push(
-				[marker(revision, { finding: finding.properties.id }), link, "", ...findingText(finding)].join("\n"),
+				[
+					marker(revision, { finding: finding.properties.id }),
+					link,
+					"",
+					...findingText(finding, revision, links),
+				].join("\n"),
 			);
 		}
 	}
@@ -171,6 +189,6 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks): st
 }
 
 /** The reply in a resolved finding's thread. */
-export function renderResolvedReply(finding: ResolvedFinding, revision: string): string {
+export function renderResolvedReply(finding: ClosedFinding, revision: string): string {
 	return `${marker(revision, { finding: finding.id })}\nResolved at ${code(short(revision))}: this revision no longer reports ${code(finding.ruleId)} here.`;
 }

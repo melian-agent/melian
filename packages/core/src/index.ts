@@ -6,12 +6,15 @@ export {
 	type CheckStatus,
 	type ConfigFor,
 	dedupeFindings,
+	noRecord,
+	type ResolvedFinding,
 	resolutionOrder,
 	resolveFinding,
+	strongestCause,
 	type Verdict,
 	type VerdictStatus,
 } from "./adjudication.ts";
-export { type CodeLocation, classifyCause } from "./cause.ts";
+export { type CodeLocation, checkEvidence, classifyCause } from "./cause.ts";
 export {
 	type Changeset,
 	parseRangeSpec,
@@ -22,6 +25,7 @@ export {
 	type Revision,
 	resolveRange,
 } from "./changeset.ts";
+export { checksOfTier } from "./checks.ts";
 export {
 	type Band,
 	defaultConfig,
@@ -36,6 +40,7 @@ export {
 	maxConfigBytes,
 	melianYamlSchema,
 	type Resolution,
+	type RuleAlias,
 	resolutionSchema,
 	type Severity,
 	severitySchema,
@@ -44,6 +49,8 @@ export type { ChangedFile, FileKind, FileStatus, Hunk } from "./diff.ts";
 export {
 	ChangesetError,
 	type ChangesetErrorCode,
+	CheckError,
+	type CheckErrorCode,
 	ConfigError,
 	type ConfigErrorCode,
 	FindingError,
@@ -66,6 +73,7 @@ export {
 	createFinding,
 	createFindingsLog,
 	type Finding,
+	type FindingEvidence,
 	type FindingExplanation,
 	type FindingIdInput,
 	type FindingInput,
@@ -75,6 +83,7 @@ export {
 	type FindingStatus,
 	type FindingsLog,
 	type FindingTrigger,
+	findingEvidenceSchema,
 	findingExplanationSchema,
 	findingId,
 	findingLocationSchema,
@@ -117,6 +126,7 @@ export {
 export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
 export { melianPaths } from "./paths.ts";
 export {
+	type ClosedFinding,
 	type DiffLines,
 	diffLines,
 	type PlacedFinding,
@@ -128,13 +138,18 @@ export {
 	type PullRequest,
 	placeFinding,
 	planPublication,
-	type ResolvedFinding,
 	type ReviewDraft,
 	type ReviewProvider,
 	type ReviewStatus,
 	reviewStatus,
 } from "./publication.ts";
-export { renderFindingsJson, renderFindingsTerminal, renderVerdictJson, type TerminalRenderOptions } from "./render.ts";
+export {
+	renderFindingsJson,
+	renderFindingsTerminal,
+	renderVerdictJson,
+	type TerminalRenderOptions,
+	visibleText,
+} from "./render.ts";
 export {
 	listRevisionFiles,
 	type RevisionEntry,

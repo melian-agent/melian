@@ -3,7 +3,7 @@ import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import { parseDocument } from "yaml";
 import { ConfigError, type ConfigErrorCode } from "./errors.ts";
-import { directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
+import { anchorGlob, directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 
 const strict = { additionalProperties: false } as const;
@@ -35,6 +35,12 @@ const band = Type.Object(
 	},
 	strict,
 );
+
+// A list says the rules are one defect the key owns; `distinct: true` says they are different defects never to merge.
+const ruleAliasSchema = Type.Union([
+	Type.Array(name),
+	Type.Object({ rules: Type.Array(name), distinct: Type.Optional(Type.Boolean()) }, strict),
+]);
 
 /** The JSON Schema of one `melian.yaml`. Every key is optional, and unknown keys are rejected. */
 export const melianYamlSchema = Type.Object(
@@ -84,7 +90,8 @@ export const melianYamlSchema = Type.Object(
 				strict,
 			),
 		),
-		ruleAliases: Type.Optional(Type.Record(Type.String(), Type.Array(name))),
+		ruleAliases: Type.Optional(Type.Record(Type.String(), ruleAliasSchema)),
+		checks: Type.Optional(Type.Object({ allowSkip: Type.Optional(Type.Array(name)) }, strict)),
 	},
 	strict,
 );
@@ -100,6 +107,12 @@ export type Severity = Static<typeof severitySchema>;
 
 /** A model tier a lens can name. Model routing also has a `decision` tier for decision models. */
 export type LensTier = Static<typeof lensTierSchema>;
+
+/**
+ * One `ruleAliases` entry: the rules other checks file the key's defect under, or, with `distinct: true`, rules that
+ * name different defects and must never merge with the key's, even on one expression.
+ */
+export type RuleAlias = readonly string[] | { readonly rules: readonly string[]; readonly distinct?: boolean };
 
 /** A model and the models to try, in order, when it fails. */
 export type ModelRoute = Static<typeof modelRoute>;
@@ -129,16 +142,21 @@ export interface MelianConfig {
 	readonly models: Readonly<Partial<Record<LensTier | "decision", ModelRoute>>>;
 	readonly knowledge: { readonly writeBack: boolean };
 	readonly decisions: { readonly provider?: string; readonly thresholds: Readonly<Record<string, Band>> };
-	/** Rule ID that owns a defect to the rule IDs other checks report it under; adjudication keeps the owner's finding. */
-	readonly ruleAliases: Readonly<Record<string, readonly string[]>>;
+	/**
+	 * Rule ID that owns a defect to the rule IDs other checks report it under, so adjudication keeps the owner's finding;
+	 * or, with `distinct: true`, to rule IDs that name other defects, so adjudication never merges them with it.
+	 */
+	readonly ruleAliases: Readonly<Record<string, RuleAlias>>;
+	/** `allowSkip` names checks a tier may skip without making the review not reviewed. */
+	readonly checks: { readonly allowSkip: readonly string[] };
 }
 
 /** The built-in defaults every `melian.yaml` layers onto. */
 export const defaultConfig: MelianConfig = {
 	tiers: {
-		fast: ["guardrails", "static", "decisions.fast"],
+		fast: ["guardrails", "static"],
 		standard: ["fast", "lens.correctness"],
-		full: ["standard", "lens.security", "lens.contracts", "lens.conventions"],
+		full: ["standard", "lens.contracts"],
 	},
 	stages: { "pre-commit": "fast", "pre-push": "standard", "pull-request": "full", comment: "standard" },
 	resolution: { P0: "block", P1: "block", P2: "acknowledge", P3: "advisory", nit: "silent" },
@@ -147,6 +165,7 @@ export const defaultConfig: MelianConfig = {
 	knowledge: { writeBack: false },
 	decisions: { thresholds: {} },
 	ruleAliases: {},
+	checks: { allowSkip: [] },
 };
 
 /**
@@ -258,14 +277,10 @@ function anchorLensPaths(site: Site, layer: MelianYaml): MelianYaml {
 	if (layer.lenses === undefined) return layer;
 	const directory = posix.dirname(site.file);
 	const anchor = (lens: string) => (path: string) => {
-		const negated = path.startsWith("!");
-		const pattern = (negated ? path.slice(1) : path).replace(/^\/+/, "");
-		const anchored = posix.normalize(posix.join(directory, pattern));
-		if (anchored === ".." || anchored.startsWith("../")) {
-			const key = `lenses.${lens}.paths`;
-			throw configError("invalidValue", site, `"${key}" has ${path}, which leaves the repository`, { key });
-		}
-		return `${negated ? "!" : ""}${anchored}`;
+		const anchored = anchorGlob(directory, path);
+		if (anchored !== undefined) return anchored;
+		const key = `lenses.${lens}.paths`;
+		throw configError("invalidValue", site, `"${key}" has ${path}, which leaves the repository`, { key });
 	};
 	const lenses = Object.fromEntries(
 		Object.entries(layer.lenses).map(([lens, settings]) => [

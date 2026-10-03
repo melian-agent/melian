@@ -20,9 +20,8 @@ import {
 import {
 	backgroundContext,
 	createMemoryStorage,
-	createReviewRegistry,
-	type Models,
-	openHarness,
+	openReviewHarness,
+	type ReviewModels,
 	reviewChangeset,
 } from "@melian-agent/pipeline";
 import { createFakeModels, scriptLenses } from "@melian-agent/pipeline/testing";
@@ -62,9 +61,18 @@ export const expectedSchema = Type.Object(
 const scriptReplySchema = Type.Union([
 	Type.Object(
 		{
-			calls: Type.Array(Type.Object({ name: text, arguments: Type.Record(Type.String(), Type.Unknown()) }, strict), {
-				minItems: 1,
-			}),
+			calls: Type.Array(
+				Type.Object(
+					{
+						name: text,
+						arguments: Type.Record(Type.String(), Type.Unknown()),
+						// A substring the call's result must contain, so a tool that breaks fails the gate.
+						expectToolResult: Type.Optional(text),
+					},
+					strict,
+				),
+				{ minItems: 1 },
+			),
 		},
 		strict,
 	),
@@ -159,7 +167,7 @@ export type GoldenMode =
 	| { readonly kind: "scripted" }
 	| {
 			readonly kind: "live";
-			readonly models: Models;
+			readonly models: ReviewModels;
 			/** `provider/model-id` for every tier the golden's `melian.yaml` leaves unrouted. */
 			readonly model?: string;
 	  };
@@ -169,6 +177,8 @@ export interface GoldenRun {
 	readonly golden: Golden;
 	readonly findings: readonly Finding[];
 	readonly rendered: string;
+	/** In a scripted run, each scripted call whose result lacked its `expectToolResult`, described. */
+	readonly toolMismatches: readonly string[];
 }
 
 const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
@@ -193,34 +203,25 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 		const lenses = await loadLenses(repo, source, paths);
 		const standards = await loadStandards(repo, source, ".");
 		const { config: loaded } = await loadConfig(repo, source, ".");
-		let models: Models;
+		let models: ReviewModels;
 		let config: MelianConfig;
+		const toolMismatches: string[] = [];
 		if (mode.kind === "scripted") {
 			const fake = createFakeModels({ models: [{ id: "scripted" }] });
 			const ref = fake.ref("scripted");
 			config = routeEveryTier(loaded, `${ref.provider}/${ref.modelId}`, true);
-			models = fake.models;
-			scriptLenses(fake, lenses, golden.script);
+			models = fake.review;
+			scriptLenses(fake, lenses, golden.script, toolMismatches);
 		} else {
 			config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false);
 			models = mode.models;
 		}
-		const harness = await openHarness(createMemoryStorage(), {
-			models,
-			registry: createReviewRegistry(),
-			...(mode.kind === "scripted" ? { settings: { retry: { enabled: false } } } : {}),
-		});
+		const harness = await openReviewHarness(createMemoryStorage(), models, { retry: mode.kind !== "scripted" });
 		try {
-			const { findings } = await reviewChangeset({
-				harness,
-				changeset,
-				config,
-				lenses,
-				standards,
-				models,
-				policy: source,
-			});
-			return { golden, findings, rendered: renderFindingsTerminal(createFindingsLog([...findings])) };
+			const review = { harness, changeset, config, lenses, standards, models, policy: source };
+			const { findings } = await reviewChangeset(review);
+			const rendered = renderFindingsTerminal(createFindingsLog([...findings]));
+			return { golden, findings, rendered, toolMismatches };
 		} finally {
 			await harness.close(backgroundContext);
 		}
@@ -234,7 +235,7 @@ export interface GoldenScore {
 	readonly golden: string;
 	readonly expected: number;
 	readonly reported: number;
-	/** Reported findings that match an expected finding. */
+	/** Reported findings that match an expected finding no earlier reported finding matched. */
 	readonly truePositives: number;
 	/** Expected findings that some reported finding matches. */
 	readonly found: number;
@@ -248,13 +249,16 @@ function key(file: string, rule: string): string {
 	return `${file}\0${rule}`;
 }
 
-/** Scores one review against its golden, matching on file and rule. */
+/**
+ * Scores one review against its golden, matching on file and rule. Each expected finding counts as found once: a
+ * second reported finding matching the same expectation is a false positive, since it is the same defect reported twice.
+ */
 export function scoreGolden(golden: Golden, findings: readonly Finding[]): GoldenScore {
 	const expected = new Set(golden.expected.comments.map((comment) => key(comment.file, comment.rule)));
 	const reported = findings.map((finding) =>
 		key(finding.properties.path ?? finding.locations[0]!.physicalLocation.artifactLocation.uri, finding.ruleId),
 	);
-	const truePositives = reported.filter((each) => expected.has(each)).length;
+	const truePositives = new Set(reported.filter((each) => expected.has(each))).size;
 	const found = [...expected].filter((each) => reported.includes(each)).length;
 	return {
 		golden: golden.name,

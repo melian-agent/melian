@@ -139,8 +139,15 @@ export function openPublishHarness(storage: Storage, fake: FakeModels, provider:
 	return openHarness(storage, { models: fake.models, registry, settings: { retry: { enabled: false } } });
 }
 
-// Reviews `main...feature` from the base's policy, the lenses answering from `script`. Returns the changeset.
-export async function reviewScenario(repo: string, harness: Harness, fake: FakeModels, script: LensScript) {
+// Reviews `main...feature` from the base's policy, the lenses answering from `script`; `rerun` runs again a lens that
+// failed at this head. Returns the changeset.
+export async function reviewScenario(
+	repo: string,
+	harness: Harness,
+	fake: FakeModels,
+	script: LensScript,
+	rerun = false,
+) {
 	const changeset: Changeset = await resolveRange(repo, "main...feature");
 	const source: RepositorySource = { kind: "revision", commit: changeset.revision.base };
 	const lenses = await loadLenses(
@@ -159,8 +166,14 @@ export async function reviewScenario(repo: string, harness: Harness, fake: FakeM
 		config,
 		lenses,
 		standards: [],
-		models: fake.models,
+		models: fake.review,
 		policy: source,
+		rerun,
+		// The default tiers' checks that run without a model, as pull request #18's runChecks will record them.
+		checks: [
+			{ name: "guardrails", status: "ran" },
+			{ name: "static", status: "ran" },
+		],
 	});
 	return { changeset, review };
 }

@@ -1,8 +1,33 @@
 {
-  "correctness": [{ "text": "Reported 0 findings." }],
+  "correctness": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
   "contracts": [
-    { "calls": [{ "name": "search", "arguments": { "pattern": "formatPrice(" } }] },
-    { "calls": [{ "name": "read_file", "arguments": { "path": "src/cart.ts", "startLine": 8 } }] },
+    {
+      "calls": [
+        {
+          "name": "search",
+          "arguments": {
+            "pattern": "formatPrice("
+          },
+          "expectToolResult": "src/cart.ts:10:"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/cart.ts",
+            "startLine": 8
+          },
+          "expectToolResult": "formatPrice(total)"
+        }
+      ]
+    },
     {
       "calls": [
         {
@@ -17,11 +42,17 @@
               "why": "This change made currency a required second parameter of formatPrice, and summary was not updated.",
               "fix": "Pass the cart's currency to formatPrice, or give currency a default."
             },
-            "evidence": "src/price.ts:1 now declares formatPrice(cents: number, currency: string)"
-          }
+            "evidence": {
+              "file": "src/price.ts",
+              "line": 1
+            }
+          },
+          "expectToolResult": "recorded finding"
         }
       ]
     },
-    { "text": "Reported 1 finding." }
+    {
+      "text": "Reported 1 finding."
+    }
   ]
 }

@@ -167,9 +167,12 @@ describe("reportFindingInputSchema", () => {
 
 	it("accepts a location, rule, severity, explanation, and optional evidence", () => {
 		expect(Value.Check(reportFindingInputSchema, report)).toBe(true);
-		expect(
-			Value.Check(reportFindingInputSchema, { ...report, endLine: 14, evidence: "src/api.ts:3 renames id" }),
-		).toBe(true);
+		const evidence = { file: "src/api.ts", line: 3, endLine: 4 };
+		expect(Value.Check(reportFindingInputSchema, { ...report, endLine: 14, evidence })).toBe(true);
+	});
+
+	it("refuses prose as evidence", () => {
+		expect(Value.Check(reportFindingInputSchema, { ...report, evidence: "src/api.ts:3 renames id" })).toBe(false);
 	});
 
 	it.each(["snippet", "cause", "resolution", "status", "source"])("refuses a lens-chosen %s", (key) => {
@@ -239,12 +242,17 @@ describe("createFinding", () => {
 	});
 
 	it("makes a finding affected only through evidence", () => {
-		const evidence = "src/api.ts:3 renames the id parameter to userId, which this call still passes positionally.";
+		const evidence = { file: "./src//api.ts", startLine: 3, snippet: "export function load(userId: string) {" };
 		const affected = createFinding({ ...evalInput, cause: { evidence } });
 		expect(affected.properties.cause).toBe("affected");
-		expect(affected.properties.evidence).toBe(evidence);
+		expect(affected.properties.evidence).toEqual({ ...evidence, file: "src/api.ts" });
 		expect(createFinding(evalInput).properties).not.toHaveProperty("evidence");
-		expect(() => createFinding({ ...evalInput, cause: { evidence: "" } })).toThrow(FindingError);
+		expect(() => createFinding({ ...evalInput, cause: { evidence: { ...evidence, snippet: "" } } })).toThrow(
+			FindingError,
+		);
+		expect(() => createFinding({ ...evalInput, cause: { evidence: { ...evidence, endLine: 2 } } })).toThrow(
+			expect.objectContaining({ code: "invalidRegion" }),
+		);
 	});
 
 	it("rejects a region that ends before it starts", () => {
@@ -415,10 +423,11 @@ describe("parseFinding", () => {
 	});
 
 	it("rejects an affected finding without evidence, and evidence on any other", () => {
-		const affected = createFinding({ ...evalInput, cause: { evidence: "src/api.ts:3 renames id." } });
+		const evidence = { file: "src/api.ts", startLine: 3, snippet: "rename(id)" };
+		const affected = createFinding({ ...evalInput, cause: { evidence } });
 		const { evidence: _, ...bare } = affected.properties;
 		expect(rejection({ ...affected, properties: bare }).code).toBe("missingEvidence");
-		const stray = rejection({ ...finding, properties: { ...finding.properties, evidence: "src/api.ts:3" } });
+		const stray = rejection({ ...finding, properties: { ...finding.properties, evidence } });
 		expect(stray.code).toBe("invalidFinding");
 		expect(stray.path).toBe("/properties/evidence");
 	});

@@ -2,10 +2,13 @@ import {
 	type Finding,
 	FindingError,
 	type FindingProperties,
+	type FindingSource,
 	type FindingStatus,
 	type FindingTrigger,
 	normaliseSnippet,
 	parseFinding,
+	type Severity,
+	strongestCause,
 } from "@melian-agent/core";
 import { type Context, type ConversationId, defineDoc, type Harness, type Tx } from "./harness.ts";
 
@@ -36,34 +39,105 @@ export interface Dismissal {
 	readonly at: string;
 }
 
-type ProducerFinding = Omit<Finding, "properties"> & { properties: Omit<FindingProperties, "status"> };
+type ProducerFinding = Omit<Finding, "properties"> & {
+	properties: Omit<FindingProperties, "status" | "reportedBy">;
+};
 
-type FindingRecord = { producer: ProducerFinding; lifecycle: FindingLifecycle };
+// Sightings are keyed by revision, `revisionKey` of a base and head, then by producer, a lens's check and version. Only
+// the same producer at the same revision ever rewrites a sighting, so two lenses or two pushes never race for one record.
+type FindingRecord = { lifecycle: FindingLifecycle; sightings: Record<string, Record<string, ProducerFinding>> };
 
-export const FindingsDocument = defineDoc<{ items: Record<string, FindingRecord> }>({
+// `revisions` lists the revisions reviewed, oldest first, so a resumed review of an old one cannot move a lifecycle back.
+// `versions` counts, per revision, the writes that could change what a read of it returns: a sighting there, or a
+// lifecycle change of a finding sighted there. Adjudication's input carries it, so a dismissal decides afresh.
+type FindingsState = { revisions: string[]; items: Record<string, FindingRecord>; versions: Record<string, number> };
+
+export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
-	version: 1,
+	version: 4,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
-	initial: () => ({ items: {} }),
+	initial: () => ({ revisions: [], items: {}, versions: {} }),
 });
+
+/**
+ * The key a reviewed revision is stored under in the findings, verdict, and review index documents: its base and head
+ * as `<base>..<head>`. A pull request retargeted onto a new base keeps its head but has another diff, so it is another
+ * revision, reviewed afresh.
+ */
+export function revisionKey(revision: { readonly base: string; readonly head: string }): string {
+	return `${revision.base}..${revision.head}`;
+}
+
+function producerKey(source: FindingSource): string {
+	return `${source.check}@${source.version ?? ""}`;
+}
+
+// Whether `source` has sighted finding `id` at `revision`.
+export function hasSighting(state: FindingsState, id: string, revision: string, source: FindingSource): boolean {
+	return state.items[id]?.sightings[revision]?.[producerKey(source)] !== undefined;
+}
+
+// How many findings `source` has sighted at `revision`.
+export function sightingCount(state: FindingsState, revision: string, source: FindingSource): number {
+	const key = producerKey(source);
+	return Object.values(state.items).filter((record) => record.sightings[revision]?.[key] !== undefined).length;
+}
+
+const severityRank: Readonly<Record<Severity, number>> = { P0: 0, P1: 1, P2: 2, P3: 3, nit: 4 };
+
+function compareText(a: string, b: string): number {
+	return a < b ? -1 : a > b ? 1 : 0;
+}
+
+function compareSources(a: FindingSource, b: FindingSource): number {
+	return compareText(a.check, b.check) || compareText(a.version ?? "", b.version ?? "");
+}
+
+// The highest severity wins, and a tie goes to the producer whose name sorts first, so every reader merges alike. The
+// winner takes the strongest cause any sighting gave, with its evidence, so an evidenced P1 beside a P0 without
+// evidence reads as an affected P0 rather than a pre-existing one.
+function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>) {
+	const ranked = Object.values(sightings).sort(
+		(a, b) =>
+			severityRank[a.properties.severity] - severityRank[b.properties.severity] ||
+			compareSources(a.properties.source, b.properties.source),
+	);
+	const reportedBy = ranked.map((each) => ({ ...each.properties.source })).sort(compareSources);
+	const { evidence: _, ...properties } = ranked[0]!.properties;
+	const cause = strongestCause(ranked);
+	return { winner: { ...ranked[0]!, properties: { ...properties, ...cause } }, reportedBy };
+}
+
+/**
+ * Marks `revision` as the newest the changeset has been reviewed at, moving it last if it was reviewed before. Call it
+ * in the commit that starts a review, so a review of an older revision that resumes afterwards counts as older.
+ * `revision` is a {@link revisionKey}, as every revision this module takes is.
+ */
+export async function recordRevision(tx: Tx, rootConversationId: ConversationId, revision: string): Promise<void> {
+	const state = await tx.doc(FindingsDocument, rootConversationId);
+	state.revisions = [...state.revisions.filter((each) => each !== revision), revision];
+}
 
 function triggerCode(trigger: FindingTrigger | undefined): string {
 	return normaliseSnippet(trigger?.snippet ?? "");
 }
 
 /**
- * Records a finding as its producer reported it at `revision`, keeping Melian's lifecycle record for its ID.
+ * Records a sighting: the finding as its producer, named by `properties.source`, reported it at `revision`. Keeps
+ * Melian's lifecycle record for its ID.
  *
  * Findings belong to the changeset's root conversation, never a lens's child conversation, so a fork of the root at any
  * revision carries them. Pass the root's ID, even from a tool running in a lens.
  *
- * The producer's record replaces any earlier one. The lifecycle starts as `new` when the ID is first seen, and
- * `lastSeenRevision` always moves to `revision`. A dismissed finding stays dismissed unless its trigger's code changed
- * materially, meaning its normalised `trigger.snippet` differs; then it becomes `new` and the dismissal moves to
- * `history`. Reporting the same finding twice stores the same state, so a tool that calls this is safe to replay.
- * Throws core's `FindingError` for an invalid finding, which aborts the transaction.
+ * A sighting replaces only the same producer's sighting of the same ID at the same revision, so a replay or a
+ * correction rewrites its own report and never another producer's or another revision's. The lifecycle starts as `new`
+ * when the ID is first seen, and `lastSeenRevision` moves to `revision` unless {@link recordRevision} marked a newer
+ * revision. A dismissed finding stays dismissed unless a sighting at that revision or a newer one has a trigger whose
+ * code changed materially, meaning its normalised `trigger.snippet` differs from the last revision's; then it becomes
+ * `new` and the dismissal moves to `history`. Reporting the same finding twice stores the same state, so a tool that
+ * calls this is safe to replay. Throws core's `FindingError` for an invalid finding, which aborts the transaction.
  */
 export async function upsertFinding(
 	tx: Tx,
@@ -72,10 +146,13 @@ export async function upsertFinding(
 	revision: string,
 ): Promise<void> {
 	const valid = parseFinding(finding);
-	const { status: _, ...properties } = valid.properties;
+	const { status: _, reportedBy: __, ...properties } = valid.properties;
 	const producer: ProducerFinding = { ...valid, properties };
-	const { items } = await tx.doc(FindingsDocument, rootConversationId);
-	const previous = items[properties.id];
+	const state = await tx.doc(FindingsDocument, rootConversationId);
+	if (!state.revisions.includes(revision)) state.revisions.push(revision);
+	bump(state, [revision]);
+	const key = producerKey(properties.source);
+	const previous = state.items[properties.id];
 	if (previous === undefined) {
 		const lifecycle: FindingLifecycle = {
 			status: "new",
@@ -83,13 +160,21 @@ export async function upsertFinding(
 			lastSeenRevision: revision,
 			history: [],
 		};
-		items[properties.id] = { producer, lifecycle };
+		state.items[properties.id] = { lifecycle, sightings: { [revision]: { [key]: producer } } };
+		return;
+	}
+	const sightings = { ...previous.sightings, [revision]: { ...previous.sightings[revision], [key]: producer } };
+	const last = previous.lifecycle.lastSeenRevision;
+	if (state.revisions.indexOf(revision) < state.revisions.indexOf(last)) {
+		state.items[properties.id] = { lifecycle: previous.lifecycle, sightings };
 		return;
 	}
 	const { dismissedBy, dismissedReason, dismissedAt, ...kept } = previous.lifecycle;
+	const lastSeen = previous.sightings[last];
 	const reopened =
 		kept.status === "dismissed" &&
-		triggerCode(previous.producer.properties.trigger) !== triggerCode(properties.trigger);
+		lastSeen !== undefined &&
+		triggerCode(adjudicate(lastSeen).winner.properties.trigger) !== triggerCode(properties.trigger);
 	const lifecycle: FindingLifecycle = reopened
 		? {
 				...kept,
@@ -106,7 +191,7 @@ export async function upsertFinding(
 				],
 			}
 		: { ...previous.lifecycle, lastSeenRevision: revision };
-	items[properties.id] = { producer, lifecycle };
+	state.items[properties.id] = { lifecycle, sightings };
 }
 
 /** Marks a finding dismissed. Throws core's `FindingError` `unknownFinding` if no finding has the ID. */
@@ -116,7 +201,8 @@ export async function dismissFinding(
 	id: string,
 	{ by, reason, at }: Dismissal,
 ): Promise<void> {
-	const { items } = await tx.doc(FindingsDocument, rootConversationId);
+	const state = await tx.doc(FindingsDocument, rootConversationId);
+	const { items } = state;
 	const record = items[id];
 	if (record === undefined) {
 		throw new FindingError("unknownFinding", `no finding has ID ${id}`, { path: "/properties/id" });
@@ -129,35 +215,69 @@ export async function dismissFinding(
 		dismissedAt: at,
 	};
 	items[id] = { ...record, lifecycle };
+	bump(state, Object.keys(record.sightings));
+}
+
+function bump(state: FindingsState, revisions: readonly string[]): void {
+	state.versions = {
+		...state.versions,
+		...Object.fromEntries(revisions.map((revision) => [revision, (state.versions[revision] ?? 0) + 1])),
+	};
+}
+
+// How many writes have changed what a read of `revision` returns, so a repeat review can tell a finished adjudication
+// that read the same findings from one that read older ones.
+export async function findingsVersion(
+	reader: Pick<Harness, "snapshot">,
+	rootConversationId: ConversationId,
+	revision: string,
+	context: Context,
+): Promise<number> {
+	return (await reader.snapshot(FindingsDocument, rootConversationId, context))?.versions[revision] ?? 0;
+}
+
+/** Which sightings {@link readFindings} merges. */
+export interface ReadFindingsOptions {
+	/**
+	 * Only these producers' sightings, such as the lenses and versions selected for the review being read. A lens that
+	 * configuration has since disabled or retiered then leaves nothing behind. A producer without a version stands for
+	 * every version of its check. Every producer when absent.
+	 */
+	readonly producers?: readonly FindingSource[];
 }
 
 /**
- * The committed findings of a conversation, in ID order, each with its lifecycle status. Empty when nothing has been
- * reported. Each is a copy: the harness caches the committed document, so changing a returned finding must not reach it.
+ * The findings sighted at `revision`, a {@link revisionKey}, one per ID in ID order, each with its lifecycle status. Where several producers
+ * sighted one ID, the highest severity wins and a tie goes to the producer whose check sorts first, and
+ * `properties.reportedBy` lists every producer that sighted it. Empty when nothing was reported at `revision`. Each is a
+ * copy: the harness caches the committed document, so changing a returned finding must not reach it.
  */
 export async function readFindings(
 	reader: Pick<Harness, "snapshot">,
 	rootConversationId: ConversationId,
+	revision: string,
 	context: Context,
+	options: ReadFindingsOptions = {},
 ): Promise<readonly Finding[]> {
-	const document = await reader.snapshot(FindingsDocument, rootConversationId, context);
-	return Object.keys(document?.items ?? {})
+	const items = (await reader.snapshot(FindingsDocument, rootConversationId, context))?.items ?? {};
+	const wanted = options.producers === undefined ? undefined : new Set(options.producers.map(producerKey));
+	// A producer named without a version counts every version of its check, such as a static tool's record that names none.
+	const anyVersion = new Set(
+		(options.producers ?? []).filter((source) => source.version === undefined).map((source) => source.check),
+	);
+	const counts = (key: string, sighting: ProducerFinding) =>
+		wanted === undefined || wanted.has(key) || anyVersion.has(sighting.properties.source.check);
+	return Object.keys(items)
 		.sort()
-		.map((id) => {
-			const { producer, lifecycle } = document!.items[id]!;
-			return structuredClone({ ...producer, properties: { ...producer.properties, status: lifecycle.status } });
+		.flatMap((id) => {
+			const { lifecycle, sightings } = items[id]!;
+			const atHead = Object.fromEntries(
+				Object.entries(sightings[revision] ?? {}).filter(([key, sighting]) => counts(key, sighting)),
+			);
+			if (Object.keys(atHead).length === 0) return [];
+			const { winner, reportedBy } = adjudicate(atHead);
+			return [
+				structuredClone({ ...winner, properties: { ...winner.properties, status: lifecycle.status, reportedBy } }),
+			];
 		});
-}
-
-// The root's document holds every review of the changeset; a finding the lenses did not report at `head` is not this
-// review's, even if an earlier revision's review reported it.
-export async function findingsAt(
-	reader: Pick<Harness, "snapshot">,
-	rootConversationId: ConversationId,
-	head: string,
-	context: Context,
-): Promise<Finding[]> {
-	const document = await reader.snapshot(FindingsDocument, rootConversationId, context);
-	const seen = (id: string) => document?.items[id]?.lifecycle.lastSeenRevision === head;
-	return (await readFindings(reader, rootConversationId, context)).filter((finding) => seen(finding.properties.id));
 }

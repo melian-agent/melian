@@ -27,7 +27,16 @@ The lenses always read the head commit, never the working tree.
 
 `review '#12'` reads the pull request through the provider, fetches `refs/pull/12/head` and the base branch from `origin` into `refs/melian/pull/12/head` and `refs/melian/pull/12/base`, points both at the commits the provider reported, and reviews `refs/melian/pull/12/base...refs/melian/pull/12/head`. The changeset's ID hashes those ref names, so every push to the pull request is a new revision of one changeset with one storage file, and the findings document can tell new from still open from resolved.
 
-`publish '#12'` reads the pull request again and refuses when its head is not the head the stored review covers, or when its merge base moved, as when a stacked pull request is retargeted to `main`, with a message to run `review` again. It opens storage with only the publish task installed, so a review a crash interrupted does not resume and spend tokens during a publish. It never posts a review of a range or a working tree: storage for a range is a different changeset, and `publishReview` refuses a head with no stored verdict. `findings '#12'` reads the local refs and storage only, with no network.
+A review is keyed by its base and head, the merge base and the head commit, so `findings` and `publish` read the verdict stored under both. `publish '#12'` reads the pull request again, fetches its base branch, and computes the merge base it diffs from now. It refuses when the head or that base differs from the stored review's, naming which, with a message to run `review` again: a pull request retargeted to `main` after its parent merged keeps its head, but GitHub now shows another diff. It opens storage with only the publish task installed, so a review a crash interrupted does not resume and spend tokens during a publish. It never posts a review of a range or a working tree: storage for a range is a different changeset, and `publishReview` refuses a base and head with no stored verdict. `findings '#12'` reads the local refs and storage only, with no network.
+
+## Checks Melian does not run yet
+
+The tier `melian.yaml` maps the `pull-request` stage to is the review's manifest, and every check in it needs a record, as [the pipeline guideline](pipeline.md#the-manifest) describes. The default tiers name `guardrails` and `static`, which Melian does not run until step 6. The CLI records each check of the manifest that is neither a lens nor a decision as `skipped`, with the reason `Melian does not run this check yet`, so a review reads not reviewed and exits `2`. A repository that accepts reviews without them says so in `melian.yaml`:
+
+```yaml
+checks:
+  allowSkip: [guardrails, static]
+```
 
 `origin` must name the GitHub repository. The token comes from `GITHUB_TOKEN`, then `GH_TOKEN`, then `gh auth token`; Melian prints where it came from, never the token.
 

@@ -15,17 +15,22 @@ import {
 } from "@melian-agent/core";
 import { readVerdict } from "./adjudication.ts";
 import { PublishError } from "./errors.ts";
+import { revisionKey } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
 	type ConversationId,
+	createRegistry,
 	type DocumentReader,
 	defineDoc,
 	defineExtension,
 	defineTask,
 	type Harness,
+	openHarness,
+	type Storage,
 	type TaskId,
 } from "./harness.ts";
+import { modelsOf, type ReviewModels } from "./models.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
 type StoredFinding = { ruleId: string; path: string; line: number; revision: string; thread?: string };
@@ -122,6 +127,8 @@ type PublishInput = {
 	root: ConversationId;
 	pullRequest: number;
 	head: string;
+	// The review whose verdict this publishes: the revisionKey of its base and head.
+	revision: string;
 	lines: Record<string, [number, number][]>;
 };
 
@@ -148,7 +155,7 @@ function publishTask(provider: ReviewProvider) {
 		initial: () => ({ phase: "publish" }),
 		phases: {
 			publish: async (task, runtime, context) => {
-				const { root, pullRequest, head, lines } = task.input;
+				const { root, pullRequest, head, revision, lines } = task.input;
 				const read = async () =>
 					(await runtime.snapshot(PublishedDocument, root, context)) ?? { order: [], revisions: {} };
 				let markers: PublishedMarkers | undefined;
@@ -158,8 +165,8 @@ function publishTask(provider: ReviewProvider) {
 				};
 				const result = { posted: 0, stillOpen: 0, resolved: 0, replies: 0, recovered: 0 };
 				try {
-					const verdict = await readVerdict(runtime, root, head, context);
-					if (verdict === undefined) throw new Error(`no verdict is recorded for ${head}`);
+					const verdict = await readVerdict(runtime, root, revision, context);
+					if (verdict === undefined) throw new Error(`no verdict is recorded for ${revision}`);
 					const state = await read();
 					const current = fingerprint(verdict);
 					const before = state.revisions[head];
@@ -273,6 +280,21 @@ export function publishExtension(provider: ReviewProvider) {
 	return defineExtension({ name: publishTaskName, tasks: [publishTask(provider)] });
 }
 
+/**
+ * Opens a harness over `storage` that publishes through `provider` and holds nothing else, so a review a crash
+ * interrupted does not resume in it and spend tokens on real models during a publish.
+ */
+export function openPublishHarness(
+	storage: Storage,
+	models: ReviewModels,
+	provider: ReviewProvider,
+	context: Context = backgroundContext,
+): Promise<Harness> {
+	const registry = createRegistry();
+	registry.install(publishExtension(provider));
+	return openHarness(storage, { models: modelsOf(models), registry }, context);
+}
+
 /** What {@link publishReview} publishes. */
 export interface PublishOptions {
 	/** A harness over the changeset's storage, with {@link publishExtension} for `provider` installed. */
@@ -282,6 +304,11 @@ export interface PublishOptions {
 	readonly changeset: Changeset;
 	/** The pull request as its provider reports it now. */
 	readonly pullRequest: PullRequest;
+	/**
+	 * The commit the pull request diffs from now: the merge base of its base branch and its head, which the host reads
+	 * with git, since the provider reports only the branch's tip.
+	 */
+	readonly base: string;
 	readonly context?: Context;
 }
 
@@ -335,8 +362,12 @@ function short(commit: string): string {
  * recorded in {@link PublishedDocument}, so publishing a revision again posts nothing, and a publication a crash
  * interrupted resumes, finding what it already posted by Melian's markers.
  *
- * Throws {@link PublishError}: `staleReview` when the changeset's head is not the pull request's, `notReviewed` when no
- * verdict is recorded for that head, `notInstalled` when the harness lacks {@link publishExtension}, and
+ * The verdict is the one recorded for the changeset's base and head, its {@link revisionKey}, so a review of the pull
+ * request before its base branch moved under it, or before it was retargeted, is never posted as a review of what it
+ * shows now.
+ *
+ * Throws {@link PublishError}: `staleReview` when the changeset's head or base is not the pull request's, `notReviewed`
+ * when no verdict is recorded for that base and head, `notInstalled` when the harness lacks {@link publishExtension}, and
  * `publishFailed` when the provider refused a post.
  */
 export async function publishReview(options: PublishOptions): Promise<Publication> {
@@ -344,7 +375,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 	const context = options.context ?? backgroundContext;
 	const head = pullRequest.head.sha;
 	const where = { pullRequest: pullRequest.number, revision: head };
-	const again = `run melian review #${pullRequest.number} first`;
+	const again = `run melian review '#${pullRequest.number}' first`;
 	if (changeset.revision.head !== head) {
 		throw new PublishError(
 			"staleReview",
@@ -352,9 +383,21 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 			where,
 		);
 	}
+	if (changeset.revision.base !== options.base) {
+		throw new PublishError(
+			"staleReview",
+			`pull request #${pullRequest.number} now diffs from ${short(options.base)} on ${pullRequest.base.ref}, but Melian reviewed it from ${short(changeset.revision.base)}; its base branch moved or it was retargeted; run melian review '#${pullRequest.number}' again`,
+			where,
+		);
+	}
+	const revision = revisionKey(changeset.revision);
 	const root = (await harness.root(context)).id;
-	if ((await readVerdict(harness, root, head, context)) === undefined) {
-		throw new PublishError("notReviewed", `Melian has no review of ${short(head)}; ${again}`, where);
+	if ((await readVerdict(harness, root, revision, context)) === undefined) {
+		throw new PublishError(
+			"notReviewed",
+			`Melian has no review of ${short(head)} from ${short(changeset.revision.base)}; ${again}`,
+			where,
+		);
 	}
 	harness.resume();
 	const unfinished = async () =>
@@ -367,6 +410,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		root,
 		pullRequest: pullRequest.number,
 		head,
+		revision,
 		lines: diffLines(changeset.revision.files),
 	};
 	const taskId = await (await harness.root(context)).commit(

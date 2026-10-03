@@ -1,10 +1,13 @@
 import { existsSync } from "node:fs";
 import {
 	type Changeset,
+	type CheckRecord,
+	checksOfTier,
 	createFindingsLog,
 	loadConfig,
 	loadLenses,
 	loadStandards,
+	type MelianConfig,
 	type RepositorySource,
 	renderFindingsJson,
 	renderFindingsTerminal,
@@ -14,21 +17,18 @@ import {
 } from "@melian-agent/core";
 import {
 	backgroundContext as context,
-	createRegistry,
-	createReviewRegistry,
-	type Harness,
-	type HarnessOptions,
-	openHarness,
+	openPublishHarness,
+	openReviewHarness,
 	openSqliteStorage,
-	publishExtension,
 	publishReview,
 	ReviewError,
 	readVerdict,
 	reviewChangeset,
+	revisionKey,
 } from "@melian-agent/pipeline";
 import { idleModels, isScripted, reviewModels, scriptVariable } from "./models.ts";
 import { CliError, git, storagePath } from "./repository.ts";
-import { baseMoved, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
+import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
 
 /** Where a command reads and writes: its working directory, environment, and output. */
 export interface Io {
@@ -53,11 +53,13 @@ export function exitCodeFor(verdict: Verdict): number {
 	return verdict.status === "passed" ? reviewExitCodes.passed : reviewExitCodes.findings;
 }
 
-async function openStorageHarness(
-	path: string,
-	options: Omit<HarnessOptions, "registry"> & { readonly registry?: HarnessOptions["registry"] },
-): Promise<Harness> {
-	return openHarness(await openSqliteStorage(path), { registry: createReviewRegistry(), ...options });
+// Melian runs no guardrails or static tools yet. Every check of the review's manifest that is neither a lens nor a
+// decision, which the pipeline records itself, is recorded as skipped, so the review reads not reviewed unless
+// melian.yaml lists the check in checks.allowSkip. A missing record would read the same, under the reason "no record".
+function unrunChecks(config: MelianConfig): CheckRecord[] {
+	return checksOfTier(config, config.stages["pull-request"] ?? "full")
+		.filter((name) => !name.startsWith("lens.") && !name.startsWith("decisions."))
+		.map((name) => ({ name, status: "skipped", reason: "Melian does not run this check yet" }));
 }
 
 // A pull request reads policy from its base. A range on the checked-out commit reads it from the working tree, since
@@ -82,11 +84,11 @@ export async function review(io: Io, argument: string, options: { readonly model
 	const lenses = await loadLenses(repoRoot, source, paths);
 	const standards = await loadStandards(repoRoot, source, ".");
 	const { config: loaded } = await loadConfig(repoRoot, source, ".");
-	const { models, config, settings } = await reviewModels(io.env, loaded, lenses, options.model);
+	const { models, config, retry } = await reviewModels(io.env, loaded, lenses, options.model);
 	const path = await storagePath(repoRoot, changeset.id, isScripted(io.env));
 	// Without the publish extension, so a publication a crash interrupted waits for melian publish rather than posting
 	// from a review.
-	const harness = await openStorageHarness(path, { models, ...(settings === undefined ? {} : { settings }) });
+	const harness = await openReviewHarness(await openSqliteStorage(path), models, { retry });
 	try {
 		let verdict: Verdict;
 		try {
@@ -98,6 +100,7 @@ export async function review(io: Io, argument: string, options: { readonly model
 				standards,
 				models,
 				policy: source,
+				checks: unrunChecks(config),
 			}));
 		} catch (error) {
 			if (!(error instanceof ReviewError) || error.verdict === undefined) throw error;
@@ -124,18 +127,19 @@ export async function publish(io: Io, argument: string): Promise<number> {
 	const provider = await gitHubFor(io.cwd, io.env);
 	const pullRequest = await provider.pullRequest(target.number);
 	const changeset = await pullRequestChangeset(io.cwd, target.number);
-	if (changeset.revision.head === pullRequest.head.sha && (await baseMoved(io.cwd, pullRequest, changeset))) {
-		throw new CliError(
-			`pull request #${target.number} now merges into ${pullRequest.base.ref} from a different base than Melian reviewed; run melian review '#${target.number}' again`,
-		);
-	}
+	const base = await currentBase(io.cwd, pullRequest);
 	const path = await storagePath(changeset.repoRoot, changeset.id, false);
 	// Only the publish task: a review a crash interrupted must not resume here and spend tokens on real models.
-	const registry = createRegistry();
-	registry.install(publishExtension(provider));
-	const harness = await openStorageHarness(path, { models: idleModels(io.env), registry });
+	const harness = await openPublishHarness(await openSqliteStorage(path), idleModels(io.env), provider);
 	try {
-		const published = await publishReview({ harness, provider, changeset, pullRequest });
+		// A head that moved has no merge base here, and publishReview refuses it for the head before it reads this.
+		const published = await publishReview({
+			harness,
+			provider,
+			changeset,
+			pullRequest,
+			base: base ?? pullRequest.base.sha,
+		});
 		const parts = [
 			`${published.posted} new ${published.posted === 1 ? "finding" : "findings"}`,
 			...(published.stillOpen > 0 ? [`${published.stillOpen} still open`] : []),
@@ -166,10 +170,10 @@ export async function findings(
 		`Melian has no review of ${short(changeset.revision.head)}; run melian review ${argument}`,
 	);
 	if (!existsSync(path)) throw missing;
-	const harness = await openStorageHarness(path, { models: idleModels(io.env) });
+	const harness = await openReviewHarness(await openSqliteStorage(path), idleModels(io.env));
 	try {
 		const root = (await harness.root(context)).id;
-		const verdict = await readVerdict(harness, root, changeset.revision.head, context);
+		const verdict = await readVerdict(harness, root, revisionKey(changeset.revision), context);
 		if (verdict === undefined) throw missing;
 		if (!options.open) {
 			io.stdout(options.json ? renderVerdictJson(verdict) : renderFindingsTerminal(verdict, { color: io.color }));

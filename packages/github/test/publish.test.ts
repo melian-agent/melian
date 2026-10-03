@@ -11,6 +11,7 @@ import {
 	ReviewError,
 	readFindings,
 	readPublished,
+	revisionKey,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type FakeState, fakeGitHub, posts } from "./fixtures/fake-github.ts";
@@ -65,7 +66,8 @@ async function reviewedRevisionOne(script = lensScript(unsafeManager, emptyName,
 }
 
 async function publish(github: ReviewProvider, changeset: Changeset) {
-	return publishReview({ harness: harness!, provider: github, changeset, pullRequest: await github.pullRequest(7) });
+	const pullRequest = await github.pullRequest(7);
+	return publishReview({ harness: harness!, provider: github, changeset, pullRequest, base: changeset.revision.base });
 }
 
 describe("reading markers back", () => {
@@ -131,7 +133,12 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(outside.body).toContain(`https://github.com/melian-agent/example/blob/${head}/src/user.ts#L19`);
 
 		// The finding in a file the change does not touch sits in the body, under a marker of its own.
-		const findings = await readFindings(harness!, (await harness!.root(context)).id, context);
+		const findings = await readFindings(
+			harness!,
+			(await harness!.root(context)).id,
+			revisionKey(changeset.revision),
+			context,
+		);
 		const retries = findings.find((finding) => finding.properties.path === "src/config.ts")!;
 		expect(review!.body).toContain(`<!-- melian:revision=${head} finding=${retries.properties.id} -->`);
 		expect(review!.body).toContain(`https://github.com/melian-agent/example/blob/${head}/src/config.ts#L1`);
@@ -162,7 +169,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const { fake, github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);
 		const root = (await harness!.root(context)).id;
-		const first = await readFindings(harness!, root, context);
+		const first = await readFindings(harness!, root, revisionKey(changeset.revision), context);
 		const retries = first.find((finding) => finding.properties.path === "src/config.ts")!;
 		const manager = first.find((finding) => finding.ruleId === "null-dereference")!;
 		await (await harness!.root(context)).commit(
@@ -236,7 +243,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		await publish(github, changeset);
 		expect(state.statuses.at(-1)).toMatchObject({ state: "error" });
 
-		const again = await reviewScenario(repo, harness!, fake, lensScript(unsafeManager, emptyName, nanRetries));
+		const again = await reviewScenario(repo, harness!, fake, lensScript(unsafeManager, emptyName, nanRetries), true);
 		await again.review;
 		const result = await publish(github, changeset);
 
@@ -306,7 +313,27 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 
 		expect(refused).toBeInstanceOf(PublishError);
 		expect(refused).toMatchObject({ code: "staleReview", pullRequest: 7 });
-		expect((refused as Error).message).toContain("run melian review #7");
+		expect((refused as Error).message).toContain("run melian review '#7'");
+		expect(posts(state)).toEqual([]);
+	});
+
+	it("refuses to publish when the pull request diffs from another base, as after a retarget", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		const pullRequest = await github.pullRequest(7);
+		const retargeted = "e".repeat(40);
+
+		const refused = await publishReview({
+			harness: harness!,
+			provider: github,
+			changeset,
+			pullRequest,
+			base: retargeted,
+		}).catch((error: unknown) => error);
+
+		expect(refused).toBeInstanceOf(PublishError);
+		expect(refused).toMatchObject({ code: "staleReview", pullRequest: 7 });
+		expect((refused as Error).message).toContain(`now diffs from ${retargeted.slice(0, 12)} on main`);
+		expect((refused as Error).message).toContain("retargeted; run melian review '#7' again");
 		expect(posts(state)).toEqual([]);
 	});
 });

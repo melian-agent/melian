@@ -55,10 +55,10 @@ export async function fetchedPullRequest(
 	return { pullRequest, changeset: await resolveRange(cwd, pullRequestRefs(number).range) };
 }
 
-// A pull request retargeted to another branch keeps its head but not its merge base, so the stored review's diff and
-// policy no longer match what GitHub shows.
-export async function baseMoved(cwd: string, pullRequest: PullRequest, changeset: Changeset): Promise<boolean> {
+// The commit the pull request diffs from now: the merge base of its base branch, fetched afresh, and its head. A
+// retargeted pull request, or one whose base branch took some of its commits, keeps its head but not this, and the
+// stored review covers a different diff. Undefined when the head is not here, which happens only once it moved.
+export async function currentBase(cwd: string, pullRequest: PullRequest): Promise<string | undefined> {
 	await fetchBase(cwd, remote, pullRequest);
-	const base = await git(cwd, ["merge-base", pullRequest.base.sha, pullRequest.head.sha]).catch(() => undefined);
-	return base !== changeset.revision.base;
+	return git(cwd, ["merge-base", pullRequest.base.sha, pullRequest.head.sha]).catch(() => undefined);
 }

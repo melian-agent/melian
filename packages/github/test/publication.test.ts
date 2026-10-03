@@ -49,7 +49,7 @@ describe("markers", () => {
 				pullRequest: 7,
 				revision,
 				fingerprint: "0123456789abcdef",
-				verdict: adjudicate({ findings: [finding], checks: [], config: defaultConfig }),
+				verdict: adjudicate({ findings: [finding], manifest: [], checks: [], config: defaultConfig }),
 				findings: [{ finding, placement: { kind: "body" } }],
 				stillOpen: 0,
 				resolved: [],

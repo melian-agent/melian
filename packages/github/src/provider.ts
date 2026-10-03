@@ -1,8 +1,8 @@
 import type {
+	ClosedFinding,
 	PostedReview,
 	PublishedMarkers,
 	PullRequest,
-	ResolvedFinding,
 	ReviewDraft,
 	ReviewProvider,
 	ReviewStatus,
@@ -160,7 +160,7 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 			return { id: String(review.id), threads };
 		},
 
-		async replyResolved(pullRequest: number, finding: ResolvedFinding & { thread: string }, revision: string) {
+		async replyResolved(pullRequest: number, finding: ClosedFinding & { thread: string }, revision: string) {
 			try {
 				const { data } = await call(`reply on pull request #${pullRequest}`, () =>
 					octokit.rest.pulls.createReplyForReviewComment({

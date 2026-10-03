@@ -114,6 +114,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			provider: github,
 			changeset,
 			pullRequest: await github.pullRequest(7),
+			base: changeset.revision.base,
 		});
 
 		expect(state.reviews).toHaveLength(1);

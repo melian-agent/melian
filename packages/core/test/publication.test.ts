@@ -99,7 +99,7 @@ describe("placeFinding", () => {
 });
 
 function verdictOf(findings: readonly Finding[], checks: readonly CheckRecord[] = []): Verdict {
-	return adjudicate({ findings, checks, config: defaultConfig });
+	return adjudicate({ findings, manifest: checks.map((check) => check.name), checks, config: defaultConfig });
 }
 
 describe("planPublication", () => {

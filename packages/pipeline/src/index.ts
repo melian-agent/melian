@@ -8,9 +8,19 @@ export {
 	ReviewError,
 	type ReviewErrorCode,
 } from "./errors.ts";
-export { type Dismissal, dismissFinding, readFindings, upsertFinding } from "./findings.ts";
-export * from "./harness.ts";
 export {
+	type Dismissal,
+	dismissFinding,
+	type ReadFindingsOptions,
+	readFindings,
+	recordRevision,
+	revisionKey,
+	upsertFinding,
+} from "./findings.ts";
+export * from "./harness.ts";
+export { providersWithCredentials, type ReviewModels } from "./models.ts";
+export {
+	openPublishHarness,
 	type Publication,
 	type PublishedRecord,
 	type PublishOptions,
@@ -27,5 +37,11 @@ export {
 	renderChangePrompt,
 	reviewChangeset,
 } from "./review.ts";
+export {
+	injectionAttemptRule,
+	quoteUntrusted,
+	reviewNonce,
+	type UntrustedLabel,
+} from "./untrusted.ts";
 
 export const packageName = "@melian-agent/pipeline";

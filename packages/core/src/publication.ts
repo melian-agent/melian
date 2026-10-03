@@ -88,7 +88,7 @@ export interface PublishedFinding {
 }
 
 /** A finding an earlier revision published that this revision no longer reports. */
-export interface ResolvedFinding extends PublishedFinding {
+export interface ClosedFinding extends PublishedFinding {
 	readonly id: string;
 }
 
@@ -99,7 +99,7 @@ export interface PublicationPlan {
 	/** Findings an earlier revision posted that still need attention. They are not posted again. */
 	readonly stillOpen: readonly string[];
 	/** Findings an earlier revision posted that this revision no longer reports, dismissed ones excepted. */
-	readonly resolved: readonly ResolvedFinding[];
+	readonly resolved: readonly ClosedFinding[];
 	/**
 	 * Every finding with a thread or a place on the pull request once this revision is published, by ID, quiet ones
 	 * included. Threads for the findings this revision posts come from the post.
@@ -147,7 +147,7 @@ export function planPublication(
 	const resolved = Object.keys(previous)
 		.sort()
 		.filter((id) => !held.has(id))
-		.map((id): ResolvedFinding => ({ id, ...previous[id]! }));
+		.map((id): ClosedFinding => ({ id, ...previous[id]! }));
 	return { post, stillOpen, resolved, open };
 }
 
@@ -200,7 +200,7 @@ export interface ReviewDraft {
 	/** How many findings an earlier revision posted that still need attention. */
 	readonly stillOpen: number;
 	/** Resolved findings that have no thread to reply in, so the body names them. */
-	readonly resolved: readonly ResolvedFinding[];
+	readonly resolved: readonly ClosedFinding[];
 }
 
 /** A review a provider posted. */
@@ -241,7 +241,7 @@ export interface ReviewProvider {
 	 */
 	replyResolved(
 		pullRequest: number,
-		finding: ResolvedFinding & { readonly thread: string },
+		finding: ClosedFinding & { readonly thread: string },
 		revision: string,
 	): Promise<string | undefined>;
 	/** Sets the review's status on a commit. Setting it again replaces it. */

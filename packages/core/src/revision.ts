@@ -1,6 +1,6 @@
 import { posix } from "node:path";
 import { OutsideRepositoryError, RevisionError } from "./errors.ts";
-import { git } from "./git.ts";
+import { git, requireGitVersion } from "./git.ts";
 import { parseTree } from "./source.ts";
 
 /** What a path names at a revision. A submodule is a commit recorded in the tree, not a directory to read. */
@@ -31,6 +31,12 @@ export interface RevisionMatch {
 /** What {@link searchRevision} looks for. */
 export interface RevisionSearch {
 	readonly pattern: string;
+	/**
+	 * The commit whose `.gitattributes` decide which files are binary and so skipped: a review's base, the same as its
+	 * diff's. Without it git reads the working tree's, often the head's, and a head adding `*.ts -diff` would hide its
+	 * own files from search.
+	 */
+	readonly attributesFrom: string;
 	/** Read `pattern` as a POSIX extended regular expression. Default: a fixed string. */
 	readonly regex?: boolean;
 	readonly ignoreCase?: boolean;
@@ -38,9 +44,12 @@ export interface RevisionSearch {
 	readonly path?: string;
 }
 
-/** The bounds every revision read applies, so a model's tool call cannot pull an unbounded answer into its context. */
+/**
+ * The bounds every revision read applies. `fileBytes` caps one blob read, high enough that a lens reaches every line of
+ * any file it should review; a tool bounds what it shows per call, not what it reads.
+ */
 export const revisionLimits = {
-	fileBytes: 256 * 1024,
+	fileBytes: 8 * 1024 * 1024,
 	searchMatches: 200,
 	matchChars: 300,
 	listEntries: 1000,
@@ -156,8 +165,29 @@ export async function listRevisionFiles(
 	};
 }
 
+// Each match is `<revision>:<path>\0<line>\0<text>\n`. A path may hold a newline, so a record is read field by field,
+// the path up to its NUL, never split on newlines. A cut output may end in a partial record, which is dropped.
+function grepMatches(output: string, prefix: string): RevisionMatch[] {
+	const matches: RevisionMatch[] = [];
+	for (let start = 0; start < output.length; ) {
+		const pathEnd = output.indexOf("\0", start);
+		const lineEnd = pathEnd === -1 ? -1 : output.indexOf("\0", pathEnd + 1);
+		const textEnd = lineEnd === -1 ? -1 : output.indexOf("\n", lineEnd + 1);
+		if (textEnd === -1) break;
+		const where = output.slice(start, pathEnd);
+		matches.push({
+			path: where.startsWith(prefix) ? where.slice(prefix.length) : where,
+			line: Number(output.slice(pathEnd + 1, lineEnd)),
+			text: output.slice(lineEnd + 1, textEnd).slice(0, revisionLimits.matchChars),
+		});
+		start = textEnd + 1;
+	}
+	return matches;
+}
+
 /**
- * Searches the files at `revision` with `git grep`, skipping binary files. Returns at most `maxMatches` matching lines,
+ * Searches the files at `revision` with `git grep`, skipping files that `search.attributesFrom`'s attributes, or their
+ * content, mark binary. Returns at most `maxMatches` matching lines,
  * each cut at {@link revisionLimits} `matchChars`, with `truncated` set when more matched.
  *
  * Throws {@link RevisionError} `invalidPattern` for a regular expression git cannot compile, and as
@@ -170,8 +200,13 @@ export async function searchRevision(
 	maxMatches: number = revisionLimits.searchMatches,
 ): Promise<{ matches: RevisionMatch[]; truncated: boolean }> {
 	checkRevision(revision);
+	checkRevision(search.attributesFrom);
+	await requireGitVersion(repoRoot);
 	const target = repositoryPath(search.path ?? "");
+	// git grep finds nothing under a missing path, which would read as "no matches".
+	await entryAt(repoRoot, revision, target);
 	const args = [
+		`--attr-source=${search.attributesFrom}`,
 		// grep.column would add a column field to every match.
 		"-c",
 		"grep.column=false",
@@ -202,17 +237,7 @@ export async function searchRevision(
 		}
 		throw new RevisionError("gitFailed", `git grep failed: ${message}`);
 	}
-	// Each match is `<revision>:<path>\0<line>\0<text>\n`; a cut output may end in a partial match.
-	const records = result.stdout.split("\n");
-	if (result.truncated || !result.stdout.endsWith("\n")) records.pop();
-	const prefix = `${revision}:`;
-	const matches = records
-		.filter((record) => record !== "")
-		.map((record) => {
-			const [where, line, ...text] = record.split("\0");
-			const path = where!.startsWith(prefix) ? where!.slice(prefix.length) : where!;
-			return { path, line: Number(line), text: text.join("\0").slice(0, revisionLimits.matchChars) };
-		});
+	const matches = grepMatches(result.stdout, `${revision}:`);
 	return {
 		matches: matches.slice(0, maxMatches),
 		truncated: result.truncated === true || matches.length > maxMatches,

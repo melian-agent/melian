@@ -43,10 +43,15 @@ function melian(cwd: string, args: string[], env: Record<string, string> = {}) {
 	return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 }
 
+// The checks of the default tiers Melian does not run yet, allowed to skip so a review can reach a verdict.
+const allowUnbuiltChecks = "checks:\n  allowSkip: [guardrails, static]\n";
+
 // A golden's repository, checked out on its feature branch, and a script the CLI's scripted mode answers lenses from.
-function goldenCheckout(golden: Golden, script: unknown = golden.script) {
+// Its uncommitted melian.yaml, unless policy is null, applies to a range on the checked-out commit.
+function goldenCheckout(golden: Golden, script: unknown = golden.script, policy: string | null = allowUnbuiltChecks) {
 	const { repo } = buildGoldenRepository(golden);
 	repos.push(repo);
+	if (policy !== null) writeFileSync(join(repo, "melian.yaml"), policy);
 	scratch = mkdtempSync(join(tmpdir(), "melian-cli-"));
 	const scriptPath = join(scratch, "script.json");
 	writeFileSync(scriptPath, JSON.stringify(script));
@@ -103,6 +108,18 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.stdout).toMatch(/^Verdict: not reviewed, blocking\n/);
 		expect(review.stdout).toContain("lens.contracts  failed");
 		expect(review.stderr).toContain("lenses did not finish: contracts");
+	});
+
+	it("exits 2 while the tier names checks Melian does not run, naming each", () => {
+		const golden = goldens["clean-rename"]!;
+		const { repo, env } = goldenCheckout(golden, golden.script, null);
+
+		const review = melian(repo, ["review", "main"], env);
+
+		expect(review.status).toBe(2);
+		expect(review.stdout).toMatch(/^Verdict: not reviewed/);
+		expect(review.stdout).toContain("guardrails  skipped");
+		expect(review.stdout).toContain("Melian does not run this check yet");
 	});
 
 	it("tells the author to review first when nothing is stored", () => {

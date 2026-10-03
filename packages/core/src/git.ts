@@ -7,12 +7,12 @@ export interface GitResult {
 	// Undecoded, for output that carries paths: a path need not be UTF-8, and decoding would replace its bytes.
 	readonly stdoutBytes: Buffer;
 	readonly stderr: string;
-	/** Set when stdout reached `maxBytes` and git was stopped; `stdout` then holds the first `maxBytes` bytes. */
+	// Set when stdout reached `maxBytes` and git was stopped; `stdout` then holds the first `maxBytes` bytes.
 	readonly truncated?: boolean;
 }
 
 export interface GitOptions {
-	/** Stop git once stdout reaches this many bytes. */
+	// Stop git once stdout reaches this many bytes.
 	readonly maxBytes?: number;
 }
 

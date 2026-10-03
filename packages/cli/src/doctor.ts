@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
-import { createReviewModels, piAuthPath } from "@melian-agent/pipeline";
+import { createReviewModels, piAuthPath, providersWithCredentials } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
 import { git } from "./repository.ts";
 
@@ -39,14 +39,10 @@ async function gitCheck(cwd: string): Promise<Check> {
 }
 
 async function credentialsCheck(): Promise<Check> {
-	const models = createReviewModels();
-	const configured: string[] = [];
-	for (const provider of models.getProviders()) {
-		if ((await models.checkAuth(provider.id).catch(() => undefined)) !== undefined) configured.push(provider.id);
-	}
+	const configured = await providersWithCredentials(createReviewModels());
 	return configured.length === 0
 		? { name: "models", state: "warn", detail: "no provider has credentials; log in with pi or set an API key" }
-		: { name: "models", state: "ok", detail: `credentials for ${configured.sort().join(", ")}` };
+		: { name: "models", state: "ok", detail: `credentials for ${configured.join(", ")}` };
 }
 
 async function repositoryCheck(cwd: string): Promise<Check> {

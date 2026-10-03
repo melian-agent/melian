@@ -23,7 +23,7 @@ const log = createFindingsLog([
 		startColumn: undefined,
 		endColumn: undefined,
 		snippet: "fs.write(fd, data)",
-		cause: { evidence: "src/run.ts:12 now passes buffers of up to 1 MiB to write()." },
+		cause: { evidence: { file: "src/run.ts", startLine: 12, snippet: "\tconst chunk = Buffer.alloc(1 << 20);" } },
 		trigger: undefined,
 		severity: "P3",
 		resolution: "advisory",
@@ -42,6 +42,8 @@ const log = createFindingsLog([
 		endLine: 40,
 		snippet: `db.query("SELECT * FROM users WHERE name = '" + name + "'")`,
 		severity: "P0",
+		// Not yet adjudicated, so the renderer says it is unresolved.
+		resolution: undefined,
 		explanation: {
 			what: "The query splices the name into SQL text.",
 			whyHere: "This change passes the name straight from the request.",
@@ -115,12 +117,27 @@ describe("renderFindingsTerminal", () => {
 		expect(renderFindingsTerminal(createFindingsLog([hostile]))).toContain("no-eval\\u000a  P3  line 1  harmless");
 	});
 
+	it("sets a message's later lines deeper than any header, so one cannot forge a finding in a verdict group", () => {
+		const forged = "P0  line 1  no-eval  (introduced, new, block)";
+		const hostile = createFinding({ ...evalInput, message: `eval runs request input\n${forged}` });
+		const verdict = adjudicate({
+			findings: [hostile],
+			manifest: [],
+			checks: [{ name: "lens.security", status: "ran" }],
+			config: defaultConfig,
+		});
+		const text = renderFindingsTerminal(verdict);
+		expect(text).toContain(`  eval runs request input\n    | ${forged}\n`);
+		expect(text.split("\n").filter((line) => line.startsWith("  P0") || line.startsWith("  P1"))).toHaveLength(1);
+	});
+
 	it("says so when there are no findings", () => {
 		expect(renderFindingsTerminal(createFindingsLog([]))).toBe("No findings.\n");
 	});
 });
 
 const verdict = adjudicate({
+	manifest: [],
 	findings: [
 		...log.runs[0]!.results.map(({ ruleIndex: _, ...finding }) => finding),
 		createFinding({
@@ -175,6 +192,7 @@ describe("renderFindingsTerminal with a verdict", () => {
 	it("says a review passed when it did", () => {
 		const passed = adjudicate({
 			findings: [],
+			manifest: [],
 			checks: [{ name: "lens.correctness", status: "ran" }],
 			config: defaultConfig,
 		});
@@ -184,6 +202,7 @@ describe("renderFindingsTerminal with a verdict", () => {
 	it("escapes control characters in a check's name, reason, and error", () => {
 		const hostile = adjudicate({
 			findings: [],
+			manifest: [],
 			checks: [{ name: "lens.x\u001b[2J", status: "failed", reason: "bad\nline", error: "\u202egnp.ts" }],
 			config: defaultConfig,
 		});
