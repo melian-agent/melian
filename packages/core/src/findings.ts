@@ -218,21 +218,49 @@ export interface FindingIdInput {
 	readonly discriminator?: string;
 }
 
-/**
- * The form of a snippet that {@link findingId} hashes: leading and trailing whitespace removed, and every run of
- * whitespace collapsed to one space. Two snippets that normalise alike are the same code.
- */
-export function normaliseSnippet(snippet: string): string {
-	return snippet.trim().replace(/\s+/g, " ");
+const word = /[\p{L}\p{M}\p{N}_$]/u;
+
+// Normalises like normaliseSnippet, and records for each output code unit the source offset it came from.
+function normaliseWithOffsets(source: string): { text: string; offsets: number[] } {
+	let text = "";
+	const offsets: number[] = [];
+	let space = false;
+	let previous = "";
+	for (let index = 0; index < source.length; ) {
+		const char = String.fromCodePoint(source.codePointAt(index)!);
+		if (/\s/u.test(char)) {
+			space = true;
+		} else {
+			if (space && word.test(previous) && word.test(char)) {
+				text += " ";
+				offsets.push(index);
+			}
+			text += char;
+			for (let unit = 0; unit < char.length; unit++) offsets.push(index + unit);
+			space = false;
+			previous = char;
+		}
+		index += char.length;
+	}
+	return { text, offsets };
 }
 
 /**
- * The stable ID of a finding: the first 16 hex characters of a sha256 over the length-prefixed file, rule, snippet with
- * leading and trailing whitespace removed and every run of whitespace collapsed to one space, and the occurrence or
- * discriminator.
+ * The form of a snippet that {@link findingId} hashes: all whitespace removed, except that a run of whitespace between
+ * two word characters (letters, marks, digits, `_`, and `$`) becomes one space. Two snippets that normalise alike are
+ * the same code, so `foo(a, b)` and the same call wrapped one argument per line are one snippet, while `return x` keeps
+ * its space.
+ */
+export function normaliseSnippet(snippet: string): string {
+	return normaliseWithOffsets(snippet).text;
+}
+
+/**
+ * The stable ID of a finding: the first 16 hex characters of a sha256 over the length-prefixed file, rule,
+ * {@link normaliseSnippet} of the snippet, and the occurrence or discriminator.
  *
- * Line numbers are not an input, so a finding keeps its ID when an edit above it shifts its lines, or when the flagged
- * code is reindented or rewrapped. Changing one token of the flagged code, such as `eval(input)` to `eval(body)`,
+ * Line numbers are not an input, so a finding keeps its ID when an edit above it shifts its lines, or when a formatter
+ * reindents or rewraps the flagged code. Changing one token of the flagged code, such as `eval(input)` to `eval(body)`,
  * changes the ID, and so does moving the code to another file or reporting it under another rule. Inserting an
  * identical snippet earlier in the file renumbers the occurrences after it.
  *
@@ -283,24 +311,7 @@ function lineStarts(source: string): number[] {
  */
 export function snippetOccurrence(source: string, snippet: string, region: SnippetRegion): number {
 	const target = normaliseSnippet(snippet);
-	const chars: string[] = [];
-	const offsets: number[] = [];
-	let space = false;
-	for (let index = 0; index < source.length; index++) {
-		const char = source[index]!;
-		if (/\s/.test(char)) {
-			space = chars.length > 0;
-			continue;
-		}
-		if (space) {
-			chars.push(" ");
-			offsets.push(index);
-			space = false;
-		}
-		chars.push(char);
-		offsets.push(index);
-	}
-	const text = chars.join("");
+	const { text, offsets } = normaliseWithOffsets(source);
 	const starts = lineStarts(source);
 	const from = (starts[region.startLine - 1] ?? source.length) + (region.startColumn ?? 1) - 1;
 	const last = region.endLine ?? region.startLine;

@@ -147,7 +147,7 @@ describe("the findings document", () => {
 			});
 		});
 
-		it("keeps a dismissal when the trigger only moves or is reindented", async () => {
+		it("keeps a dismissal when the trigger only moves or is rewrapped", async () => {
 			const finding = triggered("eval(input)");
 			const moved = createFinding({
 				...input,
@@ -157,7 +157,7 @@ describe("the findings document", () => {
 					oldLines: 1,
 					newStart: 21,
 					newLines: 1,
-					snippet: "  eval(input)\n",
+					snippet: "  eval(\n    input\n  )\n",
 				},
 			});
 			await root.commit((tx) => upsertFinding(tx, root.id, finding, "rev1"), context);
