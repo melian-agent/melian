@@ -27,24 +27,17 @@ import {
 type StoredFinding = { ruleId: string; path: string; line: number; revision: string; thread?: string };
 
 type StoredRevision = {
-	/** The review posted for the revision. */
 	review: string;
-	/** Every finding open on the pull request once the revision's review was posted, by ID. */
 	open: Record<string, StoredFinding>;
-	/** Findings the revision resolved, decided with the review so a rerun replies to the same ones. */
 	resolved: Record<string, StoredFinding>;
-	/** The reply posted in each resolved finding's thread, by finding ID. */
 	replies: Record<string, string>;
 	status?: { state: ReviewStatus["state"]; description: string };
 };
 
 type PublishedState = { order: string[]; revisions: Record<string, StoredRevision> };
 
-/**
- * What each revision posted to its pull request, keyed by head commit and then by finding ID, on the changeset's root
- * conversation. A post is a fact about the pull request, not about a transcript, so the document keeps its latest value
- * and a fork carries it as it stands: a fork that forgot a post would post it twice.
- */
+// Keeps its latest value and forks as it stands: a post is a fact about the pull request, and a fork that forgot one
+// would post it twice.
 export const PublishedDocument = defineDoc<PublishedState>({
 	kind: "melian.published",
 	version: 1,
@@ -58,20 +51,17 @@ type PublishInput = {
 	root: ConversationId;
 	pullRequest: number;
 	head: string;
-	/** The lines the revision changes, which decide where each finding is posted. */
 	lines: Record<string, [number, number][]>;
 };
 
 type PublishResult = {
 	review: string;
-	/** Findings posted with the review; zero when an earlier run posted it. */
 	posted: number;
 	stillOpen: number;
 	resolved: number;
-	/** Replies posted in resolved findings' threads by this run. */
 	replies: number;
 	status: ReviewStatus;
-	/** Posts found by their markers on the pull request rather than in the document: a crash fell between post and record. */
+	// Posts found by their markers rather than in the document: a crash fell between post and record.
 	recovered: number;
 };
 
@@ -81,8 +71,8 @@ function same(left: ReviewStatus | undefined, right: ReviewStatus): boolean {
 	return left?.state === right.state && left.description === right.description;
 }
 
-// Not replay-safe: a post and the commit that records it are two steps, and the host takes no idempotency key. Every post
-// is recorded in its own commit, and before posting anything the phase reads Melian's markers back from the pull
+// Not replay-safe: a post and the commit that records it are two steps, and the host takes no idempotency key. Every
+// post is recorded in its own commit, and before posting anything the phase reads Melian's markers back from the pull
 // request, so a rerun after a crash between a post and its record finds the post instead of repeating it.
 function publishTask(provider: ReviewProvider) {
 	return defineTask<PublishInput, { phase: "publish" }, PublishResult>({
@@ -215,7 +205,7 @@ export interface Publication {
 	readonly recovered: number;
 }
 
-/** What a revision's publication recorded: its review, the thread of each finding it posted, its replies, and status. */
+/** What a revision's publication recorded: its review, each posted finding's thread, its replies, and status. */
 export interface PublishedRecord {
 	readonly review: string;
 	readonly threads: Readonly<Record<string, string>>;
@@ -223,7 +213,7 @@ export interface PublishedRecord {
 	readonly status?: ReviewStatus;
 }
 
-/** What {@link publishReview} recorded for `revision`, a head commit, or `undefined` when nothing was published for it. */
+/** What {@link publishReview} recorded for `revision`, a head commit, or `undefined` if nothing was published. */
 export async function readPublished(
 	reader: Pick<DocumentReader, "snapshot">,
 	rootConversationId: ConversationId,

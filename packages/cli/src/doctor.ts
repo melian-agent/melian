@@ -62,10 +62,7 @@ async function repositoryCheck(cwd: string): Promise<Check> {
 	}
 }
 
-/**
- * `melian doctor`: checks what a review and a publication need, and prints one line per check. Credentials are named
- * by provider and source only, never by value. Exits `1` when Node or git cannot run a review, `0` otherwise.
- */
+// Names credentials by provider and source, never by value.
 export async function doctor(io: Io): Promise<number> {
 	const nodeVersion = process.versions.node;
 	const authPath = piAuthPath(io.env);

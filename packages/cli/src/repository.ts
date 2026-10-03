@@ -2,7 +2,6 @@ import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
 
-/** Runs git with an argument array, never a shell string. Resolves with its output, or rejects with its stderr. */
 export function git(cwd: string, args: readonly string[]): Promise<string> {
 	return new Promise((done, fail) => {
 		execFile("git", args, { cwd, maxBuffer: 16 * 1024 * 1024 }, (error, stdout, stderr) => {
@@ -12,7 +11,7 @@ export function git(cwd: string, args: readonly string[]): Promise<string> {
 	});
 }
 
-/** A failure the CLI reports as a message, without a stack. */
+// A failure printed as its message alone.
 export class CliError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -20,11 +19,7 @@ export class CliError extends Error {
 	}
 }
 
-/**
- * Where Melian keeps a changeset's storage: `melian/<id>.sqlite` in the repository's common git directory, so every
- * worktree of a clone shares one history per changeset. Scripted runs keep theirs apart under `melian/scripted/`, so a
- * review the fake model wrote is never published.
- */
+// The common git directory, so every worktree of a clone shares one storage per changeset.
 export async function storagePath(repoRoot: string, changesetId: string, scripted: boolean): Promise<string> {
 	const common = await git(repoRoot, ["rev-parse", "--git-common-dir"]);
 	const directory = join(
@@ -36,17 +31,14 @@ export async function storagePath(repoRoot: string, changesetId: string, scripte
 	return join(directory, `${changesetId}.sqlite`);
 }
 
-/** The refs a pull request's review reads, under `refs/melian/`, so its changeset keeps one identity across pushes. */
+// Fixed ref names, so a pull request's changeset ID, which hashes them, survives every push.
 export function pullRequestRefs(number: number): { base: string; head: string; range: string } {
 	const base = `refs/melian/pull/${number}/base`;
 	const head = `refs/melian/pull/${number}/head`;
 	return { base, head, range: `${base}...${head}` };
 }
 
-/**
- * Fetches a pull request's head and base branch from `remote` and points its refs at exactly the commits the provider
- * reported, so the review is of the head the pull request shows.
- */
+// Points the refs at exactly the commits the provider reported, whatever the branches hold by now.
 export async function fetchPullRequest(
 	repoRoot: string,
 	remote: string,

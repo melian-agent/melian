@@ -63,12 +63,8 @@ async function headCommit(cwd: string): Promise<string | undefined> {
 	return git(cwd, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => undefined);
 }
 
-/**
- * `melian review <range|#pr>`: reviews a range of the checkout, or a pull request fetched from GitHub, prints the
- * verdict, and returns its exit code. A pull request's policy, standards, and lenses come from its base commit; a
- * range whose head is the checked-out commit reads them from the working tree, since its author is the one running
- * Melian; any other range reads them from its base.
- */
+// A pull request reads policy from its base. A range on the checked-out commit reads it from the working tree, since
+// its author runs Melian; any other range reads it from its base.
 export async function review(io: Io, argument: string, options: { readonly model?: string }): Promise<number> {
 	const target = parseTarget(argument);
 	let changeset: Changeset;
@@ -125,10 +121,6 @@ function short(commit: string): string {
 	return commit.slice(0, 12);
 }
 
-/**
- * `melian publish <#pr>`: posts the verdict stored for the pull request's current head. Refuses a range, since a review
- * of a working tree or a local branch is never posted, and a pull request whose head moved since its review.
- */
 export async function publish(io: Io, argument: string): Promise<number> {
 	const target = parseTarget(argument);
 	if (target.kind !== "pullRequest") {
@@ -159,10 +151,6 @@ export async function publish(io: Io, argument: string): Promise<number> {
 	}
 }
 
-/**
- * `melian findings <range|#pr>`: prints the verdict stored for the changeset's head, without reviewing or touching the
- * network. `open` limits it to findings that still need attention; `json` prints JSON instead of text.
- */
 export async function findings(
 	io: Io,
 	argument: string,

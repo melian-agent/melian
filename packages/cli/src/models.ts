@@ -20,7 +20,6 @@ function routeTiers(config: MelianConfig, model: string, override: boolean): Mel
 	return { ...config, models: { ...config.models, ...routed } };
 }
 
-/** What a review runs on: the model collection, the configuration routed to it, and harness settings. */
 export interface ReviewModels {
 	readonly models: Models;
 	readonly config: MelianConfig;
@@ -38,11 +37,7 @@ async function readScript(path: string): Promise<LensScript> {
 	return script as LensScript;
 }
 
-/**
- * The models a review runs on. Normally pi-ai's providers, with credentials from Pi's login and the environment;
- * `model`, as `provider/model-id`, routes every tier the configuration leaves unrouted. Under {@link scriptVariable},
- * the fake model answering from the script.
- */
+// `model` routes every tier the configuration leaves unrouted; under the script variable, every tier runs on the fake.
 export async function reviewModels(
 	env: NodeJS.ProcessEnv,
 	config: MelianConfig,
@@ -66,12 +61,11 @@ export async function reviewModels(
 	};
 }
 
-/** Whether the CLI runs on scripted models. */
 export function isScripted(env: NodeJS.ProcessEnv): boolean {
 	return (env[scriptVariable] ?? "") !== "";
 }
 
-/** The models a harness that only reads, or only publishes, is opened with. */
+// For a harness that only reads or publishes, which never asks a model.
 export function idleModels(env: NodeJS.ProcessEnv): Models {
 	return isScripted(env) ? createFakeModels().models : createReviewModels();
 }

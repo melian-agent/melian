@@ -8,12 +8,11 @@ import {
 import { createGitHubProvider, GitHubError, parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
 import { CliError, fetchPullRequest, git, pullRequestRefs } from "./repository.ts";
 
-/** What a command names: a pull request, written `#12`, or a git range, such as `main` or `main...feature`. */
 export type Target =
 	| { readonly kind: "pullRequest"; readonly number: number }
 	| { readonly kind: "range"; readonly spec: string };
 
-/** Reads a command's target. A pull request is `#` and its number; anything else is a range. */
+// A bare number is a range: 1234 is also an abbreviated commit hash.
 export function parseTarget(argument: string): Target {
 	const match = /^#(\d+)$/.exec(argument);
 	return match === null ? { kind: "range", spec: argument } : { kind: "pullRequest", number: Number(match[1]) };
@@ -21,7 +20,6 @@ export function parseTarget(argument: string): Target {
 
 const remote = "origin";
 
-/** The provider for the repository `origin` names on GitHub, with a token from the environment or gh. */
 export async function gitHubFor(cwd: string, env: NodeJS.ProcessEnv): Promise<ReviewProvider> {
 	const url = await git(cwd, ["remote", "get-url", remote]).catch(() => {
 		throw new CliError(
@@ -36,7 +34,6 @@ export async function gitHubFor(cwd: string, env: NodeJS.ProcessEnv): Promise<Re
 	return createGitHubProvider({ owner, repo, token: found.token });
 }
 
-/** A pull request's changeset from the refs a review fetched, or a hint to run the review when they are missing. */
 export async function pullRequestChangeset(cwd: string, number: number): Promise<Changeset> {
 	try {
 		return await resolveRange(cwd, pullRequestRefs(number).range);
@@ -48,7 +45,6 @@ export async function pullRequestChangeset(cwd: string, number: number): Promise
 	}
 }
 
-/** Fetches a pull request's commits and resolves its changeset at the head the provider reports. */
 export async function fetchedPullRequest(
 	cwd: string,
 	provider: ReviewProvider,
