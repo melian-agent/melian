@@ -266,6 +266,33 @@ describe("parseFinding", () => {
 		expect(error.message).toBe("finding has an unknown key at /properties/confidance");
 	});
 
+	it.each([
+		["the result", (value: Record<string, unknown>) => Object.assign(value, { kind: "fail" }), "/kind"],
+		["the message", (value: Finding) => Object.assign(value.message, { markdown: "**x**" }), "/message/markdown"],
+		[
+			"the region",
+			(value: Finding) => Object.assign(value.locations[0]!.physicalLocation.region, { byteOffset: 0 }),
+			"/locations/0/physicalLocation/region/byteOffset",
+		],
+		[
+			"the artifact location",
+			(value: Finding) =>
+				Object.assign(value.locations[0]!.physicalLocation.artifactLocation, { uriBaseId: "%SRCROOT%" }),
+			"/locations/0/physicalLocation/artifactLocation/uriBaseId",
+		],
+		[
+			"the snippet",
+			(value: Finding) => Object.assign(value.locations[0]!.physicalLocation.region.snippet!, { binary: "AA==" }),
+			"/locations/0/physicalLocation/region/snippet/binary",
+		],
+	])("rejects an unknown member of %s", (_, add, path) => {
+		const value = structuredClone(finding);
+		add(value as Finding & Record<string, unknown>);
+		const error = rejection(value);
+		expect(error.code).toBe("invalidFinding");
+		expect(error.path).toBe(path);
+	});
+
 	it("rejects a finding without a location", () => {
 		const error = rejection({ ...finding, locations: [] });
 		expect(error.code).toBe("invalidFinding");

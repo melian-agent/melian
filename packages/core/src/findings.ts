@@ -59,45 +59,70 @@ export const findingPropertiesSchema = Type.Object(
 	strict,
 );
 
-const region = Type.Object({
-	startLine: line,
-	endLine: Type.Optional(line),
-	startColumn: Type.Optional(line),
-	endColumn: Type.Optional(line),
-	snippet: Type.Optional(Type.Object({ text: Type.String() })),
-});
+const region = Type.Object(
+	{
+		startLine: line,
+		endLine: Type.Optional(line),
+		startColumn: Type.Optional(line),
+		endColumn: Type.Optional(line),
+		snippet: Type.Optional(Type.Object({ text: Type.String() }, strict)),
+	},
+	strict,
+);
 
 /** The JSON Schema of a {@link FindingLocation}: a SARIF `location` with a physical location. */
-export const findingLocationSchema = Type.Object({
-	physicalLocation: Type.Object({ artifactLocation: Type.Object({ uri: text }), region }),
-});
+export const findingLocationSchema = Type.Object(
+	{
+		physicalLocation: Type.Object({ artifactLocation: Type.Object({ uri: text }, strict), region }, strict),
+	},
+	strict,
+);
 
-/** The JSON Schema of a {@link Finding}: a SARIF 2.1.0 `result` with Melian's extensions in its property bag. */
-export const findingSchema = Type.Object({
-	ruleId: text,
-	level: sarifLevelSchema,
-	message: Type.Object({ text }),
-	locations: Type.Array(findingLocationSchema, { minItems: 1 }),
-	properties: findingPropertiesSchema,
-});
+/**
+ * The JSON Schema of a {@link Finding}: a SARIF 2.1.0 `result` with Melian's extensions in its property bag. Every
+ * object lists the SARIF members Melian supports and rejects any other, so a result from outside cannot smuggle data
+ * into storage.
+ */
+export const findingSchema = Type.Object(
+	{
+		ruleId: text,
+		level: sarifLevelSchema,
+		message: Type.Object({ text }, strict),
+		locations: Type.Array(findingLocationSchema, { minItems: 1 }),
+		properties: findingPropertiesSchema,
+	},
+	strict,
+);
 
 /** The URI of the SARIF 2.1.0 JSON Schema, as `$schema` in a {@link FindingsLog}. */
 export const sarifSchemaUri = "https://json.schemastore.org/sarif-2.1.0.json";
 
 /** The JSON Schema of a {@link FindingsLog}. */
-export const findingsLogSchema = Type.Object({
-	$schema: Type.Optional(Type.String()),
-	version: Type.Literal("2.1.0"),
-	runs: Type.Array(
-		Type.Object({
-			tool: Type.Object({
-				driver: Type.Object({ name: Type.Literal("Melian"), informationUri: Type.Optional(Type.String()) }),
-			}),
-			results: Type.Array(findingSchema),
-		}),
-		{ minItems: 1, maxItems: 1 },
-	),
-});
+export const findingsLogSchema = Type.Object(
+	{
+		$schema: Type.Optional(Type.String()),
+		version: Type.Literal("2.1.0"),
+		runs: Type.Array(
+			Type.Object(
+				{
+					tool: Type.Object(
+						{
+							driver: Type.Object(
+								{ name: Type.Literal("Melian"), informationUri: Type.Optional(Type.String()) },
+								strict,
+							),
+						},
+						strict,
+					),
+					results: Type.Array(findingSchema),
+				},
+				strict,
+			),
+			{ minItems: 1, maxItems: 1 },
+		),
+	},
+	strict,
+);
 
 /** A SARIF `level`. */
 export type SarifLevel = Static<typeof sarifLevelSchema>;
