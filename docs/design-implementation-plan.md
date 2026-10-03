@@ -66,6 +66,7 @@ Steps to be written when milestone 2 closes.
 
 Newest first. One line per entry: date, what changed, link to the pull request where one exists.
 
+- 2026-10-03: [Pull request #11](https://github.com/melian-agent/melian/pull/11) reviewed by Claude Code's review skill and Codex adversarial review, recorded in [packages/evals/comparisons/2026-10-03-pr-11.md](../packages/evals/comparisons/2026-10-03-pr-11.md). The reviews led to the idempotent-upsert rule for tools with durable side effects, and to applying the spike's design corrections to [design.md](design.md) in the pull request.
 - 2026-10-03: Step 2 Pi Durable spike opened as [pull request #11](https://github.com/melian-agent/melian/pull/11), closing [issue #2](https://github.com/melian-agent/melian/issues/2). The design holds on Pi Durable 1.0.0; [docs/spikes/pi-durable.md](spikes/pi-durable.md) proposes rewording four rows of the mapping table: conversation keying, lens ownership, memo scope, and the storage interface. `packages/pipeline/src/harness.ts` is the one module that imports Pi Durable.
 - 2026-10-03: First comparison review of [pull request #10](https://github.com/melian-agent/melian/pull/10) recorded in [packages/evals/comparisons/2026-10-03-pr-10.md](../packages/evals/comparisons/2026-10-03-pr-10.md). The Codex finding was applied as a lockfile release-age gate in `npm run check`, and CI now runs the build.
 - 2026-10-03: Scaffold [pull request #10](https://github.com/melian-agent/melian/pull/10) reviewed by Claude Code's review skill and Codex adversarial review; findings applied.
