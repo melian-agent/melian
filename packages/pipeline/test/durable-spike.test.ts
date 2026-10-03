@@ -76,7 +76,8 @@ async function crashWhen(scenario: Scenario, reached: (events: readonly Event[])
 	const deadline = Date.now() + 15_000;
 	try {
 		while (!reached(readEvents(log))) {
-			if (child.exitCode !== null) throw new Error(`crash script exited before the kill point:\n${stderr}`);
+			if (child.exitCode !== null || child.signalCode !== null)
+				throw new Error(`crash script exited before the kill point:\n${stderr}`);
 			if (Date.now() > deadline) throw new Error(`crash script never reached the kill point:\n${stderr}`);
 			await sleep(20);
 		}
