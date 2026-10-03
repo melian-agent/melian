@@ -73,6 +73,26 @@ describe.each(sourceKinds)("loadStandards from the %s", (kind) => {
 		]);
 	});
 
+	it("follows an import in running text, but not in code or an email address", async () => {
+		writeFiles(repo, {
+			"AGENTS.md": lines(
+				"# Root rules",
+				"Read @docs/guide.md before you start.",
+				"Write to tal@docs/more.md, or run `cat @docs/app-guide.md`.",
+				"~~~",
+				"@docs/more.md",
+				"~~~",
+				"The @docs folder is not an import.",
+			),
+		});
+		const sections = await load("README.md");
+		expect(sections.map(({ path, importedBy }) => ({ path, importedBy }))).toEqual([
+			{ path: "AGENTS.md", importedBy: undefined },
+			{ path: "docs/guide.md", importedBy: "AGENTS.md" },
+			{ path: ".melian/standards/naming.md", importedBy: undefined },
+		]);
+	});
+
 	it("keeps a CLAUDE.md that has content of its own", async () => {
 		writeFiles(repo, { "CLAUDE.md": lines("# Claude-only notes", "@AGENTS.md") });
 		const sections = await load("README.md");
