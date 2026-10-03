@@ -10,7 +10,7 @@ A pull request on melian-agent/melian is reviewed by `melian review` run against
 
 ### Critical path
 
-1. `[ ]` **Scaffold.** npm workspaces, Biome, Vitest, TypeScript configuration, package skeletons from the layout in design.md, and `npm run check` running Biome, type checking, dependency audit, and tests. Unblocks everything landing as commits that pass the gate.
+1. `[x]` **Scaffold.** npm workspaces, Biome, Vitest, TypeScript configuration, package skeletons from the layout in design.md, and `npm run check` running Biome, type checking, dependency audit, and tests. Unblocks everything landing as commits that pass the gate.
 2. `[ ]` **Pi Durable spike.** Open a harness on SQLite, run one task with a checkpoint, spawn one child conversation, call one TypeBox tool, kill the process mid-task, resume. Pin the exact version and wrap it behind one internal module. The largest unknown on the path; do it before any domain code assumes the API.
 3. `[ ]` **Changeset and configuration.** Resolve a git range to base, head, files, hunks. Load `melian.yaml` with nearest-first layering. Load `AGENTS.md` as the standards section. Ranges only; no pull request fetching yet.
 4. `[ ]` **Findings.** SARIF-plus-extensions schema, stable IDs, the findings document, terminal and JSON rendering. Cause classification by location heuristic for now.
@@ -65,4 +65,5 @@ Steps to be written when milestone 2 closes.
 
 Newest first. One line per entry: date, what changed, link to the pull request where one exists.
 
+- 2026-10-03: Step 1 scaffold opened as a pull request: workspaces under the `@melian-agent` npm scope, Node floor 22.19.0 matching pi-durable, Biome, Vitest, TypeBox pinned to pi-durable's version, `npm run check`, CI on Node 22 and 24, branch protection on `main`, nine milestone issues.
 - 2026-10-03: Plan created. Design settled; no code yet.
