@@ -94,7 +94,7 @@ The keys a `melian.yaml` accepts, all optional:
 | `models` | `light`, `medium`, `heavy`, or `decision` to `model` and `fallbacks` | none |
 | `knowledge` | `writeBack`, a boolean | `false` |
 | `decisions` | `provider`, and `thresholds` from question name to a `drop` and `accept` band between 0 and 1 | no provider, no thresholds |
-| `ruleAliases` | rule ID to the rule IDs other checks report the same problem under | none |
+| `ruleAliases` | rule ID that owns a defect to the rule IDs other checks report it under | none |
 
 Lenses are a map keyed by name rather than `enable` and `disable` lists, so that layering works per lens: a service can disable one lens without restating the root's list. A band layers like any object, so a nearer file may restate only `drop` or only `accept`. A merged band missing either end, or whose `drop` exceeds its `accept`, is an error naming the nearest file that set it.
 
@@ -212,14 +212,19 @@ The resolution a lens stores at report time comes from the configuration the rev
 
 ### Dedupe across sources
 
-The findings document already holds one finding per ID. A static tool and a lens can still report one problem under two IDs, because the rule is part of the ID. Example: ESLint reports `eval(input)` under `security/detect-eval-with-expression` and the security lens reports the same call under `no-eval`; the author would see it twice. `dedupeFindings(findings, configFor)` merges two findings when different checks report them in the same file, on the same normalised snippet at the same occurrence, under one rule or rules that `ruleAliases` lists together:
+The findings document holds one finding per ID, and the rule is part of the ID, so two checks that file one defect under two rules produce two findings. Example: the first live golden run, recorded in `packages/evals/runs/2026-10-03-live-goldens.md`, had the contracts lens report `src/cart.ts:10` as `broken-caller` and the correctness lens report the same line as `unhandled-error`; ESLint and the security lens do the same with `security/detect-eval-with-expression` and `no-eval`. The author would read each defect twice.
+
+`dedupeFindings(findings, configFor)` treats two findings as one defect when different checks report them in the same file, on the same normalised snippet at the same occurrence, over overlapping lines, whatever their rules. Findings from one check never merge: a lens that reports two rules on one line means two defects.
+
+One finding speaks for each defect. `ruleAliases` decides first: a key names the rule that owns a defect, and its list the rules other checks file it under.
 
 ```yaml
 ruleAliases:
+  broken-caller: [unhandled-error]
   no-eval: [security/detect-eval-with-expression, lint/security/noGlobalEval]
 ```
 
-A key and its list form one group; any two rules in a group match. The finding of higher severity stays, the lower ID on a tie, and lists each merged finding's ID, rule, and check in `properties.alsoReportedAs`. A finding without a snippet never merges. There is no fuzzy matching: a static tool that flags line 12 and a lens that flags lines 12 to 14 stay two findings.
+With that table, the contracts lens's `broken-caller` speaks for the defect above. Without an owner among the defect's rules, the most severe finding speaks, the lower ID on a tie. The speaker takes the highest severity any of them reported, with its level to match, and lists each other finding's ID, rule, and check in `properties.alsoReportedAs`. A finding without a snippet never merges, and there is no fuzzy matching: a static tool that flags `eval(input)` and a lens that flags the three lines around it have different snippets and stay two findings.
 
 ### The verdict
 

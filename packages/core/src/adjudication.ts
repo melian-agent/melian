@@ -1,5 +1,5 @@
 import type { MelianConfig, Resolution, Severity } from "./config.ts";
-import { type AlsoReportedAs, type Finding, normaliseSnippet } from "./findings.ts";
+import { type AlsoReportedAs, type Finding, levelForSeverity, normaliseSnippet } from "./findings.ts";
 
 /** The resolutions from strictest to most lenient. */
 export const resolutionOrder: readonly Resolution[] = ["block", "acknowledge", "advisory", "silent"];
@@ -36,14 +36,6 @@ export function applyResolutions(findings: readonly Finding[], configFor: Config
 
 const rank: Readonly<Record<Severity, number>> = { P0: 0, P1: 1, P2: 2, P3: 3, nit: 4 };
 
-function aliased(left: string, right: string, aliases: MelianConfig["ruleAliases"]): boolean {
-	if (left === right) return true;
-	return Object.entries(aliases).some(([rule, others]) => {
-		const group = [rule, ...others];
-		return group.includes(left) && group.includes(right);
-	});
-}
-
 // Where a finding sits: its file, its normalised snippet, and which of the identical snippets in that file it is.
 function siteOf(finding: Finding): string | undefined {
 	const { path, occurrence } = finding.properties;
@@ -51,52 +43,93 @@ function siteOf(finding: Finding): string | undefined {
 	return snippet === "" ? undefined : JSON.stringify([path, snippet, occurrence]);
 }
 
+function lines(finding: Finding): [number, number] {
+	const { startLine, endLine = startLine } = finding.locations[0]!.physicalLocation.region;
+	return [startLine, endLine];
+}
+
+function overlap(left: Finding, right: Finding): boolean {
+	const [leftStart, leftEnd] = lines(left);
+	const [rightStart, rightEnd] = lines(right);
+	return leftStart <= rightEnd && rightStart <= leftEnd;
+}
+
+function strongerFirst(a: Finding, b: Finding): number {
+	const { severity: left, id: leftId } = a.properties;
+	const { severity: right, id: rightId } = b.properties;
+	return rank[left] - rank[right] || (leftId < rightId ? -1 : leftId > rightId ? 1 : 0);
+}
+
 function reportOf(finding: Finding): AlsoReportedAs {
 	return { id: finding.properties.id, ruleId: finding.ruleId, check: finding.properties.source.check };
 }
 
+// The finding that speaks for a defect: one whose rule `ruleAliases` names as the owner of another member's rule,
+// else the most severe.
+function keeperOf(defect: readonly Finding[], aliases: MelianConfig["ruleAliases"]): Finding {
+	const owners = defect.filter((finding) =>
+		(Object.hasOwn(aliases, finding.ruleId) ? aliases[finding.ruleId]! : []).some((alias) =>
+			defect.some((other) => other.ruleId === alias),
+		),
+	);
+	return [...(owners.length > 0 ? owners : defect)].sort(strongerFirst)[0]!;
+}
+
 /**
- * Merges findings that two checks reported for one problem. Two findings are one when different checks report them in
- * the same file, on the same normalised snippet at the same occurrence, under the same rule or rules that
- * `ruleAliases` in the configuration at that path lists together. The finding of higher severity stays, the lower ID
- * on a tie, and records each merged finding in `properties.alsoReportedAs`. A finding without a snippet is never
- * merged. Returns the findings that stay, in input order.
+ * Merges findings that different checks reported for one defect. Two findings are one defect when different checks
+ * report them in the same file, on the same normalised snippet at the same occurrence, over overlapping lines,
+ * whatever their rules: two lenses that file one broken caller under `broken-caller` and `unhandled-error` describe
+ * one defect. Findings from one check stay apart, since a check that reports two rules on one line means two defects.
+ *
+ * One finding speaks for each defect. `ruleAliases` in the configuration at its path decides first: a finding whose
+ * rule is a key listing another member's rule is preferred, so a repository can say the defect belongs to the
+ * contracts lens. Otherwise the most severe stays, the lower ID on a tie. The finding that stays takes the highest
+ * severity among them, and lists each other's ID, rule, and check in `properties.alsoReportedAs`. A finding without a
+ * snippet is never merged. Returns the findings that stay, in input order.
  */
 export function dedupeFindings(
 	findings: readonly Finding[],
 	configFor: (path: string) => Pick<MelianConfig, "ruleAliases">,
 ): Finding[] {
-	const strongestFirst = [...findings].sort(
-		(a, b) =>
-			rank[a.properties.severity] - rank[b.properties.severity] ||
-			(a.properties.id < b.properties.id ? -1 : a.properties.id > b.properties.id ? 1 : 0),
-	);
-	const kept = new Map<Finding, Finding[]>();
-	for (const finding of strongestFirst) {
+	const defects: Finding[][] = [];
+	for (const finding of [...findings].sort(strongerFirst)) {
 		const site = siteOf(finding);
-		const { ruleAliases } = configFor(finding.properties.path);
-		const reporters = (members: Finding[]) =>
-			members.some(
-				(member) =>
-					member.properties.source.check !== finding.properties.source.check &&
-					aliased(member.ruleId, finding.ruleId, ruleAliases),
-			);
+		const check = finding.properties.source.check;
 		const into =
 			site === undefined
 				? undefined
-				: [...kept].find(([keeper, members]) => siteOf(keeper) === site && reporters([keeper, ...members]));
-		if (into === undefined) kept.set(finding, []);
-		else into[1].push(finding);
+				: defects.find(
+						(defect) =>
+							siteOf(defect[0]!) === site &&
+							defect.every((member) => member.properties.source.check !== check) &&
+							defect.some((member) => overlap(member, finding)),
+					);
+		if (into === undefined) defects.push([finding]);
+		else into.push(finding);
+	}
+	const speakers = new Map<Finding, Finding>();
+	for (const defect of defects) {
+		if (defect.length === 1) {
+			speakers.set(defect[0]!, defect[0]!);
+			continue;
+		}
+		const keeper = keeperOf(defect, configFor(defect[0]!.properties.path).ruleAliases);
+		const severity = defect[0]!.properties.severity;
+		const alsoReportedAs = [
+			...(keeper.properties.alsoReportedAs ?? []),
+			...defect
+				.filter((member) => member !== keeper)
+				.flatMap((member) => [reportOf(member), ...(member.properties.alsoReportedAs ?? [])]),
+		];
+		speakers.set(keeper, {
+			...keeper,
+			level: levelForSeverity(severity),
+			properties: { ...keeper.properties, severity, alsoReportedAs },
+		});
 	}
 	return findings.flatMap((finding) => {
-		const merged = kept.get(finding);
-		if (merged === undefined) return [];
-		if (merged.length === 0) return [finding];
-		const alsoReportedAs = [
-			...(finding.properties.alsoReportedAs ?? []),
-			...merged.flatMap((each) => [reportOf(each), ...(each.properties.alsoReportedAs ?? [])]),
-		];
-		return [{ ...finding, properties: { ...finding.properties, alsoReportedAs } }];
+		const speaker = speakers.get(finding);
+		return speaker === undefined ? [] : [speaker];
 	});
 }
 

@@ -129,7 +129,7 @@ export interface MelianConfig {
 	readonly models: Readonly<Partial<Record<LensTier | "decision", ModelRoute>>>;
 	readonly knowledge: { readonly writeBack: boolean };
 	readonly decisions: { readonly provider?: string; readonly thresholds: Readonly<Record<string, Band>> };
-	/** Rule ID to the rule IDs other checks report the same problem under, so adjudication can merge their findings. */
+	/** Rule ID that owns a defect to the rule IDs other checks report it under; adjudication keeps the owner's finding. */
 	readonly ruleAliases: Readonly<Record<string, readonly string[]>>;
 }
 

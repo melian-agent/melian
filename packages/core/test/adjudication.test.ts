@@ -4,6 +4,7 @@ import {
 	createFinding,
 	dedupeFindings,
 	defaultConfig,
+	type Finding,
 	type FindingInput,
 	loadConfig,
 	type MelianConfig,
@@ -107,23 +108,84 @@ describe("dedupeFindings", () => {
 		expect(parseFinding(kept)).toEqual(kept);
 	});
 
-	it("keeps the static tool's finding when it is the more severe", () => {
+	it("keeps the more severe finding when no alias names an owner", () => {
 		const severe = finding({ ...eslintInput, severity: "P0" });
-		const deduped = dedupeFindings([lens, severe], () => aliases);
+		const deduped = dedupeFindings([lens, severe], () => defaultConfig);
 		expect(deduped.map((each) => each.properties.source.check)).toEqual(["static.eslint"]);
 		expect(deduped[0]!.properties.alsoReportedAs).toEqual([
 			{ id: lens.properties.id, ruleId: "no-eval", check: "lens.security" },
 		]);
 	});
 
-	it("keeps both without an alias, at another occurrence, or from the same check", () => {
-		expect(dedupeFindings([eslint, lens], () => defaultConfig)).toHaveLength(2);
+	it("keeps the alias's owner and raises it to the highest severity reported", () => {
+		const severe = finding({ ...eslintInput, severity: "P0" });
+		const [kept, ...rest] = dedupeFindings([lens, severe], () => aliases);
+		expect(rest).toEqual([]);
+		expect(kept).toMatchObject({ ruleId: "no-eval", level: "error", properties: { severity: "P0" } });
+		expect(parseFinding(kept)).toEqual(kept);
+	});
+
+	it("keeps both at another occurrence or from the same check", () => {
 		const second = finding({ ...eslintInput, occurrence: 1 });
 		expect(dedupeFindings([second, lens], () => aliases)).toHaveLength(2);
 		const sameCheck = finding({ ...eslintInput, source: { check: "lens.security" } });
 		expect(dedupeFindings([sameCheck, lens], () => aliases)).toHaveLength(2);
 	});
+
+	// The first live golden run: two lenses filed one broken caller in src/cart.ts under different rules.
+	describe("two lenses reporting one defect under different rules", () => {
+		const evidence = "src/price.ts:1 makes currency a required second parameter of formatPrice";
+		const atCart = {
+			file: "src/cart.ts",
+			startLine: 10,
+			endLine: 10,
+			startColumn: undefined,
+			endColumn: undefined,
+			snippet: `\treturn \`Total: \${formatPrice(total)}\`;`,
+			occurrence: 0,
+			cause: { evidence },
+			severity: "P0",
+		} as const;
+		const brokenCaller = finding({
+			...atCart,
+			rule: "broken-caller",
+			message: "summary still calls formatPrice(total) with one argument",
+			source: { check: "lens.contracts", version: "1" },
+		});
+		const unhandledError = finding({
+			...atCart,
+			rule: "unhandled-error",
+			message: "summary still calls formatPrice(total) with one argument, but currency is now required",
+			source: { check: "lens.correctness", version: "1" },
+		});
+
+		it("merges them without any alias", () => {
+			const deduped = dedupeFindings([brokenCaller, unhandledError], () => defaultConfig);
+			expect(deduped).toHaveLength(1);
+			const other = deduped[0]!.ruleId === "broken-caller" ? unhandledError : brokenCaller;
+			expect(deduped[0]!.properties.alsoReportedAs).toEqual([reportOf(other)]);
+		});
+
+		it("keeps the contracts lens's finding when the alias table says the defect is its", () => {
+			const owned = { ruleAliases: { "broken-caller": ["unhandled-error"] } };
+			for (const order of [
+				[brokenCaller, unhandledError],
+				[unhandledError, brokenCaller],
+			]) {
+				const [kept, ...rest] = dedupeFindings(order, () => owned);
+				expect(rest).toEqual([]);
+				expect(kept!.properties.id).toBe(brokenCaller.properties.id);
+				expect(kept!.properties.alsoReportedAs).toEqual([
+					{ id: unhandledError.properties.id, ruleId: "unhandled-error", check: "lens.correctness" },
+				]);
+			}
+		});
+	});
 });
+
+function reportOf(finding: Finding) {
+	return { id: finding.properties.id, ruleId: finding.ruleId, check: finding.properties.source.check };
+}
 
 describe("adjudicate", () => {
 	const ran = (name: string) => ({ name, status: "ran" }) as const;
