@@ -469,15 +469,20 @@ function checkBands(config: MelianConfig, layers: readonly { site: Site; layer: 
 	}
 }
 
-// The effective configuration for each path a check visits. Layering depends only on a file's directory, so each
-// directory is loaded once.
+// The effective configuration for each path a check visits. Layering depends only on the directory holding the path,
+// so each directory is loaded once, as a directory: a head that turns a directory into a file of the same name must
+// not decide which `melian.yaml` files apply to its neighbours.
 export function configLookup(repoRoot: string, source: RepositorySource): (path: string) => Promise<MelianConfig> {
 	const loaded = new Map<string, Promise<MelianConfig>>();
+	let reader: Promise<SourceReader> | undefined;
 	return (path) => {
-		const directory = posix.dirname(path);
+		const directory = repoPath(repoRoot, posix.dirname(path));
 		let config = loaded.get(directory);
 		if (config === undefined) {
-			config = loadConfig(repoRoot, source, path).then(({ config }) => config);
+			reader ??= openSource(repoRoot, source).catch(fromSource(repoRoot));
+			config = reader
+				.then((opened) => loadLayers(opened, directoriesUpToRoot(directory, true)))
+				.then(({ config }) => config);
 			loaded.set(directory, config);
 		}
 		return config;
@@ -499,8 +504,13 @@ export async function loadConfig(repoRoot: string, source: RepositorySource, pat
 	const target = repoPath(repoRoot, path);
 	const reader = await openSource(repoRoot, source).catch(fromSource(repoRoot));
 	const kind = await reader.exists(target).catch(fromSource(target));
+	return loadLayers(reader, directoriesUpToRoot(target, kind === "directory"));
+}
+
+// Every `melian.yaml` in `directories`, nearest first, merged over the defaults.
+async function loadLayers(reader: SourceReader, directories: readonly string[]): Promise<LoadedConfig> {
 	const layers: { site: Site; layer: MelianYaml }[] = [];
-	for (const directory of directoriesUpToRoot(target, kind === "directory")) {
+	for (const directory of directories) {
 		const file = posix.join(directory, melianPaths.config);
 		const site = { file, where: reader.label(file) };
 		const layer = await readLayer(reader, site);

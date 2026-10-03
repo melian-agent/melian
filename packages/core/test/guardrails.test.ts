@@ -117,6 +117,31 @@ describe("forbidden-paths", () => {
 		expect(findings.map((finding) => finding.properties.path)).toEqual(["dist/app.js"]);
 	});
 
+	it("judges a path by its directory's files even when the head turns a directory into a file", async () => {
+		const base = {
+			"melian.yaml": lines(
+				quiet,
+				"  forbidden-paths:",
+				"    rules:",
+				"      keys:",
+				"        paths: ['*.pem']",
+				"        message: no keys",
+			),
+			"legacy/melian.yaml": lines("guardrails:", "  forbidden-paths:", "    enabled: false"),
+			"legacy/x.txt": lines("x"),
+		};
+		const baseCommit = commit(base, "base");
+		gitIn(repo, "rm", "--quiet", "-r", "legacy");
+		const headCommit = commit({ legacy: lines("now a file"), "server.pem": lines("secret") }, "head");
+		const { revision } = await resolveRange(repo, `${baseCommit}..${headCommit}`);
+		const { findings } = await evaluateGuardrails({
+			repoRoot: repo,
+			revision,
+			source: { kind: "revision", commit: baseCommit },
+		});
+		expect(findings.map((finding) => finding.properties.path)).toEqual(["server.pem"]);
+	});
+
 	it("refuses a rule that the merged files leave without its message", async () => {
 		writeFiles(repo, {
 			"melian.yaml": lines("guardrails:", "  forbidden-paths:", "    rules:", "      x:", "        paths: [a]"),
