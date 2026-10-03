@@ -227,7 +227,13 @@ async function readLayer(source: SourceReader, site: Site): Promise<MelianYaml |
 	const document = parseDocument(text);
 	const problem = document.errors[0] ?? document.warnings[0];
 	if (problem !== undefined) throw configError("invalidYaml", site, problem.message, { cause: problem });
-	const value: unknown = document.toJS() ?? {};
+	// toJS throws a bare ReferenceError when aliases expand past its limit, the defence against a billion-laughs file.
+	let value: unknown;
+	try {
+		value = document.toJS() ?? {};
+	} catch (cause) {
+		throw configError("invalidYaml", site, (cause as Error).message, { cause });
+	}
 	rejectReservedKeys(site, value);
 	validate(site, value, melianYamlSchema);
 	return anchorLensPaths(posix.dirname(site.file), value as MelianYaml);

@@ -209,6 +209,15 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		expect(await rejection(load("a.ts"))).toMatchObject({ code: "invalidYaml" });
 	});
 
+	it("rejects a YAML alias bomb as invalid YAML naming the file", async () => {
+		const bomb = ["a: &a [x, x, x, x, x, x, x, x, x]"];
+		for (const [name, previous] of ["ba", "cb", "dc", "ed", "fe", "gf"].map((pair) => [pair[0], pair[1]])) {
+			bomb.push(`${name}: &${name} [${Array(9).fill(`*${previous}`).join(", ")}]`);
+		}
+		writeFiles(repo, { "melian.yaml": lines(...bomb) });
+		expect(await rejection(load("a.ts"))).toMatchObject({ code: "invalidYaml", file: "melian.yaml" });
+	});
+
 	it("lets a nearer file restate one end of a threshold band", async () => {
 		writeFiles(repo, {
 			"melian.yaml": lines("decisions:", "  thresholds:", "    real:", "      drop: 0.2", "      accept: 0.8"),
