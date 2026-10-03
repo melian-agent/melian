@@ -485,7 +485,7 @@ docs/
 
 ## Decision log
 
-[decisions.md](decisions.md) records every decision, what was chosen, and why, one row each.
+[decisions/](decisions/) records every decision, what was chosen, and why, one file each.
 
 ## Open questions
 

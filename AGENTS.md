@@ -1,6 +1,6 @@
 # Working in Melian
 
-Read [docs/design.md](docs/design.md) before changing anything. It holds the decisions and the reasons for them. If you change a decision, change the document in the same commit and append a row to [docs/decisions.md](docs/decisions.md), the decision log. [docs/design-implementation-plan.md](docs/design-implementation-plan.md) tracks what is built and what is deferred; update its status, and add an entry file to [docs/progress-log/](docs/progress-log/), in the same commit as the work.
+Read [docs/design.md](docs/design.md) before changing anything. It holds the decisions and the reasons for them. If you change a decision, change the document in the same commit and add a decision file to [docs/decisions/](docs/decisions/), the decision log. [docs/design-implementation-plan.md](docs/design-implementation-plan.md) tracks what is built and what is deferred; update its status, and add an entry file to [docs/progress-log/](docs/progress-log/), in the same commit as the work.
 
 Melian is a TypeScript monorepo built on Pi Durable. It follows Pi's conventions wherever it has no reason to differ, so a contributor moving between the two repositories finds nothing surprising.
 
@@ -69,7 +69,7 @@ A delegated agent shares your checkout. Do not `git checkout`, `git pull`, `git 
 
 When you learn something non-obvious while working on Melian, such as a trap, a contract, a tooling gotcha, or a verification technique that actually works, record it in this repository as part of the same change: in this file, in `docs/`, or in the closest relevant document. Agent memory is private and goes stale. The repository is reviewed and inherited by everyone who touches it.
 
-The decision log, [docs/decisions.md](docs/decisions.md), and the progress log, [docs/progress-log/](docs/progress-log/), are append-only and merged by union, so git keeps every branch's additions instead of reporting a conflict. Add a row or an entry on a line of its own; never edit one in place. To change a decision, append a row that names the one it replaces.
+The decision log, [docs/decisions/](docs/decisions/), and the progress log, [docs/progress-log/](docs/progress-log/), are append-only and merged by union, so git keeps every branch's additions instead of reporting a conflict. Add a row or an entry on a line of its own; never edit one in place. To change a decision, append a row that names the one it replaces.
 
 ## Learnings
 
