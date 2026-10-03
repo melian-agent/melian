@@ -87,13 +87,33 @@ const classEscapes: Readonly<Record<string, Test>> = {
 };
 const controlEscapes: Readonly<Record<string, number>> = { t: 9, n: 10, v: 11, f: 12, r: 13, "0": 0 };
 
+// The other cases of a code unit that has them in one code unit, as RegExp's i flag folds.
+function caseVariants(code: number): number[] {
+	const char = String.fromCharCode(code);
+	return [char.toLowerCase(), char.toUpperCase()]
+		.filter((variant) => variant.length === 1 && variant !== char)
+		.map((variant) => variant.charCodeAt(0));
+}
+
+const folded =
+	(test: Test): Test =>
+	(code) =>
+		test(code) || caseVariants(code).some(test);
+
 class Parser {
 	readonly source: string;
+	readonly ignoreCase: boolean;
 	position = 0;
 	depth = 0;
 
-	constructor(source: string) {
+	constructor(source: string, ignoreCase: boolean) {
 		this.source = source;
+		this.ignoreCase = ignoreCase;
+	}
+
+	// A literal or a class's members, folded when matching ignores case. A negated class folds before it negates.
+	private literal(test: Test): Test {
+		return this.ignoreCase ? folded(test) : test;
 	}
 
 	parse(): Node {
@@ -185,7 +205,7 @@ class Parser {
 			case "}":
 				throw new Refused(`unbalanced "${char}" at offset ${this.position - 1}; escape it with a backslash`);
 			default:
-				return { kind: "char", test: exactly(char.charCodeAt(0)) };
+				return { kind: "char", test: this.literal(exactly(char.charCodeAt(0))) };
 		}
 	}
 
@@ -194,7 +214,9 @@ class Parser {
 			const rest = this.source.slice(this.position);
 			if (rest.startsWith("?:")) this.position += 2;
 			else if (/^\?<[A-Za-z_$][\w$]*>/.test(rest)) this.position = this.source.indexOf(">", this.position) + 1;
-			else throw this.refuse("lookahead and lookbehind cannot run in linear time");
+			else if (/^\?[a-z-]+[:)]/.test(rest)) {
+				throw this.refuse("inline flags such as (?i) are not supported; set ignoreCase: true on the rule instead");
+			} else throw this.refuse("lookahead and lookbehind cannot run in linear time");
 		}
 		if (++this.depth > maxDepth) throw this.refuse(`groups may not nest more than ${maxDepth} deep`);
 		const inner = this.alternation();
@@ -211,7 +233,7 @@ class Parser {
 		if (char === "b") return { kind: "assert", at: "boundary" };
 		if (char === "B") return { kind: "assert", at: "notBoundary" };
 		const shorthand = classEscapes[char];
-		return { kind: "char", test: shorthand ?? exactly(this.escapedCode(char)) };
+		return { kind: "char", test: shorthand ?? this.literal(exactly(this.escapedCode(char))) };
 	}
 
 	// The code unit a single-character escape names, such as \t, \x41, or \. for a literal dot.
@@ -256,7 +278,7 @@ class Parser {
 			}
 		}
 		this.position++;
-		const member: Test = (code) => tests.some((test) => test(code));
+		const member: Test = this.literal((code) => tests.some((test) => test(code)));
 		return { test: negated ? not(member) : member, cost: Math.max(tests.length, 1) };
 	}
 
@@ -433,10 +455,11 @@ function build(source: string, node: Node, anchored: boolean): LinearPattern {
  * Compiles a regular expression for linear-time matching. Supports literals, `.`, classes with ranges, `\d \w \s` and
  * their negations, `\b \B`, `^ $`, groups, alternation, and the quantifiers `* + ? {n} {n,} {n,m}`, greedy or lazy.
  * Refuses backreferences and lookaround, which no linear-time engine can run, and anything else it does not know.
+ * `ignoreCase` matches as RegExp's `i` flag does without `u`.
  */
-export function compilePattern(source: string): PatternResult {
+export function compilePattern(source: string, options: { readonly ignoreCase?: boolean } = {}): PatternResult {
 	try {
-		return { ok: true, pattern: build(source, new Parser(source).parse(), false) };
+		return { ok: true, pattern: build(source, new Parser(source, options.ignoreCase === true).parse(), false) };
 	} catch (error) {
 		if (error instanceof Refused) return { ok: false, reason: error.reason };
 		throw error;

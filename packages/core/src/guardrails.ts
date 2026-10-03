@@ -1,6 +1,12 @@
 import { analyserOf, switchOffs } from "./analyser.ts";
 import type { Revision } from "./changeset.ts";
-import { type ConfigLookup, configLookup, type MelianConfig, type Severity } from "./config.ts";
+import {
+	type ConfigLookup,
+	configLookup,
+	type ForbiddenPatternRule,
+	type MelianConfig,
+	type Severity,
+} from "./config.ts";
 import type { ChangedFile, Hunk } from "./diff.ts";
 import { CheckError } from "./errors.ts";
 import {
@@ -283,12 +289,14 @@ async function forbiddenPatterns(
 	notes: string[],
 ): Promise<Hit[]> {
 	const compiled = new Map<string, LinearPattern>();
-	const patternFor = (source: string) => {
-		let pattern = compiled.get(source);
+	const patternFor = ({ pattern: source, ignoreCase = false }: ForbiddenPatternRule) => {
+		const key = `${ignoreCase ? "i" : "-"}${source}`;
+		let pattern = compiled.get(key);
 		if (pattern === undefined) {
 			// loadConfig refused every pattern that does not compile when it read the file.
-			pattern = (compilePattern(source) as Extract<ReturnType<typeof compilePattern>, { ok: true }>).pattern;
-			compiled.set(source, pattern);
+			const result = compilePattern(source, { ignoreCase });
+			pattern = (result as Extract<typeof result, { ok: true }>).pattern;
+			compiled.set(key, pattern);
 		}
 		return pattern;
 	};
@@ -357,7 +365,7 @@ async function forbiddenPatterns(
 		const matches = within.flatMap((each) => {
 			// A CRLF file's lines end in "\r", which `$` would otherwise have to match past.
 			const line = each.text.endsWith("\r") ? each.text.slice(0, -1) : each.text;
-			const matched = each.rules.filter(([, rule]) => patternFor(rule.pattern).test(line));
+			const matched = each.rules.filter(([, rule]) => patternFor(rule).test(line));
 			return matched.length === 0 ? [] : [{ hunk: each.hunk, added: each, matched }];
 		});
 		if (matches.length === 0) continue;

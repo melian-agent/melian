@@ -343,6 +343,20 @@ describe("forbidden-patterns", () => {
 		expect(summary(findings).map(({ file, line }) => [file, line])).toEqual([["a.test.ts", 1]]);
 	});
 
+	it("ignores case when a rule asks it to", async () => {
+		const todo = lines(
+			quiet,
+			"  forbidden-patterns:",
+			"    rules:",
+			"      todo:",
+			"        pattern: '\\btodo\\b'",
+			"        ignoreCase: true",
+			"        message: no todo",
+		);
+		const { findings } = await guardrails({ "melian.yaml": todo }, { "c.ts": lines("// TODO later", "// ToDo") });
+		expect(findings.map((finding) => finding.locations[0]!.physicalLocation.region.startLine)).toEqual([1, 2]);
+	});
+
 	it("matches $ at the end of a CRLF line", async () => {
 		const todo = lines(
 			quiet,

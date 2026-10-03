@@ -85,6 +85,24 @@ describe("compilePattern", () => {
 		}
 	});
 
+	it("ignores case as RegExp's i flag does, folding before a class negates", () => {
+		const sources = ["todo", "[a-c]x", "[^a]", "\\bFIXME\\b", "\\x41", "[^A-Z]+"];
+		const texts = ["TODO", "ToDo", "Bx", "A", "a", "b", "fixme now", "a", "ABC", "abc", "é", "É"];
+		for (const source of sources) {
+			const ours = compilePattern(source, { ignoreCase: true });
+			if (!ours.ok) throw new Error(ours.reason);
+			const theirs = new RegExp(source, "i");
+			for (const text of texts) {
+				expect({ source, text, matched: ours.pattern.test(text) }).toEqual({
+					source,
+					text,
+					matched: theirs.test(text),
+				});
+			}
+		}
+		expect(refusal("(?i)todo")).toMatch(/set ignoreCase: true on the rule/);
+	});
+
 	it("refuses backreferences and lookaround, which no linear-time engine runs", () => {
 		expect(refusal("(a)\\1")).toMatch(/backreferences/);
 		expect(refusal("(?<x>a)\\k<x>")).toMatch(/backreferences/);

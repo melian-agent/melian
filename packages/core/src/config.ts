@@ -119,6 +119,7 @@ export const melianYamlSchema = Type.Object(
 					"forbidden-patterns": Type.Optional(
 						guardrail({
 							pattern: Type.Optional(name),
+							ignoreCase: Type.Optional(Type.Boolean()),
 							paths: Type.Optional(globs),
 							message: Type.Optional(name),
 						}),
@@ -220,6 +221,8 @@ export interface RequiredFileRule {
  */
 export interface ForbiddenPatternRule {
 	readonly pattern: string;
+	/** Match as RegExp's `i` flag does. */
+	readonly ignoreCase?: boolean;
 	readonly paths?: readonly string[];
 	readonly message: string;
 }
@@ -423,9 +426,11 @@ function checkRequire(site: Site, layer: MelianYaml): void {
 
 // A pattern is refused when its file is read, so the error names the file rather than failing a review later.
 function checkPatterns(site: Site, layer: MelianYaml): void {
-	for (const [rule, { pattern }] of Object.entries(layer.guardrails?.["forbidden-patterns"]?.rules ?? {})) {
+	for (const [rule, { pattern, ignoreCase }] of Object.entries(
+		layer.guardrails?.["forbidden-patterns"]?.rules ?? {},
+	)) {
 		if (pattern === undefined) continue;
-		const compiled = compilePattern(pattern);
+		const compiled = compilePattern(pattern, { ignoreCase });
 		if (compiled.ok) continue;
 		const key = `guardrails.forbidden-patterns.rules.${rule}.pattern`;
 		throw configError("invalidValue", site, `"${key}" is not a safe pattern: ${compiled.reason}`, { key });
