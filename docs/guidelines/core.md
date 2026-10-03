@@ -109,6 +109,10 @@ This is a placeholder. The design classifies cause by evidence through the decis
 
 A pure deletion has no new lines, so nothing is inside it. Code beside a deletion is `affected`, and the lens must say why.
 
+### Rendering
+
+`renderFindingsJson` writes the SARIF log; `renderFindingsTerminal` writes plain text grouped by file in path order, and within a file by severity, then line, then ID. The terminal output carries no escape codes unless `color` is set, so a pipe or a log file receives plain text. Hosts decide whether to colour; core never reads `isTTY` or `NO_COLOR`.
+
 ## Tests
 
 - Run the package's tests with `npm test --workspace @melian-agent/core`, or one file with `npx vitest --run packages/core/test/changeset.test.ts` from the repository root.
@@ -116,3 +120,4 @@ A pure deletion has no new lines, so nothing is inside it. Code beside a deletio
 - Isolate git from the developer's configuration. `isolatedGitEnv` points `GIT_CONFIG_GLOBAL` at `/dev/null` and sets an author; without it, a developer who signs commits sees every fixture commit fail. Stub the same variables into `process.env` while code under test runs git.
 - Take temporary directories through `temporaryDirectory()`, which resolves symlinks. On macOS the system temporary directory is a symlink, and git reports the resolved path, so a comparison with the unresolved one fails.
 - Assert exact hunk ranges against a diff small enough to check by eye.
+- Golden files live in `test/golden/`, compared with Vitest's `toMatchFileSnapshot`. A mismatch fails the gate. After a deliberate change, regenerate with `npx vitest --run -u packages/core/test/render.test.ts` and read the diff before committing. They use `.sarif` and `.txt` extensions, which Biome does not format.

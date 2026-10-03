@@ -66,6 +66,7 @@ export {
 	sarifSchemaUri,
 } from "./findings.ts";
 export { melianPaths } from "./paths.ts";
+export { renderFindingsJson, renderFindingsTerminal, type TerminalRenderOptions } from "./render.ts";
 export { loadStandards, type StandardsSection } from "./standards.ts";
 
 export const packageName = "@melian-agent/core";
