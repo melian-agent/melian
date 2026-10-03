@@ -306,6 +306,8 @@ Caveat to state in user documentation: automated use of consumer subscriptions i
 
 The primary host and the only thing the skills call. `melian run`, `melian review <changeset>`, `melian explain <finding>`, `melian dismiss <finding> --reason`. Embeds the durable harness with SQLite storage under `.git/melian/`, one file per changeset. Uses the developer's own credentials.
 
+Publishing from the CLI sets a commit status, context `melian/review`, not a check run, because a user's token cannot create check runs; check runs arrive with the GitHub App on the server and Actions hosts. `passed`, and `findings` with nothing blocking, map to `success` with a description counting the findings; `findings` with a blocking finding maps to `failure`; `not-reviewed` maps to `error` with what did not run. The review itself is posted with the event `COMMENT`, never `APPROVE` or `REQUEST_CHANGES`: Melian never approves, and the status alone says whether anything blocks.
+
 ### Skills
 
 Thin wrappers for Claude Code, Codex, and Pi that invoke the CLI and relay findings. They never run a review with the host agent's model. The Pi skill is a Pi package; the Pi extension adds a `/melian` command over the same CLI.
@@ -399,7 +401,7 @@ A repository that has lived with a commercial reviewer accumulates workarounds i
 
 | Incumbent behaviour | Melian requirement |
 |---|---|
-| Findings on lines outside the diff cannot be posted inline, so they are buried in the review body with no thread to resolve. | `affected` findings get their own threads, anchored to the nearest line in the diff with a link to the affected location. Every finding has a thread, and the findings document records resolution regardless of where GitHub lets it be posted. |
+| Findings on lines outside the diff cannot be posted inline, so they are buried in the review body with no thread to resolve. | A finding outside the diff in a file the change touches, `affected` or `pre-existing`, gets its own thread, anchored to the nearest changed line with a link to its location. GitHub gives a file the change does not touch no line to anchor to, so such a finding goes in the review body under a marker of its own, and the findings document records its resolution regardless of where GitHub lets it be posted. |
 | The check reports green while the review was skipped, rate limited, or never ran. | The check status has three states: passed, findings, and not reviewed. A review that did not complete reports not reviewed, never passed. The durable task state is the source of truth, and the status is derived from it. |
 | Pull requests opened by bots, and pull requests whose base is not the default branch, are silently not reviewed. | Every pull request is reviewed unless configuration excludes it, and an exclusion is reported as not reviewed. Dependency pull requests get a lockfile lens, because a lockfile regeneration is where a major version bump nobody asked for hides. |
 | Open findings are only discoverable through GraphQL review threads, and the REST default page hides the rest. | The findings document is the source of truth and is queryable from the CLI: `melian findings <changeset> --open`. Resolution happens in Melian and is mirrored to GitHub, not the other way round. |
@@ -499,6 +501,7 @@ docs/
 | Git providers | GitHub only behind a provider port in core | Second provider is a package, not a refactor; nothing speculative |
 | Conversation keying | One storage per changeset; Melian maps changeset to storage | Pi mints conversation IDs; matches per-changeset state layout; one writer per changeset |
 | Publication idempotency | Durable published document plus marker check, not memos | Memos are task-scoped and temporary |
+| CLI status | Commit statuses with context `melian/review`; check runs come with the App host | A user token cannot create check runs |
 | Policy and standards source | Read from a git revision chosen by the host: base for pull requests, worktree for maintainer local runs | A head must not rewrite the policy or prompts of its own review |
 | Repository content bounds | Typed errors over size limits, no silent truncation | Unbounded reads are a resource hazard from untrusted input |
 | Severity rubric | Fixed `P0` to `P3` plus `nit` in version one; custom rubrics deferred | A closed set lets configuration be validated and resolution stay deterministic; nobody has asked for another |

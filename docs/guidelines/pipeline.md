@@ -93,6 +93,18 @@ Resolution is per path. With `options.policy`, the source `config` was loaded fr
 
 Check records are the seam with static analysis and guardrails, step 6. A step that runs a check passes `{ name, status, reason?, error? }` in `options.checks`; nothing else about its records matters to adjudication. A check that failed or was skipped makes the verdict `not-reviewed`, so a host must record every check the tier called for, including the ones that never started.
 
+## Publishing
+
+`publishReview({ harness, provider, changeset, pullRequest })` publishes the verdict recorded for a pull request's head through a `ReviewProvider` from core, such as `packages/github`'s. The harness must hold `publishExtension(provider)`, which carries the publish task, `melian.publish`; install it again after a restart so an interrupted publication resumes. It refuses with `PublishError` `staleReview` when the changeset's head is not the pull request's, and `notReviewed` when no verdict is recorded for that head, so a review of a working tree or of an older push is never posted.
+
+The task is not replay-safe: a post and the commit recording it are two steps, and GitHub takes no idempotency key. Two records guard it instead of a memo, which would vanish with the task:
+
+- `PublishedDocument` on the root conversation, keyed by head and then by finding ID, holds the review's ID, every finding open on the pull request with the comment that starts its thread, the findings this revision resolved, each reply, and the status. Each post is recorded in a commit of its own, straight after the post. Unlike the findings and verdict documents it keeps only its latest value and a fork carries it as it stands: a post is a fact about the pull request, and a fork that forgot one would post it again.
+- Melian's markers on the pull request. Before posting anything the document lacks, the task asks the provider for the markers it finds for this head, and records what it finds instead of posting. A crash between a post and its record is the case this covers.
+
+One phase does the work in order: the review, then a reply in each resolved finding's thread, then the status. `planPublication` decides what the review posts against the open findings of the revision published before, and the plan's resolved findings are stored with the review, so a rerun replies to the same ones. A second publish of the same head finds every record and posts nothing. A provider failure ends the task `failed` with everything posted so far recorded, so publishing again resumes. `publishReview` waits for any publish task a crashed run left before creating its own, so two tasks never post for one head at once.
+
+## Contracts that read like mistakes
 
 - A task phase reruns from its start after a crash. Work before the phase's checkpoint commit must be safe to repeat, or guarded by a durable record.
 - A tool's own commit and its result land in separate durable commits, so a crash between them reruns a replay-safe tool and has the model retry an unsafe one. A tool with a durable side effect is therefore an idempotent upsert keyed by a stable ID, such as a finding's, and marked `replay: "safe"`. Otherwise it is not replay-safe, and a durable record guards its side effect. Never guard it with a memo.
