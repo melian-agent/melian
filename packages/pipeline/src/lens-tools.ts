@@ -169,6 +169,9 @@ const search = defineTool({
 	execute: async (args, api, context) => {
 		const review = await headOf(api, api.conversationId, context);
 		const { matches, truncated } = await searchRevision(review.repoRoot, review.head, args);
+		// A single matching line longer than the output bound leaves nothing whole to show; that is not "no matches".
+		if (matches.length === 0 && truncated)
+			return text("[matches found, but their lines are too long to show; narrow the search with path]");
 		if (matches.length === 0) return text("No matches.");
 		const lines = matches.map((match) => `${match.path}:${match.line}: ${match.text}`);
 		return text([...lines, ...(truncated ? ["[more matches not shown; narrow the search]"] : [])].join("\n"));
@@ -264,9 +267,14 @@ async function findingFromCall(
 	}
 	const endLine = args.endLine ?? args.line;
 	if (endLine < args.line) throw new Error(`endLine ${endLine} is before line ${args.line}`);
-	const { content } = await readRevisionFile(review.repoRoot, review.head, path);
+	const { content, truncated } = await readRevisionFile(review.repoRoot, review.head, path);
 	const lines = content.split("\n");
-	if (endLine > lines.length) throw new Error(`${path} has ${lines.length} lines at the head revision`);
+	// A cut file's last line may be partial, and a whole file's final newline leaves an empty element that is no line.
+	if (truncated || lines.at(-1) === "") lines.pop();
+	if (endLine > lines.length) {
+		const known = truncated ? `only its first ${lines.length} lines can be read` : `it has ${lines.length} lines`;
+		throw new Error(`${path}:${endLine} is past what Melian can read at the head revision; ${known}`);
+	}
 	const snippet = lines.slice(args.line - 1, endLine).join("\n");
 	if (snippet.trim() === "") throw new Error(`${path}:${args.line} is blank; point at the code itself`);
 	const located = classifyCause({ file: path, startLine: args.line, endLine }, { files: changedFiles(review) });

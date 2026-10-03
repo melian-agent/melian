@@ -207,6 +207,19 @@ describe("reviewChangeset", () => {
 		expect(toolResults(requests[contracts]![1]!)[0]).not.toContain("src/report.ts:1");
 	});
 
+	it("refuses lines past the end of the file", async () => {
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [call("report_finding", { ...nullDeref, line: 8, endLine: 9 }), fauxAssistantMessage("Done.")],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		expect(await review()).toEqual([]);
+		expect(toolResults(requests[correctness]![1]!)[0]).toContain("src/user.ts:9 is past what Melian can read");
+	});
+
 	it("holds a lens to its severities and rules, and stores a repeated finding once", async () => {
 		const requests = scriptConversations(fake, [
 			{
