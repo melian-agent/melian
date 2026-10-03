@@ -165,6 +165,7 @@ describe("resolveRange", () => {
 			["diff.interHunkContext", "10"],
 			["diff.algorithm", "patience"],
 			["diff.renames", "copies"],
+			["diff.renameLimit", "1"],
 			["diff.submodule", "log"],
 			["diff.noprefix", "true"],
 			["color.diff", "always"],

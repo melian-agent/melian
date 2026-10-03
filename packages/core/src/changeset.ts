@@ -137,6 +137,8 @@ const diffFlags = [
 	"--no-textconv",
 	"--no-relative",
 	"--find-renames",
+	// git's default; a lower diff.renameLimit turns an edited rename into a deletion and an addition.
+	"-l1000",
 	"--diff-algorithm=myers",
 	"--indent-heuristic",
 	"--inter-hunk-context=0",
