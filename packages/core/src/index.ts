@@ -6,6 +6,7 @@ export {
 	type CheckStatus,
 	type ConfigFor,
 	dedupeFindings,
+	type ResolvedFinding,
 	resolutionOrder,
 	resolveFinding,
 	type Verdict,

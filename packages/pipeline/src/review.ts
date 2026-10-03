@@ -301,7 +301,10 @@ export interface ReviewOptions {
 
 /** What {@link reviewChangeset} found and concluded at the head under review. */
 export interface Review {
-	/** The findings reported at the head, as the root conversation's findings document holds them. */
+	/**
+	 * The findings the review's lenses sighted at the head, as the root conversation's findings document holds them:
+	 * without a resolution, which only the verdict carries.
+	 */
 	readonly findings: readonly Finding[];
 	/** The adjudicated outcome: findings merged across sources and resolved per path, grouped, and the review's status. */
 	readonly verdict: Verdict;

@@ -9,13 +9,20 @@ import {
 	loadConfig,
 	type MelianConfig,
 	parseFinding,
+	type Resolution,
 	resolveFinding,
 } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { evalInput } from "./fixtures/findings.ts";
 import { gitIn, isolatedGitEnv, lines, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
 
-const finding = (input: Partial<FindingInput>) => createFinding({ ...evalInput, trigger: undefined, ...input });
+// As a producer stores it: no resolution until adjudication.
+const finding = (input: Partial<FindingInput>) =>
+	createFinding({ ...evalInput, trigger: undefined, resolution: undefined, ...input });
+const resolvedAs = (each: Finding, resolution: Resolution) => ({
+	...each,
+	properties: { ...each.properties, resolution },
+});
 const renamedParameter = { file: "src/api.ts", startLine: 3, snippet: "export function load(userId: string) {" };
 
 describe("resolveFinding", () => {
@@ -39,6 +46,11 @@ describe("resolveFinding", () => {
 			expect(resolveFinding(finding({ severity, cause: "pre-existing" }), strict)).toBe("advisory");
 		}
 		expect(resolveFinding(finding({ severity: "nit", cause: "pre-existing" }), strict)).toBe("silent");
+	});
+
+	it("decides from severity and cause, never from a resolution the finding already carries", () => {
+		expect(resolveFinding(finding({ severity: "P0", resolution: "silent" }), defaultConfig)).toBe("block");
+		expect(resolveFinding(finding({ severity: "nit", resolution: "block" }), defaultConfig)).toBe("silent");
 	});
 });
 
@@ -83,7 +95,7 @@ describe("applyResolutions under layered configuration", () => {
 			"acknowledge",
 			"block",
 		]);
-		expect(findings[1]!.properties.resolution).toBe("block");
+		expect(findings[1]!.properties.resolution).toBeUndefined();
 	});
 });
 
@@ -196,27 +208,42 @@ describe("adjudicate", () => {
 	const ran = (name: string) => ({ name, status: "ran" }) as const;
 	const checks = [ran("lens.correctness"), ran("static.biome")];
 	const blocker = finding({ severity: "P1" });
-	const advisory = finding({ severity: "P3", rule: "naming", resolution: "advisory" });
-	const silent = finding({ severity: "nit", rule: "prefer-const", resolution: "silent" });
+	const advisory = finding({ severity: "P3", rule: "naming" });
+	const silent = finding({ severity: "nit", rule: "prefer-const" });
 
 	it("passes when every check ran and nothing is above silent", () => {
 		const verdict = adjudicate({ findings: [silent], checks, config: defaultConfig });
 		expect(verdict).toMatchObject({ status: "passed", blocking: false, notRun: [] });
-		expect(verdict.findings.silent).toEqual([silent]);
+		expect(verdict.findings.silent).toEqual([resolvedAs(silent, "silent")]);
 	});
 
 	it("reports findings without blocking when nothing resolves to block", () => {
 		const verdict = adjudicate({ findings: [advisory, silent], checks, config: defaultConfig });
 		expect(verdict).toMatchObject({ status: "findings", blocking: false });
-		expect(verdict.findings.advisory).toEqual([advisory]);
+		expect(verdict.findings.advisory).toEqual([resolvedAs(advisory, "advisory")]);
 	});
 
 	it("blocks when a finding resolves to block, and groups by resolution", () => {
 		const verdict = adjudicate({ findings: [silent, advisory, blocker], checks, config: defaultConfig });
 		expect(verdict).toMatchObject({ status: "findings", blocking: true });
 		expect(Object.keys(verdict.findings)).toEqual(["block", "acknowledge", "advisory", "silent"]);
-		expect(verdict.findings.block).toEqual([blocker]);
+		expect(verdict.findings.block).toEqual([resolvedAs(blocker, "block")]);
 		expect(verdict.findings.acknowledge).toEqual([]);
+	});
+
+	it("resolves a finding that arrives without a resolution, rather than drop it or count it silent", () => {
+		expect(blocker.properties.resolution).toBeUndefined();
+		const verdict = adjudicate({ findings: [blocker], checks, config: defaultConfig });
+		expect(verdict).toMatchObject({ status: "findings", blocking: true });
+		expect(verdict.findings.block).toEqual([resolvedAs(blocker, "block")]);
+		expect(verdict.findings.silent).toEqual([]);
+	});
+
+	it("replaces a resolution a finding arrives with", () => {
+		const marked = finding({ severity: "P0", resolution: "silent" });
+		const verdict = adjudicate({ findings: [marked], checks, config: defaultConfig });
+		expect(verdict).toMatchObject({ status: "findings", blocking: true });
+		expect(verdict.findings.block).toEqual([resolvedAs(marked, "block")]);
 	});
 
 	it("is not reviewed when a check failed, even with no findings", () => {
@@ -243,9 +270,9 @@ describe("adjudicate", () => {
 	});
 
 	it("counts a dismissed finding toward neither status nor blocking", () => {
-		const dismissed = createFinding({ ...evalInput, status: "dismissed" });
+		const dismissed = finding({ status: "dismissed" });
 		const verdict = adjudicate({ findings: [dismissed], checks, config: defaultConfig });
-		expect(verdict).toMatchObject({ status: "passed", blocking: false, dismissed: [dismissed] });
+		expect(verdict).toMatchObject({ status: "passed", blocking: false, dismissed: [resolvedAs(dismissed, "block")] });
 	});
 
 	it("resolves per path and dedupes across sources", () => {

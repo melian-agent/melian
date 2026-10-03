@@ -4,12 +4,12 @@ import {
 	type CheckStatus,
 	ConfigError,
 	type ConfigFor,
-	type Finding,
 	type FindingSource,
 	loadConfig,
 	type MelianConfig,
 	type RepositorySource,
 	type Resolution,
+	type ResolvedFinding,
 	type Severity,
 	type Verdict,
 	type VerdictStatus,
@@ -23,8 +23,8 @@ type StoredCheck = { name: string; status: CheckStatus; reason?: string; error?:
 type StoredVerdict = {
 	status: VerdictStatus;
 	blocking: boolean;
-	findings: Record<Resolution, Finding[]>;
-	dismissed: Finding[];
+	findings: Record<Resolution, ResolvedFinding[]>;
+	dismissed: ResolvedFinding[];
 	notRun: StoredCheck[];
 };
 

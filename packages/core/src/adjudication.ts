@@ -1,5 +1,11 @@
 import type { MelianConfig, Resolution, Severity } from "./config.ts";
-import { type AlsoReportedAs, type Finding, levelForSeverity, normaliseSnippet } from "./findings.ts";
+import {
+	type AlsoReportedAs,
+	type Finding,
+	type FindingProperties,
+	levelForSeverity,
+	normaliseSnippet,
+} from "./findings.ts";
 
 /** The resolutions from strictest to most lenient. */
 export const resolutionOrder: readonly Resolution[] = ["block", "acknowledge", "advisory", "silent"];
@@ -12,9 +18,18 @@ function lenientOf(left: Resolution, right: Resolution): Resolution {
 }
 
 /**
+ * A finding adjudication has resolved. A finding without `properties.resolution` has not been adjudicated yet, which
+ * says nothing about what it requires: it is neither `silent` nor anything else until {@link applyResolutions} runs.
+ */
+export type ResolvedFinding = Finding & {
+	readonly properties: FindingProperties & { readonly resolution: Resolution };
+};
+
+/**
  * What a finding requires under `config`, the effective configuration at the finding's path: the resolution configured
  * for its severity. A finding not shown to be caused by the change, `pre-existing` or `affected` without evidence, is
- * never above `advisory`, so an old defect cannot block an unrelated change.
+ * never above `advisory`, so an old defect cannot block an unrelated change. It decides from severity, cause, and
+ * evidence alone, never from a resolution the finding already carries.
  */
 export function resolveFinding(finding: Finding, config: Pick<MelianConfig, "resolution">): Resolution {
 	const { severity, cause, evidence } = finding.properties;
@@ -25,9 +40,9 @@ export function resolveFinding(finding: Finding, config: Pick<MelianConfig, "res
 
 /**
  * Copies of `findings` with `properties.resolution` set by {@link resolveFinding}, each under the configuration
- * `configFor` returns for its path.
+ * `configFor` returns for its path. A resolution a finding already carries is replaced, not kept.
  */
-export function applyResolutions(findings: readonly Finding[], configFor: ConfigFor): Finding[] {
+export function applyResolutions(findings: readonly Finding[], configFor: ConfigFor): ResolvedFinding[] {
 	return findings.map((finding) => {
 		const resolution = resolveFinding(finding, configFor(finding.properties.path));
 		return { ...finding, properties: { ...finding.properties, resolution } };
@@ -161,9 +176,9 @@ export interface Verdict {
 	/** Whether any finding resolves to `block`, whatever the status. */
 	readonly blocking: boolean;
 	/** The findings that count, deduplicated and grouped by resolution, each group in path, severity, and line order. */
-	readonly findings: Readonly<Record<Resolution, readonly Finding[]>>;
+	readonly findings: Readonly<Record<Resolution, readonly ResolvedFinding[]>>;
 	/** Findings dismissed with a reason. They neither block nor need attention. */
-	readonly dismissed: readonly Finding[];
+	readonly dismissed: readonly ResolvedFinding[];
 	/** The checks that were skipped or failed, with their reasons, in input order. */
 	readonly notRun: readonly CheckRecord[];
 }
@@ -196,9 +211,11 @@ function readingOrder(a: Finding, b: Finding): number {
 
 /**
  * Decides a review: merges findings two checks reported for one problem ({@link dedupeFindings}), resolves each under
- * its path's configuration ({@link applyResolutions}), and derives the status. A failed check, or a skipped one not in
- * `allowSkip`, makes the review `not-reviewed`, even with no findings. Otherwise a finding above `silent` makes it
- * `findings`, and nothing does `passed`. A dismissed finding counts toward neither.
+ * its path's configuration ({@link applyResolutions}), and derives the status. Every finding is resolved here, whether
+ * it arrives without a resolution, as a producer stores it, or with one, which is replaced; none is dropped or counted
+ * as `silent` for lacking one. A failed check, or a skipped one not in `allowSkip`, makes the review `not-reviewed`,
+ * even with no findings. Otherwise a finding above `silent` makes it `findings`, and nothing does `passed`. A
+ * dismissed finding counts toward neither.
  */
 export function adjudicate({ findings, checks, config, allowSkip = [] }: AdjudicationInput): Verdict {
 	const configFor = typeof config === "function" ? config : () => config;
@@ -209,7 +226,7 @@ export function adjudicate({ findings, checks, config, allowSkip = [] }: Adjudic
 			resolution,
 			counted.filter((finding) => finding.properties.resolution === resolution),
 		]),
-	) as Record<Resolution, Finding[]>;
+	) as Record<Resolution, ResolvedFinding[]>;
 	const notRun = checks.filter((check) => check.status !== "ran").map((check) => ({ ...check }));
 	const incomplete = notRun.some((check) => check.status === "failed" || !allowSkip.includes(check.name));
 	const attention = counted.some((finding) => finding.properties.resolution !== "silent");

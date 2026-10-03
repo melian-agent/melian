@@ -214,7 +214,7 @@ Adjudication turns the findings a review collected into what the change requires
 
 A finding the change did not cause is never above `advisory`. Problem: severity says how bad a defect is, not whether this change made it. Example: a lens notices a `P0` SQL injection on line 80 of a file whose typo on line 3 the change fixed; at the configured `block`, the typo fix could not merge. Solution: a `pre-existing` finding resolves to the lesser of its configured resolution and `advisory`, so a `nit` stays `silent`. An `introduced` finding keeps its configured resolution, and so does an `affected` one, only because it carries evidence; `affected` without evidence is treated as `pre-existing`.
 
-The resolution a lens stores at report time comes from the configuration the review started with. Adjudication's is the one that counts.
+A producer stores no resolution, and an absent one means not yet adjudicated, never `silent`. `resolveFinding` decides from severity, cause, and evidence, and ignores any resolution a finding carries; `applyResolutions` replaces it. `adjudicate` groups every finding by the resolution it computes, so none is dropped or silenced for lacking one. Its findings are `ResolvedFinding`s, whose type requires the resolution.
 
 ### Dedupe across sources
 
