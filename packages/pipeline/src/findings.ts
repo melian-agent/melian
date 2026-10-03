@@ -130,18 +130,18 @@ export async function dismissFinding(
 
 /**
  * The committed findings of a conversation, in ID order, each with its lifecycle status. Empty when nothing has been
- * reported.
+ * reported. Each is a copy: the harness caches the committed document, so changing a returned finding must not reach it.
  */
 export async function readFindings(
 	reader: Pick<Harness, "snapshot">,
 	conversationId: ConversationId,
 	context: Context,
-): Promise<Finding[]> {
+): Promise<readonly Finding[]> {
 	const document = await reader.snapshot(FindingsDocument, conversationId, context);
 	return Object.keys(document?.items ?? {})
 		.sort()
 		.map((id) => {
 			const { producer, lifecycle } = document!.items[id]!;
-			return { ...producer, properties: { ...producer.properties, status: lifecycle.status } };
+			return structuredClone({ ...producer, properties: { ...producer.properties, status: lifecycle.status } });
 		});
 }
