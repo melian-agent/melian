@@ -314,6 +314,8 @@ Publishing from the CLI sets a commit status, context `melian/review`, not a che
 
 Thin wrappers for Claude Code, Codex, and Pi that invoke the CLI and relay findings. They never run a review with the host agent's model. The Pi skill is a Pi package; the Pi extension adds a `/melian` command over the same CLI.
 
+Built so far: one `SKILL.md` per host under `skills/`, each telling the agent when to ask Melian for a review, to run `melian review` on the branch or on a pull request, to relay the terminal rendering verbatim, to fix nothing it was not asked to fix, and to publish only on the user's say-so. `melian doctor` is the only command a skill runs without a trigger. The repository installs its own Claude Code skill, `.claude/skills/melian`, as a symlink to `skills/claude-code`, so the agent writing Melian asks Melian for review. [docs/guidelines/cli.md](guidelines/cli.md#skills) says how to install each.
+
 ### Server and devcontainer
 
 A long-lived process receiving webhooks, with one SQLite storage per changeset on disk, many changesets reviewed concurrently. The natural home for Pi Durable and the first host after the CLI.

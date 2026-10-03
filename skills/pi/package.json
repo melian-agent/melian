@@ -1,0 +1,23 @@
+{
+	"name": "@melian-agent/pi-skill",
+	"version": "0.0.0",
+	"description": "The melian skill for the Pi coding agent, over the melian CLI",
+	"private": true,
+	"license": "MIT",
+	"keywords": [
+		"pi-package"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/melian-agent/melian.git",
+		"directory": "skills/pi"
+	},
+	"files": [
+		"SKILL.md"
+	],
+	"pi": {
+		"skills": [
+			"./SKILL.md"
+		]
+	}
+}
