@@ -13,7 +13,7 @@ import {
 	reviewStatus,
 	type Verdict,
 } from "@melian-agent/core";
-import { readVerdict } from "./adjudication.ts";
+import { readVerdict, type StoredVerdict } from "./adjudication.ts";
 import { PublishError } from "./errors.ts";
 import { revisionKey } from "./findings.ts";
 import {
@@ -35,14 +35,23 @@ import { modelsOf, type ReviewModels } from "./models.ts";
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
 type StoredFinding = { ruleId: string; path: string; line: number; revision: string; thread?: string };
 
-// What one round of a revision will post, committed before posting so a rerun posts exactly this.
+// What one round of a revision will post, committed before posting so a rerun posts exactly this: the verdict it
+// renders as well as its findings, since the head's verdict can change before a failed round is posted again.
 type PendingRound = {
-	verdict: string;
+	fingerprint: string;
+	verdict: StoredVerdict;
 	post: { finding: Finding; placement: Placement }[];
 	stillOpen: number;
 	open: Record<string, StoredFinding>;
 	resolved: Record<string, StoredFinding>;
+	// How many times the provider refused to post it.
+	refusals: number;
 };
+
+// A round the provider refused `maxRefusals` times. It is dropped so the next publish of the head plans afresh.
+type AbandonedRound = { fingerprint: string; refusals: number; error: string };
+
+const maxRefusals = 3;
 
 type StoredRevision = {
 	// One review per verdict published at this head: a second review of the same head can change the verdict.
@@ -50,6 +59,7 @@ type StoredRevision = {
 	// The fingerprint of the verdict the last review posted.
 	verdict?: string;
 	pending?: PendingRound;
+	abandoned?: AbandonedRound[];
 	open: Record<string, StoredFinding>;
 	resolved: Record<string, StoredFinding>;
 	// null when the thread was gone and there was nothing to reply to.
@@ -115,11 +125,13 @@ function planRound(
 		}
 	}
 	return {
-		verdict: fingerprint(verdict),
+		fingerprint: fingerprint(verdict),
+		verdict: structuredClone(verdict) as StoredVerdict,
 		post: structuredClone(plan.post.map(({ finding, placement }) => ({ finding, placement }))),
 		stillOpen: plan.stillOpen.length,
 		open: Object.fromEntries(Object.entries(plan.open).map(([id, entry]) => [id, { ...entry }])),
 		resolved,
+		refusals: 0,
 	};
 }
 
@@ -141,6 +153,7 @@ type PublishResult = {
 	status: ReviewStatus;
 	// Posts found by their markers rather than in the document: a crash fell between post and record.
 	recovered: number;
+	abandoned: AbandonedRound[];
 };
 
 const publishTaskName = "melian.publish";
@@ -158,46 +171,59 @@ function publishTask(provider: ReviewProvider) {
 				const { root, pullRequest, head, revision, lines } = task.input;
 				const read = async () =>
 					(await runtime.snapshot(PublishedDocument, root, context)) ?? { order: [], revisions: {} };
-				let markers: PublishedMarkers | undefined;
+				const markers = new Map<string, PublishedMarkers>();
 				const marked = async (verdict: string) => {
-					markers ??= await provider.findPublished(pullRequest, head, verdict);
-					return markers;
+					if (!markers.has(verdict))
+						markers.set(verdict, await provider.findPublished(pullRequest, head, verdict));
+					return markers.get(verdict)!;
 				};
 				const result = { posted: 0, stillOpen: 0, resolved: 0, replies: 0, recovered: 0 };
+				// Set while the provider is asked to post a round, so a refusal counts against that round.
+				let posting = false;
 				try {
 					const verdict = await readVerdict(runtime, root, revision, context);
 					if (verdict === undefined) throw new Error(`no verdict is recorded for ${revision}`);
-					const state = await read();
 					const current = fingerprint(verdict);
-					const before = state.revisions[head];
-					if (before?.pending === undefined && before?.verdict !== current) {
-						const round = planRound(state, head, verdict, lines);
-						await runtime.commit(async (tx) => {
-							const document = await tx.doc(PublishedDocument, root);
-							document.order = [...document.order.filter((each) => each !== head), head];
-							const existing = document.revisions[head] ?? { reviews: [], open: {}, resolved: {}, replies: {} };
-							document.revisions[head] = { ...existing, pending: round };
-							return undefined;
-						}, context);
-					}
-					const pending = (await read()).revisions[head]!.pending;
-					if (pending !== undefined) {
+					// A pending round left by a failed run is posted as planned, under its own verdict. If the head's verdict
+					// changed since, a second round then posts the current one, so the last review matches the status.
+					for (let round = 0; round < 2; round++) {
+						const state = await read();
+						const before = state.revisions[head];
+						if (before?.pending === undefined) {
+							if (before?.verdict === current) break;
+							const planned = planRound(state, head, verdict, lines);
+							await runtime.commit(async (tx) => {
+								const document = await tx.doc(PublishedDocument, root);
+								document.order = [...document.order.filter((each) => each !== head), head];
+								const existing = document.revisions[head] ?? {
+									reviews: [],
+									open: {},
+									resolved: {},
+									replies: {},
+								};
+								document.revisions[head] = { ...existing, pending: planned };
+								return undefined;
+							}, context);
+						}
+						const pending = (await read()).revisions[head]!.pending!;
 						result.stillOpen = pending.stillOpen;
-						const found = await marked(pending.verdict);
+						const found = await marked(pending.fingerprint);
 						let posted: PostedReview;
 						if (found.review === undefined) {
+							posting = true;
 							posted = await provider.postReview({
 								pullRequest,
 								revision: head,
-								fingerprint: pending.verdict,
-								verdict,
+								fingerprint: pending.fingerprint,
+								verdict: pending.verdict,
 								findings: pending.post,
 								stillOpen: pending.stillOpen,
 								resolved: Object.entries(pending.resolved)
 									.filter(([, entry]) => entry.thread === undefined)
 									.map(([id, entry]) => ({ id, ...entry })),
 							});
-							result.posted = pending.post.length;
+							posting = false;
+							result.posted += pending.post.length;
 						} else {
 							posted = { id: found.review, threads: found.threads };
 							result.recovered++;
@@ -211,7 +237,7 @@ function publishTask(provider: ReviewProvider) {
 						await runtime.commit(async (tx) => {
 							const record = (await tx.doc(PublishedDocument, root)).revisions[head]!;
 							record.reviews = [...record.reviews, posted.id];
-							record.verdict = pending.verdict;
+							record.verdict = pending.fingerprint;
 							record.open = open;
 							record.resolved = { ...record.resolved, ...pending.resolved };
 							delete record.pending;
@@ -252,17 +278,33 @@ function publishTask(provider: ReviewProvider) {
 						}, context);
 					}
 					await runtime.commit(() => {
-						const done: PublishResult = { review: record.reviews.at(-1)!, status, ...result };
+						const abandoned = structuredClone(record.abandoned ?? []);
+						const done: PublishResult = { review: record.reviews.at(-1)!, status, ...result, abandoned };
 						return { status: "terminal", outcome: { status: "completed", result: done } };
 					}, context);
 				} catch (error) {
 					if (runtime.signal.aborted) throw error;
-					// Everything posted so far is recorded, so the outcome is the failure, and publishing again resumes.
-					const failure = { message: error instanceof Error ? error.message : String(error) };
-					await runtime.commit(
-						() => ({ status: "terminal", outcome: { status: "failed", error: failure } }),
-						context,
-					);
+					// Everything posted so far is recorded, so the outcome is the failure, and publishing again resumes. A round
+					// the provider keeps refusing, such as one whose comment GitHub rejects with a 422, would block every later
+					// publish of the head, so its third refusal abandons it and the next publish plans a new round.
+					let message = error instanceof Error ? error.message : String(error);
+					await runtime.commit(async (tx) => {
+						const record = posting ? (await tx.doc(PublishedDocument, root)).revisions[head] : undefined;
+						const pending = record?.pending;
+						if (record !== undefined && pending !== undefined) {
+							pending.refusals = (pending.refusals ?? 0) + 1;
+							if (pending.refusals >= maxRefusals) {
+								const { fingerprint: refused, refusals } = pending;
+								record.abandoned = [
+									...(record.abandoned ?? []),
+									{ fingerprint: refused, refusals, error: message },
+								];
+								delete record.pending;
+								message = `the provider refused the review of verdict ${refused} ${refusals} times, so Melian abandoned it and the next publish plans a new one: ${message}`;
+							}
+						}
+						return { status: "terminal", outcome: { status: "failed", error: { message } } };
+					}, context);
 				}
 			},
 		},
@@ -321,6 +363,18 @@ export interface Publication {
 	readonly replies: number;
 	readonly status: ReviewStatus;
 	readonly recovered: number;
+	/**
+	 * Every round of this head the provider refused three times, so Melian gave it up, with the last error. A later
+	 * round planned afresh carries its findings, so they reach the pull request once the provider accepts one.
+	 */
+	readonly abandoned: readonly AbandonedReview[];
+}
+
+/** A review of a head that Melian gave up posting: the verdict it named, how often it was refused, and why. */
+export interface AbandonedReview {
+	readonly fingerprint: string;
+	readonly refusals: number;
+	readonly error: string;
 }
 
 /** What a revision's publication recorded: its review, each posted finding's thread, its replies, and status. */

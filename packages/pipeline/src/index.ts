@@ -20,6 +20,7 @@ export {
 export * from "./harness.ts";
 export { providersWithCredentials, type ReviewModels } from "./models.ts";
 export {
+	type AbandonedReview,
 	openPublishHarness,
 	type Publication,
 	type PublishedRecord,

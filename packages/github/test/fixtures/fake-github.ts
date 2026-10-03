@@ -34,6 +34,8 @@ export type FakeState = {
 	comments: FakeComment[];
 	statuses: FakeStatus[];
 	nextId: number;
+	// Set to make every review fail, as GitHub does when it has an outage.
+	failReviews?: boolean;
 	// Set to make every reply fail, as GitHub does when it has an outage.
 	failReplies?: boolean;
 	// Set to make /user refuse, as it does for an installation token.
@@ -111,6 +113,7 @@ export function fakeGitHub(
 			return json(state.comments.filter((comment) => comment.pull_request_review_id === Number(forReview[1])));
 		}
 		if (method === "POST" && path === `${pulls}/reviews`) {
+			if (state.failReviews) return json({ message: "Server Error" }, 500);
 			const draft = body as { commit_id: string; event: string; body: string; comments: ReviewComment[] };
 			for (const comment of draft.comments) {
 				if (!inDiff(state.lines, comment.path, comment.line) || comment.side !== "RIGHT")

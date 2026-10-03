@@ -258,6 +258,44 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(posts(state)).toHaveLength(before);
 	});
 
+	it("posts a refused round under its own verdict, then a round for the verdict the head has now", async () => {
+		const { fake, github, changeset, state } = await reviewedRevisionOne({
+			correctness: lensScript(unsafeManager).correctness!,
+		});
+		state.failReviews = true;
+		await expect(publish(github, changeset)).rejects.toBeInstanceOf(PublishError);
+		state.failReviews = false;
+		const again = await reviewScenario(repo, harness!, fake, lensScript(unsafeManager, emptyName, nanRetries), true);
+		await again.review;
+
+		const result = await publish(github, changeset);
+
+		expect(result).toMatchObject({ posted: 3, stillOpen: 1, abandoned: [] });
+		expect(state.reviews).toHaveLength(2);
+		expect(state.reviews[0]!.body).toContain("**not reviewed, blocking**");
+		expect(state.reviews[1]!.body).toContain("**findings, blocking**");
+		expect(state.statuses.at(-1)).toMatchObject({ state: "failure", description: "3 findings, 1 blocking" });
+	});
+
+	it("abandons a round the provider refuses three times, and plans a new one on the next publish", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		state.failReviews = true;
+		const refusals = [];
+		for (let attempt = 0; attempt < 3; attempt++) {
+			refusals.push(await publish(github, changeset).catch((error: unknown) => error));
+		}
+		state.failReviews = false;
+
+		const result = await publish(github, changeset);
+
+		for (const refused of refusals) expect(refused).toBeInstanceOf(PublishError);
+		expect((refusals[1] as Error).message).not.toContain("abandoned");
+		expect((refusals[2] as Error).message).toContain("3 times, so Melian abandoned it");
+		expect(result).toMatchObject({ posted: 3 });
+		expect(result.abandoned).toEqual([{ fingerprint: expect.any(String), refusals: 3, error: expect.any(String) }]);
+		expect(state.reviews).toHaveLength(1);
+	});
+
 	it("replies for a pushed-over revision whose replies failed when the next one is published", async () => {
 		const { fake, github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);

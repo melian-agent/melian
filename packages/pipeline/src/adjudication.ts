@@ -22,7 +22,7 @@ import { ReviewIndex } from "./review-index.ts";
 type StoredAlias = string[] | { rules: string[]; distinct?: boolean };
 type StoredCheck = { name: string; status: CheckStatus; reason?: string; error?: string; version?: string };
 
-type StoredVerdict = {
+export type StoredVerdict = {
 	status: VerdictStatus;
 	blocking: boolean;
 	findings: Record<Resolution, ResolvedFinding[]>;
