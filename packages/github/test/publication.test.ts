@@ -108,6 +108,32 @@ describe("markers", () => {
 		expect(body).toContain("`src/evil\\u000a<!-- melian.ts`");
 	});
 
+	it("makes the summary's verb agree with the number of findings", () => {
+		const summary = (count: number) => {
+			const findings = Array.from({ length: count }, (_, index) =>
+				createFinding({ ...input, severity: "P2", resolution: "acknowledge", snippet: `eval(input${index})` }),
+			);
+			const body = renderReviewBody(
+				{
+					pullRequest: 7,
+					revision,
+					fingerprint: "0123456789abcdef",
+					round: 1,
+					verdict: adjudicate({ findings, manifest: [], checks: [], config: defaultConfig }),
+					findings: [],
+					stillOpen: 0,
+					resolved: [],
+					secret,
+				},
+				links,
+			);
+			return body.split("\n\n")[1];
+		};
+
+		expect(summary(1)).toBe("1 finding needs attention: 1 acknowledge.");
+		expect(summary(2)).toBe("2 findings need attention: 2 acknowledge.");
+	});
+
 	it("cuts findings from a body over GitHub's limit, keeping the marker and saying where they all are", () => {
 		const findings = Array.from({ length: 12 }, (_, index) =>
 			createFinding({
