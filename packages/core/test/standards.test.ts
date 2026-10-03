@@ -63,6 +63,17 @@ describe("loadStandards", () => {
 		expect(sections.filter(({ content }) => content.startsWith("# App rules"))).toHaveLength(1);
 	});
 
+	it("follows the imports of a file a nearer directory already imported", async () => {
+		writeFiles(repo, { "packages/app/AGENTS.md": lines("# App rules", "@../../AGENTS.md") });
+		const sections = await loadStandards(repo, "packages/app");
+		expect(sections.map(({ path, importedBy }) => ({ path, importedBy }))).toEqual([
+			{ path: "packages/app/AGENTS.md", importedBy: undefined },
+			{ path: "AGENTS.md", importedBy: "packages/app/AGENTS.md" },
+			{ path: "docs/guide.md", importedBy: "AGENTS.md" },
+			{ path: ".melian/standards/naming.md", importedBy: undefined },
+		]);
+	});
+
 	it("returns nothing for a repository without standards", async () => {
 		const empty = join(parent, "empty");
 		writeFiles(empty, { "src/a.ts": "" });

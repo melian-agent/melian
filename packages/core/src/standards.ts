@@ -51,30 +51,33 @@ async function standardsFiles(directory: string): Promise<string[]> {
  */
 export async function loadStandards(repoRoot: string, path: string): Promise<StandardsSection[]> {
 	const root = await realpath(repoRoot);
-	const inside = (file: string) => file === root || file.startsWith(`${root}${sep}`);
-	const seen = new Set<string>();
 	const sections: StandardsSection[] = [];
-	const read = async (file: string): Promise<string | undefined> => {
+	const included = new Set<string>();
+	const expanded = new Set<string>();
+	const insideRoot = async (file: string): Promise<string | undefined> => {
 		const real = await realpath(file).catch(() => undefined);
-		if (real === undefined || !inside(real) || seen.has(real)) return undefined;
-		const content = await readFile(real, "utf8").catch(() => undefined);
-		if (content === undefined) return undefined;
-		seen.add(real);
-		return content;
+		return real === root || real?.startsWith(`${root}${sep}`) ? real : undefined;
 	};
 	for (const directory of await directoriesUpToRoot(repoRoot, path)) {
 		for (const file of await standardsFiles(directory)) {
-			const content = await read(file);
+			// A file already imported from a nearer directory keeps that position, but its own imports still apply.
+			const real = await insideRoot(file);
+			if (real === undefined || expanded.has(real)) continue;
+			const content = await readFile(real, "utf8").catch(() => undefined);
 			if (content === undefined) continue;
+			expanded.add(real);
 			const found = imports(content);
 			const source = repoRelative(repoRoot, file);
-			if (!found.onlyImports) sections.push({ path: source, content });
+			if (!found.onlyImports && !included.has(real)) sections.push({ path: source, content });
+			included.add(real);
 			for (const imported of found.paths) {
 				const target = resolve(dirname(file), imported);
-				const importedContent = await read(target);
-				if (importedContent !== undefined) {
-					sections.push({ path: repoRelative(repoRoot, target), content: importedContent, importedBy: source });
-				}
+				const realTarget = await insideRoot(target);
+				if (realTarget === undefined || included.has(realTarget)) continue;
+				const importedContent = await readFile(realTarget, "utf8").catch(() => undefined);
+				if (importedContent === undefined) continue;
+				included.add(realTarget);
+				sections.push({ path: repoRelative(repoRoot, target), content: importedContent, importedBy: source });
 			}
 		}
 	}
