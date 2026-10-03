@@ -62,9 +62,9 @@ It refuses a file outside the lens's coverage, its folder and `paths` less any f
 
 ### The policy hook
 
-`lensPolicyHook` runs before every tool call in a conversation that has a `LensDocument`, and passes every other call untouched. It blocks a tool the lens did not list, a severity outside its `severities`, a rule outside its `rules`, listing the rules that exist, and any finding once the lens has reported `budget.findings`. The model reads the reason as the tool result and can correct itself.
+`lensPolicyHook` runs before every tool call in a conversation that has a `LensDocument`, and passes every other call untouched. It blocks a tool the lens did not list, a severity outside its `severities`, and a rule outside its `rules`, listing the rules that exist. The model reads the reason as the tool result and can correct itself.
 
-The hook sees only committed findings, and a round's tool calls run in parallel, so two calls in one round can both pass it. `report_finding` checks the budget again inside its commit. A finding already stored passes that check, so a replayed call still succeeds.
+The budget is checked only inside `report_finding`'s commit, never in the hook. Problem: the hook cannot tell a new finding from a correction of one the lens already reported. Example: a lens with `budget.findings: 1` reports a finding, and the process dies after the commit and before the tool result. On resume the replay-safe tool reruns, and the model, which never saw a result, calls `report_finding` again. A hook that counted committed findings refused that call at the full budget. Solution: the commit refuses only a finding the lens has not yet reported at its head, so a replay or a correction always passes. The commit also sees every finding a parallel round committed before it, which the hook, reading a snapshot, does not. `test/review-crash.test.ts` kills a review at exactly its full budget and checks both the replay and the correction.
 
 One storage holds every review of a changeset, so the root's findings document accumulates across pushes. The budget counts only findings the lens reported at its own head, and `reviewChangeset` returns only findings reported at the head it reviewed. Without that, a lens that used its budget on the first push could report nothing on the second, and a fixed finding would come back as current.
 
