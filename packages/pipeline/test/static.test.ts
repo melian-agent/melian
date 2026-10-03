@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { chmodSync, existsSync, readFileSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
@@ -184,6 +184,43 @@ describe("runStaticTool with the repository's own tools", () => {
 		expect((error as CheckError).code).toBe("toolFailed");
 		expect((error as CheckError).message).toMatch(/exited with code 134: out of memory/);
 		expectCheckoutUntouched();
+	});
+
+	it("fails when tsc replaces its output with a FIFO, rather than reading no output as clean", {
+		timeout: 60_000,
+	}, async () => {
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
+		fakeTool(
+			repo,
+			"tsc",
+			'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nrm -f ../tsc.out\nmkfifo ../tsc.out',
+		);
+		const error = await runStaticTool(input("tsc", head), context).then(
+			() => undefined,
+			(caught: unknown) => caught,
+		);
+		expect((error as CheckError).code).toBe("toolFailed");
+		expectCheckoutUntouched();
+	});
+
+	it("measures a report that is a symlink by its target", { timeout: 60_000 }, async () => {
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": lines("a") });
+		const big = join(repo, ".git", "big.sarif");
+		writeFileSync(big, Buffer.alloc(17 * 1024 * 1024, 32));
+		fakeTool(
+			repo,
+			"biome",
+			[
+				'if [ "$1" = "--version" ]; then echo "Version: 9.9.9"; exit 0; fi',
+				'for arg in "$@"; do case "$arg" in --reporter-file=*) out=$(printf %s "$arg" | cut -d= -f2-);; esac; done',
+				`ln -s '${big}' "$out"`,
+			].join("\n"),
+		);
+		const error = await runStaticTool(input("biome", head), context).then(
+			() => undefined,
+			(caught: unknown) => caught,
+		);
+		expect((error as CheckError).code).toBe("outputTooLarge");
 	});
 
 	it("fails with toolFailed when Biome writes no report", { timeout: 60_000 }, async () => {

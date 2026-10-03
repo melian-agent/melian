@@ -133,19 +133,39 @@ class Run {
 	}
 
 	// Reads a file the tool wrote, refusing one past the output limit rather than truncating it.
+	// The tool can replace its output with a symlink or a FIFO, so the target is checked and the read is capped; only a
+	// missing file means no output.
 	async readOutput(path: string): Promise<string | undefined> {
-		const info = await this.input.env.fileInfo(path, this.context);
-		if (!info.ok) return undefined;
-		if (info.value.size >= staticOutputLimit) {
-			throw this.fail(
-				"outputTooLarge",
-				`${this.input.tool} wrote ${info.value.size} bytes; the limit is ${staticOutputLimit}`,
-			);
+		const { env, tool } = this.input;
+		const unreadable = (detail: string) => this.fail("toolFailed", `${tool}'s output ${path} ${detail}`);
+		const target = await env.canonicalPath(path, this.context);
+		if (!target.ok) {
+			if (target.error.code === "not_found") return undefined;
+			throw unreadable(`could not be read: ${target.error.message}`);
 		}
-		const text = await this.input.env.readTextFile(path, this.context);
-		if (!text.ok)
-			throw this.fail("toolFailed", `${this.input.tool}'s output could not be read: ${text.error.message}`);
-		return text.value;
+		const info = await env.fileInfo(target.value, this.context);
+		if (!info.ok) throw unreadable(`could not be read: ${info.error.message}`);
+		if (info.value.kind !== "file") throw unreadable(`is a ${info.value.kind}, not a file`);
+		const tooLarge = (size: number) =>
+			this.fail("outputTooLarge", `${tool} wrote ${size} bytes or more; the limit is ${staticOutputLimit}`);
+		if (info.value.size >= staticOutputLimit) throw tooLarge(info.value.size);
+		const reader = await env.openTextLineReader(target.value, this.context);
+		if (!reader.ok) throw unreadable(`could not be read: ${reader.error.message}`);
+		let text = "";
+		let bytes = 0;
+		try {
+			for (;;) {
+				const line = await reader.value.readLine(this.context);
+				if (!line.ok) throw unreadable(`could not be read: ${line.error.message}`);
+				if (line.value === undefined) return text;
+				const read = line.value.terminated ? `${line.value.text}\n` : line.value.text;
+				text += read;
+				bytes += Buffer.byteLength(read);
+				if (bytes >= staticOutputLimit) throw tooLarge(bytes);
+			}
+		} finally {
+			await reader.value.close(this.context);
+		}
 	}
 }
 
