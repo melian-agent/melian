@@ -97,7 +97,8 @@ async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, conte
 		base: base.status === "ran" ? base.log : empty,
 		head: head.log,
 	});
-	return { status: "ran", report };
+	const notes = [...report.notes, ...head.notes, ...(base.status === "ran" ? base.notes : [])];
+	return { status: "ran", report: { findings: report.findings, notes } };
 }
 
 async function runCheck(

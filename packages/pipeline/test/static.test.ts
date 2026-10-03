@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
@@ -11,7 +11,7 @@ import {
 	type StaticRunInput,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { commit, createRepository, fakeTool, gitIn, lines, removeRepository } from "./fixtures/repo.ts";
+import { commit, createRepository, fakeTool, gitIn, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
 
 let repo: string;
 
@@ -92,7 +92,7 @@ describe("runStaticTool with the repository's own tools", () => {
 		runs: [{ tool: { driver: { name: "Biome" } }, results: [] }],
 	});
 
-	it("prefers the tool in the repository's node_modules", { timeout: 60_000 }, async () => {
+	it("prefers the tool in the checkout's node_modules", { timeout: 60_000 }, async () => {
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": lines("debugger;") });
 		fakeTool(
 			repo,
@@ -106,6 +106,31 @@ describe("runStaticTool with the repository's own tools", () => {
 		const biome = await log("biome", head);
 		expect(biome.runs[0].tool.driver.version).toBe("0.0.0-fake");
 		expect(results(biome)).toEqual([]);
+		expectCheckoutUntouched();
+	});
+
+	it("never runs a node_modules the revision tracks, and notes that it ignored it", { timeout: 60_000 }, async () => {
+		const sentinel = join(repo, ".git", "head-code-ran");
+		const evil = `#!/bin/sh\ntouch '${sentinel}'\necho "Version: 6.6.6"\n`;
+		writeFiles(repo, {
+			"node_modules/.bin/biome": evil,
+			"packages/a/node_modules/x/index.js": lines("x"),
+			"src/a.ts": lines("debugger;"),
+		});
+		chmodSync(join(repo, "node_modules", ".bin", "biome"), 0o755);
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "head tracks node_modules");
+		const head = gitIn(repo, "rev-parse", "HEAD");
+		const result = await runStaticTool(input("biome", head), context);
+		expect(existsSync(sentinel)).toBe(false);
+		if (result.status !== "ran") throw new Error(result.reason);
+		expect(result.log.runs[0].tool.driver.version).toBe("2.5.15");
+		expect(results(result.log)).toEqual([["lint/suspicious/noDebugger", "src/a.ts", 1]]);
+		expect(result.notes).toEqual([
+			`biome ignored node_modules, which ${head.slice(0, 12)} tracks.`,
+			`biome ignored packages/a/node_modules, which ${head.slice(0, 12)} tracks.`,
+			"biome ignored the checkout's node_modules, which git tracks.",
+		]);
 		expectCheckoutUntouched();
 	});
 

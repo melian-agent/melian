@@ -25,9 +25,9 @@ export interface StaticRunInput {
 	readonly settings: StaticToolSettings | TscSettings;
 }
 
-/** A tool's log for one revision, or why the tool does not apply to it. */
+/** A tool's log for one revision, with anything the run set aside, or why the tool does not apply to it. */
 export type StaticRun =
-	| { readonly status: "ran"; readonly log: ToolLog }
+	| { readonly status: "ran"; readonly log: ToolLog; readonly notes: readonly string[] }
 	| { readonly status: "skipped"; readonly reason: string };
 
 // Variables a git hook sets for its own repository; git would honour them over `-C`.
@@ -149,15 +149,36 @@ class Run {
 	}
 }
 
-async function binaryFor(run: Run, root: string): Promise<string> {
+// The paths git tracks in a working tree, read through a file because Shell.exec interleaves its streams.
+async function trackedFiles(run: Run, tree: string, listing: string, pathspec = ""): Promise<string[]> {
+	const listed = await run.shell(`${git(tree, `ls-files -z ${pathspec}`)} > ${quote(listing)}`);
+	const files = listed.code === 0 ? await run.readOutput(listing) : undefined;
+	if (files === undefined) throw run.fail("worktreeFailed", `git ls-files failed in ${tree}: ${listed.output}`);
+	return files.split("\0").filter((file) => file !== "");
+}
+
+// Never a binary the revision's tree supplies: the head must not choose the tool that judges it, and running even its
+// `--version` would run the head's code. `installed` is the checkout's node_modules, or undefined when there is none
+// the runner may use; otherwise Melian's own tool runs.
+async function binaryFor(run: Run, installed: string | undefined): Promise<string> {
 	const { bin, melian } = toolBinaries[run.input.tool];
-	const own = posix.join(root, "node_modules", ".bin", bin);
-	if (await run.exists(own)) return own;
+	const own = installed === undefined ? undefined : posix.join(installed, ".bin", bin);
+	if (own !== undefined && (await run.exists(own))) return own;
 	try {
 		return melian();
 	} catch (cause) {
-		throw run.fail("toolMissing", `${bin} is in neither the repository's node_modules nor Melian's`, cause);
+		throw run.fail("toolMissing", `${bin} is in neither the checkout's node_modules nor Melian's`, cause);
 	}
+}
+
+// Each directory named node_modules that the revision tracks, outermost only.
+function trackedModules(files: readonly string[]): string[] {
+	const directories = files.flatMap((file) => {
+		const segments = file.split("/");
+		const at = segments.indexOf("node_modules");
+		return at === -1 ? [] : [segments.slice(0, at + 1).join("/")];
+	});
+	return [...new Set(directories)].sort();
 }
 
 async function versionOf(run: Run, binary: string): Promise<string> {
@@ -186,7 +207,14 @@ async function runBiome(run: Run, root: string, scratch: string, binary: string,
 	return normaliseBiomeSarif(text, { root, version });
 }
 
-async function runTsc(run: Run, root: string, scratch: string, binary: string, version: string): Promise<ToolLog> {
+async function runTsc(
+	run: Run,
+	root: string,
+	scratch: string,
+	binary: string,
+	version: string,
+	tracked: ReadonlySet<string>,
+): Promise<ToolLog> {
 	const { project } = run.input.settings as TscSettings;
 	const out = posix.join(scratch, "tsc.out");
 	const { code, output } = await run.shell(
@@ -194,11 +222,6 @@ async function runTsc(run: Run, root: string, scratch: string, binary: string, v
 	);
 	const text = (await run.readOutput(out)) ?? "";
 	// A diagnostic names its file by a prefix of its line; the revision's own file list says which prefix is a file.
-	const listing = posix.join(scratch, "files");
-	const listed = await run.shell(`${git(root, "ls-files -z")} > ${quote(listing)}`);
-	const files = listed.code === 0 ? await run.readOutput(listing) : undefined;
-	if (files === undefined) throw run.fail("worktreeFailed", `git ls-files failed: ${listed.output}`);
-	const tracked = new Set(files.split("\0"));
 	const log = parseTscDiagnostics(text, { root, version, project, exists: (path) => tracked.has(path) });
 	// tsc exits 1 or 2 when it reports diagnostics; a non-zero exit with none reported is a crash.
 	if (code !== 0 && (log.runs[0].results.length === 0 || (code !== 1 && code !== 2))) {
@@ -210,10 +233,12 @@ async function runTsc(run: Run, root: string, scratch: string, binary: string, v
 /**
  * Runs one static tool on one commit, entirely inside `env`. Checks the commit out into a temporary worktree with
  * `git worktree add --detach`, runs the tool there, so it reads that revision's own configuration, and removes the
- * worktree, whatever happens. The user's checkout is only read: its `node_modules` is linked into the worktree when the
- * revision has none, so the tool resolves the repository's dependencies.
+ * worktree, whatever happens. The user's checkout is only read: its `node_modules` is linked into the worktree, so the
+ * tool resolves the repository's dependencies. A `node_modules` the revision tracks is removed from the worktree and
+ * named in the run's notes.
  *
- * The tool is the worktree's `node_modules/.bin/<tool>` when present, otherwise the one Melian depends on. Runtime is
+ * The tool is never a binary from the revision's tree: it is the checkout's `node_modules/.bin/<tool>`, installed from
+ * the lockfile, when the checkout does not track it, and otherwise the one Melian depends on. Runtime is
  * bounded by `settings.timeout` and output by {@link staticOutputLimit}. tsc is skipped when the revision has no
  * `settings.project`.
  *
@@ -244,18 +269,30 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 				return { status: "skipped", reason: `${commit} has no ${project}` };
 			}
 		}
-		const modules = posix.join(root, "node_modules");
-		const checkoutModules = posix.join(repoRoot, "node_modules");
-		if (!(await run.exists(modules)) && (await run.exists(checkoutModules))) {
-			await run.shell(`ln -s ${quote(checkoutModules)} ${quote(modules)}`);
+		const files = await trackedFiles(run, root, posix.join(scratch, "files"));
+		const notes: string[] = [];
+		// A tracked node_modules would let the head supply the dependencies, plugins, and type libraries the tool loads.
+		for (const directory of trackedModules(files)) {
+			notes.push(`${tool} ignored ${directory}, which ${commit.slice(0, 12)} tracks.`);
+			await run.shell(`rm -rf ${quote(posix.join(root, directory))}`);
 		}
-		const binary = await binaryFor(run, root);
+		// The checkout's node_modules is an install from its lockfile, unless the checkout tracks it, as it does when the
+		// head under review is what is checked out.
+		const checkoutModules = posix.join(repoRoot, "node_modules");
+		const checkoutTracked = await trackedFiles(run, repoRoot, posix.join(scratch, "checkout"), "-- node_modules");
+		if (checkoutTracked.length > 0) notes.push(`${tool} ignored the checkout's node_modules, which git tracks.`);
+		const installed =
+			checkoutTracked.length === 0 && (await run.exists(checkoutModules)) ? checkoutModules : undefined;
+		if (installed !== undefined) {
+			await run.shell(`ln -s ${quote(installed)} ${quote(posix.join(root, "node_modules"))}`);
+		}
+		const binary = await binaryFor(run, installed);
 		const version = await versionOf(run, binary);
 		const log =
 			tool === "biome"
 				? await runBiome(run, root, scratch, binary, version)
-				: await runTsc(run, root, scratch, binary, version);
-		return { status: "ran", log };
+				: await runTsc(run, root, scratch, binary, version, new Set(files));
+		return { status: "ran", log, notes };
 	} finally {
 		await removeWorktree(env, repoRoot, scratch);
 	}

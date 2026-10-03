@@ -357,6 +357,7 @@ Existing code on the base branch is trusted. Submitted changes and comments are 
 - Read-only analysis of the head is fine anywhere.
 - Anything that executes head code runs in a sandbox with no secrets. That includes static tools that load repository-controlled plugins, such as eslint configurations.
 - Static tools, such as Biome and tsc, execute in the execution environment, never in the Melian process, because they load the repository's configuration and plugins. Each runs in a temporary worktree of the revision it analyses, never in the user's checkout.
+- A static tool's binary never comes from the revision's tree: it is the checkout's lockfile install or Melian's own, and a `node_modules` the revision tracks is ignored and noted.
 - Comment commands require write permission on the repository. Comment bodies enter prompts as quoted data behind an injection guard section.
 - Lenses are read-only in version one and never hold write credentials.
 - The `ExecutionEnv` interface, a `FileSystem` plus a `Shell`, is the seam for a container-backed environment. Pi's own repository carries Anthropic's sandbox-runtime as a development dependency; it is a candidate for local isolation.
@@ -506,6 +507,7 @@ docs/
 | Cause by location | Location proves introduced only; affected needs lens evidence; pre-existing otherwise | A location heuristic must never make an old defect block |
 | Lens-reported findings | Lens supplies location, rule from its declared list, severity, explanation, evidence; Melian derives snippet from the head revision and everything else | Identity must not depend on the model's wording |
 | Findings ownership | The changeset's root conversation, never a lens's child conversation | A fork of the root at any revision must carry the findings; a lens conversation ends with its task |
+| Static tool binaries | Never from the revision's tree; checkout's lockfile install or Melian's own | A head must not supply the tool that judges it |
 
 ## Open questions
 
