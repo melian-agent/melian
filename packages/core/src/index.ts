@@ -19,6 +19,7 @@ export { type CodeLocation, checkEvidence, classifyCause } from "./cause.ts";
 export {
 	type Changeset,
 	parseRangeSpec,
+	pullRequestChangesetId,
 	type RangeChangeset,
 	type RangeMode,
 	type RangeSpec,
@@ -142,6 +143,24 @@ export {
 } from "./lens.ts";
 export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
 export { analyserConfigNames, melianPaths } from "./paths.ts";
+export {
+	type ClosedFinding,
+	type DiffLines,
+	diffLines,
+	type PlacedFinding,
+	type Placement,
+	type PostedReview,
+	type PublicationPlan,
+	type PublishedFinding,
+	type PublishedMarkers,
+	type PullRequest,
+	placeFinding,
+	planPublication,
+	type ReviewDraft,
+	type ReviewProvider,
+	type ReviewStatus,
+	reviewStatus,
+} from "./publication.ts";
 export {
 	renderFindingsJson,
 	renderFindingsTerminal,

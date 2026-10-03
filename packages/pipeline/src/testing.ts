@@ -9,6 +9,7 @@ import {
 	type FauxProviderHandle,
 	fauxAssistantMessage,
 	fauxProvider,
+	fauxToolCall,
 	type Message,
 	type Model,
 	type RegisterFauxProviderOptions,
@@ -112,4 +113,78 @@ export function scriptConversations(
 	const total = scripts.reduce((sum, script) => sum + script.replies.length, 0);
 	fake.provider.setResponses(Array.from({ length: total + scripts.length + 8 }, () => respond));
 	return requests;
+}
+
+/**
+ * One scripted lens turn: tool calls the model makes, or its final answer. The shape of a golden's `script.json`. A
+ * call's `expectToolResult` is a substring its result must contain, so a tool that breaks fails the run that scripts it.
+ */
+export type LensScriptStep =
+	| {
+			readonly calls: readonly {
+				readonly name: string;
+				readonly arguments: Readonly<Record<string, unknown>>;
+				readonly expectToolResult?: string;
+			}[];
+	  }
+	| { readonly text: string };
+
+/** Each lens's turns, in order, by lens name. */
+export type LensScript = Readonly<Record<string, readonly LensScriptStep[]>>;
+
+// The text of each tool result answering the last assistant turn in `messages`, by tool call ID.
+function lastResults(messages: readonly Message[]): Map<string, string> {
+	const results = new Map<string, string>();
+	for (const message of messages) {
+		if (message.role === "assistant") results.clear();
+		if (message.role === "toolResult") results.set(message.toolCallId, text(message));
+	}
+	return results;
+}
+
+// Each reply first checks the previous step's calls against their expected results, which it finds in the request.
+function lensReplies(lens: string, steps: readonly LensScriptStep[], mismatches: string[]): ScriptedReply[] {
+	const ids: string[][] = [];
+	return steps.map((step, index) => (messages: readonly Message[]) => {
+		const previous = index === 0 ? undefined : steps[index - 1];
+		if (previous !== undefined && "calls" in previous) {
+			const results = lastResults(messages);
+			previous.calls.forEach((call, position) => {
+				const result = results.get(ids[index - 1]![position]!) ?? "";
+				if (call.expectToolResult !== undefined && !result.includes(call.expectToolResult)) {
+					mismatches.push(
+						`${lens} step ${index}: ${call.name} returned ${JSON.stringify(result)}, expected it to contain ${JSON.stringify(call.expectToolResult)}`,
+					);
+				}
+			});
+		}
+		if ("text" in step) return fauxAssistantMessage(step.text);
+		const calls = step.calls.map((call) =>
+			fauxToolCall(call.name, call.arguments as Parameters<typeof fauxToolCall>[1]),
+		);
+		ids[index] = calls.map((call) => call.id);
+		return fauxAssistantMessage(calls, { stopReason: "toolUse" });
+	});
+}
+
+/**
+ * Scripts each lens in `script` by name, matching its conversation by the lens's instructions, as
+ * {@link scriptConversations} does. Throws for a name no lens in `lenses` has. The longest instructions match first,
+ * so a lens extending another is not answered from the other's script. Each scripted call whose result lacks its
+ * `expectToolResult` is described in `mismatches`, when given.
+ */
+export function scriptLenses(
+	fake: FakeModels,
+	lenses: readonly { readonly name: string; readonly instructions: string }[],
+	script: LensScript,
+	mismatches: string[] = [],
+): Record<string, Message[][]> {
+	const scripts = Object.entries(script)
+		.map(([name, steps]) => {
+			const lens = lenses.find((each) => each.name === name);
+			if (lens === undefined) throw new Error(`the script names ${name}, which is not a lens here`);
+			return { match: lens.instructions, replies: lensReplies(name, steps, mismatches) };
+		})
+		.sort((a, b) => b.match.length - a.match.length);
+	return scriptConversations(fake, scripts);
 }

@@ -22,7 +22,7 @@ import { ReviewIndex } from "./review-index.ts";
 type StoredAlias = string[] | { rules: string[]; distinct?: boolean };
 type StoredCheck = { name: string; status: CheckStatus; reason?: string; error?: string; version?: string };
 
-type StoredVerdict = {
+export type StoredVerdict = {
 	status: VerdictStatus;
 	blocking: boolean;
 	findings: Record<Resolution, ResolvedFinding[]>;
@@ -30,8 +30,49 @@ type StoredVerdict = {
 	notRun: StoredCheck[];
 };
 
-// Each revision's verdict, keyed by `revisionKey` of its base and head, on the changeset's root conversation.
-export const VerdictDocument = defineDoc<{ verdicts: Record<string, StoredVerdict> }>({
+/**
+ * Where a review's revision came from. A `pull-request` review names the repository and pull request as its provider
+ * reported them, and the base branch's tip and head commit the provider reported when the review fetched it. Any other
+ * review is a `range`, even one naming the refs Melian fetched for a pull request.
+ */
+export type ReviewOrigin =
+	| { readonly kind: "range" }
+	| {
+			readonly kind: "pull-request";
+			readonly repository: { readonly owner: string; readonly name: string };
+			readonly pullRequest: number;
+			readonly base: string;
+			readonly head: string;
+	  };
+
+/**
+ * What a verdict was decided from, recorded beside it: its {@link ReviewOrigin}, where policy came from (`worktree`,
+ * `revision:<sha>`, or `config` when the review named no source), the tier's checks, and each lens that ran as
+ * `name@version`. Publishing reads it to refuse a verdict that must never reach a pull request.
+ */
+export type VerdictProvenance = ReviewOrigin & {
+	readonly policy: string;
+	readonly manifest: readonly string[];
+	readonly lenses: readonly string[];
+};
+
+type StoredProvenance = {
+	kind: "range" | "pull-request";
+	repository?: { owner: string; name: string };
+	pullRequest?: number;
+	base?: string;
+	head?: string;
+	policy: string;
+	manifest: string[];
+	lenses: string[];
+};
+
+// Each revision's verdict, keyed by `revisionKey` of its base and head, on the changeset's root conversation, with what
+// it was decided from under the same key.
+export const VerdictDocument = defineDoc<{
+	verdicts: Record<string, StoredVerdict>;
+	provenance?: Record<string, StoredProvenance>;
+}>({
 	kind: "melian.verdicts",
 	version: 2,
 	scope: "conversation",
@@ -60,6 +101,8 @@ export type AdjudicationTaskInput = {
 	// version, and every other check of the manifest, by name and the tool version its record names. A lens that
 	// configuration has since disabled or retiered left sightings at this revision that are not this review's.
 	producers: { check: string; version?: string }[];
+	// Recorded with the verdict, so publishing can refuse one that came from a range or from the working tree.
+	provenance: StoredProvenance;
 };
 
 async function configsFor(repoRoot: string, policy: RepositorySource, paths: readonly string[]): Promise<ConfigFor> {
@@ -106,7 +149,9 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 				if (current !== runtime.taskId) {
 					return { status: "terminal", outcome: { status: "completed", result: "superseded" } };
 				}
-				(await tx.doc(VerdictDocument, root)).verdicts[revision] = structuredClone(verdict) as StoredVerdict;
+				const document = await tx.doc(VerdictDocument, root);
+				document.verdicts[revision] = structuredClone(verdict) as StoredVerdict;
+				document.provenance = { ...document.provenance, [revision]: structuredClone(task.input.provenance) };
 				return { status: "terminal", outcome: { status: "completed", result: "recorded" } };
 			}, context);
 		},
@@ -128,9 +173,26 @@ export function adjudicationInput(options: {
 	findingsVersion: number;
 	allowSkip: readonly string[];
 	producers: readonly FindingSource[];
+	origin: ReviewOrigin;
+	lenses: readonly string[];
 }): AdjudicationTaskInput {
 	const { root, repoRoot, base, head, policy, config, manifest, checks, findingsVersion, allowSkip, producers } =
 		options;
+	const { origin } = options;
+	const provenance: StoredProvenance = {
+		kind: origin.kind,
+		...(origin.kind === "pull-request"
+			? {
+					repository: { ...origin.repository },
+					pullRequest: origin.pullRequest,
+					base: origin.base,
+					head: origin.head,
+				}
+			: {}),
+		policy: policy === undefined ? "config" : policy.kind === "worktree" ? "worktree" : `revision:${policy.commit}`,
+		manifest: [...manifest],
+		lenses: [...options.lenses].sort(),
+	};
 	return {
 		root,
 		repoRoot,
@@ -146,7 +208,24 @@ export function adjudicationInput(options: {
 		findingsVersion,
 		allowSkip: [...allowSkip],
 		producers: producers.map((source) => ({ ...source })),
+		provenance,
 	};
+}
+
+/**
+ * What the verdict recorded for `revision` was decided from, or `undefined` when that revision has none, or its
+ * verdict was recorded before Melian kept provenance.
+ */
+export async function readProvenance(
+	reader: Pick<DocumentReader, "snapshot">,
+	rootConversationId: ConversationId,
+	revision: string,
+	context: Context,
+): Promise<VerdictProvenance | undefined> {
+	const document = await reader.snapshot(VerdictDocument, rootConversationId, context);
+	const stored = document?.provenance;
+	if (stored === undefined || !Object.hasOwn(stored, revision)) return undefined;
+	return structuredClone(stored[revision]) as VerdictProvenance;
 }
 
 /**

@@ -201,6 +201,20 @@ async function diff(repoRoot: string, base: string, head: string): Promise<Chang
 }
 
 /**
+ * The changeset ID of a pull request reviewed as one: a hash of the kind, the provider, the repository, and the number,
+ * so every push to the pull request is a new revision of one changeset. A range hashes its kind too, so a range that
+ * names the refs a host fetched for a pull request never shares the pull request's ID, and so never its storage.
+ */
+export function pullRequestChangesetId(
+	provider: string,
+	repository: { readonly owner: string; readonly name: string },
+	number: number,
+): string {
+	const identity = ["pull-request", provider, repository.owner.toLowerCase(), repository.name.toLowerCase(), number];
+	return `pull-${createHash("sha256").update(identity.join("\0")).digest("hex").slice(0, 16)}`;
+}
+
+/**
  * Resolves a range in the repository containing `repoRoot` to a changeset with one revision.
  *
  * Shells out to `git`. Throws {@link ChangesetError}: `notARepository`, `invalidRange`, `unknownRef`, `noMergeBase`

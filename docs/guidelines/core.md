@@ -319,6 +319,24 @@ Severity, by default:
 
 `staticFindings` matches results across the two runs by finding identity, never by line. A result's snippet is the full text of its lines at that revision, read through git's object store, and its occurrence is counted in that revision's file, so a result moved by an edit above it keeps its ID. A renamed file's base results are identified under its head path, through `revision.files`; otherwise a pure rename would make every old result `introduced` and blocking. A result at head whose ID is absent at base is `introduced`; one present at both is `pre-existing` and never blocks; one only at base is resolved and not reported. Two results of one rule on the same lines share an ID, so they are one finding whose message counts the rest. Presence alone would then hide a second error added beside an old one, so the count matters: when the head has more results under an ID than the base, the base's count is the `pre-existing` finding and the difference is a second, `introduced` finding, identified by the discriminator `beyond the base at <id>`. A result on a blank line, in a file too large to read, or in a symlink is identified by its message instead. Any other failure to read the file fails the check with `CheckError` `unreadable`: only absence is silent, as for the loaders.
 
+## Publication
+
+`src/publication.ts` holds the provider port and the decisions publication makes without a host. `packages/github` implements the port; the pipeline's publish task calls it. Nothing here talks to a network.
+
+`ReviewProvider` is the whole surface a code host offers Melian: read a pull request's base, head, and metadata; post one review; reply in a thread; set a status; and read back Melian's markers. A second host is a second implementation of these five calls.
+
+`planPublication(verdict, previous, lines, revision)` decides what one revision posts. A finding that resolves to `block`, `acknowledge`, or `advisory` and was not open after the previous revision is posted; one already open is not posted again; an open finding the verdict no longer holds, in any group, is resolved. A dismissed finding is neither posted nor resolved, since dismissing it answered it. An open finding that turns silent or is dismissed stays in the plan's `open` set. Problem: a lens that wavers on severity reports one ID as `P3`, then `nit`, then `P3` again; dropping it while silent made the third revision post it in a second thread and leave the first unanswered. Solution: it keeps its thread while quiet.
+
+`placeFinding(finding, lines)` decides where a finding goes, given `diffLines(files)`, the lines each changed file adds at head:
+
+- `lines`: the finding overlaps a hunk's new lines, so it goes on them, clipped to the hunk.
+- `nearest`: the file changed but the finding sits outside every hunk, so it goes on the nearest added line, and the comment links to where it is.
+- `body`: the file did not change, or only lost lines, so the review's body carries it.
+
+Only added lines take an inline comment. Problem: GitHub rejects the whole review with a 422 when one comment names a line outside the diff, and its diff has three lines of context that Melian's zero-context hunks do not. Solution: anchor to added lines only, which every host shows.
+
+`reviewStatus(verdict)` maps a verdict to a commit status: `passed`, and `findings` with nothing blocking, are `success` with a count; a blocking finding is `failure`; `not-reviewed` is `error`, naming each check that did not run. `success` means only that nothing blocks: Melian never approves.
+
 ## Tests
 
 - Run the package's tests with `npm test --workspace @melian-agent/core`, or one file with `npx vitest --run packages/core/test/changeset.test.ts` from the repository root.

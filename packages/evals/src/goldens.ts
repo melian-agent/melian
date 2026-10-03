@@ -20,19 +20,11 @@ import {
 import {
 	backgroundContext,
 	createMemoryStorage,
-	type Message,
 	openReviewHarness,
 	type ReviewModels,
 	reviewChangeset,
 } from "@melian-agent/pipeline";
-import {
-	createFakeModels,
-	fauxAssistantMessage,
-	fauxToolCall,
-	type ScriptedReply,
-	scriptConversations,
-	textOf,
-} from "@melian-agent/pipeline/testing";
+import { createFakeModels, scriptLenses } from "@melian-agent/pipeline/testing";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 
@@ -197,43 +189,6 @@ function routeEveryTier(config: MelianConfig, model: string, override: boolean):
 	return { ...config, models: { ...config.models, ...models } };
 }
 
-type ScriptStep = Script[string][number];
-
-// The text of each tool result answering the last assistant turn in `messages`, by tool call ID.
-function lastResults(messages: readonly Message[]): Map<string, string> {
-	const results = new Map<string, string>();
-	for (const message of messages) {
-		if (message.role === "assistant") results.clear();
-		if (message.role === "toolResult") results.set(message.toolCallId, textOf(message));
-	}
-	return results;
-}
-
-// Each reply first checks the previous step's calls against their expected results, which it finds in the request.
-function replies(lens: string, steps: readonly ScriptStep[], mismatches: string[]): ScriptedReply[] {
-	const ids: string[][] = [];
-	return steps.map((step, index) => (messages: readonly Message[]) => {
-		const previous = index === 0 ? undefined : steps[index - 1];
-		if (previous !== undefined && "calls" in previous) {
-			const results = lastResults(messages);
-			previous.calls.forEach((call, position) => {
-				const result = results.get(ids[index - 1]![position]!) ?? "";
-				if (call.expectToolResult !== undefined && !result.includes(call.expectToolResult)) {
-					mismatches.push(
-						`${lens} step ${index}: ${call.name} returned ${JSON.stringify(result)}, expected it to contain ${JSON.stringify(call.expectToolResult)}`,
-					);
-				}
-			});
-		}
-		if ("text" in step) return fauxAssistantMessage(step.text);
-		const calls = step.calls.map((call) =>
-			fauxToolCall(call.name, call.arguments as Parameters<typeof fauxToolCall>[1]),
-		);
-		ids[index] = calls.map((call) => call.id);
-		return fauxAssistantMessage(calls, { stopReason: "toolUse" });
-	});
-}
-
 /**
  * Reviews a golden's change the way the CLI will: policy, standards, and lenses from the base commit, the range
  * `main...feature`, and every lens the change selects. Scripted runs answer each lens from `script.json` on the fake
@@ -256,16 +211,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			const ref = fake.ref("scripted");
 			config = routeEveryTier(loaded, `${ref.provider}/${ref.modelId}`, true);
 			models = fake.review;
-			// The longest instructions first, so a lens extending another is not answered from the other's script.
-			const scripts = Object.entries(golden.script)
-				.map(([name, steps]) => {
-					const lens = lenses.find((each) => each.name === name);
-					if (lens === undefined)
-						throw new Error(`${golden.name}/script.json scripts ${name}, which is not a lens here`);
-					return { match: lens.instructions, replies: replies(name, steps, toolMismatches) };
-				})
-				.sort((a, b) => b.match.length - a.match.length);
-			scriptConversations(fake, scripts);
+			scriptLenses(fake, lenses, golden.script, toolMismatches);
 		} else {
 			config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false);
 			models = mode.models;
