@@ -14,7 +14,7 @@ Melian's first review posted to a pull request through the CLI. The maintainer r
   The model's token came from the environment of that one process.
 - Pull request: [#28](https://github.com/melian-agent/melian/pull/28), branch `class-convention`, the class-convention refactor. Head `7abf402608a036fa14e44528065dd94a36148651`, base `main` at `6a0bcc6`: 10 commits, 18 files, 526 lines added and 340 removed.
 - Policy source: the base's committed policy, as for every pull request review. `--model` routed the lens tiers, since the base's `melian.yaml` routes none.
-- Wall clock: 81 seconds, 23:34:24Z to 23:35:45Z UTC. Exit code `3`: findings, none blocking.
+- Wall clock: 81 seconds, 23:34:24Z to 23:35:45Z. Exit code `3`: findings, none blocking.
 - Checks: every check ran, and `notRun` was empty. That is the guardrails, `static.biome`, `static.tsc`, `lens.correctness`, and `lens.contracts`.
 
 ## Verdict
@@ -71,7 +71,7 @@ A second `melian publish "#28"` printed `0 new findings` and posted nothing. The
 
 The review was quiet, on point, and complete.
 
-Pull request #28 is a behaviour-preserving refactor, and the lenses found nothing in it. The Codex and Opus reviews of [#28](https://github.com/melian-agent/melian/pull/28) found nothing either.
+[Pull request #28](https://github.com/melian-agent/melian/pull/28) is a behaviour-preserving refactor, and the lenses found nothing in it. That agrees with the Codex and Opus reviews of the same pull request.
 
 The one finding is right. The policy-change guardrail saw that the change edits `AGENTS.md`, which Melian reads as this repository's standards, and asked a maintainer to read it. Melian cannot judge a change to its own standards under those standards, so the guardrail is the only check that can raise it.
 
