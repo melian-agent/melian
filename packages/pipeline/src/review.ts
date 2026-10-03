@@ -326,7 +326,6 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 		base: revision.base,
 		head: revision.head,
 		files: reviewFiles(revision.files),
-		resolution: { ...config.resolution },
 	};
 	const selection = lenses.map((lens) => lens.key).sort();
 	// One lens task per head and selection. A repeat call, such as a rerun after a crash, attaches to the task the first

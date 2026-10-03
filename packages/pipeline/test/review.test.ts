@@ -173,7 +173,6 @@ describe("reviewChangeset", () => {
 				cause: "introduced",
 				trigger: { file: "src/user.ts", index: 0, snippet: "\treturn user.manager.name;" },
 				severity: "P1",
-				resolution: "block",
 				status: "new",
 				source: { check: "lens.correctness", version: correctnessLens!.version },
 				explanation: { whatToDo: nullDeref.explanation.fix },
@@ -521,7 +520,8 @@ describe("reviewChangeset", () => {
 			findings.map((each) => [each.locations[0]!.physicalLocation.artifactLocation.uri, each]),
 		);
 		expect(byFile["src/user.ts"]!.properties.cause).toBe("pre-existing");
-		expect(byFile["src/user.ts"]!.properties.resolution).toBe("acknowledge");
+		// Only adjudication decides what a finding requires; a pre-existing P1 must not arrive marked to block.
+		expect(findings.every((finding) => finding.properties.resolution === undefined)).toBe(true);
 		expect(byFile["src/report.ts"]!.properties).toMatchObject({
 			cause: "affected",
 			evidence: { file: "src/user.ts", startLine: 7, snippet: "\treturn user.manager.name;" },

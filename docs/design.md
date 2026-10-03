@@ -118,7 +118,7 @@ A finding is a SARIF `result` plus Melian extension properties. SARIF because se
 - `trigger`: the diff hunk that caused the finding, named by its file and its index within that file.
 - `severity`: `P0` to `P3` plus `nit`. The rubric is fixed in version one, so `resolution` maps a closed set and a typo in configuration is an error. A repository-defined rubric is deferred until a user needs one.
 - `confidence`: calibrated probability that the finding is real.
-- `resolution`: what this finding requires, after per-path configuration is applied.
+- `resolution`: what this finding requires, after per-path configuration is applied. Only adjudication writes it, and it caps a `pre-existing` finding at advisory; a producer stores none, and a finding without one is unresolved. Problem: `report_finding` copied the severity's configured resolution, so a pre-existing P1 was stored as `block`. Solution: no tool decides what blocks.
 - `status`: `new`, `open`, `resolved`, `dismissed`, `stale`.
 - `explanation`: what, why here, what to do. Written for the author.
 - `source`: which check produced it, and the lens or question-set version.
@@ -514,6 +514,7 @@ docs/
 | Cause by location | Location proves introduced only; affected needs lens evidence; pre-existing otherwise | A location heuristic must never make an old defect block |
 | Lens-reported findings | Lens supplies location, rule from its declared list, severity, explanation, evidence; Melian derives snippet from the head revision and everything else | Identity must not depend on the model's wording |
 | Findings ownership | The changeset's root conversation, never a lens's child conversation | A fork of the root at any revision must carry the findings; a lens conversation ends with its task |
+| Resolution ownership | Only adjudication writes resolution; tools store none | A tool must not decide what blocks |
 | Review attachment | One lens task per head, recorded in a root index; a repeat call attaches, never duplicates | A crash must not double the model spend |
 | Prompt boundaries | Head content only inside nonce-delimited labelled boundaries, with an injection policy section first in every lens | Content must be data, never instructions |
 | Evidence for affected | A changed-code location overlapping a hunk, snippet derived from head | Prose cannot cross the cause boundary |

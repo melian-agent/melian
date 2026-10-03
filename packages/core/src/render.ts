@@ -56,9 +56,9 @@ function lineSpan(finding: Finding): string {
 }
 
 function block(finding: Finding, paint: (code: string, text: string) => string): string {
-	const { severity, cause, evidence, status, explanation } = finding.properties;
+	const { severity, cause, evidence, status, explanation, resolution } = finding.properties;
 	return [
-		`  ${paint(severityColor[severity], severity)}  ${lineSpan(finding)}  ${visibleText(finding.ruleId)}  (${cause}, ${status})`,
+		`  ${paint(severityColor[severity], severity)}  ${lineSpan(finding)}  ${visibleText(finding.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"})`,
 		`  ${prose(finding.message.text, "  ")}`,
 		`    What: ${prose(explanation.what, "      ")}`,
 		`    Why here: ${prose(explanation.whyHere, "      ")}`,

@@ -164,7 +164,8 @@ Problem: a finding's ID hashes its rule and snippet, so if the model supplies th
 - `rule` must be one of the rules the lens declares in its front matter's `rules` list, which step 5 adds; the hook rejects any other.
 - `source` is the lens's identity and version.
 - `cause` is `classifyCause` of the location, made `affected` only by `evidence`, a location in the changed code that provably breaks it. `checkEvidence` accepts it only when the file is changed and the lines overlap a hunk's new lines, and the snippet stored with it is read from the head.
-- `resolution` comes from configuration, and `status` from the findings document.
+- `resolution` is left out. Only adjudication, step 7, writes it, from configuration and the cause, so a producer never decides what blocks. `findingPropertiesSchema` makes it optional, and the terminal renderer prints `unresolved` for a finding without one.
+- `status` comes from the findings document.
 
 ### Level mapping
 

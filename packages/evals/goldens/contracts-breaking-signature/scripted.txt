@@ -1,6 +1,6 @@
 src/cart.ts
 
-  P0  line 10  broken-caller  (affected, new)
+  P0  line 10  broken-caller  (affected, new, unresolved)
   summary calls formatPrice with the amount alone.
     What: summary calls formatPrice with the amount alone.
     Why here: This change made currency a required second parameter of formatPrice, and summary was not updated.

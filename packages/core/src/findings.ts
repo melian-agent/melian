@@ -62,7 +62,7 @@ export const findingPropertiesSchema = Type.Object(
 		trigger: Type.Optional(findingTriggerSchema),
 		severity: severitySchema,
 		confidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
-		resolution: resolutionSchema,
+		resolution: Type.Optional(resolutionSchema),
 		status: findingStatusSchema,
 		explanation: findingExplanationSchema,
 		source: findingSourceSchema,
@@ -455,7 +455,8 @@ export interface FindingInput {
 	readonly trigger?: FindingTrigger;
 	readonly severity: Severity;
 	readonly confidence?: number;
-	readonly resolution: Resolution;
+	/** What the finding requires. Only adjudication sets it; a producer leaves it out, and the finding is unresolved. */
+	readonly resolution?: Resolution;
 	/** Defaults to `new`. */
 	readonly status?: FindingStatus;
 	readonly explanation: FindingExplanation;

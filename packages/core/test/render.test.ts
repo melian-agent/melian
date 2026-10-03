@@ -39,6 +39,8 @@ const log = createFindingsLog([
 		endLine: 40,
 		snippet: `db.query("SELECT * FROM users WHERE name = '" + name + "'")`,
 		severity: "P0",
+		// Not yet adjudicated, so the renderer says it is unresolved.
+		resolution: undefined,
 		explanation: {
 			what: "The query splices the name into SQL text.",
 			whyHere: "This change passes the name straight from the request.",

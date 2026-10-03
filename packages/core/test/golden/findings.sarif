@@ -154,7 +154,6 @@
             },
             "severity": "P0",
             "confidence": 0.9,
-            "resolution": "block",
             "status": "new",
             "explanation": {
               "what": "The query splices the name into SQL text.",

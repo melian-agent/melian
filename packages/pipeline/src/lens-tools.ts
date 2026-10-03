@@ -9,7 +9,6 @@ import {
 	lensCovers,
 	listRevisionFiles,
 	type ReportFindingInput,
-	type Resolution,
 	type RevisionEntry,
 	readRevisionFile,
 	reportFindingInputSchema,
@@ -55,7 +54,6 @@ export type ReviewState = {
 	base: string;
 	head: string;
 	files: ReviewFile[];
-	resolution: Record<Severity, Resolution>;
 };
 
 /** The fields of `files` that the review document keeps. */
@@ -324,7 +322,6 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 					trigger: { file: hunk.file, index: hunk.index, snippet: hunk.added },
 				}),
 		severity,
-		resolution: review.resolution[severity],
 		explanation: {
 			what: args.explanation.what,
 			whyHere: args.explanation.why,
