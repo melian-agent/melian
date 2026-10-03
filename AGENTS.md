@@ -52,7 +52,7 @@ If you create or modify a test, run it and iterate until it passes. Tests use Vi
 
 - Commit each discrete change as soon as it is complete and verified, before starting the next separable piece of work. Do not let two separable changes accumulate in the working tree; splitting them afterwards is error-prone. If you are on `main`, branch first.
 - Conventional commits, concise. Say what value the commit creates, not a catalogue of changes.
-- One pull request per issue. Stack commits inside it; do not stack pull requests for one piece of work.
+- One pull request per issue; stack commits inside it. A pull request for a later step may be based on the previous step's unmerged branch, opened with `--base <that branch>` and retargeted as the stack lands, so work never waits on a merge.
 - Run a code review on the branch diff before opening a pull request, and land each fix as its own commit.
 - After opening, track CI, read every review comment, and commit each fix separately. Check for fresh comments after each push.
 - Update documentation in the same change whenever behaviour diverges from what is documented.
