@@ -183,7 +183,7 @@ Front matter is routing; the body is the system prompt for the lens's child conv
 - `tools` is a read-only allowlist: `read_file`, `search`, and `list_files`, each reading the head revision through git rather than the filesystem. The hook layer enforces it. `report_finding` is always offered and never listed.
 - `severities` bounds what the lens may report. The hook layer rejects findings outside it.
 - `rules` lists the rule IDs the lens reports under, each with a one-line description. The hook layer rejects a finding under any other rule and tells the model which rules exist, so a model cannot coin a new rule name, and with it a new finding ID, on each run.
-- `budget.findings` caps how many findings the lens may report; past it the hook layer refuses more and says why. `budget.tokens` is recorded but not yet enforced.
+- `budget.findings` caps how many findings the lens may report; past it `report_finding` refuses a new finding and says why. A replay or a correction of a finding the lens already reported always passes, so a crash at a full budget cannot strand a lens. `budget.tokens` is recorded but not yet enforced.
 - `extends` lets a repository override parts of a built-in lens, such as its tier or an appended paragraph, without copying the body.
 - `standards: true` injects the shared standards section. Default true; opt out for lenses where conventions are noise.
 

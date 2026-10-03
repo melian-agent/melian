@@ -35,22 +35,29 @@ function isCredential(value: unknown): value is Credential {
 	);
 }
 
+// pi-ai refreshes an OAuth token with less than five minutes left (DEFAULT_OAUTH_MINIMUM_VALIDITY_MS in its
+// auth/resolve.js); the margin covers a review that starts just before the window.
+const oauthRefreshWindowMs = 5 * 60_000;
+const oauthMarginMs = 2 * 60_000;
+
 // Pi resolves `!command` keys by running them and `$VAR` keys from the environment. Melian does neither, so such a
-// key reads as absent and the provider's environment variable applies instead. An expired OAuth login reads as absent
-// too: refreshing it would need a write, and pi-ai's checkAuth does not look at expiry, so model selection would
-// otherwise pick a provider whose every request then fails.
+// key reads as absent and the provider's environment variable applies instead. An OAuth login inside pi-ai's refresh
+// window reads as absent too: pi-ai would refresh it before use, which needs a write, and its checkAuth does not look
+// at expiry, so model selection would otherwise pick a provider whose every request then fails.
 function usable(credential: Credential): Credential | undefined {
-	if (credential.type === "oauth") return Date.now() < credential.expires ? credential : undefined;
+	if (credential.type === "oauth") {
+		return Date.now() + oauthRefreshWindowMs + oauthMarginMs < credential.expires ? credential : undefined;
+	}
 	if (credential.key === undefined) return credential;
 	return credential.key.startsWith("!") || credential.key.includes("$") ? undefined : credential;
 }
 
 /**
  * Pi's credential store, read-only, so one `pi` login covers Melian. It reads `auth.json` afresh on every call, so a
- * token Pi refreshed is seen at once. It never writes: refreshing an expired OAuth token would rotate the refresh
- * token Pi holds, so an expired login reads as absent, and the provider's environment variable or the next model
- * applies; a refresh pi-ai attempts anyway is a {@link PiCredentialsError} `readOnly` asking for Pi to be run. A
- * missing file holds no credentials.
+ * token Pi refreshed is seen at once. It never writes: refreshing an OAuth token would rotate the refresh token Pi
+ * holds, so a login that has expired, or expires within pi-ai's five-minute refresh window plus two minutes, reads as
+ * absent, and the provider's environment variable or the next model applies. A refresh pi-ai attempts anyway is a
+ * {@link PiCredentialsError} `readOnly` asking for Pi to be run. A missing file holds no credentials.
  */
 export function piCredentialStore(path: string = piAuthPath()): CredentialStore {
 	const load = async (): Promise<Stored> => {

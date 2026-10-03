@@ -285,6 +285,27 @@ describe("reviewChangeset", () => {
 		expect(findings).toHaveLength(1);
 	});
 
+	it("lets a lens at its full budget correct a finding it already reported", async () => {
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? { ...lens, budget: { findings: 1 } } : lens));
+		const corrected = { ...nullDeref, explanation: { ...nullDeref.explanation, what: "Corrected." } };
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("report_finding", nullDeref),
+					call("report_finding", corrected),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const findings = await review({ lenses: tight });
+
+		expect(toolResults(requests[correctness]![2]!).at(-1)).toMatch(/^recorded finding/);
+		expect(findings.map((finding) => finding.message.text)).toEqual(["Corrected."]);
+	});
+
 	it("holds a parallel round to the budget inside the commit", async () => {
 		const tight = lenses.map((lens) => (lens.name === "correctness" ? { ...lens, budget: { findings: 1 } } : lens));
 		const requests = scriptConversations(fake, [

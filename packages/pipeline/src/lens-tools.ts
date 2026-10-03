@@ -278,8 +278,9 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 
 /**
  * `report_finding`: the only way a finding leaves a lens. An idempotent upsert into the root conversation's findings
- * document, keyed by the finding's stable ID, so it is safe to replay after a crash. The budget is checked again inside
- * the commit, because the hook sees only committed findings and a round's calls run in parallel.
+ * document, keyed by the finding's stable ID, so it is safe to replay after a crash. The budget is checked inside the
+ * commit, where parallel calls in one round see each other's findings, and where a finding this lens already reported
+ * at this head always passes, so a replay or a correction succeeds at a full budget.
  */
 export const reportFinding = defineTool({
 	name: "report_finding",
@@ -315,8 +316,9 @@ export const reportFinding = defineTool({
 });
 
 /**
- * Enforces each lens's policy before a tool call runs: only the tools the lens lists plus `report_finding`, only its
- * severities and rules, and no findings past its budget. Calls in conversations that are not lenses pass untouched.
+ * Enforces each lens's policy before a tool call runs: only the tools the lens lists plus `report_finding`, and only its
+ * severities and rules. `report_finding` checks the budget inside its commit, where it can tell a new finding from a
+ * correction of one the lens already reported. Calls in conversations that are not lenses pass untouched.
  */
 export const lensPolicyHook = hook(ToolTask, {
 	beforeTool: async (call, api, context) => {
@@ -336,12 +338,6 @@ export const lensPolicyHook = hook(ToolTask, {
 		if (!lens.rules.some((each) => each.id === rule)) {
 			const rules = lens.rules.map((each) => `${each.id} (${each.description})`).join("; ");
 			return { block: `rule ${String(rule)} is not one of this lens's rules: ${rules}` };
-		}
-		const findings = (await api.snapshot(FindingsDocument, lens.review, context))?.items ?? {};
-		if (countFor(findings, lens) >= lens.budget) {
-			return {
-				block: `budget reached: this lens may report ${lens.budget} findings and has; stop reporting and finish`,
-			};
 		}
 		return undefined;
 	},
