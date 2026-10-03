@@ -45,3 +45,4 @@ One row per decision that shaped Melian, newest last. [design.md](design.md) exp
 | Check manifest | The tier's check list is the review manifest; a check with no record is skipped and the verdict is not-reviewed | A verdict must never read passed because something was not counted |
 | Dedupe and lifecycle | Only same-status findings merge; a dismissal never absorbs an open blocker | A dismissed advisory must not hide a live P0 |
 | Review identity | Base plus head, in the index, the tasks, the verdict, and the sightings | A retargeted pull request has a new diff and the same head |
+| Append-only logs | Decision log and progress log in their own union-merged files | Parallel pull requests must not conflict on bookkeeping |
