@@ -201,6 +201,8 @@ export interface ReviewDraft {
 	readonly stillOpen: number;
 	/** Resolved findings that have no thread to reply in, so the body names them. */
 	readonly resolved: readonly ClosedFinding[];
+	/** The changeset's publisher secret, as hex, which signs every marker the review carries. Never printed. */
+	readonly secret: string;
 }
 
 /** A review a provider posted. */
@@ -224,9 +226,10 @@ export interface PublishedMarkers {
  * A code host that reviews arrive on, such as GitHub. Publication reaches the host only through this port, so a second
  * host is a new implementation, not a change to the pipeline.
  *
- * Every post carries a marker naming its revision and finding, and {@link ReviewProvider.findPublished} reads them
- * back. The host accepts no idempotency key, so the markers are how a publication interrupted after a post and before
- * its record finds what it already posted.
+ * Every post carries a marker naming its revision and finding, signed with the changeset's publisher secret, and
+ * {@link ReviewProvider.findPublished} reads back only markers whose signature verifies. The host accepts no
+ * idempotency key, so the markers are how a publication interrupted after a post and before its record finds what it
+ * already posted, whoever the host says posted it.
  */
 export interface ReviewProvider {
 	/** The host's name, such as `github`, for messages. */
@@ -243,12 +246,13 @@ export interface ReviewProvider {
 		pullRequest: number,
 		finding: ClosedFinding & { readonly thread: string },
 		revision: string,
+		secret: string,
 	): Promise<string | undefined>;
 	/** Sets the review's status on a commit. Setting it again replaces it. */
 	setStatus(revision: string, status: ReviewStatus): Promise<void>;
 	/**
-	 * What the pull request already shows of `revision`'s publication, from posts that carry Melian's markers: the
-	 * review for the verdict `fingerprint` names, and every thread and reply at `revision`.
+	 * What the pull request already shows of `revision`'s publication, from posts that carry Melian's markers signed
+	 * with `secret`: the review for the verdict `fingerprint` names, and every thread and reply at `revision`.
 	 */
-	findPublished(pullRequest: number, revision: string, fingerprint: string): Promise<PublishedMarkers>;
+	findPublished(pullRequest: number, revision: string, fingerprint: string, secret: string): Promise<PublishedMarkers>;
 }

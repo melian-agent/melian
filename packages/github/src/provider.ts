@@ -9,7 +9,15 @@ import type {
 } from "@melian-agent/core";
 import { Octokit } from "@octokit/rest";
 import { GitHubError } from "./errors.ts";
-import { parseMarker, renderComment, renderResolvedReply, renderReviewBody } from "./publication.ts";
+import {
+	type Marker,
+	type MarkerKind,
+	parseMarker,
+	renderComment,
+	renderResolvedReply,
+	renderReviewBody,
+	verifyMarker,
+} from "./publication.ts";
 
 /** The commit status context Melian sets. A check run needs a GitHub App, which a user's token is not. */
 export const statusContext = "melian/review";
@@ -59,13 +67,25 @@ function firstLine(body: string | null | undefined): string {
 	return (body ?? "").split(/\r?\n/, 1)[0]!;
 }
 
+// The marker opening `body`, when it is of `kind`, names `revision`, and `secret` signed it.
+function signedMarker(
+	body: string | null | undefined,
+	kind: MarkerKind,
+	revision: string,
+	secret: string,
+): Marker | undefined {
+	const found = parseMarker(firstLine(body));
+	if (found === undefined || found.kind !== kind || found.revision !== revision) return undefined;
+	return verifyMarker(found, secret) ? found : undefined;
+}
+
 /**
  * A {@link ReviewProvider} for one GitHub repository, through Octokit.
  *
  * It posts every review with the event `COMMENT`, never `APPROVE` or `REQUEST_CHANGES`: Melian never approves, and the
  * status, not the review, says whether a change may merge. Findings go on the right-hand side of the diff by line.
- * Markers are read back only from posts by the token's own user, so another user cannot forge one to hide a post. When
- * the provider cannot tell who that is, it reads no markers at all.
+ * A marker counts only when the changeset's publisher secret signed it, whoever posted it. When the provider knows the
+ * token's own user, a marker on anyone else's post does not count either.
  */
 export function createGitHubProvider(options: GitHubProviderOptions): ReviewProvider {
 	const { owner, repo } = options;
@@ -86,11 +106,11 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 		);
 		return viewer;
 	};
-	// Fails closed: when Melian cannot tell who it posts as, as with an installation token that cannot read /user, no
-	// marker counts. Counting every author's would let a pull request's author hide Melian's review behind a forged one.
+	// A filter, never the proof: the signature is. An installation token cannot read /user, and a crash between a post
+	// and its record must still find the post.
 	const ours = async (author: { login: string } | null | undefined) => {
 		const me = await login();
-		return me !== undefined && author?.login === me;
+		return me === undefined || author?.login === me;
 	};
 
 	return {
@@ -126,7 +146,7 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 						line: placement.line,
 						side: "RIGHT" as const,
 						...range,
-						body: renderComment(placed, draft.revision, links),
+						body: renderComment(placed, draft.revision, links, draft.secret),
 					},
 				];
 			});
@@ -153,14 +173,18 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 			);
 			const threads: Record<string, string> = {};
 			for (const comment of posted) {
-				const found = parseMarker(firstLine(comment.body));
-				if (found?.finding !== undefined && found.revision === draft.revision)
-					threads[found.finding] = String(comment.id);
+				const found = signedMarker(comment.body, "finding", draft.revision, draft.secret);
+				if (found !== undefined) threads[found.id] = String(comment.id);
 			}
 			return { id: String(review.id), threads };
 		},
 
-		async replyResolved(pullRequest: number, finding: ClosedFinding & { thread: string }, revision: string) {
+		async replyResolved(
+			pullRequest: number,
+			finding: ClosedFinding & { thread: string },
+			revision: string,
+			secret: string,
+		) {
 			try {
 				const { data } = await call(`reply on pull request #${pullRequest}`, () =>
 					octokit.rest.pulls.createReplyForReviewComment({
@@ -168,7 +192,7 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 						repo,
 						pull_number: pullRequest,
 						comment_id: Number(finding.thread),
-						body: renderResolvedReply(finding, revision),
+						body: renderResolvedReply(finding, revision, secret),
 					}),
 				);
 				return String(data.id);
@@ -196,7 +220,12 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 			);
 		},
 
-		async findPublished(pullRequest: number, revision: string, fingerprint: string): Promise<PublishedMarkers> {
+		async findPublished(
+			pullRequest: number,
+			revision: string,
+			fingerprint: string,
+			secret: string,
+		): Promise<PublishedMarkers> {
 			const page = { owner, repo, pull_number: pullRequest, per_page: 100 };
 			const [reviews, comments] = await Promise.all([
 				call(`list reviews on pull request #${pullRequest}`, () =>
@@ -206,20 +235,23 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 					octokit.paginate(octokit.rest.pulls.listReviewComments, page),
 				),
 			]);
+			// The first post carrying a marker is Melian's: anyone can copy a signed marker, but only after Melian posted it.
 			let review: string | undefined;
 			for (const each of reviews) {
-				const opening = parseMarker(firstLine(each.body));
-				if (opening?.revision === revision && opening.verdict === fingerprint && (await ours(each.user))) {
+				const opening = signedMarker(each.body, "verdict", revision, secret);
+				if (opening?.id === fingerprint && (await ours(each.user))) {
 					review = String(each.id);
+					break;
 				}
 			}
 			const threads: Record<string, string> = {};
 			const replies: Record<string, string> = {};
 			for (const comment of comments) {
-				const found = parseMarker(firstLine(comment.body));
-				if (found?.revision !== revision || found.finding === undefined || !(await ours(comment.user))) continue;
 				// GitHub may send a top-level comment's in_reply_to_id as null rather than leave it out.
-				(typeof comment.in_reply_to_id === "number" ? replies : threads)[found.finding] = String(comment.id);
+				const reply = typeof comment.in_reply_to_id === "number";
+				const found = signedMarker(comment.body, reply ? "resolved" : "finding", revision, secret);
+				if (found === undefined || !(await ours(comment.user))) continue;
+				(reply ? replies : threads)[found.id] ??= String(comment.id);
 			}
 			return { ...(review === undefined ? {} : { review }), threads, replies };
 		},

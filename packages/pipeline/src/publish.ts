@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import {
 	type Changeset,
 	diffLines,
@@ -78,6 +78,18 @@ export const PublishedDocument = defineDoc<PublishedState>({
 	history: "latest",
 	fork: "current",
 	initial: () => ({ order: [], revisions: {} }),
+});
+
+// The changeset's publisher secret, which signs every marker Melian posts for it: 32 random bytes as hex, generated once
+// and kept as long as the storage. A marker counts only when it verifies, whoever the provider says posted it, so
+// recovery does not depend on the token knowing who it is.
+export const PublisherDocument = defineDoc<{ secret?: string }>({
+	kind: "melian.publisher",
+	version: 1,
+	scope: "conversation",
+	history: "latest",
+	fork: "current",
+	initial: () => ({}),
 });
 
 function fingerprint(verdict: Verdict): string {
@@ -171,16 +183,18 @@ function publishTask(provider: ReviewProvider) {
 				const { root, pullRequest, head, revision, lines } = task.input;
 				const read = async () =>
 					(await runtime.snapshot(PublishedDocument, root, context)) ?? { order: [], revisions: {} };
-				const markers = new Map<string, PublishedMarkers>();
-				const marked = async (verdict: string) => {
-					if (!markers.has(verdict))
-						markers.set(verdict, await provider.findPublished(pullRequest, head, verdict));
-					return markers.get(verdict)!;
-				};
 				const result = { posted: 0, stillOpen: 0, resolved: 0, replies: 0, recovered: 0 };
 				// Set while the provider is asked to post a round, so a refusal counts against that round.
 				let posting = false;
 				try {
+					const secret = (await runtime.snapshot(PublisherDocument, root, context))?.secret;
+					if (secret === undefined) throw new Error("the changeset has no publisher secret");
+					const markers = new Map<string, PublishedMarkers>();
+					const marked = async (verdict: string) => {
+						if (!markers.has(verdict))
+							markers.set(verdict, await provider.findPublished(pullRequest, head, verdict, secret));
+						return markers.get(verdict)!;
+					};
 					const verdict = await readVerdict(runtime, root, revision, context);
 					if (verdict === undefined) throw new Error(`no verdict is recorded for ${revision}`);
 					const current = fingerprint(verdict);
@@ -221,6 +235,7 @@ function publishTask(provider: ReviewProvider) {
 								resolved: Object.entries(pending.resolved)
 									.filter(([, entry]) => entry.thread === undefined)
 									.map(([id, entry]) => ({ id, ...entry })),
+								secret,
 							});
 							posting = false;
 							result.posted += pending.post.length;
@@ -265,6 +280,7 @@ function publishTask(provider: ReviewProvider) {
 								pullRequest,
 								{ id, ...entry, thread: entry.thread },
 								head,
+								secret,
 							);
 							recorded = reply ?? null;
 							if (reply !== undefined) result.replies++;
@@ -471,10 +487,11 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		revision,
 		lines: diffLines(changeset.revision.files),
 	};
-	const taskId = await (await harness.root(context)).commit(
-		(tx) => tx.createTask(publishTask(options.provider), input, { ownership: { kind: "conversation" } }),
-		context,
-	);
+	const taskId = await (await harness.root(context)).commit(async (tx) => {
+		const publisher = await tx.doc(PublisherDocument, root);
+		publisher.secret ??= randomBytes(32).toString("hex");
+		return tx.createTask(publishTask(options.provider), input, { ownership: { kind: "conversation" } });
+	}, context);
 	harness.resume();
 	const blocked = (await unfinished()).some(
 		(each) => each.record.id === (taskId as TaskId) && each.state.kind === "blocked",

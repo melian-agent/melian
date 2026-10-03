@@ -1,6 +1,6 @@
 import { rmSync } from "node:fs";
 import type { Changeset, ReviewProvider } from "@melian-agent/core";
-import { createGitHubProvider, parseMarker, statusContext } from "@melian-agent/github";
+import { createGitHubProvider, marker, parseMarker, statusContext } from "@melian-agent/github";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -73,27 +73,73 @@ async function publish(github: ReviewProvider, changeset: Changeset) {
 describe("reading markers back", () => {
 	const head = "a".repeat(40);
 	const fingerprint = "0123456789abcdef";
-	const forged = (login: string) => ({
-		id: 1,
+	const finding = "fedcba9876543210";
+	const secret = "11".repeat(32);
+	const none = { threads: {}, replies: {} };
+	const review = (id: number, login: string, opening: string) => ({
+		id,
 		user: { login },
-		body: `<!-- melian:revision=${head} verdict=${fingerprint} -->\nLooks fine.`,
+		body: `${opening}\nLooks fine.`,
 		commit_id: head,
 		event: "COMMENT",
 	});
-
-	it("counts only the token's own user's markers", async () => {
-		const state = pullRequestState();
-		state.reviews.push(forged("pull-request-author"));
-		expect(await providerFor(state).findPublished(7, head, fingerprint)).toEqual({ threads: {}, replies: {} });
-		state.reviews.push({ ...forged(state.login), id: 2 });
-		expect(await providerFor(state).findPublished(7, head, fingerprint)).toMatchObject({ review: "2" });
+	const comment = (id: number, login: string, opening: string, inReplyTo?: number) => ({
+		id,
+		user: { login },
+		body: `${opening}\nA finding.`,
+		path: "src/user.ts",
+		line: 7,
+		side: "RIGHT",
+		pull_request_review_id: 1,
+		...(inReplyTo === undefined ? {} : { in_reply_to_id: inReplyTo }),
 	});
 
-	it("counts no marker when it cannot tell who it posts as", async () => {
+	it("counts a marker the changeset's secret signed when it cannot tell who it posts as", async () => {
 		const state = pullRequestState();
 		state.failUser = true;
-		state.reviews.push(forged(state.login));
-		expect(await providerFor(state).findPublished(7, head, fingerprint)).toEqual({ threads: {}, replies: {} });
+		state.reviews.push(review(1, state.login, marker(head, "verdict", fingerprint, secret)));
+		state.comments.push(comment(2, state.login, marker(head, "finding", finding, secret)));
+		state.comments.push(comment(3, state.login, marker(head, "resolved", finding, secret), 2));
+
+		expect(await providerFor(state).findPublished(7, head, fingerprint, secret)).toEqual({
+			review: "1",
+			threads: { [finding]: "2" },
+			replies: { [finding]: "3" },
+		});
+	});
+
+	it("counts no marker whose signature does not verify, however right its text", async () => {
+		const state = pullRequestState();
+		state.failUser = true;
+		const unsigned = `<!-- melian:revision=${head} verdict=${fingerprint} -->`;
+		const wrong = `<!-- melian:revision=${head} verdict=${fingerprint} sig=${"0".repeat(32)} -->`;
+		const otherStorage = marker(head, "verdict", fingerprint, "22".repeat(32));
+		state.reviews.push(review(1, state.login, unsigned), review(2, state.login, wrong));
+		state.reviews.push(review(3, state.login, otherStorage));
+		state.comments.push(comment(4, state.login, marker(head, "finding", finding, "22".repeat(32))));
+		// A thread's marker copied into a reply is not a reply's.
+		state.comments.push(comment(5, state.login, marker(head, "finding", finding, secret), 4));
+
+		expect(await providerFor(state).findPublished(7, head, fingerprint, secret)).toEqual(none);
+	});
+
+	it("also requires the token's own user when it knows who that is", async () => {
+		const state = pullRequestState();
+		const signed = marker(head, "verdict", fingerprint, secret);
+		state.reviews.push(review(1, "pull-request-author", signed));
+		expect(await providerFor(state).findPublished(7, head, fingerprint, secret)).toEqual(none);
+		state.reviews.push(review(2, state.login, signed));
+		expect(await providerFor(state).findPublished(7, head, fingerprint, secret)).toMatchObject({ review: "2" });
+	});
+
+	it("takes the first post carrying a marker, since a copy can only follow Melian's", async () => {
+		const state = pullRequestState();
+		state.failUser = true;
+		const signed = marker(head, "finding", finding, secret);
+		state.comments.push(comment(1, state.login, signed), comment(2, "pull-request-author", signed));
+		expect(await providerFor(state).findPublished(7, head, fingerprint, secret)).toMatchObject({
+			threads: { [finding]: "1" },
+		});
 	});
 });
 
@@ -109,7 +155,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const [review] = state.reviews;
 		expect(review).toMatchObject({ commit_id: head, event: "COMMENT" });
 		expect(review!.body.split("\n")[0]).toMatch(
-			new RegExp(`^<!-- melian:revision=${head} verdict=[0-9a-f]{16} -->$`),
+			new RegExp(`^<!-- melian:revision=${head} verdict=[0-9a-f]{16} sig=[0-9a-f]{32} -->$`),
 		);
 		expect(review!.body).toContain("**findings, blocking**");
 
@@ -140,7 +186,9 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			context,
 		);
 		const retries = findings.find((finding) => finding.properties.path === "src/config.ts")!;
-		expect(review!.body).toContain(`<!-- melian:revision=${head} finding=${retries.properties.id} -->`);
+		expect(review!.body).toMatch(
+			new RegExp(`\\n<!-- melian:revision=${head} finding=${retries.properties.id} sig=[0-9a-f]{32} -->\\n`),
+		);
 		expect(review!.body).toContain(`https://github.com/melian-agent/example/blob/${head}/src/config.ts#L1`);
 
 		expect(state.statuses).toEqual([
@@ -207,7 +255,11 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.reviews[1]!.body).not.toContain("src/config.ts");
 		expect(state.reviews[1]!.body).toContain("1 of them was posted on an earlier revision.");
 		expect(reply).toMatchObject({ in_reply_to_id: Number(thread) });
-		expect(reply!.body.split("\n")[0]).toBe(`<!-- melian:revision=${head} finding=${manager.properties.id} -->`);
+		expect(parseMarker(reply!.body.split("\n")[0]!)).toMatchObject({
+			revision: head,
+			kind: "resolved",
+			id: manager.properties.id,
+		});
 		expect(reply!.body).toContain(`Resolved at \`${head.slice(0, 12)}\``);
 		expect(state.statuses.at(-1)).toEqual({
 			sha: head,

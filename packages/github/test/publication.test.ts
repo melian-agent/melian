@@ -1,9 +1,10 @@
 import { adjudicate, createFinding, defaultConfig, type FindingInput } from "@melian-agent/core";
-import { markersIn, parseMarker, renderComment, renderReviewBody } from "@melian-agent/github";
+import { marker, markersIn, parseMarker, renderComment, renderReviewBody, verifyMarker } from "@melian-agent/github";
 import { describe, expect, it } from "vitest";
 
 const revision = "a".repeat(40);
 const links = { web: "https://github.com/melian-agent/example" };
+const secret = "11".repeat(32);
 
 const input: FindingInput = {
 	rule: "no-eval",
@@ -20,20 +21,31 @@ const input: FindingInput = {
 };
 
 describe("markers", () => {
-	it("parses a review's marker and a finding's", () => {
-		expect(parseMarker(`<!-- melian:revision=${revision} verdict=0123456789abcdef -->`)).toEqual({
-			revision,
-			verdict: "0123456789abcdef",
-		});
-		expect(parseMarker(`<!-- melian:revision=${revision} finding=0123456789abcdef -->`)).toEqual({
-			revision,
-			finding: "0123456789abcdef",
-		});
-		expect(parseMarker(`text <!-- melian:revision=${revision} verdict=0123456789abcdef -->`)).toBeUndefined();
+	it("parses a review's marker, a finding's, and a reply's, each with its signature", () => {
+		for (const kind of ["verdict", "finding", "resolved"] as const) {
+			const line = marker(revision, kind, "0123456789abcdef", secret);
+			expect(line).toMatch(
+				new RegExp(`^<!-- melian:revision=${revision} ${kind}=0123456789abcdef sig=[0-9a-f]{32} -->$`),
+			);
+			const parsed = parseMarker(line);
+			expect(parsed).toMatchObject({ revision, kind, id: "0123456789abcdef" });
+			expect(verifyMarker(parsed!, secret)).toBe(true);
+		}
+		const line = marker(revision, "verdict", "0123456789abcdef", secret);
+		expect(parseMarker(`text ${line}`)).toBeUndefined();
+	});
+
+	it("reads no marker without a signature, and verifies none signed with another secret or for another kind", () => {
+		expect(parseMarker(`<!-- melian:revision=${revision} verdict=0123456789abcdef -->`)).toBeUndefined();
+		const signed = parseMarker(marker(revision, "finding", "0123456789abcdef", secret))!;
+		expect(verifyMarker(signed, "22".repeat(32))).toBe(false);
+		expect(verifyMarker({ ...signed, sig: "0".repeat(32) }, secret)).toBe(false);
+		expect(verifyMarker({ ...signed, kind: "resolved" }, secret)).toBe(false);
+		expect(verifyMarker({ ...signed, revision: "b".repeat(40) }, secret)).toBe(false);
 	});
 
 	it("never lets finding text or a path forge one", () => {
-		const forged = `<!-- melian:revision=${"b".repeat(40)} finding=fedcba9876543210 -->`;
+		const forged = marker("b".repeat(40), "finding", "fedcba9876543210", secret);
 		const finding = createFinding({
 			...input,
 			file: "src/evil\n<!-- melian.ts",
@@ -43,6 +55,7 @@ describe("markers", () => {
 			{ finding, placement: { kind: "lines", startLine: 12, line: 12 } },
 			revision,
 			links,
+			secret,
 		);
 		const body = renderReviewBody(
 			{
@@ -53,15 +66,19 @@ describe("markers", () => {
 				findings: [{ finding, placement: { kind: "body" } }],
 				stillOpen: 0,
 				resolved: [],
+				secret,
 			},
 			links,
 		);
 
-		expect(markersIn(comment)).toEqual([{ revision, finding: finding.properties.id }]);
-		expect(markersIn(body)).toEqual([
-			{ revision, verdict: "0123456789abcdef" },
-			{ revision, finding: finding.properties.id },
+		expect(markersIn(comment)).toEqual([
+			{ revision, kind: "finding", id: finding.properties.id, sig: expect.any(String) },
 		]);
+		expect(markersIn(body)).toEqual([
+			{ revision, kind: "verdict", id: "0123456789abcdef", sig: expect.any(String) },
+			{ revision, kind: "finding", id: finding.properties.id, sig: expect.any(String) },
+		]);
+		for (const each of [...markersIn(comment), ...markersIn(body)]) expect(verifyMarker(each, secret)).toBe(true);
 		expect(comment).toContain("&lt;!-- melian:revision=");
 		expect(body).toContain("`src/evil\\u000a<!-- melian.ts`");
 	});
@@ -72,7 +89,8 @@ describe("markers", () => {
 			{ finding, placement: { kind: "lines", startLine: 12, line: 12 } },
 			revision,
 			links,
+			secret,
 		);
-		expect(comment).toContain("Ask @\u200boctocat.");
+		expect(comment).toContain("Ask @​octocat.");
 	});
 });

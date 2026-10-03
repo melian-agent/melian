@@ -81,50 +81,59 @@ async function killAfterReviewPosted(database: string, stateFile: string, log: s
 }
 
 describe("publishing across a crash", { timeout: 30_000 }, () => {
-	it("finds the review a crash left unrecorded by its marker, records it, and posts nothing twice", async () => {
-		const database = join(dir, "review.sqlite");
-		const stateFile = join(dir, "github.json");
-		const log = join(dir, "publish.log");
-		const fake = scenarioModels();
-		const reviewing = pullRequestState();
-		harness = await openPublishHarness(await openSqliteStorage(database), fake, providerFor(reviewing));
-		const { changeset, review } = await reviewScenario(
-			repo,
-			harness,
-			fake,
-			lensScript(unsafeManager, emptyName, nanRetries),
-		);
-		await review;
-		await harness.close(context);
-		harness = undefined;
-		moveTo(reviewing, changeset);
-		writeFileSync(stateFile, JSON.stringify(reviewing));
+	// An installation token cannot read /user, so the rerun cannot tell who posted the review; the signature alone has
+	// to prove it is Melian's.
+	it.each([
+		["the token can read /user", false],
+		["the token cannot read /user", true],
+	])(
+		"finds the review a crash left unrecorded by its signed marker when %s, and posts nothing twice",
+		async (_, failUser) => {
+			const database = join(dir, "review.sqlite");
+			const stateFile = join(dir, "github.json");
+			const log = join(dir, "publish.log");
+			const fake = scenarioModels();
+			const reviewing = pullRequestState();
+			reviewing.failUser = failUser;
+			harness = await openPublishHarness(await openSqliteStorage(database), fake, providerFor(reviewing));
+			const { changeset, review } = await reviewScenario(
+				repo,
+				harness,
+				fake,
+				lensScript(unsafeManager, emptyName, nanRetries),
+			);
+			await review;
+			await harness.close(context);
+			harness = undefined;
+			moveTo(reviewing, changeset);
+			writeFileSync(stateFile, JSON.stringify(reviewing));
 
-		await killAfterReviewPosted(database, stateFile, log);
+			await killAfterReviewPosted(database, stateFile, log);
 
-		const state = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
-		expect(state.reviews).toHaveLength(1);
-		state.calls = [];
-		const github = providerFor(state);
-		harness = await openPublishHarness(await openSqliteStorage(database), scenarioModels(), github);
-		const head = changeset.revision.head;
+			const state = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
+			expect(state.reviews).toHaveLength(1);
+			state.calls = [];
+			const github = providerFor(state);
+			harness = await openPublishHarness(await openSqliteStorage(database), scenarioModels(), github);
+			const head = changeset.revision.head;
 
-		const result = await publishReview({
-			harness,
-			provider: github,
-			changeset,
-			pullRequest: await github.pullRequest(7),
-			base: changeset.revision.base,
-		});
+			const result = await publishReview({
+				harness,
+				provider: github,
+				changeset,
+				pullRequest: await github.pullRequest(7),
+				base: changeset.revision.base,
+			});
 
-		expect(state.reviews).toHaveLength(1);
-		expect(posts(state).map((call) => call.path)).toEqual([`/repos/melian-agent/example/statuses/${head}`]);
-		expect(result).toMatchObject({ review: String(state.reviews[0]!.id), posted: 0 });
-		const recorded = await readPublished(harness, (await harness.root(context)).id, head, context);
-		expect(recorded?.review).toBe(String(state.reviews[0]!.id));
-		expect(Object.values(recorded!.threads).sort()).toEqual(
-			state.comments.map((comment) => String(comment.id)).sort(),
-		);
-		expect(state.statuses).toEqual([expect.objectContaining({ sha: head, state: "failure" })]);
-	});
+			expect(state.reviews).toHaveLength(1);
+			expect(posts(state).map((call) => call.path)).toEqual([`/repos/melian-agent/example/statuses/${head}`]);
+			expect(result).toMatchObject({ review: String(state.reviews[0]!.id), posted: 0 });
+			const recorded = await readPublished(harness, (await harness.root(context)).id, head, context);
+			expect(recorded?.review).toBe(String(state.reviews[0]!.id));
+			expect(Object.values(recorded!.threads).sort()).toEqual(
+				state.comments.map((comment) => String(comment.id)).sort(),
+			);
+			expect(state.statuses).toEqual([expect.objectContaining({ sha: head, state: "failure" })]);
+		},
+	);
 });
