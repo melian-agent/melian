@@ -52,6 +52,9 @@ export type AdjudicationTaskInput = {
 	// Every check the review's tier names. One with no record in `checks` makes the verdict not reviewed.
 	manifest: string[];
 	checks: StoredCheck[];
+	// The findings document's version of this revision when the review read it: a dismissal or a new sighting changes
+	// it, so a repeat review after one starts a new task rather than return the verdict from before.
+	findingsVersion: number;
 	allowSkip: string[];
 	// The producers whose sightings at the revision count, derived from the manifest: each lens the review ran, by check and
 	// version, and every other check of the manifest, by name and the tool version its record names. A lens that
@@ -122,10 +125,12 @@ export function adjudicationInput(options: {
 	config: Pick<MelianConfig, "resolution" | "ruleAliases">;
 	manifest: readonly string[];
 	checks: readonly CheckRecord[];
+	findingsVersion: number;
 	allowSkip: readonly string[];
 	producers: readonly FindingSource[];
 }): AdjudicationTaskInput {
-	const { root, repoRoot, base, head, policy, config, manifest, checks, allowSkip, producers } = options;
+	const { root, repoRoot, base, head, policy, config, manifest, checks, findingsVersion, allowSkip, producers } =
+		options;
 	return {
 		root,
 		repoRoot,
@@ -138,6 +143,7 @@ export function adjudicationInput(options: {
 		},
 		manifest: [...manifest],
 		checks: checks.map((check) => structuredClone(check)),
+		findingsVersion,
 		allowSkip: [...allowSkip],
 		producers: producers.map((source) => ({ ...source })),
 	};

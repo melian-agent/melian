@@ -18,6 +18,7 @@ import {
 	createMemoryStorage,
 	createRegistry,
 	createReviewRegistry,
+	dismissFinding,
 	type Harness,
 	type Message,
 	openHarness,
@@ -928,6 +929,25 @@ describe("adjudication", () => {
 		expect(verdict).toMatchObject({ status: "passed", notRun: [] });
 	});
 
+	it("decides again after a dismissal rather than return the verdict from before it", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const first = await reviewed();
+		expect(first.verdict).toMatchObject({ status: "findings", blocking: true });
+		const root = await harness.root(context);
+		const at = "2026-10-03T00:00:00Z";
+		const dismissal = { by: "tal", reason: "the manager is always set here", at };
+		await root.commit((tx) => dismissFinding(tx, root.id, first.findings[0]!.properties.id, dismissal), context);
+
+		const { verdict } = await reviewed();
+
+		expect(verdict).toMatchObject({ status: "passed", blocking: false });
+		expect(verdict.dismissed).toHaveLength(1);
+		expect(await readVerdict(harness, root.id, revision(), context)).toEqual(verdict);
+	});
+
 	it("caps a pre-existing finding at advisory", async () => {
 		scriptConversations(fake, [
 			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
@@ -1006,6 +1026,7 @@ describe("adjudication", () => {
 				policy: undefined,
 				config,
 				manifest: [],
+				findingsVersion: 0,
 				checks: [failed],
 				allowSkip: [],
 				producers,

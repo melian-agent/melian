@@ -48,15 +48,17 @@ type ProducerFinding = Omit<Finding, "properties"> & {
 type FindingRecord = { lifecycle: FindingLifecycle; sightings: Record<string, Record<string, ProducerFinding>> };
 
 // `revisions` lists the revisions reviewed, oldest first, so a resumed review of an old one cannot move a lifecycle back.
-type FindingsState = { revisions: string[]; items: Record<string, FindingRecord> };
+// `versions` counts, per revision, the writes that could change what a read of it returns: a sighting there, or a
+// lifecycle change of a finding sighted there. Adjudication's input carries it, so a dismissal decides afresh.
+type FindingsState = { revisions: string[]; items: Record<string, FindingRecord>; versions: Record<string, number> };
 
 export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
-	version: 3,
+	version: 4,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
-	initial: () => ({ revisions: [], items: {} }),
+	initial: () => ({ revisions: [], items: {}, versions: {} }),
 });
 
 /**
@@ -148,6 +150,7 @@ export async function upsertFinding(
 	const producer: ProducerFinding = { ...valid, properties };
 	const state = await tx.doc(FindingsDocument, rootConversationId);
 	if (!state.revisions.includes(revision)) state.revisions.push(revision);
+	bump(state, [revision]);
 	const key = producerKey(properties.source);
 	const previous = state.items[properties.id];
 	if (previous === undefined) {
@@ -198,7 +201,8 @@ export async function dismissFinding(
 	id: string,
 	{ by, reason, at }: Dismissal,
 ): Promise<void> {
-	const { items } = await tx.doc(FindingsDocument, rootConversationId);
+	const state = await tx.doc(FindingsDocument, rootConversationId);
+	const { items } = state;
 	const record = items[id];
 	if (record === undefined) {
 		throw new FindingError("unknownFinding", `no finding has ID ${id}`, { path: "/properties/id" });
@@ -211,6 +215,25 @@ export async function dismissFinding(
 		dismissedAt: at,
 	};
 	items[id] = { ...record, lifecycle };
+	bump(state, Object.keys(record.sightings));
+}
+
+function bump(state: FindingsState, revisions: readonly string[]): void {
+	state.versions = {
+		...state.versions,
+		...Object.fromEntries(revisions.map((revision) => [revision, (state.versions[revision] ?? 0) + 1])),
+	};
+}
+
+// How many writes have changed what a read of `revision` returns, so a repeat review can tell a finished adjudication
+// that read the same findings from one that read older ones.
+export async function findingsVersion(
+	reader: Pick<Harness, "snapshot">,
+	rootConversationId: ConversationId,
+	revision: string,
+	context: Context,
+): Promise<number> {
+	return (await reader.snapshot(FindingsDocument, rootConversationId, context))?.versions[revision] ?? 0;
 }
 
 /** Which sightings {@link readFindings} merges. */

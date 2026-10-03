@@ -27,7 +27,7 @@ import {
 	readVerdict,
 } from "./adjudication.ts";
 import { ReviewError } from "./errors.ts";
-import { readFindings, recordRevision, revisionKey } from "./findings.ts";
+import { findingsVersion, readFindings, recordRevision, revisionKey } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -581,6 +581,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		config,
 		manifest,
 		checks,
+		findingsVersion: await findingsVersion(harness, root, reviewed, context),
 		allowSkip,
 		producers,
 	});
