@@ -1,0 +1,54 @@
+{
+  "correctness": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/user.ts"
+          },
+          "expectToolResult": "export function managerName"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "search",
+          "arguments": {
+            "pattern": "managerName("
+          },
+          "expectToolResult": "src/org-chart.ts:4:"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "src/user.ts",
+            "line": 7,
+            "endLine": 8,
+            "rule": "null-dereference",
+            "severity": "P1",
+            "explanation": {
+              "what": "managerName casts user.manager to User and reads its name, but manager is optional.",
+              "why": "The base guarded with ?. and fell back to \"none\"; this change removes the guard, so describe() throws for any user without a manager.",
+              "fix": "Keep the optional chain: return user.manager?.name.trim() ?? \"none\"."
+            }
+          },
+          "expectToolResult": "recorded finding"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ],
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ]
+}

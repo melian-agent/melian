@@ -3,7 +3,7 @@ import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import { parseDocument } from "yaml";
 import { ConfigError, type ConfigErrorCode } from "./errors.ts";
-import { directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
+import { anchorGlob, directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 
 const strict = { additionalProperties: false } as const;
@@ -24,7 +24,8 @@ export const severitySchema = Type.Union([
 	Type.Literal("P3"),
 	Type.Literal("nit"),
 ]);
-const lensTier = Type.Union([Type.Literal("light"), Type.Literal("medium"), Type.Literal("heavy")]);
+/** The JSON Schema of a {@link LensTier}. */
+export const lensTierSchema = Type.Union([Type.Literal("light"), Type.Literal("medium"), Type.Literal("heavy")]);
 const modelRoute = Type.Object({ model: name, fallbacks: Type.Optional(Type.Array(name)) }, strict);
 // Each end is optional in one file so that a nearer file can restate one; the merged band must have both.
 const band = Type.Object(
@@ -58,7 +59,7 @@ export const melianYamlSchema = Type.Object(
 				Type.Object(
 					{
 						enabled: Type.Optional(Type.Boolean()),
-						tier: Type.Optional(lensTier),
+						tier: Type.Optional(lensTierSchema),
 						paths: Type.Optional(Type.Array(name)),
 					},
 					strict,
@@ -97,7 +98,7 @@ export type Resolution = Static<typeof resolutionSchema>;
 export type Severity = Static<typeof severitySchema>;
 
 /** A model tier a lens can name. Model routing also has a `decision` tier for decision models. */
-export type LensTier = Static<typeof lensTier>;
+export type LensTier = Static<typeof lensTierSchema>;
 
 /** A model and the models to try, in order, when it fails. */
 export type ModelRoute = Static<typeof modelRoute>;
@@ -253,14 +254,10 @@ function anchorLensPaths(site: Site, layer: MelianYaml): MelianYaml {
 	if (layer.lenses === undefined) return layer;
 	const directory = posix.dirname(site.file);
 	const anchor = (lens: string) => (path: string) => {
-		const negated = path.startsWith("!");
-		const pattern = (negated ? path.slice(1) : path).replace(/^\/+/, "");
-		const anchored = posix.normalize(posix.join(directory, pattern));
-		if (anchored === ".." || anchored.startsWith("../")) {
-			const key = `lenses.${lens}.paths`;
-			throw configError("invalidValue", site, `"${key}" has ${path}, which leaves the repository`, { key });
-		}
-		return `${negated ? "!" : ""}${anchored}`;
+		const anchored = anchorGlob(directory, path);
+		if (anchored !== undefined) return anchored;
+		const key = `lenses.${lens}.paths`;
+		throw configError("invalidValue", site, `"${key}" has ${path}, which leaves the repository`, { key });
 	};
 	const lenses = Object.fromEntries(
 		Object.entries(layer.lenses).map(([lens, settings]) => [

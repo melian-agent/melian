@@ -1,0 +1,45 @@
+{
+  "correctness": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/arithmetic.ts"
+          },
+          "expectToolResult": "export function sum(a: number, b: number): number {"
+        }
+      ]
+    },
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "contracts": [
+    {
+      "calls": [
+        {
+          "name": "search",
+          "arguments": {
+            "pattern": "math.ts"
+          },
+          "expectToolResult": "No matches."
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "search",
+          "arguments": {
+            "pattern": "add("
+          },
+          "expectToolResult": "No matches."
+        }
+      ]
+    },
+    {
+      "text": "Reported 0 findings."
+    }
+  ]
+}

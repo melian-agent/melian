@@ -7,6 +7,13 @@ export interface GitResult {
 	// Undecoded, for output that carries paths: a path need not be UTF-8, and decoding would replace its bytes.
 	readonly stdoutBytes: Buffer;
 	readonly stderr: string;
+	// Set when stdout reached `maxBytes` and git was stopped; `stdout` then holds the first `maxBytes` bytes.
+	readonly truncated?: boolean;
+}
+
+export interface GitOptions {
+	// Stop git once stdout reaches this many bytes.
+	readonly maxBytes?: number;
 }
 
 // What `git rev-parse --local-env-vars` prints. A hook runs with these set for its own repository, and git honours
@@ -35,13 +42,26 @@ function gitEnvironment(): NodeJS.ProcessEnv {
 	return env;
 }
 
-export function git(cwd: string, args: readonly string[]): Promise<GitResult> {
+export function git(cwd: string, args: readonly string[], options: GitOptions = {}): Promise<GitResult> {
 	return new Promise((resolve, reject) => {
 		// Melian only reads; optional locks would contend with an editor or a concurrent git.
 		const child = spawn("git", args, { cwd, env: gitEnvironment() });
 		const stdout: Buffer[] = [];
 		const stderr: Buffer[] = [];
-		child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
+		let size = 0;
+		let truncated = false;
+		child.stdout.on("data", (chunk: Buffer) => {
+			if (truncated) return;
+			const room = (options.maxBytes ?? Number.POSITIVE_INFINITY) - size;
+			if (chunk.length <= room) {
+				stdout.push(chunk);
+				size += chunk.length;
+				return;
+			}
+			stdout.push(chunk.subarray(0, room));
+			truncated = true;
+			child.kill();
+		});
 		child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
 		child.on("error", (cause) =>
 			reject(
@@ -55,6 +75,7 @@ export function git(cwd: string, args: readonly string[]): Promise<GitResult> {
 				stdout: stdoutBytes.toString("utf8"),
 				stdoutBytes,
 				stderr: Buffer.concat(stderr).toString("utf8"),
+				...(truncated ? { truncated } : {}),
 			});
 		});
 	});

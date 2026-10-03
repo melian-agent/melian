@@ -107,6 +107,7 @@ export type FindingErrorCode =
 	| "invalidRegion"
 	| "deletedFile"
 	| "missingEvidence"
+	| "invalidEvidence"
 	| "missingDiscriminator"
 	| "snippetNotFound"
 	| "idMismatch"
@@ -125,5 +126,79 @@ export class FindingError extends Error {
 		this.name = "FindingError";
 		this.code = code;
 		this.path = options.path;
+	}
+}
+
+/** Why a revision could not be read. */
+export type RevisionErrorCode =
+	| "invalidRevision"
+	| "notFound"
+	| "notAFile"
+	| "symlink"
+	| "binary"
+	| "invalidPattern"
+	| "gitFailed";
+
+/** A path could not be read at a revision. `path` names it, where there is one. */
+export class RevisionError extends Error {
+	readonly code: RevisionErrorCode;
+	readonly path: string | undefined;
+
+	constructor(code: RevisionErrorCode, message: string, options: { path?: string; cause?: unknown } = {}) {
+		super(message, { cause: options.cause });
+		this.name = "RevisionError";
+		this.code = code;
+		this.path = options.path;
+	}
+}
+
+/** Why a lens could not be loaded. */
+export type LensErrorCode =
+	| "missingRoot"
+	| "notARepository"
+	| "unknownCommit"
+	| "symlink"
+	| "tooLarge"
+	| "unreadable"
+	| "missingFrontMatter"
+	| "invalidYaml"
+	| "unknownField"
+	| "invalidValue"
+	| "missingField"
+	| "unknownLens";
+
+/**
+ * A lens could not be loaded. `file` names its `LENS.md`, repository-relative, or `builtin:<name>` for a lens shipped
+ * with Melian. `field` is the offending front matter field, where there is one.
+ */
+export class LensError extends Error {
+	readonly code: LensErrorCode;
+	readonly file: string;
+	readonly field: string | undefined;
+
+	constructor(code: LensErrorCode, file: string, message: string, options: { field?: string; cause?: unknown } = {}) {
+		super(message, { cause: options.cause });
+		this.name = "LensError";
+		this.code = code;
+		this.file = file;
+		this.field = options.field;
+	}
+}
+
+/** Why a tier could not be routed to a model. */
+export type ModelRoutingErrorCode = "noModelForTier" | "invalidModel";
+
+/** A model tier could not be routed. `tier` names it; `model` is the offending configured value, where there is one. */
+export class ModelRoutingError extends Error {
+	readonly code: ModelRoutingErrorCode;
+	readonly tier: string;
+	readonly model: string | undefined;
+
+	constructor(code: ModelRoutingErrorCode, message: string, options: { tier: string; model?: string }) {
+		super(message);
+		this.name = "ModelRoutingError";
+		this.code = code;
+		this.tier = options.tier;
+		this.model = options.model;
 	}
 }

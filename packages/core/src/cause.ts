@@ -1,4 +1,5 @@
 import type { Revision } from "./changeset.ts";
+import type { Hunk } from "./diff.ts";
 import { FindingError } from "./errors.ts";
 import { canonicalPath, type LocationCause } from "./findings.ts";
 
@@ -33,4 +34,29 @@ export function classifyCause(location: CodeLocation, revision: Pick<Revision, "
 		(hunk) => hunk.newLines > 0 && location.startLine < hunk.newStart + hunk.newLines && end >= hunk.newStart,
 	);
 	return overlaps ? "introduced" : "pre-existing";
+}
+
+/**
+ * Confirms that evidence names changed code: lines at head in a file the change modifies, overlapping some hunk's new
+ * lines. Returns the first hunk it overlaps. Throws `FindingError` `invalidEvidence` naming what evidence must be when
+ * the file is unchanged or deleted, or the lines overlap no hunk's new lines, and `invalidPath` for a path that is not
+ * repository-relative.
+ */
+export function checkEvidence(location: CodeLocation, revision: Pick<Revision, "files">): Hunk {
+	const path = canonicalPath(location.file, "/evidence/file");
+	const end = location.endLine ?? location.startLine;
+	const changed = revision.files.find((file) => file.path === path && file.status !== "deleted");
+	const hunk = changed?.hunks.find(
+		(each) => each.newLines > 0 && location.startLine < each.newStart + each.newLines && end >= each.newStart,
+	);
+	if (hunk !== undefined) return hunk;
+	const where =
+		changed === undefined
+			? `${path} is not a file this change modifies`
+			: `${path}:${location.startLine}-${end} is not a line this change added or modified`;
+	throw new FindingError(
+		"invalidEvidence",
+		`${where}; evidence must be { file, line, endLine } naming lines this change added or modified`,
+		{ path: "/evidence" },
+	);
 }

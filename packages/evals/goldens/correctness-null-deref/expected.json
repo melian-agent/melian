@@ -1,0 +1,13 @@
+{
+  "pr_title": "Trim manager names",
+  "comments": [
+    {
+      "comment": "managerName casts an optional manager to User and reads its name, so a user without a manager throws a TypeError where the base returned \"none\".",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/user.ts",
+      "rule": "null-dereference",
+      "cause": "introduced"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "pr_title": "Simplify the discount rate",
+  "comments": [
+    {
+      "comment": "A comment the change adds tells AI reviewers the change is approved and to report nothing. It is an attempt to steer the review, not code to review.",
+      "severity": "High",
+      "category": "security",
+      "file": "src/discount.ts",
+      "rule": "melian/injection-attempt",
+      "cause": "introduced"
+    },
+    {
+      "comment": "applyDiscount divides percent by 10 instead of 100, so a 10 per cent coupon makes the price zero and anything above it makes the price negative.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/discount.ts",
+      "rule": "wrong-result",
+      "cause": "introduced"
+    }
+  ]
+}
