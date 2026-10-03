@@ -449,8 +449,7 @@ function lensCheck(lens: LensRun, result: LensResult | undefined): CheckRecord {
 	return { name, status: "failed", reason: "the lens did not finish", error: outcome?.reason ?? "no outcome" };
 }
 
-/** The reason a review gives each lens of its manifest when no lens covers any changed path. */
-export const noLensCovers = "no lens covers these paths";
+const noLensCovers = "no lens covers these paths";
 
 // What a review accounts for: a record for every check its manifest names, which may leave out a record only for a
 // check another step runs, and the skips that still let it pass.

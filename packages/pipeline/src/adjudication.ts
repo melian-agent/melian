@@ -30,7 +30,7 @@ type StoredVerdict = {
 	notRun: StoredCheck[];
 };
 
-/** Each revision's verdict, keyed by head commit, on the changeset's root conversation. */
+// Each revision's verdict, keyed by head commit, on the changeset's root conversation.
 export const VerdictDocument = defineDoc<{ verdicts: Record<string, StoredVerdict> }>({
 	kind: "melian.verdicts",
 	version: 1,
@@ -40,24 +40,21 @@ export const VerdictDocument = defineDoc<{ verdicts: Record<string, StoredVerdic
 	initial: () => ({ verdicts: {} }),
 });
 
-/** What the adjudication task decides from. Everything is fixed when the review creates it, so a rerun decides alike. */
+// What the adjudication task decides from. Everything is fixed when the review creates it, so a rerun decides alike.
 export type AdjudicationTaskInput = {
 	root: ConversationId;
 	repoRoot: string;
 	head: string;
-	/** Where per-path configuration is read from; without it, `config` applies to every path. */
+	// Where per-path configuration is read from; without it, `config` applies to every path.
 	policy?: RepositorySource;
 	config: { resolution: Record<Severity, Resolution>; ruleAliases: Record<string, StoredAlias> };
-	/** Every check the review's tier names. One with no record in `checks` makes the verdict not reviewed. */
+	// Every check the review's tier names. One with no record in `checks` makes the verdict not reviewed.
 	manifest: string[];
 	checks: StoredCheck[];
-	/** Checks whose skip still lets the review pass. */
 	allowSkip: string[];
-	/**
-	 * The producers whose sightings at `head` count, derived from the manifest: each lens the review ran, by check and
-	 * version, and every other check of the manifest, by name and the tool version its record names. A lens that
-	 * configuration has since disabled or retiered left sightings at this head that are not this review's.
-	 */
+	// The producers whose sightings at `head` count, derived from the manifest: each lens the review ran, by check and
+	// version, and every other check of the manifest, by name and the tool version its record names. A lens that
+	// configuration has since disabled or retiered left sightings at this head that are not this review's.
 	producers: { check: string; version?: string }[];
 };
 
@@ -67,15 +64,13 @@ async function configsFor(repoRoot: string, policy: RepositorySource, paths: rea
 	return (path) => loaded.get(path)!;
 }
 
-/** `superseded` when a later review of the head created another adjudication task before this one recorded. */
+// `superseded` when a later review of the head created another adjudication task before this one recorded.
 export type AdjudicationResult = "recorded" | "superseded";
 
-/**
- * Adjudicates the findings the root conversation holds at the head under review and records the verdict in
- * {@link VerdictDocument} under that head. It reads, decides, and writes in one phase that ends in one commit, so a
- * rerun after a crash writes the same verdict again. It records nothing once the review index names another task for
- * the head, so a crashed task that resumes late cannot overwrite a newer review's verdict.
- */
+// Adjudicates the findings the root conversation holds at the head under review and records the verdict in
+// `VerdictDocument` under that head. It reads, decides, and writes in one phase that ends in one commit, so a
+// rerun after a crash writes the same verdict again. It records nothing once the review index names another task for
+// the head, so a crashed task that resumes late cannot overwrite a newer review's verdict.
 export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adjudicate" }, AdjudicationResult>({
 	name: "melian.adjudication",
 	version: 1,
@@ -116,7 +111,6 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 	},
 });
 
-/** The input of an adjudication task for one review. */
 export function adjudicationInput(options: {
 	root: ConversationId;
 	repoRoot: string;
