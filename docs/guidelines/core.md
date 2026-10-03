@@ -195,6 +195,18 @@ The cost is the other direction: a renamed parameter that breaks a caller is `pr
 
 Everything the renderer prints is untrusted. A lens writes finding text after reading the change under review, which anyone opening a pull request controls, and that author also chooses the file paths. Example: a file named `src/run.ts` followed by ESC `[2J` clears the reviewer's screen, a newline in a path or rule ID forges a second header, and a right-to-left override makes `gnp.ts` read as `ts.png`. The terminal renderer therefore prints every control character, C1 control, line or paragraph separator, and bidi control in every string, paths and rule IDs included, as a visible `\uXXXX`, with colour on or off. Prose keeps its newlines as indented continuation lines, so a multi-line explanation stays inside its block; a newline anywhere else is escaped. Any new renderer for a terminal does the same.
 
+## Adjudication
+
+Adjudication turns the findings a review collected into what the change requires. It is plain functions over plain values, in `src/adjudication.ts`; the pipeline loads configuration and stores the result.
+
+### Resolution
+
+`resolveFinding(finding, config)` returns what a finding requires under `config`, the effective configuration at the finding's path: `config.resolution` for its severity. `applyResolutions(findings, configFor)` returns copies with `properties.resolution` set, each under `configFor(path)`, so a nested `melian.yaml` that lowers `P2` to `advisory` for `docs/` applies to findings in `docs/` and nowhere else. `configFor` is synchronous: load the configuration for each path first, with `loadConfig`.
+
+A finding the change did not cause is never above `advisory`. Problem: severity says how bad a defect is, not whether this change made it. Example: a lens notices a `P0` SQL injection on line 80 of a file whose typo on line 3 the change fixed; at the configured `block`, the typo fix could not merge. Solution: a `pre-existing` finding resolves to the lesser of its configured resolution and `advisory`, so a `nit` stays `silent`. An `introduced` finding keeps its configured resolution, and so does an `affected` one, only because it carries evidence; `affected` without evidence is treated as `pre-existing`.
+
+The resolution a lens stores at report time comes from the configuration the review started with. Adjudication's is the one that counts.
+
 ## Tests
 
 - Run the package's tests with `npm test --workspace @melian-agent/core`, or one file with `npx vitest --run packages/core/test/changeset.test.ts` from the repository root.

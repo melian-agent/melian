@@ -1,3 +1,9 @@
+export {
+	applyResolutions,
+	type ConfigFor,
+	resolutionOrder,
+	resolveFinding,
+} from "./adjudication.ts";
 export { type CodeLocation, classifyCause } from "./cause.ts";
 export {
 	type Changeset,
