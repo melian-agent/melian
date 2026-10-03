@@ -54,6 +54,12 @@ afterEach(() => {
 
 const rejection = (promise: Promise<unknown>) => rejectionOf(promise, ChangesetError);
 
+// Records a submodule pointer through the index, so no second repository is cloned.
+function commitGitlink(root: string, path: string, commit: string): void {
+	gitIn(root, "update-index", "--add", "--cacheinfo", `160000,${commit},${path}`);
+	gitIn(root, "commit", "--quiet", "-m", `point ${path} at ${commit}`);
+}
+
 describe("parseRangeSpec", () => {
 	it("keeps git's two-dot and three-dot meanings", () => {
 		expect(parseRangeSpec("origin/main..HEAD")).toEqual({ base: "origin/main", head: "HEAD", mode: "twoDot" });
@@ -160,11 +166,16 @@ describe("resolveRange", () => {
 	});
 
 	it("ignores diff settings in the user's git configuration", async () => {
+		gitIn(repo, "checkout", "--quiet", "feature");
+		commitGitlink(repo, "vendor/lib", gitIn(repo, "rev-parse", "main"));
+		gitIn(repo, "checkout", "--quiet", "main");
 		const plain = await resolveRange(repo, "main...feature");
+		expect(plain.revision.files.map(({ path }) => path)).toContain("vendor/lib");
 		const orderFile = join(repo, ".git", "order");
 		writeFiles(repo, { ".git/order": lines("poem.txt", "logo.png", "*") });
 		for (const [key, value] of [
 			["diff.orderFile", orderFile],
+			["diff.ignoreSubmodules", "all"],
 			["diff.interHunkContext", "10"],
 			["diff.algorithm", "patience"],
 			["diff.renames", "copies"],
@@ -176,6 +187,33 @@ describe("resolveRange", () => {
 			gitIn(repo, "config", key!, value!);
 		}
 		expect(await resolveRange(repo, "main...feature")).toEqual(plain);
+	});
+
+	describe("with a submodule whose pointer moves", () => {
+		let before: string;
+		let after: string;
+
+		beforeEach(() => {
+			before = gitIn(repo, "rev-parse", "main~1");
+			after = gitIn(repo, "rev-parse", "main");
+			writeFiles(repo, {
+				".gitmodules": lines('[submodule "lib"]', "\tpath = vendor/lib", "\turl = ./lib", "\tignore = all"),
+			});
+			gitIn(repo, "add", ".gitmodules");
+			commitGitlink(repo, "vendor/lib", before);
+			commitGitlink(repo, "vendor/lib", after);
+		});
+
+		it("reports the pointer even when the repository's .gitmodules ignores the submodule", async () => {
+			const changeset = await resolveRange(repo, "main~1..main");
+			expect(changeset.revision.files.map(({ path }) => path)).toEqual(["vendor/lib"]);
+		});
+
+		it("reports the pointer even when the user's configuration ignores submodules", async () => {
+			gitIn(repo, "config", "diff.ignoreSubmodules", "all");
+			const changeset = await resolveRange(repo, "main~1..main");
+			expect(changeset.revision.files.map(({ path }) => path)).toEqual(["vendor/lib"]);
+		});
 	});
 
 	it("resolves an empty diff to no files", async () => {

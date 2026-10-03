@@ -119,7 +119,13 @@ async function mergeBase(repoRoot: string, spec: RangeSpec, base: string, head: 
 }
 
 async function dirtyPaths(repoRoot: string): Promise<string[]> {
-	const output = await gitOutput(repoRoot, ["status", "--porcelain=v1", "-z", "--untracked-files=normal"]);
+	const output = await gitOutput(repoRoot, [
+		"status",
+		"--porcelain=v1",
+		"-z",
+		"--untracked-files=normal",
+		"--ignore-submodules=none",
+	]);
 	const paths: string[] = [];
 	const fields = output.split("\0");
 	for (let i = 0; i < fields.length && fields[i] !== ""; i++) {
@@ -143,6 +149,8 @@ const diffFlags = [
 	"--indent-heuristic",
 	"--inter-hunk-context=0",
 	"--submodule=short",
+	// Overrides diff.ignoreSubmodules and the ignore setting in .gitmodules, which a head commit controls.
+	"--ignore-submodules=none",
 	// Cancels diff.orderFile, so files come in git's path order.
 	"-O/dev/null",
 ];
