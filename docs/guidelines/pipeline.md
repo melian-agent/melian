@@ -36,6 +36,17 @@ The store is read-only, and that has two consequences that read like bugs:
 - A malformed `auth.json` is a `PiCredentialsError` with no cause: V8's JSON `SyntaxError` quotes the text around the fault, which can be part of a key.
 - A key Pi resolves at use, `!command` or one containing `$VAR`, reads as absent, so the provider's environment variable applies. Melian runs no commands from a credential file.
 
+Anthropic resolves in pi-ai's order, with one alias Melian adds:
+
+1. Pi's store.
+2. `ANTHROPIC_AUTH_TOKEN`, sent as a bearer token.
+3. `ANTHROPIC_OAUTH_TOKEN`.
+4. `CLAUDE_CODE_OAUTH_TOKEN`, the name Claude Code keeps the same kind of token under. Melian reads it only when `ANTHROPIC_OAUTH_TOKEN` is unset, and pi-ai still labels the source `ANTHROPIC_OAUTH_TOKEN`.
+5. `ANTHROPIC_API_KEY`.
+6. Workload identity federation.
+
+Melian never logs or reports a credential's value; errors name the file and the provider only.
+
 There is no credential pool yet; one credential per provider.
 
 ## Reviewing a changeset
