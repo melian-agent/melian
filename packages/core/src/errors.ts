@@ -6,6 +6,7 @@ export type ChangesetErrorCode =
 	| "noMergeBase"
 	| "dirtyWorktree"
 	| "gitUnavailable"
+	| "gitTooOld"
 	| "gitFailed";
 
 /** A changeset could not be resolved. `code` says why; `ref` and `paths` carry the offending input where there is one. */
@@ -86,6 +87,7 @@ export class StandardsError extends Error {
 
 /** A path given to a loader lies outside the repository it was asked about. */
 export class OutsideRepositoryError extends Error {
+	readonly code = "outsideRepository";
 	readonly path: string;
 	readonly repoRoot: string;
 

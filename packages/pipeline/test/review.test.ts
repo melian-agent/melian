@@ -159,7 +159,7 @@ describe("reviewChangeset", () => {
 			],
 			properties: {
 				cause: "introduced",
-				trigger: { file: "src/user.ts", newStart: 7, newLines: 1 },
+				trigger: { file: "src/user.ts", index: 0, snippet: "\treturn user.manager.name;" },
 				severity: "P1",
 				resolution: "block",
 				status: "new",

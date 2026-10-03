@@ -125,6 +125,31 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		});
 	});
 
+	it("normalises lens paths in the root file the same way as in a nested one", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("lenses:", "  security:", "    paths: [./src/**, 'lib/../api/**']"),
+			"services/melian.yaml": lines("lenses:", "  contracts:", "    paths: [./api/**, '../shared/**']"),
+		});
+		const { config } = await load("services/a.ts");
+		expect(config.lenses).toEqual({
+			security: { paths: ["src/**", "api/**"] },
+			contracts: { paths: ["services/api/**", "shared/**"] },
+		});
+	});
+
+	it.each([
+		["melian.yaml", "../outside/**"],
+		["melian.yaml", "!../outside/**"],
+		["services/melian.yaml", "../../outside/**"],
+	])("rejects a lens path in %s that climbs out of the repository: %j", async (file, pattern) => {
+		writeFiles(repo, { [file]: lines("lenses:", "  security:", `    paths: ['${pattern}']`) });
+		expect(await rejection(load("services/a.ts"))).toMatchObject({
+			code: "invalidValue",
+			file,
+			key: "lenses.security.paths",
+		});
+	});
+
 	it("names a melian.yaml it cannot read", async () => {
 		writeFiles(repo, { "melian.yaml/inside": "" });
 		expect(await rejection(load("a.ts"))).toMatchObject({ code: "unreadable", file: "melian.yaml" });
@@ -209,6 +234,15 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		expect(await rejection(load("a.ts"))).toMatchObject({ code: "invalidYaml" });
 	});
 
+	it("rejects a YAML alias bomb as invalid YAML naming the file", async () => {
+		const bomb = ["a: &a [x, x, x, x, x, x, x, x, x]"];
+		for (const [name, previous] of ["ba", "cb", "dc", "ed", "fe", "gf"].map((pair) => [pair[0], pair[1]])) {
+			bomb.push(`${name}: &${name} [${Array(9).fill(`*${previous}`).join(", ")}]`);
+		}
+		writeFiles(repo, { "melian.yaml": lines(...bomb) });
+		expect(await rejection(load("a.ts"))).toMatchObject({ code: "invalidYaml", file: "melian.yaml" });
+	});
+
 	it("lets a nearer file restate one end of a threshold band", async () => {
 		writeFiles(repo, {
 			"melian.yaml": lines("decisions:", "  thresholds:", "    real:", "      drop: 0.2", "      accept: 0.8"),
@@ -239,7 +273,8 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 	});
 
 	it("refuses a path outside the repository", async () => {
-		await expect(load("../elsewhere/a.ts")).rejects.toBeInstanceOf(OutsideRepositoryError);
+		const error = await rejectionOf(load("../elsewhere/a.ts"), OutsideRepositoryError);
+		expect(error).toMatchObject({ code: "outsideRepository", path: "../elsewhere/a.ts" });
 	});
 
 	it.each([".", "a.ts"])("refuses a repository root that does not exist, given %j", async (path) => {
@@ -285,6 +320,13 @@ describe("loadConfig from a revision", () => {
 		expect(await rejection(loadConfig(repo, { kind: "revision", commit }, "a.ts"))).toMatchObject({
 			code: "unknownCommit",
 		});
+	});
+
+	it("passes on git's own complaint rather than guessing it means no repository", async () => {
+		writeFiles(repo, { ".git/config": lines("[core", "not valid") });
+		const error = await rejection(loadConfig(repo, { kind: "revision", commit: "main" }, "a.ts"));
+		expect(error.code).toBe("unreadable");
+		expect(error.message).toMatch(/bad config/);
 	});
 
 	it("refuses a root that is not the top of a repository", async () => {

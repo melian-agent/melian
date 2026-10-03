@@ -114,8 +114,8 @@ A finding is a SARIF `result` plus Melian extension properties. SARIF because se
 
 - `id`: stable hash of file, rule, a normalised snippet, and the snippet's occurrence: its zero-based ordinal among identical normalised snippets in that file at head, in line order. Survives line shifts and edits elsewhere in the file; inserting an identical snippet earlier renumbers the ones after it. A finding with no snippet supplies its own discriminator, such as the enclosing symbol or the hunk index. Used for cross-revision diffing and dismissal matching.
 - `cause`: `introduced`, `affected`, or `pre-existing`. Location proves `introduced` only; `affected` needs the lens's evidence; everything else is `pre-existing`. See below.
-- `trigger`: the diff hunk that caused the finding.
-- `severity`: the repository's rubric, default `P0` to `P3` plus `nit`.
+- `trigger`: the diff hunk that caused the finding, named by its file and its index within that file.
+- `severity`: `P0` to `P3` plus `nit`. The rubric is fixed in version one, so `resolution` maps a closed set and a typo in configuration is an error. A repository-defined rubric is deferred until a user needs one.
 - `confidence`: calibrated probability that the finding is real.
 - `resolution`: what this finding requires, after per-path configuration is applied.
 - `status`: `new`, `open`, `resolved`, `dismissed`, `stale`.
@@ -222,7 +222,7 @@ Solution: `melian.yaml` may exist at any folder level. For a touched path, the n
 
 Every file in the layering is read from one revision the host chooses, the base commit for a pull request, as [Trust and isolation](#policy-and-standards-come-from-a-revision-the-host-chooses) sets out. A pull request that edits a `melian.yaml` is reviewed under the policy it is changing, not the policy it proposes.
 
-The root `.melian/` directory holds what is not per-path: lenses, standards, knowledge, and lens-pack settings.
+A `.melian/` directory may sit at any folder level too. Its `standards/` and `lenses/` resolve nearest-first for a touched path, like `melian.yaml`, so a service can carry its own conventions and its own lens. Knowledge and lens-pack settings are not per-path, and are read only from the root `.melian/`.
 
 Resolution levels map severity to requirement:
 
@@ -500,6 +500,9 @@ docs/
 | Publication idempotency | Durable published document plus marker check, not memos | Memos are task-scoped and temporary |
 | Policy and standards source | Read from a git revision chosen by the host: base for pull requests, worktree for maintainer local runs | A head must not rewrite the policy or prompts of its own review |
 | Repository content bounds | Typed errors over size limits, no silent truncation | Unbounded reads are a resource hazard from untrusted input |
+| Severity rubric | Fixed `P0` to `P3` plus `nit` in version one; custom rubrics deferred | A closed set lets configuration be validated and resolution stay deterministic; nobody has asked for another |
+| Finding triggers | A hunk carries its file and a stable index within it | A finding can name the hunk that caused it without copying it |
+| `.melian/` placement | Any folder level for standards and lenses, nearest-first; knowledge and lens-pack settings at the root only | Per-path content layers like `melian.yaml`; repository-wide state has one home |
 | Finding identity | file, rule, normalised snippet, and occurrence ordinal | Identical snippets in one file must not collide; line shifts must not change the ID |
 | Cause by location | Location proves introduced only; affected needs lens evidence; pre-existing otherwise | A location heuristic must never make an old defect block |
 

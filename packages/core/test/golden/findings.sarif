@@ -33,7 +33,7 @@
             }
           ],
           "properties": {
-            "id": "2de4ddbbdbf7cd15",
+            "id": "7fed6713d9590c08",
             "path": "src/run.ts",
             "occurrence": 0,
             "cause": "affected",
@@ -72,7 +72,7 @@
             }
           ],
           "properties": {
-            "id": "3de0bdc88a0488a9",
+            "id": "6c2db0f8d5f03223",
             "path": "src/total.ts",
             "discriminator": "total",
             "cause": "pre-existing",
@@ -114,16 +114,13 @@
             }
           ],
           "properties": {
-            "id": "d8fbb7744f3d71aa",
+            "id": "61adbcd1835a3243",
             "path": "src/run.ts",
             "occurrence": 0,
             "cause": "introduced",
             "trigger": {
               "file": "src/run.ts",
-              "oldStart": 11,
-              "oldLines": 1,
-              "newStart": 12,
-              "newLines": 1
+              "index": 0
             },
             "severity": "P0",
             "confidence": 0.9,
@@ -165,16 +162,13 @@
             }
           ],
           "properties": {
-            "id": "ca63cf1ea8a3dd6f",
+            "id": "7285ec9fe0f6275b",
             "path": "src/run.ts",
             "occurrence": 0,
             "cause": "introduced",
             "trigger": {
               "file": "src/run.ts",
-              "oldStart": 11,
-              "oldLines": 1,
-              "newStart": 12,
-              "newLines": 1
+              "index": 0
             },
             "severity": "P1",
             "confidence": 0.9,
@@ -216,16 +210,13 @@
             }
           ],
           "properties": {
-            "id": "1f6a6710b234ec5a",
+            "id": "c0dc5445aa6ee891",
             "path": "src/run.ts",
             "occurrence": 0,
             "cause": "introduced",
             "trigger": {
               "file": "src/run.ts",
-              "oldStart": 11,
-              "oldLines": 1,
-              "newStart": 12,
-              "newLines": 1
+              "index": 0
             },
             "severity": "P1",
             "confidence": 0.9,

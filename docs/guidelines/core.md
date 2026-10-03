@@ -4,7 +4,7 @@ The core package holds the review domain: changesets, configuration, standards, 
 
 ## Harness-free
 
-Core imports nothing from Pi Durable, Chord, or another Melian package. The design permits pi-ai's types; nothing needs them yet. `packages/core/test/harness-free.test.ts` fails the gate if core imports Pi or a Melian package, and so does the pipeline's `test/harness-boundary.test.ts` for Pi. Widen both in the change that first needs pi-ai's types, and import types only.
+Core imports nothing from Pi Durable, Chord, or another Melian package. The design permits pi-ai's types; nothing needs them yet. `packages/core/test/harness-free.test.ts` fails the gate if core imports Pi or a Melian package, and so does the pipeline's `test/harness-boundary.test.ts` for Pi. Both match every import form, `from`, a side-effect `import "x"`, `import()` with any quote, and `require`, in `.ts`, `.mts`, `.cts`, and JavaScript files alike; a guard that knows only `from` lets `import("@earendil-works/pi-ai")` through. Widen both in the change that first needs pi-ai's types, and import types only.
 
 Problem: a domain rule written against the harness can only be tested through the harness. Example: checking that a `P2` finding needs acknowledgement would mean opening a durable session. Solution: core takes plain values and returns plain values; the pipeline feeds it and stores what it returns.
 
@@ -12,12 +12,15 @@ Problem: a domain rule written against the harness can only be tested through th
 
 Core reads repositories by running the `git` executable through `src/git.ts`. It never uses a JavaScript reimplementation of git, which drifts from git on renames, merge bases, and configuration.
 
+- Never let the caller's environment pick the repository. A git hook runs with `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, and their kin set for its own repository, and git honours them over the working directory. `src/git.ts` removes every variable `git rev-parse --local-env-vars` lists before it spawns git.
+- Never let the checked-out head choose diff attributes. git reads `.gitattributes` from the working tree, which often holds the head under review, so a head that adds `*.ts -diff` turns its own changes into binary files with no hunks. Every diff passes `--attr-source=<base>`. That flag needs git 2.40, so `resolveRange` checks the version once per process and throws `gitTooOld` rather than review with the head's attributes.
 - Run git with an argument array, never a shell string. Refuse a ref beginning with `-` before it reaches the argument list, as `checkRange` does.
 - Pass diff flags explicitly. A user's `diff.algorithm`, `diff.renames`, `diff.renameLimit`, `diff.interHunkContext`, `diff.submodule`, `diff.ignoreSubmodules`, `diff.orderFile`, or `color.diff` must not change what Melian sees. Nor may a repository's own `.gitmodules`: a head commit that sets `ignore = all` for a submodule would otherwise hide its own pointer change, so every diff and status passes `--ignore-submodules=none`. `src/changeset.ts` pins them, and a test in `test/changeset.test.ts` resolves a range under each setting and expects the same changeset. Add a setting there when you pin a flag.
 - Ask git for machine formats: `-z` for paths, `--raw` for status and modes, `--numstat` for binary detection. Parse the unified diff only for hunks, and only the `@@ -a,b +c,d @@` headers and the lines under them.
+- Read paths as bytes. git paths need not be UTF-8, and decoding `caf\xe9.txt` as UTF-8 yields `caf�.txt`, a name git cannot find. The raw view comes back as a `Buffer`; a path that is not UTF-8 is percent-encoded and `ChangedFile.percentEncoded` says so.
 - Read modes from `--raw`, never from the patch. A file made executable, a file that became a symlink, and a moved submodule pointer all change what a reviewer must look at, and `--name-status` reports the first as a bare `M`. `ChangedFile` carries `oldMode` and `newMode` and the `FileKind` each names.
 - Git emits the raw, numstat, and patch views of one diff in the same file order. The parser joins them by position and fails if the counts disagree. One exception reads like a bug: a type change, such as a file becoming a symlink, is one raw entry but two patch sections, a deletion and an addition.
-- Report failures as `ChangesetError` codes, never as thrown strings.
+- Report failures as `ChangesetError` codes, never as thrown strings. Give a specific code only when git's output confirms it: "not a git repository" on stderr, or a silent exit from `rev-parse --verify --quiet` or `merge-base`. Anything else is `gitFailed` carrying git's stderr, because a refusal over dubious ownership that reads as "not a repository" sends the user looking in the wrong place.
 
 Two-dot and three-dot ranges differ. `main..feature` diffs `main` against `feature` directly, so anything `main` gained after `feature` branched shows up reversed. `main...feature` diffs from their merge base, which is what a pull request shows. A bare ref means three dots against `HEAD`, the default for the CLI.
 
@@ -33,11 +36,13 @@ Both sources implement one interface, `readText`, `list`, and `exists`, over rep
 - Only absence is silent. A missing file is `undefined`; any other failure is `unreadable`, carried into `ConfigError` or `StandardsError` with the path.
 - Bounds are errors, never truncation: `maxConfigBytes` (64 KiB) per `melian.yaml`, and `standardsLimits` (256 KiB per file, 1 MiB for one path's standards in all).
 - Paths stay repository-relative. `ConfigError.file`, `LoadedConfig.sources`, and `StandardsSection.path` carry them; messages about a revision name the file as git does, `<commit>:<path>`.
-- `@` imports resolve lexically against the importing file and are dropped if they climb out of the repository. Nothing calls `realpath`.
+- `@` imports follow Claude Code: an `@path` token anywhere in the text, after whitespace or at the start of a line, outside code spans and code blocks fenced with ``` or ~~~. They resolve lexically against the importing file and are dropped if they climb out of the repository or name anything but a file, since `@docs` in prose is not an import. Nothing calls `realpath`.
+
+`.melian/` may sit in any directory, as `melian.yaml` may. For each directory from the path's up to the root, `loadStandards` reads `AGENTS.md`, `CLAUDE.md`, then `.melian/standards/*.md` in name order, so a service's own standards come before the root's. Lenses will resolve the same way; knowledge is read from the root `.melian/` only.
 
 ## Layering precedence
 
-Every `melian.yaml` from a path's directory up to the repository root applies, over the built-in defaults. The nearest file wins per key. Objects merge key by key; arrays and scalars replace whole. A lens's `paths` are relative to the file that declares them, a leading `/` included, and the loader rewrites them to be repository-relative before merging, keeping a leading `!` for exclusions.
+Every `melian.yaml` from a path's directory up to the repository root applies, over the built-in defaults. The nearest file wins per key. Objects merge key by key; arrays and scalars replace whole. A lens's `paths` are relative to the file that declares them, a leading `/` included, and the loader rewrites them to be repository-relative before merging, keeping a leading `!` for exclusions. It normalises root and nested patterns alike, so `./src/**` becomes `src/**`, and a pattern whose `..` climbs out of the repository is an `invalidValue` error naming the file and `lenses.<name>.paths`.
 
 Example: the root and one service both configure Melian.
 
@@ -137,13 +142,13 @@ A `Finding` is a SARIF 2.1.0 `result`. SARIF forbids unknown keys on a result, s
 
 - Build findings with `createFinding`, which derives the level and the ID, and validate any finding read from outside with `parseFinding`. It rejects a level or an ID that disagrees with the rest of the finding.
 - Never store `undefined` in a finding. JSON drops it, so a round trip would change the value. `createFinding` leaves absent optional fields out.
-- `trigger` is optional: a pre-existing finding has no triggering hunk. Its optional `snippet` is the changed code as the producer saw it; the pipeline reopens a dismissed finding when that code's `normaliseSnippet` changes.
+- `trigger` names the hunk that caused the finding by its `file` and `index`, as a `Hunk` names itself, rather than copying its line ranges. It is optional: a pre-existing finding has no triggering hunk. Its optional `snippet` is the changed code as the producer saw it; the pipeline reopens a dismissed finding when that code's `normaliseSnippet` changes.
 
 ### Paths and URIs
 
 SARIF's `artifactLocation.uri` is a URI reference, not a path. Problem: git allows almost any byte in a file name, and `docs/release notes.md` or `src/100%.ts` copied into `uri` is not a valid URI, so a strict SARIF consumer rejects the whole log, and a `#` or `?` silently truncates the path. Solution: `createFinding` percent-encodes each path segment with `encodeURIComponent` and joins the segments with `/`, so `src/café/why?.ts` becomes `src/caf%C3%A9/why%3F.ts`. To decode, split the URI on `/` and apply `decodeURIComponent` to each segment. The raw repository-relative path stays in `properties.path` for consumers that want it, and is what `findingId` hashes, so encoding never changes an ID. `parseFinding` rejects a URI that does not encode `properties.path`.
 
-A path must stay inside the repository. `createFinding` and `parseFinding` throw `FindingError` `invalidPath` for an empty or absolute path, or one with a `..` segment, in the location or the trigger.
+A path is canonical: repository-relative, posix, with no empty or `.` segments. Problem: IDs, the findings document, and `classifyCause` compare paths as strings, so `./src/run.ts` and `src/run.ts` were two files with two IDs, and a finding at `./src/run.ts` never matched the changeset's `src/run.ts`. Solution: `createFinding` canonicalises the location's and the trigger's file, so `./src//run.ts` becomes `src/run.ts`, and `classifyCause` canonicalises before comparing. Both throw `FindingError` `invalidPath` for an empty or absolute path, one with a `..` segment, or one with a backslash, which is a Windows separator more often than a file name character. `parseFinding` refuses a stored path that is not already canonical.
 
 ### Level mapping
 
@@ -151,13 +156,15 @@ A path must stay inside the repository. `createFinding` and `parseFinding` throw
 
 ### Stable IDs
 
-`findingId` hashes the repository-relative path, the rule ID, the snippet, and a discriminator, joined by NUL, with sha256, and keeps the first 16 hex characters. Before hashing it trims the snippet and collapses every run of whitespace to one space. Line numbers are not an input.
+`findingId` hashes the repository-relative path, the rule ID, the snippet, and a discriminator with sha256, and keeps the first 16 hex characters. Each field enters the hash as its length in UTF-16 code units, a colon, and the field, so no character in one field, NUL included, can make two different findings hash alike: joining by NUL let `a\0b` and `b` collide with `a` and `b\0b`. Before hashing it normalises the snippet with `normaliseSnippet`, described below. Line numbers are not an input.
 
 Problem: cross-revision diffing and dismissals match findings by ID, so the ID must survive edits that leave the flagged code alone. Example: a commit adds an import at the top of `src/run.ts`, and `eval(input)` moves from line 12 to line 13. A line-keyed ID would call that a new finding and reopen a dismissed one. Solution: hash what the finding is about, not where it sits. Reindenting or rewrapping the snippet keeps the ID; changing one token, such as `eval(input)` to `eval(body)`, changes it, and so does moving the code to another file.
 
+The normalisation, exactly: walk the snippet by code point; drop every whitespace character (`\s` with the Unicode flag); where one or more were dropped between two word characters, emit one space instead. A word character is a letter, combining mark, or digit in any script (`\p{L}`, `\p{M}`, `\p{N}`), `_`, or `$`; everything else that is not whitespace is punctuation. So `foo(a, b)` and the same call wrapped one argument per line both become `foo(a,b)`, a call chain rewrapped one method per line becomes the one-line chain, and `return   x` becomes `return x`. Collapsing runs of whitespace was not enough: a formatter that wraps `foo(a, b)` puts a newline after `(`, where the one-line form has no space at all, so the ID changed on every rewrap. The cost is that `a - -b` and `a-- b` normalise alike, which is accepted. A formatter that also adds or removes a token, such as a trailing comma, still changes the ID.
+
 Hashing only the snippet makes identical code collide. Example: `src/run.ts` calls `eval(input)` on lines 12 and 40, and a lens reports both. Both get one ID, and the second silently replaces the first in the findings document. Solution: the discriminator. With a snippet it is the occurrence, the zero-based ordinal of that normalised snippet among identical ones in the file at head, in line order; `snippetOccurrence` counts it from the file's text, and a column tells two on one line apart. Edits elsewhere and line shifts keep it. Inserting another `eval(input)` above line 12 renumbers both, which is accepted: the alternative is a line-keyed ID. A finding without a snippet must supply its own discriminator, such as the enclosing symbol or the hunk index; `createFinding` throws `FindingError` `missingDiscriminator` otherwise, rather than guess. The finding stores whichever it used as `properties.occurrence` or `properties.discriminator`, so `parseFinding` can recompute the ID.
 
-The normalisation is a stored contract. Changing it orphans every recorded finding and dismissal, so `test/findings.test.ts` pins one ID by value. Change that value only in a change that migrates stored findings.
+The normalisation and the hash input are a stored contract. Changing either orphans every recorded finding and dismissal, so `test/findings.test.ts` pins two IDs by value, one of them for a real formatter rewrap. Change that value only in a change that migrates stored findings.
 
 ### Cause by location, for now
 

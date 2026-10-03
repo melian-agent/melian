@@ -30,14 +30,7 @@ export const findingStatusSchema = Type.Union([
 
 /** The JSON Schema of a {@link FindingTrigger}. */
 export const findingTriggerSchema = Type.Object(
-	{
-		file: text,
-		oldStart: count,
-		oldLines: count,
-		newStart: count,
-		newLines: count,
-		snippet: Type.Optional(Type.String()),
-	},
+	{ file: text, index: count, snippet: Type.Optional(Type.String()) },
 	strict,
 );
 
@@ -151,8 +144,9 @@ export type LocationCause = Exclude<Cause, "affected">;
 export type FindingStatus = Static<typeof findingStatusSchema>;
 
 /**
- * The diff hunk that caused a finding, in the file that hunk changed. Line ranges follow {@link Hunk}. `snippet` is the
- * changed code as the producer saw it; a dismissed finding reopens when its {@link normaliseSnippet} changes.
+ * The diff hunk that caused a finding, named as a {@link Hunk} names itself: its `file` and its `index` within that
+ * file. `snippet` is the changed code as the producer saw it; a dismissed finding reopens when its
+ * {@link normaliseSnippet} changes, not when the hunk moves.
  */
 export type FindingTrigger = Static<typeof findingTriggerSchema>;
 
@@ -180,23 +174,35 @@ export type Finding = Static<typeof findingSchema>;
 /** A SARIF 2.1.0 log of one Melian run. */
 export type FindingsLog = Static<typeof findingsLogSchema>;
 
-// Percent-encodes each segment; decodeURIComponent on each segment reverses it.
-function repositoryUri(path: string, pointer = "/properties/path"): string {
-	const segments = path.split("/");
-	const problem =
-		path === ""
-			? "is empty"
-			: segments[0] === ""
-				? "is absolute"
-				: segments.includes("..")
-					? "escapes the repository"
+// The repository-relative posix form of a path: `./src//run.ts` becomes `src/run.ts`. Refuses what is not one.
+export function canonicalPath(path: string, pointer = "/properties/path"): string {
+	const segments = path.split("/").filter((segment) => segment !== "" && segment !== ".");
+	const problem = path.startsWith("/")
+		? "is absolute"
+		: path.includes("\\")
+			? "uses a backslash; use forward slashes"
+			: segments.includes("..")
+				? "escapes the repository"
+				: segments.length === 0
+					? "names no file"
 					: path.isWellFormed()
 						? undefined
 						: "is not well-formed Unicode";
 	if (problem !== undefined) {
 		throw new FindingError("invalidPath", `${JSON.stringify(path)} ${problem}`, { path: pointer });
 	}
-	return segments.map(encodeURIComponent).join("/");
+	return segments.join("/");
+}
+
+// Percent-encodes each segment of a canonical path; decodeURIComponent on each segment reverses it.
+function repositoryUri(path: string): string {
+	return path.split("/").map(encodeURIComponent).join("/");
+}
+
+function requireCanonical(path: string, pointer: string): void {
+	if (canonicalPath(path, pointer) !== path) {
+		throw new FindingError("invalidPath", `${JSON.stringify(path)} is not in canonical form`, { path: pointer });
+	}
 }
 
 /** What a finding's stable ID is computed from. */
@@ -218,21 +224,49 @@ export interface FindingIdInput {
 	readonly discriminator?: string;
 }
 
-/**
- * The form of a snippet that {@link findingId} hashes: leading and trailing whitespace removed, and every run of
- * whitespace collapsed to one space. Two snippets that normalise alike are the same code.
- */
-export function normaliseSnippet(snippet: string): string {
-	return snippet.trim().replace(/\s+/g, " ");
+const word = /[\p{L}\p{M}\p{N}_$]/u;
+
+// Normalises like normaliseSnippet, and records for each output code unit the source offset it came from.
+function normaliseWithOffsets(source: string): { text: string; offsets: number[] } {
+	let text = "";
+	const offsets: number[] = [];
+	let space = false;
+	let previous = "";
+	for (let index = 0; index < source.length; ) {
+		const char = String.fromCodePoint(source.codePointAt(index)!);
+		if (/\s/u.test(char)) {
+			space = true;
+		} else {
+			if (space && word.test(previous) && word.test(char)) {
+				text += " ";
+				offsets.push(index);
+			}
+			text += char;
+			for (let unit = 0; unit < char.length; unit++) offsets.push(index + unit);
+			space = false;
+			previous = char;
+		}
+		index += char.length;
+	}
+	return { text, offsets };
 }
 
 /**
- * The stable ID of a finding: the first 16 hex characters of a sha256 over the file, the rule, the snippet with
- * leading and trailing whitespace removed and every run of whitespace collapsed to one space, and the occurrence or
- * discriminator.
+ * The form of a snippet that {@link findingId} hashes: all whitespace removed, except that a run of whitespace between
+ * two word characters (letters, marks, digits, `_`, and `$`) becomes one space. Two snippets that normalise alike are
+ * the same code, so `foo(a, b)` and the same call wrapped one argument per line are one snippet, while `return x` keeps
+ * its space.
+ */
+export function normaliseSnippet(snippet: string): string {
+	return normaliseWithOffsets(snippet).text;
+}
+
+/**
+ * The stable ID of a finding: the first 16 hex characters of a sha256 over the length-prefixed file, rule,
+ * {@link normaliseSnippet} of the snippet, and the occurrence or discriminator.
  *
- * Line numbers are not an input, so a finding keeps its ID when an edit above it shifts its lines, or when the flagged
- * code is reindented or rewrapped. Changing one token of the flagged code, such as `eval(input)` to `eval(body)`,
+ * Line numbers are not an input, so a finding keeps its ID when an edit above it shifts its lines, or when a formatter
+ * reindents or rewraps the flagged code. Changing one token of the flagged code, such as `eval(input)` to `eval(body)`,
  * changes the ID, and so does moving the code to another file or reporting it under another rule. Inserting an
  * identical snippet earlier in the file renumbers the occurrences after it.
  *
@@ -257,7 +291,9 @@ export function findingId({ file, rule, snippet, occurrence, discriminator }: Fi
 		}
 		distinguisher = discriminator;
 	}
-	return createHash("sha256").update([file, rule, normalised, distinguisher].join("\0")).digest("hex").slice(0, 16);
+	// Length-prefixed, so no character inside a field, NUL included, can move text from one field to the next.
+	const input = [file, rule, normalised, distinguisher].map((field) => `${field.length}:${field}`).join("");
+	return createHash("sha256").update(input).digest("hex").slice(0, 16);
 }
 
 /** Where a snippet sits in a file: its first line and, optionally, its first column and last line. 1-based. */
@@ -281,24 +317,7 @@ function lineStarts(source: string): number[] {
  */
 export function snippetOccurrence(source: string, snippet: string, region: SnippetRegion): number {
 	const target = normaliseSnippet(snippet);
-	const chars: string[] = [];
-	const offsets: number[] = [];
-	let space = false;
-	for (let index = 0; index < source.length; index++) {
-		const char = source[index]!;
-		if (/\s/.test(char)) {
-			space = chars.length > 0;
-			continue;
-		}
-		if (space) {
-			chars.push(" ");
-			offsets.push(index);
-			space = false;
-		}
-		chars.push(char);
-		offsets.push(index);
-	}
-	const text = chars.join("");
+	const { text, offsets } = normaliseWithOffsets(source);
 	const starts = lineStarts(source);
 	const from = (starts[region.startLine - 1] ?? source.length) + (region.startColumn ?? 1) - 1;
 	const last = region.endLine ?? region.startLine;
@@ -370,12 +389,18 @@ function defined<T extends object>(value: T): T {
 }
 
 /**
- * Builds a finding, deriving its level, ID, and URI. Throws {@link FindingError}: `invalidPath` when the file is
- * absolute or escapes the repository, `missingDiscriminator` when a finding with a
+ * Builds a finding, deriving its level, ID, and URI from the canonical repository-relative form of its file, so
+ * `./src/run.ts` and `src/run.ts` are one file. Throws {@link FindingError}: `invalidPath` when the file is absolute,
+ * escapes the repository, or uses a backslash, `missingDiscriminator` when a finding with a
  * snippet has no occurrence or one without a snippet has no discriminator, and `invalidFinding` if the result is invalid.
  */
 export function createFinding(input: FindingInput): Finding {
-	const { file, rule, snippet, occurrence, discriminator } = input;
+	const { rule, snippet, occurrence, discriminator } = input;
+	const file = canonicalPath(input.file);
+	const trigger =
+		input.trigger === undefined
+			? undefined
+			: { ...input.trigger, file: canonicalPath(input.trigger.file, "/properties/trigger/file") };
 	const id = findingId({ file, rule, snippet: snippet ?? "", occurrence, discriminator });
 	const hasSnippet = normaliseSnippet(snippet ?? "") !== "";
 	const evidence = typeof input.cause === "object" ? input.cause.evidence : undefined;
@@ -404,7 +429,7 @@ export function createFinding(input: FindingInput): Finding {
 			discriminator: hasSnippet ? undefined : discriminator,
 			cause: evidence === undefined ? input.cause : "affected",
 			evidence,
-			trigger: input.trigger,
+			trigger,
 			severity: input.severity,
 			confidence: input.confidence,
 			resolution: input.resolution,
@@ -419,8 +444,8 @@ export function createFinding(input: FindingInput): Finding {
  * Checks that `value` is a valid finding and returns it.
  *
  * Throws {@link FindingError}: `invalidFinding` when it does not match {@link findingSchema}, `levelMismatch` when its
- * level is not {@link levelForSeverity} of its severity, `invalidPath` when its path is absolute or escapes the
- * repository or its URI does not encode that path, `missingEvidence` when it is `affected` without evidence,
+ * level is not {@link levelForSeverity} of its severity, `invalidPath` when its path is not canonical or its URI does
+ * not encode that path, `missingEvidence` when it is `affected` without evidence,
  * `missingDiscriminator` when it lacks the occurrence or
  * discriminator its snippet calls for, and `idMismatch` when its ID is not {@link findingId} of its first location.
  */
@@ -447,12 +472,13 @@ export function parseFinding(value: unknown): Finding {
 	}
 	const { artifactLocation, region } = finding.locations[0]!.physicalLocation;
 	const { path, trigger } = finding.properties;
+	requireCanonical(path, "/properties/path");
 	if (artifactLocation.uri !== repositoryUri(path)) {
 		throw new FindingError("invalidPath", `finding URI ${artifactLocation.uri} does not encode its path ${path}`, {
 			path: "/locations/0/physicalLocation/artifactLocation/uri",
 		});
 	}
-	if (trigger !== undefined) repositoryUri(trigger.file, "/properties/trigger/file");
+	if (trigger !== undefined) requireCanonical(trigger.file, "/properties/trigger/file");
 	const { cause, evidence } = finding.properties;
 	if (cause === "affected" && evidence === undefined) {
 		throw new FindingError("missingEvidence", "an affected finding must cite the change that breaks it", {

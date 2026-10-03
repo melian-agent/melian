@@ -28,7 +28,15 @@ import {
 } from "./harness.ts";
 
 // `added` is the hunk's new lines, the code a dismissal is tied to.
-type ReviewHunk = { oldStart: number; oldLines: number; newStart: number; newLines: number; added: string };
+type ReviewHunk = {
+	file: string;
+	index: number;
+	oldStart: number;
+	oldLines: number;
+	newStart: number;
+	newLines: number;
+	added: string;
+};
 
 /** A changed file as the review document keeps it: enough to classify cause, without the hunks' text. */
 type ReviewFile = { path: string; status: ChangedFile["status"]; binary: boolean; hunks: ReviewHunk[] };
@@ -48,7 +56,9 @@ export function reviewFiles(files: readonly ChangedFile[]): ReviewFile[] {
 		path,
 		status,
 		binary,
-		hunks: hunks.map(({ oldStart, oldLines, newStart, newLines, text }) => ({
+		hunks: hunks.map(({ file, index, oldStart, oldLines, newStart, newLines, text }) => ({
+			file,
+			index,
 			oldStart,
 			oldLines,
 			newStart,
@@ -273,14 +283,7 @@ async function findingFromCall(
 		...(hunk === undefined
 			? {}
 			: {
-					trigger: {
-						file: path,
-						oldStart: hunk.oldStart,
-						oldLines: hunk.oldLines,
-						newStart: hunk.newStart,
-						newLines: hunk.newLines,
-						snippet: hunk.added,
-					},
+					trigger: { file: hunk.file, index: hunk.index, snippet: hunk.added },
 				}),
 		severity,
 		resolution: review.resolution[severity],

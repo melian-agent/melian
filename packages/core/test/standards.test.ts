@@ -60,6 +60,39 @@ describe.each(sourceKinds)("loadStandards from the %s", (kind) => {
 		);
 	});
 
+	it("reads a nested .melian/standards before the root's", async () => {
+		writeFiles(repo, { "packages/app/.melian/standards/app.md": lines("# App naming") });
+		const sections = await load("packages/app/src/index.ts");
+		expect(sections.map(({ path }) => path)).toEqual([
+			"packages/app/AGENTS.md",
+			"docs/app-guide.md",
+			"packages/app/.melian/standards/app.md",
+			"AGENTS.md",
+			"docs/guide.md",
+			".melian/standards/naming.md",
+		]);
+	});
+
+	it("follows an import in running text, but not in code or an email address", async () => {
+		writeFiles(repo, {
+			"AGENTS.md": lines(
+				"# Root rules",
+				"Read @docs/guide.md before you start.",
+				"Write to tal@docs/more.md, or run `cat @docs/app-guide.md`.",
+				"~~~",
+				"@docs/more.md",
+				"~~~",
+				"The @docs folder is not an import.",
+			),
+		});
+		const sections = await load("README.md");
+		expect(sections.map(({ path, importedBy }) => ({ path, importedBy }))).toEqual([
+			{ path: "AGENTS.md", importedBy: undefined },
+			{ path: "docs/guide.md", importedBy: "AGENTS.md" },
+			{ path: ".melian/standards/naming.md", importedBy: undefined },
+		]);
+	});
+
 	it("keeps a CLAUDE.md that has content of its own", async () => {
 		writeFiles(repo, { "CLAUDE.md": lines("# Claude-only notes", "@AGENTS.md") });
 		const sections = await load("README.md");

@@ -61,6 +61,13 @@ describe("classifyCause", () => {
 		expect(cause(11)).toBe("pre-existing");
 	});
 
+	it("compares canonical paths", () => {
+		expect(classifyCause({ file: "./app.ts", startLine: 3 }, changeset.revision)).toBe("introduced");
+		expect(() => classifyCause({ file: "../app.ts", startLine: 3 }, changeset.revision)).toThrow(
+			expect.objectContaining({ code: "invalidPath" }),
+		);
+	});
+
 	it("calls a location in an unchanged file pre-existing", () => {
 		expect(classifyCause({ file: "untouched.ts", startLine: 1 }, changeset.revision)).toBe("pre-existing");
 	});

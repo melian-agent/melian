@@ -7,6 +7,7 @@ import {
 	findingId,
 	findingsLogSchema,
 	levelForSeverity,
+	normaliseSnippet,
 	parseFinding,
 	snippetOccurrence,
 } from "@melian-agent/core";
@@ -39,7 +40,30 @@ describe("findingId", () => {
 
 	// Pinned so that a change to the normalisation, which would orphan every stored finding, fails here first.
 	it("hashes the file, rule, normalised snippet, and occurrence", () => {
-		expect(findingId(evalCall)).toBe("1f6a6710b234ec5a");
+		expect(findingId(evalCall)).toBe("c0dc5445aa6ee891");
+	});
+
+	// Pinned for the same reason, with code as a formatter really rewraps it.
+	it("gives a call chain and its formatter rewrap one pinned ID", () => {
+		const chain = { ...evalCall, snippet: "const rows = items.filter((item) => item.open).map(toRow);" };
+		const rewrapped = {
+			...evalCall,
+			snippet: "const rows = items\n\t.filter((item) => item.open)\n\t.map(toRow);",
+		};
+		expect(findingId(rewrapped)).toBe(findingId(chain));
+		expect(findingId(chain)).toBe("315b591698a6f2e9");
+	});
+
+	it("ignores whitespace beside punctuation, so one argument per line is the same call", () => {
+		expect(findingId({ ...evalCall, snippet: "foo(\n  a,\n  b\n)" })).toBe(
+			findingId({ ...evalCall, snippet: "foo(a, b)" }),
+		);
+	});
+
+	it("keeps one space between words, so return x is not returnx", () => {
+		expect(normaliseSnippet("return   x")).toBe("return x");
+		expect(normaliseSnippet(" a  +\n b ")).toBe("a+b");
+		expect(normaliseSnippet("café  naïve")).toBe("café naïve");
 	});
 
 	it("ignores reindenting and rewrapping the flagged code", () => {
@@ -60,6 +84,12 @@ describe("findingId", () => {
 	it("keeps fields apart, so text cannot move from one field to the next", () => {
 		expect(findingId({ file: "a", rule: "bc", snippet: "d", occurrence: 0 })).not.toBe(
 			findingId({ file: "ab", rule: "c", snippet: "d", occurrence: 0 }),
+		);
+	});
+
+	it("keeps fields apart even when one contains NUL", () => {
+		expect(findingId({ file: "a\0b", rule: "c", snippet: "d", occurrence: 0 })).not.toBe(
+			findingId({ file: "a", rule: "b\0c", snippet: "d", occurrence: 0 }),
 		);
 	});
 
@@ -98,6 +128,8 @@ describe("snippetOccurrence", () => {
 	it("counts identical normalised snippets above the region", () => {
 		expect(snippetOccurrence(source, "eval(input)", { startLine: 2 })).toBe(0);
 		expect(snippetOccurrence(source, " eval(input)\n", { startLine: 4 })).toBe(1);
+		const wrapped = "f(a, b);\nf(\n  a,\n  b\n);";
+		expect(snippetOccurrence(wrapped, "f(a, b)", { startLine: 2, endLine: 5 })).toBe(1);
 	});
 
 	it("gives identical snippets at two lines different IDs", () => {
@@ -155,7 +187,7 @@ describe("createFinding", () => {
 				path: "src/run.ts",
 				occurrence: 0,
 				cause: "introduced",
-				trigger: { file: "src/run.ts", oldStart: 11, oldLines: 1, newStart: 12, newLines: 1 },
+				trigger: { file: "src/run.ts", index: 0 },
 				severity: "P1",
 				confidence: 0.9,
 				resolution: "block",
@@ -249,6 +281,8 @@ describe("parseFinding", () => {
 		["escaping the repository", "../outside.ts"],
 		["escaping from inside", "src/../../outside.ts"],
 		["empty", ""],
+		["only dots", "./"],
+		["Windows-style", "src\\run.ts"],
 	])("refuses a path that is %s", (_, file) => {
 		expect(() => createFinding({ ...evalInput, file, trigger: undefined })).toThrow(
 			expect.objectContaining({ code: "invalidPath", path: "/properties/path" }),
@@ -260,6 +294,21 @@ describe("parseFinding", () => {
 		expect(() => createFinding({ ...evalInput, trigger })).toThrow(
 			expect.objectContaining({ code: "invalidPath", path: "/properties/trigger/file" }),
 		);
+	});
+
+	it("canonicalises a path, so one file has one ID", () => {
+		for (const file of ["./src/run.ts", "src//run.ts", "src/./run.ts", "src/run.ts/"]) {
+			const finding = createFinding({ ...evalInput, file, trigger: { ...evalInput.trigger!, file } });
+			expect(finding.properties.path).toBe("src/run.ts");
+			expect(finding.properties.trigger?.file).toBe("src/run.ts");
+			expect(finding.properties.id).toBe(createFinding(evalInput).properties.id);
+		}
+	});
+
+	it("refuses a stored path that is not canonical", () => {
+		const finding = createFinding(evalInput);
+		const value = { ...finding, properties: { ...finding.properties, path: "./src/run.ts" } };
+		expect(rejection(value).code).toBe("invalidPath");
 	});
 
 	it("refuses a URI that does not encode the path", () => {

@@ -14,19 +14,30 @@ export interface StandardsSection {
 /** The largest standards file the loader reads, and the most it reads for one path in total. Past either is an error. */
 export const standardsLimits = { fileBytes: 256 * 1024, totalBytes: 1024 * 1024 } as const;
 
-const importLine = /^@(\S+)$/;
+// An `@path` token at the start of a line or after whitespace, so `tal@example.com` is not one. Trailing sentence
+// punctuation belongs to the prose, not the path.
+const importToken = /(^|\s)@([^\s`]+?)[.,;:!?)]*(?=\s|$)/g;
+const codeSpan = /`+[^`]*`+/g;
 
-// Claude Code's import syntax: a line holding only `@path`. Lines inside fenced code blocks are text.
+// Claude Code's import syntax: `@path` anywhere in the text, except inside a code span or a fenced code block, fenced
+// with ``` or ~~~. A file whose every line is imports, such as a CLAUDE.md reading `@AGENTS.md`, is import-only.
 function imports(content: string): { paths: string[]; onlyImports: boolean } {
 	const paths: string[] = [];
 	let onlyImports = true;
-	let fenced = false;
+	let fence: string | undefined;
 	for (const raw of content.split("\n")) {
 		const line = raw.trim();
-		if (line.startsWith("```")) fenced = !fenced;
-		const match = fenced ? null : importLine.exec(line);
-		if (match !== null) paths.push(match[1]!);
-		else if (line !== "") onlyImports = false;
+		const marker = /^(```|~~~)/.exec(line)?.[1];
+		if (fence === undefined && marker !== undefined) fence = marker;
+		else if (fence !== undefined && marker === fence) fence = undefined;
+		else if (fence === undefined) {
+			const text = line.replace(codeSpan, " ");
+			const found = [...text.matchAll(importToken)].map((match) => match[2]!);
+			paths.push(...found);
+			if (text.replace(importToken, "").trim() !== "") onlyImports = false;
+			continue;
+		}
+		onlyImports = false;
 	}
 	return { paths, onlyImports: onlyImports && paths.length > 0 };
 }
@@ -72,9 +83,9 @@ function importTarget(file: string, imported: string): string | undefined {
  * passes the base commit, so that the head's changes to standards are reviewed as code and apply once merged.
  *
  * Each directory from the path's up to the root contributes its `AGENTS.md`, `CLAUDE.md`, and `.melian/standards/*.md`,
- * in that order. A file's `@path` import lines are followed one level, each imported file placed after its importer;
- * imports reaching outside the repository are skipped. A file holding nothing but imports, such as a `CLAUDE.md` that
- * reads `@AGENTS.md`, contributes only what it imports. A file reached twice appears once, at its nearest position.
+ * in that order. A file's `@path` imports, anywhere outside code, are followed one level, each imported file placed
+ * after its importer; an import that leaves the repository or names no file is skipped. A file holding nothing but
+ * imports, such as a `CLAUDE.md` that reads `@AGENTS.md`, contributes only what it imports. A file reached twice appears once, at its nearest position.
  *
  * A missing file and a symlink are skipped. Throws {@link StandardsError} for a file over
  * `standardsLimits.fileBytes`, for more than `standardsLimits.totalBytes` in all, for any other read failure, and for
@@ -117,6 +128,8 @@ export async function loadStandards(
 			for (const imported of found.paths) {
 				const importPath = importTarget(file, imported);
 				if (importPath === undefined || included.has(importPath)) continue;
+				// In running text, `@name` is often prose: a folder, a team, a package scope. Only a file is an import.
+				if ((await reader.exists(importPath).catch(fromSource)) !== "file") continue;
 				const importedContent = await read(importPath);
 				if (importedContent === undefined) continue;
 				included.add(importPath);

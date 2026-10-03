@@ -94,7 +94,7 @@ export type MelianYaml = Static<typeof melianYamlSchema>;
 /** What a finding at a given severity requires before merge. */
 export type Resolution = Static<typeof resolutionSchema>;
 
-/** A severity in the default rubric. */
+/** A severity. The rubric is fixed in version one; docs/design.md defers repository-defined rubrics. */
 export type Severity = Static<typeof severitySchema>;
 
 /** A model tier a lens can name. Model routing also has a `decision` tier for decision models. */
@@ -237,24 +237,36 @@ async function readLayer(source: SourceReader, site: Site): Promise<MelianYaml |
 	const document = parseDocument(text);
 	const problem = document.errors[0] ?? document.warnings[0];
 	if (problem !== undefined) throw configError("invalidYaml", site, problem.message, { cause: problem });
-	const value: unknown = document.toJS() ?? {};
+	// toJS throws a bare ReferenceError when aliases expand past its limit, the defence against a billion-laughs file.
+	let value: unknown;
+	try {
+		value = document.toJS() ?? {};
+	} catch (cause) {
+		throw configError("invalidYaml", site, (cause as Error).message, { cause });
+	}
 	rejectReservedKeys(site, value);
 	validate(site, value, melianYamlSchema);
-	return anchorLensPaths(posix.dirname(site.file), value as MelianYaml);
+	return anchorLensPaths(site, value as MelianYaml);
 }
 
 // A lens's paths are written relative to their melian.yaml; merging would lose which file that was.
-function anchorLensPaths(directory: string, layer: MelianYaml): MelianYaml {
+function anchorLensPaths(site: Site, layer: MelianYaml): MelianYaml {
 	if (layer.lenses === undefined) return layer;
-	const anchor = (path: string) => {
+	const directory = posix.dirname(site.file);
+	const anchor = (lens: string) => (path: string) => {
 		const negated = path.startsWith("!");
 		const pattern = (negated ? path.slice(1) : path).replace(/^\/+/, "");
-		return `${negated ? "!" : ""}${directory === "." ? pattern : posix.join(directory, pattern)}`;
+		const anchored = posix.normalize(posix.join(directory, pattern));
+		if (anchored === ".." || anchored.startsWith("../")) {
+			const key = `lenses.${lens}.paths`;
+			throw configError("invalidValue", site, `"${key}" has ${path}, which leaves the repository`, { key });
+		}
+		return `${negated ? "!" : ""}${anchored}`;
 	};
 	const lenses = Object.fromEntries(
 		Object.entries(layer.lenses).map(([lens, settings]) => [
 			lens,
-			settings.paths === undefined ? settings : { ...settings, paths: settings.paths.map(anchor) },
+			settings.paths === undefined ? settings : { ...settings, paths: settings.paths.map(anchor(lens)) },
 		]),
 	);
 	return { ...layer, lenses };

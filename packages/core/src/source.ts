@@ -1,7 +1,7 @@
 import { constants } from "node:fs";
 import { lstat, open, readdir, stat } from "node:fs/promises";
 import { join, posix } from "node:path";
-import { git } from "./git.ts";
+import { git, isNotARepository } from "./git.ts";
 
 /**
  * Where policy (`melian.yaml`) and standards are read from. The host chooses, because only the host knows who wrote
@@ -159,16 +159,24 @@ export function parseTree(output: string): TreeEntry[] {
 }
 
 async function revisionSource(repoRoot: string, commit: string): Promise<SourceReader> {
+	const notARepository = new SourceError(
+		"notARepository",
+		repoRoot,
+		`${repoRoot} is not the root of a git working tree`,
+	);
 	const prefix = await git(repoRoot, ["rev-parse", "--show-prefix"]);
-	if (prefix.code !== 0 || prefix.stdout.trim() !== "") {
-		throw new SourceError("notARepository", repoRoot, `${repoRoot} is not the root of a git working tree`);
+	if (prefix.code !== 0 && !isNotARepository(prefix.stderr)) {
+		throw new SourceError("unreadable", repoRoot, `${repoRoot}: ${prefix.stderr.trim()}`);
 	}
-	const resolved = commit.startsWith("-")
-		? undefined
-		: await git(repoRoot, ["rev-parse", "--verify", "--quiet", `${commit}^{commit}`]);
-	if (resolved === undefined || resolved.code !== 0) {
-		throw new SourceError("unknownCommit", commit, `${commit} does not name a commit`);
+	if (prefix.code !== 0 || prefix.stdout.trim() !== "") throw notARepository;
+	const unknownCommit = new SourceError("unknownCommit", commit, `${commit} does not name a commit`);
+	if (commit.startsWith("-") || commit.startsWith("^")) throw unknownCommit;
+	const resolved = await git(repoRoot, ["rev-parse", "--verify", "--quiet", `${commit}^{commit}`]);
+	// --quiet silences an unknown commit, so anything on stderr is a different failure.
+	if (resolved.code !== 0 && resolved.stderr.trim() !== "") {
+		throw new SourceError("unreadable", commit, `${commit}: ${resolved.stderr.trim()}`);
 	}
+	if (resolved.code !== 0) throw unknownCommit;
 	const sha = resolved.stdout.trim();
 	const label = (path: string) => `${sha.slice(0, 12)}:${path}`;
 	const run = async (path: string, args: readonly string[]): Promise<string> => {
