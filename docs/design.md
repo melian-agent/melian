@@ -553,6 +553,7 @@ docs/
 | Model routes in the repository | None committed; `melian.local.yaml` (ignored, worktree-only) or `--model` supplies them | A repository must not choose a contributor's provider or spend |
 | The repository's own skill | A checked-in copy of the Claude Code skill, held identical by a drift test | A symlink degrades to a text file where git has symlinks off |
 | State directory | Configurable through `MELIAN_STATE_DIR`, default the git common dir | Sandboxed hosts may not write under `.git` |
+| Milestone closure | Requires one real publication through the CLI, run by the maintainer | A loop that never reached GitHub is not closed |
 
 ## Open questions
 

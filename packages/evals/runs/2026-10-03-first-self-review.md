@@ -1,6 +1,6 @@
 # First self-review, 2026-10-03
 
-Melian's first review of its own unmerged work, run from a worktree of this repository through the built CLI on real models. It closes milestone 1: a Melian change reviewed by `melian review` against the branch. Nothing was published to GitHub.
+Melian's first review of its own unmerged work, run from a worktree of this repository through the built CLI on real models. It was first taken to close milestone 1, a Melian change reviewed by `melian review` against the branch. Nothing was published to GitHub, though, and the milestone needs findings posted through the CLI, so it stays open until the maintainer publishes one; the [implementation plan](../../../docs/design-implementation-plan.md) says how.
 
 ## Run
 

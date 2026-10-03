@@ -8,7 +8,7 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done. Each step names
 
 A pull request on melian-agent/melian is reviewed by `melian review` run against the branch, findings are posted to the pull request through the CLI, and the author fixes or dismisses them before merge. Local CLI only, maintainer pull requests only, no Actions host.
 
-Closed 2026-10-03, when Melian reviewed its own unmerged stack through the CLI on real models and found the defect that kept its own skill from running here; [packages/evals/runs/2026-10-03-first-self-review.md](../packages/evals/runs/2026-10-03-first-self-review.md) records the run. The golden-fixtures track remains open.
+Open, pending one real publication through the CLI. On 2026-10-03 Melian reviewed its own unmerged stack through the CLI on real models and found the defect that kept its own skill from running here; [packages/evals/runs/2026-10-03-first-self-review.md](../packages/evals/runs/2026-10-03-first-self-review.md) records the run. But the milestone requires findings posted to the pull request through the CLI, and `melian publish` has never run against GitHub. The maintainer closes it by running `melian review "#21" --model <provider/id>`, then `melian publish "#21"`, on [pull request #21](https://github.com/melian-agent/melian/pull/21); `--model` is needed because a pull request review reads its base's `melian.yaml`, which routes no model. The record of that run goes in `packages/evals/runs/`. The golden-fixtures track remains open.
 
 ### Critical path
 
