@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { ChangesetError, parseRangeSpec, resolveRange } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -131,6 +131,31 @@ describe("resolveRange", () => {
 		const single = await resolveRange(repo, "main");
 		const explicit = await resolveRange(repo, "main...feature");
 		expect(single.revision).toEqual(explicit.revision);
+	});
+
+	it("reports a file that became a symlink as modified, with both sides' hunks", async () => {
+		gitIn(repo, "checkout", "--quiet", "feature");
+		rmSync(join(repo, "added.txt"));
+		symlinkSync("poem.txt", join(repo, "added.txt"));
+		gitIn(repo, "commit", "--quiet", "-am", "symlink");
+		const changeset = await resolveRange(repo, "feature~1..feature");
+		expect(changeset.revision.files).toEqual([
+			{
+				status: "modified",
+				path: "added.txt",
+				binary: false,
+				hunks: [
+					expect.objectContaining({ oldStart: 1, oldLines: 2, newStart: 0, newLines: 0 }),
+					expect.objectContaining({
+						oldStart: 0,
+						oldLines: 0,
+						newStart: 1,
+						newLines: 1,
+						text: expect.stringMatching(/^\+poem\.txt/),
+					}),
+				],
+			},
+		]);
 	});
 
 	it("resolves an empty diff to no files", async () => {

@@ -32,6 +32,7 @@ interface NameStatus {
 	readonly status: FileStatus;
 	readonly path: string;
 	readonly oldPath?: string;
+	readonly typeChanged?: boolean;
 }
 
 const statuses: Record<string, FileStatus> = { A: "added", M: "modified", T: "modified", D: "deleted", R: "renamed" };
@@ -52,7 +53,9 @@ export function parseNameStatus(output: string): NameStatus[] {
 			entries.push({ status, oldPath: fields[i + 1]!, path: fields[i + 2]! });
 			i += 3;
 		} else {
-			entries.push({ status, path: fields[i + 1]! });
+			entries.push(
+				letter === "T" ? { status, path: fields[i + 1]!, typeChanged: true } : { status, path: fields[i + 1]! },
+			);
 			i += 2;
 		}
 	}
@@ -115,18 +118,21 @@ export function parsePatchHunks(output: string): Hunk[][] {
 	return files;
 }
 
-// Git emits the name-status, numstat, and patch views of one diff in the same file order.
+// Git emits the name-status, numstat, and patch views of one diff in the same file order. The patch alone shows a
+// type change, such as a file becoming a symlink, as a deletion followed by an addition.
 export function joinDiff(
 	nameStatus: readonly NameStatus[],
 	binary: readonly boolean[],
 	hunks: readonly Hunk[][],
 ): ChangedFile[] {
-	if (binary.length !== nameStatus.length || hunks.length !== nameStatus.length) {
+	const sections = nameStatus.reduce((count, entry) => count + (entry.typeChanged ? 2 : 1), 0);
+	if (binary.length !== nameStatus.length || hunks.length !== sections) {
 		throw diffMismatch(`${nameStatus.length} files by name, ${binary.length} by count, ${hunks.length} in the patch`);
 	}
-	return nameStatus.map((entry, index) => ({
-		...entry,
-		binary: binary[index]!,
-		hunks: binary[index]! ? [] : hunks[index]!,
-	}));
+	let section = 0;
+	return nameStatus.map(({ typeChanged, ...entry }, index) => {
+		const fileHunks = typeChanged ? [...hunks[section]!, ...hunks[section + 1]!] : hunks[section]!;
+		section += typeChanged ? 2 : 1;
+		return { ...entry, binary: binary[index]!, hunks: binary[index]! ? [] : fileHunks };
+	});
 }
