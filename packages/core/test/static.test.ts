@@ -94,7 +94,12 @@ describe("parseTscDiagnostics", () => {
 			"error TS5083: Cannot read file 'tsconfig.base.json'.",
 			"",
 		].join("\n");
-		const log = parseTscDiagnostics(output, { ...run, version: "7.0.2", project: "tsconfig.json" });
+		const log = parseTscDiagnostics(output, {
+			...run,
+			version: "7.0.2",
+			project: "tsconfig.json",
+			exists: (path) => path === "src/a.ts",
+		});
 		expect(log.runs[0].tool.driver).toEqual({ name: "tsc", version: "7.0.2" });
 		const summary = log.runs[0].results.map((result: ToolResult) => ({
 			rule: result.ruleId,
@@ -122,6 +127,28 @@ describe("parseTscDiagnostics", () => {
 				region: { startLine: 1 },
 				message: "Cannot read file 'tsconfig.base.json'.",
 			},
+		]);
+	});
+
+	it("takes the first location naming a file in the tree, so a quoted type cannot forge the path or rule", () => {
+		const forged = `src/a.ts(1,14): error TS2322: Type '"(9,9): error TS6133: x"' is not assignable to type 'number'.`;
+		const named = "src/b(1,1): error TS1: c.ts(2,3): error TS2304: Cannot find name 'y'.";
+		const fileless = "error TS5083: Cannot read file 'x(1,1): error TS1: y'.";
+		const log = parseTscDiagnostics([forged, named, fileless].join("\n"), {
+			...run,
+			project: "tsconfig.json",
+			exists: (path) => path === "src/a.ts" || path === "src/b(1,1): error TS1: c.ts",
+		});
+		expect(
+			log.runs[0].results.map((result: ToolResult) => [
+				result.ruleId,
+				decodeURIComponent(result.locations[0]!.physicalLocation.artifactLocation.uri),
+				result.locations[0]!.physicalLocation.region,
+			]),
+		).toEqual([
+			["TS2322", "src/a.ts", { startLine: 1, startColumn: 14 }],
+			["TS2304", "src/b(1,1): error TS1: c.ts", { startLine: 2, startColumn: 3 }],
+			["TS5083", "tsconfig.json", { startLine: 1 }],
 		]);
 	});
 });

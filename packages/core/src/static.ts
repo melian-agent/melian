@@ -209,17 +209,45 @@ function checked(tool: StaticTool, log: ToolLog): ToolLog {
 	return log;
 }
 
-const located = /^(.+)\((\d+),(\d+)\): (?:error|warning|message) (TS\d+): (.*)$/;
+// Where a diagnostic's location could end and its rule begin. A message can quote this text, and so can a file name.
+const locationEnd = /\((\d+),(\d+)\): (?:error|warning|message) (TS\d+): /g;
 const global = /^(?:error|warning|message) (TS\d+): (.*)$/;
+
+interface Diagnostic {
+	readonly path: string | undefined;
+	readonly region: ToolResult["locations"][0]["physicalLocation"]["region"];
+	readonly rule: string;
+	readonly message: string;
+}
+
+// Every place a location could end, from the left, those whose prefix names a file in the tree first. A greedy match
+// took the last, which a quoted literal type in the message controls.
+function located(row: string, root: string, exists: (path: string) => boolean): Diagnostic[] {
+	return [...row.matchAll(locationEnd)]
+		.filter((match) => match.index > 0)
+		.map((match) => ({
+			path: repositoryPath(root, row.slice(0, match.index)),
+			region: { startLine: Number(match[1]), startColumn: Number(match[2]) },
+			rule: match[3]!,
+			message: row.slice(match.index + match[0].length),
+		}))
+		.sort((a, b) => Number(b.path !== undefined && exists(b.path)) - Number(a.path !== undefined && exists(a.path)));
+}
 
 /**
  * Reads the diagnostics `tsc --noEmit --pretty false` prints into a {@link ToolLog}: `file(line,col): error TS1234:
- * message`, with indented lines continuing the message above them. A diagnostic without a file, such as a
- * `tsconfig.json` tsc cannot read, sits at line 1 of `project`, the repository-relative path of the project file. Every
- * tsc diagnostic is an error. Diagnostics outside the worktree or under `node_modules` are dropped; other lines are
- * ignored.
+ * message`, with indented lines continuing the message above them. A message or a file name can hold text that looks
+ * like a location, so the file is the shortest prefix of the line that ends where a location could and names a file
+ * for which `run.exists` holds; `exists` takes a repository-relative path and answers for the revision's tree. Failing
+ * that, a line tsc prints without a file is read as one, and anything else takes the shortest such prefix. A
+ * diagnostic without a file, such as a `tsconfig.json` tsc cannot read, sits at line 1 of `project`, the
+ * repository-relative path of the project file. Every tsc diagnostic is an error. Diagnostics outside the worktree or
+ * under `node_modules` are dropped; other lines are ignored.
  */
-export function parseTscDiagnostics(output: string, run: ToolRun & { readonly project: string }): ToolLog {
+export function parseTscDiagnostics(
+	output: string,
+	run: ToolRun & { readonly project: string; readonly exists: (path: string) => boolean },
+): ToolLog {
 	const results: ToolResult[] = [];
 	// The message an indented line continues; undefined after a dropped diagnostic, whose continuation is dropped too.
 	let continuing: { text: string } | undefined;
@@ -229,23 +257,21 @@ export function parseTscDiagnostics(output: string, run: ToolRun & { readonly pr
 			continue;
 		}
 		continuing = undefined;
-		const at = located.exec(row);
-		const anywhere = at === null ? global.exec(row) : null;
-		if (at === null && anywhere === null) continue;
-		const path = at === null ? canonicalPath(run.project) : repositoryPath(run.root, at[1]!);
-		if (path === undefined) continue;
-		continuing = { text: at === null ? anywhere![2]! : at[5]! };
+		const [first] = located(row, run.root, run.exists);
+		const fileless = global.exec(row);
+		const inTree = first?.path !== undefined && run.exists(first.path);
+		const diagnostic: Diagnostic | undefined =
+			fileless !== null && !inTree
+				? { path: canonicalPath(run.project), region: { startLine: 1 }, rule: fileless[1]!, message: fileless[2]! }
+				: first;
+		if (diagnostic?.path === undefined) continue;
+		continuing = { text: diagnostic.message };
 		results.push({
-			ruleId: at === null ? anywhere![1]! : at[4]!,
+			ruleId: diagnostic.rule,
 			level: "error",
 			message: continuing,
 			locations: [
-				{
-					physicalLocation: {
-						artifactLocation: { uri: uriOf(path) },
-						region: at === null ? { startLine: 1 } : { startLine: Number(at[2]), startColumn: Number(at[3]) },
-					},
-				},
+				{ physicalLocation: { artifactLocation: { uri: uriOf(diagnostic.path) }, region: diagnostic.region } },
 			],
 		});
 	}

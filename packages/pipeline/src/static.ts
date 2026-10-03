@@ -179,7 +179,13 @@ async function runTsc(run: Run, root: string, scratch: string, binary: string, v
 		`cd ${quote(root)} && ${fileLimit} && ${quote(binary)} --noEmit --pretty false -p ${quote(project)} > ${quote(out)} 2>&1`,
 	);
 	const text = (await run.readOutput(out)) ?? "";
-	const log = parseTscDiagnostics(text, { root, version, project });
+	// A diagnostic names its file by a prefix of its line; the revision's own file list says which prefix is a file.
+	const listing = posix.join(scratch, "files");
+	const listed = await run.shell(`${git(root, "ls-files -z")} > ${quote(listing)}`);
+	const files = listed.code === 0 ? await run.readOutput(listing) : undefined;
+	if (files === undefined) throw run.fail("worktreeFailed", `git ls-files failed: ${listed.output}`);
+	const tracked = new Set(files.split("\0"));
+	const log = parseTscDiagnostics(text, { root, version, project, exists: (path) => tracked.has(path) });
 	// tsc exits 1 or 2 when it reports diagnostics; a non-zero exit with none reported is a crash.
 	if (code !== 0 && (log.runs[0].results.length === 0 || (code !== 1 && code !== 2))) {
 		throw run.fail("toolFailed", `tsc exited with code ${code}: ${(text || output).slice(0, 4096).trim()}`);

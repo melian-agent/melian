@@ -192,7 +192,7 @@ What forbidden-patterns cannot read, it says. A line over 10,000 characters is n
 Static tools report through SARIF. A runner, which lives in the pipeline because it executes repository code, produces one SARIF log per tool per revision; core turns the base and head logs into findings.
 
 - `normaliseBiomeSarif` reads Biome's own SARIF reporter output. Biome writes absolute paths as URIs and no tool version, so the normaliser makes paths relative to the worktree it ran in, drops results outside it or under a `node_modules` directory, and records the version the runner read from `biome --version` as `tool.driver.version`.
-- `parseTscDiagnostics` reads `tsc --noEmit --pretty false`: `file(line,col): error TS1234: message`, with indented lines continuing the message. A diagnostic without a file, such as an unreadable `tsconfig.json`, sits at the project file's line 1.
+- `parseTscDiagnostics` reads `tsc --noEmit --pretty false`: `file(line,col): error TS1234: message`, with indented lines continuing the message. A diagnostic without a file, such as an unreadable `tsconfig.json`, sits at the project file's line 1. Problem: the head writes the code whose types appear in messages, and a greedy match took the last `(n,n): error TSn:` on the line. Example: `src/a.ts(1,14): error TS2322: Type '"(9,9): error TS6133: x"' is not assignable` became rule `TS6133` in a file that does not exist, and a forged rule can hit a severity override or a path the parser drops. Solution: the file is the shortest prefix ending where a location could that names a file in the revision's tree, which the caller's `exists` answers; the runner lists the worktree with `git ls-files`.
 
 Severity, by default:
 
