@@ -32,7 +32,7 @@ import {
 	LensDocument,
 	lensPolicyHook,
 	lensReadTools,
-	ReviewDocument,
+	type ReviewState,
 	reportFinding,
 	reviewFiles,
 } from "./lens-tools.ts";
@@ -52,6 +52,7 @@ interface LensRun {
 
 interface LensTaskInput {
 	readonly root: ConversationId;
+	readonly revision: ReviewState;
 	readonly prompt: string;
 	readonly lenses: readonly LensRun[];
 }
@@ -79,6 +80,7 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, Record<string, LensOu
 						name: lens.name,
 						version: lens.version,
 						review: task.input.root,
+						revision: task.input.revision,
 						tools: [...lens.tools],
 						severities: [...lens.severities],
 						rules: lens.rules.map((rule) => ({ ...rule })),
@@ -228,20 +230,22 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 		});
 	}
 	const { repoRoot, revision } = changeset;
-	const taskId = await root.commit(async (tx) => {
-		(await tx.doc(ReviewDocument, root.id)).review = {
-			repoRoot,
-			base: revision.base,
-			head: revision.head,
-			files: reviewFiles(revision.files),
-			resolution: { ...config.resolution },
-		};
-		return tx.createTask(
-			LensTask,
-			{ root: root.id, prompt: renderChangePrompt(changeset), lenses },
-			{ ownership: { kind: "conversation" } },
-		);
-	}, context);
+	const state: ReviewState = {
+		repoRoot,
+		base: revision.base,
+		head: revision.head,
+		files: reviewFiles(revision.files),
+		resolution: { ...config.resolution },
+	};
+	const taskId = await root.commit(
+		(tx) =>
+			tx.createTask(
+				LensTask,
+				{ root: root.id, revision: state, prompt: renderChangePrompt(changeset), lenses },
+				{ ownership: { kind: "conversation" } },
+			),
+		context,
+	);
 	harness.resume();
 	const blocked = (await harness.inspect(context)).tasks.find(
 		(each) => each.record.id === taskId && each.state.kind === "blocked",

@@ -41,7 +41,7 @@ type ReviewHunk = {
 /** A changed file as the review document keeps it: enough to classify cause, without the hunks' text. */
 type ReviewFile = { path: string; status: ChangedFile["status"]; binary: boolean; hunks: ReviewHunk[] };
 
-/** The revision a review reads, written on the review's root conversation when the review starts. */
+/** The revision a lens reviews, fixed when its lens task creates it. */
 export type ReviewState = {
 	repoRoot: string;
 	base: string;
@@ -79,21 +79,17 @@ function changedFiles(review: ReviewState): ChangedFile[] {
 	}));
 }
 
-export const ReviewDocument = defineDoc<{ review?: ReviewState }>({
-	kind: "melian.review",
-	version: 1,
-	scope: "conversation",
-	history: "latest",
-	fork: "current",
-	initial: () => ({}),
-});
-
 /** What a lens conversation may do, written on it in the commit that creates it. */
 export type LensPolicy = {
 	name: string;
 	version: string;
 	/** The root conversation, which owns the review and its findings document. */
 	review: ConversationId;
+	/**
+	 * The revision this lens reviews. Each lens carries its own, so a later review of the same changeset, whose lens task
+	 * may start while a crashed one resumes, never moves an earlier lens to a different head.
+	 */
+	revision: ReviewState;
 	tools: LensToolName[];
 	severities: Severity[];
 	rules: LensRule[];
@@ -117,14 +113,8 @@ async function lensOf(reader: DocumentReader, conversationId: ConversationId, co
 	return lens;
 }
 
-async function reviewOf(reader: DocumentReader, lens: LensPolicy, context: Context): Promise<ReviewState> {
-	const review = (await reader.snapshot(ReviewDocument, lens.review, context))?.review;
-	if (review === undefined) throw new Error(`conversation ${lens.review} holds no review`);
-	return review;
-}
-
 async function headOf(reader: DocumentReader, conversationId: ConversationId, context: Context) {
-	return reviewOf(reader, await lensOf(reader, conversationId, context), context);
+	return (await lensOf(reader, conversationId, context)).revision;
 }
 
 function text(content: string) {
@@ -309,7 +299,7 @@ export const reportFinding = defineTool({
 	replay: "safe",
 	execute: async (args, api, context) => {
 		const lens = await lensOf(api, api.conversationId, context);
-		const review = await reviewOf(api, lens, context);
+		const review = lens.revision;
 		const finding = await findingFromCall(args, lens, review);
 		const id = finding.properties.id;
 		await api.commit(async (tx) => {

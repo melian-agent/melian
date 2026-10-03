@@ -42,13 +42,13 @@ There is no credential pool yet; one credential per provider.
 
 1. `selectLenses` picks the lenses the changed paths and configuration call for. No model is asked.
 2. Each lens's tier resolves through `resolveModelForTier` to the first model the collection knows and holds credentials for.
-3. One root commit records the review in `ReviewDocument`, the repository, base, head, changed files, and resolution, and creates the lens task.
-4. The task's first phase creates every lens conversation in one commit, configured with its model, its instructions (`renderLensInstructions`), and an explicit tool list, and records the lens's policy in its `LensDocument`. The second phase submits the change, rendered by `renderChangePrompt`, to each lens in parallel, with a request ID per lens so a rerun does not submit twice.
+3. One root commit creates the lens task, whose input carries the revision under review: the repository, base, head, changed files, and resolution.
+4. The task's first phase creates every lens conversation in one commit, configured with its model, its instructions (`renderLensInstructions`), and an explicit tool list, and records the lens's policy and that revision in its `LensDocument`. Each lens carries its own revision, never a shared record on the root: a crashed review's lens task resumes alongside the next push's, and a shared record would move the old lenses to the new head mid-review. The second phase submits the change, rendered by `renderChangePrompt`, to each lens in parallel, with a request ID per lens so a rerun does not submit twice.
 5. A lens that does not finish is a `ReviewError` `lensFailed` naming it and carrying what was reported.
 
 ### Lens tools
 
-`read_file`, `search`, and `list_files` read the head commit through core's `readRevisionFile`, `searchRevision`, and `listRevisionFiles`, never the working tree. They find the head through the calling conversation's `LensDocument`, which names the root, whose `ReviewDocument` names the commit. All three are replay-safe because they only read.
+`read_file`, `search`, and `list_files` read the head commit through core's `readRevisionFile`, `searchRevision`, and `listRevisionFiles`, never the working tree. They find the head through the calling conversation's `LensDocument`. All three are replay-safe because they only read.
 
 `report_finding` takes a file, a line, an optional end line, a rule, a severity, an explanation (what, why, fix), and optional evidence. The model supplies nothing else:
 
