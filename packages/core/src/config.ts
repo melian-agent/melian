@@ -189,13 +189,16 @@ async function readLayer(repoRoot: string, file: string): Promise<MelianYaml | u
 
 // A lens's paths are written relative to their melian.yaml; merging would lose which file that was.
 function anchorLensPaths(directory: string, layer: MelianYaml): MelianYaml {
-	if (layer.lenses === undefined || directory === "") return layer;
+	if (layer.lenses === undefined) return layer;
+	const anchor = (path: string) => {
+		const negated = path.startsWith("!");
+		const pattern = (negated ? path.slice(1) : path).replace(/^\/+/, "");
+		return `${negated ? "!" : ""}${directory === "" ? pattern : posix.join(directory, pattern)}`;
+	};
 	const lenses = Object.fromEntries(
 		Object.entries(layer.lenses).map(([lens, settings]) => [
 			lens,
-			settings.paths === undefined
-				? settings
-				: { ...settings, paths: settings.paths.map((path) => posix.join(directory, path.replace(/^\/+/, ""))) },
+			settings.paths === undefined ? settings : { ...settings, paths: settings.paths.map(anchor) },
 		]),
 	);
 	return { ...layer, lenses };

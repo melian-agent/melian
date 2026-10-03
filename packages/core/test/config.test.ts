@@ -98,6 +98,18 @@ describe("loadConfig", () => {
 		});
 	});
 
+	it("anchors lens paths at their file, keeping negations and dropping a leading slash", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("lenses:", "  security:", "    paths: [/src/**, '!src/generated/**']"),
+			"services/melian.yaml": lines("lenses:", "  contracts:", "    paths: [/api/**, '!api/generated/**']"),
+		});
+		const { config } = await loadConfig(repo, "services/a.ts");
+		expect(config.lenses).toEqual({
+			security: { paths: ["src/**", "!src/generated/**"] },
+			contracts: { paths: ["services/api/**", "!services/api/generated/**"] },
+		});
+	});
+
 	it("names a melian.yaml it cannot read", async () => {
 		mkdirSync(join(repo, "melian.yaml"));
 		expect(await rejection(loadConfig(repo, "a.ts"))).toMatchObject({
