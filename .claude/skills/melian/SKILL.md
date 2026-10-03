@@ -37,7 +37,9 @@ melian review origin/main...HEAD
 
 Use the base the user names in place of `origin/main`. Melian reviews the commits on the branch, never uncommitted changes. When the user asks you to commit, commit as asked, then review before pushing or opening a pull request. If the working tree still has changes, say they are not in the review.
 
-A review runs the deterministic checks first, guardrails, Biome, and tsc on the base and the head, then the lenses on models. It can take several minutes: run it with the Bash tool's timeout set to 600000 milliseconds.
+A review runs the deterministic checks first, guardrails, Biome, and tsc on the base and the head, then the lenses on models. It can outlast the Bash tool's ten-minute limit, so run `melian review` with the Bash tool's run_in_background parameter set to true, and read its output until it exits before you relay it.
+
+If a review is killed or interrupted before it exits, run the same command again. That is not a repeat review: it resumes from its checkpoints, and the checks and lenses that finished do not run again.
 
 ## Review a pull request
 
@@ -61,7 +63,7 @@ Replace N with the pull request number. Keep the quotes: an unquoted `#` starts 
    | `64` | Melian could not read the command line; show its message as-is |
 
 3. List the blocking findings first, then the rest, each with its file, line, rule, and what Melian says is wrong.
-4. Stop. A nonzero exit is a verdict, not a tool failure, so do not rerun the review to change it. The one exception is an environment failure, below.
+4. Stop. A nonzero exit is a verdict, not a tool failure, so do not rerun the review to change it. The exceptions are a review killed before it exited, above, and an environment failure, below.
 
 Three kinds of exit `2` are not a verdict on the code:
 
