@@ -326,6 +326,14 @@ describe("forbidden-patterns", () => {
 		expect(error.message).toMatch(/not a safe pattern: backreferences cannot run in linear time/);
 	});
 
+	it("scans a file the base's .gitattributes hides from the diff", async () => {
+		const { findings } = await guardrails(
+			{ "melian.yaml": config, ".gitattributes": lines("*.test.ts -diff"), "a.test.ts": lines("it(a)") },
+			{ "a.test.ts": lines("it(a)", "it.only(hidden)") },
+		);
+		expect(summary(findings).map(({ file, line }) => [file, line])).toEqual([["a.test.ts", 2]]);
+	});
+
 	it("matches $ at the end of a CRLF line", async () => {
 		const todo = lines(
 			quiet,
