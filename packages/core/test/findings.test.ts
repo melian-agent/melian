@@ -39,7 +39,7 @@ describe("findingId", () => {
 
 	// Pinned so that a change to the normalisation, which would orphan every stored finding, fails here first.
 	it("hashes the file, rule, normalised snippet, and occurrence", () => {
-		expect(findingId(evalCall)).toBe("1f6a6710b234ec5a");
+		expect(findingId(evalCall)).toBe("c0dc5445aa6ee891");
 	});
 
 	it("ignores reindenting and rewrapping the flagged code", () => {
@@ -60,6 +60,12 @@ describe("findingId", () => {
 	it("keeps fields apart, so text cannot move from one field to the next", () => {
 		expect(findingId({ file: "a", rule: "bc", snippet: "d", occurrence: 0 })).not.toBe(
 			findingId({ file: "ab", rule: "c", snippet: "d", occurrence: 0 }),
+		);
+	});
+
+	it("keeps fields apart even when one contains NUL", () => {
+		expect(findingId({ file: "a\0b", rule: "c", snippet: "d", occurrence: 0 })).not.toBe(
+			findingId({ file: "a", rule: "b\0c", snippet: "d", occurrence: 0 }),
 		);
 	});
 

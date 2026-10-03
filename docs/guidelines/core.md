@@ -103,7 +103,7 @@ A path must stay inside the repository. `createFinding` and `parseFinding` throw
 
 ### Stable IDs
 
-`findingId` hashes the repository-relative path, the rule ID, the snippet, and a discriminator, joined by NUL, with sha256, and keeps the first 16 hex characters. Before hashing it trims the snippet and collapses every run of whitespace to one space. Line numbers are not an input.
+`findingId` hashes the repository-relative path, the rule ID, the snippet, and a discriminator with sha256, and keeps the first 16 hex characters. Each field enters the hash as its length in UTF-16 code units, a colon, and the field, so no character in one field, NUL included, can make two different findings hash alike: joining by NUL let `a\0b` and `b` collide with `a` and `b\0b`. Before hashing it trims the snippet and collapses every run of whitespace to one space. Line numbers are not an input.
 
 Problem: cross-revision diffing and dismissals match findings by ID, so the ID must survive edits that leave the flagged code alone. Example: a commit adds an import at the top of `src/run.ts`, and `eval(input)` moves from line 12 to line 13. A line-keyed ID would call that a new finding and reopen a dismissed one. Solution: hash what the finding is about, not where it sits. Reindenting or rewrapping the snippet keeps the ID; changing one token, such as `eval(input)` to `eval(body)`, changes it, and so does moving the code to another file.
 

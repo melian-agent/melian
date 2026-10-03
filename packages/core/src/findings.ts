@@ -227,7 +227,7 @@ export function normaliseSnippet(snippet: string): string {
 }
 
 /**
- * The stable ID of a finding: the first 16 hex characters of a sha256 over the file, the rule, the snippet with
+ * The stable ID of a finding: the first 16 hex characters of a sha256 over the length-prefixed file, rule, snippet with
  * leading and trailing whitespace removed and every run of whitespace collapsed to one space, and the occurrence or
  * discriminator.
  *
@@ -257,7 +257,9 @@ export function findingId({ file, rule, snippet, occurrence, discriminator }: Fi
 		}
 		distinguisher = discriminator;
 	}
-	return createHash("sha256").update([file, rule, normalised, distinguisher].join("\0")).digest("hex").slice(0, 16);
+	// Length-prefixed, so no character inside a field, NUL included, can move text from one field to the next.
+	const input = [file, rule, normalised, distinguisher].map((field) => `${field.length}:${field}`).join("");
+	return createHash("sha256").update(input).digest("hex").slice(0, 16);
 }
 
 /** Where a snippet sits in a file: its first line and, optionally, its first column and last line. 1-based. */
