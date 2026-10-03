@@ -141,6 +141,21 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		expect(named(lenses, "docs")[0]!.standards).toBe(false);
 	});
 
+	it("loads the lenses for two thousand changed paths from one listing, layering each folder chain once", async () => {
+		writeFiles(repo, {
+			".melian/lenses/security/LENS.md": lensFile(security),
+			"services/pay/.melian/lenses/security/LENS.md": lensFile(security),
+		});
+		const paths = Array.from({ length: 2000 }, (_, index) =>
+			index % 2 === 0 ? `src/area${index % 100}/file${index}.ts` : `services/pay/api${index % 50}/file${index}.ts`,
+		);
+		const started = Date.now();
+		const lenses = await load(paths);
+		// The reviewer measured 22 seconds for this before lens folders were listed once per revision.
+		expect(Date.now() - started).toBeLessThan(5000);
+		expect(named(lenses, "security").map((lens) => lens.scope)).toEqual(["", "services/pay"]);
+	});
+
 	it("lets .melian/lenses win a name .agents/lenses also defines", async () => {
 		writeFiles(repo, {
 			".melian/lenses/security/LENS.md": lensFile(security, "From .melian."),

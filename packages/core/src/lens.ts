@@ -263,6 +263,19 @@ async function repositoryDefinitions(reader: SourceReader, scope: string): Promi
 	return definitions;
 }
 
+// `<scope>/.melian/lenses/<name>/...` or `<scope>/.agents/lenses/<name>/...`, and the lens entry itself if it is a symlink.
+const lensEntry = /^(?:(.*)\/)?\.(?:melian|agents)\/lenses\/([^/]+)(?:\/|$)/s;
+
+// Every directory holding repository lenses, with the names it defines, from one listing of the source.
+async function lensScopes(reader: SourceReader): Promise<Map<string, Set<string>>> {
+	const scopes = new Map<string, Set<string>>();
+	for (const path of await reader.findPaths(lensEntry).catch(fromSource("."))) {
+		const [, scope = "", name] = lensEntry.exec(path)!;
+		scopes.set(scope, (scopes.get(scope) ?? new Set()).add(name!));
+	}
+	return scopes;
+}
+
 function layer(definitions: readonly Definition[]): Lens[] {
 	const lenses = new Map<string, Lens>();
 	for (const definition of definitions) {
@@ -304,16 +317,24 @@ export async function loadLenses(
 ): Promise<Lens[]> {
 	const reader = await openSource(repoRoot, source).catch(fromSource(repoRoot));
 	const builtins = await builtinDefinitions();
+	const defined = await lensScopes(reader);
 	const byScope = new Map<string, Promise<Definition[]>>();
 	const definitionsIn = (scope: string) => {
 		if (!byScope.has(scope)) byScope.set(scope, repositoryDefinitions(reader, scope));
 		return byScope.get(scope)!;
 	};
-	const union = new Map<string, Lens>();
+	// Paths that share their chain of lens scopes share their lenses, so each chain is layered once.
+	const chains = new Map<string, string[]>();
 	for (const path of paths) {
 		const target = repoPath(repoRoot, path);
-		const isDirectory = (await reader.exists(target).catch(fromSource(target))) === "directory";
-		const scopes = directoriesUpToRoot(target, isDirectory).reverse();
+		// A file is never a scope, so treating every path as a directory adds nothing for a file and saves a lookup.
+		const scopes = directoriesUpToRoot(target, true)
+			.reverse()
+			.filter((scope) => defined.has(scope));
+		chains.set(scopes.join("\0"), scopes);
+	}
+	const union = new Map<string, Lens>();
+	for (const scopes of chains.values()) {
 		const repository = (await Promise.all(scopes.map(definitionsIn))).flat();
 		for (const lens of layer([...builtins, ...repository])) union.set(`${lens.name}\0${lens.version}`, lens);
 	}
