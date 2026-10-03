@@ -27,7 +27,7 @@ import {
 	readVerdict,
 } from "./adjudication.ts";
 import { ReviewError } from "./errors.ts";
-import { readFindings, recordRevision } from "./findings.ts";
+import { readFindings, recordRevision, revisionKey } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -371,22 +371,22 @@ async function runLenses(
 	context: Context,
 ): Promise<LensResult | undefined> {
 	const root = await harness.root(context);
-	const { head } = input.revision;
+	const revision = revisionKey(input.revision);
 	const selection = input.lenses.map((lens) => lens.key).sort();
 	const taskId = await root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
-		const known = index.reviews[head];
+		const known = index.reviews[revision];
 		const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
 		const attach =
 			same && (await attachable(tx, known.task, undecided)) && !(rerun && (await anyLensFailed(tx, known.task)));
 		if (attach) return known.task as TaskId<LensResult>;
-		await recordRevision(tx, root.id, head);
+		await recordRevision(tx, root.id, revision);
 		const created = await tx.createTask(LensTask, input, { ownership: { kind: "conversation" } });
-		index.reviews[head] = { task: created, lenses: selection };
+		index.reviews[revision] = { task: created, lenses: selection };
 		return created;
 	}, context);
 	const forget = (index: ReviewIndexState) => {
-		if (index.reviews[head]?.task === taskId) index.reviews = omit(index.reviews, head);
+		if (index.reviews[revision]?.task === taskId) index.reviews = omit(index.reviews, revision);
 	};
 	await refuseIfBlocked(
 		harness,
@@ -422,7 +422,7 @@ async function startAdjudication(
 	const selection = lenses.map((lens) => lens.key).sort();
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
-		const known = index.reviews[input.head];
+		const known = index.reviews[revisionKey(input)];
 		// A failed adjudication is always rerun: it is cheap, and its failure, such as a base commit a shallow clone had
 		// not fetched yet, may have passed.
 		const retry = [...undecided, "failed"];
@@ -432,7 +432,7 @@ async function startAdjudication(
 		const created = await tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } });
 		const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
 		const entry = same ? known : { lenses: selection };
-		index.reviews[input.head] = { ...entry, adjudication: { task: created, input: key } };
+		index.reviews[revisionKey(input)] = { ...entry, adjudication: { task: created, input: key } };
 		return created;
 	}, context);
 }
@@ -557,7 +557,8 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		});
 	}
 	const { repoRoot, revision } = changeset;
-	const { head } = revision;
+	const { base, head } = revision;
+	const reviewed = revisionKey(revision);
 	const state: ReviewState = {
 		repoRoot,
 		nonce,
@@ -574,6 +575,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	const input = adjudicationInput({
 		root,
 		repoRoot,
+		base,
 		head,
 		policy: options.policy,
 		config,
@@ -584,14 +586,14 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	});
 	const adjudication = await startAdjudication(harness, input, lenses, context);
 	const forget = (index: ReviewIndexState) => {
-		const entry = index.reviews[head];
+		const entry = index.reviews[reviewed];
 		if (entry?.adjudication?.task !== adjudication) return;
-		index.reviews = { ...index.reviews, [head]: omit(entry, "adjudication") };
+		index.reviews = { ...index.reviews, [reviewed]: omit(entry, "adjudication") };
 	};
 	await refuseIfBlocked(harness, adjudication, [], forget, context);
 	const adjudicated = (await harness.waitForTask(adjudication, context)).state.outcome;
-	const findings = await readFindings(harness, root, head, context, { producers });
-	const verdict = await readVerdict(harness, root, head, context);
+	const findings = await readFindings(harness, root, reviewed, context, { producers });
+	const verdict = await readVerdict(harness, root, reviewed, context);
 	const superseded = adjudicated.status === "completed" && adjudicated.result === "superseded";
 	if (adjudicated.status !== "completed" || superseded || verdict === undefined) {
 		const why =
@@ -600,7 +602,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 				: superseded
 					? ": a later review of the head with other input replaced it"
 					: "";
-		throw new ReviewError("adjudicationFailed", `adjudication of ${head} did not complete${why}`, {
+		throw new ReviewError("adjudicationFailed", `adjudication of ${reviewed} did not complete${why}`, {
 			lenses: [],
 			findings,
 		});

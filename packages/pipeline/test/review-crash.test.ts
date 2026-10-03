@@ -15,6 +15,7 @@ import {
 	readFindings,
 	readVerdict,
 	reviewChangeset,
+	revisionKey,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -80,6 +81,14 @@ async function killWhen(
 	expect(await exited).toBe("SIGKILL");
 }
 
+// The revision `main...feature` reviews, as the findings and verdict documents key it.
+function reviewedRevision(): string {
+	return revisionKey({
+		base: gitIn(repo, "merge-base", "main", "feature"),
+		head: gitIn(repo, "rev-parse", "feature"),
+	});
+}
+
 function toolResults(messages: readonly Message[]): string[] {
 	return messages.filter((message) => message.role === "toolResult").map(textOf);
 }
@@ -118,7 +127,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		expect(first).toMatch(/^recorded finding [0-9a-f]{16}$/);
 		expect(toolResults(correction!).at(-1)).toBe(first);
 		const root = await harness.root(context);
-		const findings = await readFindings(harness, root.id, gitIn(repo, "rev-parse", "feature"), context);
+		const findings = await readFindings(harness, root.id, reviewedRevision(), context);
 		expect(findings.map((finding) => finding.message.text)).toEqual(["Corrected."]);
 	});
 
@@ -193,7 +202,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			models: fake.review,
 		});
 		const root = (await harness.root(context)).id;
-		const head = gitIn(repo, "rev-parse", "feature");
+		const head = reviewedRevision();
 		try {
 			// Waiting starts the scheduler, so wait only once the new selection has replaced the head's index entry.
 			while ((await tasks("melian.lenses")).length === 0) await sleep(10);

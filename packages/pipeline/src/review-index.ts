@@ -12,11 +12,12 @@ type IndexedReview = {
 
 export type ReviewIndexState = { reviews: Record<string, IndexedReview> };
 
-// Which tasks reviewed each head, and with which lenses. Kept on the root conversation, so a later call for the same
-// head and lenses finds the tasks, whether they finished, are running, or crashed.
+// Which tasks reviewed each revision, keyed by `revisionKey` of its base and head, and with which lenses. Kept on the
+// root conversation, so a later call for the same revision and lenses finds the tasks, whether they finished, are
+// running, or crashed. A head retargeted onto another base is another revision, with tasks of its own.
 export const ReviewIndex = defineDoc<ReviewIndexState>({
 	kind: "melian.reviews",
-	version: 1,
+	version: 2,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",

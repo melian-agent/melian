@@ -14,7 +14,7 @@ import {
 	type Verdict,
 	type VerdictStatus,
 } from "@melian-agent/core";
-import { readFindings } from "./findings.ts";
+import { readFindings, revisionKey } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
 import { ReviewIndex } from "./review-index.ts";
 
@@ -30,10 +30,10 @@ type StoredVerdict = {
 	notRun: StoredCheck[];
 };
 
-// Each revision's verdict, keyed by head commit, on the changeset's root conversation.
+// Each revision's verdict, keyed by `revisionKey` of its base and head, on the changeset's root conversation.
 export const VerdictDocument = defineDoc<{ verdicts: Record<string, StoredVerdict> }>({
 	kind: "melian.verdicts",
-	version: 1,
+	version: 2,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
@@ -44,6 +44,7 @@ export const VerdictDocument = defineDoc<{ verdicts: Record<string, StoredVerdic
 export type AdjudicationTaskInput = {
 	root: ConversationId;
 	repoRoot: string;
+	base: string;
 	head: string;
 	// Where per-path configuration is read from; without it, `config` applies to every path.
 	policy?: RepositorySource;
@@ -52,9 +53,9 @@ export type AdjudicationTaskInput = {
 	manifest: string[];
 	checks: StoredCheck[];
 	allowSkip: string[];
-	// The producers whose sightings at `head` count, derived from the manifest: each lens the review ran, by check and
+	// The producers whose sightings at the revision count, derived from the manifest: each lens the review ran, by check and
 	// version, and every other check of the manifest, by name and the tool version its record names. A lens that
-	// configuration has since disabled or retiered left sightings at this head that are not this review's.
+	// configuration has since disabled or retiered left sightings at this revision that are not this review's.
 	producers: { check: string; version?: string }[];
 };
 
@@ -64,21 +65,22 @@ async function configsFor(repoRoot: string, policy: RepositorySource, paths: rea
 	return (path) => loaded.get(path)!;
 }
 
-// `superseded` when a later review of the head created another adjudication task before this one recorded.
+// `superseded` when a later review of the revision created another adjudication task before this one recorded.
 export type AdjudicationResult = "recorded" | "superseded";
 
-// Adjudicates the findings the root conversation holds at the head under review and records the verdict in
-// `VerdictDocument` under that head. It reads, decides, and writes in one phase that ends in one commit, so a
+// Adjudicates the findings the root conversation holds at the revision under review and records the verdict in
+// `VerdictDocument` under that revision. It reads, decides, and writes in one phase that ends in one commit, so a
 // rerun after a crash writes the same verdict again. It records nothing once the review index names another task for
-// the head, so a crashed task that resumes late cannot overwrite a newer review's verdict.
+// the revision, so a crashed task that resumes late cannot overwrite a newer review's verdict.
 export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adjudicate" }, AdjudicationResult>({
 	name: "melian.adjudication",
 	version: 1,
 	initial: () => ({ phase: "adjudicate" }),
 	phases: {
 		adjudicate: async (task, runtime, context) => {
-			const { root, repoRoot, head, policy, config, manifest, checks, allowSkip, producers } = task.input;
-			const findings = await readFindings(runtime, root, head, context, { producers });
+			const { root, repoRoot, base, head, policy, config, manifest, checks, allowSkip, producers } = task.input;
+			const revision = revisionKey({ base, head });
+			const findings = await readFindings(runtime, root, revision, context, { producers });
 			let verdict: Verdict;
 			try {
 				const paths = findings.map((finding) => finding.properties.path);
@@ -96,12 +98,12 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 				return;
 			}
 			await runtime.commit(async (tx) => {
-				const current = (await tx.doc(ReviewIndex, root)).reviews[head]?.adjudication?.task;
+				const current = (await tx.doc(ReviewIndex, root)).reviews[revision]?.adjudication?.task;
 				// An entry without an adjudication task was replaced by a review that has not created one yet.
 				if (current !== runtime.taskId) {
 					return { status: "terminal", outcome: { status: "completed", result: "superseded" } };
 				}
-				(await tx.doc(VerdictDocument, root)).verdicts[head] = structuredClone(verdict) as StoredVerdict;
+				(await tx.doc(VerdictDocument, root)).verdicts[revision] = structuredClone(verdict) as StoredVerdict;
 				return { status: "terminal", outcome: { status: "completed", result: "recorded" } };
 			}, context);
 		},
@@ -114,6 +116,7 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 export function adjudicationInput(options: {
 	root: ConversationId;
 	repoRoot: string;
+	base: string;
 	head: string;
 	policy: RepositorySource | undefined;
 	config: Pick<MelianConfig, "resolution" | "ruleAliases">;
@@ -122,10 +125,11 @@ export function adjudicationInput(options: {
 	allowSkip: readonly string[];
 	producers: readonly FindingSource[];
 }): AdjudicationTaskInput {
-	const { root, repoRoot, head, policy, config, manifest, checks, allowSkip, producers } = options;
+	const { root, repoRoot, base, head, policy, config, manifest, checks, allowSkip, producers } = options;
 	return {
 		root,
 		repoRoot,
+		base,
 		head,
 		...(policy === undefined ? {} : { policy: { ...policy } }),
 		config: {
@@ -140,8 +144,9 @@ export function adjudicationInput(options: {
 }
 
 /**
- * The verdict recorded for `revision`, a head commit, on the changeset's root conversation, or `undefined` when that
- * revision has none. A copy, so changing it cannot reach the harness's cached document.
+ * The verdict recorded for `revision` on the changeset's root conversation, or `undefined` when that revision has none.
+ * `revision` is the {@link revisionKey} of the base and head reviewed, so a pull request retargeted onto another base
+ * has a verdict of its own. A copy, so changing it cannot reach the harness's cached document.
  */
 export async function readVerdict(
 	reader: Pick<DocumentReader, "snapshot">,
