@@ -371,6 +371,8 @@ Solution: core reads policy (`melian.yaml`) and standards (`AGENTS.md`, `CLAUDE.
 
 Lenses and knowledge, when their loaders arrive, follow the same rule.
 
+Reading from the base does not hide the head's changes. Each revision lists the policy and standards files it changes: every `melian.yaml`, `AGENTS.md`, `CLAUDE.md`, and file under a `.melian/` directory. A lens can be handed those changes as quoted data, "the standards this pull request changes", and review them like any other code.
+
 ## Interaction model
 
 On a pull request, Melian posts one review per revision with inline comments, a summary, and a check status derived from resolution and task state: passed, findings, or not reviewed. In threads it takes commands from collaborators:

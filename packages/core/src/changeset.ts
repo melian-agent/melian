@@ -3,6 +3,7 @@ import { stat } from "node:fs/promises";
 import { type ChangedFile, joinDiff, parseNumstatBinary, parsePatchHunks, parseRaw } from "./diff.ts";
 import { ChangesetError } from "./errors.ts";
 import { git, gitOutput } from "./git.ts";
+import { isPolicyFile } from "./paths.ts";
 
 /**
  * How a range picks its base.
@@ -21,11 +22,19 @@ export interface RangeSpec {
 	readonly mode: RangeMode;
 }
 
-/** One version of a changeset, identified by its head commit. Base and head are full commit hashes. */
+/**
+ * One version of a changeset, identified by its head commit. Base and head are full commit hashes.
+ *
+ * `policyFiles` lists, sorted, every path in `files` that steers Melian itself: a `melian.yaml`, an `AGENTS.md` or
+ * `CLAUDE.md`, or anything under a `.melian/` directory, at any depth, on either side of a rename. A review reads
+ * policy from the base, so these changes are reviewed as code rather than obeyed; a lens can be handed them as quoted
+ * data. A file such a standard imports with `@` is not listed, because only loading the standards reveals it.
+ */
 export interface Revision {
 	readonly head: string;
 	readonly base: string;
 	readonly files: readonly ChangedFile[];
+	readonly policyFiles: readonly string[];
 }
 
 /**
@@ -193,11 +202,13 @@ export async function resolveRange(
 	}
 	const names = await Promise.all([canonicalName(root, spec.base, baseRef), canonicalName(root, spec.head, head)]);
 	const identity = ["range", spec.mode, ...names].join("\0");
+	const files = await diff(root, base, head);
+	const touched = files.flatMap((file) => (file.oldPath === undefined ? [file.path] : [file.oldPath, file.path]));
 	return {
 		kind: "range",
 		id: `range-${createHash("sha256").update(identity).digest("hex").slice(0, 16)}`,
 		repoRoot: root,
 		spec,
-		revision: { head, base, files: await diff(root, base, head) },
+		revision: { head, base, files, policyFiles: [...new Set(touched.filter(isPolicyFile))].sort() },
 	};
 }
