@@ -1,7 +1,9 @@
+import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import {
 	type AssistantMessage,
 	createRegistry,
+	defineDoc,
 	defineExtension,
 	defineTask,
 	defineTool,
@@ -17,7 +19,7 @@ import { type FakeModels, fauxAssistantMessage, fauxToolCall } from "../../src/t
 // `crash` parks the second half of each scenario so the parent can kill the process there; `resume` finishes it.
 export type Mode = "crash" | "resume";
 
-export type Scenario = "task" | "replay" | "memo";
+export type Scenario = "task" | "replay" | "memo" | "finding";
 
 export type Event = { readonly event: string; readonly [field: string]: unknown };
 
@@ -107,11 +109,65 @@ export function memoTool(mode: Mode, log: string) {
 	});
 }
 
+export type Finding = { path: string; rule: string; snippet: string; title: string };
+
+export const Findings = defineDoc<{ items: Record<string, Finding> }>({
+	kind: "melian.spike.findings",
+	version: 1,
+	scope: "conversation",
+	history: "rewindable",
+	fork: "asOf",
+	initial: () => ({ items: {} }),
+});
+
+export const evalFinding: Finding = {
+	path: "src/run.ts",
+	rule: "no-eval",
+	snippet: "eval(input)",
+	title: "P1: eval runs user input",
+};
+
+// The design's stable ID: file, rule, and normalised snippet. The title is not part of it.
+export function findingId({ path, rule, snippet }: Finding): string {
+	const normalised = snippet.trim().replace(/\s+/g, " ");
+	return createHash("sha256").update([path, rule, normalised].join("\0")).digest("hex").slice(0, 16);
+}
+
+// The commit and the tool result are separate durable commits, so a crash between them reruns the call or has the
+// model retry it. An upsert by finding ID makes either harmless, which is why it is replay-safe.
+export function reportFinding(mode: Mode, log: string) {
+	return defineTool({
+		name: "report_finding",
+		description: "Report one finding",
+		parameters: Type.Object({
+			path: Type.String({ minLength: 1 }),
+			rule: Type.String({ minLength: 1 }),
+			snippet: Type.String(),
+			title: Type.String({ minLength: 1 }),
+		}),
+		replay: "safe",
+		execute: async (args, api, context) => {
+			const id = findingId(args);
+			await api.commit(async (tx) => {
+				(await tx.doc(Findings, api.conversationId)).items[id] = { ...args };
+			}, context);
+			record(log, { event: "finding-committed", id });
+			if (mode === "crash") await park();
+			return { content: [{ type: "text", text: `recorded finding ${id}` }] };
+		},
+	});
+}
+
+export function reportFindingReply(): AssistantMessage {
+	return fauxAssistantMessage(fauxToolCall("report_finding", evalFinding), { stopReason: "toolUse" });
+}
+
 export function spikeRegistry(scenario: Scenario, mode: Mode, log: string): Registry {
 	const registry = createRegistry();
 	if (scenario === "task") registry.install(defineExtension({ name: "spike", tasks: [phasedTask(mode, log)] }));
 	if (scenario === "replay") registry.install(defineExtension({ name: "spike", tools: replayTools(mode, log) }));
 	if (scenario === "memo") registry.install(defineExtension({ name: "spike", tools: [memoTool(mode, log)] }));
+	if (scenario === "finding") registry.install(defineExtension({ name: "spike", tools: [reportFinding(mode, log)] }));
 	return registry;
 }
 

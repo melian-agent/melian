@@ -15,7 +15,6 @@ import {
 	backgroundContext as context,
 	createMemoryStorage,
 	createRegistry,
-	defineDoc,
 	defineExtension,
 	defineTask,
 	defineTool,
@@ -25,7 +24,6 @@ import {
 	type Message,
 	openHarness,
 	openSqliteStorage,
-	type Registry,
 	type SubmissionId,
 	SystemEntry,
 	section,
@@ -39,9 +37,13 @@ import {
 	captured,
 	count,
 	type Event,
+	evalFinding,
+	Findings,
+	findingId,
 	offeredTools,
 	openSpikeHarness,
 	readEvents,
+	reportFindingReply,
 	type Scenario,
 	spikeRegistry,
 	systemPrompt,
@@ -389,60 +391,35 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 	});
 
 	it("f. a document written in a tool commit survives reopen, and an asOf fork sees it only after the write", async () => {
-		const Findings = defineDoc<{ items: string[] }>({
-			kind: "melian.spike.findings",
-			version: 1,
-			scope: "conversation",
-			history: "rewindable",
-			fork: "asOf",
-			initial: () => ({ items: [] }),
-		});
-		const report = defineTool({
-			name: "report_finding",
-			description: "Report one finding",
-			parameters: Type.Object({ title: Type.String() }),
-			execute: async (args, api, toolContext) => {
-				await api.commit(async (tx) => {
-					(await tx.doc(Findings, api.conversationId)).items.push(args.title);
-				}, toolContext);
-				return { content: [{ type: "text", text: "reported" }] };
-			},
-		});
-		const registry: Registry = createRegistry();
-		registry.install(defineExtension({ name: "spike", tools: [report] }));
+		const registry = spikeRegistry("finding", "resume", join(dir, "docs.jsonl"));
 		const fake = createFakeModels();
-		fake.provider.setResponses([
-			fauxAssistantMessage(fauxToolCall("report_finding", { title: "P1: eval runs user input" }), {
-				stopReason: "toolUse",
-			}),
-			fauxAssistantMessage("One finding."),
-		]);
+		fake.provider.setResponses([reportFindingReply(), fauxAssistantMessage("One finding.")]);
 		const path = join(dir, "docs.sqlite");
 		const first = tracked(await openHarness(await openSqliteStorage(path), { models: fake.models, registry }));
 		const firstRoot = await first.root(context, { agent: { model: fake.ref() } });
 		expect((await ask(firstRoot, "Review this change.")).status).toBe("done");
 		await first.close(context);
 
+		const reported = { items: { [findingId(evalFinding)]: evalFinding } };
 		const harness = tracked(await openHarness(await openSqliteStorage(path), { models: fake.models, registry }));
 		const root = await harness.root(context);
-		expect(await harness.snapshot(Findings, root.id, context)).toEqual({ items: ["P1: eval runs user input"] });
+		expect(await harness.snapshot(Findings, root.id, context)).toEqual(reported);
 
 		const entries = await entriesOf(root);
 		const call = entries.find((entry) => entry.kind === AssistantEntry.kind)!;
 		const result = entries.find((entry) => entry.kind === ToolResultEntry.kind)!;
 		const before = await root.fork(call.id, { ownership: { kind: "ownerless" } }, context);
 		const after = await root.fork(result.id, { ownership: { kind: "ownerless" } }, context);
+		const late = { ...evalFinding, rule: "no-implicit-any", title: "P2: added after the fork" };
 		await root.commit(async (tx) => {
-			(await tx.doc(Findings, root.id)).items.push("P2: added after the fork");
+			(await tx.doc(Findings, root.id)).items[findingId(late)] = late;
 		}, context);
 
 		expect(await harness.snapshot(Findings, before.id, context)).toBeUndefined();
-		expect(await harness.snapshot(Findings, after.id, context)).toEqual({ items: ["P1: eval runs user input"] });
-		expect((await harness.snapshot(Findings, root.id, context))?.items).toHaveLength(2);
+		expect(await harness.snapshot(Findings, after.id, context)).toEqual(reported);
+		expect(Object.keys((await harness.snapshot(Findings, root.id, context))?.items ?? {})).toHaveLength(2);
 		expect(await harness.snapshotAsOf(Findings, root.id, call.id, context)).toBeUndefined();
-		expect((await harness.snapshotAsOf(Findings, root.id, result.id, context))?.items).toEqual([
-			"P1: eval runs user input",
-		]);
+		expect(await harness.snapshotAsOf(Findings, root.id, result.id, context)).toEqual(reported);
 	});
 
 	it("g. api.memo is first-write-wins across SIGKILL and is dropped once its task ends", async () => {
@@ -519,6 +496,39 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 		expect(system).toHaveLength(2);
 		expect(textOf(system[0]!.model?.[0])).not.toContain("Prefer early returns.");
 		expect(textOf(system[1]!.model?.[0])).toContain("Prefer early returns.");
+	});
+
+	it("j. a finding committed just before SIGKILL is stored once, however the call is replayed or retried", async () => {
+		const { database, log } = await crashWhen("finding", (events) => count(events, "finding-committed") === 1);
+		const fake = createFakeModels();
+		const requests: Message[][] = [];
+		fake.provider.setResponses([
+			captured(requests, reportFindingReply()),
+			captured(requests, fauxAssistantMessage("One finding.")),
+		]);
+		const harness = tracked(await openSpikeHarness(database, spikeRegistry("finding", "resume", log), fake));
+		const submissionId = field<SubmissionId>(readEvents(log), "submitted", "submissionId");
+		const settled = await (await harness.submission(submissionId, context))!.wait(context);
+		expect(settled.status).toBe("done");
+
+		const id = findingId(evalFinding);
+		const root = await harness.root(context);
+		expect(await harness.snapshot(Findings, root.id, context)).toEqual({ items: { [id]: evalFinding } });
+		expect(count(readEvents(log), "finding-committed")).toBe(3);
+
+		const interrupted = toolResult(requests[0]!, "report_finding");
+		expect(interrupted?.isError).toBe(false);
+		expect(textOf(interrupted)).toBe(`recorded finding ${id}`);
+		const retried = toolResult(requests[1]!.slice(requests[0]!.length), "report_finding");
+		expect(retried?.isError).toBe(false);
+		expect(textOf(retried)).toBe(`recorded finding ${id}`);
+
+		const callIds = (await entriesOf(root))
+			.filter((entry) => entry.kind === ToolResultEntry.kind)
+			.flatMap((entry) => entry.model ?? [])
+			.flatMap((message) => (message.role === "toolResult" ? [message.toolCallId] : []));
+		expect(callIds).toHaveLength(2);
+		expect(new Set(callIds).size).toBe(2);
 	});
 
 	it("hook(ToolTask) beforeTool blocks a call before it executes", async () => {

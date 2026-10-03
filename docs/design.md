@@ -75,6 +75,8 @@ Why the split: Pi has two extension systems. The coding agent uses `ExtensionAPI
 
 Each step is a Pi Durable task. Each task checkpoints before moving on. Replay policy is noted per step.
 
+A tool with a durable side effect is written as an idempotent upsert keyed by a stable ID and marked replay-safe. Otherwise it is not replay-safe, and its side effect is guarded by a durable record, never by a task memo. A tool's commit and its result are separate durable commits, so a crash between them reruns the tool or has the model call it again.
+
 1. **Intake.** Resolve the changeset to a revision: base, head, diff, metadata, and the layered configuration for every touched path. Replay safe.
 2. **Triage.** One decision-model call over the diff summary: is this docs-only, generated, a dependency bump, test-only; which lenses apply; what is the risk score. Output selects the effective tier. Replay safe.
 3. **Static analysis.** Run configured tools on base and head inside the execution environment. Diff the SARIF results to separate introduced from pre-existing. Replay safe.
@@ -179,7 +181,7 @@ Front matter is routing; the body is the system prompt for the lens's child conv
 
 Layering follows Pi's resource rules. Built-in lenses ship inside the Melian package. Repository lenses live under `.melian/lenses/`, which is canonical and keeps them beside `melian.yaml`, standards, and knowledge. Lenses are also discovered under `.agents/lenses/`, for repositories that keep everything agent-facing under the Agent Skills directory, mirroring Pi's own dual discovery of `.pi/` and `.agents/skills/`. Skill loaders only load directories containing `SKILL.md`, so a `LENS.md` directory is invisible to them wherever it lives. We do not own the `.agents/` namespace; if the spec defines that path for something else, the spec wins. Both locations resolve nearest-first in a monorepo. Folder-level configuration can disable a lens, change its tier, narrow its paths, or add one. Lens packs for a language or framework ship as Pi packages with a `melian.lenses` manifest key mirroring `pi.skills`, pinned in project settings.
 
-Findings leave a lens through a `report_finding` tool with a TypeBox schema. Prose is never parsed for findings.
+Findings leave a lens through a `report_finding` tool with a TypeBox schema. Prose is never parsed for findings. The tool upserts by the finding's stable ID and is replay-safe, so a crash mid-call never stores a finding twice.
 
 What stays out of a lens: topology, concurrency, deadlines, publication, and verdict rules. Those are tiers and resolution configuration.
 

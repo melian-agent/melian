@@ -1,7 +1,15 @@
 // Runs the first half of a spike scenario in its own process; the parent test kills it with SIGKILL while it is parked.
 import { backgroundContext } from "../../src/harness.ts";
 import { createFakeModels } from "../../src/testing.ts";
-import { openSpikeHarness, phasedTask, record, type Scenario, spikeRegistry, toolCallReply } from "./spike.ts";
+import {
+	openSpikeHarness,
+	phasedTask,
+	record,
+	reportFindingReply,
+	type Scenario,
+	spikeRegistry,
+	toolCallReply,
+} from "./spike.ts";
 
 const [scenario, database, log] = process.argv.slice(2) as [Scenario, string, string];
 const fake = createFakeModels();
@@ -16,9 +24,12 @@ if (scenario === "task") {
 	record(log, { event: "task-created", taskId });
 	await harness.waitForTask(taskId, backgroundContext);
 } else {
-	fake.provider.setResponses([
-		toolCallReply(...(scenario === "replay" ? ["safe_probe", "unsafe_probe"] : ["publish_once"])),
-	]);
+	const firstReply = {
+		replay: toolCallReply("safe_probe", "unsafe_probe"),
+		memo: toolCallReply("publish_once"),
+		finding: reportFindingReply(),
+	};
+	fake.provider.setResponses([firstReply[scenario]]);
 	const submission = await root.submit({ type: "input", content: `run the ${scenario} scenario` }, backgroundContext);
 	record(log, { event: "submitted", submissionId: submission.id });
 	await submission.wait(backgroundContext);

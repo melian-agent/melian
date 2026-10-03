@@ -1,6 +1,6 @@
 # Spike: Pi Durable against the design
 
-Step 2 of milestone 1, tracked in [issue #2](https://github.com/melian-agent/melian/issues/2). The design assumes `@earendil-works/pi-durable` 1.0.0 behaves as its announcement describes. This spike tested that assumption against the package itself: its README, its type declarations, and eleven Vitest tests that run it on the fake model with no credentials, plus a test that guards the wrapper boundary.
+Step 2 of milestone 1, tracked in [issue #2](https://github.com/melian-agent/melian/issues/2). The design assumes `@earendil-works/pi-durable` 1.0.0 behaves as its announcement describes. This spike tested that assumption against the package itself: its README, its type declarations, and twelve Vitest tests that run it on the fake model with no credentials, plus a test that guards the wrapper boundary.
 
 ## Verdict
 
@@ -29,6 +29,7 @@ The tests live in [packages/pipeline/test/durable-spike.test.ts](../../packages/
 | g. Memo | A replay-safe tool memoised a candidate, was killed, and on rerun offered a different candidate twice. Both calls returned the first. Once the tool call finished, its task record held no memos. |
 | h. Exactly-once submission | Two submissions with one `requestId` returned the same submission ID, and so did a third after reopen. The model was called once and the transcript holds one user entry. |
 | i. Prompt sections | A `section()` that reads a file rendered the new contents in the next request after the file changed. The transcript holds two `pi.system` entries, one per version. |
+| j. Finding across a crash | `report_finding` was killed after committing a finding and before returning. On resume the replay-safe tool reran, then the model called it again. The document held one finding, and both calls returned `recorded finding <id>` without error. Against the earlier append with the default replay policy, the same test stored two copies and the interrupted call returned an error. Added after review; see [Surprises](#surprises). |
 | Hook | `hook(ToolTask, { beforeTool })` blocked a call before `execute()` ran; the model received `Tool call blocked: lenses are read-only`. |
 
 [packages/pipeline/test/harness-boundary.test.ts](../../packages/pipeline/test/harness-boundary.test.ts) fails the gate if any file under `packages/` other than the wrapper and its testing entry imports Pi Durable, pi-ai, or Chord.
@@ -45,9 +46,11 @@ Nothing was marked `it.todo`. Every behaviour the brief listed exists in 1.0.0.
 
 **Arguments are coerced before validation.** The tool task converts arguments towards the schema, so a number becomes a string and a numeric string an integer. `report_finding` will accept loosely typed calls; a schema that must reject them needs constraints coercion cannot satisfy, such as `minLength` or a pattern.
 
-**A phase reruns from its start.** Work inside a phase before its checkpoint commit repeats after a crash. Each phase must be safe to repeat, or guard its side effect with a memo.
+**A phase reruns from its start.** Work inside a phase before its checkpoint commit repeats after a crash. Each phase must be safe to repeat, or guard its side effect with a durable record.
 
 **Memos are per task and temporary.** `TaskRecord.memos` is documented as "small first-writer-wins values retained while the task can run", and test g shows them gone once the task is terminal. `api.memo()` in a tool is the tool task's memo, not the pipeline's.
+
+**A crash between a tool's commit and its result repeats the side effect.** Codex's adversarial review of [pull request #11](https://github.com/melian-agent/melian/pull/11) found this; test j reproduced it. `report_finding` committed the finding, then returned its result: two durable commits. A SIGKILL between them left the finding stored and the call unsettled. On resume the tool, unsafe by default, reported an interruption; the model called it again, and a second copy landed. Marking the append replay-safe would only have moved the rerun from the model to the harness. The rule that follows: a tool with a durable side effect is an idempotent upsert keyed by a stable ID and marked replay-safe, or it is not replay-safe and its side effect is guarded by a durable record, never by a task memo. `report_finding` now upserts by a hash of file, rule, and normalised snippet.
 
 **Conversation IDs are numbers minted by storage.** The root conversation is the reserved ID 1. There is no lookup by name or key.
 
