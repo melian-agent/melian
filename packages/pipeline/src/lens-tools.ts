@@ -1,15 +1,14 @@
 import {
 	type ChangedFile,
+	checkEvidence,
 	classifyCause,
 	createFinding,
 	type Finding,
-	type FindingSource,
 	type LensRule,
 	type LensToolName,
 	lensCovers,
 	listRevisionFiles,
 	type ReportFindingInput,
-	type Resolution,
 	type RevisionEntry,
 	readRevisionFile,
 	reportFindingInputSchema,
@@ -17,8 +16,9 @@ import {
 	type Severity,
 	searchRevision,
 	snippetOccurrence,
+	visibleText,
 } from "@melian-agent/core";
-import { FindingsDocument, upsertFinding } from "./findings.ts";
+import { FindingsDocument, hasSighting, revisionKey, sightingCount, upsertFinding } from "./findings.ts";
 import {
 	type Context,
 	type ConversationId,
@@ -26,9 +26,11 @@ import {
 	defineDoc,
 	defineTool,
 	hook,
+	section,
 	ToolTask,
 	Type,
 } from "./harness.ts";
+import { injectionPolicy, quoteUntrusted } from "./untrusted.ts";
 
 // `added` is the hunk's new lines, the code a dismissal is tied to.
 type ReviewHunk = {
@@ -41,19 +43,20 @@ type ReviewHunk = {
 	added: string;
 };
 
-/** A changed file as the review document keeps it: enough to classify cause, without the hunks' text. */
+// A changed file as the review document keeps it: enough to classify cause, without the hunks' text.
 type ReviewFile = { path: string; status: ChangedFile["status"]; binary: boolean; hunks: ReviewHunk[] };
 
-/** The revision a lens reviews, fixed when its lens task creates it. */
+// The revision a lens reviews, fixed when its lens task creates it.
 export type ReviewState = {
 	repoRoot: string;
+	// This review's boundary nonce: head content reaches a lens only inside `quoteUntrusted` blocks carrying it.
+	nonce: string;
 	base: string;
 	head: string;
 	files: ReviewFile[];
-	resolution: Record<Severity, Resolution>;
 };
 
-/** The fields of `files` that the review document keeps. */
+// The fields of `files` that the review document keeps.
 export function reviewFiles(files: readonly ChangedFile[]): ReviewFile[] {
 	return files.map(({ path, status, binary, hunks }) => ({
 		path,
@@ -82,22 +85,20 @@ function changedFiles(review: ReviewState): ChangedFile[] {
 	}));
 }
 
-/** What a lens conversation may do, written on it in the commit that creates it. */
+// What a lens conversation may do, written on it in the commit that creates it.
 export type LensPolicy = {
 	name: string;
 	version: string;
-	/** The root conversation, which owns the review and its findings document. */
+	// The root conversation, which owns the review and its findings document.
 	review: ConversationId;
-	/**
-	 * The revision this lens reviews. Each lens carries its own, so a later review of the same changeset, whose lens task
-	 * may start while a crashed one resumes, never moves an earlier lens to a different head.
-	 */
+	// The revision this lens reviews. Each lens carries its own, so a later review of the same changeset, whose lens task
+	// may start while a crashed one resumes, never moves an earlier lens to a different head.
 	revision: ReviewState;
 	tools: LensToolName[];
 	severities: Severity[];
 	rules: LensRule[];
 	budget: number;
-	/** Where the lens may report: its folder and paths, less any folder a nearer lens of its name covers. */
+	// Where the lens may report: its folder and paths, less any folder a nearer lens of its name covers.
 	coverage: { scope: string; paths: string[]; nearer: string[] };
 };
 
@@ -110,7 +111,34 @@ export const LensDocument = defineDoc<{ lens?: LensPolicy }>({
 	initial: () => ({}),
 });
 
+// What one read_file call returns, at most. The file itself is read whole, so any line can be reached by startLine.
 const maxReadLines = 2000;
+
+// Pi Durable cuts a tool's result at 50 KB or 2000 lines unless the tool says otherwise, which would drop a boundary's
+// closing tag and Melian's notes. Each tool bounds the body it quotes below that, and sets Pi's limit above it.
+const maxShownBytes = 48 * 1024;
+const outputLimits = { maxBytes: 64 * 1024, maxLines: maxReadLines + 50 } as const;
+
+// The leading rows that fit in `maxShownBytes`, joined by newlines; a first row too long alone is cut to fit.
+function fitting(rows: readonly string[]): { body: string; count: number } {
+	const shown: string[] = [];
+	let size = 0;
+	for (const row of rows) {
+		const bytes = Buffer.byteLength(row) + 1;
+		if (size + bytes > maxShownBytes) {
+			if (shown.length === 0)
+				shown.push(
+					`${Buffer.from(row)
+						.subarray(0, maxShownBytes - 64)
+						.toString()} [line cut]`,
+				);
+			break;
+		}
+		shown.push(row);
+		size += bytes;
+	}
+	return { body: shown.join("\n"), count: shown.length };
+}
 
 async function lensOf(reader: DocumentReader, conversationId: ConversationId, context: Context): Promise<LensPolicy> {
 	const lens = (await reader.snapshot(LensDocument, conversationId, context))?.lens;
@@ -129,31 +157,33 @@ function text(content: string) {
 const readFile = defineTool({
 	name: "read_file",
 	description:
-		"Read a file as it is at the head revision under review, with line numbers. Reads up to 2000 lines from startLine.",
+		"Read a file as it is at the head revision under review, with line numbers: up to maxLines lines, at most 2000, from startLine. Any line of the file can be reached by startLine.",
 	parameters: Type.Object({
 		path: Type.String({ minLength: 1, description: "Repository-relative path" }),
-		startLine: Type.Optional(Type.Integer({ minimum: 1 })),
-		endLine: Type.Optional(Type.Integer({ minimum: 1 })),
+		startLine: Type.Optional(Type.Integer({ minimum: 1, description: "First line to read; 1 when absent" })),
+		maxLines: Type.Optional(Type.Integer({ minimum: 1, maximum: maxReadLines, description: "At most 2000" })),
 	}),
 	replay: "safe",
+	outputLimits,
 	execute: async (args, api, context) => {
 		const review = await headOf(api, api.conversationId, context);
 		const file = await readRevisionFile(review.repoRoot, review.head, args.path);
 		const lines = file.content.split("\n");
 		if (lines.at(-1) === "" && !file.truncated) lines.pop();
 		const start = args.startLine ?? 1;
-		const end = Math.min(args.endLine ?? lines.length, start + maxReadLines - 1, lines.length);
-		const width = String(end).length;
-		const body = lines
-			.slice(start - 1, end)
-			.map((line, index) => `${String(start + index).padStart(width)}\t${line}`)
-			.join("\n");
+		const last = Math.min(start + (args.maxLines ?? maxReadLines) - 1, lines.length);
+		const width = String(last).length;
+		const window = lines
+			.slice(start - 1, last)
+			.map((line, index) => `${String(start + index).padStart(width)}\t${line}`);
+		const { body, count } = fitting(window);
+		const end = start - 1 + count;
 		const notes = [
 			end < lines.length ? `[lines ${end + 1} onward not shown; read again with startLine ${end + 1}]` : undefined,
 			file.truncated ? `[the file is ${file.size} bytes; only the first part was read]` : undefined,
-			start > lines.length ? `[${file.path} has ${lines.length} lines]` : undefined,
+			start > lines.length ? `[the file has ${lines.length} lines]` : undefined,
 		].filter((note) => note !== undefined);
-		return text([body, ...notes].filter((part) => part !== "").join("\n"));
+		return text([quoteUntrusted("file", body, review.nonce), ...notes].join("\n"));
 	},
 });
 
@@ -168,22 +198,28 @@ const search = defineTool({
 		path: Type.Optional(Type.String({ description: "Search only this file or directory" })),
 	}),
 	replay: "safe",
+	outputLimits,
 	execute: async (args, api, context) => {
 		const review = await headOf(api, api.conversationId, context);
-		const { matches, truncated } = await searchRevision(review.repoRoot, review.head, args);
+		// The base's attributes decide what is binary, as they do for the diff, so a head cannot hide its files.
+		const search = { ...args, attributesFrom: review.base };
+		const { matches, truncated } = await searchRevision(review.repoRoot, review.head, search);
 		// A single matching line longer than the output bound leaves nothing whole to show; that is not "no matches".
 		if (matches.length === 0 && truncated)
 			return text("[matches found, but their lines are too long to show; narrow the search with path]");
 		if (matches.length === 0) return text("No matches.");
-		const lines = matches.map((match) => `${match.path}:${match.line}: ${match.text}`);
-		return text([...lines, ...(truncated ? ["[more matches not shown; narrow the search]"] : [])].join("\n"));
+		const lines = matches.map((match) => `${visibleText(match.path)}:${match.line}: ${match.text}`);
+		const { body, count } = fitting(lines);
+		const notes = truncated || count < lines.length ? ["[more matches not shown; narrow the search]"] : [];
+		return text([quoteUntrusted("search", body, review.nonce), ...notes].join("\n"));
 	},
 });
 
 function describeEntry(entry: RevisionEntry): string {
-	if (entry.kind === "directory") return `${entry.path}/`;
-	if (entry.kind === "file") return `${entry.path} (${entry.size} bytes)`;
-	return `${entry.path} (${entry.kind})`;
+	const path = visibleText(entry.path);
+	if (entry.kind === "directory") return `${path}/`;
+	if (entry.kind === "file") return `${path} (${entry.size} bytes)`;
+	return `${path} (${entry.kind})`;
 }
 
 const listFiles = defineTool({
@@ -194,15 +230,25 @@ const listFiles = defineTool({
 		recursive: Type.Optional(Type.Boolean()),
 	}),
 	replay: "safe",
+	outputLimits,
 	execute: async (args, api, context) => {
 		const review = await headOf(api, api.conversationId, context);
 		const { entries, truncated } = await listRevisionFiles(review.repoRoot, review.head, args);
-		const lines = entries.map(describeEntry);
-		return text([...lines, ...(truncated ? ["[more entries not shown]"] : [])].join("\n") || "Empty.");
+		if (entries.length === 0) return text("Empty.");
+		const { body, count } = fitting(entries.map(describeEntry));
+		const listing = quoteUntrusted("listing", body, review.nonce);
+		return text([listing, ...(truncated || count < entries.length ? ["[more entries not shown]"] : [])].join("\n"));
 	},
 });
 
-/** The read-only tools a lens may be offered, by the names `LENS.md` lists them under. */
+// The `injection_policy` section: in a lens conversation, the rule that everything inside this review's boundaries is
+// data. Lens conversations select only the lens extension, so it renders first, ahead of the lens's instructions.
+export const injectionPolicySection = section("injection_policy", async (input, context) => {
+	const lens = (await input.read.snapshot(LensDocument, input.conversationId, context))?.lens;
+	return lens === undefined ? undefined : injectionPolicy(lens.revision.nonce);
+});
+
+// The read-only tools a lens may be offered, by the names `LENS.md` lists them under.
 export const lensReadTools = { read_file: readFile, search, list_files: listFiles } as const;
 
 function overlapping(file: ReviewFile | undefined, startLine: number, endLine: number): ReviewHunk | undefined {
@@ -211,32 +257,8 @@ function overlapping(file: ReviewFile | undefined, startLine: number, endLine: n
 	);
 }
 
-type Produced = {
-	readonly producer: { readonly properties: { readonly source: FindingSource } };
-	readonly lifecycle: { readonly lastSeenRevision: string };
-};
-
-// One storage holds every review of a changeset, so only findings this lens reported at its own head count.
-function countFor(items: Readonly<Record<string, Produced>>, lens: LensPolicy): number {
-	return Object.values(items).filter(
-		({ producer: { properties }, lifecycle }) =>
-			lifecycle.lastSeenRevision === lens.revision.head &&
-			properties.source.check === `lens.${lens.name}` &&
-			properties.source.version === lens.version,
-	).length;
-}
-
-/**
- * Builds the finding a `report_finding` call describes. The snippet comes from the head revision at the reported
- * lines, never from the model, so a finding's ID does not depend on how the model quoted the code.
- */
-async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, review: ReviewState): Promise<Finding> {
-	const path = repositoryPath(args.file);
-	if (!lensCovers(lens.coverage, path)) {
-		throw new Error(`${path} is outside the paths lens ${lens.name} reviews; report only within them`);
-	}
-	const endLine = args.endLine ?? args.line;
-	if (endLine < args.line) throw new Error(`endLine ${endLine} is before line ${args.line}`);
+async function headLines(review: ReviewState, path: string, line: number, endLine: number) {
+	if (endLine < line) throw new Error(`endLine ${endLine} is before line ${line}`);
 	const { content, truncated } = await readRevisionFile(review.repoRoot, review.head, path);
 	const lines = content.split("\n");
 	// A cut file's last line may be partial, and a whole file's final newline leaves an empty element that is no line.
@@ -245,11 +267,37 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 		const known = truncated ? `only its first ${lines.length} lines can be read` : `it has ${lines.length} lines`;
 		throw new Error(`${path}:${endLine} is past what Melian can read at the head revision; ${known}`);
 	}
-	const snippet = lines.slice(args.line - 1, endLine).join("\n");
-	if (snippet.trim() === "") throw new Error(`${path}:${args.line} is blank; point at the code itself`);
+	const snippet = lines.slice(line - 1, endLine).join("\n");
+	if (snippet.trim() === "") throw new Error(`${path}:${line} is blank; point at the code itself`);
+	return { content, snippet };
+}
+
+const proseEvidence =
+	"evidence must be a location, { file, line, endLine }, naming lines this change added or modified that break the reported code. Prose is not evidence: put the reasoning in explanation.why, and leave evidence out for a finding inside the change";
+
+// Evidence must name changed code; Melian reads its snippet from the head, so prose can never make a finding affected.
+async function evidenceFrom(args: NonNullable<ReportFindingInput["evidence"]>, review: ReviewState) {
+	const file = repositoryPath(args.file);
+	const endLine = args.endLine ?? args.line;
+	checkEvidence({ file, startLine: args.line, endLine }, { files: changedFiles(review) });
+	const { snippet } = await headLines(review, file, args.line, endLine);
+	return { file, startLine: args.line, ...(args.endLine === undefined ? {} : { endLine }), snippet };
+}
+
+// The snippet comes from the head revision at the reported lines, never from the model, so a finding's ID does not
+// depend on how the model quoted the code.
+async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, review: ReviewState): Promise<Finding> {
+	const path = repositoryPath(args.file);
+	if (!lensCovers(lens.coverage, path)) {
+		throw new Error(`${path} is outside the paths lens ${lens.name} reviews; report only within them`);
+	}
+	const endLine = args.endLine ?? args.line;
+	const { content, snippet } = await headLines(review, path, args.line, endLine);
 	const located = classifyCause({ file: path, startLine: args.line, endLine }, { files: changedFiles(review) });
 	const changed = review.files.find((file) => file.path === path);
 	const hunk = located === "introduced" ? overlapping(changed, args.line, endLine) : undefined;
+	const evidence =
+		located === "introduced" || args.evidence === undefined ? undefined : await evidenceFrom(args.evidence, review);
 	const { severity } = args;
 	return createFinding({
 		rule: args.rule,
@@ -259,14 +307,13 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 		...(args.endLine === undefined ? {} : { endLine }),
 		snippet,
 		occurrence: snippetOccurrence(content, snippet, { startLine: args.line, endLine }),
-		cause: located === "introduced" || args.evidence === undefined ? located : { evidence: args.evidence },
+		cause: evidence === undefined ? located : { evidence },
 		...(hunk === undefined
 			? {}
 			: {
 					trigger: { file: hunk.file, index: hunk.index, snippet: hunk.added },
 				}),
 		severity,
-		resolution: review.resolution[severity],
 		explanation: {
 			what: args.explanation.what,
 			whyHere: args.explanation.why,
@@ -276,17 +323,20 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 	});
 }
 
-/**
- * `report_finding`: the only way a finding leaves a lens. An idempotent upsert into the root conversation's findings
- * document, keyed by the finding's stable ID, so it is safe to replay after a crash. The budget is checked inside the
- * commit, where parallel calls in one round see each other's findings, and where a finding this lens already reported
- * at this head always passes, so a replay or a correction succeeds at a full budget.
- */
+// `report_finding`: the only way a finding leaves a lens. An idempotent upsert into the root conversation's findings
+// document, keyed by the finding's stable ID, so it is safe to replay after a crash. The budget is checked inside the
+// commit, where parallel calls in one round see each other's findings, and where a finding this lens already reported
+// at this head always passes, so a replay or a correction succeeds at a full budget.
 export const reportFinding = defineTool({
 	name: "report_finding",
 	description:
 		"Report one finding at the head revision: the file and lines of the flagged code, one of your rules, a severity, and an explanation. Call once per finding; never report findings in prose.",
 	parameters: reportFindingInputSchema,
+	// Runs before validation, so prose evidence gets a reply saying what evidence must be, not a schema error.
+	prepareArguments: (args) => {
+		if (typeof (args as { evidence?: unknown } | undefined)?.evidence === "string") throw new Error(proseEvidence);
+		return args as ReportFindingInput;
+	},
 	replay: "safe",
 	execute: async (args, api, context) => {
 		const lens = await lensOf(api, api.conversationId, context);
@@ -294,32 +344,23 @@ export const reportFinding = defineTool({
 		const finding = await findingFromCall(args, lens, review);
 		const id = finding.properties.id;
 		await api.commit(async (tx) => {
-			const { items } = await tx.doc(FindingsDocument, lens.review);
-			const current = items[id]?.lifecycle.lastSeenRevision === review.head;
-			// A finding's ID does not name its lens, so two lenses sharing a rule ID can land on one ID. Replacing the
-			// other lens's record would change its severity and source, and hand that lens back a slot of its budget.
-			const owner = items[id]?.producer.properties.source;
-			if (
-				current &&
-				owner !== undefined &&
-				(owner.check !== `lens.${lens.name}` || owner.version !== lens.version)
-			) {
-				throw new Error(`${owner.check} already reported this finding; it is recorded, so move on`);
-			}
-			if (!current && countFor(items, lens) >= lens.budget) {
+			// One storage holds every review of a changeset, so the budget counts this lens's sightings at its own revision.
+			const state = await tx.doc(FindingsDocument, lens.review);
+			const { source } = finding.properties;
+			const at = revisionKey(review);
+			const own = hasSighting(state, id, at, source);
+			if (!own && sightingCount(state, at, source) >= lens.budget) {
 				throw new Error(`budget reached: this lens may report ${lens.budget} findings; stop reporting and finish`);
 			}
-			await upsertFinding(tx, lens.review, finding, review.head);
+			await upsertFinding(tx, lens.review, finding, at);
 		}, context);
 		return text(`recorded finding ${id}`);
 	},
 });
 
-/**
- * Enforces each lens's policy before a tool call runs: only the tools the lens lists plus `report_finding`, and only its
- * severities and rules. `report_finding` checks the budget inside its commit, where it can tell a new finding from a
- * correction of one the lens already reported. Calls in conversations that are not lenses pass untouched.
- */
+// Enforces each lens's policy before a tool call runs: only the tools the lens lists plus `report_finding`, and only
+// its severities and rules. `report_finding` checks the budget inside its commit, where it can tell a new finding from
+// a correction of one the lens already reported. Calls in conversations that are not lenses pass untouched.
 export const lensPolicyHook = hook(ToolTask, {
 	beforeTool: async (call, api, context) => {
 		const lens = (await api.snapshot(LensDocument, api.conversationId, context))?.lens;

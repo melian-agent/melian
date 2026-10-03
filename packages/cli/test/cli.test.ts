@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -43,14 +43,50 @@ function melian(cwd: string, args: string[], env: Record<string, string> = {}) {
 	return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 }
 
-// A golden's repository, checked out on its feature branch, and a script the CLI's scripted mode answers lenses from.
-function goldenCheckout(golden: Golden, script: unknown = golden.script) {
-	const { repo } = buildGoldenRepository(golden);
-	repos.push(repo);
+// The goldens have no tsconfig.json, so tsc cannot check them, and Biome's defaults would add findings of their own.
+// Their tests keep the deterministic checks to guardrails; the static tools have a repository of their own below.
+const guardrailsOnly = "tiers:\n  fast: [guardrails]\n";
+
+function scriptFile(script: unknown): Record<string, string> {
 	scratch = mkdtempSync(join(tmpdir(), "melian-cli-"));
 	const scriptPath = join(scratch, "script.json");
 	writeFileSync(scriptPath, JSON.stringify(script));
-	return { repo, env: { MELIAN_TEST_SCRIPT: scriptPath } };
+	return { MELIAN_TEST_SCRIPT: scriptPath };
+}
+
+// A golden's repository, checked out on its feature branch, and a script the CLI's scripted mode answers lenses from.
+// Its uncommitted melian.yaml, unless policy is null, applies to a range on the checked-out commit.
+function goldenCheckout(golden: Golden, script: unknown = golden.script, policy: string | null = guardrailsOnly) {
+	const { repo } = buildGoldenRepository(golden);
+	repos.push(repo);
+	if (policy !== null) writeFileSync(join(repo, "melian.yaml"), policy);
+	return { repo, env: scriptFile(script) };
+}
+
+function git(repo: string, ...args: string[]): string {
+	return execFileSync("git", args, { cwd: repo, env: { ...process.env, ...gitEnv }, encoding: "utf8" }).trim();
+}
+
+const tsconfig = JSON.stringify({
+	compilerOptions: { strict: true, noEmit: true, target: "ES2022", module: "NodeNext" },
+});
+
+// A TypeScript repository under the default tiers, whose feature branch adds `added`, checked out on that branch.
+function staticCheckout(added: string) {
+	const repo = mkdtempSync(join(tmpdir(), "melian-cli-static-"));
+	repos.push(repo);
+	git(repo, "init", "--quiet", "--initial-branch=main");
+	writeFileSync(join(repo, "tsconfig.json"), tsconfig);
+	mkdirSync(join(repo, "src"));
+	writeFileSync(join(repo, "src/a.ts"), "export const a: number = 1;\n");
+	git(repo, "add", "--all");
+	git(repo, "commit", "--quiet", "-m", "base");
+	git(repo, "checkout", "--quiet", "-b", "feature");
+	writeFileSync(join(repo, "src/b.ts"), added);
+	git(repo, "add", "--all");
+	git(repo, "commit", "--quiet", "-m", "head");
+	const quiet = [{ text: "Reported 0 findings." }];
+	return { repo, env: scriptFile({ correctness: quiet, contracts: quiet }) };
 }
 
 describe("melian review and findings", { timeout: 60_000 }, () => {
@@ -105,12 +141,54 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.stderr).toContain("lenses did not finish: contracts");
 	});
 
+	it("runs a failed lens again with --rerun, and reports the stored failure without it", () => {
+		const golden = goldens["correctness-null-deref"]!;
+		const { repo, env } = goldenCheckout(golden, { correctness: golden.script.correctness });
+		expect(melian(repo, ["review", "main"], env).status).toBe(2);
+		writeFileSync(env.MELIAN_TEST_SCRIPT, JSON.stringify(golden.script));
+
+		expect(melian(repo, ["review", "main"], env).status).toBe(2);
+		const rerun = melian(repo, ["review", "main", "--rerun"], env);
+
+		expect(rerun.status).toBe(1);
+		expect(rerun.stdout).toMatch(/^Verdict: findings, blocking\n/);
+	});
+
+	it("runs guardrails, Biome, and tsc before the lenses, and passes a clean change", { timeout: 120_000 }, () => {
+		const { repo, env } = staticCheckout("export const b: number = 2;\n");
+
+		const review = melian(repo, ["review", "main"], env);
+
+		expect(review).toMatchObject({ status: 0, stderr: "" });
+		const verdict = JSON.parse(melian(repo, ["findings", "main", "--json"], env).stdout) as Verdict;
+		expect(verdict.notRun.map((check) => check.name)).toEqual(["decisions.fast"]);
+	});
+
+	it("reports what Biome finds in the head", { timeout: 120_000 }, () => {
+		const { repo, env } = staticCheckout("export const b = (x: number) => x == 1;\n");
+
+		const review = melian(repo, ["review", "main"], env);
+
+		expect(review.status).toBe(3);
+		expect(review.stdout).toMatch(/^Verdict: findings\n/);
+		expect(review.stdout).toContain("biome/suspicious/noDoubleEquals");
+	});
+
 	it("tells the author to review first when nothing is stored", () => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
 
 		expect(melian(repo, ["findings", "main"], env)).toMatchObject({
 			status: 1,
 			stderr: expect.stringContaining("run melian review main"),
+		});
+		// Every command a message suggests can be pasted into a shell as it stands.
+		expect(melian(repo, ["findings", "main~0"], env)).toMatchObject({
+			status: 1,
+			stderr: expect.stringContaining('run melian review "main~0"'),
+		});
+		expect(melian(repo, ["findings", "#5"], env)).toMatchObject({
+			status: 1,
+			stderr: expect.stringContaining('run melian review "#5" first'),
 		});
 	});
 });
@@ -128,8 +206,22 @@ describe("melian doctor", () => {
 		expect(doctor.stdout).toMatch(/^ok {4}git {9}\d+\.\d+(\.\d+)?, --attr-source supported$/m);
 		expect(doctor.stdout).toContain(`${join(home, "auth.json")} not found`);
 		expect(doctor.stdout).toMatch(/^ok {4}github {6}token from GITHUB_TOKEN$/m);
+		// This checkout has its own install, so the static checks use its Biome and tsc.
+		expect(doctor.stdout).toMatch(/^ok {4}static {6}biome from the checkout, tsc from the checkout$/m);
 		expect(doctor.stdout).not.toContain(token);
 		expect(readFileSync(bin, "utf8")).toMatch(/^#!\/usr\/bin\/env node\n/);
+	});
+
+	it("warns when melian.yaml routes no tier, names the routes when it does, and runs Melian's own Biome and tsc without an install", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+
+		const unrouted = melian(repo, ["doctor"]);
+		writeFileSync(join(repo, "melian.yaml"), "models:\n  heavy:\n    model: anthropic/claude-opus-5-5\n");
+		const routed = melian(repo, ["doctor"]);
+
+		expect(unrouted.stdout).toMatch(/^warn {2}routes {6}melian\.yaml routes no tier to a model; .*--model/m);
+		expect(routed.stdout).toMatch(/^ok {4}routes {6}heavy to anthropic\/claude-opus-5-5$/m);
+		expect(routed.stdout).toMatch(/^ok {4}static {6}biome from Melian's own copy, tsc from Melian's own copy$/m);
 	});
 });
 

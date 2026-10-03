@@ -107,6 +107,7 @@ export type FindingErrorCode =
 	| "invalidRegion"
 	| "deletedFile"
 	| "missingEvidence"
+	| "invalidEvidence"
 	| "missingDiscriminator"
 	| "snippetNotFound"
 	| "idMismatch"
@@ -125,6 +126,41 @@ export class FindingError extends Error {
 		this.name = "FindingError";
 		this.code = code;
 		this.path = options.path;
+	}
+}
+
+/** Why a check could not run. */
+export type CheckErrorCode =
+	| "unknownCheck"
+	| "unknownTier"
+	| "tierCycle"
+	| "unknownConversation"
+	| "notCompleted"
+	| "noEnvironment"
+	| "worktreeFailed"
+	| "toolMissing"
+	| "toolFailed"
+	| "timeout"
+	| "aborted"
+	| "nothingToCheck"
+	| "outputTooLarge"
+	| "invalidOutput"
+	| "unreadable"
+	| "tooLarge";
+
+/**
+ * A check could not run, or a tool it runs failed. `check` names the check, such as `static.tsc`, or the tier for
+ * `unknownTier` and `tierCycle`. A failed check says so with this error; it never reports an empty result instead.
+ */
+export class CheckError extends Error {
+	readonly code: CheckErrorCode;
+	readonly check: string;
+
+	constructor(code: CheckErrorCode, check: string, message: string, options: { cause?: unknown } = {}) {
+		super(message, { cause: options.cause });
+		this.name = "CheckError";
+		this.code = code;
+		this.check = check;
 	}
 }
 

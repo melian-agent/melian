@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
 	type Changeset,
+	type CheckRecord,
 	diffLines,
 	loadConfig,
 	loadLenses,
@@ -22,6 +23,7 @@ import {
 	type Harness,
 	openHarness,
 	publishExtension,
+	type ReviewOrigin,
 	reviewChangeset,
 	type Storage,
 } from "@melian-agent/pipeline";
@@ -105,6 +107,19 @@ export function pushRevisionThree(repo: string): void {
 	gitIn(repo, "commit", "--quiet", "--all", "-m", "revision 3");
 }
 
+// Stacks `feature` on a `parent` branch: `parent` changes src/config.ts on top of `main`, and `feature` merges it, so
+// `main...feature` holds both changes and `parent...feature` only revision 1, as after a retarget onto the parent.
+export function stackOnParent(repo: string): void {
+	gitIn(repo, "branch", "parent", "main");
+	gitIn(repo, "checkout", "--quiet", "parent");
+	writeFiles(repo, {
+		"src/config.ts": lines("export const retries = Number(process.env.RETRIES);", "export const timeout = 60;"),
+	});
+	gitIn(repo, "commit", "--quiet", "--all", "-m", "parent");
+	gitIn(repo, "checkout", "--quiet", "feature");
+	gitIn(repo, "merge", "--quiet", "--no-edit", "parent");
+}
+
 const explanation = (what: string) => ({ what, why: `${what} Why.`, fix: `${what} Fix.` });
 
 function report(file: string, line: number, rule: string, severity: string, what: string) {
@@ -139,10 +154,47 @@ export function openPublishHarness(storage: Storage, fake: FakeModels, provider:
 	return openHarness(storage, { models: fake.models, registry, settings: { retry: { enabled: false } } });
 }
 
-// Reviews `main...feature` from the base's policy, the lenses answering from `script`. Returns the changeset.
-export async function reviewScenario(repo: string, harness: Harness, fake: FakeModels, script: LensScript) {
-	const changeset: Changeset = await resolveRange(repo, "main...feature");
-	const source: RepositorySource = { kind: "revision", commit: changeset.revision.base };
+/** How {@link reviewScenario} reviews: by default `main...feature` as pull request #7, under the base's policy. */
+export interface ScenarioReview {
+	readonly range?: string;
+	readonly origin?: "range";
+	readonly policy?: "worktree";
+	/** The records of the checks that run without a model; all `ran` by default. */
+	readonly checks?: CheckRecord[];
+}
+
+// Opens a harness that only reviews, as the CLI's review does, so a publish task a crash left stays put.
+export function openReviewOnlyHarness(storage: Storage, fake: FakeModels): Promise<Harness> {
+	return openHarness(storage, {
+		models: fake.models,
+		registry: createReviewRegistry(),
+		settings: { retry: { enabled: false } },
+	});
+}
+
+// Reviews the scenario, the lenses answering from `script`; `rerun` runs again a lens that failed at this head. Returns
+// the changeset.
+export async function reviewScenario(
+	repo: string,
+	harness: Harness,
+	fake: FakeModels,
+	script: LensScript,
+	rerun = false,
+	how: ScenarioReview = {},
+) {
+	const changeset: Changeset = await resolveRange(repo, how.range ?? "main...feature");
+	const source: RepositorySource =
+		how.policy === "worktree" ? { kind: "worktree" } : { kind: "revision", commit: changeset.revision.base };
+	const origin: ReviewOrigin =
+		how.origin === "range"
+			? { kind: "range" }
+			: {
+					kind: "pull-request",
+					repository: { owner: "melian-agent", name: "example" },
+					pullRequest: 7,
+					base: changeset.revision.base,
+					head: changeset.revision.head,
+				};
 	const lenses = await loadLenses(
 		repo,
 		source,
@@ -159,8 +211,16 @@ export async function reviewScenario(repo: string, harness: Harness, fake: FakeM
 		config,
 		lenses,
 		standards: [],
-		models: fake.models,
+		models: fake.review,
 		policy: source,
+		rerun,
+		origin,
+		// The default tiers' checks that run without a model, recorded as ran, as runChecks records them.
+		checks: how.checks ?? [
+			{ name: "guardrails", status: "ran" },
+			{ name: "static.biome", status: "ran" },
+			{ name: "static.tsc", status: "ran" },
+		],
 	});
 	return { changeset, review };
 }

@@ -1,4 +1,13 @@
-export { readVerdict } from "./adjudication.ts";
+export { type ReviewOrigin, readProvenance, readVerdict, type VerdictProvenance } from "./adjudication.ts";
+export {
+	type CheckRun,
+	type CheckRunRecord,
+	checksExtension,
+	type RunChecksInput,
+	type RunIdentity,
+	readCheckRecords,
+	runChecks,
+} from "./checks.ts";
 export { createReviewModels, piAuthPath, piCredentialStore } from "./credentials.ts";
 export {
 	PiCredentialsError,
@@ -8,15 +17,27 @@ export {
 	ReviewError,
 	type ReviewErrorCode,
 } from "./errors.ts";
-export { type Dismissal, dismissFinding, readFindings, upsertFinding } from "./findings.ts";
-export * from "./harness.ts";
 export {
+	type Dismissal,
+	dismissFinding,
+	type ReadFindingsOptions,
+	readFindings,
+	recordRevision,
+	revisionKey,
+	upsertFinding,
+} from "./findings.ts";
+export * from "./harness.ts";
+export { providersWithCredentials, type ReviewModels } from "./models.ts";
+export {
+	type AbandonedReview,
+	openPublishHarness,
 	type Publication,
 	type PublishedRecord,
 	type PublishOptions,
 	publishExtension,
 	publishReview,
 	readPublished,
+	type SupersededPublication,
 } from "./publish.ts";
 export {
 	createReviewRegistry,
@@ -27,5 +48,19 @@ export {
 	renderChangePrompt,
 	reviewChangeset,
 } from "./review.ts";
+export {
+	runStaticTool,
+	type StaticRun,
+	type StaticRunInput,
+	type StaticToolSource,
+	staticOutputLimit,
+	staticToolSource,
+} from "./static.ts";
+export {
+	injectionAttemptRule,
+	quoteUntrusted,
+	reviewNonce,
+	type UntrustedLabel,
+} from "./untrusted.ts";
 
 export const packageName = "@melian-agent/pipeline";

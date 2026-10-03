@@ -1,6 +1,6 @@
 import { rmSync } from "node:fs";
-import type { Changeset, ReviewProvider } from "@melian-agent/core";
-import { createGitHubProvider, parseMarker, statusContext } from "@melian-agent/github";
+import { type Changeset, pullRequestChangesetId, type ReviewProvider, resolveRange } from "@melian-agent/core";
+import { createGitHubProvider, marker, parseMarker, statusContext } from "@melian-agent/github";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -11,11 +11,13 @@ import {
 	ReviewError,
 	readFindings,
 	readPublished,
+	revisionKey,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type FakeState, fakeGitHub, posts } from "./fixtures/fake-github.ts";
 import {
 	emptyName,
+	gitIn,
 	isolatedGitEnv,
 	lensScript,
 	moveTo,
@@ -65,33 +67,85 @@ async function reviewedRevisionOne(script = lensScript(unsafeManager, emptyName,
 }
 
 async function publish(github: ReviewProvider, changeset: Changeset) {
-	return publishReview({ harness: harness!, provider: github, changeset, pullRequest: await github.pullRequest(7) });
+	const pullRequest = await github.pullRequest(7);
+	return publishReview({ harness: harness!, provider: github, changeset, pullRequest, base: changeset.revision.base });
 }
 
 describe("reading markers back", () => {
 	const head = "a".repeat(40);
 	const fingerprint = "0123456789abcdef";
-	const forged = (login: string) => ({
-		id: 1,
+	const wanted = { fingerprint, round: 1 };
+	const finding = "fedcba9876543210";
+	const secret = "11".repeat(32);
+	const none = { threads: {}, replies: {} };
+	const review = (id: number, login: string, opening: string) => ({
+		id,
 		user: { login },
-		body: `<!-- melian:revision=${head} verdict=${fingerprint} -->\nLooks fine.`,
+		body: `${opening}\nLooks fine.`,
 		commit_id: head,
 		event: "COMMENT",
 	});
-
-	it("counts only the token's own user's markers", async () => {
-		const state = pullRequestState();
-		state.reviews.push(forged("pull-request-author"));
-		expect(await providerFor(state).findPublished(7, head, fingerprint)).toEqual({ threads: {}, replies: {} });
-		state.reviews.push({ ...forged(state.login), id: 2 });
-		expect(await providerFor(state).findPublished(7, head, fingerprint)).toMatchObject({ review: "2" });
+	const comment = (id: number, login: string, opening: string, inReplyTo?: number) => ({
+		id,
+		user: { login },
+		body: `${opening}\nA finding.`,
+		path: "src/user.ts",
+		line: 7,
+		side: "RIGHT",
+		pull_request_review_id: 1,
+		...(inReplyTo === undefined ? {} : { in_reply_to_id: inReplyTo }),
 	});
 
-	it("counts no marker when it cannot tell who it posts as", async () => {
+	it("counts a marker the changeset's secret signed when it cannot tell who it posts as", async () => {
 		const state = pullRequestState();
 		state.failUser = true;
-		state.reviews.push(forged(state.login));
-		expect(await providerFor(state).findPublished(7, head, fingerprint)).toEqual({ threads: {}, replies: {} });
+		state.reviews.push(review(1, state.login, marker(head, "verdict", fingerprint, secret, 1)));
+		state.comments.push(comment(2, state.login, marker(head, "finding", finding, secret)));
+		state.comments.push(comment(3, state.login, marker(head, "resolved", finding, secret), 2));
+
+		const github = providerFor(state);
+		expect(await github.findPublished(7, head, wanted, secret)).toEqual({
+			review: "1",
+			threads: { [finding]: "2" },
+			replies: { [finding]: "3" },
+		});
+		await github.findPublished(7, head, wanted, secret);
+		// One refused /user for the provider, not one for every marker.
+		expect(state.calls.filter((call) => call.path === "/user")).toHaveLength(1);
+	});
+
+	it("counts no marker whose signature does not verify, however right its text", async () => {
+		const state = pullRequestState();
+		state.failUser = true;
+		const unsigned = `<!-- melian:revision=${head} verdict=${fingerprint} -->`;
+		const wrong = `<!-- melian:revision=${head} verdict=${fingerprint} sig=${"0".repeat(32)} -->`;
+		const otherStorage = marker(head, "verdict", fingerprint, "22".repeat(32), 1);
+		state.reviews.push(review(1, state.login, unsigned), review(2, state.login, wrong));
+		state.reviews.push(review(3, state.login, otherStorage));
+		state.comments.push(comment(4, state.login, marker(head, "finding", finding, "22".repeat(32))));
+		// A thread's marker copied into a reply is not a reply's.
+		state.comments.push(comment(5, state.login, marker(head, "finding", finding, secret), 4));
+
+		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toEqual(none);
+	});
+
+	it("also requires the token's own user when it knows who that is", async () => {
+		const state = pullRequestState();
+		const signed = marker(head, "verdict", fingerprint, secret, 1);
+		state.reviews.push(review(1, "pull-request-author", signed));
+		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toEqual(none);
+		state.reviews.push(review(2, state.login, signed));
+		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({ review: "2" });
+	});
+
+	it("takes the first post carrying a marker, since a copy can only follow Melian's", async () => {
+		const state = pullRequestState();
+		state.failUser = true;
+		const signed = marker(head, "finding", finding, secret);
+		state.comments.push(comment(1, state.login, signed), comment(2, "pull-request-author", signed));
+		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toMatchObject({
+			threads: { [finding]: "1" },
+		});
 	});
 });
 
@@ -107,7 +161,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const [review] = state.reviews;
 		expect(review).toMatchObject({ commit_id: head, event: "COMMENT" });
 		expect(review!.body.split("\n")[0]).toMatch(
-			new RegExp(`^<!-- melian:revision=${head} verdict=[0-9a-f]{16} -->$`),
+			new RegExp(`^<!-- melian:revision=${head} verdict=[0-9a-f]{16} round=1 sig=[0-9a-f]{32} -->$`),
 		);
 		expect(review!.body).toContain("**findings, blocking**");
 
@@ -131,9 +185,16 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(outside.body).toContain(`https://github.com/melian-agent/example/blob/${head}/src/user.ts#L19`);
 
 		// The finding in a file the change does not touch sits in the body, under a marker of its own.
-		const findings = await readFindings(harness!, (await harness!.root(context)).id, context);
+		const findings = await readFindings(
+			harness!,
+			(await harness!.root(context)).id,
+			revisionKey(changeset.revision),
+			context,
+		);
 		const retries = findings.find((finding) => finding.properties.path === "src/config.ts")!;
-		expect(review!.body).toContain(`<!-- melian:revision=${head} finding=${retries.properties.id} -->`);
+		expect(review!.body).toMatch(
+			new RegExp(`\\n<!-- melian:revision=${head} finding=${retries.properties.id} sig=[0-9a-f]{32} -->\\n`),
+		);
 		expect(review!.body).toContain(`https://github.com/melian-agent/example/blob/${head}/src/config.ts#L1`);
 
 		expect(state.statuses).toEqual([
@@ -162,7 +223,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const { fake, github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);
 		const root = (await harness!.root(context)).id;
-		const first = await readFindings(harness!, root, context);
+		const first = await readFindings(harness!, root, revisionKey(changeset.revision), context);
 		const retries = first.find((finding) => finding.properties.path === "src/config.ts")!;
 		const manager = first.find((finding) => finding.ruleId === "null-dereference")!;
 		await (await harness!.root(context)).commit(
@@ -196,11 +257,15 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(replies).toHaveLength(1);
 		const [reply] = replies;
 		expect(greeting).toMatchObject({ path: "src/user.ts", line: 11, side: "RIGHT" });
-		expect(greeting!.body).toContain("trim() changes the greeting.");
+		expect(greeting!.body).toContain("trim\\(\\) changes the greeting.");
 		expect(state.reviews[1]!.body).not.toContain("src/config.ts");
 		expect(state.reviews[1]!.body).toContain("1 of them was posted on an earlier revision.");
 		expect(reply).toMatchObject({ in_reply_to_id: Number(thread) });
-		expect(reply!.body.split("\n")[0]).toBe(`<!-- melian:revision=${head} finding=${manager.properties.id} -->`);
+		expect(parseMarker(reply!.body.split("\n")[0]!)).toMatchObject({
+			revision: head,
+			kind: "resolved",
+			id: manager.properties.id,
+		});
 		expect(reply!.body).toContain(`Resolved at \`${head.slice(0, 12)}\``);
 		expect(state.statuses.at(-1)).toEqual({
 			sha: head,
@@ -208,6 +273,8 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			description: "2 findings, none blocking",
 			context: statusContext,
 		});
+		// Counts cover the run: publishing the head again resolves nothing more.
+		expect(await publish(github, second.changeset)).toMatchObject({ posted: 0, resolved: 0, replies: 0 });
 	});
 
 	it("sets the status and finishes when a resolved finding's thread was deleted", async () => {
@@ -236,7 +303,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		await publish(github, changeset);
 		expect(state.statuses.at(-1)).toMatchObject({ state: "error" });
 
-		const again = await reviewScenario(repo, harness!, fake, lensScript(unsafeManager, emptyName, nanRetries));
+		const again = await reviewScenario(repo, harness!, fake, lensScript(unsafeManager, emptyName, nanRetries), true);
 		await again.review;
 		const result = await publish(github, changeset);
 
@@ -249,6 +316,79 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const before = posts(state).length;
 		expect(await publish(github, changeset)).toMatchObject({ posted: 0 });
 		expect(posts(state)).toHaveLength(before);
+	});
+
+	it("posts a review for a verdict that recurs at a head, rather than find the earlier one by its marker", async () => {
+		const script = lensScript(unsafeManager, emptyName, nanRetries);
+		const { fake, github, changeset, state } = await reviewedRevisionOne(script);
+		await publish(github, changeset);
+		const failedTsc = [
+			{ name: "guardrails", status: "ran" as const },
+			{ name: "static.biome", status: "ran" as const },
+			{ name: "static.tsc", status: "failed" as const, reason: "tsc crashed" },
+		];
+		await (await reviewScenario(repo, harness!, fake, script, false, { checks: failedTsc })).review;
+		await publish(github, changeset);
+		expect(state.statuses.at(-1)).toMatchObject({ state: "error" });
+
+		await (await reviewScenario(repo, harness!, fake, script)).review;
+		const result = await publish(github, changeset);
+
+		// The third review's verdict is the first's again; only its round tells them apart.
+		expect(result).toMatchObject({ recovered: 0 });
+		expect(state.reviews).toHaveLength(3);
+		const rounds = state.reviews.map((review) => parseMarker(review.body.split("\n")[0]!)?.round);
+		expect(rounds).toEqual([1, 2, 3]);
+		expect(parseMarker(state.reviews[2]!.body.split("\n")[0]!)?.id).toBe(
+			parseMarker(state.reviews[0]!.body.split("\n")[0]!)?.id,
+		);
+		expect(state.statuses.at(-1)).toMatchObject({ state: "failure", description: "3 findings, 1 blocking" });
+	});
+
+	it("posts a refused round under its own verdict, then a round for the verdict the head has now", async () => {
+		const { fake, github, changeset, state } = await reviewedRevisionOne({
+			correctness: lensScript(unsafeManager).correctness!,
+		});
+		state.failReviews = true;
+		await expect(publish(github, changeset)).rejects.toBeInstanceOf(PublishError);
+		state.failReviews = false;
+		const again = await reviewScenario(repo, harness!, fake, lensScript(unsafeManager, emptyName, nanRetries), true);
+		await again.review;
+
+		const result = await publish(github, changeset);
+
+		expect(result).toMatchObject({ posted: 3, stillOpen: 1, abandoned: [] });
+		expect(state.reviews).toHaveLength(2);
+		expect(state.reviews[0]!.body).toContain("**not reviewed, blocking**");
+		expect(state.reviews[1]!.body).toContain("**findings, blocking**");
+		expect(state.statuses.at(-1)).toMatchObject({ state: "failure", description: "3 findings, 1 blocking" });
+	});
+
+	it("abandons a round the provider refuses three times, and plans a new one on the next publish", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		state.failReviews = true;
+		const refusals = [];
+		for (let attempt = 0; attempt < 3; attempt++) {
+			refusals.push(await publish(github, changeset).catch((error: unknown) => error));
+			// The head carries a status from the first attempt, though no review could be posted.
+			if (attempt === 0) expect(state.statuses).toEqual([expect.objectContaining({ state: "failure" })]);
+		}
+		expect(state.statuses.at(-1)).toMatchObject({
+			sha: changeset.revision.head,
+			state: "error",
+			description: expect.stringMatching(/^review could not be posted: GitHub refused to post a review/),
+		});
+		state.failReviews = false;
+
+		const result = await publish(github, changeset);
+
+		for (const refused of refusals) expect(refused).toBeInstanceOf(PublishError);
+		expect((refusals[1] as Error).message).not.toContain("abandoned");
+		expect((refusals[2] as Error).message).toContain("3 times, so Melian abandoned it");
+		expect(result).toMatchObject({ posted: 3 });
+		expect(result.abandoned).toEqual([{ fingerprint: expect.any(String), refusals: 3, error: expect.any(String) }]);
+		expect(state.reviews).toHaveLength(1);
+		expect(state.statuses.at(-1)).toMatchObject({ state: "failure", description: "3 findings, 1 blocking" });
 	});
 
 	it("replies for a pushed-over revision whose replies failed when the next one is published", async () => {
@@ -283,6 +423,64 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(await publish(github, fourth.changeset)).toMatchObject({ resolved: 0, replies: 0 });
 	});
 
+	it("posts every finding in the body when GitHub refuses the inline comments", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		// GitHub cannot place any comment, as on a diff that moved under the review.
+		state.lines = {};
+
+		const result = await publish(github, changeset);
+
+		expect(result).toMatchObject({ posted: 3 });
+		expect(posts(state).filter((call) => call.path.endsWith("/reviews"))).toHaveLength(2);
+		expect(state.reviews).toHaveLength(1);
+		expect(state.comments).toEqual([]);
+		const body = state.reviews[0]!.body;
+		expect(body).toContain("GitHub refused this review's inline comments, so every finding is listed here.");
+		expect(body.match(/^<!-- melian:revision=[0-9a-f]+ finding=/gm)).toHaveLength(3);
+		expect(state.statuses.at(-1)).toMatchObject({ state: "failure" });
+	});
+
+	it("plans against the last head whose review was posted, past a head whose round failed", async () => {
+		const { fake, github, changeset, state } = await reviewedRevisionOne();
+		await publish(github, changeset);
+		pushRevisionTwo(repo);
+		const second = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries, trimmedGreeting));
+		await second.review;
+		moveTo(state, second.changeset);
+		state.failReviews = true;
+		await expect(publish(github, second.changeset)).rejects.toBeInstanceOf(PublishError);
+		state.failReviews = false;
+
+		pushRevisionThree(repo);
+		const third = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries));
+		await third.review;
+		moveTo(state, third.changeset);
+		const result = await publish(github, third.changeset);
+
+		expect(result).toMatchObject({ posted: 0, stillOpen: 2, resolved: 1, replies: 1 });
+		expect(state.reviews).toHaveLength(2);
+		const threads = state.comments.filter((comment) => comment.in_reply_to_id === undefined);
+		expect(threads).toHaveLength(2);
+	});
+
+	it("does not repost open findings after a head's round was abandoned", async () => {
+		const { fake, github, changeset, state } = await reviewedRevisionOne();
+		await publish(github, changeset);
+		pushRevisionTwo(repo);
+		const second = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries, trimmedGreeting));
+		await second.review;
+		moveTo(state, second.changeset);
+		state.failReviews = true;
+		for (let attempt = 0; attempt < 3; attempt++) await publish(github, second.changeset).catch(() => {});
+		state.failReviews = false;
+
+		const result = await publish(github, second.changeset);
+
+		expect(result).toMatchObject({ posted: 1, stillOpen: 2, resolved: 1, replies: 1 });
+		const posted = state.comments.filter((comment) => comment.pull_request_review_id === state.reviews[1]!.id);
+		expect(posted.map((comment) => comment.line)).toEqual([11]);
+	});
+
 	it("sets an error status naming what did not run when the review did not complete", async () => {
 		const script = lensScript(unsafeManager);
 		const { github, changeset, state } = await reviewedRevisionOne({ correctness: script.correctness! });
@@ -306,7 +504,95 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 
 		expect(refused).toBeInstanceOf(PublishError);
 		expect(refused).toMatchObject({ code: "staleReview", pullRequest: 7 });
-		expect((refused as Error).message).toContain("run melian review #7");
+		expect((refused as Error).message).toContain('run melian review "#7"');
+		expect(posts(state)).toEqual([]);
+	});
+
+	it("refuses to publish a range review of the refs Melian fetched for the pull request, from the checkout", async () => {
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		const github = providerFor(state);
+		harness = await openPublishHarness(createMemoryStorage(), fake, github);
+		gitIn(repo, "update-ref", "refs/melian/pull/7/base", "main");
+		gitIn(repo, "update-ref", "refs/melian/pull/7/head", "feature");
+		// The head is checked out, so a range review of it reads policy from the working tree, as the CLI's does.
+		const { changeset, review } = await reviewScenario(
+			repo,
+			harness,
+			fake,
+			lensScript(unsafeManager, emptyName, nanRetries),
+			false,
+			{ range: "refs/melian/pull/7/base...refs/melian/pull/7/head", origin: "range", policy: "worktree" },
+		);
+		await review.catch(() => {});
+		moveTo(state, changeset);
+
+		const refused = await publish(github, changeset).catch((error: unknown) => error);
+
+		expect(refused).toMatchObject({ code: "notPublishable", pullRequest: 7 });
+		expect((refused as Error).message).toContain("it reviewed a range, not the pull request");
+		expect(posts(state)).toEqual([]);
+		// Either spelling of the refs is a range, whose storage is never the pull request's.
+		const short = await resolveRange(repo, "melian/pull/7/base...melian/pull/7/head");
+		const pull = pullRequestChangesetId("github", { owner: "melian-agent", name: "example" }, 7);
+		expect(short.id).toBe(changeset.id);
+		expect(pull).not.toBe(changeset.id);
+		expect(pull).toMatch(/^pull-[0-9a-f]{16}$/);
+	});
+
+	it("refuses to publish a pull request's review whose policy came from the working tree", async () => {
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		const github = providerFor(state);
+		harness = await openPublishHarness(createMemoryStorage(), fake, github);
+		const { changeset, review } = await reviewScenario(repo, harness, fake, lensScript(unsafeManager), false, {
+			policy: "worktree",
+		});
+		await review.catch(() => {});
+		moveTo(state, changeset);
+
+		const refused = await publish(github, changeset).catch((error: unknown) => error);
+
+		expect(refused).toMatchObject({ code: "notPublishable" });
+		expect((refused as Error).message).toContain("its policy came from worktree");
+		expect(posts(state)).toEqual([]);
+	});
+
+	it("stops before posting when the pull request's head moves after publish validated it", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		const pullRequest = await github.pullRequest(7);
+		state.pull.head.sha = "f".repeat(40);
+
+		const refused = await publishReview({
+			harness: harness!,
+			provider: github,
+			changeset,
+			pullRequest,
+			base: changeset.revision.base,
+		}).catch((error: unknown) => error);
+
+		expect(refused).toMatchObject({ code: "staleTarget", pullRequest: 7 });
+		expect((refused as Error).message).toContain(`its head moved to ${"f".repeat(12)}`);
+		expect(posts(state)).toEqual([]);
+	});
+
+	it("refuses to publish when the pull request diffs from another base, as after a retarget", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		const pullRequest = await github.pullRequest(7);
+		const retargeted = "e".repeat(40);
+
+		const refused = await publishReview({
+			harness: harness!,
+			provider: github,
+			changeset,
+			pullRequest,
+			base: retargeted,
+		}).catch((error: unknown) => error);
+
+		expect(refused).toBeInstanceOf(PublishError);
+		expect(refused).toMatchObject({ code: "staleReview", pullRequest: 7 });
+		expect((refused as Error).message).toContain(`now diffs from ${retargeted.slice(0, 12)} on main`);
+		expect((refused as Error).message).toContain('retargeted; run melian review "#7" again');
 		expect(posts(state)).toEqual([]);
 	});
 });

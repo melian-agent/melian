@@ -4,6 +4,8 @@ import type { Finding } from "./findings.ts";
 
 /** A pull request as its provider reports it. Commit hashes are full. */
 export interface PullRequest {
+	/** The repository the pull request belongs to, as the provider names it. */
+	readonly repository: { readonly owner: string; readonly name: string };
 	readonly number: number;
 	readonly title: string;
 	readonly url: string;
@@ -88,7 +90,7 @@ export interface PublishedFinding {
 }
 
 /** A finding an earlier revision published that this revision no longer reports. */
-export interface ResolvedFinding extends PublishedFinding {
+export interface ClosedFinding extends PublishedFinding {
 	readonly id: string;
 }
 
@@ -99,7 +101,7 @@ export interface PublicationPlan {
 	/** Findings an earlier revision posted that still need attention. They are not posted again. */
 	readonly stillOpen: readonly string[];
 	/** Findings an earlier revision posted that this revision no longer reports, dismissed ones excepted. */
-	readonly resolved: readonly ResolvedFinding[];
+	readonly resolved: readonly ClosedFinding[];
 	/**
 	 * Every finding with a thread or a place on the pull request once this revision is published, by ID, quiet ones
 	 * included. Threads for the findings this revision posts come from the post.
@@ -147,7 +149,7 @@ export function planPublication(
 	const resolved = Object.keys(previous)
 		.sort()
 		.filter((id) => !held.has(id))
-		.map((id): ResolvedFinding => ({ id, ...previous[id]! }));
+		.map((id): ClosedFinding => ({ id, ...previous[id]! }));
 	return { post, stillOpen, resolved, open };
 }
 
@@ -194,13 +196,20 @@ export interface ReviewDraft {
 	 * published at a head is its own review, so the marker that finds a review names the verdict as well as the head.
 	 */
 	readonly fingerprint: string;
+	/**
+	 * The review's round at this head, counting from 1 and never reused. A verdict can recur, A then B then A, and only
+	 * the round tells the third review from the first.
+	 */
+	readonly round: number;
 	readonly verdict: Verdict;
 	/** The findings to post, each with its placement. */
 	readonly findings: readonly PlacedFinding[];
 	/** How many findings an earlier revision posted that still need attention. */
 	readonly stillOpen: number;
 	/** Resolved findings that have no thread to reply in, so the body names them. */
-	readonly resolved: readonly ResolvedFinding[];
+	readonly resolved: readonly ClosedFinding[];
+	/** The changeset's publisher secret, as hex, which signs every marker the review carries. Never printed. */
+	readonly secret: string;
 }
 
 /** A review a provider posted. */
@@ -212,7 +221,7 @@ export interface PostedReview {
 
 /** What a pull request already shows of one revision's publication, read from Melian's markers. */
 export interface PublishedMarkers {
-	/** The review posted for the revision's verdict. */
+	/** The review posted for the revision's verdict in the round asked about. */
 	readonly review?: string;
 	/** The comment that starts each finding's thread, by finding ID. */
 	readonly threads: Readonly<Record<string, string>>;
@@ -224,9 +233,10 @@ export interface PublishedMarkers {
  * A code host that reviews arrive on, such as GitHub. Publication reaches the host only through this port, so a second
  * host is a new implementation, not a change to the pipeline.
  *
- * Every post carries a marker naming its revision and finding, and {@link ReviewProvider.findPublished} reads them
- * back. The host accepts no idempotency key, so the markers are how a publication interrupted after a post and before
- * its record finds what it already posted.
+ * Every post carries a marker naming its revision and finding, signed with the changeset's publisher secret, and
+ * {@link ReviewProvider.findPublished} reads back only markers whose signature verifies. The host accepts no
+ * idempotency key, so the markers are how a publication interrupted after a post and before its record finds what it
+ * already posted, whoever the host says posted it.
  */
 export interface ReviewProvider {
 	/** The host's name, such as `github`, for messages. */
@@ -241,14 +251,21 @@ export interface ReviewProvider {
 	 */
 	replyResolved(
 		pullRequest: number,
-		finding: ResolvedFinding & { readonly thread: string },
+		finding: ClosedFinding & { readonly thread: string },
 		revision: string,
+		secret: string,
 	): Promise<string | undefined>;
 	/** Sets the review's status on a commit. Setting it again replaces it. */
 	setStatus(revision: string, status: ReviewStatus): Promise<void>;
 	/**
-	 * What the pull request already shows of `revision`'s publication, from posts that carry Melian's markers: the
-	 * review for the verdict `fingerprint` names, and every thread and reply at `revision`.
+	 * What the pull request already shows of `revision`'s publication, from posts that carry Melian's markers signed
+	 * with `secret`: the review of `review`'s round, posting the verdict its fingerprint names, and every thread and
+	 * reply at `revision`.
 	 */
-	findPublished(pullRequest: number, revision: string, fingerprint: string): Promise<PublishedMarkers>;
+	findPublished(
+		pullRequest: number,
+		revision: string,
+		review: { readonly fingerprint: string; readonly round: number },
+		secret: string,
+	): Promise<PublishedMarkers>;
 }

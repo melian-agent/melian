@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import type { Lens, LensTier, MelianConfig, ModelRoute } from "@melian-agent/core";
-import { createReviewModels, type HarnessOptions, type Models } from "@melian-agent/pipeline";
+import { createReviewModels, type ReviewModels } from "@melian-agent/pipeline";
 import { createFakeModels, type LensScript, scriptLenses } from "@melian-agent/pipeline/testing";
 import { CliError } from "./repository.ts";
 
@@ -20,10 +20,11 @@ function routeTiers(config: MelianConfig, model: string, override: boolean): Mel
 	return { ...config, models: { ...config.models, ...routed } };
 }
 
-export interface ReviewModels {
-	readonly models: Models;
+export interface ReviewSetup {
+	readonly models: ReviewModels;
 	readonly config: MelianConfig;
-	readonly settings?: HarnessOptions["settings"];
+	/** Whether a failed model request is retried with backoff; scripted mode fails it at once. */
+	readonly retry: boolean;
 }
 
 async function readScript(path: string): Promise<LensScript> {
@@ -43,11 +44,12 @@ export async function reviewModels(
 	config: MelianConfig,
 	lenses: readonly Lens[],
 	model: string | undefined,
-): Promise<ReviewModels> {
+): Promise<ReviewSetup> {
 	const scriptPath = env[scriptVariable];
 	if (scriptPath === undefined || scriptPath === "") {
 		return {
 			models: createReviewModels(),
+			retry: true,
 			config: model === undefined ? config : routeTiers(config, model, false),
 		};
 	}
@@ -55,9 +57,9 @@ export async function reviewModels(
 	scriptLenses(fake, lenses, await readScript(scriptPath));
 	const ref = fake.ref("scripted");
 	return {
-		models: fake.models,
+		models: fake.review,
 		config: routeTiers(config, `${ref.provider}/${ref.modelId}`, true),
-		settings: { retry: { enabled: false } },
+		retry: false,
 	};
 }
 
@@ -66,6 +68,6 @@ export function isScripted(env: NodeJS.ProcessEnv): boolean {
 }
 
 // For a harness that only reads or publishes, which never asks a model.
-export function idleModels(env: NodeJS.ProcessEnv): Models {
-	return isScripted(env) ? createFakeModels().models : createReviewModels();
+export function idleModels(env: NodeJS.ProcessEnv): ReviewModels {
+	return isScripted(env) ? createFakeModels().review : createReviewModels();
 }

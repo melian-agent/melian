@@ -34,6 +34,8 @@ export type FakeState = {
 	comments: FakeComment[];
 	statuses: FakeStatus[];
 	nextId: number;
+	// Set to make every review fail, as GitHub does when it has an outage.
+	failReviews?: boolean;
 	// Set to make every reply fail, as GitHub does when it has an outage.
 	failReplies?: boolean;
 	// Set to make /user refuse, as it does for an installation token.
@@ -74,10 +76,12 @@ type ReviewComment = {
 };
 
 // A fetch that answers the routes Melian calls. `afterWrite` runs after each write is applied and before its response
-// returns, so a crash fixture can persist the state and park there.
+// returns, so a crash fixture can persist the state and park there; `beforeWrite` runs before a write is applied, so
+// one can park before GitHub has anything.
 export function fakeGitHub(
 	state: FakeState,
 	afterWrite: (call: Call) => Promise<void> | void = () => {},
+	beforeWrite: (call: Call) => Promise<void> | void = () => {},
 ): typeof fetch {
 	const repoPath = `/repos/${state.owner}/${state.repo}`;
 	const pull = () => ({
@@ -88,7 +92,11 @@ export function fakeGitHub(
 		base: {
 			ref: state.pull.base.ref,
 			sha: state.pull.base.sha,
-			repo: { clone_url: `https://github.com/${state.owner}/${state.repo}.git` },
+			repo: {
+				clone_url: `https://github.com/${state.owner}/${state.repo}.git`,
+				name: state.repo,
+				owner: { login: state.owner },
+			},
 		},
 		head: { ref: state.pull.head.ref, sha: state.pull.head.sha },
 	});
@@ -99,6 +107,7 @@ export function fakeGitHub(
 		const call: Call = { method, path: url.pathname, ...(body === undefined ? {} : { body }) };
 		state.calls.push(call);
 		const path = url.pathname;
+		if (method === "POST") await beforeWrite(call);
 		const pulls = `${repoPath}/pulls/${state.pull.number}`;
 		const user = { login: state.login };
 		if (method === "GET" && path === "/user")
@@ -111,6 +120,7 @@ export function fakeGitHub(
 			return json(state.comments.filter((comment) => comment.pull_request_review_id === Number(forReview[1])));
 		}
 		if (method === "POST" && path === `${pulls}/reviews`) {
+			if (state.failReviews) return json({ message: "Server Error" }, 500);
 			const draft = body as { commit_id: string; event: string; body: string; comments: ReviewComment[] };
 			for (const comment of draft.comments) {
 				if (!inDiff(state.lines, comment.path, comment.line) || comment.side !== "RIGHT")

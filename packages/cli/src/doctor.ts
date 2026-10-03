@@ -1,7 +1,8 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
+import { type LensTier, loadConfig, type StaticTool } from "@melian-agent/core";
 import { parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
-import { createReviewModels, piAuthPath } from "@melian-agent/pipeline";
+import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSource } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
 import { git } from "./repository.ts";
 
@@ -39,14 +40,51 @@ async function gitCheck(cwd: string): Promise<Check> {
 }
 
 async function credentialsCheck(): Promise<Check> {
-	const models = createReviewModels();
-	const configured: string[] = [];
-	for (const provider of models.getProviders()) {
-		if ((await models.checkAuth(provider.id).catch(() => undefined)) !== undefined) configured.push(provider.id);
-	}
+	const configured = await providersWithCredentials(createReviewModels());
 	return configured.length === 0
 		? { name: "models", state: "warn", detail: "no provider has credentials; log in with pi or set an API key" }
-		: { name: "models", state: "ok", detail: `credentials for ${configured.sort().join(", ")}` };
+		: { name: "models", state: "ok", detail: `credentials for ${configured.join(", ")}` };
+}
+
+const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
+
+// A lens runs on the model its tier routes to. With none routed, every review without --model stops with "no model is
+// configured", so doctor reports it before a review does.
+async function routesCheck(cwd: string): Promise<Check | undefined> {
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return undefined;
+	try {
+		const { config } = await loadConfig(root, { kind: "worktree" }, ".");
+		const routed = tiers.filter((tier) => config.models[tier] !== undefined);
+		if (routed.length === 0) {
+			return {
+				name: "routes",
+				state: "warn",
+				detail:
+					"melian.yaml routes no tier to a model; set models.light, medium, and heavy, or pass --model to review",
+			};
+		}
+		const routes = routed.map((tier) => `${tier} to ${config.models[tier]!.model}`);
+		return { name: "routes", state: "ok", detail: routes.join(", ") };
+	} catch (error) {
+		return { name: "routes", state: "warn", detail: error instanceof Error ? error.message : String(error) };
+	}
+}
+
+const staticTools: readonly StaticTool[] = ["biome", "tsc"];
+
+// The static checks run the checkout's own Biome and tsc when it has them installed, and Melian's copy otherwise, so a
+// result can differ from the repository's own lint run.
+async function staticCheck(cwd: string): Promise<Check | undefined> {
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return undefined;
+	const sources = staticTools.map((tool) => ({ tool, ...staticToolSource(root, tool) }));
+	const where = { checkout: "the checkout", melian: "Melian's own copy", missing: "nowhere" } as const;
+	return {
+		name: "static",
+		state: sources.some((source) => source.from === "missing") ? "warn" : "ok",
+		detail: sources.map((source) => `${source.tool} from ${where[source.from]}`).join(", "),
+	};
 }
 
 async function repositoryCheck(cwd: string): Promise<Check> {
@@ -86,6 +124,7 @@ export async function doctor(io: Io): Promise<number> {
 			? { name: "gh", state: "warn", detail: "not found on PATH" }
 			: { name: "gh", state: "ok", detail: gh.split("\n")[0]! },
 		await repositoryCheck(io.cwd),
+		...[await routesCheck(io.cwd), await staticCheck(io.cwd)].filter((check) => check !== undefined),
 	];
 	const width = Math.max(...checks.map((check) => check.name.length));
 	for (const check of checks) io.stdout(`${check.state.padEnd(4)}  ${check.name.padEnd(width)}  ${check.detail}\n`);

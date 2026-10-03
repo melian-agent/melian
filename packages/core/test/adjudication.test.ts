@@ -9,13 +9,21 @@ import {
 	loadConfig,
 	type MelianConfig,
 	parseFinding,
+	type Resolution,
 	resolveFinding,
 } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { evalInput } from "./fixtures/findings.ts";
 import { gitIn, isolatedGitEnv, lines, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
 
-const finding = (input: Partial<FindingInput>) => createFinding({ ...evalInput, trigger: undefined, ...input });
+// As a producer stores it: no resolution until adjudication.
+const finding = (input: Partial<FindingInput>) =>
+	createFinding({ ...evalInput, trigger: undefined, resolution: undefined, ...input });
+const resolvedAs = (each: Finding, resolution: Resolution) => ({
+	...each,
+	properties: { ...each.properties, resolution },
+});
+const renamedParameter = { file: "src/api.ts", startLine: 3, snippet: "export function load(userId: string) {" };
 
 describe("resolveFinding", () => {
 	it("takes the resolution configured for the severity of an introduced finding", () => {
@@ -25,7 +33,7 @@ describe("resolveFinding", () => {
 	});
 
 	it("keeps the configured resolution of an affected finding, which carries evidence", () => {
-		const affected = finding({ severity: "P1", cause: { evidence: "src/api.ts:3 renames id to userId" } });
+		const affected = finding({ severity: "P1", cause: { evidence: renamedParameter } });
 		expect(resolveFinding(affected, defaultConfig)).toBe("block");
 	});
 
@@ -38,6 +46,11 @@ describe("resolveFinding", () => {
 			expect(resolveFinding(finding({ severity, cause: "pre-existing" }), strict)).toBe("advisory");
 		}
 		expect(resolveFinding(finding({ severity: "nit", cause: "pre-existing" }), strict)).toBe("silent");
+	});
+
+	it("decides from severity and cause, never from a resolution the finding already carries", () => {
+		expect(resolveFinding(finding({ severity: "P0", resolution: "silent" }), defaultConfig)).toBe("block");
+		expect(resolveFinding(finding({ severity: "nit", resolution: "block" }), defaultConfig)).toBe("silent");
 	});
 });
 
@@ -82,7 +95,7 @@ describe("applyResolutions under layered configuration", () => {
 			"acknowledge",
 			"block",
 		]);
-		expect(findings[1]!.properties.resolution).toBe("block");
+		expect(findings[1]!.properties.resolution).toBeUndefined();
 	});
 });
 
@@ -134,7 +147,11 @@ describe("dedupeFindings", () => {
 
 	// The first live golden run: two lenses filed one broken caller in src/cart.ts under different rules.
 	describe("two lenses reporting one defect under different rules", () => {
-		const evidence = "src/price.ts:1 makes currency a required second parameter of formatPrice";
+		const evidence = {
+			file: "src/price.ts",
+			startLine: 1,
+			snippet: "export function formatPrice(amount: number, currency: string): string {",
+		};
 		const atCart = {
 			file: "src/cart.ts",
 			startLine: 10,
@@ -166,6 +183,46 @@ describe("dedupeFindings", () => {
 			expect(deduped[0]!.properties.alsoReportedAs).toEqual([reportOf(other)]);
 		});
 
+		it("keeps the affected cause and its evidence when the more severe finding cites none", () => {
+			const unproven = finding({
+				...atCart,
+				cause: "pre-existing",
+				rule: "unhandled-error",
+				source: { check: "lens.correctness", version: "1" },
+			});
+			const evidenced = finding({
+				...atCart,
+				severity: "P1",
+				rule: "broken-caller",
+				source: { check: "lens.contracts", version: "1" },
+			});
+			for (const order of [
+				[unproven, evidenced],
+				[evidenced, unproven],
+			]) {
+				const [kept, ...rest] = dedupeFindings(order, () => defaultConfig);
+				expect(rest).toEqual([]);
+				expect(kept!.properties).toMatchObject({ severity: "P0", cause: "affected", evidence });
+				expect(parseFinding(kept)).toEqual(kept);
+				expect(resolveFinding(kept!, defaultConfig)).toBe("block");
+			}
+		});
+
+		it("keeps an introduced cause over an affected one, and drops evidence only an affected finding carries", () => {
+			const introduced = finding({ ...atCart, cause: "introduced", severity: "P2", rule: "unhandled-error" });
+			const [kept] = dedupeFindings([brokenCaller, introduced], () => defaultConfig);
+			expect(kept!.properties.cause).toBe("introduced");
+			expect(kept!.properties).not.toHaveProperty("evidence");
+			expect(parseFinding(kept)).toEqual(kept);
+		});
+
+		it("never merges two rules an alias entry marks distinct", () => {
+			const apart = { ruleAliases: { "unhandled-error": { rules: ["broken-caller"], distinct: true } } };
+			expect(dedupeFindings([brokenCaller, unhandledError], () => apart)).toHaveLength(2);
+			const reversed = { ruleAliases: { "broken-caller": { rules: ["unhandled-error"], distinct: true } } };
+			expect(dedupeFindings([unhandledError, brokenCaller], () => reversed)).toHaveLength(2);
+		});
+
 		it("keeps the contracts lens's finding when the alias table says the defect is its", () => {
 			const owned = { ruleAliases: { "broken-caller": ["unhandled-error"] } };
 			for (const order of [
@@ -190,33 +247,49 @@ function reportOf(finding: Finding) {
 describe("adjudicate", () => {
 	const ran = (name: string) => ({ name, status: "ran" }) as const;
 	const checks = [ran("lens.correctness"), ran("static.biome")];
+	const manifest = checks.map((check) => check.name);
 	const blocker = finding({ severity: "P1" });
-	const advisory = finding({ severity: "P3", rule: "naming", resolution: "advisory" });
-	const silent = finding({ severity: "nit", rule: "prefer-const", resolution: "silent" });
+	const advisory = finding({ severity: "P3", rule: "naming" });
+	const silent = finding({ severity: "nit", rule: "prefer-const" });
 
 	it("passes when every check ran and nothing is above silent", () => {
-		const verdict = adjudicate({ findings: [silent], checks, config: defaultConfig });
+		const verdict = adjudicate({ findings: [silent], manifest, checks, config: defaultConfig });
 		expect(verdict).toMatchObject({ status: "passed", blocking: false, notRun: [] });
-		expect(verdict.findings.silent).toEqual([silent]);
+		expect(verdict.findings.silent).toEqual([resolvedAs(silent, "silent")]);
 	});
 
 	it("reports findings without blocking when nothing resolves to block", () => {
-		const verdict = adjudicate({ findings: [advisory, silent], checks, config: defaultConfig });
+		const verdict = adjudicate({ findings: [advisory, silent], manifest, checks, config: defaultConfig });
 		expect(verdict).toMatchObject({ status: "findings", blocking: false });
-		expect(verdict.findings.advisory).toEqual([advisory]);
+		expect(verdict.findings.advisory).toEqual([resolvedAs(advisory, "advisory")]);
 	});
 
 	it("blocks when a finding resolves to block, and groups by resolution", () => {
-		const verdict = adjudicate({ findings: [silent, advisory, blocker], checks, config: defaultConfig });
+		const verdict = adjudicate({ findings: [silent, advisory, blocker], manifest, checks, config: defaultConfig });
 		expect(verdict).toMatchObject({ status: "findings", blocking: true });
 		expect(Object.keys(verdict.findings)).toEqual(["block", "acknowledge", "advisory", "silent"]);
-		expect(verdict.findings.block).toEqual([blocker]);
+		expect(verdict.findings.block).toEqual([resolvedAs(blocker, "block")]);
 		expect(verdict.findings.acknowledge).toEqual([]);
+	});
+
+	it("resolves a finding that arrives without a resolution, rather than drop it or count it silent", () => {
+		expect(blocker.properties.resolution).toBeUndefined();
+		const verdict = adjudicate({ findings: [blocker], manifest, checks, config: defaultConfig });
+		expect(verdict).toMatchObject({ status: "findings", blocking: true });
+		expect(verdict.findings.block).toEqual([resolvedAs(blocker, "block")]);
+		expect(verdict.findings.silent).toEqual([]);
+	});
+
+	it("replaces a resolution a finding arrives with", () => {
+		const marked = finding({ severity: "P0", resolution: "silent" });
+		const verdict = adjudicate({ findings: [marked], manifest, checks, config: defaultConfig });
+		expect(verdict).toMatchObject({ status: "findings", blocking: true });
+		expect(verdict.findings.block).toEqual([resolvedAs(marked, "block")]);
 	});
 
 	it("is not reviewed when a check failed, even with no findings", () => {
 		const failed = { name: "lens.security", status: "failed", reason: "the lens did not finish" } as const;
-		const verdict = adjudicate({ findings: [], checks: [...checks, failed], config: defaultConfig });
+		const verdict = adjudicate({ findings: [], manifest, checks: [...checks, failed], config: defaultConfig });
 		expect(verdict).toEqual({
 			status: "not-reviewed",
 			blocking: false,
@@ -226,9 +299,28 @@ describe("adjudicate", () => {
 		});
 	});
 
+	it("is not reviewed when a check the manifest names left no record, even with no findings", () => {
+		const verdict = adjudicate({
+			findings: [],
+			manifest: [...manifest, "guardrails"],
+			checks,
+			config: defaultConfig,
+			allowSkip: ["guardrails"],
+		});
+		expect(verdict).toMatchObject({
+			status: "not-reviewed",
+			blocking: false,
+			notRun: [{ name: "guardrails", status: "skipped", reason: "no record" }],
+		});
+	});
+
+	it("passes when every check of the manifest ran and nothing was found", () => {
+		expect(adjudicate({ findings: [], manifest, checks, config: defaultConfig }).status).toBe("passed");
+	});
+
 	it("is not reviewed when a check was skipped without leave, and still says whether it blocks", () => {
 		const skipped = { name: "static.tsc", status: "skipped", reason: "no tsconfig.json" } as const;
-		const input = { findings: [blocker], checks: [...checks, skipped], config: defaultConfig };
+		const input = { findings: [blocker], manifest, checks: [...checks, skipped], config: defaultConfig };
 		expect(adjudicate(input)).toMatchObject({ status: "not-reviewed", blocking: true, notRun: [skipped] });
 		expect(adjudicate({ ...input, allowSkip: ["static.tsc"] })).toMatchObject({
 			status: "findings",
@@ -238,9 +330,41 @@ describe("adjudicate", () => {
 	});
 
 	it("counts a dismissed finding toward neither status nor blocking", () => {
-		const dismissed = createFinding({ ...evalInput, status: "dismissed" });
-		const verdict = adjudicate({ findings: [dismissed], checks, config: defaultConfig });
-		expect(verdict).toMatchObject({ status: "passed", blocking: false, dismissed: [dismissed] });
+		const dismissed = finding({ status: "dismissed" });
+		const verdict = adjudicate({ findings: [dismissed], manifest, checks, config: defaultConfig });
+		expect(verdict).toMatchObject({ status: "passed", blocking: false, dismissed: [resolvedAs(dismissed, "block")] });
+	});
+
+	describe("when one report of a defect is dismissed and another is not", () => {
+		const fromEslint = (severity: FindingInput["severity"], status?: "dismissed") =>
+			finding({
+				rule: "detect-eval",
+				severity,
+				source: { check: "static.eslint" },
+				...(status === undefined ? {} : { status }),
+			});
+		const lensAt = (severity: FindingInput["severity"], status?: "dismissed") =>
+			finding({ severity, ...(status === undefined ? {} : { status }) });
+
+		it("keeps the live blocker live and blocking, naming the dismissed report, with no alias", () => {
+			const dismissedKeeper = fromEslint("P0", "dismissed");
+			const live = lensAt("P1");
+			const verdict = adjudicate({ findings: [dismissedKeeper, live], manifest, checks, config: defaultConfig });
+			expect(verdict).toMatchObject({ status: "findings", blocking: true });
+			expect(verdict.findings.block.map((each) => each.properties.id)).toEqual([live.properties.id]);
+			expect(verdict.findings.block[0]!.properties.alsoReportedAs).toEqual([reportOf(dismissedKeeper)]);
+			expect(verdict.dismissed.map((each) => each.properties.id)).toEqual([dismissedKeeper.properties.id]);
+		});
+
+		it("keeps a live P0 blocking when the alias's owner is a dismissed P3", () => {
+			const owned = { ...defaultConfig, ruleAliases: { "no-eval": ["detect-eval"] } };
+			const dismissedOwner = lensAt("P3", "dismissed");
+			const live = fromEslint("P0");
+			const verdict = adjudicate({ findings: [dismissedOwner, live], manifest, checks, config: owned });
+			expect(verdict).toMatchObject({ status: "findings", blocking: true });
+			expect(verdict.findings.block.map((each) => each.properties.id)).toEqual([live.properties.id]);
+			expect(verdict.findings.block[0]!.properties.alsoReportedAs).toEqual([reportOf(dismissedOwner)]);
+		});
 	});
 
 	it("resolves per path and dedupes across sources", () => {
@@ -251,7 +375,7 @@ describe("adjudicate", () => {
 			resolution: path.startsWith("docs/") ? lowered : defaultConfig.resolution,
 			ruleAliases: { "no-eval": ["detect-eval"] },
 		});
-		const verdict = adjudicate({ findings: [docs, eslint, blocker], checks, config: configFor });
+		const verdict = adjudicate({ findings: [docs, eslint, blocker], manifest, checks, config: configFor });
 		expect(verdict.findings.advisory.map((each) => each.properties.path)).toEqual(["docs/guide.md"]);
 		expect(verdict.findings.block).toHaveLength(1);
 		expect(verdict.findings.block[0]!.properties.alsoReportedAs).toEqual([

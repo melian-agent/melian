@@ -12,7 +12,8 @@ function globPattern(glob: string): RegExp {
 		else if (char === "?") source += "[^/]";
 		else source += char.replace(/[.+^${}()|[\]\\]/g, "\\$&");
 	}
-	return new RegExp(`^${source}$`);
+	// `s`: a file name may hold a newline, and a pattern that skipped it would hide the file from every lens.
+	return new RegExp(`^${source}$`, "s");
 }
 
 // Whether `path` is selected by `patterns`: it matches a pattern, and no `!`-prefixed pattern excludes it.

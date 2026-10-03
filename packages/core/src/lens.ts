@@ -8,7 +8,7 @@ import { parseDocument } from "yaml";
 import { type LensTier, lensTierSchema, type MelianConfig, type Severity, severitySchema } from "./config.ts";
 import { LensError } from "./errors.ts";
 import { selectedBy } from "./glob.ts";
-import { directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
+import { anchorGlob, directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 import type { StandardsSection } from "./standards.ts";
 
@@ -21,9 +21,12 @@ export const lensToolNames = ["read_file", "search", "list_files"] as const;
 /** A read-only tool a lens may be offered. */
 export type LensToolName = (typeof lensToolNames)[number];
 
-/** The JSON Schema of a {@link LensRule}. */
+/**
+ * The JSON Schema of a {@link LensRule}. An ID is lower-case letters, digits, dots, and hyphens; the `melian/` prefix
+ * marks a rule Melian defines for every lens, such as `melian/injection-attempt`.
+ */
 export const lensRuleSchema = Type.Object(
-	{ id: Type.String({ pattern: "^[a-z0-9][a-z0-9.-]*$" }), description: text },
+	{ id: Type.String({ pattern: "^(melian/)?[a-z0-9][a-z0-9.-]*$" }), description: text },
 	strict,
 );
 
@@ -83,6 +86,11 @@ export interface Lens {
 	readonly version: string;
 	/** The nearest `LENS.md` that defined or extended it. */
 	readonly file: string;
+	/**
+	 * Folders beneath `scope` whose own lens of this name replaces this one there, found by {@link loadLenses} across
+	 * the whole source, whether or not a changed path reaches them. Not part of `version`.
+	 */
+	readonly nearer?: readonly string[];
 }
 
 /** The largest `LENS.md` the loader reads, and the findings budget of a lens that sets none. */
@@ -152,15 +160,11 @@ function tokens(value: number | string | undefined): number | undefined {
 // Paths are relative to the directory holding the lens's `.melian/` or `.agents/`, like a melian.yaml's.
 // Normalised like a melian.yaml's lens paths, so `./src/**` is `src/**`, and refused if `..` leaves the repository.
 function anchor(file: string, scope: string, path: string): string {
-	const negated = path.startsWith("!");
-	const pattern = (negated ? path.slice(1) : path).replace(/^\/+/, "");
-	const anchored = posix.normalize(posix.join(scope, pattern));
-	if (anchored === ".." || anchored.startsWith("../")) {
-		throw new LensError("invalidValue", file, `${file}: "paths" has ${path}, which leaves the repository`, {
-			field: "paths",
-		});
-	}
-	return `${negated ? "!" : ""}${anchored}`;
+	const anchored = anchorGlob(scope, path);
+	if (anchored !== undefined) return anchored;
+	throw new LensError("invalidValue", file, `${file}: "paths" has ${path}, which leaves the repository`, {
+		field: "paths",
+	});
 }
 
 function required<T>(file: string, field: string, value: T | undefined): T {
@@ -176,7 +180,7 @@ function required<T>(file: string, field: string, value: T | undefined): T {
 }
 
 function versioned(lens: Omit<Lens, "version">): Lens {
-	const { file: _, ...behaviour } = lens;
+	const { file: _, nearer: __, ...behaviour } = lens;
 	const version = createHash("sha256").update(JSON.stringify(behaviour)).digest("hex").slice(0, 12);
 	return { ...lens, version };
 }
@@ -264,6 +268,19 @@ async function repositoryDefinitions(reader: SourceReader, scope: string): Promi
 	return definitions;
 }
 
+// `<scope>/.melian/lenses/<name>/...` or `<scope>/.agents/lenses/<name>/...`, and the lens entry itself if it is a symlink.
+const lensEntry = /^(?:(.*)\/)?\.(?:melian|agents)\/lenses\/([^/]+)(?:\/|$)/s;
+
+// Every directory holding repository lenses, with the names it defines, from one listing of the source.
+async function lensScopes(reader: SourceReader): Promise<Map<string, Set<string>>> {
+	const scopes = new Map<string, Set<string>>();
+	for (const path of await reader.findPaths(lensEntry).catch(fromSource("."))) {
+		const [, scope = "", name] = lensEntry.exec(path)!;
+		scopes.set(scope, (scopes.get(scope) ?? new Set()).add(name!));
+	}
+	return scopes;
+}
+
 function layer(definitions: readonly Definition[]): Lens[] {
 	const lenses = new Map<string, Lens>();
 	for (const definition of definitions) {
@@ -305,20 +322,38 @@ export async function loadLenses(
 ): Promise<Lens[]> {
 	const reader = await openSource(repoRoot, source).catch(fromSource(repoRoot));
 	const builtins = await builtinDefinitions();
+	const defined = await lensScopes(reader);
 	const byScope = new Map<string, Promise<Definition[]>>();
 	const definitionsIn = (scope: string) => {
 		if (!byScope.has(scope)) byScope.set(scope, repositoryDefinitions(reader, scope));
 		return byScope.get(scope)!;
 	};
-	const union = new Map<string, Lens>();
+	// Paths that share their chain of lens scopes share their lenses, so each chain is layered once.
+	const chains = new Map<string, string[]>();
 	for (const path of paths) {
 		const target = repoPath(repoRoot, path);
-		const isDirectory = (await reader.exists(target).catch(fromSource(target))) === "directory";
-		const scopes = directoriesUpToRoot(target, isDirectory).reverse();
-		const repository = (await Promise.all(scopes.map(definitionsIn))).flat();
-		for (const lens of layer([...builtins, ...repository])) union.set(`${lens.name}\0${lens.version}`, lens);
+		// A file is never a scope, so treating every path as a directory adds nothing for a file and saves a lookup.
+		const scopes = directoriesUpToRoot(target, true)
+			.reverse()
+			.filter((scope) => defined.has(scope));
+		chains.set(scopes.join("\0"), scopes);
 	}
-	if (paths.length === 0) for (const lens of layer(builtins)) union.set(`${lens.name}\0${lens.version}`, lens);
+	// Where a nearer folder defines a lens's name, that folder is not the lens's to review, even if no path reaches it.
+	const withNearer = (lens: Lens): Lens => {
+		const nearer = [...defined.entries()]
+			.filter(([scope, names]) => names.has(lens.name) && scope !== lens.scope && beneath(lens.scope, scope))
+			.map(([scope]) => scope)
+			.sort();
+		return nearer.length === 0 ? lens : { ...lens, nearer };
+	};
+	const union = new Map<string, Lens>();
+	for (const scopes of chains.values()) {
+		const repository = (await Promise.all(scopes.map(definitionsIn))).flat();
+		for (const lens of layer([...builtins, ...repository]))
+			union.set(`${lens.name}\0${lens.version}`, withNearer(lens));
+	}
+	if (paths.length === 0)
+		for (const lens of layer(builtins)) union.set(`${lens.name}\0${lens.version}`, withNearer(lens));
 	return [...union.values()].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
@@ -373,22 +408,37 @@ export function selectLenses(lenses: readonly Lens[], config: MelianConfig, path
 					});
 		const nearer = lenses
 			.filter((other) => other.name === lens.name && other.scope !== lens.scope && beneath(lens.scope, other.scope))
-			.map((other) => other.scope);
+			.map((other) => other.scope)
+			.concat(lens.nearer ?? []);
 		const coverage = { scope: tuned.scope, paths: tuned.paths, nearer: [...new Set(nearer)] };
 		const files = paths.filter((path) => lensCovers(coverage, path));
 		return files.length > 0 ? [{ lens: tuned, coverage, files }] : [];
 	});
 }
 
+// The lens's policy as the model must follow it, so it never guesses a rule ID the hook would refuse.
+function renderPolicy(lens: Lens): string {
+	const plural = lens.budget.findings === 1 ? "finding" : "findings";
+	return [
+		"## Rules, severities, and budget",
+		"Report every finding under one of these rule IDs, written exactly as here. A defect no rule fits is not yours to report.",
+		lens.rules.map((rule) => `- \`${rule.id}\`: ${rule.description}`).join("\n"),
+		`Severities you may report: ${lens.severities.join(", ")}.`,
+		`Budget: at most ${lens.budget.findings} ${plural}.`,
+	].join("\n\n");
+}
+
 /**
- * The instructions a lens's conversation runs with: its body, then, unless the lens opted out, the repository's
- * standards, each under its path.
+ * The instructions a lens's conversation runs with: its body; then its rules, each ID with its description, the
+ * severities it may report, and its findings budget; then, unless the lens opted out, the repository's standards, each
+ * under its path.
  */
 export function renderLensInstructions(lens: Lens, standards: readonly StandardsSection[]): string {
-	if (!lens.standards || standards.length === 0) return lens.instructions;
+	const instructions = [lens.instructions, renderPolicy(lens)].join("\n\n");
+	if (!lens.standards || standards.length === 0) return instructions;
 	const sections = standards.map((section) => `### ${section.path}\n\n${section.content.trim()}`);
 	return [
-		lens.instructions,
+		instructions,
 		"## Repository standards",
 		"The repository's own conventions. A change that breaks one is a finding; cite the file.",
 		...sections,

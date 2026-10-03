@@ -1,4 +1,4 @@
-import { classifyCause, type RangeChangeset, resolveRange } from "@melian-agent/core";
+import { checkEvidence, classifyCause, type RangeChangeset, resolveRange } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv, lines, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
 
@@ -88,5 +88,32 @@ describe("classifyCause", () => {
 
 	it("calls a location in an unchanged file pre-existing", () => {
 		expect(classifyCause({ file: "untouched.ts", startLine: 1 }, changeset.revision)).toBe("pre-existing");
+	});
+});
+
+describe("checkEvidence", () => {
+	it("accepts lines that overlap a hunk's new lines and returns that hunk", () => {
+		expect(checkEvidence({ file: "app.ts", startLine: 3 }, changeset.revision)).toMatchObject({ index: 0 });
+		expect(checkEvidence({ file: "./app.ts", startLine: 6, endLine: 8 }, changeset.revision)).toMatchObject({
+			index: 1,
+		});
+		expect(checkEvidence({ file: "added.ts", startLine: 1 }, changeset.revision)).toMatchObject({ newStart: 1 });
+	});
+
+	it("refuses lines outside every hunk, saying what evidence must be", () => {
+		for (const location of [
+			{ file: "app.ts", startLine: 4, endLine: 7 },
+			{ file: "app.ts", startLine: 10, endLine: 11 },
+			{ file: "untouched.ts", startLine: 1 },
+			{ file: "gone.ts", startLine: 1 },
+			{ file: "logo.png", startLine: 1 },
+		]) {
+			expect(() => checkEvidence(location, changeset.revision)).toThrow(
+				expect.objectContaining({
+					code: "invalidEvidence",
+					message: expect.stringContaining("naming lines this change added or modified"),
+				}),
+			);
+		}
 	});
 });

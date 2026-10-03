@@ -371,6 +371,12 @@ describe("resolveRange", () => {
 			"services/.melian/standards/naming.md": lines("# Naming"),
 			".melian/lenses/security/LENS.md": lines("# Security"),
 			"docs/melian.yaml.md": lines("not policy"),
+			"biome.json": lines("{}"),
+			"packages/a/tsconfig.build.json": lines("{}"),
+			"packages/a/package.json": lines("{}"),
+			"web/eslint.config.mjs": lines("export default [];"),
+			"web/.eslintrc.cjs": lines("module.exports = {};"),
+			"web/package.json.bak": lines("not policy"),
 		});
 		gitIn(repo, "mv", "poem.txt", "CLAUDE.md");
 		gitIn(repo, "add", "--all");
@@ -379,9 +385,14 @@ describe("resolveRange", () => {
 		expect(revision.policyFiles).toEqual([
 			".melian/lenses/security/LENS.md",
 			"CLAUDE.md",
+			"biome.json",
 			"melian.yaml",
+			"packages/a/package.json",
+			"packages/a/tsconfig.build.json",
 			"services/.melian/standards/naming.md",
 			"services/api/AGENTS.md",
+			"web/.eslintrc.cjs",
+			"web/eslint.config.mjs",
 		]);
 	});
 

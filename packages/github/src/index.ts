@@ -11,13 +11,18 @@ export { createGitHubProvider, type GitHubProviderOptions, statusContext } from 
 export {
 	blobUrl,
 	type Marker,
+	type MarkerKind,
 	marker,
 	markersIn,
+	maxBodyLength,
 	parseMarker,
 	type RepositoryLinks,
+	type ReviewBodyOptions,
 	renderComment,
+	renderProse,
 	renderResolvedReply,
 	renderReviewBody,
+	verifyMarker,
 } from "./publication.ts";
 
 export const packageName = "@melian-agent/github";

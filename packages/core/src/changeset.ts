@@ -26,7 +26,8 @@ export interface RangeSpec {
  * One version of a changeset, identified by its head commit. Base and head are full commit hashes.
  *
  * `policyFiles` lists, sorted, every path in `files` that steers Melian itself: a `melian.yaml`, an `AGENTS.md` or
- * `CLAUDE.md`, or anything under a `.melian/` directory, at any depth, on either side of a rename. A review reads
+ * `CLAUDE.md`, anything under a `.melian/` directory, or a static tool's configuration such as `biome.json`,
+ * `tsconfig*.json`, or `package.json`, at any depth, on either side of a rename. A review reads
  * policy from the base, so these changes are reviewed as code rather than obeyed; a lens can be handed them as quoted
  * data. A file such a standard imports with `@` is not listed, because only loading the standards reveals it.
  */
@@ -197,6 +198,20 @@ async function diff(repoRoot: string, base: string, head: string): Promise<Chang
 		gitOutput(repoRoot, args(["--unified=0"])),
 	]);
 	return joinDiff(parseRaw(raw), parseNumstatBinary(numstat), parsePatchHunks(patch));
+}
+
+/**
+ * The changeset ID of a pull request reviewed as one: a hash of the kind, the provider, the repository, and the number,
+ * so every push to the pull request is a new revision of one changeset. A range hashes its kind too, so a range that
+ * names the refs a host fetched for a pull request never shares the pull request's ID, and so never its storage.
+ */
+export function pullRequestChangesetId(
+	provider: string,
+	repository: { readonly owner: string; readonly name: string },
+	number: number,
+): string {
+	const identity = ["pull-request", provider, repository.owner.toLowerCase(), repository.name.toLowerCase(), number];
+	return `pull-${createHash("sha256").update(identity.join("\0")).digest("hex").slice(0, 16)}`;
 }
 
 /**

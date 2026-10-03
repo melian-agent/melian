@@ -6,15 +6,20 @@ export {
 	type CheckStatus,
 	type ConfigFor,
 	dedupeFindings,
+	noRecord,
+	type ResolvedFinding,
 	resolutionOrder,
 	resolveFinding,
+	strongestCause,
 	type Verdict,
 	type VerdictStatus,
 } from "./adjudication.ts";
-export { type CodeLocation, classifyCause } from "./cause.ts";
+export { parseJsonc } from "./analyser.ts";
+export { type CodeLocation, checkEvidence, classifyCause } from "./cause.ts";
 export {
 	type Changeset,
 	parseRangeSpec,
+	pullRequestChangesetId,
 	type RangeChangeset,
 	type RangeMode,
 	type RangeSpec,
@@ -22,9 +27,14 @@ export {
 	type Revision,
 	resolveRange,
 } from "./changeset.ts";
+export { checksOfTier, type DeterministicCheck, deterministicChecks } from "./checks.ts";
 export {
 	type Band,
 	defaultConfig,
+	type ForbiddenPathRule,
+	type ForbiddenPatternRule,
+	type Guardrail,
+	type GuardrailSettings,
 	type LensSettings,
 	type LensTier,
 	type LoadedConfig,
@@ -35,15 +45,23 @@ export {
 	type ModelRoute,
 	maxConfigBytes,
 	melianYamlSchema,
+	type PolicyChangeReview,
+	type RequiredFileRule,
 	type Resolution,
+	type RuleAlias,
 	resolutionSchema,
 	type Severity,
+	type StaticSettings,
+	type StaticToolSettings,
 	severitySchema,
+	type TscSettings,
 } from "./config.ts";
 export type { ChangedFile, FileKind, FileStatus, Hunk } from "./diff.ts";
 export {
 	ChangesetError,
 	type ChangesetErrorCode,
+	CheckError,
+	type CheckErrorCode,
 	ConfigError,
 	type ConfigErrorCode,
 	FindingError,
@@ -66,6 +84,7 @@ export {
 	createFinding,
 	createFindingsLog,
 	type Finding,
+	type FindingEvidence,
 	type FindingExplanation,
 	type FindingIdInput,
 	type FindingInput,
@@ -75,6 +94,7 @@ export {
 	type FindingStatus,
 	type FindingsLog,
 	type FindingTrigger,
+	findingEvidenceSchema,
 	findingExplanationSchema,
 	findingId,
 	findingLocationSchema,
@@ -98,6 +118,13 @@ export {
 	snippetOccurrence,
 } from "./findings.ts";
 export {
+	type CheckReport,
+	evaluateGuardrails,
+	type GuardrailInput,
+	type GuardrailName,
+	guardrailLimits,
+} from "./guardrails.ts";
+export {
 	type Lens,
 	type LensCoverage,
 	type LensFrontMatter,
@@ -115,8 +142,9 @@ export {
 	selectLenses,
 } from "./lens.ts";
 export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
-export { melianPaths } from "./paths.ts";
+export { analyserConfigNames, melianPaths } from "./paths.ts";
 export {
+	type ClosedFinding,
 	type DiffLines,
 	diffLines,
 	type PlacedFinding,
@@ -128,13 +156,18 @@ export {
 	type PullRequest,
 	placeFinding,
 	planPublication,
-	type ResolvedFinding,
 	type ReviewDraft,
 	type ReviewProvider,
 	type ReviewStatus,
 	reviewStatus,
 } from "./publication.ts";
-export { renderFindingsJson, renderFindingsTerminal, renderVerdictJson, type TerminalRenderOptions } from "./render.ts";
+export {
+	renderFindingsJson,
+	renderFindingsTerminal,
+	renderVerdictJson,
+	type TerminalRenderOptions,
+	visibleText,
+} from "./render.ts";
 export {
 	listRevisionFiles,
 	type RevisionEntry,
@@ -149,5 +182,19 @@ export {
 } from "./revision.ts";
 export type { RepositorySource } from "./source.ts";
 export { loadStandards, type StandardsSection, standardsLimits } from "./standards.ts";
+export {
+	normaliseBiomeSarif,
+	parseTscDiagnostics,
+	type StaticFindingsInput,
+	type StaticTool,
+	staticFindings,
+	staticRuleId,
+	staticSeverity,
+	type ToolLog,
+	type ToolResult,
+	type ToolRun,
+	toolLogSchema,
+	toolResultSchema,
+} from "./static.ts";
 
 export const packageName = "@melian-agent/core";
