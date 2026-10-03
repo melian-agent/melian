@@ -8,7 +8,7 @@ export {
 	readCheckRecords,
 	runChecks,
 } from "./checks.ts";
-export { createReviewModels, piAuthPath, piCredentialStore } from "./credentials.ts";
+export { createReviewModels, PiCredentialStore, piAuthPath, piCredentialStore } from "./credentials.ts";
 export {
 	PiCredentialsError,
 	type PiCredentialsErrorCode,
@@ -33,6 +33,7 @@ export {
 	openPublishHarness,
 	type Publication,
 	type PublishedRecord,
+	PublishHarness,
 	type PublishOptions,
 	publishExtension,
 	publishReview,
@@ -44,6 +45,7 @@ export {
 	lensExtension,
 	openReviewHarness,
 	type Review,
+	ReviewHarness,
 	type ReviewOptions,
 	renderChangePrompt,
 	reviewChangeset,

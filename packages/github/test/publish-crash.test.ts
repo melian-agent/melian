@@ -182,7 +182,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 		moveTo(state, changeset);
 		state.calls = [];
 		const github = providerFor(state);
-		harness = await openPublisher(await openSqliteStorage(database), scenarioModels().review, github);
+		harness = (await openPublisher(await openSqliteStorage(database), scenarioModels().review, github)).harness;
 
 		const result = await publishReview({
 			harness,

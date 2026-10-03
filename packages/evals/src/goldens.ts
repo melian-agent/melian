@@ -216,14 +216,15 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false);
 			models = mode.models;
 		}
-		const harness = await openReviewHarness(createMemoryStorage(), models, { retry: mode.kind !== "scripted" });
+		const reviewHarness = await openReviewHarness(createMemoryStorage(), models, { retry: mode.kind !== "scripted" });
+		const { harness } = reviewHarness;
 		try {
 			const review = { harness, changeset, config, lenses, standards, models, policy: source };
 			const { findings } = await reviewChangeset(review);
 			const rendered = renderFindingsTerminal(createFindingsLog([...findings]));
 			return { golden, findings, rendered, toolMismatches };
 		} finally {
-			await harness.close(backgroundContext);
+			await reviewHarness.close(backgroundContext);
 		}
 	} finally {
 		rmSync(repo, { recursive: true, force: true });

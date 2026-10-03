@@ -471,18 +471,54 @@ export function publishExtension(provider: ReviewProvider) {
 }
 
 /**
- * Opens a harness over `storage` that publishes through `provider` and holds nothing else, so a review a crash
- * interrupted does not resume in it and spend tokens on real models during a publish.
+ * A durable harness that publishes through one provider over one changeset's storage, and holds nothing else, so a
+ * review a crash interrupted does not resume in it and spend tokens on real models during a publish. Pass its `harness`
+ * to `publishReview`, and close it when done, which closes the storage.
  */
+export class PublishHarness {
+	/** Pi's harness, which {@link publishReview} takes. */
+	readonly harness: Harness;
+
+	private constructor(harness: Harness) {
+		this.harness = harness;
+	}
+
+	/**
+	 * Opens one over `storage` that publishes through `provider`, with {@link publishExtension} alone installed. A failed
+	 * open closes `storage`.
+	 */
+	static async open(
+		storage: Storage,
+		models: ReviewModels,
+		provider: ReviewProvider,
+		context: Context = backgroundContext,
+	): Promise<PublishHarness> {
+		const registry = createRegistry();
+		registry.install(publishExtension(provider));
+		const harness = await openHarness(storage, { models: modelsOf(models), registry }, context).catch(
+			async (error: unknown) => {
+				// Pi closes the storage only once it has built a harness; an open refused before that leaves it to us.
+				await storage.close(backgroundContext).catch(() => undefined);
+				throw error;
+			},
+		);
+		return new PublishHarness(harness);
+	}
+
+	/** Closes the harness and its storage. Idempotent. */
+	close(context: Context = backgroundContext): Promise<void> {
+		return this.harness.close(context);
+	}
+}
+
+/** Opens a {@link PublishHarness} over `storage`, as {@link PublishHarness.open} does. */
 export function openPublishHarness(
 	storage: Storage,
 	models: ReviewModels,
 	provider: ReviewProvider,
 	context: Context = backgroundContext,
-): Promise<Harness> {
-	const registry = createRegistry();
-	registry.install(publishExtension(provider));
-	return openHarness(storage, { models: modelsOf(models), registry }, context);
+): Promise<PublishHarness> {
+	return PublishHarness.open(storage, models, provider, context);
 }
 
 /** What {@link publishReview} publishes. */

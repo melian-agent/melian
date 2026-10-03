@@ -466,6 +466,7 @@ Match Pi's conventions unless there is a reason not to.
 | Execution | Node environment locally, container environment for untrusted code |
 | GitHub | Octokit, GitHub App auth on server and Actions, `gh` token locally; git by shelling out |
 | Telemetry | pi-telemetry over OpenTelemetry |
+| Code shape | Classes for objects with identity, state, or a lifecycle; functions and readonly data for definitions and transforms, as in Pi |
 
 ## Package layout
 

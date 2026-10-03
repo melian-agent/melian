@@ -7,7 +7,7 @@ export {
 	type TokenSource,
 } from "./auth.ts";
 export { GitHubError, type GitHubErrorCode } from "./errors.ts";
-export { createGitHubProvider, type GitHubProviderOptions, statusContext } from "./provider.ts";
+export { createGitHubProvider, GitHubProvider, type GitHubProviderOptions, statusContext } from "./provider.ts";
 export {
 	blobUrl,
 	type Marker,

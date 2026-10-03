@@ -30,7 +30,7 @@ Two-dot and three-dot ranges differ. `main..feature` diffs `main` against `featu
 
 Problem: a loader that reads the checkout reviews a pull request under the pull request's own `melian.yaml`. Example: a head commit sets `resolution: { P0: silent }` and its review blocks nothing. Solution: the host passes the base commit, and the revision source reads blobs with `git ls-tree` and `git cat-file`, so neither the checked-out branch nor uncommitted edits reach the loader.
 
-Both sources implement one interface, `readText`, `list`, and `exists`, over repository-relative paths, and share these rules:
+Both sources are classes implementing one interface, `SourceReader`, with `readText`, `list`, `exists`, and `findPaths` over repository-relative paths. `openSource` returns a `WorktreeSource` over the checkout, or a `RevisionSource` from `RevisionSource.open`, which resolves the commit once and refuses a directory below the repository root. They share these rules:
 
 - Never follow a symlink. `readText` throws `symlink` for one; a path beneath a symlinked directory does not exist. The worktree source checks each component with `lstat` and opens with `O_NOFOLLOW`; the revision source reads the mode from `ls-tree`. `loadConfig` turns a symlinked `melian.yaml` into a `ConfigError`. `loadStandards` skips a symlinked standards file, so a `CLAUDE.md` linked to `AGENTS.md` costs nothing; the target is read under its own name if it is a standards file.
 - Only absence is silent. A missing file is `undefined`; any other failure is `unreadable`, carried into `ConfigError` or `StandardsError` with the path.

@@ -61,8 +61,42 @@ function usable(credential: Credential): Credential | undefined {
  * absent, and the provider's environment variable or the next model applies. A refresh pi-ai attempts anyway is a
  * {@link PiCredentialsError} `readOnly` asking for Pi to be run. A missing file holds no credentials.
  */
-export function piCredentialStore(path: string = piAuthPath()): CredentialStore {
-	const load = async (): Promise<Stored> => {
+export class PiCredentialStore implements CredentialStore {
+	/** The `auth.json` it reads; {@link piAuthPath} by default. */
+	readonly path: string;
+
+	constructor(path: string = piAuthPath()) {
+		this.path = path;
+	}
+
+	async read(provider: string, options?: AuthOperationOptions): Promise<Credential | undefined> {
+		options?.signal?.throwIfAborted();
+		const credential = (await this.load())[provider];
+		return credential === undefined ? undefined : usable(structuredClone(credential));
+	}
+
+	async list(options?: AuthOperationOptions): Promise<readonly CredentialInfo[]> {
+		options?.signal?.throwIfAborted();
+		return Object.entries(await this.load()).map(([providerId, credential]) => ({
+			providerId,
+			type: credential.type,
+		}));
+	}
+
+	async modify(
+		provider: string,
+		_change: (current: Credential | undefined) => Promise<Credential | undefined>,
+		_options?: AuthOperationOptions,
+	): Promise<Credential | undefined> {
+		throw this.readOnly(provider);
+	}
+
+	async delete(provider: string, _options?: AuthOperationOptions): Promise<void> {
+		throw this.readOnly(provider);
+	}
+
+	private async load(): Promise<Stored> {
+		const { path } = this;
 		const text = await readFile(path, "utf8").catch((error: NodeJS.ErrnoException) => {
 			if (error.code === "ENOENT" || error.code === "ENOTDIR") return undefined;
 			throw new PiCredentialsError("unreadable", path, `${path}: ${error.message}`, { cause: error });
@@ -70,7 +104,7 @@ export function piCredentialStore(path: string = piAuthPath()): CredentialStore 
 		if (text === undefined) return {};
 		let parsed: unknown;
 		try {
-			parsed = JSON.parse(text.replace(/^﻿/, ""));
+			parsed = JSON.parse(text.replace(/^\uFEFF/, ""));
 		} catch {
 			// No cause: V8's SyntaxError quotes the text around the fault, which may be part of a key.
 			throw new PiCredentialsError("invalid", path, `${path} is not JSON`);
@@ -88,30 +122,20 @@ export function piCredentialStore(path: string = piAuthPath()): CredentialStore 
 			}
 		}
 		return parsed as Stored;
-	};
-	const readOnly = (provider: string) =>
-		new PiCredentialsError(
+	}
+
+	private readOnly(provider: string): PiCredentialsError {
+		return new PiCredentialsError(
 			"readOnly",
-			path,
-			`Melian reads ${path} without writing it; run pi to refresh the ${provider} login, or set the provider's API key in the environment`,
+			this.path,
+			`Melian reads ${this.path} without writing it; run pi to refresh the ${provider} login, or set the provider's API key in the environment`,
 		);
-	return {
-		async read(provider: string, options?: AuthOperationOptions) {
-			options?.signal?.throwIfAborted();
-			const credential = (await load())[provider];
-			return credential === undefined ? undefined : usable(structuredClone(credential));
-		},
-		async list(options?: AuthOperationOptions): Promise<readonly CredentialInfo[]> {
-			options?.signal?.throwIfAborted();
-			return Object.entries(await load()).map(([providerId, credential]) => ({ providerId, type: credential.type }));
-		},
-		async modify(provider: string) {
-			throw readOnly(provider);
-		},
-		async delete(provider: string) {
-			throw readOnly(provider);
-		},
-	};
+	}
+}
+
+/** Creates a {@link PiCredentialStore} over `path`, as `new PiCredentialStore(path)` does. */
+export function piCredentialStore(path: string = piAuthPath()): PiCredentialStore {
+	return new PiCredentialStore(path);
 }
 
 // Claude Code keeps the same kind of Anthropic OAuth token under its own name, so a Claude Code user needs no copy.
@@ -134,5 +158,5 @@ function reviewAuthContext(): AuthContext {
  * for an unset `ANTHROPIC_OAUTH_TOKEN`. `authPath` overrides where the store is.
  */
 export function createReviewModels(options: { readonly authPath?: string } = {}): ReviewModels {
-	return wrapModels(createProviderModels(piCredentialStore(options.authPath), reviewAuthContext()));
+	return wrapModels(createProviderModels(new PiCredentialStore(options.authPath), reviewAuthContext()));
 }
