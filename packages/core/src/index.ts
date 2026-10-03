@@ -22,7 +22,7 @@ export {
 	type Resolution,
 	type Severity,
 } from "./config.ts";
-export type { ChangedFile, FileStatus, Hunk } from "./diff.ts";
+export type { ChangedFile, FileKind, FileStatus, Hunk } from "./diff.ts";
 export {
 	ChangesetError,
 	type ChangesetErrorCode,

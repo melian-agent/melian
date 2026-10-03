@@ -89,6 +89,10 @@ describe("resolveRange", () => {
 		expect(files["poem.txt"]).toEqual({
 			status: "modified",
 			path: "poem.txt",
+			oldMode: "100644",
+			newMode: "100644",
+			oldKind: "file",
+			newKind: "file",
 			binary: false,
 			hunks: [
 				{ oldStart: 2, oldLines: 1, newStart: 2, newLines: 1, header: "@@ -2 +2 @@ one", text: "-two\n+TWO" },
@@ -116,7 +120,64 @@ describe("resolveRange", () => {
 			status: "deleted",
 			hunks: [{ oldStart: 1, oldLines: 1, newStart: 0, newLines: 0, text: "-soon deleted" }],
 		});
-		expect(files["logo.png"]).toEqual({ status: "added", path: "logo.png", binary: true, hunks: [] });
+		expect(files["gone.txt"]).not.toHaveProperty("newMode");
+		expect(files["logo.png"]).toEqual({
+			status: "added",
+			path: "logo.png",
+			newMode: "100644",
+			newKind: "file",
+			binary: true,
+			hunks: [],
+		});
+	});
+
+	it("reports a mode change with no content change", async () => {
+		gitIn(repo, "checkout", "--quiet", "feature");
+		gitIn(repo, "update-index", "--chmod=+x", "poem.txt");
+		gitIn(repo, "commit", "--quiet", "-m", "executable");
+		const changeset = await resolveRange(repo, "feature~1..feature");
+		expect(changeset.revision.files).toEqual([
+			{
+				status: "modified",
+				path: "poem.txt",
+				oldMode: "100644",
+				newMode: "100755",
+				oldKind: "file",
+				newKind: "executable",
+				binary: false,
+				hunks: [],
+			},
+		]);
+	});
+
+	it("reports a symlink that became a file", async () => {
+		gitIn(repo, "checkout", "--quiet", "feature");
+		rmSync(join(repo, "added.txt"));
+		symlinkSync("poem.txt", join(repo, "added.txt"));
+		gitIn(repo, "commit", "--quiet", "-am", "symlink");
+		rmSync(join(repo, "added.txt"));
+		writeFiles(repo, { "added.txt": lines("a file again") });
+		gitIn(repo, "commit", "--quiet", "-am", "file");
+		const changeset = await resolveRange(repo, "feature~1..feature");
+		expect(changeset.revision.files).toEqual([
+			expect.objectContaining({ path: "added.txt", oldKind: "symlink", newKind: "file", oldMode: "120000" }),
+		]);
+	});
+
+	it("reports a submodule pointer as a submodule on both sides", async () => {
+		commitGitlink(repo, "vendor/lib", gitIn(repo, "rev-parse", "main~1"));
+		commitGitlink(repo, "vendor/lib", gitIn(repo, "rev-parse", "feature"));
+		const changeset = await resolveRange(repo, "main~1..main");
+		expect(changeset.revision.files).toEqual([
+			expect.objectContaining({
+				status: "modified",
+				path: "vendor/lib",
+				oldMode: "160000",
+				newMode: "160000",
+				oldKind: "submodule",
+				newKind: "submodule",
+			}),
+		]);
 	});
 
 	it("takes the merge base for three dots and the base itself for two", async () => {
@@ -150,6 +211,10 @@ describe("resolveRange", () => {
 			{
 				status: "modified",
 				path: "added.txt",
+				oldMode: "100644",
+				newMode: "120000",
+				oldKind: "file",
+				newKind: "symlink",
 				binary: false,
 				hunks: [
 					expect.objectContaining({ oldStart: 1, oldLines: 2, newStart: 0, newLines: 0 }),

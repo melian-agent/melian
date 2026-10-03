@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { stat } from "node:fs/promises";
-import { type ChangedFile, joinDiff, parseNameStatus, parseNumstatBinary, parsePatchHunks } from "./diff.ts";
+import { type ChangedFile, joinDiff, parseNumstatBinary, parsePatchHunks, parseRaw } from "./diff.ts";
 import { ChangesetError } from "./errors.ts";
 import { git, gitOutput } from "./git.ts";
 
@@ -159,12 +159,12 @@ async function diff(repoRoot: string, base: string, head: string): Promise<Chang
 	// diff.renames=copies would report copies, whose hunks are against the copy's source.
 	const run = (format: string[]) =>
 		gitOutput(repoRoot, ["-c", "diff.renames=true", "diff", ...diffFlags, ...format, base, head, "--"]);
-	const [nameStatus, numstat, patch] = await Promise.all([
-		run(["--name-status", "-z"]),
+	const [raw, numstat, patch] = await Promise.all([
+		run(["--raw", "-z", "--no-abbrev"]),
 		run(["--numstat", "-z"]),
 		run(["--unified=0"]),
 	]);
-	return joinDiff(parseNameStatus(nameStatus), parseNumstatBinary(numstat), parsePatchHunks(patch));
+	return joinDiff(parseRaw(raw), parseNumstatBinary(numstat), parsePatchHunks(patch));
 }
 
 /**
