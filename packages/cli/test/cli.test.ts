@@ -222,9 +222,14 @@ describe("melian doctor", () => {
 		const unrouted = melian(repo, ["doctor"]);
 		writeFileSync(join(repo, "melian.yaml"), "models:\n  heavy:\n    model: anthropic/claude-opus-5-5\n");
 		const routed = melian(repo, ["doctor"]);
+		writeFileSync(join(repo, "melian.local.yaml"), "models:\n  heavy:\n    model: amazon-bedrock/claude-opus\n");
+		const local = melian(repo, ["doctor"]);
 
-		expect(unrouted.stdout).toMatch(/^warn {2}routes {6}melian\.yaml routes no tier to a model; .*--model/m);
+		expect(unrouted.stdout).toMatch(
+			/^warn {2}routes {6}no tier is routed to a model; .*melian\.local\.yaml.*--model/m,
+		);
 		expect(routed.stdout).toMatch(/^ok {4}routes {6}heavy to anthropic\/claude-opus-5-5$/m);
+		expect(local.stdout).toMatch(/^ok {4}routes {6}heavy to amazon-bedrock\/claude-opus$/m);
 		expect(routed.stdout).toMatch(/^ok {4}static {6}biome from Melian's own copy, tsc from Melian's own copy$/m);
 		expect(routed.stdout).toMatch(/^ok {4}melian {6}.*, outside this checkout$/m);
 	});

@@ -9,7 +9,7 @@ The cli package is the `melian` command. It is the primary host and the only thi
 | `melian review <range\|#pr> [--rerun]` | Reviews a range of the checkout, or fetches a pull request and reviews it, then prints the verdict's terminal rendering. `--rerun` runs again the checks and lenses that failed in the last review of the same base and head | `0` passed, `1` findings with one blocking, `2` not reviewed, `3` findings with none blocking |
 | `melian publish <#pr>` | Posts the stored review of the pull request's current head to GitHub | `0` published, `1` refused or failed |
 | `melian findings <range\|#pr> [--open] [--json]` | Prints the stored verdict, or with `--open` the findings that still need attention, as text or JSON | `0`, or `1` when nothing is stored |
-| `melian doctor` | Checks Node, git and `--attr-source`, Pi's login, which providers have credentials, the GitHub token's source, gh, the repository, which `melian` ran and whether it lies inside the checkout, warning when it does, which tiers `melian.yaml` routes to a model, warning when it routes none, and whether Biome and tsc come from the checkout or Melian's own copy | `0`, or `1` when Node or git cannot run a review |
+| `melian doctor` | Checks Node, git and `--attr-source`, Pi's login, which providers have credentials, the GitHub token's source, gh, the repository, which `melian` ran and whether it lies inside the checkout, warning when it does, which tiers `melian.yaml` and `melian.local.yaml` route to a model, warning when they route none and naming both ways to fix it, and whether Biome and tsc come from the checkout or Melian's own copy | `0`, or `1` when Node or git cannot run a review |
 
 A command line Melian cannot read exits `64`. A review that fails before it has a verdict, such as on a `melian.yaml` that does not parse, exits `2`: nothing was reviewed. `--model provider/id` routes every lens tier to that model alone, over any route or fallbacks that `melian.yaml` or `melian.local.yaml` sets. Problem: it used to fill only unrouted tiers, so in a repository whose `melian.yaml` routed every tier to one provider, a contributor holding another provider's credentials had no way to run a review. Solution: the flag wins, and it is the one-off counterpart of `melian.local.yaml`.
 
@@ -22,6 +22,8 @@ A pull request is `#` and its number. Quote it, `melian review "#12"`: an unquot
 - Any other range reads them from its base.
 
 The lenses always read the head commit, never the working tree.
+
+`melian.local.yaml`, beside the root `melian.yaml` and ignored by git, is where a maintainer keeps personal model routes and provider choices; [the core guideline](core.md#layering-precedence) says how it layers. Core reads it only from the working tree, so it applies to a range on the checked-out commit and never to a pull request, which reads its base. Review a pull request in a repository that routes no tier with `--model`.
 
 ## Pull requests
 
@@ -65,7 +67,7 @@ A skill runs only the `melian` on the user's `PATH`. It never builds, installs, 
 
 To install a skill, first put `melian` on `PATH`: in a clone of Melian, `npm ci --ignore-scripts && npm run build`, then `npm link` in `packages/cli`.
 
-- Claude Code: symlink `skills/claude-code` to `~/.claude/skills/melian`, or to `.claude/skills/melian` in a project. This repository does the latter, so a Claude Code session here can ask Melian to review its own work. That works because the maintainer has linked the CLI onto `PATH` once; the root `melian.yaml` routes every tier, so the skill's command needs no `--model`.
+- Claude Code: symlink `skills/claude-code` to `~/.claude/skills/melian`, or to `.claude/skills/melian` in a project. This repository does the latter, so a Claude Code session here can ask Melian to review its own work. That works because the maintainer has linked the CLI onto `PATH` once. The root `melian.yaml` routes no model, so each maintainer routes the tiers in `melian.local.yaml` or passes `--model`.
 - Codex: symlink `skills/codex` to `~/.agents/skills/melian`, or to `.agents/skills/melian` in a repository.
 - Pi: `pi install ./skills/pi` from the clone. `skills/pi/package.json` declares the skill under `pi.skills`.
 

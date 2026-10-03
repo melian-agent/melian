@@ -62,7 +62,7 @@ async function routesCheck(cwd: string): Promise<Check | undefined> {
 				name: "routes",
 				state: "warn",
 				detail:
-					"melian.yaml routes no tier to a model; set models.light, medium, and heavy, or pass --model to review",
+					"no tier is routed to a model; set models.light, medium, and heavy in melian.local.yaml, or pass --model to review",
 			};
 		}
 		const routes = routed.map((tier) => `${tier} to ${config.models[tier]!.model}`);

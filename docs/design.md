@@ -231,7 +231,7 @@ Problem: a multi-service monorepo needs different scrutiny for a payments servic
 
 Solution: `melian.yaml` may exist at any folder level. For a touched path, the nearest file applies, merged upward to the root, in the way `CODEOWNERS` resolves. Every setting layers this way: checks, tiers, stages, lens routing, model routing, resolution levels, write-back permission, decision thresholds.
 
-Every file in the layering is read from one revision the host chooses, the base commit for a pull request, as [Trust and isolation](#policy-and-standards-come-from-a-revision-the-host-chooses) sets out. A pull request that edits a `melian.yaml` is reviewed under the policy it is changing, not the policy it proposes.
+Every file in the layering is read from one revision the host chooses, the base commit for a pull request, as [Trust and isolation](#policy-and-standards-come-from-a-revision-the-host-chooses) sets out. A pull request that edits a `melian.yaml` is reviewed under the policy it is changing, not the policy it proposes. A maintainer's `melian.local.yaml` layers over every file, and only when the host reads policy from the working tree, as [Models and credentials](#models-and-credentials) sets out.
 
 A `.melian/` directory may sit at any folder level too. Its `standards/` and `lenses/` resolve nearest-first for a touched path, like `melian.yaml`, so a service can carry its own conventions and its own lens. Knowledge and lens-pack settings are not per-path, and are read only from the root `.melian/`.
 
@@ -307,6 +307,8 @@ pi-ai provides providers, OAuth subscription auth, and the model catalogue. Meli
 - **Model routing** from tier to model: `light`, `medium`, `heavy`, `decision`, with fallbacks, overridable per path. A lens carries its tier's whole route, and moves to the next model when a provider failure outlasts pi-ai's retries or authentication fails. The route position is checkpointed with the model change, so a resumed review continues on the model it had reached.
 - **A credential pool provider** that holds several credentials per provider and rotates on rate limit or failure. This is how subscriptions stack.
 - **Credential sources**: Pi's credential store, so one `pi` login covers Melian locally; environment variables; GitHub App installation tokens on the server and Actions hosts.
+
+Routes belong to whoever pays for them. A repository commits no `models` routes, because a committed route chooses every contributor's provider and spend: Melian's own root `melian.yaml` once routed every tier to Anthropic, and a contributor with only Bedrock credentials saw `melian doctor` pass and every review exit not reviewed. A maintainer keeps routes in `melian.local.yaml` beside the root `melian.yaml`, which git ignores and which is read only from the working tree, never from a revision; `--model` on `melian review` routes every tier to one model for a single run, over any route. A pull request review reads its base's policy and never the local file, so it takes `--model` where the repository routes nothing.
 
 Caveat to state in user documentation: automated use of consumer subscriptions in CI may breach provider terms. API keys are the default for CI. Subscription use is an explicit opt-in.
 
@@ -548,6 +550,7 @@ docs/
 | Finding prose | Never live markdown; escaped and reference-neutralised; only Melian's template carries markdown | Lens text is head-steerable |
 | Stale publish tasks | Superseded before resume when the target changed; target revalidated before every side effect | A retargeted pull request must never receive a pre-retarget review |
 | The skill's `melian` | Only the one on the user's path; never built, installed, or run from the checkout; only `melian doctor` pre-approved | A repository under review must not supply its reviewer |
+| Model routes in the repository | None committed; `melian.local.yaml` (ignored, worktree-only) or `--model` supplies them | A repository must not choose a contributor's provider or spend |
 
 ## Open questions
 

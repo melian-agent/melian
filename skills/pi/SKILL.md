@@ -24,7 +24,7 @@ Run only the `melian` the shell finds on its path. Never build, install, or run 
 - If `melian doctor` exits `1`, Node or git cannot run a review. Show its output and stop.
 - A line marked `warn` does not stop a review; mention it once. Three warnings matter before reviewing, so tell the user what they mean:
   - `melian`: the `melian` on the path lives inside the repository you are in, so the change under review can alter its own reviewer. Review only after the user confirms they installed it there themselves.
-  - `routes`: `melian.yaml` routes no tier to a model, so a review exits `2` before any lens runs. Ask the user to set `models.<tier>.model` in `melian.yaml`, or to name a model you then pass as `--model provider/id`.
+  - `routes`: no tier is routed to a model, so a review exits `2` before any lens runs. Tell the user the two ways to fix it, then stop: set `models.<tier>.model` in `melian.local.yaml` beside the root `melian.yaml`, a file of their own that git ignores, or name a model for you to pass as `--model provider/id`, which routes every tier to it. A review of a pull request reads its base's `melian.yaml` and never `melian.local.yaml`, so it needs `--model` unless the repository routes its tiers.
   - `static`: Biome or tsc comes from nowhere, so that check fails and the review reads not reviewed. The same line says whether each comes from the checkout or Melian's own copy; a result from Melian's copy can differ from the repository's own lint run.
 
 ## Review the working branch
@@ -63,7 +63,7 @@ Replace N with the pull request number. Keep the quotes: an unquoted `#` starts 
 
 Two kinds of exit `2` are not a verdict on the code:
 
-- Setup. Standard error says "no model is configured for the heavy tier", or names another tier, because no `melian.yaml` routes a model to it. Tell the user to set `models.<tier>.model` in `melian.yaml`, or to name a model you then pass as `--model provider/id`.
+- Setup. Standard error says "no model is configured for the heavy tier", or names another tier, because nothing routes a model to it. Tell the user the two ways to fix it, as for the `routes` warning, then stop.
 - A transient failure. The output lists checks that did not run, and an error names a timeout, a rate limit, or a provider outage. Offer to run only what failed again, and run it when the user says to, with the same range or `"#N"`:
 
   ```sh
