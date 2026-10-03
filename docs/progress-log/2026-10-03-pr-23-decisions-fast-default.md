@@ -1,0 +1,1 @@
+The default `fast` tier names `decisions.fast` again, which [pull request #16](https://github.com/melian-agent/melian/pull/16)'s defaults had dropped, as the design's "enabled by default" requires. With no decision provider configured it records an allowed skip, so the verdict is unchanged and `notRun` shows what did not run.

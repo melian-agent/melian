@@ -1,0 +1,1 @@
+Review models read `CLAUDE_CODE_OAUTH_TOKEN` when `ANTHROPIC_OAUTH_TOKEN` is unset, so a Claude Code login reaches Anthropic without a copy; [docs/guidelines/pipeline.md](../guidelines/pipeline.md#credentials) lists the precedence.

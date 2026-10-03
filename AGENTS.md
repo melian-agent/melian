@@ -1,6 +1,6 @@
 # Working in Melian
 
-Read [docs/design.md](docs/design.md) before changing anything. It holds the decisions and the reasons for them. If you change a decision, change the document in the same commit. [docs/design-implementation-plan.md](docs/design-implementation-plan.md) tracks what is built and what is deferred; update its status and progress log in the same commit as the work.
+Read [docs/design.md](docs/design.md) before changing anything. It holds the decisions and the reasons for them. If you change a decision, change the document in the same commit and add a decision file to [docs/decisions/](docs/decisions/), the decision log. [docs/design-implementation-plan.md](docs/design-implementation-plan.md) tracks what is built and what is deferred; update its status, and add an entry file to [docs/progress-log/](docs/progress-log/), in the same commit as the work.
 
 Melian is a TypeScript monorepo built on Pi Durable. It follows Pi's conventions wherever it has no reason to differ, so a contributor moving between the two repositories finds nothing surprising.
 
@@ -53,6 +53,7 @@ If you create or modify a test, run it and iterate until it passes. Tests use Vi
 - Commit each discrete change as soon as it is complete and verified, before starting the next separable piece of work. Do not let two separable changes accumulate in the working tree; splitting them afterwards is error-prone. If you are on `main`, branch first.
 - Conventional commits, concise. Say what value the commit creates, not a catalogue of changes.
 - One pull request per issue; stack commits inside it. A pull request for a later step may be based on the previous step's unmerged branch, opened with `--base <that branch>` and retargeted as the stack lands, so work never waits on a merge.
+- When two steps need the same new abstraction, stack the second on the first rather than starting both from `main`. Two branches that each invent it conflict and leave two versions to reconcile. Parallel branches are for disjoint work.
 - Run a code review on the branch diff before opening a pull request, and land each fix as its own commit.
 - Open every pull request as a draft (`gh pr create --draft`). Mark it ready (`gh pr ready`) only after the external reviews are applied and CI passes on the result. A draft is never queued for merge; a ready pull request means the reviewer can merge without reading the review state.
 - `main` uses a merge queue. Merge with "Merge when ready" or `gh pr merge --merge --auto`, which has GitHub test the merged result before landing it, so a stacked pull request never needs `main` merged into it by hand after its base lands. Branch protection does not require branches to be up to date.
@@ -67,6 +68,8 @@ A delegated agent shares your checkout. Do not `git checkout`, `git pull`, `git 
 ## Lessons live here, not in agent memory
 
 When you learn something non-obvious while working on Melian, such as a trap, a contract, a tooling gotcha, or a verification technique that actually works, record it in this repository as part of the same change: in this file, in `docs/`, or in the closest relevant document. Agent memory is private and goes stale. The repository is reviewed and inherited by everyone who touches it.
+
+The decision log, [docs/decisions/](docs/decisions/), and the progress log, [docs/progress-log/](docs/progress-log/), hold one file per entry, so parallel pull requests never conflict on them. A new entry is a new file; never edit another entry's file. To change a decision, add a file whose `Supersedes:` line names the one it replaces. A git merge driver such as `merge=union` is no substitute: GitHub ignores merge drivers, so a pull request still shows as conflicting and a queue merge still fails.
 
 ## Learnings
 
