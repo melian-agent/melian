@@ -28,11 +28,12 @@ export function record(log: string, event: Event): void {
 	appendFileSync(log, `${JSON.stringify(event)}\n`);
 }
 
+// A read can land mid-append, so the text after the last newline is an event still being written.
 export function readEvents(log: string): Event[] {
 	if (!existsSync(log)) return [];
 	return readFileSync(log, "utf8")
 		.split("\n")
-		.filter((line) => line !== "")
+		.slice(0, -1)
 		.map((line) => JSON.parse(line) as Event);
 }
 
