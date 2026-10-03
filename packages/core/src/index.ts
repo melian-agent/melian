@@ -18,6 +18,7 @@ export {
 	type MelianConfig,
 	type MelianYaml,
 	type ModelRoute,
+	maxConfigBytes,
 	melianYamlSchema,
 	type Resolution,
 	type Severity,
@@ -33,6 +34,7 @@ export {
 	type StandardsErrorCode,
 } from "./errors.ts";
 export { melianPaths } from "./paths.ts";
-export { loadStandards, type StandardsSection } from "./standards.ts";
+export type { RepositorySource } from "./source.ts";
+export { loadStandards, type StandardsSection, standardsLimits } from "./standards.ts";
 
 export const packageName = "@melian-agent/core";

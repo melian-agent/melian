@@ -30,13 +30,20 @@ export class ChangesetError extends Error {
 /** Why configuration could not be loaded. */
 export type ConfigErrorCode =
 	| "missingRoot"
+	| "notARepository"
+	| "unknownCommit"
+	| "symlink"
+	| "tooLarge"
 	| "unreadable"
 	| "invalidYaml"
 	| "unknownKey"
 	| "reservedKey"
 	| "invalidValue";
 
-/** A `melian.yaml` could not be loaded. `file` names it; `key` is the dotted path of the offending key, where there is one. */
+/**
+ * A `melian.yaml` could not be loaded. `file` names it, repository-relative, or names the repository root or commit when
+ * the source itself could not be opened. `key` is the dotted path of the offending key, where there is one.
+ */
 export class ConfigError extends Error {
 	readonly code: ConfigErrorCode;
 	readonly file: string;
@@ -52,11 +59,18 @@ export class ConfigError extends Error {
 }
 
 /** Why standards could not be collected. */
-export type StandardsErrorCode = "missingRoot" | "unreadable";
+export type StandardsErrorCode =
+	| "missingRoot"
+	| "notARepository"
+	| "unknownCommit"
+	| "tooLarge"
+	| "totalTooLarge"
+	| "unreadable";
 
 /**
- * A standards file could not be read. `path` names it, or the repository root for `missingRoot`. A file that does not
- * exist is absence, not an error.
+ * Standards could not be collected. `path` names the file, or the repository root for `missingRoot` and
+ * `notARepository`, or the commit for `unknownCommit`. A file that does not exist is absence, and a symlink is
+ * skipped; neither is an error.
  */
 export class StandardsError extends Error {
 	readonly code: StandardsErrorCode;

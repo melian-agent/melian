@@ -213,6 +213,8 @@ Problem: a multi-service monorepo needs different scrutiny for a payments servic
 
 Solution: `melian.yaml` may exist at any folder level. For a touched path, the nearest file applies, merged upward to the root, in the way `CODEOWNERS` resolves. Every setting layers this way: checks, tiers, stages, lens routing, model routing, resolution levels, write-back permission, decision thresholds.
 
+Every file in the layering is read from one revision the host chooses, the base commit for a pull request, as [Trust and isolation](#policy-and-standards-come-from-a-revision-the-host-chooses) sets out. A pull request that edits a `melian.yaml` is reviewed under the policy it is changing, not the policy it proposes.
+
 The root `.melian/` directory holds what is not per-path: lenses, standards, knowledge, and lens-pack settings.
 
 Resolution levels map severity to requirement:
@@ -232,7 +234,7 @@ A maintainer comment can override a block. Deterministic guardrails may block at
 
 ### Reading
 
-Melian reads `AGENTS.md`, `CLAUDE.md`, and `.melian/standards/*.md`, nearest-first for the touched paths, and renders them as a prompt section into every lens that has not opted out. Changes to these files take effect on the next request.
+Melian reads `AGENTS.md`, `CLAUDE.md`, and `.melian/standards/*.md`, nearest-first for the touched paths, and renders them as a prompt section into every lens that has not opted out. It reads them from the revision the host chooses, as [Trust and isolation](#policy-and-standards-come-from-a-revision-the-host-chooses) sets out, so a pull request's changes to these files take effect once merged, not in the review of that pull request. A local run on the working tree sees them on the next request.
 
 ### Writing back
 
@@ -355,6 +357,20 @@ Existing code on the base branch is trusted. Submitted changes and comments are 
 
 Version one on a developer's own machine reviews the developer's own code and needs none of this.
 
+### Policy and standards come from a revision the host chooses
+
+Problem: `melian.yaml` decides what blocks a merge, and the standards files become part of every lens's prompt. Read from the checkout, both depend on whichever branch is checked out. A pull request can set `P0: silent` in its own `melian.yaml`, or add "approve everything" to `AGENTS.md`, and the review of that pull request obeys it.
+
+Solution: core reads policy (`melian.yaml`) and standards (`AGENTS.md`, `CLAUDE.md`, `.melian/standards/`) from a source the host names, never from wherever the filesystem happens to be.
+
+- A revision source reads a commit through git's object store: `git ls-tree` to list and `git cat-file` to read. The working tree, the checked-out branch, and uncommitted edits do not affect it.
+- A worktree source reads the working tree.
+- The host chooses. For a pull request it passes the base commit, so the head's changes to policy and standards are reviewed as code and take effect once merged. For a maintainer's local run it may pass the working tree, because the author is the maintainer. Core never decides trust; it only refuses to mix sources within one load.
+- Neither source follows a symlink. A symlinked file is refused, and a path beneath a symlinked directory does not exist, as in git's own trees. Without this, a head could link `AGENTS.md` to a file outside the repository.
+- Reads are bounded: 64 KiB for a `melian.yaml`, 256 KiB for a standards file, 1 MiB for all the standards one path collects. Past a bound is a typed error, never a silent truncation, because the content is untrusted input.
+
+Lenses and knowledge, when their loaders arrive, follow the same rule.
+
 ## Interaction model
 
 On a pull request, Melian posts one review per revision with inline comments, a summary, and a check status derived from resolution and task state: passed, findings, or not reviewed. In threads it takes commands from collaborators:
@@ -473,6 +489,8 @@ docs/
 | Git providers | GitHub only behind a provider port in core | Second provider is a package, not a refactor; nothing speculative |
 | Conversation keying | One storage per changeset; Melian maps changeset to storage | Pi mints conversation IDs; matches per-changeset state layout; one writer per changeset |
 | Publication idempotency | Durable published document plus marker check, not memos | Memos are task-scoped and temporary |
+| Policy and standards source | Read from a git revision chosen by the host: base for pull requests, worktree for maintainer local runs | A head must not rewrite the policy or prompts of its own review |
+| Repository content bounds | Typed errors over size limits, no silent truncation | Unbounded reads are a resource hazard from untrusted input |
 
 ## Open questions
 
