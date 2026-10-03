@@ -302,7 +302,8 @@ describe("Pi Durable spike", { timeout: 20_000 }, () => {
 							const request = { type: "input", content: task.input.change, requestId: `lens:${name}` } as const;
 							await (await child.submit(request, taskContext)).wait(taskContext);
 							const { entries } = await runtime.context(id, taskContext);
-							return [name, textOf(entries.at(-1)?.model?.[0])] as const;
+							const answer = entries.findLast((entry) => entry.kind === AssistantEntry.kind);
+							return [name, textOf(answer?.model?.[0])] as const;
 						}),
 					);
 					const result = Object.fromEntries(answers);
