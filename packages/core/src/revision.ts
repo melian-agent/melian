@@ -180,6 +180,8 @@ export async function searchRevision(
 	checkRevision(search.attributesFrom);
 	await requireGitVersion(repoRoot);
 	const target = repositoryPath(search.path ?? "");
+	// git grep finds nothing under a missing path, which would read as "no matches".
+	await entryAt(repoRoot, revision, target);
 	const args = [
 		`--attr-source=${search.attributesFrom}`,
 		// grep.column would add a column field to every match.

@@ -169,6 +169,11 @@ describe("searchRevision", () => {
 		});
 	});
 
+	it("refuses a path that does not exist rather than report no matches", async () => {
+		const missing = searchRevision(repo, head, { attributesFrom: head, pattern: "total", path: "nowhere" });
+		expect((await rejection(missing, RevisionError)).code).toBe("notFound");
+	});
+
 	it("bounds the number of matches", async () => {
 		const found = await searchRevision(repo, head, { attributesFrom: head, pattern: "t" }, 1);
 		expect(found.matches).toHaveLength(1);
