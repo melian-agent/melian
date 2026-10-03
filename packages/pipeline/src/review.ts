@@ -331,7 +331,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 			findings,
 		});
 	}
-	const failed = lensChecks.filter((check) => check.status === "failed").map((check) => check.name.slice(5));
+	const failed = lenses.filter((_, index) => lensChecks[index]!.status === "failed").map((lens) => lens.name);
 	if (failed.length > 0) {
 		throw new ReviewError("lensFailed", `lenses did not finish: ${failed.join(", ")}`, {
 			lenses: failed,

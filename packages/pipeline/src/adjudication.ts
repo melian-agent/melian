@@ -2,6 +2,7 @@ import {
 	adjudicate,
 	type CheckRecord,
 	type CheckStatus,
+	ConfigError,
 	type ConfigFor,
 	type Finding,
 	loadConfig,
@@ -66,15 +67,21 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 		adjudicate: async (task, runtime, context) => {
 			const { root, repoRoot, head, policy, config, checks } = task.input;
 			const findings = await findingsAt(runtime, root, head, context);
-			const configFor =
-				policy === undefined
-					? () => config
-					: await configsFor(
-							repoRoot,
-							policy,
-							findings.map((finding) => finding.properties.path),
-						);
-			const verdict = adjudicate({ findings, checks, config: configFor });
+			let verdict: Verdict;
+			try {
+				const paths = findings.map((finding) => finding.properties.path);
+				const configFor = policy === undefined ? () => config : await configsFor(repoRoot, policy, paths);
+				verdict = adjudicate({ findings, checks, config: configFor });
+			} catch (error) {
+				// A policy that cannot be read fails the same way on every rerun, so it is the task's outcome.
+				if (!(error instanceof ConfigError)) throw error;
+				const failure = { message: error.message };
+				await runtime.commit(
+					() => ({ status: "terminal", outcome: { status: "failed", error: failure } }),
+					context,
+				);
+				return;
+			}
 			await runtime.commit(async (tx) => {
 				(await tx.doc(VerdictDocument, root)).verdicts[head] = structuredClone(verdict) as StoredVerdict;
 				return { status: "terminal", outcome: { status: "completed", result: null } };

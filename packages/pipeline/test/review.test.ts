@@ -492,6 +492,20 @@ describe("adjudication", () => {
 		expect(verdict.findings.advisory).toHaveLength(1);
 	});
 
+	it("fails the review, rather than wait, when the policy cannot be read", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const missing = { kind: "revision", commit: "0".repeat(40) } as const;
+
+		const error = await reviewed({ policy: missing }).catch((caught: unknown) => caught);
+
+		expect(error).toMatchObject({ code: "adjudicationFailed" });
+		expect((error as ReviewError).findings).toHaveLength(1);
+		expect(await readVerdict(harness, await rootId(), head(), context)).toBeUndefined();
+	});
+
 	it("caps a pre-existing finding at advisory", async () => {
 		scriptConversations(fake, [
 			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
