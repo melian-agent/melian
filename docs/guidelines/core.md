@@ -205,7 +205,7 @@ Severity, by default:
 
 `static.<tool>.severity` overrides one rule, keyed by its Melian rule ID.
 
-`staticFindings` matches results across the two runs by finding identity, never by line. A result's snippet is the full text of its lines at that revision, read through git's object store, and its occurrence is counted in that revision's file, so a result moved by an edit above it keeps its ID. A result at head whose ID is absent at base is `introduced`; one present at both is `pre-existing` and never blocks; one only at base is resolved and not reported. Two results of one rule on the same lines share an ID, so they are one finding whose message counts the rest. A result on a blank line, or in a file too large to read, is identified by its message instead.
+`staticFindings` matches results across the two runs by finding identity, never by line. A result's snippet is the full text of its lines at that revision, read through git's object store, and its occurrence is counted in that revision's file, so a result moved by an edit above it keeps its ID. A renamed file's base results are identified under its head path, through `revision.files`; otherwise a pure rename would make every old result `introduced` and blocking. A result at head whose ID is absent at base is `introduced`; one present at both is `pre-existing` and never blocks; one only at base is resolved and not reported. Two results of one rule on the same lines share an ID, so they are one finding whose message counts the rest. A result on a blank line, or in a file too large to read, is identified by its message instead.
 
 ## Tests
 

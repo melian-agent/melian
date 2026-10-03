@@ -215,6 +215,25 @@ describe("staticFindings", () => {
 		expect(findings[0]!.locations[0]!.physicalLocation.region.snippet).toEqual({ text: "const added = 3;" });
 	});
 
+	it("identifies a renamed file's base results under its head path, so a pure rename introduces nothing", async () => {
+		const base = commit({ "src/a.ts": lines("export const n: number = 'x';") });
+		gitIn(repo, "mv", "src/a.ts", "src/b.ts");
+		const head = commit({});
+		const { revision } = await resolveRange(repo, `${base}..${head}`);
+		const { findings } = await staticFindings({
+			repoRoot: repo,
+			revision,
+			source: { kind: "revision", commit: base },
+			tool: "tsc",
+			settings: defaultConfig.static.tsc,
+			base: log(["src/a.ts", 1, "TS2322"]),
+			head: log(["src/b.ts", 1, "TS2322"]),
+		});
+		expect(findings.map((finding) => [finding.properties.path, finding.properties.cause])).toEqual([
+			["src/b.ts", "pre-existing"],
+		]);
+	});
+
 	it("merges results of one rule on the same lines into one finding, counting the rest", async () => {
 		const base = commit({ "a.ts": lines("f(1, 2);") });
 		const head = commit({ "a.ts": lines("f(1, 2);", "g(1, 2);") });

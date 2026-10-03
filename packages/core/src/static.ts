@@ -299,9 +299,14 @@ function decodePath(uri: string): string {
 	return uri.split("/").map(decodeURIComponent).join("/");
 }
 
-// Each result keyed by finding identity in the revision it came from. Results of one rule on the same lines share an
-// ID, so they merge into one, counted.
-async function identify(tool: StaticTool, log: ToolLog, reader: SourceReader): Promise<Map<string, Identified>> {
+// Each result keyed by finding identity in the revision it came from, its file named by `pathAtHead`. Results of one
+// rule on the same lines share an ID, so they merge into one, counted.
+async function identify(
+	tool: StaticTool,
+	log: ToolLog,
+	reader: SourceReader,
+	pathAtHead: (path: string) => string,
+): Promise<Map<string, Identified>> {
 	const texts = new Map<string, Promise<string | undefined>>();
 	const textOf = (path: string) => {
 		let text = texts.get(path);
@@ -330,7 +335,7 @@ async function identify(tool: StaticTool, log: ToolLog, reader: SourceReader): P
 		const identity = byCode
 			? { snippet, occurrence: snippetOccurrence(text, snippet, { startLine: region.startLine, endLine }) }
 			: { discriminator: result.message.text };
-		const id = findingId({ file: path, rule, snippet: identity.snippet ?? "", ...identity });
+		const id = findingId({ file: pathAtHead(path), rule, snippet: identity.snippet ?? "", ...identity });
 		const earlier = identified.get(id);
 		identified.set(
 			id,
@@ -369,9 +374,13 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 		openSource(repoRoot, { kind: "revision", commit: revision.base }),
 		openSource(repoRoot, { kind: "revision", commit: revision.head }),
 	]);
+	// A renamed file's base results are identified under its head path, so a pure rename introduces nothing.
+	const renamed = new Map(
+		revision.files.flatMap((file) => (file.oldPath === undefined ? [] : [[file.oldPath, file.path] as const])),
+	);
 	const [base, head] = await Promise.all([
-		identify(tool, input.base, baseReader),
-		identify(tool, input.head, headReader),
+		identify(tool, input.base, baseReader, (path) => renamed.get(path) ?? path),
+		identify(tool, input.head, headReader, (path) => path),
 	]);
 	const configFor = configLookup(repoRoot, input.source);
 	const version = input.head.runs[0].tool.driver.version;
