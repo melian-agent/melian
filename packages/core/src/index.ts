@@ -1,3 +1,19 @@
+export {
+	type AdjudicationInput,
+	adjudicate,
+	applyResolutions,
+	type CheckRecord,
+	type CheckStatus,
+	type ConfigFor,
+	dedupeFindings,
+	noRecord,
+	type ResolvedFinding,
+	resolutionOrder,
+	resolveFinding,
+	strongestCause,
+	type Verdict,
+	type VerdictStatus,
+} from "./adjudication.ts";
 export { parseJsonc } from "./analyser.ts";
 export { type CodeLocation, checkEvidence, classifyCause } from "./cause.ts";
 export {
@@ -31,6 +47,7 @@ export {
 	type PolicyChangeReview,
 	type RequiredFileRule,
 	type Resolution,
+	type RuleAlias,
 	resolutionSchema,
 	type Severity,
 	type StaticSettings,
@@ -59,6 +76,8 @@ export {
 	type StandardsErrorCode,
 } from "./errors.ts";
 export {
+	type AlsoReportedAs,
+	alsoReportedAsSchema,
 	type Cause,
 	causeSchema,
 	createFinding,
@@ -123,7 +142,13 @@ export {
 } from "./lens.ts";
 export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
 export { analyserConfigNames, melianPaths } from "./paths.ts";
-export { renderFindingsJson, renderFindingsTerminal, type TerminalRenderOptions, visibleText } from "./render.ts";
+export {
+	renderFindingsJson,
+	renderFindingsTerminal,
+	renderVerdictJson,
+	type TerminalRenderOptions,
+	visibleText,
+} from "./render.ts";
 export {
 	listRevisionFiles,
 	type RevisionEntry,

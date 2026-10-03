@@ -54,6 +54,12 @@ const guardrail = <Rule extends Record<string, TSchema>>(rule: Rule) =>
 		strict,
 	);
 
+// A list says the rules are one defect the key owns; `distinct: true` says they are different defects never to merge.
+const ruleAliasSchema = Type.Union([
+	Type.Array(name),
+	Type.Object({ rules: Type.Array(name), distinct: Type.Optional(Type.Boolean()) }, strict),
+]);
+
 /** The JSON Schema of one `melian.yaml`. Every key is optional, and unknown keys are rejected. */
 export const melianYamlSchema = Type.Object(
 	{
@@ -147,6 +153,8 @@ export const melianYamlSchema = Type.Object(
 				strict,
 			),
 		),
+		ruleAliases: Type.Optional(Type.Record(Type.String(), ruleAliasSchema)),
+		checks: Type.Optional(Type.Object({ allowSkip: Type.Optional(Type.Array(name)) }, strict)),
 	},
 	strict,
 );
@@ -162,6 +170,12 @@ export type Severity = Static<typeof severitySchema>;
 
 /** A model tier a lens can name. Model routing also has a `decision` tier for decision models. */
 export type LensTier = Static<typeof lensTierSchema>;
+
+/**
+ * One `ruleAliases` entry: the rules other checks file the key's defect under, or, with `distinct: true`, rules that
+ * name different defects and must never merge with the key's, even on one expression.
+ */
+export type RuleAlias = readonly string[] | { readonly rules: readonly string[]; readonly distinct?: boolean };
 
 /** A model and the models to try, in order, when it fails. */
 export type ModelRoute = Static<typeof modelRoute>;
@@ -266,14 +280,21 @@ export interface MelianConfig {
 	readonly guardrails: GuardrailSettings;
 	readonly knowledge: { readonly writeBack: boolean };
 	readonly decisions: { readonly provider?: string; readonly thresholds: Readonly<Record<string, Band>> };
+	/**
+	 * Rule ID that owns a defect to the rule IDs other checks report it under, so adjudication keeps the owner's finding;
+	 * or, with `distinct: true`, to rule IDs that name other defects, so adjudication never merges them with it.
+	 */
+	readonly ruleAliases: Readonly<Record<string, RuleAlias>>;
+	/** `allowSkip` names checks a tier may skip without making the review not reviewed. */
+	readonly checks: { readonly allowSkip: readonly string[] };
 }
 
 /** The built-in defaults every `melian.yaml` layers onto. */
 export const defaultConfig: MelianConfig = {
 	tiers: {
-		fast: ["guardrails", "static", "decisions.fast"],
+		fast: ["guardrails", "static"],
 		standard: ["fast", "lens.correctness"],
-		full: ["standard", "lens.security", "lens.contracts", "lens.conventions"],
+		full: ["standard", "lens.contracts"],
 	},
 	stages: { "pre-commit": "fast", "pre-push": "standard", "pull-request": "full", comment: "standard" },
 	resolution: { P0: "block", P1: "block", P2: "acknowledge", P3: "advisory", nit: "silent" },
@@ -291,6 +312,8 @@ export const defaultConfig: MelianConfig = {
 	},
 	knowledge: { writeBack: false },
 	decisions: { thresholds: {} },
+	ruleAliases: {},
+	checks: { allowSkip: [] },
 };
 
 /**

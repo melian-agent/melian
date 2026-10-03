@@ -1,28 +1,39 @@
 import {
 	type Changeset,
+	type CheckRecord,
+	checksOfTier,
 	type Finding,
+	type FindingSource,
 	type Lens,
 	type LensCoverage,
 	type LensRule,
 	type LensToolName,
 	type MelianConfig,
 	type ModelReference,
+	type RepositorySource,
 	renderLensInstructions,
 	resolveModelForTier,
 	type Severity,
 	type StandardsSection,
 	selectLenses,
+	type Verdict,
 	visibleText,
 } from "@melian-agent/core";
+import {
+	type AdjudicationResult,
+	AdjudicationTask,
+	type AdjudicationTaskInput,
+	adjudicationInput,
+	readVerdict,
+} from "./adjudication.ts";
 import { ReviewError } from "./errors.ts";
-import { readFindings, recordRevision } from "./findings.ts";
+import { findingsVersion, readFindings, recordRevision, revisionKey } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
 	type ConversationId,
 	configure,
 	createRegistry,
-	defineDoc,
 	defineExtension,
 	defineTask,
 	type Harness,
@@ -31,6 +42,7 @@ import {
 	type Registry,
 	type Storage,
 	type TaskId,
+	type Tx,
 } from "./harness.ts";
 import {
 	injectionPolicySection,
@@ -42,6 +54,7 @@ import {
 	reviewFiles,
 } from "./lens-tools.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
+import { ReviewIndex, type ReviewIndexState } from "./review-index.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
 
 // One lens as the lens task runs it: everything resolved, nothing left to look up.
@@ -83,17 +96,6 @@ type ReviewCheckpoint = {
 type LensCheckpoint = { phase: "spawn" } | ReviewCheckpoint;
 
 type LensResult = Record<string, LensOutcome>;
-
-// Which lens task reviewed each head, and with which lenses, by `name@version`. Kept on the root conversation, so a
-// later call for the same head and lenses finds the task, whether it finished, is running, or crashed.
-const ReviewIndex = defineDoc<{ reviews: Record<string, { task: number; lenses: string[] }> }>({
-	kind: "melian.reviews",
-	version: 1,
-	scope: "conversation",
-	history: "latest",
-	fork: "current",
-	initial: () => ({ reviews: {} }),
-});
 
 function modelName(model: ModelReference): string {
 	return `${model.provider}/${model.modelId}`;
@@ -186,15 +188,16 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 });
 
 /**
- * The extension a review harness needs: the lens task, the lens tools, `report_finding`, and the hook that holds each
- * lens to its policy. {@link openReviewHarness} installs it; a host building its own registry installs it there.
+ * The extension a review harness needs: the lens task, the lens tools, `report_finding`, the hook that holds each lens
+ * to its policy, and the adjudication task. {@link openReviewHarness} installs it; a host building its own registry
+ * installs it there.
  */
 export const lensExtension = defineExtension({
 	name: "melian.lenses",
 	tools: [...Object.values(lensReadTools), reportFinding],
 	sections: [injectionPolicySection],
 	hooks: [lensPolicyHook],
-	tasks: [LensTask],
+	tasks: [LensTask, AdjudicationTask],
 });
 
 /** A registry holding {@link lensExtension}. */
@@ -284,27 +287,254 @@ export interface ReviewOptions {
 	readonly standards: readonly StandardsSection[];
 	/** The collection the harness was opened with, used to pick each tier's first model with credentials. */
 	readonly models: ReviewModels;
+	/**
+	 * Where adjudication reads each finding's configuration, the source `config` came from, such as the base commit.
+	 * Without it, `config`'s resolution and rule aliases apply to every path.
+	 */
+	readonly policy?: RepositorySource;
+	/**
+	 * The tier whose checks the review accounts for, its manifest. Defaults to the tier configuration maps the
+	 * `pull-request` stage to. Only lenses the manifest names run.
+	 */
+	readonly tier?: string;
+	/**
+	 * What the review's other checks did, such as static analysis and guardrails, one record per check. A check of the
+	 * manifest with no record makes the verdict not reviewed. The lens step records every `lens.*` check itself, so a
+	 * record here under such a name is ignored.
+	 */
+	readonly checks?: readonly CheckRecord[];
+	/**
+	 * Run again a lens task of this head and selection that left a lens failed, rather than attach to it. Without it a
+	 * repeat review attaches to the finished task and reports the same failure, so it spends no tokens unasked.
+	 */
+	readonly rerun?: boolean;
 	readonly context?: Context;
+}
+
+/** What {@link reviewChangeset} found and concluded at the head under review. */
+export interface Review {
+	/**
+	 * The findings the review's lenses sighted at the head, as the root conversation's findings document holds them:
+	 * without a resolution, which only the verdict carries.
+	 */
+	readonly findings: readonly Finding[];
+	/** The adjudicated outcome: findings merged across sources and resolved per path, grouped, and the review's status. */
+	readonly verdict: Verdict;
+}
+
+// A task no installed extension defines stays blocked, and waiting on it would never return. `forget` takes the aborted
+// task out of the review index, so the next call starts a task rather than attach to this one.
+async function refuseIfBlocked(
+	harness: Harness,
+	taskId: TaskId,
+	lenses: readonly string[],
+	forget: (index: ReviewIndexState) => void,
+	context: Context,
+): Promise<void> {
+	harness.resume();
+	const blocked = (await harness.inspect(context)).tasks.find(
+		(each) => each.record.id === taskId && each.state.kind === "blocked",
+	);
+	if (blocked === undefined) return;
+	await harness.abortTask(taskId, context);
+	const root = await harness.root(context);
+	await root.commit(async (tx) => forget(await tx.doc(ReviewIndex, root.id)), context);
+	throw new ReviewError("notInstalled", "the harness has no melian.lenses extension; open it with openReviewHarness", {
+		lenses,
+	});
+}
+
+function omit<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K> {
+	const { [key]: _, ...rest } = value;
+	return rest;
+}
+
+// Outcomes that decided nothing: a cancelled task, one that broke the task contract, and one whose definition is gone.
+const undecided: readonly string[] = ["aborted", "faulted", "orphaned"];
+
+// Whether a repeat call may attach to the task the index names: one that is live, crashed, or decided something. A task
+// that ended without deciding would hand every later call the same non-result.
+async function attachable(tx: Tx, id: number | undefined, retry: readonly string[]): Promise<boolean> {
+	if (id === undefined) return false;
+	const record = await tx.task(id as TaskId);
+	if (record === undefined) return false;
+	return record.state.status !== "terminal" || !retry.includes(record.state.outcome.status);
+}
+
+// One lens task per head and selection. A repeat call, such as a rerun after a crash, attaches to the task the first
+// call created, which the harness resumes, rather than running every lens a second time. `undefined` when the task did
+// not complete.
+async function runLenses(
+	harness: Harness,
+	input: LensTaskInput,
+	rerun: boolean,
+	context: Context,
+): Promise<LensResult | undefined> {
+	const root = await harness.root(context);
+	const revision = revisionKey(input.revision);
+	const selection = input.lenses.map((lens) => lens.key).sort();
+	const taskId = await root.commit(async (tx) => {
+		const index = await tx.doc(ReviewIndex, root.id);
+		const known = index.reviews[revision];
+		const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
+		const attach =
+			same && (await attachable(tx, known.task, undecided)) && !(rerun && (await anyLensFailed(tx, known.task)));
+		if (attach) return known.task as TaskId<LensResult>;
+		await recordRevision(tx, root.id, revision);
+		const created = await tx.createTask(LensTask, input, { ownership: { kind: "conversation" } });
+		index.reviews[revision] = { task: created, lenses: selection };
+		return created;
+	}, context);
+	const forget = (index: ReviewIndexState) => {
+		if (index.reviews[revision]?.task === taskId) index.reviews = omit(index.reviews, revision);
+	};
+	await refuseIfBlocked(
+		harness,
+		taskId,
+		input.lenses.map((lens) => lens.name),
+		forget,
+		context,
+	);
+	const { outcome } = (await harness.waitForTask(taskId, context)).state;
+	return outcome.status === "completed" ? outcome.result : undefined;
+}
+
+// Whether a finished lens task left a lens without an answer, which `rerun` asks to try again.
+async function anyLensFailed(tx: Tx, id: number | undefined): Promise<boolean> {
+	const record = id === undefined ? undefined : await tx.task(id as TaskId);
+	if (record?.state.status !== "terminal") return false;
+	const { outcome } = record.state;
+	if (outcome.status !== "completed") return true;
+	return Object.values(outcome.result as LensResult).some((lens) => lens.status !== "done");
+}
+
+// One adjudication task per head and input. A repeat call with the same input, such as a rerun after a crash, attaches
+// to the task the first call created. A call with other input, such as a static check that has since run, creates a
+// task and records it as the head's, and a task an earlier call created then records no verdict.
+async function startAdjudication(
+	harness: Harness,
+	input: AdjudicationTaskInput,
+	lenses: readonly LensRun[],
+	context: Context,
+): Promise<TaskId<AdjudicationResult>> {
+	const root = await harness.root(context);
+	const key = JSON.stringify(input);
+	const selection = lenses.map((lens) => lens.key).sort();
+	return root.commit(async (tx) => {
+		const index = await tx.doc(ReviewIndex, root.id);
+		const known = index.reviews[revisionKey(input)];
+		// A failed adjudication is always rerun: it is cheap, and its failure, such as a base commit a shallow clone had
+		// not fetched yet, may have passed.
+		const retry = [...undecided, "failed"];
+		if (known?.adjudication?.input === key && (await attachable(tx, known.adjudication.task, retry))) {
+			return known.adjudication.task as TaskId<AdjudicationResult>;
+		}
+		const created = await tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } });
+		const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
+		const entry = same ? known : { lenses: selection };
+		index.reviews[revisionKey(input)] = { ...entry, adjudication: { task: created, input: key } };
+		return created;
+	}, context);
+}
+
+function lensCheck(lens: LensRun, result: LensResult | undefined): CheckRecord {
+	const name = `lens.${lens.name}`;
+	if (result === undefined) return { name, status: "failed", reason: "the lens task did not complete" };
+	const outcome = result[lens.key];
+	if (outcome?.status === "done") return { name, status: "ran" };
+	if (outcome?.status === "exhausted") {
+		const error = `tried ${outcome.tried.join(", ")}; the last said: ${outcome.reason}`;
+		return { name, status: "failed", reason: "every model of its tier failed", error };
+	}
+	return { name, status: "failed", reason: "the lens did not finish", error: outcome?.reason ?? "no outcome" };
+}
+
+const noLensCovers = "no lens covers these paths";
+
+// What a review accounts for: a record for every check its manifest names, which may leave out a record only for a
+// check another step runs, and the skips that still let it pass.
+interface Accounting {
+	readonly checks: CheckRecord[];
+	readonly allowSkip: string[];
+	readonly producers: FindingSource[];
+}
+
+// Records for the lenses and decision questions the manifest names; the lens step owns `lens.*`, so a record of that
+// name from elsewhere, such as a check runner that skips lenses, gives way. Every other check's record comes from
+// `supplied`; adjudication calls one with none a check that never started.
+function account(
+	manifest: readonly string[],
+	ran: readonly LensRun[],
+	result: LensResult | undefined,
+	options: Pick<ReviewOptions, "config" | "lenses" | "checks">,
+): Accounting {
+	const { config } = options;
+	const supplied = (options.checks ?? []).filter((check) => !check.name.startsWith("lens."));
+	const checks: CheckRecord[] = [...supplied, ...ran.map((lens) => lensCheck(lens, result))];
+	const allowSkip: string[] = [...config.checks.allowSkip];
+	const recorded = new Set(checks.map((check) => check.name));
+	for (const name of manifest) {
+		if (recorded.has(name)) continue;
+		if (name.startsWith("lens.")) {
+			const lens = name.slice("lens.".length);
+			const settings = Object.hasOwn(config.lenses, lens) ? config.lenses[lens] : undefined;
+			if (!options.lenses.some((each) => each.name === lens)) {
+				checks.push({ name, status: "failed", reason: `no lens is named ${lens}` });
+			} else if (settings?.enabled === false) {
+				checks.push({ name, status: "skipped", reason: `lenses.${lens}.enabled is false` });
+			} else if (ran.length === 0) {
+				checks.push({ name, status: "skipped", reason: noLensCovers });
+			} else {
+				checks.push({ name, status: "skipped", reason: "no changed file is in its paths" });
+				allowSkip.push(name);
+			}
+		} else if (name.startsWith("decisions.") && config.decisions.provider === undefined) {
+			checks.push({ name, status: "skipped", reason: "no decision provider is configured" });
+		}
+	}
+	// The design lets the fast tier run without decision questions when no provider is configured.
+	if (config.decisions.provider === undefined) {
+		allowSkip.push(...manifest.filter((name) => name.startsWith("decisions.")));
+	}
+	const versions = new Map(supplied.map((check) => [check.name, check.version]));
+	const others = [...new Set([...manifest, ...supplied.map((check) => check.name)])].filter(
+		(name) => !name.startsWith("lens."),
+	);
+	const producers: FindingSource[] = [
+		...ran.map((lens) => ({ check: `lens.${lens.name}`, version: lens.version })),
+		...others.map((check) => {
+			const version = versions.get(check);
+			return version === undefined ? { check } : { check, version };
+		}),
+	];
+	return { checks, allowSkip, producers };
 }
 
 /**
  * Reviews a changeset: selects the lenses its paths and configuration call for, runs each as a conversation owned by
- * one lens task, and returns the findings sighted at the head under review. Each lens starts on its tier's first
- * configured model that has credentials, and moves to the next when a provider failure outlasts pi-ai's retries or
- * authentication fails.
+ * one lens task, then adjudicates in a task of its own and records the verdict on the root conversation under the
+ * head. Returns the findings the selected lenses sighted at the head and the verdict. Each lens starts on its tier's
+ * first configured model that has credentials, moves to the next when a provider failure outlasts pi-ai's retries or
+ * authentication fails, and becomes a check named `lens.<name>` beside `options.checks`.
  *
  * Throws core's `ModelRoutingError` for a tier with no model, and {@link ReviewError}: `noAvailableModel` when no model
- * of a tier has credentials, `notInstalled` when the harness lacks {@link lensExtension}, `allModelsFailed` when every
- * model of a lens's route failed, naming them, and `lensFailed` when a lens did not finish for another reason. Both
- * carry the findings reported so far.
+ * of a tier has credentials, `notInstalled` when the harness lacks {@link lensExtension}, `adjudicationFailed` when no
+ * verdict was recorded, `allModelsFailed` when every model of a lens's route failed, naming them, and `lensFailed` when
+ * a lens did not finish for another reason. The last two carry the findings reported so far and the `not-reviewed`
+ * verdict already recorded.
  */
-export async function reviewChangeset(options: ReviewOptions): Promise<readonly Finding[]> {
+export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	const { harness, changeset, config, standards, models } = options;
 	const context = options.context ?? backgroundContext;
-	const root = await harness.root(context);
+	const root = (await harness.root(context)).id;
 	const paths = changeset.revision.files.map((file) => file.path);
-	const selected = selectLenses(options.lenses, config, paths);
-	if (selected.length === 0) return [];
+	const manifest = checksOfTier(config, options.tier ?? config.stages["pull-request"] ?? "full");
+	const named = new Set(manifest.filter((name) => name.startsWith("lens.")).map((name) => name.slice("lens.".length)));
+	const selected = selectLenses(
+		options.lenses.filter((lens) => named.has(lens.name)),
+		config,
+		paths,
+	);
 	const nonce = reviewNonce();
 	const lenses: LensRun[] = [];
 	for (const { lens, coverage, files } of selected) {
@@ -327,51 +557,59 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 		});
 	}
 	const { repoRoot, revision } = changeset;
+	const { base, head } = revision;
+	const reviewed = revisionKey(revision);
 	const state: ReviewState = {
 		repoRoot,
 		nonce,
 		base: revision.base,
-		head: revision.head,
+		head,
 		files: reviewFiles(revision.files),
 	};
-	const selection = lenses.map((lens) => lens.key).sort();
-	// One lens task per head and selection. A repeat call, such as a rerun after a crash, attaches to the task the first
-	// call created, which the harness resumes, rather than running every lens a second time.
-	const taskId = await root.commit(async (tx) => {
-		const index = await tx.doc(ReviewIndex, root.id);
-		const known = index.reviews[revision.head];
-		if (known !== undefined && known.lenses.join("\n") === selection.join("\n"))
-			return known.task as TaskId<LensResult>;
-		await recordRevision(tx, root.id, revision.head);
-		const created = await tx.createTask(
-			LensTask,
-			{ root: root.id, revision: state, lenses },
-			{ ownership: { kind: "conversation" } },
-		);
-		index.reviews[revision.head] = { task: created, lenses: selection };
-		return created;
-	}, context);
-	harness.resume();
-	const blocked = (await harness.inspect(context)).tasks.find(
-		(each) => each.record.id === taskId && each.state.kind === "blocked",
-	);
-	if (blocked !== undefined) {
-		await harness.abortTask(taskId, context);
-		throw new ReviewError(
-			"notInstalled",
-			"the harness has no melian.lenses extension; open it with openReviewHarness",
-			{
-				lenses: lenses.map((lens) => lens.name),
-			},
-		);
+	const lensResult =
+		lenses.length === 0
+			? {}
+			: await runLenses(harness, { root, revision: state, lenses }, options.rerun === true, context);
+	// Only the lenses this review ran count: one that configuration has since disabled or retiered leaves nothing behind.
+	const { checks, allowSkip, producers } = account(manifest, lenses, lensResult, options);
+	const input = adjudicationInput({
+		root,
+		repoRoot,
+		base,
+		head,
+		policy: options.policy,
+		config,
+		manifest,
+		checks,
+		findingsVersion: await findingsVersion(harness, root, reviewed, context),
+		allowSkip,
+		producers,
+	});
+	const adjudication = await startAdjudication(harness, input, lenses, context);
+	const forget = (index: ReviewIndexState) => {
+		const entry = index.reviews[reviewed];
+		if (entry?.adjudication?.task !== adjudication) return;
+		index.reviews = { ...index.reviews, [reviewed]: omit(entry, "adjudication") };
+	};
+	await refuseIfBlocked(harness, adjudication, [], forget, context);
+	const adjudicated = (await harness.waitForTask(adjudication, context)).state.outcome;
+	const findings = await readFindings(harness, root, reviewed, context, { producers });
+	const verdict = await readVerdict(harness, root, reviewed, context);
+	const superseded = adjudicated.status === "completed" && adjudicated.result === "superseded";
+	if (adjudicated.status !== "completed" || superseded || verdict === undefined) {
+		const why =
+			adjudicated.status === "failed"
+				? `: ${adjudicated.error.message}`
+				: superseded
+					? ": a later review of the head with other input replaced it"
+					: "";
+		throw new ReviewError("adjudicationFailed", `adjudication of ${reviewed} did not complete${why}`, {
+			lenses: [],
+			findings,
+		});
 	}
-	const settled = await harness.waitForTask(taskId, context);
-	// Only the lenses this review ran: one that configuration has since disabled or retiered leaves nothing behind.
-	const producers = lenses.map((lens) => ({ check: `lens.${lens.name}`, version: lens.version }));
-	const findings = await readFindings(harness, root.id, changeset.revision.head, context, { producers });
-	const outcome = settled.state.outcome;
 	const exhausted = lenses.flatMap((lens) => {
-		const result = outcome.status === "completed" ? outcome.result[lens.key] : undefined;
+		const result = lensResult?.[lens.key];
 		return result?.status === "exhausted" ? [{ lens: lens.name, ...result }] : [];
 	});
 	if (exhausted.length > 0) {
@@ -382,14 +620,16 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 			lenses: exhausted.map(({ lens }) => lens),
 			models: [...new Set(exhausted.flatMap(({ tried }) => tried))],
 			findings,
+			verdict,
 		});
 	}
-	const failed =
-		outcome.status === "completed"
-			? lenses.filter((lens) => outcome.result[lens.key]?.status !== "done").map((lens) => lens.name)
-			: lenses.map((lens) => lens.name);
+	const failed = lenses.filter((lens) => lensResult?.[lens.key]?.status !== "done").map((lens) => lens.name);
 	if (failed.length > 0) {
-		throw new ReviewError("lensFailed", `lenses did not finish: ${failed.join(", ")}`, { lenses: failed, findings });
+		throw new ReviewError("lensFailed", `lenses did not finish: ${failed.join(", ")}`, {
+			lenses: failed,
+			findings,
+			verdict,
+		});
 	}
-	return findings;
+	return { findings, verdict };
 }

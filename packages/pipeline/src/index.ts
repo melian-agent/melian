@@ -1,3 +1,4 @@
+export { readVerdict } from "./adjudication.ts";
 export {
 	type CheckRecord,
 	type CheckRun,
@@ -20,6 +21,7 @@ export {
 	type ReadFindingsOptions,
 	readFindings,
 	recordRevision,
+	revisionKey,
 	upsertFinding,
 } from "./findings.ts";
 export * from "./harness.ts";
@@ -28,6 +30,7 @@ export {
 	createReviewRegistry,
 	lensExtension,
 	openReviewHarness,
+	type Review,
 	type ReviewOptions,
 	renderChangePrompt,
 	reviewChangeset,

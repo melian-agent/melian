@@ -1,7 +1,15 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createFinding, type Finding, FindingError, type FindingInput, type FindingSource } from "@melian-agent/core";
+import {
+	createFinding,
+	defaultConfig,
+	type Finding,
+	FindingError,
+	type FindingInput,
+	type FindingSource,
+	resolveFinding,
+} from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -231,6 +239,25 @@ describe("the findings document", () => {
 			await root.commit((tx) => upsertFinding(tx, root.id, fromStyle("P0"), "rev1"), context);
 			const [promoted] = await readFindings(harness, root.id, "rev1", context);
 			expect(promoted!.properties).toMatchObject({ severity: "P0", source: style, reportedBy: [security, style] });
+		});
+
+		it("keeps the evidenced cause of a less severe sighting, so the merge still blocks", async () => {
+			const { harness, root } = await open(createMemoryStorage());
+			const evidence = { file: "src/api.ts", startLine: 3, snippet: "export function run(body) {" };
+			const evidenced = createFinding({ ...input, cause: { evidence } });
+			const unproven = createFinding({ ...input, severity: "P0", cause: "pre-existing", source: style });
+			await root.commit(async (tx) => {
+				await upsertFinding(tx, root.id, evidenced, "rev1");
+				await upsertFinding(tx, root.id, unproven, "rev1");
+			}, context);
+			const [merged] = await readFindings(harness, root.id, "rev1", context);
+			expect(merged!.properties).toMatchObject({
+				severity: "P0",
+				source: style,
+				cause: "affected",
+				evidence: evidenced.properties.evidence,
+			});
+			expect(resolveFinding(merged!, defaultConfig)).toBe("block");
 		});
 
 		it("breaks a severity tie by lens name", async () => {

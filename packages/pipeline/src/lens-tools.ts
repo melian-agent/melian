@@ -18,7 +18,7 @@ import {
 	snippetOccurrence,
 	visibleText,
 } from "@melian-agent/core";
-import { FindingsDocument, hasSighting, sightingCount, upsertFinding } from "./findings.ts";
+import { FindingsDocument, hasSighting, revisionKey, sightingCount, upsertFinding } from "./findings.ts";
 import {
 	type Context,
 	type ConversationId,
@@ -344,14 +344,15 @@ export const reportFinding = defineTool({
 		const finding = await findingFromCall(args, lens, review);
 		const id = finding.properties.id;
 		await api.commit(async (tx) => {
-			// One storage holds every review of a changeset, so the budget counts this lens's sightings at its own head.
+			// One storage holds every review of a changeset, so the budget counts this lens's sightings at its own revision.
 			const state = await tx.doc(FindingsDocument, lens.review);
 			const { source } = finding.properties;
-			const own = hasSighting(state, id, review.head, source);
-			if (!own && sightingCount(state, review.head, source) >= lens.budget) {
+			const at = revisionKey(review);
+			const own = hasSighting(state, id, at, source);
+			if (!own && sightingCount(state, at, source) >= lens.budget) {
 				throw new Error(`budget reached: this lens may report ${lens.budget} findings; stop reporting and finish`);
 			}
-			await upsertFinding(tx, lens.review, finding, review.head);
+			await upsertFinding(tx, lens.review, finding, at);
 		}, context);
 		return text(`recorded finding ${id}`);
 	},

@@ -1,11 +1,14 @@
 // Runs a review in its own process and parks so the parent can SIGKILL it. `finding` parks once report_finding has
 // committed, before the tool's result is stored, with the lens at its full budget of one finding. `request` parks in
-// each lens's first model request.
+// each lens's first model request. `adjudication` lets both lenses finish and parks at the start of adjudication,
+// before it records a verdict.
 import { defaultConfig, loadLenses, resolveRange } from "@melian-agent/core";
+import { AdjudicationTask } from "../../src/adjudication.ts";
 import {
 	backgroundContext,
 	createRegistry,
 	defineExtension,
+	defineTask,
 	defineTool,
 	openHarness,
 	openSqliteStorage,
@@ -16,7 +19,12 @@ import { createFakeModels, fauxAssistantMessage, fauxToolCall, scriptConversatio
 import { isolatedGitEnv } from "./repo.ts";
 import { crashFinding, crashLenses, record } from "./review-scenario.ts";
 
-const [scenario, repo, database, log] = process.argv.slice(2) as ["finding" | "request", string, string, string];
+const [scenario, repo, database, log] = process.argv.slice(2) as [
+	"finding" | "request" | "adjudication",
+	string,
+	string,
+	string,
+];
 const park = () => new Promise<never>(() => setInterval(() => {}, 60_000));
 Object.assign(process.env, isolatedGitEnv);
 
@@ -29,10 +37,23 @@ const parkedReport = defineTool({
 		return result;
 	},
 });
-// Replaces the installed melian.lenses extension by name, so the lens conversations resolve this report_finding.
+const parkedAdjudication = defineTask({
+	...AdjudicationTask.definition,
+	phases: {
+		adjudicate: async () => {
+			record(log, { event: "adjudication-started" });
+			await park();
+		},
+	},
+});
+// Replaces the installed melian.lenses extension by name, so the lens conversations resolve this report_finding and
+// the review creates this adjudication task.
 const parked = defineExtension({
 	...lensExtension,
 	tools: lensExtension.tools?.map((tool) => (tool.name === reportFinding.name ? parkedReport : tool)),
+	tasks: lensExtension.tasks?.map((task) =>
+		scenario === "adjudication" && task === AdjudicationTask ? parkedAdjudication : task,
+	),
 });
 const registry = createRegistry();
 registry.install(parked);
@@ -58,10 +79,15 @@ scriptConversations(
 				},
 				{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
 			]
-		: [
-				{ match: "You are the correctness reviewer", replies: [requested("correctness")] },
-				{ match: "You are the contracts reviewer", replies: [requested("contracts")] },
-			],
+		: scenario === "request"
+			? [
+					{ match: "You are the correctness reviewer", replies: [requested("correctness")] },
+					{ match: "You are the contracts reviewer", replies: [requested("contracts")] },
+				]
+			: [
+					{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+					{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+				],
 );
 const heavy = fake.ref("heavy");
 record(log, { event: "review-started" });
