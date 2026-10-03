@@ -13,7 +13,7 @@ The cli package is the `melian` command. It is the primary host and the only thi
 
 A command line Melian cannot read exits `64`. A review that fails before it has a verdict, such as on a `melian.yaml` that does not parse, exits `2`: nothing was reviewed. `--model provider/id` routes every tier `melian.yaml` leaves unrouted, as `MELIAN_EVAL_MODEL` does for live evals.
 
-A pull request is `#` and its number. Quote it, `melian review '#12'`: an unquoted `#` starts a comment in bash and in zsh scripts, which leaves `review` with no argument. A bare number is not accepted, because `1234` is also an abbreviated commit hash.
+A pull request is `#` and its number. Quote it, `melian review "#12"`: an unquoted `#` starts a comment in bash and in zsh scripts, which leaves `review` with no argument. A bare number is not accepted, because `1234` is also an abbreviated commit hash. Every message that suggests a command quotes it the same way, `melian review "#12"`, and quotes an argument it echoes unless it holds only characters no shell treats specially, so the suggestion can be pasted as it stands.
 
 ## Where policy comes from
 

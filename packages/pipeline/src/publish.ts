@@ -615,7 +615,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 	const context = options.context ?? backgroundContext;
 	const head = pullRequest.head.sha;
 	const where = { pullRequest: pullRequest.number, revision: head };
-	const again = `run melian review '#${pullRequest.number}' first`;
+	const again = `run melian review "#${pullRequest.number}" first`;
 	if (changeset.revision.head !== head) {
 		throw new PublishError(
 			"staleReview",
@@ -626,7 +626,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 	if (changeset.revision.base !== options.base) {
 		throw new PublishError(
 			"staleReview",
-			`pull request #${pullRequest.number} now diffs from ${short(options.base)} on ${pullRequest.base.ref}, but Melian reviewed it from ${short(changeset.revision.base)}; its base branch moved or it was retargeted; run melian review '#${pullRequest.number}' again`,
+			`pull request #${pullRequest.number} now diffs from ${short(options.base)} on ${pullRequest.base.ref}, but Melian reviewed it from ${short(changeset.revision.base)}; its base branch moved or it was retargeted; run melian review "#${pullRequest.number}" again`,
 			where,
 		);
 	}

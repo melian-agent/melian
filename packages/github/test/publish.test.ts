@@ -504,7 +504,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 
 		expect(refused).toBeInstanceOf(PublishError);
 		expect(refused).toMatchObject({ code: "staleReview", pullRequest: 7 });
-		expect((refused as Error).message).toContain("run melian review '#7'");
+		expect((refused as Error).message).toContain('run melian review "#7"');
 		expect(posts(state)).toEqual([]);
 	});
 
@@ -592,7 +592,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(refused).toBeInstanceOf(PublishError);
 		expect(refused).toMatchObject({ code: "staleReview", pullRequest: 7 });
 		expect((refused as Error).message).toContain(`now diffs from ${retargeted.slice(0, 12)} on main`);
-		expect((refused as Error).message).toContain("retargeted; run melian review '#7' again");
+		expect((refused as Error).message).toContain('retargeted; run melian review "#7" again');
 		expect(posts(state)).toEqual([]);
 	});
 });

@@ -8,7 +8,7 @@ export const usageExitCode = 64;
 export const usage = `Usage: melian <command> [options]
 
 Commands:
-  review <range|#pr>     Review a git range, such as main or main...feature, or a pull request, such as '#12'.
+  review <range|#pr>     Review a git range, such as main or main...feature, or a pull request, such as "#12".
                          Exits 0 passed, 1 blocking findings, 2 not reviewed, 3 findings with none blocking.
   publish <#pr>          Post the stored review of the pull request's current head to GitHub.
   findings <range|#pr>   Print the stored review. --open prints only findings that need attention; --json prints JSON.

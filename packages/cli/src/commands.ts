@@ -133,10 +133,17 @@ function short(commit: string): string {
 	return commit.slice(0, 12);
 }
 
+// An argument echoed in a command to run, quoted so it can be pasted into a shell: an unquoted `#` starts a comment.
+function shellQuote(argument: string): string {
+	if (/^[\w@%+=:,./-]+$/.test(argument)) return argument;
+	if (!/["$`\\!]/.test(argument)) return `"${argument}"`;
+	return `'${argument.replace(/'/g, `'\\''`)}'`;
+}
+
 export async function publish(io: Io, argument: string): Promise<number> {
 	const target = parseTarget(argument);
 	if (target.kind !== "pullRequest") {
-		throw new CliError(`publish takes a pull request, such as '#12'; Melian never posts a review of a range`);
+		throw new CliError(`publish takes a pull request, such as "#12"; Melian never posts a review of a range`);
 	}
 	if (isScripted(io.env)) throw new CliError(`publish refuses to run under ${scriptVariable}`);
 	const provider = await gitHubFor(io.cwd, io.env);
@@ -190,7 +197,7 @@ export async function findings(
 			: await resolveRange(io.cwd, target.spec);
 	const path = await storagePath(changeset.repoRoot, changeset.id, isScripted(io.env));
 	const missing = new CliError(
-		`Melian has no review of ${short(changeset.revision.head)}; run melian review ${argument}`,
+		`Melian has no review of ${short(changeset.revision.head)}; run melian review ${shellQuote(argument)}`,
 	);
 	if (!existsSync(path)) throw missing;
 	const harness = await openReviewHarness(await openSqliteStorage(path), idleModels(io.env));

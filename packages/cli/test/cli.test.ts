@@ -181,6 +181,15 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 			status: 1,
 			stderr: expect.stringContaining("run melian review main"),
 		});
+		// Every command a message suggests can be pasted into a shell as it stands.
+		expect(melian(repo, ["findings", "main~0"], env)).toMatchObject({
+			status: 1,
+			stderr: expect.stringContaining('run melian review "main~0"'),
+		});
+		expect(melian(repo, ["findings", "#5"], env)).toMatchObject({
+			status: 1,
+			stderr: expect.stringContaining('run melian review "#5" first'),
+		});
 	});
 });
 

@@ -58,7 +58,9 @@ export async function pullRequestChangeset(cwd: string, number: number): Promise
 		return await asPullRequest(cwd, number);
 	} catch (error) {
 		if (error instanceof ChangesetError && error.code === "unknownRef") {
-			throw new CliError(`Melian has not reviewed pull request #${number} here; run melian review #${number} first`);
+			throw new CliError(
+				`Melian has not reviewed pull request #${number} here; run melian review "#${number}" first`,
+			);
 		}
 		throw error;
 	}
