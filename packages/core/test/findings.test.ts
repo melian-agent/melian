@@ -168,6 +168,7 @@ describe("createFinding", () => {
 			ruleId: "no-eval",
 			level: "error",
 			message: { text: "eval runs request input" },
+			partialFingerprints: { "melian/v1": findingId(evalCall) },
 			locations: [
 				{
 					physicalLocation: {
@@ -267,7 +268,26 @@ describe("a findings log", () => {
 	it("keeps Melian's extensions through a JSON round trip", () => {
 		const parsed = JSON.parse(JSON.stringify(log)) as typeof log;
 		expect(parsed).toEqual(log);
-		expect(parsed.runs[0]!.results.map(parseFinding)).toEqual(log.runs[0]!.results);
+		const findings = parsed.runs[0]!.results.map(({ ruleIndex: _, ...finding }) => parseFinding(finding));
+		expect(findings).toEqual([createFinding(evalInput), createFinding(minimalInput)]);
+	});
+
+	it("lists each rule once and points every result at its rule", () => {
+		const twice = createFindingsLog([
+			createFinding(evalInput),
+			createFinding(minimalInput),
+			createFinding(evalInput),
+		]);
+		const [run] = twice.runs;
+		expect(run!.tool.driver.rules).toEqual([{ id: "no-eval" }, { id: "prefer-const" }]);
+		for (const result of run!.results) expect(run!.tool.driver.rules[result.ruleIndex]!.id).toBe(result.ruleId);
+		expect(Schema.Errors(sarifSchema, twice)[1]).toEqual([]);
+	});
+
+	it("carries each finding's ID as a partial fingerprint for GitHub code scanning", () => {
+		for (const result of log.runs[0]!.results) {
+			expect(result.partialFingerprints).toEqual({ "melian/v1": result.properties.id });
+		}
 	});
 
 	it.each([
@@ -391,6 +411,12 @@ describe("parseFinding", () => {
 		const error = rejection({ ...finding, level: "warning" });
 		expect(error.code).toBe("levelMismatch");
 		expect(error.message).toBe("a P1 finding has level error, not warning");
+	});
+
+	it("rejects a fingerprint that is not the finding's ID", () => {
+		const error = rejection({ ...finding, partialFingerprints: { "melian/v1": "0123456789abcdef" } });
+		expect(error.code).toBe("idMismatch");
+		expect(error.path).toBe("/partialFingerprints/melian~1v1");
 	});
 
 	it("rejects an ID that is not the finding's stable ID", () => {

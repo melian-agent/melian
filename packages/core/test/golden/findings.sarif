@@ -6,15 +6,33 @@
       "tool": {
         "driver": {
           "name": "Melian",
-          "informationUri": "https://github.com/melian-agent/melian"
+          "informationUri": "https://github.com/melian-agent/melian",
+          "rules": [
+            {
+              "id": "no-eval"
+            },
+            {
+              "id": "prefer-const"
+            },
+            {
+              "id": "sql-injection"
+            },
+            {
+              "id": "unchecked-result"
+            }
+          ]
         }
       },
       "results": [
         {
           "ruleId": "unchecked-result",
+          "ruleIndex": 3,
           "level": "note",
           "message": {
             "text": "The write's result is ignored"
+          },
+          "partialFingerprints": {
+            "melian/v1": "7fed6713d9590c08"
           },
           "locations": [
             {
@@ -55,9 +73,13 @@
         },
         {
           "ruleId": "prefer-const",
+          "ruleIndex": 1,
           "level": "note",
           "message": {
             "text": "total is never reassigned"
+          },
+          "partialFingerprints": {
+            "melian/v1": "6c2db0f8d5f03223"
           },
           "locations": [
             {
@@ -91,9 +113,13 @@
         },
         {
           "ruleId": "sql-injection",
+          "ruleIndex": 2,
           "level": "error",
           "message": {
             "text": "The query interpolates the user's name"
+          },
+          "partialFingerprints": {
+            "melian/v1": "61adbcd1835a3243"
           },
           "locations": [
             {
@@ -139,9 +165,13 @@
         },
         {
           "ruleId": "no-eval",
+          "ruleIndex": 0,
           "level": "error",
           "message": {
             "text": "eval runs a stored template"
+          },
+          "partialFingerprints": {
+            "melian/v1": "7285ec9fe0f6275b"
           },
           "locations": [
             {
@@ -187,9 +217,13 @@
         },
         {
           "ruleId": "no-eval",
+          "ruleIndex": 0,
           "level": "error",
           "message": {
             "text": "eval runs request input"
+          },
+          "partialFingerprints": {
+            "melian/v1": "c0dc5445aa6ee891"
           },
           "locations": [
             {

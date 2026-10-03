@@ -62,6 +62,7 @@ export {
 	findingStatusSchema,
 	findingsLogSchema,
 	findingTriggerSchema,
+	fingerprintKey,
 	type LocationCause,
 	levelForSeverity,
 	normaliseSnippet,

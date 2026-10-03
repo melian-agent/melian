@@ -8,6 +8,10 @@ const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
 const line = Type.Integer({ minimum: 1 });
 const count = Type.Integer({ minimum: 0 });
+const idSchema = Type.String({ pattern: "^[0-9a-f]{16}$" });
+
+/** The `partialFingerprints` key under which a SARIF result carries Melian's stable ID. */
+export const fingerprintKey = "melian/v1";
 
 /** The JSON Schema of a SARIF `level`. Melian never emits `none`, which SARIF reserves for results that are not failures. */
 export const sarifLevelSchema = Type.Union([Type.Literal("error"), Type.Literal("warning"), Type.Literal("note")]);
@@ -43,7 +47,7 @@ export const findingSourceSchema = Type.Object({ check: text, version: Type.Opti
 /** The JSON Schema of {@link FindingProperties}. Unknown keys are rejected, so a misspelt optional key is not lost. */
 export const findingPropertiesSchema = Type.Object(
 	{
-		id: Type.String({ pattern: "^[0-9a-f]{16}$" }),
+		id: idSchema,
 		path: text,
 		occurrence: Type.Optional(count),
 		discriminator: Type.Optional(text),
@@ -90,10 +94,13 @@ export const findingSchema = Type.Object(
 		level: sarifLevelSchema,
 		message: Type.Object({ text }, strict),
 		locations: Type.Array(findingLocationSchema, { minItems: 1 }),
+		partialFingerprints: Type.Object({ [fingerprintKey]: idSchema }, strict),
 		properties: findingPropertiesSchema,
 	},
 	strict,
 );
+
+const logResultSchema = Type.Object({ ...findingSchema.properties, ruleIndex: count }, strict);
 
 /** The URI of the SARIF 2.1.0 JSON Schema, as `$schema` in a {@link FindingsLog}. */
 export const sarifSchemaUri = "https://json.schemastore.org/sarif-2.1.0.json";
@@ -109,13 +116,17 @@ export const findingsLogSchema = Type.Object(
 					tool: Type.Object(
 						{
 							driver: Type.Object(
-								{ name: Type.Literal("Melian"), informationUri: Type.Optional(Type.String()) },
+								{
+									name: Type.Literal("Melian"),
+									informationUri: Type.Optional(Type.String()),
+									rules: Type.Array(Type.Object({ id: text }, strict)),
+								},
 								strict,
 							),
 						},
 						strict,
 					),
-					results: Type.Array(findingSchema),
+					results: Type.Array(logResultSchema),
 				},
 				strict,
 			),
@@ -171,7 +182,10 @@ export type FindingLocation = Static<typeof findingLocationSchema>;
  */
 export type Finding = Static<typeof findingSchema>;
 
-/** A SARIF 2.1.0 log of one Melian run. */
+/**
+ * A SARIF 2.1.0 log of one Melian run. The driver lists each rule once, and each result names its rule by `ruleIndex`
+ * as well as `ruleId`, which GitHub code scanning reads for rule metadata.
+ */
 export type FindingsLog = Static<typeof findingsLogSchema>;
 
 // The repository-relative posix form of a path: `./src//run.ts` becomes `src/run.ts`. Refuses what is not one.
@@ -415,6 +429,7 @@ export function createFinding(input: FindingInput): Finding {
 		ruleId: rule,
 		level: levelForSeverity(input.severity),
 		message: { text: input.message },
+		partialFingerprints: { [fingerprintKey]: id },
 		locations: [
 			{
 				physicalLocation: {
@@ -519,18 +534,30 @@ export function parseFinding(input: unknown): Finding {
 	if (id !== expected) {
 		throw new FindingError("idMismatch", `finding ${id} should have ID ${expected}`, { path: "/properties/id" });
 	}
+	if (finding.partialFingerprints[fingerprintKey] !== id) {
+		throw new FindingError("idMismatch", `finding ${id} has a different ${fingerprintKey} fingerprint`, {
+			path: "/partialFingerprints/melian~1v1",
+		});
+	}
 	return finding;
 }
 
-/** Wraps findings in a SARIF 2.1.0 log of one Melian run. */
+/** Wraps findings in a SARIF 2.1.0 log of one Melian run, listing each rule once in the driver. */
 export function createFindingsLog(findings: readonly Finding[]): FindingsLog {
+	const rules = [...new Set(findings.map((finding) => finding.ruleId))].sort();
 	return {
 		$schema: sarifSchemaUri,
 		version: "2.1.0",
 		runs: [
 			{
-				tool: { driver: { name: "Melian", informationUri: "https://github.com/melian-agent/melian" } },
-				results: [...findings],
+				tool: {
+					driver: {
+						name: "Melian",
+						informationUri: "https://github.com/melian-agent/melian",
+						rules: rules.map((id) => ({ id })),
+					},
+				},
+				results: findings.map(({ ruleId, ...rest }) => ({ ruleId, ruleIndex: rules.indexOf(ruleId), ...rest })),
 			},
 		],
 	};
