@@ -91,6 +91,14 @@ describe("createReviewModels", () => {
 		expect(await createReviewModels({ authPath }).checkAuth("anthropic")).toMatchObject({ type: "api_key" });
 	});
 
+	it("treats a login inside pi-ai's refresh window as absent, since using it would need a refresh", async () => {
+		store({ anthropic: { type: "oauth", access: "a", refresh: "r", expires: Date.now() + 4 * 60_000 } });
+		expect(await piCredentialStore(authPath).read("anthropic")).toBeUndefined();
+		expect(await createReviewModels({ authPath }).checkAuth("anthropic")).toBeUndefined();
+		store({ anthropic: { type: "oauth", access: "a", refresh: "r", expires: Date.now() + 6 * 60_000 } });
+		expect(await piCredentialStore(authPath).read("anthropic")).toBeUndefined();
+	});
+
 	it("serves a login that has not expired", async () => {
 		const live = { type: "oauth", access: "a", refresh: "r", expires: Date.now() + 3_600_000 };
 		store({ anthropic: live });
