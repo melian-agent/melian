@@ -1,3 +1,4 @@
+import { analyserOf, switchOffs } from "./analyser.ts";
 import type { Revision } from "./changeset.ts";
 import { type ConfigLookup, configLookup, type MelianConfig, type Severity } from "./config.ts";
 import type { ChangedFile, Hunk } from "./diff.ts";
@@ -144,18 +145,49 @@ async function requiredFiles(paths: readonly string[], configFor: ConfigLookup):
 	return [...hits.values()];
 }
 
-// Every policy file the revision lists, and every touched path its own configuration adds to the list.
+// Every policy file the revision lists, and every touched path its own configuration adds to the list. A change to an
+// analyser's configuration blocks by default: the head's copy drives the run that judges the head, so a switched-off
+// check would otherwise read as a clean one.
 function policyChanges(
-	revision: Revision,
+	input: GuardrailInput,
 	paths: readonly string[],
 	configFor: (path: string) => Promise<MelianConfig>,
 ): Promise<Hit[]> {
+	const { revision, repoRoot } = input;
+	const changed = revision.files.map((file) => file.path);
 	return Promise.all(
 		paths.map(async (path): Promise<Hit | undefined> => {
 			const config = await configFor(path);
 			const guardrail = config.guardrails["policy-change-review"];
 			if (!guardrail.enabled) return undefined;
-			if (!revision.policyFiles.includes(path) && !matchesGlobs(guardrail.files, path)) return undefined;
+			const added = matchesGlobs(guardrail.files, path);
+			if (!revision.policyFiles.includes(path) && !added) return undefined;
+			const analyser = analyserOf(path) ?? (added ? "an analyser this repository configures" : undefined);
+			if (analyser !== undefined) {
+				const [base, head] = await Promise.all([
+					blobText(repoRoot, revision.base, path),
+					blobText(repoRoot, revision.head, path),
+				]);
+				// A file too large to read is reported without the detail.
+				const text = (blob: { text?: string; why?: string }) =>
+					blob.text ?? (blob.why === "absent" ? undefined : "");
+				const switched = switchOffs(path, text(base), text(head), changed);
+				return {
+					guardrail: "policy-change-review",
+					file: path,
+					line: 1,
+					discriminator: "analyser",
+					config,
+					severity: guardrail.analyserSeverity,
+					message: `Review the change to ${path}, which configures ${analyser}.`,
+					explanation: {
+						what: [`This revision changes ${path}, which configures ${analyser}.`, ...switched].join(" "),
+						whyHere:
+							"The head's configuration drives the static run on the head, so this change decides how the head's own results are judged, and a switched-off check reads as a clean one.",
+						whatToDo: `Have a maintainer read the change to ${path}, or land it in its own pull request first.`,
+					},
+				};
+			}
 			return {
 				guardrail: "policy-change-review",
 				file: path,
@@ -337,7 +369,7 @@ export async function evaluateGuardrails(input: GuardrailInput): Promise<CheckRe
 		...(await forbiddenPaths(paths, configFor)),
 		...(await requiredFiles(paths, configFor)),
 		...(await forbiddenPatterns(input, configFor, notes)),
-		...(await policyChanges(input.revision, paths, configFor)),
+		...(await policyChanges(input, paths, configFor)),
 	];
 	return { findings: hits.map(finding), notes };
 }

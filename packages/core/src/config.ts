@@ -128,6 +128,7 @@ export const melianYamlSchema = Type.Object(
 							{
 								enabled: Type.Optional(Type.Boolean()),
 								severity: Type.Optional(severitySchema),
+								analyserSeverity: Type.Optional(severitySchema),
 								files: Type.Optional(globs),
 							},
 							strict,
@@ -239,12 +240,14 @@ export interface GuardrailSettings {
 }
 
 /**
- * Which policy changes ask for a maintainer's review. `files` are repository-relative globs once loaded, added to the
- * policy and tool configuration files every revision lists in `policyFiles`.
+ * Which policy changes ask for a maintainer's review. `severity` applies to `melian.yaml` and the standards files;
+ * `analyserSeverity` to a static tool's configuration, which blocks by default. `files` are repository-relative globs
+ * once loaded, more analyser configuration added to the built-in names.
  */
 export interface PolicyChangeReview {
 	readonly enabled: boolean;
 	readonly severity: Severity;
+	readonly analyserSeverity: Severity;
 	readonly files: readonly string[];
 }
 
@@ -280,7 +283,7 @@ export const defaultConfig: MelianConfig = {
 		"forbidden-paths": { enabled: true, severity: "P1", rules: {} },
 		"required-files": { enabled: true, severity: "P2", rules: {} },
 		"forbidden-patterns": { enabled: true, severity: "P2", rules: {} },
-		"policy-change-review": { enabled: true, severity: "P2", files: [] },
+		"policy-change-review": { enabled: true, severity: "P2", analyserSeverity: "P1", files: [] },
 	},
 	knowledge: { writeBack: false },
 	decisions: { thresholds: {} },

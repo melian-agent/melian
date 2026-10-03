@@ -208,6 +208,8 @@ stages:
 
 Melian exposes `melian run <tier>` and `melian run --stage <name>`. It never installs git hooks. Recipes ship for lefthook, pre-commit, husky, and Pi.
 
+A change to an analyser's configuration, such as `tsconfig.json` or `biome.json`, is a blocking policy finding: the head's configuration still drives the head's run, and the finding stops a switched-off check reading as clean.
+
 The fast tier must finish in seconds. It runs guardrails, static tools, and decision-model questions such as "does this diff disable a test", "does this change a public contract", "does this touch auth or billing". No LLM runs in the fast tier.
 
 The decision-model questions ship enabled by default. When no decision provider is configured, the fast tier degrades silently to guardrails and static tools and prints one line saying semantic checks are off and how to enable them; `melian doctor` reports the same. Bundling a local decision model is not an option for a default, since even Clef-flash is a 9B-parameter model, and the LLM fallback provider is never used in the fast tier because the tier's contract is that nothing slow runs in it.
@@ -357,7 +359,7 @@ Existing code on the base branch is trusted. Submitted changes and comments are 
 - Read-only analysis of the head is fine anywhere.
 - Anything that executes head code runs in a sandbox with no secrets. That includes static tools that load repository-controlled plugins, such as eslint configurations.
 - Static tools, such as Biome and tsc, execute in the execution environment, never in the Melian process, because they load the repository's configuration and plugins. Each runs in a temporary worktree of the revision it analyses, never in the user's checkout.
-- A static tool's configuration is policy: the head's copy still drives the head's run, and policy-change-review reports every change to it, from a default list a `melian.yaml` can extend.
+- A static tool's configuration is policy: the head's copy still drives the head's run, and policy-change-review reports every change to it as blocking, from a default list a `melian.yaml` can extend.
 - A static tool's binary never comes from the revision's tree: it is the checkout's lockfile install or Melian's own, and a `node_modules` the revision tracks is ignored and noted.
 - Comment commands require write permission on the repository. Comment bodies enter prompts as quoted data behind an injection guard section.
 - Lenses are read-only in version one and never hold write credentials.
@@ -509,6 +511,7 @@ docs/
 | Lens-reported findings | Lens supplies location, rule from its declared list, severity, explanation, evidence; Melian derives snippet from the head revision and everything else | Identity must not depend on the model's wording |
 | Findings ownership | The changeset's root conversation, never a lens's child conversation | A fork of the root at any revision must carry the findings; a lens conversation ends with its task |
 | Static tool binaries | Never from the revision's tree; checkout's lockfile install or Melian's own | A head must not supply the tool that judges it |
+| Analyser configuration changes | Blocking policy finding, head config still runs | A head must not switch off the checks reviewing it |
 
 ## Open questions
 

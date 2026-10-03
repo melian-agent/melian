@@ -410,6 +410,52 @@ describe("policy-change-review", () => {
 		]);
 	});
 
+	it("blocks a change to an analyser's configuration, naming what it switches off", async () => {
+		const { findings } = await guardrails(
+			{
+				"melian.yaml": lines("guardrails:", "  policy-change-review:", "    severity: P2"),
+				"tsconfig.json": lines("{", '  "compilerOptions": { "strict": true }', "}"),
+				"tsconfig.build.json": lines("{}"),
+				"web/biome.jsonc": lines("{", '  "linter": { "enabled": true }', "}"),
+				"web/src/a.ts": lines("a"),
+			},
+			{
+				"tsconfig.json": lines(
+					"{",
+					"  // the head turns checking off",
+					'  "compilerOptions": { "strict": true, "noCheck": true, "skipLibCheck": true, },',
+					"}",
+				),
+				"web/biome.jsonc": lines(
+					"{",
+					'  "linter": { "enabled": false },',
+					'  "files": { "includes": ["**", "!src"] }',
+					"}",
+				),
+				"web/src/a.ts": lines("b"),
+			},
+			["tsconfig.build.json"],
+		);
+		const policy = findings.filter((finding) => finding.ruleId === "guardrail/policy-change-review");
+		expect(
+			policy.map((finding) => [
+				finding.properties.path,
+				finding.properties.severity,
+				finding.properties.resolution,
+				finding.message.text,
+			]),
+		).toEqual([
+			["tsconfig.build.json", "P1", "block", "Review the change to tsconfig.build.json, which configures tsc."],
+			["tsconfig.json", "P1", "block", "Review the change to tsconfig.json, which configures tsc."],
+			["web/biome.jsonc", "P1", "block", "Review the change to web/biome.jsonc, which configures Biome."],
+		]);
+		expect(policy.map((finding) => finding.properties.explanation.what)).toEqual([
+			"This revision changes tsconfig.build.json, which configures tsc. The head deletes tsconfig.build.json.",
+			"This revision changes tsconfig.json, which configures tsc. It turns on noCheck. It turns on skipLibCheck.",
+			"This revision changes web/biome.jsonc, which configures Biome. It turns Biome's linter off. It makes Biome ignore src/a.ts, which this change touches.",
+		]);
+	});
+
 	it("follows the configured severity and can be turned off", async () => {
 		const { findings } = await guardrails(
 			{
