@@ -293,7 +293,7 @@ export interface GoldenScore {
 	readonly golden: string;
 	readonly expected: number;
 	readonly reported: number;
-	/** Reported findings that match an expected finding. */
+	/** Reported findings that match an expected finding no earlier reported finding matched. */
 	readonly truePositives: number;
 	/** Expected findings that some reported finding matches. */
 	readonly found: number;
@@ -307,13 +307,16 @@ function key(file: string, rule: string): string {
 	return `${file}\0${rule}`;
 }
 
-/** Scores one review against its golden, matching on file and rule. */
+/**
+ * Scores one review against its golden, matching on file and rule. Each expected finding counts as found once: a
+ * second reported finding matching the same expectation is a false positive, since it is the same defect reported twice.
+ */
 export function scoreGolden(golden: Golden, findings: readonly Finding[]): GoldenScore {
 	const expected = new Set(golden.expected.comments.map((comment) => key(comment.file, comment.rule)));
 	const reported = findings.map((finding) =>
 		key(finding.properties.path ?? finding.locations[0]!.physicalLocation.artifactLocation.uri, finding.ruleId),
 	);
-	const truePositives = reported.filter((each) => expected.has(each)).length;
+	const truePositives = new Set(reported.filter((each) => expected.has(each))).size;
 	const found = [...expected].filter((each) => reported.includes(each)).length;
 	return {
 		golden: golden.name,

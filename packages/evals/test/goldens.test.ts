@@ -79,6 +79,15 @@ describe("scoreGolden", () => {
 		expect(scoreGolden(nullDeref!, [])).toMatchObject({ precision: 1, recall: 0 });
 	});
 
+	it("counts a second finding matching one expectation as a false positive", () => {
+		expect(
+			scoreGolden(nullDeref!, [
+				finding("src/user.ts", "null-dereference"),
+				finding("src/user.ts", "null-dereference"),
+			]),
+		).toMatchObject({ truePositives: 1, found: 1, precision: 0.5, recall: 1 });
+	});
+
 	it("averages over every finding in the corpus, not per golden", () => {
 		const scores = [
 			scoreGolden(nullDeref!, [finding("src/user.ts", "null-dereference")]),

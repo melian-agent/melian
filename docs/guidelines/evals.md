@@ -56,7 +56,7 @@ Credentials resolve as in a review: Pi's login, then the provider's environment 
 
 ## Scoring
 
-A reported finding matches an expected one when both name the same file and rule. Precision is matched findings over reported findings; recall is expected findings found over expected findings. A golden with nothing expected has recall 1, and one with nothing reported has precision 1. `scoreCorpus` sums the counts across goldens before dividing, so a golden with many findings weighs more than a clean one.
+A reported finding matches an expected one when both name the same file and rule. Each expected finding is a true positive at most once: a second reported finding matching an expectation already matched is a false positive, because it reports one defect twice. Precision is true positives over reported findings; recall is expected findings found over expected findings. A golden with nothing expected has recall 1, and one with nothing reported has precision 1. `scoreCorpus` sums the counts across goldens before dividing, so a golden with many findings weighs more than a clean one.
 
 File and rule is a coarse match. Two findings under one rule in one file count as one expected finding found, and a finding on the right file and rule but the wrong line still matches. Martian's judge compares comment text; run it when the match needs to be semantic.
 
