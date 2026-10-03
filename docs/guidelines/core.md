@@ -4,7 +4,7 @@ The core package holds the review domain: changesets, configuration, standards, 
 
 ## Harness-free
 
-Core imports nothing from Pi Durable, Chord, or another Melian package. The design permits pi-ai's types; nothing needs them yet. `packages/core/test/harness-free.test.ts` fails the gate if core imports Pi or a Melian package, and so does the pipeline's `test/harness-boundary.test.ts` for Pi. Widen both in the change that first needs pi-ai's types, and import types only.
+Core imports nothing from Pi Durable, Chord, or another Melian package. The design permits pi-ai's types; nothing needs them yet. `packages/core/test/harness-free.test.ts` fails the gate if core imports Pi or a Melian package, and so does the pipeline's `test/harness-boundary.test.ts` for Pi. Both match every import form, `from`, a side-effect `import "x"`, `import()` with any quote, and `require`, in `.ts`, `.mts`, `.cts`, and JavaScript files alike; a guard that knows only `from` lets `import("@earendil-works/pi-ai")` through. Widen both in the change that first needs pi-ai's types, and import types only.
 
 Problem: a domain rule written against the harness can only be tested through the harness. Example: checking that a `P2` finding needs acknowledgement would mean opening a durable session. Solution: core takes plain values and returns plain values; the pipeline feeds it and stores what it returns.
 
