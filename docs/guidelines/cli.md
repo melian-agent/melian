@@ -59,7 +59,7 @@ Node 22 prints `ExperimentalWarning: SQLite is an experimental feature` on every
 
 The skills under `skills/` are how a coding agent calls Melian: `skills/claude-code/`, `skills/codex/`, and `skills/pi/`, each an Agent Skills directory whose `SKILL.md` runs `melian` and relays what it prints. They never review with the host's own model, reimplement a check, or read storage. `melian doctor` is the only command a skill runs without a trigger, and `melian publish` runs only when the user says to. The three files differ only where their hosts do: Claude Code's pre-approves `melian doctor` and sets the Bash tool's timeout.
 
-`test/skills.test.ts` checks each skill's front matter and that every `melian <command>` in it is one `usage` lists, so a renamed command fails the gate rather than a skill.
+`test/skills.test.ts` checks each skill's front matter, that every `melian <command>` in it and every option it passes is one `usage` lists, that its exit-code table matches `review`'s, and that the Codex and Pi skills are identical. A renamed command or option fails the gate rather than a skill.
 
 To install a skill, first put `melian` on `PATH`: in a clone of Melian, `npm ci --ignore-scripts && npm run build`, then `npm link` in `packages/cli`.
 

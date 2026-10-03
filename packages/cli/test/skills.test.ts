@@ -24,12 +24,21 @@ function skill(host: string) {
 // The commands `melian --help` lists, such as review and doctor.
 const commands = new Set([...usage.split("\n\n")[1]!.matchAll(/^ {2}([a-z]+) /gm)].map((match) => match[1]!));
 
-// Every `melian <command>` in the skill's code: inline spans, fenced blocks, and allowed-tools.
-function invoked(text: string): string[] {
+// The options `melian --help` lists, such as --rerun and --model.
+const options = new Set([...usage.split("\n\n")[2]!.matchAll(/--[a-z][a-z-]*/g)].map((match) => match[0]));
+
+// Every `melian <command>` in the skill's code, with the options that follow it on its line: inline spans, fenced
+// blocks, and allowed-tools.
+function invoked(text: string): { command: string; options: string[] }[] {
 	const code = [...text.matchAll(/```[a-z]*\n([\s\S]*?)```|`([^`\n]+)`|Bash\(([^)]+)\)/g)].map(
 		(match) => match[1] ?? match[2] ?? match[3]!,
 	);
-	return code.flatMap((span) => [...span.matchAll(/(?:^|[ \t])melian[ \t]+([a-z][a-z-]*)/gm)].map((m) => m[1]!));
+	return code.flatMap((span) =>
+		[...span.matchAll(/(?:^|[ \t])melian[ \t]+([a-z][a-z-]*)(.*)$/gm)].map((m) => ({
+			command: m[1]!,
+			options: [...m[2]!.matchAll(/(?:^|[ \t])(--[a-z][a-z-]*)/g)].map((option) => option[1]!),
+		})),
+	);
 }
 
 describe.each(hosts)("skills/%s/SKILL.md", (host) => {
@@ -44,10 +53,14 @@ describe.each(hosts)("skills/%s/SKILL.md", (host) => {
 		expect(fields.description).toMatch(/what Melian thinks/);
 	});
 
-	it("runs only commands the melian CLI has", () => {
+	it("runs only commands and options the melian CLI has", () => {
 		const used = invoked(`${fields["allowed-tools"] ?? ""}\n${body}`);
-		expect(new Set(used)).toEqual(new Set(["doctor", "review", "findings", "publish"]));
-		for (const command of used) expect(commands).toContain(command);
+		const names = used.map((each) => each.command);
+		expect(new Set(names)).toEqual(new Set(["doctor", "review", "findings", "publish"]));
+		for (const command of names) expect(commands).toContain(command);
+		const passed = used.flatMap((each) => each.options);
+		expect(new Set(passed)).toEqual(new Set(["--rerun"]));
+		for (const option of passed) expect(options).toContain(option);
 	});
 
 	it("reads the exit codes melian review and the command line end with", () => {
