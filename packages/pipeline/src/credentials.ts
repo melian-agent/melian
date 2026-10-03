@@ -10,8 +10,8 @@ import {
 	type CredentialStore,
 	createProviderModels,
 	defaultProviderAuthContext,
-	type Models,
 } from "./harness.ts";
+import { type ReviewModels, wrapModels } from "./models.ts";
 
 /**
  * Where Pi keeps the credentials `/login` saves: `auth.json` in Pi's agent directory, which is `PI_CODING_AGENT_DIR`
@@ -133,6 +133,6 @@ function reviewAuthContext(): AuthContext {
  * credential store first and its environment variables second, as pi-ai does. `CLAUDE_CODE_OAUTH_TOKEN` stands in
  * for an unset `ANTHROPIC_OAUTH_TOKEN`. `authPath` overrides where the store is.
  */
-export function createReviewModels(options: { readonly authPath?: string } = {}): Models {
-	return createProviderModels(piCredentialStore(options.authPath), reviewAuthContext());
+export function createReviewModels(options: { readonly authPath?: string } = {}): ReviewModels {
+	return wrapModels(createProviderModels(piCredentialStore(options.authPath), reviewAuthContext()));
 }

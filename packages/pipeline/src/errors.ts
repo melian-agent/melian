@@ -17,27 +17,41 @@ export class PiCredentialsError extends Error {
 }
 
 /** Why a review could not run or finish. */
-export type ReviewErrorCode = "noAvailableModel" | "notInstalled" | "lensFailed" | "adjudicationFailed";
+export type ReviewErrorCode =
+	| "noAvailableModel"
+	| "notInstalled"
+	| "lensFailed"
+	| "allModelsFailed"
+	| "adjudicationFailed";
 
 /**
- * A review could not run or finish. `lenses` names the lenses involved; `findings` holds what was reported anyway; and
- * `verdict`, when adjudication ran, is the `not-reviewed` verdict it recorded.
+ * A review could not run or finish. `lenses` names the lenses involved, `models` the models tried when every model of
+ * a tier failed, and `findings` what was reported anyway. `verdict`, when adjudication ran, is the `not-reviewed`
+ * verdict it recorded.
  */
 export class ReviewError extends Error {
 	readonly code: ReviewErrorCode;
 	readonly lenses: readonly string[];
+	readonly models: readonly string[];
 	readonly findings: readonly Finding[];
 	readonly verdict?: Verdict;
 
 	constructor(
 		code: ReviewErrorCode,
 		message: string,
-		options: { lenses: readonly string[]; findings?: readonly Finding[]; verdict?: Verdict; cause?: unknown },
+		options: {
+			lenses: readonly string[];
+			models?: readonly string[];
+			findings?: readonly Finding[];
+			verdict?: Verdict;
+			cause?: unknown;
+		},
 	) {
 		super(message, { cause: options.cause });
 		this.name = "ReviewError";
 		this.code = code;
 		this.lenses = options.lenses;
+		this.models = options.models ?? [];
 		this.findings = options.findings ?? [];
 		if (options.verdict !== undefined) this.verdict = options.verdict;
 	}

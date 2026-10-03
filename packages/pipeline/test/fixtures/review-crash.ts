@@ -1,5 +1,6 @@
-// Runs a review in its own process until report_finding has committed, then parks so the parent can SIGKILL it before
-// the tool's result is stored. The lens's budget is one finding, so the review is at its full budget when it dies.
+// Runs a review in its own process and parks so the parent can SIGKILL it. `finding` parks once report_finding has
+// committed, before the tool's result is stored, with the lens at its full budget of one finding. `request` parks in
+// each lens's first model request.
 import { defaultConfig, loadLenses, resolveRange } from "@melian-agent/core";
 import {
 	backgroundContext,
@@ -15,7 +16,8 @@ import { createFakeModels, fauxAssistantMessage, fauxToolCall, scriptConversatio
 import { isolatedGitEnv } from "./repo.ts";
 import { crashFinding, crashLenses, record } from "./review-scenario.ts";
 
-const [repo, database, log] = process.argv.slice(2) as [string, string, string];
+const [scenario, repo, database, log] = process.argv.slice(2) as ["finding" | "request", string, string, string];
+const park = () => new Promise<never>(() => setInterval(() => {}, 60_000));
 Object.assign(process.env, isolatedGitEnv);
 
 const parkedReport = defineTool({
@@ -23,7 +25,7 @@ const parkedReport = defineTool({
 	execute: async (args, api, context) => {
 		const result = await reportFinding.execute(args, api, context);
 		record(log, { event: "finding-committed" });
-		await new Promise(() => setInterval(() => {}, 60_000));
+		await park();
 		return result;
 	},
 });
@@ -42,13 +44,25 @@ const harness = await openHarness(await openSqliteStorage(database), {
 	settings: { retry: { enabled: false } },
 });
 await harness.root(backgroundContext, { agent: { model: fake.ref("orchestrator") } });
-scriptConversations(fake, [
-	{
-		match: "You are the correctness reviewer",
-		replies: [fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" })],
-	},
-	{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
-]);
+const requested = (lens: string) => () => {
+	record(log, { event: "model-request", lens });
+	return park();
+};
+scriptConversations(
+	fake,
+	scenario === "finding"
+		? [
+				{
+					match: "You are the correctness reviewer",
+					replies: [fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" })],
+				},
+				{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+			]
+		: [
+				{ match: "You are the correctness reviewer", replies: [requested("correctness")] },
+				{ match: "You are the contracts reviewer", replies: [requested("contracts")] },
+			],
+);
 const heavy = fake.ref("heavy");
 record(log, { event: "review-started" });
 await reviewChangeset({
@@ -57,5 +71,5 @@ await reviewChangeset({
 	config: { ...defaultConfig, models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } } },
 	lenses: crashLenses(await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"])),
 	standards: [],
-	models: fake.models,
+	models: fake.review,
 });

@@ -1,7 +1,27 @@
 {
   "correctness": [
-    { "calls": [{ "name": "read_file", "arguments": { "path": "src/user.ts" } }] },
-    { "calls": [{ "name": "search", "arguments": { "pattern": "managerName(" } }] },
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/user.ts"
+          },
+          "expectToolResult": "export function managerName"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "search",
+          "arguments": {
+            "pattern": "managerName("
+          },
+          "expectToolResult": "src/org-chart.ts:4:"
+        }
+      ]
+    },
     {
       "calls": [
         {
@@ -17,11 +37,18 @@
               "why": "The base guarded with ?. and fell back to \"none\"; this change removes the guard, so describe() throws for any user without a manager.",
               "fix": "Keep the optional chain: return user.manager?.name.trim() ?? \"none\"."
             }
-          }
+          },
+          "expectToolResult": "recorded finding"
         }
       ]
     },
-    { "text": "Reported 1 finding." }
+    {
+      "text": "Reported 1 finding."
+    }
   ],
-  "contracts": [{ "text": "Reported 0 findings." }]
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ]
 }

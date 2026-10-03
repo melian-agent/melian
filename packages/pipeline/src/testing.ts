@@ -15,6 +15,7 @@ import {
 } from "@earendil-works/pi-ai";
 import { createModels } from "@earendil-works/pi-ai/models";
 import type { HarnessOptions, ModelRef } from "./harness.ts";
+import { type ReviewModels, wrapModels } from "./models.ts";
 
 export { type FauxProviderHandle, fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
 
@@ -22,6 +23,8 @@ export { type FauxProviderHandle, fauxAssistantMessage, fauxToolCall } from "@ea
 export type FakeModels = {
 	readonly models: HarnessOptions["models"];
 	readonly provider: FauxProviderHandle;
+	/** The same collection as `models`, as the handle `reviewChangeset` and `openReviewHarness` take. */
+	readonly review: ReviewModels;
 	/** The reference a conversation's agent uses to select `modelId`, or the first model. */
 	ref(modelId?: string): ModelRef;
 };
@@ -34,6 +37,7 @@ export function createFakeModels(options?: RegisterFauxProviderOptions): FakeMod
 	return {
 		models,
 		provider,
+		review: wrapModels(models),
 		ref(modelId) {
 			const model: Model<string> | undefined =
 				modelId === undefined ? provider.getModel() : provider.getModel(modelId);
@@ -43,8 +47,13 @@ export function createFakeModels(options?: RegisterFauxProviderOptions): FakeMod
 	};
 }
 
-/** One scripted reply: a message, or a function of the messages the model was sent. */
-export type ScriptedReply = AssistantMessage | ((messages: readonly Message[]) => AssistantMessage);
+/**
+ * One scripted reply: a message, or a function of the messages the model was sent and the model's ID, which may return
+ * a promise, such as one that never settles to hold a request open.
+ */
+export type ScriptedReply =
+	| AssistantMessage
+	| ((messages: readonly Message[], modelId: string) => AssistantMessage | Promise<AssistantMessage>);
 
 /** The replies for every conversation whose system prompt contains `match`, in order. */
 export type ConversationScript = { readonly match: string; readonly replies: readonly ScriptedReply[] };
@@ -83,7 +92,12 @@ export function scriptConversations(
 	scripts: readonly ConversationScript[],
 ): Record<string, Message[][]> {
 	const requests: Record<string, Message[][]> = Object.fromEntries(scripts.map((script) => [script.match, []]));
-	const respond = (context: { readonly messages: readonly Message[] }): AssistantMessage => {
+	const respond = (
+		context: { readonly messages: readonly Message[] },
+		_options: unknown,
+		_state: unknown,
+		model: Model<string>,
+	): AssistantMessage | Promise<AssistantMessage> => {
 		const prompt = systemPromptOf(context.messages);
 		const script = scripts.find((each) => prompt.includes(each.match));
 		if (script === undefined) return fauxAssistantMessage("", { stopReason: "error", errorMessage: "no script" });
@@ -93,7 +107,7 @@ export function scriptConversations(
 		if (reply === undefined) {
 			return fauxAssistantMessage("", { stopReason: "error", errorMessage: `script "${script.match}" ran out` });
 		}
-		return typeof reply === "function" ? reply(context.messages) : reply;
+		return typeof reply === "function" ? reply(context.messages, model.id) : reply;
 	};
 	const total = scripts.reduce((sum, script) => sum + script.replies.length, 0);
 	fake.provider.setResponses(Array.from({ length: total + scripts.length + 8 }, () => respond));

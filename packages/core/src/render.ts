@@ -24,7 +24,12 @@ function ordinal(a: string, b: string): number {
 // sequences that rewrite the terminal or bidi overrides that reorder what it shows. Print each as a visible \uXXXX.
 const unsafe = /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g;
 
-function visible(text: string): string {
+/**
+ * `text` with every control character, C1 control, line or paragraph separator, and bidi control written as a visible
+ * `\uXXXX`, so a path or line from an untrusted change cannot rewrite a terminal, forge a line, or reorder what a
+ * reader sees.
+ */
+export function visibleText(text: string): string {
 	return text.replace(unsafe, (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`);
 }
 
@@ -32,7 +37,7 @@ function visible(text: string): string {
 function prose(text: string, indent: string): string {
 	return text
 		.split(/\r?\n/)
-		.map((line) => visible(line.replace(/\t/g, "  ")))
+		.map((line) => visibleText(line.replace(/\t/g, "  ")))
 		.join(`\n${indent}`);
 }
 
@@ -52,13 +57,18 @@ function lineSpan(finding: Finding): string {
 }
 
 function block(finding: Finding, paint: (code: string, text: string) => string): string {
-	const { severity, cause, evidence, status, explanation } = finding.properties;
+	const { severity, cause, evidence, status, explanation, resolution } = finding.properties;
 	return [
-		`  ${paint(severityColor[severity], severity)}  ${lineSpan(finding)}  ${visible(finding.ruleId)}  (${cause}, ${status})`,
+		`  ${paint(severityColor[severity], severity)}  ${lineSpan(finding)}  ${visibleText(finding.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"})`,
 		`  ${prose(finding.message.text, "  ")}`,
 		`    What: ${prose(explanation.what, "      ")}`,
 		`    Why here: ${prose(explanation.whyHere, "      ")}`,
-		...(evidence === undefined ? [] : [`    Evidence: ${prose(evidence, "      ")}`]),
+		...(evidence === undefined
+			? []
+			: [
+					`    Evidence: ${visibleText(evidence.file)}:${evidence.startLine}${evidence.endLine === undefined || evidence.endLine === evidence.startLine ? "" : `-${evidence.endLine}`}`,
+					`      ${prose(evidence.snippet, "      ")}`,
+				]),
 		`    What to do: ${prose(explanation.whatToDo, "      ")}`,
 	].join("\n");
 }
@@ -95,7 +105,7 @@ function fileSections(findings: readonly Finding[], paint: Paint): string[] {
 	}
 	return [...byFile.keys()].sort(ordinal).map((file) =>
 		[
-			paint("1", visible(file)),
+			paint("1", visibleText(file)),
 			...byFile
 				.get(file)!
 				.sort(compare)
@@ -127,7 +137,7 @@ function renderVerdict(verdict: Verdict, paint: Paint): string {
 	if (verdict.notRun.length > 0) {
 		const checks = verdict.notRun.map(({ name, status, reason, error }) =>
 			[
-				`  ${visible(name)}  ${status}${reason === undefined ? "" : `: ${prose(reason, "    ")}`}`,
+				`  ${visibleText(name)}  ${status}${reason === undefined ? "" : `: ${prose(reason, "    ")}`}`,
 				...(error === undefined ? [] : [`    Error: ${prose(error, "      ")}`]),
 			].join("\n"),
 		);

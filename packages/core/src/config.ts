@@ -3,7 +3,7 @@ import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import { parseDocument } from "yaml";
 import { ConfigError, type ConfigErrorCode } from "./errors.ts";
-import { directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
+import { anchorGlob, directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 
 const strict = { additionalProperties: false } as const;
@@ -258,14 +258,10 @@ function anchorLensPaths(site: Site, layer: MelianYaml): MelianYaml {
 	if (layer.lenses === undefined) return layer;
 	const directory = posix.dirname(site.file);
 	const anchor = (lens: string) => (path: string) => {
-		const negated = path.startsWith("!");
-		const pattern = (negated ? path.slice(1) : path).replace(/^\/+/, "");
-		const anchored = posix.normalize(posix.join(directory, pattern));
-		if (anchored === ".." || anchored.startsWith("../")) {
-			const key = `lenses.${lens}.paths`;
-			throw configError("invalidValue", site, `"${key}" has ${path}, which leaves the repository`, { key });
-		}
-		return `${negated ? "!" : ""}${anchored}`;
+		const anchored = anchorGlob(directory, path);
+		if (anchored !== undefined) return anchored;
+		const key = `lenses.${lens}.paths`;
+		throw configError("invalidValue", site, `"${key}" has ${path}, which leaves the repository`, { key });
 	};
 	const lenses = Object.fromEntries(
 		Object.entries(layer.lenses).map(([lens, settings]) => [

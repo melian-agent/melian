@@ -20,9 +20,9 @@ import {
 import {
 	backgroundContext,
 	createMemoryStorage,
-	createReviewRegistry,
-	type Models,
-	openHarness,
+	type Message,
+	openReviewHarness,
+	type ReviewModels,
 	reviewChangeset,
 } from "@melian-agent/pipeline";
 import {
@@ -31,6 +31,7 @@ import {
 	fauxToolCall,
 	type ScriptedReply,
 	scriptConversations,
+	textOf,
 } from "@melian-agent/pipeline/testing";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
@@ -68,9 +69,18 @@ export const expectedSchema = Type.Object(
 const scriptReplySchema = Type.Union([
 	Type.Object(
 		{
-			calls: Type.Array(Type.Object({ name: text, arguments: Type.Record(Type.String(), Type.Unknown()) }, strict), {
-				minItems: 1,
-			}),
+			calls: Type.Array(
+				Type.Object(
+					{
+						name: text,
+						arguments: Type.Record(Type.String(), Type.Unknown()),
+						// A substring the call's result must contain, so a tool that breaks fails the gate.
+						expectToolResult: Type.Optional(text),
+					},
+					strict,
+				),
+				{ minItems: 1 },
+			),
 		},
 		strict,
 	),
@@ -165,7 +175,7 @@ export type GoldenMode =
 	| { readonly kind: "scripted" }
 	| {
 			readonly kind: "live";
-			readonly models: Models;
+			readonly models: ReviewModels;
 			/** `provider/model-id` for every tier the golden's `melian.yaml` leaves unrouted. */
 			readonly model?: string;
 	  };
@@ -175,6 +185,8 @@ export interface GoldenRun {
 	readonly golden: Golden;
 	readonly findings: readonly Finding[];
 	readonly rendered: string;
+	/** In a scripted run, each scripted call whose result lacked its `expectToolResult`, described. */
+	readonly toolMismatches: readonly string[];
 }
 
 const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
@@ -185,12 +197,41 @@ function routeEveryTier(config: MelianConfig, model: string, override: boolean):
 	return { ...config, models: { ...config.models, ...models } };
 }
 
-function reply(step: Script[string][number]): ScriptedReply {
-	if ("text" in step) return fauxAssistantMessage(step.text);
-	const calls = step.calls.map((call) =>
-		fauxToolCall(call.name, call.arguments as Parameters<typeof fauxToolCall>[1]),
-	);
-	return fauxAssistantMessage(calls, { stopReason: "toolUse" });
+type ScriptStep = Script[string][number];
+
+// The text of each tool result answering the last assistant turn in `messages`, by tool call ID.
+function lastResults(messages: readonly Message[]): Map<string, string> {
+	const results = new Map<string, string>();
+	for (const message of messages) {
+		if (message.role === "assistant") results.clear();
+		if (message.role === "toolResult") results.set(message.toolCallId, textOf(message));
+	}
+	return results;
+}
+
+// Each reply first checks the previous step's calls against their expected results, which it finds in the request.
+function replies(lens: string, steps: readonly ScriptStep[], mismatches: string[]): ScriptedReply[] {
+	const ids: string[][] = [];
+	return steps.map((step, index) => (messages: readonly Message[]) => {
+		const previous = index === 0 ? undefined : steps[index - 1];
+		if (previous !== undefined && "calls" in previous) {
+			const results = lastResults(messages);
+			previous.calls.forEach((call, position) => {
+				const result = results.get(ids[index - 1]![position]!) ?? "";
+				if (call.expectToolResult !== undefined && !result.includes(call.expectToolResult)) {
+					mismatches.push(
+						`${lens} step ${index}: ${call.name} returned ${JSON.stringify(result)}, expected it to contain ${JSON.stringify(call.expectToolResult)}`,
+					);
+				}
+			});
+		}
+		if ("text" in step) return fauxAssistantMessage(step.text);
+		const calls = step.calls.map((call) =>
+			fauxToolCall(call.name, call.arguments as Parameters<typeof fauxToolCall>[1]),
+		);
+		ids[index] = calls.map((call) => call.id);
+		return fauxAssistantMessage(calls, { stopReason: "toolUse" });
+	});
 }
 
 /**
@@ -207,20 +248,21 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 		const lenses = await loadLenses(repo, source, paths);
 		const standards = await loadStandards(repo, source, ".");
 		const { config: loaded } = await loadConfig(repo, source, ".");
-		let models: Models;
+		let models: ReviewModels;
 		let config: MelianConfig;
+		const toolMismatches: string[] = [];
 		if (mode.kind === "scripted") {
 			const fake = createFakeModels({ models: [{ id: "scripted" }] });
 			const ref = fake.ref("scripted");
 			config = routeEveryTier(loaded, `${ref.provider}/${ref.modelId}`, true);
-			models = fake.models;
+			models = fake.review;
 			// The longest instructions first, so a lens extending another is not answered from the other's script.
 			const scripts = Object.entries(golden.script)
-				.map(([name, replies]) => {
+				.map(([name, steps]) => {
 					const lens = lenses.find((each) => each.name === name);
 					if (lens === undefined)
 						throw new Error(`${golden.name}/script.json scripts ${name}, which is not a lens here`);
-					return { match: lens.instructions, replies: replies.map(reply) };
+					return { match: lens.instructions, replies: replies(name, steps, toolMismatches) };
 				})
 				.sort((a, b) => b.match.length - a.match.length);
 			scriptConversations(fake, scripts);
@@ -228,22 +270,12 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false);
 			models = mode.models;
 		}
-		const harness = await openHarness(createMemoryStorage(), {
-			models,
-			registry: createReviewRegistry(),
-			...(mode.kind === "scripted" ? { settings: { retry: { enabled: false } } } : {}),
-		});
+		const harness = await openReviewHarness(createMemoryStorage(), models, { retry: mode.kind !== "scripted" });
 		try {
-			const { findings } = await reviewChangeset({
-				harness,
-				changeset,
-				config,
-				lenses,
-				standards,
-				models,
-				policy: source,
-			});
-			return { golden, findings, rendered: renderFindingsTerminal(createFindingsLog([...findings])) };
+			const review = { harness, changeset, config, lenses, standards, models, policy: source };
+			const { findings } = await reviewChangeset(review);
+			const rendered = renderFindingsTerminal(createFindingsLog([...findings]));
+			return { golden, findings, rendered, toolMismatches };
 		} finally {
 			await harness.close(backgroundContext);
 		}
@@ -257,7 +289,7 @@ export interface GoldenScore {
 	readonly golden: string;
 	readonly expected: number;
 	readonly reported: number;
-	/** Reported findings that match an expected finding. */
+	/** Reported findings that match an expected finding no earlier reported finding matched. */
 	readonly truePositives: number;
 	/** Expected findings that some reported finding matches. */
 	readonly found: number;
@@ -271,13 +303,16 @@ function key(file: string, rule: string): string {
 	return `${file}\0${rule}`;
 }
 
-/** Scores one review against its golden, matching on file and rule. */
+/**
+ * Scores one review against its golden, matching on file and rule. Each expected finding counts as found once: a
+ * second reported finding matching the same expectation is a false positive, since it is the same defect reported twice.
+ */
 export function scoreGolden(golden: Golden, findings: readonly Finding[]): GoldenScore {
 	const expected = new Set(golden.expected.comments.map((comment) => key(comment.file, comment.rule)));
 	const reported = findings.map((finding) =>
 		key(finding.properties.path ?? finding.locations[0]!.physicalLocation.artifactLocation.uri, finding.ruleId),
 	);
-	const truePositives = reported.filter((each) => expected.has(each)).length;
+	const truePositives = new Set(reported.filter((each) => expected.has(each))).size;
 	const found = [...expected].filter((each) => reported.includes(each)).length;
 	return {
 		golden: golden.name,

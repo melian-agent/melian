@@ -11,7 +11,7 @@ export {
 	type Verdict,
 	type VerdictStatus,
 } from "./adjudication.ts";
-export { type CodeLocation, classifyCause } from "./cause.ts";
+export { type CodeLocation, checkEvidence, classifyCause } from "./cause.ts";
 export {
 	type Changeset,
 	parseRangeSpec,
@@ -66,6 +66,7 @@ export {
 	createFinding,
 	createFindingsLog,
 	type Finding,
+	type FindingEvidence,
 	type FindingExplanation,
 	type FindingIdInput,
 	type FindingInput,
@@ -75,6 +76,7 @@ export {
 	type FindingStatus,
 	type FindingsLog,
 	type FindingTrigger,
+	findingEvidenceSchema,
 	findingExplanationSchema,
 	findingId,
 	findingLocationSchema,
@@ -116,7 +118,13 @@ export {
 } from "./lens.ts";
 export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
 export { melianPaths } from "./paths.ts";
-export { renderFindingsJson, renderFindingsTerminal, renderVerdictJson, type TerminalRenderOptions } from "./render.ts";
+export {
+	renderFindingsJson,
+	renderFindingsTerminal,
+	renderVerdictJson,
+	type TerminalRenderOptions,
+	visibleText,
+} from "./render.ts";
 export {
 	listRevisionFiles,
 	type RevisionEntry,

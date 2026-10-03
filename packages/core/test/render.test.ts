@@ -23,7 +23,7 @@ const log = createFindingsLog([
 		startColumn: undefined,
 		endColumn: undefined,
 		snippet: "fs.write(fd, data)",
-		cause: { evidence: "src/run.ts:12 now passes buffers of up to 1 MiB to write()." },
+		cause: { evidence: { file: "src/run.ts", startLine: 12, snippet: "\tconst chunk = Buffer.alloc(1 << 20);" } },
 		trigger: undefined,
 		severity: "P3",
 		resolution: "advisory",
@@ -42,6 +42,8 @@ const log = createFindingsLog([
 		endLine: 40,
 		snippet: `db.query("SELECT * FROM users WHERE name = '" + name + "'")`,
 		severity: "P0",
+		// Not yet adjudicated, so the renderer says it is unresolved.
+		resolution: undefined,
 		explanation: {
 			what: "The query splices the name into SQL text.",
 			whyHere: "This change passes the name straight from the request.",

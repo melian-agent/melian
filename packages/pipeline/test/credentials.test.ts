@@ -3,6 +3,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { createReviewModels, PiCredentialsError, piAuthPath, piCredentialStore } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { modelsOf } from "../src/models.ts";
 
 let dir: string;
 let authPath: string;
@@ -74,7 +75,7 @@ describe("piCredentialStore", () => {
 
 describe("createReviewModels", () => {
 	it("authenticates a provider from Pi's store with no environment variable set", async () => {
-		const models = createReviewModels({ authPath });
+		const models = modelsOf(createReviewModels({ authPath }));
 		expect(await models.checkAuth("anthropic")).toBeUndefined();
 		store({ anthropic: { type: "api_key", key: "sk-ant-stored" } });
 		expect(await models.checkAuth("anthropic")).toMatchObject({ type: "api_key" });
@@ -82,11 +83,11 @@ describe("createReviewModels", () => {
 
 	it("falls back to the environment when the store has nothing for a provider", async () => {
 		vi.stubEnv("OPENAI_API_KEY", "sk-env");
-		expect(await createReviewModels({ authPath }).checkAuth("openai")).toMatchObject({ type: "api_key" });
+		expect(await modelsOf(createReviewModels({ authPath })).checkAuth("openai")).toMatchObject({ type: "api_key" });
 	});
 
 	it("takes CLAUDE_CODE_OAUTH_TOKEN for an unset ANTHROPIC_OAUTH_TOKEN, ahead of ANTHROPIC_API_KEY", async () => {
-		const apiKey = async () => (await createReviewModels({ authPath }).getAuth("anthropic"))?.auth.apiKey;
+		const apiKey = async () => (await modelsOf(createReviewModels({ authPath })).getAuth("anthropic"))?.auth.apiKey;
 		vi.stubEnv("ANTHROPIC_API_KEY", "fake-api-key");
 		expect(await apiKey()).toBe("fake-api-key");
 		vi.stubEnv("CLAUDE_CODE_OAUTH_TOKEN", "fake-claude-code-token");
@@ -100,15 +101,17 @@ describe("createReviewModels", () => {
 	it("treats an expired login as absent, so the environment or the next model applies", async () => {
 		store({ anthropic: { type: "oauth", access: "old", refresh: "rotating", expires: 0 } });
 		expect(await piCredentialStore(authPath).read("anthropic")).toBeUndefined();
-		expect(await createReviewModels({ authPath }).checkAuth("anthropic")).toBeUndefined();
+		expect(await modelsOf(createReviewModels({ authPath })).checkAuth("anthropic")).toBeUndefined();
 		vi.stubEnv("ANTHROPIC_API_KEY", "sk-env");
-		expect(await createReviewModels({ authPath }).checkAuth("anthropic")).toMatchObject({ type: "api_key" });
+		expect(await modelsOf(createReviewModels({ authPath })).checkAuth("anthropic")).toMatchObject({
+			type: "api_key",
+		});
 	});
 
 	it("treats a login inside pi-ai's refresh window as absent, since using it would need a refresh", async () => {
 		store({ anthropic: { type: "oauth", access: "a", refresh: "r", expires: Date.now() + 4 * 60_000 } });
 		expect(await piCredentialStore(authPath).read("anthropic")).toBeUndefined();
-		expect(await createReviewModels({ authPath }).checkAuth("anthropic")).toBeUndefined();
+		expect(await modelsOf(createReviewModels({ authPath })).checkAuth("anthropic")).toBeUndefined();
 		store({ anthropic: { type: "oauth", access: "a", refresh: "r", expires: Date.now() + 6 * 60_000 } });
 		expect(await piCredentialStore(authPath).read("anthropic")).toBeUndefined();
 	});

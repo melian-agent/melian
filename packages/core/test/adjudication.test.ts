@@ -16,6 +16,7 @@ import { evalInput } from "./fixtures/findings.ts";
 import { gitIn, isolatedGitEnv, lines, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
 
 const finding = (input: Partial<FindingInput>) => createFinding({ ...evalInput, trigger: undefined, ...input });
+const renamedParameter = { file: "src/api.ts", startLine: 3, snippet: "export function load(userId: string) {" };
 
 describe("resolveFinding", () => {
 	it("takes the resolution configured for the severity of an introduced finding", () => {
@@ -25,7 +26,7 @@ describe("resolveFinding", () => {
 	});
 
 	it("keeps the configured resolution of an affected finding, which carries evidence", () => {
-		const affected = finding({ severity: "P1", cause: { evidence: "src/api.ts:3 renames id to userId" } });
+		const affected = finding({ severity: "P1", cause: { evidence: renamedParameter } });
 		expect(resolveFinding(affected, defaultConfig)).toBe("block");
 	});
 
@@ -134,7 +135,11 @@ describe("dedupeFindings", () => {
 
 	// The first live golden run: two lenses filed one broken caller in src/cart.ts under different rules.
 	describe("two lenses reporting one defect under different rules", () => {
-		const evidence = "src/price.ts:1 makes currency a required second parameter of formatPrice";
+		const evidence = {
+			file: "src/price.ts",
+			startLine: 1,
+			snippet: "export function formatPrice(amount: number, currency: string): string {",
+		};
 		const atCart = {
 			file: "src/cart.ts",
 			startLine: 10,

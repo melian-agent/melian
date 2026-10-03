@@ -1,6 +1,6 @@
 src/user.ts
 
-  P1  lines 7-8  null-dereference  (introduced, new)
+  P1  lines 7-8  null-dereference  (introduced, new, unresolved)
   managerName casts user.manager to User and reads its name, but manager is optional.
     What: managerName casts user.manager to User and reads its name, but manager is optional.
     Why here: The base guarded with ?. and fell back to "none"; this change removes the guard, so describe() throws for any user without a manager.

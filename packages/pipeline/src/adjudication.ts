@@ -13,7 +13,7 @@ import {
 	type Verdict,
 	type VerdictStatus,
 } from "@melian-agent/core";
-import { findingsAt } from "./findings.ts";
+import { readFindings } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
@@ -70,7 +70,7 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 			const { root, repoRoot, head, policy, config, checks } = task.input;
 			// TODO(#15): read with readFindings(root, head, { lenses: task.input.lenses }) once the sightings
 			// document lands on `lenses`, so a disabled or retiered lens's sightings at this head do not count.
-			const findings = await findingsAt(runtime, root, head, context);
+			const findings = await readFindings(runtime, root, head, context);
 			let verdict: Verdict;
 			try {
 				const paths = findings.map((finding) => finding.properties.path);
