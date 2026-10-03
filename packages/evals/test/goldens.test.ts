@@ -21,6 +21,7 @@ describe.each(goldens.map((golden): [string, Golden] => [golden.name, golden]))(
 	it("finds exactly what the golden expects, with the expected cause", async () => {
 		const run = await runGolden(golden, { kind: "scripted" });
 
+		expect(run.toolMismatches).toEqual([]);
 		expect(scoreGolden(golden, run.findings)).toMatchObject({ precision: 1, recall: 1 });
 		const causes = Object.fromEntries(
 			run.findings.map((finding) => [`${finding.properties.path}:${finding.ruleId}`, finding.properties.cause]),
@@ -28,6 +29,32 @@ describe.each(goldens.map((golden): [string, Golden] => [golden.name, golden]))(
 		for (const comment of golden.expected.comments)
 			expect(causes[`${comment.file}:${comment.rule}`]).toBe(comment.cause);
 		await expect(run.rendered).toMatchFileSnapshot(join(golden.directory, "scripted.txt"));
+	});
+});
+
+describe("expectToolResult", () => {
+	it("reports a scripted call whose result lacks the expected text, as a broken search would return", async () => {
+		const golden = goldens.find((each) => each.name === "correctness-null-deref")!;
+		const [read, , ...rest] = golden.script.correctness!;
+		const broken = {
+			...golden,
+			script: {
+				...golden.script,
+				correctness: [
+					read!,
+					{
+						calls: [
+							{ name: "search", arguments: { pattern: "nowhere-at-all" }, expectToolResult: "src/org-chart.ts" },
+						],
+					},
+					...rest,
+				],
+			},
+		};
+		const run = await runGolden(broken, { kind: "scripted" });
+		expect(run.toolMismatches).toEqual([
+			'correctness step 2: search returned "No matches.", expected it to contain "src/org-chart.ts"',
+		]);
 	});
 });
 

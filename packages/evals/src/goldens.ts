@@ -21,6 +21,7 @@ import {
 	backgroundContext,
 	createMemoryStorage,
 	createReviewRegistry,
+	type Message,
 	type Models,
 	openHarness,
 	reviewChangeset,
@@ -31,6 +32,7 @@ import {
 	fauxToolCall,
 	type ScriptedReply,
 	scriptConversations,
+	textOf,
 } from "@melian-agent/pipeline/testing";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
@@ -68,9 +70,18 @@ export const expectedSchema = Type.Object(
 const scriptReplySchema = Type.Union([
 	Type.Object(
 		{
-			calls: Type.Array(Type.Object({ name: text, arguments: Type.Record(Type.String(), Type.Unknown()) }, strict), {
-				minItems: 1,
-			}),
+			calls: Type.Array(
+				Type.Object(
+					{
+						name: text,
+						arguments: Type.Record(Type.String(), Type.Unknown()),
+						// A substring the call's result must contain, so a tool that breaks fails the gate.
+						expectToolResult: Type.Optional(text),
+					},
+					strict,
+				),
+				{ minItems: 1 },
+			),
 		},
 		strict,
 	),
@@ -175,6 +186,8 @@ export interface GoldenRun {
 	readonly golden: Golden;
 	readonly findings: readonly Finding[];
 	readonly rendered: string;
+	/** In a scripted run, each scripted call whose result lacked its `expectToolResult`, described. */
+	readonly toolMismatches: readonly string[];
 }
 
 const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
@@ -185,12 +198,41 @@ function routeEveryTier(config: MelianConfig, model: string, override: boolean):
 	return { ...config, models: { ...config.models, ...models } };
 }
 
-function reply(step: Script[string][number]): ScriptedReply {
-	if ("text" in step) return fauxAssistantMessage(step.text);
-	const calls = step.calls.map((call) =>
-		fauxToolCall(call.name, call.arguments as Parameters<typeof fauxToolCall>[1]),
-	);
-	return fauxAssistantMessage(calls, { stopReason: "toolUse" });
+type ScriptStep = Script[string][number];
+
+// The text of each tool result answering the last assistant turn in `messages`, by tool call ID.
+function lastResults(messages: readonly Message[]): Map<string, string> {
+	const results = new Map<string, string>();
+	for (const message of messages) {
+		if (message.role === "assistant") results.clear();
+		if (message.role === "toolResult") results.set(message.toolCallId, textOf(message));
+	}
+	return results;
+}
+
+// Each reply first checks the previous step's calls against their expected results, which it finds in the request.
+function replies(lens: string, steps: readonly ScriptStep[], mismatches: string[]): ScriptedReply[] {
+	const ids: string[][] = [];
+	return steps.map((step, index) => (messages: readonly Message[]) => {
+		const previous = index === 0 ? undefined : steps[index - 1];
+		if (previous !== undefined && "calls" in previous) {
+			const results = lastResults(messages);
+			previous.calls.forEach((call, position) => {
+				const result = results.get(ids[index - 1]![position]!) ?? "";
+				if (call.expectToolResult !== undefined && !result.includes(call.expectToolResult)) {
+					mismatches.push(
+						`${lens} step ${index}: ${call.name} returned ${JSON.stringify(result)}, expected it to contain ${JSON.stringify(call.expectToolResult)}`,
+					);
+				}
+			});
+		}
+		if ("text" in step) return fauxAssistantMessage(step.text);
+		const calls = step.calls.map((call) =>
+			fauxToolCall(call.name, call.arguments as Parameters<typeof fauxToolCall>[1]),
+		);
+		ids[index] = calls.map((call) => call.id);
+		return fauxAssistantMessage(calls, { stopReason: "toolUse" });
+	});
 }
 
 /**
@@ -209,6 +251,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 		const { config: loaded } = await loadConfig(repo, source, ".");
 		let models: Models;
 		let config: MelianConfig;
+		const toolMismatches: string[] = [];
 		if (mode.kind === "scripted") {
 			const fake = createFakeModels({ models: [{ id: "scripted" }] });
 			const ref = fake.ref("scripted");
@@ -216,11 +259,11 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			models = fake.models;
 			// The longest instructions first, so a lens extending another is not answered from the other's script.
 			const scripts = Object.entries(golden.script)
-				.map(([name, replies]) => {
+				.map(([name, steps]) => {
 					const lens = lenses.find((each) => each.name === name);
 					if (lens === undefined)
 						throw new Error(`${golden.name}/script.json scripts ${name}, which is not a lens here`);
-					return { match: lens.instructions, replies: replies.map(reply) };
+					return { match: lens.instructions, replies: replies(name, steps, toolMismatches) };
 				})
 				.sort((a, b) => b.match.length - a.match.length);
 			scriptConversations(fake, scripts);
@@ -235,7 +278,8 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 		});
 		try {
 			const findings = await reviewChangeset({ harness, changeset, config, lenses, standards, models });
-			return { golden, findings, rendered: renderFindingsTerminal(createFindingsLog([...findings])) };
+			const rendered = renderFindingsTerminal(createFindingsLog([...findings]));
+			return { golden, findings, rendered, toolMismatches };
 		} finally {
 			await harness.close(backgroundContext);
 		}
