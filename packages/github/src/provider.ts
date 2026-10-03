@@ -13,6 +13,7 @@ import {
 	type Marker,
 	type MarkerKind,
 	parseMarker,
+	type RepositoryLinks,
 	renderComment,
 	renderResolvedReply,
 	renderReviewBody,
@@ -25,7 +26,7 @@ export const statusContext = "melian/review";
 // GitHub refuses a commit status description longer than this.
 const maxDescription = 140;
 
-/** How {@link createGitHubProvider} reaches a repository. */
+/** How a {@link GitHubProvider} reaches a repository. */
 export interface GitHubProviderOptions {
 	readonly owner: string;
 	readonly repo: string;
@@ -87,192 +88,207 @@ function signedMarker(
  * A marker counts only when the changeset's publisher secret signed it, whoever posted it. When the provider knows the
  * token's own user, a marker on anyone else's post does not count either.
  */
-export function createGitHubProvider(options: GitHubProviderOptions): ReviewProvider {
-	const { owner, repo } = options;
-	const octokit = new Octokit({
-		auth: options.token,
-		userAgent: "melian",
-		...(options.apiUrl === undefined ? {} : { baseUrl: options.apiUrl }),
-		...(options.fetch === undefined ? {} : { request: { fetch: options.fetch } }),
-	});
-	const links = { web: `${options.webUrl ?? "https://github.com"}/${owner}/${repo}` };
+export class GitHubProvider implements ReviewProvider {
+	readonly name = "github";
+	readonly owner: string;
+	readonly repo: string;
+	private readonly octokit: Octokit;
+	private readonly links: RepositoryLinks;
 	// Who Melian posts as: from /user, or from the author of a review it posted. /user is asked once per provider, its
 	// failure remembered too: an installation token always fails it, and asking again for every marker cost one request
 	// each. A review posted later still teaches the viewer.
-	let viewer: string | undefined;
-	let asked: Promise<void> | undefined;
-	const login = async () => {
-		asked ??= octokit.rest.users.getAuthenticated().then(
-			({ data }) => {
-				viewer ??= data.login;
-			},
-			() => {},
+	private viewer: string | undefined;
+	private asked: Promise<void> | undefined;
+
+	constructor(options: GitHubProviderOptions) {
+		this.owner = options.owner;
+		this.repo = options.repo;
+		this.octokit = new Octokit({
+			auth: options.token,
+			userAgent: "melian",
+			...(options.apiUrl === undefined ? {} : { baseUrl: options.apiUrl }),
+			...(options.fetch === undefined ? {} : { request: { fetch: options.fetch } }),
+		});
+		this.links = { web: `${options.webUrl ?? "https://github.com"}/${options.owner}/${options.repo}` };
+	}
+
+	async pullRequest(number: number): Promise<PullRequest> {
+		const { owner, repo } = this;
+		const { data } = await call(`read pull request #${number}`, () =>
+			this.octokit.rest.pulls.get({ owner, repo, pull_number: number }),
 		);
-		await asked;
-		return viewer;
-	};
-	// A filter, never the proof: the signature is. An installation token cannot read /user, and a crash between a post
-	// and its record must still find the post.
-	const ours = async (author: { login: string } | null | undefined) => {
-		const me = await login();
-		return me === undefined || author?.login === me;
-	};
+		return {
+			repository: { owner: data.base.repo.owner.login, name: data.base.repo.name },
+			number: data.number,
+			title: data.title,
+			url: data.html_url,
+			state: data.state === "open" ? "open" : "closed",
+			base: { ref: data.base.ref, sha: data.base.sha },
+			head: { ref: data.head.ref, sha: data.head.sha },
+			fetch: { url: data.base.repo.clone_url, headRef: `refs/pull/${data.number}/head` },
+		};
+	}
 
-	return {
-		name: "github",
-
-		async pullRequest(number) {
-			const { data } = await call(`read pull request #${number}`, () =>
-				octokit.rest.pulls.get({ owner, repo, pull_number: number }),
-			);
-			const pullRequest: PullRequest = {
-				repository: { owner: data.base.repo.owner.login, name: data.base.repo.name },
-				number: data.number,
-				title: data.title,
-				url: data.html_url,
-				state: data.state === "open" ? "open" : "closed",
-				base: { ref: data.base.ref, sha: data.base.sha },
-				head: { ref: data.head.ref, sha: data.head.sha },
-				fetch: { url: data.base.repo.clone_url, headRef: `refs/pull/${data.number}/head` },
-			};
-			return pullRequest;
-		},
-
-		async postReview(draft: ReviewDraft): Promise<PostedReview> {
-			const comments = draft.findings.flatMap((placed) => {
-				const { placement, finding } = placed;
-				if (placement.kind === "body") return [];
-				const range =
-					placement.kind === "lines" && placement.startLine < placement.line
-						? { start_line: placement.startLine, start_side: "RIGHT" as const }
-						: {};
-				return [
-					{
-						path: finding.properties.path,
-						line: placement.line,
-						side: "RIGHT" as const,
-						...range,
-						body: renderComment(placed, draft.revision, links, draft.secret),
-					},
-				];
-			});
-			const create = (body: string, inline: typeof comments) =>
-				call(`post a review on pull request #${draft.pullRequest}`, () =>
-					octokit.rest.pulls.createReview({
-						owner,
-						repo,
-						pull_number: draft.pullRequest,
-						commit_id: draft.revision,
-						event: "COMMENT",
-						body,
-						comments: inline,
-					}),
-				);
-			let created: Awaited<ReturnType<typeof create>>;
-			try {
-				created = await create(renderReviewBody(draft, links), comments);
-			} catch (error) {
-				// GitHub refuses the whole review with a 422 when it cannot place one comment, such as on a line an
-				// outdated diff no longer has. Every finding then goes in the body, which has no line to refuse.
-				if (!(error instanceof GitHubError && error.status === 422 && comments.length > 0)) throw error;
-				const findings = draft.findings.map((placed) => ({ ...placed, placement: { kind: "body" as const } }));
-				created = await create(renderReviewBody({ ...draft, findings }, links, { inlineRefused: true }), []);
-			}
-			const review = created.data;
-			viewer ??= review.user?.login;
-			const posted = await call(`read review ${review.id}`, () =>
-				octokit.paginate(octokit.rest.pulls.listCommentsForReview, {
+	async postReview(draft: ReviewDraft): Promise<PostedReview> {
+		const { owner, repo, octokit, links } = this;
+		const comments = draft.findings.flatMap((placed) => {
+			const { placement, finding } = placed;
+			if (placement.kind === "body") return [];
+			const range =
+				placement.kind === "lines" && placement.startLine < placement.line
+					? { start_line: placement.startLine, start_side: "RIGHT" as const }
+					: {};
+			return [
+				{
+					path: finding.properties.path,
+					line: placement.line,
+					side: "RIGHT" as const,
+					...range,
+					body: renderComment(placed, draft.revision, links, draft.secret),
+				},
+			];
+		});
+		const create = (body: string, inline: typeof comments) =>
+			call(`post a review on pull request #${draft.pullRequest}`, () =>
+				octokit.rest.pulls.createReview({
 					owner,
 					repo,
 					pull_number: draft.pullRequest,
-					review_id: review.id,
-					per_page: 100,
+					commit_id: draft.revision,
+					event: "COMMENT",
+					body,
+					comments: inline,
 				}),
 			);
-			const threads: Record<string, string> = {};
-			for (const comment of posted) {
-				const found = signedMarker(comment.body, "finding", draft.revision, draft.secret);
-				if (found !== undefined) threads[found.id] = String(comment.id);
-			}
-			return { id: String(review.id), threads };
-		},
+		let created: Awaited<ReturnType<typeof create>>;
+		try {
+			created = await create(renderReviewBody(draft, links), comments);
+		} catch (error) {
+			// GitHub refuses the whole review with a 422 when it cannot place one comment, such as on a line an
+			// outdated diff no longer has. Every finding then goes in the body, which has no line to refuse.
+			if (!(error instanceof GitHubError && error.status === 422 && comments.length > 0)) throw error;
+			const findings = draft.findings.map((placed) => ({ ...placed, placement: { kind: "body" as const } }));
+			created = await create(renderReviewBody({ ...draft, findings }, links, { inlineRefused: true }), []);
+		}
+		const review = created.data;
+		this.viewer ??= review.user?.login;
+		const posted = await call(`read review ${review.id}`, () =>
+			octokit.paginate(octokit.rest.pulls.listCommentsForReview, {
+				owner,
+				repo,
+				pull_number: draft.pullRequest,
+				review_id: review.id,
+				per_page: 100,
+			}),
+		);
+		const threads: Record<string, string> = {};
+		for (const comment of posted) {
+			const found = signedMarker(comment.body, "finding", draft.revision, draft.secret);
+			if (found !== undefined) threads[found.id] = String(comment.id);
+		}
+		return { id: String(review.id), threads };
+	}
 
-		async replyResolved(
-			pullRequest: number,
-			finding: ClosedFinding & { thread: string },
-			revision: string,
-			secret: string,
-		) {
-			try {
-				const { data } = await call(`reply on pull request #${pullRequest}`, () =>
-					octokit.rest.pulls.createReplyForReviewComment({
-						owner,
-						repo,
-						pull_number: pullRequest,
-						comment_id: Number(finding.thread),
-						body: renderResolvedReply(finding, revision, secret),
-					}),
-				);
-				return String(data.id);
-			} catch (error) {
-				// A deleted comment answers 404, and one on an outdated line can answer 422; either way no thread is left.
-				if (error instanceof GitHubError && (error.status === 404 || error.status === 422)) return undefined;
-				throw error;
-			}
-		},
-
-		async setStatus(revision: string, status: ReviewStatus) {
-			const description =
-				status.description.length <= maxDescription
-					? status.description
-					: `${status.description.slice(0, maxDescription - 1)}…`;
-			await call(`set the status of ${revision}`, () =>
-				octokit.rest.repos.createCommitStatus({
+	async replyResolved(
+		pullRequest: number,
+		finding: ClosedFinding & { thread: string },
+		revision: string,
+		secret: string,
+	): Promise<string | undefined> {
+		const { owner, repo } = this;
+		try {
+			const { data } = await call(`reply on pull request #${pullRequest}`, () =>
+				this.octokit.rest.pulls.createReplyForReviewComment({
 					owner,
 					repo,
-					sha: revision,
-					state: status.state,
-					description,
-					context: statusContext,
+					pull_number: pullRequest,
+					comment_id: Number(finding.thread),
+					body: renderResolvedReply(finding, revision, secret),
 				}),
 			);
-		},
+			return String(data.id);
+		} catch (error) {
+			// A deleted comment answers 404, and one on an outdated line can answer 422; either way no thread is left.
+			if (error instanceof GitHubError && (error.status === 404 || error.status === 422)) return undefined;
+			throw error;
+		}
+	}
 
-		async findPublished(
-			pullRequest: number,
-			revision: string,
-			wanted: { readonly fingerprint: string; readonly round: number },
-			secret: string,
-		): Promise<PublishedMarkers> {
-			const page = { owner, repo, pull_number: pullRequest, per_page: 100 };
-			const [reviews, comments] = await Promise.all([
-				call(`list reviews on pull request #${pullRequest}`, () =>
-					octokit.paginate(octokit.rest.pulls.listReviews, page),
-				),
-				call(`list review comments on pull request #${pullRequest}`, () =>
-					octokit.paginate(octokit.rest.pulls.listReviewComments, page),
-				),
-			]);
-			// The first post carrying a marker is Melian's: anyone can copy a signed marker, but only after Melian posted it.
-			let review: string | undefined;
-			for (const each of reviews) {
-				const opening = signedMarker(each.body, "verdict", revision, secret);
-				// The round as well as the verdict: a verdict that recurs at a head must not find its earlier review.
-				if (opening?.id === wanted.fingerprint && opening.round === wanted.round && (await ours(each.user))) {
-					review = String(each.id);
-					break;
-				}
+	async setStatus(revision: string, status: ReviewStatus): Promise<void> {
+		const description =
+			status.description.length <= maxDescription
+				? status.description
+				: `${status.description.slice(0, maxDescription - 1)}…`;
+		await call(`set the status of ${revision}`, () =>
+			this.octokit.rest.repos.createCommitStatus({
+				owner: this.owner,
+				repo: this.repo,
+				sha: revision,
+				state: status.state,
+				description,
+				context: statusContext,
+			}),
+		);
+	}
+
+	async findPublished(
+		pullRequest: number,
+		revision: string,
+		wanted: { readonly fingerprint: string; readonly round: number },
+		secret: string,
+	): Promise<PublishedMarkers> {
+		const { octokit } = this;
+		const page = { owner: this.owner, repo: this.repo, pull_number: pullRequest, per_page: 100 };
+		const [reviews, comments] = await Promise.all([
+			call(`list reviews on pull request #${pullRequest}`, () =>
+				octokit.paginate(octokit.rest.pulls.listReviews, page),
+			),
+			call(`list review comments on pull request #${pullRequest}`, () =>
+				octokit.paginate(octokit.rest.pulls.listReviewComments, page),
+			),
+		]);
+		// The first post carrying a marker is Melian's: anyone can copy a signed marker, but only after Melian posted it.
+		let review: string | undefined;
+		for (const each of reviews) {
+			const opening = signedMarker(each.body, "verdict", revision, secret);
+			// The round as well as the verdict: a verdict that recurs at a head must not find its earlier review.
+			if (opening?.id === wanted.fingerprint && opening.round === wanted.round && (await this.ours(each.user))) {
+				review = String(each.id);
+				break;
 			}
-			const threads: Record<string, string> = {};
-			const replies: Record<string, string> = {};
-			for (const comment of comments) {
-				// GitHub may send a top-level comment's in_reply_to_id as null rather than leave it out.
-				const reply = typeof comment.in_reply_to_id === "number";
-				const found = signedMarker(comment.body, reply ? "resolved" : "finding", revision, secret);
-				if (found === undefined || !(await ours(comment.user))) continue;
-				(reply ? replies : threads)[found.id] ??= String(comment.id);
-			}
-			return { ...(review === undefined ? {} : { review }), threads, replies };
-		},
-	};
+		}
+		const threads: Record<string, string> = {};
+		const replies: Record<string, string> = {};
+		for (const comment of comments) {
+			// GitHub may send a top-level comment's in_reply_to_id as null rather than leave it out.
+			const reply = typeof comment.in_reply_to_id === "number";
+			const found = signedMarker(comment.body, reply ? "resolved" : "finding", revision, secret);
+			if (found === undefined || !(await this.ours(comment.user))) continue;
+			(reply ? replies : threads)[found.id] ??= String(comment.id);
+		}
+		return { ...(review === undefined ? {} : { review }), threads, replies };
+	}
+
+	private async login(): Promise<string | undefined> {
+		this.asked ??= this.octokit.rest.users.getAuthenticated().then(
+			({ data }) => {
+				this.viewer ??= data.login;
+			},
+			() => {},
+		);
+		await this.asked;
+		return this.viewer;
+	}
+
+	// A filter, never the proof: the signature is. An installation token cannot read /user, and a crash between a post
+	// and its record must still find the post.
+	private async ours(author: { login: string } | null | undefined): Promise<boolean> {
+		const me = await this.login();
+		return me === undefined || author?.login === me;
+	}
+}
+
+/** Creates a {@link GitHubProvider}, as `new GitHubProvider(options)` does. */
+export function createGitHubProvider(options: GitHubProviderOptions): GitHubProvider {
+	return new GitHubProvider(options);
 }
