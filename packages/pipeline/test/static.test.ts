@@ -10,7 +10,7 @@ import {
 	runStaticTool,
 	type StaticRunInput,
 } from "@melian-agent/pipeline";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { commit, createRepository, fakeTool, gitIn, lines, removeRepository } from "./fixtures/repo.ts";
 
 let repo: string;
@@ -107,6 +107,25 @@ describe("runStaticTool with the repository's own tools", () => {
 		expect(biome.runs[0].tool.driver.version).toBe("0.0.0-fake");
 		expect(results(biome)).toEqual([]);
 		expectCheckoutUntouched();
+	});
+
+	it("runs the tool with PATH, HOME, TMPDIR, and LANG only, so no secret reaches it", {
+		timeout: 60_000,
+	}, async () => {
+		vi.stubEnv("MELIAN_TEST_SECRET", "hunter2");
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
+		const seen = join(repo, ".git", "tool-env.txt");
+		fakeTool(repo, "tsc", `if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nenv > '${seen}'`);
+		await log("tsc", head);
+		const names = readFileSync(seen, "utf8")
+			.split("\n")
+			.map((line) => line.split("=")[0])
+			.filter((name) => name !== "");
+		expect(names).not.toContain("MELIAN_TEST_SECRET");
+		expect(names).toContain("PATH");
+		expect(
+			names.filter((name) => !["PATH", "HOME", "TMPDIR", "LANG", "PWD", "OLDPWD", "SHLVL", "_"].includes(name!)),
+		).toEqual([]);
 	});
 
 	it("fails with timeout when the tool runs past its limit, and still removes the worktree", {

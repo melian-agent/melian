@@ -49,6 +49,19 @@ const gitVariables = [
 	"GIT_COMMON_DIR",
 ];
 
+// Everything the runner executes may be the revision's code, so it gets these variables and nothing else: never a token
+// or key from the Melian process, even on a maintainer's own machine.
+const passedVariables = ["PATH", "HOME", "TMPDIR", "LANG"] as const;
+
+function toolEnvironment(): { env: Record<string, string>; inheritEnv: false } {
+	const env: Record<string, string> = {};
+	for (const name of passedVariables) {
+		const value = process.env[name];
+		if (value !== undefined) env[name] = value;
+	}
+	return { env, inheritEnv: false };
+}
+
 function quote(value: string): string {
 	return `'${value.replaceAll("'", "'\\''")}'`;
 }
@@ -93,6 +106,7 @@ class Run {
 		const result = await this.input.env.exec(
 			command,
 			{
+				...toolEnvironment(),
 				timeout: this.input.settings.timeout,
 				onOutput: (text) => {
 					if (output.length < 8192) output += text;
@@ -255,8 +269,12 @@ const lockReason = `melian-static pid ${process.pid}`;
 async function removeWorktree(env: ExecutionEnv, repoRoot: string, scratch: string): Promise<void> {
 	const root = posix.join(scratch, "tree");
 	// Twice forced, because the worktree is locked.
-	await env.exec(git(repoRoot, `worktree remove --force --force ${quote(root)}`), { timeout: 60 }, backgroundContext);
-	await env.exec(git(repoRoot, "worktree prune"), { timeout: 60 }, backgroundContext);
+	await env.exec(
+		git(repoRoot, `worktree remove --force --force ${quote(root)}`),
+		{ ...toolEnvironment(), timeout: 60 },
+		backgroundContext,
+	);
+	await env.exec(git(repoRoot, "worktree prune"), { ...toolEnvironment(), timeout: 60 }, backgroundContext);
 	await env.remove(scratch, { recursive: true, force: true }, backgroundContext);
 }
 
