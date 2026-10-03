@@ -46,6 +46,8 @@ export type AdjudicationTaskInput = {
 	policy?: RepositorySource;
 	config: { resolution: Record<Severity, Resolution>; ruleAliases: Record<string, string[]> };
 	checks: StoredCheck[];
+	/** The lenses this review selected, so findings from a lens configuration has since dropped do not count. */
+	lenses: { name: string; version: string }[];
 };
 
 async function configsFor(repoRoot: string, policy: RepositorySource, paths: readonly string[]): Promise<ConfigFor> {
@@ -66,6 +68,8 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 	phases: {
 		adjudicate: async (task, runtime, context) => {
 			const { root, repoRoot, head, policy, config, checks } = task.input;
+			// TODO(#15): read with readFindings(root, head, { lenses: task.input.lenses }) once the sightings
+			// document lands on `lenses`, so a disabled or retiered lens's sightings at this head do not count.
 			const findings = await findingsAt(runtime, root, head, context);
 			let verdict: Verdict;
 			try {
@@ -101,8 +105,9 @@ export function adjudicationInput(options: {
 	policy: RepositorySource | undefined;
 	config: Pick<MelianConfig, "resolution" | "ruleAliases">;
 	checks: readonly CheckRecord[];
+	lenses: readonly { readonly name: string; readonly version: string }[];
 }): AdjudicationTaskInput {
-	const { root, repoRoot, head, policy, config, checks } = options;
+	const { root, repoRoot, head, policy, config, checks, lenses } = options;
 	return {
 		root,
 		repoRoot,
@@ -115,6 +120,7 @@ export function adjudicationInput(options: {
 			),
 		},
 		checks: checks.map((check) => structuredClone(check)),
+		lenses: lenses.map(({ name, version }) => ({ name, version })),
 	};
 }
 

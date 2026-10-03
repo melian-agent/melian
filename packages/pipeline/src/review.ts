@@ -315,7 +315,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	};
 	const lensChecks = lenses.length === 0 ? [] : await runLenses(harness, { root, revision: state, lenses }, context);
 	const checks = [...(options.checks ?? []), ...lensChecks];
-	const input = adjudicationInput({ root, repoRoot, head, policy: options.policy, config, checks });
+	const input = adjudicationInput({ root, repoRoot, head, policy: options.policy, config, checks, lenses });
 	const adjudication = await (await harness.root(context)).commit(
 		(tx) => tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } }),
 		context,
