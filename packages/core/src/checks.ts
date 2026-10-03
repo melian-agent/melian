@@ -32,7 +32,7 @@ export function checksOfTier(config: Pick<MelianConfig, "tiers">, tier: string):
 		if (tierChecks !== undefined) {
 			for (const each of tierChecks) expand(each, [...path, name]);
 		} else {
-			for (const each of groups[name] ?? [name]) checks.add(each);
+			for (const each of Object.hasOwn(groups, name) ? groups[name]! : [name]) checks.add(each);
 		}
 	};
 	expand(tier, []);
