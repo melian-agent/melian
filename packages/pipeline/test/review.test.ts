@@ -257,6 +257,50 @@ describe("reviewChangeset", () => {
 		expect(findings).toHaveLength(1);
 	});
 
+	it("holds a parallel round to the budget inside the commit", async () => {
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? { ...lens, budget: { findings: 1 } } : lens));
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					calls(["report_finding", nullDeref], ["report_finding", { ...nullDeref, line: 6, endLine: 7 }]),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const findings = await review({ lenses: tight });
+
+		const results = toolResults(requests[correctness]![1]!);
+		expect(results.filter((result) => result.startsWith("recorded finding"))).toHaveLength(1);
+		expect(results.join("\n")).toContain("budget reached");
+		expect(findings).toHaveLength(1);
+	});
+
+	it("counts the budget and returns findings at the head under review only", async () => {
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? { ...lens, budget: { findings: 1 } } : lens));
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		expect(await review({ lenses: tight })).toHaveLength(1);
+
+		writeFiles(repo, {
+			"src/report.ts": lines('import { managerName } from "./user.ts";', "export const line = 1;"),
+		});
+		gitIn(repo, "commit", "--quiet", "--all", "-m", "second push");
+		const nextPush = { ...nullDeref, file: "src/report.ts", line: 2, rule: "wrong-result" };
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nextPush), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const findings = await review({ lenses: tight });
+
+		expect(toolResults(requests[correctness]![1]!)[0]).toMatch(/^recorded finding/);
+		expect(findings.map((finding) => finding.ruleId)).toEqual(["wrong-result"]);
+	});
+
 	it("classifies cause by location, with evidence the only route to affected", async () => {
 		scriptConversations(fake, [
 			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },

@@ -64,6 +64,8 @@ It upserts into the root conversation's findings document at the head revision, 
 
 The hook sees only committed findings, and a round's tool calls run in parallel, so two calls in one round can both pass it. `report_finding` checks the budget again inside its commit. A finding already stored passes that check, so a replayed call still succeeds.
 
+One storage holds every review of a changeset, so the root's findings document accumulates across pushes. The budget counts only findings the lens reported at its own head, and `reviewChangeset` returns only findings reported at the head it reviewed. Without that, a lens that used its budget on the first push could report nothing on the second, and a fixed finding would come back as current.
+
 ## Contracts that read like mistakes
 
 - A task phase reruns from its start after a crash. Work before the phase's checkpoint commit must be safe to repeat, or guarded by a durable record.

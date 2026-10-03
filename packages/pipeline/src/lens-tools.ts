@@ -223,12 +223,18 @@ function overlapping(file: ReviewFile | undefined, startLine: number, endLine: n
 	);
 }
 
-type Produced = { readonly producer: { readonly properties: { readonly source: FindingSource } } };
+type Produced = {
+	readonly producer: { readonly properties: { readonly source: FindingSource } };
+	readonly lifecycle: { readonly lastSeenRevision: string };
+};
 
+// One storage holds every review of a changeset, so only findings this lens reported at its own head count.
 function countFor(items: Readonly<Record<string, Produced>>, lens: LensPolicy): number {
 	return Object.values(items).filter(
-		({ producer: { properties } }) =>
-			properties.source.check === `lens.${lens.name}` && properties.source.version === lens.version,
+		({ producer: { properties }, lifecycle }) =>
+			lifecycle.lastSeenRevision === lens.revision.head &&
+			properties.source.check === `lens.${lens.name}` &&
+			properties.source.version === lens.version,
 	).length;
 }
 
@@ -304,7 +310,8 @@ export const reportFinding = defineTool({
 		const id = finding.properties.id;
 		await api.commit(async (tx) => {
 			const { items } = await tx.doc(FindingsDocument, lens.review);
-			if (items[id] === undefined && countFor(items, lens) >= lens.budget) {
+			const current = items[id]?.lifecycle.lastSeenRevision === review.head;
+			if (!current && countFor(items, lens) >= lens.budget) {
 				throw new Error(`budget reached: this lens may report ${lens.budget} findings; stop reporting and finish`);
 			}
 			await upsertFinding(tx, lens.review, finding, review.head);
