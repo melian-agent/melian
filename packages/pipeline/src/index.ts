@@ -1,3 +1,4 @@
+export { readVerdict } from "./adjudication.ts";
 export { createReviewModels, piAuthPath, piCredentialStore } from "./credentials.ts";
 export {
 	PiCredentialsError,
@@ -11,6 +12,7 @@ export {
 	type ReadFindingsOptions,
 	readFindings,
 	recordRevision,
+	revisionKey,
 	upsertFinding,
 } from "./findings.ts";
 export * from "./harness.ts";
@@ -19,6 +21,7 @@ export {
 	createReviewRegistry,
 	lensExtension,
 	openReviewHarness,
+	type Review,
 	type ReviewOptions,
 	renderChangePrompt,
 	reviewChangeset,

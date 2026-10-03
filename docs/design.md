@@ -94,7 +94,7 @@ Only the publish and knowledge tasks hold write credentials. Lenses never see th
 |---|---|
 | A changeset's review history | One storage per changeset, whose root conversation is that changeset's history. Pi mints conversation IDs, so Melian keeps the map from changeset to storage |
 | A new revision, a comment, a command | A `submit()` into that conversation; comments while busy use `whenBusy: "steer"` |
-| A pipeline step | A `defineTask()` with phases and checkpoints. A root document indexes the lens task of each head and lens selection, so a repeat call for that head attaches to the task rather than starting another |
+| A pipeline step | A `defineTask()` with phases and checkpoints. A root document indexes the lens task of each revision, base and head, and lens selection, and the adjudication task of each revision and input, so a repeat call for that revision attaches to the task rather than starting another |
 | A lens | A child conversation created and owned by the lens task, configured with `configure()` with its own model, instructions, and an explicit tool list, because an owned conversation otherwise inherits its owner's tools. Never a subagent tool the model chooses to call |
 | Findings | A `defineDoc()` document, rewindable, committed atomically with the transcript, and owned by the changeset's root conversation so a fork of the root at any revision carries them. It holds immutable sightings keyed by head, lens and version, and finding ID, plus one lifecycle record per ID; reading a head merges its sightings. A lens's tool writes to the root through the ID it is constructed with, never to its own child conversation |
 | Triage decisions, knowledge proposals | `defineDoc()` documents, rewindable, committed atomically with the transcript |
@@ -145,7 +145,7 @@ Each revision's findings are diffed against the previous revision's by `id`. New
 
 The findings document keeps what a producer reports apart from Melian's lifecycle state: status, who dismissed a finding and why, and the first and last revisions that reported it. A lens or tool reporting a finding again replaces only its own record, so a dismissal survives every rerun.
 
-What a producer reports is stored as immutable sightings, keyed by head commit, lens name and version, and finding ID. Problem: one mutable record per ID raced across lenses and pushes. Example: two lenses that share a rule ID report one finding at one head, and the second either replaced the first's severity and source or was refused; or a crashed review of an old head resumes after the next push and rewrites the record the new head reads. Solution: a lens writes only its own sighting at its own head, and a replay or a correction replaces only that sighting. Reading a head merges its sightings per ID deterministically: the highest severity wins, a tie goes to the lens whose name sorts first, and `reportedBy` lists every lens that sighted it. The lifecycle stays one record per ID, and the document lists the heads in the order their reviews started, so a resumed old head can neither move a finding's last-seen revision back nor reopen a dismissal.
+What a producer reports is stored as immutable sightings, keyed by revision, its base and head commits, then lens name and version, and finding ID. A pull request retargeted onto another base keeps its head but has another diff, so it is another revision. Problem: one mutable record per ID raced across lenses and pushes. Example: two lenses that share a rule ID report one finding at one head, and the second either replaced the first's severity and source or was refused; or a crashed review of an old head resumes after the next push and rewrites the record the new head reads. Solution: a lens writes only its own sighting at its own head, and a replay or a correction replaces only that sighting. Reading a head merges its sightings per ID deterministically: the highest severity wins, a tie goes to the lens whose name sorts first, the strongest cause any sighting gave stays with its evidence, and `reportedBy` lists every lens that sighted it. No merge, of sightings or of one defect across checks, lowers what blocks. The lifecycle stays one record per ID, and the document lists the heads in the order their reviews started, so a resumed old head can neither move a finding's last-seen revision back nor reopen a dismissal.
 
 Local findings persist in the clone's `.git/melian/` directory, uncommitted. When a pull request opens, the server or Actions host imports them so the author is not told the same thing twice.
 
@@ -203,15 +203,19 @@ Checks are named. Tiers are named sets of checks. Stages map workflow points to 
 
 ```yaml
 tiers:
-  fast: [guardrails, static, decisions.fast]
+  fast: [guardrails, static]
   standard: [fast, lens.correctness]
-  full: [standard, lens.security, lens.contracts, lens.conventions]
+  full: [standard, lens.contracts]
 stages:
   pre-commit: fast
   pre-push: standard
   pull-request: full
   comment: standard
 ```
+
+These are the defaults, and they name only checks that ship: a lens, or the decision-model questions, joins them when it ships.
+
+A review's tier is its manifest. Every check the tier names records whether it ran, was skipped, or failed, and a check with no record makes the review not reviewed, so nothing reads as passed because it was never counted. Only lenses the tier names run.
 
 Melian exposes `melian run <tier>` and `melian run --stage <name>`. It never installs git hooks. Recipes ship for lefthook, pre-commit, husky, and Pi.
 
@@ -515,10 +519,13 @@ docs/
 | Lens-reported findings | Lens supplies location, rule from its declared list, severity, explanation, evidence; Melian derives snippet from the head revision and everything else | Identity must not depend on the model's wording |
 | Findings ownership | The changeset's root conversation, never a lens's child conversation | A fork of the root at any revision must carry the findings; a lens conversation ends with its task |
 | Resolution ownership | Only adjudication writes resolution; tools store none | A tool must not decide what blocks |
-| Review attachment | One lens task per head, recorded in a root index; a repeat call attaches, never duplicates | A crash must not double the model spend |
+| Review attachment | One lens task per head, and one adjudication task per head and input, recorded in a root index; a repeat call attaches, never duplicates, and an adjudication the index no longer names records no verdict | A crash must not double the model spend, nor let an older verdict overwrite a newer one |
 | Prompt boundaries | Head content only inside nonce-delimited labelled boundaries, with an injection policy section first in every lens | Content must be data, never instructions |
 | Evidence for affected | A changed-code location overlapping a hunk, snippet derived from head | Prose cannot cross the cause boundary |
 | Finding sightings | Immutable per head, lens, and ID; adjudication merges deterministically | No first-writer-wins across lenses or pushes |
+| Check manifest | The tier's check list is the review manifest; a check with no record is skipped and the verdict is not-reviewed | A verdict must never read passed because something was not counted |
+| Dedupe and lifecycle | Only same-status findings merge; a dismissal never absorbs an open blocker | A dismissed advisory must not hide a live P0 |
+| Review identity | Base plus head, in the index, the tasks, the verdict, and the sightings | A retargeted pull request has a new diff and the same head |
 
 ## Open questions
 

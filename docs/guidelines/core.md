@@ -87,13 +87,15 @@ The keys a `melian.yaml` accepts, all optional:
 
 | Key | Shape | Default |
 |---|---|---|
-| `tiers` | tier name to a list of check names or other tiers | `fast`, `standard`, `full` as in the design |
+| `tiers` | tier name to a list of check names or other tiers | `fast: [guardrails, static]`, `standard: [fast, lens.correctness]`, `full: [standard, lens.contracts]` |
 | `stages` | stage name to tier name | `pre-commit: fast`, `pre-push: standard`, `pull-request: full`, `comment: standard` |
 | `resolution` | `P0` to `P3` and `nit`, each `block`, `acknowledge`, `advisory`, or `silent` | `P0` and `P1` block, `P2` acknowledge, `P3` advisory, `nit` silent |
 | `lenses` | lens name to `enabled`, `tier` (`light`, `medium`, `heavy`), and `paths` | none |
 | `models` | `light`, `medium`, `heavy`, or `decision` to `model` and `fallbacks` | none |
 | `knowledge` | `writeBack`, a boolean | `false` |
 | `decisions` | `provider`, and `thresholds` from question name to a `drop` and `accept` band between 0 and 1 | no provider, no thresholds |
+| `ruleAliases` | rule ID that owns a defect to the rule IDs other checks report it under, or to `{ rules, distinct: true }` naming rules that are different defects | none |
+| `checks` | `allowSkip`, a list of check names whose skip still lets a review pass, such as `static.tsc` in a repository with no TypeScript | `allowSkip: []` |
 
 Lenses are a map keyed by name rather than `enable` and `disable` lists, so that layering works per lens: a service can disable one lens without restating the root's list. A band layers like any object, so a nearer file may restate only `drop` or only `accept`. A merged band missing either end, or whose `drop` exceeds its `accept`, is an error naming the nearest file that set it.
 
@@ -199,7 +201,68 @@ The cost is the other direction: a renamed parameter that breaks a caller is `pr
 
 `renderFindingsJson` writes the SARIF log; `renderFindingsTerminal` writes plain text grouped by file in path order, and within a file by severity, then line, then ID. The terminal output carries no escape codes unless `color` is set, so a pipe or a log file receives plain text. Hosts decide whether to colour; core never reads `isTTY` or `NO_COLOR`.
 
-Everything the renderer prints is untrusted. A lens writes finding text after reading the change under review, which anyone opening a pull request controls, and that author also chooses the file paths. Example: a file named `src/run.ts` followed by ESC `[2J` clears the reviewer's screen, a newline in a path or rule ID forges a second header, and a right-to-left override makes `gnp.ts` read as `ts.png`. The terminal renderer therefore prints every control character, C1 control, line or paragraph separator, and bidi control in every string, paths and rule IDs included, as a visible `\uXXXX`, with colour on or off. Prose keeps its newlines as indented continuation lines, so a multi-line explanation stays inside its block; a newline anywhere else is escaped. Any new renderer for a terminal does the same. `visibleText` is that escaping, exported so the pipeline applies it to every path it puts in a prompt.
+Given a `Verdict` instead of a log, `renderFindingsTerminal` leads with the status and whether it blocks, lists the checks that did not run with their reasons and errors, then prints the `block`, `acknowledge`, and `advisory` groups in that order, each grouped by file as above. Silent and dismissed findings are counted, not printed. Check names, reasons, and errors are escaped like finding text: a provider's error message is no more trusted than a lens's. `renderVerdictJson` writes the verdict as JSON, its findings as SARIF results.
+
+Everything the renderer prints is untrusted. A lens writes finding text after reading the change under review, which anyone opening a pull request controls, and that author also chooses the file paths. Example: a file named `src/run.ts` followed by ESC `[2J` clears the reviewer's screen, a newline in a path or rule ID forges a second header, and a right-to-left override makes `gnp.ts` read as `ts.png`. The terminal renderer therefore prints every control character, C1 control, line or paragraph separator, and bidi control in every string, paths and rule IDs included, as a visible `\uXXXX`, with colour on or off. Prose keeps its newlines as indented continuation lines, so a multi-line explanation stays inside its block; a newline anywhere else is escaped. Every continuation line sits deeper than any header it could imitate. A message's first line shares a finding header's two-space indent, so its later lines take four spaces and a `| ` marker: at two spaces, a message line reading `P0  line 1  no-eval` passed for a finding of its own. Any new renderer for a terminal does the same. `visibleText` is that escaping, exported so the pipeline applies it to every path it puts in a prompt.
+
+## Adjudication
+
+Adjudication turns the findings a review collected into what the change requires. It is plain functions over plain values, in `src/adjudication.ts`; the pipeline loads configuration and stores the result.
+
+### Resolution
+
+`resolveFinding(finding, config)` returns what a finding requires under `config`, the effective configuration at the finding's path: `config.resolution` for its severity. `applyResolutions(findings, configFor)` returns copies with `properties.resolution` set, each under `configFor(path)`, so a nested `melian.yaml` that lowers `P2` to `advisory` for `docs/` applies to findings in `docs/` and nowhere else. `configFor` is synchronous: load the configuration for each path first, with `loadConfig`.
+
+A finding the change did not cause is never above `advisory`. Problem: severity says how bad a defect is, not whether this change made it. Example: a lens notices a `P0` SQL injection on line 80 of a file whose typo on line 3 the change fixed; at the configured `block`, the typo fix could not merge. Solution: a `pre-existing` finding resolves to the lesser of its configured resolution and `advisory`, so a `nit` stays `silent`. An `introduced` finding keeps its configured resolution, and so does an `affected` one, only because it carries evidence; `affected` without evidence is treated as `pre-existing`.
+
+A producer stores no resolution, and an absent one means not yet adjudicated, never `silent`. `resolveFinding` decides from severity, cause, and evidence, and ignores any resolution a finding carries; `applyResolutions` replaces it. `adjudicate` groups every finding by the resolution it computes, so none is dropped or silenced for lacking one. Its findings are `ResolvedFinding`s, whose type requires the resolution.
+
+### Dedupe across sources
+
+The findings document holds one finding per ID, and the rule is part of the ID, so two checks that file one defect under two rules produce two findings. Example: the first live golden run, recorded in `packages/evals/runs/2026-10-03-live-goldens.md`, had the contracts lens report `src/cart.ts:10` as `broken-caller` and the correctness lens report the same line as `unhandled-error`; ESLint and the security lens do the same with `security/detect-eval-with-expression` and `no-eval`. The author would read each defect twice.
+
+`dedupeFindings(findings, configFor)` treats two findings as one defect when different checks report them in the same file, on the same normalised snippet at the same occurrence, over overlapping lines, whatever their rules. Findings from one check never merge: a lens that reports two rules on one line means two defects.
+
+One finding speaks for each defect. `ruleAliases` decides first: a key names the rule that owns a defect, and its list the rules other checks file it under.
+
+```yaml
+ruleAliases:
+  broken-caller: [unhandled-error]
+  no-eval: [security/detect-eval-with-expression, lint/security/noGlobalEval]
+```
+
+With that table, the contracts lens's `broken-caller` speaks for the defect above. Without an owner among the defect's rules, the most severe finding speaks, the lower ID on a tie. A finding without a snippet never merges, and there is no fuzzy matching: a static tool that flags `eval(input)` and a lens that flags the three lines around it have different snippets and stay two findings.
+
+A merge never lowers what blocks. Problem: the speaker kept its own cause. Example: the correctness lens reports `src/cart.ts:10` as a `P0` with no evidence, so `pre-existing`, and the contracts lens reports it as a `P1` citing the changed signature in `src/price.ts`, so `affected`. The `P0` spoke, stayed `pre-existing`, and resolved to `advisory`; the evidenced blocker vanished. Solution: the speaker takes the highest severity any member reported, with its level to match, and `strongestCause` of the members: `introduced` over `affected` over `pre-existing`, with the evidence of the most severe member that has the winning cause. It lists each other finding's ID, rule, and check in `properties.alsoReportedAs`. The pipeline's merge of sightings by ID, in `readFindings`, applies `strongestCause` too.
+
+Only findings with the same lifecycle status merge. Problem: dedupe ignored status, so the speaker's status became the defect's. Example: an author dismisses the security lens's `P3` under `no-eval`, which `ruleAliases` names as the owner, and ESLint reports the same `eval(input)` as a `P0` under its own rule; the merged finding was the dismissed `P3`, and the `P0` blocked nothing. Solution: a dismissed finding never absorbs a live one. The live finding stays live and blocks if it blocks, and lists the dismissed one in `alsoReportedAs`, so the author sees that the defect was answered once under another rule.
+
+The merge is general on purpose, and that has a cost. Two distinct defects on one expression, such as a null dereference and an unhandled rejection on the same call, collapse into one finding that lists both rules in `alsoReportedAs`. That is accepted: the live runs showed one defect filed under different rules by different lenses far more often, and a merge that waited for an alias would hide nothing but show every such defect twice. `ruleAliases` is how a repository says two rules are different defects. An entry with `distinct: true` lists rules that never merge with its key, in either direction:
+
+```yaml
+ruleAliases:
+  null-dereference:
+    rules: [unhandled-error]
+    distinct: true
+```
+
+### The verdict
+
+`adjudicate({ findings, manifest, checks, config, allowSkip })` dedupes, resolves, and returns a `Verdict`: a `status`, a `blocking` flag, the findings grouped by resolution (`block`, `acknowledge`, `advisory`, `silent`), the `dismissed` findings, and `notRun`, every check that was skipped or failed with its reason. `config` is one configuration for every path or a `ConfigFor` function.
+
+The status has three states, because a check that reports green while the review never ran is the incumbent failure the design names:
+
+- `not-reviewed` when any check failed, was skipped and is not in `allowSkip`, or is in the manifest with no record. This holds with zero findings: a lens that crashed found nothing because it looked at nothing.
+- `findings` when every check ran and a finding resolves above `silent`.
+- `passed` otherwise. An allowed skip does not stop a pass.
+
+`blocking` is true whenever a finding resolves to `block`, in every status, so a host can say a review both blocks and is incomplete. A dismissed finding counts toward neither: dismissing with a reason is how an author answers an `acknowledge`.
+
+`checks` is a list of `CheckRecord`s, `{ name, status: "ran" | "skipped" | "failed", reason?, error?, version? }`, with names as the tiers spell them, such as `lens.security` or `static.biome`. The lens task writes one per lens; static analysis and guardrails, step 6, write theirs in the same shape. `version` is the version of the tool that ran, as its findings' `source.version` names it. `allowSkip` names checks whose skip is expected, such as a type checker on a change with no TypeScript; a repository sets it as `checks.allowSkip` in `melian.yaml`, and the pipeline passes it on. It never excuses a check of the manifest that left no record.
+
+The manifest is the tier's check list, and every check in it must account for itself. Problem: `checks` was optional and nothing said what it should hold, so a required check that never started left no record and no trace. Example: a pull request reviewed under `full` with the lenses passing and no Biome record read `passed`, though Biome never ran. Solution: `manifest` is required, and every name in it without a record joins `notRun` as `skipped` with the reason `no record`, which `allowSkip` cannot excuse. A record outside the manifest still counts, so a failed check a host ran anyway is never hidden.
+
+`checksOfTier(config, tier)` expands a tier into its manifest: a name that is itself a tier expands to that tier's checks, in order and without repeats. It throws `CheckError` `unknownTier` or `tierCycle`. It does not expand `static` into the static tools; [pull request #18](https://github.com/melian-agent/melian/pull/18) adds that group with its runners, and the two versions are reconciled when it lands.
 
 ## Tests
 
@@ -208,6 +271,6 @@ Everything the renderer prints is untrusted. A lens writes finding text after re
 - Isolate git from the developer's configuration. `isolatedGitEnv` points `GIT_CONFIG_GLOBAL` at `/dev/null` and sets an author; without it, a developer who signs commits sees every fixture commit fail. Stub the same variables into `process.env` while code under test runs git.
 - Take temporary directories through `temporaryDirectory()`, which resolves symlinks. On macOS the system temporary directory is a symlink, and git reports the resolved path, so a comparison with the unresolved one fails.
 - Assert exact hunk ranges against a diff small enough to check by eye.
-- Golden files live in `test/golden/`, compared with Vitest's `toMatchFileSnapshot`. A mismatch fails the gate. After a deliberate change, regenerate with `npx vitest --run -u packages/core/test/render.test.ts` and read the diff before committing. They use `.sarif` and `.txt` extensions, which Biome does not format.
+- Golden files live in `test/golden/`, compared with Vitest's `toMatchFileSnapshot`. A mismatch fails the gate. After a deliberate change, regenerate with `npx vitest --run -u packages/core/test/render.test.ts` and read the diff before committing. They use `.sarif`, `.json`, and `.txt` extensions, which Biome does not format: its `files.includes` lists only code.
 - Run every loader test against both sources with `describe.each(sourceKinds)`. `sourceFor(root, kind)` commits the working tree for a revision, so one body checks that the two agree. Test what only a revision guarantees, such as ignoring the checked-out branch, in a block of its own.
 - Await a rejection with `rejection(promise, ErrorClass)`, which fails unless the promise rejects with that class and returns the error typed.
