@@ -8,6 +8,14 @@
       "file": "src/cart.ts",
       "rule": "broken-caller",
       "cause": "affected"
+    },
+    {
+      "comment": "formatPrice now formats any currency but still divides by 100, so a currency without two minor units renders wrong: 500 yen renders as \"JPY 5\".",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/price.ts",
+      "rule": "wrong-result",
+      "cause": "introduced"
     }
   ]
 }

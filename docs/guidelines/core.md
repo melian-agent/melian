@@ -87,7 +87,7 @@ The keys a `melian.yaml` accepts, all optional:
 
 | Key | Shape | Default |
 |---|---|---|
-| `tiers` | tier name to a list of check names or other tiers | `fast: [guardrails, static]`, `standard: [fast, lens.correctness]`, `full: [standard, lens.contracts]` |
+| `tiers` | tier name to a list of check names or other tiers | `fast: [guardrails, static, decisions.fast]`, `standard: [fast, lens.correctness]`, `full: [standard, lens.contracts]` |
 | `stages` | stage name to tier name | `pre-commit: fast`, `pre-push: standard`, `pull-request: full`, `comment: standard` |
 | `resolution` | `P0` to `P3` and `nit`, each `block`, `acknowledge`, `advisory`, or `silent` | `P0` and `P1` block, `P2` acknowledge, `P3` advisory, `nit` silent |
 | `lenses` | lens name to `enabled`, `tier` (`light`, `medium`, `heavy`), and `paths` | none |
@@ -255,6 +255,8 @@ The status has three states, because a check that reports green while the review
 - `not-reviewed` when any check failed, was skipped and is not in `allowSkip`, or is in the manifest with no record. This holds with zero findings: a lens that crashed found nothing because it looked at nothing.
 - `findings` when every check ran and a finding resolves above `silent`.
 - `passed` otherwise. An allowed skip does not stop a pass.
+
+An allowed skip still appears in `notRun` with its reason, so the author can see what did not run; allowed skips never change the verdict status.
 
 `blocking` is true whenever a finding resolves to `block`, in every status, so a host can say a review both blocks and is incomplete. A dismissed finding counts toward neither: dismissing with a reason is how an author answers an `acknowledge`.
 

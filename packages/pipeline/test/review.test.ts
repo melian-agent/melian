@@ -124,6 +124,13 @@ const deterministicRan: CheckRecord[] = [
 	{ name: "static", status: "ran" },
 ];
 
+// The default fast tier names decisions.fast, and with no decision provider configured its skip is allowed.
+const allowedDecisionSkip: CheckRecord = {
+	name: "decisions.fast",
+	status: "skipped",
+	reason: "no decision provider is configured",
+};
+
 async function reviewed(options: ReviewWith = {}): Promise<Review> {
 	return reviewChangeset({
 		harness,
@@ -753,7 +760,10 @@ describe("reviewChangeset", () => {
 		expect(verdict).toMatchObject({
 			status: "not-reviewed",
 			blocking: true,
-			notRun: [{ name: "lens.correctness", status: "failed", reason: "the lens did not finish" }],
+			notRun: [
+				{ name: "lens.correctness", status: "failed", reason: "the lens did not finish" },
+				allowedDecisionSkip,
+			],
 		});
 		const root = (await harness.root(context)).id;
 		expect(await readVerdict(harness, root, reviewedRevision(), context)).toEqual(verdict);
@@ -865,7 +875,7 @@ describe("adjudication", () => {
 
 		const { findings, verdict } = await reviewed();
 
-		expect(verdict).toMatchObject({ status: "findings", blocking: true, notRun: [] });
+		expect(verdict).toMatchObject({ status: "findings", blocking: true, notRun: [allowedDecisionSkip] });
 		expect(verdict.findings.block.map((each) => each.properties.id)).toEqual([findings[0]!.properties.id]);
 		expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
 		expect(await readVerdict(harness, await rootId(), gitIn(repo, "rev-parse", "main"), context)).toBeUndefined();
@@ -930,7 +940,7 @@ describe("adjudication", () => {
 
 		const { verdict } = await reviewed({ rerun: true });
 
-		expect(verdict).toMatchObject({ status: "passed", notRun: [] });
+		expect(verdict).toMatchObject({ status: "passed", notRun: [allowedDecisionSkip] });
 	});
 
 	it("decides again after a dismissal rather than return the verdict from before it", async () => {
@@ -1015,7 +1025,7 @@ describe("adjudication", () => {
 
 			const { verdict } = await reviewed({ checks: [failed] });
 			expect(await adjudicationTask()).not.toBe(task);
-			expect(verdict).toMatchObject({ status: "not-reviewed", notRun: [failed] });
+			expect(verdict).toMatchObject({ status: "not-reviewed", notRun: [failed, allowedDecisionSkip] });
 			expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
 		});
 
@@ -1059,7 +1069,7 @@ describe("adjudication", () => {
 		it("passes under the default tiers when every check ran and none found anything", async () => {
 			done();
 			const { verdict } = await reviewed();
-			expect(verdict).toMatchObject({ status: "passed", blocking: false, notRun: [] });
+			expect(verdict).toMatchObject({ status: "passed", blocking: false, notRun: [allowedDecisionSkip] });
 		});
 
 		it("is not reviewed when a check the manifest names recorded nothing, even with no findings", async () => {
@@ -1120,6 +1130,7 @@ describe("adjudication", () => {
 			expect(verdict).toMatchObject({
 				status: "not-reviewed",
 				notRun: [
+					allowedDecisionSkip,
 					{ name: "lens.correctness", status: "skipped", reason: "lenses.correctness.enabled is false" },
 					{ name: "lens.contracts", status: "skipped", reason: "lenses.contracts.enabled is false" },
 				],
@@ -1149,6 +1160,7 @@ describe("adjudication", () => {
 			expect(verdict).toMatchObject({
 				status: "not-reviewed",
 				notRun: [
+					allowedDecisionSkip,
 					{ name: "lens.correctness", status: "skipped", reason: "no lens covers these paths" },
 					{ name: "lens.contracts", status: "skipped", reason: "no lens covers these paths" },
 				],
@@ -1159,7 +1171,10 @@ describe("adjudication", () => {
 			const { verdict: covered } = await reviewed({ lenses: one });
 			expect(covered).toMatchObject({
 				status: "passed",
-				notRun: [{ name: "lens.contracts", status: "skipped", reason: "no changed file is in its paths" }],
+				notRun: [
+					allowedDecisionSkip,
+					{ name: "lens.contracts", status: "skipped", reason: "no changed file is in its paths" },
+				],
 			});
 		});
 
@@ -1178,7 +1193,7 @@ describe("adjudication", () => {
 			const { verdict } = await reviewed({ config: tiered(...lensesOnly, "decisions.fast") });
 			expect(verdict).toMatchObject({
 				status: "passed",
-				notRun: [{ name: "decisions.fast", status: "skipped", reason: "no decision provider is configured" }],
+				notRun: [allowedDecisionSkip],
 			});
 		});
 	});

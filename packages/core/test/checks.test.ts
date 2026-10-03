@@ -2,14 +2,16 @@ import { existsSync } from "node:fs";
 import { CheckError, checksOfTier, defaultConfig } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
 
-// The checks Melian runs without a model, and `static`, the group pull request #18 expands into the static tools.
-const deterministicChecks = ["guardrails", "static", "static.biome", "static.tsc"];
+// The checks Melian runs without a model, `static`, the group pull request #18 expands into the static tools, and
+// `decisions.fast`, an allowed skip until a decision provider is configured.
+const deterministicChecks = ["guardrails", "static", "static.biome", "static.tsc", "decisions.fast"];
 
 describe("checksOfTier", () => {
 	it("expands nested tiers in order, without repeats", () => {
 		expect(checksOfTier(defaultConfig, "full")).toEqual([
 			"guardrails",
 			"static",
+			"decisions.fast",
 			"lens.correctness",
 			"lens.contracts",
 		]);
