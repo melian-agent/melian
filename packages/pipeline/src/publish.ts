@@ -266,7 +266,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 	const unfinished = async () =>
 		(await harness.inspect(context)).tasks.filter((each) => each.record.kind === publishTaskName);
 	for (const each of await unfinished()) {
-		if (each.state.kind === "blocked") break;
+		if (each.state.kind === "blocked") continue;
 		await harness.waitForTask(each.record.id, context);
 	}
 	const input: PublishInput = {
