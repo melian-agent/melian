@@ -3,11 +3,13 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { PiCredentialsError } from "./errors.ts";
 import {
+	type AuthContext,
 	type AuthOperationOptions,
 	type Credential,
 	type CredentialInfo,
 	type CredentialStore,
 	createProviderModels,
+	defaultProviderAuthContext,
 	type Models,
 } from "./harness.ts";
 
@@ -112,10 +114,25 @@ export function piCredentialStore(path: string = piAuthPath()): CredentialStore 
 	};
 }
 
+// Claude Code keeps the same kind of Anthropic OAuth token under its own name, so a Claude Code user needs no copy.
+const environmentAliases: Readonly<Record<string, string>> = { ANTHROPIC_OAUTH_TOKEN: "CLAUDE_CODE_OAUTH_TOKEN" };
+
+function reviewAuthContext(): AuthContext {
+	const base = defaultProviderAuthContext();
+	return {
+		async env(name) {
+			const alias = environmentAliases[name];
+			return (await base.env(name)) ?? (alias === undefined ? undefined : base.env(alias));
+		},
+		fileExists: (path) => base.fileExists(path),
+	};
+}
+
 /**
  * The model collection a review runs on: every pi-ai built-in provider, each resolving its credentials from Pi's
- * credential store first and its environment variables second, as pi-ai does. `authPath` overrides where the store is.
+ * credential store first and its environment variables second, as pi-ai does. `CLAUDE_CODE_OAUTH_TOKEN` stands in
+ * for an unset `ANTHROPIC_OAUTH_TOKEN`. `authPath` overrides where the store is.
  */
 export function createReviewModels(options: { readonly authPath?: string } = {}): Models {
-	return createProviderModels(piCredentialStore(options.authPath));
+	return createProviderModels(piCredentialStore(options.authPath), reviewAuthContext());
 }

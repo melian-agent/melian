@@ -12,6 +12,8 @@ beforeEach(() => {
 	authPath = join(dir, "auth.json");
 	vi.stubEnv("ANTHROPIC_API_KEY", undefined);
 	vi.stubEnv("ANTHROPIC_OAUTH_TOKEN", undefined);
+	vi.stubEnv("ANTHROPIC_AUTH_TOKEN", undefined);
+	vi.stubEnv("CLAUDE_CODE_OAUTH_TOKEN", undefined);
 	vi.stubEnv("OPENAI_API_KEY", undefined);
 });
 
@@ -81,6 +83,18 @@ describe("createReviewModels", () => {
 	it("falls back to the environment when the store has nothing for a provider", async () => {
 		vi.stubEnv("OPENAI_API_KEY", "sk-env");
 		expect(await createReviewModels({ authPath }).checkAuth("openai")).toMatchObject({ type: "api_key" });
+	});
+
+	it("takes CLAUDE_CODE_OAUTH_TOKEN for an unset ANTHROPIC_OAUTH_TOKEN, ahead of ANTHROPIC_API_KEY", async () => {
+		const apiKey = async () => (await createReviewModels({ authPath }).getAuth("anthropic"))?.auth.apiKey;
+		vi.stubEnv("ANTHROPIC_API_KEY", "fake-api-key");
+		expect(await apiKey()).toBe("fake-api-key");
+		vi.stubEnv("CLAUDE_CODE_OAUTH_TOKEN", "fake-claude-code-token");
+		expect(await apiKey()).toBe("fake-claude-code-token");
+		vi.stubEnv("ANTHROPIC_OAUTH_TOKEN", "fake-anthropic-token");
+		expect(await apiKey()).toBe("fake-anthropic-token");
+		store({ anthropic: { type: "api_key", key: "fake-stored-key" } });
+		expect(await apiKey()).toBe("fake-stored-key");
 	});
 
 	it("treats an expired login as absent, so the environment or the next model applies", async () => {

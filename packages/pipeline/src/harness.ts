@@ -8,7 +8,7 @@
  */
 import type { Context } from "@earendil-works/chord";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
-import type { CredentialStore, Models } from "@earendil-works/pi-ai";
+import { type AuthContext, type CredentialStore, defaultProviderAuthContext, type Models } from "@earendil-works/pi-ai";
 import { builtinModels } from "@earendil-works/pi-ai/providers/all";
 import {
 	type Harness,
@@ -23,10 +23,12 @@ import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite
 export type { Context } from "@earendil-works/chord";
 export {
 	type AssistantMessage,
+	type AuthContext,
 	type AuthOperationOptions,
 	type Credential,
 	type CredentialInfo,
 	type CredentialStore,
+	defaultProviderAuthContext,
 	type Message,
 	type Models,
 	Type,
@@ -76,9 +78,15 @@ export function openSqliteStorage(path: string): Promise<Storage> {
 	return openNodeSqliteStorage(path);
 }
 
-/** Every pi-ai built-in provider, resolving stored credentials from `credentials` before environment variables. */
-export function createProviderModels(credentials: CredentialStore): Models {
-	return builtinModels({ credentials });
+/**
+ * Every pi-ai built-in provider, resolving stored credentials from `credentials` before the environment variables
+ * `authContext` reads, which default to `process.env`.
+ */
+export function createProviderModels(
+	credentials: CredentialStore,
+	authContext: AuthContext = defaultProviderAuthContext(),
+): Models {
+	return builtinModels({ credentials, authContext });
 }
 
 /** Storage that keeps everything in memory and persists nothing. */
