@@ -52,7 +52,7 @@ After a deliberate change to rendering or to a golden, regenerate the snapshots 
 MELIAN_EVAL_LIVE=1 MELIAN_EVAL_MODEL=anthropic/claude-sonnet-4-5 npm run eval:live --workspace @melian-agent/evals
 ```
 
-Credentials resolve as in a review: Pi's login, then the provider's environment variables. `MELIAN_EVAL_MODEL` routes every tier a golden's `melian.yaml` leaves unrouted. The script prints precision and recall per golden and micro-averaged over the corpus. Without `MELIAN_EVAL_LIVE=1` it exits with status 2 before touching a provider.
+Credentials resolve as in a review: Pi's login, then the provider's environment variables. `MELIAN_EVAL_MODEL` routes every tier a golden's `melian.yaml` leaves unrouted. The script prints precision and recall per golden and micro-averaged over the corpus. Without `MELIAN_EVAL_LIVE=1` it exits with status 2 before touching a provider. Record each live run under `packages/evals/runs/`, with the model IDs, the commit reviewed, and what the misses and extras say about the lenses.
 
 ## Scoring
 
