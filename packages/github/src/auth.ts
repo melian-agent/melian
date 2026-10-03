@@ -25,7 +25,9 @@ export function parseGitHubRemote(url: string, host = "github.com"): GitHubRepos
 			return { owner: match[2]!, repo: match[3]!.replace(/\.git$/, "") };
 		}
 	}
-	throw new GitHubError("notGitHubRemote", `${url} is not a ${host} repository`);
+	// A CI clone's remote can hold a token as its user info, as in https://oauth2:<token>@host/o/r.
+	const shown = url.trim().replace(/^([a-z+]+:\/\/)[^@/]*@/i, "$1");
+	throw new GitHubError("notGitHubRemote", `${shown} is not a ${host} repository`);
 }
 
 /** Where a GitHub token came from: an environment variable, or the gh CLI's login. */

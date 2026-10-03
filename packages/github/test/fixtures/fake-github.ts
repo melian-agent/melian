@@ -36,6 +36,8 @@ export type FakeState = {
 	nextId: number;
 	// Set to make every reply fail, as GitHub does when it has an outage.
 	failReplies?: boolean;
+	// Set to make /user refuse, as it does for an installation token.
+	failUser?: boolean;
 	calls: Call[];
 };
 
@@ -101,7 +103,8 @@ export function fakeGitHub(
 		const path = url.pathname;
 		const pulls = `${repoPath}/pulls/${state.pull.number}`;
 		const user = { login: state.login };
-		if (method === "GET" && path === "/user") return json(user);
+		if (method === "GET" && path === "/user")
+			return state.failUser ? json({ message: "Forbidden" }, 403) : json(user);
 		if (method === "GET" && path === pulls) return json(pull());
 		if (method === "GET" && path === `${pulls}/reviews`) return json(state.reviews);
 		if (method === "GET" && path === `${pulls}/comments`) return json(state.comments);

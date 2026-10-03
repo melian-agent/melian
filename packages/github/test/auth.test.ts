@@ -20,6 +20,12 @@ describe("parseGitHubRemote", () => {
 		});
 	});
 
+	it("never puts a remote's credentials in its error", () => {
+		expect(() => parseGitHubRemote("https://oauth2:secret-token@ghe.example.com/o/r")).toThrow(
+			"https://ghe.example.com/o/r is not a github.com repository",
+		);
+	});
+
 	it("refuses another host or a path that is not owner and repository", () => {
 		for (const url of ["git@gitlab.com:owner/repo.git", "https://github.com/owner", "/srv/repo.git"]) {
 			expect(() => parseGitHubRemote(url)).toThrow(GitHubError);

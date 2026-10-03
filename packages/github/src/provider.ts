@@ -64,7 +64,8 @@ function firstLine(body: string | null | undefined): string {
  *
  * It posts every review with the event `COMMENT`, never `APPROVE` or `REQUEST_CHANGES`: Melian never approves, and the
  * status, not the review, says whether a change may merge. Findings go on the right-hand side of the diff by line.
- * Markers are read back only from posts by the token's own user, so another user cannot forge one to hide a post.
+ * Markers are read back only from posts by the token's own user, so another user cannot forge one to hide a post. When
+ * the provider cannot tell who that is, it reads no markers at all.
  */
 export function createGitHubProvider(options: GitHubProviderOptions): ReviewProvider {
 	const { owner, repo } = options;
@@ -75,18 +76,21 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 		...(options.fetch === undefined ? {} : { request: { fetch: options.fetch } }),
 	});
 	const links = { web: `${options.webUrl ?? "https://github.com"}/${owner}/${repo}` };
-	let viewer: Promise<string | undefined> | undefined;
-	// An installation token cannot read /user; it then reads every author's markers, which only risks a skipped post.
-	const login = () => {
-		viewer ??= octokit.rest.users.getAuthenticated().then(
+	// Who Melian posts as: from /user, or from the author of a review it posted. A failed lookup is not remembered, so a
+	// passing outage does not stick.
+	let viewer: string | undefined;
+	const login = async () => {
+		viewer ??= await octokit.rest.users.getAuthenticated().then(
 			({ data }) => data.login,
 			() => undefined,
 		);
 		return viewer;
 	};
+	// Fails closed: when Melian cannot tell who it posts as, as with an installation token that cannot read /user, no
+	// marker counts. Counting every author's would let a pull request's author hide Melian's review behind a forged one.
 	const ours = async (author: { login: string } | null | undefined) => {
 		const me = await login();
-		return me === undefined || author?.login === me;
+		return me !== undefined && author?.login === me;
 	};
 
 	return {
@@ -137,6 +141,7 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 					comments,
 				}),
 			);
+			viewer ??= review.user?.login;
 			const posted = await call(`read review ${review.id}`, () =>
 				octokit.paginate(octokit.rest.pulls.listCommentsForReview, {
 					owner,

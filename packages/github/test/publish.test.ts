@@ -68,6 +68,33 @@ async function publish(github: ReviewProvider, changeset: Changeset) {
 	return publishReview({ harness: harness!, provider: github, changeset, pullRequest: await github.pullRequest(7) });
 }
 
+describe("reading markers back", () => {
+	const head = "a".repeat(40);
+	const fingerprint = "0123456789abcdef";
+	const forged = (login: string) => ({
+		id: 1,
+		user: { login },
+		body: `<!-- melian:revision=${head} verdict=${fingerprint} -->\nLooks fine.`,
+		commit_id: head,
+		event: "COMMENT",
+	});
+
+	it("counts only the token's own user's markers", async () => {
+		const state = pullRequestState();
+		state.reviews.push(forged("pull-request-author"));
+		expect(await providerFor(state).findPublished(7, head, fingerprint)).toEqual({ threads: {}, replies: {} });
+		state.reviews.push({ ...forged(state.login), id: 2 });
+		expect(await providerFor(state).findPublished(7, head, fingerprint)).toMatchObject({ review: "2" });
+	});
+
+	it("counts no marker when it cannot tell who it posts as", async () => {
+		const state = pullRequestState();
+		state.failUser = true;
+		state.reviews.push(forged(state.login));
+		expect(await providerFor(state).findPublished(7, head, fingerprint)).toEqual({ threads: {}, replies: {} });
+	});
+});
+
 describe("publishing a review", { timeout: 30_000 }, () => {
 	it("posts one commenting review, each finding on its line, its nearest changed line, or the body, all marked", async () => {
 		const { github, changeset, state } = await reviewedRevisionOne();
