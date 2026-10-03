@@ -64,4 +64,4 @@ Steps to be written when milestone 2 closes.
 
 ## Progress log
 
-[progress-log.md](progress-log.md) records what landed, newest first.
+[progress-log/](progress-log/) records what landed, one file per entry, oldest first in name order.

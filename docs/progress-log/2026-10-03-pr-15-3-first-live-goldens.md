@@ -1,0 +1,1 @@
+First live golden run, on Opus 5.5, recorded in [packages/evals/runs/2026-10-03-live-goldens.md](../../packages/evals/runs/2026-10-03-live-goldens.md). Recall 1.00 and no noise on the clean golden; precision 0.50, because the correctness and contracts lenses each report the other's defect. The lenses also never see their rule IDs, so most open with a rule the hook refuses.

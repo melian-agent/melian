@@ -1,0 +1,1 @@
+First comparison review of [pull request #10](https://github.com/melian-agent/melian/pull/10) recorded in [packages/evals/comparisons/2026-10-03-pr-10.md](../../packages/evals/comparisons/2026-10-03-pr-10.md). The Codex finding was applied as a lockfile release-age gate in `npm run check`, and CI now runs the build.
