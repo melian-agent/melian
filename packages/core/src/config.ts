@@ -173,8 +173,8 @@ function validate(file: string, value: unknown, schema: TSchema): void {
 
 async function readLayer(repoRoot: string, file: string): Promise<MelianYaml | undefined> {
 	const text = await readFile(file, "utf8").catch((error: NodeJS.ErrnoException) => {
-		if (error.code === "ENOENT") return undefined;
-		throw error;
+		if (error.code === "ENOENT" || error.code === "ENOTDIR") return undefined;
+		throw new ConfigError("unreadable", file, `${file}: ${error.message}`, { cause: error });
 	});
 	if (text === undefined) return undefined;
 	const document = parseDocument(text);
@@ -220,7 +220,7 @@ function checkBands(config: MelianConfig, layers: readonly { file: string; layer
  *
  * Every `melian.yaml` from the path's directory up to the root applies. The nearest file wins per key: objects merge
  * key by key, and arrays and scalars replace. Lens `paths` are relative to the file that declares them. Throws
- * {@link ConfigError} naming the file for invalid YAML, an unknown key, or a bad value, and
+ * {@link ConfigError} naming the file for an unreadable file, invalid YAML, an unknown key, or a bad value, and
  * {@link OutsideRepositoryError} when `path` is outside `repoRoot`.
  */
 export async function loadConfig(repoRoot: string, path: string): Promise<LoadedConfig> {

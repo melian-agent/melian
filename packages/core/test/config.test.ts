@@ -1,3 +1,4 @@
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { ConfigError, defaultConfig, loadConfig, OutsideRepositoryError } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -94,6 +95,14 @@ describe("loadConfig", () => {
 		it("treats a directory path as the directory itself", async () => {
 			const { sources } = await loadConfig(repo, join(repo, "services/payments"));
 			expect(sources).toHaveLength(2);
+		});
+	});
+
+	it("names a melian.yaml it cannot read", async () => {
+		mkdirSync(join(repo, "melian.yaml"));
+		expect(await rejection(loadConfig(repo, "a.ts"))).toMatchObject({
+			code: "unreadable",
+			file: join(repo, "melian.yaml"),
 		});
 	});
 
