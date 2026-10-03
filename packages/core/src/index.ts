@@ -116,6 +116,24 @@ export {
 } from "./lens.ts";
 export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
 export { melianPaths } from "./paths.ts";
+export {
+	type DiffLines,
+	diffLines,
+	type PlacedFinding,
+	type Placement,
+	type PostedReview,
+	type PublicationPlan,
+	type PublishedFinding,
+	type PublishedMarkers,
+	type PullRequest,
+	placeFinding,
+	planPublication,
+	type ResolvedFinding,
+	type ReviewDraft,
+	type ReviewProvider,
+	type ReviewStatus,
+	reviewStatus,
+} from "./publication.ts";
 export { renderFindingsJson, renderFindingsTerminal, renderVerdictJson, type TerminalRenderOptions } from "./render.ts";
 export {
 	listRevisionFiles,

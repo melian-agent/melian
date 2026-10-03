@@ -240,6 +240,24 @@ The status has three states, because a check that reports green while the review
 
 `checks` is a list of `CheckRecord`s, `{ name, status: "ran" | "skipped" | "failed", reason?, error? }`, with names as the tiers spell them, such as `lens.security` or `static.biome`. The lens task writes one per lens; static analysis and guardrails, step 6, write theirs in the same shape. `allowSkip` names checks whose skip is expected, such as a type checker on a change with no TypeScript; nothing sets it from configuration yet.
 
+## Publication
+
+`src/publication.ts` holds the provider port and the decisions publication makes without a host. `packages/github` implements the port; the pipeline's publish task calls it. Nothing here talks to a network.
+
+`ReviewProvider` is the whole surface a code host offers Melian: read a pull request's base, head, and metadata; post one review; reply in a thread; set a status; and read back Melian's markers. A second host is a second implementation of these five calls.
+
+`planPublication(verdict, previous, lines, revision)` decides what one revision posts. A finding that resolves to `block`, `acknowledge`, or `advisory` and was not open after the previous revision is posted; one already open is not posted again; an open finding the verdict no longer holds, in any group, is resolved. A dismissed finding is neither posted nor resolved, since dismissing it answered it.
+
+`placeFinding(finding, lines)` decides where a finding goes, given `diffLines(files)`, the lines each changed file adds at head:
+
+- `lines`: the finding overlaps a hunk's new lines, so it goes on them, clipped to the hunk.
+- `nearest`: the file changed but the finding sits outside every hunk, so it goes on the nearest added line, and the comment links to where it is.
+- `body`: the file did not change, or only lost lines, so the review's body carries it.
+
+Only added lines take an inline comment. Problem: GitHub rejects the whole review with a 422 when one comment names a line outside the diff, and its diff has three lines of context that Melian's zero-context hunks do not. Solution: anchor to added lines only, which every host shows.
+
+`reviewStatus(verdict)` maps a verdict to a commit status: `passed`, and `findings` with nothing blocking, are `success` with a count; a blocking finding is `failure`; `not-reviewed` is `error`, naming each check that did not run. `success` means only that nothing blocks: Melian never approves.
+
 ## Tests
 
 - Run the package's tests with `npm test --workspace @melian-agent/core`, or one file with `npx vitest --run packages/core/test/changeset.test.ts` from the repository root.
