@@ -138,7 +138,9 @@ Static analysis gets the same split for free by running on base and head and dif
 
 ### Cross-revision diffing
 
-Each revision's findings are diffed against the previous revision's by `id`. New findings are posted. Still-open findings are not reposted. Resolved findings get a short resolution note on their thread. Dismissed findings stay dismissed unless the triggering hunk changes materially.
+Each revision's findings are diffed against the previous revision's by `id`. New findings are posted. Still-open findings are not reposted. Resolved findings get a short resolution note on their thread. Dismissed findings stay dismissed unless the triggering hunk changes materially, which for now means the normalised code of the finding's trigger differs; a reopened finding keeps its old dismissal in its history.
+
+The findings document keeps what a producer reports apart from Melian's lifecycle state: status, who dismissed a finding and why, and the first and last revisions that reported it. A lens or tool reporting a finding again replaces only its own record, so a dismissal survives every rerun.
 
 Local findings persist in the clone's `.git/melian/` directory, uncommitted. When a pull request opens, the server or Actions host imports them so the author is not told the same thing twice.
 

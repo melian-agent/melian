@@ -30,7 +30,14 @@ export const findingStatusSchema = Type.Union([
 
 /** The JSON Schema of a {@link FindingTrigger}. */
 export const findingTriggerSchema = Type.Object(
-	{ file: text, oldStart: count, oldLines: count, newStart: count, newLines: count },
+	{
+		file: text,
+		oldStart: count,
+		oldLines: count,
+		newStart: count,
+		newLines: count,
+		snippet: Type.Optional(Type.String()),
+	},
 	strict,
 );
 
@@ -143,7 +150,10 @@ export type LocationCause = Exclude<Cause, "affected">;
 /** Where a finding stands across revisions. Only `new` is assigned until cross-revision diffing exists. */
 export type FindingStatus = Static<typeof findingStatusSchema>;
 
-/** The diff hunk that caused a finding, in the file that hunk changed. Line ranges follow {@link Hunk}. */
+/**
+ * The diff hunk that caused a finding, in the file that hunk changed. Line ranges follow {@link Hunk}. `snippet` is the
+ * changed code as the producer saw it; a dismissed finding reopens when its {@link normaliseSnippet} changes.
+ */
 export type FindingTrigger = Static<typeof findingTriggerSchema>;
 
 /** A finding's explanation for the author: what is wrong, why it matters in this change, and what to do. */
@@ -208,7 +218,11 @@ export interface FindingIdInput {
 	readonly discriminator?: string;
 }
 
-function normalise(snippet: string): string {
+/**
+ * The form of a snippet that {@link findingId} hashes: leading and trailing whitespace removed, and every run of
+ * whitespace collapsed to one space. Two snippets that normalise alike are the same code.
+ */
+export function normaliseSnippet(snippet: string): string {
 	return snippet.trim().replace(/\s+/g, " ");
 }
 
@@ -226,7 +240,7 @@ function normalise(snippet: string): string {
  * snippet has no discriminator.
  */
 export function findingId({ file, rule, snippet, occurrence, discriminator }: FindingIdInput): string {
-	const normalised = normalise(snippet);
+	const normalised = normaliseSnippet(snippet);
 	let distinguisher: string;
 	if (normalised !== "") {
 		if (occurrence === undefined || !Number.isInteger(occurrence) || occurrence < 0) {
@@ -266,7 +280,7 @@ function lineStarts(source: string): number[] {
  * Throws {@link FindingError} `snippetNotFound` when the snippet is empty or does not start inside the region.
  */
 export function snippetOccurrence(source: string, snippet: string, region: SnippetRegion): number {
-	const target = normalise(snippet);
+	const target = normaliseSnippet(snippet);
 	const chars: string[] = [];
 	const offsets: number[] = [];
 	let space = false;
@@ -363,7 +377,7 @@ function defined<T extends object>(value: T): T {
 export function createFinding(input: FindingInput): Finding {
 	const { file, rule, snippet, occurrence, discriminator } = input;
 	const id = findingId({ file, rule, snippet: snippet ?? "", occurrence, discriminator });
-	const hasSnippet = normalise(snippet ?? "") !== "";
+	const hasSnippet = normaliseSnippet(snippet ?? "") !== "";
 	const evidence = typeof input.cause === "object" ? input.cause.evidence : undefined;
 	return parseFinding({
 		ruleId: rule,
@@ -452,9 +466,9 @@ export function parseFinding(value: unknown): Finding {
 	}
 	const snippet = region.snippet?.text ?? "";
 	const { occurrence, discriminator } = finding.properties;
-	const extra = normalise(snippet) === "" ? occurrence : discriminator;
+	const extra = normaliseSnippet(snippet) === "" ? occurrence : discriminator;
 	if (extra !== undefined) {
-		const key = normalise(snippet) === "" ? "occurrence" : "discriminator";
+		const key = normaliseSnippet(snippet) === "" ? "occurrence" : "discriminator";
 		throw new FindingError("invalidFinding", `finding has a ${key} its snippet does not call for`, {
 			path: `/properties/${key}`,
 		});

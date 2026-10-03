@@ -61,6 +61,7 @@ export {
 	findingTriggerSchema,
 	type LocationCause,
 	levelForSeverity,
+	normaliseSnippet,
 	parseFinding,
 	type SarifLevel,
 	type SnippetRegion,

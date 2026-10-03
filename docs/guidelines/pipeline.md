@@ -17,10 +17,13 @@ It quarantines import paths, not churn. It re-exports Pi's API unchanged, so cal
 
 `FindingsDocument` in `src/findings.ts` holds a conversation's findings keyed by stable ID. It is rewindable and forks `asOf`, so a fork taken at a revision's entry sees that revision's findings and nothing reported after it.
 
-- Write findings only through `upsertFinding(tx, conversationId, finding)`. It validates with core's `parseFinding`, then stores the finding under its ID, replacing any finding with that ID. A replayed or retried call writes the same value again, so a tool that calls it is an idempotent upsert and can be marked `replay: "safe"`. An invalid finding throws `FindingError` and aborts the whole transaction.
-- Read with `readFindings`, which returns findings in ID order and treats an absent document as empty.
-- Both take and return core's `Finding`. The document token stays inside the package. `upsertFinding` takes Pi's transaction, so its callers, such as step 5's `report_finding` tool, live in the pipeline.
-- Replacing is right while every finding is `new`. Cross-revision diffing will need an upsert that keeps a finding's status, such as `dismissed`, when a later revision reports it again.
+Each ID holds two records. The producer record is what the lens or tool reported: the finding without its status. The lifecycle record is Melian's: `status`, `dismissedBy`, `dismissedReason`, `dismissedAt`, `firstSeenRevision`, `lastSeenRevision`, and a `history` of reopened dismissals. Problem: a lens reports the same finding again on every revision, and an upsert that replaced the whole finding would reset it to `new`. Example: an author dismisses `eval(input)` as safe because the input is a constant; the next push reruns the security lens, which reports it again, and the dismissal vanishes. Solution: a producer only ever writes its own record.
+
+- Write findings only through `upsertFinding(tx, conversationId, finding, revision)`. It validates with core's `parseFinding`, replaces the producer record, and keeps the lifecycle record. The lifecycle starts as `new` when the ID is first seen, and `lastSeenRevision` always moves to `revision`. A dismissed finding stays dismissed unless its trigger changed materially, which for now means its normalised `trigger.snippet` differs from the stored one; then its status becomes `new` and the dismissal moves to `history`. A moved or reindented trigger is not material. An invalid finding throws `FindingError` and aborts the whole transaction.
+- A replayed or retried `upsertFinding` writes the same state again, so a tool that calls it is an idempotent upsert and can be marked `replay: "safe"`.
+- Dismiss with `dismissFinding(tx, conversationId, id, { by, reason, at })`. The caller supplies `at`, so a replay writes the same timestamp. An unknown ID throws `FindingError` `unknownFinding`.
+- Read with `readFindings`, which merges the two records into core `Finding`s with the lifecycle's status, in ID order, and treats an absent document as empty.
+- The functions take and return core's types. The document token stays inside the package. `upsertFinding` takes Pi's transaction, so its callers, such as step 5's `report_finding` tool, live in the pipeline.
 
 ## Contracts that read like mistakes
 
