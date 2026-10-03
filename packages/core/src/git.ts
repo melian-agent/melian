@@ -4,6 +4,8 @@ import { ChangesetError } from "./errors.ts";
 export interface GitResult {
 	readonly code: number;
 	readonly stdout: string;
+	// Undecoded, for output that carries paths: a path need not be UTF-8, and decoding would replace its bytes.
+	readonly stdoutBytes: Buffer;
 	readonly stderr: string;
 }
 
@@ -46,13 +48,15 @@ export function git(cwd: string, args: readonly string[]): Promise<GitResult> {
 				new ChangesetError("gitUnavailable", "git could not be started; is it installed and on PATH?", { cause }),
 			),
 		);
-		child.on("close", (code) =>
+		child.on("close", (code) => {
+			const stdoutBytes = Buffer.concat(stdout);
 			resolve({
 				code: code ?? -1,
-				stdout: Buffer.concat(stdout).toString("utf8"),
+				stdout: stdoutBytes.toString("utf8"),
+				stdoutBytes,
 				stderr: Buffer.concat(stderr).toString("utf8"),
-			}),
-		);
+			});
+		});
 	});
 }
 
@@ -97,6 +101,12 @@ export async function gitOutput(cwd: string, args: readonly string[]): Promise<s
 	const result = await git(cwd, args);
 	if (result.code !== 0) throw gitFailure(args, result);
 	return result.stdout;
+}
+
+export async function gitOutputBytes(cwd: string, args: readonly string[]): Promise<Buffer> {
+	const result = await git(cwd, args);
+	if (result.code !== 0) throw gitFailure(args, result);
+	return result.stdoutBytes;
 }
 
 export function gitFailure(args: readonly string[], result: GitResult): ChangesetError {

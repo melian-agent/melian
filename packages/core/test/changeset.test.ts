@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdirSync, renameSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { ChangesetError, parseRangeSpec, resolveRange } from "@melian-agent/core";
@@ -308,6 +309,22 @@ describe("resolveRange", () => {
 			const changeset = await resolveRange(repo, "feature~1..feature");
 			expect(changeset.revision.files.map(({ path }) => path)).toEqual([".gitmodules", "vendor/lib"]);
 		});
+	});
+
+	it("keeps a path that is not UTF-8 addressable, percent-encoding its bytes", async () => {
+		const blob = gitIn(repo, "rev-parse", "main:poem.txt");
+		const name = Buffer.concat([Buffer.from("caf"), Buffer.from([0xe9]), Buffer.from(".txt")]);
+		execFileSync("git", ["update-index", "--index-info"], {
+			cwd: repo,
+			env: { ...process.env, ...isolatedGitEnv },
+			input: Buffer.concat([Buffer.from(`100644 ${blob}\t`), name, Buffer.from("\n")]),
+		});
+		gitIn(repo, "commit", "--quiet", "-m", "latin-1 name");
+		const changeset = await resolveRange(repo, "main~1..main");
+		expect(changeset.revision.files).toEqual([
+			expect.objectContaining({ status: "added", path: "caf%E9.txt", percentEncoded: true }),
+		]);
+		expect((await resolveRange(repo, "main...feature")).revision.files[0]).not.toHaveProperty("percentEncoded");
 	});
 
 	it("resolves an empty diff to no files", async () => {

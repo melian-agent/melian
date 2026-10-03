@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { stat } from "node:fs/promises";
 import { type ChangedFile, joinDiff, parseNumstatBinary, parsePatchHunks, parseRaw } from "./diff.ts";
 import { ChangesetError } from "./errors.ts";
-import { git, gitFailure, gitOutput, isNotARepository, requireGitVersion } from "./git.ts";
+import { git, gitFailure, gitOutput, gitOutputBytes, isNotARepository, requireGitVersion } from "./git.ts";
 import { isPolicyFile } from "./paths.ts";
 
 /**
@@ -179,22 +179,22 @@ async function diff(repoRoot: string, base: string, head: string): Promise<Chang
 	// diff.renames=copies would report copies, whose hunks are against the copy's source.
 	// The working tree's .gitattributes belong to whatever is checked out, often the head; `*.ts -diff` there would
 	// turn the head's own changes into a binary file with no hunks.
-	const run = (format: string[]) =>
-		gitOutput(repoRoot, [
-			`--attr-source=${base}`,
-			"-c",
-			"diff.renames=true",
-			"diff",
-			...diffFlags,
-			...format,
-			base,
-			head,
-			"--",
-		]);
+	const args = (format: string[]) => [
+		`--attr-source=${base}`,
+		"-c",
+		"diff.renames=true",
+		"diff",
+		...diffFlags,
+		...format,
+		base,
+		head,
+		"--",
+	];
+	// Paths come from the raw view as bytes; the other two views only need counting.
 	const [raw, numstat, patch] = await Promise.all([
-		run(["--raw", "-z", "--no-abbrev"]),
-		run(["--numstat", "-z"]),
-		run(["--unified=0"]),
+		gitOutputBytes(repoRoot, args(["--raw", "-z", "--no-abbrev"])),
+		gitOutput(repoRoot, args(["--numstat", "-z"])),
+		gitOutput(repoRoot, args(["--unified=0"])),
 	]);
 	return joinDiff(parseRaw(raw), parseNumstatBinary(numstat), parsePatchHunks(patch));
 }
