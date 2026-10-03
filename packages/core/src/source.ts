@@ -187,7 +187,7 @@ class RevisionSource implements SourceReader {
 	readonly repoRoot: string;
 	readonly sha: string;
 
-	constructor(repoRoot: string, sha: string) {
+	private constructor(repoRoot: string, sha: string) {
 		this.repoRoot = repoRoot;
 		this.sha = sha;
 	}
