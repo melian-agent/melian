@@ -87,7 +87,8 @@ export function parseRangeSpec(spec: string): RangeSpec {
 // Refuses anything git could read as an option or a second range before it reaches a git argument list.
 function checkRange(spec: RangeSpec): RangeSpec {
 	for (const side of [spec.base, spec.head]) {
-		if (side === "" || side.includes("..") || side.startsWith("-") || /\s/.test(side)) {
+		// `^ref` is a negation: rev-parse answers `^<sha>`, which is not a commit.
+		if (side === "" || side.includes("..") || side.startsWith("-") || side.startsWith("^") || /\s/.test(side)) {
 			throw new ChangesetError("invalidRange", `"${side}" is not a ref`, { ref: side });
 		}
 	}

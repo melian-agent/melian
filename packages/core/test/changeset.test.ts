@@ -399,6 +399,10 @@ describe("resolveRange", () => {
 		expect(error.ref).toBe("no-such-branch");
 	});
 
+	it.each(["^main..feature", "main...^feature", "^main"])("refuses the negated ref in %j", async (range) => {
+		expect((await rejection(resolveRange(repo, range))).code).toBe("invalidRange");
+	});
+
 	it("refuses a malformed range before running git", async () => {
 		expect((await rejection(resolveRange(repo, "a..b..c"))).code).toBe("invalidRange");
 		const error = await rejection(resolveRange(repo, { base: "--output=x", head: "HEAD", mode: "twoDot" }));
