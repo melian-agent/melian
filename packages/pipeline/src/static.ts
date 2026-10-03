@@ -1,3 +1,5 @@
+import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, posix } from "node:path";
 import {
@@ -367,6 +369,29 @@ async function runTsc(
 		);
 	}
 	return { version: "2.1.0", runs: [{ tool: { driver: { name: "tsc", version } }, results }] };
+}
+
+/** Where {@link runStaticTool} would take a tool from: the checkout's install, Melian's own, or neither. */
+export type StaticToolSource =
+	| { readonly from: "checkout" | "melian"; readonly path: string }
+	| { readonly from: "missing" };
+
+/**
+ * Where {@link runStaticTool} takes `tool` from for the checkout at `repoRoot`, by the rule it applies on every run:
+ * the checkout's `node_modules/.bin/<tool>` when git does not track that `node_modules`, and otherwise Melian's own.
+ * For a host that reports readiness, such as `melian doctor`. Runs git in the Melian process, so pass only a checkout
+ * the user trusts, never a revision's tree.
+ */
+export function staticToolSource(repoRoot: string, tool: StaticTool): StaticToolSource {
+	const { bin, melian } = toolBinaries[tool];
+	const own = posix.join(repoRoot, "node_modules", ".bin", bin);
+	const tracked = spawnSync("git", ["-C", repoRoot, "ls-files", "--", "node_modules"], { encoding: "utf8" });
+	if (tracked.status === 0 && tracked.stdout === "" && existsSync(own)) return { from: "checkout", path: own };
+	try {
+		return { from: "melian", path: melian() };
+	} catch {
+		return { from: "missing" };
+	}
 }
 
 /**

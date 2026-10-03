@@ -1,13 +1,10 @@
 import { existsSync } from "node:fs";
 import {
 	type Changeset,
-	type CheckRecord,
-	checksOfTier,
 	createFindingsLog,
 	loadConfig,
 	loadLenses,
 	loadStandards,
-	type MelianConfig,
 	type RepositorySource,
 	renderFindingsJson,
 	renderFindingsTerminal,
@@ -25,6 +22,7 @@ import {
 	readVerdict,
 	reviewChangeset,
 	revisionKey,
+	runChecks,
 } from "@melian-agent/pipeline";
 import { idleModels, isScripted, reviewModels, scriptVariable } from "./models.ts";
 import { CliError, git, storagePath } from "./repository.ts";
@@ -51,15 +49,6 @@ export function exitCodeFor(verdict: Verdict): number {
 	if (verdict.status === "not-reviewed") return reviewExitCodes.notReviewed;
 	if (verdict.blocking) return reviewExitCodes.blocking;
 	return verdict.status === "passed" ? reviewExitCodes.passed : reviewExitCodes.findings;
-}
-
-// Melian runs no guardrails or static tools yet. Every check of the review's manifest that is neither a lens nor a
-// decision, which the pipeline records itself, is recorded as skipped, so the review reads not reviewed unless
-// melian.yaml lists the check in checks.allowSkip. A missing record would read the same, under the reason "no record".
-function unrunChecks(config: MelianConfig): CheckRecord[] {
-	return checksOfTier(config, config.stages["pull-request"] ?? "full")
-		.filter((name) => !name.startsWith("lens.") && !name.startsWith("decisions."))
-		.map((name) => ({ name, status: "skipped", reason: "Melian does not run this check yet" }));
 }
 
 // A pull request reads policy from its base. A range on the checked-out commit reads it from the working tree, since
@@ -92,8 +81,18 @@ export async function review(
 	const path = await storagePath(repoRoot, changeset.id, isScripted(io.env));
 	// Without the publish extension, so a publication a crash interrupted waits for melian publish rather than posting
 	// from a review.
-	const harness = await openReviewHarness(await openSqliteStorage(path), models, { retry });
+	const harness = await openReviewHarness(await openSqliteStorage(path), models, { retry, checkout: repoRoot });
 	try {
+		// The deterministic checks first, then the lenses: reviewChangeset reads the checks' records, and a check of the
+		// manifest without one makes the review not reviewed. The checks take the configuration as loaded, so a --model
+		// route does not change their run's identity and run them again.
+		const tier = loaded.stages["pull-request"] ?? "full";
+		const rootConversationId = (await harness.root(context)).id;
+		const checks = await runChecks(
+			harness,
+			{ rootConversationId, changeset, config: loaded, source, tier, rerunFailed: options.rerun },
+			context,
+		);
 		let verdict: Verdict;
 		try {
 			({ verdict } = await reviewChangeset({
@@ -104,7 +103,8 @@ export async function review(
 				standards,
 				models,
 				policy: source,
-				checks: unrunChecks(config),
+				tier,
+				checks: checks.records,
 				rerun: options.rerun,
 			}));
 		} catch (error) {

@@ -16,8 +16,8 @@ Commands:
 
 Options:
   --model <provider/id>  Route every tier melian.yaml leaves unrouted to this model (review).
-  --rerun                Run again the lenses that failed in the last review of this base and head, rather than
-                         print the failure it stored (review).
+  --rerun                Run again the checks and lenses that failed in the last review of this base and head,
+                         rather than print the failures it stored (review).
   --open, --json         For findings.
   --no-color             Print without colour.
   -h, --help             Show this help.

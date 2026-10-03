@@ -47,7 +47,14 @@ export {
 	renderChangePrompt,
 	reviewChangeset,
 } from "./review.ts";
-export { runStaticTool, type StaticRun, type StaticRunInput, staticOutputLimit } from "./static.ts";
+export {
+	runStaticTool,
+	type StaticRun,
+	type StaticRunInput,
+	type StaticToolSource,
+	staticOutputLimit,
+	staticToolSource,
+} from "./static.ts";
 export {
 	injectionAttemptRule,
 	quoteUntrusted,

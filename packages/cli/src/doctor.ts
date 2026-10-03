@@ -1,8 +1,8 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { type LensTier, loadConfig } from "@melian-agent/core";
+import { type LensTier, loadConfig, type StaticTool } from "@melian-agent/core";
 import { parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
-import { createReviewModels, piAuthPath, providersWithCredentials } from "@melian-agent/pipeline";
+import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSource } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
 import { git } from "./repository.ts";
 
@@ -71,6 +71,22 @@ async function routesCheck(cwd: string): Promise<Check | undefined> {
 	}
 }
 
+const staticTools: readonly StaticTool[] = ["biome", "tsc"];
+
+// The static checks run the checkout's own Biome and tsc when it has them installed, and Melian's copy otherwise, so a
+// result can differ from the repository's own lint run.
+async function staticCheck(cwd: string): Promise<Check | undefined> {
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return undefined;
+	const sources = staticTools.map((tool) => ({ tool, ...staticToolSource(root, tool) }));
+	const where = { checkout: "the checkout", melian: "Melian's own copy", missing: "nowhere" } as const;
+	return {
+		name: "static",
+		state: sources.some((source) => source.from === "missing") ? "warn" : "ok",
+		detail: sources.map((source) => `${source.tool} from ${where[source.from]}`).join(", "),
+	};
+}
+
 async function repositoryCheck(cwd: string): Promise<Check> {
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return { name: "repository", state: "warn", detail: "not inside a git repository" };
@@ -108,7 +124,7 @@ export async function doctor(io: Io): Promise<number> {
 			? { name: "gh", state: "warn", detail: "not found on PATH" }
 			: { name: "gh", state: "ok", detail: gh.split("\n")[0]! },
 		await repositoryCheck(io.cwd),
-		...[await routesCheck(io.cwd)].filter((check) => check !== undefined),
+		...[await routesCheck(io.cwd), await staticCheck(io.cwd)].filter((check) => check !== undefined),
 	];
 	const width = Math.max(...checks.map((check) => check.name.length));
 	for (const check of checks) io.stdout(`${check.state.padEnd(4)}  ${check.name.padEnd(width)}  ${check.detail}\n`);
