@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
 	type Changeset,
 	CheckError,
@@ -41,7 +42,7 @@ export type CheckRecord =
 type Runs = {
 	// Each revision's check records, keyed by head commit, then by check.
 	revisions: Record<string, Record<string, CheckRecord>>;
-	// The task running each revision's tier, keyed `<head> <tier>`, so asking again finds it rather than starting another.
+	// The task running each tier, keyed by runKey, so asking again finds it rather than starting another.
 	tasks: Record<string, number>;
 };
 
@@ -168,6 +169,8 @@ interface ChecksInput {
 	readonly config: MelianConfig;
 	readonly source: RepositorySource;
 	readonly tier: string;
+	// A rerun runs only `checks`, and keeps the earlier run's records for the rest.
+	readonly rerun?: { readonly checks: readonly string[]; readonly kept: Readonly<Record<string, CheckRecord>> };
 }
 
 type ChecksState = { phase: "start" } | { phase: "collect"; checks: string[]; tasks: Record<string, number> };
@@ -185,7 +188,7 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRecord[]>({
 	initial: () => ({ phase: "start" }),
 	phases: {
 		start: async (task, runtime, context) => {
-			const { changeset, config, source, tier } = task.input;
+			const { changeset, config, source, tier, rerun } = task.input;
 			const head = changeset.revision.head;
 			let checks: string[];
 			try {
@@ -201,6 +204,11 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRecord[]>({
 				const records = { ...revisions[head] };
 				const tasks: Record<string, number> = {};
 				for (const check of checks) {
+					const kept = rerun?.checks.includes(check) === false ? rerun.kept[check] : undefined;
+					if (kept !== undefined) {
+						records[check] = kept;
+						continue;
+					}
 					if ((deterministicChecks as readonly string[]).includes(check)) {
 						tasks[check] = await tx.createTask(
 							CheckTask,
@@ -285,6 +293,40 @@ export interface RunChecksInput {
 	readonly source: RepositorySource;
 	/** Defaults to `fast`. */
 	readonly tier?: string;
+	/** Run again the checks that failed in an earlier run with the same identity, or the whole tier if that run did not complete. */
+	readonly rerunFailed?: boolean;
+}
+
+// Canonical JSON: object keys sorted, so two equal configurations hash alike whatever order their files merged in.
+function canonical(value: unknown): string {
+	if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+	if (typeof value === "object" && value !== null) {
+		const entries = Object.entries(value).filter(([, each]) => each !== undefined);
+		entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+		return `{${entries.map(([key, each]) => `${JSON.stringify(key)}:${canonical(each)}`).join(",")}}`;
+	}
+	return JSON.stringify(value);
+}
+
+// What decides a run's results: both commits, the tier, and the policy it ran under.
+function runKey(input: RunChecksInput, tier: string): string {
+	const { base, head } = input.changeset.revision;
+	const policy = createHash("sha256")
+		.update(canonical({ config: input.config, source: input.source }))
+		.digest("hex")
+		.slice(0, 16);
+	return `${base} ${head} ${tier} ${policy}`;
+}
+
+// What a rerun repeats: the checks that failed, or the whole tier when the run did not complete.
+function rerunOf(outcome: { status: string; result?: readonly CheckRecord[] }): ChecksInput["rerun"] | "none" | "all" {
+	if (outcome.status !== "completed" || outcome.result === undefined) return "all";
+	const failed = outcome.result.filter((record) => record.status === "failed").map((record) => record.check);
+	if (failed.length === 0) return "none";
+	const kept = Object.fromEntries(
+		outcome.result.filter((record) => record.status !== "failed").map((record) => [record.check, record]),
+	);
+	return { checks: failed, kept };
 }
 
 /**
@@ -292,8 +334,9 @@ export interface RunChecksInput {
  * waited on together, each writing its findings to the root's findings document through `upsertFinding` and its
  * status to the root's check records. Resolves with one record per check the tier names, in the tier's order.
  *
- * Asking again for the same revision and tier, even from a new process after a crash, finds the task already started
- * and waits for it, so the checks run once. Lens checks are recorded as skipped, since they run in the lens step;
+ * Asking again with the same base, head, tier, configuration, and source, even from a new process after a crash, finds
+ * the task already started and waits for it, so the checks run once. A different base, configuration, or source runs
+ * them again. `rerunFailed` runs again the checks that failed, so a transient failure is not kept for good. Lens checks are recorded as skipped, since they run in the lens step;
  * a name that is no check is recorded as failed with `unknownCheck`. Rejects when the tier is unknown or includes
  * itself, and when the root conversation does not exist.
  */
@@ -307,20 +350,28 @@ export async function runChecks(
 	if (root === undefined) {
 		throw new CheckError("unknownConversation", tier, `no conversation has ID ${input.rootConversationId}`);
 	}
-	const key = `${input.changeset.revision.head} ${tier}`;
-	const taskId = await root.commit(async (tx) => {
-		const runs = await tx.doc(ChecksDocument, root.id);
-		const existing = runs.tasks[key];
-		if (existing !== undefined) return existing as TaskId<CheckRecord[]>;
-		const created = await tx.createTask(
-			ChecksTask,
-			{ changeset: input.changeset, config: input.config, source: input.source, tier },
-			{ ownership: { kind: "conversation" } },
-		);
-		runs.tasks[key] = created;
-		return created;
-	}, context);
-	const settled = await harness.waitForTask(taskId, context);
+	const key = runKey(input, tier);
+	const task: ChecksInput = { changeset: input.changeset, config: input.config, source: input.source, tier };
+	// Starts a run unless one with this key exists, or replaces `stale` with a rerun when it is still the key's task.
+	const start = (rerun?: ChecksInput["rerun"], stale?: number) =>
+		root.commit(async (tx) => {
+			const runs = await tx.doc(ChecksDocument, root.id);
+			const existing = runs.tasks[key];
+			if (existing !== undefined && existing !== stale) return existing as TaskId<CheckRecord[]>;
+			const created = await tx.createTask(ChecksTask, rerun === undefined ? task : { ...task, rerun }, {
+				ownership: { kind: "conversation" },
+			});
+			runs.tasks[key] = created;
+			return created;
+		}, context);
+	const first = await start();
+	let settled = await harness.waitForTask(first, context);
+	if (input.rerunFailed) {
+		const rerun = rerunOf(settled.state.outcome as { status: string; result?: readonly CheckRecord[] });
+		if (rerun !== "none") {
+			settled = await harness.waitForTask(await start(rerun === "all" ? undefined : rerun, first), context);
+		}
+	}
 	const { outcome } = settled.state;
 	if (outcome.status === "completed") return outcome.result;
 	if (outcome.status === "failed") {

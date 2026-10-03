@@ -1,3 +1,5 @@
+import { rmSync } from "node:fs";
+import { join } from "node:path";
 import { CheckError, type Finding, loadConfig, type RepositorySource, resolveRange } from "@melian-agent/core";
 import {
 	checksExtension,
@@ -145,6 +147,39 @@ describe("runChecks", () => {
 		expect(findings.map((finding) => finding.ruleId)).toEqual(["guardrail/forbidden-paths"]);
 		// Asking again finds the run already done instead of running the tools a second time.
 		expect(await runChecks(harness, input, context)).toEqual(records);
+		// Asking for a rerun repeats only the failed checks; with the broken tools gone, Melian's own run.
+		rmSync(join(repo, "node_modules"), { recursive: true, force: true });
+		const rerun = await runChecks(harness, { ...input, rerunFailed: true }, context);
+		expect(rerun.map((record) => [record.check, record.status])).toEqual([
+			["guardrails", "ran"],
+			["static.biome", "ran"],
+			["static.tsc", "ran"],
+		]);
+		expect(rerun[0]).toEqual(records[0]);
+	});
+
+	it("runs again when the policy source differs, rather than returning the earlier run", {
+		timeout: 60_000,
+	}, async () => {
+		const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+		const head = commit(repo, { "dist/a.js": lines("built") });
+		const policy = commit(repo, {
+			"melian.yaml": lines(
+				"tiers:",
+				"  fast: [guardrails]",
+				"guardrails:",
+				"  forbidden-paths:",
+				"    rules:",
+				"      out:",
+				"        paths: [dist/**]",
+				"        message: built output",
+			),
+		});
+		const { harness, input } = await checks(base, head);
+		const stricter = { ...input, source: { kind: "revision" as const, commit: policy } };
+		expect(await runChecks(harness, stricter, context)).toEqual([
+			{ check: "guardrails", status: "ran", findings: 1, notes: [] },
+		]);
 	});
 
 	it("records checks it does not run, and fails a name that is no check", { timeout: 60_000 }, async () => {
