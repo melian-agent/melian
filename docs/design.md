@@ -2,7 +2,7 @@
 
 This document records how Melian works and why. It is the source of truth for architecture decisions. The [README](../README.md) describes what Melian does at the capability level; this document describes how.
 
-Status: design phase, October 2026. Nothing here is implemented yet. Sections marked *open* are not yet decided.
+Status: design phase, October 2026. Nothing here is implemented yet. Progress against this design is tracked in [design-implementation-plan.md](design-implementation-plan.md).
 
 ## Goals
 
@@ -388,6 +388,11 @@ Noise is where every reviewer fails, and the only defence is measurement. The ev
 - Live runs scored on precision and recall per lens and per question set.
 - Calibration measurement for decision models before any threshold default is trusted.
 - Lens tests travel with the lens directory.
+- Comparison reviews: while Melian reviews its own pull requests, Claude Code's review skill and Codex review run on the same pull requests. Every difference is adjudicated by a maintainer and becomes a golden, positive or negative.
+
+Public benchmarks worth running against: Martian's Code Review Bench (MIT, offline golden comments plus an online developer-action signal), Qodo's injected-defect set, SWE-PRBench, and PRWeaver for multi-pull-request attack chains. None measures noise on clean pull requests, cross-revision behaviour, repository-specific standards, cause classification, or injection resistance; the Melian corpus covers those.
+
+A repository built and reviewed entirely by agents, with every reviewer finding addressed by instruction, is a corpus of agent-written pull requests and a standards fixture, not a calibration source: acceptance there is compliance, not judgement. Human labels for calibration have to be produced deliberately.
 
 Unit tests use Vitest and Pi Durable's memory storage.
 
