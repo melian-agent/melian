@@ -113,9 +113,8 @@ export class GitHubProvider implements ReviewProvider {
 	}
 
 	async pullRequest(number: number): Promise<PullRequest> {
-		const { owner, repo } = this;
 		const { data } = await call(`read pull request #${number}`, () =>
-			this.octokit.rest.pulls.get({ owner, repo, pull_number: number }),
+			this.octokit.rest.pulls.get({ owner: this.owner, repo: this.repo, pull_number: number }),
 		);
 		return {
 			repository: { owner: data.base.repo.owner.login, name: data.base.repo.name },
@@ -130,7 +129,6 @@ export class GitHubProvider implements ReviewProvider {
 	}
 
 	async postReview(draft: ReviewDraft): Promise<PostedReview> {
-		const { owner, repo, octokit, links } = this;
 		const comments = draft.findings.flatMap((placed) => {
 			const { placement, finding } = placed;
 			if (placement.kind === "body") return [];
@@ -144,15 +142,15 @@ export class GitHubProvider implements ReviewProvider {
 					line: placement.line,
 					side: "RIGHT" as const,
 					...range,
-					body: renderComment(placed, draft.revision, links, draft.secret),
+					body: renderComment(placed, draft.revision, this.links, draft.secret),
 				},
 			];
 		});
 		const create = (body: string, inline: typeof comments) =>
 			call(`post a review on pull request #${draft.pullRequest}`, () =>
-				octokit.rest.pulls.createReview({
-					owner,
-					repo,
+				this.octokit.rest.pulls.createReview({
+					owner: this.owner,
+					repo: this.repo,
 					pull_number: draft.pullRequest,
 					commit_id: draft.revision,
 					event: "COMMENT",
@@ -162,20 +160,20 @@ export class GitHubProvider implements ReviewProvider {
 			);
 		let created: Awaited<ReturnType<typeof create>>;
 		try {
-			created = await create(renderReviewBody(draft, links), comments);
+			created = await create(renderReviewBody(draft, this.links), comments);
 		} catch (error) {
 			// GitHub refuses the whole review with a 422 when it cannot place one comment, such as on a line an
 			// outdated diff no longer has. Every finding then goes in the body, which has no line to refuse.
 			if (!(error instanceof GitHubError && error.status === 422 && comments.length > 0)) throw error;
 			const findings = draft.findings.map((placed) => ({ ...placed, placement: { kind: "body" as const } }));
-			created = await create(renderReviewBody({ ...draft, findings }, links, { inlineRefused: true }), []);
+			created = await create(renderReviewBody({ ...draft, findings }, this.links, { inlineRefused: true }), []);
 		}
 		const review = created.data;
 		this.viewer ??= review.user?.login;
 		const posted = await call(`read review ${review.id}`, () =>
-			octokit.paginate(octokit.rest.pulls.listCommentsForReview, {
-				owner,
-				repo,
+			this.octokit.paginate(this.octokit.rest.pulls.listCommentsForReview, {
+				owner: this.owner,
+				repo: this.repo,
 				pull_number: draft.pullRequest,
 				review_id: review.id,
 				per_page: 100,
@@ -195,12 +193,11 @@ export class GitHubProvider implements ReviewProvider {
 		revision: string,
 		secret: string,
 	): Promise<string | undefined> {
-		const { owner, repo } = this;
 		try {
 			const { data } = await call(`reply on pull request #${pullRequest}`, () =>
 				this.octokit.rest.pulls.createReplyForReviewComment({
-					owner,
-					repo,
+					owner: this.owner,
+					repo: this.repo,
 					pull_number: pullRequest,
 					comment_id: Number(finding.thread),
 					body: renderResolvedReply(finding, revision, secret),
@@ -237,14 +234,13 @@ export class GitHubProvider implements ReviewProvider {
 		wanted: { readonly fingerprint: string; readonly round: number },
 		secret: string,
 	): Promise<PublishedMarkers> {
-		const { octokit } = this;
 		const page = { owner: this.owner, repo: this.repo, pull_number: pullRequest, per_page: 100 };
 		const [reviews, comments] = await Promise.all([
 			call(`list reviews on pull request #${pullRequest}`, () =>
-				octokit.paginate(octokit.rest.pulls.listReviews, page),
+				this.octokit.paginate(this.octokit.rest.pulls.listReviews, page),
 			),
 			call(`list review comments on pull request #${pullRequest}`, () =>
-				octokit.paginate(octokit.rest.pulls.listReviewComments, page),
+				this.octokit.paginate(this.octokit.rest.pulls.listReviewComments, page),
 			),
 		]);
 		// The first post carrying a marker is Melian's: anyone can copy a signed marker, but only after Melian posted it.

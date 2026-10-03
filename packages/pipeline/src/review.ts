@@ -390,9 +390,13 @@ async function refuseIfBlocked(
 	await harness.abortTask(taskId, context);
 	const root = await harness.root(context);
 	await root.commit(async (tx) => forget(await tx.doc(ReviewIndex, root.id)), context);
-	throw new ReviewError("notInstalled", "the harness has no melian.lenses extension; open it with openReviewHarness", {
-		lenses,
-	});
+	throw new ReviewError(
+		"notInstalled",
+		"the harness has no melian.lenses extension; pass the harness of openReviewHarness",
+		{
+			lenses,
+		},
+	);
 }
 
 function omit<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K> {
