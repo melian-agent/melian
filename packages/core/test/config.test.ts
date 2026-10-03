@@ -273,7 +273,8 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 	});
 
 	it("refuses a path outside the repository", async () => {
-		await expect(load("../elsewhere/a.ts")).rejects.toBeInstanceOf(OutsideRepositoryError);
+		const error = await rejectionOf(load("../elsewhere/a.ts"), OutsideRepositoryError);
+		expect(error).toMatchObject({ code: "outsideRepository", path: "../elsewhere/a.ts" });
 	});
 
 	it.each([".", "a.ts"])("refuses a repository root that does not exist, given %j", async (path) => {

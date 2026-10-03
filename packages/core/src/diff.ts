@@ -9,8 +9,13 @@ export type FileStatus = "added" | "modified" | "deleted" | "renamed";
  * Ranges follow git's convention: a count of 0 means the hunk only adds (or only deletes) lines, and its start on that
  * side is the line after which the change sits. `text` holds the hunk's lines without the `@@` header, each still
  * carrying its `+`, `-`, or `\` prefix.
+ *
+ * `file` is the `path` of the {@link ChangedFile} holding the hunk, and `index` its position there from 0, so a
+ * finding's trigger can name one hunk of a revision by the pair.
  */
 export interface Hunk {
+	readonly file: string;
+	readonly index: number;
 	readonly oldStart: number;
 	readonly oldLines: number;
 	readonly newStart: number;
@@ -47,6 +52,8 @@ export interface ChangedFile {
 	readonly binary: boolean;
 	readonly hunks: readonly Hunk[];
 }
+
+type PatchHunk = Omit<Hunk, "file" | "index">;
 
 interface RawEntry {
 	readonly status: FileStatus;
@@ -161,9 +168,9 @@ export function parseNumstatBinary(output: string): boolean[] {
 
 const hunkHeader = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 
-export function parsePatchHunks(output: string): Hunk[][] {
-	const files: Hunk[][] = [];
-	let hunks: Hunk[] | undefined;
+export function parsePatchHunks(output: string): PatchHunk[][] {
+	const files: PatchHunk[][] = [];
+	let hunks: PatchHunk[] | undefined;
 	let header: RegExpExecArray | undefined;
 	let headerLine = "";
 	let body: string[] = [];
@@ -206,7 +213,7 @@ export function parsePatchHunks(output: string): Hunk[][] {
 export function joinDiff(
 	raw: readonly RawEntry[],
 	binary: readonly boolean[],
-	hunks: readonly Hunk[][],
+	hunks: readonly PatchHunk[][],
 ): ChangedFile[] {
 	const sections = raw.reduce((count, entry) => count + (entry.typeChanged ? 2 : 1), 0);
 	if (binary.length !== raw.length || hunks.length !== sections) {
@@ -216,6 +223,7 @@ export function joinDiff(
 	return raw.map(({ typeChanged, ...entry }, index) => {
 		const fileHunks = typeChanged ? [...hunks[section]!, ...hunks[section + 1]!] : hunks[section]!;
 		section += typeChanged ? 2 : 1;
-		return { ...entry, binary: binary[index]!, hunks: binary[index]! ? [] : fileHunks };
+		const numbered = fileHunks.map((hunk, position) => ({ file: entry.path, index: position, ...hunk }));
+		return { ...entry, binary: binary[index]!, hunks: binary[index]! ? [] : numbered };
 	});
 }

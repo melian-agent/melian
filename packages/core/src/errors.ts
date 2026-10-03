@@ -87,6 +87,7 @@ export class StandardsError extends Error {
 
 /** A path given to a loader lies outside the repository it was asked about. */
 export class OutsideRepositoryError extends Error {
+	readonly code = "outsideRepository";
 	readonly path: string;
 	readonly repoRoot: string;
 

@@ -96,8 +96,19 @@ describe("resolveRange", () => {
 			newKind: "file",
 			binary: false,
 			hunks: [
-				{ oldStart: 2, oldLines: 1, newStart: 2, newLines: 1, header: "@@ -2 +2 @@ one", text: "-two\n+TWO" },
 				{
+					file: "poem.txt",
+					index: 0,
+					oldStart: 2,
+					oldLines: 1,
+					newStart: 2,
+					newLines: 1,
+					header: "@@ -2 +2 @@ one",
+					text: "-two\n+TWO",
+				},
+				{
+					file: "poem.txt",
+					index: 1,
 					oldStart: 4,
 					oldLines: 0,
 					newStart: 5,
@@ -105,7 +116,16 @@ describe("resolveRange", () => {
 					header: "@@ -4,0 +5 @@ four",
 					text: "+four and a half",
 				},
-				{ oldStart: 6, oldLines: 1, newStart: 6, newLines: 0, header: "@@ -6 +6,0 @@ five", text: "-six" },
+				{
+					file: "poem.txt",
+					index: 2,
+					oldStart: 6,
+					oldLines: 1,
+					newStart: 6,
+					newLines: 0,
+					header: "@@ -6 +6,0 @@ five",
+					text: "-six",
+				},
 			],
 		});
 		expect(files["new-name.txt"]).toMatchObject({
@@ -218,8 +238,17 @@ describe("resolveRange", () => {
 				newKind: "symlink",
 				binary: false,
 				hunks: [
-					expect.objectContaining({ oldStart: 1, oldLines: 2, newStart: 0, newLines: 0 }),
 					expect.objectContaining({
+						file: "added.txt",
+						index: 0,
+						oldStart: 1,
+						oldLines: 2,
+						newStart: 0,
+						newLines: 0,
+					}),
+					expect.objectContaining({
+						file: "added.txt",
+						index: 1,
 						oldStart: 0,
 						oldLines: 0,
 						newStart: 1,

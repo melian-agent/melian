@@ -84,7 +84,7 @@ export type MelianYaml = Static<typeof melianYamlSchema>;
 /** What a finding at a given severity requires before merge. */
 export type Resolution = Static<typeof resolutionValue>;
 
-/** A severity in the default rubric. */
+/** A severity. The rubric is fixed in version one; docs/design.md defers repository-defined rubrics. */
 export type Severity = "P0" | "P1" | "P2" | "P3" | "nit";
 
 /** A model tier a lens can name. Model routing also has a `decision` tier for decision models. */
