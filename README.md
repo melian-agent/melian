@@ -4,13 +4,24 @@ Melian is an open-source, durable code review agent that keeps watch over your c
 
 It takes its name from Melian the Maia, queen of Doriath, whose Girdle held back every harm from the realm she guarded. Melian does the same work for your main branch.
 
+## At a glance
+
+- **Fast where it counts.** Decision models answer the yes-or-no questions of review in tens of milliseconds, so triage, severity scoring, and the pre-commit tier finish before you have finished reading the diff. Static analysis lenses give rapid, deterministic feedback with no model in the loop at all.
+- **Deep where it matters.** Adversarial agentic lenses, each with its own focus and its own model, hunt for what would break: security holes, breaking changes, departures from your standards.
+- **Your subscriptions, your cost.** No per-seat pricing and no model markup. Bring the subscriptions and API keys you already pay for, stack them, and route each job to the cheapest model that does it well.
+- **Durable.** A review survives crashes, restarts, and deploys, and picks up where it left off without posting anything twice.
+- **Quiet.** Good changes pass without ceremony. Findings stay in scope, and a dismissal with a reason is never raised again.
+- **Remembers in your repository.** Acquired knowledge goes to `AGENTS.md` and its siblings, by pull request, where every person and every agent inherits it, not in propietary products to lock you in.
+- **Runs anywhere you do.** Locally before a pull request exists, as a skill inside Claude Code, Codex, or Pi, on pull requests as a colleague, in a devcontainer, or in GitHub Actions.
+- **Built for monorepos.** Every setting, from which lenses run to what blocks a merge, is configurable per folder.
+
 ## Why
 
 Code review is where a main branch is defended, and the volume of change arriving at that gate is going up fast. Agents now write a large share of the code that teams merge, and a human reviewer cannot read every line with the care it deserves.
 
-The commercial reviewers that have appeared to fill that gap share three problems. They lock you into their models and their pricing. They are noisy, so teams learn to scroll past them. And they forget: every pull request starts from zero, and whatever they learn about your codebase stays inside their service.
+The commercial reviewers that have appeared to fill that gap share the same problems. They are slow: every pull request waits minutes for a full pass, regardless of how trivial the change is, and nothing runs before the pull request exists. They are expensive in a way that compounds: per-seat pricing on top of the model costs you are already paying elsewhere, or cost in time with harsh rate limits -- with no say in which model does the work. They lock you into their models and their pricing. Some are noisy, so teams learn to scroll past them. And they forget: every pull request starts from zero, or worse: whatever they learn about your codebase stays inside their service.
 
-Melian is our answer. It is built in the open, on [Pi](https://github.com/earendil-works/pi), and it is designed to behave like a careful colleague rather than a linter with opinions.
+Melian is our answer. It is built in the open, on [Pi](https://github.com/earendil-works/pi), and it is designed to behave like a careful colleague rather than a linter with opinions. It spends milliseconds on the questions that need milliseconds and minutes only on the changes that deserve them, and it does so on subscriptions you already own.
 
 ## What it does
 
