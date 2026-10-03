@@ -120,10 +120,7 @@
             "cause": "introduced",
             "trigger": {
               "file": "src/run.ts",
-              "oldStart": 11,
-              "oldLines": 1,
-              "newStart": 12,
-              "newLines": 1
+              "index": 0
             },
             "severity": "P0",
             "confidence": 0.9,
@@ -171,10 +168,7 @@
             "cause": "introduced",
             "trigger": {
               "file": "src/run.ts",
-              "oldStart": 11,
-              "oldLines": 1,
-              "newStart": 12,
-              "newLines": 1
+              "index": 0
             },
             "severity": "P1",
             "confidence": 0.9,
@@ -222,10 +216,7 @@
             "cause": "introduced",
             "trigger": {
               "file": "src/run.ts",
-              "oldStart": 11,
-              "oldLines": 1,
-              "newStart": 12,
-              "newLines": 1
+              "index": 0
             },
             "severity": "P1",
             "confidence": 0.9,

@@ -11,7 +11,7 @@ export const evalInput: FindingInput = {
 	snippet: "eval(input)",
 	occurrence: 0,
 	cause: "introduced",
-	trigger: { file: "src/run.ts", oldStart: 11, oldLines: 1, newStart: 12, newLines: 1 },
+	trigger: { file: "src/run.ts", index: 0 },
 	severity: "P1",
 	confidence: 0.9,
 	resolution: "block",

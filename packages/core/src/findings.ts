@@ -30,14 +30,7 @@ export const findingStatusSchema = Type.Union([
 
 /** The JSON Schema of a {@link FindingTrigger}. */
 export const findingTriggerSchema = Type.Object(
-	{
-		file: text,
-		oldStart: count,
-		oldLines: count,
-		newStart: count,
-		newLines: count,
-		snippet: Type.Optional(Type.String()),
-	},
+	{ file: text, index: count, snippet: Type.Optional(Type.String()) },
 	strict,
 );
 
@@ -151,8 +144,9 @@ export type LocationCause = Exclude<Cause, "affected">;
 export type FindingStatus = Static<typeof findingStatusSchema>;
 
 /**
- * The diff hunk that caused a finding, in the file that hunk changed. Line ranges follow {@link Hunk}. `snippet` is the
- * changed code as the producer saw it; a dismissed finding reopens when its {@link normaliseSnippet} changes.
+ * The diff hunk that caused a finding, named as a {@link Hunk} names itself: its `file` and its `index` within that
+ * file. `snippet` is the changed code as the producer saw it; a dismissed finding reopens when its
+ * {@link normaliseSnippet} changes, not when the hunk moves.
  */
 export type FindingTrigger = Static<typeof findingTriggerSchema>;
 

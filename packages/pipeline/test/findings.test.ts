@@ -102,7 +102,7 @@ describe("the findings document", () => {
 		const triggered = (snippet: string) =>
 			createFinding({
 				...input,
-				trigger: { file: "src/run.ts", oldStart: 11, oldLines: 1, newStart: 12, newLines: 1, snippet },
+				trigger: { file: "src/run.ts", index: 0, snippet },
 			});
 
 		async function lifecycle(harness: Harness, id: string) {
@@ -151,14 +151,7 @@ describe("the findings document", () => {
 			const finding = triggered("eval(input)");
 			const moved = createFinding({
 				...input,
-				trigger: {
-					file: "src/run.ts",
-					oldStart: 20,
-					oldLines: 1,
-					newStart: 21,
-					newLines: 1,
-					snippet: "  eval(\n    input\n  )\n",
-				},
+				trigger: { file: "src/run.ts", index: 2, snippet: "  eval(\n    input\n  )\n" },
 			});
 			await root.commit((tx) => upsertFinding(tx, root.id, finding, "rev1"), context);
 			await root.commit((tx) => dismissFinding(tx, root.id, finding.properties.id, dismissal), context);
