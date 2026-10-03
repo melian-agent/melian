@@ -164,8 +164,9 @@ const statusWords: Readonly<Record<Verdict["status"], string>> = {
  * The body of a revision's review: the verdict, the checks that did not run, findings in files the change does not
  * touch, each under its own marker, and resolved findings that had no thread to reply in.
  */
-export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks): string {
+export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, options: ReviewBodyOptions = {}): string {
 	const { verdict, revision, secret } = draft;
+	const limit = options.limit ?? maxBodyLength;
 	const status = `**${statusWords[verdict.status]}${verdict.blocking ? ", blocking" : ""}**`;
 	const parts = [
 		`${marker(revision, "verdict", draft.fingerprint, secret)}\nMelian reviewed ${code(short(revision))}: ${status}.`,
@@ -189,29 +190,55 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks): st
 		);
 		parts.push(["Checks that did not run:", "", ...checks].join("\n"));
 	}
-	const inBody = draft.findings.filter((placed) => placed.placement.kind === "body");
-	if (inBody.length > 0) {
-		parts.push("### In files this change does not touch");
-		for (const { finding } of inBody) {
-			const [start, end] = span(finding);
-			const link = `[${code(finding.properties.path)} ${lineSpan(start, end)}](${blobUrl(links, revision, finding.properties.path, start, end)})`;
-			parts.push(
-				[
-					marker(revision, "finding", finding.properties.id, secret),
-					link,
-					"",
-					...findingText(finding, revision, links),
-				].join("\n"),
-			);
-		}
-	}
 	if (draft.resolved.length > 0) {
 		const resolved = draft.resolved.map(
 			(finding) => `- ${code(finding.ruleId)} in ${code(finding.path)} line ${finding.line}`,
 		);
 		parts.push(["Resolved since the last review:", "", ...resolved].join("\n"));
 	}
-	return parts.join("\n\n");
+	const inBody = draft.findings.filter((placed) => placed.placement.kind === "body");
+	const sections = inBody.map(({ finding }) => {
+		const [start, end] = span(finding);
+		const link = `[${code(finding.properties.path)} ${lineSpan(start, end)}](${blobUrl(links, revision, finding.properties.path, start, end)})`;
+		return [
+			marker(revision, "finding", finding.properties.id, secret),
+			link,
+			"",
+			...findingText(finding, revision, links),
+		].join("\n");
+	});
+	const heading = options.inlineRefused
+		? "### Findings\n\nGitHub refused this review's inline comments, so every finding is listed here."
+		: "### In files this change does not touch";
+	const assemble = (kept: number, note?: string) =>
+		[
+			...parts,
+			...(kept > 0 ? [heading, ...sections.slice(0, kept)] : []),
+			...(note === undefined ? [] : [note]),
+		].join("\n\n");
+	const whole = assemble(sections.length);
+	if (whole.length <= limit) return whole;
+	// GitHub refuses a body over its limit, and the summary and the marker matter more than the last findings.
+	const all = `\`melian findings "#${draft.pullRequest}"\` lists them all.`;
+	for (let kept = sections.length - 1; kept >= 0; kept--) {
+		const cut = sections.length - kept;
+		const body = assemble(kept, `${plural(cut, "finding")} did not fit in this review; ${all}`);
+		if (body.length <= limit) return body;
+	}
+	const note = `This review was cut to fit GitHub's limit; ${all}`;
+	const room = assemble(0).slice(0, limit - note.length - 2);
+	return `${room.slice(0, Math.max(room.lastIndexOf("\n"), 0))}\n\n${note}`;
+}
+
+/** GitHub refuses a review body, or a comment, longer than this many characters. */
+export const maxBodyLength = 65_536;
+
+/** How {@link renderReviewBody} renders. */
+export interface ReviewBodyOptions {
+	/** GitHub refused the review's inline comments, so every finding is in the body. */
+	readonly inlineRefused?: boolean;
+	/** The longest body to render; GitHub's {@link maxBodyLength} by default. */
+	readonly limit?: number;
 }
 
 /** The reply in a resolved finding's thread. */

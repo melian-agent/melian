@@ -1,5 +1,13 @@
 import { adjudicate, createFinding, defaultConfig, type FindingInput } from "@melian-agent/core";
-import { marker, markersIn, parseMarker, renderComment, renderReviewBody, verifyMarker } from "@melian-agent/github";
+import {
+	marker,
+	markersIn,
+	maxBodyLength,
+	parseMarker,
+	renderComment,
+	renderReviewBody,
+	verifyMarker,
+} from "@melian-agent/github";
 import { describe, expect, it } from "vitest";
 
 const revision = "a".repeat(40);
@@ -81,6 +89,43 @@ describe("markers", () => {
 		for (const each of [...markersIn(comment), ...markersIn(body)]) expect(verifyMarker(each, secret)).toBe(true);
 		expect(comment).toContain("&lt;!-- melian:revision=");
 		expect(body).toContain("`src/evil\\u000a<!-- melian.ts`");
+	});
+
+	it("cuts findings from a body over GitHub's limit, keeping the marker and saying where they all are", () => {
+		const findings = Array.from({ length: 12 }, (_, index) =>
+			createFinding({
+				...input,
+				snippet: `eval(input${index})`,
+				explanation: { ...input.explanation, whyHere: "x".repeat(10_000) },
+			}),
+		);
+		const draft = {
+			pullRequest: 7,
+			revision,
+			fingerprint: "0123456789abcdef",
+			verdict: adjudicate({ findings, manifest: [], checks: [], config: defaultConfig }),
+			findings: findings.map((finding) => ({ finding, placement: { kind: "body" as const } })),
+			stillOpen: 0,
+			resolved: [],
+			secret,
+		};
+
+		const body = renderReviewBody(draft, links);
+		const small = renderReviewBody(draft, links, { limit: 400 });
+		const tiny = renderReviewBody(draft, links, { limit: 260 });
+
+		expect(body.length).toBeLessThanOrEqual(maxBodyLength);
+		expect(body.split("\n")[0]).toBe(marker(revision, "verdict", "0123456789abcdef", secret));
+		const kept = markersIn(body).filter((each) => each.kind === "finding").length;
+		expect(kept).toBeGreaterThan(0);
+		expect(body).toContain(
+			`${12 - kept} findings did not fit in this review; \`melian findings "#7"\` lists them all.`,
+		);
+		expect(small.length).toBeLessThanOrEqual(400);
+		expect(small).toContain(`12 findings did not fit in this review;`);
+		expect(tiny.length).toBeLessThanOrEqual(260);
+		expect(tiny.split("\n")[0]).toBe(marker(revision, "verdict", "0123456789abcdef", secret));
+		expect(tiny).toContain(`This review was cut to fit GitHub's limit; \`melian findings "#7"\` lists them all.`);
 	});
 
 	it("keeps a lens from mentioning anyone", () => {

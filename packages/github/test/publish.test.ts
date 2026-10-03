@@ -395,6 +395,23 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(await publish(github, fourth.changeset)).toMatchObject({ resolved: 0, replies: 0 });
 	});
 
+	it("posts every finding in the body when GitHub refuses the inline comments", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		// GitHub cannot place any comment, as on a diff that moved under the review.
+		state.lines = {};
+
+		const result = await publish(github, changeset);
+
+		expect(result).toMatchObject({ posted: 3 });
+		expect(posts(state).filter((call) => call.path.endsWith("/reviews"))).toHaveLength(2);
+		expect(state.reviews).toHaveLength(1);
+		expect(state.comments).toEqual([]);
+		const body = state.reviews[0]!.body;
+		expect(body).toContain("GitHub refused this review's inline comments, so every finding is listed here.");
+		expect(body.match(/^<!-- melian:revision=[0-9a-f]+ finding=/gm)).toHaveLength(3);
+		expect(state.statuses.at(-1)).toMatchObject({ state: "failure" });
+	});
+
 	it("plans against the last head whose review was posted, past a head whose round failed", async () => {
 		const { fake, github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);

@@ -156,17 +156,29 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 					},
 				];
 			});
-			const { data: review } = await call(`post a review on pull request #${draft.pullRequest}`, () =>
-				octokit.rest.pulls.createReview({
-					owner,
-					repo,
-					pull_number: draft.pullRequest,
-					commit_id: draft.revision,
-					event: "COMMENT",
-					body: renderReviewBody(draft, links),
-					comments,
-				}),
-			);
+			const create = (body: string, inline: typeof comments) =>
+				call(`post a review on pull request #${draft.pullRequest}`, () =>
+					octokit.rest.pulls.createReview({
+						owner,
+						repo,
+						pull_number: draft.pullRequest,
+						commit_id: draft.revision,
+						event: "COMMENT",
+						body,
+						comments: inline,
+					}),
+				);
+			let created: Awaited<ReturnType<typeof create>>;
+			try {
+				created = await create(renderReviewBody(draft, links), comments);
+			} catch (error) {
+				// GitHub refuses the whole review with a 422 when it cannot place one comment, such as on a line an
+				// outdated diff no longer has. Every finding then goes in the body, which has no line to refuse.
+				if (!(error instanceof GitHubError && error.status === 422 && comments.length > 0)) throw error;
+				const findings = draft.findings.map((placed) => ({ ...placed, placement: { kind: "body" as const } }));
+				created = await create(renderReviewBody({ ...draft, findings }, links, { inlineRefused: true }), []);
+			}
+			const review = created.data;
 			viewer ??= review.user?.login;
 			const posted = await call(`read review ${review.id}`, () =>
 				octokit.paginate(octokit.rest.pulls.listCommentsForReview, {

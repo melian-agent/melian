@@ -8,6 +8,8 @@ The github package implements core's `ReviewProvider` port for GitHub through Oc
 - Inline comments go on the right-hand side by `line`, with `start_line` for a span, never by the deprecated diff `position`. Core's `placeFinding` only ever names an added line, because GitHub refuses the whole review with a 422 when one comment names a line outside the diff.
 - A finding outside the diff in a changed file is anchored to the nearest added line, and its comment links to the finding's lines at the revision with `blobUrl`. A finding in a file the change does not touch goes in the review body under a marker of its own.
 - An `affected` finding's evidence is a location, so its comment links to the changed lines that break it, at the revision, rather than quoting text.
+- When GitHub refuses a review with a 422 and it carries inline comments, `postReview` posts it once more with every finding in the body, under a line saying GitHub refused the comments. A comment GitHub cannot place, such as on a line an outdated diff no longer has, would otherwise fail the round until the pipeline abandons it, and the findings would never reach the pull request.
+- GitHub refuses a body over 65,536 characters (`maxBodyLength`). `renderReviewBody` drops findings in the body from the last until it fits, and says how many were cut and that `melian findings "#N"` lists them all; if the summary alone is too long, it cuts the text at a line and says so. The marker on the first line is never cut.
 - `createReview` does not return its comments' IDs, so `postReview` lists the review's comments afterwards and reads each one's finding from its marker.
 - The commit status context is `melian/review`. GitHub refuses a description over 140 characters, so `setStatus` truncates.
 
