@@ -27,5 +27,6 @@ jobs:
         run: npm install -g npm@11.19.0
       - run: npm ci --ignore-scripts
       - run: npm run check
+      - run: npm run build
       - name: Fail if check rewrote files
         run: git diff --exit-code
