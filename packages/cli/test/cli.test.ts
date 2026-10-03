@@ -220,13 +220,19 @@ describe("melian doctor", () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
 
 		const unrouted = melian(repo, ["doctor"]);
+		// The built-in lenses both run on heavy, so a route for light alone still leaves every review unable to run them.
+		writeFileSync(join(repo, "melian.yaml"), "models:\n  light:\n    model: anthropic/claude-haiku\n");
+		const partly = melian(repo, ["doctor"]);
 		writeFileSync(join(repo, "melian.yaml"), "models:\n  heavy:\n    model: anthropic/claude-opus-5-5\n");
 		const routed = melian(repo, ["doctor"]);
 		writeFileSync(join(repo, "melian.local.yaml"), "models:\n  heavy:\n    model: amazon-bedrock/claude-opus\n");
 		const local = melian(repo, ["doctor"]);
 
 		expect(unrouted.stdout).toMatch(
-			/^warn {2}routes {6}no tier is routed to a model; .*melian\.local\.yaml.*--model/m,
+			/^warn {2}routes {6}no tier is routed to a model; no model for heavy, for (correctness and contracts|contracts and correctness); .*melian\.local\.yaml.*--model/m,
+		);
+		expect(partly.stdout).toMatch(
+			/^warn {2}routes {6}light to anthropic\/claude-haiku; no model for heavy, for (correctness and contracts|contracts and correctness); /m,
 		);
 		expect(routed.stdout).toMatch(/^ok {4}routes {6}heavy to anthropic\/claude-opus-5-5$/m);
 		expect(local.stdout).toMatch(/^ok {4}routes {6}heavy to amazon-bedrock\/claude-opus$/m);

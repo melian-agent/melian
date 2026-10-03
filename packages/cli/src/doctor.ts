@@ -2,7 +2,14 @@ import { execFile } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join, sep } from "node:path";
-import { type LensTier, loadConfig, type StaticTool } from "@melian-agent/core";
+import {
+	checksOfTier,
+	type LensTier,
+	loadConfig,
+	loadLenses,
+	type MelianConfig,
+	type StaticTool,
+} from "@melian-agent/core";
 import { parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
 import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSource } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
@@ -50,24 +57,44 @@ async function credentialsCheck(): Promise<Check> {
 
 const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
 
-// A lens runs on the model its tier routes to. With none routed, every review without --model stops with "no model is
-// configured", so doctor reports it before a review does.
+// Each model tier the stages' lenses run on, with those lenses: a stage names a check tier, and each `lens.<name>` in it
+// runs on its lens's model tier, as melian.yaml may retier it.
+async function tiersInUse(root: string, config: MelianConfig): Promise<Map<LensTier, string[]>> {
+	const names = new Set(
+		Object.values(config.stages)
+			.flatMap((stage) => checksOfTier(config, stage))
+			.filter((check) => check.startsWith("lens."))
+			.map((check) => check.slice("lens.".length)),
+	);
+	const used = new Map<LensTier, string[]>();
+	for (const lens of await loadLenses(root, { kind: "worktree" }, ["."])) {
+		const settings = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name] : undefined;
+		if (!names.has(lens.name) || settings?.enabled === false) continue;
+		const tier = settings?.tier ?? lens.tier;
+		used.set(tier, [...new Set([...(used.get(tier) ?? []), lens.name])]);
+	}
+	return used;
+}
+
+// A lens runs on the model its tier routes to. A review whose stage runs a lens on an unrouted tier stops with "no model
+// is configured" before that lens runs, so doctor names every such tier before a review does.
 async function routesCheck(cwd: string): Promise<Check | undefined> {
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return undefined;
 	try {
 		const { config } = await loadConfig(root, { kind: "worktree" }, ".");
-		const routed = tiers.filter((tier) => config.models[tier] !== undefined);
-		if (routed.length === 0) {
-			return {
-				name: "routes",
-				state: "warn",
-				detail:
-					"no tier is routed to a model; set models.light, medium, and heavy in melian.local.yaml, or pass --model to review",
-			};
-		}
-		const routes = routed.map((tier) => `${tier} to ${config.models[tier]!.model}`);
-		return { name: "routes", state: "ok", detail: routes.join(", ") };
+		const routes = tiers
+			.filter((tier) => config.models[tier] !== undefined)
+			.map((tier) => `${tier} to ${config.models[tier]!.model}`);
+		const unrouted = [...(await tiersInUse(root, config))].filter(([tier]) => config.models[tier] === undefined);
+		if (unrouted.length === 0) return { name: "routes", state: "ok", detail: routes.join(", ") || "no lens runs" };
+		const missing = unrouted.map(([tier, lenses]) => `${tier}, for ${lenses.join(" and ")}`).join("; ");
+		const fix = "set models.<tier>.model in melian.local.yaml, or pass --model to review";
+		return {
+			name: "routes",
+			state: "warn",
+			detail: `${routes.length === 0 ? "no tier is routed to a model" : routes.join(", ")}; no model for ${missing}; ${fix}`,
+		};
 	} catch (error) {
 		return { name: "routes", state: "warn", detail: error instanceof Error ? error.message : String(error) };
 	}
