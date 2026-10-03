@@ -81,7 +81,7 @@ Each step is a Pi Durable task. Each task checkpoints before moving on. Replay p
 4. **Guardrails.** Evaluate deterministic policies. Replay safe.
 5. **Lenses.** Spawn one child conversation per selected lens, in parallel, each with its own model, instructions, and read-only tools. Each lens reports findings through a tool call, never through prose. Replay safe per lens; a crashed lens reruns from its last checkpoint.
 6. **Adjudication.** Dedupe across lenses. Classify each finding's cause. Score severity and confidence through the decision model. Apply thresholds: drop, accept, or escalate to an LLM verification pass. Apply per-path resolution. Diff against the previous revision's findings: new, still open, resolved, dismissed. Replay safe.
-7. **Publish.** Post the review, inline comments, and check status. Not replay safe. Guarded by memos keyed on revision and finding ID so a crash between posting and checkpointing cannot double-post.
+7. **Publish.** Post the review, inline comments, and check status. The status is passed, findings, or not reviewed, derived from task state. Not replay safe. Guarded by memos keyed on revision and finding ID so a crash between posting and checkpointing cannot double-post.
 8. **Knowledge.** Propose write-backs. Open or update the knowledge pull request. Not replay safe; memo-guarded like publish.
 
 Only the publish and knowledge tasks hold write credentials. Lenses never see them.
@@ -328,7 +328,7 @@ Version one on a developer's own machine reviews the developer's own code and ne
 
 ## Interaction model
 
-On a pull request, Melian posts one review per revision with inline comments, a summary, and a check status derived from resolution. In threads it takes commands from collaborators:
+On a pull request, Melian posts one review per revision with inline comments, a summary, and a check status derived from resolution and task state: passed, findings, or not reviewed. In threads it takes commands from collaborators:
 
 - re-review, optionally a tier or a path
 - explain this finding
@@ -337,6 +337,20 @@ On a pull request, Melian posts one review per revision with inline comments, a 
 - remember this
 
 Each command is a submission into the changeset's conversation. Commands arriving mid-review steer it rather than restarting it. Dismissal with a reason is the most valuable input: it feeds the calibration store and the decision-model dataset.
+
+## Requirements learned from incumbent reviewers
+
+A repository that has lived with a commercial reviewer accumulates workarounds in its `AGENTS.md`. Each one is a requirement Melian meets by design rather than by instruction to the agent that reads the review.
+
+| Incumbent behaviour | Melian requirement |
+|---|---|
+| Findings on lines outside the diff cannot be posted inline, so they are buried in the review body with no thread to resolve. | `affected` findings get their own threads, anchored to the nearest line in the diff with a link to the affected location. Every finding has a thread, and the findings document records resolution regardless of where GitHub lets it be posted. |
+| The check reports green while the review was skipped, rate limited, or never ran. | The check status has three states: passed, findings, and not reviewed. A review that did not complete reports not reviewed, never passed. The durable task state is the source of truth, and the status is derived from it. |
+| Pull requests opened by bots, and pull requests whose base is not the default branch, are silently not reviewed. | Every pull request is reviewed unless configuration excludes it, and an exclusion is reported as not reviewed. Dependency pull requests get a lockfile lens, because a lockfile regeneration is where a major version bump nobody asked for hides. |
+| Open findings are only discoverable through GraphQL review threads, and the REST default page hides the rest. | The findings document is the source of truth and is queryable from the CLI: `melian findings <changeset> --open`. Resolution happens in Melian and is mirrored to GitHub, not the other way round. |
+| Rate-limit notices give an unreliable wait, and the manual trigger is refused inside the limit. | There is no shared limit. Bring-your-own credentials and the credential pool mean capacity is the team's own, and a refused request is a provider error surfaced on the check, not a silent skip. |
+
+The same file also shows what a team does when a static rule cannot express a convention: it writes per-path natural-language instructions for the reviewer, next to a lint rule that hard-fails the highest-signal cases. That is the lens plus guardrail split, with per-path configuration, and it confirms the layering in this document.
 
 ## Evals and testing
 
