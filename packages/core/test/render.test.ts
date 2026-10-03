@@ -20,7 +20,7 @@ const log = createFindingsLog([
 		startColumn: undefined,
 		endColumn: undefined,
 		snippet: "fs.write(fd, data)",
-		cause: "affected",
+		cause: { evidence: "src/run.ts:12 now passes buffers of up to 1 MiB to write()." },
 		trigger: undefined,
 		severity: "P3",
 		resolution: "advisory",
@@ -83,16 +83,33 @@ describe("renderFindingsTerminal", () => {
 		await expect(renderFindingsTerminal(log, { color: true })).toMatchFileSnapshot("./golden/findings.ansi.txt");
 	});
 
-	it("strips control characters from finding text and indents its continuation lines", () => {
+	const invisible =
+		/[\u0000-\u0009\u000b-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/;
+
+	it("escapes control characters in finding text visibly and indents its continuation lines", () => {
 		const hostile = createFinding({
 			...evalInput,
 			message: "eval runs request input\u001b]0;pwned\u0007\u001b[2J",
 			explanation: { ...evalInput.explanation, what: "The handler passes the body to eval.\nThat runs any code." },
 		});
 		const text = renderFindingsTerminal(createFindingsLog([hostile]));
-		expect(text).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/);
-		expect(text).toContain("  eval runs request input]0;pwned[2J\n");
+		expect(text).not.toMatch(invisible);
+		expect(text).toContain("  eval runs request input\\u001b]0;pwned\\u0007\\u001b[2J\n");
 		expect(text).toContain("    What: The handler passes the body to eval.\n      That runs any code.\n");
+	});
+
+	it.each([false, true])("escapes ESC, BEL, newline, tab, and bidi overrides in a path, colour %s", (color) => {
+		const file = "src/\u001b[2Jrun\u0007\nfake.ts\tx\u202egnp.ts";
+		const hostile = createFinding({ ...evalInput, file, trigger: undefined });
+		const text = renderFindingsTerminal(createFindingsLog([hostile]), { color });
+		const header = "src/\\u001b[2Jrun\\u0007\\u000afake.ts\\u0009x\\u202egnp.ts";
+		expect(text.split("\n")[0]).toBe(color ? `\u001b[1m${header}\u001b[0m` : header);
+		expect(text.replaceAll(/\u001b\[[0-9;]*m/g, "")).not.toMatch(invisible);
+	});
+
+	it("escapes a newline in a rule ID, so it cannot forge another finding's header", () => {
+		const hostile = createFinding({ ...evalInput, rule: "no-eval\n  P3  line 1  harmless" });
+		expect(renderFindingsTerminal(createFindingsLog([hostile]))).toContain("no-eval\\u000a  P3  line 1  harmless");
 	});
 
 	it("says so when there are no findings", () => {

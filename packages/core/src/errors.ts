@@ -101,11 +101,17 @@ export class OutsideRepositoryError extends Error {
 export type FindingErrorCode =
 	| "invalidFinding"
 	| "levelMismatch"
+	| "invalidPath"
+	| "missingEvidence"
 	| "missingDiscriminator"
 	| "snippetNotFound"
-	| "idMismatch";
+	| "idMismatch"
+	| "unknownFinding";
 
-/** A value is not a valid finding. `path` is the JSON pointer of the offending field, empty for the whole value. */
+/**
+ * A value is not a valid finding, or an ID names no finding. `path` is the JSON pointer of the offending field, empty
+ * for the whole value.
+ */
 export class FindingError extends Error {
 	readonly code: FindingErrorCode;
 	readonly path: string;

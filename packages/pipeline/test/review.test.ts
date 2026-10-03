@@ -288,10 +288,11 @@ describe("reviewChangeset", () => {
 		);
 		expect(byFile["src/user.ts"]!.properties.cause).toBe("pre-existing");
 		expect(byFile["src/user.ts"]!.properties.resolution).toBe("acknowledge");
-		expect(byFile["src/report.ts"]!.properties).toMatchObject({ cause: "affected" });
-		expect(byFile["src/report.ts"]!.properties.explanation.whyHere).toContain(
-			"Evidence: src/user.ts:7 now throws for a user without a manager",
-		);
+		expect(byFile["src/report.ts"]!.properties).toMatchObject({
+			cause: "affected",
+			evidence: "src/user.ts:7 now throws for a user without a manager",
+		});
+		expect(byFile["src/user.ts"]!.properties.evidence).toBeUndefined();
 	});
 
 	it("runs no lens that configuration switches off", async () => {

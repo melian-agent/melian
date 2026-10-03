@@ -3,7 +3,7 @@ import {
 	classifyCause,
 	createFinding,
 	type Finding,
-	type Hunk,
+	type FindingSource,
 	type LensRule,
 	type LensToolName,
 	listRevisionFiles,
@@ -27,7 +27,8 @@ import {
 	Type,
 } from "./harness.ts";
 
-type ReviewHunk = { oldStart: number; oldLines: number; newStart: number; newLines: number };
+// `added` is the hunk's new lines, the code a dismissal is tied to.
+type ReviewHunk = { oldStart: number; oldLines: number; newStart: number; newLines: number; added: string };
 
 /** A changed file as the review document keeps it: enough to classify cause, without the hunks' text. */
 type ReviewFile = { path: string; status: ChangedFile["status"]; binary: boolean; hunks: ReviewHunk[] };
@@ -47,14 +48,24 @@ export function reviewFiles(files: readonly ChangedFile[]): ReviewFile[] {
 		path,
 		status,
 		binary,
-		hunks: hunks.map(({ oldStart, oldLines, newStart, newLines }) => ({ oldStart, oldLines, newStart, newLines })),
+		hunks: hunks.map(({ oldStart, oldLines, newStart, newLines, text }) => ({
+			oldStart,
+			oldLines,
+			newStart,
+			newLines,
+			added: text
+				.split("\n")
+				.filter((line) => line.startsWith("+"))
+				.map((line) => line.slice(1))
+				.join("\n"),
+		})),
 	}));
 }
 
 function changedFiles(review: ReviewState): ChangedFile[] {
 	return review.files.map((file) => ({
 		...file,
-		hunks: file.hunks.map((hunk) => ({ ...hunk, header: "", text: "" })),
+		hunks: file.hunks.map(({ added: _, ...hunk }) => ({ ...hunk, header: "", text: "" })),
 	}));
 }
 
@@ -206,15 +217,18 @@ const reportFindingParameters = Type.Object({
 	),
 });
 
-function overlapping(file: ChangedFile | undefined, startLine: number, endLine: number): Hunk | undefined {
+function overlapping(file: ReviewFile | undefined, startLine: number, endLine: number): ReviewHunk | undefined {
 	return file?.hunks.find(
 		(hunk) => hunk.newLines > 0 && startLine < hunk.newStart + hunk.newLines && endLine >= hunk.newStart,
 	);
 }
 
-function countFor(items: Readonly<Record<string, Finding>>, lens: LensPolicy): number {
+type Produced = { readonly producer: { readonly properties: { readonly source: FindingSource } } };
+
+function countFor(items: Readonly<Record<string, Produced>>, lens: LensPolicy): number {
 	return Object.values(items).filter(
-		({ properties: { source } }) => source.check === `lens.${lens.name}` && source.version === lens.version,
+		({ producer: { properties } }) =>
+			properties.source.check === `lens.${lens.name}` && properties.source.version === lens.version,
 	).length;
 }
 
@@ -243,11 +257,9 @@ async function findingFromCall(
 	if (endLine > lines.length) throw new Error(`${path} has ${lines.length} lines at the head revision`);
 	const snippet = lines.slice(args.line - 1, endLine).join("\n");
 	if (snippet.trim() === "") throw new Error(`${path}:${args.line} is blank; point at the code itself`);
-	const files = changedFiles(review);
-	const changed = files.find((file) => file.path === path);
-	const located = classifyCause({ file: path, startLine: args.line, endLine }, { files });
-	const cause = located === "introduced" ? "introduced" : args.evidence === undefined ? "pre-existing" : "affected";
-	const hunk = cause === "introduced" ? overlapping(changed, args.line, endLine) : undefined;
+	const located = classifyCause({ file: path, startLine: args.line, endLine }, { files: changedFiles(review) });
+	const changed = review.files.find((file) => file.path === path);
+	const hunk = located === "introduced" ? overlapping(changed, args.line, endLine) : undefined;
 	const severity = args.severity as Severity;
 	return createFinding({
 		rule: args.rule,
@@ -257,7 +269,7 @@ async function findingFromCall(
 		...(args.endLine === undefined ? {} : { endLine }),
 		snippet,
 		occurrence: snippetOccurrence(content, snippet, { startLine: args.line, endLine }),
-		cause,
+		cause: located === "introduced" || args.evidence === undefined ? located : { evidence: args.evidence },
 		...(hunk === undefined
 			? {}
 			: {
@@ -267,17 +279,14 @@ async function findingFromCall(
 						oldLines: hunk.oldLines,
 						newStart: hunk.newStart,
 						newLines: hunk.newLines,
+						snippet: hunk.added,
 					},
 				}),
 		severity,
 		resolution: review.resolution[severity],
 		explanation: {
 			what: args.explanation.what,
-			// TODO(reportFindingInputSchema): store evidence in its own field if core's finding gains one.
-			whyHere:
-				args.evidence === undefined
-					? args.explanation.why
-					: `${args.explanation.why}\n\nEvidence: ${args.evidence}`,
+			whyHere: args.explanation.why,
 			whatToDo: args.explanation.fix,
 		},
 		source: { check: `lens.${lens.name}`, version: lens.version },
@@ -297,14 +306,15 @@ export const reportFinding = defineTool({
 	replay: "safe",
 	execute: async (args, api, context) => {
 		const lens = await lensOf(api, api.conversationId, context);
-		const finding = await findingFromCall(args, lens, await reviewOf(api, lens, context));
+		const review = await reviewOf(api, lens, context);
+		const finding = await findingFromCall(args, lens, review);
 		const id = finding.properties.id;
 		await api.commit(async (tx) => {
 			const { items } = await tx.doc(FindingsDocument, lens.review);
 			if (items[id] === undefined && countFor(items, lens) >= lens.budget) {
 				throw new Error(`budget reached: this lens may report ${lens.budget} findings; stop reporting and finish`);
 			}
-			await upsertFinding(tx, lens.review, finding);
+			await upsertFinding(tx, lens.review, finding, review.head);
 		}, context);
 		return text(`recorded finding ${id}`);
 	},

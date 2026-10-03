@@ -6,6 +6,7 @@ import {
 	backgroundContext as context,
 	createMemoryStorage,
 	createRegistry,
+	dismissFinding,
 	type Harness,
 	openHarness,
 	openSqliteStorage,
@@ -15,6 +16,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { FindingsDocument } from "../src/findings.ts";
 
 const input: FindingInput = {
 	rule: "no-eval",
@@ -65,11 +67,11 @@ describe("the findings document", () => {
 	it("stores a finding upserted twice under one ID once", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		const reworded = createFinding({ ...input, message: "eval runs the request body" });
-		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding), context);
-		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding), context);
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
 		expect(await readFindings(harness, root.id, context)).toEqual([evalFinding]);
 
-		await root.commit((tx) => upsertFinding(tx, root.id, reworded), context);
+		await root.commit((tx) => upsertFinding(tx, root.id, reworded, "rev1"), context);
 		expect(await readFindings(harness, root.id, context)).toEqual([reworded]);
 	});
 
@@ -77,8 +79,8 @@ describe("the findings document", () => {
 		const { harness, root } = await open(createMemoryStorage());
 		const other = createFinding({ ...input, snippet: "eval(body)" });
 		await root.commit(async (tx) => {
-			await upsertFinding(tx, root.id, evalFinding);
-			await upsertFinding(tx, root.id, other);
+			await upsertFinding(tx, root.id, evalFinding, "rev1");
+			await upsertFinding(tx, root.id, other, "rev1");
 		}, context);
 		const ids = [evalFinding, other].map((finding) => finding.properties.id).sort();
 		expect((await readFindings(harness, root.id, context)).map((finding) => finding.properties.id)).toEqual(ids);
@@ -88,17 +90,115 @@ describe("the findings document", () => {
 		const { harness, root } = await open(createMemoryStorage());
 		const invalid: Finding = { ...evalFinding, level: "note" };
 		const committed = root.commit(async (tx) => {
-			await upsertFinding(tx, root.id, evalFinding);
-			await upsertFinding(tx, root.id, invalid);
+			await upsertFinding(tx, root.id, evalFinding, "rev1");
+			await upsertFinding(tx, root.id, invalid, "rev1");
 		}, context);
 		await expect(committed).rejects.toBeInstanceOf(FindingError);
 		expect(await readFindings(harness, root.id, context)).toEqual([]);
 	});
 
+	describe("lifecycle", () => {
+		const dismissal = { by: "tal", reason: "eval input is a constant here", at: "2026-10-03T00:00:00.000Z" };
+		const triggered = (snippet: string) =>
+			createFinding({
+				...input,
+				trigger: { file: "src/run.ts", oldStart: 11, oldLines: 1, newStart: 12, newLines: 1, snippet },
+			});
+
+		async function lifecycle(harness: Harness, id: string) {
+			return (await harness.snapshot(FindingsDocument, root.id, context))?.items[id]?.lifecycle;
+		}
+
+		let harness: Harness;
+		let root: Awaited<ReturnType<typeof open>>["root"];
+
+		beforeEach(async () => {
+			({ harness, root } = await open(createMemoryStorage()));
+		});
+
+		it("is new when an ID is first seen, and tracks the revisions that report it", async () => {
+			await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+			await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev2"), context);
+			expect(await lifecycle(harness, evalFinding.properties.id)).toEqual({
+				status: "new",
+				firstSeenRevision: "rev1",
+				lastSeenRevision: "rev2",
+				history: [],
+			});
+		});
+
+		it("keeps a dismissal when the same report is replayed", async () => {
+			const finding = triggered("eval(input)");
+			await root.commit((tx) => upsertFinding(tx, root.id, finding, "rev1"), context);
+			await root.commit((tx) => dismissFinding(tx, root.id, finding.properties.id, dismissal), context);
+			await root.commit((tx) => upsertFinding(tx, root.id, finding, "rev1"), context);
+			await root.commit((tx) => upsertFinding(tx, root.id, finding, "rev2"), context);
+			expect((await readFindings(harness, root.id, context)).map((each) => each.properties.status)).toEqual([
+				"dismissed",
+			]);
+			expect(await lifecycle(harness, finding.properties.id)).toEqual({
+				status: "dismissed",
+				dismissedBy: "tal",
+				dismissedReason: "eval input is a constant here",
+				dismissedAt: "2026-10-03T00:00:00.000Z",
+				firstSeenRevision: "rev1",
+				lastSeenRevision: "rev2",
+				history: [],
+			});
+		});
+
+		it("keeps a dismissal when the trigger only moves or is reindented", async () => {
+			const finding = triggered("eval(input)");
+			const moved = createFinding({
+				...input,
+				trigger: {
+					file: "src/run.ts",
+					oldStart: 20,
+					oldLines: 1,
+					newStart: 21,
+					newLines: 1,
+					snippet: "  eval(input)\n",
+				},
+			});
+			await root.commit((tx) => upsertFinding(tx, root.id, finding, "rev1"), context);
+			await root.commit((tx) => dismissFinding(tx, root.id, finding.properties.id, dismissal), context);
+			await root.commit((tx) => upsertFinding(tx, root.id, moved, "rev2"), context);
+			expect((await lifecycle(harness, finding.properties.id))?.status).toBe("dismissed");
+		});
+
+		it("reopens a dismissed finding whose trigger's code changed, keeping the dismissal in its history", async () => {
+			const finding = triggered("run(eval(input))");
+			const changed = triggered("run(eval(input), { strict: true })");
+			await root.commit((tx) => upsertFinding(tx, root.id, finding, "rev1"), context);
+			await root.commit((tx) => dismissFinding(tx, root.id, finding.properties.id, dismissal), context);
+			await root.commit((tx) => upsertFinding(tx, root.id, changed, "rev2"), context);
+			await root.commit((tx) => upsertFinding(tx, root.id, changed, "rev2"), context);
+			expect(await readFindings(harness, root.id, context)).toEqual([changed]);
+			expect(await lifecycle(harness, finding.properties.id)).toEqual({
+				status: "new",
+				firstSeenRevision: "rev1",
+				lastSeenRevision: "rev2",
+				history: [
+					{
+						dismissedBy: "tal",
+						dismissedReason: "eval input is a constant here",
+						dismissedAt: "2026-10-03T00:00:00.000Z",
+						reopenedRevision: "rev2",
+					},
+				],
+			});
+		});
+
+		it("refuses to dismiss a finding nobody reported", async () => {
+			const dismissed = root.commit((tx) => dismissFinding(tx, root.id, "0123456789abcdef", dismissal), context);
+			await expect(dismissed).rejects.toMatchObject({ code: "unknownFinding" });
+		});
+	});
+
 	it("survives a reopen", async () => {
 		const path = join(dir, "findings.sqlite");
 		const first = await open(await openSqliteStorage(path));
-		await first.root.commit((tx) => upsertFinding(tx, first.root.id, evalFinding), context);
+		await first.root.commit((tx) => upsertFinding(tx, first.root.id, evalFinding, "rev1"), context);
 		await first.harness.close(context);
 
 		const { harness, root } = await open(await openSqliteStorage(path));

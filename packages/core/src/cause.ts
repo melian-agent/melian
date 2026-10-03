@@ -1,5 +1,5 @@
 import type { Revision } from "./changeset.ts";
-import type { Cause } from "./findings.ts";
+import type { LocationCause } from "./findings.ts";
 
 /** Lines in one file at head. `endLine` defaults to `startLine`. */
 export interface CodeLocation {
@@ -10,19 +10,17 @@ export interface CodeLocation {
 }
 
 /**
- * Classifies a finding's cause by where it sits, a placeholder until decision models classify by evidence.
- *
- * A location overlapping any hunk's new lines is `introduced`. A location elsewhere in a file the revision changed is
- * `affected`, and one in an unchanged file is `pre-existing`. A pure deletion has no new lines, so code beside it is
- * `affected`, not `introduced`. A lens that can cite the change it broke, or show that it did not, may override the
- * result.
+ * Classifies a finding's cause by where it sits. Location proves `introduced` only: a location overlapping any hunk's
+ * new lines is `introduced`, and every other location is `pre-existing`, including code beside a pure deletion, which
+ * has no new lines. A finding becomes `affected` only when its producer cites the changed code that breaks it, through
+ * `createFinding`'s `cause: { evidence }`.
  */
-export function classifyCause(location: CodeLocation, revision: Pick<Revision, "files">): Cause {
+export function classifyCause(location: CodeLocation, revision: Pick<Revision, "files">): LocationCause {
 	const changed = revision.files.find((file) => file.path === location.file);
 	if (changed === undefined) return "pre-existing";
 	const end = location.endLine ?? location.startLine;
 	const overlaps = changed.hunks.some(
 		(hunk) => hunk.newLines > 0 && location.startLine < hunk.newStart + hunk.newLines && end >= hunk.newStart,
 	);
-	return overlaps ? "introduced" : "affected";
+	return overlaps ? "introduced" : "pre-existing";
 }

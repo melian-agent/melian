@@ -30,7 +30,14 @@ export const findingStatusSchema = Type.Union([
 
 /** The JSON Schema of a {@link FindingTrigger}. */
 export const findingTriggerSchema = Type.Object(
-	{ file: text, oldStart: count, oldLines: count, newStart: count, newLines: count },
+	{
+		file: text,
+		oldStart: count,
+		oldLines: count,
+		newStart: count,
+		newLines: count,
+		snippet: Type.Optional(Type.String()),
+	},
 	strict,
 );
 
@@ -44,9 +51,11 @@ export const findingSourceSchema = Type.Object({ check: text, version: Type.Opti
 export const findingPropertiesSchema = Type.Object(
 	{
 		id: Type.String({ pattern: "^[0-9a-f]{16}$" }),
+		path: text,
 		occurrence: Type.Optional(count),
 		discriminator: Type.Optional(text),
 		cause: causeSchema,
+		evidence: Type.Optional(text),
 		trigger: Type.Optional(findingTriggerSchema),
 		severity: severitySchema,
 		confidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
@@ -58,45 +67,70 @@ export const findingPropertiesSchema = Type.Object(
 	strict,
 );
 
-const region = Type.Object({
-	startLine: line,
-	endLine: Type.Optional(line),
-	startColumn: Type.Optional(line),
-	endColumn: Type.Optional(line),
-	snippet: Type.Optional(Type.Object({ text: Type.String() })),
-});
+const region = Type.Object(
+	{
+		startLine: line,
+		endLine: Type.Optional(line),
+		startColumn: Type.Optional(line),
+		endColumn: Type.Optional(line),
+		snippet: Type.Optional(Type.Object({ text: Type.String() }, strict)),
+	},
+	strict,
+);
 
 /** The JSON Schema of a {@link FindingLocation}: a SARIF `location` with a physical location. */
-export const findingLocationSchema = Type.Object({
-	physicalLocation: Type.Object({ artifactLocation: Type.Object({ uri: text }), region }),
-});
+export const findingLocationSchema = Type.Object(
+	{
+		physicalLocation: Type.Object({ artifactLocation: Type.Object({ uri: text }, strict), region }, strict),
+	},
+	strict,
+);
 
-/** The JSON Schema of a {@link Finding}: a SARIF 2.1.0 `result` with Melian's extensions in its property bag. */
-export const findingSchema = Type.Object({
-	ruleId: text,
-	level: sarifLevelSchema,
-	message: Type.Object({ text }),
-	locations: Type.Array(findingLocationSchema, { minItems: 1 }),
-	properties: findingPropertiesSchema,
-});
+/**
+ * The JSON Schema of a {@link Finding}: a SARIF 2.1.0 `result` with Melian's extensions in its property bag. Every
+ * object lists the SARIF members Melian supports and rejects any other, so a result from outside cannot smuggle data
+ * into storage.
+ */
+export const findingSchema = Type.Object(
+	{
+		ruleId: text,
+		level: sarifLevelSchema,
+		message: Type.Object({ text }, strict),
+		locations: Type.Array(findingLocationSchema, { minItems: 1 }),
+		properties: findingPropertiesSchema,
+	},
+	strict,
+);
 
 /** The URI of the SARIF 2.1.0 JSON Schema, as `$schema` in a {@link FindingsLog}. */
 export const sarifSchemaUri = "https://json.schemastore.org/sarif-2.1.0.json";
 
 /** The JSON Schema of a {@link FindingsLog}. */
-export const findingsLogSchema = Type.Object({
-	$schema: Type.Optional(Type.String()),
-	version: Type.Literal("2.1.0"),
-	runs: Type.Array(
-		Type.Object({
-			tool: Type.Object({
-				driver: Type.Object({ name: Type.Literal("Melian"), informationUri: Type.Optional(Type.String()) }),
-			}),
-			results: Type.Array(findingSchema),
-		}),
-		{ minItems: 1, maxItems: 1 },
-	),
-});
+export const findingsLogSchema = Type.Object(
+	{
+		$schema: Type.Optional(Type.String()),
+		version: Type.Literal("2.1.0"),
+		runs: Type.Array(
+			Type.Object(
+				{
+					tool: Type.Object(
+						{
+							driver: Type.Object(
+								{ name: Type.Literal("Melian"), informationUri: Type.Optional(Type.String()) },
+								strict,
+							),
+						},
+						strict,
+					),
+					results: Type.Array(findingSchema),
+				},
+				strict,
+			),
+			{ minItems: 1, maxItems: 1 },
+		),
+	},
+	strict,
+);
 
 /** A SARIF `level`. */
 export type SarifLevel = Static<typeof sarifLevelSchema>;
@@ -105,15 +139,21 @@ export type SarifLevel = Static<typeof sarifLevelSchema>;
  * Why a finding is in scope.
  *
  * - `introduced`: in the code the changeset added or changed. Can block.
- * - `affected`: outside the changed code, but broken by it. Can block.
- * - `pre-existing`: outside the changed code and not caused by it. Never blocks.
+ * - `affected`: outside the changed code, but broken by it, as `properties.evidence` shows. Can block.
+ * - `pre-existing`: outside the changed code and not shown to be caused by it. Never blocks.
  */
 export type Cause = Static<typeof causeSchema>;
+
+/** The causes a location alone can prove. Only evidence makes a finding `affected`. */
+export type LocationCause = Exclude<Cause, "affected">;
 
 /** Where a finding stands across revisions. Only `new` is assigned until cross-revision diffing exists. */
 export type FindingStatus = Static<typeof findingStatusSchema>;
 
-/** The diff hunk that caused a finding, in the file that hunk changed. Line ranges follow {@link Hunk}. */
+/**
+ * The diff hunk that caused a finding, in the file that hunk changed. Line ranges follow {@link Hunk}. `snippet` is the
+ * changed code as the producer saw it; a dismissed finding reopens when its {@link normaliseSnippet} changes.
+ */
 export type FindingTrigger = Static<typeof findingTriggerSchema>;
 
 /** A finding's explanation for the author: what is wrong, why it matters in this change, and what to do. */
@@ -125,7 +165,7 @@ export type FindingSource = Static<typeof findingSourceSchema>;
 /** Melian's extensions to a SARIF `result`, carried in its property bag. */
 export type FindingProperties = Static<typeof findingPropertiesSchema>;
 
-/** Where a finding points: a repository-relative file and a line region, with an optional snippet. */
+/** Where a finding points: a file, as a URI relative to the repository root, and a line region, with an optional snippet. */
 export type FindingLocation = Static<typeof findingLocationSchema>;
 
 /**
@@ -139,6 +179,25 @@ export type Finding = Static<typeof findingSchema>;
 
 /** A SARIF 2.1.0 log of one Melian run. */
 export type FindingsLog = Static<typeof findingsLogSchema>;
+
+// Percent-encodes each segment; decodeURIComponent on each segment reverses it.
+function repositoryUri(path: string, pointer = "/properties/path"): string {
+	const segments = path.split("/");
+	const problem =
+		path === ""
+			? "is empty"
+			: segments[0] === ""
+				? "is absolute"
+				: segments.includes("..")
+					? "escapes the repository"
+					: path.isWellFormed()
+						? undefined
+						: "is not well-formed Unicode";
+	if (problem !== undefined) {
+		throw new FindingError("invalidPath", `${JSON.stringify(path)} ${problem}`, { path: pointer });
+	}
+	return segments.map(encodeURIComponent).join("/");
+}
 
 /** What a finding's stable ID is computed from. */
 export interface FindingIdInput {
@@ -159,7 +218,11 @@ export interface FindingIdInput {
 	readonly discriminator?: string;
 }
 
-function normalise(snippet: string): string {
+/**
+ * The form of a snippet that {@link findingId} hashes: leading and trailing whitespace removed, and every run of
+ * whitespace collapsed to one space. Two snippets that normalise alike are the same code.
+ */
+export function normaliseSnippet(snippet: string): string {
 	return snippet.trim().replace(/\s+/g, " ");
 }
 
@@ -177,7 +240,7 @@ function normalise(snippet: string): string {
  * snippet has no discriminator.
  */
 export function findingId({ file, rule, snippet, occurrence, discriminator }: FindingIdInput): string {
-	const normalised = normalise(snippet);
+	const normalised = normaliseSnippet(snippet);
 	let distinguisher: string;
 	if (normalised !== "") {
 		if (occurrence === undefined || !Number.isInteger(occurrence) || occurrence < 0) {
@@ -217,7 +280,7 @@ function lineStarts(source: string): number[] {
  * Throws {@link FindingError} `snippetNotFound` when the snippet is empty or does not start inside the region.
  */
 export function snippetOccurrence(source: string, snippet: string, region: SnippetRegion): number {
-	const target = normalise(snippet);
+	const target = normaliseSnippet(snippet);
 	const chars: string[] = [];
 	const offsets: number[] = [];
 	let space = false;
@@ -287,7 +350,11 @@ export interface FindingInput {
 	readonly occurrence?: number;
 	/** Required without a snippet: what tells this finding apart, such as the enclosing symbol or the hunk index. */
 	readonly discriminator?: string;
-	readonly cause: Cause;
+	/**
+	 * `introduced` or `pre-existing`, usually from {@link classifyCause}, or `{ evidence }` for an `affected` finding:
+	 * the changed code that provably breaks this location, as the lens cites it.
+	 */
+	readonly cause: LocationCause | { readonly evidence: string };
 	readonly trigger?: FindingTrigger;
 	readonly severity: Severity;
 	readonly confidence?: number;
@@ -303,13 +370,15 @@ function defined<T extends object>(value: T): T {
 }
 
 /**
- * Builds a finding, deriving its level and ID. Throws {@link FindingError}: `missingDiscriminator` when a finding with a
+ * Builds a finding, deriving its level, ID, and URI. Throws {@link FindingError}: `invalidPath` when the file is
+ * absolute or escapes the repository, `missingDiscriminator` when a finding with a
  * snippet has no occurrence or one without a snippet has no discriminator, and `invalidFinding` if the result is invalid.
  */
 export function createFinding(input: FindingInput): Finding {
 	const { file, rule, snippet, occurrence, discriminator } = input;
 	const id = findingId({ file, rule, snippet: snippet ?? "", occurrence, discriminator });
-	const hasSnippet = normalise(snippet ?? "") !== "";
+	const hasSnippet = normaliseSnippet(snippet ?? "") !== "";
+	const evidence = typeof input.cause === "object" ? input.cause.evidence : undefined;
 	return parseFinding({
 		ruleId: rule,
 		level: levelForSeverity(input.severity),
@@ -317,7 +386,7 @@ export function createFinding(input: FindingInput): Finding {
 		locations: [
 			{
 				physicalLocation: {
-					artifactLocation: { uri: file },
+					artifactLocation: { uri: repositoryUri(file) },
 					region: defined({
 						startLine: input.startLine,
 						endLine: input.endLine,
@@ -330,9 +399,11 @@ export function createFinding(input: FindingInput): Finding {
 		],
 		properties: defined({
 			id,
+			path: file,
 			occurrence: hasSnippet ? occurrence : undefined,
 			discriminator: hasSnippet ? undefined : discriminator,
-			cause: input.cause,
+			cause: evidence === undefined ? input.cause : "affected",
+			evidence,
 			trigger: input.trigger,
 			severity: input.severity,
 			confidence: input.confidence,
@@ -348,7 +419,9 @@ export function createFinding(input: FindingInput): Finding {
  * Checks that `value` is a valid finding and returns it.
  *
  * Throws {@link FindingError}: `invalidFinding` when it does not match {@link findingSchema}, `levelMismatch` when its
- * level is not {@link levelForSeverity} of its severity, `missingDiscriminator` when it lacks the occurrence or
+ * level is not {@link levelForSeverity} of its severity, `invalidPath` when its path is absolute or escapes the
+ * repository or its URI does not encode that path, `missingEvidence` when it is `affected` without evidence,
+ * `missingDiscriminator` when it lacks the occurrence or
  * discriminator its snippet calls for, and `idMismatch` when its ID is not {@link findingId} of its first location.
  */
 export function parseFinding(value: unknown): Finding {
@@ -373,16 +446,34 @@ export function parseFinding(value: unknown): Finding {
 		});
 	}
 	const { artifactLocation, region } = finding.locations[0]!.physicalLocation;
+	const { path, trigger } = finding.properties;
+	if (artifactLocation.uri !== repositoryUri(path)) {
+		throw new FindingError("invalidPath", `finding URI ${artifactLocation.uri} does not encode its path ${path}`, {
+			path: "/locations/0/physicalLocation/artifactLocation/uri",
+		});
+	}
+	if (trigger !== undefined) repositoryUri(trigger.file, "/properties/trigger/file");
+	const { cause, evidence } = finding.properties;
+	if (cause === "affected" && evidence === undefined) {
+		throw new FindingError("missingEvidence", "an affected finding must cite the change that breaks it", {
+			path: "/properties/evidence",
+		});
+	}
+	if (cause !== "affected" && evidence !== undefined) {
+		throw new FindingError("invalidFinding", `an ${cause} finding carries evidence only an affected one needs`, {
+			path: "/properties/evidence",
+		});
+	}
 	const snippet = region.snippet?.text ?? "";
 	const { occurrence, discriminator } = finding.properties;
-	const extra = normalise(snippet) === "" ? occurrence : discriminator;
+	const extra = normaliseSnippet(snippet) === "" ? occurrence : discriminator;
 	if (extra !== undefined) {
-		const key = normalise(snippet) === "" ? "occurrence" : "discriminator";
+		const key = normaliseSnippet(snippet) === "" ? "occurrence" : "discriminator";
 		throw new FindingError("invalidFinding", `finding has a ${key} its snippet does not call for`, {
 			path: `/properties/${key}`,
 		});
 	}
-	const expected = findingId({ file: artifactLocation.uri, rule: finding.ruleId, snippet, occurrence, discriminator });
+	const expected = findingId({ file: path, rule: finding.ruleId, snippet, occurrence, discriminator });
 	if (id !== expected) {
 		throw new FindingError("idMismatch", `finding ${id} should have ID ${expected}`, { path: "/properties/id" });
 	}

@@ -133,11 +133,17 @@ Unlike the policy source, these truncate rather than fail at a bound. A lens ask
 
 ### Schema
 
-A `Finding` is a SARIF 2.1.0 `result`. SARIF forbids unknown keys on a result, so Melian's extensions (`id`, `cause`, `trigger`, `severity`, `confidence`, `resolution`, `status`, `explanation`, `source`) live in its `properties` bag. The bag rejects unknown keys too, so a misspelt optional key such as `confidance` fails instead of vanishing. `test/findings.test.ts` validates a log against the OASIS schema in `test/fixtures/sarif-schema-2.1.0.json`; keep that test passing whenever the schema changes.
+A `Finding` is a SARIF 2.1.0 `result`. SARIF forbids unknown keys on a result, so Melian's extensions (`id`, `path`, `occurrence` or `discriminator`, `cause`, `trigger`, `severity`, `confidence`, `resolution`, `status`, `explanation`, `source`) live in its `properties` bag. The bag rejects unknown keys too, so a misspelt optional key such as `confidance` fails instead of vanishing. So does every SARIF object Melian models: the result, its message, location, physical location, artifact location, region, and snippet, and the log, run, tool, and driver around them. Each lists the standard members Melian supports and nothing else, so a result supplied from outside with a member Melian does not understand, such as `kind` or `region.byteOffset`, is rejected before it reaches storage rather than stored and silently dropped later. Support a new SARIF member by adding it to the schema. `test/findings.test.ts` validates a log against the OASIS schema in `test/fixtures/sarif-schema-2.1.0.json`; keep that test passing whenever the schema changes.
 
 - Build findings with `createFinding`, which derives the level and the ID, and validate any finding read from outside with `parseFinding`. It rejects a level or an ID that disagrees with the rest of the finding.
 - Never store `undefined` in a finding. JSON drops it, so a round trip would change the value. `createFinding` leaves absent optional fields out.
-- `trigger` is optional: a pre-existing finding has no triggering hunk.
+- `trigger` is optional: a pre-existing finding has no triggering hunk. Its optional `snippet` is the changed code as the producer saw it; the pipeline reopens a dismissed finding when that code's `normaliseSnippet` changes.
+
+### Paths and URIs
+
+SARIF's `artifactLocation.uri` is a URI reference, not a path. Problem: git allows almost any byte in a file name, and `docs/release notes.md` or `src/100%.ts` copied into `uri` is not a valid URI, so a strict SARIF consumer rejects the whole log, and a `#` or `?` silently truncates the path. Solution: `createFinding` percent-encodes each path segment with `encodeURIComponent` and joins the segments with `/`, so `src/café/why?.ts` becomes `src/caf%C3%A9/why%3F.ts`. To decode, split the URI on `/` and apply `decodeURIComponent` to each segment. The raw repository-relative path stays in `properties.path` for consumers that want it, and is what `findingId` hashes, so encoding never changes an ID. `parseFinding` rejects a URI that does not encode `properties.path`.
+
+A path must stay inside the repository. `createFinding` and `parseFinding` throw `FindingError` `invalidPath` for an empty or absolute path, or one with a `..` segment, in the location or the trigger.
 
 ### Level mapping
 
@@ -155,17 +161,17 @@ The normalisation is a stored contract. Changing it orphans every recorded findi
 
 ### Cause by location, for now
 
-`classifyCause` decides a finding's cause from where it sits. A location overlapping any hunk's new lines is `introduced`; one elsewhere in a changed file is `affected`; one in an unchanged file is `pre-existing`.
+`classifyCause` decides from where a finding sits whether location alone proves its cause. A location overlapping any hunk's new lines is `introduced`. Every other location is `pre-existing`: elsewhere in a changed file, in an unchanged file, or beside a pure deletion, which has no new lines.
 
-This is a placeholder. The design classifies cause by evidence through the decision model, which arrives later. Until then the heuristic is wrong in both directions: a renamed parameter breaks a caller in an unchanged file, which the heuristic calls `pre-existing`, and an old bug three lines below a hunk is called `affected`. A lens that cites the change it broke, or shows that it did not, may override the heuristic's answer.
+Location never proves `affected`. Problem: an earlier heuristic called anything in a changed file but outside its hunks `affected`, and `affected` can block. Example: a pull request fixes a typo on line 3 of `src/db.ts`, and a lens notices a SQL injection on line 80 that predates it. The heuristic made the old injection a blocker on an unrelated typo fix. Solution: `affected` needs evidence. `createFinding` makes a finding `affected` only through `cause: { evidence }`, where `evidence` names the changed code that provably breaks the location, such as "`src/api.ts:3` renames `id` to `userId`, which this call still passes positionally". It stores the citation in `properties.evidence`, and `parseFinding` throws `missingEvidence` for an `affected` finding without it and `invalidFinding` for evidence on any other cause. No heuristic produces evidence.
 
-A pure deletion has no new lines, so nothing is inside it. Code beside a deletion is `affected`, and the lens must say why.
+The cost is the other direction: a renamed parameter that breaks a caller is `pre-existing` until the lens cites the rename. Missing breakage is recoverable; blocking on an old defect teaches authors to ignore Melian. The design classifies cause through the decision model later, which may promote a finding with evidence but never without.
 
 ### Rendering
 
 `renderFindingsJson` writes the SARIF log; `renderFindingsTerminal` writes plain text grouped by file in path order, and within a file by severity, then line, then ID. The terminal output carries no escape codes unless `color` is set, so a pipe or a log file receives plain text. Hosts decide whether to colour; core never reads `isTTY` or `NO_COLOR`.
 
-Finding text is untrusted: a lens writes it after reading the change under review, which anyone opening a pull request controls. The terminal renderer strips control characters, so a finding cannot clear the author's screen or retitle their terminal, and indents continuation lines so a multi-line explanation stays inside its block. Any new renderer for a terminal does the same.
+Everything the renderer prints is untrusted. A lens writes finding text after reading the change under review, which anyone opening a pull request controls, and that author also chooses the file paths. Example: a file named `src/run.ts` followed by ESC `[2J` clears the reviewer's screen, a newline in a path or rule ID forges a second header, and a right-to-left override makes `gnp.ts` read as `ts.png`. The terminal renderer therefore prints every control character, C1 control, line or paragraph separator, and bidi control in every string, paths and rule IDs included, as a visible `\uXXXX`, with colour on or off. Prose keeps its newlines as indented continuation lines, so a multi-line explanation stays inside its block; a newline anywhere else is escaped. Any new renderer for a terminal does the same.
 
 ## Tests
 
