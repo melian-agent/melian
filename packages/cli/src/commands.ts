@@ -14,6 +14,7 @@ import {
 } from "@melian-agent/core";
 import {
 	backgroundContext as context,
+	createRegistry,
 	createReviewRegistry,
 	type Harness,
 	type HarnessOptions,
@@ -27,7 +28,7 @@ import {
 } from "@melian-agent/pipeline";
 import { idleModels, isScripted, reviewModels, scriptVariable } from "./models.ts";
 import { CliError, git, storagePath } from "./repository.ts";
-import { fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
+import { baseMoved, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
 
 /** Where a command reads and writes: its working directory, environment, and output. */
 export interface Io {
@@ -126,8 +127,14 @@ export async function publish(io: Io, argument: string): Promise<number> {
 	const provider = await gitHubFor(io.cwd, io.env);
 	const pullRequest = await provider.pullRequest(target.number);
 	const changeset = await pullRequestChangeset(io.cwd, target.number);
+	if (changeset.revision.head === pullRequest.head.sha && (await baseMoved(io.cwd, pullRequest, changeset))) {
+		throw new CliError(
+			`pull request #${target.number} now merges into ${pullRequest.base.ref} from a different base than Melian reviewed; run melian review '#${target.number}' again`,
+		);
+	}
 	const path = await storagePath(changeset.repoRoot, changeset.id, false);
-	const registry = createReviewRegistry();
+	// Only the publish task: a review a crash interrupted must not resume here and spend tokens on real models.
+	const registry = createRegistry();
 	registry.install(publishExtension(provider));
 	const harness = await openStorageHarness(path, { models: idleModels(io.env), registry });
 	try {

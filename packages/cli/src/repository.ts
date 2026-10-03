@@ -69,3 +69,19 @@ export async function fetchPullRequest(
 		await git(repoRoot, ["update-ref", ref, commit]);
 	}
 }
+
+// Fetches the branch a pull request merges into now, beside the refs its review read, without moving them.
+export async function fetchBase(
+	repoRoot: string,
+	remote: string,
+	pullRequest: { number: number; base: { ref: string } },
+): Promise<void> {
+	await git(repoRoot, [
+		"fetch",
+		"--quiet",
+		"--no-tags",
+		"--no-write-fetch-head",
+		remote,
+		`+refs/heads/${pullRequest.base.ref}:refs/melian/pull/${pullRequest.number}/current-base`,
+	]);
+}

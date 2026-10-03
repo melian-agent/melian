@@ -6,7 +6,7 @@ import {
 	resolveRange,
 } from "@melian-agent/core";
 import { createGitHubProvider, GitHubError, parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
-import { CliError, fetchPullRequest, git, pullRequestRefs } from "./repository.ts";
+import { CliError, fetchBase, fetchPullRequest, git, pullRequestRefs } from "./repository.ts";
 
 export type Target =
 	| { readonly kind: "pullRequest"; readonly number: number }
@@ -53,4 +53,12 @@ export async function fetchedPullRequest(
 	const pullRequest = await provider.pullRequest(number);
 	await fetchPullRequest(cwd, remote, pullRequest);
 	return { pullRequest, changeset: await resolveRange(cwd, pullRequestRefs(number).range) };
+}
+
+// A pull request retargeted to another branch keeps its head but not its merge base, so the stored review's diff and
+// policy no longer match what GitHub shows.
+export async function baseMoved(cwd: string, pullRequest: PullRequest, changeset: Changeset): Promise<boolean> {
+	await fetchBase(cwd, remote, pullRequest);
+	const base = await git(cwd, ["merge-base", pullRequest.base.sha, pullRequest.head.sha]).catch(() => undefined);
+	return base !== changeset.revision.base;
 }
