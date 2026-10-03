@@ -4,10 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { createGitHubProvider } from "@melian-agent/github";
+import { createGitHubProvider, statusContext } from "@melian-agent/github";
 import {
 	backgroundContext as context,
 	type Harness,
+	openPublishHarness as openPublisher,
 	openSqliteStorage,
 	publishReview,
 	readPublished,
@@ -21,10 +22,12 @@ import {
 	moveTo,
 	nanRetries,
 	openPublishHarness,
+	openReviewOnlyHarness,
 	pullRequestState,
 	reviewScenario,
 	scenarioModels,
 	scenarioRepository,
+	stackOnParent,
 	unsafeManager,
 } from "./fixtures/scenario.ts";
 
@@ -52,11 +55,18 @@ function providerFor(state: FakeState) {
 	return createGitHubProvider({ owner: state.owner, repo: state.repo, token: "test-token", fetch: fakeGitHub(state) });
 }
 
-async function killAfterReviewPosted(database: string, stateFile: string, log: string): Promise<void> {
+// Kills the child once it logs `event`: `review-posted` after GitHub accepted the review, or `review-requested` before.
+async function killAtReview(
+	database: string,
+	stateFile: string,
+	log: string,
+	event: "review-posted" | "review-requested" = "review-posted",
+): Promise<void> {
+	const mode = event === "review-posted" ? "after-review" : "before-review";
 	// The condition resolves workspace packages to their sources, as Vitest does, rather than to a stale or absent build.
 	const child = spawn(
 		process.execPath,
-		["--conditions=@melian-agent/source", crashScript, repo, database, stateFile, log],
+		["--conditions=@melian-agent/source", crashScript, repo, database, stateFile, log, mode],
 		{ stdio: ["ignore", "ignore", "pipe"] },
 	);
 	let stderr = "";
@@ -68,7 +78,7 @@ async function killAfterReviewPosted(database: string, stateFile: string, log: s
 	);
 	const deadline = Date.now() + 15_000;
 	try {
-		while (!existsSync(log) || !readFileSync(log, "utf8").includes("review-posted\n")) {
+		while (!existsSync(log) || !readFileSync(log, "utf8").includes(`${event}\n`)) {
 			if (child.exitCode !== null || child.signalCode !== null)
 				throw new Error(`crash script exited before the kill point:\n${stderr}`);
 			if (Date.now() > deadline) throw new Error(`crash script never reached the kill point:\n${stderr}`);
@@ -108,7 +118,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			moveTo(reviewing, changeset);
 			writeFileSync(stateFile, JSON.stringify(reviewing));
 
-			await killAfterReviewPosted(database, stateFile, log);
+			await killAtReview(database, stateFile, log);
 
 			const state = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
 			expect(state.reviews).toHaveLength(1);
@@ -136,4 +146,60 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			expect(state.statuses).toEqual([expect.objectContaining({ sha: head, state: "failure" })]);
 		},
 	);
+
+	it("ends a publication a crash left from before a retarget without posting, and posts the new review once", async () => {
+		stackOnParent(repo);
+		const database = join(dir, "review.sqlite");
+		const stateFile = join(dir, "github.json");
+		const log = join(dir, "publish.log");
+		const fake = scenarioModels();
+		const reviewing = pullRequestState();
+		harness = await openPublishHarness(await openSqliteStorage(database), fake, providerFor(reviewing));
+		const first = await reviewScenario(repo, harness, fake, lensScript(unsafeManager, emptyName, nanRetries));
+		await first.review;
+		await harness.close(context);
+		harness = undefined;
+		moveTo(reviewing, first.changeset);
+		writeFileSync(stateFile, JSON.stringify(reviewing));
+
+		await killAtReview(database, stateFile, log, "review-requested");
+
+		// The parent landed, so the pull request is retargeted onto it, keeping its head, and reviewed again.
+		const state = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
+		expect(state.reviews).toEqual([]);
+		state.pull.base.ref = "parent";
+		const again = scenarioModels();
+		harness = await openReviewOnlyHarness(await openSqliteStorage(database), again);
+		const retargeted = await reviewScenario(repo, harness, again, lensScript(unsafeManager), false, {
+			range: "parent...feature",
+		});
+		await retargeted.review;
+		await harness.close(context);
+		const { changeset } = retargeted;
+		expect(changeset.revision.head).toBe(first.changeset.revision.head);
+		expect(changeset.revision.base).not.toBe(first.changeset.revision.base);
+		moveTo(state, changeset);
+		state.calls = [];
+		const github = providerFor(state);
+		harness = await openPublisher(await openSqliteStorage(database), scenarioModels().review, github);
+
+		const result = await publishReview({
+			harness,
+			provider: github,
+			changeset,
+			pullRequest: await github.pullRequest(7),
+			base: changeset.revision.base,
+		});
+
+		expect(result.superseded).toEqual([
+			{ task: expect.any(String), reason: "its baseRef was main, and is parent now" },
+		]);
+		expect(state.reviews).toHaveLength(1);
+		expect(state.comments.map((comment) => /`([a-z-]+)`/.exec(comment.body)?.[1])).toEqual(["null-dereference"]);
+		expect(result).toMatchObject({ posted: 1, recovered: 0 });
+		const head = changeset.revision.head;
+		expect(state.statuses).toEqual([
+			{ sha: head, state: "failure", description: "1 finding, 1 blocking", context: statusContext },
+		]);
+	});
 });

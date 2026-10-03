@@ -37,6 +37,7 @@ export {
 	publishExtension,
 	publishReview,
 	readPublished,
+	type SupersededPublication,
 } from "./publish.ts";
 export {
 	createReviewRegistry,

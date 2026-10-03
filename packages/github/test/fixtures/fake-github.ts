@@ -76,10 +76,12 @@ type ReviewComment = {
 };
 
 // A fetch that answers the routes Melian calls. `afterWrite` runs after each write is applied and before its response
-// returns, so a crash fixture can persist the state and park there.
+// returns, so a crash fixture can persist the state and park there; `beforeWrite` runs before a write is applied, so
+// one can park before GitHub has anything.
 export function fakeGitHub(
 	state: FakeState,
 	afterWrite: (call: Call) => Promise<void> | void = () => {},
+	beforeWrite: (call: Call) => Promise<void> | void = () => {},
 ): typeof fetch {
 	const repoPath = `/repos/${state.owner}/${state.repo}`;
 	const pull = () => ({
@@ -105,6 +107,7 @@ export function fakeGitHub(
 		const call: Call = { method, path: url.pathname, ...(body === undefined ? {} : { body }) };
 		state.calls.push(call);
 		const path = url.pathname;
+		if (method === "POST") await beforeWrite(call);
 		const pulls = `${repoPath}/pulls/${state.pull.number}`;
 		const user = { login: state.login };
 		if (method === "GET" && path === "/user")

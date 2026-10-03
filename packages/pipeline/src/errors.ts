@@ -17,7 +17,13 @@ export class PiCredentialsError extends Error {
 }
 
 /** Why a review could not be published. */
-export type PublishErrorCode = "staleReview" | "notReviewed" | "notPublishable" | "notInstalled" | "publishFailed";
+export type PublishErrorCode =
+	| "staleReview"
+	| "staleTarget"
+	| "notReviewed"
+	| "notPublishable"
+	| "notInstalled"
+	| "publishFailed";
 
 /**
  * A review could not be published. `pullRequest` names the pull request and `revision` the head commit involved. What

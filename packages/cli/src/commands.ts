@@ -164,6 +164,9 @@ export async function publish(io: Io, argument: string): Promise<number> {
 			`Published review ${published.review} of ${short(pullRequest.head.sha)} to ${pullRequest.url}: ${parts.join(", ")}.\n`,
 		);
 		io.stdout(`Status ${published.status.state}: ${published.status.description}\n`);
+		for (const { reason } of published.superseded) {
+			io.stdout(`An interrupted publication for an earlier target was dropped without posting: ${reason}\n`);
+		}
 		for (const { fingerprint, refusals, error } of published.abandoned) {
 			io.stdout(
 				`An earlier review of this head, verdict ${fingerprint}, was abandoned after ${refusals} refusals: ${error}\n`,

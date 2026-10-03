@@ -106,6 +106,19 @@ export function pushRevisionThree(repo: string): void {
 	gitIn(repo, "commit", "--quiet", "--all", "-m", "revision 3");
 }
 
+// Stacks `feature` on a `parent` branch: `parent` changes src/config.ts on top of `main`, and `feature` merges it, so
+// `main...feature` holds both changes and `parent...feature` only revision 1, as after a retarget onto the parent.
+export function stackOnParent(repo: string): void {
+	gitIn(repo, "branch", "parent", "main");
+	gitIn(repo, "checkout", "--quiet", "parent");
+	writeFiles(repo, {
+		"src/config.ts": lines("export const retries = Number(process.env.RETRIES);", "export const timeout = 60;"),
+	});
+	gitIn(repo, "commit", "--quiet", "--all", "-m", "parent");
+	gitIn(repo, "checkout", "--quiet", "feature");
+	gitIn(repo, "merge", "--quiet", "--no-edit", "parent");
+}
+
 const explanation = (what: string) => ({ what, why: `${what} Why.`, fix: `${what} Fix.` });
 
 function report(file: string, line: number, rule: string, severity: string, what: string) {
@@ -145,6 +158,15 @@ export interface ScenarioReview {
 	readonly range?: string;
 	readonly origin?: "range";
 	readonly policy?: "worktree";
+}
+
+// Opens a harness that only reviews, as the CLI's review does, so a publish task a crash left stays put.
+export function openReviewOnlyHarness(storage: Storage, fake: FakeModels): Promise<Harness> {
+	return openHarness(storage, {
+		models: fake.models,
+		registry: createReviewRegistry(),
+		settings: { retry: { enabled: false } },
+	});
 }
 
 // Reviews the scenario, the lenses answering from `script`; `rerun` runs again a lens that failed at this head. Returns

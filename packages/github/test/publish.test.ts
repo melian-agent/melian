@@ -460,6 +460,24 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(posts(state)).toEqual([]);
 	});
 
+	it("stops before posting when the pull request's head moves after publish validated it", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		const pullRequest = await github.pullRequest(7);
+		state.pull.head.sha = "f".repeat(40);
+
+		const refused = await publishReview({
+			harness: harness!,
+			provider: github,
+			changeset,
+			pullRequest,
+			base: changeset.revision.base,
+		}).catch((error: unknown) => error);
+
+		expect(refused).toMatchObject({ code: "staleTarget", pullRequest: 7 });
+		expect((refused as Error).message).toContain(`its head moved to ${"f".repeat(12)}`);
+		expect(posts(state)).toEqual([]);
+	});
+
 	it("refuses to publish when the pull request diffs from another base, as after a retarget", async () => {
 		const { github, changeset, state } = await reviewedRevisionOne();
 		const pullRequest = await github.pullRequest(7);

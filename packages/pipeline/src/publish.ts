@@ -38,6 +38,8 @@ type StoredFinding = { ruleId: string; path: string; line: number; revision: str
 // What one round of a revision will post, committed before posting so a rerun posts exactly this: the verdict it
 // renders as well as its findings, since the head's verdict can change before a failed round is posted again.
 type PendingRound = {
+	// The revisionKey of the review the round publishes: a retarget keeps the head and changes it.
+	revision: string;
 	fingerprint: string;
 	verdict: StoredVerdict;
 	post: { finding: Finding; placement: Placement }[];
@@ -83,7 +85,8 @@ export const PublishedDocument = defineDoc<PublishedState>({
 // The changeset's publisher secret, which signs every marker Melian posts for it: 32 random bytes as hex, generated once
 // and kept as long as the storage. A marker counts only when it verifies, whoever the provider says posted it, so
 // recovery does not depend on the token knowing who it is.
-export const PublisherDocument = defineDoc<{ secret?: string }>({
+// It also holds the target the latest publish validated, which a resumed task compares with its own.
+export const PublisherDocument = defineDoc<{ secret?: string; target?: PublishTarget }>({
 	kind: "melian.publisher",
 	version: 1,
 	scope: "conversation",
@@ -118,6 +121,7 @@ function unanswered(state: PublishedState, head: string): Record<string, StoredF
 function planRound(
 	state: PublishedState,
 	head: string,
+	revision: string,
 	verdict: Verdict,
 	lines: Record<string, [number, number][]>,
 ): PendingRound {
@@ -137,6 +141,7 @@ function planRound(
 		}
 	}
 	return {
+		revision,
 		fingerprint: fingerprint(verdict),
 		verdict: structuredClone(verdict) as StoredVerdict,
 		post: structuredClone(plan.post.map(({ finding, placement }) => ({ finding, placement }))),
@@ -147,12 +152,45 @@ function planRound(
 	};
 }
 
+// What one publish task posts to, validated against the provider before the task was created: the repository and pull
+// request, the base branch and its tip as the provider reported them, the merge base the host computed, the head, and
+// the revisionKey of the review whose verdict it publishes.
+type PublishTarget = {
+	repository: string;
+	pullRequest: number;
+	baseRef: string;
+	baseTip: string;
+	base: string;
+	head: string;
+	revision: string;
+};
+
+// The first way `current` differs from `recorded`, or `undefined` when they are the same target.
+function targetChange(recorded: PublishTarget | undefined, current: PublishTarget): string | undefined {
+	if (recorded === undefined) return "the task recorded no target";
+	for (const field of ["repository", "pullRequest", "baseRef", "baseTip", "base", "head", "revision"] as const) {
+		if (recorded[field] !== current[field]) {
+			return `its ${field} was ${String(recorded[field])}, and is ${String(current[field])} now`;
+		}
+	}
+	return undefined;
+}
+
+// How the pull request the provider reports now differs from `target`, or `undefined` when it does not.
+function movedFrom(target: PublishTarget, now: PullRequest): string | undefined {
+	const repository = `${now.repository.owner}/${now.repository.name}`;
+	if (repository !== target.repository) return `it belongs to ${repository} now`;
+	if (now.head.sha !== target.head) return `its head moved to ${short(now.head.sha)}`;
+	if (now.base.ref !== target.baseRef) return `it was retargeted onto ${now.base.ref}`;
+	if (now.base.sha !== target.baseTip) return `its base branch ${now.base.ref} moved to ${short(now.base.sha)}`;
+	return undefined;
+}
+
+class TargetMoved extends Error {}
+
 type PublishInput = {
 	root: ConversationId;
-	pullRequest: number;
-	head: string;
-	// The review whose verdict this publishes: the revisionKey of its base and head.
-	revision: string;
+	target: PublishTarget;
 	lines: Record<string, [number, number][]>;
 };
 
@@ -168,26 +206,56 @@ type PublishResult = {
 	abandoned: AbandonedRound[];
 };
 
+// `superseded`: the target changed before the task resumed, so it wrote nothing. `staleTarget`: the provider reported
+// a different target just before a post, so the task stopped before it.
+type PublishOutcome =
+	| ({ kind: "published" } & PublishResult)
+	| { kind: "superseded"; reason: string }
+	| { kind: "staleTarget"; reason: string };
+
 const publishTaskName = "melian.publish";
 
 // Not replay-safe: a post and the commit that records it are two steps, and the host takes no idempotency key. Every
 // post is recorded in its own commit, and before posting anything the phase reads Melian's markers back from the pull
 // request, so a rerun after a crash between a post and its record finds the post instead of repeating it.
 function publishTask(provider: ReviewProvider) {
-	return defineTask<PublishInput, { phase: "publish" }, PublishResult>({
+	return defineTask<PublishInput, { phase: "publish" }, PublishOutcome>({
 		name: publishTaskName,
 		version: 1,
 		initial: () => ({ phase: "publish" }),
 		phases: {
 			publish: async (task, runtime, context) => {
-				const { root, pullRequest, head, revision, lines } = task.input;
+				const { root, lines } = task.input;
+				// A task created before targets were recorded has none, and is superseded like any other stale one.
+				const target = task.input.target as PublishTarget | undefined;
+				const publisher = await runtime.snapshot(PublisherDocument, root, context);
+				// Every publish records the target it validated before resuming any task, so a task a crash left behind for
+				// another base, head, or pull request ends here, before any post.
+				const change =
+					publisher?.target === undefined ? "no target is recorded" : targetChange(target, publisher.target);
+				if (target === undefined || change !== undefined) {
+					const reason = change ?? "the task recorded no target";
+					await runtime.commit(
+						() => ({
+							status: "terminal",
+							outcome: { status: "completed", result: { kind: "superseded", reason } },
+						}),
+						context,
+					);
+					return;
+				}
+				const { pullRequest, head, revision } = target;
+				const revalidate = async () => {
+					const moved = movedFrom(target, await provider.pullRequest(pullRequest));
+					if (moved !== undefined) throw new TargetMoved(moved);
+				};
 				const read = async () =>
 					(await runtime.snapshot(PublishedDocument, root, context)) ?? { order: [], revisions: {} };
 				const result = { posted: 0, stillOpen: 0, resolved: 0, replies: 0, recovered: 0 };
 				// Set while the provider is asked to post a round, so a refusal counts against that round.
 				let posting = false;
 				try {
-					const secret = (await runtime.snapshot(PublisherDocument, root, context))?.secret;
+					const secret = publisher?.secret;
 					if (secret === undefined) throw new Error("the changeset has no publisher secret");
 					const markers = new Map<string, PublishedMarkers>();
 					const marked = async (verdict: string) => {
@@ -198,6 +266,19 @@ function publishTask(provider: ReviewProvider) {
 					const verdict = await readVerdict(runtime, root, revision, context);
 					if (verdict === undefined) throw new Error(`no verdict is recorded for ${revision}`);
 					const current = fingerprint(verdict);
+					// A pending round planned for another revision of this head, such as the pull request before a retarget,
+					// is dropped unless the provider already shows it, in which case the loop below records it as posted.
+					const left = (await read()).revisions[head]?.pending;
+					if (
+						left !== undefined &&
+						left.revision !== revision &&
+						(await marked(left.fingerprint)).review === undefined
+					) {
+						await runtime.commit(async (tx) => {
+							delete (await tx.doc(PublishedDocument, root)).revisions[head]!.pending;
+							return undefined;
+						}, context);
+					}
 					// A pending round left by a failed run is posted as planned, under its own verdict. If the head's verdict
 					// changed since, a second round then posts the current one, so the last review matches the status.
 					for (let round = 0; round < 2; round++) {
@@ -205,7 +286,7 @@ function publishTask(provider: ReviewProvider) {
 						const before = state.revisions[head];
 						if (before?.pending === undefined) {
 							if (before?.verdict === current) break;
-							const planned = planRound(state, head, verdict, lines);
+							const planned = planRound(state, head, revision, verdict, lines);
 							await runtime.commit(async (tx) => {
 								const document = await tx.doc(PublishedDocument, root);
 								document.order = [...document.order.filter((each) => each !== head), head];
@@ -224,6 +305,7 @@ function publishTask(provider: ReviewProvider) {
 						const found = await marked(pending.fingerprint);
 						let posted: PostedReview;
 						if (found.review === undefined) {
+							await revalidate();
 							posting = true;
 							posted = await provider.postReview({
 								pullRequest,
@@ -264,6 +346,7 @@ function publishTask(provider: ReviewProvider) {
 					// The status comes before the replies, so a thread that cannot take a reply never holds back the check.
 					const status = reviewStatus(verdict);
 					if (record.status?.state !== status.state || record.status.description !== status.description) {
+						await revalidate();
 						await provider.setStatus(head, status);
 						await runtime.commit(async (tx) => {
 							(await tx.doc(PublishedDocument, root)).revisions[head]!.status = { ...status };
@@ -276,6 +359,7 @@ function publishTask(provider: ReviewProvider) {
 						const found = (await marked(record.verdict ?? "")).replies[id];
 						let recorded: string | null;
 						if (found === undefined) {
+							await revalidate();
 							const reply = await provider.replyResolved(
 								pullRequest,
 								{ id, ...entry, thread: entry.thread },
@@ -295,11 +379,25 @@ function publishTask(provider: ReviewProvider) {
 					}
 					await runtime.commit(() => {
 						const abandoned = structuredClone(record.abandoned ?? []);
-						const done: PublishResult = { review: record.reviews.at(-1)!, status, ...result, abandoned };
+						const done: PublishOutcome = {
+							kind: "published",
+							review: record.reviews.at(-1)!,
+							status,
+							...result,
+							abandoned,
+						};
 						return { status: "terminal", outcome: { status: "completed", result: done } };
 					}, context);
 				} catch (error) {
 					if (runtime.signal.aborted) throw error;
+					if (error instanceof TargetMoved) {
+						const stale: PublishOutcome = { kind: "staleTarget", reason: error.message };
+						await runtime.commit(
+							() => ({ status: "terminal", outcome: { status: "completed", result: stale } }),
+							context,
+						);
+						return;
+					}
 					// Everything posted so far is recorded, so the outcome is the failure, and publishing again resumes. A round
 					// the provider keeps refusing, such as one whose comment GitHub rejects with a 422, would block every later
 					// publish of the head, so its third refusal abandons it and the next publish plans a new round.
@@ -388,6 +486,17 @@ export interface Publication {
 	 * round planned afresh carries its findings, so they reach the pull request once the provider accepts one.
 	 */
 	readonly abandoned: readonly AbandonedReview[];
+	/**
+	 * Publish tasks a crash left for another target, such as the pull request before a retarget, which this run ended
+	 * without posting anything.
+	 */
+	readonly superseded: readonly SupersededPublication[];
+}
+
+/** A publish task that ended without writing, because its target was not the pull request's any more, and why. */
+export interface SupersededPublication {
+	readonly task: string;
+	readonly reason: string;
 }
 
 /** A review of a head that Melian gave up posting: the verdict it named, how often it was refused, and why. */
@@ -463,7 +572,8 @@ function unpublishable(provenance: VerdictProvenance | undefined, pullRequest: P
  *
  * Throws {@link PublishError}: `staleReview` when the changeset's head or base is not the pull request's, `notReviewed`
  * when no verdict is recorded for that base and head, `notPublishable` when the verdict's provenance is not a review of
- * this pull request, fetched from the provider, under policy from the base commit it reported, `notInstalled` when the harness lacks {@link publishExtension}, and
+ * this pull request, fetched from the provider, under policy from the base commit it reported, `staleTarget` when the
+ * provider reports another head, base, or repository just before a post, `notInstalled` when the harness lacks {@link publishExtension}, and
  * `publishFailed` when the provider refused a post.
  */
 export async function publishReview(options: PublishOptions): Promise<Publication> {
@@ -503,25 +613,37 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 			where,
 		);
 	}
+	const target: PublishTarget = {
+		repository: `${pullRequest.repository.owner}/${pullRequest.repository.name}`,
+		pullRequest: pullRequest.number,
+		baseRef: pullRequest.base.ref,
+		baseTip: pullRequest.base.sha,
+		base: options.base,
+		head,
+		revision,
+	};
+	// Recorded before any earlier task resumes, so one a crash left for another target ends superseded, posting nothing.
+	await (await harness.root(context)).commit(async (tx) => {
+		const publisher = await tx.doc(PublisherDocument, root);
+		publisher.secret ??= randomBytes(32).toString("hex");
+		publisher.target = { ...target };
+		return undefined;
+	}, context);
 	harness.resume();
 	const unfinished = async () =>
 		(await harness.inspect(context)).tasks.filter((each) => each.record.kind === publishTaskName);
+	const superseded: SupersededPublication[] = [];
 	for (const each of await unfinished()) {
 		if (each.state.kind === "blocked") continue;
-		await harness.waitForTask(each.record.id, context);
+		const { outcome } = (await harness.waitForTask(each.record.id, context)).state;
+		const result = outcome.status === "completed" ? (outcome.result as PublishOutcome) : undefined;
+		if (result?.kind === "superseded") superseded.push({ task: String(each.record.id), reason: result.reason });
 	}
-	const input: PublishInput = {
-		root,
-		pullRequest: pullRequest.number,
-		head,
-		revision,
-		lines: diffLines(changeset.revision.files),
-	};
-	const taskId = await (await harness.root(context)).commit(async (tx) => {
-		const publisher = await tx.doc(PublisherDocument, root);
-		publisher.secret ??= randomBytes(32).toString("hex");
-		return tx.createTask(publishTask(options.provider), input, { ownership: { kind: "conversation" } });
-	}, context);
+	const input: PublishInput = { root, target, lines: diffLines(changeset.revision.files) };
+	const taskId = await (await harness.root(context)).commit(
+		(tx) => tx.createTask(publishTask(options.provider), input, { ownership: { kind: "conversation" } }),
+		context,
+	);
 	harness.resume();
 	const blocked = (await unfinished()).some(
 		(each) => each.record.id === (taskId as TaskId) && each.state.kind === "blocked",
@@ -535,7 +657,18 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		);
 	}
 	const { outcome } = (await harness.waitForTask(taskId, context)).state;
-	if (outcome.status === "completed") return outcome.result;
+	if (outcome.status === "completed") {
+		const { result } = outcome;
+		if (result.kind === "published") {
+			const { kind: _, ...published } = result;
+			return { ...published, superseded };
+		}
+		throw new PublishError(
+			"staleTarget",
+			`pull request #${pullRequest.number} changed while Melian published it, so it stopped before posting: ${result.reason}; ${again}`,
+			where,
+		);
+	}
 	const why = outcome.status === "failed" ? outcome.error.message : outcome.status;
 	throw new PublishError("publishFailed", `publishing to pull request #${pullRequest.number} stopped: ${why}`, where);
 }
