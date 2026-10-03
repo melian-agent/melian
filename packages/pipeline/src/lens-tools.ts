@@ -3,7 +3,6 @@ import {
 	classifyCause,
 	createFinding,
 	type Finding,
-	type FindingSource,
 	type LensRule,
 	type LensToolName,
 	lensCovers,
@@ -18,7 +17,7 @@ import {
 	searchRevision,
 	snippetOccurrence,
 } from "@melian-agent/core";
-import { FindingsDocument, upsertFinding } from "./findings.ts";
+import { FindingsDocument, hasSighting, sightingCount, upsertFinding } from "./findings.ts";
 import {
 	type Context,
 	type ConversationId,
@@ -211,21 +210,6 @@ function overlapping(file: ReviewFile | undefined, startLine: number, endLine: n
 	);
 }
 
-type Produced = {
-	readonly producer: { readonly properties: { readonly source: FindingSource } };
-	readonly lifecycle: { readonly lastSeenRevision: string };
-};
-
-// One storage holds every review of a changeset, so only findings this lens reported at its own head count.
-function countFor(items: Readonly<Record<string, Produced>>, lens: LensPolicy): number {
-	return Object.values(items).filter(
-		({ producer: { properties }, lifecycle }) =>
-			lifecycle.lastSeenRevision === lens.revision.head &&
-			properties.source.check === `lens.${lens.name}` &&
-			properties.source.version === lens.version,
-	).length;
-}
-
 /**
  * Builds the finding a `report_finding` call describes. The snippet comes from the head revision at the reported
  * lines, never from the model, so a finding's ID does not depend on how the model quoted the code.
@@ -294,19 +278,11 @@ export const reportFinding = defineTool({
 		const finding = await findingFromCall(args, lens, review);
 		const id = finding.properties.id;
 		await api.commit(async (tx) => {
-			const { items } = await tx.doc(FindingsDocument, lens.review);
-			const current = items[id]?.lifecycle.lastSeenRevision === review.head;
-			// A finding's ID does not name its lens, so two lenses sharing a rule ID can land on one ID. Replacing the
-			// other lens's record would change its severity and source, and hand that lens back a slot of its budget.
-			const owner = items[id]?.producer.properties.source;
-			if (
-				current &&
-				owner !== undefined &&
-				(owner.check !== `lens.${lens.name}` || owner.version !== lens.version)
-			) {
-				throw new Error(`${owner.check} already reported this finding; it is recorded, so move on`);
-			}
-			if (!current && countFor(items, lens) >= lens.budget) {
+			// One storage holds every review of a changeset, so the budget counts this lens's sightings at its own head.
+			const state = await tx.doc(FindingsDocument, lens.review);
+			const { source } = finding.properties;
+			const own = hasSighting(state, id, review.head, source);
+			if (!own && sightingCount(state, review.head, source) >= lens.budget) {
 				throw new Error(`budget reached: this lens may report ${lens.budget} findings; stop reporting and finish`);
 			}
 			await upsertFinding(tx, lens.review, finding, review.head);

@@ -5,7 +5,7 @@ export {
 	ReviewError,
 	type ReviewErrorCode,
 } from "./errors.ts";
-export { type Dismissal, dismissFinding, readFindings, upsertFinding } from "./findings.ts";
+export { type Dismissal, dismissFinding, readFindings, recordRevision, upsertFinding } from "./findings.ts";
 export * from "./harness.ts";
 export {
 	createReviewRegistry,

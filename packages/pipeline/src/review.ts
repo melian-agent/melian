@@ -14,7 +14,7 @@ import {
 	selectLenses,
 } from "@melian-agent/core";
 import { ReviewError } from "./errors.ts";
-import { FindingsDocument, readFindings } from "./findings.ts";
+import { readFindings, recordRevision } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -147,14 +147,6 @@ export function openReviewHarness(
 	return openHarness(storage, { models, registry: createReviewRegistry() }, context);
 }
 
-// The root's document holds every review of the changeset; a finding the lenses did not report at `head` is not this
-// review's, even if an earlier revision's review reported it.
-async function findingsAt(harness: Harness, root: ConversationId, head: string, context: Context): Promise<Finding[]> {
-	const document = await harness.snapshot(FindingsDocument, root, context);
-	const seen = (id: string) => document?.items[id]?.lifecycle.lastSeenRevision === head;
-	return (await readFindings(harness, root, context)).filter((finding) => seen(finding.properties.id));
-}
-
 const maxPromptBytes = 200 * 1024;
 
 /**
@@ -235,7 +227,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 	const root = await harness.root(context);
 	const paths = changeset.revision.files.map((file) => file.path);
 	const selected = selectLenses(options.lenses, config, paths);
-	if (selected.length === 0) return findingsAt(harness, root.id, changeset.revision.head, context);
+	if (selected.length === 0) return readFindings(harness, root.id, changeset.revision.head, context);
 	const lenses: LensRun[] = [];
 	for (const [index, { lens, coverage, files }] of selected.entries()) {
 		lenses.push({
@@ -260,11 +252,14 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 		files: reviewFiles(revision.files),
 		resolution: { ...config.resolution },
 	};
-	const taskId = await root.commit(
-		(tx) =>
-			tx.createTask(LensTask, { root: root.id, revision: state, lenses }, { ownership: { kind: "conversation" } }),
-		context,
-	);
+	const taskId = await root.commit(async (tx) => {
+		await recordRevision(tx, root.id, revision.head);
+		return tx.createTask(
+			LensTask,
+			{ root: root.id, revision: state, lenses },
+			{ ownership: { kind: "conversation" } },
+		);
+	}, context);
 	harness.resume();
 	const blocked = (await harness.inspect(context)).tasks.find(
 		(each) => each.record.id === taskId && each.state.kind === "blocked",
@@ -280,7 +275,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 		);
 	}
 	const settled = await harness.waitForTask(taskId, context);
-	const findings = await findingsAt(harness, root.id, changeset.revision.head, context);
+	const findings = await readFindings(harness, root.id, changeset.revision.head, context);
 	const outcome = settled.state.outcome;
 	const failed =
 		outcome.status === "completed"

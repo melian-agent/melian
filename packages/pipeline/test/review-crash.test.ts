@@ -21,6 +21,7 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { gitIn } from "./fixtures/repo.ts";
 import { count, crashFinding, crashRepository, readEvents } from "./fixtures/review-scenario.ts";
 
 const crashScript = fileURLToPath(new URL("./fixtures/review-crash.ts", import.meta.url));
@@ -105,7 +106,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		expect(first).toMatch(/^recorded finding [0-9a-f]{16}$/);
 		expect(toolResults(correction!).at(-1)).toBe(first);
 		const root = await harness.root(context);
-		const findings = await readFindings(harness, root.id, context);
+		const findings = await readFindings(harness, root.id, gitIn(repo, "rev-parse", "feature"), context);
 		expect(findings.map((finding) => finding.message.text)).toEqual(["Corrected."]);
 	});
 });

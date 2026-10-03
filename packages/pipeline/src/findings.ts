@@ -2,10 +2,12 @@ import {
 	type Finding,
 	FindingError,
 	type FindingProperties,
+	type FindingSource,
 	type FindingStatus,
 	type FindingTrigger,
 	normaliseSnippet,
 	parseFinding,
+	type Severity,
 } from "@melian-agent/core";
 import { type Context, type ConversationId, defineDoc, type Harness, type Tx } from "./harness.ts";
 
@@ -36,34 +38,89 @@ export interface Dismissal {
 	readonly at: string;
 }
 
-type ProducerFinding = Omit<Finding, "properties"> & { properties: Omit<FindingProperties, "status"> };
+type ProducerFinding = Omit<Finding, "properties"> & {
+	properties: Omit<FindingProperties, "status" | "reportedBy">;
+};
 
-type FindingRecord = { producer: ProducerFinding; lifecycle: FindingLifecycle };
+// Sightings are keyed by head commit, then by producer, a lens's check and version. Only the same producer at the same
+// head ever rewrites a sighting, so two lenses or two pushes never race for one record.
+type FindingRecord = { lifecycle: FindingLifecycle; sightings: Record<string, Record<string, ProducerFinding>> };
 
-export const FindingsDocument = defineDoc<{ items: Record<string, FindingRecord> }>({
+// `heads` lists the revisions reviewed, oldest first, so a resumed review of an old head cannot move a lifecycle back.
+type FindingsState = { heads: string[]; items: Record<string, FindingRecord> };
+
+export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
-	version: 1,
+	version: 2,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
-	initial: () => ({ items: {} }),
+	initial: () => ({ heads: [], items: {} }),
 });
+
+function producerKey(source: FindingSource): string {
+	return `${source.check}@${source.version ?? ""}`;
+}
+
+/** Whether `source` has sighted finding `id` at `head`. */
+export function hasSighting(state: FindingsState, id: string, head: string, source: FindingSource): boolean {
+	return state.items[id]?.sightings[head]?.[producerKey(source)] !== undefined;
+}
+
+/** How many findings `source` has sighted at `head`. */
+export function sightingCount(state: FindingsState, head: string, source: FindingSource): number {
+	const key = producerKey(source);
+	return Object.values(state.items).filter((record) => record.sightings[head]?.[key] !== undefined).length;
+}
+
+const severityRank: Readonly<Record<Severity, number>> = { P0: 0, P1: 1, P2: 2, P3: 3, nit: 4 };
+
+function compareText(a: string, b: string): number {
+	return a < b ? -1 : a > b ? 1 : 0;
+}
+
+function compareSources(a: FindingSource, b: FindingSource): number {
+	return compareText(a.check, b.check) || compareText(a.version ?? "", b.version ?? "");
+}
+
+// The highest severity wins, and a tie goes to the producer whose name sorts first, so every reader merges alike.
+function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>) {
+	const ranked = Object.values(sightings).sort(
+		(a, b) =>
+			severityRank[a.properties.severity] - severityRank[b.properties.severity] ||
+			compareSources(a.properties.source, b.properties.source),
+	);
+	const reportedBy = ranked.map((each) => ({ ...each.properties.source })).sort(compareSources);
+	return { winner: ranked[0]!, reportedBy };
+}
+
+/**
+ * Marks `revision` as the newest the changeset has been reviewed at, moving it last if it was reviewed before. Call it
+ * in the commit that starts a review, so a review of an older head that resumes afterwards counts as older.
+ */
+export async function recordRevision(tx: Tx, rootConversationId: ConversationId, revision: string): Promise<void> {
+	const state = await tx.doc(FindingsDocument, rootConversationId);
+	state.heads = [...state.heads.filter((head) => head !== revision), revision];
+}
 
 function triggerCode(trigger: FindingTrigger | undefined): string {
 	return normaliseSnippet(trigger?.snippet ?? "");
 }
 
 /**
- * Records a finding as its producer reported it at `revision`, keeping Melian's lifecycle record for its ID.
+ * Records a sighting: the finding as its producer, named by `properties.source`, reported it at `revision`. Keeps
+ * Melian's lifecycle record for its ID.
  *
  * Findings belong to the changeset's root conversation, never a lens's child conversation, so a fork of the root at any
  * revision carries them. Pass the root's ID, even from a tool running in a lens.
  *
- * The producer's record replaces any earlier one. The lifecycle starts as `new` when the ID is first seen, and
- * `lastSeenRevision` always moves to `revision`. A dismissed finding stays dismissed unless its trigger's code changed
- * materially, meaning its normalised `trigger.snippet` differs; then it becomes `new` and the dismissal moves to
- * `history`. Reporting the same finding twice stores the same state, so a tool that calls this is safe to replay.
- * Throws core's `FindingError` for an invalid finding, which aborts the transaction.
+ * A sighting replaces only the same producer's sighting of the same ID at the same revision, so a replay or a
+ * correction rewrites its own report and never another producer's or another revision's. The lifecycle starts as `new`
+ * when the ID is first seen, and `lastSeenRevision` moves to `revision` unless {@link recordRevision} marked a newer
+ * revision. A dismissed finding stays dismissed unless a sighting at that revision or a newer one has a trigger whose
+ * code changed materially, meaning its normalised `trigger.snippet` differs from the last revision's; then it becomes
+ * `new` and the dismissal moves to `history`. Reporting the same finding twice stores the same state, so a tool that
+ * calls this is safe to replay. Throws core's `FindingError` for an invalid finding, which aborts the transaction.
  */
 export async function upsertFinding(
 	tx: Tx,
@@ -72,10 +129,12 @@ export async function upsertFinding(
 	revision: string,
 ): Promise<void> {
 	const valid = parseFinding(finding);
-	const { status: _, ...properties } = valid.properties;
+	const { status: _, reportedBy: __, ...properties } = valid.properties;
 	const producer: ProducerFinding = { ...valid, properties };
-	const { items } = await tx.doc(FindingsDocument, rootConversationId);
-	const previous = items[properties.id];
+	const state = await tx.doc(FindingsDocument, rootConversationId);
+	if (!state.heads.includes(revision)) state.heads.push(revision);
+	const key = producerKey(properties.source);
+	const previous = state.items[properties.id];
 	if (previous === undefined) {
 		const lifecycle: FindingLifecycle = {
 			status: "new",
@@ -83,13 +142,21 @@ export async function upsertFinding(
 			lastSeenRevision: revision,
 			history: [],
 		};
-		items[properties.id] = { producer, lifecycle };
+		state.items[properties.id] = { lifecycle, sightings: { [revision]: { [key]: producer } } };
+		return;
+	}
+	const sightings = { ...previous.sightings, [revision]: { ...previous.sightings[revision], [key]: producer } };
+	const last = previous.lifecycle.lastSeenRevision;
+	if (state.heads.indexOf(revision) < state.heads.indexOf(last)) {
+		state.items[properties.id] = { lifecycle: previous.lifecycle, sightings };
 		return;
 	}
 	const { dismissedBy, dismissedReason, dismissedAt, ...kept } = previous.lifecycle;
+	const lastSeen = previous.sightings[last];
 	const reopened =
 		kept.status === "dismissed" &&
-		triggerCode(previous.producer.properties.trigger) !== triggerCode(properties.trigger);
+		lastSeen !== undefined &&
+		triggerCode(adjudicate(lastSeen).winner.properties.trigger) !== triggerCode(properties.trigger);
 	const lifecycle: FindingLifecycle = reopened
 		? {
 				...kept,
@@ -106,7 +173,7 @@ export async function upsertFinding(
 				],
 			}
 		: { ...previous.lifecycle, lastSeenRevision: revision };
-	items[properties.id] = { producer, lifecycle };
+	state.items[properties.id] = { lifecycle, sightings };
 }
 
 /** Marks a finding dismissed. Throws core's `FindingError` `unknownFinding` if no finding has the ID. */
@@ -132,19 +199,27 @@ export async function dismissFinding(
 }
 
 /**
- * The committed findings of a conversation, in ID order, each with its lifecycle status. Empty when nothing has been
- * reported. Each is a copy: the harness caches the committed document, so changing a returned finding must not reach it.
+ * The findings sighted at `head`, one per ID in ID order, each with its lifecycle status. Where several producers
+ * sighted one ID, the highest severity wins and a tie goes to the producer whose check sorts first, and
+ * `properties.reportedBy` lists every producer that sighted it. Empty when nothing was reported at `head`. Each is a
+ * copy: the harness caches the committed document, so changing a returned finding must not reach it.
  */
 export async function readFindings(
 	reader: Pick<Harness, "snapshot">,
 	rootConversationId: ConversationId,
+	head: string,
 	context: Context,
 ): Promise<readonly Finding[]> {
-	const document = await reader.snapshot(FindingsDocument, rootConversationId, context);
-	return Object.keys(document?.items ?? {})
+	const items = (await reader.snapshot(FindingsDocument, rootConversationId, context))?.items ?? {};
+	return Object.keys(items)
 		.sort()
-		.map((id) => {
-			const { producer, lifecycle } = document!.items[id]!;
-			return structuredClone({ ...producer, properties: { ...producer.properties, status: lifecycle.status } });
+		.flatMap((id) => {
+			const { lifecycle, sightings } = items[id]!;
+			const atHead = sightings[head];
+			if (atHead === undefined || Object.keys(atHead).length === 0) return [];
+			const { winner, reportedBy } = adjudicate(atHead);
+			return [
+				structuredClone({ ...winner, properties: { ...winner.properties, status: lifecycle.status, reportedBy } }),
+			];
 		});
 }

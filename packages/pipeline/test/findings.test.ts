@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createFinding, type Finding, FindingError, type FindingInput } from "@melian-agent/core";
+import { createFinding, type Finding, FindingError, type FindingInput, type FindingSource } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -11,6 +11,7 @@ import {
 	openHarness,
 	openSqliteStorage,
 	readFindings,
+	recordRevision,
 	type Storage,
 	upsertFinding,
 } from "@melian-agent/pipeline";
@@ -38,6 +39,12 @@ const input: FindingInput = {
 
 const evalFinding = createFinding(input);
 
+// A finding as readFindings returns it: merged from its sightings, naming every producer.
+function seen(finding: Finding, ...also: FindingSource[]): Finding {
+	const reportedBy = [finding.properties.source, ...also];
+	return { ...finding, properties: { ...finding.properties, reportedBy } };
+}
+
 let dir: string;
 let opened: Harness[];
 
@@ -61,7 +68,7 @@ async function open(storage: Storage) {
 describe("the findings document", () => {
 	it("reads as empty before anything is reported", async () => {
 		const { harness, root } = await open(createMemoryStorage());
-		expect(await readFindings(harness, root.id, context)).toEqual([]);
+		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([]);
 	});
 
 	it("stores a finding upserted twice under one ID once", async () => {
@@ -69,10 +76,10 @@ describe("the findings document", () => {
 		const reworded = createFinding({ ...input, message: "eval runs the request body" });
 		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
 		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
-		expect(await readFindings(harness, root.id, context)).toEqual([evalFinding]);
+		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(evalFinding)]);
 
 		await root.commit((tx) => upsertFinding(tx, root.id, reworded, "rev1"), context);
-		expect(await readFindings(harness, root.id, context)).toEqual([reworded]);
+		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(reworded)]);
 	});
 
 	it("keeps findings with different IDs apart, in ID order", async () => {
@@ -83,23 +90,25 @@ describe("the findings document", () => {
 			await upsertFinding(tx, root.id, other, "rev1");
 		}, context);
 		const ids = [evalFinding, other].map((finding) => finding.properties.id).sort();
-		expect((await readFindings(harness, root.id, context)).map((finding) => finding.properties.id)).toEqual(ids);
+		expect((await readFindings(harness, root.id, "rev1", context)).map((finding) => finding.properties.id)).toEqual(
+			ids,
+		);
 	});
 
 	it("stores a finding with nested undefined values as its JSON form", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		const loose = { ...evalFinding, message: { text: evalFinding.message.text, markdown: undefined } } as Finding;
 		await root.commit((tx) => upsertFinding(tx, root.id, loose, "rev1"), context);
-		expect(await readFindings(harness, root.id, context)).toEqual([evalFinding]);
+		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(evalFinding)]);
 	});
 
 	it("returns copies, so changing one does not change the committed document", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
-		const [read] = (await readFindings(harness, root.id, context)) as Finding[];
+		const [read] = (await readFindings(harness, root.id, "rev1", context)) as Finding[];
 		(read!.properties.explanation as { what: string }).what = "changed by a reader";
 		read!.locations.pop();
-		expect(await readFindings(harness, root.id, context)).toEqual([evalFinding]);
+		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(evalFinding)]);
 	});
 
 	it("refuses an invalid finding and commits nothing", async () => {
@@ -110,7 +119,7 @@ describe("the findings document", () => {
 			await upsertFinding(tx, root.id, invalid, "rev1");
 		}, context);
 		await expect(committed).rejects.toBeInstanceOf(FindingError);
-		expect(await readFindings(harness, root.id, context)).toEqual([]);
+		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([]);
 	});
 
 	describe("lifecycle", () => {
@@ -149,7 +158,7 @@ describe("the findings document", () => {
 			await root.commit((tx) => dismissFinding(tx, root.id, finding.properties.id, dismissal), context);
 			await root.commit((tx) => upsertFinding(tx, root.id, finding, "rev1"), context);
 			await root.commit((tx) => upsertFinding(tx, root.id, finding, "rev2"), context);
-			expect((await readFindings(harness, root.id, context)).map((each) => each.properties.status)).toEqual([
+			expect((await readFindings(harness, root.id, "rev2", context)).map((each) => each.properties.status)).toEqual([
 				"dismissed",
 			]);
 			expect(await lifecycle(harness, finding.properties.id)).toEqual({
@@ -182,7 +191,7 @@ describe("the findings document", () => {
 			await root.commit((tx) => dismissFinding(tx, root.id, finding.properties.id, dismissal), context);
 			await root.commit((tx) => upsertFinding(tx, root.id, changed, "rev2"), context);
 			await root.commit((tx) => upsertFinding(tx, root.id, changed, "rev2"), context);
-			expect(await readFindings(harness, root.id, context)).toEqual([changed]);
+			expect(await readFindings(harness, root.id, "rev2", context)).toEqual([seen(changed)]);
 			expect(await lifecycle(harness, finding.properties.id)).toEqual({
 				status: "new",
 				firstSeenRevision: "rev1",
@@ -204,6 +213,76 @@ describe("the findings document", () => {
 		});
 	});
 
+	describe("sightings", () => {
+		const security = input.source;
+		const style = { check: "lens.style", version: "7" };
+		const fromStyle = (severity: FindingInput["severity"]) =>
+			createFinding({ ...input, severity, resolution: "advisory", source: style });
+
+		it("merges two lenses' sightings of one ID at one head, the higher severity winning", async () => {
+			const { harness, root } = await open(createMemoryStorage());
+			await root.commit(async (tx) => {
+				await upsertFinding(tx, root.id, fromStyle("P2"), "rev1");
+				await upsertFinding(tx, root.id, evalFinding, "rev1");
+			}, context);
+			const [merged] = await readFindings(harness, root.id, "rev1", context);
+			expect(merged).toEqual(seen(evalFinding, style));
+
+			await root.commit((tx) => upsertFinding(tx, root.id, fromStyle("P0"), "rev1"), context);
+			const [promoted] = await readFindings(harness, root.id, "rev1", context);
+			expect(promoted!.properties).toMatchObject({ severity: "P0", source: style, reportedBy: [security, style] });
+		});
+
+		it("breaks a severity tie by lens name", async () => {
+			const { harness, root } = await open(createMemoryStorage());
+			await root.commit(async (tx) => {
+				await upsertFinding(tx, root.id, fromStyle("P1"), "rev1");
+				await upsertFinding(tx, root.id, evalFinding, "rev1");
+			}, context);
+			const [merged] = await readFindings(harness, root.id, "rev1", context);
+			expect(merged!.properties.source).toEqual(security);
+		});
+
+		it("lets a replay or correction replace only the same lens's sighting at that head", async () => {
+			const { harness, root } = await open(createMemoryStorage());
+			const corrected = createFinding({ ...input, message: "corrected" });
+			await root.commit(async (tx) => {
+				await upsertFinding(tx, root.id, evalFinding, "rev1");
+				await upsertFinding(tx, root.id, fromStyle("P3"), "rev1");
+				await upsertFinding(tx, root.id, evalFinding, "rev2");
+				await upsertFinding(tx, root.id, corrected, "rev1");
+			}, context);
+			const [atRev1] = await readFindings(harness, root.id, "rev1", context);
+			expect(atRev1).toEqual(seen(corrected, style));
+			expect(await readFindings(harness, root.id, "rev2", context)).toEqual([seen(evalFinding)]);
+		});
+
+		it("never lets a resumed review of an old head change what the newer head reads", async () => {
+			const { harness, root } = await open(createMemoryStorage());
+			const dismissal = { by: "tal", reason: "constant input", at: "2026-10-03T00:00:00.000Z" };
+			const old = createFinding({
+				...input,
+				message: "old head",
+				trigger: { file: "src/run.ts", index: 0, snippet: "a()" },
+			});
+			const current = createFinding({ ...input, trigger: { file: "src/run.ts", index: 0, snippet: "b()" } });
+			await root.commit((tx) => recordRevision(tx, root.id, "old"), context);
+			await root.commit(async (tx) => {
+				await recordRevision(tx, root.id, "new");
+				await upsertFinding(tx, root.id, current, "new");
+				await dismissFinding(tx, root.id, current.properties.id, dismissal);
+			}, context);
+			await root.commit((tx) => upsertFinding(tx, root.id, old, "old"), context);
+
+			const [atNew] = await readFindings(harness, root.id, "new", context);
+			expect(atNew!.message.text).toBe(input.message);
+			expect(atNew!.properties.status).toBe("dismissed");
+			const record = (await harness.snapshot(FindingsDocument, root.id, context))?.items[current.properties.id];
+			expect(record?.lifecycle.lastSeenRevision).toBe("new");
+			expect((await readFindings(harness, root.id, "old", context))[0]!.message.text).toBe("old head");
+		});
+	});
+
 	it("survives a reopen", async () => {
 		const path = join(dir, "findings.sqlite");
 		const first = await open(await openSqliteStorage(path));
@@ -212,6 +291,6 @@ describe("the findings document", () => {
 
 		const { harness, root } = await open(await openSqliteStorage(path));
 		expect(root.id).toBe(first.root.id);
-		expect(await readFindings(harness, root.id, context)).toEqual([evalFinding]);
+		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(evalFinding)]);
 	});
 });

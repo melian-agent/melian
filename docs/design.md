@@ -96,7 +96,7 @@ Only the publish and knowledge tasks hold write credentials. Lenses never see th
 | A new revision, a comment, a command | A `submit()` into that conversation; comments while busy use `whenBusy: "steer"` |
 | A pipeline step | A `defineTask()` with phases and checkpoints |
 | A lens | A child conversation created and owned by the lens task, configured with `configure()` with its own model, instructions, and an explicit tool list, because an owned conversation otherwise inherits its owner's tools. Never a subagent tool the model chooses to call |
-| Findings | A `defineDoc()` document, rewindable, committed atomically with the transcript, and owned by the changeset's root conversation so a fork of the root at any revision carries them. A lens's tool writes to the root through the ID it is constructed with, never to its own child conversation |
+| Findings | A `defineDoc()` document, rewindable, committed atomically with the transcript, and owned by the changeset's root conversation so a fork of the root at any revision carries them. It holds immutable sightings keyed by head, lens and version, and finding ID, plus one lifecycle record per ID; reading a head merges its sightings. A lens's tool writes to the root through the ID it is constructed with, never to its own child conversation |
 | Triage decisions, knowledge proposals | `defineDoc()` documents, rewindable, committed atomically with the transcript |
 | Standards and lens bodies | `section()` prompt sections rebuilt from files before every request, so edits take effect immediately and the transcript records what the model saw |
 | Idempotent publication | A durable `published` document keyed by revision and finding ID, written in the same commit that records the post, plus a check for Melian's marker on the pull request before posting. Not `api.memo()`: memos are task-scoped and discarded when the task ends |
@@ -142,6 +142,8 @@ Static analysis gets the same split for free by running on base and head and dif
 Each revision's findings are diffed against the previous revision's by `id`. New findings are posted. Still-open findings are not reposted. Resolved findings get a short resolution note on their thread. Dismissed findings stay dismissed unless the triggering hunk changes materially, which for now means the normalised code of the finding's trigger differs; a reopened finding keeps its old dismissal in its history.
 
 The findings document keeps what a producer reports apart from Melian's lifecycle state: status, who dismissed a finding and why, and the first and last revisions that reported it. A lens or tool reporting a finding again replaces only its own record, so a dismissal survives every rerun.
+
+What a producer reports is stored as immutable sightings, keyed by head commit, lens name and version, and finding ID. Problem: one mutable record per ID raced across lenses and pushes. Example: two lenses that share a rule ID report one finding at one head, and the second either replaced the first's severity and source or was refused; or a crashed review of an old head resumes after the next push and rewrites the record the new head reads. Solution: a lens writes only its own sighting at its own head, and a replay or a correction replaces only that sighting. Reading a head merges its sightings per ID deterministically: the highest severity wins, a tie goes to the lens whose name sorts first, and `reportedBy` lists every lens that sighted it. The lifecycle stays one record per ID, and the document lists the heads in the order their reviews started, so a resumed old head can neither move a finding's last-seen revision back nor reopen a dismissal.
 
 Local findings persist in the clone's `.git/melian/` directory, uncommitted. When a pull request opens, the server or Actions host imports them so the author is not told the same thing twice.
 
@@ -508,6 +510,7 @@ docs/
 | Cause by location | Location proves introduced only; affected needs lens evidence; pre-existing otherwise | A location heuristic must never make an old defect block |
 | Lens-reported findings | Lens supplies location, rule from its declared list, severity, explanation, evidence; Melian derives snippet from the head revision and everything else | Identity must not depend on the model's wording |
 | Findings ownership | The changeset's root conversation, never a lens's child conversation | A fork of the root at any revision must carry the findings; a lens conversation ends with its task |
+| Finding sightings | Immutable per head, lens, and ID; adjudication merges deterministically | No first-writer-wins across lenses or pushes |
 
 ## Open questions
 

@@ -398,26 +398,35 @@ describe("reviewChangeset", () => {
 		);
 	});
 
-	it("keeps the first lens's finding when another lens reports the same ID", async () => {
+	it("merges two lenses' reports of one ID at one head into one finding naming both", async () => {
 		const shared = lenses.map((lens) =>
 			lens.name === "contracts"
 				? { ...lens, rules: [...lens.rules, { id: "null-dereference", description: "d" }] }
 				: lens,
 		);
 		const requests = scriptConversations(fake, [
-			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
 			{
-				match: contracts,
+				match: correctness,
 				replies: [call("report_finding", { ...nullDeref, severity: "P2" }), fauxAssistantMessage("Done.")],
 			},
+			{ match: contracts, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
 		]);
 
 		const findings = await review({ lenses: shared });
 
-		const results = [correctness, contracts].map((lens) => toolResults(requests[lens]![1]!)[0]!);
-		expect(results.filter((result) => result.startsWith("recorded finding"))).toHaveLength(1);
-		expect(results.join("\n")).toContain("already reported this finding");
+		for (const lens of [correctness, contracts]) {
+			expect(toolResults(requests[lens]![1]!)[0]).toMatch(/^recorded finding/);
+		}
 		expect(findings).toHaveLength(1);
+		const version = (name: string) => shared.find((lens) => lens.name === name)!.version;
+		expect(findings[0]!.properties).toMatchObject({
+			severity: "P1",
+			source: { check: "lens.contracts" },
+			reportedBy: [
+				{ check: "lens.contracts", version: version("contracts") },
+				{ check: "lens.correctness", version: version("correctness") },
+			],
+		});
 	});
 
 	it("names the lens when it did not finish, and keeps what it reported", async () => {

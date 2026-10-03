@@ -60,6 +60,7 @@ export const findingPropertiesSchema = Type.Object(
 		status: findingStatusSchema,
 		explanation: findingExplanationSchema,
 		source: findingSourceSchema,
+		reportedBy: Type.Optional(Type.Array(findingSourceSchema, { minItems: 1 })),
 	},
 	strict,
 );
