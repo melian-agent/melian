@@ -582,7 +582,7 @@ export function configLookup(repoRoot: string, source: RepositorySource): Config
 		let config = loaded.get(directory);
 		if (config === undefined) {
 			reader ??= openSource(repoRoot, source).catch(fromSource(repoRoot));
-			config = reader.then((opened) => loadLayers(opened, directoriesUpToRoot(directory, true)));
+			config = reader.then((opened) => loadLayers(opened, directoriesUpToRoot(directory, true), source));
 			loaded.set(directory, config);
 		}
 		return config;
@@ -603,7 +603,8 @@ type Layered = LoadedConfig & { readonly layers: readonly { site: Site; layer: M
  * the base commit, so that the head's changes to policy are reviewed as code and apply once merged.
  *
  * Every `melian.yaml` from the path's directory up to the root applies. The nearest file wins per key: objects merge
- * key by key, and arrays and scalars replace. Lens `paths` are relative to the file that declares them. Throws
+ * key by key, and arrays and scalars replace. From the working tree only, `melian.local.yaml` beside the root
+ * `melian.yaml` applies last, over every other file. Lens `paths` are relative to the file that declares them. Throws
  * {@link ConfigError} naming the file for a symlink, a file over {@link maxConfigBytes}, an unreadable file, invalid
  * YAML, an unknown or reserved key, or a bad value; naming the root when it is missing or not a repository; and
  * {@link OutsideRepositoryError} when `path` is outside `repoRoot`.
@@ -612,15 +613,20 @@ export async function loadConfig(repoRoot: string, source: RepositorySource, pat
 	const target = repoPath(repoRoot, path);
 	const reader = await openSource(repoRoot, source).catch(fromSource(repoRoot));
 	const kind = await reader.exists(target).catch(fromSource(target));
-	const { config, sources } = await loadLayers(reader, directoriesUpToRoot(target, kind === "directory"));
+	const { config, sources } = await loadLayers(reader, directoriesUpToRoot(target, kind === "directory"), source);
 	return { config, sources };
 }
 
-// Every `melian.yaml` in `directories`, nearest first, merged over the defaults.
-async function loadLayers(reader: SourceReader, directories: readonly string[]): Promise<Layered> {
+// Every `melian.yaml` in `directories`, nearest first, merged over the defaults. From the working tree, the root's
+// `melian.local.yaml` comes first of all: it is the maintainer's own, never a revision's, so a head cannot supply it.
+async function loadLayers(
+	reader: SourceReader,
+	directories: readonly string[],
+	source: RepositorySource,
+): Promise<Layered> {
 	const layers: { site: Site; layer: MelianYaml }[] = [];
-	for (const directory of directories) {
-		const file = posix.join(directory, melianPaths.config);
+	const files = directories.map((directory) => posix.join(directory, melianPaths.config));
+	for (const file of source.kind === "worktree" ? [melianPaths.localConfig, ...files] : files) {
 		const site = { file, where: reader.label(file) };
 		const layer = await readLayer(reader, site);
 		if (layer !== undefined) layers.push({ site, layer });

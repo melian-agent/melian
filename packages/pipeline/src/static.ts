@@ -133,6 +133,17 @@ class Run {
 		return { code: result.value.exitCode, output: output.trim() };
 	}
 
+	// git reads every registered worktree's commondir while adding or listing one, so another run that has made its
+	// admin directory but not yet written that file fails this command. The runs on base and head add four at once.
+	async worktreeCommand(command: string): Promise<Shell> {
+		let result = await this.shell(command);
+		for (let attempt = 1; result.code !== 0 && /commondir/.test(result.output) && attempt <= 5; attempt++) {
+			await new Promise((resolve) => setTimeout(resolve, 50 * attempt));
+			result = await this.shell(command);
+		}
+		return result;
+	}
+
 	async exists(path: string): Promise<boolean> {
 		const result = await this.input.env.exists(path, this.context);
 		return result.ok && result.value;
@@ -420,7 +431,7 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 	const root = posix.join(scratch, "tree");
 	try {
 		await removeStaleWorktrees(run, scratch);
-		const added = await run.shell(
+		const added = await run.worktreeCommand(
 			git(repoRoot, `worktree add --detach --quiet --lock --reason ${quote(lockReason)} ${quote(root)} ${commit}`),
 		);
 		if (added.code !== 0) throw run.fail("worktreeFailed", `git worktree add failed: ${added.output}`);
@@ -481,7 +492,9 @@ async function removeWorktree(env: ExecutionEnv, repoRoot: string, scratch: stri
 // cannot remove. Any Melian worktree whose locking process is gone is removed before a new one is added.
 async function removeStaleWorktrees(run: Run, scratch: string): Promise<void> {
 	const listing = posix.join(scratch, "worktrees");
-	const listed = await run.shell(`${git(run.input.repoRoot, "worktree list --porcelain -z")} > ${quote(listing)}`);
+	const listed = await run.worktreeCommand(
+		`${git(run.input.repoRoot, "worktree list --porcelain -z")} > ${quote(listing)}`,
+	);
 	if (listed.code !== 0) throw run.fail("worktreeFailed", `git worktree list failed: ${listed.output}`);
 	for (const record of ((await run.readOutput(listing)) ?? "").split("\0\0")) {
 		const fields = record.split("\0");

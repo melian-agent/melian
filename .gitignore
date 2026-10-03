@@ -7,3 +7,4 @@ coverage/
 .env.*
 *.tsbuildinfo
 .claude/worktrees/
+/melian.local.yaml

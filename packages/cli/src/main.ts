@@ -15,7 +15,7 @@ Commands:
   doctor                 Check Node, git, credentials, model routes, and GitHub access.
 
 Options:
-  --model <provider/id>  Route every tier melian.yaml leaves unrouted to this model (review).
+  --model <provider/id>  Route every tier to this model, over any route melian.yaml sets (review).
   --rerun                Run again the checks and lenses that failed in the last review of this base and head,
                          rather than print the failures it stored (review).
   --open, --json         For findings.

@@ -18,7 +18,7 @@ import {
 	snippetOccurrence,
 } from "./findings.ts";
 import { git } from "./git.ts";
-import { compilePattern, type LinearPattern, matchesGlobs } from "./pattern.ts";
+import { compileGlob, compilePattern, type LinearPattern, matchesGlobs, Refused } from "./pattern.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 
 /** The guardrails version one ships, each reporting under the rule ID `guardrail/<name>`. */
@@ -153,23 +153,72 @@ async function requiredFiles(paths: readonly string[], configFor: ConfigLookup):
 	return [...hits.values()];
 }
 
+// The globs of the root manifest's `workspaces`, at base and at head, since the head's run loads the head's. Undefined
+// when one cannot be compiled, so every package.json counts rather than one slipping through.
+async function workspaceGlobs(repoRoot: string, revision: Revision): Promise<string[] | undefined> {
+	const globs: string[] = [];
+	for (const commit of [revision.base, revision.head]) {
+		const { text } = await blobText(repoRoot, commit, "package.json");
+		let manifest: unknown;
+		try {
+			manifest = text === undefined ? undefined : JSON.parse(text);
+		} catch {
+			continue;
+		}
+		const workspaces = (manifest as { workspaces?: unknown } | undefined)?.workspaces;
+		const list = Array.isArray(workspaces)
+			? workspaces
+			: (workspaces as { packages?: unknown } | undefined)?.packages;
+		if (!Array.isArray(list)) continue;
+		for (const glob of list) {
+			if (typeof glob !== "string") continue;
+			const negated = glob.startsWith("!");
+			globs.push(
+				`${negated ? "!" : ""}${glob
+					.slice(negated ? 1 : 0)
+					.replace(/^\.\//, "")
+					.replace(/\/+$/, "")}`,
+			);
+		}
+	}
+	try {
+		for (const glob of globs) compileGlob(glob.replace(/^!/, ""));
+	} catch (error) {
+		if (!(error instanceof Refused)) throw error;
+		return undefined;
+	}
+	return globs;
+}
+
+// Biome and tsc load the root package.json and each workspace package's; any other is an ordinary file, such as a
+// package that ships alongside the code without being part of the build.
+function loadsManifest(path: string, workspaces: readonly string[] | undefined): boolean {
+	if (path.split("/").at(-1) !== "package.json") return true;
+	const directory = path.split("/").slice(0, -1).join("/");
+	return directory === "" || workspaces === undefined || matchesGlobs(workspaces, directory);
+}
+
 // Every policy file the revision lists, and every touched path its own configuration adds to the list. A change to an
 // analyser's configuration blocks by default: the head's copy drives the run that judges the head, so a switched-off
 // check would otherwise read as a clean one.
-function policyChanges(
+async function policyChanges(
 	input: GuardrailInput,
 	paths: readonly string[],
 	configFor: (path: string) => Promise<MelianConfig>,
 ): Promise<Hit[]> {
 	const { revision, repoRoot } = input;
 	const changed = revision.files.map((file) => file.path);
+	const workspaces = revision.policyFiles.some((path) => path.split("/").at(-1) === "package.json")
+		? await workspaceGlobs(repoRoot, revision)
+		: [];
 	return Promise.all(
 		paths.map(async (path): Promise<Hit | undefined> => {
 			const config = await configFor(path);
 			const guardrail = config.guardrails["policy-change-review"];
 			if (!guardrail.enabled) return undefined;
 			const added = matchesGlobs(guardrail.files, path);
-			if (!revision.policyFiles.includes(path) && !added) return undefined;
+			const listed = revision.policyFiles.includes(path) && loadsManifest(path, workspaces);
+			if (!listed && !added) return undefined;
 			const analyser = analyserOf(path) ?? (added ? "an analyser this repository configures" : undefined);
 			if (analyser !== undefined) {
 				const [base, head] = await Promise.all([

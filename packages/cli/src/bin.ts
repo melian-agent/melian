@@ -8,4 +8,5 @@ process.exitCode = await main(process.argv.slice(2), {
 	stdout: (text) => process.stdout.write(text),
 	stderr: (text) => process.stderr.write(text),
 	color: process.stdout.isTTY === true && (process.env.NO_COLOR ?? "") === "",
+	...(process.argv[1] === undefined ? {} : { executable: process.argv[1] }),
 });

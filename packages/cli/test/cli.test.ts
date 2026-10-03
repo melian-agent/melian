@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -193,7 +193,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 	});
 });
 
-describe("melian doctor", () => {
+describe("melian doctor", { timeout: 60_000 }, () => {
 	it("checks the tools and names where credentials come from, never their values", () => {
 		const token = "test-token-never-printed";
 		const home = mkdtempSync(join(tmpdir(), "melian-doctor-"));
@@ -210,18 +210,98 @@ describe("melian doctor", () => {
 		expect(doctor.stdout).toMatch(/^ok {4}static {6}biome from the checkout, tsc from the checkout$/m);
 		expect(doctor.stdout).not.toContain(token);
 		expect(readFileSync(bin, "utf8")).toMatch(/^#!\/usr\/bin\/env node\n/);
+		// The test runs this checkout's own binary, so the code under review would be its reviewer.
+		expect(doctor.stdout).toContain(
+			`warn  melian      ${bin}, inside this checkout, so the change can alter its reviewer`,
+		);
 	});
 
 	it("warns when melian.yaml routes no tier, names the routes when it does, and runs Melian's own Biome and tsc without an install", () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
 
 		const unrouted = melian(repo, ["doctor"]);
+		// The built-in lenses both run on heavy, so a route for light alone still leaves every review unable to run them.
+		writeFileSync(join(repo, "melian.yaml"), "models:\n  light:\n    model: anthropic/claude-haiku\n");
+		const partly = melian(repo, ["doctor"]);
 		writeFileSync(join(repo, "melian.yaml"), "models:\n  heavy:\n    model: anthropic/claude-opus-5-5\n");
 		const routed = melian(repo, ["doctor"]);
+		writeFileSync(join(repo, "melian.local.yaml"), "models:\n  heavy:\n    model: amazon-bedrock/claude-opus\n");
+		const local = melian(repo, ["doctor"]);
 
-		expect(unrouted.stdout).toMatch(/^warn {2}routes {6}melian\.yaml routes no tier to a model; .*--model/m);
+		expect(unrouted.stdout).toMatch(
+			/^warn {2}routes {6}no tier is routed to a model; no model for heavy, for (correctness and contracts|contracts and correctness); .*melian\.local\.yaml.*--model/m,
+		);
+		expect(partly.stdout).toMatch(
+			/^warn {2}routes {6}light to anthropic\/claude-haiku; no model for heavy, for (correctness and contracts|contracts and correctness); /m,
+		);
 		expect(routed.stdout).toMatch(/^ok {4}routes {6}heavy to anthropic\/claude-opus-5-5$/m);
+		expect(local.stdout).toMatch(/^ok {4}routes {6}heavy to amazon-bedrock\/claude-opus$/m);
 		expect(routed.stdout).toMatch(/^ok {4}static {6}biome from Melian's own copy, tsc from Melian's own copy$/m);
+		expect(routed.stdout).toMatch(/^ok {4}melian {6}.*, outside this checkout$/m);
+	});
+});
+
+describe("Melian's state directory", { timeout: 60_000 }, () => {
+	const sqliteFiles = (directory: string): string[] =>
+		readdirSync(directory, { recursive: true, encoding: "utf8" }).filter((file) => file.endsWith(".sqlite"));
+
+	it("keeps storage under MELIAN_STATE_DIR, in a directory per clone, when it is set", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+		const state = mkdtempSync(join(tmpdir(), "melian-state-"));
+		repos.push(state);
+
+		const review = melian(repo, ["review", "main"], { ...env, MELIAN_STATE_DIR: state });
+
+		expect(review.status).toBe(0);
+		expect(sqliteFiles(state)).toEqual([expect.stringMatching(/^[0-9a-f]{16}\/scripted\/[^/]+\.sqlite$/)]);
+		expect(sqliteFiles(join(repo, ".git"))).toEqual([]);
+		expect(melian(repo, ["findings", "main"], { ...env, MELIAN_STATE_DIR: state })).toMatchObject({
+			status: 0,
+			stdout: review.stdout,
+		});
+	});
+
+	// A sandbox that keeps .git read-only looks like this to Melian. Root writes anywhere, so the test means nothing there.
+	it.skipIf(process.getuid?.() === 0)(
+		"names the directory and MELIAN_STATE_DIR when it cannot write, and doctor warns",
+		() => {
+			const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+			const state = mkdtempSync(join(tmpdir(), "melian-state-"));
+			repos.push(state);
+			chmodSync(state, 0o500);
+			try {
+				const review = melian(repo, ["review", "main"], { ...env, MELIAN_STATE_DIR: state });
+				const doctor = melian(repo, ["doctor"], { MELIAN_STATE_DIR: state });
+
+				expect(review.status).toBe(2);
+				expect(review.stderr).toMatch(/Melian cannot write its storage at .*MELIAN_STATE_DIR/);
+				expect(doctor.stdout).toMatch(/^warn {2}state {7}.* is not writable \(EACCES\); .*MELIAN_STATE_DIR/m);
+			} finally {
+				chmodSync(state, 0o700);
+			}
+		},
+	);
+
+	it.skipIf(process.getuid?.() === 0)("turns SQLite's refusal in a read-only .git/melian into the same advice", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+		const scripted = join(repo, ".git/melian/scripted");
+		mkdirSync(scripted, { recursive: true });
+		chmodSync(scripted, 0o500);
+		try {
+			const review = melian(repo, ["review", "main"], env);
+
+			expect(review.status).toBe(2);
+			expect(review.stderr).toMatch(
+				/Melian cannot write its storage at .*unable to open database file.*MELIAN_STATE_DIR/,
+			);
+		} finally {
+			chmodSync(scripted, 0o700);
+		}
+	});
+
+	it("reports the state directory as writable by default", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!);
+		expect(melian(repo, ["doctor"]).stdout).toMatch(/^ok {4}state {7}.*\.git\/melian, writable$/m);
 	});
 });
 

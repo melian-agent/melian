@@ -453,7 +453,10 @@ describe("policy-change-review", () => {
 
 	it("covers tool configuration and the files a melian.yaml adds, anchored to its directory", async () => {
 		const { findings } = await guardrails(
-			{ "web/melian.yaml": lines("guardrails:", "  policy-change-review:", "    files: [.babelrc]") },
+			{
+				"package.json": lines('{ "workspaces": ["web"] }'),
+				"web/melian.yaml": lines("guardrails:", "  policy-change-review:", "    files: [.babelrc]"),
+			},
 			{
 				"tsconfig.json": lines("{}"),
 				"web/package.json": lines("{}"),
@@ -465,6 +468,42 @@ describe("policy-change-review", () => {
 			"tsconfig.json",
 			"web/.babelrc",
 			"web/package.json",
+		]);
+	});
+
+	it("counts a package.json only at the root and at the workspace packages Biome and tsc load", async () => {
+		const { findings } = await guardrails(
+			{ "package.json": lines('{ "workspaces": ["packages/*", "!packages/private", "./tools/"] }') },
+			{
+				"package.json": lines('{ "workspaces": ["packages/*", "!packages/private", "./tools/"] }', ""),
+				"packages/cli/package.json": lines("{}"),
+				"packages/private/package.json": lines("{}"),
+				"tools/package.json": lines("{}"),
+				"skills/pi/package.json": lines("{}"),
+				"packages/cli/fixtures/package.json": lines("{}"),
+			},
+		);
+		expect(findings.map((finding) => finding.properties.path)).toEqual([
+			"package.json",
+			"packages/cli/package.json",
+			"tools/package.json",
+		]);
+	});
+
+	it("reads workspaces in the object form, and the head's when it adds one", async () => {
+		const { findings } = await guardrails(
+			{ "package.json": lines('{ "workspaces": { "packages": ["apps/*"] } }') },
+			{
+				"package.json": lines('{ "workspaces": { "packages": ["apps/*", "libs/*"] } }'),
+				"apps/web/package.json": lines("{}"),
+				"libs/ui/package.json": lines("{}"),
+				"docs/package.json": lines("{}"),
+			},
+		);
+		expect(findings.map((finding) => finding.properties.path)).toEqual([
+			"apps/web/package.json",
+			"libs/ui/package.json",
+			"package.json",
 		]);
 	});
 

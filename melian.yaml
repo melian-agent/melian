@@ -1,4 +1,5 @@
 # Melian's policy for its own repository. A pull request is reviewed under the base commit's copy of this file.
+# It routes no model: each maintainer routes tiers in melian.local.yaml, which git ignores, or passes --model.
 tiers:
   fast: [guardrails, static.biome, static.tsc]
 

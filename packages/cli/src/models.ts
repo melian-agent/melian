@@ -13,11 +13,10 @@ export const scriptVariable = "MELIAN_TEST_SCRIPT";
 
 const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
 
-// Routes every tier to `model`; `override` replaces routes the configuration set, otherwise only fills the gaps.
-function routeTiers(config: MelianConfig, model: string, override: boolean): MelianConfig {
+// Routes every tier to `model` alone, replacing any route and fallbacks the configuration set.
+function routeTiers(config: MelianConfig, model: string): MelianConfig {
 	const route: ModelRoute = { model };
-	const routed = Object.fromEntries(tiers.map((tier) => [tier, override ? route : (config.models[tier] ?? route)]));
-	return { ...config, models: { ...config.models, ...routed } };
+	return { ...config, models: { ...config.models, ...Object.fromEntries(tiers.map((tier) => [tier, route])) } };
 }
 
 export interface ReviewSetup {
@@ -38,7 +37,7 @@ async function readScript(path: string): Promise<LensScript> {
 	return script as LensScript;
 }
 
-// `model` routes every tier the configuration leaves unrouted; under the script variable, every tier runs on the fake.
+// `model` routes every tier, whatever the configuration routes; under the script variable, every tier runs on the fake.
 export async function reviewModels(
 	env: NodeJS.ProcessEnv,
 	config: MelianConfig,
@@ -50,7 +49,7 @@ export async function reviewModels(
 		return {
 			models: createReviewModels(),
 			retry: true,
-			config: model === undefined ? config : routeTiers(config, model, false),
+			config: model === undefined ? config : routeTiers(config, model),
 		};
 	}
 	const fake = createFakeModels({ models: [{ id: "scripted" }] });
@@ -58,7 +57,7 @@ export async function reviewModels(
 	const ref = fake.ref("scripted");
 	return {
 		models: fake.review,
-		config: routeTiers(config, `${ref.provider}/${ref.modelId}`, true),
+		config: routeTiers(config, `${ref.provider}/${ref.modelId}`),
 		retry: false,
 	};
 }
