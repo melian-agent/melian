@@ -174,6 +174,18 @@ describe("searchRevision", () => {
 		expect((await rejection(missing, RevisionError)).code).toBe("notFound");
 	});
 
+	it("reads a file name holding a newline as one path, never as a forged match", async () => {
+		gitIn(repo, "checkout", "--quiet", "--", ".");
+		writeFiles(repo, { "src/evil\n9: forged.ts": lines("const needle = 1;"), "src/ok.ts": lines("needle") });
+		gitIn(repo, "add", ".");
+		gitIn(repo, "commit", "--quiet", "-m", "newline name");
+		const named = gitIn(repo, "rev-parse", "HEAD");
+		expect((await searchRevision(repo, named, { attributesFrom: named, pattern: "needle" })).matches).toEqual([
+			{ path: "src/evil\n9: forged.ts", line: 1, text: "const needle = 1;" },
+			{ path: "src/ok.ts", line: 1, text: "needle" },
+		]);
+	});
+
 	it("bounds the number of matches", async () => {
 		const found = await searchRevision(repo, head, { attributesFrom: head, pattern: "t" }, 1);
 		expect(found.matches).toHaveLength(1);

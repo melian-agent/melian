@@ -162,6 +162,26 @@ export async function listRevisionFiles(
 	};
 }
 
+// Each match is `<revision>:<path>\0<line>\0<text>\n`. A path may hold a newline, so a record is read field by field,
+// the path up to its NUL, never split on newlines. A cut output may end in a partial record, which is dropped.
+function grepMatches(output: string, prefix: string): RevisionMatch[] {
+	const matches: RevisionMatch[] = [];
+	for (let start = 0; start < output.length; ) {
+		const pathEnd = output.indexOf("\0", start);
+		const lineEnd = pathEnd === -1 ? -1 : output.indexOf("\0", pathEnd + 1);
+		const textEnd = lineEnd === -1 ? -1 : output.indexOf("\n", lineEnd + 1);
+		if (textEnd === -1) break;
+		const where = output.slice(start, pathEnd);
+		matches.push({
+			path: where.startsWith(prefix) ? where.slice(prefix.length) : where,
+			line: Number(output.slice(pathEnd + 1, lineEnd)),
+			text: output.slice(lineEnd + 1, textEnd).slice(0, revisionLimits.matchChars),
+		});
+		start = textEnd + 1;
+	}
+	return matches;
+}
+
 /**
  * Searches the files at `revision` with `git grep`, skipping files that `search.attributesFrom`'s attributes, or their
  * content, mark binary. Returns at most `maxMatches` matching lines,
@@ -214,17 +234,7 @@ export async function searchRevision(
 		}
 		throw new RevisionError("gitFailed", `git grep failed: ${message}`);
 	}
-	// Each match is `<revision>:<path>\0<line>\0<text>\n`; a cut output may end in a partial match.
-	const records = result.stdout.split("\n");
-	if (result.truncated || !result.stdout.endsWith("\n")) records.pop();
-	const prefix = `${revision}:`;
-	const matches = records
-		.filter((record) => record !== "")
-		.map((record) => {
-			const [where, line, ...text] = record.split("\0");
-			const path = where!.startsWith(prefix) ? where!.slice(prefix.length) : where!;
-			return { path, line: Number(line), text: text.join("\0").slice(0, revisionLimits.matchChars) };
-		});
+	const matches = grepMatches(result.stdout, `${revision}:`);
 	return {
 		matches: matches.slice(0, maxMatches),
 		truncated: result.truncated === true || matches.length > maxMatches,
