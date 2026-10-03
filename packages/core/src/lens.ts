@@ -8,7 +8,7 @@ import { parseDocument } from "yaml";
 import { type LensTier, lensTierSchema, type MelianConfig, type Severity, severitySchema } from "./config.ts";
 import { LensError } from "./errors.ts";
 import { selectedBy } from "./glob.ts";
-import { directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
+import { anchorGlob, directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 import type { StandardsSection } from "./standards.ts";
 
@@ -155,15 +155,11 @@ function tokens(value: number | string | undefined): number | undefined {
 // Paths are relative to the directory holding the lens's `.melian/` or `.agents/`, like a melian.yaml's.
 // Normalised like a melian.yaml's lens paths, so `./src/**` is `src/**`, and refused if `..` leaves the repository.
 function anchor(file: string, scope: string, path: string): string {
-	const negated = path.startsWith("!");
-	const pattern = (negated ? path.slice(1) : path).replace(/^\/+/, "");
-	const anchored = posix.normalize(posix.join(scope, pattern));
-	if (anchored === ".." || anchored.startsWith("../")) {
-		throw new LensError("invalidValue", file, `${file}: "paths" has ${path}, which leaves the repository`, {
-			field: "paths",
-		});
-	}
-	return `${negated ? "!" : ""}${anchored}`;
+	const anchored = anchorGlob(scope, path);
+	if (anchored !== undefined) return anchored;
+	throw new LensError("invalidValue", file, `${file}: "paths" has ${path}, which leaves the repository`, {
+		field: "paths",
+	});
 }
 
 function required<T>(file: string, field: string, value: T | undefined): T {
