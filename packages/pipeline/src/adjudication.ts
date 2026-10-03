@@ -5,6 +5,7 @@ import {
 	ConfigError,
 	type ConfigFor,
 	type Finding,
+	type FindingSource,
 	loadConfig,
 	type MelianConfig,
 	type RepositorySource,
@@ -46,8 +47,11 @@ export type AdjudicationTaskInput = {
 	policy?: RepositorySource;
 	config: { resolution: Record<Severity, Resolution>; ruleAliases: Record<string, string[]> };
 	checks: StoredCheck[];
-	/** The lenses this review selected, so findings from a lens configuration has since dropped do not count. */
-	lenses: { name: string; version: string }[];
+	/**
+	 * The producers whose sightings at `head` count: the lenses this review selected, by check and version. A lens that
+	 * configuration has since disabled or retiered left sightings at this head that are not this review's.
+	 */
+	producers: { check: string; version?: string }[];
 };
 
 async function configsFor(repoRoot: string, policy: RepositorySource, paths: readonly string[]): Promise<ConfigFor> {
@@ -67,10 +71,8 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 	initial: () => ({ phase: "adjudicate" }),
 	phases: {
 		adjudicate: async (task, runtime, context) => {
-			const { root, repoRoot, head, policy, config, checks } = task.input;
-			// TODO(#15): read with readFindings(root, head, { lenses: task.input.lenses }) once the sightings
-			// document lands on `lenses`, so a disabled or retiered lens's sightings at this head do not count.
-			const findings = await readFindings(runtime, root, head, context);
+			const { root, repoRoot, head, policy, config, checks, producers } = task.input;
+			const findings = await readFindings(runtime, root, head, context, { producers });
 			let verdict: Verdict;
 			try {
 				const paths = findings.map((finding) => finding.properties.path);
@@ -105,9 +107,9 @@ export function adjudicationInput(options: {
 	policy: RepositorySource | undefined;
 	config: Pick<MelianConfig, "resolution" | "ruleAliases">;
 	checks: readonly CheckRecord[];
-	lenses: readonly { readonly name: string; readonly version: string }[];
+	producers: readonly FindingSource[];
 }): AdjudicationTaskInput {
-	const { root, repoRoot, head, policy, config, checks, lenses } = options;
+	const { root, repoRoot, head, policy, config, checks, producers } = options;
 	return {
 		root,
 		repoRoot,
@@ -120,7 +122,7 @@ export function adjudicationInput(options: {
 			),
 		},
 		checks: checks.map((check) => structuredClone(check)),
-		lenses: lenses.map(({ name, version }) => ({ name, version })),
+		producers: producers.map((source) => ({ ...source })),
 	};
 }
 

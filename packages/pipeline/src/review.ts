@@ -415,15 +415,15 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	};
 	const lensResult = lenses.length === 0 ? {} : await runLenses(harness, { root, revision: state, lenses }, context);
 	const checks = [...(options.checks ?? []), ...lenses.map((lens) => lensCheck(lens, lensResult))];
-	const input = adjudicationInput({ root, repoRoot, head, policy: options.policy, config, checks, lenses });
+	// Only the lenses this review ran: one that configuration has since disabled or retiered leaves nothing behind.
+	const producers = lenses.map((lens) => ({ check: `lens.${lens.name}`, version: lens.version }));
+	const input = adjudicationInput({ root, repoRoot, head, policy: options.policy, config, checks, producers });
 	const adjudication = await (await harness.root(context)).commit(
 		(tx) => tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } }),
 		context,
 	);
 	await refuseIfBlocked(harness, adjudication, [], context);
 	const adjudicated = (await harness.waitForTask(adjudication, context)).state.outcome;
-	// Only the lenses this review ran: one that configuration has since disabled or retiered leaves nothing behind.
-	const producers = lenses.map((lens) => ({ check: `lens.${lens.name}`, version: lens.version }));
 	const findings = await readFindings(harness, root, head, context, { producers });
 	const verdict = await readVerdict(harness, root, head, context);
 	if (adjudicated.status !== "completed" || verdict === undefined) {

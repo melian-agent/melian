@@ -873,6 +873,30 @@ describe("adjudication", () => {
 		expect(verdict.blocking).toBe(false);
 	});
 
+	it("leaves out the sightings of a lens that configuration has since disabled", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+			{
+				match: contracts,
+				replies: [
+					call("report_finding", { ...nullDeref, file: "src/report.ts", line: 2, rule: "changed-return" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+		await reviewed();
+		const off = { ...config, lenses: { contracts: { enabled: false } } };
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+		]);
+
+		const { verdict } = await reviewed({ config: off });
+
+		const judged = [...Object.values(verdict.findings).flat(), ...verdict.dismissed];
+		expect(judged.map((finding) => finding.ruleId)).toEqual(["null-dereference"]);
+		expect(await readVerdict(harness, await rootId(), head(), context)).toEqual(verdict);
+	});
+
 	it("is not reviewed when another check failed, even with no findings", async () => {
 		const off = { ...config, lenses: { correctness: { enabled: false }, contracts: { enabled: false } } };
 		const failed: CheckRecord = { name: "static.biome", status: "failed", reason: "biome exited 2" };
