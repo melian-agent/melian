@@ -183,6 +183,26 @@ Problem: forbidden-patterns runs a pattern from configuration over lines the hea
 
 What forbidden-patterns cannot read, it says. A line over 10,000 characters is not scanned, and a file whose name is not UTF-8 is skipped; each adds a sentence to the report's `notes`. A file over 4 MiB at head is still scanned, but its findings are identified by line number, since its text cannot be read whole to count occurrences.
 
+## Static analysis
+
+Static tools report through SARIF. A runner, which lives in the pipeline because it executes repository code, produces one SARIF log per tool per revision; core turns the base and head logs into findings.
+
+- `normaliseBiomeSarif` reads Biome's own SARIF reporter output. Biome writes absolute paths as URIs and no tool version, so the normaliser makes paths relative to the worktree it ran in, drops results outside it or under a `node_modules` directory, and records the version the runner read from `biome --version` as `tool.driver.version`.
+- `parseTscDiagnostics` reads `tsc --noEmit --pretty false`: `file(line,col): error TS1234: message`, with indented lines continuing the message. A diagnostic without a file, such as an unreadable `tsconfig.json`, sits at the project file's line 1.
+
+Severity, by default:
+
+| Tool | Result | Rule ID | Severity |
+|---|---|---|---|
+| Biome | `error` | `biome/<group>/<rule>`, from Biome's `lint/<group>/<rule>` | `P2` |
+| Biome | `warning` | as above | `P3` |
+| Biome | `note` (Biome's info) | as above | `nit` |
+| tsc | error | `tsc/TS<code>` | `P1` |
+
+`static.<tool>.severity` overrides one rule, keyed by its Melian rule ID.
+
+`staticFindings` matches results across the two runs by finding identity, never by line. A result's snippet is the full text of its lines at that revision, read through git's object store, and its occurrence is counted in that revision's file, so a result moved by an edit above it keeps its ID. A result at head whose ID is absent at base is `introduced`; one present at both is `pre-existing` and never blocks; one only at base is resolved and not reported. Two results of one rule on the same lines share an ID, so they are one finding whose message counts the rest. A result on a blank line, or in a file too large to read, is identified by its message instead.
+
 ## Tests
 
 - Run the package's tests with `npm test --workspace @melian-agent/core`, or one file with `npx vitest --run packages/core/test/changeset.test.ts` from the repository root.

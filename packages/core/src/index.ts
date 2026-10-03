@@ -96,5 +96,19 @@ export { melianPaths } from "./paths.ts";
 export { renderFindingsJson, renderFindingsTerminal, type TerminalRenderOptions } from "./render.ts";
 export type { RepositorySource } from "./source.ts";
 export { loadStandards, type StandardsSection, standardsLimits } from "./standards.ts";
+export {
+	normaliseBiomeSarif,
+	parseTscDiagnostics,
+	type StaticFindingsInput,
+	type StaticTool,
+	staticFindings,
+	staticRuleId,
+	staticSeverity,
+	type ToolLog,
+	type ToolResult,
+	type ToolRun,
+	toolLogSchema,
+	toolResultSchema,
+} from "./static.ts";
 
 export const packageName = "@melian-agent/core";
