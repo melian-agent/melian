@@ -523,22 +523,34 @@ function checkBands(config: MelianConfig, layers: readonly { site: Site; layer: 
 // The effective configuration for each path a check visits. Layering depends only on the directory holding the path,
 // so each directory is loaded once, as a directory: a head that turns a directory into a file of the same name must
 // not decide which `melian.yaml` files apply to its neighbours.
-export function configLookup(repoRoot: string, source: RepositorySource): (path: string) => Promise<MelianConfig> {
-	const loaded = new Map<string, Promise<MelianConfig>>();
+export interface ConfigLookup {
+	(path: string): Promise<MelianConfig>;
+	// The nearest melian.yaml that sets a guardrail's rule for `path`: two files may declare rules of one name.
+	ruleFile(path: string, guardrail: keyof typeof requiredRuleKeys, rule: string): Promise<string>;
+}
+
+export function configLookup(repoRoot: string, source: RepositorySource): ConfigLookup {
+	const loaded = new Map<string, Promise<Layered>>();
 	let reader: Promise<SourceReader> | undefined;
-	return (path) => {
+	const layered = (path: string) => {
 		const directory = repoPath(repoRoot, posix.dirname(path));
 		let config = loaded.get(directory);
 		if (config === undefined) {
 			reader ??= openSource(repoRoot, source).catch(fromSource(repoRoot));
-			config = reader
-				.then((opened) => loadLayers(opened, directoriesUpToRoot(directory, true)))
-				.then(({ config }) => config);
+			config = reader.then((opened) => loadLayers(opened, directoriesUpToRoot(directory, true)));
 			loaded.set(directory, config);
 		}
 		return config;
 	};
+	const lookup = (path: string) => layered(path).then(({ config }) => config);
+	lookup.ruleFile = async (path: string, guardrail: keyof typeof requiredRuleKeys, rule: string) => {
+		const { layers } = await layered(path);
+		return layers.find(({ layer }) => layer.guardrails?.[guardrail]?.rules?.[rule] !== undefined)?.site.file ?? "";
+	};
+	return lookup;
 }
+
+type Layered = LoadedConfig & { readonly layers: readonly { site: Site; layer: MelianYaml }[] };
 
 /**
  * Loads the effective configuration for `path`, a file or directory inside the repository at `repoRoot`, reading every
@@ -555,11 +567,12 @@ export async function loadConfig(repoRoot: string, source: RepositorySource, pat
 	const target = repoPath(repoRoot, path);
 	const reader = await openSource(repoRoot, source).catch(fromSource(repoRoot));
 	const kind = await reader.exists(target).catch(fromSource(target));
-	return loadLayers(reader, directoriesUpToRoot(target, kind === "directory"));
+	const { config, sources } = await loadLayers(reader, directoriesUpToRoot(target, kind === "directory"));
+	return { config, sources };
 }
 
 // Every `melian.yaml` in `directories`, nearest first, merged over the defaults.
-async function loadLayers(reader: SourceReader, directories: readonly string[]): Promise<LoadedConfig> {
+async function loadLayers(reader: SourceReader, directories: readonly string[]): Promise<Layered> {
 	const layers: { site: Site; layer: MelianYaml }[] = [];
 	for (const directory of directories) {
 		const file = posix.join(directory, melianPaths.config);
@@ -571,5 +584,5 @@ async function loadLayers(reader: SourceReader, directories: readonly string[]):
 	const config = layers.reduceRight((merged, { layer }) => merge(merged, layer), defaults) as unknown as MelianConfig;
 	checkBands(config, layers);
 	checkGuardrailRules(config, layers);
-	return { config, sources: layers.map(({ site }) => site.file) };
+	return { config, sources: layers.map(({ site }) => site.file), layers };
 }

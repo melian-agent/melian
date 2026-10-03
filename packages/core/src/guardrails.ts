@@ -1,5 +1,5 @@
 import type { Revision } from "./changeset.ts";
-import { configLookup, type MelianConfig, type Severity } from "./config.ts";
+import { type ConfigLookup, configLookup, type MelianConfig, type Severity } from "./config.ts";
 import type { ChangedFile, Hunk } from "./diff.ts";
 import { CheckError } from "./errors.ts";
 import {
@@ -110,24 +110,26 @@ async function forbiddenPaths(
 	return hits;
 }
 
-async function requiredFiles(
-	paths: readonly string[],
-	configFor: (path: string) => Promise<MelianConfig>,
-): Promise<Hit[]> {
+// One finding per rule, a rule being its name and the file that declares it: two services may each have a rule of
+// one name, and neither may hide the other.
+async function requiredFiles(paths: readonly string[], configFor: ConfigLookup): Promise<Hit[]> {
 	const hits = new Map<string, Hit>();
 	for (const path of paths) {
 		const config = await configFor(path);
 		const guardrail = config.guardrails["required-files"];
 		if (!guardrail.enabled) continue;
 		for (const [name, rule] of Object.entries(guardrail.rules)) {
-			if (hits.has(name) || !matchesGlobs(rule.when, path)) continue;
+			if (!matchesGlobs(rule.when, path)) continue;
+			const declaredIn = await configFor.ruleFile(path, "required-files", name);
+			const key = `${declaredIn}\0${name}`;
+			if (hits.has(key)) continue;
 			const missing = rule.require.filter((glob) => !paths.some((each) => matchesGlobs([glob], each)));
 			if (missing.length === 0) continue;
-			hits.set(name, {
+			hits.set(key, {
 				guardrail: "required-files",
 				file: path,
 				line: 1,
-				discriminator: name,
+				discriminator: `${name} in ${declaredIn}`,
 				config,
 				severity: guardrail.severity,
 				message: sentences([rule.message]),
@@ -328,7 +330,7 @@ async function forbiddenPatterns(
  * `ConfigError` when a `melian.yaml` cannot be loaded, and {@link CheckError} `unreadable` when a file at head cannot be read.
  */
 export async function evaluateGuardrails(input: GuardrailInput): Promise<CheckReport> {
-	const configFor = configLookup(input.repoRoot, input.source);
+	const configFor: ConfigLookup = configLookup(input.repoRoot, input.source);
 	const paths = touchedPaths(input.revision.files);
 	const notes: string[] = [];
 	const hits = [

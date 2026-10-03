@@ -225,6 +225,34 @@ describe("required-files", () => {
 		]);
 	});
 
+	it("keeps same-named rules of two services apart, each at its own severity", async () => {
+		const service = (severity: string) =>
+			lines(
+				"guardrails:",
+				"  required-files:",
+				`    severity: ${severity}`,
+				"    rules:",
+				"      changelog:",
+				"        when: [src/**]",
+				"        require: [CHANGELOG.md]",
+				"        message: note the change",
+			);
+		const { findings } = await guardrails(
+			{ "melian.yaml": quiet, "services/a/melian.yaml": service("P1"), "services/b/melian.yaml": service("P3") },
+			{ "services/a/src/x.ts": lines("x"), "services/b/src/y.ts": lines("y") },
+		);
+		expect(
+			findings.map((finding) => [
+				finding.properties.path,
+				finding.properties.severity,
+				finding.properties.discriminator,
+			]),
+		).toEqual([
+			["services/a/src/x.ts", "P1", "changelog in services/a/melian.yaml"],
+			["services/b/src/y.ts", "P3", "changelog in services/b/melian.yaml"],
+		]);
+	});
+
 	it("is satisfied when the change touches the required path too", async () => {
 		const { findings } = await guardrails(
 			{ "melian.yaml": config, "db/schema.sql": lines("create table a;") },
