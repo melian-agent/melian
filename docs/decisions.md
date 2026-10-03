@@ -1,5 +1,7 @@
 # Melian decision log
 
+Git merges this file with the union driver set in [.gitattributes](../.gitattributes), so a merge keeps the lines every branch added without reporting a conflict. Write each row on a line of its own, complete in itself, and never edit another row in place: a union merge of two edits keeps both versions.
+
 One row per decision that shaped Melian, newest last. [design.md](design.md) explains each decision in full; this table records what was chosen and why, in the order it was chosen. Rows are appended, never edited in place. A reversed or changed decision gets a new row that names the row it replaces.
 
 | Decision | Choice | Why |

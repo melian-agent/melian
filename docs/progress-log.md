@@ -1,5 +1,7 @@
 # Melian progress log
 
+Git merges this file with the union driver set in [.gitattributes](../.gitattributes), so a merge keeps the lines every branch added without reporting a conflict. Write each entry on a line of its own, complete in itself, and never edit another entry in place: a union merge of two edits keeps both versions.
+
 What landed against the [implementation plan](design-implementation-plan.md), newest first, one entry per change with its date and pull request.
 
 - 2026-10-03: [Pull request #16](https://github.com/melian-agent/melian/pull/16)'s default tiers name only checks that ship: `fast` runs guardrails and static tools, `standard` adds the correctness lens, and `full` adds the contracts lens. The defaults had named `lens.security` and `lens.conventions`, which do not exist, so once the tier became the manifest every default review read not reviewed. A test now fails if a default names a check that is neither a built-in lens nor a deterministic check.
