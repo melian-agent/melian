@@ -189,6 +189,11 @@ export interface ReviewDraft {
 	readonly pullRequest: number;
 	/** The head commit reviewed. */
 	readonly revision: string;
+	/**
+	 * Names the verdict this review posts. A second review of one head can change its verdict, and each verdict
+	 * published at a head is its own review, so the marker that finds a review names the verdict as well as the head.
+	 */
+	readonly fingerprint: string;
 	readonly verdict: Verdict;
 	/** The findings to post, each with its placement. */
 	readonly findings: readonly PlacedFinding[];
@@ -207,7 +212,7 @@ export interface PostedReview {
 
 /** What a pull request already shows of one revision's publication, read from Melian's markers. */
 export interface PublishedMarkers {
-	/** The review posted for the revision. */
+	/** The review posted for the revision's verdict. */
 	readonly review?: string;
 	/** The comment that starts each finding's thread, by finding ID. */
 	readonly threads: Readonly<Record<string, string>>;
@@ -241,6 +246,9 @@ export interface ReviewProvider {
 	): Promise<string | undefined>;
 	/** Sets the review's status on a commit. Setting it again replaces it. */
 	setStatus(revision: string, status: ReviewStatus): Promise<void>;
-	/** What the pull request already shows of `revision`'s publication, from posts that carry Melian's markers. */
-	findPublished(pullRequest: number, revision: string): Promise<PublishedMarkers>;
+	/**
+	 * What the pull request already shows of `revision`'s publication, from posts that carry Melian's markers: the
+	 * review for the verdict `fingerprint` names, and every thread and reply at `revision`.
+	 */
+	findPublished(pullRequest: number, revision: string, fingerprint: string): Promise<PublishedMarkers>;
 }

@@ -1,6 +1,9 @@
+import { createHash } from "node:crypto";
 import {
 	type Changeset,
 	diffLines,
+	type Finding,
+	type Placement,
 	type PostedReview,
 	type PublishedMarkers,
 	type PullRequest,
@@ -8,6 +11,7 @@ import {
 	type ReviewProvider,
 	type ReviewStatus,
 	reviewStatus,
+	type Verdict,
 } from "@melian-agent/core";
 import { readVerdict } from "./adjudication.ts";
 import { PublishError } from "./errors.ts";
@@ -26,8 +30,21 @@ import {
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
 type StoredFinding = { ruleId: string; path: string; line: number; revision: string; thread?: string };
 
+// What one round of a revision will post, committed before posting so a rerun posts exactly this.
+type PendingRound = {
+	verdict: string;
+	post: { finding: Finding; placement: Placement }[];
+	stillOpen: number;
+	open: Record<string, StoredFinding>;
+	resolved: Record<string, StoredFinding>;
+};
+
 type StoredRevision = {
-	review: string;
+	// One review per verdict published at this head: a second review of the same head can change the verdict.
+	reviews: string[];
+	// The fingerprint of the verdict the last review posted.
+	verdict?: string;
+	pending?: PendingRound;
 	open: Record<string, StoredFinding>;
 	resolved: Record<string, StoredFinding>;
 	// null when the thread was gone and there was nothing to reply to.
@@ -47,6 +64,59 @@ export const PublishedDocument = defineDoc<PublishedState>({
 	fork: "current",
 	initial: () => ({ order: [], revisions: {} }),
 });
+
+function fingerprint(verdict: Verdict): string {
+	return createHash("sha256").update(JSON.stringify(verdict)).digest("hex").slice(0, 16);
+}
+
+// Resolutions an earlier head decided but never replied to, because a later push arrived first. They are still owed.
+// A thread is answered once any revision replied in it, so a resolution carried forward is not carried again.
+function unanswered(state: PublishedState, head: string): Record<string, StoredFinding> {
+	const answered = new Set<string>();
+	for (const { resolved, replies } of Object.values(state.revisions)) {
+		for (const id of Object.keys(replies)) answered.add(`${id} ${resolved[id]?.thread}`);
+	}
+	const owed: Record<string, StoredFinding> = {};
+	for (const each of state.order) {
+		if (each === head) continue;
+		for (const [id, entry] of Object.entries(state.revisions[each]!.resolved)) {
+			if (entry.thread !== undefined && !answered.has(`${id} ${entry.thread}`)) owed[id] = entry;
+		}
+	}
+	return owed;
+}
+
+// The round to post for `verdict` at `head`: against the head's own open findings if it was published before, else
+// against the previous head's, with any resolution an earlier head still owes.
+function planRound(
+	state: PublishedState,
+	head: string,
+	verdict: Verdict,
+	lines: Record<string, [number, number][]>,
+): PendingRound {
+	const own = state.revisions[head];
+	const previous = state.order.filter((each) => each !== head).at(-1);
+	const base = own?.open ?? (previous === undefined ? {} : state.revisions[previous]!.open);
+	const plan = planPublication(verdict, base, lines, head);
+	const resolved: Record<string, StoredFinding> = Object.fromEntries(
+		plan.resolved.map(({ id, ...entry }) => [id, { ...entry }]),
+	);
+	if (own === undefined) {
+		const held = new Set(
+			[...Object.values(verdict.findings).flat(), ...verdict.dismissed].map((finding) => finding.properties.id),
+		);
+		for (const [id, entry] of Object.entries(unanswered(state, head))) {
+			if (!held.has(id) && !Object.hasOwn(plan.open, id)) resolved[id] ??= { ...entry };
+		}
+	}
+	return {
+		verdict: fingerprint(verdict),
+		post: structuredClone(plan.post.map(({ finding, placement }) => ({ finding, placement }))),
+		stillOpen: plan.stillOpen.length,
+		open: Object.fromEntries(Object.entries(plan.open).map(([id, entry]) => [id, { ...entry }])),
+		resolved,
+	};
+}
 
 type PublishInput = {
 	root: ConversationId;
@@ -82,56 +152,66 @@ function publishTask(provider: ReviewProvider) {
 				const read = async () =>
 					(await runtime.snapshot(PublishedDocument, root, context)) ?? { order: [], revisions: {} };
 				let markers: PublishedMarkers | undefined;
-				const marked = async () => {
-					markers ??= await provider.findPublished(pullRequest, head);
+				const marked = async (verdict: string) => {
+					markers ??= await provider.findPublished(pullRequest, head, verdict);
 					return markers;
 				};
 				const result = { posted: 0, stillOpen: 0, resolved: 0, replies: 0, recovered: 0 };
 				try {
 					const verdict = await readVerdict(runtime, root, head, context);
 					if (verdict === undefined) throw new Error(`no verdict is recorded for ${head}`);
-					let state = await read();
-					if (!Object.hasOwn(state.revisions, head)) {
-						const previous = state.order.filter((each) => each !== head).at(-1);
-						const plan = planPublication(
-							verdict,
-							previous === undefined ? {} : state.revisions[previous]!.open,
-							lines,
-							head,
-						);
-						result.stillOpen = plan.stillOpen.length;
-						const found = await marked();
+					const state = await read();
+					const current = fingerprint(verdict);
+					const before = state.revisions[head];
+					if (before?.pending === undefined && before?.verdict !== current) {
+						const round = planRound(state, head, verdict, lines);
+						await runtime.commit(async (tx) => {
+							const document = await tx.doc(PublishedDocument, root);
+							document.order = [...document.order.filter((each) => each !== head), head];
+							const existing = document.revisions[head] ?? { reviews: [], open: {}, resolved: {}, replies: {} };
+							document.revisions[head] = { ...existing, pending: round };
+							return undefined;
+						}, context);
+					}
+					const pending = (await read()).revisions[head]!.pending;
+					if (pending !== undefined) {
+						result.stillOpen = pending.stillOpen;
+						const found = await marked(pending.verdict);
 						let posted: PostedReview;
 						if (found.review === undefined) {
 							posted = await provider.postReview({
 								pullRequest,
 								revision: head,
+								fingerprint: pending.verdict,
 								verdict,
-								findings: plan.post,
-								stillOpen: plan.stillOpen.length,
-								resolved: plan.resolved.filter((each) => each.thread === undefined),
+								findings: pending.post,
+								stillOpen: pending.stillOpen,
+								resolved: Object.entries(pending.resolved)
+									.filter(([, entry]) => entry.thread === undefined)
+									.map(([id, entry]) => ({ id, ...entry })),
 							});
-							result.posted = plan.post.length;
+							result.posted = pending.post.length;
 						} else {
 							posted = { id: found.review, threads: found.threads };
 							result.recovered++;
 						}
 						const open = Object.fromEntries(
-							Object.entries(plan.open).map(([id, entry]): [string, StoredFinding] => {
-								const thread = entry.revision === head ? posted.threads[id] : entry.thread;
+							Object.entries(pending.open).map(([id, entry]): [string, StoredFinding] => {
+								const thread = entry.thread ?? (entry.revision === head ? posted.threads[id] : undefined);
 								return [id, { ...entry, ...(thread === undefined ? {} : { thread }) }];
 							}),
 						);
-						const resolved = Object.fromEntries(plan.resolved.map(({ id, ...entry }) => [id, { ...entry }]));
 						await runtime.commit(async (tx) => {
-							const document = await tx.doc(PublishedDocument, root);
-							document.order = [...document.order.filter((each) => each !== head), head];
-							document.revisions[head] = { review: posted.id, open, resolved, replies: {} };
+							const record = (await tx.doc(PublishedDocument, root)).revisions[head]!;
+							record.reviews = [...record.reviews, posted.id];
+							record.verdict = pending.verdict;
+							record.open = open;
+							record.resolved = { ...record.resolved, ...pending.resolved };
+							delete record.pending;
 							return undefined;
 						}, context);
-						state = await read();
 					}
-					const record = state.revisions[head]!;
+					const record = (await read()).revisions[head]!;
 					result.resolved = Object.keys(record.resolved).length;
 					// The status comes before the replies, so a thread that cannot take a reply never holds back the check.
 					const status = reviewStatus(verdict);
@@ -145,7 +225,7 @@ function publishTask(provider: ReviewProvider) {
 					for (const id of Object.keys(record.resolved).sort()) {
 						const entry = record.resolved[id]!;
 						if (entry.thread === undefined || Object.hasOwn(record.replies, id)) continue;
-						const found = (await marked()).replies[id];
+						const found = (await marked(record.verdict ?? "")).replies[id];
 						let recorded: string | null;
 						if (found === undefined) {
 							const reply = await provider.replyResolved(
@@ -165,7 +245,7 @@ function publishTask(provider: ReviewProvider) {
 						}, context);
 					}
 					await runtime.commit(() => {
-						const done: PublishResult = { review: record.review, status, ...result };
+						const done: PublishResult = { review: record.reviews.at(-1)!, status, ...result };
 						return { status: "terminal", outcome: { status: "completed", result: done } };
 					}, context);
 				} catch (error) {
@@ -234,7 +314,9 @@ export async function readPublished(
 ): Promise<PublishedRecord | undefined> {
 	const document = await reader.snapshot(PublishedDocument, rootConversationId, context);
 	if (document === undefined || !Object.hasOwn(document.revisions, revision)) return undefined;
-	const { review, open, replies, status } = document.revisions[revision]!;
+	const { reviews, open, replies, status } = document.revisions[revision]!;
+	const review = reviews.at(-1);
+	if (review === undefined) return undefined;
 	const threads = Object.fromEntries(
 		Object.entries(open).flatMap(([id, entry]) =>
 			entry.revision === revision && entry.thread !== undefined ? [[id, entry.thread]] : [],

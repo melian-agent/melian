@@ -191,7 +191,7 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 			);
 		},
 
-		async findPublished(pullRequest: number, revision: string): Promise<PublishedMarkers> {
+		async findPublished(pullRequest: number, revision: string, fingerprint: string): Promise<PublishedMarkers> {
 			const page = { owner, repo, pull_number: pullRequest, per_page: 100 };
 			const [reviews, comments] = await Promise.all([
 				call(`list reviews on pull request #${pullRequest}`, () =>
@@ -204,7 +204,7 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 			let review: string | undefined;
 			for (const each of reviews) {
 				const opening = parseMarker(firstLine(each.body));
-				if (opening?.revision === revision && opening.finding === undefined && (await ours(each.user))) {
+				if (opening?.revision === revision && opening.verdict === fingerprint && (await ours(each.user))) {
 					review = String(each.id);
 				}
 			}

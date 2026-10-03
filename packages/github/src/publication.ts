@@ -5,27 +5,30 @@ export interface RepositoryLinks {
 	readonly web: string;
 }
 
-/** A marker parsed from a post: the revision it belongs to, and the finding it carries, if any. */
+/** A marker parsed from a post: the revision it belongs to, and the finding or the verdict it carries. */
 export interface Marker {
 	readonly revision: string;
 	readonly finding?: string;
+	readonly verdict?: string;
 }
 
 /**
  * The hidden marker that opens every post: `<!-- melian:revision=<sha> finding=<id> -->` on a comment, and
- * `<!-- melian:revision=<sha> -->` on a review's body. A rerun reads it back to find what it already posted.
+ * `<!-- melian:revision=<sha> verdict=<fingerprint> -->` on a review's body. A rerun reads it back to find what it
+ * already posted.
  */
-export function marker(revision: string, finding?: string): string {
-	return `<!-- melian:revision=${revision}${finding === undefined ? "" : ` finding=${finding}`} -->`;
+export function marker(revision: string, carries: { finding: string } | { verdict: string }): string {
+	const extra = "finding" in carries ? `finding=${carries.finding}` : `verdict=${carries.verdict}`;
+	return `<!-- melian:revision=${revision} ${extra} -->`;
 }
 
-const markerLine = /^<!-- melian:revision=([0-9a-f]{40,64})(?: finding=([0-9a-f]{16}))? -->$/;
+const markerLine = /^<!-- melian:revision=([0-9a-f]{40,64}) (finding|verdict)=([0-9a-f]{16}) -->$/;
 
 /** The marker on a line of its own, or `undefined`. Untrusted text cannot start a line with one; see {@link prose}. */
 export function parseMarker(line: string): Marker | undefined {
 	const match = markerLine.exec(line.trim());
 	if (match === null) return undefined;
-	return { revision: match[1]!, ...(match[2] === undefined ? {} : { finding: match[2] }) };
+	return { revision: match[1]!, [match[2]!]: match[3]! };
 }
 
 /** Every marker standing on a line of its own in `body`, in order. */
@@ -109,7 +112,7 @@ export function renderComment(placed: PlacedFinding, revision: string, links: Re
 					"",
 				]
 			: [];
-	return [marker(revision, finding.properties.id), ...where, ...findingText(finding)].join("\n");
+	return [marker(revision, { finding: finding.properties.id }), ...where, ...findingText(finding)].join("\n");
 }
 
 const statusWords: Readonly<Record<Verdict["status"], string>> = {
@@ -125,7 +128,9 @@ const statusWords: Readonly<Record<Verdict["status"], string>> = {
 export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks): string {
 	const { verdict, revision } = draft;
 	const status = `**${statusWords[verdict.status]}${verdict.blocking ? ", blocking" : ""}**`;
-	const parts = [`${marker(revision)}\nMelian reviewed ${code(short(revision))}: ${status}.`];
+	const parts = [
+		`${marker(revision, { verdict: draft.fingerprint })}\nMelian reviewed ${code(short(revision))}: ${status}.`,
+	];
 	const counts = (["block", "acknowledge", "advisory"] as const)
 		.filter((resolution) => verdict.findings[resolution].length > 0)
 		.map((resolution) => `${verdict.findings[resolution].length} ${resolution}`);
@@ -151,7 +156,9 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks): st
 		for (const { finding } of inBody) {
 			const [start, end] = span(finding);
 			const link = `[${code(finding.properties.path)} ${lineSpan(start, end)}](${blobUrl(links, revision, finding.properties.path, start, end)})`;
-			parts.push([marker(revision, finding.properties.id), link, "", ...findingText(finding)].join("\n"));
+			parts.push(
+				[marker(revision, { finding: finding.properties.id }), link, "", ...findingText(finding)].join("\n"),
+			);
 		}
 	}
 	if (draft.resolved.length > 0) {
@@ -165,5 +172,5 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks): st
 
 /** The reply in a resolved finding's thread. */
 export function renderResolvedReply(finding: ResolvedFinding, revision: string): string {
-	return `${marker(revision, finding.id)}\nResolved at ${code(short(revision))}: this revision no longer reports ${code(finding.ruleId)} here.`;
+	return `${marker(revision, { finding: finding.id })}\nResolved at ${code(short(revision))}: this revision no longer reports ${code(finding.ruleId)} here.`;
 }

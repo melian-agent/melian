@@ -99,6 +99,12 @@ export function pushRevisionTwo(repo: string): void {
 	gitIn(repo, "commit", "--quiet", "--all", "-m", "revision 2");
 }
 
+// Pushes revision 3 onto `feature`, which puts the greeting back as it was at the base.
+export function pushRevisionThree(repo: string): void {
+	writeFiles(repo, { "src/user.ts": user(safe, '\treturn "Hi, " + user.name;') });
+	gitIn(repo, "commit", "--quiet", "--all", "-m", "revision 3");
+}
+
 const explanation = (what: string) => ({ what, why: `${what} Why.`, fix: `${what} Fix.` });
 
 function report(file: string, line: number, rule: string, severity: string, what: string) {

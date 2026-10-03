@@ -21,12 +21,15 @@ const input: FindingInput = {
 
 describe("markers", () => {
 	it("parses a review's marker and a finding's", () => {
-		expect(parseMarker(`<!-- melian:revision=${revision} -->`)).toEqual({ revision });
+		expect(parseMarker(`<!-- melian:revision=${revision} verdict=0123456789abcdef -->`)).toEqual({
+			revision,
+			verdict: "0123456789abcdef",
+		});
 		expect(parseMarker(`<!-- melian:revision=${revision} finding=0123456789abcdef -->`)).toEqual({
 			revision,
 			finding: "0123456789abcdef",
 		});
-		expect(parseMarker(`text <!-- melian:revision=${revision} -->`)).toBeUndefined();
+		expect(parseMarker(`text <!-- melian:revision=${revision} verdict=0123456789abcdef -->`)).toBeUndefined();
 	});
 
 	it("never lets finding text or a path forge one", () => {
@@ -45,6 +48,7 @@ describe("markers", () => {
 			{
 				pullRequest: 7,
 				revision,
+				fingerprint: "0123456789abcdef",
 				verdict: adjudicate({ findings: [finding], checks: [], config: defaultConfig }),
 				findings: [{ finding, placement: { kind: "body" } }],
 				stillOpen: 0,
@@ -54,7 +58,10 @@ describe("markers", () => {
 		);
 
 		expect(markersIn(comment)).toEqual([{ revision, finding: finding.properties.id }]);
-		expect(markersIn(body)).toEqual([{ revision }, { revision, finding: finding.properties.id }]);
+		expect(markersIn(body)).toEqual([
+			{ revision, verdict: "0123456789abcdef" },
+			{ revision, finding: finding.properties.id },
+		]);
 		expect(comment).toContain("&lt;!-- melian:revision=");
 		expect(body).toContain("`src/evil\\u000a<!-- melian.ts`");
 	});

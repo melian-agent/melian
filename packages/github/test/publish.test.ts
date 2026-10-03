@@ -22,6 +22,7 @@ import {
 	nanRetries,
 	openPublishHarness,
 	pullRequestState,
+	pushRevisionThree,
 	pushRevisionTwo,
 	reviewScenario,
 	scenarioModels,
@@ -78,7 +79,9 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.reviews).toHaveLength(1);
 		const [review] = state.reviews;
 		expect(review).toMatchObject({ commit_id: head, event: "COMMENT" });
-		expect(review!.body.split("\n")[0]).toBe(`<!-- melian:revision=${head} -->`);
+		expect(review!.body.split("\n")[0]).toMatch(
+			new RegExp(`^<!-- melian:revision=${head} verdict=[0-9a-f]{16} -->$`),
+		);
 		expect(review!.body).toContain("**findings, blocking**");
 
 		const comments = state.comments.map((comment) => ({
@@ -197,6 +200,60 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const recorded = await readPublished(harness!, root, second.changeset.revision.head, context);
 		expect(Object.values(recorded!.replies)).toEqual([null]);
 		expect(await publish(github, second.changeset)).toMatchObject({ replies: 0 });
+	});
+
+	it("posts a second review when the same head is reviewed again and its verdict changes", async () => {
+		const { fake, github, changeset, state } = await reviewedRevisionOne({
+			correctness: lensScript(unsafeManager).correctness!,
+		});
+		await publish(github, changeset);
+		expect(state.statuses.at(-1)).toMatchObject({ state: "error" });
+
+		const again = await reviewScenario(repo, harness!, fake, lensScript(unsafeManager, emptyName, nanRetries));
+		await again.review;
+		const result = await publish(github, changeset);
+
+		expect(result).toMatchObject({ posted: 2, stillOpen: 1 });
+		expect(state.reviews).toHaveLength(2);
+		const rules = state.comments.map((comment) => /`([a-z-]+)`/.exec(comment.body)?.[1]);
+		expect(rules.sort()).toEqual(["null-dereference", "wrong-result"]);
+		expect(state.reviews[1]!.body).toContain("src/config.ts");
+		expect(state.statuses.at(-1)).toMatchObject({ state: "failure", description: "3 findings, 1 blocking" });
+		const before = posts(state).length;
+		expect(await publish(github, changeset)).toMatchObject({ posted: 0 });
+		expect(posts(state)).toHaveLength(before);
+	});
+
+	it("replies for a pushed-over revision whose replies failed when the next one is published", async () => {
+		const { fake, github, changeset, state } = await reviewedRevisionOne();
+		await publish(github, changeset);
+		pushRevisionTwo(repo);
+		const second = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries, trimmedGreeting));
+		await second.review;
+		moveTo(state, second.changeset);
+		state.failReplies = true;
+		await expect(publish(github, second.changeset)).rejects.toBeInstanceOf(PublishError);
+		state.failReplies = false;
+
+		pushRevisionThree(repo);
+		const third = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries));
+		await third.review;
+		moveTo(state, third.changeset);
+		const result = await publish(github, third.changeset);
+
+		expect(result).toMatchObject({ resolved: 2, replies: 2 });
+		const replied = state.comments.filter((comment) => comment.in_reply_to_id !== undefined);
+		expect(replied.map((comment) => /`([a-z-]+)`/.exec(comment.body)?.[1]).sort()).toEqual([
+			"null-dereference",
+			"wrong-result",
+		]);
+
+		// A later revision owes nothing more: the carried resolution was answered once.
+		pushRevisionTwo(repo);
+		const fourth = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries, trimmedGreeting));
+		await fourth.review;
+		moveTo(state, fourth.changeset);
+		expect(await publish(github, fourth.changeset)).toMatchObject({ resolved: 0, replies: 0 });
 	});
 
 	it("sets an error status naming what did not run when the review did not complete", async () => {

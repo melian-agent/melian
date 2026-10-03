@@ -34,6 +34,8 @@ export type FakeState = {
 	comments: FakeComment[];
 	statuses: FakeStatus[];
 	nextId: number;
+	// Set to make every reply fail, as GitHub does when it has an outage.
+	failReplies?: boolean;
 	calls: Call[];
 };
 
@@ -129,6 +131,7 @@ export function fakeGitHub(
 		}
 		const reply = new RegExp(`^${pulls}/comments/(\\d+)/replies$`).exec(path);
 		if (method === "POST" && reply !== null) {
+			if (state.failReplies) return json({ message: "Server Error" }, 500);
 			const parent = state.comments.find((comment) => comment.id === Number(reply[1]));
 			if (parent === undefined) return json({ message: "Not Found" }, 404);
 			const created: FakeComment = {
