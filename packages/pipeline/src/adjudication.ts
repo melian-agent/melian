@@ -19,6 +19,7 @@ import { type Context, type ConversationId, type DocumentReader, defineDoc, defi
 import { ReviewIndex } from "./review-index.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
+type StoredAlias = string[] | { rules: string[]; distinct?: boolean };
 type StoredCheck = { name: string; status: CheckStatus; reason?: string; error?: string };
 
 type StoredVerdict = {
@@ -46,7 +47,7 @@ export type AdjudicationTaskInput = {
 	head: string;
 	/** Where per-path configuration is read from; without it, `config` applies to every path. */
 	policy?: RepositorySource;
-	config: { resolution: Record<Severity, Resolution>; ruleAliases: Record<string, string[]> };
+	config: { resolution: Record<Severity, Resolution>; ruleAliases: Record<string, StoredAlias> };
 	checks: StoredCheck[];
 	/**
 	 * The producers whose sightings at `head` count: the lenses this review selected, by check and version. A lens that
@@ -127,9 +128,7 @@ export function adjudicationInput(options: {
 		...(policy === undefined ? {} : { policy: { ...policy } }),
 		config: {
 			resolution: { ...config.resolution },
-			ruleAliases: Object.fromEntries(
-				Object.entries(config.ruleAliases).map(([rule, others]) => [rule, [...others]]),
-			),
+			ruleAliases: structuredClone(config.ruleAliases) as Record<string, StoredAlias>,
 		},
 		checks: checks.map((check) => structuredClone(check)),
 		producers: producers.map((source) => ({ ...source })),

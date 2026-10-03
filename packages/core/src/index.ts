@@ -9,6 +9,7 @@ export {
 	type ResolvedFinding,
 	resolutionOrder,
 	resolveFinding,
+	strongestCause,
 	type Verdict,
 	type VerdictStatus,
 } from "./adjudication.ts";
@@ -37,6 +38,7 @@ export {
 	maxConfigBytes,
 	melianYamlSchema,
 	type Resolution,
+	type RuleAlias,
 	resolutionSchema,
 	type Severity,
 	severitySchema,

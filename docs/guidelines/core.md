@@ -94,7 +94,7 @@ The keys a `melian.yaml` accepts, all optional:
 | `models` | `light`, `medium`, `heavy`, or `decision` to `model` and `fallbacks` | none |
 | `knowledge` | `writeBack`, a boolean | `false` |
 | `decisions` | `provider`, and `thresholds` from question name to a `drop` and `accept` band between 0 and 1 | no provider, no thresholds |
-| `ruleAliases` | rule ID that owns a defect to the rule IDs other checks report it under | none |
+| `ruleAliases` | rule ID that owns a defect to the rule IDs other checks report it under, or to `{ rules, distinct: true }` naming rules that are different defects | none |
 
 Lenses are a map keyed by name rather than `enable` and `disable` lists, so that layering works per lens: a service can disable one lens without restating the root's list. A band layers like any object, so a nearer file may restate only `drop` or only `accept`. A merged band missing either end, or whose `drop` exceeds its `accept`, is an error naming the nearest file that set it.
 
@@ -230,7 +230,18 @@ ruleAliases:
   no-eval: [security/detect-eval-with-expression, lint/security/noGlobalEval]
 ```
 
-With that table, the contracts lens's `broken-caller` speaks for the defect above. Without an owner among the defect's rules, the most severe finding speaks, the lower ID on a tie. The speaker takes the highest severity any of them reported, with its level to match, and lists each other finding's ID, rule, and check in `properties.alsoReportedAs`. A finding without a snippet never merges, and there is no fuzzy matching: a static tool that flags `eval(input)` and a lens that flags the three lines around it have different snippets and stay two findings.
+With that table, the contracts lens's `broken-caller` speaks for the defect above. Without an owner among the defect's rules, the most severe finding speaks, the lower ID on a tie. A finding without a snippet never merges, and there is no fuzzy matching: a static tool that flags `eval(input)` and a lens that flags the three lines around it have different snippets and stay two findings.
+
+A merge never lowers what blocks. Problem: the speaker kept its own cause. Example: the correctness lens reports `src/cart.ts:10` as a `P0` with no evidence, so `pre-existing`, and the contracts lens reports it as a `P1` citing the changed signature in `src/price.ts`, so `affected`. The `P0` spoke, stayed `pre-existing`, and resolved to `advisory`; the evidenced blocker vanished. Solution: the speaker takes the highest severity any member reported, with its level to match, and `strongestCause` of the members: `introduced` over `affected` over `pre-existing`, with the evidence of the most severe member that has the winning cause. It lists each other finding's ID, rule, and check in `properties.alsoReportedAs`. The pipeline's merge of sightings by ID, in `readFindings`, applies `strongestCause` too.
+
+The merge is general on purpose, and that has a cost. Two distinct defects on one expression, such as a null dereference and an unhandled rejection on the same call, collapse into one finding that lists both rules in `alsoReportedAs`. That is accepted: the live runs showed one defect filed under different rules by different lenses far more often, and a merge that waited for an alias would hide nothing but show every such defect twice. `ruleAliases` is how a repository says two rules are different defects. An entry with `distinct: true` lists rules that never merge with its key, in either direction:
+
+```yaml
+ruleAliases:
+  null-dereference:
+    rules: [unhandled-error]
+    distinct: true
+```
 
 ### The verdict
 

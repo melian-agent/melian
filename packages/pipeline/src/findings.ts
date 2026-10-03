@@ -8,6 +8,7 @@ import {
 	normaliseSnippet,
 	parseFinding,
 	type Severity,
+	strongestCause,
 } from "@melian-agent/core";
 import { type Context, type ConversationId, defineDoc, type Harness, type Tx } from "./harness.ts";
 
@@ -83,7 +84,9 @@ function compareSources(a: FindingSource, b: FindingSource): number {
 	return compareText(a.check, b.check) || compareText(a.version ?? "", b.version ?? "");
 }
 
-// The highest severity wins, and a tie goes to the producer whose name sorts first, so every reader merges alike.
+// The highest severity wins, and a tie goes to the producer whose name sorts first, so every reader merges alike. The
+// winner takes the strongest cause any sighting gave, with its evidence, so an evidenced P1 beside a P0 without
+// evidence reads as an affected P0 rather than a pre-existing one.
 function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>) {
 	const ranked = Object.values(sightings).sort(
 		(a, b) =>
@@ -91,7 +94,9 @@ function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>) {
 			compareSources(a.properties.source, b.properties.source),
 	);
 	const reportedBy = ranked.map((each) => ({ ...each.properties.source })).sort(compareSources);
-	return { winner: ranked[0]!, reportedBy };
+	const { evidence: _, ...properties } = ranked[0]!.properties;
+	const cause = strongestCause(ranked);
+	return { winner: { ...ranked[0]!, properties: { ...properties, ...cause } }, reportedBy };
 }
 
 /**

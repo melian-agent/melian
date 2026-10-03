@@ -178,6 +178,23 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		expect(config.tiers).toEqual({ ...defaultConfig.tiers, fast: ["guardrails"] });
 	});
 
+	it("reads a rule alias as a list of the owner's other names, or as rules marked distinct", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines(
+				"ruleAliases:",
+				"  broken-caller: [unhandled-error]",
+				"  null-dereference:",
+				"    rules: [unhandled-error]",
+				"    distinct: true",
+			),
+		});
+		const { config } = await load("a.ts");
+		expect(config.ruleAliases).toEqual({
+			"broken-caller": ["unhandled-error"],
+			"null-dereference": { rules: ["unhandled-error"], distinct: true },
+		});
+	});
+
 	it("reads an empty file as contributing nothing", async () => {
 		writeFiles(repo, { "melian.yaml": "" });
 		const { config, sources } = await load("a.ts");

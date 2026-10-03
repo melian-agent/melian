@@ -183,6 +183,46 @@ describe("dedupeFindings", () => {
 			expect(deduped[0]!.properties.alsoReportedAs).toEqual([reportOf(other)]);
 		});
 
+		it("keeps the affected cause and its evidence when the more severe finding cites none", () => {
+			const unproven = finding({
+				...atCart,
+				cause: "pre-existing",
+				rule: "unhandled-error",
+				source: { check: "lens.correctness", version: "1" },
+			});
+			const evidenced = finding({
+				...atCart,
+				severity: "P1",
+				rule: "broken-caller",
+				source: { check: "lens.contracts", version: "1" },
+			});
+			for (const order of [
+				[unproven, evidenced],
+				[evidenced, unproven],
+			]) {
+				const [kept, ...rest] = dedupeFindings(order, () => defaultConfig);
+				expect(rest).toEqual([]);
+				expect(kept!.properties).toMatchObject({ severity: "P0", cause: "affected", evidence });
+				expect(parseFinding(kept)).toEqual(kept);
+				expect(resolveFinding(kept!, defaultConfig)).toBe("block");
+			}
+		});
+
+		it("keeps an introduced cause over an affected one, and drops evidence only an affected finding carries", () => {
+			const introduced = finding({ ...atCart, cause: "introduced", severity: "P2", rule: "unhandled-error" });
+			const [kept] = dedupeFindings([brokenCaller, introduced], () => defaultConfig);
+			expect(kept!.properties.cause).toBe("introduced");
+			expect(kept!.properties).not.toHaveProperty("evidence");
+			expect(parseFinding(kept)).toEqual(kept);
+		});
+
+		it("never merges two rules an alias entry marks distinct", () => {
+			const apart = { ruleAliases: { "unhandled-error": { rules: ["broken-caller"], distinct: true } } };
+			expect(dedupeFindings([brokenCaller, unhandledError], () => apart)).toHaveLength(2);
+			const reversed = { ruleAliases: { "broken-caller": { rules: ["unhandled-error"], distinct: true } } };
+			expect(dedupeFindings([unhandledError, brokenCaller], () => reversed)).toHaveLength(2);
+		});
+
 		it("keeps the contracts lens's finding when the alias table says the defect is its", () => {
 			const owned = { ruleAliases: { "broken-caller": ["unhandled-error"] } };
 			for (const order of [
