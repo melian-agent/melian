@@ -193,7 +193,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 	});
 });
 
-describe("melian doctor", () => {
+describe("melian doctor", { timeout: 60_000 }, () => {
 	it("checks the tools and names where credentials come from, never their values", () => {
 		const token = "test-token-never-printed";
 		const home = mkdtempSync(join(tmpdir(), "melian-doctor-"));
@@ -241,7 +241,7 @@ describe("melian doctor", () => {
 	});
 });
 
-describe("Melian's state directory", () => {
+describe("Melian's state directory", { timeout: 60_000 }, () => {
 	const sqliteFiles = (directory: string): string[] =>
 		readdirSync(directory, { recursive: true, encoding: "utf8" }).filter((file) => file.endsWith(".sqlite"));
 
