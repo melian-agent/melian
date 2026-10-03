@@ -53,7 +53,7 @@ The skills under `skills/` are how a coding agent calls Melian: `skills/claude-c
 
 To install a skill, first put `melian` on `PATH`: in a clone of Melian, `npm ci --ignore-scripts && npm run build`, then `npm link` in `packages/cli`.
 
-- Claude Code: symlink `skills/claude-code` to `~/.claude/skills/melian`, or to `.claude/skills/melian` in a project. This repository does the latter, so a Claude Code session here can ask Melian to review its own work; in this checkout the skill falls back to `npx melian`.
+- Claude Code: symlink `skills/claude-code` to `~/.claude/skills/melian`, or to `.claude/skills/melian` in a project. This repository does the latter, so a Claude Code session here can ask Melian to review its own work; in this checkout the skill falls back to `npx --no melian`, and the root `melian.yaml` routes every tier, so the skill's command needs no `--model`.
 - Codex: symlink `skills/codex` to `~/.agents/skills/melian`, or to `.agents/skills/melian` in a repository.
 - Pi: `pi install ./skills/pi` from the clone. `skills/pi/package.json` declares the skill under `pi.skills`.
 

@@ -2,7 +2,8 @@ import { readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { usage } from "../src/main.ts";
+import { reviewExitCodes } from "../src/commands.ts";
+import { usage, usageExitCode } from "../src/main.ts";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const hosts = ["claude-code", "codex", "pi"];
@@ -12,10 +13,10 @@ function skill(host: string) {
 	const match = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/.exec(text);
 	if (match === null) throw new Error(`skills/${host}/SKILL.md has no front matter`);
 	const fields = Object.fromEntries(
-		match[1]!.split("\n").map((line) => {
-			const colon = line.indexOf(": ");
-			return [line.slice(0, colon), line.slice(colon + 2)];
-		}),
+		match[1]!
+			.split("\n")
+			.filter((line) => line.includes(": "))
+			.map((line) => [line.slice(0, line.indexOf(": ")), line.slice(line.indexOf(": ") + 2)]),
 	);
 	return { fields, body: match[2]! };
 }
@@ -48,6 +49,23 @@ describe.each(hosts)("skills/%s/SKILL.md", (host) => {
 		expect(new Set(used)).toEqual(new Set(["doctor", "review", "findings", "publish"]));
 		for (const command of used) expect(commands).toContain(command);
 	});
+
+	it("reads the exit codes melian review and the command line end with", () => {
+		const table = Object.fromEntries(
+			[...body.matchAll(/^ *\| `(\d+)` \| ([A-Za-z, ]+)/gm)].map((match) => [match[2]!.trim(), Number(match[1])]),
+		);
+		expect(table).toEqual({
+			passed: reviewExitCodes.passed,
+			"findings, at least one blocking": reviewExitCodes.blocking,
+			"not reviewed": reviewExitCodes.notReviewed,
+			"findings, none blocking": reviewExitCodes.findings,
+			"Melian could not read the command line": usageExitCode,
+		});
+	});
+});
+
+it("gives Codex and Pi the same skill", () => {
+	expect(skill("pi")).toEqual(skill("codex"));
 });
 
 describe("skill installation", () => {

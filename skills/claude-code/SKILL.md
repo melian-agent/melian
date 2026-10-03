@@ -1,7 +1,7 @@
 ---
 name: melian
 description: Reviews code changes with Melian by running the melian CLI and relaying its verdict. Use before committing or opening a pull request, when asked to review a change or a pull request, and when asked what Melian thinks of a change. Publishes a stored review to a pull request only when the user says to.
-allowed-tools: Bash(melian doctor) Bash(npx melian doctor)
+allowed-tools: Bash(melian doctor) Bash(npx --no melian doctor)
 ---
 
 # Melian
@@ -10,7 +10,7 @@ Melian is a code reviewer with its own models, lenses, and storage. This skill r
 
 ## Rules
 
-- Never review the change with your own model, never reimplement a Melian check, and never read Melian's storage under `.git/melian/`. To see a stored review again, run `melian findings`.
+- Never review the change with your own model, never reimplement a Melian check, and never read Melian's storage under `.git/melian/`. To see a stored review again, run `melian findings` with the review's range or pull request.
 - Run `melian review` only for the triggers in the description: before a commit or a pull request, or when the user asks for a review or for Melian's view. `melian doctor` is the only command to run without a trigger, and only to check readiness.
 - Never edit code to satisfy a finding unless the user asks you to.
 - Never run `melian publish` until the user has seen the findings and told you to publish.
@@ -19,7 +19,7 @@ Melian is a code reviewer with its own models, lenses, and storage. This skill r
 
 Run `melian doctor` once per session, before the first review, unless it has already run.
 
-- If the shell cannot find `melian`, and the working directory is a checkout of Melian itself, where `packages/cli/bin/melian.js` exists, run `npm run build` and use `npx melian` in place of `melian` for every command here. Never run `npx melian` anywhere else: npx would fetch an unrelated package named `melian` from the npm registry.
+- If the shell cannot find `melian`, and the working directory is a checkout of Melian itself, where `packages/cli/bin/melian.js` exists, run `npm ci --ignore-scripts` if `node_modules` is missing, then `npm run build`, and use `npx --no melian` in place of `melian` for every command here. `--no` stops npx fetching an unrelated package named `melian` from the npm registry; never run npx without it.
 - If the shell cannot find `melian` anywhere else, tell the user how to install it, then stop:
 
   ```sh
@@ -37,7 +37,7 @@ Run `melian doctor` once per session, before the first review, unless it has alr
 melian review origin/main...HEAD
 ```
 
-Use the base the user names in place of `origin/main`. Melian reviews the commits on the branch, never uncommitted changes, so if the working tree has changes, say they are not in the review. A review runs models and can take several minutes: run it with the Bash tool's `timeout` at 600000.
+Use the base the user names in place of `origin/main`. Melian reviews the commits on the branch, never uncommitted changes. When the user asks you to commit, commit as asked, then review before pushing or opening a pull request. If the working tree still has changes, say they are not in the review. A review runs models and can take several minutes: run it with the Bash tool's `timeout` at 600000.
 
 ## Review a pull request
 
@@ -63,13 +63,15 @@ melian review "#N"
 3. List the blocking findings first, then the rest, each with its file, line, rule, and what Melian says is wrong.
 4. Stop. A nonzero exit is a verdict, not a tool failure, so do not rerun the review to change it.
 
+One exit `2` is a setup problem rather than a verdict: standard error says `no model is configured for the heavy tier`, or names another tier, because no `melian.yaml` routes a model to it. Tell the user to set `models.<tier>.model` in `melian.yaml`, or to name a model you then pass as `--model provider/id`.
+
 ## See a stored review again
 
 ```sh
-melian findings origin/main...HEAD --open
+melian findings origin/main...HEAD
 ```
 
-Prints the findings that still need attention, without running a new review. Pass the same range or `"#N"` the review used.
+Prints the stored review exactly as `melian review` printed it, without running a new review. Pass the same range or `"#N"` the review used. It exits `0` whatever the verdict, so read the verdict from its first line, not from the exit code.
 
 ## Publish to a pull request
 
