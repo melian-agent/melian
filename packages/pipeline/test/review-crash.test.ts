@@ -13,6 +13,7 @@ import {
 	openHarness,
 	openSqliteStorage,
 	readFindings,
+	readVerdict,
 	reviewChangeset,
 } from "@melian-agent/pipeline";
 import {
@@ -45,7 +46,7 @@ afterEach(async () => {
 });
 
 async function killWhen(
-	scenario: "finding" | "request",
+	scenario: "finding" | "request" | "adjudication",
 	reached: (events: ReturnType<typeof readEvents>) => boolean,
 	database: string,
 	log: string,
@@ -151,5 +152,59 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		expect(fake.provider.state.callCount).toBe(2);
 		const lensTasks = (await harness.inspect(context)).tasks.filter((task) => task.record.kind === "melian.lenses");
 		expect(lensTasks).toEqual([]);
+	});
+
+	it("records no verdict from a crashed adjudication once a new lens selection reviews the head", async () => {
+		const database = join(dir, "superseded.sqlite");
+		const log = join(dir, "superseded.jsonl");
+		await killWhen("adjudication", (events) => count(events, "adjudication-started") === 1, database, log);
+
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
+		let release = () => {};
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		scriptConversations(fake, [
+			{
+				match: "You are the correctness reviewer",
+				replies: [async () => held.then(() => fauxAssistantMessage("Done."))],
+			},
+		]);
+		harness = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		const tasks = async (kind: string) =>
+			(await harness!.inspect(context)).tasks.filter((task) => task.record.kind === kind);
+		const [stale] = await tasks("melian.adjudication");
+		expect(stale).toBeDefined();
+		const heavy = fake.ref("heavy");
+		const reviewing = reviewChangeset({
+			harness,
+			changeset: await resolveRange(repo, "main...feature"),
+			config: {
+				...defaultConfig,
+				models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
+				lenses: { contracts: { enabled: false } },
+			},
+			lenses: crashLenses(await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"])),
+			standards: [],
+			models: fake.review,
+		});
+		const root = (await harness.root(context)).id;
+		const head = gitIn(repo, "rev-parse", "feature");
+		try {
+			// Waiting starts the scheduler, so wait only once the new selection has replaced the head's index entry.
+			while ((await tasks("melian.lenses")).length === 0) await sleep(10);
+			const settled = await harness.waitForTask(stale!.record.id, context);
+
+			expect(settled.state.outcome).toEqual({ status: "completed", result: "superseded" });
+			expect(await readVerdict(harness, root, head, context)).toBeUndefined();
+		} finally {
+			release();
+		}
+		const { verdict } = await reviewing;
+		expect(await readVerdict(harness, root, head, context)).toEqual(verdict);
 	});
 });

@@ -95,7 +95,8 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 			}
 			await runtime.commit(async (tx) => {
 				const current = (await tx.doc(ReviewIndex, root)).reviews[head]?.adjudication?.task;
-				if (current !== undefined && current !== runtime.taskId) {
+				// An entry without an adjudication task was replaced by a review that has not created one yet.
+				if (current !== runtime.taskId) {
 					return { status: "terminal", outcome: { status: "completed", result: "superseded" } };
 				}
 				(await tx.doc(VerdictDocument, root)).verdicts[head] = structuredClone(verdict) as StoredVerdict;
