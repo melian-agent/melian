@@ -26,6 +26,16 @@ Each ID holds two records. The producer record is what the lens or tool reported
 - Read with `readFindings`, which merges the two records into core `Finding`s with the lifecycle's status, in ID order, and treats an absent document as empty. It returns deep copies typed `readonly Finding[]`: `snapshot()` hands back the harness's cached document, so a caller that changed a returned finding would change what every later reader sees without a commit.
 - The functions take and return core's types. The document token stays inside the package. `upsertFinding` takes Pi's transaction, so its callers, such as step 5's `report_finding` tool, live in the pipeline.
 
+## Static tools run in the execution environment
+
+`runStaticTool` in `src/static.ts` runs Biome or tsc on one commit. Everything it executes goes through an `ExecutionEnv`, Pi Durable's `FileSystem` plus `Shell`, never through the Melian process. Biome and tsc load the repository's configuration and plugins, so running them runs the revision's code. Version one passes `createNodeExecutionEnv`, because a local run reviews the maintainer's own code; a container environment implements the same interface and replaces it without touching the runner.
+
+- One worktree per revision. The runner checks the commit out with `git worktree add --detach` into a temporary directory, runs the tool there, and removes the worktree with `git worktree remove --force` in a `finally`. Never run a tool against the user's checkout: its working tree holds whatever is checked out, edits included, and the tool would review that instead of the commit. Because the tool runs in the revision's tree, it reads the revision's own `biome.json` or `tsconfig.json` by construction.
+- git runs with the hook's repository variables unset, `core.hooksPath=/dev/null`, and `core.fsmonitor=false`. Problem: `git worktree add` runs the post-checkout hook, and a repository using husky points `core.hooksPath` at a directory the revision controls. Solution: no hook runs during checkout, so nothing executes outside the tool's timeout.
+- A worktree has no `node_modules`. The runner links the checkout's into it, so tsc resolves the repository's dependencies, and uses `node_modules/.bin/<tool>` when it is there; otherwise it runs the Biome or tsc Melian depends on. Workspaces' nested `node_modules` are not linked.
+- Bounds are failures. `static.<tool>.timeout` (300 seconds by default) caps each command, and `ulimit -f` with a check before reading caps what the tool writes at `staticOutputLimit` (16 MiB). A timeout, a crash, an unexpected exit, a missing report, or output too large is a `CheckError` with its code, never an empty log.
+- Output goes to files, not the shell's stream. `Shell.exec` interleaves stdout and stderr, which would corrupt a JSON report, so the runner redirects each tool to a file in its scratch directory and reads that.
+
 ## Contracts that read like mistakes
 
 - A task phase reruns from its start after a crash. Work before the phase's checkpoint commit must be safe to repeat, or guarded by a durable record.
