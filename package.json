@@ -1,0 +1,19 @@
+{
+	"name": "melian-monorepo",
+	"private": true,
+	"type": "module",
+	"workspaces": [
+		"packages/*"
+	],
+	"scripts": {
+		"check": "biome check --write --error-on-warnings . && node scripts/check-pinned-deps.mjs && tsc --noEmit && npm audit --audit-level=high && vitest --run",
+		"lint": "biome check --error-on-warnings .",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest --run",
+		"build": "npm run build --workspaces --if-present",
+		"clean": "npm run clean --workspaces --if-present"
+	},
+	"engines": {
+		"node": ">=22.19.0"
+	}
+}
