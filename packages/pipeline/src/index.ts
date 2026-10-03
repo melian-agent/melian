@@ -8,7 +8,7 @@ export {
 	readCheckRecords,
 	runChecks,
 } from "./checks.ts";
-export { createReviewModels, piAuthPath, piCredentialStore } from "./credentials.ts";
+export { createReviewModels, PiCredentialStore, piAuthPath, piCredentialStore } from "./credentials.ts";
 export {
 	PiCredentialsError,
 	type PiCredentialsErrorCode,
