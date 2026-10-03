@@ -2,8 +2,8 @@ import { isAbsolute, relative, resolve, sep } from "node:path";
 import { OutsideRepositoryError } from "./errors.ts";
 
 /**
- * Where Melian's files live, relative to a directory in the repository. `melian.yaml` may sit in any directory. The
- * `.melian/` directory at the repository root holds lenses, standards, and knowledge.
+ * Where Melian's files live, relative to a directory in the repository. `melian.yaml` and `.melian/` may sit in any
+ * directory; `standards` and `lenses` resolve nearest-first like `melian.yaml`. `knowledge` is read only at the root.
  */
 export const melianPaths = {
 	config: "melian.yaml",

@@ -37,6 +37,8 @@ Both sources implement one interface, `readText`, `list`, and `exists`, over rep
 - Paths stay repository-relative. `ConfigError.file`, `LoadedConfig.sources`, and `StandardsSection.path` carry them; messages about a revision name the file as git does, `<commit>:<path>`.
 - `@` imports resolve lexically against the importing file and are dropped if they climb out of the repository. Nothing calls `realpath`.
 
+`.melian/` may sit in any directory, as `melian.yaml` may. For each directory from the path's up to the root, `loadStandards` reads `AGENTS.md`, `CLAUDE.md`, then `.melian/standards/*.md` in name order, so a service's own standards come before the root's. Lenses will resolve the same way; knowledge is read from the root `.melian/` only.
+
 ## Layering precedence
 
 Every `melian.yaml` from a path's directory up to the repository root applies, over the built-in defaults. The nearest file wins per key. Objects merge key by key; arrays and scalars replace whole. A lens's `paths` are relative to the file that declares them, a leading `/` included, and the loader rewrites them to be repository-relative before merging, keeping a leading `!` for exclusions. It normalises root and nested patterns alike, so `./src/**` becomes `src/**`, and a pattern whose `..` climbs out of the repository is an `invalidValue` error naming the file and `lenses.<name>.paths`.

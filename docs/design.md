@@ -215,7 +215,7 @@ Solution: `melian.yaml` may exist at any folder level. For a touched path, the n
 
 Every file in the layering is read from one revision the host chooses, the base commit for a pull request, as [Trust and isolation](#policy-and-standards-come-from-a-revision-the-host-chooses) sets out. A pull request that edits a `melian.yaml` is reviewed under the policy it is changing, not the policy it proposes.
 
-The root `.melian/` directory holds what is not per-path: lenses, standards, knowledge, and lens-pack settings.
+A `.melian/` directory may sit at any folder level too. Its `standards/` and `lenses/` resolve nearest-first for a touched path, like `melian.yaml`, so a service can carry its own conventions and its own lens. Knowledge and lens-pack settings are not per-path, and are read only from the root `.melian/`.
 
 Resolution levels map severity to requirement:
 
@@ -493,6 +493,7 @@ docs/
 | Publication idempotency | Durable published document plus marker check, not memos | Memos are task-scoped and temporary |
 | Policy and standards source | Read from a git revision chosen by the host: base for pull requests, worktree for maintainer local runs | A head must not rewrite the policy or prompts of its own review |
 | Repository content bounds | Typed errors over size limits, no silent truncation | Unbounded reads are a resource hazard from untrusted input |
+| `.melian/` placement | Any folder level for standards and lenses, nearest-first; knowledge and lens-pack settings at the root only | Per-path content layers like `melian.yaml`; repository-wide state has one home |
 
 ## Open questions
 
