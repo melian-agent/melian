@@ -1,0 +1,13 @@
+{
+  "pr_title": "Format prices in any currency",
+  "comments": [
+    {
+      "comment": "formatPrice now requires a currency, but summary in src/cart.ts still calls it with only the amount, so the build fails and, untyped, Intl.NumberFormat throws for an undefined currency.",
+      "severity": "Critical",
+      "category": "bug",
+      "file": "src/cart.ts",
+      "rule": "broken-caller",
+      "cause": "affected"
+    }
+  ]
+}

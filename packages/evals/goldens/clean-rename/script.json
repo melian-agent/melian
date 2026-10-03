@@ -1,0 +1,11 @@
+{
+  "correctness": [
+    { "calls": [{ "name": "read_file", "arguments": { "path": "src/arithmetic.ts" } }] },
+    { "text": "Reported 0 findings." }
+  ],
+  "contracts": [
+    { "calls": [{ "name": "search", "arguments": { "pattern": "math.ts" } }] },
+    { "calls": [{ "name": "search", "arguments": { "pattern": "add(" } }] },
+    { "text": "Reported 0 findings." }
+  ]
+}
