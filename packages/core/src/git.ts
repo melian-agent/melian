@@ -30,11 +30,20 @@ export function git(cwd: string, args: readonly string[]): Promise<GitResult> {
 	});
 }
 
+// The first argument after git's own options, such as `diff` in `git -c diff.renames=true diff`.
+function subcommand(args: readonly string[]): string {
+	for (let i = 0; i < args.length; i++) {
+		if (args[i] === "-c" || args[i] === "-C") i++;
+		else if (!args[i]!.startsWith("-")) return args[i]!;
+	}
+	return "";
+}
+
 /** Runs git and returns stdout, or throws `gitFailed` with git's own message. */
 export async function gitOutput(cwd: string, args: readonly string[]): Promise<string> {
 	const result = await git(cwd, args);
 	if (result.code !== 0) {
-		throw new ChangesetError("gitFailed", `git ${args[0]} failed: ${result.stderr.trim()}`);
+		throw new ChangesetError("gitFailed", `git ${subcommand(args)} failed: ${result.stderr.trim()}`);
 	}
 	return result.stdout;
 }
