@@ -180,6 +180,25 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		});
 	});
 
+	it("sets the status and finishes when a resolved finding's thread was deleted", async () => {
+		const { fake, github, changeset, state } = await reviewedRevisionOne();
+		await publish(github, changeset);
+		state.comments = state.comments.filter((comment) => !comment.body.includes("null-dereference"));
+
+		pushRevisionTwo(repo);
+		const second = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries, trimmedGreeting));
+		await second.review;
+		moveTo(state, second.changeset);
+		const result = await publish(github, second.changeset);
+
+		expect(result).toMatchObject({ resolved: 1, replies: 0 });
+		expect(state.statuses.at(-1)).toMatchObject({ sha: second.changeset.revision.head, state: "success" });
+		const root = (await harness!.root(context)).id;
+		const recorded = await readPublished(harness!, root, second.changeset.revision.head, context);
+		expect(Object.values(recorded!.replies)).toEqual([null]);
+		expect(await publish(github, second.changeset)).toMatchObject({ replies: 0 });
+	});
+
 	it("sets an error status naming what did not run when the review did not complete", async () => {
 		const script = lensScript(unsafeManager);
 		const { github, changeset, state } = await reviewedRevisionOne({ correctness: script.correctness! });

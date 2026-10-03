@@ -156,16 +156,22 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 		},
 
 		async replyResolved(pullRequest: number, finding: ResolvedFinding & { thread: string }, revision: string) {
-			const { data } = await call(`reply on pull request #${pullRequest}`, () =>
-				octokit.rest.pulls.createReplyForReviewComment({
-					owner,
-					repo,
-					pull_number: pullRequest,
-					comment_id: Number(finding.thread),
-					body: renderResolvedReply(finding, revision),
-				}),
-			);
-			return String(data.id);
+			try {
+				const { data } = await call(`reply on pull request #${pullRequest}`, () =>
+					octokit.rest.pulls.createReplyForReviewComment({
+						owner,
+						repo,
+						pull_number: pullRequest,
+						comment_id: Number(finding.thread),
+						body: renderResolvedReply(finding, revision),
+					}),
+				);
+				return String(data.id);
+			} catch (error) {
+				// A deleted comment answers 404, and one on an outdated line can answer 422; either way no thread is left.
+				if (error instanceof GitHubError && (error.status === 404 || error.status === 422)) return undefined;
+				throw error;
+			}
 		},
 
 		async setStatus(revision: string, status: ReviewStatus) {

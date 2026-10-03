@@ -30,7 +30,8 @@ type StoredRevision = {
 	review: string;
 	open: Record<string, StoredFinding>;
 	resolved: Record<string, StoredFinding>;
-	replies: Record<string, string>;
+	// null when the thread was gone and there was nothing to reply to.
+	replies: Record<string, string | null>;
 	status?: { state: ReviewStatus["state"]; description: string };
 };
 
@@ -66,10 +67,6 @@ type PublishResult = {
 };
 
 const publishTaskName = "melian.publish";
-
-function same(left: ReviewStatus | undefined, right: ReviewStatus): boolean {
-	return left?.state === right.state && left.description === right.description;
-}
 
 // Not replay-safe: a post and the commit that records it are two steps, and the host takes no idempotency key. Every
 // post is recorded in its own commit, and before posting anything the phase reads Melian's markers back from the pull
@@ -136,24 +133,38 @@ function publishTask(provider: ReviewProvider) {
 					}
 					const record = state.revisions[head]!;
 					result.resolved = Object.keys(record.resolved).length;
+					// The status comes before the replies, so a thread that cannot take a reply never holds back the check.
+					const status = reviewStatus(verdict);
+					if (record.status?.state !== status.state || record.status.description !== status.description) {
+						await provider.setStatus(head, status);
+						await runtime.commit(async (tx) => {
+							(await tx.doc(PublishedDocument, root)).revisions[head]!.status = { ...status };
+							return undefined;
+						}, context);
+					}
 					for (const id of Object.keys(record.resolved).sort()) {
 						const entry = record.resolved[id]!;
 						if (entry.thread === undefined || Object.hasOwn(record.replies, id)) continue;
-						let reply = (await marked()).replies[id];
-						if (reply === undefined) {
-							reply = await provider.replyResolved(pullRequest, { id, ...entry, thread: entry.thread }, head);
-							result.replies++;
-						} else result.recovered++;
-						const recorded = reply;
+						const found = (await marked()).replies[id];
+						let recorded: string | null;
+						if (found === undefined) {
+							const reply = await provider.replyResolved(
+								pullRequest,
+								{ id, ...entry, thread: entry.thread },
+								head,
+							);
+							recorded = reply ?? null;
+							if (reply !== undefined) result.replies++;
+						} else {
+							recorded = found;
+							result.recovered++;
+						}
 						await runtime.commit(async (tx) => {
 							(await tx.doc(PublishedDocument, root)).revisions[head]!.replies[id] = recorded;
 							return undefined;
 						}, context);
 					}
-					const status = reviewStatus(verdict);
-					if (!same(record.status, status)) await provider.setStatus(head, status);
-					await runtime.commit(async (tx) => {
-						(await tx.doc(PublishedDocument, root)).revisions[head]!.status = { ...status };
+					await runtime.commit(() => {
 						const done: PublishResult = { review: record.review, status, ...result };
 						return { status: "terminal", outcome: { status: "completed", result: done } };
 					}, context);
@@ -209,7 +220,8 @@ export interface Publication {
 export interface PublishedRecord {
 	readonly review: string;
 	readonly threads: Readonly<Record<string, string>>;
-	readonly replies: Readonly<Record<string, string>>;
+	/** Each resolved finding's reply, by ID; `null` when its thread was gone. */
+	readonly replies: Readonly<Record<string, string | null>>;
 	readonly status?: ReviewStatus;
 }
 

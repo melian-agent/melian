@@ -230,12 +230,15 @@ export interface ReviewProvider {
 	pullRequest(number: number): Promise<PullRequest>;
 	/** Posts one review for a revision, never approving or requesting changes. */
 	postReview(draft: ReviewDraft): Promise<PostedReview>;
-	/** Replies in a resolved finding's thread that `revision` resolved it. Returns the reply's ID. */
+	/**
+	 * Replies in a resolved finding's thread that `revision` resolved it. Returns the reply's ID, or `undefined` when
+	 * the thread is gone, such as a comment someone deleted, so there is nothing to reply to.
+	 */
 	replyResolved(
 		pullRequest: number,
 		finding: ResolvedFinding & { readonly thread: string },
 		revision: string,
-	): Promise<string>;
+	): Promise<string | undefined>;
 	/** Sets the review's status on a commit. Setting it again replaces it. */
 	setStatus(revision: string, status: ReviewStatus): Promise<void>;
 	/** What the pull request already shows of `revision`'s publication, from posts that carry Melian's markers. */
