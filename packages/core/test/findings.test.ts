@@ -224,6 +224,19 @@ describe("createFinding", () => {
 		expect(() => createFinding({ ...evalInput, cause: { evidence: "" } })).toThrow(FindingError);
 	});
 
+	it("rejects a region that ends before it starts", () => {
+		for (const region of [
+			{ startLine: 12, endLine: 3 },
+			{ startLine: 12, endLine: 12, startColumn: 9, endColumn: 2 },
+			{ startLine: 12, endLine: undefined, startColumn: 9, endColumn: 2 },
+		]) {
+			expect(() => createFinding({ ...evalInput, ...region })).toThrow(
+				expect.objectContaining({ code: "invalidRegion", path: "/locations/0/physicalLocation/region" }),
+			);
+		}
+		expect(createFinding({ ...evalInput, startLine: 12, endLine: 13, startColumn: 9, endColumn: 2 })).toBeDefined();
+	});
+
 	it("rejects an input the schema would not accept", () => {
 		expect(() => createFinding({ ...evalInput, startLine: 0 })).toThrow(FindingError);
 		expect(() => createFinding({ ...evalInput, confidence: 1.5 })).toThrow(FindingError);

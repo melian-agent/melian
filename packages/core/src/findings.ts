@@ -391,7 +391,7 @@ function defined<T extends object>(value: T): T {
 /**
  * Builds a finding, deriving its level, ID, and URI from the canonical repository-relative form of its file, so
  * `./src/run.ts` and `src/run.ts` are one file. Throws {@link FindingError}: `invalidPath` when the file is absolute,
- * escapes the repository, or uses a backslash, `missingDiscriminator` when a finding with a
+ * escapes the repository, or uses a backslash, `invalidRegion` when the region ends before it starts, `missingDiscriminator` when a finding with a
  * snippet has no occurrence or one without a snippet has no discriminator, and `invalidFinding` if the result is invalid.
  */
 export function createFinding(input: FindingInput): Finding {
@@ -444,7 +444,8 @@ export function createFinding(input: FindingInput): Finding {
  * Checks that `value` is a valid finding and returns it.
  *
  * Throws {@link FindingError}: `invalidFinding` when it does not match {@link findingSchema}, `levelMismatch` when its
- * level is not {@link levelForSeverity} of its severity, `invalidPath` when its path is not canonical or its URI does
+ * level is not {@link levelForSeverity} of its severity, `invalidRegion` when its region ends before it starts,
+ * `invalidPath` when its path is not canonical or its URI does
  * not encode that path, `missingEvidence` when it is `affected` without evidence,
  * `missingDiscriminator` when it lacks the occurrence or
  * discriminator its snippet calls for, and `idMismatch` when its ID is not {@link findingId} of its first location.
@@ -472,6 +473,12 @@ export function parseFinding(value: unknown): Finding {
 	}
 	const { artifactLocation, region } = finding.locations[0]!.physicalLocation;
 	const { path, trigger } = finding.properties;
+	const { startLine, endLine = startLine, startColumn, endColumn } = region;
+	if (endLine < startLine || (endLine === startLine && (endColumn ?? Infinity) < (startColumn ?? 1))) {
+		throw new FindingError("invalidRegion", "the finding's region ends before it starts", {
+			path: "/locations/0/physicalLocation/region",
+		});
+	}
 	requireCanonical(path, "/properties/path");
 	if (artifactLocation.uri !== repositoryUri(path)) {
 		throw new FindingError("invalidPath", `finding URI ${artifactLocation.uri} does not encode its path ${path}`, {

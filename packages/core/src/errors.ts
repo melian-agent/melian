@@ -104,6 +104,7 @@ export type FindingErrorCode =
 	| "invalidFinding"
 	| "levelMismatch"
 	| "invalidPath"
+	| "invalidRegion"
 	| "missingEvidence"
 	| "missingDiscriminator"
 	| "snippetNotFound"
