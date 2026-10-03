@@ -166,6 +166,10 @@ The cost is the other direction: a renamed parameter that breaks a caller is `pr
 
 Everything the renderer prints is untrusted. A lens writes finding text after reading the change under review, which anyone opening a pull request controls, and that author also chooses the file paths. Example: a file named `src/run.ts` followed by ESC `[2J` clears the reviewer's screen, a newline in a path or rule ID forges a second header, and a right-to-left override makes `gnp.ts` read as `ts.png`. The terminal renderer therefore prints every control character, C1 control, line or paragraph separator, and bidi control in every string, paths and rule IDs included, as a visible `\uXXXX`, with colour on or off. Prose keeps its newlines as indented continuation lines, so a multi-line explanation stays inside its block; a newline anywhere else is escaped. Any new renderer for a terminal does the same.
 
+## Checks and tiers
+
+`checksOfTier(config, tier)` lists a tier's checks in order without repeats. A name that is a tier expands to that tier's checks, and `static` expands to `static.biome` and `static.tsc`. An unknown tier is `CheckError` `unknownTier`, and a tier that includes itself is `tierCycle`. `deterministicChecks` names the checks the pipeline runs as tasks: `guardrails`, `static.biome`, and `static.tsc`. A check that cannot run throws `CheckError` with a code; it never returns an empty result.
+
 ## Guardrails
 
 `evaluateGuardrails({ repoRoot, revision, source })` runs four deterministic policies in the Melian process. It never runs the repository's code: it reads the changeset, each path's layered `melian.yaml` from `source`, and, for forbidden-patterns, the changed files at head through git's object store. Each guardrail reports under `guardrail/<name>` at the severity its configuration sets, with the resolution the path's configuration gives that severity, and every finding is `introduced`, because a guardrail judges the change itself.

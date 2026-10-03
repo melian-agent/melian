@@ -9,6 +9,7 @@ export {
 	type Revision,
 	resolveRange,
 } from "./changeset.ts";
+export { checksOfTier, type DeterministicCheck, deterministicChecks } from "./checks.ts";
 export {
 	type Band,
 	defaultConfig,

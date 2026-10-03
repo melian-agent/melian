@@ -26,6 +26,17 @@ Each ID holds two records. The producer record is what the lens or tool reported
 - Read with `readFindings`, which merges the two records into core `Finding`s with the lifecycle's status, in ID order, and treats an absent document as empty. It returns deep copies typed `readonly Finding[]`: `snapshot()` hands back the harness's cached document, so a caller that changed a returned finding would change what every later reader sees without a commit.
 - The functions take and return core's types. The document token stays inside the package. `upsertFinding` takes Pi's transaction, so its callers, such as step 5's `report_finding` tool, live in the pipeline.
 
+## Check tasks
+
+`runChecks(harness, { rootConversationId, changeset, config, source, tier }, context)` runs a tier's checks on one revision. Core's `checksOfTier` expands the tier: a name that is a tier expands to its checks, and `static` to every static tool. The harness's registry must hold `checksExtension`, in every process that opens the storage, so a check task left pending by a crash resumes.
+
+- One task per check. A `melian.checks` task in the root conversation creates one `melian.check` child per deterministic check, `guardrails`, `static.biome`, or `static.tsc`, and waits on them with `allSettled`, so one failure does not abort the rest.
+- Every check writes into the root conversation. A check task commits its findings through `upsertFinding` with the root's ID and the head commit, and its record to the `melian.checks` document, in one commit with its terminal outcome. A crash before that commit reruns the check, which runs the tools on the same commits and upserts the same findings, so the task is replay-safe.
+- Every check leaves a record: `ran` with its finding count and notes, `skipped` with a reason, or `failed` with an error code and message. Problem: a check that fails silently looks like a check that found nothing, and adjudication would call the revision clean. Solution: a failed check writes no findings and a `failed` record, and adjudication reports the revision as not reviewed by it. A `lens.*` or `decisions.*` name is recorded as skipped, since those run elsewhere; any other unknown name fails with `unknownCheck`.
+- Asking twice runs once. The `melian.checks` document maps `<head> <tier>` to its task, so a second `runChecks` for the same revision and tier, from this process or a new one, waits for the first task instead of starting another.
+- Static checks get their environment from the harness's `env` option through `runtime.env()`. A durable task's input is JSON, so it cannot carry a live environment; a task resumed in a new process finds the new process's environment the same way. A harness without one fails each static check with `noEnvironment`.
+- `config` is the repository root's configuration, read from `source`. It names the tier's checks and the static tools' settings; each finding's resolution comes from its own path's configuration.
+
 ## Static tools run in the execution environment
 
 `runStaticTool` in `src/static.ts` runs Biome or tsc on one commit. Everything it executes goes through an `ExecutionEnv`, Pi Durable's `FileSystem` plus `Shell`, never through the Melian process. Biome and tsc load the repository's configuration and plugins, so running them runs the revision's code. Version one passes `createNodeExecutionEnv`, because a local run reviews the maintainer's own code; a container environment implements the same interface and replaces it without touching the runner.

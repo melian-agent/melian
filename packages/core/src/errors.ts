@@ -133,6 +133,8 @@ export type CheckErrorCode =
 	| "unknownCheck"
 	| "unknownTier"
 	| "tierCycle"
+	| "unknownConversation"
+	| "notCompleted"
 	| "noEnvironment"
 	| "worktreeFailed"
 	| "toolMissing"
