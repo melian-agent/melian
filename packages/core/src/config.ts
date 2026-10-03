@@ -17,8 +17,12 @@ const resolutionValue = Type.Union([
 ]);
 const lensTier = Type.Union([Type.Literal("light"), Type.Literal("medium"), Type.Literal("heavy")]);
 const modelRoute = Type.Object({ model: name, fallbacks: Type.Optional(Type.Array(name)) }, strict);
+// Each end is optional in one file so that a nearer file can restate one; the merged band must have both.
 const band = Type.Object(
-	{ drop: Type.Number({ minimum: 0, maximum: 1 }), accept: Type.Number({ minimum: 0, maximum: 1 }) },
+	{
+		drop: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
+		accept: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
+	},
 	strict,
 );
 
@@ -96,8 +100,14 @@ export interface LensSettings {
 	readonly paths?: readonly string[];
 }
 
-/** A decision threshold: below `drop` drops, above `accept` accepts, between escalates to an LLM pass. */
-export type Band = Static<typeof band>;
+/**
+ * A decision threshold: below `drop` drops, above `accept` accepts, between escalates to an LLM pass. One `melian.yaml`
+ * may set either end; the merged band has both.
+ */
+export interface Band {
+	readonly drop: number;
+	readonly accept: number;
+}
 
 /** The effective configuration for one path: built-in defaults with every applicable `melian.yaml` merged on top. */
 export interface MelianConfig {
@@ -206,9 +216,19 @@ function anchorLensPaths(directory: string, layer: MelianYaml): MelianYaml {
 
 function checkBands(config: MelianConfig, layers: readonly { file: string; layer: MelianYaml }[]): void {
 	for (const [question, { drop, accept }] of Object.entries(config.decisions.thresholds)) {
-		if (drop <= accept) continue;
 		const file = layers.find(({ layer }) => layer.decisions?.thresholds?.[question] !== undefined)!.file;
 		const key = `decisions.thresholds.${question}`;
+		for (const [end, value] of [
+			["drop", drop],
+			["accept", accept],
+		] as const) {
+			if (value === undefined) {
+				throw new ConfigError("invalidValue", file, `${file}: "${key}" sets no ${end}, and no farther file does`, {
+					key: `${key}.${end}`,
+				});
+			}
+		}
+		if (drop <= accept) continue;
 		throw new ConfigError(
 			"invalidValue",
 			file,

@@ -151,6 +151,15 @@ describe("loadConfig", () => {
 		expect(await rejection(loadConfig(repo, "a.ts"))).toMatchObject({ code: "invalidYaml" });
 	});
 
+	it("lets a nearer file restate one end of a threshold band", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("decisions:", "  thresholds:", "    real:", "      drop: 0.2", "      accept: 0.8"),
+			"services/melian.yaml": lines("decisions:", "  thresholds:", "    real:", "      drop: 0.3"),
+		});
+		const { config } = await loadConfig(repo, "services/a.ts");
+		expect(config.decisions.thresholds).toEqual({ real: { drop: 0.3, accept: 0.8 } });
+	});
+
 	it("rejects a threshold band whose merge drops above where it accepts, naming the nearer file", async () => {
 		writeFiles(repo, {
 			"melian.yaml": lines("decisions:", "  thresholds:", "    real:", "      drop: 0.2", "      accept: 0.8"),
@@ -162,6 +171,13 @@ describe("loadConfig", () => {
 			key: "decisions.thresholds.real",
 			file: join(repo, "services/melian.yaml"),
 		});
+		expect(error.message).toContain("drop must not exceed accept");
+	});
+
+	it("rejects a threshold band that no file completes", async () => {
+		writeFiles(repo, { "melian.yaml": lines("decisions:", "  thresholds:", "    real:", "      drop: 0.2") });
+		const error = await rejection(loadConfig(repo, "a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", key: "decisions.thresholds.real.accept" });
 	});
 
 	it("refuses a path outside the repository", async () => {

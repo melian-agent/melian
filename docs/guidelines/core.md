@@ -75,7 +75,7 @@ The keys a `melian.yaml` accepts, all optional:
 | `knowledge` | `writeBack`, a boolean | `false` |
 | `decisions` | `provider`, and `thresholds` from question name to a `drop` and `accept` band between 0 and 1 | no provider, no thresholds |
 
-Lenses are a map keyed by name rather than `enable` and `disable` lists, so that layering works per lens: a service can disable one lens without restating the root's list. A band whose merged `drop` exceeds its `accept` is an error naming the nearest file that set it.
+Lenses are a map keyed by name rather than `enable` and `disable` lists, so that layering works per lens: a service can disable one lens without restating the root's list. A band layers like any object, so a nearer file may restate only `drop` or only `accept`. A merged band missing either end, or whose `drop` exceeds its `accept`, is an error naming the nearest file that set it.
 
 Unknown keys are errors that name the key and the file, because a misspelt key otherwise falls back to a default without a word.
 
