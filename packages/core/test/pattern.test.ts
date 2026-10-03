@@ -110,8 +110,11 @@ describe("compilePattern", () => {
 		expect(refusal(`${"(".repeat(5000)}a${")".repeat(5000)}`)).toMatch(/may not nest more than 100 deep/);
 	});
 
-	it("refuses a pattern that compiles to too many steps", () => {
+	it("refuses a pattern that compiles to too many steps, counting each member of a class", () => {
 		expect(refusal("(?:(?:a{100}){100})")).toMatch(/more than 2000 steps/);
+		expect(refusal(`[${"a".repeat(30_000)}b]{100}`)).toMatch(/more than 2000 steps/);
+		expect(refusal(`[${"ab".repeat(20)}]{100}`)).toMatch(/more than 2000 steps/);
+		expect(compiled(`[${"ab".repeat(9)}]{100}`).test("ab")).toBe(false);
 	});
 
 	// RegExp needs about n³ steps for `.*a.*a.*b` on a line of a's; 20,000 of them would run for hours.

@@ -6,7 +6,8 @@
 type Test = (code: number) => boolean;
 
 type Node =
-	| { readonly kind: "char"; readonly test: Test }
+	// `cost` is how many tests one character takes: a class's member count, and 1 for anything else.
+	| { readonly kind: "char"; readonly test: Test; readonly cost?: number }
 	| { readonly kind: "assert"; readonly at: Assertion }
 	| { readonly kind: "concat"; readonly items: readonly Node[] }
 	| { readonly kind: "alt"; readonly options: readonly Node[] }
@@ -169,7 +170,7 @@ class Parser {
 			case "(":
 				return this.group();
 			case "[":
-				return { kind: "char", test: this.characterClass() };
+				return { kind: "char", ...this.characterClass() };
 			case "\\":
 				return this.escape();
 			case "*":
@@ -229,7 +230,7 @@ class Parser {
 	}
 
 	// Follows JavaScript: "]" closes the class even first, so [] matches nothing and [^] matches anything.
-	private characterClass(): Test {
+	private characterClass(): { test: Test; cost: number } {
 		const negated = this.peek() === "^";
 		if (negated) this.position++;
 		const tests: Test[] = [];
@@ -247,7 +248,7 @@ class Parser {
 		}
 		this.position++;
 		const member: Test = (code) => tests.some((test) => test(code));
-		return negated ? not(member) : member;
+		return { test: negated ? not(member) : member, cost: Math.max(tests.length, 1) };
 	}
 
 	// A code unit for one character, or a test for a shorthand such as \d.
@@ -267,9 +268,12 @@ class Parser {
 
 class Compiler {
 	readonly program: Instruction[] = [];
+	// What one character can cost, counting each member of a class, which the simulation tests one by one.
+	steps = 0;
 
-	emit(instruction: Instruction): number {
-		if (this.program.length >= maxProgram) {
+	emit(instruction: Instruction, cost = 1): number {
+		this.steps += cost;
+		if (this.steps > maxProgram) {
 			throw new Refused(`the pattern compiles to more than ${maxProgram} steps; simplify it`);
 		}
 		this.program.push(instruction);
@@ -279,7 +283,7 @@ class Compiler {
 	compile(node: Node): void {
 		switch (node.kind) {
 			case "char":
-				this.emit({ op: "char", test: node.test });
+				this.emit({ op: "char", test: node.test }, node.cost);
 				return;
 			case "assert":
 				this.emit({ op: "assert", at: node.at });
