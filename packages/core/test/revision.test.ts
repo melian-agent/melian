@@ -141,7 +141,7 @@ describe("listRevisionFiles", () => {
 
 describe("searchRevision", () => {
 	it("finds fixed strings at the revision with line numbers", async () => {
-		const found = await searchRevision(repo, head, { pattern: "total" });
+		const found = await searchRevision(repo, head, { attributesFrom: head, pattern: "total" });
 		expect(found).toEqual({
 			matches: [
 				{ path: "src/sub/b.ts", line: 1, text: "export const b = total([1]);" },
@@ -152,30 +152,51 @@ describe("searchRevision", () => {
 	});
 
 	it("narrows to a path, ignores case on request, and reads regular expressions", async () => {
-		expect((await searchRevision(repo, head, { pattern: "TOTAL", ignoreCase: true, path: "docs" })).matches).toEqual([
-			{ path: "docs/readme.md", line: 1, text: "Total is documented here." },
-		]);
-		expect((await searchRevision(repo, head, { pattern: "reduce\\(\\(a, b\\)", regex: true })).matches).toHaveLength(
-			1,
-		);
+		expect(
+			(await searchRevision(repo, head, { attributesFrom: head, pattern: "TOTAL", ignoreCase: true, path: "docs" }))
+				.matches,
+		).toEqual([{ path: "docs/readme.md", line: 1, text: "Total is documented here." }]);
+		expect(
+			(await searchRevision(repo, head, { attributesFrom: head, pattern: "reduce\\(\\(a, b\\)", regex: true }))
+				.matches,
+		).toHaveLength(1);
 	});
 
 	it("returns nothing when nothing matches, and never the working tree", async () => {
-		expect(await searchRevision(repo, head, { pattern: "uncommitted" })).toEqual({ matches: [], truncated: false });
+		expect(await searchRevision(repo, head, { attributesFrom: head, pattern: "uncommitted" })).toEqual({
+			matches: [],
+			truncated: false,
+		});
 	});
 
 	it("bounds the number of matches", async () => {
-		const found = await searchRevision(repo, head, { pattern: "t" }, 1);
+		const found = await searchRevision(repo, head, { attributesFrom: head, pattern: "t" }, 1);
 		expect(found.matches).toHaveLength(1);
 		expect(found.truncated).toBe(true);
 	});
 
 	it("reports a regular expression git cannot compile", async () => {
-		const error = await rejection(searchRevision(repo, head, { pattern: "(", regex: true }), RevisionError);
+		const error = await rejection(
+			searchRevision(repo, head, { attributesFrom: head, pattern: "(", regex: true }),
+			RevisionError,
+		);
 		expect(error.code).toBe("invalidPattern");
 	});
 
+	it("decides what is binary by the attribute source, not the checkout", async () => {
+		gitIn(repo, "checkout", "--quiet", "--", ".");
+		writeFiles(repo, { ".gitattributes": "*.ts -diff\n", "src/total.ts": lines("export const total = 2;") });
+		gitIn(repo, "add", ".");
+		gitIn(repo, "commit", "--quiet", "-m", "hide the TypeScript");
+		const hiding = gitIn(repo, "rev-parse", "HEAD");
+		const search = { pattern: "export const total" };
+		expect((await searchRevision(repo, hiding, { ...search, attributesFrom: hiding })).matches).toEqual([]);
+		expect((await searchRevision(repo, hiding, { ...search, attributesFrom: head })).matches).toEqual([
+			{ path: "src/total.ts", line: 1, text: "export const total = 2;" },
+		]);
+	});
+
 	it("treats a pattern that looks like an option as text", async () => {
-		expect((await searchRevision(repo, head, { pattern: "--output=x" })).matches).toEqual([]);
+		expect((await searchRevision(repo, head, { attributesFrom: head, pattern: "--output=x" })).matches).toEqual([]);
 	});
 });

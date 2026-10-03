@@ -175,7 +175,9 @@ const search = defineTool({
 	replay: "safe",
 	execute: async (args, api, context) => {
 		const review = await headOf(api, api.conversationId, context);
-		const { matches, truncated } = await searchRevision(review.repoRoot, review.head, args);
+		// The base's attributes decide what is binary, as they do for the diff, so a head cannot hide its files.
+		const search = { ...args, attributesFrom: review.base };
+		const { matches, truncated } = await searchRevision(review.repoRoot, review.head, search);
 		// A single matching line longer than the output bound leaves nothing whole to show; that is not "no matches".
 		if (matches.length === 0 && truncated)
 			return text("[matches found, but their lines are too long to show; narrow the search with path]");

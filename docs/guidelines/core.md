@@ -126,7 +126,7 @@ A lens defined in a folder applies only beneath it. Problem: `services/pay/.meli
 
 ## Reading the head revision for lenses
 
-`readRevisionFile`, `listRevisionFiles`, and `searchRevision` in `src/revision.ts` back the lens tools. They read a commit through `git ls-tree`, `git cat-file`, and `git grep`, never the working tree, so an uncommitted edit or untracked file is invisible to a lens. Each refuses a path outside the repository with `OutsideRepositoryError`, refuses symlinks, passes `--literal-pathspecs` so a `*` in a file name is that character, and bounds its output by `revisionLimits`.
+`readRevisionFile`, `listRevisionFiles`, and `searchRevision` in `src/revision.ts` back the lens tools. They read a commit through `git ls-tree`, `git cat-file`, and `git grep`, never the working tree, so an uncommitted edit or untracked file is invisible to a lens. Each refuses a path outside the repository with `OutsideRepositoryError`, refuses symlinks, passes `--literal-pathspecs` so a `*` in a file name is that character, and bounds its output by `revisionLimits`. `searchRevision` also takes `attributesFrom`, the commit whose `.gitattributes` decide which files `git grep -I` skips as binary, and passes it as `--attr-source`; the lens tool passes the review's base, as the diff does. Without it git reads the checkout's attributes, and a head that adds `*.ts -diff` hides its own TypeScript from search.
 
 Unlike the policy source, these truncate rather than fail at a bound. A lens asked to read a 2 MB generated file should see its first 256 KiB and a note, not an error it cannot recover from; policy, by contrast, must never be silently cut.
 
