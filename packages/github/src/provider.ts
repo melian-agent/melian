@@ -121,6 +121,7 @@ export function createGitHubProvider(options: GitHubProviderOptions): ReviewProv
 				octokit.rest.pulls.get({ owner, repo, pull_number: number }),
 			);
 			const pullRequest: PullRequest = {
+				repository: { owner: data.base.repo.owner.login, name: data.base.repo.name },
 				number: data.number,
 				title: data.title,
 				url: data.html_url,

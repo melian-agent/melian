@@ -24,6 +24,7 @@ import {
 	AdjudicationTask,
 	type AdjudicationTaskInput,
 	adjudicationInput,
+	type ReviewOrigin,
 	readVerdict,
 } from "./adjudication.ts";
 import { checksExtension } from "./checks.ts";
@@ -318,6 +319,11 @@ export interface ReviewOptions {
 	 * repeat review attaches to the finished task and reports the same failure, so it spends no tokens unasked.
 	 */
 	readonly rerun?: boolean;
+	/**
+	 * Where the revision came from, recorded with the verdict. Only a `pull-request` review whose policy came from a
+	 * revision can be published. A range by default.
+	 */
+	readonly origin?: ReviewOrigin;
 	readonly context?: Context;
 }
 
@@ -594,6 +600,8 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		findingsVersion: await findingsVersion(harness, root, reviewed, context),
 		allowSkip,
 		producers,
+		origin: options.origin ?? { kind: "range" },
+		lenses: lenses.map((lens) => lens.key),
 	});
 	const adjudication = await startAdjudication(harness, input, lenses, context);
 	const forget = (index: ReviewIndexState) => {

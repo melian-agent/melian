@@ -4,6 +4,8 @@ import type { Finding } from "./findings.ts";
 
 /** A pull request as its provider reports it. Commit hashes are full. */
 export interface PullRequest {
+	/** The repository the pull request belongs to, as the provider names it. */
+	readonly repository: { readonly owner: string; readonly name: string };
 	readonly number: number;
 	readonly title: string;
 	readonly url: string;

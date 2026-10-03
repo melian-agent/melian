@@ -22,6 +22,7 @@ import {
 	type Harness,
 	openHarness,
 	publishExtension,
+	type ReviewOrigin,
 	reviewChangeset,
 	type Storage,
 } from "@melian-agent/pipeline";
@@ -139,17 +140,36 @@ export function openPublishHarness(storage: Storage, fake: FakeModels, provider:
 	return openHarness(storage, { models: fake.models, registry, settings: { retry: { enabled: false } } });
 }
 
-// Reviews `main...feature` from the base's policy, the lenses answering from `script`; `rerun` runs again a lens that
-// failed at this head. Returns the changeset.
+/** How {@link reviewScenario} reviews: by default `main...feature` as pull request #7, under the base's policy. */
+export interface ScenarioReview {
+	readonly range?: string;
+	readonly origin?: "range";
+	readonly policy?: "worktree";
+}
+
+// Reviews the scenario, the lenses answering from `script`; `rerun` runs again a lens that failed at this head. Returns
+// the changeset.
 export async function reviewScenario(
 	repo: string,
 	harness: Harness,
 	fake: FakeModels,
 	script: LensScript,
 	rerun = false,
+	how: ScenarioReview = {},
 ) {
-	const changeset: Changeset = await resolveRange(repo, "main...feature");
-	const source: RepositorySource = { kind: "revision", commit: changeset.revision.base };
+	const changeset: Changeset = await resolveRange(repo, how.range ?? "main...feature");
+	const source: RepositorySource =
+		how.policy === "worktree" ? { kind: "worktree" } : { kind: "revision", commit: changeset.revision.base };
+	const origin: ReviewOrigin =
+		how.origin === "range"
+			? { kind: "range" }
+			: {
+					kind: "pull-request",
+					repository: { owner: "melian-agent", name: "example" },
+					pullRequest: 7,
+					base: changeset.revision.base,
+					head: changeset.revision.head,
+				};
 	const lenses = await loadLenses(
 		repo,
 		source,
@@ -169,6 +189,7 @@ export async function reviewScenario(
 		models: fake.review,
 		policy: source,
 		rerun,
+		origin,
 		// The default tiers' checks that run without a model, recorded as ran, as runChecks records them.
 		checks: [
 			{ name: "guardrails", status: "ran" },

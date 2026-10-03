@@ -90,7 +90,11 @@ export function fakeGitHub(
 		base: {
 			ref: state.pull.base.ref,
 			sha: state.pull.base.sha,
-			repo: { clone_url: `https://github.com/${state.owner}/${state.repo}.git` },
+			repo: {
+				clone_url: `https://github.com/${state.owner}/${state.repo}.git`,
+				name: state.repo,
+				owner: { login: state.owner },
+			},
 		},
 		head: { ref: state.pull.head.ref, sha: state.pull.head.sha },
 	});

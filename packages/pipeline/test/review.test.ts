@@ -1050,6 +1050,8 @@ describe("adjudication", () => {
 				checks: [failed],
 				allowSkip: [],
 				producers,
+				origin: { kind: "range" },
+				lenses: [],
 			});
 
 			const task = await (await harness.root(context)).commit(

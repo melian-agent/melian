@@ -1,4 +1,4 @@
-export { readVerdict } from "./adjudication.ts";
+export { type ReviewOrigin, readProvenance, readVerdict, type VerdictProvenance } from "./adjudication.ts";
 export {
 	type CheckRun,
 	type CheckRunRecord,

@@ -19,6 +19,7 @@ import {
 	openSqliteStorage,
 	publishReview,
 	ReviewError,
+	type ReviewOrigin,
 	readVerdict,
 	reviewChangeset,
 	revisionKey,
@@ -61,11 +62,19 @@ export async function review(
 	const target = parseTarget(argument);
 	let changeset: Changeset;
 	let source: RepositorySource;
+	let origin: ReviewOrigin = { kind: "range" };
 	if (target.kind === "pullRequest") {
 		const provider = await gitHubFor(io.cwd, io.env);
-		const fetched = await fetchedPullRequest(io.cwd, provider, target.number);
-		changeset = fetched.changeset;
-		source = { kind: "revision", commit: fetched.pullRequest.base.sha };
+		const { pullRequest, changeset: fetched } = await fetchedPullRequest(io.cwd, provider, target.number);
+		changeset = fetched;
+		source = { kind: "revision", commit: pullRequest.base.sha };
+		origin = {
+			kind: "pull-request",
+			repository: pullRequest.repository,
+			pullRequest: pullRequest.number,
+			base: pullRequest.base.sha,
+			head: pullRequest.head.sha,
+		};
 	} else {
 		changeset = await resolveRange(io.cwd, target.spec);
 		const checkedOut = await git(changeset.repoRoot, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "");
@@ -106,6 +115,7 @@ export async function review(
 				tier,
 				checks: checks.records,
 				rerun: options.rerun,
+				origin,
 			}));
 		} catch (error) {
 			if (!(error instanceof ReviewError) || error.verdict === undefined) throw error;

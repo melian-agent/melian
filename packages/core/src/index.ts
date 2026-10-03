@@ -19,6 +19,7 @@ export { type CodeLocation, checkEvidence, classifyCause } from "./cause.ts";
 export {
 	type Changeset,
 	parseRangeSpec,
+	pullRequestChangesetId,
 	type RangeChangeset,
 	type RangeMode,
 	type RangeSpec,

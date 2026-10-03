@@ -1,5 +1,5 @@
 import { rmSync } from "node:fs";
-import type { Changeset, ReviewProvider } from "@melian-agent/core";
+import { type Changeset, pullRequestChangesetId, type ReviewProvider, resolveRange } from "@melian-agent/core";
 import { createGitHubProvider, marker, parseMarker, statusContext } from "@melian-agent/github";
 import {
 	backgroundContext as context,
@@ -17,6 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type FakeState, fakeGitHub, posts } from "./fixtures/fake-github.ts";
 import {
 	emptyName,
+	gitIn,
 	isolatedGitEnv,
 	lensScript,
 	moveTo,
@@ -406,6 +407,56 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(refused).toBeInstanceOf(PublishError);
 		expect(refused).toMatchObject({ code: "staleReview", pullRequest: 7 });
 		expect((refused as Error).message).toContain("run melian review '#7'");
+		expect(posts(state)).toEqual([]);
+	});
+
+	it("refuses to publish a range review of the refs Melian fetched for the pull request, from the checkout", async () => {
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		const github = providerFor(state);
+		harness = await openPublishHarness(createMemoryStorage(), fake, github);
+		gitIn(repo, "update-ref", "refs/melian/pull/7/base", "main");
+		gitIn(repo, "update-ref", "refs/melian/pull/7/head", "feature");
+		// The head is checked out, so a range review of it reads policy from the working tree, as the CLI's does.
+		const { changeset, review } = await reviewScenario(
+			repo,
+			harness,
+			fake,
+			lensScript(unsafeManager, emptyName, nanRetries),
+			false,
+			{ range: "refs/melian/pull/7/base...refs/melian/pull/7/head", origin: "range", policy: "worktree" },
+		);
+		await review.catch(() => {});
+		moveTo(state, changeset);
+
+		const refused = await publish(github, changeset).catch((error: unknown) => error);
+
+		expect(refused).toMatchObject({ code: "notPublishable", pullRequest: 7 });
+		expect((refused as Error).message).toContain("it reviewed a range, not the pull request");
+		expect(posts(state)).toEqual([]);
+		// Either spelling of the refs is a range, whose storage is never the pull request's.
+		const short = await resolveRange(repo, "melian/pull/7/base...melian/pull/7/head");
+		const pull = pullRequestChangesetId("github", { owner: "melian-agent", name: "example" }, 7);
+		expect(short.id).toBe(changeset.id);
+		expect(pull).not.toBe(changeset.id);
+		expect(pull).toMatch(/^pull-[0-9a-f]{16}$/);
+	});
+
+	it("refuses to publish a pull request's review whose policy came from the working tree", async () => {
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		const github = providerFor(state);
+		harness = await openPublishHarness(createMemoryStorage(), fake, github);
+		const { changeset, review } = await reviewScenario(repo, harness, fake, lensScript(unsafeManager), false, {
+			policy: "worktree",
+		});
+		await review.catch(() => {});
+		moveTo(state, changeset);
+
+		const refused = await publish(github, changeset).catch((error: unknown) => error);
+
+		expect(refused).toMatchObject({ code: "notPublishable" });
+		expect((refused as Error).message).toContain("its policy came from worktree");
 		expect(posts(state)).toEqual([]);
 	});
 

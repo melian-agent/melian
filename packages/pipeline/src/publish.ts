@@ -13,7 +13,7 @@ import {
 	reviewStatus,
 	type Verdict,
 } from "@melian-agent/core";
-import { readVerdict, type StoredVerdict } from "./adjudication.ts";
+import { readProvenance, readVerdict, type StoredVerdict, type VerdictProvenance } from "./adjudication.ts";
 import { PublishError } from "./errors.ts";
 import { revisionKey } from "./findings.ts";
 import {
@@ -430,6 +430,27 @@ function short(commit: string): string {
 	return commit.slice(0, 12);
 }
 
+// Why a verdict decided from `provenance` must not reach `pullRequest`, or `undefined` when it may. Only a review of
+// the pull request itself, fetched from its provider, under policy read from the base commit the provider reported,
+// is publishable: a range naming the refs Melian fetched for the pull request is still a range, and a review whose
+// policy came from the working tree obeyed whatever was checked out.
+function unpublishable(provenance: VerdictProvenance | undefined, pullRequest: PullRequest): string | undefined {
+	if (provenance === undefined) return "its review recorded no provenance";
+	if (provenance.kind !== "pull-request") return `it reviewed a ${provenance.kind}, not the pull request`;
+	const { owner, name } = pullRequest.repository;
+	if (provenance.repository.owner !== owner || provenance.repository.name !== name) {
+		return `it reviewed ${provenance.repository.owner}/${provenance.repository.name}, not ${owner}/${name}`;
+	}
+	if (provenance.pullRequest !== pullRequest.number) return `it reviewed pull request #${provenance.pullRequest}`;
+	if (provenance.head !== pullRequest.head.sha) {
+		return `the provider reported head ${short(provenance.head)} to the review, and reports ${short(pullRequest.head.sha)} now`;
+	}
+	if (provenance.policy !== `revision:${provenance.base}`) {
+		return `its policy came from ${provenance.policy}, not from base commit ${short(provenance.base)}`;
+	}
+	return undefined;
+}
+
 /**
  * Publishes the verdict recorded for a pull request's head: one review whose body is the verdict and whose comments
  * are the findings not already open, a reply in each resolved finding's thread, and the review's status. Every post is
@@ -441,7 +462,8 @@ function short(commit: string): string {
  * shows now.
  *
  * Throws {@link PublishError}: `staleReview` when the changeset's head or base is not the pull request's, `notReviewed`
- * when no verdict is recorded for that base and head, `notInstalled` when the harness lacks {@link publishExtension}, and
+ * when no verdict is recorded for that base and head, `notPublishable` when the verdict's provenance is not a review of
+ * this pull request, fetched from the provider, under policy from the base commit it reported, `notInstalled` when the harness lacks {@link publishExtension}, and
  * `publishFailed` when the provider refused a post.
  */
 export async function publishReview(options: PublishOptions): Promise<Publication> {
@@ -470,6 +492,14 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		throw new PublishError(
 			"notReviewed",
 			`Melian has no review of ${short(head)} from ${short(changeset.revision.base)}; ${again}`,
+			where,
+		);
+	}
+	const mismatch = unpublishable(await readProvenance(harness, root, revision, context), pullRequest);
+	if (mismatch !== undefined) {
+		throw new PublishError(
+			"notPublishable",
+			`Melian will not publish its review of ${short(head)} to pull request #${pullRequest.number}: ${mismatch}; ${again}`,
 			where,
 		);
 	}

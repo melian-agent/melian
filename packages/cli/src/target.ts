@@ -2,10 +2,17 @@ import {
 	type Changeset,
 	ChangesetError,
 	type PullRequest,
+	pullRequestChangesetId,
 	type ReviewProvider,
 	resolveRange,
 } from "@melian-agent/core";
-import { createGitHubProvider, GitHubError, parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
+import {
+	createGitHubProvider,
+	GitHubError,
+	type GitHubRepository,
+	parseGitHubRemote,
+	resolveGitHubToken,
+} from "@melian-agent/github";
 import { CliError, fetchBase, fetchPullRequest, git, pullRequestRefs } from "./repository.ts";
 
 export type Target =
@@ -20,13 +27,17 @@ export function parseTarget(argument: string): Target {
 
 const remote = "origin";
 
-export async function gitHubFor(cwd: string, env: NodeJS.ProcessEnv): Promise<ReviewProvider> {
+async function gitHubRepository(cwd: string): Promise<GitHubRepository> {
 	const url = await git(cwd, ["remote", "get-url", remote]).catch(() => {
 		throw new CliError(
 			`this repository has no ${remote} remote, so Melian cannot tell which GitHub repository it is`,
 		);
 	});
-	const { owner, repo } = parseGitHubRemote(url);
+	return parseGitHubRemote(url);
+}
+
+export async function gitHubFor(cwd: string, env: NodeJS.ProcessEnv): Promise<ReviewProvider> {
+	const { owner, repo } = await gitHubRepository(cwd);
 	const found = await resolveGitHubToken(env);
 	if (found === undefined) {
 		throw new GitHubError("noToken", "no GitHub token: set GITHUB_TOKEN or GH_TOKEN, or log in with gh auth login");
@@ -34,9 +45,17 @@ export async function gitHubFor(cwd: string, env: NodeJS.ProcessEnv): Promise<Re
 	return createGitHubProvider({ owner, repo, token: found.token });
 }
 
+// The range over the refs Melian fetched, under the pull request's own changeset ID. A range review of the same refs
+// keeps its range ID, so it never shares the pull request's storage, or its verdicts.
+async function asPullRequest(cwd: string, number: number): Promise<Changeset> {
+	const range = await resolveRange(cwd, pullRequestRefs(number).range);
+	const { owner, repo } = await gitHubRepository(cwd);
+	return { ...range, id: pullRequestChangesetId("github", { owner, name: repo }, number) };
+}
+
 export async function pullRequestChangeset(cwd: string, number: number): Promise<Changeset> {
 	try {
-		return await resolveRange(cwd, pullRequestRefs(number).range);
+		return await asPullRequest(cwd, number);
 	} catch (error) {
 		if (error instanceof ChangesetError && error.code === "unknownRef") {
 			throw new CliError(`Melian has not reviewed pull request #${number} here; run melian review #${number} first`);
@@ -52,7 +71,7 @@ export async function fetchedPullRequest(
 ): Promise<{ pullRequest: PullRequest; changeset: Changeset }> {
 	const pullRequest = await provider.pullRequest(number);
 	await fetchPullRequest(cwd, remote, pullRequest);
-	return { pullRequest, changeset: await resolveRange(cwd, pullRequestRefs(number).range) };
+	return { pullRequest, changeset: await asPullRequest(cwd, number) };
 }
 
 // The commit the pull request diffs from now: the merge base of its base branch, fetched afresh, and its head. A
