@@ -62,12 +62,12 @@ function producerKey(source: FindingSource): string {
 	return `${source.check}@${source.version ?? ""}`;
 }
 
-/** Whether `source` has sighted finding `id` at `head`. */
+// Whether `source` has sighted finding `id` at `head`.
 export function hasSighting(state: FindingsState, id: string, head: string, source: FindingSource): boolean {
 	return state.items[id]?.sightings[head]?.[producerKey(source)] !== undefined;
 }
 
-/** How many findings `source` has sighted at `head`. */
+// How many findings `source` has sighted at `head`.
 export function sightingCount(state: FindingsState, head: string, source: FindingSource): number {
 	const key = producerKey(source);
 	return Object.values(state.items).filter((record) => record.sightings[head]?.[key] !== undefined).length;

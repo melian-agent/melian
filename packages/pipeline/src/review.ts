@@ -44,12 +44,12 @@ import {
 import { modelsOf, type ReviewModels } from "./models.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
 
-/** One lens as the lens task runs it: everything resolved, nothing left to look up. */
+// One lens as the lens task runs it: everything resolved, nothing left to look up.
 interface LensRun {
 	readonly key: string;
 	readonly name: string;
 	readonly version: string;
-	/** The tier's models that were known with credentials when the review started, in routing order. */
+	// The tier's models that were known with credentials when the review started, in routing order.
 	readonly route: readonly ModelReference[];
 	readonly instructions: string;
 	readonly tools: readonly LensToolName[];
@@ -57,7 +57,7 @@ interface LensRun {
 	readonly rules: readonly LensRule[];
 	readonly budget: number;
 	readonly coverage: LensCoverage;
-	/** The change as this lens sees it: only the files it covers. */
+	// The change as this lens sees it: only the files it covers.
 	readonly prompt: string;
 }
 

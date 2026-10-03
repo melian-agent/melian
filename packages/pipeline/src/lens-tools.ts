@@ -43,20 +43,20 @@ type ReviewHunk = {
 	added: string;
 };
 
-/** A changed file as the review document keeps it: enough to classify cause, without the hunks' text. */
+// A changed file as the review document keeps it: enough to classify cause, without the hunks' text.
 type ReviewFile = { path: string; status: ChangedFile["status"]; binary: boolean; hunks: ReviewHunk[] };
 
-/** The revision a lens reviews, fixed when its lens task creates it. */
+// The revision a lens reviews, fixed when its lens task creates it.
 export type ReviewState = {
 	repoRoot: string;
-	/** This review's boundary nonce: head content reaches a lens only inside `quoteUntrusted` blocks carrying it. */
+	// This review's boundary nonce: head content reaches a lens only inside `quoteUntrusted` blocks carrying it.
 	nonce: string;
 	base: string;
 	head: string;
 	files: ReviewFile[];
 };
 
-/** The fields of `files` that the review document keeps. */
+// The fields of `files` that the review document keeps.
 export function reviewFiles(files: readonly ChangedFile[]): ReviewFile[] {
 	return files.map(({ path, status, binary, hunks }) => ({
 		path,
@@ -85,22 +85,20 @@ function changedFiles(review: ReviewState): ChangedFile[] {
 	}));
 }
 
-/** What a lens conversation may do, written on it in the commit that creates it. */
+// What a lens conversation may do, written on it in the commit that creates it.
 export type LensPolicy = {
 	name: string;
 	version: string;
-	/** The root conversation, which owns the review and its findings document. */
+	// The root conversation, which owns the review and its findings document.
 	review: ConversationId;
-	/**
-	 * The revision this lens reviews. Each lens carries its own, so a later review of the same changeset, whose lens task
-	 * may start while a crashed one resumes, never moves an earlier lens to a different head.
-	 */
+	// The revision this lens reviews. Each lens carries its own, so a later review of the same changeset, whose lens task
+	// may start while a crashed one resumes, never moves an earlier lens to a different head.
 	revision: ReviewState;
 	tools: LensToolName[];
 	severities: Severity[];
 	rules: LensRule[];
 	budget: number;
-	/** Where the lens may report: its folder and paths, less any folder a nearer lens of its name covers. */
+	// Where the lens may report: its folder and paths, less any folder a nearer lens of its name covers.
 	coverage: { scope: string; paths: string[]; nearer: string[] };
 };
 
@@ -243,16 +241,14 @@ const listFiles = defineTool({
 	},
 });
 
-/**
- * The `injection_policy` section: in a lens conversation, the rule that everything inside this review's boundaries is
- * data. Lens conversations select only the lens extension, so it renders first, ahead of the lens's instructions.
- */
+// The `injection_policy` section: in a lens conversation, the rule that everything inside this review's boundaries is
+// data. Lens conversations select only the lens extension, so it renders first, ahead of the lens's instructions.
 export const injectionPolicySection = section("injection_policy", async (input, context) => {
 	const lens = (await input.read.snapshot(LensDocument, input.conversationId, context))?.lens;
 	return lens === undefined ? undefined : injectionPolicy(lens.revision.nonce);
 });
 
-/** The read-only tools a lens may be offered, by the names `LENS.md` lists them under. */
+// The read-only tools a lens may be offered, by the names `LENS.md` lists them under.
 export const lensReadTools = { read_file: readFile, search, list_files: listFiles } as const;
 
 function overlapping(file: ReviewFile | undefined, startLine: number, endLine: number): ReviewHunk | undefined {
@@ -261,10 +257,6 @@ function overlapping(file: ReviewFile | undefined, startLine: number, endLine: n
 	);
 }
 
-/**
- * Builds the finding a `report_finding` call describes. The snippet comes from the head revision at the reported
- * lines, never from the model, so a finding's ID does not depend on how the model quoted the code.
- */
 async function headLines(review: ReviewState, path: string, line: number, endLine: number) {
 	if (endLine < line) throw new Error(`endLine ${endLine} is before line ${line}`);
 	const { content, truncated } = await readRevisionFile(review.repoRoot, review.head, path);
@@ -331,12 +323,10 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 	});
 }
 
-/**
- * `report_finding`: the only way a finding leaves a lens. An idempotent upsert into the root conversation's findings
- * document, keyed by the finding's stable ID, so it is safe to replay after a crash. The budget is checked inside the
- * commit, where parallel calls in one round see each other's findings, and where a finding this lens already reported
- * at this head always passes, so a replay or a correction succeeds at a full budget.
- */
+// `report_finding`: the only way a finding leaves a lens. An idempotent upsert into the root conversation's findings
+// document, keyed by the finding's stable ID, so it is safe to replay after a crash. The budget is checked inside the
+// commit, where parallel calls in one round see each other's findings, and where a finding this lens already reported
+// at this head always passes, so a replay or a correction succeeds at a full budget.
 export const reportFinding = defineTool({
 	name: "report_finding",
 	description:
@@ -367,11 +357,9 @@ export const reportFinding = defineTool({
 	},
 });
 
-/**
- * Enforces each lens's policy before a tool call runs: only the tools the lens lists plus `report_finding`, and only its
- * severities and rules. `report_finding` checks the budget inside its commit, where it can tell a new finding from a
- * correction of one the lens already reported. Calls in conversations that are not lenses pass untouched.
- */
+// Enforces each lens's policy before a tool call runs: only the tools the lens lists plus `report_finding`, and only
+// its severities and rules. `report_finding` checks the budget inside its commit, where it can tell a new finding from
+// a correction of one the lens already reported. Calls in conversations that are not lenses pass untouched.
 export const lensPolicyHook = hook(ToolTask, {
 	beforeTool: async (call, api, context) => {
 		const lens = (await api.snapshot(LensDocument, api.conversationId, context))?.lens;
