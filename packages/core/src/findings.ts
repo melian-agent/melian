@@ -44,6 +44,7 @@ export const findingSourceSchema = Type.Object({ check: text, version: Type.Opti
 export const findingPropertiesSchema = Type.Object(
 	{
 		id: Type.String({ pattern: "^[0-9a-f]{16}$" }),
+		path: text,
 		occurrence: Type.Optional(count),
 		discriminator: Type.Optional(text),
 		cause: causeSchema,
@@ -125,7 +126,7 @@ export type FindingSource = Static<typeof findingSourceSchema>;
 /** Melian's extensions to a SARIF `result`, carried in its property bag. */
 export type FindingProperties = Static<typeof findingPropertiesSchema>;
 
-/** Where a finding points: a repository-relative file and a line region, with an optional snippet. */
+/** Where a finding points: a file, as a URI relative to the repository root, and a line region, with an optional snippet. */
 export type FindingLocation = Static<typeof findingLocationSchema>;
 
 /**
@@ -139,6 +140,25 @@ export type Finding = Static<typeof findingSchema>;
 
 /** A SARIF 2.1.0 log of one Melian run. */
 export type FindingsLog = Static<typeof findingsLogSchema>;
+
+// Percent-encodes each segment; decodeURIComponent on each segment reverses it.
+function repositoryUri(path: string, pointer = "/properties/path"): string {
+	const segments = path.split("/");
+	const problem =
+		path === ""
+			? "is empty"
+			: segments[0] === ""
+				? "is absolute"
+				: segments.includes("..")
+					? "escapes the repository"
+					: path.isWellFormed()
+						? undefined
+						: "is not well-formed Unicode";
+	if (problem !== undefined) {
+		throw new FindingError("invalidPath", `${JSON.stringify(path)} ${problem}`, { path: pointer });
+	}
+	return segments.map(encodeURIComponent).join("/");
+}
 
 /** What a finding's stable ID is computed from. */
 export interface FindingIdInput {
@@ -303,7 +323,8 @@ function defined<T extends object>(value: T): T {
 }
 
 /**
- * Builds a finding, deriving its level and ID. Throws {@link FindingError}: `missingDiscriminator` when a finding with a
+ * Builds a finding, deriving its level, ID, and URI. Throws {@link FindingError}: `invalidPath` when the file is
+ * absolute or escapes the repository, `missingDiscriminator` when a finding with a
  * snippet has no occurrence or one without a snippet has no discriminator, and `invalidFinding` if the result is invalid.
  */
 export function createFinding(input: FindingInput): Finding {
@@ -317,7 +338,7 @@ export function createFinding(input: FindingInput): Finding {
 		locations: [
 			{
 				physicalLocation: {
-					artifactLocation: { uri: file },
+					artifactLocation: { uri: repositoryUri(file) },
 					region: defined({
 						startLine: input.startLine,
 						endLine: input.endLine,
@@ -330,6 +351,7 @@ export function createFinding(input: FindingInput): Finding {
 		],
 		properties: defined({
 			id,
+			path: file,
 			occurrence: hasSnippet ? occurrence : undefined,
 			discriminator: hasSnippet ? undefined : discriminator,
 			cause: input.cause,
@@ -348,7 +370,8 @@ export function createFinding(input: FindingInput): Finding {
  * Checks that `value` is a valid finding and returns it.
  *
  * Throws {@link FindingError}: `invalidFinding` when it does not match {@link findingSchema}, `levelMismatch` when its
- * level is not {@link levelForSeverity} of its severity, `missingDiscriminator` when it lacks the occurrence or
+ * level is not {@link levelForSeverity} of its severity, `invalidPath` when its path is absolute or escapes the
+ * repository or its URI does not encode that path, `missingDiscriminator` when it lacks the occurrence or
  * discriminator its snippet calls for, and `idMismatch` when its ID is not {@link findingId} of its first location.
  */
 export function parseFinding(value: unknown): Finding {
@@ -373,6 +396,13 @@ export function parseFinding(value: unknown): Finding {
 		});
 	}
 	const { artifactLocation, region } = finding.locations[0]!.physicalLocation;
+	const { path, trigger } = finding.properties;
+	if (artifactLocation.uri !== repositoryUri(path)) {
+		throw new FindingError("invalidPath", `finding URI ${artifactLocation.uri} does not encode its path ${path}`, {
+			path: "/locations/0/physicalLocation/artifactLocation/uri",
+		});
+	}
+	if (trigger !== undefined) repositoryUri(trigger.file, "/properties/trigger/file");
 	const snippet = region.snippet?.text ?? "";
 	const { occurrence, discriminator } = finding.properties;
 	const extra = normalise(snippet) === "" ? occurrence : discriminator;
@@ -382,7 +412,7 @@ export function parseFinding(value: unknown): Finding {
 			path: `/properties/${key}`,
 		});
 	}
-	const expected = findingId({ file: artifactLocation.uri, rule: finding.ruleId, snippet, occurrence, discriminator });
+	const expected = findingId({ file: path, rule: finding.ruleId, snippet, occurrence, discriminator });
 	if (id !== expected) {
 		throw new FindingError("idMismatch", `finding ${id} should have ID ${expected}`, { path: "/properties/id" });
 	}

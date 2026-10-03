@@ -152,6 +152,7 @@ describe("createFinding", () => {
 			],
 			properties: {
 				id: findingId(evalCall),
+				path: "src/run.ts",
 				occurrence: 0,
 				cause: "introduced",
 				trigger: { file: "src/run.ts", oldStart: 11, oldLines: 1, newStart: 12, newLines: 1 },
@@ -169,7 +170,7 @@ describe("createFinding", () => {
 		const finding = createFinding(minimalInput);
 		expect(finding.locations[0]!.physicalLocation.region).toEqual({ startLine: 4 });
 		expect(Object.keys(finding.properties).sort()).toEqual(
-			["cause", "discriminator", "explanation", "id", "resolution", "severity", "source", "status"].sort(),
+			["cause", "discriminator", "explanation", "id", "path", "resolution", "severity", "source", "status"].sort(),
 		);
 		expect(finding.properties.id).toBe(
 			findingId({ file: "src/total.ts", rule: "prefer-const", snippet: "", discriminator: "total" }),
@@ -207,6 +208,23 @@ describe("a findings log", () => {
 		expect(parsed.runs[0]!.results.map(parseFinding)).toEqual(log.runs[0]!.results);
 	});
 
+	it.each([
+		["a space", "docs/release notes.md", "docs/release%20notes.md"],
+		["a percent sign", "src/100%.ts", "src/100%25.ts"],
+		["a hash", "src/#private.ts", "src/%23private.ts"],
+		["a question mark", "src/why?.ts", "src/why%3F.ts"],
+		["non-ASCII", "src/café/naïve.ts", "src/caf%C3%A9/na%C3%AFve.ts"],
+		["a colon in the first segment", "c:/run.ts", "c%3A/run.ts"],
+	])("encodes a path with %s as a valid URI and keeps the raw path", (_, file, uri) => {
+		const finding = createFinding({ ...evalInput, file, trigger: undefined });
+		const location = finding.locations[0]!.physicalLocation.artifactLocation;
+		expect(location.uri).toBe(uri);
+		expect(location.uri.split("/").map(decodeURIComponent).join("/")).toBe(file);
+		expect(finding.properties.path).toBe(file);
+		expect(finding.properties.id).toBe(findingId({ ...evalCall, file }));
+		expect(Schema.Errors(sarifSchema, createFindingsLog([finding]))[1]).toEqual([]);
+	});
+
 	it("is not valid SARIF once an extension moves out of the property bag", () => {
 		const finding = createFinding(evalInput);
 		const moved = { ...finding, severity: finding.properties.severity };
@@ -216,6 +234,30 @@ describe("a findings log", () => {
 
 describe("parseFinding", () => {
 	const finding = createFinding(evalInput);
+
+	it.each([
+		["absolute", "/etc/passwd"],
+		["escaping the repository", "../outside.ts"],
+		["escaping from inside", "src/../../outside.ts"],
+		["empty", ""],
+	])("refuses a path that is %s", (_, file) => {
+		expect(() => createFinding({ ...evalInput, file, trigger: undefined })).toThrow(
+			expect.objectContaining({ code: "invalidPath", path: "/properties/path" }),
+		);
+	});
+
+	it("refuses a trigger in a file outside the repository", () => {
+		const trigger = { ...evalInput.trigger!, file: "../run.ts" };
+		expect(() => createFinding({ ...evalInput, trigger })).toThrow(
+			expect.objectContaining({ code: "invalidPath", path: "/properties/trigger/file" }),
+		);
+	});
+
+	it("refuses a URI that does not encode the path", () => {
+		const moved = structuredClone(finding);
+		moved.locations[0]!.physicalLocation.artifactLocation.uri = "src/other.ts";
+		expect(rejection(moved).code).toBe("invalidPath");
+	});
 
 	it("rejects an unknown key in the property bag, so a misspelt optional key is not lost", () => {
 		const error = rejection({ ...finding, properties: { ...finding.properties, confidance: 0.5 } });

@@ -34,6 +34,7 @@
           ],
           "properties": {
             "id": "2de4ddbbdbf7cd15",
+            "path": "src/run.ts",
             "occurrence": 0,
             "cause": "affected",
             "severity": "P3",
@@ -71,6 +72,7 @@
           ],
           "properties": {
             "id": "3de0bdc88a0488a9",
+            "path": "src/total.ts",
             "discriminator": "total",
             "cause": "pre-existing",
             "severity": "nit",
@@ -112,6 +114,7 @@
           ],
           "properties": {
             "id": "d8fbb7744f3d71aa",
+            "path": "src/run.ts",
             "occurrence": 0,
             "cause": "introduced",
             "trigger": {
@@ -162,6 +165,7 @@
           ],
           "properties": {
             "id": "ca63cf1ea8a3dd6f",
+            "path": "src/run.ts",
             "occurrence": 0,
             "cause": "introduced",
             "trigger": {
@@ -212,6 +216,7 @@
           ],
           "properties": {
             "id": "1f6a6710b234ec5a",
+            "path": "src/run.ts",
             "occurrence": 0,
             "cause": "introduced",
             "trigger": {

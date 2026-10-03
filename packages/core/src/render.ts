@@ -40,7 +40,7 @@ function region(finding: Finding) {
 }
 
 function fileOf(finding: Finding): string {
-	return finding.locations[0]!.physicalLocation.artifactLocation.uri;
+	return finding.properties.path;
 }
 
 function compare(a: Finding, b: Finding): number {

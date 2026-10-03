@@ -68,6 +68,7 @@ export class OutsideRepositoryError extends Error {
 export type FindingErrorCode =
 	| "invalidFinding"
 	| "levelMismatch"
+	| "invalidPath"
 	| "missingDiscriminator"
 	| "snippetNotFound"
 	| "idMismatch";
