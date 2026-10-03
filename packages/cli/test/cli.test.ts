@@ -44,7 +44,7 @@ function melian(cwd: string, args: string[], env: Record<string, string> = {}) {
 }
 
 // The checks of the default tiers Melian does not run yet, allowed to skip so a review can reach a verdict.
-const allowUnbuiltChecks = "checks:\n  allowSkip: [guardrails, static]\n";
+const allowUnbuiltChecks = "checks:\n  allowSkip: [guardrails, static.biome, static.tsc]\n";
 
 // A golden's repository, checked out on its feature branch, and a script the CLI's scripted mode answers lenses from.
 // Its uncommitted melian.yaml, unless policy is null, applies to a range on the checked-out commit.

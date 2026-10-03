@@ -35,7 +35,7 @@ The tier `melian.yaml` maps the `pull-request` stage to is the review's manifest
 
 ```yaml
 checks:
-  allowSkip: [guardrails, static]
+  allowSkip: [guardrails, static.biome, static.tsc]
 ```
 
 A repeat `review` of the same base and head attaches to the last review's finished lens task and prints the failure it stored, so it spends no tokens unasked. `--rerun` runs the failed lenses again, after a rate limit or an outage.

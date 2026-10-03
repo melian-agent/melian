@@ -1,4 +1,13 @@
 export { readVerdict } from "./adjudication.ts";
+export {
+	type CheckRun,
+	type CheckRunRecord,
+	checksExtension,
+	type RunChecksInput,
+	type RunIdentity,
+	readCheckRecords,
+	runChecks,
+} from "./checks.ts";
 export { createReviewModels, piAuthPath, piCredentialStore } from "./credentials.ts";
 export {
 	PiCredentialsError,
@@ -38,6 +47,7 @@ export {
 	renderChangePrompt,
 	reviewChangeset,
 } from "./review.ts";
+export { runStaticTool, type StaticRun, type StaticRunInput, staticOutputLimit } from "./static.ts";
 export {
 	injectionAttemptRule,
 	quoteUntrusted,

@@ -169,10 +169,11 @@ export async function reviewScenario(
 		models: fake.review,
 		policy: source,
 		rerun,
-		// The default tiers' checks that run without a model, as pull request #18's runChecks will record them.
+		// The default tiers' checks that run without a model, recorded as ran, as runChecks records them.
 		checks: [
 			{ name: "guardrails", status: "ran" },
-			{ name: "static", status: "ran" },
+			{ name: "static.biome", status: "ran" },
+			{ name: "static.tsc", status: "ran" },
 		],
 	});
 	return { changeset, review };
