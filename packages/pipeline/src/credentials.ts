@@ -36,17 +36,21 @@ function isCredential(value: unknown): value is Credential {
 }
 
 // Pi resolves `!command` keys by running them and `$VAR` keys from the environment. Melian does neither, so such a
-// key reads as absent and the provider's environment variable applies instead.
-function literal(credential: Credential): Credential | undefined {
-	if (credential.type !== "api_key" || credential.key === undefined) return credential;
+// key reads as absent and the provider's environment variable applies instead. An expired OAuth login reads as absent
+// too: refreshing it would need a write, and pi-ai's checkAuth does not look at expiry, so model selection would
+// otherwise pick a provider whose every request then fails.
+function usable(credential: Credential): Credential | undefined {
+	if (credential.type === "oauth") return Date.now() < credential.expires ? credential : undefined;
+	if (credential.key === undefined) return credential;
 	return credential.key.startsWith("!") || credential.key.includes("$") ? undefined : credential;
 }
 
 /**
  * Pi's credential store, read-only, so one `pi` login covers Melian. It reads `auth.json` afresh on every call, so a
  * token Pi refreshed is seen at once. It never writes: refreshing an expired OAuth token would rotate the refresh
- * token Pi holds, so an expired login is a {@link PiCredentialsError} `readOnly` asking for Pi to be run, not a write.
- * A missing file holds no credentials.
+ * token Pi holds, so an expired login reads as absent, and the provider's environment variable or the next model
+ * applies; a refresh pi-ai attempts anyway is a {@link PiCredentialsError} `readOnly` asking for Pi to be run. A
+ * missing file holds no credentials.
  */
 export function piCredentialStore(path: string = piAuthPath()): CredentialStore {
 	const load = async (): Promise<Stored> => {
@@ -58,8 +62,9 @@ export function piCredentialStore(path: string = piAuthPath()): CredentialStore 
 		let parsed: unknown;
 		try {
 			parsed = JSON.parse(text.replace(/^﻿/, ""));
-		} catch (cause) {
-			throw new PiCredentialsError("invalid", path, `${path} is not JSON`, { cause });
+		} catch {
+			// No cause: V8's SyntaxError quotes the text around the fault, which may be part of a key.
+			throw new PiCredentialsError("invalid", path, `${path} is not JSON`);
 		}
 		if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
 			throw new PiCredentialsError("invalid", path, `${path} must hold an object of credentials by provider`);
@@ -85,7 +90,7 @@ export function piCredentialStore(path: string = piAuthPath()): CredentialStore 
 		async read(provider: string, options?: AuthOperationOptions) {
 			options?.signal?.throwIfAborted();
 			const credential = (await load())[provider];
-			return credential === undefined ? undefined : literal(structuredClone(credential));
+			return credential === undefined ? undefined : usable(structuredClone(credential));
 		},
 		async list(options?: AuthOperationOptions): Promise<readonly CredentialInfo[]> {
 			options?.signal?.throwIfAborted();

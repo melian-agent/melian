@@ -31,7 +31,8 @@ Each ID holds two records. The producer record is what the lens or tool reported
 
 The store is read-only, and that has two consequences that read like bugs:
 
-- An expired OAuth login fails with "run pi to refresh". pi-ai refreshes a token by writing it back through the store, and providers such as Anthropic rotate the refresh token on every refresh. A Melian that refreshed in memory without writing would leave Pi holding a dead refresh token.
+- An expired OAuth login reads as absent, so the provider's environment variable or the tier's next model applies, and a refresh pi-ai attempts anyway fails with "run pi to refresh". pi-ai refreshes a token by writing it back through the store, and providers such as Anthropic rotate the refresh token on every refresh. A Melian that refreshed in memory without writing would leave Pi holding a dead refresh token. Expiry is checked in the store because pi-ai's `checkAuth` ignores it, and model selection relies on `checkAuth`.
+- A malformed `auth.json` is a `PiCredentialsError` with no cause: V8's JSON `SyntaxError` quotes the text around the fault, which can be part of a key.
 - A key Pi resolves at use, `!command` or one containing `$VAR`, reads as absent, so the provider's environment variable applies. Melian runs no commands from a credential file.
 
 There is no credential pool yet; one credential per provider.

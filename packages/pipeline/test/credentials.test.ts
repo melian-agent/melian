@@ -83,11 +83,26 @@ describe("createReviewModels", () => {
 		expect(await createReviewModels({ authPath }).checkAuth("openai")).toMatchObject({ type: "api_key" });
 	});
 
-	it("asks for Pi to be run rather than refreshing an expired login", async () => {
+	it("treats an expired login as absent, so the environment or the next model applies", async () => {
 		store({ anthropic: { type: "oauth", access: "old", refresh: "rotating", expires: 0 } });
-		const error = await createReviewModels({ authPath })
-			.getAuth("anthropic")
-			.catch((e: unknown) => e);
-		expect(String((error as Error).message)).toContain("run pi to refresh the anthropic login");
+		expect(await piCredentialStore(authPath).read("anthropic")).toBeUndefined();
+		expect(await createReviewModels({ authPath }).checkAuth("anthropic")).toBeUndefined();
+		vi.stubEnv("ANTHROPIC_API_KEY", "sk-env");
+		expect(await createReviewModels({ authPath }).checkAuth("anthropic")).toMatchObject({ type: "api_key" });
+	});
+
+	it("serves a login that has not expired", async () => {
+		const live = { type: "oauth", access: "a", refresh: "r", expires: Date.now() + 3_600_000 };
+		store({ anthropic: live });
+		expect(await piCredentialStore(authPath).read("anthropic")).toEqual(live);
+	});
+
+	it("keeps the credential file's text out of a parse error", async () => {
+		writeFileSync(authPath, '{"anthropic": {"type": "api_key", "key": "sk-ant-secret" oops}}');
+		const error = (await piCredentialStore(authPath)
+			.read("anthropic")
+			.catch((e: unknown) => e)) as Error;
+		expect(error).toBeInstanceOf(PiCredentialsError);
+		expect(JSON.stringify({ message: error.message, cause: String(error.cause) })).not.toContain("sk-ant");
 	});
 });
