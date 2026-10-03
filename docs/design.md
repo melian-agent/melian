@@ -96,7 +96,8 @@ Only the publish and knowledge tasks hold write credentials. Lenses never see th
 | A new revision, a comment, a command | A `submit()` into that conversation; comments while busy use `whenBusy: "steer"` |
 | A pipeline step | A `defineTask()` with phases and checkpoints |
 | A lens | A child conversation created and owned by the lens task, configured with `configure()` with its own model, instructions, and an explicit tool list, because an owned conversation otherwise inherits its owner's tools. Never a subagent tool the model chooses to call |
-| Findings, triage decisions, knowledge proposals | `defineDoc()` documents, rewindable, committed atomically with the transcript |
+| Findings | A `defineDoc()` document, rewindable, committed atomically with the transcript, and owned by the changeset's root conversation so a fork of the root at any revision carries them. A lens's tool writes to the root through the ID it is constructed with, never to its own child conversation |
+| Triage decisions, knowledge proposals | `defineDoc()` documents, rewindable, committed atomically with the transcript |
 | Standards and lens bodies | `section()` prompt sections rebuilt from files before every request, so edits take effect immediately and the transcript records what the model saw |
 | Idempotent publication | A durable `published` document keyed by revision and finding ID, written in the same commit that records the post, plus a check for Melian's marker on the pull request before posting. Not `api.memo()`: memos are task-scoped and discarded when the task ends |
 | Webhook delivery deduplication | `requestId` on submission, exactly-once. A `requestId` is scoped to one conversation, so the changeset's storage and conversation are resolved before deduplication |
@@ -500,6 +501,7 @@ docs/
 | `.melian/` placement | Any folder level for standards and lenses, nearest-first; knowledge and lens-pack settings at the root only | Per-path content layers like `melian.yaml`; repository-wide state has one home |
 | Finding identity | file, rule, normalised snippet, and occurrence ordinal | Identical snippets in one file must not collide; line shifts must not change the ID |
 | Cause by location | Location proves introduced only; affected needs lens evidence; pre-existing otherwise | A location heuristic must never make an old defect block |
+| Findings ownership | The changeset's root conversation, never a lens's child conversation | A fork of the root at any revision must carry the findings; a lens conversation ends with its task |
 
 ## Open questions
 
