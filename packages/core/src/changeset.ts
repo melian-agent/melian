@@ -126,8 +126,8 @@ async function dirtyPaths(repoRoot: string): Promise<string[]> {
 	const fields = output.split("\0");
 	for (let i = 0; i < fields.length && fields[i] !== ""; i++) {
 		paths.push(fields[i]!.slice(3));
-		// A rename or copy is followed by its source path in a field of its own.
-		if (/^[RC]/.test(fields[i]!)) i++;
+		// A rename or copy, in the index or the working tree, is followed by its source path in a field of its own.
+		if (/^(?:[RC].|.[RC])/.test(fields[i]!)) i++;
 	}
 	return paths;
 }

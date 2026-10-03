@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, symlinkSync } from "node:fs";
+import { mkdirSync, renameSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { ChangesetError, parseRangeSpec, resolveRange } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -229,9 +229,11 @@ describe("resolveRange", () => {
 
 	it("refuses a dirty working tree only when asked to", async () => {
 		writeFiles(repo, { "poem.txt": lines("uncommitted"), "stray.txt": lines("untracked") });
+		renameSync(join(repo, "gone.txt"), join(repo, "moved.txt"));
+		gitIn(repo, "add", "--intent-to-add", "moved.txt");
 		await expect(resolveRange(repo, "main...feature")).resolves.toMatchObject({ kind: "range" });
 		const error = await rejection(resolveRange(repo, "main...feature", { requireClean: true }));
 		expect(error.code).toBe("dirtyWorktree");
-		expect([...error.paths].sort()).toEqual(["poem.txt", "stray.txt"]);
+		expect([...error.paths].sort()).toEqual(["moved.txt", "poem.txt", "stray.txt"]);
 	});
 });
