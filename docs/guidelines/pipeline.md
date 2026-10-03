@@ -22,6 +22,17 @@ It quarantines import paths, not churn. It re-exports Pi's API unchanged, so cal
 - Both take and return core's `Finding`. The document token stays inside the package. `upsertFinding` takes Pi's transaction, so its callers, such as step 5's `report_finding` tool, live in the pipeline.
 - Replacing is right while every finding is `new`. Cross-revision diffing will need an upsert that keeps a finding's status, such as `dismissed`, when a later revision reports it again.
 
+## Credentials
+
+`createReviewModels()` builds the pi-ai model collection a review runs on: every built-in provider, resolving credentials as pi-ai does, a stored credential first and the provider's environment variables second. The store is `piCredentialStore()`, which reads Pi's `auth.json`, the file `pi` writes on `/login`: `$PI_CODING_AGENT_DIR/auth.json`, or `~/.pi/agent/auth.json`. One `pi` login covers Melian.
+
+The store is read-only, and that has two consequences that read like bugs:
+
+- An expired OAuth login fails with "run pi to refresh". pi-ai refreshes a token by writing it back through the store, and providers such as Anthropic rotate the refresh token on every refresh. A Melian that refreshed in memory without writing would leave Pi holding a dead refresh token.
+- A key Pi resolves at use, `!command` or one containing `$VAR`, reads as absent, so the provider's environment variable applies. Melian runs no commands from a credential file.
+
+There is no credential pool yet; one credential per provider.
+
 ## Contracts that read like mistakes
 
 - A task phase reruns from its start after a crash. Work before the phase's checkpoint commit must be safe to repeat, or guarded by a durable record.

@@ -8,6 +8,8 @@
  */
 import type { Context } from "@earendil-works/chord";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
+import type { CredentialStore, Models } from "@earendil-works/pi-ai";
+import { builtinModels } from "@earendil-works/pi-ai/providers/all";
 import {
 	type Harness,
 	type HarnessOptions,
@@ -19,7 +21,16 @@ import {
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
 
 export type { Context } from "@earendil-works/chord";
-export { type AssistantMessage, type Message, Type } from "@earendil-works/pi-ai";
+export {
+	type AssistantMessage,
+	type AuthOperationOptions,
+	type Credential,
+	type CredentialInfo,
+	type CredentialStore,
+	type Message,
+	type Models,
+	Type,
+} from "@earendil-works/pi-ai";
 export {
 	AssistantEntry,
 	type Conversation,
@@ -62,6 +73,11 @@ export function openHarness<Tool extends ToolRegistration>(
 /** Durable storage in one SQLite file, created when absent. One process may own it at a time. */
 export function openSqliteStorage(path: string): Promise<Storage> {
 	return openNodeSqliteStorage(path);
+}
+
+/** Every pi-ai built-in provider, resolving stored credentials from `credentials` before environment variables. */
+export function createProviderModels(credentials: CredentialStore): Models {
+	return builtinModels({ credentials });
 }
 
 /** Storage that keeps everything in memory and persists nothing. */
