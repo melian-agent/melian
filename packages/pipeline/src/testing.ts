@@ -9,6 +9,7 @@ import {
 	type FauxProviderHandle,
 	fauxAssistantMessage,
 	fauxProvider,
+	fauxToolCall,
 	type Message,
 	type Model,
 	type RegisterFauxProviderOptions,
@@ -98,4 +99,40 @@ export function scriptConversations(
 	const total = scripts.reduce((sum, script) => sum + script.replies.length, 0);
 	fake.provider.setResponses(Array.from({ length: total + scripts.length + 8 }, () => respond));
 	return requests;
+}
+
+/** One scripted lens turn: tool calls the model makes, or its final answer. The shape of a golden's `script.json`. */
+export type LensScriptStep =
+	| { readonly calls: readonly { readonly name: string; readonly arguments: Readonly<Record<string, unknown>> }[] }
+	| { readonly text: string };
+
+/** Each lens's turns, in order, by lens name. */
+export type LensScript = Readonly<Record<string, readonly LensScriptStep[]>>;
+
+function lensReply(step: LensScriptStep): ScriptedReply {
+	if ("text" in step) return fauxAssistantMessage(step.text);
+	const calls = step.calls.map((call) =>
+		fauxToolCall(call.name, call.arguments as Parameters<typeof fauxToolCall>[1]),
+	);
+	return fauxAssistantMessage(calls, { stopReason: "toolUse" });
+}
+
+/**
+ * Scripts each lens in `script` by name, matching its conversation by the lens's instructions, as
+ * {@link scriptConversations} does. Throws for a name no lens in `lenses` has. The longest instructions match first,
+ * so a lens extending another is not answered from the other's script.
+ */
+export function scriptLenses(
+	fake: FakeModels,
+	lenses: readonly { readonly name: string; readonly instructions: string }[],
+	script: LensScript,
+): Record<string, Message[][]> {
+	const scripts = Object.entries(script)
+		.map(([name, steps]) => {
+			const lens = lenses.find((each) => each.name === name);
+			if (lens === undefined) throw new Error(`the script names ${name}, which is not a lens here`);
+			return { match: lens.instructions, replies: steps.map(lensReply) };
+		})
+		.sort((a, b) => b.match.length - a.match.length);
+	return scriptConversations(fake, scripts);
 }

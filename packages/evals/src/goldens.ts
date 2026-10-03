@@ -25,13 +25,7 @@ import {
 	openHarness,
 	reviewChangeset,
 } from "@melian-agent/pipeline";
-import {
-	createFakeModels,
-	fauxAssistantMessage,
-	fauxToolCall,
-	type ScriptedReply,
-	scriptConversations,
-} from "@melian-agent/pipeline/testing";
+import { createFakeModels, scriptLenses } from "@melian-agent/pipeline/testing";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 
@@ -185,14 +179,6 @@ function routeEveryTier(config: MelianConfig, model: string, override: boolean):
 	return { ...config, models: { ...config.models, ...models } };
 }
 
-function reply(step: Script[string][number]): ScriptedReply {
-	if ("text" in step) return fauxAssistantMessage(step.text);
-	const calls = step.calls.map((call) =>
-		fauxToolCall(call.name, call.arguments as Parameters<typeof fauxToolCall>[1]),
-	);
-	return fauxAssistantMessage(calls, { stopReason: "toolUse" });
-}
-
 /**
  * Reviews a golden's change the way the CLI will: policy, standards, and lenses from the base commit, the range
  * `main...feature`, and every lens the change selects. Scripted runs answer each lens from `script.json` on the fake
@@ -214,16 +200,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			const ref = fake.ref("scripted");
 			config = routeEveryTier(loaded, `${ref.provider}/${ref.modelId}`, true);
 			models = fake.models;
-			// The longest instructions first, so a lens extending another is not answered from the other's script.
-			const scripts = Object.entries(golden.script)
-				.map(([name, replies]) => {
-					const lens = lenses.find((each) => each.name === name);
-					if (lens === undefined)
-						throw new Error(`${golden.name}/script.json scripts ${name}, which is not a lens here`);
-					return { match: lens.instructions, replies: replies.map(reply) };
-				})
-				.sort((a, b) => b.match.length - a.match.length);
-			scriptConversations(fake, scripts);
+			scriptLenses(fake, lenses, golden.script);
 		} else {
 			config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false);
 			models = mode.models;
