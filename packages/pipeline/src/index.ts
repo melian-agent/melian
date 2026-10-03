@@ -1,7 +1,9 @@
 export {
 	type CheckRecord,
+	type CheckRun,
 	checksExtension,
 	type RunChecksInput,
+	type RunIdentity,
 	readCheckRecords,
 	runChecks,
 } from "./checks.ts";

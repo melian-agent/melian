@@ -109,6 +109,29 @@ export async function upsertFinding(
 	items[properties.id] = { producer, lifecycle };
 }
 
+/**
+ * Makes `findings` the whole of what `check` reports at `revision`: upserts each, and removes any finding the check
+ * reported at `revision` before that is not among them. A dismissed finding is kept, so its dismissal survives if it
+ * returns. Call it in the commit that records the check's outcome, with no findings for a check that failed, so a
+ * failed rerun leaves nothing of an earlier run behind.
+ */
+export async function replaceCheckFindings(
+	tx: Tx,
+	rootConversationId: ConversationId,
+	check: string,
+	revision: string,
+	findings: readonly Finding[],
+): Promise<void> {
+	const { items } = await tx.doc(FindingsDocument, rootConversationId);
+	const kept = new Set(findings.map((finding) => finding.properties.id));
+	for (const [id, { producer, lifecycle }] of Object.entries(items)) {
+		if (kept.has(id) || producer.properties.source.check !== check) continue;
+		if (lifecycle.lastSeenRevision !== revision || lifecycle.status === "dismissed") continue;
+		delete items[id];
+	}
+	for (const finding of findings) await upsertFinding(tx, rootConversationId, finding, revision);
+}
+
 /** Marks a finding dismissed. Throws core's `FindingError` `unknownFinding` if no finding has the ID. */
 export async function dismissFinding(
 	tx: Tx,

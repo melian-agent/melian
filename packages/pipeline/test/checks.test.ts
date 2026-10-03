@@ -49,7 +49,8 @@ async function checks(base: string, head: string, tier?: string, options: { env?
 	const source: RepositorySource = { kind: "revision", commit: base };
 	const { config } = await loadConfig(repo, source, "");
 	const input = { rootConversationId: root.id, changeset, config, source, tier };
-	return { harness, root, input, records: await runChecks(harness, input, context) };
+	const run = await runChecks(harness, input, context);
+	return { harness, root, input, run, records: run.records };
 }
 
 function summary(findings: readonly Finding[]) {
@@ -89,7 +90,7 @@ describe("runChecks", () => {
 			),
 			"src/fixed.ts": lines("export const fixed: number = 1;"),
 		});
-		const { harness, root, records } = await checks(base, head);
+		const { harness, root, run, records } = await checks(base, head);
 		expect(records).toEqual([
 			{ check: "guardrails", status: "ran", findings: 0, notes: [] },
 			{ check: "static.biome", status: "ran", findings: 2, notes: [] },
@@ -104,7 +105,7 @@ describe("runChecks", () => {
 		]);
 		const biome = findings.find((finding) => finding.ruleId.startsWith("biome/"))!;
 		expect(biome.properties.source).toEqual({ check: "static.biome", version: "2.5.15" });
-		expect(await readCheckRecords(harness, root.id, head, context)).toEqual(
+		expect(await readCheckRecords(harness, root.id, run.identity, context)).toEqual(
 			Object.fromEntries(records.map((record) => [record.check, record])),
 		);
 	});
@@ -146,10 +147,10 @@ describe("runChecks", () => {
 		const findings = await readFindings(harness, root.id, context);
 		expect(findings.map((finding) => finding.ruleId)).toEqual(["guardrail/forbidden-paths"]);
 		// Asking again finds the run already done instead of running the tools a second time.
-		expect(await runChecks(harness, input, context)).toEqual(records);
+		expect((await runChecks(harness, input, context)).records).toEqual(records);
 		// Asking for a rerun repeats only the failed checks; with the broken tools gone, Melian's own run.
 		rmSync(join(repo, "node_modules"), { recursive: true, force: true });
-		const rerun = await runChecks(harness, { ...input, rerunFailed: true }, context);
+		const { records: rerun } = await runChecks(harness, { ...input, rerunFailed: true }, context);
 		expect(rerun.map((record) => [record.check, record.status])).toEqual([
 			["guardrails", "ran"],
 			["static.biome", "ran"],
@@ -177,9 +178,48 @@ describe("runChecks", () => {
 		});
 		const { harness, input } = await checks(base, head);
 		const stricter = { ...input, source: { kind: "revision" as const, commit: policy } };
-		expect(await runChecks(harness, stricter, context)).toEqual([
+		expect((await runChecks(harness, stricter, context)).records).toEqual([
 			{ check: "guardrails", status: "ran", findings: 1, notes: [] },
 		]);
+	});
+
+	it("records a fast and a full run of one head apart", { timeout: 120_000 }, async () => {
+		const base = commit(repo, {
+			"melian.yaml": lines("tiers:", "  fast: [guardrails]", "  full: [fast, static.biome]"),
+		});
+		const head = commit(repo, { "src/a.ts": lines("debugger;") });
+		const { harness, root, input, run: fast } = await checks(base, head);
+		const full = await runChecks(harness, { ...input, tier: "full" }, context);
+		expect(Object.keys(await readCheckRecords(harness, root.id, fast.identity, context))).toEqual(["guardrails"]);
+		expect(Object.keys(await readCheckRecords(harness, root.id, full.identity, context))).toEqual([
+			"guardrails",
+			"static.biome",
+		]);
+		expect(fast.identity).toMatchObject({ head, tier: "fast" });
+		expect(full.identity).toMatchObject({ head, tier: "full", policy: fast.identity.policy });
+	});
+
+	it("drops a check's earlier findings at the head when a later run of it fails", { timeout: 60_000 }, async () => {
+		const rule = lines(
+			"tiers:",
+			"  fast: [guardrails]",
+			"guardrails:",
+			"  forbidden-paths:",
+			"    rules:",
+			"      out:",
+			"        paths: [dist/**]",
+			"        message: built output",
+		);
+		const base = commit(repo, { "melian.yaml": rule });
+		const head = commit(repo, { "dist/a.js": lines("built") });
+		const broken = commit(repo, { "melian.yaml": lines(rule, "unknown: key") });
+		const { harness, root, input } = await checks(base, head);
+		expect((await readFindings(harness, root.id, context)).map((finding) => finding.ruleId)).toEqual([
+			"guardrail/forbidden-paths",
+		]);
+		const failed = await runChecks(harness, { ...input, source: { kind: "revision", commit: broken } }, context);
+		expect(failed.records.map((record) => record.status)).toEqual(["failed"]);
+		expect(await readFindings(harness, root.id, context)).toEqual([]);
 	});
 
 	it("records checks it does not run, and fails a name that is no check", { timeout: 60_000 }, async () => {
