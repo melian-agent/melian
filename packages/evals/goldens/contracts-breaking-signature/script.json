@@ -1,7 +1,37 @@
 {
   "correctness": [
     {
-      "text": "Reported 0 findings."
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/price.ts"
+          },
+          "expectToolResult": "format(cents / 100)"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "src/price.ts",
+            "line": 2,
+            "rule": "wrong-result",
+            "severity": "P1",
+            "explanation": {
+              "what": "formatPrice divides every amount by 100, so formatPrice(500, \"JPY\") renders \"JPY 5\" for 500 yen.",
+              "why": "The base formatted dollars only; this change accepts any currency but keeps the two-decimal conversion, and yen has no minor unit.",
+              "fix": "Divide by 10 to the power of the currency's minor units, read from the formatter's resolvedOptions().maximumFractionDigits."
+            }
+          },
+          "expectToolResult": "recorded finding"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
     }
   ],
   "contracts": [
