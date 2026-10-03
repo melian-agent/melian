@@ -20,7 +20,7 @@ Closed 2026-10-03, when Melian reviewed its own unmerged stack through the CLI o
 6. `[x]` **Static and guardrails.** Biome and tsc runners normalised to SARIF on base and head, diffed. Guardrails as the path and pattern rules the Melian repository itself needs. May trail step 5 by a week if time is short.
 7. `[x]` **Adjudication, minimal.** Dedupe by ID, severity to resolution from config.
 8. `[x]` **Publish from the CLI.** `melian publish` posting a review with inline comments through Octokit using the gh token.
-9. `[x]` **Claude Code skill.** Thin wrapper over the CLI, so the agent writing Melian asks Melian for review before committing.
+9. `[x]` **Claude Code skill.** Thin wrapper over the CLI, so the agent writing Melian asks Melian for review after committing and before pushing.
 
 ### Parallel tracks
 

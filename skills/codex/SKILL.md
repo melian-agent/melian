@@ -1,6 +1,6 @@
 ---
 name: melian
-description: Reviews code changes with Melian by running the melian CLI and relaying its verdict. Use before committing or opening a pull request, when asked to review a change or a pull request, and when asked what Melian thinks of a change. Publishes a stored review to a pull request only when the user says to.
+description: Reviews code changes with Melian by running the melian CLI and relaying its verdict. Use after committing and before pushing or opening a pull request, when asked to review a change or a pull request, and when asked what Melian thinks of a change. Publishes a stored review to a pull request only when the user says to.
 ---
 
 # Melian
@@ -10,7 +10,7 @@ Melian is a code reviewer with its own checks, models, lenses, and storage. This
 ## Rules
 
 - Never review the change with your own model, never reimplement a Melian check, and never read Melian's storage, under `.git/melian/` or `MELIAN_STATE_DIR`. To see a stored review again, run `melian findings` with the review's range or pull request.
-- Run `melian review` only for the triggers in the description: before a commit or a pull request, or when the user asks for a review or for Melian's view. `melian doctor` is the only command to run without a trigger, and only to check readiness.
+- Run `melian review` only for the triggers in the description: after a commit and before a push or a pull request, or when the user asks for a review or for Melian's view. `melian doctor` is the only command to run without a trigger, and only to check readiness.
 - Never edit code to satisfy a finding unless the user asks you to.
 - Never run `melian publish` until the user has seen the findings and told you to publish.
 

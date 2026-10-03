@@ -259,7 +259,7 @@ describe.each(hosts)("skills/%s/SKILL.md", (host) => {
 		expect(fields.name).toBe("melian");
 		expect(fields.description).toBeDefined();
 		expect(fields.description!.length).toBeLessThanOrEqual(1024);
-		expect(fields.description).toMatch(/before committing or opening a pull request/);
+		expect(fields.description).toMatch(/after committing and before pushing or opening a pull request/);
 		expect(fields.description).toMatch(/asked to review a change/);
 		expect(fields.description).toMatch(/what Melian thinks/);
 	});
