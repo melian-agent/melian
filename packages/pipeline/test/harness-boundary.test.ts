@@ -4,10 +4,10 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const root = fileURLToPath(new URL("../../..", import.meta.url));
-const wrapper = "packages/pipeline/src/harness.ts";
+const permitted = ["packages/pipeline/src/harness.ts", "packages/pipeline/src/testing.ts"];
 const piImport = /["']@earendil-works\/(?:pi-durable|pi-ai|chord)(?:\/[^"']*)?["']/;
 
-// Repository-relative posix paths, so the filters and the wrapper's path match on Windows too.
+// Repository-relative posix paths, so the filters and the permitted paths match on Windows too.
 function sources(): string[] {
 	return readdirSync(join(root, "packages"), { recursive: true, encoding: "utf8" })
 		.map((path) => `packages/${path.split(sep).join("/")}`)
@@ -16,12 +16,8 @@ function sources(): string[] {
 }
 
 describe("harness boundary", () => {
-	it("only the wrapper imports Pi Durable, pi-ai, or Chord", () => {
-		const files = sources();
-		expect(files).toContain(wrapper);
-		const offenders = files.filter(
-			(path) => path !== wrapper && piImport.test(readFileSync(join(root, path), "utf8")),
-		);
-		expect(offenders).toEqual([]);
+	it("only the wrapper and its testing entry import Pi Durable, pi-ai, or Chord", () => {
+		const importers = sources().filter((path) => piImport.test(readFileSync(join(root, path), "utf8")));
+		expect(importers.sort()).toEqual(permitted);
 	});
 });

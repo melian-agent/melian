@@ -1,5 +1,6 @@
 // Runs the first half of a spike scenario in its own process; the parent test kills it with SIGKILL while it is parked.
-import { backgroundContext, createFakeModels } from "../../src/harness.ts";
+import { backgroundContext } from "../../src/harness.ts";
+import { createFakeModels } from "../../src/testing.ts";
 import { openSpikeHarness, phasedTask, record, type Scenario, spikeRegistry, toolCallReply } from "./spike.ts";
 
 const [scenario, database, log] = process.argv.slice(2) as [Scenario, string, string];

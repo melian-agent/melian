@@ -13,7 +13,6 @@ import {
 	type ConversationId,
 	configure,
 	backgroundContext as context,
-	createFakeModels,
 	createMemoryStorage,
 	createRegistry,
 	defineDoc,
@@ -21,8 +20,6 @@ import {
 	defineTask,
 	defineTool,
 	type EntryRecord,
-	fauxAssistantMessage,
-	fauxToolCall,
 	type Harness,
 	hook,
 	type Message,
@@ -37,6 +34,7 @@ import {
 	ToolTask,
 	Type,
 } from "../src/harness.ts";
+import { createFakeModels, fauxAssistantMessage, fauxToolCall } from "../src/testing.ts";
 import {
 	captured,
 	count,

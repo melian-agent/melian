@@ -5,9 +5,6 @@ import {
 	defineExtension,
 	defineTask,
 	defineTool,
-	type FakeModels,
-	fauxAssistantMessage,
-	fauxToolCall,
 	type Harness,
 	type Message,
 	openHarness,
@@ -15,6 +12,7 @@ import {
 	type Registry,
 	Type,
 } from "../../src/harness.ts";
+import { type FakeModels, fauxAssistantMessage, fauxToolCall } from "../../src/testing.ts";
 
 // `crash` parks the second half of each scenario so the parent can kill the process there; `resume` finishes it.
 export type Mode = "crash" | "resume";

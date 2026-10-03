@@ -1,24 +1,17 @@
 /**
- * The one module in Melian that imports Pi Durable, pi-ai, and Chord. Pi Durable's API is experimental, so upstream churn lands
- * here and nowhere else. Pi's concepts keep Pi's names, so Pi's README stays the reference; helpers Melian adds have
- * Melian names.
+ * The import quarantine for Pi Durable, pi-ai, and Chord: with `testing.ts`, the only module in Melian that imports
+ * them. It re-exports Pi's API under Pi's names, so Pi's README stays the reference, and callers compile against Pi's
+ * experimental contracts. An upstream rename moves one import here; a changed signature still reaches every caller.
+ * A narrow Melian-owned facade grows in front of this module as the pipeline gains callers.
  *
  * @module
  */
 import type { Context } from "@earendil-works/chord";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import {
-	type FauxProviderHandle,
-	fauxProvider,
-	type Model,
-	type RegisterFauxProviderOptions,
-} from "@earendil-works/pi-ai";
-import { createModels } from "@earendil-works/pi-ai/models";
-import {
 	type Harness,
 	type HarnessOptions,
 	MemoryStorage,
-	type ModelRef,
 	Harness as PiHarness,
 	type Storage,
 	type ToolRegistration,
@@ -26,14 +19,7 @@ import {
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
 
 export type { Context } from "@earendil-works/chord";
-export {
-	type AssistantMessage,
-	type FauxProviderHandle,
-	fauxAssistantMessage,
-	fauxToolCall,
-	type Message,
-	Type,
-} from "@earendil-works/pi-ai";
+export { type AssistantMessage, type Message, Type } from "@earendil-works/pi-ai";
 export {
 	AssistantEntry,
 	type Conversation,
@@ -80,29 +66,4 @@ export function openSqliteStorage(path: string): Promise<Storage> {
 /** Storage that keeps everything in memory and persists nothing. */
 export function createMemoryStorage(): Storage {
 	return new MemoryStorage();
-}
-
-/** A scripted model provider for tests, registered in its own model collection. */
-export type FakeModels = {
-	readonly models: HarnessOptions["models"];
-	readonly provider: FauxProviderHandle;
-	/** The reference a conversation's agent uses to select `modelId`, or the first model. */
-	ref(modelId?: string): ModelRef;
-};
-
-/** Create a scripted model provider that answers from queued responses, so tests need no credentials. */
-export function createFakeModels(options?: RegisterFauxProviderOptions): FakeModels {
-	const provider = fauxProvider(options);
-	const models = createModels();
-	models.setProvider(provider.provider);
-	return {
-		models,
-		provider,
-		ref(modelId) {
-			const model: Model<string> | undefined =
-				modelId === undefined ? provider.getModel() : provider.getModel(modelId);
-			if (model === undefined) throw new Error(`Fake model ${modelId} is not registered`);
-			return { provider: model.provider, modelId: model.id };
-		},
-	};
 }

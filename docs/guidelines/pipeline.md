@@ -4,10 +4,13 @@ The pipeline package is the only place review flow lives, and the only package t
 
 ## The harness wrapper
 
-`packages/pipeline/src/harness.ts` exists so that upstream churn in an experimental API lands in one file.
+`packages/pipeline/src/harness.ts` is an import quarantine. It and `src/testing.ts` are the only modules that import Pi Durable, pi-ai, or Chord.
+
+It quarantines import paths, not churn. It re-exports Pi's API unchanged, so callers compile against Pi's experimental contracts: an upstream rename moves one import in the wrapper, but a changed signature still breaks every caller. That is acceptable while the spike's tests are the only callers. As steps 5 and 7 add callers, a narrow Melian-owned facade grows in front of the wrapper, and raw Pi types do not cross out of `packages/pipeline`.
 
 - Re-export Pi's concepts under Pi's names, so Pi's README stays the reference. Give Melian names only to helpers Melian adds, such as `openHarness` and `createFakeModels`.
 - Export only what Melian code uses. Add an export in the same change as its first caller.
+- Keep test helpers in `src/testing.ts`, published as `@melian-agent/pipeline/testing`. `src/index.ts` exports runtime API only.
 - When upgrading Pi, read the changelog and the type declarations, run the spike tests, and update the spike report where behaviour moved.
 
 ## Contracts that read like mistakes
@@ -24,7 +27,7 @@ The pipeline package is the only place review flow lives, and the only package t
 
 ## Tests
 
-- Use the fake model from `createFakeModels()`. Never a real provider, key, or paid token.
+- Use the fake model from `createFakeModels()` in `src/testing.ts`. Never a real provider, key, or paid token.
 - Use memory storage unless the test is about surviving a reopen or a crash. Then use SQLite in a temporary directory and delete it afterwards.
 - Close every harness in `afterEach`, before deleting its directory, so a failed assertion does not leave a live SQLite handle. `close()` is idempotent.
 - Test a crash with a real process kill. Run the first half in `test/fixtures/crash.ts`, have it append events to a log synchronously, SIGKILL it at a known event, and resume in the test process against the same file. Count reruns from the log.

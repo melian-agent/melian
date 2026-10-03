@@ -31,7 +31,7 @@ The tests live in [packages/pipeline/test/durable-spike.test.ts](../../packages/
 | i. Prompt sections | A `section()` that reads a file rendered the new contents in the next request after the file changed. The transcript holds two `pi.system` entries, one per version. |
 | Hook | `hook(ToolTask, { beforeTool })` blocked a call before `execute()` ran; the model received `Tool call blocked: lenses are read-only`. |
 
-[packages/pipeline/test/harness-boundary.test.ts](../../packages/pipeline/test/harness-boundary.test.ts) fails the gate if any file under `packages/` other than the wrapper imports Pi Durable, pi-ai, or Chord.
+[packages/pipeline/test/harness-boundary.test.ts](../../packages/pipeline/test/harness-boundary.test.ts) fails the gate if any file under `packages/` other than the wrapper and its testing entry imports Pi Durable, pi-ai, or Chord.
 
 Nothing was marked `it.todo`. Every behaviour the brief listed exists in 1.0.0.
 
@@ -39,7 +39,7 @@ Nothing was marked `it.todo`. Every behaviour the brief listed exists in 1.0.0.
 
 **Pi's `source` export condition broke Vitest.** Pi's packages publish a `source` condition that points at a `src/` directory they do not ship. Melian's Vitest configuration resolved workspace packages through a condition of the same name, and Vite applies a custom condition to every package, so the first Pi import failed with `Cannot find module .../chord/src/index.ts`. Melian's condition is now `@melian-agent/source`. `tsc` was unaffected.
 
-**The fake model is in pi-ai, not pi-durable.** `@earendil-works/pi-durable/testing` holds the storage conformance suite and benchmarks. The fake model is pi-ai's `fauxProvider()`, registered in a `createModels()` collection. The wrapper's `createFakeModels()` does both.
+**The fake model is in pi-ai, not pi-durable.** `@earendil-works/pi-durable/testing` holds the storage conformance suite and benchmarks. The fake model is pi-ai's `fauxProvider()`, registered in a `createModels()` collection. Melian's `createFakeModels()`, in `packages/pipeline/src/testing.ts`, does both.
 
 **A fake reply runs its tool calls only with `stopReason: "toolUse"`.** `fauxAssistantMessage()` defaults to `"stop"`, and a reply carrying a tool call with that stop reason ends the run without running the tool.
 
@@ -61,10 +61,11 @@ Nothing was marked `it.todo`. Every behaviour the brief listed exists in 1.0.0.
 
 ## API used
 
-Through [packages/pipeline/src/harness.ts](../../packages/pipeline/src/harness.ts), which re-exports Pi's names unchanged so Pi's README stays the reference, and adds five of its own.
+Through [packages/pipeline/src/harness.ts](../../packages/pipeline/src/harness.ts), which re-exports Pi's names unchanged so Pi's README stays the reference, and adds four of its own. Test helpers are in [packages/pipeline/src/testing.ts](../../packages/pipeline/src/testing.ts). The wrapper quarantines import paths, not churn: callers still compile against Pi's experimental types, and a Melian-owned facade grows in front of it as steps 5 and 7 add callers.
 
-- Wrapper additions: `openHarness`, `openSqliteStorage` (over `openNodeSqliteStorage`), `createMemoryStorage` (over `MemoryStorage`), `createFakeModels` (over pi-ai's `fauxProvider` and `createModels`), `backgroundContext` (Chord's `BACKGROUND_CONTEXT`).
-- Definitions: `createRegistry`, `defineExtension`, `defineTool`, `defineTask`, `defineDoc`, `section`, `hook`, `ToolTask`, `configure`, `AssistantEntry`, `SystemEntry`, `ToolResultEntry`, pi-ai's `Type`, `fauxAssistantMessage`, `fauxToolCall`.
+- Wrapper additions: `openHarness`, `openSqliteStorage` (over `openNodeSqliteStorage`), `createMemoryStorage` (over `MemoryStorage`), `backgroundContext` (Chord's `BACKGROUND_CONTEXT`).
+- Testing entry: `createFakeModels` (over pi-ai's `fauxProvider` and `createModels`), and pi-ai's `fauxAssistantMessage` and `fauxToolCall`.
+- Definitions: `createRegistry`, `defineExtension`, `defineTool`, `defineTask`, `defineDoc`, `section`, `hook`, `ToolTask`, `configure`, `AssistantEntry`, `SystemEntry`, `ToolResultEntry`, pi-ai's `Type`.
 - `Harness`: `root`, `conversation`, `submission`, `commit`, `snapshot`, `snapshotAsOf`, `getTask`, `waitForTask`, `waitForIdle`, `resume`, `close`.
 - `Conversation`: `submit`, `commit`, `context`, `agent`, `fork`. `Submission`: `id`, `wait`, `status`.
 - `Tx`: `createTask`, `createConversation`, `scanConversations`, `doc`, `entry`.
