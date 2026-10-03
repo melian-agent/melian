@@ -32,8 +32,11 @@ export interface GuardrailInput {
 	readonly source: RepositorySource;
 }
 
-/** Limits on what forbidden-patterns reads at head. Past either, a line or file is not scanned, and a note says so. */
-export const guardrailLimits = { lineLength: 10_000, fileBytes: 4 * 1024 * 1024 } as const;
+/**
+ * Limits on what forbidden-patterns reads at head: `fileBytes` for a file read whole, and `scanBytes` for the lines it
+ * scans in one file. What a limit stops it scanning is reported as a finding, never passed over.
+ */
+export const guardrailLimits = { fileBytes: 4 * 1024 * 1024, scanBytes: 4 * 1024 * 1024 } as const;
 
 const check = "guardrails";
 
@@ -254,10 +257,12 @@ async function binaryLines(
 	input: GuardrailInput,
 	file: ChangedFile,
 	notes: string[],
-): Promise<{ line: number; text: string }[]> {
+): Promise<{ line: number; text: string }[] | "unscannable"> {
 	const { repoRoot, revision } = input;
 	const head = await blobText(repoRoot, revision.head, file.path);
 	if (head.text === undefined) {
+		// Text too large to read could hold anything; bytes that are not text hold no line a pattern is about.
+		if (head.why?.startsWith("larger") === true) return "unscannable";
 		notes.push(`forbidden-patterns did not scan ${file.path}, which git treats as binary and is ${head.why}.`);
 		return [];
 	}
@@ -295,29 +300,53 @@ async function forbiddenPatterns(
 			([, rule]) => rule.paths === undefined || matchesGlobs(rule.paths, file.path),
 		);
 		if (!guardrail.enabled || rules.length === 0) continue;
+		const unscannable = (line: number, what: string): Hit => ({
+			guardrail: "forbidden-patterns",
+			file: file.path,
+			line,
+			discriminator: "unscanned",
+			config,
+			severity: guardrail.severity,
+			message: "line could not be scanned.",
+			explanation: {
+				what: `forbidden-patterns could not scan ${what}, so the rule ${rules.map(([name]) => name).join(", ")} was not checked there.`,
+				whyHere: "A line Melian cannot read could hold anything the rule forbids, so it counts against the change.",
+				whatToDo: "Split the change into smaller files or lines, or have a maintainer read what was not scanned.",
+			},
+		});
 		if (file.percentEncoded) {
-			notes.push(`forbidden-patterns did not scan ${file.path}, whose name is not UTF-8.`);
+			hits.push(unscannable(1, `${file.path}, whose name is not UTF-8`));
 			continue;
 		}
-		let skipped = 0;
-		const added: { line: number; text: string; hunk?: Hunk }[] = file.binary
+		const added: { line: number; text: string; hunk?: Hunk }[] | "unscannable" = file.binary
 			? await binaryLines(input, file, notes)
 			: file.hunks.flatMap((hunk) => addedLines(hunk.text, hunk.newStart).map((each) => ({ ...each, hunk })));
-		const matches = added.flatMap((each) => {
-			if (each.text.length > guardrailLimits.lineLength) {
-				skipped++;
-				return [];
-			}
+		if (added === "unscannable") {
+			hits.push(unscannable(1, `${file.path}, over ${guardrailLimits.fileBytes} bytes`));
+			continue;
+		}
+		// Every line is scanned whole, however long, until the file's scan budget runs out.
+		let scanned = 0;
+		const unscanned = added.find((each) => {
+			scanned += Buffer.byteLength(each.text);
+			return scanned > guardrailLimits.scanBytes;
+		});
+		const within = unscanned === undefined ? added : added.slice(0, added.indexOf(unscanned));
+		if (unscanned !== undefined) {
+			const rest = added.length - within.length;
+			hits.push(
+				unscannable(
+					unscanned.line,
+					`${rest} added line(s) of ${file.path} past the ${guardrailLimits.scanBytes}-byte scan limit, from this one on`,
+				),
+			);
+		}
+		const matches = within.flatMap((each) => {
 			// A CRLF file's lines end in "\r", which `$` would otherwise have to match past.
 			const line = each.text.endsWith("\r") ? each.text.slice(0, -1) : each.text;
 			const matched = rules.filter(([, rule]) => patternFor(rule.pattern).test(line));
 			return matched.length === 0 ? [] : [{ hunk: each.hunk, added: each, matched }];
 		});
-		if (skipped > 0) {
-			notes.push(
-				`forbidden-patterns did not scan ${skipped} line(s) of ${file.path} longer than ${guardrailLimits.lineLength} characters.`,
-			);
-		}
 		if (matches.length === 0) continue;
 		reader ??= await openSource(input.repoRoot, { kind: "revision", commit: input.revision.head });
 		// A file too large to read whole is still reported, identified by line number instead of by its code.

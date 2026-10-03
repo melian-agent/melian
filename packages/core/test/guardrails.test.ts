@@ -360,13 +360,30 @@ describe("forbidden-patterns", () => {
 		]);
 	});
 
-	it("notes a line too long to scan rather than skipping it silently", async () => {
+	it("scans a long line whole, so padding cannot hide a match", async () => {
+		const { findings } = await guardrails(
+			{ "melian.yaml": config },
+			{ "a.test.ts": lines(`${" ".repeat(20_000)}it.only(x)`) },
+		);
+		expect(summary(findings).map(({ file, line }) => [file, line])).toEqual([["a.test.ts", 1]]);
+	});
+
+	it("reports what is past the scan limit as a finding, never only a note", { timeout: 60_000 }, async () => {
+		const row = `it(${"x".repeat(1_000)})`;
+		const rows = Array.from({ length: 4_300 }, () => row);
 		const { findings, notes } = await guardrails(
 			{ "melian.yaml": config },
-			{ "a.test.ts": lines(`it.only(${"x".repeat(10_001)})`) },
+			{ "a.test.ts": lines(...rows, "it.only(hidden)") },
 		);
-		expect(findings).toEqual([]);
-		expect(notes).toEqual(["forbidden-patterns did not scan 1 line(s) of a.test.ts longer than 10000 characters."]);
+		expect(notes).toEqual([]);
+		expect(
+			findings.map((finding) => [
+				finding.properties.path,
+				finding.locations[0]!.physicalLocation.region.startLine,
+				finding.properties.severity,
+				finding.message.text,
+			]),
+		).toEqual([["a.test.ts", 4_178, "P2", "line could not be scanned."]]);
 	});
 });
 
