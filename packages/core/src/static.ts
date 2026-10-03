@@ -214,6 +214,7 @@ const locationEnd = /\((\d+),(\d+)\): (?:error|warning|message) (TS\d+): /g;
 const global = /^(?:error|warning|message) (TS\d+): (.*)$/;
 
 interface Diagnostic {
+	readonly written: string;
 	readonly path: string | undefined;
 	readonly region: ToolResult["locations"][0]["physicalLocation"]["region"];
 	readonly rule: string;
@@ -226,6 +227,7 @@ function located(row: string, root: string, exists: (path: string) => boolean): 
 	return [...row.matchAll(locationEnd)]
 		.filter((match) => match.index > 0)
 		.map((match) => ({
+			written: row.slice(0, match.index),
 			path: repositoryPath(root, row.slice(0, match.index)),
 			region: { startLine: Number(match[1]), startColumn: Number(match[2]) },
 			rule: match[3]!,
@@ -242,11 +244,13 @@ function located(row: string, root: string, exists: (path: string) => boolean): 
  * that, a line tsc prints without a file is read as one, and anything else takes the shortest such prefix. A
  * diagnostic without a file, such as a `tsconfig.json` tsc cannot read, sits at line 1 of `project`, the
  * repository-relative path of the project file. Every tsc diagnostic is an error. Diagnostics outside the worktree or
- * under `node_modules` are dropped; other lines are ignored.
+ * under `node_modules` are dropped, and the file each named, as tsc wrote it, is pushed onto `dropped`; other lines are
+ * ignored.
  */
 export function parseTscDiagnostics(
 	output: string,
 	run: ToolRun & { readonly project: string; readonly exists: (path: string) => boolean },
+	dropped: string[] = [],
 ): ToolLog {
 	const results: ToolResult[] = [];
 	// The message an indented line continues; undefined after a dropped diagnostic, whose continuation is dropped too.
@@ -262,9 +266,19 @@ export function parseTscDiagnostics(
 		const inTree = first?.path !== undefined && run.exists(first.path);
 		const diagnostic: Diagnostic | undefined =
 			fileless !== null && !inTree
-				? { path: canonicalPath(run.project), region: { startLine: 1 }, rule: fileless[1]!, message: fileless[2]! }
+				? {
+						written: run.project,
+						path: canonicalPath(run.project),
+						region: { startLine: 1 },
+						rule: fileless[1]!,
+						message: fileless[2]!,
+					}
 				: first;
-		if (diagnostic?.path === undefined) continue;
+		if (diagnostic === undefined) continue;
+		if (diagnostic.path === undefined) {
+			dropped.push(diagnostic.written);
+			continue;
+		}
 		continuing = { text: diagnostic.message };
 		results.push({
 			ruleId: diagnostic.rule,

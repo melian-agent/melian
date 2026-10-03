@@ -194,6 +194,26 @@ describe("runStaticTool with the repository's own tools", () => {
 		expectCheckoutUntouched();
 	});
 
+	it("runs clean with a note when tsc fails only on files Melian does not review", { timeout: 60_000 }, async () => {
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
+		fakeTool(
+			repo,
+			"tsc",
+			[
+				'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi',
+				"echo \"node_modules/x/index.d.ts(1,1): error TS1005: ';' expected.\"",
+				"echo \"../elsewhere.ts(2,1): error TS1005: ';' expected.\"",
+				"exit 2",
+			].join("\n"),
+		);
+		const result = await runStaticTool(input("tsc", head), context);
+		if (result.status !== "ran") throw new Error(result.reason);
+		expect(results(result.log)).toEqual([]);
+		expect(result.notes).toEqual([
+			"tsc reported 2 diagnostic(s) Melian does not review: 1 in node_modules and 1 outside the repository.",
+		]);
+	});
+
 	it("fails with toolFailed when the tool crashes, carrying what it printed", { timeout: 60_000 }, async () => {
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
 		fakeTool(

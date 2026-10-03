@@ -295,6 +295,7 @@ async function runTsc(
 	binary: string,
 	version: string,
 	tracked: ReadonlySet<string>,
+	notes: string[],
 ): Promise<ToolLog> {
 	const { project } = run.input.settings as TscSettings;
 	const out = posix.join(scratch, "tsc.out");
@@ -303,10 +304,18 @@ async function runTsc(
 	);
 	const text = (await run.readOutput(out)) ?? "";
 	// A diagnostic names its file by a prefix of its line; the revision's own file list says which prefix is a file.
-	const log = parseTscDiagnostics(text, { root, version, project, exists: (path) => tracked.has(path) });
-	// tsc exits 1 or 2 when it reports diagnostics; a non-zero exit with none reported is a crash.
-	if (code !== 0 && (log.runs[0].results.length === 0 || (code !== 1 && code !== 2))) {
+	const dropped: string[] = [];
+	const log = parseTscDiagnostics(text, { root, version, project, exists: (path) => tracked.has(path) }, dropped);
+	// tsc exits 1 or 2 when it reports diagnostics; a non-zero exit with none at all is a crash.
+	if (code !== 0 && ((log.runs[0].results.length === 0 && dropped.length === 0) || (code !== 1 && code !== 2))) {
 		throw run.fail("toolFailed", `tsc exited with code ${code}: ${(text || output).slice(0, 4096).trim()}`);
+	}
+	if (dropped.length > 0) {
+		const dependencies = dropped.filter((path) => path.split(/[\\/]/).includes("node_modules")).length;
+		const outside = dropped.length - dependencies;
+		notes.push(
+			`tsc reported ${dropped.length} diagnostic(s) Melian does not review: ${dependencies} in node_modules and ${outside} outside the repository.`,
+		);
 	}
 	return log;
 }
@@ -370,7 +379,7 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		const log =
 			tool === "biome"
 				? await runBiome(run, root, scratch, binary, version)
-				: await runTsc(run, root, scratch, binary, version, new Set(files));
+				: await runTsc(run, root, scratch, binary, version, new Set(files), notes);
 		return { status: "ran", log, notes };
 	} finally {
 		await removeWorktree(env, repoRoot, scratch);
