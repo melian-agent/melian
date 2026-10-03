@@ -28,7 +28,7 @@ export type FakeState = {
 	repo: string;
 	login: string;
 	pull: { number: number; title: string; base: { ref: string; sha: string }; head: { ref: string; sha: string } };
-	/** The lines the pull request's diff adds, which alone take an inline comment. */
+	// The lines the pull request's diff adds, which alone take an inline comment.
 	lines: DiffLines;
 	reviews: FakeReview[];
 	comments: FakeComment[];
@@ -73,10 +73,8 @@ type ReviewComment = {
 	body: string;
 };
 
-/**
- * A fetch that answers the routes Melian calls. `afterWrite` runs after each write is applied and before its response
- * returns, so a crash fixture can persist the state and park there.
- */
+// A fetch that answers the routes Melian calls. `afterWrite` runs after each write is applied and before its response
+// returns, so a crash fixture can persist the state and park there.
 export function fakeGitHub(
 	state: FakeState,
 	afterWrite: (call: Call) => Promise<void> | void = () => {},

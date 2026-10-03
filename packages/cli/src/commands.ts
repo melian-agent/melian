@@ -60,10 +60,6 @@ async function openStorageHarness(
 	return openHarness(await openSqliteStorage(path), { registry: createReviewRegistry(), ...options });
 }
 
-async function headCommit(cwd: string): Promise<string | undefined> {
-	return git(cwd, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => undefined);
-}
-
 // A pull request reads policy from its base. A range on the checked-out commit reads it from the working tree, since
 // its author runs Melian; any other range reads it from its base.
 export async function review(io: Io, argument: string, options: { readonly model?: string }): Promise<number> {
@@ -77,7 +73,8 @@ export async function review(io: Io, argument: string, options: { readonly model
 		source = { kind: "revision", commit: fetched.pullRequest.base.sha };
 	} else {
 		changeset = await resolveRange(io.cwd, target.spec);
-		const own = (await headCommit(changeset.repoRoot)) === changeset.revision.head;
+		const checkedOut = await git(changeset.repoRoot, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "");
+		const own = checkedOut === changeset.revision.head;
 		source = own ? { kind: "worktree" } : { kind: "revision", commit: changeset.revision.base };
 	}
 	const { repoRoot } = changeset;

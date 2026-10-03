@@ -77,7 +77,7 @@ const user = (line7: string, line11: string) =>
 const safe = '\treturn user.manager?.name ?? "none";';
 const greeting = '\treturn "Hello, " + user.name;';
 
-/** A repository whose `feature` branch holds revision 1 of the pull request. The caller deletes it. */
+// A repository whose `feature` branch holds revision 1 of the pull request. The caller deletes it.
 export function scenarioRepository(): string {
 	const repo = realpathSync(mkdtempSync(join(tmpdir(), "melian-publish-")));
 	gitIn(repo, "init", "--quiet", "--initial-branch=main");
@@ -93,7 +93,7 @@ export function scenarioRepository(): string {
 	return repo;
 }
 
-/** Pushes revision 2 onto `feature`. */
+// Pushes revision 2 onto `feature`.
 export function pushRevisionTwo(repo: string): void {
 	writeFiles(repo, { "src/user.ts": user(safe, '\treturn "Hi, " + user.name.trim();') });
 	gitIn(repo, "commit", "--quiet", "--all", "-m", "revision 2");
@@ -111,13 +111,13 @@ function report(file: string, line: number, rule: string, severity: string, what
 	return { name: "report_finding", arguments: { file, line, rule, severity, explanation: explanation(what) } };
 }
 
-/** On line 7 at revision 1: introduced, P1, so it blocks. */
+// On line 7 at revision 1: introduced, P1, so it blocks.
 export const unsafeManager = report("src/user.ts", 7, "null-dereference", "P1", "manager may be absent.");
-/** On line 19, outside both revisions' diffs: pre-existing, so advisory. */
+// On line 19, outside both revisions' diffs: pre-existing, so advisory.
 export const emptyName = report("src/user.ts", 19, "wrong-result", "P2", "An empty name yields no initials.");
-/** In src/config.ts, which the change does not touch: pre-existing, so advisory. */
+// In src/config.ts, which the change does not touch: pre-existing, so advisory.
 export const nanRetries = report("src/config.ts", 1, "unhandled-error", "P1", "RETRIES may be unset.");
-/** On line 11 at revision 2: introduced, P2, so it needs acknowledging. */
+// On line 11 at revision 2: introduced, P2, so it needs acknowledging.
 export const trimmedGreeting = report("src/user.ts", 11, "wrong-result", "P2", "trim() changes the greeting.");
 
 export function lensScript(...findings: ReturnType<typeof report>[]): LensScript {
@@ -127,19 +127,19 @@ export function lensScript(...findings: ReturnType<typeof report>[]): LensScript
 	};
 }
 
-/** Fake models for reviews: one model every tier routes to. */
+// Fake models for reviews: one model every tier routes to.
 export function scenarioModels(): FakeModels {
 	return createFakeModels({ models: [{ id: "scripted" }] });
 }
 
-/** Opens a harness that reviews and publishes through `provider`. */
+// Opens a harness that reviews and publishes through `provider`.
 export function openPublishHarness(storage: Storage, fake: FakeModels, provider: ReviewProvider): Promise<Harness> {
 	const registry = createReviewRegistry();
 	registry.install(publishExtension(provider));
 	return openHarness(storage, { models: fake.models, registry, settings: { retry: { enabled: false } } });
 }
 
-/** Reviews `main...feature` from the base's policy, the lenses answering from `script`. Returns the changeset. */
+// Reviews `main...feature` from the base's policy, the lenses answering from `script`. Returns the changeset.
 export async function reviewScenario(repo: string, harness: Harness, fake: FakeModels, script: LensScript) {
 	const changeset: Changeset = await resolveRange(repo, "main...feature");
 	const source: RepositorySource = { kind: "revision", commit: changeset.revision.base };
@@ -165,7 +165,7 @@ export async function reviewScenario(repo: string, harness: Harness, fake: FakeM
 	return { changeset, review };
 }
 
-/** The fake GitHub's state for pull request #7, before any revision; {@link moveTo} sets one. */
+// The fake GitHub's state for pull request #7, before any revision; moveTo sets one.
 export function pullRequestState(): FakeState {
 	return fakeState(
 		"melian-agent",
@@ -175,7 +175,7 @@ export function pullRequestState(): FakeState {
 	);
 }
 
-/** Moves the fake pull request to the changeset's revision. */
+// Moves the fake pull request to the changeset's revision.
 export function moveTo(state: FakeState, changeset: Changeset): void {
 	state.pull.base.sha = changeset.revision.base;
 	state.pull.head.sha = changeset.revision.head;
