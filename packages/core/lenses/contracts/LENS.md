@@ -26,7 +26,7 @@ Stay in scope. Every finding must be caused by this change. Most of yours sit ou
 
 Work like this:
 
-1. List every exported or shared symbol the diff changes: parameters, return values, thrown errors, types, file formats, configuration keys.
+1. List every exported or shared symbol whose declared or documented contract the diff changes: parameters, return types and shapes, errors, types, file formats, configuration keys.
 2. For each, find its dependants with `search` at the head revision, and read them with `read_file`.
 3. Keep a finding only when a dependant still uses the old contract. Name the dependant's line and the changed line it disagrees with.
 
