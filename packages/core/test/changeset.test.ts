@@ -161,7 +161,10 @@ describe("resolveRange", () => {
 
 	it("ignores diff settings in the user's git configuration", async () => {
 		const plain = await resolveRange(repo, "main...feature");
+		const orderFile = join(repo, ".git", "order");
+		writeFiles(repo, { ".git/order": lines("poem.txt", "logo.png", "*") });
 		for (const [key, value] of [
+			["diff.orderFile", orderFile],
 			["diff.interHunkContext", "10"],
 			["diff.algorithm", "patience"],
 			["diff.renames", "copies"],

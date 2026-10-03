@@ -143,6 +143,8 @@ const diffFlags = [
 	"--indent-heuristic",
 	"--inter-hunk-context=0",
 	"--submodule=short",
+	// Cancels diff.orderFile, so files come in git's path order.
+	"-O/dev/null",
 ];
 
 async function diff(repoRoot: string, base: string, head: string): Promise<ChangedFile[]> {
