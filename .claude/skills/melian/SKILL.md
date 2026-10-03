@@ -10,7 +10,7 @@ Melian is a code reviewer with its own checks, models, lenses, and storage. This
 
 ## Rules
 
-- Never review the change with your own model, never reimplement a Melian check, and never read Melian's storage under `.git/melian/`. To see a stored review again, run `melian findings` with the review's range or pull request.
+- Never review the change with your own model, never reimplement a Melian check, and never read Melian's storage, under `.git/melian/` or `MELIAN_STATE_DIR`. To see a stored review again, run `melian findings` with the review's range or pull request.
 - Run `melian review` only for the triggers in the description: before a commit or a pull request, or when the user asks for a review or for Melian's view. `melian doctor` is the only command to run without a trigger, and only to check readiness.
 - Never edit code to satisfy a finding unless the user asks you to.
 - Never run `melian publish` until the user has seen the findings and told you to publish.
@@ -23,7 +23,8 @@ Run only the `melian` the shell finds on its path. Never build, install, or run 
 
 - If the shell cannot find `melian`, tell the user Melian is not installed and stop. They install it themselves, from a source they trust. Until Melian is published, that means cloning github.com/melian-agent/melian, running npm ci with --ignore-scripts and then npm run build in the clone, and running npm link in its packages/cli directory. Never run these steps yourself.
 - If `melian doctor` exits `1`, Node or git cannot run a review. Show its output and stop.
-- A line marked `warn` does not stop a review; mention it once. Three warnings matter before reviewing, so tell the user what they mean:
+- A line marked `warn` does not stop a review; mention it once. Four warnings matter before reviewing, so tell the user what they mean:
+  - `state`: Melian cannot write the directory where it stores reviews, often because the host's sandbox keeps `.git` read-only, so a review exits `2`. Ask the host for write access to the directory the line names, or ask the user to set `MELIAN_STATE_DIR` to a writable directory.
   - `melian`: the `melian` on the path lives inside the repository you are in, so the change under review can alter its own reviewer. Review only after the user confirms they installed it there themselves.
   - `routes`: no tier is routed to a model, so a review exits `2` before any lens runs. Tell the user the two ways to fix it, then stop: set `models.<tier>.model` in `melian.local.yaml` beside the root `melian.yaml`, a file of their own that git ignores, or name a model for you to pass as `--model provider/id`, which routes every tier to it. A review of a pull request reads its base's `melian.yaml` and never `melian.local.yaml`, so it needs `--model` unless the repository routes its tiers.
   - `static`: Biome or tsc comes from nowhere, so that check fails and the review reads not reviewed. The same line says whether each comes from the checkout or Melian's own copy; a result from Melian's copy can differ from the repository's own lint run.
@@ -60,10 +61,11 @@ Replace N with the pull request number. Keep the quotes: an unquoted `#` starts 
    | `64` | Melian could not read the command line; show its message as-is |
 
 3. List the blocking findings first, then the rest, each with its file, line, rule, and what Melian says is wrong.
-4. Stop. A nonzero exit is a verdict, not a tool failure, so do not rerun the review to change it.
+4. Stop. A nonzero exit is a verdict, not a tool failure, so do not rerun the review to change it. The one exception is an environment failure, below.
 
-Two kinds of exit `2` are not a verdict on the code:
+Three kinds of exit `2` are not a verdict on the code:
 
+- An environment failure. Standard error says Melian cannot write its storage, or names the database or a permission. Ask the host for write access to the directory it names, or ask the user to set `MELIAN_STATE_DIR` to a writable directory, then run the same command again. That is not a repeat review: the review's durable tasks resume from where they stopped.
 - Setup. Standard error says "no model is configured for the heavy tier", or names another tier, because nothing routes a model to it. Tell the user the two ways to fix it, as for the `routes` warning, then stop.
 - A transient failure. The output lists checks that did not run, and an error names a timeout, a rate limit, or a provider outage. Offer to run only what failed again, and run it when the user says to, with the same range or `"#N"`:
 

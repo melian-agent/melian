@@ -34,7 +34,7 @@ const options = new Set([...usage.split("\n\n")[2]!.matchAll(/--[a-z][a-z-]*/g)]
 const allowedTools = ["Bash(melian doctor)"];
 
 // Single words a skill quotes from `melian doctor`'s output, which are not commands.
-const doctorWords = new Set(["warn", "routes", "static"]);
+const doctorWords = new Set(["warn", "routes", "static", "state"]);
 
 const operators = new Set([";", "|", "&", "(", ")"]);
 
@@ -106,7 +106,8 @@ function isCommandSpan(span: string): boolean {
 	const words = shellWords(span);
 	if (words.length === 0 || words[0]!.startsWith("-")) return false;
 	if (words.length > 1 || /\$\(|<\(|>\(/.test(span)) return true;
-	if (doctorWords.has(words[0]!)) return false;
+	// An environment variable's name, such as MELIAN_STATE_DIR.
+	if (doctorWords.has(words[0]!) || /^[A-Z][A-Z0-9_]*$/.test(words[0]!)) return false;
 	return /^[A-Za-z_][\w-]*$/.test(words[0]!) || /^(?:\.{0,2}\/|~\/)/.test(words[0]!);
 }
 
@@ -171,7 +172,7 @@ describe("the skill boundary's parser", () => {
 
 	it("reads paths, options, numbers, quoted arguments, and doctor's words as data", () => {
 		const text =
-			'Set `models.<tier>.model` in `melian.yaml`, pass `--model provider/id`, exit `2`, `"#N"`, `#`, `.git/melian/`, `routes`, and `melian review "#N"`.';
+			'Set `models.<tier>.model` in `melian.yaml`, pass `--model provider/id`, exit `2`, `"#N"`, `#`, `.git/melian/`, `routes`, `MELIAN_STATE_DIR`, and `melian review "#N"`.';
 		expect(foreignExecutables(text)).toEqual([]);
 		expect(shellCommands(text).map((command) => [command.executable, ...command.args])).toEqual([
 			["melian", "review", "#N"],

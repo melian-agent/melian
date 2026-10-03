@@ -316,7 +316,7 @@ Caveat to state in user documentation: automated use of consumer subscriptions i
 
 ### CLI
 
-The primary host and the only thing the skills call. `melian run`, `melian review <changeset>`, `melian explain <finding>`, `melian dismiss <finding> --reason`. Embeds the durable harness with SQLite storage under `.git/melian/`, one file per changeset. Uses the developer's own credentials.
+The primary host and the only thing the skills call. `melian run`, `melian review <changeset>`, `melian explain <finding>`, `melian dismiss <finding> --reason`. Embeds the durable harness with SQLite storage under `.git/melian/`, one file per changeset, or under `MELIAN_STATE_DIR` with a directory per clone, for a host whose sandbox keeps `.git` read-only. Uses the developer's own credentials.
 
 Built so far: `melian review <range|#pr>` prints the verdict and exits `0` passed, `1` findings with one blocking, `2` not reviewed, or `3` findings with none blocking, so a hook or a script can act on it; `melian publish <#pr>` posts the stored review of the pull request's current head and refuses a head the stored review does not cover; `melian findings <range|#pr> [--open] [--json]` reads the findings document; and `melian doctor` checks the tools and names where credentials come from. A pull request is reviewed under the policy of its base commit, and a range on the checked-out branch under the working tree's. Publication never posts a review of a range or a working tree: a pull request and a range have separate changeset identities, so they never share storage, and every verdict records its provenance, which publishing checks. [docs/guidelines/cli.md](guidelines/cli.md) holds the detail.
 
@@ -552,6 +552,7 @@ docs/
 | The skill's `melian` | Only the one on the user's path; never built, installed, or run from the checkout; only `melian doctor` pre-approved | A repository under review must not supply its reviewer |
 | Model routes in the repository | None committed; `melian.local.yaml` (ignored, worktree-only) or `--model` supplies them | A repository must not choose a contributor's provider or spend |
 | The repository's own skill | A checked-in copy of the Claude Code skill, held identical by a drift test | A symlink degrades to a text file where git has symlinks off |
+| State directory | Configurable through `MELIAN_STATE_DIR`, default the git common dir | Sandboxed hosts may not write under `.git` |
 
 ## Open questions
 

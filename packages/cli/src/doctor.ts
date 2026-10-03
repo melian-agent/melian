@@ -1,11 +1,12 @@
 import { execFile } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
-import { sep } from "node:path";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { join, sep } from "node:path";
 import { type LensTier, loadConfig, type StaticTool } from "@melian-agent/core";
 import { parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
 import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSource } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
-import { git } from "./repository.ts";
+import { git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
 
 type Check = { readonly name: string; readonly state: "ok" | "warn" | "fail"; readonly detail: string };
 
@@ -106,6 +107,27 @@ async function executableCheck(cwd: string, executable: string | undefined): Pro
 		: { name: "melian", state: "ok", detail: `${shown}, outside this checkout` };
 }
 
+// A sandbox can keep .git read-only, and every review then fails to open its storage. Writing a file is the only test a
+// sandbox answers truthfully; it may pass a permission check and still refuse the write.
+async function stateCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<Check | undefined> {
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return undefined;
+	const directory = await stateDirectory(root, env);
+	const probe = join(directory, `.doctor-${process.pid}`);
+	try {
+		await mkdir(directory, { recursive: true });
+		await writeFile(probe, "");
+		await rm(probe, { force: true });
+		return { name: "state", state: "ok", detail: `${directory}, writable` };
+	} catch (error) {
+		return {
+			name: "state",
+			state: "warn",
+			detail: `${directory} is not writable (${(error as NodeJS.ErrnoException).code ?? (error as Error).message}); give this host write access there, or set ${stateDirectoryVariable} to a writable directory`,
+		};
+	}
+}
+
 async function repositoryCheck(cwd: string): Promise<Check> {
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return { name: "repository", state: "warn", detail: "not inside a git repository" };
@@ -143,9 +165,12 @@ export async function doctor(io: Io): Promise<number> {
 			? { name: "gh", state: "warn", detail: "not found on PATH" }
 			: { name: "gh", state: "ok", detail: gh.split("\n")[0]! },
 		await repositoryCheck(io.cwd),
-		...[await executableCheck(io.cwd, io.executable), await routesCheck(io.cwd), await staticCheck(io.cwd)].filter(
-			(check) => check !== undefined,
-		),
+		...[
+			await executableCheck(io.cwd, io.executable),
+			await stateCheck(io.cwd, io.env),
+			await routesCheck(io.cwd),
+			await staticCheck(io.cwd),
+		].filter((check) => check !== undefined),
 	];
 	const width = Math.max(...checks.map((check) => check.name.length));
 	for (const check of checks) io.stdout(`${check.state.padEnd(4)}  ${check.name.padEnd(width)}  ${check.detail}\n`);

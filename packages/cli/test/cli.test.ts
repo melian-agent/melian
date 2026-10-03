@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -232,6 +232,70 @@ describe("melian doctor", () => {
 		expect(local.stdout).toMatch(/^ok {4}routes {6}heavy to amazon-bedrock\/claude-opus$/m);
 		expect(routed.stdout).toMatch(/^ok {4}static {6}biome from Melian's own copy, tsc from Melian's own copy$/m);
 		expect(routed.stdout).toMatch(/^ok {4}melian {6}.*, outside this checkout$/m);
+	});
+});
+
+describe("Melian's state directory", () => {
+	const sqliteFiles = (directory: string): string[] =>
+		readdirSync(directory, { recursive: true, encoding: "utf8" }).filter((file) => file.endsWith(".sqlite"));
+
+	it("keeps storage under MELIAN_STATE_DIR, in a directory per clone, when it is set", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+		const state = mkdtempSync(join(tmpdir(), "melian-state-"));
+		repos.push(state);
+
+		const review = melian(repo, ["review", "main"], { ...env, MELIAN_STATE_DIR: state });
+
+		expect(review.status).toBe(0);
+		expect(sqliteFiles(state)).toEqual([expect.stringMatching(/^[0-9a-f]{16}\/scripted\/[^/]+\.sqlite$/)]);
+		expect(sqliteFiles(join(repo, ".git"))).toEqual([]);
+		expect(melian(repo, ["findings", "main"], { ...env, MELIAN_STATE_DIR: state })).toMatchObject({
+			status: 0,
+			stdout: review.stdout,
+		});
+	});
+
+	// A sandbox that keeps .git read-only looks like this to Melian. Root writes anywhere, so the test means nothing there.
+	it.skipIf(process.getuid?.() === 0)(
+		"names the directory and MELIAN_STATE_DIR when it cannot write, and doctor warns",
+		() => {
+			const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+			const state = mkdtempSync(join(tmpdir(), "melian-state-"));
+			repos.push(state);
+			chmodSync(state, 0o500);
+			try {
+				const review = melian(repo, ["review", "main"], { ...env, MELIAN_STATE_DIR: state });
+				const doctor = melian(repo, ["doctor"], { MELIAN_STATE_DIR: state });
+
+				expect(review.status).toBe(2);
+				expect(review.stderr).toMatch(/Melian cannot write its storage at .*MELIAN_STATE_DIR/);
+				expect(doctor.stdout).toMatch(/^warn {2}state {7}.* is not writable \(EACCES\); .*MELIAN_STATE_DIR/m);
+			} finally {
+				chmodSync(state, 0o700);
+			}
+		},
+	);
+
+	it.skipIf(process.getuid?.() === 0)("turns SQLite's refusal in a read-only .git/melian into the same advice", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+		const scripted = join(repo, ".git/melian/scripted");
+		mkdirSync(scripted, { recursive: true });
+		chmodSync(scripted, 0o500);
+		try {
+			const review = melian(repo, ["review", "main"], env);
+
+			expect(review.status).toBe(2);
+			expect(review.stderr).toMatch(
+				/Melian cannot write its storage at .*unable to open database file.*MELIAN_STATE_DIR/,
+			);
+		} finally {
+			chmodSync(scripted, 0o700);
+		}
+	});
+
+	it("reports the state directory as writable by default", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!);
+		expect(melian(repo, ["doctor"]).stdout).toMatch(/^ok {4}state {7}.*\.git\/melian, writable$/m);
 	});
 });
 

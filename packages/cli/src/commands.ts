@@ -16,7 +16,6 @@ import {
 	backgroundContext as context,
 	openPublishHarness,
 	openReviewHarness,
-	openSqliteStorage,
 	publishReview,
 	ReviewError,
 	type ReviewOrigin,
@@ -26,7 +25,7 @@ import {
 	runChecks,
 } from "@melian-agent/pipeline";
 import { idleModels, isScripted, reviewModels, scriptVariable } from "./models.ts";
-import { CliError, git, storagePath } from "./repository.ts";
+import { CliError, git, openStorage, storagePath } from "./repository.ts";
 import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
 
 /** Where a command reads and writes: its working directory, environment, and output. */
@@ -89,10 +88,10 @@ export async function review(
 	const standards = await loadStandards(repoRoot, source, ".");
 	const { config: loaded } = await loadConfig(repoRoot, source, ".");
 	const { models, config, retry } = await reviewModels(io.env, loaded, lenses, options.model);
-	const path = await storagePath(repoRoot, changeset.id, isScripted(io.env));
+	const path = await storagePath(repoRoot, changeset.id, io.env, isScripted(io.env));
 	// Without the publish extension, so a publication a crash interrupted waits for melian publish rather than posting
 	// from a review.
-	const harness = await openReviewHarness(await openSqliteStorage(path), models, { retry, checkout: repoRoot });
+	const harness = await openReviewHarness(await openStorage(path), models, { retry, checkout: repoRoot });
 	try {
 		// The deterministic checks first, then the lenses: reviewChangeset reads the checks' records, and a check of the
 		// manifest without one makes the review not reviewed. The checks take the configuration as loaded, so a --model
@@ -152,9 +151,9 @@ export async function publish(io: Io, argument: string): Promise<number> {
 	const pullRequest = await provider.pullRequest(target.number);
 	const changeset = await pullRequestChangeset(io.cwd, target.number);
 	const base = await currentBase(io.cwd, pullRequest);
-	const path = await storagePath(changeset.repoRoot, changeset.id, false);
+	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, false);
 	// Only the publish task: a review a crash interrupted must not resume here and spend tokens on real models.
-	const harness = await openPublishHarness(await openSqliteStorage(path), idleModels(io.env), provider);
+	const harness = await openPublishHarness(await openStorage(path), idleModels(io.env), provider);
 	try {
 		// A head that moved has no merge base here, and publishReview refuses it for the head before it reads this.
 		const published = await publishReview({
@@ -197,12 +196,12 @@ export async function findings(
 		target.kind === "pullRequest"
 			? await pullRequestChangeset(io.cwd, target.number)
 			: await resolveRange(io.cwd, target.spec);
-	const path = await storagePath(changeset.repoRoot, changeset.id, isScripted(io.env));
+	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, isScripted(io.env));
 	const missing = new CliError(
 		`Melian has no review of ${short(changeset.revision.head)}; run melian review ${shellQuote(argument)}`,
 	);
 	if (!existsSync(path)) throw missing;
-	const harness = await openReviewHarness(await openSqliteStorage(path), idleModels(io.env));
+	const harness = await openReviewHarness(await openStorage(path), idleModels(io.env));
 	try {
 		const root = (await harness.root(context)).id;
 		const verdict = await readVerdict(harness, root, revisionKey(changeset.revision), context);
