@@ -28,7 +28,7 @@ Work like this:
 
 1. Read the diff. For each changed function, name the inputs and states it now accepts.
 2. For each, ask what value or ordering makes it fail. Read the code at the head revision with `read_file`, and find callers with `search`.
-3. Keep a finding only when you can name the concrete input or sequence that triggers it and the wrong outcome it produces. Drop anything you cannot substantiate from the code you read.
+3. Keep a finding only when you can name the concrete input or sequence that triggers it and the wrong outcome it produces. The input must come from code or data in the repository, or from the change itself, not merely be allowed by a parameter's type. Do not report a failure that only a caller outside the repository could cause. Drop anything you cannot substantiate from the code you read.
 
 Severity:
 

@@ -8,4 +8,12 @@ src/cart.ts
       export function formatPrice(cents: number, currency: string): string {
     What to do: Pass the cart's currency to formatPrice, or give currency a default.
 
-1 finding in 1 file.
+src/price.ts
+
+  P1  line 2  wrong-result  (introduced, new, unresolved)
+  formatPrice divides every amount by 100, so formatPrice(500, "JPY") renders "JPY 5" for 500 yen.
+    What: formatPrice divides every amount by 100, so formatPrice(500, "JPY") renders "JPY 5" for 500 yen.
+    Why here: The base formatted dollars only; this change accepts any currency but keeps the two-decimal conversion, and yen has no minor unit.
+    What to do: Divide by 10 to the power of the currency's minor units, read from the formatter's resolvedOptions().maximumFractionDigits.
+
+2 findings in 2 files.
