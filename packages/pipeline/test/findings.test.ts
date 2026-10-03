@@ -86,6 +86,22 @@ describe("the findings document", () => {
 		expect((await readFindings(harness, root.id, context)).map((finding) => finding.properties.id)).toEqual(ids);
 	});
 
+	it("stores a finding with nested undefined values as its JSON form", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		const loose = { ...evalFinding, message: { text: evalFinding.message.text, markdown: undefined } } as Finding;
+		await root.commit((tx) => upsertFinding(tx, root.id, loose, "rev1"), context);
+		expect(await readFindings(harness, root.id, context)).toEqual([evalFinding]);
+	});
+
+	it("returns copies, so changing one does not change the committed document", async () => {
+		const { harness, root } = await open(createMemoryStorage());
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		const [read] = (await readFindings(harness, root.id, context)) as Finding[];
+		(read!.properties.explanation as { what: string }).what = "changed by a reader";
+		read!.locations.pop();
+		expect(await readFindings(harness, root.id, context)).toEqual([evalFinding]);
+	});
+
 	it("refuses an invalid finding and commits nothing", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		const invalid: Finding = { ...evalFinding, level: "note" };

@@ -56,6 +56,9 @@ function triggerCode(trigger: FindingTrigger | undefined): string {
 /**
  * Records a finding as its producer reported it at `revision`, keeping Melian's lifecycle record for its ID.
  *
+ * Findings belong to the changeset's root conversation, never a lens's child conversation, so a fork of the root at any
+ * revision carries them. Pass the root's ID, even from a tool running in a lens.
+ *
  * The producer's record replaces any earlier one. The lifecycle starts as `new` when the ID is first seen, and
  * `lastSeenRevision` always moves to `revision`. A dismissed finding stays dismissed unless its trigger's code changed
  * materially, meaning its normalised `trigger.snippet` differs; then it becomes `new` and the dismissal moves to
@@ -64,13 +67,14 @@ function triggerCode(trigger: FindingTrigger | undefined): string {
  */
 export async function upsertFinding(
 	tx: Tx,
-	conversationId: ConversationId,
+	rootConversationId: ConversationId,
 	finding: Finding,
 	revision: string,
 ): Promise<void> {
-	const { status: _, ...properties } = parseFinding(finding).properties;
-	const producer: ProducerFinding = { ...finding, properties };
-	const { items } = await tx.doc(FindingsDocument, conversationId);
+	const valid = parseFinding(finding);
+	const { status: _, ...properties } = valid.properties;
+	const producer: ProducerFinding = { ...valid, properties };
+	const { items } = await tx.doc(FindingsDocument, rootConversationId);
 	const previous = items[properties.id];
 	if (previous === undefined) {
 		const lifecycle: FindingLifecycle = {
@@ -108,11 +112,11 @@ export async function upsertFinding(
 /** Marks a finding dismissed. Throws core's `FindingError` `unknownFinding` if no finding has the ID. */
 export async function dismissFinding(
 	tx: Tx,
-	conversationId: ConversationId,
+	rootConversationId: ConversationId,
 	id: string,
 	{ by, reason, at }: Dismissal,
 ): Promise<void> {
-	const { items } = await tx.doc(FindingsDocument, conversationId);
+	const { items } = await tx.doc(FindingsDocument, rootConversationId);
 	const record = items[id];
 	if (record === undefined) {
 		throw new FindingError("unknownFinding", `no finding has ID ${id}`, { path: "/properties/id" });
@@ -129,18 +133,18 @@ export async function dismissFinding(
 
 /**
  * The committed findings of a conversation, in ID order, each with its lifecycle status. Empty when nothing has been
- * reported.
+ * reported. Each is a copy: the harness caches the committed document, so changing a returned finding must not reach it.
  */
 export async function readFindings(
 	reader: Pick<Harness, "snapshot">,
-	conversationId: ConversationId,
+	rootConversationId: ConversationId,
 	context: Context,
-): Promise<Finding[]> {
-	const document = await reader.snapshot(FindingsDocument, conversationId, context);
+): Promise<readonly Finding[]> {
+	const document = await reader.snapshot(FindingsDocument, rootConversationId, context);
 	return Object.keys(document?.items ?? {})
 		.sort()
 		.map((id) => {
 			const { producer, lifecycle } = document!.items[id]!;
-			return { ...producer, properties: { ...producer.properties, status: lifecycle.status } };
+			return structuredClone({ ...producer, properties: { ...producer.properties, status: lifecycle.status } });
 		});
 }

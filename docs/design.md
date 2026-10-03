@@ -96,7 +96,8 @@ Only the publish and knowledge tasks hold write credentials. Lenses never see th
 | A new revision, a comment, a command | A `submit()` into that conversation; comments while busy use `whenBusy: "steer"` |
 | A pipeline step | A `defineTask()` with phases and checkpoints |
 | A lens | A child conversation created and owned by the lens task, configured with `configure()` with its own model, instructions, and an explicit tool list, because an owned conversation otherwise inherits its owner's tools. Never a subagent tool the model chooses to call |
-| Findings, triage decisions, knowledge proposals | `defineDoc()` documents, rewindable, committed atomically with the transcript |
+| Findings | A `defineDoc()` document, rewindable, committed atomically with the transcript, and owned by the changeset's root conversation so a fork of the root at any revision carries them. A lens's tool writes to the root through the ID it is constructed with, never to its own child conversation |
+| Triage decisions, knowledge proposals | `defineDoc()` documents, rewindable, committed atomically with the transcript |
 | Standards and lens bodies | `section()` prompt sections rebuilt from files before every request, so edits take effect immediately and the transcript records what the model saw |
 | Idempotent publication | A durable `published` document keyed by revision and finding ID, written in the same commit that records the post, plus a check for Melian's marker on the pull request before posting. Not `api.memo()`: memos are task-scoped and discarded when the task ends |
 | Webhook delivery deduplication | `requestId` on submission, exactly-once. A `requestId` is scoped to one conversation, so the changeset's storage and conversation are resolved before deduplication |
@@ -181,14 +182,14 @@ Front matter is routing; the body is the system prompt for the lens's child conv
 - `tier` names a model tier, never a model ID. Tiers resolve through model routing, which is overridable per path.
 - `tools` is a read-only allowlist: `read_file`, `search`, and `list_files`, each reading the head revision through git rather than the filesystem. The hook layer enforces it. `report_finding` is always offered and never listed.
 - `severities` bounds what the lens may report. The hook layer rejects findings outside it.
-- `rules` lists the rule IDs the lens reports under, each with a one-line description. The hook layer rejects a finding under any other rule and tells the model which rules exist, so rule IDs stay stable enough to key findings and dismissals.
+- `rules` lists the rule IDs the lens reports under, each with a one-line description. The hook layer rejects a finding under any other rule and tells the model which rules exist, so a model cannot coin a new rule name, and with it a new finding ID, on each run.
 - `budget.findings` caps how many findings the lens may report; past it the hook layer refuses more and says why. `budget.tokens` is recorded but not yet enforced.
 - `extends` lets a repository override parts of a built-in lens, such as its tier or an appended paragraph, without copying the body.
 - `standards: true` injects the shared standards section. Default true; opt out for lenses where conventions are noise.
 
 Layering follows Pi's resource rules. Built-in lenses ship inside the core package, under `packages/core/lenses/`. Repository lenses live under `.melian/lenses/`, which is canonical and keeps them beside `melian.yaml`, standards, and knowledge. Lenses are also discovered under `.agents/lenses/`, for repositories that keep everything agent-facing under the Agent Skills directory, mirroring Pi's own dual discovery of `.pi/` and `.agents/skills/`. Skill loaders only load directories containing `SKILL.md`, so a `LENS.md` directory is invisible to them wherever it lives. We do not own the `.agents/` namespace; if the spec defines that path for something else, the spec wins. Both locations resolve nearest-first in a monorepo, and a lens defined in a folder applies only beneath it. Repository lenses are read from the revision the host chooses, as policy and standards are, so a pull request cannot rewrite the lenses that review it. Folder-level configuration can disable a lens, change its tier, narrow its paths, or add one. Lens packs for a language or framework ship as Pi packages with a `melian.lenses` manifest key mirroring `pi.skills`, pinned in project settings.
 
-Findings leave a lens through a `report_finding` tool with a TypeBox schema. Prose is never parsed for findings. The tool upserts by the finding's stable ID and is replay-safe, so a crash mid-call never stores a finding twice.
+Findings leave a lens through a `report_finding` tool with a TypeBox schema. Prose is never parsed for findings. The lens supplies location, rule, severity, explanation, and evidence; Melian derives the rest, including the snippet, so identity never depends on the model's wording. The tool upserts by the finding's stable ID and is replay-safe, so a crash mid-call never stores a finding twice.
 
 What stays out of a lens: topology, concurrency, deadlines, publication, and verdict rules. Those are tiers and resolution configuration.
 
@@ -505,6 +506,8 @@ docs/
 | `.melian/` placement | Any folder level for standards and lenses, nearest-first; knowledge and lens-pack settings at the root only | Per-path content layers like `melian.yaml`; repository-wide state has one home |
 | Finding identity | file, rule, normalised snippet, and occurrence ordinal | Identical snippets in one file must not collide; line shifts must not change the ID |
 | Cause by location | Location proves introduced only; affected needs lens evidence; pre-existing otherwise | A location heuristic must never make an old defect block |
+| Lens-reported findings | Lens supplies location, rule from its declared list, severity, explanation, evidence; Melian derives snippet from the head revision and everything else | Identity must not depend on the model's wording |
+| Findings ownership | The changeset's root conversation, never a lens's child conversation | A fork of the root at any revision must carry the findings; a lens conversation ends with its task |
 
 ## Open questions
 

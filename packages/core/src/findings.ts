@@ -8,6 +8,10 @@ const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
 const line = Type.Integer({ minimum: 1 });
 const count = Type.Integer({ minimum: 0 });
+const idSchema = Type.String({ pattern: "^[0-9a-f]{16}$" });
+
+/** The `partialFingerprints` key under which a SARIF result carries Melian's stable ID. */
+export const fingerprintKey = "melian/v1";
 
 /** The JSON Schema of a SARIF `level`. Melian never emits `none`, which SARIF reserves for results that are not failures. */
 export const sarifLevelSchema = Type.Union([Type.Literal("error"), Type.Literal("warning"), Type.Literal("note")]);
@@ -43,7 +47,7 @@ export const findingSourceSchema = Type.Object({ check: text, version: Type.Opti
 /** The JSON Schema of {@link FindingProperties}. Unknown keys are rejected, so a misspelt optional key is not lost. */
 export const findingPropertiesSchema = Type.Object(
 	{
-		id: Type.String({ pattern: "^[0-9a-f]{16}$" }),
+		id: idSchema,
 		path: text,
 		occurrence: Type.Optional(count),
 		discriminator: Type.Optional(text),
@@ -90,7 +94,39 @@ export const findingSchema = Type.Object(
 		level: sarifLevelSchema,
 		message: Type.Object({ text }, strict),
 		locations: Type.Array(findingLocationSchema, { minItems: 1 }),
+		partialFingerprints: Type.Object({ [fingerprintKey]: idSchema }, strict),
 		properties: findingPropertiesSchema,
+	},
+	strict,
+);
+
+const logResultSchema = Type.Object({ ...findingSchema.properties, ruleIndex: count }, strict);
+
+/**
+ * The JSON Schema of a {@link ReportFindingInput}: what a lens supplies through its `report_finding` tool, and nothing
+ * else. Melian derives the rest of the finding.
+ */
+export const reportFindingInputSchema = Type.Object(
+	{
+		file: Type.String({ minLength: 1, description: "Repository-relative path of the flagged file at head" }),
+		line: Type.Integer({ minimum: 1, description: "First flagged line at head" }),
+		endLine: Type.Optional(Type.Integer({ minimum: 1, description: "Last flagged line at head" })),
+		rule: Type.String({ minLength: 1, description: "One of the rules this lens declares" }),
+		severity: severitySchema,
+		explanation: Type.Object(
+			{
+				what: Type.String({ minLength: 1, description: "What is wrong" }),
+				why: Type.String({ minLength: 1, description: "Why it matters in this change" }),
+				fix: Type.String({ minLength: 1, description: "What the author should do" }),
+			},
+			strict,
+		),
+		evidence: Type.Optional(
+			Type.String({
+				minLength: 1,
+				description: "For a location outside the change: the changed code that provably breaks it",
+			}),
+		),
 	},
 	strict,
 );
@@ -109,13 +145,17 @@ export const findingsLogSchema = Type.Object(
 					tool: Type.Object(
 						{
 							driver: Type.Object(
-								{ name: Type.Literal("Melian"), informationUri: Type.Optional(Type.String()) },
+								{
+									name: Type.Literal("Melian"),
+									informationUri: Type.Optional(Type.String()),
+									rules: Type.Array(Type.Object({ id: text }, strict)),
+								},
 								strict,
 							),
 						},
 						strict,
 					),
-					results: Type.Array(findingSchema),
+					results: Type.Array(logResultSchema),
 				},
 				strict,
 			),
@@ -124,6 +164,15 @@ export const findingsLogSchema = Type.Object(
 	},
 	strict,
 );
+
+/**
+ * What a lens reports for one finding: a location, a rule from those the lens declares, a severity, an explanation, and
+ * optionally evidence. Melian derives the rest so that a finding's identity never depends on the model's wording: the
+ * snippet is read from the head revision at the reported lines, never taken from the model; `source` is the lens and
+ * its version; `cause` is {@link classifyCause} of the location, made `affected` only by `evidence`; `resolution` comes
+ * from configuration; and `status` from the findings document. {@link FindingInput} is the full internal input.
+ */
+export type ReportFindingInput = Static<typeof reportFindingInputSchema>;
 
 /** A SARIF `level`. */
 export type SarifLevel = Static<typeof sarifLevelSchema>;
@@ -171,7 +220,10 @@ export type FindingLocation = Static<typeof findingLocationSchema>;
  */
 export type Finding = Static<typeof findingSchema>;
 
-/** A SARIF 2.1.0 log of one Melian run. */
+/**
+ * A SARIF 2.1.0 log of one Melian run. The driver lists each rule once, and each result names its rule by `ruleIndex`
+ * as well as `ruleId`, which GitHub code scanning reads for rule metadata.
+ */
 export type FindingsLog = Static<typeof findingsLogSchema>;
 
 // The repository-relative posix form of a path: `./src//run.ts` becomes `src/run.ts`. Refuses what is not one.
@@ -384,14 +436,21 @@ export interface FindingInput {
 	readonly source: FindingSource;
 }
 
-function defined<T extends object>(value: T): T {
-	return Object.fromEntries(Object.entries(value).filter(([, each]) => each !== undefined)) as T;
+// A JSON round trip drops undefined-valued keys; dropping them first keeps a finding equal to its stored copy.
+function withoutUndefined(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(withoutUndefined);
+	if (value === null || typeof value !== "object") return value;
+	return Object.fromEntries(
+		Object.entries(value)
+			.filter(([, each]) => each !== undefined)
+			.map(([key, each]) => [key, withoutUndefined(each)]),
+	);
 }
 
 /**
  * Builds a finding, deriving its level, ID, and URI from the canonical repository-relative form of its file, so
  * `./src/run.ts` and `src/run.ts` are one file. Throws {@link FindingError}: `invalidPath` when the file is absolute,
- * escapes the repository, or uses a backslash, `missingDiscriminator` when a finding with a
+ * escapes the repository, or uses a backslash, `invalidRegion` when the region ends before it starts, `missingDiscriminator` when a finding with a
  * snippet has no occurrence or one without a snippet has no discriminator, and `invalidFinding` if the result is invalid.
  */
 export function createFinding(input: FindingInput): Finding {
@@ -408,21 +467,22 @@ export function createFinding(input: FindingInput): Finding {
 		ruleId: rule,
 		level: levelForSeverity(input.severity),
 		message: { text: input.message },
+		partialFingerprints: { [fingerprintKey]: id },
 		locations: [
 			{
 				physicalLocation: {
 					artifactLocation: { uri: repositoryUri(file) },
-					region: defined({
+					region: {
 						startLine: input.startLine,
 						endLine: input.endLine,
 						startColumn: input.startColumn,
 						endColumn: input.endColumn,
 						snippet: snippet === undefined ? undefined : { text: snippet },
-					}),
+					},
 				},
 			},
 		],
-		properties: defined({
+		properties: {
 			id,
 			path: file,
 			occurrence: hasSnippet ? occurrence : undefined,
@@ -436,20 +496,23 @@ export function createFinding(input: FindingInput): Finding {
 			status: input.status ?? "new",
 			explanation: input.explanation,
 			source: input.source,
-		}),
+		},
 	});
 }
 
 /**
- * Checks that `value` is a valid finding and returns it.
+ * Checks that `input` is a valid finding and returns a copy without keys whose value is `undefined`, at any depth, so
+ * the copy equals what a JSON round trip stores.
  *
  * Throws {@link FindingError}: `invalidFinding` when it does not match {@link findingSchema}, `levelMismatch` when its
- * level is not {@link levelForSeverity} of its severity, `invalidPath` when its path is not canonical or its URI does
+ * level is not {@link levelForSeverity} of its severity, `invalidRegion` when its region ends before it starts,
+ * `invalidPath` when its path is not canonical or its URI does
  * not encode that path, `missingEvidence` when it is `affected` without evidence,
  * `missingDiscriminator` when it lacks the occurrence or
  * discriminator its snippet calls for, and `idMismatch` when its ID is not {@link findingId} of its first location.
  */
-export function parseFinding(value: unknown): Finding {
+export function parseFinding(input: unknown): Finding {
+	const value = withoutUndefined(input);
 	const errors = Value.Errors(findingSchema, value);
 	const unknown = errors.find((error) => error.keyword === "additionalProperties");
 	if (unknown !== undefined) {
@@ -472,6 +535,12 @@ export function parseFinding(value: unknown): Finding {
 	}
 	const { artifactLocation, region } = finding.locations[0]!.physicalLocation;
 	const { path, trigger } = finding.properties;
+	const { startLine, endLine = startLine, startColumn, endColumn } = region;
+	if (endLine < startLine || (endLine === startLine && (endColumn ?? Infinity) < (startColumn ?? 1))) {
+		throw new FindingError("invalidRegion", "the finding's region ends before it starts", {
+			path: "/locations/0/physicalLocation/region",
+		});
+	}
 	requireCanonical(path, "/properties/path");
 	if (artifactLocation.uri !== repositoryUri(path)) {
 		throw new FindingError("invalidPath", `finding URI ${artifactLocation.uri} does not encode its path ${path}`, {
@@ -503,18 +572,30 @@ export function parseFinding(value: unknown): Finding {
 	if (id !== expected) {
 		throw new FindingError("idMismatch", `finding ${id} should have ID ${expected}`, { path: "/properties/id" });
 	}
+	if (finding.partialFingerprints[fingerprintKey] !== id) {
+		throw new FindingError("idMismatch", `finding ${id} has a different ${fingerprintKey} fingerprint`, {
+			path: "/partialFingerprints/melian~1v1",
+		});
+	}
 	return finding;
 }
 
-/** Wraps findings in a SARIF 2.1.0 log of one Melian run. */
+/** Wraps findings in a SARIF 2.1.0 log of one Melian run, listing each rule once in the driver. */
 export function createFindingsLog(findings: readonly Finding[]): FindingsLog {
+	const rules = [...new Set(findings.map((finding) => finding.ruleId))].sort();
 	return {
 		$schema: sarifSchemaUri,
 		version: "2.1.0",
 		runs: [
 			{
-				tool: { driver: { name: "Melian", informationUri: "https://github.com/melian-agent/melian" } },
-				results: [...findings],
+				tool: {
+					driver: {
+						name: "Melian",
+						informationUri: "https://github.com/melian-agent/melian",
+						rules: rules.map((id) => ({ id })),
+					},
+				},
+				results: findings.map(({ ruleId, ...rest }) => ({ ruleId, ruleIndex: rules.indexOf(ruleId), ...rest })),
 			},
 		],
 	};

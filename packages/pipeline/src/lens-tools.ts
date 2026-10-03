@@ -8,9 +8,11 @@ import {
 	type LensToolName,
 	lensCovers,
 	listRevisionFiles,
+	type ReportFindingInput,
 	type Resolution,
 	type RevisionEntry,
 	readRevisionFile,
+	reportFindingInputSchema,
 	repositoryPath,
 	type Severity,
 	searchRevision,
@@ -203,26 +205,6 @@ const listFiles = defineTool({
 /** The read-only tools a lens may be offered, by the names `LENS.md` lists them under. */
 export const lensReadTools = { read_file: readFile, search, list_files: listFiles } as const;
 
-// TODO(reportFindingInputSchema): replace with core's reportFindingInputSchema once it lands on findings.
-const reportFindingParameters = Type.Object({
-	file: Type.String({ minLength: 1, description: "Repository-relative path at the head revision" }),
-	line: Type.Integer({ minimum: 1, description: "First line of the flagged code at the head revision" }),
-	endLine: Type.Optional(Type.Integer({ minimum: 1, description: "Last line, when the code spans several" })),
-	rule: Type.String({ minLength: 1, description: "One of this lens's rule IDs" }),
-	severity: Type.Union(["P0", "P1", "P2", "P3", "nit"].map((severity) => Type.Literal(severity))),
-	explanation: Type.Object({
-		what: Type.String({ minLength: 1, description: "What is wrong" }),
-		why: Type.String({ minLength: 1, description: "Why this change causes it" }),
-		fix: Type.String({ minLength: 1, description: "What the author should do" }),
-	}),
-	evidence: Type.Optional(
-		Type.String({
-			minLength: 1,
-			description: "For code outside the diff: the changed line that breaks it, as path:line and why",
-		}),
-	),
-});
-
 function overlapping(file: ReviewFile | undefined, startLine: number, endLine: number): ReviewHunk | undefined {
 	return file?.hunks.find(
 		(hunk) => hunk.newLines > 0 && startLine < hunk.newStart + hunk.newLines && endLine >= hunk.newStart,
@@ -248,19 +230,7 @@ function countFor(items: Readonly<Record<string, Produced>>, lens: LensPolicy): 
  * Builds the finding a `report_finding` call describes. The snippet comes from the head revision at the reported
  * lines, never from the model, so a finding's ID does not depend on how the model quoted the code.
  */
-async function findingFromCall(
-	args: {
-		file: string;
-		line: number;
-		endLine?: number;
-		rule: string;
-		severity: string;
-		explanation: { what: string; why: string; fix: string };
-		evidence?: string;
-	},
-	lens: LensPolicy,
-	review: ReviewState,
-): Promise<Finding> {
+async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, review: ReviewState): Promise<Finding> {
 	const path = repositoryPath(args.file);
 	if (!lensCovers(lens.coverage, path)) {
 		throw new Error(`${path} is outside the paths lens ${lens.name} reviews; report only within them`);
@@ -280,7 +250,7 @@ async function findingFromCall(
 	const located = classifyCause({ file: path, startLine: args.line, endLine }, { files: changedFiles(review) });
 	const changed = review.files.find((file) => file.path === path);
 	const hunk = located === "introduced" ? overlapping(changed, args.line, endLine) : undefined;
-	const severity = args.severity as Severity;
+	const { severity } = args;
 	return createFinding({
 		rule: args.rule,
 		message: args.explanation.what,
@@ -315,7 +285,7 @@ export const reportFinding = defineTool({
 	name: "report_finding",
 	description:
 		"Report one finding at the head revision: the file and lines of the flagged code, one of your rules, a severity, and an explanation. Call once per finding; never report findings in prose.",
-	parameters: reportFindingParameters,
+	parameters: reportFindingInputSchema,
 	replay: "safe",
 	execute: async (args, api, context) => {
 		const lens = await lensOf(api, api.conversationId, context);

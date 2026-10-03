@@ -9,6 +9,7 @@ import {
 	levelForSeverity,
 	normaliseSnippet,
 	parseFinding,
+	reportFindingInputSchema,
 	snippetOccurrence,
 } from "@melian-agent/core";
 import Schema from "typebox/schema";
@@ -155,6 +156,27 @@ describe("snippetOccurrence", () => {
 	});
 });
 
+describe("reportFindingInputSchema", () => {
+	const report = {
+		file: "src/run.ts",
+		line: 12,
+		rule: "no-eval",
+		severity: "P1",
+		explanation: { what: "eval runs input", why: "this change routes input to it", fix: "parse it" },
+	};
+
+	it("accepts a location, rule, severity, explanation, and optional evidence", () => {
+		expect(Value.Check(reportFindingInputSchema, report)).toBe(true);
+		expect(
+			Value.Check(reportFindingInputSchema, { ...report, endLine: 14, evidence: "src/api.ts:3 renames id" }),
+		).toBe(true);
+	});
+
+	it.each(["snippet", "cause", "resolution", "status", "source"])("refuses a lens-chosen %s", (key) => {
+		expect(Value.Check(reportFindingInputSchema, { ...report, [key]: "x" })).toBe(false);
+	});
+});
+
 describe("levelForSeverity", () => {
 	it("maps P0 and P1 to error, P2 to warning, and P3 and nit to note", () => {
 		const severities = ["P0", "P1", "P2", "P3", "nit"] as const;
@@ -168,6 +190,7 @@ describe("createFinding", () => {
 			ruleId: "no-eval",
 			level: "error",
 			message: { text: "eval runs request input" },
+			partialFingerprints: { "melian/v1": findingId(evalCall) },
 			locations: [
 				{
 					physicalLocation: {
@@ -224,6 +247,27 @@ describe("createFinding", () => {
 		expect(() => createFinding({ ...evalInput, cause: { evidence: "" } })).toThrow(FindingError);
 	});
 
+	it("rejects a region that ends before it starts", () => {
+		for (const region of [
+			{ startLine: 12, endLine: 3 },
+			{ startLine: 12, endLine: 12, startColumn: 9, endColumn: 2 },
+			{ startLine: 12, endLine: undefined, startColumn: 9, endColumn: 2 },
+		]) {
+			expect(() => createFinding({ ...evalInput, ...region })).toThrow(
+				expect.objectContaining({ code: "invalidRegion", path: "/locations/0/physicalLocation/region" }),
+			);
+		}
+		expect(createFinding({ ...evalInput, startLine: 12, endLine: 13, startColumn: 9, endColumn: 2 })).toBeDefined();
+	});
+
+	it("drops undefined-valued keys at any depth", () => {
+		const finding = createFinding({ ...evalInput, trigger: { file: "src/run.ts", index: 0, snippet: undefined } });
+		expect(Object.keys(finding.properties.trigger!)).toEqual(["file", "index"]);
+		const nested = { ...finding, message: { text: "eval runs request input", markdown: undefined } };
+		expect(parseFinding(nested)).toEqual(JSON.parse(JSON.stringify(nested)));
+		expect(parseFinding(nested).message).not.toHaveProperty("markdown");
+	});
+
 	it("rejects an input the schema would not accept", () => {
 		expect(() => createFinding({ ...evalInput, startLine: 0 })).toThrow(FindingError);
 		expect(() => createFinding({ ...evalInput, confidence: 1.5 })).toThrow(FindingError);
@@ -246,7 +290,26 @@ describe("a findings log", () => {
 	it("keeps Melian's extensions through a JSON round trip", () => {
 		const parsed = JSON.parse(JSON.stringify(log)) as typeof log;
 		expect(parsed).toEqual(log);
-		expect(parsed.runs[0]!.results.map(parseFinding)).toEqual(log.runs[0]!.results);
+		const findings = parsed.runs[0]!.results.map(({ ruleIndex: _, ...finding }) => parseFinding(finding));
+		expect(findings).toEqual([createFinding(evalInput), createFinding(minimalInput)]);
+	});
+
+	it("lists each rule once and points every result at its rule", () => {
+		const twice = createFindingsLog([
+			createFinding(evalInput),
+			createFinding(minimalInput),
+			createFinding(evalInput),
+		]);
+		const [run] = twice.runs;
+		expect(run!.tool.driver.rules).toEqual([{ id: "no-eval" }, { id: "prefer-const" }]);
+		for (const result of run!.results) expect(run!.tool.driver.rules[result.ruleIndex]!.id).toBe(result.ruleId);
+		expect(Schema.Errors(sarifSchema, twice)[1]).toEqual([]);
+	});
+
+	it("carries each finding's ID as a partial fingerprint for GitHub code scanning", () => {
+		for (const result of log.runs[0]!.results) {
+			expect(result.partialFingerprints).toEqual({ "melian/v1": result.properties.id });
+		}
 	});
 
 	it.each([
@@ -370,6 +433,12 @@ describe("parseFinding", () => {
 		const error = rejection({ ...finding, level: "warning" });
 		expect(error.code).toBe("levelMismatch");
 		expect(error.message).toBe("a P1 finding has level error, not warning");
+	});
+
+	it("rejects a fingerprint that is not the finding's ID", () => {
+		const error = rejection({ ...finding, partialFingerprints: { "melian/v1": "0123456789abcdef" } });
+		expect(error.code).toBe("idMismatch");
+		expect(error.path).toBe("/partialFingerprints/melian~1v1");
 	});
 
 	it("rejects an ID that is not the finding's stable ID", () => {
