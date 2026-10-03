@@ -79,3 +79,21 @@ export class FindingError extends Error {
 		this.path = options.path;
 	}
 }
+
+/** Why a tier could not be routed to a model. */
+export type ModelRoutingErrorCode = "noModelForTier" | "invalidModel";
+
+/** A model tier could not be routed. `tier` names it; `model` is the offending configured value, where there is one. */
+export class ModelRoutingError extends Error {
+	readonly code: ModelRoutingErrorCode;
+	readonly tier: string;
+	readonly model: string | undefined;
+
+	constructor(code: ModelRoutingErrorCode, message: string, options: { tier: string; model?: string }) {
+		super(message);
+		this.name = "ModelRoutingError";
+		this.code = code;
+		this.tier = options.tier;
+		this.model = options.model;
+	}
+}

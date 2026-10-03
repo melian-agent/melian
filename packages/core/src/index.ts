@@ -33,6 +33,8 @@ export {
 	type ConfigErrorCode,
 	FindingError,
 	type FindingErrorCode,
+	ModelRoutingError,
+	type ModelRoutingErrorCode,
 	OutsideRepositoryError,
 } from "./errors.ts";
 export {
@@ -65,6 +67,7 @@ export {
 	sarifLevelSchema,
 	sarifSchemaUri,
 } from "./findings.ts";
+export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
 export { melianPaths } from "./paths.ts";
 export { renderFindingsJson, renderFindingsTerminal, type TerminalRenderOptions } from "./render.ts";
 export { loadStandards, type StandardsSection } from "./standards.ts";
