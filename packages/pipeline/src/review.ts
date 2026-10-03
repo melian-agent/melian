@@ -25,6 +25,7 @@ import {
 	defineExtension,
 	defineTask,
 	type Harness,
+	isFailoverError,
 	type Models,
 	openHarness,
 	type Registry,
@@ -46,7 +47,8 @@ interface LensRun {
 	readonly key: string;
 	readonly name: string;
 	readonly version: string;
-	readonly model: ModelReference;
+	/** The tier's models that were known with credentials when the review started, in routing order. */
+	readonly route: readonly ModelReference[];
 	readonly instructions: string;
 	readonly tools: readonly LensToolName[];
 	readonly severities: readonly Severity[];
@@ -63,9 +65,27 @@ interface LensTaskInput {
 	readonly lenses: readonly LensRun[];
 }
 
-type LensOutcome = { readonly status: "done" } | { readonly status: "unanswered"; readonly reason: string };
+type LensOutcome =
+	| { readonly status: "done" }
+	| { readonly status: "unanswered"; readonly reason: string }
+	| { readonly status: "exhausted"; readonly tried: string[]; readonly reason: string };
 
-type LensCheckpoint = { phase: "spawn" } | { phase: "review"; children: Record<string, ConversationId> };
+// `attempts` is each lens's position in its route, committed with the model change, so a resumed review continues on
+// the model it had reached rather than retrying one that already failed.
+type ReviewCheckpoint = {
+	phase: "review";
+	children: Record<string, ConversationId>;
+	attempts: Record<string, number>;
+};
+
+type LensCheckpoint = { phase: "spawn" } | ReviewCheckpoint;
+
+function modelName(model: ModelReference): string {
+	return `${model.provider}/${model.modelId}`;
+}
+
+const continuePrompt =
+	"The model reviewing this change failed, and you take over. Continue the review where it stopped: findings already recorded stay recorded, so report only what is still missing. Then answer with one line saying how many findings you reported.";
 
 // Spawns every lens conversation in one commit, so a crash leaves all of them or none; then runs them in parallel.
 // The orchestrating conversation's model is never asked which lenses to run.
@@ -83,7 +103,7 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, Record<string, LensOu
 					// the lens extension puts its injection policy section first, ahead of the instructions.
 					const tools = [...lens.tools.map((tool) => lensReadTools[tool]), reportFinding];
 					await configure(tx, created.id, {
-						model: lens.model,
+						model: lens.route[0],
 						instructions: lens.instructions,
 						tools,
 						extensions: [lensExtension],
@@ -105,19 +125,40 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, Record<string, LensOu
 					};
 					children[lens.key] = created.id;
 				}
-				return { status: "running", checkpoint: { phase: "review", children } };
+				const attempts = Object.fromEntries(Object.keys(children).map((key) => [key, 0]));
+				return { status: "running", checkpoint: { phase: "review", children, attempts } };
 			}, context);
 		},
 		review: async (task, runtime, context) => {
-			const { children } = task.state.checkpoint as Extract<LensCheckpoint, { phase: "review" }>;
+			const { children, attempts } = task.state.checkpoint as ReviewCheckpoint;
 			const outcomes = await Promise.all(
 				Object.entries(children).map(async ([key, id]): Promise<[string, LensOutcome]> => {
 					const child = (await runtime.conversation(id, context))!;
 					const lens = task.input.lenses.find((each) => each.key === key)!;
-					const request = { type: "input", content: lens.prompt, requestId: `lens:${key}` } as const;
-					const settled = await (await child.submit(request, context)).wait(context);
-					if (settled.status === "done") return [key, { status: "done" }];
-					return [key, { status: "unanswered", reason: settled.reason ?? "unanswered" }];
+					// A request ID per attempt: a rerun after a crash finds the attempt it had reached, settled or not.
+					for (let attempt = attempts[key] ?? 0; ; attempt++) {
+						const content = attempt === 0 ? lens.prompt : continuePrompt;
+						const request = { type: "input", content, requestId: `lens:${key}:${attempt}` } as const;
+						const settled = await (await child.submit(request, context)).wait(context);
+						if (settled.status === "done") return [key, { status: "done" }];
+						const reason = typeof settled.detail === "string" ? settled.detail : (settled.reason ?? "unanswered");
+						const failover =
+							settled.reason === "no_model" || (settled.reason === "model_error" && isFailoverError(reason));
+						if (!failover) return [key, { status: "unanswered", reason }];
+						const next = lens.route[attempt + 1];
+						if (next === undefined) {
+							const tried = lens.route.slice(0, attempt + 1).map(modelName);
+							return [key, { status: "exhausted", tried, reason }];
+						}
+						await runtime.commit(async (tx, current) => {
+							await configure(tx, id, { model: next });
+							const checkpoint = current.state.checkpoint as ReviewCheckpoint;
+							return {
+								status: "running",
+								checkpoint: { ...checkpoint, attempts: { ...checkpoint.attempts, [key]: attempt + 1 } },
+							};
+						}, context);
+					}
 				}),
 			);
 			const result = Object.fromEntries(outcomes);
@@ -199,13 +240,16 @@ export function renderChangePrompt(changeset: Changeset, nonce: string, only?: r
 	return parts.join("\n\n");
 }
 
-async function chooseModel(lens: Lens, config: MelianConfig, models: Models): Promise<ModelReference> {
+// The tier's model and fallbacks, keeping those the collection knows and holds credentials for, in routing order.
+async function chooseRoute(lens: Lens, config: MelianConfig, models: Models): Promise<ModelReference[]> {
 	const route = resolveModelForTier(lens.tier, config.models);
+	const available: ModelReference[] = [];
 	for (const candidate of [route.model, ...route.fallbacks]) {
 		if (models.getModel(candidate.provider, candidate.modelId) === undefined) continue;
-		if ((await models.checkAuth(candidate.provider)) !== undefined) return candidate;
+		if ((await models.checkAuth(candidate.provider)) !== undefined) available.push(candidate);
 	}
-	const tried = [route.model, ...route.fallbacks].map((each) => `${each.provider}/${each.modelId}`).join(", ");
+	if (available.length > 0) return available;
+	const tried = [route.model, ...route.fallbacks].map(modelName).join(", ");
 	throw new ReviewError(
 		"noAvailableModel",
 		`lens ${lens.name} needs a ${lens.tier} model, and none of ${tried} is known with credentials; log in with pi or set the provider's API key`,
@@ -229,12 +273,14 @@ export interface ReviewOptions {
 
 /**
  * Reviews a changeset: selects the lenses its paths and configuration call for, runs each as a conversation owned by
- * one lens task, and returns the root conversation's findings document. Each lens runs on its tier's first configured
- * model that has credentials.
+ * one lens task, and returns the findings sighted at the head under review. Each lens starts on its tier's first
+ * configured model that has credentials, and moves to the next when a provider failure outlasts pi-ai's retries or
+ * authentication fails.
  *
  * Throws core's `ModelRoutingError` for a tier with no model, and {@link ReviewError}: `noAvailableModel` when no model
- * of a tier has credentials, `notInstalled` when the harness lacks {@link lensExtension}, and `lensFailed` when a lens
- * did not finish, carrying the findings reported so far.
+ * of a tier has credentials, `notInstalled` when the harness lacks {@link lensExtension}, `allModelsFailed` when every
+ * model of a lens's route failed, naming them, and `lensFailed` when a lens did not finish for another reason. Both
+ * carry the findings reported so far.
  */
 export async function reviewChangeset(options: ReviewOptions): Promise<readonly Finding[]> {
 	const { harness, changeset, config, standards, models } = options;
@@ -250,7 +296,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 			key: `${index}-${lens.name}-${lens.version}`,
 			name: lens.name,
 			version: lens.version,
-			model: await chooseModel(lens, config, models),
+			route: await chooseRoute(lens, config, models),
 			instructions: renderLensInstructions(lens, standards),
 			tools: lens.tools,
 			severities: lens.severities,
@@ -297,6 +343,20 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 	const settled = await harness.waitForTask(taskId, context);
 	const findings = await readFindings(harness, root.id, changeset.revision.head, context);
 	const outcome = settled.state.outcome;
+	const exhausted = lenses.flatMap((lens) => {
+		const result = outcome.status === "completed" ? outcome.result[lens.key] : undefined;
+		return result?.status === "exhausted" ? [{ lens: lens.name, ...result }] : [];
+	});
+	if (exhausted.length > 0) {
+		const each = exhausted.map(
+			({ lens, tried, reason }) => `lens ${lens} tried ${tried.join(", ")}; the last said: ${reason}`,
+		);
+		throw new ReviewError("allModelsFailed", `every model of a lens's tier failed: ${each.join("; ")}`, {
+			lenses: exhausted.map(({ lens }) => lens),
+			models: [...new Set(exhausted.flatMap(({ tried }) => tried))],
+			findings,
+		});
+	}
 	const failed =
 		outcome.status === "completed"
 			? lenses.filter((lens) => outcome.result[lens.key]?.status !== "done").map((lens) => lens.name)

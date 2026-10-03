@@ -17,23 +17,33 @@ export class PiCredentialsError extends Error {
 }
 
 /** Why a review could not run or finish. */
-export type ReviewErrorCode = "noAvailableModel" | "notInstalled" | "lensFailed";
+export type ReviewErrorCode = "noAvailableModel" | "notInstalled" | "lensFailed" | "allModelsFailed";
 
-/** A review could not run or finish. `lenses` names the lenses involved; `findings` holds what was reported anyway. */
+/**
+ * A review could not run or finish. `lenses` names the lenses involved, `models` the models tried when every model of
+ * a tier failed, and `findings` what was reported anyway.
+ */
 export class ReviewError extends Error {
 	readonly code: ReviewErrorCode;
 	readonly lenses: readonly string[];
+	readonly models: readonly string[];
 	readonly findings: readonly Finding[];
 
 	constructor(
 		code: ReviewErrorCode,
 		message: string,
-		options: { lenses: readonly string[]; findings?: readonly Finding[]; cause?: unknown },
+		options: {
+			lenses: readonly string[];
+			models?: readonly string[];
+			findings?: readonly Finding[];
+			cause?: unknown;
+		},
 	) {
 		super(message, { cause: options.cause });
 		this.name = "ReviewError";
 		this.code = code;
 		this.lenses = options.lenses;
+		this.models = options.models ?? [];
 		this.findings = options.findings ?? [];
 	}
 }

@@ -61,7 +61,7 @@ beforeEach(async () => {
 		},
 		{ "src/user.ts": user("\treturn user.manager.name;") },
 	);
-	fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
+	fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "backup" }] });
 	const heavy = fake.ref("heavy");
 	config = { ...defaultConfig, models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } } };
 	harness = await openHarness(createMemoryStorage(), {
@@ -571,6 +571,74 @@ describe("reviewChangeset", () => {
 			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
 		]);
 		expect(await review({ config: fallback })).toEqual([]);
+	});
+
+	describe("when a model fails", () => {
+		const overloaded = fauxAssistantMessage("", { stopReason: "error", errorMessage: "503 overloaded_error" });
+		const withBackup = () => {
+			const { provider } = fake.ref("heavy");
+			return { ...config, models: { heavy: { model: `${provider}/heavy`, fallbacks: [`${provider}/backup`] } } };
+		};
+
+		it("moves a lens to its tier's next model and continues the review there", async () => {
+			const answeredBy: string[] = [];
+			const requests = scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [
+						overloaded,
+						(_, model) => {
+							answeredBy.push(model);
+							return call("report_finding", nullDeref);
+						},
+						(_, model) => {
+							answeredBy.push(model);
+							return fauxAssistantMessage("Reported 1 finding.");
+						},
+					],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+			const findings = await review({ config: withBackup() });
+
+			expect(answeredBy).toEqual(["backup", "backup"]);
+			expect(findings.map((finding) => finding.ruleId)).toEqual(["null-dereference"]);
+			const handover = requests[correctness]![1]!.filter((message) => message.role === "user").map(textOf);
+			expect(handover).toHaveLength(2);
+			expect(handover[1]).toContain("The model reviewing this change failed, and you take over.");
+			expect(requests[contracts]).toHaveLength(1);
+		});
+
+		it("names every model tried when the route runs out", async () => {
+			scriptConversations(fake, [
+				{ match: correctness, replies: [overloaded, overloaded] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+			const error = await review({ config: withBackup() }).catch((caught: unknown) => caught);
+			expect(error).toBeInstanceOf(ReviewError);
+			const { provider } = fake.ref("heavy");
+			expect(error).toMatchObject({
+				code: "allModelsFailed",
+				lenses: ["correctness"],
+				models: [`${provider}/heavy`, `${provider}/backup`],
+			});
+			expect((error as Error).message).toContain("503 overloaded_error");
+		});
+
+		it("does not move on from a failure another model would not fix", async () => {
+			scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [fauxAssistantMessage("", { stopReason: "error", errorMessage: "prompt is malformed" })],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+			await expect(review({ config: withBackup() })).rejects.toMatchObject({
+				code: "lensFailed",
+				lenses: ["correctness"],
+			});
+		});
 	});
 
 	it("refuses a harness without the lens extension", async () => {

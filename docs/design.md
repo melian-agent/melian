@@ -298,7 +298,7 @@ Advisory only, never authority. Fail closed on timeout or error. Inputs come fro
 
 pi-ai provides providers, OAuth subscription auth, and the model catalogue. Melian adds:
 
-- **Model routing** from tier to model: `light`, `medium`, `heavy`, `decision`, with fallbacks, overridable per path.
+- **Model routing** from tier to model: `light`, `medium`, `heavy`, `decision`, with fallbacks, overridable per path. A lens carries its tier's whole route, and moves to the next model when a provider failure outlasts pi-ai's retries or authentication fails. The route position is checkpointed with the model change, so a resumed review continues on the model it had reached.
 - **A credential pool provider** that holds several credentials per provider and rotates on rate limit or failure. This is how subscriptions stack.
 - **Credential sources**: Pi's credential store, so one `pi` login covers Melian locally; environment variables; GitHub App installation tokens on the server and Actions hosts.
 

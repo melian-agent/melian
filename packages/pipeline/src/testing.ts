@@ -43,8 +43,8 @@ export function createFakeModels(options?: RegisterFauxProviderOptions): FakeMod
 	};
 }
 
-/** One scripted reply: a message, or a function of the messages the model was sent. */
-export type ScriptedReply = AssistantMessage | ((messages: readonly Message[]) => AssistantMessage);
+/** One scripted reply: a message, or a function of the messages the model was sent and the model's ID. */
+export type ScriptedReply = AssistantMessage | ((messages: readonly Message[], modelId: string) => AssistantMessage);
 
 /** The replies for every conversation whose system prompt contains `match`, in order. */
 export type ConversationScript = { readonly match: string; readonly replies: readonly ScriptedReply[] };
@@ -83,7 +83,12 @@ export function scriptConversations(
 	scripts: readonly ConversationScript[],
 ): Record<string, Message[][]> {
 	const requests: Record<string, Message[][]> = Object.fromEntries(scripts.map((script) => [script.match, []]));
-	const respond = (context: { readonly messages: readonly Message[] }): AssistantMessage => {
+	const respond = (
+		context: { readonly messages: readonly Message[] },
+		_options: unknown,
+		_state: unknown,
+		model: Model<string>,
+	): AssistantMessage => {
 		const prompt = systemPromptOf(context.messages);
 		const script = scripts.find((each) => prompt.includes(each.match));
 		if (script === undefined) return fauxAssistantMessage("", { stopReason: "error", errorMessage: "no script" });
@@ -93,7 +98,7 @@ export function scriptConversations(
 		if (reply === undefined) {
 			return fauxAssistantMessage("", { stopReason: "error", errorMessage: `script "${script.match}" ran out` });
 		}
-		return typeof reply === "function" ? reply(context.messages) : reply;
+		return typeof reply === "function" ? reply(context.messages, model.id) : reply;
 	};
 	const total = scripts.reduce((sum, script) => sum + script.replies.length, 0);
 	fake.provider.setResponses(Array.from({ length: total + scripts.length + 8 }, () => respond));
