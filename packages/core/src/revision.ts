@@ -1,6 +1,7 @@
 import { posix } from "node:path";
 import { OutsideRepositoryError, RevisionError } from "./errors.ts";
 import { git } from "./git.ts";
+import { parseTree } from "./source.ts";
 
 /** What a path names at a revision. A submodule is a commit recorded in the tree, not a directory to read. */
 export type RevisionEntryKind = "file" | "directory" | "symlink" | "submodule";
@@ -65,30 +66,23 @@ function checkRevision(revision: string): void {
 	}
 }
 
-// `:(literal)` turns off pathspec magic and globbing, so a file named `*.ts` names only itself.
 function pathspec(path: string, directory = false): string[] {
 	if (path === "") return [];
-	return [`:(literal)${path}${directory ? "/" : ""}`];
+	return [`${path}${directory ? "/" : ""}`];
 }
 
-const kinds: Readonly<Record<string, RevisionEntryKind>> = { blob: "file", tree: "directory", commit: "submodule" };
-
-// `git ls-tree -l -z` writes `<mode> <type> <object> <size>\t<path>`, NUL-terminated, the size padded with spaces.
-function parseTree(output: string): (RevisionEntry & { object: string })[] {
-	return output
-		.split("\0")
-		.filter((record) => record !== "")
-		.map((record) => {
-			const tab = record.indexOf("\t");
-			const [mode, type, object, size] = record.slice(0, tab).split(/ +/);
-			const kind = mode === "120000" ? "symlink" : (kinds[type!] ?? "file");
-			const path = record.slice(tab + 1);
-			return kind === "file" ? { path, kind, object: object!, size: Number(size) } : { path, kind, object: object! };
-		});
+// A git tree holds only files, directories, symlinks, and submodule commits.
+function entries(output: string): (RevisionEntry & { object: string })[] {
+	return parseTree(output).map(({ kind, object, size, path }) =>
+		kind === "file" ? { path, kind, object, size } : { path, kind: kind === "other" ? "submodule" : kind, object },
+	);
 }
 
 async function lsTree(repoRoot: string, revision: string, args: readonly string[], maxBytes?: number) {
-	const result = await git(repoRoot, ["ls-tree", "-z", "-l", "--full-tree", ...args], { maxBytes });
+	// --literal-pathspecs, so that a `*` or `:` in a name is that character and nothing else.
+	const result = await git(repoRoot, ["--literal-pathspecs", "ls-tree", "-z", "-l", "--full-tree", ...args], {
+		maxBytes,
+	});
 	if (result.code !== 0 && !result.truncated) {
 		const unknown = /not a tree object|Not a valid object name/.test(result.stderr);
 		throw new RevisionError(
@@ -98,7 +92,7 @@ async function lsTree(repoRoot: string, revision: string, args: readonly string[
 	}
 	// A cut output may end in a partial record.
 	const output = result.truncated ? result.stdout.slice(0, result.stdout.lastIndexOf("\0") + 1) : result.stdout;
-	return { entries: parseTree(output), truncated: result.truncated === true };
+	return { entries: entries(output), truncated: result.truncated === true };
 }
 
 async function entryAt(repoRoot: string, revision: string, path: string) {
@@ -181,6 +175,7 @@ export async function searchRevision(
 		// grep.column would add a column field to every match.
 		"-c",
 		"grep.column=false",
+		"--literal-pathspecs",
 		"grep",
 		"-z",
 		"-n",

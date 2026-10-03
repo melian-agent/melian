@@ -133,7 +133,7 @@ function worktreeSource(root: string): SourceReader {
 	};
 }
 
-interface TreeEntry {
+export interface TreeEntry {
 	readonly kind: EntryKind;
 	readonly object: string;
 	readonly size: number;
@@ -147,7 +147,7 @@ function treeKind(mode: string): EntryKind {
 }
 
 // `git ls-tree -l -z`: `<mode> <type> <object> <size>\t<path>`, the size padded and `-` for a tree.
-function parseTree(output: string): TreeEntry[] {
+export function parseTree(output: string): TreeEntry[] {
 	return output
 		.split("\0")
 		.filter((line) => line !== "")
