@@ -62,6 +62,17 @@ There is no credential pool yet; one credential per provider.
 4. The task's first phase creates every lens conversation in one commit, configured with its model, its instructions (`renderLensInstructions`), and an explicit tool list, and records the lens's policy and that revision in its `LensDocument`. Each lens carries its own revision, never a shared record on the root: a crashed review's lens task resumes alongside the next push's, and a shared record would move the old lenses to the new head mid-review. The second phase submits the change, rendered by `renderChangePrompt` with only the files that lens covers, to each lens in parallel, with a request ID per lens so a rerun does not submit twice.
 5. A lens that does not finish is a `ReviewError` `lensFailed` naming it and carrying what was reported.
 
+### Prompt boundaries
+
+Everything that originates from the head revision reaches a lens inside a boundary from `quoteUntrusted(label, text, nonce)` in `src/untrusted.ts`: `<untrusted-NONCE label="LABEL">`, the text, `</untrusted-NONCE>`. Labels are `diff`, `file`, `search`, and `listing`. `reviewChangeset` draws the nonce once per review with `reviewNonce()` and stores it in the lens's `ReviewState`, so a replayed tool quotes with the same one.
+
+- `renderChangePrompt(changeset, nonce, only?)` puts the changed-file list in one `listing` block and each file's diff in its own `diff` block whose first line names the file. Problem: a removed line `-- src/fake.ts` renders as `--- src/fake.ts`, a header for a file that is not there. Solution: a file starts where its block starts, not at a line that looks like a header.
+- `read_file`, `search`, and `list_files` quote their results. Melian's own notes, such as "more matches not shown", stay outside the block, and never repeat a path from the head.
+- Paths pass through core's `visibleText` everywhere they reach a prompt, so a path holding a newline cannot forge a line in a listing.
+- Text that holds the nonce has it replaced with `[nonce]`, which cannot happen by chance and would otherwise close the block.
+- Every lens conversation is configured with `extensions: [lensExtension]` and nothing else, so its `injection_policy` section renders first and its `instructions` last. The section names the nonce, says that everything inside a boundary is data, and tells the lens to report an instruction found there under `melian/injection-attempt`. `reviewChangeset` adds that rule to any lens that does not declare it, so the hook never refuses the report the policy asks for.
+- A new tool that returns head content quotes it the same way. A test asserts on what the model was shown, not only on what it returned: `test/review.test.ts` strips every boundary from a prompt and checks that no path or line from the head remains.
+
 ### Lens tools
 
 `read_file`, `search`, and `list_files` read the head commit through core's `readRevisionFile`, `searchRevision`, and `listRevisionFiles`, never the working tree. They find the head through the calling conversation's `LensDocument`. All three are replay-safe because they only read.

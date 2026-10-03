@@ -17,6 +17,7 @@ import {
 	type Severity,
 	searchRevision,
 	snippetOccurrence,
+	visibleText,
 } from "@melian-agent/core";
 import { FindingsDocument, hasSighting, sightingCount, upsertFinding } from "./findings.ts";
 import {
@@ -26,9 +27,11 @@ import {
 	defineDoc,
 	defineTool,
 	hook,
+	section,
 	ToolTask,
 	Type,
 } from "./harness.ts";
+import { injectionPolicy, quoteUntrusted } from "./untrusted.ts";
 
 // `added` is the hunk's new lines, the code a dismissal is tied to.
 type ReviewHunk = {
@@ -47,6 +50,8 @@ type ReviewFile = { path: string; status: ChangedFile["status"]; binary: boolean
 /** The revision a lens reviews, fixed when its lens task creates it. */
 export type ReviewState = {
 	repoRoot: string;
+	/** This review's boundary nonce: head content reaches a lens only inside `quoteUntrusted` blocks carrying it. */
+	nonce: string;
 	base: string;
 	head: string;
 	files: ReviewFile[];
@@ -151,9 +156,9 @@ const readFile = defineTool({
 		const notes = [
 			end < lines.length ? `[lines ${end + 1} onward not shown; read again with startLine ${end + 1}]` : undefined,
 			file.truncated ? `[the file is ${file.size} bytes; only the first part was read]` : undefined,
-			start > lines.length ? `[${file.path} has ${lines.length} lines]` : undefined,
+			start > lines.length ? `[the file has ${lines.length} lines]` : undefined,
 		].filter((note) => note !== undefined);
-		return text([body, ...notes].filter((part) => part !== "").join("\n"));
+		return text([quoteUntrusted("file", body, review.nonce), ...notes].join("\n"));
 	},
 });
 
@@ -175,15 +180,17 @@ const search = defineTool({
 		if (matches.length === 0 && truncated)
 			return text("[matches found, but their lines are too long to show; narrow the search with path]");
 		if (matches.length === 0) return text("No matches.");
-		const lines = matches.map((match) => `${match.path}:${match.line}: ${match.text}`);
-		return text([...lines, ...(truncated ? ["[more matches not shown; narrow the search]"] : [])].join("\n"));
+		const lines = matches.map((match) => `${visibleText(match.path)}:${match.line}: ${match.text}`);
+		const notes = truncated ? ["[more matches not shown; narrow the search]"] : [];
+		return text([quoteUntrusted("search", lines.join("\n"), review.nonce), ...notes].join("\n"));
 	},
 });
 
 function describeEntry(entry: RevisionEntry): string {
-	if (entry.kind === "directory") return `${entry.path}/`;
-	if (entry.kind === "file") return `${entry.path} (${entry.size} bytes)`;
-	return `${entry.path} (${entry.kind})`;
+	const path = visibleText(entry.path);
+	if (entry.kind === "directory") return `${path}/`;
+	if (entry.kind === "file") return `${path} (${entry.size} bytes)`;
+	return `${path} (${entry.kind})`;
 }
 
 const listFiles = defineTool({
@@ -197,9 +204,19 @@ const listFiles = defineTool({
 	execute: async (args, api, context) => {
 		const review = await headOf(api, api.conversationId, context);
 		const { entries, truncated } = await listRevisionFiles(review.repoRoot, review.head, args);
-		const lines = entries.map(describeEntry);
-		return text([...lines, ...(truncated ? ["[more entries not shown]"] : [])].join("\n") || "Empty.");
+		if (entries.length === 0) return text("Empty.");
+		const listing = quoteUntrusted("listing", entries.map(describeEntry).join("\n"), review.nonce);
+		return text([listing, ...(truncated ? ["[more entries not shown]"] : [])].join("\n"));
 	},
+});
+
+/**
+ * The `injection_policy` section: in a lens conversation, the rule that everything inside this review's boundaries is
+ * data. Lens conversations select only the lens extension, so it renders first, ahead of the lens's instructions.
+ */
+export const injectionPolicySection = section("injection_policy", async (input, context) => {
+	const lens = (await input.read.snapshot(LensDocument, input.conversationId, context))?.lens;
+	return lens === undefined ? undefined : injectionPolicy(lens.revision.nonce);
 });
 
 /** The read-only tools a lens may be offered, by the names `LENS.md` lists them under. */

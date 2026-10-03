@@ -112,7 +112,7 @@ A lens is a directory holding `LENS.md`: YAML front matter between `---` lines, 
 | `tier` | `light`, `medium`, or `heavy` | required, or inherited |
 | `tools` | Read-only tools from `lensToolNames`: `read_file`, `search`, `list_files` | all three |
 | `severities` | The severities the lens may report | all five |
-| `rules` | `id` and one-line `description` for each rule the lens reports under | required, or inherited |
+| `rules` | `id` and one-line `description` for each rule the lens reports under. An ID is lower-case letters, digits, dots, and hyphens; the prefix `melian/` marks a rule Melian defines for every lens, such as `melian/injection-attempt` | required, or inherited |
 | `paths` | Globs relative to the directory holding the lens's `.melian/` or `.agents/`, normalised like a `melian.yaml`'s; `!` excludes, and one that leaves the repository is an error | `**` |
 | `budget` | `findings`, a count; `tokens`, a number or `200k`, recorded but not enforced | `findings: 10` |
 | `extends` | A lens to override, as layered so far | none |
@@ -196,7 +196,7 @@ The cost is the other direction: a renamed parameter that breaks a caller is `pr
 
 `renderFindingsJson` writes the SARIF log; `renderFindingsTerminal` writes plain text grouped by file in path order, and within a file by severity, then line, then ID. The terminal output carries no escape codes unless `color` is set, so a pipe or a log file receives plain text. Hosts decide whether to colour; core never reads `isTTY` or `NO_COLOR`.
 
-Everything the renderer prints is untrusted. A lens writes finding text after reading the change under review, which anyone opening a pull request controls, and that author also chooses the file paths. Example: a file named `src/run.ts` followed by ESC `[2J` clears the reviewer's screen, a newline in a path or rule ID forges a second header, and a right-to-left override makes `gnp.ts` read as `ts.png`. The terminal renderer therefore prints every control character, C1 control, line or paragraph separator, and bidi control in every string, paths and rule IDs included, as a visible `\uXXXX`, with colour on or off. Prose keeps its newlines as indented continuation lines, so a multi-line explanation stays inside its block; a newline anywhere else is escaped. Any new renderer for a terminal does the same.
+Everything the renderer prints is untrusted. A lens writes finding text after reading the change under review, which anyone opening a pull request controls, and that author also chooses the file paths. Example: a file named `src/run.ts` followed by ESC `[2J` clears the reviewer's screen, a newline in a path or rule ID forges a second header, and a right-to-left override makes `gnp.ts` read as `ts.png`. The terminal renderer therefore prints every control character, C1 control, line or paragraph separator, and bidi control in every string, paths and rule IDs included, as a visible `\uXXXX`, with colour on or off. Prose keeps its newlines as indented continuation lines, so a multi-line explanation stays inside its block; a newline anywhere else is escaped. Any new renderer for a terminal does the same. `visibleText` is that escaping, exported so the pipeline applies it to every path it puts in a prompt.
 
 ## Tests
 

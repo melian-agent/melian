@@ -16,4 +16,11 @@ export {
 	reviewChangeset,
 } from "./review.ts";
 
+export {
+	injectionAttemptRule,
+	quoteUntrusted,
+	reviewNonce,
+	type UntrustedLabel,
+} from "./untrusted.ts";
+
 export const packageName = "@melian-agent/pipeline";

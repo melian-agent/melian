@@ -12,6 +12,7 @@ import {
 	type Severity,
 	type StandardsSection,
 	selectLenses,
+	visibleText,
 } from "@melian-agent/core";
 import { ReviewError } from "./errors.ts";
 import { readFindings, recordRevision } from "./findings.ts";
@@ -30,6 +31,7 @@ import {
 	type Storage,
 } from "./harness.ts";
 import {
+	injectionPolicySection,
 	LensDocument,
 	lensPolicyHook,
 	lensReadTools,
@@ -37,6 +39,7 @@ import {
 	reportFinding,
 	reviewFiles,
 } from "./lens-tools.ts";
+import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
 
 /** One lens as the lens task runs it: everything resolved, nothing left to look up. */
 interface LensRun {
@@ -76,9 +79,15 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, Record<string, LensOu
 				const children: Record<string, ConversationId> = {};
 				for (const lens of task.input.lenses) {
 					const created = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
-					// An owned conversation starts with its owner's tools, so the list is always explicit.
+					// An owned conversation starts with its owner's tools and extensions, so both are explicit. Selecting only
+					// the lens extension puts its injection policy section first, ahead of the instructions.
 					const tools = [...lens.tools.map((tool) => lensReadTools[tool]), reportFinding];
-					await configure(tx, created.id, { model: lens.model, instructions: lens.instructions, tools });
+					await configure(tx, created.id, {
+						model: lens.model,
+						instructions: lens.instructions,
+						tools,
+						extensions: [lensExtension],
+					});
 					(await tx.doc(LensDocument, created.id)).lens = {
 						name: lens.name,
 						version: lens.version,
@@ -127,6 +136,7 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, Record<string, LensOu
 export const lensExtension = defineExtension({
 	name: "melian.lenses",
 	tools: [...Object.values(lensReadTools), reportFinding],
+	sections: [injectionPolicySection],
 	hooks: [lensPolicyHook],
 	tasks: [LensTask],
 });
@@ -150,19 +160,24 @@ export function openReviewHarness(
 const maxPromptBytes = 200 * 1024;
 
 /**
- * The input a lens receives: the revision, the files it changes, and its zero-context diff, bounded. `only` limits it
- * to the files a lens covers.
+ * The input a lens receives: the revision, the files it changes, and its zero-context diff, bounded. Everything from
+ * the head enters inside `quoteUntrusted` boundaries carrying `nonce`: the file list as one listing, and each file's
+ * diff as its own block whose first line is the file's path and status, so a changed line cannot pose as another
+ * file's header. Paths are escaped with core's `visibleText`, so a newline in one cannot forge a line. `only` limits
+ * the prompt to the files a lens covers.
  */
-export function renderChangePrompt(changeset: Changeset, only?: readonly string[]): string {
+export function renderChangePrompt(changeset: Changeset, nonce: string, only?: readonly string[]): string {
 	const { base, head } = changeset.revision;
 	const files = changeset.revision.files.filter((file) => only === undefined || only.includes(file.path));
+	const named = (file: (typeof files)[number]) =>
+		`${file.oldPath === undefined ? "" : `${visibleText(file.oldPath)} -> `}${visibleText(file.path)}`;
 	const header = [
 		`Review the change from ${base.slice(0, 12)} to ${head.slice(0, 12)}.`,
 		"",
 		"Files changed:",
-		...files.map((file) => `- ${file.status} ${file.oldPath === undefined ? "" : `${file.oldPath} -> `}${file.path}`),
+		quoteUntrusted("listing", files.map((file) => `${file.status} ${named(file)}`).join("\n"), nonce),
 		"",
-		"The diff has no context lines. Read the head revision with read_file for the code around each hunk.",
+		"Each file's diff follows in its own block, whose first line names the file. The diff has no context lines. Read the head revision with read_file for the code around each hunk.",
 	].join("\n");
 	const parts = [header];
 	let size = Buffer.byteLength(header);
@@ -173,7 +188,7 @@ export function renderChangePrompt(changeset: Changeset, only?: readonly string[
 					(hunk) =>
 						`@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@${hunk.header ? ` ${hunk.header}` : ""}\n${hunk.text}`,
 				);
-		const part = [`--- ${file.path} (${file.status})`, ...hunks].join("\n");
+		const part = quoteUntrusted("diff", [`${named(file)} (${file.status})`, ...hunks].join("\n"), nonce);
 		size += Buffer.byteLength(part);
 		if (size > maxPromptBytes) {
 			parts.push("[The diff continues; read the remaining files with read_file.]");
@@ -228,6 +243,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 	const paths = changeset.revision.files.map((file) => file.path);
 	const selected = selectLenses(options.lenses, config, paths);
 	if (selected.length === 0) return readFindings(harness, root.id, changeset.revision.head, context);
+	const nonce = reviewNonce();
 	const lenses: LensRun[] = [];
 	for (const [index, { lens, coverage, files }] of selected.entries()) {
 		lenses.push({
@@ -238,15 +254,19 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 			instructions: renderLensInstructions(lens, standards),
 			tools: lens.tools,
 			severities: lens.severities,
-			rules: lens.rules,
+			// Every lens may report an injection attempt, so the policy section never names a rule the hook refuses.
+			rules: lens.rules.some((rule) => rule.id === injectionAttemptRule.id)
+				? lens.rules
+				: [...lens.rules, injectionAttemptRule],
 			budget: lens.budget.findings,
 			coverage,
-			prompt: renderChangePrompt(changeset, files),
+			prompt: renderChangePrompt(changeset, nonce, files),
 		});
 	}
 	const { repoRoot, revision } = changeset;
 	const state: ReviewState = {
 		repoRoot,
+		nonce,
 		base: revision.base,
 		head: revision.head,
 		files: reviewFiles(revision.files),

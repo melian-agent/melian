@@ -21,9 +21,12 @@ export const lensToolNames = ["read_file", "search", "list_files"] as const;
 /** A read-only tool a lens may be offered. */
 export type LensToolName = (typeof lensToolNames)[number];
 
-/** The JSON Schema of a {@link LensRule}. */
+/**
+ * The JSON Schema of a {@link LensRule}. An ID is lower-case letters, digits, dots, and hyphens; the `melian/` prefix
+ * marks a rule Melian defines for every lens, such as `melian/injection-attempt`.
+ */
 export const lensRuleSchema = Type.Object(
-	{ id: Type.String({ pattern: "^[a-z0-9][a-z0-9.-]*$" }), description: text },
+	{ id: Type.String({ pattern: "^(melian/)?[a-z0-9][a-z0-9.-]*$" }), description: text },
 	strict,
 );
 

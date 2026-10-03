@@ -5,11 +5,12 @@ import { describe, expect, it } from "vitest";
 const goldens = loadGoldens();
 
 describe("the golden corpus", () => {
-	it("holds the step 5 fixtures", () => {
+	it("holds the corpus", () => {
 		expect(goldens.map((golden) => golden.name)).toEqual([
 			"clean-rename",
 			"contracts-breaking-signature",
 			"correctness-null-deref",
+			"injection-in-comment",
 		]);
 	});
 });
