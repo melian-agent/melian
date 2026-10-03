@@ -180,23 +180,35 @@ export type Finding = Static<typeof findingSchema>;
 /** A SARIF 2.1.0 log of one Melian run. */
 export type FindingsLog = Static<typeof findingsLogSchema>;
 
-// Percent-encodes each segment; decodeURIComponent on each segment reverses it.
-function repositoryUri(path: string, pointer = "/properties/path"): string {
-	const segments = path.split("/");
-	const problem =
-		path === ""
-			? "is empty"
-			: segments[0] === ""
-				? "is absolute"
-				: segments.includes("..")
-					? "escapes the repository"
+// The repository-relative posix form of a path: `./src//run.ts` becomes `src/run.ts`. Refuses what is not one.
+export function canonicalPath(path: string, pointer = "/properties/path"): string {
+	const segments = path.split("/").filter((segment) => segment !== "" && segment !== ".");
+	const problem = path.startsWith("/")
+		? "is absolute"
+		: path.includes("\\")
+			? "uses a backslash; use forward slashes"
+			: segments.includes("..")
+				? "escapes the repository"
+				: segments.length === 0
+					? "names no file"
 					: path.isWellFormed()
 						? undefined
 						: "is not well-formed Unicode";
 	if (problem !== undefined) {
 		throw new FindingError("invalidPath", `${JSON.stringify(path)} ${problem}`, { path: pointer });
 	}
-	return segments.map(encodeURIComponent).join("/");
+	return segments.join("/");
+}
+
+// Percent-encodes each segment of a canonical path; decodeURIComponent on each segment reverses it.
+function repositoryUri(path: string): string {
+	return path.split("/").map(encodeURIComponent).join("/");
+}
+
+function requireCanonical(path: string, pointer: string): void {
+	if (canonicalPath(path, pointer) !== path) {
+		throw new FindingError("invalidPath", `${JSON.stringify(path)} is not in canonical form`, { path: pointer });
+	}
 }
 
 /** What a finding's stable ID is computed from. */
@@ -383,12 +395,18 @@ function defined<T extends object>(value: T): T {
 }
 
 /**
- * Builds a finding, deriving its level, ID, and URI. Throws {@link FindingError}: `invalidPath` when the file is
- * absolute or escapes the repository, `missingDiscriminator` when a finding with a
+ * Builds a finding, deriving its level, ID, and URI from the canonical repository-relative form of its file, so
+ * `./src/run.ts` and `src/run.ts` are one file. Throws {@link FindingError}: `invalidPath` when the file is absolute,
+ * escapes the repository, or uses a backslash, `missingDiscriminator` when a finding with a
  * snippet has no occurrence or one without a snippet has no discriminator, and `invalidFinding` if the result is invalid.
  */
 export function createFinding(input: FindingInput): Finding {
-	const { file, rule, snippet, occurrence, discriminator } = input;
+	const { rule, snippet, occurrence, discriminator } = input;
+	const file = canonicalPath(input.file);
+	const trigger =
+		input.trigger === undefined
+			? undefined
+			: { ...input.trigger, file: canonicalPath(input.trigger.file, "/properties/trigger/file") };
 	const id = findingId({ file, rule, snippet: snippet ?? "", occurrence, discriminator });
 	const hasSnippet = normaliseSnippet(snippet ?? "") !== "";
 	const evidence = typeof input.cause === "object" ? input.cause.evidence : undefined;
@@ -417,7 +435,7 @@ export function createFinding(input: FindingInput): Finding {
 			discriminator: hasSnippet ? undefined : discriminator,
 			cause: evidence === undefined ? input.cause : "affected",
 			evidence,
-			trigger: input.trigger,
+			trigger,
 			severity: input.severity,
 			confidence: input.confidence,
 			resolution: input.resolution,
@@ -432,8 +450,8 @@ export function createFinding(input: FindingInput): Finding {
  * Checks that `value` is a valid finding and returns it.
  *
  * Throws {@link FindingError}: `invalidFinding` when it does not match {@link findingSchema}, `levelMismatch` when its
- * level is not {@link levelForSeverity} of its severity, `invalidPath` when its path is absolute or escapes the
- * repository or its URI does not encode that path, `missingEvidence` when it is `affected` without evidence,
+ * level is not {@link levelForSeverity} of its severity, `invalidPath` when its path is not canonical or its URI does
+ * not encode that path, `missingEvidence` when it is `affected` without evidence,
  * `missingDiscriminator` when it lacks the occurrence or
  * discriminator its snippet calls for, and `idMismatch` when its ID is not {@link findingId} of its first location.
  */
@@ -460,12 +478,13 @@ export function parseFinding(value: unknown): Finding {
 	}
 	const { artifactLocation, region } = finding.locations[0]!.physicalLocation;
 	const { path, trigger } = finding.properties;
+	requireCanonical(path, "/properties/path");
 	if (artifactLocation.uri !== repositoryUri(path)) {
 		throw new FindingError("invalidPath", `finding URI ${artifactLocation.uri} does not encode its path ${path}`, {
 			path: "/locations/0/physicalLocation/artifactLocation/uri",
 		});
 	}
-	if (trigger !== undefined) repositoryUri(trigger.file, "/properties/trigger/file");
+	if (trigger !== undefined) requireCanonical(trigger.file, "/properties/trigger/file");
 	const { cause, evidence } = finding.properties;
 	if (cause === "affected" && evidence === undefined) {
 		throw new FindingError("missingEvidence", "an affected finding must cite the change that breaks it", {

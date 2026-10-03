@@ -281,6 +281,8 @@ describe("parseFinding", () => {
 		["escaping the repository", "../outside.ts"],
 		["escaping from inside", "src/../../outside.ts"],
 		["empty", ""],
+		["only dots", "./"],
+		["Windows-style", "src\\run.ts"],
 	])("refuses a path that is %s", (_, file) => {
 		expect(() => createFinding({ ...evalInput, file, trigger: undefined })).toThrow(
 			expect.objectContaining({ code: "invalidPath", path: "/properties/path" }),
@@ -292,6 +294,21 @@ describe("parseFinding", () => {
 		expect(() => createFinding({ ...evalInput, trigger })).toThrow(
 			expect.objectContaining({ code: "invalidPath", path: "/properties/trigger/file" }),
 		);
+	});
+
+	it("canonicalises a path, so one file has one ID", () => {
+		for (const file of ["./src/run.ts", "src//run.ts", "src/./run.ts", "src/run.ts/"]) {
+			const finding = createFinding({ ...evalInput, file, trigger: { ...evalInput.trigger!, file } });
+			expect(finding.properties.path).toBe("src/run.ts");
+			expect(finding.properties.trigger?.file).toBe("src/run.ts");
+			expect(finding.properties.id).toBe(createFinding(evalInput).properties.id);
+		}
+	});
+
+	it("refuses a stored path that is not canonical", () => {
+		const finding = createFinding(evalInput);
+		const value = { ...finding, properties: { ...finding.properties, path: "./src/run.ts" } };
+		expect(rejection(value).code).toBe("invalidPath");
 	});
 
 	it("refuses a URI that does not encode the path", () => {
