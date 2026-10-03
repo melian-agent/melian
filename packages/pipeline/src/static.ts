@@ -9,7 +9,7 @@ import {
 	type ToolLog,
 	type TscSettings,
 } from "@melian-agent/core";
-import type { Context, ExecutionEnv } from "./harness.ts";
+import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts";
 
 /** The most a static tool may write, its report included. Past it the run fails with `outputTooLarge`. */
 export const staticOutputLimit = 16 * 1024 * 1024;
@@ -216,7 +216,10 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 	const scratch = canonical.ok ? canonical.value : scratchDir.value;
 	const root = posix.join(scratch, "tree");
 	try {
-		const added = await run.shell(git(repoRoot, `worktree add --detach --quiet ${quote(root)} ${commit}`));
+		await removeStaleWorktrees(run, scratch);
+		const added = await run.shell(
+			git(repoRoot, `worktree add --detach --quiet --lock --reason ${quote(lockReason)} ${quote(root)} ${commit}`),
+		);
 		if (added.code !== 0) throw run.fail("worktreeFailed", `git worktree add failed: ${added.output}`);
 		if (tool === "tsc") {
 			const { project } = input.settings as TscSettings;
@@ -240,8 +243,38 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 				: await runTsc(run, root, scratch, binary, version);
 		return { status: "ran", log };
 	} finally {
-		await env.exec(git(repoRoot, `worktree remove --force ${quote(root)}`), { timeout: 60 }, context);
-		await env.exec(git(repoRoot, "worktree prune"), { timeout: 60 }, context);
-		await env.remove(scratch, { recursive: true, force: true }, context);
+		await removeWorktree(env, repoRoot, scratch);
+	}
+}
+
+// Each worktree is locked with the adding process's ID, so a later run can tell a crashed run's worktree from a live one.
+const lockReason = `melian-static pid ${process.pid}`;
+
+// Cleanup runs even when the caller cancelled, so it never takes the caller's context: a cancelled context makes every
+// command return at once, and the worktree would stay registered.
+async function removeWorktree(env: ExecutionEnv, repoRoot: string, scratch: string): Promise<void> {
+	const root = posix.join(scratch, "tree");
+	// Twice forced, because the worktree is locked.
+	await env.exec(git(repoRoot, `worktree remove --force --force ${quote(root)}`), { timeout: 60 }, backgroundContext);
+	await env.exec(git(repoRoot, "worktree prune"), { timeout: 60 }, backgroundContext);
+	await env.remove(scratch, { recursive: true, force: true }, backgroundContext);
+}
+
+// A run killed with SIGKILL leaves its worktree registered and its directory in place, which `git worktree prune`
+// cannot remove. Any Melian worktree whose locking process is gone is removed before a new one is added.
+async function removeStaleWorktrees(run: Run, scratch: string): Promise<void> {
+	const listing = posix.join(scratch, "worktrees");
+	const listed = await run.shell(`${git(run.input.repoRoot, "worktree list --porcelain -z")} > ${quote(listing)}`);
+	if (listed.code !== 0) throw run.fail("worktreeFailed", `git worktree list failed: ${listed.output}`);
+	for (const record of ((await run.readOutput(listing)) ?? "").split("\0\0")) {
+		const fields = record.split("\0");
+		const path = fields.find((field) => field.startsWith("worktree "))?.slice("worktree ".length);
+		if (path === undefined || posix.basename(path) !== "tree") continue;
+		const owner = posix.dirname(path);
+		if (!posix.basename(owner).startsWith("melian-static-") || owner === scratch) continue;
+		const lock = fields.find((field) => field.startsWith("locked "))?.slice("locked ".length) ?? "";
+		const pid = /^melian-static pid (\d+)$/.exec(lock)?.[1];
+		if (pid !== undefined && (await run.shell(`kill -0 ${pid} 2> /dev/null`)).code === 0) continue;
+		await removeWorktree(run.input.env, run.input.repoRoot, owner);
 	}
 }

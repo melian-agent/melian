@@ -1,3 +1,8 @@
+import { spawn } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 import { CheckError, defaultConfig, type ToolLog } from "@melian-agent/core";
 import {
 	backgroundContext as context,
@@ -150,5 +155,56 @@ describe("runStaticTool with the repository's own tools", () => {
 		);
 		expect((error as CheckError).code).toBe("toolFailed");
 		expect((error as CheckError).message).toMatch(/no report: bad config/);
+	});
+});
+
+describe("runStaticTool after a cancellation", () => {
+	it("removes its worktree even though the caller's context is cancelled", { timeout: 60_000 }, async () => {
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
+		fakeTool(repo, "tsc", 'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nsleep 30');
+		const controller = new AbortController();
+		const cancellable = { abortSignal: controller.signal, value: () => undefined, toString: () => "cancellable" };
+		setTimeout(() => controller.abort(), 2_000);
+		await expect(runStaticTool(input("tsc", head), cancellable)).rejects.toBeInstanceOf(CheckError);
+		expectCheckoutUntouched();
+	});
+});
+
+describe("runStaticTool after a crash", () => {
+	const crashScript = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "static-crash.ts");
+
+	it("removes a worktree left by a run killed with SIGKILL before it adds its own", { timeout: 60_000 }, async () => {
+		const head = commit(repo, { "src/a.ts": lines("export const a = 1;") });
+		const events = join(repo, ".git", "crash.log");
+		const child = spawn(process.execPath, ["--conditions=@melian-agent/source", crashScript, repo, head, events], {
+			stdio: ["ignore", "ignore", "pipe"],
+		});
+		let stderr = "";
+		child.stderr.on("data", (chunk) => {
+			stderr += chunk;
+		});
+		const exited = new Promise((resolve) => child.on("exit", (code, signal) => resolve(signal ?? code)));
+		const deadline = Date.now() + 15_000;
+		try {
+			while (!(existsSync(events) && readFileSync(events, "utf8").includes("parked\n"))) {
+				if (child.exitCode !== null || child.signalCode !== null) throw new Error(`exited early:\n${stderr}`);
+				if (Date.now() > deadline) throw new Error(`never parked:\n${stderr}`);
+				await sleep(20);
+			}
+		} finally {
+			child.kill("SIGKILL");
+		}
+		expect(await exited).toBe("SIGKILL");
+		const stale = gitIn(repo, "worktree", "list", "--porcelain")
+			.split("\n")
+			.filter((line) => line.startsWith("worktree "))
+			.map((line) => line.slice("worktree ".length))
+			.filter((path) => path !== repo);
+		expect(stale).toHaveLength(1);
+		expect(existsSync(stale[0]!)).toBe(true);
+
+		await log("biome", head);
+		expect(existsSync(stale[0]!)).toBe(false);
+		expectCheckoutUntouched();
 	});
 });
