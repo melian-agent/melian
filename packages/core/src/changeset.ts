@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { stat } from "node:fs/promises";
-import { type ChangedFile, joinDiff, parseNameStatus, parseNumstatBinary, parsePatchHunks } from "./diff.ts";
+import { type ChangedFile, joinDiff, parseNumstatBinary, parsePatchHunks, parseRaw } from "./diff.ts";
 import { ChangesetError } from "./errors.ts";
 import { git, gitOutput } from "./git.ts";
+import { isPolicyFile } from "./paths.ts";
 
 /**
  * How a range picks its base.
@@ -21,11 +22,19 @@ export interface RangeSpec {
 	readonly mode: RangeMode;
 }
 
-/** One version of a changeset, identified by its head commit. Base and head are full commit hashes. */
+/**
+ * One version of a changeset, identified by its head commit. Base and head are full commit hashes.
+ *
+ * `policyFiles` lists, sorted, every path in `files` that steers Melian itself: a `melian.yaml`, an `AGENTS.md` or
+ * `CLAUDE.md`, or anything under a `.melian/` directory, at any depth, on either side of a rename. A review reads
+ * policy from the base, so these changes are reviewed as code rather than obeyed; a lens can be handed them as quoted
+ * data. A file such a standard imports with `@` is not listed, because only loading the standards reveals it.
+ */
 export interface Revision {
 	readonly head: string;
 	readonly base: string;
 	readonly files: readonly ChangedFile[];
+	readonly policyFiles: readonly string[];
 }
 
 /**
@@ -119,7 +128,13 @@ async function mergeBase(repoRoot: string, spec: RangeSpec, base: string, head: 
 }
 
 async function dirtyPaths(repoRoot: string): Promise<string[]> {
-	const output = await gitOutput(repoRoot, ["status", "--porcelain=v1", "-z", "--untracked-files=normal"]);
+	const output = await gitOutput(repoRoot, [
+		"status",
+		"--porcelain=v1",
+		"-z",
+		"--untracked-files=normal",
+		"--ignore-submodules=none",
+	]);
 	const paths: string[] = [];
 	const fields = output.split("\0");
 	for (let i = 0; i < fields.length && fields[i] !== ""; i++) {
@@ -143,6 +158,8 @@ const diffFlags = [
 	"--indent-heuristic",
 	"--inter-hunk-context=0",
 	"--submodule=short",
+	// Overrides diff.ignoreSubmodules and the ignore setting in .gitmodules, which a head commit controls.
+	"--ignore-submodules=none",
 	// Cancels diff.orderFile, so files come in git's path order.
 	"-O/dev/null",
 ];
@@ -151,12 +168,12 @@ async function diff(repoRoot: string, base: string, head: string): Promise<Chang
 	// diff.renames=copies would report copies, whose hunks are against the copy's source.
 	const run = (format: string[]) =>
 		gitOutput(repoRoot, ["-c", "diff.renames=true", "diff", ...diffFlags, ...format, base, head, "--"]);
-	const [nameStatus, numstat, patch] = await Promise.all([
-		run(["--name-status", "-z"]),
+	const [raw, numstat, patch] = await Promise.all([
+		run(["--raw", "-z", "--no-abbrev"]),
 		run(["--numstat", "-z"]),
 		run(["--unified=0"]),
 	]);
-	return joinDiff(parseNameStatus(nameStatus), parseNumstatBinary(numstat), parsePatchHunks(patch));
+	return joinDiff(parseRaw(raw), parseNumstatBinary(numstat), parsePatchHunks(patch));
 }
 
 /**
@@ -185,11 +202,13 @@ export async function resolveRange(
 	}
 	const names = await Promise.all([canonicalName(root, spec.base, baseRef), canonicalName(root, spec.head, head)]);
 	const identity = ["range", spec.mode, ...names].join("\0");
+	const files = await diff(root, base, head);
+	const touched = files.flatMap((file) => (file.oldPath === undefined ? [file.path] : [file.oldPath, file.path]));
 	return {
 		kind: "range",
 		id: `range-${createHash("sha256").update(identity).digest("hex").slice(0, 16)}`,
 		repoRoot: root,
 		spec,
-		revision: { head, base, files: await diff(root, base, head) },
+		revision: { head, base, files, policyFiles: [...new Set(touched.filter(isPolicyFile))].sort() },
 	};
 }

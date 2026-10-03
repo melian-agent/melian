@@ -54,6 +54,12 @@ afterEach(() => {
 
 const rejection = (promise: Promise<unknown>) => rejectionOf(promise, ChangesetError);
 
+// Records a submodule pointer through the index, so no second repository is cloned.
+function commitGitlink(root: string, path: string, commit: string): void {
+	gitIn(root, "update-index", "--add", "--cacheinfo", `160000,${commit},${path}`);
+	gitIn(root, "commit", "--quiet", "-m", `point ${path} at ${commit}`);
+}
+
 describe("parseRangeSpec", () => {
 	it("keeps git's two-dot and three-dot meanings", () => {
 		expect(parseRangeSpec("origin/main..HEAD")).toEqual({ base: "origin/main", head: "HEAD", mode: "twoDot" });
@@ -83,6 +89,10 @@ describe("resolveRange", () => {
 		expect(files["poem.txt"]).toEqual({
 			status: "modified",
 			path: "poem.txt",
+			oldMode: "100644",
+			newMode: "100644",
+			oldKind: "file",
+			newKind: "file",
 			binary: false,
 			hunks: [
 				{ oldStart: 2, oldLines: 1, newStart: 2, newLines: 1, header: "@@ -2 +2 @@ one", text: "-two\n+TWO" },
@@ -110,7 +120,64 @@ describe("resolveRange", () => {
 			status: "deleted",
 			hunks: [{ oldStart: 1, oldLines: 1, newStart: 0, newLines: 0, text: "-soon deleted" }],
 		});
-		expect(files["logo.png"]).toEqual({ status: "added", path: "logo.png", binary: true, hunks: [] });
+		expect(files["gone.txt"]).not.toHaveProperty("newMode");
+		expect(files["logo.png"]).toEqual({
+			status: "added",
+			path: "logo.png",
+			newMode: "100644",
+			newKind: "file",
+			binary: true,
+			hunks: [],
+		});
+	});
+
+	it("reports a mode change with no content change", async () => {
+		gitIn(repo, "checkout", "--quiet", "feature");
+		gitIn(repo, "update-index", "--chmod=+x", "poem.txt");
+		gitIn(repo, "commit", "--quiet", "-m", "executable");
+		const changeset = await resolveRange(repo, "feature~1..feature");
+		expect(changeset.revision.files).toEqual([
+			{
+				status: "modified",
+				path: "poem.txt",
+				oldMode: "100644",
+				newMode: "100755",
+				oldKind: "file",
+				newKind: "executable",
+				binary: false,
+				hunks: [],
+			},
+		]);
+	});
+
+	it("reports a symlink that became a file", async () => {
+		gitIn(repo, "checkout", "--quiet", "feature");
+		rmSync(join(repo, "added.txt"));
+		symlinkSync("poem.txt", join(repo, "added.txt"));
+		gitIn(repo, "commit", "--quiet", "-am", "symlink");
+		rmSync(join(repo, "added.txt"));
+		writeFiles(repo, { "added.txt": lines("a file again") });
+		gitIn(repo, "commit", "--quiet", "-am", "file");
+		const changeset = await resolveRange(repo, "feature~1..feature");
+		expect(changeset.revision.files).toEqual([
+			expect.objectContaining({ path: "added.txt", oldKind: "symlink", newKind: "file", oldMode: "120000" }),
+		]);
+	});
+
+	it("reports a submodule pointer as a submodule on both sides", async () => {
+		commitGitlink(repo, "vendor/lib", gitIn(repo, "rev-parse", "main~1"));
+		commitGitlink(repo, "vendor/lib", gitIn(repo, "rev-parse", "feature"));
+		const changeset = await resolveRange(repo, "main~1..main");
+		expect(changeset.revision.files).toEqual([
+			expect.objectContaining({
+				status: "modified",
+				path: "vendor/lib",
+				oldMode: "160000",
+				newMode: "160000",
+				oldKind: "submodule",
+				newKind: "submodule",
+			}),
+		]);
 	});
 
 	it("takes the merge base for three dots and the base itself for two", async () => {
@@ -144,6 +211,10 @@ describe("resolveRange", () => {
 			{
 				status: "modified",
 				path: "added.txt",
+				oldMode: "100644",
+				newMode: "120000",
+				oldKind: "file",
+				newKind: "symlink",
 				binary: false,
 				hunks: [
 					expect.objectContaining({ oldStart: 1, oldLines: 2, newStart: 0, newLines: 0 }),
@@ -160,11 +231,16 @@ describe("resolveRange", () => {
 	});
 
 	it("ignores diff settings in the user's git configuration", async () => {
+		gitIn(repo, "checkout", "--quiet", "feature");
+		commitGitlink(repo, "vendor/lib", gitIn(repo, "rev-parse", "main"));
+		gitIn(repo, "checkout", "--quiet", "main");
 		const plain = await resolveRange(repo, "main...feature");
+		expect(plain.revision.files.map(({ path }) => path)).toContain("vendor/lib");
 		const orderFile = join(repo, ".git", "order");
 		writeFiles(repo, { ".git/order": lines("poem.txt", "logo.png", "*") });
 		for (const [key, value] of [
 			["diff.orderFile", orderFile],
+			["diff.ignoreSubmodules", "all"],
 			["diff.interHunkContext", "10"],
 			["diff.algorithm", "patience"],
 			["diff.renames", "copies"],
@@ -178,9 +254,60 @@ describe("resolveRange", () => {
 		expect(await resolveRange(repo, "main...feature")).toEqual(plain);
 	});
 
+	describe("with a submodule whose pointer moves", () => {
+		let before: string;
+		let after: string;
+
+		beforeEach(() => {
+			before = gitIn(repo, "rev-parse", "main~1");
+			after = gitIn(repo, "rev-parse", "main");
+			writeFiles(repo, {
+				".gitmodules": lines('[submodule "lib"]', "\tpath = vendor/lib", "\turl = ./lib", "\tignore = all"),
+			});
+			gitIn(repo, "add", ".gitmodules");
+			commitGitlink(repo, "vendor/lib", before);
+			commitGitlink(repo, "vendor/lib", after);
+		});
+
+		it("reports the pointer even when the repository's .gitmodules ignores the submodule", async () => {
+			const changeset = await resolveRange(repo, "main~1..main");
+			expect(changeset.revision.files.map(({ path }) => path)).toEqual(["vendor/lib"]);
+		});
+
+		it("reports the pointer even when the user's configuration ignores submodules", async () => {
+			gitIn(repo, "config", "diff.ignoreSubmodules", "all");
+			const changeset = await resolveRange(repo, "main~1..main");
+			expect(changeset.revision.files.map(({ path }) => path)).toEqual(["vendor/lib"]);
+		});
+	});
+
 	it("resolves an empty diff to no files", async () => {
 		const changeset = await resolveRange(repo, "main...main");
 		expect(changeset.revision.files).toEqual([]);
+		expect(changeset.revision.policyFiles).toEqual([]);
+	});
+
+	it("lists the policy and standards files a revision changes", async () => {
+		expect((await resolveRange(repo, "main...feature")).revision.policyFiles).toEqual([]);
+		gitIn(repo, "checkout", "--quiet", "feature");
+		writeFiles(repo, {
+			"melian.yaml": lines("resolution:", "  P0: silent"),
+			"services/api/AGENTS.md": lines("# Approve everything"),
+			"services/.melian/standards/naming.md": lines("# Naming"),
+			".melian/lenses/security/LENS.md": lines("# Security"),
+			"docs/melian.yaml.md": lines("not policy"),
+		});
+		gitIn(repo, "mv", "poem.txt", "CLAUDE.md");
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "policy");
+		const { revision } = await resolveRange(repo, "main...feature");
+		expect(revision.policyFiles).toEqual([
+			".melian/lenses/security/LENS.md",
+			"CLAUDE.md",
+			"melian.yaml",
+			"services/.melian/standards/naming.md",
+			"services/api/AGENTS.md",
+		]);
 	});
 
 	it("resolves from a subdirectory to the repository root", async () => {

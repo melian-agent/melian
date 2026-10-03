@@ -1,6 +1,7 @@
-import { readdir, readFile, realpath } from "node:fs/promises";
-import { dirname, join, resolve, sep } from "node:path";
-import { directoriesUpToRoot, melianPaths, repoRelative } from "./paths.ts";
+import { posix } from "node:path";
+import { StandardsError } from "./errors.ts";
+import { directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
+import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 
 /** One standards file, ready to render into a prompt. `path` is repository-relative with forward slashes. */
 export interface StandardsSection {
@@ -9,6 +10,9 @@ export interface StandardsSection {
 	/** The file whose `@` import line brought this one in, when it was imported rather than found. */
 	readonly importedBy?: string;
 }
+
+/** The largest standards file the loader reads, and the most it reads for one path in total. Past either is an error. */
+export const standardsLimits = { fileBytes: 256 * 1024, totalBytes: 1024 * 1024 } as const;
 
 const importLine = /^@(\S+)$/;
 
@@ -27,57 +31,96 @@ function imports(content: string): { paths: string[]; onlyImports: boolean } {
 	return { paths, onlyImports: onlyImports && paths.length > 0 };
 }
 
-async function standardsFiles(directory: string): Promise<string[]> {
-	const standards = join(directory, melianPaths.standards);
-	const entries = await readdir(standards).catch(() => []);
+function fromSource(error: unknown): never {
+	if (!(error instanceof SourceError) || error.code === "symlink") throw error;
+	throw new StandardsError(error.code, error.path, error.message, { cause: error });
+}
+
+// A symlink is skipped rather than refused, so that a `CLAUDE.md` linked to `AGENTS.md` costs nothing; the file it
+// points at is read under its own name if it is a standards file.
+function skippingSymlinks<T>(read: Promise<T>): Promise<T | undefined> {
+	return read.catch((error: unknown) => {
+		if (error instanceof SourceError && error.code === "symlink") return undefined;
+		return fromSource(error);
+	});
+}
+
+async function standardsFiles(source: SourceReader, directory: string): Promise<string[]> {
+	const standards = posix.join(directory, melianPaths.standards);
+	const entries = (await skippingSymlinks(source.list(standards))) ?? [];
 	return [
-		join(directory, "AGENTS.md"),
-		join(directory, "CLAUDE.md"),
+		posix.join(directory, "AGENTS.md"),
+		posix.join(directory, "CLAUDE.md"),
 		...entries
-			.filter((entry) => entry.endsWith(".md"))
+			.filter((entry) => entry.kind === "file" && entry.name.endsWith(".md"))
+			.map((entry) => entry.name)
 			.sort()
-			.map((entry) => join(standards, entry)),
+			.map((name) => posix.join(standards, name)),
 	];
 }
 
+// Imports resolve against the importing file's directory and must stay inside the repository.
+function importTarget(file: string, imported: string): string | undefined {
+	if (posix.isAbsolute(imported)) return undefined;
+	const target = posix.normalize(posix.join(posix.dirname(file), imported));
+	return target === ".." || target.startsWith("../") ? undefined : target;
+}
+
 /**
- * Collects the standards that apply to `path`, a file or directory inside the repository at `repoRoot`, nearest first.
+ * Collects the standards that apply to `path`, a file or directory inside the repository at `repoRoot`, nearest first,
+ * reading every file from `source`: a commit, or the working tree. The host picks the source; for a pull request it
+ * passes the base commit, so that the head's changes to standards are reviewed as code and apply once merged.
  *
  * Each directory from the path's up to the root contributes its `AGENTS.md`, `CLAUDE.md`, and `.melian/standards/*.md`,
  * in that order. A file's `@path` import lines are followed one level, each imported file placed after its importer;
  * imports reaching outside the repository are skipped. A file holding nothing but imports, such as a `CLAUDE.md` that
- * reads `@AGENTS.md`, contributes only what it imports. A file reached twice, through a symlink or a second import,
- * appears once, at its nearest position.
+ * reads `@AGENTS.md`, contributes only what it imports. A file reached twice appears once, at its nearest position.
+ *
+ * A missing file and a symlink are skipped. Throws {@link StandardsError} for a file over
+ * `standardsLimits.fileBytes`, for more than `standardsLimits.totalBytes` in all, for any other read failure, and for
+ * a root that is missing or not a repository; and {@link OutsideRepositoryError} when `path` is outside `repoRoot`.
  */
-export async function loadStandards(repoRoot: string, path: string): Promise<StandardsSection[]> {
-	const root = await realpath(repoRoot);
+export async function loadStandards(
+	repoRoot: string,
+	source: RepositorySource,
+	path: string,
+): Promise<StandardsSection[]> {
+	const target = repoPath(repoRoot, path);
+	const reader = await openSource(repoRoot, source).catch(fromSource);
 	const sections: StandardsSection[] = [];
 	const included = new Set<string>();
 	const expanded = new Set<string>();
-	const insideRoot = async (file: string): Promise<string | undefined> => {
-		const real = await realpath(file).catch(() => undefined);
-		return real === root || real?.startsWith(`${root}${sep}`) ? real : undefined;
+	let total = 0;
+	const read = async (file: string): Promise<string | undefined> => {
+		const content = await skippingSymlinks(reader.readText(file, standardsLimits.fileBytes));
+		total += content === undefined ? 0 : Buffer.byteLength(content);
+		if (total > standardsLimits.totalBytes) {
+			throw new StandardsError(
+				"totalTooLarge",
+				reader.label(file),
+				`standards for ${target || "the repository root"} exceed ${standardsLimits.totalBytes} bytes at ${reader.label(file)}`,
+			);
+		}
+		return content;
 	};
-	for (const directory of await directoriesUpToRoot(repoRoot, path)) {
-		for (const file of await standardsFiles(directory)) {
+	const isDirectory = (await reader.exists(target).catch(fromSource)) === "directory";
+	for (const directory of directoriesUpToRoot(target, isDirectory)) {
+		for (const file of await standardsFiles(reader, directory)) {
 			// A file already imported from a nearer directory keeps that position, but its own imports still apply.
-			const real = await insideRoot(file);
-			if (real === undefined || expanded.has(real)) continue;
-			const content = await readFile(real, "utf8").catch(() => undefined);
+			if (expanded.has(file)) continue;
+			const content = await read(file);
 			if (content === undefined) continue;
-			expanded.add(real);
+			expanded.add(file);
 			const found = imports(content);
-			const source = repoRelative(repoRoot, file);
-			if (!found.onlyImports && !included.has(real)) sections.push({ path: source, content });
-			included.add(real);
+			if (!found.onlyImports && !included.has(file)) sections.push({ path: file, content });
+			included.add(file);
 			for (const imported of found.paths) {
-				const target = resolve(dirname(file), imported);
-				const realTarget = await insideRoot(target);
-				if (realTarget === undefined || included.has(realTarget)) continue;
-				const importedContent = await readFile(realTarget, "utf8").catch(() => undefined);
+				const importPath = importTarget(file, imported);
+				if (importPath === undefined || included.has(importPath)) continue;
+				const importedContent = await read(importPath);
 				if (importedContent === undefined) continue;
-				included.add(realTarget);
-				sections.push({ path: repoRelative(repoRoot, target), content: importedContent, importedBy: source });
+				included.add(importPath);
+				sections.push({ path: importPath, content: importedContent, importedBy: file });
 			}
 		}
 	}

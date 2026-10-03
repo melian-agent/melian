@@ -1,10 +1,10 @@
-import { readFile, stat } from "node:fs/promises";
-import { dirname, join, posix } from "node:path";
+import { posix } from "node:path";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import { parseDocument } from "yaml";
-import { ConfigError } from "./errors.ts";
-import { directoriesUpToRoot, melianPaths, repoRelative } from "./paths.ts";
+import { ConfigError, type ConfigErrorCode } from "./errors.ts";
+import { directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
+import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 
 const strict = { additionalProperties: false } as const;
 
@@ -144,13 +144,34 @@ export const defaultConfig: MelianConfig = {
 	decisions: { thresholds: {} },
 };
 
-/** The effective configuration for a path, and the files that contributed to it, nearest first. */
+/**
+ * The effective configuration for a path, and the files that contributed to it, nearest first, as repository-relative
+ * paths.
+ */
 export interface LoadedConfig {
 	readonly config: MelianConfig;
 	readonly sources: readonly string[];
 }
 
+/** The largest `melian.yaml` the loader reads. A larger file is a `tooLarge` error, never truncated. */
+export const maxConfigBytes = 64 * 1024;
+
 type Plain = Record<string, unknown>;
+
+// A file as `ConfigError.file` names it, and as a message names it: git's `<commit>:<path>` for a revision.
+interface Site {
+	readonly file: string;
+	readonly where: string;
+}
+
+function configError(
+	code: ConfigErrorCode,
+	site: Site,
+	detail: string,
+	options: { key?: string; cause?: unknown } = {},
+): ConfigError {
+	return new ConfigError(code, site.file, `${site.where}: ${detail}`, options);
+}
 
 function isPlain(value: unknown): value is Plain {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -168,16 +189,14 @@ function merge(under: Plain, over: Plain): Plain {
 }
 
 // `__proto__` as a key would replace a merged object's prototype wherever a later step copies it.
-function rejectReservedKeys(file: string, value: unknown, path: string[] = []): void {
+function rejectReservedKeys(site: Site, value: unknown, path: string[] = []): void {
 	if (!isPlain(value)) return;
 	for (const [key, child] of Object.entries(value)) {
 		const at = [...path, key];
 		if (key === "__proto__") {
-			throw new ConfigError("reservedKey", file, `${file}: "${at.join(".")}" uses a reserved key`, {
-				key: at.join("."),
-			});
+			throw configError("reservedKey", site, `"${at.join(".")}" uses a reserved key`, { key: at.join(".") });
 		}
-		rejectReservedKeys(file, child, at);
+		rejectReservedKeys(site, child, at);
 	}
 }
 
@@ -185,13 +204,13 @@ function dotted(instancePath: string): string {
 	return instancePath.split("/").slice(1).join(".");
 }
 
-function validate(file: string, value: unknown, schema: TSchema): void {
+function validate(site: Site, value: unknown, schema: TSchema): void {
 	const errors = [...Value.Errors(schema, value)];
 	const unknown = errors.find((error) => error.keyword === "additionalProperties");
 	if (unknown !== undefined) {
 		const [key] = (unknown.params as { additionalProperties: string[] }).additionalProperties;
 		const path = [dotted(unknown.instancePath), key].filter(Boolean).join(".");
-		throw new ConfigError("unknownKey", file, `${file}: unknown key "${path}"`, { key: path });
+		throw configError("unknownKey", site, `unknown key "${path}"`, { key: path });
 	}
 	const first = errors[0];
 	if (first === undefined) return;
@@ -200,26 +219,27 @@ function validate(file: string, value: unknown, schema: TSchema): void {
 		.filter((error) => error.instancePath === first.instancePath && error.keyword === "const")
 		.map((error) => (error.params as { allowedValue: unknown }).allowedValue);
 	const problem = allowed.length > 0 ? `must be one of ${allowed.join(", ")}` : first.message;
-	throw new ConfigError("invalidValue", file, `${file}: "${path || "(top level)"}" ${problem}`, {
-		key: path || undefined,
-	});
+	throw configError("invalidValue", site, `"${path || "(top level)"}" ${problem}`, { key: path || undefined });
 }
 
-async function readLayer(repoRoot: string, file: string): Promise<MelianYaml | undefined> {
-	const text = await readFile(file, "utf8").catch((error: NodeJS.ErrnoException) => {
-		if (error.code === "ENOENT" || error.code === "ENOTDIR") return undefined;
-		throw new ConfigError("unreadable", file, `${file}: ${error.message}`, { cause: error });
-	});
+// A source's message already names the file.
+function fromSource(file: string) {
+	return (error: unknown): never => {
+		if (!(error instanceof SourceError)) throw error;
+		throw new ConfigError(error.code, file, error.message, { cause: error });
+	};
+}
+
+async function readLayer(source: SourceReader, site: Site): Promise<MelianYaml | undefined> {
+	const text = await source.readText(site.file, maxConfigBytes).catch(fromSource(site.file));
 	if (text === undefined) return undefined;
 	const document = parseDocument(text);
 	const problem = document.errors[0] ?? document.warnings[0];
-	if (problem !== undefined) {
-		throw new ConfigError("invalidYaml", file, `${file}: ${problem.message}`, { cause: problem });
-	}
+	if (problem !== undefined) throw configError("invalidYaml", site, problem.message, { cause: problem });
 	const value: unknown = document.toJS() ?? {};
-	rejectReservedKeys(file, value);
-	validate(file, value, melianYamlSchema);
-	return anchorLensPaths(repoRelative(repoRoot, dirname(file)), value as MelianYaml);
+	rejectReservedKeys(site, value);
+	validate(site, value, melianYamlSchema);
+	return anchorLensPaths(posix.dirname(site.file), value as MelianYaml);
 }
 
 // A lens's paths are written relative to their melian.yaml; merging would lose which file that was.
@@ -228,7 +248,7 @@ function anchorLensPaths(directory: string, layer: MelianYaml): MelianYaml {
 	const anchor = (path: string) => {
 		const negated = path.startsWith("!");
 		const pattern = (negated ? path.slice(1) : path).replace(/^\/+/, "");
-		return `${negated ? "!" : ""}${directory === "" ? pattern : posix.join(directory, pattern)}`;
+		return `${negated ? "!" : ""}${directory === "." ? pattern : posix.join(directory, pattern)}`;
 	};
 	const lenses = Object.fromEntries(
 		Object.entries(layer.lenses).map(([lens, settings]) => [
@@ -239,50 +259,54 @@ function anchorLensPaths(directory: string, layer: MelianYaml): MelianYaml {
 	return { ...layer, lenses };
 }
 
-function checkBands(config: MelianConfig, layers: readonly { file: string; layer: MelianYaml }[]): void {
+function checkBands(config: MelianConfig, layers: readonly { site: Site; layer: MelianYaml }[]): void {
 	for (const [question, { drop, accept }] of Object.entries(config.decisions.thresholds)) {
-		const file = layers.find(({ layer }) => layer.decisions?.thresholds?.[question] !== undefined)!.file;
+		const site = layers.find(({ layer }) => layer.decisions?.thresholds?.[question] !== undefined)!.site;
 		const key = `decisions.thresholds.${question}`;
 		for (const [end, value] of [
 			["drop", drop],
 			["accept", accept],
 		] as const) {
 			if (value === undefined) {
-				throw new ConfigError("invalidValue", file, `${file}: "${key}" sets no ${end}, and no farther file does`, {
+				throw configError("invalidValue", site, `"${key}" sets no ${end}, and no farther file does`, {
 					key: `${key}.${end}`,
 				});
 			}
 		}
 		if (drop <= accept) continue;
-		throw new ConfigError(
+		throw configError(
 			"invalidValue",
-			file,
-			`${file}: "${key}" drops above ${drop} but accepts above ${accept}; drop must not exceed accept`,
+			site,
+			`"${key}" drops above ${drop} but accepts above ${accept}; drop must not exceed accept`,
 			{ key },
 		);
 	}
 }
 
 /**
- * Loads the effective configuration for `path`, a file or directory inside the repository at `repoRoot`.
+ * Loads the effective configuration for `path`, a file or directory inside the repository at `repoRoot`, reading every
+ * `melian.yaml` from `source`: a commit, or the working tree. The host picks the source; for a pull request it passes
+ * the base commit, so that the head's changes to policy are reviewed as code and apply once merged.
  *
  * Every `melian.yaml` from the path's directory up to the root applies. The nearest file wins per key: objects merge
  * key by key, and arrays and scalars replace. Lens `paths` are relative to the file that declares them. Throws
- * {@link ConfigError} naming the file for an unreadable file, invalid YAML, an unknown key, or a bad value, and
+ * {@link ConfigError} naming the file for a symlink, a file over {@link maxConfigBytes}, an unreadable file, invalid
+ * YAML, an unknown or reserved key, or a bad value; naming the root when it is missing or not a repository; and
  * {@link OutsideRepositoryError} when `path` is outside `repoRoot`.
  */
-export async function loadConfig(repoRoot: string, path: string): Promise<LoadedConfig> {
-	if (!(await stat(repoRoot).catch(() => undefined))?.isDirectory()) {
-		throw new ConfigError("missingRoot", repoRoot, `${repoRoot} is not a directory`);
-	}
-	const layers: { file: string; layer: MelianYaml }[] = [];
-	for (const directory of await directoriesUpToRoot(repoRoot, path)) {
-		const file = join(directory, melianPaths.config);
-		const layer = await readLayer(repoRoot, file);
-		if (layer !== undefined) layers.push({ file, layer });
+export async function loadConfig(repoRoot: string, source: RepositorySource, path: string): Promise<LoadedConfig> {
+	const target = repoPath(repoRoot, path);
+	const reader = await openSource(repoRoot, source).catch(fromSource(repoRoot));
+	const kind = await reader.exists(target).catch(fromSource(target));
+	const layers: { site: Site; layer: MelianYaml }[] = [];
+	for (const directory of directoriesUpToRoot(target, kind === "directory")) {
+		const file = posix.join(directory, melianPaths.config);
+		const site = { file, where: reader.label(file) };
+		const layer = await readLayer(reader, site);
+		if (layer !== undefined) layers.push({ site, layer });
 	}
 	const defaults = merge({}, structuredClone(defaultConfig) as unknown as Plain);
 	const config = layers.reduceRight((merged, { layer }) => merge(merged, layer), defaults) as unknown as MelianConfig;
 	checkBands(config, layers);
-	return { config, sources: layers.map(({ file }) => file) };
+	return { config, sources: layers.map(({ site }) => site.file) };
 }

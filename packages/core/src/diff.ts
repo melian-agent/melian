@@ -19,43 +19,78 @@ export interface Hunk {
 	readonly text: string;
 }
 
-/** One file in a revision's diff. Paths are repository-relative with forward slashes. A binary file has no hunks. */
+/**
+ * What a path holds on one side of a diff, from its git mode: `file` (100644), `executable` (100755), `symlink`
+ * (120000), or `submodule` (160000, a gitlink).
+ */
+export type FileKind = "file" | "executable" | "symlink" | "submodule";
+
+/**
+ * One file in a revision's diff. Paths are repository-relative with forward slashes. A binary file has no hunks.
+ *
+ * `oldMode` and `newMode` are git's octal modes, absent on the side where the file does not exist; `oldKind` and
+ * `newKind` name them. A mode change alone, such as a file becoming executable, is `modified` with no hunks.
+ */
 export interface ChangedFile {
 	readonly status: FileStatus;
 	readonly path: string;
 	readonly oldPath?: string;
+	readonly oldMode?: string;
+	readonly newMode?: string;
+	readonly oldKind?: FileKind;
+	readonly newKind?: FileKind;
 	readonly binary: boolean;
 	readonly hunks: readonly Hunk[];
 }
 
-interface NameStatus {
+interface RawEntry {
 	readonly status: FileStatus;
 	readonly path: string;
 	readonly oldPath?: string;
+	readonly oldMode?: string;
+	readonly newMode?: string;
+	readonly oldKind?: FileKind;
+	readonly newKind?: FileKind;
 	readonly typeChanged?: boolean;
 }
 
 const statuses: Record<string, FileStatus> = { A: "added", M: "modified", T: "modified", D: "deleted", R: "renamed" };
+const absentMode = "000000";
 
 function diffMismatch(detail: string): ChangesetError {
 	return new ChangesetError("gitFailed", `git diff output could not be parsed: ${detail}`);
 }
 
-export function parseNameStatus(output: string): NameStatus[] {
+function kindOf(mode: string): FileKind {
+	if (mode === "120000") return "symlink";
+	if (mode === "160000") return "submodule";
+	return mode === "100755" ? "executable" : "file";
+}
+
+function sides(oldMode: string, newMode: string): Partial<RawEntry> {
+	return {
+		...(oldMode === absentMode ? {} : { oldMode, oldKind: kindOf(oldMode) }),
+		...(newMode === absentMode ? {} : { newMode, newKind: kindOf(newMode) }),
+	};
+}
+
+const rawHeader = /^:(\d{6}) (\d{6}) [0-9a-f]+ [0-9a-f]+ ([A-Z])\d*$/;
+
+// `git diff --raw -z`: a `:oldmode newmode oldsha newsha status` field, then one path, or two for a rename.
+export function parseRaw(output: string): RawEntry[] {
 	const fields = output.split("\0");
-	const entries: NameStatus[] = [];
+	const entries: RawEntry[] = [];
 	let i = 0;
 	while (i < fields.length && fields[i] !== "") {
-		const letter = fields[i]![0]!;
-		const status = statuses[letter];
-		if (status === undefined) throw diffMismatch(`unexpected status ${fields[i]}`);
+		const header = rawHeader.exec(fields[i]!);
+		const status = header === null ? undefined : statuses[header[3]!];
+		if (header === null || status === undefined) throw diffMismatch(`unexpected raw entry ${fields[i]}`);
+		const modes = sides(header[1]!, header[2]!);
 		if (status === "renamed") {
-			entries.push({ status, oldPath: fields[i + 1]!, path: fields[i + 2]! });
+			entries.push({ status, oldPath: fields[i + 1]!, path: fields[i + 2]!, ...modes });
 			i += 3;
 		} else {
-			entries.push(
-				letter === "T" ? { status, path: fields[i + 1]!, typeChanged: true } : { status, path: fields[i + 1]! },
-			);
+			entries.push({ status, path: fields[i + 1]!, ...modes, ...(header[3] === "T" ? { typeChanged: true } : {}) });
 			i += 2;
 		}
 	}
@@ -118,19 +153,19 @@ export function parsePatchHunks(output: string): Hunk[][] {
 	return files;
 }
 
-// Git emits the name-status, numstat, and patch views of one diff in the same file order. The patch alone shows a
-// type change, such as a file becoming a symlink, as a deletion followed by an addition.
+// Git emits the raw, numstat, and patch views of one diff in the same file order. The patch alone shows a type
+// change, such as a file becoming a symlink, as a deletion followed by an addition.
 export function joinDiff(
-	nameStatus: readonly NameStatus[],
+	raw: readonly RawEntry[],
 	binary: readonly boolean[],
 	hunks: readonly Hunk[][],
 ): ChangedFile[] {
-	const sections = nameStatus.reduce((count, entry) => count + (entry.typeChanged ? 2 : 1), 0);
-	if (binary.length !== nameStatus.length || hunks.length !== sections) {
-		throw diffMismatch(`${nameStatus.length} files by name, ${binary.length} by count, ${hunks.length} in the patch`);
+	const sections = raw.reduce((count, entry) => count + (entry.typeChanged ? 2 : 1), 0);
+	if (binary.length !== raw.length || hunks.length !== sections) {
+		throw diffMismatch(`${raw.length} files by name, ${binary.length} by count, ${hunks.length} in the patch`);
 	}
 	let section = 0;
-	return nameStatus.map(({ typeChanged, ...entry }, index) => {
+	return raw.map(({ typeChanged, ...entry }, index) => {
 		const fileHunks = typeChanged ? [...hunks[section]!, ...hunks[section + 1]!] : hunks[section]!;
 		section += typeChanged ? 2 : 1;
 		return { ...entry, binary: binary[index]!, hunks: binary[index]! ? [] : fileHunks };

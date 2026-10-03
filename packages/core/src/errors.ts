@@ -30,13 +30,20 @@ export class ChangesetError extends Error {
 /** Why configuration could not be loaded. */
 export type ConfigErrorCode =
 	| "missingRoot"
+	| "notARepository"
+	| "unknownCommit"
+	| "symlink"
+	| "tooLarge"
 	| "unreadable"
 	| "invalidYaml"
 	| "unknownKey"
 	| "reservedKey"
 	| "invalidValue";
 
-/** A `melian.yaml` could not be loaded. `file` names it; `key` is the dotted path of the offending key, where there is one. */
+/**
+ * A `melian.yaml` could not be loaded. `file` names it, repository-relative, or names the repository root or commit when
+ * the source itself could not be opened. `key` is the dotted path of the offending key, where there is one.
+ */
 export class ConfigError extends Error {
 	readonly code: ConfigErrorCode;
 	readonly file: string;
@@ -48,6 +55,32 @@ export class ConfigError extends Error {
 		this.code = code;
 		this.file = file;
 		this.key = options.key;
+	}
+}
+
+/** Why standards could not be collected. */
+export type StandardsErrorCode =
+	| "missingRoot"
+	| "notARepository"
+	| "unknownCommit"
+	| "tooLarge"
+	| "totalTooLarge"
+	| "unreadable";
+
+/**
+ * Standards could not be collected. `path` names the file, or the repository root for `missingRoot` and
+ * `notARepository`, or the commit for `unknownCommit`. A file that does not exist is absence, and a symlink is
+ * skipped; neither is an error.
+ */
+export class StandardsError extends Error {
+	readonly code: StandardsErrorCode;
+	readonly path: string;
+
+	constructor(code: StandardsErrorCode, path: string, message: string, options: { cause?: unknown } = {}) {
+		super(message, { cause: options.cause });
+		this.name = "StandardsError";
+		this.code = code;
+		this.path = path;
 	}
 }
 

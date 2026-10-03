@@ -1,24 +1,46 @@
-import { mkdirSync } from "node:fs";
+import { symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { ConfigError, defaultConfig, loadConfig, OutsideRepositoryError } from "@melian-agent/core";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { lines, rejection as rejectionOf, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
+import {
+	ConfigError,
+	defaultConfig,
+	loadConfig,
+	maxConfigBytes,
+	OutsideRepositoryError,
+	resolveRange,
+} from "@melian-agent/core";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	gitIn,
+	isolatedGitEnv,
+	lines,
+	rejection as rejectionOf,
+	removeDirectory,
+	sourceFor,
+	sourceKinds,
+	temporaryDirectory,
+	writeFiles,
+} from "./fixtures/repo.ts";
 
 let repo: string;
 
 beforeEach(() => {
+	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 	repo = temporaryDirectory();
+	gitIn(repo, "init", "--quiet", "--initial-branch=main");
 });
 
 afterEach(() => {
+	vi.unstubAllEnvs();
 	removeDirectory(repo);
 });
 
 const rejection = (promise: Promise<unknown>) => rejectionOf(promise, ConfigError);
 
-describe("loadConfig", () => {
+describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
+	const load = (path: string) => loadConfig(repo, sourceFor(repo, kind), path);
+
 	it("returns the design's defaults when no melian.yaml exists", async () => {
-		const loaded = await loadConfig(repo, "src/index.ts");
+		const loaded = await load("src/index.ts");
 		expect(loaded).toEqual({ config: defaultConfig, sources: [] });
 		expect(loaded.config.stages).toEqual({
 			"pre-commit": "fast",
@@ -66,9 +88,9 @@ describe("loadConfig", () => {
 		});
 
 		it("lets the nearest file win per key, merging objects and replacing arrays", async () => {
-			const { config, sources } = await loadConfig(repo, "services/payments/api/charge.ts");
+			const { config, sources } = await load("services/payments/api/charge.ts");
 
-			expect(sources).toEqual([join(repo, "services/payments/melian.yaml"), join(repo, "melian.yaml")]);
+			expect(sources).toEqual(["services/payments/melian.yaml", "melian.yaml"]);
 			expect(config.resolution).toEqual({ P0: "block", P1: "block", P2: "block", P3: "block", nit: "silent" });
 			expect(config.lenses).toEqual({
 				security: { tier: "heavy", paths: ["services/payments/api/**", "services/payments/webhooks/**"] },
@@ -78,15 +100,15 @@ describe("loadConfig", () => {
 		});
 
 		it("applies only the root file outside the service", async () => {
-			const { config, sources } = await loadConfig(repo, "docs/readme.md");
+			const { config, sources } = await load("docs/readme.md");
 
-			expect(sources).toEqual([join(repo, "melian.yaml")]);
+			expect(sources).toEqual(["melian.yaml"]);
 			expect(config.resolution.P3).toBe("advisory");
 			expect(config.lenses).toEqual({ security: { tier: "medium", paths: ["src/**"] } });
 		});
 
 		it("treats a directory path as the directory itself", async () => {
-			const { sources } = await loadConfig(repo, join(repo, "services/payments"));
+			const { sources } = await load(join(repo, "services/payments"));
 			expect(sources).toHaveLength(2);
 		});
 	});
@@ -96,7 +118,7 @@ describe("loadConfig", () => {
 			"melian.yaml": lines("lenses:", "  security:", "    paths: [/src/**, '!src/generated/**']"),
 			"services/melian.yaml": lines("lenses:", "  contracts:", "    paths: [/api/**, '!api/generated/**']"),
 		});
-		const { config } = await loadConfig(repo, "services/a.ts");
+		const { config } = await load("services/a.ts");
 		expect(config.lenses).toEqual({
 			security: { paths: ["src/**", "!src/generated/**"] },
 			contracts: { paths: ["services/api/**", "!services/api/generated/**"] },
@@ -104,24 +126,38 @@ describe("loadConfig", () => {
 	});
 
 	it("names a melian.yaml it cannot read", async () => {
-		mkdirSync(join(repo, "melian.yaml"));
-		expect(await rejection(loadConfig(repo, "a.ts"))).toMatchObject({
-			code: "unreadable",
-			file: join(repo, "melian.yaml"),
-		});
+		writeFiles(repo, { "melian.yaml/inside": "" });
+		expect(await rejection(load("a.ts"))).toMatchObject({ code: "unreadable", file: "melian.yaml" });
+	});
+
+	it("refuses a symlinked melian.yaml rather than following it", async () => {
+		writeFiles(repo, { "elsewhere.yaml": lines("knowledge:", "  writeBack: true") });
+		symlinkSync("elsewhere.yaml", join(repo, "melian.yaml"));
+		expect(await rejection(load("a.ts"))).toMatchObject({ code: "symlink", file: "melian.yaml" });
+	});
+
+	it("ignores a melian.yaml beneath a symlinked directory", async () => {
+		writeFiles(repo, { "real/melian.yaml": lines("knowledge:", "  writeBack: true") });
+		symlinkSync("real", join(repo, "linked"));
+		expect(await load("linked/a.ts")).toEqual({ config: defaultConfig, sources: [] });
+	});
+
+	it("refuses a melian.yaml over the size limit instead of truncating it", async () => {
+		writeFiles(repo, { "melian.yaml": `# ${"x".repeat(maxConfigBytes)}\n` });
+		expect(await rejection(load("a.ts"))).toMatchObject({ code: "tooLarge", file: "melian.yaml" });
 	});
 
 	it("replaces a tier's checks rather than appending to them", async () => {
 		writeFiles(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
-		const { config } = await loadConfig(repo, "a.ts");
+		const { config } = await load("a.ts");
 		expect(config.tiers).toEqual({ ...defaultConfig.tiers, fast: ["guardrails"] });
 	});
 
 	it("reads an empty file as contributing nothing", async () => {
 		writeFiles(repo, { "melian.yaml": "" });
-		const { config, sources } = await loadConfig(repo, "a.ts");
+		const { config, sources } = await load("a.ts");
 		expect(config).toEqual(defaultConfig);
-		expect(sources).toEqual([join(repo, "melian.yaml")]);
+		expect(sources).toEqual(["melian.yaml"]);
 	});
 
 	it.each([
@@ -131,9 +167,10 @@ describe("loadConfig", () => {
 		["models:\n  heavy:\n    model: a\n    fallback: [b]", "models.heavy.fallback"],
 	])("rejects an unknown key in %j, naming it and the file", async (yaml, key) => {
 		writeFiles(repo, { "services/melian.yaml": yaml });
-		const error = await rejection(loadConfig(repo, "services/a.ts"));
-		expect(error).toMatchObject({ code: "unknownKey", key, file: join(repo, "services/melian.yaml") });
+		const error = await rejection(load("services/a.ts"));
+		expect(error).toMatchObject({ code: "unknownKey", key, file: "services/melian.yaml" });
 		expect(error.message).toContain(key);
+		expect(error.message).toContain("services/melian.yaml");
 	});
 
 	it.each([
@@ -142,16 +179,16 @@ describe("loadConfig", () => {
 		["__proto__:\n  polluted: true", "__proto__"],
 	])("rejects __proto__ as a key in %j", async (yaml, key) => {
 		writeFiles(repo, { "melian.yaml": yaml });
-		expect(await rejection(loadConfig(repo, "a.ts"))).toMatchObject({ code: "reservedKey", key });
+		expect(await rejection(load("a.ts"))).toMatchObject({ code: "reservedKey", key });
 	});
 
 	it("looks up a lens named like an Object method as any other lens", async () => {
-		const { config: defaults } = await loadConfig(repo, "a.ts");
+		const { config: defaults } = await load("a.ts");
 		expect(defaults.lenses.toString).toBeUndefined();
 		writeFiles(repo, {
 			"melian.yaml": lines("lenses:", "  constructor:", "    tier: heavy", "  toString:", "    enabled: false"),
 		});
-		const { config } = await loadConfig(repo, "a.ts");
+		const { config } = await load("a.ts");
 		expect(config.lenses.constructor).toEqual({ tier: "heavy" });
 		expect(config.lenses.toString).toEqual({ enabled: false });
 		expect(config.stages.hasOwnProperty).toBeUndefined();
@@ -159,7 +196,7 @@ describe("loadConfig", () => {
 
 	it("rejects a value outside its set, listing the allowed values", async () => {
 		writeFiles(repo, { "melian.yaml": lines("resolution:", "  P0: blocker") });
-		const error = await rejection(loadConfig(repo, "a.ts"));
+		const error = await rejection(load("a.ts"));
 		expect(error).toMatchObject({ code: "invalidValue", key: "resolution.P0" });
 		expect(error.message).toContain("block, acknowledge, advisory, silent");
 	});
@@ -169,7 +206,7 @@ describe("loadConfig", () => {
 		["knowledge:\n  writeBack: true\nknowledge:\n  writeBack: false", "duplicate key"],
 	])("rejects invalid YAML: %j (%s)", async (yaml) => {
 		writeFiles(repo, { "melian.yaml": yaml });
-		expect(await rejection(loadConfig(repo, "a.ts"))).toMatchObject({ code: "invalidYaml" });
+		expect(await rejection(load("a.ts"))).toMatchObject({ code: "invalidYaml" });
 	});
 
 	it("lets a nearer file restate one end of a threshold band", async () => {
@@ -177,7 +214,7 @@ describe("loadConfig", () => {
 			"melian.yaml": lines("decisions:", "  thresholds:", "    real:", "      drop: 0.2", "      accept: 0.8"),
 			"services/melian.yaml": lines("decisions:", "  thresholds:", "    real:", "      drop: 0.3"),
 		});
-		const { config } = await loadConfig(repo, "services/a.ts");
+		const { config } = await load("services/a.ts");
 		expect(config.decisions.thresholds).toEqual({ real: { drop: 0.3, accept: 0.8 } });
 	});
 
@@ -186,27 +223,73 @@ describe("loadConfig", () => {
 			"melian.yaml": lines("decisions:", "  thresholds:", "    real:", "      drop: 0.2", "      accept: 0.8"),
 			"services/melian.yaml": lines("decisions:", "  thresholds:", "    real:", "      drop: 0.9"),
 		});
-		const error = await rejection(loadConfig(repo, "services/a.ts"));
+		const error = await rejection(load("services/a.ts"));
 		expect(error).toMatchObject({
 			code: "invalidValue",
 			key: "decisions.thresholds.real",
-			file: join(repo, "services/melian.yaml"),
+			file: "services/melian.yaml",
 		});
 		expect(error.message).toContain("drop must not exceed accept");
 	});
 
 	it("rejects a threshold band that no file completes", async () => {
 		writeFiles(repo, { "melian.yaml": lines("decisions:", "  thresholds:", "    real:", "      drop: 0.2") });
-		const error = await rejection(loadConfig(repo, "a.ts"));
+		const error = await rejection(load("a.ts"));
 		expect(error).toMatchObject({ code: "invalidValue", key: "decisions.thresholds.real.accept" });
 	});
 
 	it("refuses a path outside the repository", async () => {
-		await expect(loadConfig(repo, "../elsewhere/a.ts")).rejects.toBeInstanceOf(OutsideRepositoryError);
+		await expect(load("../elsewhere/a.ts")).rejects.toBeInstanceOf(OutsideRepositoryError);
 	});
 
 	it.each([".", "a.ts"])("refuses a repository root that does not exist, given %j", async (path) => {
 		const missing = join(repo, "missing");
-		expect(await rejection(loadConfig(missing, path))).toMatchObject({ code: "missingRoot", file: missing });
+		const source = kind === "worktree" ? { kind } : { kind, commit: "HEAD" };
+		expect(await rejection(loadConfig(missing, source, path))).toMatchObject({ code: "missingRoot", file: missing });
+	});
+});
+
+describe("loadConfig from a revision", () => {
+	beforeEach(() => {
+		writeFiles(repo, { "melian.yaml": lines("resolution:", "  P2: block") });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "base policy");
+		gitIn(repo, "checkout", "--quiet", "-b", "feature");
+		writeFiles(repo, { "melian.yaml": lines("resolution:", "  P0: silent", "  P1: silent", "  P2: silent") });
+		gitIn(repo, "commit", "--quiet", "-am", "the head relaxes its own review");
+	});
+
+	it("reads the base's policy for a pull request whose head rewrites it", async () => {
+		const { revision } = await resolveRange(repo, "main...feature");
+		const { config } = await loadConfig(repo, { kind: "revision", commit: revision.base }, "src/a.ts");
+		expect(config.resolution).toMatchObject({ P0: "block", P1: "block", P2: "block" });
+	});
+
+	it("is unaffected by the branch checked out or by uncommitted edits", async () => {
+		const base = gitIn(repo, "rev-parse", "main");
+		writeFiles(repo, { "melian.yaml": lines("tier: not even valid") });
+		const { config } = await loadConfig(repo, { kind: "revision", commit: base }, "src/a.ts");
+		expect(config.resolution.P2).toBe("block");
+		await expect(loadConfig(repo, { kind: "worktree" }, "src/a.ts")).rejects.toBeInstanceOf(ConfigError);
+	});
+
+	it("names the commit in a message about one of its files", async () => {
+		writeFiles(repo, { "melian.yaml": lines("tier: fast") });
+		gitIn(repo, "commit", "--quiet", "-am", "bad key");
+		const error = await rejection(loadConfig(repo, { kind: "revision", commit: "feature" }, "a.ts"));
+		expect(error.file).toBe("melian.yaml");
+		expect(error.message).toContain(`${gitIn(repo, "rev-parse", "feature").slice(0, 12)}:melian.yaml`);
+	});
+
+	it.each(["no-such-ref", "--output=x"])("refuses a commit that does not resolve: %j", async (commit) => {
+		expect(await rejection(loadConfig(repo, { kind: "revision", commit }, "a.ts"))).toMatchObject({
+			code: "unknownCommit",
+		});
+	});
+
+	it("refuses a root that is not the top of a repository", async () => {
+		writeFiles(repo, { "src/a.ts": "" });
+		const error = await rejection(loadConfig(join(repo, "src"), { kind: "revision", commit: "HEAD" }, "a.ts"));
+		expect(error.code).toBe("notARepository");
 	});
 });
