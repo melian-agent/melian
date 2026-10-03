@@ -140,6 +140,15 @@ describe("melian's command line", () => {
 		expect(result.stderr).toContain("Melian never posts a review of a range");
 	});
 
+	it("prints usage to stderr and exits 64 without a command, and to stdout with --help", () => {
+		expect(melian(root, [])).toMatchObject({
+			status: 64,
+			stdout: "",
+			stderr: expect.stringMatching(/^Usage: melian/),
+		});
+		expect(melian(root, ["--help"])).toMatchObject({ status: 0, stdout: expect.stringMatching(/^Usage: melian/) });
+	});
+
 	it("exits 64 for a command it does not know", () => {
 		expect(melian(root, ["reveiw", "main"])).toMatchObject({
 			status: 64,

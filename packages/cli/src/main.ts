@@ -51,9 +51,13 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 		});
 		const [name, ...rest] = positionals;
 		command = name;
-		if (values.help || name === undefined || name === "help") {
+		if (values.help || name === "help") {
 			io.stdout(usage);
-			return name === undefined && !values.help ? usageExitCode : 0;
+			return 0;
+		}
+		if (name === undefined) {
+			io.stderr(usage);
+			return usageExitCode;
 		}
 		const scoped: Io = { ...io, color: io.color && values.color };
 		switch (name) {
