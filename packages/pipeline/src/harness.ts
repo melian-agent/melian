@@ -1,5 +1,5 @@
 /**
- * The one module in Melian that imports Pi Durable and Chord. Pi Durable's API is experimental, so upstream churn lands
+ * The one module in Melian that imports Pi Durable, pi-ai, and Chord. Pi Durable's API is experimental, so upstream churn lands
  * here and nowhere else. Pi's concepts keep Pi's names, so Pi's README stays the reference; helpers Melian adds have
  * Melian names.
  *

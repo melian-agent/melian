@@ -31,7 +31,7 @@ The tests live in [packages/pipeline/test/durable-spike.test.ts](../../packages/
 | i. Prompt sections | A `section()` that reads a file rendered the new contents in the next request after the file changed. The transcript holds two `pi.system` entries, one per version. |
 | Hook | `hook(ToolTask, { beforeTool })` blocked a call before `execute()` ran; the model received `Tool call blocked: lenses are read-only`. |
 
-[packages/pipeline/test/harness-boundary.test.ts](../../packages/pipeline/test/harness-boundary.test.ts) fails the gate if any file under `packages/` other than the wrapper imports Pi Durable or Chord.
+[packages/pipeline/test/harness-boundary.test.ts](../../packages/pipeline/test/harness-boundary.test.ts) fails the gate if any file under `packages/` other than the wrapper imports Pi Durable, pi-ai, or Chord.
 
 Nothing was marked `it.todo`. Every behaviour the brief listed exists in 1.0.0.
 

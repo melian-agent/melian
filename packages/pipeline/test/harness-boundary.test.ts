@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const root = fileURLToPath(new URL("../../..", import.meta.url));
 const wrapper = "packages/pipeline/src/harness.ts";
-const piImport = /["']@earendil-works\/(?:pi-durable|chord)(?:\/[^"']*)?["']/;
+const piImport = /["']@earendil-works\/(?:pi-durable|pi-ai|chord)(?:\/[^"']*)?["']/;
 
 // Repository-relative posix paths, so the filters and the wrapper's path match on Windows too.
 function sources(): string[] {
@@ -16,7 +16,7 @@ function sources(): string[] {
 }
 
 describe("harness boundary", () => {
-	it("only the wrapper imports Pi Durable or Chord", () => {
+	it("only the wrapper imports Pi Durable, pi-ai, or Chord", () => {
 		const files = sources();
 		expect(files).toContain(wrapper);
 		const offenders = files.filter(
