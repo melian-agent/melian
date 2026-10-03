@@ -8,6 +8,8 @@ Status legend: `[ ]` not started, `[~]` in progress, `[x]` done. Each step names
 
 A pull request on melian-agent/melian is reviewed by `melian review` run against the branch, findings are posted to the pull request through the CLI, and the author fixes or dismisses them before merge. Local CLI only, maintainer pull requests only, no Actions host.
 
+Closed 2026-10-03, when Melian reviewed its own unmerged stack through the CLI on real models and found the defect that kept its own skill from running here; [packages/evals/runs/2026-10-03-first-self-review.md](../packages/evals/runs/2026-10-03-first-self-review.md) records the run. Step 6 and the golden-fixtures track remain open.
+
 ### Critical path
 
 1. `[x]` **Scaffold.** npm workspaces, Biome, Vitest, TypeScript configuration, package skeletons from the layout in design.md, and `npm run check` running Biome, type checking, dependency audit, and tests. Unblocks everything landing as commits that pass the gate.
@@ -18,7 +20,7 @@ A pull request on melian-agent/melian is reviewed by `melian review` run against
 6. `[ ]` **Static and guardrails.** Biome and tsc runners normalised to SARIF on base and head, diffed. Guardrails as the path and pattern rules the Melian repository itself needs. May trail step 5 by a week if time is short.
 7. `[x]` **Adjudication, minimal.** Dedupe by ID, severity to resolution from config.
 8. `[x]` **Publish from the CLI.** `melian publish` posting a review with inline comments through Octokit using the gh token.
-9. `[~]` **Claude Code skill.** Thin wrapper over the CLI, so the agent writing Melian asks Melian for review before committing.
+9. `[x]` **Claude Code skill.** Thin wrapper over the CLI, so the agent writing Melian asks Melian for review before committing.
 
 ### Parallel tracks
 
@@ -65,6 +67,7 @@ Steps to be written when milestone 2 closes.
 
 Newest first. One line per entry: date, what changed, link to the pull request where one exists.
 
+- 2026-10-03: Milestone 1 closed. Step 9 done: `melian review origin/main...HEAD` ran on Opus 5.5 against this repository's own unmerged stack, 117 files from `684e1d8` to `a21cb00`, and exited 1, recorded in [packages/evals/runs/2026-10-03-first-self-review.md](../packages/evals/runs/2026-10-03-first-self-review.md). Its blocking finding was right: with no model routes, the skill's own command could not review this repository, so a root `melian.yaml` now routes every tier. Its two `publish.ts` findings are also right and belong to [pull request #19](https://github.com/melian-agent/melian/pull/19).
 - 2026-10-03: The loop closed in scripted mode. With the built CLI linked onto `PATH` by `npm link` and `MELIAN_TEST_SCRIPT` set, the skill's own commands ran in temporary repositories built from the goldens, each with a bare `origin`. `melian doctor` exited 0. `melian review origin/main...HEAD` exited 0 with `Verdict: passed` on `clean-rename`; 1 with `Verdict: findings, blocking` and one P1 `null-dereference` in `src/user.ts` on `correctness-null-deref`; 3 with `Verdict: findings` on `contracts-breaking-signature` with its P0 lowered to P2; and 2 with `Verdict: not reviewed` and `melian: lenses did not finish: contracts` on stderr when the contracts lens had no script. `melian findings origin/main...HEAD --open` exited 0 and printed the stored finding again, `melian publish "#1"` exited 1 refusing to run under `MELIAN_TEST_SCRIPT`, and `melian review` with no range exited 64.
 - 2026-10-03: Step 9 skills in progress, closing [issue #9](https://github.com/melian-agent/melian/issues/9), stacked on [pull request #19](https://github.com/melian-agent/melian/pull/19). `skills/claude-code/`, `skills/codex/`, and `skills/pi/` each hold a `SKILL.md` that runs `melian` and relays its output; Codex's and Pi's discovery rules were clear enough to ship them whole rather than defer them. `.claude/skills/melian` links to the Claude Code skill, so this repository reviews itself from a Claude Code session.
 - 2026-10-03: Step 8 publishing from the CLI opened as [pull request #19](https://github.com/melian-agent/melian/pull/19), closing [issue #8](https://github.com/melian-agent/melian/issues/8), stacked on [pull request #16](https://github.com/melian-agent/melian/pull/16). `melian review` takes a range or a pull request and exits 0 passed, 1 blocking, 2 not reviewed, or 3 findings with none blocking; `melian publish` posts the stored review of a pull request's head as one commenting review with inline findings, replies in resolved threads, and a `melian/review` commit status; `melian findings` and `melian doctor` complete the command. Core holds the `ReviewProvider` port, `packages/github` implements it with Octokit, and the pipeline's publish task records every post in `PublishedDocument` and reads Melian's markers back, so a crash between a post and its record never posts twice. Check runs, comment commands, and cross-revision diffing beyond publication are left for later milestones.
