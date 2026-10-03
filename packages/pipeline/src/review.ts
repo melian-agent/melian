@@ -192,7 +192,7 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 
 /**
  * The extension a review harness needs: the lens task, the lens tools, `report_finding`, the hook that holds each lens
- * to its policy, and the adjudication task. {@link openReviewHarness} installs it; a host building its own registry
+ * to its policy, and the adjudication task. {@link ReviewHarness} installs it; a host building its own registry
  * installs it there.
  */
 export const lensExtension = defineExtension({
@@ -211,25 +211,53 @@ export function createReviewRegistry(): Registry {
 }
 
 /**
- * Opens a harness over `storage` that can run reviews: {@link lensExtension} installed, models from `models`. Pass
- * `retry: false` to fail a model request at once rather than retry it with backoff, as tests and scripted evals do.
- * Pass `checkout`, the repository's working directory, to run the deterministic checks too: it installs
- * `checksExtension` and a Node execution environment there, which `runChecks` needs for the static tools.
+ * A durable harness that runs reviews over one changeset's storage, with {@link lensExtension} installed. Pass its
+ * `harness` to `reviewChangeset`, `runChecks`, and `readVerdict`, and close it when done, which closes the storage.
  */
+export class ReviewHarness {
+	/** Pi's harness, which the review functions take. */
+	readonly harness: Harness;
+
+	private constructor(harness: Harness) {
+		this.harness = harness;
+	}
+
+	/**
+	 * Opens one over `storage`, with models from `models`. Pass `retry: false` to fail a model request at once rather
+	 * than retry it with backoff, as tests and scripted evals do. Pass `checkout`, the repository's working directory, to
+	 * run the deterministic checks too: it installs `checksExtension` and a Node execution environment there, which
+	 * `runChecks` needs for the static tools.
+	 */
+	static async open(
+		storage: Storage,
+		models: ReviewModels,
+		options: { readonly retry?: boolean; readonly checkout?: string } = {},
+		context: Context = backgroundContext,
+	): Promise<ReviewHarness> {
+		const settings = options.retry === false ? { settings: { retry: { enabled: false } } } : {};
+		const registry = createReviewRegistry();
+		const { checkout } = options;
+		if (checkout !== undefined) registry.install(checksExtension);
+		const env = checkout === undefined ? {} : { env: () => createNodeExecutionEnv(checkout) };
+		return new ReviewHarness(
+			await openHarness(storage, { models: modelsOf(models), registry, ...env, ...settings }, context),
+		);
+	}
+
+	/** Closes the harness and its storage. Idempotent. */
+	close(context: Context = backgroundContext): Promise<void> {
+		return this.harness.close(context);
+	}
+}
+
+/** Opens a {@link ReviewHarness} over `storage`, as {@link ReviewHarness.open} does. */
 export function openReviewHarness(
 	storage: Storage,
 	models: ReviewModels,
 	options: { readonly retry?: boolean; readonly checkout?: string } = {},
 	context: Context = backgroundContext,
-): Promise<Harness> {
-	const settings = options.retry === false ? { settings: { retry: { enabled: false } } } : {};
-	const registry = createReviewRegistry();
-	const { checkout } = options;
-	if (checkout === undefined)
-		return openHarness(storage, { models: modelsOf(models), registry, ...settings }, context);
-	registry.install(checksExtension);
-	const env = () => createNodeExecutionEnv(checkout);
-	return openHarness(storage, { models: modelsOf(models), registry, env, ...settings }, context);
+): Promise<ReviewHarness> {
+	return ReviewHarness.open(storage, models, options, context);
 }
 
 const maxPromptBytes = 200 * 1024;

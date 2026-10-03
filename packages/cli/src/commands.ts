@@ -91,7 +91,8 @@ export async function review(
 	const path = await storagePath(repoRoot, changeset.id, io.env, isScripted(io.env));
 	// Without the publish extension, so a publication a crash interrupted waits for melian publish rather than posting
 	// from a review.
-	const harness = await openReviewHarness(await openStorage(path), models, { retry, checkout: repoRoot });
+	const reviewHarness = await openReviewHarness(await openStorage(path), models, { retry, checkout: repoRoot });
+	const { harness } = reviewHarness;
 	try {
 		// The deterministic checks first, then the lenses: reviewChangeset reads the checks' records, and a check of the
 		// manifest without one makes the review not reviewed. The checks take the configuration as loaded, so a --model
@@ -126,7 +127,7 @@ export async function review(
 		io.stdout(renderFindingsTerminal(verdict, { color: io.color }));
 		return exitCodeFor(verdict);
 	} finally {
-		await harness.close(context);
+		await reviewHarness.close(context);
 	}
 }
 
@@ -153,7 +154,8 @@ export async function publish(io: Io, argument: string): Promise<number> {
 	const base = await currentBase(io.cwd, pullRequest);
 	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, false);
 	// Only the publish task: a review a crash interrupted must not resume here and spend tokens on real models.
-	const harness = await openPublishHarness(await openStorage(path), idleModels(io.env), provider);
+	const publishHarness = await openPublishHarness(await openStorage(path), idleModels(io.env), provider);
+	const { harness } = publishHarness;
 	try {
 		// A head that moved has no merge base here, and publishReview refuses it for the head before it reads this.
 		const published = await publishReview({
@@ -182,7 +184,7 @@ export async function publish(io: Io, argument: string): Promise<number> {
 		}
 		return 0;
 	} finally {
-		await harness.close(context);
+		await publishHarness.close(context);
 	}
 }
 
@@ -201,7 +203,8 @@ export async function findings(
 		`Melian has no review of ${short(changeset.revision.head)}; run melian review ${shellQuote(argument)}`,
 	);
 	if (!existsSync(path)) throw missing;
-	const harness = await openReviewHarness(await openStorage(path), idleModels(io.env));
+	const reviewHarness = await openReviewHarness(await openStorage(path), idleModels(io.env));
+	const { harness } = reviewHarness;
 	try {
 		const root = (await harness.root(context)).id;
 		const verdict = await readVerdict(harness, root, revisionKey(changeset.revision), context);
@@ -218,6 +221,6 @@ export async function findings(
 		io.stdout(options.json ? renderFindingsJson(open) : renderFindingsTerminal(open, { color: io.color }));
 		return 0;
 	} finally {
-		await harness.close(context);
+		await reviewHarness.close(context);
 	}
 }
