@@ -109,7 +109,13 @@ afterEach(async () => {
 	rmSync(repo, { recursive: true, force: true });
 });
 
-type ReviewWith = { lenses?: Lens[]; config?: MelianConfig; checks?: CheckRecord[]; policy?: RepositorySource };
+type ReviewWith = {
+	lenses?: Lens[];
+	config?: MelianConfig;
+	checks?: CheckRecord[];
+	policy?: RepositorySource;
+	rerun?: boolean;
+};
 
 async function reviewed(options: ReviewWith = {}): Promise<Review> {
 	return reviewChangeset({
@@ -121,6 +127,7 @@ async function reviewed(options: ReviewWith = {}): Promise<Review> {
 		models: fake.review,
 		...(options.checks === undefined ? {} : { checks: options.checks }),
 		...(options.policy === undefined ? {} : { policy: options.policy }),
+		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
 	});
 }
 
@@ -876,6 +883,40 @@ describe("adjudication", () => {
 		expect(error).toMatchObject({ code: "adjudicationFailed" });
 		expect((error as ReviewError).findings).toHaveLength(1);
 		expect(await readVerdict(harness, await rootId(), head(), context)).toBeUndefined();
+	});
+
+	it("runs a failed adjudication again on the next call, so a policy fixed since then decides", async () => {
+		writeFiles(repo, { "src/melian.yaml": "resolution: [" });
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		await expect(reviewed({ policy: { kind: "worktree" } })).rejects.toMatchObject({ code: "adjudicationFailed" });
+		writeFiles(repo, { "src/melian.yaml": lines("resolution:", "  P1: advisory") });
+
+		const { verdict } = await reviewed({ policy: { kind: "worktree" } });
+
+		expect(verdict).toMatchObject({ status: "findings", blocking: false });
+		expect(await readVerdict(harness, await rootId(), head(), context)).toEqual(verdict);
+	});
+
+	it("runs a failed lens again only when asked to", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		await expect(reviewed()).rejects.toMatchObject({ code: "lensFailed" });
+		const calls = fake.provider.state.callCount;
+		await expect(reviewed()).rejects.toMatchObject({ code: "lensFailed" });
+		expect(fake.provider.state.callCount).toBe(calls);
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { verdict } = await reviewed({ rerun: true });
+
+		expect(verdict).toMatchObject({ status: "passed", notRun: [] });
 	});
 
 	it("caps a pre-existing finding at advisory", async () => {

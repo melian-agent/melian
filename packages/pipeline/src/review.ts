@@ -303,6 +303,11 @@ export interface ReviewOptions {
 	 * record here under such a name is ignored.
 	 */
 	readonly checks?: readonly CheckRecord[];
+	/**
+	 * Run again a lens task of this head and selection that left a lens failed, rather than attach to it. Without it a
+	 * repeat review attaches to the finished task and reports the same failure, so it spends no tokens unasked.
+	 */
+	readonly rerun?: boolean;
 	readonly context?: Context;
 }
 
@@ -359,7 +364,12 @@ async function attachable(tx: Tx, id: number | undefined, retry: readonly string
 // One lens task per head and selection. A repeat call, such as a rerun after a crash, attaches to the task the first
 // call created, which the harness resumes, rather than running every lens a second time. `undefined` when the task did
 // not complete.
-async function runLenses(harness: Harness, input: LensTaskInput, context: Context): Promise<LensResult | undefined> {
+async function runLenses(
+	harness: Harness,
+	input: LensTaskInput,
+	rerun: boolean,
+	context: Context,
+): Promise<LensResult | undefined> {
 	const root = await harness.root(context);
 	const { head } = input.revision;
 	const selection = input.lenses.map((lens) => lens.key).sort();
@@ -367,7 +377,9 @@ async function runLenses(harness: Harness, input: LensTaskInput, context: Contex
 		const index = await tx.doc(ReviewIndex, root.id);
 		const known = index.reviews[head];
 		const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
-		if (same && (await attachable(tx, known.task, undecided))) return known.task as TaskId<LensResult>;
+		const attach =
+			same && (await attachable(tx, known.task, undecided)) && !(rerun && (await anyLensFailed(tx, known.task)));
+		if (attach) return known.task as TaskId<LensResult>;
 		await recordRevision(tx, root.id, head);
 		const created = await tx.createTask(LensTask, input, { ownership: { kind: "conversation" } });
 		index.reviews[head] = { task: created, lenses: selection };
@@ -387,6 +399,15 @@ async function runLenses(harness: Harness, input: LensTaskInput, context: Contex
 	return outcome.status === "completed" ? outcome.result : undefined;
 }
 
+// Whether a finished lens task left a lens without an answer, which `rerun` asks to try again.
+async function anyLensFailed(tx: Tx, id: number | undefined): Promise<boolean> {
+	const record = id === undefined ? undefined : await tx.task(id as TaskId);
+	if (record?.state.status !== "terminal") return false;
+	const { outcome } = record.state;
+	if (outcome.status !== "completed") return true;
+	return Object.values(outcome.result as LensResult).some((lens) => lens.status !== "done");
+}
+
 // One adjudication task per head and input. A repeat call with the same input, such as a rerun after a crash, attaches
 // to the task the first call created. A call with other input, such as a static check that has since run, creates a
 // task and records it as the head's, and a task an earlier call created then records no verdict.
@@ -402,7 +423,10 @@ async function startAdjudication(
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const known = index.reviews[input.head];
-		if (known?.adjudication?.input === key && (await attachable(tx, known.adjudication.task, undecided))) {
+		// A failed adjudication is always rerun: it is cheap, and its failure, such as a base commit a shallow clone had
+		// not fetched yet, may have passed.
+		const retry = [...undecided, "failed"];
+		if (known?.adjudication?.input === key && (await attachable(tx, known.adjudication.task, retry))) {
 			return known.adjudication.task as TaskId<AdjudicationResult>;
 		}
 		const created = await tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } });
@@ -542,7 +566,10 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		head,
 		files: reviewFiles(revision.files),
 	};
-	const lensResult = lenses.length === 0 ? {} : await runLenses(harness, { root, revision: state, lenses }, context);
+	const lensResult =
+		lenses.length === 0
+			? {}
+			: await runLenses(harness, { root, revision: state, lenses }, options.rerun === true, context);
 	// Only the lenses this review ran count: one that configuration has since disabled or retiered leaves nothing behind.
 	const { checks, allowSkip, producers } = account(manifest, lenses, lensResult, options);
 	const input = adjudicationInput({
