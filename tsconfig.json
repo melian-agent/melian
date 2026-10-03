@@ -2,16 +2,7 @@
 	"extends": "./tsconfig.base.json",
 	"compilerOptions": {
 		"noEmit": true,
-		"paths": {
-			"@melian-agent/core": ["./packages/core/src/index.ts"],
-			"@melian-agent/pipeline": ["./packages/pipeline/src/index.ts"],
-			"@melian-agent/github": ["./packages/github/src/index.ts"],
-			"@melian-agent/state-git": ["./packages/state-git/src/index.ts"],
-			"@melian-agent/decisions": ["./packages/decisions/src/index.ts"],
-			"@melian-agent/cli": ["./packages/cli/src/index.ts"],
-			"@melian-agent/pi-extension": ["./packages/pi-extension/src/index.ts"],
-			"@melian-agent/evals": ["./packages/evals/src/index.ts"]
-		}
+		"customConditions": ["source"]
 	},
 	"include": ["packages/*/src/**/*", "packages/*/test/**/*", "vitest.config.ts"],
 	"exclude": ["**/dist/**", "**/node_modules/**"]
