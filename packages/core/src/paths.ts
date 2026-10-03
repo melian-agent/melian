@@ -24,11 +24,12 @@ export const analyserConfigNames = [
 	"biome.jsonc",
 	"tsconfig*.json",
 	"package.json",
+	"package-lock.json",
 	".eslintrc*",
 	"eslint.config.*",
 ] as const;
 
-const analyserConfig = /^(?:biome\.jsonc?|tsconfig.*\.json|package\.json|\.eslintrc.*|eslint\.config\..*)$/;
+const analyserConfig = /^(?:biome\.jsonc?|tsconfig.*\.json|package(?:-lock)?\.json|\.eslintrc.*|eslint\.config\..*)$/;
 
 // Whether a repository-relative path configures a static tool, by its name alone.
 export function isAnalyserConfig(path: string): boolean {

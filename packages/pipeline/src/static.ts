@@ -191,6 +191,64 @@ async function binaryFor(run: Run, installed: string | undefined): Promise<strin
 	}
 }
 
+// Links the checkout's installed dependencies into the worktree entry by entry. Problem: one link to the checkout's
+// node_modules made its workspace links, such as `node_modules/b -> ../packages/b`, resolve to the checkout's own
+// sources, so base and head type-checked against one tree. Solution: an entry that resolves inside the checkout, outside
+// any node_modules, is a workspace package, linked to the worktree's own copy; every other entry links to the install.
+async function linkDependencies(run: Run, root: string, scratch: string, notes: string[]): Promise<void> {
+	const { env, repoRoot, commit, tool } = run.input;
+	const canonical = await env.canonicalPath(repoRoot, run.context);
+	const checkout = canonical.ok ? canonical.value : repoRoot;
+	const commands: string[] = [];
+	const workspaces = new Set<string>();
+	const link = async (from: string, to: string): Promise<void> => {
+		const listed = await env.listDir(from, run.context);
+		if (!listed.ok) return;
+		commands.push(`mkdir -p ${quote(to)}`);
+		for (const entry of listed.value) {
+			const source = posix.join(from, entry.name);
+			const target = posix.join(to, entry.name);
+			if (entry.kind === "directory" && entry.name.startsWith("@")) {
+				await link(source, target);
+				continue;
+			}
+			const real = entry.kind === "symlink" ? await env.canonicalPath(source, run.context) : undefined;
+			const inside =
+				real?.ok === true && real.value.startsWith(`${checkout}/`) ? real.value.slice(checkout.length + 1) : "";
+			if (inside !== "" && !inside.split("/").includes("node_modules")) {
+				workspaces.add(inside);
+				commands.push(`ln -s ${quote(posix.join(root, inside))} ${quote(target)}`);
+			} else {
+				commands.push(`ln -s ${quote(source)} ${quote(target)}`);
+			}
+		}
+	};
+	await link(posix.join(checkout, "node_modules"), posix.join(root, "node_modules"));
+	// A workspace package's own node_modules holds the versions only it depends on.
+	for (const workspace of workspaces) {
+		const nested = posix.join(checkout, workspace, "node_modules");
+		if ((await run.exists(nested)) && (await run.exists(posix.join(root, workspace)))) {
+			await link(nested, posix.join(root, workspace, "node_modules"));
+		}
+	}
+	const script = posix.join(scratch, "link.sh");
+	const written = await env.writeFile(script, `${commands.join("\n")}\n`, run.context);
+	if (!written.ok) throw run.fail("worktreeFailed", `could not write ${script}: ${written.error.message}`);
+	const linked = await run.shell(`sh ${quote(script)}`);
+	if (linked.code !== 0) throw run.fail("worktreeFailed", `linking dependencies failed: ${linked.output}`);
+	// A dependency bump in the checkout but not at this revision is accepted; the lockfile is policy, reviewed as such.
+	const lockfile = "package-lock.json";
+	if (!(await run.exists(posix.join(checkout, lockfile)))) return;
+	const differs = await run.shell(
+		`cmp -s ${quote(posix.join(checkout, lockfile))} ${quote(posix.join(root, lockfile))}`,
+	);
+	if (differs.code !== 0) {
+		notes.push(
+			`${tool} resolved dependencies from the checkout's install, whose ${lockfile} differs from ${commit.slice(0, 12)}'s.`,
+		);
+	}
+}
+
 // Each directory named node_modules that the revision tracks, outermost only.
 function trackedModules(files: readonly string[]): string[] {
 	const directories = files.flatMap((file) => {
@@ -303,9 +361,7 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		if (checkoutTracked.length > 0) notes.push(`${tool} ignored the checkout's node_modules, which git tracks.`);
 		const installed =
 			checkoutTracked.length === 0 && (await run.exists(checkoutModules)) ? checkoutModules : undefined;
-		if (installed !== undefined) {
-			await run.shell(`ln -s ${quote(installed)} ${quote(posix.join(root, "node_modules"))}`);
-		}
+		if (installed !== undefined) await linkDependencies(run, root, scratch, notes);
 		const binary = await binaryFor(run, installed);
 		const version = await versionOf(run, binary);
 		const log =

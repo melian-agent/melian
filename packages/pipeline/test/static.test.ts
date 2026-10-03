@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
@@ -73,6 +73,30 @@ describe("runStaticTool with Melian's own tools", () => {
 		const tsc = await log("tsc", head);
 		expect(tsc.runs[0].tool.driver).toEqual({ name: "tsc", version: "7.0.2" });
 		expect(results(tsc)).toEqual([["TS2322", "src/a.ts", 1]]);
+		expectCheckoutUntouched();
+	});
+
+	it("resolves a workspace sibling to the revision's own sources, not the checkout's", {
+		timeout: 60_000,
+	}, async () => {
+		const workspace = JSON.stringify({
+			compilerOptions: { strict: true, noEmit: true, module: "ESNext", moduleResolution: "Bundler" },
+			include: ["packages/*/index.ts"],
+		});
+		const base = commit(repo, {
+			".gitignore": lines("node_modules"),
+			"package.json": JSON.stringify({ private: true, workspaces: ["packages/*"] }),
+			"tsconfig.json": workspace,
+			"packages/b/package.json": JSON.stringify({ name: "b", types: "./index.ts" }),
+			"packages/b/index.ts": lines("export const f = (x: number): number => x;"),
+			"packages/a/index.ts": lines('import { f } from "b";', "export const y = f(1);"),
+		});
+		const head = commit(repo, { "packages/b/index.ts": lines("export const f = (x: string): string => x;") });
+		// The checkout holds the head, with npm's workspace link, as CI does after npm ci.
+		mkdirSync(join(repo, "node_modules"), { recursive: true });
+		symlinkSync("../packages/b", join(repo, "node_modules", "b"));
+		expect(results(await log("tsc", base))).toEqual([]);
+		expect(results(await log("tsc", head))).toEqual([["TS2345", "packages/a/index.ts", 2]]);
 		expectCheckoutUntouched();
 	});
 

@@ -6,7 +6,7 @@ export function analyserOf(path: string): string | undefined {
 	const name = posix.basename(path);
 	if (/^biome\.jsonc?$/.test(name)) return "Biome";
 	if (/^tsconfig.*\.json$/.test(name)) return "tsc";
-	if (name === "package.json") return "the packages Biome and tsc load";
+	if (name === "package.json" || name === "package-lock.json") return "the packages Biome and tsc load";
 	if (/^\.eslintrc|^eslint\.config\./.test(name)) return "ESLint";
 	return undefined;
 }
