@@ -472,7 +472,7 @@ function account(
 	const { config } = options;
 	const supplied = (options.checks ?? []).filter((check) => !check.name.startsWith("lens."));
 	const checks: CheckRecord[] = [...supplied, ...ran.map((lens) => lensCheck(lens, result))];
-	const allowSkip: string[] = [];
+	const allowSkip: string[] = [...config.checks.allowSkip];
 	const recorded = new Set(checks.map((check) => check.name));
 	for (const name of manifest) {
 		if (recorded.has(name)) continue;

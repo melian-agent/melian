@@ -119,11 +119,11 @@ The tier's check list is the review's manifest. `reviewChangeset` expands `optio
 Only lenses the manifest names run. The lens step records each of them, and a record named `lens.*` in `options.checks` gives way to it. A lens of the manifest that did not run is recorded as:
 
 - `failed`, `no lens is named <name>`, when no lens of that name is loaded.
-- `skipped`, `lenses.<name>.enabled is false`, when configuration switches it off. That is an exclusion, and the design reports an exclusion as not reviewed.
+- `skipped`, `lenses.<name>.enabled is false`, when configuration switches it off. That is an exclusion, and the design reports an exclusion as not reviewed unless the repository lists the check in `checks.allowSkip`.
 - `skipped`, `no lens covers these paths`, when no lens of the manifest covers a changed path, so nothing reviewed the change.
 - `skipped`, `no changed file is in its paths`, when another lens ran. Only this skip is allowed.
 
-A `decisions.*` check is skipped and allowed while no decision provider is configured, as the design lets the fast tier degrade. Any other check, such as `guardrails` or `static.biome`, records itself through `options.checks` as `{ name, status, reason?, error?, version? }`, where `version` is the tool version its findings name; without a record it is `no record`.
+A `decisions.*` check is skipped and allowed while no decision provider is configured, as the design lets the fast tier degrade. Every check `config.checks.allowSkip` names joins the allowed skips. Any other check, such as `guardrails` or `static.biome`, records itself through `options.checks` as `{ name, status, reason?, error?, version? }`, where `version` is the tool version its findings name; without a record it is `no record`.
 
 [Pull request #18](https://github.com/melian-agent/melian/pull/18) adds `runChecks`, which keeps one record per check of a tier in the `melian.checks` document under a run identity of base, head, tier, policy hash, and task. Its records map onto this shape one for one: `check` is `name`, `status` is unchanged, a skip's `reason` is `reason`, and a failure's `error.message` is `error` with its `error.code` as `reason`. It records `lens.*` checks as skipped, which the lens step's own records replace, and `decisions.*` as skipped, which the rule above allows while no provider is configured. One field is missing: its `ran` record carries no tool version, so either it gains `version` from the head's SARIF driver, or the record omits it and the review counts that check's sightings at every version.
 

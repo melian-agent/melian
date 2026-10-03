@@ -1091,6 +1091,23 @@ describe("adjudication", () => {
 			});
 		});
 
+		it("passes with a lens switched off or a check skipped when melian.yaml allows the skip", async () => {
+			scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
+			const skipped: CheckRecord = { name: "static.tsc", status: "skipped", reason: "no tsconfig.json" };
+			const allowing = {
+				...tiered(...lensesOnly, "static.tsc"),
+				lenses: { contracts: { enabled: false } },
+				checks: { allowSkip: ["lens.contracts", "static.tsc"] },
+			};
+
+			const { verdict } = await reviewed({ config: allowing, checks: [skipped] });
+
+			expect(verdict).toMatchObject({
+				status: "passed",
+				notRun: [skipped, { name: "lens.contracts", status: "skipped" }],
+			});
+		});
+
 		it("is not reviewed when no lens covers the changed paths, and passes when one does", async () => {
 			const nowhere = lenses.map((lens) => ({ ...lens, paths: ["docs/**"] }));
 			const { verdict } = await reviewed({ lenses: nowhere });

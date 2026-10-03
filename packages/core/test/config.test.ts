@@ -195,6 +195,15 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		});
 	});
 
+	it("reads the checks a tier may skip, a nearer file's list replacing a farther one's", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("checks:", "  allowSkip: [static.tsc, static.biome]"),
+			"services/melian.yaml": lines("checks:", "  allowSkip: [lens.contracts]"),
+		});
+		expect((await load("a.ts")).config.checks).toEqual({ allowSkip: ["static.tsc", "static.biome"] });
+		expect((await load("services/a.ts")).config.checks).toEqual({ allowSkip: ["lens.contracts"] });
+	});
+
 	it("reads an empty file as contributing nothing", async () => {
 		writeFiles(repo, { "melian.yaml": "" });
 		const { config, sources } = await load("a.ts");

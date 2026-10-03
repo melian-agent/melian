@@ -91,6 +91,7 @@ export const melianYamlSchema = Type.Object(
 			),
 		),
 		ruleAliases: Type.Optional(Type.Record(Type.String(), ruleAliasSchema)),
+		checks: Type.Optional(Type.Object({ allowSkip: Type.Optional(Type.Array(name)) }, strict)),
 	},
 	strict,
 );
@@ -146,6 +147,8 @@ export interface MelianConfig {
 	 * or, with `distinct: true`, to rule IDs that name other defects, so adjudication never merges them with it.
 	 */
 	readonly ruleAliases: Readonly<Record<string, RuleAlias>>;
+	/** `allowSkip` names checks a tier may skip without making the review not reviewed. */
+	readonly checks: { readonly allowSkip: readonly string[] };
 }
 
 /** The built-in defaults every `melian.yaml` layers onto. */
@@ -162,6 +165,7 @@ export const defaultConfig: MelianConfig = {
 	knowledge: { writeBack: false },
 	decisions: { thresholds: {} },
 	ruleAliases: {},
+	checks: { allowSkip: [] },
 };
 
 /**

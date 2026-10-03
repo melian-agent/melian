@@ -95,6 +95,7 @@ The keys a `melian.yaml` accepts, all optional:
 | `knowledge` | `writeBack`, a boolean | `false` |
 | `decisions` | `provider`, and `thresholds` from question name to a `drop` and `accept` band between 0 and 1 | no provider, no thresholds |
 | `ruleAliases` | rule ID that owns a defect to the rule IDs other checks report it under, or to `{ rules, distinct: true }` naming rules that are different defects | none |
+| `checks` | `allowSkip`, a list of check names whose skip still lets a review pass, such as `static.tsc` in a repository with no TypeScript | `allowSkip: []` |
 
 Lenses are a map keyed by name rather than `enable` and `disable` lists, so that layering works per lens: a service can disable one lens without restating the root's list. A band layers like any object, so a nearer file may restate only `drop` or only `accept`. A merged band missing either end, or whose `drop` exceeds its `accept`, is an error naming the nearest file that set it.
 
@@ -257,7 +258,7 @@ The status has three states, because a check that reports green while the review
 
 `blocking` is true whenever a finding resolves to `block`, in every status, so a host can say a review both blocks and is incomplete. A dismissed finding counts toward neither: dismissing with a reason is how an author answers an `acknowledge`.
 
-`checks` is a list of `CheckRecord`s, `{ name, status: "ran" | "skipped" | "failed", reason?, error?, version? }`, with names as the tiers spell them, such as `lens.security` or `static.biome`. The lens task writes one per lens; static analysis and guardrails, step 6, write theirs in the same shape. `version` is the version of the tool that ran, as its findings' `source.version` names it. `allowSkip` names checks whose skip is expected, such as a type checker on a change with no TypeScript.
+`checks` is a list of `CheckRecord`s, `{ name, status: "ran" | "skipped" | "failed", reason?, error?, version? }`, with names as the tiers spell them, such as `lens.security` or `static.biome`. The lens task writes one per lens; static analysis and guardrails, step 6, write theirs in the same shape. `version` is the version of the tool that ran, as its findings' `source.version` names it. `allowSkip` names checks whose skip is expected, such as a type checker on a change with no TypeScript; a repository sets it as `checks.allowSkip` in `melian.yaml`, and the pipeline passes it on. It never excuses a check of the manifest that left no record.
 
 The manifest is the tier's check list, and every check in it must account for itself. Problem: `checks` was optional and nothing said what it should hold, so a required check that never started left no record and no trace. Example: a pull request reviewed under `full` with the lenses passing and no Biome record read `passed`, though Biome never ran. Solution: `manifest` is required, and every name in it without a record joins `notRun` as `skipped` with the reason `no record`, which `allowSkip` cannot excuse. A record outside the manifest still counts, so a failed check a host ran anyway is never hidden.
 
