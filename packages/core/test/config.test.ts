@@ -204,4 +204,9 @@ describe("loadConfig", () => {
 	it("refuses a path outside the repository", async () => {
 		await expect(loadConfig(repo, "../elsewhere/a.ts")).rejects.toBeInstanceOf(OutsideRepositoryError);
 	});
+
+	it.each([".", "a.ts"])("refuses a repository root that does not exist, given %j", async (path) => {
+		const missing = join(repo, "missing");
+		expect(await rejection(loadConfig(missing, path))).toMatchObject({ code: "missingRoot", file: missing });
+	});
 });

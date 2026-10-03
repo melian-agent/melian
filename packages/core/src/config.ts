@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { dirname, join, posix } from "node:path";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
@@ -263,6 +263,9 @@ function checkBands(config: MelianConfig, layers: readonly { file: string; layer
  * {@link OutsideRepositoryError} when `path` is outside `repoRoot`.
  */
 export async function loadConfig(repoRoot: string, path: string): Promise<LoadedConfig> {
+	if (!(await stat(repoRoot).catch(() => undefined))?.isDirectory()) {
+		throw new ConfigError("missingRoot", repoRoot, `${repoRoot} is not a directory`);
+	}
 	const layers: { file: string; layer: MelianYaml }[] = [];
 	for (const directory of await directoriesUpToRoot(repoRoot, path)) {
 		const file = join(directory, melianPaths.config);
