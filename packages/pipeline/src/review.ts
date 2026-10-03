@@ -238,12 +238,7 @@ export function renderChangePrompt(changeset: Changeset, nonce: string, only?: r
 	const parts = [header];
 	let size = Buffer.byteLength(header);
 	for (const file of files) {
-		const hunks = file.binary
-			? ["(binary)"]
-			: file.hunks.map(
-					(hunk) =>
-						`@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@${hunk.header ? ` ${hunk.header}` : ""}\n${hunk.text}`,
-				);
+		const hunks = file.binary ? ["(binary)"] : file.hunks.map((hunk) => `${hunk.header}\n${hunk.text}`);
 		const part = quoteUntrusted("diff", [`${named(file)} (${file.status})`, ...hunks].join("\n"), nonce);
 		size += Buffer.byteLength(part);
 		if (size > maxPromptBytes) {

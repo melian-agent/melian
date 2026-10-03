@@ -186,7 +186,11 @@ describe("reviewChangeset", () => {
 		expect(systemPromptOf(first!)).not.toContain(contracts);
 		const prompt = textOf(first!.find((message) => message.role === "user")!);
 		const nonce = nonceOf(first!);
-		expect(quoted(prompt, nonce, "diff")[0]).toMatch(/^src\/user\.ts \(modified\)\n@@ /);
+		const [diff] = quoted(prompt, nonce, "diff");
+		expect(diff!.split("\n").slice(0, 2)).toEqual([
+			"src/user.ts (modified)",
+			"@@ -7 +7 @@ export function managerName(user: User): string {",
+		]);
 		expect(quoted(toolResults(second!)[0]!, nonce, "file")).toEqual([
 			"6\texport function managerName(user: User): string {\n7\t\treturn user.manager.name;\n8\t}",
 		]);
