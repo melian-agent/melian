@@ -310,6 +310,23 @@ describe("resolveRange", () => {
 		]);
 	});
 
+	it("reads the repository it was given when a git hook's environment names another", async () => {
+		const other = temporaryDirectory();
+		try {
+			gitIn(other, "init", "--quiet", "--initial-branch=main");
+			gitIn(other, "commit", "--quiet", "--allow-empty", "-m", "elsewhere");
+			const expected = await resolveRange(repo, "main...feature");
+			vi.stubEnv("GIT_DIR", join(other, ".git"));
+			vi.stubEnv("GIT_WORK_TREE", other);
+			vi.stubEnv("GIT_INDEX_FILE", join(other, ".git", "index"));
+			vi.stubEnv("GIT_PREFIX", "nested/");
+			vi.stubEnv("GIT_COMMON_DIR", join(other, ".git"));
+			expect(await resolveRange(repo, "main...feature")).toEqual(expected);
+		} finally {
+			removeDirectory(other);
+		}
+	});
+
 	it("resolves from a subdirectory to the repository root", async () => {
 		mkdirSync(join(repo, "nested"));
 		const changeset = await resolveRange(join(repo, "nested"), "main...feature");

@@ -7,10 +7,36 @@ export interface GitResult {
 	readonly stderr: string;
 }
 
+// What `git rev-parse --local-env-vars` prints. A hook runs with these set for its own repository, and git honours
+// them over `cwd`, so Melian run from a hook would read that repository instead of the one it was given.
+const repositoryLocalVariables = [
+	"GIT_ALTERNATE_OBJECT_DIRECTORIES",
+	"GIT_CONFIG",
+	"GIT_CONFIG_PARAMETERS",
+	"GIT_CONFIG_COUNT",
+	"GIT_OBJECT_DIRECTORY",
+	"GIT_DIR",
+	"GIT_WORK_TREE",
+	"GIT_IMPLICIT_WORK_TREE",
+	"GIT_GRAFT_FILE",
+	"GIT_INDEX_FILE",
+	"GIT_NO_REPLACE_OBJECTS",
+	"GIT_REPLACE_REF_BASE",
+	"GIT_PREFIX",
+	"GIT_SHALLOW_FILE",
+	"GIT_COMMON_DIR",
+];
+
+function gitEnvironment(): NodeJS.ProcessEnv {
+	const env: NodeJS.ProcessEnv = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
+	for (const name of repositoryLocalVariables) delete env[name];
+	return env;
+}
+
 export function git(cwd: string, args: readonly string[]): Promise<GitResult> {
 	return new Promise((resolve, reject) => {
 		// Melian only reads; optional locks would contend with an editor or a concurrent git.
-		const child = spawn("git", args, { cwd, env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
+		const child = spawn("git", args, { cwd, env: gitEnvironment() });
 		const stdout: Buffer[] = [];
 		const stderr: Buffer[] = [];
 		child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
