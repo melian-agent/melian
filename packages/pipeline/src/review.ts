@@ -308,18 +308,19 @@ export async function reviewChangeset(options: ReviewOptions): Promise<readonly 
 	const nonce = reviewNonce();
 	const lenses: LensRun[] = [];
 	for (const { lens, coverage, files } of selected) {
+		// Every lens may report an injection attempt, so the policy section never names a rule the hook refuses.
+		const rules = lens.rules.some((rule) => rule.id === injectionAttemptRule.id)
+			? lens.rules
+			: [...lens.rules, injectionAttemptRule];
 		lenses.push({
 			key: `${lens.name}@${lens.version}`,
 			name: lens.name,
 			version: lens.version,
 			route: await chooseRoute(lens, config, models),
-			instructions: renderLensInstructions(lens, standards),
+			instructions: renderLensInstructions({ ...lens, rules }, standards),
 			tools: lens.tools,
 			severities: lens.severities,
-			// Every lens may report an injection attempt, so the policy section never names a rule the hook refuses.
-			rules: lens.rules.some((rule) => rule.id === injectionAttemptRule.id)
-				? lens.rules
-				: [...lens.rules, injectionAttemptRule],
+			rules,
 			budget: lens.budget.findings,
 			coverage,
 			prompt: renderChangePrompt(changeset, nonce, files),

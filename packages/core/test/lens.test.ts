@@ -334,6 +334,16 @@ describe("renderLensInstructions", () => {
 		const rendered = renderLensInstructions(correctness!, standards);
 		expect(rendered.startsWith(correctness!.instructions)).toBe(true);
 		expect(rendered).toContain("### AGENTS.md\n\nUse tabs.");
-		expect(renderLensInstructions({ ...correctness!, standards: false }, standards)).toBe(correctness!.instructions);
+		expect(renderLensInstructions({ ...correctness!, standards: false }, standards)).not.toContain("AGENTS.md");
+	});
+
+	it("renders every declared rule ID, the severities, and the budget after the body", async () => {
+		for (const lens of await loadLenses(repo, { kind: "worktree" }, [])) {
+			const rendered = renderLensInstructions(lens, []);
+			const policy = rendered.slice(lens.instructions.length);
+			for (const rule of lens.rules) expect(policy).toContain(`- \`${rule.id}\`: ${rule.description}`);
+			expect(policy).toContain(`Severities you may report: ${lens.severities.join(", ")}.`);
+			expect(policy).toContain(`Budget: at most ${lens.budget.findings} findings.`);
+		}
 	});
 });

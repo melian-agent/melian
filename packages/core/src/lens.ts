@@ -416,15 +416,29 @@ export function selectLenses(lenses: readonly Lens[], config: MelianConfig, path
 	});
 }
 
+// The lens's policy as the model must follow it, so it never guesses a rule ID the hook would refuse.
+function renderPolicy(lens: Lens): string {
+	const plural = lens.budget.findings === 1 ? "finding" : "findings";
+	return [
+		"## Rules, severities, and budget",
+		"Report every finding under one of these rule IDs, written exactly as here. A defect no rule fits is not yours to report.",
+		lens.rules.map((rule) => `- \`${rule.id}\`: ${rule.description}`).join("\n"),
+		`Severities you may report: ${lens.severities.join(", ")}.`,
+		`Budget: at most ${lens.budget.findings} ${plural}.`,
+	].join("\n\n");
+}
+
 /**
- * The instructions a lens's conversation runs with: its body, then, unless the lens opted out, the repository's
- * standards, each under its path.
+ * The instructions a lens's conversation runs with: its body; then its rules, each ID with its description, the
+ * severities it may report, and its findings budget; then, unless the lens opted out, the repository's standards, each
+ * under its path.
  */
 export function renderLensInstructions(lens: Lens, standards: readonly StandardsSection[]): string {
-	if (!lens.standards || standards.length === 0) return lens.instructions;
+	const instructions = [lens.instructions, renderPolicy(lens)].join("\n\n");
+	if (!lens.standards || standards.length === 0) return instructions;
 	const sections = standards.map((section) => `### ${section.path}\n\n${section.content.trim()}`);
 	return [
-		lens.instructions,
+		instructions,
 		"## Repository standards",
 		"The repository's own conventions. A change that breaks one is a finding; cite the file.",
 		...sections,
