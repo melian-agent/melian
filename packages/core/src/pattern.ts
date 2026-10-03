@@ -35,6 +35,8 @@ export type PatternResult =
 export const maxRepeat = 100;
 /** The largest compiled program; past it a pattern is refused as too complex. */
 export const maxProgram = 2000;
+/** The deepest groups may nest. The parser and compiler recurse once per level. */
+export const maxDepth = 100;
 
 class Refused {
 	readonly reason: string;
@@ -84,6 +86,7 @@ const controlEscapes: Readonly<Record<string, number>> = { t: 9, n: 10, v: 11, f
 class Parser {
 	readonly source: string;
 	position = 0;
+	depth = 0;
 
 	constructor(source: string) {
 		this.source = source;
@@ -189,9 +192,11 @@ class Parser {
 			else if (/^\?<[A-Za-z_$][\w$]*>/.test(rest)) this.position = this.source.indexOf(">", this.position) + 1;
 			else throw this.refuse("lookahead and lookbehind cannot run in linear time");
 		}
+		if (++this.depth > maxDepth) throw this.refuse(`groups may not nest more than ${maxDepth} deep`);
 		const inner = this.alternation();
 		if (this.peek() !== ")") throw this.refuse('missing ")"');
 		this.position++;
+		this.depth--;
 		return inner;
 	}
 

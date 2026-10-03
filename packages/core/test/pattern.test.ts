@@ -105,6 +105,11 @@ describe("compilePattern", () => {
 		expect(refusal("^*")).toMatch(/cannot follow an anchor/);
 	});
 
+	it("refuses groups nested deeper than 100, rather than overflowing the stack", () => {
+		expect(compiled(`${"(".repeat(100)}a${")".repeat(100)}`).test("a")).toBe(true);
+		expect(refusal(`${"(".repeat(5000)}a${")".repeat(5000)}`)).toMatch(/may not nest more than 100 deep/);
+	});
+
 	it("refuses a pattern that compiles to too many steps", () => {
 		expect(refusal("(?:(?:a{100}){100})")).toMatch(/more than 2000 steps/);
 	});
