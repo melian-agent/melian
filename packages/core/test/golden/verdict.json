@@ -1,0 +1,369 @@
+{
+  "status": "not-reviewed",
+  "blocking": true,
+  "findings": {
+    "block": [
+      {
+        "ruleId": "sql-injection",
+        "level": "error",
+        "message": {
+          "text": "The query interpolates the user's name"
+        },
+        "partialFingerprints": {
+          "melian/v1": "61adbcd1835a3243"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "src/run.ts"
+              },
+              "region": {
+                "startLine": 40,
+                "endLine": 40,
+                "startColumn": 3,
+                "endColumn": 14,
+                "snippet": {
+                  "text": "db.query(\"SELECT * FROM users WHERE name = '\" + name + \"'\")"
+                }
+              }
+            }
+          }
+        ],
+        "properties": {
+          "id": "61adbcd1835a3243",
+          "path": "src/run.ts",
+          "occurrence": 0,
+          "cause": "introduced",
+          "trigger": {
+            "file": "src/run.ts",
+            "index": 0
+          },
+          "severity": "P0",
+          "confidence": 0.9,
+          "resolution": "block",
+          "status": "new",
+          "explanation": {
+            "what": "The query splices the name into SQL text.",
+            "whyHere": "This change passes the name straight from the request.",
+            "whatToDo": "Pass the name as a bound parameter."
+          },
+          "source": {
+            "check": "lens.security",
+            "version": "1"
+          }
+        }
+      },
+      {
+        "ruleId": "no-eval",
+        "level": "error",
+        "message": {
+          "text": "eval runs request input"
+        },
+        "partialFingerprints": {
+          "melian/v1": "c0dc5445aa6ee891"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "src/run.ts"
+              },
+              "region": {
+                "startLine": 12,
+                "endLine": 12,
+                "startColumn": 3,
+                "endColumn": 14,
+                "snippet": {
+                  "text": "eval(input)"
+                }
+              }
+            }
+          }
+        ],
+        "properties": {
+          "id": "c0dc5445aa6ee891",
+          "path": "src/run.ts",
+          "occurrence": 0,
+          "cause": "introduced",
+          "trigger": {
+            "file": "src/run.ts",
+            "index": 0
+          },
+          "severity": "P1",
+          "confidence": 0.9,
+          "resolution": "block",
+          "status": "new",
+          "explanation": {
+            "what": "The handler passes the request body to eval.",
+            "whyHere": "This change routes the body into run() without parsing it.",
+            "whatToDo": "Parse the body with JSON.parse and validate it."
+          },
+          "source": {
+            "check": "lens.security",
+            "version": "1"
+          }
+        }
+      },
+      {
+        "ruleId": "no-eval",
+        "level": "error",
+        "message": {
+          "text": "eval runs a stored template"
+        },
+        "partialFingerprints": {
+          "melian/v1": "7285ec9fe0f6275b"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "src/run.ts"
+              },
+              "region": {
+                "startLine": 50,
+                "endLine": 50,
+                "startColumn": 3,
+                "endColumn": 14,
+                "snippet": {
+                  "text": "eval(template)"
+                }
+              }
+            }
+          }
+        ],
+        "properties": {
+          "id": "7285ec9fe0f6275b",
+          "path": "src/run.ts",
+          "occurrence": 0,
+          "cause": "introduced",
+          "trigger": {
+            "file": "src/run.ts",
+            "index": 0
+          },
+          "severity": "P1",
+          "confidence": 0.9,
+          "resolution": "block",
+          "status": "new",
+          "explanation": {
+            "what": "The renderer evaluates a template from the database.",
+            "whyHere": "This change lets users edit that template.",
+            "whatToDo": "Render the template with a sandboxed engine."
+          },
+          "source": {
+            "check": "lens.security",
+            "version": "1"
+          }
+        }
+      }
+    ],
+    "acknowledge": [
+      {
+        "ruleId": "missing-test",
+        "level": "warning",
+        "message": {
+          "text": "No test covers the new branch"
+        },
+        "partialFingerprints": {
+          "melian/v1": "2b7fb523683f9bb7"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "src/total.ts"
+              },
+              "region": {
+                "startLine": 9,
+                "endLine": 9,
+                "startColumn": 3,
+                "endColumn": 14,
+                "snippet": {
+                  "text": "if (total > limit) return limit;"
+                }
+              }
+            }
+          }
+        ],
+        "properties": {
+          "id": "2b7fb523683f9bb7",
+          "path": "src/total.ts",
+          "occurrence": 0,
+          "cause": "introduced",
+          "trigger": {
+            "file": "src/run.ts",
+            "index": 0
+          },
+          "severity": "P2",
+          "confidence": 0.9,
+          "resolution": "acknowledge",
+          "status": "new",
+          "explanation": {
+            "what": "The new limit branch has no test.",
+            "whyHere": "This change adds the branch.",
+            "whatToDo": "Add a test with a total above the limit."
+          },
+          "source": {
+            "check": "lens.security",
+            "version": "1"
+          }
+        }
+      }
+    ],
+    "advisory": [
+      {
+        "ruleId": "unchecked-result",
+        "level": "note",
+        "message": {
+          "text": "The write's result is ignored"
+        },
+        "partialFingerprints": {
+          "melian/v1": "7fed6713d9590c08"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "src/run.ts"
+              },
+              "region": {
+                "startLine": 30,
+                "endLine": 32,
+                "snippet": {
+                  "text": "fs.write(fd, data)"
+                }
+              }
+            }
+          }
+        ],
+        "properties": {
+          "id": "7fed6713d9590c08",
+          "path": "src/run.ts",
+          "occurrence": 0,
+          "cause": "affected",
+          "evidence": "src/run.ts:12 now passes buffers of up to 1 MiB to write().",
+          "severity": "P3",
+          "confidence": 0.9,
+          "resolution": "advisory",
+          "status": "new",
+          "explanation": {
+            "what": "fs.write can write fewer bytes than asked.",
+            "whyHere": "The new caller passes larger buffers than before.",
+            "whatToDo": "Loop until every byte is written, or use fs.writeFile."
+          },
+          "source": {
+            "check": "lens.security",
+            "version": "1"
+          }
+        }
+      }
+    ],
+    "silent": [
+      {
+        "ruleId": "prefer-const",
+        "level": "note",
+        "message": {
+          "text": "total is never reassigned"
+        },
+        "partialFingerprints": {
+          "melian/v1": "6c2db0f8d5f03223"
+        },
+        "locations": [
+          {
+            "physicalLocation": {
+              "artifactLocation": {
+                "uri": "src/total.ts"
+              },
+              "region": {
+                "startLine": 4
+              }
+            }
+          }
+        ],
+        "properties": {
+          "id": "6c2db0f8d5f03223",
+          "path": "src/total.ts",
+          "discriminator": "total",
+          "cause": "pre-existing",
+          "severity": "nit",
+          "resolution": "silent",
+          "status": "new",
+          "explanation": {
+            "what": "total is declared with let but never reassigned.",
+            "whyHere": "The file is open in this change, but the line predates it.",
+            "whatToDo": "Declare it with const."
+          },
+          "source": {
+            "check": "static.biome"
+          }
+        }
+      }
+    ]
+  },
+  "dismissed": [
+    {
+      "ruleId": "magic-number",
+      "level": "error",
+      "message": {
+        "text": "eval runs request input"
+      },
+      "partialFingerprints": {
+        "melian/v1": "fe5ae673bf9df975"
+      },
+      "locations": [
+        {
+          "physicalLocation": {
+            "artifactLocation": {
+              "uri": "src/run.ts"
+            },
+            "region": {
+              "startLine": 20,
+              "endLine": 20,
+              "startColumn": 3,
+              "endColumn": 14,
+              "snippet": {
+                "text": "retry(3)"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "id": "fe5ae673bf9df975",
+        "path": "src/run.ts",
+        "occurrence": 0,
+        "cause": "introduced",
+        "trigger": {
+          "file": "src/run.ts",
+          "index": 0
+        },
+        "severity": "P1",
+        "confidence": 0.9,
+        "resolution": "block",
+        "status": "dismissed",
+        "explanation": {
+          "what": "The handler passes the request body to eval.",
+          "whyHere": "This change routes the body into run() without parsing it.",
+          "whatToDo": "Parse the body with JSON.parse and validate it."
+        },
+        "source": {
+          "check": "lens.security",
+          "version": "1"
+        }
+      }
+    }
+  ],
+  "notRun": [
+    {
+      "name": "lens.security",
+      "status": "failed",
+      "reason": "the lens did not finish",
+      "error": "provider returned 529"
+    },
+    {
+      "name": "static.tsc",
+      "status": "skipped",
+      "reason": "no tsconfig.json at the base revision"
+    }
+  ]
+}

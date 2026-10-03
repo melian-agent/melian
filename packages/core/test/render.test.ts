@@ -1,9 +1,12 @@
 import {
+	adjudicate,
 	createFinding,
 	createFindingsLog,
+	defaultConfig,
 	findingsLogSchema,
 	renderFindingsJson,
 	renderFindingsTerminal,
+	renderVerdictJson,
 } from "@melian-agent/core";
 import Value from "typebox/value";
 import { describe, expect, it } from "vitest";
@@ -114,5 +117,77 @@ describe("renderFindingsTerminal", () => {
 
 	it("says so when there are no findings", () => {
 		expect(renderFindingsTerminal(createFindingsLog([]))).toBe("No findings.\n");
+	});
+});
+
+const verdict = adjudicate({
+	findings: [
+		...log.runs[0]!.results.map(({ ruleIndex: _, ...finding }) => finding),
+		createFinding({
+			...evalInput,
+			rule: "missing-test",
+			message: "No test covers the new branch",
+			file: "src/total.ts",
+			startLine: 9,
+			endLine: 9,
+			snippet: "if (total > limit) return limit;",
+			severity: "P2",
+			explanation: {
+				what: "The new limit branch has no test.",
+				whyHere: "This change adds the branch.",
+				whatToDo: "Add a test with a total above the limit.",
+			},
+		}),
+		createFinding({
+			...evalInput,
+			rule: "magic-number",
+			startLine: 20,
+			endLine: 20,
+			snippet: "retry(3)",
+			status: "dismissed",
+		}),
+	],
+	checks: [
+		{ name: "lens.correctness", status: "ran" },
+		{ name: "lens.security", status: "failed", reason: "the lens did not finish", error: "provider returned 529" },
+		{ name: "static.tsc", status: "skipped", reason: "no tsconfig.json at the base revision" },
+	],
+	config: defaultConfig,
+});
+
+describe("renderVerdictJson", () => {
+	it("renders the verdict with its findings as SARIF results", async () => {
+		const json = renderVerdictJson(verdict);
+		expect(JSON.parse(json)).toEqual(verdict);
+		await expect(json).toMatchFileSnapshot("./golden/verdict.json");
+	});
+});
+
+describe("renderFindingsTerminal with a verdict", () => {
+	it("leads with the verdict and the checks that did not run, then groups findings by resolution", async () => {
+		await expect(renderFindingsTerminal(verdict)).toMatchFileSnapshot("./golden/verdict.txt");
+	});
+
+	it("colours the status when asked", async () => {
+		await expect(renderFindingsTerminal(verdict, { color: true })).toMatchFileSnapshot("./golden/verdict.ansi.txt");
+	});
+
+	it("says a review passed when it did", () => {
+		const passed = adjudicate({
+			findings: [],
+			checks: [{ name: "lens.correctness", status: "ran" }],
+			config: defaultConfig,
+		});
+		expect(renderFindingsTerminal(passed)).toBe("Verdict: passed\n\nNo findings.\n");
+	});
+
+	it("escapes control characters in a check's name, reason, and error", () => {
+		const hostile = adjudicate({
+			findings: [],
+			checks: [{ name: "lens.x\u001b[2J", status: "failed", reason: "bad\nline", error: "\u202egnp.ts" }],
+			config: defaultConfig,
+		});
+		const text = renderFindingsTerminal(hostile);
+		expect(text).toContain("  lens.x\\u001b[2J  failed: bad\n    line\n    Error: \\u202egnp.ts\n");
 	});
 });

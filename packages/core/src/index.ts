@@ -116,7 +116,7 @@ export {
 } from "./lens.ts";
 export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
 export { melianPaths } from "./paths.ts";
-export { renderFindingsJson, renderFindingsTerminal, type TerminalRenderOptions } from "./render.ts";
+export { renderFindingsJson, renderFindingsTerminal, renderVerdictJson, type TerminalRenderOptions } from "./render.ts";
 export {
 	listRevisionFiles,
 	type RevisionEntry,
