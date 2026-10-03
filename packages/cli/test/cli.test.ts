@@ -110,6 +110,19 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.stderr).toContain("lenses did not finish: contracts");
 	});
 
+	it("runs a failed lens again with --rerun, and reports the stored failure without it", () => {
+		const golden = goldens["correctness-null-deref"]!;
+		const { repo, env } = goldenCheckout(golden, { correctness: golden.script.correctness });
+		expect(melian(repo, ["review", "main"], env).status).toBe(2);
+		writeFileSync(env.MELIAN_TEST_SCRIPT, JSON.stringify(golden.script));
+
+		expect(melian(repo, ["review", "main"], env).status).toBe(2);
+		const rerun = melian(repo, ["review", "main", "--rerun"], env);
+
+		expect(rerun.status).toBe(1);
+		expect(rerun.stdout).toMatch(/^Verdict: findings, blocking\n/);
+	});
+
 	it("exits 2 while the tier names checks Melian does not run, naming each", () => {
 		const golden = goldens["clean-rename"]!;
 		const { repo, env } = goldenCheckout(golden, golden.script, null);

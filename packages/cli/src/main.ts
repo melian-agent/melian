@@ -16,6 +16,8 @@ Commands:
 
 Options:
   --model <provider/id>  Route every tier melian.yaml leaves unrouted to this model (review).
+  --rerun                Run again the lenses that failed in the last review of this base and head, rather than
+                         print the failure it stored (review).
   --open, --json         For findings.
   --no-color             Print without colour.
   -h, --help             Show this help.
@@ -44,6 +46,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				open: { type: "boolean", default: false },
 				json: { type: "boolean", default: false },
 				model: { type: "string" },
+				rerun: { type: "boolean", default: false },
 				color: { type: "boolean", default: true },
 				help: { type: "boolean", short: "h", default: false },
 			},
@@ -64,6 +67,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			case "review":
 				return await review(scoped, one(rest, name, "range or pull request"), {
 					...(values.model === undefined ? {} : { model: values.model }),
+					rerun: values.rerun,
 				});
 			case "publish":
 				return await publish(scoped, one(rest, name, "pull request"));

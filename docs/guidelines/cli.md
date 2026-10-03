@@ -6,7 +6,7 @@ The cli package is the `melian` command. It is the primary host and the only thi
 
 | Command | Does | Exits |
 |---|---|---|
-| `melian review <range\|#pr>` | Reviews a range of the checkout, or fetches a pull request and reviews it, then prints the verdict's terminal rendering | `0` passed, `1` findings with one blocking, `2` not reviewed, `3` findings with none blocking |
+| `melian review <range\|#pr> [--rerun]` | Reviews a range of the checkout, or fetches a pull request and reviews it, then prints the verdict's terminal rendering. `--rerun` runs again the lenses that failed in the last review of the same base and head | `0` passed, `1` findings with one blocking, `2` not reviewed, `3` findings with none blocking |
 | `melian publish <#pr>` | Posts the stored review of the pull request's current head to GitHub | `0` published, `1` refused or failed |
 | `melian findings <range\|#pr> [--open] [--json]` | Prints the stored verdict, or with `--open` the findings that still need attention, as text or JSON | `0`, or `1` when nothing is stored |
 | `melian doctor` | Checks Node, git and `--attr-source`, Pi's login, which providers have credentials, the GitHub token's source, gh, and the repository | `0`, or `1` when Node or git cannot run a review |
@@ -37,6 +37,8 @@ The tier `melian.yaml` maps the `pull-request` stage to is the review's manifest
 checks:
   allowSkip: [guardrails, static]
 ```
+
+A repeat `review` of the same base and head attaches to the last review's finished lens task and prints the failure it stored, so it spends no tokens unasked. `--rerun` runs the failed lenses again, after a rate limit or an outage.
 
 `origin` must name the GitHub repository. The token comes from `GITHUB_TOKEN`, then `GH_TOKEN`, then `gh auth token`; Melian prints where it came from, never the token.
 

@@ -64,7 +64,11 @@ function unrunChecks(config: MelianConfig): CheckRecord[] {
 
 // A pull request reads policy from its base. A range on the checked-out commit reads it from the working tree, since
 // its author runs Melian; any other range reads it from its base.
-export async function review(io: Io, argument: string, options: { readonly model?: string }): Promise<number> {
+export async function review(
+	io: Io,
+	argument: string,
+	options: { readonly model?: string; readonly rerun: boolean },
+): Promise<number> {
 	const target = parseTarget(argument);
 	let changeset: Changeset;
 	let source: RepositorySource;
@@ -101,6 +105,7 @@ export async function review(io: Io, argument: string, options: { readonly model
 				models,
 				policy: source,
 				checks: unrunChecks(config),
+				rerun: options.rerun,
 			}));
 		} catch (error) {
 			if (!(error instanceof ReviewError) || error.verdict === undefined) throw error;
