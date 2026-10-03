@@ -25,6 +25,7 @@ import {
 	ReviewError,
 	readVerdict,
 	reviewChangeset,
+	type TaskId,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -985,5 +986,109 @@ describe("adjudication", () => {
 			await harness.close(context);
 			rmSync(dir, { recursive: true, force: true });
 		}
+	});
+});
+
+describe("on a repeat review after a task ended without deciding", () => {
+	let dir: string;
+	let path: string;
+	const head = () => gitIn(repo, "rev-parse", "feature");
+	const rootId = async () => (await harness.root(context)).id;
+	const noLenses = () => ({ ...config, lenses: { correctness: { enabled: false }, contracts: { enabled: false } } });
+	const open = async (registry = createReviewRegistry()) => {
+		await harness.close(context);
+		harness = await openHarness(await openSqliteStorage(path), {
+			models: fake.models,
+			registry,
+			settings: { retry: { enabled: false } },
+		});
+		await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+	};
+	const entry = async () => (await harness.snapshot(ReviewIndex, await rootId(), context))?.reviews[head()];
+	const bothDone = () =>
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+	beforeEach(async () => {
+		dir = mkdtempSync(join(tmpdir(), "melian-aborted-"));
+		path = join(dir, "review.sqlite");
+		await open();
+	});
+
+	afterEach(async () => {
+		await harness.close(context);
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it("starts a lens task in place of an aborted one", async () => {
+		let release = () => {};
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		scriptConversations(fake, [
+			{ match: correctness, replies: [async () => held.then(() => fauxAssistantMessage("Done."))] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const first = reviewed().catch((caught: unknown) => caught);
+		let aborted: number | undefined;
+		try {
+			while (aborted === undefined) {
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				aborted = (await entry())?.task;
+			}
+			await harness.abortTask(aborted as TaskId, context);
+		} finally {
+			// The lens's request holds the task until it settles; the abort mark refuses whatever it commits next.
+			release();
+		}
+		expect((await harness.waitForTask(aborted as TaskId, context)).state.outcome.status).toBe("aborted");
+		expect(await first).toMatchObject({ code: "lensFailed" });
+		bothDone();
+
+		const { verdict } = await reviewed();
+
+		expect((await entry())?.task).not.toBe(aborted);
+		expect(verdict.notRun.filter((check) => check.name.startsWith("lens."))).toEqual([]);
+	});
+
+	it("starts an adjudication task in place of an aborted one when no lens runs", async () => {
+		await reviewed({ config: noLenses() });
+		const input = (await entry())!.adjudication!.input;
+		await open();
+		const root = await harness.root(context);
+		// Nothing has resumed the scheduler yet, so the copy is aborted before it can run.
+		const copy = await root.commit(async (tx) => {
+			const created = await tx.createTask(AdjudicationTask, JSON.parse(input), {
+				ownership: { kind: "conversation" },
+			});
+			(await tx.doc(ReviewIndex, root.id)).reviews[head()]!.adjudication = { task: created, input };
+			return created;
+		}, context);
+		await harness.abortTask(copy, context);
+		expect((await harness.waitForTask(copy, context)).state.outcome.status).toBe("aborted");
+
+		const { verdict } = await reviewed({ config: noLenses() });
+
+		expect((await entry())?.adjudication?.task).not.toBe(copy);
+		expect(await readVerdict(harness, await rootId(), head(), context)).toEqual(verdict);
+	});
+
+	it.each([
+		["a lens task", () => config],
+		["an adjudication task", noLenses],
+	])("forgets %s it aborted for want of the lens extension", async (_kind, configured) => {
+		await open(createRegistry());
+		await expect(reviewed({ config: configured() })).rejects.toMatchObject({ code: "notInstalled" });
+		const forgotten = await entry();
+		expect(forgotten?.task).toBeUndefined();
+		expect(forgotten?.adjudication).toBeUndefined();
+		await open();
+		bothDone();
+
+		const { verdict } = await reviewed({ config: configured() });
+
+		expect(await readVerdict(harness, await rootId(), head(), context)).toEqual(verdict);
 	});
 });

@@ -40,6 +40,7 @@ import {
 	type Registry,
 	type Storage,
 	type TaskId,
+	type Tx,
 } from "./harness.ts";
 import {
 	injectionPolicySection,
@@ -51,7 +52,7 @@ import {
 	reviewFiles,
 } from "./lens-tools.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
-import { ReviewIndex } from "./review-index.ts";
+import { ReviewIndex, type ReviewIndexState } from "./review-index.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
 
 // One lens as the lens task runs it: everything resolved, nothing left to look up.
@@ -305,11 +306,13 @@ export interface Review {
 	readonly verdict: Verdict;
 }
 
-// A task no installed extension defines stays blocked, and waiting on it would never return.
+// A task no installed extension defines stays blocked, and waiting on it would never return. `forget` takes the aborted
+// task out of the review index, so the next call starts a task rather than attach to this one.
 async function refuseIfBlocked(
 	harness: Harness,
 	taskId: TaskId,
 	lenses: readonly string[],
+	forget: (index: ReviewIndexState) => void,
 	context: Context,
 ): Promise<void> {
 	harness.resume();
@@ -318,9 +321,28 @@ async function refuseIfBlocked(
 	);
 	if (blocked === undefined) return;
 	await harness.abortTask(taskId, context);
+	const root = await harness.root(context);
+	await root.commit(async (tx) => forget(await tx.doc(ReviewIndex, root.id)), context);
 	throw new ReviewError("notInstalled", "the harness has no melian.lenses extension; open it with openReviewHarness", {
 		lenses,
 	});
+}
+
+function omit<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K> {
+	const { [key]: _, ...rest } = value;
+	return rest;
+}
+
+// Outcomes that decided nothing: a cancelled task, one that broke the task contract, and one whose definition is gone.
+const undecided: readonly string[] = ["aborted", "faulted", "orphaned"];
+
+// Whether a repeat call may attach to the task the index names: one that is live, crashed, or decided something. A task
+// that ended without deciding would hand every later call the same non-result.
+async function attachable(tx: Tx, id: number | undefined, retry: readonly string[]): Promise<boolean> {
+	if (id === undefined) return false;
+	const record = await tx.task(id as TaskId);
+	if (record === undefined) return false;
+	return record.state.status !== "terminal" || !retry.includes(record.state.outcome.status);
 }
 
 // One lens task per head and selection. A repeat call, such as a rerun after a crash, attaches to the task the first
@@ -333,17 +355,21 @@ async function runLenses(harness: Harness, input: LensTaskInput, context: Contex
 	const taskId = await root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const known = index.reviews[head];
-		if (known?.task !== undefined && known.lenses.join("\n") === selection.join("\n"))
-			return known.task as TaskId<LensResult>;
+		const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
+		if (same && (await attachable(tx, known.task, undecided))) return known.task as TaskId<LensResult>;
 		await recordRevision(tx, root.id, head);
 		const created = await tx.createTask(LensTask, input, { ownership: { kind: "conversation" } });
 		index.reviews[head] = { task: created, lenses: selection };
 		return created;
 	}, context);
+	const forget = (index: ReviewIndexState) => {
+		if (index.reviews[head]?.task === taskId) index.reviews = omit(index.reviews, head);
+	};
 	await refuseIfBlocked(
 		harness,
 		taskId,
 		input.lenses.map((lens) => lens.name),
+		forget,
 		context,
 	);
 	const { outcome } = (await harness.waitForTask(taskId, context)).state;
@@ -365,7 +391,9 @@ async function startAdjudication(
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const known = index.reviews[input.head];
-		if (known?.adjudication?.input === key) return known.adjudication.task as TaskId<AdjudicationResult>;
+		if (known?.adjudication?.input === key && (await attachable(tx, known.adjudication.task, undecided))) {
+			return known.adjudication.task as TaskId<AdjudicationResult>;
+		}
 		const created = await tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } });
 		const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
 		const entry = same ? known : { lenses: selection };
@@ -441,7 +469,12 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	const producers = lenses.map((lens) => ({ check: `lens.${lens.name}`, version: lens.version }));
 	const input = adjudicationInput({ root, repoRoot, head, policy: options.policy, config, checks, producers });
 	const adjudication = await startAdjudication(harness, input, lenses, context);
-	await refuseIfBlocked(harness, adjudication, [], context);
+	const forget = (index: ReviewIndexState) => {
+		const entry = index.reviews[head];
+		if (entry?.adjudication?.task !== adjudication) return;
+		index.reviews = { ...index.reviews, [head]: omit(entry, "adjudication") };
+	};
+	await refuseIfBlocked(harness, adjudication, [], forget, context);
 	const adjudicated = (await harness.waitForTask(adjudication, context)).state.outcome;
 	const findings = await readFindings(harness, root, head, context, { producers });
 	const verdict = await readVerdict(harness, root, head, context);
