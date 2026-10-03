@@ -17,7 +17,7 @@ A pull request on melian-agent/melian is reviewed by `melian review` run against
 5. `[x]` **Lenses.** `LENS.md` loader, two built-in lenses (correctness, contracts), the `report_finding` tool, one child conversation per lens with read-only tools. Model routing from config tiers; credentials from environment variables and Pi's credential store. Three golden fixtures written alongside: one per lens, one clean change.
 6. `[ ]` **Static and guardrails.** Biome and tsc runners normalised to SARIF on base and head, diffed. Guardrails as the path and pattern rules the Melian repository itself needs. May trail step 5 by a week if time is short.
 7. `[x]` **Adjudication, minimal.** Dedupe by ID, severity to resolution from config.
-8. `[ ]` **Publish from the CLI.** `melian publish` posting a review with inline comments through Octokit using the gh token.
+8. `[~]` **Publish from the CLI.** `melian publish` posting a review with inline comments through Octokit using the gh token.
 9. `[ ]` **Claude Code skill.** Thin wrapper over the CLI, so the agent writing Melian asks Melian for review before committing.
 
 ### Parallel tracks
