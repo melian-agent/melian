@@ -1,0 +1,13 @@
+{
+	"files": [],
+	"references": [
+		{ "path": "./packages/core/tsconfig.build.json" },
+		{ "path": "./packages/pipeline/tsconfig.build.json" },
+		{ "path": "./packages/github/tsconfig.build.json" },
+		{ "path": "./packages/state-git/tsconfig.build.json" },
+		{ "path": "./packages/decisions/tsconfig.build.json" },
+		{ "path": "./packages/cli/tsconfig.build.json" },
+		{ "path": "./packages/pi-extension/tsconfig.build.json" },
+		{ "path": "./packages/evals/tsconfig.build.json" }
+	]
+}

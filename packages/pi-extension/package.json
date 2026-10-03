@@ -1,0 +1,36 @@
+{
+	"name": "@melian-agent/pi-extension",
+	"version": "0.0.0",
+	"description": "The /melian command for the Pi coding agent",
+	"private": true,
+	"type": "module",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/melian-agent/melian.git",
+		"directory": "packages/pi-extension"
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"source": "./src/index.ts",
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsc -b tsconfig.build.json",
+		"clean": "rm -rf dist tsconfig.build.tsbuildinfo",
+		"test": "vitest --run --root ../.. --passWithNoTests packages/pi-extension/"
+	},
+	"engines": {
+		"node": ">=22.19.0"
+	}
+}

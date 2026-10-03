@@ -417,6 +417,8 @@ Match Pi's conventions unless there is a reason not to.
 
 ## Package layout
 
+Packages publish under the `@melian-agent` npm scope. The Node floor is 22.19.0, the same as pi-durable, which needs it for default type stripping and the built-in SQLite module.
+
 ```text
 packages/
   core/          harness-free domain

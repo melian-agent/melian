@@ -10,7 +10,7 @@ A pull request on melian-agent/melian is reviewed by `melian review` run against
 
 ### Critical path
 
-1. `[ ]` **Scaffold.** npm workspaces, Biome, Vitest, TypeScript configuration, package skeletons from the layout in design.md, and `npm run check` running Biome, type checking, dependency audit, and tests. Unblocks everything landing as commits that pass the gate.
+1. `[x]` **Scaffold.** npm workspaces, Biome, Vitest, TypeScript configuration, package skeletons from the layout in design.md, and `npm run check` running Biome, type checking, dependency audit, and tests. Unblocks everything landing as commits that pass the gate.
 2. `[ ]` **Pi Durable spike.** Open a harness on SQLite, run one task with a checkpoint, spawn one child conversation, call one TypeBox tool, kill the process mid-task, resume. Pin the exact version and wrap it behind one internal module. The largest unknown on the path; do it before any domain code assumes the API.
 3. `[ ]` **Changeset and configuration.** Resolve a git range to base, head, files, hunks. Load `melian.yaml` with nearest-first layering. Load `AGENTS.md` as the standards section. Ranges only; no pull request fetching yet.
 4. `[ ]` **Findings.** SARIF-plus-extensions schema, stable IDs, the findings document, terminal and JSON rendering. Cause classification by location heuristic for now.
@@ -22,9 +22,9 @@ A pull request on melian-agent/melian is reviewed by `melian review` run against
 
 ### Parallel tracks
 
-- `[ ]` **Comparison reviews.** Every Melian pull request is also reviewed by Claude Code's review skill and by Codex review through its skill, for as long as the comparison is informative. Each finding that one reviewer raised and another did not is adjudicated by a maintainer and, if valid, added to the golden corpus. Each finding that was raised and judged noise is recorded as a negative golden. This is the first eval and it costs nothing to run.
+- `[x]` **Comparison reviews.** Every Melian pull request is also reviewed by Claude Code's review skill and by Codex review through its skill, for as long as the comparison is informative. Each finding that one reviewer raised and another did not is adjudicated by a maintainer and, if valid, added to the golden corpus. Each finding that was raised and judged noise is recorded as a negative golden. This is the first eval and it costs nothing to run.
 - `[ ]` **Golden fixtures.** Start with the three from step 5. Grow by one golden per comparison difference. Keep Martian's golden format as the base so their judge runs unchanged.
-- `[ ]` **Contributing guide.** States that Melian reviews maintainer pull requests only until container isolation exists.
+- `[x]` **Contributing guide.** States that Melian reviews maintainer pull requests only until container isolation exists.
 
 ### Explicitly deferred from milestone 1
 
@@ -60,9 +60,13 @@ Steps to be written when milestone 2 closes.
 | Subscription auth terms for automated use | Step 5 onward | API keys default; subscriptions opt-in; stated in docs |
 | Biome lacks a SARIF reporter | Step 6 | Normalise from its JSON reporter |
 | Lens prompt edits regress silently | Step 5 onward | Golden fixtures run in `npm run check` |
+| Phantom dependencies through npm hoisting | Any package | Move to pnpm when strict isolation is needed; the switch is one pull request |
 
 ## Progress log
 
 Newest first. One line per entry: date, what changed, link to the pull request where one exists.
 
+- 2026-10-03: First comparison review of [pull request #10](https://github.com/melian-agent/melian/pull/10) recorded in [packages/evals/comparisons/2026-10-03-pr-10.md](../packages/evals/comparisons/2026-10-03-pr-10.md). The Codex finding was applied as a lockfile release-age gate in `npm run check`, and CI now runs the build.
+- 2026-10-03: Scaffold [pull request #10](https://github.com/melian-agent/melian/pull/10) reviewed by Claude Code's review skill and Codex adversarial review; findings applied.
+- 2026-10-03: Step 1 scaffold opened as [pull request #10](https://github.com/melian-agent/melian/pull/10): workspaces under the `@melian-agent` npm scope, Node floor 22.19.0 matching pi-durable, Biome, Vitest, TypeBox pinned to pi-durable's version, `npm run check`, CI on Node 22 and 24, branch protection on `main`, and milestone issues [#1](https://github.com/melian-agent/melian/issues/1) to [#9](https://github.com/melian-agent/melian/issues/9).
 - 2026-10-03: Plan created. Design settled; no code yet.

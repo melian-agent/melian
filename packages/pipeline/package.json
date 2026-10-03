@@ -1,0 +1,41 @@
+{
+	"name": "@melian-agent/pipeline",
+	"version": "0.0.0",
+	"description": "Review orchestration as Pi Durable tasks and conversations",
+	"private": true,
+	"type": "module",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/melian-agent/melian.git",
+		"directory": "packages/pipeline"
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"source": "./src/index.ts",
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsc -b tsconfig.build.json",
+		"clean": "rm -rf dist tsconfig.build.tsbuildinfo",
+		"test": "vitest --run --root ../.. --passWithNoTests packages/pipeline/"
+	},
+	"engines": {
+		"node": ">=22.19.0"
+	},
+	"dependencies": {
+		"@earendil-works/chord": "1.0.0",
+		"@earendil-works/pi-ai": "1.0.0",
+		"@earendil-works/pi-durable": "1.0.0"
+	}
+}
