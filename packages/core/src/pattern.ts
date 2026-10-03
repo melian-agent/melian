@@ -46,7 +46,7 @@ class Refused {
 const isDigit: Test = (code) => code >= 48 && code <= 57;
 const isWord: Test = (code) =>
 	isDigit(code) || (code >= 65 && code <= 90) || (code >= 97 && code <= 122) || code === 95;
-// JavaScript's \s, minus the line terminators a single line never holds.
+// JavaScript's \s, line terminators included.
 const isSpace: Test = (code) =>
 	code === 32 ||
 	(code >= 9 && code <= 13) ||
@@ -68,6 +68,8 @@ const exactly =
 	(code) =>
 		code === expected;
 const anyChar: Test = () => true;
+// JavaScript's `.` without the s flag.
+const notLineTerminator: Test = (code) => code !== 10 && code !== 13 && code !== 0x2028 && code !== 0x2029;
 
 const classEscapes: Readonly<Record<string, Test>> = {
 	d: isDigit,
@@ -156,7 +158,7 @@ class Parser {
 		this.position++;
 		switch (char) {
 			case ".":
-				return { kind: "char", test: anyChar };
+				return { kind: "char", test: notLineTerminator };
 			case "^":
 				return { kind: "assert", at: "start" };
 			case "$":

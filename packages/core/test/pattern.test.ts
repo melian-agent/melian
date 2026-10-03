@@ -39,6 +39,9 @@ describe("compilePattern", () => {
 		"(a|aa)+$",
 		"[\\d-]+",
 		"^$",
+		".+",
+		"x.y",
+		"a\\sb",
 	];
 	const inputs = [
 		"",
@@ -62,6 +65,10 @@ describe("compilePattern", () => {
 		"aaaaaaaa",
 		"aaab",
 		"12-3",
+		"\n",
+		"x\ry",
+		"x\u2028y",
+		"a\nb",
 	];
 
 	it("agrees with JavaScript's RegExp on what matches", () => {

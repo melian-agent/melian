@@ -274,7 +274,9 @@ async function forbiddenPatterns(
 				skipped++;
 				return [];
 			}
-			const matched = rules.filter(([, rule]) => patternFor(rule.pattern).test(each.text));
+			// A CRLF file's lines end in "\r", which `$` would otherwise have to match past.
+			const line = each.text.endsWith("\r") ? each.text.slice(0, -1) : each.text;
+			const matched = rules.filter(([, rule]) => patternFor(rule.pattern).test(line));
 			return matched.length === 0 ? [] : [{ hunk: each.hunk, added: each, matched }];
 		});
 		if (skipped > 0) {

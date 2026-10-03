@@ -278,6 +278,19 @@ describe("forbidden-patterns", () => {
 		expect(error.message).toMatch(/not a safe pattern: backreferences cannot run in linear time/);
 	});
 
+	it("matches $ at the end of a CRLF line", async () => {
+		const todo = lines(
+			quiet,
+			"  forbidden-patterns:",
+			"    rules:",
+			"      todo:",
+			"        pattern: 'TODO$'",
+			"        message: no todo",
+		);
+		const { findings } = await guardrails({ "melian.yaml": todo }, { "c.ts": "// TODO\r\n// TODO\n" });
+		expect(findings.map((finding) => finding.locations[0]!.physicalLocation.region.startLine)).toEqual([1, 2]);
+	});
+
 	it("scans a file git calls binary when it is text, skipping lines the base had", async () => {
 		const { findings, notes } = await guardrails(
 			{ "melian.yaml": config, "b.test.ts": lines("it.only(old)", "\0") },
