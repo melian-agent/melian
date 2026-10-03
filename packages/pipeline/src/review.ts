@@ -1,7 +1,9 @@
 import {
 	type Changeset,
 	type CheckRecord,
+	checksOfTier,
 	type Finding,
+	type FindingSource,
 	type Lens,
 	type LensCoverage,
 	type LensRule,
@@ -290,7 +292,16 @@ export interface ReviewOptions {
 	 * Without it, `config`'s resolution and rule aliases apply to every path.
 	 */
 	readonly policy?: RepositorySource;
-	/** What the review's other checks did, such as static analysis and guardrails. Each lens adds its own record. */
+	/**
+	 * The tier whose checks the review accounts for, its manifest. Defaults to the tier configuration maps the
+	 * `pull-request` stage to. Only lenses the manifest names run.
+	 */
+	readonly tier?: string;
+	/**
+	 * What the review's other checks did, such as static analysis and guardrails, one record per check. A check of the
+	 * manifest with no record makes the verdict not reviewed. The lens step records every `lens.*` check itself, so a
+	 * record here under such a name is ignored.
+	 */
 	readonly checks?: readonly CheckRecord[];
 	readonly context?: Context;
 }
@@ -414,6 +425,68 @@ function lensCheck(lens: LensRun, result: LensResult | undefined): CheckRecord {
 	return { name, status: "failed", reason: "the lens did not finish", error: outcome?.reason ?? "no outcome" };
 }
 
+/** The reason a review gives each lens of its manifest when no lens covers any changed path. */
+export const noLensCovers = "no lens covers these paths";
+
+// What a review accounts for: a record for every check its manifest names, which may leave out a record only for a
+// check another step runs, and the skips that still let it pass.
+interface Accounting {
+	readonly checks: CheckRecord[];
+	readonly allowSkip: string[];
+	readonly producers: FindingSource[];
+}
+
+// Records for the lenses and decision questions the manifest names; the lens step owns `lens.*`, so a record of that
+// name from elsewhere, such as a check runner that skips lenses, gives way. Every other check's record comes from
+// `supplied`; adjudication calls one with none a check that never started.
+function account(
+	manifest: readonly string[],
+	ran: readonly LensRun[],
+	result: LensResult | undefined,
+	options: Pick<ReviewOptions, "config" | "lenses" | "checks">,
+): Accounting {
+	const { config } = options;
+	const supplied = (options.checks ?? []).filter((check) => !check.name.startsWith("lens."));
+	const checks: CheckRecord[] = [...supplied, ...ran.map((lens) => lensCheck(lens, result))];
+	const allowSkip: string[] = [];
+	const recorded = new Set(checks.map((check) => check.name));
+	for (const name of manifest) {
+		if (recorded.has(name)) continue;
+		if (name.startsWith("lens.")) {
+			const lens = name.slice("lens.".length);
+			const settings = Object.hasOwn(config.lenses, lens) ? config.lenses[lens] : undefined;
+			if (!options.lenses.some((each) => each.name === lens)) {
+				checks.push({ name, status: "failed", reason: `no lens is named ${lens}` });
+			} else if (settings?.enabled === false) {
+				checks.push({ name, status: "skipped", reason: `lenses.${lens}.enabled is false` });
+			} else if (ran.length === 0) {
+				checks.push({ name, status: "skipped", reason: noLensCovers });
+			} else {
+				checks.push({ name, status: "skipped", reason: "no changed file is in its paths" });
+				allowSkip.push(name);
+			}
+		} else if (name.startsWith("decisions.") && config.decisions.provider === undefined) {
+			checks.push({ name, status: "skipped", reason: "no decision provider is configured" });
+		}
+	}
+	// The design lets the fast tier run without decision questions when no provider is configured.
+	if (config.decisions.provider === undefined) {
+		allowSkip.push(...manifest.filter((name) => name.startsWith("decisions.")));
+	}
+	const versions = new Map(supplied.map((check) => [check.name, check.version]));
+	const others = [...new Set([...manifest, ...supplied.map((check) => check.name)])].filter(
+		(name) => !name.startsWith("lens."),
+	);
+	const producers: FindingSource[] = [
+		...ran.map((lens) => ({ check: `lens.${lens.name}`, version: lens.version })),
+		...others.map((check) => {
+			const version = versions.get(check);
+			return version === undefined ? { check } : { check, version };
+		}),
+	];
+	return { checks, allowSkip, producers };
+}
+
 /**
  * Reviews a changeset: selects the lenses its paths and configuration call for, runs each as a conversation owned by
  * one lens task, then adjudicates in a task of its own and records the verdict on the root conversation under the
@@ -432,7 +505,13 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	const context = options.context ?? backgroundContext;
 	const root = (await harness.root(context)).id;
 	const paths = changeset.revision.files.map((file) => file.path);
-	const selected = selectLenses(options.lenses, config, paths);
+	const manifest = checksOfTier(config, options.tier ?? config.stages["pull-request"] ?? "full");
+	const named = new Set(manifest.filter((name) => name.startsWith("lens.")).map((name) => name.slice("lens.".length)));
+	const selected = selectLenses(
+		options.lenses.filter((lens) => named.has(lens.name)),
+		config,
+		paths,
+	);
 	const nonce = reviewNonce();
 	const lenses: LensRun[] = [];
 	for (const { lens, coverage, files } of selected) {
@@ -464,10 +543,19 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		files: reviewFiles(revision.files),
 	};
 	const lensResult = lenses.length === 0 ? {} : await runLenses(harness, { root, revision: state, lenses }, context);
-	const checks = [...(options.checks ?? []), ...lenses.map((lens) => lensCheck(lens, lensResult))];
-	// Only the lenses this review ran: one that configuration has since disabled or retiered leaves nothing behind.
-	const producers = lenses.map((lens) => ({ check: `lens.${lens.name}`, version: lens.version }));
-	const input = adjudicationInput({ root, repoRoot, head, policy: options.policy, config, checks, producers });
+	// Only the lenses this review ran count: one that configuration has since disabled or retiered leaves nothing behind.
+	const { checks, allowSkip, producers } = account(manifest, lenses, lensResult, options);
+	const input = adjudicationInput({
+		root,
+		repoRoot,
+		head,
+		policy: options.policy,
+		config,
+		manifest,
+		checks,
+		allowSkip,
+		producers,
+	});
 	const adjudication = await startAdjudication(harness, input, lenses, context);
 	const forget = (index: ReviewIndexState) => {
 		const entry = index.reviews[head];

@@ -6,6 +6,7 @@ export {
 	type CheckStatus,
 	type ConfigFor,
 	dedupeFindings,
+	noRecord,
 	type ResolvedFinding,
 	resolutionOrder,
 	resolveFinding,
@@ -24,6 +25,7 @@ export {
 	type Revision,
 	resolveRange,
 } from "./changeset.ts";
+export { checksOfTier } from "./checks.ts";
 export {
 	type Band,
 	defaultConfig,
@@ -47,6 +49,8 @@ export type { ChangedFile, FileKind, FileStatus, Hunk } from "./diff.ts";
 export {
 	ChangesetError,
 	type ChangesetErrorCode,
+	CheckError,
+	type CheckErrorCode,
 	ConfigError,
 	type ConfigErrorCode,
 	FindingError,

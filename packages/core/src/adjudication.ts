@@ -216,7 +216,15 @@ export interface CheckRecord {
 	readonly status: CheckStatus;
 	readonly reason?: string;
 	readonly error?: string;
+	/**
+	 * The version of the tool that ran, as its findings name it in `properties.source.version`, such as Biome's. A review
+	 * counts only that version's findings for the check; without it, every version's.
+	 */
+	readonly version?: string;
 }
+
+/** The reason {@link adjudicate} gives a check the manifest names that has no record. */
+export const noRecord = "no record";
 
 /**
  * A review's outcome, as a pull request's check reports it: `passed` when every check ran and nothing needs
@@ -234,7 +242,10 @@ export interface Verdict {
 	readonly findings: Readonly<Record<Resolution, readonly ResolvedFinding[]>>;
 	/** Findings dismissed with a reason. They neither block nor need attention. */
 	readonly dismissed: readonly ResolvedFinding[];
-	/** The checks that were skipped or failed, with their reasons, in input order. */
+	/**
+	 * The checks that were skipped or failed, with their reasons, in input order, then each check the manifest names that
+	 * left no record, as skipped with the reason {@link noRecord}.
+	 */
 	readonly notRun: readonly CheckRecord[];
 }
 
@@ -242,7 +253,12 @@ export interface Verdict {
 export interface AdjudicationInput {
 	/** Findings at the head under review, at most one per ID. */
 	readonly findings: readonly Finding[];
-	/** Every check the review called for, and what it did. */
+	/**
+	 * Every check the review's tier names, as {@link checksOfTier} expands it. Each must have a record in `checks`; one
+	 * without is a check that never started, and the review is `not-reviewed`.
+	 */
+	readonly manifest: readonly string[];
+	/** What each check did: every check of the manifest, and any other the review ran. */
 	readonly checks: readonly CheckRecord[];
 	/** The configuration for every path, or a function returning the configuration at a path. */
 	readonly config: Pick<MelianConfig, "resolution" | "ruleAliases"> | ConfigFor;
@@ -268,11 +284,11 @@ function readingOrder(a: Finding, b: Finding): number {
  * Decides a review: merges findings two checks reported for one problem ({@link dedupeFindings}), resolves each under
  * its path's configuration ({@link applyResolutions}), and derives the status. Every finding is resolved here, whether
  * it arrives without a resolution, as a producer stores it, or with one, which is replaced; none is dropped or counted
- * as `silent` for lacking one. A failed check, or a skipped one not in `allowSkip`, makes the review `not-reviewed`,
- * even with no findings. Otherwise a finding above `silent` makes it `findings`, and nothing does `passed`. A
- * dismissed finding counts toward neither.
+ * as `silent` for lacking one. A failed check, a skipped one not in `allowSkip`, or a check of the manifest with no
+ * record makes the review `not-reviewed`, even with no findings. Otherwise a finding above `silent` makes it
+ * `findings`, and nothing does `passed`. A dismissed finding counts toward neither.
  */
-export function adjudicate({ findings, checks, config, allowSkip = [] }: AdjudicationInput): Verdict {
+export function adjudicate({ findings, manifest, checks, config, allowSkip = [] }: AdjudicationInput): Verdict {
 	const configFor = typeof config === "function" ? config : () => config;
 	const resolved = applyResolutions(dedupeFindings(findings, configFor), configFor).sort(readingOrder);
 	const counted = resolved.filter((finding) => finding.properties.status !== "dismissed");
@@ -282,8 +298,14 @@ export function adjudicate({ findings, checks, config, allowSkip = [] }: Adjudic
 			counted.filter((finding) => finding.properties.resolution === resolution),
 		]),
 	) as Record<Resolution, ResolvedFinding[]>;
-	const notRun = checks.filter((check) => check.status !== "ran").map((check) => ({ ...check }));
-	const incomplete = notRun.some((check) => check.status === "failed" || !allowSkip.includes(check.name));
+	const recorded = new Set(checks.map((check) => check.name));
+	const missing = [...new Set(manifest)].filter((name) => !recorded.has(name));
+	const notRun: CheckRecord[] = [
+		...checks.filter((check) => check.status !== "ran").map((check) => ({ ...check })),
+		...missing.map((name) => ({ name, status: "skipped" as const, reason: noRecord })),
+	];
+	const incomplete =
+		missing.length > 0 || notRun.some((check) => check.status === "failed" || !allowSkip.includes(check.name));
 	const attention = counted.some((finding) => finding.properties.resolution !== "silent");
 	return {
 		status: incomplete ? "not-reviewed" : attention ? "findings" : "passed",

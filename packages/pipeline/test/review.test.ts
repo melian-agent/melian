@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
 	type CheckRecord,
+	createFinding,
 	defaultConfig,
 	type Finding,
 	type Lens,
@@ -26,6 +27,7 @@ import {
 	readVerdict,
 	reviewChangeset,
 	type TaskId,
+	upsertFinding,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -40,6 +42,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, adjudicationInput } from "../src/adjudication.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
+
+const staticFinding = {
+	rule: "lint/style/noNonNullAssertion",
+	message: "a static tool flags the dereference",
+	file: "src/user.ts",
+	startLine: 7,
+	snippet: "\treturn user.manager.name;",
+	occurrence: 0,
+	cause: "introduced",
+	severity: "P0",
+	explanation: { what: "w", whyHere: "y", whatToDo: "t" },
+	source: { check: "static.biome", version: "2.2.0" },
+} as const;
 
 const correctness = "You are the correctness reviewer";
 const contracts = "You are the contracts reviewer";
@@ -73,7 +88,12 @@ beforeEach(async () => {
 	);
 	fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "backup" }] });
 	const heavy = fake.ref("heavy");
-	config = { ...defaultConfig, models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } } };
+	config = {
+		...defaultConfig,
+		// The lenses alone: nothing on this branch runs guardrails or static tools, so their checks would leave no record.
+		tiers: { ...defaultConfig.tiers, full: ["lens.correctness", "lens.contracts"] },
+		models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
+	};
 	harness = await openHarness(createMemoryStorage(), {
 		models: fake.models,
 		registry: createReviewRegistry(),
@@ -934,7 +954,9 @@ describe("adjudication", () => {
 				head: head(),
 				policy: undefined,
 				config,
+				manifest: [],
 				checks: [failed],
+				allowSkip: [],
 				producers,
 			});
 
@@ -949,14 +971,123 @@ describe("adjudication", () => {
 		});
 	});
 
-	it("is not reviewed when another check failed, even with no findings", async () => {
-		const off = { ...config, lenses: { correctness: { enabled: false }, contracts: { enabled: false } } };
-		const failed: CheckRecord = { name: "static.biome", status: "failed", reason: "biome exited 2" };
+	describe("against the tier's checks, its manifest", () => {
+		const done = () =>
+			scriptConversations(fake, [
+				{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+		const tiered = (...checks: string[]) => ({ ...config, tiers: { ...config.tiers, full: checks } });
+		const lensesOnly = ["lens.correctness", "lens.contracts"];
 
-		const { verdict } = await reviewed({ config: off, checks: [failed] });
+		it("passes when the manifest names only lenses, every one ran, and none found anything", async () => {
+			done();
+			const { verdict } = await reviewed();
+			expect(verdict).toMatchObject({ status: "passed", blocking: false, notRun: [] });
+		});
 
-		expect(verdict).toMatchObject({ status: "not-reviewed", blocking: false, notRun: [failed] });
-		expect(await reviewed({ config: off })).toMatchObject({ verdict: { status: "passed" } });
+		it("is not reviewed when a check the manifest names recorded nothing, even with no findings", async () => {
+			done();
+			const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.biome") });
+			expect(verdict).toMatchObject({
+				status: "not-reviewed",
+				blocking: false,
+				notRun: [{ name: "static.biome", status: "skipped", reason: "no record" }],
+			});
+		});
+
+		it("is not reviewed when another check failed, even with no findings", async () => {
+			done();
+			const failed: CheckRecord = { name: "static.biome", status: "failed", reason: "biome exited 2" };
+			const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.biome"), checks: [failed] });
+			expect(verdict).toMatchObject({ status: "not-reviewed", blocking: false, notRun: [failed] });
+		});
+
+		it("counts a static tool's stored sighting, merged with a lens's report of the same line", async () => {
+			const ran: CheckRecord = { name: "static.biome", status: "ran", version: "2.2.0" };
+			const root = await harness.root(context);
+			const atHead = createFinding(staticFinding);
+			await root.commit((tx) => upsertFinding(tx, root.id, atHead, gitIn(repo, "rev-parse", "feature")), context);
+			scriptConversations(fake, [
+				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+			const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.biome"), checks: [ran] });
+
+			expect(verdict).toMatchObject({ status: "findings", blocking: true, notRun: [] });
+			expect(verdict.findings.block).toHaveLength(1);
+			expect(verdict.findings.block[0]!.properties).toMatchObject({
+				severity: "P0",
+				source: { check: "static.biome" },
+				alsoReportedAs: [{ ruleId: "null-dereference", check: "lens.correctness" }],
+			});
+		});
+
+		it("leaves out a static tool's sighting from another version than its record names", async () => {
+			const root = await harness.root(context);
+			const stale = createFinding({
+				...staticFinding,
+				source: { check: "static.biome", version: "1.0.0" },
+			});
+			await root.commit((tx) => upsertFinding(tx, root.id, stale, gitIn(repo, "rev-parse", "feature")), context);
+			done();
+			const ran: CheckRecord = { name: "static.biome", status: "ran", version: "2.2.0" };
+			const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.biome"), checks: [ran] });
+			expect(verdict.status).toBe("passed");
+		});
+
+		it("is not reviewed when configuration switches every lens off, as an exclusion", async () => {
+			const off = { ...config, lenses: { correctness: { enabled: false }, contracts: { enabled: false } } };
+			const { verdict } = await reviewed({ config: off });
+			expect(fake.provider.state.callCount).toBe(0);
+			expect(verdict).toMatchObject({
+				status: "not-reviewed",
+				notRun: [
+					{ name: "lens.correctness", status: "skipped", reason: "lenses.correctness.enabled is false" },
+					{ name: "lens.contracts", status: "skipped", reason: "lenses.contracts.enabled is false" },
+				],
+			});
+		});
+
+		it("is not reviewed when no lens covers the changed paths, and passes when one does", async () => {
+			const nowhere = lenses.map((lens) => ({ ...lens, paths: ["docs/**"] }));
+			const { verdict } = await reviewed({ lenses: nowhere });
+			expect(verdict).toMatchObject({
+				status: "not-reviewed",
+				notRun: [
+					{ name: "lens.correctness", status: "skipped", reason: "no lens covers these paths" },
+					{ name: "lens.contracts", status: "skipped", reason: "no lens covers these paths" },
+				],
+			});
+
+			scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
+			const one = lenses.map((lens) => (lens.name === "contracts" ? { ...lens, paths: ["docs/**"] } : lens));
+			const { verdict: covered } = await reviewed({ lenses: one });
+			expect(covered).toMatchObject({
+				status: "passed",
+				notRun: [{ name: "lens.contracts", status: "skipped", reason: "no changed file is in its paths" }],
+			});
+		});
+
+		it("runs only the lenses the manifest names, and fails a lens it names that does not exist", async () => {
+			scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
+			const { verdict } = await reviewed({ config: tiered("lens.correctness", "lens.security") });
+			expect(fake.provider.state.callCount).toBe(1);
+			expect(verdict).toMatchObject({
+				status: "not-reviewed",
+				notRun: [{ name: "lens.security", status: "failed", reason: "no lens is named security" }],
+			});
+		});
+
+		it("lets decision questions skip when no decision provider is configured", async () => {
+			done();
+			const { verdict } = await reviewed({ config: tiered(...lensesOnly, "decisions.fast") });
+			expect(verdict).toMatchObject({
+				status: "passed",
+				notRun: [{ name: "decisions.fast", status: "skipped", reason: "no decision provider is configured" }],
+			});
+		});
 	});
 
 	it("keeps the verdict across a reopen of the storage", async () => {

@@ -213,6 +213,8 @@ stages:
   comment: standard
 ```
 
+A review's tier is its manifest. Every check the tier names records whether it ran, was skipped, or failed, and a check with no record makes the review not reviewed, so nothing reads as passed because it was never counted. Only lenses the tier names run.
+
 Melian exposes `melian run <tier>` and `melian run --stage <name>`. It never installs git hooks. Recipes ship for lefthook, pre-commit, husky, and Pi.
 
 The fast tier must finish in seconds. It runs guardrails, static tools, and decision-model questions such as "does this diff disable a test", "does this change a public contract", "does this touch auth or billing". No LLM runs in the fast tier.
@@ -519,6 +521,7 @@ docs/
 | Prompt boundaries | Head content only inside nonce-delimited labelled boundaries, with an injection policy section first in every lens | Content must be data, never instructions |
 | Evidence for affected | A changed-code location overlapping a hunk, snippet derived from head | Prose cannot cross the cause boundary |
 | Finding sightings | Immutable per head, lens, and ID; adjudication merges deterministically | No first-writer-wins across lenses or pushes |
+| Check manifest | The tier's check list is the review manifest; a check with no record is skipped and the verdict is not-reviewed | A verdict must never read passed because something was not counted |
 
 ## Open questions
 

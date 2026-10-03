@@ -123,6 +123,7 @@ describe("renderFindingsTerminal", () => {
 });
 
 const verdict = adjudicate({
+	manifest: [],
 	findings: [
 		...log.runs[0]!.results.map(({ ruleIndex: _, ...finding }) => finding),
 		createFinding({
@@ -177,6 +178,7 @@ describe("renderFindingsTerminal with a verdict", () => {
 	it("says a review passed when it did", () => {
 		const passed = adjudicate({
 			findings: [],
+			manifest: [],
 			checks: [{ name: "lens.correctness", status: "ran" }],
 			config: defaultConfig,
 		});
@@ -186,6 +188,7 @@ describe("renderFindingsTerminal with a verdict", () => {
 	it("escapes control characters in a check's name, reason, and error", () => {
 		const hostile = adjudicate({
 			findings: [],
+			manifest: [],
 			checks: [{ name: "lens.x\u001b[2J", status: "failed", reason: "bad\nline", error: "\u202egnp.ts" }],
 			config: defaultConfig,
 		});

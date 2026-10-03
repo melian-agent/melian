@@ -207,7 +207,8 @@ export async function dismissFinding(
 export interface ReadFindingsOptions {
 	/**
 	 * Only these producers' sightings, such as the lenses and versions selected for the review being read. A lens that
-	 * configuration has since disabled or retiered then leaves nothing behind. Every producer when absent.
+	 * configuration has since disabled or retiered then leaves nothing behind. A producer without a version stands for
+	 * every version of its check. Every producer when absent.
 	 */
 	readonly producers?: readonly FindingSource[];
 }
@@ -227,12 +228,18 @@ export async function readFindings(
 ): Promise<readonly Finding[]> {
 	const items = (await reader.snapshot(FindingsDocument, rootConversationId, context))?.items ?? {};
 	const wanted = options.producers === undefined ? undefined : new Set(options.producers.map(producerKey));
+	// A producer named without a version counts every version of its check, such as a static tool's record that names none.
+	const anyVersion = new Set(
+		(options.producers ?? []).filter((source) => source.version === undefined).map((source) => source.check),
+	);
+	const counts = (key: string, sighting: ProducerFinding) =>
+		wanted === undefined || wanted.has(key) || anyVersion.has(sighting.properties.source.check);
 	return Object.keys(items)
 		.sort()
 		.flatMap((id) => {
 			const { lifecycle, sightings } = items[id]!;
 			const atHead = Object.fromEntries(
-				Object.entries(sightings[head] ?? {}).filter(([key]) => wanted === undefined || wanted.has(key)),
+				Object.entries(sightings[head] ?? {}).filter(([key, sighting]) => counts(key, sighting)),
 			);
 			if (Object.keys(atHead).length === 0) return [];
 			const { winner, reportedBy } = adjudicate(atHead);

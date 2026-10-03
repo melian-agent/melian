@@ -245,17 +245,21 @@ ruleAliases:
 
 ### The verdict
 
-`adjudicate({ findings, checks, config, allowSkip })` dedupes, resolves, and returns a `Verdict`: a `status`, a `blocking` flag, the findings grouped by resolution (`block`, `acknowledge`, `advisory`, `silent`), the `dismissed` findings, and `notRun`, every check that was skipped or failed with its reason. `config` is one configuration for every path or a `ConfigFor` function.
+`adjudicate({ findings, manifest, checks, config, allowSkip })` dedupes, resolves, and returns a `Verdict`: a `status`, a `blocking` flag, the findings grouped by resolution (`block`, `acknowledge`, `advisory`, `silent`), the `dismissed` findings, and `notRun`, every check that was skipped or failed with its reason. `config` is one configuration for every path or a `ConfigFor` function.
 
 The status has three states, because a check that reports green while the review never ran is the incumbent failure the design names:
 
-- `not-reviewed` when any check failed, or was skipped and is not in `allowSkip`. This holds with zero findings: a lens that crashed found nothing because it looked at nothing.
+- `not-reviewed` when any check failed, was skipped and is not in `allowSkip`, or is in the manifest with no record. This holds with zero findings: a lens that crashed found nothing because it looked at nothing.
 - `findings` when every check ran and a finding resolves above `silent`.
 - `passed` otherwise. An allowed skip does not stop a pass.
 
 `blocking` is true whenever a finding resolves to `block`, in every status, so a host can say a review both blocks and is incomplete. A dismissed finding counts toward neither: dismissing with a reason is how an author answers an `acknowledge`.
 
-`checks` is a list of `CheckRecord`s, `{ name, status: "ran" | "skipped" | "failed", reason?, error? }`, with names as the tiers spell them, such as `lens.security` or `static.biome`. The lens task writes one per lens; static analysis and guardrails, step 6, write theirs in the same shape. `allowSkip` names checks whose skip is expected, such as a type checker on a change with no TypeScript; nothing sets it from configuration yet.
+`checks` is a list of `CheckRecord`s, `{ name, status: "ran" | "skipped" | "failed", reason?, error?, version? }`, with names as the tiers spell them, such as `lens.security` or `static.biome`. The lens task writes one per lens; static analysis and guardrails, step 6, write theirs in the same shape. `version` is the version of the tool that ran, as its findings' `source.version` names it. `allowSkip` names checks whose skip is expected, such as a type checker on a change with no TypeScript.
+
+The manifest is the tier's check list, and every check in it must account for itself. Problem: `checks` was optional and nothing said what it should hold, so a required check that never started left no record and no trace. Example: a pull request reviewed under `full` with the lenses passing and no Biome record read `passed`, though Biome never ran. Solution: `manifest` is required, and every name in it without a record joins `notRun` as `skipped` with the reason `no record`, which `allowSkip` cannot excuse. A record outside the manifest still counts, so a failed check a host ran anyway is never hidden.
+
+`checksOfTier(config, tier)` expands a tier into its manifest: a name that is itself a tier expands to that tier's checks, in order and without repeats. It throws `CheckError` `unknownTier` or `tierCycle`. It does not expand `static` into the static tools; [pull request #18](https://github.com/melian-agent/melian/pull/18) adds that group with its runners, and the two versions are reconciled when it lands.
 
 ## Tests
 

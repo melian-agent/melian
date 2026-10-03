@@ -185,6 +185,22 @@ export class LensError extends Error {
 	}
 }
 
+/** Why a tier's checks could not be named. */
+export type CheckErrorCode = "unknownTier" | "tierCycle";
+
+/** A tier's checks could not be named. `check` names the tier: one configuration does not define, or one that includes itself. */
+export class CheckError extends Error {
+	readonly code: CheckErrorCode;
+	readonly check: string;
+
+	constructor(code: CheckErrorCode, check: string, message: string, options: { cause?: unknown } = {}) {
+		super(message, { cause: options.cause });
+		this.name = "CheckError";
+		this.code = code;
+		this.check = check;
+	}
+}
+
 /** Why a tier could not be routed to a model. */
 export type ModelRoutingErrorCode = "noModelForTier" | "invalidModel";
 

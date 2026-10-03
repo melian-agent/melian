@@ -20,7 +20,7 @@ import { ReviewIndex } from "./review-index.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
 type StoredAlias = string[] | { rules: string[]; distinct?: boolean };
-type StoredCheck = { name: string; status: CheckStatus; reason?: string; error?: string };
+type StoredCheck = { name: string; status: CheckStatus; reason?: string; error?: string; version?: string };
 
 type StoredVerdict = {
 	status: VerdictStatus;
@@ -48,9 +48,14 @@ export type AdjudicationTaskInput = {
 	/** Where per-path configuration is read from; without it, `config` applies to every path. */
 	policy?: RepositorySource;
 	config: { resolution: Record<Severity, Resolution>; ruleAliases: Record<string, StoredAlias> };
+	/** Every check the review's tier names. One with no record in `checks` makes the verdict not reviewed. */
+	manifest: string[];
 	checks: StoredCheck[];
+	/** Checks whose skip still lets the review pass. */
+	allowSkip: string[];
 	/**
-	 * The producers whose sightings at `head` count: the lenses this review selected, by check and version. A lens that
+	 * The producers whose sightings at `head` count, derived from the manifest: each lens the review ran, by check and
+	 * version, and every other check of the manifest, by name and the tool version its record names. A lens that
 	 * configuration has since disabled or retiered left sightings at this head that are not this review's.
 	 */
 	producers: { check: string; version?: string }[];
@@ -77,13 +82,13 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 	initial: () => ({ phase: "adjudicate" }),
 	phases: {
 		adjudicate: async (task, runtime, context) => {
-			const { root, repoRoot, head, policy, config, checks, producers } = task.input;
+			const { root, repoRoot, head, policy, config, manifest, checks, allowSkip, producers } = task.input;
 			const findings = await readFindings(runtime, root, head, context, { producers });
 			let verdict: Verdict;
 			try {
 				const paths = findings.map((finding) => finding.properties.path);
 				const configFor = policy === undefined ? () => config : await configsFor(repoRoot, policy, paths);
-				verdict = adjudicate({ findings, checks, config: configFor });
+				verdict = adjudicate({ findings, manifest, checks, config: configFor, allowSkip });
 			} catch (error) {
 				// A policy that cannot be read fails the same way on every rerun, so it is the task's outcome.
 				if (!(error instanceof ConfigError)) throw error;
@@ -117,10 +122,12 @@ export function adjudicationInput(options: {
 	head: string;
 	policy: RepositorySource | undefined;
 	config: Pick<MelianConfig, "resolution" | "ruleAliases">;
+	manifest: readonly string[];
 	checks: readonly CheckRecord[];
+	allowSkip: readonly string[];
 	producers: readonly FindingSource[];
 }): AdjudicationTaskInput {
-	const { root, repoRoot, head, policy, config, checks, producers } = options;
+	const { root, repoRoot, head, policy, config, manifest, checks, allowSkip, producers } = options;
 	return {
 		root,
 		repoRoot,
@@ -130,7 +137,9 @@ export function adjudicationInput(options: {
 			resolution: { ...config.resolution },
 			ruleAliases: structuredClone(config.ruleAliases) as Record<string, StoredAlias>,
 		},
+		manifest: [...manifest],
 		checks: checks.map((check) => structuredClone(check)),
+		allowSkip: [...allowSkip],
 		producers: producers.map((source) => ({ ...source })),
 	};
 }
