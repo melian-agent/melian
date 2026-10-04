@@ -9,12 +9,14 @@ const permitted = ["packages/pipeline/src/harness.ts", "packages/pipeline/src/te
 const piImport =
 	/(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)["'`]@earendil-works\/(?:pi-durable|pi-ai|chord)(?:\/[^"'`]*)?["'`]/;
 
-// Repository-relative posix paths, so the filters and the permitted paths match on Windows too.
+// Repository-relative posix paths, so the filters and the permitted paths match on Windows too. A golden's trees are
+// another repository's code, which may have a wrapper of its own.
 function sources(): string[] {
 	return readdirSync(join(root, "packages"), { recursive: true, encoding: "utf8" })
 		.map((path) => `packages/${path.split(sep).join("/")}`)
 		.filter((path) => /\.[cm]?[jt]sx?$/.test(path))
-		.filter((path) => !/(^|\/)(node_modules|dist)\//.test(path));
+		.filter((path) => !/(^|\/)(node_modules|dist)\//.test(path))
+		.filter((path) => !path.startsWith("packages/evals/goldens/"));
 }
 
 describe("harness boundary", () => {

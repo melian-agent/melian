@@ -1,0 +1,92 @@
+{
+  "correctness": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "trust-boundary": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "removed-behaviour": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "tests": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "conventions": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "durability": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "packages/pipeline/src/notes.ts"
+          },
+          "expectToolResult": "document.revisions[revision] = [...notes,"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "search",
+          "arguments": {
+            "pattern": "NotesDocument"
+          },
+          "expectToolResult": "packages/pipeline/src/notes.ts:10:"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "packages/pipeline/src/notes.ts",
+            "line": 46,
+            "rule": "replay-duplicate",
+            "severity": "P1",
+            "explanation": {
+              "what": "add_note is marked replay: \"safe\", but its commit appends the note to the revision's list rather than writing it under a stable key.",
+              "why": "This change adds the tool. Pi Durable reruns a replay-safe tool in full after a crash between its commit and its result, so every write it makes must be an idempotent upsert.",
+              "fix": "Key each note by a stable ID, such as its file and line, and write it under that key, so a replay writes the same note again; or record the call's ID and skip a call already recorded."
+            },
+            "failureScenario": "The summariser calls add_note for src/a.ts line 12. The tool's commit appends the note, and the process is killed before the call's result is committed. On resume Pi Durable reruns the replay-safe tool, whose commit appends the same note again, so the walkthrough lists it twice; each further crash at that point adds another copy.",
+            "evidence": [
+              {
+                "file": "packages/pipeline/src/notes.ts",
+                "line": 43,
+                "endLine": 48,
+                "role": "cause"
+              },
+              {
+                "file": "packages/pipeline/src/notes.ts",
+                "line": 41,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "as introduced"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ]
+}

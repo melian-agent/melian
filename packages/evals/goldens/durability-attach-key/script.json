@@ -1,0 +1,93 @@
+{
+  "correctness": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "trust-boundary": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "removed-behaviour": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "tests": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "conventions": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "durability": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "packages/pipeline/src/checks.ts"
+          },
+          "expectToolResult": "const key = `${input.head} ${input.tier}`;"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "packages/pipeline/src/run-check.ts"
+          },
+          "expectToolResult": "status: \"failed\""
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "packages/pipeline/src/checks.ts",
+            "line": 43,
+            "rule": "idempotency-key",
+            "severity": "P1",
+            "explanation": {
+              "what": "The key that attaches a repeat call to an earlier run is the head and the tier, but the run's result also depends on its base, its configuration, and the source that configuration came from.",
+              "why": "This change adds the attachment. Before it every call ran the checks it was given; now a call whose input differs only outside the key returns another run's records, and nothing ever replaces a run, failed or not.",
+              "fix": "Key the run by every input that decides its result: base, head, tier, and a hash of the configuration and its source, as canonical JSON; and start a new run, rather than attach, when the run the key names failed."
+            },
+            "failureScenario": "A maintainer reviews head H, and its fast tier runs under the working tree's melian.yaml. They add a forbidden-patterns rule to melian.yaml and review H again: the key `H fast` names the first task, so runChecks returns its records and the new rule never runs over the change. A review of H after a retarget onto another base, or after Biome failed on a timeout, gets the first run's records the same way, for good.",
+            "evidence": [
+              {
+                "file": "packages/pipeline/src/checks.ts",
+                "line": 43,
+                "endLine": 47,
+                "role": "cause"
+              },
+              {
+                "file": "packages/pipeline/src/checks.ts",
+                "line": 6,
+                "endLine": 14,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "as introduced"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ]
+}
