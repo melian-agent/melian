@@ -1,10 +1,22 @@
-import { spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
+	cpSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { evaluateGuardrails, resolveRange } from "@melian-agent/core";
+import {
+	buildGoldenRepository,
 	type Golden,
+	goldensDirectory,
 	loadGoldens,
 	runGolden,
 	scoreCorpus,
@@ -21,11 +33,109 @@ describe("the golden corpus", () => {
 		expect(goldens.map((golden) => golden.name)).toEqual([
 			"clean-rename",
 			"contracts-breaking-signature",
+			"conventions-bare-reference",
+			"conventions-clean",
+			"conventions-injection",
+			"conventions-missing-doc-update",
+			"conventions-tsdoc-internal",
+			"conventions-unpinned-action",
 			"correctness-deleted-guard",
 			"correctness-null-deref",
 			"injection-in-comment",
 			"pre-existing-beside-change",
+			"removed-behaviour-clean-extract",
+			"removed-behaviour-dropped-cleanup",
+			"removed-behaviour-dropped-error-path",
+			"removed-behaviour-dropped-guard",
+			"removed-behaviour-injection",
+			"removed-behaviour-moved-status",
+			"tests-clean-covered",
+			"tests-injection",
+			"tests-teardown-asymmetry",
+			"tests-untested-behaviour",
+			"tests-vacuous-test",
+			"tests-weakened-assertion",
+			"trust-boundary-clean-build-config",
+			"trust-boundary-clean-plugin",
+			"trust-boundary-clean-summary",
+			"trust-boundary-clean-test-runner",
+			"trust-boundary-fail-open",
+			"trust-boundary-injection",
+			"trust-boundary-policy-from-head",
+			"trust-boundary-secret-env",
+			"trust-boundary-terminal-escape",
 		]);
+	});
+});
+
+describe("a golden's standards and policy", () => {
+	it("are stored under inert names, so the repository the corpus sits in never reads them as its own", () => {
+		const live = new Set(["AGENTS.md", "CLAUDE.md", "melian.yaml", "melian.local.yaml", ".melian", ".agents"]);
+		const named = readdirSync(goldensDirectory, { recursive: true, withFileTypes: true }).filter((entry) =>
+			live.has(entry.name),
+		);
+		// The corpus's own melian.yaml is Melian's policy for the tree, not a golden's.
+		expect(named.map((entry) => join(entry.parentPath, entry.name))).toEqual([join(goldensDirectory, "melian.yaml")]);
+	});
+
+	it("leave policy-change-review to a change of Melian's own configuration, the corpus's included, not a golden's", async () => {
+		const melian = join(goldensDirectory, "../../..");
+		const repo = realpathSync(mkdtempSync(join(tmpdir(), "melian-goldens-policy-")));
+		const golden = "packages/evals/goldens/trust-boundary-clean-build-config/head/tsconfig.json";
+		const write = (files: Record<string, string>) => {
+			for (const [path, content] of Object.entries(files)) {
+				mkdirSync(dirname(join(repo, path)), { recursive: true });
+				writeFileSync(join(repo, path), content);
+			}
+			const identity = ["-c", "user.name=Melian Evals", "-c", "user.email=evals@melian.invalid"];
+			execFileSync("git", ["add", "--all"], { cwd: repo });
+			execFileSync("git", [...identity, "commit", "--quiet", "--no-gpg-sign", "-m", "commit"], { cwd: repo });
+			return execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" }).trim();
+		};
+		try {
+			execFileSync("git", ["init", "--quiet", "--initial-branch=main"], { cwd: repo });
+			const policy = ["melian.yaml", "packages/evals/goldens/melian.yaml"];
+			const base = write({
+				...Object.fromEntries(policy.map((path) => [path, readFileSync(join(melian, path), "utf8")])),
+				"tsconfig.json": "{}\n",
+				[golden]: "{}\n",
+			});
+			// The corpus's melian.yaml switches the review off beneath it, which must not reach a change to the file itself.
+			const corpus = `${readFileSync(join(melian, policy[1]!), "utf8")}  # widened\n`;
+			const head = write({
+				"tsconfig.json": '{ "compilerOptions": { "noCheck": true } }\n',
+				[golden]: "{ }\n",
+				[policy[1]!]: corpus,
+			});
+			const { revision } = await resolveRange(repo, `${base}..${head}`);
+			const { findings } = await evaluateGuardrails({
+				repoRoot: repo,
+				revision,
+				source: { kind: "revision", commit: base },
+			});
+			expect(
+				findings
+					.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
+					.map((finding) => finding.properties.path),
+			).toEqual(["packages/evals/goldens/melian.yaml", "tsconfig.json"]);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("reach the golden's own repository under their live names", () => {
+		const golden = goldens.find((each) => each.name === "conventions-clean")!;
+		const { repo } = buildGoldenRepository(golden);
+		try {
+			const tracked = (ref: string) =>
+				execFileSync("git", ["ls-tree", "-r", "--name-only", ref], { cwd: repo, encoding: "utf8" }).split("\n");
+			for (const ref of ["main", "feature"]) {
+				expect(tracked(ref)).toContain("AGENTS.md");
+				expect(tracked(ref)).not.toContain("AGENTS.golden.md");
+			}
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
 	});
 });
 
@@ -103,6 +213,69 @@ describe.each(goldens.map((golden): [string, Golden] => [golden.name, golden]))(
 		expect(scoreGolden(golden, run.findings)).toMatchObject({ precision: 1, recall: 1 });
 		expect(scriptedMismatches(golden, run.findings)).toEqual([]);
 		await expect(run.rendered).toMatchFileSnapshot(join(golden.directory, "scripted.txt"));
+	});
+});
+
+describe("runGolden", () => {
+	it("loads a folder's lens for a file the change moves out of that folder, as the CLI does", async () => {
+		const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-golden-rename-")));
+		const lens = [
+			"---",
+			"name: legacy",
+			"description: The legacy module's own checks.",
+			"tier: medium",
+			"severities: [P2]",
+			"rules:",
+			"  - id: lost-answer",
+			"    description: The answer changes.",
+			"---",
+			"You are the legacy reviewer.",
+			"",
+		].join("\n");
+		const module = ["// The answer every caller expects.", "export const answer = 42;", ""].join("\n");
+		const files: Record<string, string> = {
+			"base/legacy/.melian/lenses/legacy/LENS.md": lens,
+			"base/legacy/answer.ts": module,
+			"head/legacy/.melian/lenses/legacy/LENS.md": lens,
+			"head/src/answer.ts": module,
+			"melian.golden.yaml": "tiers:\n  full: [lens.legacy]\n",
+		};
+		for (const [path, content] of Object.entries(files)) {
+			mkdirSync(dirname(join(directory, path)), { recursive: true });
+			writeFileSync(join(directory, path), content);
+		}
+		const report = {
+			file: "src/answer.ts",
+			line: 2,
+			rule: "lost-answer",
+			severity: "P2",
+			explanation: { what: "The answer moved.", why: "The change moved it.", fix: "Leave it." },
+			failureScenario: "A caller importing legacy/answer.ts no longer finds the answer and fails to build.",
+			evidence: [{ file: "src/answer.ts", line: 2, role: "cause" }],
+		};
+		const golden: Golden = {
+			name: "rename-out-of-a-folder-lens",
+			directory,
+			expected: { pr_title: "Move the answer out of legacy", comments: [] },
+			script: {
+				legacy: [{ calls: [{ name: "report_finding", arguments: report }] }, { text: "Reported 1 finding." }],
+			},
+			live: false,
+		};
+		try {
+			const run = await runGolden(golden, { kind: "scripted" });
+
+			expect(run.toolMismatches).toEqual([]);
+			expect(run.findings).toMatchObject([
+				{
+					ruleId: "lost-answer",
+					locations: [{ physicalLocation: { artifactLocation: { uri: "src/answer.ts" } } }],
+					properties: { source: { check: "lens.legacy" } },
+				},
+			]);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
 	});
 });
 
@@ -187,6 +360,58 @@ describe("scoreGolden", () => {
 				finding("src/user.ts", "null-dereference"),
 			]),
 		).toMatchObject({ truePositives: 1, found: 1, precision: 0.5, recall: 1 });
+	});
+
+	it("matches an expectation that names a source only to a finding that source reported", () => {
+		const [comment] = nullDeref!.expected.comments;
+		const golden = {
+			...nullDeref!,
+			expected: { ...nullDeref!.expected, comments: [{ ...comment!, source: "lens.tests" }] },
+		};
+		const reportedBy = (...checks: string[]) =>
+			({
+				ruleId: "null-dereference",
+				properties: { path: "src/user.ts", reportedBy: checks.map((check) => ({ check, version: "v" })) },
+				locations: [{ physicalLocation: { artifactLocation: { uri: "src/user.ts" } } }],
+			}) as never;
+		expect(scoreGolden(golden, [reportedBy("lens.correctness")])).toMatchObject({
+			truePositives: 0,
+			found: 0,
+			precision: 0,
+			recall: 0,
+		});
+		expect(scoreGolden(golden, [reportedBy("lens.correctness", "lens.tests")])).toMatchObject({
+			truePositives: 1,
+			found: 1,
+			precision: 1,
+			recall: 1,
+		});
+		expect(scriptedMismatches(golden, [reportedBy("lens.correctness")])).toEqual([
+			"src/user.ts null-dereference from lens.tests: not reported",
+		]);
+	});
+
+	it("pairs findings with expectations so that a finding several lenses reported does not take another's only match", () => {
+		const [comment] = nullDeref!.expected.comments;
+		const golden = {
+			...nullDeref!,
+			expected: {
+				...nullDeref!.expected,
+				comments: [
+					{ ...comment!, source: "lens.correctness" },
+					{ ...comment!, source: "lens.tests" },
+				],
+			},
+		};
+		const reportedBy = (...checks: string[]) =>
+			({
+				ruleId: "null-dereference",
+				properties: { path: "src/user.ts", reportedBy: checks.map((check) => ({ check, version: "v" })) },
+				locations: [{ physicalLocation: { artifactLocation: { uri: "src/user.ts" } } }],
+			}) as never;
+		expect(
+			scoreGolden(golden, [reportedBy("lens.correctness", "lens.tests"), reportedBy("lens.correctness")]),
+		).toMatchObject({ truePositives: 2, found: 2, precision: 1, recall: 1 });
 	});
 
 	it("averages over every finding in the corpus, not per golden", () => {

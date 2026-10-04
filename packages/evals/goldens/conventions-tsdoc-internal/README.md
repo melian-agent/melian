@@ -1,0 +1,3 @@
+# conventions-tsdoc-internal
+
+Seeded from finding 8 of the [comparison record](../../comparisons/2026-10-03-pr-12.md) for [pull request #12](https://github.com/melian-agent/melian/pull/12): `gitOutput`, outside the package API, carried TSDoc, against `AGENTS.md`. The same finding recurs as B18 in the record for [pull request #15](https://github.com/melian-agent/melian/pull/15) and B12 in the record for [pull request #16](https://github.com/melian-agent/melian/pull/16). The record marked this finding No for a golden, as the records for [pull request #15](https://github.com/melian-agent/melian/pull/15) and [pull request #16](https://github.com/melian-agent/melian/pull/16) marked theirs.

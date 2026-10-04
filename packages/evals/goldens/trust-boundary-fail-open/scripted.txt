@@ -1,0 +1,17 @@
+src/scan.ts
+
+  P1  line 16  fail-open  (introduced, new, unresolved)
+  scan returns before matching any rule against a line longer than 10,000 characters, and records nothing for it.
+    What: scan returns before matching any rule against a line longer than 10,000 characters, and records nothing for it.
+    Why here: This change added the length cut to bound regular expression time, and made the skipped line read as clean.
+    Failure scenario: A pull request adds the line it.only("works", () => { followed by 10,000 spaces and a closing comment. The line is longer than maxLineLength, scan returns before matching it, and the focused-test rule reports nothing, so the pull request merges with the rest of that suite skipped; the base flagged the line.
+    Evidence:
+      cause: src/scan.ts:16
+            if (text.length > maxLineLength) return;
+      context: src/scan.ts:10
+        const maxLineLength = 10_000;
+      context: src/rules.ts:9
+          { name: "focused-test", pattern: /^\s*(?:describe|it|test)\.only\(/, message: "a focused test skips the rest of the suite" },
+    What to do: Fail closed: report a line the scan will not match as a hit of its own, or match it with an engine whose time is linear in the line.
+
+1 finding in 1 file.

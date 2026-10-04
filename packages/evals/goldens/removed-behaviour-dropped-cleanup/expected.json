@@ -1,0 +1,34 @@
+{
+  "pr_title": "Flatten inWorktree",
+  "comments": [
+    {
+      "comment": "The change deleted the finally block that removed the worktree, so a task that throws leaves its worktree registered and on disk.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/worktree.ts",
+      "rule": "dropped-cleanup",
+      "cause": "introduced",
+      "failureScenario": "lintCommit runs Biome with a two-minute timeout. On a commit where Biome runs longer, run rejects, the task throws, and inWorktree rejects before git worktree remove runs, so the review-* worktree stays in git worktree list and on disk; every timed-out lint adds one more. The base removed it in a finally block.",
+      "evidence": [
+        {
+          "file": "src/worktree.ts",
+          "line": 10,
+          "endLine": 14,
+          "role": "cause",
+          "revision": "base"
+        },
+        {
+          "file": "src/worktree.ts",
+          "line": 10,
+          "endLine": 11,
+          "role": "context"
+        },
+        {
+          "file": "src/lint.ts",
+          "line": 10,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

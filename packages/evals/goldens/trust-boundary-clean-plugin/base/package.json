@@ -1,0 +1,11 @@
+{
+  "name": "shop",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "eslint": "9.12.0"
+  }
+}

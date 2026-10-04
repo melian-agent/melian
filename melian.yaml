@@ -3,6 +3,15 @@
 tiers:
   fast: [guardrails, static.biome, static.tsc]
 
+# The golden corpus seeds defects on purpose, so no lens reviews a golden's trees as Melian's own code.
+lenses:
+  correctness: { paths: ["**", "!packages/evals/goldens/**"] }
+  contracts: { paths: ["**", "!packages/evals/goldens/**"] }
+  trust-boundary: { paths: ["**", "!packages/evals/goldens/**"] }
+  removed-behaviour: { paths: ["**", "!packages/evals/goldens/**"] }
+  tests: { paths: ["**", "!packages/evals/goldens/**"] }
+  conventions: { paths: ["**", "!packages/evals/goldens/**"] }
+
 guardrails:
   forbidden-paths:
     rules:
@@ -27,6 +36,10 @@ guardrails:
         pattern: '^\s*(?:describe|it|test)\.only\('
         paths: ["**/*.test.ts"]
         message: a focused test skips the rest of the suite
+      unpinned-action:
+        pattern: 'uses:\s*[^\s#]+@v\d'
+        paths: [".github/workflows/**"]
+        message: a tag can be moved to other code after review, so pin the action to a full commit SHA with its version in a comment, as check.yml does
       dynamic-import:
         pattern: 'await import\(|import\(["'']'
         paths: ["packages/*/src/**"]

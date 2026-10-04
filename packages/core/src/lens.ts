@@ -67,13 +67,16 @@ const levelSchema = Type.Object(
 	strict,
 );
 
+const lensName = Type.String({ pattern: "^[a-z0-9][a-z0-9-]*$" });
+
 /**
  * The JSON Schema of a `LENS.md` front matter block. Only `name` is required; unknown fields are rejected. `levels` maps
  * a {@link ScrutinyLevel} to the fields that differ there; each field it leaves out comes from the top level.
+ * `handoffs` maps another lens's name to the defects that lens owns, which this lens leaves to it when both run.
  */
 export const lensFrontMatterSchema = Type.Object(
 	{
-		name: Type.String({ pattern: "^[a-z0-9][a-z0-9-]*$" }),
+		name: lensName,
 		description: Type.Optional(text),
 		tier: Type.Optional(lensTierSchema),
 		tools: Type.Optional(Type.Array(Type.Union(lensToolNames.map((tool) => Type.Literal(tool))))),
@@ -86,6 +89,7 @@ export const lensFrontMatterSchema = Type.Object(
 		),
 		extends: Type.Optional(Type.Union([text, Type.Null()])),
 		standards: Type.Optional(Type.Boolean()),
+		handoffs: Type.Optional(Type.Record(lensName, text)),
 	},
 	strict,
 );
@@ -125,7 +129,9 @@ export type LensLevels = { readonly careful: LensLevel } & { readonly [Level in 
  * `paths` are repository-relative globs. `scope` is the directory whose `.melian/` or `.agents/` defined the lens, the
  * empty string for the root and for built-in lenses; a lens never applies outside its scope. `levels` holds each level
  * the lens runs at, every field resolved. `version` hashes everything that shapes the lens's behaviour, so a finding
- * can name the lens version that produced it.
+ * can name the lens version that produced it. `handoffs` maps a neighbouring lens's name to the defects it owns, which
+ * this lens leaves to it only where the review runs it over every file this lens reviews, so a lens running alone, or
+ * beside a neighbour narrowed to fewer files, keeps its whole coverage.
  */
 export interface Lens {
 	readonly name: string;
@@ -137,6 +143,7 @@ export interface Lens {
 	readonly scope: string;
 	readonly levels: LensLevels;
 	readonly standards: boolean;
+	readonly handoffs: Readonly<Record<string, string>>;
 	readonly instructions: string;
 	readonly version: string;
 	/** The nearest `LENS.md` that defined or extended it. */
@@ -355,6 +362,15 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 	if (duplicate !== undefined) {
 		throw new LensError("invalidValue", file, `${file}: rule "${duplicate.id}" is listed twice`, { field: "rules" });
 	}
+	// Checked on the merged map: a lens extending another by a different name can inherit a hand-off to itself.
+	const handoffs = { ...base?.lens.handoffs, ...own.handoffs };
+	if (own.handoffs !== undefined && Object.hasOwn(own.handoffs, own.name)) {
+		throw new LensError("invalidValue", file, `${file}: "handoffs" names the lens itself`, { field: "handoffs" });
+	}
+	if (base !== undefined && Object.hasOwn(handoffs, own.name)) {
+		const inherited = `names the lens itself, ${own.name}, in the hand-offs it inherits from ${base.lens.name}`;
+		throw new LensError("invalidValue", file, `${file}: "handoffs" ${inherited}`, { field: "handoffs" });
+	}
 	const declared = declare(own, base?.declared);
 	const lens = versioned({
 		name: own.name,
@@ -366,6 +382,7 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 		scope,
 		levels: resolveLevels(file, own.name, declared),
 		standards: own.standards ?? base?.lens.standards ?? true,
+		handoffs,
 		instructions: [base?.lens.instructions, body].filter((part) => part !== undefined && part !== "").join("\n\n"),
 		file,
 	});
@@ -521,12 +538,14 @@ export async function loadLenses(
 
 /**
  * Where a lens may look: beneath its `scope`, selected by its `paths`, and outside every `nearer` scope, where a nearer
- * definition of the same name replaces it.
+ * definition of the same name replaces it. `moved` holds the head paths of files a review moved out of that coverage,
+ * which the lens covers for that review alone, so it can report a defect in what left its paths.
  */
 export interface LensCoverage {
 	readonly scope: string;
 	readonly paths: readonly string[];
 	readonly nearer: readonly string[];
+	readonly moved?: readonly string[];
 }
 
 /** A lens chosen to run, where it may look, and the changed files it reviews. */
@@ -543,9 +562,10 @@ function beneath(scope: string, path: string): boolean {
 /** Whether `path`, repository-relative, lies where a lens with `coverage` may look. */
 export function lensCovers(coverage: LensCoverage, path: string): boolean {
 	return (
-		beneath(coverage.scope, path) &&
-		!coverage.nearer.some((scope) => beneath(scope, path)) &&
-		selectedBy(coverage.paths, path)
+		coverage.moved?.includes(path) === true ||
+		(beneath(coverage.scope, path) &&
+			!coverage.nearer.some((scope) => beneath(scope, path)) &&
+			selectedBy(coverage.paths, path))
 	);
 }
 
@@ -643,24 +663,48 @@ export function lensLevel(lens: Lens, level: ScrutinyLevel): LensLevel {
 	});
 }
 
+// The defects a lens leaves to a neighbour, only for the neighbours that review its files: a lens whose neighbour is
+// not running keeps that coverage itself.
+function renderHandoffs(handoffs: Readonly<Record<string, string>>, neighbours: readonly string[]): string[] {
+	const owned = Object.entries(handoffs).filter(([name]) => neighbours.includes(name));
+	if (owned.length === 0) return [];
+	return [
+		"## Neighbouring lenses",
+		"These lenses review this change beside you. Each owns the defects listed against it: leave them to it, and do not report them under your own rules.",
+		owned.map(([name, defects]) => `- \`${name}\`: ${defects}`).join("\n"),
+	];
+}
+
 /**
- * The instructions a lens's conversation runs with at `level`, `careful` unless named: its body; then its rules, each
- * ID with its description, the severities it may report, the level's budget and reading scope, and what a finding's
- * failure scenario and evidence must be; then, unless the lens opted out, the repository's standards, each under its
- * path. Throws {@link LensError} `unknownLevel` for a level the lens does not declare.
+ * The instructions a lens's conversation runs with at `level`, `careful` unless named: its body; then, for each lens in
+ * `neighbours` that the lens hands defects to, those defects; then its rules, each ID with its description, the
+ * severities it may report, the level's budget and reading scope, and what a finding's failure scenario and evidence
+ * must be; then, unless the lens opted out, the repository's standards, each under its path, whose breaches are the
+ * conventions lens's to report when `neighbours` holds it and this lens's own otherwise. `neighbours` names the other
+ * lenses the review runs over every file this lens reviews, none by default. Throws {@link LensError} `unknownLevel`
+ * for a level the lens does not declare.
  */
 export function renderLensInstructions(
 	lens: Lens,
 	standards: readonly StandardsSection[],
 	level: ScrutinyLevel = defaultScrutinyLevel,
+	neighbours: readonly string[] = [],
 ): string {
-	const instructions = [lens.instructions, renderPolicy(lens, lensLevel(lens, level))].join("\n\n");
+	const instructions = [
+		lens.instructions,
+		...renderHandoffs(lens.handoffs, neighbours),
+		renderPolicy(lens, lensLevel(lens, level)),
+	].join("\n\n");
 	if (!lens.standards || standards.length === 0) return instructions;
 	const sections = standards.map((section) => `### ${section.path}\n\n${section.content.trim()}`);
+	// Like a hand-off, a breach goes to conventions only when it reviews this lens's files; otherwise this lens keeps it.
+	const owned = lens.name !== "conventions" && neighbours.includes("conventions");
 	return [
 		instructions,
 		"## Repository standards",
-		"The repository's own conventions. A change that breaks one is a finding; cite the file.",
+		owned
+			? "The repository's own conventions, as context for reading the change. A breach of one is the conventions lens's to report, quoting the rule; report it under one of your own rules only when it is also a defect that rule describes."
+			: "The repository's own conventions. A change that breaks one is a finding; cite the file.",
 		...sections,
 	].join("\n\n");
 }

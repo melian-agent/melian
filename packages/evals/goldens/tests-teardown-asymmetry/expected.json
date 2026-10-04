@@ -1,0 +1,33 @@
+{
+  "pr_title": "Delete a key from the store",
+  "comments": [
+    {
+      "comment": "The new deletion test closes the store only when its assertion passes, and every test in the file shares one directory, so one failure leaves the lock behind and fails the next test for an unrelated reason.",
+      "severity": "Low",
+      "category": "test",
+      "file": "test/store.test.ts",
+      "rule": "teardown-asymmetry",
+      "cause": "introduced",
+      "failureScenario": "If delete stops removing the key, the expect on line 40 throws and store.close() never runs, so the lock file stays in the shared directory. \"keeps a deletion across a reopen\" then fails at Store.open with \"the store in ... is already open\", burying the real failure under one that has nothing to do with deletion.",
+      "evidence": [
+        {
+          "file": "test/store.test.ts",
+          "line": 37,
+          "endLine": 41,
+          "role": "cause"
+        },
+        {
+          "file": "test/store.test.ts",
+          "line": 7,
+          "endLine": 11,
+          "role": "context"
+        },
+        {
+          "file": "src/store.ts",
+          "line": 17,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

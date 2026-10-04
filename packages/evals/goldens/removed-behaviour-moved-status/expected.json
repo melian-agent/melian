@@ -1,0 +1,35 @@
+{
+  "pr_title": "Set the status after the review",
+  "comments": [
+    {
+      "comment": "The change moved setStatus behind postReview, so a refused review leaves the head with no status, where the base set it first on purpose.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/publish.ts",
+      "rule": "moved-code-lost-anchor",
+      "cause": "introduced",
+      "failureScenario": "GitHub refuses postReview with a 422 for a comment outside the diff. publish rejects before finish runs, publishStored prints \"publish failed\", and the head carries no status at all, so a branch rule that requires it waits on that head. The base set failure or success first, whatever happened to the review.",
+      "evidence": [
+        {
+          "file": "src/publish.ts",
+          "line": 6,
+          "endLine": 8,
+          "role": "cause",
+          "revision": "base"
+        },
+        {
+          "file": "src/publish.ts",
+          "line": 8,
+          "endLine": 9,
+          "role": "context"
+        },
+        {
+          "file": "src/main.ts",
+          "line": 6,
+          "endLine": 10,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

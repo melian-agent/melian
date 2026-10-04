@@ -1,0 +1,32 @@
+{
+  "pr_title": "Summarise findings per file",
+  "comments": [
+    {
+      "comment": "renderSummary prints each finding's path raw, though paths come from the change under review and renderFindings escapes them, so a file name carrying escape sequences reaches the terminal.",
+      "severity": "High",
+      "category": "security",
+      "file": "src/render.ts",
+      "rule": "terminal-escape",
+      "cause": "introduced",
+      "failureScenario": "A pull request adds a file named \"src/\\u001b[2J\\u001b[Hall clear.ts\" and a finding lands on it. printReview writes renderSummary's line for it unescaped, so the terminal clears the screen and shows \"all clear.ts: 1 finding\" at the top, hiding the findings above it; renderFindings printed the same path as \\u{1b}[2J.",
+      "evidence": [
+        {
+          "file": "src/render.ts",
+          "line": 21,
+          "role": "cause"
+        },
+        {
+          "file": "src/render.ts",
+          "line": 8,
+          "endLine": 10,
+          "role": "context"
+        },
+        {
+          "file": "src/cli.ts",
+          "line": 5,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

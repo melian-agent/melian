@@ -1,0 +1,17 @@
+test/band.test.ts
+
+  P2  line 14  vacuous-test  (introduced, new, unresolved)
+  The test named for the drop-above-accept check passes on a different error, the missing accept.
+    What: The test named for the drop-above-accept check passes on a different error, the missing accept.
+    Why here: This change added the check and this test together, and the test's input fails an earlier check.
+    Failure scenario: parseBand({ drop: 0.9 }) has no accept, so the loop over the ends throws "each end of a band is a number from 0 to 1" and the test's toThrow(BandError) passes on it. Delete the new drop-above-accept line and the test still passes, while parseBand({ drop: 0.9, accept: 0.5 }) is never tried.
+    Evidence:
+      cause: test/band.test.ts:14
+            expect(() => parseBand({ drop: 0.9 })).toThrow(BandError);
+      context: src/band.ts:13
+            if (typeof end !== "number" || end < 0 || end > 1) throw new BandError("each end of a band is a number from 0 to 1");
+      context: src/band.ts:14
+          if ((drop as number) > (accept as number)) throw new BandError("a band's drop must not exceed its accept");
+    What to do: Pass both ends, such as { drop: 0.9, accept: 0.5 }, and assert the check's own message.
+
+1 finding in 1 file.

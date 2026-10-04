@@ -1,0 +1,92 @@
+{
+  "correctness": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "trust-boundary": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/render.ts"
+          },
+          "expectToolResult": "`${path}: ${count} finding"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "search",
+          "arguments": {
+            "pattern": "renderSummary("
+          },
+          "expectToolResult": "src/cli.ts:5:"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "src/render.ts",
+            "line": 21,
+            "rule": "terminal-escape",
+            "severity": "P1",
+            "explanation": {
+              "what": "renderSummary interpolates finding.path into terminal output without passing it through printable.",
+              "why": "This change added renderSummary and printed it from printReview; the existing line renderer escapes every path, the new one does not.",
+              "fix": "Print printable(path) in renderSummary, as renderFindings does."
+            },
+            "failureScenario": "A pull request adds a file named \"src/\\u001b[2J\\u001b[Hall clear.ts\" and a finding lands on it. printReview writes renderSummary's line for it unescaped, so the terminal clears the screen and shows \"all clear.ts: 1 finding\" at the top, hiding the findings above it; renderFindings printed the same path as \\u{1b}[2J.",
+            "evidence": [
+              {
+                "file": "src/render.ts",
+                "line": 21,
+                "role": "cause"
+              },
+              {
+                "file": "src/render.ts",
+                "line": 8,
+                "endLine": 10,
+                "role": "context"
+              },
+              {
+                "file": "src/cli.ts",
+                "line": 5,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "as introduced"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ],
+  "removed-behaviour": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "tests": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "conventions": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ]
+}

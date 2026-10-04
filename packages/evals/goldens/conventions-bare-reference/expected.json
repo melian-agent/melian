@@ -1,0 +1,26 @@
+{
+  "pr_title": "Count the lines on a receipt",
+  "comments": [
+    {
+      "comment": "The new progress-log entry names pull request #14 and issue #9 as bare text, though AGENTS.md says to link every one a document mentions and never to write a bare #12.",
+      "severity": "Low",
+      "category": "convention",
+      "file": "docs/progress-log/2026-10-02-item-count.md",
+      "rule": "quoted-rule-violation",
+      "cause": "introduced",
+      "failureScenario": "The entry writes \"Pull request #14\" and \"issue #9\" as bare text. AGENTS.md says \"Link every GitHub issue and pull request you mention in a document\" and \"Never write a bare #12.\"; GitHub links neither in a Markdown file, so a reader of the log cannot reach the pull request or the issue.",
+      "evidence": [
+        {
+          "file": "docs/progress-log/2026-10-02-item-count.md",
+          "line": 3,
+          "role": "cause"
+        },
+        {
+          "file": "AGENTS.md",
+          "line": 13,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

@@ -36,6 +36,7 @@ import {
 	endingBudgets,
 	legacyCrashFinding,
 	record,
+	twoLensTiers,
 } from "./review-scenario.ts";
 
 const [scenario, repo, database, log] = process.argv.slice(2) as [
@@ -149,7 +150,11 @@ record(log, { event: "review-started" });
 await reviewChangeset({
 	harness,
 	changeset: await resolveRange(repo, "main...feature"),
-	config: { ...defaultConfig, models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } } },
+	config: {
+		...defaultConfig,
+		tiers: twoLensTiers,
+		models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
+	},
 	lenses: lensesFor(await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"])),
 	standards: [],
 	models: fake.review,

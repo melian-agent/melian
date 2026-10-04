@@ -1,0 +1,19 @@
+docs/design.md
+
+  P2  line 7  missing-doc-update  (affected, new, unresolved)
+  docs/design.md says a half cent rounds up, and the export now rounds it to the even cent.
+    What: docs/design.md says a half cent rounds up, and the export now rounds it to the even cent.
+    Why here: AGENTS.md says "If you change a behaviour that docs/design.md describes, change the document in the same commit.", and this change altered the rounding without touching the document.
+    Failure scenario: dollars(0.5) now returns "0.00" and dollars(2.5) returns "0.02", while docs/design.md still says a half rounds up, as Math.round does, which gives "0.01" and "0.03". AGENTS.md says "If you change a behaviour that docs/design.md describes, change the document in the same commit.", so a reader who trusts the design reconciles exports against the wrong rule.
+    Evidence:
+      cause: src/export.ts:10-12
+          const whole = Math.floor(cents);
+          const fraction = cents - whole;
+          const rounded = fraction === 0.5 ? (whole % 2 === 0 ? whole : whole + 1) : Math.round(cents);
+      context: docs/design.md:7
+        Prices are whole cents. A fraction of a cent rounds to the nearest cent, and a half rounds up, as `Math.round` does.
+      context: AGENTS.md:12
+        - If you change a behaviour that docs/design.md describes, change the document in the same commit.
+    What to do: Change the rounding sentence in docs/design.md to say a half cent rounds to the even cent, to match the bank's statements.
+
+1 finding in 1 file.

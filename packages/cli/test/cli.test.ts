@@ -47,6 +47,9 @@ function melian(cwd: string, args: string[], env: Record<string, string> = {}) {
 // Their tests keep the deterministic checks to guardrails; the static tools have a repository of their own below.
 const guardrailsOnly = "tiers:\n  fast: [guardrails]\n";
 
+// Every lens the default full tier runs, so a script can answer each.
+const builtinLenses = ["correctness", "contracts", "trust-boundary", "removed-behaviour", "tests", "conventions"];
+
 function scriptFile(script: unknown): Record<string, string> {
 	scratch = mkdtempSync(join(tmpdir(), "melian-cli-"));
 	const scriptPath = join(scratch, "script.json");
@@ -86,7 +89,7 @@ function staticCheckout(added: string) {
 	git(repo, "add", "--all");
 	git(repo, "commit", "--quiet", "-m", "head");
 	const quiet = [{ text: "Reported 0 findings." }];
-	return { repo, env: scriptFile({ correctness: quiet, contracts: quiet }) };
+	return { repo, env: scriptFile(Object.fromEntries(builtinLenses.map((name) => [name, quiet]))) };
 }
 
 describe("melian review and findings", { timeout: 60_000 }, () => {
@@ -152,6 +155,44 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 
 		expect(rerun.status).toBe(1);
 		expect(rerun.stdout).toMatch(/^Verdict: findings, blocking\n/);
+	});
+
+	it("loads a folder's lens for a file the change moves out of that folder, and runs it", () => {
+		const repo = mkdtempSync(join(tmpdir(), "melian-cli-rename-"));
+		repos.push(repo);
+		git(repo, "init", "--quiet", "--initial-branch=main");
+		mkdirSync(join(repo, "services/pay/.melian/lenses/pay"), { recursive: true });
+		writeFileSync(
+			join(repo, "services/pay/.melian/lenses/pay/LENS.md"),
+			[
+				"---",
+				"name: pay",
+				"description: The payment service's own checks.",
+				"tier: medium",
+				"rules:",
+				"  - id: lost-charge",
+				"    description: A charge is lost.",
+				"---",
+				"You are the payments reviewer.",
+				"",
+			].join("\n"),
+		);
+		writeFileSync(
+			join(repo, "services/pay/charge.ts"),
+			"// Charges a card.\nexport const charge = (cents: number) => cents;\n",
+		);
+		git(repo, "add", "--all");
+		git(repo, "commit", "--quiet", "-m", "base");
+		git(repo, "checkout", "--quiet", "-b", "feature");
+		mkdirSync(join(repo, "lib"));
+		git(repo, "mv", "services/pay/charge.ts", "lib/charge.ts");
+		git(repo, "commit", "--quiet", "-m", "move the charge out of the service");
+		writeFileSync(join(repo, "melian.yaml"), `${guardrailsOnly}  full: [fast, lens.pay]\n`);
+
+		const review = melian(repo, ["review", "main"], scriptFile({ pay: [{ text: "Reported 0 findings." }] }));
+
+		expect(review).toMatchObject({ status: 0, stderr: "" });
+		expect(review.stdout).toContain("lens.pay  careful");
 	});
 
 	it("runs guardrails, Biome, and tsc before the lenses, and passes a clean change", { timeout: 120_000 }, () => {
@@ -405,7 +446,7 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
 
 		const unrouted = melian(repo, ["doctor"]);
-		// The built-in lenses both run on heavy, so a route for light alone still leaves every review unable to run them.
+		// The built-in lenses all run on heavy, so a route for light alone still leaves every review unable to run them.
 		writeFileSync(join(repo, "melian.yaml"), "models:\n  light:\n    model: anthropic/claude-haiku\n");
 		const partly = melian(repo, ["doctor"]);
 		writeFileSync(join(repo, "melian.yaml"), "models:\n  heavy:\n    model: anthropic/claude-opus-5-5\n");
@@ -413,16 +454,37 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		writeFileSync(join(repo, "melian.local.yaml"), "models:\n  heavy:\n    model: amazon-bedrock/claude-opus\n");
 		const local = melian(repo, ["doctor"]);
 
+		const heavy = [...builtinLenses].sort();
+		const needHeavy = `no model for heavy, for ${heavy.slice(0, -1).join(", ")}, and ${heavy.at(-1)}; `;
 		expect(unrouted.stdout).toMatch(
-			/^warn {2}routes {6}no tier is routed to a model; no model for heavy, for (correctness and contracts|contracts and correctness); .*melian\.local\.yaml.*--model/m,
+			new RegExp(
+				`^warn {2}routes {6}no tier is routed to a model; ${needHeavy}.*melian\\.local\\.yaml.*--model`,
+				"m",
+			),
 		);
 		expect(partly.stdout).toMatch(
-			/^warn {2}routes {6}light to anthropic\/claude-haiku; no model for heavy, for (correctness and contracts|contracts and correctness); /m,
+			new RegExp(`^warn {2}routes {6}light to anthropic/claude-haiku; ${needHeavy}`, "m"),
 		);
 		expect(routed.stdout).toMatch(/^ok {4}routes {6}heavy to anthropic\/claude-opus-5-5$/m);
 		expect(local.stdout).toMatch(/^ok {4}routes {6}heavy to amazon-bedrock\/claude-opus$/m);
 		expect(routed.stdout).toMatch(/^ok {4}static {6}biome from Melian's own copy, tsc from Melian's own copy$/m);
 		expect(routed.stdout).toMatch(/^ok {4}melian {6}.*, outside this checkout$/m);
+	});
+
+	it("names one or two lenses on an unrouted tier without a series comma", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+
+		writeFileSync(join(repo, "melian.yaml"), "tiers:\n  full: [standard, lens.contracts]\n");
+		const two = melian(repo, ["doctor"]);
+		writeFileSync(join(repo, "melian.yaml"), "tiers:\n  full: [standard]\n");
+		const one = melian(repo, ["doctor"]);
+
+		expect(two.stdout).toMatch(
+			/^warn {2}routes {6}no tier is routed to a model; no model for heavy, for contracts and correctness; /m,
+		);
+		expect(one.stdout).toMatch(
+			/^warn {2}routes {6}no tier is routed to a model; no model for heavy, for correctness; /m,
+		);
 	});
 });
 

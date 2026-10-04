@@ -1,0 +1,63 @@
+{
+  "pr_title": "Simplify the configuration walk",
+  "comments": [
+    {
+      "comment": "The change deleted the check that stopped the walk once dirname returned the directory itself, at \".\" or the filesystem root, so a start directory that never reaches root as spelled loops forever.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/config-files.ts",
+      "rule": "dropped-guard",
+      "cause": "introduced",
+      "failureScenario": "melian-config ./repo src/a.ts calls configFiles(\"./repo\", \"repo/src\"). dir never equals \"./repo\": it walks to \"repo\", then \".\", and dirname(\".\") is \".\", so the loop never ends, and with a config.json in the working directory it pushes config.json, as join(\".\", \"config.json\") spells it, until the heap runs out. The base stopped once the parent equalled the directory.",
+      "evidence": [
+        {
+          "file": "src/config-files.ts",
+          "line": 12,
+          "endLine": 13,
+          "role": "cause",
+          "revision": "base"
+        },
+        {
+          "file": "src/config-files.ts",
+          "line": 11,
+          "endLine": 12,
+          "role": "context"
+        },
+        {
+          "file": "src/cli.ts",
+          "line": 6,
+          "role": "context"
+        }
+      ]
+    },
+    {
+      "comment": "configFiles no longer stops when dirname returns the directory itself, at \".\" or the filesystem root, so a start directory that never reaches root as spelled loops forever.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/config-files.ts",
+      "rule": "wrong-result",
+      "cause": "introduced",
+      "failureScenario": "melian-config ./repo src/a.ts calls configFiles(\"./repo\", \"repo/src\"). dir walks to \"repo\", then \".\", and dirname(\".\") is \".\", so dir never equals \"./repo\" and the loop never returns. The base returned the files it found once the parent equalled the directory.",
+      "evidence": [
+        {
+          "file": "src/config-files.ts",
+          "line": 11,
+          "endLine": 12,
+          "role": "cause"
+        },
+        {
+          "file": "src/config-files.ts",
+          "line": 12,
+          "endLine": 13,
+          "role": "context",
+          "revision": "base"
+        },
+        {
+          "file": "src/cli.ts",
+          "line": 6,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

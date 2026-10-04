@@ -1,0 +1,31 @@
+{
+  "pr_title": "Refuse a band whose drop exceeds its accept",
+  "comments": [
+    {
+      "comment": "The new test passes a band with no accept, so parseBand throws for the missing end before the drop-above-accept check runs; the test passes with that check deleted.",
+      "severity": "Medium",
+      "category": "test",
+      "file": "test/band.test.ts",
+      "rule": "vacuous-test",
+      "cause": "introduced",
+      "failureScenario": "parseBand({ drop: 0.9 }) has no accept, so the loop over the ends throws \"each end of a band is a number from 0 to 1\" and the test's toThrow(BandError) passes on it. Delete the new drop-above-accept line and the test still passes, while parseBand({ drop: 0.9, accept: 0.5 }) is never tried.",
+      "evidence": [
+        {
+          "file": "test/band.test.ts",
+          "line": 14,
+          "role": "cause"
+        },
+        {
+          "file": "src/band.ts",
+          "line": 13,
+          "role": "context"
+        },
+        {
+          "file": "src/band.ts",
+          "line": 14,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

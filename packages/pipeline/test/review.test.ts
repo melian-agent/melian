@@ -15,6 +15,8 @@ import {
 	maxFailureScenarioLength,
 	maxSnippetBytes,
 	type RepositorySource,
+	renderFindingsTerminal,
+	renderVerdictJson,
 	resolveRange,
 	type Verdict,
 } from "@melian-agent/core";
@@ -51,7 +53,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, adjudicationInput } from "../src/adjudication.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
-import { withBudget } from "./fixtures/review-scenario.ts";
+import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
 
 const staticFinding = {
 	rule: "lint/style/noNonNullAssertion",
@@ -100,6 +102,7 @@ beforeEach(async () => {
 	const heavy = fake.ref("heavy");
 	config = {
 		...defaultConfig,
+		tiers: twoLensTiers,
 		models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
 	};
 	harness = await openHarness(createMemoryStorage(), {
@@ -521,6 +524,68 @@ describe("reviewChangeset", () => {
 		expect(results[3]).toBe(results[2]);
 		expect(findings).toHaveLength(1);
 		expect(findings[0]!.message.text).toBe("Reworded.");
+	});
+
+	it("lets a lens whose severities leave out P1 report an injection attempt at P1, as the injection policy orders", async () => {
+		const conventions = "You are the conventions reviewer";
+		const injection = {
+			...nullDeref,
+			rule: "melian/injection-attempt",
+			explanation: {
+				what: "A comment tells the reviewer to report nothing.",
+				why: "The change added it to steer the review.",
+				fix: "Delete the comment.",
+			},
+		};
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{
+				match: conventions,
+				replies: [
+					call("report_finding", { ...nullDeref, rule: "quoted-rule-violation" }),
+					call("report_finding", injection),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+
+		const findings = await review({
+			config: { ...config, tiers: { ...defaultConfig.tiers, full: ["standard", "lens.conventions"] } },
+		});
+
+		const results = requests[conventions]!.slice(1).map((messages) => toolResults(messages).at(-1));
+		expect(results[0]).toContain("Tool call blocked: severity P1 is outside this lens's severities: P2, P3");
+		expect(results[1]).toMatch(/^recorded finding [0-9a-f]{16} as introduced\n/);
+		expect(findings.map((finding) => [finding.ruleId, finding.properties.severity])).toEqual([
+			["melian/injection-attempt", "P1"],
+		]);
+	});
+
+	it("refuses an injection attempt at a severity other than P1 from a lens whose severities leave it out", async () => {
+		const conventions = "You are the conventions reviewer";
+		const injection = {
+			...nullDeref,
+			rule: "melian/injection-attempt",
+			severity: "P0",
+			explanation: {
+				what: "A comment tells the reviewer to report nothing.",
+				why: "The change added it to steer the review.",
+				fix: "Delete the comment.",
+			},
+		};
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: conventions, replies: [call("report_finding", injection), fauxAssistantMessage("Done.")] },
+		]);
+
+		const findings = await review({
+			config: { ...config, tiers: { ...defaultConfig.tiers, full: ["standard", "lens.conventions"] } },
+		});
+
+		expect(toolResults(requests[conventions]![1]!).at(-1)).toContain(
+			"Tool call blocked: severity P0 is outside this lens's severities: P2, P3",
+		);
+		expect(findings).toEqual([]);
 	});
 
 	it("stops accepting findings past the lens's budget and says why", async () => {
@@ -1081,6 +1146,67 @@ describe("reviewChangeset", () => {
 		expect(prompt).toContain("Reading scope: the hunks.");
 		const root = (await harness.root(context)).id;
 		expect((await readVerdict(harness, root, reviewedRevision(), context))?.ran).toEqual(verdict.ran);
+	});
+
+	it("leaves correctness its whole coverage, contracts included, when it runs alone in the standard tier", async () => {
+		const requests = scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
+
+		await reviewed({ config: { ...config, tiers: { ...defaultConfig.tiers, full: ["standard"] } } });
+
+		const prompt = systemPromptOf(requests[correctness]![0]!);
+		expect(prompt).not.toContain("## Neighbouring lenses");
+		for (const owner of ["contracts", "removed-behaviour", "trust-boundary", "`tests`", "tests lens"])
+			expect(prompt).not.toContain(owner);
+	});
+
+	it("hands correctness's contract changes, deleted behaviour, hostile input, and test defects to their owners in the full tier", async () => {
+		const backlog = ["trust-boundary", "removed-behaviour", "tests", "conventions"].map(
+			(name) => `You are the ${name} reviewer`,
+		);
+		const requests = scriptConversations(
+			fake,
+			[correctness, contracts, ...backlog].map((match) => ({ match, replies: [fauxAssistantMessage("Done.")] })),
+		);
+
+		await reviewed({ config: { ...config, tiers: defaultConfig.tiers } });
+
+		const prompt = systemPromptOf(requests[correctness]![0]!);
+		const handoffs = prompt.slice(prompt.indexOf("## Neighbouring lenses"), prompt.indexOf("## Rules, severities"));
+		expect(handoffs.split("\n").filter((line) => line.startsWith("- "))).toEqual([
+			"- `contracts`: A change to a function's declared contract, its signature, types, return shape, or thrown errors, and the callers it breaks.",
+			"- `removed-behaviour`: A cleanup, error path, or ordering the change deleted or moved with nothing in its place. Leave a deleted throw, rethrow, or error branch to it, even when a `catch` the change wrote now swallows the failure; `unhandled-error` keeps a failure that a line the change wrote drops or swallows.",
+			"- `trust-boundary`: A value an author or outside party controls that reaches a sink unescaped, makes a check pass, or carries a secret out.",
+			"- `tests`: A defect in a test.",
+		]);
+	});
+
+	it("keeps the defects and standards of a neighbour whose paths leave out some of its files", async () => {
+		writeFiles(repo, {
+			"src/report.ts": lines('import { managerName } from "./user.ts";', "export const line = 1;"),
+		});
+		gitIn(repo, "commit", "--quiet", "--all", "-m", "edit the report too");
+		const backlog = ["trust-boundary", "removed-behaviour", "tests", "conventions"].map(
+			(name) => `You are the ${name} reviewer`,
+		);
+		const requests = scriptConversations(
+			fake,
+			[correctness, contracts, ...backlog].map((match) => ({ match, replies: [fauxAssistantMessage("Done.")] })),
+		);
+		const narrow = { paths: ["src/user.ts"] };
+
+		await reviewed({
+			config: { ...config, tiers: defaultConfig.tiers, lenses: { "trust-boundary": narrow, conventions: narrow } },
+		});
+
+		const prompt = systemPromptOf(requests[correctness]![0]!);
+		const handoffs = prompt.slice(prompt.indexOf("## Neighbouring lenses"), prompt.indexOf("## Rules, severities"));
+		expect(
+			handoffs.split("\n").flatMap((line) => (line.startsWith("- ") ? [line.slice(0, line.indexOf(":"))] : [])),
+		).toEqual(["- `contracts`", "- `removed-behaviour`", "- `tests`"]);
+		expect(prompt).toContain(
+			"The repository's own conventions. A change that breaks one is a finding; cite the file.",
+		);
+		expect(prompt).not.toContain("the conventions lens's to report");
 	});
 
 	it("holds a built-in lens at careful to the level's own limit of 30 tool calls", async () => {
@@ -1928,8 +2054,19 @@ describe("adjudication", () => {
 		const lensesOnly = ["lens.correctness", "lens.contracts"];
 
 		it("passes under the default tiers when every check ran and none found anything", async () => {
-			done();
-			const { verdict } = await reviewed();
+			const everyLens = [
+				correctness,
+				contracts,
+				"You are the trust-boundary reviewer",
+				"You are the removed-behaviour reviewer",
+				"You are the tests reviewer",
+				"You are the conventions reviewer",
+			];
+			scriptConversations(
+				fake,
+				everyLens.map((match) => ({ match, replies: [fauxAssistantMessage("Done.")] })),
+			);
+			const { verdict } = await reviewed({ config: { ...config, tiers: defaultConfig.tiers } });
 			expect(verdict).toMatchObject({ status: "passed", blocking: false, notRun: [allowedDecisionSkip] });
 		});
 
@@ -2018,28 +2155,88 @@ describe("adjudication", () => {
 			});
 		});
 
-		it("is not reviewed when no lens covers the changed paths, and passes when one does", async () => {
-			const nowhere = lenses.map((lens) => ({ ...lens, paths: ["docs/**"] }));
-			const { verdict } = await reviewed({ lenses: nowhere });
-			expect(verdict).toMatchObject({
-				status: "not-reviewed",
-				notRun: [
-					allowedDecisionSkip,
-					{ name: "lens.correctness", status: "skipped", reason: "no lens covers these paths" },
-					{ name: "lens.contracts", status: "skipped", reason: "no lens covers these paths" },
-				],
-			});
+		it("passes on its other checks when every changed file is excluded from every lens, and says so", async () => {
+			const excluded = { paths: ["**", "!src/**"] };
+			const nothingCovered = { ...config, lenses: { correctness: excluded, contracts: excluded } };
+			const noPaths = (name: string): CheckRecord => ({ name, status: "skipped", reason: "no paths" });
 
+			const { verdict } = await reviewed({ config: nothingCovered });
+
+			expect(fake.provider.state.callCount).toBe(0);
+			expect(verdict).toMatchObject({
+				status: "passed",
+				notRun: [allowedDecisionSkip, noPaths("lens.correctness"), noPaths("lens.contracts")],
+			});
+			expect(renderFindingsTerminal(verdict)).toContain("  lens.correctness  skipped: no paths");
+			expect(JSON.parse(renderVerdictJson(verdict)).notRun).toContainEqual(noPaths("lens.contracts"));
+		});
+
+		it("records a lens with no changed file in its paths as an allowed skip beside one that ran", async () => {
 			scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
 			const one = lenses.map((lens) => (lens.name === "contracts" ? { ...lens, paths: ["docs/**"] } : lens));
-			const { verdict: covered } = await reviewed({ lenses: one });
-			expect(covered).toMatchObject({
+			const { verdict } = await reviewed({ lenses: one });
+			expect(verdict).toMatchObject({
 				status: "passed",
-				notRun: [
-					allowedDecisionSkip,
-					{ name: "lens.contracts", status: "skipped", reason: "no changed file is in its paths" },
-				],
+				notRun: [allowedDecisionSkip, { name: "lens.contracts", status: "skipped", reason: "no paths" }],
 			});
+		});
+
+		it("runs the lenses that covered a file the change moved into their excluded paths", async () => {
+			rmSync(repo, { recursive: true, force: true });
+			repo = baseAndHead(
+				{ "src/config.ts": lines("export const port = 8080;") },
+				{ "goldens/x/notes.md": lines("A golden.") },
+			);
+			gitIn(repo, "mv", "src/config.ts", "goldens/x/config.ts");
+			gitIn(repo, "commit", "--quiet", "-m", "move the source into the goldens");
+			const excluded = { paths: ["**", "!goldens/**"] };
+			const requests = scriptConversations(fake, [
+				{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+			const { verdict } = await reviewed({
+				config: { ...config, lenses: { correctness: excluded, contracts: excluded } },
+			});
+
+			expect(verdict).toMatchObject({ status: "passed", notRun: [allowedDecisionSkip] });
+			const [first] = requests[correctness]!;
+			const prompt = textOf(first!.find((message) => message.role === "user")!);
+			expect(quoted(prompt, nonceOf(first!), "listing")).toEqual(["renamed src/config.ts -> goldens/x/config.ts"]);
+			expect(requests[contracts]).toHaveLength(1);
+		});
+
+		it("reports a defect in a file moved into excluded paths at its head path, from the lens that covered it", async () => {
+			rmSync(repo, { recursive: true, force: true });
+			repo = baseAndHead(
+				{ "src/user.ts": user('\treturn user.manager?.name ?? "none";') },
+				{ "goldens/x/notes.md": lines("A golden.") },
+			);
+			gitIn(repo, "mv", "src/user.ts", "goldens/x/user.ts");
+			writeFiles(repo, { "goldens/x/user.ts": user("\treturn user.manager.name;") });
+			gitIn(repo, "commit", "--quiet", "--all", "-m", "move the source into the goldens and drop the guard");
+			const excluded = { paths: ["**", "!goldens/**"] };
+			const moved = {
+				...nullDeref,
+				file: "goldens/x/user.ts",
+				evidence: [{ file: "goldens/x/user.ts", line: 7, role: "cause" }],
+			};
+			scriptConversations(fake, [
+				{ match: correctness, replies: [call("report_finding", moved), fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+			const { findings } = await reviewed({
+				config: { ...config, lenses: { correctness: excluded, contracts: excluded } },
+			});
+
+			expect(findings).toMatchObject([
+				{
+					ruleId: "null-dereference",
+					locations: [{ physicalLocation: { artifactLocation: { uri: "goldens/x/user.ts" } } }],
+					properties: { source: { check: "lens.correctness" } },
+				},
+			]);
 		});
 
 		it("runs only the lenses the manifest names, and fails a lens it names that does not exist", async () => {

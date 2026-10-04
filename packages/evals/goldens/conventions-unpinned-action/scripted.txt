@@ -1,0 +1,15 @@
+.github/workflows/check.yml
+
+  P3  line 11  quoted-rule-violation  (introduced, new, unresolved)
+  actions/cache is referenced by the tag v4, not by a commit SHA.
+    What: actions/cache is referenced by the tag v4, not by a commit SHA.
+    Why here: AGENTS.md says "Pin every GitHub Action to a full commit SHA, with its version in a comment", and this change added the step.
+    Failure scenario: The step uses actions/cache@v4, a tag its owner can move. AGENTS.md says "Pin every GitHub Action to a full commit SHA, with its version in a comment", and the two steps above follow it; if v4 is retagged, the workflow runs code nobody reviewed.
+    Evidence:
+      cause: .github/workflows/check.yml:11
+              - uses: actions/cache@v4
+      context: AGENTS.md:17
+        - Pin every GitHub Action to a full commit SHA, with its version in a comment, as `actions/checkout@<sha> # v4.3.0`.
+    What to do: Reference actions/cache by the full SHA of the release, with # v4 and its exact version in a comment, as the checkout and setup-node steps do.
+
+1 finding in 1 file.

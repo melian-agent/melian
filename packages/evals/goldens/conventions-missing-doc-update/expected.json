@@ -1,0 +1,32 @@
+{
+  "pr_title": "Round half cents as the bank does",
+  "comments": [
+    {
+      "comment": "The change rounds a half cent to the even cent, but docs/design.md still says a half rounds up, and AGENTS.md says to change the document in the same commit.",
+      "severity": "Medium",
+      "category": "documentation",
+      "file": "docs/design.md",
+      "rule": "missing-doc-update",
+      "cause": "affected",
+      "failureScenario": "dollars(0.5) now returns \"0.00\" and dollars(2.5) returns \"0.02\", while docs/design.md still says a half rounds up, as Math.round does, which gives \"0.01\" and \"0.03\". AGENTS.md says \"If you change a behaviour that docs/design.md describes, change the document in the same commit.\", so a reader who trusts the design reconciles exports against the wrong rule.",
+      "evidence": [
+        {
+          "file": "src/export.ts",
+          "line": 10,
+          "endLine": 12,
+          "role": "cause"
+        },
+        {
+          "file": "docs/design.md",
+          "line": 7,
+          "role": "context"
+        },
+        {
+          "file": "AGENTS.md",
+          "line": 12,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

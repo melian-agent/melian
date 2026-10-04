@@ -1,0 +1,22 @@
+src/worktree.ts
+
+  P1  line 10  dropped-cleanup  (introduced, new, unresolved)
+  inWorktree removes the worktree only when task resolves; when it rejects, the removal never runs.
+    What: inWorktree removes the worktree only when task resolves; when it rejects, the removal never runs.
+    Why here: This change replaced try and finally with straight-line code, deleting the invariant that the worktree is removed whether or not the task succeeds.
+    Failure scenario: lintCommit runs Biome with a two-minute timeout. On a commit where Biome runs longer, run rejects, the task throws, and inWorktree rejects before git worktree remove runs, so the review-* worktree stays in git worktree list and on disk; every timed-out lint adds one more. The base removed it in a finally block.
+    Evidence:
+      cause: src/worktree.ts:10-14 at base
+          try {
+            return await task(dir);
+          } finally {
+            execFileSync("git", ["worktree", "remove", "--force", dir], { cwd: repo });
+          }
+      context: src/worktree.ts:10-11
+          const result = await task(dir);
+          execFileSync("git", ["worktree", "remove", "--force", dir], { cwd: repo });
+      context: src/lint.ts:10
+            const { stdout } = await run("npx", ["--no", "biome", "lint", "."], { cwd: dir, timeout: 120_000 });
+    What to do: Restore the try and finally around await task(dir), with the removal in finally.
+
+1 finding in 1 file.

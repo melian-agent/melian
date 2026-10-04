@@ -1,0 +1,23 @@
+src/standards.ts
+
+  P2  line 9  dropped-error-path  (introduced, new, unresolved)
+  readStandards returns undefined for any error, so a standard that exists but cannot be read is treated as absent.
+    What: readStandards returns undefined for any error, so a standard that exists but cannot be read is treated as absent.
+    Why here: This change replaced the catch that returned undefined only for ENOENT and rethrew the rest with one that swallows everything.
+    Failure scenario: A repository's AGENTS.md is a directory, or a file with mode 000. readFileSync throws EISDIR or EACCES, readStandards now returns undefined, and instructions tells the reviewer "This repository has written no standards.", so the review ignores them without a word. The base rethrew anything but ENOENT, and the review failed.
+    Evidence:
+      cause: src/standards.ts:8-10 at base
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+            throw error;
+      context: src/standards.ts:8-9
+          } catch {
+            return undefined;
+      context: src/prompt.ts:5-8
+          const standards = readStandards(root);
+          return standards === undefined
+            ? "Review the change. This repository has written no standards."
+            : `Review the change against these standards:\n\n${standards}`;
+    What to do: Restore the ENOENT check and rethrow every other error.
+
+1 finding in 1 file.

@@ -1,0 +1,28 @@
+{
+  "pr_title": "Count evidence on deleted lines",
+  "comments": [
+    {
+      "comment": "overlapsChange gained a branch for locations at the base, and no test passes a location with revision \"base\", so any mistake in that branch passes the suite.",
+      "severity": "Medium",
+      "category": "test",
+      "file": "src/overlap.ts",
+      "rule": "untested-behaviour",
+      "cause": "introduced",
+      "failureScenario": "Every test in test/overlap.test.ts passes a location without revision, so none reaches the base branch. If it read hunk.newStart and hunk.newLines instead of the old ones, a base location on deleted line 12 of the edit hunk would no longer count, and a finding the deletion caused would read as unrelated, yet all three tests would still pass.",
+      "evidence": [
+        {
+          "file": "src/overlap.ts",
+          "line": 20,
+          "endLine": 21,
+          "role": "cause"
+        },
+        {
+          "file": "test/overlap.test.ts",
+          "line": 7,
+          "endLine": 19,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

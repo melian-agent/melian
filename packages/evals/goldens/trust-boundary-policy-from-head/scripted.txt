@@ -1,0 +1,22 @@
+src/review.ts
+
+  P1  line 15  head-controls-judge  (introduced, new, unresolved)
+  loadPolicy reads policy.json from the checkout, and verdict runs on a checkout of the pull request's head, so the head supplies the policy that judges it.
+    What: loadPolicy reads policy.json from the checkout, and verdict runs on a checkout of the pull request's head, so the head supplies the policy that judges it.
+    Why here: The change replaced git show of the base commit's policy.json with a read of the working tree, and dropped the base commit from verdict, whose base documentation says the policy comes from the base commit.
+    Failure scenario: A pull request changes policy.json to { "blockOn": [] } and adds code a reviewer rates critical. verdict(repo, findings) runs on its checkout, loadPolicy reads the head's policy.json, and the verdict is "pass", where the base read policy.json from the base commit and returned "block".
+    Evidence:
+      cause: src/review.ts:15
+          return JSON.parse(readFileSync(join(repo, "policy.json"), "utf8")) as Policy;
+      context: src/review.ts:18-20
+        /** The verdict on a pull request checked out at its head in `repo`. */
+        export function verdict(repo: string, findings: readonly Finding[]): "pass" | "block" {
+          const policy = loadPolicy(repo);
+      context: src/review.ts:14 at base
+          const text = execFileSync("git", ["show", `${commit}:policy.json`], { cwd: repo, encoding: "utf8" });
+      context: src/review.ts:19-20 at base
+         * The verdict on a pull request checked out at its head in `repo`. The policy comes from the pull request's base
+         * commit, so a pull request is judged by the rules it is asking to merge into.
+    What to do: Read policy.json from the base commit again, with git show <base>:policy.json, and pass the base to loadPolicy.
+
+1 finding in 1 file.

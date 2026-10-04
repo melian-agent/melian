@@ -1,0 +1,13 @@
+{
+  "name": "@shop/cart",
+  "version": "1.4.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "check": "tsc --noEmit -p tsconfig.json",
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

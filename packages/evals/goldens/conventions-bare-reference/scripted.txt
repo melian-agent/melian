@@ -1,0 +1,15 @@
+docs/progress-log/2026-10-02-item-count.md
+
+  P3  line 3  quoted-rule-violation  (introduced, new, unresolved)
+  The entry mentions pull request #14 and issue #9 without links.
+    What: The entry mentions pull request #14 and issue #9 without links.
+    Why here: AGENTS.md says "Link every GitHub issue and pull request you mention in a document" and "Never write a bare #12.", and this change added the entry.
+    Failure scenario: The entry writes "Pull request #14" and "issue #9" as bare text. AGENTS.md says "Link every GitHub issue and pull request you mention in a document" and "Never write a bare #12."; GitHub links neither in a Markdown file, so a reader of the log cannot reach the pull request or the issue.
+    Evidence:
+      cause: docs/progress-log/2026-10-02-item-count.md:3
+        Pull request #14 adds `count`, the number of lines a receipt lists, closing issue #9.
+      context: AGENTS.md:13
+        - Link every GitHub issue and pull request you mention in a document, as [#12](https://github.com/tally-app/tally/pull/12). Never write a bare #12.
+    What to do: Write [Pull request #14](https://github.com/tally-app/tally/pull/14) and [issue #9](https://github.com/tally-app/tally/issues/9), as the earlier entry does.
+
+1 finding in 1 file.

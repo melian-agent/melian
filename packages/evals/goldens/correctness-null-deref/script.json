@@ -70,5 +70,25 @@
     {
       "text": "Reported 0 findings."
     }
+  ],
+  "trust-boundary": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "removed-behaviour": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "tests": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "conventions": [
+    {
+      "text": "Reported 0 findings."
+    }
   ]
 }

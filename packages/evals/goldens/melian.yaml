@@ -1,0 +1,6 @@
+# Melian's policy for its golden corpus, layered over the root melian.yaml for every path beneath this directory.
+# A golden's tsconfig.json or eslint.config.js configures the golden's own repository, built in a temporary directory,
+# and never an analyser that runs on Melian, so a change to one is not a policy change here.
+guardrails:
+  policy-change-review:
+    enabled: false

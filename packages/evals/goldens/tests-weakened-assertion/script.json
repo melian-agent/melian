@@ -1,0 +1,95 @@
+{
+  "correctness": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "trust-boundary": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "removed-behaviour": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "tests": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "test/skill.test.ts",
+            "revision": "base"
+          },
+          "expectToolResult": "const commands = commandsIn(readFileSync(\"skills/review/SKILL.md\", \"utf8\"));"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "skills/review/SKILL.md"
+          },
+          "expectToolResult": "git fetch origin"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "test/skill.test.ts",
+            "line": 10,
+            "endLine": 12,
+            "rule": "weakened-assertion",
+            "severity": "P2",
+            "explanation": {
+              "what": "The test filters the skill's commands to those starting with \"melian \" and then checks only those against the allowlist.",
+              "why": "This change narrowed the assertion so that the git fetch it added to the skill would pass.",
+              "fix": "Check every command against the allowlist again, and add git fetch to the allowlist if the skill may run it."
+            },
+            "failureScenario": "This change adds git fetch origin to the skill. The base test failed on it, since git fetch is not allowed; the head filters out every command not starting with \"melian \" first, so it passes, and would pass for curl https://example.com/install.sh | sh as well.",
+            "evidence": [
+              {
+                "file": "test/skill.test.ts",
+                "line": 10,
+                "endLine": 12,
+                "role": "cause"
+              },
+              {
+                "file": "test/skill.test.ts",
+                "line": 10,
+                "role": "context",
+                "revision": "base"
+              },
+              {
+                "file": "skills/review/SKILL.md",
+                "line": 14,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "as introduced"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ],
+  "conventions": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ]
+}

@@ -1,5 +1,20 @@
 src/port.ts
 
+  P1  line 3  dropped-guard  (affected, new, unresolved)
+  Nothing at head rejects a port that is not an integer from 1 to 65535: parsePort returns what Number makes of its input.
+    What: Nothing at head rejects a port that is not an integer from 1 to 65535: parsePort returns what Number makes of its input.
+    Why here: This change deleted the guard that held that invariant, and neither parsePort nor its caller restores it.
+    Failure scenario: start("") calls parsePort(""), which returns 0 now that nothing rejects a port outside 1 to 65535, and listen(0) binds a random free port. The base's guard threw "invalid port: ".
+    Evidence:
+      cause: src/port.ts:3 at base
+          if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`invalid port: ${value}`);
+      context: src/port.ts:2-3
+          const port = Number(value);
+          return port;
+      context: src/server.ts:5
+          return createServer().listen(parsePort(value));
+    What to do: Restore the guard in parsePort.
+
   P1  line 3  wrong-result  (affected, new, unresolved)
   parsePort returns whatever Number makes of its input, so an empty, fractional, or out-of-range port reaches listen.
     What: parsePort returns whatever Number makes of its input, so an empty, fractional, or out-of-range port reaches listen.
@@ -12,4 +27,4 @@ src/port.ts
           return createServer().listen(parsePort(value));
     What to do: Restore the guard, or validate the port before returning it.
 
-1 finding in 1 file.
+2 findings in 1 file.
