@@ -555,7 +555,7 @@ Existing code on the base branch is trusted. Submitted changes and comments are 
 - Static tools, such as Biome and tsc, execute in the execution environment, never in the Melian process, because they load the repository's configuration and plugins. Each runs in a temporary worktree of the revision it analyses, never in the user's checkout.
 - A static tool's configuration is policy: the head's copy still drives the head's run, and policy-change-review reports every change to it as blocking, from a default list a `melian.yaml` can extend.
 - A static tool's binary never comes from the revision's tree: it is the checkout's lockfile install or Melian's own, and a `node_modules` the revision tracks is ignored and noted.
-- Enola's configuration is policy, read from the base: its intent, constraints, suppressions, and linking files. A pull request that adds an exemption or a suppression is reviewed under the configuration it changes, and Melian never uses a committed Enola baseline.
+- Enola runs in the execution environment, never in the Melian process, like every tool that loads repository configuration: a `providers:` block in `enola.yaml` names an executable Enola runs. Its configuration is policy, read from the base: its intent, constraints, suppressions, linking, and providers. A pull request that adds an exemption or a suppression is reviewed under the configuration it changes, and Melian never uses a committed Enola baseline.
 - A credential source that runs a command is allowed only in a file the user owns, never in a committed `melian.yaml`, as [Files a user owns](#files-a-user-owns) sets out.
 - A check that ran on a model outside policy says so in its lineage, and policy can make a host rerun it, as [The review plan](#the-review-plan) sets out.
 - Comment commands require write permission on the repository. Comment bodies enter prompts as quoted data behind an injection guard section.
@@ -618,12 +618,12 @@ Planned for milestone 2, as a spike with an exit criterion.
 
 Problem: a lens finds the callers of a changed symbol by searching, one call at a time, which is slow and misses what a name search cannot see. Example: a private repository's review skill measured a reviewer walking callers by search time out at 600 seconds twice; the same review, handed the callers as precomputed data, finished in 331.
 
-Solution: [Enola](research/2026-10-04-enola.md) (enola.tech, `enola-labs/enola`, Apache 2.0, written in Go) is the first tool in the manifest. It is deterministic, loads no plugins, and executes no repository code. Melian uses it two ways:
+Solution: [Enola](research/2026-10-04-enola.md) (enola.tech, `enola-labs/enola`, Apache 2.0, written in Go) is the first tool in the manifest. It is deterministic, and its extractors are compiled in. It still runs in the execution environment, never in the Melian process, like every tool that loads repository configuration, because a `providers:` block in `enola.yaml` names an executable Enola runs with `--version` and with the repository path. Melian uses it two ways:
 
 - As a static check: `enola check` runs on the head against a baseline Melian builds from the base, and its SARIF is diffed as Biome's is.
 - As lens input: the callers of changed symbols outside the diff, from `impact_analysis`, rendered into lens prompts as data and offered as candidate `affected` evidence that the lens confirms or drops.
 
-Enola's configuration files, for intent, constraints, suppressions, and linking, are policy read from the base, and they join the policy-change list. A committed baseline is never used.
+Enola's configuration files, for intent, constraints, suppressions, linking, and providers, are policy read from the base, and they join the policy-change list. A committed baseline is never used. The spike decides whether Melian runs Enola with providers disabled.
 
 The graph is a cache, not state. Its key is Enola's own snapshot key: the facts, the Enola version, and the configuration hash. Locally it lives in a cache Melian owns under the git common directory, and on runners in the Actions cache, never on the state branch. Every pull request on one base shares the base's snapshot. A miss recomputes, because Enola's output is byte-identical for the same inputs. The check record stores the snapshot IDs and Enola's receipt. Enola is pinned in the manifest and refuses to compare snapshots across its own versions, which matches Melian's rule that a tool's version is part of a check's identity.
 
