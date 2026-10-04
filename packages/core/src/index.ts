@@ -196,13 +196,10 @@ export {
 	type PublishedFinding,
 	type PublishedMarkers,
 	type PullRequest,
-	placeFinding,
-	planPublication,
 	type ReviewDraft,
 	type ReviewProvider,
 	type ReviewStatus,
 	replyKey,
-	reviewStatus,
 } from "./publication.ts";
 export { describeBudgetEnd, Rendering, type TerminalRenderOptions, visibleText } from "./render.ts";
 export {

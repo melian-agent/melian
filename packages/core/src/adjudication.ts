@@ -3,11 +3,20 @@ import { resolutionOrder } from "./config.ts";
 import {
 	type AlsoReportedAs,
 	Finding,
+	type FindingDismissal,
 	levelForSeverity,
 	type ResolvedFinding,
 	type StoredFinding,
 } from "./findings.ts";
 import type { ScrutinyLevel } from "./lens.ts";
+import type {
+	ClosedFinding,
+	DiffLines,
+	PlacedFinding,
+	PublicationPlan,
+	PublishedFinding,
+	ReviewStatus,
+} from "./publication.ts";
 import { Rendering, type TerminalRenderOptions } from "./render.ts";
 
 /**
@@ -321,6 +330,78 @@ export class Verdict {
 		const finding =
 			all.find((each) => each.id === id) ?? all.find((each) => membersOf(each).some((other) => other.id === id));
 		return finding === undefined ? undefined : new Defect(finding, membersOf(finding));
+	}
+
+	/**
+	 * Decides what a revision's publication of the verdict posts, given the findings open on the pull request after the
+	 * previous revision's publication, and the lines the revision changes.
+	 *
+	 * Findings that resolve to `block`, `acknowledge`, or `advisory` need attention. One not already open is posted; one
+	 * already open is not posted again. An open finding the verdict no longer holds in any group, silent and dismissed
+	 * included, is resolved. An open finding the verdict holds as dismissed, itself or merged into a dismissed finding,
+	 * is resolved with that dismissal, so its thread says why, and leaves `open`: if a changed trigger reopens it, it is
+	 * posted afresh. A dismissed finding is never posted. An open finding that turned silent stays in `open`, so if it
+	 * needs attention again it returns to its own thread rather than starting a second one.
+	 */
+	publication(
+		previous: Readonly<Record<string, PublishedFinding>>,
+		lines: DiffLines,
+		revision: string,
+	): PublicationPlan {
+		const attention = this.attention();
+		const dismissals: Record<string, FindingDismissal> = {};
+		for (const { properties } of this.dismissed) {
+			if (properties.dismissal === undefined) continue;
+			for (const { id, dismissal = properties.dismissal } of [properties, ...(properties.alsoReportedAs ?? [])]) {
+				dismissals[id] ??= { ...dismissal };
+			}
+		}
+		const held = new Set([...attention, ...this.findings.silent].map((finding) => finding.properties.id));
+		const post: PlacedFinding[] = [];
+		const stillOpen: string[] = [];
+		const open: Record<string, PublishedFinding> = {};
+		for (const finding of attention) {
+			const { id, path } = finding.properties;
+			if (Object.hasOwn(previous, id)) {
+				stillOpen.push(id);
+				open[id] = previous[id]!;
+				continue;
+			}
+			post.push({ finding, placement: finding.place(lines) });
+			open[id] = { ruleId: finding.ruleId, path, line: finding.lines()[0], revision };
+		}
+		for (const id of held) {
+			if (!Object.hasOwn(open, id) && Object.hasOwn(previous, id)) open[id] = previous[id]!;
+		}
+		const resolved = Object.keys(previous)
+			.sort()
+			.filter((id) => !held.has(id))
+			.map((id): ClosedFinding => {
+				const dismissal = Object.hasOwn(dismissals, id) ? dismissals[id] : undefined;
+				return { id, ...previous[id]!, ...(dismissal === undefined ? {} : { dismissal: { ...dismissal } }) };
+			});
+		return { post, stillOpen, resolved, open, dismissals };
+	}
+
+	/**
+	 * The status a pull request's check shows for the verdict. A review that passed, or found nothing blocking, is
+	 * `success`, with the count of findings; one with a blocking finding is `failure`; one that did not complete is
+	 * `error`, naming what did not run. Melian never approves, so `success` means only that nothing blocks.
+	 */
+	reviewStatus(): ReviewStatus {
+		const count = (number: number, noun: string) => `${number} ${noun}${number === 1 ? "" : "s"}`;
+		if (this.status === "not-reviewed") {
+			const reasons = this.notRun.map(
+				({ name, status, reason }) => `${name} ${status}${reason === undefined ? "" : ` (${reason})`}`,
+			);
+			return { state: "error", description: `Not reviewed: ${reasons.join("; ") || "the review did not complete"}` };
+		}
+		const shown = this.attention().length;
+		if (this.status === "passed" || shown === 0) return { state: "success", description: "Passed" };
+		if (this.blocking) {
+			return { state: "failure", description: `${count(shown, "finding")}, ${this.findings.block.length} blocking` };
+		}
+		return { state: "success", description: `${count(shown, "finding")}, none blocking` };
 	}
 
 	/** The verdict as plain text for a terminal, as {@link Rendering} renders it. */

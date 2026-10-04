@@ -9,11 +9,9 @@ import {
 	type PostedReview,
 	type PublishedMarkers,
 	type PullRequest,
-	planPublication,
 	type ReviewProvider,
 	type ReviewStatus,
 	replyKey,
-	reviewStatus,
 	type StoredFinding,
 	type StoredVerdict,
 	Verdict,
@@ -295,7 +293,7 @@ function planRound(
 	const own = postedAt(head) ? state.revisions[head] : undefined;
 	const previous = state.order.filter((each) => each !== head && postedAt(each)).at(-1);
 	const base = own?.open ?? (previous === undefined ? {} : state.revisions[previous]!.open);
-	const plan = planPublication(verdict, base, lines, head);
+	const plan = verdict.publication(base, lines, head);
 	const resolved: Record<string, PublishedEntry> = Object.fromEntries(
 		plan.resolved.map(({ id, ...entry }) => [id, structuredClone(entry)]),
 	);
@@ -474,7 +472,7 @@ function publishTask(provider: ReviewProvider) {
 					}
 					// The status comes first, so the head carries one even when its review cannot be posted, and before the
 					// replies, so a thread that cannot take a reply never holds back the check.
-					const status = reviewStatus(verdict);
+					const status = verdict.reviewStatus();
 					const shown = (await read()).revisions[head]?.status;
 					if (shown?.state !== status.state || shown.description !== status.description) {
 						await postStatus(status);
@@ -551,7 +549,7 @@ function publishTask(provider: ReviewProvider) {
 					}
 					// A reason changed by a second dismissal takes a reply alone, under the status already set.
 					// The dismissals a publication of the verdict answers, whatever the pull request already shows.
-					const { dismissals } = planPublication(verdict, {}, lines, head);
+					const { dismissals } = verdict.publication({}, lines, head);
 					const again = redismissed(await read(), head, dismissals);
 					if (Object.keys(again).length > 0) {
 						await runtime.commit(async (tx) => {

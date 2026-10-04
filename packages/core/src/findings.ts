@@ -12,6 +12,7 @@ import {
 } from "./config.ts";
 import { FindingError } from "./errors.ts";
 import { melianPaths } from "./paths.ts";
+import type { DiffLines, Placement } from "./publication.ts";
 import { Rendering, type TerminalRenderOptions } from "./render.ts";
 
 const strict = { additionalProperties: false } as const;
@@ -937,6 +938,24 @@ export class Finding {
 	lines(): [number, number] {
 		const { startLine, endLine = startLine } = this.locations[0]!.physicalLocation.region;
 		return [startLine, endLine];
+	}
+
+	/** Where the finding is posted, given the lines its revision changes. */
+	place(lines: DiffLines): Placement {
+		const ranges = Object.hasOwn(lines, this.properties.path) ? lines[this.properties.path]! : [];
+		if (ranges.length === 0) return { kind: "body" };
+		const [start, end] = this.lines();
+		const overlap = ranges.find(([first, last]) => first <= end && start <= last);
+		if (overlap !== undefined) {
+			return { kind: "lines", startLine: Math.max(start, overlap[0]), line: Math.min(end, overlap[1]) };
+		}
+		let nearest = ranges[0]![0];
+		for (const [first, last] of ranges) {
+			for (const candidate of [first, last]) {
+				if (Math.abs(candidate - start) < Math.abs(nearest - start)) nearest = candidate;
+			}
+		}
+		return { kind: "nearest", line: nearest };
 	}
 
 	/**

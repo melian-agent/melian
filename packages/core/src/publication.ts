@@ -50,29 +50,6 @@ export type Placement =
 	| { readonly kind: "nearest"; readonly line: number }
 	| { readonly kind: "body" };
 
-function span(finding: Finding): [number, number] {
-	const { startLine, endLine = startLine } = finding.locations[0]!.physicalLocation.region;
-	return [startLine, endLine];
-}
-
-/** Where `finding` is posted, given the lines its revision changes. */
-export function placeFinding(finding: Finding, lines: DiffLines): Placement {
-	const ranges = Object.hasOwn(lines, finding.properties.path) ? lines[finding.properties.path]! : [];
-	if (ranges.length === 0) return { kind: "body" };
-	const [start, end] = span(finding);
-	const overlap = ranges.find(([first, last]) => first <= end && start <= last);
-	if (overlap !== undefined) {
-		return { kind: "lines", startLine: Math.max(start, overlap[0]), line: Math.min(end, overlap[1]) };
-	}
-	let nearest = ranges[0]![0];
-	for (const [first, last] of ranges) {
-		for (const candidate of [first, last]) {
-			if (Math.abs(candidate - start) < Math.abs(nearest - start)) nearest = candidate;
-		}
-	}
-	return { kind: "nearest", line: nearest };
-}
-
 /** A finding posted with its placement. */
 export interface PlacedFinding {
 	readonly finding: Finding;
@@ -119,7 +96,7 @@ export function replyKey(id: string, thread: string, dismissal?: string): string
 	return [id, thread, ...(dismissal === undefined ? [] : [dismissal])].join(" ");
 }
 
-/** What one revision's publication posts, decided by {@link planPublication}. */
+/** What one revision's publication posts, as `Verdict.publication` decides it. */
 export interface PublicationPlan {
 	/** Findings that need attention and were not open before, each with its placement. */
 	readonly post: readonly PlacedFinding[];
@@ -141,90 +118,10 @@ export interface PublicationPlan {
 	readonly dismissals: Readonly<Record<string, FindingDismissal>>;
 }
 
-/**
- * Decides what a revision's publication posts, given its verdict, the findings open on the pull request after the
- * previous revision's publication, and the lines the revision changes.
- *
- * Findings that resolve to `block`, `acknowledge`, or `advisory` need attention. One not already open is posted; one
- * already open is not posted again. An open finding the verdict no longer holds in any group, silent and dismissed
- * included, is resolved. An open finding the verdict holds as dismissed, itself or merged into a dismissed finding, is
- * resolved with that dismissal, so its thread says why, and leaves `open`: if a changed trigger reopens it, it is
- * posted afresh. A dismissed finding is never posted. An open finding that turned silent stays in `open`, so if it needs attention again it returns to its own
- * thread rather than starting a second one.
- */
-export function planPublication(
-	verdict: Verdict,
-	previous: Readonly<Record<string, PublishedFinding>>,
-	lines: DiffLines,
-	revision: string,
-): PublicationPlan {
-	const attention = [...verdict.findings.block, ...verdict.findings.acknowledge, ...verdict.findings.advisory];
-	const dismissals: Record<string, FindingDismissal> = {};
-	for (const { properties } of verdict.dismissed) {
-		if (properties.dismissal === undefined) continue;
-		for (const { id, dismissal = properties.dismissal } of [properties, ...(properties.alsoReportedAs ?? [])]) {
-			dismissals[id] ??= { ...dismissal };
-		}
-	}
-	const held = new Set([...attention, ...verdict.findings.silent].map((finding) => finding.properties.id));
-	const post: PlacedFinding[] = [];
-	const stillOpen: string[] = [];
-	const open: Record<string, PublishedFinding> = {};
-	for (const finding of attention) {
-		const { id, path } = finding.properties;
-		if (Object.hasOwn(previous, id)) {
-			stillOpen.push(id);
-			open[id] = previous[id]!;
-			continue;
-		}
-		const placement = placeFinding(finding, lines);
-		post.push({ finding, placement });
-		open[id] = { ruleId: finding.ruleId, path, line: span(finding)[0], revision };
-	}
-	for (const id of held) {
-		if (!Object.hasOwn(open, id) && Object.hasOwn(previous, id)) open[id] = previous[id]!;
-	}
-	const resolved = Object.keys(previous)
-		.sort()
-		.filter((id) => !held.has(id))
-		.map((id): ClosedFinding => {
-			const dismissal = Object.hasOwn(dismissals, id) ? dismissals[id] : undefined;
-			return { id, ...previous[id]!, ...(dismissal === undefined ? {} : { dismissal: { ...dismissal } }) };
-		});
-	return { post, stillOpen, resolved, open, dismissals };
-}
-
 /** A commit status: `success`, `failure`, or `error`, with a description for the author. */
 export interface ReviewStatus {
 	readonly state: "success" | "failure" | "error";
 	readonly description: string;
-}
-
-function plural(count: number, noun: string): string {
-	return `${count} ${noun}${count === 1 ? "" : "s"}`;
-}
-
-/**
- * The status a pull request's check shows for `verdict`. A review that passed, or found nothing blocking, is `success`,
- * with the count of findings; one with a blocking finding is `failure`; one that did not complete is `error`, naming
- * what did not run. Melian never approves, so `success` means only that nothing blocks.
- */
-export function reviewStatus(verdict: Verdict): ReviewStatus {
-	if (verdict.status === "not-reviewed") {
-		const reasons = verdict.notRun.map(
-			({ name, status, reason }) => `${name} ${status}${reason === undefined ? "" : ` (${reason})`}`,
-		);
-		return { state: "error", description: `Not reviewed: ${reasons.join("; ") || "the review did not complete"}` };
-	}
-	const shown = verdict.findings.block.length + verdict.findings.acknowledge.length + verdict.findings.advisory.length;
-	if (verdict.status === "passed" || shown === 0) return { state: "success", description: "Passed" };
-	if (verdict.blocking) {
-		return {
-			state: "failure",
-			description: `${plural(shown, "finding")}, ${verdict.findings.block.length} blocking`,
-		};
-	}
-	return { state: "success", description: `${plural(shown, "finding")}, none blocking` };
 }
 
 /** One revision's review, ready for a provider to post. */
