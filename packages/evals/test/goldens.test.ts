@@ -1,8 +1,18 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	cpSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { evaluateGuardrails, resolveRange } from "@melian-agent/core";
 import {
 	buildGoldenRepository,
 	type Golden,
@@ -64,7 +74,47 @@ describe("a golden's standards and policy", () => {
 		const named = readdirSync(goldensDirectory, { recursive: true, withFileTypes: true }).filter((entry) =>
 			live.has(entry.name),
 		);
-		expect(named.map((entry) => join(entry.parentPath, entry.name))).toEqual([]);
+		// The corpus's own melian.yaml is Melian's policy for the tree, not a golden's.
+		expect(named.map((entry) => join(entry.parentPath, entry.name))).toEqual([join(goldensDirectory, "melian.yaml")]);
+	});
+
+	it("leave policy-change-review to a change of Melian's own configuration, not a golden's", async () => {
+		const melian = join(goldensDirectory, "../../..");
+		const repo = realpathSync(mkdtempSync(join(tmpdir(), "melian-goldens-policy-")));
+		const golden = "packages/evals/goldens/trust-boundary-clean-build-config/head/tsconfig.json";
+		const write = (files: Record<string, string>) => {
+			for (const [path, content] of Object.entries(files)) {
+				mkdirSync(dirname(join(repo, path)), { recursive: true });
+				writeFileSync(join(repo, path), content);
+			}
+			const identity = ["-c", "user.name=Melian Evals", "-c", "user.email=evals@melian.invalid"];
+			execFileSync("git", ["add", "--all"], { cwd: repo });
+			execFileSync("git", [...identity, "commit", "--quiet", "--no-gpg-sign", "-m", "commit"], { cwd: repo });
+			return execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" }).trim();
+		};
+		try {
+			execFileSync("git", ["init", "--quiet", "--initial-branch=main"], { cwd: repo });
+			const policy = ["melian.yaml", "packages/evals/goldens/melian.yaml"];
+			const base = write({
+				...Object.fromEntries(policy.map((path) => [path, readFileSync(join(melian, path), "utf8")])),
+				"tsconfig.json": "{}\n",
+				[golden]: "{}\n",
+			});
+			const head = write({ "tsconfig.json": '{ "compilerOptions": { "noCheck": true } }\n', [golden]: "{ }\n" });
+			const { revision } = await resolveRange(repo, `${base}..${head}`);
+			const { findings } = await evaluateGuardrails({
+				repoRoot: repo,
+				revision,
+				source: { kind: "revision", commit: base },
+			});
+			expect(
+				findings
+					.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
+					.map((finding) => finding.properties.path),
+			).toEqual(["tsconfig.json"]);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
 	});
 
 	it("reach the golden's own repository under their live names", () => {
