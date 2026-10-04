@@ -12,11 +12,11 @@ import {
 	resolveRange,
 } from "@melian-agent/core";
 import {
+	type Context,
 	backgroundContext as context,
 	createMemoryStorage,
 	createReviewRegistry,
 	DismissHarness,
-	dismissFinding,
 	type Harness,
 	openHarness,
 	openPublishHarness,
@@ -28,6 +28,7 @@ import {
 	reviewChangeset,
 	revisionKey,
 	type Storage,
+	type TaskId,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -38,7 +39,6 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, type AdjudicationTaskInput } from "../src/adjudication.ts";
-import { FindingsDocument } from "../src/findings.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 
@@ -219,6 +219,36 @@ async function publisher(path: string) {
 		}
 	};
 	return { publish, statuses };
+}
+
+// The real recordDismissal, killed after its commit: its context is cancelled where it would start the adjudication,
+// which never runs in this process, as when the process dies there. Pi's waitForTask enables scheduling before it
+// honours a cancelled context, so the wait rejects here without asking Pi, or the adjudication could finish before the
+// harness closes.
+async function dismissCutShort(harness: Harness, id: string, with_ = dismissal): Promise<void> {
+	const controller = new AbortController();
+	const killed: Context = {
+		abortSignal: controller.signal,
+		value: (key) => context.value(key),
+		toString: () => "a dismiss killed after its commit",
+	};
+	const dying = new Proxy(harness, {
+		get(target, name) {
+			if (name === "resume") return () => controller.abort(new Error("killed"));
+			if (name === "waitForTask") return () => Promise.reject(controller.signal.reason);
+			const value = Reflect.get(target, name, target);
+			return typeof value === "function" ? value.bind(target) : value;
+		},
+	});
+	const recording = recordDismissal({
+		harness: dying,
+		revision: await revision(),
+		id,
+		dismissal: with_,
+		repoRoot: repo,
+		context: killed,
+	});
+	await expect(recording).rejects.toThrow();
 }
 
 describe("recording a dismissal", () => {
@@ -440,25 +470,11 @@ describe("recording a dismissal", () => {
 		const first = await reviewHarness(await openSqliteStorage(path));
 		scriptFinding();
 		const id = (await reviewed(first, true)).findings[0]!.properties.id;
-		const key = revisionKey(await revision());
-		// What a dismiss killed after its commit leaves: the dismissal, and an adjudication task that never ran.
-		const root = await first.root(context);
-		await root.commit(async (tx) => {
-			await dismissFinding(tx, root.id, id, dismissal);
-			const index = await tx.doc(ReviewIndex, root.id);
-			const entry = index.reviews[key]!;
-			const input = {
-				...(JSON.parse(entry.adjudication!.input) as AdjudicationTaskInput),
-				findingsVersion: (await tx.doc(FindingsDocument, root.id)).versions[key]!,
-			};
-			const task = await tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } });
-			index.reviews = {
-				...index.reviews,
-				[key]: { ...entry, adjudication: { task, input: JSON.stringify(input) } },
-			};
-			return undefined;
-		}, context);
 		await first.close(context);
+		const killed = await DismissHarness.open(await openSqliteStorage(path), fake.review);
+		opened.push(killed);
+		await dismissCutShort(killed.harness, id);
+		await killed.close(context);
 		const { publish, statuses } = await publisher(path);
 
 		await expect(publish()).rejects.toMatchObject({ code: "notReviewed" });
@@ -473,6 +489,55 @@ describe("recording a dismissal", () => {
 		await dismissing.close(context);
 		await publish();
 		expect(statuses).toEqual([{ state: "success", description: "Passed" }]);
+	});
+
+	it("lets a later review attach to the adjudication a cut-short dismissal left pending", async () => {
+		const path = join(dir, "changeset.sqlite");
+		const first = await reviewHarness(await openSqliteStorage(path));
+		scriptFinding();
+		const id = (await reviewed(first)).findings[0]!.properties.id;
+		await first.close(context);
+		const killed = await DismissHarness.open(await openSqliteStorage(path), fake.review);
+		opened.push(killed);
+		await dismissCutShort(killed.harness, id);
+		const pending = await adjudicationTask(killed.harness);
+		await killed.close(context);
+		const calls = fake.provider.state.callCount;
+
+		const reopened = await reviewHarness(await openSqliteStorage(path));
+		const { verdict } = await reviewed(reopened);
+
+		expect(verdict).toMatchObject({ status: "passed", blocking: false });
+		expect(verdict.dismissed.map((each) => each.properties.dismissal)).toEqual([dismissal]);
+		expect(fake.provider.state.callCount).toBe(calls);
+		expect(await adjudicationTask(reopened)).toBe(pending);
+		const task = await reopened.getTask(pending as TaskId, context);
+		expect(task?.state).toMatchObject({ status: "terminal", outcome: { status: "completed", result: "recorded" } });
+	});
+
+	it("supersedes a cut-short dismissal's adjudication when the finding is dismissed again with another reason", async () => {
+		const path = join(dir, "changeset.sqlite");
+		const first = await reviewHarness(await openSqliteStorage(path));
+		scriptFinding();
+		const id = (await reviewed(first)).findings[0]!.properties.id;
+		await first.close(context);
+		const killed = await DismissHarness.open(await openSqliteStorage(path), fake.review);
+		opened.push(killed);
+		await dismissCutShort(killed.harness, id);
+		const pending = await adjudicationTask(killed.harness);
+		await killed.close(context);
+		const dismissing = await DismissHarness.open(await openSqliteStorage(path), fake.review);
+		opened.push(dismissing);
+		const later = { ...dismissal, reason: "The caller checks it first.", at: "2026-10-04T02:00:00Z" };
+
+		const recorded = await dismiss(dismissing.harness, id, later);
+
+		expect(recorded.replaced).toEqual(dismissal);
+		expect(recorded.finding.properties).toMatchObject({ dismissal: later });
+		expect(recorded.finding.properties.pastDismissals).toEqual([{ ...dismissal, replacedAt: later.at }]);
+		expect(await adjudicationTask(dismissing.harness)).not.toBe(pending);
+		const old = await dismissing.harness.waitForTask(pending as TaskId, context);
+		expect(old.state.outcome).toEqual({ status: "completed", result: "superseded" });
 	});
 
 	it("refuses to publish a verdict whose adjudication ended without deciding, naming why", async () => {

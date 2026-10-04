@@ -30,6 +30,7 @@ import {
 	reviewScenario,
 	scenarioModels,
 	scenarioRepository,
+	stackOnEditedParent,
 	trimmedGreeting,
 	unsafeManager,
 } from "./fixtures/scenario.ts";
@@ -380,6 +381,54 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		]);
 		expect(await publish(github, changeset)).toMatchObject({ posted: 0, dismissed: 0, replies: 0 });
 		expect(state.comments.filter((comment) => comment.in_reply_to_id === Number(thread))).toHaveLength(2);
+	});
+
+	it("answers a finding dismissed again in the new thread it was reposted in at the same head after a retarget", async () => {
+		stackOnEditedParent(repo);
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		const github = providerFor(state);
+		harness = await openPublishHarness(createMemoryStorage(), fake, github);
+		const root = (await harness.root(context)).id;
+		const script = lensScript(unsafeManager, emptyName, nanRetries);
+		// Reviews the head against `range` as the pull request's base, publishes, then dismisses the manager finding and
+		// publishes again, returning the finding's thread.
+		const reviewDismissPublish = async (range: string, reason: string) => {
+			const { changeset, review } = await reviewScenario(repo, harness!, fake, script, false, { range });
+			await review;
+			moveTo(state, changeset);
+			await publish(github, changeset);
+			const manager = (await readFindings(harness!, root, revisionKey(changeset.revision), context)).find(
+				(finding) => finding.ruleId === "null-dereference",
+			)!;
+			const thread = (await readPublished(harness!, root, changeset.revision.head, context))!.threads[
+				manager.properties.id
+			]!;
+			await recordDismissal({
+				harness: harness!,
+				revision: changeset.revision,
+				id: manager.properties.id,
+				dismissal: { by: "Melian Test <test@melian.invalid>", reason, at: new Date().toISOString() },
+				repoRoot: repo,
+			});
+			await publish(github, changeset);
+			return { thread, manager, head: changeset.revision.head };
+		};
+
+		const first = await reviewDismissPublish("parent...feature", "The parent guarantees a manager.");
+		const second = await reviewDismissPublish("main...feature", "Every user here has a manager.");
+
+		expect(second.head).toBe(first.head);
+		expect(second.manager.properties.id).toBe(first.manager.properties.id);
+		expect(second.manager.properties.pastDismissals).toHaveLength(1);
+		expect(second.thread).not.toBe(first.thread);
+		const answer = (thread: string) =>
+			state.comments
+				.filter((comment) => comment.in_reply_to_id === Number(thread))
+				.map((comment) => comment.body.split("\n")[1]);
+		const short = first.head.slice(0, 12);
+		expect(answer(first.thread)).toEqual([`Dismissed at \`${short}\`: The parent guarantees a manager.`]);
+		expect(answer(second.thread)).toEqual([`Dismissed at \`${short}\`: Every user here has a manager.`]);
 	});
 
 	it("sets the status and finishes when a resolved finding's thread was deleted", async () => {
