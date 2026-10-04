@@ -460,10 +460,12 @@ models:
 ```
 
 - `accept` lists the models that satisfy the tier.
-- `unavailable` is `derive`, the default, or `fail`. With `derive` the resolver picks a credentialed model from the catalogue. With `fail` and no accepted model credentialed, every check on that tier records `failed` with the reason, and the verdict is not reviewed.
+- `unavailable` is `derive`, the default, or `fail`. With `derive` the resolver prefers a credentialed model from `accept`. When none is credentialed it may pick another from the catalogue, and every check that runs on it records the same outside-policy lineage an override does. With `fail` and no accepted model credentialed, every check on that tier records `failed` with the reason, and the verdict is not reviewed.
 - `acceptOverridden: false` refuses a check on the tier that ran outside policy, below. In milestone 2 the key fails closed everywhere, locally too: such a check records `failed` with the reason, and the verdict is not reviewed. From milestone 3, a host completing the manifest reruns such a check instead.
 
-A local file or `--model` may route a tier outside `accept`. The review runs, and every check that ran outside policy records in its lineage the lens, the model it ran on, the model policy wanted, and the file or flag that overrode it. That record appears in the CLI's output, in `melian findings --json`, in the review body, and uncollapsed at the top of the [ledger](#the-ledger). Routes stay overridable per path, and a local file may pin one lens to a model or cap its level. Policy, routes included, is still read from the base for a pull request, so a pull-request review takes the base's routes, a derived route, or `--model`.
+A local file, `--model`, or a derived route may put a tier outside `accept`. The review runs, and every check that ran outside policy records in its lineage the lens, the model it ran on, the model policy wanted, and the file, flag, or derivation that put it there. That record appears in the CLI's output, in `melian findings --json`, in the review body, and uncollapsed at the top of the [ledger](#the-ledger). Routes stay overridable per path, and a local file may pin one lens to a model or cap its level.
+
+Preference files apply only to a range review on the checked-out commit, whose policy comes from the working tree. Policy, routes included, is read from the base for a pull request, and a pull-request review reads no preference file: it takes the base's routes, a derived route, or `--model`. Both kinds of review can produce an outside-policy record: a range review through a local file, `--model`, or derivation, and a pull-request review through `--model` or derivation.
 
 Asking a model which model should verify a finding would add noise to a question with a right answer the model cannot see. Which lenses run, and how hard, is a judgment over content, and belongs to [triage](#scrutiny-levels).
 
