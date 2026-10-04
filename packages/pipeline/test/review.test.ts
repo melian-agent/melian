@@ -1,6 +1,7 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
 	type CheckRecord,
 	createFinding,
@@ -8,6 +9,7 @@ import {
 	type Finding,
 	type Lens,
 	type LensBudget,
+	loadConfig,
 	loadLenses,
 	type MelianConfig,
 	ModelRoutingError,
@@ -2247,6 +2249,53 @@ describe("adjudication", () => {
 				status: "not-reviewed",
 				notRun: [{ name: "lens.security", status: "failed", reason: "no lens is named security" }],
 			});
+		});
+
+		it.each([
+			["has no files", lines("Notes.")],
+			["touches only docs", lines("Notes, revised.")],
+		])("passes a change that %s under Melian's own tiers, skipping its repository lens", async (_, notes) => {
+			const own = (path: string) =>
+				readFileSync(fileURLToPath(new URL(`../../../${path}`, import.meta.url)), "utf8");
+			rmSync(repo, { recursive: true, force: true });
+			repo = baseAndHead(
+				{
+					"melian.yaml": own("melian.yaml"),
+					".melian/lenses/durability/LENS.md": own(".melian/lenses/durability/LENS.md"),
+					"docs/notes.md": lines("Notes."),
+				},
+				{ "docs/notes.md": notes },
+			);
+			const base = { kind: "revision", commit: gitIn(repo, "rev-parse", "main") } as const;
+			const { revision } = await resolveRange(repo, "main...feature");
+			const { config: melian } = await loadConfig(repo, base, ".");
+			const everyBuiltIn = [
+				"correctness",
+				"contracts",
+				"trust-boundary",
+				"removed-behaviour",
+				"tests",
+				"conventions",
+			];
+			scriptConversations(
+				fake,
+				everyBuiltIn.map((name) => ({
+					match: `You are the ${name} reviewer`,
+					replies: [fauxAssistantMessage("Done.")],
+				})),
+			);
+
+			const { verdict } = await reviewed({
+				config: { ...melian, models: config.models },
+				lenses: await loadLenses(
+					repo,
+					base,
+					revision.files.map((file) => file.path),
+				),
+			});
+
+			expect(verdict.status).toBe("passed");
+			expect(verdict.notRun).toContainEqual({ name: "lens.durability", status: "skipped", reason: "no paths" });
 		});
 
 		it("lets decision questions skip when no decision provider is configured", async () => {

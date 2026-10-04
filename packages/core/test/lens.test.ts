@@ -263,6 +263,23 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		expect(lensCovers(selected!.coverage, "src/other.ts")).toBe(true);
 	});
 
+	it("loads the root's lenses, and no folder's, when a change has no paths", async () => {
+		writeFiles(repo, {
+			".melian/lenses/security/LENS.md": lensFile(security),
+			"services/pay/.agents/lenses/billing/LENS.md": lensFile([
+				"name: billing",
+				"description: Billing rules.",
+				"tier: medium",
+				"rules:",
+				"  - id: wrong-total",
+				"    description: A total is wrong.",
+			]),
+		});
+		const lenses = await load([]);
+		expect(lenses.map((lens) => lens.name)).toEqual([...builtins, "security"].sort());
+		expect(named(lenses, "security")[0]!.scope).toBe("");
+	});
+
 	it("lets .melian/lenses win a name .agents/lenses also defines", async () => {
 		writeFiles(repo, {
 			".melian/lenses/security/LENS.md": lensFile(security, "From .melian."),

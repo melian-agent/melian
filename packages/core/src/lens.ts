@@ -486,9 +486,10 @@ function layer(definitions: readonly Definition[]): Lens[] {
  *
  * Built-in lenses come first. Over them layer the `.melian/lenses/<name>/LENS.md` and `.agents/lenses/<name>/LENS.md`
  * of every directory from the root down to each path, nearest last, so the nearest definition of a name wins; within
- * one directory `.melian/` wins over `.agents/`. A definition with `extends` overrides the fields it sets on the named
- * lens as layered so far and appends its body; one without replaces any farther lens of its name. Repository lenses are
- * read from `source`, as configuration is, so a pull request's head cannot rewrite the lenses that review it.
+ * one directory `.melian/` wins over `.agents/`. With no paths, the built-ins and the root directory's lenses load. A
+ * definition with `extends` overrides the fields it sets on the named lens as layered so far and appends its body; one
+ * without replaces any farther lens of its name. Repository lenses are read from `source`, as configuration is, so a
+ * pull request's head cannot rewrite the lenses that review it.
  *
  * Throws {@link LensError} naming the file for a symlink, a file over {@link lensLimits}, an unreadable file, bad
  * front matter, a missing required field, or an `extends` naming no lens; and {@link OutsideRepositoryError} when a
@@ -531,8 +532,11 @@ export async function loadLenses(
 		for (const lens of layer([...builtins, ...repository]))
 			union.set(`${lens.name}\0${lens.version}`, withNearer(lens));
 	}
-	if (paths.length === 0)
-		for (const lens of layer(builtins)) union.set(`${lens.name}\0${lens.version}`, withNearer(lens));
+	// With no paths, the root's lenses still load, so a tier that names one records it skipped, not unknown.
+	if (paths.length === 0) {
+		const root = defined.has("") ? await definitionsIn("") : [];
+		for (const lens of layer([...builtins, ...root])) union.set(`${lens.name}\0${lens.version}`, withNearer(lens));
+	}
 	return [...union.values()].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
