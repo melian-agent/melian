@@ -42,6 +42,7 @@ import { AdjudicationTask, type AdjudicationTaskInput } from "../src/adjudicatio
 import { FindingsDocument } from "../src/findings.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
+import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
 const correctness = "You are the correctness reviewer";
 const contracts = "You are the contracts reviewer";
@@ -104,7 +105,11 @@ beforeEach(async () => {
 	dir = mkdtempSync(join(tmpdir(), "melian-dismiss-"));
 	fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
 	const heavy = fake.ref("heavy");
-	config = { ...defaultConfig, models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } } };
+	config = {
+		...defaultConfig,
+		tiers: twoLensTiers,
+		models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
+	};
 	lenses = await loadLenses(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/user.ts"]);
 });
 
