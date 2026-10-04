@@ -673,6 +673,8 @@ Solution: publication maintains one comment Melian owns per pull request, the le
 2. Override and not-reviewed warnings, uncollapsed.
 3. A walkthrough, collapsed: a paragraph, a table of file or layer to summary, and a sequence diagram where one applies. The [summarise task](#the-pipeline) writes it on the `light` model tier, reading head content inside prompt boundaries and holding no write credentials, and publish renders it through the same escaping as findings. It is labelled a summary, never a verdict.
 4. Run details, collapsed: the manifest, the plan with its models and levels, lineage, caps, timings, cost, and the standards files each lens read.
+
+Neither the hidden stamp nor the run details carries `dismissal.by`: the dismisser Melian records is a git identity whose email does not belong on a pull request, as [the dismissal publication decision](decisions/2026-10-04-dismissal-publication.md) says, and the dismissals section gives only each reason.
 5. Verification outcomes.
 6. Dismissals with their reasons.
 7. One collapsed section per earlier round, each trimmed to a line as the body nears GitHub's limit of 65,536 characters.

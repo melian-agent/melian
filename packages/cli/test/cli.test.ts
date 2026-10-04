@@ -314,6 +314,29 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("says in one line that git has no author to record as the dismisser", () => {
+		const { repo, env, id } = reviewedNullDeref();
+		const {
+			GIT_AUTHOR_NAME: _,
+			GIT_AUTHOR_EMAIL: __,
+			...rest
+		} = { ...process.env, ...gitEnv, NO_COLOR: "1", ...env };
+		// Only an identity set in configuration counts, so git cannot guess one from the host.
+		const strict = { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "user.useConfigOnly", GIT_CONFIG_VALUE_0: "true" };
+
+		const result = spawnSync(process.execPath, [bin, "dismiss", range, id, "--reason", reason], {
+			cwd: repo,
+			encoding: "utf8",
+			env: { ...rest, ...strict },
+			timeout: 60_000,
+		});
+
+		expect(result.status).toBe(1);
+		expect(result.stderr).toBe(
+			"melian: Melian records who dismissed a finding as the git author, and git has none: git var failed: Author identity unknown; set user.name and user.email\n",
+		);
+	});
+
 	it("exits 1 when the review or the finding is not found", () => {
 		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!);
 		expect(melian(repo, ["dismiss", "main", "0123456789abcdef", "--reason", reason], env)).toMatchObject({

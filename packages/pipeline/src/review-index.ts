@@ -1,4 +1,4 @@
-import { defineDoc } from "./harness.ts";
+import { defineDoc, type TaskId, type Tx } from "./harness.ts";
 
 // Type aliases, not interfaces: a document's value must satisfy Pi's JsonObject, which an interface never does.
 type IndexedReview = {
@@ -23,3 +23,16 @@ export const ReviewIndex = defineDoc<ReviewIndexState>({
 	fork: "current",
 	initial: () => ({ reviews: {} }),
 });
+
+// Outcomes that decided nothing: a cancelled task, one that broke the task contract, and one whose definition is gone.
+export const undecided: readonly string[] = ["aborted", "faulted", "orphaned"];
+
+// Whether a repeat call may attach to the task the index names: one that is live, crashed, or decided something, and
+// whose outcome is not one of `retry`. A task that ended without deciding would hand every later call the same
+// non-result.
+export async function attachable(tx: Tx, id: number | undefined, retry: readonly string[]): Promise<boolean> {
+	if (id === undefined) return false;
+	const record = await tx.task(id as TaskId);
+	if (record === undefined) return false;
+	return record.state.status !== "terminal" || !retry.includes(record.state.outcome.status);
+}

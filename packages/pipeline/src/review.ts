@@ -64,7 +64,7 @@ import {
 	type StoredBudgetEnd,
 } from "./lens-tools.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
-import { ReviewIndex, type ReviewIndexState } from "./review-index.ts";
+import { attachable, ReviewIndex, type ReviewIndexState, undecided } from "./review-index.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
 
 // One lens as the lens task runs it, at one level: everything resolved, nothing left to look up.
@@ -425,18 +425,6 @@ async function refuseIfBlocked(
 function omit<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K> {
 	const { [key]: _, ...rest } = value;
 	return rest;
-}
-
-// Outcomes that decided nothing: a cancelled task, one that broke the task contract, and one whose definition is gone.
-const undecided: readonly string[] = ["aborted", "faulted", "orphaned"];
-
-// Whether a repeat call may attach to the task the index names: one that is live, crashed, or decided something. A task
-// that ended without deciding would hand every later call the same non-result.
-async function attachable(tx: Tx, id: number | undefined, retry: readonly string[]): Promise<boolean> {
-	if (id === undefined) return false;
-	const record = await tx.task(id as TaskId);
-	if (record === undefined) return false;
-	return record.state.status !== "terminal" || !retry.includes(record.state.outcome.status);
 }
 
 // One lens task per head and selection. A repeat call, such as a rerun after a crash, attaches to the task the first

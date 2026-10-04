@@ -243,8 +243,10 @@ export async function findings(
 // user.email.
 async function gitAuthor(repoRoot: string): Promise<string> {
 	const ident = await git(repoRoot, ["var", "GIT_AUTHOR_IDENT"]).catch((error: Error) => {
+		// git explains a missing identity over several lines; its first says what is wrong.
+		const why = error.message.split("\n")[0]!.trim();
 		throw new CliError(
-			`Melian records who dismissed a finding as the git author, and git has none: ${error.message}; set user.name and user.email`,
+			`Melian records who dismissed a finding as the git author, and git has none: ${why}; set user.name and user.email`,
 		);
 	});
 	return ident.replace(/ \d+ [+-]\d{4}$/, "");

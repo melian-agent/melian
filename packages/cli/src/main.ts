@@ -17,7 +17,8 @@ Commands:
   dismiss <range|#pr> <id> --reason <text> [--only]
                          Dismiss a finding of the stored review, with a reason, and decide its verdict again. It
                          dismisses every report merged into the finding unless --only names one report alone.
-                         Exits 0 when recorded, 1 when the review or the finding is not found.
+                         Exits 0 when recorded, 1 when the review or the finding is not found, or when the
+                         dismissal was recorded but the verdict could not be decided again.
   doctor                 Check Node, git, credentials, model routes, and GitHub access.
 
 Options:

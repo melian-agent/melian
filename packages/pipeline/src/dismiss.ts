@@ -20,7 +20,7 @@ import {
 	type TaskId,
 } from "./harness.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
-import { ReviewIndex } from "./review-index.ts";
+import { attachable, ReviewIndex, undecided } from "./review-index.ts";
 
 // The adjudication task alone, so a dismissal decides the verdict again without resuming a review a crash interrupted.
 const adjudicationExtension = defineExtension({ name: "melian.adjudication", tasks: [AdjudicationTask] });
@@ -172,14 +172,9 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		const key = JSON.stringify(input);
 		// Copies: the stored verdict is the commit's own view, unusable once the commit settles.
 		const also = members.filter((other) => dismissed.includes(other.id)).map((other) => ({ ...other }));
-		// The same dismissal again, as after a dismiss a crash cut short, waits for the adjudication it started.
-		const current = await tx.task(known.task as TaskId);
-		const undecided = ["aborted", "faulted", "orphaned", "failed"];
-		if (
-			known.input === key &&
-			current !== undefined &&
-			(current.state.status !== "terminal" || !undecided.includes(current.state.outcome.status))
-		) {
+		// The same dismissal again, as after a dismiss a crash cut short, waits for the adjudication it started, unless
+		// that ended without deciding, failed included, as a review would rerun it.
+		if (known.input === key && (await attachable(tx, known.task, [...undecided, "failed"]))) {
 			return { replaced, also, task: known.task as TaskId<AdjudicationResult> };
 		}
 		const task = await tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } });
