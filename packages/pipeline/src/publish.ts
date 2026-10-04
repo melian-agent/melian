@@ -3,8 +3,8 @@ import {
 	type Changeset,
 	diffLines,
 	dismissalVersion,
-	dismissedReports,
 	type Finding,
+	type FindingDismissal,
 	type Placement,
 	type PostedReview,
 	type PublishedMarkers,
@@ -252,11 +252,15 @@ function unanswered(state: PublishedState, head: string): Record<string, StoredF
 // Dismissed findings whose thread last heard another reason. The fingerprint leaves dismissals out, so no round plans
 // them, and each is resolved again at `head` with the dismissal it has now. A finding's thread is the one the newest
 // head naming it holds; a finding still open there, or answered without a dismissal, is a round's to answer.
-function redismissed(state: PublishedState, head: string, verdict: Verdict): Record<string, StoredFinding> {
+function redismissed(
+	state: PublishedState,
+	head: string,
+	dismissals: Readonly<Record<string, FindingDismissal>>,
+): Record<string, StoredFinding> {
 	const answered = repliedKeys(state);
 	const planned = state.revisions[head]?.resolved ?? {};
 	const again: Record<string, StoredFinding> = {};
-	for (const [id, dismissal] of dismissedReports(verdict)) {
+	for (const [id, dismissal] of Object.entries(dismissals)) {
 		const latest = state.order.findLast((each) => {
 			const record = state.revisions[each]!;
 			return Object.hasOwn(record.open, id) || Object.hasOwn(record.resolved, id);
@@ -296,7 +300,7 @@ function planRound(
 		const held = new Set(
 			[...Object.values(verdict.findings).flat(), ...verdict.dismissed].map((finding) => finding.properties.id),
 		);
-		const dismissed = dismissedReports(verdict);
+
 		// A resolution still owed is carried as its reply would read now: with the dismissal of the finding that holds its
 		// ID dismissed, itself or merged, and otherwise as it was owed, while no finding with the ID is held. A dismissal
 		// note owed for code a later head removed is still owed. One whose reply, as it would read now, is recorded is
@@ -304,7 +308,7 @@ function planRound(
 		const answered = repliedKeys(state);
 		for (const [id, entry] of Object.entries(unanswered(state, head))) {
 			if (Object.hasOwn(plan.open, id)) continue;
-			const now = dismissed.get(id);
+			const now = Object.hasOwn(plan.dismissals, id) ? plan.dismissals[id] : undefined;
 			const carried =
 				now !== undefined
 					? { ...structuredClone(entry), dismissal: { ...now } }
@@ -540,7 +544,9 @@ function publishTask(provider: ReviewProvider) {
 						result.resolved += closed.filter((entry) => entry.dismissal === undefined).length;
 					}
 					// A reason changed by a second dismissal takes a reply alone, under the status already set.
-					const again = redismissed(await read(), head, verdict);
+					// The dismissals a publication of the verdict answers, whatever the pull request already shows.
+					const { dismissals } = planPublication(verdict, {}, lines, head);
+					const again = redismissed(await read(), head, dismissals);
 					if (Object.keys(again).length > 0) {
 						await runtime.commit(async (tx) => {
 							const stored = (await tx.doc(PublishedDocument, root)).revisions[head]!;

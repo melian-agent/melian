@@ -119,22 +119,6 @@ export function replyKey(id: string, thread: string, dismissal?: string): string
 	return [id, thread, ...(dismissal === undefined ? [] : [dismissal])].join(" ");
 }
 
-/**
- * Each dismissal in `verdict` by the ID of every report it dismissed: the dismissed finding's own and each one
- * adjudication merged into it. A finding posted under a report's ID that now speaks through another is answered with
- * the dismissal, not as though the revision no longer reported it.
- */
-export function dismissedReports(verdict: Verdict): Map<string, FindingDismissal> {
-	const reports = new Map<string, FindingDismissal>();
-	for (const { properties } of verdict.dismissed) {
-		if (properties.dismissal === undefined) continue;
-		for (const id of [properties.id, ...(properties.alsoReportedAs ?? []).map((other) => other.id)]) {
-			if (!reports.has(id)) reports.set(id, properties.dismissal);
-		}
-	}
-	return reports;
-}
-
 /** What one revision's publication posts, decided by {@link planPublication}. */
 export interface PublicationPlan {
 	/** Findings that need attention and were not open before, each with its placement. */
@@ -148,6 +132,12 @@ export interface PublicationPlan {
 	 * included. Threads for the findings this revision posts come from the post.
 	 */
 	readonly open: Readonly<Record<string, PublishedFinding>>;
+	/**
+	 * Each dismissal in the verdict by the ID of every report it dismissed: the dismissed finding's own and each one
+	 * adjudication merged into it, so a finding posted under a report's ID that now speaks through another is answered
+	 * with the dismissal, not as though the revision no longer reported it.
+	 */
+	readonly dismissals: Readonly<Record<string, FindingDismissal>>;
 }
 
 /**
@@ -157,8 +147,8 @@ export interface PublicationPlan {
  * Findings that resolve to `block`, `acknowledge`, or `advisory` need attention. One not already open is posted; one
  * already open is not posted again. An open finding the verdict no longer holds in any group, silent and dismissed
  * included, is resolved. An open finding the verdict holds as dismissed, itself or merged into a dismissed finding, is
- * resolved with that dismissal, so its thread says why, and leaves `open`: if a changed trigger reopens it, it is posted afresh. A dismissed finding is never
- * posted. An open finding that turned silent stays in `open`, so if it needs attention again it returns to its own
+ * resolved with that dismissal, so its thread says why, and leaves `open`: if a changed trigger reopens it, it is
+ * posted afresh. A dismissed finding is never posted. An open finding that turned silent stays in `open`, so if it needs attention again it returns to its own
  * thread rather than starting a second one.
  */
 export function planPublication(
@@ -168,7 +158,13 @@ export function planPublication(
 	revision: string,
 ): PublicationPlan {
 	const attention = [...verdict.findings.block, ...verdict.findings.acknowledge, ...verdict.findings.advisory];
-	const dismissed = dismissedReports(verdict);
+	const dismissals: Record<string, FindingDismissal> = {};
+	for (const { properties } of verdict.dismissed) {
+		if (properties.dismissal === undefined) continue;
+		for (const id of [properties.id, ...(properties.alsoReportedAs ?? []).map((other) => other.id)]) {
+			dismissals[id] ??= { ...properties.dismissal };
+		}
+	}
 	const held = new Set([...attention, ...verdict.findings.silent].map((finding) => finding.properties.id));
 	const post: PlacedFinding[] = [];
 	const stillOpen: string[] = [];
@@ -191,10 +187,10 @@ export function planPublication(
 		.sort()
 		.filter((id) => !held.has(id))
 		.map((id): ClosedFinding => {
-			const dismissal = dismissed.get(id);
+			const dismissal = Object.hasOwn(dismissals, id) ? dismissals[id] : undefined;
 			return { id, ...previous[id]!, ...(dismissal === undefined ? {} : { dismissal: { ...dismissal } }) };
 		});
-	return { post, stillOpen, resolved, open };
+	return { post, stillOpen, resolved, open, dismissals };
 }
 
 /** A commit status: `success`, `failure`, or `error`, with a description for the author. */

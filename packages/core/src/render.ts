@@ -88,20 +88,17 @@ function dismissalLines(finding: Finding): string[] {
 	];
 }
 
-// The other reports of the finding's defect: those adjudication merged into it, which a dismissal of it dismisses too,
-// and the dismissed ones it lists beside it.
-function reportLines(finding: Finding, ids: boolean): string[] {
-	return (finding.properties.alsoReportedAs ?? []).map(({ id, ruleId, check, severity, dismissed }) => {
-		const what = `${severity === undefined ? "" : `${severity} `}${visibleText(ruleId)} from ${visibleText(check)}`;
-		return `    ${dismissed ? "Also reported, dismissed" : "Merged report"}: ${what}${ids ? `  ${visibleText(id)}` : ""}`;
-	});
-}
-
 function block(finding: Finding, paint: Paint, ids: boolean): string {
 	const { severity, cause, evidence, failureScenario, status, explanation, resolution, id } = finding.properties;
+	// The other reports of its defect: those adjudication merged into it, which a dismissal of it dismisses too, and the
+	// dismissed ones it lists beside it.
+	const reports = (finding.properties.alsoReportedAs ?? []).map((other) => {
+		const what = `${other.severity === undefined ? "" : `${other.severity} `}${visibleText(other.ruleId)} from ${visibleText(other.check)}`;
+		return `    ${other.dismissed ? "Also reported, dismissed" : "Merged report"}: ${what}${ids ? `  ${visibleText(other.id)}` : ""}`;
+	});
 	return [
 		`  ${paint(severityColor[severity], severity)}  ${lineSpan(finding)}  ${visibleText(finding.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"})${ids ? `  ${visibleText(id)}` : ""}`,
-		...reportLines(finding, ids),
+		...reports,
 		...dismissalLines(finding),
 		`  ${prose(finding.message.text, messageContinuation)}`,
 		`    What: ${prose(explanation.what, "      ")}`,

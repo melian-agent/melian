@@ -187,7 +187,6 @@ export {
 	type DiffLines,
 	diffLines,
 	dismissalVersion,
-	dismissedReports,
 	type PlacedFinding,
 	type Placement,
 	type PostedReview,
