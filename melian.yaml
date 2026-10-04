@@ -19,6 +19,28 @@ guardrails:
 
   forbidden-patterns:
     rules:
+      free-domain-function:
+        pattern: '^(export )?(async )?function \w+\((readonly )?(finding|findings|verdict|defect|manifest|lens|revision|changeset)\b'
+        paths:
+          - "packages/*/src/**"
+          # Grandfathered until refactored; a refactored file leaves this list in the same pull request.
+          - "!packages/cli/src/commands.ts"
+          - "!packages/cli/src/doctor.ts"
+          - "!packages/core/src/adjudication.ts"
+          - "!packages/core/src/findings.ts"
+          - "!packages/core/src/lens.ts"
+          - "!packages/core/src/publication.ts"
+          - "!packages/core/src/render.ts"
+          - "!packages/core/src/revision.ts"
+          - "!packages/core/src/static.ts"
+          - "!packages/github/src/publication.ts"
+          - "!packages/pipeline/src/adjudication.ts"
+          - "!packages/pipeline/src/findings.ts"
+          - "!packages/pipeline/src/lens-tools.ts"
+          - "!packages/pipeline/src/publish.ts"
+          - "!packages/pipeline/src/review.ts"
+          - "!packages/pipeline/src/testing.ts"
+        message: behaviour belongs to the object it is about; make this a method of the domain class, as AGENTS.md says
       focused-test:
         pattern: '^\s*(?:describe|it|test)\.only\('
         paths: ["**/*.test.ts"]

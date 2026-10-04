@@ -1,0 +1,7 @@
+# Domain objects carry behaviour
+
+Choice: Behaviour belongs to the object it is about. A function whose first parameter is a `Finding`, `Defect`, `Verdict`, `Manifest`, `Lens`, `Revision`, or `Changeset`, and that asks that object something or changes it, is a method of that class; a free function is for a transform between shapes that owns no state. Core's domain types become classes over their stored JSON, `Finding.from(stored)` and `toJSON()`, so a Pi Durable document stays JSON and the class is the runtime view, as Pi's `Transaction` is over stored entries. The guardrail `free-domain-function` holds new code to the rule, with a grandfather list of files that shrinks as each is refactored; a Biome GritQL plugin and a conventions-lens golden follow with the refactor.
+
+Why: The class convention this supersedes drew the line at identity, state, or lifecycle and left "transform" wide enough that `adjudication.ts` grew twenty-one free functions, thirteen of them asking a `Finding` something, and the same shape spread through `lens.ts`, `render.ts`, and `findings.ts`. A finding has an identity by construction, a verdict holds a manifest and a status, and a merged defect has a speaker: they are objects by the rule's own terms. The verifier, triage, and the ledger add behaviour to each, so they get a home first. Melian enforces the rule on itself through a guardrail today and a lint rule next, as [AGENTS.md](../../AGENTS.md) says a repeated review finding becomes a check.
+
+Supersedes: 2026-10-03-classes-for-stateful-objects.md
