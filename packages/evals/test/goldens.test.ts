@@ -72,7 +72,7 @@ describe("MELIAN_EVAL_GOLDEN", { timeout: 60_000 }, () => {
 		);
 	});
 
-	it("stops live.ts with status 2 before it touches a provider when the name matches no golden", () => {
+	it("exits live.ts with status 2, saying no golden has the name, when the name matches no golden", () => {
 		const live = fileURLToPath(new URL("../src/live.ts", import.meta.url));
 		const result = spawnSync(process.execPath, ["--conditions=@melian-agent/source", live], {
 			env: { PATH: process.env.PATH, MELIAN_EVAL_LIVE: "1", MELIAN_EVAL_GOLDEN: "no-such-golden" },
@@ -82,7 +82,7 @@ describe("MELIAN_EVAL_GOLDEN", { timeout: 60_000 }, () => {
 		expect(result.stderr).toMatch(/^No golden is named no-such-golden\./);
 	});
 
-	it("stops live.ts with status 2 before it touches a provider when the named golden sets live: false", () => {
+	it("exits live.ts with status 2, saying the golden runs scripted only, when it sets live: false", () => {
 		const live = fileURLToPath(new URL("../src/live.ts", import.meta.url));
 		const result = spawnSync(process.execPath, ["--conditions=@melian-agent/source", live], {
 			env: { PATH: process.env.PATH, MELIAN_EVAL_LIVE: "1", MELIAN_EVAL_GOLDEN: "pre-existing-beside-change" },
