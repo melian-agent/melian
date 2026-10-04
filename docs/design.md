@@ -197,7 +197,7 @@ rules:
     description: Request input reaches a query, command, or template unescaped.
 paths: ["**"]
 levels:
-  quick:    { tier: medium, reads: hunks,     verify: false, budget: { findings: 3,  tokens: 50k,  tools: 10 } }
+  quick:    { tier: medium, reads: hunks,     verify: false, budget: { findings: 3,  tokens: 100k, tools: 10 } }
   careful:  { tier: heavy,  reads: functions, verify: true,  budget: { findings: 8,  tokens: 200k, tools: 30 } }
   deep:     { tier: heavy,  reads: functions, verify: true,  budget: { findings: 12, tokens: 400k, tools: 60 } }
 extends: ~
@@ -210,7 +210,7 @@ Report through the finding tool.
 
 Front matter is routing; the body is the system prompt for the lens's child conversation.
 
-- `levels` sets, for each [scrutiny level](#scrutiny-levels), the model tier, the budgets, the reading scope, and whether the level's candidates are verified. Each field a level leaves out comes from the top-level `tier` and `budget`, so a lens that extends another and retiers it moves every level that names no tier of its own. A lens that declares no levels has one, `careful`, from its top-level fields. It runs only at `careful`, and triage's question for it collapses to skip or run. A lens that declares some levels has those and `careful`. The built-in lenses declare all three: `quick` on `medium`, reading hunks, unverified, with a small budget; `careful` as they ran in milestone 1; and `deep` on `heavy`, reading functions, with larger budgets. Until triage lands, every lens runs at `careful`.
+- `levels` sets, for each [scrutiny level](#scrutiny-levels), the model tier, the budgets, the reading scope, and whether the level's candidates are verified. Each field a level leaves out comes from the top-level `tier` and `budget`, so a lens that extends another and retiers it moves every level that names no tier of its own. A lens that declares no levels has one, `careful`, from its top-level fields. It runs only at `careful`, and triage's question for it collapses to skip or run. A lens that declares some levels has those and `careful`. The built-in lenses declare all three: `quick` on `medium`, reading hunks, unverified, with a small budget; `careful` as they ran in milestone 1, now held to 200,000 tokens and 30 tool calls; and `deep` on `heavy`, reading functions, with larger budgets. `quick`'s 100,000 tokens sit above the change prompt's cap of 200 KB, about 50,000 tokens, so a large diff alone cannot spend its budget in the first round. Until triage lands, every lens runs at `careful`.
 - `tier` names a model tier, never a model ID. Tiers resolve through the [review plan](#the-review-plan), which is overridable per path.
 - `reads` is `hunks` or `functions`, `hunks` by default. At `functions` the lens reviews the whole function around each hunk, because a defect can sit on a line the change left alone inside a function it edited, and that defect is the change's to answer for. The lens's instructions name its reading scope; at `functions` they tell it to read each enclosing function with `read_file`. Putting the functions into the prompt itself waits for a way to find them in every language Melian reviews.
 - `verify` sends the level's candidates to the [verifier](#verification).

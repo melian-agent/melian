@@ -76,9 +76,14 @@ describe("built-in lenses", () => {
 					tier: "medium",
 					reads: "hunks",
 					verify: false,
-					budget: { findings: 3, tokens: 50_000, tools: 10 },
+					budget: { findings: 3, tokens: 100_000, tools: 10 },
 				},
-				careful: { tier: "heavy", reads: "hunks", verify: true, budget: { findings: 8 } },
+				careful: {
+					tier: "heavy",
+					reads: "hunks",
+					verify: true,
+					budget: { findings: 8, tokens: 200_000, tools: 30 },
+				},
 				deep: {
 					tier: "heavy",
 					reads: "functions",
@@ -323,13 +328,13 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 			tier: "medium",
 			reads: "hunks",
 			verify: false,
-			budget: { findings: 3, tokens: 50_000, tools: 4 },
+			budget: { findings: 3, tokens: 100_000, tools: 4 },
 		});
 		expect(correctness!.levels.careful).toEqual({
 			tier: "heavy",
 			reads: "hunks",
 			verify: true,
-			budget: { findings: 8 },
+			budget: { findings: 8, tokens: 200_000, tools: 30 },
 		});
 	});
 
@@ -509,7 +514,7 @@ describe("renderLensInstructions", () => {
 			const policy = rendered.slice(lens.instructions.length);
 			for (const rule of lens.rules) expect(policy).toContain(`- \`${rule.id}\`: ${rule.description}`);
 			expect(policy).toContain(`Severities you may report: ${lens.severities.join(", ")}.`);
-			expect(policy).toContain(`Budget: at most ${lens.levels.careful.budget.findings} findings.`);
+			expect(policy).toContain(`Budget: at most ${lens.levels.careful.budget.findings} findings,`);
 		}
 	});
 
@@ -517,11 +522,13 @@ describe("renderLensInstructions", () => {
 		const [, correctness] = await loadLenses(repo, { kind: "worktree" }, []);
 		const careful = renderLensInstructions(correctness!, []);
 		expect(careful).toBe(renderLensInstructions(correctness!, [], "careful"));
-		expect(careful).toContain("Budget: at most 8 findings.\n");
+		expect(careful).toContain(
+			"Budget: at most 8 findings, 30 calls to the read-only tools, and 200,000 tokens of input and output.",
+		);
 		expect(careful).toContain("Reading scope: the hunks.");
 		const quick = renderLensInstructions(correctness!, [], "quick");
 		expect(quick).toContain(
-			"Budget: at most 3 findings, 10 calls to the read-only tools, and 50,000 tokens of input and output. When the tool calls or tokens run out, the review ends with what you have reported",
+			"Budget: at most 3 findings, 10 calls to the read-only tools, and 100,000 tokens of input and output. When the tool calls or tokens run out, the review ends with what you have reported",
 		);
 		const deep = renderLensInstructions(correctness!, [], "deep");
 		expect(deep).toContain("Reading scope: the hunks and the functions around them.");

@@ -1051,10 +1051,39 @@ describe("reviewChangeset", () => {
 			{ name: "lens.correctness", status: "ran", level: "careful" },
 		]);
 		const prompt = systemPromptOf(requests[correctness]![0]!);
-		expect(prompt).toContain("Budget: at most 8 findings.");
+		expect(prompt).toContain(
+			"Budget: at most 8 findings, 30 calls to the read-only tools, and 200,000 tokens of input and output.",
+		);
 		expect(prompt).toContain("Reading scope: the hunks.");
 		const root = (await harness.root(context)).id;
 		expect((await readVerdict(harness, root, reviewedRevision(), context))?.ran).toEqual(verdict.ran);
+	});
+
+	it("holds a built-in lens at careful to the level's own limit of 30 tool calls", async () => {
+		const reads = Array.from({ length: 30 }, (_, index): [string, Arguments] => [
+			"read_file",
+			{ path: "src/user.ts", startLine: (index % 8) + 1 },
+		]);
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					calls(...reads),
+					call("search", { pattern: "managerName" }),
+					fauxAssistantMessage("Never asked."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { verdict } = await reviewed();
+
+		expect(requests[correctness]).toHaveLength(2);
+		expect(verdict.notRun.find((check) => check.name === "lens.correctness")).toMatchObject({
+			status: "ended",
+			level: "careful",
+			budgetEnded: { budget: "tools", limit: 30, tools: 30 },
+		});
 	});
 
 	it("records the level on the check record of a lens that did not finish", async () => {
