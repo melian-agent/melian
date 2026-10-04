@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import {
+	capSnippet,
 	createFinding,
 	createFindingsLog,
 	type Finding,
@@ -9,6 +10,7 @@ import {
 	levelForSeverity,
 	maxEvidenceLocations,
 	maxFailureScenarioLength,
+	maxSnippetBytes,
 	normaliseSnippet,
 	parseFinding,
 	reportFindingInputSchema,
@@ -207,6 +209,26 @@ describe("reportFindingInputSchema", () => {
 
 	it.each(["snippet", "cause", "resolution", "status", "source"])("refuses a lens-chosen %s", (key) => {
 		expect(Value.Check(reportFindingInputSchema, { ...report, [key]: "x" })).toBe(false);
+	});
+});
+
+describe("capSnippet", () => {
+	it("keeps a snippet that fits in 2 KiB whole", () => {
+		const fits = "x".repeat(maxSnippetBytes);
+		expect(capSnippet(fits)).toEqual({ text: fits, kept: fits });
+	});
+
+	it("cuts a longer one at a character boundary, ending it with a marker naming the whole snippet's hash", () => {
+		for (const unit of ["x", "€", "😀"]) {
+			const long = unit.repeat(maxSnippetBytes + 1);
+			const { text, kept } = capSnippet(long);
+			expect(text.startsWith(kept)).toBe(true);
+			expect(text.slice(kept.length)).toMatch(/^ \[cut at 2 KiB; sha256 [0-9a-f]{16}\]$/);
+			expect(kept).toBe(unit.repeat(kept.length / unit.length));
+			expect(Buffer.byteLength(text)).toBeLessThanOrEqual(maxSnippetBytes);
+			expect(Buffer.byteLength(text)).toBeGreaterThan(maxSnippetBytes - 4);
+			expect(capSnippet(`${long}y`).text).not.toBe(text);
+		}
 	});
 });
 

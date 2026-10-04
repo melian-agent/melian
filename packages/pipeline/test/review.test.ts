@@ -10,7 +10,9 @@ import {
 	loadLenses,
 	type MelianConfig,
 	ModelRoutingError,
+	maxEvidenceLocations,
 	maxFailureScenarioLength,
+	maxSnippetBytes,
 	type RepositorySource,
 	resolveRange,
 } from "@melian-agent/core";
@@ -436,6 +438,43 @@ describe("reviewChangeset", () => {
 		).toEqual(["9998", "9999", "10000"]);
 		expect(toolResults(requests[correctness]![2]!).at(-1)).toMatch(/^recorded finding/);
 		expect(findings.map((finding) => finding.locations[0]!.physicalLocation.region.startLine)).toContain(9999);
+	});
+
+	it("stores at most 2 KiB of snippet per location, cut at a character, for ten locations on a multi-megabyte line", async () => {
+		writeFiles(repo, { "src/huge.ts": lines(`export const blob = "${"€".repeat(1_000_000)}";`) });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "a huge line");
+		const evidence = Array.from({ length: maxEvidenceLocations }, (_, index) => ({
+			file: "src/huge.ts",
+			line: 1,
+			role: index === 0 ? "cause" : "context",
+		}));
+		scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("report_finding", { ...nullDeref, file: "src/huge.ts", line: 1, rule: "wrong-result", evidence }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const [finding] = await review({ lenses: lenses.map((lens) => ({ ...lens, paths: ["**"] })) });
+
+		const snippets = [
+			finding!.locations[0]!.physicalLocation.region.snippet!.text,
+			finding!.properties.trigger!.snippet!,
+			...finding!.properties.evidence!.map((location) => location.snippet),
+		];
+		expect(snippets).toHaveLength(maxEvidenceLocations + 2);
+		for (const snippet of snippets) {
+			expect(Buffer.byteLength(snippet)).toBeLessThanOrEqual(maxSnippetBytes);
+			expect(snippet.startsWith('export const blob = "€€€')).toBe(true);
+			expect(snippet).toMatch(/€ \[cut at 2 KiB; sha256 [0-9a-f]{16}\]$/);
+			expect(snippet.isWellFormed() && !snippet.includes("\uFFFD")).toBe(true);
+		}
+		expect(Buffer.byteLength(JSON.stringify(finding))).toBeLessThan(32 * 1024);
 	});
 
 	it("refuses lines past the end of the file", async () => {

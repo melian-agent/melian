@@ -149,8 +149,28 @@ export const maxFailureScenarioLength = 2000;
 /** The most evidence locations one finding may carry. */
 export const maxEvidenceLocations = 10;
 
-/** The most lines one evidence location may span, so the snippet stored with it stays short. */
+/** The most lines one evidence location may span, so it names the code that matters rather than a whole file. */
 export const maxEvidenceLines = 60;
+
+/** The most bytes of UTF-8 a snippet a lens finding stores may hold, the cut marker included. */
+export const maxSnippetBytes = 2048;
+
+const encoder = new TextEncoder();
+
+/**
+ * A snippet as a lens finding stores it. `text` is the snippet itself when its UTF-8 fits in {@link maxSnippetBytes};
+ * otherwise its longest prefix that ends on a character boundary and leaves room for a marker, then the marker,
+ * ` [cut at 2 KiB; sha256 <16 hex digits>]`, which names the whole snippet's hash, so two snippets that differ only past
+ * the cut still differ. `kept` is that prefix, or the whole snippet. One long line repeated across a finding's
+ * locations then stores kilobytes, not megabytes.
+ */
+export function capSnippet(snippet: string): { readonly text: string; readonly kept: string } {
+	if (Buffer.byteLength(snippet) <= maxSnippetBytes) return { text: snippet, kept: snippet };
+	const marker = ` [cut at 2 KiB; sha256 ${createHash("sha256").update(snippet).digest("hex").slice(0, 16)}]`;
+	const { read } = encoder.encodeInto(snippet, new Uint8Array(maxSnippetBytes - marker.length));
+	const kept = snippet.slice(0, read);
+	return { text: `${kept}${marker}`, kept };
+}
 
 /**
  * The JSON Schema of a {@link ReportFindingInput}: what a lens supplies through its `report_finding` tool, and nothing

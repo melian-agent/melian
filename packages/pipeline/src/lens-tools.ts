@@ -1,5 +1,6 @@
 import {
 	type ChangedFile,
+	capSnippet,
 	classifyCause,
 	createFinding,
 	type EvidenceLocation,
@@ -342,20 +343,29 @@ async function evidenceFrom(args: ReportFindingInput["evidence"], review: Review
 					? '; for lines this change deleted, add revision: "base" to the location, naming a renamed file by its old path'
 					: "";
 			const { snippet } = await linesAt(review, revision, file, line, endLine, hint);
-			return { file, startLine: line, ...(last === undefined ? {} : { endLine }), role, revision, snippet };
+			return {
+				file,
+				startLine: line,
+				...(last === undefined ? {} : { endLine }),
+				role,
+				revision,
+				snippet: capSnippet(snippet).text,
+			};
 		}),
 	);
 }
 
 // The snippet comes from the head revision at the reported lines, never from the model, so a finding's ID does not
-// depend on how the model quoted the code.
+// depend on how the model quoted the code. A cut snippet's occurrence is its kept prefix's, which starts at the
+// reported line as the whole snippet does.
 async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, review: ReviewState): Promise<Finding> {
 	const path = repositoryPath(args.file);
 	if (!lensCovers(lens.coverage, path)) {
 		throw new Error(`${path} is outside the paths lens ${lens.name} reviews; report only within them`);
 	}
 	const endLine = args.endLine ?? args.line;
-	const { content, snippet } = await linesAt(review, "head", path, args.line, endLine);
+	const { content, snippet: whole } = await linesAt(review, "head", path, args.line, endLine);
+	const { text: snippet, kept } = capSnippet(whole);
 	const evidence = await evidenceFrom(args.evidence, review);
 	const location = { file: path, startLine: args.line, endLine };
 	const cause = classifyCause(location, { files: changedFiles(review) }, evidence);
@@ -369,14 +379,14 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 		startLine: args.line,
 		...(args.endLine === undefined ? {} : { endLine }),
 		snippet,
-		occurrence: snippetOccurrence(content, snippet, { startLine: args.line, endLine }),
+		occurrence: snippetOccurrence(content, kept, { startLine: args.line, endLine }),
 		cause,
 		failureScenario: args.failureScenario,
 		evidence,
 		...(hunk === undefined
 			? {}
 			: {
-					trigger: { file: hunk.file, index: hunk.index, snippet: hunk.added },
+					trigger: { file: hunk.file, index: hunk.index, snippet: capSnippet(hunk.added).text },
 				}),
 		severity,
 		explanation: {
