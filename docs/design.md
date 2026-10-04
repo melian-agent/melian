@@ -2,7 +2,7 @@
 
 This document records how Melian works and why. It is the source of truth for architecture decisions. The [README](../README.md) describes what Melian does at the capability level; this document describes how.
 
-Status: milestone 1, the local CLI loop, closed on 2026-10-04 with [the first publication](../packages/evals/runs/2026-10-04-first-publish.md). Milestone 2 makes Melian the review of record for its own repository, milestone 3 runs it on GitHub Actions, and milestone 4 teaches it to remember and learn. [design-implementation-plan.md](design-implementation-plan.md) plans all three. Each section below opens with the milestone that built it, or will.
+Status: milestone 1, the local CLI loop, closed on 2026-10-04 with [the first publication](../packages/evals/runs/2026-10-04-first-publish.md). Milestone 2 makes Melian the review of record for its own repository. Milestone 3, "Melian reviews pull requests on GitHub Actions", runs it there, and milestone 4 teaches it to remember and learn. [design-implementation-plan.md](design-implementation-plan.md) plans all three. Each section below opens with the milestone that built it, or will.
 
 ## Goals
 
@@ -71,7 +71,7 @@ Core, the pipeline, and the CLI and skill hosts were built in milestone 1. Triag
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Core** is harness-free TypeScript. It imports pi-ai types and nothing else from Pi. It holds the finding schema and stable IDs, finding identity and the lifecycle rules, guardrail evaluation, SARIF normalisation of static tool output, lens loading, configuration layering, the standards loader, the git client, and the provider port. The GitHub client lives in `packages/github`, behind that port. The `Decider` port arrives in milestone 2 and the knowledge loader in milestone 4. The `Decider` port sits beside the provider port, and its adapters live in `packages/decisions`, as the GitHub client does in `packages/github`. Dismissal, the first command that acts on findings across revisions, is planned for milestone 2. All of it is unit-testable without a harness.
+**Core** is harness-free TypeScript. It imports pi-ai types and nothing else from Pi. It holds the finding schema and stable IDs, finding identity and the lifecycle rules, guardrail evaluation, SARIF normalisation of static tool output, lens loading, configuration layering, the standards loader, the git client, and the provider port. The GitHub client lives in `packages/github`, behind that port. The `Decider` port arrives in milestone 2 beside the provider port, with its adapters in `packages/decisions` as the GitHub client is in `packages/github`, and the knowledge loader arrives in milestone 4. Dismissal, the first command that acts on findings across revisions, is planned for milestone 2. All of it is unit-testable without a harness.
 
 **Pipeline** is the only place review flow lives. It is written once against Pi Durable: tasks, child conversations, documents, memos, hooks. It also holds the static tool runners, because running a tool executes repository code and so goes through Pi Durable's `ExecutionEnv`, which core may not import. Every host embeds this layer; none reimplements it.
 
@@ -445,7 +445,7 @@ pi-ai provides providers, OAuth subscription auth, and the model catalogue. Meli
 
 Problem: a committed route chose every contributor's provider. Melian's own root `melian.yaml` once routed every tier to Anthropic, and a contributor with only Bedrock credentials saw `melian doctor` pass and every review exit not reviewed. Forbidding committed routes was the blunt fix: a team could share no default, and rolling Melian out meant every engineer writing routes by hand.
 
-Solution: which model plays which role is a lookup, never a model's judgment. At intake a deterministic resolver reads the routes, pi-ai's catalogue (family, context window, price), the credentials present, and, from milestone 4, the calibration store's scores per lens, and writes the review plan as a durable document. The plan routes each lens's finder; each candidate's verifier, on a different family from its finder when one is credentialed; and the walkthrough. It routes no deduper: the mechanical [merge](#the-pipeline) runs before verification, and detecting duplicates by meaning waits for a decision model in milestone 4. `melian doctor` prints the plan it would resolve now.
+Solution: which model plays which role is a lookup, never a model's judgement. At intake a deterministic resolver reads the routes, pi-ai's catalogue (family, context window, price), the credentials present, and, from milestone 4, the calibration store's scores per lens, and writes the review plan as a durable document. The plan routes each lens's finder; each candidate's verifier, on a different family from its finder when one is credentialed; and the walkthrough. It routes no deduper: the mechanical [merge](#the-pipeline) runs before verification, and detecting duplicates by meaning waits for a decision model in milestone 4. `melian doctor` prints the plan it would resolve now.
 
 A committed `melian.yaml` may carry the team's default routes. A committed route is a default: an engineer without its credential gets a derived route and a doctor line saying so, so rolling Melian out to a team is mostly distributing credentials. A route gains three keys:
 
@@ -469,7 +469,7 @@ A local file, `--model`, or a derived route may put a tier outside `accept`. The
 
 Preference files apply only to a range review on the checked-out commit, whose policy comes from the working tree. Policy, routes included, is read from the base for a pull request, and a pull-request review reads no preference file: it takes the base's routes, a derived route, or `--model`. Both kinds of review can produce an outside-policy record: a range review through a local file, `--model`, or derivation, and a pull-request review through `--model` or derivation.
 
-Asking a model which model should verify a finding would add noise to a question with a right answer the model cannot see. Which lenses run, and how hard, is a judgment over content, and belongs to [triage](#scrutiny-levels).
+Asking a model which model should verify a finding would add noise to a question with a right answer the model cannot see. Which lenses run, and how hard, is a judgement over content, and belongs to [triage](#scrutiny-levels).
 
 User documentation says that whether a subscription may be used in automation, or shared across a team, is a question for the provider's contract, and that Melian takes no position on it.
 
@@ -776,7 +776,7 @@ Milestone 1, the local CLI loop, is complete.
 
 Milestone 2 makes Melian the review of record for Melian. It brings the lens backlog, the verifier, and scrutiny levels with triage through the `Decider` port. It brings the review plan, the files a user owns, `melian dismiss`, the ledger, and the tool manifest with Enola. It ends with a required `melian/review` status on `main`, and takes the issues milestone 1 deferred. Authority over the Melian repository needs lens coverage, a verifier, dismissal, and a required status check, and none of them needs the Actions host. [The classification of 151 accepted findings](research/2026-10-04-review-findings-by-bucket.md) shows why coverage comes first: correctness, at 54, is the only bucket today's lenses plausibly cover, and trust boundary, at 28, and durability, at 17, have no check at all.
 
-Milestone 3 runs Melian on GitHub Actions: the Actions host completing the manifest from local records, the state branch, container isolation, the credential pool, and Opengrep and gitleaks.
+Milestone 3, "Melian reviews pull requests on GitHub Actions", brings the Actions host completing the manifest from local records, the state branch, container isolation, the credential pool, and Opengrep and gitleaks.
 
 Milestone 4 makes Melian remember and learn: comment commands including dismiss-with-reason, knowledge write-back, the decision-model adapters and the verification executor on them, and calibration. [design-implementation-plan.md](design-implementation-plan.md) defines each milestone and lists what is deferred. The server host, Slack, autofix, and fine-tuning decision models from calibration data are not yet scheduled.
 

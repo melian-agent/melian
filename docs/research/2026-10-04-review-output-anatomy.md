@@ -6,12 +6,12 @@ Source: [CodeRabbit](https://www.coderabbit.ai)'s comments on fourteen pull requ
 
 ## The summary comment
 
-Each pull request has one summary comment carrying a hidden marker. CodeRabbit rewrites it on every push, nineteen times on one pull request and sixteen on another, so its creation time stays at the first review and only its edit time moves. In order:
+Each pull request has one summary comment with a hidden marker. CodeRabbit rewrites it on every push, nineteen times on one pull request, so only its edit time moves. In order:
 
 1. A badge linking to the vendor's change view.
-2. A status callout, uncollapsed, only while it applies: processing new changes; reviews paused, with resume and trigger checkboxes; review limit reached, with the minutes to wait; review skipped, for example because the author is a bot.
-3. The recent review: "No actionable comments were generated in the recent review" when that is so, then a collapsed block with the run configuration, the commits, the files selected, the files skipped as similar to earlier changes, the code guidelines used, and how many included reviews remain.
-4. A collapsed walkthrough: a paragraph; a table of layer or file to summary under bold group titles; a priority, an estimated review effort in minutes, and a change type; and a mermaid sequence diagram, left out for docs-only changes.
+2. A status callout, uncollapsed, only while it applies: processing; reviews paused, with resume checkboxes; review limit reached, with the wait; review skipped, say for a bot author.
+3. The recent review: a line saying nothing actionable was found, when so, then a collapsed block with the run configuration, the commits, the files selected and skipped, the code guidelines used, and the reviews remaining.
+4. A collapsed walkthrough: a paragraph; a table of layer or file to summary; a priority, an estimated review effort, and a change type; and a mermaid sequence diagram, left out for docs-only changes.
 5. A merge-risk line, uncollapsed, with a label, "up to" a short head SHA, and a paragraph of rationale, backed by hidden JSON naming the source commit and the covered commit.
 6. Collapsed pre-merge checks with pass and fail counts: title, description, linked issues, out-of-scope changes, and docstring coverage.
 7. Collapsed finishing touches and an autopilot checkbox, then a tip about the help command.
@@ -20,14 +20,14 @@ Never seen in the sample: the poem, related pull requests, suggested labels, sug
 
 ## Naming what a review covers
 
-- A commits heading in the review body and the summary: reviewing files changed from the base and between the previous reviewed SHA and the head SHA.
+- A commits heading in the review body and the summary, naming the previous reviewed SHA and the head SHA.
 - The merge-risk "up to" line and its hidden coverage JSON.
 - File lists: selected, ignored by path filters, no reviewable changes, and skipped as similar.
-- A manual trigger gets a short reply, performed or not completed, noting that review is incremental and reviewed commits are not reviewed again.
+- A manual trigger gets a short reply noting that review is incremental.
 
 ## The review body
 
-One per push, always with the event `COMMENTED`: an actionable-comment count; a caution callout listing comments outside the diff range; nitpicks nested by file, each with its own prompt for agents; one combined prompt to fix everything; and collapsed review details with the configuration, run ID, commits, and file lists.
+One per push, always with the event `COMMENTED`: an actionable-comment count; a callout listing comments outside the diff; nitpicks by file, each with a prompt for agents; one combined prompt to fix everything; and collapsed details with the configuration, run ID, commits, and files.
 
 ## Inline comments
 
@@ -40,11 +40,11 @@ One per push, always with the event `COMMENTED`: an actionable-comment count; a 
 
 ## After a push
 
-An incremental review covers the range from the last reviewed head to the new one, and earlier findings get the addressed line and are resolved. A push with nothing new may post no review at all. After several pushes auto-review pauses; one maintainer re-triggered it five times by comment. In a thread the bot can withdraw a finding and resolve it, and notes when it added or removed a learning.
+An incremental review covers the range from the last reviewed head to the new one, and fixed findings get the addressed line and are resolved. A push with nothing new may post no review. After several pushes auto-review pauses; one maintainer re-triggered it five times. In a thread the bot can withdraw a finding, and notes when it changes a learning.
 
 ## Configuration seen
 
-One repository sets the chill profile, request-changes off, the poem off, auto-review on except for drafts, and two path instructions, and leaves the walkthrough, diagrams, pre-merge checks, and base branches at their defaults. The other sets only auto-review on drafts, so the review loop runs on drafts while CI skips them.
+One repository sets the chill profile, request-changes off, auto-review except on drafts, and two path instructions, and leaves the walkthrough and pre-merge checks at their defaults. The other only turns auto-review on for drafts, which CI skips.
 
 ## What maintainers value and work around
 
@@ -54,7 +54,7 @@ One repository sets the chill profile, request-changes off, the poem off, auto-r
 - A pull request on a non-default base, or from a bot, gets no review, and the skip reads like a clean review.
 - Reviews stop at 150 files.
 - Because the summary is edited in place, a watcher must read its edit time and coverage stamp, not its creation time. A heading that moved into a callout broke one watcher.
-- A changes-requested state sticks until dismissed, an info-level thread never resolves itself, and nitpicks have no thread, so maintainers answer them in a top-level comment.
+- A changes-requested state sticks until dismissed, an info thread never resolves itself, and nitpicks have no thread.
 - Valued: learnings, where a well-argued decline pays off later; draft-first pull requests; a cheap fallback review when rate-limited.
 
 ## What to take and what to avoid
