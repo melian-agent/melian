@@ -315,5 +315,5 @@ export function renderResolvedReply(finding: ClosedFinding, revision: string, se
 
 // Prose on one line, for a list item or a reply's single line.
 function inline(text: string): string {
-	return renderProse(text).replace(/\r?\n/g, " ");
+	return renderProse(text).replace(/\r\n?|\n/g, " ");
 }

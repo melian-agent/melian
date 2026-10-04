@@ -363,11 +363,12 @@ export type FindingDismissal = Static<typeof findingDismissalSchema>;
 export type PastDismissal = Static<typeof pastDismissalSchema>;
 
 /**
- * A dismissal's reason without surrounding whitespace. Throws {@link FindingError} `invalidDismissal` when it is blank
+ * A dismissal's reason without surrounding whitespace, each line break a plain `\n`: a lone carriage return ends a
+ * line in markdown too, so it would let a reason break out of the one line a pull request reply gives it. Throws {@link FindingError} `invalidDismissal` when it is blank
  * or longer than {@link maxDismissalReasonLength}.
  */
 export function dismissalReason(reason: string): string {
-	const trimmed = reason.trim();
+	const trimmed = reason.replace(/\r\n?/g, "\n").trim();
 	if (trimmed === "") {
 		throw new FindingError("invalidDismissal", "a dismissal needs a reason", {
 			path: "/properties/dismissal/reason",

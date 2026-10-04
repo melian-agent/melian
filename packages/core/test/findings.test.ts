@@ -244,6 +244,8 @@ describe("snippetHash", () => {
 describe("dismissalReason", () => {
 	it("trims a reason, and refuses one that is blank or over the bound", () => {
 		expect(dismissalReason("  constant input \n")).toBe("constant input");
+		// A lone carriage return ends a markdown line too, so a reason holds only plain line feeds.
+		expect(dismissalReason("ok\r===\r\n- item")).toBe("ok\n===\n- item");
 		expect(dismissalReason("x".repeat(maxDismissalReasonLength))).toHaveLength(maxDismissalReasonLength);
 		for (const reason of ["", " \t\n", "x".repeat(maxDismissalReasonLength + 1)]) {
 			expect(() => dismissalReason(reason)).toThrow(expect.objectContaining({ code: "invalidDismissal" }));
