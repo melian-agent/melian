@@ -1,0 +1,5 @@
+# Affected finding trigger
+
+Choice: An `affected` finding's trigger covers every hunk a proving `cause` location falls on, ordered by file then hunk index. It names the first of them, with that hunk's added lines, cut for storage, as its snippet. Its hash is `snippetHash` of every proving hunk's added and removed lines, each keeping its `+` or `-`, joined in that order. An `introduced` finding's trigger is unchanged: the hunk it sits in, hashed by its added lines.
+
+Why: A dismissed finding reopens when its trigger's hash changes. A trigger taken from the first proving location the model listed made that hash depend on the model's order: evidence citing `src/a.ts` then `src/b.ts` on one push and the reverse on the next, with neither file changed, reopened the dismissal. Sorting makes the trigger independent of that order, and hashing every proving hunk reopens the finding when any of the code that caused it changes, not only the first. Removed lines count because a cause can be a deletion, which adds nothing.

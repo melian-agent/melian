@@ -7,6 +7,7 @@ import {
 	createFinding,
 	type EvidenceLocation,
 	type Finding,
+	type FindingTrigger,
 	type LensRule,
 	type LensToolName,
 	lensCovers,
@@ -51,7 +52,9 @@ import {
 } from "./harness.ts";
 import { injectionPolicy, quoteUntrusted } from "./untrusted.ts";
 
-// `added` is the hunk's new lines, the code a dismissal is tied to.
+// `added` is the hunk's new lines, the code a dismissal of an introduced finding is tied to. `changes` is its added and
+// removed lines in diff order, each keeping its `+` or `-`, the code a dismissal of an affected finding is tied to;
+// absent from a lens an older Melian created.
 type ReviewHunk = {
 	file: string;
 	index: number;
@@ -60,6 +63,7 @@ type ReviewHunk = {
 	newStart: number;
 	newLines: number;
 	added: string;
+	changes?: string;
 };
 
 // A changed file as the review document keeps it: enough to classify cause, without the hunks' text. `oldPath` names a
@@ -89,26 +93,29 @@ export function reviewFiles(files: readonly ChangedFile[]): ReviewFile[] {
 		...(oldPath === undefined ? {} : { oldPath }),
 		status,
 		binary,
-		hunks: hunks.map(({ file, index, oldStart, oldLines, newStart, newLines, text }) => ({
-			file,
-			index,
-			oldStart,
-			oldLines,
-			newStart,
-			newLines,
-			added: text
-				.split("\n")
-				.filter((line) => line.startsWith("+"))
-				.map((line) => line.slice(1))
-				.join("\n"),
-		})),
+		hunks: hunks.map(({ file, index, oldStart, oldLines, newStart, newLines, text }) => {
+			const changes = text.split("\n").filter((line) => line.startsWith("+") || line.startsWith("-"));
+			return {
+				file,
+				index,
+				oldStart,
+				oldLines,
+				newStart,
+				newLines,
+				added: changes
+					.filter((line) => line.startsWith("+"))
+					.map((line) => line.slice(1))
+					.join("\n"),
+				changes: changes.join("\n"),
+			};
+		}),
 	}));
 }
 
-function changedFiles(review: ReviewState): ChangedFile[] {
-	return review.files.map((file) => ({
+function changedFiles(files: readonly ReviewFile[]): ChangedFile[] {
+	return files.map((file) => ({
 		...file,
-		hunks: file.hunks.map(({ added: _, ...hunk }) => ({ ...hunk, header: "", text: "" })),
+		hunks: file.hunks.map(({ added: _, changes: __, ...hunk }) => ({ ...hunk, header: "", text: "" })),
 	}));
 }
 
@@ -512,18 +519,28 @@ function overlapping(file: ReviewFile | undefined, startLine: number, endLine: n
 	);
 }
 
-// The hunk an affected finding's first proving `cause` location falls on, so the finding's trigger is the changed code
-// that caused it and a dismissal of it reopens when that code changes. A rename proves without a hunk, and gives none.
-function provingHunk(review: ReviewState, evidence: readonly EvidenceLocation[], findingFile: string) {
-	const changed = { files: changedFiles(review) };
-	for (const location of evidence) {
-		if (location.proves !== true) continue;
-		const overlap = causeOverlap(location, changed, findingFile);
-		if (overlap?.kind !== "hunk") continue;
-		const { file, index } = overlap.hunk;
-		return review.files.flatMap((each) => each.hunks).find((hunk) => hunk.file === file && hunk.index === index);
-	}
-	return undefined;
+// Every hunk a proving `cause` location falls on, by file then index, so the order the model listed its evidence in
+// never changes an affected finding's trigger. A rename proves without a hunk, and adds none.
+function provingHunks(
+	evidence: readonly EvidenceLocation[],
+	files: readonly ReviewFile[],
+	findingFile: string,
+): ReviewHunk[] {
+	const changed = { files: changedFiles(files) };
+	const proven = evidence.flatMap((location) => {
+		const overlap = location.proves === true ? causeOverlap(location, changed, findingFile) : undefined;
+		return overlap?.kind === "hunk" ? [overlap.hunk] : [];
+	});
+	return files
+		.flatMap((file) => file.hunks)
+		.filter((hunk) => proven.some((each) => each.file === hunk.file && each.index === hunk.index))
+		.sort((a, b) => (a.file === b.file ? a.index - b.index : a.file < b.file ? -1 : 1));
+}
+
+// A trigger that names `hunk`, showing its added lines, and hashes `code` whole, so a dismissal reopens only when that
+// code changes, however long it is.
+function triggerOn(hunk: ReviewHunk, code: string): FindingTrigger {
+	return { file: hunk.file, index: hunk.index, snippet: capSnippet(hunk.added), hash: snippetHash(code) };
 }
 
 // The text at `line` to `endLine` of `path` at the review's head or base. `hint` follows the message for a missing file.
@@ -604,7 +621,7 @@ async function evidenceFrom(
 					: "";
 			const { snippet } = await linesAt(review, revision, file, line, endLine, hint);
 			const site = { file, startLine: line, endLine, role, revision };
-			const changed = { files: changedFiles(review) };
+			const changed = { files: changedFiles(review.files) };
 			const deleted = revision === "base" && changeOverlap(site, changed, findingFile) !== undefined;
 			const proves = causeOverlap(site, changed, findingFile) !== undefined;
 			return {
@@ -632,13 +649,15 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 	const { content, snippet } = await linesAt(review, "head", path, args.line, endLine);
 	const evidence = await evidenceFrom(args.evidence, review, path);
 	const location = { file: path, startLine: args.line, endLine };
-	const cause = classifyCause(location, { files: changedFiles(review) }, evidence);
+	const cause = classifyCause(location, { files: changedFiles(review.files) }, evidence);
 	const changed = review.files.find((file) => file.path === path);
-	const hunk =
-		cause === "introduced"
-			? overlapping(changed, args.line, endLine)
-			: cause === "affected"
-				? provingHunk(review, evidence, path)
+	const introducing = cause === "introduced" ? overlapping(changed, args.line, endLine) : undefined;
+	const proving = cause === "affected" ? provingHunks(evidence, review.files, path) : [];
+	const trigger =
+		introducing !== undefined
+			? triggerOn(introducing, introducing.added)
+			: proving[0] !== undefined
+				? triggerOn(proving[0], proving.map((hunk) => hunk.changes ?? hunk.added).join("\n"))
 				: undefined;
 	const { severity } = args;
 	return createFinding({
@@ -652,16 +671,7 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 		cause,
 		failureScenario: args.failureScenario,
 		evidence,
-		...(hunk === undefined
-			? {}
-			: {
-					trigger: {
-						file: hunk.file,
-						index: hunk.index,
-						snippet: capSnippet(hunk.added),
-						hash: snippetHash(hunk.added),
-					},
-				}),
+		...(trigger === undefined ? {} : { trigger }),
 		severity,
 		explanation: {
 			what: args.explanation.what,

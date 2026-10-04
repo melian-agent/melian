@@ -382,6 +382,83 @@ describe("recording a dismissal", () => {
 		]);
 	});
 
+	describe("an affected finding whose evidence proves two hunks", () => {
+		const team = (size: string) => lines(`export const teamSize = ${size};`, "");
+		const twoCauses = (order: "user first" | "team first") => {
+			const inUser = { file: "src/user.ts", line: 8, role: "cause" };
+			const inTeam = { file: "src/team.ts", line: 1, role: "cause" };
+			const caller = {
+				...nullDeref,
+				file: "src/org.ts",
+				line: 3,
+				failureScenario: 'describe({ name: "Ada" }) throws, since managerName now reads name of an absent manager.',
+				evidence: [
+					...(order === "user first" ? [inUser, inTeam] : [inTeam, inUser]),
+					{ file: "src/org.ts", line: 3, role: "context" },
+				],
+			};
+			scriptConversations(fake, [
+				{ match: correctness, replies: [report(caller), fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+		};
+
+		beforeEach(async () => {
+			rmSync(repo, { recursive: true, force: true });
+			repo = baseAndHead(
+				{
+					"src/user.ts": user("manager", '\treturn user.manager?.name ?? "none";'),
+					"src/team.ts": team("4"),
+					"src/org.ts": lines(
+						'import { managerName, type User } from "./user";',
+						"",
+						'export const describe = (user: User) => user.name + " reports to " + managerName(user);',
+					),
+				},
+				{ "src/user.ts": user("boss", unsafe), "src/team.ts": team("5") },
+			);
+			lenses = await loadLenses(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, [
+				"src/user.ts",
+			]);
+		});
+
+		it("keeps its dismissal when the lens lists the same causes in the other order", async () => {
+			const harness = await reviewHarness(createMemoryStorage());
+			twoCauses("user first");
+			const [first] = (await reviewed(harness)).findings;
+			expect(first!.properties).toMatchObject({ path: "src/org.ts", cause: "affected" });
+			await dismiss(harness, first!.properties.id);
+			push("boss", unsafe, { "src/other.ts": "export const other = 1;\n" });
+			twoCauses("team first");
+
+			const { verdict } = await reviewed(harness);
+
+			expect(verdict).toMatchObject({ status: "passed", blocking: false });
+			const [kept] = verdict.dismissed;
+			expect(kept!.properties).toMatchObject({ id: first!.properties.id, dismissal });
+			expect(kept!.properties.trigger).toEqual(first!.properties.trigger);
+			expect(kept!.properties.trigger).toMatchObject({ file: "src/team.ts", index: 0 });
+		});
+
+		it("reopens when the hunk it lists second changes", async () => {
+			const harness = await reviewHarness(createMemoryStorage());
+			twoCauses("user first");
+			const [first] = (await reviewed(harness)).findings;
+			await dismiss(harness, first!.properties.id);
+			push("boss", unsafe, { "src/team.ts": team("6") });
+			twoCauses("user first");
+
+			const { verdict } = await reviewed(harness);
+
+			const [reopened] = verdict.findings.block;
+			expect(reopened!.properties).toMatchObject({ id: first!.properties.id, status: "new", cause: "affected" });
+			expect(reopened!.properties.trigger!.hash).not.toBe(first!.properties.trigger!.hash);
+			expect(reopened!.properties.pastDismissals).toEqual([
+				{ ...dismissal, reopenedRevision: revisionKey(await revision()) },
+			]);
+		});
+	});
+
 	it("dismisses every report adjudication merged into the finding, so the defect leaves the verdict whole", async () => {
 		const harness = await reviewHarness(createMemoryStorage());
 		scriptFinding(true);

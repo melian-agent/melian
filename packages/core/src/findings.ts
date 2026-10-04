@@ -335,7 +335,9 @@ export type FindingStatus = Static<typeof findingStatusSchema>;
  * The diff hunk that caused a finding, named as a {@link Hunk} names itself: its `file` and its `index` within that
  * file. `snippet` is the changed code as the producer saw it, perhaps cut for storage; `hash`, when present, is the
  * {@link snippetHash} of that code whole. A dismissed finding reopens when the whole code's {@link normaliseSnippet}
- * changes, not when the hunk moves.
+ * changes, not when the hunk moves. An `affected` finding proved by several hunks names the first by file then index,
+ * and its `hash` covers the added and removed lines of all of them in that order, so it changes when any of them does
+ * and never with the order its evidence listed them in.
  */
 export type FindingTrigger = Static<typeof findingTriggerSchema>;
 
