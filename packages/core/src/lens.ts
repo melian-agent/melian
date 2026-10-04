@@ -362,8 +362,14 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 	if (duplicate !== undefined) {
 		throw new LensError("invalidValue", file, `${file}: rule "${duplicate.id}" is listed twice`, { field: "rules" });
 	}
+	// Checked on the merged map: a lens extending another by a different name can inherit a hand-off to itself.
+	const handoffs = { ...base?.lens.handoffs, ...own.handoffs };
 	if (own.handoffs !== undefined && Object.hasOwn(own.handoffs, own.name)) {
 		throw new LensError("invalidValue", file, `${file}: "handoffs" names the lens itself`, { field: "handoffs" });
+	}
+	if (base !== undefined && Object.hasOwn(handoffs, own.name)) {
+		const inherited = `names the lens itself, ${own.name}, in the hand-offs it inherits from ${base.lens.name}`;
+		throw new LensError("invalidValue", file, `${file}: "handoffs" ${inherited}`, { field: "handoffs" });
 	}
 	const declared = declare(own, base?.declared);
 	const lens = versioned({
@@ -376,7 +382,7 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 		scope,
 		levels: resolveLevels(file, own.name, declared),
 		standards: own.standards ?? base?.lens.standards ?? true,
-		handoffs: { ...base?.lens.handoffs, ...own.handoffs },
+		handoffs,
 		instructions: [base?.lens.instructions, body].filter((part) => part !== undefined && part !== "").join("\n\n"),
 		file,
 	});

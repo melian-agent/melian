@@ -313,6 +313,18 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		});
 	});
 
+	it("refuses a hand-off to the lens itself that it inherits through extends, naming both lenses", async () => {
+		writeFiles(repo, {
+			".melian/lenses/tests/LENS.md": lensFile(["name: tests", "extends: correctness"], "Review the tests."),
+		});
+		expect(await rejection(load(["src/index.ts"]), LensError)).toMatchObject({
+			code: "invalidValue",
+			field: "handoffs",
+			message:
+				'.melian/lenses/tests/LENS.md: "handoffs" names the lens itself, tests, in the hand-offs it inherits from correctness',
+		});
+	});
+
 	it("resolves each level from its own fields, then the top level, then Melian's defaults", async () => {
 		writeFiles(repo, {
 			".melian/lenses/security/LENS.md": lensFile([
