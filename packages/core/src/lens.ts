@@ -130,7 +130,8 @@ export type LensLevels = { readonly careful: LensLevel } & { readonly [Level in 
  * empty string for the root and for built-in lenses; a lens never applies outside its scope. `levels` holds each level
  * the lens runs at, every field resolved. `version` hashes everything that shapes the lens's behaviour, so a finding
  * can name the lens version that produced it. `handoffs` maps a neighbouring lens's name to the defects it owns, which
- * this lens leaves to it only in a review that runs it, so a lens running alone keeps its whole coverage.
+ * this lens leaves to it only where the review runs it over every file this lens reviews, so a lens running alone, or
+ * beside a neighbour narrowed to fewer files, keeps its whole coverage.
  */
 export interface Lens {
 	readonly name: string;
@@ -653,10 +654,10 @@ export function lensLevel(lens: Lens, level: ScrutinyLevel): LensLevel {
 	});
 }
 
-// The defects a lens leaves to a neighbour, only for neighbours the review runs: a lens whose neighbour is not running
-// keeps that coverage itself.
-function renderHandoffs(handoffs: Readonly<Record<string, string>>, running: readonly string[]): string[] {
-	const owned = Object.entries(handoffs).filter(([name]) => running.includes(name));
+// The defects a lens leaves to a neighbour, only for the neighbours that review its files: a lens whose neighbour is
+// not running keeps that coverage itself.
+function renderHandoffs(handoffs: Readonly<Record<string, string>>, neighbours: readonly string[]): string[] {
+	const owned = Object.entries(handoffs).filter(([name]) => neighbours.includes(name));
 	if (owned.length === 0) return [];
 	return [
 		"## Neighbouring lenses",
@@ -667,28 +668,28 @@ function renderHandoffs(handoffs: Readonly<Record<string, string>>, running: rea
 
 /**
  * The instructions a lens's conversation runs with at `level`, `careful` unless named: its body; then, for each lens in
- * `running` that the lens hands defects to, those defects; then its rules, each ID with its description, the
+ * `neighbours` that the lens hands defects to, those defects; then its rules, each ID with its description, the
  * severities it may report, the level's budget and reading scope, and what a finding's failure scenario and evidence
  * must be; then, unless the lens opted out, the repository's standards, each under its path, whose breaches are the
- * conventions lens's to report when `running` holds it and this lens's own otherwise. `running` names the lenses the
- * review runs, none by default. Throws {@link LensError} `unknownLevel` for a level the lens does not
- * declare.
+ * conventions lens's to report when `neighbours` holds it and this lens's own otherwise. `neighbours` names the other
+ * lenses the review runs over every file this lens reviews, none by default. Throws {@link LensError} `unknownLevel`
+ * for a level the lens does not declare.
  */
 export function renderLensInstructions(
 	lens: Lens,
 	standards: readonly StandardsSection[],
 	level: ScrutinyLevel = defaultScrutinyLevel,
-	running: readonly string[] = [],
+	neighbours: readonly string[] = [],
 ): string {
 	const instructions = [
 		lens.instructions,
-		...renderHandoffs(lens.handoffs, running),
+		...renderHandoffs(lens.handoffs, neighbours),
 		renderPolicy(lens, lensLevel(lens, level)),
 	].join("\n\n");
 	if (!lens.standards || standards.length === 0) return instructions;
 	const sections = standards.map((section) => `### ${section.path}\n\n${section.content.trim()}`);
-	// Like a hand-off, the standards go to conventions only when it runs beside this lens; otherwise this lens keeps them.
-	const owned = lens.name !== "conventions" && running.includes("conventions");
+	// Like a hand-off, a breach goes to conventions only when it reviews this lens's files; otherwise this lens keeps it.
+	const owned = lens.name !== "conventions" && neighbours.includes("conventions");
 	return [
 		instructions,
 		"## Repository standards",

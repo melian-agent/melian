@@ -1153,6 +1153,35 @@ describe("reviewChangeset", () => {
 		]);
 	});
 
+	it("keeps the defects and standards of a neighbour whose paths leave out some of its files", async () => {
+		writeFiles(repo, {
+			"src/report.ts": lines('import { managerName } from "./user.ts";', "export const line = 1;"),
+		});
+		gitIn(repo, "commit", "--quiet", "--all", "-m", "edit the report too");
+		const backlog = ["trust-boundary", "removed-behaviour", "tests", "conventions"].map(
+			(name) => `You are the ${name} reviewer`,
+		);
+		const requests = scriptConversations(
+			fake,
+			[correctness, contracts, ...backlog].map((match) => ({ match, replies: [fauxAssistantMessage("Done.")] })),
+		);
+		const narrow = { paths: ["src/user.ts"] };
+
+		await reviewed({
+			config: { ...config, tiers: defaultConfig.tiers, lenses: { "trust-boundary": narrow, conventions: narrow } },
+		});
+
+		const prompt = systemPromptOf(requests[correctness]![0]!);
+		const handoffs = prompt.slice(prompt.indexOf("## Neighbouring lenses"), prompt.indexOf("## Rules, severities"));
+		expect(
+			handoffs.split("\n").flatMap((line) => (line.startsWith("- ") ? [line.slice(0, line.indexOf(":"))] : [])),
+		).toEqual(["- `contracts`", "- `removed-behaviour`", "- `tests`"]);
+		expect(prompt).toContain(
+			"The repository's own conventions. A change that breaks one is a finding; cite the file.",
+		);
+		expect(prompt).not.toContain("the conventions lens's to report");
+	});
+
 	it("holds a built-in lens at careful to the level's own limit of 30 tool calls", async () => {
 		const reads = Array.from({ length: 30 }, (_, index): [string, Arguments] => [
 			"read_file",

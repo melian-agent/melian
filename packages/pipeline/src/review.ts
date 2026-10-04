@@ -612,9 +612,16 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		paths,
 	);
 	const nonce = reviewNonce();
-	const running = selected.map(({ lens }) => lens.name);
+	const names = [...new Set(selected.map(({ lens }) => lens.name))];
 	const lenses: LensRun[] = [];
 	for (const { lens, coverage, files } of selected) {
+		// A neighbour takes defects off this lens only if it reviews every file this lens does; otherwise this lens keeps
+		// them, rather than leave them unreviewed in the files the neighbour's paths leave out.
+		const neighbours = names.filter(
+			(name) =>
+				name !== lens.name &&
+				files.every((file) => selected.some((other) => other.lens.name === name && other.files.includes(file))),
+		);
 		// Every lens may report an injection attempt, so the policy section never names a rule the hook refuses.
 		const rules = lens.rules.some((rule) => rule.id === injectionAttemptRule.id)
 			? lens.rules
@@ -628,7 +635,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 			version: lens.version,
 			level,
 			route: await chooseRoute(lens.name, settings.tier, config, models),
-			instructions: renderLensInstructions({ ...lens, rules }, standards, level, running),
+			instructions: renderLensInstructions({ ...lens, rules }, standards, level, neighbours),
 			tools: lens.tools,
 			severities: lens.severities,
 			rules,
