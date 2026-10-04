@@ -4,8 +4,12 @@ src/cart.ts
   summary calls formatPrice with the amount alone.
     What: summary calls formatPrice with the amount alone.
     Why here: This change made currency a required second parameter of formatPrice, and summary was not updated.
-    Evidence: src/price.ts:1
-      export function formatPrice(cents: number, currency: string): string {
+    Failure scenario: summary([{ name: "Tea", cents: 450 }]) calls formatPrice(450) with no currency: tsc rejects the call, and at run time Intl.NumberFormat throws a TypeError because the currency style needs a currency code.
+    Evidence:
+      cause: src/price.ts:1
+        export function formatPrice(cents: number, currency: string): string {
+      context: src/cart.ts:10
+          return `Total: ${formatPrice(total)}`;
     What to do: Pass the cart's currency to formatPrice, or give currency a default.
 
 src/price.ts
@@ -14,6 +18,12 @@ src/price.ts
   formatPrice divides every amount by 100, so formatPrice(500, "JPY") renders "JPY 5" for 500 yen.
     What: formatPrice divides every amount by 100, so formatPrice(500, "JPY") renders "JPY 5" for 500 yen.
     Why here: The base formatted dollars only; this change accepts any currency but keeps the two-decimal conversion, and yen has no minor unit.
+    Failure scenario: formatPrice(500, "JPY") divides by 100 and renders "JPY 5" for a 500 yen price, since yen has no minor unit.
+    Evidence:
+      cause: src/price.ts:2
+          return new Intl.NumberFormat("en-AU", { style: "currency", currency }).format(cents / 100);
+      context: src/price.ts:2 at base
+          return `$${(cents / 100).toFixed(2)}`;
     What to do: Divide by 10 to the power of the currency's minor units, read from the formatter's resolvedOptions().maximumFractionDigits.
 
 2 findings in 2 files.

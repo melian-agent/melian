@@ -1,7 +1,10 @@
 import { randomBytes } from "node:crypto";
 
-/** What a quoted block of head content is: a diff, a file's text, search results, or a directory listing. */
-export type UntrustedLabel = "diff" | "file" | "search" | "listing";
+/**
+ * What a quoted block of the change's content is: a diff, a file's text, search results, a directory listing, or the
+ * code at a finding's evidence locations.
+ */
+export type UntrustedLabel = "diff" | "file" | "search" | "listing" | "evidence";
 
 /**
  * A fresh random nonce for one review. Quoted content cannot close a boundary it cannot name, and the head is fixed

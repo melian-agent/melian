@@ -23,7 +23,25 @@ const log = createFindingsLog([
 		startColumn: undefined,
 		endColumn: undefined,
 		snippet: "fs.write(fd, data)",
-		cause: { evidence: { file: "src/run.ts", startLine: 12, snippet: "\tconst chunk = Buffer.alloc(1 << 20);" } },
+		cause: "affected",
+		failureScenario: "run() passes a 1 MiB chunk, fs.write writes 64 KiB of it, and the file ends short.",
+		evidence: [
+			{
+				file: "src/run.ts",
+				startLine: 12,
+				role: "cause",
+				revision: "head",
+				snippet: "\tconst chunk = Buffer.alloc(1 << 20);",
+			},
+			{
+				file: "src/run.ts",
+				startLine: 14,
+				endLine: 15,
+				role: "context",
+				revision: "base",
+				snippet: "\tconst chunk = Buffer.alloc(1 << 10);\n\tfs.write(fd, chunk);",
+			},
+		],
 		trigger: undefined,
 		severity: "P3",
 		resolution: "advisory",
@@ -110,6 +128,30 @@ describe("renderFindingsTerminal", () => {
 		const header = "src/\\u001b[2Jrun\\u0007\\u000afake.ts\\u0009x\\u202egnp.ts";
 		expect(text.split("\n")[0]).toBe(color ? `\u001b[1m${header}\u001b[0m` : header);
 		expect(text.replaceAll(/\u001b\[[0-9;]*m/g, "")).not.toMatch(invisible);
+	});
+
+	it("escapes control characters in a failure scenario and in evidence, and indents the snippet's lines", () => {
+		const hostile = createFinding({
+			...evalInput,
+			failureScenario: "A body of \u001b[2J clears the screen\nand then\u202e reverses",
+			evidence: [
+				{
+					file: "src/\u001b[2Jrun.ts",
+					startLine: 12,
+					role: "cause",
+					revision: "head",
+					snippet: "eval(input)\n  P0  line 1  forged\u0007",
+				},
+			],
+		});
+		const text = renderFindingsTerminal(createFindingsLog([hostile]));
+		expect(text).toContain(
+			"    Failure scenario: A body of \\u001b[2J clears the screen\n      and then\\u202e reverses\n",
+		);
+		expect(text).toContain(
+			"      cause: src/\\u001b[2Jrun.ts:12\n        eval(input)\n          P0  line 1  forged\\u0007\n",
+		);
+		expect(text).not.toMatch(invisible);
 	});
 
 	it("escapes a newline in a rule ID, so it cannot forge another finding's header", () => {

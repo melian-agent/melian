@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import {
 	causeSchema,
 	createFindingsLog,
+	evidenceRevisionSchema,
+	evidenceRoleSchema,
 	type Finding,
 	type LensTier,
 	loadConfig,
@@ -31,9 +33,22 @@ import Value from "typebox/value";
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
 
+/** The JSON Schema of one expected evidence location, in the shape a lens gives it to `report_finding`. */
+export const goldenEvidenceSchema = Type.Object(
+	{
+		file: text,
+		line: Type.Integer({ minimum: 1 }),
+		endLine: Type.Optional(Type.Integer({ minimum: 1 })),
+		role: evidenceRoleSchema,
+		revision: Type.Optional(evidenceRevisionSchema),
+	},
+	strict,
+);
+
 /**
  * The JSON Schema of one expected finding: Martian's golden comment (`comment`, `severity`, `category`), so Martian's
- * judge reads it unchanged, plus the fields Melian matches on (`file`, `rule`) and checks (`cause`).
+ * judge reads it unchanged, plus the fields Melian matches on (`file`, `rule`) and those a scripted run checks
+ * (`cause`, `failureScenario`, `evidence`).
  */
 export const goldenCommentSchema = Type.Object(
 	{
@@ -48,13 +63,23 @@ export const goldenCommentSchema = Type.Object(
 		file: text,
 		rule: text,
 		cause: causeSchema,
+		failureScenario: text,
+		evidence: Type.Array(goldenEvidenceSchema, { minItems: 1 }),
 	},
 	strict,
 );
 
-/** The JSON Schema of a golden's `expected.json`, in Martian's per-pull-request shape. */
+/**
+ * The JSON Schema of a golden's `expected.json`, in Martian's per-pull-request shape, plus Melian's `live`: `false`
+ * keeps a golden out of live runs, for one whose expectation only the scripted run can meet.
+ */
 export const expectedSchema = Type.Object(
-	{ pr_title: text, url: Type.Optional(text), comments: Type.Array(goldenCommentSchema) },
+	{
+		pr_title: text,
+		url: Type.Optional(text),
+		live: Type.Optional(Type.Boolean()),
+		comments: Type.Array(goldenCommentSchema),
+	},
 	strict,
 );
 
@@ -97,6 +122,8 @@ export interface Golden {
 	readonly directory: string;
 	readonly expected: Expected;
 	readonly script: Script;
+	/** Whether live runs review it: false when its `expected.json` sets `live: false`. Scripted runs review every golden. */
+	readonly live: boolean;
 }
 
 /** Where the corpus lives: one directory per golden. */
@@ -117,11 +144,13 @@ export function loadGoldens(directory: string = goldensDirectory): Golden[] {
 		.sort()
 		.map((name) => {
 			const root = join(directory, name);
+			const expected = readJson<Expected>(join(root, "expected.json"), expectedSchema);
 			return {
 				name,
 				directory: root,
-				expected: readJson<Expected>(join(root, "expected.json"), expectedSchema),
+				expected,
 				script: readJson<Script>(join(root, "script.json"), scriptSchema),
+				live: expected.live !== false,
 			};
 		});
 }
@@ -229,6 +258,39 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 	} finally {
 		rmSync(repo, { recursive: true, force: true });
 	}
+}
+
+/**
+ * How a scripted run's findings differ from what its golden expects in the fields scoring does not match on: each
+ * expected finding's cause, failure scenario, and evidence locations, described. A scripted run plays back the
+ * golden's replies, so they must agree exactly; a live model's wording never would, and live runs do not check them.
+ */
+export function scriptedMismatches(golden: Golden, findings: readonly Finding[]): string[] {
+	return golden.expected.comments.flatMap((comment) => {
+		const name = `${comment.file} ${comment.rule}`;
+		const found = findings.find((each) => each.properties.path === comment.file && each.ruleId === comment.rule);
+		if (found === undefined) return [`${name}: not reported`];
+		const { cause, failureScenario, evidence = [] } = found.properties;
+		const reported = evidence.map(({ file, startLine, endLine, role, revision }) => ({
+			file,
+			line: startLine,
+			...(endLine === undefined ? {} : { endLine }),
+			role,
+			revision,
+		}));
+		const expected = comment.evidence.map((location) => ({ ...location, revision: location.revision ?? "head" }));
+		return [
+			...(cause === comment.cause ? [] : [`${name}: cause ${cause}, expected ${comment.cause}`]),
+			...(failureScenario === comment.failureScenario
+				? []
+				: [
+						`${name}: failure scenario ${JSON.stringify(failureScenario)}, expected ${JSON.stringify(comment.failureScenario)}`,
+					]),
+			...(JSON.stringify(reported) === JSON.stringify(expected)
+				? []
+				: [`${name}: evidence ${JSON.stringify(reported)}, expected ${JSON.stringify(expected)}`]),
+		];
+	});
 }
 
 /** How well one review matched its golden. A finding matches an expected one with the same file and rule. */

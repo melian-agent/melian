@@ -8,12 +8,14 @@ export {
 	type GoldenRun,
 	type GoldenScore,
 	goldenCommentSchema,
+	goldenEvidenceSchema,
 	goldensDirectory,
 	loadGoldens,
 	runGolden,
 	type Script,
 	scoreCorpus,
 	scoreGolden,
+	scriptedMismatches,
 	scriptSchema,
 } from "./goldens.ts";
 

@@ -191,6 +191,8 @@ export interface ReviewDraft {
 	readonly pullRequest: number;
 	/** The head commit reviewed. */
 	readonly revision: string;
+	/** The base commit the review diffed from, where evidence on lines the change deleted is read. */
+	readonly base: string;
 	/**
 	 * Names the verdict this review posts. A second review of one head can change its verdict, and each verdict
 	 * published at a head is its own review, so the marker that finds a review names the verdict as well as the head.

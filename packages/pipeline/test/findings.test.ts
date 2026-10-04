@@ -2,30 +2,41 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+	type Changeset,
 	createFinding,
 	defaultConfig,
 	type Finding,
 	FindingError,
 	type FindingInput,
 	type FindingSource,
+	type PullRequest,
+	type ReviewDraft,
+	type ReviewProvider,
 	resolveFinding,
+	type Verdict,
 } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
 	createRegistry,
+	defineDoc,
 	dismissFinding,
 	type Harness,
 	openHarness,
+	openPublishHarness,
 	openSqliteStorage,
+	publishReview,
 	readFindings,
+	readVerdict,
 	recordRevision,
 	type Storage,
 	upsertFinding,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { type StoredVerdict, upgradeStoredVerdict, VerdictDocument } from "../src/adjudication.ts";
 import { FindingsDocument } from "../src/findings.ts";
+import { fingerprint, legacyFingerprint, PublishedDocument, PublisherDocument } from "../src/publish.ts";
 
 const input: FindingInput = {
 	rule: "no-eval",
@@ -241,11 +252,28 @@ describe("the findings document", () => {
 			expect(promoted!.properties).toMatchObject({ severity: "P0", source: style, reportedBy: [security, style] });
 		});
 
-		it("keeps the evidenced cause of a less severe sighting, so the merge still blocks", async () => {
+		it("keeps the evidenced cause of a less severe sighting, and its whole claim, so the merge still blocks", async () => {
 			const { harness, root } = await open(createMemoryStorage());
-			const evidence = { file: "src/api.ts", startLine: 3, snippet: "export function run(body) {" };
-			const evidenced = createFinding({ ...input, cause: { evidence } });
-			const unproven = createFinding({ ...input, severity: "P0", cause: "pre-existing", source: style });
+			const evidence = [
+				{
+					file: "src/api.ts",
+					startLine: 3,
+					role: "cause" as const,
+					revision: "head" as const,
+					snippet: "export function run(body) {",
+				},
+			];
+			const failureScenario = "run('process.exit()') stops the server.";
+			const evidenced = createFinding({ ...input, cause: "affected", evidence, failureScenario });
+			const contextOnly = [{ ...evidence[0]!, role: "context" as const }];
+			const unproven = createFinding({
+				...input,
+				severity: "P0",
+				cause: "pre-existing",
+				evidence: contextOnly,
+				failureScenario: "A guess.",
+				source: style,
+			});
 			await root.commit(async (tx) => {
 				await upsertFinding(tx, root.id, evidenced, "rev1");
 				await upsertFinding(tx, root.id, unproven, "rev1");
@@ -255,7 +283,11 @@ describe("the findings document", () => {
 				severity: "P0",
 				source: style,
 				cause: "affected",
-				evidence: evidenced.properties.evidence,
+				evidence: [...contextOnly, ...evidence],
+				failureScenario: "A guess.",
+				otherClaims: [
+					{ id: evidenced.properties.id, ruleId: "no-eval", source: security, failureScenario, evidence },
+				],
 			});
 			expect(resolveFinding(merged!, defaultConfig)).toBe("block");
 		});
@@ -319,5 +351,297 @@ describe("the findings document", () => {
 		const { harness, root } = await open(await openSqliteStorage(path));
 		expect(root.id).toBe(first.root.id);
 		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(evalFinding)]);
+	});
+});
+
+// Documents of earlier versions, written raw, so a test can store the shape a released Melian left behind.
+type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+type Legacy = { [key: string]: Json };
+const json = (value: unknown) => value as Json;
+
+describe("documents stored before evidence became a list", () => {
+	// The document as version 4 stored it: an affected sighting carried one evidence location, and none a scenario.
+	const LegacyFindings = defineDoc<Legacy>({
+		kind: "melian.findings",
+		version: 4,
+		scope: "conversation",
+		history: "rewindable",
+		fork: "asOf",
+		initial: () => ({ revisions: [], items: {}, versions: {} }),
+	});
+
+	it("reads a single evidence location as one cause at head, and a missing failure scenario as none", async () => {
+		const evidence = [
+			{ file: "src/api.ts", startLine: 3, role: "cause" as const, revision: "head" as const, snippet: "run(body)" },
+		];
+		const current = createFinding({ ...input, cause: "affected", evidence });
+		const { status: _, ...properties } = current.properties;
+		const { role: __, revision: ___, ...old } = evidence[0]!;
+		const sighting = { ...current, properties: { ...properties, evidence: old } };
+		const path = join(dir, "legacy.sqlite");
+		const first = await open(await openSqliteStorage(path));
+		await first.root.commit(async (tx) => {
+			const state = await tx.doc(LegacyFindings, first.root.id);
+			state.revisions = ["rev1"];
+			state.items = json({
+				[current.properties.id]: {
+					lifecycle: { status: "new", firstSeenRevision: "rev1", lastSeenRevision: "rev1", history: [] },
+					sightings: { rev1: { "lens.security@1": sighting } },
+				},
+			});
+			state.versions = { rev1: 1 };
+		}, context);
+		await first.harness.close(context);
+
+		const { harness, root } = await open(await openSqliteStorage(path));
+		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(current)]);
+		const later = createFinding({
+			...input,
+			snippet: "eval(body)",
+			evidence,
+			failureScenario: "eval('1') returns 1.",
+		});
+		await root.commit((tx) => upsertFinding(tx, root.id, later, "rev1"), context);
+		expect(await readFindings(harness, root.id, "rev1", context)).toHaveLength(2);
+	});
+
+	const LegacyVerdicts = defineDoc<Legacy>({
+		kind: "melian.verdicts",
+		version: 2,
+		scope: "conversation",
+		history: "rewindable",
+		fork: "asOf",
+		initial: () => ({ verdicts: {} }),
+	});
+
+	const LegacyPublished = defineDoc<Legacy>({
+		kind: "melian.published",
+		version: 1,
+		scope: "conversation",
+		history: "latest",
+		fork: "current",
+		initial: () => ({ order: [], revisions: {} }),
+	});
+
+	it("reads a recorded verdict, and a round left pending, with each finding in the current shape", async () => {
+		const evidence = [
+			{ file: "src/api.ts", startLine: 3, role: "cause" as const, revision: "head" as const, snippet: "run(body)" },
+		];
+		const current = createFinding({ ...input, cause: "affected", evidence });
+		const { role: _, revision: __, ...old } = evidence[0]!;
+		const stored = { ...current, properties: { ...current.properties, evidence: old } };
+		const verdict = (finding: unknown) => ({
+			status: "findings",
+			blocking: true,
+			findings: { block: [finding], acknowledge: [], advisory: [], silent: [] },
+			dismissed: [finding],
+			notRun: [],
+		});
+		const pending = (finding: unknown) => ({
+			revision: "base..head",
+			round: 1,
+			fingerprint: "0123456789abcdef",
+			verdict: verdict(finding),
+			post: [{ finding, placement: { kind: "body" } }],
+			stillOpen: 0,
+			open: {},
+			resolved: {},
+			refusals: 0,
+		});
+		const path = join(dir, "legacy-verdicts.sqlite");
+		const first = await open(await openSqliteStorage(path));
+		await first.root.commit(async (tx) => {
+			(await tx.doc(LegacyVerdicts, first.root.id)).verdicts = json({ "base..head": verdict(stored) });
+			const published = await tx.doc(LegacyPublished, first.root.id);
+			published.order = ["head"];
+			published.revisions = json({
+				head: { reviews: [], open: {}, resolved: {}, replies: {}, pending: pending(stored) },
+			});
+		}, context);
+		await first.harness.close(context);
+
+		const { harness, root } = await open(await openSqliteStorage(path));
+		expect(await readVerdict(harness, root.id, "base..head", context)).toEqual(verdict(current));
+		const published = await harness.snapshot(PublishedDocument, root.id, context);
+		expect(published?.revisions.head?.pending).toEqual(pending(current));
+	});
+
+	it("knows a migrated verdict by the fingerprint it was published under, so its head takes no second review", async () => {
+		const evidence = [
+			{ file: "src/api.ts", startLine: 3, role: "cause" as const, revision: "head" as const, snippet: "run(body)" },
+		];
+		const current = createFinding({ ...input, cause: "affected", evidence });
+		const { role: _, revision: __, ...old } = evidence[0]!;
+		const stored = { ...current, properties: { ...current.properties, evidence: old } };
+		const plain = createFinding({ ...input, snippet: "eval(body)" });
+		const verdict = (finding: unknown) =>
+			({
+				status: "findings",
+				blocking: true,
+				findings: { block: [finding, plain], acknowledge: [], advisory: [], silent: [] },
+				dismissed: [],
+				notRun: [],
+			}) as unknown as Verdict;
+		const published = fingerprint(verdict(stored));
+		const migrated = upgradeStoredVerdict(verdict(stored) as StoredVerdict) as Verdict;
+
+		expect(fingerprint(migrated)).not.toBe(published);
+		expect(legacyFingerprint(migrated)).toBe(published);
+		const scenario = createFinding({ ...input, cause: "affected", evidence, failureScenario: "run(1) throws." });
+		expect(legacyFingerprint(verdict(scenario))).toBeUndefined();
+		const contextOnly = [{ ...evidence[0]!, role: "context" as const }];
+		expect(legacyFingerprint(verdict(createFinding({ ...input, evidence: contextOnly })))).toBeUndefined();
+	});
+
+	describe("publishing a head once per revision, across the upgrade", () => {
+		const head = "a".repeat(40);
+		const baseA = "b".repeat(40);
+		const baseB = "c".repeat(40);
+		const repository = { owner: "melian-agent", name: "example" };
+		const evidence = [
+			{ file: "src/api.ts", startLine: 3, role: "cause" as const, revision: "head" as const, snippet: "run(body)" },
+		];
+		const current = createFinding({ ...input, cause: "affected", evidence });
+		const { role: _, revision: __, ...old } = evidence[0]!;
+		const stored = { ...current, properties: { ...current.properties, evidence: old } };
+		// The verdict as an older Melian recorded it, for A..H and, identically, for B..H after a retarget.
+		const oldVerdict = {
+			status: "findings",
+			blocking: true,
+			findings: { block: [stored], acknowledge: [], advisory: [], silent: [] },
+			dismissed: [],
+			notRun: [],
+		};
+		const provenance = (base: string) => ({
+			kind: "pull-request" as const,
+			repository,
+			pullRequest: 7,
+			base,
+			head,
+			policy: `revision:${base}`,
+			manifest: [] as string[],
+			lenses: [] as string[],
+		});
+
+		function fakeProvider(base: string) {
+			const posted: ReviewDraft[] = [];
+			const pullRequest: PullRequest = {
+				repository,
+				number: 7,
+				title: "t",
+				url: "https://github.com/melian-agent/example/pull/7",
+				state: "open",
+				base: { ref: "main", sha: base },
+				head: { ref: "feature", sha: head },
+				fetch: { url: "https://github.com/melian-agent/example.git", headRef: "refs/pull/7/head" },
+			};
+			const provider: ReviewProvider = {
+				name: "fake",
+				pullRequest: async () => pullRequest,
+				postReview: async (draft) => {
+					posted.push(draft);
+					return { id: String(200 + posted.length), threads: {} };
+				},
+				replyResolved: async () => undefined,
+				setStatus: async () => undefined,
+				findPublished: async () => ({ threads: {}, replies: {} }),
+			};
+			return { provider, posted, pullRequest };
+		}
+
+		// Writes what the older Melian left: A..H's review posted under its verdict's fingerprint, and the verdicts of
+		// `reviewed`, then publishes `base`..H with the current Melian.
+		async function publishAfterUpgrade(reviewed: string[], base: string) {
+			const path = join(dir, "legacy-published.sqlite");
+			const first = await open(await openSqliteStorage(path));
+			await first.root.commit(async (tx) => {
+				const verdicts = await tx.doc(LegacyVerdicts, first.root.id);
+				verdicts.verdicts = json(Object.fromEntries(reviewed.map((each) => [`${each}..${head}`, oldVerdict])));
+				verdicts.provenance = json(
+					Object.fromEntries(reviewed.map((each) => [`${each}..${head}`, provenance(each)])),
+				);
+				const published = await tx.doc(LegacyPublished, first.root.id);
+				published.order = [head];
+				published.revisions = json({
+					[head]: {
+						reviews: ["101"],
+						verdict: fingerprint(oldVerdict as unknown as Verdict),
+						rounds: 1,
+						open: {},
+						resolved: {},
+						replies: {},
+						status: { state: "failure", description: "1 finding, 1 blocking" },
+					},
+				});
+				(await tx.doc(PublisherDocument, first.root.id)).secret = "11".repeat(32);
+			}, context);
+			await first.harness.close(context);
+
+			const { provider, posted, pullRequest } = fakeProvider(base);
+			const publisher = await openPublishHarness(await openSqliteStorage(path), createFakeModels().review, provider);
+			try {
+				const changeset = { revision: { base, head, files: [] } } as unknown as Changeset;
+				const publication = await publishReview({
+					harness: publisher.harness,
+					provider,
+					changeset,
+					pullRequest,
+					base,
+				});
+				return { publication, posted };
+			} finally {
+				await publisher.close();
+			}
+		}
+
+		it("posts nothing again for the revision that review was of", async () => {
+			const { publication, posted } = await publishAfterUpgrade([baseA], baseA);
+			expect(posted).toEqual([]);
+			expect(publication.review).toBe("101");
+		});
+
+		it("posts a review of a retargeted revision whose verdict matches the one published under the old base", async () => {
+			const path = join(dir, "published.sqlite");
+			const verdict = upgradeStoredVerdict(oldVerdict as unknown as StoredVerdict);
+			const first = await open(await openSqliteStorage(path));
+			await first.root.commit(async (tx) => {
+				const verdicts = await tx.doc(VerdictDocument, first.root.id);
+				for (const base of [baseA, baseB]) {
+					verdicts.verdicts[`${base}..${head}`] = verdict;
+					verdicts.provenance = {
+						...verdicts.provenance,
+						[`${base}..${head}`]: provenance(base),
+					};
+				}
+				(await tx.doc(PublisherDocument, first.root.id)).secret = "11".repeat(32);
+			}, context);
+			await first.harness.close(context);
+			const publishAt = async (base: string) => {
+				const { provider, posted, pullRequest } = fakeProvider(base);
+				const publisher = await openPublishHarness(
+					await openSqliteStorage(path),
+					createFakeModels().review,
+					provider,
+				);
+				try {
+					const changeset = { revision: { base, head, files: [] } } as unknown as Changeset;
+					await publishReview({ harness: publisher.harness, provider, changeset, pullRequest, base });
+					return posted;
+				} finally {
+					await publisher.close();
+				}
+			};
+
+			expect(await publishAt(baseA)).toHaveLength(1);
+			expect(await publishAt(baseA)).toEqual([]);
+			expect(await publishAt(baseB)).toHaveLength(1);
+		});
+
+		it("posts a review of a retargeted revision whose verdict an older Melian recorded identically", async () => {
+			const { publication, posted } = await publishAfterUpgrade([baseA, baseB], baseB);
+			expect(posted).toHaveLength(1);
+			expect(posted[0]).toMatchObject({ revision: head, base: baseB });
+			expect(publication.review).toBe("201");
+		});
 	});
 });

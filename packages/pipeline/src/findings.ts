@@ -5,10 +5,11 @@ import {
 	type FindingSource,
 	type FindingStatus,
 	type FindingTrigger,
-	normaliseSnippet,
+	mergeClaims,
 	parseFinding,
 	type Severity,
-	strongestCause,
+	snippetHash,
+	upgradeStoredFinding,
 } from "@melian-agent/core";
 import { type Context, type ConversationId, defineDoc, type Harness, type Tx } from "./harness.ts";
 
@@ -52,13 +53,36 @@ type FindingRecord = { lifecycle: FindingLifecycle; sightings: Record<string, Re
 // lifecycle change of a finding sighted there. Adjudication's input carries it, so a dismissal decides afresh.
 type FindingsState = { revisions: string[]; items: Record<string, FindingRecord>; versions: Record<string, number> };
 
+// Version 5 made evidence a list of locations; a sighting stored before reads with its one location as a cause.
 export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
-	version: 4,
+	version: 5,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
 	initial: () => ({ revisions: [], items: {}, versions: {} }),
+	migrate: (value, from) => {
+		if (from < 4)
+			throw new Error(`the findings document needs migrating from version ${from}, which Melian cannot do`);
+		const state = value as FindingsState;
+		const items = Object.fromEntries(
+			Object.entries(state.items).map(([id, record]) => {
+				const sightings = Object.fromEntries(
+					Object.entries(record.sightings).map(([revision, byProducer]) => [
+						revision,
+						Object.fromEntries(
+							Object.entries(byProducer).map(([producer, sighting]) => [
+								producer,
+								upgradeStoredFinding(sighting),
+							]),
+						),
+					]),
+				);
+				return [id, { ...record, sightings }];
+			}),
+		);
+		return { ...state, items };
+	},
 });
 
 /**
@@ -96,8 +120,9 @@ function compareSources(a: FindingSource, b: FindingSource): number {
 }
 
 // The highest severity wins, and a tie goes to the producer whose name sorts first, so every reader merges alike. The
-// winner takes the strongest cause any sighting gave, with its evidence, so an evidenced P1 beside a P0 without
-// evidence reads as an affected P0 rather than a pre-existing one.
+// winner keeps its own claim and takes the strongest cause any sighting gave, with the cause locations that prove it,
+// and every other sighting's claim, so a P1 whose cause location overlaps the change, beside a P0 whose evidence proves
+// nothing, reads as an affected P0 that still carries the P1's scenario and evidence.
 function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>) {
 	const ranked = Object.values(sightings).sort(
 		(a, b) =>
@@ -105,9 +130,9 @@ function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>) {
 			compareSources(a.properties.source, b.properties.source),
 	);
 	const reportedBy = ranked.map((each) => ({ ...each.properties.source })).sort(compareSources);
-	const { evidence: _, ...properties } = ranked[0]!.properties;
-	const cause = strongestCause(ranked);
-	return { winner: { ...ranked[0]!, properties: { ...properties, ...cause } }, reportedBy };
+	const { evidence: _, failureScenario: __, otherClaims: ___, ...properties } = ranked[0]!.properties;
+	const claims = mergeClaims(ranked[0]!, ranked);
+	return { winner: { ...ranked[0]!, properties: { ...properties, ...claims } }, reportedBy };
 }
 
 /**
@@ -120,8 +145,9 @@ export async function recordRevision(tx: Tx, rootConversationId: ConversationId,
 	state.revisions = [...state.revisions.filter((each) => each !== revision), revision];
 }
 
+// A trigger stored before snippets were cut has no hash, but its snippet is the whole code.
 function triggerCode(trigger: FindingTrigger | undefined): string {
-	return normaliseSnippet(trigger?.snippet ?? "");
+	return trigger?.hash ?? snippetHash(trigger?.snippet ?? "");
 }
 
 /**
@@ -135,9 +161,10 @@ function triggerCode(trigger: FindingTrigger | undefined): string {
  * correction rewrites its own report and never another producer's or another revision's. The lifecycle starts as `new`
  * when the ID is first seen, and `lastSeenRevision` moves to `revision` unless {@link recordRevision} marked a newer
  * revision. A dismissed finding stays dismissed unless a sighting at that revision or a newer one has a trigger whose
- * code changed materially, meaning its normalised `trigger.snippet` differs from the last revision's; then it becomes
- * `new` and the dismissal moves to `history`. Reporting the same finding twice stores the same state, so a tool that
- * calls this is safe to replay. Throws core's `FindingError` for an invalid finding, which aborts the transaction.
+ * code changed materially, meaning its `trigger.hash`, or the hash of its normalised `trigger.snippet` when it has none,
+ * differs from the last revision's; then it becomes `new` and the dismissal moves to `history`. Reporting the same
+ * finding twice stores the same state, so a tool that calls this is safe to replay. Throws core's `FindingError` for an
+ * invalid finding, which aborts the transaction.
  */
 export async function upsertFinding(
 	tx: Tx,

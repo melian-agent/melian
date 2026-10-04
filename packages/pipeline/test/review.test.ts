@@ -10,6 +10,9 @@ import {
 	loadLenses,
 	type MelianConfig,
 	ModelRoutingError,
+	maxEvidenceLocations,
+	maxFailureScenarioLength,
+	maxSnippetBytes,
 	type RepositorySource,
 	resolveRange,
 } from "@melian-agent/core";
@@ -18,6 +21,7 @@ import {
 	createMemoryStorage,
 	createRegistry,
 	createReviewRegistry,
+	defineDoc,
 	dismissFinding,
 	type Harness,
 	type Message,
@@ -186,6 +190,8 @@ const nullDeref = {
 		why: "This change dropped the optional chain, so a user without a manager throws.",
 		fix: "Restore user.manager?.name with a fallback.",
 	},
+	failureScenario: 'managerName({ name: "Ada" }) throws TypeError: Cannot read properties of undefined.',
+	evidence: [{ file: "src/user.ts", line: 7, role: "cause" }],
 };
 
 function toolResults(messages: readonly Message[]): string[] {
@@ -435,6 +441,43 @@ describe("reviewChangeset", () => {
 		expect(findings.map((finding) => finding.locations[0]!.physicalLocation.region.startLine)).toContain(9999);
 	});
 
+	it("stores at most 2 KiB of snippet per location, cut at a character, for ten locations on a multi-megabyte line", async () => {
+		writeFiles(repo, { "src/huge.ts": lines(`export const blob = "${"€".repeat(1_000_000)}";`) });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "a huge line");
+		const evidence = Array.from({ length: maxEvidenceLocations }, (_, index) => ({
+			file: "src/huge.ts",
+			line: 1,
+			role: index === 0 ? "cause" : "context",
+		}));
+		scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("report_finding", { ...nullDeref, file: "src/huge.ts", line: 1, rule: "wrong-result", evidence }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const [finding] = await review({ lenses: lenses.map((lens) => ({ ...lens, paths: ["**"] })) });
+
+		const snippets = [
+			finding!.locations[0]!.physicalLocation.region.snippet!.text,
+			finding!.properties.trigger!.snippet!,
+			...finding!.properties.evidence!.map((location) => location.snippet),
+		];
+		expect(snippets).toHaveLength(maxEvidenceLocations + 2);
+		for (const snippet of snippets) {
+			expect(Buffer.byteLength(snippet)).toBeLessThanOrEqual(maxSnippetBytes);
+			expect(snippet.startsWith('export const blob = "€€€')).toBe(true);
+			expect(snippet).toMatch(/€ \[cut at 2 KiB\]$/);
+			expect(snippet.isWellFormed() && !snippet.includes("\uFFFD")).toBe(true);
+		}
+		expect(Buffer.byteLength(JSON.stringify(finding))).toBeLessThan(32 * 1024);
+	});
+
 	it("refuses lines past the end of the file", async () => {
 		const requests = scriptConversations(fake, [
 			{
@@ -470,7 +513,7 @@ describe("reviewChangeset", () => {
 		expect(results[1]).toContain(
 			"Tool call blocked: rule made-up is not one of this lens's rules: null-dereference (",
 		);
-		expect(results[2]).toMatch(/^recorded finding [0-9a-f]{16}$/);
+		expect(results[2]).toMatch(/^recorded finding [0-9a-f]{16} as introduced\n/);
 		expect(results[3]).toBe(results[2]);
 		expect(findings).toHaveLength(1);
 		expect(findings[0]!.message.text).toBe("Reworded.");
@@ -563,22 +606,55 @@ describe("reviewChangeset", () => {
 		expect(findings.map((finding) => finding.ruleId)).toEqual(["wrong-result"]);
 	});
 
-	it("classifies cause by location, with evidence the only route to affected", async () => {
-		scriptConversations(fake, [
+	it("classifies cause by location, with a cause location overlapping the change the only route to affected", async () => {
+		const atReport = { ...nullDeref, file: "src/report.ts", line: 2 };
+		const requests = scriptConversations(fake, [
 			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
 			{
 				match: contracts,
 				replies: [
 					calls(
-						["report_finding", { ...nullDeref, rule: "changed-return", severity: "P2", line: 2 }],
 						[
 							"report_finding",
 							{
 								...nullDeref,
-								file: "src/report.ts",
+								rule: "changed-return",
+								severity: "P2",
 								line: 2,
+								evidence: [{ file: "src/user.ts", line: 2, role: "cause" }],
+							},
+						],
+						[
+							"report_finding",
+							{
+								...atReport,
 								rule: "broken-caller",
-								evidence: { file: "src/user.ts", line: 7 },
+								evidence: [
+									{ file: "src/user.ts", line: 7, role: "cause" },
+									{ file: "src/report.ts", line: 2, role: "context" },
+								],
+							},
+						],
+						[
+							"report_finding",
+							{
+								...atReport,
+								rule: "changed-error",
+								evidence: [
+									{ file: "src/report.ts", line: 2, role: "cause" },
+									{ file: "src/user.ts", line: 7, role: "context" },
+								],
+							},
+						],
+						[
+							"report_finding",
+							{
+								...atReport,
+								rule: "data-contract",
+								evidence: [
+									{ file: "src/user.ts", line: 7, role: "cause", revision: "base" },
+									{ file: "src/user.ts", line: 2, role: "context", revision: "base" },
+								],
 							},
 						],
 					),
@@ -589,21 +665,188 @@ describe("reviewChangeset", () => {
 
 		const findings = await review();
 
-		const byFile = Object.fromEntries(
-			findings.map((each) => [each.locations[0]!.physicalLocation.artifactLocation.uri, each]),
-		);
-		expect(byFile["src/user.ts"]!.properties.cause).toBe("pre-existing");
+		const byRule = Object.fromEntries(findings.map((each) => [each.ruleId, each.properties]));
+		expect(byRule["changed-return"]!.cause).toBe("pre-existing");
 		// Only adjudication decides what a finding requires; a pre-existing P1 must not arrive marked to block.
 		expect(findings.every((finding) => finding.properties.resolution === undefined)).toBe(true);
-		expect(byFile["src/report.ts"]!.properties).toMatchObject({
+		expect(byRule["broken-caller"]).toMatchObject({
 			cause: "affected",
-			evidence: { file: "src/user.ts", startLine: 7, snippet: "\treturn user.manager.name;" },
+			failureScenario: nullDeref.failureScenario,
+			evidence: [
+				{
+					file: "src/user.ts",
+					startLine: 7,
+					role: "cause",
+					revision: "head",
+					snippet: "\treturn user.manager.name;",
+				},
+				{
+					file: "src/report.ts",
+					startLine: 2,
+					role: "context",
+					revision: "head",
+					snippet: "export const line = managerName(me);",
+				},
+			],
 		});
-		expect(byFile["src/user.ts"]!.properties.evidence).toBeUndefined();
+		expect(byRule["changed-error"]!.cause).toBe("pre-existing");
+		expect(byRule["data-contract"]).toMatchObject({
+			cause: "affected",
+			evidence: [
+				{
+					file: "src/user.ts",
+					startLine: 7,
+					role: "cause",
+					revision: "base",
+					deleted: true,
+					snippet: '\treturn user.manager?.name ?? "none";',
+				},
+				{ file: "src/user.ts", startLine: 2, role: "context", revision: "base", snippet: "\tname: string;" },
+			],
+		});
+		// Only lines the change deleted are marked so; the GitHub comment says "deleted by this change" for these alone.
+		expect(byRule["data-contract"]!.evidence![1]).not.toHaveProperty("deleted");
+		expect(byRule["broken-caller"]!.evidence!.some((location) => "deleted" in location)).toBe(false);
+		// A cause location overlapping the change is marked as the one that proves it, so a merge that must cut keeps it.
+		const proving = (rule: string) => byRule[rule]!.evidence!.map((location) => location.proves === true);
+		expect(proving("broken-caller")).toEqual([true, false]);
+		expect(proving("data-contract")).toEqual([true, false]);
+		expect(proving("changed-return")).toEqual([false]);
+		expect(proving("changed-error")).toEqual([false, false]);
+		const results = toolResults(requests[contracts]![1]!);
+		expect(results[0]).toMatch(
+			/^recorded finding [0-9a-f]{16} as pre-existing: it is outside the change, and no cause/,
+		);
+		expect(results[1]).toMatch(/^recorded finding [0-9a-f]{16} as affected\n/);
+		const nonce = nonceOf(requests[contracts]![0]!);
+		expect(quoted(results[1]!, nonce, "evidence")).toEqual([
+			"cause src/user.ts:7: \treturn user.manager.name;\ncontext src/report.ts:2: export const line = managerName(me);",
+		]);
+		expect(quoted(results[3]!, nonce, "evidence")).toEqual([
+			'cause src/user.ts:7 at base: \treturn user.manager?.name ?? "none";\ncontext src/user.ts:2 at base: \tname: string;',
+		]);
 	});
 
-	it("refuses prose evidence and evidence outside every hunk, saying what evidence must be", async () => {
+	it("reads the base revision with read_file when asked, so a lens can number deleted lines", async () => {
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					calls(
+						["read_file", { path: "src/user.ts", startLine: 7, maxLines: 1, revision: "base" }],
+						["read_file", { path: "src/user.ts", startLine: 7, maxLines: 1 }],
+					),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		await review();
+
+		const nonce = nonceOf(requests[correctness]![0]!);
+		const [base, head] = toolResults(requests[correctness]![1]!);
+		expect(quoted(base!, nonce, "file")).toEqual(['7\t\treturn user.manager?.name ?? "none";']);
+		expect(quoted(head!, nonce, "file")).toEqual(["7\t\treturn user.manager.name;"]);
+	});
+
+	it("calls a finding affected when a cause location names a file the change renamed without editing", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{
+				"src/config.ts": lines("export const port = 8080;"),
+				"src/server.ts": lines('import { port } from "./config.ts";', "listen(port);"),
+			},
+			{ "src/notes.md": lines("Renames the configuration module.") },
+		);
+		gitIn(repo, "mv", "src/config.ts", "src/settings.ts");
+		gitIn(repo, "commit", "--quiet", "-m", "rename");
+		const changeset = await resolveRange(repo, "main...feature");
+		expect(changeset.revision.files.find((file) => file.path === "src/settings.ts")).toMatchObject({
+			status: "renamed",
+			oldPath: "src/config.ts",
+			hunks: [],
+		});
+		const stale = {
+			...nullDeref,
+			file: "src/server.ts",
+			line: 1,
+			failureScenario: "Loading src/server.ts fails: ./config.ts no longer exists.",
+		};
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{
+				match: contracts,
+				replies: [
+					calls(
+						[
+							"report_finding",
+							{
+								...stale,
+								rule: "broken-caller",
+								evidence: [{ file: "src/config.ts", line: 1, role: "cause", revision: "base" }],
+							},
+						],
+						[
+							"report_finding",
+							{
+								...stale,
+								rule: "data-contract",
+								evidence: [{ file: "src/settings.ts", line: 1, role: "cause" }],
+							},
+						],
+						[
+							"report_finding",
+							{
+								...stale,
+								rule: "changed-return",
+								evidence: [{ file: "src/config.ts", line: 1, role: "context", revision: "base" }],
+							},
+						],
+						[
+							"report_finding",
+							{
+								...nullDeref,
+								file: "src/settings.ts",
+								line: 1,
+								rule: "broken-caller",
+								failureScenario: "A port above 65535 from the environment is never rejected.",
+								evidence: [{ file: "src/config.ts", line: 1, role: "cause", revision: "base" }],
+							},
+						],
+					),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+
+		const findings = await review({
+			lenses: await loadLenses(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, [
+				"src/settings.ts",
+			]),
+		});
+
+		const fileOf = (each: (typeof findings)[number]) => each.locations[0]!.physicalLocation.artifactLocation.uri;
+		const own = findings.find((each) => fileOf(each) === "src/settings.ts")!.properties;
+		expect(own.cause).toBe("pre-existing");
+		expect(own.evidence).toEqual([expect.not.objectContaining({ deleted: true })]);
+		const byRule = Object.fromEntries(
+			findings.filter((each) => fileOf(each) === "src/server.ts").map((each) => [each.ruleId, each.properties]),
+		);
+		expect(byRule["broken-caller"]).toMatchObject({
+			cause: "affected",
+			evidence: [{ file: "src/config.ts", revision: "base", deleted: true, snippet: "export const port = 8080;" }],
+		});
+		expect(byRule["data-contract"]).toMatchObject({
+			cause: "affected",
+			evidence: [{ file: "src/settings.ts", revision: "head", snippet: "export const port = 8080;" }],
+		});
+		expect(byRule["changed-return"]!.cause).toBe("pre-existing");
+	});
+
+	it("refuses a missing or malformed failure scenario or evidence, saying what each must be", async () => {
 		const broken = { ...nullDeref, file: "src/report.ts", line: 2, rule: "broken-caller" };
+		const { failureScenario: _, ...unexplained } = broken;
 		const requests = scriptConversations(fake, [
 			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
 			{
@@ -611,8 +854,16 @@ describe("reviewChangeset", () => {
 				replies: [
 					calls(
 						["report_finding", { ...broken, evidence: "src/user.ts:7 now throws for a user without a manager" }],
-						["report_finding", { ...broken, evidence: { file: "src/user.ts", line: 6 } }],
-						["report_finding", { ...broken, evidence: { file: "src/report.ts", line: 1 } }],
+						["report_finding", { ...broken, evidence: { file: "src/user.ts", line: 7 } }],
+						["report_finding", { ...broken, evidence: [{ file: "src/user.ts", line: 7 }] }],
+						["report_finding", unexplained],
+						["report_finding", { ...broken, failureScenario: "x".repeat(maxFailureScenarioLength + 1) }],
+						["report_finding", { ...broken, evidence: [{ file: "src/gone.ts", line: 1, role: "cause" }] }],
+						[
+							"report_finding",
+							{ ...broken, evidence: [{ file: "src/user.ts", line: 1, endLine: 61, role: "cause" }] },
+						],
+						["report_finding", { ...broken, file: "src/gone.ts", line: 1 }],
 					),
 					fauxAssistantMessage("Done."),
 				],
@@ -621,10 +872,18 @@ describe("reviewChangeset", () => {
 
 		expect(await review()).toEqual([]);
 
-		const [prose, outside, unchanged] = toolResults(requests[contracts]![1]!);
-		expect(prose).toContain("evidence must be a location, { file, line, endLine }");
-		expect(outside).toContain("src/user.ts:6-6 is not a line this change added or modified");
-		expect(unchanged).toContain("src/report.ts is not a file this change modifies");
+		const [prose, single, roleless, missing, long, absent, wide, located] = toolResults(requests[contracts]![1]!);
+		expect(prose).toContain("evidence must be a list of one or more locations, each { file, line, endLine, role }");
+		expect(prose).toContain("Prose is not evidence");
+		expect(single).toContain("evidence must be a list of one or more locations");
+		expect(roleless).toContain("evidence[0] is not one");
+		expect(missing).toContain("failureScenario must be prose of at most 2000 characters naming the concrete input");
+		expect(long).toContain(`this one has ${maxFailureScenarioLength + 1}`);
+		expect(absent).toContain(
+			'src/gone.ts does not exist at the head revision; for lines this change deleted, add revision: "base"',
+		);
+		expect(wide).toContain("spans more than 60 lines; name the lines that matter");
+		expect(located).toMatch(/src\/gone\.ts does not exist at the head revision$/m);
 	});
 
 	it("reviews a head once: a repeat call with the same lenses returns its findings without asking a model", async () => {
@@ -974,7 +1233,13 @@ describe("adjudication", () => {
 			{
 				match: contracts,
 				replies: [
-					call("report_finding", { ...nullDeref, rule: "changed-return", severity: "P0", line: 2 }),
+					call("report_finding", {
+						...nullDeref,
+						rule: "changed-return",
+						severity: "P0",
+						line: 2,
+						evidence: [{ file: "src/user.ts", line: 2, role: "cause" }],
+					}),
 					fauxAssistantMessage("Done."),
 				],
 			},
@@ -984,6 +1249,108 @@ describe("adjudication", () => {
 
 		expect(verdict.findings.advisory.map((each) => each.properties.cause)).toEqual(["pre-existing"]);
 		expect(verdict.blocking).toBe(false);
+	});
+
+	it("blocks on a caller a pure deletion broke, proved only by the deleted line at the base", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		const port = (...guard: string[]) =>
+			lines(
+				"export function parsePort(value: string): number {",
+				"\tconst port = Number(value);",
+				...guard,
+				"\treturn port;",
+				"}",
+			);
+		const server = lines(
+			'import { parsePort } from "./port.ts";',
+			"",
+			'export const port = parsePort(process.env.PORT ?? "");',
+		);
+		repo = baseAndHead(
+			{
+				"src/port.ts": port('\tif (!Number.isInteger(port) || port < 1) throw new Error("invalid port");'),
+				"src/server.ts": server,
+			},
+			{ "src/port.ts": port() },
+		);
+		const changeset = await resolveRange(repo, "main...feature");
+		expect(changeset.revision.files[0]!.hunks.map(({ newLines, oldStart }) => [newLines, oldStart])).toEqual([
+			[0, 3],
+		]);
+		const atServer = {
+			...nullDeref,
+			file: "src/server.ts",
+			line: 3,
+			rule: "wrong-result",
+			failureScenario: 'With PORT unset, parsePort("") returns 0 and the server binds a random port.',
+			evidence: [
+				{ file: "src/port.ts", line: 3, role: "cause", revision: "base" },
+				{ file: "src/port.ts", line: 3, role: "context", revision: "head" },
+			],
+		};
+		const besideDeletion = {
+			...atServer,
+			file: "src/port.ts",
+			line: 3,
+			rule: "unhandled-error",
+			evidence: [{ file: "src/port.ts", line: 3, role: "context", revision: "base" }],
+		};
+		scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					calls(["report_finding", atServer], ["report_finding", besideDeletion]),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { verdict } = await reviewed({
+			lenses: await loadLenses(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, [
+				"src/port.ts",
+			]),
+		});
+
+		expect(verdict.blocking).toBe(true);
+		expect(verdict.findings.block.map((each) => [each.properties.path, each.properties.cause])).toEqual([
+			["src/server.ts", "affected"],
+		]);
+		expect(verdict.findings.block[0]!.properties.evidence![0]).toMatchObject({ revision: "base", deleted: true });
+		expect(verdict.findings.advisory.map((each) => [each.properties.path, each.properties.cause])).toEqual([
+			["src/port.ts", "pre-existing"],
+		]);
+	});
+
+	it("lets a cause location on an unrelated changed line make an old defect affected and block", async () => {
+		// Pinned as it stands: Melian checks that a cause location overlaps the change, not that the change brings the
+		// failure about. Milestone 2's verifier step caps a lens finding no verifier judged at advisory, and this test
+		// then expects advisory.
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{
+				match: contracts,
+				replies: [
+					call("report_finding", {
+						...nullDeref,
+						file: "src/report.ts",
+						line: 2,
+						rule: "broken-caller",
+						failureScenario:
+							"line is computed at import, before me is defined, so importing src/report.ts throws.",
+						evidence: [{ file: "src/user.ts", line: 7, role: "cause" }],
+					}),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+
+		const { verdict } = await reviewed();
+
+		expect(verdict.findings.block.map((each) => [each.properties.path, each.properties.cause])).toEqual([
+			["src/report.ts", "affected"],
+		]);
+		expect(verdict.blocking).toBe(true);
 	});
 
 	it("leaves out the sightings of a lens that configuration has since disabled", async () => {
@@ -1255,7 +1622,12 @@ describe("a stacked pull request retargeted onto another base", () => {
 		gitIn(repo, "commit", "--quiet", "--all", "-m", "child");
 	});
 
-	const atReport = { ...nullDeref, file: "src/report.ts", line: 2 };
+	const atReport = {
+		...nullDeref,
+		file: "src/report.ts",
+		line: 2,
+		evidence: [{ file: "src/report.ts", line: 2, role: "cause" }],
+	};
 	const reporting = () =>
 		scriptConversations(fake, [
 			{ match: correctness, replies: [call("report_finding", atReport), fauxAssistantMessage("Done.")] },
@@ -1396,5 +1768,190 @@ describe("on a repeat review after a task ended without deciding", () => {
 		const { verdict } = await reviewed({ config: configured() });
 
 		expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
+	});
+});
+
+describe("code over 2 KiB, which a finding stores cut", () => {
+	const dismissal = { by: "tal", reason: "the table is generated", at: "2026-10-04T00:00:00Z" };
+	const rows = Array.from({ length: 70 }, (_, index) => `export const row${index} = "${"x".repeat(40)}";`);
+	// The same rows as a formatter might reindent them: only whitespace differs.
+	const reindented = rows.map((row) => `\t${row.replace(" = ", "   =   ")}`);
+	const cells = Array.from({ length: 300 }, (_, index) => `"cell${index}"`);
+	const table = `export const table = [${cells.join(", ")}];`;
+	const tableReindented = `\texport const table = [${cells.join(",   ")}];`;
+	let dir: string;
+
+	beforeEach(() => {
+		dir = mkdtempSync(join(tmpdir(), "melian-cut-"));
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	function commitOnFeature(files: Record<string, string>, message: string): void {
+		writeFiles(repo, files);
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", message);
+	}
+
+	function reportOn(line: number): void {
+		scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("report_finding", {
+						...nullDeref,
+						file: "src/table.ts",
+						line,
+						evidence: [{ file: "src/table.ts", line, role: "cause" }],
+					}),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+	}
+
+	const everywhere = () => lenses.map((lens) => ({ ...lens, paths: ["**"] }));
+
+	async function statuses() {
+		const { findings } = await reviewed({ lenses: everywhere() });
+		return findings.map((finding) => [finding.properties.id, finding.properties.status]);
+	}
+
+	async function dismissAll(findings: readonly Finding[]): Promise<void> {
+		const root = await harness.root(context);
+		for (const finding of findings) {
+			await root.commit((tx) => dismissFinding(tx, root.id, finding.properties.id, dismissal), context);
+		}
+	}
+
+	it("keeps a dismissal when a formatter reindents a trigger hunk over 2 KiB", async () => {
+		commitOnFeature({ "src/table.ts": lines(...rows) }, "a generated table");
+		reportOn(10);
+		const { findings } = await reviewed({ lenses: everywhere() });
+		expect(Buffer.byteLength(findings[0]!.properties.trigger!.snippet!)).toBeLessThanOrEqual(maxSnippetBytes);
+		await dismissAll(findings);
+
+		commitOnFeature({ "src/table.ts": lines(...reindented) }, "reindent the table");
+		reportOn(10);
+
+		expect(await statuses()).toEqual([[findings[0]!.properties.id, "dismissed"]]);
+	});
+
+	it("keeps a finding's ID and its dismissal when a formatter reindents flagged code over 2 KiB", async () => {
+		commitOnFeature({ "src/table.ts": lines(table) }, "a generated table");
+		reportOn(1);
+		const { findings } = await reviewed({ lenses: everywhere() });
+		const stored = findings[0]!.locations[0]!.physicalLocation.region.snippet!.text;
+		expect(Buffer.byteLength(stored)).toBeLessThanOrEqual(maxSnippetBytes);
+		expect(stored.endsWith(" [cut at 2 KiB]")).toBe(true);
+		await dismissAll(findings);
+
+		commitOnFeature({ "src/table.ts": lines(tableReindented) }, "reindent the table");
+		reportOn(1);
+
+		expect(await statuses()).toEqual([[findings[0]!.properties.id, "dismissed"]]);
+	});
+
+	// The findings document as version 4 stored it, before any snippet was cut, written raw.
+	type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+	const LegacyFindings = defineDoc<{ [key: string]: Json }>({
+		kind: "melian.findings",
+		version: 4,
+		scope: "conversation",
+		history: "rewindable",
+		fork: "asOf",
+		initial: () => ({ revisions: [], items: {}, versions: {} }),
+	});
+
+	// Stores `sighting`, dismissed at the current head, as a Melian before the cut left it, then reopens the storage.
+	async function storeBeforeTheCut(sighting: Finding): Promise<void> {
+		const path = join(dir, "review.sqlite");
+		const open = async () =>
+			openHarness(await openSqliteStorage(path), {
+				models: fake.models,
+				registry: createReviewRegistry(),
+				settings: { retry: { enabled: false } },
+			});
+		await harness.close(context);
+		harness = await open();
+		const root = await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+		const { status: _, ...properties } = sighting.properties;
+		const revision = reviewedRevision();
+		const [correctnessLens] = lenses.filter((lens) => lens.name === "correctness");
+		await root.commit(async (tx) => {
+			const state = await tx.doc(LegacyFindings, root.id);
+			state.revisions = [revision];
+			state.items = JSON.parse(
+				JSON.stringify({
+					[sighting.properties.id]: {
+						lifecycle: {
+							status: "dismissed",
+							dismissedBy: dismissal.by,
+							dismissedReason: dismissal.reason,
+							dismissedAt: dismissal.at,
+							firstSeenRevision: revision,
+							lastSeenRevision: revision,
+							history: [],
+						},
+						sightings: {
+							[revision]: { [`lens.correctness@${correctnessLens!.version}`]: { ...sighting, properties } },
+						},
+					},
+				}),
+			);
+			state.versions = { [revision]: 1 };
+		}, context);
+		await harness.close(context);
+		harness = await open();
+	}
+
+	// A lens finding as a Melian before the cut built it: every snippet whole.
+	function wholeFinding(file: string, line: number, snippet: string, added: string): Finding {
+		const [correctnessLens] = lenses.filter((lens) => lens.name === "correctness");
+		const finding = createFinding({
+			rule: nullDeref.rule,
+			message: nullDeref.explanation.what,
+			file,
+			startLine: line,
+			snippet,
+			occurrence: 0,
+			cause: "introduced",
+			trigger: { file, index: 0, snippet: added },
+			severity: "P1",
+			explanation: {
+				what: nullDeref.explanation.what,
+				whyHere: nullDeref.explanation.why,
+				whatToDo: nullDeref.explanation.fix,
+			},
+			source: { check: "lens.correctness", version: correctnessLens!.version },
+		});
+		const [location] = finding.locations;
+		const region = { ...location.physicalLocation.region, snippet: { text: snippet } };
+		return { ...finding, locations: [{ physicalLocation: { ...location.physicalLocation, region } }] };
+	}
+
+	it("keeps a dismissal stored with a whole trigger over 2 KiB when the same hunk is sighted again", async () => {
+		commitOnFeature({ "src/table.ts": lines(...rows) }, "a generated table");
+		const stored = wholeFinding("src/table.ts", 10, rows[9]!, rows.join("\n"));
+		await storeBeforeTheCut(stored);
+
+		commitOnFeature({ "src/report.ts": lines("export const unrelated = 1;") }, "touch another file");
+		reportOn(10);
+
+		expect(await statuses()).toEqual([[stored.properties.id, "dismissed"]]);
+	});
+
+	it("keeps the ID and the dismissal of flagged code over 2 KiB stored whole", async () => {
+		commitOnFeature({ "src/table.ts": lines(table) }, "a generated table");
+		const stored = wholeFinding("src/table.ts", 1, table, table);
+		await storeBeforeTheCut(stored);
+
+		commitOnFeature({ "src/report.ts": lines("export const unrelated = 1;") }, "touch another file");
+		reportOn(1);
+
+		expect(await statuses()).toEqual([[stored.properties.id, "dismissed"]]);
 	});
 });

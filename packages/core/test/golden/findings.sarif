@@ -55,11 +55,24 @@
             "path": "src/run.ts",
             "occurrence": 0,
             "cause": "affected",
-            "evidence": {
-              "file": "src/run.ts",
-              "startLine": 12,
-              "snippet": "\tconst chunk = Buffer.alloc(1 << 20);"
-            },
+            "failureScenario": "run() passes a 1 MiB chunk, fs.write writes 64 KiB of it, and the file ends short.",
+            "evidence": [
+              {
+                "file": "src/run.ts",
+                "startLine": 12,
+                "role": "cause",
+                "revision": "head",
+                "snippet": "\tconst chunk = Buffer.alloc(1 << 20);"
+              },
+              {
+                "file": "src/run.ts",
+                "startLine": 14,
+                "endLine": 15,
+                "role": "context",
+                "revision": "base",
+                "snippet": "\tconst chunk = Buffer.alloc(1 << 10);\n\tfs.write(fd, chunk);"
+              }
+            ],
             "severity": "P3",
             "confidence": 0.9,
             "resolution": "advisory",

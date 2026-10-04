@@ -1,0 +1,15 @@
+src/receipt.ts
+
+  P2  line 4  wrong-result  (pre-existing, new, unresolved)
+  receipt divides the total in cents by 10, so 450 cents prints as Total: 45.00.
+    What: receipt divides the total in cents by 10, so 450 cents prints as Total: 45.00.
+    Why here: The change only made total's parameter readonly; the division in receipt predates it.
+    Failure scenario: receipt([450]) prints "Total: 45.00" for a total of 4.50, because it divides cents by 10.
+    Evidence:
+      cause: src/receipt.ts:4
+          return `Total: ${(total(cents) / 10).toFixed(2)}`;
+      context: src/total.ts:1
+        export function total(cents: readonly number[]): number {
+    What to do: Divide by 100.
+
+1 finding in 1 file.

@@ -1,20 +1,28 @@
 import {
 	type ChangedFile,
-	checkEvidence,
+	capSnippet,
+	causeOverlap,
+	changeOverlap,
 	classifyCause,
 	createFinding,
+	type EvidenceLocation,
 	type Finding,
 	type LensRule,
 	type LensToolName,
 	lensCovers,
 	listRevisionFiles,
+	maxEvidenceLines,
+	maxEvidenceLocations,
+	maxFailureScenarioLength,
 	type ReportFindingInput,
 	type RevisionEntry,
+	RevisionError,
 	readRevisionFile,
 	reportFindingInputSchema,
 	repositoryPath,
 	type Severity,
 	searchRevision,
+	snippetHash,
 	snippetOccurrence,
 	visibleText,
 } from "@melian-agent/core";
@@ -43,8 +51,15 @@ type ReviewHunk = {
 	added: string;
 };
 
-// A changed file as the review document keeps it: enough to classify cause, without the hunks' text.
-type ReviewFile = { path: string; status: ChangedFile["status"]; binary: boolean; hunks: ReviewHunk[] };
+// A changed file as the review document keeps it: enough to classify cause, without the hunks' text. `oldPath` names a
+// renamed file at the base, where evidence on its deleted lines points.
+type ReviewFile = {
+	path: string;
+	oldPath?: string;
+	status: ChangedFile["status"];
+	binary: boolean;
+	hunks: ReviewHunk[];
+};
 
 // The revision a lens reviews, fixed when its lens task creates it.
 export type ReviewState = {
@@ -58,8 +73,9 @@ export type ReviewState = {
 
 // The fields of `files` that the review document keeps.
 export function reviewFiles(files: readonly ChangedFile[]): ReviewFile[] {
-	return files.map(({ path, status, binary, hunks }) => ({
+	return files.map(({ path, oldPath, status, binary, hunks }) => ({
 		path,
+		...(oldPath === undefined ? {} : { oldPath }),
 		status,
 		binary,
 		hunks: hunks.map(({ file, index, oldStart, oldLines, newStart, newLines, text }) => ({
@@ -157,17 +173,24 @@ function text(content: string) {
 const readFile = defineTool({
 	name: "read_file",
 	description:
-		"Read a file as it is at the head revision under review, with line numbers: up to maxLines lines, at most 2000, from startLine. Any line of the file can be reached by startLine.",
+		'Read a file as it is at the head revision under review, or at the base with revision "base", with line numbers: up to maxLines lines, at most 2000, from startLine. Any line of the file can be reached by startLine.',
 	parameters: Type.Object({
-		path: Type.String({ minLength: 1, description: "Repository-relative path" }),
+		path: Type.String({ minLength: 1, description: "Repository-relative path at the named revision" }),
 		startLine: Type.Optional(Type.Integer({ minimum: 1, description: "First line to read; 1 when absent" })),
 		maxLines: Type.Optional(Type.Integer({ minimum: 1, maximum: maxReadLines, description: "At most 2000" })),
+		revision: Type.Optional(
+			Type.Union([Type.Literal("head"), Type.Literal("base")], {
+				description:
+					"head by default; base to read code this change deleted, numbered as evidence with revision base is, naming a renamed file by its old path",
+			}),
+		),
 	}),
 	replay: "safe",
 	outputLimits,
 	execute: async (args, api, context) => {
 		const review = await headOf(api, api.conversationId, context);
-		const file = await readRevisionFile(review.repoRoot, review.head, args.path);
+		const commit = args.revision === "base" ? review.base : review.head;
+		const file = await readRevisionFile(review.repoRoot, commit, args.path);
 		const lines = file.content.split("\n");
 		if (lines.at(-1) === "" && !file.truncated) lines.pop();
 		const start = args.startLine ?? 1;
@@ -257,31 +280,99 @@ function overlapping(file: ReviewFile | undefined, startLine: number, endLine: n
 	);
 }
 
-async function headLines(review: ReviewState, path: string, line: number, endLine: number) {
+// The text at `line` to `endLine` of `path` at the review's head or base. `hint` follows the message for a missing file.
+async function linesAt(
+	review: ReviewState,
+	revision: "head" | "base",
+	path: string,
+	line: number,
+	endLine: number,
+	hint = "",
+) {
 	if (endLine < line) throw new Error(`endLine ${endLine} is before line ${line}`);
-	const { content, truncated } = await readRevisionFile(review.repoRoot, review.head, path);
+	const commit = revision === "base" ? review.base : review.head;
+	const { content, truncated } = await readRevisionFile(review.repoRoot, commit, path).catch((error: unknown) => {
+		if (!(error instanceof RevisionError) || error.code !== "notFound") throw error;
+		throw new Error(`${path} does not exist at the ${revision} revision${hint}`);
+	});
 	const lines = content.split("\n");
 	// A cut file's last line may be partial, and a whole file's final newline leaves an empty element that is no line.
 	if (truncated || lines.at(-1) === "") lines.pop();
 	if (endLine > lines.length) {
 		const known = truncated ? `only its first ${lines.length} lines can be read` : `it has ${lines.length} lines`;
-		throw new Error(`${path}:${endLine} is past what Melian can read at the head revision; ${known}`);
+		throw new Error(`${path}:${endLine} is past what Melian can read at the ${revision} revision; ${known}`);
 	}
 	const snippet = lines.slice(line - 1, endLine).join("\n");
 	if (snippet.trim() === "") throw new Error(`${path}:${line} is blank; point at the code itself`);
 	return { content, snippet };
 }
 
-const proseEvidence =
-	"evidence must be a location, { file, line, endLine }, naming lines this change added or modified that break the reported code. Prose is not evidence: put the reasoning in explanation.why, and leave evidence out for a finding inside the change";
+const evidenceShape =
+	'evidence must be a list of one or more locations, each { file, line, endLine, role }, with role "cause" for the code that brings the failure about or "context" for code the claim reads but does not blame, and revision "base" for lines this change deleted';
+const scenarioShape = `failureScenario must be prose of at most ${maxFailureScenarioLength} characters naming the concrete input, state, or sequence that makes the code fail, and the wrong outcome it produces`;
 
-// Evidence must name changed code; Melian reads its snippet from the head, so prose can never make a finding affected.
-async function evidenceFrom(args: NonNullable<ReportFindingInput["evidence"]>, review: ReviewState) {
-	const file = repositoryPath(args.file);
-	const endLine = args.endLine ?? args.line;
-	checkEvidence({ file, startLine: args.line, endLine }, { files: changedFiles(review) });
-	const { snippet } = await headLines(review, file, args.line, endLine);
-	return { file, startLine: args.line, ...(args.endLine === undefined ? {} : { endLine }), snippet };
+// What a call's failure scenario or evidence must be, when it is missing or malformed, so the model reads how to fix
+// its call rather than a schema error. Undefined when both look right; the schema then checks the rest.
+function malformed(args: unknown): string | undefined {
+	const { failureScenario, evidence } = (args ?? {}) as { failureScenario?: unknown; evidence?: unknown };
+	if (typeof failureScenario !== "string" || failureScenario.trim() === "")
+		return `${scenarioShape}; it is missing or blank`;
+	if (failureScenario.length > maxFailureScenarioLength) {
+		return `${scenarioShape}; this one has ${failureScenario.length}`;
+	}
+	if (typeof evidence === "string") {
+		return `${evidenceShape}. Prose is not evidence: put the reasoning in explanation.why and failureScenario`;
+	}
+	if (!Array.isArray(evidence) || evidence.length === 0) return `${evidenceShape}; it is missing or empty`;
+	if (evidence.length > maxEvidenceLocations) return `${evidenceShape}, at most ${maxEvidenceLocations} of them`;
+	const bad = evidence.findIndex(
+		(location) =>
+			location === null ||
+			typeof location !== "object" ||
+			!["cause", "context"].includes((location as { role?: unknown }).role as string),
+	);
+	return bad === -1 ? undefined : `${evidenceShape}; evidence[${bad}] is not one`;
+}
+
+// Melian reads each location's snippet from the revision it names, so the evidence a verifier and the author see is
+// the code itself, never the model's quotation of it.
+async function evidenceFrom(
+	args: ReportFindingInput["evidence"],
+	review: ReviewState,
+	findingFile: string,
+): Promise<EvidenceLocation[]> {
+	// A call an older Melian stored before a crash resumes here without passing prepareArguments or the schema again.
+	if (!Array.isArray(args)) throw new Error(evidenceShape);
+	return await Promise.all(
+		args.map(async ({ file: given, line, endLine: last, role, revision = "head" }) => {
+			const file = repositoryPath(given);
+			const endLine = last ?? line;
+			if (endLine - line >= maxEvidenceLines) {
+				throw new Error(
+					`evidence ${file}:${line}-${endLine} spans more than ${maxEvidenceLines} lines; name the lines that matter`,
+				);
+			}
+			const hint =
+				revision === "head"
+					? '; for lines this change deleted, add revision: "base" to the location, naming a renamed file by its old path'
+					: "";
+			const { snippet } = await linesAt(review, revision, file, line, endLine, hint);
+			const site = { file, startLine: line, endLine, role, revision };
+			const changed = { files: changedFiles(review) };
+			const deleted = revision === "base" && changeOverlap(site, changed, findingFile) !== undefined;
+			const proves = causeOverlap(site, changed, findingFile) !== undefined;
+			return {
+				file,
+				startLine: line,
+				...(last === undefined ? {} : { endLine }),
+				role,
+				revision,
+				...(deleted ? { deleted } : {}),
+				...(proves ? { proves } : {}),
+				snippet: capSnippet(snippet),
+			};
+		}),
+	);
 }
 
 // The snippet comes from the head revision at the reported lines, never from the model, so a finding's ID does not
@@ -292,12 +383,12 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 		throw new Error(`${path} is outside the paths lens ${lens.name} reviews; report only within them`);
 	}
 	const endLine = args.endLine ?? args.line;
-	const { content, snippet } = await headLines(review, path, args.line, endLine);
-	const located = classifyCause({ file: path, startLine: args.line, endLine }, { files: changedFiles(review) });
+	const { content, snippet } = await linesAt(review, "head", path, args.line, endLine);
+	const evidence = await evidenceFrom(args.evidence, review, path);
+	const location = { file: path, startLine: args.line, endLine };
+	const cause = classifyCause(location, { files: changedFiles(review) }, evidence);
 	const changed = review.files.find((file) => file.path === path);
-	const hunk = located === "introduced" ? overlapping(changed, args.line, endLine) : undefined;
-	const evidence =
-		located === "introduced" || args.evidence === undefined ? undefined : await evidenceFrom(args.evidence, review);
+	const hunk = cause === "introduced" ? overlapping(changed, args.line, endLine) : undefined;
 	const { severity } = args;
 	return createFinding({
 		rule: args.rule,
@@ -307,11 +398,18 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 		...(args.endLine === undefined ? {} : { endLine }),
 		snippet,
 		occurrence: snippetOccurrence(content, snippet, { startLine: args.line, endLine }),
-		cause: evidence === undefined ? located : { evidence },
+		cause,
+		failureScenario: args.failureScenario,
+		evidence,
 		...(hunk === undefined
 			? {}
 			: {
-					trigger: { file: hunk.file, index: hunk.index, snippet: hunk.added },
+					trigger: {
+						file: hunk.file,
+						index: hunk.index,
+						snippet: capSnippet(hunk.added),
+						hash: snippetHash(hunk.added),
+					},
 				}),
 		severity,
 		explanation: {
@@ -330,11 +428,14 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 export const reportFinding = defineTool({
 	name: "report_finding",
 	description:
-		"Report one finding at the head revision: the file and lines of the flagged code, one of your rules, a severity, and an explanation. Call once per finding; never report findings in prose.",
+		"Report one finding at the head revision: the file and lines of the flagged code, one of your rules, a severity, an explanation, a failure scenario, and evidence locations. Call once per finding; never report findings in prose.",
 	parameters: reportFindingInputSchema,
-	// Runs before validation, so prose evidence gets a reply saying what evidence must be, not a schema error.
+	outputLimits,
+	// Runs before validation, so a missing or malformed failure scenario or evidence gets a reply saying what it must be,
+	// not a schema error.
 	prepareArguments: (args) => {
-		if (typeof (args as { evidence?: unknown } | undefined)?.evidence === "string") throw new Error(proseEvidence);
+		const problem = malformed(args);
+		if (problem !== undefined) throw new Error(problem);
 		return args as ReportFindingInput;
 	},
 	replay: "safe",
@@ -354,7 +455,20 @@ export const reportFinding = defineTool({
 			}
 			await upsertFinding(tx, lens.review, finding, at);
 		}, context);
-		return text(`recorded finding ${id}`);
+		const { cause, evidence = [] } = finding.properties;
+		const unproven =
+			cause === "pre-existing"
+				? ": it is outside the change, and no cause location overlaps lines the change added, modified, or deleted, or names a file it only renamed while the finding's own file is one it edited or left alone"
+				: "";
+		// Each location's first line as Melian read it, so a lens that miscounted a line number sees what it cited.
+		const { body } = fitting(
+			evidence.map(
+				({ file, startLine, role, revision, snippet }) =>
+					`${role} ${visibleText(file)}:${startLine}${revision === "base" ? " at base" : ""}: ${snippet.split("\n")[0]}`,
+			),
+		);
+		const cited = quoteUntrusted("evidence", body, review.nonce);
+		return text(`recorded finding ${id} as ${cause}${unproven}\nThe first line of each evidence location:\n${cited}`);
 	},
 });
 

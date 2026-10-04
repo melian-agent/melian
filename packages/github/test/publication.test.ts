@@ -13,6 +13,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 const revision = "a".repeat(40);
+const base = "c".repeat(40);
 const links = { web: "https://github.com/melian-agent/example" };
 const secret = "11".repeat(32);
 
@@ -35,8 +36,78 @@ describe("links", () => {
 		const url = blobUrl(links, revision, "src/a)b (c)/it's*!.ts", 3, 5);
 		expect(url).toBe(`${links.web}/blob/${revision}/src/a%29b%20%28c%29/it%27s%2A%21.ts#L3-L5`);
 		const finding = createFinding({ ...input, file: "src/a)b.ts" });
-		const comment = renderComment({ finding, placement: { kind: "nearest", line: 1 } }, revision, links, secret);
+		const comment = renderComment(
+			{ finding, placement: { kind: "nearest", line: 1 } },
+			revision,
+			base,
+			links,
+			secret,
+		);
 		expect(comment).toContain(`(${links.web}/blob/${revision}/src/a%29b.ts#L12)`);
+	});
+});
+
+describe("findings", () => {
+	it("shows the failure scenario and links each evidence location at the commit it was read from", () => {
+		const finding = createFinding({
+			...input,
+			cause: "affected",
+			failureScenario: "A body of `process.exit()` stops the server.",
+			evidence: [
+				{ file: "src/api.ts", startLine: 3, endLine: 4, role: "cause", revision: "head", snippet: "run(body)" },
+				{
+					file: "src/old.ts",
+					startLine: 9,
+					role: "context",
+					revision: "base",
+					deleted: true,
+					snippet: "guard(body)",
+				},
+			],
+		});
+		const comment = renderComment(
+			{ finding, placement: { kind: "lines", startLine: 12, line: 12 } },
+			revision,
+			base,
+			links,
+			secret,
+		);
+		expect(comment).toContain("**Failure scenario:** A body of \\`process.exit\\(\\)\\` stops the server.");
+		expect(comment).toContain(
+			`- cause: [\`src/api.ts\` lines 3-4](${links.web}/blob/${revision}/src/api.ts#L3-L4)\n`,
+		);
+		expect(comment).toContain(
+			`- context: [\`src/old.ts\` line 9](${links.web}/blob/${base}/src/old.ts#L9), deleted by this change`,
+		);
+		expect(comment).not.toContain("guard(body)");
+	});
+
+	it('labels a base location ", deleted by this change" only when its lines overlap a hunk\'s old lines, not every evidence location with revision: "base", context as well as cause', () => {
+		const untouched = { file: "src/api.ts", startLine: 3, revision: "base", snippet: "run(body)" } as const;
+		const finding = createFinding({
+			...input,
+			failureScenario: "A body of `process.exit()` stops the server.",
+			evidence: [
+				{ ...untouched, role: "cause" },
+				{ ...untouched, role: "context", startLine: 4 },
+				{ ...untouched, role: "cause", startLine: 9, deleted: true },
+			],
+		});
+		const comment = renderComment(
+			{ finding, placement: { kind: "lines", startLine: 12, line: 12 } },
+			revision,
+			base,
+			links,
+			secret,
+		);
+		expect(comment).toContain(
+			`- cause: [\`src/api.ts\` line 3](${links.web}/blob/${base}/src/api.ts#L3), at the base\n`,
+		);
+		expect(comment).toContain(
+			`- context: [\`src/api.ts\` line 4](${links.web}/blob/${base}/src/api.ts#L4), at the base\n`,
+		);
+		expect(comment).toContain(`(${links.web}/blob/${base}/src/api.ts#L9), deleted by this change`);
+		expect(comment.match(/deleted by this change/g)).toHaveLength(1);
 	});
 });
 
@@ -78,6 +149,7 @@ describe("markers", () => {
 		const comment = renderComment(
 			{ finding, placement: { kind: "lines", startLine: 12, line: 12 } },
 			revision,
+			base,
 			links,
 			secret,
 		);
@@ -85,6 +157,7 @@ describe("markers", () => {
 			{
 				pullRequest: 7,
 				revision,
+				base,
 				fingerprint: "0123456789abcdef",
 				round: 1,
 				verdict: adjudicate({ findings: [finding], manifest: [], checks: [], config: defaultConfig }),
@@ -117,6 +190,7 @@ describe("markers", () => {
 				{
 					pullRequest: 7,
 					revision,
+					base,
 					fingerprint: "0123456789abcdef",
 					round: 1,
 					verdict: adjudicate({ findings, manifest: [], checks: [], config: defaultConfig }),
@@ -145,6 +219,7 @@ describe("markers", () => {
 		const draft = {
 			pullRequest: 7,
 			revision,
+			base,
 			fingerprint: "0123456789abcdef",
 			round: 1,
 			verdict: adjudicate({ findings, manifest: [], checks: [], config: defaultConfig }),
@@ -192,6 +267,7 @@ describe("markers", () => {
 		const comment = renderComment(
 			{ finding, placement: { kind: "lines", startLine: 12, line: 12 } },
 			revision,
+			base,
 			links,
 			secret,
 		);

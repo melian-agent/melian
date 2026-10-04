@@ -7,7 +7,20 @@
       "category": "bug",
       "file": "src/cart.ts",
       "rule": "broken-caller",
-      "cause": "affected"
+      "cause": "affected",
+      "failureScenario": "summary([{ name: \"Tea\", cents: 450 }]) calls formatPrice(450) with no currency: tsc rejects the call, and at run time Intl.NumberFormat throws a TypeError because the currency style needs a currency code.",
+      "evidence": [
+        {
+          "file": "src/price.ts",
+          "line": 1,
+          "role": "cause"
+        },
+        {
+          "file": "src/cart.ts",
+          "line": 10,
+          "role": "context"
+        }
+      ]
     },
     {
       "comment": "formatPrice now formats any currency but still divides by 100, so a currency without two minor units renders wrong: 500 yen renders as \"JPY 5\".",
@@ -15,7 +28,21 @@
       "category": "bug",
       "file": "src/price.ts",
       "rule": "wrong-result",
-      "cause": "introduced"
+      "cause": "introduced",
+      "failureScenario": "formatPrice(500, \"JPY\") divides by 100 and renders \"JPY 5\" for a 500 yen price, since yen has no minor unit.",
+      "evidence": [
+        {
+          "file": "src/price.ts",
+          "line": 2,
+          "role": "cause"
+        },
+        {
+          "file": "src/price.ts",
+          "line": 2,
+          "role": "context",
+          "revision": "base"
+        }
+      ]
     }
   ]
 }

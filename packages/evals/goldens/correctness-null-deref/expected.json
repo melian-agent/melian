@@ -7,7 +7,27 @@
       "category": "bug",
       "file": "src/user.ts",
       "rule": "null-dereference",
-      "cause": "introduced"
+      "cause": "introduced",
+      "failureScenario": "describe({ name: \"Ada\" }) in src/org-chart.ts calls managerName on a user without a manager, which reads name of undefined and throws a TypeError, where the base returned \"Ada reports to none\".",
+      "evidence": [
+        {
+          "file": "src/user.ts",
+          "line": 7,
+          "endLine": 8,
+          "role": "cause"
+        },
+        {
+          "file": "src/org-chart.ts",
+          "line": 4,
+          "role": "context"
+        },
+        {
+          "file": "src/user.ts",
+          "line": 7,
+          "role": "context",
+          "revision": "base"
+        }
+      ]
     }
   ]
 }

@@ -122,8 +122,14 @@ export function stackOnParent(repo: string): void {
 
 const explanation = (what: string) => ({ what, why: `${what} Why.`, fix: `${what} Fix.` });
 
+// Each finding blames its own line, so only a location inside the diff makes it more than pre-existing.
 function report(file: string, line: number, rule: string, severity: string, what: string) {
-	return { name: "report_finding", arguments: { file, line, rule, severity, explanation: explanation(what) } };
+	const evidence = [{ file, line, role: "cause" }];
+	const failureScenario = `${what} Scenario.`;
+	return {
+		name: "report_finding",
+		arguments: { file, line, rule, severity, explanation: explanation(what), failureScenario, evidence },
+	};
 }
 
 // On line 7 at revision 1: introduced, P1, so it blocks.

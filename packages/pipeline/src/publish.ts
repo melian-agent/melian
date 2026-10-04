@@ -11,9 +11,17 @@ import {
 	type ReviewProvider,
 	type ReviewStatus,
 	reviewStatus,
+	upgradeStoredFinding,
 	type Verdict,
 } from "@melian-agent/core";
-import { readProvenance, readVerdict, type StoredVerdict, type VerdictProvenance } from "./adjudication.ts";
+import {
+	readProvenance,
+	readVerdict,
+	type StoredVerdict,
+	upgradeStoredVerdict,
+	VerdictDocument,
+	type VerdictProvenance,
+} from "./adjudication.ts";
 import { PublishError } from "./errors.ts";
 import { revisionKey } from "./findings.ts";
 import {
@@ -60,8 +68,11 @@ const maxRefusals = 3;
 type StoredRevision = {
 	// One review per verdict published at this head: a second review of the same head can change the verdict.
 	reviews: string[];
-	// The fingerprint of the verdict the last review posted.
+	// The fingerprint of the verdict the last review posted, and the revisionKey of the review that verdict is of. A
+	// retarget keeps the head, so a fingerprint alone matches an identical verdict of another base. An older Melian
+	// recorded no revision.
 	verdict?: string;
+	verdictRevision?: string;
 	// How many rounds were ever planned at this head, so each round has a number of its own.
 	rounds?: number;
 	pending?: PendingRound;
@@ -83,11 +94,24 @@ function unpublished(): StoredRevision {
 // would post it twice.
 export const PublishedDocument = defineDoc<PublishedState>({
 	kind: "melian.published",
-	version: 1,
+	version: 2,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
 	initial: () => ({ order: [], revisions: {} }),
+	// Version 2 made a finding's evidence a list of locations, so a round left pending before it renders.
+	migrate: (value) => {
+		const state = value as PublishedState;
+		const revisions = Object.fromEntries(
+			Object.entries(state.revisions).map(([head, record]) => {
+				const { pending } = record;
+				if (pending === undefined) return [head, record];
+				const post = pending.post.map((each) => ({ ...each, finding: upgradeStoredFinding(each.finding) }));
+				return [head, { ...record, pending: { ...pending, verdict: upgradeStoredVerdict(pending.verdict), post } }];
+			}),
+		);
+		return { ...state, revisions };
+	},
 });
 
 // The changeset's publisher secret, which signs every marker Melian posts for it: 32 random bytes as hex, generated once
@@ -103,8 +127,56 @@ export const PublisherDocument = defineDoc<{ secret?: string; target?: PublishTa
 	initial: () => ({}),
 });
 
-function fingerprint(verdict: Verdict): string {
+export function fingerprint(verdict: Verdict): string {
 	return createHash("sha256").update(JSON.stringify(verdict)).digest("hex").slice(0, 16);
+}
+
+// The fingerprint a verdict migrated from version 2 of the verdict document had before, when it could have been one:
+// each finding's evidence is the single cause at head that the migration made of its one location, and no finding has
+// a failure scenario. A head published before the upgrade then reads as published, rather than taking a second review
+// of the same verdict.
+export function legacyFingerprint(verdict: Verdict): string | undefined {
+	const findings = [...Object.values(verdict.findings).flat(), ...verdict.dismissed];
+	const legacy = (finding: Finding) => {
+		const { evidence, failureScenario, otherClaims } = finding.properties;
+		if (failureScenario !== undefined || otherClaims !== undefined) return false;
+		if (evidence === undefined) return true;
+		return evidence.length === 1 && evidence[0]!.role === "cause" && evidence[0]!.revision === "head";
+	};
+	if (!findings.every(legacy)) return undefined;
+	const downgrade = (finding: Finding) => {
+		const [location] = finding.properties.evidence ?? [];
+		if (location === undefined) return finding;
+		const { role: _, revision: __, ...old } = location;
+		return { ...finding, properties: { ...finding.properties, evidence: old } };
+	};
+	const groups = Object.fromEntries(
+		Object.entries(verdict.findings).map(([resolution, group]) => [resolution, group.map(downgrade)]),
+	);
+	const old = { ...verdict, findings: groups, dismissed: verdict.dismissed.map(downgrade) };
+	return createHash("sha256").update(JSON.stringify(old)).digest("hex").slice(0, 16);
+}
+
+// Whether the last review posted at `head`, as `record` holds it, posted this revision's verdict, by its current or
+// legacy fingerprint. A record an older Melian wrote names no revision; it counts only when no other revision reviewed
+// at the head has a verdict with the same fingerprint, so an identical verdict after a retarget is never taken for the
+// one posted under the old base.
+async function postedVerdictOf(
+	record: StoredRevision | undefined,
+	revision: string,
+	head: string,
+	fingerprints: readonly (string | undefined)[],
+	reader: Pick<DocumentReader, "snapshot">,
+	root: ConversationId,
+	context: Context,
+): Promise<boolean> {
+	if (record?.verdict === undefined || !fingerprints.includes(record.verdict)) return false;
+	if (record.verdictRevision !== undefined) return record.verdictRevision === revision;
+	const verdicts = (await reader.snapshot(VerdictDocument, root, context))?.verdicts ?? {};
+	return !Object.entries(verdicts).some(([other, verdict]) => {
+		if (other === revision || !other.endsWith(`..${head}`)) return false;
+		return [fingerprint(verdict), legacyFingerprint(verdict)].includes(record.verdict);
+	});
 }
 
 // Resolutions an earlier head decided but never replied to, because a later push arrived first. They are still owed.
@@ -256,7 +328,7 @@ function publishTask(provider: ReviewProvider) {
 					);
 					return;
 				}
-				const { pullRequest, head, revision } = target;
+				const { pullRequest, base, head, revision } = target;
 				const revalidate = async () => {
 					const moved = movedFrom(target, await provider.pullRequest(pullRequest));
 					if (moved !== undefined) throw new TargetMoved(moved);
@@ -290,6 +362,7 @@ function publishTask(provider: ReviewProvider) {
 					const verdict = await readVerdict(runtime, root, revision, context);
 					if (verdict === undefined) throw new Error(`no verdict is recorded for ${revision}`);
 					const current = fingerprint(verdict);
+					const legacy = legacyFingerprint(verdict);
 					// A pending round planned for another revision of this head, such as the pull request before a retarget,
 					// is dropped unless the provider already shows it, in which case the loop below records it as posted.
 					const left = (await read()).revisions[head]?.pending;
@@ -312,7 +385,8 @@ function publishTask(provider: ReviewProvider) {
 						const state = await read();
 						const before = state.revisions[head];
 						if (before?.pending === undefined) {
-							if (before?.verdict === current) break;
+							if (await postedVerdictOf(before, revision, head, [current, legacy], runtime, root, context))
+								break;
 							const planned = planRound(state, head, revision, verdict, lines);
 							await runtime.commit(async (tx) => {
 								const document = await tx.doc(PublishedDocument, root);
@@ -335,6 +409,7 @@ function publishTask(provider: ReviewProvider) {
 							posted = await provider.postReview({
 								pullRequest,
 								revision: head,
+								base,
 								fingerprint: pending.fingerprint,
 								round: pending.round,
 								verdict: pending.verdict,
@@ -361,6 +436,7 @@ function publishTask(provider: ReviewProvider) {
 							const record = (await tx.doc(PublishedDocument, root)).revisions[head]!;
 							record.reviews = [...record.reviews, posted.id];
 							record.verdict = pending.fingerprint;
+							record.verdictRevision = pending.revision;
 							record.open = open;
 							record.resolved = { ...record.resolved, ...pending.resolved };
 							delete record.pending;

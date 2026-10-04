@@ -4,6 +4,15 @@ src/user.ts
   managerName casts user.manager to User and reads its name, but manager is optional.
     What: managerName casts user.manager to User and reads its name, but manager is optional.
     Why here: The base guarded with ?. and fell back to "none"; this change removes the guard, so describe() throws for any user without a manager.
+    Failure scenario: describe({ name: "Ada" }) in src/org-chart.ts calls managerName on a user without a manager, which reads name of undefined and throws a TypeError, where the base returned "Ada reports to none".
+    Evidence:
+      cause: src/user.ts:7-8
+          const manager = user.manager as User;
+          return manager.name.trim();
+      context: src/org-chart.ts:4
+          return `${user.name} reports to ${managerName(user)}`;
+      context: src/user.ts:7 at base
+          return user.manager?.name ?? "none";
     What to do: Keep the optional chain: return user.manager?.name.trim() ?? "none".
 
 1 finding in 1 file.

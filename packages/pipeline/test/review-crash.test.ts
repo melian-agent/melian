@@ -47,7 +47,7 @@ afterEach(async () => {
 });
 
 async function killWhen(
-	scenario: "finding" | "request" | "adjudication",
+	scenario: "finding" | "legacy" | "request" | "adjudication",
 	reached: (events: ReturnType<typeof readEvents>) => boolean,
 	database: string,
 	log: string,
@@ -124,11 +124,50 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		expect(settled.state.outcome.status).toBe("completed");
 		const [replayed, correction] = requests["You are the correctness reviewer"]!;
 		const [first] = toolResults(replayed!);
-		expect(first).toMatch(/^recorded finding [0-9a-f]{16}$/);
+		expect(first).toMatch(/^recorded finding [0-9a-f]{16} as introduced\n/);
 		expect(toolResults(correction!).at(-1)).toBe(first);
 		const root = await harness.root(context);
 		const findings = await readFindings(harness, root.id, reviewedRevision(), context);
 		expect(findings.map((finding) => finding.message.text)).toEqual(["Corrected."]);
+	});
+
+	it("refuses an older Melian's call replayed after a crash, saying what evidence must be, and takes the lens's retry", async () => {
+		const database = join(dir, "legacy.sqlite");
+		const log = join(dir, "legacy.jsonl");
+		await killWhen("legacy", (events) => count(events, "legacy-call-accepted") === 1, database, log);
+
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
+		const requests = scriptConversations(fake, [
+			{
+				match: "You are the correctness reviewer",
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+		]);
+		harness = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		harness.resume();
+		const lensTask = (await harness.inspect(context)).tasks.find((task) => task.record.kind === "melian.lenses");
+		expect(lensTask).toBeDefined();
+		const settled = await harness.waitForTask(lensTask!.record.id, context);
+
+		expect(settled.state.outcome.status).toBe("completed");
+		const [replayed, retried] = requests["You are the correctness reviewer"]!;
+		expect(toolResults(replayed!)).toEqual([
+			expect.stringContaining(
+				"evidence must be a list of one or more locations, each { file, line, endLine, role }",
+			),
+		]);
+		expect(toolResults(retried!).at(-1)).toMatch(/^recorded finding [0-9a-f]{16} as introduced\n/);
+		const root = await harness.root(context);
+		const findings = await readFindings(harness, root.id, reviewedRevision(), context);
+		expect(findings.map((finding) => finding.properties.failureScenario)).toEqual([crashFinding.failureScenario]);
 	});
 
 	it("attaches a repeat call to the crashed review, so each lens asks its model once", async () => {

@@ -131,17 +131,28 @@ export function blobUrl(links: RepositoryLinks, revision: string, path: string, 
 	return `${links.web}/blob/${revision}/${encoded}#L${start}${end === start ? "" : `-L${end}`}`;
 }
 
-// An affected finding's evidence is the changed code that breaks it, linked at the revision.
-function evidenceText(finding: Finding, revision: string, links: RepositoryLinks): string[] {
-	const { evidence } = finding.properties;
-	if (evidence === undefined) return [];
-	const { file, startLine, endLine = startLine } = evidence;
-	const link = `[${code(file)} ${lineSpan(startLine, endLine)}](${blobUrl(links, revision, file, startLine, endLine)})`;
-	return ["", `**Evidence:** the change at ${link} breaks it.`];
+// The commits a finding's links point at: the head reviewed, and the base its deleted lines are read from.
+interface Commits {
+	readonly head: string;
+	readonly base: string;
 }
 
-function findingText(finding: Finding, revision: string, links: RepositoryLinks): string[] {
-	const { severity, cause, resolution, explanation } = finding.properties;
+// Each evidence location links to its lines at the commit it was read from, rather than quoting the code. A base
+// location says the change deleted its lines only when Melian found so when it read them.
+function evidenceText(finding: Finding, commits: Commits, links: RepositoryLinks): string[] {
+	const { evidence } = finding.properties;
+	if (evidence === undefined) return [];
+	const items = evidence.map(({ file, startLine, endLine = startLine, role, revision, deleted }) => {
+		const at = revision === "base" ? commits.base : commits.head;
+		const link = `[${code(file)} ${lineSpan(startLine, endLine)}](${blobUrl(links, at, file, startLine, endLine)})`;
+		const where = revision === "base" ? (deleted === true ? ", deleted by this change" : ", at the base") : "";
+		return `- ${role}: ${link}${where}`;
+	});
+	return ["", "**Evidence:**", "", ...items];
+}
+
+function findingText(finding: Finding, commits: Commits, links: RepositoryLinks): string[] {
+	const { severity, cause, resolution, explanation, failureScenario } = finding.properties;
 	return [
 		`**${severity}** ${code(finding.ruleId)} (${cause}, ${resolution ?? "unresolved"})`,
 		"",
@@ -150,14 +161,24 @@ function findingText(finding: Finding, revision: string, links: RepositoryLinks)
 		`**What:** ${renderProse(explanation.what)}`,
 		"",
 		`**Why here:** ${renderProse(explanation.whyHere)}`,
-		...evidenceText(finding, revision, links),
+		...(failureScenario === undefined ? [] : ["", `**Failure scenario:** ${renderProse(failureScenario)}`]),
+		...evidenceText(finding, commits, links),
 		"",
 		`**What to do:** ${renderProse(explanation.whatToDo)}`,
 	];
 }
 
-/** The body of a finding's inline comment. A finding anchored to the nearest changed line links to where it is. */
-export function renderComment(placed: PlacedFinding, revision: string, links: RepositoryLinks, secret: string): string {
+/**
+ * The body of a finding's inline comment. A finding anchored to the nearest changed line links to where it is.
+ * `revision` is the head reviewed, and `base` the commit evidence on deleted lines links to.
+ */
+export function renderComment(
+	placed: PlacedFinding,
+	revision: string,
+	base: string,
+	links: RepositoryLinks,
+	secret: string,
+): string {
 	const { finding, placement } = placed;
 	const [start, end] = span(finding);
 	const where =
@@ -170,7 +191,7 @@ export function renderComment(placed: PlacedFinding, revision: string, links: Re
 	return [
 		marker(revision, "finding", finding.properties.id, secret),
 		...where,
-		...findingText(finding, revision, links),
+		...findingText(finding, { head: revision, base }, links),
 	].join("\n");
 }
 
@@ -226,7 +247,7 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 			marker(revision, "finding", finding.properties.id, secret),
 			link,
 			"",
-			...findingText(finding, revision, links),
+			...findingText(finding, { head: revision, base: draft.base }, links),
 		].join("\n");
 	});
 	const heading = options.inlineRefused
