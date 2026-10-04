@@ -14,6 +14,7 @@ import {
 	normaliseSnippet,
 	parseFinding,
 	reportFindingInputSchema,
+	snippetHash,
 	snippetOccurrence,
 	upgradeStoredFinding,
 } from "@melian-agent/core";
@@ -229,6 +230,14 @@ describe("capSnippet", () => {
 			expect(Buffer.byteLength(text)).toBeGreaterThan(maxSnippetBytes - 4);
 			expect(capSnippet(`${long}y`).text).not.toBe(text);
 		}
+	});
+});
+
+describe("snippetHash", () => {
+	it("hashes two snippets that normalise alike alike, and a changed token apart", () => {
+		expect(snippetHash("foo(a, b)")).toMatch(/^[0-9a-f]{64}$/);
+		expect(snippetHash("\tfoo(\n\t\ta,\n\t\tb\n\t)")).toBe(snippetHash("foo(a, b)"));
+		expect(snippetHash("foo(a, c)")).not.toBe(snippetHash("foo(a, b)"));
 	});
 });
 

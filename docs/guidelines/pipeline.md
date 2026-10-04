@@ -95,7 +95,7 @@ Pi Durable cuts a tool's result at 50 KB or 2000 lines unless the tool sets `out
 - `prepareArguments` runs before schema validation and refuses a call whose failure scenario is missing, blank, or too long, or whose evidence is prose, a single object, empty, too long a list, or holds a location without a `role`, with a message saying what each must be. Pi Durable validates against the schema before any hook, so without it the model would read only a schema error such as `evidence: must be array`.
 - Source comes from the lens's name and version, and status from the document. The tool stores no resolution: only adjudication writes one, so a pre-existing P1 never arrives marked to block.
 
-It refuses a file outside the lens's coverage, its folder and `paths` less any folder a nearer lens of its name covers. It upserts into the root conversation's findings document at the head revision, never the lens's own, so one review has one document. A trigger carries the hunk's added lines as its snippet, so a dismissal reopens only when that code changes.
+It refuses a file outside the lens's coverage, its folder and `paths` less any folder a nearer lens of its name covers. It upserts into the root conversation's findings document at the head revision, never the lens's own, so one review has one document. A trigger carries the hunk's added lines as its snippet, cut at 2 KiB, and `snippetHash` of them whole as its `hash`, so a dismissal reopens only when that code changes, however long the hunk.
 
 ### The policy hook
 

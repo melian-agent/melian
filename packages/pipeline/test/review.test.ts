@@ -21,6 +21,7 @@ import {
 	createMemoryStorage,
 	createRegistry,
 	createReviewRegistry,
+	defineDoc,
 	dismissFinding,
 	type Harness,
 	type Message,
@@ -1744,5 +1745,158 @@ describe("on a repeat review after a task ended without deciding", () => {
 		const { verdict } = await reviewed({ config: configured() });
 
 		expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
+	});
+});
+
+describe("code over 2 KiB, which a finding stores cut", () => {
+	const dismissal = { by: "tal", reason: "the table is generated", at: "2026-10-04T00:00:00Z" };
+	const rows = Array.from({ length: 70 }, (_, index) => `export const row${index} = "${"x".repeat(40)}";`);
+	// The same rows as a formatter might reindent them: only whitespace differs.
+	const reindented = rows.map((row) => `\t${row.replace(" = ", "   =   ")}`);
+	let dir: string;
+
+	beforeEach(() => {
+		dir = mkdtempSync(join(tmpdir(), "melian-cut-"));
+	});
+
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	function commitOnFeature(files: Record<string, string>, message: string): void {
+		writeFiles(repo, files);
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", message);
+	}
+
+	function reportOn(line: number): void {
+		scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("report_finding", {
+						...nullDeref,
+						file: "src/table.ts",
+						line,
+						evidence: [{ file: "src/table.ts", line, role: "cause" }],
+					}),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+	}
+
+	const everywhere = () => lenses.map((lens) => ({ ...lens, paths: ["**"] }));
+
+	async function statuses() {
+		const { findings } = await reviewed({ lenses: everywhere() });
+		return findings.map((finding) => [finding.properties.id, finding.properties.status]);
+	}
+
+	async function dismissAll(findings: readonly Finding[]): Promise<void> {
+		const root = await harness.root(context);
+		for (const finding of findings) {
+			await root.commit((tx) => dismissFinding(tx, root.id, finding.properties.id, dismissal), context);
+		}
+	}
+
+	it("keeps a dismissal when a formatter reindents a trigger hunk over 2 KiB", async () => {
+		commitOnFeature({ "src/table.ts": lines(...rows) }, "a generated table");
+		reportOn(10);
+		const { findings } = await reviewed({ lenses: everywhere() });
+		expect(Buffer.byteLength(findings[0]!.properties.trigger!.snippet!)).toBeLessThanOrEqual(maxSnippetBytes);
+		await dismissAll(findings);
+
+		commitOnFeature({ "src/table.ts": lines(...reindented) }, "reindent the table");
+		reportOn(10);
+
+		expect(await statuses()).toEqual([[findings[0]!.properties.id, "dismissed"]]);
+	});
+
+	// The findings document as version 4 stored it, before any snippet was cut, written raw.
+	type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+	const LegacyFindings = defineDoc<{ [key: string]: Json }>({
+		kind: "melian.findings",
+		version: 4,
+		scope: "conversation",
+		history: "rewindable",
+		fork: "asOf",
+		initial: () => ({ revisions: [], items: {}, versions: {} }),
+	});
+
+	// Stores `sighting`, dismissed at the current head, as a Melian before the cut left it, then reopens the storage.
+	async function storeBeforeTheCut(sighting: Finding): Promise<void> {
+		const path = join(dir, "review.sqlite");
+		const open = async () =>
+			openHarness(await openSqliteStorage(path), {
+				models: fake.models,
+				registry: createReviewRegistry(),
+				settings: { retry: { enabled: false } },
+			});
+		await harness.close(context);
+		harness = await open();
+		const root = await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+		const { status: _, ...properties } = sighting.properties;
+		const revision = reviewedRevision();
+		const [correctnessLens] = lenses.filter((lens) => lens.name === "correctness");
+		await root.commit(async (tx) => {
+			const state = await tx.doc(LegacyFindings, root.id);
+			state.revisions = [revision];
+			state.items = JSON.parse(
+				JSON.stringify({
+					[sighting.properties.id]: {
+						lifecycle: {
+							status: "dismissed",
+							dismissedBy: dismissal.by,
+							dismissedReason: dismissal.reason,
+							dismissedAt: dismissal.at,
+							firstSeenRevision: revision,
+							lastSeenRevision: revision,
+							history: [],
+						},
+						sightings: {
+							[revision]: { [`lens.correctness@${correctnessLens!.version}`]: { ...sighting, properties } },
+						},
+					},
+				}),
+			);
+			state.versions = { [revision]: 1 };
+		}, context);
+		await harness.close(context);
+		harness = await open();
+	}
+
+	// A lens finding as a Melian before the cut built it: every snippet whole.
+	function wholeFinding(file: string, line: number, snippet: string, added: string): Finding {
+		const [correctnessLens] = lenses.filter((lens) => lens.name === "correctness");
+		return createFinding({
+			rule: nullDeref.rule,
+			message: nullDeref.explanation.what,
+			file,
+			startLine: line,
+			snippet,
+			occurrence: 0,
+			cause: "introduced",
+			trigger: { file, index: 0, snippet: added },
+			severity: "P1",
+			explanation: {
+				what: nullDeref.explanation.what,
+				whyHere: nullDeref.explanation.why,
+				whatToDo: nullDeref.explanation.fix,
+			},
+			source: { check: "lens.correctness", version: correctnessLens!.version },
+		});
+	}
+
+	it("keeps a dismissal stored with a whole trigger over 2 KiB when the same hunk is sighted again", async () => {
+		commitOnFeature({ "src/table.ts": lines(...rows) }, "a generated table");
+		const stored = wholeFinding("src/table.ts", 10, rows[9]!, rows.join("\n"));
+		await storeBeforeTheCut(stored);
+
+		commitOnFeature({ "src/report.ts": lines("export const unrelated = 1;") }, "touch another file");
+		reportOn(10);
+
+		expect(await statuses()).toEqual([[stored.properties.id, "dismissed"]]);
 	});
 });

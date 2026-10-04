@@ -136,6 +136,7 @@ export {
 	type SnippetRegion,
 	sarifLevelSchema,
 	sarifSchemaUri,
+	snippetHash,
 	snippetOccurrence,
 	upgradeStoredFinding,
 } from "./findings.ts";

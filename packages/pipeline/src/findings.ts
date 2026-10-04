@@ -6,9 +6,9 @@ import {
 	type FindingStatus,
 	type FindingTrigger,
 	mergeClaims,
-	normaliseSnippet,
 	parseFinding,
 	type Severity,
+	snippetHash,
 	upgradeStoredFinding,
 } from "@melian-agent/core";
 import { type Context, type ConversationId, defineDoc, type Harness, type Tx } from "./harness.ts";
@@ -145,8 +145,9 @@ export async function recordRevision(tx: Tx, rootConversationId: ConversationId,
 	state.revisions = [...state.revisions.filter((each) => each !== revision), revision];
 }
 
+// A trigger stored before snippets were cut has no hash, but its snippet is the whole code.
 function triggerCode(trigger: FindingTrigger | undefined): string {
-	return normaliseSnippet(trigger?.snippet ?? "");
+	return trigger?.hash ?? snippetHash(trigger?.snippet ?? "");
 }
 
 /**
@@ -160,9 +161,10 @@ function triggerCode(trigger: FindingTrigger | undefined): string {
  * correction rewrites its own report and never another producer's or another revision's. The lifecycle starts as `new`
  * when the ID is first seen, and `lastSeenRevision` moves to `revision` unless {@link recordRevision} marked a newer
  * revision. A dismissed finding stays dismissed unless a sighting at that revision or a newer one has a trigger whose
- * code changed materially, meaning its normalised `trigger.snippet` differs from the last revision's; then it becomes
- * `new` and the dismissal moves to `history`. Reporting the same finding twice stores the same state, so a tool that
- * calls this is safe to replay. Throws core's `FindingError` for an invalid finding, which aborts the transaction.
+ * code changed materially, meaning its `trigger.hash`, or the hash of its normalised `trigger.snippet` when it has none,
+ * differs from the last revision's; then it becomes `new` and the dismissal moves to `history`. Reporting the same
+ * finding twice stores the same state, so a tool that calls this is safe to replay. Throws core's `FindingError` for an
+ * invalid finding, which aborts the transaction.
  */
 export async function upsertFinding(
 	tx: Tx,

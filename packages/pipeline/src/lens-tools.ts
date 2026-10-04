@@ -21,6 +21,7 @@ import {
 	repositoryPath,
 	type Severity,
 	searchRevision,
+	snippetHash,
 	snippetOccurrence,
 	visibleText,
 } from "@melian-agent/core";
@@ -398,7 +399,12 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 		...(hunk === undefined
 			? {}
 			: {
-					trigger: { file: hunk.file, index: hunk.index, snippet: capSnippet(hunk.added).text },
+					trigger: {
+						file: hunk.file,
+						index: hunk.index,
+						snippet: capSnippet(hunk.added).text,
+						hash: snippetHash(hunk.added),
+					},
 				}),
 		severity,
 		explanation: {

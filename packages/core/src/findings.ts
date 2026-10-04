@@ -34,7 +34,12 @@ export const findingStatusSchema = Type.Union([
 
 /** The JSON Schema of a {@link FindingTrigger}. */
 export const findingTriggerSchema = Type.Object(
-	{ file: text, index: count, snippet: Type.Optional(Type.String()) },
+	{
+		file: text,
+		index: count,
+		snippet: Type.Optional(Type.String()),
+		hash: Type.Optional(Type.String({ pattern: "^[0-9a-f]{64}$" })),
+	},
 	strict,
 );
 
@@ -293,8 +298,9 @@ export type FindingStatus = Static<typeof findingStatusSchema>;
 
 /**
  * The diff hunk that caused a finding, named as a {@link Hunk} names itself: its `file` and its `index` within that
- * file. `snippet` is the changed code as the producer saw it; a dismissed finding reopens when its
- * {@link normaliseSnippet} changes, not when the hunk moves.
+ * file. `snippet` is the changed code as the producer saw it, perhaps cut for storage; `hash`, when present, is the
+ * {@link snippetHash} of that code whole. A dismissed finding reopens when the whole code's {@link normaliseSnippet}
+ * changes, not when the hunk moves.
  */
 export type FindingTrigger = Static<typeof findingTriggerSchema>;
 
@@ -438,6 +444,11 @@ function normaliseWithOffsets(source: string): { text: string; offsets: number[]
  */
 export function normaliseSnippet(snippet: string): string {
 	return normaliseWithOffsets(snippet).text;
+}
+
+/** The sha256, in hex, of {@link normaliseSnippet} of `snippet`: two snippets that normalise alike hash alike. */
+export function snippetHash(snippet: string): string {
+	return createHash("sha256").update(normaliseSnippet(snippet)).digest("hex");
 }
 
 /**
