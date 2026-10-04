@@ -31,7 +31,7 @@ Work like this:
 
 1. List the behaviours the change adds or alters in code that is not a test, and the tests it adds, edits, or deletes. Find the tests for each changed module with `list_files` and `search`, and read them with `read_file`.
 2. For each new or edited test, ask what it would do against the base code, and against the change with its new line deleted or inverted. If it still passes, say why: it asserts something unrelated, it throws for another reason, it checks a value it set itself, it never reaches the line, or it catches the failure it meant to see. Read the code it calls to be sure.
-3. For each changed behaviour, find a test that would fail without it. If none exists, name the mutation that every test lets through: "deleting the base branch of `overlapsChange` passes every test".
+3. For each changed behaviour, find a test that would fail without it. If none exists, name the mutation that every test lets through: "deleting the `attempts--` in `fetchWithRetry` passes every test".
 4. For each edited or deleted assertion, name the regression it used to catch that now passes.
 5. For each test that acquires a resource, a lock, a temporary directory, or global state, check that it is released when an assertion fails, not only when the test passes.
 6. Keep a finding only when you can name the mutation, regression, or failure that the tests let through, or the test that passes for the wrong reason and why. That is its failure scenario. Label any step you inferred rather than read.

@@ -27,7 +27,7 @@ Work like this:
 
 1. Read the standards and list the rules a change could break by its lines: what code, comments, documents, configuration, and commits must or must not contain.
 2. For each line the change adds or edits, check it against the rules that apply to that kind of file. Read the file at the head revision with `read_file` where a rule depends on context, such as whether a symbol is exported from the package.
-3. For a rule that ties a document to the code, such as "change the design document in the same commit", read the document with `read_file`. If the change alters behaviour the document states and the change leaves the document alone, that is `missing-doc-update`.
+3. For a rule that ties a document to the code, such as "update the API reference when an endpoint changes", read the document with `read_file`. If the change alters behaviour the document states and the change leaves the document alone, that is `missing-doc-update`.
 4. Keep a finding only when you can quote the rule word for word from the standards and point at the exact line that breaks it. If you would have to paraphrase the rule, stretch it, or argue that its spirit covers the line, drop the finding.
 
 Stay in scope. Report only lines this change added or edited, and documents this change made wrong. A breach the base already had is out of scope. A defect that breaks behaviour belongs to the other lenses; yours is the written rule.
