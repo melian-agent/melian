@@ -5,22 +5,19 @@ import {
 	defaultScrutinyLevel,
 	type Finding,
 	type FindingSource,
-	type Lens,
+	Lens,
 	type LensBudget,
 	type LensCoverage,
 	type LensRule,
 	type LensTier,
 	type LensToolName,
-	lensLevel,
 	type MelianConfig,
 	type ModelReference,
 	type RepositorySource,
-	renderLensInstructions,
 	resolveModelForTier,
 	type ScrutinyLevel,
 	type Severity,
 	type StandardsSection,
-	selectLenses,
 	type Verdict,
 	visibleText,
 } from "@melian-agent/core";
@@ -607,7 +604,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	);
 	const manifest = checksOfTier(config, options.tier ?? config.stages["pull-request"] ?? "full");
 	const named = new Set(manifest.filter((name) => name.startsWith("lens.")).map((name) => name.slice("lens.".length)));
-	const selected = selectLenses(
+	const selected = Lens.select(
 		options.lenses.filter((lens) => named.has(lens.name)),
 		config,
 		paths,
@@ -634,14 +631,14 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 			: [...lens.rules, injectionAttemptRule];
 		// Every lens runs at its default level until triage chooses one per review.
 		const level = defaultScrutinyLevel;
-		const settings = lensLevel(lens, level);
+		const settings = lens.level(level);
 		lenses.push({
 			key: `${lens.name}@${lens.version}`,
 			name: lens.name,
 			version: lens.version,
 			level,
 			route: await chooseRoute(lens.name, settings.tier, config, models),
-			instructions: renderLensInstructions({ ...lens, rules }, standards, level, neighbours),
+			instructions: Lens.from({ ...lens.toJSON(), rules }).renderInstructions(standards, level, neighbours),
 			tools: lens.tools,
 			severities: lens.severities,
 			rules,

@@ -2,8 +2,8 @@ import { existsSync } from "node:fs";
 import {
 	type Changeset,
 	FindingsLog,
+	Lens,
 	loadConfig,
-	loadLenses,
 	loadStandards,
 	type RepositorySource,
 	resolveRange,
@@ -87,7 +87,7 @@ export async function review(
 	const paths = changeset.revision.files.flatMap((file) =>
 		file.oldPath === undefined ? [file.path] : [file.oldPath, file.path],
 	);
-	const lenses = await loadLenses(repoRoot, source, paths);
+	const lenses = await Lens.load(repoRoot, source, paths);
 	const standards = await loadStandards(repoRoot, source, ".");
 	const { config: loaded } = await loadConfig(repoRoot, source, ".");
 	const { models, config, retry } = await reviewModels(io.env, loaded, lenses, options.model);

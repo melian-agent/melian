@@ -7,7 +7,7 @@
 // `tokens` park in the read_file call that ends the lens, once its commit has recorded the spent budget and before the
 // tool's result is stored: `spent` in the second read under a budget of one call, `tokens` in the first under a budget
 // of one token.
-import { defaultConfig, loadLenses, resolveRange, severitySchema } from "@melian-agent/core";
+import { defaultConfig, Lens, resolveRange, severitySchema } from "@melian-agent/core";
 import { AdjudicationTask } from "../../src/adjudication.ts";
 import {
 	backgroundContext,
@@ -141,7 +141,7 @@ scriptConversations(fake, [
 	{ match: "You are the correctness reviewer", replies: correctness[scenario] },
 	{ match: "You are the contracts reviewer", replies: [scenario === "request" ? requested("contracts") : done] },
 ]);
-function lensesFor(lenses: Awaited<ReturnType<typeof loadLenses>>) {
+function lensesFor(lenses: Lens[]) {
 	if (scenario === "spent" || scenario === "tokens") return budgetLenses(lenses, endingBudgets[scenario]);
 	return scenario === "read" ? budgetLenses(lenses) : crashLenses(lenses);
 }
@@ -155,7 +155,7 @@ await reviewChangeset({
 		tiers: twoLensTiers,
 		models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
 	},
-	lenses: lensesFor(await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"])),
+	lenses: lensesFor(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 	standards: [],
 	models: fake.review,
 });

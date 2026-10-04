@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { defaultConfig, loadLenses, resolveRange } from "@melian-agent/core";
+import { defaultConfig, Lens, resolveRange } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createReviewRegistry,
@@ -203,7 +203,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 				tiers: twoLensTiers,
 				models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
 			},
-			lenses: crashLenses(await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"])),
+			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
 			models: fake.review,
 		});
@@ -250,7 +250,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 				models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
 				lenses: { contracts: { enabled: false } },
 			},
-			lenses: crashLenses(await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"])),
+			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
 			models: fake.review,
 		});
@@ -302,7 +302,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 				tiers: twoLensTiers,
 				models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
 			},
-			lenses: budgetLenses(await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"])),
+			lenses: budgetLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
 			models: fake.review,
 		});
@@ -348,10 +348,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 					tiers: twoLensTiers,
 					models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
 				},
-				lenses: budgetLenses(
-					await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"]),
-					endingBudgets[scenario],
-				),
+				lenses: budgetLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"]), endingBudgets[scenario]),
 				standards: [],
 				models: fake.review,
 			});

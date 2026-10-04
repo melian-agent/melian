@@ -9,9 +9,9 @@ import {
 	evidenceRoleSchema,
 	type Finding,
 	FindingsLog,
+	Lens,
 	type LensTier,
 	loadConfig,
-	loadLenses,
 	loadStandards,
 	type MelianConfig,
 	type ModelRoute,
@@ -261,7 +261,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 		const paths = changeset.revision.files.flatMap((file) =>
 			file.oldPath === undefined ? [file.path] : [file.oldPath, file.path],
 		);
-		const lenses = await loadLenses(repo, source, paths);
+		const lenses = await Lens.load(repo, source, paths);
 		const standards = await loadStandards(repo, source, ".");
 		const { config: loaded } = await loadConfig(repo, source, ".");
 		let models: ReviewModels;

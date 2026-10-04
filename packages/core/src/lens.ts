@@ -124,7 +124,7 @@ export interface LensLevel {
 export type LensLevels = { readonly careful: LensLevel } & { readonly [Level in "quick" | "deep"]?: LensLevel };
 
 /**
- * A lens with its layering and defaults resolved, ready to run as a conversation.
+ * What a {@link Lens} holds: a lens with its layering and defaults resolved, ready to run as a conversation.
  *
  * `paths` are repository-relative globs. `scope` is the directory whose `.melian/` or `.agents/` defined the lens, the
  * empty string for the root and for built-in lenses; a lens never applies outside its scope. `levels` holds each level
@@ -133,7 +133,7 @@ export type LensLevels = { readonly careful: LensLevel } & { readonly [Level in 
  * this lens leaves to it only where the review runs it over every file this lens reviews, so a lens running alone, or
  * beside a neighbour narrowed to fewer files, keeps its whole coverage.
  */
-export interface Lens {
+export interface LensFields {
 	readonly name: string;
 	readonly description: string;
 	readonly tools: readonly LensToolName[];
@@ -149,7 +149,7 @@ export interface Lens {
 	/** The nearest `LENS.md` that defined or extended it. */
 	readonly file: string;
 	/**
-	 * Folders beneath `scope` whose own lens of this name replaces this one there, found by {@link loadLenses} across
+	 * Folders beneath `scope` whose own lens of this name replaces this one there, found by {@link Lens.load} across
 	 * the whole source, whether or not a changed path reaches them. Not part of `version`.
 	 */
 	readonly nearer?: readonly string[];
@@ -263,7 +263,9 @@ function required<T>(file: string, field: string, value: T | undefined): T {
 	);
 }
 
-function versioned(lens: Omit<Lens, "version">): Lens {
+// Hashes everything that shapes a lens's behaviour, in the order the fields are declared, never its file or nearer
+// scopes: a lens's version names the findings it produced, so this hash must not change for an unchanged lens.
+function versioned(lens: Omit<LensFields, "version">): LensFields {
 	const { file: _, nearer: __, ...behaviour } = lens;
 	const version = createHash("sha256").update(JSON.stringify(behaviour)).digest("hex").slice(0, 12);
 	return { ...lens, version };
@@ -390,7 +392,7 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 }
 
 interface Layered {
-	readonly lens: Lens;
+	readonly lens: LensFields;
 	readonly declared: Declared;
 }
 
@@ -460,7 +462,7 @@ async function lensScopes(reader: SourceReader): Promise<Map<string, Set<string>
 	return scopes;
 }
 
-function layer(definitions: readonly Definition[]): Lens[] {
+function layer(definitions: readonly Definition[]): LensFields[] {
 	const lenses = new Map<string, Layered>();
 	for (const definition of definitions) {
 		const { extends: extended, name } = definition.frontMatter;
@@ -478,62 +480,6 @@ function layer(definitions: readonly Definition[]): Lens[] {
 		lenses.set(name, resolve(definition, base));
 	}
 	return [...lenses.values()].map(({ lens }) => lens);
-}
-
-/**
- * Loads the lenses that apply to each of `paths`, files or directories inside the repository at `repoRoot`, and
- * returns their union by name and version, sorted by name.
- *
- * Built-in lenses come first. Over them layer the `.melian/lenses/<name>/LENS.md` and `.agents/lenses/<name>/LENS.md`
- * of every directory from the root down to each path, nearest last, so the nearest definition of a name wins; within
- * one directory `.melian/` wins over `.agents/`. A definition with `extends` overrides the fields it sets on the named
- * lens as layered so far and appends its body; one without replaces any farther lens of its name. Repository lenses are
- * read from `source`, as configuration is, so a pull request's head cannot rewrite the lenses that review it.
- *
- * Throws {@link LensError} naming the file for a symlink, a file over {@link lensLimits}, an unreadable file, bad
- * front matter, a missing required field, or an `extends` naming no lens; and {@link OutsideRepositoryError} when a
- * path is outside `repoRoot`.
- */
-export async function loadLenses(
-	repoRoot: string,
-	source: RepositorySource,
-	paths: readonly string[],
-): Promise<Lens[]> {
-	const reader = await openSource(repoRoot, source).catch(fromSource(repoRoot));
-	const builtins = await builtinDefinitions();
-	const defined = await lensScopes(reader);
-	const byScope = new Map<string, Promise<Definition[]>>();
-	const definitionsIn = (scope: string) => {
-		if (!byScope.has(scope)) byScope.set(scope, repositoryDefinitions(reader, scope));
-		return byScope.get(scope)!;
-	};
-	// Paths that share their chain of lens scopes share their lenses, so each chain is layered once.
-	const chains = new Map<string, string[]>();
-	for (const path of paths) {
-		const target = repoPath(repoRoot, path);
-		// A file is never a scope, so treating every path as a directory adds nothing for a file and saves a lookup.
-		const scopes = directoriesUpToRoot(target, true)
-			.reverse()
-			.filter((scope) => defined.has(scope));
-		chains.set(scopes.join("\0"), scopes);
-	}
-	// Where a nearer folder defines a lens's name, that folder is not the lens's to review, even if no path reaches it.
-	const withNearer = (lens: Lens): Lens => {
-		const nearer = [...defined.entries()]
-			.filter(([scope, names]) => names.has(lens.name) && scope !== lens.scope && beneath(lens.scope, scope))
-			.map(([scope]) => scope)
-			.sort();
-		return nearer.length === 0 ? lens : { ...lens, nearer };
-	};
-	const union = new Map<string, Lens>();
-	for (const scopes of chains.values()) {
-		const repository = (await Promise.all(scopes.map(definitionsIn))).flat();
-		for (const lens of layer([...builtins, ...repository]))
-			union.set(`${lens.name}\0${lens.version}`, withNearer(lens));
-	}
-	if (paths.length === 0)
-		for (const lens of layer(builtins)) union.set(`${lens.name}\0${lens.version}`, withNearer(lens));
-	return [...union.values()].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
 /**
@@ -577,35 +523,6 @@ function retiered({ quick, careful, deep }: LensLevels, tier: LensTier): LensLev
 	};
 }
 
-/**
- * Picks the lenses to run on a changeset and the changed files each reviews: a lens runs when `config` leaves it
- * enabled and it covers at least one of `paths`. A lens covers a path beneath its scope that its `paths` select,
- * unless a nearer folder defines a lens of the same name, which replaces it there. Configuration's `tier` replaces the
- * tier of every level of the lens, and its `paths` replace the lens's, so a `melian.yaml` can retier a lens, narrow it,
- * or switch it off without touching its `LENS.md`.
- */
-export function selectLenses(lenses: readonly Lens[], config: MelianConfig, paths: readonly string[]): LensSelection[] {
-	return lenses.flatMap((lens) => {
-		const settings = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name] : undefined;
-		if (settings?.enabled === false) return [];
-		const tuned =
-			settings === undefined
-				? lens
-				: versioned({
-						...lens,
-						levels: settings.tier === undefined ? lens.levels : retiered(lens.levels, settings.tier),
-						paths: settings.paths ?? lens.paths,
-					});
-		const nearer = lenses
-			.filter((other) => other.name === lens.name && other.scope !== lens.scope && beneath(lens.scope, other.scope))
-			.map((other) => other.scope)
-			.concat(lens.nearer ?? []);
-		const coverage = { scope: tuned.scope, paths: tuned.paths, nearer: [...new Set(nearer)] };
-		const files = paths.filter((path) => lensCovers(coverage, path));
-		return files.length > 0 ? [{ lens: tuned, coverage, files }] : [];
-	});
-}
-
 const reportingRules = `## Failure scenario and evidence
 
 Every \`report_finding\` call needs both. A call without them is refused.
@@ -636,33 +553,6 @@ function renderBudget({ findings, tokens, tools }: LensBudget): string {
 	return `Budget: at most ${listed}.${ending}`;
 }
 
-// The lens's policy as the model must follow it, so it never guesses a rule ID the hook would refuse.
-function renderPolicy(lens: Lens, level: LensLevel): string {
-	return [
-		"## Rules, severities, and budget",
-		"Report every finding under one of these rule IDs, written exactly as here. A defect no rule fits is not yours to report.",
-		lens.rules.map((rule) => `- \`${rule.id}\`: ${rule.description}`).join("\n"),
-		`Severities you may report: ${lens.severities.join(", ")}.`,
-		renderBudget(level.budget),
-		readingScopes[level.reads],
-		reportingRules,
-	].join("\n\n");
-}
-
-/**
- * The settings `lens` runs with at `level`. Throws {@link LensError} `unknownLevel` for a level the lens does not
- * declare; every lens has `careful`.
- */
-export function lensLevel(lens: Lens, level: ScrutinyLevel): LensLevel {
-	const settings = lens.levels[level];
-	if (settings !== undefined) return settings;
-	const declared = scrutinyLevels.filter((each) => lens.levels[each] !== undefined).join(", ");
-	throw new LensError("unknownLevel", lens.file, `lens ${lens.name} has no level ${level}; it has ${declared}`, {
-		lens: lens.name,
-		level,
-	});
-}
-
 // The defects a lens leaves to a neighbour, only for the neighbours that review its files: a lens whose neighbour is
 // not running keeps that coverage itself.
 function renderHandoffs(handoffs: Readonly<Record<string, string>>, neighbours: readonly string[]): string[] {
@@ -676,35 +566,213 @@ function renderHandoffs(handoffs: Readonly<Record<string, string>>, neighbours: 
 }
 
 /**
- * The instructions a lens's conversation runs with at `level`, `careful` unless named: its body; then, for each lens in
- * `neighbours` that the lens hands defects to, those defects; then its rules, each ID with its description, the
- * severities it may report, the level's budget and reading scope, and what a finding's failure scenario and evidence
- * must be; then, unless the lens opted out, the repository's standards, each under its path, whose breaches are the
- * conventions lens's to report when `neighbours` holds it and this lens's own otherwise. `neighbours` names the other
- * lenses the review runs over every file this lens reviews, none by default. Throws {@link LensError} `unknownLevel`
- * for a level the lens does not declare.
+ * A lens with its layering and defaults resolved, ready to run as a conversation: a runtime view over its
+ * {@link LensFields}.
  */
-export function renderLensInstructions(
-	lens: Lens,
-	standards: readonly StandardsSection[],
-	level: ScrutinyLevel = defaultScrutinyLevel,
-	neighbours: readonly string[] = [],
-): string {
-	const instructions = [
-		lens.instructions,
-		...renderHandoffs(lens.handoffs, neighbours),
-		renderPolicy(lens, lensLevel(lens, level)),
-	].join("\n\n");
-	if (!lens.standards || standards.length === 0) return instructions;
-	const sections = standards.map((section) => `### ${section.path}\n\n${section.content.trim()}`);
-	// Like a hand-off, a breach goes to conventions only when it reviews this lens's files; otherwise this lens keeps it.
-	const owned = lens.name !== "conventions" && neighbours.includes("conventions");
-	return [
-		instructions,
-		"## Repository standards",
-		owned
-			? "The repository's own conventions, as context for reading the change. A breach of one is the conventions lens's to report, quoting the rule; report it under one of your own rules only when it is also a defect that rule describes."
-			: "The repository's own conventions. A change that breaks one is a finding; cite the file.",
-		...sections,
-	].join("\n\n");
+export class Lens {
+	readonly name: string;
+	readonly description: string;
+	readonly tools: readonly LensToolName[];
+	readonly severities: readonly Severity[];
+	readonly rules: readonly LensRule[];
+	readonly paths: readonly string[];
+	readonly scope: string;
+	readonly levels: LensLevels;
+	readonly standards: boolean;
+	readonly handoffs: Readonly<Record<string, string>>;
+	readonly instructions: string;
+	readonly version: string;
+	readonly file: string;
+	readonly nearer?: readonly string[];
+
+	private constructor(fields: LensFields) {
+		this.name = fields.name;
+		this.description = fields.description;
+		this.tools = fields.tools;
+		this.severities = fields.severities;
+		this.rules = fields.rules;
+		this.paths = fields.paths;
+		this.scope = fields.scope;
+		this.levels = fields.levels;
+		this.standards = fields.standards;
+		this.handoffs = fields.handoffs;
+		this.instructions = fields.instructions;
+		this.version = fields.version;
+		this.file = fields.file;
+		this.nearer = fields.nearer;
+	}
+
+	/** The lens `fields` describe, as given: its version is not computed again. */
+	static from(fields: LensFields): Lens {
+		return new Lens(fields);
+	}
+
+	/**
+	 * Loads the lenses that apply to each of `paths`, files or directories inside the repository at `repoRoot`, and
+	 * returns their union by name and version, sorted by name.
+	 *
+	 * Built-in lenses come first. Over them layer the `.melian/lenses/<name>/LENS.md` and `.agents/lenses/<name>/LENS.md`
+	 * of every directory from the root down to each path, nearest last, so the nearest definition of a name wins; within
+	 * one directory `.melian/` wins over `.agents/`. A definition with `extends` overrides the fields it sets on the named
+	 * lens as layered so far and appends its body; one without replaces any farther lens of its name. Repository lenses are
+	 * read from `source`, as configuration is, so a pull request's head cannot rewrite the lenses that review it.
+	 *
+	 * Throws {@link LensError} naming the file for a symlink, a file over {@link lensLimits}, an unreadable file, bad
+	 * front matter, a missing required field, or an `extends` naming no lens; and {@link OutsideRepositoryError} when a
+	 * path is outside `repoRoot`.
+	 */
+	static async load(repoRoot: string, source: RepositorySource, paths: readonly string[]): Promise<Lens[]> {
+		const reader = await openSource(repoRoot, source).catch(fromSource(repoRoot));
+		const builtins = await builtinDefinitions();
+		const defined = await lensScopes(reader);
+		const byScope = new Map<string, Promise<Definition[]>>();
+		const definitionsIn = (scope: string) => {
+			if (!byScope.has(scope)) byScope.set(scope, repositoryDefinitions(reader, scope));
+			return byScope.get(scope)!;
+		};
+		// Paths that share their chain of lens scopes share their lenses, so each chain is layered once.
+		const chains = new Map<string, string[]>();
+		for (const path of paths) {
+			const target = repoPath(repoRoot, path);
+			// A file is never a scope, so treating every path as a directory adds nothing for a file and saves a lookup.
+			const scopes = directoriesUpToRoot(target, true)
+				.reverse()
+				.filter((scope) => defined.has(scope));
+			chains.set(scopes.join("\0"), scopes);
+		}
+		// Where a nearer folder defines a lens's name, that folder is not the lens's to review, even if no path reaches it.
+		const withNearer = (lens: LensFields): LensFields => {
+			const nearer = [...defined.entries()]
+				.filter(([scope, names]) => names.has(lens.name) && scope !== lens.scope && beneath(lens.scope, scope))
+				.map(([scope]) => scope)
+				.sort();
+			return nearer.length === 0 ? lens : { ...lens, nearer };
+		};
+		const union = new Map<string, LensFields>();
+		for (const scopes of chains.values()) {
+			const repository = (await Promise.all(scopes.map(definitionsIn))).flat();
+			for (const lens of layer([...builtins, ...repository]))
+				union.set(`${lens.name}\0${lens.version}`, withNearer(lens));
+		}
+		if (paths.length === 0)
+			for (const lens of layer(builtins)) union.set(`${lens.name}\0${lens.version}`, withNearer(lens));
+		return [...union.values()]
+			.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+			.map((lens) => new Lens(lens));
+	}
+
+	/**
+	 * Picks the lenses to run on a changeset and the changed files each reviews: a lens runs when `config` leaves it
+	 * enabled and it covers at least one of `paths`. A lens covers a path beneath its scope that its `paths` select,
+	 * unless a nearer folder defines a lens of the same name, which replaces it there. Configuration's `tier` replaces
+	 * the tier of every level of the lens, and its `paths` replace the lens's, so a `melian.yaml` can retier a lens,
+	 * narrow it, or switch it off without touching its `LENS.md`.
+	 */
+	static select(lenses: readonly Lens[], config: MelianConfig, paths: readonly string[]): LensSelection[] {
+		return lenses.flatMap((lens) => {
+			const settings = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name] : undefined;
+			if (settings?.enabled === false) return [];
+			const tuned =
+				settings === undefined
+					? lens
+					: new Lens(
+							versioned({
+								...lens.toJSON(),
+								levels: settings.tier === undefined ? lens.levels : retiered(lens.levels, settings.tier),
+								paths: settings.paths ?? lens.paths,
+							}),
+						);
+			const nearer = lenses
+				.filter(
+					(other) => other.name === lens.name && other.scope !== lens.scope && beneath(lens.scope, other.scope),
+				)
+				.map((other) => other.scope)
+				.concat(lens.nearer ?? []);
+			const coverage = { scope: tuned.scope, paths: tuned.paths, nearer: [...new Set(nearer)] };
+			const files = paths.filter((path) => lensCovers(coverage, path));
+			return files.length > 0 ? [{ lens: tuned, coverage, files }] : [];
+		});
+	}
+
+	/**
+	 * The settings the lens runs with at `level`. Throws {@link LensError} `unknownLevel` for a level the lens does not
+	 * declare; every lens has `careful`.
+	 */
+	level(level: ScrutinyLevel): LensLevel {
+		const settings = this.levels[level];
+		if (settings !== undefined) return settings;
+		const declared = scrutinyLevels.filter((each) => this.levels[each] !== undefined).join(", ");
+		throw new LensError("unknownLevel", this.file, `lens ${this.name} has no level ${level}; it has ${declared}`, {
+			lens: this.name,
+			level,
+		});
+	}
+
+	/**
+	 * The instructions the lens's conversation runs with at `level`, `careful` unless named: its body; then, for each
+	 * lens in `neighbours` that the lens hands defects to, those defects; then its rules, each ID with its description,
+	 * the severities it may report, the level's budget and reading scope, and what a finding's failure scenario and
+	 * evidence must be; then, unless the lens opted out, the repository's standards, each under its path, whose breaches
+	 * are the conventions lens's to report when `neighbours` holds it and this lens's own otherwise. `neighbours` names
+	 * the other lenses the review runs over every file this lens reviews, none by default. Throws {@link LensError}
+	 * `unknownLevel` for a level the lens does not declare.
+	 */
+	renderInstructions(
+		standards: readonly StandardsSection[],
+		level: ScrutinyLevel = defaultScrutinyLevel,
+		neighbours: readonly string[] = [],
+	): string {
+		const instructions = [
+			this.instructions,
+			...renderHandoffs(this.handoffs, neighbours),
+			this.#policy(this.level(level)),
+		].join("\n\n");
+		if (!this.standards || standards.length === 0) return instructions;
+		const sections = standards.map((section) => `### ${section.path}\n\n${section.content.trim()}`);
+		// Like a hand-off, a breach goes to conventions only when it reviews this lens's files; otherwise this lens keeps it.
+		const owned = this.name !== "conventions" && neighbours.includes("conventions");
+		return [
+			instructions,
+			"## Repository standards",
+			owned
+				? "The repository's own conventions, as context for reading the change. A breach of one is the conventions lens's to report, quoting the rule; report it under one of your own rules only when it is also a defect that rule describes."
+				: "The repository's own conventions. A change that breaks one is a finding; cite the file.",
+			...sections,
+		].join("\n\n");
+	}
+
+	/** The lens's fields, in their declared order. */
+	toJSON(): LensFields {
+		const { name, description, tools, severities, rules, paths, scope, levels, standards, handoffs } = this;
+		const { instructions, version, file, nearer } = this;
+		return {
+			name,
+			description,
+			tools,
+			severities,
+			rules,
+			paths,
+			scope,
+			levels,
+			standards,
+			handoffs,
+			instructions,
+			version,
+			file,
+			...(nearer === undefined ? {} : { nearer }),
+		};
+	}
+
+	// The lens's policy as the model must follow it, so it never guesses a rule ID the hook would refuse.
+	#policy(level: LensLevel): string {
+		return [
+			"## Rules, severities, and budget",
+			"Report every finding under one of these rule IDs, written exactly as here. A defect no rule fits is not yours to report.",
+			this.rules.map((rule) => `- \`${rule.id}\`: ${rule.description}`).join("\n"),
+			`Severities you may report: ${this.severities.join(", ")}.`,
+			renderBudget(level.budget),
+			readingScopes[level.reads],
+			reportingRules,
+		].join("\n\n");
+	}
 }

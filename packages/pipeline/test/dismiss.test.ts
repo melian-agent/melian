@@ -3,8 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
 	defaultConfig,
-	type Lens,
-	loadLenses,
+	Lens,
 	type MelianConfig,
 	type PullRequest,
 	type ReviewProvider,
@@ -110,7 +109,7 @@ beforeEach(async () => {
 		tiers: twoLensTiers,
 		models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
 	};
-	lenses = await loadLenses(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/user.ts"]);
+	lenses = await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/user.ts"]);
 });
 
 afterEach(async () => {
@@ -352,7 +351,7 @@ describe("recording a dismissal", () => {
 			{ "src/user.ts": user("manager", '\treturn user.manager?.name ?? "none";'), "src/org.ts": org },
 			{ "src/user.ts": user("boss", [unsafe, ...padding("first")].join("\n")) },
 		);
-		lenses = await loadLenses(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/user.ts"]);
+		lenses = await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/user.ts"]);
 		const caller = {
 			...nullDeref,
 			file: "src/org.ts",
@@ -439,7 +438,7 @@ describe("recording a dismissal", () => {
 				},
 				{ "src/user.ts": user("boss", unsafe), "src/team.ts": team("5") },
 			);
-			lenses = await loadLenses(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, [
+			lenses = await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, [
 				"src/user.ts",
 			]);
 		});

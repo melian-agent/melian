@@ -11,8 +11,8 @@ import {
 	type Changeset,
 	type CheckRecord,
 	diffLines,
+	Lens,
 	loadConfig,
-	loadLenses,
 	type MelianConfig,
 	type RepositorySource,
 	type ReviewProvider,
@@ -214,7 +214,7 @@ export async function reviewScenario(
 					base: changeset.revision.base,
 					head: changeset.revision.head,
 				};
-	const lenses = await loadLenses(
+	const lenses = await Lens.load(
 		repo,
 		source,
 		changeset.revision.files.map((file) => file.path),

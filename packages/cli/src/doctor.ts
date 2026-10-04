@@ -5,10 +5,9 @@ import { join, sep } from "node:path";
 import {
 	checksOfTier,
 	defaultScrutinyLevel,
-	type Lens,
+	Lens,
 	type LensTier,
 	loadConfig,
-	loadLenses,
 	type MelianConfig,
 	type StaticTool,
 	scrutinyLevels,
@@ -70,7 +69,7 @@ async function tiersInUse(root: string, config: MelianConfig): Promise<Map<LensT
 			.map((check) => check.slice("lens.".length)),
 	);
 	const used = new Map<LensTier, string[]>();
-	for (const lens of await loadLenses(root, { kind: "worktree" }, ["."])) {
+	for (const lens of await Lens.load(root, { kind: "worktree" }, ["."])) {
 		const settings = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name] : undefined;
 		if (!names.has(lens.name) || settings?.enabled === false) continue;
 		const tier = settings?.tier ?? lens.levels[defaultScrutinyLevel].tier;
@@ -142,7 +141,7 @@ async function levelsCheck(cwd: string): Promise<Check | undefined> {
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return undefined;
 	try {
-		const inverted = (await loadLenses(root, { kind: "worktree" }, ["."])).flatMap((lens) => {
+		const inverted = (await Lens.load(root, { kind: "worktree" }, ["."])).flatMap((lens) => {
 			const found = inversions(lens);
 			return found.length === 0 ? [] : [`${lens.name}: ${found.join("; ")}`];
 		});
