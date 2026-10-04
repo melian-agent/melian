@@ -1126,6 +1126,26 @@ describe("reviewChangeset", () => {
 		});
 	});
 
+	it("counts each call against the tools budget though a provider reuses its call ID across rounds", async () => {
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tools: 2 }) : lens));
+		const reused = () =>
+			fauxAssistantMessage(fauxToolCall("read_file", { path: "src/user.ts" }, { id: "call_0" }), {
+				stopReason: "toolUse",
+			});
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: [reused(), reused(), reused(), fauxAssistantMessage("Never asked.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { verdict } = await reviewed({ lenses: tight });
+
+		expect(requests[correctness]).toHaveLength(3);
+		expect(verdict.notRun.find((check) => check.name === "lens.correctness")).toMatchObject({
+			status: "ended",
+			budgetEnded: { budget: "tools", limit: 2 },
+		});
+	});
+
 	it("ends a lens at its token budget after the round that spends it, keeping what it reported", async () => {
 		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tokens: 1 }) : lens));
 		const requests = scriptConversations(fake, [

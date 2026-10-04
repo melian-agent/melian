@@ -125,9 +125,10 @@ export type LensPolicy = {
 	coverage: { scope: string; paths: string[]; nearer: string[] };
 };
 
-// What a lens has spent that Pi's usage document does not hold: the ID of every call it made to a read-only tool, and
-// the first budget it ran out of, recorded by the tool call that ended the conversation for it.
-export type LensSpend = { calls: string[]; ended?: "tokens" | "tools" };
+// What a lens has spent that Pi's usage document does not hold: the tool task of every call it made to a read-only
+// tool, and the first budget it ran out of, recorded by the tool call that ended the conversation for it. Pi mints a
+// task per call and keeps it across a replay, where a provider may reuse a call ID in every round.
+export type LensSpend = { calls: number[]; ended?: "tokens" | "tools" };
 
 export const LensDocument = defineDoc<{ lens?: LensPolicy; spend?: LensSpend }>({
 	kind: "melian.lens",
@@ -187,12 +188,13 @@ type Spent = "tokens" | "tools";
 
 type Metered = { refused?: number; spent?: Spent };
 
-// The round's calls to the read-only tools in call order, from `LiveDoc`, which lists every call of the round when it
-// starts, and the tokens the conversation has used, which Pi records with each response before its round runs.
+// The tool tasks of the round's calls to the read-only tools, in call order, from `LiveDoc`, which lists every call of
+// the round when it starts, and the tokens the conversation has used, which Pi records with each response before its
+// round runs. A call of a sequential round that has not started has no task yet, but keeps its place.
 async function roundOf(reader: DocumentReader, conversationId: ConversationId, lens: LensPolicy, context: Context) {
 	const live = (await reader.snapshot(LiveDoc, conversationId, context))?.tools ?? [];
 	const offered: readonly string[] = lens.tools;
-	const round = live.filter((slot) => offered.includes(slot.name)).map((slot) => slot.callId);
+	const round = live.filter((slot) => offered.includes(slot.name)).map((slot): number | undefined => slot.taskId);
 	const used = tokensUsed(await reader.snapshot(UsageDoc, conversationId, context));
 	return { round, used };
 }
@@ -201,8 +203,8 @@ async function roundOf(reader: DocumentReader, conversationId: ConversationId, l
 // earlier rounds made with the calls the round holds.
 function spentBy(
 	lens: LensPolicy,
-	calls: readonly string[],
-	round: readonly string[],
+	calls: readonly number[],
+	round: readonly (number | undefined)[],
 	used: number,
 ): Spent | undefined {
 	const { tokens, tools } = lens.limits ?? {};
@@ -219,7 +221,7 @@ async function roundEnds(api: DocumentReader & { conversationId: ConversationId 
 	return spentBy(lens, calls, round, used) !== undefined;
 }
 
-// Counts a read-only tool call by its ID and decides, from durable state alone, whether it is past the tools budget and
+// Counts a read-only tool call by its task and decides, from durable state alone, whether it is past the tools budget and
 // whether its round spends a budget. The round's read calls are numbered from `LiveDoc` in call order, so a call's
 // number and its round's ending never depend on which call commits first.
 async function meter(api: ToolExecutionApi, lens: LensPolicy, counted: boolean, context: Context): Promise<Metered> {
@@ -231,9 +233,9 @@ async function meter(api: ToolExecutionApi, lens: LensPolicy, counted: boolean, 
 		// Read back through the document: the object assigned is copied in, and changes to it afterwards would be lost.
 		document.spend ??= { calls: [] };
 		const { spend } = document;
-		if (counted && !spend.calls.includes(api.callId)) spend.calls.push(api.callId);
+		if (counted && !spend.calls.includes(api.taskId)) spend.calls.push(api.taskId);
 		const earlier = spend.calls.filter((id) => !round.includes(id)).length;
-		const position = earlier + round.indexOf(api.callId) + 1;
+		const position = earlier + round.indexOf(api.taskId) + 1;
 		const spent = spentBy(lens, spend.calls, round, used);
 		if (spent !== undefined) spend.ended ??= spent;
 		return {
