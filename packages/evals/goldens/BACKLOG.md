@@ -63,6 +63,12 @@ A repository lens under Melian's own `.melian/lenses/`, still to come in step 3.
 - [Pull request #13](https://github.com/melian-agent/melian/pull/13) ([record](../comparisons/2026-10-03-pr-13.md)): 3, paths are invalid SARIF URIs; 5, `parseFinding` accepts unknown SARIF members; 9, the SARIF log lacks `tool.driver.rules` and `partialFingerprints`.
 - [Pull request #34](https://github.com/melian-agent/melian/pull/34) ([record](../comparisons/2026-10-04-pr-34.md)): A2, a pure rename breaks an unchanged consumer of the old path, expected `affected`.
 
+## Built-in rules
+
+Defects a deterministic rule should catch in every repository, which no lens is meant to:
+
+- An action in `.github/workflows/` pinned to a tag, such as `actions/cache@v4`, rather than a full commit SHA. `trust-boundary` leaves a loose pin to the standards or a static rule, and Melian's own `melian.yaml` carries the forbidden-patterns rule `unpinned-action`, but a repository with neither gets no finding. A built-in rule is owed, with a scripted golden that expects it.
+
 ## The pipeline, scripted only
 
 Lens budgets, which a scripted golden can drive and no lens judges:

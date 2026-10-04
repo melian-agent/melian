@@ -36,6 +36,10 @@ guardrails:
         pattern: '^\s*(?:describe|it|test)\.only\('
         paths: ["**/*.test.ts"]
         message: a focused test skips the rest of the suite
+      unpinned-action:
+        pattern: 'uses:\s*[^\s#]+@v\d'
+        paths: [".github/workflows/**"]
+        message: a tag can be moved to other code after review, so pin the action to a full commit SHA with its version in a comment, as check.yml does
       dynamic-import:
         pattern: 'await import\(|import\(["'']'
         paths: ["packages/*/src/**"]
