@@ -41,7 +41,7 @@ import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { FindingsDocument } from "../src/findings.ts";
-import { fingerprint, legacyFingerprint, PublishedDocument, PublisherDocument } from "../src/publish.ts";
+import { PublishedDocument, PublisherDocument } from "../src/publish.ts";
 
 const input: FindingInput = {
 	rule: "no-eval",
@@ -593,16 +593,16 @@ describe("documents stored before evidence became a list", () => {
 				dismissed: [],
 				notRun: [],
 			}) as StoredVerdict;
-		const published = fingerprint(Verdict.from(verdict(stored)));
+		const published = Verdict.from(verdict(stored)).fingerprint();
 		const migrated = Verdict.from(Verdict.upgrade(verdict(stored)));
 
-		expect(fingerprint(migrated)).not.toBe(published);
-		expect(legacyFingerprint(migrated)).toBe(published);
+		expect(migrated.fingerprint()).not.toBe(published);
+		expect(migrated.legacyFingerprint()).toBe(published);
 		const scenario = Finding.create({ ...input, cause: "affected", evidence, failureScenario: "run(1) throws." });
-		expect(legacyFingerprint(Verdict.from(verdict(scenario.toJSON())))).toBeUndefined();
+		expect(Verdict.from(verdict(scenario.toJSON())).legacyFingerprint()).toBeUndefined();
 		const contextOnly = [{ ...evidence[0]!, role: "context" as const }];
 		const contextual = Finding.create({ ...input, evidence: contextOnly }).toJSON();
-		expect(legacyFingerprint(Verdict.from(verdict(contextual)))).toBeUndefined();
+		expect(Verdict.from(verdict(contextual)).legacyFingerprint()).toBeUndefined();
 	});
 
 	it("keys each reply an older Melian recorded by its finding, its thread, and the dismissal it gave", async () => {
@@ -708,7 +708,7 @@ describe("documents stored before evidence became a list", () => {
 				published.revisions = json({
 					[head]: {
 						reviews: ["101"],
-						verdict: fingerprint(Verdict.from(oldVerdict as unknown as StoredVerdict)),
+						verdict: Verdict.from(oldVerdict as unknown as StoredVerdict).fingerprint(),
 						rounds: 1,
 						open: {},
 						resolved: {},

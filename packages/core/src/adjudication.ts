@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { MelianConfig, Resolution, RuleAlias } from "./config.ts";
 import { resolutionOrder } from "./config.ts";
 import {
@@ -402,6 +403,54 @@ export class Verdict {
 			return { state: "failure", description: `${count(shown, "finding")}, ${this.findings.block.length} blocking` };
 		}
 		return { state: "success", description: `${count(shown, "finding")}, none blocking` };
+	}
+
+	/**
+	 * The verdict's fingerprint: the first 16 hex digits of a SHA-256 over its JSON, which names the verdict a review
+	 * posted. Who dismissed each finding, why, and when stay out of it, a merged report's own dismissal included: a
+	 * reason changed by a second dismissal is answered in the finding's thread, and a review saying nothing new would
+	 * only repeat the last one. A verdict without dismissals hashes as it always has.
+	 */
+	fingerprint(): string {
+		const bare = (finding: Finding): StoredFinding => {
+			const { dismissal: _, pastDismissals: __, ...properties } = finding.properties;
+			const { alsoReportedAs } = properties;
+			if (alsoReportedAs === undefined) return { ...finding.toJSON(), properties };
+			const reports = alsoReportedAs.map(({ dismissal: ___, ...report }) => report);
+			return { ...finding.toJSON(), properties: { ...properties, alsoReportedAs: reports } };
+		};
+		const findings = Object.fromEntries(
+			Object.entries(this.findings).map(([resolution, group]) => [resolution, group.map(bare)]),
+		);
+		const kept = { ...this.toJSON(), findings, dismissed: this.dismissed.map(bare) };
+		return createHash("sha256").update(JSON.stringify(kept)).digest("hex").slice(0, 16);
+	}
+
+	/**
+	 * The fingerprint the verdict had before it was migrated from version 2 of the verdict document, when it could have
+	 * been one: each finding's evidence is the single cause at head that the migration made of its one location, and no
+	 * finding has a failure scenario. A head published before the upgrade then reads as published, rather than taking a
+	 * second review of the same verdict. `undefined` for a verdict no older Melian could have recorded.
+	 */
+	legacyFingerprint(): string | undefined {
+		const legacy = (finding: Finding) => {
+			const { evidence, failureScenario, otherClaims } = finding.properties;
+			if (failureScenario !== undefined || otherClaims !== undefined) return false;
+			if (evidence === undefined) return true;
+			return evidence.length === 1 && evidence[0]!.role === "cause" && evidence[0]!.revision === "head";
+		};
+		if (!this.all().every(legacy)) return undefined;
+		const downgrade = (finding: Finding) => {
+			const [location] = finding.properties.evidence ?? [];
+			if (location === undefined) return finding.toJSON();
+			const { role: _, revision: __, ...old } = location;
+			return { ...finding.toJSON(), properties: { ...finding.properties, evidence: old } };
+		};
+		const groups = Object.fromEntries(
+			Object.entries(this.findings).map(([resolution, group]) => [resolution, group.map(downgrade)]),
+		);
+		const old = { ...this.toJSON(), findings: groups, dismissed: this.dismissed.map(downgrade) };
+		return createHash("sha256").update(JSON.stringify(old)).digest("hex").slice(0, 16);
 	}
 
 	/** The verdict as plain text for a terminal, as {@link Rendering} renders it. */

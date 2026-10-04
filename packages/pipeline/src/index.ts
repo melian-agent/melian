@@ -44,13 +44,13 @@ export {
 	type SupersededPublication,
 } from "./publish.ts";
 export {
+	ChangePrompt,
 	createReviewRegistry,
 	lensExtension,
 	openReviewHarness,
 	type Review,
 	ReviewHarness,
 	type ReviewOptions,
-	renderChangePrompt,
 	reviewChangeset,
 } from "./review.ts";
 export {

@@ -11,6 +11,7 @@ import {
 	type LensRule,
 	type LensTier,
 	type LensToolName,
+	Manifest,
 	type MelianConfig,
 	type ModelReference,
 	type RepositorySource,
@@ -287,40 +288,53 @@ const maxPromptBytes = 200 * 1024;
 
 /**
  * The input a lens receives: the revision, the files it changes, and its zero-context diff, bounded. Everything from
- * the head enters inside `quoteUntrusted` boundaries carrying `nonce`: the file list as one listing, and each file's
- * diff as its own block whose first line is the file's path and status, so a changed line cannot pose as another
- * file's header. Paths are escaped with core's `visibleText`, so a newline in one cannot forge a line. `only` limits
- * the prompt to the files a lens covers, matching a renamed file by its old path or its new one.
+ * the head enters inside `quoteUntrusted` boundaries carrying the review's `nonce`: the file list as one listing, and
+ * each file's diff as its own block whose first line is the file's path and status, so a changed line cannot pose as
+ * another file's header. Paths are escaped with core's `visibleText`, so a newline in one cannot forge a line.
  */
-export function renderChangePrompt(changeset: Changeset, nonce: string, only?: readonly string[]): string {
-	const { base, head } = changeset.revision;
-	const files = changeset.revision.files.filter(
-		(file) =>
-			only === undefined || only.includes(file.path) || (file.oldPath !== undefined && only.includes(file.oldPath)),
-	);
-	const named = (file: (typeof files)[number]) =>
-		`${file.oldPath === undefined ? "" : `${visibleText(file.oldPath)} -> `}${visibleText(file.path)}`;
-	const header = [
-		`Review the change from ${base.slice(0, 12)} to ${head.slice(0, 12)}.`,
-		"",
-		"Files changed:",
-		quoteUntrusted("listing", files.map((file) => `${file.status} ${named(file)}`).join("\n"), nonce),
-		"",
-		"Each file's diff follows in its own block, whose first line names the file. The diff has no context lines. Read the head revision with read_file for the code around each hunk.",
-	].join("\n");
-	const parts = [header];
-	let size = Buffer.byteLength(header);
-	for (const file of files) {
-		const hunks = file.binary ? ["(binary)"] : file.hunks.map((hunk) => `${hunk.header}\n${hunk.text}`);
-		const part = quoteUntrusted("diff", [`${named(file)} (${file.status})`, ...hunks].join("\n"), nonce);
-		size += Buffer.byteLength(part);
-		if (size > maxPromptBytes) {
-			parts.push("[The diff continues; read the remaining files with read_file.]");
-			break;
-		}
-		parts.push(part);
+export class ChangePrompt {
+	readonly changeset: Changeset;
+	readonly nonce: string;
+
+	constructor(changeset: Changeset, nonce: string) {
+		this.changeset = changeset;
+		this.nonce = nonce;
 	}
-	return parts.join("\n\n");
+
+	/** The prompt, limited to the files `only` names when given, matching a renamed file by its old path or its new one. */
+	render(only?: readonly string[]): string {
+		const { nonce } = this;
+		const { base, head } = this.changeset.revision;
+		const files = this.changeset.revision.files.filter(
+			(file) =>
+				only === undefined ||
+				only.includes(file.path) ||
+				(file.oldPath !== undefined && only.includes(file.oldPath)),
+		);
+		const named = (file: (typeof files)[number]) =>
+			`${file.oldPath === undefined ? "" : `${visibleText(file.oldPath)} -> `}${visibleText(file.path)}`;
+		const header = [
+			`Review the change from ${base.slice(0, 12)} to ${head.slice(0, 12)}.`,
+			"",
+			"Files changed:",
+			quoteUntrusted("listing", files.map((file) => `${file.status} ${named(file)}`).join("\n"), nonce),
+			"",
+			"Each file's diff follows in its own block, whose first line names the file. The diff has no context lines. Read the head revision with read_file for the code around each hunk.",
+		].join("\n");
+		const parts = [header];
+		let size = Buffer.byteLength(header);
+		for (const file of files) {
+			const hunks = file.binary ? ["(binary)"] : file.hunks.map((hunk) => `${hunk.header}\n${hunk.text}`);
+			const part = quoteUntrusted("diff", [`${named(file)} (${file.status})`, ...hunks].join("\n"), nonce);
+			size += Buffer.byteLength(part);
+			if (size > maxPromptBytes) {
+				parts.push("[The diff continues; read the remaining files with read_file.]");
+				break;
+			}
+			parts.push(part);
+		}
+		return parts.join("\n\n");
+	}
 }
 
 // The tier's model and fallbacks, keeping those the collection knows and holds credentials for, in routing order.
@@ -522,53 +536,49 @@ function lensCheck(lens: LensRun, result: LensResult | undefined): CheckRecord {
 	return { name, status: "failed", level, reason: "the lens did not finish", error: outcome?.reason ?? "no outcome" };
 }
 
-// What a review accounts for: a record for every check its manifest names, which may leave out a record only for a
-// check another step runs, and the skips that still let it pass.
-interface Accounting {
-	readonly checks: CheckRecord[];
-	readonly allowSkip: string[];
-	readonly producers: FindingSource[];
-}
-
-// Records for the lenses and decision questions the manifest names; the lens step owns `lens.*`, so a record of that
-// name from elsewhere, such as a check runner that skips lenses, gives way. Every other check's record comes from
-// `supplied`; adjudication calls one with none a check that never started.
+// Records for the lenses and decision questions the tier names; the lens step owns `lens.*`, so a record of that name
+// from elsewhere, such as a check runner that skips lenses, gives way. Every other check's record comes from
+// `supplied`; adjudication calls one with none a check that never started. The producers are the sources whose findings
+// the review counts.
 function account(
-	manifest: readonly string[],
+	checks: readonly string[],
 	ran: readonly LensRun[],
 	result: LensResult | undefined,
 	options: Pick<ReviewOptions, "config" | "lenses" | "checks">,
-): Accounting {
+): { readonly manifest: Manifest; readonly producers: FindingSource[] } {
 	const { config } = options;
 	const supplied = (options.checks ?? []).filter((check) => !check.name.startsWith("lens."));
-	const checks: CheckRecord[] = [...supplied, ...ran.map((lens) => lensCheck(lens, result))];
-	const allowSkip: string[] = [...config.checks.allowSkip];
-	const recorded = new Set(checks.map((check) => check.name));
-	for (const name of manifest) {
+	const manifest = new Manifest(
+		checks,
+		[...supplied, ...ran.map((lens) => lensCheck(lens, result))],
+		config.checks.allowSkip,
+	);
+	const recorded = new Set(manifest.records().map((check) => check.name));
+	for (const name of checks) {
 		if (recorded.has(name)) continue;
 		if (name.startsWith("lens.")) {
 			const lens = name.slice("lens.".length);
 			const settings = Object.hasOwn(config.lenses, lens) ? config.lenses[lens] : undefined;
 			if (!options.lenses.some((each) => each.name === lens)) {
-				checks.push({ name, status: "failed", reason: `no lens is named ${lens}` });
+				manifest.record({ name, status: "failed", reason: `no lens is named ${lens}` });
 			} else if (settings?.enabled === false) {
-				checks.push({ name, status: "skipped", reason: `lenses.${lens}.enabled is false` });
+				manifest.record({ name, status: "skipped", reason: `lenses.${lens}.enabled is false` });
 			} else {
 				// Nothing it covers changed, so there was nothing for it to review: a change of excluded paths alone passes
 				// on its deterministic checks.
-				checks.push({ name, status: "skipped", reason: "no paths" });
-				allowSkip.push(name);
+				manifest.record({ name, status: "skipped", reason: "no paths" });
+				manifest.allowSkip(name);
 			}
 		} else if (name.startsWith("decisions.") && config.decisions.provider === undefined) {
-			checks.push({ name, status: "skipped", reason: "no decision provider is configured" });
+			manifest.record({ name, status: "skipped", reason: "no decision provider is configured" });
 		}
 	}
 	// The design lets the fast tier run without decision questions when no provider is configured.
 	if (config.decisions.provider === undefined) {
-		allowSkip.push(...manifest.filter((name) => name.startsWith("decisions.")));
+		for (const name of checks.filter((each) => each.startsWith("decisions."))) manifest.allowSkip(name);
 	}
 	const versions = new Map(supplied.map((check) => [check.name, check.version]));
-	const others = [...new Set([...manifest, ...supplied.map((check) => check.name)])].filter(
+	const others = [...new Set([...checks, ...supplied.map((check) => check.name)])].filter(
 		(name) => !name.startsWith("lens."),
 	);
 	const producers: FindingSource[] = [
@@ -578,7 +588,7 @@ function account(
 			return version === undefined ? { check } : { check, version };
 		}),
 	];
-	return { checks, allowSkip, producers };
+	return { manifest, producers };
 }
 
 /**
@@ -608,6 +618,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		paths,
 	);
 	const nonce = reviewNonce();
+	const prompt = new ChangePrompt(changeset, nonce);
 	const names = [...new Set(selected.map(({ lens }) => lens.name))];
 	const lenses: LensRun[] = [];
 	for (const { lens, coverage: configured, files } of selected) {
@@ -642,7 +653,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 			rules,
 			budget: settings.budget,
 			coverage,
-			prompt: renderChangePrompt(changeset, nonce, files),
+			prompt: prompt.render(files),
 		});
 	}
 	const { repoRoot, revision } = changeset;
@@ -660,7 +671,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 			? {}
 			: await runLenses(harness, { root, revision: state, lenses }, options.rerun === true, context);
 	// Only the lenses this review ran count: one that configuration has since disabled or retiered leaves nothing behind.
-	const { checks, allowSkip, producers } = account(manifest, lenses, lensResult, options);
+	const { manifest: accounted, producers } = account(manifest, lenses, lensResult, options);
 	const input = adjudicationInput({
 		root,
 		repoRoot,
@@ -669,9 +680,9 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		policy: options.policy,
 		config,
 		manifest,
-		checks,
+		checks: accounted.records(),
 		findingsVersion: await findingsVersion(harness, root, reviewed, context),
-		allowSkip,
+		allowSkip: accounted.skippable(),
 		producers,
 		origin: options.origin ?? { kind: "range" },
 		lenses: lenses.map((lens) => lens.key),

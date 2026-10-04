@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import {
 	type Changeset,
 	dismissalVersion,
@@ -161,50 +161,6 @@ export const PublisherDocument = defineDoc<{ secret?: string; target?: PublishTa
 	initial: () => ({}),
 });
 
-// Who dismissed each finding, why, and when stay out of the fingerprint, a merged report's own dismissal included: a
-// reason changed by a second dismissal is answered in the finding's thread, and a review saying nothing new would only
-// repeat the last one. A verdict without them hashes as it always has.
-export function fingerprint(verdict: Verdict): string {
-	const bare = (finding: Finding): StoredFinding => {
-		const { dismissal: _, pastDismissals: __, ...properties } = finding.properties;
-		const { alsoReportedAs } = properties;
-		if (alsoReportedAs === undefined) return { ...finding.toJSON(), properties };
-		const reports = alsoReportedAs.map(({ dismissal: ___, ...report }) => report);
-		return { ...finding.toJSON(), properties: { ...properties, alsoReportedAs: reports } };
-	};
-	const findings = Object.fromEntries(
-		Object.entries(verdict.findings).map(([resolution, group]) => [resolution, group.map(bare)]),
-	);
-	const kept = { ...verdict, findings, dismissed: verdict.dismissed.map(bare) };
-	return createHash("sha256").update(JSON.stringify(kept)).digest("hex").slice(0, 16);
-}
-
-// The fingerprint a verdict migrated from version 2 of the verdict document had before, when it could have been one:
-// each finding's evidence is the single cause at head that the migration made of its one location, and no finding has
-// a failure scenario. A head published before the upgrade then reads as published, rather than taking a second review
-// of the same verdict.
-export function legacyFingerprint(verdict: Verdict): string | undefined {
-	const findings = [...Object.values(verdict.findings).flat(), ...verdict.dismissed];
-	const legacy = (finding: Finding) => {
-		const { evidence, failureScenario, otherClaims } = finding.properties;
-		if (failureScenario !== undefined || otherClaims !== undefined) return false;
-		if (evidence === undefined) return true;
-		return evidence.length === 1 && evidence[0]!.role === "cause" && evidence[0]!.revision === "head";
-	};
-	if (!findings.every(legacy)) return undefined;
-	const downgrade = (finding: Finding) => {
-		const [location] = finding.properties.evidence ?? [];
-		if (location === undefined) return finding;
-		const { role: _, revision: __, ...old } = location;
-		return { ...finding.toJSON(), properties: { ...finding.properties, evidence: old } };
-	};
-	const groups = Object.fromEntries(
-		Object.entries(verdict.findings).map(([resolution, group]) => [resolution, group.map(downgrade)]),
-	);
-	const old = { ...verdict, findings: groups, dismissed: verdict.dismissed.map(downgrade) };
-	return createHash("sha256").update(JSON.stringify(old)).digest("hex").slice(0, 16);
-}
-
 // Whether the last review posted at `head`, as `record` holds it, posted this revision's verdict, by its current or
 // legacy fingerprint. A record an older Melian wrote names no revision; it counts only when no other revision reviewed
 // at the head has a verdict with the same fingerprint, so an identical verdict after a retarget is never taken for the
@@ -224,7 +180,7 @@ async function postedVerdictOf(
 	return !Object.entries(verdicts).some(([other, verdict]) => {
 		if (other === revision || !other.endsWith(`..${head}`)) return false;
 		const decided = Verdict.from(verdict);
-		return [fingerprint(decided), legacyFingerprint(decided)].includes(record.verdict);
+		return [decided.fingerprint(), decided.legacyFingerprint()].includes(record.verdict);
 	});
 }
 
@@ -321,7 +277,7 @@ function planRound(
 	return {
 		revision,
 		round: (state.revisions[head]?.rounds ?? 0) + 1,
-		fingerprint: fingerprint(verdict),
+		fingerprint: verdict.fingerprint(),
 		verdict: structuredClone(verdict.toJSON()),
 		post: structuredClone(plan.post.map(({ finding, placement }) => ({ finding, placement }))),
 		stillOpen: plan.stillOpen.length,
@@ -458,8 +414,8 @@ function publishTask(provider: ReviewProvider) {
 					};
 					const verdict = await readVerdict(runtime, root, revision, context);
 					if (verdict === undefined) throw new Error(`no verdict is recorded for ${revision}`);
-					const current = fingerprint(verdict);
-					const legacy = legacyFingerprint(verdict);
+					const current = verdict.fingerprint();
+					const legacy = verdict.legacyFingerprint();
 					// A pending round planned for another revision of this head, such as the pull request before a retarget,
 					// is dropped unless the provider already shows it, in which case the loop below records it as posted.
 					const left = (await read()).revisions[head]?.pending;
