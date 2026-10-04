@@ -3,7 +3,7 @@
   "comments": [
     {
       "comment": "runChecks attaches a repeat call to the earlier task by head and tier alone, so a call with another base, configuration, or source gets the first run's records, and a failed run is returned for good.",
-      "severity": "High",
+      "severity": "Medium",
       "category": "bug",
       "file": "packages/pipeline/src/checks.ts",
       "rule": "idempotency-key",
@@ -12,8 +12,8 @@
       "evidence": [
         {
           "file": "packages/pipeline/src/checks.ts",
-          "line": 43,
-          "endLine": 47,
+          "line": 48,
+          "endLine": 52,
           "role": "cause"
         },
         {

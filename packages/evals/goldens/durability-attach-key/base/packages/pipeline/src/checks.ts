@@ -24,6 +24,9 @@ export const ChecksTask = defineTask<ChecksInput, { phase: "run" }, CheckRecord[
 			await runtime.commit(() => ({ status: "terminal", outcome: { status: "completed", result: records } }), context);
 		},
 	},
+	abort: async (_task, runtime, context) => {
+		await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+	},
 });
 
 /** Runs a tier's checks on one revision under the input's configuration, and returns a record for each check. */

@@ -1,18 +1,18 @@
 packages/pipeline/src/walkthrough.ts
 
-  P1  line 30  stale-task-write  (introduced, new, unresolved)
+  P1  line 32  stale-task-write  (introduced, new, unresolved)
   The walkthrough task's final commit stores its walkthrough for the revision whichever task the review index names for it now.
     What: The walkthrough task's final commit stores its walkthrough for the revision whichever task the review index names for it now.
     Why here: This change records each walkthrough task in the index in place of the last, but a crashed task resumes whenever the harness does, and nothing stops it writing after its replacement. Adjudication guards the same case in its final commit.
     Failure scenario: writeWalkthrough for revision R creates task T1, and the process is killed while summarise waits on the model. A dismissal decides R's verdict again, and the next writeWalkthrough creates T2 and names it in the index. Its harness.resume() also restarts T1, which reruns with the old verdict in its input; when T1's model call returns after T2's, T1 commits the old walkthrough over T2's, and publish renders a walkthrough that still lists the dismissed finding.
     Evidence:
-      cause: packages/pipeline/src/walkthrough.ts:28-32
+      cause: packages/pipeline/src/walkthrough.ts:30-34
                 await runtime.commit(async (tx) => {
                   const document = await tx.doc(WalkthroughDocument, root);
                   document.revisions[revision] = text;
                   return { status: "terminal", outcome: { status: "completed", result: { kind: "written" } } };
                 }, context);
-      context: packages/pipeline/src/walkthrough.ts:57
+      context: packages/pipeline/src/walkthrough.ts:62
             index.revisions[revision] = { ...index.revisions[revision], walkthrough: created };
       context: packages/pipeline/src/adjudication.ts:19-20
                 if (index.revisions[revision]?.adjudication !== task.id)

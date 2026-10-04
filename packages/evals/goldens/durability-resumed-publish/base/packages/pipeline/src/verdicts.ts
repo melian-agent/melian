@@ -6,6 +6,8 @@ export const VerdictDocument = defineDoc<{ revisions: Record<string, Verdict> }>
 	kind: "melian.verdicts",
 	version: 1,
 	scope: "conversation",
+	history: "rewindable",
+	fork: "asOf",
 	initial: () => ({ revisions: {} }),
 });
 

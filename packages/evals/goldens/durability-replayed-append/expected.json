@@ -12,13 +12,13 @@
       "evidence": [
         {
           "file": "packages/pipeline/src/notes.ts",
-          "line": 43,
-          "endLine": 48,
+          "line": 45,
+          "endLine": 50,
           "role": "cause"
         },
         {
           "file": "packages/pipeline/src/notes.ts",
-          "line": 41,
+          "line": 43,
           "role": "context"
         }
       ]

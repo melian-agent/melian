@@ -24,6 +24,9 @@ export const AdjudicationTask = defineTask<AdjudicationInput, { phase: "decide" 
 			}, context);
 		},
 	},
+	abort: async (_task, runtime, context) => {
+		await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+	},
 });
 
 /** Decides the verdict of `findings` for `revision`, in place of any adjudication the index names for it. */
@@ -46,5 +49,5 @@ export async function decideVerdict(
 	}, context);
 	harness.resume();
 	await harness.waitForTask(id, context);
-	return readVerdict(root, root.id, revision, context);
+	return readVerdict(harness, root.id, revision, context);
 }

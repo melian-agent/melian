@@ -9,6 +9,8 @@ export const PublishedDocument = defineDoc<{ heads: Record<string, { revision: s
 	kind: "melian.published",
 	version: 1,
 	scope: "conversation",
+	history: "latest",
+	fork: "current",
 	initial: () => ({ heads: {} }),
 });
 

@@ -12,6 +12,8 @@ export const WalkthroughDocument = defineDoc<{ revisions: Record<string, string>
 	kind: "melian.walkthrough",
 	version: 1,
 	scope: "conversation",
+	history: "rewindable",
+	fork: "asOf",
 	initial: () => ({ revisions: {} }),
 });
 
@@ -31,6 +33,9 @@ export function walkthroughTask(summarise: Summarise) {
 					return { status: "terminal", outcome: { status: "completed", result: { kind: "written" } } };
 				}, context);
 			},
+		},
+		abort: async (_task, runtime, context) => {
+			await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
 		},
 	});
 }
@@ -59,6 +64,6 @@ export async function writeWalkthrough(
 	}, context);
 	harness.resume();
 	await harness.waitForTask(id, context);
-	const written = await root.snapshot(WalkthroughDocument, root.id, context);
+	const written = await harness.snapshot(WalkthroughDocument, root.id, context);
 	return written?.revisions[revision] ?? "";
 }

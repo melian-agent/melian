@@ -9,5 +9,7 @@ export const ReviewIndex = defineDoc<{ revisions: Record<string, IndexedRevision
 	kind: "melian.reviews",
 	version: 1,
 	scope: "conversation",
+	history: "latest",
+	fork: "current",
 	initial: () => ({ revisions: {} }),
 });

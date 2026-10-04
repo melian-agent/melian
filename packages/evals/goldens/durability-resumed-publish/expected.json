@@ -12,14 +12,14 @@
       "evidence": [
         {
           "file": "packages/pipeline/src/publish.ts",
-          "line": 63,
-          "endLine": 66,
+          "line": 65,
+          "endLine": 68,
           "role": "cause"
         },
         {
           "file": "packages/pipeline/src/publish.ts",
-          "line": 25,
-          "endLine": 30,
+          "line": 27,
+          "endLine": 32,
           "role": "context"
         }
       ]

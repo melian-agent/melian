@@ -11,6 +11,8 @@ export const NotesDocument = defineDoc<NotesState>({
 	kind: "melian.notes",
 	version: 1,
 	scope: "conversation",
+	history: "rewindable",
+	fork: "asOf",
 	initial: () => ({ revisions: {} }),
 });
 

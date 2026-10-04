@@ -58,9 +58,9 @@
           "name": "report_finding",
           "arguments": {
             "file": "packages/pipeline/src/checks.ts",
-            "line": 43,
+            "line": 48,
             "rule": "idempotency-key",
-            "severity": "P1",
+            "severity": "P2",
             "explanation": {
               "what": "The key that attaches a repeat call to an earlier run is the head and the tier, but the run's result also depends on its base, its configuration, and the source that configuration came from.",
               "why": "This change adds the attachment. Before it every call ran the checks it was given; now a call whose input differs only outside the key returns another run's records, and nothing ever replaces a run, failed or not.",
@@ -70,8 +70,8 @@
             "evidence": [
               {
                 "file": "packages/pipeline/src/checks.ts",
-                "line": 43,
-                "endLine": 47,
+                "line": 48,
+                "endLine": 52,
                 "role": "cause"
               },
               {

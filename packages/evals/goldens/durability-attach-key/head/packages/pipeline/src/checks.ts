@@ -1,5 +1,5 @@
 import type { CheckRecord, MelianConfig, RepositorySource } from "@melian-agent/core";
-import { type Context, type ConversationId, defineDoc, defineTask, type Harness } from "./harness.ts";
+import { type Context, type ConversationId, defineDoc, defineTask, type Harness, type TaskId } from "./harness.ts";
 import { runCheck } from "./run-check.ts";
 
 /** One run of a tier's checks: the revision, the configuration that names the checks, and where it was read from. */
@@ -24,13 +24,18 @@ export const ChecksTask = defineTask<ChecksInput, { phase: "run" }, CheckRecord[
 			await runtime.commit(() => ({ status: "terminal", outcome: { status: "completed", result: records } }), context);
 		},
 	},
+	abort: async (_task, runtime, context) => {
+		await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+	},
 });
 
 // Which task ran each tier's checks, on the root conversation, so a repeat call finds it after a restart.
-export const ChecksDocument = defineDoc<{ runs: Record<string, number> }>({
+export const ChecksDocument = defineDoc<{ runs: Record<string, TaskId<CheckRecord[]>> }>({
 	kind: "melian.checks",
 	version: 1,
 	scope: "conversation",
+	history: "rewindable",
+	fork: "asOf",
 	initial: () => ({ runs: {} }),
 });
 

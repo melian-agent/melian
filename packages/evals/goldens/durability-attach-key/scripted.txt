@@ -1,12 +1,12 @@
 packages/pipeline/src/checks.ts
 
-  P1  line 43  idempotency-key  (introduced, new, unresolved)
+  P2  line 48  idempotency-key  (introduced, new, unresolved)
   The key that attaches a repeat call to an earlier run is the head and the tier, but the run's result also depends on its base, its configuration, and the source that configuration came from.
     What: The key that attaches a repeat call to an earlier run is the head and the tier, but the run's result also depends on its base, its configuration, and the source that configuration came from.
     Why here: This change adds the attachment. Before it every call ran the checks it was given; now a call whose input differs only outside the key returns another run's records, and nothing ever replaces a run, failed or not.
     Failure scenario: A maintainer reviews head H, and its fast tier runs under the working tree's melian.yaml. They add a forbidden-patterns rule to melian.yaml and review H again: the key `H fast` names the first task, so runChecks returns its records and the new rule never runs over the change. A review of H after a retarget onto another base, or after Biome failed on a timeout, gets the first run's records the same way, for good.
     Evidence:
-      cause: packages/pipeline/src/checks.ts:43-47
+      cause: packages/pipeline/src/checks.ts:48-52
           const key = `${input.head} ${input.tier}`;
           const id = await root.commit(async (tx) => {
             const runs = await tx.doc(ChecksDocument, root.id);

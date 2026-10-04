@@ -48,7 +48,7 @@
           "arguments": {
             "pattern": "task.input"
           },
-          "expectToolResult": "packages/pipeline/src/publish.ts:25:"
+          "expectToolResult": "packages/pipeline/src/publish.ts:27:"
         }
       ]
     },
@@ -58,7 +58,7 @@
           "name": "report_finding",
           "arguments": {
             "file": "packages/pipeline/src/publish.ts",
-            "line": 65,
+            "line": 67,
             "rule": "stale-task-write",
             "severity": "P1",
             "explanation": {
@@ -70,14 +70,14 @@
             "evidence": [
               {
                 "file": "packages/pipeline/src/publish.ts",
-                "line": 63,
-                "endLine": 66,
+                "line": 65,
+                "endLine": 68,
                 "role": "cause"
               },
               {
                 "file": "packages/pipeline/src/publish.ts",
-                "line": 25,
-                "endLine": 30,
+                "line": 27,
+                "endLine": 32,
                 "role": "context"
               }
             ]
