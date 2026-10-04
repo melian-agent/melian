@@ -258,7 +258,8 @@ export async function replaceCheckFindings(
 
 /**
  * Marks a finding dismissed, and returns the dismissal it replaced, if it was dismissed already. A replaced dismissal
- * moves to the finding's history, so its reason is not lost. The reason is stored without surrounding whitespace.
+ * moves to the finding's history, so its reason is not lost; the same dismisser giving the same reason again changes
+ * nothing. The reason is stored without surrounding whitespace.
  * Throws core's `FindingError`: `unknownFinding` if no finding has the ID, and `invalidDismissal` for a blank `by` or
  * `at`, or a reason core's `dismissalReason` refuses.
  */
@@ -286,6 +287,8 @@ export async function dismissFinding(
 		throw new FindingError("unknownFinding", `no finding has ID ${id}`, { path: "/properties/id" });
 	}
 	const { status, dismissedBy, dismissedReason, dismissedAt, history } = record.lifecycle;
+	// The same dismisser giving the same reason again changes nothing, so a retried dismiss adds no history.
+	if (status === "dismissed" && dismissedBy === by && dismissedReason === why) return undefined;
 	const replaced =
 		status === "dismissed"
 			? { by: dismissedBy ?? "", reason: dismissedReason ?? "", at: dismissedAt ?? "" }

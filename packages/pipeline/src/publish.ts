@@ -39,6 +39,7 @@ import {
 	type TaskId,
 } from "./harness.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
+import { ReviewIndex } from "./review-index.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
 // `dismissal` is set on a finding resolved because someone dismissed it, so its reply says why.
@@ -227,12 +228,19 @@ function planRound(
 		const held = new Set(
 			[...Object.values(verdict.findings).flat(), ...verdict.dismissed].map((finding) => finding.properties.id),
 		);
-		const dismissed = new Set(verdict.dismissed.map((finding) => finding.properties.id));
-		// A dismissal note is still owed while the finding stays dismissed; any other resolution, while it stays gone.
-		const owed = (id: string, entry: StoredFinding) =>
-			entry.dismissal === undefined ? !held.has(id) : dismissed.has(id);
+		const dismissed = new Map(
+			verdict.dismissed.map((finding) => [finding.properties.id, finding.properties.dismissal]),
+		);
+		// A dismissal note is still owed while the finding stays dismissed, with the reason it has now; any other
+		// resolution, while the finding stays gone.
 		for (const [id, entry] of Object.entries(unanswered(state, head))) {
-			if (owed(id, entry) && !Object.hasOwn(plan.open, id)) resolved[id] ??= structuredClone(entry);
+			if (Object.hasOwn(plan.open, id)) continue;
+			if (entry.dismissal === undefined) {
+				if (!held.has(id)) resolved[id] ??= structuredClone(entry);
+			} else if (dismissed.has(id)) {
+				const now = dismissed.get(id) ?? entry.dismissal;
+				resolved[id] ??= { ...structuredClone(entry), dismissal: { ...now } };
+			}
 		}
 	}
 	return {
@@ -735,7 +743,7 @@ function unpublishable(provenance: VerdictProvenance | undefined, pullRequest: P
  * shows now.
  *
  * Throws {@link PublishError}: `staleReview` when the changeset's head or base is not the pull request's, `notReviewed`
- * when no verdict is recorded for that base and head, `notPublishable` when the verdict's provenance is not a review of
+ * when no verdict is recorded for that base and head or its adjudication is still undecided, `notPublishable` when the verdict's provenance is not a review of
  * this pull request, fetched from the provider, under policy from the base commit it reported, `staleTarget` when the
  * provider reports another head, base, or repository just before a post, `notInstalled` when the harness lacks {@link publishExtension}, and
  * `publishFailed` when the provider refused a post.
@@ -774,6 +782,19 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		throw new PublishError(
 			"notPublishable",
 			`Melian will not publish its review of ${short(head)} to pull request #${pullRequest.number}: ${mismatch}; ${again}`,
+			where,
+		);
+	}
+	// A dismissal, or a review a crash cut short, may have left the revision's adjudication undecided, and the stored
+	// verdict is then the one from before it.
+	const deciding = (await harness.snapshot(ReviewIndex, root, context))?.reviews[revision]?.adjudication?.task;
+	if (
+		deciding !== undefined &&
+		(await harness.inspect(context)).tasks.some((each) => each.record.id === (deciding as TaskId))
+	) {
+		throw new PublishError(
+			"notReviewed",
+			`Melian has not finished deciding the verdict of ${short(head)}, as after a dismissal or a review that was interrupted; ${again}`,
 			where,
 		);
 	}

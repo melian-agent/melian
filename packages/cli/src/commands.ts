@@ -283,21 +283,18 @@ export async function dismiss(io: Io, argument: string, id: string, reason: stri
 			}
 			throw error;
 		});
-		const { finding, replaced, verdict } = recorded;
+		const { finding, also, replaced, verdict } = recorded;
 		const { ruleId } = finding;
-		const { path: file } = finding.properties;
+		const { path: file, id: shown } = finding.properties;
 		const line = finding.locations[0]!.physicalLocation.region.startLine;
-		const what = `${visibleText(ruleId)} in ${visibleText(file)} line ${line} (${id})`;
+		const what = `${visibleText(ruleId)} in ${visibleText(file)} line ${line} (${shown})`;
 		io.stdout(
 			`${replaced === undefined ? "Dismissed" : "Updated the dismissal of"} ${what} as ${visibleText(by)}.\n`,
 		);
 		if (replaced !== undefined)
 			io.stdout(`It was dismissed by ${visibleText(replaced.by)}: ${visibleText(replaced.reason)}\n`);
-		const attention = [...verdict.findings.block, ...verdict.findings.acknowledge, ...verdict.findings.advisory];
-		for (const other of attention.filter((each) => each.properties.alsoReportedAs?.some((also) => also.id === id))) {
-			io.stdout(
-				`${visibleText(other.ruleId)} (${other.properties.id}) reports the same defect and still counts; dismiss it too if the reason holds.\n`,
-			);
+		if (also.length > 0) {
+			io.stdout(`Also dismissed the same defect's other reports: ${also.join(", ")}.\n`);
 		}
 		io.stdout(`Verdict now: ${verdictWords[verdict.status]}${verdict.blocking ? ", blocking" : ""}.\n`);
 		const target = parseTarget(argument);

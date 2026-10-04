@@ -1,5 +1,6 @@
+import { existsSync } from "node:fs";
 import type { Finding, Verdict } from "@melian-agent/core";
-import { AdjudicationTask, type AdjudicationTaskInput, readVerdict } from "./adjudication.ts";
+import { type AdjudicationResult, AdjudicationTask, type AdjudicationTaskInput, readVerdict } from "./adjudication.ts";
 import { DismissError } from "./errors.ts";
 import { type Dismissal, dismissFinding, FindingsDocument, revisionKey } from "./findings.ts";
 import {
@@ -82,7 +83,9 @@ export interface DismissalOptions {
 export interface RecordedDismissal {
 	/** The dismissed finding as the new verdict holds it, or the dismissed finding that speaks for it after a merge. */
 	readonly finding: Finding;
-	/** The dismissal this one replaced, when the finding was dismissed already. */
+	/** The reports adjudication had merged into the finding, dismissed with it, by ID. */
+	readonly also: readonly string[];
+	/** The dismissal this one replaced, when the finding was dismissed already with another reason or dismisser. */
 	readonly replaced?: Dismissal;
 	readonly verdict: Verdict;
 }
@@ -109,27 +112,49 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 	const stored = await readVerdict(harness, root.id, revision, context);
 	if (stored === undefined) throw new DismissError("notReviewed", `Melian has no review of ${revision}`, where);
 	const all = [...Object.values(stored.findings).flat(), ...stored.dismissed];
-	if (all.find(names(id)) === undefined) {
+	const shown = all.find(names(id));
+	if (shown === undefined) {
 		throw new DismissError("unknownFinding", `the review of ${revision} has no finding ${id}`, where);
 	}
-	const { replaced, task } = await root.commit(async (tx) => {
+	// The finding as the verdict shows it: its own report and every report adjudication merged into it, so dismissing
+	// one defect never leaves another check's report of it live.
+	const members = [shown.properties.id, ...(shown.properties.alsoReportedAs ?? []).map((other) => other.id)];
+	const { replaced, also, task } = await root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const entry = index.reviews[revision];
-		if (entry?.adjudication === undefined) {
+		const known = entry?.adjudication;
+		if (entry === undefined || known === undefined) {
 			throw new DismissError("notReviewed", `Melian has no adjudication of ${revision} to repeat; ${again}`, where);
 		}
-		const replaced = await dismissFinding(tx, root.id, id, dismissal);
+		const recorded = (await tx.doc(FindingsDocument, root.id)).items;
+		const dismissed = [...new Set(members)].filter((member) => Object.hasOwn(recorded, member));
+		let replaced: Dismissal | undefined;
+		for (const member of dismissed) {
+			const before = await dismissFinding(tx, root.id, member, dismissal);
+			if (member === shown.properties.id) replaced = before;
+		}
 		// The review's own input with the findings version the dismissal moved to, keeping its key order, so a later
-		// review that computes the same input attaches to this task.
-		const previous = JSON.parse(entry.adjudication.input) as AdjudicationTaskInput;
+		// review that computes the same input attaches to this task. The review's checkout stays while it exists, since
+		// another worktree may hold another melian.yaml.
+		const previous = JSON.parse(known.input) as AdjudicationTaskInput;
 		const findingsVersion = (await tx.doc(FindingsDocument, root.id)).versions[revision] ?? 0;
-		const input: AdjudicationTaskInput = { ...previous, repoRoot, findingsVersion };
+		const checkout = existsSync(previous.repoRoot) ? previous.repoRoot : repoRoot;
+		const input: AdjudicationTaskInput = { ...previous, repoRoot: checkout, findingsVersion };
+		const key = JSON.stringify(input);
+		const also = dismissed.filter((member) => member !== shown.properties.id);
+		// The same dismissal again, as after a dismiss a crash cut short, waits for the adjudication it started.
+		const current = await tx.task(known.task as TaskId);
+		const undecided = ["aborted", "faulted", "orphaned", "failed"];
+		if (
+			known.input === key &&
+			current !== undefined &&
+			(current.state.status !== "terminal" || !undecided.includes(current.state.outcome.status))
+		) {
+			return { replaced, also, task: known.task as TaskId<AdjudicationResult> };
+		}
 		const task = await tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } });
-		index.reviews = {
-			...index.reviews,
-			[revision]: { ...entry, adjudication: { task, input: JSON.stringify(input) } },
-		};
-		return { replaced, task };
+		index.reviews = { ...index.reviews, [revision]: { ...entry, adjudication: { task, input: key } } };
+		return { replaced, also, task };
 	}, context);
 	harness.resume();
 	const blocked = (await harness.inspect(context)).tasks.some(
@@ -154,5 +179,5 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			where,
 		);
 	}
-	return { finding, ...(replaced === undefined ? {} : { replaced }), verdict };
+	return { finding, also, ...(replaced === undefined ? {} : { replaced }), verdict };
 }

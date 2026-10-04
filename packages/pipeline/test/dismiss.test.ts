@@ -1,15 +1,27 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { defaultConfig, type Lens, loadLenses, type MelianConfig, resolveRange } from "@melian-agent/core";
+import {
+	defaultConfig,
+	type Lens,
+	loadLenses,
+	type MelianConfig,
+	type PullRequest,
+	type ReviewProvider,
+	type ReviewStatus,
+	resolveRange,
+} from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
 	createReviewRegistry,
 	DismissHarness,
+	dismissFinding,
 	type Harness,
 	openHarness,
+	openPublishHarness,
 	openSqliteStorage,
+	publishReview,
 	type Review,
 	readVerdict,
 	recordDismissal,
@@ -25,6 +37,8 @@ import {
 	scriptConversations,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AdjudicationTask, type AdjudicationTaskInput } from "../src/adjudication.ts";
+import { FindingsDocument } from "../src/findings.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 
@@ -111,30 +125,49 @@ async function reviewHarness(storage: Storage): Promise<Harness> {
 	return harness;
 }
 
-// The lenses' replies for one review: correctness reports the null dereference, contracts nothing.
-function scriptFinding(): void {
+const report = (args: Parameters<typeof fauxToolCall>[1]) =>
+	fauxAssistantMessage(fauxToolCall("report_finding", args), { stopReason: "toolUse" });
+
+// The lenses' replies for one review: correctness reports the null dereference, and contracts nothing or, with
+// `merged`, the same line under a rule of its own, which adjudication merges into the dereference as one defect.
+function scriptFinding(merged = false): void {
+	const changedReturn = { ...nullDeref, rule: "changed-return", severity: "P2" };
 	scriptConversations(fake, [
-		{
-			match: correctness,
-			replies: [
-				fauxAssistantMessage(fauxToolCall("report_finding", nullDeref), { stopReason: "toolUse" }),
-				fauxAssistantMessage("Done."),
-			],
-		},
-		{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		{ match: correctness, replies: [report(nullDeref), fauxAssistantMessage("Done.")] },
+		{ match: contracts, replies: [...(merged ? [report(changedReturn)] : []), fauxAssistantMessage("Done.")] },
 	]);
 }
 
-async function reviewed(harness: Harness): Promise<Review> {
+// Reviews main...feature, as a range, or as pull request #7 under its base's policy, which only can be published.
+async function reviewed(harness: Harness, asPullRequest = false): Promise<Review> {
+	const changeset = await resolveRange(repo, "main...feature");
+	const { base, head } = changeset.revision;
+	const pullRequest = {
+		origin: {
+			kind: "pull-request" as const,
+			repository: { owner: "melian-agent", name: "example" },
+			pullRequest: 7,
+			base,
+			head,
+		},
+		policy: { kind: "revision" as const, commit: base },
+	};
 	return reviewChangeset({
 		harness,
-		changeset: await resolveRange(repo, "main...feature"),
+		changeset,
 		config,
 		lenses,
 		standards: [],
 		models: fake.review,
 		checks: [...deterministicRan],
+		...(asPullRequest ? pullRequest : {}),
 	});
+}
+
+async function adjudicationTask(harness: Harness): Promise<number | undefined> {
+	const root = (await harness.root(context)).id;
+	return (await harness.snapshot(ReviewIndex, root, context))?.reviews[revisionKey(await revision())]?.adjudication
+		?.task;
 }
 
 async function revision() {
@@ -231,6 +264,107 @@ describe("recording a dismissal", () => {
 		]);
 	});
 
+	it("dismisses every report adjudication merged into the finding, so the defect leaves the verdict whole", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding(true);
+		const { verdict: before } = await reviewed(harness);
+		const [shown] = before.findings.block;
+		const others = shown!.properties.alsoReportedAs!.map((other) => other.id);
+		expect(others).toHaveLength(1);
+
+		const recorded = await dismiss(harness, shown!.properties.id);
+
+		expect(recorded.also).toEqual(others);
+		expect(recorded.verdict).toMatchObject({ status: "passed", blocking: false });
+		expect(recorded.verdict.dismissed.map((each) => each.properties.id)).toEqual([shown!.properties.id]);
+		expect(recorded.verdict.dismissed[0]!.properties.alsoReportedAs!.map((other) => other.id)).toEqual(others);
+	});
+
+	it("waits for its own adjudication when the same dismissal is recorded again, adding no history", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding();
+		const id = (await reviewed(harness)).findings[0]!.properties.id;
+		const first = await dismiss(harness, id);
+		const task = await adjudicationTask(harness);
+
+		const again = await dismiss(harness, id);
+
+		expect(again.replaced).toBeUndefined();
+		expect(again.finding.properties.pastDismissals).toBeUndefined();
+		expect(again.verdict).toEqual(first.verdict);
+		expect(await adjudicationTask(harness)).toBe(task);
+	});
+
+	it("refuses to publish a verdict a cut-short dismissal left undecided, and finishes it when dismissed again", async () => {
+		const path = join(dir, "changeset.sqlite");
+		const first = await reviewHarness(await openSqliteStorage(path));
+		scriptFinding();
+		const id = (await reviewed(first, true)).findings[0]!.properties.id;
+		const key = revisionKey(await revision());
+		// What a dismiss killed after its commit leaves: the dismissal, and an adjudication task that never ran.
+		const root = await first.root(context);
+		await root.commit(async (tx) => {
+			await dismissFinding(tx, root.id, id, dismissal);
+			const index = await tx.doc(ReviewIndex, root.id);
+			const entry = index.reviews[key]!;
+			const input = {
+				...(JSON.parse(entry.adjudication!.input) as AdjudicationTaskInput),
+				findingsVersion: (await tx.doc(FindingsDocument, root.id)).versions[key]!,
+			};
+			const task = await tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } });
+			index.reviews = {
+				...index.reviews,
+				[key]: { ...entry, adjudication: { task, input: JSON.stringify(input) } },
+			};
+			return undefined;
+		}, context);
+		await first.close(context);
+		const { base, head } = await revision();
+		const pullRequest: PullRequest = {
+			repository: { owner: "melian-agent", name: "example" },
+			number: 7,
+			title: "t",
+			url: "https://github.com/melian-agent/example/pull/7",
+			state: "open",
+			base: { ref: "main", sha: base },
+			head: { ref: "feature", sha: head },
+			fetch: { url: "https://github.com/melian-agent/example.git", headRef: "refs/pull/7/head" },
+		};
+		const statuses: ReviewStatus[] = [];
+		const provider: ReviewProvider = {
+			name: "fake",
+			pullRequest: async () => pullRequest,
+			postReview: async () => ({ id: "201", threads: {} }),
+			replyResolved: async () => undefined,
+			setStatus: async (_, status) => {
+				statuses.push(status);
+			},
+			findPublished: async () => ({ threads: {}, replies: {} }),
+		};
+		const changeset = await resolveRange(repo, "main...feature");
+		const publish = async () => {
+			const publishing = await openPublishHarness(await openSqliteStorage(path), fake.review, provider);
+			try {
+				return await publishReview({ harness: publishing.harness, provider, changeset, pullRequest, base });
+			} finally {
+				await publishing.close(context);
+			}
+		};
+
+		await expect(publish()).rejects.toMatchObject({ code: "notReviewed" });
+		expect(statuses).toEqual([]);
+
+		const dismissing = await DismissHarness.open(await openSqliteStorage(path), fake.review);
+		opened.push(dismissing);
+		const task = await adjudicationTask(dismissing.harness);
+		const recorded = await dismiss(dismissing.harness, id);
+		expect(recorded.verdict.status).toBe("passed");
+		expect(await adjudicationTask(dismissing.harness)).toBe(task);
+		await dismissing.close(context);
+		await publish();
+		expect(statuses).toEqual([{ state: "success", description: "Passed" }]);
+	});
+
 	it("refuses a revision with no stored review, and an ID its verdict does not hold", async () => {
 		const harness = await reviewHarness(createMemoryStorage());
 		await expect(dismiss(harness, "0123456789abcdef")).rejects.toMatchObject({
@@ -271,6 +405,7 @@ describe("recording a dismissal", () => {
 		opened.push(dismissing);
 		const recorded = await dismiss(dismissing.harness, id);
 		expect(recorded.verdict.status).toBe("passed");
+		const task = await adjudicationTask(dismissing.harness);
 		await dismissing.close(context);
 		const calls = fake.provider.state.callCount;
 
@@ -279,5 +414,6 @@ describe("recording a dismissal", () => {
 
 		expect(verdict).toEqual(recorded.verdict);
 		expect(fake.provider.state.callCount).toBe(calls);
+		expect(await adjudicationTask(reopened)).toBe(task);
 	});
 });
