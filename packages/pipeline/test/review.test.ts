@@ -1121,18 +1121,18 @@ describe("reviewChangeset", () => {
 		expect((await readVerdict(harness, root, reviewedRevision(), context))?.ran).toEqual(verdict.ran);
 	});
 
-	it("leaves correctness its whole coverage when it runs without the lenses it hands defects to", async () => {
+	it("leaves correctness its whole coverage, contracts included, when it runs alone in the standard tier", async () => {
 		const requests = scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
 
 		await reviewed({ config: { ...config, tiers: { ...defaultConfig.tiers, full: ["standard"] } } });
 
 		const prompt = systemPromptOf(requests[correctness]![0]!);
 		expect(prompt).not.toContain("## Neighbouring lenses");
-		for (const owner of ["removed-behaviour", "trust-boundary", "`tests`", "tests lens"])
+		for (const owner of ["contracts", "removed-behaviour", "trust-boundary", "`tests`", "tests lens"])
 			expect(prompt).not.toContain(owner);
 	});
 
-	it("hands correctness's deleted behaviour, hostile input, and test defects to their owners in the full tier", async () => {
+	it("hands correctness's contract changes, deleted behaviour, hostile input, and test defects to their owners in the full tier", async () => {
 		const backlog = ["trust-boundary", "removed-behaviour", "tests", "conventions"].map(
 			(name) => `You are the ${name} reviewer`,
 		);
@@ -1146,6 +1146,7 @@ describe("reviewChangeset", () => {
 		const prompt = systemPromptOf(requests[correctness]![0]!);
 		const handoffs = prompt.slice(prompt.indexOf("## Neighbouring lenses"), prompt.indexOf("## Rules, severities"));
 		expect(handoffs.split("\n").filter((line) => line.startsWith("- "))).toEqual([
+			"- `contracts`: A change to a function's declared contract, its signature, types, return shape, or thrown errors, and the callers it breaks.",
 			"- `removed-behaviour`: A cleanup, error path, or ordering the change deleted or moved with nothing in its place, including a throw or rethrow the change deleted whose failure a `catch` the change wrote now swallows.",
 			"- `trust-boundary`: A value an author or outside party controls that reaches a sink unescaped, makes a check pass, or carries a secret out.",
 			"- `tests`: A defect in a test.",
