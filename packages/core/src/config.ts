@@ -572,15 +572,46 @@ function checkBands(config: MelianConfig, layers: readonly { site: Site; layer: 
 	}
 }
 
-// The effective configuration for each path a check visits. Layering depends only on the directory holding the path,
-// so each directory is loaded once, as a directory: a head that turns a directory into a file of the same name must
-// not decide which `melian.yaml` files apply to its neighbours.
+/**
+ * The effective configuration for each path a check visits, as {@link configLookup} opens it. Layering depends only
+ * on the directory holding the path, so each directory is loaded once, as a directory: a head that turns a directory
+ * into a file of the same name must not decide which `melian.yaml` files apply to its neighbours.
+ */
 export interface ConfigLookup {
 	(path: string): Promise<MelianConfig>;
-	// The nearest melian.yaml that sets a guardrail's rule for `path`: two files may declare rules of one name.
+	/** The nearest `melian.yaml` that sets a guardrail's rule for `path`: two files may declare rules of one name. */
 	ruleFile(path: string, guardrail: keyof typeof requiredRuleKeys, rule: string): Promise<string>;
+	/**
+	 * The configuration policy-change-review judges a change to `path` under, and resolves its finding under. A
+	 * `melian.yaml` is judged under the directory above its own, so none switches off the review of itself. The root's
+	 * has no directory above it: its own settings judge it, and they may make that review stricter than the defaults,
+	 * never more lenient.
+	 */
+	policyReview(path: string): Promise<MelianConfig>;
 }
 
+const severityOrder: readonly Severity[] = ["P0", "P1", "P2", "P3", "nit"];
+
+function stricter(left: Severity, right: Severity): Severity {
+	return severityOrder.indexOf(left) <= severityOrder.indexOf(right) ? left : right;
+}
+
+function withReviewFloor(config: MelianConfig): MelianConfig {
+	const own = config.guardrails["policy-change-review"];
+	const floor = defaultConfig.guardrails["policy-change-review"];
+	const review = {
+		...own,
+		enabled: true,
+		severity: stricter(own.severity, floor.severity),
+		analyserSeverity: stricter(own.analyserSeverity, floor.analyserSeverity),
+	};
+	return { ...config, guardrails: { ...config.guardrails, "policy-change-review": review } };
+}
+
+/**
+ * A {@link ConfigLookup} reading every `melian.yaml` from `source`, as {@link loadConfig} does. It loads nothing until
+ * asked, and throws as {@link loadConfig} does.
+ */
 export function configLookup(repoRoot: string, source: RepositorySource): ConfigLookup {
 	const loaded = new Map<string, Promise<Layered>>();
 	let reader: Promise<SourceReader> | undefined;
@@ -598,6 +629,11 @@ export function configLookup(repoRoot: string, source: RepositorySource): Config
 	lookup.ruleFile = async (path: string, guardrail: keyof typeof requiredRuleKeys, rule: string) => {
 		const { layers } = await layered(path);
 		return layers.find(({ layer }) => layer.guardrails?.[guardrail]?.rules?.[rule] !== undefined)?.site.file ?? "";
+	};
+	lookup.policyReview = async (path: string) => {
+		if (posix.basename(path) !== melianPaths.config) return lookup(path);
+		if (path !== melianPaths.config) return lookup(posix.dirname(path));
+		return withReviewFloor(await lookup(path));
 	};
 	return lookup;
 }

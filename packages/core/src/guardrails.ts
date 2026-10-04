@@ -1,4 +1,3 @@
-import { posix } from "node:path";
 import { analyserOf, switchOffs } from "./analyser.ts";
 import type { Revision } from "./changeset.ts";
 import {
@@ -202,11 +201,7 @@ function loadsManifest(path: string, workspaces: readonly string[] | undefined):
 // Every policy file the revision lists, and every touched path its own configuration adds to the list. A change to an
 // analyser's configuration blocks by default: the head's copy drives the run that judges the head, so a switched-off
 // check would otherwise read as a clean one.
-async function policyChanges(
-	input: GuardrailInput,
-	paths: readonly string[],
-	configFor: (path: string) => Promise<MelianConfig>,
-): Promise<Hit[]> {
+async function policyChanges(input: GuardrailInput, paths: readonly string[], configFor: ConfigLookup): Promise<Hit[]> {
 	const { revision, repoRoot } = input;
 	const changed = revision.files.map((file) => file.path);
 	const workspaces = revision.policyFiles.some((path) => path.split("/").at(-1) === "package.json")
@@ -214,10 +209,7 @@ async function policyChanges(
 		: [];
 	return Promise.all(
 		paths.map(async (path): Promise<Hit | undefined> => {
-			// A melian.yaml is judged under the configuration of the directory above its own, so one that switches the
-			// review off beneath it never switches off the review of itself. The root's has no directory above it.
-			const config = await configFor(path.split("/").at(-1) === "melian.yaml" ? posix.dirname(path) : path);
-			const guardrail = config.guardrails["policy-change-review"];
+			const guardrail = (await configFor.policyReview(path)).guardrails["policy-change-review"];
 			if (!guardrail.enabled) return undefined;
 			const added = matchesGlobs(guardrail.files, path);
 			const listed = revision.policyFiles.includes(path) && loadsManifest(path, workspaces);
@@ -454,7 +446,8 @@ async function forbiddenPatterns(
  * - `forbidden-patterns`: an added line matches a rule's pattern, run by a linear-time engine.
  * - `policy-change-review`: the revision changes a policy, standards, or tool configuration file, one of
  *   `revision.policyFiles` or a path the configuration's `files` adds. A `melian.yaml` takes this guardrail from the
- *   configuration of the directory above its own, so it never switches off the review of itself.
+ *   configuration of the directory above its own, so it never switches off the review of itself. The root's takes it
+ *   from its own configuration, which may make it stricter than the defaults but never more lenient.
  *
  * Every finding is `introduced`. Several rules of one guardrail that fire on one path or line give one finding. Throws
  * `ConfigError` when a `melian.yaml` cannot be loaded, and {@link CheckError} `unreadable` when a file at head cannot be read.
