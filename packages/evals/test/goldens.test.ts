@@ -1,3 +1,5 @@
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Golden, loadGoldens, runGolden, scoreCorpus, scoreGolden, scriptedMismatches } from "@melian-agent/evals";
 import { describe, expect, it } from "vitest";
@@ -14,6 +16,28 @@ describe("the golden corpus", () => {
 			"injection-in-comment",
 			"pre-existing-beside-change",
 		]);
+	});
+});
+
+describe("the live flag", () => {
+	it("keeps a golden whose expected.json sets live: false out of live runs, while the scripted runs below cover it", () => {
+		expect(goldens.filter((golden) => !golden.live).map((golden) => golden.name)).toEqual([
+			"pre-existing-beside-change",
+		]);
+	});
+
+	it("rejects a live flag that is not a boolean", () => {
+		const directory = mkdtempSync(join(tmpdir(), "melian-goldens-"));
+		try {
+			const golden = goldens.find((each) => each.name === "clean-rename")!;
+			const copy = join(directory, golden.name);
+			cpSync(golden.directory, copy, { recursive: true });
+			const expected = JSON.parse(readFileSync(join(copy, "expected.json"), "utf8"));
+			writeFileSync(join(copy, "expected.json"), JSON.stringify({ ...expected, live: "no" }));
+			expect(() => loadGoldens(directory)).toThrow(/expected\.json: \/live /);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
 	});
 });
 

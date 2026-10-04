@@ -69,9 +69,17 @@ export const goldenCommentSchema = Type.Object(
 	strict,
 );
 
-/** The JSON Schema of a golden's `expected.json`, in Martian's per-pull-request shape. */
+/**
+ * The JSON Schema of a golden's `expected.json`, in Martian's per-pull-request shape, plus Melian's `live`: `false`
+ * keeps a golden out of live runs, for one whose expectation only the scripted run can meet.
+ */
 export const expectedSchema = Type.Object(
-	{ pr_title: text, url: Type.Optional(text), comments: Type.Array(goldenCommentSchema) },
+	{
+		pr_title: text,
+		url: Type.Optional(text),
+		live: Type.Optional(Type.Boolean()),
+		comments: Type.Array(goldenCommentSchema),
+	},
 	strict,
 );
 
@@ -114,6 +122,8 @@ export interface Golden {
 	readonly directory: string;
 	readonly expected: Expected;
 	readonly script: Script;
+	/** Whether live runs review it: false when its `expected.json` sets `live: false`. Scripted runs review every golden. */
+	readonly live: boolean;
 }
 
 /** Where the corpus lives: one directory per golden. */
@@ -134,11 +144,13 @@ export function loadGoldens(directory: string = goldensDirectory): Golden[] {
 		.sort()
 		.map((name) => {
 			const root = join(directory, name);
+			const expected = readJson<Expected>(join(root, "expected.json"), expectedSchema);
 			return {
 				name,
 				directory: root,
-				expected: readJson<Expected>(join(root, "expected.json"), expectedSchema),
+				expected,
 				script: readJson<Script>(join(root, "script.json"), scriptSchema),
+				live: expected.live !== false,
 			};
 		});
 }

@@ -1,5 +1,6 @@
 {
   "pr_title": "Accept a readonly list of prices",
+  "live": false,
   "comments": [
     {
       "comment": "receipt divides cents by 10 rather than 100, a defect that predates this change; the changed signature is only context, so it stays pre-existing and never blocks.",

@@ -1,7 +1,8 @@
 /**
  * Runs every golden against real models and prints precision and recall. Spends real tokens, so it runs only with
  * `MELIAN_EVAL_LIVE=1`, and never in `npm run check`. `MELIAN_EVAL_MODEL`, as `provider/model-id`, routes every tier a
- * golden's `melian.yaml` leaves unrouted. Credentials come from Pi's login or the providers' environment variables.
+ * golden's `melian.yaml` leaves unrouted. Credentials come from Pi's login or the providers' environment variables. A
+ * golden whose `expected.json` sets `live: false` is skipped and left out of the corpus score.
  *
  * @module
  */
@@ -17,6 +18,10 @@ const models = createReviewModels();
 const model = process.env.MELIAN_EVAL_MODEL;
 const scores: GoldenScore[] = [];
 for (const golden of loadGoldens()) {
+	if (!golden.live) {
+		console.log(`${golden.name}: skipped, live: false`);
+		continue;
+	}
 	const run = await runGolden(golden, { kind: "live", models, ...(model === undefined ? {} : { model }) });
 	const score = scoreGolden(golden, run.findings);
 	scores.push(score);
