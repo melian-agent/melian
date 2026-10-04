@@ -199,23 +199,34 @@ export type LensErrorCode =
 	| "unknownField"
 	| "invalidValue"
 	| "missingField"
-	| "unknownLens";
+	| "unknownLens"
+	| "unknownLevel";
 
 /**
  * A lens could not be loaded. `file` names its `LENS.md`, repository-relative, or `builtin:<name>` for a lens shipped
- * with Melian. `field` is the offending front matter field, where there is one.
+ * with Melian. `field` is the offending front matter field, where there is one. For a problem with one of its scrutiny
+ * levels, `lens` names the lens and `level` the level.
  */
 export class LensError extends Error {
 	readonly code: LensErrorCode;
 	readonly file: string;
 	readonly field: string | undefined;
+	readonly lens: string | undefined;
+	readonly level: string | undefined;
 
-	constructor(code: LensErrorCode, file: string, message: string, options: { field?: string; cause?: unknown } = {}) {
+	constructor(
+		code: LensErrorCode,
+		file: string,
+		message: string,
+		options: { field?: string; lens?: string; level?: string; cause?: unknown } = {},
+	) {
 		super(message, { cause: options.cause });
 		this.name = "LensError";
 		this.code = code;
 		this.file = file;
 		this.field = options.field;
+		this.lens = options.lens;
+		this.level = options.level;
 	}
 }
 

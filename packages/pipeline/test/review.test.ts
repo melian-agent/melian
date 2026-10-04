@@ -48,6 +48,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, adjudicationInput } from "../src/adjudication.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
+import { withBudget } from "./fixtures/review-scenario.ts";
 
 const staticFinding = {
 	rule: "lint/style/noNonNullAssertion",
@@ -520,7 +521,7 @@ describe("reviewChangeset", () => {
 	});
 
 	it("stops accepting findings past the lens's budget and says why", async () => {
-		const tight = lenses.map((lens) => (lens.name === "correctness" ? { ...lens, budget: { findings: 1 } } : lens));
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 1 }) : lens));
 		const requests = scriptConversations(fake, [
 			{
 				match: correctness,
@@ -542,7 +543,7 @@ describe("reviewChangeset", () => {
 	});
 
 	it("lets a lens at its full budget correct a finding it already reported", async () => {
-		const tight = lenses.map((lens) => (lens.name === "correctness" ? { ...lens, budget: { findings: 1 } } : lens));
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 1 }) : lens));
 		const corrected = { ...nullDeref, explanation: { ...nullDeref.explanation, what: "Corrected." } };
 		const requests = scriptConversations(fake, [
 			{
@@ -563,7 +564,7 @@ describe("reviewChangeset", () => {
 	});
 
 	it("holds a parallel round to the budget inside the commit", async () => {
-		const tight = lenses.map((lens) => (lens.name === "correctness" ? { ...lens, budget: { findings: 1 } } : lens));
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 1 }) : lens));
 		const requests = scriptConversations(fake, [
 			{
 				match: correctness,
@@ -584,7 +585,7 @@ describe("reviewChangeset", () => {
 	});
 
 	it("counts the budget and returns findings at the head under review only", async () => {
-		const tight = lenses.map((lens) => (lens.name === "correctness" ? { ...lens, budget: { findings: 1 } } : lens));
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 1 }) : lens));
 		scriptConversations(fake, [
 			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
 			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
@@ -936,7 +937,7 @@ describe("reviewChangeset", () => {
 				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
 				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
 			]);
-			const tight = lenses.map((lens) => ({ ...lens, budget: { findings: 1 } }));
+			const tight = lenses.map((lens) => withBudget(lens, { findings: 1 }));
 
 			const findings = await review({ config: retiered, lenses: tight });
 

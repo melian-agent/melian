@@ -2,17 +2,22 @@ import {
 	type Changeset,
 	type CheckRecord,
 	checksOfTier,
+	defaultScrutinyLevel,
 	type Finding,
 	type FindingSource,
 	type Lens,
+	type LensBudget,
 	type LensCoverage,
 	type LensRule,
+	type LensTier,
 	type LensToolName,
+	lensLevel,
 	type MelianConfig,
 	type ModelReference,
 	type RepositorySource,
 	renderLensInstructions,
 	resolveModelForTier,
+	type ScrutinyLevel,
 	type Severity,
 	type StandardsSection,
 	selectLenses,
@@ -60,18 +65,19 @@ import { modelsOf, type ReviewModels } from "./models.ts";
 import { ReviewIndex, type ReviewIndexState } from "./review-index.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
 
-// One lens as the lens task runs it: everything resolved, nothing left to look up.
+// One lens as the lens task runs it, at one level: everything resolved, nothing left to look up.
 interface LensRun {
 	readonly key: string;
 	readonly name: string;
 	readonly version: string;
-	// The tier's models that were known with credentials when the review started, in routing order.
+	readonly level: ScrutinyLevel;
+	// The level's tier's models that were known with credentials when the review started, in routing order.
 	readonly route: readonly ModelReference[];
 	readonly instructions: string;
 	readonly tools: readonly LensToolName[];
 	readonly severities: readonly Severity[];
 	readonly rules: readonly LensRule[];
-	readonly budget: number;
+	readonly budget: LensBudget;
 	readonly coverage: LensCoverage;
 	// The change as this lens sees it: only the files it covers.
 	readonly prompt: string;
@@ -136,7 +142,7 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 						tools: [...lens.tools],
 						severities: [...lens.severities],
 						rules: lens.rules.map((rule) => ({ ...rule })),
-						budget: lens.budget,
+						budget: lens.budget.findings,
 						coverage: {
 							scope: lens.coverage.scope,
 							paths: [...lens.coverage.paths],
@@ -305,9 +311,14 @@ export function renderChangePrompt(changeset: Changeset, nonce: string, only?: r
 }
 
 // The tier's model and fallbacks, keeping those the collection knows and holds credentials for, in routing order.
-async function chooseRoute(lens: Lens, config: MelianConfig, review: ReviewModels): Promise<ModelReference[]> {
+async function chooseRoute(
+	lens: string,
+	tier: LensTier,
+	config: MelianConfig,
+	review: ReviewModels,
+): Promise<ModelReference[]> {
 	const models = modelsOf(review);
-	const route = resolveModelForTier(lens.tier, config.models);
+	const route = resolveModelForTier(tier, config.models);
 	const available: ModelReference[] = [];
 	for (const candidate of [route.model, ...route.fallbacks]) {
 		if (models.getModel(candidate.provider, candidate.modelId) === undefined) continue;
@@ -317,8 +328,8 @@ async function chooseRoute(lens: Lens, config: MelianConfig, review: ReviewModel
 	const tried = [route.model, ...route.fallbacks].map(modelName).join(", ");
 	throw new ReviewError(
 		"noAvailableModel",
-		`lens ${lens.name} needs a ${lens.tier} model, and none of ${tried} is known with credentials; log in with pi or set the provider's API key`,
-		{ lenses: [lens.name] },
+		`lens ${lens} needs a ${tier} model, and none of ${tried} is known with credentials; log in with pi or set the provider's API key`,
+		{ lenses: [lens] },
 	);
 }
 
@@ -597,16 +608,20 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		const rules = lens.rules.some((rule) => rule.id === injectionAttemptRule.id)
 			? lens.rules
 			: [...lens.rules, injectionAttemptRule];
+		// Every lens runs at its default level until triage chooses one per review.
+		const level = defaultScrutinyLevel;
+		const settings = lensLevel(lens, level);
 		lenses.push({
 			key: `${lens.name}@${lens.version}`,
 			name: lens.name,
 			version: lens.version,
-			route: await chooseRoute(lens, config, models),
-			instructions: renderLensInstructions({ ...lens, rules }, standards),
+			level,
+			route: await chooseRoute(lens.name, settings.tier, config, models),
+			instructions: renderLensInstructions({ ...lens, rules }, standards, level),
 			tools: lens.tools,
 			severities: lens.severities,
 			rules,
-			budget: lens.budget.findings,
+			budget: settings.budget,
 			coverage,
 			prompt: renderChangePrompt(changeset, nonce, files),
 		});

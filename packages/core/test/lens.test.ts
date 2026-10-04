@@ -5,6 +5,7 @@ import {
 	type Lens,
 	LensError,
 	lensCovers,
+	lensLevel,
 	lensToolNames,
 	loadLenses,
 	type MelianConfig,
@@ -62,15 +63,30 @@ describe("built-in lenses", () => {
 		expect(lenses.map((lens) => lens.name)).toEqual(["contracts", "correctness"]);
 		const [contracts, correctness] = lenses;
 		expect(correctness).toMatchObject({
-			tier: "heavy",
 			tools: [...lensToolNames],
 			severities: ["P0", "P1", "P2"],
 			paths: ["**"],
 			scope: "",
-			budget: { findings: 8 },
 			standards: true,
 			file: "builtin:correctness",
 		});
+		for (const lens of lenses) {
+			expect(lens.levels).toEqual({
+				quick: {
+					tier: "medium",
+					reads: "hunks",
+					verify: false,
+					budget: { findings: 3, tokens: 50_000, tools: 10 },
+				},
+				careful: { tier: "heavy", reads: "hunks", verify: true, budget: { findings: 8 } },
+				deep: {
+					tier: "heavy",
+					reads: "functions",
+					verify: true,
+					budget: { findings: 12, tokens: 400_000, tools: 60 },
+				},
+			});
+		}
 		expect(correctness!.rules.map((rule) => rule.id)).toContain("null-dereference");
 		expect(contracts!.rules.map((rule) => rule.id)).toContain("broken-caller");
 		expect(correctness!.instructions).toMatch(/^You are the correctness reviewer/);
@@ -115,6 +131,53 @@ describe("parseLensFile", () => {
 	});
 });
 
+describe("scrutiny levels", () => {
+	const caught = (content: string, file = "lenses/security/LENS.md") => {
+		try {
+			parseLensFile(file, content);
+		} catch (error) {
+			return error as LensError;
+		}
+		throw new Error("parsed");
+	};
+
+	it("refuses a level outside quick, careful, and deep, naming the lens and the level", () => {
+		const error = caught(lensFile([...security, "levels:", "  thorough: { tier: heavy }"]));
+		expect(error).toBeInstanceOf(LensError);
+		expect(error).toMatchObject({
+			code: "unknownLevel",
+			file: "lenses/security/LENS.md",
+			field: "levels.thorough",
+			lens: "security",
+			level: "thorough",
+		});
+		expect(error.message).toBe(
+			"lenses/security/LENS.md: lens security, level thorough: no such level; a lens's levels are quick, careful, deep",
+		);
+	});
+
+	it("refuses a bad value or an unknown field inside a level, naming the lens and the level", () => {
+		const reads = caught(lensFile([...security, "levels:", "  deep: { reads: everything }"]));
+		expect(reads).toMatchObject({
+			code: "invalidValue",
+			field: "levels.deep.reads",
+			lens: "security",
+			level: "deep",
+		});
+		expect(reads.message).toBe(
+			'lenses/security/LENS.md: lens security, level deep: "levels.deep.reads" must be one of hunks, functions',
+		);
+		const tools = caught(lensFile([...security, "levels:", "  quick: { budget: { tools: 0 } }"]));
+		expect(tools).toMatchObject({ code: "invalidValue", field: "levels.quick.budget.tools", level: "quick" });
+		const unknown = caught(lensFile([...security, "levels:", "  quick: { model: opus }"]));
+		expect(unknown).toMatchObject({ code: "unknownField", field: "levels.quick.model", level: "quick" });
+		expect(caught(lensFile([...security, "levels: [quick]"]))).toMatchObject({
+			code: "invalidValue",
+			field: "levels",
+		});
+	});
+});
+
 describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 	const load = (paths: string[]) => loadLenses(repo, sourceFor(repo, kind), paths);
 
@@ -135,9 +198,12 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		expect(lenses.map((lens) => lens.name)).toEqual(["contracts", "correctness", "docs", "security"]);
 		expect(named(lenses, "security")[0]).toMatchObject({
 			file: ".melian/lenses/security/LENS.md",
-			budget: { findings: 3, tokens: 200_000 },
+			levels: {
+				careful: { tier: "medium", reads: "hunks", verify: true, budget: { findings: 3, tokens: 200_000 } },
+			},
 			severities: ["P0", "P1", "P2", "P3", "nit"],
 		});
+		expect(Object.keys(named(lenses, "security")[0]!.levels)).toEqual(["careful"]);
 		expect(named(lenses, "docs")[0]!.standards).toBe(false);
 	});
 
@@ -185,10 +251,91 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 			),
 		});
 		const [correctness] = named(await load(["src/index.ts"]), "correctness");
-		expect(correctness!.tier).toBe("medium");
+		// The built-in's careful level sets no tier of its own, so it follows the new top level; deep names heavy.
+		expect(correctness!.levels.careful.tier).toBe("medium");
+		expect(correctness!.levels.deep?.tier).toBe("heavy");
 		expect(correctness!.file).toBe(".melian/lenses/correctness/LENS.md");
 		expect(correctness!.rules.map((rule) => rule.id)).toContain("null-dereference");
 		expect(correctness!.instructions).toMatch(/^You are the correctness reviewer[\s\S]*Also check the retry loop\.$/);
+	});
+
+	it("resolves each level from its own fields, then the top level, then Melian's defaults", async () => {
+		writeFiles(repo, {
+			".melian/lenses/security/LENS.md": lensFile([
+				...security,
+				"budget: { findings: 4, tokens: 100k, tools: 20 }",
+				"levels:",
+				"  quick: { tier: light, budget: { findings: 1 } }",
+				"  deep: { reads: functions, budget: { tokens: 1m } }",
+			]),
+		});
+		const [lens] = named(await load(["src/index.ts"]), "security");
+		expect(lens!.levels).toEqual({
+			quick: { tier: "light", reads: "hunks", verify: false, budget: { findings: 1, tokens: 100_000, tools: 20 } },
+			careful: { tier: "medium", reads: "hunks", verify: true, budget: { findings: 4, tokens: 100_000, tools: 20 } },
+			deep: {
+				tier: "medium",
+				reads: "functions",
+				verify: true,
+				budget: { findings: 4, tokens: 1_000_000, tools: 20 },
+			},
+		});
+	});
+
+	it("runs a lens that declares no levels at careful only, from its top-level tier and budget", async () => {
+		writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile(security) });
+		const [lens] = named(await load(["src/index.ts"]), "security");
+		expect(lens!.levels).toEqual({
+			careful: { tier: "medium", reads: "hunks", verify: true, budget: { findings: 10 } },
+		});
+		expect(() => lensLevel(lens!, "deep")).toThrow(
+			expect.objectContaining({ code: "unknownLevel", lens: "security", level: "deep" }),
+		);
+	});
+
+	it("layers an extending lens's levels over the base's, field by field", async () => {
+		writeFiles(repo, {
+			".melian/lenses/correctness/LENS.md": lensFile([
+				"name: correctness",
+				"extends: correctness",
+				"levels:",
+				"  quick: { budget: { tools: 4 } }",
+			]),
+		});
+		const [correctness] = named(await load(["src/index.ts"]), "correctness");
+		expect(correctness!.levels.quick).toEqual({
+			tier: "medium",
+			reads: "hunks",
+			verify: false,
+			budget: { findings: 3, tokens: 50_000, tools: 4 },
+		});
+		expect(correctness!.levels.careful).toEqual({
+			tier: "heavy",
+			reads: "hunks",
+			verify: true,
+			budget: { findings: 8 },
+		});
+	});
+
+	it("names the lens and the level for a level with no tier anywhere", async () => {
+		writeFiles(repo, {
+			".melian/lenses/style/LENS.md": lensFile([
+				"name: style",
+				"description: Style.",
+				"rules:",
+				"  - id: style",
+				"    description: d",
+				"levels:",
+				"  careful: { tier: light }",
+				"  deep: { reads: functions }",
+			]),
+		});
+		expect(await rejection(load(["src/index.ts"]), LensError)).toMatchObject({
+			code: "missingField",
+			field: "levels.deep.tier",
+			lens: "style",
+			level: "deep",
+		});
 	});
 
 	it("applies a folder's lens only beneath that folder, nearest first", async () => {
@@ -202,7 +349,7 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		});
 		const lenses = await load(["src/index.ts", "services/pay/api.ts"]);
 		const variants = named(lenses, "security");
-		expect(variants.map((lens) => [lens.scope, lens.tier, lens.paths])).toEqual([
+		expect(variants.map((lens) => [lens.scope, lens.levels.careful.tier, lens.paths])).toEqual([
 			["", "medium", ["**"]],
 			["services/pay", "heavy", ["services/pay/api.ts"]],
 		]);
@@ -270,13 +417,15 @@ describe("selectLenses", () => {
 	const lens = (overrides: Partial<Lens>): Lens => ({
 		name: "security",
 		description: "d",
-		tier: "medium",
 		tools: [...lensToolNames],
 		severities: ["P1"],
 		rules: [{ id: "injection", description: "d" }],
 		paths: ["**"],
 		scope: "",
-		budget: { findings: 5 },
+		levels: {
+			quick: { tier: "light", reads: "hunks", verify: false, budget: { findings: 2 } },
+			careful: { tier: "medium", reads: "hunks", verify: true, budget: { findings: 5 } },
+		},
 		standards: true,
 		instructions: "i",
 		version: "000000000000",
@@ -321,7 +470,8 @@ describe("selectLenses", () => {
 	it("applies configuration: disabled, retiered, narrowed", () => {
 		expect(selectLenses([lens({})], config({ security: { enabled: false } }), ["src/a.ts"])).toEqual([]);
 		const [retiered] = selectLenses([lens({})], config({ security: { tier: "heavy" } }), ["src/a.ts"]);
-		expect(retiered!.lens.tier).toBe("heavy");
+		expect(retiered!.lens.levels.careful.tier).toBe("heavy");
+		expect(retiered!.lens.levels.quick?.tier).toBe("heavy");
 		expect(retiered!.lens.version).not.toBe("000000000000");
 		expect(selectLenses([lens({})], config({ security: { paths: ["docs/**"] } }), ["src/a.ts"])).toEqual([]);
 	});
@@ -343,8 +493,25 @@ describe("renderLensInstructions", () => {
 			const policy = rendered.slice(lens.instructions.length);
 			for (const rule of lens.rules) expect(policy).toContain(`- \`${rule.id}\`: ${rule.description}`);
 			expect(policy).toContain(`Severities you may report: ${lens.severities.join(", ")}.`);
-			expect(policy).toContain(`Budget: at most ${lens.budget.findings} findings.`);
+			expect(policy).toContain(`Budget: at most ${lens.levels.careful.budget.findings} findings.`);
 		}
+	});
+
+	it("renders the level's budget and reading scope, careful unless named", async () => {
+		const [, correctness] = await loadLenses(repo, { kind: "worktree" }, []);
+		const careful = renderLensInstructions(correctness!, []);
+		expect(careful).toBe(renderLensInstructions(correctness!, [], "careful"));
+		expect(careful).toContain("Budget: at most 8 findings.\n");
+		expect(careful).toContain("Reading scope: the hunks.");
+		const quick = renderLensInstructions(correctness!, [], "quick");
+		expect(quick).toContain(
+			"Budget: at most 3 findings, 10 calls to the read-only tools, and 50,000 tokens of input and output. When the tool calls or tokens run out, the review ends with what you have reported",
+		);
+		const deep = renderLensInstructions(correctness!, [], "deep");
+		expect(deep).toContain("Reading scope: the hunks and the functions around them.");
+		expect(deep).toContain("Budget: at most 12 findings, 60 calls to the read-only tools, and 400,000 tokens");
+		const { quick: _, ...rest } = correctness!.levels;
+		expect(() => renderLensInstructions({ ...correctness!, levels: rest }, [], "quick")).toThrow(LensError);
 	});
 
 	it("tells every lens, its own or a repository's, to supply a failure scenario and evidence", async () => {

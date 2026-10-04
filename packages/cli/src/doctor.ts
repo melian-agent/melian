@@ -4,6 +4,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join, sep } from "node:path";
 import {
 	checksOfTier,
+	defaultScrutinyLevel,
 	type LensTier,
 	loadConfig,
 	loadLenses,
@@ -58,7 +59,7 @@ async function credentialsCheck(): Promise<Check> {
 const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
 
 // Each model tier the stages' lenses run on, with those lenses: a stage names a check tier, and each `lens.<name>` in it
-// runs on its lens's model tier, as melian.yaml may retier it.
+// runs on the model tier of its lens's default level, as melian.yaml may retier it.
 async function tiersInUse(root: string, config: MelianConfig): Promise<Map<LensTier, string[]>> {
 	const names = new Set(
 		Object.values(config.stages)
@@ -70,7 +71,7 @@ async function tiersInUse(root: string, config: MelianConfig): Promise<Map<LensT
 	for (const lens of await loadLenses(root, { kind: "worktree" }, ["."])) {
 		const settings = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name] : undefined;
 		if (!names.has(lens.name) || settings?.enabled === false) continue;
-		const tier = settings?.tier ?? lens.tier;
+		const tier = settings?.tier ?? lens.levels[defaultScrutinyLevel].tier;
 		used.set(tier, [...new Set([...(used.get(tier) ?? []), lens.name])]);
 	}
 	return used;

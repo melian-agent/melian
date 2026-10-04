@@ -31,7 +31,44 @@ export const lensRuleSchema = Type.Object(
 	strict,
 );
 
-/** The JSON Schema of a `LENS.md` front matter block. Only `name` is required; unknown fields are rejected. */
+/** How hard a lens looks at one change, from least to most. */
+export const scrutinyLevels = ["quick", "careful", "deep"] as const;
+
+/** A scrutiny level: `quick`, `careful`, or `deep`. */
+export type ScrutinyLevel = (typeof scrutinyLevels)[number];
+
+/** The level a lens runs at when nothing chooses another, and the only level of a lens that declares none. */
+export const defaultScrutinyLevel = "careful" satisfies ScrutinyLevel;
+
+/** What a lens reads at a level: the hunks only, or the hunks and the whole function around each. */
+export const lensReadScopes = ["hunks", "functions"] as const;
+
+/** A lens's reading scope at a level. */
+export type LensReads = (typeof lensReadScopes)[number];
+
+const budgetSchema = Type.Object(
+	{
+		findings: Type.Optional(Type.Integer({ minimum: 1 })),
+		tokens: Type.Optional(Type.Union([Type.Integer({ minimum: 1 }), Type.String({ pattern: "^[0-9]+[kKmM]?$" })])),
+		tools: Type.Optional(Type.Integer({ minimum: 1 })),
+	},
+	strict,
+);
+
+const levelSchema = Type.Object(
+	{
+		tier: Type.Optional(lensTierSchema),
+		reads: Type.Optional(Type.Union(lensReadScopes.map((reads) => Type.Literal(reads)))),
+		verify: Type.Optional(Type.Boolean()),
+		budget: Type.Optional(budgetSchema),
+	},
+	strict,
+);
+
+/**
+ * The JSON Schema of a `LENS.md` front matter block. Only `name` is required; unknown fields are rejected. `levels` maps
+ * a {@link ScrutinyLevel} to the fields that differ there; each field it leaves out comes from the top level.
+ */
 export const lensFrontMatterSchema = Type.Object(
 	{
 		name: Type.String({ pattern: "^[a-z0-9][a-z0-9-]*$" }),
@@ -41,16 +78,9 @@ export const lensFrontMatterSchema = Type.Object(
 		severities: Type.Optional(Type.Array(severitySchema, { minItems: 1 })),
 		rules: Type.Optional(Type.Array(lensRuleSchema, { minItems: 1 })),
 		paths: Type.Optional(Type.Array(text, { minItems: 1 })),
-		budget: Type.Optional(
-			Type.Object(
-				{
-					findings: Type.Optional(Type.Integer({ minimum: 1 })),
-					tokens: Type.Optional(
-						Type.Union([Type.Integer({ minimum: 1 }), Type.String({ pattern: "^[0-9]+[kKmM]?$" })]),
-					),
-				},
-				strict,
-			),
+		budget: Type.Optional(budgetSchema),
+		levels: Type.Optional(
+			Type.Object(Object.fromEntries(scrutinyLevels.map((level) => [level, Type.Optional(levelSchema)])), strict),
 		),
 		extends: Type.Optional(Type.Union([text, Type.Null()])),
 		standards: Type.Optional(Type.Boolean()),
@@ -65,23 +95,43 @@ export type LensFrontMatter = Static<typeof lensFrontMatterSchema>;
 export type LensRule = Static<typeof lensRuleSchema>;
 
 /**
+ * What a lens may spend at a level: findings it may report, input and output tokens its conversation may use, and calls
+ * it may make to the read-only tools. A budget it leaves out is unbounded.
+ */
+export interface LensBudget {
+	readonly findings: number;
+	readonly tokens?: number;
+	readonly tools?: number;
+}
+
+/** How a lens runs at one {@link ScrutinyLevel}: its model tier, what it reads, whether its findings are verified, and its budget. */
+export interface LensLevel {
+	readonly tier: LensTier;
+	readonly reads: LensReads;
+	readonly verify: boolean;
+	readonly budget: LensBudget;
+}
+
+/** The levels a lens runs at: always `careful`, and `quick` and `deep` where its `LENS.md` declares them. */
+export type LensLevels = { readonly careful: LensLevel } & { readonly [Level in "quick" | "deep"]?: LensLevel };
+
+/**
  * A lens with its layering and defaults resolved, ready to run as a conversation.
  *
  * `paths` are repository-relative globs. `scope` is the directory whose `.melian/` or `.agents/` defined the lens, the
- * empty string for the root and for built-in lenses; a lens never applies outside its scope. `version` hashes
- * everything that shapes the lens's behaviour, so a finding can name the lens version that produced it.
+ * empty string for the root and for built-in lenses; a lens never applies outside its scope. `levels` holds each level
+ * the lens runs at, every field resolved. `version` hashes everything that shapes the lens's behaviour, so a finding
+ * can name the lens version that produced it.
  */
 export interface Lens {
 	readonly name: string;
 	readonly description: string;
-	readonly tier: LensTier;
 	readonly tools: readonly LensToolName[];
 	readonly severities: readonly Severity[];
 	readonly rules: readonly LensRule[];
 	readonly paths: readonly string[];
 	readonly scope: string;
-	/** `tokens` is recorded but not yet enforced. */
-	readonly budget: { readonly findings: number; readonly tokens?: number };
+	readonly levels: LensLevels;
 	readonly standards: boolean;
 	readonly instructions: string;
 	readonly version: string;
@@ -111,13 +161,31 @@ function dotted(instancePath: string): string {
 	return instancePath.split("/").slice(1).join(".");
 }
 
+// `lens <name>, level <level>: ` for a field under `levels.<level>`, so the error names both.
+function levelPrefix(value: unknown, field: string): { prefix: string; lens?: string; level?: string } {
+	const [top, level] = field.split(".");
+	if (top !== "levels" || level === undefined) return { prefix: "" };
+	const name = (value as { name?: unknown }).name;
+	const lens = typeof name === "string" ? name : undefined;
+	return { prefix: `lens ${lens ?? "(unnamed)"}, level ${level}: `, ...(lens === undefined ? {} : { lens }), level };
+}
+
 function validate(file: string, value: unknown): LensFrontMatter {
 	const errors = [...Value.Errors(lensFrontMatterSchema, value)];
 	const unknown = errors.find((error) => error.keyword === "additionalProperties");
 	if (unknown !== undefined) {
 		const [key] = (unknown.params as { additionalProperties: string[] }).additionalProperties;
 		const field = [dotted(unknown.instancePath), key].filter(Boolean).join(".");
-		throw new LensError("unknownField", file, `${file}: unknown front matter field "${field}"`, { field });
+		const { prefix, ...named } = levelPrefix(value, field);
+		if (dotted(unknown.instancePath) === "levels") {
+			const levels = scrutinyLevels.join(", ");
+			const message = `${file}: ${prefix}no such level; a lens's levels are ${levels}`;
+			throw new LensError("unknownLevel", file, message, { field, ...named });
+		}
+		throw new LensError("unknownField", file, `${file}: ${prefix}unknown front matter field "${field}"`, {
+			field,
+			...named,
+		});
 	}
 	const first = errors[0];
 	if (first === undefined) return value as LensFrontMatter;
@@ -126,7 +194,11 @@ function validate(file: string, value: unknown): LensFrontMatter {
 		.filter((error) => error.instancePath === first.instancePath && error.keyword === "const")
 		.map((error) => (error.params as { allowedValue: unknown }).allowedValue);
 	const problem = allowed.length > 0 ? `must be one of ${allowed.join(", ")}` : first.message;
-	throw new LensError("invalidValue", file, `${file}: "${field ?? "(front matter)"}" ${problem}`, { field });
+	const { prefix, ...named } = levelPrefix(value, field ?? "");
+	throw new LensError("invalidValue", file, `${file}: ${prefix}"${field ?? "(front matter)"}" ${problem}`, {
+		field,
+		...named,
+	});
 }
 
 /**
@@ -186,34 +258,111 @@ function versioned(lens: Omit<Lens, "version">): Lens {
 	return { ...lens, version };
 }
 
+type DeclaredBudget = { readonly findings?: number; readonly tokens?: number; readonly tools?: number };
+type DeclaredLevel = {
+	readonly tier?: LensTier;
+	readonly reads?: LensReads;
+	readonly verify?: boolean;
+	readonly budget: DeclaredBudget;
+};
+
+// What a lens's files set, layered through `extends` but not yet defaulted, so a level a nearer file leaves alone
+// still takes the top-level tier or budget that file sets.
+interface Declared {
+	readonly tier?: LensTier;
+	readonly budget: DeclaredBudget;
+	readonly levels: { readonly [Level in ScrutinyLevel]?: DeclaredLevel };
+}
+
+function declaredBudget(budget: LensFrontMatter["budget"], base: DeclaredBudget | undefined): DeclaredBudget {
+	return {
+		findings: budget?.findings ?? base?.findings,
+		tokens: tokens(budget?.tokens) ?? base?.tokens,
+		tools: budget?.tools ?? base?.tools,
+	};
+}
+
+function declare(own: LensFrontMatter, base: Declared | undefined): Declared {
+	const levels: { [Level in ScrutinyLevel]?: DeclaredLevel } = {};
+	for (const level of scrutinyLevels) {
+		const mine = own.levels?.[level];
+		const theirs = base?.levels[level];
+		if (mine === undefined && theirs === undefined) continue;
+		levels[level] = {
+			tier: mine?.tier ?? theirs?.tier,
+			reads: mine?.reads ?? theirs?.reads,
+			verify: mine?.verify ?? theirs?.verify,
+			budget: declaredBudget(mine?.budget, theirs?.budget),
+		};
+	}
+	return { tier: own.tier ?? base?.tier, budget: declaredBudget(own.budget, base?.budget), levels };
+}
+
+// Each field a level leaves out comes from the top level, then from Melian's default. `careful` always exists, and is
+// resolved first, so a lens with no tier anywhere is refused for its top-level `tier`.
+function resolveLevels(file: string, name: string, declared: Declared): LensLevels {
+	const resolved = (level: ScrutinyLevel, own: DeclaredLevel | undefined): LensLevel => {
+		const tier = own?.tier ?? declared.tier;
+		if (tier === undefined && level === defaultScrutinyLevel) required(file, "tier", tier);
+		if (tier === undefined) {
+			throw new LensError(
+				"missingField",
+				file,
+				`${file}: lens ${name}, level ${level}: "tier" is required, on the level or at the top level`,
+				{ field: `levels.${level}.tier`, lens: name, level },
+			);
+		}
+		const tokens = own?.budget.tokens ?? declared.budget.tokens;
+		const tools = own?.budget.tools ?? declared.budget.tools;
+		return {
+			tier,
+			reads: own?.reads ?? "hunks",
+			verify: own?.verify ?? level !== "quick",
+			budget: {
+				findings: own?.budget.findings ?? declared.budget.findings ?? lensLimits.defaultFindings,
+				...(tokens === undefined ? {} : { tokens }),
+				...(tools === undefined ? {} : { tools }),
+			},
+		};
+	};
+	const careful = resolved(defaultScrutinyLevel, declared.levels.careful);
+	const { quick, deep } = declared.levels;
+	return {
+		...(quick === undefined ? {} : { quick: resolved("quick", quick) }),
+		careful,
+		...(deep === undefined ? {} : { deep: resolved("deep", deep) }),
+	};
+}
+
 // `extends` takes the named lens, as layered so far, and overrides the fields this file sets. Its body is appended.
-function resolve(definition: Definition, base: Lens | undefined): Lens {
+function resolve(definition: Definition, base: Layered | undefined): Layered {
 	const { file, scope, frontMatter: own, body } = definition;
-	const budgetTokens = tokens(own.budget?.tokens) ?? base?.budget.tokens;
-	const description = required(file, "description", own.description ?? base?.description);
-	const tier = required(file, "tier", own.tier ?? base?.tier);
-	const rules = required(file, "rules", own.rules ?? base?.rules);
+	const description = required(file, "description", own.description ?? base?.lens.description);
+	const rules = required(file, "rules", own.rules ?? base?.lens.rules);
 	const duplicate = rules.find((rule, index) => rules.findIndex((other) => other.id === rule.id) !== index);
 	if (duplicate !== undefined) {
 		throw new LensError("invalidValue", file, `${file}: rule "${duplicate.id}" is listed twice`, { field: "rules" });
 	}
-	return versioned({
+	const declared = declare(own, base?.declared);
+	const lens = versioned({
 		name: own.name,
 		description,
-		tier,
-		tools: own.tools ?? base?.tools ?? lensToolNames,
-		severities: own.severities ?? base?.severities ?? ["P0", "P1", "P2", "P3", "nit"],
+		tools: own.tools ?? base?.lens.tools ?? lensToolNames,
+		severities: own.severities ?? base?.lens.severities ?? ["P0", "P1", "P2", "P3", "nit"],
 		rules,
-		paths: own.paths?.map((path) => anchor(file, scope, path)) ?? base?.paths ?? [anchor(file, scope, "**")],
+		paths: own.paths?.map((path) => anchor(file, scope, path)) ?? base?.lens.paths ?? [anchor(file, scope, "**")],
 		scope,
-		budget: {
-			findings: own.budget?.findings ?? base?.budget.findings ?? lensLimits.defaultFindings,
-			...(budgetTokens === undefined ? {} : { tokens: budgetTokens }),
-		},
-		standards: own.standards ?? base?.standards ?? true,
-		instructions: [base?.instructions, body].filter((part) => part !== undefined && part !== "").join("\n\n"),
+		levels: resolveLevels(file, own.name, declared),
+		standards: own.standards ?? base?.lens.standards ?? true,
+		instructions: [base?.lens.instructions, body].filter((part) => part !== undefined && part !== "").join("\n\n"),
 		file,
 	});
+	return { lens, declared };
+}
+
+interface Layered {
+	readonly lens: Lens;
+	readonly declared: Declared;
 }
 
 function fromSource(file: string) {
@@ -283,7 +432,7 @@ async function lensScopes(reader: SourceReader): Promise<Map<string, Set<string>
 }
 
 function layer(definitions: readonly Definition[]): Lens[] {
-	const lenses = new Map<string, Lens>();
+	const lenses = new Map<string, Layered>();
 	for (const definition of definitions) {
 		const { extends: extended, name } = definition.frontMatter;
 		const base = extended == null ? undefined : lenses.get(extended);
@@ -299,7 +448,7 @@ function layer(definitions: readonly Definition[]): Lens[] {
 		}
 		lenses.set(name, resolve(definition, base));
 	}
-	return [...lenses.values()];
+	return [...lenses.values()].map(({ lens }) => lens);
 }
 
 /**
@@ -388,12 +537,19 @@ export function lensCovers(coverage: LensCoverage, path: string): boolean {
 	);
 }
 
+// Every level of `lens` on `tier`.
+function retiered(levels: LensLevels, tier: LensTier): LensLevels {
+	return Object.fromEntries(
+		Object.entries(levels).map(([level, settings]) => [level, { ...settings, tier }]),
+	) as unknown as LensLevels;
+}
+
 /**
  * Picks the lenses to run on a changeset and the changed files each reviews: a lens runs when `config` leaves it
  * enabled and it covers at least one of `paths`. A lens covers a path beneath its scope that its `paths` select,
- * unless a nearer folder defines a lens of the same name, which replaces it there. Configuration overrides a lens's
- * `tier` and replaces its `paths`, so a `melian.yaml` can retier a lens, narrow it, or switch it off without touching
- * its `LENS.md`.
+ * unless a nearer folder defines a lens of the same name, which replaces it there. Configuration's `tier` replaces the
+ * tier of every level of the lens, and its `paths` replace the lens's, so a `melian.yaml` can retier a lens, narrow it,
+ * or switch it off without touching its `LENS.md`.
  */
 export function selectLenses(lenses: readonly Lens[], config: MelianConfig, paths: readonly string[]): LensSelection[] {
 	return lenses.flatMap((lens) => {
@@ -404,7 +560,7 @@ export function selectLenses(lenses: readonly Lens[], config: MelianConfig, path
 				? lens
 				: versioned({
 						...lens,
-						tier: settings.tier ?? lens.tier,
+						levels: settings.tier === undefined ? lens.levels : retiered(lens.levels, settings.tier),
 						paths: settings.paths ?? lens.paths,
 					});
 		const nearer = lenses
@@ -426,26 +582,70 @@ Every \`report_finding\` call needs both. A call without them is refused.
 - The result of \`report_finding\` quotes the first line of each evidence location as Melian read it. If one is not the code you meant, call \`report_finding\` again for the same file, line, and rule with the right locations; it replaces your earlier report.
 - A finding outside the change counts as caused by it only when one of its \`cause\` locations overlaps lines the change added, modified, or deleted, or any line of another file it renamed without editing, named by its old path with \`revision: "base"\` or by its new path. That counts only for a finding in a file the change edited or left alone: when the change only moved the finding's own file, no rename makes the finding caused by the change, not even a sibling moved with it. Otherwise it is recorded as pre-existing, and never blocks.`;
 
+function counted(count: number, noun: string): string {
+	return `${count.toLocaleString("en-AU")} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+const readingScopes: Readonly<Record<LensReads, string>> = {
+	hunks: "Reading scope: the hunks. Review the lines this change added, modified, or deleted; read the code around them only to confirm a defect in them.",
+	functions:
+		"Reading scope: the hunks and the functions around them. For each hunk, read the whole function, method, or top-level block that holds it at the head revision with `read_file`, and review all of it: a defect on a line the change left alone, inside a function it edited, is the change's to answer for. Cite the changed line that makes it so as a `cause` location.",
+};
+
+function renderBudget({ findings, tokens, tools }: LensBudget): string {
+	const limits = [
+		counted(findings, "finding"),
+		...(tools === undefined ? [] : [`${counted(tools, "call")} to the read-only tools`]),
+		...(tokens === undefined ? [] : [`${counted(tokens, "token")} of input and output`]),
+	];
+	const last = limits.pop()!;
+	const listed = limits.length === 0 ? last : `${limits.join(", ")}${limits.length > 1 ? "," : ""} and ${last}`;
+	const ending =
+		tokens === undefined && tools === undefined
+			? ""
+			: " When the tool calls or tokens run out, the review ends with what you have reported, so report each finding as soon as you have confirmed it.";
+	return `Budget: at most ${listed}.${ending}`;
+}
+
 // The lens's policy as the model must follow it, so it never guesses a rule ID the hook would refuse.
-function renderPolicy(lens: Lens): string {
-	const plural = lens.budget.findings === 1 ? "finding" : "findings";
+function renderPolicy(lens: Lens, level: LensLevel): string {
 	return [
 		"## Rules, severities, and budget",
 		"Report every finding under one of these rule IDs, written exactly as here. A defect no rule fits is not yours to report.",
 		lens.rules.map((rule) => `- \`${rule.id}\`: ${rule.description}`).join("\n"),
 		`Severities you may report: ${lens.severities.join(", ")}.`,
-		`Budget: at most ${lens.budget.findings} ${plural}.`,
+		renderBudget(level.budget),
+		readingScopes[level.reads],
 		reportingRules,
 	].join("\n\n");
 }
 
 /**
- * The instructions a lens's conversation runs with: its body; then its rules, each ID with its description, the
- * severities it may report, its findings budget, and what a finding's failure scenario and evidence must be; then,
- * unless the lens opted out, the repository's standards, each under its path.
+ * The settings `lens` runs with at `level`. Throws {@link LensError} `unknownLevel` for a level the lens does not
+ * declare; every lens has `careful`.
  */
-export function renderLensInstructions(lens: Lens, standards: readonly StandardsSection[]): string {
-	const instructions = [lens.instructions, renderPolicy(lens)].join("\n\n");
+export function lensLevel(lens: Lens, level: ScrutinyLevel): LensLevel {
+	const settings = lens.levels[level];
+	if (settings !== undefined) return settings;
+	const declared = scrutinyLevels.filter((each) => lens.levels[each] !== undefined).join(", ");
+	throw new LensError("unknownLevel", lens.file, `lens ${lens.name} has no level ${level}; it has ${declared}`, {
+		lens: lens.name,
+		level,
+	});
+}
+
+/**
+ * The instructions a lens's conversation runs with at `level`, `careful` unless named: its body; then its rules, each
+ * ID with its description, the severities it may report, the level's budget and reading scope, and what a finding's
+ * failure scenario and evidence must be; then, unless the lens opted out, the repository's standards, each under its
+ * path. Throws {@link LensError} `unknownLevel` for a level the lens does not declare.
+ */
+export function renderLensInstructions(
+	lens: Lens,
+	standards: readonly StandardsSection[],
+	level: ScrutinyLevel = defaultScrutinyLevel,
+): string {
+	const instructions = [lens.instructions, renderPolicy(lens, lensLevel(lens, level))].join("\n\n");
 	if (!lens.standards || standards.length === 0) return instructions;
 	const sections = standards.map((section) => `### ${section.path}\n\n${section.content.trim()}`);
 	return [
