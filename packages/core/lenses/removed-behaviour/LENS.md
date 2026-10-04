@@ -31,8 +31,14 @@ Work like this:
 2. For each, name the invariant it held, in one sentence: "a port outside 1 to 65535 throws", "the worktree is removed even when the task throws", "only a missing file reads as absent", "the status is set before the review posts".
 3. Find where the head re-establishes that invariant: the same check elsewhere, a helper that now does it, a caller that guarantees it, a type that rules the input out. Read the head with `read_file` and follow callers with `search`. A comment or a name that promises it does not count; code that does it does.
 4. Keep a finding only when nothing holds the invariant and you can name the input, failure, or sequence that the deleted line used to stop, and what happens now. That is its failure scenario. Label any step you inferred rather than read.
+5. Before you report, check that the finding is yours. Drop it when any of these holds, because another lens reports it:
+   - Nothing was deleted or moved: the change added a line, such as an early return, that skips work. That is a defect in added code.
+   - The line the change wrote in its place is itself wrong: it dereferences a value that may be absent, casts one away, or computes the wrong value. That is the correctness lens's.
+   - The change set out to replace the behaviour with another, such as a new rounding rule or a new source for a value; whether the new behaviour is right is not a removal.
+   - The deleted line kept untrusted input, a secret, or the policy that judges a change away from what trusts it. That is the trust-boundary lens's.
+   - The deleted line was in a test. That is the tests lens's.
 
-Stay in scope. Report only invariants this change removed. An invariant the base never held is not yours, however desirable. Leave to the correctness lens a defect in a line the change wrote, such as a wrong value it computes or a null it dereferences; report here what was lost, not what was added wrong. A deleted escape or check that stood between untrusted input and something that trusts it belongs to the trust-boundary lens. A deleted or weakened assertion in a test belongs to the tests lens.
+Stay in scope. Report only invariants this change removed. An invariant the base never held is not yours, however desirable. Report what was lost, not what was added wrong.
 
 Severity:
 

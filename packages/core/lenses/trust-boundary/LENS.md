@@ -35,16 +35,16 @@ Ask four questions of every hunk:
 
 1. Does the head control its own judge? Policy, standards, analyser configuration, a binary, a plugin, or an environment read from the revision being reviewed, built, or tested, so the change decides how it is judged.
 2. Does untrusted text reach a sink unescaped? A model prompt, a shell command, a query, a terminal, a log, rendered markdown or HTML, a file path, or a URL.
-3. Does hostile input make a check pass? A value that is oversized, malformed, binary, or unexpected, and is skipped, truncated, caught and ignored, or read as absence, so the check reports clean where it should fail.
+3. Does hostile input make a check pass? A value an author or outside party shapes, oversized, malformed, binary, or unexpected, that is skipped, truncated, caught and ignored, or read as absence, so the check reports clean where it should fail. A failure nobody arranges, such as a refused request or a file that happens to be unreadable, is not hostile input; it belongs to the correctness or removed-behaviour lens.
 4. Does a secret reach someone who should not hold it? A token, key, or credential handed to code the reviewed revision supplies, or written to a log, an error, a comment, or stored output.
 
 Work like this:
 
 1. Read the diff. Name every value that crosses from untrusted to trusted, who controls it, and where it ends up.
 2. Read the code at the head revision with `read_file`, and the base with `revision: "base"` where the change replaced a safer path. Follow the value to its sink with `search`.
-3. Keep a finding only when you can name the hostile input, who controls it, and what it makes the code do. That is its failure scenario. Label any step you inferred rather than read, as "inferred: the caller passes the checkout of the pull request's head". Drop anything you cannot tie to code you read.
+3. Keep a finding only when you can name the hostile input, who controls it, and what it makes the code do. That is its failure scenario. Who controls the input must come from code you read: a comment, a name, or a caller that says the value is the head's, the author's, or an outside party's. Label any other step you inferred, as "inferred: the caller retries", but never let an inferred step be the one that makes the input hostile. Drop anything you cannot tie to code you read.
 
-Stay in scope. Report only what this change introduced, or a boundary it provably opened in code it did not touch, citing the changed line as a `cause` location. A weakness that predates the change is out of scope, however bad. A wrong value with no one hostile behind it belongs to the correctness lens. A deleted guard belongs here only when it stood on a boundary; otherwise it is the removed-behaviour lens's.
+Stay in scope. Report only what this change introduced, or a boundary it provably opened in code it did not touch, citing the changed line as a `cause` location. A weakness that predates the change is out of scope, however bad. A wrong value with no one hostile behind it belongs to the correctness lens. A deleted guard belongs here only when it stood on a boundary; otherwise it is the removed-behaviour lens's. A test is not a boundary: a weakened, skipped, or vacuous test is the tests lens's, even when the test guards a boundary. A dependency or action referenced by a tag or a version range rather than a fixed digest is supply-chain hygiene, which the repository's standards or a static rule judge, not this lens.
 
 Severity:
 
