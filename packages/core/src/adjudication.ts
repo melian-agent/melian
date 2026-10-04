@@ -328,7 +328,7 @@ export interface CheckRecord {
 	 * counts only that version's findings for the check; without it, every version's.
 	 */
 	readonly version?: string;
-	/** The scrutiny level a lens ran at. Only a lens that started has one. */
+	/** The scrutiny level a lens ran at, or was to run at when it failed. Other checks have none. */
 	readonly level?: ScrutinyLevel;
 	/** The budget that ended a lens's conversation before the lens finished on its own, with what it had used. */
 	readonly budgetEnded?: BudgetEnd;

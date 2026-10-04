@@ -537,11 +537,12 @@ export function lensCovers(coverage: LensCoverage, path: string): boolean {
 	);
 }
 
-// Every level of `lens` on `tier`.
-function retiered(levels: LensLevels, tier: LensTier): LensLevels {
-	return Object.fromEntries(
-		Object.entries(levels).map(([level, settings]) => [level, { ...settings, tier }]),
-	) as unknown as LensLevels;
+function retiered({ quick, careful, deep }: LensLevels, tier: LensTier): LensLevels {
+	return {
+		...(quick === undefined ? {} : { quick: { ...quick, tier } }),
+		careful: { ...careful, tier },
+		...(deep === undefined ? {} : { deep: { ...deep, tier } }),
+	};
 }
 
 /**

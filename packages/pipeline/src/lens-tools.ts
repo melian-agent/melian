@@ -185,12 +185,9 @@ export function tokensUsed(usage: Readonly<UsageState> | undefined): number {
 
 type Metered = { refused?: number; spent?: "tokens" | "tools" };
 
-// Counts a call to a read-only tool and decides whether the lens's budget is spent, all from durable state, so a
-// replayed call counts once and every call of one round decides alike. Pi records token usage with each response,
-// before the round's tools start; this commit records the call's ID, once. A round's read calls are numbered in call
-// order after every earlier round's, so a call past the tools budget is refused whichever call commits first. A
-// conversation ends only when every call of its round asks it to, so every call of a round that spends a budget asks,
-// and the first records which budget it was, for the lens task to read.
+// Counts a read-only tool call by its ID and decides, from durable state alone, whether it is past the tools budget and
+// whether its round spends a budget. Pi ends a run only when every call of the round asks, so the round's read calls
+// are numbered from `LiveDoc` in call order, and every call of the round decides alike whichever commits first.
 async function meter(api: ToolExecutionApi, lens: LensPolicy, counted: boolean, context: Context): Promise<Metered> {
 	const { tokens, tools } = lens.limits ?? {};
 	if (tokens === undefined && tools === undefined) return {};
@@ -234,7 +231,7 @@ function ending(result: TextResult, lens: LensPolicy, spent: Metered["spent"]) {
 	if (spent === undefined) return result;
 	const why =
 		spent === "tokens"
-			? `this lens has used its budget of ${lens.limits?.tokens} tokens`
+			? `this lens has used its budget of ${lens.limits?.tokens?.toLocaleString("en-AU")} tokens`
 			: `this lens has used its budget of ${readCalls(lens.limits?.tools)}`;
 	const note = { type: "text" as const, text: `[${why}. ${budgetEnds}]` };
 	return { content: [...result.content, note], control: { terminate: true as const } };
