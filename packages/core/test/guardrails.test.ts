@@ -585,6 +585,14 @@ describe("policy-change-review", () => {
 		]);
 	});
 
+	it("reports a change to the root melian.yaml at P1 though the root lists it as an analyser's file and lowers that", async () => {
+		const root = lines(quiet, "    analyserSeverity: P3", "    files: [melian.yaml]");
+		const { findings } = await guardrails({ "melian.yaml": root }, { "melian.yaml": lines(root, "resolution:") });
+		expect(summary(findings).map(({ file, severity }) => ({ file, severity }))).toEqual([
+			{ file: "melian.yaml", severity: "P1" },
+		]);
+	});
+
 	it("asks for acknowledgement of a change to the root melian.yaml though the root maps P2 to silent", async () => {
 		const root = lines("resolution:", "  P2: silent");
 		const baseCommit = commit({ "melian.yaml": root }, "base");
