@@ -1,0 +1,55 @@
+{
+  "correctness": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/receipt.ts"
+          },
+          "expectToolResult": "(total(cents) / 10).toFixed(2)"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "src/receipt.ts",
+            "line": 4,
+            "rule": "wrong-result",
+            "severity": "P2",
+            "explanation": {
+              "what": "receipt divides the total in cents by 10, so 450 cents prints as Total: 45.00.",
+              "why": "The change only made total's parameter readonly; the division in receipt predates it.",
+              "fix": "Divide by 100."
+            },
+            "failureScenario": "receipt([450]) prints \"Total: 45.00\" for a total of 4.50, because it divides cents by 10.",
+            "evidence": [
+              {
+                "file": "src/receipt.ts",
+                "line": 4,
+                "role": "cause"
+              },
+              {
+                "file": "src/total.ts",
+                "line": 1,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "as pre-existing"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ],
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ]
+}

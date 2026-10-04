@@ -36,6 +36,16 @@ export const crashFinding = {
 	evidence: [{ file: "src/user.ts", line: 7, role: "cause" }],
 };
 
+// crashFinding as an older Melian's report_finding took it: one evidence location, and no failure scenario.
+export const legacyCrashFinding = {
+	file: crashFinding.file,
+	line: crashFinding.line,
+	rule: crashFinding.rule,
+	severity: crashFinding.severity,
+	explanation: crashFinding.explanation,
+	evidence: { file: "src/user.ts", line: 7 },
+};
+
 // The correctness lens may report one finding, so the crashed review dies at exactly its full budget.
 export function crashLenses(lenses: readonly Lens[]): Lens[] {
 	return lenses.map((lens) => (lens.name === "correctness" ? { ...lens, budget: { findings: 1 } } : lens));

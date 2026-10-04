@@ -9,8 +9,10 @@ describe("the golden corpus", () => {
 		expect(goldens.map((golden) => golden.name)).toEqual([
 			"clean-rename",
 			"contracts-breaking-signature",
+			"correctness-deleted-guard",
 			"correctness-null-deref",
 			"injection-in-comment",
+			"pre-existing-beside-change",
 		]);
 	});
 });
@@ -82,7 +84,7 @@ describe("scriptedMismatches", () => {
 });
 
 describe("scoreGolden", () => {
-	const [, , nullDeref] = goldens;
+	const nullDeref = goldens.find((each) => each.name === "correctness-null-deref");
 	const finding = (path: string, rule: string) =>
 		({
 			ruleId: rule,

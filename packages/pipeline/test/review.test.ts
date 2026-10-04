@@ -1227,6 +1227,108 @@ describe("adjudication", () => {
 		expect(verdict.blocking).toBe(false);
 	});
 
+	it("blocks on a caller a pure deletion broke, proved only by the deleted line at the base", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		const port = (...guard: string[]) =>
+			lines(
+				"export function parsePort(value: string): number {",
+				"\tconst port = Number(value);",
+				...guard,
+				"\treturn port;",
+				"}",
+			);
+		const server = lines(
+			'import { parsePort } from "./port.ts";',
+			"",
+			'export const port = parsePort(process.env.PORT ?? "");',
+		);
+		repo = baseAndHead(
+			{
+				"src/port.ts": port('\tif (!Number.isInteger(port) || port < 1) throw new Error("invalid port");'),
+				"src/server.ts": server,
+			},
+			{ "src/port.ts": port() },
+		);
+		const changeset = await resolveRange(repo, "main...feature");
+		expect(changeset.revision.files[0]!.hunks.map(({ newLines, oldStart }) => [newLines, oldStart])).toEqual([
+			[0, 3],
+		]);
+		const atServer = {
+			...nullDeref,
+			file: "src/server.ts",
+			line: 3,
+			rule: "wrong-result",
+			failureScenario: 'With PORT unset, parsePort("") returns 0 and the server binds a random port.',
+			evidence: [
+				{ file: "src/port.ts", line: 3, role: "cause", revision: "base" },
+				{ file: "src/port.ts", line: 3, role: "context", revision: "head" },
+			],
+		};
+		const besideDeletion = {
+			...atServer,
+			file: "src/port.ts",
+			line: 3,
+			rule: "unhandled-error",
+			evidence: [{ file: "src/port.ts", line: 3, role: "context", revision: "base" }],
+		};
+		scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					calls(["report_finding", atServer], ["report_finding", besideDeletion]),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { verdict } = await reviewed({
+			lenses: await loadLenses(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, [
+				"src/port.ts",
+			]),
+		});
+
+		expect(verdict.blocking).toBe(true);
+		expect(verdict.findings.block.map((each) => [each.properties.path, each.properties.cause])).toEqual([
+			["src/server.ts", "affected"],
+		]);
+		expect(verdict.findings.block[0]!.properties.evidence![0]).toMatchObject({ revision: "base", deleted: true });
+		expect(verdict.findings.advisory.map((each) => [each.properties.path, each.properties.cause])).toEqual([
+			["src/port.ts", "pre-existing"],
+		]);
+	});
+
+	it("lets a cause location on an unrelated changed line make an old defect affected and block", async () => {
+		// Pinned as it stands: Melian checks that a cause location overlaps the change, not that the change brings the
+		// failure about. Milestone 2's verifier step caps a lens finding no verifier judged at advisory, and this test
+		// then expects advisory.
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{
+				match: contracts,
+				replies: [
+					call("report_finding", {
+						...nullDeref,
+						file: "src/report.ts",
+						line: 2,
+						rule: "broken-caller",
+						failureScenario:
+							"line is computed at import, before me is defined, so importing src/report.ts throws.",
+						evidence: [{ file: "src/user.ts", line: 7, role: "cause" }],
+					}),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+
+		const { verdict } = await reviewed();
+
+		expect(verdict.findings.block.map((each) => [each.properties.path, each.properties.cause])).toEqual([
+			["src/report.ts", "affected"],
+		]);
+		expect(verdict.blocking).toBe(true);
+	});
+
 	it("leaves out the sightings of a lens that configuration has since disabled", async () => {
 		scriptConversations(fake, [
 			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },

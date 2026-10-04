@@ -1,0 +1,26 @@
+{
+  "pr_title": "Accept a readonly list of prices",
+  "comments": [
+    {
+      "comment": "receipt divides cents by 10 rather than 100, a defect that predates this change; the changed signature is only context, so it stays pre-existing and never blocks.",
+      "severity": "Medium",
+      "category": "bug",
+      "file": "src/receipt.ts",
+      "rule": "wrong-result",
+      "cause": "pre-existing",
+      "failureScenario": "receipt([450]) prints \"Total: 45.00\" for a total of 4.50, because it divides cents by 10.",
+      "evidence": [
+        {
+          "file": "src/receipt.ts",
+          "line": 4,
+          "role": "cause"
+        },
+        {
+          "file": "src/total.ts",
+          "line": 1,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

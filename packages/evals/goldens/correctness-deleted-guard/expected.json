@@ -1,0 +1,27 @@
+{
+  "pr_title": "Drop the port range check",
+  "comments": [
+    {
+      "comment": "parsePort no longer rejects a port outside 1 to 65535, so start(\"\") binds a random port where the base threw.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/port.ts",
+      "rule": "wrong-result",
+      "cause": "affected",
+      "failureScenario": "start(\"\") in src/server.ts calls parsePort(\"\"), which returns 0, and listen(0) binds a random free port, where the base threw \"invalid port: \".",
+      "evidence": [
+        {
+          "file": "src/port.ts",
+          "line": 3,
+          "role": "cause",
+          "revision": "base"
+        },
+        {
+          "file": "src/server.ts",
+          "line": 5,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}
