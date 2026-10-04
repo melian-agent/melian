@@ -34,12 +34,15 @@ export type ChangeOverlap =
  * The part of the change a location falls on, whatever its role, or `undefined` when it falls on nothing the change
  * did. At head: a hunk's new lines in a file the change keeps. At the base: a hunk's old lines in a file the base had,
  * named by its base path, so deleted lines count as changed code. On either side, any line of a file the change
- * renamed without editing, named by its path on that side, since the rename is what the change did to it. Compares
- * canonical paths; throws `FindingError` `invalidPath` for a path that is not repository-relative.
+ * renamed without editing, named by its path on that side, since the rename is what the change did to it, unless that
+ * file is `findingFile`, the head path of the finding the location supports: moving a file changes no line of it, so
+ * the rename proves nothing about a defect inside it. Compares canonical paths; throws `FindingError` `invalidPath` for
+ * a path that is not repository-relative.
  */
 export function changeOverlap(
 	location: CodeLocation & { readonly revision?: EvidenceRevision },
 	revision: Pick<Revision, "files">,
+	findingFile?: string,
 ): ChangeOverlap | undefined {
 	const path = canonicalPath(location.file, "/evidence/file");
 	const end = location.endLine ?? location.startLine;
@@ -50,7 +53,10 @@ export function changeOverlap(
 			: file.path === path && file.status !== "deleted",
 	);
 	if (changed === undefined) return undefined;
-	if (changed.status === "renamed" && changed.hunks.length === 0) return { kind: "rename", file: changed };
+	if (changed.status === "renamed" && changed.hunks.length === 0) {
+		const own = findingFile !== undefined && canonicalPath(findingFile, "/file") === changed.path;
+		return own ? undefined : { kind: "rename", file: changed };
+	}
 	const hunk = changed.hunks.find((each) =>
 		base
 			? overlaps(location.startLine, end, each.oldStart, each.oldLines)
@@ -60,12 +66,16 @@ export function changeOverlap(
 }
 
 /**
- * The part of the change a piece of evidence proves caused a finding, by {@link changeOverlap}, or `undefined` when it
- * proves nothing. Only a `cause` location proves anything; a `context` location never does.
+ * The part of the change a piece of evidence proves caused a finding in `findingFile`, by {@link changeOverlap}, or
+ * `undefined` when it proves nothing. Only a `cause` location proves anything; a `context` location never does.
  */
-export function causeOverlap(site: EvidenceSite, revision: Pick<Revision, "files">): ChangeOverlap | undefined {
+export function causeOverlap(
+	site: EvidenceSite,
+	revision: Pick<Revision, "files">,
+	findingFile?: string,
+): ChangeOverlap | undefined {
 	canonicalPath(site.file, "/evidence/file");
-	return site.role === "cause" ? changeOverlap(site, revision) : undefined;
+	return site.role === "cause" ? changeOverlap(site, revision, findingFile) : undefined;
 }
 
 /**
@@ -74,9 +84,10 @@ export function causeOverlap(site: EvidenceSite, revision: Pick<Revision, "files
  * Location proves `introduced` only: a location in an added file, binary files included, or overlapping any hunk's new
  * lines is `introduced`. Any other location is `affected` when one of `evidence`'s locations proves the change caused
  * it, by {@link causeOverlap}, and `pre-existing` otherwise, including code beside or around a pure deletion, which has no
- * new lines. A file deleted at head has no lines to point at, so a location in one throws `FindingError` `deletedFile`.
- * Compares canonical paths, so `./src/run.ts` is `src/run.ts`; throws `FindingError` `invalidPath` for a path that is
- * absolute, escapes the repository, or uses a backslash.
+ * new lines, and code in a file the change only renamed, whatever its evidence cites in that file. A file deleted at
+ * head has no lines to point at, so a location in one throws `FindingError` `deletedFile`. Compares canonical paths, so
+ * `./src/run.ts` is `src/run.ts`; throws `FindingError` `invalidPath` for a path that is absolute, escapes the
+ * repository, or uses a backslash.
  */
 export function classifyCause(location: CodeLocation, revision: Pick<Revision, "files">): LocationCause;
 export function classifyCause(
@@ -91,7 +102,9 @@ export function classifyCause(
 ): Cause {
 	const located = causeByLocation(location, revision);
 	if (located === "introduced") return located;
-	return evidence.some((site) => causeOverlap(site, revision) !== undefined) ? "affected" : "pre-existing";
+	return evidence.some((site) => causeOverlap(site, revision, location.file) !== undefined)
+		? "affected"
+		: "pre-existing";
 }
 
 function causeByLocation(location: CodeLocation, revision: Pick<Revision, "files">): LocationCause {

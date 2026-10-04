@@ -797,6 +797,17 @@ describe("reviewChangeset", () => {
 								evidence: [{ file: "src/config.ts", line: 1, role: "context", revision: "base" }],
 							},
 						],
+						[
+							"report_finding",
+							{
+								...nullDeref,
+								file: "src/settings.ts",
+								line: 1,
+								rule: "broken-caller",
+								failureScenario: "A port above 65535 from the environment is never rejected.",
+								evidence: [{ file: "src/config.ts", line: 1, role: "cause", revision: "base" }],
+							},
+						],
 					),
 					fauxAssistantMessage("Done."),
 				],
@@ -809,7 +820,13 @@ describe("reviewChangeset", () => {
 			]),
 		});
 
-		const byRule = Object.fromEntries(findings.map((each) => [each.ruleId, each.properties]));
+		const fileOf = (each: (typeof findings)[number]) => each.locations[0]!.physicalLocation.artifactLocation.uri;
+		const own = findings.find((each) => fileOf(each) === "src/settings.ts")!.properties;
+		expect(own.cause).toBe("pre-existing");
+		expect(own.evidence).toEqual([expect.not.objectContaining({ deleted: true })]);
+		const byRule = Object.fromEntries(
+			findings.filter((each) => fileOf(each) === "src/server.ts").map((each) => [each.ruleId, each.properties]),
+		);
 		expect(byRule["broken-caller"]).toMatchObject({
 			cause: "affected",
 			evidence: [{ file: "src/config.ts", revision: "base", deleted: true, snippet: "export const port = 8080;" }],

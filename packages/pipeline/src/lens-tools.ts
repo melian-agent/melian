@@ -335,7 +335,11 @@ function malformed(args: unknown): string | undefined {
 
 // Melian reads each location's snippet from the revision it names, so the evidence a verifier and the author see is
 // the code itself, never the model's quotation of it.
-async function evidenceFrom(args: ReportFindingInput["evidence"], review: ReviewState): Promise<EvidenceLocation[]> {
+async function evidenceFrom(
+	args: ReportFindingInput["evidence"],
+	review: ReviewState,
+	findingFile: string,
+): Promise<EvidenceLocation[]> {
 	// A call an older Melian stored before a crash resumes here without passing prepareArguments or the schema again.
 	if (!Array.isArray(args)) throw new Error(evidenceShape);
 	return await Promise.all(
@@ -354,7 +358,11 @@ async function evidenceFrom(args: ReportFindingInput["evidence"], review: Review
 			const { snippet } = await linesAt(review, revision, file, line, endLine, hint);
 			const deleted =
 				revision === "base" &&
-				changeOverlap({ file, startLine: line, endLine, revision }, { files: changedFiles(review) }) !== undefined;
+				changeOverlap(
+					{ file, startLine: line, endLine, revision },
+					{ files: changedFiles(review) },
+					findingFile,
+				) !== undefined;
 			return {
 				file,
 				startLine: line,
@@ -377,7 +385,7 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 	}
 	const endLine = args.endLine ?? args.line;
 	const { content, snippet } = await linesAt(review, "head", path, args.line, endLine);
-	const evidence = await evidenceFrom(args.evidence, review);
+	const evidence = await evidenceFrom(args.evidence, review, path);
 	const location = { file: path, startLine: args.line, endLine };
 	const cause = classifyCause(location, { files: changedFiles(review) }, evidence);
 	const changed = review.files.find((file) => file.path === path);
@@ -451,7 +459,7 @@ export const reportFinding = defineTool({
 		const { cause, evidence = [] } = finding.properties;
 		const unproven =
 			cause === "pre-existing"
-				? ": it is outside the change, and no cause location overlaps lines the change added, modified, or deleted, or a file it renamed"
+				? ": it is outside the change, and no cause location overlaps lines the change added, modified, or deleted, or names another file it only renamed"
 				: "";
 		// Each location's first line as Melian read it, so a lens that miscounted a line number sees what it cited.
 		const { body } = fitting(

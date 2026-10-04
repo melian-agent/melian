@@ -184,4 +184,36 @@ describe("causeOverlap", () => {
 		expect(causeOverlap(context, moved.revision)).toBeUndefined();
 		expect(changeOverlap(context, moved.revision)).toEqual({ kind: "rename", file: renamed });
 	});
+
+	it("keeps a finding inside a file renamed without editing pre-existing when its evidence cites its own lines", async () => {
+		gitIn(repo, "mv", "untouched.ts", "kept.ts");
+		gitIn(repo, "commit", "--quiet", "-m", "rename only");
+		const moved = await resolveRange(repo, "main...feature");
+		const inside = { file: "kept.ts", startLine: 2 };
+		for (const site of [
+			{ file: "kept.ts", startLine: 2, role: "cause" },
+			{ file: "untouched.ts", startLine: 2, role: "cause", revision: "base" },
+		] as const) {
+			expect(classifyCause(inside, moved.revision, [site])).toBe("pre-existing");
+			expect(causeOverlap(site, moved.revision, "./kept.ts")).toBeUndefined();
+			expect(changeOverlap(site, moved.revision, "kept.ts")).toBeUndefined();
+		}
+		const edited = { file: "app.ts", startLine: 3, role: "cause" } as const;
+		expect(classifyCause(inside, moved.revision, [edited])).toBe("affected");
+	});
+
+	it("calls a consumer in another file affected when it cites the file the change only renamed", async () => {
+		gitIn(repo, "mv", "untouched.ts", "kept.ts");
+		gitIn(repo, "commit", "--quiet", "-m", "rename only");
+		const moved = await resolveRange(repo, "main...feature");
+		const renamed = moved.revision.files.find((file) => file.path === "kept.ts");
+		const consumer = { file: "app.ts", startLine: 1 };
+		for (const site of [
+			{ file: "untouched.ts", startLine: 1, role: "cause", revision: "base" },
+			{ file: "kept.ts", startLine: 1, role: "cause" },
+		] as const) {
+			expect(classifyCause(consumer, moved.revision, [site])).toBe("affected");
+			expect(causeOverlap(site, moved.revision, consumer.file)).toEqual({ kind: "rename", file: renamed });
+		}
+	});
 });

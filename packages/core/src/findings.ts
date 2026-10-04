@@ -231,7 +231,7 @@ export const reportFindingInputSchema = Type.Object(
 				minItems: 1,
 				maxItems: maxEvidenceLocations,
 				description:
-					"The code the claim rests on, as locations, never prose. A finding outside the change is caused by it only when a cause location overlaps lines the change added, modified, or deleted, or names a file it renamed",
+					"The code the claim rests on, as locations, never prose. A finding outside the change is caused by it only when a cause location overlaps lines the change added, modified, or deleted, or names another file it renamed without editing",
 			},
 		),
 	},
@@ -319,8 +319,8 @@ export type EvidenceRevision = Static<typeof evidenceRevisionSchema>;
  * Lines a finding's claim rests on, at the head or the base, with the role they play and `snippet` read from that
  * revision at those lines, never written by the producer. A `cause` location overlapping the change is what makes a
  * finding outside the diff `affected`. `deleted` marks a base location whose lines the change deleted or replaced, or
- * whose file it renamed without editing, as Melian found when it read the location; a base location without it names
- * code the change left alone.
+ * whose file it renamed without editing when that file is not the finding's own, as Melian found when it read the
+ * location; a base location without it names code the change left alone.
  */
 export type EvidenceLocation = Static<typeof evidenceLocationSchema>;
 
