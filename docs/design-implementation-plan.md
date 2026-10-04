@@ -49,7 +49,7 @@ Steps to be written when milestone 1 closes.
 
 ## Milestone 3: Melian remembers and learns
 
-Cross-revision diffing, comment commands including dismiss-with-reason, knowledge write-back by pull request, decision-model triage and the calibration store.
+Cross-revision commands, comment commands including dismiss-with-reason, knowledge write-back by pull request, decision-model triage and the calibration store.
 
 Steps to be written when milestone 2 closes.
 
