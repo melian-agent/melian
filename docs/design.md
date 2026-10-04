@@ -627,7 +627,7 @@ Problem: a lens finds the callers of a changed symbol by searching, one call at 
 Solution: [Enola](research/2026-10-04-enola.md) (enola.tech, `enola-labs/enola`, Apache 2.0, written in Go) is the first tool in the manifest. It is deterministic, and its extractors are compiled in. It still runs in the execution environment, never in the Melian process, like every tool that loads repository configuration, because a `providers:` block in `enola.yaml` names an executable Enola runs with `--version` and with the repository path. Melian uses it two ways:
 
 - As a static check: `enola check` runs on the head against a baseline Melian builds from the base, and its SARIF is diffed as Biome's is.
-- As lens input: the callers of changed symbols outside the diff, rendered into lens prompts as data and offered as candidate `affected` evidence that the lens confirms or drops. Melian runs Enola as a subprocess, never through its MCP server, and core derives the callers itself by walking the `calls` and `imports` edges in `facts.jsonl`, a deterministic transform. Enola's MCP tool `impact_analysis` computes the same closure. The spike confirms that the facts carry call edges for TypeScript.
+- As lens input: the callers of changed symbols outside the diff, rendered into lens prompts as data and offered as candidate `affected` evidence that the lens confirms or drops. Melian uses Enola's two documented interfaces and never reconstructs its algorithms. The contract artifacts, `facts.jsonl`, `insights.json`, and `receipt.json`, versioned by a `format_version` that changes only on a breaking change, give identity, lineage, and the cache key. The callers come from Enola's MCP server over stdio, which the binary starts when run with no flags: `plan_check` takes the revision's unified diff and returns the constraints that apply and the impact in one call, and `impact_analysis` answers for a single symbol. Pi has no MCP client, so Melian carries one, a pinned dependency or a small JSON-RPC stdio client, which the spike chooses and measures.
 
 Enola's configuration files, for intent, constraints, suppressions, linking, and providers, are policy read from the base, and they join the policy-change list. A committed baseline is never used. The spike decides whether Melian runs Enola with providers disabled.
 
@@ -738,7 +738,7 @@ Match Pi's conventions unless there is a reason not to.
 | Models | pi-ai, with the review plan's resolver (planned, milestone 2) and the credential-pool provider (planned, milestone 3) |
 | Secrets | `melian.secrets.yaml` and `~/.config/melian/secrets.yaml`, then Pi's credential store, then environment variables (planned, milestone 2) |
 | Decisions | `Decider` port in core; recorded and LLM fallback adapters in `packages/decisions` (planned, milestone 2); Jev and Clef adapters (planned, milestone 4) |
-| Code graph | Enola, pinned in the tool manifest and run as a subprocess; core walks the `calls` and `imports` edges in its `facts.jsonl` for callers (planned, milestone 2) |
+| Code graph | Enola, pinned in the tool manifest; its contract artifacts for identity and the cache, `enola check` for the static check, its MCP server over stdio for callers (planned, milestone 2) |
 | Durability | pi-durable, exact-pinned, wrapped behind one module |
 | Storage | memory for tests, SQLite locally, SQLite on the server (planned), JSONL on the state branch for Actions (planned, milestone 3) |
 | Execution | Node environment locally, container environment for untrusted code (planned, milestone 3) |
