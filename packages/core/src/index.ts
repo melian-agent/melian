@@ -204,14 +204,7 @@ export {
 	replyKey,
 	reviewStatus,
 } from "./publication.ts";
-export {
-	describeBudgetEnd,
-	renderFindingsJson,
-	renderFindingsTerminal,
-	renderVerdictJson,
-	type TerminalRenderOptions,
-	visibleText,
-} from "./render.ts";
+export { describeBudgetEnd, Rendering, type TerminalRenderOptions, visibleText } from "./render.ts";
 export {
 	listRevisionFiles,
 	type RevisionEntry,

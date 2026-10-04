@@ -16,7 +16,6 @@ import {
 	type MelianConfig,
 	type ModelRoute,
 	type RepositorySource,
-	renderFindingsTerminal,
 	resolveRange,
 } from "@melian-agent/core";
 import {
@@ -283,7 +282,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 		try {
 			const review = { harness, changeset, config, lenses, standards, models, policy: source };
 			const { findings } = await reviewChangeset(review);
-			const rendered = renderFindingsTerminal(FindingsLog.of([...findings]));
+			const rendered = FindingsLog.of([...findings]).render();
 			return { golden, findings, rendered, toolMismatches };
 		} finally {
 			await reviewHarness.close(backgroundContext);

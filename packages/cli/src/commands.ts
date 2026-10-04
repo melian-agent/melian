@@ -6,9 +6,6 @@ import {
 	loadLenses,
 	loadStandards,
 	type RepositorySource,
-	renderFindingsJson,
-	renderFindingsTerminal,
-	renderVerdictJson,
 	resolveRange,
 	type Verdict,
 	visibleText,
@@ -130,7 +127,7 @@ export async function review(
 			io.stderr(`melian: ${error.message}\n`);
 			verdict = error.verdict;
 		}
-		io.stdout(renderFindingsTerminal(verdict, { color: io.color, ids: true }));
+		io.stdout(verdict.render({ color: io.color, ids: true }));
 		return exitCodeFor(verdict);
 	} finally {
 		await reviewHarness.close(context);
@@ -226,15 +223,11 @@ export async function findings(
 		if (verdict === undefined) throw missing;
 		const render = { color: io.color, ids: true, all: options.all };
 		if (!options.open) {
-			io.stdout(options.json ? renderVerdictJson(verdict) : renderFindingsTerminal(verdict, render));
+			io.stdout(options.json ? verdict.renderJson() : verdict.render(render));
 			return 0;
 		}
-		const open = FindingsLog.of([
-			...verdict.findings.block,
-			...verdict.findings.acknowledge,
-			...verdict.findings.advisory,
-		]);
-		io.stdout(options.json ? renderFindingsJson(open) : renderFindingsTerminal(open, render));
+		const open = FindingsLog.of(verdict.attention());
+		io.stdout(options.json ? open.renderJson() : open.render(render));
 		return 0;
 	} finally {
 		await reviewHarness.close(context);

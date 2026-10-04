@@ -8,6 +8,7 @@ import {
 	type StoredFinding,
 } from "./findings.ts";
 import type { ScrutinyLevel } from "./lens.ts";
+import { Rendering, type TerminalRenderOptions } from "./render.ts";
 
 /**
  * The configuration that applies at a repository-relative path, usually through `loadConfig` for that path. Given
@@ -320,6 +321,16 @@ export class Verdict {
 		const finding =
 			all.find((each) => each.id === id) ?? all.find((each) => membersOf(each).some((other) => other.id === id));
 		return finding === undefined ? undefined : new Defect(finding, membersOf(finding));
+	}
+
+	/** The verdict as plain text for a terminal, as {@link Rendering} renders it. */
+	render(options: TerminalRenderOptions = {}): string {
+		return new Rendering(options).verdict(this);
+	}
+
+	/** The verdict as JSON text, indented by two spaces and ending in a newline. Its findings are SARIF results. */
+	renderJson(): string {
+		return `${JSON.stringify(this, null, 2)}\n`;
 	}
 
 	/** The verdict as it is stored. */

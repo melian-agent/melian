@@ -1,13 +1,4 @@
-import {
-	Adjudication,
-	defaultConfig,
-	Finding,
-	FindingsLog,
-	findingsLogSchema,
-	renderFindingsJson,
-	renderFindingsTerminal,
-	renderVerdictJson,
-} from "@melian-agent/core";
+import { Adjudication, defaultConfig, Finding, FindingsLog, findingsLogSchema } from "@melian-agent/core";
 import Value from "typebox/value";
 import { describe, expect, it } from "vitest";
 import { evalInput, minimalInput } from "./fixtures/findings.ts";
@@ -86,7 +77,7 @@ const log = FindingsLog.of([
 
 describe("renderFindingsJson", () => {
 	it("renders the SARIF log", async () => {
-		const json = renderFindingsJson(log);
+		const json = log.renderJson();
 		expect(Value.Check(findingsLogSchema, JSON.parse(json))).toBe(true);
 		await expect(json).toMatchFileSnapshot("./golden/findings.sarif");
 	});
@@ -94,16 +85,16 @@ describe("renderFindingsJson", () => {
 
 describe("renderFindingsTerminal", () => {
 	it("groups by file and orders by severity, then line", async () => {
-		await expect(renderFindingsTerminal(log)).toMatchFileSnapshot("./golden/findings.txt");
+		await expect(log.render()).toMatchFileSnapshot("./golden/findings.txt");
 	});
 
 	it("uses no escape codes unless asked", () => {
-		expect(renderFindingsTerminal(log)).not.toContain("\u001b");
-		expect(renderFindingsTerminal(log, { color: false })).toBe(renderFindingsTerminal(log));
+		expect(log.render()).not.toContain("\u001b");
+		expect(log.render({ color: false })).toBe(log.render());
 	});
 
 	it("colours severities and file names when asked", async () => {
-		await expect(renderFindingsTerminal(log, { color: true })).toMatchFileSnapshot("./golden/findings.ansi.txt");
+		await expect(log.render({ color: true })).toMatchFileSnapshot("./golden/findings.ansi.txt");
 	});
 
 	const invisible =
@@ -115,7 +106,7 @@ describe("renderFindingsTerminal", () => {
 			message: "eval runs request input\u001b]0;pwned\u0007\u001b[2J",
 			explanation: { ...evalInput.explanation, what: "The handler passes the body to eval.\nThat runs any code." },
 		});
-		const text = renderFindingsTerminal(FindingsLog.of([hostile]));
+		const text = FindingsLog.of([hostile]).render();
 		expect(text).not.toMatch(invisible);
 		expect(text).toContain("  eval runs request input\\u001b]0;pwned\\u0007\\u001b[2J\n");
 		expect(text).toContain("    What: The handler passes the body to eval.\n      That runs any code.\n");
@@ -124,7 +115,7 @@ describe("renderFindingsTerminal", () => {
 	it.each([false, true])("escapes ESC, BEL, newline, tab, and bidi overrides in a path, colour %s", (color) => {
 		const file = "src/\u001b[2Jrun\u0007\nfake.ts\tx\u202egnp.ts";
 		const hostile = Finding.create({ ...evalInput, file, trigger: undefined });
-		const text = renderFindingsTerminal(FindingsLog.of([hostile]), { color });
+		const text = FindingsLog.of([hostile]).render({ color });
 		const header = "src/\\u001b[2Jrun\\u0007\\u000afake.ts\\u0009x\\u202egnp.ts";
 		expect(text.split("\n")[0]).toBe(color ? `\u001b[1m${header}\u001b[0m` : header);
 		expect(text.replaceAll(/\u001b\[[0-9;]*m/g, "")).not.toMatch(invisible);
@@ -144,7 +135,7 @@ describe("renderFindingsTerminal", () => {
 				},
 			],
 		});
-		const text = renderFindingsTerminal(FindingsLog.of([hostile]));
+		const text = FindingsLog.of([hostile]).render();
 		expect(text).toContain(
 			"    Failure scenario: A body of \\u001b[2J clears the screen\n      and then\\u202e reverses\n",
 		);
@@ -156,7 +147,7 @@ describe("renderFindingsTerminal", () => {
 
 	it("escapes a newline in a rule ID, so it cannot forge another finding's header", () => {
 		const hostile = Finding.create({ ...evalInput, rule: "no-eval\n  P3  line 1  harmless" });
-		expect(renderFindingsTerminal(FindingsLog.of([hostile]))).toContain("no-eval\\u000a  P3  line 1  harmless");
+		expect(FindingsLog.of([hostile]).render()).toContain("no-eval\\u000a  P3  line 1  harmless");
 	});
 
 	it("sets a message's later lines deeper than any header, so one cannot forge a finding in a verdict group", () => {
@@ -168,13 +159,13 @@ describe("renderFindingsTerminal", () => {
 			checks: [{ name: "lens.security", status: "ran" }],
 			config: defaultConfig,
 		}).adjudicate();
-		const text = renderFindingsTerminal(verdict);
+		const text = verdict.render();
 		expect(text).toContain(`  eval runs request input\n    | ${forged}\n`);
 		expect(text.split("\n").filter((line) => line.startsWith("  P0") || line.startsWith("  P1"))).toHaveLength(1);
 	});
 
 	it("says so when there are no findings", () => {
-		expect(renderFindingsTerminal(FindingsLog.of([]))).toBe("No findings.\n");
+		expect(FindingsLog.of([]).render()).toBe("No findings.\n");
 	});
 });
 
@@ -235,7 +226,7 @@ const verdict = new Adjudication({
 
 describe("renderVerdictJson", () => {
 	it("renders the verdict with its findings as SARIF results", async () => {
-		const json = renderVerdictJson(verdict);
+		const json = verdict.renderJson();
 		expect(JSON.parse(json)).toEqual(verdict);
 		await expect(json).toMatchFileSnapshot("./golden/verdict.json");
 	});
@@ -243,11 +234,11 @@ describe("renderVerdictJson", () => {
 
 describe("renderFindingsTerminal with a verdict", () => {
 	it("leads with the verdict, the checks that did not run, a lens its budget ended, and each lens's level, then groups findings by resolution", async () => {
-		await expect(renderFindingsTerminal(verdict)).toMatchFileSnapshot("./golden/verdict.txt");
+		await expect(verdict.render()).toMatchFileSnapshot("./golden/verdict.txt");
 	});
 
 	it("colours the status when asked", async () => {
-		await expect(renderFindingsTerminal(verdict, { color: true })).toMatchFileSnapshot("./golden/verdict.ansi.txt");
+		await expect(verdict.render({ color: true })).toMatchFileSnapshot("./golden/verdict.ansi.txt");
 	});
 
 	it("says a review passed when it did", () => {
@@ -257,7 +248,7 @@ describe("renderFindingsTerminal with a verdict", () => {
 			checks: [{ name: "lens.correctness", status: "ran" }],
 			config: defaultConfig,
 		}).adjudicate();
-		expect(renderFindingsTerminal(passed)).toBe("Verdict: passed\n\nNo findings.\n");
+		expect(passed.render()).toBe("Verdict: passed\n\nNo findings.\n");
 	});
 
 	describe("with every finding and its ID", () => {
@@ -291,7 +282,7 @@ describe("renderFindingsTerminal with a verdict", () => {
 		}).adjudicate();
 
 		it("prints silent and dismissed findings, each dismissal with who, when, and why", () => {
-			const text = renderFindingsTerminal(shown, { all: true, ids: true });
+			const text = shown.render({ all: true, ids: true });
 			expect(text).toContain("Silent: 1 finding");
 			expect(text).toContain("Dismissed: 1 finding");
 			expect(text).not.toContain("not shown");
@@ -304,7 +295,7 @@ describe("renderFindingsTerminal with a verdict", () => {
 		});
 
 		it("counts them and leaves out IDs by default", () => {
-			const text = renderFindingsTerminal(shown);
+			const text = shown.render();
 			expect(text).toContain("1 silent finding and 1 dismissed finding not shown.");
 			expect(text).not.toContain(dismissed.properties.id);
 			expect(text).toContain("Earlier dismissal, reopened at a..b");
@@ -333,7 +324,7 @@ describe("renderFindingsTerminal with a verdict", () => {
 			findings: [speaker, merged, answered],
 		}).adjudicate();
 
-		const text = renderFindingsTerminal(verdict, { ids: true });
+		const text = verdict.render({ ids: true });
 
 		expect(text).toContain(
 			[
@@ -343,7 +334,7 @@ describe("renderFindingsTerminal with a verdict", () => {
 				"  eval runs request input",
 			].join("\n"),
 		);
-		expect(renderFindingsTerminal(verdict)).toContain("    Merged report: P2 code-injection from lens.contracts\n");
+		expect(verdict.render()).toContain("    Merged report: P2 code-injection from lens.contracts\n");
 	});
 
 	it("escapes control characters in a check's name, reason, and error", () => {
@@ -353,7 +344,7 @@ describe("renderFindingsTerminal with a verdict", () => {
 			checks: [{ name: "lens.x\u001b[2J", status: "failed", reason: "bad\nline", error: "\u202egnp.ts" }],
 			config: defaultConfig,
 		}).adjudicate();
-		const text = renderFindingsTerminal(hostile);
+		const text = hostile.render();
 		expect(text).toContain("  lens.x\\u001b[2J  failed: bad\n    line\n    Error: \\u202egnp.ts\n");
 	});
 });

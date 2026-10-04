@@ -12,6 +12,7 @@ import {
 } from "./config.ts";
 import { FindingError } from "./errors.ts";
 import { melianPaths } from "./paths.ts";
+import { Rendering, type TerminalRenderOptions } from "./render.ts";
 
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
@@ -1127,6 +1128,16 @@ export class FindingsLog {
 	/** The findings the log holds, in the order of its results. */
 	findings(): readonly Finding[] {
 		return this.#findings;
+	}
+
+	/** The log as plain text for a terminal, as {@link Rendering} renders it. */
+	render(options: TerminalRenderOptions = {}): string {
+		return new Rendering(options).log(this);
+	}
+
+	/** The log as SARIF JSON text, indented by two spaces and ending in a newline. */
+	renderJson(): string {
+		return `${JSON.stringify(this, null, 2)}\n`;
 	}
 
 	/** The log as JSON. */

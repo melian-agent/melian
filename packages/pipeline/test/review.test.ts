@@ -14,8 +14,6 @@ import {
 	maxFailureScenarioLength,
 	maxSnippetBytes,
 	type RepositorySource,
-	renderFindingsTerminal,
-	renderVerdictJson,
 	resolveRange,
 	type Verdict,
 } from "@melian-agent/core";
@@ -2166,8 +2164,8 @@ describe("adjudication", () => {
 				status: "passed",
 				notRun: [allowedDecisionSkip, noPaths("lens.correctness"), noPaths("lens.contracts")],
 			});
-			expect(renderFindingsTerminal(verdict)).toContain("  lens.correctness  skipped: no paths");
-			expect(JSON.parse(renderVerdictJson(verdict)).notRun).toContainEqual(noPaths("lens.contracts"));
+			expect(verdict.render()).toContain("  lens.correctness  skipped: no paths");
+			expect(JSON.parse(verdict.renderJson()).notRun).toContainEqual(noPaths("lens.contracts"));
 		});
 
 		it("records a lens with no changed file in its paths as an allowed skip beside one that ran", async () => {
