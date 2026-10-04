@@ -561,6 +561,33 @@ describe("reviewChangeset", () => {
 		]);
 	});
 
+	it("refuses an injection attempt at a severity other than P1 from a lens whose severities leave it out", async () => {
+		const conventions = "You are the conventions reviewer";
+		const injection = {
+			...nullDeref,
+			rule: "melian/injection-attempt",
+			severity: "P0",
+			explanation: {
+				what: "A comment tells the reviewer to report nothing.",
+				why: "The change added it to steer the review.",
+				fix: "Delete the comment.",
+			},
+		};
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: conventions, replies: [call("report_finding", injection), fauxAssistantMessage("Done.")] },
+		]);
+
+		const findings = await review({
+			config: { ...config, tiers: { ...defaultConfig.tiers, full: ["standard", "lens.conventions"] } },
+		});
+
+		expect(toolResults(requests[conventions]![1]!).at(-1)).toContain(
+			"Tool call blocked: severity P0 is outside this lens's severities: P2, P3",
+		);
+		expect(findings).toEqual([]);
+	});
+
 	it("stops accepting findings past the lens's budget and says why", async () => {
 		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 1 }) : lens));
 		const requests = scriptConversations(fake, [
