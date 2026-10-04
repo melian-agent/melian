@@ -9,6 +9,7 @@ import {
 	type MemberClaim,
 	maxEvidenceLocations,
 	normaliseSnippet,
+	wasCut,
 } from "./findings.ts";
 
 /** The resolutions from strictest to most lenient. */
@@ -53,11 +54,14 @@ export function applyResolutions(findings: readonly Finding[], configFor: Config
 
 const rank: Readonly<Record<Severity, number>> = { P0: 0, P1: 1, P2: 2, P3: 3, nit: 4 };
 
-// Where a finding sits: its file, its normalised snippet, and which of the identical snippets in that file it is.
+// Where a finding sits: its file, its normalised snippet, and which of the identical snippets in that file it is. Two
+// cut snippets alike may differ past the cut, so a cut one sits on its lines too.
 function siteOf(finding: Finding): string | undefined {
 	const { path, occurrence } = finding.properties;
-	const snippet = normaliseSnippet(finding.locations[0]!.physicalLocation.region.snippet?.text ?? "");
-	return snippet === "" ? undefined : JSON.stringify([path, snippet, occurrence]);
+	const { snippet: stored, startLine, endLine = startLine } = finding.locations[0]!.physicalLocation.region;
+	const snippet = normaliseSnippet(stored?.text ?? "");
+	if (snippet === "") return undefined;
+	return JSON.stringify([path, snippet, occurrence, ...(wasCut(stored!.text) ? [startLine, endLine] : [])]);
 }
 
 function lines(finding: Finding): [number, number] {

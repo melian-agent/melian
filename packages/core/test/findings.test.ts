@@ -216,19 +216,17 @@ describe("reportFindingInputSchema", () => {
 describe("capSnippet", () => {
 	it("keeps a snippet that fits in 2 KiB whole", () => {
 		const fits = "x".repeat(maxSnippetBytes);
-		expect(capSnippet(fits)).toEqual({ text: fits, kept: fits });
+		expect(capSnippet(fits)).toBe(fits);
 	});
 
-	it("cuts a longer one at a character boundary, ending it with a marker naming the whole snippet's hash", () => {
+	it("cuts a longer one at a character boundary and marks the cut", () => {
 		for (const unit of ["x", "€", "😀"]) {
-			const long = unit.repeat(maxSnippetBytes + 1);
-			const { text, kept } = capSnippet(long);
-			expect(text.startsWith(kept)).toBe(true);
-			expect(text.slice(kept.length)).toMatch(/^ \[cut at 2 KiB; sha256 [0-9a-f]{16}\]$/);
+			const text = capSnippet(unit.repeat(maxSnippetBytes + 1));
+			const kept = text.slice(0, -" [cut at 2 KiB]".length);
+			expect(text.endsWith(" [cut at 2 KiB]")).toBe(true);
 			expect(kept).toBe(unit.repeat(kept.length / unit.length));
 			expect(Buffer.byteLength(text)).toBeLessThanOrEqual(maxSnippetBytes);
 			expect(Buffer.byteLength(text)).toBeGreaterThan(maxSnippetBytes - 4);
-			expect(capSnippet(`${long}y`).text).not.toBe(text);
 		}
 	});
 });
@@ -369,6 +367,22 @@ describe("createFinding", () => {
 		const nested = { ...finding, message: { text: "eval runs request input", markdown: undefined } };
 		expect(parseFinding(nested)).toEqual(JSON.parse(JSON.stringify(nested)));
 		expect(parseFinding(nested).message).not.toHaveProperty("markdown");
+	});
+
+	it("takes its ID from the whole of a snippet over 2 KiB and stores it cut, so a reindent keeps the ID", () => {
+		const cells = Array.from({ length: 300 }, (_, index) => `"cell${index}"`);
+		const whole = `const table = [${cells.join(", ")}];`;
+		const finding = createFinding({ ...evalInput, snippet: whole });
+		const stored = finding.locations[0]!.physicalLocation.region.snippet!.text;
+		expect(finding.properties.id).toBe(findingId({ ...evalInput, snippet: whole }));
+		expect(stored).toBe(capSnippet(whole));
+		expect(Buffer.byteLength(stored)).toBeLessThanOrEqual(maxSnippetBytes);
+		expect(parseFinding(JSON.parse(JSON.stringify(finding)))).toEqual(finding);
+		const reindented = createFinding({ ...evalInput, snippet: `\t\t${whole.replaceAll(", ", ",\n\t\t\t")}` });
+		expect(reindented.properties.id).toBe(finding.properties.id);
+		const changedPastTheCut = createFinding({ ...evalInput, snippet: whole.replace("cell299", "cell300") });
+		expect(changedPastTheCut.locations[0]!.physicalLocation.region.snippet!.text).toBe(stored);
+		expect(changedPastTheCut.properties.id).not.toBe(finding.properties.id);
 	});
 
 	it("rejects an input the schema would not accept", () => {

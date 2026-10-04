@@ -362,23 +362,21 @@ async function evidenceFrom(args: ReportFindingInput["evidence"], review: Review
 				role,
 				revision,
 				...(deleted ? { deleted } : {}),
-				snippet: capSnippet(snippet).text,
+				snippet: capSnippet(snippet),
 			};
 		}),
 	);
 }
 
 // The snippet comes from the head revision at the reported lines, never from the model, so a finding's ID does not
-// depend on how the model quoted the code. A cut snippet's occurrence is its kept prefix's, which starts at the
-// reported line as the whole snippet does.
+// depend on how the model quoted the code.
 async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, review: ReviewState): Promise<Finding> {
 	const path = repositoryPath(args.file);
 	if (!lensCovers(lens.coverage, path)) {
 		throw new Error(`${path} is outside the paths lens ${lens.name} reviews; report only within them`);
 	}
 	const endLine = args.endLine ?? args.line;
-	const { content, snippet: whole } = await linesAt(review, "head", path, args.line, endLine);
-	const { text: snippet, kept } = capSnippet(whole);
+	const { content, snippet } = await linesAt(review, "head", path, args.line, endLine);
 	const evidence = await evidenceFrom(args.evidence, review);
 	const location = { file: path, startLine: args.line, endLine };
 	const cause = classifyCause(location, { files: changedFiles(review) }, evidence);
@@ -392,7 +390,7 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 		startLine: args.line,
 		...(args.endLine === undefined ? {} : { endLine }),
 		snippet,
-		occurrence: snippetOccurrence(content, kept, { startLine: args.line, endLine }),
+		occurrence: snippetOccurrence(content, snippet, { startLine: args.line, endLine }),
 		cause,
 		failureScenario: args.failureScenario,
 		evidence,
@@ -402,7 +400,7 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 					trigger: {
 						file: hunk.file,
 						index: hunk.index,
-						snippet: capSnippet(hunk.added).text,
+						snippet: capSnippet(hunk.added),
 						hash: snippetHash(hunk.added),
 					},
 				}),

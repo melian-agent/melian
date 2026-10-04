@@ -153,6 +153,17 @@ describe("dedupeFindings", () => {
 		expect(dedupeFindings([sameCheck, lens], () => aliases)).toHaveLength(2);
 	});
 
+	it("keeps apart two findings whose snippets are cut alike but differ past the cut", () => {
+		const long = `const table = [${Array.from({ length: 300 }, (_, index) => `"cell${index}"`).join(", ")}];`;
+		const atLine = { startLine: 1, startColumn: undefined, endColumn: undefined };
+		const oneLine = finding({ ...atLine, endLine: 1, snippet: long });
+		const twoLines = finding({ ...eslintInput, ...atLine, endLine: 2, snippet: `${long}\nrun(table);` });
+		expect(oneLine.locations[0]!.physicalLocation.region.snippet).toEqual(
+			twoLines.locations[0]!.physicalLocation.region.snippet,
+		);
+		expect(dedupeFindings([oneLine, twoLines], () => aliases)).toHaveLength(2);
+	});
+
 	// The first live golden run: two lenses filed one broken caller in src/cart.ts under different rules.
 	describe("two lenses reporting one defect under different rules", () => {
 		const evidence = [

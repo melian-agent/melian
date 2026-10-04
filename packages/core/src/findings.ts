@@ -163,19 +163,24 @@ export const maxSnippetBytes = 2048;
 
 const encoder = new TextEncoder();
 
+const cutMarker = " [cut at 2 KiB]";
+
 /**
- * A snippet as a lens finding stores it. `text` is the snippet itself when its UTF-8 fits in {@link maxSnippetBytes};
- * otherwise its longest prefix that ends on a character boundary and leaves room for a marker, then the marker,
- * ` [cut at 2 KiB; sha256 <16 hex digits>]`, which names the whole snippet's hash, so two snippets that differ only past
- * the cut still differ. `kept` is that prefix, or the whole snippet. One long line repeated across a finding's
- * locations then stores kilobytes, not megabytes.
+ * A snippet as a finding stores it, for display: the snippet itself when its UTF-8 fits in {@link maxSnippetBytes};
+ * otherwise its longest prefix that ends on a character boundary and leaves room for the marker ` [cut at 2 KiB]`, then
+ * the marker. One long line repeated across a finding's locations then stores kilobytes, not megabytes. Identity never
+ * reads the cut copy: a finding's ID and its trigger's {@link snippetHash} come from the whole snippet.
  */
-export function capSnippet(snippet: string): { readonly text: string; readonly kept: string } {
-	if (Buffer.byteLength(snippet) <= maxSnippetBytes) return { text: snippet, kept: snippet };
-	const marker = ` [cut at 2 KiB; sha256 ${createHash("sha256").update(snippet).digest("hex").slice(0, 16)}]`;
-	const { read } = encoder.encodeInto(snippet, new Uint8Array(maxSnippetBytes - marker.length));
-	const kept = snippet.slice(0, read);
-	return { text: `${kept}${marker}`, kept };
+export function capSnippet(snippet: string): string {
+	if (Buffer.byteLength(snippet) <= maxSnippetBytes) return snippet;
+	const { read } = encoder.encodeInto(snippet, new Uint8Array(maxSnippetBytes - cutMarker.length));
+	return `${snippet.slice(0, read)}${cutMarker}`;
+}
+
+// Whether `text` is a snippet capSnippet cut, so the whole snippet its finding's ID came from is gone. A cut leaves at
+// most three bytes of the cap unused, since no character is longer than four.
+export function wasCut(text: string): boolean {
+	return text.endsWith(cutMarker) && Buffer.byteLength(text) > maxSnippetBytes - 4;
 }
 
 /**
@@ -553,7 +558,7 @@ export interface FindingInput {
 	readonly endLine?: number;
 	readonly startColumn?: number;
 	readonly endColumn?: number;
-	/** The flagged code, as it appears at head. Part of the ID. */
+	/** The flagged code, whole, as it appears at head. Part of the ID; the finding stores it cut by {@link capSnippet}. */
 	readonly snippet?: string;
 	/** Required with a snippet: its ordinal among identical snippets in the file, from {@link snippetOccurrence}. */
 	readonly occurrence?: number;
@@ -592,7 +597,8 @@ function withoutUndefined(value: unknown): unknown {
 
 /**
  * Builds a finding, deriving its level, ID, and URI from the canonical repository-relative form of its file, so
- * `./src/run.ts` and `src/run.ts` are one file. Throws {@link FindingError}: `invalidPath` when the file is absolute,
+ * `./src/run.ts` and `src/run.ts` are one file. The ID comes from the whole snippet, and the finding stores it cut by
+ * {@link capSnippet}. Throws {@link FindingError}: `invalidPath` when the file is absolute,
  * escapes the repository, or uses a backslash, `invalidRegion` when the region ends before it starts, `missingDiscriminator` when a finding with a
  * snippet has no occurrence or one without a snippet has no discriminator, and `invalidFinding` if the result is invalid.
  */
@@ -623,7 +629,7 @@ export function createFinding(input: FindingInput): Finding {
 						endLine: input.endLine,
 						startColumn: input.startColumn,
 						endColumn: input.endColumn,
-						snippet: snippet === undefined ? undefined : { text: snippet },
+						snippet: snippet === undefined ? undefined : { text: capSnippet(snippet) },
 					},
 				},
 			},
@@ -656,7 +662,8 @@ export function createFinding(input: FindingInput): Finding {
  * `invalidPath` when its path is not canonical or its URI does
  * not encode that path, `missingEvidence` when it is `affected` without a `cause` evidence location,
  * `missingDiscriminator` when it lacks the occurrence or
- * discriminator its snippet calls for, and `idMismatch` when its ID is not {@link findingId} of its first location.
+ * discriminator its snippet calls for, and `idMismatch` when its ID is not {@link findingId} of its first location, which
+ * it cannot tell for a snippet {@link capSnippet} cut.
  */
 export function parseFinding(input: unknown): Finding {
 	const value = withoutUndefined(input);
@@ -731,7 +738,10 @@ export function parseFinding(input: unknown): Finding {
 			path: `/properties/${key}`,
 		});
 	}
-	const expected = findingId({ file: path, rule: finding.ruleId, snippet, occurrence, discriminator });
+	// A cut snippet no longer holds the code its ID came from, so only an uncut one can be checked against it.
+	const expected = wasCut(snippet)
+		? id
+		: findingId({ file: path, rule: finding.ruleId, snippet, occurrence, discriminator });
 	if (id !== expected) {
 		throw new FindingError("idMismatch", `finding ${id} should have ID ${expected}`, { path: "/properties/id" });
 	}

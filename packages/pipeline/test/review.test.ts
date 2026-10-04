@@ -472,7 +472,7 @@ describe("reviewChangeset", () => {
 		for (const snippet of snippets) {
 			expect(Buffer.byteLength(snippet)).toBeLessThanOrEqual(maxSnippetBytes);
 			expect(snippet.startsWith('export const blob = "€€€')).toBe(true);
-			expect(snippet).toMatch(/€ \[cut at 2 KiB; sha256 [0-9a-f]{16}\]$/);
+			expect(snippet).toMatch(/€ \[cut at 2 KiB\]$/);
 			expect(snippet.isWellFormed() && !snippet.includes("\uFFFD")).toBe(true);
 		}
 		expect(Buffer.byteLength(JSON.stringify(finding))).toBeLessThan(32 * 1024);
@@ -1753,6 +1753,9 @@ describe("code over 2 KiB, which a finding stores cut", () => {
 	const rows = Array.from({ length: 70 }, (_, index) => `export const row${index} = "${"x".repeat(40)}";`);
 	// The same rows as a formatter might reindent them: only whitespace differs.
 	const reindented = rows.map((row) => `\t${row.replace(" = ", "   =   ")}`);
+	const cells = Array.from({ length: 300 }, (_, index) => `"cell${index}"`);
+	const table = `export const table = [${cells.join(", ")}];`;
+	const tableReindented = `\texport const table = [${cells.join(",   ")}];`;
 	let dir: string;
 
 	beforeEach(() => {
@@ -1810,6 +1813,21 @@ describe("code over 2 KiB, which a finding stores cut", () => {
 
 		commitOnFeature({ "src/table.ts": lines(...reindented) }, "reindent the table");
 		reportOn(10);
+
+		expect(await statuses()).toEqual([[findings[0]!.properties.id, "dismissed"]]);
+	});
+
+	it("keeps a finding's ID and its dismissal when a formatter reindents flagged code over 2 KiB", async () => {
+		commitOnFeature({ "src/table.ts": lines(table) }, "a generated table");
+		reportOn(1);
+		const { findings } = await reviewed({ lenses: everywhere() });
+		const stored = findings[0]!.locations[0]!.physicalLocation.region.snippet!.text;
+		expect(Buffer.byteLength(stored)).toBeLessThanOrEqual(maxSnippetBytes);
+		expect(stored.endsWith(" [cut at 2 KiB]")).toBe(true);
+		await dismissAll(findings);
+
+		commitOnFeature({ "src/table.ts": lines(tableReindented) }, "reindent the table");
+		reportOn(1);
 
 		expect(await statuses()).toEqual([[findings[0]!.properties.id, "dismissed"]]);
 	});
@@ -1896,6 +1914,17 @@ describe("code over 2 KiB, which a finding stores cut", () => {
 
 		commitOnFeature({ "src/report.ts": lines("export const unrelated = 1;") }, "touch another file");
 		reportOn(10);
+
+		expect(await statuses()).toEqual([[stored.properties.id, "dismissed"]]);
+	});
+
+	it("keeps the ID and the dismissal of flagged code over 2 KiB stored whole", async () => {
+		commitOnFeature({ "src/table.ts": lines(table) }, "a generated table");
+		const stored = wholeFinding("src/table.ts", 1, table, table);
+		await storeBeforeTheCut(stored);
+
+		commitOnFeature({ "src/report.ts": lines("export const unrelated = 1;") }, "touch another file");
+		reportOn(1);
 
 		expect(await statuses()).toEqual([[stored.properties.id, "dismissed"]]);
 	});
