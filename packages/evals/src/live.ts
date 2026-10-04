@@ -23,11 +23,12 @@ if (process.env.MELIAN_EVAL_LIVE !== "1") {
 	process.exit(2);
 }
 
+const allGoldens = loadGoldens();
 let goldens: Golden[];
 try {
-	goldens = selectGoldens(loadGoldens(), process.env.MELIAN_EVAL_GOLDEN);
+	goldens = selectGoldens(allGoldens, process.env.MELIAN_EVAL_GOLDEN);
 } catch (error) {
-	console.error((error as Error).message);
+	console.error(error instanceof Error ? error.message : String(error));
 	process.exit(2);
 }
 const models = createReviewModels();
