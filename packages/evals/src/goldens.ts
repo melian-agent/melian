@@ -259,7 +259,9 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 	try {
 		const source: RepositorySource = { kind: "revision", commit: base };
 		const changeset = await resolveRange(repo, "main...feature");
-		const paths = changeset.revision.files.map((file) => file.path);
+		const paths = changeset.revision.files.flatMap((file) =>
+			file.oldPath === undefined ? [file.path] : [file.oldPath, file.path],
+		);
 		const lenses = await loadLenses(repo, source, paths);
 		const standards = await loadStandards(repo, source, ".");
 		const { config: loaded } = await loadConfig(repo, source, ".");

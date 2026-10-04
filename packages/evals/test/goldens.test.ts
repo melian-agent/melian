@@ -210,6 +210,69 @@ describe.each(goldens.map((golden): [string, Golden] => [golden.name, golden]))(
 	});
 });
 
+describe("runGolden", () => {
+	it("loads a folder's lens for a file the change moves out of that folder, as the CLI does", async () => {
+		const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-golden-rename-")));
+		const lens = [
+			"---",
+			"name: legacy",
+			"description: The legacy module's own checks.",
+			"tier: medium",
+			"severities: [P2]",
+			"rules:",
+			"  - id: lost-answer",
+			"    description: The answer changes.",
+			"---",
+			"You are the legacy reviewer.",
+			"",
+		].join("\n");
+		const module = ["// The answer every caller expects.", "export const answer = 42;", ""].join("\n");
+		const files: Record<string, string> = {
+			"base/legacy/.melian/lenses/legacy/LENS.md": lens,
+			"base/legacy/answer.ts": module,
+			"head/legacy/.melian/lenses/legacy/LENS.md": lens,
+			"head/src/answer.ts": module,
+			"melian.golden.yaml": "tiers:\n  full: [lens.legacy]\n",
+		};
+		for (const [path, content] of Object.entries(files)) {
+			mkdirSync(dirname(join(directory, path)), { recursive: true });
+			writeFileSync(join(directory, path), content);
+		}
+		const report = {
+			file: "src/answer.ts",
+			line: 2,
+			rule: "lost-answer",
+			severity: "P2",
+			explanation: { what: "The answer moved.", why: "The change moved it.", fix: "Leave it." },
+			failureScenario: "A caller importing legacy/answer.ts no longer finds the answer and fails to build.",
+			evidence: [{ file: "src/answer.ts", line: 2, role: "cause" }],
+		};
+		const golden: Golden = {
+			name: "rename-out-of-a-folder-lens",
+			directory,
+			expected: { pr_title: "Move the answer out of legacy", comments: [] },
+			script: {
+				legacy: [{ calls: [{ name: "report_finding", arguments: report }] }, { text: "Reported 1 finding." }],
+			},
+			live: false,
+		};
+		try {
+			const run = await runGolden(golden, { kind: "scripted" });
+
+			expect(run.toolMismatches).toEqual([]);
+			expect(run.findings).toMatchObject([
+				{
+					ruleId: "lost-answer",
+					locations: [{ physicalLocation: { artifactLocation: { uri: "src/answer.ts" } } }],
+					properties: { source: { check: "lens.legacy" } },
+				},
+			]);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+});
+
 describe("expectToolResult", () => {
 	it("reports a scripted call whose result lacks the expected text, as a broken search would return", async () => {
 		const golden = goldens.find((each) => each.name === "correctness-null-deref")!;
