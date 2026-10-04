@@ -7,6 +7,7 @@ import {
 	defaultConfig,
 	type Finding,
 	type Lens,
+	type LensBudget,
 	loadLenses,
 	type MelianConfig,
 	ModelRoutingError,
@@ -1156,6 +1157,77 @@ describe("reviewChangeset", () => {
 		});
 		expect(record?.budgetEnded?.tokens).toBeGreaterThan(0);
 		expect(verdict.status).toBe("not-reviewed");
+	});
+
+	describe("records the tools budget's end when it refused a read and the lens then finished without one", () => {
+		const refusedThenDone = (budget: Partial<LensBudget>) => {
+			scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [
+						call("read_file", { path: "src/user.ts" }),
+						calls(
+							["read_file", { path: "src/user.ts", startLine: 7, maxLines: 1 }],
+							["search", { pattern: "managerName" }],
+							["list_files", {}],
+						),
+						call("report_finding", nullDeref),
+						fauxAssistantMessage("Done."),
+					],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+			return reviewed({
+				lenses: lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, budget) : lens)),
+			});
+		};
+
+		it("as ended", async () => {
+			const { findings, verdict } = await refusedThenDone({ tools: 2 });
+
+			expect(findings).toHaveLength(1);
+			expect(verdict.notRun.find((check) => check.name === "lens.correctness")).toMatchObject({
+				status: "ended",
+				budgetEnded: { budget: "tools", limit: 2, tools: 2 },
+			});
+			expect(verdict.status).toBe("not-reviewed");
+		});
+
+		it("as ran with the ending, when its level counts it", async () => {
+			const { verdict } = await refusedThenDone({ tools: 2, ended: "count" });
+
+			expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toMatchObject({
+				status: "ran",
+				budgetEnded: { budget: "tools", limit: 2, tools: 2 },
+			});
+		});
+	});
+
+	it("records no budget's end for reports past the tools budget", async () => {
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tools: 1 }) : lens));
+		const corrected = { ...nullDeref, explanation: { ...nullDeref.explanation, fix: "Return undefined first." } };
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("read_file", { path: "src/user.ts" }),
+					call("report_finding", nullDeref),
+					call("report_finding", corrected),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { findings, verdict } = await reviewed({ lenses: tight });
+
+		expect(requests[correctness]).toHaveLength(4);
+		expect(findings).toHaveLength(1);
+		expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toEqual({
+			name: "lens.correctness",
+			status: "ran",
+			level: "careful",
+		});
 	});
 
 	it("ends a lens at the first read after its tools budget, refusing there a call its policy refuses", async () => {

@@ -225,7 +225,12 @@ async function roundEnds(api: DocumentReader & { conversationId: ConversationId 
 // Counts a call by its task and decides, from durable state alone, its number against the tools budget and whether its
 // round ends the conversation. The round's calls are numbered from `LiveDoc` in call order, so a call's number and its
 // round's ending never depend on which call commits first.
-async function meter(api: ToolExecutionApi, lens: LensPolicy, context: Context): Promise<Metered> {
+async function meter(
+	api: ToolExecutionApi,
+	lens: LensPolicy,
+	call: "read" | "report",
+	context: Context,
+): Promise<Metered> {
 	const { tokens, tools } = lens.limits ?? {};
 	if (tokens === undefined && tools === undefined) return { position: 0 };
 	const round = await roundOf(api, api.conversationId, lens, context);
@@ -238,6 +243,8 @@ async function meter(api: ToolExecutionApi, lens: LensPolicy, context: Context):
 		const position = earlier + round.round.indexOf(api.taskId) + 1;
 		const spent = spentBy(lens, spend.calls, round);
 		if (spent !== undefined) spend.ended ??= spent;
+		// A refused read is reduced coverage, recorded now: a lens that follows the refusal note never reads again.
+		if (call === "read" && tools !== undefined && position > tools) spend.ended ??= "tools";
 		// Only a call within the budget counts, so the count a budget's end reports never passes its limit.
 		const counts = spent === undefined && (tools === undefined || position <= tools);
 		if (counts && !spend.calls.includes(api.taskId)) spend.calls.push(api.taskId);
@@ -307,14 +314,14 @@ async function budgeted(
 	read: (review: ReviewState) => Promise<ToolResult>,
 ) {
 	const lens = await lensOf(api, api.conversationId, context);
-	const { position, spent } = await meter(api, lens, context);
+	const { position, spent } = await meter(api, lens, "read", context);
 	const tools = lens.limits?.tools;
 	const problem = refusal(lens, { name, arguments: {} });
 	if (problem !== undefined) return ending(failed(new Error(problem), context), lens, spent);
 	if (spent !== undefined) return ending(text("[not run]"), lens, spent);
 	if (tools !== undefined && position > tools) {
 		return text(
-			`[not run: this lens may make ${toolCalls(tools)}, and this was call ${position}. Report what you have confirmed; another read ends the review.]`,
+			`[not run: this lens may make ${toolCalls(tools)}, and this was call ${position}. The tools budget has ended this review: report what you have confirmed; another read ends the conversation.]`,
 		);
 	}
 	const result = await read(lens.revision).catch((error: unknown) => failed(error, context));
@@ -616,7 +623,7 @@ export const reportFinding = defineTool({
 	replay: "safe",
 	execute: async (args, api, context) => {
 		const lens = await lensOf(api, api.conversationId, context);
-		const { spent } = await meter(api, lens, context);
+		const { spent } = await meter(api, lens, "report", context);
 		const result = await recordFinding(args, api, lens, context).catch((error: unknown) => failed(error, context));
 		return ending(result, lens, spent);
 	},
