@@ -16,4 +16,20 @@ src/config-files.ts
         for (const found of configFiles(root, dirname(join(root, file)))) console.log(found);
     What to do: Restore the check: compute the parent, and break when it equals dir.
 
-1 finding in 1 file.
+  P1  line 12  wrong-result  (introduced, new, unresolved)
+  The loop ends only when dir equals root, and dirname of the top directory is itself, so a root that the walk never spells the same way spins forever.
+    What: The loop ends only when dir equals root, and dirname of the top directory is itself, so a root that the walk never spells the same way spins forever.
+    Why here: This change replaced the parent check with a bare dir = dirname(dir).
+    Failure scenario: melian-config ./repo src/a.ts calls configFiles("./repo", "repo/src"). dir walks to "repo", then ".", and dirname(".") is ".", so dir never equals "./repo" and the loop never returns. The base returned the files it found once the parent equalled the directory.
+    Evidence:
+      cause: src/config-files.ts:11-12
+            if (dir === root) break;
+            dir = dirname(dir);
+      context: src/config-files.ts:12-13 at base
+            const parent = dirname(dir);
+            if (parent === dir) break;
+      context: src/cli.ts:6
+        for (const found of configFiles(root, dirname(join(root, file)))) console.log(found);
+    What to do: Stop when dirname(dir) equals dir, as the base did.
+
+2 findings in 1 file.

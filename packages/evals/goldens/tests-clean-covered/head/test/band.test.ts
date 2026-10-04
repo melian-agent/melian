@@ -10,6 +10,10 @@ describe("parseBand", () => {
 		expect(() => parseBand({ drop: -0.1, accept: 0.8 })).toThrow("each end of a band is a number from 0 to 1");
 	});
 
+	it("accepts a band whose drop equals its accept", () => {
+		expect(parseBand({ drop: 0.5, accept: 0.5 })).toEqual({ drop: 0.5, accept: 0.5 });
+	});
+
 	it("refuses a drop above the accept", () => {
 		expect(() => parseBand({ drop: 0.9, accept: 0.5 })).toThrow("a band's drop must not exceed its accept");
 	});

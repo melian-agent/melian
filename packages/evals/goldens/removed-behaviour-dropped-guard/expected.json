@@ -29,6 +29,35 @@
           "role": "context"
         }
       ]
+    },
+    {
+      "comment": "configFiles no longer stops at the top of the filesystem, so a start directory that never reaches root as spelled loops forever.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/config-files.ts",
+      "rule": "wrong-result",
+      "cause": "introduced",
+      "failureScenario": "melian-config ./repo src/a.ts calls configFiles(\"./repo\", \"repo/src\"). dir walks to \"repo\", then \".\", and dirname(\".\") is \".\", so dir never equals \"./repo\" and the loop never returns. The base returned the files it found once the parent equalled the directory.",
+      "evidence": [
+        {
+          "file": "src/config-files.ts",
+          "line": 11,
+          "endLine": 12,
+          "role": "cause"
+        },
+        {
+          "file": "src/config-files.ts",
+          "line": 12,
+          "endLine": 13,
+          "role": "context",
+          "revision": "base"
+        },
+        {
+          "file": "src/cli.ts",
+          "line": 6,
+          "role": "context"
+        }
+      ]
     }
   ]
 }

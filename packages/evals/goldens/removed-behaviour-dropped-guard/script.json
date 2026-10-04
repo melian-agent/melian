@@ -1,7 +1,47 @@
 {
   "correctness": [
     {
-      "text": "Reported 0 findings."
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "src/config-files.ts",
+            "line": 12,
+            "rule": "wrong-result",
+            "severity": "P1",
+            "explanation": {
+              "what": "The loop ends only when dir equals root, and dirname of the top directory is itself, so a root that the walk never spells the same way spins forever.",
+              "why": "This change replaced the parent check with a bare dir = dirname(dir).",
+              "fix": "Stop when dirname(dir) equals dir, as the base did."
+            },
+            "failureScenario": "melian-config ./repo src/a.ts calls configFiles(\"./repo\", \"repo/src\"). dir walks to \"repo\", then \".\", and dirname(\".\") is \".\", so dir never equals \"./repo\" and the loop never returns. The base returned the files it found once the parent equalled the directory.",
+            "evidence": [
+              {
+                "file": "src/config-files.ts",
+                "line": 11,
+                "endLine": 12,
+                "role": "cause"
+              },
+              {
+                "file": "src/config-files.ts",
+                "line": 12,
+                "endLine": 13,
+                "role": "context",
+                "revision": "base"
+              },
+              {
+                "file": "src/cli.ts",
+                "line": 6,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "as introduced"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
     }
   ],
   "contracts": [
