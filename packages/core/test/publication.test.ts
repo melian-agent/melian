@@ -171,6 +171,30 @@ describe("planPublication", () => {
 		expect(plan.open).toEqual({});
 	});
 
+	it("maps a merged report dismissed on its own to its own dismissal, not the one of the finding it speaks through", () => {
+		const own = { by: "Tal <tal@melian.invalid>", reason: "Constant input.", at: "2026-10-04T00:00:00Z" };
+		const later = { by: "Tal <tal@melian.invalid>", reason: "Sandboxed.", at: "2026-10-04T01:00:00Z" };
+		const member = finding({
+			snippet: "eval(body)",
+			startLine: 40,
+			endLine: 40,
+			rule: "code-injection",
+			severity: "P2",
+			source: { check: "lens.contracts" },
+		});
+		const dismissed = [
+			{ ...fixed, properties: { ...fixed.properties, status: "dismissed" as const, dismissal: later } },
+			{ ...member, properties: { ...member.properties, status: "dismissed" as const, dismissal: own } },
+		];
+		const verdict = verdictOf(dismissed);
+		expect(verdict.dismissed.map((each) => each.properties.id)).toEqual([fixed.properties.id]);
+
+		const plan = planPublication(verdict, { [member.properties.id]: posted("103") }, lines, head);
+
+		expect(plan.dismissals).toEqual({ [fixed.properties.id]: later, [member.properties.id]: own });
+		expect(plan.resolved).toEqual([{ id: member.properties.id, ...posted("103"), dismissal: own }]);
+	});
+
 	it("keeps a finding that turned silent on its thread, so it never gets a second one", () => {
 		const quiet = finding({ severity: "nit" });
 		const loud = finding({ severity: "P3" });

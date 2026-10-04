@@ -165,13 +165,16 @@ export const PublisherDocument = defineDoc<{ secret?: string; target?: PublishTa
 	initial: () => ({}),
 });
 
-// Who dismissed each finding, why, and when stay out of the fingerprint: a reason changed by a second dismissal is
-// answered in the finding's thread, and a review saying nothing new would only repeat the last one. A verdict without
-// them hashes as it always has.
+// Who dismissed each finding, why, and when stay out of the fingerprint, a merged report's own dismissal included: a
+// reason changed by a second dismissal is answered in the finding's thread, and a review saying nothing new would only
+// repeat the last one. A verdict without them hashes as it always has.
 export function fingerprint(verdict: Verdict): string {
 	const bare = (finding: Finding): Finding => {
 		const { dismissal: _, pastDismissals: __, ...properties } = finding.properties;
-		return { ...finding, properties };
+		const { alsoReportedAs } = properties;
+		if (alsoReportedAs === undefined) return { ...finding, properties };
+		const reports = alsoReportedAs.map(({ dismissal: ___, ...report }) => report);
+		return { ...finding, properties: { ...properties, alsoReportedAs: reports } };
 	};
 	const findings = Object.fromEntries(
 		Object.entries(verdict.findings).map(([resolution, group]) => [resolution, group.map(bare)]),

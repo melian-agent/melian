@@ -135,7 +135,8 @@ export interface PublicationPlan {
 	/**
 	 * Each dismissal in the verdict by the ID of every report it dismissed: the dismissed finding's own and each one
 	 * adjudication merged into it, so a finding posted under a report's ID that now speaks through another is answered
-	 * with the dismissal, not as though the revision no longer reported it.
+	 * with the dismissal, not as though the revision no longer reported it. A merged report dismissed on its own maps to
+	 * its own dismissal, and only one without maps to the finding's.
 	 */
 	readonly dismissals: Readonly<Record<string, FindingDismissal>>;
 }
@@ -161,8 +162,8 @@ export function planPublication(
 	const dismissals: Record<string, FindingDismissal> = {};
 	for (const { properties } of verdict.dismissed) {
 		if (properties.dismissal === undefined) continue;
-		for (const id of [properties.id, ...(properties.alsoReportedAs ?? []).map((other) => other.id)]) {
-			dismissals[id] ??= { ...properties.dismissal };
+		for (const { id, dismissal = properties.dismissal } of [properties, ...(properties.alsoReportedAs ?? [])]) {
+			dismissals[id] ??= { ...dismissal };
 		}
 	}
 	const held = new Set([...attention, ...verdict.findings.silent].map((finding) => finding.properties.id));

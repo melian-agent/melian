@@ -89,8 +89,14 @@ function strongerFirst(a: Ranked, b: Ranked): number {
 }
 
 function reportOf(finding: Finding): AlsoReportedAs {
-	const { id, source, severity } = finding.properties;
-	return { id, ruleId: finding.ruleId, check: source.check, severity };
+	const { id, source, severity, dismissal } = finding.properties;
+	return {
+		id,
+		ruleId: finding.ruleId,
+		check: source.check,
+		severity,
+		...(dismissal === undefined ? {} : { dismissal: { ...dismissal } }),
+	};
 }
 
 type Aliases = MelianConfig["ruleAliases"];

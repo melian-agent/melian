@@ -1,4 +1,5 @@
-import { rmSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { type Changeset, pullRequestChangesetId, type ReviewProvider, resolveRange } from "@melian-agent/core";
 import { createGitHubProvider, marker, parseMarker, statusContext } from "@melian-agent/github";
 import {
@@ -381,6 +382,67 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		]);
 		expect(await publish(github, changeset)).toMatchObject({ posted: 0, dismissed: 0, replies: 0 });
 		expect(state.comments.filter((comment) => comment.in_reply_to_id === Number(thread))).toHaveLength(2);
+	});
+
+	it("keeps each merged report's own dismissal, answering only the thread whose report was dismissed since", async () => {
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		const github = providerFor(state);
+		harness = await openPublishHarness(createMemoryStorage(), fake, github);
+		const root = (await harness.root(context)).id;
+		const changedReturn = {
+			...unsafeManager,
+			arguments: { ...unsafeManager.arguments, rule: "changed-return", severity: "P2" },
+		};
+		const by = "Melian Test <test@melian.invalid>";
+		// Reviews the head with each lens reporting `calls`, publishes, and returns the changeset and each thread by rule.
+		const reviewPublish = async (correctness: (typeof unsafeManager)[], contracts: (typeof unsafeManager)[]) => {
+			const script = {
+				correctness: [{ calls: correctness }, { text: "Done." }],
+				contracts: [{ calls: contracts }, { text: "Done." }],
+			};
+			const { changeset, review } = await reviewScenario(repo, harness!, fake, script);
+			await review;
+			moveTo(state, changeset);
+			await publish(github, changeset);
+			const findings = await readFindings(harness!, root, revisionKey(changeset.revision), context);
+			const idOf = (rule: string) => findings.find((finding) => finding.ruleId === rule)!.properties.id;
+			const { threads } = (await readPublished(harness!, root, changeset.revision.head, context))!;
+			return { changeset, idOf, threadOf: (rule: string) => threads[idOf(rule)]! };
+		};
+		const dismiss = (changeset: Changeset, id: string, reason: string, at: string) =>
+			recordDismissal({
+				harness: harness!,
+				revision: changeset.revision,
+				id,
+				dismissal: { by, reason, at },
+				repoRoot: repo,
+			});
+		const first = await reviewPublish([], [changedReturn]);
+		const contractsId = first.idOf("changed-return");
+		await dismiss(first.changeset, contractsId, "Contracts never promised a manager.", "2026-10-04T00:00:00.000Z");
+		await publish(github, first.changeset);
+		writeFileSync(join(repo, "src/other.ts"), "export const other = 1;\n");
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "revision 2");
+		const second = await reviewPublish([unsafeManager], [changedReturn]);
+		const correctnessId = second.idOf("null-dereference");
+		expect(second.idOf("changed-return")).toBe(contractsId);
+
+		await dismiss(second.changeset, correctnessId, "Every user here has a manager.", "2026-10-04T01:00:00.000Z");
+		await publish(github, second.changeset);
+
+		const answers = (thread: string) =>
+			state.comments
+				.filter((comment) => comment.in_reply_to_id === Number(thread))
+				.map((comment) => comment.body.split("\n")[1]);
+		const [before, after] = [first, second].map((each) => each.changeset.revision.head.slice(0, 12));
+		expect(answers(first.threadOf("changed-return"))).toEqual([
+			`Dismissed at \`${before}\`: Contracts never promised a manager.`,
+		]);
+		expect(answers(second.threadOf("null-dereference"))).toEqual([
+			`Dismissed at \`${after}\`: Every user here has a manager.`,
+		]);
 	});
 
 	it("answers a finding dismissed again in the new thread it was reposted in at the same head after a retarget", async () => {
