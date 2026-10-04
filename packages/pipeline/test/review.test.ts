@@ -1066,7 +1066,7 @@ describe("reviewChangeset", () => {
 		expect(error.verdict?.notRun[0]).toMatchObject({ name: "lens.correctness", status: "failed", level: "careful" });
 	});
 
-	it("ends a lens at its tools budget after the round that spends it, keeping what it reported", async () => {
+	it("refuses the reads past the tools budget, lets the lens report, and ends it at its next read", async () => {
 		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tools: 2 }) : lens));
 		const requests = scriptConversations(fake, [
 			{
@@ -1074,10 +1074,40 @@ describe("reviewChangeset", () => {
 				replies: [
 					call("read_file", { path: "src/user.ts" }),
 					calls(
-						["read_file", { path: "src/report.ts" }],
+						["read_file", { path: "src/user.ts", startLine: 7, maxLines: 1 }],
 						["search", { pattern: "managerName" }],
-						["report_finding", nullDeref],
+						["report_finding", { ...nullDeref, severity: "P3" }],
 					),
+					calls(["report_finding", nullDeref], ["list_files", {}]),
+					fauxAssistantMessage("Never asked."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { findings, verdict } = await reviewed({ lenses: tight });
+
+		expect(requests[correctness]).toHaveLength(3);
+		const [read, searched, blocked] = toolResults(requests[correctness]![2]!).slice(1);
+		expect(read).toContain("return user.manager.name;");
+		expect(read).toContain("[that was the last of this lens's 2 calls to the read-only tools.");
+		expect(searched).toMatch(/^\[not run: this lens may make 2 calls to the read-only tools, and this was call 3\./);
+		expect(blocked).toContain("severity P3 is outside this lens's severities");
+		expect(findings).toHaveLength(1);
+		const record = verdict.notRun.find((check) => check.name === "lens.correctness");
+		expect(record).toMatchObject({ status: "ended", level: "careful", budgetEnded: { budget: "tools", limit: 2 } });
+		expect(record?.budgetEnded?.tokens).toBeGreaterThan(0);
+		expect(verdict.status).toBe("not-reviewed");
+	});
+
+	it("ends a lens at the first read after its tools budget, refusing there a call its policy refuses", async () => {
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tools: 1 }) : lens));
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("read_file", { path: "src/user.ts", startLine: 7, maxLines: 1 }),
+					calls(["search", { pattern: "managerName" }], ["report_finding", { ...nullDeref, severity: "P3" }]),
 					fauxAssistantMessage("Never asked."),
 				],
 			},
@@ -1087,42 +1117,10 @@ describe("reviewChangeset", () => {
 		const { findings, verdict } = await reviewed({ lenses: tight });
 
 		expect(requests[correctness]).toHaveLength(2);
-		expect(findings).toHaveLength(1);
-		const record = verdict.notRun.find((check) => check.name === "lens.correctness");
-		expect(record).toMatchObject({
-			status: "ended",
-			level: "careful",
-			budgetEnded: { budget: "tools", limit: 2, tools: 3 },
-		});
-		expect(record?.budgetEnded?.tokens).toBeGreaterThan(0);
-		expect(verdict.status).toBe("not-reviewed");
-	});
-
-	it("refuses a read past the tools budget, and ends the lens after that round, a call its policy refuses included", async () => {
-		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tools: 1 }) : lens));
-		const requests = scriptConversations(fake, [
-			{
-				match: correctness,
-				replies: [
-					calls(
-						["read_file", { path: "src/user.ts", startLine: 7, maxLines: 1 }],
-						["search", { pattern: "managerName" }],
-						["report_finding", { ...nullDeref, severity: "P3" }],
-					),
-					fauxAssistantMessage("Never asked."),
-				],
-			},
-			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
-		]);
-
-		const { findings, verdict } = await reviewed({ lenses: tight });
-
-		expect(requests[correctness]).toHaveLength(1);
 		expect(findings).toEqual([]);
 		expect(verdict.notRun.find((check) => check.name === "lens.correctness")?.budgetEnded).toMatchObject({
 			budget: "tools",
 			limit: 1,
-			tools: 2,
 		});
 	});
 
@@ -1202,7 +1200,7 @@ describe("reviewChangeset", () => {
 		const spent = () => lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tokens: 1 }) : lens));
 		const endedBy = (verdict: Verdict) => verdict.notRun.find((check) => check.name === "lens.correctness");
 
-		it("holds a read that throws", async () => {
+		it("holds a read that would throw, which it never runs", async () => {
 			const requests = scriptConversations(fake, [
 				{
 					match: correctness,

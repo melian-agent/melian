@@ -186,7 +186,7 @@ export function tokensUsed(usage: Readonly<UsageState> | undefined): number {
 
 type Spent = "tokens" | "tools";
 
-type Metered = { refused?: number; spent?: Spent };
+type Metered = { position?: number; spent?: Spent };
 
 // The tool tasks of the round's calls to the read-only tools, in call order, from `LiveDoc`, which lists every call of
 // the round when it starts, and the tokens the conversation has used, which Pi records with each response before its
@@ -199,8 +199,9 @@ async function roundOf(reader: DocumentReader, conversationId: ConversationId, l
 	return { round, used };
 }
 
-// Which budget a round spends, from what every call of the round reads alike: the tokens used before it, and the calls
-// earlier rounds made with the calls the round holds.
+// Which budget ends a round, from what every call of the round reads alike: the tokens used before it, or a read in a
+// round that starts with the tools budget already used. The round that crosses the tools budget goes on, its excess
+// calls refused, so the lens sees the reads that ran and can report what they showed.
 function spentBy(
 	lens: LensPolicy,
 	calls: readonly number[],
@@ -210,7 +211,7 @@ function spentBy(
 	const { tokens, tools } = lens.limits ?? {};
 	if (tokens !== undefined && used >= tokens) return "tokens";
 	const earlier = calls.filter((id) => !round.includes(id)).length;
-	return tools !== undefined && earlier + round.length > tools ? "tools" : undefined;
+	return tools !== undefined && round.length > 0 && earlier >= tools ? "tools" : undefined;
 }
 
 // Whether the round of this call spends a budget, read without writing, as a hook must.
@@ -221,9 +222,9 @@ async function roundEnds(api: DocumentReader & { conversationId: ConversationId 
 	return spentBy(lens, calls, round, used) !== undefined;
 }
 
-// Counts a read-only tool call by its task and decides, from durable state alone, whether it is past the tools budget and
-// whether its round spends a budget. The round's read calls are numbered from `LiveDoc` in call order, so a call's
-// number and its round's ending never depend on which call commits first.
+// Counts a read-only tool call by its task and decides, from durable state alone, its number against the tools budget
+// and whether its round ends the conversation. The round's read calls are numbered from `LiveDoc` in call order, so a
+// call's number and its round's ending never depend on which call commits first.
 async function meter(api: ToolExecutionApi, lens: LensPolicy, counted: boolean, context: Context): Promise<Metered> {
 	const { tokens, tools } = lens.limits ?? {};
 	if (tokens === undefined && tools === undefined) return {};
@@ -238,10 +239,7 @@ async function meter(api: ToolExecutionApi, lens: LensPolicy, counted: boolean, 
 		const position = earlier + round.indexOf(api.taskId) + 1;
 		const spent = spentBy(lens, spend.calls, round, used);
 		if (spent !== undefined) spend.ended ??= spent;
-		return {
-			...(counted && tools !== undefined && position > tools ? { refused: position } : {}),
-			...(spent === undefined ? {} : { spent }),
-		};
+		return { ...(counted ? { position } : {}), ...(spent === undefined ? {} : { spent }) };
 	}, context);
 }
 
@@ -298,8 +296,8 @@ function refusal(lens: LensPolicy, call: { name: string; arguments: unknown }): 
 	return undefined;
 }
 
-// Runs a read-only tool within the lens's policy and budgets: counted, refused past the tools budget, ending the
-// conversation once a budget is spent, whatever the read does.
+// Runs a read-only tool within the lens's policy and budgets: counted, refused past the tools budget or in a round that
+// ends the conversation, and ending it once a budget is spent, whatever the read does.
 async function budgeted(
 	api: ToolExecutionApi,
 	context: Context,
@@ -307,17 +305,20 @@ async function budgeted(
 	read: (review: ReviewState) => Promise<ToolResult>,
 ) {
 	const lens = await lensOf(api, api.conversationId, context);
-	const { refused, spent } = await meter(api, lens, true, context);
+	const { position = 0, spent } = await meter(api, lens, true, context);
+	const tools = lens.limits?.tools;
 	const problem = refusal(lens, { name, arguments: {} });
-	const result =
-		problem !== undefined
-			? failed(new Error(problem), context)
-			: refused !== undefined
-				? text(
-						`[not run: this lens may make ${readCalls(lens.limits?.tools)}, and this was call ${refused}. Report what you have confirmed, then finish.]`,
-					)
-				: await read(lens.revision).catch((error: unknown) => failed(error, context));
-	return ending(result, lens, spent);
+	if (problem !== undefined) return ending(failed(new Error(problem), context), lens, spent);
+	if (spent !== undefined) return ending(text("[not run]"), lens, spent);
+	if (tools !== undefined && position > tools) {
+		return text(
+			`[not run: this lens may make ${readCalls(tools)}, and this was call ${position}. Report what you have confirmed; another read ends the review.]`,
+		);
+	}
+	const result = await read(lens.revision).catch((error: unknown) => failed(error, context));
+	if (tools === undefined || position < tools) return result;
+	const last = `[that was the last of this lens's ${readCalls(tools)}. Report what you have confirmed; another read ends the review.]`;
+	return { ...result, content: [...(result.content ?? []), { type: "text" as const, text: last }] };
 }
 
 /**
