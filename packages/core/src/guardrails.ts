@@ -4,6 +4,7 @@ import type { Revision } from "./changeset.ts";
 import {
 	type ConfigLookup,
 	configLookup,
+	defaultConfig,
 	type ForbiddenPatternRule,
 	type MelianConfig,
 	type Severity,
@@ -214,9 +215,12 @@ async function policyChanges(
 		: [];
 	return Promise.all(
 		paths.map(async (path): Promise<Hit | undefined> => {
-			// A melian.yaml is judged under the configuration of the directory above its own, so one that switches the
-			// review off beneath it never switches off the review of itself. The root's has no directory above it.
-			const config = await configFor(path.split("/").at(-1) === "melian.yaml" ? posix.dirname(path) : path);
+			// A melian.yaml is judged under the configuration of the directory above its own, and the root's, which has
+			// none, under the built-in defaults, so no melian.yaml switches off the review of itself.
+			const config =
+				path === "melian.yaml"
+					? defaultConfig
+					: await configFor(path.split("/").at(-1) === "melian.yaml" ? posix.dirname(path) : path);
 			const guardrail = config.guardrails["policy-change-review"];
 			if (!guardrail.enabled) return undefined;
 			const added = matchesGlobs(guardrail.files, path);
@@ -454,7 +458,8 @@ async function forbiddenPatterns(
  * - `forbidden-patterns`: an added line matches a rule's pattern, run by a linear-time engine.
  * - `policy-change-review`: the revision changes a policy, standards, or tool configuration file, one of
  *   `revision.policyFiles` or a path the configuration's `files` adds. A `melian.yaml` takes this guardrail from the
- *   configuration of the directory above its own, so it never switches off the review of itself.
+ *   configuration of the directory above its own, and the root's from the built-in defaults, so it never switches off
+ *   the review of itself.
  *
  * Every finding is `introduced`. Several rules of one guardrail that fire on one path or line give one finding. Throws
  * `ConfigError` when a `melian.yaml` cannot be loaded, and {@link CheckError} `unreadable` when a file at head cannot be read.
