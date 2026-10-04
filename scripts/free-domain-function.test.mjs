@@ -43,6 +43,10 @@ describe("the free-domain-function Biome plugin", { timeout: 30_000 }, () => {
 		]);
 	});
 
+	it("reports an anonymous default-exported function over a Lens", () => {
+		expect(lint("packages/core/src/scratch.ts", "export default function (lens: Lens): void {}\n")).toEqual([1]);
+	});
+
 	it("does not report a class method that takes a Finding", () => {
 		const source = "export class Triage {\n\taccept(finding: Finding): void {}\n}\n";
 		expect(lint("packages/core/src/scratch.ts", source)).toEqual([]);

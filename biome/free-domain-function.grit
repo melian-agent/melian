@@ -1,6 +1,9 @@
 language js
 
-JsFunctionDeclaration(id = $name, parameters = JsParameters(items = [$first, ...])) where {
+or {
+	JsFunctionDeclaration(id = $name, parameters = JsParameters(items = [$first, ...])),
+	JsFunctionExportDefaultDeclaration(parameters = JsParameters(items = [$first, ...])) as $name
+} where {
 	$first <: JsFormalParameter(type_annotation = TsTypeAnnotation(ty = $type)),
 	$type <: or {
 		r"(?:readonly\s+)?(?:Finding|Defect|Verdict|Manifest|Lens|Revision|Changeset)(?:\[\])?",
@@ -8,6 +11,6 @@ JsFunctionDeclaration(id = $name, parameters = JsParameters(items = [$first, ...
 	},
 	register_diagnostic(
 		span = $name,
-		message = "Behaviour belongs to the object it is about: a function whose first parameter is a domain object is a method of that class, as AGENTS.md says."
+		message = "Behaviour belongs to the object it is about: make a function whose first parameter is a domain object a method on that object's class, or on this package's own class that adapts it, as AGENTS.md says."
 	)
 }
