@@ -432,6 +432,22 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		expect(routed.stdout).toMatch(/^ok {4}static {6}biome from Melian's own copy, tsc from Melian's own copy$/m);
 		expect(routed.stdout).toMatch(/^ok {4}melian {6}.*, outside this checkout$/m);
 	});
+
+	it("names one or two lenses on an unrouted tier without a series comma", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+
+		writeFileSync(join(repo, "melian.yaml"), "tiers:\n  full: [standard, lens.contracts]\n");
+		const two = melian(repo, ["doctor"]);
+		writeFileSync(join(repo, "melian.yaml"), "tiers:\n  full: [standard]\n");
+		const one = melian(repo, ["doctor"]);
+
+		expect(two.stdout).toMatch(
+			/^warn {2}routes {6}no tier is routed to a model; no model for heavy, for contracts and correctness; /m,
+		);
+		expect(one.stdout).toMatch(
+			/^warn {2}routes {6}no tier is routed to a model; no model for heavy, for correctness; /m,
+		);
+	});
 });
 
 describe("Melian's state directory", { timeout: 60_000 }, () => {
