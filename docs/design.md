@@ -453,7 +453,7 @@ Where a tool comes from depends on what it loads. A tool whose configuration loa
 
 Anthropic's sandbox-runtime, which Pi's own repository depends on, is a candidate for the local untrusted case on a machine without Docker.
 
-The first standalone analysers are Opengrep and gitleaks. Opengrep is preferred over Semgrep's registry rules on licensing: those rules carry a licence of their own that restricts how they may be used and redistributed. Melian ships no Opengrep rules at first. gitleaks is the fast tier's secrets check.
+The first standalone analysers are Opengrep and gitleaks. Opengrep is the LGPL 2.1 fork of the Semgrep engine, which also stays LGPL 2.1. Melian does not use Semgrep's registry rules. Since 13 December 2024 they are under the [Semgrep Rules License v1.0](https://semgrep.dev/legal/rules-license), which allows them only for a user's internal business purposes and forbids distributing them or offering them as a service. Opengrep's fork of those rules keeps their earlier licence, LGPL 2.1 with the Commons Clause, which forbids selling them. Melian ships no Opengrep rules at first. gitleaks is the fast tier's secrets check.
 
 ## Interaction model
 
