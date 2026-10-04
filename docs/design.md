@@ -552,11 +552,7 @@ docs/
 
 ## Roadmap
 
-**Version one.** The CLI, the skills for Claude Code, Codex, and Pi, built-in lenses, guardrails, static analysis with SARIF, decision-model triage, findings persistence under `.git/melian/`, and the evals package. Runs on a developer's machine or in a devcontainer against trusted code.
-
-**Fast follow.** The GitHub Actions host with the state-branch backend, pull request publication, comment commands, and knowledge write-back by pull request.
-
-**Then.** The server host, Slack, container isolation for untrusted code, autofix beginning with suggestion blocks, decision-model fine-tuning from calibration data.
+Milestone 1, the local CLI loop, is complete. Milestone 2 is the Actions host, the state branch, tool provisioning, Opengrep and gitleaks, and the issues milestone 1 deferred. Milestone 3 is cross-revision commands, dismiss-with-reason, knowledge write-back, and decision-model triage and calibration. [design-implementation-plan.md](design-implementation-plan.md) defines each milestone and lists what is deferred. The server host, Slack, autofix, and fine-tuning decision models from calibration data are not yet scheduled.
 
 ## Decision log
 
