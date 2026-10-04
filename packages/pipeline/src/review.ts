@@ -156,6 +156,7 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 							scope: lens.coverage.scope,
 							paths: [...lens.coverage.paths],
 							nearer: [...lens.coverage.nearer],
+							...(lens.coverage.moved === undefined ? {} : { moved: [...lens.coverage.moved] }),
 						},
 					};
 					children[lens.key] = created.id;
@@ -614,7 +615,12 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	const nonce = reviewNonce();
 	const names = [...new Set(selected.map(({ lens }) => lens.name))];
 	const lenses: LensRun[] = [];
-	for (const { lens, coverage, files } of selected) {
+	for (const { lens, coverage: configured, files } of selected) {
+		// A lens selected through a file's old path covers its head path for this review, so it can report what it moved.
+		const moved = changeset.revision.files
+			.filter((file) => file.oldPath !== undefined && files.includes(file.oldPath) && !files.includes(file.path))
+			.map((file) => file.path);
+		const coverage = moved.length === 0 ? configured : { ...configured, moved };
 		// A neighbour takes defects off this lens only if it reviews every file this lens does; otherwise this lens keeps
 		// them, rather than leave them unreviewed in the files the neighbour's paths leave out.
 		const neighbours = names.filter(

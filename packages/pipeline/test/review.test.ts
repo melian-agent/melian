@@ -2206,6 +2206,39 @@ describe("adjudication", () => {
 			expect(requests[contracts]).toHaveLength(1);
 		});
 
+		it("reports a defect in a file moved into excluded paths at its head path, from the lens that covered it", async () => {
+			rmSync(repo, { recursive: true, force: true });
+			repo = baseAndHead(
+				{ "src/user.ts": user('\treturn user.manager?.name ?? "none";') },
+				{ "goldens/x/notes.md": lines("A golden.") },
+			);
+			gitIn(repo, "mv", "src/user.ts", "goldens/x/user.ts");
+			writeFiles(repo, { "goldens/x/user.ts": user("\treturn user.manager.name;") });
+			gitIn(repo, "commit", "--quiet", "--all", "-m", "move the source into the goldens and drop the guard");
+			const excluded = { paths: ["**", "!goldens/**"] };
+			const moved = {
+				...nullDeref,
+				file: "goldens/x/user.ts",
+				evidence: [{ file: "goldens/x/user.ts", line: 7, role: "cause" }],
+			};
+			scriptConversations(fake, [
+				{ match: correctness, replies: [call("report_finding", moved), fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+			const { findings } = await reviewed({
+				config: { ...config, lenses: { correctness: excluded, contracts: excluded } },
+			});
+
+			expect(findings).toMatchObject([
+				{
+					ruleId: "null-dereference",
+					locations: [{ physicalLocation: { artifactLocation: { uri: "goldens/x/user.ts" } } }],
+					properties: { source: { check: "lens.correctness" } },
+				},
+			]);
+		});
+
 		it("runs only the lenses the manifest names, and fails a lens it names that does not exist", async () => {
 			scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
 			const { verdict } = await reviewed({ config: tiered("lens.correctness", "lens.security") });

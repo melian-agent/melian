@@ -538,12 +538,14 @@ export async function loadLenses(
 
 /**
  * Where a lens may look: beneath its `scope`, selected by its `paths`, and outside every `nearer` scope, where a nearer
- * definition of the same name replaces it.
+ * definition of the same name replaces it. `moved` holds the head paths of files a review moved out of that coverage,
+ * which the lens covers for that review alone, so it can report a defect in what left its paths.
  */
 export interface LensCoverage {
 	readonly scope: string;
 	readonly paths: readonly string[];
 	readonly nearer: readonly string[];
+	readonly moved?: readonly string[];
 }
 
 /** A lens chosen to run, where it may look, and the changed files it reviews. */
@@ -560,9 +562,10 @@ function beneath(scope: string, path: string): boolean {
 /** Whether `path`, repository-relative, lies where a lens with `coverage` may look. */
 export function lensCovers(coverage: LensCoverage, path: string): boolean {
 	return (
-		beneath(coverage.scope, path) &&
-		!coverage.nearer.some((scope) => beneath(scope, path)) &&
-		selectedBy(coverage.paths, path)
+		coverage.moved?.includes(path) === true ||
+		(beneath(coverage.scope, path) &&
+			!coverage.nearer.some((scope) => beneath(scope, path)) &&
+			selectedBy(coverage.paths, path))
 	);
 }
 

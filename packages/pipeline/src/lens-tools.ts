@@ -136,8 +136,9 @@ export type LensPolicy = {
 	budget: number;
 	// The level's token and tool budgets; absent from a lens an older Melian created, which enforces neither.
 	limits?: { tokens?: number; tools?: number };
-	// Where the lens may report: its folder and paths, less any folder a nearer lens of its name covers.
-	coverage: { scope: string; paths: string[]; nearer: string[] };
+	// Where the lens may report: its folder and paths, less any folder a nearer lens of its name covers, and the head
+	// path of each file the review moved out of them.
+	coverage: { scope: string; paths: string[]; nearer: string[]; moved?: string[] };
 };
 
 // What a lens has spent that Pi's usage document does not hold: the tool task of every call the tools budget counted,
