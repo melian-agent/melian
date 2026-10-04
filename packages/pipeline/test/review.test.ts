@@ -51,7 +51,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, adjudicationInput } from "../src/adjudication.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
-import { withBudget } from "./fixtures/review-scenario.ts";
+import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
 
 const staticFinding = {
 	rule: "lint/style/noNonNullAssertion",
@@ -100,6 +100,7 @@ beforeEach(async () => {
 	const heavy = fake.ref("heavy");
 	config = {
 		...defaultConfig,
+		tiers: twoLensTiers,
 		models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
 	};
 	harness = await openHarness(createMemoryStorage(), {
@@ -1928,8 +1929,11 @@ describe("adjudication", () => {
 		const lensesOnly = ["lens.correctness", "lens.contracts"];
 
 		it("passes under the default tiers when every check ran and none found anything", async () => {
-			done();
-			const { verdict } = await reviewed();
+			scriptConversations(
+				fake,
+				[correctness, contracts].map((match) => ({ match, replies: [fauxAssistantMessage("Done.")] })),
+			);
+			const { verdict } = await reviewed({ config: { ...config, tiers: defaultConfig.tiers } });
 			expect(verdict).toMatchObject({ status: "passed", blocking: false, notRun: [allowedDecisionSkip] });
 		});
 

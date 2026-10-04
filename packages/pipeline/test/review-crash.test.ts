@@ -34,6 +34,7 @@ import {
 	crashRepository,
 	endingBudgets,
 	readEvents,
+	twoLensTiers,
 } from "./fixtures/review-scenario.ts";
 
 const crashScript = fileURLToPath(new URL("./fixtures/review-crash.ts", import.meta.url));
@@ -197,7 +198,11 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		await reviewChangeset({
 			harness,
 			changeset: await resolveRange(repo, "main...feature"),
-			config: { ...defaultConfig, models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } } },
+			config: {
+				...defaultConfig,
+				tiers: twoLensTiers,
+				models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
+			},
 			lenses: crashLenses(await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
 			models: fake.review,
@@ -241,6 +246,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			changeset: await resolveRange(repo, "main...feature"),
 			config: {
 				...defaultConfig,
+				tiers: twoLensTiers,
 				models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
 				lenses: { contracts: { enabled: false } },
 			},
@@ -291,7 +297,11 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		const { verdict } = await reviewChangeset({
 			harness,
 			changeset: await resolveRange(repo, "main...feature"),
-			config: { ...defaultConfig, models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } } },
+			config: {
+				...defaultConfig,
+				tiers: twoLensTiers,
+				models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
+			},
 			lenses: budgetLenses(await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
 			models: fake.review,
@@ -333,7 +343,11 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			const { verdict } = await reviewChangeset({
 				harness,
 				changeset: await resolveRange(repo, "main...feature"),
-				config: { ...defaultConfig, models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } } },
+				config: {
+					...defaultConfig,
+					tiers: twoLensTiers,
+					models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
+				},
 				lenses: budgetLenses(
 					await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"]),
 					endingBudgets[scenario],

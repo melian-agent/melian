@@ -1,4 +1,4 @@
-import type { Lens, LensBudget } from "@melian-agent/core";
+import { defaultConfig, type Lens, type LensBudget } from "@melian-agent/core";
 import { baseAndHead, lines } from "./repo.ts";
 
 export { count, readEvents, record } from "./spike.ts";
@@ -66,3 +66,6 @@ export function budgetLenses(lenses: readonly Lens[], budget: Partial<LensBudget
 // The budgets the crash scenarios that end a lens hold it to: `spent` one tool call, so its second read ends it, and
 // `tokens` one token, which its first response spends.
 export const endingBudgets = { spent: { tools: 1 }, tokens: { tokens: 1 } } as const;
+
+// The crash scenarios script correctness and contracts; the default full tier's other lenses have goldens of their own.
+export const twoLensTiers = { ...defaultConfig.tiers, full: ["standard", "lens.contracts"] };
