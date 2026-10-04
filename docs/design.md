@@ -747,7 +747,7 @@ Match Pi's conventions unless there is a reason not to.
 | Execution | Node environment locally, container environment for untrusted code (planned, milestone 3) |
 | GitHub | Octokit, GitHub App auth on server and Actions (planned), `gh` token locally; git by shelling out |
 | Telemetry | pi-telemetry over OpenTelemetry (planned) |
-| Code shape | Classes for objects with identity, state, or a lifecycle; functions and readonly data for definitions and transforms, as in Pi |
+| Code shape | Classes for objects with identity, state, or a lifecycle, and functions and readonly data for definitions, as in Pi; every query, change, and transform of a domain object is a method on it, and constructions are static factories, which departs from Pi's plain stored records because Melian's objects accumulate behaviour; an outer package adapts a core object through a class of its own; the `free-domain-function` guardrail and Biome plugin enforce it |
 
 ## Package layout
 

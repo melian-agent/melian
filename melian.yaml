@@ -19,6 +19,10 @@ guardrails:
 
   forbidden-patterns:
     rules:
+      free-domain-function:
+        pattern: '^(export )?(async )?function \w+\(\w+: (readonly )?(Finding|Defect|Verdict|Manifest|Lens|Revision|Changeset)\b'
+        paths: ["packages/*/src/**"]
+        message: behaviour belongs to the object it is about, so make this a method on that object's class or on this package's own class that adapts it; for a false positive, the Biome rule biome/free-domain-function.grit reads the syntax and the rule in AGENTS.md decides
       focused-test:
         pattern: '^\s*(?:describe|it|test)\.only\('
         paths: ["**/*.test.ts"]
