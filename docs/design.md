@@ -560,4 +560,7 @@ Milestone 1, the local CLI loop, is complete. Milestone 2 is the Actions host, t
 
 ## Open questions
 
-None at present. The scheduled sweep for the Actions host is the one deferred decision: it is designed in the hosts section and will be revisited if event-driven recovery proves insufficient in practice.
+- Can a range review seed a pull-request review? They are separate changesets with separate storage, so the findings a maintainer saw locally are raised again when the pull request is reviewed. To be settled in milestone 3.
+- Should local routes ever apply to a pull-request review on the maintainer's own machine? Currently never: a pull-request review reads its base's policy and never `melian.local.yaml`, so it takes `--model` where the repository routes nothing.
+
+The scheduled sweep for the Actions host is a deferred decision: it is designed in the hosts section and will be revisited if event-driven recovery proves insufficient in practice.
