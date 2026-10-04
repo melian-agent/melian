@@ -1,0 +1,13 @@
+{
+  "name": "@shop/cart",
+  "version": "1.4.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10",
+    "typescript": "5.9.3"
+  }
+}

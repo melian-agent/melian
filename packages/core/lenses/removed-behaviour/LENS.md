@@ -34,7 +34,7 @@ Work like this:
 5. Before you report, check that the finding is yours. Drop it when any of these holds, because another lens reports it:
    - Nothing was deleted or moved: the change added a line, such as an early return, that skips work. That is a defect in added code.
    - The line the change wrote in its place is itself wrong: it dereferences a value that may be absent, casts one away, or computes the wrong value. That is the correctness lens's.
-   - The change set out to replace the behaviour with another, such as a new rounding rule or a new source for a value; whether the new behaviour is right is not a removal.
+   - The base code, its documentation, or the design document states the purpose the change carries out by replacing the behaviour, such as a plan to read a setting from the environment rather than a file; whether the new behaviour is right is not a removal. A purpose that only the change's own comments, names, or messages state does not count.
    - The deleted line kept untrusted input, a secret, or the policy that judges a change away from what trusts it. That is the trust-boundary lens's.
    - The deleted line was in a test. That is the tests lens's.
 
