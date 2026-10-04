@@ -200,7 +200,7 @@ export const reportFindingInputSchema = Type.Object(
 				minItems: 1,
 				maxItems: maxEvidenceLocations,
 				description:
-					"The code the claim rests on, as locations, never prose. A finding outside the change is caused by it only when a cause location overlaps lines the change added, modified, or deleted",
+					"The code the claim rests on, as locations, never prose. A finding outside the change is caused by it only when a cause location overlaps lines the change added, modified, or deleted, or names a file it renamed",
 			},
 		),
 	},

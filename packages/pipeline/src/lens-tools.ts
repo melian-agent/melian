@@ -424,7 +424,7 @@ export const reportFinding = defineTool({
 		const { cause } = finding.properties;
 		const unproven =
 			cause === "pre-existing"
-				? ": it is outside the change, and no cause location overlaps lines the change added, modified, or deleted"
+				? ": it is outside the change, and no cause location overlaps lines the change added, modified, or deleted, or a file it renamed"
 				: "";
 		return text(`recorded finding ${id} as ${cause}${unproven}`);
 	},

@@ -1,5 +1,5 @@
 import type { Revision } from "./changeset.ts";
-import type { Hunk } from "./diff.ts";
+import type { ChangedFile, Hunk } from "./diff.ts";
 import { FindingError } from "./errors.ts";
 import { type Cause, canonicalPath, type EvidenceRevision, type EvidenceRole, type LocationCause } from "./findings.ts";
 
@@ -23,22 +23,49 @@ function overlaps(start: number, end: number, from: number, count: number): bool
 }
 
 /**
- * The hunk a piece of evidence proves the change caused, or `undefined` when it proves nothing. Only a `cause` location
- * proves anything: at head, lines overlapping a hunk's new lines in a file the change keeps; at the base, lines
- * overlapping a hunk's old lines in a file the base had, named by its base path, so a deleted guard counts as changed
- * code. A `context` location never does. Compares canonical paths; throws `FindingError` `invalidPath` for a path that
- * is not repository-relative.
+ * The part of the change a location's lines fall on: a hunk they overlap, or a file the change renamed without
+ * editing, which the rename changed as a whole.
  */
-export function causeHunk(site: EvidenceSite, revision: Pick<Revision, "files">): Hunk | undefined {
-	const path = canonicalPath(site.file, "/evidence/file");
-	if (site.role !== "cause") return undefined;
-	const end = site.endLine ?? site.startLine;
-	if (site.revision === "base") {
-		const changed = revision.files.find((file) => (file.oldPath ?? file.path) === path && file.status !== "added");
-		return changed?.hunks.find((hunk) => overlaps(site.startLine, end, hunk.oldStart, hunk.oldLines));
-	}
-	const changed = revision.files.find((file) => file.path === path && file.status !== "deleted");
-	return changed?.hunks.find((hunk) => overlaps(site.startLine, end, hunk.newStart, hunk.newLines));
+export type ChangeOverlap =
+	| { readonly kind: "hunk"; readonly hunk: Hunk }
+	| { readonly kind: "rename"; readonly file: ChangedFile };
+
+/**
+ * The part of the change a location falls on, whatever its role, or `undefined` when it falls on nothing the change
+ * did. At head: a hunk's new lines in a file the change keeps. At the base: a hunk's old lines in a file the base had,
+ * named by its base path, so deleted lines count as changed code. On either side, any line of a file the change
+ * renamed without editing, named by its path on that side, since the rename is what the change did to it. Compares
+ * canonical paths; throws `FindingError` `invalidPath` for a path that is not repository-relative.
+ */
+export function changeOverlap(
+	location: CodeLocation & { readonly revision?: EvidenceRevision },
+	revision: Pick<Revision, "files">,
+): ChangeOverlap | undefined {
+	const path = canonicalPath(location.file, "/evidence/file");
+	const end = location.endLine ?? location.startLine;
+	const base = location.revision === "base";
+	const changed = revision.files.find((file) =>
+		base
+			? (file.oldPath ?? file.path) === path && file.status !== "added"
+			: file.path === path && file.status !== "deleted",
+	);
+	if (changed === undefined) return undefined;
+	if (changed.status === "renamed" && changed.hunks.length === 0) return { kind: "rename", file: changed };
+	const hunk = changed.hunks.find((each) =>
+		base
+			? overlaps(location.startLine, end, each.oldStart, each.oldLines)
+			: overlaps(location.startLine, end, each.newStart, each.newLines),
+	);
+	return hunk === undefined ? undefined : { kind: "hunk", hunk };
+}
+
+/**
+ * The part of the change a piece of evidence proves caused a finding, by {@link changeOverlap}, or `undefined` when it
+ * proves nothing. Only a `cause` location proves anything; a `context` location never does.
+ */
+export function causeOverlap(site: EvidenceSite, revision: Pick<Revision, "files">): ChangeOverlap | undefined {
+	canonicalPath(site.file, "/evidence/file");
+	return site.role === "cause" ? changeOverlap(site, revision) : undefined;
 }
 
 /**
@@ -46,7 +73,7 @@ export function causeHunk(site: EvidenceSite, revision: Pick<Revision, "files">)
  *
  * Location proves `introduced` only: a location in an added file, binary files included, or overlapping any hunk's new
  * lines is `introduced`. Any other location is `affected` when one of `evidence`'s locations proves the change caused
- * it, by {@link causeHunk}, and `pre-existing` otherwise, including code beside or around a pure deletion, which has no
+ * it, by {@link causeOverlap}, and `pre-existing` otherwise, including code beside or around a pure deletion, which has no
  * new lines. A file deleted at head has no lines to point at, so a location in one throws `FindingError` `deletedFile`.
  * Compares canonical paths, so `./src/run.ts` is `src/run.ts`; throws `FindingError` `invalidPath` for a path that is
  * absolute, escapes the repository, or uses a backslash.
@@ -64,7 +91,7 @@ export function classifyCause(
 ): Cause {
 	const located = causeByLocation(location, revision);
 	if (located === "introduced") return located;
-	return evidence.some((site) => causeHunk(site, revision) !== undefined) ? "affected" : "pre-existing";
+	return evidence.some((site) => causeOverlap(site, revision) !== undefined) ? "affected" : "pre-existing";
 }
 
 function causeByLocation(location: CodeLocation, revision: Pick<Revision, "files">): LocationCause {

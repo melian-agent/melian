@@ -423,7 +423,7 @@ Every \`report_finding\` call needs both. A call without them is refused.
 
 - \`failureScenario\`: the concrete input, state, or sequence of calls that makes the code fail, and the wrong outcome it produces, in at most ${maxFailureScenarioLength} characters. Name values and results: "\`parsePort("")\` returns \`NaN\`, and \`listen(NaN)\` binds a random port", not "may fail for some inputs". If you cannot name one from the code you read, do not report the finding.
 - \`evidence\`: one or more locations, \`{ file, line, endLine, role }\`, holding the code the claim rests on. \`role\` is \`cause\` for the code that brings the failure about, and \`context\` for code the claim reads but does not blame, such as a caller or the guard that is missing. Add \`revision: "base"\` for lines this change deleted, numbered as in the base commit; a location is at head otherwise. Melian reads the code at each location itself, so never quote it. A location spans at most ${maxEvidenceLines} lines.
-- A finding outside the change counts as caused by it only when one of its \`cause\` locations overlaps lines the change added, modified, or deleted. Otherwise it is recorded as pre-existing, and never blocks.`;
+- A finding outside the change counts as caused by it only when one of its \`cause\` locations overlaps lines the change added, modified, or deleted, or any line of a file it renamed without editing, named by its old path with \`revision: "base"\` or by its new path. Otherwise it is recorded as pre-existing, and never blocks.`;
 
 // The lens's policy as the model must follow it, so it never guesses a rule ID the hook would refuse.
 function renderPolicy(lens: Lens): string {

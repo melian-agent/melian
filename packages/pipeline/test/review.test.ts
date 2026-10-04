@@ -666,6 +666,83 @@ describe("reviewChangeset", () => {
 		expect(results[1]).toMatch(/^recorded finding [0-9a-f]{16} as affected$/);
 	});
 
+	it("calls a finding affected when a cause location names a file the change renamed without editing", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{
+				"src/config.ts": lines("export const port = 8080;"),
+				"src/server.ts": lines('import { port } from "./config.ts";', "listen(port);"),
+			},
+			{ "src/notes.md": lines("Renames the configuration module.") },
+		);
+		gitIn(repo, "mv", "src/config.ts", "src/settings.ts");
+		gitIn(repo, "commit", "--quiet", "-m", "rename");
+		const changeset = await resolveRange(repo, "main...feature");
+		expect(changeset.revision.files.find((file) => file.path === "src/settings.ts")).toMatchObject({
+			status: "renamed",
+			oldPath: "src/config.ts",
+			hunks: [],
+		});
+		const stale = {
+			...nullDeref,
+			file: "src/server.ts",
+			line: 1,
+			failureScenario: "Loading src/server.ts fails: ./config.ts no longer exists.",
+		};
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{
+				match: contracts,
+				replies: [
+					calls(
+						[
+							"report_finding",
+							{
+								...stale,
+								rule: "broken-caller",
+								evidence: [{ file: "src/config.ts", line: 1, role: "cause", revision: "base" }],
+							},
+						],
+						[
+							"report_finding",
+							{
+								...stale,
+								rule: "data-contract",
+								evidence: [{ file: "src/settings.ts", line: 1, role: "cause" }],
+							},
+						],
+						[
+							"report_finding",
+							{
+								...stale,
+								rule: "changed-return",
+								evidence: [{ file: "src/config.ts", line: 1, role: "context", revision: "base" }],
+							},
+						],
+					),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+
+		const findings = await review({
+			lenses: await loadLenses(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, [
+				"src/settings.ts",
+			]),
+		});
+
+		const byRule = Object.fromEntries(findings.map((each) => [each.ruleId, each.properties]));
+		expect(byRule["broken-caller"]).toMatchObject({
+			cause: "affected",
+			evidence: [{ file: "src/config.ts", revision: "base", snippet: "export const port = 8080;" }],
+		});
+		expect(byRule["data-contract"]).toMatchObject({
+			cause: "affected",
+			evidence: [{ file: "src/settings.ts", revision: "head", snippet: "export const port = 8080;" }],
+		});
+		expect(byRule["changed-return"]!.cause).toBe("pre-existing");
+	});
+
 	it("refuses a missing or malformed failure scenario or evidence, saying what each must be", async () => {
 		const broken = { ...nullDeref, file: "src/report.ts", line: 2, rule: "broken-caller" };
 		const { failureScenario: _, ...unexplained } = broken;

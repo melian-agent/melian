@@ -16,7 +16,14 @@ export {
 	type VerdictStatus,
 } from "./adjudication.ts";
 export { parseJsonc } from "./analyser.ts";
-export { type CodeLocation, causeHunk, classifyCause, type EvidenceSite } from "./cause.ts";
+export {
+	type ChangeOverlap,
+	type CodeLocation,
+	causeOverlap,
+	changeOverlap,
+	classifyCause,
+	type EvidenceSite,
+} from "./cause.ts";
 export {
 	type Changeset,
 	parseRangeSpec,
