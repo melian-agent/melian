@@ -67,7 +67,7 @@ Core, the pipeline, and the CLI and skill hosts were built in milestone 1. The A
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Core** is harness-free TypeScript. It imports pi-ai types and nothing else from Pi. It holds the finding schema and stable IDs, finding identity and the lifecycle rules, guardrail evaluation, SARIF normalisation of static tool output, lens loading, configuration layering, the standards loader, the git client, and the provider port. The GitHub client lives in `packages/github`, behind that port. The knowledge loader and the decision-model port arrive in milestone 3. The commands that act on findings across revisions, such as dismissal, are planned for milestone 3. All of it is unit-testable without a harness.
+**Core** is harness-free TypeScript. It imports pi-ai types and nothing else from Pi. It holds the finding schema and stable IDs, finding identity and the lifecycle rules, guardrail evaluation, SARIF normalisation of static tool output, lens loading, configuration layering, the standards loader, the git client, and the provider port. The GitHub client lives in `packages/github`, behind that port. The knowledge loader and the `Decider` port arrive in milestone 3. The `Decider` port sits beside the provider port, and its adapters live in `packages/decisions`, as the GitHub client does in `packages/github`. The commands that act on findings across revisions, such as dismissal, are planned for milestone 3. All of it is unit-testable without a harness.
 
 **Pipeline** is the only place review flow lives. It is written once against Pi Durable: tasks, child conversations, documents, memos, hooks. It also holds the static tool runners, because running a tool executes repository code and so goes through Pi Durable's `ExecutionEnv`, which core may not import. Every host embeds this layer; none reimplements it.
 
@@ -303,7 +303,7 @@ The lenses, the explanation, anything beyond the 64k-token state window, anythin
 
 ### Architecture
 
-- A `Decider` port in core beside the model port. pi-ai does not speak this API, so the adapter is Melian code. One adapter covers both vendors; base URL and auth differ. Providers: Jev hosted, Clef on Workers AI, Clef self-hosted, a recorded provider for tests, and a fallback that asks a cheap text model with structured output.
+- The `Decider` interface lives in core beside the `ReviewProvider` port. Its adapters live in `packages/decisions`, as the GitHub client lives in `packages/github` behind the provider port. pi-ai does not speak this API, so the adapters are Melian code. One adapter covers Jev and Clef; base URL and auth differ. Adapters: Jev hosted, Clef on Workers AI, Clef self-hosted, a recorded provider for tests, and a fallback that asks a cheap text model with structured output.
 - A `decision` tier in model routing, overridable per path. Default Clef-flash for the fast tier and Clef for triage.
 - Question sets are versioned, typed units in code with their own golden evals. Every answer records the question-set version.
 - Every decision is a replay-safe task that stores the full probability distribution, not just the chosen option. Thresholds live in configuration and can be retuned from stored data.
@@ -518,7 +518,7 @@ Match Pi's conventions unless there is a reason not to.
 | Config | YAML for `melian.yaml`, Markdown with front matter for lenses, plain Markdown for standards |
 | Findings | SARIF plus extension properties |
 | Models | pi-ai, with the credential-pool provider (planned) |
-| Decisions | Melian `Decider` port; Jev and Clef adapters (planned, milestone 3) |
+| Decisions | `Decider` port in core; Jev and Clef adapters in `packages/decisions` (planned, milestone 3) |
 | Durability | pi-durable, exact-pinned, wrapped behind one module |
 | Storage | memory for tests, SQLite locally, SQLite on the server (planned), JSONL on the state branch for Actions (planned, milestone 2) |
 | Execution | Node environment locally, container environment for untrusted code (planned, milestone 2) |
@@ -528,7 +528,7 @@ Match Pi's conventions unless there is a reason not to.
 
 ## Package layout
 
-Laid out in milestone 1. `state-git/`, `decisions/`, and `pi-extension/` are skeletons that export only their package name: milestone 2 fills `state-git/` with the state branch, and milestone 3 fills `decisions/` with the decision models. The Pi extension is not yet scheduled.
+Laid out in milestone 1. `state-git/`, `decisions/`, and `pi-extension/` are skeletons that export only their package name: milestone 2 fills `state-git/` with the state branch, and milestone 3 fills `decisions/` with the decision-model adapters. The Pi extension is not yet scheduled.
 
 Packages publish under the `@melian-agent` npm scope. The Node floor is 22.19.0, the same as pi-durable, which needs it for default type stripping and the built-in SQLite module.
 
@@ -539,7 +539,7 @@ packages/
   pipeline/      Pi Durable orchestration
   github/        Octokit client and review publication
   state-git/     orphan-branch storage backend and state branch helpers (skeleton)
-  decisions/     Decider port and adapters (skeleton)
+  decisions/     Decider adapters, behind core's port (skeleton)
   cli/           the melian command
   pi-extension/  /melian command and Pi package manifest (skeleton)
   evals/         golden corpus and scoring
