@@ -73,7 +73,7 @@ Defects a deterministic rule should catch in every repository, which no lens is 
 
 Lens budgets, which a scripted golden can drive and no lens judges:
 
-- [Pull request #37](https://github.com/melian-agent/melian/pull/37) ([record](../comparisons/2026-10-04-pr-37.md)): A4, a lens its budget ends before it reports anything, expected not reviewed; C2, a script that reuses one call ID across rounds under a tight tools budget, expected ended.
+- [Pull request #37](https://github.com/melian-agent/melian/pull/37) ([record](../comparisons/2026-10-04-pr-37.md)): A4, a lens its budget ends before it reports anything, expected not reviewed; C2, a script that reuses one call ID across rounds under a tight tools budget, expected ended; D1, a lens whose reads are refused past its tools budget, which then reports and finishes, expected ended and not reviewed; D2, a round holding a blocked call, a read, and a search under `budget.tools: 2`, expected both reads to run and no budget end.
 
 ## No lens yet
 
