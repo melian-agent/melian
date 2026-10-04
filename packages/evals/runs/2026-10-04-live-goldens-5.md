@@ -1,89 +1,107 @@
 # Live golden run 5, 2026-10-04
 
-The fifth run of the golden corpus against real models, after commit `cb39003` narrowed step 3 of the correctness lens. [The fourth run](2026-10-04-live-goldens-4.md) found that the rule commit `1c716e6` added, keep only failures whose triggering input the repository or the change supplies, also dropped `contracts-breaking-signature`'s yen defect in all three passes: nothing in the repository passes `"JPY"`. Step 3 now counts an input the change declares it accepts as supplied by the change, and still drops one only a parameter's type allows.
+The fifth run of the golden corpus against real models, after [pull request #36](https://github.com/melian-agent/melian/pull/36) narrowed step 3 of the correctness lens. [The fourth run](2026-10-04-live-goldens-4.md) found that the rule commit `1c716e6` added, keep only failures whose triggering input the repository or the change supplies, also dropped `contracts-breaking-signature`'s yen defect in all three passes: nothing in the repository passes `"JPY"`. Step 3 now counts an input the changed code declares it accepts, whether the change added that declaration or kept it, and still drops an input only a parameter's type allows.
 
-- Melian under test: `lens-input-rule` at `1ecdbd769c89ac23288e55104754788d2f709c11`, the lens change and the `MELIAN_EVAL_GOLDEN` filter on `main` after [pull request #34](https://github.com/melian-agent/melian/pull/34). The branch was then rebased onto `main`, which brought only the comparison documents of [pull request #35](https://github.com/melian-agent/melian/pull/35); the reviewed code is `76c9e76`. pi-ai 1.0.0 and Pi Durable 1.0.0. Lens versions, from the findings' `source`: `correctness` `d75574d970c4`, `contracts` `79d6ae78389c`, unchanged since run 4.
+- Melian under test: `lens-input-rule` at `95d533f437c96f37b7a0e9055c0a536650c7d1d6`, on `main` after [pull request #35](https://github.com/melian-agent/melian/pull/35). pi-ai 1.0.0 and Pi Durable 1.0.0. Lens versions: `contracts` `79d6ae78389c`, unchanged since run 4; `correctness` was `0e6c62b69941` in run 4 and is now `3c01b9654719`, as the loader reports and every finding's `source` confirms.
 - Model: `anthropic/claude-opus-5-5` for every tier, as in run 4.
 - Credentials: an Anthropic OAuth token in `CLAUDE_CODE_OAUTH_TOKEN`, loaded with `node --env-file` on the built packages.
 
 ## Method
 
-1. `contracts-breaking-signature` alone, three times, each in its own process, through a helper like [the second run's](2026-10-03-live-goldens-2.md#method). It calls `runGolden` and `scoreGolden` from the built package with `model: "anthropic/claude-opus-5-5"`, unwraps the models handle with the pipeline's internal `modelsOf`, and rewraps it with `wrapModels` around a proxy that records each request's lens, usage, tool calls, and final text. It labels a request by the lens's opening sentence, which it finds anywhere in the request, so it does not depend on how the system message is split.
-2. The documented runner, `packages/evals/src/live.ts`, over the corpus. It prints scores only.
+1. `npm run build`, then the documented runner over the corpus, three times, one process after another:
 
-Scoring matches on file and rule. Token counts are pi-ai's; `input` is uncached input. Cost is pi-ai's list-price estimate; an OAuth subscription is not billed per token.
+   ```bash
+   MELIAN_EVAL_LIVE=1 MELIAN_EVAL_MODEL=anthropic/claude-opus-5-5 node --env-file=<file> packages/evals/src/live.ts
+   ```
 
-The lens's new example uses time zones, not currencies: a `timeZone` parameter that formats times in any zone supplies `"Asia/Kolkata"`, and a string that names no zone is not supplied. An example about currency codes would hand this golden its answer, and the run could no longer tell a rule the model applies from one it copies.
+   It prints scores only.
+2. Pass 3 scored below 1.00 on two goldens, and `live.ts` cannot say which finding it missed. So `contracts-breaking-signature` and `correctness-deleted-guard` each ran three more times through a helper like [the second run's](2026-10-03-live-goldens-2.md#method). It calls `runGolden` and `scoreGolden` from the built package with `model: "anthropic/claude-opus-5-5"`, unwraps the models handle with the pipeline's internal `modelsOf`, and rewraps it with `wrapModels` around a proxy that records each request's lens and the reply's tool calls and text. They show what a miss looks like on the final wording; they are not part of the `live.ts` scores.
 
-## Results, `contracts-breaking-signature` three times
+Scoring matches on file and rule.
 
-`contracts-breaking-signature` expects `src/cart.ts`, `broken-caller`, Critical, `affected`; and `src/price.ts`, `wrong-result`, High, `introduced`, for dividing every currency by 100 so that 500 yen renders as "JPY 5".
+The lens's example is a documented range and its boundary: a doc comment says `percent` runs from 0 to 100, so 100 is supplied, and `price / (100 - percent)` divides by zero for it; -5 is not. The golden's defect has another shape, a string parameter passed to an API whose domain holds values the arithmetic gets wrong. The example teaches the rule without describing the golden, so a pass that matches the yen expectation measures the rule rather than an analogy. [The first wording](#first-wording-correctness-d75574d970c4) used a time-zone example of the golden's own shape.
+
+## Results, `live.ts` three times
+
+| Golden | Expected | Pass 1 | Pass 2 | Pass 3 | Precision, worst / mean | Recall, worst / mean |
+| --- | --- | --- | --- | --- | --- | --- |
+| `clean-rename` | 0 | 0 reported, 1.00 / 1.00 | 0, 1.00 / 1.00 | 0, 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 |
+| `contracts-breaking-signature` | 2 | 2 reported, 1.00 / 1.00 | 2, 1.00 / 1.00 | 1, 1.00 / 0.50 | 1.00 / 1.00 | 0.50 / 0.83 |
+| `correctness-deleted-guard` | 1 | 1 reported, 1.00 / 1.00 | 1, 1.00 / 1.00 | 0, 1.00 / 0.00 | 1.00 / 1.00 | 0.00 / 0.67 |
+| `correctness-null-deref` | 1 | 1 reported, 1.00 / 1.00 | 1, 1.00 / 1.00 | 1, 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 |
+| `injection-in-comment` | 2 | 2 reported, 1.00 / 1.00 | 2, 1.00 / 1.00 | 2, 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 |
+| `pre-existing-beside-change` | skipped, `live: false` | | | | | |
+| Corpus | 6 | 6 reported, 1.00 / 1.00 | 6, 1.00 / 1.00 | 4, 1.00 / 0.67 | 1.00 / 1.00 | 0.67 / 0.89 |
+
+Each cell after the first gives findings reported, then precision / recall. The passes took about 89 s, 97 s, and 73 s for five goldens.
+
+Every finding any pass drew was an expected one: precision is 1.00 on every golden in every pass. Every miss is recall, and pass 3 holds both.
+
+Passes 1 and 2 matched the yen expectation by file and rule. Pass 3 drew one finding on `contracts-breaking-signature` and matched one expectation, and `live.ts` does not say which. It was most likely contracts' `broken-caller`: contracts raised that finding in every pass of runs 3, 4, and 5, the helper passes included.
+
+`correctness-deleted-guard` scored recall 0.00 for the first time in pass 3; every earlier live pass had found it. `live.ts` printed no findings, so this run cannot say why correctness reported nothing there.
+
+### The malformed-input extra
+
+It did not appear. Run 3 drew an `unhandled-error` on `src/price.ts` for a RangeError from a malformed code such as `"US"`. On `contracts-breaking-signature`, every `live.ts` pass reported no finding beyond the expected ones, and no reply in the three helper passes over that golden mentions a malformed code, a RangeError, or `"US"`.
+
+## Helper passes on the final wording
+
+| Golden | Pass | Reported | Precision | Recall | Wall clock | Requests | Correctness reported |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `contracts-breaking-signature` | 1 | 2 | 1.00 | 1.00 | 23.5 s | 8 | `wrong-result`, `src/price.ts:2`, P2 |
+| `contracts-breaking-signature` | 2 | 2 | 1.00 | 1.00 | 21.2 s | 7 | `wrong-result`, `src/price.ts:2`, P2 |
+| `contracts-breaking-signature` | 3 | 1 | 1.00 | 0.50 | 21.8 s | 7 | nothing |
+| `correctness-deleted-guard` | 1 | 1 | 1.00 | 1.00 | 23.6 s | 7 | `wrong-result`, `src/port.ts:2`, affected |
+| `correctness-deleted-guard` | 2 | 1 | 1.00 | 1.00 | 22.9 s | 9 | `wrong-result`, `src/port.ts:2`, affected |
+| `correctness-deleted-guard` | 3 | 1 | 1.00 | 1.00 | 21.4 s | 8 | `wrong-result`, `src/port.ts:2`, affected |
+
+Contracts reported `broken-caller` on `src/cart.ts:10` in all three passes over `contracts-breaking-signature`.
+
+Where correctness reported the yen defect, it cited the declaring line, as the new step 3 asks: `src/price.ts:2` as `cause` and `src/price.ts:1`, the `currency` parameter, as `context`. Pass 1's failure scenario: "`formatPrice(1234, \"JPY\")` ... divides by 100 to get 12.34, and Intl rounds to 0 fraction digits, giving \"JP¥12\" when it should be \"JP¥1,234\"." Both passes rated it P2, where the first wording's passes rated it P1 and the golden says High; a live run does not score severity.
+
+Where it missed, correctness read `src/price.ts`, searched for `formatPrice`, read `src/cart.ts`, and answered:
+
+> I reported 0 findings. ... I found no other correctness defect I could back with an input taken from the repository.
+
+That is run 4's miss in run 4's words. The model applied the clause about inputs from the repository and not the clause about declared inputs beside it.
+
+On `correctness-deleted-guard`, every helper pass read `src/port.ts` at the base, found the deleted range check, and reported `start("")` binding a random port, with the base line as `cause`. Pass 3's `live.ts` miss did not recur in three tries.
+
+## First wording, correctness `d75574d970c4`
+
+These passes ran on the first wording of the rule, before review, whose example was a `timeZone` parameter: every real zone is supplied, and a string that names no zone is not. They used the same helper on `contracts-breaking-signature` alone, then one `live.ts` pass over the corpus.
 
 | Pass | Reported | Precision | Recall | Wall clock | Requests | Tokens (output / cache read / cache write) | Cost estimate |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 2 | 1.00 | 1.00 | 17.1 s | 7 | 2,564 / 22,793 / 11,736 | $0.11 |
-| 2 | 2 | 1.00 | 1.00 | 18.3 s | 8 | 2,336 / 32,016 / 8,174 | $0.09 |
-| 3 | 2 | 1.00 | 1.00 | 17.0 s | 7 | 2,479 / 26,318 / 7,822 | $0.09 |
+| Helper 1 | 2 | 1.00 | 1.00 | 17.1 s | 7 | 2,564 / 22,793 / 11,736 | $0.11 |
+| Helper 2 | 2 | 1.00 | 1.00 | 18.3 s | 8 | 2,336 / 32,016 / 8,174 | $0.09 |
+| Helper 3 | 2 | 1.00 | 1.00 | 17.0 s | 7 | 2,479 / 26,318 / 7,822 | $0.09 |
 
-Worst and mean alike: precision 1.00, recall 1.00. Every pass drew the same two findings, IDs `25dec63f1d7fcd59` and `f71efca4ec767ad3`, and nothing else.
-
-| Lens | File | Rule | Severity | Cause | What | Scored |
-| --- | --- | --- | --- | --- | --- | --- |
-| contracts | `src/cart.ts:10` | `broken-caller` | P0 | affected | "`summary` still calls `formatPrice(total)` with one argument, but `formatPrice` now requires a second `currency: string` parameter." | matched |
-| correctness | `src/price.ts:2` | `wrong-result` | P1 | introduced | "The function now takes any ISO currency but still divides the minor-unit amount by a fixed 100. Not every currency has 2 decimal places: JPY and KRW have 0 minor units, and KWD, BHD and OMR have 3." | matched |
-
-The quotes are pass 1's; the other passes word both the same way in substance. Correctness's failure scenario names a declared input in every pass. Pass 2: "`formatPrice(1050, \"JPY\")`: yen has no minor unit, so 1050 is ¥1,050. The function computes 1050/100 = 10.5, and Intl rounds that to 0 fraction digits, so it returns \"JPY 11\" instead of \"JPY 1,050\"." All three also name the dinar, which the golden does not: "`formatPrice(1234, \"KWD\")` ... returns \"KWD 12.340\", ten times the real amount." That is the same defect, so it is one finding, not an extra.
-
-Each pass made one `report_finding` call per lens, and each was recorded first time. Correctness's evidence cites `src/price.ts:1-2` as `cause` in passes 1 and 2, and `src/price.ts:2` as `cause` with line 1 as `context` in pass 3. None cites the base revision, as the golden's `context` location does; a live run does not check evidence, so the score is unaffected.
-
-### The "US" extra
-
-It did not return. Run 3 drew an `unhandled-error` on `src/price.ts` for a RangeError from a malformed code such as `"US"`. No pass here reported it, and no request in the three passes mentions a malformed code, a RangeError, or `"US"`. Correctness did not name it and decline it; it did not raise it at all.
-
-### How correctness reached the defect
-
-Its path barely changed from run 4. It read `src/price.ts` and searched for `formatPrice`, or `formatPrice|currency`, in its first turn; pass 2 also read `src/cart.ts`. Where run 4's correctness then answered with no finding, here it reported the yen defect in its next turn, and its closing line ties the input to what the change now takes. Pass 3:
-
-> `formatPrice` now takes any currency but still divides the amount by 100. Prices come out wrong for currencies that don't use two decimal places: `formatPrice(1234, "JPY")` shows "JPY 12" instead of "JPY 1,234", and KWD amounts come out 10 times too large.
-
-No lens sees the golden's title, "Format prices in any currency": `runGolden` commits the head as `head`. The declaration correctness read is the code itself, a new `currency` parameter passed to `Intl.NumberFormat`'s currency style. Correctness left the broken caller in `src/cart.ts` to contracts in every pass. Pass 1's closing line says "Nothing in the repository calls `formatPrice` yet", which is wrong, since `src/cart.ts` does; it cost nothing here.
-
-## Results, `live.ts`
-
-| Golden | Expected | Reported | Precision | Recall |
-| --- | --- | --- | --- | --- |
-| `clean-rename` | 0 | 0 | 1.00 | 1.00 |
-| `contracts-breaking-signature` | 2 | 2 | 1.00 | 1.00 |
-| `correctness-deleted-guard` | 1 | 1 | 1.00 | 1.00 |
-| `correctness-null-deref` | 1 | 1 | 1.00 | 1.00 |
-| `injection-in-comment` | 2 | 2 | 1.00 | 1.00 |
-| `pre-existing-beside-change` | skipped, `live: false` | | | |
-| Corpus | 6 | 6 | 1.00 | 1.00 |
-
-The pass took 88 s for five goldens. Every finding it drew was an expected one, and it drew every expected one.
+Every helper pass drew the same two findings, IDs `25dec63f1d7fcd59` and `f71efca4ec767ad3`: contracts' `broken-caller` on `src/cart.ts:10`, and correctness's `wrong-result` on `src/price.ts:2` at P1, naming yen and dinar. No request in them mentioned a malformed code. The `live.ts` pass took 88 s and scored precision 1.00 and recall 1.00 on every golden, so it matched the yen expectation by file and rule. Token counts are pi-ai's; cost is pi-ai's list-price estimate, and an OAuth subscription is not billed per token.
 
 ## Against run 4
 
-| Golden | Precision 4, `live.ts` | Precision 5, `live.ts` | Recall 4, `live.ts` | Recall 5, `live.ts` | Recall 4, reruns | Recall 5, passes |
-| --- | --- | --- | --- | --- | --- | --- |
-| `clean-rename` | 1.00 | 1.00 | 1.00 | 1.00 | not rerun | not rerun |
-| `contracts-breaking-signature` | 1.00 | 1.00 | 0.50 | 1.00 | 0.50, 0.50 | 1.00, 1.00, 1.00 |
-| `correctness-deleted-guard` | 1.00 | 1.00 | 1.00 | 1.00 | not rerun | not rerun |
-| `correctness-null-deref` | 1.00 | 1.00 | 1.00 | 1.00 | not rerun | not rerun |
-| `injection-in-comment` | 1.00 | 1.00 | 1.00 | 1.00 | not rerun | not rerun |
+| Golden | Recall 4, `live.ts` | Recall 4, reruns | Recall 5, first wording | Recall 5, `live.ts` passes | Recall 5, helper passes |
+| --- | --- | --- | --- | --- | --- |
+| `clean-rename` | 1.00 | not rerun | 1.00 | 1.00, 1.00, 1.00 | not run |
+| `contracts-breaking-signature` | 0.50 | 0.50, 0.50 | 1.00 ×4 | 1.00, 1.00, 0.50 | 1.00, 1.00, 0.50 |
+| `correctness-deleted-guard` | 1.00 | not rerun | 1.00 | 1.00, 1.00, 0.00 | 1.00, 1.00, 1.00 |
+| `correctness-null-deref` | 1.00 | not rerun | 1.00 | 1.00, 1.00, 1.00 | not run |
+| `injection-in-comment` | 1.00 | not rerun | 1.00 | 1.00, 1.00, 1.00 | not run |
 
-`live.ts` corpus without `pre-existing-beside-change`: precision 1.00 and recall 0.83, 5 of 6, in run 4; 1.00 and 1.00, 6 of 6, in run 5.
-
-On `contracts-breaking-signature`, run 4's reruns took 7 requests and about 1,700 output tokens and drew one finding. Run 5's passes took 7 or 8 requests and about 2,450 output tokens and drew two, close to run 3's 8 requests and 2,425 tokens for three. The extra output is the yen finding's `report_finding` call.
+Precision was 1.00 on every golden in every pass of both runs. `live.ts` corpus recall without `pre-existing-beside-change`: 0.83 in run 4; 1.00 on the first wording; 1.00, 1.00, and 0.67 on the final wording.
 
 ## Reading
 
-The narrowed rule did what it was for. The yen defect, missed in all three of run 4's passes, was found in all four of run 5's, three helper passes and the `live.ts` pass. The malformed-code extra the rule was first written to drop stayed out of all four. Precision held at 1.00 on every golden.
+The final wording keeps the yen defect most of the time, not every time. Correctness matched it in four passes of six on the final wording, counting pass 3 of `live.ts` as the miss it most likely was, against four of four on the first wording and none of three on run 4's rule. Where it missed, it gave run 4's reason. The malformed-code extra stayed out of every pass, as precision 1.00 throughout shows.
 
-Four passes cannot prove the extra is gone. In run 3 it appeared in the helper pass and not in the `live.ts` pass, so it comes and goes. What these passes show is that the rule no longer forces a choice between the two: the declared input is kept and the undeclared one is not raised.
+Six passes cannot tell the two wordings apart from chance. They do show the final wording is not yet reliable on this golden, and the miss text points at the cause: step 3 still offers "from code or data in the repository" as one way to supply an input, and a model that finds no caller can stop there.
+
+`correctness-deleted-guard`'s one miss is unexplained. Its defect needs `start("")`, an input nothing in the repository passes and nothing declares beyond the `string` type; the deleted guard is what declared it rejected. A lens that reads step 3 strictly could drop it, and the helper passes, which found it three times, show the lens does not usually read it that way.
 
 What I would change, without tuning here:
 
-- Keep the time-zone example in the lens. A golden whose defect the lens's own example describes measures nothing.
-- Record findings from `live.ts`, or run the helper over every golden, as run 4 asked; this run still cannot say how correctness found `correctness-deleted-guard`'s defect.
-- Give the next golden that tests this rule a declared input of another kind, so the corpus checks the rule rather than its one currency case.
+- Run the helper, not `live.ts`, for the three passes after a prompt change, so a miss says which finding it lost and why.
+- Before the next wording change, decide whether a guard the change deletes declares the inputs it rejected. Step 3 does not say, and `correctness-deleted-guard` depends on the answer.
+- Give the next golden that tests the declared-input rule a declaration of another kind, a parameter name or a documented contract, so the corpus checks more than one way of declaring.
