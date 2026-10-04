@@ -37,6 +37,12 @@ describe("the free-domain-function Biome plugin", { timeout: 30_000 }, () => {
 		expect(lint("packages/core/src/scratch.ts", source.join("\n"))).toEqual([1]);
 	});
 
+	it("reports a free function over a readonly array of Verdicts", () => {
+		expect(lint("packages/core/src/scratch.ts", "function tally(verdicts: readonly Verdict[]): void {}\n")).toEqual([
+			1,
+		]);
+	});
+
 	it("does not report a class method that takes a Finding", () => {
 		const source = "export class Triage {\n\taccept(finding: Finding): void {}\n}\n";
 		expect(lint("packages/core/src/scratch.ts", source)).toEqual([]);

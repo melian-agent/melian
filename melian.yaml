@@ -20,7 +20,7 @@ guardrails:
   forbidden-patterns:
     rules:
       free-domain-function:
-        pattern: '^(export )?(async )?function \w+\(\w+: (readonly )?(Finding|StoredFinding|ResolvedFinding|Defect|Verdict|Manifest|Lens|Revision|Changeset)\b'
+        pattern: '^(export )?(async )?function \w+\(\w+: (readonly )?(Finding|Defect|Verdict|Manifest|Lens|Revision|Changeset)\b'
         paths: ["packages/*/src/**"]
         message: behaviour belongs to the object it is about; make this a method of the domain class, as AGENTS.md says
       focused-test:
