@@ -80,7 +80,7 @@ function block(finding: Finding, paint: (code: string, text: string) => string):
 	].join("\n");
 }
 
-function plural(count: number, noun: string, nouns = `${noun}s`): string {
+export function plural(count: number, noun: string, nouns = `${noun}s`): string {
 	return `${count.toLocaleString("en-AU")} ${count === 1 ? noun : nouns}`;
 }
 

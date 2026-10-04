@@ -129,7 +129,7 @@ export type LensPolicy = {
 // never one it refused, the first budget the lens ran out of, recorded by the call that ended the conversation for it,
 // and the tool task of every `report_finding` call by the finding it reported. Pi mints a task per call and keeps it
 // across a replay, where a provider may reuse a call ID in every round.
-export type LensSpend = { calls: number[]; ended?: "tokens" | "tools"; reports?: Record<string, number[]> };
+type LensSpend = { calls: number[]; ended?: "tokens" | "tools"; reports?: Record<string, number[]> };
 
 export const LensDocument = defineDoc<{ lens?: LensPolicy; spend?: LensSpend }>({
 	kind: "melian.lens",
@@ -181,7 +181,7 @@ function text(content: string) {
 
 // Input tokens, cache writes included, and output tokens of every model response in the conversation. Cache reads are
 // left out: they re-read context a provider has already counted once.
-export function tokensUsed(usage: Readonly<UsageState> | undefined): number {
+function tokensUsed(usage: Readonly<UsageState> | undefined): number {
 	return Object.values(usage?.models ?? {}).reduce((sum, each) => sum + each.input + each.cacheWrite + each.output, 0);
 }
 
@@ -323,10 +323,8 @@ async function budgeted(
 	return { ...result, content: [...(result.content ?? []), { type: "text" as const, text: last }] };
 }
 
-/**
- * The budget that ended a lens's conversation, from what its tools recorded and Pi's usage: which budget, its limit,
- * and the tokens and read-only tool calls the lens had used. `undefined` when no budget ended it.
- */
+// The budget that ended a lens's conversation, from what its tools recorded and Pi's usage: which budget, its limit, and
+// the tokens and counted tool calls the lens had used. `undefined` when no budget ended it.
 export async function budgetEnded(
 	reader: DocumentReader,
 	conversationId: ConversationId,

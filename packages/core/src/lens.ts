@@ -10,6 +10,7 @@ import { LensError } from "./errors.ts";
 import { maxEvidenceLines, maxFailureScenarioLength } from "./findings.ts";
 import { selectedBy } from "./glob.ts";
 import { anchorGlob, directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
+import { plural } from "./render.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 import type { StandardsSection } from "./standards.ts";
 
@@ -594,10 +595,6 @@ Every \`report_finding\` call needs both. A call without them is refused.
 - The result of \`report_finding\` quotes the first line of each evidence location as Melian read it. If one is not the code you meant, call \`report_finding\` again for the same file, line, and rule with the right locations; it replaces your earlier report.
 - A finding outside the change counts as caused by it only when one of its \`cause\` locations overlaps lines the change added, modified, or deleted, or any line of another file it renamed without editing, named by its old path with \`revision: "base"\` or by its new path. That counts only for a finding in a file the change edited or left alone: when the change only moved the finding's own file, no rename makes the finding caused by the change, not even a sibling moved with it. Otherwise it is recorded as pre-existing, and never blocks.`;
 
-function counted(count: number, noun: string): string {
-	return `${count.toLocaleString("en-AU")} ${noun}${count === 1 ? "" : "s"}`;
-}
-
 const readingScopes: Readonly<Record<LensReads, string>> = {
 	hunks: "Reading scope: the hunks. Review the lines this change added, modified, or deleted; read the code around them only to confirm a defect in them.",
 	functions:
@@ -606,9 +603,9 @@ const readingScopes: Readonly<Record<LensReads, string>> = {
 
 function renderBudget({ findings, tokens, tools }: LensBudget): string {
 	const limits = [
-		counted(findings, "finding"),
-		...(tools === undefined ? [] : [`${counted(tools, "tool call")}, \`report_finding\` included`]),
-		...(tokens === undefined ? [] : [`${counted(tokens, "token")} of input and output`]),
+		plural(findings, "finding"),
+		...(tools === undefined ? [] : [`${plural(tools, "tool call")}, \`report_finding\` included`]),
+		...(tokens === undefined ? [] : [`${plural(tokens, "token")} of input and output`]),
 	];
 	const last = limits.pop()!;
 	const listed = limits.length === 0 ? last : `${limits.join(", ")}${limits.length > 1 ? "," : ""} and ${last}`;
