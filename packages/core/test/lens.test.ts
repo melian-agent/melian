@@ -523,16 +523,18 @@ describe("renderLensInstructions", () => {
 		const careful = renderLensInstructions(correctness!, []);
 		expect(careful).toBe(renderLensInstructions(correctness!, [], "careful"));
 		expect(careful).toContain(
-			"Budget: at most 8 findings, 30 calls to the read-only tools, and 200,000 tokens of input and output.",
+			"Budget: at most 8 findings, 30 tool calls, `report_finding` included, and 200,000 tokens of input and output.",
 		);
 		expect(careful).toContain("Reading scope: the hunks.");
 		const quick = renderLensInstructions(correctness!, [], "quick");
 		expect(quick).toContain(
-			"Budget: at most 3 findings, 10 calls to the read-only tools, and 100,000 tokens of input and output. When the tool calls or tokens run out, the review ends with what you have reported",
+			"Budget: at most 3 findings, 10 tool calls, `report_finding` included, and 100,000 tokens of input and output. When the tool calls or tokens run out, the review ends with what you have reported",
 		);
 		const deep = renderLensInstructions(correctness!, [], "deep");
 		expect(deep).toContain("Reading scope: the hunks and the functions around them.");
-		expect(deep).toContain("Budget: at most 12 findings, 60 calls to the read-only tools, and 400,000 tokens");
+		expect(deep).toContain(
+			"Budget: at most 12 findings, 60 tool calls, `report_finding` included, and 400,000 tokens",
+		);
 		const { quick: _, ...rest } = correctness!.levels;
 		expect(() => renderLensInstructions({ ...correctness!, levels: rest }, [], "quick")).toThrow(LensError);
 	});

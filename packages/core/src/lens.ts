@@ -96,9 +96,9 @@ export type LensFrontMatter = Static<typeof lensFrontMatterSchema>;
 export type LensRule = Static<typeof lensRuleSchema>;
 
 /**
- * What a lens may spend at a level: findings it may report, input and output tokens its conversation may use, and calls
- * it may make to the read-only tools. A budget it leaves out is unbounded. `ended: "count"` counts a lens a budget ended
- * as one that ran, with the findings it reported; without it, such a lens leaves the review not reviewed.
+ * What a lens may spend at a level: findings it may report, input and output tokens its conversation may use, and tool
+ * calls it may make, `report_finding` among them. A budget it leaves out is unbounded. `ended: "count"` counts a lens a
+ * budget ended as one that ran, with the findings it reported; without it, such a lens leaves the review not reviewed.
  */
 export interface LensBudget {
 	readonly findings: number;
@@ -607,7 +607,7 @@ const readingScopes: Readonly<Record<LensReads, string>> = {
 function renderBudget({ findings, tokens, tools }: LensBudget): string {
 	const limits = [
 		counted(findings, "finding"),
-		...(tools === undefined ? [] : [`${counted(tools, "call")} to the read-only tools`]),
+		...(tools === undefined ? [] : [`${counted(tools, "tool call")}, \`report_finding\` included`]),
 		...(tokens === undefined ? [] : [`${counted(tokens, "token")} of input and output`]),
 	];
 	const last = limits.pop()!;

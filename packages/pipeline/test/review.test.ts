@@ -565,6 +565,29 @@ describe("reviewChangeset", () => {
 		expect(findings.map((finding) => finding.message.text)).toEqual(["Corrected."]);
 	});
 
+	it("refuses a fourth correction of one finding, keeping the third", async () => {
+		const correction = (what: string) => ({ ...nullDeref, explanation: { ...nullDeref.explanation, what } });
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("report_finding", nullDeref),
+					...["First.", "Second.", "Third.", "Fourth."].map((what) => call("report_finding", correction(what))),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const findings = await review();
+
+		expect(toolResults(requests[correctness]![4]!).at(-1)).toMatch(/^recorded finding/);
+		expect(toolResults(requests[correctness]![5]!).at(-1)).toMatch(
+			/^\[not recorded: this lens has corrected finding [0-9a-f]+ 3 times/,
+		);
+		expect(findings.map((finding) => finding.message.text)).toEqual(["Third."]);
+	});
+
 	it("holds a parallel round to the budget inside the commit", async () => {
 		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 1 }) : lens));
 		const requests = scriptConversations(fake, [
@@ -1052,7 +1075,7 @@ describe("reviewChangeset", () => {
 		]);
 		const prompt = systemPromptOf(requests[correctness]![0]!);
 		expect(prompt).toContain(
-			"Budget: at most 8 findings, 30 calls to the read-only tools, and 200,000 tokens of input and output.",
+			"Budget: at most 8 findings, 30 tool calls, `report_finding` included, and 200,000 tokens of input and output.",
 		);
 		expect(prompt).toContain("Reading scope: the hunks.");
 		const root = (await harness.root(context)).id;
@@ -1119,8 +1142,10 @@ describe("reviewChangeset", () => {
 		expect(requests[correctness]).toHaveLength(3);
 		const [read, searched, blocked] = toolResults(requests[correctness]![2]!).slice(1);
 		expect(read).toContain("return user.manager.name;");
-		expect(read).toContain("[that was the last of this lens's 2 calls to the read-only tools.");
-		expect(searched).toMatch(/^\[not run: this lens may make 2 calls to the read-only tools, and this was call 3\./);
+		expect(read).toContain("[that was the last of this lens's 2 tool calls, report_finding included.");
+		expect(searched).toMatch(
+			/^\[not run: this lens may make 2 tool calls, report_finding included, and this was call 3\./,
+		);
 		expect(blocked).toContain("severity P3 is outside this lens's severities");
 		expect(findings).toHaveLength(1);
 		const record = verdict.notRun.find((check) => check.name === "lens.correctness");
@@ -1155,6 +1180,38 @@ describe("reviewChangeset", () => {
 			budget: "tools",
 			limit: 1,
 			tools: 1,
+		});
+	});
+
+	it("counts report_finding against the tools budget", async () => {
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tools: 2 }) : lens));
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					calls(
+						["report_finding", nullDeref],
+						["read_file", { path: "src/user.ts" }],
+						["search", { pattern: "x" }],
+					),
+					call("list_files", {}),
+					fauxAssistantMessage("Never asked."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { findings, verdict } = await reviewed({ lenses: tight });
+
+		expect(requests[correctness]).toHaveLength(2);
+		expect(toolResults(requests[correctness]![1]!).at(-1)).toMatch(
+			/^\[not run: this lens may make 2 tool calls, report_finding included, and this was call 3\./,
+		);
+		expect(findings).toHaveLength(1);
+		expect(verdict.notRun.find((check) => check.name === "lens.correctness")?.budgetEnded).toMatchObject({
+			budget: "tools",
+			limit: 2,
+			tools: 2,
 		});
 	});
 
