@@ -47,8 +47,9 @@ export const goldenEvidenceSchema = Type.Object(
 
 /**
  * The JSON Schema of one expected finding: Martian's golden comment (`comment`, `severity`, `category`), so Martian's
- * judge reads it unchanged, plus the fields Melian matches on (`file`, `rule`) and those a scripted run checks
- * (`cause`, `failureScenario`, `evidence`).
+ * judge reads it unchanged, plus the fields Melian matches on (`file`, `rule`, and `source`, a check that must be among
+ * the finding's `reportedBy`, such as `lens.tests`) and those a scripted run checks (`cause`, `failureScenario`,
+ * `evidence`).
  */
 export const goldenCommentSchema = Type.Object(
 	{
@@ -62,6 +63,7 @@ export const goldenCommentSchema = Type.Object(
 		category: text,
 		file: text,
 		rule: text,
+		source: Type.Optional(text),
 		cause: causeSchema,
 		failureScenario: text,
 		evidence: Type.Array(goldenEvidenceSchema, { minItems: 1 }),
@@ -281,8 +283,8 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
  */
 export function scriptedMismatches(golden: Golden, findings: readonly Finding[]): string[] {
 	return golden.expected.comments.flatMap((comment) => {
-		const name = `${comment.file} ${comment.rule}`;
-		const found = findings.find((each) => each.properties.path === comment.file && each.ruleId === comment.rule);
+		const name = `${comment.file} ${comment.rule}${comment.source === undefined ? "" : ` from ${comment.source}`}`;
+		const found = findings.find((each) => answers(comment, each));
 		if (found === undefined) return [`${name}: not reported`];
 		const { cause, failureScenario, evidence = [] } = found.properties;
 		const reported = evidence.map(({ file, startLine, endLine, role, revision }) => ({
@@ -307,7 +309,10 @@ export function scriptedMismatches(golden: Golden, findings: readonly Finding[])
 	});
 }
 
-/** How well one review matched its golden. A finding matches an expected one with the same file and rule. */
+/**
+ * How well one review matched its golden. A finding matches an expected one with the same file and rule, reported by
+ * the expected one's `source` when it names one.
+ */
 export interface GoldenScore {
 	readonly golden: string;
 	readonly expected: number;
@@ -322,29 +327,52 @@ export interface GoldenScore {
 	readonly recall: number;
 }
 
-function key(file: string, rule: string): string {
-	return `${file}\0${rule}`;
+// Whether `finding` answers `comment`: the same file and rule, and, when the comment names a source, reported by it.
+// One finding merges every lens that sighted the same defect, so only `reportedBy` says which lenses reported it.
+function answers(comment: GoldenComment, finding: Finding): boolean {
+	const path = finding.properties.path ?? finding.locations[0]!.physicalLocation.artifactLocation.uri;
+	if (path !== comment.file || finding.ruleId !== comment.rule) return false;
+	if (comment.source === undefined) return true;
+	const { reportedBy, source } = finding.properties;
+	return (reportedBy ?? (source === undefined ? [] : [source])).some((each) => each.check === comment.source);
 }
 
 /**
- * Scores one review against its golden, matching on file and rule. Each expected finding counts as found once: a
- * second reported finding matching the same expectation is a false positive, since it is the same defect reported twice.
+ * Scores one review against its golden, matching on file and rule, and on the reporting check where an expected
+ * finding names its `source`. Each expected finding counts as found once: a second reported finding matching the same
+ * expectation is a false positive, since it is the same defect reported twice.
  */
 export function scoreGolden(golden: Golden, findings: readonly Finding[]): GoldenScore {
-	const expected = new Set(golden.expected.comments.map((comment) => key(comment.file, comment.rule)));
-	const reported = findings.map((finding) =>
-		key(finding.properties.path ?? finding.locations[0]!.physicalLocation.artifactLocation.uri, finding.ruleId),
-	);
-	const truePositives = new Set(reported.filter((each) => expected.has(each))).size;
-	const found = [...expected].filter((each) => reported.includes(each)).length;
+	const expected = [
+		...new Map(
+			golden.expected.comments.map((comment) => [
+				JSON.stringify([comment.file, comment.rule, comment.source]),
+				comment,
+			]),
+		).values(),
+	];
+	const found = expected.filter((comment) => findings.some((finding) => answers(comment, finding))).length;
+	// Pairs findings with expectations so that as many as possible count, each expectation once: with sources, a finding
+	// several lenses reported may answer more than one expectation, and the first one it fits may be another's only fit.
+	const holder: (number | undefined)[] = expected.map(() => undefined);
+	const claim = (index: number, tried: Set<number>): boolean =>
+		expected.some((comment, slot) => {
+			if (tried.has(slot) || !answers(comment, findings[index]!)) return false;
+			tried.add(slot);
+			const held = holder[slot];
+			if (held !== undefined && !claim(held, tried)) return false;
+			holder[slot] = index;
+			return true;
+		});
+	const truePositives = findings.filter((_, index) => claim(index, new Set())).length;
 	return {
 		golden: golden.name,
-		expected: expected.size,
-		reported: reported.length,
+		expected: expected.length,
+		reported: findings.length,
 		truePositives,
 		found,
-		precision: reported.length === 0 ? 1 : truePositives / reported.length,
-		recall: expected.size === 0 ? 1 : found / expected.size,
+		precision: findings.length === 0 ? 1 : truePositives / findings.length,
+		recall: expected.length === 0 ? 1 : found / expected.length,
 	};
 }
 

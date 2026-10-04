@@ -212,6 +212,58 @@ describe("scoreGolden", () => {
 		).toMatchObject({ truePositives: 1, found: 1, precision: 0.5, recall: 1 });
 	});
 
+	it("matches an expectation that names a source only to a finding that source reported", () => {
+		const [comment] = nullDeref!.expected.comments;
+		const golden = {
+			...nullDeref!,
+			expected: { ...nullDeref!.expected, comments: [{ ...comment!, source: "lens.tests" }] },
+		};
+		const reportedBy = (...checks: string[]) =>
+			({
+				ruleId: "null-dereference",
+				properties: { path: "src/user.ts", reportedBy: checks.map((check) => ({ check, version: "v" })) },
+				locations: [{ physicalLocation: { artifactLocation: { uri: "src/user.ts" } } }],
+			}) as never;
+		expect(scoreGolden(golden, [reportedBy("lens.correctness")])).toMatchObject({
+			truePositives: 0,
+			found: 0,
+			precision: 0,
+			recall: 0,
+		});
+		expect(scoreGolden(golden, [reportedBy("lens.correctness", "lens.tests")])).toMatchObject({
+			truePositives: 1,
+			found: 1,
+			precision: 1,
+			recall: 1,
+		});
+		expect(scriptedMismatches(golden, [reportedBy("lens.correctness")])).toEqual([
+			"src/user.ts null-dereference from lens.tests: not reported",
+		]);
+	});
+
+	it("pairs findings with expectations so that a finding several lenses reported does not take another's only match", () => {
+		const [comment] = nullDeref!.expected.comments;
+		const golden = {
+			...nullDeref!,
+			expected: {
+				...nullDeref!.expected,
+				comments: [
+					{ ...comment!, source: "lens.correctness" },
+					{ ...comment!, source: "lens.tests" },
+				],
+			},
+		};
+		const reportedBy = (...checks: string[]) =>
+			({
+				ruleId: "null-dereference",
+				properties: { path: "src/user.ts", reportedBy: checks.map((check) => ({ check, version: "v" })) },
+				locations: [{ physicalLocation: { artifactLocation: { uri: "src/user.ts" } } }],
+			}) as never;
+		expect(
+			scoreGolden(golden, [reportedBy("lens.correctness", "lens.tests"), reportedBy("lens.correctness")]),
+		).toMatchObject({ truePositives: 2, found: 2, precision: 1, recall: 1 });
+	});
+
 	it("averages over every finding in the corpus, not per golden", () => {
 		const scores = [
 			scoreGolden(nullDeref!, [finding("src/user.ts", "null-dereference")]),
