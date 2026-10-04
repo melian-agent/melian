@@ -498,6 +498,57 @@ describe("recording a dismissal", () => {
 		expect(statuses).toEqual([]);
 	});
 
+	it("reports the verdict of a review that replaced its adjudication before that adjudication recorded", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding();
+		const id = (await reviewed(harness)).findings[0]!.properties.id;
+		const key = revisionKey(await revision());
+		// A review that starts between the dismissal's commit and its adjudication, after static analysis failed, records
+		// an adjudication task of its own in the index, as reviewChangeset does for input that differs.
+		const review = async () => {
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				const index = await tx.doc(ReviewIndex, root.id);
+				const entry = index.reviews[key]!;
+				const input = JSON.parse(entry.adjudication!.input) as AdjudicationTaskInput;
+				const failed = { name: "static.biome", status: "failed" as const, reason: "biome crashed" };
+				const checks = input.checks.map((check) => (check.name === failed.name ? failed : check));
+				const newer = { ...input, checks };
+				const task = await tx.createTask(AdjudicationTask, newer, { ownership: { kind: "conversation" } });
+				index.reviews = {
+					...index.reviews,
+					[key]: { ...entry, adjudication: { task, input: JSON.stringify(newer) } },
+				};
+				return undefined;
+			}, context);
+		};
+		const racing = new Proxy(harness, {
+			get(target, name) {
+				if (name === "resume") return () => undefined;
+				if (name === "inspect") {
+					return async (ctx: typeof context) => {
+						await review();
+						target.resume();
+						return target.inspect(ctx);
+					};
+				}
+				const value = Reflect.get(target, name, target);
+				return typeof value === "function" ? value.bind(target) : value;
+			},
+		});
+
+		const recorded = await recordDismissal({
+			harness: racing,
+			revision: await revision(),
+			id,
+			dismissal,
+			repoRoot: repo,
+		});
+
+		expect(recorded.verdict).toMatchObject({ status: "not-reviewed", blocking: false });
+		expect(recorded.finding.properties).toMatchObject({ id, status: "dismissed", dismissal });
+	});
+
 	it("refuses a revision with no stored review, and an ID its verdict does not hold", async () => {
 		const harness = await reviewHarness(createMemoryStorage());
 		await expect(dismiss(harness, "0123456789abcdef")).rejects.toMatchObject({

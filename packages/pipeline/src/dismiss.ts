@@ -1,6 +1,12 @@
 import { existsSync } from "node:fs";
 import type { AlsoReportedAs, Finding, Verdict } from "@melian-agent/core";
-import { type AdjudicationResult, AdjudicationTask, type AdjudicationTaskInput, readVerdict } from "./adjudication.ts";
+import {
+	type AdjudicationResult,
+	AdjudicationTask,
+	type AdjudicationTaskInput,
+	readVerdict,
+	VerdictDocument,
+} from "./adjudication.ts";
 import { DismissError } from "./errors.ts";
 import { type Dismissal, dismissFinding, FindingsDocument, revisionKey } from "./findings.ts";
 import {
@@ -130,18 +136,19 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 	const where = { revision, finding: id };
 	const root = await harness.root(context);
 	const again = "run melian review again";
-	const stored = await readVerdict(harness, root.id, revision, context);
-	if (stored === undefined) throw new DismissError("notReviewed", `Melian has no review of ${revision}`, where);
-	const found = named(stored, id);
-	if (found === undefined) {
-		throw new DismissError("unknownFinding", `the review of ${revision} has no finding ${id}`, where);
-	}
-	// The finding as the verdict shows it: its own report and every report adjudication merged into it, so dismissing
-	// one defect never leaves another check's report of it live, unless the caller asked for the one report alone.
-	const own = options.only ? id : found.finding.properties.id;
-	const members = options.only ? [] : found.members;
-	const reports = [own, ...members.map((other) => other.id)];
 	const { replaced, also, task } = await root.commit(async (tx) => {
+		// Read in the commit, so a review that recorded another verdict a moment before decides what the ID names.
+		const stored = (await tx.doc(VerdictDocument, root.id)).verdicts[revision];
+		if (stored === undefined) throw new DismissError("notReviewed", `Melian has no review of ${revision}`, where);
+		const found = named(stored, id);
+		if (found === undefined) {
+			throw new DismissError("unknownFinding", `the review of ${revision} has no finding ${id}`, where);
+		}
+		// The finding as the verdict shows it: its own report and every report adjudication merged into it, so dismissing
+		// one defect never leaves another check's report of it live, unless the caller asked for the one report alone.
+		const own = options.only ? id : found.finding.properties.id;
+		const members = options.only ? [] : found.members;
+		const reports = [own, ...members.map((other) => other.id)];
 		const index = await tx.doc(ReviewIndex, root.id);
 		const entry = index.reviews[revision];
 		const known = entry?.adjudication;
@@ -163,7 +170,8 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		const checkout = existsSync(previous.repoRoot) ? previous.repoRoot : repoRoot;
 		const input: AdjudicationTaskInput = { ...previous, repoRoot: checkout, findingsVersion };
 		const key = JSON.stringify(input);
-		const also = members.filter((other) => dismissed.includes(other.id));
+		// Copies: the stored verdict is the commit's own view, unusable once the commit settles.
+		const also = members.filter((other) => dismissed.includes(other.id)).map((other) => ({ ...other }));
 		// The same dismissal again, as after a dismiss a crash cut short, waits for the adjudication it started.
 		const current = await tx.task(known.task as TaskId);
 		const undecided = ["aborted", "faulted", "orphaned", "failed"];
@@ -190,7 +198,15 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			where,
 		);
 	}
-	const { outcome } = (await harness.waitForTask(task, context)).state;
+	let { outcome } = (await harness.waitForTask(task, context)).state;
+	// A review of the revision that started after the dismissal's commit replaced its adjudication with one of its own,
+	// which reads the dismissal; its verdict is the one to report.
+	if (outcome.status === "completed" && outcome.result === "superseded") {
+		const newer = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision]?.adjudication?.task;
+		if (newer !== undefined && newer !== (task as number)) {
+			({ outcome } = (await harness.waitForTask(newer as TaskId<AdjudicationResult>, context)).state);
+		}
+	}
 	const verdict = await readVerdict(harness, root.id, revision, context);
 	const finding = verdict === undefined ? undefined : named(verdict, id)?.finding;
 	if (
