@@ -56,6 +56,16 @@ describe("resolveFinding", () => {
 		expect(resolveFinding(finding({ severity: "nit", cause: "pre-existing" }), strict)).toBe("silent");
 	});
 
+	it("never resolves a policy-change-review finding on a melian.yaml below acknowledge", () => {
+		const quiet: MelianConfig = { ...defaultConfig, resolution: { ...defaultConfig.resolution, P2: "silent" } };
+		const policy = { rule: "guardrail/policy-change-review", severity: "P2" } as const;
+		expect(resolveFinding(finding({ ...policy, file: "melian.yaml" }), quiet)).toBe("acknowledge");
+		expect(resolveFinding(finding({ ...policy, file: "docs/melian.yaml" }), quiet)).toBe("acknowledge");
+		expect(resolveFinding(finding({ ...policy, file: "AGENTS.md" }), quiet)).toBe("silent");
+		expect(resolveFinding(finding({ severity: "P2", file: "melian.yaml" }), quiet)).toBe("silent");
+		expect(resolveFinding(finding({ ...policy, severity: "P1", file: "melian.yaml" }), defaultConfig)).toBe("block");
+	});
+
 	it("decides from severity and cause, never from a resolution the finding already carries", () => {
 		expect(resolveFinding(finding({ severity: "P0", resolution: "silent" }), defaultConfig)).toBe("block");
 		expect(resolveFinding(finding({ severity: "nit", resolution: "block" }), defaultConfig)).toBe("silent");

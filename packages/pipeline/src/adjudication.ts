@@ -4,6 +4,8 @@ import {
 	type CheckStatus,
 	ConfigError,
 	type ConfigFor,
+	configLookup,
+	type Finding,
 	type FindingSource,
 	loadConfig,
 	type MelianConfig,
@@ -141,10 +143,24 @@ export type AdjudicationTaskInput = {
 	provenance: StoredProvenance;
 };
 
-async function configsFor(repoRoot: string, policy: RepositorySource, paths: readonly string[]): Promise<ConfigFor> {
-	const loaded = new Map<string, MelianConfig>();
-	for (const path of new Set(paths)) loaded.set(path, (await loadConfig(repoRoot, policy, path)).config);
-	return (path) => loaded.get(path)!;
+const policyReview = "guardrail/policy-change-review";
+
+// A policy-change-review finding resolves under the configuration that judged it, not its path's own, so a
+// melian.yaml cannot resolve the review of a change to itself.
+async function configsFor(
+	repoRoot: string,
+	policy: RepositorySource,
+	findings: readonly Finding[],
+): Promise<ConfigFor> {
+	const lookup = configLookup(repoRoot, policy);
+	const atPath = new Map<string, MelianConfig>();
+	const judging = new Map<string, MelianConfig>();
+	for (const { ruleId, properties } of findings) {
+		const { path } = properties;
+		if (!atPath.has(path)) atPath.set(path, (await loadConfig(repoRoot, policy, path)).config);
+		if (ruleId === policyReview && !judging.has(path)) judging.set(path, await lookup.policyReview(path));
+	}
+	return (path, rule) => (rule === policyReview ? judging : atPath).get(path)!;
 }
 
 // `superseded` when a later review of the revision created another adjudication task before this one recorded.
@@ -168,8 +184,7 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 			const findings = await readFindings(runtime, root, revision, context, { producers });
 			let verdict: Verdict;
 			try {
-				const paths = findings.map((finding) => finding.properties.path);
-				const configFor = policy === undefined ? () => config : await configsFor(repoRoot, policy, paths);
+				const configFor = policy === undefined ? () => config : await configsFor(repoRoot, policy, findings);
 				verdict = adjudicate({ findings, manifest, checks, config: configFor, allowSkip });
 			} catch (error) {
 				// A policy that cannot be read is the task's outcome rather than a fault. It may not fail the same way next

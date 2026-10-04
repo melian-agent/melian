@@ -1,3 +1,4 @@
+import { posix } from "node:path";
 import type { MelianConfig, Resolution, RuleAlias, Severity } from "./config.ts";
 import {
 	type AlsoReportedAs,
@@ -12,15 +13,24 @@ import {
 	wasCut,
 } from "./findings.ts";
 import type { ScrutinyLevel } from "./lens.ts";
+import { melianPaths } from "./paths.ts";
 
 /** The resolutions from strictest to most lenient. */
 export const resolutionOrder: readonly Resolution[] = ["block", "acknowledge", "advisory", "silent"];
 
-/** The configuration that applies at a repository-relative path, usually through `loadConfig` for that path. */
-export type ConfigFor = (path: string) => Pick<MelianConfig, "resolution" | "ruleAliases">;
+/**
+ * The configuration that applies at a repository-relative path, usually through `loadConfig` for that path. Given
+ * `rule`, the rule of a finding being resolved, it is the configuration that judged that rule at the path, which can
+ * differ from the path's own: policy-change-review judges a `melian.yaml` under `ConfigLookup.policyReview`.
+ */
+export type ConfigFor = (path: string, rule?: string) => Pick<MelianConfig, "resolution" | "ruleAliases">;
 
 function lenientOf(left: Resolution, right: Resolution): Resolution {
 	return resolutionOrder.indexOf(left) > resolutionOrder.indexOf(right) ? left : right;
+}
+
+function stricterOf(left: Resolution, right: Resolution): Resolution {
+	return resolutionOrder.indexOf(left) < resolutionOrder.indexOf(right) ? left : right;
 }
 
 /**
@@ -35,21 +45,27 @@ export type ResolvedFinding = Finding & {
  * What a finding requires under `config`, the effective configuration at the finding's path: the resolution configured
  * for its severity. A finding not shown to be caused by the change, `pre-existing` or `affected` without a `cause`
  * evidence location marked `proves`, is never above `advisory`, so an old defect cannot block an unrelated change. A
- * finding stored before Melian marked proving locations marks none, and any `cause` location of it counts. It decides
- * from severity, cause, and evidence alone, never from a resolution the finding already carries.
+ * finding stored before Melian marked proving locations marks none, and any `cause` location of it counts. A
+ * `guardrail/policy-change-review` finding on a `melian.yaml` is never below `acknowledge`, so no `melian.yaml`
+ * silences the review of a change to itself. It decides from rule, path, severity, cause, and evidence alone, never
+ * from a resolution the finding already carries.
  */
 export function resolveFinding(finding: Finding, config: Pick<MelianConfig, "resolution">): Resolution {
 	const configured = config.resolution[finding.properties.severity];
-	return causeRank(finding) < 2 ? configured : lenientOf(configured, "advisory");
+	const resolution = causeRank(finding) < 2 ? configured : lenientOf(configured, "advisory");
+	const ownPolicy =
+		finding.ruleId === "guardrail/policy-change-review" &&
+		posix.basename(finding.properties.path) === melianPaths.config;
+	return ownPolicy ? stricterOf(resolution, "acknowledge") : resolution;
 }
 
 /**
  * Copies of `findings` with `properties.resolution` set by {@link resolveFinding}, each under the configuration
- * `configFor` returns for its path. A resolution a finding already carries is replaced, not kept.
+ * `configFor` returns for its path and rule. A resolution a finding already carries is replaced, not kept.
  */
 export function applyResolutions(findings: readonly Finding[], configFor: ConfigFor): ResolvedFinding[] {
 	return findings.map((finding) => {
-		const resolution = resolveFinding(finding, configFor(finding.properties.path));
+		const resolution = resolveFinding(finding, configFor(finding.properties.path, finding.ruleId));
 		return { ...finding, properties: { ...finding.properties, resolution } };
 	});
 }

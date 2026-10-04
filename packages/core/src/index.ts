@@ -39,6 +39,8 @@ export {
 export { checksOfTier, type DeterministicCheck, deterministicChecks } from "./checks.ts";
 export {
 	type Band,
+	type ConfigLookup,
+	configLookup,
 	defaultConfig,
 	type ForbiddenPathRule,
 	type ForbiddenPatternRule,

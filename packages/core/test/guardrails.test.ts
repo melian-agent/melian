@@ -1,4 +1,11 @@
-import { ConfigError, evaluateGuardrails, type Finding, loadConfig, resolveRange } from "@melian-agent/core";
+import {
+	adjudicate,
+	ConfigError,
+	evaluateGuardrails,
+	type Finding,
+	loadConfig,
+	resolveRange,
+} from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	gitIn,
@@ -574,6 +581,31 @@ describe("policy-change-review", () => {
 		);
 		expect(summary(findings).map(({ file, severity }) => ({ file, severity }))).toEqual([
 			{ file: "melian.yaml", severity: "P2" },
+		]);
+	});
+
+	it("asks for acknowledgement of a change to the root melian.yaml though the root maps P2 to silent", async () => {
+		const root = lines("resolution:", "  P2: silent");
+		const baseCommit = commit({ "melian.yaml": root }, "base");
+		const headCommit = commit(
+			{ "melian.yaml": lines(root, "guardrails:", "  forbidden-paths:", "    enabled: false") },
+			"head",
+		);
+		const { revision } = await resolveRange(repo, `${baseCommit}..${headCommit}`);
+		const source = { kind: "revision", commit: baseCommit } as const;
+		const { findings } = await evaluateGuardrails({ repoRoot: repo, revision, source });
+		const { config } = await loadConfig(repo, source, "melian.yaml");
+
+		const verdict = adjudicate({
+			findings,
+			manifest: ["guardrails"],
+			checks: [{ name: "guardrails", status: "ran" }],
+			config,
+		});
+
+		expect(verdict.status).toBe("findings");
+		expect(verdict.findings.acknowledge.map((finding) => [finding.ruleId, finding.properties.path])).toEqual([
+			["guardrail/policy-change-review", "melian.yaml"],
 		]);
 	});
 

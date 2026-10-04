@@ -323,4 +323,32 @@ describe("runChecks feeding reviewChangeset", () => {
 			"biome/suspicious/noDoubleEquals",
 		]);
 	});
+
+	it("resolves a change to a nested melian.yaml under the configuration that judged it, not the file's own", {
+		timeout: 60_000,
+	}, async () => {
+		const base = commit(repo, {
+			"melian.yaml": lines("tiers:", "  fast: [guardrails]", "resolution:", "  P2: block"),
+			"docs/melian.yaml": lines("resolution:", "  P2: silent"),
+		});
+		const head = commit(repo, { "docs/melian.yaml": lines("resolution:", "  P2: advisory") });
+		const { harness, fake, input, run } = await checks(base, head, "fast");
+
+		const { verdict } = await reviewChangeset({
+			harness,
+			changeset: input.changeset,
+			config: input.config,
+			policy: input.source,
+			lenses: [],
+			standards: [],
+			models: fake.review,
+			tier: "fast",
+			checks: run.records,
+		});
+
+		expect(verdict).toMatchObject({ status: "findings", blocking: true });
+		expect(verdict.findings.block.map((finding) => [finding.ruleId, finding.properties.path])).toEqual([
+			["guardrail/policy-change-review", "docs/melian.yaml"],
+		]);
+	});
 });
