@@ -3,7 +3,10 @@
 // report_finding as the Melian before failure scenarios defined it, and parks once a call in that shape has been
 // accepted, so the parent replays it through the current tool. `request` parks in each lens's first model request.
 // `adjudication` lets both lenses finish and parks at the start of adjudication, before it records a verdict. `read`
-// parks once read_file has counted its call against a budget of two, before the tool's result is stored.
+// parks once read_file has counted its call against a budget of two, before the tool's result is stored. `spent` and
+// `tokens` park in the read_file call that ends the lens, once its commit has recorded the spent budget and before the
+// tool's result is stored: `spent` in the second read under a budget of one call, `tokens` in the first under a budget
+// of one token.
 import { defaultConfig, loadLenses, resolveRange, severitySchema } from "@melian-agent/core";
 import { AdjudicationTask } from "../../src/adjudication.ts";
 import {
@@ -18,12 +21,25 @@ import {
 } from "../../src/harness.ts";
 import { lensReadTools, reportFinding } from "../../src/lens-tools.ts";
 import { lensExtension, reviewChangeset } from "../../src/review.ts";
-import { createFakeModels, fauxAssistantMessage, fauxToolCall, scriptConversations } from "../../src/testing.ts";
+import {
+	createFakeModels,
+	fauxAssistantMessage,
+	fauxToolCall,
+	type ScriptedReply,
+	scriptConversations,
+} from "../../src/testing.ts";
 import { isolatedGitEnv } from "./repo.ts";
-import { budgetLenses, crashFinding, crashLenses, legacyCrashFinding, record } from "./review-scenario.ts";
+import {
+	budgetLenses,
+	crashFinding,
+	crashLenses,
+	endingBudgets,
+	legacyCrashFinding,
+	record,
+} from "./review-scenario.ts";
 
 const [scenario, repo, database, log] = process.argv.slice(2) as [
-	"finding" | "legacy" | "request" | "adjudication" | "read",
+	"finding" | "legacy" | "request" | "adjudication" | "read" | "spent" | "tokens",
 	string,
 	string,
 	string,
@@ -44,6 +60,7 @@ const parkedRead = defineTool({
 	...lensReadTools.read_file,
 	execute: async (args, api, context) => {
 		const result = await lensReadTools.read_file.execute(args, api, context);
+		if (scenario !== "read" && !("control" in result)) return result;
 		record(log, { event: "read-counted" });
 		await park();
 		return result;
@@ -81,7 +98,7 @@ const parkedAdjudication = defineTask({
 const parked = defineExtension({
 	...lensExtension,
 	tools: lensExtension.tools?.map((tool) =>
-		tool.name === lensReadTools.read_file.name && scenario === "read"
+		tool.name === lensReadTools.read_file.name && ["read", "spent", "tokens"].includes(scenario)
 			? parkedRead
 			: tool.name !== reportFinding.name
 				? tool
@@ -107,52 +124,33 @@ const requested = (lens: string) => () => {
 	record(log, { event: "model-request", lens });
 	return park();
 };
-scriptConversations(
-	fake,
-	scenario === "finding" || scenario === "legacy"
-		? [
-				{
-					match: "You are the correctness reviewer",
-					replies: [
-						fauxAssistantMessage(
-							fauxToolCall("report_finding", scenario === "legacy" ? legacyCrashFinding : crashFinding),
-							{ stopReason: "toolUse" },
-						),
-					],
-				},
-				{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
-			]
-		: scenario === "read"
-			? [
-					{
-						match: "You are the correctness reviewer",
-						replies: [
-							fauxAssistantMessage(fauxToolCall("read_file", { path: "src/user.ts" }), {
-								stopReason: "toolUse",
-							}),
-						],
-					},
-					{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
-				]
-			: scenario === "request"
-				? [
-						{ match: "You are the correctness reviewer", replies: [requested("correctness")] },
-						{ match: "You are the contracts reviewer", replies: [requested("contracts")] },
-					]
-				: [
-						{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
-						{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
-					],
-);
+const toolUse = (name: string, args: Parameters<typeof fauxToolCall>[1]) =>
+	fauxAssistantMessage(fauxToolCall(name, args), { stopReason: "toolUse" });
+const done = fauxAssistantMessage("Done.");
+const correctness: Readonly<Record<typeof scenario, readonly ScriptedReply[]>> = {
+	finding: [toolUse("report_finding", crashFinding)],
+	legacy: [toolUse("report_finding", legacyCrashFinding)],
+	request: [requested("correctness")],
+	adjudication: [done],
+	read: [toolUse("read_file", { path: "src/user.ts" })],
+	spent: [toolUse("read_file", { path: "src/user.ts" }), toolUse("read_file", { path: "src/user.ts", startLine: 7 })],
+	tokens: [toolUse("read_file", { path: "src/user.ts" })],
+};
+scriptConversations(fake, [
+	{ match: "You are the correctness reviewer", replies: correctness[scenario] },
+	{ match: "You are the contracts reviewer", replies: [scenario === "request" ? requested("contracts") : done] },
+]);
+function lensesFor(lenses: Awaited<ReturnType<typeof loadLenses>>) {
+	if (scenario === "spent" || scenario === "tokens") return budgetLenses(lenses, endingBudgets[scenario]);
+	return scenario === "read" ? budgetLenses(lenses) : crashLenses(lenses);
+}
 const heavy = fake.ref("heavy");
 record(log, { event: "review-started" });
 await reviewChangeset({
 	harness,
 	changeset: await resolveRange(repo, "main...feature"),
 	config: { ...defaultConfig, models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } } },
-	lenses: (scenario === "read" ? budgetLenses : crashLenses)(
-		await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"]),
-	),
+	lenses: lensesFor(await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"])),
 	standards: [],
 	models: fake.review,
 });

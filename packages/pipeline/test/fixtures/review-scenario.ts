@@ -57,8 +57,12 @@ export function crashLenses(lenses: readonly Lens[]): Lens[] {
 	return lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 1 }) : lens));
 }
 
-// The correctness lens may make two calls to the read-only tools, so a replayed call counted twice would leave the lens
-// a call short.
-export function budgetLenses(lenses: readonly Lens[]): Lens[] {
-	return lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tools: 2 }) : lens));
+// The correctness lens held to `budget`: by default two tool calls, so a replayed call counted twice would leave the
+// lens a call short.
+export function budgetLenses(lenses: readonly Lens[], budget: Partial<LensBudget> = { tools: 2 }): Lens[] {
+	return lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, budget) : lens));
 }
+
+// The budgets the crash scenarios that end a lens hold it to: `spent` one tool call, so its second read ends it, and
+// `tokens` one token, which its first response spends.
+export const endingBudgets = { spent: { tools: 1 }, tokens: { tokens: 1 } } as const;

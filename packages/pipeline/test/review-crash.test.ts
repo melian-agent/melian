@@ -32,6 +32,7 @@ import {
 	crashFinding,
 	crashLenses,
 	crashRepository,
+	endingBudgets,
 	readEvents,
 } from "./fixtures/review-scenario.ts";
 
@@ -54,7 +55,7 @@ afterEach(async () => {
 });
 
 async function killWhen(
-	scenario: "finding" | "legacy" | "request" | "adjudication" | "read",
+	scenario: "finding" | "legacy" | "request" | "adjudication" | "read" | "spent" | "tokens",
 	reached: (events: ReturnType<typeof readEvents>) => boolean,
 	database: string,
 	log: string,
@@ -298,6 +299,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 
 		// The replayed call is the lens's first and its next is its second, so the budget of two lets both run and the
 		// lens finishes on its own. Counted twice, the second would have been refused and ended the lens.
+		expect(requests["You are the correctness reviewer"]).toHaveLength(2);
 		const [replayed, next] = requests["You are the correctness reviewer"]!;
 		expect(toolResults(replayed!)).toEqual([expect.stringContaining("export interface User")]);
 		expect(toolResults(next!).at(-1)).toContain("return user.manager.name;");
@@ -308,4 +310,47 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			level: "careful",
 		});
 	});
+
+	// The killed process committed the spent budget in the call that ends the lens, then died before Pi stored its
+	// result. The replay decides from durable state alone, so it ends the lens too, and the model is never asked again.
+	for (const scenario of ["spent", "tokens"] as const) {
+		it(`ends a lens on replay when the call that ended it at its ${scenario === "spent" ? "tools" : "token"} budget crashed`, async () => {
+			const database = join(dir, `${scenario}.sqlite`);
+			const log = join(dir, `${scenario}.jsonl`);
+			await killWhen(scenario, (events) => count(events, "read-counted") === 1, database, log);
+
+			const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
+			const requests = scriptConversations(fake, [
+				{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Never asked.")] },
+				{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+			]);
+			harness = await openHarness(await openSqliteStorage(database), {
+				models: fake.models,
+				registry: createReviewRegistry(),
+				settings: { retry: { enabled: false } },
+			});
+			const heavy = fake.ref("heavy");
+			const { verdict } = await reviewChangeset({
+				harness,
+				changeset: await resolveRange(repo, "main...feature"),
+				config: { ...defaultConfig, models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } } },
+				lenses: budgetLenses(
+					await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"]),
+					endingBudgets[scenario],
+				),
+				standards: [],
+				models: fake.review,
+			});
+
+			expect(requests["You are the correctness reviewer"]).toHaveLength(0);
+			const ended = verdict.notRun.find((check) => check.name === "lens.correctness");
+			expect(ended).toMatchObject(
+				scenario === "spent"
+					? { status: "ended", budgetEnded: { budget: "tools", limit: 1, tools: 1 } }
+					: { status: "ended", budgetEnded: { budget: "tokens", limit: 1, tools: 0 } },
+			);
+			// The tokens are the killed process's: its one response, recorded before the crash, spent the budget.
+			expect(ended?.budgetEnded?.tokens).toBeGreaterThan(1);
+		});
+	}
 });
