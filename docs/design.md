@@ -209,7 +209,7 @@ Report through the finding tool.
 
 Front matter is routing; the body is the system prompt for the lens's child conversation.
 
-- `levels` sets, for each [scrutiny level](#scrutiny-levels), the model tier, the budgets, the reading scope, and whether the level's candidates are verified. A lens that declares no levels has one, `careful`, from a top-level `tier` and `budget`, as each lens built in milestone 1 does.
+- `levels` sets, for each [scrutiny level](#scrutiny-levels), the model tier, the budgets, the reading scope, and whether the level's candidates are verified. A lens that declares no levels has one, `careful`, from a top-level `tier` and `budget`, as each lens built in milestone 1 does. It runs only at `careful`, and triage's question for it collapses to skip or run.
 - `tier` names a model tier, never a model ID. Tiers resolve through the [review plan](#the-review-plan), which is overridable per path.
 - `reads` is `hunks` or `functions`. At `functions` the lens's prompt carries the whole function around each hunk, because a bug on an unchanged line of a touched function is in scope.
 - `verify` sends the level's candidates to the [verifier](#verification).
@@ -311,7 +311,9 @@ triage:
   escalateAt: P1
 ```
 
-The default band is `quick` to `deep`, so triage can never switch off a lens that policy says runs; only a floor of `skip`, set on purpose for a path, lets it. One rule escalates mechanically: a lens at `quick` that reports a finding at or above `escalateAt`, P1 by default, runs again at the next level as a new check record. Adjudication reads the higher level's record for that lens. The manifest records the level each check ran at, and the [verifier](#verification) runs on the `verifier` model tier.
+The default band is `quick` to `deep`, so triage can never switch off a lens that policy says runs; only a floor of `skip`, set on purpose for a path, lets it. When the paths a change touches carry different bands, the highest floor and the lowest ceiling apply; where they cross, the floor wins, because a floor is policy saying how hard a lens must look. A local file may cap a lens's level, and a cap below the repository's floor is an override: the lens runs at the cap and its check records the override in its lineage, as a route outside `accept` does.
+
+One rule escalates mechanically: a lens at `quick` that reports a finding at or above `escalateAt`, P1 by default, runs again at the next level as a new check record. Adjudication reads the higher level's record for that lens. Escalation never goes past the ceiling: a severe finding from a lens already at its ceiling is reported with a note that escalation was capped. The manifest records the level each check ran at, and the [verifier](#verification) runs on the `verifier` model tier.
 
 The split keeps the verdict deterministic: a model proposes, policy bounds, and the resolver executes. Conditional scrutiny is the cheapest form of conditional review.
 
