@@ -89,7 +89,7 @@ The keys a `melian.yaml` accepts, all optional:
 
 | Key | Shape | Default |
 |---|---|---|
-| `tiers` | tier name to a list of check names or other tiers | `fast: [guardrails, static, decisions.fast]`, `standard: [fast, lens.correctness]`, `full: [standard, lens.contracts]` |
+| `tiers` | tier name to a list of check names or other tiers | `fast: [guardrails, static, decisions.fast]`, `standard: [fast, lens.correctness]`, `full: [standard, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions]` |
 | `stages` | stage name to tier name | `pre-commit: fast`, `pre-push: standard`, `pull-request: full`, `comment: standard` |
 | `resolution` | `P0` to `P3` and `nit`, each `block`, `acknowledge`, `advisory`, or `silent` | `P0` and `P1` block, `P2` acknowledge, `P3` advisory, `nit` silent |
 | `lenses` | lens name to `enabled`, `tier` (`light`, `medium`, `heavy`), and `paths` | none |

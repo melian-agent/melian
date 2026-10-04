@@ -13,10 +13,11 @@ goldens/correctness-null-deref/
 ├── melian.yaml     # optional; committed with base, so it is the policy the review runs under
 ├── expected.json   # what a review must find
 ├── script.json     # the lens replies the scripted runner plays back
-└── scripted.txt    # the scripted run's terminal output, compared by the gate
+├── scripted.txt    # the scripted run's terminal output, compared by the gate
+└── README.md       # optional; the comparison record and finding the defect came from
 ```
 
-`buildGoldenRepository` commits `base/` on `main`, replaces the tree with `head/` on `feature`, and the runner reviews `main...feature`. A file in `base/` and missing from `head/` is deleted; a file that moves is a rename. Keep the trees small enough to read in one sitting, and write them as working code apart from the declared defects, so a live model is not distracted by unrelated breakage.
+`buildGoldenRepository` commits `base/` on `main`, replaces the tree with `head/` on `feature`, and the runner reviews `main...feature`. A file in `base/` and missing from `head/` is deleted; a file that moves is a rename. Keep the trees small enough to read in one sitting, and write them as working code apart from the declared defects, so a live model is not distracted by unrelated breakage. The review reads standards from the base, so a golden that tests the `conventions` lens carries its `AGENTS.md` in `base/` and, unchanged, in `head/`.
 
 `expected.json` uses Martian's golden-comment shape, so Martian's judge reads it unchanged, with Melian's fields added to each comment:
 
@@ -77,4 +78,6 @@ File and rule is a coarse match. Two findings under one rule in one file count a
 
 `live.ts` runs every golden, or the one `MELIAN_EVAL_GOLDEN` names, unless its `expected.json` sets `"live": false`. It prints `<golden>: skipped, live: false` for such a golden and leaves it out of the corpus score; the scripted run still covers it. Problem: some goldens test plumbing a live lens has no reason to exercise. `pre-existing-beside-change` proves that a `context` location in changed code does not promote an old defect, so it expects a `pre-existing` finding, and a live lens that rightly declines to audit old code never reports one. Live, that golden could only cost recall. Set `live: false` only for such a golden, never to hide a lens's miss. `injection-in-comment` checks that a lens reports an instruction planted in the change under `melian/injection-attempt` and still finds the defect beside it; on a live run, a lens that obeys the comment scores a recall of zero. `correctness-deleted-guard` is a pure deletion: the finding beside the deleted guard has no new lines to overlap, so only its `cause` location at the base, read with `read_file` and `revision: "base"`, makes it `affected`.
 
-Comparison reviews in `comparisons/` feed the corpus: each adjudicated difference between reviewers becomes a golden, positive or negative.
+Comparison reviews in `comparisons/` feed the corpus: each adjudicated difference between reviewers becomes a golden, positive or negative. A golden drawn from a record says which in a `README.md` beside `expected.json`, since the expected file's schema is Martian's and has no field for it. [goldens/BACKLOG.md](../../packages/evals/goldens/BACKLOG.md) lists, by lens, the findings the records mark as goldens that none has become yet.
+
+One defect can fit two lenses' rules, and each would report it under its own. Declare a second finding only where the second lens's instructions claim that kind of defect, as both `correctness` and `removed-behaviour` claim a removed guard: `correctness-deleted-guard` and `removed-behaviour-dropped-guard` each expect `correctness`'s `wrong-result` and `removed-behaviour`'s `dropped-guard`. Otherwise the defect has one owner, and the other lens's report of it is an extra that says its boundary leaks.

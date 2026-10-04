@@ -175,7 +175,7 @@ Local findings persist in the clone's `.git/melian/` directory, uncommitted. It 
 
 ## Lenses
 
-Built in milestone 1, except levels, built in milestone 2 (review of record), the lens backlog, planned for milestone 2, and lens packs and a lens's `references/`, `examples/`, and `tests/` directories, which are not yet scheduled.
+Built in milestone 1, except levels and four of the five backlog lenses, built in milestone 2 (review of record), the `durability` lens, planned for milestone 2, and lens packs and a lens's `references/`, `examples/`, and `tests/` directories, which are not yet scheduled.
 
 A lens is a directory containing `LENS.md`, modelled on the Agent Skills layout but deliberately not a `SKILL.md`, so that Claude Code, Codex, and Pi never load a lens as a host skill.
 
@@ -230,19 +230,20 @@ What stays out of a lens: topology, concurrency, deadlines, publication, and ver
 
 ### The lens backlog
 
-Planned for milestone 2.
+Built in milestone 2 step 3, except `durability`, planned for milestone 2.
 
 Problem: the two lenses that ship cover one kind of defect. [The classification of 151 accepted findings](research/2026-10-04-review-findings-by-bucket.md) from Melian's comparison records puts 54 in correctness, the only bucket today's lenses plausibly reach. Trust boundary, with 28, and durability, with 17, are mostly high severity, and no check looks for either. About 11 of the 151 could be a static rule. Example: in [pull request #12](https://github.com/melian-agent/melian/pull/12), `loadConfig` read the head's `melian.yaml`, so a pull request set the policy for its own review. No lens today asks whether the head controls its own judge.
 
-Solution: five more lenses, each one angle:
+Solution: five more lenses, each one angle. Four are built in, under `packages/core/lenses/`, and join the default `full` tier beside `correctness` and `contracts`:
 
-- `trust-boundary`: whether the head controls its own judge, environment, or output, such as policy read from the head, a binary taken from the tree, or text that reaches a terminal or a model unescaped.
-- `durability`: Pi Durable's replay and idempotency rules, such as a side effect between two commits, a superseded task that still writes, or a resumed task acting on a target that has moved. It is a repository lens under Melian's own `.melian/lenses/`, because those rules are Melian's, not every user's.
-- `removed-behaviour`: for each deleted line, the invariant it held and where the new code restores it.
-- `tests`: whether the tests a change adds or edits would fail without it, and whether changed behaviour has a test at all.
-- `conventions`: a breach of the standards files, reported only when the lens can cite the standard's own wording and point to the line that breaks it.
+- `trust-boundary`: whether something untrusted reaches something that trusts it. The head supplies the policy, standards, configuration, binary, or environment that judges it (`head-controls-judge`); untrusted text reaches a model, a shell, a query, or rendered markup unescaped (`injection-sink`), or a terminal or log with its control characters intact (`terminal-escape`); an untrusted path escapes where it belongs (`path-traversal`); hostile input makes a check skip or pass (`fail-open`); or a secret reaches code from the revision under review, a log, or a message (`secret-exposure`).
+- `removed-behaviour`: for each line the change deletes or moves, the invariant it held and the head code that still holds it. A guard, cleanup, error path, or ordering that nothing replaces is the finding (`dropped-guard`, `dropped-cleanup`, `dropped-error-path`, `moved-code-lost-anchor`), with the deleted lines as its `cause` at the base.
+- `tests`: whether the tests a change adds or edits would fail without it, and whether changed behaviour has a test at all: a behaviour no test would miss (`untested-behaviour`), a test that passes for the wrong reason (`vacuous-test`), an assertion loosened (`weakened-assertion`) or switched off (`disabled-test`), and a test that releases what it acquired only when it passes (`teardown-asymmetry`). A missing test counts only where the repository tests that code, so a repository without tests is not told so on every change.
+- `conventions`: a breach of the standards files, reported only when the lens can quote the standard's own words and point to the line that breaks it (`quoted-rule-violation`), or a document the standards tie to the code that the change left stating the old behaviour (`missing-doc-update`). Without standards it reports nothing.
 
-Each is written adversarially: it looks for the strongest reasons the change should not ship, gives no credit for intent or for likely follow-up work, and treats an empty answer as a good one. [The comparison of review tools](research/2026-10-04-review-tools-compared.md) shows where each angle comes from. Each ships with five goldens from the comparison records. Lens tests in the lens directory remain unscheduled.
+The fifth, `durability`, covers Pi Durable's replay and idempotency rules, such as a side effect between two commits, a superseded task that still writes, or a resumed task acting on a target that has moved. It will be a repository lens under Melian's own `.melian/lenses/`, because those rules are Melian's, not every user's.
+
+Each is written adversarially: it looks for the strongest reasons the change should not ship, gives no credit for intent or for likely follow-up work, prefers one strong finding to several weak ones, labels what it inferred, and treats an empty answer as a good one. [The comparison of review tools](research/2026-10-04-review-tools-compared.md) shows where each angle comes from. Each lens also names the defects that belong to a neighbour, so one defect has one owner: a wrong value in a line the change wrote is `correctness`'s, a deleted cleanup, error path, or ordering is `removed-behaviour`'s, a deleted check that stood on a trust boundary is `trust-boundary`'s, and a deleted assertion is `tests`'. `correctness` names the same boundaries from its side. A removed guard is the one defect both `correctness` and `removed-behaviour` report. [decisions/2026-10-04-lens-backlog-boundaries.md](decisions/2026-10-04-lens-backlog-boundaries.md) records the boundaries. Each built-in lens ships with five goldens from the comparison records, one of them clean, and [packages/evals/goldens/BACKLOG.md](../packages/evals/goldens/BACKLOG.md) lists the records' other goldens by lens. Lens tests in the lens directory remain unscheduled.
 
 ## Verification
 
@@ -275,7 +276,7 @@ Checks are named. Tiers are named sets of checks. Stages map workflow points to 
 tiers:
   fast: [guardrails, static, decisions.fast]
   standard: [fast, lens.correctness]
-  full: [standard, lens.contracts]
+  full: [standard, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions]
 stages:
   pre-commit: fast
   pre-push: standard
@@ -708,7 +709,7 @@ The same file also shows what a team does when a static rule cannot express a co
 
 ## Evals and testing
 
-Built in milestone 1, with the golden corpus still growing. Goldens for the lens backlog are planned for milestone 2 (review of record), calibration measurement for milestone 4 (calibration), and lens tests in the lens directory are not yet scheduled.
+Built in milestone 1, with the golden corpus still growing. Goldens for the four built-in backlog lenses were written in milestone 2 (review of record) and `durability`'s are planned for it, calibration measurement for milestone 4 (calibration), and lens tests in the lens directory are not yet scheduled.
 
 Noise is where every reviewer fails, and the only defence is measurement. The evals package is first-class:
 
