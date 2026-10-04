@@ -599,9 +599,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	const context = options.context ?? backgroundContext;
 	const root = (await harness.root(context)).id;
 	// A file's old path too, so a move out of a lens's paths still runs the lens on what left them.
-	const paths = changeset.revision.files.flatMap((file) =>
-		file.oldPath === undefined ? [file.path] : [file.oldPath, file.path],
-	);
+	const paths = changeset.revision.paths();
 	const manifest = checksOfTier(config, options.tier ?? config.stages["pull-request"] ?? "full");
 	const named = new Set(manifest.filter((name) => name.startsWith("lens.")).map((name) => name.slice("lens.".length)));
 	const selected = Lens.select(

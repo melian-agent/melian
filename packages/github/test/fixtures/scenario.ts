@@ -8,15 +8,13 @@ import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
-	type Changeset,
+	Changeset,
 	type CheckRecord,
-	diffLines,
 	Lens,
 	loadConfig,
 	type MelianConfig,
 	type RepositorySource,
 	type ReviewProvider,
-	resolveRange,
 } from "@melian-agent/core";
 import {
 	createReviewRegistry,
@@ -201,7 +199,7 @@ export async function reviewScenario(
 	rerun = false,
 	how: ScenarioReview = {},
 ) {
-	const changeset: Changeset = await resolveRange(repo, how.range ?? "main...feature");
+	const changeset: Changeset = await Changeset.resolve(repo, how.range ?? "main...feature");
 	const source: RepositorySource =
 		how.policy === "worktree" ? { kind: "worktree" } : { kind: "revision", commit: changeset.revision.base };
 	const origin: ReviewOrigin =
@@ -260,5 +258,5 @@ export function pullRequestState(): FakeState {
 export function moveTo(state: FakeState, changeset: Changeset): void {
 	state.pull.base.sha = changeset.revision.base;
 	state.pull.head.sha = changeset.revision.head;
-	state.lines = diffLines(changeset.revision.files);
+	state.lines = changeset.revision.diffLines();
 }

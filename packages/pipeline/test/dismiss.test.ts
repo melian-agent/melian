@@ -2,13 +2,13 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+	Changeset,
 	defaultConfig,
 	Lens,
 	type MelianConfig,
 	type PullRequest,
 	type ReviewProvider,
 	type ReviewStatus,
-	resolveRange,
 } from "@melian-agent/core";
 import {
 	type Context,
@@ -145,7 +145,7 @@ function scriptFinding(merged = false): void {
 
 // Reviews main...feature, as a range, or as pull request #7 under its base's policy, which only can be published.
 async function reviewed(harness: Harness, asPullRequest = false): Promise<Review> {
-	const changeset = await resolveRange(repo, "main...feature");
+	const changeset = await Changeset.resolve(repo, "main...feature");
 	const { base, head } = changeset.revision;
 	const pullRequest = {
 		origin: {
@@ -176,7 +176,7 @@ async function adjudicationTask(harness: Harness): Promise<number | undefined> {
 }
 
 async function revision() {
-	return (await resolveRange(repo, "main...feature")).revision;
+	return (await Changeset.resolve(repo, "main...feature")).revision;
 }
 
 async function dismiss(harness: Harness, id: string, with_ = dismissal) {
@@ -214,7 +214,7 @@ async function publisher(path: string) {
 		},
 		findPublished: async () => ({ threads: {}, replies: {} }),
 	};
-	const changeset = await resolveRange(repo, "main...feature");
+	const changeset = await Changeset.resolve(repo, "main...feature");
 	const publish = async () => {
 		const publishing = await openPublishHarness(await openSqliteStorage(path), fake.review, provider);
 		try {

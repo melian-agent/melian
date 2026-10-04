@@ -27,7 +27,6 @@
 				"**/packages/*/src/**",
 				"!**/packages/cli/src/commands.ts",
 				"!**/packages/cli/src/doctor.ts",
-				"!**/packages/core/src/static.ts",
 				"!**/packages/github/src/publication.ts",
 				"!**/packages/pipeline/src/publish.ts",
 				"!**/packages/pipeline/src/review.ts"

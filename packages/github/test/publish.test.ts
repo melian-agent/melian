@@ -1,6 +1,6 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type Changeset, pullRequestChangesetId, type ReviewProvider, resolveRange } from "@melian-agent/core";
+import { Changeset, pullRequestChangesetId, type ReviewProvider } from "@melian-agent/core";
 import { createGitHubProvider, marker, parseMarker, statusContext } from "@melian-agent/github";
 import {
 	backgroundContext as context,
@@ -784,7 +784,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect((refused as Error).message).toContain("it reviewed a range, not the pull request");
 		expect(posts(state)).toEqual([]);
 		// Either spelling of the refs is a range, whose storage is never the pull request's.
-		const short = await resolveRange(repo, "melian/pull/7/base...melian/pull/7/head");
+		const short = await Changeset.resolve(repo, "melian/pull/7/base...melian/pull/7/head");
 		const pull = pullRequestChangesetId("github", { owner: "melian-agent", name: "example" }, 7);
 		expect(short.id).toBe(changeset.id);
 		expect(pull).not.toBe(changeset.id);

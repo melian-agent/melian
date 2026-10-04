@@ -8,7 +8,6 @@ import { CheckError } from "./errors.ts";
 import {
 	canonicalPath,
 	Finding,
-	type FindingTrigger,
 	findingId,
 	normaliseSnippet,
 	type SarifLevel,
@@ -389,20 +388,6 @@ async function identify(
 	return identified;
 }
 
-function triggerFor(revision: Revision, path: string, startLine: number, endLine: number): FindingTrigger | undefined {
-	const file = revision.files.find((each) => each.path === path);
-	const hunk = file?.hunks.find(
-		(each) => each.newLines > 0 && startLine < each.newStart + each.newLines && endLine >= each.newStart,
-	);
-	if (hunk === undefined) return undefined;
-	const added = hunk.text
-		.split("\n")
-		.filter((row) => row.startsWith("+"))
-		.map((row) => row.slice(1))
-		.join("\n");
-	return { file: path, index: hunk.index, snippet: added };
-}
-
 /**
  * Turns one tool's results at base and head into findings, matched across the two runs by finding identity, never by
  * line. A result's snippet is the full text of its lines at its own revision, read through git's object store, and its
@@ -453,7 +438,7 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 				occurrence: extra === undefined ? each.occurrence : undefined,
 				discriminator: extra?.discriminator ?? each.discriminator,
 				cause,
-				trigger: cause === "introduced" ? triggerFor(revision, each.path, region.startLine, endLine) : undefined,
+				trigger: cause === "introduced" ? revision.trigger(each.path, region.startLine, endLine) : undefined,
 				severity,
 				explanation: {
 					what: each.result.message.text,

@@ -1,9 +1,6 @@
 import {
 	type ChangedFile,
 	capSnippet,
-	causeOverlap,
-	changeOverlap,
-	classifyCause,
 	type EvidenceLocation,
 	Finding,
 	type FindingTrigger,
@@ -16,6 +13,7 @@ import {
 	maxFailureScenarioLength,
 	type ProvingHunk,
 	type ReportFindingInput,
+	Revision,
 	type RevisionEntry,
 	RevisionError,
 	readRevisionFile,
@@ -112,11 +110,13 @@ export function reviewFiles(files: readonly ChangedFile[]): ReviewFile[] {
 	}));
 }
 
-function changedFiles(files: readonly ReviewFile[]): ChangedFile[] {
-	return files.map((file) => ({
+// The revision a review state records, its hunks without the text the lens tools never read.
+function revisionOf(review: ReviewState): Revision {
+	const files: ChangedFile[] = review.files.map((file) => ({
 		...file,
 		hunks: file.hunks.map(({ added: _, changes: __, ...hunk }) => ({ ...hunk, header: "", text: "" })),
 	}));
+	return Revision.from({ base: review.base, head: review.head, files });
 }
 
 // What a lens conversation may do, written on it in the commit that creates it.
@@ -524,17 +524,13 @@ function overlapping(file: ReviewFile | undefined, startLine: number, endLine: n
 
 // Every hunk a proving `cause` location falls on, by file then index, so the order the model listed its evidence in
 // never changes which hunk an affected finding's trigger names. A rename proves without a hunk, and adds none.
-function provingHunks(
-	evidence: readonly EvidenceLocation[],
-	files: readonly ReviewFile[],
-	findingFile: string,
-): ReviewHunk[] {
-	const changed = { files: changedFiles(files) };
+function provingHunks(evidence: readonly EvidenceLocation[], review: ReviewState, findingFile: string): ReviewHunk[] {
+	const changed = revisionOf(review);
 	const proven = evidence.flatMap((location) => {
-		const overlap = location.proves === true ? causeOverlap(location, changed, findingFile) : undefined;
+		const overlap = location.proves === true ? changed.causeOverlap(location, findingFile) : undefined;
 		return overlap?.kind === "hunk" ? [overlap.hunk] : [];
 	});
-	return files
+	return review.files
 		.flatMap((file) => file.hunks)
 		.filter((hunk) => proven.some((each) => each.file === hunk.file && each.index === hunk.index))
 		.sort((a, b) => (a.file === b.file ? a.index - b.index : a.file < b.file ? -1 : 1));
@@ -631,9 +627,9 @@ async function evidenceFrom(
 					: "";
 			const { snippet } = await linesAt(review, revision, file, line, endLine, hint);
 			const site = { file, startLine: line, endLine, role, revision };
-			const changed = { files: changedFiles(review.files) };
-			const deleted = revision === "base" && changeOverlap(site, changed, findingFile) !== undefined;
-			const proves = causeOverlap(site, changed, findingFile) !== undefined;
+			const changed = revisionOf(review);
+			const deleted = revision === "base" && changed.changeOverlap(site, findingFile) !== undefined;
+			const proves = changed.causeOverlap(site, findingFile) !== undefined;
 			return {
 				file,
 				startLine: line,
@@ -659,10 +655,10 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 	const { content, snippet } = await linesAt(review, "head", path, args.line, endLine);
 	const evidence = await evidenceFrom(args.evidence, review, path);
 	const location = { file: path, startLine: args.line, endLine };
-	const cause = classifyCause(location, { files: changedFiles(review.files) }, evidence);
+	const cause = revisionOf(review).classifyCause(location, evidence);
 	const changed = review.files.find((file) => file.path === path);
 	const introducing = cause === "introduced" ? overlapping(changed, args.line, endLine) : undefined;
-	const proving = cause === "affected" ? provingHunks(evidence, review.files, path) : [];
+	const proving = cause === "affected" ? provingHunks(evidence, review, path) : [];
 	// An introduced finding's trigger hashes its hunk's added lines whole, so a dismissal reopens only when that code
 	// changes, however long it is.
 	const trigger: FindingTrigger | undefined =

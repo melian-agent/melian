@@ -3,9 +3,9 @@ import {
 	type ChangedFile,
 	type CheckRecord,
 	defaultConfig,
-	diffLines,
 	Finding,
 	type FindingInput,
+	Revision,
 	type Verdict,
 } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
@@ -33,7 +33,7 @@ const changed = (path: string, hunks: ReturnType<typeof hunk>[], extra: Partial<
 	...extra,
 });
 
-describe("diffLines", () => {
+describe("Revision.diffLines", () => {
 	it("lists each file's added lines at head, and nothing for deletions, binaries, or deleted files", () => {
 		const files = [
 			changed("src/run.ts", [
@@ -45,7 +45,7 @@ describe("diffLines", () => {
 			changed("logo.png", [], { binary: true }),
 			changed("only-deletes.ts", [hunk("only-deletes.ts", 0, 4, 0)]),
 		];
-		expect(diffLines(files)).toEqual({
+		expect(Revision.from({ base: "a".repeat(40), head: "b".repeat(40), files: files }).diffLines()).toEqual({
 			"src/run.ts": [
 				[3, 4],
 				[20, 20],

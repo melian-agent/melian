@@ -1,11 +1,11 @@
 import { pathToFileURL } from "node:url";
 import {
+	Changeset,
 	CheckError,
 	defaultConfig,
 	type Finding,
 	normaliseBiomeSarif,
 	parseTscDiagnostics,
-	resolveRange,
 	staticFindings,
 	staticSeverity,
 	type ToolLog,
@@ -218,7 +218,7 @@ describe("staticFindings", () => {
 		const head = commit({
 			"a.ts": lines("import x from 'x';", "const added = 3;", "const old = 1;", "const fixed = 2 as const;"),
 		});
-		const { revision } = await resolveRange(repo, `${base}..${head}`);
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
 		const { findings } = await staticFindings({
 			repoRoot: repo,
 			revision,
@@ -245,7 +245,7 @@ describe("staticFindings", () => {
 		const base = commit({ "src/a.ts": lines("export const n: number = 'x';") });
 		gitIn(repo, "mv", "src/a.ts", "src/b.ts");
 		const head = commit({});
-		const { revision } = await resolveRange(repo, `${base}..${head}`);
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
 		const { findings } = await staticFindings({
 			repoRoot: repo,
 			revision,
@@ -262,7 +262,7 @@ describe("staticFindings", () => {
 	it("merges results of one rule on the same lines into one finding, counting the rest", async () => {
 		const base = commit({ "a.ts": lines("f(1, 2);") });
 		const head = commit({ "a.ts": lines("f(1, 2);", "g(1, 2);") });
-		const { revision } = await resolveRange(repo, `${base}..${head}`);
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
 		const { findings } = await staticFindings({
 			repoRoot: repo,
 			revision,
@@ -280,7 +280,7 @@ describe("staticFindings", () => {
 	it("fails rather than guess when a result's file cannot be read", async () => {
 		const base = commit({ "src/a.ts": lines("a") });
 		const head = commit({ "src/a.ts": lines("b") });
-		const { revision } = await resolveRange(repo, `${base}..${head}`);
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
 		const error = await staticFindings({
 			repoRoot: repo,
 			revision,
@@ -299,7 +299,7 @@ describe("staticFindings", () => {
 	it("reports a second result added beside an old one on the same lines as introduced", async () => {
 		const base = commit({ "a.ts": lines("f(1, 2);") });
 		const head = commit({ "a.ts": lines("f(1, 2);", "") });
-		const { revision } = await resolveRange(repo, `${base}..${head}`);
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
 		const { findings } = await staticFindings({
 			repoRoot: repo,
 			revision,
@@ -317,7 +317,7 @@ describe("staticFindings", () => {
 	it("takes severity overrides from the tool's settings, and stores no resolution", async () => {
 		const base = commit({ "melian.yaml": lines("resolution:", "  P0: advisory"), "a.ts": lines("a") });
 		const head = commit({ "a.ts": lines("b") });
-		const { revision } = await resolveRange(repo, `${base}..${head}`);
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
 		const { findings } = await staticFindings({
 			repoRoot: repo,
 			revision,

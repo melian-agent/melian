@@ -13,6 +13,7 @@ import {
 	type PullRequest,
 	type ReviewDraft,
 	type ReviewProvider,
+	Revision,
 	replyKey,
 	type StoredFinding,
 	type StoredVerdict,
@@ -722,7 +723,7 @@ describe("documents stored before evidence became a list", () => {
 			const { provider, posted, pullRequest } = fakeProvider(base);
 			const publisher = await openPublishHarness(await openSqliteStorage(path), createFakeModels().review, provider);
 			try {
-				const changeset = { revision: { base, head, files: [] } } as unknown as Changeset;
+				const changeset = { revision: Revision.from({ base, head, files: [] }) } as unknown as Changeset;
 				const publication = await publishReview({
 					harness: publisher.harness,
 					provider,
@@ -766,7 +767,7 @@ describe("documents stored before evidence became a list", () => {
 					provider,
 				);
 				try {
-					const changeset = { revision: { base, head, files: [] } } as unknown as Changeset;
+					const changeset = { revision: Revision.from({ base, head, files: [] }) } as unknown as Changeset;
 					await publishReview({ harness: publisher.harness, provider, changeset, pullRequest, base });
 					return posted;
 				} finally {

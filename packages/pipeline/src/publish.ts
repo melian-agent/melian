@@ -1,7 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import {
 	type Changeset,
-	diffLines,
 	dismissalVersion,
 	Finding,
 	type FindingDismissal,
@@ -946,7 +945,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		const result = outcome.status === "completed" ? (outcome.result as PublishOutcome) : undefined;
 		if (result?.kind === "superseded") superseded.push({ task: String(each.record.id), reason: result.reason });
 	}
-	const input: PublishInput = { root, target, lines: diffLines(changeset.revision.files) };
+	const input: PublishInput = { root, target, lines: changeset.revision.diffLines() };
 	const taskId = await (await harness.root(context)).commit(
 		(tx) => tx.createTask(publishTask(options.provider), input, { ownership: { kind: "conversation" } }),
 		context,

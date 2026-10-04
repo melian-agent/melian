@@ -1,12 +1,12 @@
 import { rmSync } from "node:fs";
 import { join } from "node:path";
 import {
+	Changeset,
 	CheckError,
 	defaultConfig,
 	type Finding,
 	loadConfig,
 	type RepositorySource,
-	resolveRange,
 } from "@melian-agent/core";
 import {
 	checksExtension,
@@ -56,7 +56,7 @@ async function open(options: { env?: boolean } = {}) {
 
 async function checks(base: string, head: string, tier?: string, options: { env?: boolean } = {}) {
 	const { harness, fake, root } = await open(options);
-	const changeset = await resolveRange(repo, `${base}..${head}`);
+	const changeset = await Changeset.resolve(repo, `${base}..${head}`);
 	const source: RepositorySource = { kind: "revision", commit: base };
 	const { config } = await loadConfig(repo, source, "");
 	const input = { rootConversationId: root.id, changeset, config, source, tier };

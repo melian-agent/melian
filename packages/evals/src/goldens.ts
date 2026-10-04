@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+	Changeset,
 	causeSchema,
 	evidenceRevisionSchema,
 	evidenceRoleSchema,
@@ -16,7 +17,6 @@ import {
 	type MelianConfig,
 	type ModelRoute,
 	type RepositorySource,
-	resolveRange,
 } from "@melian-agent/core";
 import {
 	backgroundContext,
@@ -257,10 +257,8 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 	const { repo, base } = buildGoldenRepository(golden);
 	try {
 		const source: RepositorySource = { kind: "revision", commit: base };
-		const changeset = await resolveRange(repo, "main...feature");
-		const paths = changeset.revision.files.flatMap((file) =>
-			file.oldPath === undefined ? [file.path] : [file.oldPath, file.path],
-		);
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const paths = changeset.revision.paths();
 		const lenses = await Lens.load(repo, source, paths);
 		const standards = await loadStandards(repo, source, ".");
 		const { config: loaded } = await loadConfig(repo, source, ".");

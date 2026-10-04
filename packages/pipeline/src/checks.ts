@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import {
 	type Changeset,
+	type ChangesetFields,
 	CheckError,
 	type CheckErrorCode,
 	type CheckReport,
@@ -10,6 +11,7 @@ import {
 	evaluateGuardrails,
 	type MelianConfig,
 	type RepositorySource,
+	Revision,
 	type StaticTool,
 	staticFindings,
 	type ToolLog,
@@ -76,7 +78,8 @@ interface CheckInput {
 	// The run this check belongs to, as identityKey writes it.
 	readonly run: string;
 	readonly check: DeterministicCheck;
-	readonly changeset: Changeset;
+	// As JSON, since a task's input is stored.
+	readonly changeset: ChangesetFields;
 	readonly config: MelianConfig;
 	readonly source: RepositorySource;
 }
@@ -101,7 +104,8 @@ async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, conte
 			"the harness has no execution environment to run static tools in",
 		);
 	}
-	const { repoRoot, revision } = input.changeset;
+	const { repoRoot } = input.changeset;
+	const revision = Revision.from(input.changeset.revision);
 	const run = (commit: string) => runStaticTool({ env, repoRoot, commit, tool, settings }, context);
 	const head = await run(revision.head);
 	if (head.status === "skipped") return head;
@@ -130,7 +134,8 @@ async function runCheck(
 	context: Context,
 ): Promise<Outcome> {
 	if (input.check === "guardrails") {
-		const { repoRoot, revision } = input.changeset;
+		const { repoRoot } = input.changeset;
+		const revision = Revision.from(input.changeset.revision);
 		return { status: "ran", report: await evaluateGuardrails({ repoRoot, revision, source: input.source }) };
 	}
 	return runStatic(input, await env(), context);
@@ -187,7 +192,7 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 
 interface ChecksInput {
 	readonly identity: Omit<RunIdentity, "task">;
-	readonly changeset: Changeset;
+	readonly changeset: ChangesetFields;
 	readonly config: MelianConfig;
 	readonly source: RepositorySource;
 	readonly tier: string;
@@ -373,7 +378,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 	const key = identityKey({ ...identity, task: 0 });
 	const task: ChecksInput = {
 		identity,
-		changeset: input.changeset,
+		changeset: input.changeset.toJSON(),
 		config: input.config,
 		source: input.source,
 		tier,

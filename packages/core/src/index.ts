@@ -15,24 +15,21 @@ export {
 	type VerdictStatus,
 } from "./adjudication.ts";
 export { parseJsonc } from "./analyser.ts";
-export {
-	type ChangeOverlap,
-	type CodeLocation,
-	causeOverlap,
-	changeOverlap,
-	classifyCause,
-	type EvidenceSite,
+export type {
+	ChangeOverlap,
+	CodeLocation,
+	EvidenceSite,
 } from "./cause.ts";
 export {
-	type Changeset,
+	Changeset,
+	type ChangesetFields,
 	parseRangeSpec,
 	pullRequestChangesetId,
-	type RangeChangeset,
 	type RangeMode,
 	type RangeSpec,
 	type ResolveRangeOptions,
-	type Revision,
-	resolveRange,
+	Revision,
+	type RevisionFields,
 } from "./changeset.ts";
 export { checksOfTier, type DeterministicCheck, deterministicChecks } from "./checks.ts";
 export {
@@ -184,7 +181,6 @@ export { analyserConfigNames, melianPaths } from "./paths.ts";
 export {
 	type ClosedFinding,
 	type DiffLines,
-	diffLines,
 	dismissalVersion,
 	type PlacedFinding,
 	type Placement,

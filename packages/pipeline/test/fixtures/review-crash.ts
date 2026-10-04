@@ -7,7 +7,7 @@
 // `tokens` park in the read_file call that ends the lens, once its commit has recorded the spent budget and before the
 // tool's result is stored: `spent` in the second read under a budget of one call, `tokens` in the first under a budget
 // of one token.
-import { defaultConfig, Lens, resolveRange, severitySchema } from "@melian-agent/core";
+import { Changeset, defaultConfig, Lens, severitySchema } from "@melian-agent/core";
 import { AdjudicationTask } from "../../src/adjudication.ts";
 import {
 	backgroundContext,
@@ -149,7 +149,7 @@ const heavy = fake.ref("heavy");
 record(log, { event: "review-started" });
 await reviewChangeset({
 	harness,
-	changeset: await resolveRange(repo, "main...feature"),
+	changeset: await Changeset.resolve(repo, "main...feature"),
 	config: {
 		...defaultConfig,
 		tiers: twoLensTiers,

@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import type { Verdict } from "./adjudication.ts";
-import type { ChangedFile } from "./diff.ts";
 import type { Finding, FindingDismissal } from "./findings.ts";
 
 /** A pull request as its provider reports it. Commit hashes are full. */
@@ -23,19 +22,6 @@ export interface PullRequest {
  * order. Only these lines take an inline comment that is sure to land.
  */
 export type DiffLines = Readonly<Record<string, readonly (readonly [number, number])[]>>;
-
-/** The lines each changed file adds at head. Deleted, binary, and percent-encoded files have none. */
-export function diffLines(files: readonly ChangedFile[]): Record<string, [number, number][]> {
-	const lines: Record<string, [number, number][]> = {};
-	for (const file of files) {
-		if (file.status === "deleted" || file.binary || file.percentEncoded) continue;
-		const ranges = file.hunks
-			.filter((hunk) => hunk.newLines > 0)
-			.map((hunk): [number, number] => [hunk.newStart, hunk.newStart + hunk.newLines - 1]);
-		if (ranges.length > 0) lines[file.path] = ranges;
-	}
-	return lines;
-}
 
 /**
  * Where a finding is posted.

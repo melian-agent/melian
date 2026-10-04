@@ -12,7 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { evaluateGuardrails, resolveRange } from "@melian-agent/core";
+import { Changeset, evaluateGuardrails } from "@melian-agent/core";
 import {
 	buildGoldenRepository,
 	type Golden,
@@ -107,7 +107,7 @@ describe("a golden's standards and policy", () => {
 				[golden]: "{ }\n",
 				[policy[1]!]: corpus,
 			});
-			const { revision } = await resolveRange(repo, `${base}..${head}`);
+			const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
 			const { findings } = await evaluateGuardrails({
 				repoRoot: repo,
 				revision,

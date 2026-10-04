@@ -1,12 +1,11 @@
 import { existsSync } from "node:fs";
 import {
-	type Changeset,
+	Changeset,
 	FindingsLog,
 	Lens,
 	loadConfig,
 	loadStandards,
 	type RepositorySource,
-	resolveRange,
 	type Verdict,
 	visibleText,
 } from "@melian-agent/core";
@@ -78,15 +77,13 @@ export async function review(
 			head: pullRequest.head.sha,
 		};
 	} else {
-		changeset = await resolveRange(io.cwd, target.spec);
+		changeset = await Changeset.resolve(io.cwd, target.spec);
 		const checkedOut = await git(changeset.repoRoot, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "");
 		const own = checkedOut === changeset.revision.head;
 		source = own ? { kind: "worktree" } : { kind: "revision", commit: changeset.revision.base };
 	}
 	const { repoRoot } = changeset;
-	const paths = changeset.revision.files.flatMap((file) =>
-		file.oldPath === undefined ? [file.path] : [file.oldPath, file.path],
-	);
+	const paths = changeset.revision.paths();
 	const lenses = await Lens.load(repoRoot, source, paths);
 	const standards = await loadStandards(repoRoot, source, ".");
 	const { config: loaded } = await loadConfig(repoRoot, source, ".");
@@ -197,7 +194,7 @@ async function storedChangeset(io: Io, argument: string): Promise<Changeset> {
 	const target = parseTarget(argument);
 	return target.kind === "pullRequest"
 		? await pullRequestChangeset(io.cwd, target.number)
-		: await resolveRange(io.cwd, target.spec);
+		: await Changeset.resolve(io.cwd, target.spec);
 }
 
 function noReview(changeset: Changeset, argument: string): CliError {

@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+	Changeset,
 	type CheckRecord,
 	defaultConfig,
 	Finding,
@@ -13,7 +14,6 @@ import {
 	maxFailureScenarioLength,
 	maxSnippetBytes,
 	type RepositorySource,
-	resolveRange,
 	type Verdict,
 } from "@melian-agent/core";
 import {
@@ -147,7 +147,7 @@ async function reviewed(options: ReviewWith = {}): Promise<Review> {
 	const ran = deterministicRan.filter((check) => !left.includes(check.name));
 	return reviewChangeset({
 		harness,
-		changeset: await resolveRange(repo, options.range ?? "main...feature"),
+		changeset: await Changeset.resolve(repo, options.range ?? "main...feature"),
 		config: options.config ?? config,
 		lenses: options.lenses ?? lenses,
 		standards: [{ path: "AGENTS.md", content: "Never use the non-null assertion operator." }],
@@ -849,7 +849,7 @@ describe("reviewChangeset", () => {
 		);
 		gitIn(repo, "mv", "src/config.ts", "src/settings.ts");
 		gitIn(repo, "commit", "--quiet", "-m", "rename");
-		const changeset = await resolveRange(repo, "main...feature");
+		const changeset = await Changeset.resolve(repo, "main...feature");
 		expect(changeset.revision.files.find((file) => file.path === "src/settings.ts")).toMatchObject({
 			status: "renamed",
 			oldPath: "src/config.ts",
@@ -1883,7 +1883,7 @@ describe("adjudication", () => {
 			},
 			{ "src/port.ts": port() },
 		);
-		const changeset = await resolveRange(repo, "main...feature");
+		const changeset = await Changeset.resolve(repo, "main...feature");
 		expect(changeset.revision.files[0]!.hunks.map(({ newLines, oldStart }) => [newLines, oldStart])).toEqual([
 			[0, 3],
 		]);
