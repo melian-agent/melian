@@ -2,7 +2,7 @@
 
 The first live runs of the four built-in backlog lenses, `trust-boundary`, `removed-behaviour`, `tests`, and `conventions`, on [pull request #42](https://github.com/melian-agent/melian/pull/42), over the twenty goldens it adds and the six before them. Three passes measured the lenses as first written; one tuning round followed, and three more passes measured it.
 
-- Melian under test: the untuned passes ran with the lens files of `68271f1` (the branch's head was `3e46f74`, a working commit of documents on top of it); the tuned passes ran at `5ebb588`. Both sit on `main` after [pull request #36](https://github.com/melian-agent/melian/pull/36), so `correctness` carries the declared-input rule. pi-ai 1.0.0 and Pi Durable 1.0.0.
+- Melian under test: the untuned passes ran with the code and lens files of `7f560ff`, and the tuned passes with those of `ed25da5`. Both ran before the branch's last rebase, which brought in only [pull request #43](https://github.com/melian-agent/melian/pull/43)'s lint rule and guardrail and two documents, none of which a review loads; the commits named here are the rebased ones, so they stay reachable. Both sit on `main` after [pull request #36](https://github.com/melian-agent/melian/pull/36), so `correctness` carries the declared-input rule. pi-ai 1.0.0 and Pi Durable 1.0.0.
 - Lens versions, untuned: `correctness` `d7d338f575f0`, `contracts` `60e9cabb913b`, `trust-boundary` `30535f91dd40`, `removed-behaviour` `8ede5357acf5`, `tests` `e36f8e7cff9b`, `conventions` `33ad44be4f39`. Tuned: `correctness` `db4521c53845`, `trust-boundary` `37456558b6c7`, `removed-behaviour` `5f4872e0bbc1`; the other three unchanged.
 - Model: `anthropic/claude-opus-5-5` for every tier, through `MELIAN_EVAL_MODEL`. Every lens runs at `careful`, on `heavy`.
 - Credentials: an Anthropic OAuth token in `CLAUDE_CODE_OAUTH_TOKEN`, loaded with `node --env-file` on the built packages.
@@ -93,7 +93,7 @@ Each new lens found its own defect on all of its goldens, and `conventions` repo
 
 Hypothesis: the precision lost is ownership, not judgement. Each lens finds the defect its goldens seed, and most extras restate a neighbour's finding because the boundaries were written on one side only: the new lenses said what to leave to `correctness`, and `correctness` said nothing back. Stating each boundary on both sides, and giving `removed-behaviour` and `trust-boundary` a test they can apply before reporting, should remove the duplicates without costing recall.
 
-The changes, in `5ebb588`:
+The changes, in `ed25da5`:
 
 - `removed-behaviour` checks, before it reports, that something was deleted or moved, that the replacement line is not itself wrong, that the change did not set out to replace the behaviour, that the deleted line did not stand on a trust boundary, and that it was not in a test.
 - `trust-boundary` needs the code it read to say who controls a hostile input; an inferred step can never be the one that makes the input hostile. A failure nobody arranges is not hostile input, a test is not a boundary, and a loosely pinned dependency is hygiene for the standards or a static rule.
