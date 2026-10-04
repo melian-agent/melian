@@ -176,3 +176,38 @@ Final, over three passes:
 ## Cost
 
 Untuned, each pass made 523 to 543 requests in 617 to 643 seconds, about 147,000 output tokens, $7.13 to $7.30 at list price. Final, 497 to 514 requests in 548 to 580 seconds, about 129,000 output tokens, $6.77 to $6.89. An OAuth subscription is not billed per token.
+
+## Addendum, 2026-10-05: the `trust-boundary` goldens with a clean build configuration
+
+`removed-behaviour` was right about `trust-boundary-clean-build-config`, so the golden changed rather than the lens. Both trees now carry a `check` script, `tsc --noEmit -p tsconfig.json`, which the workflow runs before the build, so the head's move from `tsc` to esbuild for the build leaves the type check in place and no lens has a true finding. Three more passes then reviewed the nine `trust-boundary-*` goldens. The rest of the corpus was not rerun, so the corpus figures above stand as measured, on the old golden.
+
+- Melian under test: the code of `b8c3b60`, built, with the corrected golden. Lens versions are the final ones above; the logged runner recorded them unchanged.
+- Model, tier, level, credentials, and runner as above, the runner limited to goldens whose names start with `trust-boundary-`.
+
+Per golden, over three passes:
+
+| Golden | Expected | Reported | Precision worst | Precision mean | Recall worst | Recall mean |
+| --- | --- | --- | --- | --- | --- | --- |
+| `trust-boundary-clean-build-config` | 0 | 0, 0, 0 | 1.00 | 1.00 | 1.00 | 1.00 |
+| `trust-boundary-clean-plugin` | 0 | 0, 0, 0 | 1.00 | 1.00 | 1.00 | 1.00 |
+| `trust-boundary-clean-summary` | 0 | 0, 0, 0 | 1.00 | 1.00 | 1.00 | 1.00 |
+| `trust-boundary-clean-test-runner` | 0 | 1, 1, 1 | 0.00 | 0.00 | 1.00 | 1.00 |
+| `trust-boundary-fail-open` | 1 | 2, 1, 2 | 0.50 | 0.67 | 1.00 | 1.00 |
+| `trust-boundary-injection` | 2 | 2, 2, 2 | 1.00 | 1.00 | 1.00 | 1.00 |
+| `trust-boundary-policy-from-head` | 1 | 2, 1, 1 | 0.50 | 0.83 | 1.00 | 1.00 |
+| `trust-boundary-secret-env` | 1 | 1, 1, 1 | 1.00 | 1.00 | 1.00 | 1.00 |
+| `trust-boundary-terminal-escape` | 1 | 1, 1, 1 | 1.00 | 1.00 | 1.00 | 1.00 |
+
+| Goldens | Precision per pass | Worst | Mean | Recall per pass | Worst | Mean |
+| --- | --- | --- | --- | --- | --- | --- |
+| `trust-boundary-*` | 0.67, 0.86, 0.75 | 0.67 | 0.76 | 1.00, 1.00, 1.00 | 1.00 | 1.00 |
+
+No lens reported anything on `trust-boundary-clean-build-config`. `trust-boundary` reported all six of its expected findings in every pass and nothing else. The extras are other lenses':
+
+- `trust-boundary-clean-test-runner`: `tests` reports, in all three passes, the arguable finding above, that pinning the suite to UTC leaves the one test of `dayOf` unable to tell the process's zone from UTC.
+- `trust-boundary-fail-open`: `correctness` reports the skipped long line as `wrong-result` in passes 1 and 3, as before.
+- `trust-boundary-policy-from-head`: in pass 1, `correctness` reports as `unhandled-error` that reading `policy.json` from the head lets a pull request that deletes or breaks the file make `verdict` throw. It is a second consequence of the line `trust-boundary` reports, and the golden does not declare it.
+
+`trust-boundary-injection` drew no split finding in any pass. Worst precision on `trust-boundary`'s goldens rose from 0.60 to 0.67, as the record predicted, and the mean from 0.67 to 0.76. Recall held at 1.00. `trust-boundary` still ships below the precision bar of 0.8, with no extra of its own.
+
+Each pass made 134 to 143 requests in 179 to 182 seconds, about 36,000 output tokens, $1.88 to $2.03 at list price.
