@@ -51,7 +51,7 @@ import {
 	type UsageState,
 	validateToolArguments,
 } from "./harness.ts";
-import { injectionPolicy, quoteUntrusted } from "./untrusted.ts";
+import { injectionAttemptRule, injectionPolicy, injectionSeverity, quoteUntrusted } from "./untrusted.ts";
 
 // `added` is the hunk's new lines, the code a dismissal of an introduced finding is tied to. `changes` is its added and
 // removed lines in diff order, each keeping its `+` or `-`, the code a dismissal of an affected finding is tied to;
@@ -347,13 +347,15 @@ function ending(result: ToolResult, lens: LensPolicy, spent: Spent | undefined) 
 }
 
 // What the lens's policy refuses in `call`, or undefined: a tool it does not list, and for `report_finding`, a severity
-// or a rule outside its own.
+// or a rule outside its own. An injection attempt at P1 always passes, because the injection policy orders every lens
+// to report one at P1, whatever severities the lens declares.
 function refusal(lens: LensPolicy, call: { name: string; arguments: unknown }): string | undefined {
 	const allowed: readonly string[] = [...lens.tools, "report_finding"];
 	if (!allowed.includes(call.name)) return `lens ${lens.name} may call only ${allowed.join(", ")}`;
 	if (call.name !== "report_finding") return undefined;
 	const { severity, rule } = (call.arguments ?? {}) as { severity?: unknown; rule?: unknown };
-	if (!lens.severities.includes(severity as Severity)) {
+	const injection = rule === injectionAttemptRule.id && severity === injectionSeverity;
+	if (!injection && !lens.severities.includes(severity as Severity)) {
 		return `severity ${String(severity)} is outside this lens's severities: ${lens.severities.join(", ")}`;
 	}
 	if (!lens.rules.some((each) => each.id === rule)) {

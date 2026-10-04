@@ -119,7 +119,7 @@ A lens is a directory holding `LENS.md`: YAML front matter between `---` lines, 
 | `description` | One line | required, or inherited through `extends` |
 | `tier` | `light`, `medium`, or `heavy`; each level that names none runs on it | required, or inherited |
 | `tools` | Read-only tools from `lensToolNames`: `read_file`, `search`, `list_files` | all three |
-| `severities` | The severities the lens may report | all five |
+| `severities` | The severities the lens may report; the pipeline also accepts `melian/injection-attempt` at P1 from every lens | all five |
 | `rules` | `id` and one-line `description` for each rule the lens reports under. An ID is lower-case letters, digits, dots, and hyphens; the prefix `melian/` marks a rule Melian defines for every lens, such as `melian/injection-attempt` | required, or inherited |
 | `paths` | Globs relative to the directory holding the lens's `.melian/` or `.agents/`, normalised like a `melian.yaml`'s; `!` excludes, and one that leaves the repository is an error | `**` |
 | `budget` | `findings`, a count; `tokens`, a number or `200k`; `tools`, a count of tool calls, `report_finding` included; `ended`, `count` to count a lens a budget ended as run, or `incomplete`. Each level that leaves one out takes it from here | `findings: 10`, no token or tool limit, `ended: incomplete` |
