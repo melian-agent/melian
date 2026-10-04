@@ -15,6 +15,7 @@ import {
 	maxEvidenceLines,
 	maxEvidenceLocations,
 	maxFailureScenarioLength,
+	type ProvingHunk,
 	type ReportFindingInput,
 	type RevisionEntry,
 	RevisionError,
@@ -520,7 +521,7 @@ function overlapping(file: ReviewFile | undefined, startLine: number, endLine: n
 }
 
 // Every hunk a proving `cause` location falls on, by file then index, so the order the model listed its evidence in
-// never changes an affected finding's trigger. A rename proves without a hunk, and adds none.
+// never changes which hunk an affected finding's trigger names. A rename proves without a hunk, and adds none.
 function provingHunks(
 	evidence: readonly EvidenceLocation[],
 	files: readonly ReviewFile[],
@@ -537,10 +538,17 @@ function provingHunks(
 		.sort((a, b) => (a.file === b.file ? a.index - b.index : a.file < b.file ? -1 : 1));
 }
 
-// A trigger that names `hunk`, showing its added lines, and hashes `code` whole, so a dismissal reopens only when that
-// code changes, however long it is.
-function triggerOn(hunk: ReviewHunk, code: string): FindingTrigger {
-	return { file: hunk.file, index: hunk.index, snippet: capSnippet(hunk.added), hash: snippetHash(code) };
+// A hunk as the proof of an affected finding names it: its file, and its added and removed lines hashed whole.
+function provingHunk(hunk: ReviewHunk): ProvingHunk {
+	return { file: hunk.file, hash: snippetHash(hunk.changes ?? hunk.added) };
+}
+
+// An affected finding's trigger: the first proving hunk, showing its added lines, and every proving hunk as its proof,
+// which the findings document unions across sightings, so a dismissal reopens only when one of those hunks changes.
+function affectedTrigger(proving: readonly ReviewHunk[]): FindingTrigger | undefined {
+	const [first] = proving;
+	if (first === undefined) return undefined;
+	return { file: first.file, index: first.index, snippet: capSnippet(first.added), proof: proving.map(provingHunk) };
 }
 
 // The text at `line` to `endLine` of `path` at the review's head or base. `hint` follows the message for a missing file.
@@ -653,12 +661,17 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 	const changed = review.files.find((file) => file.path === path);
 	const introducing = cause === "introduced" ? overlapping(changed, args.line, endLine) : undefined;
 	const proving = cause === "affected" ? provingHunks(evidence, review.files, path) : [];
-	const trigger =
-		introducing !== undefined
-			? triggerOn(introducing, introducing.added)
-			: proving[0] !== undefined
-				? triggerOn(proving[0], proving.map((hunk) => hunk.changes ?? hunk.added).join("\n"))
-				: undefined;
+	// An introduced finding's trigger hashes its hunk's added lines whole, so a dismissal reopens only when that code
+	// changes, however long it is.
+	const trigger: FindingTrigger | undefined =
+		introducing === undefined
+			? affectedTrigger(proving)
+			: {
+					file: introducing.file,
+					index: introducing.index,
+					snippet: capSnippet(introducing.added),
+					hash: snippetHash(introducing.added),
+				};
 	const { severity } = args;
 	return createFinding({
 		rule: args.rule,
@@ -738,7 +751,13 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 			if (calls.length > maxCorrections) return false;
 			document.spend.reports[id] = [...calls, api.taskId];
 		}
-		await upsertFinding(tx, lens.review, finding, at);
+		await upsertFinding(
+			tx,
+			lens.review,
+			finding,
+			at,
+			review.files.flatMap((file) => file.hunks.map(provingHunk)),
+		);
 		return true;
 	}, context);
 	if (!recorded) {

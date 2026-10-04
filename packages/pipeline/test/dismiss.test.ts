@@ -39,6 +39,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, type AdjudicationTaskInput } from "../src/adjudication.ts";
+import { FindingsDocument } from "../src/findings.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 
@@ -376,7 +377,7 @@ describe("recording a dismissal", () => {
 		const [reopened] = verdict.findings.block;
 		expect(reopened!.properties).toMatchObject({ id: first!.properties.id, status: "new", cause: "affected" });
 		expect(reopened!.properties.trigger!.snippet).toBe(first!.properties.trigger!.snippet);
-		expect(reopened!.properties.trigger!.hash).not.toBe(first!.properties.trigger!.hash);
+		expect(reopened!.properties.trigger!.proof).not.toEqual(first!.properties.trigger!.proof);
 		expect(reopened!.properties.pastDismissals).toEqual([
 			{ ...dismissal, reopenedRevision: revisionKey(await revision()) },
 		]);
@@ -384,23 +385,39 @@ describe("recording a dismissal", () => {
 
 	describe("an affected finding whose evidence proves two hunks", () => {
 		const team = (size: string) => lines(`export const teamSize = ${size};`, "");
-		const twoCauses = (order: "user first" | "team first") => {
-			const inUser = { file: "src/user.ts", line: 8, role: "cause" };
-			const inTeam = { file: "src/team.ts", line: 1, role: "cause" };
+		const causes = {
+			user: { file: "src/user.ts", line: 8, role: "cause" },
+			team: { file: "src/team.ts", line: 1, role: "cause" },
+		};
+		// Scripts the correctness lens to report the caller in src/org.ts, citing `cited` as its causes in that order.
+		const cite = (...cited: (keyof typeof causes)[]) => {
 			const caller = {
 				...nullDeref,
 				file: "src/org.ts",
 				line: 3,
 				failureScenario: 'describe({ name: "Ada" }) throws, since managerName now reads name of an absent manager.',
-				evidence: [
-					...(order === "user first" ? [inUser, inTeam] : [inTeam, inUser]),
-					{ file: "src/org.ts", line: 3, role: "context" },
-				],
+				evidence: [...cited.map((each) => causes[each]), { file: "src/org.ts", line: 3, role: "context" }],
 			};
 			scriptConversations(fake, [
 				{ match: correctness, replies: [report(caller), fauxAssistantMessage("Done.")] },
 				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
 			]);
+		};
+		const twoCauses = (order: "user first" | "team first") =>
+			order === "user first" ? cite("user", "team") : cite("team", "user");
+		const storedProof = async (harness: Harness, id: string) => {
+			const root = (await harness.root(context)).id;
+			return (await harness.snapshot(FindingsDocument, root, context))?.items[id]?.lifecycle.proof;
+		};
+		// Reviews the caller citing src/user.ts alone, dismisses it, then pushes an unrelated file and reviews it citing
+		// both causes. Returns the finding as first reviewed.
+		const dismissThenCiteBoth = async (harness: Harness) => {
+			cite("user");
+			const [first] = (await reviewed(harness)).findings;
+			await dismiss(harness, first!.properties.id);
+			push("boss", unsafe, { "src/other.ts": "export const other = 1;\n" });
+			cite("user", "team");
+			return { first: first!, widened: await reviewed(harness) };
 		};
 
 		beforeEach(async () => {
@@ -440,6 +457,48 @@ describe("recording a dismissal", () => {
 			expect(kept!.properties.trigger).toMatchObject({ file: "src/team.ts", index: 0 });
 		});
 
+		it("keeps its dismissal when a later review cites a second cause on unchanged hunks, adding it to the proof", async () => {
+			const harness = await reviewHarness(createMemoryStorage());
+
+			const { first, widened } = await dismissThenCiteBoth(harness);
+
+			expect(widened.verdict).toMatchObject({ status: "passed", blocking: false });
+			const [kept] = widened.verdict.dismissed;
+			expect(kept!.properties).toMatchObject({ id: first.properties.id, dismissal });
+			expect(first.properties).toMatchObject({ path: "src/org.ts", cause: "affected" });
+			expect(first.properties.trigger!.proof).toEqual([{ file: "src/user.ts", hash: expect.any(String) }]);
+			expect(await storedProof(harness, first.properties.id)).toEqual([
+				{ file: "src/team.ts", hash: expect.any(String) },
+				first.properties.trigger!.proof![0],
+			]);
+		});
+
+		it.each([
+			{ changed: "src/user.ts", cited: "team" as const, change: () => push("chief", unsafe) },
+			{
+				changed: "src/team.ts",
+				cited: "user" as const,
+				change: () => push("boss", unsafe, { "src/team.ts": team("6") }),
+			},
+		])(
+			"reopens when $changed, a hunk of its widened proof, changes, though the lens cites only the other",
+			async ({ cited, change }) => {
+				const harness = await reviewHarness(createMemoryStorage());
+				const { first } = await dismissThenCiteBoth(harness);
+				change();
+				cite(cited);
+
+				const { verdict } = await reviewed(harness);
+
+				const [reopened] = verdict.findings.block;
+				expect(reopened!.properties).toMatchObject({ id: first.properties.id, status: "new", cause: "affected" });
+				expect(reopened!.properties.pastDismissals).toEqual([
+					{ ...dismissal, reopenedRevision: revisionKey(await revision()) },
+				]);
+				expect(await storedProof(harness, first.properties.id)).toEqual(reopened!.properties.trigger!.proof);
+			},
+		);
+
 		it("reopens when the hunk it lists second changes", async () => {
 			const harness = await reviewHarness(createMemoryStorage());
 			twoCauses("user first");
@@ -452,7 +511,7 @@ describe("recording a dismissal", () => {
 
 			const [reopened] = verdict.findings.block;
 			expect(reopened!.properties).toMatchObject({ id: first!.properties.id, status: "new", cause: "affected" });
-			expect(reopened!.properties.trigger!.hash).not.toBe(first!.properties.trigger!.hash);
+			expect(reopened!.properties.trigger!.proof).not.toEqual(first!.properties.trigger!.proof);
 			expect(reopened!.properties.pastDismissals).toEqual([
 				{ ...dismissal, reopenedRevision: revisionKey(await revision()) },
 			]);

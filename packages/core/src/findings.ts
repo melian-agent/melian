@@ -32,13 +32,19 @@ export const findingStatusSchema = Type.Union([
 	Type.Literal("stale"),
 ]);
 
+const sha256 = Type.String({ pattern: "^[0-9a-f]{64}$" });
+
+/** The JSON Schema of a {@link ProvingHunk}. */
+export const provingHunkSchema = Type.Object({ file: text, hash: sha256 }, strict);
+
 /** The JSON Schema of a {@link FindingTrigger}. */
 export const findingTriggerSchema = Type.Object(
 	{
 		file: text,
 		index: count,
 		snippet: Type.Optional(Type.String()),
-		hash: Type.Optional(Type.String({ pattern: "^[0-9a-f]{64}$" })),
+		hash: Type.Optional(sha256),
+		proof: Type.Optional(Type.Array(provingHunkSchema, { minItems: 1 })),
 	},
 	strict,
 );
@@ -336,11 +342,17 @@ export type FindingStatus = Static<typeof findingStatusSchema>;
  * The diff hunk that caused a finding, named as a {@link Hunk} names itself: its `file` and its `index` within that
  * file. `snippet` is the changed code as the producer saw it, perhaps cut for storage; `hash`, when present, is the
  * {@link snippetHash} of that code whole. A dismissed finding reopens when the whole code's {@link normaliseSnippet}
- * changes, not when the hunk moves. An `affected` finding proved by several hunks names the first by file then index,
- * and its `hash` covers the added and removed lines of all of them in that order, so it changes when any of them does
- * and never with the order its evidence listed them in.
+ * changes, not when the hunk moves. An `affected` finding's trigger names the first hunk that proves its cause, by file
+ * then index, with that hunk's added lines as its `snippet`, and has no `hash`: its `proof` lists every proving hunk
+ * as a {@link ProvingHunk}, and its dismissal reopens only when one of those hunks changes.
  */
 export type FindingTrigger = Static<typeof findingTriggerSchema>;
+
+/**
+ * A hunk that proves an `affected` finding's cause: its file, and the {@link snippetHash} of its added and removed lines,
+ * each keeping its `+` or `-`. It names no index, so a hunk that moves within its file still proves the cause.
+ */
+export type ProvingHunk = Static<typeof provingHunkSchema>;
 
 /** What an evidence location says about its lines: `cause` blames them for the failure, `context` only reads them. */
 export type EvidenceRole = Static<typeof evidenceRoleSchema>;
@@ -683,7 +695,14 @@ export function createFinding(input: FindingInput): Finding {
 	const trigger =
 		input.trigger === undefined
 			? undefined
-			: { ...input.trigger, file: canonicalPath(input.trigger.file, "/properties/trigger/file") };
+			: {
+					...input.trigger,
+					file: canonicalPath(input.trigger.file, "/properties/trigger/file"),
+					proof: input.trigger.proof?.map((hunk, index) => ({
+						...hunk,
+						file: canonicalPath(hunk.file, `/properties/trigger/proof/${index}/file`),
+					})),
+				};
 	const id = findingId({ file, rule, snippet: snippet ?? "", occurrence, discriminator });
 	const hasSnippet = normaliseSnippet(snippet ?? "") !== "";
 	const evidence = input.evidence?.map((location, index) => ({
@@ -777,6 +796,9 @@ export function parseFinding(input: unknown): Finding {
 		});
 	}
 	if (trigger !== undefined) requireCanonical(trigger.file, "/properties/trigger/file");
+	for (const [index, hunk] of (trigger?.proof ?? []).entries()) {
+		requireCanonical(hunk.file, `/properties/trigger/proof/${index}/file`);
+	}
 	const { cause, evidence = [] } = finding.properties;
 	if (cause === "affected" && !evidence.some((location) => location.role === "cause")) {
 		throw new FindingError(

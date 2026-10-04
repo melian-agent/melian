@@ -16,6 +16,7 @@ import {
 	type ReviewProvider,
 	replyKey,
 	resolveFinding,
+	snippetHash,
 	type Verdict,
 } from "@melian-agent/core";
 import {
@@ -233,6 +234,66 @@ describe("the findings document", () => {
 						reopenedRevision: "rev2",
 					},
 				],
+			});
+		});
+
+		it("reads an affected trigger stored with one hash as a proof of that hunk, and reopens when it changes", async () => {
+			const lib = snippetHash("+export const run = eval;");
+			const util = snippetHash("+export const parse = JSON.parse;");
+			const affected = (trigger: FindingInput["trigger"]) =>
+				createFinding({
+					...input,
+					cause: "affected",
+					evidence: [
+						{
+							file: "src/lib.ts",
+							startLine: 1,
+							role: "cause",
+							revision: "head",
+							proves: true,
+							snippet: "export const run = eval;",
+						},
+					],
+					trigger,
+				});
+			const old = affected({ file: "src/lib.ts", index: 0, snippet: "export const run = eval;", hash: lib });
+			const { status: _, ...sighting } = old.properties;
+			await root.commit(async (tx) => {
+				const state = await tx.doc(FindingsDocument, root.id);
+				state.revisions.push("rev1");
+				state.items[old.properties.id] = {
+					lifecycle: {
+						status: "dismissed",
+						dismissedBy: dismissal.by,
+						dismissedReason: dismissal.reason,
+						dismissedAt: dismissal.at,
+						firstSeenRevision: "rev1",
+						lastSeenRevision: "rev1",
+						history: [],
+					},
+					sightings: { rev1: { "lens.security@1": { ...old, properties: sighting } } },
+				};
+			}, context);
+			const proof = [
+				{ file: "src/lib.ts", hash: lib },
+				{ file: "src/util.ts", hash: util },
+			];
+			const cited = affected({ file: "src/lib.ts", index: 0, snippet: "export const run = eval;", proof });
+
+			await expect(root.commit((tx) => upsertFinding(tx, root.id, cited, "rev2"), context)).rejects.toThrow(
+				/needs the hunks of revision rev2/,
+			);
+			await root.commit((tx) => upsertFinding(tx, root.id, cited, "rev2", proof), context);
+
+			expect(await lifecycle(harness, old.properties.id)).toMatchObject({ status: "dismissed", proof });
+
+			const changed = [{ file: "src/lib.ts", hash: snippetHash("+export const run = Function;") }, proof[1]!];
+			await root.commit((tx) => upsertFinding(tx, root.id, cited, "rev3", changed), context);
+
+			expect(await lifecycle(harness, old.properties.id)).toMatchObject({
+				status: "new",
+				history: [{ dismissedReason: dismissal.reason, reopenedRevision: "rev3" }],
+				proof,
 			});
 		});
 
