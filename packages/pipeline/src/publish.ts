@@ -19,6 +19,7 @@ import {
 	readVerdict,
 	type StoredVerdict,
 	upgradeStoredVerdict,
+	VerdictDocument,
 	type VerdictProvenance,
 } from "./adjudication.ts";
 import { PublishError } from "./errors.ts";
@@ -67,8 +68,11 @@ const maxRefusals = 3;
 type StoredRevision = {
 	// One review per verdict published at this head: a second review of the same head can change the verdict.
 	reviews: string[];
-	// The fingerprint of the verdict the last review posted.
+	// The fingerprint of the verdict the last review posted, and the revisionKey of the review that verdict is of. A
+	// retarget keeps the head, so a fingerprint alone matches an identical verdict of another base. An older Melian
+	// recorded no revision.
 	verdict?: string;
+	verdictRevision?: string;
 	// How many rounds were ever planned at this head, so each round has a number of its own.
 	rounds?: number;
 	pending?: PendingRound;
@@ -151,6 +155,28 @@ export function legacyFingerprint(verdict: Verdict): string | undefined {
 	);
 	const old = { ...verdict, findings: groups, dismissed: verdict.dismissed.map(downgrade) };
 	return createHash("sha256").update(JSON.stringify(old)).digest("hex").slice(0, 16);
+}
+
+// Whether the last review posted at `head`, as `record` holds it, posted this revision's verdict, by its current or
+// legacy fingerprint. A record an older Melian wrote names no revision; it counts only when no other revision reviewed
+// at the head has a verdict with the same fingerprint, so an identical verdict after a retarget is never taken for the
+// one posted under the old base.
+async function postedVerdictOf(
+	record: StoredRevision | undefined,
+	revision: string,
+	head: string,
+	fingerprints: readonly (string | undefined)[],
+	reader: Pick<DocumentReader, "snapshot">,
+	root: ConversationId,
+	context: Context,
+): Promise<boolean> {
+	if (record?.verdict === undefined || !fingerprints.includes(record.verdict)) return false;
+	if (record.verdictRevision !== undefined) return record.verdictRevision === revision;
+	const verdicts = (await reader.snapshot(VerdictDocument, root, context))?.verdicts ?? {};
+	return !Object.entries(verdicts).some(([other, verdict]) => {
+		if (other === revision || !other.endsWith(`..${head}`)) return false;
+		return [fingerprint(verdict), legacyFingerprint(verdict)].includes(record.verdict);
+	});
 }
 
 // Resolutions an earlier head decided but never replied to, because a later push arrived first. They are still owed.
@@ -359,7 +385,8 @@ function publishTask(provider: ReviewProvider) {
 						const state = await read();
 						const before = state.revisions[head];
 						if (before?.pending === undefined) {
-							if (before?.verdict !== undefined && [current, legacy].includes(before.verdict)) break;
+							if (await postedVerdictOf(before, revision, head, [current, legacy], runtime, root, context))
+								break;
 							const planned = planRound(state, head, revision, verdict, lines);
 							await runtime.commit(async (tx) => {
 								const document = await tx.doc(PublishedDocument, root);
@@ -409,6 +436,7 @@ function publishTask(provider: ReviewProvider) {
 							const record = (await tx.doc(PublishedDocument, root)).revisions[head]!;
 							record.reviews = [...record.reviews, posted.id];
 							record.verdict = pending.fingerprint;
+							record.verdictRevision = pending.revision;
 							record.open = open;
 							record.resolved = { ...record.resolved, ...pending.resolved };
 							delete record.pending;
