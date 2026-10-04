@@ -7,6 +7,7 @@ import {
 	defaultConfig,
 	type Finding,
 	type Lens,
+	type LensBudget,
 	loadLenses,
 	type MelianConfig,
 	ModelRoutingError,
@@ -15,6 +16,7 @@ import {
 	maxSnippetBytes,
 	type RepositorySource,
 	resolveRange,
+	type Verdict,
 } from "@melian-agent/core";
 import {
 	backgroundContext as context,
@@ -24,6 +26,7 @@ import {
 	defineDoc,
 	dismissFinding,
 	type Harness,
+	lensExtension,
 	type Message,
 	openHarness,
 	openSqliteStorage,
@@ -48,6 +51,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, adjudicationInput } from "../src/adjudication.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
+import { withBudget } from "./fixtures/review-scenario.ts";
 
 const staticFinding = {
 	rule: "lint/style/noNonNullAssertion",
@@ -520,7 +524,7 @@ describe("reviewChangeset", () => {
 	});
 
 	it("stops accepting findings past the lens's budget and says why", async () => {
-		const tight = lenses.map((lens) => (lens.name === "correctness" ? { ...lens, budget: { findings: 1 } } : lens));
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 1 }) : lens));
 		const requests = scriptConversations(fake, [
 			{
 				match: correctness,
@@ -542,7 +546,7 @@ describe("reviewChangeset", () => {
 	});
 
 	it("lets a lens at its full budget correct a finding it already reported", async () => {
-		const tight = lenses.map((lens) => (lens.name === "correctness" ? { ...lens, budget: { findings: 1 } } : lens));
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 1 }) : lens));
 		const corrected = { ...nullDeref, explanation: { ...nullDeref.explanation, what: "Corrected." } };
 		const requests = scriptConversations(fake, [
 			{
@@ -562,8 +566,31 @@ describe("reviewChangeset", () => {
 		expect(findings.map((finding) => finding.message.text)).toEqual(["Corrected."]);
 	});
 
+	it("refuses a fourth correction of one finding, keeping the third", async () => {
+		const correction = (what: string) => ({ ...nullDeref, explanation: { ...nullDeref.explanation, what } });
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("report_finding", nullDeref),
+					...["First.", "Second.", "Third.", "Fourth."].map((what) => call("report_finding", correction(what))),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const findings = await review();
+
+		expect(toolResults(requests[correctness]![4]!).at(-1)).toMatch(/^recorded finding/);
+		expect(toolResults(requests[correctness]![5]!).at(-1)).toMatch(
+			/^\[not recorded: this lens has corrected finding [0-9a-f]+ 3 times/,
+		);
+		expect(findings.map((finding) => finding.message.text)).toEqual(["Third."]);
+	});
+
 	it("holds a parallel round to the budget inside the commit", async () => {
-		const tight = lenses.map((lens) => (lens.name === "correctness" ? { ...lens, budget: { findings: 1 } } : lens));
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 1 }) : lens));
 		const requests = scriptConversations(fake, [
 			{
 				match: correctness,
@@ -584,7 +611,7 @@ describe("reviewChangeset", () => {
 	});
 
 	it("counts the budget and returns findings at the head under review only", async () => {
-		const tight = lenses.map((lens) => (lens.name === "correctness" ? { ...lens, budget: { findings: 1 } } : lens));
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 1 }) : lens));
 		scriptConversations(fake, [
 			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
 			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
@@ -936,7 +963,7 @@ describe("reviewChangeset", () => {
 				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
 				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
 			]);
-			const tight = lenses.map((lens) => ({ ...lens, budget: { findings: 1 } }));
+			const tight = lenses.map((lens) => withBudget(lens, { findings: 1 }));
 
 			const findings = await review({ config: retiered, lenses: tight });
 
@@ -1032,6 +1059,465 @@ describe("reviewChangeset", () => {
 		});
 		const root = (await harness.root(context)).id;
 		expect(await readVerdict(harness, root, reviewedRevision(), context)).toEqual(verdict);
+	});
+
+	it("records the level each lens ran at on its check record, and runs it with that level's instructions", async () => {
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { verdict } = await reviewed();
+
+		expect(verdict.ran).toEqual([
+			...deterministicRan,
+			{ name: "lens.contracts", status: "ran", level: "careful" },
+			{ name: "lens.correctness", status: "ran", level: "careful" },
+		]);
+		const prompt = systemPromptOf(requests[correctness]![0]!);
+		expect(prompt).toContain(
+			"Budget: at most 8 findings, 30 tool calls, `report_finding` included, and 200,000 tokens of input and output.",
+		);
+		expect(prompt).toContain("Reading scope: the hunks.");
+		const root = (await harness.root(context)).id;
+		expect((await readVerdict(harness, root, reviewedRevision(), context))?.ran).toEqual(verdict.ran);
+	});
+
+	it("holds a built-in lens at careful to the level's own limit of 30 tool calls", async () => {
+		const reads = Array.from({ length: 30 }, (_, index): [string, Arguments] => [
+			"read_file",
+			{ path: "src/user.ts", startLine: (index % 8) + 1 },
+		]);
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					calls(...reads),
+					call("search", { pattern: "managerName" }),
+					fauxAssistantMessage("Never asked."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { verdict } = await reviewed();
+
+		expect(requests[correctness]).toHaveLength(2);
+		expect(verdict.notRun.find((check) => check.name === "lens.correctness")).toMatchObject({
+			status: "ended",
+			level: "careful",
+			budgetEnded: { budget: "tools", limit: 30, tools: 30 },
+		});
+	});
+
+	it("records the level on the check record of a lens that did not finish", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const error = (await review().catch((caught: unknown) => caught)) as ReviewError;
+		expect(error.verdict?.notRun[0]).toMatchObject({ name: "lens.correctness", status: "failed", level: "careful" });
+	});
+
+	it("refuses the reads past the tools budget, lets the lens report, and ends it at its next read", async () => {
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tools: 2 }) : lens));
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("read_file", { path: "src/user.ts" }),
+					calls(
+						["read_file", { path: "src/user.ts", startLine: 7, maxLines: 1 }],
+						["search", { pattern: "managerName" }],
+						["report_finding", { ...nullDeref, severity: "P3" }],
+					),
+					calls(["report_finding", nullDeref], ["list_files", {}]),
+					fauxAssistantMessage("Never asked."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { findings, verdict } = await reviewed({ lenses: tight });
+
+		expect(requests[correctness]).toHaveLength(3);
+		const [read, searched, blocked] = toolResults(requests[correctness]![2]!).slice(1);
+		expect(read).toContain("return user.manager.name;");
+		expect(read).toContain("[that was the last of this lens's 2 tool calls, report_finding included.");
+		expect(searched).toMatch(
+			/^\[not run: this lens may make 2 tool calls, report_finding included, and this was call 3\./,
+		);
+		expect(blocked).toContain("severity P3 is outside this lens's severities");
+		expect(findings).toHaveLength(1);
+		const record = verdict.notRun.find((check) => check.name === "lens.correctness");
+		expect(record).toMatchObject({
+			status: "ended",
+			level: "careful",
+			budgetEnded: { budget: "tools", limit: 2, tools: 2 },
+		});
+		expect(record?.budgetEnded?.tokens).toBeGreaterThan(0);
+		expect(verdict.status).toBe("not-reviewed");
+	});
+
+	describe("records the tools budget's end when it refused a read and the lens then finished without one", () => {
+		const refusedThenDone = (budget: Partial<LensBudget>) => {
+			scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [
+						call("read_file", { path: "src/user.ts" }),
+						calls(
+							["read_file", { path: "src/user.ts", startLine: 7, maxLines: 1 }],
+							["search", { pattern: "managerName" }],
+							["list_files", {}],
+						),
+						call("report_finding", nullDeref),
+						fauxAssistantMessage("Done."),
+					],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+			return reviewed({
+				lenses: lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, budget) : lens)),
+			});
+		};
+
+		it("as ended", async () => {
+			const { findings, verdict } = await refusedThenDone({ tools: 2 });
+
+			expect(findings).toHaveLength(1);
+			expect(verdict.notRun.find((check) => check.name === "lens.correctness")).toMatchObject({
+				status: "ended",
+				budgetEnded: { budget: "tools", limit: 2, tools: 2 },
+			});
+			expect(verdict.status).toBe("not-reviewed");
+		});
+
+		it("as ran with the ending, when its level counts it", async () => {
+			const { verdict } = await refusedThenDone({ tools: 2, ended: "count" });
+
+			expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toMatchObject({
+				status: "ran",
+				budgetEnded: { budget: "tools", limit: 2, tools: 2 },
+			});
+		});
+	});
+
+	it("records no budget's end for reports past the tools budget", async () => {
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tools: 1 }) : lens));
+		const corrected = { ...nullDeref, explanation: { ...nullDeref.explanation, fix: "Return undefined first." } };
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("read_file", { path: "src/user.ts" }),
+					call("report_finding", nullDeref),
+					call("report_finding", corrected),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { findings, verdict } = await reviewed({ lenses: tight });
+
+		expect(requests[correctness]).toHaveLength(4);
+		expect(findings).toHaveLength(1);
+		expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toEqual({
+			name: "lens.correctness",
+			status: "ran",
+			level: "careful",
+		});
+	});
+
+	it("ends a lens at the first read after its tools budget, refusing there a call its policy refuses", async () => {
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tools: 1 }) : lens));
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("read_file", { path: "src/user.ts", startLine: 7, maxLines: 1 }),
+					calls(["search", { pattern: "managerName" }], ["report_finding", { ...nullDeref, severity: "P3" }]),
+					fauxAssistantMessage("Never asked."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { findings, verdict } = await reviewed({ lenses: tight });
+
+		expect(requests[correctness]).toHaveLength(2);
+		expect(findings).toEqual([]);
+		expect(verdict.notRun.find((check) => check.name === "lens.correctness")?.budgetEnded).toMatchObject({
+			budget: "tools",
+			limit: 1,
+			tools: 1,
+		});
+	});
+
+	it("counts report_finding against the tools budget", async () => {
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tools: 2 }) : lens));
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					calls(
+						["report_finding", nullDeref],
+						["read_file", { path: "src/user.ts" }],
+						["search", { pattern: "x" }],
+					),
+					call("list_files", {}),
+					fauxAssistantMessage("Never asked."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { findings, verdict } = await reviewed({ lenses: tight });
+
+		expect(requests[correctness]).toHaveLength(2);
+		expect(toolResults(requests[correctness]![1]!).at(-1)).toMatch(
+			/^\[not run: this lens may make 2 tool calls, report_finding included, and this was call 3\./,
+		);
+		expect(findings).toHaveLength(1);
+		expect(verdict.notRun.find((check) => check.name === "lens.correctness")?.budgetEnded).toMatchObject({
+			budget: "tools",
+			limit: 2,
+			tools: 2,
+		});
+	});
+
+	describe("numbers only the calls that reach a tool, so a round of two under a budget of two runs both", () => {
+		const roundOfTwo = async (unrun: [string, Arguments]) => {
+			const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tools: 2 }) : lens));
+			const requests = scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [
+						calls(unrun, ["read_file", { path: "src/user.ts" }], ["search", { pattern: "managerName" }]),
+						fauxAssistantMessage("Done."),
+					],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+			const { verdict } = await reviewed({ lenses: tight });
+			const [, read, searched] = toolResults(requests[correctness]![1]!);
+			expect(read).toContain("return user.manager.name;");
+			expect(read).not.toContain("that was the last");
+			expect(searched).toContain("src/report.ts:1:");
+			expect(searched).toContain("[that was the last of this lens's 2 tool calls, report_finding included.");
+			expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toEqual({
+				name: "lens.correctness",
+				status: "ran",
+				level: "careful",
+			});
+		};
+
+		it("past a report_finding its policy blocks", () =>
+			roundOfTwo(["report_finding", { ...nullDeref, rule: "no-such-rule" }]));
+
+		it("past a call whose arguments fail validation", () => roundOfTwo(["read_file", {}]));
+	});
+
+	it("counts each call against the tools budget though a provider reuses its call ID across rounds", async () => {
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tools: 2 }) : lens));
+		const reused = () =>
+			fauxAssistantMessage(fauxToolCall("read_file", { path: "src/user.ts" }, { id: "call_0" }), {
+				stopReason: "toolUse",
+			});
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: [reused(), reused(), reused(), fauxAssistantMessage("Never asked.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { verdict } = await reviewed({ lenses: tight });
+
+		expect(requests[correctness]).toHaveLength(3);
+		expect(verdict.notRun.find((check) => check.name === "lens.correctness")).toMatchObject({
+			status: "ended",
+			budgetEnded: { budget: "tools", limit: 2, tools: 2 },
+		});
+	});
+
+	it("ends a lens in a round that starts with its token budget spent, keeping what it reported", async () => {
+		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tokens: 1 }) : lens));
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					calls(["report_finding", nullDeref], ["read_file", { path: "src/user.ts" }]),
+					fauxAssistantMessage("Never asked."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { findings, verdict } = await reviewed({ lenses: tight });
+
+		expect(requests[correctness]).toHaveLength(1);
+		expect(findings).toHaveLength(1);
+		const ended = verdict.notRun.find((check) => check.name === "lens.correctness");
+		expect(ended).toMatchObject({ status: "ended", budgetEnded: { budget: "tokens", limit: 1, tools: 0 } });
+		expect(ended?.budgetEnded?.tokens).toBeGreaterThan(1);
+		expect(verdict.ran?.find((check) => check.name === "lens.contracts")).toEqual({
+			name: "lens.contracts",
+			status: "ran",
+			level: "careful",
+		});
+		expect(verdict.status).toBe("not-reviewed");
+	});
+
+	it("counts a lens its budget ended as run, with its findings, when its level says so", async () => {
+		const counted = lenses.map((lens) =>
+			lens.name === "correctness" ? withBudget(lens, { tokens: 1, ended: "count" }) : lens,
+		);
+		scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [call("report_finding", nullDeref), fauxAssistantMessage("Never asked.")],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { findings, verdict } = await reviewed({ lenses: counted });
+
+		expect(findings).toHaveLength(1);
+		expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toMatchObject({
+			status: "ran",
+			level: "careful",
+			budgetEnded: { budget: "tokens", limit: 1 },
+		});
+		expect(verdict.notRun.map((check) => check.name)).not.toContain("lens.correctness");
+		expect(verdict.status).toBe("findings");
+	});
+
+	describe("ends a lens whose spent round", () => {
+		const spent = () => lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tokens: 1 }) : lens));
+		const endedBy = (verdict: Verdict) => verdict.notRun.find((check) => check.name === "lens.correctness");
+
+		it("holds a read that would throw, which it never runs", async () => {
+			const requests = scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [call("read_file", { path: "src/missing.ts" }), fauxAssistantMessage("Never asked.")],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+			const { verdict } = await reviewed({ lenses: spent() });
+
+			expect(requests[correctness]).toHaveLength(1);
+			expect(endedBy(verdict)).toMatchObject({ status: "ended", budgetEnded: { budget: "tokens" } });
+		});
+
+		it("holds a report_finding that throws", async () => {
+			const requests = scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [
+						call("report_finding", { ...nullDeref, file: "src/missing.ts" }),
+						fauxAssistantMessage("Never asked."),
+					],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+			const { findings, verdict } = await reviewed({ lenses: spent() });
+
+			expect(requests[correctness]).toHaveLength(1);
+			expect(findings).toEqual([]);
+			expect(endedBy(verdict)).toMatchObject({ status: "ended", budgetEnded: { budget: "tokens" } });
+		});
+
+		it("holds only a call its policy refuses, refusing it in the tool", async () => {
+			const requests = scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [
+						call("report_finding", { ...nullDeref, severity: "P3" }),
+						fauxAssistantMessage("Never asked."),
+					],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+			const { findings, verdict } = await reviewed({ lenses: spent() });
+
+			expect(requests[correctness]).toHaveLength(1);
+			expect(findings).toEqual([]);
+			expect(endedBy(verdict)).toMatchObject({ status: "ended", budgetEnded: { budget: "tokens" } });
+		});
+
+		// Pi Durable answers a call whose arguments fail validation, or that names a tool the request did not offer,
+		// without running Melian's code or offering it a hook that can end the run. A round made only of such calls makes
+		// one more request; the next round with a call that reaches a tool ends the run.
+		it("holds only calls that never reach a tool, after one more request", async () => {
+			const requests = scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [
+						calls(["read_file", {}], ["write_file", { path: "src/user.ts" }]),
+						call("list_files", {}),
+						fauxAssistantMessage("Never asked."),
+					],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+			const { verdict } = await reviewed({ lenses: spent() });
+
+			expect(requests[correctness]).toHaveLength(2);
+			expect(toolResults(requests[correctness]![1]!)).toEqual([
+				expect.stringContaining("Validation failed"),
+				expect.stringContaining("Tool write_file is not available"),
+			]);
+			expect(endedBy(verdict)).toMatchObject({ status: "ended", budgetEnded: { budget: "tokens" } });
+		});
+	});
+
+	it("holds a lens task an older Melian created, whose budget is a number, to that findings budget", async () => {
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("report_finding", nullDeref),
+					call("report_finding", { ...nullDeref, line: 6, endLine: 7 }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+		const [lensTask] = (lensExtension.tasks ?? []).filter((task) => task.definition.name === "melian.lenses");
+		const [lens] = lenses.filter((each) => each.name === "correctness");
+		const root = await harness.root(context);
+		const head = gitIn(repo, "rev-parse", "feature");
+		const input = {
+			root: root.id,
+			revision: { repoRoot: repo, nonce: "0".repeat(24), base: gitIn(repo, "rev-parse", "main"), head, files: [] },
+			lenses: [
+				{
+					key: `correctness@${lens!.version}`,
+					name: "correctness",
+					version: lens!.version,
+					route: [fake.ref("heavy")],
+					instructions: correctness,
+					tools: [...lens!.tools],
+					severities: [...lens!.severities],
+					rules: lens!.rules.map((rule) => ({ ...rule })),
+					budget: 1,
+					coverage: { scope: "", paths: ["**"], nearer: [] },
+					prompt: "Review the change.",
+				},
+			],
+		};
+		// The registry holds the task erased; its input is the old shape, which the current type no longer allows.
+		const taskId = await root.commit(
+			(tx) => tx.createTask(lensTask as never, input as never, { ownership: { kind: "conversation" } }),
+			context,
+		);
+
+		await harness.waitForTask(taskId, context);
+
+		expect(toolResults(requests[correctness]![2]!).at(-1)).toContain("budget reached");
 	});
 
 	it("refuses a tier with no model, or none with credentials", async () => {

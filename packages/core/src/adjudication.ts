@@ -11,6 +11,7 @@ import {
 	normaliseSnippet,
 	wasCut,
 } from "./findings.ts";
+import type { ScrutinyLevel } from "./lens.ts";
 
 /** The resolutions from strictest to most lenient. */
 export const resolutionOrder: readonly Resolution[] = ["block", "acknowledge", "advisory", "silent"];
@@ -298,8 +299,22 @@ export function dedupeFindings(
 	});
 }
 
-/** Whether a check ran to completion, was skipped, or failed. */
-export type CheckStatus = "ran" | "skipped" | "failed";
+/**
+ * Whether a check ran to completion, was skipped, failed, or was `ended` by its budget before it finished: a lens whose
+ * level does not count a budget's end as a run.
+ */
+export type CheckStatus = "ran" | "skipped" | "failed" | "ended";
+
+/**
+ * Which budget ended a lens's conversation, and its limit, with what the lens had used of each when it ended: input and
+ * output tokens, and tool calls counted against the budget.
+ */
+export interface BudgetEnd {
+	readonly budget: "tokens" | "tools";
+	readonly limit: number;
+	readonly tokens: number;
+	readonly tools: number;
+}
 
 /**
  * What one check of a review did, such as a lens, a static tool, or a guardrail. `reason` says why a check was skipped
@@ -316,6 +331,13 @@ export interface CheckRecord {
 	 * counts only that version's findings for the check; without it, every version's.
 	 */
 	readonly version?: string;
+	/** The scrutiny level a lens ran at, or was to run at when it failed. Other checks have none. */
+	readonly level?: ScrutinyLevel;
+	/**
+	 * The budget that ended a lens's conversation before the lens finished on its own, with what it had used: on an
+	 * `ended` record, or on a `ran` record when the lens's level counts a budget's end as a run.
+	 */
+	readonly budgetEnded?: BudgetEnd;
 }
 
 /** The reason {@link adjudicate} gives a check the manifest names that has no record. */
@@ -323,8 +345,8 @@ export const noRecord = "no record";
 
 /**
  * A review's outcome, as a pull request's check reports it: `passed` when every check ran and nothing needs
- * attention, `findings` when every check ran and something does, and `not-reviewed` when a check failed or was skipped
- * without leave. A review that did not complete is never `passed`.
+ * attention, `findings` when every check ran and something does, and `not-reviewed` when a check failed, was ended by
+ * its budget, or was skipped without leave. A review that did not complete is never `passed`.
  */
 export type VerdictStatus = "passed" | "findings" | "not-reviewed";
 
@@ -338,10 +360,15 @@ export interface Verdict {
 	/** Findings dismissed with a reason. They neither block nor need attention. */
 	readonly dismissed: readonly ResolvedFinding[];
 	/**
-	 * The checks that were skipped or failed, with their reasons, in input order, then each check the manifest names that
-	 * left no record, as skipped with the reason {@link noRecord}.
+	 * The checks that were skipped, failed, or ended by their budget, with their reasons, in input order, then each check
+	 * the manifest names that left no record, as skipped with the reason {@link noRecord}.
 	 */
 	readonly notRun: readonly CheckRecord[];
+	/**
+	 * The checks that ran, in input order, each lens with the level it ran at and any budget that ended it. Absent from a
+	 * verdict recorded before Melian kept it.
+	 */
+	readonly ran?: readonly CheckRecord[];
 }
 
 /** What {@link adjudicate} decides from. */
@@ -379,8 +406,8 @@ function readingOrder(a: Finding, b: Finding): number {
  * Decides a review: merges findings two checks reported for one problem ({@link dedupeFindings}), resolves each under
  * its path's configuration ({@link applyResolutions}), and derives the status. Every finding is resolved here, whether
  * it arrives without a resolution, as a producer stores it, or with one, which is replaced; none is dropped or counted
- * as `silent` for lacking one. A failed check, a skipped one not in `allowSkip`, or a check of the manifest with no
- * record makes the review `not-reviewed`, even with no findings. Otherwise a finding above `silent` makes it
+ * as `silent` for lacking one. A failed check, one its budget ended, a skipped one not in `allowSkip`, or a check of
+ * the manifest with no record makes the review `not-reviewed`, even with no findings. Otherwise a finding above `silent` makes it
  * `findings`, and nothing does `passed`. A dismissed finding counts toward neither.
  */
 export function adjudicate({ findings, manifest, checks, config, allowSkip = [] }: AdjudicationInput): Verdict {
@@ -400,7 +427,7 @@ export function adjudicate({ findings, manifest, checks, config, allowSkip = [] 
 		...missing.map((name) => ({ name, status: "skipped" as const, reason: noRecord })),
 	];
 	const incomplete =
-		missing.length > 0 || notRun.some((check) => check.status === "failed" || !allowSkip.includes(check.name));
+		missing.length > 0 || notRun.some((check) => check.status !== "skipped" || !allowSkip.includes(check.name));
 	const attention = counted.some((finding) => finding.properties.resolution !== "silent");
 	return {
 		status: incomplete ? "not-reviewed" : attention ? "findings" : "passed",
@@ -408,5 +435,6 @@ export function adjudicate({ findings, manifest, checks, config, allowSkip = [] 
 		findings: grouped,
 		dismissed: resolved.filter((finding) => finding.properties.status === "dismissed"),
 		notRun,
+		ran: checks.filter((check) => check.status === "ran").map((check) => ({ ...check })),
 	};
 }

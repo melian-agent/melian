@@ -2,6 +2,7 @@ export {
 	type AdjudicationInput,
 	adjudicate,
 	applyResolutions,
+	type BudgetEnd,
 	type CheckRecord,
 	type CheckStatus,
 	type Claimant,
@@ -148,20 +149,29 @@ export {
 	guardrailLimits,
 } from "./guardrails.ts";
 export {
+	defaultScrutinyLevel,
 	type Lens,
+	type LensBudget,
 	type LensCoverage,
 	type LensFrontMatter,
+	type LensLevel,
+	type LensLevels,
+	type LensReads,
 	type LensRule,
 	type LensSelection,
 	type LensToolName,
 	lensCovers,
 	lensFrontMatterSchema,
+	lensLevel,
 	lensLimits,
+	lensReadScopes,
 	lensRuleSchema,
 	lensToolNames,
 	loadLenses,
 	parseLensFile,
 	renderLensInstructions,
+	type ScrutinyLevel,
+	scrutinyLevels,
 	selectLenses,
 } from "./lens.ts";
 export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
@@ -185,6 +195,7 @@ export {
 	reviewStatus,
 } from "./publication.ts";
 export {
+	describeBudgetEnd,
 	renderFindingsJson,
 	renderFindingsTerminal,
 	renderVerdictJson,

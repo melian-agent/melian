@@ -2,17 +2,22 @@ import {
 	type Changeset,
 	type CheckRecord,
 	checksOfTier,
+	defaultScrutinyLevel,
 	type Finding,
 	type FindingSource,
 	type Lens,
+	type LensBudget,
 	type LensCoverage,
 	type LensRule,
+	type LensTier,
 	type LensToolName,
+	lensLevel,
 	type MelianConfig,
 	type ModelReference,
 	type RepositorySource,
 	renderLensInstructions,
 	resolveModelForTier,
+	type ScrutinyLevel,
 	type Severity,
 	type StandardsSection,
 	selectLenses,
@@ -48,6 +53,7 @@ import {
 	type Tx,
 } from "./harness.ts";
 import {
+	budgetEnded,
 	injectionPolicySection,
 	LensDocument,
 	lensPolicyHook,
@@ -55,23 +61,25 @@ import {
 	type ReviewState,
 	reportFinding,
 	reviewFiles,
+	type StoredBudgetEnd,
 } from "./lens-tools.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
 import { ReviewIndex, type ReviewIndexState } from "./review-index.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
 
-// One lens as the lens task runs it: everything resolved, nothing left to look up.
+// One lens as the lens task runs it, at one level: everything resolved, nothing left to look up.
 interface LensRun {
 	readonly key: string;
 	readonly name: string;
 	readonly version: string;
-	// The tier's models that were known with credentials when the review started, in routing order.
+	readonly level: ScrutinyLevel;
+	// The level's tier's models that were known with credentials when the review started, in routing order.
 	readonly route: readonly ModelReference[];
 	readonly instructions: string;
 	readonly tools: readonly LensToolName[];
 	readonly severities: readonly Severity[];
 	readonly rules: readonly LensRule[];
-	readonly budget: number;
+	readonly budget: LensBudget;
 	readonly coverage: LensCoverage;
 	// The change as this lens sees it: only the files it covers.
 	readonly prompt: string;
@@ -84,7 +92,7 @@ interface LensTaskInput {
 }
 
 type LensOutcome =
-	| { readonly status: "done" }
+	| { readonly status: "done"; readonly budgetEnded?: StoredBudgetEnd }
 	| { readonly status: "unanswered"; readonly reason: string }
 	| { readonly status: "exhausted"; readonly tried: string[]; readonly reason: string };
 
@@ -122,6 +130,9 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 					// An owned conversation starts with its owner's tools and extensions, so both are explicit. Selecting only
 					// the lens extension puts its injection policy section first, ahead of the instructions.
 					const tools = [...lens.tools.map((tool) => lensReadTools[tool]), reportFinding];
+					// A task an older Melian created and a crash left in this phase holds only the findings budget, as a number.
+					const stored = lens.budget as LensBudget | number;
+					const budget = typeof stored === "number" ? { findings: stored } : stored;
 					await configure(tx, created.id, {
 						model: lens.route[0],
 						instructions: lens.instructions,
@@ -136,7 +147,11 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 						tools: [...lens.tools],
 						severities: [...lens.severities],
 						rules: lens.rules.map((rule) => ({ ...rule })),
-						budget: lens.budget,
+						budget: budget.findings,
+						limits: {
+							...(budget.tokens === undefined ? {} : { tokens: budget.tokens }),
+							...(budget.tools === undefined ? {} : { tools: budget.tools }),
+						},
 						coverage: {
 							scope: lens.coverage.scope,
 							paths: [...lens.coverage.paths],
@@ -160,7 +175,10 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 						const content = attempt === 0 ? lens.prompt : continuePrompt;
 						const request = { type: "input", content, requestId: `lens:${key}:${attempt}` } as const;
 						const settled = await (await child.submit(request, context)).wait(context);
-						if (settled.status === "done") return [key, { status: "done" }];
+						if (settled.status === "done") {
+							const ended = await budgetEnded(runtime, id, context);
+							return [key, { status: "done", ...(ended === undefined ? {} : { budgetEnded: ended }) }];
+						}
 						const reason = typeof settled.detail === "string" ? settled.detail : (settled.reason ?? "unanswered");
 						const failover =
 							settled.reason === "no_model" || (settled.reason === "model_error" && isFailoverError(reason));
@@ -305,9 +323,14 @@ export function renderChangePrompt(changeset: Changeset, nonce: string, only?: r
 }
 
 // The tier's model and fallbacks, keeping those the collection knows and holds credentials for, in routing order.
-async function chooseRoute(lens: Lens, config: MelianConfig, review: ReviewModels): Promise<ModelReference[]> {
+async function chooseRoute(
+	lens: string,
+	tier: LensTier,
+	config: MelianConfig,
+	review: ReviewModels,
+): Promise<ModelReference[]> {
 	const models = modelsOf(review);
-	const route = resolveModelForTier(lens.tier, config.models);
+	const route = resolveModelForTier(tier, config.models);
 	const available: ModelReference[] = [];
 	for (const candidate of [route.model, ...route.fallbacks]) {
 		if (models.getModel(candidate.provider, candidate.modelId) === undefined) continue;
@@ -317,8 +340,8 @@ async function chooseRoute(lens: Lens, config: MelianConfig, review: ReviewModel
 	const tried = [route.model, ...route.fallbacks].map(modelName).join(", ");
 	throw new ReviewError(
 		"noAvailableModel",
-		`lens ${lens.name} needs a ${lens.tier} model, and none of ${tried} is known with credentials; log in with pi or set the provider's API key`,
-		{ lenses: [lens.name] },
+		`lens ${lens} needs a ${tier} model, and none of ${tried} is known with credentials; log in with pi or set the provider's API key`,
+		{ lenses: [lens] },
 	);
 }
 
@@ -494,14 +517,20 @@ async function startAdjudication(
 
 function lensCheck(lens: LensRun, result: LensResult | undefined): CheckRecord {
 	const name = `lens.${lens.name}`;
-	if (result === undefined) return { name, status: "failed", reason: "the lens task did not complete" };
+	const { level } = lens;
+	if (result === undefined) return { name, status: "failed", level, reason: "the lens task did not complete" };
 	const outcome = result[lens.key];
-	if (outcome?.status === "done") return { name, status: "ran" };
+	if (outcome?.status === "done") {
+		const { budgetEnded } = outcome;
+		if (budgetEnded === undefined) return { name, status: "ran", level };
+		// A budget's end is reduced coverage, so it leaves the review not reviewed unless the level counts it.
+		return { name, status: lens.budget.ended === "count" ? "ran" : "ended", level, budgetEnded };
+	}
 	if (outcome?.status === "exhausted") {
 		const error = `tried ${outcome.tried.join(", ")}; the last said: ${outcome.reason}`;
-		return { name, status: "failed", reason: "every model of its tier failed", error };
+		return { name, status: "failed", level, reason: "every model of its tier failed", error };
 	}
-	return { name, status: "failed", reason: "the lens did not finish", error: outcome?.reason ?? "no outcome" };
+	return { name, status: "failed", level, reason: "the lens did not finish", error: outcome?.reason ?? "no outcome" };
 }
 
 const noLensCovers = "no lens covers these paths";
@@ -597,16 +626,20 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		const rules = lens.rules.some((rule) => rule.id === injectionAttemptRule.id)
 			? lens.rules
 			: [...lens.rules, injectionAttemptRule];
+		// Every lens runs at its default level until triage chooses one per review.
+		const level = defaultScrutinyLevel;
+		const settings = lensLevel(lens, level);
 		lenses.push({
 			key: `${lens.name}@${lens.version}`,
 			name: lens.name,
 			version: lens.version,
-			route: await chooseRoute(lens, config, models),
-			instructions: renderLensInstructions({ ...lens, rules }, standards),
+			level,
+			route: await chooseRoute(lens.name, settings.tier, config, models),
+			instructions: renderLensInstructions({ ...lens, rules }, standards, level),
 			tools: lens.tools,
 			severities: lens.severities,
 			rules,
-			budget: lens.budget.findings,
+			budget: settings.budget,
 			coverage,
 			prompt: renderChangePrompt(changeset, nonce, files),
 		});

@@ -40,8 +40,11 @@ export {
 	defaultProviderAuthContext,
 	type Message,
 	type Models,
+	type ToolCall,
 	Type,
 } from "@earendil-works/pi-ai";
+// The validator Pi Durable's tool task applies to a call's arguments before any hook.
+export { validateToolArguments } from "@earendil-works/pi-ai/utils/validation";
 export {
 	AssistantEntry,
 	type Conversation,
@@ -57,6 +60,7 @@ export {
 	type Harness,
 	type HarnessOptions,
 	hook,
+	LiveDoc,
 	type ModelRef,
 	type Registry,
 	type Storage,
@@ -64,10 +68,14 @@ export {
 	SystemEntry,
 	section,
 	type TaskId,
+	type ToolExecutionApi,
 	type ToolRegistration,
 	ToolResultEntry,
 	ToolTask,
+	type ToolTaskInput,
 	type Tx,
+	UsageDoc,
+	type UsageState,
 } from "@earendil-works/pi-durable";
 export type { ExecutionEnv } from "@earendil-works/pi-durable/env";
 

@@ -374,13 +374,48 @@
     {
       "name": "lens.security",
       "status": "failed",
+      "level": "deep",
       "reason": "the lens did not finish",
       "error": "provider returned 529"
+    },
+    {
+      "name": "lens.tests",
+      "status": "ended",
+      "level": "quick",
+      "budgetEnded": {
+        "budget": "tokens",
+        "limit": 50000,
+        "tokens": 51200,
+        "tools": 4
+      }
     },
     {
       "name": "static.tsc",
       "status": "skipped",
       "reason": "no tsconfig.json at the base revision"
+    }
+  ],
+  "ran": [
+    {
+      "name": "lens.correctness",
+      "status": "ran",
+      "level": "careful"
+    },
+    {
+      "name": "lens.contracts",
+      "status": "ran",
+      "level": "quick",
+      "budgetEnded": {
+        "budget": "tools",
+        "limit": 10,
+        "tokens": 48120,
+        "tools": 10
+      }
+    },
+    {
+      "name": "static.biome",
+      "status": "ran",
+      "version": "2.5.15"
     }
   ]
 }

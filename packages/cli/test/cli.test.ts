@@ -208,11 +208,27 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		expect(doctor.stdout).toMatch(/^ok {4}github {6}token from GITHUB_TOKEN$/m);
 		// This checkout has its own install, so the static checks use its Biome and tsc.
 		expect(doctor.stdout).toMatch(/^ok {4}static {6}biome from the checkout, tsc from the checkout$/m);
+		expect(doctor.stdout).toMatch(/^ok {4}levels {6}each lens's levels cost more from quick to deep$/m);
 		expect(doctor.stdout).not.toContain(token);
 		expect(readFileSync(bin, "utf8")).toMatch(/^#!\/usr\/bin\/env node\n/);
 		// The test runs this checkout's own binary, so the code under review would be its reviewer.
 		expect(doctor.stdout).toContain(
 			`warn  melian      ${bin}, inside this checkout, so the change can alter its reviewer`,
+		);
+	});
+
+	it("warns when an extending lens's top-level tier or budget leaves a level cheaper than the one below it", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		mkdirSync(join(repo, ".melian/lenses/correctness"), { recursive: true });
+		writeFileSync(
+			join(repo, ".melian/lenses/correctness/LENS.md"),
+			"---\nname: correctness\nextends: correctness\ntier: light\nbudget: { tokens: 500k }\n---\n",
+		);
+
+		const doctor = melian(repo, ["doctor"]);
+
+		expect(doctor.stdout).toContain(
+			"warn  levels      correctness: careful runs on light, below quick's medium; deep allows 400,000 tokens, fewer than careful's 500,000; set the level's own tier or budget",
 		);
 	});
 
