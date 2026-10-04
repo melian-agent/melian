@@ -211,7 +211,7 @@ Front matter is routing; the body is the system prompt for the lens's child conv
 
 - `levels` sets, for each [scrutiny level](#scrutiny-levels), the model tier, the budgets, the reading scope, and whether the level's candidates are verified. A lens that declares no levels has one, `careful`, from a top-level `tier` and `budget`, as each lens built in milestone 1 does. It runs only at `careful`, and triage's question for it collapses to skip or run.
 - `tier` names a model tier, never a model ID. Tiers resolve through the [review plan](#the-review-plan), which is overridable per path.
-- `reads` is `hunks` or `functions`. At `functions` the lens's prompt carries the whole function around each hunk, because a bug on an unchanged line of a touched function is in scope.
+- `reads` is `hunks` or `functions`. At `functions` the lens's prompt carries the whole function around each hunk, because a defect can sit on a line the change left alone inside a function it edited, and that defect is the change's to answer for.
 - `verify` sends the level's candidates to the [verifier](#verification).
 - `tools` is a read-only allowlist: `read_file`, `search`, and `list_files`, each reading the head revision through git rather than the filesystem. The hook layer enforces it. `report_finding` is always offered and never listed.
 - `severities` bounds what the lens may report. The hook layer rejects findings outside it.
@@ -238,7 +238,7 @@ Solution: five more lenses, each one angle:
 - `durability`: Pi Durable's replay and idempotency rules, such as a side effect between two commits, a superseded task that still writes, or a resumed task acting on a target that has moved. It is a repository lens under Melian's own `.melian/lenses/`, because those rules are Melian's, not every user's.
 - `removed-behaviour`: for each deleted line, the invariant it held and where the new code restores it.
 - `tests`: whether the tests a change adds or edits would fail without it, and whether changed behaviour has a test at all.
-- `conventions`: a breach of the standards files, reported only when the lens can quote both the rule and the offending line.
+- `conventions`: a breach of the standards files, reported only when the lens can cite the standard's own wording and point to the line that breaks it.
 
 Each is written adversarially: it looks for the strongest reasons the change should not ship, gives no credit for intent or for likely follow-up work, and treats an empty answer as a good one. [The comparison of review tools](research/2026-10-04-review-tools-compared.md) shows where each angle comes from. Each ships with five goldens from the comparison records. Lens tests in the lens directory remain unscheduled.
 

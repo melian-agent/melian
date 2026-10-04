@@ -16,12 +16,12 @@ Source: the prompt templates in the Claude Code 2.1.252 binary, and the prompt t
 
 The skill reviews the branch against its upstream, with uncommitted changes when there are any. Independent finders each take one angle and run as separate subagents:
 
-- Line by line: read every hunk, then the whole function around it, because a bug on an unchanged line of a touched function is in scope.
+- Line by line: read every hunk, then the whole function around it, since a defect on a line the change left alone, inside a function it edited, still counts.
 - Removed behaviour: for each deleted line, name the invariant it held and find where the new code restores it.
 - Cross-file tracing of callers and callees, and at the top levels language pitfalls.
-- Cleanup: reuse, simplification, efficiency, altitude, and conventions, where a violation counts only when the exact rule and the exact line can both be quoted.
+- Cleanup: reuse, simplification, efficiency, altitude, and conventions, where a breach counts only if the finder can cite the standard's own wording and point to the line that breaks it.
 
-Correctness outranks cleanup at the cap. Finders are told to pass on every candidate with a nameable failure scenario, because finders that quietly drop half-believed candidates cause most misses.
+Correctness outranks cleanup at the cap. Finders are told to forward every candidate whose failure they can describe concretely, because most misses come from finders silently discarding what they only half believe.
 
 Effort sets the pipeline. Low reads the diff once and reports at most four bugs visible in a hunk. Medium biases to precision and high to recall, each with eight angles and a verify. The top levels add angles and a gap sweep for what the list lacks. Which template runs depends on the model family. Some run every angle in sequence in one context, deduplicate, and verify nothing. The prompt that ran on Melian's shadow reviews was one of those: high effort, eight inline angles, dedup, no verify, and at most ten findings.
 
