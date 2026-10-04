@@ -91,7 +91,13 @@ async function routesCheck(cwd: string): Promise<Check | undefined> {
 			.map((tier) => `${tier} to ${config.models[tier]!.model}`);
 		const unrouted = [...(await tiersInUse(root, config))].filter(([tier]) => config.models[tier] === undefined);
 		if (unrouted.length === 0) return { name: "routes", state: "ok", detail: routes.join(", ") || "no lens runs" };
-		const missing = unrouted.map(([tier, lenses]) => `${tier}, for ${lenses.join(" and ")}`).join("; ");
+		const missing = unrouted
+			.map(([tier, lenses]) => {
+				const names =
+					lenses.length < 3 ? lenses.join(" and ") : `${lenses.slice(0, -1).join(", ")}, and ${lenses.at(-1)}`;
+				return `${tier}, for ${names}`;
+			})
+			.join("; ");
 		const fix = "set models.<tier>.model in melian.local.yaml, or pass --model to review";
 		return {
 			name: "routes",
