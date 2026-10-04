@@ -49,7 +49,7 @@ Built in milestone 1, except verification, level, plan, ledger, and decision, pl
 | Finding | One objection, with a stable identity, a cause, a severity, evidence, an explanation, and a status. |
 | Resolution | What a finding at a given severity requires before merge: `block`, `acknowledge`, `advisory`, `silent`. |
 | Verification | A verifier's verdict on one candidate finding: `confirmed`, `plausible`, or `refuted`, with a reason and an optional correction. |
-| Level | How hard a lens looks at one change: `light`, `standard`, or `deep`. A level sets the lens's model tier, budgets, finding cap, reading scope, and whether its findings are verified. |
+| Level | How hard a lens looks at one change: `quick`, `careful`, or `deep`. A level sets the lens's model tier, budgets, finding cap, reading scope, and whether its findings are verified. |
 | Plan | The review plan: which model plays each role in one review, resolved at intake from policy, the model catalogue, and the credentials present. |
 | Ledger | The one comment Melian owns on a pull request, edited in place, recording what each review round did. |
 | Knowledge | A fact learned during review that should outlive the review. |
@@ -193,8 +193,8 @@ rules:
     description: Request input reaches a query, command, or template unescaped.
 paths: ["**"]
 levels:
-  light:    { tier: medium, reads: hunks,     verify: false, budget: { findings: 3,  tokens: 50k,  tools: 10 } }
-  standard: { tier: heavy,  reads: functions, verify: true,  budget: { findings: 8,  tokens: 200k, tools: 30 } }
+  quick:    { tier: medium, reads: hunks,     verify: false, budget: { findings: 3,  tokens: 50k,  tools: 10 } }
+  careful:  { tier: heavy,  reads: functions, verify: true,  budget: { findings: 8,  tokens: 200k, tools: 30 } }
   deep:     { tier: heavy,  reads: functions, verify: true,  budget: { findings: 12, tokens: 400k, tools: 60 } }
 extends: ~
 standards: true
@@ -206,7 +206,7 @@ Report through the finding tool.
 
 Front matter is routing; the body is the system prompt for the lens's child conversation.
 
-- `levels` sets, for each [scrutiny level](#scrutiny-levels), the model tier, the budgets, the reading scope, and whether the level's candidates are verified. A lens that declares no levels has one, `standard`, from a top-level `tier` and `budget`, as each lens built in milestone 1 does.
+- `levels` sets, for each [scrutiny level](#scrutiny-levels), the model tier, the budgets, the reading scope, and whether the level's candidates are verified. A lens that declares no levels has one, `careful`, from a top-level `tier` and `budget`, as each lens built in milestone 1 does.
 - `tier` names a model tier, never a model ID. Tiers resolve through the [review plan](#the-review-plan), which is overridable per path.
 - `reads` is `hunks` or `functions`. At `functions` the lens's prompt carries the whole function around each hunk, because a bug on an unchanged line of a touched function is in scope.
 - `verify` sends the level's candidates to the [verifier](#verification).
@@ -258,7 +258,7 @@ The verifier runs on a model tier of its own, `verifier`. The [review plan](#the
 
 Thresholds are asymmetric at first. A decision model may confirm a candidate or escalate it to the LLM verifier; a refutation needs the LLM verifier until calibration data shows the decision model's refutations hold. The failure to design against is a real P1 dropped on a 9B-parameter model's word.
 
-A `refuted` finding leaves the verdict and stays in the store with its verdict, so the evals and the ledger can show what was dropped and why. `plausible` and `confirmed` findings count, and the ledger marks which is which. A level that does not verify, `light` by default, passes its findings on without a `verification` record, and [escalation](#scrutiny-levels) reruns a severe light finding at a level that does.
+A `refuted` finding leaves the verdict and stays in the store with its verdict, so the evals and the ledger can show what was dropped and why. `plausible` and `confirmed` findings count, and the ledger marks which is which. A level that does not verify, `quick` by default, passes its findings on without a `verification` record, and [escalation](#scrutiny-levels) reruns a severe quick finding at a level that does.
 
 ## Checks, tiers, and stages
 
@@ -296,19 +296,19 @@ Planned for milestone 2.
 
 Problem: every lens in a tier runs at full depth on every change. A one-line fix to a README costs what a change to the publish task costs, and the only way to spend less is to switch a lens off, which is a policy decision a model should not make.
 
-Solution: each lens declares three [levels](#lenses), `light`, `standard`, and `deep`, and triage chooses one per lens for each review. Triage asks one choice question per lens, `skip`, `light`, `standard`, or `deep`, through the `Decider` port. A decision model answers when one is configured, else the LLM fallback adapter, else the lens runs at the tier's default level, `standard` unless configuration names another. The fast tier skips triage.
+Solution: each lens declares three [levels](#lenses), `quick`, `careful`, and `deep`, and triage chooses one per lens for each review. The names differ from the model tier `light` and the check tier `standard` on purpose. Triage asks one choice question per lens, `skip`, `quick`, `careful`, or `deep`, through the `Decider` port. A decision model answers when one is configured, else the LLM fallback adapter, else the lens runs at the tier's default level, `careful` unless configuration names another. The fast tier skips triage.
 
 Policy bounds the choice. A floor and a ceiling per path, layered like every other setting, set a band, and triage moves only within it:
 
 ```yaml
 lenses:
   trust-boundary:
-    level: { floor: standard, ceiling: deep }
+    level: { floor: careful, ceiling: deep }
 triage:
   escalateAt: P1
 ```
 
-The default band is `light` to `deep`, so triage can never switch off a lens that policy says runs; only a floor of `skip`, set on purpose for a path, lets it. One rule escalates mechanically: a lens at `light` that reports a finding at or above `escalateAt`, P1 by default, runs again at the next level as a new check record. Adjudication reads the higher level's record for that lens. The manifest records the level each check ran at, and the [verifier](#verification) runs on the `verifier` model tier.
+The default band is `quick` to `deep`, so triage can never switch off a lens that policy says runs; only a floor of `skip`, set on purpose for a path, lets it. One rule escalates mechanically: a lens at `quick` that reports a finding at or above `escalateAt`, P1 by default, runs again at the next level as a new check record. Adjudication reads the higher level's record for that lens. The manifest records the level each check ran at, and the [verifier](#verification) runs on the `verifier` model tier.
 
 The split keeps the verdict deterministic: a model proposes, policy bounds, and the resolver executes. Conditional scrutiny is the cheapest form of conditional review.
 
