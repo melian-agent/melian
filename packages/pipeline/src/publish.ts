@@ -123,8 +123,34 @@ export const PublisherDocument = defineDoc<{ secret?: string; target?: PublishTa
 	initial: () => ({}),
 });
 
-function fingerprint(verdict: Verdict): string {
+export function fingerprint(verdict: Verdict): string {
 	return createHash("sha256").update(JSON.stringify(verdict)).digest("hex").slice(0, 16);
+}
+
+// The fingerprint a verdict migrated from version 2 of the verdict document had before, when it could have been one:
+// each finding's evidence is the single cause at head that the migration made of its one location, and no finding has
+// a failure scenario. A head published before the upgrade then reads as published, rather than taking a second review
+// of the same verdict.
+export function legacyFingerprint(verdict: Verdict): string | undefined {
+	const findings = [...Object.values(verdict.findings).flat(), ...verdict.dismissed];
+	const legacy = (finding: Finding) => {
+		const { evidence, failureScenario } = finding.properties;
+		if (failureScenario !== undefined) return false;
+		if (evidence === undefined) return true;
+		return evidence.length === 1 && evidence[0]!.role === "cause" && evidence[0]!.revision === "head";
+	};
+	if (!findings.every(legacy)) return undefined;
+	const downgrade = (finding: Finding) => {
+		const [location] = finding.properties.evidence ?? [];
+		if (location === undefined) return finding;
+		const { role: _, revision: __, ...old } = location;
+		return { ...finding, properties: { ...finding.properties, evidence: old } };
+	};
+	const groups = Object.fromEntries(
+		Object.entries(verdict.findings).map(([resolution, group]) => [resolution, group.map(downgrade)]),
+	);
+	const old = { ...verdict, findings: groups, dismissed: verdict.dismissed.map(downgrade) };
+	return createHash("sha256").update(JSON.stringify(old)).digest("hex").slice(0, 16);
 }
 
 // Resolutions an earlier head decided but never replied to, because a later push arrived first. They are still owed.
@@ -310,6 +336,7 @@ function publishTask(provider: ReviewProvider) {
 					const verdict = await readVerdict(runtime, root, revision, context);
 					if (verdict === undefined) throw new Error(`no verdict is recorded for ${revision}`);
 					const current = fingerprint(verdict);
+					const legacy = legacyFingerprint(verdict);
 					// A pending round planned for another revision of this head, such as the pull request before a retarget,
 					// is dropped unless the provider already shows it, in which case the loop below records it as posted.
 					const left = (await read()).revisions[head]?.pending;
@@ -332,7 +359,7 @@ function publishTask(provider: ReviewProvider) {
 						const state = await read();
 						const before = state.revisions[head];
 						if (before?.pending === undefined) {
-							if (before?.verdict === current) break;
+							if (before?.verdict !== undefined && [current, legacy].includes(before.verdict)) break;
 							const planned = planRound(state, head, revision, verdict, lines);
 							await runtime.commit(async (tx) => {
 								const document = await tx.doc(PublishedDocument, root);

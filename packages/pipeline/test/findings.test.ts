@@ -9,6 +9,7 @@ import {
 	type FindingInput,
 	type FindingSource,
 	resolveFinding,
+	type Verdict,
 } from "@melian-agent/core";
 import {
 	backgroundContext as context,
@@ -27,8 +28,9 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { type StoredVerdict, upgradeStoredVerdict } from "../src/adjudication.ts";
 import { FindingsDocument } from "../src/findings.ts";
-import { PublishedDocument } from "../src/publish.ts";
+import { fingerprint, legacyFingerprint, PublishedDocument } from "../src/publish.ts";
 
 const input: FindingInput = {
 	rule: "no-eval",
@@ -453,5 +455,32 @@ describe("documents stored before evidence became a list", () => {
 		expect(await readVerdict(harness, root.id, "base..head", context)).toEqual(verdict(current));
 		const published = await harness.snapshot(PublishedDocument, root.id, context);
 		expect(published?.revisions.head?.pending).toEqual(pending(current));
+	});
+
+	it("knows a migrated verdict by the fingerprint it was published under, so its head takes no second review", async () => {
+		const evidence = [
+			{ file: "src/api.ts", startLine: 3, role: "cause" as const, revision: "head" as const, snippet: "run(body)" },
+		];
+		const current = createFinding({ ...input, cause: "affected", evidence });
+		const { role: _, revision: __, ...old } = evidence[0]!;
+		const stored = { ...current, properties: { ...current.properties, evidence: old } };
+		const plain = createFinding({ ...input, snippet: "eval(body)" });
+		const verdict = (finding: unknown) =>
+			({
+				status: "findings",
+				blocking: true,
+				findings: { block: [finding, plain], acknowledge: [], advisory: [], silent: [] },
+				dismissed: [],
+				notRun: [],
+			}) as unknown as Verdict;
+		const published = fingerprint(verdict(stored));
+		const migrated = upgradeStoredVerdict(verdict(stored) as StoredVerdict) as Verdict;
+
+		expect(fingerprint(migrated)).not.toBe(published);
+		expect(legacyFingerprint(migrated)).toBe(published);
+		const scenario = createFinding({ ...input, cause: "affected", evidence, failureScenario: "run(1) throws." });
+		expect(legacyFingerprint(verdict(scenario))).toBeUndefined();
+		const contextOnly = [{ ...evidence[0]!, role: "context" as const }];
+		expect(legacyFingerprint(verdict(createFinding({ ...input, evidence: contextOnly })))).toBeUndefined();
 	});
 });
