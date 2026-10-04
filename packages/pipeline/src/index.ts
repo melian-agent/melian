@@ -9,7 +9,10 @@ export {
 	runChecks,
 } from "./checks.ts";
 export { createReviewModels, PiCredentialStore, piAuthPath, piCredentialStore } from "./credentials.ts";
+export { type DismissalOptions, DismissHarness, type RecordedDismissal, recordDismissal } from "./dismiss.ts";
 export {
+	DismissError,
+	type DismissErrorCode,
 	PiCredentialsError,
 	type PiCredentialsErrorCode,
 	PublishError,

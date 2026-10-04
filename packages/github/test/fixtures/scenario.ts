@@ -120,6 +120,19 @@ export function stackOnParent(repo: string): void {
 	gitIn(repo, "merge", "--quiet", "--no-edit", "parent");
 }
 
+// Rebuilds `feature` on a `parent` branch that edits the line above managerName's body, so revision 1's hunk is line 7
+// alone against `parent` and lines 6 and 7 against `main`: a retarget onto `main` keeps the head and changes the trigger.
+export function stackOnEditedParent(repo: string): void {
+	const signature = "export function managerName(user: User): string {";
+	const edited = (body: string) => user(body, greeting).replace(signature, `${signature} // the manager's name`);
+	gitIn(repo, "checkout", "--quiet", "-b", "parent", "main");
+	writeFiles(repo, { "src/user.ts": edited(safe) });
+	gitIn(repo, "commit", "--quiet", "--all", "-m", "parent");
+	gitIn(repo, "checkout", "--quiet", "-B", "feature", "parent");
+	writeFiles(repo, { "src/user.ts": edited("\treturn (user.manager as User).name;") });
+	gitIn(repo, "commit", "--quiet", "--all", "-m", "revision 1 on parent");
+}
+
 const explanation = (what: string) => ({ what, why: `${what} Why.`, fix: `${what} Fix.` });
 
 // Each finding blames its own line, so only a location inside the diff makes it more than pre-existing.

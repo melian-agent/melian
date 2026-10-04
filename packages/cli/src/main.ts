@@ -1,5 +1,6 @@
 import { parseArgs } from "node:util";
-import { findings, type Io, publish, review, reviewExitCodes } from "./commands.ts";
+import { dismissalReason, FindingError } from "@melian-agent/core";
+import { dismiss, findings, type Io, publish, review, reviewExitCodes } from "./commands.ts";
 import { doctor } from "./doctor.ts";
 
 /** The exit code for a command line Melian cannot read, as `sysexits.h` numbers it. */
@@ -11,14 +12,22 @@ Commands:
   review <range|#pr>     Review a git range, such as main or main...feature, or a pull request, such as "#12".
                          Exits 0 passed, 1 blocking findings, 2 not reviewed, 3 findings with none blocking.
   publish <#pr>          Post the stored review of the pull request's current head to GitHub.
-  findings <range|#pr>   Print the stored review. --open prints only findings that need attention; --json prints JSON.
+  findings <range|#pr>   Print the stored review. --open prints only findings that need attention, --all silent and
+                         dismissed findings too; --json prints JSON.
+  dismiss <range|#pr> <id> --reason <text> [--only]
+                         Dismiss a finding of the stored review, with a reason, and decide its verdict again. It
+                         dismisses every report merged into the finding unless --only names one report alone.
+                         Exits 0 when recorded, 1 when the review or the finding is not found, or when the
+                         dismissal was recorded but the verdict could not be decided again.
   doctor                 Check Node, git, credentials, model routes, and GitHub access.
 
 Options:
   --model <provider/id>  Route every tier to this model, over any route melian.yaml sets (review).
   --rerun                Run again the checks and lenses that failed in the last review of this base and head,
                          rather than print the failures it stored (review).
-  --open, --json         For findings.
+  --open, --all, --json  For findings.
+  --reason <text>        Why the finding does not apply, at most 1000 characters (dismiss).
+  --only                 Dismiss the report the ID names alone, leaving the reports merged with it live (dismiss).
   --no-color             Print without colour.
   -h, --help             Show this help.
 
@@ -26,6 +35,16 @@ Quote a pull request number: an unquoted # starts a comment in most shells.
 `;
 
 class UsageError extends Error {}
+
+// A reason Melian refuses, blank or too long, is a command line it cannot read.
+function readableReason(reason: string): string {
+	try {
+		return dismissalReason(reason);
+	} catch (error) {
+		if (error instanceof FindingError) throw new UsageError(error.message);
+		throw error;
+	}
+}
 
 function one(positionals: readonly string[], command: string, what: string): string {
 	if (positionals.length !== 1) throw new UsageError(`${command} takes one ${what}`);
@@ -47,6 +66,9 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				json: { type: "boolean", default: false },
 				model: { type: "string" },
 				rerun: { type: "boolean", default: false },
+				all: { type: "boolean", default: false },
+				reason: { type: "string" },
+				only: { type: "boolean", default: false },
 				color: { type: "boolean", default: true },
 				help: { type: "boolean", short: "h", default: false },
 			},
@@ -72,10 +94,21 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			case "publish":
 				return await publish(scoped, one(rest, name, "pull request"));
 			case "findings":
+				if (values.open && values.all) throw new UsageError("findings takes --open or --all, not both");
 				return await findings(scoped, one(rest, name, "range or pull request"), {
 					open: values.open,
+					all: values.all,
 					json: values.json,
 				});
+			case "dismiss": {
+				if (rest.length !== 2) throw new UsageError("dismiss takes a range or pull request and a finding ID");
+				const [target, id] = rest as [string, string];
+				if (!/^[0-9a-f]{16}$/.test(id)) {
+					throw new UsageError(`${id} is not a finding ID; an ID is 16 hex digits, as melian findings prints it`);
+				}
+				if (values.reason === undefined) throw new UsageError("dismiss needs --reason <text>");
+				return await dismiss(scoped, target, id, readableReason(values.reason), { only: values.only });
+			}
 			case "doctor":
 				if (rest.length > 0) throw new UsageError("doctor takes no arguments");
 				return await doctor(scoped);

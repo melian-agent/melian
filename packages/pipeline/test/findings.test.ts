@@ -5,14 +5,18 @@ import {
 	type Changeset,
 	createFinding,
 	defaultConfig,
+	dismissalVersion,
 	type Finding,
 	FindingError,
 	type FindingInput,
 	type FindingSource,
+	maxDismissalReasonLength,
 	type PullRequest,
 	type ReviewDraft,
 	type ReviewProvider,
+	replyKey,
 	resolveFinding,
+	snippetHash,
 	type Verdict,
 } from "@melian-agent/core";
 import {
@@ -210,7 +214,14 @@ describe("the findings document", () => {
 			await root.commit((tx) => dismissFinding(tx, root.id, finding.properties.id, dismissal), context);
 			await root.commit((tx) => upsertFinding(tx, root.id, changed, "rev2"), context);
 			await root.commit((tx) => upsertFinding(tx, root.id, changed, "rev2"), context);
-			expect(await readFindings(harness, root.id, "rev2", context)).toEqual([seen(changed)]);
+			const [reopened] = await readFindings(harness, root.id, "rev2", context);
+			expect(reopened).toEqual({
+				...seen(changed),
+				properties: {
+					...seen(changed).properties,
+					pastDismissals: [{ ...dismissal, reopenedRevision: "rev2" }],
+				},
+			});
 			expect(await lifecycle(harness, finding.properties.id)).toEqual({
 				status: "new",
 				firstSeenRevision: "rev1",
@@ -224,6 +235,104 @@ describe("the findings document", () => {
 					},
 				],
 			});
+		});
+
+		it("reads an affected trigger stored with one hash as a proof of that hunk, and reopens when it changes", async () => {
+			const lib = snippetHash("+export const run = eval;");
+			const util = snippetHash("+export const parse = JSON.parse;");
+			const affected = (trigger: FindingInput["trigger"]) =>
+				createFinding({
+					...input,
+					cause: "affected",
+					evidence: [
+						{
+							file: "src/lib.ts",
+							startLine: 1,
+							role: "cause",
+							revision: "head",
+							proves: true,
+							snippet: "export const run = eval;",
+						},
+					],
+					trigger,
+				});
+			const old = affected({ file: "src/lib.ts", index: 0, snippet: "export const run = eval;", hash: lib });
+			const { status: _, ...sighting } = old.properties;
+			await root.commit(async (tx) => {
+				const state = await tx.doc(FindingsDocument, root.id);
+				state.revisions.push("rev1");
+				state.items[old.properties.id] = {
+					lifecycle: {
+						status: "dismissed",
+						dismissedBy: dismissal.by,
+						dismissedReason: dismissal.reason,
+						dismissedAt: dismissal.at,
+						firstSeenRevision: "rev1",
+						lastSeenRevision: "rev1",
+						history: [],
+					},
+					sightings: { rev1: { "lens.security@1": { ...old, properties: sighting } } },
+				};
+			}, context);
+			const proof = [
+				{ file: "src/lib.ts", hash: lib },
+				{ file: "src/util.ts", hash: util },
+			];
+			const cited = affected({ file: "src/lib.ts", index: 0, snippet: "export const run = eval;", proof });
+
+			await expect(root.commit((tx) => upsertFinding(tx, root.id, cited, "rev2"), context)).rejects.toThrow(
+				/needs the hunks of revision rev2/,
+			);
+			await root.commit((tx) => upsertFinding(tx, root.id, cited, "rev2", proof), context);
+
+			expect(await lifecycle(harness, old.properties.id)).toMatchObject({ status: "dismissed", proof });
+
+			const changed = [{ file: "src/lib.ts", hash: snippetHash("+export const run = Function;") }, proof[1]!];
+			await root.commit((tx) => upsertFinding(tx, root.id, cited, "rev3", changed), context);
+
+			expect(await lifecycle(harness, old.properties.id)).toMatchObject({
+				status: "new",
+				history: [{ dismissedReason: dismissal.reason, reopenedRevision: "rev3" }],
+				proof,
+			});
+		});
+
+		it("carries the dismissal on the finding it reads", async () => {
+			await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+			await root.commit((tx) => dismissFinding(tx, root.id, evalFinding.properties.id, dismissal), context);
+			const [read] = await readFindings(harness, root.id, "rev1", context);
+			expect(read!.properties).toMatchObject({ status: "dismissed", dismissal });
+			expect(read!.properties.pastDismissals).toBeUndefined();
+		});
+
+		it("replaces the reason of a finding dismissed again, keeping the first in its history", async () => {
+			const again = { by: "ana", reason: "  the input is a literal  ", at: "2026-10-04T00:00:00.000Z" };
+			await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+			const first = await root.commit(
+				(tx) => dismissFinding(tx, root.id, evalFinding.properties.id, dismissal),
+				context,
+			);
+			const replaced = await root.commit(
+				(tx) => dismissFinding(tx, root.id, evalFinding.properties.id, again),
+				context,
+			);
+			expect(first).toBeUndefined();
+			expect(replaced).toEqual(dismissal);
+			const [read] = await readFindings(harness, root.id, "rev1", context);
+			expect(read!.properties.dismissal).toEqual({ ...again, reason: "the input is a literal" });
+			expect(read!.properties.pastDismissals).toEqual([{ ...dismissal, replacedAt: again.at }]);
+		});
+
+		it("refuses a blank or overlong reason and commits nothing", async () => {
+			await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+			for (const reason of [" \n ", "x".repeat(maxDismissalReasonLength + 1)]) {
+				const dismissed = root.commit(
+					(tx) => dismissFinding(tx, root.id, evalFinding.properties.id, { ...dismissal, reason }),
+					context,
+				);
+				await expect(dismissed).rejects.toMatchObject({ code: "invalidDismissal" });
+			}
+			expect((await lifecycle(harness, evalFinding.properties.id))?.status).toBe("new");
 		});
 
 		it("refuses to dismiss a finding nobody reported", async () => {
@@ -491,6 +600,37 @@ describe("documents stored before evidence became a list", () => {
 		expect(legacyFingerprint(verdict(scenario))).toBeUndefined();
 		const contextOnly = [{ ...evidence[0]!, role: "context" as const }];
 		expect(legacyFingerprint(verdict(createFinding({ ...input, evidence: contextOnly })))).toBeUndefined();
+	});
+
+	it("keys each reply an older Melian recorded by its finding, its thread, and the dismissal it gave", async () => {
+		const path = join(dir, "legacy-replies.sqlite");
+		const dismissal = { by: "Tal <tal@melian.invalid>", reason: "Constant input.", at: "2026-10-04T00:00:00Z" };
+		const entry = { ruleId: "no-eval", path: "src/run.ts", line: 12, revision: "head" };
+		const first = await open(await openSqliteStorage(path));
+		await first.root.commit(async (tx) => {
+			const published = await tx.doc(LegacyPublished, first.root.id);
+			published.order = ["head"];
+			published.revisions = json({
+				head: {
+					reviews: ["101"],
+					open: {},
+					resolved: {
+						aaaaaaaaaaaaaaaa: { ...entry, thread: "9" },
+						bbbbbbbbbbbbbbbb: { ...entry, thread: "11", dismissal },
+						cccccccccccccccc: entry,
+					},
+					replies: { aaaaaaaaaaaaaaaa: "10", bbbbbbbbbbbbbbbb: null },
+				},
+			});
+		}, context);
+		await first.harness.close(context);
+
+		const { harness, root } = await open(await openSqliteStorage(path));
+		const published = await harness.snapshot(PublishedDocument, root.id, context);
+		expect(published?.revisions.head?.replies).toEqual({
+			[replyKey("aaaaaaaaaaaaaaaa", "9")]: "10",
+			[replyKey("bbbbbbbbbbbbbbbb", "11", dismissalVersion(dismissal))]: null,
+		});
 	});
 
 	describe("publishing a head once per revision, across the upgrade", () => {

@@ -131,12 +131,68 @@ describe("planPublication", () => {
 		});
 	});
 
-	it("never posts or resolves a dismissed finding", () => {
-		const dismissed: Finding = { ...fixed, properties: { ...fixed.properties, status: "dismissed" } };
-		const plan = planPublication(verdictOf([dismissed]), { [fixed.properties.id]: posted("102") }, lines, head);
+	it("resolves an open finding that was dismissed, with its dismissal, and never posts a dismissed one", () => {
+		const dismissal = { by: "Tal <tal@melian.invalid>", reason: "Constant input.", at: "2026-10-04T00:00:00Z" };
+		const as = (each: Finding): Finding => ({
+			...each,
+			properties: { ...each.properties, status: "dismissed", dismissal },
+		});
+		const plan = planPublication(
+			verdictOf([as(fixed), as(fresh)]),
+			{ [fixed.properties.id]: posted("102") },
+			lines,
+			head,
+		);
 
-		expect(plan).toMatchObject({ post: [], stillOpen: [], resolved: [] });
-		expect(plan.open).toEqual({ [fixed.properties.id]: posted("102") });
+		expect(plan).toMatchObject({ post: [], stillOpen: [] });
+		expect(plan.resolved).toEqual([{ id: fixed.properties.id, ...posted("102"), dismissal }]);
+		expect(plan.open).toEqual({});
+	});
+
+	it("resolves a posted finding with the dismissal of the finding it was merged into, not as gone", () => {
+		const dismissal = { by: "Tal <tal@melian.invalid>", reason: "Constant input.", at: "2026-10-04T00:00:00Z" };
+		const member = finding({
+			snippet: "eval(body)",
+			startLine: 40,
+			endLine: 40,
+			rule: "code-injection",
+			severity: "P2",
+			source: { check: "lens.contracts" },
+		});
+		const dismissed = [fixed, member].map(
+			(each): Finding => ({ ...each, properties: { ...each.properties, status: "dismissed", dismissal } }),
+		);
+		const verdict = verdictOf(dismissed);
+		expect(verdict.dismissed.map((each) => each.properties.id)).toEqual([fixed.properties.id]);
+
+		const plan = planPublication(verdict, { [member.properties.id]: posted("103") }, lines, head);
+
+		expect(plan.resolved).toEqual([{ id: member.properties.id, ...posted("103"), dismissal }]);
+		expect(plan.open).toEqual({});
+	});
+
+	it("maps a merged report dismissed on its own to its own dismissal, not the one of the finding it speaks through", () => {
+		const own = { by: "Tal <tal@melian.invalid>", reason: "Constant input.", at: "2026-10-04T00:00:00Z" };
+		const later = { by: "Tal <tal@melian.invalid>", reason: "Sandboxed.", at: "2026-10-04T01:00:00Z" };
+		const member = finding({
+			snippet: "eval(body)",
+			startLine: 40,
+			endLine: 40,
+			rule: "code-injection",
+			severity: "P2",
+			source: { check: "lens.contracts" },
+		});
+		const dismissed = [
+			{ ...fixed, properties: { ...fixed.properties, status: "dismissed" as const, dismissal: later } },
+			{ ...member, properties: { ...member.properties, status: "dismissed" as const, dismissal: own } },
+		];
+		const verdict = verdictOf(dismissed);
+		expect(verdict.dismissed.map((each) => each.properties.id)).toEqual([fixed.properties.id]);
+
+		const plan = planPublication(verdict, { [member.properties.id]: posted("103") }, lines, head);
+
+		expect(plan.dismissals).toEqual({ [fixed.properties.id]: later, [member.properties.id]: own });
+		expect(plan.resolved).toEqual([{ id: member.properties.id, ...posted("103"), dismissal: own }]);
 	});
 
 	it("keeps a finding that turned silent on its thread, so it never gets a second one", () => {

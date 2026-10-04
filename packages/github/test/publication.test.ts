@@ -133,7 +133,7 @@ describe("markers", () => {
 		expect(verifyMarker({ ...signed, sig: "0".repeat(32) }, secret)).toBe(false);
 		expect(verifyMarker({ ...signed, kind: "resolved" }, secret)).toBe(false);
 		expect(verifyMarker({ ...signed, revision: "b".repeat(40) }, secret)).toBe(false);
-		const review = parseMarker(marker(revision, "verdict", "0123456789abcdef", secret, 3))!;
+		const review = parseMarker(marker(revision, "verdict", "0123456789abcdef", secret, { round: 3 }))!;
 		expect(review.round).toBe(3);
 		expect(verifyMarker(review, secret)).toBe(true);
 		expect(verifyMarker({ ...review, round: 1 }, secret)).toBe(false);
@@ -270,7 +270,7 @@ describe("markers", () => {
 		const tiny = renderReviewBody(draft, links, { limit: 260 });
 
 		expect(body.length).toBeLessThanOrEqual(maxBodyLength);
-		expect(body.split("\n")[0]).toBe(marker(revision, "verdict", "0123456789abcdef", secret, 1));
+		expect(body.split("\n")[0]).toBe(marker(revision, "verdict", "0123456789abcdef", secret, { round: 1 }));
 		const kept = markersIn(body).filter((each) => each.kind === "finding").length;
 		expect(kept).toBeGreaterThan(0);
 		expect(body).toContain(
@@ -279,7 +279,7 @@ describe("markers", () => {
 		expect(small.length).toBeLessThanOrEqual(400);
 		expect(small).toContain(`12 findings did not fit in this review;`);
 		expect(tiny.length).toBeLessThanOrEqual(260);
-		expect(tiny.split("\n")[0]).toBe(marker(revision, "verdict", "0123456789abcdef", secret, 1));
+		expect(tiny.split("\n")[0]).toBe(marker(revision, "verdict", "0123456789abcdef", secret, { round: 1 }));
 		expect(tiny).toContain(`This review was cut to fit GitHub's limit; \`melian findings "#7"\` lists them all.`);
 	});
 

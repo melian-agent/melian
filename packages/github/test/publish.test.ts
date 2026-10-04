@@ -1,4 +1,5 @@
-import { rmSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { type Changeset, pullRequestChangesetId, type ReviewProvider, resolveRange } from "@melian-agent/core";
 import { createGitHubProvider, marker, parseMarker, statusContext } from "@melian-agent/github";
 import {
@@ -11,6 +12,7 @@ import {
 	ReviewError,
 	readFindings,
 	readPublished,
+	recordDismissal,
 	revisionKey,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -29,6 +31,7 @@ import {
 	reviewScenario,
 	scenarioModels,
 	scenarioRepository,
+	stackOnEditedParent,
 	trimmedGreeting,
 	unsafeManager,
 } from "./fixtures/scenario.ts";
@@ -99,15 +102,20 @@ describe("reading markers back", () => {
 	it("counts a marker the changeset's secret signed when it cannot tell who it posts as", async () => {
 		const state = pullRequestState();
 		state.failUser = true;
-		state.reviews.push(review(1, state.login, marker(head, "verdict", fingerprint, secret, 1)));
+		state.reviews.push(review(1, state.login, marker(head, "verdict", fingerprint, secret, { round: 1 })));
 		state.comments.push(comment(2, state.login, marker(head, "finding", finding, secret)));
 		state.comments.push(comment(3, state.login, marker(head, "resolved", finding, secret), 2));
+		const version = "00112233aabbccdd";
+		state.comments.push(
+			comment(4, state.login, marker(head, "resolved", finding, secret, { dismissal: version }), 2),
+		);
 
 		const github = providerFor(state);
+		// A reply is found by its finding, its thread, and the dismissal it gave, so a second reason is a reply of its own.
 		expect(await github.findPublished(7, head, wanted, secret)).toEqual({
 			review: "1",
 			threads: { [finding]: "2" },
-			replies: { [finding]: "3" },
+			replies: { [`${finding} 2`]: "3", [`${finding} 2 ${version}`]: "4" },
 		});
 		await github.findPublished(7, head, wanted, secret);
 		// One refused /user for the provider, not one for every marker.
@@ -119,7 +127,7 @@ describe("reading markers back", () => {
 		state.failUser = true;
 		const unsigned = `<!-- melian:revision=${head} verdict=${fingerprint} -->`;
 		const wrong = `<!-- melian:revision=${head} verdict=${fingerprint} sig=${"0".repeat(32)} -->`;
-		const otherStorage = marker(head, "verdict", fingerprint, "22".repeat(32), 1);
+		const otherStorage = marker(head, "verdict", fingerprint, "22".repeat(32), { round: 1 });
 		state.reviews.push(review(1, state.login, unsigned), review(2, state.login, wrong));
 		state.reviews.push(review(3, state.login, otherStorage));
 		state.comments.push(comment(4, state.login, marker(head, "finding", finding, "22".repeat(32))));
@@ -131,7 +139,7 @@ describe("reading markers back", () => {
 
 	it("also requires the token's own user when it knows who that is", async () => {
 		const state = pullRequestState();
-		const signed = marker(head, "verdict", fingerprint, secret, 1);
+		const signed = marker(head, "verdict", fingerprint, secret, { round: 1 });
 		state.reviews.push(review(1, "pull-request-author", signed));
 		expect(await providerFor(state).findPublished(7, head, wanted, secret)).toEqual(none);
 		state.reviews.push(review(2, state.login, signed));
@@ -219,7 +227,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.reviews).toHaveLength(1);
 	});
 
-	it("replies in a resolved finding's thread, and reposts neither open nor dismissed findings", async () => {
+	it("replies in a resolved finding's thread, names a dismissed one in the body, and reposts neither", async () => {
 		const { fake, github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);
 		const root = (await harness!.root(context)).id;
@@ -248,7 +256,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const result = await publish(github, second.changeset);
 
 		const head = second.changeset.revision.head;
-		expect(result).toMatchObject({ posted: 1, stillOpen: 1, resolved: 1, replies: 1 });
+		expect(result).toMatchObject({ posted: 1, stillOpen: 1, resolved: 1, dismissed: 1, replies: 1 });
 		expect(state.reviews).toHaveLength(2);
 		const posted = state.comments.filter((comment) => comment.pull_request_review_id === state.reviews[1]!.id);
 		expect(posted).toHaveLength(1);
@@ -258,7 +266,11 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const [reply] = replies;
 		expect(greeting).toMatchObject({ path: "src/user.ts", line: 11, side: "RIGHT" });
 		expect(greeting!.body).toContain("trim\\(\\) changes the greeting.");
-		expect(state.reviews[1]!.body).not.toContain("src/config.ts");
+		// The dismissed finding was posted in the body, so it has no thread, and the next body says why it went.
+		expect(state.reviews[1]!.body).toContain(
+			"Dismissed since the last review:\n\n- `unhandled-error` in `src/config.ts` line 1: RETRIES is always set in deployment.",
+		);
+		expect(state.reviews[1]!.body).not.toContain("RETRIES may be unset.");
 		expect(state.reviews[1]!.body).toContain("1 of them was posted on an earlier revision.");
 		expect(reply).toMatchObject({ in_reply_to_id: Number(thread) });
 		expect(parseMarker(reply!.body.split("\n")[0]!)).toMatchObject({
@@ -274,7 +286,211 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 			context: statusContext,
 		});
 		// Counts cover the run: publishing the head again resolves nothing more.
-		expect(await publish(github, second.changeset)).toMatchObject({ posted: 0, resolved: 0, replies: 0 });
+		expect(await publish(github, second.changeset)).toMatchObject({
+			posted: 0,
+			resolved: 0,
+			dismissed: 0,
+			replies: 0,
+		});
+	});
+
+	it("answers a dismissed finding's thread with the reason, and counts it out of the status", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		await publish(github, changeset);
+		const root = (await harness!.root(context)).id;
+		const manager = (await readFindings(harness!, root, revisionKey(changeset.revision), context)).find(
+			(finding) => finding.ruleId === "null-dereference",
+		)!;
+		const thread = (await readPublished(harness!, root, changeset.revision.head, context))!.threads[
+			manager.properties.id
+		]!;
+		const reason = "Every user here has a manager; see @octocat's #12.";
+		const recorded = await recordDismissal({
+			harness: harness!,
+			revision: changeset.revision,
+			id: manager.properties.id,
+			dismissal: { by: "Melian Test <test@melian.invalid>", reason, at: "2026-10-04T00:00:00.000Z" },
+			repoRoot: repo,
+		});
+		expect(recorded.verdict).toMatchObject({ status: "findings", blocking: false });
+		state.calls.length = 0;
+
+		const result = await publish(github, changeset);
+
+		const head = changeset.revision.head;
+		expect(result).toMatchObject({ posted: 0, stillOpen: 2, resolved: 0, dismissed: 1, replies: 1 });
+		expect(state.statuses.at(-1)).toEqual({
+			sha: head,
+			state: "success",
+			description: "2 findings, none blocking",
+			context: statusContext,
+		});
+		const replies = state.comments.filter((comment) => comment.in_reply_to_id !== undefined);
+		expect(replies).toHaveLength(1);
+		const [reply] = replies;
+		expect(reply).toMatchObject({ in_reply_to_id: Number(thread) });
+		expect(parseMarker(reply!.body.split("\n")[0]!)).toMatchObject({
+			revision: head,
+			kind: "resolved",
+			id: manager.properties.id,
+		});
+		expect(reply!.body.split("\n")[1]).toBe(
+			`Dismissed at \`${head.slice(0, 12)}\`: Every user here has a manager; see @\u2060octocat's \\#\u206012.`,
+		);
+		expect(reply!.body).not.toContain("test@melian.invalid");
+		// The new verdict takes a review of its own, which posts no comment and repeats no finding.
+		expect(state.reviews).toHaveLength(2);
+		expect(state.comments.filter((comment) => comment.pull_request_review_id === state.reviews[1]!.id)).toEqual([]);
+		expect(state.reviews[1]!.body).toContain("1 dismissed finding not shown.");
+		expect(await publish(github, changeset)).toMatchObject({ posted: 0, dismissed: 0, replies: 0 });
+	});
+
+	it("answers a reason changed by a second dismissal with a reply of its own, and posts no review for it", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		await publish(github, changeset);
+		const root = (await harness!.root(context)).id;
+		const manager = (await readFindings(harness!, root, revisionKey(changeset.revision), context)).find(
+			(finding) => finding.ruleId === "null-dereference",
+		)!;
+		const thread = (await readPublished(harness!, root, changeset.revision.head, context))!.threads[
+			manager.properties.id
+		]!;
+		const dismiss = (reason: string, at: string) =>
+			recordDismissal({
+				harness: harness!,
+				revision: changeset.revision,
+				id: manager.properties.id,
+				dismissal: { by: "Melian Test <test@melian.invalid>", reason, at },
+				repoRoot: repo,
+			});
+		await dismiss("Every user here has a manager.", "2026-10-04T00:00:00.000Z");
+		await publish(github, changeset);
+		const reviews = state.reviews.length;
+		const statuses = state.statuses.length;
+		await dismiss("The caller checks the manager first.", "2026-10-04T01:00:00.000Z");
+
+		const result = await publish(github, changeset);
+
+		expect(result).toMatchObject({ posted: 0, resolved: 0, dismissed: 1, replies: 1 });
+		expect(state.reviews).toHaveLength(reviews);
+		expect(state.statuses).toHaveLength(statuses);
+		const short = changeset.revision.head.slice(0, 12);
+		const answers = state.comments.filter((comment) => comment.in_reply_to_id === Number(thread));
+		expect(answers.map((comment) => comment.body.split("\n")[1])).toEqual([
+			`Dismissed at \`${short}\`: Every user here has a manager.`,
+			`Dismissed at \`${short}\`: The caller checks the manager first.`,
+		]);
+		expect(await publish(github, changeset)).toMatchObject({ posted: 0, dismissed: 0, replies: 0 });
+		expect(state.comments.filter((comment) => comment.in_reply_to_id === Number(thread))).toHaveLength(2);
+	});
+
+	it("keeps each merged report's own dismissal, answering only the thread whose report was dismissed since", async () => {
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		const github = providerFor(state);
+		harness = await openPublishHarness(createMemoryStorage(), fake, github);
+		const root = (await harness.root(context)).id;
+		const changedReturn = {
+			...unsafeManager,
+			arguments: { ...unsafeManager.arguments, rule: "changed-return", severity: "P2" },
+		};
+		const by = "Melian Test <test@melian.invalid>";
+		// Reviews the head with each lens reporting `calls`, publishes, and returns the changeset and each thread by rule.
+		const reviewPublish = async (correctness: (typeof unsafeManager)[], contracts: (typeof unsafeManager)[]) => {
+			const script = {
+				correctness: [{ calls: correctness }, { text: "Done." }],
+				contracts: [{ calls: contracts }, { text: "Done." }],
+			};
+			const { changeset, review } = await reviewScenario(repo, harness!, fake, script);
+			await review;
+			moveTo(state, changeset);
+			await publish(github, changeset);
+			const findings = await readFindings(harness!, root, revisionKey(changeset.revision), context);
+			const idOf = (rule: string) => findings.find((finding) => finding.ruleId === rule)!.properties.id;
+			const { threads } = (await readPublished(harness!, root, changeset.revision.head, context))!;
+			return { changeset, idOf, threadOf: (rule: string) => threads[idOf(rule)]! };
+		};
+		const dismiss = (changeset: Changeset, id: string, reason: string, at: string) =>
+			recordDismissal({
+				harness: harness!,
+				revision: changeset.revision,
+				id,
+				dismissal: { by, reason, at },
+				repoRoot: repo,
+			});
+		const first = await reviewPublish([], [changedReturn]);
+		const contractsId = first.idOf("changed-return");
+		await dismiss(first.changeset, contractsId, "Contracts never promised a manager.", "2026-10-04T00:00:00.000Z");
+		await publish(github, first.changeset);
+		writeFileSync(join(repo, "src/other.ts"), "export const other = 1;\n");
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "revision 2");
+		const second = await reviewPublish([unsafeManager], [changedReturn]);
+		const correctnessId = second.idOf("null-dereference");
+		expect(second.idOf("changed-return")).toBe(contractsId);
+
+		await dismiss(second.changeset, correctnessId, "Every user here has a manager.", "2026-10-04T01:00:00.000Z");
+		await publish(github, second.changeset);
+
+		const answers = (thread: string) =>
+			state.comments
+				.filter((comment) => comment.in_reply_to_id === Number(thread))
+				.map((comment) => comment.body.split("\n")[1]);
+		const [before, after] = [first, second].map((each) => each.changeset.revision.head.slice(0, 12));
+		expect(answers(first.threadOf("changed-return"))).toEqual([
+			`Dismissed at \`${before}\`: Contracts never promised a manager.`,
+		]);
+		expect(answers(second.threadOf("null-dereference"))).toEqual([
+			`Dismissed at \`${after}\`: Every user here has a manager.`,
+		]);
+	});
+
+	it("answers a finding dismissed again in the new thread it was reposted in at the same head after a retarget", async () => {
+		stackOnEditedParent(repo);
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		const github = providerFor(state);
+		harness = await openPublishHarness(createMemoryStorage(), fake, github);
+		const root = (await harness.root(context)).id;
+		const script = lensScript(unsafeManager, emptyName, nanRetries);
+		// Reviews the head against `range` as the pull request's base, publishes, then dismisses the manager finding and
+		// publishes again, returning the finding's thread.
+		const reviewDismissPublish = async (range: string, reason: string) => {
+			const { changeset, review } = await reviewScenario(repo, harness!, fake, script, false, { range });
+			await review;
+			moveTo(state, changeset);
+			await publish(github, changeset);
+			const manager = (await readFindings(harness!, root, revisionKey(changeset.revision), context)).find(
+				(finding) => finding.ruleId === "null-dereference",
+			)!;
+			const thread = (await readPublished(harness!, root, changeset.revision.head, context))!.threads[
+				manager.properties.id
+			]!;
+			await recordDismissal({
+				harness: harness!,
+				revision: changeset.revision,
+				id: manager.properties.id,
+				dismissal: { by: "Melian Test <test@melian.invalid>", reason, at: new Date().toISOString() },
+				repoRoot: repo,
+			});
+			await publish(github, changeset);
+			return { thread, manager, head: changeset.revision.head };
+		};
+
+		const first = await reviewDismissPublish("parent...feature", "The parent guarantees a manager.");
+		const second = await reviewDismissPublish("main...feature", "Every user here has a manager.");
+
+		expect(second.head).toBe(first.head);
+		expect(second.manager.properties.id).toBe(first.manager.properties.id);
+		expect(second.manager.properties.pastDismissals).toHaveLength(1);
+		expect(second.thread).not.toBe(first.thread);
+		const answer = (thread: string) =>
+			state.comments
+				.filter((comment) => comment.in_reply_to_id === Number(thread))
+				.map((comment) => comment.body.split("\n")[1]);
+		const short = first.head.slice(0, 12);
+		expect(answer(first.thread)).toEqual([`Dismissed at \`${short}\`: The parent guarantees a manager.`]);
+		expect(answer(second.thread)).toEqual([`Dismissed at \`${short}\`: Every user here has a manager.`]);
 	});
 
 	it("sets the status and finishes when a resolved finding's thread was deleted", async () => {
@@ -421,6 +637,41 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		await fourth.review;
 		moveTo(state, fourth.changeset);
 		expect(await publish(github, fourth.changeset)).toMatchObject({ resolved: 0, replies: 0 });
+	});
+
+	it("answers a dismissed finding's thread at the next head when its reply failed and the next head removed the code", async () => {
+		const { fake, github, changeset, state } = await reviewedRevisionOne();
+		await publish(github, changeset);
+		const root = (await harness!.root(context)).id;
+		const manager = (await readFindings(harness!, root, revisionKey(changeset.revision), context)).find(
+			(finding) => finding.ruleId === "null-dereference",
+		)!;
+		const thread = (await readPublished(harness!, root, changeset.revision.head, context))!.threads[
+			manager.properties.id
+		]!;
+		const reason = "Every user here has a manager.";
+		await recordDismissal({
+			harness: harness!,
+			revision: changeset.revision,
+			id: manager.properties.id,
+			dismissal: { by: "Melian Test <test@melian.invalid>", reason, at: "2026-10-04T00:00:00.000Z" },
+			repoRoot: repo,
+		});
+		state.failReplies = true;
+		await expect(publish(github, changeset)).rejects.toBeInstanceOf(PublishError);
+		state.failReplies = false;
+
+		pushRevisionTwo(repo);
+		const second = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries, trimmedGreeting));
+		await second.review;
+		moveTo(state, second.changeset);
+		const result = await publish(github, second.changeset);
+
+		expect(result).toMatchObject({ dismissed: 1, replies: 1 });
+		const answers = state.comments.filter((comment) => comment.in_reply_to_id === Number(thread));
+		expect(answers.map((comment) => comment.body.split("\n")[1])).toEqual([
+			`Dismissed at \`${second.changeset.revision.head.slice(0, 12)}\`: ${reason}`,
+		]);
 	});
 
 	it("posts every finding in the body when GitHub refuses the inline comments", async () => {

@@ -87,3 +87,26 @@ export class ReviewError extends Error {
 		if (options.verdict !== undefined) this.verdict = options.verdict;
 	}
 }
+
+/** Why a finding could not be dismissed, or why its verdict was not decided again afterwards. */
+export type DismissErrorCode = "notReviewed" | "unknownFinding" | "notInstalled" | "adjudicationFailed";
+
+/**
+ * A dismissal could not be recorded: `notReviewed` when no verdict is stored for the revision, `unknownFinding` when the
+ * verdict holds no finding with the ID, and `notInstalled` when the harness cannot adjudicate. `adjudicationFailed`
+ * means the dismissal was recorded but the verdict was not decided again; the next review of the revision decides it.
+ * `revision` is the revision's key and `finding` the ID.
+ */
+export class DismissError extends Error {
+	readonly code: DismissErrorCode;
+	readonly revision: string;
+	readonly finding: string;
+
+	constructor(code: DismissErrorCode, message: string, options: { revision: string; finding: string }) {
+		super(message);
+		this.name = "DismissError";
+		this.code = code;
+		this.revision = options.revision;
+		this.finding = options.finding;
+	}
+}

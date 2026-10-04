@@ -13,6 +13,7 @@ Melian is a code reviewer with its own checks, models, lenses, and storage. This
 - Run `melian review` only for the triggers in the description: after a commit and before a push or a pull request, or when the user asks for a review or for Melian's view. `melian doctor` is the only command to run without a trigger, and only to check readiness.
 - Never edit code to satisfy a finding unless the user asks you to.
 - Never run `melian publish` until the user has seen the findings and told you to publish.
+- Never run `melian dismiss` unless the user has told you to dismiss that finding, and give the reason they gave.
 
 ## Check readiness
 
@@ -85,6 +86,22 @@ melian findings origin/main...HEAD
 ```
 
 Prints the stored review exactly as `melian review` printed it, without running a new review. Pass the same range or `"#N"` the review used. When a review is stored it exits `0` whatever the verdict, so read the verdict from its first line, not from the exit code. It exits `1` when nothing is stored for that range or pull request: run `melian review` with it first.
+
+Pass `--all` to print the silent and dismissed findings too, each dismissed one with who dismissed it and why.
+
+## Dismiss a finding
+
+A user who decides a finding does not apply can dismiss it with a reason. Melian then counts it out of the verdict, never raises it again, and keeps it dismissed across new reviews and pushes until the code that triggered it changes. Dismiss only when the user tells you to dismiss a finding; never to make a review pass, and never on your own judgement that a finding is wrong. Say what you think if asked, and let the user decide.
+
+```sh
+melian dismiss origin/main...HEAD 0123456789abcdef --reason "The input is a constant here."
+```
+
+Use the same range or `"#N"` the review used, and the finding's ID, the 16 hex digits that end its first line in what `melian review` and `melian findings` print. The reason is the user's, in their words, at most 1000 characters. It exits `0` when the dismissal is recorded and prints the verdict it decided again; show that. It exits `1` when nothing is stored for that range or pull request, or the review has no finding with that ID, and also when the dismissal was recorded but the verdict could not be decided again, which its message says; then run `melian review` with the same range or `"#N"`, which decides it. It exits `64` for a missing, blank, or overlong reason or an ID that is not 16 hex digits; show its message.
+
+A finding can carry other reports of the same defect, which Melian merged into it because they flag the same code; each is printed under the finding's first line as "Merged report", with its severity, rule, check, and ID. Dismissing the finding dismisses those reports with it, and the output names each one. Before you dismiss such a finding, show the user its merged reports and ask whether each is the same defect. To dismiss one report and keep the others counting, add `--only` and give the ID of the report to dismiss.
+
+Dismissing a finding again replaces its reason and keeps the old one. A dismissal stays on this machine until it is published: for a pull request, it reaches GitHub only through `melian publish`, which still waits for the user to say so.
 
 ## Publish to a pull request
 

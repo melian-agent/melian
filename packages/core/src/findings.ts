@@ -32,13 +32,19 @@ export const findingStatusSchema = Type.Union([
 	Type.Literal("stale"),
 ]);
 
+const sha256 = Type.String({ pattern: "^[0-9a-f]{64}$" });
+
+/** The JSON Schema of a {@link ProvingHunk}. */
+export const provingHunkSchema = Type.Object({ file: text, hash: sha256 }, strict);
+
 /** The JSON Schema of a {@link FindingTrigger}. */
 export const findingTriggerSchema = Type.Object(
 	{
 		file: text,
 		index: count,
 		snippet: Type.Optional(Type.String()),
-		hash: Type.Optional(Type.String({ pattern: "^[0-9a-f]{64}$" })),
+		hash: Type.Optional(sha256),
+		proof: Type.Optional(Type.Array(provingHunkSchema, { minItems: 1 })),
 	},
 	strict,
 );
@@ -73,8 +79,21 @@ export const findingEvidenceSchema = Type.Array(evidenceLocationSchema, { minIte
 /** The JSON Schema of a {@link FindingSource}. */
 export const findingSourceSchema = Type.Object({ check: text, version: Type.Optional(text) }, strict);
 
+/** The JSON Schema of a {@link FindingDismissal}. */
+export const findingDismissalSchema = Type.Object({ by: text, reason: text, at: text }, strict);
+
 /** The JSON Schema of an {@link AlsoReportedAs}. */
-export const alsoReportedAsSchema = Type.Object({ id: idSchema, ruleId: text, check: text }, strict);
+export const alsoReportedAsSchema = Type.Object(
+	{
+		id: idSchema,
+		ruleId: text,
+		check: text,
+		severity: Type.Optional(severitySchema),
+		dismissed: Type.Optional(Type.Literal(true)),
+		dismissal: Type.Optional(findingDismissalSchema),
+	},
+	strict,
+);
 
 /** The JSON Schema of a {@link MemberClaim}. */
 export const memberClaimSchema = Type.Object(
@@ -84,6 +103,18 @@ export const memberClaimSchema = Type.Object(
 		source: findingSourceSchema,
 		failureScenario: Type.Optional(text),
 		evidence: Type.Optional(findingEvidenceSchema),
+	},
+	strict,
+);
+
+/** The JSON Schema of a {@link PastDismissal}. */
+export const pastDismissalSchema = Type.Object(
+	{
+		by: Type.String(),
+		reason: Type.String(),
+		at: Type.String(),
+		reopenedRevision: Type.Optional(text),
+		replacedAt: Type.Optional(text),
 	},
 	strict,
 );
@@ -103,6 +134,8 @@ export const findingPropertiesSchema = Type.Object(
 		confidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
 		resolution: Type.Optional(resolutionSchema),
 		status: findingStatusSchema,
+		dismissal: Type.Optional(findingDismissalSchema),
+		pastDismissals: Type.Optional(Type.Array(pastDismissalSchema)),
 		explanation: findingExplanationSchema,
 		source: findingSourceSchema,
 		reportedBy: Type.Optional(Type.Array(findingSourceSchema, { minItems: 1 })),
@@ -149,6 +182,9 @@ export const findingSchema = Type.Object(
 );
 
 const logResultSchema = Type.Object({ ...findingSchema.properties, ruleIndex: count }, strict);
+
+/** The longest reason a dismissal may give, in UTF-16 code units. */
+export const maxDismissalReasonLength = 1000;
 
 /** The longest failure scenario a lens may report, in UTF-16 code units. */
 export const maxFailureScenarioLength = 2000;
@@ -299,16 +335,24 @@ export type Cause = Static<typeof causeSchema>;
 /** The causes a location alone can prove. Only evidence makes a finding `affected`. */
 export type LocationCause = Exclude<Cause, "affected">;
 
-/** Where a finding stands across revisions. Only `new` is assigned until cross-revision diffing exists. */
+/** Where a finding stands across revisions. Melian assigns `new`, and `dismissed` once someone dismisses it. */
 export type FindingStatus = Static<typeof findingStatusSchema>;
 
 /**
  * The diff hunk that caused a finding, named as a {@link Hunk} names itself: its `file` and its `index` within that
  * file. `snippet` is the changed code as the producer saw it, perhaps cut for storage; `hash`, when present, is the
  * {@link snippetHash} of that code whole. A dismissed finding reopens when the whole code's {@link normaliseSnippet}
- * changes, not when the hunk moves.
+ * changes, not when the hunk moves. An `affected` finding's trigger names the first hunk that proves its cause, by file
+ * then index, with that hunk's added lines as its `snippet`, and has no `hash`: its `proof` lists every proving hunk
+ * as a {@link ProvingHunk}, and its dismissal reopens only when one of those hunks changes.
  */
 export type FindingTrigger = Static<typeof findingTriggerSchema>;
+
+/**
+ * A hunk that proves an `affected` finding's cause: its file, and the {@link snippetHash} of its added and removed lines,
+ * each keeping its `+` or `-`. It names no index, so a hunk that moves within its file still proves the cause.
+ */
+export type ProvingHunk = Static<typeof provingHunkSchema>;
 
 /** What an evidence location says about its lines: `cause` blames them for the failure, `context` only reads them. */
 export type EvidenceRole = Static<typeof evidenceRoleSchema>;
@@ -330,13 +374,53 @@ export type EvidenceLocation = Static<typeof evidenceLocationSchema>;
 /** A finding's evidence: one or more {@link EvidenceLocation}s. */
 export type FindingEvidence = Static<typeof findingEvidenceSchema>;
 
+/**
+ * Who dismissed a finding, why, and when, as an ISO 8601 timestamp. Present on a finding whose status is `dismissed`.
+ * `by` is whoever the host says dismissed it; the CLI records the git author.
+ */
+export type FindingDismissal = Static<typeof findingDismissalSchema>;
+
+/**
+ * A dismissal that no longer stands, kept so its reason is not lost: `reopenedRevision` names the revision whose
+ * trigger changed materially and reopened the finding, and `replacedAt` the time a later dismissal replaced it.
+ */
+export type PastDismissal = Static<typeof pastDismissalSchema>;
+
+/**
+ * A dismissal's reason without surrounding whitespace, each line break a plain `\n`: a lone carriage return ends a
+ * line in markdown too, so it would let a reason break out of the one line a pull request reply gives it. Throws {@link FindingError} `invalidDismissal` when it is blank
+ * or longer than {@link maxDismissalReasonLength}.
+ */
+export function dismissalReason(reason: string): string {
+	const trimmed = reason.replace(/\r\n?/g, "\n").trim();
+	if (trimmed === "") {
+		throw new FindingError("invalidDismissal", "a dismissal needs a reason", {
+			path: "/properties/dismissal/reason",
+		});
+	}
+	if (trimmed.length > maxDismissalReasonLength) {
+		throw new FindingError(
+			"invalidDismissal",
+			`a dismissal's reason is ${trimmed.length} characters; the most is ${maxDismissalReasonLength}`,
+			{ path: "/properties/dismissal/reason" },
+		);
+	}
+	return trimmed;
+}
+
 /** A finding's explanation for the author: what is wrong, why it matters in this change, and what to do. */
 export type FindingExplanation = Static<typeof findingExplanationSchema>;
 
 /** The check that produced a finding, and the version of the lens or question set it ran. */
 export type FindingSource = Static<typeof findingSourceSchema>;
 
-/** A finding adjudication merged into another: its ID, its rule, and the check that reported it. */
+/**
+ * A report of the same defect that a finding lists: its ID, rule, check, and the severity it reported. A report
+ * adjudication merged into the finding has no `dismissed`; a dismissed report a live finding never absorbed is listed
+ * with `dismissed: true`, so a reader sees the defect was answered once under another rule. A report that was
+ * dismissed itself carries its own `dismissal`, so merging two reports dismissed apart never gives one the other's
+ * reason. A verdict recorded before Melian kept severities has none.
+ */
 export type AlsoReportedAs = Static<typeof alsoReportedAsSchema>;
 
 /**
@@ -611,7 +695,14 @@ export function createFinding(input: FindingInput): Finding {
 	const trigger =
 		input.trigger === undefined
 			? undefined
-			: { ...input.trigger, file: canonicalPath(input.trigger.file, "/properties/trigger/file") };
+			: {
+					...input.trigger,
+					file: canonicalPath(input.trigger.file, "/properties/trigger/file"),
+					proof: input.trigger.proof?.map((hunk, index) => ({
+						...hunk,
+						file: canonicalPath(hunk.file, `/properties/trigger/proof/${index}/file`),
+					})),
+				};
 	const id = findingId({ file, rule, snippet: snippet ?? "", occurrence, discriminator });
 	const hasSnippet = normaliseSnippet(snippet ?? "") !== "";
 	const evidence = input.evidence?.map((location, index) => ({
@@ -705,6 +796,9 @@ export function parseFinding(input: unknown): Finding {
 		});
 	}
 	if (trigger !== undefined) requireCanonical(trigger.file, "/properties/trigger/file");
+	for (const [index, hunk] of (trigger?.proof ?? []).entries()) {
+		requireCanonical(hunk.file, `/properties/trigger/proof/${index}/file`);
+	}
 	const { cause, evidence = [] } = finding.properties;
 	if (cause === "affected" && !evidence.some((location) => location.role === "cause")) {
 		throw new FindingError(

@@ -1,11 +1,12 @@
-import type {
-	ClosedFinding,
-	PostedReview,
-	PublishedMarkers,
-	PullRequest,
-	ReviewDraft,
-	ReviewProvider,
-	ReviewStatus,
+import {
+	type ClosedFinding,
+	type PostedReview,
+	type PublishedMarkers,
+	type PullRequest,
+	type ReviewDraft,
+	type ReviewProvider,
+	type ReviewStatus,
+	replyKey,
 } from "@melian-agent/core";
 import { Octokit } from "@octokit/rest";
 import { GitHubError } from "./errors.ts";
@@ -257,10 +258,12 @@ export class GitHubProvider implements ReviewProvider {
 		const replies: Record<string, string> = {};
 		for (const comment of comments) {
 			// GitHub may send a top-level comment's in_reply_to_id as null rather than leave it out.
-			const reply = typeof comment.in_reply_to_id === "number";
+			const thread = comment.in_reply_to_id;
+			const reply = typeof thread === "number";
 			const found = signedMarker(comment.body, reply ? "resolved" : "finding", revision, secret);
 			if (found === undefined || !(await this.ours(comment.user))) continue;
-			(reply ? replies : threads)[found.id] ??= String(comment.id);
+			if (reply) replies[replyKey(found.id, String(thread), found.dismissal)] ??= String(comment.id);
+			else threads[found.id] ??= String(comment.id);
 		}
 		return { ...(review === undefined ? {} : { review }), threads, replies };
 	}

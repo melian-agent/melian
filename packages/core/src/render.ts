@@ -6,6 +6,10 @@ import type { EvidenceLocation, Finding, FindingsLog } from "./findings.ts";
 export interface TerminalRenderOptions {
 	/** Colour severities and file names with ANSI escape codes. Off by default. */
 	readonly color?: boolean;
+	/** End each finding's first line, and each line naming another report of its defect, with its ID, which `melian dismiss` takes. Off by default. */
+	readonly ids?: boolean;
+	/** Print a verdict's silent and dismissed findings too, rather than count them. Off by default. */
+	readonly all?: boolean;
 }
 
 /** Renders a findings log as SARIF JSON, indented by two spaces and ending in a newline. */
@@ -67,10 +71,35 @@ function evidenceLines(evidence: readonly EvidenceLocation[]): string[] {
 	]);
 }
 
-function block(finding: Finding, paint: (code: string, text: string) => string): string {
-	const { severity, cause, evidence, failureScenario, status, explanation, resolution } = finding.properties;
+// Who dismissed a finding and why, and each dismissal before that no longer stands.
+function dismissalLines(finding: Finding): string[] {
+	const { dismissal, pastDismissals = [] } = finding.properties;
+	const said = ({ by, at, reason }: { by: string; at: string; reason: string }) =>
+		`by ${visibleText(by)} at ${visibleText(at)}: ${prose(reason, "      ")}`;
 	return [
-		`  ${paint(severityColor[severity], severity)}  ${lineSpan(finding)}  ${visibleText(finding.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"})`,
+		...(dismissal === undefined ? [] : [`    Dismissed ${said(dismissal)}`]),
+		...pastDismissals.map((past) => {
+			const ended =
+				past.replacedAt === undefined
+					? `reopened at ${visibleText(past.reopenedRevision ?? "a later revision")}`
+					: `replaced at ${visibleText(past.replacedAt)}`;
+			return `    Earlier dismissal, ${ended}, ${said(past)}`;
+		}),
+	];
+}
+
+function block(finding: Finding, paint: Paint, ids: boolean): string {
+	const { severity, cause, evidence, failureScenario, status, explanation, resolution, id } = finding.properties;
+	// The other reports of its defect: those adjudication merged into it, which a dismissal of it dismisses too, and the
+	// dismissed ones it lists beside it.
+	const reports = (finding.properties.alsoReportedAs ?? []).map((other) => {
+		const what = `${other.severity === undefined ? "" : `${other.severity} `}${visibleText(other.ruleId)} from ${visibleText(other.check)}`;
+		return `    ${other.dismissed ? "Also reported, dismissed" : "Merged report"}: ${what}${ids ? `  ${visibleText(other.id)}` : ""}`;
+	});
+	return [
+		`  ${paint(severityColor[severity], severity)}  ${lineSpan(finding)}  ${visibleText(finding.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"})${ids ? `  ${visibleText(id)}` : ""}`,
+		...reports,
+		...dismissalLines(finding),
 		`  ${prose(finding.message.text, messageContinuation)}`,
 		`    What: ${prose(explanation.what, "      ")}`,
 		`    Why here: ${prose(explanation.whyHere, "      ")}`,
@@ -88,25 +117,28 @@ export function plural(count: number, noun: string, nouns = `${noun}s`): string 
  * Renders a findings log or a verdict as plain text for a terminal.
  *
  * A log renders grouped by file in path order, and within a file by severity, then line. Each finding is one block with
- * its rule, cause, status, message, the explanation's three parts, its failure scenario, and each evidence location
- * with its role and the code read there.
+ * its rule, cause, status, each other report of its defect, merged into it or dismissed beside it, with its severity,
+ * rule, and check, the message, the explanation's three parts, its failure scenario, and each evidence location with
+ * its role and the code read there.
  *
  * A verdict renders a header with its status and whether it blocks, the checks that did not run and why, a lens its
  * budget ended among them, each lens that ran with its scrutiny level and any budget that ended it while its level
  * counted it as run, and then its findings grouped by resolution, strictest first, each group by file as for a log.
- * Silent and dismissed findings are counted, not shown.
+ * Silent and dismissed findings are counted, not shown, unless `all` is set; then they follow, each dismissed one with
+ * who dismissed it and why. A finding dismissed before and reopened shows that dismissal wherever it is printed.
  */
 export function renderFindingsTerminal(input: FindingsLog | Verdict, options: TerminalRenderOptions = {}): string {
 	const paint: Paint = (code, text) => (options.color ? `\u001b[${code}m${text}\u001b[0m` : text);
-	if (!("runs" in input)) return renderVerdict(input, paint);
+	const ids = options.ids === true;
+	if (!("runs" in input)) return renderVerdict(input, paint, ids, options.all === true);
 	const findings = input.runs.flatMap((run) => run.results);
 	if (findings.length === 0) return "No findings.\n";
-	return `${[...fileSections(findings, paint), summary(findings)].join("\n\n")}\n`;
+	return `${[...fileSections(findings, paint, ids), summary(findings)].join("\n\n")}\n`;
 }
 
 type Paint = (code: string, text: string) => string;
 
-function fileSections(findings: readonly Finding[], paint: Paint): string[] {
+function fileSections(findings: readonly Finding[], paint: Paint, ids: boolean): string[] {
 	const byFile = new Map<string, Finding[]>();
 	for (const finding of findings) {
 		const file = finding.properties.path;
@@ -118,7 +150,7 @@ function fileSections(findings: readonly Finding[], paint: Paint): string[] {
 			...byFile
 				.get(file)!
 				.sort(compare)
-				.map((finding) => block(finding, paint)),
+				.map((finding) => block(finding, paint, ids)),
 		].join("\n\n"),
 	);
 }
@@ -151,7 +183,7 @@ export function describeBudgetEnd({ budget, limit, tokens, tools }: BudgetEnd): 
 	return `its ${budgetNames[budget]} budget of ${limit.toLocaleString("en-AU")} ran out after ${used}`;
 }
 
-function renderVerdict(verdict: Verdict, paint: Paint): string {
+function renderVerdict(verdict: Verdict, paint: Paint, ids: boolean, all: boolean): string {
 	const [color, label] = statusLabel[verdict.status];
 	const parts = [`Verdict: ${paint(color, label)}${verdict.blocking ? `, ${paint("31", "blocking")}` : ""}`];
 	if (verdict.notRun.length > 0) {
@@ -172,17 +204,21 @@ function renderVerdict(verdict: Verdict, paint: Paint): string {
 		);
 		parts.push([`${plural(lenses.length, "lens", "lenses")} ran:`, ...checks].join("\n"));
 	}
-	for (const resolution of shownResolutions) {
-		const findings = verdict.findings[resolution];
+	const groups = shownResolutions.map((resolution): [string, readonly Finding[]] => [
+		resolution,
+		verdict.findings[resolution],
+	]);
+	if (all) groups.push(["silent", verdict.findings.silent], ["dismissed", verdict.dismissed]);
+	for (const [name, findings] of groups) {
 		if (findings.length === 0) continue;
-		parts.push(paint("1", `${capitalised(resolution)}: ${plural(findings.length, "finding")}`));
-		parts.push(...fileSections(findings, paint));
+		parts.push(paint("1", `${capitalised(name)}: ${plural(findings.length, "finding")}`));
+		parts.push(...fileSections(findings, paint, ids));
 	}
 	const hidden = [
 		...(verdict.findings.silent.length > 0 ? [`${plural(verdict.findings.silent.length, "silent finding")}`] : []),
 		...(verdict.dismissed.length > 0 ? [`${plural(verdict.dismissed.length, "dismissed finding")}`] : []),
 	];
-	if (hidden.length > 0) parts.push(`${capitalised(hidden.join(" and "))} not shown.`);
+	if (hidden.length > 0 && !all) parts.push(`${capitalised(hidden.join(" and "))} not shown.`);
 	const shown = shownResolutions.flatMap((resolution) => verdict.findings[resolution]);
 	parts.push(shown.length === 0 ? "No findings." : summary(shown));
 	return `${parts.join("\n\n")}\n`;

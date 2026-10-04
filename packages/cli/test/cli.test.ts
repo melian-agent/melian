@@ -100,7 +100,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(stored.status).toBe(0);
 		const verdict = JSON.parse(stored.stdout) as Verdict;
 		expect(verdict.status).toBe("passed");
-		expect(review.stdout).toBe(renderFindingsTerminal(verdict));
+		expect(review.stdout).toBe(renderFindingsTerminal(verdict, { ids: true }));
 		expect(review.stdout).toMatch(/^Verdict: passed\n/);
 	});
 
@@ -190,6 +190,175 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 			status: 1,
 			stderr: expect.stringContaining('run melian review "#5" first'),
 		});
+	});
+});
+
+describe("melian dismiss", { timeout: 60_000 }, () => {
+	const reason = "The manager is always set for users in this report.";
+
+	// A reviewed golden whose one blocking finding is the null dereference, and that finding's ID. The range names its
+	// branch, so another worktree, where HEAD names something else, names the same changeset.
+	const range = "main...feature";
+	function reviewedNullDeref() {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!);
+		expect(melian(repo, ["review", range], env).status).toBe(1);
+		const stored = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as Verdict;
+		const id = stored.findings.block[0]!.properties.id;
+		return { repo, env, id };
+	}
+
+	it("records a dismissal from any worktree of the clone, and the verdict, findings, and a rerun count it out", () => {
+		const { repo, env, id } = reviewedNullDeref();
+		// The storage sits in the git common directory, so a second worktree of the clone shares it.
+		const worktree = mkdtempSync(join(tmpdir(), "melian-cli-worktree-"));
+		rmSync(worktree, { recursive: true });
+		repos.push(worktree);
+		git(repo, "worktree", "add", "--quiet", "--detach", worktree, "HEAD");
+
+		const dismissed = melian(worktree, ["dismiss", range, id, "--reason", reason], env);
+
+		expect(dismissed).toMatchObject({ status: 0, stderr: "" });
+		expect(dismissed.stdout).toBe(
+			`Dismissed null-dereference in src/user.ts line 7 (${id}) as Melian Test <test@melian.invalid>.\nVerdict now: passed.\n`,
+		);
+		const findings = melian(repo, ["findings", range], env);
+		expect(findings.stdout).toMatch(/^Verdict: passed\n/);
+		expect(findings.stdout).toContain("1 dismissed finding not shown.");
+		expect(findings.stdout).not.toContain(reason);
+		const all = melian(repo, ["findings", range, "--all"], env);
+		expect(all.stdout).toContain("Dismissed: 1 finding");
+		expect(all.stdout).toMatch(
+			new RegExp(
+				`\\(introduced, dismissed, block\\)  ${id}\\n    Dismissed by Melian Test <test@melian\\.invalid> at \\d{4}-[^:]+:\\d\\d:[^:]+: ${reason}\\n`,
+			),
+		);
+		const verdict = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as Verdict;
+		expect(verdict.dismissed[0]!.properties.dismissal).toMatchObject({
+			by: "Melian Test <test@melian.invalid>",
+			reason,
+		});
+		const rerun = melian(repo, ["review", range], env);
+		expect(rerun).toMatchObject({ status: 0, stdout: findings.stdout });
+	});
+
+	it("updates the reason of a finding dismissed again and keeps the first", () => {
+		const { repo, env, id } = reviewedNullDeref();
+		melian(repo, ["dismiss", range, id, "--reason", reason], env);
+
+		const again = melian(repo, ["dismiss", range, id, "--reason", "Covered by the caller's check."], env);
+
+		expect(again.status).toBe(0);
+		expect(again.stdout).toContain(`Updated the dismissal of null-dereference in src/user.ts line 7 (${id})`);
+		expect(again.stdout).toContain(`It was dismissed by Melian Test <test@melian.invalid>: ${reason}\n`);
+		const all = melian(repo, ["findings", range, "--all"], env).stdout;
+		expect(all).toContain(": Covered by the caller's check.\n");
+		expect(all).toMatch(
+			new RegExp(`Earlier dismissal, replaced at [^,]+, by Melian Test <test@melian\\.invalid> at [^ ]+: ${reason}`),
+		);
+	});
+
+	// The null dereference golden, with the contracts lens reporting the same lines under a rule of its own, so
+	// adjudication merges the two reports as one defect that correctness speaks for.
+	function reviewedMerged() {
+		const golden = goldens["correctness-null-deref"]!;
+		const script = golden.script as { correctness: { calls?: { name: string; arguments: object }[] }[] };
+		const call = script.correctness
+			.flatMap((step) => step.calls ?? [])
+			.find((each) => each.name === "report_finding")!;
+		const changedReturn = { ...call, arguments: { ...call.arguments, rule: "changed-return", severity: "P2" } };
+		const contracts = [{ calls: [changedReturn] }, { text: "Reported 1 finding." }];
+		const { repo, env } = goldenCheckout(golden, { ...script, contracts });
+		const review = melian(repo, ["review", range], env);
+		expect(review.status).toBe(1);
+		const stored = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as Verdict;
+		const [speaker] = stored.findings.block;
+		const [member] = speaker!.properties.alsoReportedAs!;
+		return { repo, env, review, id: speaker!.properties.id, member: member!.id };
+	}
+
+	it("prints a finding's merged reports, and names each one dismissing the finding dismisses with it", () => {
+		const { repo, env, review, id, member } = reviewedMerged();
+		expect(review.stdout).toContain(
+			`null-dereference  (introduced, new, block)  ${id}\n    Merged report: P2 changed-return from lens.contracts  ${member}\n`,
+		);
+
+		const dismissed = melian(repo, ["dismiss", range, id, "--reason", reason], env);
+
+		expect(dismissed).toMatchObject({ status: 0, stderr: "" });
+		expect(dismissed.stdout).toBe(
+			[
+				`Dismissed null-dereference in src/user.ts line 7 (${id}) as Melian Test <test@melian.invalid>.`,
+				"Also dismissed, as reports adjudication merged into it:",
+				`  changed-return from lens.contracts (${member})`,
+				"To dismiss one report alone, run melian dismiss with --only.",
+				"Verdict now: passed.",
+				"",
+			].join("\n"),
+		);
+	});
+
+	it("dismisses the one report --only names, and leaves the report merged with it live", () => {
+		const { repo, env, id, member } = reviewedMerged();
+
+		const dismissed = melian(repo, ["dismiss", range, id, "--only", "--reason", reason], env);
+
+		expect(dismissed).toMatchObject({ status: 0, stderr: "" });
+		expect(dismissed.stdout).not.toContain("Also dismissed");
+		expect(dismissed.stdout).toContain("Verdict now: findings.\n");
+		const verdict = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as Verdict;
+		expect(verdict.dismissed.map((each) => each.properties.id)).toEqual([id]);
+		const live = Object.values(verdict.findings).flat();
+		expect(live.map((each) => each.properties.id)).toEqual([member]);
+		expect(melian(repo, ["findings", range], env).stdout).toContain(
+			`changed-return  (introduced, new, acknowledge)  ${member}\n    Also reported, dismissed: P1 null-dereference from lens.correctness  ${id}\n`,
+		);
+	});
+
+	it("says in one line that git has no author to record as the dismisser", () => {
+		const { repo, env, id } = reviewedNullDeref();
+		const {
+			GIT_AUTHOR_NAME: _,
+			GIT_AUTHOR_EMAIL: __,
+			...rest
+		} = { ...process.env, ...gitEnv, NO_COLOR: "1", ...env };
+		// Only an identity set in configuration counts, so git cannot guess one from the host.
+		const strict = { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "user.useConfigOnly", GIT_CONFIG_VALUE_0: "true" };
+
+		const result = spawnSync(process.execPath, [bin, "dismiss", range, id, "--reason", reason], {
+			cwd: repo,
+			encoding: "utf8",
+			env: { ...rest, ...strict },
+			timeout: 60_000,
+		});
+
+		expect(result.status).toBe(1);
+		expect(result.stderr).toBe(
+			"melian: Melian records who dismissed a finding as the git author, and git has none: git var failed: Author identity unknown; set user.name and user.email\n",
+		);
+	});
+
+	it("exits 1 when the review or the finding is not found", () => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!);
+		expect(melian(repo, ["dismiss", "main", "0123456789abcdef", "--reason", reason], env)).toMatchObject({
+			status: 1,
+			stderr: expect.stringContaining("run melian review main"),
+		});
+		expect(melian(repo, ["review", "main"], env).status).toBe(1);
+		expect(melian(repo, ["dismiss", "main", "0123456789abcdef", "--reason", reason], env)).toMatchObject({
+			status: 1,
+			stderr: expect.stringContaining("has no finding 0123456789abcdef; melian findings main --all lists them"),
+		});
+	});
+
+	it.each([
+		["no reason", ["dismiss", "main", "0123456789abcdef"], "dismiss needs --reason <text>"],
+		["a blank reason", ["dismiss", "main", "0123456789abcdef", "--reason", "  "], "a dismissal needs a reason"],
+		["an overlong reason", ["dismiss", "main", "0123456789abcdef", "--reason", "x".repeat(1001)], "the most is 1000"],
+		["a malformed ID", ["dismiss", "main", "null-dereference", "--reason", reason], "is not a finding ID"],
+		["no ID", ["dismiss", "main", "--reason", reason], "dismiss takes a range or pull request and a finding ID"],
+		["findings with --open and --all", ["findings", "main", "--open", "--all"], "--open or --all, not both"],
+	])("exits 64 for %s", (_, args, message) => {
+		expect(melian(root, args)).toMatchObject({ status: 64, stderr: expect.stringContaining(message) });
 	});
 });
 

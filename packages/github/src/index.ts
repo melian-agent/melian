@@ -11,6 +11,7 @@ export { createGitHubProvider, GitHubProvider, type GitHubProviderOptions, statu
 export {
 	blobUrl,
 	type Marker,
+	type MarkerDetail,
 	type MarkerKind,
 	marker,
 	markersIn,

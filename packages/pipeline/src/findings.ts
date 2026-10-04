@@ -1,11 +1,16 @@
 import {
+	type Cause,
+	dismissalReason,
 	type Finding,
+	type FindingDismissal,
 	FindingError,
 	type FindingProperties,
 	type FindingSource,
 	type FindingStatus,
 	type FindingTrigger,
 	mergeClaims,
+	type PastDismissal,
+	type ProvingHunk,
 	parseFinding,
 	type Severity,
 	snippetHash,
@@ -15,14 +20,21 @@ import { type Context, type ConversationId, defineDoc, type Harness, type Tx } f
 
 // Type aliases, not interfaces: a document's value must satisfy Pi's JsonObject, which an interface never does.
 
-// A dismissal that a later revision reopened, kept so the reason is not lost.
-type PastDismissal = {
+// A dismissal that no longer stands, kept so the reason is not lost: a later revision reopened it, or a later dismissal
+// replaced it. An entry from before re-dismissal kept history names only the revision that reopened it.
+type StoredPastDismissal = {
 	dismissedBy: string;
 	dismissedReason: string;
 	dismissedAt: string;
-	reopenedRevision: string;
+	reopenedRevision?: string;
+	replacedAt?: string;
 };
 
+// A hunk that proves an affected finding's cause, as core's `ProvingHunk`.
+type StoredProvingHunk = { file: string; hash: string };
+
+// `proof` is the union of the hunks every affected sighting since the lifecycle last reopened has proved, less any
+// changed since; absent from a record stored before Melian kept it, and from one never sighted as affected.
 type FindingLifecycle = {
 	status: FindingStatus;
 	dismissedBy?: string;
@@ -30,18 +42,16 @@ type FindingLifecycle = {
 	dismissedAt?: string;
 	firstSeenRevision: string;
 	lastSeenRevision: string;
-	history: PastDismissal[];
+	history: StoredPastDismissal[];
+	proof?: StoredProvingHunk[];
 };
 
 /** Who dismissed a finding, why, and when, as an ISO 8601 timestamp the caller supplies so a replay writes the same. */
-export interface Dismissal {
-	readonly by: string;
-	readonly reason: string;
-	readonly at: string;
-}
+export type Dismissal = FindingDismissal;
 
+// Status and dismissals are Melian's lifecycle, never a producer's, so a sighting stores none of them.
 type ProducerFinding = Omit<Finding, "properties"> & {
-	properties: Omit<FindingProperties, "status" | "reportedBy">;
+	properties: Omit<FindingProperties, "status" | "reportedBy" | "dismissal" | "pastDismissals">;
 };
 
 // Sightings are keyed by revision, `revisionKey` of a base and head, then by producer, a lens's check and version. Only
@@ -150,6 +160,18 @@ function triggerCode(trigger: FindingTrigger | undefined): string {
 	return trigger?.hash ?? snippetHash(trigger?.snippet ?? "");
 }
 
+// The hunks an affected sighting proved. One stored before triggers kept a proof names a single hunk by its hash.
+function proofOf(cause: Cause, trigger: FindingTrigger | undefined): StoredProvingHunk[] {
+	if (cause !== "affected" || trigger === undefined) return [];
+	return trigger.proof?.map((hunk) => ({ ...hunk })) ?? [{ file: trigger.file, hash: triggerCode(trigger) }];
+}
+
+// The hunks in `proof`, each once, by file then hash, so a union stores the same whatever order it was built in.
+function unionOf(proof: readonly StoredProvingHunk[]): StoredProvingHunk[] {
+	const byKey = new Map(proof.map((hunk) => [`${hunk.file}\0${hunk.hash}`, hunk]));
+	return [...byKey.keys()].sort(compareText).map((key) => ({ ...byKey.get(key)! }));
+}
+
 /**
  * Records a sighting: the finding as its producer, named by `properties.source`, reported it at `revision`. Keeps
  * Melian's lifecycle record for its ID.
@@ -162,19 +184,31 @@ function triggerCode(trigger: FindingTrigger | undefined): string {
  * when the ID is first seen, and `lastSeenRevision` moves to `revision` unless {@link recordRevision} marked a newer
  * revision. A dismissed finding stays dismissed unless a sighting at that revision or a newer one has a trigger whose
  * code changed materially, meaning its `trigger.hash`, or the hash of its normalised `trigger.snippet` when it has none,
- * differs from the last revision's; then it becomes `new` and the dismissal moves to `history`. Reporting the same
- * finding twice stores the same state, so a tool that calls this is safe to replay. Throws core's `FindingError` for an
- * invalid finding, which aborts the transaction.
+ * differs from the last revision's; then it becomes `new` and the dismissal moves to `history`.
+ *
+ * An `affected` finding is tied instead to the hunks that proved its cause: the union of every `trigger.proof` its
+ * sightings gave since it last reopened, so a lens citing one more cause adds to the proof rather than replacing it.
+ * Sighted again as anything but `introduced`, a dismissed finding with such a proof reopens only when a hunk in it has
+ * no hunk of equal content in the same file among `hunks`, the hunks of `revision`, never because the lens cited more
+ * or fewer of them. A hunk that changed leaves the proof. `hunks` is required with a sighting that has a proof.
+ *
+ * Reporting the same finding twice stores the same state, so a tool that calls this is safe to replay. Throws core's
+ * `FindingError` for an invalid finding, which aborts the transaction.
  */
 export async function upsertFinding(
 	tx: Tx,
 	rootConversationId: ConversationId,
 	finding: Finding,
 	revision: string,
+	hunks?: readonly ProvingHunk[],
 ): Promise<void> {
 	const valid = parseFinding(finding);
-	const { status: _, reportedBy: __, ...properties } = valid.properties;
+	const { status: _, reportedBy: __, dismissal: ___, pastDismissals: ____, ...properties } = valid.properties;
 	const producer: ProducerFinding = { ...valid, properties };
+	const proved = proofOf(properties.cause, properties.trigger);
+	if (proved.length > 0 && hunks === undefined) {
+		throw new Error(`recording affected finding ${properties.id} needs the hunks of revision ${revision}`);
+	}
 	const state = await tx.doc(FindingsDocument, rootConversationId);
 	if (!state.revisions.includes(revision)) state.revisions.push(revision);
 	bump(state, [revision]);
@@ -186,6 +220,7 @@ export async function upsertFinding(
 			firstSeenRevision: revision,
 			lastSeenRevision: revision,
 			history: [],
+			...(proved.length === 0 ? {} : { proof: unionOf(proved) }),
 		};
 		state.items[properties.id] = { lifecycle, sightings: { [revision]: { [key]: producer } } };
 		return;
@@ -198,10 +233,23 @@ export async function upsertFinding(
 	}
 	const { dismissedBy, dismissedReason, dismissedAt, ...kept } = previous.lifecycle;
 	const lastSeen = previous.sightings[last];
+	const stored =
+		kept.proof ??
+		unionOf(Object.values(lastSeen ?? {}).flatMap((each) => proofOf(each.properties.cause, each.properties.trigger)));
+	const standing =
+		hunks === undefined
+			? stored
+			: stored.filter((each) => hunks.some((hunk) => hunk.file === each.file && hunk.hash === each.hash));
+	// A lens that cites no proving cause this time makes the finding pre-existing, which is no change to the code.
+	const proven = stored.length > 0 && properties.cause !== "introduced";
 	const reopened =
 		kept.status === "dismissed" &&
 		lastSeen !== undefined &&
-		triggerCode(adjudicate(lastSeen).winner.properties.trigger) !== triggerCode(properties.trigger);
+		(proven
+			? standing.length < stored.length
+			: triggerCode(adjudicate(lastSeen).winner.properties.trigger) !== triggerCode(properties.trigger));
+	const proof = unionOf([...(reopened ? [] : standing), ...proved]);
+	const tied = proof.length > 0 || kept.proof !== undefined ? { proof } : {};
 	const lifecycle: FindingLifecycle = reopened
 		? {
 				...kept,
@@ -216,8 +264,9 @@ export async function upsertFinding(
 						reopenedRevision: revision,
 					},
 				],
+				...tied,
 			}
-		: { ...previous.lifecycle, lastSeenRevision: revision };
+		: { ...previous.lifecycle, lastSeenRevision: revision, ...tied };
 	state.items[properties.id] = { lifecycle, sightings };
 }
 
@@ -254,28 +303,65 @@ export async function replaceCheckFindings(
 	for (const finding of findings) await upsertFinding(tx, rootConversationId, finding, revision);
 }
 
-/** Marks a finding dismissed. Throws core's `FindingError` `unknownFinding` if no finding has the ID. */
+/**
+ * Marks a finding dismissed, and returns the dismissal it replaced, if it was dismissed already. A replaced dismissal
+ * moves to the finding's history, so its reason is not lost; the same dismisser giving the same reason again changes
+ * nothing. The reason is stored without surrounding whitespace.
+ * Throws core's `FindingError`: `unknownFinding` if no finding has the ID, and `invalidDismissal` for a blank `by` or
+ * `at`, or a reason core's `dismissalReason` refuses.
+ */
 export async function dismissFinding(
 	tx: Tx,
 	rootConversationId: ConversationId,
 	id: string,
 	{ by, reason, at }: Dismissal,
-): Promise<void> {
+): Promise<Dismissal | undefined> {
+	const why = dismissalReason(reason);
+	for (const [field, value] of [
+		["by", by],
+		["at", at],
+	] as const) {
+		if (value.trim() === "") {
+			throw new FindingError("invalidDismissal", `a dismissal needs ${field === "by" ? "a dismisser" : "a time"}`, {
+				path: `/properties/dismissal/${field}`,
+			});
+		}
+	}
 	const state = await tx.doc(FindingsDocument, rootConversationId);
 	const { items } = state;
 	const record = items[id];
 	if (record === undefined) {
 		throw new FindingError("unknownFinding", `no finding has ID ${id}`, { path: "/properties/id" });
 	}
+	const { status, dismissedBy, dismissedReason, dismissedAt, history } = record.lifecycle;
+	// The same dismisser giving the same reason again changes nothing, so a retried dismiss adds no history.
+	if (status === "dismissed" && dismissedBy === by && dismissedReason === why) return undefined;
+	const replaced =
+		status === "dismissed"
+			? { by: dismissedBy ?? "", reason: dismissedReason ?? "", at: dismissedAt ?? "" }
+			: undefined;
 	const lifecycle: FindingLifecycle = {
 		...record.lifecycle,
 		status: "dismissed",
 		dismissedBy: by,
-		dismissedReason: reason,
+		dismissedReason: why,
 		dismissedAt: at,
+		history:
+			replaced === undefined
+				? history
+				: [
+						...history,
+						{
+							dismissedBy: replaced.by,
+							dismissedReason: replaced.reason,
+							dismissedAt: replaced.at,
+							replacedAt: at,
+						},
+					],
 	};
 	items[id] = { ...record, lifecycle };
 	bump(state, Object.keys(record.sightings));
+	return replaced;
 }
 
 function bump(state: FindingsState, revisions: readonly string[]): void {
@@ -294,6 +380,26 @@ export async function findingsVersion(
 	context: Context,
 ): Promise<number> {
 	return (await reader.snapshot(FindingsDocument, rootConversationId, context))?.versions[revision] ?? 0;
+}
+
+// The lifecycle's dismissal, while it stands, and the dismissals before it, as a finding carries them.
+function dismissalsOf(lifecycle: FindingLifecycle): Pick<FindingProperties, "dismissal" | "pastDismissals"> {
+	const { status, dismissedBy, dismissedReason, dismissedAt, history } = lifecycle;
+	const past = history.map(
+		({ dismissedBy: by, dismissedReason: reason, dismissedAt: at, reopenedRevision, replacedAt }): PastDismissal => ({
+			by,
+			reason,
+			at,
+			...(reopenedRevision === undefined ? {} : { reopenedRevision }),
+			...(replacedAt === undefined ? {} : { replacedAt }),
+		}),
+	);
+	return {
+		...(status === "dismissed"
+			? { dismissal: { by: dismissedBy ?? "", reason: dismissedReason ?? "", at: dismissedAt ?? "" } }
+			: {}),
+		...(past.length === 0 ? {} : { pastDismissals: past }),
+	};
 }
 
 /** Which sightings {@link readFindings} merges. */
@@ -336,8 +442,7 @@ export async function readFindings(
 			);
 			if (Object.keys(atHead).length === 0) return [];
 			const { winner, reportedBy } = adjudicate(atHead);
-			return [
-				structuredClone({ ...winner, properties: { ...winner.properties, status: lifecycle.status, reportedBy } }),
-			];
+			const properties = { ...winner.properties, status: lifecycle.status, ...dismissalsOf(lifecycle), reportedBy };
+			return [structuredClone({ ...winner, properties })];
 		});
 }

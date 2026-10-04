@@ -260,6 +260,87 @@ describe("renderFindingsTerminal with a verdict", () => {
 		expect(renderFindingsTerminal(passed)).toBe("Verdict: passed\n\nNo findings.\n");
 	});
 
+	describe("with every finding and its ID", () => {
+		const dismissal = {
+			by: "Tal <tal@melian.invalid>",
+			reason: "Retries are fixed.\nSee the runbook.",
+			at: "2026-10-04T00:00:00Z",
+		};
+		const dismissed = createFinding({ ...evalInput, rule: "magic-number", snippet: "retry(3)", status: "dismissed" });
+		const reopened = createFinding({ ...evalInput, snippet: "eval(body)", severity: "P2" });
+		const shown = adjudicate({
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+			findings: [
+				{ ...dismissed, properties: { ...dismissed.properties, dismissal } },
+				{
+					...reopened,
+					properties: {
+						...reopened.properties,
+						pastDismissals: [{ ...dismissal, reason: "Constant\u001b[2J.", reopenedRevision: "a..b" }],
+					},
+				},
+				createFinding({ ...evalInput, snippet: "eval(note)", severity: "nit" }),
+			],
+		});
+
+		it("prints silent and dismissed findings, each dismissal with who, when, and why", () => {
+			const text = renderFindingsTerminal(shown, { all: true, ids: true });
+			expect(text).toContain("Silent: 1 finding");
+			expect(text).toContain("Dismissed: 1 finding");
+			expect(text).not.toContain("not shown");
+			expect(text).toContain(
+				`  P1  line 12  magic-number  (introduced, dismissed, block)  ${dismissed.properties.id}\n    Dismissed by Tal <tal@melian.invalid> at 2026-10-04T00:00:00Z: Retries are fixed.\n      See the runbook.\n`,
+			);
+			expect(text).toContain(
+				"    Earlier dismissal, reopened at a..b, by Tal <tal@melian.invalid> at 2026-10-04T00:00:00Z: Constant\\u001b[2J.\n",
+			);
+		});
+
+		it("counts them and leaves out IDs by default", () => {
+			const text = renderFindingsTerminal(shown);
+			expect(text).toContain("1 silent finding and 1 dismissed finding not shown.");
+			expect(text).not.toContain(dismissed.properties.id);
+			expect(text).toContain("Earlier dismissal, reopened at a..b");
+		});
+	});
+
+	it("prints each finding's merged reports, and the dismissed reports beside it, with severity, rule, check, and ID", () => {
+		const speaker = createFinding(evalInput);
+		const merged = createFinding({
+			...evalInput,
+			rule: "code-injection",
+			severity: "P2",
+			source: { check: "lens.contracts" },
+		});
+		const answered = createFinding({
+			...evalInput,
+			rule: "unsafe-call",
+			severity: "P3",
+			source: { check: "static.biome" },
+			status: "dismissed",
+		});
+		const verdict = adjudicate({
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+			findings: [speaker, merged, answered],
+		});
+
+		const text = renderFindingsTerminal(verdict, { ids: true });
+
+		expect(text).toContain(
+			[
+				`  P1  line 12  no-eval  (introduced, new, block)  ${speaker.properties.id}`,
+				`    Merged report: P2 code-injection from lens.contracts  ${merged.properties.id}`,
+				`    Also reported, dismissed: P3 unsafe-call from static.biome  ${answered.properties.id}`,
+				"  eval runs request input",
+			].join("\n"),
+		);
+		expect(renderFindingsTerminal(verdict)).toContain("    Merged report: P2 code-injection from lens.contracts\n");
+	});
+
 	it("escapes control characters in a check's name, reason, and error", () => {
 		const hostile = adjudicate({
 			findings: [],

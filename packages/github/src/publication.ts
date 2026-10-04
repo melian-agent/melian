@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import {
 	type ClosedFinding,
 	describeBudgetEnd,
+	dismissalVersion,
 	type Finding,
 	type PlacedFinding,
 	type ReviewDraft,
@@ -16,20 +17,26 @@ export interface RepositoryLinks {
 /** What a marker carries: a finding's thread, a review's verdict, or a reply that resolves a finding. */
 export type MarkerKind = "finding" | "verdict" | "resolved";
 
+/** What a marker carries beyond its kind and ID. */
+export interface MarkerDetail {
+	/** On a review's body, the review's round at the revision. */
+	readonly round?: number;
+	/** On a reply giving a dismissal, the dismissal's version. */
+	readonly dismissal?: string;
+}
+
 /** A marker parsed from a post: the revision it belongs to, what it carries, and its signature. */
-export interface Marker {
+export interface Marker extends MarkerDetail {
 	readonly revision: string;
 	readonly kind: MarkerKind;
 	/** The finding's ID, or for `verdict` the verdict's fingerprint. */
 	readonly id: string;
-	/** On a review's body, the review's round at the revision. */
-	readonly round?: number;
 	readonly sig: string;
 }
 
 // What a marker says, as it is signed.
-function claim(kind: MarkerKind, id: string, round: number | undefined): string {
-	return `${kind}=${id}${round === undefined ? "" : ` round=${round}`}`;
+function claim(kind: MarkerKind, id: string, { round, dismissal }: MarkerDetail): string {
+	return `${kind}=${id}${round === undefined ? "" : ` round=${round}`}${dismissal === undefined ? "" : ` dismissal=${dismissal}`}`;
 }
 
 function signature(secret: string, revision: string, carries: string): string {
@@ -39,18 +46,25 @@ function signature(secret: string, revision: string, carries: string): string {
 /**
  * The hidden marker that opens every post: `<!-- melian:revision=<sha> <kind>=<id> sig=<signature> -->`, where kind is
  * `finding` on a finding's comment, `verdict` on a review's body, and `resolved` on a reply. A review's marker also
- * carries its round, `verdict=<fingerprint> round=<n>`, since one verdict can recur at a head. The signature is the
+ * carries its round, `verdict=<fingerprint> round=<n>`, since one verdict can recur at a head, and a reply giving a
+ * dismissal carries the dismissal's version, `resolved=<id> dismissal=<version>`, since a reason can change. The signature is the
  * first 32 hex digits of HMAC-SHA256, keyed with the changeset's publisher secret, over `<sha>|` and everything between
  * the revision and `sig=`. A rerun reads markers back to find what it already posted, and trusts one only when its
  * signature verifies.
  */
-export function marker(revision: string, kind: MarkerKind, id: string, secret: string, round?: number): string {
-	const carries = claim(kind, id, round);
+export function marker(
+	revision: string,
+	kind: MarkerKind,
+	id: string,
+	secret: string,
+	detail: MarkerDetail = {},
+): string {
+	const carries = claim(kind, id, detail);
 	return `<!-- melian:revision=${revision} ${carries} sig=${signature(secret, revision, carries)} -->`;
 }
 
 const markerLine =
-	/^<!-- melian:revision=([0-9a-f]{40,64}) (finding|verdict|resolved)=([0-9a-f]{16})(?: round=([1-9][0-9]{0,8}))? sig=([0-9a-f]{32}) -->$/;
+	/^<!-- melian:revision=([0-9a-f]{40,64}) (finding|verdict|resolved)=([0-9a-f]{16})(?: round=([1-9][0-9]{0,8}))?(?: dismissal=([0-9a-f]{16}))? sig=([0-9a-f]{32}) -->$/;
 
 /**
  * The marker on a line of its own, or `undefined`. Untrusted text cannot start a line with one; see
@@ -60,7 +74,8 @@ export function parseMarker(line: string): Marker | undefined {
 	const match = markerLine.exec(line.trim());
 	if (match === null) return undefined;
 	const round = match[4] === undefined ? {} : { round: Number(match[4]) };
-	return { revision: match[1]!, kind: match[2] as MarkerKind, id: match[3]!, ...round, sig: match[5]! };
+	const dismissal = match[5] === undefined ? {} : { dismissal: match[5] };
+	return { revision: match[1]!, kind: match[2] as MarkerKind, id: match[3]!, ...round, ...dismissal, sig: match[6]! };
 }
 
 /**
@@ -68,7 +83,7 @@ export function parseMarker(line: string): Marker | undefined {
  * already posted, under the same kind and round, so it cannot hide anything Melian has yet to post.
  */
 export function verifyMarker(found: Marker, secret: string): boolean {
-	const expected = Buffer.from(signature(secret, found.revision, claim(found.kind, found.id, found.round)), "hex");
+	const expected = Buffer.from(signature(secret, found.revision, claim(found.kind, found.id, found)), "hex");
 	return timingSafeEqual(expected, Buffer.from(found.sig, "hex"));
 }
 
@@ -211,14 +226,14 @@ const statusWords: Readonly<Record<Verdict["status"], string>> = {
 /**
  * The body of a revision's review: the verdict, the checks that did not run, a lens its budget ended among them, any
  * lens its budget ended that its level counts as run, findings in files the change does not touch, each under its own
- * marker, and resolved findings that had no thread to reply in.
+ * marker, and resolved and dismissed findings that had no thread to reply in, each dismissed one with its reason.
  */
 export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, options: ReviewBodyOptions = {}): string {
 	const { verdict, revision, secret } = draft;
 	const limit = options.limit ?? maxBodyLength;
 	const status = `**${statusWords[verdict.status]}${verdict.blocking ? ", blocking" : ""}**`;
 	const parts = [
-		`${marker(revision, "verdict", draft.fingerprint, secret, draft.round)}\nMelian reviewed ${code(short(revision))}: ${status}.`,
+		`${marker(revision, "verdict", draft.fingerprint, secret, { round: draft.round })}\nMelian reviewed ${code(short(revision))}: ${status}.`,
 	];
 	const counts = (["block", "acknowledge", "advisory"] as const)
 		.filter((resolution) => verdict.findings[resolution].length > 0)
@@ -237,7 +252,7 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	if (verdict.notRun.length > 0) {
 		const checks = verdict.notRun.map(({ name, status: ran, reason, budgetEnded }) => {
 			const why = reason ?? (budgetEnded === undefined ? undefined : describeBudgetEnd(budgetEnded));
-			return `- ${code(name)} ${ran}${why === undefined ? "" : `: ${renderProse(why).replace(/\r?\n/g, " ")}`}`;
+			return `- ${code(name)} ${ran}${why === undefined ? "" : `: ${inline(why)}`}`;
 		});
 		parts.push(["Checks that did not run:", "", ...checks].join("\n"));
 	}
@@ -247,12 +262,13 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	if (counted.length > 0) {
 		parts.push(["Lenses a budget ended, counted with the findings they reported:", "", ...counted].join("\n"));
 	}
-	if (draft.resolved.length > 0) {
-		const resolved = draft.resolved.map(
-			(finding) => `- ${code(finding.ruleId)} in ${code(finding.path)} line ${finding.line}`,
-		);
-		parts.push(["Resolved since the last review:", "", ...resolved].join("\n"));
-	}
+	const named = (finding: ClosedFinding) => `- ${code(finding.ruleId)} in ${code(finding.path)} line ${finding.line}`;
+	const resolved = draft.resolved.filter((finding) => finding.dismissal === undefined).map(named);
+	if (resolved.length > 0) parts.push(["Resolved since the last review:", "", ...resolved].join("\n"));
+	const dismissed = draft.resolved.flatMap((finding) =>
+		finding.dismissal === undefined ? [] : [`${named(finding)}: ${inline(finding.dismissal.reason)}`],
+	);
+	if (dismissed.length > 0) parts.push(["Dismissed since the last review:", "", ...dismissed].join("\n"));
 	const inBody = draft.findings.filter((placed) => placed.placement.kind === "body");
 	const sections = inBody.map(({ finding }) => {
 		const [start, end] = span(finding);
@@ -298,7 +314,22 @@ export interface ReviewBodyOptions {
 	readonly limit?: number;
 }
 
-/** The reply in a resolved finding's thread. */
+/**
+ * The reply in a resolved finding's thread: that the revision no longer reports it, or, for a dismissed finding, that it
+ * was dismissed and why. The reason goes through {@link renderProse}, and the dismisser is left out: the reply is posted
+ * from the publisher's account, and the dismisser Melian records is a git identity, whose email does not belong on a
+ * pull request.
+ */
 export function renderResolvedReply(finding: ClosedFinding, revision: string, secret: string): string {
-	return `${marker(revision, "resolved", finding.id, secret)}\nResolved at ${code(short(revision))}: this revision no longer reports ${code(finding.ruleId)} here.`;
+	const version = finding.dismissal === undefined ? {} : { dismissal: dismissalVersion(finding.dismissal) };
+	const head = marker(revision, "resolved", finding.id, secret, version);
+	if (finding.dismissal !== undefined) {
+		return `${head}\nDismissed at ${code(short(revision))}: ${inline(finding.dismissal.reason)}`;
+	}
+	return `${head}\nResolved at ${code(short(revision))}: this revision no longer reports ${code(finding.ruleId)} here.`;
+}
+
+// Prose on one line, for a list item or a reply's single line.
+function inline(text: string): string {
+	return renderProse(text).replace(/\r\n?|\n/g, " ");
 }
