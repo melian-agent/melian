@@ -402,7 +402,7 @@ Alternative backends behind the same interface: SQLite in the Actions cache, obj
 
 ## Trust and isolation
 
-Built in milestone 1: policy and standards read from a chosen revision, prompt boundaries, static tools in a temporary worktree with no secrets, and signed markers. Container isolation is planned for milestone 2 (Actions host), and comment commands for milestone 3.
+Built in milestone 1: policy and standards read from a chosen revision, prompt boundaries, static tools in a temporary worktree with no secrets, and signed markers. Container isolation and [tool provisioning](#tool-provisioning) are planned for milestone 2 (Actions host), and comment commands for milestone 3.
 
 Existing code on the base branch is trusted. Submitted changes and comments are not.
 
@@ -435,6 +435,25 @@ Solution: core reads policy (`melian.yaml`) and standards (`AGENTS.md`, `CLAUDE.
 Lenses and knowledge, when their loaders arrive, follow the same rule.
 
 Reading from the base does not hide the head's changes. Each revision lists the policy and standards files it changes: every `melian.yaml`, `AGENTS.md`, `CLAUDE.md`, file under a `.melian/` directory, and static tool configuration file, such as `biome.json`, `tsconfig*.json`, or `package.json`. A lens can be handed those changes as quoted data, "the standards this pull request changes", and review them like any other code.
+
+### Tool provisioning
+
+Planned for milestone 2 (Actions host).
+
+Problem: a finding's identity hashes its rule and snippet, and an analyser's version decides what it reports and under which rule. Biome and tsc arrive through npm, pinned by a lockfile; standalone analysers such as Opengrep and gitleaks do not. Example: a maintainer's Homebrew gitleaks is a release ahead of the one on the Actions runner, and a rule renamed between them gives the same secret a new finding ID, so a dismissed finding returns and an open one is posted again. Whichever binary sits first on the host's `PATH` would also judge the change from outside the trust boundary.
+
+Solution: Melian pins every external tool in a `tools.yaml` manifest of its own: the version, and per platform a download URL and a sha256. The manifest takes the same release-age quarantine as npm dependencies, so a release younger than the window is refused, and a bump is a reviewed pull request.
+
+One manifest builds two execution environments:
+
+- Local, for trusted runs. Melian materialises the manifest into a cache it owns, verifies each download by its hash, and puts the cache on the Node execution environment's `PATH`.
+- Container, for untrusted heads. An image built from the same manifest runs with no network, the worktree mounted read-only, and resource limits.
+
+Where a tool comes from depends on what it loads. A tool whose configuration loads repository code, such as Biome, eslint, or tsc, comes from the repository's lockfile install, the checkout's, as [the static tool binaries decision](decisions/2026-10-03-static-tool-binaries.md) sets, because its configuration and plugins are written for that version. A standalone analyser, such as Opengrep or gitleaks, comes from Melian's manifest. Either way it executes inside the environment, never in the Melian process. Melian never depends on a host-installed analyser: version drift breaks finding identity, and the host is outside the trust boundary.
+
+Anthropic's sandbox-runtime, which Pi's own repository depends on, is a candidate for the local untrusted case on a machine without Docker.
+
+The first standalone analysers are Opengrep and gitleaks. Opengrep is preferred over Semgrep's registry rules on licensing: those rules carry a licence of their own that restricts how they may be used and redistributed. Melian ships no Opengrep rules at first. gitleaks is the fast tier's secrets check.
 
 ## Interaction model
 
