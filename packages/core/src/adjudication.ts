@@ -29,10 +29,6 @@ function lenientOf(left: Resolution, right: Resolution): Resolution {
 	return resolutionOrder.indexOf(left) > resolutionOrder.indexOf(right) ? left : right;
 }
 
-function stricterOf(left: Resolution, right: Resolution): Resolution {
-	return resolutionOrder.indexOf(left) < resolutionOrder.indexOf(right) ? left : right;
-}
-
 /**
  * A finding adjudication has resolved. A finding without `properties.resolution` has not been adjudicated yet, which
  * says nothing about what it requires: it is neither `silent` nor anything else until {@link applyResolutions} runs.
@@ -57,7 +53,8 @@ export function resolveFinding(finding: Finding, config: Pick<MelianConfig, "res
 	const ownPolicy =
 		finding.ruleId === "guardrail/policy-change-review" &&
 		posix.basename(finding.properties.path) === melianPaths.config;
-	return ownPolicy ? stricterOf(resolution, "acknowledge") : resolution;
+	const belowAcknowledge = resolutionOrder.indexOf(resolution) > resolutionOrder.indexOf("acknowledge");
+	return ownPolicy && belowAcknowledge ? "acknowledge" : resolution;
 }
 
 /**
