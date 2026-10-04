@@ -23,9 +23,9 @@ The skill reviews the branch against its upstream, with uncommitted changes when
 
 Correctness outranks cleanup at the cap. Finders are told to pass on every candidate with a nameable failure scenario, because finders that quietly drop half-believed candidates cause most misses.
 
-Effort sets the pipeline. Low reads the diff once and reports at most four bugs visible in a hunk. Medium biases to precision and high to recall, each with eight angles and a verify. The top levels add angles and a gap sweep for what the list lacks. Some model families run every angle in one context with no verify.
+Effort sets the pipeline. Low reads the diff once and reports at most four bugs visible in a hunk. Medium biases to precision and high to recall, each with eight angles and a verify. The top levels add angles and a gap sweep for what the list lacks. Which template runs depends on the model family. Some run every angle in sequence in one context, deduplicate, and verify nothing. The prompt that ran on Melian's shadow reviews was one of those: high effort, eight inline angles, dedup, no verify, and at most ten findings.
 
-The verify pass is the precision mechanism. After dedup, one verifier per candidate returns confirmed when the trigger can be named and the line quoted, plausible when the mechanism is real but the trigger uncertain, and refuted when the claim is wrong or guarded elsewhere. At high effort the default is plausible, and a candidate may not be refuted for being speculative. A finding carries file, line, summary, failure scenario, category, and verdict. A review run without subagents must say it was single-pass.
+In the variants that use subagents, the verify pass is the precision mechanism. After dedup, one verifier per candidate returns confirmed when the trigger can be named and the line quoted, plausible when the mechanism is real but the trigger uncertain, and refuted when the claim is wrong or guarded elsewhere. At high effort the default is plausible, and a candidate may not be refuted for being speculative. A finding carries file, line, summary, failure scenario, category, and verdict. A review run without subagents must say it was single-pass.
 
 ## A private repository's low-cost review skill
 

@@ -230,7 +230,7 @@ What stays out of a lens: topology, concurrency, deadlines, publication, and ver
 
 Planned for milestone 2.
 
-Problem: the two lenses that ship cover one kind of defect. [The classification of 151 accepted findings](research/2026-10-04-review-findings-by-bucket.md) from Melian's comparison records puts 54 in correctness, the only bucket today's lenses plausibly reach. Trust boundary, with 28, and durability, with 17, are mostly high severity, and no check looks for either. About 11 of the 151 could be a static rule. Example: in [pull request #12](https://github.com/melian-agent/melian/pull/12), `loadConfig` read the head's `melian.yaml`, so a pull request set the policy for its own review. The correctness lens drops failures that only a caller outside the repository could cause, so it would not have looked.
+Problem: the two lenses that ship cover one kind of defect. [The classification of 151 accepted findings](research/2026-10-04-review-findings-by-bucket.md) from Melian's comparison records puts 54 in correctness, the only bucket today's lenses plausibly reach. Trust boundary, with 28, and durability, with 17, are mostly high severity, and no check looks for either. About 11 of the 151 could be a static rule. Example: in [pull request #12](https://github.com/melian-agent/melian/pull/12), `loadConfig` read the head's `melian.yaml`, so a pull request set the policy for its own review. No lens today asks whether the head controls its own judge.
 
 Solution: five more lenses, each one angle:
 
@@ -246,7 +246,7 @@ Each is written adversarially: it looks for the strongest reasons the change sho
 
 Planned for milestone 2, except the decision-model executor, planned for milestone 4.
 
-Problem: a lens reports what it half-believes, and Melian counts every report. Example: a lens reports a null dereference on a value that a guard two lines above already checks; the finding blocks the merge, and the author spends a round proving the lens wrong. Claude Code's review skill and a private repository's review skill both attack each candidate before reporting it, and their precision rests on that pass, as [the comparison of review tools](research/2026-10-04-review-tools-compared.md) sets out. Melian has no verifier, and its `confidence` field is never filled.
+Problem: a lens reports what it half-believes, and Melian counts every report. Example: a lens reports a null dereference on a value that a guard two lines above already checks; the finding blocks the merge, and the author spends a round proving the lens wrong. Claude Code's review skill, in its variants that use subagents, and a private repository's review skill both attack each candidate before reporting it, and their precision rests on that pass, as [the comparison of review tools](research/2026-10-04-review-tools-compared.md) sets out. The variant that ran as Melian's shadow reviewer was not one of those: it ran eight angles inline, deduplicated, and verified nothing. Melian has no verifier, and its `confidence` field is never filled.
 
 Solution: every candidate finding from a level that verifies passes a verifier before adjudication counts it. Verification is one typed state and one typed verdict, with two executors.
 
