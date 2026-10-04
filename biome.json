@@ -23,7 +23,7 @@
 	"plugins": [
 		{
 			"path": "./biome/free-domain-function.grit",
-			"includes": ["**/packages/*/src/**", "!**/packages/cli/src/commands.ts", "!**/packages/cli/src/doctor.ts"]
+			"includes": ["**/packages/*/src/**"]
 		}
 	],
 	"formatter": {

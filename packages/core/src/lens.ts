@@ -523,6 +523,8 @@ function retiered({ quick, careful, deep }: LensLevels, tier: LensTier): LensLev
 	};
 }
 
+const tierOrder: readonly LensTier[] = ["light", "medium", "heavy"];
+
 const reportingRules = `## Failure scenario and evidence
 
 Every \`report_finding\` call needs both. A call without them is refused.
@@ -739,6 +741,38 @@ export class Lens {
 				: "The repository's own conventions. A change that breaks one is a finding; cite the file.",
 			...sections,
 		].join("\n\n");
+	}
+
+	/**
+	 * Where one of the lens's levels is cheaper than the level below it, as one sentence each, for `melian doctor`. Each
+	 * level takes what it leaves out from the top level, so a lens that extends another and sets a top-level tier or
+	 * budget moves the levels that name none, and can leave `careful` on a lighter tier than `quick`, or allowing more
+	 * than `deep`. Triage will choose a level by how hard a lens should look, so a higher level that costs less inverts
+	 * its choice.
+	 */
+	inversions(): string[] {
+		const declared = scrutinyLevels.flatMap((level) => {
+			const settings = this.levels[level];
+			return settings === undefined ? [] : [{ level, ...settings }];
+		});
+		return declared.slice(1).flatMap((upper, index) => {
+			const lower = declared[index]!;
+			const tier =
+				tierOrder.indexOf(upper.tier) < tierOrder.indexOf(lower.tier)
+					? [`${upper.level} runs on ${upper.tier}, below ${lower.level}'s ${lower.tier}`]
+					: [];
+			const budgets = (["tokens", "tools"] as const).flatMap((budget) => {
+				const mine = upper.budget[budget] ?? Number.POSITIVE_INFINITY;
+				const below = lower.budget[budget] ?? Number.POSITIVE_INFINITY;
+				if (mine >= below) return [];
+				const unit = budget === "tokens" ? "tokens" : "tool calls";
+				const theirs = below === Number.POSITIVE_INFINITY ? "no limit" : below.toLocaleString("en-AU");
+				return [
+					`${upper.level} allows ${mine.toLocaleString("en-AU")} ${unit}, fewer than ${lower.level}'s ${theirs}`,
+				];
+			});
+			return [...tier, ...budgets];
+		});
 	}
 
 	/** The lens's fields, in their declared order. */
