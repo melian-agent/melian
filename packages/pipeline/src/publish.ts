@@ -298,8 +298,9 @@ function planRound(
 		);
 		const dismissed = dismissedReports(verdict);
 		// A resolution still owed is carried as its reply would read now: with the dismissal of the finding that holds its
-		// ID dismissed, itself or merged, and otherwise while the finding stays gone. One whose reply, as it would read
-		// now, is recorded is answered.
+		// ID dismissed, itself or merged, and otherwise as it was owed, while no finding with the ID is held. A dismissal
+		// note owed for code a later head removed is still owed. One whose reply, as it would read now, is recorded is
+		// answered.
 		const answered = repliedKeys(state);
 		for (const [id, entry] of Object.entries(unanswered(state, head))) {
 			if (Object.hasOwn(plan.open, id)) continue;
@@ -307,9 +308,9 @@ function planRound(
 			const carried =
 				now !== undefined
 					? { ...structuredClone(entry), dismissal: { ...now } }
-					: entry.dismissal === undefined && !held.has(id)
-						? structuredClone(entry)
-						: undefined;
+					: held.has(id)
+						? undefined
+						: structuredClone(entry);
 			if (carried !== undefined && !answered.has(replyKeyOf(id, carried))) resolved[id] ??= carried;
 		}
 	}

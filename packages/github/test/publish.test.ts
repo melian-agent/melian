@@ -528,6 +528,41 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(await publish(github, fourth.changeset)).toMatchObject({ resolved: 0, replies: 0 });
 	});
 
+	it("answers a dismissed finding's thread at the next head when its reply failed and the next head removed the code", async () => {
+		const { fake, github, changeset, state } = await reviewedRevisionOne();
+		await publish(github, changeset);
+		const root = (await harness!.root(context)).id;
+		const manager = (await readFindings(harness!, root, revisionKey(changeset.revision), context)).find(
+			(finding) => finding.ruleId === "null-dereference",
+		)!;
+		const thread = (await readPublished(harness!, root, changeset.revision.head, context))!.threads[
+			manager.properties.id
+		]!;
+		const reason = "Every user here has a manager.";
+		await recordDismissal({
+			harness: harness!,
+			revision: changeset.revision,
+			id: manager.properties.id,
+			dismissal: { by: "Melian Test <test@melian.invalid>", reason, at: "2026-10-04T00:00:00.000Z" },
+			repoRoot: repo,
+		});
+		state.failReplies = true;
+		await expect(publish(github, changeset)).rejects.toBeInstanceOf(PublishError);
+		state.failReplies = false;
+
+		pushRevisionTwo(repo);
+		const second = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries, trimmedGreeting));
+		await second.review;
+		moveTo(state, second.changeset);
+		const result = await publish(github, second.changeset);
+
+		expect(result).toMatchObject({ dismissed: 1, replies: 1 });
+		const answers = state.comments.filter((comment) => comment.in_reply_to_id === Number(thread));
+		expect(answers.map((comment) => comment.body.split("\n")[1])).toEqual([
+			`Dismissed at \`${second.changeset.revision.head.slice(0, 12)}\`: ${reason}`,
+		]);
+	});
+
 	it("posts every finding in the body when GitHub refuses the inline comments", async () => {
 		const { github, changeset, state } = await reviewedRevisionOne();
 		// GitHub cannot place any comment, as on a diff that moved under the review.
