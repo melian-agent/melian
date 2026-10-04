@@ -1,0 +1,28 @@
+{
+  "correctness": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "trust-boundary": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/render.ts"
+          },
+          "expectToolResult": "`${printable(path)}: ${count} finding"
+        }
+      ]
+    },
+    {
+      "text": "Reported 0 findings."
+    }
+  ]
+}

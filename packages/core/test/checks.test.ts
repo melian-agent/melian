@@ -11,6 +11,7 @@ describe("checksOfTier", () => {
 			"decisions.fast",
 			"lens.correctness",
 			"lens.contracts",
+			"lens.trust-boundary",
 		]);
 		expect(checksOfTier({ tiers: { a: ["static.tsc", "b", "static.tsc"], b: ["lens.x"] } }, "a")).toEqual([
 			"static.tsc",

@@ -1,0 +1,79 @@
+{
+  "correctness": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "trust-boundary": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/review.ts"
+          },
+          "expectToolResult": "checked out at its head in `repo`"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/policy.ts",
+            "revision": "base"
+          },
+          "expectToolResult": "[\"show\", `${commit}:policy.json`]"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "src/policy.ts",
+            "line": 10,
+            "rule": "head-controls-judge",
+            "severity": "P1",
+            "explanation": {
+              "what": "loadPolicy reads policy.json from the checkout, and verdict runs on a checkout of the pull request's head, so the head supplies the policy that judges it.",
+              "why": "The change replaced git show of the base commit's policy.json with a read of the working tree, and dropped the base commit from verdict.",
+              "fix": "Read policy.json from the base commit again, with git show <base>:policy.json, and pass the base to loadPolicy."
+            },
+            "failureScenario": "A pull request changes policy.json to { \"blockOn\": [] } and adds code a reviewer rates critical. verdict(repo, findings) runs on its checkout, loadPolicy reads the head's policy.json, and the verdict is \"pass\", where the base read policy.json from the base commit and returned \"block\".",
+            "evidence": [
+              {
+                "file": "src/policy.ts",
+                "line": 10,
+                "role": "cause"
+              },
+              {
+                "file": "src/review.ts",
+                "line": 8,
+                "endLine": 10,
+                "role": "context"
+              },
+              {
+                "file": "src/policy.ts",
+                "line": 9,
+                "role": "context",
+                "revision": "base"
+              }
+            ]
+          },
+          "expectToolResult": "as introduced"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ]
+}

@@ -47,6 +47,9 @@ function melian(cwd: string, args: string[], env: Record<string, string> = {}) {
 // Their tests keep the deterministic checks to guardrails; the static tools have a repository of their own below.
 const guardrailsOnly = "tiers:\n  fast: [guardrails]\n";
 
+// Every lens the default full tier runs, so a script can answer each.
+const builtinLenses = ["correctness", "contracts", "trust-boundary"];
+
 function scriptFile(script: unknown): Record<string, string> {
 	scratch = mkdtempSync(join(tmpdir(), "melian-cli-"));
 	const scriptPath = join(scratch, "script.json");
@@ -86,7 +89,7 @@ function staticCheckout(added: string) {
 	git(repo, "add", "--all");
 	git(repo, "commit", "--quiet", "-m", "head");
 	const quiet = [{ text: "Reported 0 findings." }];
-	return { repo, env: scriptFile({ correctness: quiet, contracts: quiet }) };
+	return { repo, env: scriptFile(Object.fromEntries(builtinLenses.map((name) => [name, quiet]))) };
 }
 
 describe("melian review and findings", { timeout: 60_000 }, () => {
@@ -405,7 +408,7 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
 
 		const unrouted = melian(repo, ["doctor"]);
-		// The built-in lenses both run on heavy, so a route for light alone still leaves every review unable to run them.
+		// The built-in lenses all run on heavy, so a route for light alone still leaves every review unable to run them.
 		writeFileSync(join(repo, "melian.yaml"), "models:\n  light:\n    model: anthropic/claude-haiku\n");
 		const partly = melian(repo, ["doctor"]);
 		writeFileSync(join(repo, "melian.yaml"), "models:\n  heavy:\n    model: anthropic/claude-opus-5-5\n");
@@ -413,11 +416,16 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		writeFileSync(join(repo, "melian.local.yaml"), "models:\n  heavy:\n    model: amazon-bedrock/claude-opus\n");
 		const local = melian(repo, ["doctor"]);
 
+		const heavy = [...builtinLenses].sort();
+		const needHeavy = `no model for heavy, for ${heavy.slice(0, -1).join(", ")}, and ${heavy.at(-1)}; `;
 		expect(unrouted.stdout).toMatch(
-			/^warn {2}routes {6}no tier is routed to a model; no model for heavy, for (correctness and contracts|contracts and correctness); .*melian\.local\.yaml.*--model/m,
+			new RegExp(
+				`^warn {2}routes {6}no tier is routed to a model; ${needHeavy}.*melian\\.local\\.yaml.*--model`,
+				"m",
+			),
 		);
 		expect(partly.stdout).toMatch(
-			/^warn {2}routes {6}light to anthropic\/claude-haiku; no model for heavy, for (correctness and contracts|contracts and correctness); /m,
+			new RegExp(`^warn {2}routes {6}light to anthropic/claude-haiku; ${needHeavy}`, "m"),
 		);
 		expect(routed.stdout).toMatch(/^ok {4}routes {6}heavy to anthropic\/claude-opus-5-5$/m);
 		expect(local.stdout).toMatch(/^ok {4}routes {6}heavy to amazon-bedrock\/claude-opus$/m);

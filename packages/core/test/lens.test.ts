@@ -57,11 +57,15 @@ function named(lenses: readonly Lens[], name: string): Lens[] {
 	return lenses.filter((lens) => lens.name === name);
 }
 
+// Every lens Melian ships, in the order the loader returns them.
+const builtins = ["contracts", "correctness", "trust-boundary"];
+
 describe("built-in lenses", () => {
 	it("load correctness and contracts with their declared rules", async () => {
 		const lenses = await loadLenses(repo, { kind: "worktree" }, ["src/index.ts"]);
-		expect(lenses.map((lens) => lens.name)).toEqual(["contracts", "correctness"]);
-		const [contracts, correctness] = lenses;
+		expect(lenses.map((lens) => lens.name)).toEqual(builtins);
+		const [contracts] = named(lenses, "contracts");
+		const [correctness] = named(lenses, "correctness");
 		expect(correctness).toMatchObject({
 			tools: [...lensToolNames],
 			severities: ["P0", "P1", "P2"],
@@ -70,7 +74,7 @@ describe("built-in lenses", () => {
 			standards: true,
 			file: "builtin:correctness",
 		});
-		for (const lens of lenses) {
+		for (const lens of [contracts!, correctness!]) {
 			expect(lens.levels).toEqual({
 				quick: {
 					tier: "medium",
@@ -96,6 +100,25 @@ describe("built-in lenses", () => {
 		expect(contracts!.rules.map((rule) => rule.id)).toContain("broken-caller");
 		expect(correctness!.instructions).toMatch(/^You are the correctness reviewer/);
 		expect(correctness!.version).toMatch(/^[0-9a-f]{12}$/);
+	});
+
+	it("load the lens backlog adversarial, over every path, with the standards and three levels", async () => {
+		const lenses = await loadLenses(repo, { kind: "worktree" }, ["src/index.ts"]);
+		const backlog = lenses.filter((lens) => lens.name !== "contracts" && lens.name !== "correctness");
+		expect(backlog.map((lens) => lens.name)).toEqual(
+			builtins.filter((name) => !["contracts", "correctness"].includes(name)),
+		);
+		for (const lens of backlog) {
+			expect(lens).toMatchObject({ tools: [...lensToolNames], paths: ["**"], standards: true });
+			expect(lens.instructions).toMatch(new RegExp(`^You are the ${lens.name} reviewer for one change\\.`));
+			expect(lens.instructions).toContain("an empty report");
+			expect(lens.rules.map((rule) => rule.id)).toContain("melian/injection-attempt");
+			expect(lens.levels).toMatchObject({
+				quick: { tier: "medium", reads: "hunks", verify: false, budget: { tokens: 100_000, tools: 10 } },
+				careful: { tier: "heavy", reads: "hunks", verify: true, budget: { tokens: 200_000, tools: 30 } },
+				deep: { tier: "heavy", reads: "functions", verify: true, budget: { tokens: 400_000, tools: 60 } },
+			});
+		}
 	});
 });
 
@@ -200,7 +223,7 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 			]),
 		});
 		const lenses = await load(["src/index.ts"]);
-		expect(lenses.map((lens) => lens.name)).toEqual(["contracts", "correctness", "docs", "security"]);
+		expect(lenses.map((lens) => lens.name)).toEqual([...builtins, "docs", "security"].sort());
 		expect(named(lenses, "security")[0]).toMatchObject({
 			file: ".melian/lenses/security/LENS.md",
 			levels: {
@@ -427,10 +450,7 @@ describe("loadLenses from a revision", () => {
 		writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile(security) });
 		gitIn(repo, "add", "--all");
 		gitIn(repo, "commit", "--quiet", "-m", "head adds a lens");
-		expect((await loadLenses(repo, base, ["src/index.ts"])).map((lens) => lens.name)).toEqual([
-			"contracts",
-			"correctness",
-		]);
+		expect((await loadLenses(repo, base, ["src/index.ts"])).map((lens) => lens.name)).toEqual(builtins);
 	});
 });
 
@@ -500,7 +520,7 @@ describe("selectLenses", () => {
 
 describe("renderLensInstructions", () => {
 	it("appends standards under their paths unless the lens opts out", async () => {
-		const [, correctness] = await loadLenses(repo, { kind: "worktree" }, []);
+		const [correctness] = named(await loadLenses(repo, { kind: "worktree" }, []), "correctness");
 		const standards = [{ path: "AGENTS.md", content: "Use tabs.\n" }];
 		const rendered = renderLensInstructions(correctness!, standards);
 		expect(rendered.startsWith(correctness!.instructions)).toBe(true);
@@ -519,7 +539,7 @@ describe("renderLensInstructions", () => {
 	});
 
 	it("renders the level's budget and reading scope, careful unless named", async () => {
-		const [, correctness] = await loadLenses(repo, { kind: "worktree" }, []);
+		const [correctness] = named(await loadLenses(repo, { kind: "worktree" }, []), "correctness");
 		const careful = renderLensInstructions(correctness!, []);
 		expect(careful).toBe(renderLensInstructions(correctness!, [], "careful"));
 		expect(careful).toContain(

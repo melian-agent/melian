@@ -1,0 +1,19 @@
+src/render.ts
+
+  P1  line 21  terminal-escape  (introduced, new, unresolved)
+  renderSummary interpolates finding.path into terminal output without passing it through printable.
+    What: renderSummary interpolates finding.path into terminal output without passing it through printable.
+    Why here: This change added renderSummary and printed it from printReview; the existing line renderer escapes every path, the new one does not.
+    Failure scenario: A pull request adds a file named "src/\u001b[2J\u001b[Hall clear.ts" and a finding lands on it. printReview writes renderSummary's line for it unescaped, so the terminal clears the screen and shows "all clear.ts: 1 finding" at the top, hiding the findings above it; renderFindings printed the same path as \u{1b}[2J.
+    Evidence:
+      cause: src/render.ts:21
+          return [...counts].map(([path, count]) => `${path}: ${count} finding${count === 1 ? "" : "s"}`).join("\n");
+      context: src/render.ts:8-10
+        function printable(text: string): string {
+          return text.replace(/[^\x20-\x7e]/gu, (character) => `\\u{${character.codePointAt(0)!.toString(16)}}`);
+        }
+      context: src/cli.ts:5
+          process.stdout.write(`${renderFindings(findings)}\n\n${renderSummary(findings)}\n`);
+    What to do: Print printable(path) in renderSummary, as renderFindings does.
+
+1 finding in 1 file.

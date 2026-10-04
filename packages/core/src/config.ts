@@ -294,7 +294,7 @@ export const defaultConfig: MelianConfig = {
 	tiers: {
 		fast: ["guardrails", "static", "decisions.fast"],
 		standard: ["fast", "lens.correctness"],
-		full: ["standard", "lens.contracts"],
+		full: ["standard", "lens.contracts", "lens.trust-boundary"],
 	},
 	stages: { "pre-commit": "fast", "pre-push": "standard", "pull-request": "full", comment: "standard" },
 	resolution: { P0: "block", P1: "block", P2: "acknowledge", P3: "advisory", nit: "silent" },

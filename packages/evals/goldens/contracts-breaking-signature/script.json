@@ -107,5 +107,10 @@
     {
       "text": "Reported 1 finding."
     }
+  ],
+  "trust-boundary": [
+    {
+      "text": "Reported 0 findings."
+    }
   ]
 }

