@@ -155,6 +155,15 @@ export function loadGoldens(directory: string = goldensDirectory): Golden[] {
 		});
 }
 
+/** The goldens a live run reviews: all of them, or only the one named `name`. Throws when no golden has that name. */
+export function selectGoldens(goldens: readonly Golden[], name: string | undefined): Golden[] {
+	if (name === undefined || name === "") return [...goldens];
+	const selected = goldens.filter((golden) => golden.name === name);
+	if (selected.length === 0)
+		throw new Error(`No golden is named ${name}. Goldens: ${goldens.map((golden) => golden.name).join(", ")}.`);
+	return selected;
+}
+
 const gitEnv = {
 	...process.env,
 	GIT_CONFIG_GLOBAL: "/dev/null",
