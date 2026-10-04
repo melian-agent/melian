@@ -608,6 +608,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		paths,
 	);
 	const nonce = reviewNonce();
+	const running = selected.map(({ lens }) => lens.name);
 	const lenses: LensRun[] = [];
 	for (const { lens, coverage, files } of selected) {
 		// Every lens may report an injection attempt, so the policy section never names a rule the hook refuses.
@@ -623,7 +624,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 			version: lens.version,
 			level,
 			route: await chooseRoute(lens.name, settings.tier, config, models),
-			instructions: renderLensInstructions({ ...lens, rules }, standards, level),
+			instructions: renderLensInstructions({ ...lens, rules }, standards, level, running),
 			tools: lens.tools,
 			severities: lens.severities,
 			rules,

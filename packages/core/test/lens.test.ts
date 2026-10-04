@@ -287,6 +287,32 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		expect(correctness!.instructions).toMatch(/^You are the correctness reviewer[\s\S]*Also check the retry loop\.$/);
 	});
 
+	it("merges an extending lens's hand-offs over the base's, and refuses a hand-off to the lens itself", async () => {
+		writeFiles(repo, {
+			".melian/lenses/correctness/LENS.md": lensFile([
+				"name: correctness",
+				"extends: correctness",
+				"handoffs:",
+				"  tests: A test that leaks a temporary directory.",
+				"  security: A query built from request input.",
+			]),
+		});
+		const [correctness] = named(await load(["src/index.ts"]), "correctness");
+		expect(correctness!.handoffs).toMatchObject({
+			"removed-behaviour": expect.stringMatching(/^A cleanup, error path, or ordering/),
+			tests: "A test that leaks a temporary directory.",
+			security: "A query built from request input.",
+		});
+		writeFiles(repo, {
+			".melian/lenses/security/LENS.md": lensFile([...security, "handoffs:", "  security: Its own defects."]),
+		});
+		expect(await rejection(load(["src/index.ts"]), LensError)).toMatchObject({
+			code: "invalidValue",
+			field: "handoffs",
+			message: '.melian/lenses/security/LENS.md: "handoffs" names the lens itself',
+		});
+	});
+
 	it("resolves each level from its own fields, then the top level, then Melian's defaults", async () => {
 		writeFiles(repo, {
 			".melian/lenses/security/LENS.md": lensFile([
@@ -468,6 +494,7 @@ describe("selectLenses", () => {
 			careful: { tier: "medium", reads: "hunks", verify: true, budget: { findings: 5 } },
 		},
 		standards: true,
+		handoffs: {},
 		instructions: "i",
 		version: "000000000000",
 		file: "f",
@@ -519,6 +546,20 @@ describe("selectLenses", () => {
 });
 
 describe("renderLensInstructions", () => {
+	it("hands a defect to a neighbour only when the review runs that neighbour", async () => {
+		const [correctness] = named(await loadLenses(repo, { kind: "worktree" }, []), "correctness");
+		const alone = renderLensInstructions(correctness!, [], "careful", ["correctness"]);
+		expect(alone).toBe(renderLensInstructions(correctness!, []));
+		expect(alone).not.toContain("## Neighbouring lenses");
+		for (const neighbour of ["removed-behaviour", "trust-boundary", "`tests`", "tests lens"])
+			expect(alone).not.toContain(neighbour);
+		const beside = renderLensInstructions(correctness!, [], "careful", ["correctness", "tests"]);
+		expect(beside).toContain("## Neighbouring lenses");
+		expect(beside).toContain("- `tests`: A defect in a test.");
+		expect(beside).not.toContain("removed-behaviour");
+		expect(beside.indexOf("## Neighbouring lenses")).toBeLessThan(beside.indexOf("## Rules, severities, and budget"));
+	});
+
 	it("appends standards under their paths unless the lens opts out", async () => {
 		const [correctness] = named(await loadLenses(repo, { kind: "worktree" }, []), "correctness");
 		const standards = [{ path: "AGENTS.md", content: "Use tabs.\n" }];

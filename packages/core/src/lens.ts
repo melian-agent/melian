@@ -67,13 +67,16 @@ const levelSchema = Type.Object(
 	strict,
 );
 
+const lensName = Type.String({ pattern: "^[a-z0-9][a-z0-9-]*$" });
+
 /**
  * The JSON Schema of a `LENS.md` front matter block. Only `name` is required; unknown fields are rejected. `levels` maps
  * a {@link ScrutinyLevel} to the fields that differ there; each field it leaves out comes from the top level.
+ * `handoffs` maps another lens's name to the defects that lens owns, which this lens leaves to it when both run.
  */
 export const lensFrontMatterSchema = Type.Object(
 	{
-		name: Type.String({ pattern: "^[a-z0-9][a-z0-9-]*$" }),
+		name: lensName,
 		description: Type.Optional(text),
 		tier: Type.Optional(lensTierSchema),
 		tools: Type.Optional(Type.Array(Type.Union(lensToolNames.map((tool) => Type.Literal(tool))))),
@@ -86,6 +89,7 @@ export const lensFrontMatterSchema = Type.Object(
 		),
 		extends: Type.Optional(Type.Union([text, Type.Null()])),
 		standards: Type.Optional(Type.Boolean()),
+		handoffs: Type.Optional(Type.Record(lensName, text)),
 	},
 	strict,
 );
@@ -125,7 +129,8 @@ export type LensLevels = { readonly careful: LensLevel } & { readonly [Level in 
  * `paths` are repository-relative globs. `scope` is the directory whose `.melian/` or `.agents/` defined the lens, the
  * empty string for the root and for built-in lenses; a lens never applies outside its scope. `levels` holds each level
  * the lens runs at, every field resolved. `version` hashes everything that shapes the lens's behaviour, so a finding
- * can name the lens version that produced it.
+ * can name the lens version that produced it. `handoffs` maps a neighbouring lens's name to the defects it owns, which
+ * this lens leaves to it only in a review that runs it, so a lens running alone keeps its whole coverage.
  */
 export interface Lens {
 	readonly name: string;
@@ -137,6 +142,7 @@ export interface Lens {
 	readonly scope: string;
 	readonly levels: LensLevels;
 	readonly standards: boolean;
+	readonly handoffs: Readonly<Record<string, string>>;
 	readonly instructions: string;
 	readonly version: string;
 	/** The nearest `LENS.md` that defined or extended it. */
@@ -355,6 +361,9 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 	if (duplicate !== undefined) {
 		throw new LensError("invalidValue", file, `${file}: rule "${duplicate.id}" is listed twice`, { field: "rules" });
 	}
+	if (own.handoffs !== undefined && Object.hasOwn(own.handoffs, own.name)) {
+		throw new LensError("invalidValue", file, `${file}: "handoffs" names the lens itself`, { field: "handoffs" });
+	}
 	const declared = declare(own, base?.declared);
 	const lens = versioned({
 		name: own.name,
@@ -366,6 +375,7 @@ function resolve(definition: Definition, base: Layered | undefined): Layered {
 		scope,
 		levels: resolveLevels(file, own.name, declared),
 		standards: own.standards ?? base?.lens.standards ?? true,
+		handoffs: { ...base?.lens.handoffs, ...own.handoffs },
 		instructions: [base?.lens.instructions, body].filter((part) => part !== undefined && part !== "").join("\n\n"),
 		file,
 	});
@@ -643,18 +653,37 @@ export function lensLevel(lens: Lens, level: ScrutinyLevel): LensLevel {
 	});
 }
 
+// The defects a lens leaves to a neighbour, only for neighbours the review runs: a lens whose neighbour is not running
+// keeps that coverage itself.
+function renderHandoffs(handoffs: Readonly<Record<string, string>>, running: readonly string[]): string[] {
+	const owned = Object.entries(handoffs).filter(([name]) => running.includes(name));
+	if (owned.length === 0) return [];
+	return [
+		"## Neighbouring lenses",
+		"These lenses review this change beside you. Each owns the defects listed against it: leave them to it, and do not report them under your own rules.",
+		owned.map(([name, defects]) => `- \`${name}\`: ${defects}`).join("\n"),
+	];
+}
+
 /**
- * The instructions a lens's conversation runs with at `level`, `careful` unless named: its body; then its rules, each
- * ID with its description, the severities it may report, the level's budget and reading scope, and what a finding's
- * failure scenario and evidence must be; then, unless the lens opted out, the repository's standards, each under its
- * path. Throws {@link LensError} `unknownLevel` for a level the lens does not declare.
+ * The instructions a lens's conversation runs with at `level`, `careful` unless named: its body; then, for each lens in
+ * `running` that the lens hands defects to, those defects; then its rules, each ID with its description, the
+ * severities it may report, the level's budget and reading scope, and what a finding's failure scenario and evidence
+ * must be; then, unless the lens opted out, the repository's standards, each under its path. `running` names the
+ * lenses the review runs, none by default. Throws {@link LensError} `unknownLevel` for a level the lens does not
+ * declare.
  */
 export function renderLensInstructions(
 	lens: Lens,
 	standards: readonly StandardsSection[],
 	level: ScrutinyLevel = defaultScrutinyLevel,
+	running: readonly string[] = [],
 ): string {
-	const instructions = [lens.instructions, renderPolicy(lens, lensLevel(lens, level))].join("\n\n");
+	const instructions = [
+		lens.instructions,
+		...renderHandoffs(lens.handoffs, running),
+		renderPolicy(lens, lensLevel(lens, level)),
+	].join("\n\n");
 	if (!lens.standards || standards.length === 0) return instructions;
 	const sections = standards.map((section) => `### ${section.path}\n\n${section.content.trim()}`);
 	return [
