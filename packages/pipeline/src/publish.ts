@@ -41,7 +41,15 @@ import {
 import { modelsOf, type ReviewModels } from "./models.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
-type StoredFinding = { ruleId: string; path: string; line: number; revision: string; thread?: string };
+// `dismissal` is set on a finding resolved because someone dismissed it, so its reply says why.
+type StoredFinding = {
+	ruleId: string;
+	path: string;
+	line: number;
+	revision: string;
+	thread?: string;
+	dismissal?: { by: string; reason: string; at: string };
+};
 
 // What one round of a revision will post, committed before posting so a rerun posts exactly this: the verdict it
 // renders as well as its findings, since the head's verdict can change before a failed round is posted again.
@@ -213,14 +221,18 @@ function planRound(
 	const base = own?.open ?? (previous === undefined ? {} : state.revisions[previous]!.open);
 	const plan = planPublication(verdict, base, lines, head);
 	const resolved: Record<string, StoredFinding> = Object.fromEntries(
-		plan.resolved.map(({ id, ...entry }) => [id, { ...entry }]),
+		plan.resolved.map(({ id, ...entry }) => [id, structuredClone(entry)]),
 	);
 	if (own === undefined) {
 		const held = new Set(
 			[...Object.values(verdict.findings).flat(), ...verdict.dismissed].map((finding) => finding.properties.id),
 		);
+		const dismissed = new Set(verdict.dismissed.map((finding) => finding.properties.id));
+		// A dismissal note is still owed while the finding stays dismissed; any other resolution, while it stays gone.
+		const owed = (id: string, entry: StoredFinding) =>
+			entry.dismissal === undefined ? !held.has(id) : dismissed.has(id);
 		for (const [id, entry] of Object.entries(unanswered(state, head))) {
-			if (!held.has(id) && !Object.hasOwn(plan.open, id)) resolved[id] ??= { ...entry };
+			if (owed(id, entry) && !Object.hasOwn(plan.open, id)) resolved[id] ??= structuredClone(entry);
 		}
 	}
 	return {
@@ -283,6 +295,8 @@ type PublishResult = {
 	posted: number;
 	stillOpen: number;
 	resolved: number;
+	// Absent from a result recorded before dismissals were posted.
+	dismissed?: number;
 	replies: number;
 	status: ReviewStatus;
 	// Posts found by their markers rather than in the document: a crash fell between post and record.
@@ -345,7 +359,7 @@ function publishTask(provider: ReviewProvider) {
 						return undefined;
 					}, context);
 				};
-				const result = { posted: 0, stillOpen: 0, resolved: 0, replies: 0, recovered: 0 };
+				const result = { posted: 0, stillOpen: 0, resolved: 0, dismissed: 0, replies: 0, recovered: 0 };
 				// Set while the provider is asked to post a round, so a refusal counts against that round.
 				let posting = false;
 				try {
@@ -442,7 +456,9 @@ function publishTask(provider: ReviewProvider) {
 							delete record.pending;
 							return undefined;
 						}, context);
-						result.resolved += Object.keys(pending.resolved).length;
+						const closed = Object.values(pending.resolved);
+						result.dismissed += closed.filter((entry) => entry.dismissal !== undefined).length;
+						result.resolved += closed.filter((entry) => entry.dismissal === undefined).length;
 					}
 					const record = (await read()).revisions[head]!;
 					for (const id of Object.keys(record.resolved).sort()) {
@@ -624,6 +640,8 @@ export interface Publication {
 	readonly stillOpen: number;
 	/** Findings an earlier revision posted that the reviews this run posted no longer report. */
 	readonly resolved: number;
+	/** Findings an earlier revision posted that were dismissed since, each answered with the reason. */
+	readonly dismissed: number;
 	readonly replies: number;
 	readonly status: ReviewStatus;
 	readonly recovered: number;
@@ -807,7 +825,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		const { result } = outcome;
 		if (result.kind === "published") {
 			const { kind: _, ...published } = result;
-			return { ...published, superseded };
+			return { ...published, dismissed: published.dismissed ?? 0, superseded };
 		}
 		throw new PublishError(
 			"staleTarget",

@@ -131,12 +131,22 @@ describe("planPublication", () => {
 		});
 	});
 
-	it("never posts or resolves a dismissed finding", () => {
-		const dismissed: Finding = { ...fixed, properties: { ...fixed.properties, status: "dismissed" } };
-		const plan = planPublication(verdictOf([dismissed]), { [fixed.properties.id]: posted("102") }, lines, head);
+	it("resolves an open finding that was dismissed, with its dismissal, and never posts a dismissed one", () => {
+		const dismissal = { by: "Tal <tal@melian.invalid>", reason: "Constant input.", at: "2026-10-04T00:00:00Z" };
+		const as = (each: Finding): Finding => ({
+			...each,
+			properties: { ...each.properties, status: "dismissed", dismissal },
+		});
+		const plan = planPublication(
+			verdictOf([as(fixed), as(fresh)]),
+			{ [fixed.properties.id]: posted("102") },
+			lines,
+			head,
+		);
 
-		expect(plan).toMatchObject({ post: [], stillOpen: [], resolved: [] });
-		expect(plan.open).toEqual({ [fixed.properties.id]: posted("102") });
+		expect(plan).toMatchObject({ post: [], stillOpen: [] });
+		expect(plan.resolved).toEqual([{ id: fixed.properties.id, ...posted("102"), dismissal }]);
+		expect(plan.open).toEqual({});
 	});
 
 	it("keeps a finding that turned silent on its thread, so it never gets a second one", () => {

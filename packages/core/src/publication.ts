@@ -1,6 +1,6 @@
 import type { Verdict } from "./adjudication.ts";
 import type { ChangedFile } from "./diff.ts";
-import type { Finding } from "./findings.ts";
+import type { Finding, FindingDismissal } from "./findings.ts";
 
 /** A pull request as its provider reports it. Commit hashes are full. */
 export interface PullRequest {
@@ -89,9 +89,13 @@ export interface PublishedFinding {
 	readonly thread?: string;
 }
 
-/** A finding an earlier revision published that this revision no longer reports. */
+/**
+ * A finding an earlier revision published that this revision no longer reports, or that someone dismissed, in which
+ * case `dismissal` says who, when, and why.
+ */
 export interface ClosedFinding extends PublishedFinding {
 	readonly id: string;
+	readonly dismissal?: FindingDismissal;
 }
 
 /** What one revision's publication posts, decided by {@link planPublication}. */
@@ -100,7 +104,7 @@ export interface PublicationPlan {
 	readonly post: readonly PlacedFinding[];
 	/** Findings an earlier revision posted that still need attention. They are not posted again. */
 	readonly stillOpen: readonly string[];
-	/** Findings an earlier revision posted that this revision no longer reports, dismissed ones excepted. */
+	/** Findings an earlier revision posted that this revision no longer reports, or that were dismissed since. */
 	readonly resolved: readonly ClosedFinding[];
 	/**
 	 * Every finding with a thread or a place on the pull request once this revision is published, by ID, quiet ones
@@ -115,9 +119,10 @@ export interface PublicationPlan {
  *
  * Findings that resolve to `block`, `acknowledge`, or `advisory` need attention. One not already open is posted; one
  * already open is not posted again. An open finding the verdict no longer holds in any group, silent and dismissed
- * included, is resolved. A dismissed finding is never posted and never called resolved: dismissing it answered it.
- * An open finding that turned silent or was dismissed stays in `open`, so if it needs attention again it returns to
- * its own thread rather than starting a second one.
+ * included, is resolved. An open finding the verdict holds as dismissed is resolved with its dismissal, so its thread
+ * says why, and leaves `open`: if a changed trigger reopens it, it is posted afresh. A dismissed finding is never
+ * posted. An open finding that turned silent stays in `open`, so if it needs attention again it returns to its own
+ * thread rather than starting a second one.
  */
 export function planPublication(
 	verdict: Verdict,
@@ -126,9 +131,8 @@ export function planPublication(
 	revision: string,
 ): PublicationPlan {
 	const attention = [...verdict.findings.block, ...verdict.findings.acknowledge, ...verdict.findings.advisory];
-	const held = new Set(
-		[...attention, ...verdict.findings.silent, ...verdict.dismissed].map((finding) => finding.properties.id),
-	);
+	const dismissed = new Map(verdict.dismissed.map((finding) => [finding.properties.id, finding.properties.dismissal]));
+	const held = new Set([...attention, ...verdict.findings.silent].map((finding) => finding.properties.id));
 	const post: PlacedFinding[] = [];
 	const stillOpen: string[] = [];
 	const open: Record<string, PublishedFinding> = {};
@@ -149,7 +153,10 @@ export function planPublication(
 	const resolved = Object.keys(previous)
 		.sort()
 		.filter((id) => !held.has(id))
-		.map((id): ClosedFinding => ({ id, ...previous[id]! }));
+		.map((id): ClosedFinding => {
+			const dismissal = dismissed.get(id);
+			return { id, ...previous[id]!, ...(dismissal === undefined ? {} : { dismissal: { ...dismissal } }) };
+		});
 	return { post, stillOpen, resolved, open };
 }
 
@@ -208,7 +215,7 @@ export interface ReviewDraft {
 	readonly findings: readonly PlacedFinding[];
 	/** How many findings an earlier revision posted that still need attention. */
 	readonly stillOpen: number;
-	/** Resolved findings that have no thread to reply in, so the body names them. */
+	/** Resolved and dismissed findings that have no thread to reply in, so the body names them. */
 	readonly resolved: readonly ClosedFinding[];
 	/** The changeset's publisher secret, as hex, which signs every marker the review carries. Never printed. */
 	readonly secret: string;
@@ -248,8 +255,9 @@ export interface ReviewProvider {
 	/** Posts one review for a revision, never approving or requesting changes. */
 	postReview(draft: ReviewDraft): Promise<PostedReview>;
 	/**
-	 * Replies in a resolved finding's thread that `revision` resolved it. Returns the reply's ID, or `undefined` when
-	 * the thread is gone, such as a comment someone deleted, so there is nothing to reply to.
+	 * Replies in a resolved finding's thread that `revision` resolved it, or, for a finding with a `dismissal`, that it
+	 * was dismissed and why. Returns the reply's ID, or `undefined` when the thread is gone, such as a comment someone
+	 * deleted, so there is nothing to reply to.
 	 */
 	replyResolved(
 		pullRequest: number,
