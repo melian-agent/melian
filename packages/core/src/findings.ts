@@ -69,6 +69,18 @@ export const findingSourceSchema = Type.Object({ check: text, version: Type.Opti
 /** The JSON Schema of an {@link AlsoReportedAs}. */
 export const alsoReportedAsSchema = Type.Object({ id: idSchema, ruleId: text, check: text }, strict);
 
+/** The JSON Schema of a {@link MemberClaim}. */
+export const memberClaimSchema = Type.Object(
+	{
+		id: idSchema,
+		ruleId: text,
+		source: findingSourceSchema,
+		failureScenario: Type.Optional(text),
+		evidence: Type.Optional(findingEvidenceSchema),
+	},
+	strict,
+);
+
 /** The JSON Schema of {@link FindingProperties}. Unknown keys are rejected, so a misspelt optional key is not lost. */
 export const findingPropertiesSchema = Type.Object(
 	{
@@ -88,6 +100,7 @@ export const findingPropertiesSchema = Type.Object(
 		source: findingSourceSchema,
 		reportedBy: Type.Optional(Type.Array(findingSourceSchema, { minItems: 1 })),
 		alsoReportedAs: Type.Optional(Type.Array(alsoReportedAsSchema)),
+		otherClaims: Type.Optional(Type.Array(memberClaimSchema)),
 	},
 	strict,
 );
@@ -288,6 +301,13 @@ export type FindingSource = Static<typeof findingSourceSchema>;
 
 /** A finding adjudication merged into another: its ID, its rule, and the check that reported it. */
 export type AlsoReportedAs = Static<typeof alsoReportedAsSchema>;
+
+/**
+ * The claim of a finding or sighting merged into another, kept whole beside the speaker's in
+ * `properties.otherClaims`: who made it, and its own failure scenario and evidence, so a verifier judges each claim
+ * with its own proof.
+ */
+export type MemberClaim = Static<typeof memberClaimSchema>;
 
 /** Melian's extensions to a SARIF `result`, carried in its property bag. */
 export type FindingProperties = Static<typeof findingPropertiesSchema>;
@@ -651,12 +671,21 @@ export function parseFinding(input: unknown): Finding {
 			},
 		);
 	}
-	for (const [index, location] of evidence.entries()) {
-		requireCanonical(location.file, `/properties/evidence/${index}/file`);
-		if ((location.endLine ?? location.startLine) < location.startLine) {
-			throw new FindingError("invalidRegion", "an evidence location ends before it starts", {
-				path: `/properties/evidence/${index}`,
-			});
+	const cited = [
+		{ at: "/properties/evidence", locations: evidence },
+		...(finding.properties.otherClaims ?? []).map((claim, index) => ({
+			at: `/properties/otherClaims/${index}/evidence`,
+			locations: claim.evidence ?? [],
+		})),
+	];
+	for (const { at, locations } of cited) {
+		for (const [index, location] of locations.entries()) {
+			requireCanonical(location.file, `${at}/${index}/file`);
+			if ((location.endLine ?? location.startLine) < location.startLine) {
+				throw new FindingError("invalidRegion", "an evidence location ends before it starts", {
+					path: `${at}/${index}`,
+				});
+			}
 		}
 	}
 	const snippet = region.snippet?.text ?? "";

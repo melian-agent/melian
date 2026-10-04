@@ -1,9 +1,13 @@
 import type { MelianConfig, Resolution, RuleAlias, Severity } from "./config.ts";
 import {
 	type AlsoReportedAs,
+	type EvidenceLocation,
 	type Finding,
+	type FindingEvidence,
 	type FindingProperties,
 	levelForSeverity,
+	type MemberClaim,
+	maxEvidenceLocations,
 	normaliseSnippet,
 } from "./findings.ts";
 
@@ -69,7 +73,7 @@ function overlap(left: Finding, right: Finding): boolean {
 
 // What ranking two findings reads, so the pipeline can rank stored sightings as well as findings.
 type Ranked = {
-	readonly properties: Pick<FindingProperties, "severity" | "id" | "cause" | "evidence" | "failureScenario">;
+	readonly properties: Pick<FindingProperties, "severity" | "id" | "cause" | "evidence">;
 };
 
 function strongerFirst(a: Ranked, b: Ranked): number {
@@ -118,35 +122,94 @@ function causeRank(finding: Ranked): number {
 	return cause === "affected" && evidence.some((location) => location.role === "cause") ? 1 : 2;
 }
 
+/** A finding or a stored sighting, as {@link mergeClaims} reads it. */
+export type Claimant = {
+	readonly ruleId: string;
+	readonly properties: Pick<
+		FindingProperties,
+		"severity" | "id" | "cause" | "evidence" | "failureScenario" | "source" | "otherClaims"
+	>;
+};
+
+function sameLocation(left: EvidenceLocation, right: EvidenceLocation): boolean {
+	return (
+		left.file === right.file &&
+		left.startLine === right.startLine &&
+		(left.endLine ?? left.startLine) === (right.endLine ?? right.startLine) &&
+		left.role === right.role &&
+		left.revision === right.revision
+	);
+}
+
+// The speaker's evidence with the prover's `cause` locations it lacks, ten in all. At least one of those stays, taking
+// the speaker's last place if the speaker cites ten, so the merged cause never lacks its proof.
+function withProof(own: FindingEvidence | undefined, proof: readonly EvidenceLocation[]): FindingEvidence | undefined {
+	const cited = own ?? [];
+	const missing = proof.filter((location) => !cited.some((each) => sameLocation(each, location)));
+	if (missing.length === 0) return own;
+	const imported = missing.slice(0, Math.max(maxEvidenceLocations - cited.length, 1));
+	return [...cited.slice(0, maxEvidenceLocations - imported.length), ...imported];
+}
+
+function claimOf({ ruleId, properties }: Claimant): MemberClaim[] {
+	const { id, source, failureScenario, evidence } = properties;
+	if (failureScenario === undefined && evidence === undefined) return [];
+	return [
+		{
+			id,
+			ruleId,
+			source,
+			...(failureScenario === undefined ? {} : { failureScenario }),
+			...(evidence === undefined ? {} : { evidence }),
+		},
+	];
+}
+
 /**
- * The cause that findings merged as one defect take, with the evidence and failure scenario of the finding that gave
- * it: the strongest cause any of them has, in the order `introduced`, `affected` with a `cause` location,
- * `pre-existing`. A merge takes this rather than the cause of whichever finding speaks, so merging never turns a
- * finding that blocks into one that does not, and the evidence that proves the cause stays with it. Among the findings
- * with the strongest cause, the most severe supplies them, the lower ID on a tie. Throws `RangeError` for no findings.
+ * The cause, evidence, failure scenario, and other claims of `members` merged as one defect that `speaker`, one of
+ * them, speaks for. The speaker keeps its own failure scenario and evidence. The cause is the strongest any member
+ * has, in the order `introduced`, `affected` with a `cause` location, `pre-existing`, so merging never turns a finding
+ * that blocks into one that does not. When a member other than the speaker proves it, the most severe such member, the
+ * lower ID on a tie, adds its `cause` locations to the speaker's evidence, ten locations in all, so the cause travels
+ * with its proof. Every other member's failure scenario and evidence, and any claims it already carries, are kept whole
+ * in `otherClaims`, so a verifier judges each claim with its own proof. Throws `RangeError` when `members` omits
+ * `speaker`.
  */
-export function strongestCause(
-	findings: readonly Ranked[],
-): Pick<FindingProperties, "cause" | "evidence" | "failureScenario"> {
-	const strongest = [...findings].sort((a, b) => causeRank(a) - causeRank(b) || strongerFirst(a, b))[0];
-	if (strongest === undefined) throw new RangeError("strongestCause needs at least one finding");
-	const { evidence, failureScenario } = strongest.properties;
-	const cause = (["introduced", "affected", "pre-existing"] as const)[causeRank(strongest)]!;
+export function mergeClaims(
+	speaker: Claimant,
+	members: readonly Claimant[],
+): Pick<FindingProperties, "cause" | "evidence" | "failureScenario" | "otherClaims"> {
+	if (!members.includes(speaker)) throw new RangeError("mergeClaims needs the speaker among the members");
+	const best = Math.min(...members.map(causeRank));
+	const prover =
+		causeRank(speaker) === best
+			? speaker
+			: [...members].filter((member) => causeRank(member) === best).sort(strongerFirst)[0]!;
+	const { failureScenario } = speaker.properties;
+	const proof = prover === speaker ? [] : (prover.properties.evidence ?? []).filter((each) => each.role === "cause");
+	const evidence = withProof(speaker.properties.evidence, proof);
+	const otherClaims = [
+		...(speaker.properties.otherClaims ?? []),
+		...members
+			.filter((member) => member !== speaker)
+			.flatMap((member) => [...claimOf(member), ...(member.properties.otherClaims ?? [])]),
+	];
 	return {
-		cause,
+		cause: (["introduced", "affected", "pre-existing"] as const)[best]!,
 		...(evidence === undefined ? {} : { evidence }),
 		...(failureScenario === undefined ? {} : { failureScenario }),
+		...(otherClaims.length === 0 ? {} : { otherClaims }),
 	};
 }
 
-// The speaker of a merged defect: the highest severity, and the strongest cause with its evidence, any member reported.
+// The speaker of a merged defect: the highest severity any member reported, and the merged claims.
 function speakFor(keeper: Finding, defect: readonly Finding[], alsoReportedAs: AlsoReportedAs[]): Finding {
 	const severity = [...defect].sort(strongerFirst)[0]!.properties.severity;
-	const { evidence: _, failureScenario: __, ...properties } = keeper.properties;
+	const { evidence: _, failureScenario: __, otherClaims: ___, ...properties } = keeper.properties;
 	return {
 		...keeper,
 		level: levelForSeverity(severity),
-		properties: { ...properties, ...strongestCause(defect), severity, alsoReportedAs },
+		properties: { ...properties, ...mergeClaims(keeper, defect), severity, alsoReportedAs },
 	};
 }
 
@@ -160,9 +223,9 @@ function speakFor(keeper: Finding, defect: readonly Finding[], alsoReportedAs: A
  * One finding speaks for each defect. `ruleAliases` in the configuration at its path decides first: a finding whose
  * rule is a key listing another member's rule is preferred, so a repository can say the defect belongs to the
  * contracts lens. Otherwise the most severe stays, the lower ID on a tie. The finding that stays takes the highest
- * severity among them and the strongest cause with its evidence ({@link strongestCause}), so a merge never lowers what
- * blocks, and lists each other's ID, rule, and check in `properties.alsoReportedAs`. A finding without a snippet is
- * never merged.
+ * severity among them and the strongest cause, keeps its own claim and every other's ({@link mergeClaims}), so a merge
+ * never lowers what blocks and drops no claim, and lists each other's ID, rule, and check in
+ * `properties.alsoReportedAs`. A finding without a snippet is never merged.
  *
  * Only findings with the same lifecycle status merge. A dismissed finding never absorbs a live one: a live finding
  * beside a dismissed report of the same defect stays live, and blocks if it blocks, listing the dismissed one in

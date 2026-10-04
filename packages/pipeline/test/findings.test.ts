@@ -246,7 +246,7 @@ describe("the findings document", () => {
 			expect(promoted!.properties).toMatchObject({ severity: "P0", source: style, reportedBy: [security, style] });
 		});
 
-		it("keeps the evidenced cause of a less severe sighting, so the merge still blocks", async () => {
+		it("keeps the evidenced cause of a less severe sighting, and its whole claim, so the merge still blocks", async () => {
 			const { harness, root } = await open(createMemoryStorage());
 			const evidence = [
 				{
@@ -277,8 +277,11 @@ describe("the findings document", () => {
 				severity: "P0",
 				source: style,
 				cause: "affected",
-				evidence: evidenced.properties.evidence,
-				failureScenario,
+				evidence: [...contextOnly, ...evidence],
+				failureScenario: "A guess.",
+				otherClaims: [
+					{ id: evidenced.properties.id, ruleId: "no-eval", source: security, failureScenario, evidence },
+				],
 			});
 			expect(resolveFinding(merged!, defaultConfig)).toBe("block");
 		});

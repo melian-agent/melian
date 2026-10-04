@@ -198,35 +198,79 @@ describe("dedupeFindings", () => {
 			expect(deduped[0]!.properties.alsoReportedAs).toEqual([reportOf(other)]);
 		});
 
-		it("keeps the affected cause, its evidence, and its failure scenario when the more severe finding proves none", () => {
-			const context = [{ ...evidence[0]!, role: "context" as const }];
-			const unproven = finding({
-				...atCart,
-				cause: "pre-existing",
-				evidence: context,
-				failureScenario: "A guess.",
-				rule: "unhandled-error",
-				source: { check: "lens.correctness", version: "1" },
-			});
-			const evidenced = finding({
-				...atCart,
-				severity: "P1",
-				rule: "broken-caller",
-				source: { check: "lens.contracts", version: "1" },
-			});
+		const claimOf = (each: Finding) => ({
+			id: each.properties.id,
+			ruleId: each.ruleId,
+			source: each.properties.source,
+			failureScenario: each.properties.failureScenario,
+			evidence: each.properties.evidence,
+		});
+		const context = [{ ...evidence[0]!, role: "context" as const }];
+		const unprovenInput: Partial<FindingInput> = {
+			...atCart,
+			cause: "pre-existing",
+			evidence: context,
+			failureScenario: "A guess.",
+			rule: "unhandled-error",
+			source: { check: "lens.correctness", version: "1" },
+		};
+		const unproven = finding(unprovenInput);
+		const evidenced = finding({
+			...atCart,
+			severity: "P1",
+			rule: "broken-caller",
+			source: { check: "lens.contracts", version: "1" },
+		});
+
+		it("lets the speaker keep its own claim, adds the cause locations that prove the merged cause, and keeps the other claim whole", () => {
 			for (const order of [
 				[unproven, evidenced],
 				[evidenced, unproven],
 			]) {
 				const [kept, ...rest] = dedupeFindings(order, () => defaultConfig);
 				expect(rest).toEqual([]);
-				expect(kept!.properties).toMatchObject({ severity: "P0", cause: "affected", evidence, failureScenario });
+				expect(kept!.properties).toMatchObject({
+					id: unproven.properties.id,
+					severity: "P0",
+					cause: "affected",
+					failureScenario: "A guess.",
+					evidence: [...context, ...evidence],
+					otherClaims: [claimOf(evidenced)],
+				});
 				expect(parseFinding(kept)).toEqual(kept);
 				expect(resolveFinding(kept!, defaultConfig)).toBe("block");
 			}
 		});
 
-		it("keeps an introduced cause over an affected one, with the introduced finding's own evidence", () => {
+		it("lets the alias owner keep its own scenario and evidence when another member proves the cause", () => {
+			const owned = { ruleAliases: { "unhandled-error": ["broken-caller"] } };
+			const owner = finding({ ...unprovenInput, failureScenario: "The owner's scenario.", severity: "P3" });
+			const [kept] = dedupeFindings([evidenced, owner], () => owned);
+			expect(kept!.properties).toMatchObject({
+				id: owner.properties.id,
+				severity: "P1",
+				cause: "affected",
+				failureScenario: "The owner's scenario.",
+				evidence: [...context, ...evidence],
+				otherClaims: [claimOf(evidenced)],
+			});
+			expect(resolveFinding(kept!, defaultConfig)).toBe("block");
+		});
+
+		it("caps the merged evidence at ten locations and still carries a cause location that proves it", () => {
+			const many = Array.from({ length: 10 }, (_, index) => ({
+				...context[0]!,
+				startLine: index + 1,
+				snippet: `line ${index + 1}`,
+			}));
+			const crowded = finding({ ...unprovenInput, evidence: many });
+			const [kept] = dedupeFindings([crowded, evidenced], () => defaultConfig);
+			expect(kept!.properties.evidence).toEqual([...many.slice(0, 9), evidence[0]]);
+			expect(kept!.properties.otherClaims).toEqual([claimOf(evidenced)]);
+			expect(resolveFinding(kept!, defaultConfig)).toBe("block");
+		});
+
+		it("keeps an introduced cause over an affected one, and every member's own claim", () => {
 			const own = [{ ...evidence[0]!, file: "src/cart.ts", startLine: 10, snippet: "formatPrice(total)" }];
 			const introduced = finding({
 				...atCart,
@@ -237,7 +281,13 @@ describe("dedupeFindings", () => {
 				rule: "unhandled-error",
 			});
 			const [kept] = dedupeFindings([brokenCaller, introduced], () => defaultConfig);
-			expect(kept!.properties).toMatchObject({ cause: "introduced", evidence: own, failureScenario: "Introduced." });
+			expect(kept!.properties).toMatchObject({
+				id: brokenCaller.properties.id,
+				cause: "introduced",
+				failureScenario,
+				evidence: [...evidence, ...own],
+				otherClaims: [claimOf(introduced)],
+			});
 			expect(parseFinding(kept)).toEqual(kept);
 			const tsc = finding({
 				...atCart,
@@ -247,9 +297,21 @@ describe("dedupeFindings", () => {
 				source: { check: "static.tsc" },
 			});
 			const [plain] = dedupeFindings([brokenCaller, tsc], () => defaultConfig);
-			expect(plain!.properties.cause).toBe("introduced");
-			expect(plain!.properties).not.toHaveProperty("evidence");
-			expect(plain!.properties).not.toHaveProperty("failureScenario");
+			expect(plain!.properties).toMatchObject({ cause: "introduced", failureScenario, evidence });
+			expect(plain!.properties).not.toHaveProperty("otherClaims");
+		});
+
+		it("carries the claims a merged finding already holds into the next merge", () => {
+			const [first] = dedupeFindings([unproven, evidenced], () => defaultConfig);
+			const third = finding({
+				...atCart,
+				severity: "P3",
+				failureScenario: "A third view.",
+				rule: "null-dereference",
+				source: { check: "lens.security", version: "1" },
+			});
+			const [kept] = dedupeFindings([first!, third], () => defaultConfig);
+			expect(kept!.properties.otherClaims).toEqual([claimOf(evidenced), claimOf(third)]);
 		});
 
 		it("never merges two rules an alias entry marks distinct", () => {

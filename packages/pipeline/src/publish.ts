@@ -134,8 +134,8 @@ export function fingerprint(verdict: Verdict): string {
 export function legacyFingerprint(verdict: Verdict): string | undefined {
 	const findings = [...Object.values(verdict.findings).flat(), ...verdict.dismissed];
 	const legacy = (finding: Finding) => {
-		const { evidence, failureScenario } = finding.properties;
-		if (failureScenario !== undefined) return false;
+		const { evidence, failureScenario, otherClaims } = finding.properties;
+		if (failureScenario !== undefined || otherClaims !== undefined) return false;
 		if (evidence === undefined) return true;
 		return evidence.length === 1 && evidence[0]!.role === "cause" && evidence[0]!.revision === "head";
 	};

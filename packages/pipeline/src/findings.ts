@@ -5,10 +5,10 @@ import {
 	type FindingSource,
 	type FindingStatus,
 	type FindingTrigger,
+	mergeClaims,
 	normaliseSnippet,
 	parseFinding,
 	type Severity,
-	strongestCause,
 	upgradeStoredFinding,
 } from "@melian-agent/core";
 import { type Context, type ConversationId, defineDoc, type Harness, type Tx } from "./harness.ts";
@@ -120,8 +120,9 @@ function compareSources(a: FindingSource, b: FindingSource): number {
 }
 
 // The highest severity wins, and a tie goes to the producer whose name sorts first, so every reader merges alike. The
-// winner takes the strongest cause any sighting gave, with that sighting's evidence and failure scenario, so a P1 whose
-// cause location overlaps the change, beside a P0 whose evidence proves nothing, reads as an affected P0.
+// winner keeps its own claim and takes the strongest cause any sighting gave, with the cause locations that prove it,
+// and every other sighting's claim, so a P1 whose cause location overlaps the change, beside a P0 whose evidence proves
+// nothing, reads as an affected P0 that still carries the P1's scenario and evidence.
 function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>) {
 	const ranked = Object.values(sightings).sort(
 		(a, b) =>
@@ -129,9 +130,9 @@ function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>) {
 			compareSources(a.properties.source, b.properties.source),
 	);
 	const reportedBy = ranked.map((each) => ({ ...each.properties.source })).sort(compareSources);
-	const { evidence: _, failureScenario: __, ...properties } = ranked[0]!.properties;
-	const cause = strongestCause(ranked);
-	return { winner: { ...ranked[0]!, properties: { ...properties, ...cause } }, reportedBy };
+	const { evidence: _, failureScenario: __, otherClaims: ___, ...properties } = ranked[0]!.properties;
+	const claims = mergeClaims(ranked[0]!, ranked);
+	return { winner: { ...ranked[0]!, properties: { ...properties, ...claims } }, reportedBy };
 }
 
 /**
