@@ -1,8 +1,8 @@
 import {
 	adjudicate,
-	createFinding,
-	createFindingsLog,
 	defaultConfig,
+	Finding,
+	FindingsLog,
 	findingsLogSchema,
 	renderFindingsJson,
 	renderFindingsTerminal,
@@ -13,8 +13,8 @@ import { describe, expect, it } from "vitest";
 import { evalInput, minimalInput } from "./fixtures/findings.ts";
 
 // Out of order on purpose: the renderer sorts files by path, then findings by severity and line.
-const log = createFindingsLog([
-	createFinding({
+const log = FindingsLog.of([
+	Finding.create({
 		...evalInput,
 		rule: "unchecked-result",
 		message: "The write's result is ignored",
@@ -51,8 +51,8 @@ const log = createFindingsLog([
 			whatToDo: "Loop until every byte is written, or use fs.writeFile.",
 		},
 	}),
-	createFinding(minimalInput),
-	createFinding({
+	Finding.create(minimalInput),
+	Finding.create({
 		...evalInput,
 		rule: "sql-injection",
 		message: "The query interpolates the user's name",
@@ -68,7 +68,7 @@ const log = createFindingsLog([
 			whatToDo: "Pass the name as a bound parameter.",
 		},
 	}),
-	createFinding({
+	Finding.create({
 		...evalInput,
 		rule: "no-eval",
 		message: "eval runs a stored template",
@@ -81,7 +81,7 @@ const log = createFindingsLog([
 			whatToDo: "Render the template with a sandboxed engine.",
 		},
 	}),
-	createFinding(evalInput),
+	Finding.create(evalInput),
 ]);
 
 describe("renderFindingsJson", () => {
@@ -110,12 +110,12 @@ describe("renderFindingsTerminal", () => {
 		/[\u0000-\u0009\u000b-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/;
 
 	it("escapes control characters in finding text visibly and indents its continuation lines", () => {
-		const hostile = createFinding({
+		const hostile = Finding.create({
 			...evalInput,
 			message: "eval runs request input\u001b]0;pwned\u0007\u001b[2J",
 			explanation: { ...evalInput.explanation, what: "The handler passes the body to eval.\nThat runs any code." },
 		});
-		const text = renderFindingsTerminal(createFindingsLog([hostile]));
+		const text = renderFindingsTerminal(FindingsLog.of([hostile]));
 		expect(text).not.toMatch(invisible);
 		expect(text).toContain("  eval runs request input\\u001b]0;pwned\\u0007\\u001b[2J\n");
 		expect(text).toContain("    What: The handler passes the body to eval.\n      That runs any code.\n");
@@ -123,15 +123,15 @@ describe("renderFindingsTerminal", () => {
 
 	it.each([false, true])("escapes ESC, BEL, newline, tab, and bidi overrides in a path, colour %s", (color) => {
 		const file = "src/\u001b[2Jrun\u0007\nfake.ts\tx\u202egnp.ts";
-		const hostile = createFinding({ ...evalInput, file, trigger: undefined });
-		const text = renderFindingsTerminal(createFindingsLog([hostile]), { color });
+		const hostile = Finding.create({ ...evalInput, file, trigger: undefined });
+		const text = renderFindingsTerminal(FindingsLog.of([hostile]), { color });
 		const header = "src/\\u001b[2Jrun\\u0007\\u000afake.ts\\u0009x\\u202egnp.ts";
 		expect(text.split("\n")[0]).toBe(color ? `\u001b[1m${header}\u001b[0m` : header);
 		expect(text.replaceAll(/\u001b\[[0-9;]*m/g, "")).not.toMatch(invisible);
 	});
 
 	it("escapes control characters in a failure scenario and in evidence, and indents the snippet's lines", () => {
-		const hostile = createFinding({
+		const hostile = Finding.create({
 			...evalInput,
 			failureScenario: "A body of \u001b[2J clears the screen\nand then\u202e reverses",
 			evidence: [
@@ -144,7 +144,7 @@ describe("renderFindingsTerminal", () => {
 				},
 			],
 		});
-		const text = renderFindingsTerminal(createFindingsLog([hostile]));
+		const text = renderFindingsTerminal(FindingsLog.of([hostile]));
 		expect(text).toContain(
 			"    Failure scenario: A body of \\u001b[2J clears the screen\n      and then\\u202e reverses\n",
 		);
@@ -155,13 +155,13 @@ describe("renderFindingsTerminal", () => {
 	});
 
 	it("escapes a newline in a rule ID, so it cannot forge another finding's header", () => {
-		const hostile = createFinding({ ...evalInput, rule: "no-eval\n  P3  line 1  harmless" });
-		expect(renderFindingsTerminal(createFindingsLog([hostile]))).toContain("no-eval\\u000a  P3  line 1  harmless");
+		const hostile = Finding.create({ ...evalInput, rule: "no-eval\n  P3  line 1  harmless" });
+		expect(renderFindingsTerminal(FindingsLog.of([hostile]))).toContain("no-eval\\u000a  P3  line 1  harmless");
 	});
 
 	it("sets a message's later lines deeper than any header, so one cannot forge a finding in a verdict group", () => {
 		const forged = "P0  line 1  no-eval  (introduced, new, block)";
-		const hostile = createFinding({ ...evalInput, message: `eval runs request input\n${forged}` });
+		const hostile = Finding.create({ ...evalInput, message: `eval runs request input\n${forged}` });
 		const verdict = adjudicate({
 			findings: [hostile],
 			manifest: [],
@@ -174,15 +174,15 @@ describe("renderFindingsTerminal", () => {
 	});
 
 	it("says so when there are no findings", () => {
-		expect(renderFindingsTerminal(createFindingsLog([]))).toBe("No findings.\n");
+		expect(renderFindingsTerminal(FindingsLog.of([]))).toBe("No findings.\n");
 	});
 });
 
 const verdict = adjudicate({
 	manifest: [],
 	findings: [
-		...log.runs[0]!.results.map(({ ruleIndex: _, ...finding }) => finding),
-		createFinding({
+		...log.findings(),
+		Finding.create({
 			...evalInput,
 			rule: "missing-test",
 			message: "No test covers the new branch",
@@ -197,7 +197,7 @@ const verdict = adjudicate({
 				whatToDo: "Add a test with a total above the limit.",
 			},
 		}),
-		createFinding({
+		Finding.create({
 			...evalInput,
 			rule: "magic-number",
 			startLine: 20,
@@ -266,22 +266,27 @@ describe("renderFindingsTerminal with a verdict", () => {
 			reason: "Retries are fixed.\nSee the runbook.",
 			at: "2026-10-04T00:00:00Z",
 		};
-		const dismissed = createFinding({ ...evalInput, rule: "magic-number", snippet: "retry(3)", status: "dismissed" });
-		const reopened = createFinding({ ...evalInput, snippet: "eval(body)", severity: "P2" });
+		const dismissed = Finding.create({
+			...evalInput,
+			rule: "magic-number",
+			snippet: "retry(3)",
+			status: "dismissed",
+		});
+		const reopened = Finding.create({ ...evalInput, snippet: "eval(body)", severity: "P2" });
 		const shown = adjudicate({
 			manifest: [],
 			checks: [],
 			config: defaultConfig,
 			findings: [
-				{ ...dismissed, properties: { ...dismissed.properties, dismissal } },
-				{
-					...reopened,
+				Finding.from({ ...dismissed.toJSON(), properties: { ...dismissed.properties, dismissal } }),
+				Finding.from({
+					...reopened.toJSON(),
 					properties: {
 						...reopened.properties,
 						pastDismissals: [{ ...dismissal, reason: "Constant\u001b[2J.", reopenedRevision: "a..b" }],
 					},
-				},
-				createFinding({ ...evalInput, snippet: "eval(note)", severity: "nit" }),
+				}),
+				Finding.create({ ...evalInput, snippet: "eval(note)", severity: "nit" }),
 			],
 		});
 
@@ -307,14 +312,14 @@ describe("renderFindingsTerminal with a verdict", () => {
 	});
 
 	it("prints each finding's merged reports, and the dismissed reports beside it, with severity, rule, check, and ID", () => {
-		const speaker = createFinding(evalInput);
-		const merged = createFinding({
+		const speaker = Finding.create(evalInput);
+		const merged = Finding.create({
 			...evalInput,
 			rule: "code-injection",
 			severity: "P2",
 			source: { check: "lens.contracts" },
 		});
-		const answered = createFinding({
+		const answered = Finding.create({
 			...evalInput,
 			rule: "unsafe-call",
 			severity: "P3",

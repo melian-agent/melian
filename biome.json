@@ -28,7 +28,6 @@
 				"!**/packages/cli/src/commands.ts",
 				"!**/packages/cli/src/doctor.ts",
 				"!**/packages/core/src/adjudication.ts",
-				"!**/packages/core/src/findings.ts",
 				"!**/packages/core/src/lens.ts",
 				"!**/packages/core/src/publication.ts",
 				"!**/packages/core/src/render.ts",

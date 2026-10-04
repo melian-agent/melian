@@ -7,8 +7,7 @@ import type { Severity, StaticToolSettings } from "./config.ts";
 import { CheckError } from "./errors.ts";
 import {
 	canonicalPath,
-	createFinding,
-	type Finding,
+	Finding,
 	type FindingTrigger,
 	findingId,
 	normaliseSnippet,
@@ -442,7 +441,7 @@ export async function staticFindings(input: StaticFindingsInput): Promise<CheckR
 				extra === undefined
 					? `${each.result.message.text}${more}`
 					: `${count} more ${each.rule} result(s) on these lines than at the base: ${each.result.message.text}`;
-			return createFinding({
+			return Finding.create({
 				rule: each.rule,
 				message,
 				file: each.path,

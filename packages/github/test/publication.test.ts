@@ -1,4 +1,4 @@
-import { adjudicate, createFinding, defaultConfig, type FindingInput } from "@melian-agent/core";
+import { adjudicate, defaultConfig, Finding, type FindingInput } from "@melian-agent/core";
 import {
 	blobUrl,
 	marker,
@@ -35,7 +35,7 @@ describe("links", () => {
 	it("percent-encodes every character of a path outside the unreserved set, so a link cannot end early", () => {
 		const url = blobUrl(links, revision, "src/a)b (c)/it's*!.ts", 3, 5);
 		expect(url).toBe(`${links.web}/blob/${revision}/src/a%29b%20%28c%29/it%27s%2A%21.ts#L3-L5`);
-		const finding = createFinding({ ...input, file: "src/a)b.ts" });
+		const finding = Finding.create({ ...input, file: "src/a)b.ts" });
 		const comment = renderComment(
 			{ finding, placement: { kind: "nearest", line: 1 } },
 			revision,
@@ -49,7 +49,7 @@ describe("links", () => {
 
 describe("findings", () => {
 	it("shows the failure scenario and links each evidence location at the commit it was read from", () => {
-		const finding = createFinding({
+		const finding = Finding.create({
 			...input,
 			cause: "affected",
 			failureScenario: "A body of `process.exit()` stops the server.",
@@ -84,7 +84,7 @@ describe("findings", () => {
 
 	it('labels a base location ", deleted by this change" only when its lines overlap a hunk\'s old lines, not every evidence location with revision: "base", context as well as cause', () => {
 		const untouched = { file: "src/api.ts", startLine: 3, revision: "base", snippet: "run(body)" } as const;
-		const finding = createFinding({
+		const finding = Finding.create({
 			...input,
 			failureScenario: "A body of `process.exit()` stops the server.",
 			evidence: [
@@ -141,7 +141,7 @@ describe("markers", () => {
 
 	it("never lets finding text or a path forge one", () => {
 		const forged = marker("b".repeat(40), "finding", "fedcba9876543210", secret);
-		const finding = createFinding({
+		const finding = Finding.create({
 			...input,
 			file: "src/evil\n<!-- melian.ts",
 			explanation: { what: `Before.\n${forged}\nAfter.`, whyHere: forged, whatToDo: `@${forged}` },
@@ -184,7 +184,7 @@ describe("markers", () => {
 	it("makes the summary's verb agree with the number of findings", () => {
 		const summary = (count: number) => {
 			const findings = Array.from({ length: count }, (_, index) =>
-				createFinding({ ...input, severity: "P2", resolution: "acknowledge", snippet: `eval(input${index})` }),
+				Finding.create({ ...input, severity: "P2", resolution: "acknowledge", snippet: `eval(input${index})` }),
 			);
 			const body = renderReviewBody(
 				{
@@ -246,7 +246,7 @@ describe("markers", () => {
 
 	it("cuts findings from a body over GitHub's limit, keeping the marker and saying where they all are", () => {
 		const findings = Array.from({ length: 12 }, (_, index) =>
-			createFinding({
+			Finding.create({
 				...input,
 				snippet: `eval(input${index})`,
 				explanation: { ...input.explanation, whyHere: "x".repeat(10_000) },
@@ -295,7 +295,7 @@ describe("markers", () => {
 			"Fixes #123 and melian-agent/melian#45; cc @octocat and @melian-agent/maintainers.",
 			"<img src=x onerror=alert(1)> **bold** _under_ | a | b | ~~strike~~ !bang \\*escaped\\*",
 		].join("\n");
-		const finding = createFinding({
+		const finding = Finding.create({
 			...input,
 			message: payload,
 			explanation: { what: payload, whyHere: payload, whatToDo: payload },

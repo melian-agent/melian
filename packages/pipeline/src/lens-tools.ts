@@ -4,9 +4,8 @@ import {
 	causeOverlap,
 	changeOverlap,
 	classifyCause,
-	createFinding,
 	type EvidenceLocation,
-	type Finding,
+	Finding,
 	type FindingTrigger,
 	type LensRule,
 	type LensToolName,
@@ -676,7 +675,7 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 					hash: snippetHash(introducing.added),
 				};
 	const { severity } = args;
-	return createFinding({
+	return Finding.create({
 		rule: args.rule,
 		message: args.explanation.what,
 		file: path,

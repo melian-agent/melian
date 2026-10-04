@@ -1,14 +1,12 @@
 import {
 	adjudicate,
 	applyResolutions,
-	createFinding,
 	dedupeFindings,
 	defaultConfig,
-	type Finding,
+	Finding,
 	type FindingInput,
 	loadConfig,
 	type MelianConfig,
-	parseFinding,
 	type Resolution,
 	resolveFinding,
 } from "@melian-agent/core";
@@ -18,7 +16,7 @@ import { gitIn, isolatedGitEnv, lines, removeDirectory, temporaryDirectory, writ
 
 // As a producer stores it: no resolution until adjudication.
 const finding = (input: Partial<FindingInput>) =>
-	createFinding({ ...evalInput, trigger: undefined, resolution: undefined, ...input });
+	Finding.create({ ...evalInput, trigger: undefined, resolution: undefined, ...input });
 const resolvedAs = (each: Finding, resolution: Resolution) => ({
 	...each,
 	properties: { ...each.properties, resolution },
@@ -138,7 +136,7 @@ describe("dedupeFindings", () => {
 			ruleId: "security/detect-eval-with-expression",
 			check: "static.eslint",
 		});
-		expect(parseFinding(kept)).toEqual(kept);
+		expect(Finding.parse(kept)).toEqual(kept);
 	});
 
 	it("keeps the more severe finding when no alias names an owner", () => {
@@ -153,7 +151,7 @@ describe("dedupeFindings", () => {
 		const [kept, ...rest] = dedupeFindings([lens, severe], () => aliases);
 		expect(rest).toEqual([]);
 		expect(kept).toMatchObject({ ruleId: "no-eval", level: "error", properties: { severity: "P0" } });
-		expect(parseFinding(kept)).toEqual(kept);
+		expect(Finding.parse(kept)).toEqual(kept);
 	});
 
 	it("keeps both at another occurrence or from the same check", () => {
@@ -258,7 +256,7 @@ describe("dedupeFindings", () => {
 					evidence: [...context, ...evidence],
 					otherClaims: [claimOf(evidenced)],
 				});
-				expect(parseFinding(kept)).toEqual(kept);
+				expect(Finding.parse(kept)).toEqual(kept);
 				expect(resolveFinding(kept!, defaultConfig)).toBe("block");
 			}
 		});
@@ -368,7 +366,7 @@ describe("dedupeFindings", () => {
 				evidence: [...evidence, ...own],
 				otherClaims: [claimOf(introduced)],
 			});
-			expect(parseFinding(kept)).toEqual(kept);
+			expect(Finding.parse(kept)).toEqual(kept);
 			const tsc = finding({
 				...atCart,
 				cause: "introduced",

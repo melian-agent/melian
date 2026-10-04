@@ -6,6 +6,7 @@ import {
 	type AdjudicationTaskInput,
 	readVerdict,
 	VerdictDocument,
+	verdictOf,
 } from "./adjudication.ts";
 import { DismissError } from "./errors.ts";
 import { type Dismissal, dismissFinding, FindingsDocument, revisionKey } from "./findings.ts";
@@ -150,7 +151,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		// Read in the commit, so a review that recorded another verdict a moment before decides what the ID names.
 		const stored = (await tx.doc(VerdictDocument, root.id)).verdicts[revision];
 		if (stored === undefined) throw new DismissError("notReviewed", `Melian has no review of ${revision}`, where);
-		const found = DismissalTarget.named(stored, id);
+		const found = DismissalTarget.named(verdictOf(stored), id);
 		if (found === undefined) {
 			throw new DismissError("unknownFinding", `the review of ${revision} has no finding ${id}`, where);
 		}

@@ -278,7 +278,7 @@ export const reportFindingInputSchema = Type.Object(
 /** The URI of the SARIF 2.1.0 JSON Schema, as `$schema` in a {@link FindingsLog}. */
 export const sarifSchemaUri = "https://json.schemastore.org/sarif-2.1.0.json";
 
-/** The JSON Schema of a {@link FindingsLog}. */
+/** The JSON Schema of a {@link SarifLog}. */
 export const findingsLogSchema = Type.Object(
 	{
 		$schema: Type.Optional(Type.String()),
@@ -436,20 +436,14 @@ export type FindingProperties = Static<typeof findingPropertiesSchema>;
 /** Where a finding points: a file, as a URI relative to the repository root, and a line region, with an optional snippet. */
 export type FindingLocation = Static<typeof findingLocationSchema>;
 
-/**
- * One objection, as a SARIF 2.1.0 `result`.
- *
- * `level` follows `properties.severity` by {@link levelForSeverity}, and `properties.id` is {@link findingId} of the
- * first location's file, the rule, that location's snippet, and `properties.occurrence` or `properties.discriminator`. {@link createFinding} derives both, and
- * {@link parseFinding} rejects a finding where either disagrees.
- */
-export type Finding = Static<typeof findingSchema>;
+/** A {@link Finding} as JSON: a SARIF 2.1.0 `result`, as a Pi Durable document stores it and a SARIF log carries it. */
+export type StoredFinding = Static<typeof findingSchema>;
 
 /**
- * A SARIF 2.1.0 log of one Melian run. The driver lists each rule once, and each result names its rule by `ruleIndex`
- * as well as `ruleId`, which GitHub code scanning reads for rule metadata.
+ * A SARIF 2.1.0 log of one Melian run, as JSON. The driver lists each rule once, and each result names its rule by
+ * `ruleIndex` as well as `ruleId`, which GitHub code scanning reads for rule metadata.
  */
-export type FindingsLog = Static<typeof findingsLogSchema>;
+export type SarifLog = Static<typeof findingsLogSchema>;
 
 // The repository-relative posix form of a path: `./src//run.ts` becomes `src/run.ts`. Refuses what is not one.
 export function canonicalPath(path: string, pointer = "/properties/path"): string {
@@ -635,7 +629,7 @@ export function levelForSeverity(severity: Severity): SarifLevel {
 	return levels[severity];
 }
 
-/** What {@link createFinding} builds a finding from. Optional fields are left out of the finding when absent. */
+/** What {@link Finding.create} builds a finding from. Optional fields are left out of the finding when absent. */
 export interface FindingInput {
 	readonly rule: string;
 	readonly message: string;
@@ -683,204 +677,268 @@ function withoutUndefined(value: unknown): unknown {
 }
 
 /**
- * Builds a finding, deriving its level, ID, and URI from the canonical repository-relative form of its file, so
- * `./src/run.ts` and `src/run.ts` are one file. The ID comes from the whole snippet, and the finding stores it cut by
- * {@link capSnippet}. Throws {@link FindingError}: `invalidPath` when the file is absolute,
- * escapes the repository, or uses a backslash, `invalidRegion` when the region ends before it starts, `missingDiscriminator` when a finding with a
- * snippet has no occurrence or one without a snippet has no discriminator, and `invalidFinding` if the result is invalid.
+ * One objection, as a SARIF 2.1.0 `result`: a runtime view over a {@link StoredFinding}, holding its fields as they are
+ * stored, so `toJSON()` gives back the stored shape and a Pi Durable document stays JSON.
+ *
+ * `level` follows `properties.severity` by {@link levelForSeverity}, and `properties.id` is {@link findingId} of the
+ * first location's file, the rule, that location's snippet, and `properties.occurrence` or `properties.discriminator`.
+ * {@link Finding.create} derives both, and {@link Finding.parse} rejects a finding where either disagrees.
  */
-export function createFinding(input: FindingInput): Finding {
-	const { rule, snippet, occurrence, discriminator } = input;
-	const file = canonicalPath(input.file);
-	const trigger =
-		input.trigger === undefined
-			? undefined
-			: {
-					...input.trigger,
-					file: canonicalPath(input.trigger.file, "/properties/trigger/file"),
-					proof: input.trigger.proof?.map((hunk, index) => ({
-						...hunk,
-						file: canonicalPath(hunk.file, `/properties/trigger/proof/${index}/file`),
-					})),
-				};
-	const id = findingId({ file, rule, snippet: snippet ?? "", occurrence, discriminator });
-	const hasSnippet = normaliseSnippet(snippet ?? "") !== "";
-	const evidence = input.evidence?.map((location, index) => ({
-		...location,
-		file: canonicalPath(location.file, `/properties/evidence/${index}/file`),
-	}));
-	return parseFinding({
-		ruleId: rule,
-		level: levelForSeverity(input.severity),
-		message: { text: input.message },
-		partialFingerprints: { [fingerprintKey]: id },
-		locations: [
-			{
-				physicalLocation: {
-					artifactLocation: { uri: repositoryUri(file) },
-					region: {
-						startLine: input.startLine,
-						endLine: input.endLine,
-						startColumn: input.startColumn,
-						endColumn: input.endColumn,
-						snippet: snippet === undefined ? undefined : { text: capSnippet(snippet) },
+export class Finding {
+	readonly ruleId: string;
+	readonly level: SarifLevel;
+	readonly message: StoredFinding["message"];
+	readonly partialFingerprints: StoredFinding["partialFingerprints"];
+	readonly locations: StoredFinding["locations"];
+	readonly properties: FindingProperties;
+
+	// Declared in the order a stored finding holds them, so its JSON, and every hash of it, is unchanged.
+	private constructor(stored: StoredFinding) {
+		this.ruleId = stored.ruleId;
+		this.level = stored.level;
+		this.message = stored.message;
+		this.partialFingerprints = stored.partialFingerprints;
+		this.locations = stored.locations;
+		this.properties = stored.properties;
+	}
+
+	/**
+	 * The finding a stored one describes, trusted as stored, as from a document Melian wrote. It is not validated;
+	 * {@link Finding.parse} validates a finding from anywhere else.
+	 */
+	static from(stored: StoredFinding): Finding {
+		return new Finding(stored);
+	}
+
+	/**
+	 * Builds a finding, deriving its level, ID, and URI from the canonical repository-relative form of its file, so
+	 * `./src/run.ts` and `src/run.ts` are one file. The ID comes from the whole snippet, and the finding stores it cut by
+	 * {@link capSnippet}. Throws {@link FindingError}: `invalidPath` when the file is absolute, escapes the repository,
+	 * or uses a backslash, `invalidRegion` when the region ends before it starts, `missingDiscriminator` when a finding
+	 * with a snippet has no occurrence or one without a snippet has no discriminator, and `invalidFinding` if the result
+	 * is invalid.
+	 */
+	static create(input: FindingInput): Finding {
+		const { rule, snippet, occurrence, discriminator } = input;
+		const file = canonicalPath(input.file);
+		const trigger =
+			input.trigger === undefined
+				? undefined
+				: {
+						...input.trigger,
+						file: canonicalPath(input.trigger.file, "/properties/trigger/file"),
+						proof: input.trigger.proof?.map((hunk, index) => ({
+							...hunk,
+							file: canonicalPath(hunk.file, `/properties/trigger/proof/${index}/file`),
+						})),
+					};
+		const id = findingId({ file, rule, snippet: snippet ?? "", occurrence, discriminator });
+		const hasSnippet = normaliseSnippet(snippet ?? "") !== "";
+		const evidence = input.evidence?.map((location, index) => ({
+			...location,
+			file: canonicalPath(location.file, `/properties/evidence/${index}/file`),
+		}));
+		return Finding.parse({
+			ruleId: rule,
+			level: levelForSeverity(input.severity),
+			message: { text: input.message },
+			partialFingerprints: { [fingerprintKey]: id },
+			locations: [
+				{
+					physicalLocation: {
+						artifactLocation: { uri: repositoryUri(file) },
+						region: {
+							startLine: input.startLine,
+							endLine: input.endLine,
+							startColumn: input.startColumn,
+							endColumn: input.endColumn,
+							snippet: snippet === undefined ? undefined : { text: capSnippet(snippet) },
+						},
 					},
 				},
+			],
+			properties: {
+				id,
+				path: file,
+				occurrence: hasSnippet ? occurrence : undefined,
+				discriminator: hasSnippet ? undefined : discriminator,
+				cause: input.cause,
+				failureScenario: input.failureScenario,
+				evidence,
+				trigger,
+				severity: input.severity,
+				confidence: input.confidence,
+				resolution: input.resolution,
+				status: input.status ?? "new",
+				explanation: input.explanation,
+				source: input.source,
 			},
-		],
-		properties: {
-			id,
-			path: file,
-			occurrence: hasSnippet ? occurrence : undefined,
-			discriminator: hasSnippet ? undefined : discriminator,
-			cause: input.cause,
-			failureScenario: input.failureScenario,
-			evidence,
-			trigger,
-			severity: input.severity,
-			confidence: input.confidence,
-			resolution: input.resolution,
-			status: input.status ?? "new",
-			explanation: input.explanation,
-			source: input.source,
-		},
-	});
-}
+		});
+	}
 
-/**
- * Checks that `input` is a valid finding and returns a copy without keys whose value is `undefined`, at any depth, so
- * the copy equals what a JSON round trip stores.
- *
- * Throws {@link FindingError}: `invalidFinding` when it does not match {@link findingSchema}, `levelMismatch` when its
- * level is not {@link levelForSeverity} of its severity, `invalidRegion` when its region ends before it starts,
- * `invalidPath` when its path is not canonical or its URI does
- * not encode that path, `missingEvidence` when it is `affected` without a `cause` evidence location,
- * `missingDiscriminator` when it lacks the occurrence or
- * discriminator its snippet calls for, and `idMismatch` when its ID is not {@link findingId} of its first location, which
- * it cannot tell for a snippet {@link capSnippet} cut.
- */
-export function parseFinding(input: unknown): Finding {
-	const value = withoutUndefined(input);
-	const errors = Value.Errors(findingSchema, value);
-	const unknown = errors.find((error) => error.keyword === "additionalProperties");
-	if (unknown !== undefined) {
-		const [key] = (unknown.params as { additionalProperties: string[] }).additionalProperties;
-		const path = `${unknown.instancePath}/${key}`;
-		throw new FindingError("invalidFinding", `finding has an unknown key at ${path}`, { path });
-	}
-	const error = errors[0];
-	if (error !== undefined) {
-		const path = error.instancePath || "(top level)";
-		throw new FindingError("invalidFinding", `finding ${path} ${error.message}`, { path: error.instancePath });
-	}
-	const finding = value as Finding;
-	const { severity, id } = finding.properties;
-	const level = levelForSeverity(severity);
-	if (finding.level !== level) {
-		throw new FindingError("levelMismatch", `a ${severity} finding has level ${level}, not ${finding.level}`, {
-			path: "/level",
-		});
-	}
-	const { artifactLocation, region } = finding.locations[0]!.physicalLocation;
-	const { path, trigger } = finding.properties;
-	const { startLine, endLine = startLine, startColumn, endColumn } = region;
-	if (endLine < startLine || (endLine === startLine && (endColumn ?? Infinity) < (startColumn ?? 1))) {
-		throw new FindingError("invalidRegion", "the finding's region ends before it starts", {
-			path: "/locations/0/physicalLocation/region",
-		});
-	}
-	requireCanonical(path, "/properties/path");
-	if (artifactLocation.uri !== repositoryUri(path)) {
-		throw new FindingError("invalidPath", `finding URI ${artifactLocation.uri} does not encode its path ${path}`, {
-			path: "/locations/0/physicalLocation/artifactLocation/uri",
-		});
-	}
-	if (trigger !== undefined) requireCanonical(trigger.file, "/properties/trigger/file");
-	for (const [index, hunk] of (trigger?.proof ?? []).entries()) {
-		requireCanonical(hunk.file, `/properties/trigger/proof/${index}/file`);
-	}
-	const { cause, evidence = [] } = finding.properties;
-	if (cause === "affected" && !evidence.some((location) => location.role === "cause")) {
-		throw new FindingError(
-			"missingEvidence",
-			"an affected finding must cite, as a cause, the change that breaks it",
-			{
-				path: "/properties/evidence",
-			},
-		);
-	}
-	const cited = [
-		{ at: "/properties/evidence", locations: evidence },
-		...(finding.properties.otherClaims ?? []).map((claim, index) => ({
-			at: `/properties/otherClaims/${index}/evidence`,
-			locations: claim.evidence ?? [],
-		})),
-	];
-	for (const { at, locations } of cited) {
-		for (const [index, location] of locations.entries()) {
-			requireCanonical(location.file, `${at}/${index}/file`);
-			if ((location.endLine ?? location.startLine) < location.startLine) {
-				throw new FindingError("invalidRegion", "an evidence location ends before it starts", {
-					path: `${at}/${index}`,
-				});
+	/**
+	 * Checks that `input` is a valid finding and returns it without keys whose value is `undefined`, at any depth, so it
+	 * equals what a JSON round trip stores.
+	 *
+	 * Throws {@link FindingError}: `invalidFinding` when it does not match {@link findingSchema}, `levelMismatch` when
+	 * its level is not {@link levelForSeverity} of its severity, `invalidRegion` when its region ends before it starts,
+	 * `invalidPath` when its path is not canonical or its URI does not encode that path, `missingEvidence` when it is
+	 * `affected` without a `cause` evidence location, `missingDiscriminator` when it lacks the occurrence or
+	 * discriminator its snippet calls for, and `idMismatch` when its ID is not {@link findingId} of its first location,
+	 * which it cannot tell for a snippet {@link capSnippet} cut.
+	 */
+	static parse(input: unknown): Finding {
+		const value = withoutUndefined(input);
+		const errors = Value.Errors(findingSchema, value);
+		const unknown = errors.find((error) => error.keyword === "additionalProperties");
+		if (unknown !== undefined) {
+			const [key] = (unknown.params as { additionalProperties: string[] }).additionalProperties;
+			const path = `${unknown.instancePath}/${key}`;
+			throw new FindingError("invalidFinding", `finding has an unknown key at ${path}`, { path });
+		}
+		const error = errors[0];
+		if (error !== undefined) {
+			const path = error.instancePath || "(top level)";
+			throw new FindingError("invalidFinding", `finding ${path} ${error.message}`, { path: error.instancePath });
+		}
+		const finding = value as StoredFinding;
+		const { severity, id } = finding.properties;
+		const level = levelForSeverity(severity);
+		if (finding.level !== level) {
+			throw new FindingError("levelMismatch", `a ${severity} finding has level ${level}, not ${finding.level}`, {
+				path: "/level",
+			});
+		}
+		const { artifactLocation, region } = finding.locations[0]!.physicalLocation;
+		const { path, trigger } = finding.properties;
+		const { startLine, endLine = startLine, startColumn, endColumn } = region;
+		if (endLine < startLine || (endLine === startLine && (endColumn ?? Infinity) < (startColumn ?? 1))) {
+			throw new FindingError("invalidRegion", "the finding's region ends before it starts", {
+				path: "/locations/0/physicalLocation/region",
+			});
+		}
+		requireCanonical(path, "/properties/path");
+		if (artifactLocation.uri !== repositoryUri(path)) {
+			throw new FindingError("invalidPath", `finding URI ${artifactLocation.uri} does not encode its path ${path}`, {
+				path: "/locations/0/physicalLocation/artifactLocation/uri",
+			});
+		}
+		if (trigger !== undefined) requireCanonical(trigger.file, "/properties/trigger/file");
+		for (const [index, hunk] of (trigger?.proof ?? []).entries()) {
+			requireCanonical(hunk.file, `/properties/trigger/proof/${index}/file`);
+		}
+		const { cause, evidence = [] } = finding.properties;
+		if (cause === "affected" && !evidence.some((location) => location.role === "cause")) {
+			throw new FindingError(
+				"missingEvidence",
+				"an affected finding must cite, as a cause, the change that breaks it",
+				{
+					path: "/properties/evidence",
+				},
+			);
+		}
+		const cited = [
+			{ at: "/properties/evidence", locations: evidence },
+			...(finding.properties.otherClaims ?? []).map((claim, index) => ({
+				at: `/properties/otherClaims/${index}/evidence`,
+				locations: claim.evidence ?? [],
+			})),
+		];
+		for (const { at, locations } of cited) {
+			for (const [index, location] of locations.entries()) {
+				requireCanonical(location.file, `${at}/${index}/file`);
+				if ((location.endLine ?? location.startLine) < location.startLine) {
+					throw new FindingError("invalidRegion", "an evidence location ends before it starts", {
+						path: `${at}/${index}`,
+					});
+				}
 			}
 		}
+		const snippet = region.snippet?.text ?? "";
+		const { occurrence, discriminator } = finding.properties;
+		const extra = normaliseSnippet(snippet) === "" ? occurrence : discriminator;
+		if (extra !== undefined) {
+			const key = normaliseSnippet(snippet) === "" ? "occurrence" : "discriminator";
+			throw new FindingError("invalidFinding", `finding has a ${key} its snippet does not call for`, {
+				path: `/properties/${key}`,
+			});
+		}
+		// A cut snippet no longer holds the code its ID came from, so only an uncut one can be checked against it.
+		const expected = wasCut(snippet)
+			? id
+			: findingId({ file: path, rule: finding.ruleId, snippet, occurrence, discriminator });
+		if (id !== expected) {
+			throw new FindingError("idMismatch", `finding ${id} should have ID ${expected}`, { path: "/properties/id" });
+		}
+		if (finding.partialFingerprints[fingerprintKey] !== id) {
+			throw new FindingError("idMismatch", `finding ${id} has a different ${fingerprintKey} fingerprint`, {
+				path: "/partialFingerprints/melian~1v1",
+			});
+		}
+		return new Finding(finding);
 	}
-	const snippet = region.snippet?.text ?? "";
-	const { occurrence, discriminator } = finding.properties;
-	const extra = normaliseSnippet(snippet) === "" ? occurrence : discriminator;
-	if (extra !== undefined) {
-		const key = normaliseSnippet(snippet) === "" ? "occurrence" : "discriminator";
-		throw new FindingError("invalidFinding", `finding has a ${key} its snippet does not call for`, {
-			path: `/properties/${key}`,
-		});
+
+	/**
+	 * A finding stored before evidence became a list, in the current shape. Its single evidence location, which only an
+	 * `affected` finding carried, becomes a one-entry list naming the location a `cause` at head. A finding from before
+	 * failure scenarios has none, which the schema allows. Anything else comes back unchanged. A stored document that
+	 * holds findings calls this when it migrates, so a review recorded before the change still reads, renders, and
+	 * publishes.
+	 */
+	static upgrade<T>(stored: T): T {
+		const properties = (stored as { properties?: { evidence?: unknown } } | null)?.properties;
+		const evidence = properties?.evidence;
+		if (evidence === null || typeof evidence !== "object" || Array.isArray(evidence)) return stored;
+		const location = { ...evidence, role: "cause", revision: "head" };
+		return { ...stored, properties: { ...properties, evidence: [location] } };
 	}
-	// A cut snippet no longer holds the code its ID came from, so only an uncut one can be checked against it.
-	const expected = wasCut(snippet)
-		? id
-		: findingId({ file: path, rule: finding.ruleId, snippet, occurrence, discriminator });
-	if (id !== expected) {
-		throw new FindingError("idMismatch", `finding ${id} should have ID ${expected}`, { path: "/properties/id" });
+
+	/** The finding's stable ID, `properties.id`. */
+	get id(): string {
+		return this.properties.id;
 	}
-	if (finding.partialFingerprints[fingerprintKey] !== id) {
-		throw new FindingError("idMismatch", `finding ${id} has a different ${fingerprintKey} fingerprint`, {
-			path: "/partialFingerprints/melian~1v1",
-		});
+
+	/** The finding as it is stored: a SARIF result, its fields in their stored order. */
+	toJSON(): StoredFinding {
+		const { ruleId, level, message, partialFingerprints, locations, properties } = this;
+		return { ruleId, level, message, partialFingerprints, locations, properties };
 	}
-	return finding;
 }
 
-/** Wraps findings in a SARIF 2.1.0 log of one Melian run, listing each rule once in the driver. */
-export function createFindingsLog(findings: readonly Finding[]): FindingsLog {
-	const rules = [...new Set(findings.map((finding) => finding.ruleId))].sort();
-	return {
-		$schema: sarifSchemaUri,
-		version: "2.1.0",
-		runs: [
-			{
-				tool: {
-					driver: {
-						name: "Melian",
-						informationUri: "https://github.com/melian-agent/melian",
-						rules: rules.map((id) => ({ id })),
-					},
-				},
-				results: findings.map(({ ruleId, ...rest }) => ({ ruleId, ruleIndex: rules.indexOf(ruleId), ...rest })),
-			},
-		],
-	};
-}
+/** A SARIF 2.1.0 log of one Melian run, as {@link SarifLog} describes it, over the findings it was made from. */
+export class FindingsLog {
+	readonly $schema: string;
+	readonly version: "2.1.0";
+	readonly runs: SarifLog["runs"];
+	readonly #findings: readonly Finding[];
 
-/**
- * A finding stored before evidence became a list, in the current shape. Its single evidence location, which only an
- * `affected` finding carried, becomes a one-entry list naming the location a `cause` at head. A finding from before
- * failure scenarios has none, which the schema allows. Anything else comes back unchanged. A stored document that holds
- * findings calls this when it migrates, so a review recorded before the change still reads, renders, and publishes.
- */
-export function upgradeStoredFinding<T>(finding: T): T {
-	const properties = (finding as { properties?: { evidence?: unknown } } | null)?.properties;
-	const evidence = properties?.evidence;
-	if (evidence === null || typeof evidence !== "object" || Array.isArray(evidence)) return finding;
-	const location = { ...evidence, role: "cause", revision: "head" };
-	return { ...finding, properties: { ...properties, evidence: [location] } };
+	private constructor(runs: SarifLog["runs"], findings: readonly Finding[]) {
+		this.$schema = sarifSchemaUri;
+		this.version = "2.1.0";
+		this.runs = runs;
+		this.#findings = findings;
+	}
+
+	/** Wraps findings in a SARIF 2.1.0 log of one Melian run, listing each rule once in the driver. */
+	static of(findings: readonly Finding[]): FindingsLog {
+		const rules = [...new Set(findings.map((finding) => finding.ruleId))].sort();
+		const results = findings.map((finding) => {
+			const { ruleId, ...rest } = finding.toJSON();
+			return { ruleId, ruleIndex: rules.indexOf(ruleId), ...rest };
+		});
+		const driver = { name: "Melian" as const, informationUri: "https://github.com/melian-agent/melian" };
+		const runs: SarifLog["runs"] = [{ tool: { driver: { ...driver, rules: rules.map((id) => ({ id })) } }, results }];
+		return new FindingsLog(runs, findings);
+	}
+
+	/** The findings the log holds, in the order of its results. */
+	findings(): readonly Finding[] {
+		return this.#findings;
+	}
+
+	/** The log as JSON. */
+	toJSON(): SarifLog {
+		const { $schema, version, runs } = this;
+		return { $schema, version, runs };
+	}
 }

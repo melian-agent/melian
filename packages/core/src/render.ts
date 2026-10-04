@@ -131,7 +131,7 @@ export function renderFindingsTerminal(input: FindingsLog | Verdict, options: Te
 	const paint: Paint = (code, text) => (options.color ? `\u001b[${code}m${text}\u001b[0m` : text);
 	const ids = options.ids === true;
 	if (!("runs" in input)) return renderVerdict(input, paint, ids, options.all === true);
-	const findings = input.runs.flatMap((run) => run.results);
+	const findings = input.findings();
 	if (findings.length === 0) return "No findings.\n";
 	return `${[...fileSections(findings, paint, ids), summary(findings)].join("\n\n")}\n`;
 }

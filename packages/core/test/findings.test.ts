@@ -1,11 +1,10 @@
 import { readFileSync } from "node:fs";
 import {
 	capSnippet,
-	createFinding,
-	createFindingsLog,
 	dismissalReason,
-	type Finding,
+	Finding,
 	FindingError,
+	FindingsLog,
 	findingId,
 	findingsLogSchema,
 	levelForSeverity,
@@ -14,11 +13,9 @@ import {
 	maxFailureScenarioLength,
 	maxSnippetBytes,
 	normaliseSnippet,
-	parseFinding,
 	reportFindingInputSchema,
 	snippetHash,
 	snippetOccurrence,
-	upgradeStoredFinding,
 } from "@melian-agent/core";
 import Schema from "typebox/schema";
 import Value from "typebox/value";
@@ -34,7 +31,7 @@ const evalCall = { file: "src/run.ts", rule: "no-eval", snippet: "eval(input)", 
 
 function rejection(value: unknown): FindingError {
 	try {
-		parseFinding(value);
+		Finding.parse(value);
 	} catch (error) {
 		expect(error).toBeInstanceOf(FindingError);
 		return error as FindingError;
@@ -131,7 +128,7 @@ describe("snippetOccurrence", () => {
 
 	function id(text: string, startLine: number): string {
 		const occurrence = snippetOccurrence(text, "eval(input)", { startLine });
-		return createFinding({ ...evalInput, startLine, occurrence, trigger: undefined }).properties.id;
+		return Finding.create({ ...evalInput, startLine, occurrence, trigger: undefined }).properties.id;
 	}
 
 	it("counts identical normalised snippets above the region", () => {
@@ -253,7 +250,7 @@ describe("dismissalReason", () => {
 	});
 
 	it("is carried on a dismissed finding with the dismissals before it, which the schema accepts", () => {
-		const finding = createFinding(minimalInput);
+		const finding = Finding.create(minimalInput);
 		const dismissal = { by: "Tal <tal@melian.invalid>", reason: "Constant input.", at: "2026-10-04T00:00:00Z" };
 		const properties = {
 			...finding.properties,
@@ -261,7 +258,7 @@ describe("dismissalReason", () => {
 			dismissal,
 			pastDismissals: [{ ...dismissal, reopenedRevision: "a..b" }],
 		};
-		expect(parseFinding({ ...finding, properties }).properties.dismissal).toEqual(dismissal);
+		expect(Finding.parse({ ...finding, properties }).properties.dismissal).toEqual(dismissal);
 		expect(rejection({ ...finding, properties: { ...properties, dismissal: { ...dismissal, why: "x" } } }).code).toBe(
 			"invalidFinding",
 		);
@@ -277,7 +274,7 @@ describe("levelForSeverity", () => {
 
 describe("createFinding", () => {
 	it("builds a SARIF result with Melian's extensions in its property bag", () => {
-		expect(createFinding(evalInput)).toEqual({
+		expect(Finding.create(evalInput)).toEqual({
 			ruleId: "no-eval",
 			level: "error",
 			message: { text: "eval runs request input" },
@@ -313,7 +310,7 @@ describe("createFinding", () => {
 	});
 
 	it("leaves absent optional fields out rather than storing undefined", () => {
-		const finding = createFinding(minimalInput);
+		const finding = Finding.create(minimalInput);
 		expect(finding.locations[0]!.physicalLocation.region).toEqual({ startLine: 4 });
 		expect(Object.keys(finding.properties).sort()).toEqual(
 			["cause", "discriminator", "explanation", "id", "path", "resolution", "severity", "source", "status"].sort(),
@@ -324,7 +321,7 @@ describe("createFinding", () => {
 	});
 
 	it("refuses a finding without a snippet or a discriminator", () => {
-		expect(() => createFinding({ ...minimalInput, discriminator: undefined })).toThrow(
+		expect(() => Finding.create({ ...minimalInput, discriminator: undefined })).toThrow(
 			expect.objectContaining({ code: "missingDiscriminator" }),
 		);
 	});
@@ -347,16 +344,18 @@ describe("createFinding", () => {
 			},
 		];
 		const failureScenario = "load(42) passes a number where a string is now required.";
-		const affected = createFinding({ ...evalInput, cause: "affected", evidence, failureScenario });
+		const affected = Finding.create({ ...evalInput, cause: "affected", evidence, failureScenario });
 		expect(affected.properties.cause).toBe("affected");
 		expect(affected.properties.failureScenario).toBe(failureScenario);
 		expect(affected.properties.evidence).toEqual([{ ...evidence[0], file: "src/api.ts" }, evidence[1]]);
-		expect(affected.properties.id).toBe(createFinding(evalInput).properties.id);
-		const other = createFinding({ ...evalInput, evidence: [evidence[1]!], failureScenario: "Something else." });
+		expect(affected.properties.id).toBe(Finding.create(evalInput).properties.id);
+		const other = Finding.create({ ...evalInput, evidence: [evidence[1]!], failureScenario: "Something else." });
 		expect(other.properties.id).toBe(affected.properties.id);
-		expect(createFinding(evalInput).properties).not.toHaveProperty("evidence");
-		expect(() => createFinding({ ...evalInput, evidence: [{ ...evidence[0]!, snippet: "" }] })).toThrow(FindingError);
-		expect(() => createFinding({ ...evalInput, evidence: [{ ...evidence[0]!, endLine: 2 }] })).toThrow(
+		expect(Finding.create(evalInput).properties).not.toHaveProperty("evidence");
+		expect(() => Finding.create({ ...evalInput, evidence: [{ ...evidence[0]!, snippet: "" }] })).toThrow(
+			FindingError,
+		);
+		expect(() => Finding.create({ ...evalInput, evidence: [{ ...evidence[0]!, endLine: 2 }] })).toThrow(
 			expect.objectContaining({ code: "invalidRegion", path: "/properties/evidence/0" }),
 		);
 	});
@@ -369,10 +368,10 @@ describe("createFinding", () => {
 			revision: "head" as const,
 			snippet: "x",
 		};
-		expect(() => createFinding({ ...evalInput, cause: "affected" })).toThrow(
+		expect(() => Finding.create({ ...evalInput, cause: "affected" })).toThrow(
 			expect.objectContaining({ code: "missingEvidence" }),
 		);
-		expect(() => createFinding({ ...evalInput, cause: "affected", evidence: [context] })).toThrow(
+		expect(() => Finding.create({ ...evalInput, cause: "affected", evidence: [context] })).toThrow(
 			expect.objectContaining({ code: "missingEvidence" }),
 		);
 	});
@@ -383,45 +382,45 @@ describe("createFinding", () => {
 			{ startLine: 12, endLine: 12, startColumn: 9, endColumn: 2 },
 			{ startLine: 12, endLine: undefined, startColumn: 9, endColumn: 2 },
 		]) {
-			expect(() => createFinding({ ...evalInput, ...region })).toThrow(
+			expect(() => Finding.create({ ...evalInput, ...region })).toThrow(
 				expect.objectContaining({ code: "invalidRegion", path: "/locations/0/physicalLocation/region" }),
 			);
 		}
-		expect(createFinding({ ...evalInput, startLine: 12, endLine: 13, startColumn: 9, endColumn: 2 })).toBeDefined();
+		expect(Finding.create({ ...evalInput, startLine: 12, endLine: 13, startColumn: 9, endColumn: 2 })).toBeDefined();
 	});
 
 	it("drops undefined-valued keys at any depth", () => {
-		const finding = createFinding({ ...evalInput, trigger: { file: "src/run.ts", index: 0, snippet: undefined } });
+		const finding = Finding.create({ ...evalInput, trigger: { file: "src/run.ts", index: 0, snippet: undefined } });
 		expect(Object.keys(finding.properties.trigger!)).toEqual(["file", "index"]);
 		const nested = { ...finding, message: { text: "eval runs request input", markdown: undefined } };
-		expect(parseFinding(nested)).toEqual(JSON.parse(JSON.stringify(nested)));
-		expect(parseFinding(nested).message).not.toHaveProperty("markdown");
+		expect(Finding.parse(nested)).toEqual(JSON.parse(JSON.stringify(nested)));
+		expect(Finding.parse(nested).message).not.toHaveProperty("markdown");
 	});
 
 	it("takes its ID from the whole of a snippet over 2 KiB and stores it cut, so a reindent keeps the ID", () => {
 		const cells = Array.from({ length: 300 }, (_, index) => `"cell${index}"`);
 		const whole = `const table = [${cells.join(", ")}];`;
-		const finding = createFinding({ ...evalInput, snippet: whole });
+		const finding = Finding.create({ ...evalInput, snippet: whole });
 		const stored = finding.locations[0]!.physicalLocation.region.snippet!.text;
 		expect(finding.properties.id).toBe(findingId({ ...evalInput, snippet: whole }));
 		expect(stored).toBe(capSnippet(whole));
 		expect(Buffer.byteLength(stored)).toBeLessThanOrEqual(maxSnippetBytes);
-		expect(parseFinding(JSON.parse(JSON.stringify(finding)))).toEqual(finding);
-		const reindented = createFinding({ ...evalInput, snippet: `\t\t${whole.replaceAll(", ", ",\n\t\t\t")}` });
+		expect(Finding.parse(JSON.parse(JSON.stringify(finding)))).toEqual(finding);
+		const reindented = Finding.create({ ...evalInput, snippet: `\t\t${whole.replaceAll(", ", ",\n\t\t\t")}` });
 		expect(reindented.properties.id).toBe(finding.properties.id);
-		const changedPastTheCut = createFinding({ ...evalInput, snippet: whole.replace("cell299", "cell300") });
+		const changedPastTheCut = Finding.create({ ...evalInput, snippet: whole.replace("cell299", "cell300") });
 		expect(changedPastTheCut.locations[0]!.physicalLocation.region.snippet!.text).toBe(stored);
 		expect(changedPastTheCut.properties.id).not.toBe(finding.properties.id);
 	});
 
 	it("rejects an input the schema would not accept", () => {
-		expect(() => createFinding({ ...evalInput, startLine: 0 })).toThrow(FindingError);
-		expect(() => createFinding({ ...evalInput, confidence: 1.5 })).toThrow(FindingError);
+		expect(() => Finding.create({ ...evalInput, startLine: 0 })).toThrow(FindingError);
+		expect(() => Finding.create({ ...evalInput, confidence: 1.5 })).toThrow(FindingError);
 	});
 });
 
 describe("a findings log", () => {
-	const log = createFindingsLog([createFinding(evalInput), createFinding(minimalInput)]);
+	const log = FindingsLog.of([Finding.create(evalInput), Finding.create(minimalInput)]);
 
 	it("is valid SARIF 2.1.0", () => {
 		const [valid, errors] = Schema.Errors(sarifSchema, log);
@@ -436,15 +435,15 @@ describe("a findings log", () => {
 	it("keeps Melian's extensions through a JSON round trip", () => {
 		const parsed = JSON.parse(JSON.stringify(log)) as typeof log;
 		expect(parsed).toEqual(log);
-		const findings = parsed.runs[0]!.results.map(({ ruleIndex: _, ...finding }) => parseFinding(finding));
-		expect(findings).toEqual([createFinding(evalInput), createFinding(minimalInput)]);
+		const findings = parsed.runs[0]!.results.map(({ ruleIndex: _, ...finding }) => Finding.parse(finding));
+		expect(findings).toEqual([Finding.create(evalInput), Finding.create(minimalInput)]);
 	});
 
 	it("lists each rule once and points every result at its rule", () => {
-		const twice = createFindingsLog([
-			createFinding(evalInput),
-			createFinding(minimalInput),
-			createFinding(evalInput),
+		const twice = FindingsLog.of([
+			Finding.create(evalInput),
+			Finding.create(minimalInput),
+			Finding.create(evalInput),
 		]);
 		const [run] = twice.runs;
 		expect(run!.tool.driver.rules).toEqual([{ id: "no-eval" }, { id: "prefer-const" }]);
@@ -466,24 +465,25 @@ describe("a findings log", () => {
 		["non-ASCII", "src/café/naïve.ts", "src/caf%C3%A9/na%C3%AFve.ts"],
 		["a colon in the first segment", "c:/run.ts", "c%3A/run.ts"],
 	])("encodes a path with %s as a valid URI and keeps the raw path", (_, file, uri) => {
-		const finding = createFinding({ ...evalInput, file, trigger: undefined });
+		const finding = Finding.create({ ...evalInput, file, trigger: undefined });
 		const location = finding.locations[0]!.physicalLocation.artifactLocation;
 		expect(location.uri).toBe(uri);
 		expect(location.uri.split("/").map(decodeURIComponent).join("/")).toBe(file);
 		expect(finding.properties.path).toBe(file);
 		expect(finding.properties.id).toBe(findingId({ ...evalCall, file }));
-		expect(Schema.Errors(sarifSchema, createFindingsLog([finding]))[1]).toEqual([]);
+		expect(Schema.Errors(sarifSchema, FindingsLog.of([finding]))[1]).toEqual([]);
 	});
 
 	it("is not valid SARIF once an extension moves out of the property bag", () => {
-		const finding = createFinding(evalInput);
-		const moved = { ...finding, severity: finding.properties.severity };
-		expect(Schema.Check(sarifSchema, createFindingsLog([moved as Finding]))).toBe(false);
+		const finding = Finding.create(evalInput);
+		const log = FindingsLog.of([finding]).toJSON();
+		const results = log.runs[0].results.map((result) => ({ ...result, severity: finding.properties.severity }));
+		expect(Schema.Check(sarifSchema, { ...log, runs: [{ ...log.runs[0], results }] })).toBe(false);
 	});
 });
 
 describe("parseFinding", () => {
-	const finding = createFinding(evalInput);
+	const finding = Finding.create(evalInput);
 
 	it.each([
 		["absolute", "/etc/passwd"],
@@ -493,29 +493,29 @@ describe("parseFinding", () => {
 		["only dots", "./"],
 		["Windows-style", "src\\run.ts"],
 	])("refuses a path that is %s", (_, file) => {
-		expect(() => createFinding({ ...evalInput, file, trigger: undefined })).toThrow(
+		expect(() => Finding.create({ ...evalInput, file, trigger: undefined })).toThrow(
 			expect.objectContaining({ code: "invalidPath", path: "/properties/path" }),
 		);
 	});
 
 	it("refuses a trigger in a file outside the repository", () => {
 		const trigger = { ...evalInput.trigger!, file: "../run.ts" };
-		expect(() => createFinding({ ...evalInput, trigger })).toThrow(
+		expect(() => Finding.create({ ...evalInput, trigger })).toThrow(
 			expect.objectContaining({ code: "invalidPath", path: "/properties/trigger/file" }),
 		);
 	});
 
 	it("canonicalises a path, so one file has one ID", () => {
 		for (const file of ["./src/run.ts", "src//run.ts", "src/./run.ts", "src/run.ts/"]) {
-			const finding = createFinding({ ...evalInput, file, trigger: { ...evalInput.trigger!, file } });
+			const finding = Finding.create({ ...evalInput, file, trigger: { ...evalInput.trigger!, file } });
 			expect(finding.properties.path).toBe("src/run.ts");
 			expect(finding.properties.trigger?.file).toBe("src/run.ts");
-			expect(finding.properties.id).toBe(createFinding(evalInput).properties.id);
+			expect(finding.properties.id).toBe(Finding.create(evalInput).properties.id);
 		}
 	});
 
 	it("refuses a stored path that is not canonical", () => {
-		const finding = createFinding(evalInput);
+		const finding = Finding.create(evalInput);
 		const value = { ...finding, properties: { ...finding.properties, path: "./src/run.ts" } };
 		expect(rejection(value).code).toBe("invalidPath");
 	});
@@ -564,12 +564,12 @@ describe("parseFinding", () => {
 		const evidence = [
 			{ file: "src/api.ts", startLine: 3, role: "cause" as const, revision: "head" as const, snippet: "rename(id)" },
 		];
-		const affected = createFinding({ ...evalInput, cause: "affected", evidence });
+		const affected = Finding.create({ ...evalInput, cause: "affected", evidence });
 		const { evidence: _, ...bare } = affected.properties;
 		expect(rejection({ ...affected, properties: bare }).code).toBe("missingEvidence");
-		expect(parseFinding({ ...finding, properties: { ...finding.properties, evidence } }).properties.evidence).toEqual(
-			evidence,
-		);
+		expect(
+			Finding.parse({ ...finding, properties: { ...finding.properties, evidence } }).properties.evidence,
+		).toEqual(evidence);
 		const empty = rejection({ ...finding, properties: { ...finding.properties, evidence: [] } });
 		expect(empty.code).toBe("invalidFinding");
 		expect(empty.path).toBe("/properties/evidence");
@@ -605,17 +605,17 @@ describe("upgradeStoredFinding", () => {
 		const evidence = [
 			{ file: "src/api.ts", startLine: 3, role: "cause" as const, revision: "head" as const, snippet: "rename(id)" },
 		];
-		const current = createFinding({ ...evalInput, cause: "affected", evidence });
+		const current = Finding.create({ ...evalInput, cause: "affected", evidence });
 		const { role: _, revision: __, ...old } = evidence[0]!;
 		const stored = { ...current, properties: { ...current.properties, evidence: old } };
-		expect(upgradeStoredFinding(stored)).toEqual(current);
-		expect(parseFinding(upgradeStoredFinding(stored))).toEqual(current);
+		expect(Finding.upgrade(stored)).toEqual(current);
+		expect(Finding.parse(Finding.upgrade(stored))).toEqual(current);
 	});
 
 	it("leaves a finding without evidence, or with a list, as it is", () => {
-		const plain = createFinding(evalInput);
-		expect(upgradeStoredFinding(plain)).toBe(plain);
-		expect(upgradeStoredFinding(plain).properties).not.toHaveProperty("failureScenario");
+		const plain = Finding.create(evalInput);
+		expect(Finding.upgrade(plain)).toBe(plain);
+		expect(Finding.upgrade(plain).properties).not.toHaveProperty("failureScenario");
 		const evidence = [
 			{
 				file: "src/run.ts",
@@ -625,7 +625,7 @@ describe("upgradeStoredFinding", () => {
 				snippet: "eval(input)",
 			},
 		];
-		const listed = createFinding({ ...evalInput, evidence });
-		expect(upgradeStoredFinding(listed)).toBe(listed);
+		const listed = Finding.create({ ...evalInput, evidence });
+		expect(Finding.upgrade(listed)).toBe(listed);
 	});
 });

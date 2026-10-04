@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import {
 	type Changeset,
-	createFindingsLog,
+	FindingsLog,
 	loadConfig,
 	loadLenses,
 	loadStandards,
@@ -229,7 +229,7 @@ export async function findings(
 			io.stdout(options.json ? renderVerdictJson(verdict) : renderFindingsTerminal(verdict, render));
 			return 0;
 		}
-		const open = createFindingsLog([
+		const open = FindingsLog.of([
 			...verdict.findings.block,
 			...verdict.findings.acknowledge,
 			...verdict.findings.advisory,

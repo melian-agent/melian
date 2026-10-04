@@ -2,10 +2,9 @@ import {
 	adjudicate,
 	type ChangedFile,
 	type CheckRecord,
-	createFinding,
 	defaultConfig,
 	diffLines,
-	type Finding,
+	Finding,
 	type FindingInput,
 	placeFinding,
 	planPublication,
@@ -16,7 +15,7 @@ import { describe, expect, it } from "vitest";
 import { evalInput } from "./fixtures/findings.ts";
 
 const finding = (input: Partial<FindingInput>): Finding =>
-	createFinding({ ...evalInput, trigger: undefined, startColumn: undefined, endColumn: undefined, ...input });
+	Finding.create({ ...evalInput, trigger: undefined, startColumn: undefined, endColumn: undefined, ...input });
 
 const hunk = (file: string, index: number, newStart: number, newLines: number) => ({
 	file,
@@ -133,10 +132,8 @@ describe("planPublication", () => {
 
 	it("resolves an open finding that was dismissed, with its dismissal, and never posts a dismissed one", () => {
 		const dismissal = { by: "Tal <tal@melian.invalid>", reason: "Constant input.", at: "2026-10-04T00:00:00Z" };
-		const as = (each: Finding): Finding => ({
-			...each,
-			properties: { ...each.properties, status: "dismissed", dismissal },
-		});
+		const as = (each: Finding): Finding =>
+			Finding.from({ ...each.toJSON(), properties: { ...each.properties, status: "dismissed", dismissal } });
 		const plan = planPublication(
 			verdictOf([as(fixed), as(fresh)]),
 			{ [fixed.properties.id]: posted("102") },
@@ -160,7 +157,8 @@ describe("planPublication", () => {
 			source: { check: "lens.contracts" },
 		});
 		const dismissed = [fixed, member].map(
-			(each): Finding => ({ ...each, properties: { ...each.properties, status: "dismissed", dismissal } }),
+			(each): Finding =>
+				Finding.from({ ...each.toJSON(), properties: { ...each.properties, status: "dismissed", dismissal } }),
 		);
 		const verdict = verdictOf(dismissed);
 		expect(verdict.dismissed.map((each) => each.properties.id)).toEqual([fixed.properties.id]);
@@ -183,8 +181,14 @@ describe("planPublication", () => {
 			source: { check: "lens.contracts" },
 		});
 		const dismissed = [
-			{ ...fixed, properties: { ...fixed.properties, status: "dismissed" as const, dismissal: later } },
-			{ ...member, properties: { ...member.properties, status: "dismissed" as const, dismissal: own } },
+			Finding.from({
+				...fixed.toJSON(),
+				properties: { ...fixed.properties, status: "dismissed", dismissal: later },
+			}),
+			Finding.from({
+				...member.toJSON(),
+				properties: { ...member.properties, status: "dismissed", dismissal: own },
+			}),
 		];
 		const verdict = verdictOf(dismissed);
 		expect(verdict.dismissed.map((each) => each.properties.id)).toEqual([fixed.properties.id]);

@@ -3,7 +3,7 @@ import {
 	type Changeset,
 	diffLines,
 	dismissalVersion,
-	type Finding,
+	Finding,
 	type FindingDismissal,
 	type Placement,
 	type PostedReview,
@@ -14,7 +14,7 @@ import {
 	type ReviewStatus,
 	replyKey,
 	reviewStatus,
-	upgradeStoredFinding,
+	type StoredFinding,
 	type Verdict,
 } from "@melian-agent/core";
 import {
@@ -26,6 +26,7 @@ import {
 	upgradeStoredVerdict,
 	VerdictDocument,
 	type VerdictProvenance,
+	verdictOf,
 } from "./adjudication.ts";
 import { PublishError } from "./errors.ts";
 import { findingsVersion, revisionKey } from "./findings.ts";
@@ -48,7 +49,7 @@ import { ReviewIndex } from "./review-index.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
 // `dismissal` is set on a finding resolved because someone dismissed it, so its reply says why.
-type StoredFinding = {
+type PublishedEntry = {
 	ruleId: string;
 	path: string;
 	line: number;
@@ -66,10 +67,10 @@ type PendingRound = {
 	round: number;
 	fingerprint: string;
 	verdict: StoredVerdict;
-	post: { finding: Finding; placement: Placement }[];
+	post: { finding: StoredFinding; placement: Placement }[];
 	stillOpen: number;
-	open: Record<string, StoredFinding>;
-	resolved: Record<string, StoredFinding>;
+	open: Record<string, PublishedEntry>;
+	resolved: Record<string, PublishedEntry>;
 	// How many times the provider refused to post it.
 	refusals: number;
 };
@@ -91,8 +92,8 @@ type StoredRevision = {
 	rounds?: number;
 	pending?: PendingRound;
 	abandoned?: AbandonedRound[];
-	open: Record<string, StoredFinding>;
-	resolved: Record<string, StoredFinding>;
+	open: Record<string, PublishedEntry>;
+	resolved: Record<string, PublishedEntry>;
 	// Each reply by `replyKey` of the finding, its thread, and the dismissal it gave, if any; null when the thread was
 	// gone and there was nothing to reply to.
 	replies: Record<string, string | null>;
@@ -106,13 +107,13 @@ function unpublished(): StoredRevision {
 }
 
 // The key a reply to `entry`, resolved or dismissed, is recorded under.
-function replyKeyOf(id: string, entry: StoredFinding & { thread: string }): string {
+function replyKeyOf(id: string, entry: PublishedEntry & { thread: string }): string {
 	return replyKey(id, entry.thread, entry.dismissal === undefined ? undefined : dismissalVersion(entry.dismissal));
 }
 
 // A round left pending before evidence became a list, with each finding in the current shape.
 function upgradePending(pending: PendingRound): PendingRound {
-	const post = pending.post.map((each) => ({ ...each, finding: upgradeStoredFinding(each.finding) }));
+	const post = pending.post.map((each) => ({ ...each, finding: Finding.upgrade(each.finding) }));
 	return { ...pending, verdict: upgradeStoredVerdict(pending.verdict), post };
 }
 
@@ -169,12 +170,12 @@ export const PublisherDocument = defineDoc<{ secret?: string; target?: PublishTa
 // reason changed by a second dismissal is answered in the finding's thread, and a review saying nothing new would only
 // repeat the last one. A verdict without them hashes as it always has.
 export function fingerprint(verdict: Verdict): string {
-	const bare = (finding: Finding): Finding => {
+	const bare = (finding: Finding): StoredFinding => {
 		const { dismissal: _, pastDismissals: __, ...properties } = finding.properties;
 		const { alsoReportedAs } = properties;
-		if (alsoReportedAs === undefined) return { ...finding, properties };
+		if (alsoReportedAs === undefined) return { ...finding.toJSON(), properties };
 		const reports = alsoReportedAs.map(({ dismissal: ___, ...report }) => report);
-		return { ...finding, properties: { ...properties, alsoReportedAs: reports } };
+		return { ...finding.toJSON(), properties: { ...properties, alsoReportedAs: reports } };
 	};
 	const findings = Object.fromEntries(
 		Object.entries(verdict.findings).map(([resolution, group]) => [resolution, group.map(bare)]),
@@ -200,7 +201,7 @@ export function legacyFingerprint(verdict: Verdict): string | undefined {
 		const [location] = finding.properties.evidence ?? [];
 		if (location === undefined) return finding;
 		const { role: _, revision: __, ...old } = location;
-		return { ...finding, properties: { ...finding.properties, evidence: old } };
+		return { ...finding.toJSON(), properties: { ...finding.properties, evidence: old } };
 	};
 	const groups = Object.fromEntries(
 		Object.entries(verdict.findings).map(([resolution, group]) => [resolution, group.map(downgrade)]),
@@ -227,7 +228,8 @@ async function postedVerdictOf(
 	const verdicts = (await reader.snapshot(VerdictDocument, root, context))?.verdicts ?? {};
 	return !Object.entries(verdicts).some(([other, verdict]) => {
 		if (other === revision || !other.endsWith(`..${head}`)) return false;
-		return [fingerprint(verdict), legacyFingerprint(verdict)].includes(record.verdict);
+		const decided = verdictOf(verdict);
+		return [fingerprint(decided), legacyFingerprint(decided)].includes(record.verdict);
 	});
 }
 
@@ -238,9 +240,9 @@ function repliedKeys(state: PublishedState): Set<string> {
 
 // Resolutions an earlier head decided but never replied to, because a later push arrived first. They are still owed.
 // The caller carries each as its reply would read now, and skips one whose reply is recorded already.
-function unanswered(state: PublishedState, head: string): Record<string, StoredFinding & { thread: string }> {
+function unanswered(state: PublishedState, head: string): Record<string, PublishedEntry & { thread: string }> {
 	const answered = repliedKeys(state);
-	const owed: Record<string, StoredFinding & { thread: string }> = {};
+	const owed: Record<string, PublishedEntry & { thread: string }> = {};
 	for (const each of state.order) {
 		if (each === head) continue;
 		for (const [id, entry] of Object.entries(state.revisions[each]!.resolved)) {
@@ -259,10 +261,10 @@ function redismissed(
 	state: PublishedState,
 	head: string,
 	dismissals: Readonly<Record<string, FindingDismissal>>,
-): Record<string, StoredFinding> {
+): Record<string, PublishedEntry> {
 	const answered = repliedKeys(state);
 	const planned = state.revisions[head]?.resolved ?? {};
-	const again: Record<string, StoredFinding> = {};
+	const again: Record<string, PublishedEntry> = {};
 	for (const [id, dismissal] of Object.entries(dismissals)) {
 		const latest = state.order.findLast((each) => {
 			const record = state.revisions[each]!;
@@ -296,7 +298,7 @@ function planRound(
 	const previous = state.order.filter((each) => each !== head && postedAt(each)).at(-1);
 	const base = own?.open ?? (previous === undefined ? {} : state.revisions[previous]!.open);
 	const plan = planPublication(verdict, base, lines, head);
-	const resolved: Record<string, StoredFinding> = Object.fromEntries(
+	const resolved: Record<string, PublishedEntry> = Object.fromEntries(
 		plan.resolved.map(({ id, ...entry }) => [id, structuredClone(entry)]),
 	);
 	if (own === undefined) {
@@ -325,7 +327,7 @@ function planRound(
 		revision,
 		round: (state.revisions[head]?.rounds ?? 0) + 1,
 		fingerprint: fingerprint(verdict),
-		verdict: structuredClone(verdict) as StoredVerdict,
+		verdict: structuredClone(verdict) as unknown as StoredVerdict,
 		post: structuredClone(plan.post.map(({ finding, placement }) => ({ finding, placement }))),
 		stillOpen: plan.stillOpen.length,
 		open: Object.fromEntries(Object.entries(plan.open).map(([id, entry]) => [id, { ...entry }])),
@@ -512,8 +514,11 @@ function publishTask(provider: ReviewProvider) {
 								base,
 								fingerprint: pending.fingerprint,
 								round: pending.round,
-								verdict: pending.verdict,
-								findings: pending.post,
+								verdict: verdictOf(pending.verdict),
+								findings: pending.post.map(({ finding, placement }) => ({
+									finding: Finding.from(finding),
+									placement,
+								})),
 								stillOpen: pending.stillOpen,
 								resolved: Object.entries(pending.resolved)
 									.filter(([, entry]) => entry.thread === undefined)
@@ -527,7 +532,7 @@ function publishTask(provider: ReviewProvider) {
 							result.recovered++;
 						}
 						const open = Object.fromEntries(
-							Object.entries(pending.open).map(([id, entry]): [string, StoredFinding] => {
+							Object.entries(pending.open).map(([id, entry]): [string, PublishedEntry] => {
 								const thread = entry.thread ?? (entry.revision === head ? posted.threads[id] : undefined);
 								return [id, { ...entry, ...(thread === undefined ? {} : { thread }) }];
 							}),

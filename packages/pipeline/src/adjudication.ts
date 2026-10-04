@@ -5,7 +5,7 @@ import {
 	ConfigError,
 	type ConfigFor,
 	configLookup,
-	type Finding,
+	Finding,
 	type FindingSource,
 	loadConfig,
 	type MelianConfig,
@@ -14,7 +14,7 @@ import {
 	type ResolvedFinding,
 	type ScrutinyLevel,
 	type Severity,
-	upgradeStoredFinding,
+	type StoredFinding,
 	type Verdict,
 	type VerdictStatus,
 } from "@melian-agent/core";
@@ -38,8 +38,8 @@ type StoredCheck = {
 export type StoredVerdict = {
 	status: VerdictStatus;
 	blocking: boolean;
-	findings: Record<Resolution, ResolvedFinding[]>;
-	dismissed: ResolvedFinding[];
+	findings: Record<Resolution, StoredFinding[]>;
+	dismissed: StoredFinding[];
 	notRun: StoredCheck[];
 	// Absent from a verdict recorded before Melian kept the checks that ran.
 	ran?: StoredCheck[];
@@ -48,9 +48,21 @@ export type StoredVerdict = {
 // A verdict recorded before evidence became a list, with each finding in the current shape.
 export function upgradeStoredVerdict(verdict: StoredVerdict): StoredVerdict {
 	const findings = Object.fromEntries(
-		Object.entries(verdict.findings).map(([resolution, group]) => [resolution, group.map(upgradeStoredFinding)]),
+		Object.entries(verdict.findings).map(([resolution, group]) => [
+			resolution,
+			group.map((finding) => Finding.upgrade(finding)),
+		]),
 	) as StoredVerdict["findings"];
-	return { ...verdict, findings, dismissed: verdict.dismissed.map(upgradeStoredFinding) };
+	return { ...verdict, findings, dismissed: verdict.dismissed.map((finding) => Finding.upgrade(finding)) };
+}
+
+// The verdict a stored one describes, its findings as Finding objects.
+export function verdictOf(stored: StoredVerdict): Verdict {
+	const resolved = (finding: StoredFinding) => Finding.from(finding) as ResolvedFinding;
+	const findings = Object.fromEntries(
+		Object.entries(stored.findings).map(([resolution, group]) => [resolution, group.map(resolved)]),
+	) as Record<Resolution, ResolvedFinding[]>;
+	return { ...stored, findings, dismissed: stored.dismissed.map(resolved) };
 }
 
 /**
@@ -204,7 +216,7 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 					return { status: "terminal", outcome: { status: "completed", result: "superseded" } };
 				}
 				const document = await tx.doc(VerdictDocument, root);
-				document.verdicts[revision] = structuredClone(verdict) as StoredVerdict;
+				document.verdicts[revision] = structuredClone(verdict) as unknown as StoredVerdict;
 				document.provenance = { ...document.provenance, [revision]: structuredClone(task.input.provenance) };
 				document.decisions = { ...document.decisions, [revision]: { task: runtime.taskId, findingsVersion: seen } };
 				return { status: "terminal", outcome: { status: "completed", result: "recorded" } };
@@ -310,5 +322,5 @@ export async function readVerdict(
 ): Promise<Verdict | undefined> {
 	const document = await reader.snapshot(VerdictDocument, rootConversationId, context);
 	if (document === undefined || !Object.hasOwn(document.verdicts, revision)) return undefined;
-	return structuredClone(document.verdicts[revision]);
+	return verdictOf(structuredClone(document.verdicts[revision]!));
 }

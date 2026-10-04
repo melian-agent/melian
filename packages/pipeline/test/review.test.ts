@@ -3,9 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
 	type CheckRecord,
-	createFinding,
 	defaultConfig,
-	type Finding,
+	Finding,
 	type Lens,
 	type LensBudget,
 	loadLenses,
@@ -2093,7 +2092,7 @@ describe("adjudication", () => {
 		it("counts a static tool's stored sighting, merged with a lens's report of the same line", async () => {
 			const ran: CheckRecord = { name: "static.biome", status: "ran", version: "2.2.0" };
 			const root = await harness.root(context);
-			const atHead = createFinding(staticFinding);
+			const atHead = Finding.create(staticFinding);
 			await root.commit((tx) => upsertFinding(tx, root.id, atHead, reviewedRevision()), context);
 			scriptConversations(fake, [
 				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
@@ -2113,7 +2112,7 @@ describe("adjudication", () => {
 
 		it("leaves out a static tool's sighting from another version than its record names", async () => {
 			const root = await harness.root(context);
-			const stale = createFinding({
+			const stale = Finding.create({
 				...staticFinding,
 				source: { check: "static.biome", version: "1.0.0" },
 			});
@@ -2594,7 +2593,7 @@ describe("code over 2 KiB, which a finding stores cut", () => {
 	// A lens finding as a Melian before the cut built it: every snippet whole.
 	function wholeFinding(file: string, line: number, snippet: string, added: string): Finding {
 		const [correctnessLens] = lenses.filter((lens) => lens.name === "correctness");
-		const finding = createFinding({
+		const finding = Finding.create({
 			rule: nullDeref.rule,
 			message: nullDeref.explanation.what,
 			file,
@@ -2613,7 +2612,10 @@ describe("code over 2 KiB, which a finding stores cut", () => {
 		});
 		const [location] = finding.locations;
 		const region = { ...location.physicalLocation.region, snippet: { text: snippet } };
-		return { ...finding, locations: [{ physicalLocation: { ...location.physicalLocation, region } }] };
+		return Finding.from({
+			...finding.toJSON(),
+			locations: [{ physicalLocation: { ...location.physicalLocation, region } }],
+		});
 	}
 
 	it("keeps a dismissal stored with a whole trigger over 2 KiB when the same hunk is sighted again", async () => {

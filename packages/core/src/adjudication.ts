@@ -3,7 +3,7 @@ import type { MelianConfig, Resolution, RuleAlias, Severity } from "./config.ts"
 import {
 	type AlsoReportedAs,
 	type EvidenceLocation,
-	type Finding,
+	Finding,
 	type FindingEvidence,
 	type FindingProperties,
 	levelForSeverity,
@@ -64,7 +64,10 @@ export function resolveFinding(finding: Finding, config: Pick<MelianConfig, "res
 export function applyResolutions(findings: readonly Finding[], configFor: ConfigFor): ResolvedFinding[] {
 	return findings.map((finding) => {
 		const resolution = resolveFinding(finding, configFor(finding.properties.path, finding.ruleId));
-		return { ...finding, properties: { ...finding.properties, resolution } };
+		return Finding.from({
+			...finding.toJSON(),
+			properties: { ...finding.properties, resolution },
+		}) as ResolvedFinding;
 	});
 }
 
@@ -240,11 +243,11 @@ export function mergeClaims(
 function speakFor(keeper: Finding, defect: readonly Finding[], alsoReportedAs: AlsoReportedAs[]): Finding {
 	const severity = [...defect].sort(strongerFirst)[0]!.properties.severity;
 	const { evidence: _, failureScenario: __, otherClaims: ___, ...properties } = keeper.properties;
-	return {
-		...keeper,
+	return Finding.from({
+		...keeper.toJSON(),
 		level: levelForSeverity(severity),
 		properties: { ...properties, ...mergeClaims(keeper, defect), severity, alsoReportedAs },
-	};
+	});
 }
 
 /**

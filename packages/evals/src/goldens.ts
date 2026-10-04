@@ -5,10 +5,10 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
 	causeSchema,
-	createFindingsLog,
 	evidenceRevisionSchema,
 	evidenceRoleSchema,
 	type Finding,
+	FindingsLog,
 	type LensTier,
 	loadConfig,
 	loadLenses,
@@ -283,7 +283,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 		try {
 			const review = { harness, changeset, config, lenses, standards, models, policy: source };
 			const { findings } = await reviewChangeset(review);
-			const rendered = renderFindingsTerminal(createFindingsLog([...findings]));
+			const rendered = renderFindingsTerminal(FindingsLog.of([...findings]));
 			return { golden, findings, rendered, toolMismatches };
 		} finally {
 			await reviewHarness.close(backgroundContext);

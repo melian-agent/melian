@@ -1,7 +1,7 @@
 import {
 	type Cause,
 	dismissalReason,
-	type Finding,
+	Finding,
 	type FindingDismissal,
 	FindingError,
 	type FindingProperties,
@@ -11,10 +11,9 @@ import {
 	mergeClaims,
 	type PastDismissal,
 	type ProvingHunk,
-	parseFinding,
 	type Severity,
+	type StoredFinding,
 	snippetHash,
-	upgradeStoredFinding,
 } from "@melian-agent/core";
 import { type Context, type ConversationId, defineDoc, type Harness, type Tx } from "./harness.ts";
 
@@ -50,7 +49,7 @@ type FindingLifecycle = {
 export type Dismissal = FindingDismissal;
 
 // Status and dismissals are Melian's lifecycle, never a producer's, so a sighting stores none of them.
-type ProducerFinding = Omit<Finding, "properties"> & {
+type ProducerFinding = Omit<StoredFinding, "properties"> & {
 	properties: Omit<FindingProperties, "status" | "reportedBy" | "dismissal" | "pastDismissals">;
 };
 
@@ -81,10 +80,7 @@ export const FindingsDocument = defineDoc<FindingsState>({
 					Object.entries(record.sightings).map(([revision, byProducer]) => [
 						revision,
 						Object.fromEntries(
-							Object.entries(byProducer).map(([producer, sighting]) => [
-								producer,
-								upgradeStoredFinding(sighting),
-							]),
+							Object.entries(byProducer).map(([producer, sighting]) => [producer, Finding.upgrade(sighting)]),
 						),
 					]),
 				);
@@ -202,7 +198,7 @@ export async function upsertFinding(
 	revision: string,
 	hunks?: readonly ProvingHunk[],
 ): Promise<void> {
-	const valid = parseFinding(finding);
+	const valid = Finding.parse(finding).toJSON();
 	const { status: _, reportedBy: __, dismissal: ___, pastDismissals: ____, ...properties } = valid.properties;
 	const producer: ProducerFinding = { ...valid, properties };
 	const proved = proofOf(properties.cause, properties.trigger);
@@ -443,6 +439,6 @@ export async function readFindings(
 			if (Object.keys(atHead).length === 0) return [];
 			const { winner, reportedBy } = adjudicate(atHead);
 			const properties = { ...winner.properties, status: lifecycle.status, ...dismissalsOf(lifecycle), reportedBy };
-			return [structuredClone({ ...winner, properties })];
+			return [Finding.from(structuredClone({ ...winner, properties }))];
 		});
 }

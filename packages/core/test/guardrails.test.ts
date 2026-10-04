@@ -1,11 +1,4 @@
-import {
-	adjudicate,
-	ConfigError,
-	evaluateGuardrails,
-	type Finding,
-	loadConfig,
-	resolveRange,
-} from "@melian-agent/core";
+import { adjudicate, ConfigError, evaluateGuardrails, Finding, loadConfig, resolveRange } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	gitIn,
@@ -630,8 +623,8 @@ describe("policy-change-review", () => {
 		const [location] = notice.locations;
 		const region = { ...location!.physicalLocation.region, snippet: { text: "resolution:" } };
 		// Sorts first, so were the two merged it would speak for them, and its rule would escape the acknowledge floor.
-		const lens: Finding = {
-			...notice,
+		const lens = Finding.from({
+			...notice.toJSON(),
 			ruleId: "lens.correctness/wrong-result",
 			locations: [{ ...location!, physicalLocation: { ...location!.physicalLocation, region } }],
 			properties: {
@@ -640,7 +633,7 @@ describe("policy-change-review", () => {
 				occurrence: 0,
 				source: { check: "lens.correctness" },
 			},
-		};
+		});
 
 		const verdict = adjudicate({
 			findings: [notice, lens],
