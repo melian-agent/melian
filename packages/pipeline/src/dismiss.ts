@@ -56,10 +56,25 @@ export class DismissHarness {
 	}
 }
 
-// Whether a finding of a verdict is `id`, or speaks for it after adjudication merged the two as one defect.
-function names(id: string): (finding: Finding) => boolean {
-	return (finding) =>
-		finding.properties.id === id || (finding.properties.alsoReportedAs ?? []).some((other) => other.id === id);
+// The finding of `verdict` that `id` names, and the reports dismissing it dismisses: the finding with that ID, else the
+// one adjudication merged it into. A live finding's `alsoReportedAs` also lists the dismissed reports of its defect,
+// which it never absorbed, so they neither lead to it nor are dismissed with it.
+function named(verdict: Verdict, id: string): { finding: Finding; members: string[] } | undefined {
+	const dismissed = new Set(
+		verdict.dismissed.flatMap((each) => [
+			each.properties.id,
+			...(each.properties.alsoReportedAs ?? []).map((other) => other.id),
+		]),
+	);
+	const membersOf = (finding: Finding) => {
+		const reports = (finding.properties.alsoReportedAs ?? []).map((other) => other.id);
+		const merged =
+			finding.properties.status === "dismissed" ? reports : reports.filter((each) => !dismissed.has(each));
+		return [finding.properties.id, ...merged];
+	};
+	const all = [...Object.values(verdict.findings).flat(), ...verdict.dismissed];
+	const finding = all.find((each) => each.properties.id === id) ?? all.find((each) => membersOf(each).includes(id));
+	return finding === undefined ? undefined : { finding, members: membersOf(finding) };
 }
 
 /** What {@link recordDismissal} dismisses. */
@@ -111,14 +126,13 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 	const again = "run melian review again";
 	const stored = await readVerdict(harness, root.id, revision, context);
 	if (stored === undefined) throw new DismissError("notReviewed", `Melian has no review of ${revision}`, where);
-	const all = [...Object.values(stored.findings).flat(), ...stored.dismissed];
-	const shown = all.find(names(id));
-	if (shown === undefined) {
+	const found = named(stored, id);
+	if (found === undefined) {
 		throw new DismissError("unknownFinding", `the review of ${revision} has no finding ${id}`, where);
 	}
 	// The finding as the verdict shows it: its own report and every report adjudication merged into it, so dismissing
 	// one defect never leaves another check's report of it live.
-	const members = [shown.properties.id, ...(shown.properties.alsoReportedAs ?? []).map((other) => other.id)];
+	const { finding: shown, members } = found;
 	const { replaced, also, task } = await root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const entry = index.reviews[revision];
@@ -170,8 +184,13 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 	}
 	const { outcome } = (await harness.waitForTask(task, context)).state;
 	const verdict = await readVerdict(harness, root.id, revision, context);
-	const finding = verdict?.dismissed.find(names(id));
-	if (outcome.status !== "completed" || outcome.result !== "recorded" || verdict === undefined || !finding) {
+	const finding = verdict === undefined ? undefined : named(verdict, id)?.finding;
+	if (
+		outcome.status !== "completed" ||
+		outcome.result !== "recorded" ||
+		finding?.properties.status !== "dismissed" ||
+		verdict === undefined
+	) {
 		const why = outcome.status === "failed" ? `: ${outcome.error.message}` : "";
 		throw new DismissError(
 			"adjudicationFailed",

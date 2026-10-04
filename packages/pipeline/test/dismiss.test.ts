@@ -280,6 +280,32 @@ describe("recording a dismissal", () => {
 		expect(recorded.verdict.dismissed[0]!.properties.alsoReportedAs!.map((other) => other.id)).toEqual(others);
 	});
 
+	it("dismisses again only the report an ID names, never a live finding that lists it as dismissed context", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		const changedReturn = { ...nullDeref, rule: "changed-return", severity: "P2" };
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [report(changedReturn), fauxAssistantMessage("Done.")] },
+		]);
+		const old = (await reviewed(harness)).findings[0]!.properties.id;
+		await dismiss(harness, old);
+		push("boss", unsafe, { "src/other.ts": "export const other = 1;\n" });
+		scriptFinding(true);
+		const { verdict: before } = await reviewed(harness);
+		const [live] = before.findings.block;
+		expect(live).toMatchObject({ ruleId: "null-dereference", properties: { severity: "P1", status: "new" } });
+		expect(live!.properties.alsoReportedAs!.map((other) => other.id)).toEqual([old]);
+		const later = { ...dismissal, reason: "Contracts never promised a manager.", at: "2026-10-04T02:00:00Z" };
+
+		const recorded = await dismiss(harness, old, later);
+
+		expect(recorded.finding.properties).toMatchObject({ id: old, dismissal: later });
+		expect(recorded.also).toEqual([]);
+		expect(recorded.verdict).toMatchObject({ status: "findings", blocking: true });
+		expect(recorded.verdict.findings.block.map((each) => each.properties.id)).toEqual([live!.properties.id]);
+		expect(recorded.verdict.dismissed.map((each) => each.properties.id)).toEqual([old]);
+	});
+
 	it("waits for its own adjudication when the same dismissal is recorded again, adding no history", async () => {
 		const harness = await reviewHarness(createMemoryStorage());
 		scriptFinding();
