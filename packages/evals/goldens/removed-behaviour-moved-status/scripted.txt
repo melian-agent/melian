@@ -1,0 +1,24 @@
+src/publish.ts
+
+  P1  line 9  moved-code-lost-anchor  (introduced, new, unresolved)
+  publish sets the status only after postReview resolves, so any refusal of the review leaves the head without one.
+    What: publish sets the status only after postReview resolves, so any refusal of the review leaves the head without one.
+    Why here: This change moved the setStatus call from before postReview into finish, after it, and deleted the comment saying why it went first.
+    Failure scenario: GitHub refuses postReview with a 422 for a comment outside the diff. publish rejects before finish runs, publishStored prints "publish failed", and the head carries no status at all, so a branch rule that requires it waits on that head. The base set failure or success first, whatever happened to the review.
+    Evidence:
+      cause: src/publish.ts:6-8 at base
+        /** Publishes a review of `head`. The status goes first, so the head carries one even when the review is refused. */
+        export async function publish(client: Client, head: string, blocking: boolean, body: string): Promise<void> {
+          await client.setStatus(head, blocking ? "failure" : "success", blocking ? "Findings block the merge" : "Nothing blocks");
+      context: src/publish.ts:8-9
+          await client.postReview(head, body);
+          await finish(client, head, blocking);
+      context: src/main.ts:6-10
+            await publish(client, head, blocking, body);
+            return 0;
+          } catch (error) {
+            console.error(`publish failed: ${error instanceof Error ? error.message : String(error)}; run it again`);
+            return 1;
+    What to do: Call finish before postReview, as the base set the status first.
+
+1 finding in 1 file.

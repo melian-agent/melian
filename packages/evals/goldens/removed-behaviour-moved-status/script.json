@@ -1,0 +1,86 @@
+{
+  "correctness": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "trust-boundary": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "removed-behaviour": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/publish.ts",
+            "revision": "base"
+          },
+          "expectToolResult": "The status goes first"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/main.ts"
+          },
+          "expectToolResult": "publish failed"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "src/publish.ts",
+            "line": 9,
+            "rule": "moved-code-lost-anchor",
+            "severity": "P1",
+            "explanation": {
+              "what": "publish sets the status only after postReview resolves, so any refusal of the review leaves the head without one.",
+              "why": "This change moved the setStatus call from before postReview into finish, after it, and deleted the comment saying why it went first.",
+              "fix": "Call finish before postReview, as the base set the status first."
+            },
+            "failureScenario": "GitHub refuses postReview with a 422 for a comment outside the diff. publish rejects before finish runs, publishStored prints \"publish failed\", and the head carries no status at all, so a branch rule that requires it waits on that head. The base set failure or success first, whatever happened to the review.",
+            "evidence": [
+              {
+                "file": "src/publish.ts",
+                "line": 6,
+                "endLine": 8,
+                "role": "cause",
+                "revision": "base"
+              },
+              {
+                "file": "src/publish.ts",
+                "line": 8,
+                "endLine": 9,
+                "role": "context"
+              },
+              {
+                "file": "src/main.ts",
+                "line": 6,
+                "endLine": 10,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "as introduced"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ]
+}

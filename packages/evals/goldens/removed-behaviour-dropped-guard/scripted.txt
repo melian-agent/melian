@@ -1,0 +1,19 @@
+src/config-files.ts
+
+  P1  line 12  dropped-guard  (introduced, new, unresolved)
+  configFiles stops only when dir equals root, so any start that is not beneath root as spelled walks to the top and spins there.
+    What: configFiles stops only when dir equals root, so any start that is not beneath root as spelled walks to the top and spins there.
+    Why here: This change deleted the guard that broke the loop when dirname returned the directory itself.
+    Failure scenario: melian-config ./repo src/a.ts calls configFiles("./repo", "repo/src"). dir never equals "./repo": it walks to "repo", then ".", and dirname(".") is ".", so the loop never ends, and with a config.json in the working directory it pushes ./config.json until the heap runs out. The base stopped once the parent equalled the directory.
+    Evidence:
+      cause: src/config-files.ts:12-13 at base
+            const parent = dirname(dir);
+            if (parent === dir) break;
+      context: src/config-files.ts:11-12
+            if (dir === root) break;
+            dir = dirname(dir);
+      context: src/cli.ts:6
+        for (const found of configFiles(root, dirname(join(root, file)))) console.log(found);
+    What to do: Restore the check: compute the parent, and break when it equals dir.
+
+1 finding in 1 file.

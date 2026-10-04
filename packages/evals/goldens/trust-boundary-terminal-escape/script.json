@@ -73,5 +73,10 @@
     {
       "text": "Reported 1 finding."
     }
+  ],
+  "removed-behaviour": [
+    {
+      "text": "Reported 0 findings."
+    }
   ]
 }

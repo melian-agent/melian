@@ -1,0 +1,35 @@
+{
+  "pr_title": "Tidy the standards reader",
+  "comments": [
+    {
+      "comment": "The change deleted the rethrow for every read failure but a missing file, so an unreadable AGENTS.md reads as no standards and the review runs without them.",
+      "severity": "Medium",
+      "category": "bug",
+      "file": "src/standards.ts",
+      "rule": "dropped-error-path",
+      "cause": "introduced",
+      "failureScenario": "A repository's AGENTS.md is a directory, or a file with mode 000. readFileSync throws EISDIR or EACCES, readStandards now returns undefined, and instructions tells the reviewer \"This repository has written no standards.\", so the review ignores them without a word. The base rethrew anything but ENOENT, and the review failed.",
+      "evidence": [
+        {
+          "file": "src/standards.ts",
+          "line": 8,
+          "endLine": 10,
+          "role": "cause",
+          "revision": "base"
+        },
+        {
+          "file": "src/standards.ts",
+          "line": 8,
+          "endLine": 9,
+          "role": "context"
+        },
+        {
+          "file": "src/prompt.ts",
+          "line": 5,
+          "endLine": 8,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

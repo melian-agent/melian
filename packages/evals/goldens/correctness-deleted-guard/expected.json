@@ -22,6 +22,34 @@
           "role": "context"
         }
       ]
+    },
+    {
+      "comment": "The change deleted the guard that held parsePort to integers from 1 to 65535, and nothing in the head holds it, so start(\"\") listens on a random port.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/port.ts",
+      "rule": "dropped-guard",
+      "cause": "affected",
+      "failureScenario": "start(\"\") calls parsePort(\"\"), which returns 0 now that nothing rejects a port outside 1 to 65535, and listen(0) binds a random free port. The base's guard threw \"invalid port: \".",
+      "evidence": [
+        {
+          "file": "src/port.ts",
+          "line": 3,
+          "role": "cause",
+          "revision": "base"
+        },
+        {
+          "file": "src/port.ts",
+          "line": 2,
+          "endLine": 3,
+          "role": "context"
+        },
+        {
+          "file": "src/server.ts",
+          "line": 5,
+          "role": "context"
+        }
+      ]
     }
   ]
 }

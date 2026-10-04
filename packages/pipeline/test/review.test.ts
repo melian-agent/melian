@@ -1929,7 +1929,12 @@ describe("adjudication", () => {
 		const lensesOnly = ["lens.correctness", "lens.contracts"];
 
 		it("passes under the default tiers when every check ran and none found anything", async () => {
-			const everyLens = [correctness, contracts, "You are the trust-boundary reviewer"];
+			const everyLens = [
+				correctness,
+				contracts,
+				"You are the trust-boundary reviewer",
+				"You are the removed-behaviour reviewer",
+			];
 			scriptConversations(
 				fake,
 				everyLens.map((match) => ({ match, replies: [fauxAssistantMessage("Done.")] })),
