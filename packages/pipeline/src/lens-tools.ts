@@ -125,8 +125,8 @@ export type LensPolicy = {
 	coverage: { scope: string; paths: string[]; nearer: string[] };
 };
 
-// What a lens has spent that Pi's usage document does not hold: the tool task of every call it made to a read-only
-// tool, and the first budget it ran out of, recorded by the tool call that ended the conversation for it. Pi mints a
+// What a lens has spent that Pi's usage document does not hold: the tool task of every call to a read-only tool that
+// ran, never one the budget refused, and the first budget it ran out of, recorded by the tool call that ended the conversation for it. Pi mints a
 // task per call and keeps it across a replay, where a provider may reuse a call ID in every round.
 export type LensSpend = { calls: number[]; ended?: "tokens" | "tools" };
 
@@ -234,11 +234,13 @@ async function meter(api: ToolExecutionApi, lens: LensPolicy, counted: boolean, 
 		// Read back through the document: the object assigned is copied in, and changes to it afterwards would be lost.
 		document.spend ??= { calls: [] };
 		const { spend } = document;
-		if (counted && !spend.calls.includes(api.taskId)) spend.calls.push(api.taskId);
 		const earlier = spend.calls.filter((id) => !round.includes(id)).length;
 		const position = earlier + round.indexOf(api.taskId) + 1;
 		const spent = spentBy(lens, spend.calls, round, used);
 		if (spent !== undefined) spend.ended ??= spent;
+		// Only a call that runs is spent, so the count a budget's end reports never passes its limit.
+		const runs = spent === undefined && (tools === undefined || position <= tools);
+		if (counted && runs && !spend.calls.includes(api.taskId)) spend.calls.push(api.taskId);
 		return { ...(counted ? { position } : {}), ...(spent === undefined ? {} : { spent }) };
 	}, context);
 }

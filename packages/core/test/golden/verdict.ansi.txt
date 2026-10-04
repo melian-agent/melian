@@ -8,7 +8,7 @@ Verdict: [31mnot reviewed[0m, [31mblocking[0m
 
 2 lenses ran:
   lens.correctness  careful
-  lens.contracts  quick, ended and counted: its tool call budget of 10 ran out after 11 tool calls and 48,120 tokens
+  lens.contracts  quick, ended and counted: its tool call budget of 10 ran out after 10 tool calls and 48,120 tokens
 
 [1mBlock: 3 findings[0m
 

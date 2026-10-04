@@ -1095,7 +1095,11 @@ describe("reviewChangeset", () => {
 		expect(blocked).toContain("severity P3 is outside this lens's severities");
 		expect(findings).toHaveLength(1);
 		const record = verdict.notRun.find((check) => check.name === "lens.correctness");
-		expect(record).toMatchObject({ status: "ended", level: "careful", budgetEnded: { budget: "tools", limit: 2 } });
+		expect(record).toMatchObject({
+			status: "ended",
+			level: "careful",
+			budgetEnded: { budget: "tools", limit: 2, tools: 2 },
+		});
 		expect(record?.budgetEnded?.tokens).toBeGreaterThan(0);
 		expect(verdict.status).toBe("not-reviewed");
 	});
@@ -1121,6 +1125,7 @@ describe("reviewChangeset", () => {
 		expect(verdict.notRun.find((check) => check.name === "lens.correctness")?.budgetEnded).toMatchObject({
 			budget: "tools",
 			limit: 1,
+			tools: 1,
 		});
 	});
 
@@ -1140,11 +1145,11 @@ describe("reviewChangeset", () => {
 		expect(requests[correctness]).toHaveLength(3);
 		expect(verdict.notRun.find((check) => check.name === "lens.correctness")).toMatchObject({
 			status: "ended",
-			budgetEnded: { budget: "tools", limit: 2 },
+			budgetEnded: { budget: "tools", limit: 2, tools: 2 },
 		});
 	});
 
-	it("ends a lens at its token budget after the round that spends it, keeping what it reported", async () => {
+	it("ends a lens in a round that starts with its token budget spent, keeping what it reported", async () => {
 		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tokens: 1 }) : lens));
 		const requests = scriptConversations(fake, [
 			{
@@ -1162,7 +1167,7 @@ describe("reviewChangeset", () => {
 		expect(requests[correctness]).toHaveLength(1);
 		expect(findings).toHaveLength(1);
 		const ended = verdict.notRun.find((check) => check.name === "lens.correctness");
-		expect(ended).toMatchObject({ status: "ended", budgetEnded: { budget: "tokens", limit: 1, tools: 1 } });
+		expect(ended).toMatchObject({ status: "ended", budgetEnded: { budget: "tokens", limit: 1, tools: 0 } });
 		expect(ended?.budgetEnded?.tokens).toBeGreaterThan(1);
 		expect(verdict.ran?.find((check) => check.name === "lens.contracts")).toEqual({
 			name: "lens.contracts",

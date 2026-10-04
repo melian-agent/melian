@@ -212,7 +212,7 @@ const verdict = adjudicate({
 			name: "lens.contracts",
 			status: "ran",
 			level: "quick",
-			budgetEnded: { budget: "tools", limit: 10, tokens: 48_120, tools: 11 },
+			budgetEnded: { budget: "tools", limit: 10, tokens: 48_120, tools: 10 },
 		},
 		{
 			name: "lens.security",
