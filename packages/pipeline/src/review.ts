@@ -130,6 +130,9 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 					// An owned conversation starts with its owner's tools and extensions, so both are explicit. Selecting only
 					// the lens extension puts its injection policy section first, ahead of the instructions.
 					const tools = [...lens.tools.map((tool) => lensReadTools[tool]), reportFinding];
+					// A task an older Melian created and a crash left in this phase holds only the findings budget, as a number.
+					const stored = lens.budget as LensBudget | number;
+					const budget = typeof stored === "number" ? { findings: stored } : stored;
 					await configure(tx, created.id, {
 						model: lens.route[0],
 						instructions: lens.instructions,
@@ -144,10 +147,10 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 						tools: [...lens.tools],
 						severities: [...lens.severities],
 						rules: lens.rules.map((rule) => ({ ...rule })),
-						budget: lens.budget.findings,
+						budget: budget.findings,
 						limits: {
-							...(lens.budget.tokens === undefined ? {} : { tokens: lens.budget.tokens }),
-							...(lens.budget.tools === undefined ? {} : { tools: lens.budget.tools }),
+							...(budget.tokens === undefined ? {} : { tokens: budget.tokens }),
+							...(budget.tools === undefined ? {} : { tools: budget.tools }),
 						},
 						coverage: {
 							scope: lens.coverage.scope,

@@ -24,6 +24,7 @@ import {
 	defineDoc,
 	dismissFinding,
 	type Harness,
+	lensExtension,
 	type Message,
 	openHarness,
 	openSqliteStorage,
@@ -1154,6 +1155,51 @@ describe("reviewChangeset", () => {
 			status: "ran",
 			level: "careful",
 		});
+	});
+
+	it("holds a lens task an older Melian created, whose budget is a number, to that findings budget", async () => {
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("report_finding", nullDeref),
+					call("report_finding", { ...nullDeref, line: 6, endLine: 7 }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+		const [lensTask] = (lensExtension.tasks ?? []).filter((task) => task.definition.name === "melian.lenses");
+		const [lens] = lenses.filter((each) => each.name === "correctness");
+		const root = await harness.root(context);
+		const head = gitIn(repo, "rev-parse", "feature");
+		const input = {
+			root: root.id,
+			revision: { repoRoot: repo, nonce: "0".repeat(24), base: gitIn(repo, "rev-parse", "main"), head, files: [] },
+			lenses: [
+				{
+					key: `correctness@${lens!.version}`,
+					name: "correctness",
+					version: lens!.version,
+					route: [fake.ref("heavy")],
+					instructions: correctness,
+					tools: [...lens!.tools],
+					severities: [...lens!.severities],
+					rules: lens!.rules.map((rule) => ({ ...rule })),
+					budget: 1,
+					coverage: { scope: "", paths: ["**"], nearer: [] },
+					prompt: "Review the change.",
+				},
+			],
+		};
+		// The registry holds the task erased; its input is the old shape, which the current type no longer allows.
+		const taskId = await root.commit(
+			(tx) => tx.createTask(lensTask as never, input as never, { ownership: { kind: "conversation" } }),
+			context,
+		);
+
+		await harness.waitForTask(taskId, context);
+
+		expect(toolResults(requests[correctness]![2]!).at(-1)).toContain("budget reached");
 	});
 
 	it("refuses a tier with no model, or none with credentials", async () => {
