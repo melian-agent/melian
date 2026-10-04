@@ -269,13 +269,19 @@ function overlapping(file: ReviewFile | undefined, startLine: number, endLine: n
 	);
 }
 
-// The text at `line` to `endLine` of `path` at the review's head or base.
-async function linesAt(review: ReviewState, revision: "head" | "base", path: string, line: number, endLine: number) {
+// The text at `line` to `endLine` of `path` at the review's head or base. `hint` follows the message for a missing file.
+async function linesAt(
+	review: ReviewState,
+	revision: "head" | "base",
+	path: string,
+	line: number,
+	endLine: number,
+	hint = "",
+) {
 	if (endLine < line) throw new Error(`endLine ${endLine} is before line ${line}`);
 	const commit = revision === "base" ? review.base : review.head;
 	const { content, truncated } = await readRevisionFile(review.repoRoot, commit, path).catch((error: unknown) => {
 		if (!(error instanceof RevisionError) || error.code !== "notFound") throw error;
-		const hint = revision === "head" ? '; for lines this change deleted, add revision: "base"' : "";
 		throw new Error(`${path} does not exist at the ${revision} revision${hint}`);
 	});
 	const lines = content.split("\n");
@@ -298,7 +304,8 @@ const scenarioShape = `failureScenario must be prose of at most ${maxFailureScen
 // its call rather than a schema error. Undefined when both look right; the schema then checks the rest.
 function malformed(args: unknown): string | undefined {
 	const { failureScenario, evidence } = (args ?? {}) as { failureScenario?: unknown; evidence?: unknown };
-	if (typeof failureScenario !== "string" || failureScenario.trim() === "") return `${scenarioShape}; it is missing`;
+	if (typeof failureScenario !== "string" || failureScenario.trim() === "")
+		return `${scenarioShape}; it is missing or blank`;
 	if (failureScenario.length > maxFailureScenarioLength) {
 		return `${scenarioShape}; this one has ${failureScenario.length}`;
 	}
@@ -319,6 +326,8 @@ function malformed(args: unknown): string | undefined {
 // Melian reads each location's snippet from the revision it names, so the evidence a verifier and the author see is
 // the code itself, never the model's quotation of it.
 async function evidenceFrom(args: ReportFindingInput["evidence"], review: ReviewState): Promise<EvidenceLocation[]> {
+	// A call an older Melian stored before a crash resumes here without passing prepareArguments or the schema again.
+	if (!Array.isArray(args)) throw new Error(evidenceShape);
 	return await Promise.all(
 		args.map(async ({ file: given, line, endLine: last, role, revision = "head" }) => {
 			const file = repositoryPath(given);
@@ -328,7 +337,11 @@ async function evidenceFrom(args: ReportFindingInput["evidence"], review: Review
 					`evidence ${file}:${line}-${endLine} spans more than ${maxEvidenceLines} lines; name the lines that matter`,
 				);
 			}
-			const { snippet } = await linesAt(review, revision, file, line, endLine);
+			const hint =
+				revision === "head"
+					? '; for lines this change deleted, add revision: "base" to the location, naming a renamed file by its old path'
+					: "";
+			const { snippet } = await linesAt(review, revision, file, line, endLine, hint);
 			return { file, startLine: line, ...(last === undefined ? {} : { endLine }), role, revision, snippet };
 		}),
 	);

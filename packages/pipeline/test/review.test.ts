@@ -685,6 +685,7 @@ describe("reviewChangeset", () => {
 							"report_finding",
 							{ ...broken, evidence: [{ file: "src/user.ts", line: 1, endLine: 61, role: "cause" }] },
 						],
+						["report_finding", { ...broken, file: "src/gone.ts", line: 1 }],
 					),
 					fauxAssistantMessage("Done."),
 				],
@@ -693,7 +694,7 @@ describe("reviewChangeset", () => {
 
 		expect(await review()).toEqual([]);
 
-		const [prose, single, roleless, missing, long, absent, wide] = toolResults(requests[contracts]![1]!);
+		const [prose, single, roleless, missing, long, absent, wide, located] = toolResults(requests[contracts]![1]!);
 		expect(prose).toContain("evidence must be a list of one or more locations, each { file, line, endLine, role }");
 		expect(prose).toContain("Prose is not evidence");
 		expect(single).toContain("evidence must be a list of one or more locations");
@@ -704,6 +705,7 @@ describe("reviewChangeset", () => {
 			'src/gone.ts does not exist at the head revision; for lines this change deleted, add revision: "base"',
 		);
 		expect(wide).toContain("spans more than 60 lines; name the lines that matter");
+		expect(located).toMatch(/src\/gone\.ts does not exist at the head revision$/m);
 	});
 
 	it("reviews a head once: a repeat call with the same lenses returns its findings without asking a model", async () => {
