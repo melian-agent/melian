@@ -521,8 +521,6 @@ function lensCheck(lens: LensRun, result: LensResult | undefined): CheckRecord {
 	return { name, status: "failed", level, reason: "the lens did not finish", error: outcome?.reason ?? "no outcome" };
 }
 
-const noLensCovers = "no lens covers these paths";
-
 // What a review accounts for: a record for every check its manifest names, which may leave out a record only for a
 // check another step runs, and the skips that still let it pass.
 interface Accounting {
@@ -554,10 +552,10 @@ function account(
 				checks.push({ name, status: "failed", reason: `no lens is named ${lens}` });
 			} else if (settings?.enabled === false) {
 				checks.push({ name, status: "skipped", reason: `lenses.${lens}.enabled is false` });
-			} else if (ran.length === 0) {
-				checks.push({ name, status: "skipped", reason: noLensCovers });
 			} else {
-				checks.push({ name, status: "skipped", reason: "no changed file is in its paths" });
+				// Nothing it covers changed, so there was nothing for it to review: a change of excluded paths alone passes
+				// on its deterministic checks.
+				checks.push({ name, status: "skipped", reason: "no paths" });
 				allowSkip.push(name);
 			}
 		} else if (name.startsWith("decisions.") && config.decisions.provider === undefined) {

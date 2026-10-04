@@ -169,8 +169,7 @@ Only lenses the manifest names run. The lens step records each of them, and a re
 
 - `failed`, `no lens is named <name>`, when no lens of that name is loaded.
 - `skipped`, `lenses.<name>.enabled is false`, when configuration switches it off. That is an exclusion, and the design reports an exclusion as not reviewed unless the repository lists the check in `checks.allowSkip`.
-- `skipped`, `no lens covers these paths`, when no lens of the manifest covers a changed path, so nothing reviewed the change.
-- `skipped`, `no changed file is in its paths`, when another lens ran. Only this skip is allowed.
+- `skipped`, `no paths`, when no changed file is in its paths. This skip is allowed, whether or not another lens ran: a change that touches only paths every lens excludes, such as Melian's own goldens, passes on its deterministic checks, and the terminal and JSON output list each lens with that reason. [decisions/2026-10-05-lens-with-no-paths.md](../decisions/2026-10-05-lens-with-no-paths.md) records why.
 
 A `decisions.*` check is skipped and allowed while no decision provider is configured, as the design lets the fast tier degrade. Every check `config.checks.allowSkip` names joins the allowed skips. Any other check, such as `guardrails` or `static.biome`, records itself through `options.checks` as `{ name, status, reason?, error?, version? }`, where `version` is the tool version its findings name; without a record it is `no record`.
 

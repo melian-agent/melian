@@ -287,7 +287,7 @@ stages:
 
 These are the defaults, and they name only checks that ship: a lens joins them when it ships. `decisions.fast` is there before its decision model ships, because with no decision provider configured it records an allowed skip, as below.
 
-A review's tier is its manifest. Every check the tier names records whether it ran, was skipped, or failed, and a check with no record makes the review not reviewed, so nothing reads as passed because it was never counted. Only lenses the tier names run.
+A review's tier is its manifest. Every check the tier names records whether it ran, was skipped, or failed, and a check with no record makes the review not reviewed, so nothing reads as passed because it was never counted. Only lenses the tier names run. A lens whose paths match no changed file records an allowed skip with the reason `no paths`, as a `decisions.*` check does without a provider, so a change that touches only paths every lens excludes passes on its deterministic checks; the terminal and JSON output show the skip and its reason. [decisions/2026-10-05-lens-with-no-paths.md](decisions/2026-10-05-lens-with-no-paths.md) records why.
 
 The CLI exposes `review`, `publish`, `findings`, `dismiss`, and `doctor`, and `review` runs the tier the `pull-request` stage maps to. A `run` command for a named tier or stage, and recipes for lefthook, pre-commit, husky, and Pi, are not yet scheduled. Melian never installs git hooks.
 

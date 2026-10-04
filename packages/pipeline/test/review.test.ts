@@ -15,6 +15,8 @@ import {
 	maxFailureScenarioLength,
 	maxSnippetBytes,
 	type RepositorySource,
+	renderFindingsTerminal,
+	renderVerdictJson,
 	resolveRange,
 	type Verdict,
 } from "@melian-agent/core";
@@ -2096,27 +2098,29 @@ describe("adjudication", () => {
 			});
 		});
 
-		it("is not reviewed when no lens covers the changed paths, and passes when one does", async () => {
-			const nowhere = lenses.map((lens) => ({ ...lens, paths: ["docs/**"] }));
-			const { verdict } = await reviewed({ lenses: nowhere });
-			expect(verdict).toMatchObject({
-				status: "not-reviewed",
-				notRun: [
-					allowedDecisionSkip,
-					{ name: "lens.correctness", status: "skipped", reason: "no lens covers these paths" },
-					{ name: "lens.contracts", status: "skipped", reason: "no lens covers these paths" },
-				],
-			});
+		it("passes on its other checks when every changed file is excluded from every lens, and says so", async () => {
+			const excluded = { paths: ["**", "!src/**"] };
+			const nothingCovered = { ...config, lenses: { correctness: excluded, contracts: excluded } };
+			const noPaths = (name: string): CheckRecord => ({ name, status: "skipped", reason: "no paths" });
 
+			const { verdict } = await reviewed({ config: nothingCovered });
+
+			expect(fake.provider.state.callCount).toBe(0);
+			expect(verdict).toMatchObject({
+				status: "passed",
+				notRun: [allowedDecisionSkip, noPaths("lens.correctness"), noPaths("lens.contracts")],
+			});
+			expect(renderFindingsTerminal(verdict)).toContain("  lens.correctness  skipped: no paths");
+			expect(JSON.parse(renderVerdictJson(verdict)).notRun).toContainEqual(noPaths("lens.contracts"));
+		});
+
+		it("records a lens with no changed file in its paths as an allowed skip beside one that ran", async () => {
 			scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
 			const one = lenses.map((lens) => (lens.name === "contracts" ? { ...lens, paths: ["docs/**"] } : lens));
-			const { verdict: covered } = await reviewed({ lenses: one });
-			expect(covered).toMatchObject({
+			const { verdict } = await reviewed({ lenses: one });
+			expect(verdict).toMatchObject({
 				status: "passed",
-				notRun: [
-					allowedDecisionSkip,
-					{ name: "lens.contracts", status: "skipped", reason: "no changed file is in its paths" },
-				],
+				notRun: [allowedDecisionSkip, { name: "lens.contracts", status: "skipped", reason: "no paths" }],
 			});
 		});
 
