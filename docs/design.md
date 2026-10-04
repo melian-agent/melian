@@ -432,7 +432,7 @@ Solution: core reads policy (`melian.yaml`) and standards (`AGENTS.md`, `CLAUDE.
 - Neither source follows a symlink. A symlinked file is refused, and a path beneath a symlinked directory does not exist, as in git's own trees. Without this, a head could link `AGENTS.md` to a file outside the repository.
 - Reads are bounded: 64 KiB for a `melian.yaml`, 256 KiB for a standards file, 1 MiB for all the standards one path collects. Past a bound is a typed error, never a silent truncation, because the content is untrusted input.
 
-Lenses and knowledge, when their loaders arrive, follow the same rule.
+Lenses follow the same rule: the lens loader reads repository lenses from the revision the host chooses, so a pull request cannot rewrite the lenses that review it. Knowledge will too, once its loader arrives in milestone 3.
 
 Reading from the base does not hide the head's changes. Each revision lists the policy and standards files it changes: every `melian.yaml`, `AGENTS.md`, `CLAUDE.md`, file under a `.melian/` directory, and static tool configuration file, such as `biome.json`, `tsconfig*.json`, or `package.json`. A lens can be handed those changes as quoted data, "the standards this pull request changes", and review them like any other code.
 
