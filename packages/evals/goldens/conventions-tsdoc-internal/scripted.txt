@@ -1,0 +1,17 @@
+src/receipt.ts
+
+  P3  line 11  quoted-rule-violation  (introduced, new, unresolved)
+  add carries a TSDoc block, and it is internal to src/receipt.ts.
+    What: add carries a TSDoc block, and it is internal to src/receipt.ts.
+    Why here: AGENTS.md says "TSDoc only on exported package API. Nothing on internals.", and this change added the block.
+    Failure scenario: add is exported neither from src/receipt.ts nor from the package entry, src/index.ts, yet the change documents it with TSDoc. AGENTS.md says "TSDoc only on exported package API. Nothing on internals.", so a contributor reading the file takes add for public API, and the next internal helper copies the block.
+    Evidence:
+      cause: src/receipt.ts:11
+        /** Adds one item's price to a running sum of cents. */
+      context: src/index.ts:2
+        export { type Item, total } from "./receipt.ts";
+      context: AGENTS.md:7
+        - TSDoc only on exported package API. Nothing on internals.
+    What to do: Delete the TSDoc block on add; its name says what it does.
+
+1 finding in 1 file.

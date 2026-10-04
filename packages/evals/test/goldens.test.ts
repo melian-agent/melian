@@ -21,6 +21,11 @@ describe("the golden corpus", () => {
 		expect(goldens.map((golden) => golden.name)).toEqual([
 			"clean-rename",
 			"contracts-breaking-signature",
+			"conventions-bare-reference",
+			"conventions-clean",
+			"conventions-missing-doc-update",
+			"conventions-tsdoc-internal",
+			"conventions-unpinned-action",
 			"correctness-deleted-guard",
 			"correctness-null-deref",
 			"injection-in-comment",

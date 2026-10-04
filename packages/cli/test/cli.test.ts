@@ -48,7 +48,7 @@ function melian(cwd: string, args: string[], env: Record<string, string> = {}) {
 const guardrailsOnly = "tiers:\n  fast: [guardrails]\n";
 
 // Every lens the default full tier runs, so a script can answer each.
-const builtinLenses = ["correctness", "contracts", "trust-boundary", "removed-behaviour", "tests"];
+const builtinLenses = ["correctness", "contracts", "trust-boundary", "removed-behaviour", "tests", "conventions"];
 
 function scriptFile(script: unknown): Record<string, string> {
 	scratch = mkdtempSync(join(tmpdir(), "melian-cli-"));

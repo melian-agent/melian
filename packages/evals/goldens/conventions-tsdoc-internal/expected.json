@@ -1,0 +1,31 @@
+{
+  "pr_title": "Name the step that sums a receipt",
+  "comments": [
+    {
+      "comment": "The change gives add, an unexported helper, a TSDoc block, though AGENTS.md says \"TSDoc only on exported package API. Nothing on internals.\"",
+      "severity": "Low",
+      "category": "convention",
+      "file": "src/receipt.ts",
+      "rule": "quoted-rule-violation",
+      "cause": "introduced",
+      "failureScenario": "add is exported neither from src/receipt.ts nor from the package entry, src/index.ts, yet the change documents it with TSDoc. AGENTS.md says \"TSDoc only on exported package API. Nothing on internals.\", so a contributor reading the file takes add for public API, and the next internal helper copies the block.",
+      "evidence": [
+        {
+          "file": "src/receipt.ts",
+          "line": 11,
+          "role": "cause"
+        },
+        {
+          "file": "src/index.ts",
+          "line": 2,
+          "role": "context"
+        },
+        {
+          "file": "AGENTS.md",
+          "line": 7,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}
