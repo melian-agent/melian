@@ -110,7 +110,8 @@ export type FindingErrorCode =
 	| "missingDiscriminator"
 	| "snippetNotFound"
 	| "idMismatch"
-	| "unknownFinding";
+	| "unknownFinding"
+	| "invalidDismissal";
 
 /**
  * A value is not a valid finding, or an ID names no finding. `path` is the JSON pointer of the offending field, empty

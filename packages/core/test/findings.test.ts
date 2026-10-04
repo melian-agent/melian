@@ -3,11 +3,13 @@ import {
 	capSnippet,
 	createFinding,
 	createFindingsLog,
+	dismissalReason,
 	type Finding,
 	FindingError,
 	findingId,
 	findingsLogSchema,
 	levelForSeverity,
+	maxDismissalReasonLength,
 	maxEvidenceLocations,
 	maxFailureScenarioLength,
 	maxSnippetBytes,
@@ -236,6 +238,31 @@ describe("snippetHash", () => {
 		expect(snippetHash("foo(a, b)")).toMatch(/^[0-9a-f]{64}$/);
 		expect(snippetHash("\tfoo(\n\t\ta,\n\t\tb\n\t)")).toBe(snippetHash("foo(a, b)"));
 		expect(snippetHash("foo(a, c)")).not.toBe(snippetHash("foo(a, b)"));
+	});
+});
+
+describe("dismissalReason", () => {
+	it("trims a reason, and refuses one that is blank or over the bound", () => {
+		expect(dismissalReason("  constant input \n")).toBe("constant input");
+		expect(dismissalReason("x".repeat(maxDismissalReasonLength))).toHaveLength(maxDismissalReasonLength);
+		for (const reason of ["", " \t\n", "x".repeat(maxDismissalReasonLength + 1)]) {
+			expect(() => dismissalReason(reason)).toThrow(expect.objectContaining({ code: "invalidDismissal" }));
+		}
+	});
+
+	it("is carried on a dismissed finding with the dismissals before it, which the schema accepts", () => {
+		const finding = createFinding(minimalInput);
+		const dismissal = { by: "Tal <tal@melian.invalid>", reason: "Constant input.", at: "2026-10-04T00:00:00Z" };
+		const properties = {
+			...finding.properties,
+			status: "dismissed" as const,
+			dismissal,
+			pastDismissals: [{ ...dismissal, reopenedRevision: "a..b" }],
+		};
+		expect(parseFinding({ ...finding, properties }).properties.dismissal).toEqual(dismissal);
+		expect(rejection({ ...finding, properties: { ...properties, dismissal: { ...dismissal, why: "x" } } }).code).toBe(
+			"invalidFinding",
+		);
 	});
 });
 

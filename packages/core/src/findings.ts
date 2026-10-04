@@ -88,6 +88,21 @@ export const memberClaimSchema = Type.Object(
 	strict,
 );
 
+/** The JSON Schema of a {@link FindingDismissal}. */
+export const findingDismissalSchema = Type.Object({ by: text, reason: text, at: text }, strict);
+
+/** The JSON Schema of a {@link PastDismissal}. */
+export const pastDismissalSchema = Type.Object(
+	{
+		by: Type.String(),
+		reason: Type.String(),
+		at: Type.String(),
+		reopenedRevision: Type.Optional(text),
+		replacedAt: Type.Optional(text),
+	},
+	strict,
+);
+
 /** The JSON Schema of {@link FindingProperties}. Unknown keys are rejected, so a misspelt optional key is not lost. */
 export const findingPropertiesSchema = Type.Object(
 	{
@@ -103,6 +118,8 @@ export const findingPropertiesSchema = Type.Object(
 		confidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
 		resolution: Type.Optional(resolutionSchema),
 		status: findingStatusSchema,
+		dismissal: Type.Optional(findingDismissalSchema),
+		pastDismissals: Type.Optional(Type.Array(pastDismissalSchema)),
 		explanation: findingExplanationSchema,
 		source: findingSourceSchema,
 		reportedBy: Type.Optional(Type.Array(findingSourceSchema, { minItems: 1 })),
@@ -149,6 +166,9 @@ export const findingSchema = Type.Object(
 );
 
 const logResultSchema = Type.Object({ ...findingSchema.properties, ruleIndex: count }, strict);
+
+/** The longest reason a dismissal may give, in UTF-16 code units. */
+export const maxDismissalReasonLength = 1000;
 
 /** The longest failure scenario a lens may report, in UTF-16 code units. */
 export const maxFailureScenarioLength = 2000;
@@ -299,7 +319,7 @@ export type Cause = Static<typeof causeSchema>;
 /** The causes a location alone can prove. Only evidence makes a finding `affected`. */
 export type LocationCause = Exclude<Cause, "affected">;
 
-/** Where a finding stands across revisions. Only `new` is assigned until cross-revision diffing exists. */
+/** Where a finding stands across revisions. Melian assigns `new`, and `dismissed` once someone dismisses it. */
 export type FindingStatus = Static<typeof findingStatusSchema>;
 
 /**
@@ -329,6 +349,39 @@ export type EvidenceLocation = Static<typeof evidenceLocationSchema>;
 
 /** A finding's evidence: one or more {@link EvidenceLocation}s. */
 export type FindingEvidence = Static<typeof findingEvidenceSchema>;
+
+/**
+ * Who dismissed a finding, why, and when, as an ISO 8601 timestamp. Present on a finding whose status is `dismissed`.
+ * `by` is whoever the host says dismissed it; the CLI records the git author.
+ */
+export type FindingDismissal = Static<typeof findingDismissalSchema>;
+
+/**
+ * A dismissal that no longer stands, kept so its reason is not lost: `reopenedRevision` names the revision whose
+ * trigger changed materially and reopened the finding, and `replacedAt` the time a later dismissal replaced it.
+ */
+export type PastDismissal = Static<typeof pastDismissalSchema>;
+
+/**
+ * A dismissal's reason without surrounding whitespace. Throws {@link FindingError} `invalidDismissal` when it is blank
+ * or longer than {@link maxDismissalReasonLength}.
+ */
+export function dismissalReason(reason: string): string {
+	const trimmed = reason.trim();
+	if (trimmed === "") {
+		throw new FindingError("invalidDismissal", "a dismissal needs a reason", {
+			path: "/properties/dismissal/reason",
+		});
+	}
+	if (trimmed.length > maxDismissalReasonLength) {
+		throw new FindingError(
+			"invalidDismissal",
+			`a dismissal's reason is ${trimmed.length} characters; the most is ${maxDismissalReasonLength}`,
+			{ path: "/properties/dismissal/reason" },
+		);
+	}
+	return trimmed;
+}
 
 /** A finding's explanation for the author: what is wrong, why it matters in this change, and what to do. */
 export type FindingExplanation = Static<typeof findingExplanationSchema>;

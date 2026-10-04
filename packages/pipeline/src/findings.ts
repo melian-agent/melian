@@ -1,11 +1,14 @@
 import {
+	dismissalReason,
 	type Finding,
+	type FindingDismissal,
 	FindingError,
 	type FindingProperties,
 	type FindingSource,
 	type FindingStatus,
 	type FindingTrigger,
 	mergeClaims,
+	type PastDismissal,
 	parseFinding,
 	type Severity,
 	snippetHash,
@@ -15,12 +18,14 @@ import { type Context, type ConversationId, defineDoc, type Harness, type Tx } f
 
 // Type aliases, not interfaces: a document's value must satisfy Pi's JsonObject, which an interface never does.
 
-// A dismissal that a later revision reopened, kept so the reason is not lost.
-type PastDismissal = {
+// A dismissal that no longer stands, kept so the reason is not lost: a later revision reopened it, or a later dismissal
+// replaced it. An entry from before re-dismissal kept history names only the revision that reopened it.
+type StoredPastDismissal = {
 	dismissedBy: string;
 	dismissedReason: string;
 	dismissedAt: string;
-	reopenedRevision: string;
+	reopenedRevision?: string;
+	replacedAt?: string;
 };
 
 type FindingLifecycle = {
@@ -30,18 +35,15 @@ type FindingLifecycle = {
 	dismissedAt?: string;
 	firstSeenRevision: string;
 	lastSeenRevision: string;
-	history: PastDismissal[];
+	history: StoredPastDismissal[];
 };
 
 /** Who dismissed a finding, why, and when, as an ISO 8601 timestamp the caller supplies so a replay writes the same. */
-export interface Dismissal {
-	readonly by: string;
-	readonly reason: string;
-	readonly at: string;
-}
+export type Dismissal = FindingDismissal;
 
+// Status and dismissals are Melian's lifecycle, never a producer's, so a sighting stores none of them.
 type ProducerFinding = Omit<Finding, "properties"> & {
-	properties: Omit<FindingProperties, "status" | "reportedBy">;
+	properties: Omit<FindingProperties, "status" | "reportedBy" | "dismissal" | "pastDismissals">;
 };
 
 // Sightings are keyed by revision, `revisionKey` of a base and head, then by producer, a lens's check and version. Only
@@ -173,7 +175,7 @@ export async function upsertFinding(
 	revision: string,
 ): Promise<void> {
 	const valid = parseFinding(finding);
-	const { status: _, reportedBy: __, ...properties } = valid.properties;
+	const { status: _, reportedBy: __, dismissal: ___, pastDismissals: ____, ...properties } = valid.properties;
 	const producer: ProducerFinding = { ...valid, properties };
 	const state = await tx.doc(FindingsDocument, rootConversationId);
 	if (!state.revisions.includes(revision)) state.revisions.push(revision);
@@ -254,28 +256,62 @@ export async function replaceCheckFindings(
 	for (const finding of findings) await upsertFinding(tx, rootConversationId, finding, revision);
 }
 
-/** Marks a finding dismissed. Throws core's `FindingError` `unknownFinding` if no finding has the ID. */
+/**
+ * Marks a finding dismissed, and returns the dismissal it replaced, if it was dismissed already. A replaced dismissal
+ * moves to the finding's history, so its reason is not lost. The reason is stored without surrounding whitespace.
+ * Throws core's `FindingError`: `unknownFinding` if no finding has the ID, and `invalidDismissal` for a blank `by` or
+ * `at`, or a reason core's `dismissalReason` refuses.
+ */
 export async function dismissFinding(
 	tx: Tx,
 	rootConversationId: ConversationId,
 	id: string,
 	{ by, reason, at }: Dismissal,
-): Promise<void> {
+): Promise<Dismissal | undefined> {
+	const why = dismissalReason(reason);
+	for (const [field, value] of [
+		["by", by],
+		["at", at],
+	] as const) {
+		if (value.trim() === "") {
+			throw new FindingError("invalidDismissal", `a dismissal needs ${field === "by" ? "a dismisser" : "a time"}`, {
+				path: `/properties/dismissal/${field}`,
+			});
+		}
+	}
 	const state = await tx.doc(FindingsDocument, rootConversationId);
 	const { items } = state;
 	const record = items[id];
 	if (record === undefined) {
 		throw new FindingError("unknownFinding", `no finding has ID ${id}`, { path: "/properties/id" });
 	}
+	const { status, dismissedBy, dismissedReason, dismissedAt, history } = record.lifecycle;
+	const replaced =
+		status === "dismissed"
+			? { by: dismissedBy ?? "", reason: dismissedReason ?? "", at: dismissedAt ?? "" }
+			: undefined;
 	const lifecycle: FindingLifecycle = {
 		...record.lifecycle,
 		status: "dismissed",
 		dismissedBy: by,
-		dismissedReason: reason,
+		dismissedReason: why,
 		dismissedAt: at,
+		history:
+			replaced === undefined
+				? history
+				: [
+						...history,
+						{
+							dismissedBy: replaced.by,
+							dismissedReason: replaced.reason,
+							dismissedAt: replaced.at,
+							replacedAt: at,
+						},
+					],
 	};
 	items[id] = { ...record, lifecycle };
 	bump(state, Object.keys(record.sightings));
+	return replaced;
 }
 
 function bump(state: FindingsState, revisions: readonly string[]): void {
@@ -294,6 +330,26 @@ export async function findingsVersion(
 	context: Context,
 ): Promise<number> {
 	return (await reader.snapshot(FindingsDocument, rootConversationId, context))?.versions[revision] ?? 0;
+}
+
+// The lifecycle's dismissal, while it stands, and the dismissals before it, as a finding carries them.
+function dismissalsOf(lifecycle: FindingLifecycle): Pick<FindingProperties, "dismissal" | "pastDismissals"> {
+	const { status, dismissedBy, dismissedReason, dismissedAt, history } = lifecycle;
+	const past = history.map(
+		({ dismissedBy: by, dismissedReason: reason, dismissedAt: at, reopenedRevision, replacedAt }): PastDismissal => ({
+			by,
+			reason,
+			at,
+			...(reopenedRevision === undefined ? {} : { reopenedRevision }),
+			...(replacedAt === undefined ? {} : { replacedAt }),
+		}),
+	);
+	return {
+		...(status === "dismissed"
+			? { dismissal: { by: dismissedBy ?? "", reason: dismissedReason ?? "", at: dismissedAt ?? "" } }
+			: {}),
+		...(past.length === 0 ? {} : { pastDismissals: past }),
+	};
 }
 
 /** Which sightings {@link readFindings} merges. */
@@ -336,8 +392,7 @@ export async function readFindings(
 			);
 			if (Object.keys(atHead).length === 0) return [];
 			const { winner, reportedBy } = adjudicate(atHead);
-			return [
-				structuredClone({ ...winner, properties: { ...winner.properties, status: lifecycle.status, reportedBy } }),
-			];
+			const properties = { ...winner.properties, status: lifecycle.status, ...dismissalsOf(lifecycle), reportedBy };
+			return [structuredClone({ ...winner, properties })];
 		});
 }

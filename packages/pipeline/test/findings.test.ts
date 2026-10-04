@@ -9,6 +9,7 @@ import {
 	FindingError,
 	type FindingInput,
 	type FindingSource,
+	maxDismissalReasonLength,
 	type PullRequest,
 	type ReviewDraft,
 	type ReviewProvider,
@@ -210,7 +211,14 @@ describe("the findings document", () => {
 			await root.commit((tx) => dismissFinding(tx, root.id, finding.properties.id, dismissal), context);
 			await root.commit((tx) => upsertFinding(tx, root.id, changed, "rev2"), context);
 			await root.commit((tx) => upsertFinding(tx, root.id, changed, "rev2"), context);
-			expect(await readFindings(harness, root.id, "rev2", context)).toEqual([seen(changed)]);
+			const [reopened] = await readFindings(harness, root.id, "rev2", context);
+			expect(reopened).toEqual({
+				...seen(changed),
+				properties: {
+					...seen(changed).properties,
+					pastDismissals: [{ ...dismissal, reopenedRevision: "rev2" }],
+				},
+			});
 			expect(await lifecycle(harness, finding.properties.id)).toEqual({
 				status: "new",
 				firstSeenRevision: "rev1",
@@ -224,6 +232,44 @@ describe("the findings document", () => {
 					},
 				],
 			});
+		});
+
+		it("carries the dismissal on the finding it reads", async () => {
+			await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+			await root.commit((tx) => dismissFinding(tx, root.id, evalFinding.properties.id, dismissal), context);
+			const [read] = await readFindings(harness, root.id, "rev1", context);
+			expect(read!.properties).toMatchObject({ status: "dismissed", dismissal });
+			expect(read!.properties.pastDismissals).toBeUndefined();
+		});
+
+		it("replaces the reason of a finding dismissed again, keeping the first in its history", async () => {
+			const again = { by: "ana", reason: "  the input is a literal  ", at: "2026-10-04T00:00:00.000Z" };
+			await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+			const first = await root.commit(
+				(tx) => dismissFinding(tx, root.id, evalFinding.properties.id, dismissal),
+				context,
+			);
+			const replaced = await root.commit(
+				(tx) => dismissFinding(tx, root.id, evalFinding.properties.id, again),
+				context,
+			);
+			expect(first).toBeUndefined();
+			expect(replaced).toEqual(dismissal);
+			const [read] = await readFindings(harness, root.id, "rev1", context);
+			expect(read!.properties.dismissal).toEqual({ ...again, reason: "the input is a literal" });
+			expect(read!.properties.pastDismissals).toEqual([{ ...dismissal, replacedAt: again.at }]);
+		});
+
+		it("refuses a blank or overlong reason and commits nothing", async () => {
+			await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+			for (const reason of [" \n ", "x".repeat(maxDismissalReasonLength + 1)]) {
+				const dismissed = root.commit(
+					(tx) => dismissFinding(tx, root.id, evalFinding.properties.id, { ...dismissal, reason }),
+					context,
+				);
+				await expect(dismissed).rejects.toMatchObject({ code: "invalidDismissal" });
+			}
+			expect((await lifecycle(harness, evalFinding.properties.id))?.status).toBe("new");
 		});
 
 		it("refuses to dismiss a finding nobody reported", async () => {
