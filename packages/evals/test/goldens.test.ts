@@ -1,10 +1,12 @@
-import { spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+	buildGoldenRepository,
 	type Golden,
+	goldensDirectory,
 	loadGoldens,
 	runGolden,
 	scoreCorpus,
@@ -53,6 +55,31 @@ describe("the golden corpus", () => {
 			"trust-boundary-secret-env",
 			"trust-boundary-terminal-escape",
 		]);
+	});
+});
+
+describe("a golden's standards and policy", () => {
+	it("are stored under inert names, so the repository the corpus sits in never reads them as its own", () => {
+		const live = new Set(["AGENTS.md", "CLAUDE.md", "melian.yaml", "melian.local.yaml", ".melian", ".agents"]);
+		const named = readdirSync(goldensDirectory, { recursive: true, withFileTypes: true }).filter((entry) =>
+			live.has(entry.name),
+		);
+		expect(named.map((entry) => join(entry.parentPath, entry.name))).toEqual([]);
+	});
+
+	it("reach the golden's own repository under their live names", () => {
+		const golden = goldens.find((each) => each.name === "conventions-clean")!;
+		const { repo } = buildGoldenRepository(golden);
+		try {
+			const tracked = (ref: string) =>
+				execFileSync("git", ["ls-tree", "-r", "--name-only", ref], { cwd: repo, encoding: "utf8" }).split("\n");
+			for (const ref of ["main", "feature"]) {
+				expect(tracked(ref)).toContain("AGENTS.md");
+				expect(tracked(ref)).not.toContain("AGENTS.golden.md");
+			}
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
 	});
 });
 

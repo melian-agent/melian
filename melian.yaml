@@ -3,6 +3,15 @@
 tiers:
   fast: [guardrails, static.biome, static.tsc]
 
+# The golden corpus seeds defects on purpose, so no lens reviews a golden's trees as Melian's own code.
+lenses:
+  correctness: { paths: ["**", "!packages/evals/goldens/**"] }
+  contracts: { paths: ["**", "!packages/evals/goldens/**"] }
+  trust-boundary: { paths: ["**", "!packages/evals/goldens/**"] }
+  removed-behaviour: { paths: ["**", "!packages/evals/goldens/**"] }
+  tests: { paths: ["**", "!packages/evals/goldens/**"] }
+  conventions: { paths: ["**", "!packages/evals/goldens/**"] }
+
 guardrails:
   forbidden-paths:
     rules:

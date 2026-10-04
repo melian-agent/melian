@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
 	causeSchema,
@@ -185,23 +185,38 @@ function git(repo: string, ...args: string[]): string {
 	return execFileSync("git", args, { cwd: repo, env: gitEnv, encoding: "utf8" }).trim();
 }
 
+// `AGENTS.golden.md` is `AGENTS.md`, and `melian.golden.yaml` is `melian.yaml`.
+const inert = /\.golden(?=\.[^.]*$)/;
+
+// Copies a golden's tree into `repo`, writing each file stored under an inert name under its live one.
+function copyTree(tree: string, repo: string): void {
+	for (const entry of readdirSync(tree, { recursive: true, withFileTypes: true })) {
+		if (!entry.isFile()) continue;
+		const target = join(repo, relative(tree, entry.parentPath), entry.name.replace(inert, ""));
+		mkdirSync(dirname(target), { recursive: true });
+		cpSync(join(entry.parentPath, entry.name), target);
+	}
+}
+
 /**
- * Builds a golden's repository in a temporary directory: `base/` committed on `main`, with the golden's `melian.yaml`
- * when it has one, then `head/` replacing the tree on `feature`. The caller deletes `repo`.
+ * Builds a golden's repository in a temporary directory: `base/` committed on `main`, with the golden's
+ * `melian.golden.yaml` as `melian.yaml` when it has one, then `head/` replacing the tree on `feature`. A golden stores
+ * its standards and policy under inert names, such as `AGENTS.golden.md`, so the repository it sits in never reads them
+ * as its own; each is written here under its live name, `AGENTS.md`. The caller deletes `repo`.
  */
 export function buildGoldenRepository(golden: Golden): { repo: string; base: string; head: string } {
 	const repo = realpathSync(mkdtempSync(join(tmpdir(), `melian-golden-${golden.name}-`)));
 	git(repo, "init", "--quiet", "--initial-branch=main");
-	cpSync(join(golden.directory, "base"), repo, { recursive: true });
-	if (existsSync(join(golden.directory, "melian.yaml")))
-		cpSync(join(golden.directory, "melian.yaml"), join(repo, "melian.yaml"));
+	copyTree(join(golden.directory, "base"), repo);
+	if (existsSync(join(golden.directory, "melian.golden.yaml")))
+		cpSync(join(golden.directory, "melian.golden.yaml"), join(repo, "melian.yaml"));
 	git(repo, "add", "--all");
 	git(repo, "commit", "--quiet", "-m", "base");
 	const base = git(repo, "rev-parse", "HEAD");
 	git(repo, "checkout", "--quiet", "-b", "feature");
 	for (const entry of readdirSync(repo))
 		if (entry !== ".git" && entry !== "melian.yaml") rmSync(join(repo, entry), { recursive: true });
-	cpSync(join(golden.directory, "head"), repo, { recursive: true });
+	copyTree(join(golden.directory, "head"), repo);
 	git(repo, "add", "--all");
 	git(repo, "commit", "--quiet", "--allow-empty", "-m", "head");
 	return { repo, base, head: git(repo, "rev-parse", "HEAD") };
@@ -213,7 +228,7 @@ export type GoldenMode =
 	| {
 			readonly kind: "live";
 			readonly models: ReviewModels;
-			/** `provider/model-id` for every tier the golden's `melian.yaml` leaves unrouted. */
+			/** `provider/model-id` for every tier the golden's `melian.golden.yaml` leaves unrouted. */
 			readonly model?: string;
 	  };
 
