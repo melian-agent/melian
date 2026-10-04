@@ -1934,6 +1934,7 @@ describe("adjudication", () => {
 				contracts,
 				"You are the trust-boundary reviewer",
 				"You are the removed-behaviour reviewer",
+				"You are the tests reviewer",
 			];
 			scriptConversations(
 				fake,

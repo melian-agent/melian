@@ -1,0 +1,88 @@
+{
+  "correctness": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "trust-boundary": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "removed-behaviour": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "tests": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "test/store.test.ts"
+          },
+          "expectToolResult": "One directory for the file"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/store.ts"
+          },
+          "expectToolResult": "is already open"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "test/store.test.ts",
+            "line": 41,
+            "rule": "teardown-asymmetry",
+            "severity": "P3",
+            "explanation": {
+              "what": "forgets a deleted key calls store.close() as its last statement rather than in finally, unlike the other tests in the file.",
+              "why": "This change added the test without the try and finally the file's other tests use, though they share one store directory.",
+              "fix": "Wrap the test's body in try and close the store in finally, as the other tests do."
+            },
+            "failureScenario": "If delete stops removing the key, the expect on line 40 throws and store.close() never runs, so the lock file stays in the shared directory. \"keeps a deletion across a reopen\" then fails at Store.open with \"the store in ... is already open\", burying the real failure under one that has nothing to do with deletion.",
+            "evidence": [
+              {
+                "file": "test/store.test.ts",
+                "line": 37,
+                "endLine": 41,
+                "role": "cause"
+              },
+              {
+                "file": "test/store.test.ts",
+                "line": 7,
+                "endLine": 11,
+                "role": "context"
+              },
+              {
+                "file": "src/store.ts",
+                "line": 17,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "as introduced"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ]
+}

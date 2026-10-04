@@ -1,0 +1,25 @@
+test/store.test.ts
+
+  P3  line 41  teardown-asymmetry  (introduced, new, unresolved)
+  forgets a deleted key calls store.close() as its last statement rather than in finally, unlike the other tests in the file.
+    What: forgets a deleted key calls store.close() as its last statement rather than in finally, unlike the other tests in the file.
+    Why here: This change added the test without the try and finally the file's other tests use, though they share one store directory.
+    Failure scenario: If delete stops removing the key, the expect on line 40 throws and store.close() never runs, so the lock file stays in the shared directory. "keeps a deletion across a reopen" then fails at Store.open with "the store in ... is already open", burying the real failure under one that has nothing to do with deletion.
+    Evidence:
+      cause: test/store.test.ts:37-41
+            const store = Store.open(dir);
+            store.put("b", "2");
+            store.delete("b");
+            expect(store.get("b")).toBeUndefined();
+            store.close();
+      context: test/store.test.ts:7-11
+        // One directory for the file, so each test also proves the one before it released the store.
+        let dir: string;
+        beforeAll(() => {
+          dir = mkdtempSync(join(tmpdir(), "store-"));
+        });
+      context: src/store.ts:17
+            if (existsSync(lock)) throw new Error(`the store in ${dir} is already open`);
+    What to do: Wrap the test's body in try and close the store in finally, as the other tests do.
+
+1 finding in 1 file.

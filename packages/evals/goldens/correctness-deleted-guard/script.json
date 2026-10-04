@@ -125,5 +125,10 @@
     {
       "text": "Reported 1 finding."
     }
+  ],
+  "tests": [
+    {
+      "text": "Reported 0 findings."
+    }
   ]
 }

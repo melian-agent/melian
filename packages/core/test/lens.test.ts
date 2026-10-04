@@ -58,7 +58,7 @@ function named(lenses: readonly Lens[], name: string): Lens[] {
 }
 
 // Every lens Melian ships, in the order the loader returns them.
-const builtins = ["contracts", "correctness", "removed-behaviour", "trust-boundary"];
+const builtins = ["contracts", "correctness", "removed-behaviour", "tests", "trust-boundary"];
 
 describe("built-in lenses", () => {
 	it("load correctness and contracts with their declared rules", async () => {
