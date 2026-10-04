@@ -66,6 +66,12 @@ describe("MELIAN_EVAL_GOLDEN", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("refuses a golden that sets live: false, since it runs scripted only", () => {
+		expect(() => selectGoldens(goldens, "pre-existing-beside-change")).toThrow(
+			/^pre-existing-beside-change sets live: false in its expected\.json, so it runs scripted only\.$/,
+		);
+	});
+
 	it("stops live.ts with status 2 before it touches a provider when the name matches no golden", () => {
 		const live = fileURLToPath(new URL("../src/live.ts", import.meta.url));
 		const result = spawnSync(process.execPath, ["--conditions=@melian-agent/source", live], {
@@ -74,6 +80,16 @@ describe("MELIAN_EVAL_GOLDEN", { timeout: 60_000 }, () => {
 		});
 		expect(result.status).toBe(2);
 		expect(result.stderr).toMatch(/^No golden is named no-such-golden\./);
+	});
+
+	it("stops live.ts with status 2 before it touches a provider when the named golden sets live: false", () => {
+		const live = fileURLToPath(new URL("../src/live.ts", import.meta.url));
+		const result = spawnSync(process.execPath, ["--conditions=@melian-agent/source", live], {
+			env: { PATH: process.env.PATH, MELIAN_EVAL_LIVE: "1", MELIAN_EVAL_GOLDEN: "pre-existing-beside-change" },
+			encoding: "utf8",
+		});
+		expect(result.status).toBe(2);
+		expect(result.stderr).toMatch(/^pre-existing-beside-change sets live: false .* runs scripted only\./);
 	});
 });
 

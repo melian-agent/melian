@@ -155,12 +155,17 @@ export function loadGoldens(directory: string = goldensDirectory): Golden[] {
 		});
 }
 
-/** The goldens a live run reviews: all of them, or only the one named `name`. Throws when no golden has that name. */
+/**
+ * The goldens a live run reviews: all of them, or only the one named `name`. Throws when no golden has that name, or
+ * when the named golden sets `live: false`.
+ */
 export function selectGoldens(goldens: readonly Golden[], name: string | undefined): Golden[] {
 	if (name === undefined || name === "") return [...goldens];
 	const selected = goldens.filter((golden) => golden.name === name);
 	if (selected.length === 0)
 		throw new Error(`No golden is named ${name}. Goldens: ${goldens.map((golden) => golden.name).join(", ")}.`);
+	if (selected.some((golden) => !golden.live))
+		throw new Error(`${name} sets live: false in its expected.json, so it runs scripted only.`);
 	return selected;
 }
 
