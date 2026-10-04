@@ -528,7 +528,7 @@ Match Pi's conventions unless there is a reason not to.
 
 ## Package layout
 
-Laid out in milestone 1. Three packages are still skeletons, as marked below.
+Laid out in milestone 1. `state-git/`, `decisions/`, and `pi-extension/` are skeletons that export only their package name: milestone 2 fills `state-git/` with the state branch, and milestone 3 fills `decisions/` with the decision models. The Pi extension is not yet scheduled.
 
 Packages publish under the `@melian-agent` npm scope. The Node floor is 22.19.0, the same as pi-durable, which needs it for default type stripping and the built-in SQLite module.
 
@@ -537,11 +537,11 @@ packages/
   core/          harness-free domain
     lenses/      built-in lenses, shipped in the package
   pipeline/      Pi Durable orchestration
-  github/        Octokit client, review publication, state branch helpers
-  state-git/     orphan-branch storage backend
-  decisions/     Decider port and adapters
+  github/        Octokit client and review publication
+  state-git/     orphan-branch storage backend and state branch helpers (skeleton)
+  decisions/     Decider port and adapters (skeleton)
   cli/           the melian command
-  pi-extension/  /melian command and Pi package manifest
+  pi-extension/  /melian command and Pi package manifest (skeleton)
   evals/         golden corpus and scoring
 skills/
   claude-code/
