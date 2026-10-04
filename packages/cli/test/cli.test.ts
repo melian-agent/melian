@@ -157,6 +157,44 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(rerun.stdout).toMatch(/^Verdict: findings, blocking\n/);
 	});
 
+	it("loads a folder's lens for a file the change moves out of that folder, and runs it", () => {
+		const repo = mkdtempSync(join(tmpdir(), "melian-cli-rename-"));
+		repos.push(repo);
+		git(repo, "init", "--quiet", "--initial-branch=main");
+		mkdirSync(join(repo, "services/pay/.melian/lenses/pay"), { recursive: true });
+		writeFileSync(
+			join(repo, "services/pay/.melian/lenses/pay/LENS.md"),
+			[
+				"---",
+				"name: pay",
+				"description: The payment service's own checks.",
+				"tier: medium",
+				"rules:",
+				"  - id: lost-charge",
+				"    description: A charge is lost.",
+				"---",
+				"You are the payments reviewer.",
+				"",
+			].join("\n"),
+		);
+		writeFileSync(
+			join(repo, "services/pay/charge.ts"),
+			"// Charges a card.\nexport const charge = (cents: number) => cents;\n",
+		);
+		git(repo, "add", "--all");
+		git(repo, "commit", "--quiet", "-m", "base");
+		git(repo, "checkout", "--quiet", "-b", "feature");
+		mkdirSync(join(repo, "lib"));
+		git(repo, "mv", "services/pay/charge.ts", "lib/charge.ts");
+		git(repo, "commit", "--quiet", "-m", "move the charge out of the service");
+		writeFileSync(join(repo, "melian.yaml"), `${guardrailsOnly}  full: [fast, lens.pay]\n`);
+
+		const review = melian(repo, ["review", "main"], scriptFile({ pay: [{ text: "Reported 0 findings." }] }));
+
+		expect(review).toMatchObject({ status: 0, stderr: "" });
+		expect(review.stdout).toContain("lens.pay  careful");
+	});
+
 	it("runs guardrails, Biome, and tsc before the lenses, and passes a clean change", { timeout: 120_000 }, () => {
 		const { repo, env } = staticCheckout("export const b: number = 2;\n");
 
