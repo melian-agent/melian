@@ -233,7 +233,7 @@ What stays out of a lens: topology, concurrency, deadlines, publication, and ver
 
 Built in milestone 2 step 3, except `durability`, planned for milestone 2.
 
-Problem: the two lenses that ship cover one kind of defect. [The classification of 151 accepted findings](research/2026-10-04-review-findings-by-bucket.md) from Melian's comparison records puts 54 in correctness, the only bucket today's lenses plausibly reach. Trust boundary, with 28, and durability, with 17, are mostly high severity, and no check looks for either. About 11 of the 151 could be a static rule. Example: in [pull request #12](https://github.com/melian-agent/melian/pull/12), `loadConfig` read the head's `melian.yaml`, so a pull request set the policy for its own review. No lens today asks whether the head controls its own judge.
+Problem: the two lenses milestone 1 shipped covered one kind of defect. [The classification of 151 accepted findings](research/2026-10-04-review-findings-by-bucket.md) from Melian's comparison records put 54 in correctness, the only bucket those lenses plausibly reached. Trust boundary, with 28, and durability, with 17, were mostly high severity, and no check looked for either. About 11 of the 151 could be a static rule. Example: in [pull request #12](https://github.com/melian-agent/melian/pull/12), `loadConfig` read the head's `melian.yaml`, so a pull request set the policy for its own review. No lens asked whether the head controls its own judge.
 
 Solution: five more lenses, each one angle. Four are built in, under `packages/core/lenses/`, and join the default `full` tier beside `correctness` and `contracts`:
 

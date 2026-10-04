@@ -2,13 +2,13 @@
   "pr_title": "Simplify the configuration walk",
   "comments": [
     {
-      "comment": "The change deleted the check that stopped the walk at the filesystem root, so a start directory that never reaches root loops forever.",
+      "comment": "The change deleted the check that stopped the walk once dirname returned the directory itself, at \".\" or the filesystem root, so a start directory that never reaches root as spelled loops forever.",
       "severity": "High",
       "category": "bug",
       "file": "src/config-files.ts",
       "rule": "dropped-guard",
       "cause": "introduced",
-      "failureScenario": "melian-config ./repo src/a.ts calls configFiles(\"./repo\", \"repo/src\"). dir never equals \"./repo\": it walks to \"repo\", then \".\", and dirname(\".\") is \".\", so the loop never ends, and with a config.json in the working directory it pushes ./config.json until the heap runs out. The base stopped once the parent equalled the directory.",
+      "failureScenario": "melian-config ./repo src/a.ts calls configFiles(\"./repo\", \"repo/src\"). dir never equals \"./repo\": it walks to \"repo\", then \".\", and dirname(\".\") is \".\", so the loop never ends, and with a config.json in the working directory it pushes config.json, as join(\".\", \"config.json\") spells it, until the heap runs out. The base stopped once the parent equalled the directory.",
       "evidence": [
         {
           "file": "src/config-files.ts",
@@ -31,7 +31,7 @@
       ]
     },
     {
-      "comment": "configFiles no longer stops at the top of the filesystem, so a start directory that never reaches root as spelled loops forever.",
+      "comment": "configFiles no longer stops when dirname returns the directory itself, at \".\" or the filesystem root, so a start directory that never reaches root as spelled loops forever.",
       "severity": "High",
       "category": "bug",
       "file": "src/config-files.ts",

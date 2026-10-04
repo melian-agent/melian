@@ -92,7 +92,7 @@
               "why": "This change deleted the guard that broke the loop when dirname returned the directory itself.",
               "fix": "Restore the check: compute the parent, and break when it equals dir."
             },
-            "failureScenario": "melian-config ./repo src/a.ts calls configFiles(\"./repo\", \"repo/src\"). dir never equals \"./repo\": it walks to \"repo\", then \".\", and dirname(\".\") is \".\", so the loop never ends, and with a config.json in the working directory it pushes ./config.json until the heap runs out. The base stopped once the parent equalled the directory.",
+            "failureScenario": "melian-config ./repo src/a.ts calls configFiles(\"./repo\", \"repo/src\"). dir never equals \"./repo\": it walks to \"repo\", then \".\", and dirname(\".\") is \".\", so the loop never ends, and with a config.json in the working directory it pushes config.json, as join(\".\", \"config.json\") spells it, until the heap runs out. The base stopped once the parent equalled the directory.",
             "evidence": [
               {
                 "file": "src/config-files.ts",
