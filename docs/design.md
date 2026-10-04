@@ -63,11 +63,11 @@ Core, the pipeline, and the CLI and skill hosts were built in milestone 1. The A
 ├─────────────────────────────────────────────────────────┤
 │ Pipeline: review orchestration as Pi Durable tasks and conversations
 ├─────────────────────────────────────────────────────────┤
-│ Core: findings, lenses, checks, config, standards, knowledge, decisions, github, git
+│ Core: findings, lenses, checks, config, standards, knowledge, decisions, git, provider port
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Core** is harness-free TypeScript. It imports pi-ai types and nothing else from Pi. It holds the finding schema and stable IDs, finding diffing across revisions, guardrail evaluation, SARIF normalisation of static tool output, lens loading, configuration layering, standards and knowledge loaders, the decision-model port, and the GitHub and git clients. All of it is unit-testable without a harness.
+**Core** is harness-free TypeScript. It imports pi-ai types and nothing else from Pi. It holds the finding schema and stable IDs, finding identity and the lifecycle rules, guardrail evaluation, SARIF normalisation of static tool output, lens loading, configuration layering, standards and knowledge loaders, the decision-model port, the git client, and the provider port. The GitHub client lives in `packages/github`, behind that port. The commands that act on findings across revisions, such as dismissal, are planned for milestone 3. All of it is unit-testable without a harness.
 
 **Pipeline** is the only place review flow lives. It is written once against Pi Durable: tasks, child conversations, documents, memos, hooks. It also holds the static tool runners, because running a tool executes repository code and so goes through Pi Durable's `ExecutionEnv`, which core may not import. Every host embeds this layer; none reimplements it.
 
