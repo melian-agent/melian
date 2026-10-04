@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import type { Finding, Verdict } from "@melian-agent/core";
+import type { AlsoReportedAs, Finding, Verdict } from "@melian-agent/core";
 import { type AdjudicationResult, AdjudicationTask, type AdjudicationTaskInput, readVerdict } from "./adjudication.ts";
 import { DismissError } from "./errors.ts";
 import { type Dismissal, dismissFinding, FindingsDocument, revisionKey } from "./findings.ts";
@@ -56,24 +56,25 @@ export class DismissHarness {
 	}
 }
 
-// The finding of `verdict` that `id` names, and the reports dismissing it dismisses: the finding with that ID, else the
-// one adjudication merged it into. A live finding's `alsoReportedAs` also lists the dismissed reports of its defect,
-// which it never absorbed, so they neither lead to it nor are dismissed with it.
-function named(verdict: Verdict, id: string): { finding: Finding; members: string[] } | undefined {
+// The finding of `verdict` that `id` names, and the other reports adjudication merged into it: the finding with that
+// ID, else the one it was merged into. A live finding's `alsoReportedAs` also lists the dismissed reports of its defect,
+// which it never absorbed, so they neither lead to it nor are dismissed with it. A verdict recorded before Melian marked
+// those reports `dismissed` still lists each among its own dismissed findings.
+function named(verdict: Verdict, id: string): { finding: Finding; members: AlsoReportedAs[] } | undefined {
 	const dismissed = new Set(
 		verdict.dismissed.flatMap((each) => [
 			each.properties.id,
 			...(each.properties.alsoReportedAs ?? []).map((other) => other.id),
 		]),
 	);
-	const membersOf = (finding: Finding) => {
-		const reports = (finding.properties.alsoReportedAs ?? []).map((other) => other.id);
-		const merged =
-			finding.properties.status === "dismissed" ? reports : reports.filter((each) => !dismissed.has(each));
-		return [finding.properties.id, ...merged];
-	};
+	const membersOf = ({ properties }: Finding) =>
+		(properties.alsoReportedAs ?? []).filter(
+			(other) => properties.status === "dismissed" || (other.dismissed !== true && !dismissed.has(other.id)),
+		);
 	const all = [...Object.values(verdict.findings).flat(), ...verdict.dismissed];
-	const finding = all.find((each) => each.properties.id === id) ?? all.find((each) => membersOf(each).includes(id));
+	const finding =
+		all.find((each) => each.properties.id === id) ??
+		all.find((each) => membersOf(each).some((other) => other.id === id));
 	return finding === undefined ? undefined : { finding, members: membersOf(finding) };
 }
 
@@ -87,6 +88,11 @@ export interface DismissalOptions {
 	readonly id: string;
 	readonly dismissal: Dismissal;
 	/**
+	 * Dismiss the report `id` names alone, leaving every other report adjudication merged with it live. By default the
+	 * finding is dismissed as the verdict shows it, with every report merged into it.
+	 */
+	readonly only?: boolean;
+	/**
 	 * The checkout the verdict's per-path policy is read from, in place of the one the review ran in, which may have
 	 * been a worktree since removed.
 	 */
@@ -98,8 +104,8 @@ export interface DismissalOptions {
 export interface RecordedDismissal {
 	/** The dismissed finding as the new verdict holds it, or the dismissed finding that speaks for it after a merge. */
 	readonly finding: Finding;
-	/** The reports adjudication had merged into the finding, dismissed with it, by ID. */
-	readonly also: readonly string[];
+	/** The reports adjudication had merged into the finding, dismissed with it: none with `only`. */
+	readonly also: readonly AlsoReportedAs[];
 	/** The dismissal this one replaced, when the finding was dismissed already with another reason or dismisser. */
 	readonly replaced?: Dismissal;
 	readonly verdict: Verdict;
@@ -131,8 +137,10 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		throw new DismissError("unknownFinding", `the review of ${revision} has no finding ${id}`, where);
 	}
 	// The finding as the verdict shows it: its own report and every report adjudication merged into it, so dismissing
-	// one defect never leaves another check's report of it live.
-	const { finding: shown, members } = found;
+	// one defect never leaves another check's report of it live, unless the caller asked for the one report alone.
+	const own = options.only ? id : found.finding.properties.id;
+	const members = options.only ? [] : found.members;
+	const reports = [own, ...members.map((other) => other.id)];
 	const { replaced, also, task } = await root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const entry = index.reviews[revision];
@@ -141,11 +149,11 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			throw new DismissError("notReviewed", `Melian has no adjudication of ${revision} to repeat; ${again}`, where);
 		}
 		const recorded = (await tx.doc(FindingsDocument, root.id)).items;
-		const dismissed = [...new Set(members)].filter((member) => Object.hasOwn(recorded, member));
+		const dismissed = [...new Set(reports)].filter((report) => Object.hasOwn(recorded, report));
 		let replaced: Dismissal | undefined;
-		for (const member of dismissed) {
-			const before = await dismissFinding(tx, root.id, member, dismissal);
-			if (member === shown.properties.id) replaced = before;
+		for (const report of dismissed) {
+			const before = await dismissFinding(tx, root.id, report, dismissal);
+			if (report === own) replaced = before;
 		}
 		// The review's own input with the findings version the dismissal moved to, keeping its key order, so a later
 		// review that computes the same input attaches to this task. The review's checkout stays while it exists, since
@@ -155,7 +163,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		const checkout = existsSync(previous.repoRoot) ? previous.repoRoot : repoRoot;
 		const input: AdjudicationTaskInput = { ...previous, repoRoot: checkout, findingsVersion };
 		const key = JSON.stringify(input);
-		const also = dismissed.filter((member) => member !== shown.properties.id);
+		const also = members.filter((other) => dismissed.includes(other.id));
 		// The same dismissal again, as after a dismiss a crash cut short, waits for the adjudication it started.
 		const current = await tx.task(known.task as TaskId);
 		const undecided = ["aborted", "faulted", "orphaned", "failed"];

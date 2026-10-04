@@ -123,9 +123,11 @@ describe("dedupeFindings", () => {
 
 		expect(rest).toEqual([]);
 		expect(kept!.properties.id).toBe(lens.properties.id);
-		expect(kept!.properties.alsoReportedAs).toEqual([
-			{ id: eslint.properties.id, ruleId: "security/detect-eval-with-expression", check: "static.eslint" },
-		]);
+		expect(kept!.properties.alsoReportedAs).toEqual([reportOf(eslint)]);
+		expect(kept!.properties.alsoReportedAs![0]).toMatchObject({
+			ruleId: "security/detect-eval-with-expression",
+			check: "static.eslint",
+		});
 		expect(parseFinding(kept)).toEqual(kept);
 	});
 
@@ -133,9 +135,7 @@ describe("dedupeFindings", () => {
 		const severe = finding({ ...eslintInput, severity: "P0" });
 		const deduped = dedupeFindings([lens, severe], () => defaultConfig);
 		expect(deduped.map((each) => each.properties.source.check)).toEqual(["static.eslint"]);
-		expect(deduped[0]!.properties.alsoReportedAs).toEqual([
-			{ id: lens.properties.id, ruleId: "no-eval", check: "lens.security" },
-		]);
+		expect(deduped[0]!.properties.alsoReportedAs).toEqual([reportOf(lens)]);
 	});
 
 	it("keeps the alias's owner and raises it to the highest severity reported", () => {
@@ -400,16 +400,15 @@ describe("dedupeFindings", () => {
 				const [kept, ...rest] = dedupeFindings(order, () => owned);
 				expect(rest).toEqual([]);
 				expect(kept!.properties.id).toBe(brokenCaller.properties.id);
-				expect(kept!.properties.alsoReportedAs).toEqual([
-					{ id: unhandledError.properties.id, ruleId: "unhandled-error", check: "lens.correctness" },
-				]);
+				expect(kept!.properties.alsoReportedAs).toEqual([reportOf(unhandledError)]);
 			}
 		});
 	});
 });
 
 function reportOf(finding: Finding) {
-	return { id: finding.properties.id, ruleId: finding.ruleId, check: finding.properties.source.check };
+	const { id, source, severity } = finding.properties;
+	return { id, ruleId: finding.ruleId, check: source.check, severity };
 }
 
 describe("adjudicate", () => {
@@ -544,7 +543,9 @@ describe("adjudicate", () => {
 			const verdict = adjudicate({ findings: [dismissedKeeper, live], manifest, checks, config: defaultConfig });
 			expect(verdict).toMatchObject({ status: "findings", blocking: true });
 			expect(verdict.findings.block.map((each) => each.properties.id)).toEqual([live.properties.id]);
-			expect(verdict.findings.block[0]!.properties.alsoReportedAs).toEqual([reportOf(dismissedKeeper)]);
+			expect(verdict.findings.block[0]!.properties.alsoReportedAs).toEqual([
+				{ ...reportOf(dismissedKeeper), dismissed: true },
+			]);
 			expect(verdict.dismissed.map((each) => each.properties.id)).toEqual([dismissedKeeper.properties.id]);
 		});
 
@@ -555,7 +556,9 @@ describe("adjudicate", () => {
 			const verdict = adjudicate({ findings: [dismissedOwner, live], manifest, checks, config: owned });
 			expect(verdict).toMatchObject({ status: "findings", blocking: true });
 			expect(verdict.findings.block.map((each) => each.properties.id)).toEqual([live.properties.id]);
-			expect(verdict.findings.block[0]!.properties.alsoReportedAs).toEqual([reportOf(dismissedOwner)]);
+			expect(verdict.findings.block[0]!.properties.alsoReportedAs).toEqual([
+				{ ...reportOf(dismissedOwner), dismissed: true },
+			]);
 		});
 	});
 
@@ -570,9 +573,7 @@ describe("adjudicate", () => {
 		const verdict = adjudicate({ findings: [docs, eslint, blocker], manifest, checks, config: configFor });
 		expect(verdict.findings.advisory.map((each) => each.properties.path)).toEqual(["docs/guide.md"]);
 		expect(verdict.findings.block).toHaveLength(1);
-		expect(verdict.findings.block[0]!.properties.alsoReportedAs).toEqual([
-			{ id: eslint.properties.id, ruleId: "detect-eval", check: "static.eslint" },
-		]);
+		expect(verdict.findings.block[0]!.properties.alsoReportedAs).toEqual([reportOf(eslint)]);
 		expect(verdict.findings.acknowledge).toEqual([]);
 	});
 });

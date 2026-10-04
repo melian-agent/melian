@@ -74,7 +74,16 @@ export const findingEvidenceSchema = Type.Array(evidenceLocationSchema, { minIte
 export const findingSourceSchema = Type.Object({ check: text, version: Type.Optional(text) }, strict);
 
 /** The JSON Schema of an {@link AlsoReportedAs}. */
-export const alsoReportedAsSchema = Type.Object({ id: idSchema, ruleId: text, check: text }, strict);
+export const alsoReportedAsSchema = Type.Object(
+	{
+		id: idSchema,
+		ruleId: text,
+		check: text,
+		severity: Type.Optional(severitySchema),
+		dismissed: Type.Optional(Type.Literal(true)),
+	},
+	strict,
+);
 
 /** The JSON Schema of a {@link MemberClaim}. */
 export const memberClaimSchema = Type.Object(
@@ -390,7 +399,12 @@ export type FindingExplanation = Static<typeof findingExplanationSchema>;
 /** The check that produced a finding, and the version of the lens or question set it ran. */
 export type FindingSource = Static<typeof findingSourceSchema>;
 
-/** A finding adjudication merged into another: its ID, its rule, and the check that reported it. */
+/**
+ * A report of the same defect that a finding lists: its ID, rule, check, and the severity it reported. A report
+ * adjudication merged into the finding has no `dismissed`; a dismissed report a live finding never absorbed is listed
+ * with `dismissed: true`, so a reader sees the defect was answered once under another rule. A verdict recorded before
+ * Melian kept severities has none.
+ */
 export type AlsoReportedAs = Static<typeof alsoReportedAsSchema>;
 
 /**

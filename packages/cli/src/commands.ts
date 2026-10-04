@@ -258,7 +258,13 @@ const verdictWords: Readonly<Record<Verdict["status"], string>> = {
 
 // Dismisses a finding of the stored review in the changeset's storage, shared by every worktree of the clone, and
 // decides the verdict again. Like findings, it reads only local refs and storage.
-export async function dismiss(io: Io, argument: string, id: string, reason: string): Promise<number> {
+export async function dismiss(
+	io: Io,
+	argument: string,
+	id: string,
+	reason: string,
+	options: { readonly only: boolean } = { only: false },
+): Promise<number> {
 	const changeset = await storedChangeset(io, argument);
 	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, isScripted(io.env));
 	if (!existsSync(path)) throw noReview(changeset, argument);
@@ -272,6 +278,7 @@ export async function dismiss(io: Io, argument: string, id: string, reason: stri
 			revision: changeset.revision,
 			id,
 			dismissal,
+			only: options.only,
 			repoRoot: changeset.repoRoot,
 		}).catch((error: unknown) => {
 			if (!(error instanceof DismissError)) throw error;
@@ -294,7 +301,11 @@ export async function dismiss(io: Io, argument: string, id: string, reason: stri
 		if (replaced !== undefined)
 			io.stdout(`It was dismissed by ${visibleText(replaced.by)}: ${visibleText(replaced.reason)}\n`);
 		if (also.length > 0) {
-			io.stdout(`Also dismissed the same defect's other reports: ${also.join(", ")}.\n`);
+			const reports = also.map(
+				(other) => `  ${visibleText(other.ruleId)} from ${visibleText(other.check)} (${other.id})\n`,
+			);
+			io.stdout(`Also dismissed, as reports adjudication merged into it:\n${reports.join("")}`);
+			io.stdout(`To dismiss one report alone, run melian dismiss with --only.\n`);
 		}
 		io.stdout(`Verdict now: ${verdictWords[verdict.status]}${verdict.blocking ? ", blocking" : ""}.\n`);
 		const target = parseTarget(argument);

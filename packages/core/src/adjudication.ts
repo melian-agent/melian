@@ -89,7 +89,8 @@ function strongerFirst(a: Ranked, b: Ranked): number {
 }
 
 function reportOf(finding: Finding): AlsoReportedAs {
-	return { id: finding.properties.id, ruleId: finding.ruleId, check: finding.properties.source.check };
+	const { id, source, severity } = finding.properties;
+	return { id, ruleId: finding.ruleId, check: source.check, severity };
 }
 
 type Aliases = MelianConfig["ruleAliases"];
@@ -237,12 +238,12 @@ function speakFor(keeper: Finding, defect: readonly Finding[], alsoReportedAs: A
  * rule is a key listing another member's rule is preferred, so a repository can say the defect belongs to the
  * contracts lens. Otherwise the most severe stays, the lower ID on a tie. The finding that stays takes the highest
  * severity among them and the strongest cause, keeps its own claim and every other's ({@link mergeClaims}), so a merge
- * never lowers what blocks and drops no claim, and lists each other's ID, rule, and check in
+ * never lowers what blocks and drops no claim, and lists each other's ID, rule, check, and severity in
  * `properties.alsoReportedAs`. A finding without a snippet is never merged.
  *
  * Only findings with the same lifecycle status merge. A dismissed finding never absorbs a live one: a live finding
  * beside a dismissed report of the same defect stays live, and blocks if it blocks, listing the dismissed one in
- * `alsoReportedAs`. Returns the findings that stay, in input order.
+ * `alsoReportedAs` with `dismissed: true`. Returns the findings that stay, in input order.
  */
 export function dedupeFindings(
 	findings: readonly Finding[],
@@ -278,7 +279,9 @@ export function dedupeFindings(
 		const context =
 			defect[0]!.properties.status === "dismissed"
 				? []
-				: dismissed.filter((other) => joins(defect, other)).map(reportOf);
+				: dismissed
+						.filter((other) => joins(defect, other))
+						.map((other) => ({ ...reportOf(other), dismissed: true as const }));
 		if (defect.length === 1 && context.length === 0) {
 			speakers.set(defect[0]!, defect[0]!);
 			continue;

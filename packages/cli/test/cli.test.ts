@@ -257,6 +257,63 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		);
 	});
 
+	// The null dereference golden, with the contracts lens reporting the same lines under a rule of its own, so
+	// adjudication merges the two reports as one defect that correctness speaks for.
+	function reviewedMerged() {
+		const golden = goldens["correctness-null-deref"]!;
+		const script = golden.script as { correctness: { calls?: { name: string; arguments: object }[] }[] };
+		const call = script.correctness
+			.flatMap((step) => step.calls ?? [])
+			.find((each) => each.name === "report_finding")!;
+		const changedReturn = { ...call, arguments: { ...call.arguments, rule: "changed-return", severity: "P2" } };
+		const contracts = [{ calls: [changedReturn] }, { text: "Reported 1 finding." }];
+		const { repo, env } = goldenCheckout(golden, { ...script, contracts });
+		const review = melian(repo, ["review", range], env);
+		expect(review.status).toBe(1);
+		const stored = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as Verdict;
+		const [speaker] = stored.findings.block;
+		const [member] = speaker!.properties.alsoReportedAs!;
+		return { repo, env, review, id: speaker!.properties.id, member: member!.id };
+	}
+
+	it("prints a finding's merged reports, and names each one dismissing the finding dismisses with it", () => {
+		const { repo, env, review, id, member } = reviewedMerged();
+		expect(review.stdout).toContain(
+			`null-dereference  (introduced, new, block)  ${id}\n    Merged report: P2 changed-return from lens.contracts  ${member}\n`,
+		);
+
+		const dismissed = melian(repo, ["dismiss", range, id, "--reason", reason], env);
+
+		expect(dismissed).toMatchObject({ status: 0, stderr: "" });
+		expect(dismissed.stdout).toBe(
+			[
+				`Dismissed null-dereference in src/user.ts line 7 (${id}) as Melian Test <test@melian.invalid>.`,
+				"Also dismissed, as reports adjudication merged into it:",
+				`  changed-return from lens.contracts (${member})`,
+				"To dismiss one report alone, run melian dismiss with --only.",
+				"Verdict now: passed.",
+				"",
+			].join("\n"),
+		);
+	});
+
+	it("dismisses the one report --only names, and leaves the report merged with it live", () => {
+		const { repo, env, id, member } = reviewedMerged();
+
+		const dismissed = melian(repo, ["dismiss", range, id, "--only", "--reason", reason], env);
+
+		expect(dismissed).toMatchObject({ status: 0, stderr: "" });
+		expect(dismissed.stdout).not.toContain("Also dismissed");
+		expect(dismissed.stdout).toContain("Verdict now: findings.\n");
+		const verdict = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as Verdict;
+		expect(verdict.dismissed.map((each) => each.properties.id)).toEqual([id]);
+		const live = Object.values(verdict.findings).flat();
+		expect(live.map((each) => each.properties.id)).toEqual([member]);
+		expect(melian(repo, ["findings", range], env).stdout).toContain(
+			`changed-return  (introduced, new, acknowledge)  ${member}\n    Also reported, dismissed: P1 null-dereference from lens.correctness  ${id}\n`,
+		);
+	});
+
 	it("exits 1 when the review or the finding is not found", () => {
 		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!);
 		expect(melian(repo, ["dismiss", "main", "0123456789abcdef", "--reason", reason], env)).toMatchObject({

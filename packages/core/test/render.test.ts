@@ -306,6 +306,41 @@ describe("renderFindingsTerminal with a verdict", () => {
 		});
 	});
 
+	it("prints each finding's merged reports, and the dismissed reports beside it, with severity, rule, check, and ID", () => {
+		const speaker = createFinding(evalInput);
+		const merged = createFinding({
+			...evalInput,
+			rule: "code-injection",
+			severity: "P2",
+			source: { check: "lens.contracts" },
+		});
+		const answered = createFinding({
+			...evalInput,
+			rule: "unsafe-call",
+			severity: "P3",
+			source: { check: "static.biome" },
+			status: "dismissed",
+		});
+		const verdict = adjudicate({
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+			findings: [speaker, merged, answered],
+		});
+
+		const text = renderFindingsTerminal(verdict, { ids: true });
+
+		expect(text).toContain(
+			[
+				`  P1  line 12  no-eval  (introduced, new, block)  ${speaker.properties.id}`,
+				`    Merged report: P2 code-injection from lens.contracts  ${merged.properties.id}`,
+				`    Also reported, dismissed: P3 unsafe-call from static.biome  ${answered.properties.id}`,
+				"  eval runs request input",
+			].join("\n"),
+		);
+		expect(renderFindingsTerminal(verdict)).toContain("    Merged report: P2 code-injection from lens.contracts\n");
+	});
+
 	it("escapes control characters in a check's name, reason, and error", () => {
 		const hostile = adjudicate({
 			findings: [],

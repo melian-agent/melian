@@ -6,7 +6,7 @@ import type { EvidenceLocation, Finding, FindingsLog } from "./findings.ts";
 export interface TerminalRenderOptions {
 	/** Colour severities and file names with ANSI escape codes. Off by default. */
 	readonly color?: boolean;
-	/** End each finding's first line with its ID, which `melian dismiss` takes. Off by default. */
+	/** End each finding's first line, and each line naming another report of its defect, with its ID, which `melian dismiss` takes. Off by default. */
 	readonly ids?: boolean;
 	/** Print a verdict's silent and dismissed findings too, rather than count them. Off by default. */
 	readonly all?: boolean;
@@ -88,10 +88,20 @@ function dismissalLines(finding: Finding): string[] {
 	];
 }
 
+// The other reports of the finding's defect: those adjudication merged into it, which a dismissal of it dismisses too,
+// and the dismissed ones it lists beside it.
+function reportLines(finding: Finding, ids: boolean): string[] {
+	return (finding.properties.alsoReportedAs ?? []).map(({ id, ruleId, check, severity, dismissed }) => {
+		const what = `${severity === undefined ? "" : `${severity} `}${visibleText(ruleId)} from ${visibleText(check)}`;
+		return `    ${dismissed ? "Also reported, dismissed" : "Merged report"}: ${what}${ids ? `  ${visibleText(id)}` : ""}`;
+	});
+}
+
 function block(finding: Finding, paint: Paint, ids: boolean): string {
 	const { severity, cause, evidence, failureScenario, status, explanation, resolution, id } = finding.properties;
 	return [
 		`  ${paint(severityColor[severity], severity)}  ${lineSpan(finding)}  ${visibleText(finding.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"})${ids ? `  ${visibleText(id)}` : ""}`,
+		...reportLines(finding, ids),
 		...dismissalLines(finding),
 		`  ${prose(finding.message.text, messageContinuation)}`,
 		`    What: ${prose(explanation.what, "      ")}`,
@@ -110,8 +120,9 @@ export function plural(count: number, noun: string, nouns = `${noun}s`): string 
  * Renders a findings log or a verdict as plain text for a terminal.
  *
  * A log renders grouped by file in path order, and within a file by severity, then line. Each finding is one block with
- * its rule, cause, status, message, the explanation's three parts, its failure scenario, and each evidence location
- * with its role and the code read there.
+ * its rule, cause, status, each other report of its defect, merged into it or dismissed beside it, with its severity,
+ * rule, and check, the message, the explanation's three parts, its failure scenario, and each evidence location with
+ * its role and the code read there.
  *
  * A verdict renders a header with its status and whether it blocks, the checks that did not run and why, a lens its
  * budget ended among them, each lens that ran with its scrutiny level and any budget that ended it while its level

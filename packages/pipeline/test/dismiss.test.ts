@@ -274,10 +274,36 @@ describe("recording a dismissal", () => {
 
 		const recorded = await dismiss(harness, shown!.properties.id);
 
-		expect(recorded.also).toEqual(others);
+		expect(recorded.also).toEqual([
+			expect.objectContaining({ id: others[0], ruleId: "changed-return", check: "lens.contracts" }),
+		]);
 		expect(recorded.verdict).toMatchObject({ status: "passed", blocking: false });
 		expect(recorded.verdict.dismissed.map((each) => each.properties.id)).toEqual([shown!.properties.id]);
 		expect(recorded.verdict.dismissed[0]!.properties.alsoReportedAs!.map((other) => other.id)).toEqual(others);
+	});
+
+	it("dismisses only the report the ID names when asked, leaving the report merged with it live", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding(true);
+		const [shown] = (await reviewed(harness)).verdict.findings.block;
+		const member = shown!.properties.alsoReportedAs![0]!.id;
+
+		const recorded = await recordDismissal({
+			harness,
+			revision: await revision(),
+			id: shown!.properties.id,
+			dismissal,
+			only: true,
+			repoRoot: repo,
+		});
+
+		expect(recorded.also).toEqual([]);
+		expect(recorded.finding.properties).toMatchObject({ id: shown!.properties.id, status: "dismissed" });
+		const live = Object.values(recorded.verdict.findings).flat();
+		expect(live.map((each) => each.properties.id)).toEqual([member]);
+		expect(live[0]!.properties.alsoReportedAs).toEqual([
+			expect.objectContaining({ id: shown!.properties.id, dismissed: true }),
+		]);
 	});
 
 	it("dismisses again only the report an ID names, never a live finding that lists it as dismissed context", async () => {
