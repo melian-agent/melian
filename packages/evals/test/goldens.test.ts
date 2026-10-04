@@ -78,7 +78,7 @@ describe("a golden's standards and policy", () => {
 		expect(named.map((entry) => join(entry.parentPath, entry.name))).toEqual([join(goldensDirectory, "melian.yaml")]);
 	});
 
-	it("leave policy-change-review to a change of Melian's own configuration, not a golden's", async () => {
+	it("leave policy-change-review to a change of Melian's own configuration, the corpus's included, not a golden's", async () => {
 		const melian = join(goldensDirectory, "../../..");
 		const repo = realpathSync(mkdtempSync(join(tmpdir(), "melian-goldens-policy-")));
 		const golden = "packages/evals/goldens/trust-boundary-clean-build-config/head/tsconfig.json";
@@ -100,7 +100,13 @@ describe("a golden's standards and policy", () => {
 				"tsconfig.json": "{}\n",
 				[golden]: "{}\n",
 			});
-			const head = write({ "tsconfig.json": '{ "compilerOptions": { "noCheck": true } }\n', [golden]: "{ }\n" });
+			// The corpus's melian.yaml switches the review off beneath it, which must not reach a change to the file itself.
+			const corpus = `${readFileSync(join(melian, policy[1]!), "utf8")}  # widened\n`;
+			const head = write({
+				"tsconfig.json": '{ "compilerOptions": { "noCheck": true } }\n',
+				[golden]: "{ }\n",
+				[policy[1]!]: corpus,
+			});
 			const { revision } = await resolveRange(repo, `${base}..${head}`);
 			const { findings } = await evaluateGuardrails({
 				repoRoot: repo,
@@ -111,7 +117,7 @@ describe("a golden's standards and policy", () => {
 				findings
 					.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
 					.map((finding) => finding.properties.path),
-			).toEqual(["tsconfig.json"]);
+			).toEqual(["packages/evals/goldens/melian.yaml", "tsconfig.json"]);
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}
