@@ -292,11 +292,14 @@ const maxPromptBytes = 200 * 1024;
  * the head enters inside `quoteUntrusted` boundaries carrying `nonce`: the file list as one listing, and each file's
  * diff as its own block whose first line is the file's path and status, so a changed line cannot pose as another
  * file's header. Paths are escaped with core's `visibleText`, so a newline in one cannot forge a line. `only` limits
- * the prompt to the files a lens covers.
+ * the prompt to the files a lens covers, matching a renamed file by its old path or its new one.
  */
 export function renderChangePrompt(changeset: Changeset, nonce: string, only?: readonly string[]): string {
 	const { base, head } = changeset.revision;
-	const files = changeset.revision.files.filter((file) => only === undefined || only.includes(file.path));
+	const files = changeset.revision.files.filter(
+		(file) =>
+			only === undefined || only.includes(file.path) || (file.oldPath !== undefined && only.includes(file.oldPath)),
+	);
 	const named = (file: (typeof files)[number]) =>
 		`${file.oldPath === undefined ? "" : `${visibleText(file.oldPath)} -> `}${visibleText(file.path)}`;
 	const header = [
@@ -597,7 +600,10 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	const { harness, changeset, config, standards, models } = options;
 	const context = options.context ?? backgroundContext;
 	const root = (await harness.root(context)).id;
-	const paths = changeset.revision.files.map((file) => file.path);
+	// A file's old path too, so a move out of a lens's paths still runs the lens on what left them.
+	const paths = changeset.revision.files.flatMap((file) =>
+		file.oldPath === undefined ? [file.path] : [file.oldPath, file.path],
+	);
 	const manifest = checksOfTier(config, options.tier ?? config.stages["pull-request"] ?? "full");
 	const named = new Set(manifest.filter((name) => name.startsWith("lens.")).map((name) => name.slice("lens.".length)));
 	const selected = selectLenses(

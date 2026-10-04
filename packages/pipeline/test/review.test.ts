@@ -2125,6 +2125,31 @@ describe("adjudication", () => {
 			});
 		});
 
+		it("runs the lenses that covered a file the change moved into their excluded paths", async () => {
+			rmSync(repo, { recursive: true, force: true });
+			repo = baseAndHead(
+				{ "src/config.ts": lines("export const port = 8080;") },
+				{ "goldens/x/notes.md": lines("A golden.") },
+			);
+			gitIn(repo, "mv", "src/config.ts", "goldens/x/config.ts");
+			gitIn(repo, "commit", "--quiet", "-m", "move the source into the goldens");
+			const excluded = { paths: ["**", "!goldens/**"] };
+			const requests = scriptConversations(fake, [
+				{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+			const { verdict } = await reviewed({
+				config: { ...config, lenses: { correctness: excluded, contracts: excluded } },
+			});
+
+			expect(verdict).toMatchObject({ status: "passed", notRun: [allowedDecisionSkip] });
+			const [first] = requests[correctness]!;
+			const prompt = textOf(first!.find((message) => message.role === "user")!);
+			expect(quoted(prompt, nonceOf(first!), "listing")).toEqual(["renamed src/config.ts -> goldens/x/config.ts"]);
+			expect(requests[contracts]).toHaveLength(1);
+		});
+
 		it("runs only the lenses the manifest names, and fails a lens it names that does not exist", async () => {
 			scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
 			const { verdict } = await reviewed({ config: tiered("lens.correctness", "lens.security") });

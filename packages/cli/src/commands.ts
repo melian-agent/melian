@@ -87,7 +87,9 @@ export async function review(
 		source = own ? { kind: "worktree" } : { kind: "revision", commit: changeset.revision.base };
 	}
 	const { repoRoot } = changeset;
-	const paths = changeset.revision.files.map((file) => file.path);
+	const paths = changeset.revision.files.flatMap((file) =>
+		file.oldPath === undefined ? [file.path] : [file.oldPath, file.path],
+	);
 	const lenses = await loadLenses(repoRoot, source, paths);
 	const standards = await loadStandards(repoRoot, source, ".");
 	const { config: loaded } = await loadConfig(repoRoot, source, ".");
