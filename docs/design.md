@@ -39,7 +39,7 @@ Built in milestone 1, except knowledge and decisions, planned for milestone 3 (k
 | Term | Meaning |
 |---|---|
 | Changeset | The unit under review: staged changes, a branch range, a working tree, or a pull request. Everything downstream is identical regardless of kind. |
-| Revision | One version of a changeset, identified by its head commit. A pull request has many revisions. |
+| Revision | One version of a changeset, identified by its base and head commits; a pull request retargeted onto another base is a new revision with the same head. A pull request has many revisions. |
 | Check | A named unit of work that produces findings: a static tool run, a deterministic policy, or a lens. |
 | Tier | A named set of checks, such as `fast`, `standard`, `full`. |
 | Stage | A point in a workflow, such as `pre-commit`, `pre-push`, `pull-request`, `comment`, mapped to a tier. |
