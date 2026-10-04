@@ -11,6 +11,7 @@ import {
 	normaliseSnippet,
 	wasCut,
 } from "./findings.ts";
+import type { ScrutinyLevel } from "./lens.ts";
 
 /** The resolutions from strictest to most lenient. */
 export const resolutionOrder: readonly Resolution[] = ["block", "acknowledge", "advisory", "silent"];
@@ -316,6 +317,8 @@ export interface CheckRecord {
 	 * counts only that version's findings for the check; without it, every version's.
 	 */
 	readonly version?: string;
+	/** The scrutiny level a lens ran at. Only a lens that started has one. */
+	readonly level?: ScrutinyLevel;
 }
 
 /** The reason {@link adjudicate} gives a check the manifest names that has no record. */
@@ -342,6 +345,11 @@ export interface Verdict {
 	 * left no record, as skipped with the reason {@link noRecord}.
 	 */
 	readonly notRun: readonly CheckRecord[];
+	/**
+	 * The checks that ran, in input order, each lens with the level it ran at. Absent from a verdict recorded before
+	 * Melian kept it.
+	 */
+	readonly ran?: readonly CheckRecord[];
 }
 
 /** What {@link adjudicate} decides from. */
@@ -408,5 +416,6 @@ export function adjudicate({ findings, manifest, checks, config, allowSkip = [] 
 		findings: grouped,
 		dismissed: resolved.filter((finding) => finding.properties.status === "dismissed"),
 		notRun,
+		ran: checks.filter((check) => check.status === "ran").map((check) => ({ ...check })),
 	};
 }

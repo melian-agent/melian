@@ -464,7 +464,14 @@ describe("adjudicate", () => {
 			findings: { block: [], acknowledge: [], advisory: [], silent: [] },
 			dismissed: [],
 			notRun: [failed],
+			ran: checks,
 		});
+	});
+
+	it("keeps the checks that ran, each lens with its level", () => {
+		const lens = { name: "lens.correctness", status: "ran", level: "careful" } as const;
+		const verdict = adjudicate({ findings: [], manifest, checks: [...checks, lens], config: defaultConfig });
+		expect(verdict.ran).toEqual([...checks, lens]);
 	});
 
 	it("is not reviewed when a check the manifest names left no record, even with no findings", () => {

@@ -505,14 +505,15 @@ async function startAdjudication(
 
 function lensCheck(lens: LensRun, result: LensResult | undefined): CheckRecord {
 	const name = `lens.${lens.name}`;
-	if (result === undefined) return { name, status: "failed", reason: "the lens task did not complete" };
+	const { level } = lens;
+	if (result === undefined) return { name, status: "failed", level, reason: "the lens task did not complete" };
 	const outcome = result[lens.key];
-	if (outcome?.status === "done") return { name, status: "ran" };
+	if (outcome?.status === "done") return { name, status: "ran", level };
 	if (outcome?.status === "exhausted") {
 		const error = `tried ${outcome.tried.join(", ")}; the last said: ${outcome.reason}`;
-		return { name, status: "failed", reason: "every model of its tier failed", error };
+		return { name, status: "failed", level, reason: "every model of its tier failed", error };
 	}
-	return { name, status: "failed", reason: "the lens did not finish", error: outcome?.reason ?? "no outcome" };
+	return { name, status: "failed", level, reason: "the lens did not finish", error: outcome?.reason ?? "no outcome" };
 }
 
 const noLensCovers = "no lens covers these paths";

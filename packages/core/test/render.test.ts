@@ -207,9 +207,16 @@ const verdict = adjudicate({
 		}),
 	],
 	checks: [
-		{ name: "lens.correctness", status: "ran" },
-		{ name: "lens.security", status: "failed", reason: "the lens did not finish", error: "provider returned 529" },
+		{ name: "lens.correctness", status: "ran", level: "careful" },
+		{
+			name: "lens.security",
+			status: "failed",
+			level: "deep",
+			reason: "the lens did not finish",
+			error: "provider returned 529",
+		},
 		{ name: "static.tsc", status: "skipped", reason: "no tsconfig.json at the base revision" },
+		{ name: "static.biome", status: "ran", version: "2.5.15" },
 	],
 	config: defaultConfig,
 });
@@ -223,7 +230,7 @@ describe("renderVerdictJson", () => {
 });
 
 describe("renderFindingsTerminal with a verdict", () => {
-	it("leads with the verdict and the checks that did not run, then groups findings by resolution", async () => {
+	it("leads with the verdict, the checks that did not run, and each lens's level, then groups findings by resolution", async () => {
 		await expect(renderFindingsTerminal(verdict)).toMatchFileSnapshot("./golden/verdict.txt");
 	});
 

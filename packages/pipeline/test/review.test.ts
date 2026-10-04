@@ -1035,6 +1035,35 @@ describe("reviewChangeset", () => {
 		expect(await readVerdict(harness, root, reviewedRevision(), context)).toEqual(verdict);
 	});
 
+	it("records the level each lens ran at on its check record, and runs it with that level's instructions", async () => {
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { verdict } = await reviewed();
+
+		expect(verdict.ran).toEqual([
+			...deterministicRan,
+			{ name: "lens.contracts", status: "ran", level: "careful" },
+			{ name: "lens.correctness", status: "ran", level: "careful" },
+		]);
+		const prompt = systemPromptOf(requests[correctness]![0]!);
+		expect(prompt).toContain("Budget: at most 8 findings.");
+		expect(prompt).toContain("Reading scope: the hunks.");
+		const root = (await harness.root(context)).id;
+		expect((await readVerdict(harness, root, reviewedRevision(), context))?.ran).toEqual(verdict.ran);
+	});
+
+	it("records the level on the check record of a lens that did not finish", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const error = (await review().catch((caught: unknown) => caught)) as ReviewError;
+		expect(error.verdict?.notRun[0]).toMatchObject({ name: "lens.correctness", status: "failed", level: "careful" });
+	});
+
 	it("refuses a tier with no model, or none with credentials", async () => {
 		await expect(review({ config: { ...config, models: {} } })).rejects.toThrow(ModelRoutingError);
 		const unknown = { ...config, models: { heavy: { model: "nowhere/opus", fallbacks: ["faux/missing"] } } };

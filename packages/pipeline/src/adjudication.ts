@@ -10,6 +10,7 @@ import {
 	type RepositorySource,
 	type Resolution,
 	type ResolvedFinding,
+	type ScrutinyLevel,
 	type Severity,
 	upgradeStoredFinding,
 	type Verdict,
@@ -21,7 +22,14 @@ import { ReviewIndex } from "./review-index.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
 type StoredAlias = string[] | { rules: string[]; distinct?: boolean };
-type StoredCheck = { name: string; status: CheckStatus; reason?: string; error?: string; version?: string };
+type StoredCheck = {
+	name: string;
+	status: CheckStatus;
+	reason?: string;
+	error?: string;
+	version?: string;
+	level?: ScrutinyLevel;
+};
 
 export type StoredVerdict = {
 	status: VerdictStatus;
@@ -29,6 +37,8 @@ export type StoredVerdict = {
 	findings: Record<Resolution, ResolvedFinding[]>;
 	dismissed: ResolvedFinding[];
 	notRun: StoredCheck[];
+	// Absent from a verdict recorded before Melian kept the checks that ran.
+	ran?: StoredCheck[];
 };
 
 // A verdict recorded before evidence became a list, with each finding in the current shape.

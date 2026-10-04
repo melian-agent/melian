@@ -1,9 +1,12 @@
 Verdict: [31mnot reviewed[0m, [31mblocking[0m
 
 2 checks did not run:
-  lens.security  failed: the lens did not finish
+  lens.security  failed at deep: the lens did not finish
     Error: provider returned 529
   static.tsc  skipped: no tsconfig.json at the base revision
+
+1 lens ran:
+  lens.correctness  careful
 
 [1mBlock: 3 findings[0m
 

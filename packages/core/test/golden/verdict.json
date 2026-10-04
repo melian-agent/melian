@@ -374,6 +374,7 @@
     {
       "name": "lens.security",
       "status": "failed",
+      "level": "deep",
       "reason": "the lens did not finish",
       "error": "provider returned 529"
     },
@@ -381,6 +382,18 @@
       "name": "static.tsc",
       "status": "skipped",
       "reason": "no tsconfig.json at the base revision"
+    }
+  ],
+  "ran": [
+    {
+      "name": "lens.correctness",
+      "status": "ran",
+      "level": "careful"
+    },
+    {
+      "name": "static.biome",
+      "status": "ran",
+      "version": "2.5.15"
     }
   ]
 }

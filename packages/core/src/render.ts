@@ -80,8 +80,8 @@ function block(finding: Finding, paint: (code: string, text: string) => string):
 	].join("\n");
 }
 
-function plural(count: number, noun: string): string {
-	return `${count} ${noun}${count === 1 ? "" : "s"}`;
+function plural(count: number, noun: string, nouns = `${noun}s`): string {
+	return `${count} ${count === 1 ? noun : nouns}`;
 }
 
 /**
@@ -91,9 +91,9 @@ function plural(count: number, noun: string): string {
  * its rule, cause, status, message, the explanation's three parts, its failure scenario, and each evidence location
  * with its role and the code read there.
  *
- * A verdict renders a header with its status and whether it blocks, the checks that did not run and why, and then its
- * findings grouped by resolution, strictest first, each group by file as for a log. Silent and dismissed findings are
- * counted, not shown.
+ * A verdict renders a header with its status and whether it blocks, the checks that did not run and why, each lens that
+ * ran with its scrutiny level, and then its findings grouped by resolution, strictest first, each group by file as for
+ * a log. Silent and dismissed findings are counted, not shown.
  */
 export function renderFindingsTerminal(input: FindingsLog | Verdict, options: TerminalRenderOptions = {}): string {
 	const paint: Paint = (code, text) => (options.color ? `\u001b[${code}m${text}\u001b[0m` : text);
@@ -143,13 +143,18 @@ function renderVerdict(verdict: Verdict, paint: Paint): string {
 	const [color, label] = statusLabel[verdict.status];
 	const parts = [`Verdict: ${paint(color, label)}${verdict.blocking ? `, ${paint("31", "blocking")}` : ""}`];
 	if (verdict.notRun.length > 0) {
-		const checks = verdict.notRun.map(({ name, status, reason, error }) =>
+		const checks = verdict.notRun.map(({ name, status, level, reason, error }) =>
 			[
-				`  ${visibleText(name)}  ${status}${reason === undefined ? "" : `: ${prose(reason, "    ")}`}`,
+				`  ${visibleText(name)}  ${status}${level === undefined ? "" : ` at ${level}`}${reason === undefined ? "" : `: ${prose(reason, "    ")}`}`,
 				...(error === undefined ? [] : [`    Error: ${prose(error, "      ")}`]),
 			].join("\n"),
 		);
 		parts.push([`${plural(verdict.notRun.length, "check")} did not run:`, ...checks].join("\n"));
+	}
+	const lenses = (verdict.ran ?? []).filter((check) => check.level !== undefined);
+	if (lenses.length > 0) {
+		const checks = lenses.map(({ name, level }) => `  ${visibleText(name)}  ${level}`);
+		parts.push([`${plural(lenses.length, "lens", "lenses")} ran:`, ...checks].join("\n"));
 	}
 	for (const resolution of shownResolutions) {
 		const findings = verdict.findings[resolution];
