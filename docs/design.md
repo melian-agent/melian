@@ -513,17 +513,17 @@ Match Pi's conventions unless there is a reason not to.
 | Concern | Choice |
 |---|---|
 | Runtime | Node 22.19 or later, ESM only, TypeScript |
-| Repository | npm workspaces, Biome, esbuild for the CLI bundle, Vitest |
+| Repository | npm workspaces, Biome, tsc project references; the CLI ships a committed bin shim over dist, Vitest |
 | Schemas | TypeBox, pinned to pi-durable's version; JSON Schema derived for editor validation |
 | Config | YAML for `melian.yaml`, Markdown with front matter for lenses and standards |
 | Findings | SARIF plus extension properties |
-| Models | pi-ai, with the credential-pool provider |
-| Decisions | Melian `Decider` port; Jev and Clef adapters |
+| Models | pi-ai, with the credential-pool provider (planned) |
+| Decisions | Melian `Decider` port; Jev and Clef adapters (planned, milestone 3) |
 | Durability | pi-durable, exact-pinned, wrapped behind one module |
-| Storage | memory for tests, SQLite locally and on the server, JSONL on the state branch for Actions |
-| Execution | Node environment locally, container environment for untrusted code |
-| GitHub | Octokit, GitHub App auth on server and Actions, `gh` token locally; git by shelling out |
-| Telemetry | pi-telemetry over OpenTelemetry |
+| Storage | memory for tests, SQLite locally and on the server, JSONL on the state branch for Actions (planned, milestone 2) |
+| Execution | Node environment locally, container environment for untrusted code (planned, milestone 2) |
+| GitHub | Octokit, GitHub App auth on server and Actions (planned), `gh` token locally; git by shelling out |
+| Telemetry | pi-telemetry over OpenTelemetry (planned) |
 | Code shape | Classes for objects with identity, state, or a lifecycle; functions and readonly data for definitions and transforms, as in Pi |
 
 ## Package layout
