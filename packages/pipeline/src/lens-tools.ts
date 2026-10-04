@@ -28,6 +28,7 @@ import {
 } from "@melian-agent/core";
 import { FindingsDocument, hasSighting, revisionKey, sightingCount, upsertFinding } from "./findings.ts";
 import {
+	AssistantEntry,
 	type Context,
 	type ConversationId,
 	type DocumentReader,
@@ -36,11 +37,17 @@ import {
 	hook,
 	LiveDoc,
 	section,
+	type TaskId,
+	type ToolCall,
 	type ToolExecutionApi,
+	type ToolRegistration,
 	ToolTask,
+	type ToolTaskInput,
+	type Tx,
 	Type,
 	UsageDoc,
 	type UsageState,
+	validateToolArguments,
 } from "./harness.ts";
 import { injectionPolicy, quoteUntrusted } from "./untrusted.ts";
 
@@ -189,20 +196,56 @@ type Spent = "tokens" | "tools";
 
 type Metered = { position: number; spent?: Spent };
 
-// The tool tasks of the round's counted calls, to the read-only tools and `report_finding`, in call order, from
-// `LiveDoc`, which lists every call of the round when it starts; whether the round holds a read; and the tokens the
-// conversation has used, which Pi records with each response before its round runs. A call of a sequential round that
-// has not started has no task yet, but keeps its place.
-async function roundOf(reader: DocumentReader, conversationId: ConversationId, lens: LensPolicy, context: Context) {
-	const live = (await reader.snapshot(LiveDoc, conversationId, context))?.tools ?? [];
-	const reads: readonly string[] = lens.tools;
-	const counted = live.filter((slot) => reads.includes(slot.name) || slot.name === "report_finding");
-	const round = counted.map((slot): number | undefined => slot.taskId);
+type Slot = { callId: string; name: string; taskId?: number };
+
+// The round's slots, from `LiveDoc`, which lists every call of the round in call order when it starts, and the tokens
+// the conversation has used, which Pi records with each response before its round runs. A call of a sequential round
+// that has not started has no task yet, but keeps its place.
+async function roundState(reader: DocumentReader, conversationId: ConversationId, context: Context) {
+	const slots: readonly Slot[] = (await reader.snapshot(LiveDoc, conversationId, context))?.tools ?? [];
 	const used = tokensUsed(await reader.snapshot(UsageDoc, conversationId, context));
+	return { slots, used };
+}
+
+// The tool tasks of the round's counted calls, to the read-only tools and `report_finding` that `reaches` admits, in
+// call order; whether those hold a read; and the tokens used before the round.
+function roundOf(
+	lens: LensPolicy,
+	{ slots, used }: Awaited<ReturnType<typeof roundState>>,
+	reaches: (slot: Slot) => boolean,
+) {
+	const reads: readonly string[] = lens.tools;
+	const counted = slots.filter(
+		(slot) => (reads.includes(slot.name) || slot.name === "report_finding") && reaches(slot),
+	);
+	const round = counted.map((slot) => slot.taskId);
 	return { round, reads: counted.some((slot) => reads.includes(slot.name)), used };
 }
 
-type Round = Awaited<ReturnType<typeof roundOf>>;
+type Round = ReturnType<typeof roundOf>;
+
+// The calls of this task's round that reach their tool: arguments the tool's repair and Pi's validator accept, in the
+// order Pi applies them, and that the lens's policy allows. Read from the assistant entry that started the round,
+// which never changes, so every call of the round and every replay admits the same calls.
+async function reachingCalls(tx: Tx, taskId: TaskId, lens: LensPolicy): Promise<Set<string>> {
+	const input = (await tx.task(taskId))?.input as ToolTaskInput | undefined;
+	const entry = input === undefined ? undefined : await tx.entry(AssistantEntry, input.assistant);
+	const message = entry?.model?.[0];
+	const calls = message?.role === "assistant" ? message.content.filter((each) => each.type === "toolCall") : [];
+	return new Set(calls.filter((call) => reaches(lens, call)).map((call) => call.id));
+}
+
+function reaches(lens: LensPolicy, call: ToolCall): boolean {
+	const tool = lensTools.find((each) => each.name === call.name);
+	if (tool === undefined) return false;
+	try {
+		const prepared = tool.prepareArguments === undefined ? call.arguments : tool.prepareArguments(call.arguments);
+		const args: unknown = validateToolArguments(tool, { ...call, arguments: prepared as ToolCall["arguments"] });
+		return refusal(lens, { name: call.name, arguments: args }) === undefined;
+	} catch {
+		return false;
+	}
+}
 
 // Which budget ends a round, from what every call of the round reads alike: the tokens used before it, or a read in a
 // round that starts with the tools budget already used. The round that crosses the tools budget goes on, its excess
@@ -214,17 +257,19 @@ function spentBy(lens: LensPolicy, calls: readonly number[], { round, reads, use
 	return tools !== undefined && reads && earlier >= tools ? "tools" : undefined;
 }
 
-// Whether the round of this call ends the conversation, read without writing, as a hook must.
+// Whether the round of this call ends the conversation, read without writing, as a hook must. A hook cannot read the
+// round's other calls, so it counts every call by name; a call it lets through that the tools' count leaves out is
+// refused by its tool.
 async function roundEnds(api: DocumentReader & { conversationId: ConversationId }, lens: LensPolicy, context: Context) {
 	if (lens.limits?.tokens === undefined && lens.limits?.tools === undefined) return false;
-	const round = await roundOf(api, api.conversationId, lens, context);
+	const round = roundOf(lens, await roundState(api, api.conversationId, context), () => true);
 	const calls = (await api.snapshot(LensDocument, api.conversationId, context))?.spend?.calls ?? [];
 	return spentBy(lens, calls, round) !== undefined;
 }
 
 // Counts a call by its task and decides, from durable state alone, its number against the tools budget and whether its
-// round ends the conversation. The round's calls are numbered from `LiveDoc` in call order, so a call's number and its
-// round's ending never depend on which call commits first.
+// round ends the conversation. The round's calls that reach a tool are numbered in call order, so a call's number and
+// its round's ending never depend on which call commits first.
 async function meter(
 	api: ToolExecutionApi,
 	lens: LensPolicy,
@@ -233,20 +278,25 @@ async function meter(
 ): Promise<Metered> {
 	const { tokens, tools } = lens.limits ?? {};
 	if (tokens === undefined && tools === undefined) return { position: 0 };
-	const round = await roundOf(api, api.conversationId, lens, context);
+	const state = await roundState(api, api.conversationId, context);
 	return api.commit(async (tx) => {
+		const reaching = await reachingCalls(tx, api.taskId, lens);
+		const round = roundOf(lens, state, (slot) => reaching.has(slot.callId));
 		const document = await tx.doc(LensDocument, api.conversationId);
 		// Read back through the document: the object assigned is copied in, and changes to it afterwards would be lost.
 		document.spend ??= { calls: [] };
 		const { spend } = document;
 		const earlier = spend.calls.filter((id) => !round.round.includes(id)).length;
-		const position = earlier + round.round.indexOf(api.taskId) + 1;
+		// A call its policy refuses is in no position: its tool refuses it, and it never counts.
+		const index = round.round.indexOf(api.taskId);
+		const position = earlier + index + 1;
+		const past = index !== -1 && tools !== undefined && position > tools;
 		const spent = spentBy(lens, spend.calls, round);
 		if (spent !== undefined) spend.ended ??= spent;
 		// A refused read is reduced coverage, recorded now: a lens that follows the refusal note never reads again.
-		if (call === "read" && tools !== undefined && position > tools) spend.ended ??= "tools";
+		if (call === "read" && past) spend.ended ??= "tools";
 		// Only a call within the budget counts, so the count a budget's end reports never passes its limit.
-		const counts = spent === undefined && (tools === undefined || position <= tools);
+		const counts = spent === undefined && index !== -1 && !past;
 		if (counts && !spend.calls.includes(api.taskId)) spend.calls.push(api.taskId);
 		return { position, ...(spent === undefined ? {} : { spent }) };
 	}, context);
@@ -628,6 +678,9 @@ export const reportFinding = defineTool({
 		return ending(result, lens, spent);
 	},
 });
+
+// Every tool a lens may be offered, which `reaches` checks a call against as Pi would.
+const lensTools: readonly ToolRegistration[] = [...Object.values(lensReadTools), reportFinding];
 
 // How many times a lens may correct one finding it reported.
 const maxCorrections = 3;

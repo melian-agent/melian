@@ -1287,6 +1287,38 @@ describe("reviewChangeset", () => {
 		});
 	});
 
+	describe("numbers only the calls that reach a tool, so a round of two under a budget of two runs both", () => {
+		const roundOfTwo = async (unrun: [string, Arguments]) => {
+			const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tools: 2 }) : lens));
+			const requests = scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [
+						calls(unrun, ["read_file", { path: "src/user.ts" }], ["search", { pattern: "managerName" }]),
+						fauxAssistantMessage("Done."),
+					],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+			const { verdict } = await reviewed({ lenses: tight });
+			const [, read, searched] = toolResults(requests[correctness]![1]!);
+			expect(read).toContain("return user.manager.name;");
+			expect(read).not.toContain("that was the last");
+			expect(searched).toContain("src/report.ts:1:");
+			expect(searched).toContain("[that was the last of this lens's 2 tool calls, report_finding included.");
+			expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toEqual({
+				name: "lens.correctness",
+				status: "ran",
+				level: "careful",
+			});
+		};
+
+		it("past a report_finding its policy blocks", () =>
+			roundOfTwo(["report_finding", { ...nullDeref, rule: "no-such-rule" }]));
+
+		it("past a call whose arguments fail validation", () => roundOfTwo(["read_file", {}]));
+	});
+
 	it("counts each call against the tools budget though a provider reuses its call ID across rounds", async () => {
 		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tools: 2 }) : lens));
 		const reused = () =>
