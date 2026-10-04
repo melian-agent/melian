@@ -114,7 +114,7 @@ Only the publish and knowledge tasks hold write credentials. Lenses never see th
 | Standards and lens bodies | `section()` prompt sections rebuilt from files before every request, so edits take effect immediately and the transcript records what the model saw |
 | Idempotent publication | A durable `published` document keyed by revision and finding ID, written in the same commit that records the post, plus a check for Melian's signed marker on the pull request before posting. The signing secret is a root document of the changeset's storage, disposed with it. Not `api.memo()`: memos are task-scoped and discarded when the task ends |
 | The walkthrough | A summarise task per revision that owns one child conversation with read-only tools. Its output is stored with the verdict, keyed by revision, and publish renders it |
-| The ledger | Its comment ID in the `published` document, so a replay edits the comment rather than posting another |
+| The ledger | Its comment ID in a changeset-level document, a root document of the changeset's storage, not the per-revision `published` document, because one comment spans every revision. A replay edits the comment rather than posting another |
 | Webhook delivery deduplication | `requestId` on submission, exactly-once. A `requestId` is scoped to one conversation, so the changeset's storage and conversation are resolved before deduplication |
 | Tool restriction and command guardrails | `hook(ToolTask)` with `beforeTool` |
 | Storage | The `Storage` interface: one atomic `commit(writes)`, ID minting, a set of reads, and `close()`, with no cross-process locking. The state-branch backend wraps Pi's JSONL storage and relies on one writer per changeset |
@@ -137,7 +137,7 @@ A finding is a SARIF `result` plus Melian extension properties. SARIF because se
 - `evidence`: one or more locations, each `{ file, line, endLine, role }`, holding the code the claim rests on. Required. `role` is `cause`, the code that brings the failure about, or `context`, code the claim reads but does not blame. A location may add `revision: base` to point at lines the change deleted, read from the base commit, so the removed-behaviour lens can show what was removed. Melian reads the snippet at each location from the head, or from the base for a base location, and stores it beside the location, so the verifier and the author read the same code the lens did.
 - `severity`: `P0` to `P3` plus `nit`. The rubric is fixed in version one, so `resolution` maps a closed set and a typo in configuration is an error. A repository-defined rubric is deferred until a user needs one.
 - `confidence`: calibrated probability that the finding is real, from a decision model, planned for milestone 4. The LLM verifier never writes it: a text model's stated confidence is not calibrated, and one field holding both would spoil the calibration set.
-- `verification`: the verifier's verdict, `confirmed`, `plausible`, or `refuted`, with its reason, an optional correction, the executor, the model, and the verifier's version. See [Verification](#verification).
+- `verification`: the verifier's verdict, `confirmed`, `plausible`, or `refuted`, with its reason, an optional correction, the executor, the model, and the verifier's version. A correction is text shown beside the finding and never changes its severity, location, or ID. See [Verification](#verification).
 - `resolution`: what this finding requires, after per-path configuration is applied. Only adjudication writes it, and it caps at advisory a `pre-existing` finding and a lens finding no verifier judged; a producer stores none, and a finding without one is unresolved. Problem: `report_finding` copied the severity's configured resolution, so a pre-existing P1 was stored as `block`. Solution: no tool decides what blocks.
 - `status`: `new`, `open`, `resolved`, `dismissed`, `stale`.
 - `explanation`: what, why here, what to do. Written for the author.
@@ -216,7 +216,7 @@ Front matter is routing; the body is the system prompt for the lens's child conv
 - `tools` is a read-only allowlist: `read_file`, `search`, and `list_files`, each reading the head revision through git rather than the filesystem. The hook layer enforces it. `report_finding` is always offered and never listed.
 - `severities` bounds what the lens may report. The hook layer rejects findings outside it.
 - `rules` lists the rule IDs the lens reports under, each with a one-line description. The hook layer rejects a finding under any other rule and tells the model which rules exist, so a model cannot coin a new rule name, and with it a new finding ID, on each run.
-- `budget.findings` caps how many findings the lens may report; past it `report_finding` refuses a new finding and says why. A replay or a correction of a finding the lens already reported always passes, so a crash at a full budget cannot strand a lens. `budget.tokens` and `budget.tools` cap the conversation's tokens and tool calls from milestone 2; until then `budget.tokens` is recorded but not enforced.
+- `budget.findings` caps how many findings the lens may report; past it `report_finding` refuses a new finding and says why. A replay or a correction of a finding the lens already reported always passes, so a crash at a full budget cannot strand a lens. `budget.tokens` and `budget.tools` cap the conversation's tokens and tool calls from milestone 2, enforced per level; until then `budget.tokens` is recorded but not enforced.
 - `extends` lets a repository override parts of a built-in lens, such as its tier or an appended paragraph, without copying the body.
 - `standards: true` injects the shared standards section. Default true; opt out for lenses where conventions are noise.
 
@@ -255,7 +255,7 @@ Solution: every candidate finding from a level that verifies passes a verifier b
 - The LLM executor: a verifier conversation with the read-only lens tools, answering through a `report_verdict` tool.
 - The decision-model executor, in milestone 4: a decision model answers when the packed state fits its capability descriptor and a provider is configured.
 
-Both executors write the same record, `verification` on the finding: verdict, reason, correction, executor, model, and version. Uniform records across executors become the calibration set. `confidence` stays reserved for a decision model's calibrated probability.
+Both executors write the same record, `verification` on the finding: verdict, reason, correction, executor, model, and version. A correction is text shown beside the finding; it never changes the finding's severity, location, or ID. Uniform records across executors become the calibration set. `confidence` stays reserved for a decision model's calibrated probability.
 
 The verifier runs on a model tier of its own, `verifier`. The [review plan](#the-review-plan) routes it to a different model family from the finder whose candidate it judges whenever one is credentialed, because checking across families is the cheap substitute for a stronger judge.
 
@@ -481,10 +481,10 @@ The CLI and the skills were built in milestone 1. `melian dismiss` is planned fo
 
 The primary host and the only thing the skills call. It has four commands, and a fifth is planned for milestone 2:
 
-- `melian review <range|#pr>` reviews a range of the checkout, or fetches a pull request and reviews it, and prints the verdict. It exits `0` passed, `1` findings with one blocking, `2` not reviewed, or `3` findings with none blocking, so a hook or a script can act on it. `--model <provider/id>` routes every tier to one model for that run, over any route, and from milestone 2 every check records the override in its lineage. A repeat review of the same base and head prints what was stored and spends nothing; `--rerun` runs the failed checks and lenses again.
+- `melian review <range|#pr>` reviews a range of the checkout, or fetches a pull request and reviews it, and prints the verdict. It exits `0` passed, `1` findings with one blocking, `2` not reviewed, or `3` findings with none blocking, so a hook or a script can act on it. `--model <provider/id>` routes every tier to one model for that run, over any route, and from milestone 2 every check it puts outside policy records the override in its lineage. A repeat review of the same base and head prints what was stored and spends nothing; `--rerun` runs the failed checks and lenses again.
 - `melian publish <#pr>` posts the stored review of the pull request's current head, and refuses a head or base the stored review does not cover. It exits `0` published, or `1` refused or failed.
 - `melian findings <range|#pr> [--open] [--json]` reads the stored verdict, and exits `1` when nothing is stored.
-- `melian doctor` checks Node, git, credentials, GitHub access, and where the static tools come from, and from milestone 2 prints the review plan it would resolve. It exits `1` when Node or git cannot run a review, and from milestone 2 when `melian.local.yaml` or `melian.secrets.yaml` is tracked.
+- `melian doctor` checks Node, git, credentials, model routes, GitHub access, and where the static tools come from, and from milestone 2 prints the review plan it would resolve. It exits `1` when Node or git cannot run a review, and from milestone 2 when `melian.local.yaml` or `melian.secrets.yaml` is tracked.
 - `melian dismiss <#pr|range> <id> --reason <text>` records a dismissal in the findings document, with who dismissed the finding and why. The finding stays dismissed until its trigger changes materially, and publication honours it.
 
 A command line Melian cannot read exits `64`.
@@ -663,7 +663,7 @@ Planned for milestone 2.
 
 Problem: a pull request shows Melian's findings but not what Melian did to reach them: which head a round reviewed, which lenses ran at which level on which model, what was refuted, and what was dismissed and why. A reader has to run the CLI to find out, and a review body per push scatters the answer across rounds. Editing the pull request description instead would race with its author and fight its template.
 
-Solution: publication maintains one comment Melian owns per pull request, the ledger. The first publish creates it, and every later one edits it in place. Its comment ID is recorded in the `published` document, so a replay re-renders it rather than posting another. It carries a signed marker and a hidden, versioned JSON stamp with the base, head, verdict, and counts. Its first visible line names the base, the head, and the round. Then, in order:
+Solution: publication maintains one comment Melian owns per pull request, the ledger. The first publish creates it, and every later one edits it in place. Its comment ID is recorded in a changeset-level document, not the per-revision `published` document, because one comment spans every revision; a replay re-renders it rather than posting another. It carries a signed marker and a hidden, versioned JSON stamp with the base, head, verdict, and counts. Its first visible line names the base, the head, and the round. Then, in order:
 
 1. Open findings and the verdict.
 2. Override and not-reviewed warnings, uncollapsed.
@@ -671,7 +671,7 @@ Solution: publication maintains one comment Melian owns per pull request, the le
 4. Run details, collapsed: the manifest, the plan with its models and levels, lineage, caps, timings, cost, and the standards files each lens read.
 5. Verification outcomes.
 6. Dismissals with their reasons.
-7. One collapsed section per earlier round, each trimmed to a line as the body nears GitHub's 64 KB limit.
+7. One collapsed section per earlier round, each trimmed to a line as the body nears GitHub's limit of 65,536 characters.
 
 `melian.yaml` switches the walkthrough:
 
