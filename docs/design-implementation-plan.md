@@ -82,6 +82,8 @@ Steps to be written when milestone 3 closes.
 | Phantom dependencies through npm hoisting | Any package | Move to pnpm when strict isolation is needed; the switch is one pull request |
 | Enola pre-1.0 churn and TypeScript extractor gaps | Milestone 2, step 11 | Pinned manifest, the spike's exit criterion, `search` unrestricted until per-file coverage is measured against tsc |
 | The verifier drops real findings | Milestone 2, step 6 onward | Asymmetric thresholds, refuted findings kept in the store, shadow reviewers until recall holds |
+| Any writer can forge the required `melian/review` status until the GitHub App binds it | Milestone 2, step 10, until milestone 3 | Writers are trusted by decision; `trust.writers: false` turns that off; milestone 3 binds the required check to the GitHub App as its expected source |
+| Losing the one clone that reviews Melian loses the marker secret, the ledger's comment ID, and every dismissal | Milestone 2, steps 7 and 8, until milestone 3 | A publish that finds a ledger marker it cannot verify refuses and names the recovery, never posting a duplicate; shared state on the state branch in milestone 3 |
 
 ## Progress log
 
