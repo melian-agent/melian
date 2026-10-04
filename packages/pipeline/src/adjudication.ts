@@ -16,7 +16,7 @@ import {
 	type Verdict,
 	type VerdictStatus,
 } from "@melian-agent/core";
-import { readFindings, revisionKey } from "./findings.ts";
+import { findingsVersion, readFindings, revisionKey } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
 import { ReviewIndex } from "./review-index.ts";
@@ -88,11 +88,16 @@ type StoredProvenance = {
 	lenses: string[];
 };
 
+// The adjudication task that recorded a verdict, and the findings version it read before deciding. Absent for a verdict
+// recorded before Melian kept it.
+type StoredDecision = { task: number; findingsVersion: number };
+
 // Each revision's verdict, keyed by `revisionKey` of its base and head, on the changeset's root conversation, with what
-// it was decided from under the same key.
+// it was decided from and the task that decided it under the same key.
 export const VerdictDocument = defineDoc<{
 	verdicts: Record<string, StoredVerdict>;
 	provenance?: Record<string, StoredProvenance>;
+	decisions?: Record<string, StoredDecision>;
 }>({
 	kind: "melian.verdicts",
 	version: 3,
@@ -157,6 +162,9 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 		adjudicate: async (task, runtime, context) => {
 			const { root, repoRoot, base, head, policy, config, manifest, checks, allowSkip, producers } = task.input;
 			const revision = revisionKey({ base, head });
+			// Read before the findings, so a write that lands between the two reads makes the verdict look older, never
+			// newer, than what it was decided from.
+			const seen = await findingsVersion(runtime, root, revision, context);
 			const findings = await readFindings(runtime, root, revision, context, { producers });
 			let verdict: Verdict;
 			try {
@@ -183,6 +191,7 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 				const document = await tx.doc(VerdictDocument, root);
 				document.verdicts[revision] = structuredClone(verdict) as StoredVerdict;
 				document.provenance = { ...document.provenance, [revision]: structuredClone(task.input.provenance) };
+				document.decisions = { ...document.decisions, [revision]: { task: runtime.taskId, findingsVersion: seen } };
 				return { status: "terminal", outcome: { status: "completed", result: "recorded" } };
 			}, context);
 		},
@@ -257,6 +266,20 @@ export async function readProvenance(
 	const stored = document?.provenance;
 	if (stored === undefined || !Object.hasOwn(stored, revision)) return undefined;
 	return structuredClone(stored[revision]) as VerdictProvenance;
+}
+
+/**
+ * The adjudication task that recorded the verdict for `revision` and the findings version it decided from, or
+ * `undefined` when that revision has no verdict, or its verdict was recorded before Melian kept them.
+ */
+export async function readDecision(
+	reader: Pick<DocumentReader, "snapshot">,
+	rootConversationId: ConversationId,
+	revision: string,
+	context: Context,
+): Promise<StoredDecision | undefined> {
+	const decisions = (await reader.snapshot(VerdictDocument, rootConversationId, context))?.decisions;
+	return decisions === undefined || !Object.hasOwn(decisions, revision) ? undefined : { ...decisions[revision]! };
 }
 
 /**

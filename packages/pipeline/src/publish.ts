@@ -15,6 +15,8 @@ import {
 	type Verdict,
 } from "@melian-agent/core";
 import {
+	type AdjudicationResult,
+	readDecision,
 	readProvenance,
 	readVerdict,
 	type StoredVerdict,
@@ -23,7 +25,7 @@ import {
 	type VerdictProvenance,
 } from "./adjudication.ts";
 import { PublishError } from "./errors.ts";
-import { revisionKey } from "./findings.ts";
+import { findingsVersion, revisionKey } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -732,6 +734,40 @@ function unpublishable(provenance: VerdictProvenance | undefined, pullRequest: P
 	return undefined;
 }
 
+// Why the verdict stored for `revision` may not be the one its findings decide now, or `undefined` when it is. The task
+// the review index names must have ended recording the stored verdict, from the findings as they are now. Pi's
+// inspection lists live tasks only, so a task that ended without deciding, aborted, failed, faulted, or orphaned, is
+// read by its ID, never inferred from its absence there. With no task named, as after a crash between a review's new
+// lens selection and its adjudication, the stored verdict stands only while its findings are unchanged.
+async function undecidedVerdict(
+	harness: Harness,
+	root: ConversationId,
+	revision: string,
+	context: Context,
+): Promise<string | undefined> {
+	const deciding = (await harness.snapshot(ReviewIndex, root, context))?.reviews[revision]?.adjudication;
+	const decision = await readDecision(harness, root, revision, context);
+	const now = await findingsVersion(harness, root, revision, context);
+	if (deciding === undefined) {
+		return decision === undefined || decision.findingsVersion === now
+			? undefined
+			: "its findings changed after it was decided, and no adjudication is recorded since";
+	}
+	const task = await harness.getTask(deciding.task as TaskId<AdjudicationResult>, context);
+	if (task === undefined) return `its adjudication task ${deciding.task} is gone`;
+	if (task.state.status !== "terminal") return "its adjudication has not finished";
+	const { outcome } = task.state;
+	if (outcome.status !== "completed") return `its adjudication ended ${outcome.status}`;
+	if (outcome.result !== "recorded") return `its adjudication ended ${outcome.result}`;
+	// A verdict recorded before Melian kept its decision: the input the index holds names the version it read.
+	const decided = decision ?? {
+		task: deciding.task,
+		findingsVersion: (JSON.parse(deciding.input) as { findingsVersion: number }).findingsVersion,
+	};
+	if (decided.task !== deciding.task) return "another adjudication task recorded the stored verdict";
+	return decided.findingsVersion === now ? undefined : "its findings changed after it was decided";
+}
+
 /**
  * Publishes the verdict recorded for a pull request's head: one review whose body is the verdict and whose comments
  * are the findings not already open, a reply in each resolved finding's thread, and the review's status. Every post is
@@ -785,16 +821,11 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 			where,
 		);
 	}
-	// A dismissal, or a review a crash cut short, may have left the revision's adjudication undecided, and the stored
-	// verdict is then the one from before it.
-	const deciding = (await harness.snapshot(ReviewIndex, root, context))?.reviews[revision]?.adjudication?.task;
-	if (
-		deciding !== undefined &&
-		(await harness.inspect(context)).tasks.some((each) => each.record.id === (deciding as TaskId))
-	) {
+	const undecided = await undecidedVerdict(harness, root, revision, context);
+	if (undecided !== undefined) {
 		throw new PublishError(
 			"notReviewed",
-			`Melian has not finished deciding the verdict of ${short(head)}, as after a dismissal or a review that was interrupted; ${again}`,
+			`Melian has not finished deciding the verdict of ${short(head)}, as after a dismissal or a review that was interrupted: ${undecided}; ${again}`,
 			where,
 		);
 	}

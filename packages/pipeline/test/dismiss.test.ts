@@ -185,6 +185,42 @@ function push(label: string, body: string, extra: Record<string, string> = {}): 
 	gitIn(repo, "commit", "--quiet", "-m", "push");
 }
 
+// Publishes main...feature as pull request #7 from the storage at `path`, through a provider that records statuses.
+async function publisher(path: string) {
+	const { base, head } = await revision();
+	const pullRequest: PullRequest = {
+		repository: { owner: "melian-agent", name: "example" },
+		number: 7,
+		title: "t",
+		url: "https://github.com/melian-agent/example/pull/7",
+		state: "open",
+		base: { ref: "main", sha: base },
+		head: { ref: "feature", sha: head },
+		fetch: { url: "https://github.com/melian-agent/example.git", headRef: "refs/pull/7/head" },
+	};
+	const statuses: ReviewStatus[] = [];
+	const provider: ReviewProvider = {
+		name: "fake",
+		pullRequest: async () => pullRequest,
+		postReview: async () => ({ id: "201", threads: {} }),
+		replyResolved: async () => undefined,
+		setStatus: async (_, status) => {
+			statuses.push(status);
+		},
+		findPublished: async () => ({ threads: {}, replies: {} }),
+	};
+	const changeset = await resolveRange(repo, "main...feature");
+	const publish = async () => {
+		const publishing = await openPublishHarness(await openSqliteStorage(path), fake.review, provider);
+		try {
+			return await publishReview({ harness: publishing.harness, provider, changeset, pullRequest, base });
+		} finally {
+			await publishing.close(context);
+		}
+	};
+	return { publish, statuses };
+}
+
 describe("recording a dismissal", () => {
 	it("counts a dismissed finding out of a verdict it decides again, and a later review attaches to it", async () => {
 		const harness = await reviewHarness(createMemoryStorage());
@@ -423,37 +459,7 @@ describe("recording a dismissal", () => {
 			return undefined;
 		}, context);
 		await first.close(context);
-		const { base, head } = await revision();
-		const pullRequest: PullRequest = {
-			repository: { owner: "melian-agent", name: "example" },
-			number: 7,
-			title: "t",
-			url: "https://github.com/melian-agent/example/pull/7",
-			state: "open",
-			base: { ref: "main", sha: base },
-			head: { ref: "feature", sha: head },
-			fetch: { url: "https://github.com/melian-agent/example.git", headRef: "refs/pull/7/head" },
-		};
-		const statuses: ReviewStatus[] = [];
-		const provider: ReviewProvider = {
-			name: "fake",
-			pullRequest: async () => pullRequest,
-			postReview: async () => ({ id: "201", threads: {} }),
-			replyResolved: async () => undefined,
-			setStatus: async (_, status) => {
-				statuses.push(status);
-			},
-			findPublished: async () => ({ threads: {}, replies: {} }),
-		};
-		const changeset = await resolveRange(repo, "main...feature");
-		const publish = async () => {
-			const publishing = await openPublishHarness(await openSqliteStorage(path), fake.review, provider);
-			try {
-				return await publishReview({ harness: publishing.harness, provider, changeset, pullRequest, base });
-			} finally {
-				await publishing.close(context);
-			}
-		};
+		const { publish, statuses } = await publisher(path);
 
 		await expect(publish()).rejects.toMatchObject({ code: "notReviewed" });
 		expect(statuses).toEqual([]);
@@ -467,6 +473,29 @@ describe("recording a dismissal", () => {
 		await dismissing.close(context);
 		await publish();
 		expect(statuses).toEqual([{ state: "success", description: "Passed" }]);
+	});
+
+	it("refuses to publish a verdict whose adjudication ended without deciding, naming why", async () => {
+		const path = join(dir, "changeset.sqlite");
+		const first = await reviewHarness(await openSqliteStorage(path));
+		scriptFinding();
+		const id = (await reviewed(first, true)).findings[0]!.properties.id;
+		await first.close(context);
+		const { publish, statuses } = await publisher(path);
+		// A harness that cannot adjudicate records the dismissal, then aborts the task it cannot run, which Pi settles
+		// as orphaned. Pi's inspection lists live tasks only, so the orphan is absent from it.
+		const publishing = await openPublishHarness(await openSqliteStorage(path), fake.review, {
+			name: "idle",
+		} as ReviewProvider);
+		opened.push(publishing);
+		await expect(dismiss(publishing.harness, id)).rejects.toMatchObject({ code: "notInstalled" });
+		await publishing.close(context);
+
+		await expect(publish()).rejects.toMatchObject({
+			code: "notReviewed",
+			message: expect.stringContaining("its adjudication ended orphaned"),
+		});
+		expect(statuses).toEqual([]);
 	});
 
 	it("refuses a revision with no stored review, and an ID its verdict does not hold", async () => {
