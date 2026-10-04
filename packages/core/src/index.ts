@@ -15,7 +15,7 @@ export {
 	type VerdictStatus,
 } from "./adjudication.ts";
 export { parseJsonc } from "./analyser.ts";
-export { type CodeLocation, checkEvidence, classifyCause } from "./cause.ts";
+export { type CodeLocation, causeHunk, classifyCause, type EvidenceSite } from "./cause.ts";
 export {
 	type Changeset,
 	parseRangeSpec,
@@ -83,6 +83,12 @@ export {
 	causeSchema,
 	createFinding,
 	createFindingsLog,
+	type EvidenceLocation,
+	type EvidenceRevision,
+	type EvidenceRole,
+	evidenceLocationSchema,
+	evidenceRevisionSchema,
+	evidenceRoleSchema,
 	type Finding,
 	type FindingEvidence,
 	type FindingExplanation,
@@ -107,6 +113,9 @@ export {
 	fingerprintKey,
 	type LocationCause,
 	levelForSeverity,
+	maxEvidenceLines,
+	maxEvidenceLocations,
+	maxFailureScenarioLength,
 	normaliseSnippet,
 	parseFinding,
 	type ReportFindingInput,
@@ -116,6 +125,7 @@ export {
 	sarifLevelSchema,
 	sarifSchemaUri,
 	snippetOccurrence,
+	upgradeStoredFinding,
 } from "./findings.ts";
 export {
 	type CheckReport,

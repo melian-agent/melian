@@ -11,6 +11,7 @@ import {
 	type Resolution,
 	type ResolvedFinding,
 	type Severity,
+	upgradeStoredFinding,
 	type Verdict,
 	type VerdictStatus,
 } from "@melian-agent/core";
@@ -29,6 +30,14 @@ export type StoredVerdict = {
 	dismissed: ResolvedFinding[];
 	notRun: StoredCheck[];
 };
+
+// A verdict recorded before evidence became a list, with each finding in the current shape.
+export function upgradeStoredVerdict(verdict: StoredVerdict): StoredVerdict {
+	const findings = Object.fromEntries(
+		Object.entries(verdict.findings).map(([resolution, group]) => [resolution, group.map(upgradeStoredFinding)]),
+	) as StoredVerdict["findings"];
+	return { ...verdict, findings, dismissed: verdict.dismissed.map(upgradeStoredFinding) };
+}
 
 /**
  * Where a review's revision came from. A `pull-request` review names the repository and pull request as its provider
@@ -74,11 +83,21 @@ export const VerdictDocument = defineDoc<{
 	provenance?: Record<string, StoredProvenance>;
 }>({
 	kind: "melian.verdicts",
-	version: 2,
+	version: 3,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
 	initial: () => ({ verdicts: {} }),
+	// Version 3 made a finding's evidence a list of locations.
+	migrate: (value, from) => {
+		if (from < 2)
+			throw new Error(`the verdict document needs migrating from version ${from}, which Melian cannot do`);
+		const state = value as { verdicts: Record<string, StoredVerdict> };
+		const verdicts = Object.fromEntries(
+			Object.entries(state.verdicts).map(([revision, verdict]) => [revision, upgradeStoredVerdict(verdict)]),
+		);
+		return { ...value, verdicts };
+	},
 });
 
 // What the adjudication task decides from. Everything is fixed when the review creates it, so a rerun decides alike.

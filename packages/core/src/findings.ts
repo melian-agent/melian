@@ -41,11 +41,27 @@ export const findingTriggerSchema = Type.Object(
 /** The JSON Schema of a {@link FindingExplanation}. */
 export const findingExplanationSchema = Type.Object({ what: text, whyHere: text, whatToDo: text }, strict);
 
-/** The JSON Schema of {@link FindingEvidence}. */
-export const findingEvidenceSchema = Type.Object(
-	{ file: text, startLine: line, endLine: Type.Optional(line), snippet: text },
+/** The JSON Schema of an {@link EvidenceRole}. */
+export const evidenceRoleSchema = Type.Union([Type.Literal("cause"), Type.Literal("context")]);
+
+/** The JSON Schema of an {@link EvidenceRevision}. */
+export const evidenceRevisionSchema = Type.Union([Type.Literal("head"), Type.Literal("base")]);
+
+/** The JSON Schema of an {@link EvidenceLocation}. */
+export const evidenceLocationSchema = Type.Object(
+	{
+		file: text,
+		startLine: line,
+		endLine: Type.Optional(line),
+		role: evidenceRoleSchema,
+		revision: evidenceRevisionSchema,
+		snippet: text,
+	},
 	strict,
 );
+
+/** The JSON Schema of {@link FindingEvidence}. */
+export const findingEvidenceSchema = Type.Array(evidenceLocationSchema, { minItems: 1 });
 
 /** The JSON Schema of a {@link FindingSource}. */
 export const findingSourceSchema = Type.Object({ check: text, version: Type.Optional(text) }, strict);
@@ -61,6 +77,7 @@ export const findingPropertiesSchema = Type.Object(
 		occurrence: Type.Optional(count),
 		discriminator: Type.Optional(text),
 		cause: causeSchema,
+		failureScenario: Type.Optional(text),
 		evidence: Type.Optional(findingEvidenceSchema),
 		trigger: Type.Optional(findingTriggerSchema),
 		severity: severitySchema,
@@ -113,6 +130,15 @@ export const findingSchema = Type.Object(
 
 const logResultSchema = Type.Object({ ...findingSchema.properties, ruleIndex: count }, strict);
 
+/** The longest failure scenario a lens may report, in UTF-16 code units. */
+export const maxFailureScenarioLength = 2000;
+
+/** The most evidence locations one finding may carry. */
+export const maxEvidenceLocations = 10;
+
+/** The most lines one evidence location may span, so the snippet stored with it stays short. */
+export const maxEvidenceLines = 60;
+
 /**
  * The JSON Schema of a {@link ReportFindingInput}: what a lens supplies through its `report_finding` tool, and nothing
  * else. Melian derives the rest of the finding.
@@ -132,24 +158,37 @@ export const reportFindingInputSchema = Type.Object(
 			},
 			strict,
 		),
-		evidence: Type.Optional(
+		failureScenario: Type.String({
+			minLength: 1,
+			maxLength: maxFailureScenarioLength,
+			pattern: "\\S",
+			description:
+				"The concrete input, state, or sequence of calls that makes the code fail, and the wrong outcome it produces. Prose",
+		}),
+		evidence: Type.Array(
 			Type.Object(
 				{
-					file: Type.String({
-						minLength: 1,
-						description: "Repository-relative path of a file this change modifies",
+					file: Type.String({ minLength: 1, description: "Repository-relative path at the named revision" }),
+					line: Type.Integer({ minimum: 1, description: "First line at the named revision" }),
+					endLine: Type.Optional(Type.Integer({ minimum: 1, description: "Last line at the named revision" })),
+					role: Type.Union([Type.Literal("cause"), Type.Literal("context")], {
+						description:
+							"cause: the code that brings the failure about; context: code the claim reads but does not blame",
 					}),
-					line: Type.Integer({ minimum: 1, description: "First line, at head, of the changed code" }),
-					endLine: Type.Optional(
-						Type.Integer({ minimum: 1, description: "Last line, at head, of the changed code" }),
+					revision: Type.Optional(
+						Type.Union([Type.Literal("head"), Type.Literal("base")], {
+							description: "head by default; base for lines this change deleted, read from the base commit",
+						}),
 					),
 				},
-				{
-					...strict,
-					description:
-						"For a location outside the change: the lines this change added or modified that provably break it. A location, never prose",
-				},
+				strict,
 			),
+			{
+				minItems: 1,
+				maxItems: maxEvidenceLocations,
+				description:
+					"The code the claim rests on, as locations, never prose. A finding outside the change is caused by it only when a cause location overlaps lines the change added, modified, or deleted",
+			},
 		),
 	},
 	strict,
@@ -190,11 +229,12 @@ export const findingsLogSchema = Type.Object(
 );
 
 /**
- * What a lens reports for one finding: a location, a rule from those the lens declares, a severity, an explanation, and
- * optionally evidence. Melian derives the rest so that a finding's identity never depends on the model's wording: the
- * snippet is read from the head revision at the reported lines, never taken from the model; `source` is the lens and
- * its version; `cause` is {@link classifyCause} of the location, made `affected` only by `evidence`; `resolution` comes
- * from configuration; and `status` from the findings document. {@link FindingInput} is the full internal input.
+ * What a lens reports for one finding: a location, a rule from those the lens declares, a severity, an explanation, a
+ * failure scenario, and evidence locations. Melian derives the rest so that a finding's identity never depends on the
+ * model's wording: the snippet is read from the head revision at the reported lines, never taken from the model, and
+ * each evidence location's snippet from the revision it names; `source` is the lens and its version; `cause` is
+ * {@link classifyCause} of the location and its evidence; `resolution` comes from configuration; and `status` from the
+ * findings document. {@link FindingInput} is the full internal input.
  */
 export type ReportFindingInput = Static<typeof reportFindingInputSchema>;
 
@@ -205,7 +245,8 @@ export type SarifLevel = Static<typeof sarifLevelSchema>;
  * Why a finding is in scope.
  *
  * - `introduced`: in the code the changeset added or changed. Can block.
- * - `affected`: outside the changed code, but broken by it, as `properties.evidence` shows. Can block.
+ * - `affected`: outside the changed code, but broken by it, as a `cause` location in `properties.evidence` shows. Can
+ *   block.
  * - `pre-existing`: outside the changed code and not shown to be caused by it. Never blocks.
  */
 export type Cause = Static<typeof causeSchema>;
@@ -223,10 +264,20 @@ export type FindingStatus = Static<typeof findingStatusSchema>;
  */
 export type FindingTrigger = Static<typeof findingTriggerSchema>;
 
+/** What an evidence location says about its lines: `cause` blames them for the failure, `context` only reads them. */
+export type EvidenceRole = Static<typeof evidenceRoleSchema>;
+
+/** Which commit an evidence location's lines are read from: the head, or the base for lines the change deleted. */
+export type EvidenceRevision = Static<typeof evidenceRevisionSchema>;
+
 /**
- * What makes a finding `affected`: the changed code that breaks its location, as lines at head that overlap a hunk's
- * new lines, with `snippet` read from the head revision at those lines, never written by the producer.
+ * Lines a finding's claim rests on, at the head or the base, with the role they play and `snippet` read from that
+ * revision at those lines, never written by the producer. A `cause` location overlapping the change is what makes a
+ * finding outside the diff `affected`.
  */
+export type EvidenceLocation = Static<typeof evidenceLocationSchema>;
+
+/** A finding's evidence: one or more {@link EvidenceLocation}s. */
 export type FindingEvidence = Static<typeof findingEvidenceSchema>;
 
 /** A finding's explanation for the author: what is wrong, why it matters in this change, and what to do. */
@@ -455,10 +506,14 @@ export interface FindingInput {
 	/** Required without a snippet: what tells this finding apart, such as the enclosing symbol or the hunk index. */
 	readonly discriminator?: string;
 	/**
-	 * `introduced` or `pre-existing`, usually from {@link classifyCause}, or `{ evidence }` for an `affected` finding:
-	 * the changed code that provably breaks this location, which {@link checkEvidence} confirms is in the change.
+	 * Usually {@link classifyCause} of the location and its evidence. `affected` needs a `cause` location in `evidence`;
+	 * this function cannot see the change, so the caller confirms that location overlaps it.
 	 */
-	readonly cause: LocationCause | { readonly evidence: FindingEvidence };
+	readonly cause: Cause;
+	/** The input, state, or sequence that makes the code fail, and the wrong outcome. Every lens finding has one. */
+	readonly failureScenario?: string;
+	/** The code the claim rests on. Every lens finding has some; a static or guardrail finding has none. */
+	readonly evidence?: FindingEvidence;
 	readonly trigger?: FindingTrigger;
 	readonly severity: Severity;
 	readonly confidence?: number;
@@ -496,9 +551,10 @@ export function createFinding(input: FindingInput): Finding {
 			: { ...input.trigger, file: canonicalPath(input.trigger.file, "/properties/trigger/file") };
 	const id = findingId({ file, rule, snippet: snippet ?? "", occurrence, discriminator });
 	const hasSnippet = normaliseSnippet(snippet ?? "") !== "";
-	const cited = typeof input.cause === "object" ? input.cause.evidence : undefined;
-	const evidence =
-		cited === undefined ? undefined : { ...cited, file: canonicalPath(cited.file, "/properties/evidence/file") };
+	const evidence = input.evidence?.map((location, index) => ({
+		...location,
+		file: canonicalPath(location.file, `/properties/evidence/${index}/file`),
+	}));
 	return parseFinding({
 		ruleId: rule,
 		level: levelForSeverity(input.severity),
@@ -523,7 +579,8 @@ export function createFinding(input: FindingInput): Finding {
 			path: file,
 			occurrence: hasSnippet ? occurrence : undefined,
 			discriminator: hasSnippet ? undefined : discriminator,
-			cause: evidence === undefined ? input.cause : "affected",
+			cause: input.cause,
+			failureScenario: input.failureScenario,
 			evidence,
 			trigger,
 			severity: input.severity,
@@ -543,7 +600,7 @@ export function createFinding(input: FindingInput): Finding {
  * Throws {@link FindingError}: `invalidFinding` when it does not match {@link findingSchema}, `levelMismatch` when its
  * level is not {@link levelForSeverity} of its severity, `invalidRegion` when its region ends before it starts,
  * `invalidPath` when its path is not canonical or its URI does
- * not encode that path, `missingEvidence` when it is `affected` without evidence,
+ * not encode that path, `missingEvidence` when it is `affected` without a `cause` evidence location,
  * `missingDiscriminator` when it lacks the occurrence or
  * discriminator its snippet calls for, and `idMismatch` when its ID is not {@link findingId} of its first location.
  */
@@ -584,22 +641,21 @@ export function parseFinding(input: unknown): Finding {
 		});
 	}
 	if (trigger !== undefined) requireCanonical(trigger.file, "/properties/trigger/file");
-	const { cause, evidence } = finding.properties;
-	if (cause === "affected" && evidence === undefined) {
-		throw new FindingError("missingEvidence", "an affected finding must cite the change that breaks it", {
-			path: "/properties/evidence",
-		});
-	}
-	if (cause !== "affected" && evidence !== undefined) {
-		throw new FindingError("invalidFinding", `an ${cause} finding carries evidence only an affected one needs`, {
-			path: "/properties/evidence",
-		});
-	}
-	if (evidence !== undefined) {
-		requireCanonical(evidence.file, "/properties/evidence/file");
-		if ((evidence.endLine ?? evidence.startLine) < evidence.startLine) {
-			throw new FindingError("invalidRegion", "the finding's evidence ends before it starts", {
+	const { cause, evidence = [] } = finding.properties;
+	if (cause === "affected" && !evidence.some((location) => location.role === "cause")) {
+		throw new FindingError(
+			"missingEvidence",
+			"an affected finding must cite, as a cause, the change that breaks it",
+			{
 				path: "/properties/evidence",
+			},
+		);
+	}
+	for (const [index, location] of evidence.entries()) {
+		requireCanonical(location.file, `/properties/evidence/${index}/file`);
+		if ((location.endLine ?? location.startLine) < location.startLine) {
+			throw new FindingError("invalidRegion", "an evidence location ends before it starts", {
+				path: `/properties/evidence/${index}`,
 			});
 		}
 	}
@@ -643,4 +699,18 @@ export function createFindingsLog(findings: readonly Finding[]): FindingsLog {
 			},
 		],
 	};
+}
+
+/**
+ * A finding stored before evidence became a list, in the current shape. Its single evidence location, which only an
+ * `affected` finding carried, becomes a one-entry list naming the location a `cause` at head. A finding from before
+ * failure scenarios has none, which the schema allows. Anything else comes back unchanged. A stored document that holds
+ * findings calls this when it migrates, so a review recorded before the change still reads, renders, and publishes.
+ */
+export function upgradeStoredFinding<T>(finding: T): T {
+	const properties = (finding as { properties?: { evidence?: unknown } } | null)?.properties;
+	const evidence = properties?.evidence;
+	if (evidence === null || typeof evidence !== "object" || Array.isArray(evidence)) return finding;
+	const location = { ...evidence, role: "cause", revision: "head" };
+	return { ...finding, properties: { ...properties, evidence: [location] } };
 }

@@ -30,19 +30,24 @@ goldens/correctness-null-deref/
       "category": "bug",
       "file": "src/user.ts",
       "rule": "null-dereference",
-      "cause": "introduced"
+      "cause": "introduced",
+      "failureScenario": "describe({ name: \"Ada\" }) ... throws a TypeError ...",
+      "evidence": [
+        { "file": "src/user.ts", "line": 7, "endLine": 8, "role": "cause" },
+        { "file": "src/user.ts", "line": 7, "role": "context", "revision": "base" }
+      ]
     }
   ]
 }
 ```
 
-`severity` is Martian's `Critical`, `High`, `Medium`, or `Low`. `file` and `rule` are what scoring matches on; `rule` must be one the producing lens declares. `cause` is checked by the scripted runner. A clean golden has an empty `comments` list, and any finding on it costs precision.
+`severity` is Martian's `Critical`, `High`, `Medium`, or `Low`. `file` and `rule` are what scoring matches on; `rule` must be one the producing lens declares. `cause`, `failureScenario`, and `evidence` are what a good lens reports for the defect, `evidence` in the shape `report_finding` takes it. The scripted runner checks all three against the finding through `scriptedMismatches`, so the script's `report_finding` call carries the same scenario and locations; a live run checks none of them, since no model words a scenario the same way twice. A clean golden has an empty `comments` list, and any finding on it costs precision.
 
 `script.json` maps each lens name to its replies, in order. A reply is `{ "calls": [{ "name", "arguments", "expectToolResult" }] }`, one model turn calling tools, or `{ "text": "..." }`, a final answer. `expectToolResult` is optional: a substring the call's result must contain. The runner checks it when the lens's next request arrives, and `runGolden` returns every miss in `toolMismatches`, which the gate requires to be empty. Problem: a scripted reply ignores what the tools returned, so a `search` broken to return "No matches." or a `read_file` of the wrong file still passed. Solution: give every call in a golden an expectation, such as the line a search must find or `recorded finding` for `report_finding`. Every lens the change selects needs a script, even if it only answers `Reported 0 findings.`; an unscripted lens fails the run.
 
 ## Two modes
 
-**Scripted** runs are part of `npm run check`. `runGolden(golden, { kind: "scripted" })` routes every tier to the fake model, answers each lens from `script.json` by matching its instructions in the system prompt, and returns the findings and their terminal rendering. The test requires precision and recall of 1, the expected cause for each finding, and a rendering identical to `scripted.txt`. Scripted runs prove the plumbing: lens selection, the lens tools reading the head revision, `report_finding`, the hook, the findings document, and rendering. They say nothing about whether a lens's prompt finds the defect, because the script finds it.
+**Scripted** runs are part of `npm run check`. `runGolden(golden, { kind: "scripted" })` routes every tier to the fake model, answers each lens from `script.json` by matching its instructions in the system prompt, and returns the findings and their terminal rendering. The test requires precision and recall of 1, the expected cause, failure scenario, and evidence for each finding, and a rendering identical to `scripted.txt`. Scripted runs prove the plumbing: lens selection, the lens tools reading the head revision, `report_finding`, the hook, the findings document, and rendering. They say nothing about whether a lens's prompt finds the defect, because the script finds it.
 
 After a deliberate change to rendering or to a golden, regenerate the snapshots with `npx vitest --run -u packages/evals/` and read the diff before committing.
 
@@ -65,8 +70,8 @@ File and rule is a coarse match. Two findings under one rule in one file count a
 ## Adding a golden
 
 1. Write `base/` and `head/` so the change carries only the declared defects, or none for a clean golden. One change may carry more than one, as real changes do: `contracts-breaking-signature` breaks a caller and gets yen wrong. Declare every real defect, because a lens that finds an undeclared one is right and would score as noise.
-2. Write `expected.json`, naming for each defect the lens rule that should catch it.
-3. Write `script.json` with the tool calls a good lens would make, each with the `expectToolResult` that proves its tool worked, ending each lens with a final answer.
+2. Write `expected.json`, naming for each defect the lens rule that should catch it, its cause, a failure scenario with concrete values, and the evidence locations that show it.
+3. Write `script.json` with the tool calls a good lens would make, each with the `expectToolResult` that proves its tool worked, ending each lens with a final answer. Each `report_finding` call carries the failure scenario and evidence its expected finding names.
 4. Run `npx vitest --run -u packages/evals/` to write `scripted.txt`, read it, and commit all of it.
 5. Run the live eval if you have credentials, and record a miss as a learning about the lens, not by loosening the golden.
 

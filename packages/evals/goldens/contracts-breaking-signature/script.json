@@ -24,7 +24,21 @@
               "what": "formatPrice divides every amount by 100, so formatPrice(500, \"JPY\") renders \"JPY 5\" for 500 yen.",
               "why": "The base formatted dollars only; this change accepts any currency but keeps the two-decimal conversion, and yen has no minor unit.",
               "fix": "Divide by 10 to the power of the currency's minor units, read from the formatter's resolvedOptions().maximumFractionDigits."
-            }
+            },
+            "failureScenario": "formatPrice(500, \"JPY\") divides by 100 and renders \"JPY 5\" for a 500 yen price, since yen has no minor unit.",
+            "evidence": [
+              {
+                "file": "src/price.ts",
+                "line": 2,
+                "role": "cause"
+              },
+              {
+                "file": "src/price.ts",
+                "line": 2,
+                "role": "context",
+                "revision": "base"
+              }
+            ]
           },
           "expectToolResult": "recorded finding"
         }
@@ -72,10 +86,19 @@
               "why": "This change made currency a required second parameter of formatPrice, and summary was not updated.",
               "fix": "Pass the cart's currency to formatPrice, or give currency a default."
             },
-            "evidence": {
-              "file": "src/price.ts",
-              "line": 1
-            }
+            "failureScenario": "summary([{ name: \"Tea\", cents: 450 }]) calls formatPrice(450) with no currency: tsc rejects the call, and at run time Intl.NumberFormat throws a TypeError because the currency style needs a currency code.",
+            "evidence": [
+              {
+                "file": "src/price.ts",
+                "line": 1,
+                "role": "cause"
+              },
+              {
+                "file": "src/cart.ts",
+                "line": 10,
+                "role": "context"
+              }
+            ]
           },
           "expectToolResult": "recorded finding"
         }

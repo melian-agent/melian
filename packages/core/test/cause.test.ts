@@ -1,4 +1,4 @@
-import { checkEvidence, classifyCause, type RangeChangeset, resolveRange } from "@melian-agent/core";
+import { causeHunk, classifyCause, type RangeChangeset, resolveRange } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv, lines, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
 
@@ -91,29 +91,72 @@ describe("classifyCause", () => {
 	});
 });
 
-describe("checkEvidence", () => {
-	it("accepts lines that overlap a hunk's new lines and returns that hunk", () => {
-		expect(checkEvidence({ file: "app.ts", startLine: 3 }, changeset.revision)).toMatchObject({ index: 0 });
-		expect(checkEvidence({ file: "./app.ts", startLine: 6, endLine: 8 }, changeset.revision)).toMatchObject({
-			index: 1,
-		});
-		expect(checkEvidence({ file: "added.ts", startLine: 1 }, changeset.revision)).toMatchObject({ newStart: 1 });
+describe("classifyCause with evidence", () => {
+	const outside = { file: "untouched.ts", startLine: 1 };
+
+	it("calls a location outside the change affected when a cause location overlaps a hunk's new lines", () => {
+		expect(classifyCause(outside, changeset.revision, [{ file: "app.ts", startLine: 3, role: "cause" }])).toBe(
+			"affected",
+		);
+		const atHead = { file: "./app.ts", startLine: 6, endLine: 8, role: "cause", revision: "head" } as const;
+		expect(classifyCause(outside, changeset.revision, [atHead])).toBe("affected");
 	});
 
-	it("refuses lines outside every hunk, saying what evidence must be", () => {
-		for (const location of [
-			{ file: "app.ts", startLine: 4, endLine: 7 },
-			{ file: "app.ts", startLine: 10, endLine: 11 },
-			{ file: "untouched.ts", startLine: 1 },
-			{ file: "gone.ts", startLine: 1 },
-			{ file: "logo.png", startLine: 1 },
-		]) {
-			expect(() => checkEvidence(location, changeset.revision)).toThrow(
-				expect.objectContaining({
-					code: "invalidEvidence",
-					message: expect.stringContaining("naming lines this change added or modified"),
-				}),
-			);
+	it("calls it affected when a base cause location overlaps a hunk's old lines, a deletion included", () => {
+		const deleted = { file: "app.ts", startLine: 9, role: "cause", revision: "base" } as const;
+		expect(classifyCause(outside, changeset.revision, [deleted])).toBe("affected");
+		const goneFile = { file: "gone.ts", startLine: 1, role: "cause", revision: "base" } as const;
+		expect(classifyCause(outside, changeset.revision, [goneFile])).toBe("affected");
+	});
+
+	it("keeps it pre-existing for context, for cause outside every hunk, and for a base location on new lines", () => {
+		for (const site of [
+			{ file: "app.ts", startLine: 3, role: "context" },
+			{ file: "app.ts", startLine: 9, role: "context", revision: "base" },
+			{ file: "app.ts", startLine: 4, endLine: 7, role: "cause" },
+			{ file: "app.ts", startLine: 10, endLine: 11, role: "cause" },
+			{ file: "app.ts", startLine: 8, role: "cause", revision: "base" },
+			{ file: "untouched.ts", startLine: 1, role: "cause" },
+			{ file: "gone.ts", startLine: 1, role: "cause" },
+			{ file: "added.ts", startLine: 1, role: "cause", revision: "base" },
+			{ file: "logo.png", startLine: 1, role: "cause" },
+		] as const) {
+			expect(classifyCause(outside, changeset.revision, [site])).toBe("pre-existing");
+			expect(causeHunk(site, changeset.revision)).toBeUndefined();
 		}
+	});
+
+	it("never lets evidence move a location inside the change off introduced", () => {
+		expect(classifyCause({ file: "app.ts", startLine: 3 }, changeset.revision, [])).toBe("introduced");
+	});
+});
+
+describe("causeHunk", () => {
+	it("returns the hunk a cause location overlaps, on the side it names", () => {
+		expect(causeHunk({ file: "app.ts", startLine: 3, role: "cause" }, changeset.revision)).toMatchObject({
+			index: 0,
+		});
+		expect(
+			causeHunk({ file: "app.ts", startLine: 9, role: "cause", revision: "base" }, changeset.revision),
+		).toMatchObject({ index: 2 });
+		expect(causeHunk({ file: "added.ts", startLine: 1, role: "cause" }, changeset.revision)).toMatchObject({
+			newStart: 1,
+		});
+	});
+
+	it("names a renamed file at the base by its old path", async () => {
+		gitIn(repo, "mv", "app.ts", "moved.ts");
+		writeFiles(repo, { "moved.ts": lines("l1", "l2", "L3", "l4", "l5", "l6", "l7", "n1", "n2", "l8", "l10", "x") });
+		gitIn(repo, "add", ".");
+		gitIn(repo, "commit", "--quiet", "-m", "move");
+		const moved = await resolveRange(repo, "main...feature");
+		const renamed = moved.revision.files.find((file) => file.path === "moved.ts");
+		expect(renamed).toMatchObject({ status: "renamed", oldPath: "app.ts" });
+		expect(
+			causeHunk({ file: "app.ts", startLine: 9, role: "cause", revision: "base" }, moved.revision),
+		).toBeDefined();
+		expect(
+			causeHunk({ file: "moved.ts", startLine: 9, role: "cause", revision: "base" }, moved.revision),
+		).toBeUndefined();
 	});
 });

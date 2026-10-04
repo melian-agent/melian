@@ -107,7 +107,6 @@ export type FindingErrorCode =
 	| "invalidRegion"
 	| "deletedFile"
 	| "missingEvidence"
-	| "invalidEvidence"
 	| "missingDiscriminator"
 	| "snippetNotFound"
 	| "idMismatch"

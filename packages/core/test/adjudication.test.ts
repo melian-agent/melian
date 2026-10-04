@@ -23,7 +23,15 @@ const resolvedAs = (each: Finding, resolution: Resolution) => ({
 	...each,
 	properties: { ...each.properties, resolution },
 });
-const renamedParameter = { file: "src/api.ts", startLine: 3, snippet: "export function load(userId: string) {" };
+const renamedParameter = [
+	{
+		file: "src/api.ts",
+		startLine: 3,
+		role: "cause",
+		revision: "head",
+		snippet: "export function load(userId: string) {",
+	},
+] as const;
 
 describe("resolveFinding", () => {
 	it("takes the resolution configured for the severity of an introduced finding", () => {
@@ -33,7 +41,7 @@ describe("resolveFinding", () => {
 	});
 
 	it("keeps the configured resolution of an affected finding, which carries evidence", () => {
-		const affected = finding({ severity: "P1", cause: { evidence: renamedParameter } });
+		const affected = finding({ severity: "P1", cause: "affected", evidence: [...renamedParameter] });
 		expect(resolveFinding(affected, defaultConfig)).toBe("block");
 	});
 
@@ -147,11 +155,16 @@ describe("dedupeFindings", () => {
 
 	// The first live golden run: two lenses filed one broken caller in src/cart.ts under different rules.
 	describe("two lenses reporting one defect under different rules", () => {
-		const evidence = {
-			file: "src/price.ts",
-			startLine: 1,
-			snippet: "export function formatPrice(amount: number, currency: string): string {",
-		};
+		const evidence = [
+			{
+				file: "src/price.ts",
+				startLine: 1,
+				role: "cause" as const,
+				revision: "head" as const,
+				snippet: "export function formatPrice(amount: number, currency: string): string {",
+			},
+		];
+		const failureScenario = "summary() calls formatPrice(total) with no currency, and Intl.NumberFormat throws.";
 		const atCart = {
 			file: "src/cart.ts",
 			startLine: 10,
@@ -160,7 +173,9 @@ describe("dedupeFindings", () => {
 			endColumn: undefined,
 			snippet: `\treturn \`Total: \${formatPrice(total)}\`;`,
 			occurrence: 0,
-			cause: { evidence },
+			cause: "affected",
+			evidence,
+			failureScenario,
 			severity: "P0",
 		} as const;
 		const brokenCaller = finding({
@@ -183,10 +198,13 @@ describe("dedupeFindings", () => {
 			expect(deduped[0]!.properties.alsoReportedAs).toEqual([reportOf(other)]);
 		});
 
-		it("keeps the affected cause and its evidence when the more severe finding cites none", () => {
+		it("keeps the affected cause, its evidence, and its failure scenario when the more severe finding proves none", () => {
+			const context = [{ ...evidence[0]!, role: "context" as const }];
 			const unproven = finding({
 				...atCart,
 				cause: "pre-existing",
+				evidence: context,
+				failureScenario: "A guess.",
 				rule: "unhandled-error",
 				source: { check: "lens.correctness", version: "1" },
 			});
@@ -202,18 +220,36 @@ describe("dedupeFindings", () => {
 			]) {
 				const [kept, ...rest] = dedupeFindings(order, () => defaultConfig);
 				expect(rest).toEqual([]);
-				expect(kept!.properties).toMatchObject({ severity: "P0", cause: "affected", evidence });
+				expect(kept!.properties).toMatchObject({ severity: "P0", cause: "affected", evidence, failureScenario });
 				expect(parseFinding(kept)).toEqual(kept);
 				expect(resolveFinding(kept!, defaultConfig)).toBe("block");
 			}
 		});
 
-		it("keeps an introduced cause over an affected one, and drops evidence only an affected finding carries", () => {
-			const introduced = finding({ ...atCart, cause: "introduced", severity: "P2", rule: "unhandled-error" });
+		it("keeps an introduced cause over an affected one, with the introduced finding's own evidence", () => {
+			const own = [{ ...evidence[0]!, file: "src/cart.ts", startLine: 10, snippet: "formatPrice(total)" }];
+			const introduced = finding({
+				...atCart,
+				cause: "introduced",
+				evidence: own,
+				failureScenario: "Introduced.",
+				severity: "P2",
+				rule: "unhandled-error",
+			});
 			const [kept] = dedupeFindings([brokenCaller, introduced], () => defaultConfig);
-			expect(kept!.properties.cause).toBe("introduced");
-			expect(kept!.properties).not.toHaveProperty("evidence");
+			expect(kept!.properties).toMatchObject({ cause: "introduced", evidence: own, failureScenario: "Introduced." });
 			expect(parseFinding(kept)).toEqual(kept);
+			const tsc = finding({
+				...atCart,
+				cause: "introduced",
+				evidence: undefined,
+				failureScenario: undefined,
+				source: { check: "static.tsc" },
+			});
+			const [plain] = dedupeFindings([brokenCaller, tsc], () => defaultConfig);
+			expect(plain!.properties.cause).toBe("introduced");
+			expect(plain!.properties).not.toHaveProperty("evidence");
+			expect(plain!.properties).not.toHaveProperty("failureScenario");
 		});
 
 		it("never merges two rules an alias entry marks distinct", () => {

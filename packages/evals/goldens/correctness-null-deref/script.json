@@ -36,7 +36,27 @@
               "what": "managerName casts user.manager to User and reads its name, but manager is optional.",
               "why": "The base guarded with ?. and fell back to \"none\"; this change removes the guard, so describe() throws for any user without a manager.",
               "fix": "Keep the optional chain: return user.manager?.name.trim() ?? \"none\"."
-            }
+            },
+            "failureScenario": "describe({ name: \"Ada\" }) in src/org-chart.ts calls managerName on a user without a manager, which reads name of undefined and throws a TypeError, where the base returned \"Ada reports to none\".",
+            "evidence": [
+              {
+                "file": "src/user.ts",
+                "line": 7,
+                "endLine": 8,
+                "role": "cause"
+              },
+              {
+                "file": "src/org-chart.ts",
+                "line": 4,
+                "role": "context"
+              },
+              {
+                "file": "src/user.ts",
+                "line": 7,
+                "role": "context",
+                "revision": "base"
+              }
+            ]
           },
           "expectToolResult": "recorded finding"
         }

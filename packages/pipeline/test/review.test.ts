@@ -10,6 +10,7 @@ import {
 	loadLenses,
 	type MelianConfig,
 	ModelRoutingError,
+	maxFailureScenarioLength,
 	type RepositorySource,
 	resolveRange,
 } from "@melian-agent/core";
@@ -186,6 +187,8 @@ const nullDeref = {
 		why: "This change dropped the optional chain, so a user without a manager throws.",
 		fix: "Restore user.manager?.name with a fallback.",
 	},
+	failureScenario: 'managerName({ name: "Ada" }) throws TypeError: Cannot read properties of undefined.',
+	evidence: [{ file: "src/user.ts", line: 7, role: "cause" }],
 };
 
 function toolResults(messages: readonly Message[]): string[] {
@@ -470,7 +473,7 @@ describe("reviewChangeset", () => {
 		expect(results[1]).toContain(
 			"Tool call blocked: rule made-up is not one of this lens's rules: null-dereference (",
 		);
-		expect(results[2]).toMatch(/^recorded finding [0-9a-f]{16}$/);
+		expect(results[2]).toMatch(/^recorded finding [0-9a-f]{16} as introduced$/);
 		expect(results[3]).toBe(results[2]);
 		expect(findings).toHaveLength(1);
 		expect(findings[0]!.message.text).toBe("Reworded.");
@@ -563,22 +566,52 @@ describe("reviewChangeset", () => {
 		expect(findings.map((finding) => finding.ruleId)).toEqual(["wrong-result"]);
 	});
 
-	it("classifies cause by location, with evidence the only route to affected", async () => {
-		scriptConversations(fake, [
+	it("classifies cause by location, with a cause location overlapping the change the only route to affected", async () => {
+		const atReport = { ...nullDeref, file: "src/report.ts", line: 2 };
+		const requests = scriptConversations(fake, [
 			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
 			{
 				match: contracts,
 				replies: [
 					calls(
-						["report_finding", { ...nullDeref, rule: "changed-return", severity: "P2", line: 2 }],
 						[
 							"report_finding",
 							{
 								...nullDeref,
-								file: "src/report.ts",
+								rule: "changed-return",
+								severity: "P2",
 								line: 2,
+								evidence: [{ file: "src/user.ts", line: 2, role: "cause" }],
+							},
+						],
+						[
+							"report_finding",
+							{
+								...atReport,
 								rule: "broken-caller",
-								evidence: { file: "src/user.ts", line: 7 },
+								evidence: [
+									{ file: "src/user.ts", line: 7, role: "cause" },
+									{ file: "src/report.ts", line: 2, role: "context" },
+								],
+							},
+						],
+						[
+							"report_finding",
+							{
+								...atReport,
+								rule: "changed-error",
+								evidence: [
+									{ file: "src/report.ts", line: 2, role: "cause" },
+									{ file: "src/user.ts", line: 7, role: "context" },
+								],
+							},
+						],
+						[
+							"report_finding",
+							{
+								...atReport,
+								rule: "data-contract",
+								evidence: [{ file: "src/user.ts", line: 7, role: "cause", revision: "base" }],
 							},
 						],
 					),
@@ -589,21 +622,53 @@ describe("reviewChangeset", () => {
 
 		const findings = await review();
 
-		const byFile = Object.fromEntries(
-			findings.map((each) => [each.locations[0]!.physicalLocation.artifactLocation.uri, each]),
-		);
-		expect(byFile["src/user.ts"]!.properties.cause).toBe("pre-existing");
+		const byRule = Object.fromEntries(findings.map((each) => [each.ruleId, each.properties]));
+		expect(byRule["changed-return"]!.cause).toBe("pre-existing");
 		// Only adjudication decides what a finding requires; a pre-existing P1 must not arrive marked to block.
 		expect(findings.every((finding) => finding.properties.resolution === undefined)).toBe(true);
-		expect(byFile["src/report.ts"]!.properties).toMatchObject({
+		expect(byRule["broken-caller"]).toMatchObject({
 			cause: "affected",
-			evidence: { file: "src/user.ts", startLine: 7, snippet: "\treturn user.manager.name;" },
+			failureScenario: nullDeref.failureScenario,
+			evidence: [
+				{
+					file: "src/user.ts",
+					startLine: 7,
+					role: "cause",
+					revision: "head",
+					snippet: "\treturn user.manager.name;",
+				},
+				{
+					file: "src/report.ts",
+					startLine: 2,
+					role: "context",
+					revision: "head",
+					snippet: "export const line = managerName(me);",
+				},
+			],
 		});
-		expect(byFile["src/user.ts"]!.properties.evidence).toBeUndefined();
+		expect(byRule["changed-error"]!.cause).toBe("pre-existing");
+		expect(byRule["data-contract"]).toMatchObject({
+			cause: "affected",
+			evidence: [
+				{
+					file: "src/user.ts",
+					startLine: 7,
+					role: "cause",
+					revision: "base",
+					snippet: '\treturn user.manager?.name ?? "none";',
+				},
+			],
+		});
+		const results = toolResults(requests[contracts]![1]!);
+		expect(results[0]).toMatch(
+			/^recorded finding [0-9a-f]{16} as pre-existing: it is outside the change, and no cause/,
+		);
+		expect(results[1]).toMatch(/^recorded finding [0-9a-f]{16} as affected$/);
 	});
 
-	it("refuses prose evidence and evidence outside every hunk, saying what evidence must be", async () => {
+	it("refuses a missing or malformed failure scenario or evidence, saying what each must be", async () => {
 		const broken = { ...nullDeref, file: "src/report.ts", line: 2, rule: "broken-caller" };
+		const { failureScenario: _, ...unexplained } = broken;
 		const requests = scriptConversations(fake, [
 			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
 			{
@@ -611,8 +676,15 @@ describe("reviewChangeset", () => {
 				replies: [
 					calls(
 						["report_finding", { ...broken, evidence: "src/user.ts:7 now throws for a user without a manager" }],
-						["report_finding", { ...broken, evidence: { file: "src/user.ts", line: 6 } }],
-						["report_finding", { ...broken, evidence: { file: "src/report.ts", line: 1 } }],
+						["report_finding", { ...broken, evidence: { file: "src/user.ts", line: 7 } }],
+						["report_finding", { ...broken, evidence: [{ file: "src/user.ts", line: 7 }] }],
+						["report_finding", unexplained],
+						["report_finding", { ...broken, failureScenario: "x".repeat(maxFailureScenarioLength + 1) }],
+						["report_finding", { ...broken, evidence: [{ file: "src/gone.ts", line: 1, role: "cause" }] }],
+						[
+							"report_finding",
+							{ ...broken, evidence: [{ file: "src/user.ts", line: 1, endLine: 61, role: "cause" }] },
+						],
 					),
 					fauxAssistantMessage("Done."),
 				],
@@ -621,10 +693,17 @@ describe("reviewChangeset", () => {
 
 		expect(await review()).toEqual([]);
 
-		const [prose, outside, unchanged] = toolResults(requests[contracts]![1]!);
-		expect(prose).toContain("evidence must be a location, { file, line, endLine }");
-		expect(outside).toContain("src/user.ts:6-6 is not a line this change added or modified");
-		expect(unchanged).toContain("src/report.ts is not a file this change modifies");
+		const [prose, single, roleless, missing, long, absent, wide] = toolResults(requests[contracts]![1]!);
+		expect(prose).toContain("evidence must be a list of one or more locations, each { file, line, endLine, role }");
+		expect(prose).toContain("Prose is not evidence");
+		expect(single).toContain("evidence must be a list of one or more locations");
+		expect(roleless).toContain("evidence[0] is not one");
+		expect(missing).toContain("failureScenario must be prose of at most 2000 characters naming the concrete input");
+		expect(long).toContain(`this one has ${maxFailureScenarioLength + 1}`);
+		expect(absent).toContain(
+			'src/gone.ts does not exist at the head revision; for lines this change deleted, add revision: "base"',
+		);
+		expect(wide).toContain("spans more than 60 lines; name the lines that matter");
 	});
 
 	it("reviews a head once: a repeat call with the same lenses returns its findings without asking a model", async () => {
@@ -974,7 +1053,13 @@ describe("adjudication", () => {
 			{
 				match: contracts,
 				replies: [
-					call("report_finding", { ...nullDeref, rule: "changed-return", severity: "P0", line: 2 }),
+					call("report_finding", {
+						...nullDeref,
+						rule: "changed-return",
+						severity: "P0",
+						line: 2,
+						evidence: [{ file: "src/user.ts", line: 2, role: "cause" }],
+					}),
 					fauxAssistantMessage("Done."),
 				],
 			},
@@ -1255,7 +1340,12 @@ describe("a stacked pull request retargeted onto another base", () => {
 		gitIn(repo, "commit", "--quiet", "--all", "-m", "child");
 	});
 
-	const atReport = { ...nullDeref, file: "src/report.ts", line: 2 };
+	const atReport = {
+		...nullDeref,
+		file: "src/report.ts",
+		line: 2,
+		evidence: [{ file: "src/report.ts", line: 2, role: "cause" }],
+	};
 	const reporting = () =>
 		scriptConversations(fake, [
 			{ match: correctness, replies: [call("report_finding", atReport), fauxAssistantMessage("Done.")] },

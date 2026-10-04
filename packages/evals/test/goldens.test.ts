@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { type Golden, loadGoldens, runGolden, scoreCorpus, scoreGolden } from "@melian-agent/evals";
+import { type Golden, loadGoldens, runGolden, scoreCorpus, scoreGolden, scriptedMismatches } from "@melian-agent/evals";
 import { describe, expect, it } from "vitest";
 
 const goldens = loadGoldens();
@@ -18,16 +18,12 @@ describe("the golden corpus", () => {
 // Scripted runs replay each golden's canned lens replies on the fake model, so the plumbing from lens to findings
 // document to rendered output runs in the gate. They prove the pipeline, not the lenses' judgement; live runs do that.
 describe.each(goldens.map((golden): [string, Golden] => [golden.name, golden]))("scripted %s", (_, golden) => {
-	it("finds exactly what the golden expects, with the expected cause", async () => {
+	it("finds exactly what the golden expects, with its cause, failure scenario, and evidence", async () => {
 		const run = await runGolden(golden, { kind: "scripted" });
 
 		expect(run.toolMismatches).toEqual([]);
 		expect(scoreGolden(golden, run.findings)).toMatchObject({ precision: 1, recall: 1 });
-		const causes = Object.fromEntries(
-			run.findings.map((finding) => [`${finding.properties.path}:${finding.ruleId}`, finding.properties.cause]),
-		);
-		for (const comment of golden.expected.comments)
-			expect(causes[`${comment.file}:${comment.rule}`]).toBe(comment.cause);
+		expect(scriptedMismatches(golden, run.findings)).toEqual([]);
 		await expect(run.rendered).toMatchFileSnapshot(join(golden.directory, "scripted.txt"));
 	});
 });
@@ -54,6 +50,33 @@ describe("expectToolResult", () => {
 		const run = await runGolden(broken, { kind: "scripted" });
 		expect(run.toolMismatches).toEqual([
 			'correctness step 2: search returned "No matches.", expected it to contain "src/org-chart.ts"',
+		]);
+	});
+});
+
+describe("scriptedMismatches", () => {
+	it("names a finding whose cause, failure scenario, or evidence differs from the golden's", async () => {
+		const golden = goldens.find((each) => each.name === "contracts-breaking-signature")!;
+		const run = await runGolden(golden, { kind: "scripted" });
+		const [cart, price] = golden.expected.comments;
+		const drifted = {
+			...golden,
+			expected: {
+				...golden.expected,
+				comments: [
+					{ ...cart!, cause: "pre-existing" as const, failureScenario: "Something else." },
+					{ ...price!, evidence: [{ file: "src/price.ts", line: 2, role: "cause" as const }] },
+				],
+			},
+		};
+		expect(scriptedMismatches(drifted, run.findings)).toEqual([
+			"src/cart.ts broken-caller: cause affected, expected pre-existing",
+			expect.stringMatching(/^src\/cart\.ts broken-caller: failure scenario "summary/),
+			expect.stringMatching(/^src\/price\.ts wrong-result: evidence \[.*"revision":"base".*\], expected \[/),
+		]);
+		expect(scriptedMismatches(drifted, [])).toEqual([
+			"src/cart.ts broken-caller: not reported",
+			"src/price.ts wrong-result: not reported",
 		]);
 	});
 });

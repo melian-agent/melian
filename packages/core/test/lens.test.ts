@@ -346,4 +346,14 @@ describe("renderLensInstructions", () => {
 			expect(policy).toContain(`Budget: at most ${lens.budget.findings} findings.`);
 		}
 	});
+
+	it("tells every lens, its own or a repository's, to supply a failure scenario and evidence", async () => {
+		for (const lens of await loadLenses(repo, { kind: "worktree" }, [])) {
+			const policy = renderLensInstructions(lens, []).slice(lens.instructions.length);
+			expect(policy).toContain("## Failure scenario and evidence");
+			expect(policy).toContain("`failureScenario`: the concrete input, state, or sequence of calls");
+			expect(policy).toContain("`role` is `cause` for the code that brings the failure about");
+			expect(policy).toContain('Add `revision: "base"` for lines this change deleted');
+		}
+	});
 });

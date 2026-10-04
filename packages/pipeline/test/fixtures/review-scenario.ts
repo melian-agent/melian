@@ -32,6 +32,8 @@ export const crashFinding = {
 		why: "This change dropped the optional chain, so a user without a manager throws.",
 		fix: "Restore user.manager?.name with a fallback.",
 	},
+	failureScenario: 'managerName({ name: "Ada" }) throws a TypeError reading name of undefined.',
+	evidence: [{ file: "src/user.ts", line: 7, role: "cause" }],
 };
 
 // The correctness lens may report one finding, so the crashed review dies at exactly its full budget.

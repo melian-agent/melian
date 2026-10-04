@@ -27,15 +27,13 @@ export type ResolvedFinding = Finding & {
 
 /**
  * What a finding requires under `config`, the effective configuration at the finding's path: the resolution configured
- * for its severity. A finding not shown to be caused by the change, `pre-existing` or `affected` without evidence, is
- * never above `advisory`, so an old defect cannot block an unrelated change. It decides from severity, cause, and
- * evidence alone, never from a resolution the finding already carries.
+ * for its severity. A finding not shown to be caused by the change, `pre-existing` or `affected` without a `cause`
+ * evidence location, is never above `advisory`, so an old defect cannot block an unrelated change. It decides from
+ * severity, cause, and evidence alone, never from a resolution the finding already carries.
  */
 export function resolveFinding(finding: Finding, config: Pick<MelianConfig, "resolution">): Resolution {
-	const { severity, cause, evidence } = finding.properties;
-	const configured = config.resolution[severity];
-	const caused = cause === "introduced" || (cause === "affected" && evidence !== undefined);
-	return caused ? configured : lenientOf(configured, "advisory");
+	const configured = config.resolution[finding.properties.severity];
+	return causeRank(finding) < 2 ? configured : lenientOf(configured, "advisory");
 }
 
 /**
@@ -70,7 +68,9 @@ function overlap(left: Finding, right: Finding): boolean {
 }
 
 // What ranking two findings reads, so the pipeline can rank stored sightings as well as findings.
-type Ranked = { readonly properties: Pick<FindingProperties, "severity" | "id" | "cause" | "evidence"> };
+type Ranked = {
+	readonly properties: Pick<FindingProperties, "severity" | "id" | "cause" | "evidence" | "failureScenario">;
+};
 
 function strongerFirst(a: Ranked, b: Ranked): number {
 	const { severity: left, id: leftId } = a.properties;
@@ -111,31 +111,38 @@ function keeperOf(defect: readonly Finding[], aliases: Aliases): Finding {
 	return [...(owners.length > 0 ? owners : defect)].sort(strongerFirst)[0]!;
 }
 
-// How strongly a finding is tied to the change: introduced, then affected with evidence, then anything else.
+// How strongly a finding is tied to the change: introduced, then affected with a cause location, then anything else.
 function causeRank(finding: Ranked): number {
-	const { cause, evidence } = finding.properties;
-	return cause === "introduced" ? 0 : cause === "affected" && evidence !== undefined ? 1 : 2;
+	const { cause, evidence = [] } = finding.properties;
+	if (cause === "introduced") return 0;
+	return cause === "affected" && evidence.some((location) => location.role === "cause") ? 1 : 2;
 }
 
 /**
- * The cause, with its evidence, that findings merged as one defect take: the strongest any of them has, in the order
- * `introduced`, `affected` with its evidence, `pre-existing`. A merge takes this rather than the cause of whichever
- * finding speaks, so merging never turns a finding that blocks into one that does not. Among the findings with the
- * strongest cause, the most severe supplies the evidence, the lower ID on a tie. Throws `RangeError` for no findings.
+ * The cause that findings merged as one defect take, with the evidence and failure scenario of the finding that gave
+ * it: the strongest cause any of them has, in the order `introduced`, `affected` with a `cause` location,
+ * `pre-existing`. A merge takes this rather than the cause of whichever finding speaks, so merging never turns a
+ * finding that blocks into one that does not, and the evidence that proves the cause stays with it. Among the findings
+ * with the strongest cause, the most severe supplies them, the lower ID on a tie. Throws `RangeError` for no findings.
  */
-export function strongestCause(findings: readonly Ranked[]): Pick<FindingProperties, "cause" | "evidence"> {
+export function strongestCause(
+	findings: readonly Ranked[],
+): Pick<FindingProperties, "cause" | "evidence" | "failureScenario"> {
 	const strongest = [...findings].sort((a, b) => causeRank(a) - causeRank(b) || strongerFirst(a, b))[0];
 	if (strongest === undefined) throw new RangeError("strongestCause needs at least one finding");
-	const rank = causeRank(strongest);
-	if (rank === 0) return { cause: "introduced" };
-	if (rank === 1) return { cause: "affected", evidence: strongest.properties.evidence! };
-	return { cause: "pre-existing" };
+	const { evidence, failureScenario } = strongest.properties;
+	const cause = (["introduced", "affected", "pre-existing"] as const)[causeRank(strongest)]!;
+	return {
+		cause,
+		...(evidence === undefined ? {} : { evidence }),
+		...(failureScenario === undefined ? {} : { failureScenario }),
+	};
 }
 
 // The speaker of a merged defect: the highest severity, and the strongest cause with its evidence, any member reported.
 function speakFor(keeper: Finding, defect: readonly Finding[], alsoReportedAs: AlsoReportedAs[]): Finding {
 	const severity = [...defect].sort(strongerFirst)[0]!.properties.severity;
-	const { evidence: _, ...properties } = keeper.properties;
+	const { evidence: _, failureScenario: __, ...properties } = keeper.properties;
 	return {
 		...keeper,
 		level: levelForSeverity(severity),

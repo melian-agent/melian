@@ -9,6 +9,7 @@ import {
 	parseFinding,
 	type Severity,
 	strongestCause,
+	upgradeStoredFinding,
 } from "@melian-agent/core";
 import { type Context, type ConversationId, defineDoc, type Harness, type Tx } from "./harness.ts";
 
@@ -52,13 +53,36 @@ type FindingRecord = { lifecycle: FindingLifecycle; sightings: Record<string, Re
 // lifecycle change of a finding sighted there. Adjudication's input carries it, so a dismissal decides afresh.
 type FindingsState = { revisions: string[]; items: Record<string, FindingRecord>; versions: Record<string, number> };
 
+// Version 5 made evidence a list of locations; a sighting stored before reads with its one location as a cause.
 export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
-	version: 4,
+	version: 5,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
 	initial: () => ({ revisions: [], items: {}, versions: {} }),
+	migrate: (value, from) => {
+		if (from < 4)
+			throw new Error(`the findings document needs migrating from version ${from}, which Melian cannot do`);
+		const state = value as FindingsState;
+		const items = Object.fromEntries(
+			Object.entries(state.items).map(([id, record]) => {
+				const sightings = Object.fromEntries(
+					Object.entries(record.sightings).map(([revision, byProducer]) => [
+						revision,
+						Object.fromEntries(
+							Object.entries(byProducer).map(([producer, sighting]) => [
+								producer,
+								upgradeStoredFinding(sighting),
+							]),
+						),
+					]),
+				);
+				return [id, { ...record, sightings }];
+			}),
+		);
+		return { ...state, items };
+	},
 });
 
 /**
@@ -96,8 +120,8 @@ function compareSources(a: FindingSource, b: FindingSource): number {
 }
 
 // The highest severity wins, and a tie goes to the producer whose name sorts first, so every reader merges alike. The
-// winner takes the strongest cause any sighting gave, with its evidence, so an evidenced P1 beside a P0 without
-// evidence reads as an affected P0 rather than a pre-existing one.
+// winner takes the strongest cause any sighting gave, with that sighting's evidence and failure scenario, so a P1 whose
+// cause location overlaps the change, beside a P0 whose evidence proves nothing, reads as an affected P0.
 function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>) {
 	const ranked = Object.values(sightings).sort(
 		(a, b) =>
@@ -105,7 +129,7 @@ function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>) {
 			compareSources(a.properties.source, b.properties.source),
 	);
 	const reportedBy = ranked.map((each) => ({ ...each.properties.source })).sort(compareSources);
-	const { evidence: _, ...properties } = ranked[0]!.properties;
+	const { evidence: _, failureScenario: __, ...properties } = ranked[0]!.properties;
 	const cause = strongestCause(ranked);
 	return { winner: { ...ranked[0]!, properties: { ...properties, ...cause } }, reportedBy };
 }

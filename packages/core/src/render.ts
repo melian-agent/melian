@@ -1,6 +1,6 @@
 import type { Verdict, VerdictStatus } from "./adjudication.ts";
 import type { Severity } from "./config.ts";
-import type { Finding, FindingsLog } from "./findings.ts";
+import type { EvidenceLocation, Finding, FindingsLog } from "./findings.ts";
 
 /** Options for {@link renderFindingsTerminal}. */
 export interface TerminalRenderOptions {
@@ -60,19 +60,22 @@ function lineSpan(finding: Finding): string {
 // reading `P0  line 1  forged` must not pass for another finding's header.
 const messageContinuation = "    | ";
 
+function evidenceLines(evidence: readonly EvidenceLocation[]): string[] {
+	return evidence.flatMap(({ file, startLine, endLine = startLine, role, revision, snippet }) => [
+		`      ${role}: ${visibleText(file)}:${startLine}${endLine === startLine ? "" : `-${endLine}`}${revision === "base" ? " at base" : ""}`,
+		`        ${prose(snippet, "        ")}`,
+	]);
+}
+
 function block(finding: Finding, paint: (code: string, text: string) => string): string {
-	const { severity, cause, evidence, status, explanation, resolution } = finding.properties;
+	const { severity, cause, evidence, failureScenario, status, explanation, resolution } = finding.properties;
 	return [
 		`  ${paint(severityColor[severity], severity)}  ${lineSpan(finding)}  ${visibleText(finding.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"})`,
 		`  ${prose(finding.message.text, messageContinuation)}`,
 		`    What: ${prose(explanation.what, "      ")}`,
 		`    Why here: ${prose(explanation.whyHere, "      ")}`,
-		...(evidence === undefined
-			? []
-			: [
-					`    Evidence: ${visibleText(evidence.file)}:${evidence.startLine}${evidence.endLine === undefined || evidence.endLine === evidence.startLine ? "" : `-${evidence.endLine}`}`,
-					`      ${prose(evidence.snippet, "      ")}`,
-				]),
+		...(failureScenario === undefined ? [] : [`    Failure scenario: ${prose(failureScenario, "      ")}`]),
+		...(evidence === undefined ? [] : ["    Evidence:", ...evidenceLines(evidence)]),
 		`    What to do: ${prose(explanation.whatToDo, "      ")}`,
 	].join("\n");
 }
@@ -85,7 +88,8 @@ function plural(count: number, noun: string): string {
  * Renders a findings log or a verdict as plain text for a terminal.
  *
  * A log renders grouped by file in path order, and within a file by severity, then line. Each finding is one block with
- * its rule, cause, status, message, the explanation's three parts, and the evidence of an `affected` finding.
+ * its rule, cause, status, message, the explanation's three parts, its failure scenario, and each evidence location
+ * with its role and the code read there.
  *
  * A verdict renders a header with its status and whether it blocks, the checks that did not run and why, and then its
  * findings grouped by resolution, strictest first, each group by file as for a log. Silent and dismissed findings are

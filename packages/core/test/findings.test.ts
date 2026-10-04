@@ -7,10 +7,13 @@ import {
 	findingId,
 	findingsLogSchema,
 	levelForSeverity,
+	maxEvidenceLocations,
+	maxFailureScenarioLength,
 	normaliseSnippet,
 	parseFinding,
 	reportFindingInputSchema,
 	snippetOccurrence,
+	upgradeStoredFinding,
 } from "@melian-agent/core";
 import Schema from "typebox/schema";
 import Value from "typebox/value";
@@ -163,16 +166,43 @@ describe("reportFindingInputSchema", () => {
 		rule: "no-eval",
 		severity: "P1",
 		explanation: { what: "eval runs input", why: "this change routes input to it", fix: "parse it" },
+		failureScenario: "A request whose body is `process.exit()` stops the server.",
+		evidence: [{ file: "src/run.ts", line: 12, role: "cause" }],
 	};
 
-	it("accepts a location, rule, severity, explanation, and optional evidence", () => {
+	it("accepts a location, rule, severity, explanation, failure scenario, and evidence", () => {
 		expect(Value.Check(reportFindingInputSchema, report)).toBe(true);
-		const evidence = { file: "src/api.ts", line: 3, endLine: 4 };
+		const evidence = [
+			{ file: "src/api.ts", line: 3, endLine: 4, role: "cause" },
+			{ file: "src/api.ts", line: 9, role: "context", revision: "base" },
+		];
 		expect(Value.Check(reportFindingInputSchema, { ...report, endLine: 14, evidence })).toBe(true);
 	});
 
-	it("refuses prose as evidence", () => {
+	it("requires a failure scenario of bounded, non-blank prose", () => {
+		const { failureScenario: _, ...without } = report;
+		expect(Value.Check(reportFindingInputSchema, without)).toBe(false);
+		expect(Value.Check(reportFindingInputSchema, { ...report, failureScenario: "  \n" })).toBe(false);
+		const long = "x".repeat(maxFailureScenarioLength + 1);
+		expect(Value.Check(reportFindingInputSchema, { ...report, failureScenario: long })).toBe(false);
+	});
+
+	it("requires at least one evidence location, each with a role", () => {
+		const { evidence: _, ...without } = report;
+		expect(Value.Check(reportFindingInputSchema, without)).toBe(false);
+		expect(Value.Check(reportFindingInputSchema, { ...report, evidence: [] })).toBe(false);
+		const roleless = [{ file: "src/run.ts", line: 12 }];
+		expect(Value.Check(reportFindingInputSchema, { ...report, evidence: roleless })).toBe(false);
+		const blamed = [{ file: "src/run.ts", line: 12, role: "blame" }];
+		expect(Value.Check(reportFindingInputSchema, { ...report, evidence: blamed })).toBe(false);
+		const tooMany = Array.from({ length: maxEvidenceLocations + 1 }, () => report.evidence[0]);
+		expect(Value.Check(reportFindingInputSchema, { ...report, evidence: tooMany })).toBe(false);
+	});
+
+	it("refuses prose as evidence, and a lens-quoted snippet", () => {
 		expect(Value.Check(reportFindingInputSchema, { ...report, evidence: "src/api.ts:3 renames id" })).toBe(false);
+		const quoted = [{ ...report.evidence[0], snippet: "eval(input)" }];
+		expect(Value.Check(reportFindingInputSchema, { ...report, evidence: quoted })).toBe(false);
 	});
 
 	it.each(["snippet", "cause", "resolution", "status", "source"])("refuses a lens-chosen %s", (key) => {
@@ -241,17 +271,51 @@ describe("createFinding", () => {
 		);
 	});
 
-	it("makes a finding affected only through evidence", () => {
-		const evidence = { file: "./src//api.ts", startLine: 3, snippet: "export function load(userId: string) {" };
-		const affected = createFinding({ ...evalInput, cause: { evidence } });
+	it("stores evidence with canonical paths, and keeps the ID free of evidence and failure scenario", () => {
+		const evidence = [
+			{
+				file: "./src//api.ts",
+				startLine: 3,
+				role: "cause" as const,
+				revision: "head" as const,
+				snippet: "export function load(userId: string) {",
+			},
+			{
+				file: "src/run.ts",
+				startLine: 12,
+				role: "context" as const,
+				revision: "head" as const,
+				snippet: "eval(input)",
+			},
+		];
+		const failureScenario = "load(42) passes a number where a string is now required.";
+		const affected = createFinding({ ...evalInput, cause: "affected", evidence, failureScenario });
 		expect(affected.properties.cause).toBe("affected");
-		expect(affected.properties.evidence).toEqual({ ...evidence, file: "src/api.ts" });
+		expect(affected.properties.failureScenario).toBe(failureScenario);
+		expect(affected.properties.evidence).toEqual([{ ...evidence[0], file: "src/api.ts" }, evidence[1]]);
+		expect(affected.properties.id).toBe(createFinding(evalInput).properties.id);
+		const other = createFinding({ ...evalInput, evidence: [evidence[1]!], failureScenario: "Something else." });
+		expect(other.properties.id).toBe(affected.properties.id);
 		expect(createFinding(evalInput).properties).not.toHaveProperty("evidence");
-		expect(() => createFinding({ ...evalInput, cause: { evidence: { ...evidence, snippet: "" } } })).toThrow(
-			FindingError,
+		expect(() => createFinding({ ...evalInput, evidence: [{ ...evidence[0]!, snippet: "" }] })).toThrow(FindingError);
+		expect(() => createFinding({ ...evalInput, evidence: [{ ...evidence[0]!, endLine: 2 }] })).toThrow(
+			expect.objectContaining({ code: "invalidRegion", path: "/properties/evidence/0" }),
 		);
-		expect(() => createFinding({ ...evalInput, cause: { evidence: { ...evidence, endLine: 2 } } })).toThrow(
-			expect.objectContaining({ code: "invalidRegion" }),
+	});
+
+	it("makes a finding affected only with a cause location", () => {
+		const context = {
+			file: "src/api.ts",
+			startLine: 3,
+			role: "context" as const,
+			revision: "head" as const,
+			snippet: "x",
+		};
+		expect(() => createFinding({ ...evalInput, cause: "affected" })).toThrow(
+			expect.objectContaining({ code: "missingEvidence" }),
+		);
+		expect(() => createFinding({ ...evalInput, cause: "affected", evidence: [context] })).toThrow(
+			expect.objectContaining({ code: "missingEvidence" }),
 		);
 	});
 
@@ -422,14 +486,19 @@ describe("parseFinding", () => {
 		expect(error.path).toBe(path);
 	});
 
-	it("rejects an affected finding without evidence, and evidence on any other", () => {
-		const evidence = { file: "src/api.ts", startLine: 3, snippet: "rename(id)" };
-		const affected = createFinding({ ...evalInput, cause: { evidence } });
+	it("rejects an affected finding without a cause location, and accepts evidence on any cause", () => {
+		const evidence = [
+			{ file: "src/api.ts", startLine: 3, role: "cause" as const, revision: "head" as const, snippet: "rename(id)" },
+		];
+		const affected = createFinding({ ...evalInput, cause: "affected", evidence });
 		const { evidence: _, ...bare } = affected.properties;
 		expect(rejection({ ...affected, properties: bare }).code).toBe("missingEvidence");
-		const stray = rejection({ ...finding, properties: { ...finding.properties, evidence } });
-		expect(stray.code).toBe("invalidFinding");
-		expect(stray.path).toBe("/properties/evidence");
+		expect(parseFinding({ ...finding, properties: { ...finding.properties, evidence } }).properties.evidence).toEqual(
+			evidence,
+		);
+		const empty = rejection({ ...finding, properties: { ...finding.properties, evidence: [] } });
+		expect(empty.code).toBe("invalidFinding");
+		expect(empty.path).toBe("/properties/evidence");
 	});
 
 	it("rejects a finding without a location", () => {
@@ -454,5 +523,35 @@ describe("parseFinding", () => {
 		const error = rejection({ ...finding, ruleId: "no-implied-eval" });
 		expect(error.code).toBe("idMismatch");
 		expect(error.path).toBe("/properties/id");
+	});
+});
+
+describe("upgradeStoredFinding", () => {
+	it("reads a single old-shape evidence location as one cause at head", () => {
+		const evidence = [
+			{ file: "src/api.ts", startLine: 3, role: "cause" as const, revision: "head" as const, snippet: "rename(id)" },
+		];
+		const current = createFinding({ ...evalInput, cause: "affected", evidence });
+		const { role: _, revision: __, ...old } = evidence[0]!;
+		const stored = { ...current, properties: { ...current.properties, evidence: old } };
+		expect(upgradeStoredFinding(stored)).toEqual(current);
+		expect(parseFinding(upgradeStoredFinding(stored))).toEqual(current);
+	});
+
+	it("leaves a finding without evidence, or with a list, as it is", () => {
+		const plain = createFinding(evalInput);
+		expect(upgradeStoredFinding(plain)).toBe(plain);
+		expect(upgradeStoredFinding(plain).properties).not.toHaveProperty("failureScenario");
+		const evidence = [
+			{
+				file: "src/run.ts",
+				startLine: 12,
+				role: "context" as const,
+				revision: "head" as const,
+				snippet: "eval(input)",
+			},
+		];
+		const listed = createFinding({ ...evalInput, evidence });
+		expect(upgradeStoredFinding(listed)).toBe(listed);
 	});
 });

@@ -14,11 +14,13 @@ import {
 	backgroundContext as context,
 	createMemoryStorage,
 	createRegistry,
+	defineDoc,
 	dismissFinding,
 	type Harness,
 	openHarness,
 	openSqliteStorage,
 	readFindings,
+	readVerdict,
 	recordRevision,
 	type Storage,
 	upsertFinding,
@@ -26,6 +28,7 @@ import {
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FindingsDocument } from "../src/findings.ts";
+import { PublishedDocument } from "../src/publish.ts";
 
 const input: FindingInput = {
 	rule: "no-eval",
@@ -243,9 +246,26 @@ describe("the findings document", () => {
 
 		it("keeps the evidenced cause of a less severe sighting, so the merge still blocks", async () => {
 			const { harness, root } = await open(createMemoryStorage());
-			const evidence = { file: "src/api.ts", startLine: 3, snippet: "export function run(body) {" };
-			const evidenced = createFinding({ ...input, cause: { evidence } });
-			const unproven = createFinding({ ...input, severity: "P0", cause: "pre-existing", source: style });
+			const evidence = [
+				{
+					file: "src/api.ts",
+					startLine: 3,
+					role: "cause" as const,
+					revision: "head" as const,
+					snippet: "export function run(body) {",
+				},
+			];
+			const failureScenario = "run('process.exit()') stops the server.";
+			const evidenced = createFinding({ ...input, cause: "affected", evidence, failureScenario });
+			const contextOnly = [{ ...evidence[0]!, role: "context" as const }];
+			const unproven = createFinding({
+				...input,
+				severity: "P0",
+				cause: "pre-existing",
+				evidence: contextOnly,
+				failureScenario: "A guess.",
+				source: style,
+			});
 			await root.commit(async (tx) => {
 				await upsertFinding(tx, root.id, evidenced, "rev1");
 				await upsertFinding(tx, root.id, unproven, "rev1");
@@ -256,6 +276,7 @@ describe("the findings document", () => {
 				source: style,
 				cause: "affected",
 				evidence: evidenced.properties.evidence,
+				failureScenario,
 			});
 			expect(resolveFinding(merged!, defaultConfig)).toBe("block");
 		});
@@ -319,5 +340,118 @@ describe("the findings document", () => {
 		const { harness, root } = await open(await openSqliteStorage(path));
 		expect(root.id).toBe(first.root.id);
 		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(evalFinding)]);
+	});
+});
+
+// Documents of earlier versions, written raw, so a test can store the shape a released Melian left behind.
+type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+type Legacy = { [key: string]: Json };
+const json = (value: unknown) => value as Json;
+
+describe("documents stored before evidence became a list", () => {
+	// The document as version 4 stored it: an affected sighting carried one evidence location, and none a scenario.
+	const LegacyFindings = defineDoc<Legacy>({
+		kind: "melian.findings",
+		version: 4,
+		scope: "conversation",
+		history: "rewindable",
+		fork: "asOf",
+		initial: () => ({ revisions: [], items: {}, versions: {} }),
+	});
+
+	it("reads a single evidence location as one cause at head, and a missing failure scenario as none", async () => {
+		const evidence = [
+			{ file: "src/api.ts", startLine: 3, role: "cause" as const, revision: "head" as const, snippet: "run(body)" },
+		];
+		const current = createFinding({ ...input, cause: "affected", evidence });
+		const { status: _, ...properties } = current.properties;
+		const { role: __, revision: ___, ...old } = evidence[0]!;
+		const sighting = { ...current, properties: { ...properties, evidence: old } };
+		const path = join(dir, "legacy.sqlite");
+		const first = await open(await openSqliteStorage(path));
+		await first.root.commit(async (tx) => {
+			const state = await tx.doc(LegacyFindings, first.root.id);
+			state.revisions = ["rev1"];
+			state.items = json({
+				[current.properties.id]: {
+					lifecycle: { status: "new", firstSeenRevision: "rev1", lastSeenRevision: "rev1", history: [] },
+					sightings: { rev1: { "lens.security@1": sighting } },
+				},
+			});
+			state.versions = { rev1: 1 };
+		}, context);
+		await first.harness.close(context);
+
+		const { harness, root } = await open(await openSqliteStorage(path));
+		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(current)]);
+		const later = createFinding({
+			...input,
+			snippet: "eval(body)",
+			evidence,
+			failureScenario: "eval('1') returns 1.",
+		});
+		await root.commit((tx) => upsertFinding(tx, root.id, later, "rev1"), context);
+		expect(await readFindings(harness, root.id, "rev1", context)).toHaveLength(2);
+	});
+
+	const LegacyVerdicts = defineDoc<Legacy>({
+		kind: "melian.verdicts",
+		version: 2,
+		scope: "conversation",
+		history: "rewindable",
+		fork: "asOf",
+		initial: () => ({ verdicts: {} }),
+	});
+
+	const LegacyPublished = defineDoc<Legacy>({
+		kind: "melian.published",
+		version: 1,
+		scope: "conversation",
+		history: "latest",
+		fork: "current",
+		initial: () => ({ order: [], revisions: {} }),
+	});
+
+	it("reads a recorded verdict, and a round left pending, with each finding in the current shape", async () => {
+		const evidence = [
+			{ file: "src/api.ts", startLine: 3, role: "cause" as const, revision: "head" as const, snippet: "run(body)" },
+		];
+		const current = createFinding({ ...input, cause: "affected", evidence });
+		const { role: _, revision: __, ...old } = evidence[0]!;
+		const stored = { ...current, properties: { ...current.properties, evidence: old } };
+		const verdict = (finding: unknown) => ({
+			status: "findings",
+			blocking: true,
+			findings: { block: [finding], acknowledge: [], advisory: [], silent: [] },
+			dismissed: [finding],
+			notRun: [],
+		});
+		const pending = (finding: unknown) => ({
+			revision: "base..head",
+			round: 1,
+			fingerprint: "0123456789abcdef",
+			verdict: verdict(finding),
+			post: [{ finding, placement: { kind: "body" } }],
+			stillOpen: 0,
+			open: {},
+			resolved: {},
+			refusals: 0,
+		});
+		const path = join(dir, "legacy-verdicts.sqlite");
+		const first = await open(await openSqliteStorage(path));
+		await first.root.commit(async (tx) => {
+			(await tx.doc(LegacyVerdicts, first.root.id)).verdicts = json({ "base..head": verdict(stored) });
+			const published = await tx.doc(LegacyPublished, first.root.id);
+			published.order = ["head"];
+			published.revisions = json({
+				head: { reviews: [], open: {}, resolved: {}, replies: {}, pending: pending(stored) },
+			});
+		}, context);
+		await first.harness.close(context);
+
+		const { harness, root } = await open(await openSqliteStorage(path));
+		expect(await readVerdict(harness, root.id, "base..head", context)).toEqual(verdict(current));
+		const published = await harness.snapshot(PublishedDocument, root.id, context);
+		expect(published?.revisions.head?.pending).toEqual(pending(current));
 	});
 });

@@ -142,7 +142,7 @@ export class GitHubProvider implements ReviewProvider {
 					line: placement.line,
 					side: "RIGHT" as const,
 					...range,
-					body: renderComment(placed, draft.revision, this.links, draft.secret),
+					body: renderComment(placed, draft.revision, draft.base, this.links, draft.secret),
 				},
 			];
 		});

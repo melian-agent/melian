@@ -11,9 +11,16 @@ import {
 	type ReviewProvider,
 	type ReviewStatus,
 	reviewStatus,
+	upgradeStoredFinding,
 	type Verdict,
 } from "@melian-agent/core";
-import { readProvenance, readVerdict, type StoredVerdict, type VerdictProvenance } from "./adjudication.ts";
+import {
+	readProvenance,
+	readVerdict,
+	type StoredVerdict,
+	upgradeStoredVerdict,
+	type VerdictProvenance,
+} from "./adjudication.ts";
 import { PublishError } from "./errors.ts";
 import { revisionKey } from "./findings.ts";
 import {
@@ -83,11 +90,24 @@ function unpublished(): StoredRevision {
 // would post it twice.
 export const PublishedDocument = defineDoc<PublishedState>({
 	kind: "melian.published",
-	version: 1,
+	version: 2,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
 	initial: () => ({ order: [], revisions: {} }),
+	// Version 2 made a finding's evidence a list of locations, so a round left pending before it renders.
+	migrate: (value) => {
+		const state = value as PublishedState;
+		const revisions = Object.fromEntries(
+			Object.entries(state.revisions).map(([head, record]) => {
+				const { pending } = record;
+				if (pending === undefined) return [head, record];
+				const post = pending.post.map((each) => ({ ...each, finding: upgradeStoredFinding(each.finding) }));
+				return [head, { ...record, pending: { ...pending, verdict: upgradeStoredVerdict(pending.verdict), post } }];
+			}),
+		);
+		return { ...state, revisions };
+	},
 });
 
 // The changeset's publisher secret, which signs every marker Melian posts for it: 32 random bytes as hex, generated once
@@ -256,7 +276,7 @@ function publishTask(provider: ReviewProvider) {
 					);
 					return;
 				}
-				const { pullRequest, head, revision } = target;
+				const { pullRequest, base, head, revision } = target;
 				const revalidate = async () => {
 					const moved = movedFrom(target, await provider.pullRequest(pullRequest));
 					if (moved !== undefined) throw new TargetMoved(moved);
@@ -335,6 +355,7 @@ function publishTask(provider: ReviewProvider) {
 							posted = await provider.postReview({
 								pullRequest,
 								revision: head,
+								base,
 								fingerprint: pending.fingerprint,
 								round: pending.round,
 								verdict: pending.verdict,

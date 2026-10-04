@@ -7,6 +7,7 @@ import Value from "typebox/value";
 import { parseDocument } from "yaml";
 import { type LensTier, lensTierSchema, type MelianConfig, type Severity, severitySchema } from "./config.ts";
 import { LensError } from "./errors.ts";
+import { maxEvidenceLines, maxFailureScenarioLength } from "./findings.ts";
 import { selectedBy } from "./glob.ts";
 import { anchorGlob, directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
@@ -416,6 +417,14 @@ export function selectLenses(lenses: readonly Lens[], config: MelianConfig, path
 	});
 }
 
+const reportingRules = `## Failure scenario and evidence
+
+Every \`report_finding\` call needs both. A call without them is refused.
+
+- \`failureScenario\`: the concrete input, state, or sequence of calls that makes the code fail, and the wrong outcome it produces, in at most ${maxFailureScenarioLength} characters. Name values and results: "\`parsePort("")\` returns \`NaN\`, and \`listen(NaN)\` binds a random port", not "may fail for some inputs". If you cannot name one from the code you read, do not report the finding.
+- \`evidence\`: one or more locations, \`{ file, line, endLine, role }\`, holding the code the claim rests on. \`role\` is \`cause\` for the code that brings the failure about, and \`context\` for code the claim reads but does not blame, such as a caller or the guard that is missing. Add \`revision: "base"\` for lines this change deleted, numbered as in the base commit; a location is at head otherwise. Melian reads the code at each location itself, so never quote it. A location spans at most ${maxEvidenceLines} lines.
+- A finding outside the change counts as caused by it only when one of its \`cause\` locations overlaps lines the change added, modified, or deleted. Otherwise it is recorded as pre-existing, and never blocks.`;
+
 // The lens's policy as the model must follow it, so it never guesses a rule ID the hook would refuse.
 function renderPolicy(lens: Lens): string {
 	const plural = lens.budget.findings === 1 ? "finding" : "findings";
@@ -425,13 +434,14 @@ function renderPolicy(lens: Lens): string {
 		lens.rules.map((rule) => `- \`${rule.id}\`: ${rule.description}`).join("\n"),
 		`Severities you may report: ${lens.severities.join(", ")}.`,
 		`Budget: at most ${lens.budget.findings} ${plural}.`,
+		reportingRules,
 	].join("\n\n");
 }
 
 /**
  * The instructions a lens's conversation runs with: its body; then its rules, each ID with its description, the
- * severities it may report, and its findings budget; then, unless the lens opted out, the repository's standards, each
- * under its path.
+ * severities it may report, its findings budget, and what a finding's failure scenario and evidence must be; then,
+ * unless the lens opted out, the repository's standards, each under its path.
  */
 export function renderLensInstructions(lens: Lens, standards: readonly StandardsSection[]): string {
 	const instructions = [lens.instructions, renderPolicy(lens)].join("\n\n");
