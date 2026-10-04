@@ -12,7 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import { basename, dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { evaluateGuardrails, resolveRange } from "@melian-agent/core";
+import { defaultConfig, evaluateGuardrails, loadConfig, resolveRange } from "@melian-agent/core";
 import {
 	buildGoldenRepository,
 	type Golden,
@@ -101,6 +101,30 @@ describe("a golden's standards and policy", () => {
 			expect(readFileSync(join(copy.parentPath, copy.name), "utf8"), join(copy.parentPath, copy.name)).toBe(
 				original,
 			);
+		}
+	});
+
+	it("carry Melian's own full tier, which keeps every check of the default full tier", async () => {
+		const melian = join(goldensDirectory, "../../..");
+		const fullTier = async (policy: string) => {
+			const repo = realpathSync(mkdtempSync(join(tmpdir(), "melian-goldens-tier-")));
+			try {
+				execFileSync("git", ["init", "--quiet"], { cwd: repo });
+				writeFileSync(join(repo, "melian.yaml"), policy);
+				return (await loadConfig(repo, { kind: "worktree" }, ".")).config.tiers.full;
+			} finally {
+				rmSync(repo, { recursive: true, force: true });
+			}
+		};
+		const root = await fullTier(readFileSync(join(melian, "melian.yaml"), "utf8"));
+		expect(root).toEqual(expect.arrayContaining([...defaultConfig.tiers.full!]));
+		const copies = readdirSync(goldensDirectory, { recursive: true, withFileTypes: true }).filter(
+			(entry) => entry.name === "melian.golden.yaml",
+		);
+		expect(copies.length).toBeGreaterThan(0);
+		for (const copy of copies) {
+			const path = join(copy.parentPath, copy.name);
+			expect(await fullTier(readFileSync(path, "utf8")), path).toEqual(root);
 		}
 	});
 
