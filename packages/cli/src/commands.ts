@@ -11,15 +11,19 @@ import {
 	renderVerdictJson,
 	resolveRange,
 	type Verdict,
+	visibleText,
 } from "@melian-agent/core";
 import {
 	backgroundContext as context,
+	DismissError,
+	DismissHarness,
 	openPublishHarness,
 	openReviewHarness,
 	publishReview,
 	ReviewError,
 	type ReviewOrigin,
 	readVerdict,
+	recordDismissal,
 	reviewChangeset,
 	revisionKey,
 	runChecks,
@@ -124,7 +128,7 @@ export async function review(
 			io.stderr(`melian: ${error.message}\n`);
 			verdict = error.verdict;
 		}
-		io.stdout(renderFindingsTerminal(verdict, { color: io.color }));
+		io.stdout(renderFindingsTerminal(verdict, { color: io.color, ids: true }));
 		return exitCodeFor(verdict);
 	} finally {
 		await reviewHarness.close(context);
@@ -169,6 +173,7 @@ export async function publish(io: Io, argument: string): Promise<number> {
 			`${published.posted} new ${published.posted === 1 ? "finding" : "findings"}`,
 			...(published.stillOpen > 0 ? [`${published.stillOpen} still open`] : []),
 			...(published.resolved > 0 ? [`${published.resolved} resolved`] : []),
+			...(published.dismissed > 0 ? [`${published.dismissed} dismissed`] : []),
 		];
 		io.stdout(
 			`Published review ${published.review} of ${short(pullRequest.head.sha)} to ${pullRequest.url}: ${parts.join(", ")}.\n`,
@@ -188,20 +193,28 @@ export async function publish(io: Io, argument: string): Promise<number> {
 	}
 }
 
+// The changeset a stored review is read from: the refs `review` fetched for a pull request, or the range. No network.
+async function storedChangeset(io: Io, argument: string): Promise<Changeset> {
+	const target = parseTarget(argument);
+	return target.kind === "pullRequest"
+		? await pullRequestChangeset(io.cwd, target.number)
+		: await resolveRange(io.cwd, target.spec);
+}
+
+function noReview(changeset: Changeset, argument: string): CliError {
+	return new CliError(
+		`Melian has no review of ${short(changeset.revision.head)}; run melian review ${shellQuote(argument)}`,
+	);
+}
+
 export async function findings(
 	io: Io,
 	argument: string,
-	options: { readonly open: boolean; readonly json: boolean },
+	options: { readonly open: boolean; readonly all: boolean; readonly json: boolean },
 ): Promise<number> {
-	const target = parseTarget(argument);
-	const changeset =
-		target.kind === "pullRequest"
-			? await pullRequestChangeset(io.cwd, target.number)
-			: await resolveRange(io.cwd, target.spec);
+	const changeset = await storedChangeset(io, argument);
 	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, isScripted(io.env));
-	const missing = new CliError(
-		`Melian has no review of ${short(changeset.revision.head)}; run melian review ${shellQuote(argument)}`,
-	);
+	const missing = noReview(changeset, argument);
 	if (!existsSync(path)) throw missing;
 	const reviewHarness = await openReviewHarness(await openStorage(path), idleModels(io.env));
 	const { harness } = reviewHarness;
@@ -209,8 +222,9 @@ export async function findings(
 		const root = (await harness.root(context)).id;
 		const verdict = await readVerdict(harness, root, revisionKey(changeset.revision), context);
 		if (verdict === undefined) throw missing;
+		const render = { color: io.color, ids: true, all: options.all };
 		if (!options.open) {
-			io.stdout(options.json ? renderVerdictJson(verdict) : renderFindingsTerminal(verdict, { color: io.color }));
+			io.stdout(options.json ? renderVerdictJson(verdict) : renderFindingsTerminal(verdict, render));
 			return 0;
 		}
 		const open = createFindingsLog([
@@ -218,9 +232,80 @@ export async function findings(
 			...verdict.findings.acknowledge,
 			...verdict.findings.advisory,
 		]);
-		io.stdout(options.json ? renderFindingsJson(open) : renderFindingsTerminal(open, { color: io.color }));
+		io.stdout(options.json ? renderFindingsJson(open) : renderFindingsTerminal(open, render));
 		return 0;
 	} finally {
 		await reviewHarness.close(context);
+	}
+}
+
+// The git author, as `Name <email>`, in git's own order: GIT_AUTHOR_NAME and GIT_AUTHOR_EMAIL, then user.name and
+// user.email.
+async function gitAuthor(repoRoot: string): Promise<string> {
+	const ident = await git(repoRoot, ["var", "GIT_AUTHOR_IDENT"]).catch((error: Error) => {
+		throw new CliError(
+			`Melian records who dismissed a finding as the git author, and git has none: ${error.message}; set user.name and user.email`,
+		);
+	});
+	return ident.replace(/ \d+ [+-]\d{4}$/, "");
+}
+
+const verdictWords: Readonly<Record<Verdict["status"], string>> = {
+	passed: "passed",
+	findings: "findings",
+	"not-reviewed": "not reviewed",
+};
+
+// Dismisses a finding of the stored review in the changeset's storage, shared by every worktree of the clone, and
+// decides the verdict again. Like findings, it reads only local refs and storage.
+export async function dismiss(io: Io, argument: string, id: string, reason: string): Promise<number> {
+	const changeset = await storedChangeset(io, argument);
+	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, isScripted(io.env));
+	if (!existsSync(path)) throw noReview(changeset, argument);
+	const by = await gitAuthor(changeset.repoRoot);
+	// Only the adjudication task: a review or publication a crash interrupted must not resume here.
+	const dismissHarness = await DismissHarness.open(await openStorage(path), idleModels(io.env));
+	try {
+		const dismissal = { by, reason, at: new Date().toISOString() };
+		const recorded = await recordDismissal({
+			harness: dismissHarness.harness,
+			revision: changeset.revision,
+			id,
+			dismissal,
+			repoRoot: changeset.repoRoot,
+		}).catch((error: unknown) => {
+			if (!(error instanceof DismissError)) throw error;
+			if (error.code === "notReviewed") throw noReview(changeset, argument);
+			if (error.code === "unknownFinding") {
+				throw new CliError(
+					`the review of ${short(changeset.revision.head)} has no finding ${id}; melian findings ${shellQuote(argument)} --all lists them`,
+				);
+			}
+			throw error;
+		});
+		const { finding, replaced, verdict } = recorded;
+		const { ruleId } = finding;
+		const { path: file } = finding.properties;
+		const line = finding.locations[0]!.physicalLocation.region.startLine;
+		const what = `${visibleText(ruleId)} in ${visibleText(file)} line ${line} (${id})`;
+		io.stdout(
+			`${replaced === undefined ? "Dismissed" : "Updated the dismissal of"} ${what} as ${visibleText(by)}.\n`,
+		);
+		if (replaced !== undefined)
+			io.stdout(`It was dismissed by ${visibleText(replaced.by)}: ${visibleText(replaced.reason)}\n`);
+		const attention = [...verdict.findings.block, ...verdict.findings.acknowledge, ...verdict.findings.advisory];
+		for (const other of attention.filter((each) => each.properties.alsoReportedAs?.some((also) => also.id === id))) {
+			io.stdout(
+				`${visibleText(other.ruleId)} (${other.properties.id}) reports the same defect and still counts; dismiss it too if the reason holds.\n`,
+			);
+		}
+		io.stdout(`Verdict now: ${verdictWords[verdict.status]}${verdict.blocking ? ", blocking" : ""}.\n`);
+		const target = parseTarget(argument);
+		if (target.kind === "pullRequest") {
+			io.stdout(`Run melian publish ${shellQuote(argument)} to post the new verdict to the pull request.\n`);
+		}
+		return 0;
+	} finally {
+		await dismissHarness.close(context);
 	}
 }
