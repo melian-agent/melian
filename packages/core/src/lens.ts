@@ -689,7 +689,7 @@ export function renderLensInstructions(
 	return [
 		instructions,
 		"## Repository standards",
-		"The repository's own conventions. A change that breaks one is a finding; cite the file.",
+		"The repository's own conventions, as context for reading the change. A breach of one is the conventions lens's to report, quoting the rule; report it under one of your own rules only when it is also a defect that rule describes.",
 		...sections,
 	].join("\n\n");
 }

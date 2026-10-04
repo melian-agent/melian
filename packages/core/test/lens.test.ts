@@ -566,6 +566,8 @@ describe("renderLensInstructions", () => {
 		const rendered = renderLensInstructions(correctness!, standards);
 		expect(rendered.startsWith(correctness!.instructions)).toBe(true);
 		expect(rendered).toContain("### AGENTS.md\n\nUse tabs.");
+		expect(rendered).toContain("A breach of one is the conventions lens's to report");
+		expect(rendered).not.toContain("A change that breaks one is a finding");
 		expect(renderLensInstructions({ ...correctness!, standards: false }, standards)).not.toContain("AGENTS.md");
 	});
 
