@@ -1,3 +1,3 @@
 # Item count
 
-Pull request #14 adds `count`, the number of items a receipt charges for, closing issue #9.
+Pull request #14 adds `count`, the number of lines a receipt lists, closing issue #9.

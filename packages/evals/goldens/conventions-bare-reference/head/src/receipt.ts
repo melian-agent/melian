@@ -8,7 +8,7 @@ export function total(items: readonly Item[]): number {
 	return items.reduce((sum, item) => sum + item.cents, 0);
 }
 
-/** How many items cost more than nothing, leaving out free items such as a bag. */
+/** How many lines the receipt lists, one per item. */
 export function count(items: readonly Item[]): number {
-	return items.filter((item) => item.cents > 0).length;
+	return items.length;
 }

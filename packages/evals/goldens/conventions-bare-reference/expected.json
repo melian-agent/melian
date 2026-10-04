@@ -1,5 +1,5 @@
 {
-  "pr_title": "Count the items a receipt charges for",
+  "pr_title": "Count the lines on a receipt",
   "comments": [
     {
       "comment": "The new progress-log entry names pull request #14 and issue #9 as bare text, though AGENTS.md says to link every one a document mentions and never to write a bare #12.",
