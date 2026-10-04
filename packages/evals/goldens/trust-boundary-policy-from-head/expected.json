@@ -2,28 +2,35 @@
   "pr_title": "Read the policy without shelling out to git",
   "comments": [
     {
-      "comment": "loadPolicy now reads policy.json from the checkout, which verdict says is the pull request's head, so a pull request sets the policy it is judged by.",
+      "comment": "loadPolicy now reads policy.json from the checkout, which verdict says is the pull request's head, so a pull request sets the policy it is judged by; the base read it from the base commit, as its documentation of verdict required.",
       "severity": "High",
       "category": "security",
-      "file": "src/policy.ts",
+      "file": "src/review.ts",
       "rule": "head-controls-judge",
       "cause": "introduced",
       "failureScenario": "A pull request changes policy.json to { \"blockOn\": [] } and adds code a reviewer rates critical. verdict(repo, findings) runs on its checkout, loadPolicy reads the head's policy.json, and the verdict is \"pass\", where the base read policy.json from the base commit and returned \"block\".",
       "evidence": [
         {
-          "file": "src/policy.ts",
-          "line": 10,
+          "file": "src/review.ts",
+          "line": 15,
           "role": "cause"
         },
         {
           "file": "src/review.ts",
-          "line": 8,
-          "endLine": 10,
+          "line": 18,
+          "endLine": 20,
           "role": "context"
         },
         {
-          "file": "src/policy.ts",
-          "line": 9,
+          "file": "src/review.ts",
+          "line": 14,
+          "role": "context",
+          "revision": "base"
+        },
+        {
+          "file": "src/review.ts",
+          "line": 19,
+          "endLine": 20,
           "role": "context",
           "revision": "base"
         }

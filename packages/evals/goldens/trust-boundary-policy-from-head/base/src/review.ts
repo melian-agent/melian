@@ -1,8 +1,18 @@
-import { loadPolicy } from "./policy.ts";
+import { execFileSync } from "node:child_process";
+
+export interface Policy {
+	readonly blockOn: readonly string[];
+}
 
 export interface Finding {
 	readonly severity: string;
 	readonly message: string;
+}
+
+// Reads `policy.json` as committed at `commit`.
+function loadPolicy(repo: string, commit: string): Policy {
+	const text = execFileSync("git", ["show", `${commit}:policy.json`], { cwd: repo, encoding: "utf8" });
+	return JSON.parse(text) as Policy;
 }
 
 /**
