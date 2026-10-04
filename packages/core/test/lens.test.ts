@@ -566,9 +566,24 @@ describe("renderLensInstructions", () => {
 		const rendered = renderLensInstructions(correctness!, standards);
 		expect(rendered.startsWith(correctness!.instructions)).toBe(true);
 		expect(rendered).toContain("### AGENTS.md\n\nUse tabs.");
-		expect(rendered).toContain("A breach of one is the conventions lens's to report");
-		expect(rendered).not.toContain("A change that breaks one is a finding");
 		expect(renderLensInstructions({ ...correctness!, standards: false }, standards)).not.toContain("AGENTS.md");
+	});
+
+	it("leaves a breach of the standards to conventions only when the review runs it", async () => {
+		const lenses = await loadLenses(repo, { kind: "worktree" }, []);
+		const [correctness] = named(lenses, "correctness");
+		const [conventions] = named(lenses, "conventions");
+		const standards = [{ path: "AGENTS.md", content: "Use tabs.\n" }];
+		const keeps = "The repository's own conventions. A change that breaks one is a finding; cite the file.";
+		const handsOver = "A breach of one is the conventions lens's to report";
+
+		const alone = renderLensInstructions(correctness!, standards, "careful", ["correctness"]);
+		expect(alone).toContain(keeps);
+		expect(alone).not.toContain(handsOver);
+		const beside = renderLensInstructions(correctness!, standards, "careful", ["correctness", "conventions"]);
+		expect(beside).toContain(handsOver);
+		expect(beside).not.toContain(keeps);
+		expect(renderLensInstructions(conventions!, standards, "careful", ["conventions"])).toContain(keeps);
 	});
 
 	it("renders every declared rule ID, the severities, and the budget after the body", async () => {

@@ -669,8 +669,9 @@ function renderHandoffs(handoffs: Readonly<Record<string, string>>, running: rea
  * The instructions a lens's conversation runs with at `level`, `careful` unless named: its body; then, for each lens in
  * `running` that the lens hands defects to, those defects; then its rules, each ID with its description, the
  * severities it may report, the level's budget and reading scope, and what a finding's failure scenario and evidence
- * must be; then, unless the lens opted out, the repository's standards, each under its path. `running` names the
- * lenses the review runs, none by default. Throws {@link LensError} `unknownLevel` for a level the lens does not
+ * must be; then, unless the lens opted out, the repository's standards, each under its path, whose breaches are the
+ * conventions lens's to report when `running` holds it and this lens's own otherwise. `running` names the lenses the
+ * review runs, none by default. Throws {@link LensError} `unknownLevel` for a level the lens does not
  * declare.
  */
 export function renderLensInstructions(
@@ -686,10 +687,14 @@ export function renderLensInstructions(
 	].join("\n\n");
 	if (!lens.standards || standards.length === 0) return instructions;
 	const sections = standards.map((section) => `### ${section.path}\n\n${section.content.trim()}`);
+	// Like a hand-off, the standards go to conventions only when it runs beside this lens; otherwise this lens keeps them.
+	const owned = lens.name !== "conventions" && running.includes("conventions");
 	return [
 		instructions,
 		"## Repository standards",
-		"The repository's own conventions, as context for reading the change. A breach of one is the conventions lens's to report, quoting the rule; report it under one of your own rules only when it is also a defect that rule describes.",
+		owned
+			? "The repository's own conventions, as context for reading the change. A breach of one is the conventions lens's to report, quoting the rule; report it under one of your own rules only when it is also a defect that rule describes."
+			: "The repository's own conventions. A change that breaks one is a finding; cite the file.",
 		...sections,
 	].join("\n\n");
 }
