@@ -149,6 +149,28 @@ describe("planPublication", () => {
 		expect(plan.open).toEqual({});
 	});
 
+	it("resolves a posted finding with the dismissal of the finding it was merged into, not as gone", () => {
+		const dismissal = { by: "Tal <tal@melian.invalid>", reason: "Constant input.", at: "2026-10-04T00:00:00Z" };
+		const member = finding({
+			snippet: "eval(body)",
+			startLine: 40,
+			endLine: 40,
+			rule: "code-injection",
+			severity: "P2",
+			source: { check: "lens.contracts" },
+		});
+		const dismissed = [fixed, member].map(
+			(each): Finding => ({ ...each, properties: { ...each.properties, status: "dismissed", dismissal } }),
+		);
+		const verdict = verdictOf(dismissed);
+		expect(verdict.dismissed.map((each) => each.properties.id)).toEqual([fixed.properties.id]);
+
+		const plan = planPublication(verdict, { [member.properties.id]: posted("103") }, lines, head);
+
+		expect(plan.resolved).toEqual([{ id: member.properties.id, ...posted("103"), dismissal }]);
+		expect(plan.open).toEqual({});
+	});
+
 	it("keeps a finding that turned silent on its thread, so it never gets a second one", () => {
 		const quiet = finding({ severity: "nit" });
 		const loud = finding({ severity: "P3" });

@@ -3,6 +3,7 @@ import {
 	type Changeset,
 	diffLines,
 	dismissalVersion,
+	dismissedReports,
 	type Finding,
 	type Placement,
 	type PostedReview,
@@ -255,9 +256,7 @@ function redismissed(state: PublishedState, head: string, verdict: Verdict): Rec
 	const answered = repliedKeys(state);
 	const planned = state.revisions[head]?.resolved ?? {};
 	const again: Record<string, StoredFinding> = {};
-	for (const finding of verdict.dismissed) {
-		const { id, dismissal } = finding.properties;
-		if (dismissal === undefined) continue;
+	for (const [id, dismissal] of dismissedReports(verdict)) {
 		const latest = state.order.findLast((each) => {
 			const record = state.revisions[each]!;
 			return Object.hasOwn(record.open, id) || Object.hasOwn(record.resolved, id);
@@ -297,21 +296,20 @@ function planRound(
 		const held = new Set(
 			[...Object.values(verdict.findings).flat(), ...verdict.dismissed].map((finding) => finding.properties.id),
 		);
-		const dismissed = new Map(
-			verdict.dismissed.map((finding) => [finding.properties.id, finding.properties.dismissal]),
-		);
-		// A dismissal note is still owed while the finding stays dismissed, with the reason it has now; any other
-		// resolution, while the finding stays gone. One whose reply, as it would read now, is recorded is answered.
+		const dismissed = dismissedReports(verdict);
+		// A resolution still owed is carried as its reply would read now: with the dismissal of the finding that holds its
+		// ID dismissed, itself or merged, and otherwise while the finding stays gone. One whose reply, as it would read
+		// now, is recorded is answered.
 		const answered = repliedKeys(state);
 		for (const [id, entry] of Object.entries(unanswered(state, head))) {
 			if (Object.hasOwn(plan.open, id)) continue;
-			let carried: (StoredFinding & { thread: string }) | undefined;
-			if (entry.dismissal === undefined) {
-				if (!held.has(id)) carried = structuredClone(entry);
-			} else if (dismissed.has(id)) {
-				const now = dismissed.get(id) ?? entry.dismissal;
-				carried = { ...structuredClone(entry), dismissal: { ...now } };
-			}
+			const now = dismissed.get(id);
+			const carried =
+				now !== undefined
+					? { ...structuredClone(entry), dismissal: { ...now } }
+					: entry.dismissal === undefined && !held.has(id)
+						? structuredClone(entry)
+						: undefined;
 			if (carried !== undefined && !answered.has(replyKeyOf(id, carried))) resolved[id] ??= carried;
 		}
 	}
