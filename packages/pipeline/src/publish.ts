@@ -15,18 +15,16 @@ import {
 	replyKey,
 	reviewStatus,
 	type StoredFinding,
-	type Verdict,
+	type StoredVerdict,
+	Verdict,
 } from "@melian-agent/core";
 import {
 	type AdjudicationResult,
 	readDecision,
 	readProvenance,
 	readVerdict,
-	type StoredVerdict,
-	upgradeStoredVerdict,
 	VerdictDocument,
 	type VerdictProvenance,
-	verdictOf,
 } from "./adjudication.ts";
 import { PublishError } from "./errors.ts";
 import { findingsVersion, revisionKey } from "./findings.ts";
@@ -114,7 +112,7 @@ function replyKeyOf(id: string, entry: PublishedEntry & { thread: string }): str
 // A round left pending before evidence became a list, with each finding in the current shape.
 function upgradePending(pending: PendingRound): PendingRound {
 	const post = pending.post.map((each) => ({ ...each, finding: Finding.upgrade(each.finding) }));
-	return { ...pending, verdict: upgradeStoredVerdict(pending.verdict), post };
+	return { ...pending, verdict: Verdict.upgrade(pending.verdict), post };
 }
 
 // A reply recorded by its finding's ID alone, keyed as the reply to the entry its head resolved.
@@ -228,7 +226,7 @@ async function postedVerdictOf(
 	const verdicts = (await reader.snapshot(VerdictDocument, root, context))?.verdicts ?? {};
 	return !Object.entries(verdicts).some(([other, verdict]) => {
 		if (other === revision || !other.endsWith(`..${head}`)) return false;
-		const decided = verdictOf(verdict);
+		const decided = Verdict.from(verdict);
 		return [fingerprint(decided), legacyFingerprint(decided)].includes(record.verdict);
 	});
 }
@@ -327,7 +325,7 @@ function planRound(
 		revision,
 		round: (state.revisions[head]?.rounds ?? 0) + 1,
 		fingerprint: fingerprint(verdict),
-		verdict: structuredClone(verdict) as unknown as StoredVerdict,
+		verdict: structuredClone(verdict.toJSON()),
 		post: structuredClone(plan.post.map(({ finding, placement }) => ({ finding, placement }))),
 		stillOpen: plan.stillOpen.length,
 		open: Object.fromEntries(Object.entries(plan.open).map(([id, entry]) => [id, { ...entry }])),
@@ -514,7 +512,7 @@ function publishTask(provider: ReviewProvider) {
 								base,
 								fingerprint: pending.fingerprint,
 								round: pending.round,
-								verdict: verdictOf(pending.verdict),
+								verdict: Verdict.from(pending.verdict),
 								findings: pending.post.map(({ finding, placement }) => ({
 									finding: Finding.from(finding),
 									placement,

@@ -1,4 +1,4 @@
-import { adjudicate, defaultConfig, Finding, type FindingInput } from "@melian-agent/core";
+import { Adjudication, defaultConfig, Finding, type FindingInput } from "@melian-agent/core";
 import {
 	blobUrl,
 	marker,
@@ -160,7 +160,12 @@ describe("markers", () => {
 				base,
 				fingerprint: "0123456789abcdef",
 				round: 1,
-				verdict: adjudicate({ findings: [finding], manifest: [], checks: [], config: defaultConfig }),
+				verdict: new Adjudication({
+					findings: [finding],
+					manifest: [],
+					checks: [],
+					config: defaultConfig,
+				}).adjudicate(),
 				findings: [{ finding, placement: { kind: "body" } }],
 				stillOpen: 0,
 				resolved: [],
@@ -193,7 +198,7 @@ describe("markers", () => {
 					base,
 					fingerprint: "0123456789abcdef",
 					round: 1,
-					verdict: adjudicate({ findings, manifest: [], checks: [], config: defaultConfig }),
+					verdict: new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate(),
 					findings: [],
 					stillOpen: 0,
 					resolved: [],
@@ -218,7 +223,7 @@ describe("markers", () => {
 				base,
 				fingerprint: "0123456789abcdef",
 				round: 1,
-				verdict: adjudicate({
+				verdict: new Adjudication({
 					findings: [],
 					manifest: [],
 					checks: [
@@ -226,7 +231,7 @@ describe("markers", () => {
 						{ name: "lens.contracts", status: "ran", level: "quick", budgetEnded: counted },
 					],
 					config: defaultConfig,
-				}),
+				}).adjudicate(),
 				findings: [],
 				stillOpen: 0,
 				resolved: [],
@@ -258,7 +263,7 @@ describe("markers", () => {
 			base,
 			fingerprint: "0123456789abcdef",
 			round: 1,
-			verdict: adjudicate({ findings, manifest: [], checks: [], config: defaultConfig }),
+			verdict: new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate(),
 			findings: findings.map((finding) => ({ finding, placement: { kind: "body" as const } })),
 			stillOpen: 0,
 			resolved: [],

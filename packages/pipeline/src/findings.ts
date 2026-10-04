@@ -8,7 +8,6 @@ import {
 	type FindingSource,
 	type FindingStatus,
 	type FindingTrigger,
-	mergeClaims,
 	type PastDismissal,
 	type ProvingHunk,
 	type Severity,
@@ -137,7 +136,9 @@ function adjudicate(sightings: Readonly<Record<string, ProducerFinding>>) {
 	);
 	const reportedBy = ranked.map((each) => ({ ...each.properties.source })).sort(compareSources);
 	const { evidence: _, failureScenario: __, otherClaims: ___, ...properties } = ranked[0]!.properties;
-	const claims = mergeClaims(ranked[0]!, ranked);
+	// A sighting stores no lifecycle status, and merging claims reads none.
+	const members = ranked.map((each) => Finding.from({ ...each, properties: { ...each.properties, status: "new" } }));
+	const claims = members[0]!.mergeClaims(members);
 	return { winner: { ...ranked[0]!, properties: { ...properties, ...claims } }, reportedBy };
 }
 

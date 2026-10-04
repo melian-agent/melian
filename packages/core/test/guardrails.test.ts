@@ -1,4 +1,4 @@
-import { adjudicate, ConfigError, evaluateGuardrails, Finding, loadConfig, resolveRange } from "@melian-agent/core";
+import { Adjudication, ConfigError, evaluateGuardrails, Finding, loadConfig, resolveRange } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	gitIn,
@@ -598,12 +598,12 @@ describe("policy-change-review", () => {
 		const { findings } = await evaluateGuardrails({ repoRoot: repo, revision, source });
 		const { config } = await loadConfig(repo, source, "melian.yaml");
 
-		const verdict = adjudicate({
+		const verdict = new Adjudication({
 			findings,
 			manifest: ["guardrails"],
 			checks: [{ name: "guardrails", status: "ran" }],
 			config,
-		});
+		}).adjudicate();
 
 		expect(verdict.status).toBe("findings");
 		expect(verdict.findings.acknowledge.map((finding) => [finding.ruleId, finding.properties.path])).toEqual([
@@ -635,12 +635,12 @@ describe("policy-change-review", () => {
 			},
 		});
 
-		const verdict = adjudicate({
+		const verdict = new Adjudication({
 			findings: [notice, lens],
 			manifest: ["guardrails"],
 			checks: [{ name: "guardrails", status: "ran" }],
 			config,
-		});
+		}).adjudicate();
 
 		expect(verdict.status).toBe("findings");
 		expect(verdict.findings.acknowledge.map(({ ruleId, properties }) => [ruleId, properties.alsoReportedAs])).toEqual(

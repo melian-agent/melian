@@ -165,6 +165,9 @@ export type MelianYaml = Static<typeof melianYamlSchema>;
 /** What a finding at a given severity requires before merge. */
 export type Resolution = Static<typeof resolutionSchema>;
 
+/** The resolutions from strictest to most lenient. */
+export const resolutionOrder: readonly Resolution[] = ["block", "acknowledge", "advisory", "silent"];
+
 /** A severity. The rubric is fixed in version one; docs/design.md defers repository-defined rubrics. */
 export type Severity = Static<typeof severitySchema>;
 

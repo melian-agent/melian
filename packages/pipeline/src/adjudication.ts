@@ -1,22 +1,20 @@
 import {
-	adjudicate,
+	Adjudication,
 	type CheckRecord,
 	type CheckStatus,
 	ConfigError,
 	type ConfigFor,
 	configLookup,
-	Finding,
+	type Finding,
 	type FindingSource,
 	loadConfig,
 	type MelianConfig,
 	type RepositorySource,
 	type Resolution,
-	type ResolvedFinding,
 	type ScrutinyLevel,
 	type Severity,
-	type StoredFinding,
-	type Verdict,
-	type VerdictStatus,
+	type StoredVerdict,
+	Verdict,
 } from "@melian-agent/core";
 import { findingsVersion, readFindings, revisionKey } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
@@ -34,36 +32,6 @@ type StoredCheck = {
 	level?: ScrutinyLevel;
 	budgetEnded?: StoredBudgetEnd;
 };
-
-export type StoredVerdict = {
-	status: VerdictStatus;
-	blocking: boolean;
-	findings: Record<Resolution, StoredFinding[]>;
-	dismissed: StoredFinding[];
-	notRun: StoredCheck[];
-	// Absent from a verdict recorded before Melian kept the checks that ran.
-	ran?: StoredCheck[];
-};
-
-// A verdict recorded before evidence became a list, with each finding in the current shape.
-export function upgradeStoredVerdict(verdict: StoredVerdict): StoredVerdict {
-	const findings = Object.fromEntries(
-		Object.entries(verdict.findings).map(([resolution, group]) => [
-			resolution,
-			group.map((finding) => Finding.upgrade(finding)),
-		]),
-	) as StoredVerdict["findings"];
-	return { ...verdict, findings, dismissed: verdict.dismissed.map((finding) => Finding.upgrade(finding)) };
-}
-
-// The verdict a stored one describes, its findings as Finding objects.
-export function verdictOf(stored: StoredVerdict): Verdict {
-	const resolved = (finding: StoredFinding) => Finding.from(finding) as ResolvedFinding;
-	const findings = Object.fromEntries(
-		Object.entries(stored.findings).map(([resolution, group]) => [resolution, group.map(resolved)]),
-	) as Record<Resolution, ResolvedFinding[]>;
-	return { ...stored, findings, dismissed: stored.dismissed.map(resolved) };
-}
 
 /**
  * Where a review's revision came from. A `pull-request` review names the repository and pull request as its provider
@@ -125,7 +93,7 @@ export const VerdictDocument = defineDoc<{
 			throw new Error(`the verdict document needs migrating from version ${from}, which Melian cannot do`);
 		const state = value as { verdicts: Record<string, StoredVerdict> };
 		const verdicts = Object.fromEntries(
-			Object.entries(state.verdicts).map(([revision, verdict]) => [revision, upgradeStoredVerdict(verdict)]),
+			Object.entries(state.verdicts).map(([revision, verdict]) => [revision, Verdict.upgrade(verdict)]),
 		);
 		return { ...value, verdicts };
 	},
@@ -197,7 +165,7 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 			let verdict: Verdict;
 			try {
 				const configFor = policy === undefined ? () => config : await configsFor(repoRoot, policy, findings);
-				verdict = adjudicate({ findings, manifest, checks, config: configFor, allowSkip });
+				verdict = new Adjudication({ findings, manifest, checks, config: configFor, allowSkip }).adjudicate();
 			} catch (error) {
 				// A policy that cannot be read is the task's outcome rather than a fault. It may not fail the same way next
 				// time, as when a shallow clone fetches the base later, so the next review starts a new task.
@@ -216,7 +184,7 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 					return { status: "terminal", outcome: { status: "completed", result: "superseded" } };
 				}
 				const document = await tx.doc(VerdictDocument, root);
-				document.verdicts[revision] = structuredClone(verdict) as unknown as StoredVerdict;
+				document.verdicts[revision] = structuredClone(verdict.toJSON());
 				document.provenance = { ...document.provenance, [revision]: structuredClone(task.input.provenance) };
 				document.decisions = { ...document.decisions, [revision]: { task: runtime.taskId, findingsVersion: seen } };
 				return { status: "terminal", outcome: { status: "completed", result: "recorded" } };
@@ -322,5 +290,5 @@ export async function readVerdict(
 ): Promise<Verdict | undefined> {
 	const document = await reader.snapshot(VerdictDocument, rootConversationId, context);
 	if (document === undefined || !Object.hasOwn(document.verdicts, revision)) return undefined;
-	return verdictOf(structuredClone(document.verdicts[revision]!));
+	return Verdict.from(structuredClone(document.verdicts[revision]!));
 }

@@ -1,5 +1,5 @@
 import {
-	adjudicate,
+	Adjudication,
 	type ChangedFile,
 	type CheckRecord,
 	defaultConfig,
@@ -98,7 +98,12 @@ describe("placeFinding", () => {
 });
 
 function verdictOf(findings: readonly Finding[], checks: readonly CheckRecord[] = []): Verdict {
-	return adjudicate({ findings, manifest: checks.map((check) => check.name), checks, config: defaultConfig });
+	return new Adjudication({
+		findings,
+		manifest: checks.map((check) => check.name),
+		checks,
+		config: defaultConfig,
+	}).adjudicate();
 }
 
 describe("planPublication", () => {

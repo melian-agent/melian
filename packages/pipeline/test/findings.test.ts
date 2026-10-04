@@ -14,9 +14,10 @@ import {
 	type ReviewDraft,
 	type ReviewProvider,
 	replyKey,
-	resolveFinding,
 	type StoredFinding,
+	type StoredVerdict,
 	snippetHash,
+	Verdict,
 } from "@melian-agent/core";
 import {
 	backgroundContext as context,
@@ -37,7 +38,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { type StoredVerdict, upgradeStoredVerdict, VerdictDocument, verdictOf } from "../src/adjudication.ts";
+import { VerdictDocument } from "../src/adjudication.ts";
 import { FindingsDocument } from "../src/findings.ts";
 import { fingerprint, legacyFingerprint, PublishedDocument, PublisherDocument } from "../src/publish.ts";
 
@@ -398,7 +399,7 @@ describe("the findings document", () => {
 					{ id: evidenced.properties.id, ruleId: "no-eval", source: security, failureScenario, evidence },
 				],
 			});
-			expect(resolveFinding(merged!, defaultConfig)).toBe("block");
+			expect(merged!.resolve(defaultConfig)).toBe("block");
 		});
 
 		it("breaks a severity tie by lens name", async () => {
@@ -591,16 +592,16 @@ describe("documents stored before evidence became a list", () => {
 				dismissed: [],
 				notRun: [],
 			}) as StoredVerdict;
-		const published = fingerprint(verdictOf(verdict(stored)));
-		const migrated = verdictOf(upgradeStoredVerdict(verdict(stored)));
+		const published = fingerprint(Verdict.from(verdict(stored)));
+		const migrated = Verdict.from(Verdict.upgrade(verdict(stored)));
 
 		expect(fingerprint(migrated)).not.toBe(published);
 		expect(legacyFingerprint(migrated)).toBe(published);
 		const scenario = Finding.create({ ...input, cause: "affected", evidence, failureScenario: "run(1) throws." });
-		expect(legacyFingerprint(verdictOf(verdict(scenario.toJSON())))).toBeUndefined();
+		expect(legacyFingerprint(Verdict.from(verdict(scenario.toJSON())))).toBeUndefined();
 		const contextOnly = [{ ...evidence[0]!, role: "context" as const }];
 		const contextual = Finding.create({ ...input, evidence: contextOnly }).toJSON();
-		expect(legacyFingerprint(verdictOf(verdict(contextual)))).toBeUndefined();
+		expect(legacyFingerprint(Verdict.from(verdict(contextual)))).toBeUndefined();
 	});
 
 	it("keys each reply an older Melian recorded by its finding, its thread, and the dismissal it gave", async () => {
@@ -706,7 +707,7 @@ describe("documents stored before evidence became a list", () => {
 				published.revisions = json({
 					[head]: {
 						reviews: ["101"],
-						verdict: fingerprint(verdictOf(oldVerdict as unknown as StoredVerdict)),
+						verdict: fingerprint(Verdict.from(oldVerdict as unknown as StoredVerdict)),
 						rounds: 1,
 						open: {},
 						resolved: {},
@@ -743,7 +744,7 @@ describe("documents stored before evidence became a list", () => {
 
 		it("posts a review of a retargeted revision whose verdict matches the one published under the old base", async () => {
 			const path = join(dir, "published.sqlite");
-			const verdict = upgradeStoredVerdict(oldVerdict as unknown as StoredVerdict);
+			const verdict = Verdict.upgrade(oldVerdict as unknown as StoredVerdict);
 			const first = await open(await openSqliteStorage(path));
 			await first.root.commit(async (tx) => {
 				const verdicts = await tx.doc(VerdictDocument, first.root.id);

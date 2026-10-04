@@ -1,5 +1,5 @@
 import {
-	adjudicate,
+	Adjudication,
 	defaultConfig,
 	Finding,
 	FindingsLog,
@@ -162,12 +162,12 @@ describe("renderFindingsTerminal", () => {
 	it("sets a message's later lines deeper than any header, so one cannot forge a finding in a verdict group", () => {
 		const forged = "P0  line 1  no-eval  (introduced, new, block)";
 		const hostile = Finding.create({ ...evalInput, message: `eval runs request input\n${forged}` });
-		const verdict = adjudicate({
+		const verdict = new Adjudication({
 			findings: [hostile],
 			manifest: [],
 			checks: [{ name: "lens.security", status: "ran" }],
 			config: defaultConfig,
-		});
+		}).adjudicate();
 		const text = renderFindingsTerminal(verdict);
 		expect(text).toContain(`  eval runs request input\n    | ${forged}\n`);
 		expect(text.split("\n").filter((line) => line.startsWith("  P0") || line.startsWith("  P1"))).toHaveLength(1);
@@ -178,7 +178,7 @@ describe("renderFindingsTerminal", () => {
 	});
 });
 
-const verdict = adjudicate({
+const verdict = new Adjudication({
 	manifest: [],
 	findings: [
 		...log.findings(),
@@ -231,7 +231,7 @@ const verdict = adjudicate({
 		{ name: "static.biome", status: "ran", version: "2.5.15" },
 	],
 	config: defaultConfig,
-});
+}).adjudicate();
 
 describe("renderVerdictJson", () => {
 	it("renders the verdict with its findings as SARIF results", async () => {
@@ -251,12 +251,12 @@ describe("renderFindingsTerminal with a verdict", () => {
 	});
 
 	it("says a review passed when it did", () => {
-		const passed = adjudicate({
+		const passed = new Adjudication({
 			findings: [],
 			manifest: [],
 			checks: [{ name: "lens.correctness", status: "ran" }],
 			config: defaultConfig,
-		});
+		}).adjudicate();
 		expect(renderFindingsTerminal(passed)).toBe("Verdict: passed\n\nNo findings.\n");
 	});
 
@@ -273,7 +273,7 @@ describe("renderFindingsTerminal with a verdict", () => {
 			status: "dismissed",
 		});
 		const reopened = Finding.create({ ...evalInput, snippet: "eval(body)", severity: "P2" });
-		const shown = adjudicate({
+		const shown = new Adjudication({
 			manifest: [],
 			checks: [],
 			config: defaultConfig,
@@ -288,7 +288,7 @@ describe("renderFindingsTerminal with a verdict", () => {
 				}),
 				Finding.create({ ...evalInput, snippet: "eval(note)", severity: "nit" }),
 			],
-		});
+		}).adjudicate();
 
 		it("prints silent and dismissed findings, each dismissal with who, when, and why", () => {
 			const text = renderFindingsTerminal(shown, { all: true, ids: true });
@@ -326,12 +326,12 @@ describe("renderFindingsTerminal with a verdict", () => {
 			source: { check: "static.biome" },
 			status: "dismissed",
 		});
-		const verdict = adjudicate({
+		const verdict = new Adjudication({
 			manifest: [],
 			checks: [],
 			config: defaultConfig,
 			findings: [speaker, merged, answered],
-		});
+		}).adjudicate();
 
 		const text = renderFindingsTerminal(verdict, { ids: true });
 
@@ -347,12 +347,12 @@ describe("renderFindingsTerminal with a verdict", () => {
 	});
 
 	it("escapes control characters in a check's name, reason, and error", () => {
-		const hostile = adjudicate({
+		const hostile = new Adjudication({
 			findings: [],
 			manifest: [],
 			checks: [{ name: "lens.x\u001b[2J", status: "failed", reason: "bad\nline", error: "\u202egnp.ts" }],
 			config: defaultConfig,
-		});
+		}).adjudicate();
 		const text = renderFindingsTerminal(hostile);
 		expect(text).toContain("  lens.x\\u001b[2J  failed: bad\n    line\n    Error: \\u202egnp.ts\n");
 	});

@@ -1,8 +1,17 @@
 import { createHash } from "node:crypto";
+import { posix } from "node:path";
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
-import { type Resolution, resolutionSchema, type Severity, severitySchema } from "./config.ts";
+import {
+	type MelianConfig,
+	type Resolution,
+	resolutionOrder,
+	resolutionSchema,
+	type Severity,
+	severitySchema,
+} from "./config.ts";
 import { FindingError } from "./errors.ts";
+import { melianPaths } from "./paths.ts";
 
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
@@ -676,6 +685,31 @@ function withoutUndefined(value: unknown): unknown {
 	);
 }
 
+const severityRank: Readonly<Record<Severity, number>> = { P0: 0, P1: 1, P2: 2, P3: 3, nit: 4 };
+
+function sameLocation(left: EvidenceLocation, right: EvidenceLocation): boolean {
+	return (
+		left.file === right.file &&
+		left.startLine === right.startLine &&
+		(left.endLine ?? left.startLine) === (right.endLine ?? right.startLine) &&
+		left.role === right.role &&
+		left.revision === right.revision
+	);
+}
+
+// The speaker's evidence with the prover's `cause` locations it lacks, ten in all, those marked `proves` first. At
+// least one of those stays, taking the speaker's last place if the speaker cites ten, so the merged cause never lacks
+// its proof.
+function withProof(own: FindingEvidence | undefined, proof: readonly EvidenceLocation[]): FindingEvidence | undefined {
+	const cited = own ?? [];
+	const missing = proof
+		.filter((location) => !cited.some((each) => sameLocation(each, location)))
+		.sort((left, right) => Number(right.proves === true) - Number(left.proves === true));
+	if (missing.length === 0) return own;
+	const imported = missing.slice(0, Math.max(maxEvidenceLocations - cited.length, 1));
+	return [...cited.slice(0, maxEvidenceLocations - imported.length), ...imported];
+}
+
 /**
  * One objection, as a SARIF 2.1.0 `result`: a runtime view over a {@link StoredFinding}, holding its fields as they are
  * stored, so `toJSON()` gives back the stored shape and a Pi Durable document stays JSON.
@@ -898,12 +932,171 @@ export class Finding {
 		return this.properties.id;
 	}
 
+	/** The first and last line of the finding's location. */
+	lines(): [number, number] {
+		const { startLine, endLine = startLine } = this.locations[0]!.physicalLocation.region;
+		return [startLine, endLine];
+	}
+
+	/**
+	 * Where the finding sits, as a key two findings of one defect share: its file, its normalised snippet, and which of
+	 * the identical snippets in that file it is. Two cut snippets alike may differ past the cut, so a cut one sits on its
+	 * lines too. `undefined` for a finding without a snippet, which never merges.
+	 */
+	site(): string | undefined {
+		const { path, occurrence } = this.properties;
+		const { snippet: stored } = this.locations[0]!.physicalLocation.region;
+		const snippet = normaliseSnippet(stored?.text ?? "");
+		if (snippet === "") return undefined;
+		return JSON.stringify([path, snippet, occurrence, ...(wasCut(stored!.text) ? this.lines() : [])]);
+	}
+
+	/** Whether the finding's lines overlap `other`'s. */
+	overlaps(other: Finding): boolean {
+		const [start, end] = this.lines();
+		const [otherStart, otherEnd] = other.lines();
+		return start <= otherEnd && otherStart <= end;
+	}
+
+	/**
+	 * How strongly the finding is tied to the change: `0` introduced, `1` affected with a proving `cause` location, `2`
+	 * anything else. A finding stored before Melian marked proving locations marks none, and any `cause` location of it
+	 * counts, so it ranks as it did.
+	 */
+	causeRank(): number {
+		const { cause, evidence = [] } = this.properties;
+		if (cause === "introduced") return 0;
+		if (cause !== "affected") return 2;
+		const marked = evidence.some((location) => location.proves === true);
+		return evidence.some((location) => location.role === "cause" && (location.proves === true || !marked)) ? 1 : 2;
+	}
+
+	/** The finding as another report of its defect lists it: its ID, rule, check, severity, and its own dismissal. */
+	report(): AlsoReportedAs {
+		const { id, source, severity, dismissal } = this.properties;
+		return {
+			id,
+			ruleId: this.ruleId,
+			check: source.check,
+			severity,
+			...(dismissal === undefined ? {} : { dismissal: { ...dismissal } }),
+		};
+	}
+
+	/** Negative when the finding comes first in reading order: by path, then severity, then line, then ID. */
+	compareReading(other: Finding): number {
+		const order = (left: string, right: string) => (left < right ? -1 : left > right ? 1 : 0);
+		return (
+			order(this.properties.path, other.properties.path) ||
+			severityRank[this.properties.severity] - severityRank[other.properties.severity] ||
+			this.lines()[0] - other.lines()[0] ||
+			order(this.id, other.id)
+		);
+	}
+
+	/** Negative when the finding is more severe than `other`, the lower ID on a tie, as a sort comparator. */
+	compareStrength(other: Finding): number {
+		const { severity: left, id: leftId } = this.properties;
+		const { severity: right, id: rightId } = other.properties;
+		return severityRank[left] - severityRank[right] || (leftId < rightId ? -1 : leftId > rightId ? 1 : 0);
+	}
+
+	/** The finding's own claim, its failure scenario and evidence, as another finding keeps it once merged; none without either. */
+	claims(): MemberClaim[] {
+		const { id, source, failureScenario, evidence } = this.properties;
+		if (failureScenario === undefined && evidence === undefined) return [];
+		return [
+			{
+				id,
+				ruleId: this.ruleId,
+				source,
+				...(failureScenario === undefined ? {} : { failureScenario }),
+				...(evidence === undefined ? {} : { evidence }),
+			},
+		];
+	}
+
+	/**
+	 * The cause, evidence, failure scenario, and other claims of `members` merged as one defect that this finding, one of
+	 * them, speaks for. It keeps its own failure scenario and evidence. The cause is the strongest any member has, in the
+	 * order `introduced`, `affected` with a `cause` location, `pre-existing`, so merging never turns a finding that blocks
+	 * into one that does not. When another member proves it, the most severe such member, the lower ID on a tie, adds
+	 * its `cause` locations to this finding's evidence, ten locations in all, those marked `proves` first, so the cause
+	 * travels with its proof. Every other member's failure scenario and evidence, and any claims it already carries, are
+	 * kept whole in `otherClaims`, so a verifier judges each claim with its own proof. Throws `RangeError` when `members`
+	 * omits this finding.
+	 */
+	mergeClaims(
+		members: readonly Finding[],
+	): Pick<FindingProperties, "cause" | "evidence" | "failureScenario" | "otherClaims"> {
+		if (!members.includes(this)) throw new RangeError("mergeClaims needs the speaker among the members");
+		const best = Math.min(...members.map((member) => member.causeRank()));
+		const prover =
+			this.causeRank() === best
+				? this
+				: members
+						.filter((member) => member.causeRank() === best)
+						.sort((left, right) => left.compareStrength(right))[0]!;
+		const { failureScenario } = this.properties;
+		const proof = prover === this ? [] : (prover.properties.evidence ?? []).filter((each) => each.role === "cause");
+		const evidence = withProof(this.properties.evidence, proof);
+		const otherClaims = [
+			...(this.properties.otherClaims ?? []),
+			...members
+				.filter((member) => member !== this)
+				.flatMap((member) => [...member.claims(), ...(member.properties.otherClaims ?? [])]),
+		];
+		return {
+			cause: (["introduced", "affected", "pre-existing"] as const)[best]!,
+			...(evidence === undefined ? {} : { evidence }),
+			...(failureScenario === undefined ? {} : { failureScenario }),
+			...(otherClaims.length === 0 ? {} : { otherClaims }),
+		};
+	}
+
+	/**
+	 * What the finding requires under `config`, the effective configuration at its path: the resolution configured for
+	 * its severity. A finding not shown to be caused by the change, `pre-existing` or `affected` without a `cause`
+	 * evidence location marked `proves`, is never above `advisory`, so an old defect cannot block an unrelated change. A
+	 * finding stored before Melian marked proving locations marks none, and any `cause` location of it counts. A
+	 * `guardrail/policy-change-review` finding on a `melian.yaml` is never below `acknowledge`, so no `melian.yaml`
+	 * silences the review of a change to itself. It decides from rule, path, severity, cause, and evidence alone, never
+	 * from a resolution the finding already carries.
+	 */
+	resolve(config: Pick<MelianConfig, "resolution">): Resolution {
+		const configured = config.resolution[this.properties.severity];
+		const resolution =
+			this.causeRank() < 2 || resolutionOrder.indexOf(configured) > resolutionOrder.indexOf("advisory")
+				? configured
+				: "advisory";
+		// The notice carries no snippet, so adjudication never merges it into a finding of another rule.
+		const ownPolicy =
+			this.ruleId === "guardrail/policy-change-review" &&
+			posix.basename(this.properties.path) === melianPaths.config;
+		const belowAcknowledge = resolutionOrder.indexOf(resolution) > resolutionOrder.indexOf("acknowledge");
+		return ownPolicy && belowAcknowledge ? "acknowledge" : resolution;
+	}
+
+	/** A copy with `properties.resolution` set by {@link Finding.resolve}, replacing any it carries. */
+	resolved(config: Pick<MelianConfig, "resolution">): ResolvedFinding {
+		const resolution = this.resolve(config);
+		return Finding.from({ ...this.toJSON(), properties: { ...this.properties, resolution } }) as ResolvedFinding;
+	}
+
 	/** The finding as it is stored: a SARIF result, its fields in their stored order. */
 	toJSON(): StoredFinding {
 		const { ruleId, level, message, partialFingerprints, locations, properties } = this;
 		return { ruleId, level, message, partialFingerprints, locations, properties };
 	}
 }
+
+/**
+ * A finding adjudication has resolved. A finding without `properties.resolution` has not been adjudicated yet, which
+ * says nothing about what it requires: it is neither `silent` nor anything else until adjudication resolves it.
+ */
+export type ResolvedFinding = Finding & {
+	readonly properties: FindingProperties & { readonly resolution: Resolution };
+};
 
 /** A SARIF 2.1.0 log of one Melian run, as {@link SarifLog} describes it, over the findings it was made from. */
 export class FindingsLog {
