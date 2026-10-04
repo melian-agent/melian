@@ -55,6 +55,7 @@ export const evidenceLocationSchema = Type.Object(
 		endLine: Type.Optional(line),
 		role: evidenceRoleSchema,
 		revision: evidenceRevisionSchema,
+		deleted: Type.Optional(Type.Literal(true)),
 		snippet: text,
 	},
 	strict,
@@ -306,7 +307,9 @@ export type EvidenceRevision = Static<typeof evidenceRevisionSchema>;
 /**
  * Lines a finding's claim rests on, at the head or the base, with the role they play and `snippet` read from that
  * revision at those lines, never written by the producer. A `cause` location overlapping the change is what makes a
- * finding outside the diff `affected`.
+ * finding outside the diff `affected`. `deleted` marks a base location whose lines the change deleted or replaced, or
+ * whose file it renamed without editing, as Melian found when it read the location; a base location without it names
+ * code the change left alone.
  */
 export type EvidenceLocation = Static<typeof evidenceLocationSchema>;
 

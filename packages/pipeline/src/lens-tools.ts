@@ -1,6 +1,7 @@
 import {
 	type ChangedFile,
 	capSnippet,
+	changeOverlap,
 	classifyCause,
 	createFinding,
 	type EvidenceLocation,
@@ -343,12 +344,16 @@ async function evidenceFrom(args: ReportFindingInput["evidence"], review: Review
 					? '; for lines this change deleted, add revision: "base" to the location, naming a renamed file by its old path'
 					: "";
 			const { snippet } = await linesAt(review, revision, file, line, endLine, hint);
+			const deleted =
+				revision === "base" &&
+				changeOverlap({ file, startLine: line, endLine, revision }, { files: changedFiles(review) }) !== undefined;
 			return {
 				file,
 				startLine: line,
 				...(last === undefined ? {} : { endLine }),
 				role,
 				revision,
+				...(deleted ? { deleted } : {}),
 				snippet: capSnippet(snippet).text,
 			};
 		}),

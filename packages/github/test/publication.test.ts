@@ -55,7 +55,14 @@ describe("findings", () => {
 			failureScenario: "A body of `process.exit()` stops the server.",
 			evidence: [
 				{ file: "src/api.ts", startLine: 3, endLine: 4, role: "cause", revision: "head", snippet: "run(body)" },
-				{ file: "src/old.ts", startLine: 9, role: "context", revision: "base", snippet: "guard(body)" },
+				{
+					file: "src/old.ts",
+					startLine: 9,
+					role: "context",
+					revision: "base",
+					deleted: true,
+					snippet: "guard(body)",
+				},
 			],
 		});
 		const comment = renderComment(
@@ -73,6 +80,34 @@ describe("findings", () => {
 			`- context: [\`src/old.ts\` line 9](${links.web}/blob/${base}/src/old.ts#L9), deleted by this change`,
 		);
 		expect(comment).not.toContain("guard(body)");
+	});
+
+	it('labels a base location ", deleted by this change" only when its lines overlap a hunk\'s old lines, not every evidence location with revision: "base", context as well as cause', () => {
+		const untouched = { file: "src/api.ts", startLine: 3, revision: "base", snippet: "run(body)" } as const;
+		const finding = createFinding({
+			...input,
+			failureScenario: "A body of `process.exit()` stops the server.",
+			evidence: [
+				{ ...untouched, role: "cause" },
+				{ ...untouched, role: "context", startLine: 4 },
+				{ ...untouched, role: "cause", startLine: 9, deleted: true },
+			],
+		});
+		const comment = renderComment(
+			{ finding, placement: { kind: "lines", startLine: 12, line: 12 } },
+			revision,
+			base,
+			links,
+			secret,
+		);
+		expect(comment).toContain(
+			`- cause: [\`src/api.ts\` line 3](${links.web}/blob/${base}/src/api.ts#L3), at the base\n`,
+		);
+		expect(comment).toContain(
+			`- context: [\`src/api.ts\` line 4](${links.web}/blob/${base}/src/api.ts#L4), at the base\n`,
+		);
+		expect(comment).toContain(`(${links.web}/blob/${base}/src/api.ts#L9), deleted by this change`);
+		expect(comment.match(/deleted by this change/g)).toHaveLength(1);
 	});
 });
 

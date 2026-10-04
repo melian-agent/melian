@@ -650,7 +650,10 @@ describe("reviewChangeset", () => {
 							{
 								...atReport,
 								rule: "data-contract",
-								evidence: [{ file: "src/user.ts", line: 7, role: "cause", revision: "base" }],
+								evidence: [
+									{ file: "src/user.ts", line: 7, role: "cause", revision: "base" },
+									{ file: "src/user.ts", line: 2, role: "context", revision: "base" },
+								],
 							},
 						],
 					),
@@ -694,10 +697,15 @@ describe("reviewChangeset", () => {
 					startLine: 7,
 					role: "cause",
 					revision: "base",
+					deleted: true,
 					snippet: '\treturn user.manager?.name ?? "none";',
 				},
+				{ file: "src/user.ts", startLine: 2, role: "context", revision: "base", snippet: "\tname: string;" },
 			],
 		});
+		// Only lines the change deleted are marked so; the GitHub comment says "deleted by this change" for these alone.
+		expect(byRule["data-contract"]!.evidence![1]).not.toHaveProperty("deleted");
+		expect(byRule["broken-caller"]!.evidence!.some((location) => "deleted" in location)).toBe(false);
 		const results = toolResults(requests[contracts]![1]!);
 		expect(results[0]).toMatch(
 			/^recorded finding [0-9a-f]{16} as pre-existing: it is outside the change, and no cause/,
@@ -773,7 +781,7 @@ describe("reviewChangeset", () => {
 		const byRule = Object.fromEntries(findings.map((each) => [each.ruleId, each.properties]));
 		expect(byRule["broken-caller"]).toMatchObject({
 			cause: "affected",
-			evidence: [{ file: "src/config.ts", revision: "base", snippet: "export const port = 8080;" }],
+			evidence: [{ file: "src/config.ts", revision: "base", deleted: true, snippet: "export const port = 8080;" }],
 		});
 		expect(byRule["data-contract"]).toMatchObject({
 			cause: "affected",

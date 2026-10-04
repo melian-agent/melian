@@ -137,14 +137,16 @@ interface Commits {
 	readonly base: string;
 }
 
-// Each evidence location links to its lines at the commit it was read from, rather than quoting the code.
+// Each evidence location links to its lines at the commit it was read from, rather than quoting the code. A base
+// location says the change deleted its lines only when Melian found so when it read them.
 function evidenceText(finding: Finding, commits: Commits, links: RepositoryLinks): string[] {
 	const { evidence } = finding.properties;
 	if (evidence === undefined) return [];
-	const items = evidence.map(({ file, startLine, endLine = startLine, role, revision }) => {
+	const items = evidence.map(({ file, startLine, endLine = startLine, role, revision, deleted }) => {
 		const at = revision === "base" ? commits.base : commits.head;
 		const link = `[${code(file)} ${lineSpan(startLine, endLine)}](${blobUrl(links, at, file, startLine, endLine)})`;
-		return `- ${role}: ${link}${revision === "base" ? ", deleted by this change" : ""}`;
+		const where = revision === "base" ? (deleted === true ? ", deleted by this change" : ", at the base") : "";
+		return `- ${role}: ${link}${where}`;
 	});
 	return ["", "**Evidence:**", "", ...items];
 }
