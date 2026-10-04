@@ -609,6 +609,29 @@ describe("policy-change-review", () => {
 		]);
 	});
 
+	describe("on a working-tree review, applies melian.local.yaml to the review of the root melian.yaml", () => {
+		async function rootSeverities(local: string) {
+			const baseCommit = commit({ "melian.yaml": quiet }, "base");
+			const headCommit = commit({ "melian.yaml": lines(quiet, "    severity: P3") }, "head");
+			writeFiles(repo, { "melian.local.yaml": local });
+			const { revision } = await resolveRange(repo, `${baseCommit}..${headCommit}`);
+			const { findings } = await evaluateGuardrails({ repoRoot: repo, revision, source: { kind: "worktree" } });
+			return summary(findings).map(({ file, severity }) => ({ file, severity }));
+		}
+
+		it("when it makes the review stricter", async () => {
+			expect(await rootSeverities(lines("guardrails:", "  policy-change-review:", "    severity: P1"))).toEqual([
+				{ file: "melian.yaml", severity: "P1" },
+			]);
+		});
+
+		it("but never more lenient than the defaults", async () => {
+			expect(await rootSeverities(lines(quiet, "    severity: P3"))).toEqual([
+				{ file: "melian.yaml", severity: "P2" },
+			]);
+		});
+	});
+
 	it("lets the root melian.yaml make the review of its own change stricter", async () => {
 		const { findings } = await guardrails(
 			{ "melian.yaml": lines(quiet, "    severity: P1") },
