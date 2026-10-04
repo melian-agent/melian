@@ -30,7 +30,6 @@ Each entry names the record's finding number and what it found. A finding that r
 
 - [Pull request #10](https://github.com/melian-agent/melian/pull/10) ([record](../comparisons/2026-10-03-pr-10.md)): 6, `AGENTS.md` promises guidance files that do not exist; 8, the plan leaves a finished track unticked.
 - [Pull request #12](https://github.com/melian-agent/melian/pull/12) ([record](../comparisons/2026-10-03-pr-12.md)): 24, the design says two things about where standards live.
-- [Pull request #43](https://github.com/melian-agent/melian/pull/43) ([record](../comparisons/2026-10-04-pr-43.md)): A1, with B3 and C3, a change adding a free function over a `Finding` with a wrapped signature, against the rule in `AGENTS.md`, expected reported.
 
 ## durability
 

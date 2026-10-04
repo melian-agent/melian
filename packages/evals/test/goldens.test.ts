@@ -35,6 +35,7 @@ describe("the golden corpus", () => {
 			"contracts-breaking-signature",
 			"conventions-bare-reference",
 			"conventions-clean",
+			"conventions-free-domain-function",
 			"conventions-injection",
 			"conventions-missing-doc-update",
 			"conventions-tsdoc-internal",
