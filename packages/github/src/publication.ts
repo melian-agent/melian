@@ -131,7 +131,7 @@ export function blobUrl(links: RepositoryLinks, revision: string, path: string, 
 	return `${links.web}/blob/${revision}/${encoded}#L${start}${end === start ? "" : `-L${end}`}`;
 }
 
-/** The commits a finding's links point at: the head reviewed, and the base its deleted lines are read from. */
+// The commits a finding's links point at: the head reviewed, and the base its deleted lines are read from.
 interface Commits {
 	readonly head: string;
 	readonly base: string;
