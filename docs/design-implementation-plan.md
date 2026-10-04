@@ -41,27 +41,47 @@ Each is a differentiator; none is needed to review a pull request once. Resist p
 - Container isolation
 - The full evals corpus
 
-## Milestone 2: Melian reviews pull requests on GitHub Actions
+## Milestone 2: Melian is the review of record for Melian
 
-The Actions host from design.md: `pull_request_target` workflow, state branch backend, `workflow_dispatch` continuation, `workflow_run` recovery, three-state check status. Melian's own repository is the first installation. With it come [tool provisioning](design.md#tool-provisioning) from a pinned manifest, local and in a container, and Opengrep and gitleaks as the first standalone analysers. The milestone also takes the three issues milestone 1 deferred: [issue #22](https://github.com/melian-agent/melian/issues/22), lens path globs on a backtracking `RegExp`; [issue #24](https://github.com/melian-agent/melian/issues/24), `decisions.*` checks left without a record once a provider is configured; and [issue #26](https://github.com/melian-agent/melian/issues/26), `reviewChangeset` driving `runChecks` itself.
+Done when the `melian/review` status is required on `main`, and every pull request on melian-agent/melian is reviewed by Melian with the lenses, the verifier, and the ledger below. Dismissals work from the CLI. The shadow reviewers, Codex's adversarial review and Claude Code's review skill, have been retired, or the criterion for retiring them is recorded. Authority over the Melian repository needs lens coverage, a verifier, dismissal, and a required status check, and none of them needs the Actions host, so the Actions host moves to milestone 3. [decisions/2026-10-04-milestone-order.md](decisions/2026-10-04-milestone-order.md) records why.
 
-Steps to be written when milestone 1 closes.
+### Critical path
 
-## Milestone 3: Melian remembers and learns
+1. `[x]` **Research notes and this design update.** [Pull request #31](https://github.com/melian-agent/melian/pull/31) adds [research/](research/) with four notes, states the decisions below in [design.md](design.md), and records each in [decisions/](decisions/). Unblocks every step below.
+2. `[ ]` **Failure scenario and evidence.** `report_finding` gains two required fields, a failure scenario and evidence locations as `{ file, line, endLine }`; the schema, the renderer, and the goldens follow. Unblocks the verifier, which has nothing to attack without them.
+3. `[ ]` **Lenses from the research.** `trust-boundary`, `durability` as a repository lens under `.melian/lenses/`, `removed-behaviour`, `tests`, and `conventions`, written adversarially, with levels in `LENS.md`. Five goldens per lens from the comparison records, and the rest listed for scripted goldens. Unblocks recall on trust boundary and durability, the two largest buckets with no check.
+4. `[ ]` **The review plan.** The resolver over pi-ai's catalogue and the credentials present; named credentials; the secrets files and the user-level files, with environment and command sources; `accept` and `unavailable`; override lineage; `melian doctor` printing the plan; committed default routes in Melian's own `melian.yaml`. Unblocks the verifier's route to a different family from its finder.
+5. `[ ]` **The `Decider` port and triage.** The port in core, with the recorded and LLM fallback adapters in `packages/decisions`; triage at intake choosing each lens's level within the policy floor and ceiling, and the escalation rule. Unblocks scrutiny levels in a real review, and the decision-model adapters in milestone 4.
+6. `[ ]` **The verifier.** The state and verdict schemas, the LLM executor with `report_verdict`, the `verifier` tier, and adjudication counting verdicts. Needs steps 2 and 4. Unblocks the precision a required status needs.
+7. `[ ]` **`melian dismiss`.** `melian dismiss <#pr|range> <id> --reason <text>`, the lifecycle it drives, and publication honouring it. A dismissal lives in local SQLite, shared across the clone's worktrees through the git common directory; a second maintainer does not see it until the state branch lands in milestone 3. The milestone accepts that, because one maintainer reviews Melian. Unblocks the required status: a blocking finding the maintainer rejects needs a way out.
+8. `[ ]` **The ledger.** The comment Melian owns and edits in place, its stamp, the walkthrough, run details, warnings, earlier rounds, addressed-in-commit edits with thread resolution, and the agent prompt block in `melian findings`. Unblocks reading what a review did without the CLI.
+9. `[ ]` **Required status on `main`.** Make `melian/review` a required check. The shadow reviewers keep running on every pull request until Melian's recall against them holds for a run of ten pull requests, a criterion the maintainer may tighten, and every difference still becomes a golden. Every pull request gets a comparison record; pull requests [#14](https://github.com/melian-agent/melian/pull/14), [#17](https://github.com/melian-agent/melian/pull/17), [#20](https://github.com/melian-agent/melian/pull/20), and [#28](https://github.com/melian-agent/melian/pull/28) have none. Unblocks retiring the shadow reviewers.
+10. `[ ]` **Issues milestone 1 deferred.** [Issue #22](https://github.com/melian-agent/melian/issues/22), lens path globs on a backtracking `RegExp`; [issue #24](https://github.com/melian-agent/melian/issues/24), `decisions.*` checks left without a record once a provider is configured; and [issue #26](https://github.com/melian-agent/melian/issues/26), `reviewChangeset` driving `runChecks` itself. Issue #24 bites as soon as step 5 configures a provider.
+11. `[ ]` **The tool manifest and the Enola spike.** The `tools.yaml` manifest with hashes and the release-age quarantine; Enola as a static check and as blast-radius input to lenses; the cache under the git common directory; break-glass `search`; and the three coverage artifacts. Exit criterion: Enola's TypeScript extractor resolves Melian's own imports and calls, with gaps its coverage report names. On Melian the direct value is one real layering constraint, core never reaching the pipeline, because the repository is small; the value is for users. Unblocks precomputed callers in the verifier's state.
 
-Cross-revision commands, comment commands including dismiss-with-reason, knowledge write-back by pull request, decision-model triage and the calibration store.
+## Milestone 3: Melian reviews pull requests on GitHub Actions
+
+The Actions host from design.md: `pull_request_target` workflow, state branch backend, `workflow_dispatch` continuation, `workflow_run` recovery, three-state check status. Melian's own repository is the first installation. The host completes the manifest from local review records, running only the checks that lack one. With it come the credential pool with stacking rules, the secrets file in a repository secret and the preferences file in a repository variable, the GitHub App with the secrets permission for rotating OAuth credentials, `add-mask` for every credential value, and `acceptOverridden`. Container isolation follows from the [tool manifest](design.md#tool-provisioning), and Opengrep and gitleaks join it after Enola.
 
 Steps to be written when milestone 2 closes.
+
+## Milestone 4: Melian remembers and learns
+
+Comment commands, including dismiss-with-reason from a thread; knowledge write-back by pull request; the Jev and Clef adapters; calibration measurement and the calibration store; the decision-model verification executor, with asymmetric thresholds; triage on a decision model; routing scores learned from calibration feeding the resolver; and pre-merge checks on a pull request's title, description, and out-of-scope changes.
+
+Steps to be written when milestone 3 closes.
 
 ## Risks
 
 | Risk | Where it bites | Mitigation |
 |---|---|---|
-| Pi Durable API changes under us | Steps 2, 5, 7 | Exact pin, one wrapper module, core stays harness-free |
-| Subscription auth terms for automated use | Step 5 onward | API keys default; subscriptions opt-in; stated in docs |
-| Biome's SARIF reporter changes shape | Step 6 | Biome 2.5 ships one, and Melian reads it; it writes absolute paths and no version, so the normaliser fills both in, and output it cannot read fails the check rather than reading as clean |
-| Lens prompt edits regress silently | Step 5 onward | Golden fixtures run in `npm run check` |
+| Pi Durable API changes under us | Milestone 1, steps 2, 5, 7 | Exact pin, one wrapper module, core stays harness-free |
+| Subscription auth terms for automated use | Milestone 1, step 5 onward | User documentation says the provider's contract decides, and Melian takes no position |
+| Biome's SARIF reporter changes shape | Milestone 1, step 6 | Biome 2.5 ships one, and Melian reads it; it writes absolute paths and no version, so the normaliser fills both in, and output it cannot read fails the check rather than reading as clean |
+| Lens prompt edits regress silently | Milestone 1, step 5 onward | Golden fixtures run in `npm run check` |
 | Phantom dependencies through npm hoisting | Any package | Move to pnpm when strict isolation is needed; the switch is one pull request |
+| Enola pre-1.0 churn and TypeScript extractor gaps | Milestone 2, step 11 | Pinned manifest, the spike's exit criterion, break-glass `search` driven by coverage |
+| The verifier drops real findings | Milestone 2, step 6 onward | Asymmetric thresholds, refuted findings kept in the store, shadow reviewers until recall holds |
 
 ## Progress log
 
