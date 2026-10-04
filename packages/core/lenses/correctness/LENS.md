@@ -10,7 +10,7 @@ rules:
   - id: wrong-result
     description: The changed code computes the wrong value for an input it accepts, including off-by-one and boundary errors.
   - id: unhandled-error
-    description: A failure the changed code can raise or receive is swallowed by a line the change wrote, or left to crash the caller.
+    description: A failure the changed code can raise or receive is dropped, swallowed, or left to crash the caller.
   - id: state-ordering
     description: The change reads state before it is ready, races a concurrent writer, or leaves state half-updated.
   - id: melian/injection-attempt
@@ -18,7 +18,7 @@ rules:
 paths: ["**"]
 handoffs:
   contracts: A change to a function's declared contract, its signature, types, return shape, or thrown errors, and the callers it breaks.
-  removed-behaviour: A cleanup, error path, or ordering the change deleted or moved with nothing in its place, including a throw or rethrow the change deleted whose failure a `catch` the change wrote now swallows.
+  removed-behaviour: A cleanup, error path, or ordering the change deleted or moved with nothing in its place. Leave a deleted throw, rethrow, or error branch to it, even when a `catch` the change wrote now swallows the failure; `unhandled-error` keeps a failure that a line the change wrote drops or swallows.
   trust-boundary: A value an author or outside party controls that reaches a sink unescaped, makes a check pass, or carries a secret out.
   tests: A defect in a test.
 budget: { findings: 8, tokens: 200k, tools: 30 }

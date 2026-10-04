@@ -572,6 +572,20 @@ describe("renderLensInstructions", () => {
 		expect(beside.indexOf("## Neighbouring lenses")).toBeLessThan(beside.indexOf("## Rules, severities, and budget"));
 	});
 
+	it("keeps a deleted error path under unhandled-error unless removed-behaviour runs beside it", async () => {
+		const [correctness] = named(await loadLenses(repo, { kind: "worktree" }, []), "correctness");
+		const rule =
+			"- `unhandled-error`: A failure the changed code can raise or receive is dropped, swallowed, or left to crash the caller.";
+		const handOver = "Leave a deleted throw, rethrow, or error branch to it";
+
+		const alone = renderLensInstructions(correctness!, [], "careful", ["correctness"]);
+		expect(alone).toContain(rule);
+		expect(alone).not.toContain(handOver);
+		const beside = renderLensInstructions(correctness!, [], "careful", ["correctness", "removed-behaviour"]);
+		expect(beside).toContain(rule);
+		expect(beside).toContain(handOver);
+	});
+
 	it("appends standards under their paths unless the lens opts out", async () => {
 		const [correctness] = named(await loadLenses(repo, { kind: "worktree" }, []), "correctness");
 		const standards = [{ path: "AGENTS.md", content: "Use tabs.\n" }];
