@@ -56,3 +56,9 @@ export function withBudget(lens: Lens, budget: Partial<LensBudget>): Lens {
 export function crashLenses(lenses: readonly Lens[]): Lens[] {
 	return lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 1 }) : lens));
 }
+
+// The correctness lens may make two calls to the read-only tools, so a replayed call counted twice would leave the lens
+// a call short.
+export function budgetLenses(lenses: readonly Lens[]): Lens[] {
+	return lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tools: 2 }) : lens));
+}

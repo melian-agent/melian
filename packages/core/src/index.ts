@@ -2,6 +2,7 @@ export {
 	type AdjudicationInput,
 	adjudicate,
 	applyResolutions,
+	type BudgetEnd,
 	type CheckRecord,
 	type CheckStatus,
 	type Claimant,

@@ -34,9 +34,13 @@ import {
 	defineDoc,
 	defineTool,
 	hook,
+	LiveDoc,
 	section,
+	type ToolExecutionApi,
 	ToolTask,
 	Type,
+	UsageDoc,
+	type UsageState,
 } from "./harness.ts";
 import { injectionPolicy, quoteUntrusted } from "./untrusted.ts";
 
@@ -113,12 +117,19 @@ export type LensPolicy = {
 	tools: LensToolName[];
 	severities: Severity[];
 	rules: LensRule[];
+	// The findings budget.
 	budget: number;
+	// The level's token and tool budgets; absent from a lens an older Melian created, which enforces neither.
+	limits?: { tokens?: number; tools?: number };
 	// Where the lens may report: its folder and paths, less any folder a nearer lens of its name covers.
 	coverage: { scope: string; paths: string[]; nearer: string[] };
 };
 
-export const LensDocument = defineDoc<{ lens?: LensPolicy }>({
+// What a lens has spent that Pi's usage document does not hold: the ID of every call it made to a read-only tool, and
+// the first budget it ran out of, recorded by the tool call that ended the conversation for it.
+export type LensSpend = { calls: string[]; ended?: "tokens" | "tools" };
+
+export const LensDocument = defineDoc<{ lens?: LensPolicy; spend?: LensSpend }>({
 	kind: "melian.lens",
 	version: 1,
 	scope: "conversation",
@@ -162,13 +173,106 @@ async function lensOf(reader: DocumentReader, conversationId: ConversationId, co
 	return lens;
 }
 
-async function headOf(reader: DocumentReader, conversationId: ConversationId, context: Context) {
-	return (await lensOf(reader, conversationId, context)).revision;
-}
-
 function text(content: string) {
 	return { content: [{ type: "text" as const, text: content }] };
 }
+
+// Input tokens, cache writes included, and output tokens of every model response in the conversation. Cache reads are
+// left out: they re-read context a provider has already counted once.
+export function tokensUsed(usage: Readonly<UsageState> | undefined): number {
+	return Object.values(usage?.models ?? {}).reduce((sum, each) => sum + each.input + each.cacheWrite + each.output, 0);
+}
+
+type Metered = { refused?: number; spent?: "tokens" | "tools" };
+
+// Counts a call to a read-only tool and decides whether the lens's budget is spent, all from durable state, so a
+// replayed call counts once and every call of one round decides alike. Pi records token usage with each response,
+// before the round's tools start; this commit records the call's ID, once. A round's read calls are numbered in call
+// order after every earlier round's, so a call past the tools budget is refused whichever call commits first. A
+// conversation ends only when every call of its round asks it to, so every call of a round that spends a budget asks,
+// and the first records which budget it was, for the lens task to read.
+async function meter(api: ToolExecutionApi, lens: LensPolicy, counted: boolean, context: Context): Promise<Metered> {
+	const { tokens, tools } = lens.limits ?? {};
+	if (tokens === undefined && tools === undefined) return {};
+	const live = (await api.snapshot(LiveDoc, api.conversationId, context))?.tools ?? [];
+	const offered: readonly string[] = lens.tools;
+	const listed = live.filter((slot) => offered.includes(slot.name)).map((slot) => slot.callId);
+	const round = !counted || listed.includes(api.callId) ? listed : [...listed, api.callId];
+	const used = tokensUsed(await api.snapshot(UsageDoc, api.conversationId, context));
+	return api.commit(async (tx) => {
+		const document = await tx.doc(LensDocument, api.conversationId);
+		// Read back through the document: the object assigned is copied in, and changes to it afterwards would be lost.
+		document.spend ??= { calls: [] };
+		const { spend } = document;
+		if (counted && !spend.calls.includes(api.callId)) spend.calls.push(api.callId);
+		const earlier = spend.calls.filter((id) => !round.includes(id)).length;
+		const position = earlier + round.indexOf(api.callId) + 1;
+		const spent =
+			tokens !== undefined && used >= tokens
+				? "tokens"
+				: tools !== undefined && earlier + round.length > tools
+					? "tools"
+					: undefined;
+		if (spent !== undefined) spend.ended ??= spent;
+		return {
+			...(counted && tools !== undefined && position > tools ? { refused: position } : {}),
+			...(spent === undefined ? {} : { spent }),
+		};
+	}, context);
+}
+
+type TextResult = ReturnType<typeof text>;
+
+function readCalls(count: number | undefined): string {
+	return `${count} ${count === 1 ? "call" : "calls"} to the read-only tools`;
+}
+
+const budgetEnds = "The review ends after this round with the findings reported so far.";
+
+// A spent budget ends the conversation after this round: the result asks Pi to stop rather than request another turn.
+function ending(result: TextResult, lens: LensPolicy, spent: Metered["spent"]) {
+	if (spent === undefined) return result;
+	const why =
+		spent === "tokens"
+			? `this lens has used its budget of ${lens.limits?.tokens} tokens`
+			: `this lens has used its budget of ${readCalls(lens.limits?.tools)}`;
+	const note = { type: "text" as const, text: `[${why}. ${budgetEnds}]` };
+	return { content: [...result.content, note], control: { terminate: true as const } };
+}
+
+// Runs a read-only tool within the lens's budgets: counted, refused past the tools budget, ending the conversation once
+// a budget is spent.
+async function budgeted(api: ToolExecutionApi, context: Context, read: (review: ReviewState) => Promise<TextResult>) {
+	const lens = await lensOf(api, api.conversationId, context);
+	const { refused, spent } = await meter(api, lens, true, context);
+	const result =
+		refused === undefined
+			? await read(lens.revision)
+			: text(
+					`[not run: this lens may make ${readCalls(lens.limits?.tools)}, and this was call ${refused}. Report what you have confirmed, then finish.]`,
+				);
+	return ending(result, lens, spent);
+}
+
+/**
+ * The budget that ended a lens's conversation, from what its tools recorded and Pi's usage: which budget, its limit,
+ * and the tokens and read-only tool calls the lens had used. `undefined` when no budget ended it.
+ */
+export async function budgetEnded(
+	reader: DocumentReader,
+	conversationId: ConversationId,
+	context: Context,
+): Promise<StoredBudgetEnd | undefined> {
+	const document = await reader.snapshot(LensDocument, conversationId, context);
+	const ended = document?.spend?.ended;
+	const limit = ended === undefined ? undefined : document?.lens?.limits?.[ended];
+	if (ended === undefined || limit === undefined) return undefined;
+	const tokens = tokensUsed(await reader.snapshot(UsageDoc, conversationId, context));
+	return { budget: ended, limit, tokens, tools: document?.spend?.calls.length ?? 0 };
+}
+
+// Core's BudgetEnd as a JSON type, for task results and stored check records.
+export type StoredBudgetEnd = { budget: "tokens" | "tools"; limit: number; tokens: number; tools: number };
 
 const readFile = defineTool({
 	name: "read_file",
@@ -187,27 +291,29 @@ const readFile = defineTool({
 	}),
 	replay: "safe",
 	outputLimits,
-	execute: async (args, api, context) => {
-		const review = await headOf(api, api.conversationId, context);
-		const commit = args.revision === "base" ? review.base : review.head;
-		const file = await readRevisionFile(review.repoRoot, commit, args.path);
-		const lines = file.content.split("\n");
-		if (lines.at(-1) === "" && !file.truncated) lines.pop();
-		const start = args.startLine ?? 1;
-		const last = Math.min(start + (args.maxLines ?? maxReadLines) - 1, lines.length);
-		const width = String(last).length;
-		const window = lines
-			.slice(start - 1, last)
-			.map((line, index) => `${String(start + index).padStart(width)}\t${line}`);
-		const { body, count } = fitting(window);
-		const end = start - 1 + count;
-		const notes = [
-			end < lines.length ? `[lines ${end + 1} onward not shown; read again with startLine ${end + 1}]` : undefined,
-			file.truncated ? `[the file is ${file.size} bytes; only the first part was read]` : undefined,
-			start > lines.length ? `[the file has ${lines.length} lines]` : undefined,
-		].filter((note) => note !== undefined);
-		return text([quoteUntrusted("file", body, review.nonce), ...notes].join("\n"));
-	},
+	execute: (args, api, context) =>
+		budgeted(api, context, async (review) => {
+			const commit = args.revision === "base" ? review.base : review.head;
+			const file = await readRevisionFile(review.repoRoot, commit, args.path);
+			const lines = file.content.split("\n");
+			if (lines.at(-1) === "" && !file.truncated) lines.pop();
+			const start = args.startLine ?? 1;
+			const last = Math.min(start + (args.maxLines ?? maxReadLines) - 1, lines.length);
+			const width = String(last).length;
+			const window = lines
+				.slice(start - 1, last)
+				.map((line, index) => `${String(start + index).padStart(width)}\t${line}`);
+			const { body, count } = fitting(window);
+			const end = start - 1 + count;
+			const notes = [
+				end < lines.length
+					? `[lines ${end + 1} onward not shown; read again with startLine ${end + 1}]`
+					: undefined,
+				file.truncated ? `[the file is ${file.size} bytes; only the first part was read]` : undefined,
+				start > lines.length ? `[the file has ${lines.length} lines]` : undefined,
+			].filter((note) => note !== undefined);
+			return text([quoteUntrusted("file", body, review.nonce), ...notes].join("\n"));
+		}),
 });
 
 const search = defineTool({
@@ -222,20 +328,20 @@ const search = defineTool({
 	}),
 	replay: "safe",
 	outputLimits,
-	execute: async (args, api, context) => {
-		const review = await headOf(api, api.conversationId, context);
-		// The base's attributes decide what is binary, as they do for the diff, so a head cannot hide its files.
-		const search = { ...args, attributesFrom: review.base };
-		const { matches, truncated } = await searchRevision(review.repoRoot, review.head, search);
-		// A single matching line longer than the output bound leaves nothing whole to show; that is not "no matches".
-		if (matches.length === 0 && truncated)
-			return text("[matches found, but their lines are too long to show; narrow the search with path]");
-		if (matches.length === 0) return text("No matches.");
-		const lines = matches.map((match) => `${visibleText(match.path)}:${match.line}: ${match.text}`);
-		const { body, count } = fitting(lines);
-		const notes = truncated || count < lines.length ? ["[more matches not shown; narrow the search]"] : [];
-		return text([quoteUntrusted("search", body, review.nonce), ...notes].join("\n"));
-	},
+	execute: (args, api, context) =>
+		budgeted(api, context, async (review) => {
+			// The base's attributes decide what is binary, as they do for the diff, so a head cannot hide its files.
+			const search = { ...args, attributesFrom: review.base };
+			const { matches, truncated } = await searchRevision(review.repoRoot, review.head, search);
+			// A single matching line longer than the output bound leaves nothing whole to show; that is not "no matches".
+			if (matches.length === 0 && truncated)
+				return text("[matches found, but their lines are too long to show; narrow the search with path]");
+			if (matches.length === 0) return text("No matches.");
+			const lines = matches.map((match) => `${visibleText(match.path)}:${match.line}: ${match.text}`);
+			const { body, count } = fitting(lines);
+			const notes = truncated || count < lines.length ? ["[more matches not shown; narrow the search]"] : [];
+			return text([quoteUntrusted("search", body, review.nonce), ...notes].join("\n"));
+		}),
 });
 
 function describeEntry(entry: RevisionEntry): string {
@@ -254,14 +360,16 @@ const listFiles = defineTool({
 	}),
 	replay: "safe",
 	outputLimits,
-	execute: async (args, api, context) => {
-		const review = await headOf(api, api.conversationId, context);
-		const { entries, truncated } = await listRevisionFiles(review.repoRoot, review.head, args);
-		if (entries.length === 0) return text("Empty.");
-		const { body, count } = fitting(entries.map(describeEntry));
-		const listing = quoteUntrusted("listing", body, review.nonce);
-		return text([listing, ...(truncated || count < entries.length ? ["[more entries not shown]"] : [])].join("\n"));
-	},
+	execute: (args, api, context) =>
+		budgeted(api, context, async (review) => {
+			const { entries, truncated } = await listRevisionFiles(review.repoRoot, review.head, args);
+			if (entries.length === 0) return text("Empty.");
+			const { body, count } = fitting(entries.map(describeEntry));
+			const listing = quoteUntrusted("listing", body, review.nonce);
+			return text(
+				[listing, ...(truncated || count < entries.length ? ["[more entries not shown]"] : [])].join("\n"),
+			);
+		}),
 });
 
 // The `injection_policy` section: in a lens conversation, the rule that everything inside this review's boundaries is
@@ -468,7 +576,10 @@ export const reportFinding = defineTool({
 			),
 		);
 		const cited = quoteUntrusted("evidence", body, review.nonce);
-		return text(`recorded finding ${id} as ${cause}${unproven}\nThe first line of each evidence location:\n${cited}`);
+		const recorded = text(
+			`recorded finding ${id} as ${cause}${unproven}\nThe first line of each evidence location:\n${cited}`,
+		);
+		return ending(recorded, lens, (await meter(api, lens, false, context)).spent);
 	},
 });
 

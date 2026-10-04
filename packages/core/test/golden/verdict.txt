@@ -5,8 +5,9 @@ Verdict: not reviewed, blocking
     Error: provider returned 529
   static.tsc  skipped: no tsconfig.json at the base revision
 
-1 lens ran:
+2 lenses ran:
   lens.correctness  careful
+  lens.contracts  quick, ended by its tool call budget of 10, having used 11 tool calls and 48,120 tokens
 
 Block: 3 findings
 

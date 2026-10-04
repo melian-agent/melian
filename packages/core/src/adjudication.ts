@@ -303,6 +303,17 @@ export function dedupeFindings(
 export type CheckStatus = "ran" | "skipped" | "failed";
 
 /**
+ * Which budget ended a lens's conversation, and its limit, with what the lens had used of each when it ended: input and
+ * output tokens, and calls to the read-only tools.
+ */
+export interface BudgetEnd {
+	readonly budget: "tokens" | "tools";
+	readonly limit: number;
+	readonly tokens: number;
+	readonly tools: number;
+}
+
+/**
  * What one check of a review did, such as a lens, a static tool, or a guardrail. `reason` says why a check was skipped
  * or failed, for the author; `error` carries the failure's own message, for the maintainer.
  */
@@ -319,6 +330,8 @@ export interface CheckRecord {
 	readonly version?: string;
 	/** The scrutiny level a lens ran at. Only a lens that started has one. */
 	readonly level?: ScrutinyLevel;
+	/** The budget that ended a lens's conversation before the lens finished on its own, with what it had used. */
+	readonly budgetEnded?: BudgetEnd;
 }
 
 /** The reason {@link adjudicate} gives a check the manifest names that has no record. */
@@ -346,8 +359,8 @@ export interface Verdict {
 	 */
 	readonly notRun: readonly CheckRecord[];
 	/**
-	 * The checks that ran, in input order, each lens with the level it ran at. Absent from a verdict recorded before
-	 * Melian kept it.
+	 * The checks that ran, in input order, each lens with the level it ran at and any budget that ended it. Absent from a
+	 * verdict recorded before Melian kept it.
 	 */
 	readonly ran?: readonly CheckRecord[];
 }

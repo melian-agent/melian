@@ -57,6 +57,7 @@ export {
 	type Harness,
 	type HarnessOptions,
 	hook,
+	LiveDoc,
 	type ModelRef,
 	type Registry,
 	type Storage,
@@ -64,10 +65,13 @@ export {
 	SystemEntry,
 	section,
 	type TaskId,
+	type ToolExecutionApi,
 	type ToolRegistration,
 	ToolResultEntry,
 	ToolTask,
 	type Tx,
+	UsageDoc,
+	type UsageState,
 } from "@earendil-works/pi-durable";
 export type { ExecutionEnv } from "@earendil-works/pi-durable/env";
 

@@ -26,7 +26,14 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { gitIn } from "./fixtures/repo.ts";
-import { count, crashFinding, crashLenses, crashRepository, readEvents } from "./fixtures/review-scenario.ts";
+import {
+	budgetLenses,
+	count,
+	crashFinding,
+	crashLenses,
+	crashRepository,
+	readEvents,
+} from "./fixtures/review-scenario.ts";
 
 const crashScript = fileURLToPath(new URL("./fixtures/review-crash.ts", import.meta.url));
 
@@ -47,7 +54,7 @@ afterEach(async () => {
 });
 
 async function killWhen(
-	scenario: "finding" | "legacy" | "request" | "adjudication",
+	scenario: "finding" | "legacy" | "request" | "adjudication" | "read",
 	reached: (events: ReturnType<typeof readEvents>) => boolean,
 	database: string,
 	log: string,
@@ -254,5 +261,51 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		}
 		const { verdict } = await reviewing;
 		expect(await readVerdict(harness, root, head, context)).toEqual(verdict);
+	});
+
+	it("counts a read-only tool call replayed after a crash once against the tools budget", async () => {
+		const database = join(dir, "read.sqlite");
+		const log = join(dir, "read.jsonl");
+		await killWhen("read", (events) => count(events, "read-counted") === 1, database, log);
+
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
+		const requests = scriptConversations(fake, [
+			{
+				match: "You are the correctness reviewer",
+				replies: [
+					fauxAssistantMessage(fauxToolCall("read_file", { path: "src/user.ts", startLine: 7, maxLines: 1 }), {
+						stopReason: "toolUse",
+					}),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+		]);
+		harness = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		const heavy = fake.ref("heavy");
+		const { verdict } = await reviewChangeset({
+			harness,
+			changeset: await resolveRange(repo, "main...feature"),
+			config: { ...defaultConfig, models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } } },
+			lenses: budgetLenses(await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"])),
+			standards: [],
+			models: fake.review,
+		});
+
+		// The replayed call is the lens's first and its next is its second, so the budget of two lets both run and the
+		// lens finishes on its own. Counted twice, the second would have been refused and ended the lens.
+		const [replayed, next] = requests["You are the correctness reviewer"]!;
+		expect(toolResults(replayed!)).toEqual([expect.stringContaining("export interface User")]);
+		expect(toolResults(next!).at(-1)).toContain("return user.manager.name;");
+		expect(toolResults(next!).at(-1)).not.toContain("not run");
+		expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toEqual({
+			name: "lens.correctness",
+			status: "ran",
+			level: "careful",
+		});
 	});
 });

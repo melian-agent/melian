@@ -53,6 +53,7 @@ import {
 	type Tx,
 } from "./harness.ts";
 import {
+	budgetEnded,
 	injectionPolicySection,
 	LensDocument,
 	lensPolicyHook,
@@ -60,6 +61,7 @@ import {
 	type ReviewState,
 	reportFinding,
 	reviewFiles,
+	type StoredBudgetEnd,
 } from "./lens-tools.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
 import { ReviewIndex, type ReviewIndexState } from "./review-index.ts";
@@ -90,7 +92,7 @@ interface LensTaskInput {
 }
 
 type LensOutcome =
-	| { readonly status: "done" }
+	| { readonly status: "done"; readonly budgetEnded?: StoredBudgetEnd }
 	| { readonly status: "unanswered"; readonly reason: string }
 	| { readonly status: "exhausted"; readonly tried: string[]; readonly reason: string };
 
@@ -143,6 +145,10 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 						severities: [...lens.severities],
 						rules: lens.rules.map((rule) => ({ ...rule })),
 						budget: lens.budget.findings,
+						limits: {
+							...(lens.budget.tokens === undefined ? {} : { tokens: lens.budget.tokens }),
+							...(lens.budget.tools === undefined ? {} : { tools: lens.budget.tools }),
+						},
 						coverage: {
 							scope: lens.coverage.scope,
 							paths: [...lens.coverage.paths],
@@ -166,7 +172,10 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 						const content = attempt === 0 ? lens.prompt : continuePrompt;
 						const request = { type: "input", content, requestId: `lens:${key}:${attempt}` } as const;
 						const settled = await (await child.submit(request, context)).wait(context);
-						if (settled.status === "done") return [key, { status: "done" }];
+						if (settled.status === "done") {
+							const ended = await budgetEnded(runtime, id, context);
+							return [key, { status: "done", ...(ended === undefined ? {} : { budgetEnded: ended }) }];
+						}
 						const reason = typeof settled.detail === "string" ? settled.detail : (settled.reason ?? "unanswered");
 						const failover =
 							settled.reason === "no_model" || (settled.reason === "model_error" && isFailoverError(reason));
@@ -508,7 +517,10 @@ function lensCheck(lens: LensRun, result: LensResult | undefined): CheckRecord {
 	const { level } = lens;
 	if (result === undefined) return { name, status: "failed", level, reason: "the lens task did not complete" };
 	const outcome = result[lens.key];
-	if (outcome?.status === "done") return { name, status: "ran", level };
+	if (outcome?.status === "done") {
+		const { budgetEnded } = outcome;
+		return { name, status: "ran", level, ...(budgetEnded === undefined ? {} : { budgetEnded }) };
+	}
 	if (outcome?.status === "exhausted") {
 		const error = `tried ${outcome.tried.join(", ")}; the last said: ${outcome.reason}`;
 		return { name, status: "failed", level, reason: "every model of its tier failed", error };

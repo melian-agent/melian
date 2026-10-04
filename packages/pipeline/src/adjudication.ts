@@ -18,6 +18,7 @@ import {
 } from "@melian-agent/core";
 import { readFindings, revisionKey } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
+import type { StoredBudgetEnd } from "./lens-tools.ts";
 import { ReviewIndex } from "./review-index.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
@@ -29,6 +30,7 @@ type StoredCheck = {
 	error?: string;
 	version?: string;
 	level?: ScrutinyLevel;
+	budgetEnded?: StoredBudgetEnd;
 };
 
 export type StoredVerdict = {

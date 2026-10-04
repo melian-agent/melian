@@ -391,6 +391,17 @@
       "level": "careful"
     },
     {
+      "name": "lens.contracts",
+      "status": "ran",
+      "level": "quick",
+      "budgetEnded": {
+        "budget": "tools",
+        "limit": 10,
+        "tokens": 48120,
+        "tools": 11
+      }
+    },
+    {
       "name": "static.biome",
       "status": "ran",
       "version": "2.5.15"

@@ -1,4 +1,4 @@
-import type { Verdict, VerdictStatus } from "./adjudication.ts";
+import type { BudgetEnd, Verdict, VerdictStatus } from "./adjudication.ts";
 import type { Severity } from "./config.ts";
 import type { EvidenceLocation, Finding, FindingsLog } from "./findings.ts";
 
@@ -81,7 +81,7 @@ function block(finding: Finding, paint: (code: string, text: string) => string):
 }
 
 function plural(count: number, noun: string, nouns = `${noun}s`): string {
-	return `${count} ${count === 1 ? noun : nouns}`;
+	return `${count.toLocaleString("en-AU")} ${count === 1 ? noun : nouns}`;
 }
 
 /**
@@ -92,8 +92,8 @@ function plural(count: number, noun: string, nouns = `${noun}s`): string {
  * with its role and the code read there.
  *
  * A verdict renders a header with its status and whether it blocks, the checks that did not run and why, each lens that
- * ran with its scrutiny level, and then its findings grouped by resolution, strictest first, each group by file as for
- * a log. Silent and dismissed findings are counted, not shown.
+ * ran with its scrutiny level and any budget that ended it, and then its findings grouped by resolution, strictest
+ * first, each group by file as for a log. Silent and dismissed findings are counted, not shown.
  */
 export function renderFindingsTerminal(input: FindingsLog | Verdict, options: TerminalRenderOptions = {}): string {
 	const paint: Paint = (code, text) => (options.color ? `\u001b[${code}m${text}\u001b[0m` : text);
@@ -139,6 +139,13 @@ function capitalised(text: string): string {
 	return `${text[0]!.toUpperCase()}${text.slice(1)}`;
 }
 
+const budgetNames: Readonly<Record<BudgetEnd["budget"], string>> = { tokens: "token", tools: "tool call" };
+
+function describeBudgetEnd({ budget, limit, tokens, tools }: BudgetEnd): string {
+	const used = `${plural(tools, "tool call")} and ${plural(tokens, "token")}`;
+	return `ended by its ${budgetNames[budget]} budget of ${limit.toLocaleString("en-AU")}, having used ${used}`;
+}
+
 function renderVerdict(verdict: Verdict, paint: Paint): string {
 	const [color, label] = statusLabel[verdict.status];
 	const parts = [`Verdict: ${paint(color, label)}${verdict.blocking ? `, ${paint("31", "blocking")}` : ""}`];
@@ -153,7 +160,10 @@ function renderVerdict(verdict: Verdict, paint: Paint): string {
 	}
 	const lenses = (verdict.ran ?? []).filter((check) => check.level !== undefined);
 	if (lenses.length > 0) {
-		const checks = lenses.map(({ name, level }) => `  ${visibleText(name)}  ${level}`);
+		const checks = lenses.map(
+			({ name, level, budgetEnded }) =>
+				`  ${visibleText(name)}  ${level}${budgetEnded === undefined ? "" : `, ${describeBudgetEnd(budgetEnded)}`}`,
+		);
 		parts.push([`${plural(lenses.length, "lens", "lenses")} ran:`, ...checks].join("\n"));
 	}
 	for (const resolution of shownResolutions) {

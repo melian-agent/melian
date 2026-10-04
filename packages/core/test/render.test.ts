@@ -209,6 +209,12 @@ const verdict = adjudicate({
 	checks: [
 		{ name: "lens.correctness", status: "ran", level: "careful" },
 		{
+			name: "lens.contracts",
+			status: "ran",
+			level: "quick",
+			budgetEnded: { budget: "tools", limit: 10, tokens: 48_120, tools: 11 },
+		},
+		{
 			name: "lens.security",
 			status: "failed",
 			level: "deep",
@@ -230,7 +236,7 @@ describe("renderVerdictJson", () => {
 });
 
 describe("renderFindingsTerminal with a verdict", () => {
-	it("leads with the verdict, the checks that did not run, and each lens's level, then groups findings by resolution", async () => {
+	it("leads with the verdict, the checks that did not run, and each lens's level and budget end, then groups findings by resolution", async () => {
 		await expect(renderFindingsTerminal(verdict)).toMatchFileSnapshot("./golden/verdict.txt");
 	});
 
