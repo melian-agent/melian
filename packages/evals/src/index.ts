@@ -17,6 +17,7 @@ export {
 	scoreGolden,
 	scriptedMismatches,
 	scriptSchema,
+	selectGoldens,
 } from "./goldens.ts";
 
 export const packageName = "@melian-agent/evals";

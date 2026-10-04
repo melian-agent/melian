@@ -1,7 +1,17 @@
+import { spawnSync } from "node:child_process";
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Golden, loadGoldens, runGolden, scoreCorpus, scoreGolden, scriptedMismatches } from "@melian-agent/evals";
+import { fileURLToPath } from "node:url";
+import {
+	type Golden,
+	loadGoldens,
+	runGolden,
+	scoreCorpus,
+	scoreGolden,
+	scriptedMismatches,
+	selectGoldens,
+} from "@melian-agent/evals";
 import { describe, expect, it } from "vitest";
 
 const goldens = loadGoldens();
@@ -38,6 +48,48 @@ describe("the live flag", () => {
 		} finally {
 			rmSync(directory, { recursive: true, force: true });
 		}
+	});
+});
+
+describe("MELIAN_EVAL_GOLDEN", { timeout: 60_000 }, () => {
+	it("selects every golden when unset or empty, and only the named one when set", () => {
+		expect(selectGoldens(goldens, undefined)).toEqual(goldens);
+		expect(selectGoldens(goldens, "")).toEqual(goldens);
+		expect(selectGoldens(goldens, "contracts-breaking-signature").map((golden) => golden.name)).toEqual([
+			"contracts-breaking-signature",
+		]);
+	});
+
+	it("refuses a name no golden has, listing the goldens", () => {
+		expect(() => selectGoldens(goldens, "contracts")).toThrow(
+			/^No golden is named contracts\. Goldens: clean-rename, contracts-breaking-signature, /,
+		);
+	});
+
+	it("refuses a golden that sets live: false, since it runs scripted only", () => {
+		expect(() => selectGoldens(goldens, "pre-existing-beside-change")).toThrow(
+			/^pre-existing-beside-change sets live: false in its expected\.json, so it runs scripted only\.$/,
+		);
+	});
+
+	it("exits live.ts with status 2, saying no golden has the name, when the name matches no golden", () => {
+		const live = fileURLToPath(new URL("../src/live.ts", import.meta.url));
+		const result = spawnSync(process.execPath, ["--conditions=@melian-agent/source", live], {
+			env: { PATH: process.env.PATH, MELIAN_EVAL_LIVE: "1", MELIAN_EVAL_GOLDEN: "no-such-golden" },
+			encoding: "utf8",
+		});
+		expect(result.status).toBe(2);
+		expect(result.stderr).toMatch(/^No golden is named no-such-golden\./);
+	});
+
+	it("exits live.ts with status 2, saying the golden runs scripted only, when it sets live: false", () => {
+		const live = fileURLToPath(new URL("../src/live.ts", import.meta.url));
+		const result = spawnSync(process.execPath, ["--conditions=@melian-agent/source", live], {
+			env: { PATH: process.env.PATH, MELIAN_EVAL_LIVE: "1", MELIAN_EVAL_GOLDEN: "pre-existing-beside-change" },
+			encoding: "utf8",
+		});
+		expect(result.status).toBe(2);
+		expect(result.stderr).toMatch(/^pre-existing-beside-change sets live: false .* runs scripted only\./);
 	});
 });
 
