@@ -227,7 +227,7 @@ These are the defaults, and they name only checks that ship: a lens joins them w
 
 A review's tier is its manifest. Every check the tier names records whether it ran, was skipped, or failed, and a check with no record makes the review not reviewed, so nothing reads as passed because it was never counted. Only lenses the tier names run.
 
-Melian exposes `melian run <tier>` and `melian run --stage <name>`. It never installs git hooks. Recipes ship for lefthook, pre-commit, husky, and Pi.
+The CLI exposes `review`, `publish`, `findings`, and `doctor`, and `review` runs the tier the `pull-request` stage maps to. A `run` command for a named tier or stage, and recipes for lefthook, pre-commit, husky, and Pi, are planned for milestone 2. Melian never installs git hooks.
 
 A change to an analyser's configuration, such as `tsconfig.json` or `biome.json`, is a blocking policy finding: the head's configuration still drives the head's run, and the finding stops a switched-off check reading as clean.
 
@@ -336,9 +336,16 @@ The CLI and the skills were built in milestone 1. The Actions host is planned fo
 
 ### CLI
 
-The primary host and the only thing the skills call. `melian run`, `melian review <changeset>`, `melian explain <finding>`, `melian dismiss <finding> --reason`. Embeds the durable harness with SQLite storage under `.git/melian/`, one file per changeset, or under `MELIAN_STATE_DIR` with a directory per clone, for a host whose sandbox keeps `.git` read-only. Uses the developer's own credentials.
+The primary host and the only thing the skills call. It has four commands:
 
-Built so far: `melian review <range|#pr>` prints the verdict and exits `0` passed, `1` findings with one blocking, `2` not reviewed, or `3` findings with none blocking, so a hook or a script can act on it; `melian publish <#pr>` posts the stored review of the pull request's current head and refuses a head the stored review does not cover; `melian findings <range|#pr> [--open] [--json]` reads the findings document; and `melian doctor` checks the tools and names where credentials come from. A pull request is reviewed under the policy of its base commit, and a range on the checked-out branch under the working tree's. Publication never posts a review of a range or a working tree: a pull request and a range have separate changeset identities, so they never share storage, and every verdict records its provenance, which publishing checks. [docs/guidelines/cli.md](guidelines/cli.md) holds the detail.
+- `melian review <range|#pr>` reviews a range of the checkout, or fetches a pull request and reviews it, and prints the verdict. It exits `0` passed, `1` findings with one blocking, `2` not reviewed, or `3` findings with none blocking, so a hook or a script can act on it. `--model <provider/id>` routes every tier to one model for that run, over any route. A repeat review of the same base and head prints what was stored and spends nothing; `--rerun` runs the failed checks and lenses again.
+- `melian publish <#pr>` posts the stored review of the pull request's current head, and refuses a head or base the stored review does not cover. It exits `0` published, or `1` refused or failed.
+- `melian findings <range|#pr> [--open] [--json]` reads the stored verdict, and exits `1` when nothing is stored.
+- `melian doctor` checks Node, git, credentials, model routes, GitHub access, and where the static tools come from. It exits `1` when Node or git cannot run a review.
+
+A command line Melian cannot read exits `64`.
+
+The CLI embeds the durable harness with SQLite storage under `.git/melian/`, one file per changeset, or under `MELIAN_STATE_DIR` with a directory per clone, for a host whose sandbox keeps `.git` read-only. It uses the developer's own credentials, and the model routes in `melian.local.yaml`, which it reads only from the working tree. A pull request is reviewed under the policy of its base commit, and a range on the checked-out branch under the working tree's. Publication never posts a review of a range or a working tree: a pull request and a range have separate changeset identities, so they never share storage, and every verdict records its provenance, which publishing checks. A `run` command is planned for milestone 2 and a `dismiss` command with a reason for milestone 3; an `explain` command is not yet scheduled. [docs/guidelines/cli.md](guidelines/cli.md) holds the detail.
 
 Publishing from the CLI sets a commit status, context `melian/review`, not a check run, because a user's token cannot create check runs; check runs arrive with the GitHub App on the server and Actions hosts. `passed`, and `findings` with nothing blocking, map to `success` with a description counting the findings; `findings` with a blocking finding maps to `failure`; `not-reviewed` maps to `error` with what did not run. The review itself is posted with the event `COMMENT`, never `APPROVE` or `REQUEST_CHANGES`: Melian never approves, and the status alone says whether anything blocks.
 
