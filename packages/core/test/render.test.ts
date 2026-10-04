@@ -221,6 +221,12 @@ const verdict = adjudicate({
 			reason: "the lens did not finish",
 			error: "provider returned 529",
 		},
+		{
+			name: "lens.tests",
+			status: "ended",
+			level: "quick",
+			budgetEnded: { budget: "tokens", limit: 50_000, tokens: 51_200, tools: 4 },
+		},
 		{ name: "static.tsc", status: "skipped", reason: "no tsconfig.json at the base revision" },
 		{ name: "static.biome", status: "ran", version: "2.5.15" },
 	],
@@ -236,7 +242,7 @@ describe("renderVerdictJson", () => {
 });
 
 describe("renderFindingsTerminal with a verdict", () => {
-	it("leads with the verdict, the checks that did not run, and each lens's level and budget end, then groups findings by resolution", async () => {
+	it("leads with the verdict, the checks that did not run, a lens its budget ended, and each lens's level, then groups findings by resolution", async () => {
 		await expect(renderFindingsTerminal(verdict)).toMatchFileSnapshot("./golden/verdict.txt");
 	});
 

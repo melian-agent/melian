@@ -468,6 +468,23 @@ describe("adjudicate", () => {
 		});
 	});
 
+	it("is not reviewed when a budget ended a lens, which allowSkip cannot excuse", () => {
+		const ended = {
+			name: "lens.correctness",
+			status: "ended",
+			level: "careful",
+			budgetEnded: { budget: "tokens", limit: 200_000, tokens: 201_000, tools: 12 },
+		} as const;
+		const verdict = adjudicate({
+			findings: [],
+			manifest,
+			checks: [...checks, ended],
+			config: defaultConfig,
+			allowSkip: ["lens.correctness"],
+		});
+		expect(verdict).toMatchObject({ status: "not-reviewed", notRun: [ended], ran: checks });
+	});
+
 	it("keeps the checks that ran, each lens with its level", () => {
 		const lens = { name: "lens.correctness", status: "ran", level: "careful" } as const;
 		const verdict = adjudicate({ findings: [], manifest, checks: [...checks, lens], config: defaultConfig });

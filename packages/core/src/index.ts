@@ -195,6 +195,7 @@ export {
 	reviewStatus,
 } from "./publication.ts";
 export {
+	describeBudgetEnd,
 	renderFindingsJson,
 	renderFindingsTerminal,
 	renderVerdictJson,

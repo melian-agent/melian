@@ -91,9 +91,10 @@ function plural(count: number, noun: string, nouns = `${noun}s`): string {
  * its rule, cause, status, message, the explanation's three parts, its failure scenario, and each evidence location
  * with its role and the code read there.
  *
- * A verdict renders a header with its status and whether it blocks, the checks that did not run and why, each lens that
- * ran with its scrutiny level and any budget that ended it, and then its findings grouped by resolution, strictest
- * first, each group by file as for a log. Silent and dismissed findings are counted, not shown.
+ * A verdict renders a header with its status and whether it blocks, the checks that did not run and why, a lens its
+ * budget ended among them, each lens that ran with its scrutiny level and any budget that ended it while its level
+ * counted it as run, and then its findings grouped by resolution, strictest first, each group by file as for a log.
+ * Silent and dismissed findings are counted, not shown.
  */
 export function renderFindingsTerminal(input: FindingsLog | Verdict, options: TerminalRenderOptions = {}): string {
 	const paint: Paint = (code, text) => (options.color ? `\u001b[${code}m${text}\u001b[0m` : text);
@@ -141,28 +142,33 @@ function capitalised(text: string): string {
 
 const budgetNames: Readonly<Record<BudgetEnd["budget"], string>> = { tokens: "token", tools: "tool call" };
 
-function describeBudgetEnd({ budget, limit, tokens, tools }: BudgetEnd): string {
+/**
+ * Says which budget ended a lens and what it had used, for an author: "its token budget of 50,000 ran out after 4 tool
+ * calls and 51,200 tokens".
+ */
+export function describeBudgetEnd({ budget, limit, tokens, tools }: BudgetEnd): string {
 	const used = `${plural(tools, "tool call")} and ${plural(tokens, "token")}`;
-	return `ended by its ${budgetNames[budget]} budget of ${limit.toLocaleString("en-AU")}, having used ${used}`;
+	return `its ${budgetNames[budget]} budget of ${limit.toLocaleString("en-AU")} ran out after ${used}`;
 }
 
 function renderVerdict(verdict: Verdict, paint: Paint): string {
 	const [color, label] = statusLabel[verdict.status];
 	const parts = [`Verdict: ${paint(color, label)}${verdict.blocking ? `, ${paint("31", "blocking")}` : ""}`];
 	if (verdict.notRun.length > 0) {
-		const checks = verdict.notRun.map(({ name, status, level, reason, error }) =>
-			[
-				`  ${visibleText(name)}  ${status}${level === undefined ? "" : ` at ${level}`}${reason === undefined ? "" : `: ${prose(reason, "    ")}`}`,
+		const checks = verdict.notRun.map(({ name, status, level, reason, error, budgetEnded }) => {
+			const why = reason ?? (budgetEnded === undefined ? undefined : describeBudgetEnd(budgetEnded));
+			return [
+				`  ${visibleText(name)}  ${status}${level === undefined ? "" : ` at ${level}`}${why === undefined ? "" : `: ${prose(why, "    ")}`}`,
 				...(error === undefined ? [] : [`    Error: ${prose(error, "      ")}`]),
-			].join("\n"),
-		);
+			].join("\n");
+		});
 		parts.push([`${plural(verdict.notRun.length, "check")} did not run:`, ...checks].join("\n"));
 	}
 	const lenses = (verdict.ran ?? []).filter((check) => check.level !== undefined);
 	if (lenses.length > 0) {
 		const checks = lenses.map(
 			({ name, level, budgetEnded }) =>
-				`  ${visibleText(name)}  ${level}${budgetEnded === undefined ? "" : `, ${describeBudgetEnd(budgetEnded)}`}`,
+				`  ${visibleText(name)}  ${level}${budgetEnded === undefined ? "" : `, ended and counted: ${describeBudgetEnd(budgetEnded)}`}`,
 		);
 		parts.push([`${plural(lenses.length, "lens", "lenses")} ran:`, ...checks].join("\n"));
 	}

@@ -379,6 +379,17 @@
       "error": "provider returned 529"
     },
     {
+      "name": "lens.tests",
+      "status": "ended",
+      "level": "quick",
+      "budgetEnded": {
+        "budget": "tokens",
+        "limit": 50000,
+        "tokens": 51200,
+        "tools": 4
+      }
+    },
+    {
       "name": "static.tsc",
       "status": "skipped",
       "reason": "no tsconfig.json at the base revision"

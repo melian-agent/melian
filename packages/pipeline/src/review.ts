@@ -522,7 +522,9 @@ function lensCheck(lens: LensRun, result: LensResult | undefined): CheckRecord {
 	const outcome = result[lens.key];
 	if (outcome?.status === "done") {
 		const { budgetEnded } = outcome;
-		return { name, status: "ran", level, ...(budgetEnded === undefined ? {} : { budgetEnded }) };
+		if (budgetEnded === undefined) return { name, status: "ran", level };
+		// A budget's end is reduced coverage, so it leaves the review not reviewed unless the level counts it.
+		return { name, status: lens.budget.ended === "count" ? "ran" : "ended", level, budgetEnded };
 	}
 	if (outcome?.status === "exhausted") {
 		const error = `tried ${outcome.tried.join(", ")}; the last said: ${outcome.reason}`;

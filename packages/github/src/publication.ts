@@ -1,5 +1,12 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { ClosedFinding, Finding, PlacedFinding, ReviewDraft, Verdict } from "@melian-agent/core";
+import {
+	type ClosedFinding,
+	describeBudgetEnd,
+	type Finding,
+	type PlacedFinding,
+	type ReviewDraft,
+	type Verdict,
+} from "@melian-agent/core";
 
 /** Where a revision's posts link to: the repository's web address, such as `https://github.com/owner/repo`. */
 export interface RepositoryLinks {
@@ -202,8 +209,9 @@ const statusWords: Readonly<Record<Verdict["status"], string>> = {
 };
 
 /**
- * The body of a revision's review: the verdict, the checks that did not run, findings in files the change does not
- * touch, each under its own marker, and resolved findings that had no thread to reply in.
+ * The body of a revision's review: the verdict, the checks that did not run, a lens its budget ended among them, any
+ * lens its budget ended that its level counts as run, findings in files the change does not touch, each under its own
+ * marker, and resolved findings that had no thread to reply in.
  */
 export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, options: ReviewBodyOptions = {}): string {
 	const { verdict, revision, secret } = draft;
@@ -227,11 +235,17 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	];
 	parts.push(summary.join(" "));
 	if (verdict.notRun.length > 0) {
-		const checks = verdict.notRun.map(
-			({ name, status: ran, reason }) =>
-				`- ${code(name)} ${ran}${reason === undefined ? "" : `: ${renderProse(reason).replace(/\r?\n/g, " ")}`}`,
-		);
+		const checks = verdict.notRun.map(({ name, status: ran, reason, budgetEnded }) => {
+			const why = reason ?? (budgetEnded === undefined ? undefined : describeBudgetEnd(budgetEnded));
+			return `- ${code(name)} ${ran}${why === undefined ? "" : `: ${renderProse(why).replace(/\r?\n/g, " ")}`}`;
+		});
 		parts.push(["Checks that did not run:", "", ...checks].join("\n"));
+	}
+	const counted = (verdict.ran ?? []).flatMap(({ name, budgetEnded }) =>
+		budgetEnded === undefined ? [] : [`- ${code(name)}: ${describeBudgetEnd(budgetEnded)}`],
+	);
+	if (counted.length > 0) {
+		parts.push(["Lenses a budget ended, counted with the findings they reported:", "", ...counted].join("\n"));
 	}
 	if (draft.resolved.length > 0) {
 		const resolved = draft.resolved.map(

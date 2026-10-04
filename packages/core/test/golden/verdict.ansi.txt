@@ -1,13 +1,14 @@
 Verdict: [31mnot reviewed[0m, [31mblocking[0m
 
-2 checks did not run:
+3 checks did not run:
   lens.security  failed at deep: the lens did not finish
     Error: provider returned 529
+  lens.tests  ended at quick: its token budget of 50,000 ran out after 4 tool calls and 51,200 tokens
   static.tsc  skipped: no tsconfig.json at the base revision
 
 2 lenses ran:
   lens.correctness  careful
-  lens.contracts  quick, ended by its tool call budget of 10, having used 11 tool calls and 48,120 tokens
+  lens.contracts  quick, ended and counted: its tool call budget of 10 ran out after 11 tool calls and 48,120 tokens
 
 [1mBlock: 3 findings[0m
 

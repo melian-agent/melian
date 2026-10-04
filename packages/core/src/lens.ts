@@ -51,6 +51,7 @@ const budgetSchema = Type.Object(
 		findings: Type.Optional(Type.Integer({ minimum: 1 })),
 		tokens: Type.Optional(Type.Union([Type.Integer({ minimum: 1 }), Type.String({ pattern: "^[0-9]+[kKmM]?$" })])),
 		tools: Type.Optional(Type.Integer({ minimum: 1 })),
+		ended: Type.Optional(Type.Union([Type.Literal("incomplete"), Type.Literal("count")])),
 	},
 	strict,
 );
@@ -96,12 +97,14 @@ export type LensRule = Static<typeof lensRuleSchema>;
 
 /**
  * What a lens may spend at a level: findings it may report, input and output tokens its conversation may use, and calls
- * it may make to the read-only tools. A budget it leaves out is unbounded.
+ * it may make to the read-only tools. A budget it leaves out is unbounded. `ended: "count"` counts a lens a budget ended
+ * as one that ran, with the findings it reported; without it, such a lens leaves the review not reviewed.
  */
 export interface LensBudget {
 	readonly findings: number;
 	readonly tokens?: number;
 	readonly tools?: number;
+	readonly ended?: "count";
 }
 
 /** How a lens runs at one {@link ScrutinyLevel}: its model tier, what it reads, whether its findings are verified, and its budget. */
@@ -258,7 +261,12 @@ function versioned(lens: Omit<Lens, "version">): Lens {
 	return { ...lens, version };
 }
 
-type DeclaredBudget = { readonly findings?: number; readonly tokens?: number; readonly tools?: number };
+type DeclaredBudget = {
+	readonly findings?: number;
+	readonly tokens?: number;
+	readonly tools?: number;
+	readonly ended?: "incomplete" | "count";
+};
 type DeclaredLevel = {
 	readonly tier?: LensTier;
 	readonly reads?: LensReads;
@@ -279,6 +287,7 @@ function declaredBudget(budget: LensFrontMatter["budget"], base: DeclaredBudget 
 		findings: budget?.findings ?? base?.findings,
 		tokens: tokens(budget?.tokens) ?? base?.tokens,
 		tools: budget?.tools ?? base?.tools,
+		ended: budget?.ended ?? base?.ended,
 	};
 }
 
@@ -314,6 +323,7 @@ function resolveLevels(file: string, name: string, declared: Declared): LensLeve
 		}
 		const tokens = own?.budget.tokens ?? declared.budget.tokens;
 		const tools = own?.budget.tools ?? declared.budget.tools;
+		const ended = own?.budget.ended ?? declared.budget.ended;
 		return {
 			tier,
 			reads: own?.reads ?? "hunks",
@@ -322,6 +332,7 @@ function resolveLevels(file: string, name: string, declared: Declared): LensLeve
 				findings: own?.budget.findings ?? declared.budget.findings ?? lensLimits.defaultFindings,
 				...(tokens === undefined ? {} : { tokens }),
 				...(tools === undefined ? {} : { tools }),
+				...(ended === "count" ? { ended } : {}),
 			},
 		};
 	};

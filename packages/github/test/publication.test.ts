@@ -208,6 +208,42 @@ describe("markers", () => {
 		expect(summary(2)).toBe("2 findings need attention: 2 acknowledge.");
 	});
 
+	it("names each lens its budget ended, whether that left the review not reviewed or its level counted the lens", () => {
+		const ended = { budget: "tokens", limit: 50_000, tokens: 51_200, tools: 4 } as const;
+		const counted = { budget: "tools", limit: 10, tokens: 48_120, tools: 10 } as const;
+		const body = renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: "0123456789abcdef",
+				round: 1,
+				verdict: adjudicate({
+					findings: [],
+					manifest: [],
+					checks: [
+						{ name: "lens.correctness", status: "ended", level: "careful", budgetEnded: ended },
+						{ name: "lens.contracts", status: "ran", level: "quick", budgetEnded: counted },
+					],
+					config: defaultConfig,
+				}),
+				findings: [],
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+
+		expect(body).toContain("**not reviewed**");
+		expect(body).toContain(
+			"Checks that did not run:\n\n- `lens.correctness` ended: its token budget of 50,000 ran out after 4 tool calls and 51,200 tokens",
+		);
+		expect(body).toContain(
+			"Lenses a budget ended, counted with the findings they reported:\n\n- `lens.contracts`: its tool call budget of 10 ran out after 10 tool calls and 48,120 tokens",
+		);
+	});
+
 	it("cuts findings from a body over GitHub's limit, keeping the marker and saying where they all are", () => {
 		const findings = Array.from({ length: 12 }, (_, index) =>
 			createFinding({

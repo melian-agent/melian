@@ -1087,14 +1087,14 @@ describe("reviewChangeset", () => {
 
 		expect(requests[correctness]).toHaveLength(2);
 		expect(findings).toHaveLength(1);
-		const record = verdict.ran?.find((check) => check.name === "lens.correctness");
+		const record = verdict.notRun.find((check) => check.name === "lens.correctness");
 		expect(record).toMatchObject({
-			status: "ran",
+			status: "ended",
 			level: "careful",
 			budgetEnded: { budget: "tools", limit: 2, tools: 3 },
 		});
 		expect(record?.budgetEnded?.tokens).toBeGreaterThan(0);
-		expect(verdict.status).toBe("findings");
+		expect(verdict.status).toBe("not-reviewed");
 	});
 
 	it("refuses a read past the tools budget, and ends the lens a round later when a refused call keeps it going", async () => {
@@ -1123,7 +1123,7 @@ describe("reviewChangeset", () => {
 		expect(read).toContain("[this lens has used its budget of 1 call to the read-only tools.");
 		expect(searched).toMatch(/^\[not run: this lens may make 1 call to the read-only tools, and this was call 2\./);
 		expect(blocked).toContain("severity P3 is outside this lens's severities");
-		expect(verdict.ran?.find((check) => check.name === "lens.correctness")?.budgetEnded).toMatchObject({
+		expect(verdict.notRun.find((check) => check.name === "lens.correctness")?.budgetEnded).toMatchObject({
 			budget: "tools",
 			limit: 1,
 			tools: 3,
@@ -1147,14 +1147,39 @@ describe("reviewChangeset", () => {
 
 		expect(requests[correctness]).toHaveLength(1);
 		expect(findings).toHaveLength(1);
-		const ended = verdict.ran?.find((check) => check.name === "lens.correctness")?.budgetEnded;
-		expect(ended).toMatchObject({ budget: "tokens", limit: 1, tools: 1 });
-		expect(ended?.tokens).toBeGreaterThan(1);
+		const ended = verdict.notRun.find((check) => check.name === "lens.correctness");
+		expect(ended).toMatchObject({ status: "ended", budgetEnded: { budget: "tokens", limit: 1, tools: 1 } });
+		expect(ended?.budgetEnded?.tokens).toBeGreaterThan(1);
 		expect(verdict.ran?.find((check) => check.name === "lens.contracts")).toEqual({
 			name: "lens.contracts",
 			status: "ran",
 			level: "careful",
 		});
+		expect(verdict.status).toBe("not-reviewed");
+	});
+
+	it("counts a lens its budget ended as run, with its findings, when its level says so", async () => {
+		const counted = lenses.map((lens) =>
+			lens.name === "correctness" ? withBudget(lens, { tokens: 1, ended: "count" }) : lens,
+		);
+		scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [call("report_finding", nullDeref), fauxAssistantMessage("Never asked.")],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const { findings, verdict } = await reviewed({ lenses: counted });
+
+		expect(findings).toHaveLength(1);
+		expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toMatchObject({
+			status: "ran",
+			level: "careful",
+			budgetEnded: { budget: "tokens", limit: 1 },
+		});
+		expect(verdict.notRun.map((check) => check.name)).not.toContain("lens.correctness");
+		expect(verdict.status).toBe("findings");
 	});
 
 	it("holds a lens task an older Melian created, whose budget is a number, to that findings budget", async () => {

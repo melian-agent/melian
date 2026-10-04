@@ -282,6 +282,22 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		});
 	});
 
+	it("counts a lens its budget ended as run only at a level that says budget.ended: count", async () => {
+		writeFiles(repo, {
+			".melian/lenses/security/LENS.md": lensFile([
+				...security,
+				"budget: { ended: count }",
+				"levels:",
+				"  quick: { budget: { tokens: 50k } }",
+				"  deep: { budget: { ended: incomplete } }",
+			]),
+		});
+		const [lens] = named(await load(["src/index.ts"]), "security");
+		expect(lens!.levels.quick?.budget).toEqual({ findings: 10, tokens: 50_000, ended: "count" });
+		expect(lens!.levels.careful.budget).toEqual({ findings: 10, ended: "count" });
+		expect(lens!.levels.deep?.budget).toEqual({ findings: 10 });
+	});
+
 	it("runs a lens that declares no levels at careful only, from its top-level tier and budget", async () => {
 		writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile(security) });
 		const [lens] = named(await load(["src/index.ts"]), "security");
