@@ -202,6 +202,34 @@ describe("causeOverlap", () => {
 		expect(classifyCause(inside, moved.revision, [edited])).toBe("affected");
 	});
 
+	it("never promotes a finding in a file the change only moved by citing a sibling it also only moved", async () => {
+		gitIn(repo, "checkout", "--quiet", "main");
+		writeFiles(repo, { "db/query.ts": lines("q1", "q2"), "db/conn.ts": lines("c1", "c2") });
+		gitIn(repo, "add", ".");
+		gitIn(repo, "commit", "--quiet", "-m", "db");
+		gitIn(repo, "checkout", "--quiet", "-b", "move");
+		gitIn(repo, "mv", "db", "database");
+		gitIn(repo, "commit", "--quiet", "-m", "move db");
+		const moved = await resolveRange(repo, "main...move");
+		expect(moved.revision.files).toEqual([
+			expect.objectContaining({ path: "database/conn.ts", oldPath: "db/conn.ts", status: "renamed", hunks: [] }),
+			expect.objectContaining({ path: "database/query.ts", oldPath: "db/query.ts", status: "renamed", hunks: [] }),
+		]);
+		const renamed = moved.revision.files[0];
+		const query = { file: "database/query.ts", startLine: 2 };
+		const consumer = { file: "untouched.ts", startLine: 1 };
+		for (const site of [
+			{ file: "database/conn.ts", startLine: 1, role: "cause" },
+			{ file: "db/conn.ts", startLine: 1, role: "cause", revision: "base" },
+		] as const) {
+			expect(classifyCause(query, moved.revision, [site])).toBe("pre-existing");
+			expect(causeOverlap(site, moved.revision, query.file)).toBeUndefined();
+			expect(changeOverlap(site, moved.revision, query.file)).toBeUndefined();
+			expect(classifyCause(consumer, moved.revision, [site])).toBe("affected");
+			expect(causeOverlap(site, moved.revision, consumer.file)).toEqual({ kind: "rename", file: renamed });
+		}
+	});
+
 	it("calls a consumer in another file affected when it cites the file the change only renamed", async () => {
 		gitIn(repo, "mv", "untouched.ts", "kept.ts");
 		gitIn(repo, "commit", "--quiet", "-m", "rename only");

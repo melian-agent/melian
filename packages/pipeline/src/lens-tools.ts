@@ -459,7 +459,7 @@ export const reportFinding = defineTool({
 		const { cause, evidence = [] } = finding.properties;
 		const unproven =
 			cause === "pre-existing"
-				? ": it is outside the change, and no cause location overlaps lines the change added, modified, or deleted, or names another file it only renamed"
+				? ": it is outside the change, and no cause location overlaps lines the change added, modified, or deleted, or names a file it only renamed while the finding's own file is one it edited or left alone"
 				: "";
 		// Each location's first line as Melian read it, so a lens that miscounted a line number sees what it cited.
 		const { body } = fitting(

@@ -18,6 +18,10 @@ export interface EvidenceSite extends CodeLocation {
 	readonly revision?: EvidenceRevision;
 }
 
+function onlyMoved(file: ChangedFile): boolean {
+	return file.status === "renamed" && file.hunks.length === 0;
+}
+
 function overlaps(start: number, end: number, from: number, count: number): boolean {
 	return count > 0 && start < from + count && end >= from;
 }
@@ -34,10 +38,10 @@ export type ChangeOverlap =
  * The part of the change a location falls on, whatever its role, or `undefined` when it falls on nothing the change
  * did. At head: a hunk's new lines in a file the change keeps. At the base: a hunk's old lines in a file the base had,
  * named by its base path, so deleted lines count as changed code. On either side, any line of a file the change
- * renamed without editing, named by its path on that side, since the rename is what the change did to it, unless that
- * file is `findingFile`, the head path of the finding the location supports: moving a file changes no line of it, so
- * the rename proves nothing about a defect inside it. Compares canonical paths; throws `FindingError` `invalidPath` for
- * a path that is not repository-relative.
+ * renamed without editing, named by its path on that side, since the rename is what the change did to it, unless
+ * `findingFile`, the head path of the finding the location supports, is itself a file the change only moved: moving
+ * files changes none of their lines, so no rename proves anything about a defect inside one, its own or a sibling's.
+ * Compares canonical paths; throws `FindingError` `invalidPath` for a path that is not repository-relative.
  */
 export function changeOverlap(
 	location: CodeLocation & { readonly revision?: EvidenceRevision },
@@ -53,9 +57,10 @@ export function changeOverlap(
 			: file.path === path && file.status !== "deleted",
 	);
 	if (changed === undefined) return undefined;
-	if (changed.status === "renamed" && changed.hunks.length === 0) {
-		const own = findingFile !== undefined && canonicalPath(findingFile, "/file") === changed.path;
-		return own ? undefined : { kind: "rename", file: changed };
+	if (onlyMoved(changed)) {
+		const findingPath = findingFile === undefined ? undefined : canonicalPath(findingFile, "/file");
+		const findingMoved = revision.files.some((file) => file.path === findingPath && onlyMoved(file));
+		return findingMoved ? undefined : { kind: "rename", file: changed };
 	}
 	const hunk = changed.hunks.find((each) =>
 		base
@@ -84,7 +89,7 @@ export function causeOverlap(
  * Location proves `introduced` only: a location in an added file, binary files included, or overlapping any hunk's new
  * lines is `introduced`. Any other location is `affected` when one of `evidence`'s locations proves the change caused
  * it, by {@link causeOverlap}, and `pre-existing` otherwise, including code beside or around a pure deletion, which has no
- * new lines, and code in a file the change only renamed, whatever its evidence cites in that file. A file deleted at
+ * new lines, and code in a file the change only renamed, whatever renamed file its evidence cites. A file deleted at
  * head has no lines to point at, so a location in one throws `FindingError` `deletedFile`. Compares canonical paths, so
  * `./src/run.ts` is `src/run.ts`; throws `FindingError` `invalidPath` for a path that is absolute, escapes the
  * repository, or uses a backslash.
