@@ -1888,7 +1888,7 @@ describe("code over 2 KiB, which a finding stores cut", () => {
 	// A lens finding as a Melian before the cut built it: every snippet whole.
 	function wholeFinding(file: string, line: number, snippet: string, added: string): Finding {
 		const [correctnessLens] = lenses.filter((lens) => lens.name === "correctness");
-		return createFinding({
+		const finding = createFinding({
 			rule: nullDeref.rule,
 			message: nullDeref.explanation.what,
 			file,
@@ -1905,6 +1905,9 @@ describe("code over 2 KiB, which a finding stores cut", () => {
 			},
 			source: { check: "lens.correctness", version: correctnessLens!.version },
 		});
+		const [location] = finding.locations;
+		const region = { ...location.physicalLocation.region, snippet: { text: snippet } };
+		return { ...finding, locations: [{ physicalLocation: { ...location.physicalLocation, region } }] };
 	}
 
 	it("keeps a dismissal stored with a whole trigger over 2 KiB when the same hunk is sighted again", async () => {
