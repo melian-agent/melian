@@ -264,6 +264,58 @@ describe("recording a dismissal", () => {
 		]);
 	});
 
+	it("reopens a finding outside the diff when the hunk that caused it changes past its stored snippet", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		const org = lines(
+			'import { managerName, type User } from "./user";',
+			"",
+			'export const describe = (user: User) => user.name + " reports to " + managerName(user);',
+		);
+		// Forty lines of 80 characters after the dereference keep the hunk's added code past the 2 KiB snippet cap.
+		const padding = (last: string) => [
+			...Array.from({ length: 39 }, (_, at) => `\t// ${String(at).padStart(2, "0")} ${"x".repeat(72)}`),
+			`\t// ${last}`,
+		];
+		repo = baseAndHead(
+			{ "src/user.ts": user("manager", '\treturn user.manager?.name ?? "none";'), "src/org.ts": org },
+			{ "src/user.ts": user("boss", [unsafe, ...padding("first")].join("\n")) },
+		);
+		lenses = await loadLenses(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/user.ts"]);
+		const caller = {
+			...nullDeref,
+			file: "src/org.ts",
+			line: 3,
+			failureScenario: 'describe({ name: "Ada" }) throws, since managerName now reads name of an absent manager.',
+			evidence: [
+				{ file: "src/user.ts", line: 8, role: "cause" },
+				{ file: "src/org.ts", line: 3, role: "context" },
+			],
+		};
+		const script = () =>
+			scriptConversations(fake, [
+				{ match: correctness, replies: [report(caller), fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+		const harness = await reviewHarness(createMemoryStorage());
+		script();
+		const [first] = (await reviewed(harness)).findings;
+		expect(first!.properties).toMatchObject({ path: "src/org.ts", cause: "affected" });
+		expect(first!.properties.trigger).toMatchObject({ file: "src/user.ts", index: 0 });
+		await dismiss(harness, first!.properties.id);
+		push("boss", [unsafe, ...padding("second")].join("\n"));
+		script();
+
+		const { verdict } = await reviewed(harness);
+
+		const [reopened] = verdict.findings.block;
+		expect(reopened!.properties).toMatchObject({ id: first!.properties.id, status: "new", cause: "affected" });
+		expect(reopened!.properties.trigger!.snippet).toBe(first!.properties.trigger!.snippet);
+		expect(reopened!.properties.trigger!.hash).not.toBe(first!.properties.trigger!.hash);
+		expect(reopened!.properties.pastDismissals).toEqual([
+			{ ...dismissal, reopenedRevision: revisionKey(await revision()) },
+		]);
+	});
+
 	it("dismisses every report adjudication merged into the finding, so the defect leaves the verdict whole", async () => {
 		const harness = await reviewHarness(createMemoryStorage());
 		scriptFinding(true);

@@ -512,6 +512,20 @@ function overlapping(file: ReviewFile | undefined, startLine: number, endLine: n
 	);
 }
 
+// The hunk an affected finding's first proving `cause` location falls on, so the finding's trigger is the changed code
+// that caused it and a dismissal of it reopens when that code changes. A rename proves without a hunk, and gives none.
+function provingHunk(review: ReviewState, evidence: readonly EvidenceLocation[], findingFile: string) {
+	const changed = { files: changedFiles(review) };
+	for (const location of evidence) {
+		if (location.proves !== true) continue;
+		const overlap = causeOverlap(location, changed, findingFile);
+		if (overlap?.kind !== "hunk") continue;
+		const { file, index } = overlap.hunk;
+		return review.files.flatMap((each) => each.hunks).find((hunk) => hunk.file === file && hunk.index === index);
+	}
+	return undefined;
+}
+
 // The text at `line` to `endLine` of `path` at the review's head or base. `hint` follows the message for a missing file.
 async function linesAt(
 	review: ReviewState,
@@ -620,7 +634,12 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 	const location = { file: path, startLine: args.line, endLine };
 	const cause = classifyCause(location, { files: changedFiles(review) }, evidence);
 	const changed = review.files.find((file) => file.path === path);
-	const hunk = cause === "introduced" ? overlapping(changed, args.line, endLine) : undefined;
+	const hunk =
+		cause === "introduced"
+			? overlapping(changed, args.line, endLine)
+			: cause === "affected"
+				? provingHunk(review, evidence, path)
+				: undefined;
 	const { severity } = args;
 	return createFinding({
 		rule: args.rule,
