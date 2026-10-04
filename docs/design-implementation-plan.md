@@ -43,7 +43,7 @@ Each is a differentiator; none is needed to review a pull request once. Resist p
 
 ## Milestone 2: Melian reviews pull requests on GitHub Actions
 
-The Actions host from design.md: `pull_request_target` workflow, state branch backend, `workflow_dispatch` continuation, `workflow_run` recovery, three-state check status. Melian's own repository is the first installation.
+The Actions host from design.md: `pull_request_target` workflow, state branch backend, `workflow_dispatch` continuation, `workflow_run` recovery, three-state check status. Melian's own repository is the first installation. The milestone also takes the three issues milestone 1 deferred: [issue #22](https://github.com/melian-agent/melian/issues/22), lens path globs on a backtracking `RegExp`; [issue #24](https://github.com/melian-agent/melian/issues/24), `decisions.*` checks left without a record once a provider is configured; and [issue #26](https://github.com/melian-agent/melian/issues/26), `reviewChangeset` driving `runChecks` itself.
 
 Steps to be written when milestone 1 closes.
 

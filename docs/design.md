@@ -2,7 +2,7 @@
 
 This document records how Melian works and why. It is the source of truth for architecture decisions. The [README](../README.md) describes what Melian does at the capability level; this document describes how.
 
-Status: design phase, October 2026. Nothing here is implemented yet. Progress against this design is tracked in [design-implementation-plan.md](design-implementation-plan.md).
+Status: milestone 1, the local CLI loop, is complete, as [design-implementation-plan.md](design-implementation-plan.md) and [the first publication's run record](../packages/evals/runs/2026-10-04-first-publish.md) record. Milestones 2 and 3 are planned. Each section below opens with the milestone that built it, or will.
 
 ## Goals
 
@@ -34,6 +34,8 @@ Melian follows Pi's philosophy: a minimal core, extensible by design, small enou
 
 ## Concepts
 
+Built in milestone 1, except knowledge and decisions, planned for milestone 3 (knowledge write-back and decision models).
+
 | Term | Meaning |
 |---|---|
 | Changeset | The unit under review: staged changes, a branch range, a working tree, or a pull request. Everything downstream is identical regardless of kind. |
@@ -50,6 +52,8 @@ Melian follows Pi's philosophy: a minimal core, extensible by design, small enou
 | Decision | A typed answer with a calibrated probability, from a decision model. |
 
 ## Architecture
+
+Core, the pipeline, and the CLI and skill hosts were built in milestone 1. The Actions host and the state-branch backend are planned for milestone 2 (Actions host). Triage, decision-model scoring, and the knowledge step are planned for milestone 3 (decision models and knowledge write-back). The server and Slack hosts are not yet scheduled.
 
 ### Three layers
 
@@ -109,6 +113,8 @@ Pi Durable is pinned to an exact version and imported by one internal module, be
 
 ## Findings
 
+Built in milestone 1. The dismissal commands are planned for milestone 3 (cross-revision commands).
+
 ### Schema
 
 A finding is a SARIF `result` plus Melian extension properties. SARIF because semgrep, gitleaks, and eslint emit it natively, GitHub code scanning ingests it, and it forces a stable schema from the first commit. Extensions:
@@ -150,6 +156,8 @@ What a producer reports is stored as immutable sightings, keyed by revision, its
 Local findings persist in the clone's `.git/melian/` directory, uncommitted. When a pull request opens, the server or Actions host imports them so the author is not told the same thing twice.
 
 ## Lenses
+
+Built in milestone 1, except lens packs and lens tests in the lens directory, which are not yet scheduled.
 
 A lens is a directory containing `LENS.md`, modelled on the Agent Skills layout but deliberately not a `SKILL.md`, so that Claude Code, Codex, and Pi never load a lens as a host skill.
 
@@ -199,6 +207,8 @@ What stays out of a lens: topology, concurrency, deadlines, publication, and ver
 
 ## Checks, tiers, and stages
 
+Built in milestone 1, except the `run` command and hook recipes, planned for milestone 2 (Actions host), and the decision-model questions, planned for milestone 3 (decision models).
+
 Checks are named. Tiers are named sets of checks. Stages map workflow points to tiers.
 
 ```yaml
@@ -227,6 +237,8 @@ The decision-model questions ship enabled by default. When no decision provider 
 
 ## Configuration and layering
 
+Built in milestone 1, except the maintainer comment that overrides a block and the confidence threshold for agentic findings, planned for milestone 3 (comment commands and decision models).
+
 Problem: a multi-service monorepo needs different scrutiny for a payments service than for its docs, and a single root configuration cannot express that without becoming a rules engine.
 
 Solution: `melian.yaml` may exist at any folder level. For a touched path, the nearest file applies, merged upward to the root, in the way `CODEOWNERS` resolves. Every setting layers this way: checks, tiers, stages, lens routing, model routing, resolution levels, write-back permission, decision thresholds.
@@ -250,6 +262,8 @@ A maintainer comment can override a block. Deterministic guardrails may block at
 
 ## Standards and knowledge
 
+Reading was built in milestone 1. Writing back is planned for milestone 3 (knowledge write-back).
+
 ### Reading
 
 Melian reads `AGENTS.md`, `CLAUDE.md`, and `.melian/standards/*.md`, nearest-first for the touched paths, and renders them as a prompt section into every lens that has not opted out. It reads them from the revision the host chooses, as [Trust and isolation](#policy-and-standards-come-from-a-revision-the-host-chooses) sets out, so a pull request's changes to these files take effect once merged, not in the review of that pull request. A local run on the working tree sees them on the next request.
@@ -267,6 +281,8 @@ The test for placement is whether a human colleague would need it. A decision-mo
 Lifecycle: a proposal is a durable document with states `proposed`, `open`, `merged`, `declined`. Merged disposes the document. Declined keeps a tombstone keyed by content hash so the same proposal is not raised again. Write-back is opt-in per repository and always by pull request.
 
 ## Decision models
+
+Planned for milestone 3 (decision models). Milestone 1 built only the configuration keys, `decisions.provider` and `decisions.thresholds`, and the allowed skip each `decisions.*` check records while no provider is configured.
 
 Jev (TypeSafe) and Clef (Cloudflare, open weights, Apache 2.0) share one request shape: a state plus typed questions, returning calibrated probabilities over `noul` (boolean), `choice`, and `score` questions in a single pass, in tens to hundreds of milliseconds, for a fraction of a cent per call. They generate no text.
 
@@ -302,6 +318,8 @@ Advisory only, never authority. Fail closed on timeout or error. Inputs come fro
 
 ## Models and credentials
 
+Model routing and the local credential sources were built in milestone 1. GitHub App installation tokens are planned for milestone 2 (Actions host). The credential pool is not yet scheduled.
+
 pi-ai provides providers, OAuth subscription auth, and the model catalogue. Melian adds:
 
 - **Model routing** from tier to model: `light`, `medium`, `heavy`, `decision`, with fallbacks, overridable per path. A lens carries its tier's whole route, and moves to the next model when a provider failure outlasts pi-ai's retries or authentication fails. The route position is checkpointed with the model change, so a resumed review continues on the model it had reached.
@@ -313,6 +331,8 @@ Routes belong to whoever pays for them. A repository commits no `models` routes,
 Caveat to state in user documentation: automated use of consumer subscriptions in CI may breach provider terms. API keys are the default for CI. Subscription use is an explicit opt-in.
 
 ## Hosts
+
+The CLI and the skills were built in milestone 1. The Actions host is planned for milestone 2 (Actions host). The Pi extension's `/melian` command, the server host, Slack, and other git providers are not yet scheduled.
 
 ### CLI
 
@@ -365,6 +385,8 @@ The changeset abstraction already hides where a change came from. The provider-s
 
 ## State storage
 
+SQLite storage for local runs was built in milestone 1. The orphan-branch backend is planned for milestone 2 (state branch).
+
 Pi Durable's `Storage` interface is one atomic `commit(writes)`, ID minting, a set of reads, and `close()`. It does no cross-process locking, so one process owns a storage at a time. Melian keeps one storage per changeset, whose root conversation is that changeset's history. The shipped JSONL backend writes an append-only `main.jsonl` with sidecars over a `FileSystem` abstraction.
 
 The orphan-branch backend, the default for Actions, wraps Pi's JSONL storage on a worktree of a `melian/state` branch rather than implementing the interface itself, and runs Pi's storage conformance suite. Each durable commit becomes a git commit and push. Each changeset's storage lives in its own subdirectory, which avoids conflicts and makes disposal on close a directory delete. The Actions concurrency group gives each changeset one writer. `--force-with-lease` detects a second writer that slips past it, but cannot merge that writer's commits into a harness already open. Push latency of about a second is acceptable against reviews that take minutes.
@@ -372,6 +394,8 @@ The orphan-branch backend, the default for Actions, wraps Pi's JSONL storage on 
 Alternative backends behind the same interface: SQLite in the Actions cache, object storage, Postgres, Cloudflare Durable Objects.
 
 ## Trust and isolation
+
+Built in milestone 1: policy and standards read from a chosen revision, prompt boundaries, static tools in a temporary worktree with no secrets, and signed markers. Container isolation is planned for milestone 2 (Actions host), and comment commands for milestone 3.
 
 Existing code on the base branch is trusted. Submitted changes and comments are not.
 
@@ -407,6 +431,8 @@ Reading from the base does not hide the head's changes. Each revision lists the 
 
 ## Interaction model
 
+Posting a review with inline comments, a summary, and a commit status was built in milestone 1, through `melian publish`. The thread commands are planned for milestone 3 (comment commands).
+
 On a pull request, Melian posts one review per revision with inline comments, a summary, and a check status derived from resolution and task state: passed, findings, or not reviewed. In threads it takes commands from collaborators:
 
 - re-review, optionally a tier or a path
@@ -418,6 +444,8 @@ On a pull request, Melian posts one review per revision with inline comments, a 
 Each command is a submission into the changeset's conversation. Commands arriving mid-review steer it rather than restarting it. Dismissal with a reason is the most valuable input: it feeds the calibration store and the decision-model dataset.
 
 ## Requirements learned from incumbent reviewers
+
+Built in milestone 1, except the lockfile lens and the credential pool, which are not yet scheduled.
 
 A repository that has lived with a commercial reviewer accumulates workarounds in its `AGENTS.md`. Each one is a requirement Melian meets by design rather than by instruction to the agent that reads the review.
 
@@ -432,6 +460,8 @@ A repository that has lived with a commercial reviewer accumulates workarounds i
 The same file also shows what a team does when a static rule cannot express a convention: it writes per-path natural-language instructions for the reviewer, next to a lint rule that hard-fails the highest-signal cases. That is the lens plus guardrail split, with per-path configuration, and it confirms the layering in this document.
 
 ## Evals and testing
+
+Built in milestone 1, with the golden corpus still growing. Calibration measurement is planned for milestone 3 (calibration); lens tests in the lens directory are not yet scheduled.
 
 Noise is where every reviewer fails, and the only defence is measurement. The evals package is first-class:
 
@@ -449,6 +479,8 @@ A repository built and reviewed entirely by agents, with every reviewer finding 
 Unit tests use Vitest and Pi Durable's memory storage.
 
 ## Tech stack
+
+In use since milestone 1, except what a row marks as planned.
 
 Match Pi's conventions unless there is a reason not to.
 
@@ -469,6 +501,8 @@ Match Pi's conventions unless there is a reason not to.
 | Code shape | Classes for objects with identity, state, or a lifecycle; functions and readonly data for definitions and transforms, as in Pi |
 
 ## Package layout
+
+Laid out in milestone 1. Three packages are still skeletons, as marked below.
 
 Packages publish under the `@melian-agent` npm scope. The Node floor is 22.19.0, the same as pi-durable, which needs it for default type stripping and the built-in SQLite module.
 
