@@ -67,7 +67,7 @@ Core, the pipeline, and the CLI and skill hosts were built in milestone 1. The A
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Core** is harness-free TypeScript. It imports pi-ai types and nothing else from Pi. It holds the finding schema and stable IDs, finding identity and the lifecycle rules, guardrail evaluation, SARIF normalisation of static tool output, lens loading, configuration layering, standards and knowledge loaders, the decision-model port, the git client, and the provider port. The GitHub client lives in `packages/github`, behind that port. The commands that act on findings across revisions, such as dismissal, are planned for milestone 3. All of it is unit-testable without a harness.
+**Core** is harness-free TypeScript. It imports pi-ai types and nothing else from Pi. It holds the finding schema and stable IDs, finding identity and the lifecycle rules, guardrail evaluation, SARIF normalisation of static tool output, lens loading, configuration layering, the standards loader, the git client, and the provider port. The GitHub client lives in `packages/github`, behind that port. The knowledge loader and the decision-model port arrive in milestone 3. The commands that act on findings across revisions, such as dismissal, are planned for milestone 3. All of it is unit-testable without a harness.
 
 **Pipeline** is the only place review flow lives. It is written once against Pi Durable: tasks, child conversations, documents, memos, hooks. It also holds the static tool runners, because running a tool executes repository code and so goes through Pi Durable's `ExecutionEnv`, which core may not import. Every host embeds this layer; none reimplements it.
 
@@ -153,11 +153,11 @@ The findings document keeps what a producer reports apart from Melian's lifecycl
 
 What a producer reports is stored as immutable sightings, keyed by revision, its base and head commits, then lens name and version, and finding ID. A pull request retargeted onto another base keeps its head but has another diff, so it is another revision. Problem: one mutable record per ID raced across lenses and pushes. Example: two lenses that share a rule ID report one finding at one head, and the second either replaced the first's severity and source or was refused; or a crashed review of an old head resumes after the next push and rewrites the record the new head reads. Solution: a lens writes only its own sighting at its own head, and a replay or a correction replaces only that sighting. Reading a head merges its sightings per ID deterministically: the highest severity wins, a tie goes to the lens whose name sorts first, the strongest cause any sighting gave stays with its evidence, and `reportedBy` lists every lens that sighted it. No merge, of sightings or of one defect across checks, lowers what blocks. The lifecycle stays one record per ID, and the document lists the heads in the order their reviews started, so a resumed old head can neither move a finding's last-seen revision back nor reopen a dismissal.
 
-Local findings persist in the clone's `.git/melian/` directory, uncommitted. A range review and a pull-request review are separate changesets with separate storage, and never share findings. Whether a range review can seed a pull-request review, so the author is not told the same thing twice, is an open question for milestone 3.
+Local findings persist in the clone's `.git/melian/` directory, uncommitted. A range review and a pull-request review are separate changesets with separate storage, and never share findings. Whether a range review can seed a pull-request review, so the author is not told the same thing twice, is an [open question](#open-questions).
 
 ## Lenses
 
-Built in milestone 1, except lens packs and lens tests in the lens directory, which are not yet scheduled.
+Built in milestone 1, except lens packs and a lens's `references/`, `examples/`, and `tests/` directories, which are not yet scheduled.
 
 A lens is a directory containing `LENS.md`, modelled on the Agent Skills layout but deliberately not a `SKILL.md`, so that Claude Code, Codex, and Pi never load a lens as a host skill.
 
@@ -207,7 +207,7 @@ What stays out of a lens: topology, concurrency, deadlines, publication, and ver
 
 ## Checks, tiers, and stages
 
-Built in milestone 1, except the `run` command and hook recipes, planned for milestone 2 (Actions host), and the decision-model questions, planned for milestone 3 (decision models).
+Built in milestone 1, except the decision-model questions, planned for milestone 3 (decision models), and the `run` command and hook recipes, which are not yet scheduled.
 
 Checks are named. Tiers are named sets of checks. Stages map workflow points to tiers.
 
@@ -227,7 +227,7 @@ These are the defaults, and they name only checks that ship: a lens joins them w
 
 A review's tier is its manifest. Every check the tier names records whether it ran, was skipped, or failed, and a check with no record makes the review not reviewed, so nothing reads as passed because it was never counted. Only lenses the tier names run.
 
-The CLI exposes `review`, `publish`, `findings`, and `doctor`, and `review` runs the tier the `pull-request` stage maps to. A `run` command for a named tier or stage, and recipes for lefthook, pre-commit, husky, and Pi, are planned for milestone 2. Melian never installs git hooks.
+The CLI exposes `review`, `publish`, `findings`, and `doctor`, and `review` runs the tier the `pull-request` stage maps to. A `run` command for a named tier or stage, and recipes for lefthook, pre-commit, husky, and Pi, are not yet scheduled. Melian never installs git hooks.
 
 A change to an analyser's configuration, such as `tsconfig.json` or `biome.json`, is a blocking policy finding: the head's configuration still drives the head's run, and the finding stops a switched-off check reading as clean.
 
@@ -282,7 +282,7 @@ Lifecycle: a proposal is a durable document with states `proposed`, `open`, `mer
 
 ## Decision models
 
-Planned for milestone 3 (decision models). Milestone 1 built only the configuration keys, `decisions.provider` and `decisions.thresholds`, and the allowed skip each `decisions.*` check records while no provider is configured.
+Planned for milestone 3 (decision models). Milestone 1 built only the configuration, `decisions.provider`, `decisions.thresholds`, and the `decision` model tier, and the allowed skip each `decisions.*` check records while no provider is configured.
 
 Jev (TypeSafe) and Clef (Cloudflare, open weights, Apache 2.0) share one request shape: a state plus typed questions, returning calibrated probabilities over `noul` (boolean), `choice`, and `score` questions in a single pass, in tens to hundreds of milliseconds, for a fraction of a cent per call. They generate no text.
 
@@ -332,7 +332,7 @@ Caveat to state in user documentation: automated use of consumer subscriptions i
 
 ## Hosts
 
-The CLI and the skills were built in milestone 1. The Actions host is planned for milestone 2 (Actions host). The Pi extension's `/melian` command, the server host, Slack, and other git providers are not yet scheduled.
+The CLI and the skills were built in milestone 1. The Actions host is planned for milestone 2. The Pi extension's `/melian` command, the server host, Slack, and other git providers are not yet scheduled.
 
 ### CLI
 
@@ -345,7 +345,7 @@ The primary host and the only thing the skills call. It has four commands:
 
 A command line Melian cannot read exits `64`.
 
-The CLI embeds the durable harness with SQLite storage under `.git/melian/`, one file per changeset, or under `MELIAN_STATE_DIR` with a directory per clone, for a host whose sandbox keeps `.git` read-only. It uses the developer's own credentials, and the model routes in `melian.local.yaml`, which it reads only from the working tree. A pull request is reviewed under the policy of its base commit, and a range on the checked-out branch under the working tree's. Publication never posts a review of a range or a working tree: a pull request and a range have separate changeset identities, so they never share storage, and every verdict records its provenance, which publishing checks. A `run` command is planned for milestone 2 and a `dismiss` command with a reason for milestone 3; an `explain` command is not yet scheduled. [docs/guidelines/cli.md](guidelines/cli.md) holds the detail.
+The CLI embeds the durable harness with SQLite storage under `.git/melian/`, one file per changeset, or under `MELIAN_STATE_DIR` with a directory per clone, for a host whose sandbox keeps `.git` read-only. It uses the developer's own credentials, and the model routes in `melian.local.yaml`, which it reads only from the working tree. A pull request is reviewed under the policy of its base commit. A range whose head is the checked-out commit is reviewed under the working tree's, and any other range under its base's. Publication never posts a review of a range or a working tree: a pull request and a range have separate changeset identities, so they never share storage, and every verdict records its provenance, which publishing checks. A `dismiss` command with a reason is planned for milestone 3; `run` and `explain` commands are not yet scheduled. [docs/guidelines/cli.md](guidelines/cli.md) holds the detail.
 
 Publishing from the CLI sets a commit status, context `melian/review`, not a check run, because a user's token cannot create check runs; check runs arrive with the GitHub App on the server and Actions hosts. `passed`, and `findings` with nothing blocking, map to `success` with a description counting the findings; `findings` with a blocking finding maps to `failure`; `not-reviewed` maps to `error` with what did not run. The review itself is posted with the event `COMMENT`, never `APPROVE` or `REQUEST_CHANGES`: Melian never approves, and the status alone says whether anything blocks.
 
@@ -357,7 +357,7 @@ Built so far: one `SKILL.md` per host under `skills/`, each telling the agent wh
 
 ### Server and devcontainer
 
-A long-lived process receiving webhooks, with one SQLite storage per changeset on disk, many changesets reviewed concurrently. The natural home for Pi Durable and the first host after the CLI.
+A long-lived process receiving webhooks, with one SQLite storage per changeset on disk, many changesets reviewed concurrently. The natural home for Pi Durable.
 
 ### GitHub Actions
 
@@ -471,7 +471,7 @@ Each command is a submission into the changeset's conversation. Commands arrivin
 
 ## Requirements learned from incumbent reviewers
 
-Built in milestone 1, except the lockfile lens and the credential pool, which are not yet scheduled.
+Built in milestone 1, except three parts. Reviewing every pull request, with an exclusion reported as not reviewed, arrives with the Actions host in milestone 2. The lockfile lens and the credential pool are not yet scheduled.
 
 A repository that has lived with a commercial reviewer accumulates workarounds in its `AGENTS.md`. Each one is a requirement Melian meets by design rather than by instruction to the agent that reads the review.
 
@@ -552,7 +552,7 @@ docs/
 
 ## Roadmap
 
-Milestone 1, the local CLI loop, is complete. Milestone 2 is the Actions host, the state branch, tool provisioning, Opengrep and gitleaks, and the issues milestone 1 deferred. Milestone 3 is cross-revision commands, dismiss-with-reason, knowledge write-back, and decision-model triage and calibration. [design-implementation-plan.md](design-implementation-plan.md) defines each milestone and lists what is deferred. The server host, Slack, autofix, and fine-tuning decision models from calibration data are not yet scheduled.
+Milestone 1, the local CLI loop, is complete. Milestone 2 is the Actions host, the state branch, tool provisioning, Opengrep and gitleaks, and the issues milestone 1 deferred. Milestone 3 is cross-revision commands, comment commands including dismiss-with-reason, knowledge write-back, and decision-model triage and calibration. [design-implementation-plan.md](design-implementation-plan.md) defines each milestone and lists what is deferred. The server host, Slack, autofix, and fine-tuning decision models from calibration data are not yet scheduled.
 
 ## Decision log
 
@@ -560,7 +560,7 @@ Milestone 1, the local CLI loop, is complete. Milestone 2 is the Actions host, t
 
 ## Open questions
 
-- Can a range review seed a pull-request review? They are separate changesets with separate storage, so the findings a maintainer saw locally are raised again when the pull request is reviewed. To be settled in milestone 3.
-- Should local routes ever apply to a pull-request review on the maintainer's own machine? Currently never: a pull-request review reads its base's policy and never `melian.local.yaml`, so it takes `--model` where the repository routes nothing.
+- Can a range review seed a pull-request review? They are separate changesets with separate storage, so the findings a maintainer saw locally are raised again when the pull request is reviewed. No milestone is planned to settle it.
+- Should local routes ever apply to a pull-request review on the maintainer's own machine? Today they never do. A pull-request review reads its base's policy and never `melian.local.yaml`, so it takes `--model` where the repository routes nothing.
 
 The scheduled sweep for the Actions host is a deferred decision: it is designed in the hosts section and will be revisited if event-driven recovery proves insufficient in practice.
