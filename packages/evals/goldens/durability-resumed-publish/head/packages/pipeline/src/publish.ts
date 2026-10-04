@@ -35,6 +35,9 @@ export function publishTask(provider: ReviewProvider) {
 				}, context);
 			},
 		},
+		abort: async (_task, runtime, context) => {
+			await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+		},
 	});
 }
 

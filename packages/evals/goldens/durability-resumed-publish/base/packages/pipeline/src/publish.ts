@@ -35,6 +35,9 @@ export function publishTask(provider: ReviewProvider) {
 				}, context);
 			},
 		},
+		abort: async (_task, runtime, context) => {
+			await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+		},
 	});
 }
 
@@ -55,6 +58,11 @@ export async function publishReview(options: PublishOptions, context: Context): 
 	const { harness, provider, pullRequest, base, head } = options;
 	const current = await provider.pullRequest(pullRequest);
 	if (current.head !== head) throw new Error(`pull request #${pullRequest} is at ${current.head}; review it again`);
+	// A publication a crash interrupted was for the pull request as it stood then, so end it unposted before starting
+	// another.
+	for (const each of (await harness.inspect(context)).tasks) {
+		if (each.record.kind === "melian.publish") await harness.abortTask(each.record.id, context);
+	}
 	const root = await harness.root(context);
 	const input: PublishInput = { root: root.id, pullRequest, head, revision: `${base}..${head}` };
 	const id = await root.commit(
