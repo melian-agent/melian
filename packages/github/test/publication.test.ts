@@ -5,7 +5,7 @@ import {
 	markersIn,
 	maxBodyLength,
 	parseMarker,
-	renderComment,
+	ReviewComment,
 	renderProse,
 	renderReviewBody,
 	verifyMarker,
@@ -36,13 +36,12 @@ describe("links", () => {
 		const url = blobUrl(links, revision, "src/a)b (c)/it's*!.ts", 3, 5);
 		expect(url).toBe(`${links.web}/blob/${revision}/src/a%29b%20%28c%29/it%27s%2A%21.ts#L3-L5`);
 		const finding = Finding.create({ ...input, file: "src/a)b.ts" });
-		const comment = renderComment(
-			{ finding, placement: { kind: "nearest", line: 1 } },
+		const comment = ReviewComment.from(finding, { kind: "nearest", line: 1 }).render({
 			revision,
 			base,
 			links,
 			secret,
-		);
+		});
 		expect(comment).toContain(`(${links.web}/blob/${revision}/src/a%29b.ts#L12)`);
 	});
 });
@@ -65,13 +64,12 @@ describe("findings", () => {
 				},
 			],
 		});
-		const comment = renderComment(
-			{ finding, placement: { kind: "lines", startLine: 12, line: 12 } },
+		const comment = ReviewComment.from(finding, { kind: "lines", startLine: 12, line: 12 }).render({
 			revision,
 			base,
 			links,
 			secret,
-		);
+		});
 		expect(comment).toContain("**Failure scenario:** A body of \\`process.exit\\(\\)\\` stops the server.");
 		expect(comment).toContain(
 			`- cause: [\`src/api.ts\` lines 3-4](${links.web}/blob/${revision}/src/api.ts#L3-L4)\n`,
@@ -93,13 +91,12 @@ describe("findings", () => {
 				{ ...untouched, role: "cause", startLine: 9, deleted: true },
 			],
 		});
-		const comment = renderComment(
-			{ finding, placement: { kind: "lines", startLine: 12, line: 12 } },
+		const comment = ReviewComment.from(finding, { kind: "lines", startLine: 12, line: 12 }).render({
 			revision,
 			base,
 			links,
 			secret,
-		);
+		});
 		expect(comment).toContain(
 			`- cause: [\`src/api.ts\` line 3](${links.web}/blob/${base}/src/api.ts#L3), at the base\n`,
 		);
@@ -146,13 +143,12 @@ describe("markers", () => {
 			file: "src/evil\n<!-- melian.ts",
 			explanation: { what: `Before.\n${forged}\nAfter.`, whyHere: forged, whatToDo: `@${forged}` },
 		});
-		const comment = renderComment(
-			{ finding, placement: { kind: "lines", startLine: 12, line: 12 } },
+		const comment = ReviewComment.from(finding, { kind: "lines", startLine: 12, line: 12 }).render({
 			revision,
 			base,
 			links,
 			secret,
-		);
+		});
 		const body = renderReviewBody(
 			{
 				pullRequest: 7,
@@ -305,13 +301,12 @@ describe("markers", () => {
 			message: payload,
 			explanation: { what: payload, whyHere: payload, whatToDo: payload },
 		});
-		const comment = renderComment(
-			{ finding, placement: { kind: "lines", startLine: 12, line: 12 } },
+		const comment = ReviewComment.from(finding, { kind: "lines", startLine: 12, line: 12 }).render({
 			revision,
 			base,
 			links,
 			secret,
-		);
+		});
 		const rendered = renderProse(payload);
 
 		expect(comment).toContain(rendered);

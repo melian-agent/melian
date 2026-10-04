@@ -10,6 +10,7 @@ export { GitHubError, type GitHubErrorCode } from "./errors.ts";
 export { createGitHubProvider, GitHubProvider, type GitHubProviderOptions, statusContext } from "./provider.ts";
 export {
 	blobUrl,
+	type CommentContext,
 	type Marker,
 	type MarkerDetail,
 	type MarkerKind,
@@ -19,7 +20,7 @@ export {
 	parseMarker,
 	type RepositoryLinks,
 	type ReviewBodyOptions,
-	renderComment,
+	ReviewComment,
 	renderProse,
 	renderResolvedReply,
 	renderReviewBody,
