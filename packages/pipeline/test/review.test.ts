@@ -512,7 +512,7 @@ describe("reviewChangeset", () => {
 		expect(results[1]).toContain(
 			"Tool call blocked: rule made-up is not one of this lens's rules: null-dereference (",
 		);
-		expect(results[2]).toMatch(/^recorded finding [0-9a-f]{16} as introduced$/);
+		expect(results[2]).toMatch(/^recorded finding [0-9a-f]{16} as introduced\n/);
 		expect(results[3]).toBe(results[2]);
 		expect(findings).toHaveLength(1);
 		expect(findings[0]!.message.text).toBe("Reworded.");
@@ -710,7 +710,37 @@ describe("reviewChangeset", () => {
 		expect(results[0]).toMatch(
 			/^recorded finding [0-9a-f]{16} as pre-existing: it is outside the change, and no cause/,
 		);
-		expect(results[1]).toMatch(/^recorded finding [0-9a-f]{16} as affected$/);
+		expect(results[1]).toMatch(/^recorded finding [0-9a-f]{16} as affected\n/);
+		const nonce = nonceOf(requests[contracts]![0]!);
+		expect(quoted(results[1]!, nonce, "evidence")).toEqual([
+			"cause src/user.ts:7: \treturn user.manager.name;\ncontext src/report.ts:2: export const line = managerName(me);",
+		]);
+		expect(quoted(results[3]!, nonce, "evidence")).toEqual([
+			'cause src/user.ts:7 at base: \treturn user.manager?.name ?? "none";\ncontext src/user.ts:2 at base: \tname: string;',
+		]);
+	});
+
+	it("reads the base revision with read_file when asked, so a lens can number deleted lines", async () => {
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					calls(
+						["read_file", { path: "src/user.ts", startLine: 7, maxLines: 1, revision: "base" }],
+						["read_file", { path: "src/user.ts", startLine: 7, maxLines: 1 }],
+					),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		await review();
+
+		const nonce = nonceOf(requests[correctness]![0]!);
+		const [base, head] = toolResults(requests[correctness]![1]!);
+		expect(quoted(base!, nonce, "file")).toEqual(['7\t\treturn user.manager?.name ?? "none";']);
+		expect(quoted(head!, nonce, "file")).toEqual(["7\t\treturn user.manager.name;"]);
 	});
 
 	it("calls a finding affected when a cause location names a file the change renamed without editing", async () => {

@@ -171,17 +171,24 @@ function text(content: string) {
 const readFile = defineTool({
 	name: "read_file",
 	description:
-		"Read a file as it is at the head revision under review, with line numbers: up to maxLines lines, at most 2000, from startLine. Any line of the file can be reached by startLine.",
+		'Read a file as it is at the head revision under review, or at the base with revision "base", with line numbers: up to maxLines lines, at most 2000, from startLine. Any line of the file can be reached by startLine.',
 	parameters: Type.Object({
-		path: Type.String({ minLength: 1, description: "Repository-relative path" }),
+		path: Type.String({ minLength: 1, description: "Repository-relative path at the named revision" }),
 		startLine: Type.Optional(Type.Integer({ minimum: 1, description: "First line to read; 1 when absent" })),
 		maxLines: Type.Optional(Type.Integer({ minimum: 1, maximum: maxReadLines, description: "At most 2000" })),
+		revision: Type.Optional(
+			Type.Union([Type.Literal("head"), Type.Literal("base")], {
+				description:
+					"head by default; base to read code this change deleted, numbered as evidence with revision base is, naming a renamed file by its old path",
+			}),
+		),
 	}),
 	replay: "safe",
 	outputLimits,
 	execute: async (args, api, context) => {
 		const review = await headOf(api, api.conversationId, context);
-		const file = await readRevisionFile(review.repoRoot, review.head, args.path);
+		const commit = args.revision === "base" ? review.base : review.head;
+		const file = await readRevisionFile(review.repoRoot, commit, args.path);
 		const lines = file.content.split("\n");
 		if (lines.at(-1) === "" && !file.truncated) lines.pop();
 		const start = args.startLine ?? 1;
@@ -412,6 +419,7 @@ export const reportFinding = defineTool({
 	description:
 		"Report one finding at the head revision: the file and lines of the flagged code, one of your rules, a severity, an explanation, a failure scenario, and evidence locations. Call once per finding; never report findings in prose.",
 	parameters: reportFindingInputSchema,
+	outputLimits,
 	// Runs before validation, so a missing or malformed failure scenario or evidence gets a reply saying what it must be,
 	// not a schema error.
 	prepareArguments: (args) => {
@@ -436,12 +444,20 @@ export const reportFinding = defineTool({
 			}
 			await upsertFinding(tx, lens.review, finding, at);
 		}, context);
-		const { cause } = finding.properties;
+		const { cause, evidence = [] } = finding.properties;
 		const unproven =
 			cause === "pre-existing"
 				? ": it is outside the change, and no cause location overlaps lines the change added, modified, or deleted, or a file it renamed"
 				: "";
-		return text(`recorded finding ${id} as ${cause}${unproven}`);
+		// Each location's first line as Melian read it, so a lens that miscounted a line number sees what it cited.
+		const { body } = fitting(
+			evidence.map(
+				({ file, startLine, role, revision, snippet }) =>
+					`${role} ${visibleText(file)}:${startLine}${revision === "base" ? " at base" : ""}: ${snippet.split("\n")[0]}`,
+			),
+		);
+		const cited = quoteUntrusted("evidence", body, review.nonce);
+		return text(`recorded finding ${id} as ${cause}${unproven}\nThe first line of each evidence location:\n${cited}`);
 	},
 });
 

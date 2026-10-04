@@ -354,6 +354,8 @@ describe("renderLensInstructions", () => {
 			expect(policy).toContain("`failureScenario`: the concrete input, state, or sequence of calls");
 			expect(policy).toContain("`role` is `cause` for the code that brings the failure about");
 			expect(policy).toContain('Add `revision: "base"` for lines this change deleted');
+			expect(policy).toContain('read the file with `read_file` and `revision: "base"`');
+			expect(policy).toContain("quotes the first line of each evidence location as Melian read it");
 		}
 	});
 });

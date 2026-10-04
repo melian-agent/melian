@@ -124,7 +124,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		expect(settled.state.outcome.status).toBe("completed");
 		const [replayed, correction] = requests["You are the correctness reviewer"]!;
 		const [first] = toolResults(replayed!);
-		expect(first).toMatch(/^recorded finding [0-9a-f]{16} as introduced$/);
+		expect(first).toMatch(/^recorded finding [0-9a-f]{16} as introduced\n/);
 		expect(toolResults(correction!).at(-1)).toBe(first);
 		const root = await harness.root(context);
 		const findings = await readFindings(harness, root.id, reviewedRevision(), context);
