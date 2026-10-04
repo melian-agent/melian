@@ -1,6 +1,7 @@
 import {
 	type ChangedFile,
 	capSnippet,
+	causeOverlap,
 	changeOverlap,
 	classifyCause,
 	createFinding,
@@ -356,13 +357,10 @@ async function evidenceFrom(
 					? '; for lines this change deleted, add revision: "base" to the location, naming a renamed file by its old path'
 					: "";
 			const { snippet } = await linesAt(review, revision, file, line, endLine, hint);
-			const deleted =
-				revision === "base" &&
-				changeOverlap(
-					{ file, startLine: line, endLine, revision },
-					{ files: changedFiles(review) },
-					findingFile,
-				) !== undefined;
+			const site = { file, startLine: line, endLine, role, revision };
+			const changed = { files: changedFiles(review) };
+			const deleted = revision === "base" && changeOverlap(site, changed, findingFile) !== undefined;
+			const proves = causeOverlap(site, changed, findingFile) !== undefined;
 			return {
 				file,
 				startLine: line,
@@ -370,6 +368,7 @@ async function evidenceFrom(
 				role,
 				revision,
 				...(deleted ? { deleted } : {}),
+				...(proves ? { proves } : {}),
 				snippet: capSnippet(snippet),
 			};
 		}),

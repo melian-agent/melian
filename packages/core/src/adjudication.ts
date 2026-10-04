@@ -33,8 +33,9 @@ export type ResolvedFinding = Finding & {
 /**
  * What a finding requires under `config`, the effective configuration at the finding's path: the resolution configured
  * for its severity. A finding not shown to be caused by the change, `pre-existing` or `affected` without a `cause`
- * evidence location, is never above `advisory`, so an old defect cannot block an unrelated change. It decides from
- * severity, cause, and evidence alone, never from a resolution the finding already carries.
+ * evidence location marked `proves`, is never above `advisory`, so an old defect cannot block an unrelated change. A
+ * finding stored before Melian marked proving locations marks none, and any `cause` location of it counts. It decides
+ * from severity, cause, and evidence alone, never from a resolution the finding already carries.
  */
 export function resolveFinding(finding: Finding, config: Pick<MelianConfig, "resolution">): Resolution {
 	const configured = config.resolution[finding.properties.severity];
@@ -119,11 +120,15 @@ function keeperOf(defect: readonly Finding[], aliases: Aliases): Finding {
 	return [...(owners.length > 0 ? owners : defect)].sort(strongerFirst)[0]!;
 }
 
-// How strongly a finding is tied to the change: introduced, then affected with a cause location, then anything else.
+// How strongly a finding is tied to the change: introduced, then affected with a proving cause location, then anything
+// else.
 function causeRank(finding: Ranked): number {
 	const { cause, evidence = [] } = finding.properties;
 	if (cause === "introduced") return 0;
-	return cause === "affected" && evidence.some((location) => location.role === "cause") ? 1 : 2;
+	if (cause !== "affected") return 2;
+	// A finding stored before `proves` existed marks no location; any `cause` location counts, so it resolves as it did.
+	const marked = evidence.some((location) => location.proves === true);
+	return evidence.some((location) => location.role === "cause" && (location.proves === true || !marked)) ? 1 : 2;
 }
 
 /** A finding or a stored sighting, as {@link mergeClaims} reads it. */
@@ -145,11 +150,14 @@ function sameLocation(left: EvidenceLocation, right: EvidenceLocation): boolean 
 	);
 }
 
-// The speaker's evidence with the prover's `cause` locations it lacks, ten in all. At least one of those stays, taking
-// the speaker's last place if the speaker cites ten, so the merged cause never lacks its proof.
+// The speaker's evidence with the prover's `cause` locations it lacks, ten in all, those marked `proves` first. At
+// least one of those stays, taking the speaker's last place if the speaker cites ten, so the merged cause never lacks
+// its proof.
 function withProof(own: FindingEvidence | undefined, proof: readonly EvidenceLocation[]): FindingEvidence | undefined {
 	const cited = own ?? [];
-	const missing = proof.filter((location) => !cited.some((each) => sameLocation(each, location)));
+	const missing = proof
+		.filter((location) => !cited.some((each) => sameLocation(each, location)))
+		.sort((left, right) => Number(right.proves === true) - Number(left.proves === true));
 	if (missing.length === 0) return own;
 	const imported = missing.slice(0, Math.max(maxEvidenceLocations - cited.length, 1));
 	return [...cited.slice(0, maxEvidenceLocations - imported.length), ...imported];
@@ -174,8 +182,8 @@ function claimOf({ ruleId, properties }: Claimant): MemberClaim[] {
  * them, speaks for. The speaker keeps its own failure scenario and evidence. The cause is the strongest any member
  * has, in the order `introduced`, `affected` with a `cause` location, `pre-existing`, so merging never turns a finding
  * that blocks into one that does not. When a member other than the speaker proves it, the most severe such member, the
- * lower ID on a tie, adds its `cause` locations to the speaker's evidence, ten locations in all, so the cause travels
- * with its proof. Every other member's failure scenario and evidence, and any claims it already carries, are kept whole
+ * lower ID on a tie, adds its `cause` locations to the speaker's evidence, ten locations in all, those marked
+ * `proves` first, so the cause travels with its proof. Every other member's failure scenario and evidence, and any claims it already carries, are kept whole
  * in `otherClaims`, so a verifier judges each claim with its own proof. Throws `RangeError` when `members` omits
  * `speaker`.
  */

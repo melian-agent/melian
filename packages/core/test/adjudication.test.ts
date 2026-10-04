@@ -281,6 +281,65 @@ describe("dedupeFindings", () => {
 			expect(resolveFinding(kept!, defaultConfig)).toBe("block");
 		});
 
+		// A lens may mark more than one location `cause`, the defect's own unchanged line among them.
+		const ownLine = {
+			file: "src/cart.ts",
+			startLine: 10,
+			role: "cause" as const,
+			revision: "head" as const,
+			snippet: atCart.snippet,
+		};
+		const proving = { ...evidence[0]!, proves: true as const };
+		const contextLines = (count: number) =>
+			Array.from({ length: count }, (_, index) => ({
+				...context[0]!,
+				startLine: index + 1,
+				snippet: `line ${index + 1}`,
+			}));
+
+		it("keeps the cause location that proves the merged cause when the cap cuts another before it", () => {
+			const many = contextLines(10);
+			const crowded = finding({ ...unprovenInput, evidence: many });
+			const twoCauses = finding({
+				...atCart,
+				severity: "P1",
+				rule: "broken-caller",
+				source: { check: "lens.contracts", version: "1" },
+				evidence: [ownLine, proving],
+			});
+			const [kept] = dedupeFindings([crowded, twoCauses], () => defaultConfig);
+			expect(kept!.properties.cause).toBe("affected");
+			expect(kept!.properties.evidence).toEqual([...many.slice(0, 9), proving]);
+			expect(resolveFinding(kept!, defaultConfig)).toBe("block");
+		});
+
+		it("imports the proving cause location first when it comes third among the prover's causes", () => {
+			const many = contextLines(8);
+			const crowded = finding({ ...unprovenInput, evidence: many });
+			const otherLine = { ...ownLine, file: "src/total.ts", startLine: 4, snippet: "const total = sum(items);" };
+			const threeCauses = finding({
+				...atCart,
+				severity: "P1",
+				rule: "broken-caller",
+				source: { check: "lens.contracts", version: "1" },
+				evidence: [ownLine, otherLine, proving],
+			});
+			const [kept] = dedupeFindings([crowded, threeCauses], () => defaultConfig);
+			expect(kept!.properties.evidence).toEqual([...many, proving, ownLine]);
+			expect(resolveFinding(kept!, defaultConfig)).toBe("block");
+		});
+
+		it("counts only a cause location marked as proving once any location is marked, and any one when none is", () => {
+			const marked = finding({
+				...atCart,
+				severity: "P1",
+				evidence: [ownLine, { ...context[0]!, proves: true }],
+			});
+			expect(resolveFinding(marked, defaultConfig)).toBe("advisory");
+			const stored = finding({ ...atCart, severity: "P1", evidence: [ownLine] });
+			expect(resolveFinding(stored, defaultConfig)).toBe("block");
+		});
+
 		it("keeps an introduced cause over an affected one, and every member's own claim", () => {
 			const own = [{ ...evidence[0]!, file: "src/cart.ts", startLine: 10, snippet: "formatPrice(total)" }];
 			const introduced = finding({

@@ -61,6 +61,7 @@ export const evidenceLocationSchema = Type.Object(
 		role: evidenceRoleSchema,
 		revision: evidenceRevisionSchema,
 		deleted: Type.Optional(Type.Literal(true)),
+		proves: Type.Optional(Type.Literal(true)),
 		snippet: text,
 	},
 	strict,
@@ -320,7 +321,9 @@ export type EvidenceRevision = Static<typeof evidenceRevisionSchema>;
  * revision at those lines, never written by the producer. A `cause` location overlapping the change is what makes a
  * finding outside the diff `affected`. `deleted` marks a base location whose lines the change deleted or replaced, or
  * whose file it renamed without editing when it did not only move the finding's own file, as Melian found when it
- * read the location; a base location without it names code the change left alone.
+ * read the location; a base location without it names code the change left alone. `proves` marks a `cause` location
+ * that overlaps the change by {@link causeOverlap}, the location that makes the finding `affected`, so a merge can keep
+ * it when it must cut others.
  */
 export type EvidenceLocation = Static<typeof evidenceLocationSchema>;
 

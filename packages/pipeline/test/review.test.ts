@@ -707,6 +707,12 @@ describe("reviewChangeset", () => {
 		// Only lines the change deleted are marked so; the GitHub comment says "deleted by this change" for these alone.
 		expect(byRule["data-contract"]!.evidence![1]).not.toHaveProperty("deleted");
 		expect(byRule["broken-caller"]!.evidence!.some((location) => "deleted" in location)).toBe(false);
+		// A cause location overlapping the change is marked as the one that proves it, so a merge that must cut keeps it.
+		const proving = (rule: string) => byRule[rule]!.evidence!.map((location) => location.proves === true);
+		expect(proving("broken-caller")).toEqual([true, false]);
+		expect(proving("data-contract")).toEqual([true, false]);
+		expect(proving("changed-return")).toEqual([false]);
+		expect(proving("changed-error")).toEqual([false, false]);
 		const results = toolResults(requests[contracts]![1]!);
 		expect(results[0]).toMatch(
 			/^recorded finding [0-9a-f]{16} as pre-existing: it is outside the change, and no cause/,
