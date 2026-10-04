@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
-import type { MelianConfig, Resolution, RuleAlias } from "./config.ts";
-import { resolutionOrder } from "./config.ts";
+import { type MelianConfig, type Resolution, type RuleAlias, resolutionOrder } from "./config.ts";
 import {
 	type AlsoReportedAs,
 	Finding,
@@ -61,9 +60,9 @@ export class Defect {
 	}
 
 	/**
-	 * Merges `findings`, the reports of one defect, into the one `keeper`, among them, speaks for. The speaker takes the
-	 * highest severity any of them reported and their merged claims ({@link Finding.mergeClaims}), so a merge never
-	 * lowers what blocks and drops no claim, and lists each other report's ID, rule, check, and severity in
+	 * Merges `findings`, the reports of one defect, under `keeper`, the one among them that speaks for it. The speaker
+	 * takes the highest severity any of them reported and their merged claims ({@link Finding.mergeClaims}), so a merge
+	 * never lowers what blocks and drops no claim. It lists each other report's ID, rule, check, and severity in
 	 * `properties.alsoReportedAs`, then each report in `context`: the dismissed reports of the defect it never absorbed.
 	 */
 	static merge(keeper: Finding, findings: readonly Finding[], context: readonly AlsoReportedAs[]): Defect {
@@ -289,7 +288,7 @@ export class Verdict {
 		return new Verdict({ ...stored, findings, dismissed: stored.dismissed.map(resolved) });
 	}
 
-	/** A verdict stored before evidence became a list, with each finding in the current shape by {@link Finding.upgrade}. */
+	/** A verdict stored before evidence became a list, each finding in the current shape by {@link Finding.upgrade}. */
 	static upgrade(stored: StoredVerdict): StoredVerdict {
 		const findings = Object.fromEntries(
 			Object.entries(stored.findings).map(([resolution, group]) => [
@@ -545,7 +544,9 @@ export class Adjudication {
 							.filter((other) => this.#joins(group, other))
 							.map((other) => ({ ...other.report(), dismissed: true as const }));
 			if (group.length === 1 && context.length === 0) {
-				defects.set(group[0]!, new Defect(group[0]!, group[0]!.properties.alsoReportedAs ?? []));
+				const [alone] = group as [Finding];
+				const members = (alone.properties.alsoReportedAs ?? []).filter((member) => member.dismissed !== true);
+				defects.set(alone, new Defect(alone, members));
 				continue;
 			}
 			const keeper = this.#keeper(group);

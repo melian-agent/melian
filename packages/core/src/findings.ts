@@ -1021,7 +1021,7 @@ export class Finding {
 		return severityRank[left] - severityRank[right] || (leftId < rightId ? -1 : leftId > rightId ? 1 : 0);
 	}
 
-	/** The finding's own claim, its failure scenario and evidence, as another finding keeps it once merged; none without either. */
+	/** The finding's own failure scenario and evidence, as a finding it merges into keeps them; none without either. */
 	claims(): MemberClaim[] {
 		const { id, source, failureScenario, evidence } = this.properties;
 		if (failureScenario === undefined && evidence === undefined) return [];
