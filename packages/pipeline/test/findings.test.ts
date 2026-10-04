@@ -5,6 +5,7 @@ import {
 	type Changeset,
 	createFinding,
 	defaultConfig,
+	dismissalVersion,
 	type Finding,
 	FindingError,
 	type FindingInput,
@@ -13,6 +14,7 @@ import {
 	type PullRequest,
 	type ReviewDraft,
 	type ReviewProvider,
+	replyKey,
 	resolveFinding,
 	type Verdict,
 } from "@melian-agent/core";
@@ -537,6 +539,37 @@ describe("documents stored before evidence became a list", () => {
 		expect(legacyFingerprint(verdict(scenario))).toBeUndefined();
 		const contextOnly = [{ ...evidence[0]!, role: "context" as const }];
 		expect(legacyFingerprint(verdict(createFinding({ ...input, evidence: contextOnly })))).toBeUndefined();
+	});
+
+	it("keys each reply an older Melian recorded by its finding, its thread, and the dismissal it gave", async () => {
+		const path = join(dir, "legacy-replies.sqlite");
+		const dismissal = { by: "Tal <tal@melian.invalid>", reason: "Constant input.", at: "2026-10-04T00:00:00Z" };
+		const entry = { ruleId: "no-eval", path: "src/run.ts", line: 12, revision: "head" };
+		const first = await open(await openSqliteStorage(path));
+		await first.root.commit(async (tx) => {
+			const published = await tx.doc(LegacyPublished, first.root.id);
+			published.order = ["head"];
+			published.revisions = json({
+				head: {
+					reviews: ["101"],
+					open: {},
+					resolved: {
+						aaaaaaaaaaaaaaaa: { ...entry, thread: "9" },
+						bbbbbbbbbbbbbbbb: { ...entry, thread: "11", dismissal },
+						cccccccccccccccc: entry,
+					},
+					replies: { aaaaaaaaaaaaaaaa: "10", bbbbbbbbbbbbbbbb: null },
+				},
+			});
+		}, context);
+		await first.harness.close(context);
+
+		const { harness, root } = await open(await openSqliteStorage(path));
+		const published = await harness.snapshot(PublishedDocument, root.id, context);
+		expect(published?.revisions.head?.replies).toEqual({
+			[replyKey("aaaaaaaaaaaaaaaa", "9")]: "10",
+			[replyKey("bbbbbbbbbbbbbbbb", "11", dismissalVersion(dismissal))]: null,
+		});
 	});
 
 	describe("publishing a head once per revision, across the upgrade", () => {

@@ -186,6 +186,7 @@ export {
 	type ClosedFinding,
 	type DiffLines,
 	diffLines,
+	dismissalVersion,
 	type PlacedFinding,
 	type Placement,
 	type PostedReview,
@@ -198,6 +199,7 @@ export {
 	type ReviewDraft,
 	type ReviewProvider,
 	type ReviewStatus,
+	replyKey,
 	reviewStatus,
 } from "./publication.ts";
 export {

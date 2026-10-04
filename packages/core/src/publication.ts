@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Verdict } from "./adjudication.ts";
 import type { ChangedFile } from "./diff.ts";
 import type { Finding, FindingDismissal } from "./findings.ts";
@@ -96,6 +97,26 @@ export interface PublishedFinding {
 export interface ClosedFinding extends PublishedFinding {
 	readonly id: string;
 	readonly dismissal?: FindingDismissal;
+}
+
+/**
+ * A dismissal's version: the first 16 hex digits of a SHA-256 over its reason, dismisser, and time. A reply giving a
+ * dismissal names it, so a dismissal whose reason changed is answered again rather than taken as answered.
+ */
+export function dismissalVersion({ by, reason, at }: FindingDismissal): string {
+	return createHash("sha256")
+		.update(JSON.stringify([reason, by, at]))
+		.digest("hex")
+		.slice(0, 16);
+}
+
+/**
+ * The key a reply in a finding's thread is recorded and found under: the finding's ID, the thread, and, for a reply
+ * giving a dismissal, its {@link dismissalVersion}. A finding reposted in a new thread, or dismissed again with another
+ * reason, takes a reply of its own.
+ */
+export function replyKey(id: string, thread: string, dismissal?: string): string {
+	return [id, thread, ...(dismissal === undefined ? [] : [dismissal])].join(" ");
 }
 
 /** What one revision's publication posts, decided by {@link planPublication}. */
@@ -234,7 +255,7 @@ export interface PublishedMarkers {
 	readonly review?: string;
 	/** The comment that starts each finding's thread, by finding ID. */
 	readonly threads: Readonly<Record<string, string>>;
-	/** The reply marking each finding resolved at the revision, by finding ID. */
+	/** The reply marking each finding resolved or dismissed at the revision, by {@link replyKey}. */
 	readonly replies: Readonly<Record<string, string>>;
 }
 
