@@ -15,6 +15,7 @@ import {
 	maxSnippetBytes,
 	type RepositorySource,
 	resolveRange,
+	type Verdict,
 } from "@melian-agent/core";
 import {
 	backgroundContext as context,
@@ -1097,7 +1098,7 @@ describe("reviewChangeset", () => {
 		expect(verdict.status).toBe("not-reviewed");
 	});
 
-	it("refuses a read past the tools budget, and ends the lens a round later when a refused call keeps it going", async () => {
+	it("refuses a read past the tools budget, and ends the lens after that round, a call its policy refuses included", async () => {
 		const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tools: 1 }) : lens));
 		const requests = scriptConversations(fake, [
 			{
@@ -1108,25 +1109,20 @@ describe("reviewChangeset", () => {
 						["search", { pattern: "managerName" }],
 						["report_finding", { ...nullDeref, severity: "P3" }],
 					),
-					call("list_files", {}),
 					fauxAssistantMessage("Never asked."),
 				],
 			},
 			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
 		]);
 
-		const { verdict } = await reviewed({ lenses: tight });
+		const { findings, verdict } = await reviewed({ lenses: tight });
 
-		expect(requests[correctness]).toHaveLength(2);
-		const [read, searched, blocked] = toolResults(requests[correctness]![1]!);
-		expect(read).toContain("return user.manager.name;");
-		expect(read).toContain("[this lens has used its budget of 1 call to the read-only tools.");
-		expect(searched).toMatch(/^\[not run: this lens may make 1 call to the read-only tools, and this was call 2\./);
-		expect(blocked).toContain("severity P3 is outside this lens's severities");
+		expect(requests[correctness]).toHaveLength(1);
+		expect(findings).toEqual([]);
 		expect(verdict.notRun.find((check) => check.name === "lens.correctness")?.budgetEnded).toMatchObject({
 			budget: "tools",
 			limit: 1,
-			tools: 3,
+			tools: 2,
 		});
 	});
 
@@ -1180,6 +1176,90 @@ describe("reviewChangeset", () => {
 		});
 		expect(verdict.notRun.map((check) => check.name)).not.toContain("lens.correctness");
 		expect(verdict.status).toBe("findings");
+	});
+
+	describe("ends a lens whose spent round", () => {
+		const spent = () => lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { tokens: 1 }) : lens));
+		const endedBy = (verdict: Verdict) => verdict.notRun.find((check) => check.name === "lens.correctness");
+
+		it("holds a read that throws", async () => {
+			const requests = scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [call("read_file", { path: "src/missing.ts" }), fauxAssistantMessage("Never asked.")],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+			const { verdict } = await reviewed({ lenses: spent() });
+
+			expect(requests[correctness]).toHaveLength(1);
+			expect(endedBy(verdict)).toMatchObject({ status: "ended", budgetEnded: { budget: "tokens" } });
+		});
+
+		it("holds a report_finding that throws", async () => {
+			const requests = scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [
+						call("report_finding", { ...nullDeref, file: "src/missing.ts" }),
+						fauxAssistantMessage("Never asked."),
+					],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+			const { findings, verdict } = await reviewed({ lenses: spent() });
+
+			expect(requests[correctness]).toHaveLength(1);
+			expect(findings).toEqual([]);
+			expect(endedBy(verdict)).toMatchObject({ status: "ended", budgetEnded: { budget: "tokens" } });
+		});
+
+		it("holds only a call its policy refuses, refusing it in the tool", async () => {
+			const requests = scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [
+						call("report_finding", { ...nullDeref, severity: "P3" }),
+						fauxAssistantMessage("Never asked."),
+					],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+			const { findings, verdict } = await reviewed({ lenses: spent() });
+
+			expect(requests[correctness]).toHaveLength(1);
+			expect(findings).toEqual([]);
+			expect(endedBy(verdict)).toMatchObject({ status: "ended", budgetEnded: { budget: "tokens" } });
+		});
+
+		// Pi Durable answers a call whose arguments fail validation, or that names a tool the request did not offer,
+		// without running Melian's code or offering it a hook that can end the run. A round made only of such calls makes
+		// one more request; the next round with a call that reaches a tool ends the run.
+		it("holds only calls that never reach a tool, after one more request", async () => {
+			const requests = scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [
+						calls(["read_file", {}], ["write_file", { path: "src/user.ts" }]),
+						call("list_files", {}),
+						fauxAssistantMessage("Never asked."),
+					],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+			const { verdict } = await reviewed({ lenses: spent() });
+
+			expect(requests[correctness]).toHaveLength(2);
+			expect(toolResults(requests[correctness]![1]!)).toEqual([
+				expect.stringContaining("Validation failed"),
+				expect.stringContaining("Tool write_file is not available"),
+			]);
+			expect(endedBy(verdict)).toMatchObject({ status: "ended", budgetEnded: { budget: "tokens" } });
+		});
 	});
 
 	it("holds a lens task an older Melian created, whose budget is a number, to that findings budget", async () => {
