@@ -1,6 +1,6 @@
 # Live golden run 5, 2026-10-04
 
-The fifth run of the golden corpus against real models, after [pull request #36](https://github.com/melian-agent/melian/pull/36) narrowed step 3 of the correctness lens. [The fourth run](2026-10-04-live-goldens-4.md) found that the rule commit `1c716e6` added, keep only failures whose triggering input the repository or the change supplies, also dropped `contracts-breaking-signature`'s yen defect in all three passes: nothing in the repository passes `"JPY"`. Step 3 now counts an input the changed code declares it accepts, whether the change added that declaration or kept it, and still drops an input only a parameter's type allows.
+The fifth run of the golden corpus against real models, after [pull request #36](https://github.com/melian-agent/melian/pull/36) narrowed step 3 of the correctness lens. [The fourth run](2026-10-04-live-goldens-4.md) found that the rule commit `1c716e6` added, keep only failures whose triggering input the repository or the change supplies, also dropped `contracts-breaking-signature`'s yen defect in all three passes: nothing in the repository passes `"JPY"`. Step 3 now counts an input the changed code declares it accepts, whether the change added that declaration or kept it, and still drops an input only a parameter's type allows. [A further iteration](#declared-input-rule-first-correctness-041d7ca94bc2) put the declared-input rule first; it is the wording kept.
 
 - Melian under test: `lens-input-rule` at `95d533f437c96f37b7a0e9055c0a536650c7d1d6`, on `main` after [pull request #35](https://github.com/melian-agent/melian/pull/35). pi-ai 1.0.0 and Pi Durable 1.0.0. Lens versions: `contracts` `79d6ae78389c`, unchanged since run 4; `correctness` was `0e6c62b69941` in run 4 and is now `3c01b9654719`, as the loader reports and every finding's `source` confirms.
 - Model: `anthropic/claude-opus-5-5` for every tier, as in run 4.
@@ -105,3 +105,47 @@ What I would change, without tuning here:
 - Run the helper, not `live.ts`, for the three passes after a prompt change, so a miss says which finding it lost and why.
 - Before the next wording change, decide whether a guard the change deletes declares the inputs it rejected. Step 3 does not say, and `correctness-deleted-guard` depends on the answer.
 - Give the next golden that tests the declared-input rule a declaration of another kind, a parameter name or a documented contract, so the corpus checks more than one way of declaring.
+
+## Declared-input rule first, correctness `041d7ca94bc2`
+
+The final wording's misses pointed at the order of step 3. It offered the repository first and the declaration second, so a lens that found no caller passing `"JPY"` stopped at the first clause. Step 3 also did not say whether a guard the change deletes declares the inputs it rejected, and `correctness-deleted-guard` depends on that.
+
+The maintainer decided to test one more wording. Step 3 now leads with the declared-input rule: an input is supplied when the changed code declares it accepts it, by a parameter's name, its documented contract, or an API the value is passed to that accepts that domain, whether the change added the declaration or kept it, citing the declaring line as `context`. A guard the change removed declares the inputs it rejected. Otherwise the input must come from code or data in the repository or the change. An input only a parameter's type allows is never supplied. The percent example and its two counter-examples stay. The sentence that a defect against an input the function already declared is in scope went, because "whether the change added the declaration or kept it" now says it. Nothing else in the lens changed.
+
+- Melian under test: `lens-input-rule` at `3490c05`. Lens versions: `contracts` `79d6ae78389c`, unchanged; `correctness` `041d7ca94bc2`, read from the built loader.
+- Model and credentials as above. `npm run build`, then the `live.ts` command from [Method](#method) three times, one process after another.
+
+| Golden | Expected | Pass 1 | Pass 2 | Pass 3 | Precision, worst / mean | Recall, worst / mean |
+| --- | --- | --- | --- | --- | --- | --- |
+| `clean-rename` | 0 | 0 reported, 1.00 / 1.00 | 0, 1.00 / 1.00 | 0, 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 |
+| `contracts-breaking-signature` | 2 | 2 reported, 1.00 / 1.00 | 2, 1.00 / 1.00 | 2, 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 |
+| `correctness-deleted-guard` | 1 | 1 reported, 1.00 / 1.00 | 1, 1.00 / 1.00 | 1, 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 |
+| `correctness-null-deref` | 1 | 1 reported, 1.00 / 1.00 | 1, 1.00 / 1.00 | 1, 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 |
+| `injection-in-comment` | 2 | 2 reported, 1.00 / 1.00 | 2, 1.00 / 1.00 | 2, 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 |
+| `pre-existing-beside-change` | skipped, `live: false` | | | | | |
+| Corpus | 6 | 6 reported, 1.00 / 1.00 | 6, 1.00 / 1.00 | 6, 1.00 / 1.00 | 1.00 / 1.00 | 1.00 / 1.00 |
+
+The passes took 76 s, 84 s, and 76 s. On `contracts-breaking-signature`, two findings at precision 1.00 against two expectations means both matched, so every pass matched the yen expectation by file and rule. With no miss to explain, no helper pass ran.
+
+### The three wordings
+
+| Correctness version | Wording | Yen matched | `correctness-deleted-guard` found | Worst corpus recall, `live.ts` |
+| --- | --- | --- | --- | --- |
+| `d75574d970c4` | First: declared inputs beside the repository, `timeZone` example | 4 of 4, 3 helper and 1 `live.ts` | 1 of 1 | 1.00, one pass |
+| `3c01b9654719` | Final: repository first, declared inputs defined, percent example | 4 of 6 | 5 of 6, 2 of 3 in `live.ts` | 0.67 |
+| `041d7ca94bc2` | Declared-input rule first, removed guard declares, repository as fallback | 3 of 3 | 3 of 3 | 1.00 |
+
+Precision was 1.00 in every pass of every wording.
+
+### Reading
+
+The declared-input-first wording met the bar the maintainer set: the yen golden matched in all three passes and every other golden held. It stays. It also settles the open question about deleted guards in the lens text rather than leaving it to the model.
+
+Three passes are thin. If the final wording's four-in-six rate were the truth, three straight matches would still happen about three times in ten. What the data supports is that the reordered wording did no worse on any golden and better on the two that had missed, and that the misses were the order problem the miss text named.
+
+The percent example still describes neither golden. The yen golden's shape is a string passed to an API whose domain holds values the arithmetic gets wrong, and only the first wording's `timeZone` example shared it. The kept wording's matches therefore measure the rule, not an analogy, but the corpus checks only one kind of declaration, an API's domain.
+
+### Goldens that should be written
+
+- A correctness golden whose triggering input is declared by a parameter's name or a documented contract rather than by an API's domain, such as a doc comment giving a range whose boundary the change mishandles. It checks the declared-input rule on a second shape and settles whether a wording's example acts as an analogue of the golden it is measured on.
+- A correctness golden whose only path to the failure is an input only a parameter's type allows, expecting no finding, so the corpus can see the rule wrongly admit one.
