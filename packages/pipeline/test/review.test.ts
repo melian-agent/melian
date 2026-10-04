@@ -1144,7 +1144,7 @@ describe("reviewChangeset", () => {
 		const prompt = systemPromptOf(requests[correctness]![0]!);
 		const handoffs = prompt.slice(prompt.indexOf("## Neighbouring lenses"), prompt.indexOf("## Rules, severities"));
 		expect(handoffs.split("\n").filter((line) => line.startsWith("- "))).toEqual([
-			"- `removed-behaviour`: A cleanup, error path, or ordering the change deleted or moved with nothing in its place.",
+			"- `removed-behaviour`: A cleanup, error path, or ordering the change deleted or moved with nothing in its place, including a throw or rethrow the change deleted whose failure a `catch` the change wrote now swallows.",
 			"- `trust-boundary`: A value an author or outside party controls that reaches a sink unescaped, makes a check pass, or carries a secret out.",
 			"- `tests`: A defect in a test.",
 		]);
