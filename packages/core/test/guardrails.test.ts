@@ -610,6 +610,43 @@ describe("policy-change-review", () => {
 		]);
 	});
 
+	it("never merges the notice of a change to the root melian.yaml into another check's finding on its line", async () => {
+		const root = lines("resolution:", "  P2: silent");
+		const baseCommit = commit({ "melian.yaml": root }, "base");
+		const headCommit = commit({ "melian.yaml": lines(root, "  P3: silent") }, "head");
+		const { revision } = await resolveRange(repo, `${baseCommit}..${headCommit}`);
+		const source = { kind: "revision", commit: baseCommit } as const;
+		const { findings } = await evaluateGuardrails({ repoRoot: repo, revision, source });
+		const { config } = await loadConfig(repo, source, "melian.yaml");
+		const notice = findings.find((finding) => finding.ruleId === "guardrail/policy-change-review")!;
+		const [location] = notice.locations;
+		const region = { ...location!.physicalLocation.region, snippet: { text: "resolution:" } };
+		// Sorts first, so were the two merged it would speak for them, and its rule would escape the acknowledge floor.
+		const lens: Finding = {
+			...notice,
+			ruleId: "lens.correctness/wrong-result",
+			locations: [{ ...location!, physicalLocation: { ...location!.physicalLocation, region } }],
+			properties: {
+				...notice.properties,
+				id: "0000000000000000",
+				occurrence: 0,
+				source: { check: "lens.correctness" },
+			},
+		};
+
+		const verdict = adjudicate({
+			findings: [notice, lens],
+			manifest: ["guardrails"],
+			checks: [{ name: "guardrails", status: "ran" }],
+			config,
+		});
+
+		expect(verdict.status).toBe("findings");
+		expect(verdict.findings.acknowledge.map(({ ruleId, properties }) => [ruleId, properties.alsoReportedAs])).toEqual(
+			[["guardrail/policy-change-review", undefined]],
+		);
+	});
+
 	describe("on a working-tree review, applies melian.local.yaml to the review of the root melian.yaml", () => {
 		async function rootSeverities(local: string) {
 			const baseCommit = commit({ "melian.yaml": quiet }, "base");

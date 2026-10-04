@@ -53,6 +53,7 @@ export type ResolvedFinding = Finding & {
 export function resolveFinding(finding: Finding, config: Pick<MelianConfig, "resolution">): Resolution {
 	const configured = config.resolution[finding.properties.severity];
 	const resolution = causeRank(finding) < 2 ? configured : lenientOf(configured, "advisory");
+	// The notice carries no snippet, so dedupeFindings never merges it into a finding of another rule.
 	const ownPolicy =
 		finding.ruleId === "guardrail/policy-change-review" &&
 		posix.basename(finding.properties.path) === melianPaths.config;
