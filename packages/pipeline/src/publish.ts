@@ -279,7 +279,7 @@ function planRound(
 		round: (state.revisions[head]?.rounds ?? 0) + 1,
 		fingerprint: verdict.fingerprint(),
 		verdict: structuredClone(verdict.toJSON()),
-		post: structuredClone(plan.post.map(({ finding, placement }) => ({ finding, placement }))),
+		post: structuredClone(plan.post.map(({ finding, placement }) => ({ finding: finding.toJSON(), placement }))),
 		stillOpen: plan.stillOpen.length,
 		open: Object.fromEntries(Object.entries(plan.open).map(([id, entry]) => [id, { ...entry }])),
 		resolved,
