@@ -627,15 +627,15 @@ Enola's configuration files, for intent, constraints, suppressions, linking, and
 
 The graph is a cache, not state. Its key is Enola's own snapshot key: the facts, the Enola version, and the configuration hash. Locally it lives in a cache Melian owns under the git common directory, and on runners in the Actions cache, never on the state branch. Every pull request on one base shares the base's snapshot. A miss recomputes, because Enola's output is byte-identical for the same inputs. The check record stores the snapshot IDs and Enola's receipt. Enola is pinned in the manifest and refuses to compare snapshots across its own versions, which matches Melian's rule that a tool's version is part of a check's identity.
 
-Search becomes break-glass. Where Enola's coverage report says the graph cannot resolve a file's calls, `search` is free. Where it can, `search` keeps a call budget per lens, and each call carries a reason the hook records, so the ledger and the evals show how often it fires.
+Search may become break-glass, but not yet. Enola's own coverage report, `coverage_report` or `enola coverage`, measures edges between repositories and needs two or more in one graph; it says nothing about a file's calls inside one repository, and an absent edge is not proof that no relationship exists. So `search` stays unrestricted until the spike defines per-file call coverage for the graph and measures it against ground truth: for TypeScript, the imports and calls tsc resolves on Melian's own tree. Only then may coverage budget `search`: where the graph covers a file's calls, `search` keeps a call budget per lens, and each call carries a reason the hook records, so the ledger and the evals show how often it fires.
 
 Three kinds of coverage artifact live in the same cache, keyed by commit and tool version, with their IDs in the check record:
 
-- Graph coverage, from Enola's coverage report.
+- Graph coverage: the per-file coverage the spike defines.
 - Test coverage of changed lines. It runs the head's tests, so for an untrusted head it waits for container isolation.
 - Review coverage, computed from lens transcripts: which hunks and enclosing functions each lens read, giving what was not reviewed, per file.
 
-The spike's exit criterion: Enola's TypeScript extractor resolves Melian's own imports and calls, with any gaps named in its coverage report. Melian's repository is small, so on Melian the direct value is one real layering constraint, that core never reaches the pipeline; the larger value is for users. Enola is pre-1.0, v0.4.26 with a release every two or three days, and a documented TypeScript alias bug once left thousands of call edges dangling. The pinned manifest, the exit criterion, and break-glass driven by coverage bound both risks.
+The spike's exit criterion: per-file call coverage for the graph is defined, and measured against the imports and calls tsc resolves on Melian's own tree, with every gap named. Melian's repository is small, so on Melian the direct value is one real layering constraint, that core never reaches the pipeline; the larger value is for users. Enola is pre-1.0, v0.4.26 with a release every two or three days, and a documented TypeScript alias bug once left thousands of call edges dangling. The pinned manifest, the exit criterion, and `search` left unrestricted until coverage is measured bound both risks.
 
 ## Interaction model
 
