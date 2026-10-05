@@ -151,9 +151,10 @@ export class Ledger {
 		const fits = () => this.opening().length + 2 + projection().length <= limit;
 		for (let i = 0; !fits() && i < history.length; i++) {
 			const round = this.draft.publication.rounds[i]!;
+			if (!("verdict" in round)) continue;
 			history[i] = details(
 				`Earlier round ${round.round} at ${round.head.slice(0, 12)}`,
-				`${round.base.slice(0, 12)}..${round.head.slice(0, 12)}; ${"verdict" in round ? round.verdict.status : round.status}. Details trimmed.`,
+				`${round.base.slice(0, 12)}..${round.head.slice(0, 12)}; ${round.verdict.status}. Details trimmed.`,
 			);
 			cut = true;
 		}

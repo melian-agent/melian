@@ -159,6 +159,31 @@ describe("ledger rendering", () => {
 		expect(body).toContain("Unsafe input");
 		expect(body.match(/<details>/g)?.length ?? 0).toBe(body.match(/<\/details>/g)?.length ?? 0);
 	});
+	it("leaves earlier rounds that are already one line alone and cuts the walkthrough instead", () => {
+		const rounds = [
+			{ round: 1, base, head: "c".repeat(40), status: "pass" as const },
+			{ round: 2, base, head: "d".repeat(40), status: "pass" as const },
+			{ ...round, round: 3, walkthrough: { summary: "w".repeat(3000), files: [] } },
+		];
+		const ledger = Ledger.from(verdict, { rounds }, options);
+		const roomy = ledger.render(links);
+		const body = ledger.render(links, roomy.length - 3300);
+		expect(body.length).toBeLessThanOrEqual(roomy.length - 3300);
+		expect(body).not.toContain("Details trimmed.");
+		expect(body).not.toContain("w".repeat(3000));
+		expect(body).toContain("This ledger was cut");
+	});
+	it("shortens a full earlier round and shrinks the body", () => {
+		const rounds = [
+			{ ...round, round: 1, walkthrough: { summary: "y".repeat(3000), files: [] } },
+			{ ...round, round: 2 },
+		];
+		const ledger = Ledger.from(verdict, { rounds }, options);
+		const roomy = ledger.render(links);
+		const body = ledger.render(links, roomy.length - 1000);
+		expect(body.length).toBeLessThan(roomy.length);
+		expect(body).toMatch(/Earlier round 1 at[^\n]*<\/summary>\n\n[^\n]*Details trimmed\./);
+	});
 	it("drops the oldest earlier round first and keeps the current round", () => {
 		const rounds = Array.from({ length: 6 }, (_, index) => ({
 			...round,
