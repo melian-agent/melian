@@ -515,7 +515,7 @@ export function parseYaml(text: string, site: Site, schema: TSchema, options: { 
 
 // `line N, column M` of the node at `path` in a YAML document, or of the key that names it when `key` is set: where a
 // redacted error points instead of quoting what is there. Falls back to the deepest node the path reaches.
-function position(document: Document, text: string, path: readonly string[], key = false): string {
+export function position(document: Document, text: string, path: readonly string[], key = false): string {
 	let node: unknown = document.contents;
 	let offset = (node as { range?: [number] } | null)?.range?.[0] ?? 0;
 	for (const [index, segment] of path.entries()) {
@@ -528,11 +528,6 @@ function position(document: Document, text: string, path: readonly string[], key
 	}
 	const before = text.slice(0, offset).split("\n");
 	return `line ${before.length}, column ${before.at(-1)!.length + 1}`;
-}
-
-/** Where `path` lies in YAML `text`, as `line N, column M`, for an error that must not quote the file. */
-export function locate(text: string, path: readonly string[], key = false): string {
-	return position(parseDocument(text), text, path, key);
 }
 
 // The checks of `rejectReservedKeys` and `validate`, saying only where the problem is: in a secrets file, a key may be

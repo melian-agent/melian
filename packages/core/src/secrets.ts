@@ -2,7 +2,8 @@ import { constants, type Stats } from "node:fs";
 import { lstat, open, realpath, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import Type from "typebox";
-import { configError, locate, maxConfigBytes, parseYaml, type Site } from "./config.ts";
+import { parseDocument } from "yaml";
+import { configError, maxConfigBytes, parseYaml, position, type Site } from "./config.ts";
 import { git } from "./git.ts";
 import { melianPaths } from "./paths.ts";
 import { visibleText } from "./render.ts";
@@ -142,7 +143,7 @@ async function readSecretsFile(
 	const inside = repoRoot === undefined ? await insideRepository(path, reviewed) : undefined;
 	const credentials = Object.entries(parsed.credentials ?? {}).map(([credential, entry]): NamedCredential => {
 		// A credential's name is a key, and a key may be a pasted secret, so errors name where it is, never what.
-		const at = `the credential at ${locate(text, ["credentials", credential], true)}`;
+		const at = `the credential at ${position(parseDocument(text), text, ["credentials", credential], true)}`;
 		const sources = (["key", "env", "command"] as const).filter((each) => entry[each] !== undefined);
 		if (sources.length !== 1) {
 			throw configError("invalidValue", site, `${at} must take its value from exactly one of key, env, and command`);
