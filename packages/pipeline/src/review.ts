@@ -8,6 +8,7 @@ import {
 	Lens,
 	type LensBudget,
 	type LensCoverage,
+	type LensNeighbour,
 	type LensRule,
 	type LensTier,
 	type LensToolName,
@@ -619,21 +620,26 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	);
 	const nonce = reviewNonce();
 	const prompt = new ChangePrompt(changeset, nonce);
-	const names = [...new Set(selected.map(({ lens }) => lens.name))];
-	const lenses: LensRun[] = [];
-	for (const { lens, coverage: configured, files } of selected) {
-		// A lens selected through a file's old path covers its head path for this review, so it can report what it moved.
+	// A lens selected through a file's old path covers its head path for this review, so it can report what it moved.
+	const covering = selected.map((selection) => {
+		const { files } = selection;
 		const moved = changeset.revision.files
 			.filter((file) => file.oldPath !== undefined && files.includes(file.oldPath) && !files.includes(file.path))
 			.map((file) => file.path);
+		return { ...selection, moved, covers: [...files, ...moved] };
+	});
+	const lenses: LensRun[] = [];
+	for (const { lens, coverage: configured, files, moved, covers } of covering) {
 		const coverage = moved.length === 0 ? configured : { ...configured, moved };
-		// A neighbour takes defects off this lens only if it reviews every file this lens does; otherwise this lens keeps
-		// them, rather than leave them unreviewed in the files the neighbour's paths leave out.
-		const neighbours = names.filter(
-			(name) =>
-				name !== lens.name &&
-				files.every((file) => selected.some((other) => other.lens.name === name && other.files.includes(file))),
-		);
+		// A neighbour takes defects off this lens only in the files it reviews too; this lens keeps them in the rest,
+		// rather than leave them unreviewed where the neighbour's paths do not reach.
+		const neighbours = [...new Set(covering.map((other) => other.lens.name))].flatMap((name): LensNeighbour[] => {
+			if (name === lens.name) return [];
+			const theirs = new Set(covering.flatMap((other) => (other.lens.name === name ? other.covers : [])));
+			const shared = covers.filter((file) => theirs.has(file));
+			if (shared.length === 0) return [];
+			return [{ name, files: shared.length === covers.length ? "every" : shared }];
+		});
 		// Every lens may report an injection attempt, so the policy section never names a rule the hook refuses.
 		const rules = lens.rules.some((rule) => rule.id === injectionAttemptRule.id)
 			? lens.rules
@@ -647,7 +653,12 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 			version: lens.version,
 			level,
 			route: await chooseRoute(lens.name, settings.tier, config, models),
-			instructions: Lens.from({ ...lens.toJSON(), rules }).renderInstructions(standards, level, neighbours),
+			instructions: Lens.from({ ...lens.toJSON(), rules }).renderInstructions(
+				standards,
+				level,
+				neighbours,
+				(listing) => quoteUntrusted("listing", listing, nonce),
+			),
 			tools: lens.tools,
 			severities: lens.severities,
 			rules,

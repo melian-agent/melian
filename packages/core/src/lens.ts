@@ -10,7 +10,7 @@ import { LensError } from "./errors.ts";
 import { maxEvidenceLines, maxFailureScenarioLength } from "./findings.ts";
 import { selectedBy } from "./glob.ts";
 import { anchorGlob, directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
-import { plural } from "./render.ts";
+import { plural, visibleText } from "./render.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 import type { StandardsSection } from "./standards.ts";
 
@@ -130,8 +130,8 @@ export type LensLevels = { readonly careful: LensLevel } & { readonly [Level in 
  * empty string for the root and for built-in lenses; a lens never applies outside its scope. `levels` holds each level
  * the lens runs at, every field resolved. `version` hashes everything that shapes the lens's behaviour, so a finding
  * can name the lens version that produced it. `handoffs` maps a neighbouring lens's name to the defects it owns, which
- * this lens leaves to it only where the review runs it over every file this lens reviews, so a lens running alone, or
- * beside a neighbour narrowed to fewer files, keeps its whole coverage.
+ * this lens leaves to it only in the files the review runs it over, so a lens running alone keeps its whole coverage,
+ * and one beside a neighbour narrowed to fewer files keeps it in the files the neighbour leaves out.
  */
 export interface LensFields {
 	readonly name: string;
@@ -555,17 +555,19 @@ function renderBudget({ findings, tokens, tools }: LensBudget): string {
 	return `Budget: at most ${listed}.${ending}`;
 }
 
-// The defects a lens leaves to a neighbour, only for the neighbours that review its files: a lens whose neighbour is
-// not running keeps that coverage itself.
-function renderHandoffs(handoffs: Readonly<Record<string, string>>, neighbours: readonly string[]): string[] {
-	const owned = Object.entries(handoffs).filter(([name]) => neighbours.includes(name));
-	if (owned.length === 0) return [];
-	return [
-		"## Neighbouring lenses",
-		"These lenses review this change beside you. Each owns the defects listed against it: leave them to it, and do not report them under your own rules.",
-		owned.map(([name, defects]) => `- \`${name}\`: ${defects}`).join("\n"),
-	];
+/**
+ * A neighbour of a lens in one review: another lens the review runs, and the files it reviews among the lens's own,
+ * `every` one or those listed. The lens leaves the neighbour its defects in those files and keeps them in the rest.
+ */
+export interface LensNeighbour {
+	readonly name: string;
+	readonly files: "every" | readonly string[];
 }
+
+const handoffsIntro =
+	"These lenses review this change beside you. Each owns the defects listed against it: leave them to it, and do not report them under your own rules.";
+const partialHandoffs =
+	"A lens whose entry lists files reviews only those of your files: leave its defects to it in those files, and report them under your own rules in every other file.";
 
 /**
  * A lens with its layering and defaults resolved, ready to run as a conversation: a runtime view over its
@@ -716,27 +718,31 @@ export class Lens {
 
 	/**
 	 * The instructions the lens's conversation runs with at `level`, `careful` unless named: its body; then, for each
-	 * lens in `neighbours` that the lens hands defects to, those defects; then its rules, each ID with its description,
-	 * the severities it may report, the level's budget and reading scope, and what a finding's failure scenario and
-	 * evidence must be; then, unless the lens opted out, the repository's standards, each under its path, whose breaches
-	 * are the conventions lens's to report when `neighbours` holds it and this lens's own otherwise. `neighbours` names
-	 * the other lenses the review runs over every file this lens reviews, none by default. Throws {@link LensError}
-	 * `unknownLevel` for a level the lens does not declare.
+	 * of `neighbours` that the lens hands defects to, those defects, and the files they are the neighbour's in unless it
+	 * reviews every file this lens does; then its rules, each ID with its description, the severities it may report, the
+	 * level's budget and reading scope, and what a finding's failure scenario and evidence must be; then, unless the lens
+	 * opted out, the repository's standards, each under its path, whose breaches are the conventions lens's to report
+	 * when it is a neighbour over every file and this lens's own otherwise. `quote` wraps a neighbour's list of files,
+	 * which come from the change, so a pipeline can mark them as its data. Throws {@link LensError} `unknownLevel` for a
+	 * level the lens does not declare.
 	 */
 	renderInstructions(
 		standards: readonly StandardsSection[],
 		level: ScrutinyLevel = defaultScrutinyLevel,
-		neighbours: readonly string[] = [],
+		neighbours: readonly LensNeighbour[] = [],
+		quote: (listing: string) => string = (listing) => listing,
 	): string {
 		const instructions = [
 			this.instructions,
-			...renderHandoffs(this.handoffs, neighbours),
+			...this.#handoffs(neighbours, quote),
 			this.#policy(this.level(level)),
 		].join("\n\n");
 		if (!this.standards || standards.length === 0) return instructions;
 		const sections = standards.map((section) => `### ${section.path}\n\n${section.content.trim()}`);
-		// Like a hand-off, a breach goes to conventions only when it reviews this lens's files; otherwise this lens keeps it.
-		const owned = this.name !== "conventions" && neighbours.includes("conventions");
+		// A breach goes to conventions only when it reviews every file of this lens's; otherwise this lens keeps it.
+		const owned =
+			this.name !== "conventions" &&
+			neighbours.some((neighbour) => neighbour.name === "conventions" && neighbour.files === "every");
 		return [
 			instructions,
 			"## Repository standards",
@@ -799,6 +805,28 @@ export class Lens {
 			file,
 			...(nearer === undefined ? {} : { nearer }),
 		};
+	}
+
+	// The defects the lens leaves to each neighbour that reviews some of its files, listing those files unless it reviews
+	// every one: a lens keeps the defects of a neighbour that is not running, and keeps them in the files one leaves out.
+	#handoffs(neighbours: readonly LensNeighbour[], quote: (listing: string) => string): string[] {
+		const owned = Object.entries(this.handoffs).flatMap(([name, defects]) => {
+			const files = neighbours.find((neighbour) => neighbour.name === name)?.files;
+			return files === undefined || (files !== "every" && files.length === 0) ? [] : [{ name, files, defects }];
+		});
+		if (owned.length === 0) return [];
+		const partial = owned.some((neighbour) => neighbour.files !== "every");
+		return [
+			"## Neighbouring lenses",
+			partial ? `${handoffsIntro} ${partialHandoffs}` : handoffsIntro,
+			owned
+				.map(({ name, files, defects }) =>
+					files === "every"
+						? `- \`${name}\`: ${defects}`
+						: `- \`${name}\`, in these files only: ${defects}\n${quote(files.map(visibleText).join("\n"))}`,
+				)
+				.join("\n"),
+		];
 	}
 
 	// The lens's policy as the model must follow it, so it never guesses a rule ID the hook would refuse.

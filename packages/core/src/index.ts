@@ -162,6 +162,7 @@ export {
 	type LensFrontMatter,
 	type LensLevel,
 	type LensLevels,
+	type LensNeighbour,
 	type LensReads,
 	type LensRule,
 	type LensSelection,
