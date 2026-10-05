@@ -27,9 +27,12 @@ export class ComparisonExport {
 	render(): string {
 		const reviewers = new Set<string>();
 		for (const { comparison } of this.entries) {
-			for (const external of comparison.externalFindings())
+			for (const reviewer of [
+				...Object.values(comparison.importsBySource()).flatMap((each) => each.reviewers ?? []),
+				...comparison.externalFindings().map((each) => each.reviewer),
+			])
 				reviewers.add(
-					`${external.reviewer.name}${external.reviewer.version === undefined ? "" : ` ${external.reviewer.version}`}${external.reviewer.login === undefined ? "" : ` (${external.reviewer.login})`}`,
+					`${reviewer.name}${reviewer.version === undefined ? "" : ` ${reviewer.version}`}${reviewer.login === undefined ? "" : ` (${reviewer.login})`}`,
 				);
 		}
 		const target = /^#\d+$/.test(this.target) ? `pull request ${this.target}` : this.target;
@@ -43,6 +46,10 @@ export class ComparisonExport {
 		let section = 0;
 		for (const [round, { comparison, verdict }] of this.entries.entries()) {
 			const groups = new Map<string, ReturnType<typeof comparison.externalFindings>>();
+			for (const reviewer of Object.values(comparison.importsBySource()).flatMap((each) => each.reviewers ?? [])) {
+				const name = `${reviewer.name}${reviewer.version === undefined ? "" : ` ${reviewer.version}`}${reviewer.login === undefined ? "" : ` (${reviewer.login})`}`;
+				groups.set(name, []);
+			}
 			for (const finding of comparison.externalFindings()) {
 				const name = `${finding.reviewer.name}${finding.reviewer.version === undefined ? "" : ` ${finding.reviewer.version}`}${finding.reviewer.login === undefined ? "" : ` (${finding.reviewer.login})`}`;
 				groups.set(name, [...(groups.get(name) ?? []), finding]);

@@ -411,6 +411,24 @@ describe("comparison review fixes", () => {
 		expect(new ComparisonSet(entries).candidates()).toEqual([]);
 	});
 
+	it("exports imported reviewers who reported no findings", () => {
+		const external = report({ reviewer: { name: "claude-code" } });
+		const comparison = compared([external]);
+		comparison.import(
+			"file:clean-codex.json",
+			{ findings: [], skippedBodies: 0, reviewers: [{ name: "codex", version: "6.1" }] },
+			by.at,
+		);
+		const output = new ComparisonExport([{ changeset: "a", comparison }], "range").render();
+		expect(output).toContain("Reviewers: claude-code; codex 6.1; Melian's own review");
+		expect(output).toContain(
+			"## B. codex 6.1, round 1\n\n0 findings at bbbbbbbbbbbb.\n\n" +
+				"| # | Reviewer | File | Summary | Adjudication | Golden |\n|---|---|---|---|---|---|\n\n",
+		);
+		expect(output).toContain("## A. claude-code, round 1\n\n1 finding");
+		expect(output).toContain("## C. Melian review, round 1");
+	});
+
 	it("exports matched IDs and dismissal labels beside adjudicated findings", () => {
 		const finding = Finding.create({ ...evalInput, status: "dismissed" });
 		const external = report();
