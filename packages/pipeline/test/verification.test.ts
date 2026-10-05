@@ -846,6 +846,35 @@ describe("verification ownership and budgets", () => {
 			],
 		};
 	}
+	it("starts fresh when only the verifier version changes without rerun", async () => {
+		const stored = await input();
+		stored.version = "v1";
+		stored.candidates[0]!.budget.tools = 20;
+		const revision = revisionKey(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.lenses;
+		const firstRequests = scripts("refuted");
+		const first = (await startVerification(harness, stored, selection, false, context))!;
+		const completed = await harness.waitForTask(first, context);
+		expect(completed.state.outcome).toMatchObject({
+			status: "completed",
+			result: { [stored.candidates[0]!.key]: { status: "done" } },
+		});
+		expect(firstRequests[verifierMarker]).toHaveLength(2);
+		expect((await readFindings(harness, stored.root, revision, context))[0]!.properties.verification).toMatchObject({
+			verdict: "refuted",
+			version: "v1",
+		});
+		const requests = scripts();
+		const replacement = (await startVerification(harness, { ...stored, version: "v2" }, selection, false, context))!;
+		expect(replacement).not.toBe(first);
+		expect((await readFindings(harness, stored.root, revision, context))[0]!.properties.verification).toBeUndefined();
+		await harness.waitForTask(replacement, context);
+		expect(requests[verifierMarker]).toHaveLength(2);
+		expect((await readFindings(harness, stored.root, revision, context))[0]!.properties.verification).toMatchObject({
+			verdict: "confirmed",
+			version: "v2",
+		});
+	});
 	it.each(["aborted", "faulted", "orphaned", "failed", "unjudged"] as const)(
 		"replaces a terminal %s verification task without rerun",
 		async (status) => {
