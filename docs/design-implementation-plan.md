@@ -76,6 +76,34 @@ Done when the `melian/review` status is required on `main`, and every pull reque
    - `[ ]` `melian compare export`. The record in today's markdown form, and the document as JSON with `--json`.
    - `[ ]` The drain rule. [The evals guideline](guidelines/evals.md#comparisons) states it, and it holds from [pull request #65](https://github.com/melian-agent/melian/pull/65) on; this item has `melian compare stats` say when a drain pull request is due.
 
+### Milestone 2 in flight, 2026-10-05
+
+Open pull requests, in landing order:
+
+1. [#62](https://github.com/melian-agent/melian/pull/62), step 5. It takes a merge pass so the review plan uses the level triage chose. Three Melian rounds are done.
+2. [#68](https://github.com/melian-agent/melian/pull/68), step 15 items 1 to 3. Three Melian rounds are done. It waits for [#62](https://github.com/melian-agent/melian/pull/62) to land before its final round.
+3. [#72](https://github.com/melian-agent/melian/pull/72), step 15 items 4 to 7, stacked on [#68](https://github.com/melian-agent/melian/pull/68). Codex wrote it. Its first fix pass is in progress, from three reviews.
+4. [#73](https://github.com/melian-agent/melian/pull/73), step 8, the ledger. Codex wrote it. Four reviews are in, and a fix pass is to come.
+5. [#74](https://github.com/melian-agent/melian/pull/74), the Codex seatbelt wrapper. Two bypasses were found and are being fixed.
+6. [#75](https://github.com/melian-agent/melian/pull/75), follow-ups from [#61](https://github.com/melian-agent/melian/pull/61). Under review.
+
+The records [#67](https://github.com/melian-agent/melian/pull/67) and [#69](https://github.com/melian-agent/melian/pull/69) wait on their pull requests' final rounds.
+
+What remains after them:
+
+- Step 6, the verifier. Step 4 landed, so it is unblocked.
+- Step 9's issues [#26](https://github.com/melian-agent/melian/issues/26) and [#46](https://github.com/melian-agent/melian/issues/46).
+- Step 10's rehearsal.
+- Step 11, which waits on Enola's next release. That release carries `enola impact` upstream.
+- Step 14's leftovers, including a durability tuning round. Worst precision was 0.56 after run 9.
+
+Two experiments are running, and each has a record that decides it:
+
+- **Sonnet 5.5 as the review of record.** The [#73](https://github.com/melian-agent/melian/pull/73) record decides it. Sonnet ran beside the Opus review there.
+- **Codex for implementation.** The [#72](https://github.com/melian-agent/melian/pull/72) and [#73](https://github.com/melian-agent/melian/pull/73) records decide it, set against Opus-written pull requests of similar size.
+
+[AGENTS.md](../AGENTS.md#delegation-and-the-review-loop) states how the loop runs.
+
 ## Milestone 3: Melian reviews pull requests on GitHub Actions
 
 The Actions host from design.md: `pull_request_target` workflow, state branch backend, `workflow_dispatch` continuation, `workflow_run` recovery, three-state check status. Melian's own repository is the first installation. The host completes the manifest from local review records, running only the checks that lack one. With it come the credential pool with stacking rules, the secrets file in a repository secret and the preferences file in a repository variable, the GitHub App, bound as the expected source of the required `melian/review` check and holding the secrets permission for rotating OAuth credentials, `add-mask` for every credential value, and `acceptOverridden: false` rerunning a check that ran outside policy rather than failing it. Container isolation follows from the [tool manifest](design.md#tool-provisioning), and Opengrep and gitleaks join it after Enola.
