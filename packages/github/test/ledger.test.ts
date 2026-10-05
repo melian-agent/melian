@@ -264,7 +264,7 @@ describe("ledger rendering", () => {
 			checks: [],
 			config: defaultConfig,
 		}).adjudicate();
-		const body = Ledger.from(
+		const ledger = Ledger.from(
 			currentVerdict,
 			{
 				rounds: [
@@ -272,19 +272,30 @@ describe("ledger rendering", () => {
 						...round,
 						walkthrough: {
 							summary: "summary",
-							files: Array.from({ length: 100 }, () => ({ path: "src/run.ts", summary: "x".repeat(2000) })),
+							files: Array.from({ length: 6 }, (_, index) => ({
+								path: `src/run${index}.ts`,
+								summary: "x".repeat(1500),
+							})),
 						},
 					},
 				],
 			},
 			options,
-		).render(links, 9000);
-		expect(body.length).toBeLessThanOrEqual(9000);
-		expect(body).toContain("<summary>Run details");
-		expect(body).toContain("<summary>Prompt for agents");
-		expect(body).toContain("### Dismissals");
-		expect(body).toContain("Input is validated upstream.");
-		expect(Ledger.readStamp(body)).toBeDefined();
+		);
+		const whole = ledger.render(links, 100_000);
+		expect(whole).toContain("src/run5.ts");
+		expect(whole).not.toContain("Walkthrough details trimmed.");
+		expect(whole.length).toBeGreaterThan(9000);
+		const cut = ledger.render(links, 9000);
+		expect(cut.length).toBeLessThanOrEqual(9000);
+		expect(cut).toContain("This ledger was cut");
+		expect(cut).not.toContain("<summary>Walkthrough");
+		expect(cut).not.toContain("src/run0.ts");
+		expect(cut).toContain("<summary>Run details");
+		expect(cut).toContain("<summary>Prompt for agents");
+		expect(cut).toContain("### Dismissals");
+		expect(cut).toContain("Input is validated upstream.");
+		expect(Ledger.readStamp(cut)).toBeDefined();
 	});
 
 	it("cuts a walkthrough over 12,000 characters and says so", () => {
