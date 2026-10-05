@@ -120,6 +120,8 @@ describe("the overlong-sentence guardrail", () => {
 		expect(pattern.test(`${clause}; ${clause}: ${clause}`)).toBe(true);
 		expect(pattern.test(`${words(22)}; ${words(22)}`)).toBe(false);
 		expect(pattern.test(`${words(23)}; ${words(22)}`)).toBe(true);
+		expect(pattern.test(`${words(22)}: ${words(22)}`)).toBe(false);
+		expect(pattern.test(`${words(23)}: ${words(22)}`)).toBe(true);
 		expect(pattern.test(`${words(22)}; ${words(22)}. ${words(22)}: ${words(22)}`)).toBe(false);
 	});
 
