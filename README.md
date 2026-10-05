@@ -108,7 +108,8 @@ The sandbox confines writes, not secrets. Reads stay open except for `~/.ssh`, `
 
 Limits the sandbox does not close:
 
-- A task can write any file inside the worktree, so committed hooks, `package.json` scripts, `.husky`, `.gitmodules`, and `.lfsconfig` are untrusted until reviewed. A task cannot create a nested repository: writes to a `.git` anywhere below the worktree root are denied, since a nested `config` could set `core.fsmonitor` or `core.hooksPath` and run when the host enters that directory.
+- A task can write any file inside the worktree, so committed hooks, `package.json` scripts, `.husky`, `.gitmodules`, and `.lfsconfig` are untrusted until reviewed. A task cannot create a nested repository: writes to a `.git` anywhere below the worktree root are denied, since a nested `config` could set `core.fsmonitor` or `core.hooksPath` and run when the host enters that directory. The same holds in any letter case (`.GIT`), since APFS ignores case and git still finds the repository.
+- A task cannot create a file named `HEAD`, in any letter case, anywhere below the worktree root. Git takes any directory holding `HEAD`, `objects/`, and `refs/` as a bare repository, and a task could write a `config` there that names a program, to run when the host enters it. A bare repository cannot exist without `HEAD`. The worktree's own `HEAD` lives in the administrative directory, not under the worktree, so commits are unaffected; a tool that writes a `HEAD` file inside the worktree fails.
 - `refs`, `logs`, and `objects` are writable and shared with every worktree, so a task can move or delete refs and objects: the sandbox confines code execution, not repository integrity.
 - `~/.codex/cache` and `~/.codex/tmp` are writable because Codex needs them; whether Codex runs anything from them is unverified.
 - `.env` is unreadable only at the root of the worktree and of the checkout; a nested `.env` stays readable.

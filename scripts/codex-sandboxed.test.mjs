@@ -133,6 +133,7 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			`(literal "${admin}/config.worktree")`,
 			`(regex #"^${linked.replace(/[[\].*^$+?(){}|\\]/g, "\\$&")}/.*/[.][gG][iI][tT](/|$)")`,
 			`(regex #"^${linked.replace(/[[\].*^$+?(){}|\\]/g, "\\$&")}/[.][gG][iI][tT]$")`,
+			`(regex #"^${linked.replace(/[[\].*^$+?(){}|\\]/g, "\\$&")}/.*/[hH][eE][aA][dD]$")`,
 			`(literal "${home}/.codex/config.toml")`,
 			`(literal "${home}/.codex/auth.json")`,
 			`(subpath "${home}/.codex/hooks")`,
@@ -281,6 +282,16 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			expect(failure(() => sh(linked, "echo x > .GiT")).status).not.toBe(0);
 			expect(readdirSync(join(linked, "casesub"))).toEqual([]);
 			expect(existsSync(join(linked, ".git"))).toBe(true);
+		});
+
+		it("cannot build a bare repository, which needs a HEAD file in any case", () => {
+			sh(linked, "mkdir -p bare/objects bare/refs");
+			expect(failure(() => sh(linked, "echo 'ref: refs/heads/main' > bare/HEAD")).status).not.toBe(0);
+			expect(failure(() => sh(linked, "echo 'ref: refs/heads/main' > bare/head")).status).not.toBe(0);
+			expect(failure(() => sh(linked, "echo 'ref: refs/heads/main' > bare/objects/Head")).status).not.toBe(0);
+			expect(existsSync(join(linked, "bare", "HEAD"))).toBe(false);
+			const gitDir = git(join(linked, "bare"), "rev-parse", "--absolute-git-dir").toString().trim();
+			expect(realpathSync(gitDir)).toBe(realpathSync(admin));
 		});
 
 		it("cannot start a rebase, whose todo file the host would later run", () => {

@@ -79,6 +79,8 @@ dynamic_rules() {
   wt_re=$(real "$worktree" | sed 's/[][\.*^$+?(){}|]/\\&/g')
   printf '  (regex #"^%s/.*/[.][gG][iI][tT](/|$)")\n' "$wt_re"
   printf '  (regex #"^%s/[.][gG][iI][tT]$")\n' "$wt_re"
+  # Git also takes any directory holding HEAD, objects/ and refs/ as a bare repository, whose config could run a program.
+  printf '  (regex #"^%s/.*/[hH][eE][aA][dD]$")\n' "$wt_re"
   echo ")"
 
   echo "(deny file-read*"
