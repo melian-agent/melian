@@ -28,6 +28,8 @@ export type FakeModels = {
 	readonly review: ReviewModels;
 	/** The reference a conversation's agent uses to select `modelId`, or the first model. */
 	ref(modelId?: string): ModelRef;
+	/** Registers a provider of its own that holds a model `modelId` but no credentials, and returns that model's reference. */
+	withoutCredentials(modelId: string): ModelRef;
 };
 
 /** Create a scripted model provider that answers from queued responses, so tests need no credentials. */
@@ -39,6 +41,14 @@ export function createFakeModels(options?: RegisterFauxProviderOptions): FakeMod
 		models,
 		provider,
 		review: wrapModels(models),
+		withoutCredentials(modelId) {
+			const locked = fauxProvider({ provider: "locked", models: [{ id: modelId }] });
+			models.setProvider({
+				...locked.provider,
+				auth: { apiKey: { name: "Locked", resolve: async () => undefined } },
+			});
+			return { provider: "locked", modelId };
+		},
 		ref(modelId) {
 			const model: Model<string> | undefined =
 				modelId === undefined ? provider.getModel() : provider.getModel(modelId);

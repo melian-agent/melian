@@ -109,8 +109,14 @@ describe("the triage model", () => {
 		expect(await choose({ medium: route("medium"), heavy: route("heavy") })).toMatchObject({
 			model: model("medium"),
 		});
-		// A model the collection does not know, as one without credentials, is passed over.
+		// A model the collection does not know is passed over, as one it knows without credentials is.
 		expect(await choose({ light: { model: "nowhere/light" }, heavy: route("heavy") })).toMatchObject({
+			model: model("heavy"),
+		});
+		const locked = fake.withoutCredentials("locked-light");
+		expect(
+			await choose({ light: { model: `${locked.provider}/${locked.modelId}` }, heavy: route("heavy") }),
+		).toMatchObject({
 			model: model("heavy"),
 		});
 	});
