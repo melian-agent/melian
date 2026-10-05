@@ -31,7 +31,9 @@
 	],
 	"scripts": {
 		"build": "tsc -b tsconfig.build.json",
-		"clean": "rm -rf dist tsconfig.build.tsbuildinfo",
+		"clean": "rm -rf dist ../../.tsbuild/cli.tsbuildinfo",
+		"prepack": "npm run build",
+		"postpack": "npm run clean",
 		"test": "vitest --run --root ../.. --passWithNoTests packages/cli/"
 	},
 	"engines": {

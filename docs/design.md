@@ -740,7 +740,7 @@ Match Pi's conventions unless there is a reason not to.
 | Concern | Choice |
 |---|---|
 | Runtime | Node 22.19 or later, ESM only, TypeScript |
-| Repository | npm workspaces, Biome, tsc project references; the CLI ships a committed bin shim over dist, Vitest |
+| Repository | npm workspaces, Biome, tsc project references, Vitest; the CLI's committed bin shim runs the source in a checkout and `dist` in the published package, and `dist` is built only to publish |
 | Schemas | TypeBox, pinned to pi-durable's version; JSON Schema for editor validation (planned) |
 | Config | YAML for `melian.yaml`, Markdown with front matter for lenses, plain Markdown for standards |
 | Findings | SARIF plus extension properties |

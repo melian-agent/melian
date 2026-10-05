@@ -1,0 +1,7 @@
+{
+	"files.exclude": {
+		"**/dist": true,
+		"**/.tsbuild": true,
+		"**/*.tsbuildinfo": true
+	}
+}
