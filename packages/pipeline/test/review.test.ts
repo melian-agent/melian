@@ -1339,6 +1339,22 @@ describe("reviewChangeset", () => {
 			expect(handoffsOf(first!)["trust-boundary"]).toBe("every");
 		});
 
+		it("counts a neighbour selected through a file's head path for its old path", async () => {
+			writeFiles(repo, {
+				"lib/report.ts": lines('import { managerName } from "./user.ts";', "export const line = managerName(me);"),
+			});
+			gitIn(repo, "rm", "--quiet", "src/report.ts");
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "move the report out of src");
+			const requests = everyLens();
+			const lenses = { "trust-boundary": { paths: ["src/user.ts", "lib/**"] } };
+
+			await reviewed({ config: { ...config, tiers: defaultConfig.tiers, lenses } });
+
+			// Its paths leave out src/report.ts, the old path of the lib/report.ts it covers.
+			expect(handoffsOf(requests[correctness]![0]!)["trust-boundary"]).toBe("every");
+		});
+
 		it("hands Melian's own correctness defects to durability on durability's files alone", async () => {
 			const own = (path: string) =>
 				readFileSync(fileURLToPath(new URL(`../../../${path}`, import.meta.url)), "utf8");

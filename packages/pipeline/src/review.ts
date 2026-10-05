@@ -641,6 +641,9 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		const neighbours = [...new Set(covering.map((other) => other.lens.name))].flatMap((name): LensNeighbour[] => {
 			if (name === lens.name) return [];
 			const theirs = new Set(covering.flatMap((other) => (other.lens.name === name ? other.covers : [])));
+			// A neighbour over a renamed file's head path covers its old path too, as one over the old path covers the head.
+			for (const file of changeset.revision.files)
+				if (file.oldPath !== undefined && theirs.has(file.path)) theirs.add(file.oldPath);
 			const shared = covers.filter((file) => theirs.has(file));
 			if (shared.length === 0) return [];
 			return [{ name, files: shared.length === covers.length ? "every" : shared }];
