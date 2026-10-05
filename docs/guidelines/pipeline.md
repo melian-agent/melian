@@ -212,6 +212,10 @@ Problem: a commit hands the document's value as a view of its own, and `structur
 
 Codex's companion script wraps the review in an envelope when asked for JSON, with the review output under `result`. The importer reads the review output only, so the agent that ran Codex saves that `result` field as the file. Teaching the importer the envelope would mean following a plugin's private shape, which differs between its commands; one sentence in the skills is smaller.
 
+`CompareHarness.adjudicate(revision, id, judgement)` reads the verdict and comparison in one commit and records the local judgement. It writes no lifecycle record and creates no task. The host supplies the git author and time. A failed validation rolls back the whole commit.
+
+`CompareHarness.all(changeset)` reads each comparison beside its stored verdict and refreshes the matches in memory. It writes nothing. The CLI reads it once per changeset storage for stats, backlog, and export. No review task resumes. `importFindings` records the first comparison time and an optional target beside its import.
+
 ## Contracts that read like mistakes
 
 - A task phase reruns from its start after a crash. Work before the phase's checkpoint commit must be safe to repeat, or guarded by a durable record.
