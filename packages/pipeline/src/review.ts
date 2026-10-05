@@ -93,7 +93,8 @@ interface LensTaskInput {
 }
 
 type LensOutcome =
-	| { readonly status: "done"; readonly budgetEnded?: StoredBudgetEnd }
+	// `model` is the model the lens finished on, after any failover; absent from an outcome an older Melian stored.
+	| { readonly status: "done"; readonly model?: string; readonly budgetEnded?: StoredBudgetEnd }
 	| { readonly status: "unanswered"; readonly reason: string }
 	| { readonly status: "exhausted"; readonly tried: string[]; readonly reason: string };
 
@@ -179,7 +180,8 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 						const settled = await (await child.submit(request, context)).wait(context);
 						if (settled.status === "done") {
 							const ended = await budgetEnded(runtime, id, context);
-							return [key, { status: "done", ...(ended === undefined ? {} : { budgetEnded: ended }) }];
+							const model = modelName(lens.route[attempt]!);
+							return [key, { status: "done", model, ...(ended === undefined ? {} : { budgetEnded: ended }) }];
 						}
 						const reason = typeof settled.detail === "string" ? settled.detail : (settled.reason ?? "unanswered");
 						const failover =
@@ -392,6 +394,16 @@ function planned(options: ReviewOptions): ReviewOptions {
 	};
 }
 
+// Each lens that finished, by name, to the model it finished on, so its lineage names the model that ran.
+function ranOn(lenses: readonly LensRun[], result: LensResult | undefined): Map<string, string> {
+	return new Map(
+		lenses.flatMap((lens) => {
+			const outcome = result?.[lens.key];
+			return outcome?.status === "done" && outcome.model !== undefined ? [[lens.name, outcome.model] as const] : [];
+		}),
+	);
+}
+
 /** What {@link reviewChangeset} reviews, and with what. */
 export interface ReviewOptions {
 	/** A harness with {@link lensExtension} installed, over the changeset's own storage. */
@@ -480,6 +492,14 @@ function omit<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K>
 	return rest;
 }
 
+// The lenses a review runs, each by `name@version` and the route it resolved. Problem: a selection of names alone let a
+// review under another plan, such as one with --model or a changed preference file, attach to a lens task that ran on
+// the old route, and the verdict then claimed a lineage the lenses never ran under. Solution: the route is part of
+// the selection, so another route runs the lenses again.
+function selectionOf(lenses: readonly LensRun[]): string[] {
+	return lenses.map((lens) => `${lens.key} on ${lens.route.map(modelName).join(", ")}`).sort();
+}
+
 // One lens task per head and selection. A repeat call, such as a rerun after a crash, attaches to the task the first
 // call created, which the harness resumes, rather than running every lens a second time. `undefined` when the task did
 // not complete.
@@ -491,7 +511,7 @@ async function runLenses(
 ): Promise<LensResult | undefined> {
 	const root = await harness.root(context);
 	const revision = revisionKey(input.revision);
-	const selection = input.lenses.map((lens) => lens.key).sort();
+	const selection = selectionOf(input.lenses);
 	const taskId = await root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const known = index.reviews[revision];
@@ -538,7 +558,7 @@ async function startAdjudication(
 ): Promise<TaskId<AdjudicationResult>> {
 	const root = await harness.root(context);
 	const key = JSON.stringify(input);
-	const selection = lenses.map((lens) => lens.key).sort();
+	const selection = selectionOf(lenses);
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const known = index.reviews[revisionKey(input)];
@@ -749,7 +769,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		policy: options.policy,
 		config,
 		manifest,
-		checks: request.plan?.mark(accounted.records()) ?? accounted.records(),
+		checks: request.plan?.mark(accounted.records(), ranOn(lenses, lensResult)) ?? accounted.records(),
 		findingsVersion: await findingsVersion(harness, root, reviewed, context),
 		allowSkip: accounted.skippable(),
 		producers,

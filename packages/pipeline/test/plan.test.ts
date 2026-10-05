@@ -62,7 +62,7 @@ afterEach(async () => {
 
 // A review whose committed melian.yaml routes heavy as `committed`, with melian.local.yaml routing it to `local`, or,
 // with `light`, moving both lenses to a light tier it routes to that model.
-async function planned(committed: ModelRoute, local?: string, options: { light?: string } = {}) {
+async function planned(committed: ModelRoute, local?: string, options: { light?: string; fails?: string } = {}) {
 	const { light } = options;
 	const moved: Record<string, LensSettings> =
 		light === undefined ? {} : { correctness: { tier: "light" }, contracts: { tier: "light" } };
@@ -96,11 +96,13 @@ async function planned(committed: ModelRoute, local?: string, options: { light?:
 	const answered: string[] = [];
 	const answer = (_: unknown, modelId: string) => {
 		answered.push(modelId);
+		if (modelId === options.fails)
+			return fauxAssistantMessage("", { stopReason: "error", errorMessage: "503 overloaded_error" });
 		return fauxAssistantMessage("No findings.");
 	};
 	scriptConversations(fake, [
-		{ match: correctness, replies: [answer] },
-		{ match: contracts, replies: [answer] },
+		{ match: correctness, replies: [answer, answer] },
+		{ match: contracts, replies: [answer, answer] },
 	]);
 	const review = await reviewChangeset({
 		harness,
@@ -174,6 +176,32 @@ describe("reviewChangeset with a plan", () => {
 			reason,
 			lineage: { model: backup, wanted: heavy, by: "melian.local.yaml", outside: true },
 		});
+	});
+
+	it("runs the lenses again under another plan, and records only the lineage of the route that ran", async () => {
+		const first = await planned({ model: heavy, accept: [heavy] }, backup);
+		const second = await planned({ model: heavy, accept: [heavy] });
+
+		expect(first.answered).toEqual(["backup", "backup"]);
+		expect(second.answered).toEqual(["heavy", "heavy"]);
+		const lenses = second.review.verdict.ran?.filter((check) => check.name.startsWith("lens.")) ?? [];
+		expect(lenses).toHaveLength(2);
+		expect(lenses.every((check) => check.lineage === undefined)).toBe(true);
+	});
+
+	it("records the fallback a lens finished on, outside accept, when its accepted model failed", async () => {
+		const { review, answered } = await planned({ model: heavy, fallbacks: [backup], accept: [heavy] }, undefined, {
+			fails: "heavy",
+		});
+
+		expect([...answered].sort()).toEqual(["backup", "backup", "heavy", "heavy"]);
+		const lineage = { model: backup, wanted: heavy, by: "melian.yaml", outside: true };
+		expect(review.verdict.ran).toEqual(
+			expect.arrayContaining([
+				{ name: "lens.contracts", status: "ran", level: "careful", lineage },
+				{ name: "lens.correctness", status: "ran", level: "careful", lineage },
+			]),
+		);
 	});
 
 	it("runs the committed route with no lineage when the preference file stays on it", async () => {

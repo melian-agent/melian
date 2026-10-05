@@ -336,44 +336,44 @@ export class ReviewPlan {
 	}
 
 	/**
-	 * What the plan says of the check of lens `name` at `level`: why it must fail, and its lineage. A lens a preference
-	 * file moved to another tier runs on that tier's route but stays under its committed tier's policy, so it cannot
-	 * leave a route `acceptOverridden: false` guards by moving to a tier that guards nothing.
+	 * What the plan says of the check of lens `name` at `level`, on `ran`, the model it finished on, or the first of its
+	 * route when it has not run: why it must fail, and its lineage. A lens a preference file moved to another tier runs
+	 * on that tier's route but stays under its committed tier's policy, so it cannot leave a route
+	 * `acceptOverridden: false` guards by moving to a tier that guards nothing.
 	 */
-	judge(name: string, level: ScrutinyLevel): LensJudgement {
+	judge(name: string, level: ScrutinyLevel, ran?: string): LensJudgement {
 		const entry = this.lenses.find((each) => each.name === name)?.levels.find((each) => each.level === level);
 		if (entry === undefined) return {};
-		const refused = this.refusal(entry.tier);
 		const planned = this.tier(entry.tier);
-		const model = planned.models[0]?.model;
-		if (entry.committed === undefined) {
-			const lineage = this.lineage(entry.tier);
-			return {
-				...(refused === undefined ? {} : { refusal: refused }),
-				...(lineage === undefined ? {} : { lineage }),
-			};
-		}
-		const policy = this.tier(entry.committed);
-		const lineage = model === undefined ? undefined : ReviewPlan.leaving(policy, model, entry.by);
-		const moved = `lenses.${name}.tier moves it from ${entry.committed} to ${entry.tier}`;
-		const refusal =
-			refused ??
-			(policy.acceptOverridden === false && lineage?.outside === true
-				? `${moved}, and models.${entry.committed}.acceptOverridden is false; ${entry.tier} runs ${model}, which models.${entry.committed}.accept does not list`
-				: undefined);
+		const model = ran ?? planned.models[0]?.model;
+		const policyTier = entry.committed ?? entry.tier;
+		const policy = this.tier(policyTier);
+		const by = entry.committed === undefined ? planned.by : entry.by;
+		const lineage = model === undefined ? undefined : ReviewPlan.leaving(policy, model, by);
+		const outside = policy.acceptOverridden === false && lineage?.outside === true;
+		const unlisted = `which models.${policyTier}.accept does not list`;
+		const why =
+			entry.committed === undefined
+				? `models.${policyTier}.acceptOverridden is false, and ${by ?? "its route"} puts it on ${model}, ${unlisted}`
+				: `lenses.${name}.tier moves it from ${policyTier} to ${entry.tier}, and models.${policyTier}.acceptOverridden is false; ${entry.tier} runs ${model}, ${unlisted}`;
+		const refusal = this.refusal(entry.tier) ?? (outside ? why : undefined);
 		return { ...(refusal === undefined ? {} : { refusal }), ...(lineage === undefined ? {} : { lineage }) };
 	}
 
 	/**
-	 * `records` with each lens's lineage added, for every lens that ran, or was to run, at a level the plan routed off
-	 * its committed route.
+	 * `records` with each lens's lineage added, judged on the model it finished on, from `ranOn` by lens name, or the
+	 * first of its route. A lens that finished on a model its policy refuses, such as a fallback outside `accept`,
+	 * records `failed`, since its result cannot count.
 	 */
-	mark(records: readonly CheckRecord[]): CheckRecord[] {
+	mark(records: readonly CheckRecord[], ranOn: ReadonlyMap<string, string> = new Map()): CheckRecord[] {
 		return records.map((record) => {
 			if (!record.name.startsWith("lens.") || record.level === undefined || record.lineage !== undefined)
 				return record;
-			const { lineage } = this.judge(record.name.slice("lens.".length), record.level);
-			return lineage === undefined ? record : { ...record, lineage };
+			const name = record.name.slice("lens.".length);
+			const { refusal, lineage } = this.judge(name, record.level, ranOn.get(name));
+			const marked = lineage === undefined ? record : { ...record, lineage };
+			if (refusal === undefined || record.status === "failed" || !ranOn.has(name)) return marked;
+			return { ...marked, status: "failed", reason: refusal };
 		});
 	}
 

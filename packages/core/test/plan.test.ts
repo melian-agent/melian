@@ -312,6 +312,24 @@ describe("a resolved plan", () => {
 		]);
 	});
 
+	it("judges each lens record on the model it finished on, and fails one that finished outside a guarded accept", () => {
+		const credentials = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" };
+		const resolved = plan({ heavy: { model: opus, accept: [opus], acceptOverridden: false } }, credentials, {
+			preferences: { light: { model: opus, fallbacks: ["openai/gpt-5.4-mini"] } },
+			retier: { correctness: "light" },
+		});
+		// The first model of the moved lens's route is inside accept, so the plan lets it run.
+		expect(resolved.judge("correctness", "careful").refusal).toBeUndefined();
+		const record = { name: "lens.correctness", status: "ran", level: "careful" } as const;
+		expect(resolved.mark([record], new Map([["correctness", opus]]))).toEqual([record]);
+		const [fallback] = resolved.mark([record], new Map([["correctness", "openai/gpt-5.4-mini"]]));
+		expect(fallback).toMatchObject({
+			status: "failed",
+			reason: expect.stringContaining("light runs openai/gpt-5.4-mini, which models.heavy.accept does not list"),
+			lineage: { model: "openai/gpt-5.4-mini", wanted: opus, by: "melian.local.yaml", outside: true },
+		});
+	});
+
 	it("prints each routed tier, each lens's levels, and every warning for doctor", () => {
 		const resolved = plan(
 			{ heavy: { model: opus, fallbacks: [gpt] }, medium: { model: "anthropic/claude-sonnet-5-5" } },
