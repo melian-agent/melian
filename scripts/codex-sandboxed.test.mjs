@@ -415,6 +415,14 @@ describe("codex-sandboxed.sh profile", () => {
 		expect(text.indexOf("(deny file-read*")).toBeGreaterThan(text.indexOf("(allow file-read*)"));
 	});
 
+	it("denies all writes to root .env files after the write allowances", () => {
+		const text = profile(linked);
+		const denyAt = text.lastIndexOf("(deny file-write*\n");
+		expect(denyAt).toBeGreaterThan(text.lastIndexOf("(allow file-write"));
+		for (const path of [join(linked, ".env"), join(main, ".env")])
+			expect(text.slice(denyAt)).toContain(`(literal "${path}")`);
+	});
+
 	it("names the target of a symlinked .env, since seatbelt matches real paths", () => {
 		const target = join(run, "real.env");
 		writeFileSync(target, "SECRET=1\n");
@@ -423,6 +431,9 @@ describe("codex-sandboxed.sh profile", () => {
 			const deny = block(profile(linked), "deny file-read*");
 			expect(deny).toContain(`(literal "${target}")`);
 			expect(deny).not.toContain(`(literal "${linked}/.env")`);
+			const writes = profile(linked).slice(profile(linked).lastIndexOf("(deny file-write*\n"));
+			expect(writes).toContain(`(literal "${linked}/.env")`);
+			expect(writes).toContain(`(literal "${target}")`);
 		} finally {
 			rmSync(join(linked, ".env"), { force: true });
 		}
@@ -436,6 +447,9 @@ describe("codex-sandboxed.sh profile", () => {
 			const deny = block(profile(linked), "deny file-read*");
 			expect(deny).toContain(`(literal "${target}")`);
 			expect(deny).not.toContain(`(literal "${linked}/.env")`);
+			const writes = profile(linked).slice(profile(linked).lastIndexOf("(deny file-write*\n"));
+			expect(writes).toContain(`(literal "${linked}/.env")`);
+			expect(writes).toContain(`(literal "${target}")`);
 		} finally {
 			rmSync(join(linked, ".env"), { force: true });
 			rmSync(target, { force: true });
@@ -749,6 +763,24 @@ describe("codex-sandboxed.sh profile", () => {
 		it("cannot write git config or hooks", () => {
 			expect(failure(() => sh(linked, "git config core.fsmonitor evil")).status).not.toBe(0);
 			expect(failure(() => sh(linked, `echo x > '${main}/.git/hooks/pre-commit'`)).status).not.toBe(0);
+		});
+
+		it("cannot read, rename, unlink, or create root .env files", () => {
+			for (const directory of [linked, main]) {
+				const file = join(directory, ".env");
+				writeFileSync(file, "SYNTHETIC_TEST_SECRET=1\n");
+				try {
+					for (const command of ["cat .env", "mv .env renamed-env", "rm .env"])
+						expect(failure(() => sh(directory, command)).status, command).not.toBe(0);
+					expect(existsSync(file)).toBe(true);
+					expect(existsSync(join(directory, "renamed-env"))).toBe(false);
+					rmSync(file);
+					expect(failure(() => sh(directory, "touch .env")).status).not.toBe(0);
+				} finally {
+					rmSync(file, { force: true });
+					rmSync(join(directory, "renamed-env"), { force: true });
+				}
+			}
 		});
 
 		it("cannot read the host's Melian storage in the git common directory", () => {

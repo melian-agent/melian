@@ -178,6 +178,15 @@ dynamic_rules() {
   printf '  (regex #"^%s/logs/refs/melian/(.*/)?head([.]lock)?$")\n' "$(regex_path "$common")"
   echo ")"
 
+  echo "(deny file-write*"
+  printf '  (literal "%s/.env")\n' "$worktree"
+  filters literal "$worktree/.env"
+  if [ "$(basename "$common")" = ".git" ]; then
+    printf '  (literal "%s/.env")\n' "$(dirname "$common")"
+    filters literal "$(dirname "$common")/.env"
+  fi
+  echo ")"
+
   echo "(deny file-read*"
   filters subpath "$HOME/.ssh" "$common/melian" "$worktree/.git/melian"
   filters literal "$HOME/.pi/agent/auth.json" "$HOME/.npmrc" "$worktree/.env"
