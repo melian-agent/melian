@@ -24,7 +24,8 @@ Commands:
 Options:
   --model <provider/id>  Route every tier to this model, over any route melian.yaml sets (review).
   --rerun                Run again the checks and lenses that failed in the last review of this base and head,
-                         rather than print the failures it stored (review).
+                         and ask triage again if its decision did not complete, rather than print what it
+                         stored; a completed triage decision is never asked again (review).
   --open, --all, --json  For findings.
   --reason <text>        Why the finding does not apply, at most 1000 characters (dismiss).
   --only                 Dismiss the report the ID names alone, leaving the reports merged with it live (dismiss).

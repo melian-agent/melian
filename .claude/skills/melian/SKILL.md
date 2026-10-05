@@ -78,7 +78,7 @@ Three kinds of exit `2` are not a verdict on the code:
   melian review origin/main...HEAD --rerun
   ```
 
-  Without `--rerun`, `melian review` of the same base and head prints the stored result again and runs nothing.
+  Without `--rerun`, `melian review` of the same base and head prints the stored result again and runs nothing. With it, Melian also asks triage again when its decision did not complete, and never when it did.
 
 ## See a stored review again
 

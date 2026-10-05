@@ -2055,12 +2055,13 @@ describe("adjudication", () => {
 		expect(error).toMatchObject({ code: "adjudicationFailed" });
 		expect((error as ReviewError).findings).toHaveLength(2);
 		expect(await readVerdict(harness, await rootId(), revision(), context)).toBeUndefined();
-		writeFiles(repo, { "lib/melian.yaml": lines("resolution:", "  P0: advisory") });
+		// A pre-existing finding never resolves above advisory, so only silent shows that the fixed policy decided.
+		writeFiles(repo, { "lib/melian.yaml": lines("resolution:", "  P0: silent") });
 
 		const { verdict } = await reviewed({ policy: { kind: "worktree" } });
 
 		expect(verdict).toMatchObject({ status: "findings", blocking: true });
-		expect(verdict.findings.advisory.map((finding) => finding.properties.path)).toEqual(["lib/legacy.ts"]);
+		expect(verdict.findings.silent.map((finding) => finding.properties.path)).toEqual(["lib/legacy.ts"]);
 		expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
 	});
 
