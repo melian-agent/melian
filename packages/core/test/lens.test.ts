@@ -542,6 +542,16 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		});
 	});
 
+	it("refuses a glob past the matching engine's step limit when the lens loads", async () => {
+		const glob = `src/${"a".repeat(2_000)}`;
+		writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile([...security, `paths: ["!${glob}", "**"]`]) });
+		const error = await rejection(load(["src/index.ts"]), LensError);
+		expect(error).toMatchObject({ code: "invalidValue", field: "paths", file: ".melian/lenses/security/LENS.md" });
+		expect(error.message).toContain(
+			`"paths" has !${glob}, which is not a safe glob: the pattern compiles to more than`,
+		);
+	});
+
 	it("refuses a lens whose name differs from its directory", async () => {
 		writeFiles(repo, { ".melian/lenses/sec/LENS.md": lensFile(security) });
 		expect(await rejection(load(["src/index.ts"]), LensError)).toMatchObject({ code: "invalidValue", field: "name" });

@@ -9,7 +9,7 @@ import { type LensTier, lensTierSchema, type MelianConfig, type Severity, severi
 import { LensError } from "./errors.ts";
 import { maxEvidenceLines, maxFailureScenarioLength } from "./findings.ts";
 import { anchorGlob, directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
-import { matchesGlobs } from "./pattern.ts";
+import { compileGlob, matchesGlobs, Refused } from "./pattern.ts";
 import { plural, visibleText } from "./render.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 import type { StandardsSection } from "./standards.ts";
@@ -253,12 +253,22 @@ function tokens(value: number | string | undefined): number | undefined {
 
 // Paths are relative to the directory holding the lens's `.melian/` or `.agents/`, like a melian.yaml's.
 // Normalised like a melian.yaml's lens paths, so `./src/**` is `src/**`, and refused if `..` leaves the repository.
+// Compiled here, as loadConfig compiles a melian.yaml's, so a glob past the step limit fails the load, naming the file.
 function anchor(file: string, scope: string, path: string): string {
 	const anchored = anchorGlob(scope, path);
-	if (anchored !== undefined) return anchored;
-	throw new LensError("invalidValue", file, `${file}: "paths" has ${path}, which leaves the repository`, {
-		field: "paths",
-	});
+	if (anchored === undefined) {
+		throw new LensError("invalidValue", file, `${file}: "paths" has ${path}, which leaves the repository`, {
+			field: "paths",
+		});
+	}
+	try {
+		compileGlob(anchored.replace(/^!/, ""));
+	} catch (error) {
+		if (!(error instanceof Refused)) throw error;
+		const message = `${file}: "paths" has ${path}, which is not a safe glob: ${error.reason}`;
+		throw new LensError("invalidValue", file, message, { field: "paths" });
+	}
+	return anchored;
 }
 
 function required<T>(file: string, field: string, value: T | undefined): T {
