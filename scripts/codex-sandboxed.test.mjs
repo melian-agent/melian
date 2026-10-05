@@ -30,6 +30,17 @@ const realAgentSocket = (() => {
 	}
 })();
 
+const calculatorRunning = () => {
+	try {
+		return (
+			execFileSync("osascript", ["-e", 'application "Calculator" is running'], { encoding: "utf8" }).trim() ===
+			"true"
+		);
+	} catch {
+		return false;
+	}
+};
+
 const failure = (fn) => {
 	try {
 		fn();
@@ -89,7 +100,19 @@ describe("codex-sandboxed.sh profile", () => {
 
 	const tmpProbe = () => `/private/tmp/codex-sandboxed-probe-${basename(root)}`;
 
+	const calculatorWasRunning = sandboxExec && calculatorRunning();
+
 	afterAll(() => {
+		if (sandboxExec) {
+			try {
+				execFileSync("launchctl", ["remove", "melian-probe"], { stdio: "ignore" });
+			} catch {}
+			if (!calculatorWasRunning && calculatorRunning()) {
+				try {
+					execFileSync("osascript", ["-e", 'tell application "Calculator" to quit'], { stdio: "ignore" });
+				} catch {}
+			}
+		}
 		rmSync(tmpProbe(), { force: true });
 		rmSync(root, { recursive: true, force: true });
 	});
@@ -420,7 +443,10 @@ describe("codex-sandboxed.sh profile", () => {
 		it("serves and fetches over loopback, but cannot connect to a unix-domain socket", async () => {
 			const loopback =
 				"const h=require('http').createServer((q,r)=>r.end('ok')).listen(0,'127.0.0.1',async()=>{console.log('served',await (await fetch('http://127.0.0.1:'+h.address().port)).text());h.close()})";
-			expect(sandboxedNode(loopback)).toContain("served ok");
+			const served = execFileSync("sandbox-exec", ["-f", profilePath, process.execPath, "-e", loopback], {
+				env: env(),
+			}).toString();
+			expect(served).toContain("served ok");
 			const socketPath = join(root, "agent.sock");
 			const server = createServer((connection) => connection.end("secret"));
 			await new Promise((resolve) => server.listen(socketPath, resolve));
@@ -448,9 +474,6 @@ describe("codex-sandboxed.sh profile", () => {
 		it.skipIf(!realAgentSocket)("cannot reach the user's ssh agent", () => {
 			expect(failure(() => sh(linked, `SSH_AUTH_SOCK='${realAgentSocket}' ssh-add -l`)).status).toBe(2);
 		});
-
-		const sandboxedNode = (code) =>
-			execFileSync("sandbox-exec", ["-f", profilePath, process.execPath, "-e", code], { env: env() }).toString();
 
 		it("cannot create a symlink in the worktree outside node_modules, nor move one in, nor set a file flag", () => {
 			sh(linked, `ln -s /tmp '${run}/outside-link'`);
@@ -833,17 +856,27 @@ describe("codex-sandboxed.sh profile", () => {
 			chmodSync(join(sleeperBin, "codex"), 0o755);
 			const prompt = join(root, "sleeper.md");
 			writeFileSync(prompt, "go\n");
-			const result = failure(() =>
-				execFileSync(script, [linked, "m", prompt, join(root, "sleeper.log")], {
-					stdio: "pipe",
-					env: { ...env(), PATH: `${sleeperBin}:${env().PATH}` },
-				}),
-			);
-			expect(result.status).toBe(7);
-			const pid = Number(readFileSync(join(linked, "sleeper.pid"), "utf8"));
-			expect(pid).toBeGreaterThan(1);
-			expect(() => process.kill(pid, 0)).toThrow();
-			rmSync(join(linked, "sleeper.pid"));
+			const pidFile = join(linked, "sleeper.pid");
+			try {
+				const result = failure(() =>
+					execFileSync(script, [linked, "m", prompt, join(root, "sleeper.log")], {
+						stdio: "pipe",
+						env: { ...env(), PATH: `${sleeperBin}:${env().PATH}` },
+					}),
+				);
+				expect(result.status).toBe(7);
+				const pid = Number(readFileSync(pidFile, "utf8"));
+				expect(pid).toBeGreaterThan(1);
+				expect(() => process.kill(pid, 0)).toThrow();
+			} finally {
+				if (existsSync(pidFile)) {
+					const pid = Number(readFileSync(pidFile, "utf8"));
+					try {
+						process.kill(pid, "SIGKILL");
+					} catch {}
+					rmSync(pidFile);
+				}
+			}
 		});
 
 		it("creates the Codex directories under CODEX_HOME and passes it through", () => {
