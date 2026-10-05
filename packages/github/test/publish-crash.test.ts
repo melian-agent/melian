@@ -111,13 +111,14 @@ async function killAtReview(
 
 describe("publishing across a crash", { timeout: 30_000 }, () => {
 	it.each([
-		{ interruptedTrust: true, trustedWriters: true },
+		{ interruptedTrust: true, trustedWriters: true, changedPublisher: true },
+		{ interruptedTrust: true, trustedWriters: true, changedPublisher: false },
 		{ interruptedTrust: false, trustedWriters: false },
 		{ interruptedTrust: true, trustedWriters: false },
 		{ interruptedTrust: false, trustedWriters: true },
 	])(
 		"keeps publisher attribution across a status crash (trust: $interruptedTrust -> $trustedWriters)",
-		async ({ interruptedTrust, trustedWriters }) => {
+		async ({ interruptedTrust, trustedWriters, changedPublisher }) => {
 			const database = join(dir, "review.sqlite");
 			const stateFile = join(dir, "github.json");
 			const log = join(dir, "publish.log");
@@ -135,6 +136,10 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			const persisted = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
 			expect(persisted.statuses).toHaveLength(1);
 			expect(persisted.reviews).toHaveLength(0);
+			if (changedPublisher) {
+				persisted.login = "new-publisher";
+				persisted.permissions = { ...persisted.permissions, "new-publisher": "maintain" };
+			}
 			const provider = providerFor(persisted);
 			const publisher = await openPublisher(await openSqliteStorage(database), scenarioModels().review, provider);
 			harness = publisher.harness;
@@ -151,6 +156,8 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			const result = await publish();
 			if (interruptedTrust !== trustedWriters)
 				expect(result.superseded).toEqual([expect.objectContaining({ reason: "writer trust policy changed" })]);
+			if (changedPublisher)
+				expect(result.superseded).toEqual([expect.objectContaining({ reason: "publisher login changed" })]);
 			const record = await readPublished(
 				harness,
 				(await harness.root(context)).id,
@@ -159,12 +166,17 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			);
 			expect(record?.publishedBy).toEqual({
 				trustedWriters,
-				login: "melian-user",
-				permission: "write",
+				login: changedPublisher ? "new-publisher" : "melian-user",
+				permission: changedPublisher ? "maintain" : "write",
 				authorPermission: "read",
 			});
 			expect(persisted.reviews).toHaveLength(1);
 			expect(persisted.ledgers).toHaveLength(1);
+			if (changedPublisher) {
+				expect(persisted.reviews[0]?.user.login).toBe("new-publisher");
+				expect(persisted.ledgers[0]?.user.login).toBe("new-publisher");
+				expect(persisted.ledgers[0]?.body).toContain("new-publisher");
+			}
 			persisted.calls = [];
 			await publish();
 			expect(posts(persisted)).toEqual([]);

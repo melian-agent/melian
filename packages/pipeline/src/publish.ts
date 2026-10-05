@@ -210,9 +210,14 @@ export const LedgerDocument = defineDoc<{ comment?: PostedLedger }>({
 // and kept as long as the storage. A marker counts only when it verifies, whoever the provider says posted it, so
 // recovery does not depend on the token knowing who it is.
 // It also holds the target the latest publish validated, which a resumed task compares with its own.
-export const PublisherDocument = defineDoc<{ secret?: string; target?: PublishTarget; trustedWriters?: boolean }>({
+export const PublisherDocument = defineDoc<{ secret?: string; target?: PublishTarget; publishedBy?: PublishedBy }>({
 	kind: "melian.publisher",
-	version: 1,
+	version: 2,
+	migrate: (value) => {
+		const stored = value as { secret?: string; target?: PublishTarget; trustedWriters?: boolean };
+		const { trustedWriters, ...publisher } = stored;
+		return { ...publisher, publishedBy: { trustedWriters: trustedWriters ?? true } };
+	},
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
@@ -442,9 +447,17 @@ function publishTask(provider: ReviewProvider) {
 				// another base, head, or pull request ends here, before any post.
 				const change =
 					publisher?.target === undefined ? "no target is recorded" : targetChange(target, publisher.target);
-				const trustChanged = publishedBy.trustedWriters !== (publisher?.trustedWriters ?? true);
-				if (target === undefined || change !== undefined || trustChanged) {
-					const reason = trustChanged ? "writer trust policy changed" : (change ?? "the task recorded no target");
+				const current = publisher?.publishedBy;
+				const trustChanged = publishedBy.trustedWriters !== current?.trustedWriters;
+				const attributionChanged = (["login", "permission", "authorPermission"] as const).find(
+					(field) => publishedBy[field] !== undefined && publishedBy[field] !== current?.[field],
+				);
+				if (target === undefined || change !== undefined || trustChanged || attributionChanged !== undefined) {
+					const reason = trustChanged
+						? "writer trust policy changed"
+						: attributionChanged !== undefined
+							? `publisher ${attributionChanged} changed`
+							: (change ?? "the task recorded no target");
 					await runtime.commit(
 						() => ({
 							status: "terminal",
@@ -1128,7 +1141,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		const publisher = await tx.doc(PublisherDocument, root);
 		publisher.secret ??= randomBytes(32).toString("hex");
 		publisher.target = { ...target };
-		publisher.trustedWriters = publishedBy.trustedWriters;
+		publisher.publishedBy = { ...publishedBy };
 		return undefined;
 	}, context);
 	harness.resume();

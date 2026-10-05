@@ -608,7 +608,7 @@ The CLI reads writer trust from the committed root policy at the pull request ba
 
 `melian doctor` reports committed writer trust, viewer login and repository permission. It uses the local default-branch ref because it has no pull request argument. Without a base ref it warns and uses committed `HEAD`. A viewer without write permission warns without failing the command.
 
-Each published revision records the viewer login, repository permission, author permission and writer trust setting. Refused identity reads stay unknown. The ledger shows these fields. An author without write permission does not block the maintainer publishing a full review. Nothing consumes local records today; milestone 3 must refuse them for such authors. Older records migrate to trusted writers with no known poster.
+Each published revision records the viewer login, repository permission, author permission and writer trust setting. Refused identity reads stay unknown. The ledger shows these fields. An author without write permission does not block the maintainer publishing a full review. Nothing consumes local records today; milestone 3 must refuse them for such authors. Older records migrate to trusted writers with no known poster. Before resuming publication, the publisher document records the full current attribution. An interrupted task is superseded when writer trust or a previously known login or permission changes.
 
 The milestone 2 gate rests on that trust and nothing stronger. Milestone 3 binds the required check to the GitHub App as its expected source, so a status set with a user's token no longer satisfies it.
 
