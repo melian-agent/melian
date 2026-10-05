@@ -2,7 +2,7 @@ import { constants, type Stats } from "node:fs";
 import { open, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import Type from "typebox";
-import { configError, maxConfigBytes, parseYaml, type Site } from "./config.ts";
+import { configError, locate, maxConfigBytes, parseYaml, type Site } from "./config.ts";
 import { git } from "./git.ts";
 import { melianPaths } from "./paths.ts";
 
@@ -121,37 +121,30 @@ async function readSecretsFile(path: string, repoRoot: string | undefined): Prom
 	};
 	const owner = await ownership(path, info);
 	const credentials = Object.entries(parsed.credentials ?? {}).map(([credential, entry]): NamedCredential => {
-		const key = `credentials.${credential}`;
+		// A credential's name is a key, and a key may be a pasted secret, so errors name where it is, never what.
+		const at = `the credential at ${locate(text, ["credentials", credential], true)}`;
 		const sources = (["key", "env", "command"] as const).filter((each) => entry[each] !== undefined);
 		if (sources.length !== 1) {
-			throw configError(
-				"invalidValue",
-				site,
-				`"${key}" must take its value from exactly one of key, env, and command`,
-				{ key },
-			);
+			throw configError("invalidValue", site, `${at} must take its value from exactly one of key, env, and command`);
 		}
 		const [source] = sources as ["key" | "env" | "command"];
 		if (source === "command" && standing !== undefined) {
-			throw configError("notIgnored", site, `"${key}" runs a command, which Melian refuses here: ${standing}`, {
-				key: `${key}.command`,
-			});
+			throw configError("notIgnored", site, `${at} runs a command, which Melian refuses here: ${standing}`);
 		}
 		if (source === "command" && owner !== undefined) {
 			throw configError(
 				"notUserOwned",
 				site,
-				`"${key}" runs a command, which Melian runs only from a file you own and no one else can read, write, or replace: ${owner}`,
-				{ key: `${key}.command` },
+				`${at} runs a command, which Melian runs only from a file you own and no one else can read, write, or replace: ${owner}`,
 			);
 		}
-		const text = entry[source]!;
+		const given = entry[source]!;
 		const value: CredentialValue =
 			source === "key"
-				? { kind: "literal", key: text }
+				? { kind: "literal", key: given }
 				: source === "env"
-					? { kind: "env", variable: text }
-					: { kind: "command", command: text };
+					? { kind: "env", variable: given }
+					: { kind: "command", command: given };
 		return { name: credential, provider: entry.provider!, type: "api_key", value, file: path };
 	});
 	const warnings =
@@ -169,7 +162,8 @@ async function readSecretsFile(path: string, repoRoot: string | undefined): Prom
  * per-clone file is never read through a symlink. Nothing is resolved here: no variable read and no command run. Throws {@link ConfigError}: `tracked`
  * for a per-clone file git tracks under any case of its name, since a head could supply it; `notIgnored` for a command
  * in a per-clone file git does not ignore, or when git cannot say; `notUserOwned` for a command in a file another user
- * could have written; and as `loadConfig` does for a file it cannot read or parse.
+ * could have written; and as `loadConfig` does for a file it cannot read or parse. No error quotes the file: each
+ * names the file, its code, and a line and column, never a key or a value, and none carries a `key`.
  */
 export async function loadSecrets(repoRoot: string, user?: string): Promise<LoadedSecrets> {
 	const clone = await readSecretsFile(join(repoRoot, melianPaths.secrets), repoRoot);

@@ -108,7 +108,8 @@ describe("loadSecrets", () => {
 		const command = ["credentials:", "  a: { provider: openai, command: cat key }"];
 		secrets(repo, "melian.secrets.yaml", ...command);
 		const unignored = await rejection(loadSecrets(repo));
-		expect(unignored).toMatchObject({ code: "notIgnored", key: "credentials.a.command" });
+		expect(unignored).toMatchObject({ code: "notIgnored", key: undefined });
+		expect(unignored.message).toContain("the credential at line 2, column 3 runs a command");
 		expect(unignored.message).toContain("git does not ignore melian.secrets.yaml");
 
 		writeFiles(repo, { ".gitignore": lines("/melian.secrets.yaml") });
@@ -131,7 +132,7 @@ describe("loadSecrets", () => {
 		const user = secrets(home, "secrets.yaml", "credentials:", "  a: { provider: openai, command: cat key }");
 		chmodSync(user, 0o620);
 		const error = await rejection(loadSecrets(repo, user));
-		expect(error).toMatchObject({ code: "notUserOwned", key: "credentials.a.command", file: user });
+		expect(error).toMatchObject({ code: "notUserOwned", file: user });
 	});
 
 	it("never reads the per-clone file through a symlink, and follows the user's own", async () => {
@@ -148,7 +149,7 @@ describe("loadSecrets", () => {
 		const file = secrets(repo, "melian.secrets.yaml", "credentials:", "  a: { provider: openai, command: cat key }");
 		chmodSync(file, 0o644);
 		const error = await rejection(loadSecrets(repo));
-		expect(error).toMatchObject({ code: "notUserOwned", key: "credentials.a.command" });
+		expect(error.code).toBe("notUserOwned");
 		expect(error.message).toContain(`${file} has mode 644; chmod 600 ${file}`);
 	});
 
@@ -187,15 +188,50 @@ describe("loadSecrets", () => {
 	])("refuses a credential with %s", async (_, entry) => {
 		secrets(repo, "melian.secrets.yaml", "credentials:", entry);
 		const error = await rejection(loadSecrets(repo));
-		expect(error).toMatchObject({ code: "invalidValue", key: "credentials.a" });
-		expect(error.message).toContain("exactly one of key, env, and command");
+		expect(error).toMatchObject({ code: "invalidValue" });
+		expect(error.message).toContain(
+			"the credential at line 2, column 3 must take its value from exactly one of key, env, and command",
+		);
 	});
 
 	it("refuses an unknown key or a type other than api_key, naming the file", async () => {
 		const file = secrets(repo, "melian.secrets.yaml", "credentials:", "  a: { provider: openai, env: A, pool: x }");
 		expect(await rejection(loadSecrets(repo))).toMatchObject({ code: "unknownKey", file });
 		secrets(repo, "melian.secrets.yaml", "credentials:", "  a: { provider: openai, type: oauth, env: A }");
-		expect(await rejection(loadSecrets(repo))).toMatchObject({ code: "invalidValue", key: "credentials.a.type" });
+		const type = await rejection(loadSecrets(repo));
+		expect(type).toMatchObject({ code: "invalidValue" });
+		expect(type.message).toMatch(/an invalid value at line 2, column \d+$/);
+	});
+
+	// Every error the loader raises for a secrets file names the file, a code, and a position, and none of what is there:
+	// a key may be a pasted secret, and a line missing its colon makes one key of a field and its value.
+	it.each([
+		["an unknown key, a field missing its colon", "unknownKey", ["  a: { provider: openai, key sk-SENTINEL }"]],
+		["an unknown key, a secret as a field name", "unknownKey", ["  a: { provider: openai, sk-SENTINEL: x }"]],
+		["a wrong type", "invalidValue", ["  a: { provider: [sk-SENTINEL], env: A }"]],
+		["a missing field, under a secret as the credential's name", "invalidValue", ["  sk-SENTINEL: { env: A }"]],
+		["a bad source type", "invalidValue", ["  a: { provider: openai, type: sk-SENTINEL, env: A }"]],
+		["a credential with no source, named by a secret", "invalidValue", ["  sk-SENTINEL: { provider: openai }"]],
+		["a reserved key", "reservedKey", ["  __proto__: { provider: sk-SENTINEL, env: A }"]],
+		["a list where credentials belong", "invalidValue", ["  - sk-SENTINEL"]],
+	])("names only the position of %s", async (_, code, entry) => {
+		const file = secrets(repo, "melian.secrets.yaml", "credentials:", ...entry);
+		const error = await rejection(loadSecrets(repo));
+		expect(error).toMatchObject({ code, file, key: undefined });
+		expect(error.message).toMatch(/ at line \d+, column \d+/);
+		expect(`${error.message} ${String(error.cause ?? "")}`).not.toContain("SENTINEL");
+	});
+
+	it("names a credential a command source refuses by position, never by its name", async () => {
+		const file = secrets(
+			repo,
+			"melian.secrets.yaml",
+			"credentials:",
+			"  sk-SENTINEL: { provider: openai, command: cat key }",
+		);
+		const error = await rejection(loadSecrets(repo));
+		expect(error).toMatchObject({ code: "notIgnored", file });
+		expect(error.message).not.toContain("SENTINEL");
 	});
 
 	it.each([

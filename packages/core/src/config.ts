@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { posix } from "node:path";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
-import { parseDocument } from "yaml";
+import { type Document, isMap, isScalar, parseDocument } from "yaml";
 import { ConfigError, type ConfigErrorCode } from "./errors.ts";
 import { anchorGlob, directoriesUpToRoot, globShapeProblem, melianPaths, repoPath } from "./paths.ts";
 import { compileGlob, compilePattern, Refused } from "./pattern.ts";
@@ -503,10 +503,70 @@ export function parseYaml(text: string, site: Site, schema: TSchema, options: { 
 		if (options.redact === true) throw configError("invalidYaml", site, "YAML aliases expand past the limit");
 		throw configError("invalidYaml", site, (cause as Error).message, { cause });
 	}
+	if (options.redact === true) {
+		validateRedacted(site, value, schema, document, text);
+		return withoutPrototypes(value);
+	}
 	rejectReservedKeys(site, value);
 	value = withoutPrototypes(value);
 	validate(site, value, schema);
 	return value;
+}
+
+// `line N, column M` of the node at `path` in a YAML document, or of the key that names it when `key` is set: where a
+// redacted error points instead of quoting what is there. Falls back to the deepest node the path reaches.
+function position(document: Document, text: string, path: readonly string[], key = false): string {
+	let node: unknown = document.contents;
+	let offset = (node as { range?: [number] } | null)?.range?.[0] ?? 0;
+	for (const [index, segment] of path.entries()) {
+		if (!isMap(node)) break;
+		const pair = node.items.find((each) => isScalar(each.key) && String(each.key.value) === segment);
+		if (pair === undefined) break;
+		const target = index === path.length - 1 && key ? pair.key : (pair.value ?? pair.key);
+		offset = (target as { range?: [number] } | null)?.range?.[0] ?? offset;
+		node = pair.value;
+	}
+	const before = text.slice(0, offset).split("\n");
+	return `line ${before.length}, column ${before.at(-1)!.length + 1}`;
+}
+
+/** Where `path` lies in YAML `text`, as `line N, column M`, for an error that must not quote the file. */
+export function locate(text: string, path: readonly string[], key = false): string {
+	return position(parseDocument(text), text, path, key);
+}
+
+// The checks of `rejectReservedKeys` and `validate`, saying only where the problem is: in a secrets file, a key may be
+// a credential pasted where a name belongs, or a line missing its colon that made one key of a field and its value.
+function validateRedacted(site: Site, value: unknown, schema: TSchema, document: Document, text: string): void {
+	const reserved = (child: unknown, path: string[]): string[] | undefined => {
+		if (!isPlain(child)) return undefined;
+		for (const [key, grandchild] of Object.entries(child)) {
+			if (key === "__proto__") return [...path, key];
+			const found = reserved(grandchild, [...path, key]);
+			if (found !== undefined) return found;
+		}
+		return undefined;
+	};
+	const proto = reserved(value, []);
+	if (proto !== undefined) {
+		throw configError("reservedKey", site, `a reserved key at ${position(document, text, proto, true)}`);
+	}
+	const errors = [...Value.Errors(schema, withoutPrototypes(value))];
+	const segments = (instancePath: string) =>
+		instancePath
+			.split("/")
+			.slice(1)
+			.map((segment) => segment.replaceAll("~1", "/").replaceAll("~0", "~"));
+	const unknown = errors.find((error) => error.keyword === "additionalProperties");
+	if (unknown !== undefined) {
+		const [key] = (unknown.params as { additionalProperties: string[] }).additionalProperties;
+		const at = position(document, text, [...segments(unknown.instancePath), key!], true);
+		throw configError("unknownKey", site, `an unknown key at ${at}`);
+	}
+	const first = errors[0];
+	if (first === undefined) return;
+	const what = first.keyword === "required" ? "a missing field" : "an invalid value";
+	throw configError("invalidValue", site, `${what} at ${position(document, text, segments(first.instancePath))}`);
 }
 
 function parseLayer(text: string, site: Site, directory: string): MelianYaml {
