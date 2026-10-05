@@ -11,7 +11,13 @@ import {
 	resolveModelForTier,
 } from "@melian-agent/core";
 import { FallbackDecider } from "@melian-agent/decisions";
-import { createReviewModels, planInputs, type ReviewModels, RouteTextModel } from "@melian-agent/pipeline";
+import {
+	createReviewModels,
+	planInputs,
+	type ReviewModels,
+	RouteTextModel,
+	unlockCredentials,
+} from "@melian-agent/pipeline";
 import { createFakeModels, type LensScript, scriptLenses } from "@melian-agent/pipeline/testing";
 import { CliError } from "./repository.ts";
 
@@ -67,6 +73,47 @@ export function triageProviders(plan: ReviewPlan): string[] {
 		const { status, models } = plan.tier(tier);
 		return status === "routed" ? models.map(({ model }) => model.slice(0, model.indexOf("/"))) : [];
 	});
+}
+
+/** Triage's wiring for one review: the decider, or why there is none, and what each of the harness and the review takes from it. */
+export class Triage {
+	readonly decider: Decider | undefined;
+	readonly skipped: string | undefined;
+
+	private constructor(decider: Decider | undefined, skipped: string | undefined) {
+		this.decider = decider;
+		this.skipped = skipped;
+	}
+
+	// Unlocks the lenses' providers, and the triage providers unless a script stands in for every model, since a
+	// command credential runs now and one that fails stops the review before it starts. Scripted mode triages nothing,
+	// so every lens runs at the level its script was written for.
+	static async open(options: {
+		readonly scripted: boolean;
+		readonly config: MelianConfig;
+		readonly plan: ReviewPlan;
+		readonly models: ReviewModels;
+		readonly decide?: typeof fallbackDecider;
+	}): Promise<Triage> {
+		const { scripted, config, plan, models, decide = fallbackDecider } = options;
+		await unlockCredentials(models, [...plan.providers(), ...(scripted ? [] : triageProviders(plan))]);
+		if (scripted) return new Triage(undefined, undefined);
+		const chosen = await decide({ ...config, models: plan.routes() }, models);
+		return "decider" in chosen ? new Triage(chosen.decider, undefined) : new Triage(undefined, chosen.skipped);
+	}
+
+	/** What `openReviewHarness` takes: the decider, so its decision task is installed. */
+	harnessOptions(): { readonly decider?: Decider } {
+		return this.decider === undefined ? {} : { decider: this.decider };
+	}
+
+	/** What `reviewChangeset` takes: the decider, or why triage did not run, for each lens's record. */
+	reviewOptions(): { readonly decider?: Decider; readonly triageSkipped?: string } {
+		return {
+			...this.harnessOptions(),
+			...(this.skipped === undefined ? {} : { triageSkipped: this.skipped }),
+		};
+	}
 }
 
 async function readScript(path: string): Promise<LensScript> {
