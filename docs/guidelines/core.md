@@ -451,7 +451,7 @@ type StoredExternalFinding = {
 };
 ```
 
-A source is named by a string: `github:<login>` for a pull request's review threads, `file:<path>` for a file. Adjudication, statistics, the backlog, and export, the later items of step 15, read this shape; adjudication adds a field of its own beside `matches`, so a comparison stored now still reads.
+A source is named by a string: `github:<login>` for a pull request's review threads, `file:<path>` for a file. Adjudication, statistics, the backlog, and export, the later items of step 15, read this shape; adjudication adds a field of its own beside `matches`, so a comparison stored now still reads. `Comparison` carries a top-level field it does not know through every change and back out of `toJSON()`. Problem: an older binary that read a newer comparison and wrote it back would drop the newer field, such as the maintainer's adjudications. Solution: unknown fields survive, so only the binary that knows a field ever changes it.
 
 Melian's findings are referenced by ID only. Problem: a copy of each finding would go stale when a dismissal decides the verdict again, and it would duplicate the snippets that quote the repository. Solution: `comparison.compare(verdict)` records the IDs of the stored review's findings each time it runs, and a reader takes the findings from the review. It takes those that need attention and those dismissed. A silent finding was never shown to the author, so it takes no part in matching or counts: a nit Melian kept quiet is neither a match for a reviewer's comment nor a Melian-only finding.
 

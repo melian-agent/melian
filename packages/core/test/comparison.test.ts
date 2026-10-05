@@ -383,6 +383,15 @@ describe("Comparison matching", () => {
 		expect(again.effectiveMatches().map((match) => match.external)).toEqual([near.id]);
 	});
 
+	it("keeps a field a newer Melian stored, through an import and a comparison", () => {
+		const finding = melian();
+		const stored = { ...compared([], [finding]).toJSON(), adjudications: { later: { verdict: "valid" } } };
+		const comparison = Comparison.from(stored);
+		comparison.import("file:codex.json", { findings: [external()], skippedBodies: 0 }, "t");
+		comparison.compare(verdictOf([finding]));
+		expect(comparison.toJSON()).toMatchObject({ adjudications: { later: { verdict: "valid" } } });
+	});
+
 	it("refuses a hand match naming a finding it does not hold", () => {
 		const finding = melian();
 		const near = external();

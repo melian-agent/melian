@@ -530,16 +530,20 @@ export class Comparison {
 	private matches: ComparisonMatch[];
 	private unmatches: ComparisonUnmatch[];
 	private imports: Record<string, ComparisonImport>;
+	// Fields a newer Melian stored that this one does not know, such as adjudications, kept so a write never drops them.
+	private readonly later: Record<string, unknown>;
 
 	// Declared in the order a stored comparison holds them, so its JSON keeps that order.
 	private constructor(stored: StoredComparison) {
-		this.base = stored.base;
-		this.head = stored.head;
-		this.external = stored.external;
-		this.melian = stored.melian;
-		this.matches = stored.matches;
-		this.unmatches = stored.unmatches;
-		this.imports = stored.imports;
+		const { base, head, external, melian, matches, unmatches, imports, ...later } = stored;
+		this.base = base;
+		this.head = head;
+		this.external = external;
+		this.melian = melian;
+		this.matches = matches;
+		this.unmatches = unmatches;
+		this.imports = imports;
+		this.later = later;
 	}
 
 	/** An empty comparison of the revision `base`..`head`. */
@@ -726,6 +730,7 @@ export class Comparison {
 			matches: this.matches,
 			unmatches: this.unmatches,
 			imports: this.imports,
+			...this.later,
 		});
 	}
 
