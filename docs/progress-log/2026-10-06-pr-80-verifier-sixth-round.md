@@ -3,3 +3,5 @@
 [Pull request #80](https://github.com/melian-agent/melian/pull/80).
 
 Older stored lens inputs without verify now use the lens definition at their recorded level. A version-2 quick input with explicit verification reaches the judge. The regression failed before the fix with no verifier requests.
+
+Verification now replaces aborted, faulted, orphaned and failed terminal tasks without rerun. A completed task missing a candidate outcome also starts fresh. Completed attempts with recorded candidate failures stay not reviewed until rerun. Five regressions cover these states. The caller already rejected non-completed outcomes, so the reported green-status consequence was refuted.

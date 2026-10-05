@@ -5,6 +5,7 @@ import {
 	backgroundContext as context,
 	createMemoryStorage,
 	createReviewRegistry,
+	defineTask,
 	type Harness,
 	lensExtension,
 	openHarness,
@@ -40,13 +41,15 @@ let harness: Harness;
 let fake: FakeModels;
 let lenses: Lens[];
 let changeset: Changeset;
+let registry: ReturnType<typeof createReviewRegistry>;
 
 beforeEach(async () => {
 	repo = crashRepository();
 	fake = createFakeModels({ models: [{ id: "finder" }, { id: "judge" }, { id: "backup" }] });
+	registry = createReviewRegistry();
 	harness = await openHarness(createMemoryStorage(), {
 		models: fake.models,
-		registry: createReviewRegistry(),
+		registry,
 		settings: { retry: { enabled: false }, toolExecution: "parallel" },
 	});
 	await harness.root(context, { agent: { model: fake.ref("finder") } });
@@ -829,6 +832,58 @@ describe("verification ownership and budgets", () => {
 			],
 		};
 	}
+	it.each(["aborted", "faulted", "orphaned", "failed", "unjudged"] as const)(
+		"replaces a terminal %s verification task without rerun",
+		async (status) => {
+			const stored = await input();
+			stored.candidates[0]!.budget.tools = 20;
+			const root = await harness.root(context);
+			const revision = revisionKey(changeset.revision);
+			const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
+			scripts();
+			const first = (await startVerification(harness, stored, selection, false, context))!;
+			await harness.waitForTask(first, context);
+			const terminal = defineTask<Record<string, never>, { phase: "end" }, unknown>({
+				abort: async (_task, runtime, context) => {
+					await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+				},
+				name: "test.verifier-terminal",
+				version: 1,
+				initial: () => ({ phase: "end" }),
+				phases: {
+					end: async (_task, runtime, context) => {
+						const outcome =
+							status === "unjudged"
+								? { status: "completed" as const, result: {} }
+								: status === "orphaned"
+									? { status, reason: "definition unavailable" }
+									: status === "aborted"
+										? { status }
+										: { status, error: { message: "task failed" } };
+						await runtime.commit(() => ({ status: "terminal", outcome }), context);
+					},
+				},
+			});
+			registry.install({ name: "terminal-fixture", tasks: [terminal] });
+			const parked = await root.commit(async (tx) => {
+				const id = await tx.createTask(terminal, {}, { ownership: { kind: "conversation" } });
+				(await tx.doc(ReviewIndex, root.id)).reviews[revision]!.verification!.task = id;
+				return id;
+			}, context);
+			expect((await harness.waitForTask(parked, context)).state.outcome.status).toBe(
+				status === "unjudged" ? "completed" : status,
+			);
+			const requests = scripts();
+			const replacement = (await startVerification(harness, stored, selection, false, context))!;
+			expect(replacement).not.toBe(parked);
+			expect((await readFindings(harness, root.id, revision, context))[0]!.properties.verification).toBeUndefined();
+			await harness.waitForTask(replacement, context);
+			expect(requests[verifierMarker]).toHaveLength(2);
+			expect((await readFindings(harness, root.id, revision, context))[0]!.properties.verification?.verdict).toBe(
+				"confirmed",
+			);
+		},
+	);
 	it("a task the index does not name asks no model and writes nothing", async () => {
 		const stored = await input();
 		const calls = fake.provider.state.callCount;

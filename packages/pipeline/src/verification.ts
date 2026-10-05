@@ -19,7 +19,7 @@ import {
 	type StoredBudgetEnd,
 } from "./lens-tools.ts";
 import { lensExtension } from "./review.ts";
-import { attachable, ReviewIndex } from "./review-index.ts";
+import { ReviewIndex } from "./review-index.ts";
 import { quoteUntrusted } from "./untrusted.ts";
 import { verifierInstructions } from "./verification-instructions.ts";
 
@@ -214,14 +214,18 @@ export async function startVerification(
 		if (known !== undefined && known.lenses.join("\n") !== selection.join("\n")) return undefined;
 		const previous = known?.verification;
 		const record = previous === undefined ? undefined : await tx.task(previous.task as TaskId);
+		const results =
+			record?.state.status === "terminal" && record.state.outcome.status === "completed"
+				? (record.state.outcome.result as VerificationResult)
+				: undefined;
 		const failed =
-			record?.state.status === "terminal" &&
-			(record.state.outcome.status !== "completed" ||
-				Object.values(record.state.outcome.result as VerificationResult).some(
-					(outcome) => outcome.status !== "done",
-				));
-		if (previous?.input === key && !(rerun && failed) && (await attachable(tx, previous.task, [])))
-			return previous.task as TaskId<VerificationResult>;
+			results !== undefined && input.candidates.some((candidate) => results[candidate.key]?.status !== "done");
+		if (previous?.input === key) {
+			if (failed && !rerun && input.candidates.every((candidate) => results![candidate.key] !== undefined))
+				return previous.task as TaskId<VerificationResult>;
+			if (record !== undefined && (record.state.status !== "terminal" || (results !== undefined && !failed)))
+				return previous.task as TaskId<VerificationResult>;
+		}
 		await clearVerifications(tx, input.root, revisionKey(input.revision));
 		const created = await tx.createTask(VerificationTask, input, { ownership: { kind: "conversation" } });
 		const { adjudication: __, ...entry } = known ?? { lenses: [...selection] };
