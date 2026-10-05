@@ -228,6 +228,8 @@ describe("ReviewPlan.resolve", () => {
 		expect(flagged.refusal("heavy")).toContain("--model puts it on openai/gpt-5.4-mini");
 		// A fallback outside accept is dropped, so a failover never leaves policy either.
 		expect(kept.tier("heavy")).toMatchObject({ status: "routed", models: [{ model: gpt }] });
+		expect(kept.tier("heavy").outside).toBeUndefined();
+		expect(kept.lineage("heavy")).toEqual({ model: gpt, wanted: opus, by: "melian.local.yaml", outside: false });
 		expect(kept.refusal("heavy")).toBeUndefined();
 	});
 

@@ -230,7 +230,6 @@ export class ReviewPlan {
 			chosen = [derived];
 			by = "derived";
 		}
-		const outside = accept.length > 0 && !accept.includes(chosen[0]!);
 		if (policy?.acceptOverridden === false && accept.length > 0) {
 			const kept = chosen.filter((model) => accept.includes(model));
 			if (kept.length === 0) {
@@ -245,6 +244,8 @@ export class ReviewPlan {
 			}
 			chosen = kept;
 		}
+		// From the route the fail-closed branch kept, so an accepted fallback it promoted reads as inside accept.
+		const outside = accept.length > 0 && !accept.includes(chosen[0]!);
 		return {
 			...base,
 			status: "routed",
