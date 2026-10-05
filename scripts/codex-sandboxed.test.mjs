@@ -442,6 +442,14 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 		expect(text.indexOf("(deny file-read*")).toBeGreaterThan(text.indexOf("(allow file-read*)"));
 	});
 
+	it("keeps Pi auth unreadable with no later read allowance", () => {
+		const text = profile(linked);
+		const denyAt = text.lastIndexOf("(deny file-read*\n");
+		expect(denyAt).toBeGreaterThan(text.lastIndexOf("(allow file-read"));
+		expect(block(text.slice(denyAt), "deny file-read*")).toContain(`(literal "${home}/.pi/agent/auth.json")`);
+		expect(text.slice(denyAt)).not.toMatch(/\(allow file-read/);
+	});
+
 	it("denies all writes to root .env files after the write allowances", () => {
 		const text = profile(linked);
 		const denyAt = text.lastIndexOf("(deny file-write*\n");
