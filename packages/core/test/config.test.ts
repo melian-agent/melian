@@ -144,6 +144,13 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		expect(defaultConfig.triage).toEqual({ escalateAt: "P1" });
 	});
 
+	it("refuses triage in a nested melian.yaml, since a review reads it from the root alone", async () => {
+		writeFiles(repo, { "services/melian.yaml": lines("triage:", "  escalateAt: P2") });
+		const error = await rejection(load("services/a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", key: "triage", file: "services/melian.yaml" });
+		expect(error.message).toContain("only the root melian.yaml may set it");
+	});
+
 	it("refuses a ceiling of skip, which would let triage switch a lens off past its floor", async () => {
 		writeFiles(repo, { "melian.yaml": lines("lenses:", "  tests:", "    level: { ceiling: skip }") });
 		const error = await rejection(load("."));

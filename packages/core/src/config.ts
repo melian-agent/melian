@@ -458,7 +458,19 @@ async function readLayer(source: SourceReader, site: Site): Promise<MelianYaml |
 	validate(site, value, melianYamlSchema);
 	checkPatterns(site, value as MelianYaml);
 	checkRequire(site, value as MelianYaml);
+	checkRootOnly(site, value as MelianYaml);
 	return anchorPaths(site, value as MelianYaml);
+}
+
+// A review reads `triage` from the root's configuration alone, so a nested file setting it would be silently ignored.
+function checkRootOnly(site: Site, layer: MelianYaml): void {
+	if (layer.triage === undefined || site.file === melianPaths.config || site.file === melianPaths.localConfig) return;
+	throw configError(
+		"invalidValue",
+		site,
+		`"triage" applies to the whole review, so only the root melian.yaml may set it; move it there`,
+		{ key: "triage" },
+	);
 }
 
 // Each `require` glob must be matched on its own, so an exclusion there would always count as missing.
