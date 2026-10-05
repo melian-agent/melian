@@ -179,7 +179,7 @@ dynamic_rules() {
   echo ")"
 
   echo "(deny file-read*"
-  filters subpath "$HOME/.ssh"
+  filters subpath "$HOME/.ssh" "$common/melian" "$worktree/.git/melian"
   filters literal "$HOME/.pi/agent/auth.json" "$HOME/.npmrc" "$worktree/.env"
   [ "$(basename "$common")" = ".git" ] && filters literal "$(dirname "$common")/.env"
   echo ")"

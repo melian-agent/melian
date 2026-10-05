@@ -401,6 +401,8 @@ describe("codex-sandboxed.sh profile", () => {
 		const deny = block(text, "deny file-read*");
 		for (const path of [
 			`(subpath "${home}/.ssh")`,
+			`(subpath "${main}/.git/melian")`,
+			`(subpath "${linked}/.git/melian")`,
 			`(literal "${home}/.pi/agent/auth.json")`,
 			`(literal "${home}/.npmrc")`,
 			`(literal "${linked}/.env")`,
@@ -747,6 +749,19 @@ describe("codex-sandboxed.sh profile", () => {
 		it("cannot write git config or hooks", () => {
 			expect(failure(() => sh(linked, "git config core.fsmonitor evil")).status).not.toBe(0);
 			expect(failure(() => sh(linked, `echo x > '${main}/.git/hooks/pre-commit'`)).status).not.toBe(0);
+		});
+
+		it("cannot read the host's Melian storage in the git common directory", () => {
+			const state = join(main, ".git", "melian");
+			mkdirSync(state);
+			writeFileSync(join(state, "ledger.sqlite"), "host-ledger-secret\n");
+			try {
+				const result = failure(() => sh(linked, `cat '${state}/ledger.sqlite'`));
+				expect(result.status).not.toBe(0);
+				expect(result.stderr).toContain("Operation not permitted");
+			} finally {
+				rmSync(state, { recursive: true, force: true });
+			}
 		});
 
 		it("cannot write under the home directory, /private/tmp, or ~/.npm", () => {
