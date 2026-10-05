@@ -29,6 +29,7 @@ import {
 	systemPromptOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
@@ -282,6 +283,23 @@ describe("reviewChangeset with a plan", () => {
 		expect(second.review.findings).toEqual([]);
 		expect(second.review.verdict.attention()).toEqual([]);
 		expect(second.review.verdict.status).toBe("passed");
+	});
+
+	it("treats an index entry from before routes joined its key as stale, and reads only the run that replaces it", async () => {
+		await planned({ model: heavy, accept: [heavy] }, undefined, { reports: "heavy" });
+		// The entry as review index version 2 stored it: each lens by name and version, with no route.
+		const root = await harness.root(context);
+		const revision = revisionKey((await Changeset.resolve(repo, "main...feature")).revision);
+		await root.commit(async (tx) => {
+			const index = await tx.doc(ReviewIndex, root.id);
+			const entry = index.reviews[revision]!;
+			index.reviews[revision] = { ...entry, lenses: entry.lenses.map((lens) => lens.split(" on ")[0]!) };
+		}, context);
+
+		const again = await planned({ model: heavy, accept: [heavy] });
+
+		expect(again.answered).toEqual(["heavy", "heavy"]);
+		expect(again.review.verdict.attention()).toEqual([]);
 	});
 
 	it("runs the committed route with no lineage when the preference file stays on it", async () => {
