@@ -566,6 +566,8 @@ Built in milestone 1: policy and standards read from a chosen revision, prompt b
 
 Existing code on the base branch is trusted. Submitted changes and comments are not.
 
+The Codex task wrapper confines writes, but the host must treat everything under its worktree and scratch as untrusted. A task can create a repository in its exempt temp directory, then rename its parent into persistent storage. Seatbelt checks the rename paths, not their descendants. The exemption stays because Melian's tests create repositories there; denying directory renames would break `npm ci` and git. The host reviews task output through the pull request and never runs git inside a directory a task created. [The residual-limits decision](decisions/2026-10-06-codex-sandbox-residual-limits.md) records this boundary and the routes the sandbox does close.
+
 - Read-only analysis of the head is fine anywhere.
 - Anything that executes head code runs in a sandbox with no secrets. That includes static tools that load repository-controlled plugins, such as eslint configurations.
 - Static tools, such as Biome and tsc, execute in the execution environment, never in the Melian process, because they load the repository's configuration and plugins. Each runs in a temporary worktree of the revision it analyses, never in the user's checkout.
