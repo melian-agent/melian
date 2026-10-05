@@ -268,13 +268,15 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		expect(human.stdout).toMatch(/octocat {2}src\/user\.ts:20 {2}Should this log the name too\?/);
 	});
 
-	it("refuses a pull request that moved since Melian's review, and records nothing", () => {
+	it("refuses a pull request that moved since Melian's review, and records nothing from any source", () => {
 		const { repo, files, env } = pullRequest(true);
 		expect(melian(repo, ["review", "#7"], env).status).toBe(1);
 
-		const result = melian(repo, ["compare", "#7", "--from", "github"], env);
+		// A good file first, then GitHub, which fails: the file's finding is held back with it.
+		const good = codexFile(files, [codexFinding(8, "Null manager")]);
+		const result = melian(repo, ["compare", "#7", "--from", `file:${good}`, "--from", "github"], env);
 
-		expect(result.status).toBe(1);
+		expect(result).toMatchObject({ status: 1, stdout: "" });
 		expect(result.stderr).toContain(`pull request #7 is at ffffffffffff now`);
 		expect(result.stderr).toContain(`run melian review "#7" first`);
 		const empty = join(files, "empty.json");
