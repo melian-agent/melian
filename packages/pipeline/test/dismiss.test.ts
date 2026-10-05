@@ -238,7 +238,14 @@ async function publisher(path: string) {
 	const publish = async () => {
 		const publishing = await openPublishHarness(await openSqliteStorage(path), fake.review, provider);
 		try {
-			return await publishReview({ harness: publishing.harness, provider, changeset, pullRequest, base });
+			return await publishReview({
+				trustedWriters: true,
+				harness: publishing.harness,
+				provider,
+				changeset,
+				pullRequest,
+				base,
+			});
 		} finally {
 			await publishing.close(context);
 		}

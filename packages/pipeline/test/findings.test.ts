@@ -772,6 +772,7 @@ describe("documents stored before evidence became a list", () => {
 			try {
 				const changeset = { revision: Revision.from({ base, head, files: [] }) } as unknown as Changeset;
 				const publication = await publishReview({
+					trustedWriters: true,
 					harness: publisher.harness,
 					provider,
 					changeset,
@@ -821,7 +822,14 @@ describe("documents stored before evidence became a list", () => {
 				);
 				try {
 					const changeset = { revision: Revision.from({ base, head, files: [] }) } as unknown as Changeset;
-					await publishReview({ harness: publisher.harness, provider, changeset, pullRequest, base });
+					await publishReview({
+						trustedWriters: true,
+						harness: publisher.harness,
+						provider,
+						changeset,
+						pullRequest,
+						base,
+					});
 					return posted;
 				} finally {
 					await publisher.close();

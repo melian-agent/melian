@@ -604,7 +604,7 @@ Problem: milestone 2 makes `melian/review` a required status, and the CLI sets i
 
 Solution: writers are trusted, by decision. A commit status or a local review record from an identity with write permission on the repository counts. `trust.writers: false` in the root `melian.yaml` turns this off; then only a run on a trusted host counts. A pull request from anyone without write permission never relies on a local record, and the trusted host, the Actions host in milestone 3, runs the full gate for it.
 
-The CLI reads writer trust from the committed root policy at the pull request base. With trust off, it still posts the review and ledger. It sets `melian/review` to `error`: "not reviewed here: writers are not trusted; a trusted host sets this status". Publication exits successfully and prints that reason. Only milestone 3's Actions host will count under this policy.
+The CLI reads writer trust from the committed root policy at the pull request base. Every publication caller must supply that policy explicitly; omission is refused before any write. Only legacy stored migrations default to trusted writers. With trust off, it still posts the review and ledger. It sets `melian/review` to `error`: "not reviewed here: writers are not trusted; a trusted host sets this status". Publication exits successfully and prints that reason. Only milestone 3's Actions host will count under this policy.
 
 `melian doctor` reports committed writer trust, viewer login and repository permission. It uses the local default-branch ref because it has no pull request argument. Without a base ref it warns and uses committed `HEAD`. A viewer without write permission warns without failing the command.
 

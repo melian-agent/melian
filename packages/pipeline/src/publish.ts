@@ -896,8 +896,8 @@ export function openPublishHarness(
 
 /** What {@link publishReview} publishes. */
 export interface PublishOptions {
-	/** Root writer-trust policy, true by default; false leaves the status for a trusted host. */
-	readonly trustedWriters?: boolean;
+	/** Required root writer-trust policy; false leaves the status for a trusted host. */
+	readonly trustedWriters: boolean;
 	/** A harness over the changeset's storage, with {@link publishExtension} for `provider` installed. */
 	readonly harness: Harness;
 	readonly provider: ReviewProvider;
@@ -985,7 +985,7 @@ export async function readPublished(
 		review,
 		threads,
 		replies,
-		publishedBy: publishedBy ?? { trustedWriters: true },
+		publishedBy: publishedBy!,
 		...(status === undefined ? {} : { status }),
 	});
 }
@@ -1073,6 +1073,9 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 	const head = pullRequest.head.sha;
 	const where = { pullRequest: pullRequest.number, revision: head };
 	const again = `run melian review "#${pullRequest.number}" first`;
+	if (typeof options.trustedWriters !== "boolean") {
+		throw new PublishError("notPublishable", "publication requires an explicit root writer-trust policy", where);
+	}
 	if (changeset.revision.head !== head) {
 		throw new PublishError(
 			"staleReview",
@@ -1121,7 +1124,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 				? permission
 				: await options.provider.permission(pullRequest.author);
 	const publishedBy: PublishedBy = {
-		trustedWriters: options.trustedWriters ?? true,
+		trustedWriters: options.trustedWriters,
 		...(login === undefined ? {} : { login }),
 		...(permission === undefined ? {} : { permission }),
 		...(authorPermission === undefined ? {} : { authorPermission }),

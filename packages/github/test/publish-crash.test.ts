@@ -212,6 +212,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			const github = providerFor(state);
 			harness = await openPublishHarness(await openSqliteStorage(database), scenarioModels(), github);
 			await publishReview({
+				trustedWriters: true,
 				harness,
 				provider: github,
 				changeset,
@@ -265,6 +266,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			const head = changeset.revision.head;
 
 			const result = await publishReview({
+				trustedWriters: true,
 				harness,
 				provider: github,
 				changeset,
@@ -329,6 +331,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 		harness = (await openPublisher(await openSqliteStorage(database), scenarioModels().review, github)).harness;
 
 		const result = await publishReview({
+			trustedWriters: true,
 			harness,
 			provider: github,
 			changeset,
@@ -374,6 +377,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			moveTo(state, first.changeset);
 			harness = (await openPublisher(await openSqliteStorage(database), fake.review, github)).harness;
 			await publishReview({
+				trustedWriters: true,
 				harness,
 				provider: github,
 				changeset: first.changeset,
@@ -398,6 +402,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			github = providerFor(recovered);
 			harness = (await openPublisher(await openSqliteStorage(database), fake.review, github)).harness;
 			await publishReview({
+				trustedWriters: true,
 				harness,
 				provider: github,
 				changeset: second.changeset,

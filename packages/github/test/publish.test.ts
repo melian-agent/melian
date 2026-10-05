@@ -81,6 +81,21 @@ async function publish(github: ReviewProvider, changeset: Changeset, trustedWrit
 	});
 }
 
+it("refuses publication without explicit writer trust before any write", async () => {
+	const { github, changeset, state } = await reviewedRevisionOne(lensScript());
+	const options = {
+		harness: harness!,
+		provider: github,
+		changeset,
+		pullRequest: await github.pullRequest(7),
+		base: changeset.revision.base,
+	};
+	await expect(Reflect.apply(publishReview, undefined, [options])).rejects.toThrow(
+		"requires an explicit root writer-trust policy",
+	);
+	expect(posts(state)).toEqual([]);
+});
+
 describe("reading markers back", () => {
 	const head = "a".repeat(40);
 	const fingerprint = "0123456789abcdef";
@@ -973,6 +988,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		state.pull.head.sha = "f".repeat(40);
 
 		const refused = await publishReview({
+			trustedWriters: true,
 			harness: harness!,
 			provider: github,
 			changeset,
@@ -991,6 +1007,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const retargeted = "e".repeat(40);
 
 		const refused = await publishReview({
+			trustedWriters: true,
 			harness: harness!,
 			provider: github,
 			changeset,

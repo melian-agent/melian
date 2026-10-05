@@ -512,6 +512,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		expect(prompt).toContain("return (user.manager as User).name;");
 		const publish = async (changeset: typeof first.changeset, enabled = true) =>
 			publishReview({
+				trustedWriters: true,
 				harness: harness!,
 				provider,
 				changeset,
@@ -615,6 +616,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		moveTo(state, first.changeset);
 		const publish = async (changeset: typeof first.changeset) =>
 			publishReview({
+				trustedWriters: true,
 				harness: harness!,
 				provider,
 				changeset,
@@ -667,6 +669,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		await first.review;
 		moveTo(state, first.changeset);
 		await publishReview({
+			trustedWriters: true,
 			harness,
 			provider,
 			changeset: first.changeset,
@@ -706,6 +709,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		});
 		await expect(
 			publishReview({
+				trustedWriters: true,
 				harness,
 				provider,
 				changeset: first.changeset,
@@ -741,6 +745,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		moveTo(state, first.changeset);
 		await expect(
 			publishReview({
+				trustedWriters: true,
 				harness,
 				provider,
 				changeset: first.changeset,
@@ -769,6 +774,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 			moveTo(state, first.changeset);
 			const publish = async () =>
 				publishReview({
+					trustedWriters: true,
 					harness: harness!,
 					provider,
 					changeset: first.changeset,
@@ -974,6 +980,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		moveTo(state, first.changeset);
 		const publish = async (changeset: typeof first.changeset) =>
 			publishReview({
+				trustedWriters: true,
 				harness: harness!,
 				provider,
 				changeset,
@@ -1022,6 +1029,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		moveTo(state, changeset);
 		const waited = vi.spyOn(harness, "waitForTask");
 		const refused = await publishReview({
+			trustedWriters: true,
 			harness,
 			provider,
 			changeset,
@@ -1060,6 +1068,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		moveTo(state, first.changeset);
 		const publish = async (changeset: typeof first.changeset) =>
 			publishReview({
+				trustedWriters: true,
 				harness: harness!,
 				provider,
 				changeset,
@@ -1188,6 +1197,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 			root = (await harness.root(context)).id;
 			const publish = async () =>
 				publishReview({
+					trustedWriters: true,
 					harness: harness!,
 					provider,
 					changeset: current.changeset,
@@ -1274,6 +1284,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		moveTo(state, first.changeset);
 		const publish = async (changeset: typeof first.changeset) =>
 			publishReview({
+				trustedWriters: true,
 				harness: harness!,
 				provider,
 				changeset,
@@ -1321,6 +1332,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		moveTo(state, first.changeset);
 		const publish = async (changeset: typeof first.changeset) =>
 			publishReview({
+				trustedWriters: true,
 				harness: harness!,
 				provider,
 				changeset,
@@ -1358,6 +1370,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		moveTo(state, first.changeset);
 		const publish = async (changeset: typeof first.changeset) =>
 			publishReview({
+				trustedWriters: true,
 				harness: harness!,
 				provider,
 				changeset,
@@ -1395,6 +1408,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		const publish = async (changeset: (typeof changesets)[number]) => {
 			moveTo(state, changeset);
 			return publishReview({
+				trustedWriters: true,
 				harness: harness!,
 				provider,
 				changeset,
@@ -1429,6 +1443,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 			await review.review;
 			moveTo(state, review.changeset);
 			await publishReview({
+				trustedWriters: true,
 				harness,
 				provider,
 				changeset: review.changeset,

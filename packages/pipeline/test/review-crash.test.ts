@@ -657,7 +657,14 @@ describe("a lens task from an earlier selection during triage", { timeout: 60_00
 		expect((await harness.snapshot(ReviewIndex, root, context))!.reviews[revision]!.adjudication).toBeUndefined();
 		expect(await readVerdict(harness, root, revision, context)).toBeUndefined();
 		await expect(
-			publishReview({ harness, changeset, provider, pullRequest, base: changeset.revision.base }),
+			publishReview({
+				trustedWriters: true,
+				harness,
+				changeset,
+				provider,
+				pullRequest,
+				base: changeset.revision.base,
+			}),
 		).rejects.toMatchObject({ code: "notReviewed" });
 		expect(provider.postReview).not.toHaveBeenCalled();
 		expect(provider.writeLedger).not.toHaveBeenCalled();
@@ -738,7 +745,14 @@ describe("a lens task from an earlier selection during triage", { timeout: 60_00
 		const completed = await openPublishHarness(await openSqliteStorage(database), fake.review, provider);
 		harness = completed.harness;
 		await expect(
-			publishReview({ harness, changeset, provider, pullRequest, base: changeset.revision.base }),
+			publishReview({
+				trustedWriters: true,
+				harness,
+				changeset,
+				provider,
+				pullRequest,
+				base: changeset.revision.base,
+			}),
 		).resolves.toBeDefined();
 		expect(provider.postReview).toHaveBeenCalledOnce();
 	});
