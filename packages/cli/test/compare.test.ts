@@ -1,5 +1,14 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	realpathSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -450,7 +459,9 @@ describe("melian compare stats and backlog", { timeout: 60_000 }, () => {
 		expect(stats.stdout).toContain("melian: recall 0/1 (0.000), precision 0/0 (1.000), pending 1.");
 		expect(stats.stdout).toContain("needs-execution: 1.");
 		expect(stats.stdout).toContain("Drain not due");
-		expect(melian(repo, ["compare", "stats", "--since", "2099-01-01"], env).stdout).toContain("Comparisons: 0.");
+		expect(melian(repo, ["compare", "stats", "--since", "2099-01-01"], env).stdout).toMatch(
+			/Comparisons: 0\.\nClone-wide, not narrowed by the filter:\nPending matches: \d+\./,
+		);
 		const backlog = melian(repo, ["compare", "backlog"], env);
 		expect(backlog).toMatchObject({
 			status: 0,

@@ -302,6 +302,8 @@ describe("comparison review fixes", () => {
 				.sort(),
 		).toEqual(["new-3"]);
 		expect(set.renderStats({ last: 1 })).toContain("Comparisons: 1.");
+		expect(set.renderStats({ last: 1 })).toContain("Clone-wide, not narrowed by the filter:\nPending matches: 0.\n");
+		expect(set.renderStats()).not.toContain("Clone-wide");
 		expect(set.renderStats({ last: 1 })).toContain("Drain due: ship 2 owed goldens");
 		expect(set.renderStats({ since: "2099-01-01" })).toContain("Drain due: ship 2 owed goldens");
 		expect(set.renderStats({ since: "2099-01-01" })).toContain("no-owner: 4.");

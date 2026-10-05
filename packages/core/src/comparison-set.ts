@@ -202,11 +202,17 @@ export class ComparisonSet {
 		const stats = this.stats();
 		const metrics = selected.stats();
 		const drain = this.drain();
-		const out = [`Comparisons: ${selected.drain().comparisons}. Pending matches: ${stats.pendingMatches}.\n`];
+		const filtered = options.since !== undefined || options.last !== undefined;
+		const out = [
+			filtered
+				? `Comparisons: ${selected.drain().comparisons}.\n`
+				: `Comparisons: ${selected.drain().comparisons}. Pending matches: ${stats.pendingMatches}.\n`,
+		];
 		for (const each of metrics.reviewers)
 			out.push(
 				`${visibleText(each.reviewer)}: recall ${each.found}/${each.total} (${each.recall.toFixed(3)}), precision ${each.valid}/${each.valid + each.noise + each.duplicate} (${each.precision.toFixed(3)}), pending ${each.pending}.\n`,
 			);
+		if (filtered) out.push(`Clone-wide, not narrowed by the filter:\nPending matches: ${stats.pendingMatches}.\n`);
 		for (const reason of missReasons) out.push(`${reason}: ${stats.misses[reason]}.\n`);
 		out.push(`Valid misses without a reason: ${stats.reasonlessMisses}.\n`);
 		for (const candidate of this.candidates())
