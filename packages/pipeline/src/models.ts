@@ -58,6 +58,7 @@ export async function planInputs(models: ReviewModels): Promise<PlanSources> {
 	);
 	const credentials: Record<string, string> = {};
 	for (const provider of collection.getProviders()) {
+		if (provider.auth.apiKey === undefined && provider.auth.oauth === undefined) continue;
 		const described = await store?.describe(provider.id);
 		const checked =
 			described === undefined ? await collection.checkAuth(provider.id).catch(() => undefined) : undefined;
@@ -68,14 +69,13 @@ export async function planInputs(models: ReviewModels): Promise<PlanSources> {
 }
 
 /**
- * Reads the named credential of each of `providers` that has one, running its command, so a command that fails stops
+ * Reads the named credential of each of `providers` that has one, running its command, so a command that fails or returns an unusable bearer stops
  * a review before it starts, with a `CredentialError` naming the credential and its file, rather than failing a lens.
  */
 export async function unlockCredentials(models: ReviewModels, providers: readonly string[]): Promise<void> {
 	const store = stores.get(models);
 	if (store === undefined) return;
 	for (const provider of new Set(providers)) {
-		const credential = store.credential(provider);
-		if (credential !== undefined) await store.value(credential);
+		await store.unlock(provider);
 	}
 }

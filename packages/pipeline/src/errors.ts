@@ -16,12 +16,12 @@ export class PiCredentialsError extends Error {
 	}
 }
 
-/** Why a named credential could not be used: its command failed, its source gave nothing, or its provider is unknown. */
-export type CredentialErrorCode = "commandFailed" | "noValue" | "unknownProvider";
+/** Why a named credential could not be used: its command failed, its source gave nothing, its bearer expired, or its provider accepts no supported auth. */
+export type CredentialErrorCode = "commandFailed" | "noValue" | "tokenExpired" | "unknownProvider" | "unsupportedAuth";
 
 /**
  * A named credential from a secrets file could not be read: its command failed or timed out, or its source gave an
- * empty value. `credential` and `file` name it; the message never quotes what the command printed.
+ * empty value or expired bearer. `credential` and `file` name it; the message never quotes what the command printed.
  */
 export class CredentialError extends Error {
 	readonly code: CredentialErrorCode;
