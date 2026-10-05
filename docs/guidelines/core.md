@@ -10,7 +10,7 @@ Problem: a domain rule written against the harness can only be tested through th
 
 ## Domain objects
 
-Behaviour belongs to the object it is about, as [AGENTS.md](../../AGENTS.md) says. Core's seven domain types are classes, each a runtime view over its JSON: a Pi Durable document or a task's input stays JSON, and the class is how code reads it. Problem: a function whose first parameter is a finding hides what a finding can do. Example: before step 12, `adjudication.ts` held twenty-one free functions, thirteen of them asking a finding something, so a reader looking for how a finding resolves searched the module rather than the class. Solution: every query, change, or transform of a domain object is a method on it, and a construction is a static factory.
+Behaviour belongs to the object it is about, as [AGENTS.md](../../AGENTS.md) says. Core's domain types are classes, each a runtime view over its JSON: a Pi Durable document or a task's input stays JSON, and the class is how code reads it. Problem: a function whose first parameter is a finding hides what a finding can do. Example: before step 12, `adjudication.ts` held twenty-one free functions, thirteen of them asking a finding something, so a reader looking for how a finding resolves searched the module rather than the class. Solution: every query, change, or transform of a domain object is a method on it, and a construction is a static factory.
 
 | Class | Built by | What it answers |
 | --- | --- | --- |
@@ -22,6 +22,8 @@ Behaviour belongs to the object it is about, as [AGENTS.md](../../AGENTS.md) say
 | `Lens` | `Lens.load(repoRoot, source, paths)`, `Lens.from(fields)`; `Lens.select(lenses, config, paths)` picks a review's lenses | `level(level)`, `renderInstructions(standards, level, neighbours, quote)`, `oversizedHandoffs(neighbours)`, `inversions()`, `toJSON()` |
 | `Revision` | `Revision.from({ head, base, files })`, deriving `policyFiles` unless given | `paths()`, `diffLines()`, `trigger(path, startLine, endLine)`, `changeOverlap(location, findingFile?)`, `causeOverlap(site, findingFile?)`, `classifyCause(location, evidence?)`, `toJSON()` |
 | `Changeset` | `Changeset.resolve(repoRoot, range, options)` from git, `Changeset.from(fields)` from a task's input | `withId(id)`, `toJSON()` |
+| `ExternalFinding` | `ExternalFinding.create(input)` from an importer's values, `ExternalFinding.fromFile(value, path)` from a reviewer's file, `ExternalFinding.from(stored)` trusting what Melian stored | `site()`, `meetsFinding(finding)`, `meets(other)`, `sameReviewer(other)`, `compareSite(other)`, `toJSON()` |
+| `Comparison` | `Comparison.of(revision)` empty, `Comparison.from(stored)` from the pipeline's document | `import(source, imported, at)`, `compare(findings)`, `match(external, melian, by, at)`, `unmatch(...)`, `externalFindings()`, `externalFinding(id)`, `melianFindings()`, `effectiveMatches()`, `importsBySource()`, `groups()`, `matched()`, `externalOnly()`, `melianOnly()`, `toJSON()` |
 
 `Adjudication` holds a review's findings, its `Manifest`, and its configuration, and `adjudicate()` decides the `Verdict`. `Rendering` holds the terminal options that `finding.render(rendering)`, `log.render(rendering)`, and `verdict.render(rendering)` share, `ids`, `all`, and `paint()` for colour, so each object renders itself and no method takes the object it renders as a parameter. A verdict renders each resolution group as a `FindingsLog`, through `log.files(rendering)`.
 
@@ -403,6 +405,75 @@ Severity, by default:
 Only added lines take an inline comment. Problem: GitHub rejects the whole review with a 422 when one comment names a line outside the diff, and its diff has three lines of context that Melian's zero-context hunks do not. Solution: anchor to added lines only, which every host shows.
 
 `verdict.reviewStatus()` maps a verdict to a commit status: `passed`, and `findings` with nothing blocking, are `success` with a count; a blocking finding is `failure`; `not-reviewed` is `error`, naming each check that did not run. `success` means only that nothing blocks: Melian never approves.
+
+## Comparison
+
+`src/comparison.ts` holds the shape of another reviewer's finding and the comparison of those findings with Melian's, as [design.md](../design.md#comparison-with-external-reviewers) sets out. The pipeline stores a comparison in the changeset's storage; the github package and the pipeline import findings into it; core decides what matches.
+
+### The stored shape
+
+The pipeline's comparison document is at version 1. It keys a `StoredComparison` by the `revisionKey` of the stored review it compares against, and each one holds:
+
+```ts
+type StoredComparison = {
+	base: string; // the revision compared: the stored review's base and head
+	head: string;
+	external: Record<string, StoredExternalFinding>; // by ID
+	melian: string[]; // the IDs of verdict.all() in the stored review: read from it, never copied
+	matches: { external: string; melian: string; kind: "site" | "hand"; by?: string; at?: string }[];
+	unmatches: { external: string; melian: string; by: string; at: string }[];
+	imports: Record<string, { at: string; findings: number; skippedBodies: number }>; // the last import, by source
+};
+
+type StoredExternalFinding = {
+	id: string;
+	reviewer: { name: "codex" | "claude-code" | "coderabbit" | "human"; version?: string; login?: string };
+	file?: string; // canonical, as a finding's path is
+	line?: number;
+	endLine?: number;
+	revision?: "base"; // a thread on the diff's left side
+	outdated?: boolean; // a thread GitHub no longer places; its lines are its original ones
+	title: string; // one line, at most 200 characters
+	body: string; // at most 65,536 characters
+	severity?: string; // the reviewer's own word, such as "high" or "P1"
+	source:
+		| { kind: "thread"; thread: string; comment: string; url: string } // GitHub's node ID, the first comment's ID
+		| { kind: "file"; path: string; position: number; ref?: string };
+	postedAt?: string;
+	resolved?: boolean;
+};
+```
+
+A source is named by a string: `github:<login>` for a pull request's review threads, `file:<path>` for a file. Adjudication, statistics, the backlog, and export, the later items of step 15, read this shape; adjudication adds a field of its own beside `matches`, so a comparison stored now still reads.
+
+Melian's findings are referenced by ID only. Problem: a copy of each finding would go stale when a dismissal decides the verdict again, and it would duplicate the snippets that quote the repository. Solution: `comparison.compare(verdict.all())` records the IDs of the stored review's findings, live and dismissed, each time it runs, and a reader takes the findings from the review.
+
+An external finding's ID is the first 16 hex digits of a sha256 over the length-prefixed reviewer name and source key, as `findingId` hashes its fields: `thread:<node ID>` for a thread, `file:<path>#<position>` for a file, or `file:<path>#ref:<ref>` when the file gives the finding a `ref`. Importing again upserts by ID, so an edited thread updates its finding and a re-run reviewer's file replaces its own. Neither the version, the lines, nor the text enters the ID.
+
+`ExternalFinding.create` puts the file in canonical form, refuses one that is not a repository-relative path and an `endLine` before `line` or without one with `ComparisonError` `invalidFinding`, and keeps the title to its first non-blank line, cut at `maxExternalTitleLength` with an ellipsis. Everything an external finding holds is untrusted: the CLI prints it through `visibleText`, and export will escape it as publication escapes findings.
+
+### Reviewers' files
+
+`ExternalFinding.fromFile(value, path)` reads a parsed JSON file in one of two shapes, and throws `ComparisonError` `invalidFile` naming the path and the first fault for anything else. A file whose top level has `next_steps` is Codex's adversarial review output, read under Codex's own schema: `line_start` and `line_end` become the lines, and a non-empty `recommendation` follows the body. Any other file is the external-finding shape, which the agent that ran a reviewer writes:
+
+```json
+{
+	"reviewer": { "name": "claude-code", "version": "2.1.0" },
+	"findings": [
+		{ "ref": "A1", "file": "src/a.ts", "line": 3, "endLine": 5, "title": "One line", "body": "Prose", "severity": "P1" }
+	]
+}
+```
+
+Every finding needs a `title` and a `body`; `ref`, `file`, `line`, `endLine`, `severity`, `postedAt`, and `resolved` are optional, and an unknown key is refused. A file holds at most 1,000 findings.
+
+### Matching
+
+`comparison.compare(findings)` matches by site. An external finding meets a Melian finding when they name the same file and their lines overlap or lie within `siteDistance`, three lines, of each other, at the Melian finding's own location or at one of its `cause` evidence locations at head. Problem: an `affected` finding sits in a file the change did not edit, and a reviewer reading the diff points at the changed line that breaks it. Solution: a `cause` location at head is a site of the finding too. A `context` location, or a `cause` location at the base, is not.
+
+An external finding with no file or line, an `outdated` one, and one on the base side match nothing by site; only a maintainer matches them. `comparison.match(external, melian, by, at)` records a hand match and drops any unmatch of the pair; `comparison.unmatch(...)` drops any match of the pair, by site or by hand, and records the unmatch. `compare` rebuilds the site matches and keeps every hand record, so both survive every import. An ID the comparison does not hold is `ComparisonError` `unknownExternal` or `unknownMelian`.
+
+`comparison.groups()` counts each defect once. Matches join external findings and Melian findings into one group, so three reviewers at one Melian finding are one matched defect. External findings that match nothing group by site across reviewers, a reviewer being its name and login: two reviewers at one site are one external-only defect, while one reviewer's two findings at one site stay two, as two reports from one check do. Grouping chains, so reviewers at lines 10, 13, and 16 of one file are one group. An unmatched finding never joins a Melian finding's group through another reviewer's match, so an unmatch holds. `matched()`, `externalOnly()`, and `melianOnly()` read the groups.
 
 ## Tests
 
