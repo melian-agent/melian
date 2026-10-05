@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { chmodSync, chownSync, mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { ConfigError, loadSecrets } from "@melian-agent/core";
@@ -145,6 +146,36 @@ describe("loadSecrets", () => {
 		const error = await rejection(loadSecrets(repo, user));
 		expect(error).toMatchObject({ code: "notUserOwned", file: user });
 	});
+
+	it("refuses a file over the size limit, never reading part of it", async () => {
+		const file = secrets(
+			repo,
+			"melian.secrets.yaml",
+			"credentials:",
+			`  a: { provider: openai, key: ${"k".repeat(70_000)} }`,
+		);
+		const error = await rejection(loadSecrets(repo));
+		expect(error).toMatchObject({ code: "tooLarge", file });
+		expect(error.message).not.toContain("kkkk");
+	});
+
+	it("refuses a directory where a secrets file belongs", async () => {
+		mkdirSync(join(repo, "melian.secrets.yaml"));
+		expect(await rejection(loadSecrets(repo))).toMatchObject({
+			code: "unreadable",
+			file: join(repo, "melian.secrets.yaml"),
+		});
+	});
+
+	// A FIFO would block a plain open until a writer came; the loader opens without blocking and refuses it.
+	it.skipIf(process.platform === "win32")(
+		"refuses a FIFO where a secrets file belongs, without blocking",
+		async () => {
+			const fifo = join(home, "secrets.yaml");
+			execFileSync("mkfifo", [fifo]);
+			expect(await rejection(loadSecrets(repo, fifo))).toMatchObject({ code: "unreadable", file: fifo });
+		},
+	);
 
 	it("never reads the per-clone file through a symlink, and follows the user's own", async () => {
 		const target = secrets(home, "real.yaml", "credentials:", "  a: { provider: openai, env: OPENAI_API_KEY }");
