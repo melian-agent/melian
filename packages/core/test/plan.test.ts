@@ -270,6 +270,20 @@ describe("ReviewPlan.resolve", () => {
 		expect(resolved.routes()).toEqual({});
 	});
 
+	it("leaves a route a preference file chose alone on an unavailable: fail tier", () => {
+		const committed = { heavy: { model: opus, accept: [opus], unavailable: "fail" as const } };
+		const resolved = plan(committed, { openai: "OPENAI_API_KEY" }, { preferences: { heavy: { model: gpt } } });
+		expect(resolved.tier("heavy")).toMatchObject({ status: "routed", models: [{ model: gpt }] });
+		expect(resolved.refusal("heavy")).toBeUndefined();
+	});
+
+	it("leaves a route --model chose alone on an unavailable: fail tier", () => {
+		const committed = { heavy: { model: opus, accept: [opus, gpt], unavailable: "fail" as const } };
+		const resolved = plan(committed, { openai: "OPENAI_API_KEY" }, { model: gpt });
+		expect(resolved.tier("heavy")).toMatchObject({ status: "routed", models: [{ model: gpt }] });
+		expect(resolved.refusal("heavy")).toBeUndefined();
+	});
+
 	it("records the lineage of a route a preference file changed, inside accept or outside it", () => {
 		const committed = { heavy: { model: opus, accept: [opus, gpt] } };
 		const credentials = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" };
