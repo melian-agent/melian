@@ -50,6 +50,29 @@
           "role": "context"
         }
       ]
+    },
+    {
+      "comment": "The rename deleted the Math.max(0, ...) bound on the slice start, which held the doc comment's promise that a short log comes back whole; nothing in the new code holds it.",
+      "severity": "Medium",
+      "category": "bug",
+      "file": "packages/core/src/log-tail.ts",
+      "rule": "dropped-guard",
+      "source": "lens.removed-behaviour",
+      "cause": "introduced",
+      "failureScenario": "tail(\"a\\nb\\nc\", 5) used to clamp the start to 0 and return all three lines; with the clamp deleted it returns [\"b\", \"c\"], breaking the doc comment's promise that a log shorter than count lines comes back whole.",
+      "evidence": [
+        {
+          "file": "packages/core/src/tail.ts",
+          "line": 7,
+          "role": "cause",
+          "revision": "base"
+        },
+        {
+          "file": "packages/core/src/log-tail.ts",
+          "line": 7,
+          "role": "context"
+        }
+      ]
     }
   ]
 }

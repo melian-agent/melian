@@ -60,7 +60,52 @@
   ],
   "removed-behaviour": [
     {
-      "text": "Reported 0 findings."
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "packages/core/src/tail.ts",
+            "revision": "base"
+          },
+          "expectToolResult": "Math.max(0, lines.length - count)"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "packages/core/src/log-tail.ts",
+            "line": 7,
+            "rule": "dropped-guard",
+            "severity": "P2",
+            "explanation": {
+              "what": "The rename deleted the bound that kept the slice start at 0 or above.",
+              "why": "The bound held the doc comment's promise that a log shorter than count lines comes back whole, and nothing in log-tail.ts holds it now.",
+              "fix": "Restore Math.max(0, lines.length - count)."
+            },
+            "failureScenario": "tail(\"a\\nb\\nc\", 5) used to clamp the start to 0 and return all three lines; with the clamp deleted it returns [\"b\", \"c\"], breaking the doc comment's promise that a log shorter than count lines comes back whole.",
+            "evidence": [
+              {
+                "file": "packages/core/src/tail.ts",
+                "line": 7,
+                "role": "cause",
+                "revision": "base"
+              },
+              {
+                "file": "packages/core/src/log-tail.ts",
+                "line": 7,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "recorded finding"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
     }
   ],
   "tests": [

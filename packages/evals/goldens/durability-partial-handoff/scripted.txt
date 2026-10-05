@@ -1,5 +1,17 @@
 packages/core/src/log-tail.ts
 
+  P2  line 7  dropped-guard  (introduced, new, unresolved)
+  The rename deleted the bound that kept the slice start at 0 or above.
+    What: The rename deleted the bound that kept the slice start at 0 or above.
+    Why here: The bound held the doc comment's promise that a log shorter than count lines comes back whole, and nothing in log-tail.ts holds it now.
+    Failure scenario: tail("a\nb\nc", 5) used to clamp the start to 0 and return all three lines; with the clamp deleted it returns ["b", "c"], breaking the doc comment's promise that a log shorter than count lines comes back whole.
+    Evidence:
+      cause: packages/core/src/tail.ts:7 at base
+          return lines.slice(Math.max(0, lines.length - count));
+      context: packages/core/src/log-tail.ts:7
+          return lines.slice(lines.length - count);
+    What to do: Restore Math.max(0, lines.length - count).
+
   P2  line 7  wrong-result  (introduced, new, unresolved)
   tail returns fewer lines than the log holds when the log is shorter than count.
     What: tail returns fewer lines than the log holds when the log is shorter than count.
@@ -29,4 +41,4 @@ packages/pipeline/src/lens-run.ts
           version: 1,
     What to do: Give the new shape a task version of its own and read both shapes in failedLenses, or keep the record.
 
-2 findings in 2 files.
+3 findings in 2 files.
