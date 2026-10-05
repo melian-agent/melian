@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
 	type Changeset,
 	type CheckRecord,
@@ -118,6 +119,7 @@ interface LensRun {
 	// The level's tier's models that were known with credentials when the review started, in routing order.
 	readonly route: readonly ModelReference[];
 	readonly instructions: string;
+	readonly instructionFingerprint?: string;
 	readonly standards?: readonly string[];
 	readonly tools: readonly LensToolName[];
 	readonly severities: readonly Severity[];
@@ -822,7 +824,8 @@ function omit<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K>
 // change to any of them runs the lenses again. A task an older Melian created names none of them.
 function escalatesTo(escalation: NonNullable<LensRun["escalation"]>): string {
 	const { next } = escalation;
-	if (next !== undefined) return `escalates to ${next.key} (${next.route.map(modelName).join(", ")})`;
+	if (next !== undefined)
+		return `escalates to ${next.key} (${next.route.map(modelName).join(", ")}) ${next.instructionFingerprint ?? ""}`;
 	return `capped ${escalation.cap ?? "at its ceiling"}`;
 }
 
@@ -831,6 +834,7 @@ function selectionOf(lenses: readonly LensRun[], escalateAt: Severity | undefine
 		.map((lens) =>
 			[
 				lens.key,
+				...(lens.instructionFingerprint === undefined ? [] : [`instructions ${lens.instructionFingerprint}`]),
 				...(lens.band === undefined ? [] : [`band ${lens.band}`]),
 				...(escalateAt === undefined ? [] : [`escalateAt ${escalateAt}`]),
 				...(lens.escalation === undefined ? [] : [escalatesTo(lens.escalation)]),
@@ -1460,6 +1464,27 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					(text, label = "listing") => quoteUntrusted(label, text, nonce),
 					standardsSource,
 				),
+				instructionFingerprint: createHash("sha256")
+					.update(
+						JSON.stringify({
+							instructions: ruled.renderInstructions(
+								reading.sections,
+								level,
+								neighbours,
+								(text, label = "listing") => quoteUntrusted(label, text, "0".repeat(24)),
+								standardsSource,
+							),
+							standards: reading.sections,
+							source: standards instanceof Standards ? standards.source : null,
+							tools: lens.tools,
+							severities: lens.severities,
+							rules,
+							budget: settings.budget,
+							coverage,
+							prompt: new ChangePrompt(changeset, "0".repeat(24)).render(files),
+						}),
+					)
+					.digest("hex"),
 				standards: reading.paths(),
 				tools: lens.tools,
 				severities: lens.severities,

@@ -23,3 +23,5 @@ A five-section regression confirms that an imported file uses its importer's sco
 Standards imports now refuse ignored and credential files before reading. Revision imports read only tracked blobs, with ignore rules from that revision. The CLI reads range standards from commits. Core probes and a fake-model review confirm that a head's nested import cannot send clone secrets, and that the check record names the refusal. The import safety decision records this boundary.
 
 An automatic-check regression fails a fake compiler, repairs it, confirms a repeat uses the cached failure, then verifies `rerun: true` clears it. The compiler runs once per revision on the retry.
+
+Lens selection now fingerprints stable instruction inputs, including standards and provenance, while excluding fresh nonces. A fake-model regression reviews one revision twice after a standards edit and observes the new text in a second request. An unchanged repeat, including `rerun`, still attaches. The identity decision records the rule.

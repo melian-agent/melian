@@ -59,8 +59,14 @@ async function setup(kind: "revision" | "worktree" = "revision") {
 		models: { heavy: { model: `${ref.provider}/${ref.modelId}` } },
 	};
 	const requests = scriptConversations(fake, [
-		{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
-		{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+		{
+			match: "You are the correctness reviewer",
+			replies: [fauxAssistantMessage("Done."), fauxAssistantMessage("Done.")],
+		},
+		{
+			match: "You are the contracts reviewer",
+			replies: [fauxAssistantMessage("Done."), fauxAssistantMessage("Done.")],
+		},
 	]);
 	harness = await openReviewHarness(createMemoryStorage(), fake.review, { retry: false });
 	const options = {
@@ -122,6 +128,21 @@ describe("per-lens standards", () => {
 		expect(result.verdict.ran!.find(({ name }) => name === "lens.correctness")!.reason).toContain(
 			"packages/core/src/AGENTS.md -> melian.secrets.yaml",
 		);
+	});
+
+	it("refreshes changed worktree standards at the same revision without hashing fresh nonces", async () => {
+		writeFiles(repo, { "AGENTS.md": "FIRST_STANDARD" });
+		const { options, requests } = await setup("worktree");
+		await reviewChangeset(options);
+		await reviewChangeset({ ...options, rerun: true });
+		expect(requests["You are the correctness reviewer"]).toHaveLength(1);
+		writeFiles(repo, { "AGENTS.md": "SECOND_STANDARD" });
+		await reviewChangeset({
+			...options,
+			standards: await Standards.load(repo, options.policy, options.changeset.revision.paths()),
+		});
+		expect(requests["You are the correctness reviewer"]).toHaveLength(2);
+		expect(systemPromptOf(requests["You are the correctness reviewer"]![1]!)).toContain("SECOND_STANDARD");
 	});
 
 	it("includes both sides of a rename for a lens selected through the head path", async () => {
