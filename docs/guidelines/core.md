@@ -114,6 +114,7 @@ The keys a `melian.yaml` accepts, all optional:
 | `stages` | stage name to tier name | `pre-commit: fast`, `pre-push: standard`, `pull-request: full`, `comment: standard` |
 | `resolution` | `P0` to `P3` and `nit`, each `block`, `acknowledge`, `advisory`, or `silent` | `P0` and `P1` block, `P2` acknowledge, `P3` advisory, `nit` silent |
 | `lenses` | lens name to `enabled`, `tier` (`light`, `medium`, `heavy`), and `paths` | none |
+| `publish` | `walkthrough` with boolean `enabled`, `collapsed` and `diagrams` | all `true` |
 | `models` | `light`, `medium`, `heavy`, or `decision` to `model` and `fallbacks` | none |
 | `static` | `biome` and `tsc`, each with `enabled`, `timeout` in seconds, and `severity` from a Melian rule ID to a severity; `tsc` also takes `project` | both enabled, 300 seconds, no overrides, `project: tsconfig.json` |
 | `guardrails` | `forbidden-paths`, `required-files`, `forbidden-patterns`, each with `enabled`, `severity`, and `rules` by name, a forbidden-patterns rule taking `pattern`, `message`, `paths`, `ignoreCase`, and `severity`; `policy-change-review` with `enabled`, `severity`, `analyserSeverity`, and `files`, globs added to the built-in analyser configuration files | all enabled, no rules, no extra files; severity `P1` for forbidden-paths, `P2` for the others, `analyserSeverity` `P1` |
@@ -392,7 +393,7 @@ Severity, by default:
 
 `src/publication.ts` holds the provider port and the decisions publication makes without a host. `packages/github` implements the port; the pipeline's publish task calls it. Nothing here talks to a network.
 
-`ReviewProvider` is the whole surface a code host offers Melian: read a pull request's base, head, and metadata; post one review; reply in a thread; set a status; and read back Melian's markers. A second host is a second implementation of these five calls.
+`ReviewProvider` is the whole surface a code host offers Melian: read a pull request's base, head, and metadata; post one review; close a finding with an edit and thread resolution, or reply with a dismissal; find and write the ledger; set a status with its ledger link; and read back Melian’s markers. A second host implements this port.
 
 `verdict.publication(previous, lines, revision)` decides what one revision posts. A finding that resolves to `block`, `acknowledge`, or `advisory` and was not open after the previous revision is posted; one already open is not posted again; an open finding the verdict no longer holds, in any group, is resolved. A dismissed finding is never posted. An open finding the verdict holds as dismissed is resolved with its `dismissal`, so the host can answer its thread with the reason, and leaves the plan's `open` set: if a changed trigger reopens it, it is a new question and gets a new thread. An open finding that turns silent stays in the plan's `open` set. Problem: a lens that wavers on severity reports one ID as `P3`, then `nit`, then `P3` again; dropping it while silent made the third revision post it in a second thread and leave the first unanswered. Solution: it keeps its thread while quiet.
 
@@ -403,6 +404,8 @@ Severity, by default:
 - `body`: the file did not change, or only lost lines, so the review's body carries it.
 
 Only added lines take an inline comment. Problem: GitHub rejects the whole review with a 422 when one comment names a line outside the diff, and its diff has three lines of context that Melian's zero-context hunks do not. Solution: anchor to added lines only, which every host shows.
+
+`verdict.agentPrompt(target)` renders one fenced prompt for every open finding, with its ID, path, lines, rule, explanation and dismissal command. It opens with the untrusted-data rule. Control characters and backticks cannot escape the fence. JSON output stays the interface for programs.
 
 `verdict.reviewStatus()` maps a verdict to a commit status: `passed`, and `findings` with nothing blocking, are `success` with a count; a blocking finding is `failure`; `not-reviewed` is `error`, naming each check that did not run. `success` means only that nothing blocks: Melian never approves.
 

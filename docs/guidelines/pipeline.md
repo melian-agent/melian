@@ -225,3 +225,17 @@ A task a crash left behind may be for a target that is gone. Problem: the waitin
 - The parent polls that log while the child writes it, so ignore text after the last newline: it is an event still being written. Detect an early death through `signalCode` as well as `exitCode`, which stays null when a signal kills the child, and kill the child in a `finally`.
 - A fake reply carrying tool calls needs `stopReason: "toolUse"`; the default `"stop"` ends the run without running them.
 - Assert on what the model was shown, not only on what the harness returned. `captured()` in `test/fixtures/spike.ts` keeps each request's messages.
+
+## Ledger records and summaries
+
+Version 4 of `VerdictDocument` adds optional run details and walkthroughs under each revision key. Its migration preserves version 3 records; version 2 still upgrades evidence through `Verdict.upgrade`. An older verdict has no summary or run details and stays publishable.
+
+The review records its manifest, policy source, selected lenses and levels, routing order, budgets and standards paths. A successful lens carries the models it used, tokens and cost from Pi’s durable usage record. These details are a projection for publication; they do not decide the verdict.
+
+`melian.summarise` runs in a review harness, with one owned conversation and one request ID. Its prompt contains bounded diffs and head content inside untrusted boundaries. Its sole tool records a bounded paragraph, file summaries and an optional diagram. A per-revision index attaches a repeat call to its existing task. `summariseReview` stores a note if no light model has credentials or no summary was returned. A publish harness does not install this task.
+
+Version 4 of `PublishedDocument` adds optional ledger round snapshots and a pending round’s snapshot. The migration keeps version 3 replies as keyed, and still upgrades versions 1 and 2. An older record starts its ledger history at the next publication; it does not invent missing earlier snapshots. A carried resolution stores the commit that first addressed it.
+
+`LedgerDocument`, version 1, is a root document with latest history and a current fork. It holds the comment ID, URL and verified public stamp across every head. The publish task checks for an orphaned marker before writes, posts reviews and closes findings, then writes the ledger. After GitHub accepts a ledger write, a separate commit records it. A replay reads the stamp and restores the record without writing the same projection again. The status link has its own checkpoint, so a crash after the ledger record still finishes the link.
+
+An addressed inline finding keeps its first signed marker and appends a resolution marker. The provider skips an accepted edit but retries GraphQL resolution until the pipeline records the action. A dismissal still posts its reason as a reply. Neither the ledger nor the hidden stamp carries the git identity of the dismisser.
