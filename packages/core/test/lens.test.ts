@@ -108,14 +108,14 @@ describe("built-in lenses", () => {
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
 			contracts: "686d7ad61a40",
 			conventions: "bb08d9e590e4",
-			correctness: "c22842327fa3",
+			correctness: "05037e7ba4a2",
 			"removed-behaviour": "45fa8885fd01",
 			tests: "bee1be69be22",
 			"trust-boundary": "593b84bf6e82",
 		});
 		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
 		const [correctness] = Lens.select(named(lenses, "correctness"), tuned, ["src/index.ts"]);
-		expect(correctness!.lens.version).toBe("55d4d18f3384");
+		expect(correctness!.lens.version).toBe("735049d98890");
 	});
 
 	// Melian's own repository extends two built-ins with a hand-off to its durability lens, which changes their versions.
@@ -129,13 +129,13 @@ describe("built-in lenses", () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toMatchObject({
 			durability: "2d5b8a8ef26d",
-			correctness: "4b100d521191",
+			correctness: "23c306b4f6a0",
 			"removed-behaviour": "d9d8851b1ced",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toMatchObject({
-			correctness: "ad214def24d2",
+			correctness: "2f8444850df1",
 			"removed-behaviour": "7f9a438eac87",
 		});
 	});
@@ -704,7 +704,7 @@ describe("Lens.renderInstructions", () => {
 		const [correctness] = named(await Lens.load(repo, { kind: "worktree" }, []), "correctness");
 		const rule =
 			"- `unhandled-error`: A failure the changed code can raise or receive is dropped, swallowed, or left to crash the caller.";
-		const handOver = "Leave a deleted throw, rethrow, or error branch to it";
+		const handOver = "Leave a deleted rethrow or error branch to it";
 
 		const alone = correctness!.renderInstructions([], "careful", [every("correctness")], asIs);
 		expect(alone).toContain(rule);
