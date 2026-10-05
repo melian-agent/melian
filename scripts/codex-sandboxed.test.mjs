@@ -7,6 +7,7 @@ import {
 	readFileSync,
 	realpathSync,
 	rmSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -140,6 +141,19 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		expect(deny).not.toContain(".codex/auth.json");
 		expect(deny).not.toContain(".config/gh");
 		expect(text.indexOf("(deny file-read*")).toBeGreaterThan(text.indexOf("(allow file-read*)"));
+	});
+
+	it("names the target of a symlinked .env, since seatbelt matches real paths", () => {
+		const target = join(run, "real.env");
+		writeFileSync(target, "SECRET=1\n");
+		symlinkSync(target, join(linked, ".env"));
+		try {
+			const deny = block(profile(linked), "deny file-read*");
+			expect(deny).toContain(`(literal "${target}")`);
+			expect(deny).not.toContain(`(literal "${linked}/.env")`);
+		} finally {
+			rmSync(join(linked, ".env"), { force: true });
+		}
 	});
 
 	it("refuses the main checkout, where the worktree allowance would cover .git", () => {

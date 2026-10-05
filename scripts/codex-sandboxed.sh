@@ -6,12 +6,19 @@
 # macOS only: it uses sandbox-exec, the seatbelt Codex itself runs on.
 set -euo pipefail
 
-# Prints the real path of $1, resolving symlinks in its directory; seatbelt matches real paths.
+# Prints the real path of $1, resolving symlinks in its directory and in its last component;
+# seatbelt matches real paths, so a filter naming a link would miss its target.
 real() {
-  local dir
-  if [ -d "$1" ]; then (cd "$1" && pwd -P); return; fi
-  dir=$(dirname "$1")
-  if [ -d "$dir" ]; then echo "$(cd "$dir" && pwd -P)/$(basename "$1")"; else echo "$1"; fi
+  local p=$1 dir target hops=0
+  while [ -L "$p" ] && [ "$hops" -lt 40 ]; do
+    dir=$(cd "$(dirname "$p")" && pwd -P)
+    target=$(readlink "$p")
+    case $target in /*) p=$target ;; *) p=$dir/$target ;; esac
+    hops=$((hops + 1))
+  done
+  if [ -d "$p" ]; then (cd "$p" && pwd -P); return; fi
+  dir=$(dirname "$p")
+  if [ -d "$dir" ]; then echo "$(cd "$dir" && pwd -P)/$(basename "$p")"; else echo "$p"; fi
 }
 
 # Exits 64 on a path with a backslash, double quote, or newline: it would break out of a profile string.
