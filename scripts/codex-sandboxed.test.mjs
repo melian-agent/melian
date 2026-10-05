@@ -1042,6 +1042,26 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 			rmSync(join(run, "repo"), { recursive: true, force: true });
 		});
 
+		it("merges diverging branches with --no-ff, writing MERGE_HEAD before the merge commit", () => {
+			sh(
+				linked,
+				"git checkout -q -b merge-topic && echo topic > merge-topic-file && git add merge-topic-file && git commit -q -m topic",
+			);
+			const topic = git(linked, "rev-parse", "HEAD").toString().trim();
+			sh(
+				linked,
+				"git checkout -q -b merge-target HEAD~1 && echo target > merge-target-file && git add merge-target-file && git commit -q -m target",
+			);
+			const target = git(linked, "rev-parse", "HEAD").toString().trim();
+			sh(linked, "git merge --no-ff --no-commit merge-topic");
+			expect(readFileSync(join(admin, "MERGE_HEAD"), "utf8").trim()).toBe(topic);
+			sh(linked, "git commit -q -m merged");
+			expect(git(linked, "show", "-s", "--format=%P", "HEAD").toString().trim().split(" ")).toEqual([target, topic]);
+			expect(existsSync(join(admin, "MERGE_HEAD"))).toBe(false);
+			for (const file of ["merge-topic-file", "merge-target-file"])
+				expect(existsSync(join(linked, file))).toBe(true);
+		});
+
 		it("squash-merges, and cherry-picks two commits, which write SQUASH_MSG and the sequencer directory", () => {
 			sh(
 				linked,
