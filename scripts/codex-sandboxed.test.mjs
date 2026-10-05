@@ -76,6 +76,7 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 		...process.env,
 		HOME: home,
 		CODEX_HOME: join(home, ".codex"),
+		PI_CODING_AGENT_DIR: "",
 		TMPDIR: join(root, "tmp"),
 		PATH: `${bin}:${process.env.PATH}`,
 	});
@@ -448,6 +449,53 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 		expect(denyAt).toBeGreaterThan(text.lastIndexOf("(allow file-read"));
 		expect(block(text.slice(denyAt), "deny file-read*")).toContain(`(literal "${home}/.pi/agent/auth.json")`);
 		expect(text.slice(denyAt)).not.toMatch(/\(allow file-read/);
+	});
+
+	it("denies the default Pi store when PI_CODING_AGENT_DIR is unset or empty", () => {
+		for (const unset of [false, true]) {
+			const defaultEnv = env();
+			if (unset) delete defaultEnv.PI_CODING_AGENT_DIR;
+			const text = execFileSync(script, ["--print-profile", linked, scratch, run], {
+				encoding: "utf8",
+				env: defaultEnv,
+			});
+			expect(block(text, "deny file-read*")).toContain(`(literal "${home}/.pi/agent/auth.json")`);
+		}
+	});
+
+	it("denies both Pi stores and resolves the configured store's symlinks", () => {
+		const store = join(root, "pi-store");
+		const target = join(root, "pi-auth.json");
+		const link = join(root, "pi-link");
+		mkdirSync(store);
+		symlinkSync(store, link);
+		writeFileSync(target, "synthetic-pi-credential\n");
+		symlinkSync(target, join(store, "auth.json"));
+		const text = execFileSync(script, ["--print-profile", linked, scratch, run], {
+			encoding: "utf8",
+			env: { ...env(), PI_CODING_AGENT_DIR: link },
+		});
+		const deny = block(text, "deny file-read*");
+		for (const path of [join(home, ".pi/agent/auth.json"), target])
+			expect(deny).toContain(`(literal "${path}")`);
+		expect(deny).not.toContain(`${link}/auth.json`);
+		expect(text.slice(text.lastIndexOf("(deny file-read*\n"))).not.toMatch(/\(allow file-read/);
+	});
+
+	it("refuses a Pi directory holding a quote, backslash, or newline before printing a profile", () => {
+		for (const name of ['pi"store', "pi\\store", "pi\nstore", "pi-store\n"]) {
+			try {
+				execFileSync(script, ["--print-profile", linked, scratch, run], {
+					stdio: "pipe",
+					env: { ...env(), PI_CODING_AGENT_DIR: join(root, name) },
+				});
+				throw new Error(`accepted Pi directory: ${name}`);
+			} catch (error) {
+				expect(error.status, name).toBe(64);
+				expect(String(error.stdout), name).toBe("");
+				expect(String(error.stderr), name).toContain("backslash, quote, or newline");
+			}
+		}
 	});
 
 	it("denies all writes to root .env files after the write allowances", () => {

@@ -37,6 +37,8 @@ check_path() {
   esac
 }
 
+check_path "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}"
+
 regex_path() {
   local r
   r=$(real "$1")
@@ -206,7 +208,8 @@ dynamic_rules() {
 
   echo "(deny file-read*"
   filters subpath "$HOME/.ssh" "$common/melian" "$worktree/.git/melian"
-  filters literal "$HOME/.pi/agent/auth.json" "$HOME/.npmrc" "$worktree/.env"
+  filters literal "$HOME/.pi/agent/auth.json" "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/auth.json" \
+    "$HOME/.npmrc" "$worktree/.env"
   [ "$(basename "$common")" = ".git" ] && filters literal "$(dirname "$common")/.env"
   echo ")"
 }
