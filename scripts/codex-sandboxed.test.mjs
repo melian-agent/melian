@@ -78,7 +78,17 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh --print-profi
 	it("denies writes to hooks, config, info, and Codex's config after the allow", () => {
 		const text = profile(linked);
 		const deny = block(text, "deny file-write*");
-		for (const path of [`(subpath "${main}/.git/hooks")`, `(subpath "${main}/.git/info")`, `(literal "${main}/.git/config")`, `(literal "${main}/.git/config.lock")`, `(literal "${admin}/config.worktree")`, `(literal "${linked}/.git")`, `(literal "${home}/.codex/config.toml")`, `(literal "${home}/.codex/auth.json")`, `(subpath "${home}/.codex/hooks")`]) {
+		for (const path of [
+			`(subpath "${main}/.git/hooks")`,
+			`(subpath "${main}/.git/info")`,
+			`(literal "${main}/.git/config")`,
+			`(literal "${main}/.git/config.lock")`,
+			`(literal "${admin}/config.worktree")`,
+			`(literal "${linked}/.git")`,
+			`(literal "${home}/.codex/config.toml")`,
+			`(literal "${home}/.codex/auth.json")`,
+			`(subpath "${home}/.codex/hooks")`,
+		]) {
 			expect(deny).toContain(path);
 		}
 		expect(text.indexOf("(deny file-write*")).toBeGreaterThan(text.indexOf("(allow file-write*"));
@@ -93,7 +103,14 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh --print-profi
 	it("denies reads of credentials and .env files, but not Codex's auth.json", () => {
 		const text = profile(linked);
 		const deny = block(text, "deny file-read*");
-		for (const path of [`(subpath "${home}/.ssh")`, `(literal "${home}/.pi/agent/auth.json")`, `(literal "${home}/.npmrc")`, `(literal "${home}/.config/gh/hosts.yml")`, `(literal "${linked}/.env")`, `(literal "${main}/.env")`]) {
+		for (const path of [
+			`(subpath "${home}/.ssh")`,
+			`(literal "${home}/.pi/agent/auth.json")`,
+			`(literal "${home}/.npmrc")`,
+			`(literal "${home}/.config/gh/hosts.yml")`,
+			`(literal "${linked}/.env")`,
+			`(literal "${main}/.env")`,
+		]) {
 			expect(deny).toContain(path);
 		}
 		expect(deny).not.toContain(".codex/auth.json");
