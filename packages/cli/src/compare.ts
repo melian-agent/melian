@@ -75,9 +75,10 @@ function reviewerOf(finding: ExternalFinding): string {
 
 // The counts, then each finding nothing matched, by ID, so a maintainer can match one by hand.
 function summary(comparison: Comparison, verdict: Verdict | undefined, skippedBodies?: number): string {
-	const matched = comparison.matched().length;
-	const externalOnly = comparison.externalOnly();
-	const melianOnly = comparison.melianOnly();
+	const groups = comparison.groups();
+	const matched = groups.filter((group) => group.external.length > 0 && group.melian.length > 0).length;
+	const externalOnly = groups.filter((group) => group.melian.length === 0);
+	const melianOnly = groups.filter((group) => group.external.length === 0).flatMap((group) => group.melian);
 	const skipped = skippedBodies === undefined ? "" : ` Skipped review bodies: ${skippedBodies}.`;
 	const out = [
 		`Matched: ${matched}. External only: ${externalOnly.length}. Melian only: ${melianOnly.length}.${skipped}\n`,

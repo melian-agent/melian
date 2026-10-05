@@ -654,41 +654,33 @@ export class Comparison {
 	}
 
 	/**
-	 * Every defect the comparison counts, each once. A group with Melian findings holds every external finding matched
-	 * with them, so several reviewers at one Melian finding count once. External findings matched with none group by
-	 * site across reviewers: two from different reviewers that meet are one defect, while two from one reviewer stay
-	 * two, as two reports from one check do.
+	 * Every defect the comparison counts, each once. Each Melian finding is one, with every external finding matched with
+	 * it, so several reviewers at one Melian finding count once; an external finding that matches two Melian findings
+	 * sits beside each and never joins them. External findings that match none grow groups in site order: one joins the
+	 * first group holding a finding it meets and none from its own reviewer, so a group holds at most one finding from
+	 * each reviewer, as two reports from one check stay two.
 	 */
 	groups(): ComparisonGroup[] {
-		const parent = new Map<string, string>();
-		const find = (node: string): string => {
-			let root = node;
-			while (parent.get(root) !== root) root = parent.get(root)!;
-			parent.set(node, root);
-			return root;
-		};
-		const union = (a: string, b: string) => parent.set(find(a), find(b));
 		const external = this.externalFindings();
-		for (const finding of external) parent.set(`e:${finding.id}`, `e:${finding.id}`);
-		for (const id of this.melian) parent.set(`m:${id}`, `m:${id}`);
 		const matches = this.effectiveMatches();
-		for (const match of matches) union(`e:${match.external}`, `m:${match.melian}`);
 		const matched = new Set(matches.map((match) => match.external));
-		const alone = external.filter((finding) => !matched.has(finding.id));
-		for (const [index, finding] of alone.entries()) {
-			for (const other of alone.slice(index + 1)) {
-				if (!finding.sameReviewer(other) && finding.meets(other)) union(`e:${finding.id}`, `e:${other.id}`);
-			}
+		const own = this.melian.map((id) => ({
+			external: external.filter((finding) =>
+				matches.some((match) => match.melian === id && match.external === finding.id),
+			),
+			melian: [id],
+		}));
+		const alone: ExternalFinding[][] = [];
+		for (const finding of external.filter((each) => !matched.has(each.id))) {
+			const group = alone.find(
+				(members) =>
+					members.some((member) => member.meets(finding)) &&
+					!members.some((member) => member.sameReviewer(finding)),
+			);
+			if (group === undefined) alone.push([finding]);
+			else group.push(finding);
 		}
-		const groups = new Map<string, { external: ExternalFinding[]; melian: string[] }>();
-		const group = (node: string) => {
-			const root = find(node);
-			if (!groups.has(root)) groups.set(root, { external: [], melian: [] });
-			return groups.get(root)!;
-		};
-		for (const finding of external) group(`e:${finding.id}`).external.push(finding);
-		for (const id of this.melian) group(`m:${id}`).melian.push(id);
-		return [...groups.values()];
+		return [...own, ...alone.map((members) => ({ external: members, melian: [] }))];
 	}
 
 	/** The groups where external findings match Melian findings. */

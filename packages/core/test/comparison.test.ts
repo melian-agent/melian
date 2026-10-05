@@ -281,11 +281,36 @@ describe("Comparison matching", () => {
 		const codexAgain = external({ file: "src/b.ts", line: 31 });
 		const claude = external({ reviewer: { name: "claude-code" }, file: "src/b.ts", line: 33 });
 		const comparison = compared([codex, codexAgain, claude], [melian()]);
-		const groups = ids(comparison.externalOnly()).map((group) => group.external.sort());
-		expect(groups).toHaveLength(1);
-		expect(groups[0]).toEqual([codex.id, codexAgain.id, claude.id].sort());
+		// In site order: Codex at 30 starts a group, Codex at 31 cannot join it, and Claude Code at 33 joins the first.
+		expect(ids(comparison.externalOnly())).toEqual([
+			{ external: [codex.id, claude.id], melian: [] },
+			{ external: [codexAgain.id], melian: [] },
+		]);
 		const apart = compared([codex, codexAgain], [melian()]);
 		expect(apart.externalOnly()).toHaveLength(2);
+	});
+
+	it("keeps a reviewer's finding unmatched by hand out of the group another reviewer's match makes", () => {
+		const finding = melian();
+		const codex = external({ line: 12 });
+		const claude = external({ reviewer: { name: "claude-code" }, line: 13 });
+		const comparison = compared([codex, claude], [finding]);
+		comparison.unmatch(claude.id, finding.id, "M", "t");
+		expect(ids(comparison.matched())).toEqual([{ external: [codex.id], melian: [finding.id] }]);
+		expect(ids(comparison.externalOnly())).toEqual([{ external: [claude.id], melian: [] }]);
+	});
+
+	it("matches an external finding with each of two Melian findings near it, and never merges them", () => {
+		const first = melian();
+		const second = melian({ snippet: "eval(other)", startLine: 15, endLine: 15 });
+		const between = external({ line: 13, endLine: 14 });
+		const comparison = compared([between], [first, second]);
+		expect(ids(comparison.matched())).toEqual([
+			{ external: [between.id], melian: [first.id] },
+			{ external: [between.id], melian: [second.id] },
+		]);
+		expect(comparison.melianOnly()).toEqual([]);
+		expect(comparison.externalOnly()).toEqual([]);
 	});
 
 	it("lets an unmatch override a site match, and keeps both kinds of hand record across a re-import", () => {
