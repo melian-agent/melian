@@ -1094,6 +1094,10 @@ export class Finding {
 	/** The finding's own failure scenario and evidence, as a finding it merges into keeps them; none without either. */
 	claims(): MemberClaim[] {
 		const { id, source, failureScenario, evidence, verification } = this.properties;
+		const original = this.properties.otherClaims?.find(
+			(claim) => claim.id === id && claim.source.check === source.check && claim.source.version === source.version,
+		);
+		if (original !== undefined) return [original];
 		if (failureScenario === undefined && evidence === undefined) return [];
 		return [
 			{
@@ -1141,6 +1145,18 @@ export class Finding {
 		const verification = [...members.flatMap((member) => member.claims()), ...otherClaims]
 			.flatMap((claim) => (claim.verification === undefined ? [] : [claim.verification]))
 			.sort((left, right) => rank[left.verdict] - rank[right.verdict])[0];
+		if (JSON.stringify(verification) !== JSON.stringify(this.claims()[0]?.verification) || proof.length > 0) {
+			for (const claim of this.claims())
+				if (
+					!otherClaims.some(
+						(each) =>
+							each.id === claim.id &&
+							each.source.check === claim.source.check &&
+							each.source.version === claim.source.version,
+					)
+				)
+					otherClaims.unshift(claim);
+		}
 		return {
 			...(verification === undefined ? {} : { verification }),
 			cause: (["introduced", "affected", "pre-existing"] as const)[best]!,

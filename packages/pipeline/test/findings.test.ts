@@ -397,6 +397,13 @@ describe("the findings document", () => {
 				evidence: [...contextOnly, ...evidence],
 				failureScenario: "A guess.",
 				otherClaims: [
+					{
+						id: unproven.properties.id,
+						ruleId: "no-eval",
+						source: style,
+						failureScenario: "A guess.",
+						evidence: contextOnly,
+					},
 					{ id: evidenced.properties.id, ruleId: "no-eval", source: security, failureScenario, evidence },
 				],
 			});
@@ -469,6 +476,36 @@ describe("the findings document", () => {
 type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 type Legacy = { [key: string]: Json };
 const json = (value: unknown) => value as Json;
+
+describe("version 5 findings", () => {
+	it("reads through version 6 after an SQLite reopen", async () => {
+		const legacy = defineDoc<Legacy>({
+			kind: "melian.findings",
+			version: 5,
+			scope: "conversation",
+			history: "rewindable",
+			fork: "asOf",
+			initial: () => ({}),
+		});
+		const path = join(dir, "version-five.sqlite");
+		const first = await open(await openSqliteStorage(path));
+		const { status: _, ...properties } = evalFinding.properties;
+		await first.root.commit(async (tx) => {
+			const state = await tx.doc(legacy, first.root.id);
+			state.revisions = ["rev1"];
+			state.items = json({
+				[evalFinding.id]: {
+					lifecycle: { status: "new", firstSeenRevision: "rev1", lastSeenRevision: "rev1", history: [] },
+					sightings: { rev1: { "lens.security@1": { ...evalFinding.toJSON(), properties } } },
+				},
+			});
+			state.versions = { rev1: 1 };
+		}, context);
+		await first.harness.close(context);
+		const { harness, root } = await open(await openSqliteStorage(path));
+		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(evalFinding)]);
+	});
+});
 
 describe("documents stored before evidence became a list", () => {
 	// The document as version 4 stored it: an affected sighting carried one evidence location, and none a scenario.

@@ -3,10 +3,6 @@ import {
 	type CheckRecord,
 	type CheckStatus,
 	ConfigError,
-	type ConfigFor,
-	configLookup,
-	type Finding,
-	loadConfig,
 	type MelianConfig,
 	type RepositorySource,
 	type Resolution,
@@ -17,6 +13,7 @@ import {
 	type StoredVerdict,
 	Verdict,
 } from "@melian-agent/core";
+import { configsFor } from "./configurations.ts";
 import { findingsVersion, type Producer, readFindings, revisionKey } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
@@ -68,6 +65,7 @@ export type VerdictProvenance = ReviewOrigin & {
 	readonly manifest: readonly string[];
 	readonly lenses: readonly string[];
 	readonly plan?: StoredPlan;
+	readonly verifierVersion?: string;
 };
 
 type StoredProvenance = {
@@ -80,6 +78,7 @@ type StoredProvenance = {
 	manifest: string[];
 	lenses: string[];
 	plan?: StoredPlan;
+	verifierVersion?: string;
 };
 
 // The adjudication task that recorded a verdict, and the findings version it read before deciding. Absent for a verdict
@@ -136,26 +135,6 @@ export type AdjudicationTaskInput = {
 	// Recorded with the verdict, so publishing can refuse one that came from a range or from the working tree.
 	provenance: StoredProvenance;
 };
-
-const policyReview = "guardrail/policy-change-review";
-
-// A policy-change-review finding resolves under the configuration that judged it, not its path's own, so a
-// melian.yaml cannot resolve the review of a change to itself.
-async function configsFor(
-	repoRoot: string,
-	policy: RepositorySource,
-	findings: readonly Finding[],
-): Promise<ConfigFor> {
-	const lookup = configLookup(repoRoot, policy);
-	const atPath = new Map<string, MelianConfig>();
-	const judging = new Map<string, MelianConfig>();
-	for (const { ruleId, properties } of findings) {
-		const { path } = properties;
-		if (!atPath.has(path)) atPath.set(path, (await loadConfig(repoRoot, policy, path)).config);
-		if (ruleId === policyReview && !judging.has(path)) judging.set(path, await lookup.policyReview(path));
-	}
-	return (path, rule) => (rule === policyReview ? judging : atPath).get(path)!;
-}
 
 // `superseded` when a later review of the revision created another adjudication task before this one recorded.
 export type AdjudicationResult = "recorded" | "superseded";
@@ -225,11 +204,13 @@ export function adjudicationInput(options: {
 	origin: ReviewOrigin;
 	lenses: readonly string[];
 	plan?: ReviewPlan | undefined;
+	verifierVersion?: string;
 }): AdjudicationTaskInput {
 	const { root, repoRoot, base, head, policy, config, manifest, checks, findingsVersion, allowSkip, producers } =
 		options;
 	const { origin } = options;
 	const provenance: StoredProvenance = {
+		...(options.verifierVersion === undefined ? {} : { verifierVersion: options.verifierVersion }),
 		kind: origin.kind,
 		...(origin.kind === "pull-request"
 			? {

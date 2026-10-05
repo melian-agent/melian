@@ -25,6 +25,7 @@ import {
 	fauxAssistantMessage,
 	fauxToolCall,
 	scriptConversations,
+	scriptVerifier,
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -62,7 +63,17 @@ afterEach(async () => {
 });
 
 async function killWhen(
-	scenario: "finding" | "legacy" | "request" | "adjudication" | "read" | "spent" | "tokens" | "escalation",
+	scenario:
+		| "finding"
+		| "legacy"
+		| "request"
+		| "adjudication"
+		| "read"
+		| "spent"
+		| "tokens"
+		| "escalation"
+		| "verifier"
+		| "verdict",
 	reached: (events: ReturnType<typeof readEvents>) => boolean,
 	database: string,
 	log: string,
@@ -544,9 +555,49 @@ describe("an escalation across a crash", { timeout: 30_000 }, () => {
 		const levels: string[] = [];
 		for (let id = 1; id < 60; id++) {
 			const lens = (await harness.snapshot(LensDocument, id as ConversationId, context))?.lens;
-			if (lens !== undefined) levels.push(lens.level ?? "none");
+			if (lens !== undefined && lens.role !== "verifier") levels.push(lens.level ?? "none");
 		}
 		// One conversation per level: the escalation's was created once, before the crash.
 		expect(levels.sort()).toEqual(["careful", "quick"]);
+		expect(verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
+		expect(verdict.attention()[0]!.properties.verification?.verdict).toBe("confirmed");
+		expect(verdict.attention()[0]!.properties.source.version).toMatch(/@quick$/);
+	});
+});
+
+describe("verification across a crash", { timeout: 30_000 }, () => {
+	it.each(["verifier", "verdict"] as const)("resumes %s after a real kill", async (scenario) => {
+		const database = join(dir, "verifier.sqlite");
+		const log = join(dir, "verifier.jsonl");
+		await killWhen(
+			scenario,
+			(events) =>
+				scenario === "verifier"
+					? events.some((event) => event.event === "model-request" && event.lens === "verifier")
+					: count(events, "verdict-committed") === 1,
+			database,
+			log,
+		);
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "medium" }] });
+		const requests = scriptConversations(fake, [
+			{
+				match: "Melian adversarial verifier",
+				replies: [(messages) => scriptVerifier(messages), (messages) => scriptVerifier(messages)],
+			},
+		]);
+		harness = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		const root = await harness.root(context);
+		const before = await readFindings(harness, root.id, reviewedRevision(), context);
+		expect(before[0]?.properties.verification !== undefined).toBe(scenario === "verdict");
+		harness.resume();
+		const task = (await harness.inspect(context)).tasks.find((task) => task.record.kind === "melian.verification")!;
+		expect((await harness.waitForTask(task.record.id, context)).state.outcome.status).toBe("completed");
+		const after = await readFindings(harness, root.id, reviewedRevision(), context);
+		expect(after[0]!.properties.verification?.verdict).toBe("confirmed");
+		expect(requests["Melian adversarial verifier"]).toHaveLength(scenario === "verdict" ? 1 : 2);
 	});
 });

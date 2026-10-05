@@ -7,3 +7,12 @@ Why: Verification must judge exactly the defect adjudication groups. Shared grou
 Choice: Default 8 falls back from an unrouted verifier to heavy, medium, then light lens routes. A refused verifier tier never falls back. Each planned model optionally stores its family, derived from its catalogue name. Cross-family routes preserve order inside each family. Providers include verification; doctor prints families and warns on fallback or same-family verification.
 
 Why: A contributor holding one provider can still review. A route policy refusal must not spend tokens on a result it cannot count. Family lookup is deterministic and survives a stored plan.
+
+
+Choice: Defaults 2, 9, 10, 11 and 12 select live defects with a verifying lens claim or an escalation-kept quick claim. Every lens claim on a candidate is judged. LensDocument has an optional verifier role, labelled sighting keys and the current model. The verifier uses the existing read tools and budget meter, with 100,000 tokens and 20 calls per candidate, at most eight conversations at once. Its version hashes instructions, report schema and question set. Scripted responses match a verifier marker and derive their replies from messages alone.
+
+Why: A quick claim an escalated run leaves unanswered must still reach judgement. Reusing read tools retains the existing boundaries and replay rules. Fixed budgets bound this step without adding configuration. Stateless scripts answer parallel conversations correctly.
+
+Choice: A revision and input attach to one verification task through an optional ReviewIndex entry. Spawn creates all owned conversations in one commit. Attempts and model changes commit together. Only rerun replaces an unanswered attachment. Every report commit checks task ownership. Findings document version 6 keeps optional verdict maps by revision, producer and verifier version beside each finding's sightings. Reads project the latest recorded version onto each claim and the strongest onto the merged finding. Clearing sightings clears their verdicts.
+
+Why: Replays must neither spend on replaced runs nor overwrite newer findings. A verdict belongs to its sighting, not its merged speaker. Version 5 migrates unchanged; version 4 also receives the existing evidence migration.

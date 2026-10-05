@@ -236,3 +236,12 @@ A task a crash left behind may be for a target that is gone. Problem: the waitin
 - The parent polls that log while the child writes it, so ignore text after the last newline: it is an event still being written. Detect an early death through `signalCode` as well as `exitCode`, which stays null when a signal kills the child, and kill the child in a `finally`.
 - A fake reply carrying tool calls needs `stopReason: "toolUse"`; the default `"stop"` ends the run without running them.
 - Assert on what the model was shown, not only on what the harness returned. `captured()` in `test/fixtures/spike.ts` keeps each request's messages.
+
+
+## Verifying a changeset
+
+After lenses finish, read their producers and group findings through core's Merge and the shared per-path configuration lookup. One verification task owns a conversation per candidate. Each labelled lens claim enters a findings boundary with its own evidence. Static reports carry no claim. Escalation-kept quick claims pass verification too.
+
+The root index attaches a repeated revision and input to its verification task. An unanswered result requires rerun to spend again. Spawn commits all conversations together. A failover commits its attempt and model together. Request IDs include candidate and attempt. A replaced task asks no model. The open sweep aborts replaced live verification tasks. report_verdict checks ownership inside its commit, including replay, and upserts by sighting and verifier version.
+
+The findings document is version 6. Its optional per-sighting verification maps leave version 5 records unchanged. Clearing a sighting removes its verdicts. A merged speaker carries the strongest verdict while each claim retains its own. Fake scripts match the verifier marker; the reserved verifier script key maps finding IDs to outcomes. Crash tests kill a process during its first request and after the report commit.

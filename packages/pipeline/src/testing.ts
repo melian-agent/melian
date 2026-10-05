@@ -15,8 +15,10 @@ import {
 	type RegisterFauxProviderOptions,
 } from "@earendil-works/pi-ai";
 import { createModels } from "@earendil-works/pi-ai/models";
+import type { Verification } from "@melian-agent/core";
 import type { HarnessOptions, ModelRef } from "./harness.ts";
 import { type ReviewModels, wrapModels } from "./models.ts";
+import { verifierMarker } from "./verification-instructions.ts";
 
 export { type FauxProviderHandle, fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
 
@@ -91,6 +93,7 @@ export function textOf(message: Message): string {
 export function scriptConversations(
 	fake: FakeModels,
 	scripts: readonly ConversationScript[],
+	verdicts: VerifierScript = {},
 ): Record<string, Message[][]> {
 	const requests: Record<string, Message[][]> = Object.fromEntries(scripts.map((script) => [script.match, []]));
 	const respond = (
@@ -101,6 +104,11 @@ export function scriptConversations(
 	): AssistantMessage | Promise<AssistantMessage> => {
 		const prompt = systemPromptOf(context.messages);
 		const script = scripts.find((each) => prompt.includes(each.match));
+		if (script === undefined && prompt.includes(verifierMarker)) {
+			requests[verifierMarker] ??= [];
+			requests[verifierMarker]!.push(structuredClone([...context.messages]));
+			return scriptVerifier(context.messages, verdicts);
+		}
 		if (script === undefined) return fauxAssistantMessage("", { stopReason: "error", errorMessage: "no script" });
 		const seen = requests[script.match]!;
 		seen.push(structuredClone([...context.messages]));
@@ -111,7 +119,7 @@ export function scriptConversations(
 		return typeof reply === "function" ? reply(context.messages, model.id) : reply;
 	};
 	const total = scripts.reduce((sum, script) => sum + script.replies.length, 0);
-	fake.provider.setResponses(Array.from({ length: total + scripts.length + 8 }, () => respond));
+	fake.provider.setResponses(Array.from({ length: total + scripts.length + 256 }, () => respond));
 	return requests;
 }
 
@@ -130,7 +138,26 @@ export type LensScriptStep =
 	| { readonly text: string };
 
 /** Each lens's turns, in order, by lens name. */
-export type LensScript = Readonly<Record<string, readonly LensScriptStep[]>>;
+export type VerifierScript = Readonly<
+	Record<
+		string,
+		| Verification["verdict"]
+		| {
+				verdict: Verification["verdict"];
+				reason?: string;
+				correction?: string;
+				evidence?: readonly {
+					file: string;
+					line: number;
+					endLine?: number;
+					role: "cause" | "context";
+					revision?: "head" | "base";
+				}[];
+		  }
+	>
+>;
+
+export type LensScript = Readonly<Record<string, readonly LensScriptStep[] | VerifierScript>>;
 
 // The text of each tool result answering the last assistant turn in `messages`, by tool call ID.
 function lastResults(messages: readonly Message[]): Map<string, string> {
@@ -180,11 +207,42 @@ export function scriptLenses(
 	mismatches: string[] = [],
 ): Record<string, Message[][]> {
 	const scripts = Object.entries(script)
+		.filter(([name]) => name !== "verifier")
 		.map(([name, steps]) => {
 			const lens = lenses.find((each) => each.name === name);
 			if (lens === undefined) throw new Error(`the script names ${name}, which is not a lens here`);
-			return { match: lens.instructions, replies: lensReplies(name, steps, mismatches) };
+			return {
+				match: lens.instructions,
+				replies: lensReplies(name, steps as readonly LensScriptStep[], mismatches),
+			};
 		})
 		.sort((a, b) => b.match.length - a.match.length);
-	return scriptConversations(fake, scripts);
+	return scriptConversations(fake, scripts, script.verifier as VerifierScript | undefined);
+}
+
+/** Answers verifier requests from their messages alone, safely across parallel conversations. */
+export function scriptVerifier(messages: readonly Message[], verdicts: VerifierScript = {}): AssistantMessage {
+	if (
+		messages.some(
+			(message) =>
+				message.role === "assistant" &&
+				message.content.some((block) => block.type === "toolCall" && block.name === "report_verdict"),
+		)
+	)
+		return fauxAssistantMessage("Every claim judged.");
+	const prompt = systemPromptOf(messages);
+	const calls = [...prompt.matchAll(/Claim (c[1-9][0-9]*) finding ([0-9a-f]+)/g)].map((match) => {
+		const scripted = verdicts[match[2]!] ?? "confirmed";
+		const outcome = typeof scripted === "string" ? { verdict: scripted } : scripted;
+		const reason = outcome.reason ?? "The scripted verifier traced the claim.";
+		return fauxToolCall("report_verdict", {
+			claim: match[1]!,
+			answers: { code: "yes", guard: outcome.verdict === "refuted" ? "yes" : "no", base: "no" },
+			verdict: outcome.verdict,
+			reason,
+			...("correction" in outcome && outcome.correction !== undefined ? { correction: outcome.correction } : {}),
+			...("evidence" in outcome && outcome.evidence !== undefined ? { evidence: [...outcome.evidence] } : {}),
+		});
+	});
+	return fauxAssistantMessage(calls, { stopReason: "toolUse" });
 }
