@@ -1311,6 +1311,8 @@ describe("reviewChangeset", () => {
 					expect(verdict.render()).toContain(
 						"lens.correctness  careful; kept the defects it hands to `trust-boundary`",
 					);
+					// contracts hands nothing to trust-boundary, so its instructions left nothing out.
+					expect(verdict.ran?.find((check) => check.name === "lens.contracts")?.reason).toBeUndefined();
 				}
 			}
 		});

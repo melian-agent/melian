@@ -690,6 +690,8 @@ describe("Lens.renderInstructions", () => {
 			expect(render(over)).not.toContain("`tests`");
 			expect(render(over)).toContain("- `contracts`: A change to a function's declared contract");
 		}
+		const [contracts] = named(await Lens.load(repo, { kind: "worktree" }, []), "contracts");
+		expect(contracts!.oversizedHandoffs([{ name: "tests", files: files(41) }])).toEqual([]);
 		expect(Buffer.byteLength(files(30, 200).join("\n"))).toBeGreaterThan(4 * 1024);
 		expect(Buffer.byteLength(files(40).join("\n"))).toBeLessThan(4 * 1024);
 	});
