@@ -1,0 +1,1 @@
+The thirteenth review of [pull request #62](https://github.com/melian-agent/melian/pull/62) flagged `decided`, a test helper whose first parameter was a `Lens`. Each test now constructs its decision inline with `Decision.parse`. The adjacent `triage` helper had the same problem; its callers now invoke the lens's methods directly. Neither fixture needs a new runtime API.

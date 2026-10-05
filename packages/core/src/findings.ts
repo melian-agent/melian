@@ -283,6 +283,13 @@ export const reportFindingInputSchema = Type.Object(
 					"The code the claim rests on, as locations, never prose. A finding outside the change is caused by it only when a cause location overlaps lines the change added, modified, or deleted, or names a file it renamed without editing, unless it only moved the finding's own file",
 			},
 		),
+		refuted: Type.Optional(
+			Type.String({
+				pattern: "^[0-9a-f]{16}$",
+				description:
+					"Only for a finding an earlier, quicker look reported that you were asked to check: its ID, as you were given it, when the code shows it is not a defect. Report it at the finding's file, lines, and rule, with failureScenario saying why it cannot fail and evidence holding the code that prevents it",
+			}),
+		),
 	},
 	strict,
 );

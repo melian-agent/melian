@@ -546,8 +546,8 @@ describe("a lens two folders define", () => {
 				[
 					"correctness",
 					[
-						{ scope: "", model: opus },
-						{ scope: "services/pay", model: "openai/gpt-5.4-mini" },
+						{ scope: "", level: "careful" as const, model: opus },
+						{ scope: "services/pay", level: "careful" as const, model: "openai/gpt-5.4-mini" },
 					],
 				],
 			]);
@@ -595,10 +595,12 @@ describe("a resolved plan", () => {
 		// The first model of the moved lens's route is inside accept, so the plan lets it run.
 		expect(resolved.judge("correctness", "careful").refusal).toBeUndefined();
 		const record = { name: "lens.correctness", status: "ran", level: "careful" } as const;
-		expect(resolved.mark([record], new Map([["correctness", [{ scope: "", model: opus }]]]))).toEqual([record]);
+		expect(
+			resolved.mark([record], new Map([["correctness", [{ scope: "", level: "careful" as const, model: opus }]]])),
+		).toEqual([record]);
 		const [fallback] = resolved.mark(
 			[record],
-			new Map([["correctness", [{ scope: "", model: "openai/gpt-5.4-mini" }]]]),
+			new Map([["correctness", [{ scope: "", level: "careful" as const, model: "openai/gpt-5.4-mini" }]]]),
 		);
 		expect(fallback).toMatchObject({
 			status: "failed",
@@ -628,6 +630,15 @@ describe("a resolved plan", () => {
 			},
 		]);
 		expect(resolved.summary()).toBe("");
+	});
+
+	it("names a provider only a level other than careful needs, since triage may choose it", () => {
+		const resolved = plan(
+			{ heavy: { model: opus }, medium: { model: gpt } },
+			{ anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" },
+		);
+		// medium serves only quick, yet a review that triages a lens to quick calls it.
+		expect(resolved.providers()).toEqual(["openai", "anthropic"]);
 	});
 
 	it("names the providers the review's lenses may call, and no other tier's", () => {

@@ -1,0 +1,1 @@
+Melian's review of [pull request #62](https://github.com/melian-agent/melian/pull/62) found five gaps, now closed. A lens task whose index entry predates the level key is aborted, and so is a decision task a rerun replaces. The CLI wires triage through a tested `Triage` object, and a `melian.local.yaml` may set `triage`. Overlong sentences in the docs are split.
