@@ -399,6 +399,24 @@ describe.each(sourceKinds)("standards import safety from %s", (kind) => {
 		}
 	});
 
+	it("refuses a force-added import excluded by the revision's ignore rules", async () => {
+		writeFiles(repo, {
+			"AGENTS.md": "# Rules\n@private.md\n",
+			".gitignore": "private.md\n",
+			"private.md": "FORCE_ADDED_PRIVATE_VALUE",
+		});
+		gitIn(repo, "add", "--force", "private.md");
+		const source = sourceFor(repo, "revision");
+		expect(gitIn(repo, "ls-files", "private.md")).toBe("private.md");
+		const reader = await sourceModule.openSource(repo, source);
+		const read = vi.spyOn(reader, "readText");
+		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
+		const reading = (await Standards.load(repo, source, ["a.ts"])).forFiles(["a.ts"]);
+		expect(reading.paths()).not.toContain("private.md");
+		expect(reading.note()).toContain("AGENTS.md -> private.md");
+		expect(read.mock.calls.some(([path]) => path === "private.md")).toBe(false);
+	});
+
 	it("uses the revision's ignore rules and never reads untracked working tree imports", async () => {
 		writeFiles(repo, { "AGENTS.md": "# Rules\n@private.md\n@untracked.md\n", "private.md": "PUBLIC_BASE" });
 		const source = sourceFor(repo, "revision");
