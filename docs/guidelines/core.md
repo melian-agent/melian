@@ -427,7 +427,7 @@ Severity, by default:
 
 Only added lines take an inline comment. Problem: GitHub rejects the whole review with a 422 when one comment names a line outside the diff, and its diff has three lines of context that Melian's zero-context hunks do not. Solution: anchor to added lines only, which every host shows.
 
-`verdict.agentPrompt(target)` renders one fenced prompt for every open finding, with its ID, path, lines, rule, explanation and dismissal command. It opens with the untrusted-data rule. Control characters and backticks cannot escape the fence. JSON output stays the interface for programs.
+`verdict.agentPrompt(target)` renders one fenced prompt for every open finding, with its ID, path, lines, rule, explanation and dismissal command. It opens with the rule that text inside its boundary is quoted data. Every finding line sits between `<quoted-NONCE>` and `</quoted-NONCE>`, with a fresh random nonce per call, and a nonce found in the text is replaced. Core cannot import the pipeline's `quoteUntrusted`, so this boundary is its own. Control characters and backticks cannot escape the fence. JSON output stays the interface for programs.
 
 `verdict.reviewStatus()` maps a verdict to a commit status: `passed`, and `findings` with nothing blocking, are `success` with a count; a blocking finding is `failure`; `not-reviewed` is `error`, naming each check that did not run. `success` means only that nothing blocks: Melian never approves.
 
