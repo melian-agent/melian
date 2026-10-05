@@ -16,6 +16,7 @@ import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts
 import { VerdictDocument } from "../../pipeline/src/adjudication.ts";
 import { baseAndHead, isolatedGitEnv } from "../../pipeline/test/fixtures/repo.ts";
 import { publish, review } from "../src/commands.ts";
+import { main } from "../src/main.ts";
 import { storagePath } from "../src/repository.ts";
 import * as targets from "../src/target.ts";
 
@@ -81,7 +82,12 @@ describe("CLI walkthrough switch", { timeout: 60_000 }, () => {
 });
 
 describe("CLI publish walkthrough settings", { timeout: 60_000 }, () => {
-	async function published(yaml: string, options: { walkthrough?: boolean }, headYaml?: string) {
+	async function published(
+		yaml: string,
+		options: { walkthrough?: boolean },
+		headYaml?: string,
+		throughMain = false,
+	) {
 		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 		repo = baseAndHead(
 			{ "src/a.ts": "export const a = 1;\n", "melian.yaml": `tiers:\n  full: [guardrails]\n${yaml}` },
@@ -111,11 +117,22 @@ describe("CLI publish walkthrough settings", { timeout: 60_000 }, () => {
 		env = { ...process.env, MELIAN_TEST_SCRIPT: script };
 		const io = { cwd: repo, env, stdout: () => {}, stderr: () => {}, color: false };
 		// A head that edits melian.yaml draws a policy finding, which exits 3.
-		expect(await review(io, "#7", { rerun: false })).toBe(headYaml === undefined ? 0 : 3);
+		expect(
+			throughMain
+				? await main(["review", "#7", ...(options.walkthrough === false ? ["--no-walkthrough"] : [])], io)
+				: await review(io, "#7", { rerun: false }),
+		).toBe(headYaml === undefined ? 0 : 3);
 		// publish refuses a scripted run and reads the unscripted storage, so the scripted review moves there.
 		copyFileSync(await storagePath(repo, changeset.id, env, true), await storagePath(repo, changeset.id, env, false));
 		const { MELIAN_TEST_SCRIPT: _, ...clean } = env;
-		expect(await publish({ ...io, env: clean }, "#7", options)).toBe(0);
+		expect(
+			throughMain
+				? await main(["publish", "#7", ...(options.walkthrough === false ? ["--no-walkthrough"] : [])], {
+						...io,
+						env: clean,
+					})
+				: await publish({ ...io, env: clean }, "#7", options),
+		).toBe(0);
 		return state.ledgers[0]!.body;
 	}
 
@@ -138,5 +155,9 @@ describe("CLI publish walkthrough settings", { timeout: 60_000 }, () => {
 				"publish:\n  walkthrough:\n    enabled: true\n",
 			),
 		).not.toContain("Walkthrough");
+	});
+
+	it("passes --no-walkthrough from the command line through review and publish", async () => {
+		expect(await published("", { walkthrough: false }, undefined, true)).not.toContain("Walkthrough");
 	});
 });
