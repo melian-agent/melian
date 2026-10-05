@@ -95,3 +95,15 @@ describe("the free-domain-function exclusion list", () => {
 		expect(excluded().sort()).toEqual(offenders.sort());
 	});
 });
+
+describe("the free-domain-function guardrail's pattern", () => {
+	const types = ["Finding", "ResolvedFinding", "Defect", "Verdict", "Manifest", "Lens", "Revision", "Changeset"];
+
+	it.each(types)("matches a free function over a %s", (type) => {
+		expect(guardrailPattern().test(`function f(finding: ${type}): void {}`)).toBe(true);
+	});
+
+	it("does not match a type that only starts with a domain type's name", () => {
+		expect(guardrailPattern().test("function f(x: ResolvedFindingX) {}")).toBe(false);
+	});
+});
