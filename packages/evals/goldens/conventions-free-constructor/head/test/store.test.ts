@@ -14,11 +14,11 @@ test("reads back a saved invoice by its ID, paid or not, and nothing for an ID n
 
 test("lists only the unpaid invoices, in the order they were saved", () => {
 	const store = new InvoiceStore();
-	store.save(new Invoice("inv-1", "Acme", 12_500, false));
-	store.save(new Invoice("inv-2", "Globex", 4_000, true));
 	store.save(new Invoice("inv-3", "Initech", 900, false));
+	store.save(new Invoice("inv-2", "Globex", 4_000, true));
+	store.save(new Invoice("inv-1", "Acme", 12_500, false));
 	assert.deepEqual(store.unpaid(), [
-		new Invoice("inv-1", "Acme", 12_500, false),
 		new Invoice("inv-3", "Initech", 900, false),
+		new Invoice("inv-1", "Acme", 12_500, false),
 	]);
 });
