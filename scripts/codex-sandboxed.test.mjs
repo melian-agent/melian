@@ -378,6 +378,7 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 			`${common}/refs`,
 			`${common}/logs`,
 			`${admin}/logs`,
+			`${admin}/sequencer`,
 			...codex,
 		]) {
 			const escaped = path.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
@@ -403,6 +404,19 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 		const escaped = `${main}/.git`.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
 		for (const tree of ["refs", "logs/refs"])
 			expect(allow).toContain(`(regex #"^${escaped}/${tree}/remotes/[^/]+/HEAD([.]lock)?$")`);
+		expect(allow).not.toContain("commondir");
+	});
+
+	it("keeps sequencer head writable while denying commondir and repository components", () => {
+		const text = profile(linked, scratch);
+		const escaped = admin.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
+		const deny = block(text, "deny file-write*");
+		expect(deny).toContain(
+			`(regex #"^${escaped}/sequencer/(.*/)?([oO][bB][jJ][eE][cC][tT][sS]|[rR][eE][fF][sS])(/|$)")`,
+		);
+		const allowAt = text.indexOf("(allow file-write-create file-write-data file-write-unlink\n");
+		const allow = block(text.slice(allowAt), "allow file-write-create file-write-data file-write-unlink");
+		expect(allow).toContain(`(regex #"^${escaped}/sequencer/head([.]lock)?$")`);
 		expect(allow).not.toContain("commondir");
 	});
 
@@ -1218,11 +1232,15 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 					`mkdir -p '${admin}/sequencer/x/.git'`,
 					`mkdir -p '${admin}/sequencer/objects'`,
 					`mkdir -p '${admin}/sequencer/refs'`,
+					`mkdir -p '${admin}/sequencer' && echo x > '${admin}/sequencer/commondir'`,
+					`mkdir -p '${admin}/sequencer/x' && echo x > '${admin}/sequencer/x/HEAD'`,
 				])
 					expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
 				expect(existsSync(join(admin, "sequencer", "x", ".git"))).toBe(false);
 				expect(existsSync(join(admin, "sequencer", "objects"))).toBe(false);
 				expect(existsSync(join(admin, "sequencer", "refs"))).toBe(false);
+				expect(existsSync(join(admin, "sequencer", "commondir"))).toBe(false);
+				expect(existsSync(join(admin, "sequencer", "x", "HEAD"))).toBe(false);
 			} finally {
 				rmSync(join(admin, "sequencer"), { recursive: true, force: true });
 			}
