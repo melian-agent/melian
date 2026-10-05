@@ -11,3 +11,5 @@ The final diff review replaced a live-task inspection assertion with the durable
 Final verification found that [pull request #62](https://github.com/melian-agent/melian/pull/62) had landed and the shared main ref had advanced. This branch merges that result, retaining its complete-input skip rule and the standards omission note together. The combined result passes the gate.
 
 The first fix pass for [pull request #85](https://github.com/melian-agent/melian/pull/85) corrects the GitHub guideline: published state upgrades to version 6. The document definition confirms the target.
+
+The manifest guideline now describes automatic checks when records are absent, matching `reviewChangeset`. Hosts can still supply records.
