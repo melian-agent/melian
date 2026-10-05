@@ -720,6 +720,51 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		expect(state.ledgers[0]!.body).toBe(Ledger.from(verdict, edited.publication, options).render(links));
 	});
 
+	it("keeps the newest 50 rounds, so round 51 drops the oldest", async () => {
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test-token",
+			fetch: fakeGitHub(state),
+		});
+		harness = await openPublishHarness(createMemoryStorage(), fake, provider);
+		const first = await reviewScenario(repo, harness, fake, lensScript(unsafeManager));
+		await first.review;
+		moveTo(state, first.changeset);
+		const publish = async (changeset: typeof first.changeset) =>
+			publishReview({
+				harness: harness!,
+				provider,
+				changeset,
+				pullRequest: await provider.pullRequest(7),
+				base: changeset.revision.base,
+			});
+		await publish(first.changeset);
+		const root = (await harness.root(context)).id;
+		const filler = Array.from({ length: 49 }, (_, index) => ({
+			base: "b".repeat(40),
+			head: "c".repeat(40),
+			round: index + 1,
+			status: "passed" as const,
+		}));
+		await (await harness.root(context)).commit(async (tx) => {
+			const doc = await tx.doc(PublishedDocument, root);
+			doc.ledgerRounds = [...filler, ...doc.ledgerRounds!];
+		}, context);
+		expect((await harness.snapshot(PublishedDocument, root, context))!.ledgerRounds).toHaveLength(50);
+		pushRevisionTwo(repo);
+		const second = await reviewScenario(repo, harness, fake, lensScript(unsafeManager));
+		await second.review;
+		moveTo(state, second.changeset);
+		await publish(second.changeset);
+		const rounds = (await harness.snapshot(PublishedDocument, root, context))!.ledgerRounds!;
+		expect(rounds).toHaveLength(50);
+		expect(rounds[0]).toMatchObject({ round: 2, head: "c".repeat(40) });
+		expect(rounds.at(-1)).toMatchObject({ head: second.changeset.revision.head });
+	});
+
 	it("starts a fresh ledger when the recorded comment was deleted by hand", async () => {
 		const state = pullRequestState();
 		const provider = createGitHubProvider({

@@ -102,6 +102,9 @@ type StoredRevision = {
 	ledgerUrl?: string;
 };
 
+// The ledger shows this many rounds, newest last; older ones fall off so the stored history stays bounded.
+const maxLedgerRounds = 50;
+
 type PublishedState = {
 	order: string[];
 	revisions: Record<string, StoredRevision>;
@@ -560,7 +563,7 @@ function publishTask(provider: ReviewProvider) {
 											: round,
 									),
 									structuredClone(pending.ledger),
-								];
+								].slice(-maxLedgerRounds);
 							record.reviews = [...record.reviews, posted.id];
 							record.verdict = pending.fingerprint;
 							record.verdictRevision = pending.revision;
@@ -620,6 +623,7 @@ function publishTask(provider: ReviewProvider) {
 					const latest = rounds.at(-1);
 					if (latest === undefined || latest.head !== head || latest.round !== (record.rounds ?? 1)) {
 						rounds.push({ base, head, round: record.rounds ?? 1, verdict: verdict.toJSON(), resolved: [] });
+						rounds.splice(0, rounds.length - maxLedgerRounds);
 					}
 					const currentRound = rounds.at(-1)! as LedgerRound;
 					currentRound.base = base;

@@ -12,7 +12,7 @@ The stamp digest must equal the ledger marker ID exactly. The projection fingerp
 
 The summariser runs only for pull-request targets. It has one recording tool, which rejects unknown properties, copies bounded known fields and validates file paths against the change. Its output cannot render autolinks. The walkthrough has its own size budget and is cut before dismissals, run details or the prompt. Provider details stay out of fixed failure notes. Notes are stored apart from successful summaries, so another review retries, up to two summariser attempts per revision; after that the note stands until `--rerun`, which also refreshes a successful summary. A summary problem never changes the review exit code.
 
-Once a later round posts, older stored rounds retain only base, head, round number and status. A base-only retarget adds one round. Removing a finding's marker prevents its edit but still allows thread resolution, recorded as null. Thread discovery is cached for one publication. An abandoned round keeps the ledger link.
+Once a later round posts, older stored rounds retain only base, head, round number and status. The stored history keeps the newest 50 rounds. A base-only retarget adds one round. Removing a finding's marker prevents its edit but still allows thread resolution, recorded as null. Thread discovery is cached for one publication. An abandoned round keeps the ledger link.
 
 Why: the durable store remains the source of truth. The status must describe the current review even when its optional ledger needs recovery. A mutable comment needs ownership as well as a public signature. Display history and summary prose must have bounds independent of the findings that need action.
 
