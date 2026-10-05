@@ -205,6 +205,7 @@ for d in "${codex_names[@]}"; do mkdir -p "$codex_home/$d"; done
 codex_home=$(real "$codex_home")
 CODEX_HOME="$codex_home" "$0" --print-profile "$worktree" "$scratch" "$run" > "$profile"
 
+# TMPPREFIX is where zsh writes here-documents; its /tmp/zsh default is closed, and Codex runs every command as zsh -lc.
 # The sandbox confines writes, not secrets; pass only what a task needs and drop the rest, so an
 # agent socket, cloud credentials, tokens, and npm settings never reach it.
 allowed=()
@@ -221,7 +222,7 @@ cd "$worktree"
 # stdin is /dev/null: codex exec reads a piped stdin as extra input and stalls waiting for it.
 # The prompt follows --, so one that starts with a dash is not read as an option.
 set -m
-sandbox-exec -f "$profile" env -i ${allowed[@]+"${allowed[@]}"} TMPDIR="$run" npm_config_cache="$scratch/npm-cache" \
+sandbox-exec -f "$profile" env -i ${allowed[@]+"${allowed[@]}"} TMPDIR="$run" TMPPREFIX="$run/zsh" npm_config_cache="$scratch/npm-cache" \
   codex exec --dangerously-bypass-approvals-and-sandbox --model "$model" -C "$worktree" -- "$prompt" < /dev/null > "$log" 2>&1 &
 child=$!
 status=0

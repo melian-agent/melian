@@ -78,7 +78,7 @@ describe("codex-sandboxed.sh profile", () => {
 		mkdirSync(bin);
 		writeFileSync(
 			join(bin, "codex"),
-			'#!/bin/sh\nfor a in "$@"; do echo "arg:$a"; done\nenv | sed \'s/^/env:/\'\ntouch "$TMPDIR/probe" && echo probe-ok\ntouch "$npm_config_cache/probe" && echo cache-ok\nif read -r line; then echo "stdin:data"; else echo "stdin:eof"; fi\n',
+			'#!/bin/sh\nfor a in "$@"; do echo "arg:$a"; done\nenv | sed \'s/^/env:/\'\ntouch "$TMPDIR/probe" && echo probe-ok\nzsh -lc \'cat <<EOF\nzsh-heredoc-ok\nEOF\' || echo zsh-heredoc-failed\ntouch "$npm_config_cache/probe" && echo cache-ok\nif read -r line; then echo "stdin:data"; else echo "stdin:eof"; fi\n',
 		);
 		chmodSync(join(bin, "codex"), 0o755);
 		for (const dir of ["sessions", "log", "hooks"]) mkdirSync(join(home, ".codex", dir), { recursive: true });
@@ -681,6 +681,18 @@ describe("codex-sandboxed.sh profile", () => {
 			expect(readFileSync(join(linked, "pb"), "utf8")).toBe("b2\n");
 		});
 
+		it("runs here-documents in zsh, bash, and sh with the wrapper's temp variables", () => {
+			const heredoc = (shell, flags) =>
+				execFileSync(
+					"sandbox-exec",
+					["-f", profilePath, "env", `TMPDIR=${run}`, `TMPPREFIX=${run}/zsh`, shell, flags, "cat <<EOF\nhello\nEOF"],
+					{ cwd: linked, encoding: "utf8", stdio: "pipe", env: env() },
+				);
+			expect(heredoc("/bin/zsh", "-lc")).toBe("hello\n");
+			expect(heredoc("/bin/bash", "-c")).toBe("hello\n");
+			expect(heredoc("/bin/sh", "-c")).toBe("hello\n");
+		});
+
 		it("can write the per-run directory", () => {
 			sh(linked, `touch '${run}/ok'`);
 			expect(existsSync(join(run, "ok"))).toBe(true);
@@ -724,6 +736,9 @@ describe("codex-sandboxed.sh profile", () => {
 			expect(out).toContain("arg:--\narg:--not-an-option please");
 			expect(out).toMatch(/env:TMPDIR=.*\/codex-run\.[A-Za-z0-9]+/);
 			expect(out).toMatch(/env:npm_config_cache=.*\/codex-run\.[A-Za-z0-9]+\/npm-cache/);
+			expect(out).toMatch(/env:TMPPREFIX=.*\/codex-run\.[A-Za-z0-9]+\/zsh\n/);
+			expect(out).toContain("zsh-heredoc-ok");
+			expect(out).not.toContain("zsh-heredoc-failed");
 			expect(out).toContain(`env:HOME=${home}`);
 			expect(out).toContain(`env:PATH=${bin}:`);
 			for (const [name, value] of Object.entries(kept)) expect(out).toContain(`env:${name}=${value}\n`);
