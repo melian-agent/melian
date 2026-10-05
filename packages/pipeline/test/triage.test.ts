@@ -319,6 +319,10 @@ describe("triage", () => {
 		const reviewed = await review({ decider, config: { ...config, models: rest } });
 		expect(decider.requests[0]!.questions[0]!.options).toEqual(["careful", "deep"]);
 		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
+		// The level triage could not offer is noted, so coverage never shrinks unseen.
+		expect(lensRecord(reviewed)!.reason).toBe(
+			"triage could not choose quick, since quick runs on medium, and no model is configured for the medium tier; set models.medium.model in melian.yaml",
+		);
 	});
 
 	it("fails the review before any lens runs when a lens's band holds no level it can run at", async () => {
@@ -711,21 +715,18 @@ describe("escalation", () => {
 		expect(reviewed.findings.map((finding) => finding.ruleId)).toEqual(["null-dereference"]);
 	});
 
-	it("caps an escalation whose next level's tier reaches no model, with a note", async () => {
+	it("fails the review when a lens's default level has no model, rather than run it at a lighter one", async () => {
 		const decider = choosing("quick");
 		await open(decider);
-		scriptConversations(fake, [{ match: correctness, replies: [severe, done] }]);
 		const { heavy: _, ...rest } = config.models;
-		const quickOnly = { ...config, models: rest };
 
-		const reviewed = await review({ decider, config: quickOnly });
+		const error = await review({ decider, config: { ...config, models: rest } }).catch((caught: unknown) => caught);
 
-		expect(lensRecord(reviewed)).toEqual({
-			name: "lens.correctness",
-			status: "ran",
-			level: "quick",
-			reason: `escalation capped at quick, since careful runs on heavy, which reaches no model with credentials: at quick it reported a P1 finding, at or above P1; ${lightly}`,
-		});
+		expect(error).toMatchObject({ code: "noAvailableModel", lenses: ["correctness"] });
+		expect((error as Error).message).toContain(
+			"its default level, careful, runs on heavy, and no model is configured for the heavy tier",
+		);
+		expect(fake.provider.state.callCount).toBe(0);
 	});
 
 	it("does not escalate a quick finding below escalateAt, and does at a lower escalateAt", async () => {
@@ -765,21 +766,22 @@ describe("escalation", () => {
 		]);
 	});
 
-	it("runs the lenses again, rather than attach, when the level a quick run escalates to gains a model", async () => {
+	it("keys a quick run by where it escalates, capped at its ceiling or to its next level", async () => {
 		const decider = choosing("quick");
 		await open(decider);
 		scriptConversations(fake, [{ match: correctness, replies: [severe, done] }]);
-		const { heavy: _, ...rest } = config.models;
-		const first = await review({ decider, config: { ...config, models: rest } });
-		expect(lensRecord(first)).toMatchObject({ level: "quick", reason: expect.stringContaining("escalation capped") });
+		const capped = { ...config, lenses: { correctness: { level: { ceiling: "quick" } } } } as const;
+		await review({ decider, config: capped });
+		const root = (await harness.root(context)).id;
+		expect((await harness.snapshot(ReviewIndex, root, context))!.reviews[revision()]!.lenses).toEqual([
+			`correctness@${version()}@quick band quick-quick escalateAt P1 capped at its ceiling`,
+		]);
 
-		// heavy is routed now, so the same quick run escalates: another selection, and a task that escalates.
 		scriptConversations(fake, [{ match: correctness, replies: [severe, done, done] }]);
 		const second = await review({ decider });
 
 		expect(lensRecord(second)).toMatchObject({ level: "careful" });
-		const index = await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context);
-		expect(index!.reviews[revision()]!.lenses).toEqual([
+		expect((await harness.snapshot(ReviewIndex, root, context))!.reviews[revision()]!.lenses).toEqual([
 			`correctness@${version()}@quick band quick-deep escalateAt P1 escalates to correctness@${version()}@careful`,
 		]);
 	});

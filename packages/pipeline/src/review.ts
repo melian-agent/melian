@@ -7,6 +7,7 @@ import {
 	type Decider,
 	type Decision,
 	type DecisionRequest,
+	defaultScrutinyLevel,
 	EscalationRule,
 	type EscalationTrigger,
 	type Finding,
@@ -1037,16 +1038,36 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	const routed = (tier: LensTier) => "route" in routes.get(tier)!;
 	// A lens runs only at a level its band holds whose tier reaches a model; with none, the review fails before any lens
 	// runs, rather than run it below its floor.
+	const unrouted = (tier: LensTier) => {
+		const route = routes.get(tier);
+		return route !== undefined && "unrouted" in route ? route.unrouted : undefined;
+	};
+	// Levels the band holds that triage could not offer, by lens, noted on its record so coverage never shrinks unseen.
+	const unrunnable = new Map<Lens, string[]>();
 	const runnable = new Map(
 		covering.map(({ lens }) => {
-			const levels = lens.runnableLevels(bands.get(lens)!, routed);
-			if (levels.length === 0) {
-				const unrouted = (tier: LensTier) => {
-					const route = routes.get(tier);
-					return route !== undefined && "unrouted" in route ? route.unrouted : undefined;
-				};
-				throw noLevel(lens.name, bands.get(lens)!, lens.unrunnable(bands.get(lens)!, unrouted));
+			const band = bands.get(lens)!;
+			const levels = lens.runnableLevels(band, routed);
+			if (levels.length === 0) throw noLevel(lens.name, band, lens.unrunnable(band, unrouted));
+			// The level the lens runs at without a decision must run, as it had to before triage, so a missing model
+			// fails the review rather than quietly moving the lens to a lighter level.
+			const fallback = band.bound(defaultScrutinyLevel, band.holds(lens.declaredLevels()));
+			if (fallback !== "skip" && !levels.includes(fallback)) {
+				const { tier } = lens.level(fallback);
+				throw noLevel(lens.name, band, `its default level, ${fallback}, runs on ${tier}, and ${unrouted(tier)}`);
 			}
+			// Without a decider the lens runs at its default level, so a level it could not have chosen changes nothing.
+			const dropped =
+				options.decider === undefined
+					? []
+					: band.holds(lens.declaredLevels()).filter((level) => !levels.includes(level));
+			unrunnable.set(
+				lens,
+				dropped.map((level) => {
+					const { tier } = lens.level(level);
+					return `triage could not choose ${level}, since ${level} runs on ${tier}, and ${unrouted(tier)}`;
+				}),
+			);
 			return [lens, levels] as const;
 		}),
 	);
@@ -1091,7 +1112,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 			if (shared.length === 0) return [];
 			return [{ name, files: shared.length === covers.length ? "every" : shared }];
 		});
-		const noted: string[] = [];
+		const noted: string[] = [...(unrunnable.get(lens) ?? [])];
 		if (triaged.failure !== undefined)
 			noted.push(`triage failed, so it ran at its default level: ${triaged.failure}`);
 		if (options.decider === undefined && options.triageSkipped !== undefined)
