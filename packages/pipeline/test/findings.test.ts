@@ -108,6 +108,35 @@ describe("the findings document", () => {
 	});
 
 	it.each(["confirmed", "plausible", "refuted"] as const)(
+		"clears a %s verdict when a lens replaces its sighting",
+		async (verdict) => {
+			const { harness, root } = await open(createMemoryStorage());
+			await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+			await root.commit(
+				(tx) =>
+					upsertVerification(tx, root.id, "rev1", evalFinding.id, input.source, {
+						verdict,
+						reason: "Traced the original claim.",
+						executor: "llm",
+						model: "fake/judge",
+						version: "1",
+					}),
+				context,
+			);
+			expect((await readFindings(harness, root.id, "rev1", context))[0]!.properties.verification?.verdict).toBe(
+				verdict,
+			);
+			const reworded = Finding.create({ ...input, message: "eval runs the request body" });
+			expect(reworded.id).toBe(evalFinding.id);
+			await root.commit((tx) => upsertFinding(tx, root.id, reworded, "rev1"), context);
+			const state = (await harness.snapshot(FindingsDocument, root.id, context))!;
+			expect(state.items[evalFinding.id]!.verifications?.rev1).toEqual({});
+			const findings = await readFindings(harness, root.id, "rev1", context);
+			expect(findings).toEqual([seen(reworded)]);
+			expect(findings[0]!.properties.verification).toBeUndefined();
+		},
+	);
+	it.each(["confirmed", "plausible", "refuted"] as const)(
 		"replays an identical %s verification without changing the findings version",
 		async (verdict) => {
 			const { harness, root } = await open(createMemoryStorage());
