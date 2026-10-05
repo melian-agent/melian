@@ -2,6 +2,14 @@ import { createHash } from "node:crypto";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import type { Verdict } from "./adjudication.ts";
+import {
+	Adjudication,
+	type ComparisonAdjudicationRecord,
+	comparisonAdjudicationSchema,
+	missReasons,
+	type StoredComparisonAdjudication,
+} from "./comparison-adjudication.ts";
+import type { ComparisonStats, OwedGolden, RepeatedFinding } from "./comparison-set.ts";
 import { FindingError } from "./errors.ts";
 import { canonicalPath, type Finding } from "./findings.ts";
 import { visibleText } from "./render.ts";
@@ -121,6 +129,17 @@ export const comparisonSchema = Type.Object(
 		matches: Type.Array(comparisonMatchSchema),
 		unmatches: Type.Array(comparisonUnmatchSchema),
 		imports: Type.Record(Type.String(), comparisonImportSchema),
+		adjudications: Type.Optional(
+			Type.Record(
+				Type.String(),
+				Type.Object(
+					{ current: comparisonAdjudicationSchema, history: Type.Array(comparisonAdjudicationSchema) },
+					strict,
+				),
+			),
+		),
+		createdAt: Type.Optional(text),
+		target: Type.Optional(text),
 	},
 	strict,
 );
@@ -198,7 +217,13 @@ export type ExternalFindingsFile = Static<typeof externalFindingsFileSchema>;
 export type ExternalFindingInput = Omit<StoredExternalFinding, "id">;
 
 /** Why an external finding, a reviewer's file, or a match was refused. */
-export type ComparisonErrorCode = "invalidFinding" | "invalidFile" | "unknownExternal" | "unknownMelian";
+export type ComparisonErrorCode =
+	| "invalidFinding"
+	| "invalidFile"
+	| "unknownExternal"
+	| "unknownMelian"
+	| "unknownFinding"
+	| "invalidAdjudication";
 
 /** An external finding, a reviewer's file, or a match was refused. `path` names the file or JSON pointer at fault. */
 export class ComparisonError extends Error {
@@ -561,12 +586,16 @@ export class Comparison {
 	private matches: ComparisonMatch[];
 	private unmatches: ComparisonUnmatch[];
 	private imports: Record<string, ComparisonImport>;
-	// Fields a newer Melian stored that this one does not know, such as adjudications, kept so a write never drops them.
+	private judgements: Record<string, ComparisonAdjudicationRecord> | undefined;
+	private createdAt: string | undefined;
+	private target: string | undefined;
+	// Keep fields a newer Melian stored, so an older writer never drops them.
 	private readonly later: Record<string, unknown>;
 
 	// Declared in the order a stored comparison holds them, so its JSON keeps that order.
 	private constructor(stored: StoredComparison) {
-		const { base, head, external, melian, matches, unmatches, imports, ...later } = stored;
+		const { base, head, external, melian, matches, unmatches, imports, adjudications, createdAt, target, ...later } =
+			stored;
 		this.base = base;
 		this.head = head;
 		this.external = external;
@@ -574,6 +603,9 @@ export class Comparison {
 		this.matches = matches;
 		this.unmatches = unmatches;
 		this.imports = imports;
+		this.judgements = adjudications;
+		this.createdAt = createdAt;
+		this.target = target;
 		this.later = later;
 	}
 
@@ -675,6 +707,172 @@ export class Comparison {
 		this.unmatches = [...this.unmatches.filter((each) => pairKey(each) !== key), { external, melian, by, at }];
 	}
 
+	/** Records the first comparison time and the CLI target, without changing either on reruns. */
+	record(at: string, target?: string): void {
+		const earlier = this.recordedAt();
+		this.createdAt ??= earlier !== undefined && Date.parse(earlier) < Date.parse(at) ? earlier : at;
+		if (target !== undefined) this.target ??= target;
+	}
+
+	/** When comparison began, falling back to its earliest import for an older document. */
+	recordedAt(): string | undefined {
+		return (
+			this.createdAt ??
+			Object.values(this.imports)
+				.map((each) => each.at)
+				.sort((a, b) => Date.parse(a) - Date.parse(b))[0]
+		);
+	}
+
+	/** The target the host named, or the base and head for an older document. */
+	label(): string {
+		return this.target ?? `${this.base.slice(0, 12)}..${this.head.slice(0, 12)}`;
+	}
+
+	/** Recall over adjudicated distinct defects, precision over adjudicated reports, and pending reports. */
+	stats(): ComparisonStats {
+		const counts = new Map<
+			string,
+			{
+				reviewer: string;
+				found: number;
+				total: number;
+				valid: number;
+				noise: number;
+				duplicate: number;
+				pending: number;
+			}
+		>();
+		const reviewers = new Map(
+			this.externalFindings().map((each) => [
+				each.id,
+				`${each.reviewer.name}${each.reviewer.login === undefined ? "" : `:${each.reviewer.login.toLowerCase()}`}`,
+			]),
+		);
+		for (const id of this.melian) reviewers.set(id, "melian");
+		for (const reviewer of new Set(["melian", ...reviewers.values()]))
+			counts.set(reviewer, { reviewer, found: 0, total: 0, valid: 0, noise: 0, duplicate: 0, pending: 0 });
+		const ambiguous = new Set(this.ambiguous().map((each) => each.external.id));
+		for (const [id, reviewer] of reviewers) {
+			const judgement = this.adjudication(id)?.current;
+			const count = counts.get(reviewer)!;
+			if (judgement === undefined) count.pending++;
+			else count[judgement.verdict]++;
+		}
+		const misses = Object.fromEntries(missReasons.map((reason) => [reason, 0])) as ComparisonStats["misses"];
+		for (const group of this.groups()) {
+			const ids = [...group.melian, ...group.external.map((each) => each.id).filter((id) => !ambiguous.has(id))];
+			const valid = ids.filter((id) => this.adjudication(id)?.current.verdict === "valid");
+			if (valid.length === 0) continue;
+			const excluded =
+				group.melian.length === 0 && valid.every((id) => this.adjudication(id)?.current.reason === "out-of-scope");
+			for (const count of counts.values()) {
+				if (count.reviewer === "melian" && excluded) continue;
+				count.total++;
+				if (valid.some((id) => reviewers.get(id) === count.reviewer)) count.found++;
+			}
+			if (group.melian.length === 0) {
+				const reasons = valid.map((id) => this.adjudication(id)?.current.reason);
+				const reason = reasons.find((reason) => reason !== undefined && reason !== "out-of-scope") ?? reasons[0];
+				if (reason !== undefined) misses[reason]++;
+			}
+		}
+		return {
+			pendingMatches: ambiguous.size,
+			reviewers: [...counts.values()]
+				.sort((a, b) => compareText(a.reviewer, b.reviewer))
+				.map((count) => ({
+					...count,
+					recall: count.total === 0 ? 1 : count.found / count.total,
+					precision:
+						count.valid + count.noise + count.duplicate === 0
+							? 1
+							: count.valid / (count.valid + count.noise + count.duplicate),
+				})),
+			misses,
+		};
+	}
+
+	/** Goldens the current judgements owe, each with its target lens. */
+	backlog(): Omit<OwedGolden, "changeset">[] {
+		return Object.entries(this.adjudications()).flatMap(([id, { current }]) =>
+			current.golden === undefined || current.golden === "none"
+				? []
+				: [
+						{
+							id,
+							lens: current.golden,
+							target: this.label(),
+							title: this.externalFinding(id)?.title ?? id,
+							verdict: current.verdict,
+							at: current.at,
+						},
+					],
+		);
+	}
+
+	/** Adjudicated valid defects, clustered by explicit rule tag or normalised title. */
+	repeats(verdict?: Verdict): Omit<RepeatedFinding, "changesets">[] {
+		const own = new Map((verdict?.all() ?? []).map((each) => [each.id, each]));
+		return Object.entries(this.adjudications()).flatMap(([id, { current }]) => {
+			if (current.verdict !== "valid") return [];
+			const finding = this.externalFinding(id);
+			const title = finding?.title ?? own.get(id)?.properties.explanation.what;
+			const rule = current.rule ?? own.get(id)?.ruleId;
+			if (rule === undefined && title === undefined) return [];
+			const key =
+				rule === undefined
+					? `title:${title!
+							.normalize("NFKC")
+							.toLowerCase()
+							.replace(/[^\p{L}\p{N}]+/gu, " ")
+							.trim()}`
+					: `rule:${rule}`;
+			if (key === "title:") return [];
+			return [{ key, title: title ?? rule!, ids: [id] }];
+		});
+	}
+
+	/** Records a judgement without changing Melian's review or dismissing its finding. */
+	adjudicate(id: string, input: StoredComparisonAdjudication): void {
+		if (this.externalFinding(id) === undefined && !this.melian.includes(id)) {
+			throw new ComparisonError("unknownFinding", `the comparison has no finding ${id}`);
+		}
+		const judgement = Adjudication.create(input).toJSON();
+		if (
+			judgement.verdict === "valid" &&
+			this.externalFinding(id) !== undefined &&
+			!this.effectiveMatches().some((match) => match.external === id) &&
+			judgement.reason === undefined
+		) {
+			throw new ComparisonError("invalidAdjudication", "a valid external-only finding needs a miss reason");
+		}
+		this.record(judgement.at);
+		const previous = this.adjudication(id);
+		if (previous !== undefined && JSON.stringify(previous.current) === JSON.stringify(judgement)) return;
+		this.judgements = {
+			...this.judgements,
+			[id]: { current: judgement, history: previous === undefined ? [] : [...previous.history, previous.current] },
+		};
+	}
+
+	/** The current judgement and its replacement history, or undefined. */
+	adjudication(id: string): ComparisonAdjudicationRecord | undefined {
+		return this.judgements !== undefined && Object.hasOwn(this.judgements, id)
+			? structuredClone(this.judgements[id]!)
+			: undefined;
+	}
+
+	/** Judgements of findings the comparison still holds; withdrawn findings keep their history in storage. */
+	adjudications(): Record<string, ComparisonAdjudicationRecord> {
+		const ids = new Set([...this.externalFindings().map((each) => each.id), ...this.melian]);
+		return Object.fromEntries(
+			Object.entries(this.judgements ?? {})
+				.filter(([id]) => ids.has(id))
+				.map(([id, record]) => [id, structuredClone(record)]),
+		);
+	}
+
 	/** Every external finding, in file, line, and ID order. */
 	externalFindings(): ExternalFinding[] {
 		return Object.values(this.external)
@@ -765,6 +963,9 @@ export class Comparison {
 			matches: this.matches,
 			unmatches: this.unmatches,
 			imports: this.imports,
+			...(this.judgements === undefined ? {} : { adjudications: this.judgements }),
+			...(this.createdAt === undefined ? {} : { createdAt: this.createdAt }),
+			...(this.target === undefined ? {} : { target: this.target }),
 			...this.later,
 		});
 	}
