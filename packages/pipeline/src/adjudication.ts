@@ -11,8 +11,10 @@ import {
 	type MelianConfig,
 	type RepositorySource,
 	type Resolution,
+	type ReviewPlan,
 	type ScrutinyLevel,
 	type Severity,
+	type StoredPlan,
 	type StoredVerdict,
 	Verdict,
 } from "@melian-agent/core";
@@ -31,6 +33,13 @@ type StoredCheck = {
 	version?: string;
 	level?: ScrutinyLevel;
 	budgetEnded?: StoredBudgetEnd;
+	lineage?: {
+		model: string;
+		wanted?: string;
+		by: string;
+		moved?: { by: string; from: string; to: string };
+		outside: boolean;
+	};
 };
 
 /**
@@ -50,13 +59,16 @@ export type ReviewOrigin =
 
 /**
  * What a verdict was decided from, recorded beside it: its {@link ReviewOrigin}, where policy came from (`worktree`,
- * `revision:<sha>`, or `config` when the review named no source), the tier's checks, and each lens that ran as
- * `name@version`. Publishing reads it to refuse a verdict that must never reach a pull request.
+ * `revision:<sha>`, or `config` when the review named no source), the tier's checks, each lens that ran as
+ * `name@version`, and the review plan, as `ReviewPlan.from` reads it, when the review had one. Publishing reads it to
+ * refuse a verdict that must never reach a pull request; a summary reads the plan the review ran under, even after a
+ * crash, rather than resolve another.
  */
 export type VerdictProvenance = ReviewOrigin & {
 	readonly policy: string;
 	readonly manifest: readonly string[];
 	readonly lenses: readonly string[];
+	readonly plan?: StoredPlan;
 };
 
 type StoredProvenance = {
@@ -68,6 +80,7 @@ type StoredProvenance = {
 	policy: string;
 	manifest: string[];
 	lenses: string[];
+	plan?: StoredPlan;
 };
 
 // The adjudication task that recorded a verdict, and the findings version it read before deciding. Absent for a verdict
@@ -210,6 +223,7 @@ export function adjudicationInput(options: {
 	producers: readonly FindingSource[];
 	origin: ReviewOrigin;
 	lenses: readonly string[];
+	plan?: ReviewPlan | undefined;
 }): AdjudicationTaskInput {
 	const { root, repoRoot, base, head, policy, config, manifest, checks, findingsVersion, allowSkip, producers } =
 		options;
@@ -227,6 +241,7 @@ export function adjudicationInput(options: {
 		policy: policy === undefined ? "config" : policy.kind === "worktree" ? "worktree" : `revision:${policy.commit}`,
 		manifest: [...manifest],
 		lenses: [...options.lenses].sort(),
+		...(options.plan === undefined ? {} : { plan: options.plan.toJSON() }),
 	};
 	return {
 		root,

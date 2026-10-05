@@ -9,6 +9,7 @@ coverage/
 .tsbuild/
 .claude/worktrees/
 /melian.local.yaml
+/melian.secrets.yaml
 
 # Local reports and handovers, never committed
 tmp/

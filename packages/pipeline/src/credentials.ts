@@ -1,7 +1,9 @@
+import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { PiCredentialsError } from "./errors.ts";
+import { type NamedCredential, visibleText } from "@melian-agent/core";
+import { CredentialError, PiCredentialsError } from "./errors.ts";
 import {
 	type AuthContext,
 	type AuthOperationOptions,
@@ -133,6 +135,138 @@ export class PiCredentialStore implements CredentialStore {
 	}
 }
 
+// Long enough for a password manager to ask for a fingerprint, short enough that a hung command fails the review.
+const commandTimeoutMs = 60_000;
+// Far more than any key; a command printing more is not printing a key.
+const commandOutputBytes = 64 * 1024;
+
+function runCommand(credential: NamedCredential, command: string): Promise<string> {
+	const { name, file } = credential;
+	return new Promise((resolve, reject) => {
+		execFile(
+			"/bin/sh",
+			["-c", command],
+			{ timeout: commandTimeoutMs, maxBuffer: commandOutputBytes },
+			(error, stdout) => {
+				// Never the command's output in a message: what it printed may be the key, or part of it.
+				if (error !== null) {
+					const how =
+						(error as { code?: unknown }).code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"
+							? `printed more than ${commandOutputBytes / 1024} KiB`
+							: error.killed
+								? `did not finish in ${commandTimeoutMs / 1000} seconds`
+								: `failed (${error.code ?? error.signal})`;
+					reject(
+						new CredentialError(
+							"commandFailed",
+							`credential ${visibleText(name)} in ${visibleText(file)}: its command ${how}`,
+							{
+								credential: name,
+								file,
+							},
+						),
+					);
+					return;
+				}
+				resolve(stdout.trim());
+			},
+		);
+	});
+}
+
+/**
+ * The credentials a review reads: the named credentials of the secrets files first, in their order, then Pi's store.
+ * The provider's environment variables apply after both, as pi-ai resolves them. A named credential applies when its
+ * source is present: a literal key, an environment variable that is set, or a command, which counts as present until
+ * it runs, at its provider's first use, once per process. Like Pi's store it never writes.
+ */
+export class MelianCredentialStore implements CredentialStore {
+	readonly named: readonly NamedCredential[];
+	readonly pi: PiCredentialStore;
+	readonly #env: NodeJS.ProcessEnv;
+	readonly #values = new Map<NamedCredential, Promise<string>>();
+
+	constructor(named: readonly NamedCredential[], pi: PiCredentialStore = new PiCredentialStore(), env = process.env) {
+		this.named = named;
+		this.pi = pi;
+		this.#env = env;
+	}
+
+	/** The named credential that applies to `provider`, if any. */
+	credential(provider: string): NamedCredential | undefined {
+		return this.named.find(
+			(credential) =>
+				credential.provider === provider &&
+				(credential.value.kind !== "env" || (this.#env[credential.value.variable] ?? "") !== ""),
+		);
+	}
+
+	/** Where `provider`'s credential comes from, if this store holds one: a named credential and its file, or Pi's login. */
+	async describe(provider: string): Promise<string | undefined> {
+		const named = this.credential(provider);
+		if (named !== undefined) return `${named.name} in ${named.file}`;
+		const stored = await this.pi.read(provider).catch(() => undefined);
+		return stored === undefined ? undefined : `Pi's login in ${this.pi.path}`;
+	}
+
+	/** The value of `provider`'s named credential, running its command if it has one. */
+	async value(credential: NamedCredential): Promise<string> {
+		let value = this.#values.get(credential);
+		if (value === undefined) {
+			const source = credential.value;
+			value =
+				source.kind === "literal"
+					? Promise.resolve(source.key)
+					: source.kind === "env"
+						? Promise.resolve(this.#env[source.variable] ?? "")
+						: runCommand(credential, source.command);
+			this.#values.set(credential, value);
+		}
+		const resolved = await value;
+		if (resolved === "") {
+			const { name, file } = credential;
+			throw new CredentialError(
+				"noValue",
+				`credential ${visibleText(name)} in ${visibleText(file)} gave an empty value`,
+				{
+					credential: name,
+					file,
+				},
+			);
+		}
+		return resolved;
+	}
+
+	async read(provider: string, options?: AuthOperationOptions): Promise<Credential | undefined> {
+		options?.signal?.throwIfAborted();
+		const named = this.credential(provider);
+		if (named === undefined) return this.pi.read(provider, options);
+		return { type: "api_key", key: await this.value(named) };
+	}
+
+	async list(options?: AuthOperationOptions): Promise<readonly CredentialInfo[]> {
+		const stored = await this.pi.list(options);
+		const named = this.named.flatMap((credential) =>
+			this.credential(credential.provider) === credential
+				? [{ providerId: credential.provider, type: "api_key" as const }]
+				: [],
+		);
+		return [...named, ...stored.filter((each) => !named.some((other) => other.providerId === each.providerId))];
+	}
+
+	modify(
+		provider: string,
+		change: (current: Credential | undefined) => Promise<Credential | undefined>,
+		options?: AuthOperationOptions,
+	): Promise<Credential | undefined> {
+		return this.pi.modify(provider, change, options);
+	}
+
+	delete(provider: string, options?: AuthOperationOptions): Promise<void> {
+		return this.pi.delete(provider, options);
+	}
+}
+
 /** Creates a {@link PiCredentialStore} over `path`, as `new PiCredentialStore(path)` does. */
 export function piCredentialStore(path: string = piAuthPath()): PiCredentialStore {
 	return new PiCredentialStore(path);
@@ -153,10 +287,25 @@ function reviewAuthContext(): AuthContext {
 }
 
 /**
- * The model collection a review runs on: every pi-ai built-in provider, each resolving its credentials from Pi's
- * credential store first and its environment variables second, as pi-ai does. `CLAUDE_CODE_OAUTH_TOKEN` stands in
- * for an unset `ANTHROPIC_OAUTH_TOKEN`. `authPath` overrides where the store is.
+ * The model collection a review runs on: every pi-ai built-in provider, each resolving its credentials from the named
+ * `credentials` of the secrets files first, then Pi's credential store, then its environment variables, as pi-ai does.
+ * `CLAUDE_CODE_OAUTH_TOKEN` stands in for an unset `ANTHROPIC_OAUTH_TOKEN`. `authPath` overrides where Pi's store is.
+ * Throws {@link CredentialError} `unknownProvider` for a named credential whose provider the catalogue does not know.
  */
-export function createReviewModels(options: { readonly authPath?: string } = {}): ReviewModels {
-	return wrapModels(createProviderModels(new PiCredentialStore(options.authPath), reviewAuthContext()));
+export function createReviewModels(
+	options: { readonly authPath?: string; readonly credentials?: readonly NamedCredential[] } = {},
+): ReviewModels {
+	const store = new MelianCredentialStore(options.credentials ?? [], new PiCredentialStore(options.authPath));
+	const models = createProviderModels(store, reviewAuthContext());
+	// A provider pi-ai does not know, such as a misspelt one, would leave the credential unused without a word.
+	for (const { name, provider, file } of store.named) {
+		if (models.getProvider(provider) !== undefined) continue;
+		throw new CredentialError(
+			"unknownProvider",
+			// A secrets file's names reach a terminal, so they print escaped.
+			`credential ${visibleText(name)} in ${visibleText(file)} names the provider ${visibleText(provider)}, which Melian's model catalogue does not know`,
+			{ credential: name, file },
+		);
+	}
+	return wrapModels(models, store);
 }
