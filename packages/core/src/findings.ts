@@ -16,6 +16,8 @@ import { melianPaths } from "./paths.ts";
 import type { DiffLines, Placement } from "./publication.ts";
 import { evidenceLines, messageContinuation, plural, prose, Rendering, severityColor, visibleText } from "./render.ts";
 
+import { type Verification, verificationSchema } from "./verification.ts";
+
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
 const line = Type.Integer({ minimum: 1 });
@@ -115,6 +117,7 @@ export const memberClaimSchema = Type.Object(
 		source: findingSourceSchema,
 		failureScenario: Type.Optional(text),
 		evidence: Type.Optional(findingEvidenceSchema),
+		verification: Type.Optional(verificationSchema),
 	},
 	strict,
 );
@@ -144,6 +147,7 @@ export const findingPropertiesSchema = Type.Object(
 		trigger: Type.Optional(findingTriggerSchema),
 		severity: severitySchema,
 		confidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
+		verification: Type.Optional(verificationSchema),
 		resolution: Type.Optional(resolutionSchema),
 		status: findingStatusSchema,
 		dismissal: Type.Optional(findingDismissalSchema),
@@ -676,6 +680,8 @@ export interface FindingInput {
 	readonly trigger?: FindingTrigger;
 	readonly severity: Severity;
 	readonly confidence?: number;
+	/** The verifier judgement; never changes identity or severity. */
+	readonly verification?: Verification;
 	/** What the finding requires. Only adjudication sets it; a producer leaves it out, and the finding is unresolved. */
 	readonly resolution?: Resolution;
 	/** Defaults to `new`. */
@@ -812,6 +818,7 @@ export class Finding {
 				trigger,
 				severity: input.severity,
 				confidence: input.confidence,
+				verification: input.verification,
 				resolution: input.resolution,
 				status: input.status ?? "new",
 				explanation: input.explanation,
@@ -1086,7 +1093,7 @@ export class Finding {
 
 	/** The finding's own failure scenario and evidence, as a finding it merges into keeps them; none without either. */
 	claims(): MemberClaim[] {
-		const { id, source, failureScenario, evidence } = this.properties;
+		const { id, source, failureScenario, evidence, verification } = this.properties;
 		if (failureScenario === undefined && evidence === undefined) return [];
 		return [
 			{
@@ -1095,6 +1102,7 @@ export class Finding {
 				source,
 				...(failureScenario === undefined ? {} : { failureScenario }),
 				...(evidence === undefined ? {} : { evidence }),
+				...(verification === undefined ? {} : { verification }),
 			},
 		];
 	}
@@ -1111,7 +1119,7 @@ export class Finding {
 	 */
 	mergeClaims(
 		members: readonly Finding[],
-	): Pick<FindingProperties, "cause" | "evidence" | "failureScenario" | "otherClaims"> {
+	): Pick<FindingProperties, "cause" | "evidence" | "failureScenario" | "otherClaims" | "verification"> {
 		if (!members.includes(this)) throw new RangeError("mergeClaims needs the speaker among the members");
 		const best = Math.min(...members.map((member) => member.causeRank()));
 		const prover =
@@ -1129,7 +1137,12 @@ export class Finding {
 				.filter((member) => member !== this)
 				.flatMap((member) => [...member.claims(), ...(member.properties.otherClaims ?? [])]),
 		];
+		const rank = { confirmed: 0, plausible: 1, refuted: 2 };
+		const verification = [...members.flatMap((member) => member.claims()), ...otherClaims]
+			.flatMap((claim) => (claim.verification === undefined ? [] : [claim.verification]))
+			.sort((left, right) => rank[left.verdict] - rank[right.verdict])[0];
 		return {
+			...(verification === undefined ? {} : { verification }),
 			cause: (["introduced", "affected", "pre-existing"] as const)[best]!,
 			...(evidence === undefined ? {} : { evidence }),
 			...(failureScenario === undefined ? {} : { failureScenario }),

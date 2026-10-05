@@ -626,37 +626,7 @@ export class Adjudication {
 	 * `alsoReportedAs` with `dismissed: true`.
 	 */
 	defects(): Defect[] {
-		const groups: Finding[][] = [];
-		for (const finding of [...this.findings].sort((a, b) => a.compareStrength(b))) {
-			const into = groups.find(
-				(group) => group[0]!.properties.status === finding.properties.status && this.#joins(group, finding),
-			);
-			if (into === undefined) groups.push([finding]);
-			else into.push(finding);
-		}
-		const dismissed = this.findings.filter((finding) => finding.properties.status === "dismissed");
-		const elsewhere = new Set(dismissed.flatMap((finding) => finding.reportIds()));
-		const defects = new Map<Finding, Defect>();
-		for (const group of groups) {
-			// A live defect names the dismissed reports of it, for context, and is never absorbed by them.
-			const context =
-				group[0]!.properties.status === "dismissed"
-					? []
-					: dismissed
-							.filter((other) => this.#joins(group, other))
-							.map((other) => ({ ...other.report(), dismissed: true as const }));
-			if (group.length === 1 && context.length === 0) {
-				const [alone] = group as [Finding];
-				defects.set(alone, Defect.of(alone, elsewhere));
-				continue;
-			}
-			const keeper = this.#keeper(group);
-			defects.set(keeper, Defect.merge(keeper, group, context, elsewhere));
-		}
-		return this.findings.flatMap((finding) => {
-			const defect = defects.get(finding);
-			return defect === undefined ? [] : [defect];
-		});
+		return new Merge(this.findings, this.#configFor).defects();
 	}
 
 	/** The finding that speaks for each of {@link Adjudication.defects}, in input order. */
@@ -691,6 +661,52 @@ export class Adjudication {
 			dismissed: resolved.filter((finding) => finding.properties.status === "dismissed"),
 			notRun: this.manifest.notRun(),
 			ran: this.manifest.ran(),
+		});
+	}
+}
+
+/** A review's findings grouped mechanically, before verification and again at adjudication. */
+export class Merge {
+	readonly findings: readonly Finding[];
+	readonly #configFor: ConfigFor;
+
+	constructor(findings: readonly Finding[], config: Pick<MelianConfig, "resolution" | "ruleAliases"> | ConfigFor) {
+		this.findings = findings;
+		this.#configFor = typeof config === "function" ? config : () => config;
+	}
+
+	/** The defects in speaker order, preserving each claim and separating lifecycle statuses. */
+	defects(): Defect[] {
+		const groups: Finding[][] = [];
+		for (const finding of [...this.findings].sort((a, b) => a.compareStrength(b))) {
+			const into = groups.find(
+				(group) => group[0]!.properties.status === finding.properties.status && this.#joins(group, finding),
+			);
+			if (into === undefined) groups.push([finding]);
+			else into.push(finding);
+		}
+		const dismissed = this.findings.filter((finding) => finding.properties.status === "dismissed");
+		const elsewhere = new Set(dismissed.flatMap((finding) => finding.reportIds()));
+		const defects = new Map<Finding, Defect>();
+		for (const group of groups) {
+			// A live defect names the dismissed reports of it, for context, and is never absorbed by them.
+			const context =
+				group[0]!.properties.status === "dismissed"
+					? []
+					: dismissed
+							.filter((other) => this.#joins(group, other))
+							.map((other) => ({ ...other.report(), dismissed: true as const }));
+			if (group.length === 1 && context.length === 0) {
+				const [alone] = group as [Finding];
+				defects.set(alone, Defect.of(alone, elsewhere));
+				continue;
+			}
+			const keeper = this.#keeper(group);
+			defects.set(keeper, Defect.merge(keeper, group, context, elsewhere));
+		}
+		return this.findings.flatMap((finding) => {
+			const defect = defects.get(finding);
+			return defect === undefined ? [] : [defect];
 		});
 	}
 
