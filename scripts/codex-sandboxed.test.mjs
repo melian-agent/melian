@@ -114,6 +114,7 @@ describe("codex-sandboxed.sh profile", () => {
 			}
 		}
 		rmSync(tmpProbe(), { force: true });
+		if (existsSync(join(linked, "flagged"))) execFileSync("chflags", ["nouchg", join(linked, "flagged")]);
 		rmSync(root, { recursive: true, force: true });
 	});
 
@@ -287,7 +288,6 @@ describe("codex-sandboxed.sh profile", () => {
 		const text = profile(linked, scratch);
 		const deny = block(text, "deny file-write*");
 		const files = block(text, "deny file-write-create file-write-data file-write-unlink");
-		const esc = (path) => path.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
 		expect(linked).toContain("a+b (c).d");
 		expect(deny).toContain("a\\+b \\(c\\)\\.d");
 		const codex = [`${home}/.codex/cache`, `${home}/.codex/sessions`, `${home}/.codex/attachments`];
@@ -301,7 +301,7 @@ describe("codex-sandboxed.sh profile", () => {
 			`${admin}/logs`,
 			...codex,
 		]) {
-			const escaped = esc(path);
+			const escaped = path.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
 			expect(deny).toContain(`(regex #"^${escaped}/(.*/)?[.][gG][iI][tT](/|$)")`);
 			expect(files).toContain(
 				`(regex #"^${escaped}/(.*/)?([hH][eE][aA][dD]|[cC][oO][mM][mM][oO][nN][dD][iI][rR])$")`,
@@ -642,7 +642,9 @@ describe("codex-sandboxed.sh profile", () => {
 			sh(linked, "git update-ref --create-reflog refs/melian/pull/7/head HEAD");
 			expect(git(linked, "rev-parse", "refs/melian/pull/7/head").toString().trim()).toMatch(/^[0-9a-f]{40}$/);
 			sh(linked, "git update-ref -d refs/melian/pull/7/head");
-			expect(failure(() => git(linked, "rev-parse", "--verify", "-q", "refs/melian/pull/7/head")).status).not.toBe(0);
+			expect(failure(() => git(linked, "rev-parse", "--verify", "-q", "refs/melian/pull/7/head")).status).not.toBe(
+				0,
+			);
 			expect(failure(() => sh(linked, "git branch feature/head")).status).not.toBe(0);
 		});
 
@@ -888,10 +890,7 @@ describe("codex-sandboxed.sh profile", () => {
 			const termTmp = join(root, "tmp-term");
 			mkdirSync(termBin);
 			mkdirSync(termTmp);
-			writeFileSync(
-				join(termBin, "codex"),
-				"#!/bin/sh\nsleep 3019 &\necho $! > term-sleeper.pid\nsleep 3018\n",
-			);
+			writeFileSync(join(termBin, "codex"), "#!/bin/sh\nsleep 3019 &\necho $! > term-sleeper.pid\nsleep 3018\n");
 			chmodSync(join(termBin, "codex"), 0o755);
 			const prompt = join(root, "term.md");
 			writeFileSync(prompt, "go\n");
