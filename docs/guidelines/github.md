@@ -35,7 +35,7 @@ Finding text is never live markdown either. Problem: Melian posts from the maint
 - A finding's title is its first comment's first line that is not blank. CodeRabbit's comments open with a line naming the category and severity, such as `_⚠️ Potential issue_ | _🟠 Major_`, then the headline. So for CodeRabbit the first such line is the reviewer's `severity`, cut at 100 characters, and the next is the title. The importer selects lines and parses no markdown, as [the anatomy of CodeRabbit's output](../research/2026-10-04-review-output-anatomy.md) warns, so both keep their markup as written.
 - Review bodies have no thread. CodeRabbit puts nitpicks and comments outside the diff there. The importer counts the login's non-empty review bodies as `skippedBodies` and reads nothing from them.
 - Each finding records the commit its thread's first comment was written on, `originalCommit { oid }`, as `commit`, so core matches by site only a thread read at the compared head.
-- `import()` returns the head GitHub placed the threads at, `headRefOid`, so the host can refuse a pull request that moved since Melian's review.
+- `import()` returns the first thread page's head, `headRefOid`, so the host can refuse a pull request that moved since Melian's review. A later page naming another head throws `GitHubError` `failed`, since placements from two heads cannot form one comparison.
 
 ## Tokens
 

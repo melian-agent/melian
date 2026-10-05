@@ -5,3 +5,5 @@ The fifth-round fix pass merges main at `921d856`, including triage, the ledger,
 Round five fixes ref-less external finding IDs to use the canonical file path. A regression imports `src/run.ts` and `./src//run.ts` with the same contents and keeps one finding.
 
 Round five adds a query assertion for `comments(first: 1)` on every thread page. Changing it to `last: 1` fails the new test while the ten recorded-response tests still pass.
+
+Round five keeps the first thread page's head and refuses any later page placed at another head. A two-page regression failed before the check because the importer returned mixed placements under the last head.

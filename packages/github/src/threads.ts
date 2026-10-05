@@ -183,7 +183,13 @@ export class ReviewThreadImporter implements ExternalImporter {
 		const findings: ExternalFinding[] = [];
 		await this.pages<ThreadsPage>(threadsQuery, (page) => {
 			const pullRequest = this.found(page.repository?.pullRequest);
-			head = pullRequest.headRefOid;
+			if (head !== undefined && head !== pullRequest.headRefOid) {
+				throw new GitHubError(
+					"failed",
+					`pull request #${this.pullRequest} in ${this.owner}/${this.repo} moved while reading review threads; run compare again`,
+				);
+			}
+			head ??= pullRequest.headRefOid;
 			for (const thread of pullRequest.reviewThreads.nodes) {
 				const [first] = thread.comments.nodes;
 				if (first !== undefined && wrote(first.author, this.login)) findings.push(this.finding(thread, first));

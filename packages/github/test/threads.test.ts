@@ -89,6 +89,23 @@ describe("ReviewThreadImporter", () => {
 		}
 	});
 
+	it("refuses thread pages placed at different pull request heads", async () => {
+		const pages = structuredClone(recording.graphql!.MelianReviewThreads!) as {
+			data: { repository: { pullRequest: { headRefOid: string } } };
+		}[];
+		pages[1]!.data.repository.pullRequest.headRefOid = "3".repeat(40);
+		const { opened, requests } = importer(undefined, {
+			...recording,
+			graphql: { ...recording.graphql, MelianReviewThreads: pages },
+		});
+
+		const refused = opened.import();
+
+		await expect(refused).rejects.toThrow(GitHubError);
+		await expect(refused).rejects.toMatchObject({ code: "failed", message: expect.stringContaining("moved") });
+		expect(requests).toHaveLength(2);
+	});
+
 	it("skips and counts the login's review bodies, which have no thread, without parsing them", async () => {
 		const { opened } = importer();
 
