@@ -510,6 +510,12 @@ describe("the user-level preference file", () => {
 	const preferences = () => join(home, "config.yaml");
 	const worktree = () => ({ kind: "worktree" as const, preferences: preferences() });
 
+	it("may set triage, which a nested melian.yaml may not", async () => {
+		writeFiles(home, { "config.yaml": lines("triage:", "  escalateAt: P2") });
+		const { config } = await loadConfig(repo, worktree(), "services/pay/a.ts");
+		expect(config.triage).toEqual({ escalateAt: "P2" });
+	});
+
 	it("layers under melian.local.yaml and over every melian.yaml, its globs anchored at the root", async () => {
 		writeFiles(home, {
 			"config.yaml": lines(
