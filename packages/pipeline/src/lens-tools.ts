@@ -760,14 +760,14 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 	const review = lens.revision;
 	const finding = await findingFromCall(args, lens, review);
 	const id = finding.properties.id;
-	const refuted = args.refuted === true;
+	const { refuted } = args;
 	const recorded = await api.commit(async (tx) => {
 		// One storage holds every review of a changeset, so the budget counts this lens's sightings at its own revision.
 		const state = await tx.doc(FindingsDocument, lens.review);
 		const { source } = finding.properties;
 		const at = revisionKey(review);
 		const own = hasSighting(state, id, at, source);
-		if (!refuted && !own && sightingCount(state, at, source) >= lens.budget) {
+		if (refuted === undefined && !own && sightingCount(state, at, source) >= lens.budget) {
 			throw new Error(`budget reached: this lens may report ${lens.budget} findings; stop reporting and finish`);
 		}
 		// Each report reads the code at every location it cites, and quotes it back, so corrections are capped.
@@ -779,10 +779,11 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 			if (calls.length > maxCorrections) return false;
 			document.spend.reports[id] = [...calls, api.taskId];
 		}
-		// A refutation stores no sighting: the lens says a finding an earlier run reported is not a defect.
-		if (refuted) {
+		// A refutation stores no sighting: the lens says the finding an earlier run reported, by the ID it was given, is
+		// not a defect, so the refutation never depends on reproducing that finding's snippet.
+		if (refuted !== undefined) {
 			const listed = document.spend.refuted ?? [];
-			if (!listed.includes(id)) document.spend.refuted = [...listed, id];
+			if (!listed.includes(refuted)) document.spend.refuted = [...listed, refuted];
 			return true;
 		}
 		await upsertFinding(
@@ -794,7 +795,7 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 		);
 		return true;
 	}, context);
-	if (recorded && refuted) return text(`recorded that finding ${id} is not a defect`);
+	if (recorded && refuted !== undefined) return text(`recorded that finding ${refuted} is not a defect`);
 	if (!recorded) {
 		return text(
 			`[not recorded: this lens has corrected finding ${id} ${maxCorrections} times, the most it may; report another finding or finish]`,

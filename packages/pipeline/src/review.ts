@@ -155,11 +155,11 @@ type StoredEscalation = { trigger: StoredTrigger; carried: string[] };
 function carriedFindings(findings: readonly SightedFinding[], nonce: string): string {
 	const listed = findings.map(
 		(finding) =>
-			`${finding.id} ${finding.severity} ${visibleText(finding.ruleId)} at ${visibleText(finding.path)}:${finding.line}: ${visibleText(finding.message.split("\n")[0] ?? "")}`,
+			`${finding.id} ${finding.severity} ${visibleText(finding.ruleId)} at ${visibleText(finding.path)}:${finding.line}-${finding.endLine}: ${visibleText(finding.message.split("\n")[0] ?? "")}`,
 	);
 	return [
 		"## Findings a quicker look reported",
-		"A quicker look at this change reported the findings below, and you were brought in to check them as well as review the change. For each, if it is a defect, report it with report_finding at the same file, line, and rule, with its own failure scenario and evidence. If the code shows it is not a defect, report it with refuted: true at the same file, line, and rule, with a failureScenario saying why it cannot fail and evidence holding the code that prevents it. A finding you leave unanswered stays in the review as the quicker look reported it.",
+		"A quicker look at this change reported the findings below, and you were brought in to check them as well as review the change. Each line gives the finding's ID, severity, rule, and file with its first and last lines. For each, if it is a defect, report it with report_finding at the same file, lines, and rule, with its own failure scenario and evidence. If the code shows it is not a defect, report it with refuted set to its ID, at the same file, lines, and rule, with a failureScenario saying why it cannot fail and evidence holding the code that prevents it. A finding you leave unanswered stays in the review as the quicker look reported it.",
 		quoteUntrusted("findings", listed.join("\n"), nonce),
 	].join("\n\n");
 }
@@ -347,7 +347,19 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 						? next.prompt
 						: `${next.prompt}\n\n${carriedFindings(carried, input.revision.nonce)}`;
 				const rerun = await run(next, child!, prompt);
-				const restated = new Set((await sighted(next)).map((finding) => finding.id));
+				// A restatement is the same finding by its ID, or by its file, rule, and overlapping lines, since a run that
+				// reported other lines of one defect hashes another snippet.
+				const higher = await sighted(next);
+				const restates = (finding: SightedFinding) =>
+					higher.some(
+						(each) =>
+							each.id === finding.id ||
+							(each.path === finding.path &&
+								each.ruleId === finding.ruleId &&
+								each.line <= finding.endLine &&
+								finding.line <= each.endLine),
+					);
+				const restated = new Set(carried.filter(restates).map((finding) => finding.id));
 				const refuted = (await refutedBy(runtime, child!, context)).filter(
 					(id) => escalation.carried.includes(id) && !restated.has(id),
 				);

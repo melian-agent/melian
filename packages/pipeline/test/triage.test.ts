@@ -152,6 +152,17 @@ function choosing(level: "skip" | ScrutinyLevel, name = "recorded"): RecordedDec
 
 const version = () => lenses.find((lens) => lens.name === "correctness")!.version;
 
+// The ID of the first finding a quicker run carried into the request `messages` hold.
+function carriedId(messages: readonly Message[]): string {
+	const input = messages
+		.filter((message) => message.role === "user")
+		.map(textOf)
+		.join("\n");
+	const id = /label="findings">\n([0-9a-f]{16}) /.exec(input)?.[1];
+	if (id === undefined) throw new Error("no carried finding in the request");
+	return id;
+}
+
 // The budget a level states in a lens's instructions.
 const statedBudget: Record<ScrutinyLevel, string> = {
 	quick: "at most 3 findings",
@@ -507,7 +518,7 @@ describe("escalation", () => {
 		expect(input).toMatch(/^Review the change from/);
 		expect(input).toContain("## Findings a quicker look reported");
 		expect(input).toMatch(
-			/<untrusted-[0-9a-f]{24} label="findings">\n[0-9a-f]{16} P1 null-dereference at src\/user\.ts:7: /,
+			/<untrusted-[0-9a-f]{24} label="findings">\n[0-9a-f]{16} P1 null-dereference at src\/user\.ts:7-7: /,
 		);
 		// Each level is its own conversation and its own request, so the rerun's input is not deduplicated.
 		const sent = await lensRequests();
@@ -549,15 +560,18 @@ describe("escalation", () => {
 		);
 	});
 
-	it("drops a quick finding the escalated run refutes", async () => {
+	it("drops a quick finding the escalated run refutes by its ID, whatever lines the refutation names", async () => {
 		const decider = choosing("quick");
 		await open(decider);
-		const refute = call("report_finding", {
-			...crashFinding,
-			refuted: true,
-			failureScenario: "Every caller passes a user whose manager is set, so the dereference cannot fail.",
-		});
-		const requests = scriptConversations(fake, [{ match: correctness, replies: [severe, done, refute, done] }]);
+		// The quick run reports lines 6 to 7; the careful run refutes it by the ID it was given, naming line 7 alone.
+		const spanning = call("report_finding", { ...crashFinding, line: 6, endLine: 7 });
+		const refute = (messages: readonly Message[]) =>
+			call("report_finding", {
+				...crashFinding,
+				refuted: carriedId(messages),
+				failureScenario: "Every caller passes a user whose manager is set, so the dereference cannot fail.",
+			});
+		const requests = scriptConversations(fake, [{ match: correctness, replies: [spanning, done, refute, done] }]);
 
 		const reviewed = await review({ decider });
 
@@ -568,6 +582,22 @@ describe("escalation", () => {
 		);
 		const results = requests[correctness]![3]!.filter((message) => message.role === "toolResult").map(textOf);
 		expect(results.at(-1)).toMatch(/^recorded that finding [0-9a-f]{16} is not a defect$/);
+	});
+
+	it("counts once a quick finding the escalated run restates at other lines of the same defect", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		const spanning = call("report_finding", { ...crashFinding, line: 6, endLine: 7 });
+		const requests = scriptConversations(fake, [{ match: correctness, replies: [spanning, done, severe, done] }]);
+
+		const reviewed = await review({ decider });
+
+		const input = textOf(requests[correctness]![2]!.find((message) => message.role === "user")!);
+		expect(input).toMatch(/[0-9a-f]{16} P1 null-dereference at src\/user\.ts:6-7: /);
+		expect(reviewed.findings.map((finding) => finding.properties.source)).toEqual([
+			{ check: "lens.correctness", version: `${version()}@careful` },
+		]);
+		expect(lensRecord(reviewed)!.reason).toContain("careful restated 1 finding quick carried");
 	});
 
 	it("runs a lens again when a budget ended it at quick before it reported anything", async () => {

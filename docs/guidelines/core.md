@@ -207,7 +207,7 @@ A path is canonical: repository-relative, posix, with no empty or `.` segments. 
 
 ### What a lens reports
 
-`reportFindingInputSchema` is the lens-facing schema for the `report_finding` tool, and holds exactly `file`, `line`, an optional `endLine`, `rule`, `severity`, `explanation` (`what`, `why`, `fix`), `failureScenario`, `evidence`, and an optional `refuted: true`, with which an escalated run says a finding the quicker run reported is not a defect. Every object in it rejects other keys. `FindingInput` stays the internal type that `Finding.create` takes.
+`reportFindingInputSchema` is the lens-facing schema for the `report_finding` tool, and holds exactly `file`, `line`, an optional `endLine`, `rule`, `severity`, `explanation` (`what`, `why`, `fix`), `failureScenario`, `evidence`, and an optional `refuted`, the 16-hex-digit ID of a finding the quicker run reported, with which an escalated run says that finding is not a defect. Every object in it rejects other keys. `FindingInput` stays the internal type that `Finding.create` takes.
 
 - `failureScenario` is prose, required, and bounded: at most `maxFailureScenarioLength` (2,000) characters, with at least one that is not whitespace. It names the concrete input, state, or sequence that makes the code fail, and the wrong outcome.
 - `evidence` is a list of one to `maxEvidenceLocations` (10) locations, each `{ file, line, endLine?, role, revision? }`. `role` is `cause` or `context`; `revision` is `head` when absent, or `base` for lines the change deleted. A string is not evidence, and neither is a location that quotes its own snippet.

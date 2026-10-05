@@ -284,9 +284,10 @@ export const reportFindingInputSchema = Type.Object(
 			},
 		),
 		refuted: Type.Optional(
-			Type.Literal(true, {
+			Type.String({
+				pattern: "^[0-9a-f]{16}$",
 				description:
-					"Only for a finding an earlier, quicker look reported that you were asked to check: true when the code shows it is not a defect. Report it at the same file, line, and rule, with failureScenario saying why it cannot fail and evidence holding the code that prevents it",
+					"Only for a finding an earlier, quicker look reported that you were asked to check: its ID, as you were given it, when the code shows it is not a defect. Report it at the finding's file, lines, and rule, with failureScenario saying why it cannot fail and evidence holding the code that prevents it",
 			}),
 		),
 	},

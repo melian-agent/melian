@@ -115,6 +115,7 @@ export type SightedFinding = {
 	readonly severity: Severity;
 	readonly path: string;
 	readonly line: number;
+	readonly endLine: number;
 	readonly message: string;
 };
 
@@ -127,8 +128,10 @@ export function sightedBy(state: FindingsState, revision: string, source: Findin
 			const sighting = state.items[id]!.sightings[revision]?.[key];
 			if (sighting === undefined) return [];
 			const { severity, path } = sighting.properties;
-			const line = sighting.locations[0]?.physicalLocation.region.startLine ?? 1;
-			return [{ id, ruleId: sighting.ruleId, severity, path, line, message: sighting.message.text }];
+			const region = sighting.locations[0]?.physicalLocation.region;
+			const line = region?.startLine ?? 1;
+			const endLine = region?.endLine ?? line;
+			return [{ id, ruleId: sighting.ruleId, severity, path, line, endLine, message: sighting.message.text }];
 		});
 }
 
