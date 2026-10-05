@@ -476,8 +476,7 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 			env: { ...env(), PI_CODING_AGENT_DIR: link },
 		});
 		const deny = block(text, "deny file-read*");
-		for (const path of [join(home, ".pi/agent/auth.json"), target])
-			expect(deny).toContain(`(literal "${path}")`);
+		for (const path of [join(home, ".pi/agent/auth.json"), target]) expect(deny).toContain(`(literal "${path}")`);
 		expect(deny).not.toContain(`${link}/auth.json`);
 		expect(text.slice(text.lastIndexOf("(deny file-read*\n"))).not.toMatch(/\(allow file-read/);
 	});
@@ -1221,6 +1220,102 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 		});
 	});
 
+	it.each(["test", "cleanup"])(
+		"exits 143 on TERM during %s, leaving no stand-in codex, sleepers, run directory or profile",
+		async (phase) => {
+			const termBin = join(root, `term-bin-${phase}`);
+			const termTmp = join(root, `tmp-term-${phase}`);
+			mkdirSync(termBin);
+			mkdirSync(termTmp);
+			if (!sandboxExec) {
+				writeFileSync(join(termBin, "uname"), "#!/bin/sh\necho Darwin\n");
+				writeFileSync(join(termBin, "sandbox-exec"), '#!/bin/sh\nshift 2\nexec "$@"\n');
+				for (const name of ["uname", "sandbox-exec"]) chmodSync(join(termBin, name), 0o755);
+			}
+			writeFileSync(
+				join(termBin, "codex"),
+				'#!/bin/sh\nsleep 3019 &\nbackground=$!\nsleep 3018 &\nforeground=$!\nprintf "%s\\n" "$$" "$background" "$foreground" > term-pids\nwait "$foreground"\n',
+			);
+			chmodSync(join(termBin, "codex"), 0o755);
+			const prompt = join(root, "term.md");
+			writeFileSync(prompt, "go\n");
+			const pidFile = join(linked, "term-pids");
+			const wrapper = spawn(script, [linked, "m", prompt, join(root, "term.log")], {
+				stdio: "ignore",
+				env: { ...env(), TMPDIR: termTmp, PATH: `${termBin}:${env().PATH}` },
+			});
+			const exited = new Promise((resolve) => wrapper.on("exit", (code, signal) => resolve({ code, signal })));
+			const waitForExit = async () => {
+				let timer;
+				try {
+					return await Promise.race([
+						exited,
+						new Promise((resolve) => {
+							timer = setTimeout(resolve, 2000);
+						}),
+					]);
+				} finally {
+					clearTimeout(timer);
+				}
+			};
+			const running = (pid) => {
+				try {
+					process.kill(pid, 0);
+					return true;
+				} catch {
+					return false;
+				}
+			};
+			let pids = [];
+			const waitForDescendants = async () => {
+				for (let i = 0; i < 20 && pids.some(running); i++) await new Promise((resolve) => setTimeout(resolve, 100));
+			};
+			try {
+				for (
+					let i = 0;
+					i < 300 && !(existsSync(pidFile) && readFileSync(pidFile, "utf8").trim().split("\n").length === 3);
+					i++
+				)
+					await new Promise((resolve) => setTimeout(resolve, 100));
+				pids = readFileSync(pidFile, "utf8").trim().split("\n").map(Number);
+				expect(pids).toHaveLength(3);
+				for (const pid of pids) expect(Number.isInteger(pid) && pid > 1).toBe(true);
+				expect(readdirSync(termTmp).some((name) => name.startsWith("codex-run."))).toBe(true);
+				if (phase === "cleanup") return;
+				wrapper.kill("SIGTERM");
+				expect(await waitForExit()).toEqual({ code: 143, signal: null });
+				await waitForDescendants();
+				expect(pids.filter(running)).toEqual([]);
+				expect(readdirSync(termTmp)).toEqual([]);
+			} finally {
+				if (wrapper.exitCode === null && wrapper.signalCode === null) wrapper.kill("SIGTERM");
+				const result = await waitForExit();
+				if (wrapper.exitCode === null && wrapper.signalCode === null) wrapper.kill("SIGKILL");
+				if (existsSync(pidFile)) {
+					pids = readFileSync(pidFile, "utf8")
+						.trim()
+						.split("\n")
+						.map(Number)
+						.filter((pid) => Number.isInteger(pid) && pid > 1);
+				}
+				for (const pid of pids) {
+					try {
+						process.kill(pid, "SIGKILL");
+					} catch {}
+				}
+				await waitForExit();
+				await waitForDescendants();
+				try {
+					expect(pids.filter(running)).toEqual([]);
+					expect(result).toEqual({ code: 143, signal: null });
+					expect(readdirSync(termTmp)).toEqual([]);
+				} finally {
+					rmSync(pidFile, { force: true });
+				}
+			}
+		},
+	);
+
 	describe.skipIf(!sandboxExec)("the wrapper end to end, with a stand-in codex", () => {
 		it("passes only an allow-list of variables, points TMPDIR and the npm cache at the run, passes the prompt after --, and cleans up", () => {
 			const freshHome = join(root, "runtime-home");
@@ -1333,42 +1428,6 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 			expect(out).toContain("clone:denied");
 			expect(existsSync(join(stateScratch, "melian", "clone", "x.sqlite"))).toBe(true);
 			expect(existsSync(join(main, ".git", "melian"))).toBe(false);
-		});
-
-		it("exits 143 on TERM, killing the task's background child and removing the run directory and profile", async () => {
-			const termBin = join(root, "term-bin");
-			const termTmp = join(root, "tmp-term");
-			mkdirSync(termBin);
-			mkdirSync(termTmp);
-			writeFileSync(join(termBin, "codex"), "#!/bin/sh\nsleep 3019 &\necho $! > term-sleeper.pid\nsleep 3018\n");
-			chmodSync(join(termBin, "codex"), 0o755);
-			const prompt = join(root, "term.md");
-			writeFileSync(prompt, "go\n");
-			const pidFile = join(linked, "term-sleeper.pid");
-			const wrapper = spawn(script, [linked, "m", prompt, join(root, "term.log")], {
-				stdio: "ignore",
-				env: { ...env(), TMPDIR: termTmp, PATH: `${termBin}:${env().PATH}` },
-			});
-			const exited = new Promise((resolve) => wrapper.on("exit", (code, signal) => resolve({ code, signal })));
-			try {
-				for (let i = 0; i < 300 && !(existsSync(pidFile) && readFileSync(pidFile, "utf8").trim()); i++)
-					await new Promise((resolve) => setTimeout(resolve, 100));
-				const pid = Number(readFileSync(pidFile, "utf8"));
-				expect(pid).toBeGreaterThan(1);
-				expect(readdirSync(termTmp).some((name) => name.startsWith("codex-run."))).toBe(true);
-				wrapper.kill("SIGTERM");
-				expect(await exited).toEqual({ code: 143, signal: null });
-				expect(() => process.kill(pid, 0)).toThrow();
-				expect(readdirSync(termTmp)).toEqual([]);
-			} finally {
-				if (wrapper.exitCode === null && wrapper.signalCode === null) wrapper.kill("SIGKILL");
-				if (existsSync(pidFile)) {
-					try {
-						process.kill(Number(readFileSync(pidFile, "utf8")), "SIGKILL");
-					} catch {}
-					rmSync(pidFile);
-				}
-			}
 		});
 
 		it("kills a backgrounded child when the wrapper returns, and returns codex's exit status", () => {
