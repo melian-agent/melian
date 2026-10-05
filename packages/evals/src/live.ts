@@ -19,10 +19,39 @@ import {
 	scoreGolden,
 	selectGoldens,
 } from "./goldens.ts";
+import { loadVerifierGoldens, runVerifierGolden, scoreVerifierGolden } from "./verifier.ts";
 
 if (process.env.MELIAN_EVAL_LIVE !== "1") {
 	console.error("Live evals call real models and spend tokens. Set MELIAN_EVAL_LIVE=1 to run them.");
 	process.exit(2);
+}
+
+const verifierModel = process.env.MELIAN_EVAL_VERIFIER_MODEL;
+if (process.env.MELIAN_EVAL_VERIFIER === "1") {
+	const all = loadVerifierGoldens();
+	const selected = process.env.MELIAN_EVAL_GOLDEN;
+	const goldens = selected === undefined || selected === "" ? all : all.filter((golden) => golden.name === selected);
+	if (goldens.length === 0 || (verifierModel ?? process.env.MELIAN_EVAL_MODEL) === undefined) {
+		console.error("Verifier evals need a known golden and MELIAN_EVAL_VERIFIER_MODEL or MELIAN_EVAL_MODEL.");
+		process.exit(2);
+	}
+	const models = createReviewModels({ credentials: await liveCredentials(process.cwd()) });
+	const scores = [];
+	for (const golden of goldens) {
+		const run = await runVerifierGolden(golden, {
+			kind: "live",
+			models,
+			model: process.env.MELIAN_EVAL_MODEL,
+			verifierModel,
+		});
+		const score = scoreVerifierGolden(golden, run);
+		scores.push(score);
+		console.log(
+			`${golden.name}: ${score.verdict ?? "unjudged"}, ${score.passed ? "passed" : "failed"} (${score.kind})`,
+		);
+	}
+	console.log(`verifier corpus: ${scores.filter((score) => score.passed).length}/${scores.length} passed`);
+	process.exit(scores.every((score) => score.passed) ? 0 : 1);
 }
 
 const allGoldens = loadGoldens();
@@ -41,7 +70,12 @@ for (const golden of goldens) {
 		console.log(`${golden.name}: skipped, live: false`);
 		continue;
 	}
-	const run = await runGolden(golden, { kind: "live", models, ...(model === undefined ? {} : { model }) });
+	const run = await runGolden(golden, {
+		kind: "live",
+		models,
+		...(model === undefined ? {} : { model }),
+		...(verifierModel === undefined ? {} : { verifierModel }),
+	});
 	const score = scoreGolden(golden, run.findings);
 	scores.push(score);
 	console.log(

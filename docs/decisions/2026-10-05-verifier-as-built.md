@@ -21,3 +21,7 @@ Why: Replays must neither spend on replaced runs nor overwrite newer findings. A
 Choice: Defaults 3, 4, 6 and 7 remove a defect only when every lens claim was refuted and no deterministic check co-reported it. An unjudged lens-only defect resolves no higher than advisory. The optional adjudication input flag verificationRan applies this cap only to new reviews. A dismissal keeps the stored flag and runs no verifier. Any unfinished candidate leaves a failed or budget-ended verifier check and a not-reviewed verdict.
 
 Why: A refutation cannot erase another claim or deterministic proof. Capping an old review during dismissal would silently unblock it. The advisory cap limits unjudged findings; the not-reviewed status still prevents an incomplete review passing.
+
+Choice: Default 13 puts execution-dependent misses under packages/evals/verifier, outside the lens corpus. Each has base and head trees, a planted candidate, acceptable verdicts, a script and a source README. Four real defects accept confirmed or plausible, never refuted. Two decoys require refuted. A fake finder plants each through report_finding; the verifier uses the durable task. Live runs select this suite separately and may route another verifier model.
+
+Why: The suite measures whether verification drops a real defect, independently of whether a finder notices it. Scripted tests exercise the integration without claiming to measure a model. Lens scoring stays unchanged.

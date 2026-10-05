@@ -66,6 +66,16 @@ One run cannot tell a fixed lens from a lucky draw. In the [second](../../packag
 
 A lens meets the bar when, over three passes, its goldens' worst precision is at least 0.8 and their worst recall at least 0.6. A lens's goldens are those whose names start with its name, scored together as one corpus and counting every lens's findings on them, since a golden scores the whole review. A lens below either bar may still ship, marked below the bar in its run record and in the plan; its goldens are never loosened to lift it over.
 
+## Verifier evals
+
+Execution-dependent misses live under `packages/evals/verifier/<name>/`, separate from the lens corpus. Each directory holds `base/`, `head/`, `candidate.json`, `expected.json`, `script.json` and a `README.md` naming the comparison record and finding. The four initial misses come from [pull request #68](https://github.com/melian-agent/melian/pull/68), C5 and C8, [pull request #72](https://github.com/melian-agent/melian/pull/72), C9, and [pull request #61](https://github.com/melian-agent/melian/pull/61), A1. The decoys cover a null guard and a type with one caller that excludes zero.
+
+`loadVerifierGoldens` validates the files. `runVerifierGolden` plants the candidate through a scripted lens's `report_finding`, so Melian reads the snippets, then runs the real verification task. `scoreVerifierGolden` accepts confirmed or plausible for a `needs-execution` case, and only refuted for a decoy. A missing judgement fails. The scripted suite runs in the gate; it checks integration and scoring, not model quality. Lens goldens and their scoring stay unchanged. The root policy excludes this corpus from lenses, and its own `melian.yaml` disables policy notices beneath it.
+
+Live verifier runs need both `MELIAN_EVAL_LIVE=1` and `MELIAN_EVAL_VERIFIER=1`. `MELIAN_EVAL_VERIFIER_MODEL` routes their judge independently; `MELIAN_EVAL_MODEL` is its fallback. `MELIAN_EVAL_GOLDEN` selects one verifier case. An unknown name or absent model stops the suite before provider access. The finder stays scripted, so the suite measures whether the judge retains a real defect. The runner prints each verdict and pass or fail, then the total; any failure exits 1. Live runs spend tokens and remain outside the gate.
+
+Existing lens goldens explicitly route the fake verifier in scripted mode. In live mode their verifier uses `MELIAN_EVAL_VERIFIER_MODEL`, or `MELIAN_EVAL_MODEL`, or the committed verifier route when neither variable is set. A fake provider can be added to an existing opaque model collection through the pipeline testing entry; this lets a planted finder share a harness with a separately routed judge.
+
 ## Scoring
 
 A reported finding matches an expected one when both name the same file and rule and, where the expected one names a `source`, the finding's `reportedBy` lists it. Each expected finding is a true positive at most once, and findings are paired with expectations so that as many count as can: a second reported finding matching an expectation already matched is a false positive, because it reports one defect twice. Precision is true positives over reported findings; recall is expected findings found over expected findings. A golden with nothing expected has recall 1, and one with nothing reported has precision 1. `scoreCorpus` sums the counts across goldens before dividing, so a golden with many findings weighs more than a clean one.
@@ -100,7 +110,7 @@ Each finding is adjudicated valid, noise, or a duplicate, with a severity. A val
 
 - `owned-missed`: a lens or check owns it and missed it. It usually owes a golden for that lens.
 - `no-owner`: no lens or check owns it. It points at a new rule, guardrail, or lens, and a repeat on a second pull request is a candidate check.
-- `needs-execution`: it was found by running code, not by reading it. It joins the verifier's evals and the tool manifest's list, not the golden corpus.
+- `needs-execution`: it was found by running code, not by reading it. It joins [verifier evals](#verifier-evals) and the tool manifest's list, not the lens golden corpus.
 - `out-of-scope`: Melian does not review this kind of change. It owes nothing, and does not count against Melian's recall.
 
 A Melian finding judged noise owes a clean golden for the lens that raised it. A golden is owed only where the adjudication says so, naming its lens; a difference alone owes nothing. A golden drawn from a record names its finding in a `README.md` beside `expected.json`, since the expected file's schema is Martian's and has no field for it.

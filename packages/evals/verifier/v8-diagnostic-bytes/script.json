@@ -1,0 +1,4 @@
+{
+  "verdict": "plausible",
+  "reason": "Run importReview with malformed JSON containing an ESC sentinel and inspect standard error bytes; V8 supplies the diagnostic text."
+}

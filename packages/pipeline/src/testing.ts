@@ -17,7 +17,7 @@ import {
 import { createModels } from "@earendil-works/pi-ai/models";
 import type { Verification } from "@melian-agent/core";
 import type { HarnessOptions, ModelRef } from "./harness.ts";
-import { type ReviewModels, wrapModels } from "./models.ts";
+import { modelsOf, type ReviewModels, wrapModels } from "./models.ts";
 import { verifierMarker } from "./verification-instructions.ts";
 
 export { type FauxProviderHandle, fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
@@ -32,15 +32,17 @@ export type FakeModels = {
 	ref(modelId?: string): ModelRef;
 };
 
-/** Create a scripted model provider that answers from queued responses, so tests need no credentials. */
-export function createFakeModels(options?: RegisterFauxProviderOptions): FakeModels {
+/** Creates a scripted provider in its own collection, or alongside an existing review collection for a planted finder. */
+export function createFakeModels(options?: RegisterFauxProviderOptions, review?: ReviewModels): FakeModels {
 	const provider = fauxProvider(options);
-	const models = createModels();
+	const models = review === undefined ? createModels() : modelsOf(review);
+	if (!("setProvider" in models) || typeof models.setProvider !== "function")
+		throw new TypeError("The review collection must allow a scripted provider.");
 	models.setProvider(provider.provider);
 	return {
 		models,
 		provider,
-		review: wrapModels(models),
+		review: review ?? wrapModels(models),
 		ref(modelId) {
 			const model: Model<string> | undefined =
 				modelId === undefined ? provider.getModel() : provider.getModel(modelId);
