@@ -8,7 +8,6 @@ import {
 	defaultConfig,
 	Finding,
 	Lens,
-	type LensBudget,
 	type MelianConfig,
 	Rendering,
 	ReviewPlan,
@@ -182,15 +181,6 @@ const statedBudget: Record<ScrutinyLevel, string> = {
 
 function lensRecord(review: Review): CheckRecord | undefined {
 	return [...(review.verdict.ran ?? []), ...review.verdict.notRun].find((check) => check.name === "lens.correctness");
-}
-
-// `lens` with `budget` over one level's budget.
-function budgeted(lens: Lens, level: ScrutinyLevel, budget: Partial<LensBudget>): Lens {
-	const settings = lens.level(level);
-	return Lens.from({
-		...lens.toJSON(),
-		levels: { ...lens.levels, [level]: { ...settings, budget: { ...settings.budget, ...budget } } },
-	});
 }
 
 // Each lens request the storage holds, by its request ID, with the level of the lens conversation it went to.
@@ -381,6 +371,25 @@ describe("triage", () => {
 		expect(fake.provider.state.callCount).toBe(0);
 	});
 
+	it("fails the review when a careful-only lens declares no level within a deep floor", async () => {
+		const decider = choosing("deep");
+		await open(decider);
+		const lens = lenses.find((each) => each.name === "correctness")!;
+		const carefulOnly = Lens.from({ ...lens.toJSON(), levels: { careful: lens.levels.careful } });
+		const floored = { ...config, lenses: { correctness: { level: { floor: "deep" } } } } as const;
+
+		const error = await review({ decider, config: floored, lenses: [carefulOnly] }).catch(
+			(caught: unknown) => caught,
+		);
+
+		expect(error).toMatchObject({ code: "noAvailableModel", lenses: ["correctness"] });
+		expect((error as Error).message).toBe(
+			"lens correctness may run from deep to deep, and no level there can run: it declares none of them, only careful. Route the tier in melian.local.yaml, log in with pi, or set the provider's API key",
+		);
+		expect(decider.requests).toHaveLength(0);
+		expect(fake.provider.state.callCount).toBe(0);
+	});
+
 	it.each([
 		["quick", ["quick", "careful", "deep"]],
 		["skip", ["skip", "quick", "careful", "deep"]],
@@ -448,7 +457,7 @@ describe("triage", () => {
 		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
 	});
 
-	it("keeps each folder variant of a lens to its own band, and asks one question for both", async () => {
+	it("judges each folder variant on its own level's model, and asks one question for both", async () => {
 		writeFiles(repo, {
 			"services/.melian/lenses/correctness/LENS.md": lines(
 				"---",
@@ -463,11 +472,38 @@ describe("triage", () => {
 		gitIn(repo, "commit", "--quiet", "-m", "a payments service");
 		writeFiles(repo, { "services/melian.yaml": lines("lenses:", "  correctness:", "    level: { floor: deep }") });
 		const variants = await Lens.load(repo, { kind: "worktree" }, ["src/user.ts", "services/pay.ts"]);
+		const medium = `${fake.ref("medium").provider}/medium`;
+		const heavy = `${fake.ref("heavy").provider}/heavy`;
+		const models: MelianConfig["models"] = {
+			medium: { model: medium, accept: [medium], acceptOverridden: false },
+			heavy: { model: heavy, accept: [heavy], acceptOverridden: false },
+		};
+		const planned = { ...config, models };
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config: planned,
+			routes: { committed: models, overridden: {}, lensTiers: {}, retiered: {} },
+			catalog,
+			credentials,
+			lenses: variants,
+			checks: ["lens.correctness"],
+		});
 		const decider = choosing("quick");
 		await open(decider);
 		scriptConversations(fake, [{ match: correctness, replies: [done, done] }]);
 
-		const reviewed = await review({ decider, lenses: variants, policy: "worktree" });
+		const reviewed = await reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config: planned,
+			lenses: variants,
+			standards: [],
+			models: fake.review,
+			checks: ran,
+			policy: { kind: "worktree" },
+			decider,
+			plan,
+		});
 
 		const [request] = decider.requests;
 		expect(request!.questions.map((question) => [question.id, question.options])).toEqual([
@@ -478,6 +514,10 @@ describe("triage", () => {
 			.map((check) => check.level)
 			.sort();
 		expect(levels).toEqual(["deep", "quick"]);
+		expect(reviewed.verdict.status).toBe("passed");
+		expect(
+			reviewed.verdict.ran?.filter((check) => check.name === "lens.correctness").map((check) => check.lineage),
+		).toEqual([undefined, undefined]);
 	});
 
 	it("records a decision that failed, and runs every lens at its default level with a note", async () => {
@@ -521,9 +561,8 @@ describe("triage", () => {
 			context,
 		);
 		expect(stored!.decision).toBeUndefined();
-		expect(stored!.failure).toBe(
-			"the decision was asked of asked, but this harness holds installed; open the harness with the same decider",
-		);
+		expect(stored!.failure).toBeUndefined();
+		expect(lensRecord(reviewed)!.reason).toContain("the decision task ended aborted");
 	});
 
 	describe("attaching to a stored decision", () => {
@@ -752,6 +791,72 @@ describe("a decision task another call replaced", () => {
 	});
 });
 
+describe("a decision resumed with another decider", () => {
+	it("leaves no answer and asks the original decider after another reopen", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "melian-triage-decider-"));
+		const path = join(dir, "review.sqlite");
+		const original = choosing("quick", "original");
+		const other = choosing("deep", "other");
+		const parked = vi.fn(
+			(_request: Parameters<Decider["decide"]>[0], signal: AbortSignal | undefined) =>
+				new Promise<never>((_, reject) => {
+					signal?.addEventListener("abort", () => reject(signal.reason), { once: true });
+				}),
+		);
+		const reopen = async (decider: Decider) => {
+			await reviewHarness?.close(context);
+			reviewHarness = await ReviewHarness.open(await openSqliteStorage(path), fake.review, {
+				retry: false,
+				decider,
+			});
+			harness = reviewHarness.harness;
+			await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+		};
+		try {
+			const waiting: Decider = { name: original.name, calibrated: false, decide: parked };
+			await reopen(waiting);
+			const interrupted = review({ decider: waiting }).catch(() => undefined);
+			await vi.waitFor(() => expect(parked).toHaveBeenCalledOnce());
+			const pending = await readRecordedDecision(
+				harness,
+				(await harness.root(context)).id,
+				revision(),
+				"triage",
+				context,
+			);
+			await reopen(other);
+			await interrupted;
+			scriptConversations(fake, [{ match: correctness, replies: [done, done] }]);
+
+			const mismatched = await review({ decider: original });
+
+			expect(other.requests).toHaveLength(0);
+			expect(original.requests).toHaveLength(0);
+			expect(lensRecord(mismatched)).toMatchObject({ status: "ran", level: "careful" });
+			const stored = await readRecordedDecision(
+				harness,
+				(await harness.root(context)).id,
+				revision(),
+				"triage",
+				context,
+			);
+			expect(stored).toEqual({ task: pending!.task });
+			expect((await harness.waitForTask(pending!.task as TaskId, context)).state.outcome.status).toBe("aborted");
+
+			await reopen(original);
+			const triaged = await review({ decider: original });
+
+			expect(original.requests).toHaveLength(1);
+			expect(other.requests).toHaveLength(0);
+			expect(lensRecord(triaged)).toMatchObject({ status: "ran", level: "quick" });
+		} finally {
+			await reviewHarness?.close(context);
+			reviewHarness = undefined;
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+});
+
 describe("triage under a review plan", () => {
 	// heavy, careful's and deep's tier, fails: its only accepted model has no credentials. medium, quick's, is routed.
 	async function refusingHeavy() {
@@ -874,7 +979,7 @@ describe("escalation under a review plan", () => {
 		expect(lensRecord(reviewed)!.reason).toContain("escalated from quick to careful");
 		// The map the plan marks from holds the careful run's model, not the quick run's.
 		const marked = mark.mock.calls.at(-1)![1]!;
-		expect(marked.get("correctness")).toEqual([{ scope: "", model: heavy }]);
+		expect(marked.get("correctness")).toEqual([{ scope: "", level: "careful", model: heavy }]);
 		// The refusal callback asked about the escalated run on the model it finished on.
 		expect(judge.mock.calls).toContainEqual(["correctness", "careful", heavy, ""]);
 	});
@@ -1120,9 +1225,14 @@ describe("escalation", () => {
 	it("takes a refutation from an escalated run whose findings budget is spent", async () => {
 		const decider = choosing("quick");
 		await open(decider);
-		const tight = lenses.map((lens) =>
-			lens.name === "correctness" ? budgeted(lens, "careful", { findings: 1 }) : lens,
-		);
+		const tight = lenses.map((lens) => {
+			if (lens.name !== "correctness") return lens;
+			const settings = lens.level("careful");
+			return Lens.from({
+				...lens.toJSON(),
+				levels: { ...lens.levels, careful: { ...settings, budget: { ...settings.budget, findings: 1 } } },
+			});
+		});
 		const other = call("report_finding", { ...crashFinding, line: 6, rule: "wrong-result" });
 		const refute = (messages: readonly Message[]) =>
 			call("report_finding", {
@@ -1160,7 +1270,14 @@ describe("escalation", () => {
 	it("runs a lens again when a budget ended it at quick before it reported anything", async () => {
 		const decider = choosing("quick");
 		await open(decider);
-		const tight = lenses.map((lens) => (lens.name === "correctness" ? budgeted(lens, "quick", { tools: 1 }) : lens));
+		const tight = lenses.map((lens) => {
+			if (lens.name !== "correctness") return lens;
+			const settings = lens.level("quick");
+			return Lens.from({
+				...lens.toJSON(),
+				levels: { ...lens.levels, quick: { ...settings, budget: { ...settings.budget, tools: 1 } } },
+			});
+		});
 		const reads = fauxAssistantMessage(
 			[
 				fauxToolCall("read_file", { path: "src/user.ts" }),
@@ -1184,7 +1301,14 @@ describe("escalation", () => {
 	it("leaves a lens a budget ended at quick ended when its ceiling is quick", async () => {
 		const decider = choosing("quick");
 		await open(decider);
-		const tight = lenses.map((lens) => (lens.name === "correctness" ? budgeted(lens, "quick", { tools: 1 }) : lens));
+		const tight = lenses.map((lens) => {
+			if (lens.name !== "correctness") return lens;
+			const settings = lens.level("quick");
+			return Lens.from({
+				...lens.toJSON(),
+				levels: { ...lens.levels, quick: { ...settings, budget: { ...settings.budget, tools: 1 } } },
+			});
+		});
 		const reads = fauxAssistantMessage(
 			[
 				fauxToolCall("read_file", { path: "src/user.ts" }),

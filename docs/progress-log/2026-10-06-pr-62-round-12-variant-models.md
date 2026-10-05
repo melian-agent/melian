@@ -1,0 +1,3 @@
+The twelfth review of [pull request #62](https://github.com/melian-agent/melian/pull/62) confirmed that `ReviewPlan.mark` judged mixed-level folder variants against each other's models. With guarded medium and heavy routes, the root correctness variant at quick and the services variant at deep both recorded failed despite finishing on their own accepted models.
+
+The finished-model lookup now carries scope and level under each lens name. Each record uses only models from its own level, judged at their scopes. The folder-variant regression asserts both levels ran, no override lineage, and a passed verdict. Same-level variant refusal and fallback tests still pass.

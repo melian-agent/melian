@@ -78,18 +78,16 @@ export function decisionTask(decider: Decider, timeout = decisionTimeout) {
 				// record another decider's answer under this key.
 				const named = (JSON.parse(key) as { decider?: unknown }).decider;
 				if (named !== decider.name) {
-					answer = {
-						failure: `the decision was asked of ${String(named)}, but this harness holds ${decider.name}; open the harness with the same decider`,
-					};
-				} else {
-					try {
-						const decided = await Promise.race([decider.decide(request as DecisionRequest, signal), expired]);
-						answer = { decision: Decision.parse(request as DecisionRequest, decided, decider).toJSON() };
-					} catch (error) {
-						if (runtime.signal.aborted) throw error;
-						const failure = error instanceof Error ? error.message : String(error);
-						answer = { failure: failure.length <= maxFailure ? failure : `${failure.slice(0, maxFailure - 1)}…` };
-					}
+					await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+					return;
+				}
+				try {
+					const decided = await Promise.race([decider.decide(request as DecisionRequest, signal), expired]);
+					answer = { decision: Decision.parse(request as DecisionRequest, decided, decider).toJSON() };
+				} catch (error) {
+					if (runtime.signal.aborted) throw error;
+					const failure = error instanceof Error ? error.message : String(error);
+					answer = { failure: failure.length <= maxFailure ? failure : `${failure.slice(0, maxFailure - 1)}…` };
 				}
 				await runtime.commit(async (tx) => {
 					const document = await tx.doc(DecisionDocument, root);

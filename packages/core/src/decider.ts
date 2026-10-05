@@ -198,9 +198,12 @@ function normalized(
 		}
 	}
 	const weightOf = (option: string) => (Object.hasOwn(weights, option) ? weights[option]! : 0);
-	const total = question.options.reduce((sum, option) => sum + weightOf(option), 0);
-	if (total === 0) throw invalid("with no weight on any option");
-	const distribution = Object.fromEntries(question.options.map((option) => [option, weightOf(option) / total]));
+	const maximum = question.options.reduce((largest, option) => Math.max(largest, weightOf(option)), 0);
+	if (maximum === 0) throw invalid("with no weight on any option");
+	const total = question.options.reduce((sum, option) => sum + weightOf(option) / maximum, 0);
+	const distribution = Object.fromEntries(
+		question.options.map((option) => [option, weightOf(option) / maximum / total]),
+	);
 	const chosen = question.options.reduce((best, option) => (weightOf(option) > weightOf(best) ? option : best));
 	return { question: question.id, distribution, chosen };
 }

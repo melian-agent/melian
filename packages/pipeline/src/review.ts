@@ -140,11 +140,40 @@ interface LensRun {
 }
 
 // `escalateAt` is absent from a task an older Melian created, which escalates nothing.
-interface LensTaskInput {
+interface StoredLensTaskInput {
 	readonly root: ConversationId;
 	readonly revision: ReviewState;
 	readonly lenses: readonly LensRun[];
 	readonly escalateAt?: Severity;
+}
+
+class LensTaskInput {
+	readonly root: ConversationId;
+	readonly revision: ReviewState;
+	readonly lenses: readonly LensRun[];
+	readonly escalateAt?: Severity;
+
+	constructor(root: ConversationId, revision: ReviewState, lenses: readonly LensRun[], escalateAt?: Severity) {
+		this.root = root;
+		this.revision = revision;
+		this.lenses = lenses;
+		if (escalateAt !== undefined) this.escalateAt = escalateAt;
+	}
+
+	static upgrade(input: unknown): StoredLensTaskInput {
+		const stored = input as StoredLensTaskInput;
+		const lenses = stored.lenses.map(({ level: _, ...run }) => run) as unknown as LensRun[];
+		return new LensTaskInput(stored.root, stored.revision, lenses, stored.escalateAt).toJSON();
+	}
+
+	toJSON(): StoredLensTaskInput {
+		return {
+			root: this.root,
+			revision: this.revision,
+			lenses: this.lenses,
+			...(this.escalateAt === undefined ? {} : { escalateAt: this.escalateAt }),
+		};
+	}
 }
 
 // A run the escalation rule moved on names why, and the key of the run it moved to, absent when its ceiling capped it.
@@ -208,7 +237,7 @@ const continuePrompt =
 	"The model reviewing this change failed, and you take over. Continue the review where it stopped: findings already recorded stay recorded, so report only what is still missing. Then answer with one line saying how many findings you reported.";
 
 // Creates one lens's conversation, owned by the lens task, and writes its policy on it.
-async function spawnLens(tx: Tx, taskId: TaskId, input: LensTaskInput, lens: LensRun): Promise<ConversationId> {
+async function spawnLens(tx: Tx, taskId: TaskId, input: StoredLensTaskInput, lens: LensRun): Promise<ConversationId> {
 	const created = await tx.createConversation({ ownership: { kind: "task", taskId } });
 	// An owned conversation starts with its owner's tools and extensions, so both are explicit. Selecting only the lens
 	// extension puts its injection policy section first, ahead of the instructions.
@@ -262,7 +291,7 @@ async function abortReplacedRuns(harness: Harness, context: Context): Promise<vo
 	const root = await harness.root(context);
 	const index = await harness.snapshot(ReviewIndex, root.id, context);
 	for (const { record } of live) {
-		const input = record.input as unknown as LensTaskInput;
+		const input = record.input as unknown as StoredLensTaskInput;
 		const entry = index?.reviews[revisionKey(input.revision)];
 		// An entry with no task is one a review that selected no lens rewrote: it names no run at all.
 		const replaced =
@@ -294,7 +323,7 @@ async function abortReplacedRuns(harness: Harness, context: Context): Promise<vo
 // Whether the review index names another lens task, or none, for the task's revision: a later review replaced this run.
 async function superseded(
 	reader: DocumentReader,
-	input: LensTaskInput,
+	input: StoredLensTaskInput,
 	taskId: number,
 	context: Context,
 ): Promise<boolean> {
@@ -305,7 +334,7 @@ async function superseded(
 // Spawns every lens conversation in one commit, so a crash leaves all of them or none; then runs them in parallel.
 // A lens the escalation rule moves to its next level gets a conversation of its own, created in the commit that
 // records why, and runs there. The orchestrating conversation's model is never asked which lenses to run.
-const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
+const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 	name: "melian.lenses",
 	// Version 2 added escalation: a run's `escalation`, the input's `escalateAt`, the checkpoint's `escalations`, and an
 	// outcome's `escalation`. A version 1 task holds none of them, and runs as it did. Its runs lose their `level`, so
@@ -313,14 +342,10 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 	// after the upgrade that runs the lens at the same level.
 	version: 2,
 	initial: () => ({ phase: "spawn" }),
-	migrate: (input, checkpoint) => {
-		const stored = input as unknown as { lenses: (LensRun & { level?: ScrutinyLevel })[] };
-		const lenses = stored.lenses.map(({ level: _, ...run }) => run);
-		return {
-			input: { ...stored, lenses } as unknown as LensTaskInput,
-			checkpoint: checkpoint as unknown as LensCheckpoint,
-		};
-	},
+	migrate: (input, checkpoint) => ({
+		input: LensTaskInput.upgrade(input),
+		checkpoint: checkpoint as unknown as LensCheckpoint,
+	}),
 	phases: {
 		spawn: async (task, runtime, context) => {
 			await runtime.commit(async (tx) => {
@@ -653,12 +678,15 @@ function planned(options: ReviewOptions): ReviewOptions {
 function ranOn(
 	lenses: readonly LensRun[],
 	result: LensResult | undefined,
-): Map<string, { scope: string; model: string }[]> {
-	const ran = new Map<string, { scope: string; model: string }[]>();
+): Map<string, { scope: string; level: ScrutinyLevel; model: string }[]> {
+	const ran = new Map<string, { scope: string; level: ScrutinyLevel; model: string }[]>();
 	for (const lens of lenses) {
 		const outcome = result?.[lens.key];
 		if (outcome?.status !== "done" || outcome.model === undefined) continue;
-		ran.set(lens.name, [...(ran.get(lens.name) ?? []), { scope: lens.coverage.scope, model: outcome.model }]);
+		ran.set(lens.name, [
+			...(ran.get(lens.name) ?? []),
+			{ scope: lens.coverage.scope, level: lens.level, model: outcome.model },
+		]);
 	}
 	return ran;
 }
@@ -795,11 +823,11 @@ function runsOf(lenses: readonly LensRun[]): LensRun[] {
 // escalations.
 async function runLenses(
 	harness: Harness,
-	input: LensTaskInput,
+	input: StoredLensTaskInput,
 	rerun: boolean,
 	context: Context,
 	refused: (key: string, model: string) => boolean = () => false,
-): Promise<{ readonly result: LensResult | undefined; readonly ran: LensTaskInput }> {
+): Promise<{ readonly result: LensResult | undefined; readonly ran: StoredLensTaskInput }> {
 	const root = await harness.root(context);
 	const revision = revisionKey(input.revision);
 	const selection = selectionOf(input.lenses, input.escalateAt);
@@ -846,7 +874,7 @@ async function runLenses(
 	const { outcome } = settled.state;
 	return {
 		result: outcome.status === "completed" ? outcome.result : undefined,
-		ran: settled.input as unknown as LensTaskInput,
+		ran: settled.input as unknown as StoredLensTaskInput,
 	};
 }
 
@@ -1112,21 +1140,35 @@ async function triage(
 		const known = document.decisions[revision]?.[set];
 		// A rerun asks again after any decision that did not complete: one that failed, and one a crash left undecided.
 		const retry = rerun && known?.decision === undefined;
-		if (known?.key === key && !retry && (await attachable(tx, known.task, undecided))) {
-			return known.task as TaskId<DecisionResult>;
+		const attach = known?.key === key && !retry && (await attachable(tx, known.task, undecided));
+		const index = await tx.doc(ReviewIndex, root.id);
+		const previous = index.reviews[revision]?.task;
+		const record = previous === undefined ? undefined : await tx.task(previous as TaskId);
+		const task = attach
+			? (known.task as TaskId<DecisionResult>)
+			: await tx.createTask(decisionTask(decider), input, { ownership: { kind: "conversation" } });
+		if (!attach) {
+			replaced = known?.task;
+			document.decisions = {
+				...document.decisions,
+				[revision]: { ...document.decisions[revision], [set]: { key, task } },
+			};
 		}
-		const created = await tx.createTask(decisionTask(decider), input, { ownership: { kind: "conversation" } });
-		replaced = known?.task;
-		document.decisions = {
-			...document.decisions,
-			[revision]: { ...document.decisions[revision], [set]: { key, task: created } },
-		};
-		return created;
+		if (!attach || (known.decision === undefined && known.failure === undefined)) {
+			// Waiting starts every pending task, before triage can choose the selection that replaces this live run.
+			if (record !== undefined && record.state.status !== "terminal") index.reviews[revision] = { lenses: [] };
+		}
+		return task;
 	}, context);
 	// A live replaced task would still ask its decider, and its answer lands nowhere.
 	if (replaced !== undefined && replaced !== taskId) {
 		await harness.abortTask(replaced as TaskId, context).catch(() => undefined);
 	}
+	const decided = await readRecordedDecision(harness, root.id, revision, set, context);
+	if (decided?.task === taskId && (decided.decision !== undefined || decided.failure !== undefined)) {
+		return decided.decision === undefined ? { failure: decided.failure } : { decision: decided.decision };
+	}
+	await abortReplacedRuns(harness, context);
 	const forget = async (tx: Tx, rootId: ConversationId) => {
 		const document = await tx.doc(DecisionDocument, rootId);
 		const entries = document.decisions[revision];
@@ -1362,7 +1404,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		files: reviewFiles(revision.files),
 	};
 	const { escalateAt } = config.triage;
-	const lensInput: LensTaskInput = { root, revision: state, lenses, escalateAt };
+	const lensInput = new LensTaskInput(root, state, lenses, escalateAt).toJSON();
 	const { result: lensResult, ran } =
 		lenses.length === 0
 			? { result: {}, ran: lensInput }

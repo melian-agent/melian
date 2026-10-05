@@ -88,6 +88,27 @@ describe("a decision", () => {
 		expect(decision.chosen("contracts")).toBeUndefined();
 	});
 
+	it("normalises finite weights whose sum would overflow", () => {
+		const decision = Decision.parse(
+			request,
+			{
+				answers: [
+					{ question: "correctness", distribution: { quick: Number.MAX_VALUE, careful: Number.MAX_VALUE / 2 } },
+					{ question: "tests", distribution: { skip: Number.MAX_VALUE, careful: Number.MAX_VALUE } },
+				],
+			},
+			triager,
+		);
+		const [correctness, tests] = decision.toJSON().answers;
+		expect(correctness!.distribution).toEqual({ skip: 0, quick: 2 / 3, careful: 1 / 3, deep: 0 });
+		expect(correctness!.chosen).toBe("quick");
+		expect(tests!.distribution).toEqual({ skip: 0.5, careful: 0.5 });
+		expect(tests!.chosen).toBe("skip");
+		for (const answer of decision.toJSON().answers) {
+			expect(Object.values(answer.distribution).reduce((sum, probability) => sum + probability, 0)).toBe(1);
+		}
+	});
+
 	it("refuses an answer that leaves a question out, answers one not asked, or weighs an option it does not have", () => {
 		const answer = (answers: { question: string; distribution: Record<string, number> }[]) => () =>
 			Decision.parse(request, { answers }, triager);
@@ -187,6 +208,15 @@ describe("triage of a lens", () => {
 		// A careful-only lens under a floor of deep has nowhere to run: never a quieter level than the floor.
 		expect(carefulOnly.runnableLevels(LevelBand.of({ floor: "deep" }), routed)).toEqual([]);
 		expect(() => triage(carefulOnly, LevelBand.of({ floor: "deep" }))).toThrow(RangeError);
+	});
+
+	it("explains when the lens declares none of the levels its band holds", () => {
+		const unrouted = vi.fn(() => "no route");
+
+		expect(carefulOnly.unrunnable(LevelBand.of({ floor: "deep" }), unrouted)).toBe(
+			"it declares none of them, only careful",
+		);
+		expect(unrouted).not.toHaveBeenCalled();
 	});
 
 	it("takes the highest floor and the lowest ceiling across paths, the floor winning where they cross", () => {
