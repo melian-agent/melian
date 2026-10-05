@@ -457,3 +457,5 @@ Only added lines take an inline comment. Problem: GitHub rejects the whole revie
 All Enola policy paths join analyser configuration in policy-change-review. A committed `.enola/baseline` does not.
 
 `GraphSnapshot` holds validated graph artifacts and a `GraphEntryState`. Snapshot IDs identify Enola's facts; cache keys identify inputs. Keep these separate in records.
+
+`EnolaFacts` reads the JSONL contract; `EnolaImpact` accepts only a successful full JSON query. Exit 2 is no answer. `GraphCoverage.compute` creates a validated per-file artifact with explicit denominators and gaps; its ID hashes its stored content. Symbols and paths remain repository data.

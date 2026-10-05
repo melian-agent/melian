@@ -25,7 +25,7 @@ if [ "$1" = "--version" ]; then echo 0.0.1; exit 0; fi
 for config in "$@"; do :; done
 case "$1" in
 --generate)
-  printf '%s' '{"format_version":1,"kind":"symbol","name":"Alpha"}' > .enola/facts.jsonl
+  printf '%s' '{"id":"alpha","kind":"symbol","name":"Alpha","file":"src/a.ts","line":1}' > .enola/facts.jsonl
   printf '%s' '[]' > .enola/insights.json
   printf '%s' '{"format_version":1,"snapshot_id":"sha256:${"a".repeat(64)}","enola_version":"0.0.1"}' > .enola/receipt.json
   grep -F 'providers: []' "$config" > /dev/null || exit 9

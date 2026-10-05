@@ -263,3 +263,11 @@ Every worktree command, including cleanup, passes through `Run.worktreeCommand`.
 ## Graph cache
 
 `GraphCache.open(root)` uses the tool cache root. `GraphSnapshot` validates receipt format 1, key parts, and artifact hashes. Its key hashes tree, version, binary digest, and base policy hash with NUL separators. Reads of corrupt entries return a miss; writes rename a complete directory. Upstream restore metadata travels beside contract artifacts. Nothing ages out by clock, and nothing enters the state branch.
+
+## Per-file graph coverage
+
+`CompilerGraph.open`, from the dedicated pipeline/coverage entry, uses TypeScript 7's unstable synchronous API and must be closed. It reads the same root project as static.tsc. Its worker entry runs through the execution environment when used on a reviewed tree. The evals spike uses a disposable copy of a named trusted commit.
+
+Count each repository-resolved import or re-export declaration and literal dynamic import. Count distinct enclosing-function/callee pairs for calls, new expressions, and tagged templates, following aliases. Top-level calls use a module sentinel. Named function values use the binding declaration; anonymous functions retain their own identity. Declaration files, node_modules, and libraries are outside the denominator. Count external and unresolved calls separately.
+
+`EnolaCoverage` matches explicit resolved facts and upstream impact edges. It requires declaration identity, rejects directory name collisions, and never counts has_method as a call. A file's calls and imports each retain matched/total and every named gap. Zero total means n/a. A proposed future threshold is 1.0 for both ratios; it is not applied. Search stays unrestricted. [The spike](../spikes/enola-coverage.md) holds the measurements.

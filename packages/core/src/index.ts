@@ -260,6 +260,7 @@ export {
 export const packageName = "@melian-agent/core";
 
 export { EnolaPolicy, type EnolaPolicyState, type EnolaSnapshot, normaliseEnolaSarif } from "./enola.ts";
+export { type EnolaFact, EnolaFacts, EnolaImpact, type EnolaImpactState, EnolaQueryError } from "./enola-graph.ts";
 export { enolaPolicyPattern } from "./enola-paths.ts";
 export {
 	type GraphEntryState,
@@ -270,6 +271,16 @@ export {
 	graphFiles,
 	graphKeySchema,
 } from "./graph.ts";
+export {
+	type CallGroundTruth,
+	type CallPair,
+	CoverageError,
+	type CoverageGap,
+	GraphCoverage,
+	type GraphCoverageState,
+	type ImportEdge,
+	type SymbolSite,
+} from "./graph-coverage.ts";
 export {
 	type ToolArtifact,
 	ToolManifest,

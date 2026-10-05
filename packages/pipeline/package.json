@@ -25,7 +25,13 @@
 			"import": "./dist/testing.js",
 			"default": "./dist/testing.js"
 		},
-		"./package.json": "./package.json"
+		"./package.json": "./package.json",
+		"./coverage": {
+			"@melian-agent/source": "./src/coverage.ts",
+			"types": "./dist/coverage.d.ts",
+			"import": "./dist/coverage.js",
+			"default": "./dist/coverage.js"
+		}
 	},
 	"files": [
 		"dist",

@@ -98,7 +98,7 @@ What remains after them:
 - Step 6, the verifier. Step 4 landed, so it is unblocked.
 - Step 9's issues [#26](https://github.com/melian-agent/melian/issues/26) and [#46](https://github.com/melian-agent/melian/issues/46).
 - Step 10's rehearsal.
-- Step 11 is in build on `tool-manifest`, without a pull request yet. The strict manifest, quarantine, and verified binary cache are built; the Enola static check and policy boundary are built; the graph cache is built; the coverage spike follows.
+- Step 11 is in build on `tool-manifest`, without a pull request yet. The strict manifest, quarantine, and verified binary cache are built; the Enola static check and policy boundary are built; the graph cache is built; the compiler reader and coverage definition are built; the measured table is in the spike report. Coverage artifacts and callers follow.
 - Step 14's leftovers, including a durability tuning round. Worst precision was 0.56 after run 9.
 
 Two experiments are running, and each has a record that decides it:
@@ -129,7 +129,7 @@ Steps to be written when milestone 3 closes.
 | Biome's SARIF reporter changes shape | Milestone 1, step 6 | Biome 2.5 ships one, and Melian reads it; it writes absolute paths and no version, so the normaliser fills both in, and output it cannot read fails the check rather than reading as clean |
 | Lens prompt edits regress silently | Milestone 1, step 5 onward | Golden fixtures run in `npm run check` |
 | Phantom dependencies through npm hoisting | Any package | Move to pnpm when strict isolation is needed; the switch is one pull request |
-| Enola pre-1.0 churn and TypeScript extractor gaps | Milestone 2, step 11 | Pinned manifest, the spike's exit criterion, `search` unrestricted until per-file coverage is measured against tsc |
+| Enola pre-1.0 churn and TypeScript extractor gaps | Milestone 2, step 11 | Pinned manifest; measured 825/5723 calls (14.4%) and 207/407 imports (50.9%) at ad303b5; search remains unrestricted |
 | The verifier drops real findings | Milestone 2, step 6 onward | Asymmetric thresholds, refuted findings kept in the store, shadow reviewers until recall holds |
 | Any writer can forge the required `melian/review` status until the GitHub App binds it | Milestone 2, step 10, until milestone 3 | Writers are trusted by decision; `trust.writers: false` turns that off; milestone 3 binds the required check to the GitHub App as its expected source |
 | Losing the one clone that reviews Melian loses the marker secret, the ledger's comment ID, and every dismissal | Milestone 2, steps 7 and 8, until milestone 3 | A publish that finds a ledger marker it cannot verify refuses and names the recovery, never posting a duplicate; shared state on the state branch in milestone 3 |

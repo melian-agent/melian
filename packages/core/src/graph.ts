@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
+import { EnolaFacts } from "./enola-graph.ts";
 
 const hash = Type.String({ pattern: "^[a-f0-9]{64}$" });
 const strict = { additionalProperties: false };
@@ -74,8 +75,15 @@ export class GraphSnapshot {
 			!/^sha256:[a-f0-9]{64}$/.test(stored.snapshot_id)
 		)
 			throw new GraphError("Unsupported Enola receipt format, identity, or version");
-		JSON.parse(files["insights.json"]);
-		for (const line of files["facts.jsonl"].split("\n").filter(Boolean)) JSON.parse(line);
+		if (!Array.isArray(JSON.parse(files["insights.json"]))) throw new GraphError("Invalid Enola insights");
+		EnolaFacts.parse(files["facts.jsonl"]);
+		for (const name of ["snapshot.meta.json", "run.json"] as const) {
+			if (files[name] !== undefined) {
+				const value: unknown = JSON.parse(files[name]);
+				if (typeof value !== "object" || value === null || Array.isArray(value))
+					throw new GraphError(`Invalid ${name}`);
+			}
+		}
 		const artifacts = Object.fromEntries(
 			Object.entries(files).map(([name, text]) => [name, createHash("sha256").update(text).digest("hex")]),
 		);

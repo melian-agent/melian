@@ -11,7 +11,7 @@ afterEach(async () => {
 });
 const parts = { tree: "a".repeat(40), version: "0.4.27", binary: "b".repeat(64), config: "c".repeat(64) };
 const files = {
-	"facts.jsonl": '{"name":"Alpha"}\n',
+	"facts.jsonl": '{"id":"a","kind":"symbol","name":"Alpha"}\n',
 	"insights.json": "[]",
 	"receipt.json": JSON.stringify({
 		format_version: 1,
@@ -51,5 +51,6 @@ it("recomputes corrupt and incompatible entries, ignoring abandoned temporary di
 	entry.format_version = 2;
 	await writeFile(join(directory, "entry.json"), JSON.stringify(entry));
 	expect(await cache.read(parts)).toBeUndefined();
+	expect(() => GraphSnapshot.create(parts, { ...files, "facts.jsonl": "{}" })).toThrow();
 	expect(() => GraphSnapshot.create(parts, { ...files, "receipt.json": '{"format_version":2}' })).toThrow();
 });

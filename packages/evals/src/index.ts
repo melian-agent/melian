@@ -21,3 +21,5 @@ export {
 } from "./goldens.ts";
 
 export const packageName = "@melian-agent/evals";
+
+export { EnolaCoverage } from "./enola-coverage.ts";

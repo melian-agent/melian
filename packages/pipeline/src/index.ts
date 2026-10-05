@@ -85,6 +85,7 @@ export {
 
 export const packageName = "@melian-agent/pipeline";
 
+export { EnolaCoverage } from "./enola-coverage.ts";
 export { GraphCache } from "./graph-cache.ts";
 export { summarizeReview } from "./summarize.ts";
 export { type ToolBinaryReceipt, ToolCache, ToolCacheError, type ToolFetch } from "./tool-cache.ts";
