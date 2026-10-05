@@ -713,8 +713,9 @@ export class Lens {
 		return lenses.flatMap((lens) => {
 			const settings = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name] : undefined;
 			if (settings?.enabled === false) return [];
+			// A band or `enabled` alone changes nothing the version hashes, so the lens keeps the version it loaded with.
 			const tuned =
-				settings === undefined
+				settings?.tier === undefined && settings?.paths === undefined
 					? lens
 					: new Lens(
 							versioned({
@@ -755,31 +756,39 @@ export class Lens {
 	}
 
 	/**
-	 * The question triage asks about the lens: whether to skip it, or how closely it should look, at one of its levels.
-	 * A lens that declares no levels has only `careful`, so its question is whether to run at all. The question's ID is
-	 * the lens's name.
+	 * The levels triage may choose for the lens: those it declares inside `band` whose model tier `routed` says reaches a
+	 * model with credentials, from `quick` to `deep`. Empty when none does, and the lens cannot run within its band.
 	 */
-	triageQuestion(): ChoiceQuestion {
-		const levels = this.declaredLevels();
+	runnableLevels(band: LevelBand, routed: (tier: LensTier) => boolean): ScrutinyLevel[] {
+		return band.holds(this.declaredLevels()).filter((level) => routed(this.level(level).tier));
+	}
+
+	/**
+	 * The question triage asks about the lens: whether to skip it, where `band`'s floor allows that, or how closely it
+	 * should look, at one of `levels`, the lens's {@link Lens.runnableLevels}. The question's ID is the lens's name.
+	 */
+	triageQuestion(band: LevelBand, levels: readonly ScrutinyLevel[]): ChoiceQuestion {
+		const skip = band.floor === "skip" ? ["skip" as const] : [];
 		return {
 			id: this.name,
 			text: [
 				`How closely should the \`${this.name}\` lens review this change? It looks for: ${this.description}`,
-				`- skip: nothing in the change is this lens's concern.`,
+				...skip.map(() => "- skip: nothing in the change is this lens's concern."),
 				...levels.map((level) => `- ${level}: ${levelMeanings[level]}`),
 			].join("\n"),
-			options: ["skip", ...levels],
+			options: [...skip, ...levels],
 		};
 	}
 
 	/**
 	 * The lens's level for one review: the option `decision` chose for it, or the default level when there is no
-	 * decision or it holds no answer for this lens, held within `band` and moved to a level the lens has.
+	 * decision or it holds no answer for this lens, held within `band` and moved to the nearest of `levels`, its
+	 * {@link Lens.runnableLevels}, which must not be empty.
 	 */
-	triage(band: LevelBand, decision?: Decision): TriageChoice {
+	triage(band: LevelBand, levels: readonly ScrutinyLevel[], decision?: Decision): TriageChoice {
 		const chosen = decision?.chosen(this.name);
 		const choice = chosen === "skip" || isScrutinyLevel(chosen) ? chosen : defaultScrutinyLevel;
-		return band.bound(choice, this.declaredLevels());
+		return band.bound(choice, levels);
 	}
 
 	/**

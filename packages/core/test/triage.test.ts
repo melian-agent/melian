@@ -34,11 +34,15 @@ afterEach(() => {
 
 const triager = { name: "recorded", calibrated: false };
 
+// Every tier routes to a model with credentials.
+const routed = () => true;
+const everywhere = LevelBand.of({ floor: "skip" });
+
 function decided(lens: Lens, distribution: Record<string, number>): Decision {
 	const request: DecisionRequest = {
 		questionSet: triageQuestionSet,
 		state: "the change",
-		questions: [lens.triageQuestion()],
+		questions: [lens.triageQuestion(everywhere, lens.runnableLevels(everywhere, routed))],
 	};
 	return Decision.parse(request, { answers: [{ question: lens.name, distribution }] }, triager);
 }
@@ -105,41 +109,60 @@ describe("a decision", () => {
 });
 
 describe("triage of a lens", () => {
-	it("asks whether to skip the lens or run it at each level it declares", () => {
-		expect(correctness.triageQuestion()).toMatchObject({
-			id: "correctness",
-			options: ["skip", "quick", "careful", "deep"],
-		});
-		expect(correctness.triageQuestion().text).toContain(correctness.description);
+	// The lens's levels the band holds, every tier routed.
+	const triage = (lens: Lens, band: LevelBand, decision?: Decision) =>
+		lens.triage(band, lens.runnableLevels(band, routed), decision);
+
+	it("asks whether to skip the lens, where the floor allows it, or run it at each level it may run at", () => {
+		const question = correctness.triageQuestion(everywhere, correctness.runnableLevels(everywhere, routed));
+		expect(question).toMatchObject({ id: "correctness", options: ["skip", "quick", "careful", "deep"] });
+		expect(question.text).toContain(correctness.description);
+		const band = LevelBand.of(undefined);
+		expect(correctness.triageQuestion(band, correctness.runnableLevels(band, routed)).options).toEqual([
+			"quick",
+			"careful",
+			"deep",
+		]);
 		// A lens with no levels of its own runs only at careful, so the question is whether to run it.
-		expect(carefulOnly.triageQuestion().options).toEqual(["skip", "careful"]);
+		expect(carefulOnly.triageQuestion(everywhere, carefulOnly.runnableLevels(everywhere, routed)).options).toEqual([
+			"skip",
+			"careful",
+		]);
+	});
+
+	it("offers only the levels whose tier routes to a model with credentials", () => {
+		const band = LevelBand.of(undefined);
+		const heavyOnly = (tier: string) => tier === "heavy";
+		expect(correctness.runnableLevels(band, heavyOnly)).toEqual(["careful", "deep"]);
+		expect(correctness.triage(band, ["careful", "deep"], decided(correctness, { quick: 1 }))).toBe("careful");
+		expect(correctness.runnableLevels(LevelBand.of({ ceiling: "quick" }), heavyOnly)).toEqual([]);
 	});
 
 	it("takes the level the decision chose within the default band, and careful without a decision", () => {
 		const band = LevelBand.of(undefined);
 		for (const level of ["quick", "careful", "deep"] as const) {
-			expect(correctness.triage(band, decided(correctness, { [level]: 1 }))).toBe(level);
+			expect(triage(correctness, band, decided(correctness, { [level]: 1 }))).toBe(level);
 		}
-		expect(correctness.triage(band)).toBe("careful");
+		expect(triage(correctness, band)).toBe("careful");
 		// The default floor is quick, so triage cannot switch off a lens policy runs.
-		expect(correctness.triage(band, decided(correctness, { skip: 1 }))).toBe("quick");
+		expect(triage(correctness, band, decided(correctness, { skip: 1 }))).toBe("quick");
 	});
 
 	it("holds the choice to the floor and the ceiling, and skips only above a floor of skip", () => {
 		const careful = LevelBand.of({ floor: "careful", ceiling: "careful" });
-		expect(correctness.triage(careful, decided(correctness, { quick: 1 }))).toBe("careful");
-		expect(correctness.triage(careful, decided(correctness, { deep: 1 }))).toBe("careful");
+		expect(triage(correctness, careful, decided(correctness, { quick: 1 }))).toBe("careful");
+		expect(triage(correctness, careful, decided(correctness, { deep: 1 }))).toBe("careful");
 		const quick = LevelBand.of({ ceiling: "quick" });
-		expect(correctness.triage(quick)).toBe("quick");
-		const optional = LevelBand.of({ floor: "skip" });
-		expect(correctness.triage(optional, decided(correctness, { skip: 1 }))).toBe("skip");
+		expect(triage(correctness, quick)).toBe("quick");
+		expect(triage(correctness, everywhere, decided(correctness, { skip: 1 }))).toBe("skip");
 	});
 
-	it("moves a choice to a level the lens has", () => {
-		const band = LevelBand.of(undefined);
-		expect(carefulOnly.triage(band, decided(carefulOnly, { careful: 1 }))).toBe("careful");
-		expect(carefulOnly.triage(LevelBand.of({ floor: "deep" }))).toBe("careful");
-		expect(carefulOnly.triage(LevelBand.of({ ceiling: "quick" }))).toBe("careful");
+	it("moves a choice to a level the lens has, and never below the floor", () => {
+		expect(triage(carefulOnly, LevelBand.of(undefined), decided(carefulOnly, { careful: 1 }))).toBe("careful");
+		expect(triage(carefulOnly, LevelBand.of({ ceiling: "deep" }))).toBe("careful");
+		// A careful-only lens under a floor of deep has nowhere to run: never a quieter level than the floor.
+		expect(carefulOnly.runnableLevels(LevelBand.of({ floor: "deep" }), routed)).toEqual([]);
+		expect(() => triage(carefulOnly, LevelBand.of({ floor: "deep" }))).toThrow(RangeError);
 	});
 
 	it("takes the highest floor and the lowest ceiling across paths, the floor winning where they cross", () => {
@@ -202,6 +225,11 @@ describe("the escalation rule", () => {
 		);
 		expect(rule.describe({ kind: "budget", budget: "tools" }, "quick", undefined)).toBe(
 			"escalation capped at quick, its ceiling: at quick its tools budget ended it before it reported anything",
+		);
+		expect(
+			rule.describe({ kind: "severity", severity: "P1" }, "quick", undefined, "since careful's tier has no model"),
+		).toBe(
+			"escalation capped at quick, since careful's tier has no model: at quick it reported a P1 finding, at or above P1",
 		);
 	});
 });

@@ -11,7 +11,6 @@ import {
 	type LensBudget,
 	loadConfig,
 	type MelianConfig,
-	ModelRoutingError,
 	maxEvidenceLocations,
 	maxFailureScenarioLength,
 	maxSnippetBytes,
@@ -1893,8 +1892,13 @@ describe("reviewChangeset", () => {
 		expect(toolResults(requests[correctness]![2]!).at(-1)).toContain("budget reached");
 	});
 
-	it("refuses a tier with no model, or none with credentials", async () => {
-		await expect(review({ config: { ...config, models: {} } })).rejects.toThrow(ModelRoutingError);
+	it("refuses a lens whose band holds no level on a tier with a model, or none with credentials", async () => {
+		const error = await review({ config: { ...config, models: {} } }).catch((caught: unknown) => caught);
+		expect(error).toMatchObject({ code: "noAvailableModel", lenses: ["contracts"] });
+		expect((error as Error).message).toMatch(
+			/^lens contracts may run from quick to deep, and no level there can run: quick runs on medium, and no model is configured for the medium tier/,
+		);
+		expect(fake.provider.state.callCount).toBe(0);
 		const unknown = { ...config, models: { heavy: { model: "nowhere/opus", fallbacks: ["faux/missing"] } } };
 		await expect(review({ config: unknown })).rejects.toMatchObject({ code: "noAvailableModel" });
 	});

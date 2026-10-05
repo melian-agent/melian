@@ -5,6 +5,7 @@ import {
 	type LensTier,
 	type MelianConfig,
 	type ModelRoute,
+	ModelRoutingError,
 	resolveModelForTier,
 } from "@melian-agent/core";
 import { FallbackDecider } from "@melian-agent/decisions";
@@ -35,18 +36,37 @@ export interface ReviewSetup {
 	readonly retry: boolean;
 	/** The decider triage asks, or none, and every lens runs at its default level. */
 	readonly decider?: Decider;
+	/** Why there is no decider, outside scripted mode, which the review notes on each lens's record. */
+	readonly triageSkipped?: string;
 }
 
 // Triage's LLM fallback, on the cheapest lens tier routed to a model with credentials: the plan's cheapest text route,
-// until the review plan resolves one. None when no tier has such a model, and every lens runs at its default level.
-async function fallbackDecider(config: MelianConfig, models: ReviewModels): Promise<Decider | undefined> {
+// until the review plan resolves one. A tier whose route cannot be read is passed over, as one without credentials is,
+// so a broken route no lens uses never stops a review. With none, every lens runs at its default level, and `skipped`
+// says why.
+export async function fallbackDecider(
+	config: MelianConfig,
+	models: ReviewModels,
+): Promise<{ readonly decider: Decider; readonly model: string } | { readonly skipped: string }> {
+	const passed: string[] = [];
 	for (const tier of tiers) {
-		if (config.models[tier] === undefined) continue;
-		const { model, fallbacks } = resolveModelForTier(tier, config.models);
-		const text = await RouteTextModel.open(models, [model, ...fallbacks]);
-		if (text !== undefined) return new FallbackDecider(text);
+		if (config.models[tier] === undefined) {
+			passed.push(`${tier} is not routed`);
+			continue;
+		}
+		let route: ReturnType<typeof resolveModelForTier>;
+		try {
+			route = resolveModelForTier(tier, config.models);
+		} catch (error) {
+			if (!(error instanceof ModelRoutingError)) throw error;
+			passed.push(error.message);
+			continue;
+		}
+		const text = await RouteTextModel.open(models, [route.model, ...route.fallbacks]);
+		if (text !== undefined) return { decider: new FallbackDecider(text), model: text.name };
+		passed.push(`no model of ${tier} has credentials`);
 	}
-	return undefined;
+	return { skipped: `no lens tier reaches a model for the LLM fallback: ${passed.join("; ")}` };
 }
 
 async function readScript(path: string): Promise<LensScript> {
@@ -78,8 +98,9 @@ export async function reviewModels(
 	if (scriptPath === undefined || scriptPath === "") {
 		const models = createReviewModels();
 		const routed = model === undefined ? config : routeTiers(config, model);
-		const decider = await fallbackDecider(routed, models);
-		return { models, retry: true, config: routed, ...(decider === undefined ? {} : { decider }) };
+		const triage = await fallbackDecider(routed, models);
+		const chosen = "decider" in triage ? { decider: triage.decider } : { triageSkipped: triage.skipped };
+		return { models, retry: true, config: routed, ...chosen };
 	}
 	const fake = createFakeModels({ models: [{ id: "scripted" }] });
 	scriptLenses(fake, lenses, await readScript(scriptPath));

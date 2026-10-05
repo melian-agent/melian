@@ -2,15 +2,7 @@ import { execFile } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join, sep } from "node:path";
-import {
-	checksOfTier,
-	defaultScrutinyLevel,
-	Lens,
-	type LensTier,
-	loadConfig,
-	type MelianConfig,
-	type StaticTool,
-} from "@melian-agent/core";
+import { checksOfTier, Lens, type LensTier, loadConfig, type MelianConfig, type StaticTool } from "@melian-agent/core";
 import { parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
 import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSource } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
@@ -58,8 +50,9 @@ async function credentialsCheck(): Promise<Check> {
 
 const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
 
-// Each model tier the stages' lenses run on, with those lenses: a stage names a check tier, and each `lens.<name>` in it
-// runs on the model tier of its lens's default level, as melian.yaml may retier it.
+// Each model tier the stages' lenses may run on, with those lenses and the levels on it: a stage names a check tier,
+// and each `lens.<name>` in it runs at whichever of its levels triage chooses, each on its own model tier, as
+// melian.yaml may retier the lens.
 async function tiersInUse(root: string, config: MelianConfig): Promise<Map<LensTier, string[]>> {
 	const names = new Set(
 		Object.values(config.stages)
@@ -71,14 +64,16 @@ async function tiersInUse(root: string, config: MelianConfig): Promise<Map<LensT
 	for (const lens of await Lens.load(root, { kind: "worktree" }, ["."])) {
 		const settings = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name] : undefined;
 		if (!names.has(lens.name) || settings?.enabled === false) continue;
-		const tier = settings?.tier ?? lens.levels[defaultScrutinyLevel].tier;
-		used.set(tier, [...new Set([...(used.get(tier) ?? []), lens.name])]);
+		for (const level of lens.declaredLevels()) {
+			const tier = settings?.tier ?? lens.level(level).tier;
+			used.set(tier, [...new Set([...(used.get(tier) ?? []), `${lens.name} at ${level}`])]);
+		}
 	}
-	return used;
+	return new Map([...used].map(([tier, levels]) => [tier, levels.sort()]));
 }
 
-// A lens runs on the model its tier routes to. A review whose stage runs a lens on an unrouted tier stops with "no model
-// is configured" before that lens runs, so doctor names every such tier before a review does.
+// Triage offers a lens only the levels whose tier routes to a model, and a review fails a lens whose band holds none,
+// so doctor names every unrouted tier a stage's lenses have a level on, with those levels.
 async function routesCheck(cwd: string): Promise<Check | undefined> {
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return undefined;
@@ -90,17 +85,18 @@ async function routesCheck(cwd: string): Promise<Check | undefined> {
 		const unrouted = [...(await tiersInUse(root, config))].filter(([tier]) => config.models[tier] === undefined);
 		if (unrouted.length === 0) return { name: "routes", state: "ok", detail: routes.join(", ") || "no lens runs" };
 		const missing = unrouted
-			.map(([tier, lenses]) => {
+			.map(([tier, levels]) => {
 				const names =
-					lenses.length < 3 ? lenses.join(" and ") : `${lenses.slice(0, -1).join(", ")}, and ${lenses.at(-1)}`;
+					levels.length < 3 ? levels.join(" and ") : `${levels.slice(0, -1).join(", ")}, and ${levels.at(-1)}`;
 				return `${tier}, for ${names}`;
 			})
 			.join("; ");
+		const effect = "triage never runs a lens at those levels, and a review fails a lens whose band holds no other";
 		const fix = "set models.<tier>.model in melian.local.yaml, or pass --model to review";
 		return {
 			name: "routes",
 			state: "warn",
-			detail: `${routes.length === 0 ? "no tier is routed to a model" : routes.join(", ")}; no model for ${missing}; ${fix}`,
+			detail: `${routes.length === 0 ? "no tier is routed to a model" : routes.join(", ")}; no model for ${missing}; ${effect}; ${fix}`,
 		};
 	} catch (error) {
 		return { name: "routes", state: "warn", detail: error instanceof Error ? error.message : String(error) };

@@ -103,7 +103,7 @@ export async function review(
 	const lenses = await Lens.load(repoRoot, source, paths);
 	const standards = await loadStandards(repoRoot, source, ".");
 	const { config: loaded } = await loadConfig(repoRoot, source, ".");
-	const { models, config, retry, decider } = await reviewModels(io.env, loaded, lenses, options.model);
+	const { models, config, retry, decider, triageSkipped } = await reviewModels(io.env, loaded, lenses, options.model);
 	const path = await storagePath(repoRoot, changeset.id, io.env, isScripted(io.env));
 	// Without the publish extension, so a publication a crash interrupted waits for melian publish rather than posting
 	// from a review.
@@ -134,6 +134,7 @@ export async function review(
 				standards,
 				models,
 				...(decider === undefined ? {} : { decider }),
+				...(triageSkipped === undefined ? {} : { triageSkipped }),
 				policy: source,
 				tier,
 				checks: checks.records,

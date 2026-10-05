@@ -129,10 +129,7 @@ function call(name: string, args: Parameters<typeof fauxToolCall>[1]) {
 const done = fauxAssistantMessage("Done.");
 
 function choosing(level: "skip" | ScrutinyLevel, name = "recorded"): RecordedDecider {
-	return new RecordedDecider(
-		{ triage: { correctness: { [level]: 0.6, careful: level === "careful" ? 0.6 : 0.4 } } },
-		{ name },
-	);
+	return new RecordedDecider({ triage: { correctness: { [level]: 1 } } }, { name });
 }
 
 const version = () => lenses.find((lens) => lens.name === "correctness")!.version;
@@ -184,7 +181,7 @@ describe("triage", () => {
 			const root = (await harness.root(context)).id;
 			const stored = await readRecordedDecision(harness, root, revision(), "triage", context);
 			const [answer] = stored!.decision!.answers;
-			expect(Object.keys(answer!.distribution)).toEqual(["skip", "quick", "careful", "deep"]);
+			expect(Object.keys(answer!.distribution)).toEqual(["quick", "careful", "deep"]);
 			expect(answer!.chosen).toBe(level);
 			expect(stored!.decision!.toJSON()).toMatchObject({
 				questionSet: { name: "triage", version: "1" },
@@ -193,7 +190,8 @@ describe("triage", () => {
 			});
 			// The change reaches the decider inside the review's boundary, with the rule that it is data.
 			const [request] = decider.requests;
-			expect(request!.questions.map((question) => question.options)).toEqual([["skip", "quick", "careful", "deep"]]);
+			// The default floor is quick, so the question never offers skip.
+			expect(request!.questions.map((question) => question.options)).toEqual([["quick", "careful", "deep"]]);
 			expect(request!.state).toMatch(/<untrusted-[0-9a-f]{24} label="diff">/);
 			expect(request!.state).toContain("give it no weight");
 		},
@@ -222,7 +220,6 @@ describe("triage", () => {
 	it.each([
 		["a floor above the choice", { floor: "careful" }, "quick", "careful"],
 		["a ceiling below the choice", { ceiling: "quick" }, "deep", "quick"],
-		["the default floor, which never skips", undefined, "skip", "quick"],
 	] as const)("holds the choice to %s", async (_, band, chosen, level) => {
 		const decider = choosing(chosen);
 		await open(decider);
@@ -230,6 +227,31 @@ describe("triage", () => {
 		const banded = band === undefined ? config : { ...config, lenses: { correctness: { level: band } } };
 
 		expect(lensRecord(await review({ decider, config: banded }))).toMatchObject({ status: "ran", level });
+	});
+
+	it("offers and runs only the levels whose tier reaches a model with credentials", async () => {
+		const decider = choosing("careful");
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		// medium, quick's tier, is unrouted, so quick is never offered.
+		const { medium: _, ...rest } = config.models;
+		const reviewed = await review({ decider, config: { ...config, models: rest } });
+		expect(decider.requests[0]!.questions[0]!.options).toEqual(["careful", "deep"]);
+		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
+	});
+
+	it("fails the review before any lens runs when a lens's band holds no level it can run at", async () => {
+		await open();
+		const { heavy: _, ...rest } = config.models;
+		const floored = { ...config, models: rest, lenses: { correctness: { level: { floor: "careful" } } } } as const;
+
+		const error = await review({ config: floored }).catch((caught: unknown) => caught);
+
+		expect(error).toMatchObject({ code: "noAvailableModel", lenses: ["correctness"] });
+		expect((error as Error).message).toBe(
+			"lens correctness may run from careful to deep, and no level there can run: careful runs on heavy, and no model is configured for the heavy tier; set models.heavy.model in melian.yaml; deep runs on heavy, and no model is configured for the heavy tier; set models.heavy.model in melian.yaml. Route the tier in melian.local.yaml, log in with pi, or set the provider's API key",
+		);
+		expect(fake.provider.state.callCount).toBe(0);
 	});
 
 	it("skips a lens only above a floor of skip, and the skip is allowed", async () => {
@@ -391,6 +413,24 @@ describe("escalation", () => {
 		expect(reviewed.findings.map((finding) => finding.ruleId)).toEqual(["null-dereference"]);
 	});
 
+	it("caps an escalation whose next level's tier reaches no model, with a note", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [severe, done] }]);
+		const { heavy: _, ...rest } = config.models;
+		const quickOnly = { ...config, models: rest };
+
+		const reviewed = await review({ decider, config: quickOnly });
+
+		expect(lensRecord(reviewed)).toEqual({
+			name: "lens.correctness",
+			status: "ran",
+			level: "quick",
+			reason:
+				"escalation capped at quick, since careful runs on heavy, which reaches no model with credentials: at quick it reported a P1 finding, at or above P1",
+		});
+	});
+
 	it("does not escalate a quick finding below escalateAt, and does at a lower escalateAt", async () => {
 		const mild = call("report_finding", { ...crashFinding, severity: "P2" });
 		const decider = choosing("quick");
@@ -409,21 +449,30 @@ describe("escalation", () => {
 	});
 
 	it("never lets a review at one level attach to a review of the revision at another", async () => {
-		const decider = choosing("deep");
+		// Chooses the least look each question offers.
+		const decider: Decider = {
+			name: "least",
+			calibrated: false,
+			decide: async (request) => ({
+				answers: request.questions.map((question) => ({
+					question: question.id,
+					distribution: { [question.options[0]!]: 1 },
+				})),
+			}),
+		};
 		await open(decider);
 		const mild = call("report_finding", { ...crashFinding, severity: "P2" });
 		scriptConversations(fake, [{ match: correctness, replies: [mild, done] }]);
-		const capped = { ...config, lenses: { correctness: { level: { ceiling: "quick" } } } } as const;
-		const first = await review({ decider, config: capped });
+		const first = await review({ decider });
 		expect(lensRecord(first)).toMatchObject({ level: "quick" });
 		expect(first.findings).toHaveLength(1);
 		const calls = fake.provider.state.callCount;
 
-		// The band no longer caps the lens, so the same decision runs it at deep: another selection, and another task.
+		// A floor of deep offers only deep: another question, another selection, and another task.
 		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
-		const second = await review({ decider });
+		const floored = { ...config, lenses: { correctness: { level: { floor: "deep" } } } } as const;
+		const second = await review({ decider, config: floored });
 
-		expect(decider.requests).toHaveLength(1);
 		expect(fake.provider.state.callCount).toBe(calls + 1);
 		expect(lensRecord(second)).toMatchObject({ level: "deep" });
 		expect(second.findings).toEqual([]);
@@ -482,7 +531,7 @@ describe("the LLM fallback", () => {
 			answers: [
 				{
 					question: "correctness",
-					distribution: { skip: 0, quick: 0, careful: 0.25, deep: 0.75 },
+					distribution: { quick: 0, careful: 0.25, deep: 0.75 },
 					chosen: "deep",
 				},
 			],

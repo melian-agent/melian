@@ -456,32 +456,46 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
 
 		const unrouted = melian(repo, ["doctor"]);
-		// The built-in lenses all run on heavy, so a route for light alone still leaves every review unable to run them.
+		// The built-in lenses run at quick on medium and at careful and deep on heavy, so a route for light alone leaves
+		// every level of every lens unable to run.
 		writeFileSync(join(repo, "melian.yaml"), "models:\n  light:\n    model: anthropic/claude-haiku\n");
 		const partly = melian(repo, ["doctor"]);
 		writeFileSync(join(repo, "melian.yaml"), "models:\n  heavy:\n    model: anthropic/claude-opus-5-5\n");
+		const heavyOnly = melian(repo, ["doctor"]);
+		writeFileSync(
+			join(repo, "melian.yaml"),
+			"models:\n  medium:\n    model: anthropic/claude-sonnet-4-5\n  heavy:\n    model: anthropic/claude-opus-5-5\n",
+		);
 		const routed = melian(repo, ["doctor"]);
 		writeFileSync(join(repo, "melian.local.yaml"), "models:\n  heavy:\n    model: amazon-bedrock/claude-opus\n");
 		const local = melian(repo, ["doctor"]);
 
-		const heavy = [...builtinLenses].sort();
-		const needHeavy = `no model for heavy, for ${heavy.slice(0, -1).join(", ")}, and ${heavy.at(-1)}; `;
-		expect(unrouted.stdout).toMatch(
-			new RegExp(
-				`^warn {2}routes {6}no tier is routed to a model; ${needHeavy}.*melian\\.local\\.yaml.*--model`,
-				"m",
-			),
+		const series = (items: string[]) => `${items.slice(0, -1).join(", ")}, and ${items.at(-1)}`;
+		const atLevels = (...levels: string[]) =>
+			builtinLenses.flatMap((lens) => levels.map((level) => `${lens} at ${level}`)).sort();
+		const needMedium = `medium, for ${series(atLevels("quick"))}`;
+		const needHeavy = `heavy, for ${series(atLevels("careful", "deep"))}`;
+		const effect = "triage never runs a lens at those levels, and a review fails a lens whose band holds no other";
+		expect(unrouted.stdout).toContain(
+			`warn  routes      no tier is routed to a model; no model for ${needMedium}; ${needHeavy}; ${effect}; set models.<tier>.model in melian.local.yaml, or pass --model to review`,
 		);
-		expect(partly.stdout).toMatch(
-			new RegExp(`^warn {2}routes {6}light to anthropic/claude-haiku; ${needHeavy}`, "m"),
+		expect(partly.stdout).toContain(
+			`warn  routes      light to anthropic/claude-haiku; no model for ${needMedium}; ${needHeavy}; `,
 		);
-		expect(routed.stdout).toMatch(/^ok {4}routes {6}heavy to anthropic\/claude-opus-5-5$/m);
-		expect(local.stdout).toMatch(/^ok {4}routes {6}heavy to amazon-bedrock\/claude-opus$/m);
+		expect(heavyOnly.stdout).toContain(
+			`warn  routes      heavy to anthropic/claude-opus-5-5; no model for ${needMedium}; ${effect}`,
+		);
+		expect(routed.stdout).toMatch(
+			/^ok {4}routes {6}medium to anthropic\/claude-sonnet-4-5, heavy to anthropic\/claude-opus-5-5$/m,
+		);
+		expect(local.stdout).toMatch(
+			/^ok {4}routes {6}medium to anthropic\/claude-sonnet-4-5, heavy to amazon-bedrock\/claude-opus$/m,
+		);
 		expect(routed.stdout).toMatch(/^ok {4}static {6}biome from Melian's own copy, tsc from Melian's own copy$/m);
 		expect(routed.stdout).toMatch(/^ok {4}melian {6}.*, outside this checkout$/m);
 	});
 
-	it("names one or two lenses on an unrouted tier without a series comma", () => {
+	it("names one or two lens levels on an unrouted tier without a series comma", () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
 
 		writeFileSync(join(repo, "melian.yaml"), "tiers:\n  full: [standard, lens.contracts]\n");
@@ -490,10 +504,10 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		const one = melian(repo, ["doctor"]);
 
 		expect(two.stdout).toMatch(
-			/^warn {2}routes {6}no tier is routed to a model; no model for heavy, for contracts and correctness; /m,
+			/^warn {2}routes {6}no tier is routed to a model; no model for medium, for contracts at quick and correctness at quick; /m,
 		);
 		expect(one.stdout).toMatch(
-			/^warn {2}routes {6}no tier is routed to a model; no model for heavy, for correctness; /m,
+			/^warn {2}routes {6}no tier is routed to a model; no model for medium, for correctness at quick; /m,
 		);
 	});
 });

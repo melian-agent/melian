@@ -22,6 +22,7 @@ import {
 	Manifest,
 	type MelianConfig,
 	type ModelReference,
+	ModelRoutingError,
 	type RepositorySource,
 	resolveModelForTier,
 	type ScrutinyLevel,
@@ -93,7 +94,8 @@ import { injectionAttemptRule, quoteUntrusted, reviewNonce, triageBoundary } fro
 // One lens as the lens task runs it, at one level: everything resolved, nothing left to look up. `key` names the lens
 // with its version and level, so a run at one level never stands in for a run at another: it keys the task's children,
 // attempts, and results, the review index's selection, and each request's ID. A run at `quick` carries `escalation`,
-// whose `next` is the run the escalation rule moves it to, absent when the band's ceiling stops it there.
+// whose `next` is the run the escalation rule moves it to, absent when the band's ceiling stops it there, or `cap`,
+// when the next level's tier reaches no model.
 interface LensRun {
 	readonly key: string;
 	readonly name: string;
@@ -109,7 +111,7 @@ interface LensRun {
 	readonly coverage: LensCoverage;
 	// The change as this lens sees it: only the files it covers.
 	readonly prompt: string;
-	readonly escalation?: { readonly next?: LensRun };
+	readonly escalation?: { readonly next?: LensRun; readonly cap?: string };
 }
 
 // `escalateAt` is absent from a task an older Melian created, which escalates nothing.
@@ -453,26 +455,47 @@ export class ChangePrompt {
 	}
 }
 
-// The tier's model and fallbacks, keeping those the collection knows and holds credentials for, in routing order.
-async function chooseRoute(
-	lens: string,
-	tier: LensTier,
-	config: MelianConfig,
-	review: ReviewModels,
-): Promise<ModelReference[]> {
+// A model tier's route as a review can run it: the tier's model and fallbacks that the collection knows and holds
+// credentials for, in routing order, or why there are none.
+type TierRoute = { readonly route: ModelReference[] } | { readonly unrouted: string };
+
+async function routeOf(tier: LensTier, config: MelianConfig, review: ReviewModels): Promise<TierRoute> {
 	const models = modelsOf(review);
-	const route = resolveModelForTier(tier, config.models);
+	let route: ReturnType<typeof resolveModelForTier>;
+	try {
+		route = resolveModelForTier(tier, config.models);
+	} catch (error) {
+		if (error instanceof ModelRoutingError) return { unrouted: error.message };
+		throw error;
+	}
 	const available: ModelReference[] = [];
 	for (const candidate of [route.model, ...route.fallbacks]) {
 		if (models.getModel(candidate.provider, candidate.modelId) === undefined) continue;
 		if ((await models.checkAuth(candidate.provider)) !== undefined) available.push(candidate);
 	}
-	if (available.length > 0) return available;
+	if (available.length > 0) return { route: available };
 	const tried = [route.model, ...route.fallbacks].map(modelName).join(", ");
-	throw new ReviewError(
+	return { unrouted: `none of ${tried} is known with credentials` };
+}
+
+// Why a lens has no level it may run at: each level the band holds, with why its tier reaches no model, or that the
+// lens declares none in the band.
+function noLevel(lens: Lens, band: LevelBand, routes: ReadonlyMap<LensTier, TierRoute>): ReviewError {
+	const held = band.holds(lens.declaredLevels());
+	const why =
+		held.length === 0
+			? `it declares none of them, only ${lens.declaredLevels().join(", ")}`
+			: held
+					.map((level) => {
+						const { tier } = lens.level(level);
+						const route = routes.get(tier);
+						return `${level} runs on ${tier}, and ${route !== undefined && "unrouted" in route ? route.unrouted : "it has no route"}`;
+					})
+					.join("; ");
+	return new ReviewError(
 		"noAvailableModel",
-		`lens ${lens} needs a ${tier} model, and none of ${tried} is known with credentials; log in with pi or set the provider's API key`,
-		{ lenses: [lens] },
+		`lens ${lens.name} may run from ${band.floor} to ${band.ceiling}, and no level there can run: ${why}. Route the tier in melian.local.yaml, log in with pi, or set the provider's API key`,
+		{ lenses: [lens.name] },
 	);
 }
 
@@ -492,6 +515,8 @@ export interface ReviewOptions {
 	 * Without it, every lens runs at its default level within its band.
 	 */
 	readonly decider?: Decider;
+	/** Why the host has no decider for this review, noted on each lens's record; ignored with a decider. */
+	readonly triageSkipped?: string;
 	/**
 	 * Where adjudication reads each finding's configuration, the source `config` came from, such as the base commit.
 	 * Without it, `config`'s resolution and rule aliases apply to every path.
@@ -650,7 +675,8 @@ function settle(first: LensRun, result: LensResult | undefined, rule: Escalation
 		const outcome = result?.[run.key];
 		const escalation = outcome?.status === "done" ? outcome.escalation : undefined;
 		const next = escalation?.to === undefined ? undefined : run.escalation?.next;
-		if (escalation !== undefined) notes.push(rule.describe(escalation.trigger, run.level, next?.level));
+		if (escalation !== undefined)
+			notes.push(rule.describe(escalation.trigger, run.level, next?.level, run.escalation?.cap));
 		if (next === undefined) return { run, outcome, notes };
 		run = next;
 	}
@@ -832,8 +858,8 @@ async function triage(
  * provider failure outlasts pi-ai's retries or authentication fails, and becomes a check named `lens.<name>` beside
  * `options.checks`.
  *
- * Throws core's `ModelRoutingError` for a tier with no model, and {@link ReviewError}: `noAvailableModel` when no model
- * of a tier has credentials, `notInstalled` when the harness lacks {@link lensExtension}, or the decision extension for
+ * Throws {@link ReviewError}: `noAvailableModel` when a lens has no level in its band whose tier routes to a model with
+ * credentials, naming each level and why, `notInstalled` when the harness lacks {@link lensExtension}, or the decision extension for
  * a decider, `adjudicationFailed` when no verdict was recorded, `allModelsFailed` when every model of a lens's route
  * failed, naming them, and `lensFailed` when a lens did not finish for another reason. The last two carry the findings
  * reported so far and the `not-reviewed` verdict already recorded.
@@ -865,6 +891,20 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		return { ...selection, moved, covers: [...files, ...moved] };
 	});
 	const bands = await bandsOf(covering, options);
+	const tiers = new Set(covering.flatMap(({ lens }) => lens.declaredLevels().map((level) => lens.level(level).tier)));
+	const routes = new Map(
+		await Promise.all([...tiers].map(async (tier) => [tier, await routeOf(tier, config, models)] as const)),
+	);
+	const routed = (tier: LensTier) => "route" in routes.get(tier)!;
+	// A lens runs only at a level its band holds whose tier reaches a model; with none, the review fails before any lens
+	// runs, rather than run it below its floor.
+	const runnable = new Map(
+		covering.map(({ lens }) => {
+			const levels = lens.runnableLevels(bands.get(lens.name)!, routed);
+			if (levels.length === 0) throw noLevel(lens, bands.get(lens.name)!, routes);
+			return [lens, levels] as const;
+		}),
+	);
 	const triaged =
 		options.decider === undefined || covering.length === 0
 			? {}
@@ -876,12 +916,21 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 						questionSet: triageQuestionSet,
 						state: [triageBoundary(nonce), "## The change", prompt.render()].join("\n\n"),
 						// One question per name: two variants of a lens in different folders share a name, and so its answer.
-						questions: [...new Map(covering.map(({ lens }) => [lens.name, lens.triageQuestion()])).values()],
+						questions: [
+							...new Map(
+								covering.map(({ lens }) => [
+									lens.name,
+									lens.triageQuestion(bands.get(lens.name)!, runnable.get(lens)!),
+								]),
+							).values(),
+						],
 					},
 					options.rerun === true,
 					context,
 				);
-	const choices = new Map(covering.map(({ lens }) => [lens, lens.triage(bands.get(lens.name)!, triaged.decision)]));
+	const choices = new Map(
+		covering.map(({ lens }) => [lens, lens.triage(bands.get(lens.name)!, runnable.get(lens)!, triaged.decision)]),
+	);
 	// A lens triage skipped is not running, so no lens hands it a defect.
 	const running = covering.filter(({ lens }) => choices.get(lens) !== "skip");
 	const skipped = covering.filter(({ lens }) => choices.get(lens) === "skip").map(({ lens }) => lens.name);
@@ -904,6 +953,8 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		const noted: string[] = [];
 		if (triaged.failure !== undefined)
 			noted.push(`triage failed, so it ran at its default level: ${triaged.failure}`);
+		if (options.decider === undefined && options.triageSkipped !== undefined)
+			noted.push(`triage did not run, so it ran at its default level: ${options.triageSkipped}`);
 		const oversized = lens.oversizedHandoffs(neighbours);
 		if (oversized.length > 0) {
 			const listed = oversized.map((name) => `\`${name}\``).join(", ");
@@ -923,7 +974,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 				name: lens.name,
 				version: lens.version,
 				level,
-				route: await chooseRoute(lens.name, settings.tier, config, models),
+				route: [...(routes.get(settings.tier) as { route: ModelReference[] }).route],
 				instructions: ruled.renderInstructions(standards, level, neighbours, (listing) =>
 					quoteUntrusted("listing", listing, nonce),
 				),
@@ -942,7 +993,14 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 			continue;
 		}
 		const next = lens.escalation(level, bands.get(lens.name)!);
-		lenses.push({ ...first, escalation: next === undefined ? {} : { next: await runAt(next) } });
+		const nextTier = next === undefined ? undefined : lens.level(next).tier;
+		const escalation =
+			next === undefined
+				? {}
+				: nextTier !== undefined && !routed(nextTier)
+					? { cap: `since ${next} runs on ${nextTier}, which reaches no model with credentials` }
+					: { next: await runAt(next) };
+		lenses.push({ ...first, escalation });
 	}
 	const state: ReviewState = {
 		repoRoot,

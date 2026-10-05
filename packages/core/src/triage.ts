@@ -45,17 +45,23 @@ export class LevelBand {
 		return new LevelBand(floor, ceiling);
 	}
 
+	/** The levels of `levels` inside the band, in their order. */
+	holds(levels: readonly ScrutinyLevel[]): ScrutinyLevel[] {
+		return levels.filter((level) => rank(level) >= rank(this.floor) && rank(level) <= rank(this.ceiling));
+	}
+
 	/**
-	 * `choice` held to the band, then moved to the nearest of `declared`, the levels a lens runs at: within the band
-	 * where one is, else the nearest outside it, the higher on a tie, since a lens must run at a level it has. A choice
-	 * of `skip` the floor allows stays `skip`.
+	 * `choice` held to the band, then moved to the nearest of `levels`, the higher on a tie. A choice of `skip` the floor
+	 * allows stays `skip`. `levels` are the ones a lens may run at inside the band, so the result is never below the
+	 * floor; throws a `RangeError` when it is empty and the choice is not `skip`, since the lens then has nowhere to run.
 	 */
-	bound(choice: TriageChoice, declared: readonly ScrutinyLevel[]): TriageChoice {
+	bound(choice: TriageChoice, levels: readonly ScrutinyLevel[]): TriageChoice {
 		const held =
 			rank(choice) < rank(this.floor) ? this.floor : rank(choice) > rank(this.ceiling) ? this.ceiling : choice;
 		if (held === "skip") return held;
-		const within = declared.filter((level) => rank(level) >= rank(this.floor) && rank(level) <= rank(this.ceiling));
-		return nearest(held, within.length > 0 ? within : declared);
+		const within = this.holds(levels);
+		if (within.length === 0) throw new RangeError(`no level between ${this.floor} and ${this.ceiling} can run`);
+		return nearest(held, within);
 	}
 
 	/** The next of `declared` above `level` that the ceiling allows, or `undefined` when the ceiling stops it. */
@@ -116,16 +122,15 @@ export class EscalationRule {
 	}
 
 	/**
-	 * A note for the check record of a lens that escalated from `from` to `to`, or that would have and stopped at its
-	 * ceiling, `from`, when `to` is `undefined`.
+	 * A note for the check record of a lens that escalated from `from` to `to`, or that would have and stopped at `from`
+	 * when `to` is `undefined`: at its ceiling, or for `cap`, the reason given.
 	 */
-	describe(trigger: EscalationTrigger, from: ScrutinyLevel, to: ScrutinyLevel | undefined): string {
+	describe(trigger: EscalationTrigger, from: ScrutinyLevel, to: ScrutinyLevel | undefined, cap?: string): string {
 		const why =
 			trigger.kind === "severity"
 				? `it reported a ${trigger.severity} finding, at or above ${this.escalateAt}`
 				: `its ${trigger.budget} budget ended it before it reported anything`;
-		return to === undefined
-			? `escalation capped at ${from}, its ceiling: at ${from} ${why}`
-			: `escalated from ${from} to ${to}: at ${from} ${why}`;
+		if (to !== undefined) return `escalated from ${from} to ${to}: at ${from} ${why}`;
+		return `escalation capped at ${from}, ${cap ?? "its ceiling"}: at ${from} ${why}`;
 	}
 }
