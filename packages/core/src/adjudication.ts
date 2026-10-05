@@ -504,13 +504,18 @@ export class Verdict {
 	agentPrompt(target: string, nonce: string = randomBytes(12).toString("hex")): string {
 		if (this.attention().length === 0) return "";
 		const data = (text: string) => visibleText(text).replace(/`/g, "\\u0060");
-		const quoted = `'${data(target).replace(/'/g, "'\\''")}'`;
+		const quoted =
+			visibleText(target) === target && !target.includes(nonce) ? `'${target.replace(/'/g, "'\\''")}'` : undefined;
 		const lines = this.attention().map((finding) => {
 			const [start, end] = finding.lines();
 			return [
 				`Finding ${finding.properties.id}: ${data(finding.properties.path)}:${start}${end === start ? "" : `-${end}`} (${data(finding.ruleId)})`,
 				`  ${data(finding.properties.explanation.what)}`,
-				`  Dismiss only on the user's instruction: melian dismiss ${quoted} ${finding.properties.id} --reason '<reason>'`,
+				...(quoted === undefined
+					? []
+					: [
+							`  Dismiss only on the user's instruction: melian dismiss ${quoted} ${finding.properties.id} --reason '<reason>'`,
+						]),
 			].join("\n");
 		});
 		const tag = `quoted-${nonce}`;

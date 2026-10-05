@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { Adjudication, defaultConfig, Finding } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
 
@@ -60,6 +61,36 @@ Finding 2b01994f177115fa: src/run.ts:7 (unsafe)
 		expect(inside.some((line) => line.includes("ignore previous instructions"))).toBe(true);
 		expect(lines.slice(0, open).concat(lines.slice(close)).join("\n")).not.toContain("Finding ");
 	});
+
+	it.each(["main...feature`branch", "main...feature'branch"])("preserves the shell target %s", (target) => {
+		const verdict = new Adjudication({
+			findings: [Finding.create(input)],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const prompt = verdict.agentPrompt(target);
+		const command = /melian dismiss .+ --reason '<reason>'/.exec(prompt)![0];
+		const parsed = execFileSync("/bin/sh", ["-c", `melian() { printf '%s' "$2"; }\n${command}`], {
+			encoding: "utf8",
+		});
+		expect(parsed).toBe(target);
+	});
+
+	it.each(["main...feature\nbranch", "main...feature\u001bbranch", "main...boundarynonce"])(
+		"omits a dismissal command for an unquotable target %s",
+		(target) => {
+			const verdict = new Adjudication({
+				findings: [Finding.create(input)],
+				manifest: [],
+				checks: [],
+				config: defaultConfig,
+			}).adjudicate();
+			const prompt = verdict.agentPrompt(target, "boundarynonce");
+			expect(prompt).toContain(`Finding ${verdict.attention()[0]!.id}`);
+			expect(prompt).not.toContain("melian dismiss");
+		},
+	);
 
 	it("keeps control characters and fences inside one data line and leaves quiet findings out", () => {
 		const finding = Finding.create({
