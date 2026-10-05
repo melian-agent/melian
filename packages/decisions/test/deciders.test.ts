@@ -197,4 +197,32 @@ describe("the LLM fallback decider", () => {
 		};
 		await expect(new FallbackDecider(failing).decide(request)).rejects.toThrow("503 overloaded_error");
 	});
+
+	it("passes cancellation to a model call already in progress", async () => {
+		const controller = new AbortController();
+		const reason = new Error("decision cancelled");
+		let received: AbortSignal | undefined;
+		let started = () => {};
+		const calling = new Promise<void>((resolve) => {
+			started = resolve;
+		});
+		const text: TextModel = {
+			name: "faux/light",
+			async answer(_request, signal) {
+				received = signal;
+				started();
+				if (signal === undefined) return answered;
+				return new Promise<never>((_resolve, reject) => {
+					signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+				});
+			},
+		};
+		const pending = new FallbackDecider(text).decide(request, controller.signal);
+		await calling;
+		expect(received).toBe(controller.signal);
+		expect(received!.aborted).toBe(false);
+		controller.abort(reason);
+		await expect(pending).rejects.toBe(reason);
+		expect(received!.aborted).toBe(true);
+	});
 });
