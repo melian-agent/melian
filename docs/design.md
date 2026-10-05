@@ -422,7 +422,7 @@ The lenses, the explanation, anything beyond the 64k-token state window, anythin
 ### Architecture
 
 - The `Decider` interface lives in core beside the `ReviewProvider` port. Its adapters live in `packages/decisions`, as the GitHub client lives in `packages/github` behind the provider port. pi-ai does not speak this API, so the adapters are Melian code. One adapter covers Jev and Clef; base URL and auth differ. Adapters: Jev hosted, Clef on Workers AI, Clef self-hosted, a recorded provider for tests, and a fallback that asks a cheap text model with structured output.
-- A `decision` tier in model routing, overridable per path. Default Clef-flash for the fast tier and Clef for triage. Without a decision provider, the LLM fallback adapter answers triage on the plan's cheapest text route, and its answers carry no calibrated probability.
+- A `decision` tier in model routing, read from the root's configuration, as every route is until the plan resolves routes per path. Default Clef-flash for the fast tier and Clef for triage. Without a decision provider, the LLM fallback adapter answers triage on the plan's cheapest text route, and its answers carry no calibrated probability.
 - Question sets are versioned, typed units in code with their own golden evals. Every answer records the question-set version.
 - Every decision is a replay-safe task that stores the full probability distribution, not just the chosen option. Thresholds live in configuration and can be retuned from stored data.
 - Thresholds are bands: below drops, above accepts, inside escalates to an LLM pass.
