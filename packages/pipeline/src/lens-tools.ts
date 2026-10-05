@@ -411,14 +411,21 @@ async function budgeted(
 	const { position, spent } = await meter(api, lens, "read", context);
 	const tools = lens.limits?.tools;
 	const problem = refusal(lens, { name, arguments: {} });
-	if (problem !== undefined) return ending(failed(new Error(problem), context), lens, spent);
+	if (problem !== undefined)
+		return ending(
+			failed(new Error(problem), context, lens.role === "verifier" ? lens.revision.nonce : undefined),
+			lens,
+			spent,
+		);
 	if (spent !== undefined) return ending(text("[not run]"), lens, spent);
 	if (tools !== undefined && position > tools) {
 		return text(
 			`[not run: this lens may make ${toolCalls(tools)}, and this was call ${position}. The tools budget has ended this review: report what you have confirmed; another read ends the conversation.]`,
 		);
 	}
-	const result = await read(lens.revision).catch((error: unknown) => failed(error, context));
+	const result = await read(lens.revision).catch((error: unknown) =>
+		failed(error, context, lens.role === "verifier" ? lens.revision.nonce : undefined),
+	);
 	if (tools === undefined || position < tools) return result;
 	const last = `[that was the last of this lens's ${toolCalls(tools)}. Report what you have confirmed; another read ends the review.]`;
 	return { ...result, content: [...(result.content ?? []), { type: "text" as const, text: last }] };
