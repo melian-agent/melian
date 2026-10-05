@@ -14,7 +14,9 @@ import {
 	type Model,
 	type RegisterFauxProviderOptions,
 } from "@earendil-works/pi-ai";
-import { createModels } from "@earendil-works/pi-ai/models";
+import { createModels, type MutableModels } from "@earendil-works/pi-ai/models";
+import type { NamedCredential } from "@melian-agent/core";
+import { MelianCredentialStore, PiCredentialStore } from "./credentials.ts";
 import type { HarnessOptions, ModelRef } from "./harness.ts";
 import { type ReviewModels, wrapModels } from "./models.ts";
 
@@ -31,14 +33,61 @@ export type FakeModels = {
 };
 
 /** Create a scripted model provider that answers from queued responses, so tests need no credentials. */
-export function createFakeModels(options?: RegisterFauxProviderOptions): FakeModels {
+export function createFakeModels(
+	options: RegisterFauxProviderOptions & {
+		readonly auth?: "oauth" | "none";
+		readonly credentials?: readonly NamedCredential[];
+		readonly authPath?: string;
+	} = {},
+): FakeModels {
 	const provider = fauxProvider(options);
-	const models = createModels();
-	models.setProvider(provider.provider);
+	const store =
+		options.credentials === undefined
+			? undefined
+			: new MelianCredentialStore(
+					options.credentials,
+					(id) => {
+						const auth = models.getProvider(id)?.auth;
+						return { apiKey: auth?.apiKey !== undefined, oauth: auth?.oauth !== undefined };
+					},
+					new PiCredentialStore(options.authPath),
+					{},
+				);
+	const models: MutableModels = createModels({ ...(store === undefined ? {} : { credentials: store }) });
+	let auth = provider.provider.auth;
+	if (options.auth === "none") {
+		auth = {};
+	} else if (options.auth === "oauth") {
+		auth = {
+			oauth: {
+				name: "Fake OAuth",
+				async login(): Promise<never> {
+					throw new Error("Fake OAuth never logs in");
+				},
+				async refresh(): Promise<never> {
+					throw new Error("Fake OAuth never refreshes");
+				},
+				async toAuth(credential) {
+					return { apiKey: credential.access };
+				},
+			},
+		};
+	} else if (options.credentials !== undefined) {
+		auth = {
+			apiKey: {
+				name: "Fake API key",
+				async resolve({ credential }) {
+					return credential?.key === undefined ? undefined : { auth: { apiKey: credential.key } };
+				},
+			},
+		};
+	}
+	const registered = { ...provider.provider, auth };
+	models.setProvider(registered);
 	return {
 		models,
-		provider,
-		review: wrapModels(models),
+		provider: { ...provider, provider: registered },
+		review: wrapModels(models, store),
 		ref(modelId) {
 			const model: Model<string> | undefined =
 				modelId === undefined ? provider.getModel() : provider.getModel(modelId);

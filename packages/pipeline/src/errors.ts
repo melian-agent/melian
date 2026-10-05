@@ -16,8 +16,8 @@ export class PiCredentialsError extends Error {
 	}
 }
 
-/** Why a named credential could not be used: its command failed, its source gave nothing, or its provider is unknown. */
-export type CredentialErrorCode = "commandFailed" | "noValue" | "unknownProvider";
+/** Why a named credential could not be used: its command failed, its source gave nothing, or its provider accepts no supported auth. */
+export type CredentialErrorCode = "commandFailed" | "noValue" | "unknownProvider" | "unsupportedAuth";
 
 /**
  * A named credential from a secrets file could not be read: its command failed or timed out, or its source gave an

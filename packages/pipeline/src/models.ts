@@ -58,6 +58,7 @@ export async function planInputs(models: ReviewModels): Promise<PlanSources> {
 	);
 	const credentials: Record<string, string> = {};
 	for (const provider of collection.getProviders()) {
+		if (provider.auth.apiKey === undefined && provider.auth.oauth === undefined) continue;
 		const described = await store?.describe(provider.id);
 		const checked =
 			described === undefined ? await collection.checkAuth(provider.id).catch(() => undefined) : undefined;
