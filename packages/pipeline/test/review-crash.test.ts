@@ -27,7 +27,7 @@ import {
 	scriptConversations,
 	textOf,
 } from "@melian-agent/pipeline/testing";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -595,6 +595,75 @@ describe("an escalation across a crash", { timeout: 30_000 }, () => {
 		}
 		// One conversation per level: the escalation's was created once, before the crash.
 		expect(levels.sort()).toEqual(["careful", "quick"]);
+	});
+});
+
+describe("a lens task from an earlier selection during triage", { timeout: 30_000 }, () => {
+	it("cannot resume while a fresh decision is pending", async () => {
+		const database = join(dir, "triage.sqlite");
+		const log = join(dir, "triage.jsonl");
+		await killWhen("request", (events) => count(events, "model-request") === 2, database, log);
+		let release = () => {};
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const decide = vi.fn(async (request: Parameters<Decider["decide"]>[0]) => {
+			await gate;
+			return {
+				answers: request.questions.map((question) => ({ question: question.id, distribution: { quick: 1 } })),
+			};
+		});
+		const decider: Decider = { name: "holding", calibrated: false, decide };
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "medium" }, { id: "heavy" }] });
+		const requests = scriptConversations(fake, [
+			{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+			{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const reopened = await ReviewHarness.open(await openSqliteStorage(database), fake.review, {
+			retry: false,
+			decider,
+		});
+		harness = reopened.harness;
+		const previous = (await harness.inspect(context)).tasks.find((task) => task.record.kind === "melian.lenses")!;
+		const medium = fake.ref("medium");
+		const heavy = fake.ref("heavy");
+		const pending = reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config: {
+				...defaultConfig,
+				tiers: { ...defaultConfig.tiers, full: ["standard"] },
+				models: {
+					medium: { model: `${medium.provider}/${medium.modelId}` },
+					heavy: { model: `${heavy.provider}/${heavy.modelId}` },
+				},
+			},
+			lenses: await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"]),
+			standards: [],
+			models: fake.review,
+			decider,
+			checks: [
+				{ name: "guardrails", status: "ran" },
+				{ name: "static.biome", status: "ran" },
+				{ name: "static.tsc", status: "ran" },
+			],
+		});
+		try {
+			await vi.waitFor(() => expect(decide).toHaveBeenCalledOnce());
+			expect(fake.provider.state.callCount).toBe(0);
+			const old = await harness.waitForTask(previous.record.id, context);
+			expect(old.state.outcome.status).toBe("aborted");
+		} finally {
+			release();
+			await pending.catch(() => undefined);
+		}
+		const reviewed = await pending;
+		expect(reviewed.verdict.ran?.find((check) => check.name === "lens.correctness")).toMatchObject({
+			status: "ran",
+			level: "quick",
+		});
+		expect(requests["You are the correctness reviewer"]).toHaveLength(1);
+		expect(requests["You are the contracts reviewer"]).toHaveLength(0);
 	});
 });
 

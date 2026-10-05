@@ -1097,21 +1097,35 @@ async function triage(
 		const known = document.decisions[revision]?.[set];
 		// A rerun asks again after any decision that did not complete: one that failed, and one a crash left undecided.
 		const retry = rerun && known?.decision === undefined;
-		if (known?.key === key && !retry && (await attachable(tx, known.task, undecided))) {
-			return known.task as TaskId<DecisionResult>;
+		const attach = known?.key === key && !retry && (await attachable(tx, known.task, undecided));
+		const index = await tx.doc(ReviewIndex, root.id);
+		const previous = index.reviews[revision]?.task;
+		const record = previous === undefined ? undefined : await tx.task(previous as TaskId);
+		const task = attach
+			? (known.task as TaskId<DecisionResult>)
+			: await tx.createTask(decisionTask(decider), input, { ownership: { kind: "conversation" } });
+		if (!attach) {
+			replaced = known?.task;
+			document.decisions = {
+				...document.decisions,
+				[revision]: { ...document.decisions[revision], [set]: { key, task } },
+			};
 		}
-		const created = await tx.createTask(decisionTask(decider), input, { ownership: { kind: "conversation" } });
-		replaced = known?.task;
-		document.decisions = {
-			...document.decisions,
-			[revision]: { ...document.decisions[revision], [set]: { key, task: created } },
-		};
-		return created;
+		if (!attach || (known.decision === undefined && known.failure === undefined)) {
+			// Waiting starts every pending task, before triage can choose the selection that replaces this live run.
+			if (record !== undefined && record.state.status !== "terminal") index.reviews[revision] = { lenses: [] };
+		}
+		return task;
 	}, context);
 	// A live replaced task would still ask its decider, and its answer lands nowhere.
 	if (replaced !== undefined && replaced !== taskId) {
 		await harness.abortTask(replaced as TaskId, context).catch(() => undefined);
 	}
+	const decided = await readRecordedDecision(harness, root.id, revision, set, context);
+	if (decided?.task === taskId && (decided.decision !== undefined || decided.failure !== undefined)) {
+		return decided.decision === undefined ? { failure: decided.failure } : { decision: decided.decision };
+	}
+	await abortReplacedRuns(harness, context);
 	const forget = async (tx: Tx, rootId: ConversationId) => {
 		const document = await tx.doc(DecisionDocument, rootId);
 		const entries = document.decisions[revision];

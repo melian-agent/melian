@@ -306,6 +306,8 @@ Problem: every lens in a tier runs at full depth on every change. A one-line fix
 
 Solution: each lens declares three [levels](#lenses), `quick`, `careful`, and `deep`, and triage chooses one per lens for each review. The names differ from the model tier `light` and the check tier `standard` on purpose. Triage asks one choice question per lens, `skip`, `quick`, `careful`, or `deep`, through the `Decider` port. A decision model answers when one is configured, else the LLM fallback adapter, else the lens runs at its default level, `careful`. A decider that fails, times out, or answers what it was not asked fails closed to that default, never to `skip`, and each lens's record says triage failed. The fast tier skips triage.
 
+A pending decision may choose another selection. Its commit removes any live lens task for that revision from the review index. The review aborts that task before waiting for triage, since Pi Durable starts every pending task when a caller waits. A recorded decision returns without starting the scheduler, so the review can attach to or replace its lens task first. Finished lens tasks stay available for attachment. [The decision](decisions/2026-10-06-triage-waits-before-lenses.md) records why.
+
 Policy bounds the choice. A floor and a ceiling per path, layered like every other setting, set a band, and triage moves only within it:
 
 ```yaml
