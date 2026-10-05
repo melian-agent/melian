@@ -764,6 +764,22 @@ export class Lens {
 	}
 
 	/**
+	 * Why the lens has no {@link Lens.runnableLevels} in `band`: each level the band holds, with why its tier reaches no
+	 * model as `unrouted` says, or that the lens declares none of the band's levels.
+	 */
+	unrunnable(band: LevelBand, unrouted: (tier: LensTier) => string | undefined): string {
+		const declared = this.declaredLevels();
+		const held = band.holds(declared);
+		if (held.length === 0) return `it declares none of them, only ${declared.join(", ")}`;
+		return held
+			.map((level) => {
+				const { tier } = this.level(level);
+				return `${level} runs on ${tier}, and ${unrouted(tier) ?? "it has no route"}`;
+			})
+			.join("; ");
+	}
+
+	/**
 	 * The question triage asks about the lens: whether to skip it, where `band`'s floor allows that, or how closely it
 	 * should look, at one of `levels`, the lens's {@link Lens.runnableLevels}. The question's ID is the lens's name.
 	 */

@@ -534,24 +534,12 @@ async function routeOf(tier: LensTier, config: MelianConfig, review: ReviewModel
 	return { unrouted: `none of ${tried} is known with credentials` };
 }
 
-// Why a lens has no level it may run at: each level the band holds, with why its tier reaches no model, or that the
-// lens declares none in the band.
-function noLevel(lens: Lens, band: LevelBand, routes: ReadonlyMap<LensTier, TierRoute>): ReviewError {
-	const held = band.holds(lens.declaredLevels());
-	const why =
-		held.length === 0
-			? `it declares none of them, only ${lens.declaredLevels().join(", ")}`
-			: held
-					.map((level) => {
-						const { tier } = lens.level(level);
-						const route = routes.get(tier);
-						return `${level} runs on ${tier}, and ${route !== undefined && "unrouted" in route ? route.unrouted : "it has no route"}`;
-					})
-					.join("; ");
+// The error for a lens that has no level it may run at, with `why` from `lens.unrunnable`.
+function noLevel(name: string, band: LevelBand, why: string): ReviewError {
 	return new ReviewError(
 		"noAvailableModel",
-		`lens ${lens.name} may run from ${band.floor} to ${band.ceiling}, and no level there can run: ${why}. Route the tier in melian.local.yaml, log in with pi, or set the provider's API key`,
-		{ lenses: [lens.name] },
+		`lens ${name} may run from ${band.floor} to ${band.ceiling}, and no level there can run: ${why}. Route the tier in melian.local.yaml, log in with pi, or set the provider's API key`,
+		{ lenses: [name] },
 	);
 }
 
@@ -1026,7 +1014,13 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	const runnable = new Map(
 		covering.map(({ lens }) => {
 			const levels = lens.runnableLevels(bands.get(lens)!, routed);
-			if (levels.length === 0) throw noLevel(lens, bands.get(lens)!, routes);
+			if (levels.length === 0) {
+				const unrouted = (tier: LensTier) => {
+					const route = routes.get(tier);
+					return route !== undefined && "unrouted" in route ? route.unrouted : undefined;
+				};
+				throw noLevel(lens.name, bands.get(lens)!, lens.unrunnable(bands.get(lens)!, unrouted));
+			}
 			return [lens, levels] as const;
 		}),
 	);
