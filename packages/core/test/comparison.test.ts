@@ -395,6 +395,26 @@ describe("Comparison matching", () => {
 		expect(compared([octocat, human("OctoCat", 11)], [melian()]).externalOnly()).toHaveLength(2);
 	});
 
+	it("does not group a finding read at an earlier commit with another reviewer's finding at the same site", () => {
+		const thread = (line: number) =>
+			external({
+				reviewer: { name: "coderabbit", login: "coderabbitai[bot]", kind: "bot" },
+				source: { kind: "thread", thread: `PRRT_${line}`, url: `https://github.com/o/r/pull/1#PRRT_${line}` },
+				line,
+				commit: "c".repeat(40),
+			});
+		const peer = external({ reviewer: { name: "claude-code" }, line: 12 });
+		// Findings group in site order, so the earlier thread comes before the peer and after it.
+		for (const line of [11, 13]) {
+			const earlier = thread(line);
+			expect(earlier.meets(peer)).toBe(true);
+			const comparison = compared([earlier, peer], []);
+			expect(ids(comparison.externalOnly())).toEqual(
+				[earlier, peer].sort((a, b) => a.compareSite(b)).map((each) => ({ external: [each.id], melian: [] })),
+			);
+		}
+	});
+
 	it("keeps a reviewer's finding unmatched by hand out of the group another reviewer's match makes", () => {
 		const finding = melian();
 		const codex = external({ line: 12 });
