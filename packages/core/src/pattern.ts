@@ -486,7 +486,8 @@ export function compileGlob(glob: string): LinearPattern {
 	return compiled;
 }
 
-// Globs come from configuration and lenses, so there are few; each is matched against every touched path.
+// Not bounded by configuration: the analyser also compiles globs from the head's biome.json, and a `/**` variant of each,
+// and guardrails compile `workspaces` globs from its package.json, so the head fills this within one process.
 const globs = new Map<string, LinearPattern>();
 
 function buildGlob(glob: string): LinearPattern {
