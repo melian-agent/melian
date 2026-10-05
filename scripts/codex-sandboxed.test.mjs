@@ -192,9 +192,6 @@ describe("codex-sandboxed.sh profile", () => {
 		const deny = block(text, "deny file-write*");
 		const files = block(text, "deny file-write-create file-write-data file-write-unlink");
 		const esc = (path) => path.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
-		const dotGit = (path) => `(regex #"^${esc(path)}/(.*/)?[.][gG][iI][tT](/|$)")`;
-		const names = (path) =>
-			`(regex #"^${esc(path)}/(.*/)?([hH][eE][aA][dD]|[cC][oO][mM][mM][oO][nN][dD][iI][rR])$")`;
 		expect(linked).toContain("a+b (c).d");
 		expect(deny).toContain("a\\+b \\(c\\)\\.d");
 		const codex = [`${home}/.codex/cache`, `${home}/.codex/sessions`, `${home}/.codex/attachments`];
@@ -208,10 +205,12 @@ describe("codex-sandboxed.sh profile", () => {
 			`${admin}/logs`,
 			...codex,
 		]) {
-			expect(deny).toContain(dotGit(path));
+			const escaped = esc(path);
+			expect(deny).toContain(`(regex #"^${escaped}/(.*/)?[.][gG][iI][tT](/|$)")`);
+			expect(files).toContain(
+				`(regex #"^${escaped}/(.*/)?([hH][eE][aA][dD]|[cC][oO][mM][mM][oO][nN][dD][iI][rR])$")`,
+			);
 		}
-		for (const path of [linked, scratch, `${common}/objects`, `${common}/refs`, `${common}/logs`, `${admin}/logs`, ...codex])
-			expect(files).toContain(names(path));
 		expect(files).toContain("(require-not (vnode-type DIRECTORY))");
 		expect(deny).not.toContain("[hH][eE][aA][dD]");
 		expect(deny).not.toContain("/(.*/)?[oO][bB][jJ][eE][cC][tT][sS]");
