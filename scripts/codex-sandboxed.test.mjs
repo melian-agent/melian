@@ -21,7 +21,16 @@ const script = join(import.meta.dirname, "codex-sandboxed.sh");
 const git = (cwd, ...args) =>
 	execFileSync("git", ["-c", "user.email=t@example.com", "-c", "user.name=t", ...args], { cwd, stdio: "pipe" });
 
-const sandboxExec = existsSync("/usr/bin/sandbox-exec");
+const sandboxExec = (() => {
+	if (!existsSync("/usr/bin/sandbox-exec")) return false;
+	try {
+		execFileSync("sandbox-exec", ["-p", "(version 1) (allow default)", "/usr/bin/true"], { stdio: "ignore" });
+		return true;
+	} catch {
+		// macOS refuses a nested sandbox when the test itself runs inside this wrapper.
+		return false;
+	}
+})();
 const realAgentSocket = (() => {
 	try {
 		return execFileSync("launchctl", ["getenv", "SSH_AUTH_SOCK"], { encoding: "utf8" }).trim();
@@ -207,9 +216,10 @@ describe("codex-sandboxed.sh profile", () => {
 			env: { ...env(), CODEX_HOME: elsewhere },
 		});
 		const allow = block(text, "allow file-write*");
-		expect(allow).toContain(`(subpath "${elsewhere}/sessions")`);
+		const escaped = elsewhere.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
+		expect(allow).toContain(`(regex #"^${escaped}/sessions/")`);
 		expect(allow).toContain(`(literal "${elsewhere}/history.jsonl")`);
-		expect(allow).toContain(`^${elsewhere}/[^/]+\\.sqlite`);
+		expect(allow).toContain(`^${escaped}/[^/]+\\.sqlite`);
 		expect(block(text, "deny file-write*")).toContain(`(literal "${elsewhere}/config.toml")`);
 		expect(block(text, "deny file-write*")).toContain(`(subpath "${elsewhere}/hooks")`);
 		expect(text).not.toContain(`${home}/.codex`);
@@ -235,8 +245,9 @@ describe("codex-sandboxed.sh profile", () => {
 
 	it("allows the named Codex runtime paths, never the home directory or its secrets and caches", () => {
 		const allow = block(profile(linked), "allow file-write*");
-		expect(allow).toContain(`(subpath "${home}/.codex/sessions")`);
-		expect(allow).toContain(`(subpath "${home}/.codex/log")`);
+		const escaped = `${home}/.codex`.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
+		expect(allow).toContain(`(regex #"^${escaped}/sessions/")`);
+		expect(allow).toContain(`(regex #"^${escaped}/log/")`);
 		expect(allow).not.toContain(`(subpath "${home}/.codex")`);
 		for (const path of ["config.toml", "hooks", "shell_snapshots", "memories", ".tmp"]) {
 			expect(allow).not.toContain(`${home}/.codex/${path}`);
@@ -249,17 +260,57 @@ describe("codex-sandboxed.sh profile", () => {
 		const source = readFileSync(script, "utf8");
 		const names = /^codex_names=\((.*)\)$/m.exec(source)?.[1].split(" ");
 		expect(names).toHaveLength(8);
-		expect(source.match(/codex_names\[@\]/g)).toHaveLength(3);
+		expect(source.match(/codex_names\[@\]/g)).toHaveLength(4);
 		const text = profile(linked);
 		const allow = block(text, "allow file-write*");
 		const deny = block(text, "deny file-write*");
 		const escaped = `${home}/.codex`.replace(/[[\\.*^$+?(){}|\]]/g, "\\$&");
 		for (const name of names) {
-			expect(allow, name).toContain(`(subpath "${home}/.codex/${name}")`);
+			expect(allow, name).toContain(`(regex #"^${escaped}/${name}/")`);
+			expect(allow, name).not.toContain(`(subpath "${home}/.codex/${name}")`);
 			expect(deny, name).toContain(`^${escaped}/${name}/(.*/)?[.][gG][iI][tT](/|$)`);
 			expect(text, name).toContain(
 				`^${escaped}/${name}/(.*/)?([hH][eE][aA][dD]|[cC][oO][mM][mM][oO][nN][dD][iI][rR])$`,
 			);
+		}
+	});
+
+	it("denies symlink creation under Codex's home after the runtime allowances", () => {
+		const text = profile(linked);
+		const deny = `(deny file-write-create\n  (require-all\n    (subpath "${home}/.codex")\n    (vnode-type SYMLINK)))`;
+		expect(text.indexOf(deny)).toBeGreaterThan(text.indexOf("(allow file-write*"));
+	});
+
+	it("refuses symlinked Codex paths before printing a profile", () => {
+		const names = [
+			"sessions",
+			"log",
+			"cache",
+			"tmp",
+			"ipc",
+			"thread-writer-locks",
+			"mcp-oauth-locks",
+			"attachments",
+			"auth.json",
+			".",
+		];
+		for (const [index, name] of names.entries()) {
+			const fakeHome = join(root, `symlink-home-${index}`);
+			const codex = join(fakeHome, ".codex");
+			mkdirSync(fakeHome);
+			if (name !== ".") mkdirSync(codex);
+			symlinkSync(run, name === "." ? codex : join(codex, name));
+			try {
+				execFileSync(script, ["--print-profile", linked], {
+					env: { ...env(), HOME: fakeHome, CODEX_HOME: codex },
+					stdio: "pipe",
+				});
+				throw new Error(`accepted symlink: ${name}`);
+			} catch (error) {
+				expect(error.status, name).toBe(64);
+				expect(String(error.stdout), name).toBe("");
+				expect(String(error.stderr), name).toContain("symlink");
+			}
 		}
 	});
 
@@ -321,17 +372,19 @@ describe("codex-sandboxed.sh profile", () => {
 		const allow = text.slice(allowAt);
 		for (const path of ["logs/HEAD", "logs/HEAD.lock"]) expect(allow).toContain(`(literal "${main}/.git/${path}")`);
 		for (const path of ["logs/HEAD", "logs/HEAD.lock"]) expect(allow).toContain(`(literal "${admin}/${path}")`);
+		const escaped = `${main}/.git`.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
 		for (const tree of ["refs", "logs/refs"])
-			expect(allow).toContain(`(regex #"^${main}/\\.git/${tree}/remotes/[^/]+/HEAD([.]lock)?$")`);
+			expect(allow).toContain(`(regex #"^${escaped}/${tree}/remotes/[^/]+/HEAD([.]lock)?$")`);
 		expect(allow).not.toContain("commondir");
 	});
 
 	it("denies nothing under the run directory, which the wrapper deletes, but everything under a separate scratch", () => {
 		expect(profile(linked)).not.toContain(`^${run}/`);
 		const text = profile(linked, scratch);
+		const escaped = scratch.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
 		expect(text).not.toContain(`^${run}/`);
 		for (const name of ["[.][gG][iI][tT](/|$)", "([hH][eE][aA][dD]|[cC][oO][mM][mM][oO][nN][dD][iI][rR])$"])
-			expect(text).toContain(`^${scratch}/(.*/)?${name}`);
+			expect(text).toContain(`^${escaped}/(.*/)?${name}`);
 		const apart = block(text, "deny file-write*");
 		expect(apart).not.toContain(`(subpath "${run}")`);
 	});
@@ -703,6 +756,20 @@ describe("codex-sandboxed.sh profile", () => {
 			expect(failure(() => sh(linked, `touch '${join(root, "tmp")}/outside-run'`)).status).not.toBe(0);
 		});
 
+		it("keeps Codex's cache directory fixed while allowing files inside it", () => {
+			const cache = join(home, ".codex", "cache");
+			rmSync(cache, { recursive: true, force: true });
+			mkdirSync(cache, { recursive: true });
+			for (const command of [
+				`mv '${cache}' '${home}/.codex/auth.json.tmp'`,
+				`ln -s /tmp '${home}/.codex/cache2'`,
+				`rmdir '${cache}'`,
+			])
+				expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
+			sh(linked, `mkdir -p '${cache}/x' && touch '${cache}/x/probe'`);
+			expect(existsSync(join(cache, "x", "probe"))).toBe(true);
+		});
+
 		it("rewrites auth.json through a temporary and a rename, as a login refresh does", () => {
 			mkdirSync(join(home, ".codex"), { recursive: true });
 			sh(
@@ -851,6 +918,27 @@ describe("codex-sandboxed.sh profile", () => {
 				expect(existsSync(join(home, ".codex", dir))).toBe(true);
 			expect(execFileSync("ls", [join(root, "tmp")]).toString()).not.toMatch(/codex-run\./);
 			expect(execFileSync("ls", [join(root, "tmp")]).toString()).not.toMatch(/codex-seatbelt/);
+		});
+
+		it("refuses a symlinked cache before creating a profile or running Codex", () => {
+			const fakeHome = join(root, "wrapper-symlink-home");
+			const temp = join(root, "wrapper-symlink-tmp");
+			mkdirSync(join(fakeHome, ".codex"), { recursive: true });
+			mkdirSync(temp);
+			symlinkSync(run, join(fakeHome, ".codex", "cache"));
+			const prompt = join(root, "symlink.md");
+			const log = join(root, "symlink.log");
+			writeFileSync(prompt, "go\n");
+			const result = failure(() =>
+				execFileSync(script, [linked, "m", prompt, log], {
+					env: { ...env(), HOME: fakeHome, CODEX_HOME: join(fakeHome, ".codex"), TMPDIR: temp },
+					stdio: "pipe",
+				}),
+			);
+			expect(result.status).toBe(64);
+			expect(result.stderr).toContain("symlink");
+			expect(readdirSync(temp)).toEqual([]);
+			expect(existsSync(log)).toBe(false);
 		});
 
 		it("runs codex inside the sandbox: a write to the home directory and a nested .git both fail", () => {

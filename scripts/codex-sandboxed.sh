@@ -46,6 +46,21 @@ regex_path() {
   printf '%s\n' "$r" | sed 's/[][\.*^$+?(){}|]/\\&/g'
 }
 
+check_codex_paths() {
+  local p
+  if [ -L "$codex_home" ]; then
+    echo "codex-sandboxed: Codex home is a symlink: $codex_home" >&2
+    exit 64
+  fi
+  codex_home=$(real "$codex_home")
+  for p in "${codex_names[@]}" auth.json; do
+    if [ -L "$codex_home/$p" ] || [ "$(real "$codex_home/$p")" != "$codex_home/$p" ]; then
+      echo "codex-sandboxed: Codex path is a symlink or resolves outside its home: $codex_home/$p" >&2
+      exit 64
+    fi
+  done
+}
+
 filters() {
   local kind=$1 p r; shift
   for p in "$@"; do
@@ -81,7 +96,7 @@ dynamic_rules() {
     printf '  (regex #"^%s/next-index-[0-9]+\\.lock$")\n' "$(regex_path "$admin")"
     printf '  (regex #"^%s/index\\.stash\\.[0-9]+(\\.lock)?$")\n' "$(regex_path "$admin")"
     for p in "${codex_names[@]}"; do
-      filters subpath "$codex/$p"
+      printf '  (regex #"^%s/%s/")\n' "$(regex_path "$codex")" "$p"
     done
     for p in history.jsonl session_index.jsonl models_cache.json installation_id version.json \
       cloud-requirements-cache.json .sqlite-maintenance.lock; do
@@ -102,6 +117,7 @@ dynamic_rules() {
   # file immune to the wrapper's rm -rf.
   printf '(deny file-write-create\n  (require-all\n    (subpath "%s")\n    (vnode-type SYMLINK)))\n' "$worktree"
   printf '(allow file-write-create\n  (require-all\n    (regex #"^%s/(.*/)?node_modules/")\n    (vnode-type SYMLINK)))\n' "$(regex_path "$worktree")"
+  printf '(deny file-write-create\n  (require-all\n    (subpath "%s")\n    (vnode-type SYMLINK)))\n' "$codex"
   echo "(deny file-write-flags)"
 
   echo "(deny file-write*"
@@ -175,6 +191,7 @@ if [ "${1:-}" = "--print-profile" ]; then
   tmpdir=$(real "${TMPDIR:-/tmp}")
   run=${4:-$tmpdir/codex-run}
   scratch=${3:-${CODEX_SANDBOX_SCRATCH:-$run}}
+  check_codex_paths
   cat "$(cd "$(dirname "$0")" && pwd -P)/codex-seatbelt.sb"
   dynamic_rules "$worktree" "$scratch" "$run"
   exit 0
@@ -195,6 +212,7 @@ log_dir=$(dirname "$log")
 [ -d "$log_dir" ] || { echo "codex-sandboxed: log directory not found: $log_dir" >&2; exit 64; }
 log="$(cd "$log_dir" && pwd -P)/$(basename "$log")"
 tmpdir=$(real "${TMPDIR:-/tmp}")
+check_codex_paths
 profile=$(mktemp "${tmpdir%/}/codex-seatbelt.XXXXXX")
 run=$(real "$(mktemp -d "${tmpdir%/}/codex-run.XXXXXX")")
 # The task runs in its own process group (job control), and the trap kills the group, so a background
