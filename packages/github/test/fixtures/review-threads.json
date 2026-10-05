@@ -20,11 +20,11 @@
 										"originalLine": 8,
 										"originalStartLine": 7,
 										"diffSide": "RIGHT",
+										"startDiffSide": "RIGHT",
 										"subjectType": "LINE",
 										"comments": {
 											"nodes": [
 												{
-													"databaseId": 2401,
 													"url": "https://github.com/melian-agent/example/pull/7#discussion_r2401",
 													"body": "_⚠️ Potential issue_ | _🟠 Major_\n\n**Guard the missing manager.**\n\n`user.manager` is optional, so `managerName` throws for a user without one.",
 													"createdAt": "2026-10-05T01:00:00Z",
@@ -42,11 +42,11 @@
 										"originalLine": 20,
 										"originalStartLine": null,
 										"diffSide": "RIGHT",
+										"startDiffSide": null,
 										"subjectType": "LINE",
 										"comments": {
 											"nodes": [
 												{
-													"databaseId": 2402,
 													"url": "https://github.com/melian-agent/example/pull/7#discussion_r2402",
 													"body": "Should this log the name too?",
 													"createdAt": "2026-10-05T01:05:00Z",
@@ -78,11 +78,11 @@
 										"originalLine": 4,
 										"originalStartLine": null,
 										"diffSide": "RIGHT",
+										"startDiffSide": null,
 										"subjectType": "LINE",
 										"comments": {
 											"nodes": [
 												{
-													"databaseId": 2403,
 													"url": "https://github.com/melian-agent/example/pull/7#discussion_r2403",
 													"body": "_🧹 Nitpick_ | _🔵 Trivial_\n\n**The heading names a command that no longer exists.**",
 													"createdAt": "2026-10-05T01:00:00Z",

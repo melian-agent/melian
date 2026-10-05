@@ -52,7 +52,6 @@ describe("ReviewThreadImporter", () => {
 				source: {
 					kind: "thread",
 					thread: "PRRT_kwDOAAABc0",
-					comment: "2401",
 					url: "https://github.com/melian-agent/example/pull/7#discussion_r2401",
 				},
 				postedAt: "2026-10-05T01:00:00Z",
@@ -155,14 +154,23 @@ describe("ReviewThreadImporter", () => {
 		expect(second.findings.map((finding) => finding.id)).toEqual(first.findings.map((finding) => finding.id));
 	});
 
-	it("keeps a file-level thread without lines, and marks one on the diff's left side as the base's", async () => {
+	it("keeps a file-level thread without lines, marks the left side's as the base's, and skips a deleted author's", async () => {
 		const [page] = recording.graphql!.MelianReviewThreads! as {
-			data: { repository: { pullRequest: { reviewThreads: { nodes: Record<string, unknown>[] } } } };
+			data: {
+				repository: {
+					pullRequest: {
+						reviewThreads: { nodes: (Record<string, unknown> & { comments: { nodes: object[] } })[] };
+					};
+				};
+			};
 		}[];
 		const [thread] = page!.data.repository.pullRequest.reviewThreads.nodes;
 		const nodes = [
 			{ ...thread, id: "PRRT_file", subjectType: "FILE", line: null, startLine: null, originalLine: null },
-			{ ...thread, id: "PRRT_left", diffSide: "LEFT" },
+			{ ...thread, id: "PRRT_left", diffSide: "LEFT", startDiffSide: "LEFT" },
+			// A span that starts on the base side and ends at head names lines of two files, so only its end is kept.
+			{ ...thread, id: "PRRT_across", startDiffSide: "LEFT" },
+			{ ...thread, id: "PRRT_ghost", comments: { nodes: [{ ...thread!.comments.nodes[0], author: null }] } },
 		];
 		const changed = structuredClone(page!);
 		changed.data.repository.pullRequest.reviewThreads = {
@@ -174,11 +182,18 @@ describe("ReviewThreadImporter", () => {
 
 		const imported = await importer(undefined, answers).opened.import();
 
-		const [file, left] = imported.findings.map((finding) => finding.toJSON());
+		const [file, left, across] = imported.findings.map((finding) => finding.toJSON());
+		expect(imported.findings).toHaveLength(3);
 		expect(file).not.toHaveProperty("line");
 		expect(file).not.toHaveProperty("outdated");
 		expect(left).toMatchObject({ line: 7, endLine: 8, revision: "base" });
-		expect(imported.findings.every((finding) => finding.site() === undefined)).toBe(true);
+		expect(across).toMatchObject({ line: 8, endLine: 8 });
+		expect(across).not.toHaveProperty("revision");
+		expect(imported.findings.map((finding) => finding.site())).toEqual([
+			undefined,
+			undefined,
+			{ file: "src/user.ts", start: 8, end: 8 },
+		]);
 	});
 
 	it("says GitHub has no such pull request, and refuses a login GitHub could not hold", async () => {

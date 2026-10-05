@@ -23,9 +23,10 @@ const threadsQuery = `query MelianReviewThreads($owner: String!, $name: String!,
           originalLine
           originalStartLine
           diffSide
+          startDiffSide
           subjectType
           comments(first: 1) {
-            nodes { databaseId url body createdAt author { __typename login } }
+            nodes { url body createdAt author { __typename login } }
           }
         }
       }
@@ -56,9 +57,10 @@ type ThreadNode = {
 	originalLine: number | null;
 	originalStartLine: number | null;
 	diffSide: "LEFT" | "RIGHT";
+	startDiffSide: "LEFT" | "RIGHT" | null;
 	subjectType?: "LINE" | "FILE";
 	comments: {
-		nodes: { databaseId: number | null; url: string; body: string; createdAt: string; author: Author }[];
+		nodes: { url: string; body: string; createdAt: string; author: Author }[];
 	};
 };
 
@@ -197,7 +199,9 @@ export class ReviewThreadImporter implements ExternalImporter {
 		// A file-level thread has no line; a thread GitHub no longer places keeps its original lines, marked outdated.
 		const placed = thread.line !== null;
 		const end = thread.subjectType === "FILE" ? null : placed ? thread.line : thread.originalLine;
-		const start = placed ? thread.startLine : thread.originalStartLine;
+		// A start on the other side of the diff from the end names lines of the other file, so the end stands alone.
+		const sameSide = thread.startDiffSide === null || thread.startDiffSide === thread.diffSide;
+		const start = !sameSide ? null : placed ? thread.startLine : thread.originalStartLine;
 		const reviewer = reviewerOf(comment.author!);
 		// CodeRabbit opens with a line naming its category and severity, then its headline on the next line that is not
 		// blank. Melian selects the lines and parses no markdown.
@@ -216,7 +220,6 @@ export class ReviewThreadImporter implements ExternalImporter {
 			source: {
 				kind: "thread",
 				thread: thread.id,
-				comment: String(comment.databaseId ?? thread.id),
 				url: comment.url,
 			},
 			postedAt: comment.createdAt,

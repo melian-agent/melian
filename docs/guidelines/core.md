@@ -444,7 +444,7 @@ type StoredExternalFinding = {
 	body: string; // at most 65,536 characters
 	severity?: string; // the reviewer's own word, such as "high" or "P1"
 	source:
-		| { kind: "thread"; thread: string; comment: string; url: string } // GitHub's node ID, the first comment's ID
+		| { kind: "thread"; thread: string; url: string } // GitHub's node ID, the first comment's URL
 		| { kind: "file"; path: string; position: number; ref?: string };
 	postedAt?: string;
 	resolved?: boolean;

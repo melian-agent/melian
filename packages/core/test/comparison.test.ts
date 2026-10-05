@@ -51,7 +51,6 @@ describe("ExternalFinding", () => {
 		const source = {
 			kind: "thread",
 			thread: "PRRT_1",
-			comment: "11",
 			url: "https://github.com/o/r/pull/1#r11",
 		} as const;
 		const first = external({ reviewer: { name: "coderabbit", login: "coderabbitai[bot]" }, source } as const);
@@ -286,7 +285,7 @@ describe("Comparison matching", () => {
 		const rabbit = external({
 			reviewer: { name: "coderabbit", login: "coderabbitai[bot]" },
 			line: 13,
-			source: { kind: "thread", thread: "PRRT_9", comment: "9", url: "https://github.com/o/r/pull/1#r9" },
+			source: { kind: "thread", thread: "PRRT_9", url: "https://github.com/o/r/pull/1#r9" },
 		});
 		const comparison = compared([codex, rabbit], [finding]);
 		expect(comparison.matched()).toHaveLength(1);
@@ -420,7 +419,7 @@ describe("Comparison matching", () => {
 
 	it("keeps a finding another source still holds when one source withdraws it", () => {
 		const shared = external({
-			source: { kind: "thread", thread: "PRRT_1", comment: "1", url: "https://github.com/o/r/pull/1#r1" },
+			source: { kind: "thread", thread: "PRRT_1", url: "https://github.com/o/r/pull/1#r1" },
 		});
 		const comparison = compared([], [melian()]);
 		comparison.import("github:coderabbitai[bot]", { findings: [shared], skippedBodies: 0 }, "t1");

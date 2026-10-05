@@ -44,11 +44,10 @@ export const externalReviewerSchema = Type.Object(
 );
 
 /**
- * Where an external finding was read: a review thread, by GitHub's node ID for the thread, the database ID of its first
- * comment, and that comment's URL; or a file, by its path and the finding's position in it, or the `ref` the file gave.
+ * Where an external finding was read: a review thread, by GitHub's node ID for the thread and its first comment's URL; or a file, by its path and the finding's position in it, or the `ref` the file gave.
  */
 export const externalSourceSchema = Type.Union([
-	Type.Object({ kind: Type.Literal("thread"), thread: text, comment: text, url: text }, strict),
+	Type.Object({ kind: Type.Literal("thread"), thread: text, url: text }, strict),
 	Type.Object({ kind: Type.Literal("file"), path: text, position: count, ref: Type.Optional(text) }, strict),
 ]);
 
