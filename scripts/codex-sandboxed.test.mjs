@@ -554,6 +554,7 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 			for (const tree of trees) {
 				const parent = join(tree, "env-parent");
 				const file = join(directory, ".env");
+				const treeExisted = existsSync(tree);
 				mkdirSync(parent, { recursive: true });
 				writeFileSync(join(parent, "secret"), "SYNTHETIC_TEST_SECRET=1\n");
 				symlinkSync(relative(directory, join(parent, "secret")), file);
@@ -564,6 +565,7 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 				} finally {
 					rmSync(file);
 					rmSync(parent, { recursive: true, force: true });
+					if (!treeExisted) rmSync(tree, { recursive: true, force: true });
 				}
 			}
 		}
@@ -898,12 +900,17 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 		});
 
 		it("cannot create a nested repository or .git file in a subdirectory of the worktree", () => {
-			sh(linked, "mkdir -p sub");
-			expect(failure(() => sh(linked, "git -C sub init -q")).status).not.toBe(0);
-			expect(failure(() => sh(linked, "echo x > sub/.git")).status).not.toBe(0);
-			expect(failure(() => sh(linked, "mkdir -p deep/er/.git")).status).not.toBe(0);
-			expect(existsSync(join(linked, "sub", ".git"))).toBe(false);
-			sh(linked, "echo ok > sub/file");
+			try {
+				sh(linked, "mkdir -p sub");
+				expect(failure(() => sh(linked, "git -C sub init -q")).status).not.toBe(0);
+				expect(failure(() => sh(linked, "echo x > sub/.git")).status).not.toBe(0);
+				expect(failure(() => sh(linked, "mkdir -p deep/er/.git")).status).not.toBe(0);
+				expect(existsSync(join(linked, "sub", ".git"))).toBe(false);
+				sh(linked, "echo ok > sub/file");
+			} finally {
+				rmSync(join(linked, "sub"), { recursive: true, force: true });
+				rmSync(join(linked, "deep"), { recursive: true, force: true });
+			}
 		});
 
 		it("cannot plant a repository in scratch, the object store, the refs, or Codex's directories", () => {
@@ -916,30 +923,43 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 				`echo x > '${main}/.git/objects/x/HEAD'`,
 				`mkdir -p '${home}/.codex/cache/x/.git'`,
 			];
-			for (const command of planted) expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
-			for (const path of [join(scratch, "x", ".git"), join(scratch, "x", "HEAD")])
-				expect(existsSync(path)).toBe(false);
+			try {
+				for (const command of planted) expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
+				for (const path of [join(scratch, "x", ".git"), join(scratch, "x", "HEAD")])
+					expect(existsSync(path)).toBe(false);
+			} finally {
+				for (const path of [scratch, join(main, ".git", "objects"), join(home, ".codex", "cache")])
+					rmSync(join(path, "x"), { recursive: true, force: true });
+			}
 			sh(linked, "echo z > h && git add h && git commit -q -m after-plant");
 			expect(git(linked, "log", "-1", "--format=%s").toString().trim()).toBe("after-plant");
 		});
 
 		it("cannot create a .git in another case, nested or beside the pointer file", () => {
-			sh(linked, "mkdir -p casesub");
-			expect(failure(() => sh(linked, "mkdir -p casesub/.GIT")).status).not.toBe(0);
-			expect(failure(() => sh(linked, "echo x > casesub/.Git")).status).not.toBe(0);
-			expect(failure(() => sh(linked, "echo x > .GiT")).status).not.toBe(0);
-			expect(readdirSync(join(linked, "casesub"))).toEqual([]);
-			expect(existsSync(join(linked, ".git"))).toBe(true);
+			try {
+				sh(linked, "mkdir -p casesub");
+				expect(failure(() => sh(linked, "mkdir -p casesub/.GIT")).status).not.toBe(0);
+				expect(failure(() => sh(linked, "echo x > casesub/.Git")).status).not.toBe(0);
+				expect(failure(() => sh(linked, "echo x > .GiT")).status).not.toBe(0);
+				expect(readdirSync(join(linked, "casesub"))).toEqual([]);
+				expect(existsSync(join(linked, ".git"))).toBe(true);
+			} finally {
+				rmSync(join(linked, "casesub"), { recursive: true, force: true });
+			}
 		});
 
 		it("cannot build a bare repository, which needs a HEAD file in any case", () => {
-			sh(linked, "mkdir -p bare/objects bare/refs");
-			expect(failure(() => sh(linked, "echo 'ref: refs/heads/main' > bare/HEAD")).status).not.toBe(0);
-			expect(failure(() => sh(linked, "echo 'ref: refs/heads/main' > bare/head")).status).not.toBe(0);
-			expect(failure(() => sh(linked, "echo 'ref: refs/heads/main' > bare/objects/Head")).status).not.toBe(0);
-			expect(existsSync(join(linked, "bare", "HEAD"))).toBe(false);
-			const gitDir = git(join(linked, "bare"), "rev-parse", "--absolute-git-dir").toString().trim();
-			expect(realpathSync(gitDir)).toBe(realpathSync(admin));
+			try {
+				sh(linked, "mkdir -p bare/objects bare/refs");
+				expect(failure(() => sh(linked, "echo 'ref: refs/heads/main' > bare/HEAD")).status).not.toBe(0);
+				expect(failure(() => sh(linked, "echo 'ref: refs/heads/main' > bare/head")).status).not.toBe(0);
+				expect(failure(() => sh(linked, "echo 'ref: refs/heads/main' > bare/objects/Head")).status).not.toBe(0);
+				expect(existsSync(join(linked, "bare", "HEAD"))).toBe(false);
+				const gitDir = git(join(linked, "bare"), "rev-parse", "--absolute-git-dir").toString().trim();
+				expect(realpathSync(gitDir)).toBe(realpathSync(admin));
+			} finally {
+				rmSync(join(linked, "bare"), { recursive: true, force: true });
+			}
 		});
 
 		it("can create, rename, and remove a directory named head, though no file", () => {
@@ -972,7 +992,7 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 		it("cannot plant a repository through a commondir file or a HEAD file under refs, logs, or objects", () => {
 			sh(linked, "mkdir -p sub");
 			const common = `${main}/.git`;
-			for (const path of [
+			const paths = [
 				`${common}/refs/x/commondir`,
 				`${common}/refs/x/HEAD`,
 				`${common}/objects/x/HEAD`,
@@ -981,12 +1001,26 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 				`${common}/refs/remotes/x/objects/f`,
 				`${common}/logs/refs/remotes/x/objects/f`,
 				`${linked}/sub/commondir`,
-			])
-				expect(
-					failure(() => sh(linked, `mkdir -p '${join(path, "..")}' && echo x > '${path}'`)).status,
-					path,
-				).not.toBe(0);
-			expect(existsSync(join(linked, "sub", "commondir"))).toBe(false);
+			];
+			try {
+				for (const path of paths)
+					expect(
+						failure(() => sh(linked, `mkdir -p '${join(path, "..")}' && echo x > '${path}'`)).status,
+						path,
+					).not.toBe(0);
+				expect(existsSync(join(linked, "sub", "commondir"))).toBe(false);
+			} finally {
+				for (const path of [
+					`${common}/refs/x`,
+					`${common}/objects/x`,
+					`${common}/logs/x`,
+					`${admin}/logs/x`,
+					`${common}/refs/remotes/x`,
+					`${common}/logs/refs/remotes/x`,
+					`${linked}/sub`,
+				])
+					rmSync(path, { recursive: true, force: true });
+			}
 			git(linked, "branch", "objects/y");
 			sh(linked, "git branch objects/x && git branch -d objects/x");
 		});
@@ -1128,21 +1162,25 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 				"git checkout -q -b squash-target HEAD~2 && git merge --squash topic-sq && git commit -q -m squashed",
 			);
 			expect(existsSync(join(linked, "sq2"))).toBe(true);
+			rmSync(join(admin, "sequencer"), { recursive: true, force: true });
 			sh(linked, `git checkout -q -b pick-target HEAD~1 && git cherry-pick ${one} ${two}`);
 			expect(git(linked, "log", "-2", "--format=%s").toString().trim().split("\n")).toEqual(["s2", "s1"]);
 		});
 
 		it("cannot plant a repository in the sequencer directory, whose head file stays writable for git", () => {
-			for (const command of [
-				`mkdir -p '${admin}/sequencer/x/.git'`,
-				`mkdir -p '${admin}/sequencer/objects'`,
-				`mkdir -p '${admin}/sequencer/refs'`,
-			])
-				expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
-			expect(existsSync(join(admin, "sequencer", "x", ".git"))).toBe(false);
-			expect(existsSync(join(admin, "sequencer", "objects"))).toBe(false);
-			expect(existsSync(join(admin, "sequencer", "refs"))).toBe(false);
-			rmSync(join(admin, "sequencer"), { recursive: true, force: true });
+			try {
+				for (const command of [
+					`mkdir -p '${admin}/sequencer/x/.git'`,
+					`mkdir -p '${admin}/sequencer/objects'`,
+					`mkdir -p '${admin}/sequencer/refs'`,
+				])
+					expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
+				expect(existsSync(join(admin, "sequencer", "x", ".git"))).toBe(false);
+				expect(existsSync(join(admin, "sequencer", "objects"))).toBe(false);
+				expect(existsSync(join(admin, "sequencer", "refs"))).toBe(false);
+			} finally {
+				rmSync(join(admin, "sequencer"), { recursive: true, force: true });
+			}
 			sh(linked, "git checkout -q -b seq-target topic-sq~2 && git cherry-pick topic-sq~1 topic-sq");
 			expect(git(linked, "log", "-2", "--format=%s").toString().trim().split("\n")).toEqual(["s2", "s1"]);
 		});
