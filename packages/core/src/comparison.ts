@@ -114,7 +114,7 @@ const fileFindingSchema = Type.Object(
 		file: Type.Optional(text),
 		line: Type.Optional(line),
 		endLine: Type.Optional(line),
-		title: Type.String({ minLength: 1, maxLength: maxExternalTitleLength }),
+		title: text,
 		body: Type.String({ maxLength: maxExternalBodyLength }),
 		severity: Type.Optional(text),
 		postedAt: Type.Optional(text),

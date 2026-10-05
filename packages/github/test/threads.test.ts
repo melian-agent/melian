@@ -101,6 +101,16 @@ describe("ReviewThreadImporter", () => {
 		expect(imported.skippedBodies).toBe(1);
 	});
 
+	it("knows CodeRabbit by its bare login too, which GraphQL spells without [bot]", async () => {
+		const { opened } = importer("CodeRabbitAI");
+
+		const imported = await opened.import();
+
+		expect(imported.findings).toHaveLength(2);
+		expect(imported.findings[0]!.reviewer).toEqual({ name: "coderabbit", login: "CodeRabbitAI" });
+		expect(imported.skippedBodies).toBe(1);
+	});
+
 	it("gives a thread the same ID on every import, so importing again updates it", async () => {
 		const first = await importer().opened.import();
 		const second = await importer().opened.import();

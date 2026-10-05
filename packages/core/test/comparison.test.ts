@@ -142,6 +142,14 @@ describe("ExternalFinding", () => {
 		});
 	});
 
+	it("cuts a file's long title as it cuts a thread's", () => {
+		const [finding] = ExternalFinding.fromFile(
+			{ reviewer: { name: "human" }, findings: [{ title: "x".repeat(500), body: "" }] },
+			"x.json",
+		);
+		expect([...finding!.title]).toHaveLength(maxExternalTitleLength);
+	});
+
 	it("refuses a file in neither shape, naming the file and what is wrong", () => {
 		expect(() => ExternalFinding.fromFile({ findings: [] }, "x.json")).toThrow(
 			/x\.json is not an external-finding file: it .*reviewer/,

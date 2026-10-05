@@ -89,12 +89,13 @@ export interface ReviewThreadImporterOptions {
 	readonly fetch?: typeof fetch;
 }
 
-// GraphQL names a bot by its bare login, `coderabbitai`, where REST and the web say `coderabbitai[bot]`. Logins are
-// case-insensitive.
-function restLogin(author: Author): string | undefined {
-	if (author === null) return undefined;
-	const login = author.__typename === "Bot" && !author.login.endsWith("[bot]") ? `${author.login}[bot]` : author.login;
-	return login.toLowerCase();
+// GraphQL names a bot by its bare login, `coderabbitai`, where REST and the web say `coderabbitai[bot]`, so a bot's
+// comment is the login's under either spelling. Logins are case-insensitive.
+function wrote(author: Author, login: string): boolean {
+	if (author === null) return false;
+	const wanted = login.toLowerCase();
+	const bare = author.login.toLowerCase();
+	return bare === wanted || (author.__typename === "Bot" && `${bare.replace(/\[bot\]$/, "")}[bot]` === wanted);
 }
 
 function statusOf(error: unknown): number | undefined {
@@ -125,7 +126,7 @@ export class ReviewThreadImporter implements ExternalImporter {
 		this.pullRequest = options.pullRequest;
 		this.login = options.login;
 		this.source = `github:${options.login}`;
-		const name = options.login.toLowerCase() === coderabbitLogin ? "coderabbit" : "human";
+		const name = options.login.toLowerCase().replace(/\[bot\]$/, "") === "coderabbitai" ? "coderabbit" : "human";
 		this.reviewer = { name, login: options.login };
 		this.octokit = new Octokit({
 			auth: options.token,
@@ -153,7 +154,6 @@ export class ReviewThreadImporter implements ExternalImporter {
 	 * when GitHub refuses or the pull request does not exist.
 	 */
 	async import(): Promise<ExternalImport & { readonly head: string }> {
-		const wanted = this.login.toLowerCase();
 		let head: string | undefined;
 		const findings: ExternalFinding[] = [];
 		await this.pages<ThreadsPage>(threadsQuery, (page) => {
@@ -161,7 +161,7 @@ export class ReviewThreadImporter implements ExternalImporter {
 			head = pullRequest.headRefOid;
 			for (const thread of pullRequest.reviewThreads.nodes) {
 				const [first] = thread.comments.nodes;
-				if (first !== undefined && restLogin(first.author) === wanted) findings.push(this.finding(thread, first));
+				if (first !== undefined && wrote(first.author, this.login)) findings.push(this.finding(thread, first));
 			}
 			return pullRequest.reviewThreads.pageInfo;
 		});
@@ -169,7 +169,7 @@ export class ReviewThreadImporter implements ExternalImporter {
 		await this.pages<ReviewsPage>(reviewsQuery, (page) => {
 			const { reviews } = this.found(page.repository?.pullRequest);
 			for (const review of reviews.nodes) {
-				if (restLogin(review.author) === wanted && review.body.trim() !== "") skippedBodies++;
+				if (wrote(review.author, this.login) && review.body.trim() !== "") skippedBodies++;
 			}
 			return reviews.pageInfo;
 		});
