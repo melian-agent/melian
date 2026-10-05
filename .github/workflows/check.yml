@@ -41,7 +41,9 @@ jobs:
           cp .npmrc "$RUNNER_TEMP/project/"
           cd "$RUNNER_TEMP/project"
           npm init -y > /dev/null
-          npm install --ignore-scripts "$RUNNER_TEMP"/tarballs/melian-agent-{cli,core,pipeline,github}-*.tgz
+          # Every tarball the pack made, not a list: a list misses a workspace package the CLI comes to depend on, and npm
+          # then asks the registry for it.
+          npm install --ignore-scripts "$RUNNER_TEMP"/tarballs/*.tgz
           # An empty stderr proves src/warnings.ts still drops Node 22's SQLite warning in the built output.
           node_modules/.bin/melian --help > "$RUNNER_TEMP/help.out" 2> "$RUNNER_TEMP/help.err"
           grep -q '^Usage: melian ' "$RUNNER_TEMP/help.out"

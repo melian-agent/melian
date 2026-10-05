@@ -349,6 +349,28 @@ describe("the findings document", () => {
 		const fromStyle = (severity: FindingInput["severity"]) =>
 			Finding.create({ ...input, severity, resolution: "advisory", source: style });
 
+		it("holds a versionless producer to its IDs across every version of its check", async () => {
+			const { harness, root } = await open(createMemoryStorage());
+			const versionless = { check: security.check };
+			const older = Finding.create({ ...input, rule: "older-eval", source: versionless });
+			await root.commit(async (tx) => {
+				await upsertFinding(tx, root.id, older, "rev1");
+				await upsertFinding(tx, root.id, evalFinding, "rev1");
+			}, context);
+
+			for (const finding of [older, evalFinding]) {
+				const read = await readFindings(harness, root.id, "rev1", context, {
+					producers: [{ ...versionless, ids: [finding.properties.id] }],
+				});
+				expect(read).toEqual([seen(finding)]);
+			}
+			expect(
+				await readFindings(harness, root.id, "rev1", context, {
+					producers: [{ ...versionless, ids: [] }, security],
+				}),
+			).toEqual([seen(evalFinding)]);
+		});
+
 		it("merges two lenses' sightings of one ID at one head, the higher severity winning", async () => {
 			const { harness, root } = await open(createMemoryStorage());
 			await root.commit(async (tx) => {

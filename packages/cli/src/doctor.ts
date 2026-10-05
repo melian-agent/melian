@@ -16,7 +16,7 @@ import {
 import { parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
 import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSource } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
-import { reviewModels } from "./models.ts";
+import { decisionProviderRefusal, reviewModels } from "./models.ts";
 import { git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
 
 type Check = { readonly name: string; readonly state: "ok" | "warn" | "fail"; readonly detail: string };
@@ -115,7 +115,11 @@ async function planChecks(cwd: string, env: NodeJS.ProcessEnv, secrets: LoadedSe
 		const checks = Object.values(loaded.config.stages).flatMap((stage) => checksOfTier(loaded.config, stage));
 		const lenses = await Lens.load(root, source, ["."]);
 		const { plan } = await reviewModels({}, loaded, lenses, { checks, credentials: secrets.credentials });
-		return plan.lines().map(({ state, text }) => ({ name: "plan", state, detail: text }));
+		const refusal = decisionProviderRefusal(loaded.config);
+		return [
+			...(refusal === undefined ? [] : [{ name: "decisions", state: "fail", detail: refusal } satisfies Check]),
+			...plan.lines().map(({ state, text }): Check => ({ name: "plan", state, detail: text })),
+		];
 	} catch (error) {
 		return [{ name: "plan", state: "warn", detail: error instanceof Error ? error.message : String(error) }];
 	}

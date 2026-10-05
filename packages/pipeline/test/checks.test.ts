@@ -309,11 +309,12 @@ describe("runChecks feeding reviewChangeset", () => {
 			});
 		};
 
-		// The default fast tier names decisions.fast, an allowed skip while no decision provider is configured.
+		// The default fast tier names decisions.fast, an allowed skip while no decision provider is configured. The review
+		// records it, as it records lenses, in place of the check runner's record.
 		const decisions = {
 			name: "decisions.fast",
 			status: "skipped",
-			reason: "decision-model questions are not built yet",
+			reason: "no decision provider is configured",
 		};
 		expect((await review(clean)).verdict).toMatchObject({ status: "passed", blocking: false, notRun: [decisions] });
 

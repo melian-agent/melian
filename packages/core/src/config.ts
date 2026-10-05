@@ -28,6 +28,12 @@ export const severitySchema = Type.Union([
 ]);
 /** The JSON Schema of a {@link LensTier}. */
 export const lensTierSchema = Type.Union([Type.Literal("light"), Type.Literal("medium"), Type.Literal("heavy")]);
+const scrutinyLevel = Type.Union([Type.Literal("quick"), Type.Literal("careful"), Type.Literal("deep")]);
+// A floor of `skip` lets triage switch the lens off; a ceiling never does. Each end is optional in one file.
+const levelBand = Type.Object(
+	{ floor: Type.Optional(Type.Union([Type.Literal("skip"), scrutinyLevel])), ceiling: Type.Optional(scrutinyLevel) },
+	strict,
+);
 // `accept`, `unavailable`, and `acceptOverridden` are policy: only a committed melian.yaml may set them.
 const modelRoute = Type.Object(
 	{
@@ -115,6 +121,7 @@ export const melianYamlSchema = Type.Object(
 						enabled: Type.Optional(Type.Boolean()),
 						tier: Type.Optional(lensTierSchema),
 						paths: Type.Optional(Type.Array(name)),
+						level: Type.Optional(levelBand),
 					},
 					strict,
 				),
@@ -188,6 +195,7 @@ export const melianYamlSchema = Type.Object(
 		),
 		ruleAliases: Type.Optional(Type.Record(Type.String(), ruleAliasSchema)),
 		checks: Type.Optional(Type.Object({ allowSkip: Type.Optional(Type.Array(name)) }, strict)),
+		triage: Type.Optional(Type.Object({ escalateAt: Type.Optional(severitySchema) }, strict)),
 	},
 	strict,
 );
@@ -226,11 +234,18 @@ export type RuleAlias = readonly string[] | { readonly rules: readonly string[];
  */
 export type ModelRoute = Static<typeof modelRoute>;
 
+/**
+ * The levels triage may choose for a lens on one path: at least `floor` and at most `ceiling`, `quick` and `deep` when
+ * left out. Only a floor of `skip` lets triage switch the lens off.
+ */
+export type LevelBandSettings = Static<typeof levelBand>;
+
 /** Per-lens settings. `paths` are repository-relative globs once loaded. */
 export interface LensSettings {
 	readonly enabled?: boolean;
 	readonly tier?: LensTier;
 	readonly paths?: readonly string[];
+	readonly level?: LevelBandSettings;
 }
 
 /**
@@ -339,6 +354,8 @@ export interface MelianConfig {
 	readonly ruleAliases: Readonly<Record<string, RuleAlias>>;
 	/** `allowSkip` names checks a tier may skip without making the review not reviewed. */
 	readonly checks: { readonly allowSkip: readonly string[] };
+	/** `escalateAt`: a lens at `quick` that reports a finding this severe or worse runs again at the next level. */
+	readonly triage: { readonly escalateAt: Severity };
 }
 
 /** The built-in defaults every `melian.yaml` layers onto. */
@@ -375,6 +392,7 @@ export const defaultConfig: MelianConfig = {
 	decisions: { thresholds: {} },
 	ruleAliases: {},
 	checks: { allowSkip: [] },
+	triage: { escalateAt: "P1" },
 };
 
 /**
@@ -594,7 +612,9 @@ function validateRedacted(site: Site, value: unknown, schema: TSchema, document:
 function parseLayer(text: string, site: Site, directory: string): MelianYaml {
 	const value = parseYaml(text, site, melianYamlSchema);
 	checkPatterns(site, value as MelianYaml);
+	checkLensNames(site, value as MelianYaml);
 	checkRequire(site, value as MelianYaml);
+	checkRootOnly(site, value as MelianYaml);
 	if (site.preference === true) checkPreference(site, value as MelianYaml);
 	else if (site.file !== melianPaths.config) checkNested(site, value as MelianYaml);
 	return anchorPaths(site, directory, value as MelianYaml);
@@ -630,6 +650,18 @@ function checkPreference(site: Site, layer: MelianYaml): void {
 	}
 }
 
+// A review reads `triage` from the root's configuration alone, so a nested file setting it would be silently ignored. A
+// preference file layers over the root's, so it may.
+function checkRootOnly(site: Site, layer: MelianYaml): void {
+	if (layer.triage === undefined || site.preference === true || site.file === melianPaths.config) return;
+	throw configError(
+		"invalidValue",
+		site,
+		`"triage" applies to the whole review, so only the root melian.yaml may set it; move it there`,
+		{ key: "triage" },
+	);
+}
+
 // Each `require` glob must be matched on its own, so an exclusion there would always count as missing.
 function checkRequire(site: Site, layer: MelianYaml): void {
 	for (const [rule, { require }] of Object.entries(layer.guardrails?.["required-files"]?.rules ?? {})) {
@@ -642,6 +674,19 @@ function checkRequire(site: Site, layer: MelianYaml): void {
 			`"${key}" has ${negated}; each require glob must be touched, so it cannot exclude. Narrow the glob instead`,
 			{ key },
 		);
+	}
+}
+
+// Triage's question ID is the lens name, and the decision tool's schema bounds an ID; the schema's Record does not
+// check key length.
+const maxLensName = 128;
+
+function checkLensNames(site: Site, layer: MelianYaml): void {
+	for (const name of Object.keys(layer.lenses ?? {})) {
+		if (name.length <= maxLensName) continue;
+		throw configError("invalidValue", site, `"lenses" names a lens of more than ${maxLensName} characters`, {
+			key: "lenses",
+		});
 	}
 }
 

@@ -77,7 +77,7 @@ Three kinds of exit `2` are not a verdict on the code:
   melian review origin/main...HEAD --rerun
   ```
 
-  Without `--rerun`, `melian review` of the same base and head reuses the stored check and lens results. A failed walkthrough may run the summariser again, up to two finished or replaced attempts per revision. A pending walkthrough resumes without spending another attempt.
+  Without `--rerun`, `melian review` of the same base and head reuses the stored check and lens results. A failed walkthrough may run the summariser again, up to two finished or replaced attempts per revision. A pending walkthrough resumes without spending another attempt. With `--rerun`, Melian also asks triage again when its decision did not complete, and never when it did.
 
 ## See a stored review again
 

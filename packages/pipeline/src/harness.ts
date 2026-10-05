@@ -31,6 +31,7 @@ import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite
 
 export type { Context } from "@earendil-works/chord";
 export {
+	type Api,
 	type AssistantMessage,
 	type AuthContext,
 	type AuthOperationOptions,
@@ -39,6 +40,7 @@ export {
 	type CredentialStore,
 	defaultProviderAuthContext,
 	type Message,
+	type Model,
 	type Models,
 	type ToolCall,
 	Type,

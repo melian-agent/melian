@@ -44,6 +44,7 @@ export {
 	type GuardrailSettings,
 	type LensSettings,
 	type LensTier,
+	type LevelBandSettings,
 	type LoadedConfig,
 	lensTierSchema,
 	loadConfig,
@@ -68,6 +69,20 @@ export {
 	severitySchema,
 	type TscSettings,
 } from "./config.ts";
+export {
+	type ChoiceAnswer,
+	type ChoiceQuestion,
+	type DecidedAnswer,
+	type Decider,
+	type DeciderAnswer,
+	Decision,
+	type DecisionRequest,
+	type QuestionSet,
+	questionFingerprint,
+	type StoredDecision,
+	type TextModel,
+	type ToolRequest,
+} from "./decider.ts";
 export type { ChangedFile, FileKind, FileStatus, Hunk } from "./diff.ts";
 export {
 	ChangesetError,
@@ -76,6 +91,8 @@ export {
 	type CheckErrorCode,
 	ConfigError,
 	type ConfigErrorCode,
+	DecisionError,
+	type DecisionErrorCode,
 	FindingError,
 	type FindingErrorCode,
 	LedgerRefusal,
@@ -256,6 +273,15 @@ export {
 	toolLogSchema,
 	toolResultSchema,
 } from "./static.ts";
+export {
+	type EscalationEvidence,
+	EscalationRule,
+	type EscalationTrigger,
+	LevelBand,
+	type TriageChoice,
+	triageChoices,
+	triageQuestionSet,
+} from "./triage.ts";
 
 export const packageName = "@melian-agent/core";
 
