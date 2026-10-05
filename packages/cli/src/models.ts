@@ -75,7 +75,6 @@ export function triageProviders(plan: ReviewPlan): string[] {
 	});
 }
 
-/** Triage's wiring for one review: the decider, or why there is none, and what each of the harness and the review takes from it. */
 export class Triage {
 	readonly decider: Decider | undefined;
 	readonly skipped: string | undefined;
@@ -102,12 +101,10 @@ export class Triage {
 		return "decider" in chosen ? new Triage(chosen.decider, undefined) : new Triage(undefined, chosen.skipped);
 	}
 
-	/** What `openReviewHarness` takes: the decider, so its decision task is installed. */
 	harnessOptions(): { readonly decider?: Decider } {
 		return this.decider === undefined ? {} : { decider: this.decider };
 	}
 
-	/** What `reviewChangeset` takes: the decider, or why triage did not run, for each lens's record. */
 	reviewOptions(): { readonly decider?: Decider; readonly triageSkipped?: string } {
 		return {
 			...this.harnessOptions(),
