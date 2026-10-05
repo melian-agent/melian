@@ -156,7 +156,15 @@ class StandardsLoader implements SourceReader {
 	isIgnored(path: string): Promise<boolean> {
 		let ignored = this.ignored.get(path);
 		if (ignored === undefined) {
-			ignored = this.reader.isIgnored(path);
+			ignored = this.reader.isIgnored(path).catch((error: unknown) => {
+				if (
+					error instanceof SourceError &&
+					error.code === "unreadable" &&
+					/beyond a symbolic link/.test(error.message)
+				)
+					return true;
+				throw error;
+			});
 			this.ignored.set(path, ignored);
 		}
 		return ignored;

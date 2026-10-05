@@ -123,6 +123,21 @@ describe.each(sourceKinds)("loadStandards from the %s", (kind) => {
 		expect(sections.map(({ path }) => path)).not.toContain("packages/app/CLAUDE.md");
 	});
 
+	it("skips imports beneath a symlinked directory without stopping the review", async () => {
+		writeFiles(repo, {
+			"real-docs/rules.md": "SYMLINK_DIRECTORY_RULE",
+			"AGENTS.md": "# Rules\n@linked-docs/rules.md\n",
+		});
+		symlinkSync("real-docs", join(repo, "linked-docs"));
+		const source = sourceFor(repo, kind);
+		const reader = await sourceModule.openSource(repo, source);
+		const read = vi.spyOn(reader, "readText");
+		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
+		const sections = await loadStandards(repo, source, "a.ts");
+		expect(sections.map(({ content }) => content).join("\n")).not.toContain("SYMLINK_DIRECTORY_RULE");
+		expect(read.mock.calls.some(([path]) => path === "linked-docs/rules.md")).toBe(false);
+	});
+
 	it("never follows a symlink out of the repository", async () => {
 		symlinkSync("../../private.md", join(repo, ".melian/standards/leak.md"));
 		symlinkSync("../private.md", join(repo, "docs/leak.md"));
