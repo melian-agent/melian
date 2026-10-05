@@ -1926,6 +1926,37 @@ describe("reviewChangeset", () => {
 		await expect(review({ config: unknown })).rejects.toMatchObject({ code: "noAvailableModel" });
 	});
 
+	it("chooses an OAuth-only route authenticated by a named command bearer", async () => {
+		await harness.close(context);
+		fake = createFakeModels({
+			provider: "fake-oauth",
+			auth: "oauth",
+			models: [{ id: "orchestrator" }, { id: "heavy" }],
+			authPath: join(repo, "missing-auth.json"),
+			credentials: [
+				{
+					name: "login",
+					provider: "fake-oauth",
+					type: "api_key",
+					value: { kind: "command", command: "printf fake-bearer" },
+					file: "/fake/secrets.yaml",
+				},
+			],
+		});
+		harness = await openHarness(createMemoryStorage(), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		expect(await review({ config: { ...config, models: { heavy: { model: "fake-oauth/heavy" } } } })).toEqual([]);
+		expect(fake.provider.state.callCount).toBe(2);
+	});
+
 	it("falls back to the next model when the first is unavailable", async () => {
 		const heavy = fake.ref("heavy");
 		const fallback = {

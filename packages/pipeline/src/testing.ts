@@ -14,9 +14,10 @@ import {
 	type Model,
 	type RegisterFauxProviderOptions,
 } from "@earendil-works/pi-ai";
-import { createModels } from "@earendil-works/pi-ai/models";
-import type { Verification } from "@melian-agent/core";
-import type { HarnessOptions, ModelRef } from "./harness.ts";
+import { createModels, type MutableModels } from "@earendil-works/pi-ai/models";
+import type { NamedCredential, Verification } from "@melian-agent/core";
+import { MelianCredentialStore, PiCredentialStore } from "./credentials.ts";
+import type { CredentialStore, HarnessOptions, ModelRef } from "./harness.ts";
 import { modelsOf, type ReviewModels, wrapModels } from "./models.ts";
 import { verifierMarker } from "./verification-instructions.ts";
 
@@ -35,14 +36,65 @@ export type FakeModels = {
 };
 
 /** Creates a scripted provider in its own collection, or alongside an existing review collection for a planted finder. */
-export function createFakeModels(options?: RegisterFauxProviderOptions, review?: ReviewModels): FakeModels {
+export function createFakeModels(
+	options: RegisterFauxProviderOptions & {
+		readonly auth?: "oauth" | "none";
+		readonly credentials?: readonly NamedCredential[];
+		readonly credentialStore?: CredentialStore;
+		readonly authPath?: string;
+	} = {},
+	review?: ReviewModels,
+): FakeModels {
 	const provider = fauxProvider(options);
-	const models = review === undefined ? createModels() : modelsOf(review);
-	models.setProvider(provider.provider);
+	const store =
+		options.credentials === undefined
+			? undefined
+			: new MelianCredentialStore(
+					options.credentials,
+					(id) => {
+						const auth = models.getProvider(id)?.auth;
+						return { apiKey: auth?.apiKey !== undefined, oauth: auth?.oauth !== undefined };
+					},
+					new PiCredentialStore(options.authPath),
+					{},
+				);
+	const credentials = options.credentialStore ?? store;
+	const models: MutableModels =
+		review === undefined ? createModels({ ...(credentials === undefined ? {} : { credentials }) }) : modelsOf(review);
+	let auth = provider.provider.auth;
+	if (options.auth === "none") {
+		auth = {};
+	} else if (options.auth === "oauth") {
+		auth = {
+			oauth: {
+				name: "Fake OAuth",
+				async login(): Promise<never> {
+					throw new Error("Fake OAuth never logs in");
+				},
+				async refresh(): Promise<never> {
+					throw new Error("Fake OAuth never refreshes");
+				},
+				async toAuth(credential) {
+					return { apiKey: credential.access };
+				},
+			},
+		};
+	} else if (options.credentials !== undefined) {
+		auth = {
+			apiKey: {
+				name: "Fake API key",
+				async resolve({ credential }) {
+					return credential?.key === undefined ? undefined : { auth: { apiKey: credential.key } };
+				},
+			},
+		};
+	}
+	const registered = { ...provider.provider, auth };
+	models.setProvider(registered);
 	return {
 		models,
-		provider,
-		review: review ?? wrapModels(models),
+		provider: { ...provider, provider: registered },
+		review: review ?? wrapModels(models, store),
 		withoutCredentials(modelId) {
 			const locked = fauxProvider({ provider: "locked", models: [{ id: modelId }] });
 			models.setProvider({
@@ -51,6 +103,7 @@ export function createFakeModels(options?: RegisterFauxProviderOptions, review?:
 			});
 			return { provider: "locked", modelId };
 		},
+
 		ref(modelId) {
 			const model: Model<string> | undefined =
 				modelId === undefined ? provider.getModel() : provider.getModel(modelId);
