@@ -218,6 +218,25 @@ describe("codex-sandboxed.sh profile", () => {
 		);
 	});
 
+	it("defaults to .codex under HOME when CODEX_HOME is unset", () => {
+		const fakeHome = join(root, "default-home");
+		mkdirSync(fakeHome);
+		const defaultEnv = { ...env(), HOME: fakeHome };
+		delete defaultEnv.CODEX_HOME;
+		const text = execFileSync(script, ["--print-profile", linked, scratch, run], {
+			encoding: "utf8",
+			env: defaultEnv,
+		});
+		const codex = join(fakeHome, ".codex");
+		const escaped = codex.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
+		const allow = block(text, "allow file-write*");
+		for (const name of codexNames) expect(allow).toContain(`(regex #"^${escaped}/${name}/")`);
+		expect(allow).toContain(`(literal "${codex}/history.jsonl")`);
+		expect(allow).toContain(`(regex #"^${escaped}/(auth\\.json([.][^/]*)?|[.]tmp[^/]+)$")`);
+		expect(allow).toContain(`(regex #"^${escaped}/[^/]+\\.sqlite(-shm|-wal)?$")`);
+		expect(text).not.toContain(join(home, ".codex"));
+	});
+
 	it("names CODEX_HOME instead of ~/.codex when it is set, and refuses a relative one", () => {
 		const elsewhere = join(root, "elsewhere-codex");
 		const text = execFileSync(script, ["--print-profile", linked, run, run], {
