@@ -614,7 +614,7 @@ Reading from the base does not hide the head's changes. Each revision lists the 
 
 ### Tool provisioning
 
-The manifest and its quarantine are built. The local cache and Enola integration are in progress in milestone 2 (review of record). The container environment, Opengrep, and gitleaks are planned for milestone 3 (Actions host).
+The manifest and its quarantine are built. The verified tool cache is built; Enola integration is in progress in milestone 2 (review of record). The container environment, Opengrep, and gitleaks are planned for milestone 3 (Actions host).
 
 Problem: a finding's identity hashes its rule and snippet, and an analyser's version decides what it reports and under which rule. Biome and tsc arrive through npm, pinned by a lockfile; standalone analysers such as Opengrep and gitleaks do not. Example: a maintainer's Homebrew gitleaks is a release ahead of the one on the Actions runner. A rule renamed between them gives the same secret a new finding ID, so a dismissed finding returns and an open one is posted again. Whichever binary sits first on the host's `PATH` would also judge the change from outside the trust boundary.
 
@@ -624,7 +624,7 @@ Enola uses the official v0.4.27 release, which includes `enola impact --json`. M
 
 One manifest builds two execution environments:
 
-- Local, for trusted runs. Melian materialises the manifest into a cache it owns, verifies each download by its hash, and puts the cache on the Node execution environment's `PATH`.
+- Local, for trusted runs. Melian materialises the manifest into a cache it owns, verifies each download by its hash, and passes the binary's absolute path to the execution environment. Every cached use checks the extracted binary against its receipt.
 - Container, for untrusted heads. An image built from the same manifest runs with no network, the worktree mounted read-only, and resource limits.
 
 Where a tool comes from depends on what it loads. A tool whose configuration loads repository code, such as Biome, eslint, or tsc, comes from the checkout's lockfile install, as [the static tool binaries decision](decisions/2026-10-03-static-tool-binaries.md) sets. Its configuration and plugins are written for that version. Where the checkout installs none, Melian's own copy runs, and `melian doctor` says which one will. A standalone analyser, such as Opengrep or gitleaks, comes from Melian's manifest. Either way it executes inside the environment, never in the Melian process. Melian never depends on a host-installed analyser: version drift breaks finding identity, and the host is outside the trust boundary.

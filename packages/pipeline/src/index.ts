@@ -86,3 +86,5 @@ export {
 export const packageName = "@melian-agent/pipeline";
 
 export { summarizeReview } from "./summarize.ts";
+
+export { type ToolBinaryReceipt, ToolCache, ToolCacheError, type ToolFetch } from "./tool-cache.ts";
