@@ -46,8 +46,9 @@ describe("ReviewThreadImporter", () => {
 				file: "src/user.ts",
 				line: 7,
 				endLine: 8,
-				title: "_⚠️ Potential issue_ | _🟠 Major_",
-				body: expect.stringContaining("**Guard the missing manager.**"),
+				title: "**Guard the missing manager.**",
+				body: expect.stringContaining("is optional, so `managerName` throws"),
+				severity: "_⚠️ Potential issue_ | _🟠 Major_",
 				source: {
 					kind: "thread",
 					thread: "PRRT_kwDOAAABc0",
@@ -58,6 +59,8 @@ describe("ReviewThreadImporter", () => {
 				resolved: true,
 			},
 			expect.objectContaining({
+				title: "**The heading names a command that no longer exists.**",
+				severity: "_🧹 Nitpick_ | _🔵 Trivial_",
 				file: "docs/removed.md",
 				line: 4,
 				endLine: 4,

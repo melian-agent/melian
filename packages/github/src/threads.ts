@@ -198,14 +198,21 @@ export class ReviewThreadImporter implements ExternalImporter {
 		const placed = thread.line !== null;
 		const end = thread.subjectType === "FILE" ? null : placed ? thread.line : thread.originalLine;
 		const start = placed ? thread.startLine : thread.originalStartLine;
+		const reviewer = reviewerOf(comment.author!);
+		// CodeRabbit opens with a line naming its category and severity, then its headline on the next line that is not
+		// blank. Melian selects the lines and parses no markdown.
+		const lines = comment.body.split(/\r?\n/).filter((each) => each.trim() !== "");
+		const rabbit = reviewer.name === "coderabbit" && lines.length > 1;
+		const title = rabbit ? lines[1]! : comment.body.trim() === "" ? "(empty comment)" : comment.body;
 		return ExternalFinding.create({
-			reviewer: reviewerOf(comment.author!),
+			reviewer,
 			file: thread.path,
 			...(end === null ? {} : { line: Math.min(start ?? end, end), endLine: end }),
 			...(thread.diffSide === "LEFT" ? { revision: "base" as const } : {}),
 			...(end !== null && !placed ? { outdated: true } : {}),
-			title: comment.body.trim() === "" ? "(empty comment)" : comment.body,
+			title,
 			body: comment.body,
+			...(rabbit ? { severity: [...lines[0]!.trim()].slice(0, 100).join("") } : {}),
 			source: {
 				kind: "thread",
 				thread: thread.id,

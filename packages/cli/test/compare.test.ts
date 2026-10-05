@@ -230,7 +230,9 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		const lines = result.stdout.split("\n");
 		expect(lines[0]).toBe("Imported 2 from github:coderabbitai[bot], skipping 1 review body without a thread.");
 		expect(lines[2]).toBe("Matched: 1. External only: 1. Melian only: 0. Skipped review bodies: 1.");
-		expect(lines[4]).toMatch(/^ {2}[0-9a-f]{16} {2}coderabbit {2}docs\/removed\.md:4 \(outdated\) {2}_🧹 Nitpick_/);
+		expect(lines[4]).toMatch(
+			/^ {2}[0-9a-f]{16} {2}coderabbit {2}docs\/removed\.md:4 \(outdated\) {2}\*\*The heading names a command/,
+		);
 		const human = melian(repo, ["compare", "#7", "--from", "github:octocat"], env);
 		expect(human.stdout).toContain("Imported 1 from github:octocat, skipping 1 review body without a thread.");
 		expect(human.stdout).toMatch(/octocat {2}src\/user\.ts:20 {2}Should this log the name too\?/);
