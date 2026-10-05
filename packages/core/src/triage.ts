@@ -109,6 +109,11 @@ export class EscalationRule {
 		this.escalateAt = escalateAt;
 	}
 
+	/** Whether a finding of `severity` is at or above `escalateAt`. */
+	reaches(severity: Severity): boolean {
+		return severityOrder.indexOf(severity) <= severityOrder.indexOf(this.escalateAt);
+	}
+
 	/** Why `run` should run again at the next level, or `undefined` when it should not. */
 	trigger(run: EscalationEvidence): EscalationTrigger | undefined {
 		if (run.level !== "quick") return undefined;

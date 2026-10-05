@@ -149,7 +149,13 @@ export type LensPolicy = {
 // never one it refused, the first budget the lens ran out of, recorded by the call that ended the conversation for it,
 // and the tool task of every `report_finding` call by the finding it reported. Pi mints a task per call and keeps it
 // across a replay, where a provider may reuse a call ID in every round.
-type LensSpend = { calls: number[]; ended?: "tokens" | "tools"; reports?: Record<string, number[]> };
+// `refuted` holds the IDs of findings the lens reported as not a defect, which an escalated run is asked to check.
+type LensSpend = {
+	calls: number[];
+	ended?: "tokens" | "tools";
+	reports?: Record<string, number[]>;
+	refuted?: string[];
+};
 
 export const LensDocument = defineDoc<{ lens?: LensPolicy; spend?: LensSpend }>({
 	kind: "melian.lens",
@@ -408,6 +414,15 @@ export async function budgetEnded(
 	if (ended === undefined || limit === undefined) return undefined;
 	const tokens = tokensUsed(await reader.snapshot(UsageDoc, conversationId, context));
 	return { budget: ended, limit, tokens, tools: document?.spend?.calls.length ?? 0 };
+}
+
+// The IDs of the findings a lens conversation reported as not a defect.
+export async function refutedBy(
+	reader: DocumentReader,
+	conversationId: ConversationId,
+	context: Context,
+): Promise<string[]> {
+	return [...((await reader.snapshot(LensDocument, conversationId, context))?.spend?.refuted ?? [])];
 }
 
 // Core's BudgetEnd as a JSON type, for task results and stored check records.
@@ -749,13 +764,14 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 	const review = lens.revision;
 	const finding = await findingFromCall(args, lens, review);
 	const id = finding.properties.id;
+	const refuted = args.refuted === true;
 	const recorded = await api.commit(async (tx) => {
 		// One storage holds every review of a changeset, so the budget counts this lens's sightings at its own revision.
 		const state = await tx.doc(FindingsDocument, lens.review);
 		const { source } = finding.properties;
 		const at = revisionKey(review);
 		const own = hasSighting(state, id, at, source);
-		if (!own && sightingCount(state, at, source) >= lens.budget) {
+		if (!refuted && !own && sightingCount(state, at, source) >= lens.budget) {
 			throw new Error(`budget reached: this lens may report ${lens.budget} findings; stop reporting and finish`);
 		}
 		// Each report reads the code at every location it cites, and quotes it back, so corrections are capped.
@@ -767,6 +783,12 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 			if (calls.length > maxCorrections) return false;
 			document.spend.reports[id] = [...calls, api.taskId];
 		}
+		// A refutation stores no sighting: the lens says a finding an earlier run reported is not a defect.
+		if (refuted) {
+			const listed = document.spend.refuted ?? [];
+			if (!listed.includes(id)) document.spend.refuted = [...listed, id];
+			return true;
+		}
 		await upsertFinding(
 			tx,
 			lens.review,
@@ -776,6 +798,7 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 		);
 		return true;
 	}, context);
+	if (recorded && refuted) return text(`recorded that finding ${id} is not a defect`);
 	if (!recorded) {
 		return text(
 			`[not recorded: this lens has corrected finding ${id} ${maxCorrections} times, the most it may; report another finding or finish]`,

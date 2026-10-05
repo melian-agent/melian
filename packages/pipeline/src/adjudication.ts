@@ -6,7 +6,6 @@ import {
 	type ConfigFor,
 	configLookup,
 	type Finding,
-	type FindingSource,
 	loadConfig,
 	type MelianConfig,
 	type RepositorySource,
@@ -16,7 +15,7 @@ import {
 	type StoredVerdict,
 	Verdict,
 } from "@melian-agent/core";
-import { findingsVersion, readFindings, revisionKey } from "./findings.ts";
+import { findingsVersion, type Producer, readFindings, revisionKey } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
 import { ReviewIndex } from "./review-index.ts";
@@ -120,7 +119,7 @@ export type AdjudicationTaskInput = {
 	// the tool version its record names. A lens that configuration has since disabled or retiered, or a quick run that
 	// escalated, left sightings at this revision that are not this review's. One an older Melian recorded names a lens's
 	// version alone, and still reads its own sightings.
-	producers: { check: string; version?: string }[];
+	producers: { check: string; version?: string; ids?: string[] }[];
 	// Recorded with the verdict, so publishing can refuse one that came from a range or from the working tree.
 	provenance: StoredProvenance;
 };
@@ -209,7 +208,7 @@ export function adjudicationInput(options: {
 	checks: readonly CheckRecord[];
 	findingsVersion: number;
 	allowSkip: readonly string[];
-	producers: readonly FindingSource[];
+	producers: readonly Producer[];
 	origin: ReviewOrigin;
 	lenses: readonly string[];
 }): AdjudicationTaskInput {
@@ -244,7 +243,10 @@ export function adjudicationInput(options: {
 		checks: checks.map((check) => structuredClone(check)),
 		findingsVersion,
 		allowSkip: [...allowSkip],
-		producers: producers.map((source) => ({ ...source })),
+		producers: producers.map(({ ids, ...source }) => ({
+			...source,
+			...(ids === undefined ? {} : { ids: [...ids] }),
+		})),
 		provenance,
 	};
 }

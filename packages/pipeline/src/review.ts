@@ -9,7 +9,6 @@ import {
 	EscalationRule,
 	type EscalationTrigger,
 	type Finding,
-	type FindingSource,
 	Lens,
 	type LensBudget,
 	type LensCoverage,
@@ -53,10 +52,12 @@ import { ReviewError } from "./errors.ts";
 import {
 	FindingsDocument,
 	findingsVersion,
+	type Producer,
 	readFindings,
 	recordRevision,
 	revisionKey,
-	sightingSeverities,
+	type SightedFinding,
+	sightedBy,
 } from "./findings.ts";
 import {
 	backgroundContext,
@@ -83,6 +84,7 @@ import {
 	lensReadTools,
 	lensSource,
 	type ReviewState,
+	refutedBy,
 	reportFinding,
 	reviewFiles,
 	type StoredBudgetEnd,
@@ -127,12 +129,36 @@ type LensOutcome =
 	| {
 			readonly status: "done";
 			readonly budgetEnded?: StoredBudgetEnd;
-			readonly escalation?: { readonly trigger: EscalationTrigger; readonly to?: string };
+			readonly escalation?: {
+				readonly trigger: EscalationTrigger;
+				readonly to?: string;
+				// The IDs of the findings it carried to `to`, those `to` neither restated nor refuted, and those `to` refuted.
+				readonly carried?: readonly string[];
+				readonly kept?: readonly string[];
+				readonly refuted?: readonly string[];
+			};
 	  }
 	| { readonly status: "unanswered"; readonly reason: string }
 	| { readonly status: "exhausted"; readonly tried: string[]; readonly reason: string };
 
 type StoredTrigger = { kind: "severity"; severity: Severity } | { kind: "budget"; budget: "tokens" | "tools" };
+
+// Why a run escalated, and the IDs of the findings at or above `escalateAt` it carried to the next run.
+type StoredEscalation = { trigger: StoredTrigger; carried: string[] };
+
+// The findings a quick run carries to the run it escalated to, quoted as the change's data, since a model wrote them
+// after reading the change, with how to confirm or refute each.
+function carriedFindings(findings: readonly SightedFinding[], nonce: string): string {
+	const listed = findings.map(
+		(finding) =>
+			`${finding.id} ${finding.severity} ${visibleText(finding.ruleId)} at ${visibleText(finding.path)}:${finding.line}: ${visibleText(finding.message.split("\n")[0] ?? "")}`,
+	);
+	return [
+		"## Findings a quicker look reported",
+		"A quicker look at this change reported the findings below, and you were brought in to check them as well as review the change. For each, if it is a defect, report it with report_finding at the same file, line, and rule, with its own failure scenario and evidence. If the code shows it is not a defect, report it with refuted: true at the same file, line, and rule, with a failureScenario saying why it cannot fail and evidence holding the code that prevents it. A finding you leave unanswered stays in the review as the quicker look reported it.",
+		quoteUntrusted("findings", listed.join("\n"), nonce),
+	].join("\n\n");
+}
 
 // `attempts` is each run's position in its route, committed with the model change, so a resumed review continues on
 // the model it had reached rather than retrying one that already failed. `escalations` names, by the key of the run
@@ -142,7 +168,7 @@ type ReviewCheckpoint = {
 	phase: "review";
 	children: Record<string, ConversationId>;
 	attempts: Record<string, number>;
-	escalations?: Record<string, StoredTrigger>;
+	escalations?: Record<string, StoredEscalation>;
 };
 
 type LensCheckpoint = { phase: "spawn" } | ReviewCheckpoint;
@@ -226,10 +252,10 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 			const revision = revisionKey(input.revision);
 			// One run on its conversation, from the attempt a crash left it at. A request ID per attempt: a rerun after a
 			// crash finds the attempt it had reached, settled or not.
-			const run = async (lens: LensRun, id: ConversationId): Promise<LensOutcome> => {
+			const run = async (lens: LensRun, id: ConversationId, prompt: string): Promise<LensOutcome> => {
 				const child = (await runtime.conversation(id, context))!;
 				for (let attempt = started.attempts[lens.key] ?? 0; ; attempt++) {
-					const content = attempt === 0 ? lens.prompt : continuePrompt;
+					const content = attempt === 0 ? prompt : continuePrompt;
 					const request = { type: "input", content, requestId: `lens:${lens.key}:${attempt}` } as const;
 					const settled = await (await child.submit(request, context)).wait(context);
 					if (settled.status === "done") {
@@ -255,55 +281,71 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 					}, context);
 				}
 			};
-			// Why a finished run escalates, from what it reported at this revision and the budget that ended it, read
-			// from durable state, so a rerun after a crash decides alike.
-			const triggerOf = async (lens: LensRun, outcome: LensOutcome): Promise<EscalationTrigger | undefined> => {
+			const sighted = async (lens: LensRun) => {
+				const findings = await runtime.snapshot(FindingsDocument, input.root, context);
+				const source = lensSource(lens.name, lens.version, lens.level);
+				return findings === undefined ? [] : sightedBy(findings, revision, source);
+			};
+			// Why a finished run escalates, and the findings it carries to the next run, from what it reported at this
+			// revision and the budget that ended it, read from durable state, so a rerun after a crash decides alike.
+			const escalationOf = async (lens: LensRun, outcome: LensOutcome): Promise<StoredEscalation | undefined> => {
 				if (rule === undefined || lens.escalation === undefined || outcome.status !== "done") return undefined;
 				const decided = started.escalations?.[lens.key];
 				if (decided !== undefined) return decided;
-				const findings = await runtime.snapshot(FindingsDocument, input.root, context);
-				const source = lensSource(lens.name, lens.version, lens.level);
-				const severities = findings === undefined ? [] : sightingSeverities(findings, revision, source);
+				const reported = await sighted(lens);
 				const budget = outcome.budgetEnded?.budget;
-				return rule.trigger({
+				const trigger = rule.trigger({
 					level: lens.level,
-					severities,
+					severities: reported.map((finding) => finding.severity),
 					...(budget === undefined ? {} : { budgetEnded: budget }),
 				});
+				if (trigger === undefined) return undefined;
+				const carried = reported.filter((finding) => rule.reaches(finding.severity)).map((finding) => finding.id);
+				return { trigger: { ...trigger }, carried };
 			};
-			// Each lens's runs in order: its first, then each the escalation rule moves it to.
+			// A lens's first run, then the run the escalation rule moves it to. The escalated run is asked to confirm or
+			// refute each severe finding the first reported; one it does neither stays, attributed to the first run.
 			const chain = async (first: LensRun): Promise<[string, LensOutcome][]> => {
-				const outcomes: [string, LensOutcome][] = [];
-				let lens = first;
-				let id = started.children[first.key]!;
-				for (;;) {
-					const outcome = await run(lens, id);
-					const trigger = await triggerOf(lens, outcome);
-					const next = lens.escalation?.next;
-					if (trigger === undefined || outcome.status !== "done") return [...outcomes, [lens.key, outcome]];
-					if (next === undefined) return [...outcomes, [lens.key, { ...outcome, escalation: { trigger } }]];
-					outcomes.push([lens.key, { ...outcome, escalation: { trigger, to: next.key } }]);
-					let child = started.children[next.key];
-					if (child === undefined) {
-						await runtime.commit(async (tx, current) => {
-							const checkpoint = current.state.checkpoint as ReviewCheckpoint;
-							child = checkpoint.children[next.key];
-							if (child !== undefined) return undefined;
-							child = await spawnLens(tx, runtime.taskId, input, next);
-							return {
-								status: "running",
-								checkpoint: {
-									...checkpoint,
-									children: { ...checkpoint.children, [next.key]: child },
-									attempts: { ...checkpoint.attempts, [next.key]: 0 },
-									escalations: { ...checkpoint.escalations, [lens.key]: { ...trigger } },
-								},
-							};
-						}, context);
-					}
-					lens = next;
-					id = child!;
+				const outcome = await run(first, started.children[first.key]!, first.prompt);
+				const escalation = await escalationOf(first, outcome);
+				const next = first.escalation?.next;
+				if (escalation === undefined || outcome.status !== "done") return [[first.key, outcome]];
+				const { trigger } = escalation;
+				if (next === undefined) return [[first.key, { ...outcome, escalation: { trigger } }]];
+				let child = started.children[next.key];
+				if (child === undefined) {
+					await runtime.commit(async (tx, current) => {
+						const checkpoint = current.state.checkpoint as ReviewCheckpoint;
+						child = checkpoint.children[next.key];
+						if (child !== undefined) return undefined;
+						child = await spawnLens(tx, runtime.taskId, input, next);
+						return {
+							status: "running",
+							checkpoint: {
+								...checkpoint,
+								children: { ...checkpoint.children, [next.key]: child },
+								attempts: { ...checkpoint.attempts, [next.key]: 0 },
+								escalations: { ...checkpoint.escalations, [first.key]: escalation },
+							},
+						};
+					}, context);
 				}
+				const carried = (await sighted(first)).filter((finding) => escalation.carried.includes(finding.id));
+				const prompt =
+					carried.length === 0
+						? next.prompt
+						: `${next.prompt}\n\n${carriedFindings(carried, input.revision.nonce)}`;
+				const rerun = await run(next, child!, prompt);
+				const restated = new Set((await sighted(next)).map((finding) => finding.id));
+				const refuted = (await refutedBy(runtime, child!, context)).filter(
+					(id) => escalation.carried.includes(id) && !restated.has(id),
+				);
+				const kept = escalation.carried.filter((id) => !restated.has(id) && !refuted.includes(id));
+				const moved = { trigger, to: next.key, carried: escalation.carried, kept, refuted };
+				return [
+					[first.key, { ...outcome, escalation: moved }],
+					[next.key, rerun],
+				];
 			};
 			const chains = await Promise.all(input.lenses.map(chain));
 			const result = Object.fromEntries(chains.flat());
@@ -665,21 +707,46 @@ async function startAdjudication(
 	}, context);
 }
 
-// The run whose record stands for a lens: its first, or the last the escalation rule moved it to, with its outcome,
-// and a note for each escalation, saying why it ran again or that its ceiling capped it.
-type SettledLens = { readonly run: LensRun; readonly outcome: LensOutcome | undefined; readonly notes: string[] };
+// The run whose record stands for a lens: its first, or the one the escalation rule moved it to, with its outcome; a
+// note for each escalation, saying why it ran again or that it was capped, and what became of the findings it carried;
+// and the first run's findings the escalated run neither restated nor refuted, which still count.
+type SettledLens = {
+	readonly run: LensRun;
+	readonly outcome: LensOutcome | undefined;
+	readonly notes: string[];
+	readonly kept?: Producer;
+};
+
+function plural(count: number, noun: string): string {
+	return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
 
 function settle(first: LensRun, result: LensResult | undefined, rule: EscalationRule): SettledLens {
-	const notes: string[] = [];
-	for (let run = first; ; ) {
-		const outcome = result?.[run.key];
-		const escalation = outcome?.status === "done" ? outcome.escalation : undefined;
-		const next = escalation?.to === undefined ? undefined : run.escalation?.next;
-		if (escalation !== undefined)
-			notes.push(rule.describe(escalation.trigger, run.level, next?.level, run.escalation?.cap));
-		if (next === undefined) return { run, outcome, notes };
-		run = next;
+	const outcome = result?.[first.key];
+	const escalation = outcome?.status === "done" ? outcome.escalation : undefined;
+	const next = escalation?.to === undefined ? undefined : first.escalation?.next;
+	if (escalation === undefined) return { run: first, outcome, notes: [] };
+	const notes = [rule.describe(escalation.trigger, first.level, next?.level, first.escalation?.cap)];
+	if (next === undefined) return { run: first, outcome, notes };
+	const carried = escalation.carried ?? [];
+	const kept = escalation.kept ?? [];
+	const refuted = escalation.refuted ?? [];
+	const restated = carried.length - kept.length - refuted.length;
+	if (restated > 0) notes.push(`${next.level} restated ${plural(restated, "finding")} ${first.level} carried`);
+	if (refuted.length > 0)
+		notes.push(`${next.level} refuted ${plural(refuted.length, "finding")} ${first.level} carried`);
+	if (kept.length > 0) {
+		notes.push(
+			`${plural(kept.length, "finding")} ${first.level} carried at or above ${rule.escalateAt}, which ${next.level} neither restated nor refuted, still ${kept.length === 1 ? "counts" : "count"} as ${first.level} reported ${kept.length === 1 ? "it" : "them"}`,
+		);
 	}
+	const source = lensSource(first.name, first.version, first.level);
+	return {
+		run: next,
+		outcome: result?.[next.key],
+		notes,
+		...(kept.length === 0 ? {} : { kept: { ...source, ids: [...kept] } }),
+	};
 }
 
 // `notes` say why the lens ran where it did: hand-offs its instructions left out for size, a triage that failed, and
@@ -714,7 +781,7 @@ function account(
 	settled: readonly SettledLens[],
 	lenses: { readonly records: readonly CheckRecord[]; readonly skippable: readonly string[] },
 	options: Pick<ReviewOptions, "config" | "lenses" | "checks">,
-): { readonly manifest: Manifest; readonly producers: FindingSource[] } {
+): { readonly manifest: Manifest; readonly producers: Producer[] } {
 	const { config } = options;
 	const owned = (name: string) => name.startsWith("lens.") || name.startsWith("decisions.");
 	const supplied = (options.checks ?? []).filter((check) => !owned(check.name));
@@ -754,8 +821,11 @@ function account(
 	const others = [...new Set([...checks, ...supplied.map((check) => check.name)])].filter(
 		(name) => !name.startsWith("lens."),
 	);
-	const producers: FindingSource[] = [
-		...settled.map(({ run }) => lensSource(run.name, run.version, run.level)),
+	const producers: Producer[] = [
+		...settled.flatMap(({ run, kept }) => [
+			lensSource(run.name, run.version, run.level),
+			...(kept === undefined ? [] : [kept]),
+		]),
 		...others.map((check) => {
 			const version = versions.get(check);
 			return version === undefined ? { check } : { check, version };

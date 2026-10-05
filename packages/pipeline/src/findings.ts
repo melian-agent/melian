@@ -108,13 +108,28 @@ export function hasSighting(state: FindingsState, id: string, revision: string, 
 	return state.items[id]?.sightings[revision]?.[producerKey(source)] !== undefined;
 }
 
-// The severity of each finding `source` has sighted at `revision`.
-export function sightingSeverities(state: FindingsState, revision: string, source: FindingSource): Severity[] {
+// A finding as one producer sighted it, as much as escalation reads.
+export type SightedFinding = {
+	readonly id: string;
+	readonly ruleId: string;
+	readonly severity: Severity;
+	readonly path: string;
+	readonly line: number;
+	readonly message: string;
+};
+
+// Each finding `source` has sighted at `revision`, in ID order.
+export function sightedBy(state: FindingsState, revision: string, source: FindingSource): SightedFinding[] {
 	const key = producerKey(source);
-	return Object.values(state.items).flatMap((record) => {
-		const sighting = record.sightings[revision]?.[key];
-		return sighting === undefined ? [] : [sighting.properties.severity];
-	});
+	return Object.keys(state.items)
+		.sort()
+		.flatMap((id) => {
+			const sighting = state.items[id]!.sightings[revision]?.[key];
+			if (sighting === undefined) return [];
+			const { severity, path } = sighting.properties;
+			const line = sighting.locations[0]?.physicalLocation.region.startLine ?? 1;
+			return [{ id, ruleId: sighting.ruleId, severity, path, line, message: sighting.message.text }];
+		});
 }
 
 // How many findings `source` has sighted at `revision`.
@@ -408,14 +423,18 @@ function dismissalsOf(lifecycle: FindingLifecycle): Pick<FindingProperties, "dis
 	};
 }
 
+/** A producer whose sightings a read counts: all of them, or only the findings `ids` names. */
+export type Producer = FindingSource & { readonly ids?: readonly string[] };
+
 /** Which sightings {@link readFindings} merges. */
 export interface ReadFindingsOptions {
 	/**
 	 * Only these producers' sightings, such as the lenses and versions selected for the review being read. A lens that
 	 * configuration has since disabled or retiered then leaves nothing behind. A producer without a version stands for
-	 * every version of its check. Every producer when absent.
+	 * every version of its check, and one with `ids` counts only those findings, as a quick run whose escalated run
+	 * neither restated nor refuted them. Every producer when absent.
 	 */
-	readonly producers?: readonly FindingSource[];
+	readonly producers?: readonly Producer[];
 }
 
 /**
@@ -432,13 +451,20 @@ export async function readFindings(
 	options: ReadFindingsOptions = {},
 ): Promise<readonly Finding[]> {
 	const items = (await reader.snapshot(FindingsDocument, rootConversationId, context))?.items ?? {};
-	const wanted = options.producers === undefined ? undefined : new Set(options.producers.map(producerKey));
+	const wanted =
+		options.producers === undefined
+			? undefined
+			: new Map(options.producers.map((source) => [producerKey(source), source.ids] as const));
 	// A producer named without a version counts every version of its check, such as a static tool's record that names none.
 	const anyVersion = new Set(
 		(options.producers ?? []).filter((source) => source.version === undefined).map((source) => source.check),
 	);
-	const counts = (key: string, sighting: ProducerFinding) =>
-		wanted === undefined || wanted.has(key) || anyVersion.has(sighting.properties.source.check);
+	const counts = (key: string, sighting: ProducerFinding) => {
+		if (wanted === undefined || anyVersion.has(sighting.properties.source.check)) return true;
+		if (!wanted.has(key)) return false;
+		const ids = wanted.get(key);
+		return ids === undefined || ids.includes(sighting.properties.id);
+	};
 	return Object.keys(items)
 		.sort()
 		.flatMap((id) => {

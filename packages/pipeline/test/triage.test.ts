@@ -320,13 +320,19 @@ describe("escalation", () => {
 			name: "lens.correctness",
 			status: "ran",
 			level: "careful",
-			reason: "escalated from quick to careful: at quick it reported a P1 finding, at or above P1",
+			reason:
+				"escalated from quick to careful: at quick it reported a P1 finding, at or above P1; 1 finding quick carried at or above P1, which careful neither restated nor refuted, still counts as quick reported it",
 		});
-		// The careful run starts afresh on the change, at careful's budget, not as a continuation of the quick run.
+		// The careful run starts afresh on the change, at careful's budget, with the quick run's finding to check.
 		const careful = requests[correctness]![2]!;
 		expect(systemPromptOf(careful)).toContain(statedBudget.careful);
 		expect(careful.filter((message) => message.role === "assistant")).toEqual([]);
-		expect(textOf(careful.find((message) => message.role === "user")!)).toMatch(/^Review the change from/);
+		const input = textOf(careful.find((message) => message.role === "user")!);
+		expect(input).toMatch(/^Review the change from/);
+		expect(input).toContain("## Findings a quicker look reported");
+		expect(input).toMatch(
+			/<untrusted-[0-9a-f]{24} label="findings">\n[0-9a-f]{16} P1 null-dereference at src\/user\.ts:7: /,
+		);
 		// Each level is its own conversation and its own request, so the rerun's input is not deduplicated.
 		const sent = await lensRequests();
 		const quick = sent.get(`lens:correctness@${version()}@quick:0`);
@@ -334,22 +340,56 @@ describe("escalation", () => {
 		expect(quick).toMatchObject({ level: "quick" });
 		expect(rerun).toMatchObject({ level: "careful" });
 		expect(rerun!.conversation).not.toBe(quick!.conversation);
-		// The careful run stands for the lens: the quick run's sighting stays stored, under its own level, and out of the
-		// verdict.
-		expect(reviewed.findings).toEqual([]);
-		expect(reviewed.verdict.status).toBe("passed");
-		const root = (await harness.root(context)).id;
-		const atQuick = await readFindings(harness, root, revision(), context, {
-			producers: [{ check: "lens.correctness", version: `${version()}@quick` }],
-		});
-		expect(atQuick.map((finding) => finding.properties.source)).toEqual([
+		// The quick P1 the careful run left unanswered still blocks, attributed to the quick run.
+		expect(reviewed.verdict).toMatchObject({ status: "findings", blocking: true });
+		expect(reviewed.findings.map((finding) => finding.properties.source)).toEqual([
 			{ check: "lens.correctness", version: `${version()}@quick` },
 		]);
+		const root = (await harness.root(context)).id;
 		const index = await harness.snapshot(ReviewIndex, root, context);
 		expect(index!.reviews[revision()]!.lenses).toEqual([`correctness@${version()}@quick`]);
 		expect((await readProvenance(harness, root, revision(), context))!.lenses).toEqual([
 			`correctness@${version()}@careful`,
 		]);
+	});
+
+	it("counts a quick finding the escalated run restates once, with the escalated run speaking for it", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [severe, done, severe, done] }]);
+
+		const reviewed = await review({ decider });
+
+		expect(reviewed.findings.map((finding) => finding.properties.source)).toEqual([
+			{ check: "lens.correctness", version: `${version()}@careful` },
+		]);
+		expect(reviewed.findings[0]!.properties.reportedBy).toEqual([
+			{ check: "lens.correctness", version: `${version()}@careful` },
+		]);
+		expect(lensRecord(reviewed)!.reason).toBe(
+			"escalated from quick to careful: at quick it reported a P1 finding, at or above P1; careful restated 1 finding quick carried",
+		);
+	});
+
+	it("drops a quick finding the escalated run refutes", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		const refute = call("report_finding", {
+			...crashFinding,
+			refuted: true,
+			failureScenario: "Every caller passes a user whose manager is set, so the dereference cannot fail.",
+		});
+		const requests = scriptConversations(fake, [{ match: correctness, replies: [severe, done, refute, done] }]);
+
+		const reviewed = await review({ decider });
+
+		expect(reviewed.findings).toEqual([]);
+		expect(reviewed.verdict.status).toBe("passed");
+		expect(lensRecord(reviewed)!.reason).toBe(
+			"escalated from quick to careful: at quick it reported a P1 finding, at or above P1; careful refuted 1 finding quick carried",
+		);
+		const results = requests[correctness]![3]!.filter((message) => message.role === "toolResult").map(textOf);
+		expect(results.at(-1)).toMatch(/^recorded that finding [0-9a-f]{16} is not a defect$/);
 	});
 
 	it("runs a lens again when a budget ended it at quick before it reported anything", async () => {
