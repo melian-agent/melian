@@ -50,6 +50,7 @@ describe("the golden corpus", () => {
 			"durability-resumed-publish",
 			"durability-superseded-write",
 			"guardrails-bare-issue-reference",
+			"guardrails-overlong-sentence",
 			"injection-in-comment",
 			"pre-existing-beside-change",
 			"removed-behaviour-clean-extract",
@@ -223,7 +224,7 @@ describe("a golden's standards and policy", () => {
 });
 
 describe("a guardrail golden", () => {
-	it.each(["bare-issue-reference"])(
+	it.each(["bare-issue-reference", "overlong-sentence"])(
 		"runs the %s rule as the root melian.yaml states it",
 		async (rule) => {
 			const golden = goldens.find((each) => each.name === `guardrails-${rule}`)!;
@@ -246,6 +247,7 @@ describe("the live flag", () => {
 	it("keeps a golden whose expected.json sets live: false out of live runs, while the scripted runs below cover it", () => {
 		expect(goldens.filter((golden) => !golden.live).map((golden) => golden.name)).toEqual([
 			"guardrails-bare-issue-reference",
+			"guardrails-overlong-sentence",
 			"pre-existing-beside-change",
 		]);
 	});

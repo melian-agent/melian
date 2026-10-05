@@ -72,3 +72,44 @@ describe("the bare-issue-reference guardrail", () => {
 		expect(bare.filter((line) => !pattern.test(line))).toEqual([]);
 	});
 });
+
+describe("the overlong-sentence guardrail", () => {
+	const fires = (pattern: LinearPattern, count: number) => pattern.test(`${words(count)}.`);
+
+	it("is advisory, and covers docs, the comparison records, and the README but not the golden corpus", async () => {
+		const { rule } = await rootRule("overlong-sentence");
+		expect(rule.severity).toBe("P3");
+		for (const path of ["docs/design.md", "docs/decisions/a.md", "packages/evals/comparisons/a.md", "README.md"]) {
+			expect(matchesGlobs(rule.paths ?? [], path), path).toBe(true);
+		}
+		for (const path of ["AGENTS.md", "packages/evals/goldens/x/head/docs/a.md", "packages/core/src/a.ts"]) {
+			expect(matchesGlobs(rule.paths ?? [], path), path).toBe(false);
+		}
+		expect(rule.message).toContain("AGENTS.md");
+	});
+
+	it("fires on a sentence of 60 words and stays quiet on one of 24", async () => {
+		const { pattern } = await rootRule("overlong-sentence");
+		expect(fires(pattern, 60)).toBe(true);
+		expect(fires(pattern, 24)).toBe(false);
+	});
+
+	it("draws the line at 45 words, whatever the spacing", async () => {
+		const { pattern } = await rootRule("overlong-sentence");
+		expect(fires(pattern, 44)).toBe(false);
+		expect(fires(pattern, 45)).toBe(true);
+		expect(pattern.test(`${words(45).replaceAll(" ", ",  ")}.`)).toBe(true);
+	});
+
+	it("counts a run, so a full stop, question mark, or exclamation mark resets it", async () => {
+		const { pattern } = await rootRule("overlong-sentence");
+		for (const stop of [".", "?", "!"]) expect(pattern.test(`${words(30)}${stop} ${words(30)}${stop}`)).toBe(false);
+	});
+
+	it("scans a very long line in linear time", async () => {
+		const { pattern } = await rootRule("overlong-sentence");
+		const started = performance.now();
+		pattern.test(words(20_000));
+		expect(performance.now() - started).toBeLessThan(5_000);
+	});
+});
