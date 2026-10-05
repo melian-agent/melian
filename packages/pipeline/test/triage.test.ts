@@ -730,7 +730,7 @@ describe("escalation", () => {
 
 describe("the LLM fallback", () => {
 	async function fallbackDecider(): Promise<FallbackDecider> {
-		const model = await RouteTextModel.open(fake.review, [fake.ref("light")]);
+		const model = await RouteTextModel.create(fake.review, [fake.ref("light")]);
 		return new FallbackDecider(model!);
 	}
 
@@ -756,6 +756,11 @@ describe("the LLM fallback", () => {
 		const reviewed = await review({ decider });
 
 		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "deep" });
+		expect(reviewed.verdict.notRun).toContainEqual({
+			name: "decisions.fast",
+			status: "skipped",
+			reason: "no decision provider is configured; triage ran on the LLM fallback",
+		});
 		const [asked] = requests[fallback]!;
 		const prompt = asked!
 			.filter((message: Message) => message.role === "user")
@@ -763,6 +768,8 @@ describe("the LLM fallback", () => {
 			.join("\n");
 		expect(prompt).toContain("How closely should the `correctness` lens review this change?");
 		expect(prompt).toMatch(/<untrusted-[0-9a-f]{24} label="diff">/);
+		// The decider has no tools, so it is never told to read the head.
+		expect(prompt).not.toContain("read_file");
 		const stored = await readRecordedDecision(
 			harness,
 			(await harness.root(context)).id,

@@ -154,7 +154,7 @@ export class Decision {
 					question: question.id,
 				});
 			}
-			return normalised(question, given.distribution, decider.name);
+			return normalized(question, given.distribution, decider.name);
 		});
 		return new Decision({
 			questionSet: { name: request.questionSet.name, version: request.questionSet.version },
@@ -181,7 +181,7 @@ export class Decision {
 	}
 }
 
-function normalised(
+function normalized(
 	question: ChoiceQuestion,
 	weights: Readonly<Record<string, number>>,
 	decider: string,

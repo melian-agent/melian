@@ -472,8 +472,11 @@ export class ChangePrompt {
 		this.nonce = nonce;
 	}
 
-	/** The prompt, limited to the files `only` names when given, matching a renamed file by its old path or its new one. */
-	render(only?: readonly string[]): string {
+	/**
+	 * The prompt, limited to the files `only` names when given, matching a renamed file by its old path or its new one.
+	 * With `tools: false`, for a reader with no tools such as a decider, it does not tell the reader to read the head.
+	 */
+	render(only?: readonly string[], options: { readonly tools?: boolean } = {}): string {
 		const { nonce } = this;
 		const { base, head } = this.changeset.revision;
 		const files = this.changeset.revision.files.filter(
@@ -490,7 +493,7 @@ export class ChangePrompt {
 			"Files changed:",
 			quoteUntrusted("listing", files.map((file) => `${file.status} ${named(file)}`).join("\n"), nonce),
 			"",
-			"Each file's diff follows in its own block, whose first line names the file. The diff has no context lines. Read the head revision with read_file for the code around each hunk.",
+			`Each file's diff follows in its own block, whose first line names the file. The diff has no context lines.${options.tools === false ? "" : " Read the head revision with read_file for the code around each hunk."}`,
 		].join("\n");
 		const parts = [header];
 		let size = Buffer.byteLength(header);
@@ -632,7 +635,6 @@ async function refuseIfBlocked(
 	throw new ReviewError("notInstalled", missing, { lenses });
 }
 
-// Forgets a task the review index names, by `forget` on the index.
 function inIndex(forget: (index: ReviewIndexState) => void) {
 	return async (tx: Tx, root: ConversationId) => forget(await tx.doc(ReviewIndex, root));
 }
@@ -806,7 +808,12 @@ function lensCheck(lens: LensRun, outcome: LensOutcome | undefined, completed: b
 function account(
 	checks: readonly string[],
 	settled: readonly SettledLens[],
-	lenses: { readonly records: readonly CheckRecord[]; readonly skippable: readonly string[] },
+	lenses: {
+		readonly records: readonly CheckRecord[];
+		readonly skippable: readonly string[];
+		// The decider that answered triage, when one did.
+		readonly triagedBy?: string;
+	},
 	options: Pick<ReviewOptions, "config" | "lenses" | "checks">,
 ): { readonly manifest: Manifest; readonly producers: Producer[] } {
 	const { config } = options;
@@ -834,7 +841,8 @@ function account(
 		} else if (name.startsWith("decisions.")) {
 			if (provider === undefined) {
 				// The design lets the fast tier run without decision questions when no provider is configured.
-				manifest.record({ name, status: "skipped", reason: "no decision provider is configured" });
+				const triaged = lenses.triagedBy === undefined ? "" : `; triage ran on ${lenses.triagedBy}`;
+				manifest.record({ name, status: "skipped", reason: `no decision provider is configured${triaged}` });
 				manifest.allowSkip(name);
 			} else {
 				// A configured provider asks for the questions, and Melian cannot ask them yet, so the review fails closed
@@ -1031,7 +1039,9 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 					options.decider,
 					{
 						questionSet: triageQuestionSet,
-						state: [triageBoundary(nonce), "## The change", prompt.render()].join("\n\n"),
+						state: [triageBoundary(nonce), "## The change", prompt.render(undefined, { tools: false })].join(
+							"\n\n",
+						),
 						questions: sharedQuestions(
 							covering.map(({ lens }) => lens.triageQuestion(bands.get(lens)!, runnable.get(lens)!)),
 						),
@@ -1154,7 +1164,16 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	const { manifest: accounted, producers } = account(
 		manifest,
 		settled,
-		{ records, skippable: skipped.map((name) => `lens.${name}`) },
+		{
+			records,
+			skippable: skipped.map((name) => `lens.${name}`),
+			...(triaged.decision === undefined
+				? {}
+				: {
+						triagedBy:
+							triaged.decision.decider === "llm-fallback" ? "the LLM fallback" : triaged.decision.decider,
+					}),
+		},
 		options,
 	);
 	const input = adjudicationInput({

@@ -49,7 +49,7 @@ export class RouteTextModel implements TextModel {
 	}
 
 	/** The first model of `route` that `models` knows and holds credentials for, or `undefined` when there is none. */
-	static async open(models: ReviewModels, route: readonly ModelReference[]): Promise<RouteTextModel | undefined> {
+	static async create(models: ReviewModels, route: readonly ModelReference[]): Promise<RouteTextModel | undefined> {
 		const collection = modelsOf(models);
 		for (const reference of route) {
 			const model = collection.getModel(reference.provider, reference.modelId);

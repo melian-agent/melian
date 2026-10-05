@@ -31,6 +31,19 @@ describe("the triage model", () => {
 	const route = (id: string) => ({ model: `${fake.ref(id).provider}/${id}` });
 	const choose = (models: MelianConfig["models"]) => fallbackDecider({ ...defaultConfig, models }, fake.review);
 
+	it("triages on the cheapest routed tier with credentials, passing over unrouted and uncredentialed ones", async () => {
+		const model = (id: string) => `${fake.ref(id).provider}/${id}`;
+		const all = { light: route("light"), medium: route("medium"), heavy: route("heavy") };
+		expect(await choose(all)).toMatchObject({ model: model("light") });
+		expect(await choose({ medium: route("medium"), heavy: route("heavy") })).toMatchObject({
+			model: model("medium"),
+		});
+		// A model the collection does not know, as one without credentials, is passed over.
+		expect(await choose({ light: { model: "nowhere/light" }, heavy: route("heavy") })).toMatchObject({
+			model: model("heavy"),
+		});
+	});
+
 	it("passes over a tier whose route cannot be read, rather than stop the review", async () => {
 		const chosen = await choose({ light: { model: "claude-haiku" }, medium: route("medium") });
 		expect(chosen).toMatchObject({ model: `${fake.ref("medium").provider}/medium` });

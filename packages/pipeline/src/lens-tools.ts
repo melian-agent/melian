@@ -86,11 +86,7 @@ export type ReviewState = {
 	files: ReviewFile[];
 };
 
-/**
- * The source a lens's findings name: its check, and its version with the level it ran at, so the sightings of one lens
- * at two levels of one revision are two producers', and a run at one level never stands in for a run at another. A
- * lens an older Melian created names no level.
- */
+// A lens's findings name its version with the level it ran at, so one lens at two levels of a revision is two producers.
 export function lensSource(name: string, version: string, level: ScrutinyLevel | undefined): FindingSource {
 	return { check: `lens.${name}`, version: level === undefined ? version : `${version}@${level}` };
 }
