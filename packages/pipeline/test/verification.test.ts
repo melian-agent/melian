@@ -149,6 +149,70 @@ describe("the verifier", () => {
 		expect(result.findings.every((finding) => finding.properties.verification?.verdict === "confirmed")).toBe(true);
 		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
 	});
+	it("leaves a two-claim candidate not reviewed when only one claim is judged", async () => {
+		const first = lenses[0]!;
+		lenses.push(
+			Lens.from({
+				...first.toJSON(),
+				name: "second",
+				version: "second",
+				instructions: "Second finder",
+				rules: [{ id: "second-rule", description: "Same failure." }],
+			}),
+		);
+		const requests = scriptConversations(fake, [
+			...lenses.map((lens) => ({
+				match: lens.instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", { ...crashFinding, rule: lens.rules[0]!.id }), {
+						stopReason: "toolUse",
+					}),
+					fauxAssistantMessage("Done."),
+				],
+			})),
+			{
+				match: verifierMarker,
+				replies: [
+					fauxAssistantMessage(
+						fauxToolCall("report_verdict", {
+							claim: "c1",
+							answers: { code: "yes", guard: "yes", base: "no" },
+							verdict: "refuted",
+							reason: "A guard prevents this claim's failure.",
+							evidence: [{ file: "src/user.ts", line: 7, role: "context" }],
+						}),
+						{ stopReason: "toolUse" },
+					),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+		await expect(review()).rejects.toMatchObject({
+			code: "verifierFailed",
+			verdict: {
+				status: "not-reviewed",
+				findings: { advisory: [expect.anything()] },
+				notRun: [
+					expect.objectContaining({
+						name: "verifier",
+						status: "failed",
+						reason: "the verifier left a claim unjudged",
+					}),
+				],
+			},
+		});
+		expect(requests[verifierMarker]).toHaveLength(2);
+		expect(systemPromptOf(requests[verifierMarker]![0]!)).toContain("Claim c2 finding");
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		const findings = await readFindings(harness, root.id, revision, context);
+		expect(findings).toHaveLength(2);
+		expect(findings.filter((finding) => finding.properties.verification?.verdict === "refuted")).toHaveLength(1);
+		expect(findings.filter((finding) => finding.properties.verification === undefined)).toHaveLength(1);
+		const verdict = (await readVerdict(harness, root.id, revision, context))!;
+		expect(verdict.ran?.some((check) => check.name === "verifier")).toBe(false);
+		expect(verdict.refuted).toBeUndefined();
+	});
 	it.each(["confirmed", "plausible", "refuted"] as const)(
 		"stores %s beside the sighting without writing confidence",
 		async (verdict) => {
