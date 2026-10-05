@@ -1,0 +1,9 @@
+docs/progress-log/2026-09-29-receipt-vat.md
+
+  P3  line 5  guardrail/forbidden-patterns  (introduced, new, advisory)
+  AGENTS.md says to link every GitHub issue and pull request you mention, in chat and docs, because only GitHub's own UI turns a bare number into a link; write the number as the text of a Markdown link to its page.
+    What: This line matches the forbidden-patterns rule bare-issue-reference.
+    Why here: AGENTS.md says to link every GitHub issue and pull request you mention, in chat and docs, because only GitHub's own UI turns a bare number into a link; write the number as the text of a Markdown link to its page.
+    What to do: Rewrite the line so it no longer matches.
+
+1 finding in 1 file.

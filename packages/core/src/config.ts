@@ -143,6 +143,7 @@ export const melianYamlSchema = Type.Object(
 							ignoreCase: Type.Optional(Type.Boolean()),
 							paths: Type.Optional(globs),
 							message: Type.Optional(name),
+							severity: Type.Optional(severitySchema),
 						}),
 					),
 					"policy-change-review": Type.Optional(
@@ -267,6 +268,8 @@ export interface ForbiddenPatternRule {
 	readonly ignoreCase?: boolean;
 	readonly paths?: readonly string[];
 	readonly message: string;
+	/** Overrides the guardrail's severity for this rule's findings. */
+	readonly severity?: Severity;
 }
 
 /** One guardrail: whether it runs, the severity of its findings, and its named rules. */
@@ -769,7 +772,7 @@ export interface ConfigLookup {
 
 const severityOrder: readonly Severity[] = ["P0", "P1", "P2", "P3", "nit"];
 
-function stricter(left: Severity, right: Severity): Severity {
+export function stricter(left: Severity, right: Severity): Severity {
 	return severityOrder.indexOf(left) <= severityOrder.indexOf(right) ? left : right;
 }
 
