@@ -7,3 +7,5 @@ Round five fixes ref-less external finding IDs to use the canonical file path. A
 Round five adds a query assertion for `comments(first: 1)` on every thread page. Changing it to `last: 1` fails the new test while the ten recorded-response tests still pass.
 
 Round five keeps the first thread page's head and refuses any later page placed at another head. A two-page regression failed before the check because the importer returned mixed placements under the last head.
+
+Round five tests a replacement verdict at the same revision. A hand match to its new finding persists through storage and re-import, while a match to the removed finding fails. Removing the comparison refresh before the change fails the regression with `unknownMelian` for the new finding.

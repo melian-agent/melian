@@ -36,8 +36,13 @@ const evalAt = (startLine: number, snippet: string) =>
 const findings = [evalAt(12, "eval(input)"), evalAt(40, "eval(other)")];
 
 // Stores Melian's verdict of `revision`, as a review would, over these findings.
-async function storeReview(harness: CompareHarness): Promise<void> {
-	const verdict = new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate();
+async function storeReview(harness: CompareHarness, reviewFindings: readonly Finding[] = findings): Promise<void> {
+	const verdict = new Adjudication({
+		findings: reviewFindings,
+		manifest: [],
+		checks: [],
+		config: defaultConfig,
+	}).adjudicate();
 	const root = await harness.harness.root(context);
 	await root.commit(async (tx) => {
 		const document = await tx.doc(VerdictDocument, root.id);
@@ -151,6 +156,31 @@ describe("CompareHarness", () => {
 
 		expect(comparison.effectiveMatches()).toEqual([{ ...pair, kind: "site" }]);
 		expect(await harness.harness.snapshot(VerdictDocument, root.id, context)).toEqual(before);
+	});
+
+	it("hand-matches against a replacement verdict and refuses a finding it no longer holds", async () => {
+		const harness = await memoryHarness();
+		const first = findings[0]!;
+		const second = findings[1]!;
+		const far = codex(90, 0);
+		const sources = [{ source: "file:codex.json", imported: imported(far) }];
+		await storeReview(harness, [first]);
+		await harness.importFindings(revision, sources, "t1");
+		await storeReview(harness, [second]);
+		const pair = { external: far.id, melian: second.id };
+		const hand = { by: "Maintainer <m@example.com>", at: "t2" };
+
+		const matched = await harness.match(revision, pair, hand);
+
+		expect(matched.melianFindings()).toEqual([second.id]);
+		expect(matched.effectiveMatches()).toEqual([{ ...pair, kind: "hand", ...hand }]);
+		expect((await harness.read(revision))?.toJSON()).toEqual(matched.toJSON());
+		const again = await harness.importFindings(revision, sources, "t3");
+		expect(again.effectiveMatches()).toEqual(matched.effectiveMatches());
+		const refused = harness.match(revision, { external: far.id, melian: first.id }, hand);
+		await expect(refused).rejects.toThrow(ComparisonError);
+		await expect(refused).rejects.toMatchObject({ code: "unknownMelian" });
+		expect((await harness.read(revision))?.toJSON()).toEqual(again.toJSON());
 	});
 
 	it("keeps a hand match and an unmatch across a reopen and a re-import", async () => {
