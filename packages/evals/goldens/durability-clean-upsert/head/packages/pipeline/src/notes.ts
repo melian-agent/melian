@@ -37,7 +37,8 @@ export async function readNotes(
 
 /**
  * The summariser's `add_note` tool. It records the note for one line of `revision` in the root conversation's notes,
- * whichever conversation calls it. A line holds one note, so a second call for it replaces the first.
+ * and only the root conversation's summariser is given it. Its calls run one at a time, so two calls for one line are
+ * never pending at once, and a second call for a line replaces the first.
  */
 export function addNoteTool(root: ConversationId, revision: string) {
 	return defineTool({
@@ -49,6 +50,7 @@ export function addNoteTool(root: ConversationId, revision: string) {
 			text: Type.String({ minLength: 1, maxLength: 500 }),
 		}),
 		replay: "safe",
+		executionMode: "sequential",
 		execute: async (args, api, context) => {
 			const note: Note = { file: args.file, line: args.line, text: args.text };
 			await api.commit(async (tx) => {

@@ -148,3 +148,5 @@ Tuned, `durability`'s own precision was 1.00 in every pass; corrected, it is 0.8
 The corrected lens ships below the precision bar of 0.8, at a worst of 0.31 against the tuned lens's 0.44. Most of the extras on its goldens, 20 of 24, still come from other lenses restating the defects it owns, which the one-sided hand-off explains. The rest, 4 of 24, are its own. No tuning followed, so the next round starts from these figures.
 
 Each pass made 140 to 161 requests in 149 to 194 seconds, 40,000 to 44,000 output tokens, $2.04 to $2.21 at list price.
+
+After this measurement, `durability-clean-upsert`'s tool comment was narrowed: only the root conversation's summariser holds `add_note`, and the tool, marked `executionMode: "sequential"`, runs its calls one at a time. Two calls for one line can no longer be pending at once, so the pass-2 extra no longer applies to the corpus as it ships. The figures above stand as measured.
