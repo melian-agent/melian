@@ -42,7 +42,7 @@ describe("ReviewThreadImporter", () => {
 		expect(imported.findings.map((finding) => finding.toJSON())).toEqual([
 			{
 				id: expect.stringMatching(/^[0-9a-f]{16}$/),
-				reviewer: { name: "coderabbit", login: "coderabbitai[bot]" },
+				reviewer: { name: "coderabbit", login: "coderabbitai[bot]", kind: "bot" },
 				file: "src/user.ts",
 				line: 7,
 				endLine: 8,
@@ -91,7 +91,7 @@ describe("ReviewThreadImporter", () => {
 		expect(opened.source).toBe("github:octocat");
 		expect(imported.findings.map((finding) => finding.toJSON())).toEqual([
 			expect.objectContaining({
-				reviewer: { name: "human", login: "octocat" },
+				reviewer: { name: "human", login: "octocat", kind: "user" },
 				file: "src/user.ts",
 				line: 20,
 				endLine: 20,
@@ -107,8 +107,43 @@ describe("ReviewThreadImporter", () => {
 		const imported = await opened.import();
 
 		expect(imported.findings).toHaveLength(2);
-		expect(imported.findings[0]!.reviewer).toEqual({ name: "coderabbit", login: "CodeRabbitAI" });
+		expect(imported.findings[0]!.reviewer).toEqual({ name: "coderabbit", login: "coderabbitai[bot]", kind: "bot" });
 		expect(imported.skippedBodies).toBe(1);
+	});
+
+	it("names Copilot's bot, keeps any other bot as a human by its login, and never takes a person for a bot", async () => {
+		const [page] = recording.graphql!.MelianReviewThreads! as {
+			data: { repository: { pullRequest: { reviewThreads: { nodes: { comments: { nodes: object[] } }[] } } } };
+		}[];
+		const [thread] = page!.data.repository.pullRequest.reviewThreads.nodes;
+		const by = (id: string, author: object) => ({
+			...thread,
+			id,
+			comments: { nodes: [{ ...thread!.comments.nodes[0], author }] },
+		});
+		const changed = structuredClone(page!);
+		changed.data.repository.pullRequest.reviewThreads = {
+			pageInfo: { hasNextPage: false, endCursor: null },
+			nodes: [
+				by("PRRT_copilot", { __typename: "Bot", login: "copilot-pull-request-reviewer" }),
+				by("PRRT_other", { __typename: "Bot", login: "renovate" }),
+				by("PRRT_person", { __typename: "User", login: "coderabbitai" }),
+			],
+		} as never;
+		const answers = { ...recording, graphql: { ...recording.graphql, MelianReviewThreads: [changed] } };
+
+		const copilot = await importer("copilot-pull-request-reviewer[bot]", answers).opened.import();
+		const other = await importer("renovate[bot]", answers).opened.import();
+		const rabbit = await importer(undefined, answers).opened.import();
+
+		expect(copilot.findings.map((each) => each.reviewer)).toEqual([
+			{ name: "copilot", login: "copilot-pull-request-reviewer[bot]", kind: "bot" },
+		]);
+		expect(other.findings.map((each) => each.reviewer)).toEqual([
+			{ name: "human", login: "renovate[bot]", kind: "bot" },
+		]);
+		// A person whose login is the bot's bare name is not the bot.
+		expect(rabbit.findings).toEqual([]);
 	});
 
 	it("gives a thread the same ID on every import, so importing again updates it", async () => {

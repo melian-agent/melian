@@ -429,7 +429,12 @@ type StoredComparison = {
 
 type StoredExternalFinding = {
 	id: string;
-	reviewer: { name: "codex" | "claude-code" | "coderabbit" | "human"; version?: string; login?: string };
+	reviewer: {
+		name: "codex" | "claude-code" | "coderabbit" | "copilot" | "human";
+		version?: string;
+		login?: string; // on GitHub, as REST spells it
+		kind?: "bot" | "user"; // on GitHub, from the author's GraphQL type
+	};
 	file?: string; // canonical, as a finding's path is
 	line?: number;
 	endLine?: number;
@@ -450,7 +455,7 @@ A source is named by a string: `github:<login>` for a pull request's review thre
 
 Melian's findings are referenced by ID only. Problem: a copy of each finding would go stale when a dismissal decides the verdict again, and it would duplicate the snippets that quote the repository. Solution: `comparison.compare(verdict)` records the IDs of the stored review's findings each time it runs, and a reader takes the findings from the review. It takes those that need attention and those dismissed. A silent finding was never shown to the author, so it takes no part in matching or counts: a nit Melian kept quiet is neither a match for a reviewer's comment nor a Melian-only finding.
 
-An external finding's ID is the first 16 hex digits of a sha256 over length-prefixed fields, as `findingId` hashes its own: the reviewer's name and the thread's node ID; or the reviewer's name, the file's path, and the finding's `ref`; or, for a finding without a `ref`, the path, the finding's file and line, and its title. Problem: a finding known by its position in the file took another finding's ID when a rerun dropped one above it, and a hand match moved with the ID. Solution: a finding without a `ref` is known by what it says, so an unchanged finding keeps its ID across reruns and a changed one is new. Two findings alike in file, line, and title are one, and a file that repeats a `ref` is `ComparisonError` `invalidFile`. Neither the version nor the body enters the ID.
+An external finding's ID is the first 16 hex digits of a sha256 over length-prefixed fields, as `findingId` hashes its own: the thread's node ID; or the file's path and the finding's `ref`; or, for a finding without a `ref`, the path, the finding's file and line, and its title. The reviewer stays out, so a later change to how reviewers are named never orphans a hand record. Problem: a finding known by its position in the file took another finding's ID when a rerun dropped one above it, and a hand match moved with the ID. Solution: a finding without a `ref` is known by what it says, so an unchanged finding keeps its ID across reruns and a changed one is new. Two findings alike in file, line, and title are one, and a file that repeats a `ref` is `ComparisonError` `invalidFile`. Neither the version nor the body enters the ID.
 
 `comparison.import(source, imported, at)` replaces what the source last imported. A finding it no longer reports goes, unless another source still holds it, and so do the hand matches and unmatches that name it, so a re-run reviewer's file replaces its own and an edited thread updates its finding. `imports` keeps each source's IDs for that, and the CLI reports the count it stored.
 

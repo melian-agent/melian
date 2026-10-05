@@ -28,12 +28,18 @@ export const externalReviewerNameSchema = Type.Union([
 	Type.Literal("codex"),
 	Type.Literal("claude-code"),
 	Type.Literal("coderabbit"),
+	Type.Literal("copilot"),
 	Type.Literal("human"),
 ]);
 
 /** Who raised an external finding: the reviewer, its version where known, and its login on a code host. */
 export const externalReviewerSchema = Type.Object(
-	{ name: externalReviewerNameSchema, version: Type.Optional(text), login: Type.Optional(text) },
+	{
+		name: externalReviewerNameSchema,
+		version: Type.Optional(text),
+		login: Type.Optional(text),
+		kind: Type.Optional(Type.Union([Type.Literal("bot"), Type.Literal("user")])),
+	},
 	strict,
 );
 
@@ -215,8 +221,9 @@ function schemaProblem(schema: TSchema, value: unknown): string | undefined {
 	return error === undefined ? undefined : `${error.instancePath || "(top level)"} ${error.message}`;
 }
 
-// What the ID hashes besides the reviewer: the thread; or the file, and the finding's ref in it, or without one its
-// file, line, and title, so an unchanged finding keeps its ID when a rerun reorders the file.
+// What the ID hashes: the thread's node ID; or the file's path, and the finding's ref in it, or without one its file,
+// line, and title, so an unchanged finding keeps its ID when a rerun reorders the file. The reviewer stays out, so a
+// later change to how reviewers are named never orphans a hand record.
 function sourceFields(input: ExternalFindingInput, title: string): string[] {
 	const { source } = input;
 	if (source.kind === "thread") return ["thread", source.thread];
@@ -298,7 +305,7 @@ export class ExternalFinding {
 			});
 		}
 		// Length-prefixed, so no character inside a field can move text from one field to the next.
-		const hashed = [input.reviewer.name, ...sourceFields(input, title)]
+		const hashed = sourceFields(input, title)
 			.map((field) => `${field.length}:${field}`)
 			.join("");
 		const id = createHash("sha256").update(hashed).digest("hex").slice(0, 16);

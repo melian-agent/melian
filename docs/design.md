@@ -745,14 +745,14 @@ Solution: comparison is a Melian capability. `melian compare` builds it, a store
 
 **Shape.** An external finding has one shape whatever its source:
 
-- the reviewer, `codex`, `claude-code`, `coderabbit`, or `human`, with a version where known;
+- the reviewer, `codex`, `claude-code`, `coderabbit`, `copilot`, or `human`, with a version where known, and on GitHub its login and whether it is a bot;
 - the file and line range;
 - a title and a body;
 - the reviewer's own severity, if it gave one;
 - a stable source reference: a thread or comment ID and its URL, or the file and position it was read from;
 - when it was posted, and whether its thread was resolved.
 
-Its ID hashes the reviewer and the source reference, so importing again updates a finding rather than adding one. Melian's findings keep their own shape. A comparison holds, for one changeset at one head, the external findings, Melian's findings from its stored review of that head, and the matches between them. It is a `defineDoc()` document in the changeset's storage, beside the findings document, so it lives where dismissals live. A range compares as a pull request does, for reviewers run on a local branch.
+Its ID hashes the source reference alone, so importing again updates a finding rather than adding one, and a later change to how reviewers are named never orphans a hand match. An import replaces what its source last imported, so a finding the reviewer withdrew goes. Melian's findings keep their own shape. A comparison holds, for one changeset at one head, the external findings, Melian's findings from its stored review of that head, and the matches between them. It is a `defineDoc()` document in the changeset's storage, beside the findings document, so it lives where dismissals live. A range compares as a pull request does, for reviewers run on a local branch.
 
 **Importers.** Each source is an object with a static `open`, like the other adapters. An import is replay safe: each finding upserts by its ID.
 

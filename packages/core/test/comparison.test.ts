@@ -47,7 +47,7 @@ const ids = (groups: ReturnType<Comparison["groups"]>) =>
 	groups.map((group) => ({ external: group.external.map((each) => each.id), melian: [...group.melian] }));
 
 describe("ExternalFinding", () => {
-	it("hashes the reviewer and the source reference into its ID, so importing again gives the same ID", () => {
+	it("hashes the source reference into its ID, so importing again gives the same ID", () => {
 		const source = {
 			kind: "thread",
 			thread: "PRRT_1",
@@ -63,7 +63,8 @@ describe("ExternalFinding", () => {
 		} as const);
 		expect(again.id).toBe(first.id);
 		expect(first.id).toMatch(/^[0-9a-f]{16}$/);
-		expect(external({ reviewer: { name: "human", login: "octocat" }, source } as const).id).not.toBe(first.id);
+		// The reviewer stays out of the ID, so naming reviewers differently later never orphans a hand record.
+		expect(external({ reviewer: { name: "human", login: "octocat" }, source } as const).id).toBe(first.id);
 		// Without a ref, a file's finding is known by its file, line, and title, never its position.
 		const file = { kind: "file", path: "codex.json", position: 0 } as const;
 		expect(external({ source: file }).id).toBe(external({ source: { ...file, position: 7 } }).id);

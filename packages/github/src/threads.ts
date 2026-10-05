@@ -89,13 +89,33 @@ export interface ReviewThreadImporterOptions {
 	readonly fetch?: typeof fetch;
 }
 
-// GraphQL names a bot by its bare login, `coderabbitai`, where REST and the web say `coderabbitai[bot]`, so a bot's
-// comment is the login's under either spelling. Logins are case-insensitive.
+// GraphQL names a bot by its bare login, `coderabbitai`, where REST and the web say `coderabbitai[bot]`. A bot's
+// comment is the login's under either spelling; a user's only under its own, so a bot's name never matches a person.
+// Logins are case-insensitive.
 function wrote(author: Author, login: string): boolean {
 	if (author === null) return false;
 	const wanted = login.toLowerCase();
-	const bare = author.login.toLowerCase();
-	return bare === wanted || (author.__typename === "Bot" && `${bare.replace(/\[bot\]$/, "")}[bot]` === wanted);
+	const own = author.login.toLowerCase();
+	if (author.__typename !== "Bot") return own === wanted;
+	return own.replace(/\[bot\]$/, "") === wanted.replace(/\[bot\]$/, "");
+}
+
+// The bots Melian names, by bare login.
+const botNames: Readonly<Record<string, ExternalReviewer["name"]>> = {
+	coderabbitai: "coderabbit",
+	"copilot-pull-request-reviewer": "copilot",
+};
+
+// The reviewer an author is: CodeRabbit's and Copilot's bots by name, and anyone else a human kept by login, as REST
+// spells it.
+function reviewerOf(author: NonNullable<Author>): ExternalReviewer {
+	const bot = author.__typename === "Bot";
+	const bare = author.login.replace(/\[bot\]$/i, "");
+	const login = bot ? `${bare}[bot]` : author.login;
+	const kind = bot ? "bot" : "user";
+	const key = bare.toLowerCase();
+	const named = bot && Object.hasOwn(botNames, key) ? botNames[key] : undefined;
+	return { name: named ?? "human", login, kind };
 }
 
 function statusOf(error: unknown): number | undefined {
@@ -118,7 +138,6 @@ export class ReviewThreadImporter implements ExternalImporter {
 	private readonly repo: string;
 	private readonly pullRequest: number;
 	private readonly login: string;
-	private readonly reviewer: ExternalReviewer;
 
 	private constructor(options: ReviewThreadImporterOptions & { readonly login: string }) {
 		this.owner = options.owner;
@@ -126,8 +145,6 @@ export class ReviewThreadImporter implements ExternalImporter {
 		this.pullRequest = options.pullRequest;
 		this.login = options.login;
 		this.source = `github:${options.login}`;
-		const name = options.login.toLowerCase().replace(/\[bot\]$/, "") === "coderabbitai" ? "coderabbit" : "human";
-		this.reviewer = { name, login: options.login };
 		this.octokit = new Octokit({
 			auth: options.token,
 			userAgent: "melian",
@@ -182,7 +199,7 @@ export class ReviewThreadImporter implements ExternalImporter {
 		const end = thread.subjectType === "FILE" ? null : placed ? thread.line : thread.originalLine;
 		const start = placed ? thread.startLine : thread.originalStartLine;
 		return ExternalFinding.create({
-			reviewer: this.reviewer,
+			reviewer: reviewerOf(comment.author!),
 			file: thread.path,
 			...(end === null ? {} : { line: Math.min(start ?? end, end), endLine: end }),
 			...(thread.diffSide === "LEFT" ? { revision: "base" as const } : {}),
