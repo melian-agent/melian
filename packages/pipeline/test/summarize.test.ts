@@ -222,6 +222,8 @@ describe("walkthrough summaries", () => {
 		harness.resume();
 		const pending = (await harness.inspect(context)).tasks.find(({ record }) => record.kind === "melian.summarize");
 		expect(pending?.state.kind).toBe("blocked");
+		expect((await summarize())?.walkthroughAttempts?.[revision]).toBe(1);
+		expect((await summarize())?.walkthroughAttempts?.[revision]).toBe(1);
 		const captured = scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
 		registry.install(summarizeExtension);
 		const result = await summarize();
