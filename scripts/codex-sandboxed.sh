@@ -70,11 +70,20 @@ if [ "${1:-}" = "--print-profile" ]; then
   exit 0
 fi
 
+if [ $# -lt 3 ]; then
+  echo "usage: codex-sandboxed.sh <worktree> <model> <prompt-file> [log-file] [scratch-dir]" >&2
+  exit 64
+fi
 if [ "$(uname -s)" != "Darwin" ]; then echo "codex-sandboxed: macOS only" >&2; exit 64; fi
 worktree=$(cd "$1" && pwd -P)
 model=$2
-prompt_file=$3
 log=${4:-/dev/stdout}
+[ -f "$3" ] || { echo "codex-sandboxed: prompt file not found: $3" >&2; exit 64; }
+prompt=$(cat "$3")
+[ -n "${prompt//[[:space:]]/}" ] || { echo "codex-sandboxed: prompt file is empty: $3" >&2; exit 64; }
+log_dir=$(dirname "$log")
+[ -d "$log_dir" ] || { echo "codex-sandboxed: log directory not found: $log_dir" >&2; exit 64; }
+log="$(cd "$log_dir" && pwd -P)/$(basename "$log")"
 tmpdir=$(real "${TMPDIR:-/tmp}")
 scratch=${5:-${CODEX_SANDBOX_SCRATCH:-$tmpdir}}
 profile=$(mktemp "${tmpdir%/}/codex-seatbelt.XXXXXX")
@@ -82,4 +91,4 @@ trap 'rm -f "$profile"' EXIT
 "$0" --print-profile "$worktree" "$scratch" > "$profile"
 cd "$worktree"
 # No exec: it would replace the shell and skip the EXIT trap that removes the profile.
-sandbox-exec -f "$profile" codex exec --dangerously-bypass-approvals-and-sandbox --model "$model" -C "$worktree" "$(cat "$prompt_file")" > "$log" 2>&1
+sandbox-exec -f "$profile" codex exec --dangerously-bypass-approvals-and-sandbox --model "$model" -C "$worktree" "$prompt" > "$log" 2>&1
