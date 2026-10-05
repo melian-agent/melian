@@ -116,8 +116,8 @@ export function renderProse(text: string): string {
 		.replace(/@(?=[\p{L}\p{N}_-])/gu, "@\u2060")
 		.replace(/\\#(?=\d)/g, "\\#\u2060")
 		.replace(/:(?=\/\/)/g, ":\u2060")
-		.replace(/www\./gi, "www\u2060.")
-		.replace(/\bGH-(?=\d)/gi, "GH-\u2060");
+		.replace(/www\./gi, (match) => `${match.slice(0, -1)}\u2060.`)
+		.replace(/\bGH-(?=\d)/gi, (match) => `${match}\u2060`);
 }
 
 const controls = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
