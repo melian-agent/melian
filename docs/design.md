@@ -34,7 +34,7 @@ Melian follows Pi's philosophy: a minimal core, extensible by design, small enou
 
 ## Concepts
 
-Built in milestone 1, except level, whose declaration and budgets milestone 2 built, plan, which milestone 2 built, and verification, ledger, decision, and comparison, planned for milestone 2 (review of record), and knowledge, planned for milestone 4 (remembers and learns).
+Built in milestone 1, except level, whose declaration and budgets milestone 2 built, plan, which milestone 2 built, the ledger, which milestone 2 built in [pull request #73](https://github.com/melian-agent/melian/pull/73), and verification, decision, and comparison, planned for milestone 2 (review of record), and knowledge, planned for milestone 4 (remembers and learns).
 
 | Term | Meaning |
 |---|---|
@@ -125,7 +125,7 @@ Pi Durable is pinned to an exact version and imported by one internal module, be
 
 ## Findings
 
-Built in milestone 1, except the failure scenario and evidence for every finding and `melian dismiss`, built in milestone 2 (review of record); verification and editing a resolved finding's comment, planned for milestone 2; and dismissal from a pull-request thread, planned for milestone 4 (comment commands).
+Built in milestone 1, except the failure scenario and evidence for every finding and `melian dismiss`, built in milestone 2 (review of record); editing a resolved finding's comment, built in milestone 2 in [pull request #73](https://github.com/melian-agent/melian/pull/73); verification, planned for milestone 2; and dismissal from a pull-request thread, planned for milestone 4 (comment commands).
 
 ### Schema
 
