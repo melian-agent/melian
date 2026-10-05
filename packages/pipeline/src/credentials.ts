@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { NamedCredential } from "@melian-agent/core";
+import { type NamedCredential, visibleText } from "@melian-agent/core";
 import { CredentialError, PiCredentialsError } from "./errors.ts";
 import {
 	type AuthContext,
@@ -157,10 +157,14 @@ function runCommand(credential: NamedCredential, command: string): Promise<strin
 								? `did not finish in ${commandTimeoutMs / 1000} seconds`
 								: `failed (${error.code ?? error.signal})`;
 					reject(
-						new CredentialError("commandFailed", `credential ${name} in ${file}: its command ${how}`, {
-							credential: name,
-							file,
-						}),
+						new CredentialError(
+							"commandFailed",
+							`credential ${visibleText(name)} in ${visibleText(file)}: its command ${how}`,
+							{
+								credential: name,
+								file,
+							},
+						),
 					);
 					return;
 				}
@@ -221,10 +225,14 @@ export class MelianCredentialStore implements CredentialStore {
 		const resolved = await value;
 		if (resolved === "") {
 			const { name, file } = credential;
-			throw new CredentialError("noValue", `credential ${name} in ${file} gave an empty value`, {
-				credential: name,
-				file,
-			});
+			throw new CredentialError(
+				"noValue",
+				`credential ${visibleText(name)} in ${visibleText(file)} gave an empty value`,
+				{
+					credential: name,
+					file,
+				},
+			);
 		}
 		return resolved;
 	}
@@ -294,7 +302,8 @@ export function createReviewModels(
 		if (models.getProvider(provider) !== undefined) continue;
 		throw new CredentialError(
 			"unknownProvider",
-			`credential ${name} in ${file} names the provider ${provider}, which Melian's model catalogue does not know`,
+			// A secrets file's names reach a terminal, so they print escaped.
+			`credential ${visibleText(name)} in ${visibleText(file)} names the provider ${visibleText(provider)}, which Melian's model catalogue does not know`,
 			{ credential: name, file },
 		);
 	}

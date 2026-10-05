@@ -240,6 +240,21 @@ describe("MelianCredentialStore", () => {
 		);
 	});
 
+	it("names an unknown provider escaped, so a secrets file cannot write to the terminal", () => {
+		const forged = named("typo\u001b[2J", "antropic\u001b]0;pwned\u0007", { kind: "literal", key: "k" });
+		const error = (() => {
+			try {
+				createReviewModels({ authPath, credentials: [forged] });
+			} catch (caught) {
+				return caught as Error;
+			}
+			throw new Error("expected createReviewModels to refuse the credential");
+		})();
+		expect(error).toMatchObject({ code: "unknownProvider" });
+		expect(error.message).not.toMatch(/[\u001b\u0007]/);
+		expect(error.message).toContain("names the provider antropic\\u001b]0;pwned\\u0007");
+	});
+
 	it("refuses a named credential for a provider the catalogue does not know", () => {
 		expect(() =>
 			createReviewModels({ authPath, credentials: [named("typo", "antropic", { kind: "literal", key: "k" })] }),
