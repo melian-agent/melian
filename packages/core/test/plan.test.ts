@@ -161,7 +161,13 @@ describe("ReviewPlan.resolve", () => {
 	});
 
 	it("matches a model across a provider's prefix in its name", () => {
-		const resolved = plan({ heavy: { model: opus } }, { openrouter: "OPENROUTER_API_KEY" });
+		// A decoy at the wanted model's price, sorting first, wins the nearest-price fallback unless the name decides.
+		const decoy = model("openrouter", "aaa/decoy", "Decoy", 4, 20);
+		const resolved = plan(
+			{ heavy: { model: opus } },
+			{ openrouter: "OPENROUTER_API_KEY" },
+			{ catalog: [...catalog, decoy] },
+		);
 		expect(resolved.tier("heavy").models[0]?.model).toBe("openrouter/anthropic/claude-opus-5.5");
 	});
 
