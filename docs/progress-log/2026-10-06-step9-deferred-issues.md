@@ -13,3 +13,5 @@ Final verification found that [pull request #62](https://github.com/melian-agent
 The first fix pass for [pull request #85](https://github.com/melian-agent/melian/pull/85) corrects the GitHub guideline: published state upgrades to version 6. The document definition confirms the target.
 
 The manifest guideline now describes automatic checks when records are absent, matching `reviewChangeset`. Hosts can still supply records.
+
+The standards and run-details paragraphs split the two long sentences flagged in review. Their contracts are unchanged.
