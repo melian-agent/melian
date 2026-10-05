@@ -86,7 +86,7 @@ Open pull requests, in landing order:
 2. [#68](https://github.com/melian-agent/melian/pull/68), step 15 items 1 to 3. Three Melian rounds are done. It waits for [#62](https://github.com/melian-agent/melian/pull/62) to land before its final round.
 3. [#72](https://github.com/melian-agent/melian/pull/72), step 15 items 4 to 7, stacked on [#68](https://github.com/melian-agent/melian/pull/68). Codex wrote it. Its first fix pass is in progress, from three reviews.
 4. [#73](https://github.com/melian-agent/melian/pull/73), step 8, the ledger. Codex wrote it. Four reviews are in, and a fix pass is to come.
-5. [#74](https://github.com/melian-agent/melian/pull/74), the Codex seatbelt wrapper. The thirteenth-round fixes follow a merge of main; enforcement tests await the maintainer’s host run.
+5. [#74](https://github.com/melian-agent/melian/pull/74), the Codex seatbelt wrapper. Fourteenth-round fixes protect relocated Pi credentials and repair planting and process cleanup tests. The host run found one stale sequencer directory; enforcement tests await a host rerun.
 6. [#75](https://github.com/melian-agent/melian/pull/75), follow-ups from [#61](https://github.com/melian-agent/melian/pull/61). Under review.
 
 The records [#67](https://github.com/melian-agent/melian/pull/67) and [#69](https://github.com/melian-agent/melian/pull/69) wait on their pull requests' final rounds.
