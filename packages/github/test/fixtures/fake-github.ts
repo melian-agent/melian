@@ -33,7 +33,6 @@ export type FakeState = {
 	reviews: FakeReview[];
 	comments: FakeComment[];
 	ledgers: { id: number; user: User; body: string; html_url: string; created_at?: string }[];
-	/** When set, the review-thread query serves this many threads a page, with a cursor. */
 	threadPageSize?: number;
 	resolvedThreads: number[];
 	statuses: FakeStatus[];

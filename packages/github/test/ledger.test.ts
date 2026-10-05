@@ -60,6 +60,30 @@ const round: LedgerRound = {
 const options = { pullRequest: 7, secret, walkthrough: { enabled: true, collapsed: true, diagrams: true } };
 
 describe("ledger rendering", () => {
+	it("stamps the open, blocking and dismissed counts", () => {
+		const warning = Finding.from({
+			...finding.toJSON(),
+			properties: { ...finding.properties, id: "warning-finding", severity: "P3", resolution: "warn" },
+		});
+		const dismissed = Finding.from({
+			...finding.toJSON(),
+			properties: {
+				...finding.properties,
+				id: "dismissed-finding",
+				status: "dismissed",
+				dismissal: { by: "Reviewer", reason: "Input is validated upstream.", at: "2026-10-05" },
+			},
+		});
+		const counted = new Adjudication({
+			findings: [finding, warning, dismissed],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const { stamp } = Ledger.from(counted, { rounds: [{ ...round, verdict: counted.toJSON() }] }, options);
+		expect(stamp.counts).toEqual({ open: 2, blocking: 1, dismissed: 1 });
+	});
+
 	it("reads back a signed stamp and rejects a changed stamp", () => {
 		const ledger = Ledger.from(verdict, { rounds: [round] }, options);
 		const body = ledger.render(links);
