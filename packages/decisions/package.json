@@ -34,5 +34,9 @@
 	},
 	"engines": {
 		"node": ">=22.19.0"
+	},
+	"dependencies": {
+		"@melian-agent/core": "*",
+		"typebox": "1.3.27"
 	}
 }
