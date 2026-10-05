@@ -54,6 +54,47 @@ export class Ledger {
 		this.stamp = stamp;
 	}
 
+	/** Reads a stamp, only after its enclosing marker has verified; checks its digest against the marker and exact visible body. */
+	static readStamp(body: string): StoredLedgerStamp | undefined {
+		const match = /^<!-- melian:stamp=(.*) -->$/.exec(body.split(/\r?\n/)[1] ?? "");
+		if (match === null) return undefined;
+		try {
+			const value: unknown = JSON.parse(match[1]!);
+			if (typeof value !== "object" || value === null) return undefined;
+			const stamp = value as StoredLedgerStamp;
+			if (
+				stamp.version !== 1 ||
+				typeof stamp.base !== "string" ||
+				!/^[0-9a-f]{40,64}$/.test(stamp.base) ||
+				typeof stamp.head !== "string" ||
+				!/^[0-9a-f]{40,64}$/.test(stamp.head) ||
+				!Number.isSafeInteger(stamp.round) ||
+				stamp.round < 1 ||
+				typeof stamp.verdict !== "string" ||
+				!/^[0-9a-f]{16}$/.test(stamp.verdict) ||
+				typeof stamp.projection !== "string" ||
+				!/^[0-9a-f]{16}$/.test(stamp.projection) ||
+				(stamp.plan !== null && (typeof stamp.plan !== "string" || !/^[0-9a-f]{16}$/.test(stamp.plan))) ||
+				!Array.isArray(stamp.lenses) ||
+				!stamp.lenses.every((lens) => typeof lens === "string") ||
+				typeof stamp.counts !== "object" ||
+				stamp.counts === null ||
+				![stamp.counts.open, stamp.counts.blocking, stamp.counts.dismissed].every(
+					(count) => Number.isSafeInteger(count) && count >= 0,
+				)
+			)
+				return undefined;
+			const opening = parseMarker(body.split(/\r?\n/)[0] ?? "");
+			if (opening?.kind !== "ledger" || opening.id !== digest(match[1]!) || opening.revision !== stamp.head)
+				return undefined;
+			const visible = body.slice(body.indexOf("\n", body.indexOf("\n") + 1) + 1);
+			if (!visible.startsWith("\n") || digest(visible.slice(1)) !== stamp.projection) return undefined;
+			return stamp;
+		} catch {
+			return undefined;
+		}
+	}
+
 	/** Builds the current ledger without reading the host or changing the record. */
 	static from(
 		verdict: Verdict,
@@ -164,7 +205,6 @@ export class Ledger {
 											`| ${code(visibleText(path)).replace(/\|/g, "\\|")} | ${prose(summary.slice(0, 2000))} |`,
 									),
 							].join("\n"),
-							...(text.note === undefined ? [] : [prose(text.note)]),
 							...(walkthrough.diagrams && text.diagram !== undefined
 								? [`Diagram (summary):\n\n${renderDiagram(text.diagram.slice(0, 4000))}`]
 								: []),
@@ -255,59 +295,5 @@ export class Ledger {
 			`Earlier round ${round.round} at ${round.head.slice(0, 12)}`,
 			prior.sections(links, false).join("\n\n"),
 		);
-	}
-}
-
-/** A ledger stamp read only after its enclosing marker has verified. */
-export class LedgerStamp {
-	private readonly body: string;
-	private constructor(body: string) {
-		this.body = body;
-	}
-
-	/** Parses a stamp and checks its digest against the marker and exact visible body. */
-	static parse(body: string): StoredLedgerStamp | undefined {
-		return new LedgerStamp(body).parse();
-	}
-
-	private parse(): StoredLedgerStamp | undefined {
-		const body = this.body;
-		const match = /^<!-- melian:stamp=(.*) -->$/.exec(body.split(/\r?\n/)[1] ?? "");
-		if (match === null) return undefined;
-		try {
-			const value: unknown = JSON.parse(match[1]!);
-			if (typeof value !== "object" || value === null) return undefined;
-			const stamp = value as StoredLedgerStamp;
-			if (
-				stamp.version !== 1 ||
-				typeof stamp.base !== "string" ||
-				!/^[0-9a-f]{40,64}$/.test(stamp.base) ||
-				typeof stamp.head !== "string" ||
-				!/^[0-9a-f]{40,64}$/.test(stamp.head) ||
-				!Number.isSafeInteger(stamp.round) ||
-				stamp.round < 1 ||
-				typeof stamp.verdict !== "string" ||
-				!/^[0-9a-f]{16}$/.test(stamp.verdict) ||
-				typeof stamp.projection !== "string" ||
-				!/^[0-9a-f]{16}$/.test(stamp.projection) ||
-				(stamp.plan !== null && (typeof stamp.plan !== "string" || !/^[0-9a-f]{16}$/.test(stamp.plan))) ||
-				!Array.isArray(stamp.lenses) ||
-				!stamp.lenses.every((lens) => typeof lens === "string") ||
-				typeof stamp.counts !== "object" ||
-				stamp.counts === null ||
-				![stamp.counts.open, stamp.counts.blocking, stamp.counts.dismissed].every(
-					(count) => Number.isSafeInteger(count) && count >= 0,
-				)
-			)
-				return undefined;
-			const opening = parseMarker(body.split(/\r?\n/)[0] ?? "");
-			if (opening?.kind !== "ledger" || opening.id !== digest(match[1]!) || opening.revision !== stamp.head)
-				return undefined;
-			const visible = body.slice(body.indexOf("\n", body.indexOf("\n") + 1) + 1);
-			if (!visible.startsWith("\n") || digest(visible.slice(1)) !== stamp.projection) return undefined;
-			return stamp;
-		} catch {
-			return undefined;
-		}
 	}
 }

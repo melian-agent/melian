@@ -1,13 +1,6 @@
 import { rmSync } from "node:fs";
 import { Adjudication, defaultConfig, Finding, type LedgerRound } from "@melian-agent/core";
-import {
-	createGitHubProvider,
-	Ledger,
-	LedgerStamp,
-	maxBodyLength,
-	parseMarker,
-	verifyMarker,
-} from "@melian-agent/github";
+import { createGitHubProvider, Ledger, maxBodyLength, parseMarker, verifyMarker } from "@melian-agent/github";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -72,9 +65,9 @@ describe("ledger rendering", () => {
 		const marker = parseMarker(body.split("\n")[0]!)!;
 		expect(marker.kind).toBe("ledger");
 		expect(verifyMarker(marker, secret)).toBe(true);
-		expect(LedgerStamp.parse(body)).toEqual(ledger.stamp);
-		expect(ledger.diff(LedgerStamp.parse(body))).toBe(false);
-		expect(LedgerStamp.parse(body.replace('"round":1', '"round":2'))).toBeUndefined();
+		expect(Ledger.readStamp(body)).toEqual(ledger.stamp);
+		expect(ledger.diff(Ledger.readStamp(body))).toBe(false);
+		expect(Ledger.readStamp(body.replace('"round":1', '"round":2'))).toBeUndefined();
 	});
 
 	it("switches the walkthrough and keeps earlier rounds collapsed with their heads", () => {
@@ -160,18 +153,18 @@ describe("ledger rendering", () => {
 		);
 		const body = ledger.render(links);
 		expect(body.length).toBeLessThanOrEqual(maxBodyLength);
-		expect(LedgerStamp.parse(body)).toEqual(ledger.stamp);
+		expect(Ledger.readStamp(body)).toEqual(ledger.stamp);
 		expect(body).toContain("This ledger was cut");
 		expect(body.match(/<details>/g)?.length ?? 0).toBe(body.match(/<\/details>/g)?.length ?? 0);
 	});
 	it("rejects visible tampering, truncation and a digest hidden in another marker field", () => {
 		const ledger = Ledger.from(verdict, { rounds: [round] }, options);
 		const body = ledger.render(links);
-		expect(LedgerStamp.parse(body.replace("Reads input", "Different text"))).toBeUndefined();
-		expect(LedgerStamp.parse(body.slice(0, -20))).toBeUndefined();
+		expect(Ledger.readStamp(body.replace("Reads input", "Different text"))).toBeUndefined();
+		expect(Ledger.readStamp(body.slice(0, -20))).toBeUndefined();
 		const original = parseMarker(body.split("\n")[0]!)!.id;
 		const wrong = body.replace(`ledger=${original}`, `ledger=0123456789abcdef extra=ledger=${original}`);
-		expect(LedgerStamp.parse(wrong)).toBeUndefined();
+		expect(Ledger.readStamp(wrong)).toBeUndefined();
 	});
 
 	it("renders no empty agent prompt or unrecorded verifier claim", () => {
@@ -199,7 +192,7 @@ describe("ledger rendering", () => {
 		const body = ledger.render(links);
 		expect(body.split("\n")[1]).toContain("\\u2028");
 		expect(body.split("\n")[1]).toContain("\\u2029");
-		expect(LedgerStamp.parse(body)).toEqual(ledger.stamp);
+		expect(Ledger.readStamp(body)).toEqual(ledger.stamp);
 		expect(body).toContain("one two");
 		expect(body).not.toContain("one\\u000atwo");
 	});
@@ -265,7 +258,7 @@ describe("ledger rendering", () => {
 		expect(body).toContain("<summary>Prompt for agents");
 		expect(body).toContain("### Dismissals");
 		expect(body).toContain("Input is validated upstream.");
-		expect(LedgerStamp.parse(body)).toBeDefined();
+		expect(Ledger.readStamp(body)).toBeDefined();
 	});
 
 	it("changes the stamp for each walkthrough switch alone", () => {
@@ -371,7 +364,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		);
 		expect(state.ledgers[0]!.body).toContain("tokens, $");
 		expect(state.ledgers[0]!.body).toContain(`ran on ${details!.lenses[0]!.ran}`);
-		expect(LedgerStamp.parse(state.ledgers[0]!.body)?.plan).not.toBeNull();
+		expect(Ledger.readStamp(state.ledgers[0]!.body)?.plan).not.toBeNull();
 		const patchesBefore = state.calls.filter(({ method }) => method === "PATCH").length;
 		await publish(first.changeset, false);
 		expect(state.calls.filter(({ method }) => method === "PATCH")).toHaveLength(patchesBefore + 1);
@@ -384,7 +377,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		await publish(second.changeset, false);
 		expect(state.ledgers).toHaveLength(1);
 		expect(state.ledgers[0]!.id).toBe(id);
-		expect(LedgerStamp.parse(state.ledgers[0]!.body)?.head).toBe(second.changeset.revision.head);
+		expect(Ledger.readStamp(state.ledgers[0]!.body)?.head).toBe(second.changeset.revision.head);
 		expect(state.ledgers[0]!.body).toContain(`Earlier round 1 at ${first.changeset.revision.head.slice(0, 12)}`);
 		expect(state.ledgers[0]!.body).not.toContain("<summary>Walkthrough");
 		const rootState = (await harness.snapshot(PublishedDocument, (await harness.root(context)).id, context))!;
@@ -642,7 +635,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 			provider.findLedger(7, secret, {
 				id: "17",
 				url: comment.html_url,
-				stamp: LedgerStamp.parse(comment.body)!,
+				stamp: Ledger.readStamp(comment.body)!,
 				author: state.login,
 			}),
 		).rejects.toThrow("another publisher");
@@ -686,7 +679,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		const recorded = {
 			id: "17",
 			url: comment.html_url,
-			stamp: LedgerStamp.parse(comment.body)!,
+			stamp: Ledger.readStamp(comment.body)!,
 			author: state.login,
 		};
 		expect(await provider.findLedger(7, secret, recorded)).toEqual(recorded);

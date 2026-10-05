@@ -13,7 +13,7 @@ import {
 } from "@melian-agent/core";
 import { Octokit } from "@octokit/rest";
 import { GitHubError } from "./errors.ts";
-import { Ledger, LedgerStamp } from "./ledger.ts";
+import { Ledger } from "./ledger.ts";
 import {
 	type Marker,
 	type MarkerKind,
@@ -288,7 +288,7 @@ export class GitHubProvider implements ReviewProvider {
 				"unverifiable",
 				"the pull request has a ledger Melian cannot verify; restore the changeset's storage, or delete the orphaned ledger comment by hand before publishing again",
 			);
-		const stamp = LedgerStamp.parse(body);
+		const stamp = Ledger.readStamp(body);
 		if (stamp === undefined)
 			throw new LedgerRefusal(
 				"damaged",

@@ -29,4 +29,4 @@ export {
 
 export const packageName = "@melian-agent/github";
 
-export { Ledger, LedgerStamp } from "./ledger.ts";
+export { Ledger } from "./ledger.ts";
