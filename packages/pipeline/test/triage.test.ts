@@ -8,7 +8,6 @@ import {
 	defaultConfig,
 	Finding,
 	Lens,
-	type LensBudget,
 	type MelianConfig,
 	Rendering,
 	ReviewPlan,
@@ -182,15 +181,6 @@ const statedBudget: Record<ScrutinyLevel, string> = {
 
 function lensRecord(review: Review): CheckRecord | undefined {
 	return [...(review.verdict.ran ?? []), ...review.verdict.notRun].find((check) => check.name === "lens.correctness");
-}
-
-// `lens` with `budget` over one level's budget.
-function budgeted(lens: Lens, level: ScrutinyLevel, budget: Partial<LensBudget>): Lens {
-	const settings = lens.level(level);
-	return Lens.from({
-		...lens.toJSON(),
-		levels: { ...lens.levels, [level]: { ...settings, budget: { ...settings.budget, ...budget } } },
-	});
 }
 
 // Each lens request the storage holds, by its request ID, with the level of the lens conversation it went to.
@@ -1235,9 +1225,14 @@ describe("escalation", () => {
 	it("takes a refutation from an escalated run whose findings budget is spent", async () => {
 		const decider = choosing("quick");
 		await open(decider);
-		const tight = lenses.map((lens) =>
-			lens.name === "correctness" ? budgeted(lens, "careful", { findings: 1 }) : lens,
-		);
+		const tight = lenses.map((lens) => {
+			if (lens.name !== "correctness") return lens;
+			const settings = lens.level("careful");
+			return Lens.from({
+				...lens.toJSON(),
+				levels: { ...lens.levels, careful: { ...settings, budget: { ...settings.budget, findings: 1 } } },
+			});
+		});
 		const other = call("report_finding", { ...crashFinding, line: 6, rule: "wrong-result" });
 		const refute = (messages: readonly Message[]) =>
 			call("report_finding", {
@@ -1275,7 +1270,14 @@ describe("escalation", () => {
 	it("runs a lens again when a budget ended it at quick before it reported anything", async () => {
 		const decider = choosing("quick");
 		await open(decider);
-		const tight = lenses.map((lens) => (lens.name === "correctness" ? budgeted(lens, "quick", { tools: 1 }) : lens));
+		const tight = lenses.map((lens) => {
+			if (lens.name !== "correctness") return lens;
+			const settings = lens.level("quick");
+			return Lens.from({
+				...lens.toJSON(),
+				levels: { ...lens.levels, quick: { ...settings, budget: { ...settings.budget, tools: 1 } } },
+			});
+		});
 		const reads = fauxAssistantMessage(
 			[
 				fauxToolCall("read_file", { path: "src/user.ts" }),
@@ -1299,7 +1301,14 @@ describe("escalation", () => {
 	it("leaves a lens a budget ended at quick ended when its ceiling is quick", async () => {
 		const decider = choosing("quick");
 		await open(decider);
-		const tight = lenses.map((lens) => (lens.name === "correctness" ? budgeted(lens, "quick", { tools: 1 }) : lens));
+		const tight = lenses.map((lens) => {
+			if (lens.name !== "correctness") return lens;
+			const settings = lens.level("quick");
+			return Lens.from({
+				...lens.toJSON(),
+				levels: { ...lens.levels, quick: { ...settings, budget: { ...settings.budget, tools: 1 } } },
+			});
+		});
 		const reads = fauxAssistantMessage(
 			[
 				fauxToolCall("read_file", { path: "src/user.ts" }),
