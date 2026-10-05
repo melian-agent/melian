@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { loadConfig } from "../src/config.ts";
-import { type LinearPattern, compilePattern, matchesGlobs } from "../src/pattern.ts";
+import { compilePattern, type LinearPattern, matchesGlobs } from "../src/pattern.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -17,7 +17,7 @@ async function rootRule(name: string) {
 }
 
 function markdownLines(directory: string): string[] {
-	return readdirSync(join(root, directory), { recursive: true })
+	return readdirSync(join(root, directory), { recursive: true, encoding: "utf8" })
 		.filter((file) => file.endsWith(".md"))
 		.flatMap((file) => readFileSync(join(root, directory, file), "utf8").split("\n"));
 }
@@ -63,7 +63,8 @@ describe("the bare-issue-reference guardrail", () => {
 	it("agrees with a reading that strips whole Markdown links, on every line of the records and progress-log entries", async () => {
 		const { pattern } = await rootRule("bare-issue-reference");
 		const lines = [...markdownLines("packages/evals/comparisons"), ...markdownLines("docs/progress-log")];
-		const bareOutsideLinks = (line: string) => /(^|[\s(])#\d/.test(line.replace(/\[[^\]]*\]\([^)]*\)/g, "").replace(/`[^`]*`/g, ""));
+		const bareOutsideLinks = (line: string) =>
+			/(^|[\s(])#\d/.test(line.replace(/\[[^\]]*\]\([^)]*\)/g, "").replace(/`[^`]*`/g, ""));
 		const linked = lines.filter((line) => /\]\([^)]*\)/.test(line) && !bareOutsideLinks(line));
 		expect(linked.filter((line) => /#\d/.test(line)).length).toBeGreaterThan(20);
 		expect(linked.filter((line) => pattern.test(line))).toEqual([]);
