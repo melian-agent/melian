@@ -1826,6 +1826,55 @@ describe("reviews recorded before levels joined the keys", () => {
 		expect(after).toEqual([]);
 	});
 
+	it("keeps a version-1 checkpoint's phase, child and attempt when upgrading mid-review", () => {
+		const lens = lenses.find((each) => each.name === "correctness")!;
+		const key = `correctness@${lens.version}`;
+		const input = {
+			root: 1 as ConversationId,
+			revision: {
+				repoRoot: repo,
+				nonce: "0".repeat(24),
+				base: gitIn(repo, "merge-base", "main", "feature"),
+				head: gitIn(repo, "rev-parse", "feature"),
+				files: [],
+			},
+			lenses: [
+				{
+					key,
+					name: lens.name,
+					version: lens.version,
+					level: "careful",
+					route: [fake.ref("medium"), fake.ref("heavy")],
+					instructions: correctness,
+					tools: [...lens.tools],
+					severities: [...lens.severities],
+					rules: lens.rules.map((rule) => ({ ...rule })),
+					budget: { findings: 8 },
+					coverage: { scope: "", paths: ["**"], nearer: [] },
+					prompt: "Review the change.",
+				},
+			],
+		};
+		const checkpoint = { phase: "review", children: { [key]: 2 as ConversationId }, attempts: { [key]: 1 } };
+		const definition = createReviewRegistry().snapshot().task("melian.lenses")!.definition;
+		const migrate = definition.migrate as (
+			input: unknown,
+			checkpoint: unknown,
+			from: number,
+		) => { input: unknown; checkpoint: unknown };
+
+		const upgraded = migrate(input, checkpoint, 1);
+
+		expect(definition.version).toBe(2);
+		expect(upgraded.input).toMatchObject({
+			root: input.root,
+			revision: input.revision,
+			lenses: [{ key, version: lens.version, route: input.lenses[0]!.route }],
+		});
+		expect(upgraded.input).not.toHaveProperty("lenses.0.level");
+		expect(upgraded.checkpoint).toEqual({ phase: "review", children: { [key]: 2 }, attempts: { [key]: 1 } });
+	});
+
 	it("resumes a lens task an older Melian created, at version 1, under the current definition", async () => {
 		const path = join(dir, "review.sqlite");
 		// The definition as an older Melian registered it; only its name and version reach storage.
