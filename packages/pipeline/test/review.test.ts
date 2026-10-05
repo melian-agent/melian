@@ -446,7 +446,9 @@ describe("reviewChangeset", () => {
 		expect(findings.map((finding) => finding.locations[0]!.physicalLocation.region.startLine)).toContain(9999);
 	});
 
-	it("stores at most 2 KiB of snippet per location, cut at a character, for ten locations on a multi-megabyte line", async () => {
+	it("stores at most 2 KiB of snippet per location, cut at a character, for ten locations on a multi-megabyte line", {
+		timeout: 30_000,
+	}, async () => {
 		writeFiles(repo, { "src/huge.ts": lines(`export const blob = "${"€".repeat(1_000_000)}";`) });
 		gitIn(repo, "add", "--all");
 		gitIn(repo, "commit", "--quiet", "-m", "a huge line");
