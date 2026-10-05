@@ -88,6 +88,27 @@ describe("a decision", () => {
 		expect(decision.chosen("contracts")).toBeUndefined();
 	});
 
+	it("normalises finite weights whose sum would overflow", () => {
+		const decision = Decision.parse(
+			request,
+			{
+				answers: [
+					{ question: "correctness", distribution: { quick: Number.MAX_VALUE, careful: Number.MAX_VALUE / 2 } },
+					{ question: "tests", distribution: { skip: Number.MAX_VALUE, careful: Number.MAX_VALUE } },
+				],
+			},
+			triager,
+		);
+		const [correctness, tests] = decision.toJSON().answers;
+		expect(correctness!.distribution).toEqual({ skip: 0, quick: 2 / 3, careful: 1 / 3, deep: 0 });
+		expect(correctness!.chosen).toBe("quick");
+		expect(tests!.distribution).toEqual({ skip: 0.5, careful: 0.5 });
+		expect(tests!.chosen).toBe("skip");
+		for (const answer of decision.toJSON().answers) {
+			expect(Object.values(answer.distribution).reduce((sum, probability) => sum + probability, 0)).toBe(1);
+		}
+	});
+
 	it("refuses an answer that leaves a question out, answers one not asked, or weighs an option it does not have", () => {
 		const answer = (answers: { question: string; distribution: Record<string, number> }[]) => () =>
 			Decision.parse(request, { answers }, triager);
