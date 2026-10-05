@@ -1,3 +1,5 @@
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import {
 	Adjudication,
 	Comparison,
@@ -10,7 +12,6 @@ import {
 	Finding,
 } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
-import { Adjudication as ComparisonAdjudication } from "../src/comparison-adjudication.ts";
 import { evalInput } from "./fixtures/findings.ts";
 
 const by = { by: "Ada <ada@example.com>", at: "2026-10-05T01:00:00Z" };
@@ -40,9 +41,15 @@ const row = (comparison: Comparison, reviewer: string) =>
 	comparison.stats().reviewers.find((each) => each.reviewer === reviewer);
 
 describe("comparison review fixes", () => {
-	it("imports adjudication first without a schema cycle", () => {
-		expect(ComparisonAdjudication.create({ ...by, verdict: "valid" }).toJSON()).toEqual({ ...by, verdict: "valid" });
-		expect(() => ComparisonAdjudication.create({ ...by, verdict: "wrong" })).toThrow(ComparisonError);
+	it("loads the adjudication module first in a fresh process, without a schema cycle", () => {
+		const module = fileURLToPath(new URL("../src/comparison-adjudication.ts", import.meta.url));
+		const child = spawnSync(
+			process.execPath,
+			["--conditions=@melian-agent/source", "-e", `import(${JSON.stringify(module)})`],
+			{ encoding: "utf8" },
+		);
+		expect(child.stderr).toBe("");
+		expect(child.status).toBe(0);
 	});
 
 	it("skips a pending Melian report in a valid matched group until judged", () => {
