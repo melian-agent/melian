@@ -38,15 +38,6 @@ const triager = { name: "recorded", calibrated: false };
 const routed = () => true;
 const everywhere = LevelBand.of({ floor: "skip" });
 
-function decided(lens: Lens, distribution: Record<string, number>): Decision {
-	const request: DecisionRequest = {
-		questionSet: triageQuestionSet,
-		state: "the change",
-		questions: [lens.triageQuestion(everywhere, lens.runnableLevels(everywhere, routed))],
-	};
-	return Decision.parse(request, { answers: [{ question: lens.name, distribution }] }, triager);
-}
-
 describe("a decision", () => {
 	const request: DecisionRequest = {
 		questionSet: triageQuestionSet,
@@ -154,10 +145,6 @@ describe("a decision's errors", () => {
 });
 
 describe("triage of a lens", () => {
-	// The lens's levels the band holds, every tier routed.
-	const triage = (lens: Lens, band: LevelBand, decision?: Decision) =>
-		lens.triage(band, lens.runnableLevels(band, routed), decision);
-
 	it("asks whether to skip the lens, where the floor allows it, or run it at each level it may run at", () => {
 		const question = correctness.triageQuestion(everywhere, correctness.runnableLevels(everywhere, routed));
 		expect(question).toMatchObject({ id: "correctness", options: ["skip", "quick", "careful", "deep"] });
@@ -176,38 +163,118 @@ describe("triage of a lens", () => {
 	});
 
 	it("offers only the levels whose tier routes to a model with credentials", () => {
+		const request: DecisionRequest = {
+			questionSet: triageQuestionSet,
+			state: "the change",
+			questions: [correctness.triageQuestion(everywhere, correctness.runnableLevels(everywhere, routed))],
+		};
 		const band = LevelBand.of(undefined);
 		const heavyOnly = (tier: string) => tier === "heavy";
 		expect(correctness.runnableLevels(band, heavyOnly)).toEqual(["careful", "deep"]);
-		expect(correctness.triage(band, ["careful", "deep"], decided(correctness, { quick: 1 }))).toBe("careful");
+		expect(
+			correctness.triage(
+				band,
+				["careful", "deep"],
+				Decision.parse(request, { answers: [{ question: correctness.name, distribution: { quick: 1 } }] }, triager),
+			),
+		).toBe("careful");
 		expect(correctness.runnableLevels(LevelBand.of({ ceiling: "quick" }), heavyOnly)).toEqual([]);
 	});
 
 	it("takes the level the decision chose within the default band, and careful without a decision", () => {
+		const request: DecisionRequest = {
+			questionSet: triageQuestionSet,
+			state: "the change",
+			questions: [correctness.triageQuestion(everywhere, correctness.runnableLevels(everywhere, routed))],
+		};
 		const band = LevelBand.of(undefined);
 		for (const level of ["quick", "careful", "deep"] as const) {
-			expect(triage(correctness, band, decided(correctness, { [level]: 1 }))).toBe(level);
+			expect(
+				correctness.triage(
+					band,
+					correctness.runnableLevels(band, routed),
+					Decision.parse(
+						request,
+						{ answers: [{ question: correctness.name, distribution: { [level]: 1 } }] },
+						triager,
+					),
+				),
+			).toBe(level);
 		}
-		expect(triage(correctness, band)).toBe("careful");
+		expect(correctness.triage(band, correctness.runnableLevels(band, routed))).toBe("careful");
 		// The default floor is quick, so triage cannot switch off a lens policy runs.
-		expect(triage(correctness, band, decided(correctness, { skip: 1 }))).toBe("quick");
+		expect(
+			correctness.triage(
+				band,
+				correctness.runnableLevels(band, routed),
+				Decision.parse(request, { answers: [{ question: correctness.name, distribution: { skip: 1 } }] }, triager),
+			),
+		).toBe("quick");
 	});
 
 	it("holds the choice to the floor and the ceiling, and skips only above a floor of skip", () => {
+		const request: DecisionRequest = {
+			questionSet: triageQuestionSet,
+			state: "the change",
+			questions: [correctness.triageQuestion(everywhere, correctness.runnableLevels(everywhere, routed))],
+		};
 		const careful = LevelBand.of({ floor: "careful", ceiling: "careful" });
-		expect(triage(correctness, careful, decided(correctness, { quick: 1 }))).toBe("careful");
-		expect(triage(correctness, careful, decided(correctness, { deep: 1 }))).toBe("careful");
+		expect(
+			correctness.triage(
+				careful,
+				correctness.runnableLevels(careful, routed),
+				Decision.parse(request, { answers: [{ question: correctness.name, distribution: { quick: 1 } }] }, triager),
+			),
+		).toBe("careful");
+		expect(
+			correctness.triage(
+				careful,
+				correctness.runnableLevels(careful, routed),
+				Decision.parse(request, { answers: [{ question: correctness.name, distribution: { deep: 1 } }] }, triager),
+			),
+		).toBe("careful");
 		const quick = LevelBand.of({ ceiling: "quick" });
-		expect(triage(correctness, quick)).toBe("quick");
-		expect(triage(correctness, everywhere, decided(correctness, { skip: 1 }))).toBe("skip");
+		expect(correctness.triage(quick, correctness.runnableLevels(quick, routed))).toBe("quick");
+		expect(
+			correctness.triage(
+				everywhere,
+				correctness.runnableLevels(everywhere, routed),
+				Decision.parse(request, { answers: [{ question: correctness.name, distribution: { skip: 1 } }] }, triager),
+			),
+		).toBe("skip");
 	});
 
 	it("moves a choice to a level the lens has, and never below the floor", () => {
-		expect(triage(carefulOnly, LevelBand.of(undefined), decided(carefulOnly, { careful: 1 }))).toBe("careful");
-		expect(triage(carefulOnly, LevelBand.of({ ceiling: "deep" }))).toBe("careful");
+		const request: DecisionRequest = {
+			questionSet: triageQuestionSet,
+			state: "the change",
+			questions: [carefulOnly.triageQuestion(everywhere, carefulOnly.runnableLevels(everywhere, routed))],
+		};
+		expect(
+			carefulOnly.triage(
+				LevelBand.of(undefined),
+				carefulOnly.runnableLevels(LevelBand.of(undefined), routed),
+				Decision.parse(
+					request,
+					{ answers: [{ question: carefulOnly.name, distribution: { careful: 1 } }] },
+					triager,
+				),
+			),
+		).toBe("careful");
+		expect(
+			carefulOnly.triage(
+				LevelBand.of({ ceiling: "deep" }),
+				carefulOnly.runnableLevels(LevelBand.of({ ceiling: "deep" }), routed),
+			),
+		).toBe("careful");
 		// A careful-only lens under a floor of deep has nowhere to run: never a quieter level than the floor.
 		expect(carefulOnly.runnableLevels(LevelBand.of({ floor: "deep" }), routed)).toEqual([]);
-		expect(() => triage(carefulOnly, LevelBand.of({ floor: "deep" }))).toThrow(RangeError);
+		expect(() =>
+			carefulOnly.triage(
+				LevelBand.of({ floor: "deep" }),
+				carefulOnly.runnableLevels(LevelBand.of({ floor: "deep" }), routed),
+			),
+		).toThrow(RangeError);
 	});
 
 	it("explains when the lens declares none of the levels its band holds", () => {
