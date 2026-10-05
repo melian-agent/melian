@@ -33,6 +33,12 @@ describe("resolveModelForTier", () => {
 		expect(resolveModelForTier("light", { light: { model: "openai/gpt-5-mini" } }).fallbacks).toEqual([]);
 	});
 
+	it("routes a route that names no model to the models its accept lists, in order", () => {
+		const route = resolveModelForTier("verifier", { verifier: { accept: ["openai/gpt-5.5", "anthropic/opus"] } });
+		expect(route.model).toEqual({ provider: "openai", modelId: "gpt-5.5" });
+		expect(route.fallbacks).toEqual([{ provider: "anthropic", modelId: "opus" }]);
+	});
+
 	it("names the tier when no model is configured for it", () => {
 		const error = thrown(() => resolveModelForTier("medium", { heavy: { model: "anthropic/claude-opus-4-1" } }));
 		expect(error.code).toBe("noModelForTier");

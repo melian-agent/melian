@@ -1,30 +1,118 @@
 import { readFile } from "node:fs/promises";
-import type { Lens, LensTier, MelianConfig, ModelRoute } from "@melian-agent/core";
-import { createReviewModels, type ReviewModels } from "@melian-agent/pipeline";
+import {
+	type Decider,
+	type Lens,
+	type LensTier,
+	type LoadedConfig,
+	type MelianConfig,
+	ModelRoutingError,
+	type NamedCredential,
+	ReviewPlan,
+	resolveModelForTier,
+	visibleText,
+} from "@melian-agent/core";
+import { FallbackDecider } from "@melian-agent/decisions";
+import {
+	createReviewModels,
+	planInputs,
+	type ReviewModels,
+	RouteTextModel,
+	unlockCredentials,
+} from "@melian-agent/pipeline";
 import { createFakeModels, type LensScript, scriptLenses } from "@melian-agent/pipeline/testing";
 import { CliError } from "./repository.ts";
 
 /**
  * The environment variable that switches the CLI to scripted mode: the path of a lens script, in a golden's
- * `script.json` shape. Every tier routes to a fake model that answers each lens from it, and storage moves under
- * `melian/scripted/` so nothing a script produced can be published. It exists so tests can run the CLI end to end
- * without a provider.
+ * `script.json` shape. Every lens tier routes to a fake model that answers each lens from it, as `--model` would
+ * route it, and storage moves under `melian/scripted/` so nothing a script produced can be published. It exists so
+ * tests can run the CLI end to end without a provider.
  */
 export const scriptVariable = "MELIAN_TEST_SCRIPT";
 
 const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
 
-// Routes every tier to `model` alone, replacing any route and fallbacks the configuration set.
-function routeTiers(config: MelianConfig, model: string): MelianConfig {
-	const route: ModelRoute = { model };
-	return { ...config, models: { ...config.models, ...Object.fromEntries(tiers.map((tier) => [tier, route])) } };
-}
-
 export interface ReviewSetup {
 	readonly models: ReviewModels;
-	readonly config: MelianConfig;
+	readonly plan: ReviewPlan;
 	/** Whether a failed model request is retried with backoff; scripted mode fails it at once. */
 	readonly retry: boolean;
+}
+
+// Triage's LLM fallback, on the first of the plan's lens tier routes with a model that has credentials. A tier whose route cannot be
+// read is passed over, as one without credentials is, so a broken route no lens uses never stops a review. With none,
+// every lens runs at its default level, and `skipped` says why.
+export async function fallbackDecider(
+	config: MelianConfig,
+	models: ReviewModels,
+): Promise<{ readonly decider: Decider; readonly model: string } | { readonly skipped: string }> {
+	const passed: string[] = [];
+	for (const tier of tiers) {
+		if (config.models[tier]?.model === undefined) {
+			passed.push(`${tier} is not routed`);
+			continue;
+		}
+		let route: ReturnType<typeof resolveModelForTier>;
+		try {
+			route = resolveModelForTier(tier, config.models);
+		} catch (error) {
+			if (!(error instanceof ModelRoutingError)) throw error;
+			passed.push(error.message);
+			continue;
+		}
+		const text = await RouteTextModel.create(models, [route.model, ...route.fallbacks]);
+		if (text !== undefined) return { decider: new FallbackDecider(text), model: text.name };
+		passed.push(`no model of ${tier} has credentials`);
+	}
+	return { skipped: `no lens tier reaches a model for the LLM fallback: ${passed.join("; ")}` };
+}
+
+// The providers triage's LLM fallback may call: each routed lens tier's models, since the fallback takes the cheapest
+// with credentials, so a command credential it needs runs before the review starts, with the others.
+export function triageProviders(plan: ReviewPlan): string[] {
+	return tiers.flatMap((tier) => {
+		const { status, models } = plan.tier(tier);
+		return status === "routed" ? models.map(({ model }) => model.slice(0, model.indexOf("/"))) : [];
+	});
+}
+
+export class Triage {
+	readonly decider: Decider | undefined;
+	readonly skipped: string | undefined;
+
+	private constructor(decider: Decider | undefined, skipped: string | undefined) {
+		this.decider = decider;
+		this.skipped = skipped;
+	}
+
+	// Unlocks the lenses' providers, and the triage providers unless a script stands in for every model, since a
+	// command credential runs now and one that fails stops the review before it starts. Scripted mode triages nothing,
+	// so every lens runs at the level its script was written for.
+	static async create(options: {
+		readonly scripted: boolean;
+		readonly config: MelianConfig;
+		readonly plan: ReviewPlan;
+		readonly models: ReviewModels;
+		readonly decide?: typeof fallbackDecider;
+	}): Promise<Triage> {
+		const { scripted, config, plan, models, decide = fallbackDecider } = options;
+		if (plan.lenses.length === 0) return new Triage(undefined, undefined);
+		await unlockCredentials(models, [...plan.providers(), ...(scripted ? [] : triageProviders(plan))]);
+		if (scripted) return new Triage(undefined, undefined);
+		const chosen = await decide({ ...config, models: plan.routes() }, models);
+		return "decider" in chosen ? new Triage(chosen.decider, undefined) : new Triage(undefined, chosen.skipped);
+	}
+
+	harnessOptions(): { readonly decider?: Decider } {
+		return this.decider === undefined ? {} : { decider: this.decider };
+	}
+
+	reviewOptions(): { readonly decider?: Decider; readonly triageSkipped?: string } {
+		return {
+			...this.harnessOptions(),
+			...(this.skipped === undefined ? {} : { triageSkipped: this.skipped }),
+		};
+	}
 }
 
 async function readScript(path: string): Promise<LensScript> {
@@ -38,29 +126,50 @@ async function readScript(path: string): Promise<LensScript> {
 	return script as LensScript;
 }
 
-// `model` routes every tier, whatever the configuration routes; under the script variable, every tier runs on the fake.
+// Why a review cannot run, or undefined when it can: a decision provider has no adapter yet. `review` refuses on it;
+// doctor reports it beside the plan.
+export function decisionProviderRefusal(config: MelianConfig): string | undefined {
+	const { provider } = config.decisions;
+	return provider === undefined
+		? undefined
+		: `melian.yaml sets decisions.provider to ${visibleText(provider)}, and Melian has no adapter for a decision provider until milestone 4; remove the key, and triage runs on the LLM fallback`;
+}
+
+// Under the script variable every lens tier runs on the fake, routed as --model would route it.
 export async function reviewModels(
 	env: NodeJS.ProcessEnv,
-	config: MelianConfig,
+	loaded: LoadedConfig,
 	lenses: readonly Lens[],
-	model: string | undefined,
+	options: {
+		readonly model?: string | undefined;
+		readonly checks: readonly string[];
+		readonly credentials: readonly NamedCredential[];
+	},
 ): Promise<ReviewSetup> {
 	const scriptPath = env[scriptVariable];
-	if (scriptPath === undefined || scriptPath === "") {
-		return {
-			models: createReviewModels(),
-			retry: true,
-			config: model === undefined ? config : routeTiers(config, model),
-		};
+	const scripted = scriptPath !== undefined && scriptPath !== "";
+	let models: ReviewModels;
+	let model = options.model;
+	if (scripted) {
+		const fake = createFakeModels({ models: [{ id: "scripted" }] });
+		scriptLenses(fake, lenses, await readScript(scriptPath));
+		const ref = fake.ref("scripted");
+		models = fake.review;
+		model = `${ref.provider}/${ref.modelId}`;
+	} else {
+		models = createReviewModels({ credentials: options.credentials });
 	}
-	const fake = createFakeModels({ models: [{ id: "scripted" }] });
-	scriptLenses(fake, lenses, await readScript(scriptPath));
-	const ref = fake.ref("scripted");
-	return {
-		models: fake.review,
-		config: routeTiers(config, `${ref.provider}/${ref.modelId}`),
-		retry: false,
-	};
+	const { catalog, credentials } = await planInputs(models);
+	const plan = ReviewPlan.resolve({
+		config: loaded.config,
+		routes: loaded.routes,
+		...(model === undefined ? {} : { model }),
+		catalog,
+		credentials,
+		lenses,
+		checks: options.checks,
+	});
+	return { models, plan, retry: !scripted };
 }
 
 export function isScripted(env: NodeJS.ProcessEnv): boolean {

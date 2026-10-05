@@ -14,6 +14,7 @@ Each entry names the record's finding number and what it found. A finding that r
 - [Pull request #18](https://github.com/melian-agent/melian/pull/18) ([record](../comparisons/2026-10-03-pr-18.md)): A1, a head that turns a directory into a file poisons the configuration cache; A3, a quoted literal type rewrites a tsc result's path and rule; A4, one NUL byte stops forbidden-patterns scanning a file; A7 and B1, a tracked `node_modules/.bin/tsc` runs; A14, `readOutput` reads through symlinks; B2, a head switches off the analysers that judge it; C6, a solution-style `tsconfig.json` checks nothing and reads as clean; C10, a rename brings a file into a rule's scope unscanned.
 - [Pull request #19](https://github.com/melian-agent/melian/pull/19) ([record](../comparisons/2026-10-03-pr-19.md)): A1, a marker is trusted by its author rather than a signature; A2 and B6, a range review's verdict lands in the pull request's storage; B5, finding text renders as live markdown in the maintainer's voice.
 - [Pull request #21](https://github.com/melian-agent/melian/pull/21) ([record](../comparisons/2026-10-03-pr-21.md)): A1, the skill builds and runs the checkout's own `melian`.
+- [Pull request #62](https://github.com/melian-agent/melian/pull/62) ([record](../comparisons/2026-10-05-pr-62.md)): C4, a model the head's text reaches decides how closely the head is reviewed, here triage choosing `quick` for a pull request with nothing below it, expected `head-controls-judge`.
 
 ## removed-behaviour
 
@@ -30,7 +31,6 @@ Each entry names the record's finding number and what it found. A finding that r
 
 - [Pull request #10](https://github.com/melian-agent/melian/pull/10) ([record](../comparisons/2026-10-03-pr-10.md)): 6, `AGENTS.md` promises guidance files that do not exist; 8, the plan leaves a finished track unticked.
 - [Pull request #12](https://github.com/melian-agent/melian/pull/12) ([record](../comparisons/2026-10-03-pr-12.md)): 24, the design says two things about where standards live.
-- [Pull request #51](https://github.com/melian-agent/melian/pull/51) ([record](../comparisons/2026-10-05-pr-51.md)): D5, a free function that constructs a domain object rather than taking one as its first parameter, such as `function revisionOf(review: ReviewState): Revision`, expected `quoted-rule-violation`. The record marks no golden because the fix deleted the function, but neither the `free-domain-function` guardrail nor the Biome rule can see the shape, since both read only the first parameter, so only the lens catches the next one.
 
 ## durability
 
@@ -56,8 +56,8 @@ A repository lens under Melian's own `.melian/lenses/`. A scripted golden for it
 - [Pull request #19](https://github.com/melian-agent/melian/pull/19) ([record](../comparisons/2026-10-03-pr-19.md)): B2, every marker read repeats the refused `/user` request.
 - [Pull request #34](https://github.com/melian-agent/melian/pull/34) ([record](../comparisons/2026-10-04-pr-34.md)): A1, a `cause` location on an unrelated changed line makes an old defect block, expected advisory once the verifier lands; B1, the comment says "deleted by this change" for lines the change never touched; C1 and C2, two lenses sighting one defect must keep both claims; E1 and E2, a directory move must leave a finding in a moved file `pre-existing`; E3, a merge must keep the location that proves its cause.
 - [Pull request #36](https://github.com/melian-agent/melian/pull/36) ([record](../comparisons/2026-10-04-pr-36.md)): C1 to C4, the two goldens [the fifth live run](../runs/2026-10-04-live-goldens-5.md) proposes for the declared-input rule: a documented contract the base already holds, and an input only a parameter's type allows, expected to draw nothing.
-- [Pull request #42](https://github.com/melian-agent/melian/pull/42) ([record](../comparisons/2026-10-05-pr-42.md)): A1 and E3, a deleted rethrow, so a `catch` that used to rethrow now swallows the failure, reviewed under the `standard` tier, expected `unhandled-error` with `source` `lens.correctness`. A test pins the rendered instructions; no golden pins the finding.
 - [Pull request #48](https://github.com/melian-agent/melian/pull/48) ([record](../comparisons/2026-10-05-pr-48.md)): C1, a root that maps `P2` to `silent` passes an edit to itself, because its policy notice resolves under the root's own configuration rather than the one that judged it; D1, a negative golden: a change that keys a resolution floor on the `ruleId` of a deduplicated finding, where the rule's findings carry no snippet and so never merge, expected to draw nothing.
+- [Pull request #62](https://github.com/melian-agent/melian/pull/62) ([record](../comparisons/2026-10-05-pr-62.md)): A2, a clamp that returns a value outside its bounds when no candidate lies inside them, expected `wrong-result`; C1, a value chosen from a declared set reaches a lookup that throws for some members, here a level whose tier has no route, expected `unhandled-error`; C3, a map keyed by a name two entries share, so the second overwrites the first, expected `wrong-result`.
 
 ## contracts
 

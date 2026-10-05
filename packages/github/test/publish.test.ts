@@ -207,6 +207,13 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 
 		expect(state.statuses).toEqual([
 			{ sha: head, state: "failure", description: "3 findings, 1 blocking", context: statusContext },
+			{
+				sha: head,
+				state: "failure",
+				description: "3 findings, 1 blocking",
+				context: statusContext,
+				target_url: state.ledgers[0]!.html_url,
+			},
 		]);
 		const recorded = await readPublished(harness!, (await harness!.root(context)).id, head, context);
 		expect(recorded?.review).toBe(String(review!.id));
@@ -227,7 +234,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.reviews).toHaveLength(1);
 	});
 
-	it("replies in a resolved finding's thread, names a dismissed one in the body, and reposts neither", async () => {
+	it("edits and resolves an addressed finding's thread, names a dismissed one in the body, and reposts neither", async () => {
 		const { fake, github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);
 		const root = (await harness!.root(context)).id;
@@ -261,9 +268,8 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const posted = state.comments.filter((comment) => comment.pull_request_review_id === state.reviews[1]!.id);
 		expect(posted).toHaveLength(1);
 		const [greeting] = posted;
-		const replies = state.comments.filter((comment) => comment.in_reply_to_id !== undefined);
-		expect(replies).toHaveLength(1);
-		const [reply] = replies;
+		expect(state.comments.filter((comment) => comment.in_reply_to_id !== undefined)).toEqual([]);
+		const reply = state.comments.find((comment) => String(comment.id) === thread)!;
 		expect(greeting).toMatchObject({ path: "src/user.ts", line: 11, side: "RIGHT" });
 		expect(greeting!.body).toContain("trim\\(\\) changes the greeting.");
 		// The dismissed finding was posted in the body, so it has no thread, and the next body says why it went.
@@ -272,14 +278,15 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		);
 		expect(state.reviews[1]!.body).not.toContain("RETRIES may be unset.");
 		expect(state.reviews[1]!.body).toContain("1 of them was posted on an earlier revision.");
-		expect(reply).toMatchObject({ in_reply_to_id: Number(thread) });
-		expect(parseMarker(reply!.body.split("\n")[0]!)).toMatchObject({
+		expect(state.resolvedThreads).toContain(Number(thread));
+		expect(parseMarker(reply!.body.split("\n").at(-1)!)).toMatchObject({
 			revision: head,
 			kind: "resolved",
 			id: manager.properties.id,
 		});
-		expect(reply!.body).toContain(`Resolved at \`${head.slice(0, 12)}\``);
+		expect(reply!.body).toContain(`Addressed in commit ${head.slice(0, 12)}`);
 		expect(state.statuses.at(-1)).toEqual({
+			target_url: state.ledgers[0]!.html_url,
 			sha: head,
 			state: "success",
 			description: "2 findings, none blocking",
@@ -320,6 +327,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const head = changeset.revision.head;
 		expect(result).toMatchObject({ posted: 0, stillOpen: 2, resolved: 0, dismissed: 1, replies: 1 });
 		expect(state.statuses.at(-1)).toEqual({
+			target_url: state.ledgers[0]!.html_url,
 			sha: head,
 			state: "success",
 			description: "2 findings, none blocking",
@@ -493,6 +501,47 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(answer(second.thread)).toEqual([`Dismissed at \`${short}\`: Every user here has a manager.`]);
 	});
 
+	it("edits an unrecorded signed ledger when the recorded one was deleted, and creates none", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		await publish(github, changeset);
+		const [original] = state.ledgers;
+		const copy = { ...original!, id: state.nextId++ };
+		state.ledgers = [copy];
+
+		await publish(github, changeset);
+
+		expect(state.ledgers).toEqual([copy]);
+		expect(state.statuses.at(-1)).toMatchObject({ target_url: copy.html_url });
+	});
+
+	it("repairs an unrecorded ledger-refusal status after publication succeeds", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne(
+			lensScript(emptyName, nanRetries, trimmedGreeting),
+		);
+		await publish(github, changeset);
+		const root = (await harness!.root(context)).id;
+		const head = changeset.revision.head;
+		const recorded = await readPublished(harness!, root, head, context);
+		expect(recorded?.status?.state).toBe("success");
+		state.statuses.push({
+			sha: head,
+			state: "error",
+			description: "ledger unavailable; restore storage or delete the ledger comment by hand",
+			context: statusContext,
+			target_url: state.ledgers[0]!.html_url,
+		});
+		expect((await readPublished(harness!, root, head, context))?.status).toEqual(recorded?.status);
+
+		await publish(github, changeset);
+
+		expect(state.statuses.at(-1)).toMatchObject({
+			sha: head,
+			state: "success",
+			description: recorded!.status!.description,
+			target_url: state.ledgers[0]!.html_url,
+		});
+	});
+
 	it("sets the status and finishes when a resolved finding's thread was deleted", async () => {
 		const { fake, github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);
@@ -607,6 +656,47 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.statuses.at(-1)).toMatchObject({ state: "failure", description: "3 findings, 1 blocking" });
 	});
 
+	it("resolves the thread again at the same head when an accepted edit's resolution failed", async () => {
+		const { fake, github, changeset, state } = await reviewedRevisionOne();
+		await publish(github, changeset);
+		pushRevisionTwo(repo);
+		const second = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries, trimmedGreeting));
+		await second.review;
+		moveTo(state, second.changeset);
+		state.failResolve = true;
+		await expect(publish(github, second.changeset)).rejects.toBeInstanceOf(PublishError);
+		expect(state.resolvedThreads).toEqual([]);
+		state.failResolve = false;
+
+		const result = await publish(github, second.changeset);
+
+		expect(result).toMatchObject({ replies: 1 });
+		expect(state.resolvedThreads).toHaveLength(1);
+	});
+
+	it("reads finding threads afresh for each publish", async () => {
+		const { fake, github, changeset, state } = await reviewedRevisionOne();
+		await publish(github, changeset);
+		const reads = () =>
+			state.calls.filter((call) => (call.body as { query?: string } | undefined)?.query?.includes("reviewThreads"))
+				.length;
+		pushRevisionTwo(repo);
+		const second = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries, trimmedGreeting));
+		await second.review;
+		moveTo(state, second.changeset);
+		await publish(github, second.changeset);
+		const afterSecond = reads();
+		expect(afterSecond).toBeGreaterThan(0);
+
+		pushRevisionThree(repo);
+		const third = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries));
+		await third.review;
+		moveTo(state, third.changeset);
+		expect(await publish(github, third.changeset)).toMatchObject({ resolved: 1 });
+
+		expect(reads()).toBeGreaterThan(afterSecond);
+	});
+
 	it("replies for a pushed-over revision whose replies failed when the next one is published", async () => {
 		const { fake, github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);
@@ -625,7 +715,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const result = await publish(github, third.changeset);
 
 		expect(result).toMatchObject({ resolved: 2, replies: 2 });
-		const replied = state.comments.filter((comment) => comment.in_reply_to_id !== undefined);
+		const replied = state.comments.filter((comment) => state.resolvedThreads.includes(comment.id));
 		expect(replied.map((comment) => /`([a-z-]+)`/.exec(comment.body)?.[1]).sort()).toEqual([
 			"null-dereference",
 			"wrong-result",
@@ -738,12 +828,13 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 
 		await publish(github, changeset);
 
-		expect(state.statuses).toEqual([
+		expect(state.statuses).toHaveLength(2);
+		expect(state.statuses.at(-1)).toEqual(
 			expect.objectContaining({
 				state: "error",
 				description: expect.stringMatching(/^Not reviewed: lens\.contracts failed/),
 			}),
-		]);
+		);
 		expect(state.reviews[0]!.body).toContain("**not reviewed, blocking**");
 	});
 

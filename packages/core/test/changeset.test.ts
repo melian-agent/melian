@@ -377,6 +377,9 @@ describe("Changeset.resolve", () => {
 			"web/eslint.config.mjs": lines("export default [];"),
 			"web/.eslintrc.cjs": lines("module.exports = {};"),
 			"web/package.json.bak": lines("not policy"),
+			// A case-insensitive filesystem opens these as the maintainer's own files.
+			"MELIAN.SECRETS.YAML": lines("credentials: {}"),
+			"config/Melian.Local.yaml": lines("{}"),
 		});
 		gitIn(repo, "mv", "poem.txt", "CLAUDE.md");
 		gitIn(repo, "add", "--all");
@@ -385,7 +388,9 @@ describe("Changeset.resolve", () => {
 		expect(revision.policyFiles).toEqual([
 			".melian/lenses/security/LENS.md",
 			"CLAUDE.md",
+			"MELIAN.SECRETS.YAML",
 			"biome.json",
+			"config/Melian.Local.yaml",
 			"melian.yaml",
 			"packages/a/package.json",
 			"packages/a/tsconfig.build.json",

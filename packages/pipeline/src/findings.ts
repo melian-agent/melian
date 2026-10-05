@@ -108,6 +108,33 @@ export function hasSighting(state: FindingsState, id: string, revision: string, 
 	return state.items[id]?.sightings[revision]?.[producerKey(source)] !== undefined;
 }
 
+// A finding as one producer sighted it, as much as escalation reads.
+export type SightedFinding = {
+	readonly id: string;
+	readonly ruleId: string;
+	readonly severity: Severity;
+	readonly path: string;
+	readonly line: number;
+	readonly endLine: number;
+	readonly message: string;
+};
+
+// Each finding `source` has sighted at `revision`, in ID order.
+export function sightedBy(state: FindingsState, revision: string, source: FindingSource): SightedFinding[] {
+	const key = producerKey(source);
+	return Object.keys(state.items)
+		.sort()
+		.flatMap((id) => {
+			const sighting = state.items[id]!.sightings[revision]?.[key];
+			if (sighting === undefined) return [];
+			const { severity, path } = sighting.properties;
+			const region = sighting.locations[0]?.physicalLocation.region;
+			const line = region?.startLine ?? 1;
+			const endLine = region?.endLine ?? line;
+			return [{ id, ruleId: sighting.ruleId, severity, path, line, endLine, message: sighting.message.text }];
+		});
+}
+
 // How many findings `source` has sighted at `revision`.
 export function sightingCount(state: FindingsState, revision: string, source: FindingSource): number {
 	const key = producerKey(source);
@@ -361,6 +388,29 @@ export async function dismissFinding(
 	return replaced;
 }
 
+// Drops every sighting `sources` made at `revision`, in the commit that starts their replacement run, so a verdict reads
+// only the run the review index names. Lifecycle records stay, so a dismissal survives the rerun of a finding.
+export async function clearSightings(
+	tx: Tx,
+	rootConversationId: ConversationId,
+	revision: string,
+	sources: readonly FindingSource[],
+): Promise<void> {
+	const state = await tx.doc(FindingsDocument, rootConversationId);
+	const keys = new Set(sources.map(producerKey));
+	let cleared = false;
+	for (const [id, record] of Object.entries(state.items)) {
+		const atRevision = record.sightings[revision];
+		if (atRevision === undefined || !Object.keys(atRevision).some((key) => keys.has(key))) continue;
+		const kept = Object.fromEntries(Object.entries(atRevision).filter(([key]) => !keys.has(key)));
+		const sightings = { ...record.sightings, [revision]: kept };
+		if (Object.keys(kept).length === 0) delete sightings[revision];
+		state.items[id] = { ...record, sightings };
+		cleared = true;
+	}
+	if (cleared) bump(state, [revision]);
+}
+
 function bump(state: FindingsState, revisions: readonly string[]): void {
 	state.versions = {
 		...state.versions,
@@ -399,14 +449,18 @@ function dismissalsOf(lifecycle: FindingLifecycle): Pick<FindingProperties, "dis
 	};
 }
 
+/** A producer whose sightings a read counts: all of them, or only the findings `ids` names. */
+export type Producer = FindingSource & { readonly ids?: readonly string[] };
+
 /** Which sightings {@link readFindings} merges. */
 export interface ReadFindingsOptions {
 	/**
 	 * Only these producers' sightings, such as the lenses and versions selected for the review being read. A lens that
 	 * configuration has since disabled or retiered then leaves nothing behind. A producer without a version stands for
-	 * every version of its check. Every producer when absent.
+	 * every version of its check, and one with `ids` counts only those findings, as a quick run whose escalated run
+	 * neither restated nor refuted them. Every producer when absent.
 	 */
-	readonly producers?: readonly FindingSource[];
+	readonly producers?: readonly Producer[];
 }
 
 /**
@@ -423,13 +477,18 @@ export async function readFindings(
 	options: ReadFindingsOptions = {},
 ): Promise<readonly Finding[]> {
 	const items = (await reader.snapshot(FindingsDocument, rootConversationId, context))?.items ?? {};
-	const wanted = options.producers === undefined ? undefined : new Set(options.producers.map(producerKey));
-	// A producer named without a version counts every version of its check, such as a static tool's record that names none.
-	const anyVersion = new Set(
-		(options.producers ?? []).filter((source) => source.version === undefined).map((source) => source.check),
-	);
-	const counts = (key: string, sighting: ProducerFinding) =>
-		wanted === undefined || wanted.has(key) || anyVersion.has(sighting.properties.source.check);
+	const wanted =
+		options.producers === undefined
+			? undefined
+			: new Map(options.producers.map((source) => [producerKey(source), source.ids] as const));
+	const counts = (key: string, sighting: ProducerFinding) => {
+		if (wanted === undefined) return true;
+		return [key, producerKey({ check: sighting.properties.source.check })].some((producer) => {
+			if (!wanted.has(producer)) return false;
+			const ids = wanted.get(producer);
+			return ids === undefined || ids.includes(sighting.properties.id);
+		});
+	};
 	return Object.keys(items)
 		.sort()
 		.flatMap((id) => {
