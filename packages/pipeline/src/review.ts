@@ -31,6 +31,7 @@ import {
 	adjudicationInput,
 	type ReviewOrigin,
 	readVerdict,
+	VerdictDocument,
 } from "./adjudication.ts";
 import { checksExtension } from "./checks.ts";
 import { ReviewError } from "./errors.ts";
@@ -51,6 +52,7 @@ import {
 	type Storage,
 	type TaskId,
 	type Tx,
+	UsageDoc,
 } from "./harness.ts";
 import {
 	budgetEnded,
@@ -65,6 +67,7 @@ import {
 } from "./lens-tools.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
 import { attachable, ReviewIndex, type ReviewIndexState, undecided } from "./review-index.ts";
+import { summariseExtension } from "./summarise.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
 
 // One lens as the lens task runs it, at one level: everything resolved, nothing left to look up.
@@ -92,7 +95,11 @@ interface LensTaskInput {
 }
 
 type LensOutcome =
-	| { readonly status: "done"; readonly budgetEnded?: StoredBudgetEnd }
+	| {
+			readonly status: "done";
+			readonly budgetEnded?: StoredBudgetEnd;
+			readonly usage?: { models: string[]; tokens: number; cost: number };
+	  }
 	| { readonly status: "unanswered"; readonly reason: string }
 	| { readonly status: "exhausted"; readonly tried: string[]; readonly reason: string };
 
@@ -178,7 +185,13 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 						const settled = await (await child.submit(request, context)).wait(context);
 						if (settled.status === "done") {
 							const ended = await budgetEnded(runtime, id, context);
-							return [key, { status: "done", ...(ended === undefined ? {} : { budgetEnded: ended }) }];
+							const spend = (await runtime.snapshot(UsageDoc, id, context))?.models ?? {};
+							const usage = {
+								models: Object.keys(spend),
+								tokens: Object.values(spend).reduce((sum, item) => sum + item.totalTokens, 0),
+								cost: Object.values(spend).reduce((sum, item) => sum + item.cost.total, 0),
+							};
+							return [key, { status: "done", usage, ...(ended === undefined ? {} : { budgetEnded: ended }) }];
 						}
 						const reason = typeof settled.detail === "string" ? settled.detail : (settled.reason ?? "unanswered");
 						const failover =
@@ -226,6 +239,7 @@ export const lensExtension = defineExtension({
 export function createReviewRegistry(): Registry {
 	const registry = createRegistry();
 	registry.install(lensExtension);
+	registry.install(summariseExtension);
 	return registry;
 }
 
@@ -717,6 +731,32 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		origin: options.origin ?? { kind: "range" },
 		lenses: lenses.map((lens) => lens.key),
 	});
+	await (await harness.root(context)).commit(async (tx) => {
+		const document = await tx.doc(VerdictDocument, root);
+		document.details = {
+			...document.details,
+			[reviewed]: {
+				policy: input.provenance.policy,
+				manifest: [...manifest],
+				lenses: lenses.map(({ key, name, version, level, route, budget }) => ({
+					name,
+					version,
+					level,
+					models: route.map(modelName),
+					...(lensResult?.[key]?.status === "done" && lensResult[key].usage !== undefined
+						? { usage: structuredClone(lensResult[key].usage) }
+						: {}),
+					budget: {
+						findings: budget.findings,
+						...(budget.tokens === undefined ? {} : { tokens: budget.tokens }),
+						...(budget.tools === undefined ? {} : { tools: budget.tools }),
+					},
+				})),
+				standards: standards.map((section) => section.path),
+			},
+		};
+		return undefined;
+	}, context);
 	const adjudication = await startAdjudication(harness, input, lenses, context);
 	const forget = (index: ReviewIndexState) => {
 		const entry = index.reviews[reviewed];

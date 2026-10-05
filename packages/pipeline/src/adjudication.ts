@@ -9,12 +9,14 @@ import {
 	type FindingSource,
 	loadConfig,
 	type MelianConfig,
+	type PublicationDetails,
 	type RepositorySource,
 	type Resolution,
 	type ScrutinyLevel,
 	type Severity,
 	type StoredVerdict,
 	Verdict,
+	type Walkthrough,
 } from "@melian-agent/core";
 import { findingsVersion, readFindings, revisionKey } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
@@ -80,9 +82,11 @@ export const VerdictDocument = defineDoc<{
 	verdicts: Record<string, StoredVerdict>;
 	provenance?: Record<string, StoredProvenance>;
 	decisions?: Record<string, StoredDecision>;
+	details?: Record<string, PublicationDetails>;
+	walkthroughs?: Record<string, Walkthrough>;
 }>({
 	kind: "melian.verdicts",
-	version: 3,
+	version: 4,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",

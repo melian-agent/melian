@@ -4,7 +4,9 @@ import {
 	dismissalVersion,
 	Finding,
 	type FindingDismissal,
+	type LedgerRound,
 	type Placement,
+	type PostedLedger,
 	type PostedReview,
 	type PublishedMarkers,
 	type PullRequest,
@@ -51,6 +53,7 @@ type PublishedEntry = {
 	revision: string;
 	thread?: string;
 	dismissal?: { by: string; reason: string; at: string };
+	addressedIn?: string;
 };
 
 // What one round of a revision will post, committed before posting so a rerun posts exactly this: the verdict it
@@ -68,6 +71,7 @@ type PendingRound = {
 	resolved: Record<string, PublishedEntry>;
 	// How many times the provider refused to post it.
 	refusals: number;
+	ledger?: LedgerRound;
 };
 
 // A round the provider refused `maxRefusals` times. It is dropped so the next publish of the head plans afresh.
@@ -93,9 +97,10 @@ type StoredRevision = {
 	// gone and there was nothing to reply to.
 	replies: Record<string, string | null>;
 	status?: { state: ReviewStatus["state"]; description: string };
+	ledgerUrl?: string;
 };
 
-type PublishedState = { order: string[]; revisions: Record<string, StoredRevision> };
+type PublishedState = { order: string[]; revisions: Record<string, StoredRevision>; ledgerRounds?: LedgerRound[] };
 
 function unpublished(): StoredRevision {
 	return { reviews: [], open: {}, resolved: {}, replies: {} };
@@ -127,7 +132,7 @@ function rekeyReplies(record: StoredRevision): StoredRevision {
 // would post it twice.
 export const PublishedDocument = defineDoc<PublishedState>({
 	kind: "melian.published",
-	version: 3,
+	version: 4,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
@@ -146,6 +151,15 @@ export const PublishedDocument = defineDoc<PublishedState>({
 		);
 		return { ...state, revisions };
 	},
+});
+
+export const LedgerDocument = defineDoc<{ comment?: PostedLedger }>({
+	kind: "melian.ledger",
+	version: 1,
+	scope: "conversation",
+	history: "latest",
+	fork: "current",
+	initial: () => ({}),
 });
 
 // The changeset's publisher secret, which signs every marker Melian posts for it: 32 random bytes as hex, generated once
@@ -250,7 +264,10 @@ function planRound(
 	const base = own?.open ?? (previous === undefined ? {} : state.revisions[previous]!.open);
 	const plan = verdict.publication(base, lines, head);
 	const resolved: Record<string, PublishedEntry> = Object.fromEntries(
-		plan.resolved.map(({ id, ...entry }) => [id, structuredClone(entry)]),
+		plan.resolved.map(({ id, ...entry }) => [
+			id,
+			{ ...structuredClone(entry), ...(entry.dismissal === undefined ? { addressedIn: head } : {}) },
+		]),
 	);
 	if (own === undefined) {
 		const held = new Set(
@@ -327,6 +344,7 @@ type PublishInput = {
 	root: ConversationId;
 	target: PublishTarget;
 	lines: Record<string, [number, number][]>;
+	walkthrough?: { enabled: boolean; collapsed: boolean; diagrams: boolean };
 };
 
 type PublishResult = {
@@ -390,11 +408,16 @@ function publishTask(provider: ReviewProvider) {
 					(await runtime.snapshot(PublishedDocument, root, context)) ?? { order: [], revisions: {} };
 				const postStatus = async (status: ReviewStatus) => {
 					await revalidate();
-					await provider.setStatus(head, status);
+					const ledgerUrl = (await runtime.snapshot(LedgerDocument, root, context))?.comment?.url;
+					await provider.setStatus(head, status, ledgerUrl);
 					await runtime.commit(async (tx) => {
 						const document = await tx.doc(PublishedDocument, root);
 						if (!document.order.includes(head)) document.order = [...document.order, head];
-						document.revisions[head] = { ...(document.revisions[head] ?? unpublished()), status: { ...status } };
+						document.revisions[head] = {
+							...(document.revisions[head] ?? unpublished()),
+							status: { ...status },
+							...(ledgerUrl === undefined ? {} : { ledgerUrl }),
+						};
 						return undefined;
 					}, context);
 				};
@@ -414,6 +437,7 @@ function publishTask(provider: ReviewProvider) {
 					};
 					const verdict = await readVerdict(runtime, root, revision, context);
 					if (verdict === undefined) throw new Error(`no verdict is recorded for ${revision}`);
+					await provider.findLedger(pullRequest, secret);
 					const current = verdict.fingerprint();
 					const legacy = verdict.legacyFingerprint();
 					// A pending round planned for another revision of this head, such as the pull request before a retarget,
@@ -441,6 +465,25 @@ function publishTask(provider: ReviewProvider) {
 							if (await postedVerdictOf(before, revision, head, [current, legacy], runtime, root, context))
 								break;
 							const planned = planRound(state, head, revision, verdict, lines);
+							const storedVerdict = await runtime.snapshot(VerdictDocument, root, context);
+							const details = storedVerdict?.details?.[revision];
+							const walkthrough = storedVerdict?.walkthroughs?.[revision];
+							planned.ledger = {
+								base,
+								head,
+								round: planned.round,
+								verdict: structuredClone(planned.verdict),
+								...(details === undefined ? {} : { details: structuredClone(details) }),
+								...(walkthrough === undefined ? {} : { walkthrough: structuredClone(walkthrough) }),
+								resolved: Object.entries(planned.resolved).map(([id, entry]) => ({
+									id,
+									ruleId: entry.ruleId,
+									path: entry.path,
+									line: entry.line,
+									commit: entry.addressedIn ?? head,
+									...(entry.dismissal === undefined ? {} : { reason: entry.dismissal.reason }),
+								})),
+							};
 							await runtime.commit(async (tx) => {
 								const document = await tx.doc(PublishedDocument, root);
 								document.order = [...document.order.filter((each) => each !== head), head];
@@ -489,7 +532,10 @@ function publishTask(provider: ReviewProvider) {
 							}),
 						);
 						await runtime.commit(async (tx) => {
-							const record = (await tx.doc(PublishedDocument, root)).revisions[head]!;
+							const document = await tx.doc(PublishedDocument, root);
+							const record = document.revisions[head]!;
+							if (pending.ledger !== undefined)
+								document.ledgerRounds = [...(document.ledgerRounds ?? []), structuredClone(pending.ledger)];
 							record.reviews = [...record.reviews, posted.id];
 							record.verdict = pending.fingerprint;
 							record.verdictRevision = pending.revision;
@@ -524,7 +570,7 @@ function publishTask(provider: ReviewProvider) {
 						const found = (await marked({ fingerprint: record.verdict ?? "", round: record.rounds ?? 0 }))
 							.replies[key];
 						let recorded: string | null;
-						if (found === undefined) {
+						if (found === undefined || entry.dismissal === undefined) {
 							await revalidate();
 							const reply = await provider.replyResolved(
 								pullRequest,
@@ -540,6 +586,51 @@ function publishTask(provider: ReviewProvider) {
 						}
 						await runtime.commit(async (tx) => {
 							(await tx.doc(PublishedDocument, root)).revisions[head]!.replies[key] = recorded;
+							return undefined;
+						}, context);
+					}
+					const publication = await read();
+					const rounds = structuredClone(publication.ledgerRounds ?? []);
+					const storedVerdict = await runtime.snapshot(VerdictDocument, root, context);
+					const latest = rounds.at(-1);
+					if (latest === undefined || latest.head !== head || latest.base !== base) {
+						rounds.push({ base, head, round: record.rounds ?? 1, verdict: verdict.toJSON(), resolved: [] });
+					}
+					const currentRound = rounds.at(-1)!;
+					currentRound.verdict = verdict.toJSON();
+					currentRound.resolved = Object.entries(record.resolved).map(([id, entry]) => ({
+						id,
+						ruleId: entry.ruleId,
+						path: entry.path,
+						line: entry.line,
+						commit: entry.addressedIn ?? head,
+						...(entry.dismissal === undefined ? {} : { reason: entry.dismissal.reason }),
+					}));
+					if (storedVerdict?.details?.[revision] !== undefined)
+						currentRound.details = structuredClone(storedVerdict.details[revision]);
+					if (storedVerdict?.walkthroughs?.[revision] !== undefined)
+						currentRound.walkthrough = structuredClone(storedVerdict.walkthroughs[revision]);
+					const previousLedger = (await runtime.snapshot(LedgerDocument, root, context))?.comment;
+					await revalidate();
+					const ledger = await provider.writeLedger({
+						pullRequest,
+						verdict,
+						publication: { rounds },
+						walkthrough: task.input.walkthrough ?? { enabled: true, collapsed: true, diagrams: true },
+						secret,
+					});
+					if (JSON.stringify(previousLedger) !== JSON.stringify(ledger)) {
+						await runtime.commit(async (tx) => {
+							(await tx.doc(LedgerDocument, root)).comment = structuredClone(ledger);
+							(await tx.doc(PublishedDocument, root)).ledgerRounds = rounds;
+							return undefined;
+						}, context);
+					}
+					if ((await read()).revisions[head]?.ledgerUrl !== ledger.url) {
+						await revalidate();
+						await provider.setStatus(head, status, ledger.url);
+						await runtime.commit(async (tx) => {
+							(await tx.doc(PublishedDocument, root)).revisions[head]!.ledgerUrl = ledger.url;
 							return undefined;
 						}, context);
 					}
@@ -683,6 +774,7 @@ export interface PublishOptions {
 	 * with git, since the provider reports only the branch's tip.
 	 */
 	readonly base: string;
+	readonly walkthrough?: { readonly enabled: boolean; readonly collapsed: boolean; readonly diagrams: boolean };
 	readonly context?: Context;
 }
 
@@ -901,7 +993,12 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		const result = outcome.status === "completed" ? (outcome.result as PublishOutcome) : undefined;
 		if (result?.kind === "superseded") superseded.push({ task: String(each.record.id), reason: result.reason });
 	}
-	const input: PublishInput = { root, target, lines: changeset.revision.diffLines() };
+	const input: PublishInput = {
+		root,
+		target,
+		lines: changeset.revision.diffLines(),
+		...(options.walkthrough === undefined ? {} : { walkthrough: { ...options.walkthrough } }),
+	};
 	const taskId = await (await harness.root(context)).commit(
 		(tx) => tx.createTask(publishTask(options.provider), input, { ownership: { kind: "conversation" } }),
 		context,
