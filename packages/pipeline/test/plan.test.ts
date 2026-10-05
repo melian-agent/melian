@@ -196,6 +196,23 @@ describe("reviewChangeset with a plan", () => {
 		]);
 	});
 
+	it("fails every lens on a tier whose accepted models have no credentials under unavailable: fail, asking no model", async () => {
+		const { review, answered } = await planned({
+			model: "nowhere/opus",
+			accept: ["nowhere/opus"],
+			unavailable: "fail",
+		});
+
+		expect(answered).toEqual([]);
+		expect(review.verdict.status).toBe("not-reviewed");
+		const reason =
+			"none of nowhere/opus, which models.heavy accepts, has credentials, and models.heavy.unavailable is fail";
+		expect(review.verdict.notRun.filter((check) => check.name.startsWith("lens."))).toEqual([
+			{ name: "lens.contracts", status: "failed", level: "careful", reason },
+			{ name: "lens.correctness", status: "failed", level: "careful", reason },
+		]);
+	});
+
 	it("keeps a lens a preference file moved to another tier under its committed tier's policy", async () => {
 		const { review, answered } = await planned(
 			{ model: heavy, accept: [heavy], acceptOverridden: false },
