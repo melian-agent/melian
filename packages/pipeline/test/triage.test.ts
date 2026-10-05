@@ -433,6 +433,37 @@ describe("triage", () => {
 		});
 	});
 
+	it("runs a lens at its runnable floor when triage chooses skip from a cut change prompt", async () => {
+		writeFiles(repo, { "src/large.ts": `export const text = "${"x".repeat(210 * 1024)}";\n` });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "a large change");
+		const decider = choosing("skip");
+		await open(decider);
+		const sent = scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		const optional = { ...config, lenses: { correctness: { level: { floor: "skip" } } } } as const;
+
+		const reviewed = await review({ decider, config: optional });
+
+		expect(decider.requests[0]!.state).toContain("[The diff continues; the remaining files are omitted.]");
+		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "quick" });
+		expect(lensRecord(reviewed)!.reason).toContain("triage input was cut, so no lens could skip");
+		expect(sent[correctness]).toHaveLength(1);
+		const stored = await readRecordedDecision(
+			harness,
+			(await harness.root(context)).id,
+			revision(),
+			"triage",
+			context,
+		);
+		expect(stored).toMatchObject({ inputCut: true });
+		expect(stored!.decision!.chosen("correctness")).toBe("skip");
+
+		const repeated = await review({ decider, config: optional });
+		expect(lensRecord(repeated)).toMatchObject({ status: "ran", level: "quick" });
+		expect(decider.requests).toHaveLength(1);
+		expect(sent[correctness]).toHaveLength(1);
+	});
+
 	it("removes a triage-skipped lens from another lens's hand-off instructions", async () => {
 		const contracts = "You are the contracts reviewer";
 		const twoLenses = {
