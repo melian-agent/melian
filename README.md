@@ -82,3 +82,13 @@ Melian is an independent open-source project. Some of the work on it, including 
 ## Contributing
 
 Contributions are welcome once the foundations are in place. We will hold the same bar as Pi: you must understand the code you submit. Using an agent to write it is fine. Submitting what you cannot explain is not.
+
+### Running Codex tasks
+
+Codex's own sandbox denies writes under `.git`, so a Codex task cannot commit or fetch. `scripts/codex-sandboxed.sh` runs the task in full-access mode inside a narrower sandbox of our own. It works on macOS only.
+
+```
+scripts/codex-sandboxed.sh <worktree> <model> <prompt-file> [log] [scratch]
+```
+
+Writes are allowed in the worktree, the checkout's `.git`, the scratch directory, temp directories, and the Codex, npm, and gh caches. Everything else is denied, including the home directory and any other checkout. Reads and the network stay open, so commit, fetch, `gh`, and npm installs work. The sandbox does not limit what a task pushes. The brief should tell it to push only its own branch.
