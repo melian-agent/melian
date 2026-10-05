@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, truncateSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Adjudication, ComparisonError, defaultConfig, ExternalFinding, Finding } from "@melian-agent/core";
@@ -8,6 +8,7 @@ import {
 	backgroundContext as context,
 	createMemoryStorage,
 	FileImporter,
+	maxReviewerFileBytes,
 	openSqliteStorage,
 	revisionKey,
 } from "@melian-agent/pipeline";
@@ -226,6 +227,17 @@ describe("FileImporter", () => {
 		await expect(FileImporter.open("wrong.json", options)).rejects.toMatchObject({ code: "invalidFile" });
 		await expect(FileImporter.open("reviews", options)).rejects.toMatchObject({
 			message: expect.stringContaining("not a file"),
+		});
+	});
+
+	it("refuses a file larger than maxReviewerFileBytes without reading it", async () => {
+		const root = repo();
+		writeFileSync(join(root, "huge.json"), "");
+		truncateSync(join(root, "huge.json"), maxReviewerFileBytes + 1);
+
+		await expect(FileImporter.open("huge.json", { cwd: root, repoRoot: root })).rejects.toMatchObject({
+			code: "unreadable",
+			message: expect.stringContaining(`huge.json: it is larger than ${maxReviewerFileBytes} bytes`),
 		});
 	});
 });
