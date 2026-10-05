@@ -1,7 +1,8 @@
+import { readFile } from "node:fs/promises";
 import { posix } from "node:path";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
-import { parseDocument } from "yaml";
+import { type Document, isMap, isScalar, parseDocument } from "yaml";
 import { ConfigError, type ConfigErrorCode } from "./errors.ts";
 import { anchorGlob, directoriesUpToRoot, globShapeProblem, melianPaths, repoPath } from "./paths.ts";
 import { compileGlob, compilePattern, Refused } from "./pattern.ts";
@@ -27,7 +28,19 @@ export const severitySchema = Type.Union([
 ]);
 /** The JSON Schema of a {@link LensTier}. */
 export const lensTierSchema = Type.Union([Type.Literal("light"), Type.Literal("medium"), Type.Literal("heavy")]);
-const modelRoute = Type.Object({ model: name, fallbacks: Type.Optional(Type.Array(name)) }, strict);
+// `accept`, `unavailable`, and `acceptOverridden` are policy: only a committed melian.yaml may set them.
+const modelRoute = Type.Object(
+	{
+		model: Type.Optional(name),
+		fallbacks: Type.Optional(Type.Array(name)),
+		accept: Type.Optional(Type.Array(name)),
+		unavailable: Type.Optional(Type.Union([Type.Literal("derive"), Type.Literal("fail")])),
+		acceptOverridden: Type.Optional(Type.Boolean()),
+	},
+	strict,
+);
+/** The keys of a model route that only a committed `melian.yaml` may set. */
+export const routePolicyKeys = ["accept", "unavailable", "acceptOverridden"] as const;
 // Each end is optional in one file so that a nearer file can restate one; the merged band must have both.
 const band = Type.Object(
 	{
@@ -97,6 +110,7 @@ export const melianYamlSchema = Type.Object(
 					medium: Type.Optional(modelRoute),
 					heavy: Type.Optional(modelRoute),
 					decision: Type.Optional(modelRoute),
+					verifier: Type.Optional(modelRoute),
 				},
 				strict,
 			),
@@ -175,13 +189,23 @@ export type Severity = Static<typeof severitySchema>;
 /** A model tier a lens can name. Model routing also has a `decision` tier for decision models. */
 export type LensTier = Static<typeof lensTierSchema>;
 
+/** A tier model routing routes: a lens tier, `decision` for decision models, or `verifier` for the verifier. */
+export type ModelTier = LensTier | "decision" | "verifier";
+
+/** Every model tier, in the order Melian prints them. */
+export const modelTiers: readonly ModelTier[] = ["light", "medium", "heavy", "decision", "verifier"];
+
 /**
  * One `ruleAliases` entry: the rules other checks file the key's defect under, or, with `distinct: true`, rules that
  * name different defects and must never merge with the key's, even on one expression.
  */
 export type RuleAlias = readonly string[] | { readonly rules: readonly string[]; readonly distinct?: boolean };
 
-/** A model and the models to try, in order, when it fails. */
+/**
+ * A model and the models to try, in order, when it fails; with `accept`, the models that satisfy the tier, and what to
+ * do when none of them has credentials, `unavailable`, `derive` by default. `acceptOverridden: false` refuses a check
+ * that would run on the tier outside `accept`.
+ */
 export type ModelRoute = Static<typeof modelRoute>;
 
 /** Per-lens settings. `paths` are repository-relative globs once loaded. */
@@ -281,7 +305,7 @@ export interface MelianConfig {
 	readonly stages: Readonly<Record<string, string>>;
 	readonly resolution: Readonly<Record<Severity, Resolution>>;
 	readonly lenses: Readonly<Record<string, LensSettings>>;
-	readonly models: Readonly<Partial<Record<LensTier | "decision", ModelRoute>>>;
+	readonly models: Readonly<Partial<Record<ModelTier, ModelRoute>>>;
 	readonly static: StaticSettings;
 	readonly guardrails: GuardrailSettings;
 	readonly knowledge: { readonly writeBack: boolean };
@@ -330,12 +354,27 @@ export const defaultConfig: MelianConfig = {
 };
 
 /**
- * The effective configuration for a path, and the files that contributed to it, nearest first, as repository-relative
- * paths.
+ * Each model tier's route as the committed files alone set it, which is what policy wants, and, for each tier a
+ * preference file changed, the nearest such file. A route's `accept`, `unavailable`, and `acceptOverridden` always come
+ * from the committed files.
+ */
+export interface RouteLineage {
+	readonly committed: MelianConfig["models"];
+	readonly overridden: Readonly<Partial<Record<ModelTier, string>>>;
+	/** Each lens tier the committed files set, by lens name; a lens they leave alone runs on its own tier. */
+	readonly lensTiers: Readonly<Record<string, LensTier>>;
+	/** Each lens a preference file moved to another tier, by name, to the nearest such file. */
+	readonly retiered: Readonly<Record<string, string>>;
+}
+
+/**
+ * The effective configuration for a path, the files that contributed to it, nearest first, as repository-relative
+ * paths, a user-level preference file by the path it was given, and where its model routes came from.
  */
 export interface LoadedConfig {
 	readonly config: MelianConfig;
 	readonly sources: readonly string[];
+	readonly routes: RouteLineage;
 }
 
 /** The largest `melian.yaml` the loader reads. A larger file is a `tooLarge` error, never truncated. */
@@ -343,13 +382,15 @@ export const maxConfigBytes = 64 * 1024;
 
 type Plain = Record<string, unknown>;
 
-// A file as `ConfigError.file` names it, and as a message names it: git's `<commit>:<path>` for a revision.
-interface Site {
+// A file as `ConfigError.file` names it, and as a message names it: git's `<commit>:<path>` for a revision. A preference
+// file is a maintainer's own, read only from the working tree or the user's configuration directory.
+export interface Site {
 	readonly file: string;
 	readonly where: string;
+	readonly preference?: boolean;
 }
 
-function configError(
+export function configError(
 	code: ConfigErrorCode,
 	site: Site,
 	detail: string,
@@ -427,23 +468,142 @@ function fromSource(file: string) {
 
 async function readLayer(source: SourceReader, site: Site): Promise<MelianYaml | undefined> {
 	const text = await source.readText(site.file, maxConfigBytes).catch(fromSource(site.file));
+	return text === undefined ? undefined : parseLayer(text, site, posix.dirname(site.file));
+}
+
+// The user-level preference file lives outside the repository, so it is read from disk, and its globs are anchored at
+// the repository root, as if it sat beside the root melian.yaml. A symlink is followed: dotfiles are often linked.
+async function readUserLayer(path: string): Promise<MelianYaml | undefined> {
+	const site = { file: path, where: path, preference: true };
+	const text = await readFile(path).catch((error: NodeJS.ErrnoException) => {
+		if (error.code === "ENOENT" || error.code === "ENOTDIR") return undefined;
+		throw configError("unreadable", site, error.message, { cause: error });
+	});
 	if (text === undefined) return undefined;
-	const document = parseDocument(text);
+	if (text.length > maxConfigBytes) {
+		throw configError("tooLarge", site, `${text.length} bytes; the limit is ${maxConfigBytes}`);
+	}
+	return parseLayer(text.toString("utf8"), site, "");
+}
+
+// YAML text as a value with no prototypes, validated against `schema`, as `melian.yaml` and the secrets files are read.
+// With `redact`, a syntax error names only its code, line, and column, and keeps no cause: the parser's diagnostic
+// quotes the offending line, which in a secrets file may hold a key.
+export function parseYaml(text: string, site: Site, schema: TSchema, options: { redact?: boolean } = {}): unknown {
+	const document = parseDocument(text, { prettyErrors: options.redact !== true });
 	const problem = document.errors[0] ?? document.warnings[0];
-	if (problem !== undefined) throw configError("invalidYaml", site, problem.message, { cause: problem });
+	if (problem !== undefined) {
+		if (options.redact !== true) throw configError("invalidYaml", site, problem.message, { cause: problem });
+		const before = text.slice(0, problem.pos[0]).split("\n");
+		const where = ` at line ${before.length}, column ${before.at(-1)!.length + 1}`;
+		throw configError("invalidYaml", site, `YAML error ${problem.code}${where}`);
+	}
 	// toJS throws a bare ReferenceError when aliases expand past its limit, the defence against a billion-laughs file.
 	let value: unknown;
 	try {
 		value = document.toJS() ?? {};
 	} catch (cause) {
+		if (options.redact === true) throw configError("invalidYaml", site, "YAML aliases expand past the limit");
 		throw configError("invalidYaml", site, (cause as Error).message, { cause });
+	}
+	if (options.redact === true) {
+		validateRedacted(site, value, schema, document, text);
+		return withoutPrototypes(value);
 	}
 	rejectReservedKeys(site, value);
 	value = withoutPrototypes(value);
-	validate(site, value, melianYamlSchema);
+	validate(site, value, schema);
+	return value;
+}
+
+// `line N, column M` of the node at `path` in a YAML document, or of the key that names it when `key` is set: where a
+// redacted error points instead of quoting what is there. Falls back to the deepest node the path reaches.
+export function position(document: Document, text: string, path: readonly string[], key = false): string {
+	let node: unknown = document.contents;
+	let offset = (node as { range?: [number] } | null)?.range?.[0] ?? 0;
+	for (const [index, segment] of path.entries()) {
+		if (!isMap(node)) break;
+		const pair = node.items.find((each) => isScalar(each.key) && String(each.key.value) === segment);
+		if (pair === undefined) break;
+		const target = index === path.length - 1 && key ? pair.key : (pair.value ?? pair.key);
+		offset = (target as { range?: [number] } | null)?.range?.[0] ?? offset;
+		node = pair.value;
+	}
+	const before = text.slice(0, offset).split("\n");
+	return `line ${before.length}, column ${before.at(-1)!.length + 1}`;
+}
+
+// The checks of `rejectReservedKeys` and `validate`, saying only where the problem is: in a secrets file, a key may be
+// a credential pasted where a name belongs, or a line missing its colon that made one key of a field and its value.
+function validateRedacted(site: Site, value: unknown, schema: TSchema, document: Document, text: string): void {
+	const reserved = (child: unknown, path: string[]): string[] | undefined => {
+		if (!isPlain(child)) return undefined;
+		for (const [key, grandchild] of Object.entries(child)) {
+			if (key === "__proto__") return [...path, key];
+			const found = reserved(grandchild, [...path, key]);
+			if (found !== undefined) return found;
+		}
+		return undefined;
+	};
+	const proto = reserved(value, []);
+	if (proto !== undefined) {
+		throw configError("reservedKey", site, `a reserved key at ${position(document, text, proto, true)}`);
+	}
+	const errors = [...Value.Errors(schema, withoutPrototypes(value))];
+	const segments = (instancePath: string) =>
+		instancePath
+			.split("/")
+			.slice(1)
+			.map((segment) => segment.replaceAll("~1", "/").replaceAll("~0", "~"));
+	const unknown = errors.find((error) => error.keyword === "additionalProperties");
+	if (unknown !== undefined) {
+		const [key] = (unknown.params as { additionalProperties: string[] }).additionalProperties;
+		const at = position(document, text, [...segments(unknown.instancePath), key!], true);
+		throw configError("unknownKey", site, `an unknown key at ${at}`);
+	}
+	const first = errors[0];
+	if (first === undefined) return;
+	const what = first.keyword === "required" ? "a missing field" : "an invalid value";
+	throw configError("invalidValue", site, `${what} at ${position(document, text, segments(first.instancePath))}`);
+}
+
+function parseLayer(text: string, site: Site, directory: string): MelianYaml {
+	const value = parseYaml(text, site, melianYamlSchema);
 	checkPatterns(site, value as MelianYaml);
 	checkRequire(site, value as MelianYaml);
-	return anchorPaths(site, value as MelianYaml);
+	if (site.preference === true) checkPreference(site, value as MelianYaml);
+	else if (site.file !== melianPaths.config) checkNested(site, value as MelianYaml);
+	return anchorPaths(site, directory, value as MelianYaml);
+}
+
+// The review plan reads routes from the root's configuration alone until it plans per path, so a nested file's route
+// policy would never apply: a stricter nested policy would fail open. Refusing it says so where it is written.
+function checkNested(site: Site, layer: MelianYaml): void {
+	for (const [tier, route] of Object.entries(layer.models ?? {})) {
+		const key = routePolicyKeys.find((each) => route?.[each] !== undefined);
+		if (key === undefined) continue;
+		throw configError(
+			"invalidValue",
+			site,
+			`"models.${tier}.${key}" is route policy, which only the root melian.yaml sets until Melian plans routes per path`,
+			{ key: `models.${tier}.${key}` },
+		);
+	}
+}
+
+// A route's policy keys decide whether a check ran inside policy, so a preference file setting one could wave its own
+// override through.
+function checkPreference(site: Site, layer: MelianYaml): void {
+	for (const [tier, route] of Object.entries(layer.models ?? {})) {
+		const key = routePolicyKeys.find((each) => route?.[each] !== undefined);
+		if (key === undefined) continue;
+		throw configError(
+			"invalidValue",
+			site,
+			`"models.${tier}.${key}" is policy, which only a committed melian.yaml sets; a preference file may set model and fallbacks`,
+			{ key: `models.${tier}.${key}` },
+		);
+	}
 }
 
 // Each `require` glob must be matched on its own, so an exclusion there would always count as missing.
@@ -485,8 +645,7 @@ const globLists: readonly (readonly string[])[] = [
 ];
 
 // Globs are written relative to their melian.yaml; merging would lose which file that was.
-function anchorPaths(site: Site, layer: MelianYaml): MelianYaml {
-	const directory = posix.dirname(site.file);
+function anchorPaths(site: Site, directory: string, layer: MelianYaml): MelianYaml {
 	const anchor = (key: string, path: string) => {
 		const shape = globShapeProblem(path);
 		if (shape !== undefined) throw configError("invalidValue", site, `"${key}" has ${path}${shape}`, { key });
@@ -559,6 +718,52 @@ function checkBands(config: MelianConfig, layers: readonly { site: Site; layer: 
 			"invalidValue",
 			site,
 			`"${key}" drops above ${drop} but accepts above ${accept}; drop must not exceed accept`,
+			{ key },
+		);
+	}
+}
+
+// `model` is optional so a preference file can restate only `fallbacks`, but a merged route with fallbacks and neither a
+// model nor an accept would drop them without a word.
+function checkFallbacks(models: MelianConfig["models"], layers: readonly { site: Site; layer: MelianYaml }[]): void {
+	for (const tier of modelTiers) {
+		const route = models[tier];
+		if (route?.fallbacks === undefined || route.model !== undefined || (route.accept?.length ?? 0) > 0) continue;
+		const site = layers.find(({ layer }) => layer.models?.[tier]?.fallbacks !== undefined)!.site;
+		const key = `models.${tier}.model`;
+		throw configError(
+			"invalidValue",
+			site,
+			`"models.${tier}.fallbacks" has no model to follow; set "${key}", or accept, which a committed melian.yaml sets`,
+			{ key },
+		);
+	}
+}
+
+// A route that refuses every model outside accept, and accepts none, would fail every check on its tier whatever the
+// maintainer holds, so it is a mistake in the file rather than a policy.
+function checkRefusals(models: MelianConfig["models"], layers: readonly { site: Site; layer: MelianYaml }[]): void {
+	for (const tier of modelTiers) {
+		const route = models[tier];
+		// An empty accept would accept nothing, and the plan would read it as no accept at all, so a route that refuses
+		// overrides would refuse none of them.
+		if (route?.accept !== undefined && route.accept.length === 0) {
+			const site = layers.find(({ layer }) => layer.models?.[tier]?.accept !== undefined)!.site;
+			const key = `models.${tier}.accept`;
+			throw configError(
+				"invalidValue",
+				site,
+				`"${key}" lists no model; list the models that satisfy the tier, or leave it out to accept the route's own model and fallbacks`,
+				{ key },
+			);
+		}
+		if (route?.acceptOverridden !== false || route.model !== undefined || (route.accept?.length ?? 0) > 0) continue;
+		const site = layers.find(({ layer }) => layer.models?.[tier]?.acceptOverridden !== undefined)!.site;
+		const key = `models.${tier}.acceptOverridden`;
+		throw configError(
+			"invalidValue",
+			site,
+			`"${key}" is false, but models.${tier} names no model and no accept, so no model could run; set models.${tier}.model or models.${tier}.accept`,
 			{ key },
 		);
 	}
@@ -638,22 +843,29 @@ type Layered = LoadedConfig & { readonly layers: readonly { site: Site; layer: M
  * the base commit, so that the head's changes to policy are reviewed as code and apply once merged.
  *
  * Every `melian.yaml` from the path's directory up to the root applies. The nearest file wins per key: objects merge
- * key by key, and arrays and scalars replace. From the working tree only, `melian.local.yaml` beside the root
- * `melian.yaml` applies last, over every other file. Lens `paths` are relative to the file that declares them. Throws
- * {@link ConfigError} naming the file for a symlink, a file over {@link maxConfigBytes}, an unreadable file, invalid
- * YAML, an unknown or reserved key, or a bad value; naming the root when it is missing or not a repository; and
- * {@link OutsideRepositoryError} when `path` is outside `repoRoot`.
+ * key by key, and arrays and scalars replace. From the working tree only, the preference files apply over every
+ * committed file: `melian.local.yaml` beside the root `melian.yaml` last of all, and under it the user-level file the
+ * source names in `preferences`. Neither may set a route's policy keys. Lens `paths` are relative to the file that
+ * declares them, and to the root for the user-level file. Throws {@link ConfigError} naming the file for a symlink, a
+ * file over {@link maxConfigBytes}, an unreadable file, invalid YAML, an unknown or reserved key, or a bad value;
+ * naming the root when it is missing or not a repository; and {@link OutsideRepositoryError} when `path` is outside
+ * `repoRoot`.
  */
 export async function loadConfig(repoRoot: string, source: RepositorySource, path: string): Promise<LoadedConfig> {
 	const target = repoPath(repoRoot, path);
 	const reader = await openSource(repoRoot, source).catch(fromSource(repoRoot));
 	const kind = await reader.exists(target).catch(fromSource(target));
-	const { config, sources } = await loadLayers(reader, directoriesUpToRoot(target, kind === "directory"), source);
-	return { config, sources };
+	const { config, sources, routes } = await loadLayers(
+		reader,
+		directoriesUpToRoot(target, kind === "directory"),
+		source,
+	);
+	return { config, sources, routes };
 }
 
-// Every `melian.yaml` in `directories`, nearest first, merged over the defaults. From the working tree, the root's
-// `melian.local.yaml` comes first of all: it is the maintainer's own, never a revision's, so a head cannot supply it.
+// Every `melian.yaml` in `directories`, nearest first, merged over the defaults. From the working tree, the preference
+// files come first of all: the root's `melian.local.yaml`, then the user-level file. They are the maintainer's own,
+// never a revision's, so a head cannot supply them.
 async function loadLayers(
 	reader: SourceReader,
 	directories: readonly string[],
@@ -661,7 +873,18 @@ async function loadLayers(
 ): Promise<Layered> {
 	const layers: { site: Site; layer: MelianYaml }[] = [];
 	const files = directories.map((directory) => posix.join(directory, melianPaths.config));
-	for (const file of source.kind === "worktree" ? [melianPaths.localConfig, ...files] : files) {
+	const worktree = source.kind === "worktree";
+	for (const file of worktree ? [melianPaths.localConfig] : []) {
+		const site = { file, where: reader.label(file), preference: true };
+		const layer = await readLayer(reader, site);
+		if (layer !== undefined) layers.push({ site, layer });
+	}
+	if (worktree && source.preferences !== undefined) {
+		const layer = await readUserLayer(source.preferences);
+		if (layer !== undefined) layers.push({ site: { file: source.preferences, where: source.preferences }, layer });
+	}
+	const preferences = layers.length;
+	for (const file of files) {
 		const site = { file, where: reader.label(file) };
 		const layer = await readLayer(reader, site);
 		if (layer !== undefined) layers.push({ site, layer });
@@ -670,5 +893,33 @@ async function loadLayers(
 	const config = layers.reduceRight((merged, { layer }) => merge(merged, layer), defaults) as unknown as MelianConfig;
 	checkBands(config, layers);
 	checkGuardrailRules(config, layers);
-	return { config, sources: layers.map(({ site }) => site.file), layers };
+	const committed = layers
+		.slice(preferences)
+		.reduceRight(
+			(merged, { layer }) => merge(merged, { models: layer.models ?? {}, lenses: layer.lenses ?? {} }),
+			merge({}, { models: {}, lenses: {} }),
+		);
+	checkRefusals(committed.models as MelianConfig["models"], layers.slice(preferences));
+	checkFallbacks(config.models, layers);
+	const lensTiers: Record<string, LensTier> = {};
+	for (const [name, settings] of Object.entries(committed.lenses as MelianConfig["lenses"])) {
+		if (settings.tier !== undefined) lensTiers[name] = settings.tier;
+	}
+	const retiered: Record<string, string> = {};
+	for (const { site, layer } of layers.slice(0, preferences).reverse()) {
+		for (const [name, settings] of Object.entries(layer.lenses ?? {})) {
+			if (settings?.tier !== undefined) retiered[name] = site.file;
+		}
+	}
+	const overridden: Partial<Record<ModelTier, string>> = {};
+	for (const tier of modelTiers) {
+		const nearest = layers
+			.slice(0, preferences)
+			.find(
+				({ layer }) => layer.models?.[tier]?.model !== undefined || layer.models?.[tier]?.fallbacks !== undefined,
+			);
+		if (nearest !== undefined) overridden[tier] = nearest.site.file;
+	}
+	const routes = { committed: committed.models as MelianConfig["models"], overridden, lensTiers, retiered };
+	return { config, sources: layers.map(({ site }) => site.file), routes, layers };
 }

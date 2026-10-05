@@ -1,0 +1,33 @@
+{
+  "pr_title": "Read invoices back from the store",
+  "comments": [
+    {
+      "comment": "The change adds invoiceOf, a module-level free function that builds an Invoice from a stored row, though AGENTS.md says \"`Invoice` is the domain object. Building an `Invoice` from anything else, such as a request body or a stored row, is a static factory on `Invoice`, as `Invoice.from(id, body)` is, never a free function. A free function is for a module-private helper that touches no domain object.\"",
+      "severity": "Low",
+      "category": "convention",
+      "file": "src/store.ts",
+      "rule": "quoted-rule-violation",
+      "source": "lens.conventions",
+      "cause": "introduced",
+      "failureScenario": "invoiceOf builds an Invoice from an InvoiceRow as a free function in store.ts. AGENTS.md says \"`Invoice` is the domain object. Building an `Invoice` from anything else, such as a request body or a stored row, is a static factory on `Invoice`, as `Invoice.from(id, body)` is, never a free function. A free function is for a module-private helper that touches no domain object.\" invoiceOf is module-private but constructs an Invoice, so the exemption does not cover it. A reader looking on Invoice for the ways to build one finds Invoice.from and not invoiceOf, and the next reader of rows writes a third.",
+      "evidence": [
+        {
+          "file": "src/store.ts",
+          "line": 11,
+          "endLine": 13,
+          "role": "cause"
+        },
+        {
+          "file": "src/invoice.ts",
+          "line": 22,
+          "role": "context"
+        },
+        {
+          "file": "AGENTS.md",
+          "line": 7,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

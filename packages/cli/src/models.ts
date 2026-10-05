@@ -1,28 +1,20 @@
 import { readFile } from "node:fs/promises";
-import type { Lens, LensTier, MelianConfig, ModelRoute } from "@melian-agent/core";
-import { createReviewModels, type ReviewModels } from "@melian-agent/pipeline";
+import { type Lens, type LoadedConfig, type NamedCredential, ReviewPlan } from "@melian-agent/core";
+import { createReviewModels, planInputs, type ReviewModels } from "@melian-agent/pipeline";
 import { createFakeModels, type LensScript, scriptLenses } from "@melian-agent/pipeline/testing";
 import { CliError } from "./repository.ts";
 
 /**
  * The environment variable that switches the CLI to scripted mode: the path of a lens script, in a golden's
- * `script.json` shape. Every tier routes to a fake model that answers each lens from it, and storage moves under
- * `melian/scripted/` so nothing a script produced can be published. It exists so tests can run the CLI end to end
- * without a provider.
+ * `script.json` shape. Every lens tier routes to a fake model that answers each lens from it, as `--model` would
+ * route it, and storage moves under `melian/scripted/` so nothing a script produced can be published. It exists so
+ * tests can run the CLI end to end without a provider.
  */
 export const scriptVariable = "MELIAN_TEST_SCRIPT";
 
-const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
-
-// Routes every tier to `model` alone, replacing any route and fallbacks the configuration set.
-function routeTiers(config: MelianConfig, model: string): MelianConfig {
-	const route: ModelRoute = { model };
-	return { ...config, models: { ...config.models, ...Object.fromEntries(tiers.map((tier) => [tier, route])) } };
-}
-
 export interface ReviewSetup {
 	readonly models: ReviewModels;
-	readonly config: MelianConfig;
+	readonly plan: ReviewPlan;
 	/** Whether a failed model request is retried with backoff; scripted mode fails it at once. */
 	readonly retry: boolean;
 }
@@ -38,29 +30,41 @@ async function readScript(path: string): Promise<LensScript> {
 	return script as LensScript;
 }
 
-// `model` routes every tier, whatever the configuration routes; under the script variable, every tier runs on the fake.
+// Under the script variable every lens tier runs on the fake, routed as --model would route it.
 export async function reviewModels(
 	env: NodeJS.ProcessEnv,
-	config: MelianConfig,
+	loaded: LoadedConfig,
 	lenses: readonly Lens[],
-	model: string | undefined,
+	options: {
+		readonly model?: string | undefined;
+		readonly checks: readonly string[];
+		readonly credentials: readonly NamedCredential[];
+	},
 ): Promise<ReviewSetup> {
 	const scriptPath = env[scriptVariable];
-	if (scriptPath === undefined || scriptPath === "") {
-		return {
-			models: createReviewModels(),
-			retry: true,
-			config: model === undefined ? config : routeTiers(config, model),
-		};
+	const scripted = scriptPath !== undefined && scriptPath !== "";
+	let models: ReviewModels;
+	let model = options.model;
+	if (scripted) {
+		const fake = createFakeModels({ models: [{ id: "scripted" }] });
+		scriptLenses(fake, lenses, await readScript(scriptPath));
+		const ref = fake.ref("scripted");
+		models = fake.review;
+		model = `${ref.provider}/${ref.modelId}`;
+	} else {
+		models = createReviewModels({ credentials: options.credentials });
 	}
-	const fake = createFakeModels({ models: [{ id: "scripted" }] });
-	scriptLenses(fake, lenses, await readScript(scriptPath));
-	const ref = fake.ref("scripted");
-	return {
-		models: fake.review,
-		config: routeTiers(config, `${ref.provider}/${ref.modelId}`),
-		retry: false,
-	};
+	const { catalog, credentials } = await planInputs(models);
+	const plan = ReviewPlan.resolve({
+		config: loaded.config,
+		routes: loaded.routes,
+		...(model === undefined ? {} : { model }),
+		catalog,
+		credentials,
+		lenses,
+		checks: options.checks,
+	});
+	return { models, plan, retry: !scripted };
 }
 
 export function isScripted(env: NodeJS.ProcessEnv): boolean {

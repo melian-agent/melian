@@ -39,11 +39,19 @@ export type ConfigErrorCode =
 	| "invalidYaml"
 	| "unknownKey"
 	| "reservedKey"
-	| "invalidValue";
+	| "invalidValue"
+	| "tracked"
+	| "cloneCommand"
+	| "notUserOwned"
+	| "userFileInRepository";
 
 /**
- * A `melian.yaml` could not be loaded. `file` names it, repository-relative, or names the repository root or commit when
- * the source itself could not be opened. `key` is the dotted path of the offending key, where there is one.
+ * A `melian.yaml`, a preference file, or a secrets file could not be loaded. `file` names it, repository-relative, or by
+ * the path it was given when it lies outside the repository, or names the repository root or commit when the source
+ * itself could not be opened. `key` is the dotted path of the offending key, where there is one. `tracked` is a secrets
+ * file git tracks; `cloneCommand` is a command source in the per-clone secrets file, which may hold only literal and
+ * environment sources; `notUserOwned` is a command source in a file someone other than the user could have written;
+ * `userFileInRepository` is a command in a user-level file that leads into the repository under review.
  */
 export class ConfigError extends Error {
 	readonly code: ConfigErrorCode;

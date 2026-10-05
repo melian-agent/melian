@@ -13,7 +13,7 @@ It takes its name from Melian the Maia, queen of Doriath, whose Girdle held back
 - **Quiet.** Good changes pass without ceremony. Findings stay in scope, and a dismissal with a reason is never raised again.
 - **Remembers in your repository.** Acquired knowledge goes to `AGENTS.md` and its siblings, by pull request, where every person and every agent inherits it, not in propietary products to lock you in.
 - **Runs anywhere you do.** Locally before a pull request exists, as a skill inside Claude Code, Codex, or Pi, on pull requests as a colleague, in a devcontainer, or in GitHub Actions.
-- **Built for monorepos.** Every setting, from which lenses run to what blocks a merge, is configurable per folder.
+- **Built for monorepos.** Which lenses run, and what blocks a merge, is configurable per folder. A model route's `accept`, `unavailable`, and `acceptOverridden` are set once, in the root `melian.yaml`.
 
 ## Why
 
@@ -53,7 +53,27 @@ Melian is our answer. It is built in the open, on [Pi](https://github.com/earend
 
 ## Bring your own models
 
-Melian does not sell you model access. You bring your own subscriptions and API keys, stack several of them, and decide which model does which job: a strong model for the security lens, a cheap one for triage, a fast open-weight decision model for the yes-or-no questions that do not need a paragraph of reasoning. Routing is configurable per repository and per folder, so one monorepo can give its payments service more scrutiny than its docs.
+Melian does not sell you model access. You bring your own subscriptions and API keys, stack several of them, and decide which model does which job. A strong model takes the security lens, a cheap one triage, and a fast open-weight decision model the yes-or-no questions that do not need a paragraph of reasoning. Routing is configurable per repository, and a repository's `melian.yaml` may commit the team's default routes. A contributor without a route's credentials gets the same model from a provider they do hold, or the nearest by price, and every check run that way says so. Run `melian doctor` to see which model each tier would use, and from which credential.
+
+### Your credentials
+
+Melian reads credentials from two secrets files, then from Pi's login, then from each provider's environment variables:
+
+- `melian.secrets.yaml` beside a repository's root `melian.yaml`, for one clone. Keep it out of git: Melian refuses one that git tracks.
+- `secrets.yaml` in `~/.config/melian/`, or `$XDG_CONFIG_HOME/melian/`, for every repository you work on.
+
+Each credential names a provider and takes its key from one of three sources:
+
+```yaml
+credentials:
+  pinned-anthropic: { provider: anthropic, key: sk-ant-... }          # the key itself
+  work-anthropic: { provider: anthropic, env: WORK_ANTHROPIC_KEY }    # an environment variable
+  work-openai: { provider: openai, command: "op read op://dev/openai/key" }  # a command's output, user-level file only
+```
+
+A command runs only from your own `secrets.yaml` in `~/.config/melian/`, never from `melian.secrets.yaml`, which holds keys and environment variables only: a file inside a repository may have come from someone else's change. That file must be yours, with mode 600, in a directory no one else can write; otherwise Melian refuses the command. Melian never prints a credential.
+
+Whether a subscription may be used in automation, or shared across a team, is a question for the provider's contract. Melian takes no position on it.
 
 ## Built for large monorepos
 
