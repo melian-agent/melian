@@ -84,22 +84,40 @@ export const VerdictDocument = defineDoc<{
 	decisions?: Record<string, StoredDecision>;
 	details?: Record<string, PublicationDetails>;
 	walkthroughs?: Record<string, Walkthrough>;
+	walkthroughNotes?: Record<string, string>;
 }>({
 	kind: "melian.verdicts",
-	version: 4,
+	version: 5,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
 	initial: () => ({ verdicts: {} }),
-	// Version 3 made a finding's evidence a list of locations.
+	// Version 3 upgrades evidence; version 4 adds details and summaries; version 5 separates fallback notes.
 	migrate: (value, from) => {
 		if (from < 2)
 			throw new Error(`the verdict document needs migrating from version ${from}, which Melian cannot do`);
-		const state = value as { verdicts: Record<string, StoredVerdict> };
+		const state = value as {
+			verdicts: Record<string, StoredVerdict>;
+			walkthroughs?: Record<string, Walkthrough>;
+			walkthroughNotes?: Record<string, string>;
+		};
+		const walkthroughs = { ...state.walkthroughs };
+		const walkthroughNotes = { ...state.walkthroughNotes };
+		for (const [revision, walkthrough] of Object.entries(walkthroughs)) {
+			if (walkthrough.note !== undefined) {
+				walkthroughNotes[revision] = "No walkthrough available. The summariser returned no summary.";
+				delete walkthroughs[revision];
+			}
+		}
 		const verdicts = Object.fromEntries(
 			Object.entries(state.verdicts).map(([revision, verdict]) => [revision, Verdict.upgrade(verdict)]),
 		);
-		return { ...value, verdicts };
+		return {
+			...value,
+			verdicts,
+			...(state.walkthroughs === undefined ? {} : { walkthroughs }),
+			...(Object.keys(walkthroughNotes).length === 0 ? {} : { walkthroughNotes }),
+		};
 	},
 });
 

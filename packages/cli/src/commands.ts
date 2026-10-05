@@ -141,7 +141,8 @@ export async function review(
 			io.stderr(`melian: ${error.message}\n`);
 			verdict = error.verdict;
 		}
-		if (options.walkthrough !== false) await summariseReview({ harness, changeset, config, models });
+		if (target.kind === "pullRequest" && options.walkthrough !== false)
+			await summariseReview({ harness, changeset, config, models, rerun: options.rerun });
 		const outcome = new ReviewOutcome(verdict);
 		io.stdout(outcome.render(io.color));
 		return outcome.exitCode();
