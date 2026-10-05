@@ -418,7 +418,11 @@ describe("an escalation across a crash", { timeout: 30_000 }, () => {
 		expect(decider.requests).toEqual([]);
 		// Only the careful run's interrupted request was answered: the quick run did not run again.
 		expect(requests["You are the correctness reviewer"]).toHaveLength(1);
-		expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toMatchObject({ level: "careful" });
+		// The record follows the escalation the stored task made before the crash.
+		expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toMatchObject({
+			level: "careful",
+			reason: expect.stringMatching(/^escalated from quick to careful: at quick it reported a P1 finding/),
+		});
 		const levels: string[] = [];
 		for (let id = 1; id < 60; id++) {
 			const lens = (await harness.snapshot(LensDocument, id as ConversationId, context))?.lens;

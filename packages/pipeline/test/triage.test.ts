@@ -524,7 +524,7 @@ describe("escalation", () => {
 		const root = (await harness.root(context)).id;
 		const index = await harness.snapshot(ReviewIndex, root, context);
 		expect(index!.reviews[revision()]!.lenses).toEqual([
-			`correctness@${version()}@quick band quick-deep escalateAt P1`,
+			`correctness@${version()}@quick band quick-deep escalateAt P1 escalates to correctness@${version()}@careful`,
 		]);
 		expect((await readProvenance(harness, root, revision(), context))!.lenses).toEqual([
 			`correctness@${version()}@careful`,
@@ -688,7 +688,26 @@ describe("escalation", () => {
 		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
 		const index = await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context);
 		expect(index!.reviews[revision()]!.lenses).toEqual([
-			`correctness@${version()}@quick band quick-deep escalateAt P2`,
+			`correctness@${version()}@quick band quick-deep escalateAt P2 escalates to correctness@${version()}@careful`,
+		]);
+	});
+
+	it("runs the lenses again, rather than attach, when the level a quick run escalates to gains a model", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [severe, done] }]);
+		const { heavy: _, ...rest } = config.models;
+		const first = await review({ decider, config: { ...config, models: rest } });
+		expect(lensRecord(first)).toMatchObject({ level: "quick", reason: expect.stringContaining("escalation capped") });
+
+		// heavy is routed now, so the same quick run escalates: another selection, and a task that escalates.
+		scriptConversations(fake, [{ match: correctness, replies: [severe, done, done] }]);
+		const second = await review({ decider });
+
+		expect(lensRecord(second)).toMatchObject({ level: "careful" });
+		const index = await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context);
+		expect(index!.reviews[revision()]!.lenses).toEqual([
+			`correctness@${version()}@quick band quick-deep escalateAt P1 escalates to correctness@${version()}@careful`,
 		]);
 	});
 

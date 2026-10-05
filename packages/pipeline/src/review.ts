@@ -632,9 +632,14 @@ function omit<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K>
 	return rest;
 }
 
-// A review's lens selection as the review index keys it: each run's key, with the band its level was held to and the
-// severity that escalates it, so a review under a changed band or `escalateAt` starts a task of its own rather than
+// A review's lens selection as the review index keys it: each run's key, with the band its level was held to, the
+// severity that escalates it, and the run a quick run escalates to or why it is capped, so a review under a changed band or `escalateAt` starts a task of its own rather than
 // attach to one that escalated under the old rule. A task an older Melian created names neither.
+function escalatesTo(escalation: NonNullable<LensRun["escalation"]>): string {
+	if (escalation.next !== undefined) return `escalates to ${escalation.next.key}`;
+	return `capped ${escalation.cap ?? "at its ceiling"}`;
+}
+
 function selectionOf(lenses: readonly LensRun[], escalateAt: Severity | undefined): string[] {
 	return lenses
 		.map((lens) =>
@@ -642,20 +647,22 @@ function selectionOf(lenses: readonly LensRun[], escalateAt: Severity | undefine
 				lens.key,
 				...(lens.band === undefined ? [] : [`band ${lens.band}`]),
 				...(escalateAt === undefined ? [] : [`escalateAt ${escalateAt}`]),
+				...(lens.escalation === undefined ? [] : [escalatesTo(lens.escalation)]),
 			].join(" "),
 		)
 		.sort();
 }
 
 // One lens task per head and selection. A repeat call, such as a rerun after a crash, attaches to the task the first
-// call created, which the harness resumes, rather than running every lens a second time. `undefined` when the task did
-// not complete.
+// call created, which the harness resumes, rather than running every lens a second time. Returns the task's result,
+// `undefined` when the task did not complete, and the runs and `escalateAt` its stored input holds, which decided its
+// escalations.
 async function runLenses(
 	harness: Harness,
 	input: LensTaskInput,
 	rerun: boolean,
 	context: Context,
-): Promise<LensResult | undefined> {
+): Promise<{ readonly result: LensResult | undefined; readonly ran: LensTaskInput }> {
 	const root = await harness.root(context);
 	const revision = revisionKey(input.revision);
 	const selection = selectionOf(input.lenses, input.escalateAt);
@@ -681,8 +688,12 @@ async function runLenses(
 		inIndex(forget),
 		context,
 	);
-	const { outcome } = (await harness.waitForTask(taskId, context)).state;
-	return outcome.status === "completed" ? outcome.result : undefined;
+	const settled = await harness.waitForTask(taskId, context);
+	const { outcome } = settled.state;
+	return {
+		result: outcome.status === "completed" ? outcome.result : undefined,
+		ran: settled.input as unknown as LensTaskInput,
+	};
 }
 
 // Whether a finished lens task left a lens without an answer, which `rerun` asks to try again.
@@ -1127,12 +1138,15 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		files: reviewFiles(revision.files),
 	};
 	const { escalateAt } = config.triage;
-	const lensResult =
+	const lensInput: LensTaskInput = { root, revision: state, lenses, escalateAt };
+	const { result: lensResult, ran } =
 		lenses.length === 0
-			? {}
-			: await runLenses(harness, { root, revision: state, lenses, escalateAt }, options.rerun === true, context);
-	const rule = new EscalationRule(escalateAt);
-	const settling = lenses.map((lens) => settle(lens, lensResult, rule));
+			? { result: {}, ran: lensInput }
+			: await runLenses(harness, lensInput, options.rerun === true, context);
+	// Escalation is settled from the runs the task stored, which decided it, never from this call's own computation.
+	const rule = new EscalationRule(ran.escalateAt ?? escalateAt);
+	const stored = new Map(ran.lenses.map((run) => [run.key, run]));
+	const settling = lenses.map((lens) => settle(stored.get(lens.key) ?? lens, lensResult, rule));
 	// The change triage reads can steer it, so a review in which every lens stayed at quick says so.
 	const light =
 		triaged.decision !== undefined && settling.length > 0 && settling.every(({ run }) => run.level === "quick")
