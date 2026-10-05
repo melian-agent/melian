@@ -433,6 +433,18 @@ describe("Changeset.resolve", () => {
 		expect((await Changeset.resolve(repo, "main..feature")).id).not.toBe(before.id);
 	});
 
+	it("renames a changeset with withId and keeps everything else", async () => {
+		const original = await Changeset.resolve(repo, "main...feature");
+		const renamed = original.withId("pull-0123456789abcdef");
+
+		expect(renamed.id).toBe("pull-0123456789abcdef");
+		expect(renamed.kind).toBe(original.kind);
+		expect(renamed.repoRoot).toBe(original.repoRoot);
+		expect(renamed.spec).toEqual(original.spec);
+		expect(renamed.revision).toEqual(original.revision);
+		expect(renamed.toJSON()).toEqual({ ...original.toJSON(), id: "pull-0123456789abcdef" });
+	});
+
 	it("refuses a path outside any repository", async () => {
 		const outside = temporaryDirectory();
 		try {
