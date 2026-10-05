@@ -49,13 +49,15 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 	beforeAll(() => {
 		root = realpathSync(mkdtempSync(join(tmpdir(), "codex-sandboxed-")));
 		main = join(root, "main");
-		linked = join(root, "linked");
+		// The directory name holds regex metacharacters, so the escaping in the deny regexes is exercised.
+		linked = join(root, "a+b (c).d", "linked");
 		home = join(root, "home");
 		run = join(root, "tmp", "codex-run");
 		mkdirSync(run, { recursive: true });
 		mkdirSync(main);
 		git(main, "init", "-q");
 		git(main, "commit", "-q", "--allow-empty", "-m", "init");
+		mkdirSync(join(root, "a+b (c).d"));
 		git(main, "worktree", "add", "-q", linked);
 		admin = join(main, ".git", "worktrees", "linked");
 		bin = join(root, "bin");
