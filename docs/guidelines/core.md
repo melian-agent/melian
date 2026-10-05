@@ -424,7 +424,29 @@ type StoredComparison = {
 	melian: string[]; // the IDs of the stored review's shown and dismissed findings: read from it, never copied
 	matches: { external: string; melian: string; kind: "site" | "hand"; by?: string; at?: string }[];
 	unmatches: { external: string; melian: string; by: string; at: string }[];
-	imports: Record<string, { at: string; ids: string[]; skippedBodies: number }>; // the last import, by source
+	imports: Record<string, StoredComparisonImport>; // the last import, by source
+	adjudications?: Record<string, { current: StoredComparisonAdjudication; history: StoredComparisonAdjudication[] }>; // by finding ID, external or Melian's
+	createdAt?: string; // when the first round was compared; reruns keep it
+	target?: string; // the range or pull request the host named, for labels
+};
+
+type StoredComparisonImport = {
+	at: string;
+	ids: string[];
+	skippedBodies: number;
+	reviewers?: ExternalReviewer[]; // who the source covered, kept when it held no findings
+};
+
+type StoredComparisonAdjudication = {
+	verdict: "valid" | "noise" | "duplicate";
+	by: string;
+	at: string;
+	severity?: Severity;
+	of?: string; // the finding a duplicate repeats
+	reason?: "owned-missed" | "no-owner" | "needs-execution" | "out-of-scope"; // for a valid external finding Melian missed
+	golden?: string; // the lens owed a golden, or "none"
+	rule?: string;
+	note?: string;
 };
 
 type StoredExternalFinding = {
