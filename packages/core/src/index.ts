@@ -2,6 +2,7 @@ export {
 	Adjudication,
 	type AdjudicationInput,
 	type BudgetEnd,
+	type CheckLineage,
 	type CheckRecord,
 	type CheckStatus,
 	type ConfigFor,
@@ -50,14 +51,18 @@ export {
 	type MelianConfig,
 	type MelianYaml,
 	type ModelRoute,
+	type ModelTier,
 	maxConfigBytes,
 	melianYamlSchema,
+	modelTiers,
 	type PolicyChangeReview,
 	type RequiredFileRule,
 	type Resolution,
+	type RouteLineage,
 	type RuleAlias,
 	resolutionOrder,
 	resolutionSchema,
+	routePolicyKeys,
 	type Severity,
 	type StaticSettings,
 	type StaticToolSettings,
@@ -195,7 +200,18 @@ export {
 	scrutinyLevels,
 } from "./lens.ts";
 export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
-export { analyserConfigNames, melianPaths } from "./paths.ts";
+export { analyserConfigNames, melianPaths, userFiles } from "./paths.ts";
+export {
+	type CatalogModel,
+	type PlanInput,
+	type PlanLine,
+	type PlannedLens,
+	type PlannedModel,
+	type PlannedTier,
+	ReviewPlan,
+	type StoredPlan,
+	type TierStatus,
+} from "./plan.ts";
 export {
 	type ClosedFinding,
 	type DiffLines,
@@ -212,7 +228,7 @@ export {
 	type ReviewStatus,
 	replyKey,
 } from "./publication.ts";
-export { describeBudgetEnd, Rendering, type TerminalRenderOptions, visibleText } from "./render.ts";
+export { describeBudgetEnd, describeLineage, Rendering, type TerminalRenderOptions, visibleText } from "./render.ts";
 export {
 	listRevisionFiles,
 	type RevisionEntry,
@@ -225,6 +241,13 @@ export {
 	revisionLimits,
 	searchRevision,
 } from "./revision.ts";
+export {
+	type CredentialValue,
+	type LoadedSecrets,
+	loadSecrets,
+	type NamedCredential,
+	secretsFileSchema,
+} from "./secrets.ts";
 export type { RepositorySource } from "./source.ts";
 export { loadStandards, type StandardsSection, standardsLimits } from "./standards.ts";
 export {

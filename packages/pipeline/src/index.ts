@@ -8,7 +8,13 @@ export {
 	readCheckRecords,
 	runChecks,
 } from "./checks.ts";
-export { createReviewModels, PiCredentialStore, piAuthPath, piCredentialStore } from "./credentials.ts";
+export {
+	createReviewModels,
+	MelianCredentialStore,
+	PiCredentialStore,
+	piAuthPath,
+	piCredentialStore,
+} from "./credentials.ts";
 export {
 	type DecisionResult,
 	decisionExtension,
@@ -17,6 +23,8 @@ export {
 } from "./decisions.ts";
 export { type DismissalOptions, DismissHarness, type RecordedDismissal, recordDismissal } from "./dismiss.ts";
 export {
+	CredentialError,
+	type CredentialErrorCode,
 	DismissError,
 	type DismissErrorCode,
 	PiCredentialsError,
@@ -36,7 +44,14 @@ export {
 	upsertFinding,
 } from "./findings.ts";
 export * from "./harness.ts";
-export { providersWithCredentials, type ReviewModels, RouteTextModel } from "./models.ts";
+export {
+	type PlanSources,
+	planInputs,
+	providersWithCredentials,
+	type ReviewModels,
+	RouteTextModel,
+	unlockCredentials,
+} from "./models.ts";
 export {
 	type AbandonedReview,
 	openPublishHarness,

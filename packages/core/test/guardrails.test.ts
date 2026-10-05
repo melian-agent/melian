@@ -311,6 +311,43 @@ describe("forbidden-patterns", () => {
 		expect(finding!.properties.explanation.what).toContain("focused-test, skipped-test");
 	});
 
+	it.each([
+		["the stricter rule first", ["block", "note"]],
+		["the stricter rule last", ["note", "block"]],
+	])("reports a line at the strictest severity of the rules that match it, with %s", async (_, order) => {
+		const rule = {
+			note: ["      note:", "        pattern: 'TODO'", "        severity: P3", "        message: finish it"],
+			block: [
+				"      block:",
+				"        pattern: 'TODO'",
+				"        severity: P1",
+				"        message: do not commit it",
+			],
+		};
+		const withSeverity = lines(
+			quiet,
+			"  forbidden-patterns:",
+			"    rules:",
+			...order.flatMap((name) => rule[name as keyof typeof rule]),
+			"      plain:",
+			"        pattern: 'FIXME'",
+			"        message: fix it",
+			"      loud:",
+			"        pattern: 'HACK'",
+			"        severity: P3",
+			"        message: remove it",
+		);
+		const { findings } = await guardrails(
+			{ "melian.yaml": withSeverity },
+			{ "a.ts": lines("// TODO", "// FIXME", "// HACK") },
+		);
+		expect(summary(findings).map(({ line, severity }) => [line, severity])).toEqual([
+			[1, "P1"],
+			[2, "P2"],
+			[3, "P3"],
+		]);
+	});
+
 	it("gives identical lines their own occurrence, so neither replaces the other", async () => {
 		const { findings } = await guardrails(
 			{ "melian.yaml": config },
@@ -409,6 +446,31 @@ describe("forbidden-patterns", () => {
 			{ "a.test.ts": lines(`${" ".repeat(20_000)}it.only(x)`) },
 		);
 		expect(summary(findings).map(({ file, line }) => [file, line])).toEqual([["a.test.ts", 1]]);
+	});
+
+	it("reports what it could not scan at the strictest severity of the rules it could not check", {
+		timeout: 60_000,
+	}, async () => {
+		const strict = lines(
+			quiet,
+			"  forbidden-patterns:",
+			"    rules:",
+			"      note:",
+			"        pattern: '\\.only\\('",
+			"        severity: P3",
+			"        message: note it",
+			"      block:",
+			"        pattern: '\\.skip\\('",
+			"        severity: P1",
+			"        message: block it",
+		);
+		const row = `it(${"x".repeat(1_000)})`;
+		const rows = Array.from({ length: 4_300 }, () => row);
+		const { findings } = await guardrails(
+			{ "melian.yaml": strict },
+			{ "a.test.ts": lines(...rows, "it.only(hidden)") },
+		);
+		expect(summary(findings).map(({ severity }) => severity)).toEqual(["P1"]);
 	});
 
 	it("reports what is past the scan limit as a finding, never only a note", { timeout: 60_000 }, async () => {

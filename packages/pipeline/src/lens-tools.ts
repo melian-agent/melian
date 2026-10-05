@@ -50,6 +50,7 @@ import {
 	type UsageState,
 	validateToolArguments,
 } from "./harness.ts";
+import { ReviewIndex } from "./review-index.ts";
 import { injectionAttemptRule, injectionPolicy, injectionSeverity, quoteUntrusted } from "./untrusted.ts";
 
 // `added` is the hunk's new lines, the code a dismissal of an introduced finding is tied to. `changes` is its added and
@@ -134,6 +135,9 @@ export type LensPolicy = {
 	rules: LensRule[];
 	// The findings budget.
 	budget: number;
+	// The lens task that runs it, which the review index must still name for the revision for a report to count; absent
+	// from a lens an older Melian created.
+	task?: number;
 	// The level's token and tool budgets; absent from a lens an older Melian created, which enforces neither.
 	limits?: { tokens?: number; tools?: number };
 	// Where the lens may report: its folder and paths, less any folder a nearer lens of its name covers, and the head
@@ -754,9 +758,18 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 	const { refuted } = args;
 	const recorded = await api.commit(async (tx) => {
 		// One storage holds every review of a changeset, so the budget counts this lens's sightings at its own revision.
+		// The lens task that runs this conversation: its policy names it, and for a conversation an older Melian spawned,
+		// before policies did, the task that created it does. Read first: a commit reads no table after it writes.
+		const runner = lens.task ?? (await tx.conversation(api.conversationId))?.owner?.taskId;
 		const state = await tx.doc(FindingsDocument, lens.review);
 		const { source } = finding.properties;
 		const at = revisionKey(review);
+		// A later review of the revision replaced this lens's run, and cleared its sightings; one written now would
+		// count in a verdict whose record says the replacement ran.
+		const entry = (await tx.doc(ReviewIndex, lens.review)).reviews[at];
+		if (runner !== undefined && entry !== undefined && entry.task !== runner) {
+			throw new Error("superseded: a later review of this revision replaced this run; stop reporting and finish");
+		}
 		const own = hasSighting(state, id, at, source);
 		if (refuted === undefined && !own && sightingCount(state, at, source) >= lens.budget) {
 			throw new Error(`budget reached: this lens may report ${lens.budget} findings; stop reporting and finish`);

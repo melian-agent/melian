@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import {
 	type ClosedFinding,
 	describeBudgetEnd,
+	describeLineage,
 	dismissalVersion,
 	type Finding,
 	type Placement,
@@ -233,7 +234,8 @@ const statusWords: Readonly<Record<Verdict["status"], string>> = {
 };
 
 /**
- * The body of a revision's review: the verdict, the checks that did not run, a lens its budget ended among them, any
+ * The body of a revision's review: the verdict, the checks that left the committed routes and what put them there, the
+ * checks that did not run, a lens its budget ended among them, any
  * lens its budget ended that its level counts as run, findings in files the change does not touch, each under its own
  * marker, and resolved and dismissed findings that had no thread to reply in, each dismissed one with its reason.
  */
@@ -258,6 +260,11 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 		...(verdict.dismissed.length > 0 ? [`${plural(verdict.dismissed.length, "dismissed finding")} not shown.`] : []),
 	];
 	parts.push(summary.join(" "));
+	// A check off the committed routes ran under a maintainer's own choice, so it leads, before anything else said.
+	const routed = [...(verdict.ran ?? []), ...verdict.notRun].flatMap(({ name, lineage }) =>
+		lineage === undefined ? [] : [`- ${code(name)} ${inline(describeLineage(lineage))}`],
+	);
+	if (routed.length > 0) parts.push(["Checks that left the committed routes:", "", ...routed].join("\n"));
 	if (verdict.notRun.length > 0) {
 		const checks = verdict.notRun.map(({ name, status: ran, reason, budgetEnded }) => {
 			const ended = budgetEnded === undefined ? [] : [describeBudgetEnd(budgetEnded)];
