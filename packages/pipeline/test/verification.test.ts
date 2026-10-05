@@ -1,6 +1,14 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Changeset, defaultConfig, Lens, ReviewPlan, type Verification, VerificationState } from "@melian-agent/core";
+import {
+	Changeset,
+	defaultConfig,
+	Finding,
+	Lens,
+	ReviewPlan,
+	type Verification,
+	VerificationState,
+} from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -15,6 +23,7 @@ import {
 	reviewChangeset,
 	revisionKey,
 	type TaskId,
+	upsertFinding,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -934,6 +943,75 @@ describe("verification ownership and budgets", () => {
 			],
 		};
 	}
+	it("limits nine candidates to eight in-flight judge requests", async () => {
+		const stored = await input();
+		const template = stored.candidates[0]!;
+		const findings = Array.from({ length: 9 }, (_, index) =>
+			Finding.create({
+				file: "src/user.ts",
+				startLine: 7,
+				rule: crashFinding.rule,
+				discriminator: `candidate-${index}`,
+				message: crashFinding.explanation.what,
+				severity: "P1",
+				cause: "pre-existing",
+				explanation: template.state.speaker.properties.explanation,
+				failureScenario: crashFinding.failureScenario,
+				evidence: template.state.speaker.properties.evidence,
+				source: template.state.claims[0]!.source,
+			}),
+		);
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		await root.commit(async (tx) => {
+			for (const finding of findings) await upsertFinding(tx, root.id, finding, revision);
+		}, context);
+		stored.candidates = findings.map((finding) => ({
+			...template,
+			key: finding.id,
+			state: VerificationState.from(finding).toJSON(),
+			budget: { ...template.budget, tools: 20 },
+		}));
+		const release = Promise.withResolvers<void>();
+		let inFlight = 0;
+		let maximum = 0;
+		const requests = scriptConversations(fake, [
+			{
+				match: verifierMarker,
+				replies: Array.from({ length: 18 }, () => async (messages: Parameters<typeof scriptVerifier>[0]) => {
+					inFlight++;
+					maximum = Math.max(maximum, inFlight);
+					try {
+						await release.promise;
+						return scriptVerifier(messages);
+					} finally {
+						inFlight--;
+					}
+				}),
+			},
+		]);
+		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
+		const id = (await startVerification(harness, stored, selection, false, context))!;
+		const finished = harness.waitForTask(id, context);
+		try {
+			await vi.waitFor(() => expect(inFlight).toBeGreaterThanOrEqual(8));
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			expect(inFlight).toBe(8);
+			expect(requests[verifierMarker]).toHaveLength(8);
+			release.resolve();
+			const completed = await finished;
+			expect(completed.state.outcome).toMatchObject({
+				status: "completed",
+				result: Object.fromEntries(findings.map((finding) => [finding.id, { status: "done" }])),
+			});
+			expect(requests[verifierMarker]).toHaveLength(18);
+			expect(maximum).toBe(8);
+			expect(inFlight).toBe(0);
+		} finally {
+			release.resolve();
+			await finished;
+		}
+	});
 	it("starts fresh when only the verifier version changes without rerun", async () => {
 		const stored = await input();
 		stored.version = "v1";
