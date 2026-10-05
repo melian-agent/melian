@@ -535,6 +535,14 @@ describe("melian compare stats and backlog", { timeout: 60_000 }, () => {
 	])("refuses invalid %s", (option, value) => {
 		expect(melian(root, ["compare", "stats", option, value]).status).toBe(64);
 	});
+
+	it.each([
+		[["compare", "stats", "--since", "2026-01-01", "--last", "1"], "--since or --last, not both"],
+		[["compare", "stats", range], "compare stats takes no target"],
+		[["compare", "backlog", range], "compare backlog takes no target"],
+	])("refuses %j", (args, message) => {
+		expect(melian(root, args)).toMatchObject({ status: 64, stderr: expect.stringContaining(message) });
+	});
 });
 
 describe("melian compare export", { timeout: 60_000 }, () => {
