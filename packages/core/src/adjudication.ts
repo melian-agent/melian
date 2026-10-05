@@ -500,7 +500,8 @@ export class Verdict {
 	/**
 	 * The verdict as plain text for a terminal: a header with its status and whether it blocks; the checks that did not
 	 * run and why, a lens its budget ended among them; each lens that ran with its scrutiny level and any budget that
-	 * ended it while its level counted it as run; then its findings grouped by resolution, strictest first, each group by
+	 * ended it while its level counted it as run; each check that left the committed routes, as `describeLineage` says it;
+	 * then its findings grouped by resolution, strictest first, each group by
 	 * file as {@link FindingsLog.files} groups them. Silent and dismissed findings are counted, not shown, unless the
 	 * rendering's `all` is set; then they follow, each dismissed one with who dismissed it and why.
 	 */

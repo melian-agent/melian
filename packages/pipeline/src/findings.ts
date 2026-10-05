@@ -361,10 +361,8 @@ export async function dismissFinding(
 	return replaced;
 }
 
-/**
- * Drops every sighting `sources` made at `revision`, in the commit that starts their replacement run, so a verdict reads
- * only the run the review index names. Lifecycle records stay, so a dismissal survives the rerun of a finding.
- */
+// Drops every sighting `sources` made at `revision`, in the commit that starts their replacement run, so a verdict reads
+// only the run the review index names. Lifecycle records stay, so a dismissal survives the rerun of a finding.
 export async function clearSightings(
 	tx: Tx,
 	rootConversationId: ConversationId,

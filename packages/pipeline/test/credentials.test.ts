@@ -11,6 +11,7 @@ import {
 	piAuthPath,
 	piCredentialStore,
 	planInputs,
+	providersWithCredentials,
 	unlockCredentials,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -261,6 +262,18 @@ describe("MelianCredentialStore", () => {
 		expect(credentials.openai).toBe("pinned in /home/me/.config/melian/secrets.yaml");
 		expect(await modelsOf(models).getAuth("openai")).toMatchObject({ auth: { apiKey: "sk-named" } });
 		await unlockCredentials(models, ["openai", "anthropic"]);
+	});
+
+	it("names a command credential as the source when building a plan, and never runs its command", async () => {
+		const marker = join(dir, "ran");
+		const models = createReviewModels({
+			authPath,
+			credentials: [named("vault", "openai", { kind: "command", command: `touch ${marker}; echo sk-key` })],
+		});
+		const { credentials } = await planInputs(models);
+		expect(credentials.openai).toBe("vault in /home/me/.config/melian/secrets.yaml");
+		expect(await providersWithCredentials(models)).toContain("openai");
+		expect(existsSync(marker)).toBe(false);
 	});
 
 	it("names an environment variable pi-ai found as the source, and lists catalogue models", async () => {

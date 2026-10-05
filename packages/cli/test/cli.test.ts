@@ -1,5 +1,14 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -676,6 +685,22 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		expect(doctor.stdout).not.toContain("\u001b");
 		expect(doctor.stdout).not.toContain("pwned");
 		expect(doctor.stdout).not.toMatch(/^ok {4}plan {8}heavy: routed by melian\.yaml$/m);
+	});
+
+	it("names a command credential in the plan without running its command", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, "models:\n  heavy:\n    model: openai/gpt-5.5\n");
+		const marker = join(repo, ".git", "ran");
+		const xdg = userDirectory(
+			`credentials:\n  vault: { provider: openai, command: "touch ${marker}; echo sk-key" }\n`,
+		);
+		const secrets = join(xdg.XDG_CONFIG_HOME, "melian/secrets.yaml");
+
+		const doctor = melian(repo, ["doctor"], xdg);
+
+		expect(doctor.stdout).toContain(
+			`ok    plan        heavy: openai/gpt-5.5 with vault in ${secrets}; routed by melian.yaml\n`,
+		);
+		expect(existsSync(marker)).toBe(false);
 	});
 
 	it("fails, naming the credential, for a secrets file whose provider the catalogue does not know", () => {
