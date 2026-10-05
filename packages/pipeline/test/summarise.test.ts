@@ -149,6 +149,13 @@ describe("walkthrough summaries", () => {
 			"No walkthrough available. The summariser failed.",
 		);
 		auth.mockRestore();
+		const files = vi.spyOn(changeset.revision.files, Symbol.iterator).mockImplementationOnce(() => {
+			throw new Error("private prompt error");
+		});
+		expect((await summarise())?.walkthroughNotes?.[revision]).toBe(
+			"No walkthrough available. The summariser failed.",
+		);
+		files.mockRestore();
 		await harness.close(context);
 		harness = await openHarness(createMemoryStorage(), { models: models.models, registry: createRegistry() });
 		const root = await harness.root(context);

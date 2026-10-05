@@ -229,8 +229,23 @@ describe("ledger rendering", () => {
 	});
 
 	it("bounds the walkthrough before losing dismissals, run details or the prompt", () => {
+		const dismissed = Finding.from({
+			...finding.toJSON(),
+			properties: {
+				...finding.properties,
+				id: "dismissed-finding",
+				status: "dismissed",
+				dismissal: { by: "Reviewer", reason: "Input is validated upstream.", at: "2026-10-05" },
+			},
+		});
+		const currentVerdict = new Adjudication({
+			findings: [finding, dismissed],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
 		const body = Ledger.from(
-			verdict,
+			currentVerdict,
 			{
 				rounds: [
 					{
@@ -247,6 +262,9 @@ describe("ledger rendering", () => {
 		expect(body.length).toBeLessThanOrEqual(9000);
 		expect(body).toContain("<summary>Run details");
 		expect(body).toContain("<summary>Prompt for agents");
+		expect(body).toContain("### Dismissals");
+		expect(body).toContain("Input is validated upstream.");
+		expect(LedgerStamp.parse(body)).toBeDefined();
 	});
 
 	it("changes the stamp for each walkthrough switch alone", () => {

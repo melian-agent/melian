@@ -115,7 +115,7 @@ export function renderProse(text: string): string {
 		.replace(/[*_[\]()#!|~`]/g, "\\$&")
 		.replace(/@(?=[\p{L}\p{N}_-])/gu, "@\u2060")
 		.replace(/\\#(?=\d)/g, "\\#\u2060")
-		.replace(/([a-z][a-z0-9+.-]*):(?=\/\/)/gi, "$1:\u2060")
+		.replace(/:(?=\/\/)/g, ":\u2060")
 		.replace(/\bwww\./gi, "www\u2060.")
 		.replace(/\bGH-(?=\d)/gi, "GH-\u2060");
 }

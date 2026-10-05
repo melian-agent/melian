@@ -76,7 +76,7 @@ export class Ledger {
 			},
 			lenses: current.details?.lenses.map(({ name, version }) => `${name}@${version}`) ?? [],
 			plan: current.details === undefined ? null : digest(JSON.stringify(current.details)),
-			projection: "",
+			projection: digest(""),
 		};
 		const draft = { ...options, verdict, publication };
 		const ledger = new Ledger(draft, stamp);
@@ -166,13 +166,13 @@ export class Ledger {
 							].join("\n"),
 							...(text.note === undefined ? [] : [prose(text.note)]),
 							...(walkthrough.diagrams && text.diagram !== undefined
-								? [`Diagram (summary):\n\n${renderDiagram(text.diagram)}`]
+								? [`Diagram (summary):\n\n${renderDiagram(text.diagram.slice(0, 4000))}`]
 								: []),
 						].join("\n\n");
 			const bounded =
 				body.length <= 12_000
 					? body
-					: `${prose(text?.summary.slice(0, 4000) ?? "No walkthrough available.")}\n\nWalkthrough details trimmed.`;
+					: `${prose(text?.summary.slice(0, 4000) ?? "No walkthrough available.").slice(0, 11_900)}\n\nWalkthrough details trimmed.`;
 			parts.push(details("Walkthrough (summary, not a verdict)", bounded, walkthrough.collapsed));
 		}
 		parts.push(this.runDetails(current));
@@ -290,7 +290,7 @@ export class LedgerStamp {
 				!/^[0-9a-f]{16}$/.test(stamp.verdict) ||
 				typeof stamp.projection !== "string" ||
 				!/^[0-9a-f]{16}$/.test(stamp.projection) ||
-				(stamp.plan !== null && !/^[0-9a-f]{16}$/.test(stamp.plan)) ||
+				(stamp.plan !== null && (typeof stamp.plan !== "string" || !/^[0-9a-f]{16}$/.test(stamp.plan))) ||
 				!Array.isArray(stamp.lenses) ||
 				!stamp.lenses.every((lens) => typeof lens === "string") ||
 				typeof stamp.counts !== "object" ||

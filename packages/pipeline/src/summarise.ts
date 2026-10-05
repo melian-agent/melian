@@ -193,7 +193,7 @@ class WalkthroughPrompt {
 	}
 }
 
-/** Writes and stores a walkthrough during review, once per revision, without involving publication credentials. */
+/** Stores a pull-request walkthrough, retrying failures or an explicit rerun without publication credentials. */
 export async function summariseReview(options: {
 	readonly harness: Harness;
 	readonly changeset: Changeset;
