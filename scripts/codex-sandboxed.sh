@@ -118,7 +118,7 @@ dynamic_rules() {
   local codex_dirs=() persistent=("$worktree") d
   if [ "$(real "$scratch")" != "$(real "$run")" ]; then persistent+=("$scratch"); fi
   for d in "${codex_names[@]}"; do codex_dirs+=("$codex/$d"); done
-  local trees=("${persistent[@]}" "$common/objects" "$common/refs" "$common/logs" "$admin/logs" \
+  local trees=("${persistent[@]}" "$common/objects" "$common/refs" "$common/logs" "$admin/logs" "$admin/sequencer" \
     ${codex_dirs[@]+"${codex_dirs[@]}"})
   {
     for p in "${trees[@]}"; do
@@ -127,6 +127,9 @@ dynamic_rules() {
     # The remote HEAD allowance below makes refs/remotes/<name> a place git may write HEAD, so a
     # repository there still needs objects/; deny that directory, whose name only a remote branch could use.
     printf '  (regex #"^%s/(logs/)?refs/remotes/[^/]+/[oO][bB][jJ][eE][cC][tT][sS](/|$)")\n' "$(regex_path "$common")"
+    # Git writes only todo, head, abort-safety, and opts in sequencer/, but its head file stays writable below,
+    # so a repository there needs a refs/ or objects/ the deny keeps out; the profile matches names without regard to case.
+    printf '  (regex #"^%s/sequencer/(.*/)?([oO][bB][jJ][eE][cC][tT][sS]|[rR][eE][fF][sS])(/|$)")\n' "$(regex_path "$admin")"
   } | awk '!seen[$0]++'
   echo ")"
 
@@ -153,6 +156,9 @@ dynamic_rules() {
   printf '  (regex #"^%s/logs/refs/remotes/[^/]+/HEAD([.]lock)?$")\n' "$(regex_path "$common")"
   # Melian's own CLI writes refs/melian/pull/<N>/head for every pull-request review.
   printf '  (regex #"^%s/refs/melian/(.*/)?head([.]lock)?$")\n' "$(regex_path "$common")"
+  # git cherry-pick and revert of several commits keep their position in sequencer/head. The profile's regexes
+  # match without regard to case on APFS, so this also opens sequencer/HEAD.
+  printf '  (regex #"^%s/sequencer/head([.]lock)?$")\n' "$(regex_path "$admin")"
   printf '  (regex #"^%s/logs/refs/melian/(.*/)?head([.]lock)?$")\n' "$(regex_path "$common")"
   echo ")"
 

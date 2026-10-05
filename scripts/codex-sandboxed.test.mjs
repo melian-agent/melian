@@ -746,6 +746,21 @@ describe("codex-sandboxed.sh profile", () => {
 			expect(git(linked, "log", "-2", "--format=%s").toString().trim().split("\n")).toEqual(["s2", "s1"]);
 		});
 
+		it("cannot plant a repository in the sequencer directory, whose head file stays writable for git", () => {
+			for (const command of [
+				`mkdir -p '${admin}/sequencer/x/.git'`,
+				`mkdir -p '${admin}/sequencer/objects'`,
+				`mkdir -p '${admin}/sequencer/refs'`,
+			])
+				expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
+			expect(existsSync(join(admin, "sequencer", "x", ".git"))).toBe(false);
+			expect(existsSync(join(admin, "sequencer", "objects"))).toBe(false);
+			expect(existsSync(join(admin, "sequencer", "refs"))).toBe(false);
+			rmSync(join(admin, "sequencer"), { recursive: true, force: true });
+			sh(linked, "git checkout -q -b seq-target topic-sq~2 && git cherry-pick topic-sq~1 topic-sq");
+			expect(git(linked, "log", "-2", "--format=%s").toString().trim().split("\n")).toEqual(["s2", "s1"]);
+		});
+
 		it("commits only the named paths, and stashes and restores changes", () => {
 			sh(linked, "echo a > pa && echo b > pb && git add pa pb && git commit -q -m both");
 			sh(linked, "echo a2 > pa && echo b2 > pb && git commit -q -m partial -- pa");
