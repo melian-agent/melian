@@ -671,6 +671,27 @@ describe("Lens.renderInstructions", () => {
 		expect(section.match(/^- /gm)).toHaveLength(2);
 	});
 
+	it("lists at most 40 files or 4 KiB for a neighbour, and past either leaves its hand-off out", async () => {
+		const [correctness] = named(await Lens.load(repo, { kind: "worktree" }, []), "correctness");
+		const files = (count: number, length = 8) =>
+			Array.from({ length: count }, (_, index) => `src/${String(index).padStart(length, "0")}.ts`);
+		const render = (neighbour: LensNeighbour) =>
+			correctness!.renderInstructions([], "careful", [every("contracts"), neighbour], asIs);
+		const forty = { name: "tests", files: files(40) };
+		expect(correctness!.oversizedHandoffs([forty])).toEqual([]);
+		expect(render(forty)).toContain("- `tests`, in these files only: A defect in a test.");
+		for (const over of [
+			{ name: "tests", files: files(41) },
+			{ name: "tests", files: files(30, 200) },
+		]) {
+			expect(correctness!.oversizedHandoffs([every("contracts"), over])).toEqual(["tests"]);
+			expect(render(over)).not.toContain("`tests`");
+			expect(render(over)).toContain("- `contracts`: A change to a function's declared contract");
+		}
+		expect(Buffer.byteLength(files(30, 200).join("\n"))).toBeGreaterThan(4 * 1024);
+		expect(Buffer.byteLength(files(40).join("\n"))).toBeLessThan(4 * 1024);
+	});
+
 	it("renders no hand-off to a neighbour that reviews none of the lens's files", async () => {
 		const [correctness] = named(await Lens.load(repo, { kind: "worktree" }, []), "correctness");
 		expect(correctness!.renderInstructions([], "careful", [{ name: "tests", files: [] }], asIs)).toBe(

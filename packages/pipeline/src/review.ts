@@ -12,6 +12,7 @@ import {
 	type LensRule,
 	type LensTier,
 	type LensToolName,
+	lensLimits,
 	Manifest,
 	type MelianConfig,
 	type ModelReference,
@@ -519,14 +520,16 @@ async function startAdjudication(
 	}, context);
 }
 
-function lensCheck(lens: LensRun, result: LensResult | undefined): CheckRecord {
+// `note` says which hand-offs the lens's instructions left out for size, on a record of a lens that ran.
+function lensCheck(lens: LensRun, result: LensResult | undefined, note: string | undefined): CheckRecord {
 	const name = `lens.${lens.name}`;
 	const { level } = lens;
 	if (result === undefined) return { name, status: "failed", level, reason: "the lens task did not complete" };
 	const outcome = result[lens.key];
 	if (outcome?.status === "done") {
 		const { budgetEnded } = outcome;
-		if (budgetEnded === undefined) return { name, status: "ran", level };
+		if (budgetEnded === undefined)
+			return { name, status: "ran", level, ...(note === undefined ? {} : { reason: note }) };
 		// A budget's end is reduced coverage, so it leaves the review not reviewed unless the level counts it.
 		return { name, status: lens.budget.ended === "count" ? "ran" : "ended", level, budgetEnded };
 	}
@@ -545,13 +548,14 @@ function account(
 	checks: readonly string[],
 	ran: readonly LensRun[],
 	result: LensResult | undefined,
+	notes: ReadonlyMap<string, string>,
 	options: Pick<ReviewOptions, "config" | "lenses" | "checks">,
 ): { readonly manifest: Manifest; readonly producers: FindingSource[] } {
 	const { config } = options;
 	const supplied = (options.checks ?? []).filter((check) => !check.name.startsWith("lens."));
 	const manifest = new Manifest(
 		checks,
-		[...supplied, ...ran.map((lens) => lensCheck(lens, result))],
+		[...supplied, ...ran.map((lens) => lensCheck(lens, result, notes.get(lens.key)))],
 		config.checks.allowSkip,
 	);
 	const recorded = new Set(manifest.records().map((check) => check.name));
@@ -629,6 +633,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		return { ...selection, moved, covers: [...files, ...moved] };
 	});
 	const lenses: LensRun[] = [];
+	const notes = new Map<string, string>();
 	for (const { lens, coverage: configured, files, moved, covers } of covering) {
 		const coverage = moved.length === 0 ? configured : { ...configured, moved };
 		// A neighbour takes defects off this lens only in the files it reviews too; this lens keeps them in the rest,
@@ -640,6 +645,15 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 			if (shared.length === 0) return [];
 			return [{ name, files: shared.length === covers.length ? "every" : shared }];
 		});
+		const oversized = lens.oversizedHandoffs(neighbours);
+		if (oversized.length > 0) {
+			const named = oversized.map((name) => `\`${name}\``).join(", ");
+			const limit = `${lensLimits.handoffFiles} files or ${lensLimits.handoffBytes / 1024} KiB`;
+			notes.set(
+				`${lens.name}@${lens.version}`,
+				`kept the defects it hands to ${named}, whose files here would list past ${limit}`,
+			);
+		}
 		// Every lens may report an injection attempt, so the policy section never names a rule the hook refuses.
 		const rules = lens.rules.some((rule) => rule.id === injectionAttemptRule.id)
 			? lens.rules
@@ -682,7 +696,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 			? {}
 			: await runLenses(harness, { root, revision: state, lenses }, options.rerun === true, context);
 	// Only the lenses this review ran count: one that configuration has since disabled or retiered leaves nothing behind.
-	const { manifest: accounted, producers } = account(manifest, lenses, lensResult, options);
+	const { manifest: accounted, producers } = account(manifest, lenses, lensResult, notes, options);
 	const input = adjudicationInput({
 		root,
 		repoRoot,

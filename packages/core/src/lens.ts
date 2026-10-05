@@ -156,8 +156,17 @@ export interface LensFields {
 	readonly nearer?: readonly string[];
 }
 
-/** The largest `LENS.md` the loader reads, and the findings budget of a lens that sets none. */
-export const lensLimits = { fileBytes: 64 * 1024, defaultFindings: 10 } as const;
+/**
+ * The largest `LENS.md` the loader reads; the findings budget of a lens that sets none; and the most files, and bytes of
+ * listing, a hand-off names for a neighbour that reviews only some of a lens's files. Past either, the hand-off is left
+ * out and the lens keeps the neighbour's defects, so an author cannot grow a system prompt by renaming files.
+ */
+export const lensLimits = {
+	fileBytes: 64 * 1024,
+	defaultFindings: 10,
+	handoffFiles: 40,
+	handoffBytes: 4 * 1024,
+} as const;
 
 const lensDirectories = [".agents/lenses", melianPaths.lenses] as const;
 const builtinDirectory = fileURLToPath(new URL("../lenses/", import.meta.url));
@@ -565,6 +574,11 @@ export interface LensNeighbour {
 	readonly files: "every" | readonly string[];
 }
 
+// A neighbour's files as a hand-off lists them, one per line, each with its control characters made visible.
+function listing(files: readonly string[]): string {
+	return files.map(visibleText).join("\n");
+}
+
 // Only the overload without neighbours reaches this default, and then no list renders.
 function unquoted(): never {
 	throw new TypeError("renderInstructions needs a quote for a neighbour's list of files");
@@ -820,12 +834,26 @@ export class Lens {
 		};
 	}
 
+	/**
+	 * The neighbours this lens hands defects to whose list of files is past {@link lensLimits}' `handoffFiles` or
+	 * `handoffBytes`. Their hand-offs are left out of the instructions, so the lens keeps their defects everywhere.
+	 */
+	oversizedHandoffs(neighbours: readonly LensNeighbour[]): string[] {
+		return neighbours.flatMap(({ name, files }) => {
+			if (!Object.hasOwn(this.handoffs, name) || files === "every") return [];
+			const bytes = Buffer.byteLength(listing(files));
+			return files.length > lensLimits.handoffFiles || bytes > lensLimits.handoffBytes ? [name] : [];
+		});
+	}
+
 	// The defects the lens leaves to each neighbour that reviews some of its files, listing those files unless it reviews
 	// every one: a lens keeps the defects of a neighbour that is not running, and keeps them in the files one leaves out.
 	#handoffs(neighbours: readonly LensNeighbour[], quote: (listing: string) => string): string[] {
+		const oversized = this.oversizedHandoffs(neighbours);
 		const owned = Object.entries(this.handoffs).flatMap(([name, defects]) => {
 			const files = neighbours.find((neighbour) => neighbour.name === name)?.files;
-			return files === undefined || (files !== "every" && files.length === 0) ? [] : [{ name, files, defects }];
+			if (files === undefined || oversized.includes(name)) return [];
+			return files !== "every" && files.length === 0 ? [] : [{ name, files, defects }];
 		});
 		if (owned.length === 0) return [];
 		const partial = owned.some((neighbour) => neighbour.files !== "every");
@@ -836,7 +864,7 @@ export class Lens {
 				.map(({ name, files, defects }) =>
 					files === "every"
 						? `- \`${name}\`: ${defects}`
-						: `- \`${name}\`, in these files only: ${defects}\n${quote(files.map(visibleText).join("\n"))}`,
+						: `- \`${name}\`, in these files only: ${defects}\n${quote(listing(files))}`,
 				)
 				.join("\n"),
 		];

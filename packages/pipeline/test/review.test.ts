@@ -1277,6 +1277,44 @@ describe("reviewChangeset", () => {
 			});
 		});
 
+		it("leaves out a neighbour's hand-off past 40 files, and says so on the lens's record", async () => {
+			const many = (count: number) =>
+				Object.fromEntries(
+					Array.from({ length: count }, (_, index) => [
+						`src/many/${index}.ts`,
+						lines(`export const n = ${index};`),
+					]),
+				);
+			const narrow = { "trust-boundary": { paths: ["src/many/**"] } };
+			for (const [count, listed] of [
+				[40, true],
+				[41, false],
+			] as const) {
+				writeFiles(repo, many(count));
+				gitIn(repo, "add", "--all");
+				gitIn(repo, "commit", "--quiet", "-m", `${count} files`);
+				const requests = everyLens();
+
+				const { verdict } = await reviewed({ config: { ...config, tiers: defaultConfig.tiers, lenses: narrow } });
+
+				const entries = handoffsOf(requests[correctness]!.at(-1)!);
+				const ran = verdict.ran?.find((check) => check.name === "lens.correctness");
+				if (listed) {
+					expect(entries["trust-boundary"]).toHaveLength(40);
+					expect(ran?.reason).toBeUndefined();
+				} else {
+					expect(entries["trust-boundary"]).toBeUndefined();
+					expect(entries.contracts).toBe("every");
+					expect(ran?.reason).toBe(
+						"kept the defects it hands to `trust-boundary`, whose files here would list past 40 files or 4 KiB",
+					);
+					expect(verdict.render()).toContain(
+						"lens.correctness  careful; kept the defects it hands to `trust-boundary`",
+					);
+				}
+			}
+		});
+
 		it("counts a neighbour selected through a file's old path for its head path", async () => {
 			writeFiles(repo, {
 				"lib/report.ts": lines('import { managerName } from "./user.ts";', "export const line = managerName(me);"),
