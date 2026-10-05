@@ -142,7 +142,7 @@ export class ReviewPlan {
 
 	/**
 	 * Resolves the plan. For each tier: `--model` routes a lens tier to that model alone; otherwise the effective route,
-	 * model then fallbacks, or its `accept` when it names no model. Only models the catalogue holds and some credential
+	 * model then fallbacks, or its `accept` then fallbacks when it names no model. Only models the catalogue holds and some credential
 	 * covers count. When none of the committed route does, the first accepted model with credentials stands in; when
 	 * none of those does either, `unavailable: fail` fails the tier, and `derive`, the default, takes the same model
 	 * from another provider with credentials, else the model whose price is nearest. A route from a preference file or
@@ -194,7 +194,8 @@ export class ReviewPlan {
 			route = [effective.model, ...(effective.fallbacks ?? [])];
 			by = routes.overridden[tier];
 		} else {
-			route = effective?.accept ?? [];
+			route = [...new Set([...(effective?.accept ?? []), ...(effective?.fallbacks ?? [])])];
+			by = routes.overridden[tier];
 		}
 		for (const name of [...route, ...accept]) parseModelReference(name, tier);
 		const entry = (name: string) => {

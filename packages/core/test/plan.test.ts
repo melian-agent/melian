@@ -118,6 +118,31 @@ describe("ReviewPlan.resolve", () => {
 		expect(resolved.warnings()).toEqual([]);
 	});
 
+	it("runs the fallbacks of a route that names only accept, after the accepted models, and warns when one runs outside accept", () => {
+		const committed = { verifier: { accept: [opus], fallbacks: [gpt] } };
+		const both = plan(committed, { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" }, { checks: [] });
+		expect(both.tier("verifier")).toMatchObject({ status: "routed", models: [{ model: opus }, { model: gpt }] });
+		expect(both.warnings()).toEqual([]);
+
+		const fallback = plan(committed, { openai: "OPENAI_API_KEY" }, { checks: [] });
+		expect(fallback.tier("verifier")).toMatchObject({ status: "routed", models: [{ model: gpt }], outside: true });
+		expect(fallback.warnings()).toEqual([expect.stringContaining(`does not accept ${gpt}`)]);
+	});
+
+	it("records the preference file that added fallbacks to an accept-only route", () => {
+		const resolved = plan(
+			{ verifier: { accept: [opus] } },
+			{ openai: "OPENAI_API_KEY" },
+			{ checks: [], preferences: { verifier: { fallbacks: [gpt] } } },
+		);
+		expect(resolved.tier("verifier")).toMatchObject({
+			status: "routed",
+			by: "melian.local.yaml",
+			models: [{ model: gpt }],
+		});
+		expect(resolved.lineage("verifier")).toEqual({ model: gpt, by: "melian.local.yaml", outside: true });
+	});
+
 	it("stands an accepted model in for a committed one with no credentials, and says so", () => {
 		const resolved = plan({ heavy: { model: opus, accept: [opus, gpt] } }, { openai: "OPENAI_API_KEY" });
 		expect(resolved.tier("heavy")).toMatchObject({ status: "routed", models: [{ model: gpt }] });
