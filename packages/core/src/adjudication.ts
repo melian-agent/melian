@@ -159,6 +159,8 @@ export interface CheckRecord {
 	readonly version?: string;
 	/** Snapshot identities and their receipts when a graph tool ran. */
 	readonly snapshots?: readonly EnolaSnapshot[];
+	/** Coverage content IDs, when the check captured an artifact. */
+	readonly coverage?: { graph?: string; review?: string; test?: string };
 	/** The scrutiny level a lens ran at, or was to run at when it failed. Other checks have none. */
 	readonly level?: ScrutinyLevel;
 	/**

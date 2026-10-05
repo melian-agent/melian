@@ -6,8 +6,10 @@ import {
 	GraphSnapshot,
 	graphFiles,
 	normaliseEnolaSarif,
+	TestCoverage,
 	type ToolLog,
 } from "@melian-agent/core";
+import { CoverageCache } from "./coverage-cache.ts";
 import { GraphCache } from "./graph-cache.ts";
 import { type Run, type StaticRun, staticOutputLimit } from "./static.ts";
 import type { ToolProvisioning } from "./tool-provisioning.ts";
@@ -90,6 +92,14 @@ export class EnolaRun {
 			throw this.#run.fail("toolFailed", `Could not write Enola configuration: ${written.error.message}`);
 	}
 
+	async #coverage(snapshot: GraphSnapshot): Promise<{ graph?: string; test: string }> {
+		const cache = await CoverageCache.open(this.#cache.root);
+		const parts = snapshot.toJSON().parts;
+		const graph = await cache.read(parts, "graph");
+		const test = await cache.store(parts, TestCoverage.unavailable(parts.tree, parts.version));
+		return { ...(graph ? { graph: graph.id } : {}), test };
+	}
+
 	async #generate(root: string, output: string, commit: string): Promise<EnolaSnapshot> {
 		await this.#prepare(root, output);
 		const tree = await this.#run.shell(this.#run.git(`rev-parse ${commit}^{tree}`));
@@ -107,6 +117,7 @@ export class EnolaRun {
 				snapshotId: cached.snapshotId,
 				receipt: cached.files()["receipt.json"],
 				cacheKey: cached.key,
+				coverage: await this.#coverage(cached),
 			};
 		}
 		const log = posix.join(output, "generate.log");
@@ -147,7 +158,13 @@ export class EnolaRun {
 		}
 		await this.#cache.store(snapshot);
 		this.#notes.push(`Enola graph cache miss: ${snapshot.key}`);
-		return { commit, snapshotId: stored.snapshot_id, receipt, cacheKey: snapshot.key };
+		return {
+			commit,
+			snapshotId: stored.snapshot_id,
+			receipt,
+			cacheKey: snapshot.key,
+			coverage: await this.#coverage(snapshot),
+		};
 	}
 
 	async #sarif(root: string, output: string, baseline: string): Promise<ToolLog> {

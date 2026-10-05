@@ -459,3 +459,7 @@ All Enola policy paths join analyser configuration in policy-change-review. A co
 `GraphSnapshot` holds validated graph artifacts and a `GraphEntryState`. Snapshot IDs identify Enola's facts; cache keys identify inputs. Keep these separate in records.
 
 `EnolaFacts` reads the JSONL contract; `EnolaImpact` accepts only a successful full JSON query. Exit 2 is no answer. `GraphCoverage.compute` creates a validated per-file artifact with explicit denominators and gaps; its ID hashes its stored content. Symbols and paths remain repository data.
+
+### Coverage artifacts
+
+`ReviewCoverage.compute` counts delivered read lines and search matches for each lens, revision and changed file. It records intersected hunks and supplied enclosing declarations. “Read” means some numbered lines were delivered, not the whole file. `TestCoverage.unavailable` records the container-isolation requirement and never executes tests. Both validate their stored JSON and hash it for check-record identities.

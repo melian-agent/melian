@@ -96,6 +96,7 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		expect(report.findings[0]?.properties.cause).toBe("introduced");
 		expect(result.notes).toContain("Enola configuration differs at head; the base's copies judged both revisions.");
 		expect(result.snapshots?.map((s) => s.commit)).toEqual([base, head]);
+		expect(result.snapshots?.every((s) => /^[a-f0-9]{64}$/.test(s.coverage?.test ?? ""))).toBe(true);
 		const repeated = await runStaticTool(
 			{
 				env: createNodeExecutionEnv(repo),

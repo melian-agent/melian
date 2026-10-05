@@ -192,7 +192,7 @@ export class GraphCoverage {
 		return GraphCoverage.from({ format_version: 1, tree, version, compiler: truth.compiler, files, totals, causes });
 	}
 	/** Restores a computed artifact. */
-	static from(state: GraphCoverageState): GraphCoverage {
+	static from(state: unknown): GraphCoverage {
 		if (!Value.Check(coverageSchema, state)) throw new CoverageError("Invalid graph coverage artifact");
 		const names = new Set<string>();
 		for (const file of state.files) {

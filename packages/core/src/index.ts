@@ -259,6 +259,14 @@ export {
 
 export const packageName = "@melian-agent/core";
 
+export {
+	type CoverageIds,
+	ReviewCoverage,
+	type ReviewCoverageState,
+	type ReviewRead,
+	TestCoverage,
+	type TestCoverageState,
+} from "./coverage-artifacts.ts";
 export { EnolaPolicy, type EnolaPolicyState, type EnolaSnapshot, normaliseEnolaSarif } from "./enola.ts";
 export { type EnolaFact, EnolaFacts, EnolaImpact, type EnolaImpactState, EnolaQueryError } from "./enola-graph.ts";
 export { enolaPolicyPattern } from "./enola-paths.ts";

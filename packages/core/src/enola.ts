@@ -154,4 +154,10 @@ export function normaliseEnolaSarif(output: string, run: ToolRun): ToolLog {
 }
 
 /** A snapshot identity and its original receipt, recorded beside the check. */
-export type EnolaSnapshot = { commit: string; snapshotId: string; receipt: string; cacheKey?: string };
+export type EnolaSnapshot = {
+	commit: string;
+	snapshotId: string;
+	receipt: string;
+	cacheKey?: string;
+	coverage?: { graph?: string; review?: string; test?: string };
+};

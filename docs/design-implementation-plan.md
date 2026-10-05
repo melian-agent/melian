@@ -137,3 +137,5 @@ Steps to be written when milestone 3 closes.
 ## Progress log
 
 [progress-log/](progress-log/) records what landed, one file per entry, oldest first in name order.
+
+Step 11 coverage artifacts: classes and atomic cache storage are built. Static records hold unavailable test-coverage identities and measured graph identities when present. Durable-transcript parsing is built; attaching review artifacts to lens records follows with the lens-input change.

@@ -8,8 +8,15 @@ import {
 	EnolaPolicy,
 	type GraphFiles,
 	GraphSnapshot,
+	TestCoverage,
 } from "@melian-agent/core";
-import { backgroundContext, createNodeExecutionEnv, GraphCache, ToolProvisioning } from "@melian-agent/pipeline";
+import {
+	backgroundContext,
+	CoverageCache,
+	createNodeExecutionEnv,
+	GraphCache,
+	ToolProvisioning,
+} from "@melian-agent/pipeline";
 import { CompilerGraph } from "./compiler-graph.ts";
 import { EnolaCoverage } from "./enola-coverage.ts";
 
@@ -200,6 +207,9 @@ export class EnolaSpike {
 		let start = performance.now();
 		await cache.store(graph);
 		const cacheWriteSeconds = (performance.now() - start) / 1000;
+		const artifacts = await CoverageCache.open(cache.root);
+		await artifacts.store(parts, measured);
+		await artifacts.store(parts, TestCoverage.unavailable(parts.tree, parts.version));
 		start = performance.now();
 		await cache.read(graph.toJSON().parts);
 		const cacheReadSeconds = (performance.now() - start) / 1000;

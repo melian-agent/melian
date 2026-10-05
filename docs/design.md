@@ -874,3 +874,5 @@ Milestone 4 makes Melian remember and learn: comment commands including dismiss-
 The scheduled sweep for the Actions host is a deferred decision: it is designed in the hosts section and will be revisited if event-driven recovery proves insufficient in practice.
 
 The graph cache is built. Its atomic entries hash each artifact and preserve upstream restore metadata beside facts, insights, and the receipt. Corruption is a cache miss. Enola receipts carry timestamps; fact identity, rather than receipt byte identity, survives a recomputation.
+
+The coverage artifact classes and cache storage are built. Review coverage distinguishes delivered reads, search matches and untouched files; it records intersected hunks and supplied declaration ranges. Static Enola stores test coverage as unavailable pending container isolation. A missing graph-coverage artifact does not imply complete coverage. Search remains unrestricted.
