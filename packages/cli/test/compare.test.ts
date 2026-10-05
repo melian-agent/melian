@@ -333,6 +333,41 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		expect(human.stdout).toMatch(/octocat {2}src\/user\.ts:20 {2}Should this log the name too\?/);
 	});
 
+	it("counts an adjudicated pull request in stats and the backlog", () => {
+		const { repo, env } = pullRequest();
+		expect(melian(repo, ["review", "#7"], env).status).toBe(1);
+		const imported = melian(repo, ["compare", "#7"], env);
+		const missed = /^ {2}([0-9a-f]{16}) {2}coderabbit/m.exec(imported.stdout)![1]!;
+		expect(
+			melian(
+				repo,
+				[
+					"compare",
+					"adjudicate",
+					"#7",
+					missed,
+					"--verdict",
+					"valid",
+					"--reason",
+					"no-owner",
+					"--golden",
+					"correctness",
+				],
+				env,
+			).status,
+		).toBe(0);
+		const stats = melian(repo, ["compare", "stats"], env);
+		expect(stats).toMatchObject({ status: 0, stderr: "" });
+		expect(stats.stdout).toContain("Comparisons: 1.");
+		expect(stats.stdout).toContain("coderabbit");
+		const backlog = melian(repo, ["compare", "backlog"], env);
+		expect(backlog).toMatchObject({
+			status: 0,
+			stderr: "",
+			stdout: expect.stringContaining(`correctness: #7 ${missed}`),
+		});
+	});
+
 	it("ignores the recording without scripted mode, and fails to find a GitHub token instead of answering from it", () => {
 		const { repo, env } = pullRequest();
 		const { MELIAN_TEST_SCRIPT: _script, ...unscripted } = env;
