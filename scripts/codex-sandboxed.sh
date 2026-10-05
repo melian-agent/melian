@@ -6,7 +6,6 @@
 # macOS only: it uses sandbox-exec, the seatbelt Codex itself runs on.
 set -euo pipefail
 
-# CODEX_HOME relocates Codex's state directory, and CODEX_* passes through to the task.
 codex_home=${CODEX_HOME:-$HOME/.codex}
 case $codex_home in
   /*) ;;
