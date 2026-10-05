@@ -298,6 +298,30 @@ describe("ledger rendering", () => {
 		expect(body).toContain("careful; route a/b; committed lens changed at head; budgets");
 	});
 
+	it("names the standards each lens received alongside their union", () => {
+		const current = {
+			...round,
+			details: {
+				policy: "revision:base",
+				manifest: [],
+				standards: ["AGENTS.md", "packages/core/AGENTS.md"],
+				lenses: [
+					{
+						name: "contracts",
+						version: "1",
+						level: "careful",
+						models: [],
+						budget: { findings: 8 },
+						standards: ["packages/core/AGENTS.md", "AGENTS.md"],
+					},
+				],
+			},
+		};
+		const body = Ledger.from(verdict, { rounds: [current] }, options).render(links);
+		expect(body).toContain("Standards: AGENTS.md, packages/core/AGENTS.md");
+		expect(body).toContain("; standards packages/core/AGENTS.md, AGENTS.md");
+	});
+
 	it("keeps markdown in a finding path inert inside the agent prompt", () => {
 		const hostile = Finding.create({
 			rule: "unsafe",

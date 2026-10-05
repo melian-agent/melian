@@ -6,6 +6,7 @@ import {
 	defaultConfig,
 	type LedgerRound,
 	type PostedLedger,
+	type PublicationDetails,
 	type StoredVerdict,
 	type Walkthrough,
 } from "@melian-agent/core";
@@ -201,5 +202,72 @@ describe("ledger document migration", () => {
 		expect(rounds?.[0]).toEqual({ base, head, round: 1, status: "passed" });
 		expect(rounds?.[1]).toEqual({ ...round, round: 2 });
 		expect((await harness.snapshot(LedgerDocument, root.id, context))?.comment).toEqual(comment);
+	});
+	it("reads version 5 lens details with standards absent and preserves them on upgrade", async () => {
+		dir = mkdtempSync(join(tmpdir(), "melian-standards-migration-"));
+		const database = join(dir, "state.sqlite");
+		const fake = createFakeModels();
+		const open = async () =>
+			openHarness(await openSqliteStorage(database), { models: fake.models, registry: createRegistry() }, context);
+		const old = defineDoc<{ verdicts: Record<string, StoredVerdict>; details: Record<string, PublicationDetails> }>({
+			kind: "melian.verdicts",
+			version: 5,
+			scope: "conversation",
+			history: "rewindable",
+			fork: "asOf",
+			initial: () => ({ verdicts: {}, details: {} }),
+		});
+		const oldPublished = defineDoc<OldPublication & { ledgerRounds: LedgerRound[] }>({
+			kind: "melian.published",
+			version: 5,
+			scope: "conversation",
+			history: "latest",
+			fork: "current",
+			initial: () => ({ order: [], revisions: {}, ledgerRounds: [] }),
+		});
+		const details = {
+			policy: "config",
+			manifest: ["lens.correctness"],
+			standards: ["AGENTS.md"],
+			lenses: [
+				{ name: "correctness", version: "1", level: "careful", models: ["fake/model"], budget: { findings: 8 } },
+			],
+		};
+		harness = await open();
+		let root = await harness.root(context);
+		await root.commit(async (tx) => {
+			(await tx.doc(old, root.id)).details.head = details;
+			(await tx.doc(oldPublished, root.id)).ledgerRounds = [
+				{
+					base: "a".repeat(40),
+					head: "b".repeat(40),
+					round: 1,
+					verdict: new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig })
+						.adjudicate()
+						.toJSON(),
+					resolved: [],
+					details,
+				},
+			];
+		}, context);
+		await harness.close(context);
+		harness = await open();
+		root = await harness.root(context);
+		expect((await harness.snapshot(VerdictDocument, root.id, context))?.details?.head).toEqual(details);
+		expect((await harness.snapshot(PublishedDocument, root.id, context))?.ledgerRounds?.at(-1)).toMatchObject({
+			details,
+		});
+		expect(
+			(await harness.snapshot(VerdictDocument, root.id, context))?.details?.head?.lenses[0]?.standards,
+		).toBeUndefined();
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).details!.head!.lenses[0]!.standards = ["AGENTS.md"];
+		}, context);
+		await harness.close(context);
+		harness = await open();
+		root = await harness.root(context);
+		expect((await harness.snapshot(VerdictDocument, root.id, context))?.details?.head?.lenses[0]?.standards).toEqual([
+			"AGENTS.md",
+		]);
 	});
 });

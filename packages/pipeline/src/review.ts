@@ -30,6 +30,8 @@ import {
 	resolveModelForTier,
 	type ScrutinyLevel,
 	type Severity,
+	Standards,
+	StandardsReading,
 	type StandardsSection,
 	triageChoices,
 	triageQuestionSet,
@@ -116,6 +118,7 @@ interface LensRun {
 	// The level's tier's models that were known with credentials when the review started, in routing order.
 	readonly route: readonly ModelReference[];
 	readonly instructions: string;
+	readonly standards?: readonly string[];
 	readonly tools: readonly LensToolName[];
 	readonly severities: readonly Severity[];
 	readonly rules: readonly LensRule[];
@@ -149,9 +152,10 @@ class LensTaskInput {
 		if (escalateAt !== undefined) this.escalateAt = escalateAt;
 	}
 
-	static upgrade(input: unknown): StoredLensTaskInput {
+	static upgrade(input: unknown, from: number): StoredLensTaskInput {
 		const stored = input as StoredLensTaskInput;
-		const lenses = stored.lenses.map(({ level: _, ...run }) => run) as unknown as LensRun[];
+		const lenses =
+			from >= 2 ? stored.lenses : (stored.lenses.map(({ level: _, ...run }) => run) as unknown as LensRun[]);
 		return new LensTaskInput(stored.root, stored.revision, lenses, stored.escalateAt).toJSON();
 	}
 
@@ -340,10 +344,11 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 	// outcome's `escalation`. A version 1 task holds none of them, and runs as it did. Its runs lose their `level`, so
 	// its findings name the lens's version alone, as its review's producers do, and never share a producer with a review
 	// after the upgrade that runs the lens at the same level.
-	version: 2,
+	// Version 3 records each run's standards paths; older runs leave them absent.
+	version: 3,
 	initial: () => ({ phase: "spawn" }),
-	migrate: (input, checkpoint) => ({
-		input: LensTaskInput.upgrade(input),
+	migrate: (input, checkpoint, from) => ({
+		input: LensTaskInput.upgrade(input, from),
 		checkpoint: checkpoint as unknown as LensCheckpoint,
 	}),
 	phases: {
@@ -709,7 +714,8 @@ export interface ReviewOptions {
 	readonly config: MelianConfig;
 	/** The lenses that may run; configuration and the changed paths select among them. */
 	readonly lenses: readonly Lens[];
-	readonly standards: readonly StandardsSection[];
+	/** Chains for changed paths, or flat sections shared by every lens for older callers. */
+	readonly standards: Standards | readonly StandardsSection[];
 	/** The collection the harness was opened with, used to pick each tier's first model with credentials. */
 	readonly models: ReviewModels;
 	/**
@@ -1383,7 +1389,21 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			if (shared.length === 0) return [];
 			return [{ name, files: shared.length === covers.length ? "every" : shared }];
 		});
+		const standardsFiles = [
+			...covers,
+			...changeset.revision.files
+				.filter((file) => file.oldPath !== undefined && covers.includes(file.path))
+				.map((file) => file.oldPath!),
+		];
+		const reading = lens.standards
+			? standards instanceof Standards
+				? standards.forFiles(standardsFiles)
+				: StandardsReading.from(standards)
+			: StandardsReading.from([]);
+		const standardsSource = standards instanceof Standards ? standards.source.kind : options.policy?.kind;
 		const noted: string[] = [...(unrunnable.get(lens) ?? [])];
+		const omitted = reading.note();
+		if (omitted !== undefined) noted.push(omitted);
 		if (triaged.failure !== undefined)
 			noted.push(`triage failed, so it ran at its default level: ${triaged.failure}`);
 		if (options.decider === undefined && options.triageSkipped !== undefined)
@@ -1410,9 +1430,14 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				version: lens.version,
 				level,
 				route: [...(routes.get(settings.tier) as { route: ModelReference[] }).route],
-				instructions: ruled.renderInstructions(standards, level, neighbours, (listing) =>
-					quoteUntrusted("listing", listing, nonce),
+				instructions: ruled.renderInstructions(
+					reading.sections,
+					level,
+					neighbours,
+					(text, label = "listing") => quoteUntrusted(label, text, nonce),
+					standardsSource,
 				),
+				standards: reading.paths(),
 				tools: lens.tools,
 				severities: lens.severities,
 				rules,
@@ -1538,11 +1563,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		manifest: [...manifest],
 		lenses: settled
 			.map(({ run }) => run)
-			.map(({ key, name, version, level, route, budget }) => ({
+			.map(({ key, name, version, level, route, budget, standards: paths }) => ({
 				name,
 				version,
 				level,
 				models: route.map(modelName),
+				...(paths === undefined ? {} : { standards: [...paths] }),
 				...(lensRan(key)?.model === undefined ? {} : { ran: lensRan(key)?.model }),
 				...(lineageOf(name, level) === undefined ? {} : { lineage: describeLineage(lineageOf(name, level)!) }),
 				...(lensRan(key)?.usage === undefined ? {} : { usage: structuredClone(lensRan(key)?.usage) }),
@@ -1552,7 +1578,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					...(budget.tools === undefined ? {} : { tools: budget.tools }),
 				},
 			})),
-		standards: standards.map((section) => section.path),
+		standards: [...new Set(settled.flatMap(({ run }) => run.standards ?? []))],
 	};
 	const adjudication = await startAdjudication(harness, input, selectionOf(lenses, escalateAt), context);
 	if (adjudication === undefined) {

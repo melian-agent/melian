@@ -138,12 +138,12 @@ class VerdictState {
 
 export const VerdictDocument = defineDoc<StoredVerdictState>({
 	kind: "melian.verdicts",
-	version: 5,
+	version: 6,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
 	initial: () => new VerdictState({ verdicts: {} }).toJSON(),
-	// Version 3 upgrades evidence; version 4 adds details and summaries; version 5 separates fallback notes.
+	// Older details keep per-lens standards absent; version 5 also separates fallback notes.
 	migrate: (value, from) => VerdictState.upgrade(value, from),
 });
 

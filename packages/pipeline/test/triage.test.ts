@@ -1037,6 +1037,7 @@ describe("escalation under a review plan", () => {
 				version: version(),
 				level: "careful",
 				models: [heavy],
+				standards: [],
 				ran: heavy,
 				lineage: describeLineage(lensRecord(reviewed)!.lineage!),
 				usage: expect.objectContaining({ models: [heavy], tokens: expect.any(Number), cost: expect.any(Number) }),
@@ -1865,7 +1866,7 @@ describe("reviews recorded before levels joined the keys", () => {
 
 		const upgraded = migrate(input, checkpoint, 1);
 
-		expect(definition.version).toBe(2);
+		expect(definition.version).toBe(3);
 		expect(upgraded.input).toMatchObject({
 			root: input.root,
 			revision: input.revision,
@@ -1873,6 +1874,10 @@ describe("reviews recorded before levels joined the keys", () => {
 		});
 		expect(upgraded.input).not.toHaveProperty("lenses.0.level");
 		expect(upgraded.checkpoint).toEqual({ phase: "review", children: { [key]: 2 }, attempts: { [key]: 1 } });
+		const previous = migrate(input, checkpoint, 2);
+		expect(previous.input).toEqual(input);
+		expect(previous.input).not.toHaveProperty("lenses.0.standards");
+		expect(previous.checkpoint).toEqual(checkpoint);
 	});
 
 	it("resumes a lens task an older Melian created, at version 1, under the current definition", async () => {

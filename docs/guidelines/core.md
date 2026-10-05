@@ -63,7 +63,7 @@ Both sources are classes implementing one interface, `SourceReader`, with `readT
 
 `Standards.load(repoRoot, source, paths)` shares the one-path reader across changed paths, caching file reads and directory listings. It keeps chains by directory. `standards.forFiles(files)` returns a `StandardsReading`: its sections, actual paths, omitted paths, and the note the pipeline records. Files contribute their chains in the caller's order, nearest first within each chain; a duplicate stays at its first position. Both paths of a rename apply. Imports keep their importer's scope for omission priority.
 
-The file and single-chain bounds still throw `StandardsError`. A union across a lens's files holds at most 1 MiB. Whole sections leave from deepest scope first, later sections first at equal depth. The reading's note names each omitted path and the count. This keeps a lens spanning many packages reviewable without hiding what it could not read. `loadStandards` remains exported for one-path callers.
+The file and single-chain bounds still throw `StandardsError`. A union across a lens's files holds at most 1 MiB. Whole sections leave from deepest scope first, later sections first at equal depth. The reading's note names each omitted path and the count. This keeps a lens spanning many packages reviewable without hiding what it could not read. `loadStandards` remains exported for one-path callers. `Lens.renderInstructions` takes an optional standards source kind and a quote callback whose label distinguishes listings from standards. Revision sections render plainly. Each worktree section, heading included, is quoted as untrusted input with a lead-in that makes review-steering instructions reportable as `melian/injection-attempt`.
 
 ## Layering precedence
 
