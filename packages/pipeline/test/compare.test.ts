@@ -119,6 +119,50 @@ describe("CompareHarness", () => {
 		expect(await harness.read({ ...revision, base: "c".repeat(40) })).toBeUndefined();
 	});
 
+	it("compares a version 5 verdict without changing its plan, run details or walkthrough state", async () => {
+		const harness = await memoryHarness();
+		await storeReview(harness);
+		const root = await harness.harness.root(context);
+		const key = revisionKey(revision);
+		await root.commit(async (tx) => {
+			const document = await tx.doc(VerdictDocument, root.id);
+			document.provenance = {
+				[key]: {
+					kind: "range",
+					policy: "config",
+					manifest: [],
+					lenses: [],
+					plan: {
+						tiers: [
+							{ tier: "light", status: "routed", models: [{ model: "fake/scripted", credential: "test-key" }] },
+						],
+						lenses: [],
+					},
+				},
+			};
+			document.decisions = { [key]: { task: 1, findingsVersion: 2 } };
+			document.details = { [key]: { policy: "config", manifest: [], lenses: [], standards: ["AGENTS.md"] } };
+			document.walkthroughs = { [key]: { summary: "Changes the runner.", files: [] } };
+			document.walkthroughNotes = { [key]: "A previous attempt failed." };
+			document.walkthroughAttempts = { [key]: 1 };
+		}, context);
+		const before = await harness.harness.snapshot(VerdictDocument, root.id, context);
+		const near = codex(13, 0);
+
+		expect(await harness.reviewed(revision)).toBe(true);
+		const comparison = await harness.importFindings(
+			revision,
+			[{ source: "file:codex.json", imported: imported(near) }],
+			"t",
+		);
+		const pair = { external: near.id, melian: findings[0]!.id };
+		await harness.unmatch(revision, pair, { by: "M", at: "t2" });
+		await harness.match(revision, pair, { by: "M", at: "t3" });
+
+		expect(comparison.effectiveMatches()).toEqual([{ ...pair, kind: "site" }]);
+		expect(await harness.harness.snapshot(VerdictDocument, root.id, context)).toEqual(before);
+	});
+
 	it("keeps a hand match and an unmatch across a reopen and a re-import", async () => {
 		const path = join(directory, "changeset.sqlite");
 		const near = codex(13, 0);

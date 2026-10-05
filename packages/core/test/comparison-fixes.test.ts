@@ -83,6 +83,38 @@ describe("comparison review fixes", () => {
 		expect(row(comparison, "codex")).toMatchObject({ found: 1, total: 2 });
 	});
 
+	it.each(["match", "unmatch"] as const)(
+		"keeps a mixed pairing pending until the remaining pair is %sed",
+		(action) => {
+			const first = own();
+			const second = own("eval(other)", 14);
+			const external = report({ line: 13 });
+			const comparison = compared([external], first, second);
+			for (const finding of [first, second]) comparison.adjudicate(finding.id, { ...by, verdict: "valid" });
+			comparison.adjudicate(external.id, { ...by, verdict: "valid" });
+			comparison.match(external.id, first.id, by.by, by.at);
+			comparison.compare(verdictOf(first, second));
+			expect(
+				comparison
+					.effectiveMatches()
+					.map((match) => match.kind)
+					.sort(),
+			).toEqual(["hand", "site"]);
+			expect(comparison.stats().pendingMatches).toBe(1);
+			expect(row(comparison, "codex")).toMatchObject({ found: 0, total: 0, valid: 1, pending: 0, precision: 1 });
+			comparison[action](external.id, second.id, by.by, by.at);
+			comparison.compare(verdictOf(first, second));
+			expect(comparison.stats().pendingMatches).toBe(0);
+			expect(row(comparison, "codex")).toMatchObject({
+				found: action === "match" ? 2 : 1,
+				total: 2,
+				valid: 1,
+				pending: 0,
+				precision: 1,
+			});
+		},
+	);
+
 	it("persists an empty import's participant and counts its recall denominator after a round trip", () => {
 		const finding = report({ reviewer: { name: "claude-code" } });
 		const comparison = compared([finding]);
@@ -356,6 +388,22 @@ describe("comparison review fixes", () => {
 			return { changeset: String(index), comparison, verdict };
 		});
 		expect(new ComparisonSet(entries).candidates()).toEqual([]);
+	});
+
+	it("exports matched IDs and dismissal labels beside adjudicated findings", () => {
+		const finding = Finding.create({ ...evalInput, status: "dismissed" });
+		const external = report();
+		const comparison = compared([external], finding);
+		comparison.adjudicate(external.id, { ...by, verdict: "valid" });
+		comparison.adjudicate(finding.id, { ...by, verdict: "noise" });
+		const output = new ComparisonExport(
+			[{ changeset: "a", comparison, verdict: verdictOf(finding) }],
+			"range",
+		).render();
+		expect(output).toContain(" \\(dismissed\\) | noise |");
+		expect(output).toContain(
+			`Matched:\n  ${finding.id}  \\(dismissed\\)\n    ${external.id}  codex  src/run.ts:12\n`,
+		);
 	});
 
 	it("bounds escaped export cells to a first paragraph and publishes names without author emails", () => {

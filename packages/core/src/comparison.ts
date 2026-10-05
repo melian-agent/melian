@@ -1025,16 +1025,17 @@ export class Comparison {
 	}
 
 	/**
-	 * The external findings that matched more than one Melian finding by site, each with those Melian findings. Proximity
-	 * alone cannot say which defect a reviewer meant, so each waits for the maintainer to match or unmatch by hand; a
-	 * finding a maintainer matched by hand to several is not ambiguous.
+	 * The external findings with several matches and at least one site match, each with those Melian findings. A hand
+	 * match settles only its own pair; any remaining mechanical pairing waits for the maintainer to match or unmatch it.
+	 * A finding matched entirely by hand is not ambiguous.
 	 */
 	ambiguous(): { readonly external: ExternalFinding; readonly melian: readonly string[] }[] {
-		const site = this.effectiveMatches().filter((match) => match.kind === "site");
+		const matches = this.effectiveMatches();
 		return this.externalFindings()
+			.filter((external) => matches.some((match) => match.external === external.id && match.kind === "site"))
 			.map((external) => ({
 				external,
-				melian: site.filter((match) => match.external === external.id).map((match) => match.melian),
+				melian: matches.filter((match) => match.external === external.id).map((match) => match.melian),
 			}))
 			.filter((each) => each.melian.length > 1);
 	}
@@ -1042,14 +1043,15 @@ export class Comparison {
 	/**
 	 * The comparison as the terminal shows it. The matched count is of distinct external findings, with the distinct
 	 * Melian findings they cover beside it, so one reviewer's finding near two of Melian's counts once. Then the
-	 * external-only and Melian-only counts, and of review bodies skipped when given; each ambiguous match; and each finding
-	 * nothing matched, by ID, so a maintainer can match one by hand.
-	 * `verdict` is the stored review, which names each Melian-only finding's rule and place. Every string is untrusted, so
-	 * each prints through `visibleText`.
+	 * external-only and Melian-only counts, and of review bodies skipped when given; each ambiguous match; and every
+	 * finding's ID, with matched external findings beside the Melian findings they matched.
+	 * `verdict` is the stored review, which names each Melian-only finding's rule and place and identifies dismissed
+	 * findings in either group. Every string is untrusted, so each prints through `visibleText`.
 	 */
 	render(verdict: Verdict | undefined, skippedBodies?: number): string {
 		const groups = this.groups();
 		const matches = this.effectiveMatches();
+		const dismissed = new Set((verdict?.dismissed ?? []).map((finding) => finding.id));
 		const matched = new Set(matches.map((match) => match.external)).size;
 		const covered = new Set(matches.map((match) => match.melian)).size;
 		const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
@@ -1063,6 +1065,15 @@ export class Comparison {
 		if (ambiguous.length > 0) out.push("Ambiguous, near several Melian findings; match or unmatch by hand:\n");
 		for (const { external, melian } of ambiguous) {
 			out.push(`  ${external.id}  ${external.by()}  ${external.where()}  near ${melian.join(", ")}\n`);
+		}
+		const matchedGroups = groups.filter((group) => group.external.length > 0 && group.melian.length > 0);
+		if (matchedGroups.length > 0) out.push("Matched:\n");
+		for (const group of matchedGroups) {
+			const id = group.melian[0]!;
+			out.push(`  ${id}${dismissed.has(id) ? "  (dismissed)" : ""}\n`);
+			for (const finding of group.external) {
+				out.push(`    ${finding.id}  ${finding.by()}  ${finding.where()}\n`);
+			}
 		}
 		if (externalOnly.length > 0) out.push("External only:\n");
 		for (const finding of externalOnly.flatMap((group) => group.external)) {
@@ -1080,7 +1091,9 @@ export class Comparison {
 			const [start, end] = finding.lines();
 			const lines = start === end ? `${start}` : `${start}-${end}`;
 			const { severity, path } = finding.properties;
-			out.push(`  ${id}  ${severity} ${visibleText(finding.ruleId)}  ${visibleText(path)}:${lines}\n`);
+			out.push(
+				`  ${id}  ${severity} ${visibleText(finding.ruleId)}  ${visibleText(path)}:${lines}${dismissed.has(id) ? "  (dismissed)" : ""}\n`,
+			);
 		}
 		return out.join("");
 	}

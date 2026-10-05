@@ -63,6 +63,7 @@ export class ComparisonExport {
 				out.push("\n");
 			}
 			const letter = sectionLetter(section++);
+			const dismissed = new Set((verdict?.dismissed ?? []).map((finding) => finding.id));
 			const findings = (verdict?.all() ?? []).filter((finding) => comparison.melianFindings().includes(finding.id));
 			out.push(
 				`## ${letter}. Melian review, round ${round + 1}\n\n`,
@@ -74,7 +75,7 @@ export class ComparisonExport {
 				const { explanation, path, source } = finding.properties;
 				const judgement = comparison.judgement(finding.id);
 				out.push(
-					`| ${letter}${index + 1} | ${markdownText(`Melian, ${source.check}`)} | ${markdownText(`${path}:${start}${start === end ? "" : `-${end}`}`)} | ${markdownText(`${finding.ruleId}: ${firstParagraph(explanation.what)}`)} | ${this.judgement(judgement)} | ${markdownText(judgement?.golden ?? "Not decided")} |\n`,
+					`| ${letter}${index + 1} | ${markdownText(`Melian, ${source.check}`)} | ${markdownText(`${path}:${start}${start === end ? "" : `-${end}`}`)} | ${markdownText(`${finding.ruleId}: ${firstParagraph(explanation.what)}${dismissed.has(finding.id) ? " (dismissed)" : ""}`)} | ${this.judgement(judgement)} | ${markdownText(judgement?.golden ?? "Not decided")} |\n`,
 				);
 			}
 			out.push("\n");
@@ -98,13 +99,14 @@ export class ComparisonExport {
 			`${new ComparisonSet(this.entries).renderStats({ drain: false }).trimEnd().split("\n").map(markdownText).join("\n")}\n`,
 			"\n## Differences\n\n",
 		);
-		for (const { comparison } of this.entries) {
+		for (const { comparison, verdict } of this.entries) {
 			const matches = comparison.effectiveMatches();
 			out.push(
-				`At ${comparison.head.slice(0, 12)}: ${new Set(matches.map((each) => each.external)).size} matched external findings, ${comparison.externalOnly().length} external-only defects, ${comparison.melianOnly().length} Melian-only findings.\n`,
+				`At ${comparison.head.slice(0, 12)}: ${new Set(matches.map((each) => each.external)).size} matched external findings, ${comparison.externalOnly().length} external-only defects, ${comparison.melianOnly().length} Melian-only findings.\n\n`,
+				`${comparison.render(verdict).trimEnd().split("\n").map(markdownText).join("\n")}\n\n`,
 			);
 		}
-		return out.join("");
+		return `${out.join("").trimEnd()}\n`;
 	}
 
 	private judgement(value: StoredComparisonAdjudication | undefined): string {

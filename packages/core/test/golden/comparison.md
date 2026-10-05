@@ -41,3 +41,8 @@ Valid misses without a reason: 0.
 ## Differences
 
 At bbbbbbbbbbbb: 1 matched external findings, 0 external-only defects, 0 Melian-only findings.
+
+Matched: 1 external finding, covering 1 Melian finding. External only: 0. Melian only: 0.
+Matched:
+  c0dc5445aa6ee891
+    92511b68b984b476  codex  src/run.ts:12

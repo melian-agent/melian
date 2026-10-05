@@ -1,0 +1,22 @@
+src/migrate.ts
+
+  P1  line 16  unhandled-error  (introduced, new, unresolved)
+  migrate logs a failed migration and carries on: it records the migration as applied, runs the next one, and returns as if every migration succeeded.
+    What: migrate logs a failed migration and carries on: it records the migration as applied, runs the next one, and returns as if every migration succeeded.
+    Why here: This change rewrote the catch around db.exec to log the error message and deleted its rethrow, so the failure never reaches start.
+    Failure scenario: db.exec rejects 002-user-email's ALTER TABLE, say with SQLITE_BUSY while another process holds the lock. migrate logs the failure, records 002-user-email as applied, runs 003-user-email-index against a table with no email column, which fails and is recorded too, and returns 2, so start serves against a schema without the column. Both migrations are recorded as applied, so no later startup retries them. The base rethrew, and start stopped before serve.
+    Evidence:
+      cause: src/migrate.ts:15-17
+            } catch (error) {
+              log(`migration ${migration.id} failed: ${error instanceof Error ? error.message : String(error)}`);
+            }
+      context: src/migrate.ts:16-17 at base
+              log(`migration ${migration.id} failed`);
+              throw error;
+      context: src/start.ts:5-7
+        /** Brings the schema up to date, then serves. A failed migration stops startup before any request reads the schema. */
+        export async function start(db: Database, serve: () => void): Promise<void> {
+          await migrate(db, migrations, console.error);
+    What to do: Rethrow after logging, so a failed migration is never recorded and start stops before it serves.
+
+1 finding in 1 file.

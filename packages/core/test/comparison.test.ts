@@ -270,6 +270,16 @@ describe("ExternalFinding", () => {
 });
 
 describe("Comparison matching", () => {
+	it("lists a uniquely matched external finding beside its Melian finding, with its reviewer and site", () => {
+		const finding = melian();
+		const outside = external({ line: 11, endLine: 13 });
+		const comparison = compared([outside], [finding]);
+		expect(comparison.ambiguous()).toEqual([]);
+		expect(comparison.render(verdictOf([finding]))).toContain(
+			`Matched:\n  ${finding.id}\n    ${outside.id}  codex  src/run.ts:11-13\n`,
+		);
+	});
+
 	it("matches by site: the same file, with lines that overlap", () => {
 		const finding = melian();
 		const outside = external({ line: 11, endLine: 13 });
@@ -298,6 +308,27 @@ describe("Comparison matching", () => {
 		expect(comparison.effectiveMatches()).toEqual([]);
 		expect(ids(comparison.externalOnly())).toEqual([{ external: [near.id], melian: [] }]);
 		expect(comparison.melianOnly()).toEqual([]);
+	});
+
+	it.each([true, false])("includes and labels a dismissed Melian finding (matched: %s)", (matched) => {
+		const finding = melian({ status: "dismissed" });
+		const verdict = verdictOf([finding]);
+		expect(verdict.attention()).toEqual([]);
+		expect(verdict.dismissed.map((each) => each.id)).toEqual([finding.id]);
+		const outside = external();
+		const comparison = compared(matched ? [outside] : [], [finding]);
+		expect(comparison.melianFindings()).toEqual([finding.id]);
+		if (matched) {
+			expect(comparison.effectiveMatches()).toEqual([{ external: outside.id, melian: finding.id, kind: "site" }]);
+			expect(comparison.render(verdict)).toBe(
+				`Matched: 1 external finding, covering 1 Melian finding. External only: 0. Melian only: 0.\nMatched:\n  ${finding.id}  (dismissed)\n    ${outside.id}  codex  src/run.ts:12\n`,
+			);
+		} else {
+			expect(comparison.melianOnly()).toEqual([finding.id]);
+			expect(comparison.render(verdict)).toBe(
+				`Matched: 0 external findings, covering 0 Melian findings. External only: 0. Melian only: 1.\nMelian only:\n  ${finding.id}  P1 no-eval  src/run.ts:12  (dismissed)\n`,
+			);
+		}
 	});
 
 	it("site-matches a thread only when its reviewer read the compared head, and says why another waits", () => {
@@ -452,6 +483,27 @@ describe("Comparison matching", () => {
 		expect(comparison.render(undefined)).toMatch(
 			/^Matched: 1 external finding, covering 1 Melian finding\. External only: 0\. Melian only: 1\./,
 		);
+	});
+
+	it("keeps a mechanical pairing ambiguous after a hand match settles only the other pair", () => {
+		const first = melian();
+		const second = melian({ snippet: "eval(other)", startLine: 15, endLine: 15 });
+		const between = external({ line: 13, endLine: 14 });
+		const comparison = compared([between], [first, second]);
+		comparison.match(between.id, first.id, "M", "t");
+		comparison.compare(verdictOf([first, second]));
+		expect(
+			comparison
+				.effectiveMatches()
+				.map((match) => match.kind)
+				.sort(),
+		).toEqual(["hand", "site"]);
+		expect(comparison.ambiguous()).toEqual([{ external: between, melian: [first.id, second.id].sort() }]);
+		expect(comparison.render(undefined)).toContain(
+			`  ${between.id}  codex  src/run.ts:13-14  near ${[first.id, second.id].sort().join(", ")}\n`,
+		);
+		comparison.unmatch(between.id, second.id, "M", "t2");
+		expect(comparison.ambiguous()).toEqual([]);
 	});
 
 	it("does not call a finding ambiguous that a maintainer matched by hand to two Melian findings", () => {

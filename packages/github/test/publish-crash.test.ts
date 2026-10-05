@@ -14,6 +14,7 @@ import {
 	readPublished,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { LedgerDocument } from "../../pipeline/src/publish.ts";
 import { type FakeState, fakeGitHub, posts } from "./fixtures/fake-github.ts";
 import {
 	emptyName,
@@ -24,6 +25,7 @@ import {
 	openPublishHarness,
 	openReviewOnlyHarness,
 	pullRequestState,
+	pushRevisionTwo,
 	reviewScenario,
 	scenarioModels,
 	scenarioRepository,
@@ -60,9 +62,16 @@ async function killAtReview(
 	database: string,
 	stateFile: string,
 	log: string,
-	event: "review-posted" | "review-requested" = "review-posted",
+	event: "review-posted" | "review-requested" | "ledger-edited" | "ledger-status-posted" = "review-posted",
 ): Promise<void> {
-	const mode = event === "review-posted" ? "after-review" : "before-review";
+	const mode =
+		event === "review-posted"
+			? "after-review"
+			: event === "ledger-edited"
+				? "after-ledger-edit"
+				: event === "ledger-status-posted"
+					? "after-ledger-status"
+					: "before-review";
 	// The condition resolves workspace packages to their sources, as Vitest does, rather than to a stale or absent build.
 	const child = spawn(
 		process.execPath,
@@ -91,6 +100,50 @@ async function killAtReview(
 }
 
 describe("publishing across a crash", { timeout: 30_000 }, () => {
+	it.each(["matches", "state differs", "URL differs"])(
+		"recovers an unrecorded ledger status when the provider status %s",
+		async (current) => {
+			const database = join(dir, "review.sqlite");
+			const stateFile = join(dir, "github.json");
+			const log = join(dir, "publish.log");
+			const fake = scenarioModels();
+			const reviewing = pullRequestState();
+			harness = await openPublishHarness(await openSqliteStorage(database), fake, providerFor(reviewing));
+			const { changeset, review } = await reviewScenario(repo, harness, fake, lensScript(unsafeManager));
+			await review;
+			await harness.close(context);
+			harness = undefined;
+			moveTo(reviewing, changeset);
+			writeFileSync(stateFile, JSON.stringify(reviewing));
+
+			await killAtReview(database, stateFile, log, "ledger-status-posted");
+
+			const state = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
+			expect(state.statuses).toHaveLength(2);
+			const linked = state.statuses.at(-1)!;
+			expect(linked).toMatchObject({ state: "failure", target_url: state.ledgers[0]!.html_url });
+			if (current === "state differs") state.statuses.push({ ...linked, state: "success" });
+			if (current === "URL differs") state.statuses.push({ ...linked, target_url: "https://example.test/other" });
+			state.calls = [];
+			const github = providerFor(state);
+			harness = await openPublishHarness(await openSqliteStorage(database), scenarioModels(), github);
+			await publishReview({
+				harness,
+				provider: github,
+				changeset,
+				pullRequest: await github.pullRequest(7),
+				base: changeset.revision.base,
+			});
+
+			expect(posts(state).map(({ path }) => path)).toEqual(
+				current === "matches" ? [] : [`/repos/melian-agent/example/statuses/${changeset.revision.head}`],
+			);
+			expect(state.statuses.at(-1)).toEqual(linked);
+			expect(state.reviews).toHaveLength(1);
+			expect(state.ledgers).toHaveLength(1);
+		},
+	);
+
 	// An installation token cannot read /user, so the rerun cannot tell who posted the review; the signature alone has
 	// to prove it is Melian's.
 	it.each([
@@ -136,15 +189,22 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			});
 
 			expect(state.reviews).toHaveLength(1);
-			// The child set the status before it posted the review, and recorded it.
-			expect(posts(state)).toEqual([]);
+			// The recovered review is not reposted; the remaining ledger and status link are new writes.
+			expect(posts(state).map(({ path }) => path)).toEqual([
+				"/repos/melian-agent/example/issues/7/comments",
+				`/repos/melian-agent/example/statuses/${head}`,
+			]);
+			expect(state.ledgers).toHaveLength(1);
 			expect(result).toMatchObject({ review: String(state.reviews[0]!.id), posted: 0 });
 			const recorded = await readPublished(harness, (await harness.root(context)).id, head, context);
 			expect(recorded?.review).toBe(String(state.reviews[0]!.id));
 			expect(Object.values(recorded!.threads).sort()).toEqual(
 				state.comments.map((comment) => String(comment.id)).sort(),
 			);
-			expect(state.statuses).toEqual([expect.objectContaining({ sha: head, state: "failure" })]);
+			expect(state.statuses).toEqual([
+				expect.objectContaining({ sha: head, state: "failure" }),
+				expect.objectContaining({ sha: head, state: "failure", target_url: state.ledgers[0]!.html_url }),
+			]);
 		},
 	);
 
@@ -203,12 +263,68 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 		expect(state.statuses.map(({ description }) => description)).toEqual([
 			"3 findings, 1 blocking",
 			"1 finding, 1 blocking",
+			"1 finding, 1 blocking",
 		]);
 		expect(state.statuses.at(-1)).toEqual({
+			target_url: state.ledgers[0]!.html_url,
 			sha: head,
 			state: "failure",
 			description: "1 finding, 1 blocking",
 			context: statusContext,
 		});
 	});
+	it.each([false, true])(
+		"recovers the ledger edit accepted before the record commit (installation token: %s)",
+		async (failUser) => {
+			const database = join(dir, "ledger.sqlite");
+			const stateFile = join(dir, "ledger-github.json");
+			const log = join(dir, "ledger-publish.log");
+			const fake = scenarioModels();
+			const state = pullRequestState();
+			state.failUser = failUser;
+			let github = providerFor(state);
+			harness = await openReviewOnlyHarness(await openSqliteStorage(database), fake);
+			const first = await reviewScenario(repo, harness, fake, lensScript(unsafeManager, emptyName));
+			await first.review;
+			await harness.close(context);
+			moveTo(state, first.changeset);
+			harness = (await openPublisher(await openSqliteStorage(database), fake.review, github)).harness;
+			await publishReview({
+				harness,
+				provider: github,
+				changeset: first.changeset,
+				pullRequest: await github.pullRequest(7),
+				base: first.changeset.revision.base,
+			});
+			const id = state.ledgers[0]!.id;
+			await harness.close(context);
+			pushRevisionTwo(repo);
+			harness = await openReviewOnlyHarness(await openSqliteStorage(database), fake);
+			const second = await reviewScenario(repo, harness, fake, lensScript(emptyName));
+			await second.review;
+			await harness.close(context);
+			harness = undefined;
+			moveTo(state, second.changeset);
+			writeFileSync(stateFile, JSON.stringify(state));
+			await killAtReview(database, stateFile, log, "ledger-edited");
+			const recovered = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
+			const body = recovered.ledgers[0]!.body;
+			expect(body).toContain(`head ${second.changeset.revision.head.slice(0, 12)}`);
+			recovered.calls = [];
+			github = providerFor(recovered);
+			harness = (await openPublisher(await openSqliteStorage(database), fake.review, github)).harness;
+			await publishReview({
+				harness,
+				provider: github,
+				changeset: second.changeset,
+				pullRequest: await github.pullRequest(7),
+				base: second.changeset.revision.base,
+			});
+			expect(recovered.ledgers).toHaveLength(1);
+			expect(recovered.ledgers[0]).toMatchObject({ id, body });
+			expect(recovered.calls.filter(({ method }) => method === "POST" || method === "PATCH")).toEqual([]);
+			const recorded = await harness.snapshot(LedgerDocument, (await harness.root(context)).id, context);
+			expect(recorded?.comment).toMatchObject({ id: String(id), stamp: { head: second.changeset.revision.head } });
+		},
+	);
 });

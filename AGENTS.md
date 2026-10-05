@@ -67,6 +67,46 @@ If you create or modify a test, run it and iterate until it passes. Tests use Vi
 
 A delegated agent shares your checkout. Do not `git checkout`, `git pull`, `git stash`, or rebase in the orchestrating session while one is working. Use a throwaway worktree for concurrent work on another branch. Read-only agents are safe to overlap; writers are not.
 
+## Delegation and the review loop
+
+Milestone 2 runs on three lanes of work and a fixed review loop. Read this before you start a step or review a pull request.
+
+### Who does what
+
+- Implementation steps go to Opus 5.5 agents or to Codex (GPT-6.1 Sol).
+- Small tasks go to Sonnet 5.5: a doc fix, a single test, a record fill-in, a merge chain.
+- Reviews of record go to Opus 5.5. A Sonnet 5.5 trial is under way, judged from the record for [pull request #73](https://github.com/melian-agent/melian/pull/73), where it ran beside the Opus review.
+- Codex tasks run through the companion's `task --write`, for editing and tests only. Its sandbox denies writes under `.git` and, before 2026-10-05, had no network. A Sonnet agent commits, runs the gate, pushes, and opens the draft from Codex's report. A seatbelt wrapper that lets Codex commit is under review in [pull request #74](https://github.com/melian-agent/melian/pull/74) and is not yet safe to use.
+
+### Three reviews before ready
+
+Every pull request gets all three before it is marked ready:
+
+1. Codex's adversarial review, through its companion. It uses GPT-5.6 Sol by default.
+2. A Claude review of record. It runs the code and does not only read it.
+3. Melian's own review, from the branch's own build. Repeat it after each fix pass until only policy notices and advisories remain.
+
+Melian reviews itself with `melian review main...HEAD`, run from a throwaway worktree beside the checkout. Raise every lens's budget to `budget: { findings: 8, tokens: 600000, tools: 90 }`:
+
+- For a built-in lens, write an uncommitted `.melian/lenses/<name>/LENS.md` that `extends` it and sets that budget.
+- For a repository lens, such as `durability`, edit the budget line of its committed file in place. An `extends` directory must match the lens name, so an extension cannot sit beside it.
+- Remove the uncommitted files before you commit anything.
+
+### The comparison record
+
+Every pull request gets a record under `packages/evals/comparisons/`. An agent writes it and updates it after each round. It lists each reviewer's findings, the adjudication with a miss reason, and the fix commits. [The evals guideline](docs/guidelines/evals.md#comparisons) sets out the form.
+
+### Ready and queued
+
+Mark a pull request ready and queue it with `gh pr merge --merge --auto` only when both hold:
+
+- CI is green on the exact head. Confirm the run with `gh run view <id> --json headSha`.
+- The last Melian round found nothing above advisory. Policy notices on configuration files are by design once a maintainer has read them.
+
+### Timeouts
+
+Parallel gates load the machine, and five-second test timeouts are common. Rerun a timed-out test alone before you draw a conclusion.
+
 ## Lessons live here, not in agent memory
 
 When you learn something non-obvious while working on Melian, such as a trap, a contract, a tooling gotcha, or a verification technique that actually works, record it in this repository as part of the same change: in this file, in `docs/`, or in the closest relevant document. Agent memory is private and goes stale. The repository is reviewed and inherited by everyone who touches it.
@@ -113,3 +153,7 @@ Add important learnings here, newest last. Each entry names the symptom, the cau
 - A Biome plugin's `includes` in `biome.json` matches nothing, so the plugin never runs and the gate stays green. Cause: Biome 2.5 matches a plugin's `includes` against the file's full path, not the path relative to `biome.json` as `files.includes` does, so `packages/*/src/**` never matches. Start each plugin glob, negated ones too, with `**/`, as the `free-domain-function` entry does, and prove a new plugin fires on a scratch file before trusting a clean run.
 - `git status` in the main checkout fails with `this operation must be run in a work tree`, `.git/config` holds `core.bare = true`, and a branch such as `feature` holds commits named `base` or `policy` that nobody made. Cause: an agent gated every commit with `git rebase --exec "npm run check"`. Git sets `GIT_DIR` and `GIT_WORK_TREE` for an exec command, and every child inherits them, so every git command the test suite runs on its temporary repositories ran against the real repository instead, whatever directory it ran in. Never gate commits with `git rebase --exec`; check out each commit in a throwaway worktree and run the gate with `GIT_*` unset. Repair with `git config core.bare false` and delete the stray branch; linked worktrees keep working meanwhile.
 - A Vitest snapshot update reports fewer files than the command names. Cause: Vitest 5 can consume the first file argument after `-u`, leaving that test outside the run. Put explicit file paths before `--update`, and confirm the reported file count before accepting the update.
+- A Codex task run through the Codex companion cannot `git add`, `commit`, or `fetch`, and fails with `index.lock: Operation not permitted`. Before a config change it also had no network. Cause: Codex's workspace-write sandbox denies every write under a `.git` directory, in a worktree and a clone alike, and only its full-access mode lifts that. Run Codex through `scripts/codex-sandboxed.sh <worktree> <model> <prompt-file> [log] [scratch]`, from a linked worktree beside the checkout; it exits 64 for the main checkout. It runs `codex exec` in full-access mode inside a seatbelt profile of our own. Writes reach the worktree, scratch, and a per-run temp directory. They reach `objects`, `refs`, and `logs` under `.git`, and the literal state files in the worktree's administrative directory. They reach Codex's session and cache directories too, under `$CODEX_HOME` when set. Hooks, `.git/config`, the administrative directory's `commondir` and `gitdir`, and `~/.codex/config.toml` stay denied. `~/.codex/auth.json` is writable, since Codex rewrites it when it refreshes a login. Each names a program that later runs outside the sandbox, or a git directory that could. Direct repository creation is denied in persistent writable subtrees. A task can rename a repository's parent out of exempt temp storage; [the residual-limits decision](docs/decisions/2026-10-06-codex-sandbox-residual-limits.md) requires the host never run git inside a directory a task created. The per-run directory is exempt, because the script deletes it on exit. Every other subtree denies a `.git` component, in any letter case. It also denies a file named `HEAD` or `commondir`, since a directory holding `HEAD` and `commondir` is a repository too. Seatbelt's `vnode-type` filter limits that deny to files, so a directory named `head` is fine. Git's own `HEAD` writes under `refs` and `logs` are allowed after the deny. The last match wins, and the allow must name the same operations as the deny. The profile denies symlink creation in the worktree outside `node_modules`, and `chflags`. The wrapper kills the task's process group on exit, so a child cannot refill the deleted run directory. The worktree is still writable. Committed hooks and `package.json` scripts stay untrusted until reviewed, and so does a symlink a task wrote. `refs`, `logs`, and `objects` are writable too. The sandbox confines code execution, not repository integrity. A task cannot rebase: `rebase-merge` and `rebase-apply` hold `exec` lines the host would run later. `.git/config` is denied. Push without `-u`. Never set an upstream or add a remote from inside the task. ssh remotes and `~/.npmrc` registry tokens do not work there. Reads and IP networking are open. The profile names its Mach services, so a task cannot start a process through launchd. It allows no unix-domain socket but the DNS resolver's, so a task cannot reach the ssh agent or the Docker daemon. gh's configuration is readable. The keychain is reachable, since gh and git use its token. The sandbox therefore confines writes, not secrets. The task's environment is an allow-list (`PATH`, `HOME`, `USER`, `LOGNAME`, `SHELL`, `TERM`, `LANG`, `LC_*`, `TZ`, `EDITOR`, `CODEX_*`, `GIT_AUTHOR_*`, `GIT_COMMITTER_*`). The rest is dropped, including `SSH_AUTH_SOCK`. It is macOS only, since it uses `sandbox-exec`, the seatbelt Codex itself runs on. The profile does not limit pushes, so a Codex brief should still tell the task to push only its own branch.
+- A test over a long body takes seconds and times out under load, though it passes alone. Cause: a regex on model or finding text that starts with an unbounded class, such as `/([a-z][a-z0-9+.-]*):(?=\/\/)/`, rescans to the end of the text from every start, which is quadratic on a 100 KB run of letters. Anchor on the delimiter, as `/:(?=\/\/)/` does, and time a new `renderProse` rule on `"x".repeat(120_000)`.
+
+- `melian review` run with another branch's build fails with "Document N (melian.verdicts) has newer version X than Y". Cause: Melian shares storage across every worktree of a checkout under the git common directory. A build with an older document version cannot read a changeset a newer branch's build wrote. Review a branch with its own build, or set `MELIAN_STATE_DIR` to a directory of its own for the other build.

@@ -21,7 +21,7 @@ export type FakeComment = {
 	pull_request_review_id: number;
 };
 
-export type FakeStatus = { sha: string; state: string; description: string; context: string };
+export type FakeStatus = { sha: string; state: string; description: string; context: string; target_url?: string };
 
 export type FakeState = {
 	owner: string;
@@ -32,12 +32,18 @@ export type FakeState = {
 	lines: DiffLines;
 	reviews: FakeReview[];
 	comments: FakeComment[];
+	ledgers: { id: number; user: User; body: string; html_url: string; created_at?: string }[];
+	threadPageSize?: number;
+	resolvedThreads: number[];
 	statuses: FakeStatus[];
 	nextId: number;
 	// Set to make every review fail, as GitHub does when it has an outage.
 	failReviews?: boolean;
 	// Set to make every reply fail, as GitHub does when it has an outage.
 	failReplies?: boolean;
+	failResolve?: boolean;
+	// Set to make every ledger write fail, as GitHub does when it has an outage.
+	failLedger?: boolean;
 	// Set to make /user refuse, as it does for an installation token.
 	failUser?: boolean;
 	calls: Call[];
@@ -52,6 +58,8 @@ export function fakeState(owner: string, repo: string, pull: FakeState["pull"], 
 		lines,
 		reviews: [],
 		comments: [],
+		ledgers: [],
+		resolvedThreads: [],
 		statuses: [],
 		nextId: 1000,
 		calls: [],
@@ -107,14 +115,93 @@ export function fakeGitHub(
 		const call: Call = { method, path: url.pathname, ...(body === undefined ? {} : { body }) };
 		state.calls.push(call);
 		const path = url.pathname;
-		if (method === "POST") await beforeWrite(call);
-		const pulls = `${repoPath}/pulls/${state.pull.number}`;
 		const user = { login: state.login };
+		if (method === "POST" || method === "PATCH") await beforeWrite(call);
+		if (method === "POST" && path === "/graphql") {
+			const query = body as { query: string; variables: { id?: string } };
+			if (query.query.includes("resolveReviewThread")) {
+				const id = Number(query.variables.id);
+				if (state.failReplies || state.failResolve) return json({ message: "Server Error" }, 500);
+				state.resolvedThreads.push(id);
+				await afterWrite(call);
+				return json({ data: { resolveReviewThread: { thread: { id: String(id), isResolved: true } } } });
+			}
+			const all = state.comments
+				.filter((comment) => comment.in_reply_to_id === undefined)
+				.map((comment) => ({
+					id: String(comment.id),
+					isResolved: state.resolvedThreads.includes(comment.id),
+					comments: { nodes: [{ databaseId: comment.id }] },
+				}));
+			const cursor = (body as { variables: { cursor?: string | null } }).variables.cursor;
+			const start = cursor == null ? 0 : Number(cursor);
+			const end = state.threadPageSize === undefined ? all.length : start + state.threadPageSize;
+			return json({
+				data: {
+					repository: {
+						pullRequest: {
+							reviewThreads: {
+								nodes: all.slice(start, end),
+								pageInfo: { hasNextPage: end < all.length, endCursor: end < all.length ? String(end) : null },
+							},
+						},
+					},
+				},
+			});
+		}
+		const issues = `${repoPath}/issues/${state.pull.number}/comments`;
+		if (method === "GET" && path === issues)
+			return json(
+				state.ledgers.map((comment, index) => ({
+					...comment,
+					created_at: comment.created_at ?? new Date(index * 1000).toISOString(),
+				})),
+			);
+		if (method === "POST" && path === issues) {
+			if (state.failLedger) return json({ message: "Server Error" }, 500);
+			const id = state.nextId++;
+			const comment = {
+				id,
+				user,
+				body: (body as { body: string }).body,
+				html_url: `https://github.com/${state.owner}/${state.repo}/pull/${state.pull.number}#issuecomment-${id}`,
+			};
+			state.ledgers.push(comment);
+			await afterWrite(call);
+			return json(comment, 201);
+		}
+		const ledgerId = new RegExp(`^${repoPath}/issues/comments/(\\d+)$`).exec(path);
+		if ((method === "GET" || method === "PATCH") && ledgerId !== null) {
+			const comment = state.ledgers.find((each) => each.id === Number(ledgerId[1]));
+			if (comment === undefined) return json({ message: "Not Found" }, 404);
+			if (method === "PATCH") {
+				comment.body = (body as { body: string }).body;
+				await afterWrite(call);
+			}
+			return json(comment);
+		}
+		const commentId = new RegExp(`^${repoPath}/pulls/comments/(\\d+)$`).exec(path);
+		if ((method === "GET" || method === "PATCH") && commentId !== null) {
+			const comment = state.comments.find((each) => each.id === Number(commentId[1]));
+			if (comment === undefined) return json({ message: "Not Found" }, 404);
+			if (method === "PATCH") {
+				if (state.failReplies) return json({ message: "Server Error" }, 500);
+				comment.body = (body as { body: string }).body;
+				await afterWrite(call);
+			}
+			return json(comment);
+		}
+		const pulls = `${repoPath}/pulls/${state.pull.number}`;
 		if (method === "GET" && path === "/user")
 			return state.failUser ? json({ message: "Forbidden" }, 403) : json(user);
 		if (method === "GET" && path === pulls) return json(pull());
 		if (method === "GET" && path === `${pulls}/reviews`) return json(state.reviews);
 		if (method === "GET" && path === `${pulls}/comments`) return json(state.comments);
+		const reviewId = new RegExp(`^${pulls}/reviews/(\\d+)$`).exec(path);
+		if (method === "GET" && reviewId !== null) {
+			const review = state.reviews.find((each) => each.id === Number(reviewId[1]));
+			return review === undefined ? json({ message: "Not Found" }, 404) : json(review);
+		}
 		const forReview = new RegExp(`^${pulls}/reviews/(\\d+)/comments$`).exec(path);
 		if (method === "GET" && forReview !== null) {
 			return json(state.comments.filter((comment) => comment.pull_request_review_id === Number(forReview[1])));
@@ -155,6 +242,9 @@ export function fakeGitHub(
 			await afterWrite(call);
 			return json(created, 201);
 		}
+		const statuses = new RegExp(`^${repoPath}/commits/([0-9a-f]+)/statuses$`).exec(path);
+		if (method === "GET" && statuses !== null)
+			return json(state.statuses.filter((each) => each.sha === statuses[1]).toReversed());
 		const status = new RegExp(`^${repoPath}/statuses/([0-9a-f]+)$`).exec(path);
 		if (method === "POST" && status !== null) {
 			const posted = body as Omit<FakeStatus, "sha">;
