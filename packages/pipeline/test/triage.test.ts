@@ -628,6 +628,10 @@ describe("triage under a review plan", () => {
 
 		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "quick" });
 		expect(reviewed.verdict.status).toBe("passed");
+		// The verdict's provenance holds both the run that stands for the lens, at its level, and the plan it ran under.
+		const provenance = await readProvenance(harness, (await harness.root(context)).id, revision(), context);
+		expect(provenance!.lenses).toEqual([`correctness@${version()}@quick`]);
+		expect(provenance!.plan).toEqual(plan.toJSON());
 		// Its escalation to careful would be refused, so the run is keyed as capped by the plan.
 		const index = await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context);
 		expect(index!.reviews[revision()]!.lenses[0]).toContain(
