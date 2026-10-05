@@ -690,10 +690,51 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 			author: state.login,
 		};
 		expect(await provider.findLedger(7, secret, recorded)).toEqual(recorded);
-		await expect(provider.findLedger(7, secret)).rejects.toThrow("publisher is unknown");
+		expect(await provider.findLedger(7, secret)).toEqual(recorded);
+		const lookalike = {
+			id: 18,
+			user: { login: "stranger" },
+			body: comment.body.replace(/ledger=\S+/, "ledger=forged"),
+			html_url: "https://example.test/18",
+		};
+		state.ledgers.splice(0, state.ledgers.length, lookalike);
+		await expect(provider.findLedger(7, secret)).rejects.toThrow("cannot verify");
+		state.ledgers.splice(0, state.ledgers.length, comment);
 		comment.user.login = "stranger";
 		await expect(provider.findLedger(7, secret, recorded)).rejects.toThrow("another publisher");
 		await expect(provider.findLedger(7, secret, { ...recorded, author: undefined })).rejects.toThrow("unknown");
+	});
+
+	it("finds a ledger created before a crash under an installation token and edits it", async () => {
+		const state = pullRequestState();
+		state.failUser = true;
+		const connect = () =>
+			createGitHubProvider({ owner: state.owner, repo: state.repo, token: "test-token", fetch: fakeGitHub(state) });
+		const draft = { ...options, verdict, publication: { rounds: [round] } };
+		await connect().writeLedger(draft);
+		expect(state.ledgers).toHaveLength(1);
+		const edited = { ...draft, publication: { rounds: [{ ...round, round: 2 }] } };
+		const again = await connect().writeLedger(edited);
+		expect(state.ledgers).toHaveLength(1);
+		expect(again.id).toBe(String(state.ledgers[0]!.id));
+		expect(state.ledgers[0]!.body).toBe(Ledger.from(verdict, edited.publication, options).render(links));
+	});
+
+	it("starts a fresh ledger when the recorded comment was deleted by hand", async () => {
+		const state = pullRequestState();
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test-token",
+			fetch: fakeGitHub(state),
+		});
+		const draft = { ...options, verdict, publication: { rounds: [round] } };
+		const first = await provider.writeLedger(draft);
+		state.ledgers.length = 0;
+		expect(await provider.findLedger(7, secret, first)).toBeUndefined();
+		const second = await provider.writeLedger({ ...draft, recorded: first });
+		expect(state.ledgers).toHaveLength(1);
+		expect(second.id).toBe(String(state.ledgers[0]!.id));
 	});
 
 	it("resolves markerless finding threads, records null and shares one thread lookup", async () => {

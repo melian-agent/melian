@@ -270,12 +270,8 @@ export class GitHubProvider implements ReviewProvider {
 		);
 		for (const comment of comments) {
 			if (!/^<!-- melian:revision=.* ledger=/.test(firstLine(comment.body))) continue;
-			if (login === undefined)
-				throw new GitHubError(
-					"failed",
-					"the ledger publisher is unknown; restore its recorded comment id and author before publishing again",
-				);
-			if (comment.user?.login !== login) continue;
+			// The login only skips strangers early. Without one, the signature decides: readLedger refuses a lookalike.
+			if (login !== undefined && comment.user?.login !== login) continue;
 			return this.readLedger(comment, secret);
 		}
 		return undefined;

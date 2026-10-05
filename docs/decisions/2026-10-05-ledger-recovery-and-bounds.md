@@ -6,7 +6,7 @@ Problem: another commenter could block ledger discovery, and a damaged own ledge
 
 Example: a stranger copies the public marker onto a comment. A token that cannot identify its user then treats that stranger's comment as the mutable ledger.
 
-Choice: publication sets the status first, posts the review and closes findings, then discovers and writes the ledger. A ledger problem updates the status with recovery instructions. Discovery fetches the recorded ID first. Marker scans ignore other publishers. Installation tokens use the recorded ID and author when `/user` cannot identify them; unknown ownership never authorises an edit. A damaged own ledger requires deleting the comment by hand. An orphaned ledger can also recover by restoring storage.
+Choice: publication sets the status first, posts the review and closes findings, then discovers and writes the ledger. A ledger problem updates the status with recovery instructions. Discovery fetches the recorded ID first. Marker scans skip other authors when the login is known, and otherwise the signature decides; a lookalike that fails it refuses the write. Installation tokens use the recorded ID and author when `/user` cannot identify them; an unknown author never authorises an edit of the recorded ledger. A damaged own ledger requires deleting the comment by hand. An orphaned ledger can also recover by restoring storage.
 
 The stamp digest must equal the ledger marker ID exactly. The projection fingerprint hashes the exact final bounded visible body, excluding the marker and stamp. Readback checks both digests. Separator characters are escaped in stamp JSON.
 
