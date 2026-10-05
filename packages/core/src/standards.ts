@@ -18,7 +18,7 @@ export interface StandardsSection {
 	readonly importedBy?: string;
 }
 
-/** The largest standards file the loader reads, and the most it reads for one path in total. Past either is an error. */
+/** Bounds on individual reads, single chains, and rendered per-lens unions. */
 export const standardsLimits = { fileBytes: 256 * 1024, totalBytes: 1024 * 1024, sections: 1024 } as const;
 
 // An `@path` token at the start of a line or after whitespace, so `tal@example.com` is not one. Trailing sentence
@@ -113,6 +113,8 @@ class StandardsLoader implements SourceReader {
 	readonly directories = new Map<string, Promise<readonly Entry[] | undefined>>();
 	readonly refused = new Map<string, string[]>();
 	readonly ignored = new Map<string, Promise<boolean>>();
+	readonly oversized = new Map<string, string[]>();
+	readonly rootErrors = new Map<string, StandardsError[]>();
 	readonly kinds = new Map<string, Promise<EntryKind | undefined>>();
 
 	private constructor(repoRoot: string, reader: SourceReader) {
@@ -164,17 +166,29 @@ class StandardsLoader implements SourceReader {
 		return this.reader.findPaths(pattern);
 	}
 
-	async load(path: string): Promise<StandardsSection[]> {
+	async load(path: string, omitOversized = false): Promise<StandardsSection[]> {
 		const target = repoPath(this.repoRoot, path);
 		const sections: StandardsSection[] = [];
 		const refused: string[] = [];
 		this.refused.set(target, refused);
+		const oversized: string[] = [];
+		const rootErrors: StandardsError[] = [];
+		this.oversized.set(target, oversized);
+		this.rootErrors.set(target, rootErrors);
 		const included = new Set<string>();
 		const expanded = new Set<string>();
 		let total = 0;
 		const counted = new Set<string>();
-		const read = async (file: string): Promise<string | undefined> => {
-			const content = await skippingSymlinks(this.readText(file, standardsLimits.fileBytes));
+		const read = async (file: string, directory: string): Promise<string | undefined> => {
+			let content: string | undefined;
+			try {
+				content = await skippingSymlinks(this.readText(file, standardsLimits.fileBytes));
+			} catch (error) {
+				if (!omitOversized || !(error instanceof StandardsError) || error.code !== "tooLarge") throw error;
+				if (directory === "") rootErrors.push(error);
+				else oversized.push(file);
+				return undefined;
+			}
 			if (!counted.has(file)) total += content === undefined ? 0 : Buffer.byteLength(content);
 			counted.add(file);
 			if (total > standardsLimits.totalBytes) {
@@ -191,7 +205,7 @@ class StandardsLoader implements SourceReader {
 			for (const file of await standardsFiles(this, directory)) {
 				// A file already imported from a nearer directory keeps that position, but its own imports still apply.
 				if (expanded.has(file)) continue;
-				const content = await read(file);
+				const content = await read(file, directory);
 				if (content === undefined) continue;
 				expanded.add(file);
 				const found = imports(content);
@@ -209,7 +223,7 @@ class StandardsLoader implements SourceReader {
 					}
 					// In running text, `@name` is often prose: a folder, a team, a package scope. Only a file is an import.
 					if ((await this.exists(importPath).catch(fromSource)) !== "file") continue;
-					const importedContent = await read(importPath);
+					const importedContent = await read(importPath, directory);
 					if (importedContent === undefined) continue;
 					included.add(importPath);
 					sections.push({ path: importPath, content: importedContent, importedBy: file });
@@ -238,10 +252,17 @@ export class StandardsReading {
 	readonly sections: readonly StandardsSection[];
 	readonly omitted: readonly string[];
 	readonly refused: readonly string[];
+	readonly oversized: readonly string[];
 
-	private constructor(sections: readonly StandardsSection[], omitted: readonly string[], refused: readonly string[]) {
+	private constructor(
+		sections: readonly StandardsSection[],
+		omitted: readonly string[],
+		refused: readonly string[],
+		oversized: readonly string[],
+	) {
 		this.sections = sections;
-		this.omitted = omitted;
+		this.omitted = [...new Set([...omitted, ...oversized])];
+		this.oversized = oversized;
 		this.refused = refused;
 	}
 
@@ -250,6 +271,7 @@ export class StandardsReading {
 		sections: readonly StandardsSection[],
 		refused: readonly string[] = [],
 		nearest: readonly string[] = [],
+		oversized: readonly string[] = [],
 	): StandardsReading {
 		const seen = new Set<string>();
 		const unique = sections.filter((section) => {
@@ -286,6 +308,7 @@ export class StandardsReading {
 			unique.filter((section) => !omitted.has(section.path)),
 			[...omitted],
 			[...new Set(refused)],
+			[...new Set(oversized)],
 		);
 	}
 
@@ -296,12 +319,19 @@ export class StandardsReading {
 
 	/** The omission note a lens's check record carries, absent when every section fits. */
 	note(): string | undefined {
+		const capped = this.omitted.filter((path) => !this.oversized.includes(path));
 		const omission =
-			this.omitted.length === 0
+			capped.length === 0
 				? undefined
-				: `left out ${this.omitted.length} standards section${this.omitted.length === 1 ? "" : "s"} past ${standardsLimits.totalBytes / 1024} KiB: ${listedPaths(this.omitted)}`;
+				: `left out ${capped.length} standards section${capped.length === 1 ? "" : "s"} past ${standardsLimits.totalBytes / 1024} KiB: ${listedPaths(capped)}`;
 		return (
-			[omission, ...(this.refused.length === 0 ? [] : [`refused standards imports: ${listedPaths(this.refused)}`])]
+			[
+				omission,
+				...(this.oversized.length === 0
+					? []
+					: [`left out standards over ${standardsLimits.fileBytes / 1024} KiB: ${listedPaths(this.oversized)}`]),
+				...(this.refused.length === 0 ? [] : [`refused standards imports: ${listedPaths(this.refused)}`]),
+			]
 				.filter(Boolean)
 				.join("; ") || undefined
 		);
@@ -314,6 +344,8 @@ export class Standards {
 	readonly #repoRoot: string;
 	readonly #chains: ReadonlyMap<string, readonly StandardsSection[]>;
 	readonly #refused: ReadonlyMap<string, readonly string[]>;
+	readonly #oversized: ReadonlyMap<string, readonly string[]>;
+	readonly #rootErrors: ReadonlyMap<string, readonly StandardsError[]>;
 	readonly #directories: ReadonlyMap<string, string>;
 
 	private constructor(
@@ -322,30 +354,38 @@ export class Standards {
 		chains: ReadonlyMap<string, readonly StandardsSection[]>,
 		directories: ReadonlyMap<string, string>,
 		refused: ReadonlyMap<string, readonly string[]>,
+		oversized: ReadonlyMap<string, readonly string[]>,
+		rootErrors: ReadonlyMap<string, readonly StandardsError[]>,
 	) {
 		this.#repoRoot = repoRoot;
 		this.source = Object.freeze({ ...source });
 		this.#chains = chains;
 		this.#directories = directories;
 		this.#refused = refused;
+		this.#oversized = oversized;
+		this.#rootErrors = rootErrors;
 	}
 
 	/**
-	 * Reads each standards file and directory once for all paths. Every single path must fit the loader's bounds;
-	 * symlinks are skipped and imports resolve one level. Throws the same typed errors as {@link loadStandards}.
+	 * Reads each standards file and directory once for all paths. Oversized nested files become chain omissions;
+	 * oversized root files throw when {@link forFiles} requests their chain. Other bounds and errors match {@link loadStandards}.
 	 */
 	static async load(repoRoot: string, source: RepositorySource, paths: readonly string[]): Promise<Standards> {
 		const loader = await StandardsLoader.open(repoRoot, source);
 		const chains = new Map<string, readonly StandardsSection[]>();
 		const directories = new Map<string, string>();
 		const refused = new Map<string, readonly string[]>();
+		const oversized = new Map<string, readonly string[]>();
+		const rootErrors = new Map<string, readonly StandardsError[]>();
 		for (const path of paths) {
 			const target = repoPath(repoRoot, path);
 			const directory =
 				(await loader.exists(target).catch(fromSource)) === "directory" ? target : posix.dirname(target);
 			directories.set(target, directory);
 			if (!chains.has(directory)) {
-				chains.set(directory, await loader.load(path));
+				chains.set(directory, await loader.load(path, true));
+				oversized.set(directory, loader.oversized.get(target) ?? []);
+				rootErrors.set(directory, loader.rootErrors.get(target) ?? []);
 				refused.set(directory, loader.refused.get(target) ?? []);
 			}
 		}
@@ -355,6 +395,8 @@ export class Standards {
 			chains,
 			directories,
 			refused,
+			oversized,
+			rootErrors,
 		);
 	}
 
@@ -370,6 +412,12 @@ export class Standards {
 	 * many directories gets a bounded union, preferring each file's nearest rules and naming omissions in its note.
 	 */
 	forFiles(files: readonly string[]): StandardsReading {
+		for (const file of files) {
+			const target = repoPath(this.#repoRoot, file);
+			const directory = this.#directories.get(target) ?? posix.dirname(target);
+			const error = this.#rootErrors.get(directory)?.[0];
+			if (error !== undefined) throw error;
+		}
 		return StandardsReading.from(
 			files.flatMap((file) => {
 				const target = repoPath(this.#repoRoot, file);
@@ -387,6 +435,10 @@ export class Standards {
 				if (nearest === undefined) return [];
 				const scope = nearest.importedBy ?? nearest.path;
 				return chain!.filter((section) => (section.importedBy ?? section.path) === scope).map(({ path }) => path);
+			}),
+			files.flatMap((file) => {
+				const target = repoPath(this.#repoRoot, file);
+				return this.#oversized.get(this.#directories.get(target) ?? posix.dirname(target)) ?? [];
 			}),
 		);
 	}

@@ -300,11 +300,24 @@ describe.each(sourceKinds)("Standards from the %s", (kind) => {
 		});
 	});
 
-	it("refuses an oversized individual file", async () => {
-		writeFiles(repo, { "packages/app/AGENTS.md": "x".repeat(standardsLimits.fileBytes + 1) });
-		await expect(Standards.load(repo, sourceFor(repo, kind), ["packages/app/a.ts"])).rejects.toMatchObject({
-			code: "tooLarge",
-		});
+	it("omits an oversized vendor carrier only from the chains that reach it", async () => {
+		writeFiles(repo, { "vendor/x/AGENTS.md": "x".repeat(300 * 1024) });
+		const paths = ["vendor/x/a.ts", "packages/app/a.ts"];
+		const standards = await Standards.load(repo, sourceFor(repo, kind), paths);
+		const vendor = standards.forFiles([paths[0]!]);
+		expect(vendor.omitted).toEqual(["vendor/x/AGENTS.md"]);
+		expect(vendor.note()).toContain("over 256 KiB: vendor/x/AGENTS.md");
+		expect(vendor.paths()).toContain("AGENTS.md");
+		expect(standards.forFiles([paths[1]!]).omitted).toEqual([]);
+	});
+
+	it("defers an oversized root carrier error until a lens needs its chain", async () => {
+		writeFiles(repo, { "AGENTS.md": "x".repeat(standardsLimits.fileBytes + 1) });
+		const paths = ["packages/app/a.ts"];
+		const standards = await Standards.load(repo, sourceFor(repo, kind), paths);
+		expect(standards.forFiles([]).paths()).toEqual([]);
+		expect(() => standards.forFiles(paths)).toThrow(StandardsError);
+		expect(() => standards.forFiles(paths)).toThrow(/AGENTS\.md/);
 	});
 });
 

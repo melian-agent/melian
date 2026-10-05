@@ -194,6 +194,39 @@ describe("per-lens standards", () => {
 		);
 	});
 
+	it.each(["uncovered", "opt-out", "covered"] as const)(
+		"keeps an oversized vendor carrier local to %s lenses",
+		async (mode) => {
+			writeFiles(repo, {
+				"vendor/x/AGENTS.md": "x".repeat(300 * 1024),
+				"vendor/x/a.ts": "export const a = 2;\n",
+			});
+			gitIn(repo, "add", "vendor");
+			gitIn(repo, "commit", "--quiet", "-m", "vendor change");
+			const { options, requests } = await setup("worktree");
+			const lenses = options.lenses.map((lens) =>
+				lens.name === "correctness" && mode !== "uncovered"
+					? Lens.from({ ...lens.toJSON(), paths: ["vendor/**"], standards: mode !== "opt-out" })
+					: lens,
+			);
+			const config =
+				mode === "uncovered"
+					? options.config
+					: {
+							...options.config,
+							lenses: { ...options.config.lenses, correctness: { paths: ["vendor/**"] } },
+						};
+			const result = await reviewChangeset({ ...options, lenses, config });
+			expect(result.verdict.status).toBe(mode === "covered" ? "not-reviewed" : "passed");
+			if (mode === "covered") {
+				expect(result.verdict.notRun.find(({ name }) => name === "lens.correctness")!.reason).toContain(
+					"vendor/x/AGENTS.md",
+				);
+			}
+			expect(systemPromptOf(requests["You are the contracts reviewer"]![0]!)).toContain("# GitHub conventions");
+		},
+	);
+
 	it("names sections omitted from a wide lens's union on its check record", async () => {
 		const paths = Array.from({ length: 6 }, (_, i) => `packages/core/p${i}/a.ts`);
 		writeFiles(
