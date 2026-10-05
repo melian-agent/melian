@@ -124,6 +124,15 @@ async function readScript(path: string): Promise<LensScript> {
 	return script as LensScript;
 }
 
+// Why a review cannot run, or undefined when it can: a decision provider has no adapter yet. `review` refuses on it;
+// doctor reports it beside the plan.
+export function decisionProviderRefusal(config: MelianConfig): string | undefined {
+	const { provider } = config.decisions;
+	return provider === undefined
+		? undefined
+		: `melian.yaml sets decisions.provider to ${provider}, and Melian has no adapter for a decision provider until milestone 4; remove the key, and triage runs on the LLM fallback`;
+}
+
 // Under the script variable every lens tier runs on the fake, routed as --model would route it.
 export async function reviewModels(
 	env: NodeJS.ProcessEnv,
@@ -135,12 +144,6 @@ export async function reviewModels(
 		readonly credentials: readonly NamedCredential[];
 	},
 ): Promise<ReviewSetup> {
-	const { provider } = loaded.config.decisions;
-	if (provider !== undefined) {
-		throw new CliError(
-			`melian.yaml sets decisions.provider to ${provider}, and Melian has no adapter for a decision provider until milestone 4; remove the key, and triage runs on the LLM fallback`,
-		);
-	}
 	const scriptPath = env[scriptVariable];
 	const scripted = scriptPath !== undefined && scriptPath !== "";
 	let models: ReviewModels;

@@ -30,7 +30,7 @@ import {
 	revisionKey,
 	runChecks,
 } from "@melian-agent/pipeline";
-import { idleModels, isScripted, reviewModels, scriptVariable, Triage } from "./models.ts";
+import { decisionProviderRefusal, idleModels, isScripted, reviewModels, scriptVariable, Triage } from "./models.ts";
 import { CliError, git, openStorage, storagePath } from "./repository.ts";
 import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
 
@@ -114,6 +114,8 @@ export async function review(
 	const tier = loaded.stages["pull-request"] ?? "full";
 	const secrets = await loadSecrets(repoRoot, userFiles(io.env).secrets);
 	for (const warning of secrets.warnings) io.stderr(`melian: ${warning}\n`);
+	const refusal = decisionProviderRefusal(loaded);
+	if (refusal !== undefined) throw new CliError(refusal);
 	const { models, plan, retry } = await reviewModels(io.env, policy, lenses, {
 		model: options.model,
 		checks: checksOfTier(loaded, tier),

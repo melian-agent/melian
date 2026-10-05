@@ -586,6 +586,22 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("reports a decision provider as its own failing line and still prints the plan", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		writeFileSync(
+			join(repo, "melian.yaml"),
+			"decisions:\n  provider: clef\nmodels:\n  light:\n    model: anthropic/claude-haiku-4-5\n",
+		);
+
+		const doctor = melian(repo, ["doctor"]);
+
+		expect(doctor.status).toBe(1);
+		expect(doctor.stdout).toMatch(
+			/^fail {2}decisions {3}melian\.yaml sets decisions\.provider to clef, and Melian has no adapter/m,
+		);
+		expect(doctor.stdout).toMatch(/^(ok|warn) {2,4}plan {8}light: /m);
+	});
+
 	it("prints the plan: each routed tier with its credential and file, each lens's levels, and every warning", () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
 		// A literal key in the user's own secrets file, so the plan does not depend on this machine's credentials.
