@@ -58,7 +58,7 @@ export function decisionTask(decider: Decider, timeout = decisionTimeout) {
 		initial: () => ({ phase: "decide" }),
 		phases: {
 			decide: async (task, runtime, context) => {
-				const { root, revision, request } = task.input;
+				const { root, revision, key, request } = task.input;
 				const timedOut = AbortSignal.timeout(timeout);
 				const signal = AbortSignal.any([runtime.signal, timedOut]);
 				// A decider that ignores its signal would otherwise hold the task open past the timeout.
@@ -74,13 +74,22 @@ export function decisionTask(decider: Decider, timeout = decisionTimeout) {
 				});
 				expired.catch(() => undefined);
 				let answer: Pick<StoredEntry, "decision" | "failure">;
-				try {
-					const decided = await Promise.race([decider.decide(request as DecisionRequest, signal), expired]);
-					answer = { decision: Decision.parse(request as DecisionRequest, decided, decider).toJSON() };
-				} catch (error) {
-					if (runtime.signal.aborted) throw error;
-					const failure = error instanceof Error ? error.message : String(error);
-					answer = { failure: failure.length <= maxFailure ? failure : `${failure.slice(0, maxFailure - 1)}…` };
+				// The registry holds the decider the harness opened with, whatever the input's key names, so asking it would
+				// record another decider's answer under this key.
+				const named = (JSON.parse(key) as { decider?: unknown }).decider;
+				if (named !== decider.name) {
+					answer = {
+						failure: `the decision was asked of ${String(named)}, but this harness holds ${decider.name}; open the harness with the same decider`,
+					};
+				} else {
+					try {
+						const decided = await Promise.race([decider.decide(request as DecisionRequest, signal), expired]);
+						answer = { decision: Decision.parse(request as DecisionRequest, decided, decider).toJSON() };
+					} catch (error) {
+						if (runtime.signal.aborted) throw error;
+						const failure = error instanceof Error ? error.message : String(error);
+						answer = { failure: failure.length <= maxFailure ? failure : `${failure.slice(0, maxFailure - 1)}…` };
+					}
 				}
 				await runtime.commit(async (tx) => {
 					const document = await tx.doc(DecisionDocument, root);

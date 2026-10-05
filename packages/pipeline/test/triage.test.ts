@@ -459,6 +459,30 @@ describe("triage", () => {
 		expect(stored!.decision).toBeUndefined();
 	});
 
+	it("fails closed when the harness holds another decider than the one the decision names", async () => {
+		const installed = choosing("quick", "installed");
+		const asked = choosing("quick", "asked");
+		await open(installed);
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+
+		const reviewed = await review({ decider: asked });
+
+		expect(installed.requests).toHaveLength(0);
+		expect(asked.requests).toHaveLength(0);
+		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
+		const stored = await readRecordedDecision(
+			harness,
+			(await harness.root(context)).id,
+			revision(),
+			"triage",
+			context,
+		);
+		expect(stored!.decision).toBeUndefined();
+		expect(stored!.failure).toBe(
+			"the decision was asked of asked, but this harness holds installed; open the harness with the same decider",
+		);
+	});
+
 	describe("attaching to a stored decision", () => {
 		// Fails its first `failures` calls, then chooses quick.
 		function flaky(failures: number): Decider & { readonly calls: number } {
