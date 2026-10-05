@@ -718,6 +718,7 @@ describe("the verifier", () => {
 		expect(requests[verifierMarker]).toHaveLength(2);
 	});
 	it("fails over to the next verifier model", async () => {
+		const models: string[] = [];
 		const requests = scriptConversations(fake, [
 			{
 				match: lenses[0]!.instructions,
@@ -729,14 +730,27 @@ describe("the verifier", () => {
 			{
 				match: verifierMarker,
 				replies: [
-					fauxAssistantMessage("", { stopReason: "error", errorMessage: "HTTP 503 service unavailable" }),
-					(messages) => scriptVerifier(messages),
-					(messages) => scriptVerifier(messages),
+					(_messages, modelId) => {
+						models.push(modelId);
+						return fauxAssistantMessage("", {
+							stopReason: "error",
+							errorMessage: "HTTP 503 service unavailable",
+						});
+					},
+					(messages, modelId) => {
+						models.push(modelId);
+						return scriptVerifier(messages);
+					},
+					(messages, modelId) => {
+						models.push(modelId);
+						return scriptVerifier(messages);
+					},
 				],
 			},
 		]);
 		const result = await review();
 		expect(requests[verifierMarker]).toHaveLength(3);
+		expect(models).toEqual(["judge", "backup", "backup"]);
 		expect(result.findings[0]!.properties.verification?.model).toBe(`${fake.ref("backup").provider}/backup`);
 	});
 	it("retries a failed verification on rerun with unchanged candidates", async () => {
