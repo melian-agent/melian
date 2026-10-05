@@ -70,6 +70,7 @@ dynamic_rules() {
   filters literal "$common/config" "$common/config.lock" "$admin/commondir" "$admin/gitdir" "$admin/locked" \
     "$admin/config.worktree" "$worktree/.git" "$codex/config.toml" "$codex/auth.json"
   filters subpath "$codex/hooks"
+  printf '  (regex #"^%s/.*/\\.git(/|$)")\n' "$(real "$worktree" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
   echo ")"
 
   echo "(deny file-read*"

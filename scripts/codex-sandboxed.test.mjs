@@ -115,6 +115,7 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			`(literal "${admin}/locked")`,
 			`(literal "${admin}/config.worktree")`,
 			`(literal "${linked}/.git")`,
+			`(regex #"^${linked.replace(/[[\].*^$+?(){}|\\]/g, "\\$&")}/.*/\\.git(/|$)")`,
 			`(literal "${home}/.codex/config.toml")`,
 			`(literal "${home}/.codex/auth.json")`,
 			`(subpath "${home}/.codex/hooks")`,
@@ -230,6 +231,15 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 				expect(failure(() => widenedSh(`echo evil > '${file}'`)).status).not.toBe(0);
 				expect(readFileSync(file, "utf8")).toBe(before);
 			}
+		});
+
+		it("cannot create a nested repository or .git file in a subdirectory of the worktree", () => {
+			sh(linked, "mkdir -p sub");
+			expect(failure(() => sh(linked, "git -C sub init -q")).status).not.toBe(0);
+			expect(failure(() => sh(linked, "echo x > sub/.git")).status).not.toBe(0);
+			expect(failure(() => sh(linked, "mkdir -p deep/er/.git")).status).not.toBe(0);
+			expect(existsSync(join(linked, "sub", ".git"))).toBe(false);
+			sh(linked, "echo ok > sub/file");
 		});
 
 		it("cannot start a rebase, whose todo file the host would later run", () => {
