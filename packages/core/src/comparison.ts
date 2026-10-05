@@ -434,9 +434,15 @@ export class ExternalFinding {
 		);
 	}
 
-	/** Whether `other` came from the same reviewer: the same name, and the same login where either has one. */
+	/**
+	 * Whether `other` came from the same reviewer: the same name, and the same login where either has one, ignoring case
+	 * as GitHub does.
+	 */
 	sameReviewer(other: ExternalFinding): boolean {
-		return this.reviewer.name === other.reviewer.name && this.reviewer.login === other.reviewer.login;
+		return (
+			this.reviewer.name === other.reviewer.name &&
+			this.reviewer.login?.toLowerCase() === other.reviewer.login?.toLowerCase()
+		);
 	}
 
 	toJSON(): StoredExternalFinding {

@@ -306,6 +306,17 @@ describe("Comparison matching", () => {
 		expect(apart.externalOnly()).toHaveLength(2);
 	});
 
+	it("knows a reviewer by its name and login, ignoring the login's case", () => {
+		const human = (login: string, line: number) =>
+			external({ reviewer: { name: "human", login }, file: "src/b.ts", line });
+		const octocat = human("octocat", 10);
+		expect(octocat.sameReviewer(human("OctoCat", 11))).toBe(true);
+		expect(octocat.sameReviewer(human("hubot", 11))).toBe(false);
+		expect(octocat.sameReviewer(external({ reviewer: { name: "codex" }, file: "src/b.ts", line: 11 }))).toBe(false);
+		expect(compared([octocat, human("hubot", 11)], [melian()]).externalOnly()).toHaveLength(1);
+		expect(compared([octocat, human("OctoCat", 11)], [melian()]).externalOnly()).toHaveLength(2);
+	});
+
 	it("keeps a reviewer's finding unmatched by hand out of the group another reviewer's match makes", () => {
 		const finding = melian();
 		const codex = external({ line: 12 });
