@@ -173,6 +173,48 @@ describe("ReviewThreadImporter", () => {
 		expect(imported.findings.some((finding) => finding.body.includes("prefer a guard clause"))).toBe(false);
 	});
 
+	it("counts CodeRabbit's review bodies across pages", async () => {
+		const answers: GitHubRecording = {
+			...recording,
+			graphql: {
+				...recording.graphql,
+				MelianReviews: [
+					{
+						data: {
+							repository: {
+								pullRequest: {
+									reviews: {
+										pageInfo: { hasNextPage: true, endCursor: "review-1" },
+										nodes: [{ body: "First review body", author: { __typename: "Bot", login: "coderabbitai" } }],
+									},
+								},
+							},
+						},
+					},
+					{
+						data: {
+							repository: {
+								pullRequest: {
+									reviews: {
+										pageInfo: { hasNextPage: false, endCursor: "review-2" },
+										nodes: [{ body: "Second review body", author: { __typename: "Bot", login: "coderabbitai" } }],
+									},
+								},
+							},
+						},
+					},
+				],
+			},
+		};
+		const { opened, requests } = importer(undefined, answers);
+
+		const imported = await opened.import();
+
+		expect(imported.skippedBodies).toBe(2);
+		const reviews = requests.filter((request) => request.body.query.includes("MelianReviews"));
+		expect(reviews.map((request) => request.body.variables.after)).toEqual([null, "review-1"]);
+	});
+
 	it("imports another login's threads as a human reviewer's, by that login", async () => {
 		const { opened } = importer("octocat");
 
