@@ -141,6 +141,27 @@ describe("loadSecrets", () => {
 		expect((await loadSecrets(repo, join(home, "secrets.yaml"))).credentials).toHaveLength(1);
 	});
 
+	it("refuses a command when the user-level file's directory is a symlink into the repository", async () => {
+		secrets(repo, "config/secrets.yaml", "credentials:", "  a: { provider: openai, command: cat key }");
+		const link = join(home, "melian");
+		symlinkSync(join(repo, "config"), link);
+		const error = await rejection(loadSecrets(repo, join(link, "secrets.yaml")));
+		expect(error).toMatchObject({ code: "userFileInRepository", file: join(link, "secrets.yaml") });
+		expect(error.message).toContain(`${link} is a symlink`);
+	});
+
+	it("refuses a command when the user-level file's real path lies inside the repository", async () => {
+		const file = secrets(repo, "secrets.yaml", "credentials:", "  a: { provider: openai, command: cat key }");
+		const error = await rejection(loadSecrets(repo, file));
+		expect(error.code).toBe("userFileInRepository");
+		expect(error.message).toContain("inside the repository under review");
+	});
+
+	it("accepts a command in a plain user-level file outside the repository", async () => {
+		const file = secrets(home, "secrets.yaml", "credentials:", "  a: { provider: openai, command: cat key }");
+		expect((await loadSecrets(repo, file)).credentials).toHaveLength(1);
+	});
+
 	it("refuses a command in a user-level file others can read", async () => {
 		const file = secrets(home, "secrets.yaml", "credentials:", "  a: { provider: openai, command: cat key }");
 		chmodSync(file, 0o644);

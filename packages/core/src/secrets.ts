@@ -1,6 +1,6 @@
 import { constants, type Stats } from "node:fs";
-import { open, stat } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { lstat, open, realpath, stat } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import Type from "typebox";
 import { configError, locate, maxConfigBytes, parseYaml, type Site } from "./config.ts";
 import { git } from "./git.ts";
@@ -61,6 +61,22 @@ async function ownership(path: string, info: Stats): Promise<string | undefined>
 	return shared ? `others can replace files in ${directory}; chmod go-w ${directory}` : undefined;
 }
 
+// Why the user-level file cannot be taken as the user's own, or `undefined`. Problem: O_NOFOLLOW guards only the final
+// component, so `~/.config/melian` could be a symlink into a checkout, and a file a head wrote would read as the
+// user's. Solution: its directory, the one below the configuration root, must not be a symlink, and the file's real
+// path, whatever links lead to it, must lie outside the repository under review.
+async function insideRepository(path: string, repoRoot: string): Promise<string | undefined> {
+	const directory = dirname(path);
+	if ((await lstat(directory).catch(() => undefined))?.isSymbolicLink()) {
+		return `${directory} is a symlink; move the real directory there`;
+	}
+	const [real, root] = await Promise.all([realpath(path), realpath(repoRoot)]).catch(() => [undefined, undefined]);
+	if (real === undefined || root === undefined) return `Melian could not resolve the real path of ${path}`;
+	const inside = relative(root, real);
+	const outside = inside === ".." || inside.startsWith(`..${sep}`) || isAbsolute(inside);
+	return outside ? undefined : `${path} resolves to ${real}, inside the repository under review`;
+}
+
 // Refuses the per-clone file when git tracks it under any case of its name: a head could then supply it. Problem: on a
 // case-insensitive filesystem a committed `MELIAN.SECRETS.YAML` opens as `melian.secrets.yaml`, and an exact-case
 // lookup called it untracked. Solution: ask git case-insensitively. The file never holds a command, so a git that cannot
@@ -106,6 +122,7 @@ async function readSecretsFile(
 	path: string,
 	repoRoot: string | undefined,
 	user: string | undefined,
+	reviewed: string,
 ): Promise<LoadedSecrets> {
 	const site: Site = { file: path, where: path };
 	const read = await readOnce(path, site, repoRoot === undefined);
@@ -116,6 +133,7 @@ async function readSecretsFile(
 		credentials?: Record<string, Record<string, string>>;
 	};
 	const owner = await ownership(path, info);
+	const inside = repoRoot === undefined ? await insideRepository(path, reviewed) : undefined;
 	const credentials = Object.entries(parsed.credentials ?? {}).map(([credential, entry]): NamedCredential => {
 		// A credential's name is a key, and a key may be a pasted secret, so errors name where it is, never what.
 		const at = `the credential at ${locate(text, ["credentials", credential], true)}`;
@@ -139,6 +157,13 @@ async function readSecretsFile(
 				"notUserOwned",
 				site,
 				`${at} runs a command, which Melian runs only from a file you own and no one else can read, write, or replace: ${owner}`,
+			);
+		}
+		if (source === "command" && inside !== undefined) {
+			throw configError(
+				"userFileInRepository",
+				site,
+				`${at} runs a command, which Melian runs only from your own secrets file, and that file must not lead into the checkout: ${inside}`,
 			);
 		}
 		const given = entry[source]!;
@@ -165,13 +190,15 @@ async function readSecretsFile(
  * and checked through that handle; the per-clone file is never read through a symlink. Nothing is resolved here: no
  * variable read and no command run. Throws {@link ConfigError}: `tracked` for a per-clone file git tracks under any case
  * of its name, since a head could supply it; `cloneCommand` for a command in the per-clone file; `notUserOwned` for a
- * command in a user-level file another user could have written; and as `loadConfig` does for a file it cannot read or
+ * command in a user-level file another user could have written; `userFileInRepository` for a command in a user-level
+ * file whose directory is a symlink or whose real path lies inside `repoRoot`; and as `loadConfig` does for a file it cannot read or
  * parse. No error quotes the file: each names the file, its code, and a line and column, never a key or a value, and
  * none carries a `key`.
  */
 export async function loadSecrets(repoRoot: string, user?: string): Promise<LoadedSecrets> {
-	const clone = await readSecretsFile(join(repoRoot, melianPaths.secrets), repoRoot, user);
-	const own = user === undefined ? { credentials: [], warnings: [] } : await readSecretsFile(user, undefined, user);
+	const clone = await readSecretsFile(join(repoRoot, melianPaths.secrets), repoRoot, user, repoRoot);
+	const own =
+		user === undefined ? { credentials: [], warnings: [] } : await readSecretsFile(user, undefined, user, repoRoot);
 	return {
 		credentials: [...clone.credentials, ...own.credentials],
 		warnings: [...clone.warnings, ...own.warnings],
