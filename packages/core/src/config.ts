@@ -480,15 +480,23 @@ async function readUserLayer(path: string): Promise<MelianYaml | undefined> {
 }
 
 // YAML text as a value with no prototypes, validated against `schema`, as `melian.yaml` and the secrets files are read.
-export function parseYaml(text: string, site: Site, schema: TSchema): unknown {
-	const document = parseDocument(text);
+// With `redact`, a syntax error names only its code, line, and column, and keeps no cause: the parser's diagnostic
+// quotes the offending line, which in a secrets file may hold a key.
+export function parseYaml(text: string, site: Site, schema: TSchema, options: { redact?: boolean } = {}): unknown {
+	const document = parseDocument(text, { prettyErrors: options.redact !== true });
 	const problem = document.errors[0] ?? document.warnings[0];
-	if (problem !== undefined) throw configError("invalidYaml", site, problem.message, { cause: problem });
+	if (problem !== undefined) {
+		if (options.redact !== true) throw configError("invalidYaml", site, problem.message, { cause: problem });
+		const before = text.slice(0, problem.pos[0]).split("\n");
+		const where = ` at line ${before.length}, column ${before.at(-1)!.length + 1}`;
+		throw configError("invalidYaml", site, `YAML error ${problem.code}${where}`);
+	}
 	// toJS throws a bare ReferenceError when aliases expand past its limit, the defence against a billion-laughs file.
 	let value: unknown;
 	try {
 		value = document.toJS() ?? {};
 	} catch (cause) {
+		if (options.redact === true) throw configError("invalidYaml", site, "YAML aliases expand past the limit");
 		throw configError("invalidYaml", site, (cause as Error).message, { cause });
 	}
 	rejectReservedKeys(site, value);

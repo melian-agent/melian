@@ -159,6 +159,18 @@ describe("loadSecrets", () => {
 		expect(await rejection(loadSecrets(repo))).toMatchObject({ code: "invalidValue", key: "credentials.a.type" });
 	});
 
+	it.each([
+		["an unclosed flow mapping", "  a: { provider: openai, key: sk-SENTINEL-never-printed"],
+		["a nested mapping", "  a: sk-SENTINEL-never-printed: x"],
+	])("names only the code, line, and column of a YAML error in %s, never the line", async (_, entry) => {
+		const file = secrets(repo, "melian.secrets.yaml", "credentials:", entry);
+		const error = await rejection(loadSecrets(repo));
+		expect(error).toMatchObject({ code: "invalidYaml", file });
+		expect(error.message).toMatch(/: YAML error [A-Z_]+ at line \d+, column \d+$/);
+		expect(error.message).not.toContain("SENTINEL");
+		expect(error.cause).toBeUndefined();
+	});
+
 	it("never quotes a literal key in an error", async () => {
 		secrets(repo, "melian.secrets.yaml", "credentials:", "  a: { provider: openai, key: sk-secret, env: A }");
 		const error = await rejection(loadSecrets(repo));

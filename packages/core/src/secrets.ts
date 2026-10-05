@@ -88,7 +88,9 @@ async function readSecretsFile(path: string, repoRoot: string | undefined): Prom
 	const text = await readFile(path, "utf8").catch((error: NodeJS.ErrnoException) => {
 		throw configError("unreadable", site, error.message, { cause: error });
 	});
-	const parsed = parseYaml(text, site, secretsFileSchema) as { credentials?: Record<string, Record<string, string>> };
+	const parsed = parseYaml(text, site, secretsFileSchema, { redact: true }) as {
+		credentials?: Record<string, Record<string, string>>;
+	};
 	const owned = userOwned(info.mode, info.uid);
 	const credentials = Object.entries(parsed.credentials ?? {}).map(([credential, entry]): NamedCredential => {
 		const key = `credentials.${credential}`;

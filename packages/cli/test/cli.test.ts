@@ -576,6 +576,23 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("never prints a malformed secrets file's lines, in review or in doctor", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+		const xdg = userDirectory("credentials:\n  a: { provider: openai, key: sk-SENTINEL-never-printed\n");
+
+		const review = melian(repo, ["review", "main"], { ...env, ...xdg });
+		const doctor = melian(repo, ["doctor"], xdg);
+
+		expect(review.status).toBe(2);
+		expect(review.stderr).toMatch(/secrets\.yaml: YAML error [A-Z_]+ at line \d+, column \d+\n/);
+		expect(doctor.stdout).toMatch(
+			/^fail {2}secrets {5}.*secrets\.yaml: YAML error [A-Z_]+ at line \d+, column \d+$/m,
+		);
+		for (const output of [review.stdout, review.stderr, doctor.stdout, doctor.stderr]) {
+			expect(output).not.toContain("SENTINEL");
+		}
+	});
+
 	it("fails when git tracks a maintainer's file under another case of its name", () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
 		writeFileSync(join(repo, "melian.secrets.yaml"), "credentials: {}\n");
