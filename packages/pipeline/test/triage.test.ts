@@ -1161,7 +1161,7 @@ describe("the LLM fallback", () => {
 			context,
 		);
 		expect(stored!.decision!.toJSON()).toMatchObject({
-			decider: "llm-fallback",
+			decider: `llm-fallback:${fake.ref("light").provider}/light`,
 			calibrated: false,
 			model: `${fake.ref("light").provider}/light`,
 			answers: [
@@ -1171,6 +1171,42 @@ describe("the LLM fallback", () => {
 					chosen: "deep",
 				},
 			],
+		});
+	});
+
+	describe("across reviews", () => {
+		const answer = call("answer", {
+			answers: [{ question: "correctness", probabilities: [{ option: "careful", probability: 1 }] }],
+		});
+
+		// Two reviews of one revision on one storage, the second with a fallback on `second`; how often triage asked.
+		async function asked(first: string, second: string): Promise<number> {
+			const dir = mkdtempSync(join(tmpdir(), "melian-triage-"));
+			const requests = scriptConversations(fake, [
+				{ match: fallback, replies: [answer, answer, answer] },
+				{ match: correctness, replies: [done, done, done] },
+			]);
+			for (const id of [first, second]) {
+				await reviewHarness?.close(context);
+				const decider = new FallbackDecider((await RouteTextModel.create(fake.review, [fake.ref(id)]))!);
+				reviewHarness = await ReviewHarness.open(await openSqliteStorage(join(dir, "db.sqlite")), fake.review, {
+					retry: false,
+					decider,
+				});
+				harness = reviewHarness.harness;
+				await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+				await review({ decider });
+			}
+			rmSync(dir, { recursive: true, force: true });
+			return requests[fallback]!.length;
+		}
+
+		it("asks again when a later review routes triage to another model", async () => {
+			expect(await asked("light", "medium")).toBe(2);
+		});
+
+		it("asks once when a later review routes triage to the same model", async () => {
+			expect(await asked("light", "light")).toBe(1);
 		});
 	});
 

@@ -46,12 +46,13 @@ const instructions = `You answer typed questions about a code change for Melian,
  * once per {@link FallbackDecider.decide}.
  */
 export class FallbackDecider implements Decider {
-	readonly name = "llm-fallback";
+	readonly name: string;
 	readonly calibrated = false;
 	readonly #model: TextModel;
 
 	constructor(model: TextModel) {
 		this.#model = model;
+		this.name = `llm-fallback:${model.name}`;
 	}
 
 	/**

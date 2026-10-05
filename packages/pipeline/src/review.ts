@@ -1374,7 +1374,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				? {}
 				: {
 						triagedBy:
-							triaged.decision.decider === "llm-fallback" ? "the LLM fallback" : triaged.decision.decider,
+							triaged.decision.decider.startsWith("llm-fallback") ? "the LLM fallback" : triaged.decision.decider,
 					}),
 		},
 		options,

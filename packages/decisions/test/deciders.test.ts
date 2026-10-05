@@ -122,7 +122,7 @@ describe("the LLM fallback decider", () => {
 			model: "faux/light",
 		});
 		const decision = Decision.parse(request, answer, decider);
-		expect(decision.toJSON()).toMatchObject({ decider: "llm-fallback", calibrated: false, model: "faux/light" });
+		expect(decision.toJSON()).toMatchObject({ decider: "llm-fallback:faux/light", calibrated: false, model: "faux/light" });
 		expect(decision.chosen("correctness")).toBe("careful");
 	});
 
