@@ -68,8 +68,8 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		for (const file of ["HEAD", "index", "index.lock", "ORIG_HEAD", "MERGE_MSG", "COMMIT_EDITMSG", "gc.pid"]) {
 			expect(allow).toContain(`(literal "${admin}/${file}")`);
 		}
-		for (const dir of ["logs", "rebase-merge", "rebase-apply"])
-			expect(allow).toContain(`(subpath "${admin}/${dir}")`);
+		expect(allow).toContain(`(subpath "${admin}/logs")`);
+		for (const dir of ["rebase-merge", "rebase-apply"]) expect(allow).not.toContain(dir);
 		expect(allow).toContain(`(subpath "${linked}")`);
 		expect(allow).not.toContain(`(subpath "${admin}")`);
 		expect(allow).not.toContain(`"${main}/.git")`);
@@ -212,6 +212,13 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			expect(failure(() => sh(linked, `mkdir '${admin}/hooks'`)).status).not.toBe(0);
 			sh(linked, "echo y > g && git add g && git commit -q -m again");
 			expect(git(linked, "log", "-1", "--format=%s").toString().trim()).toBe("again");
+		});
+
+		it("cannot start a rebase, whose todo file the host would later run", () => {
+			for (const dir of ["rebase-merge", "rebase-apply"]) {
+				expect(failure(() => sh(linked, `mkdir '${admin}/${dir}'`)).status).not.toBe(0);
+				expect(existsSync(join(admin, dir))).toBe(false);
+			}
 		});
 
 		it("cannot write git config or hooks", () => {

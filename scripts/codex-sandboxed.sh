@@ -52,7 +52,7 @@ dynamic_rules() {
       REVERT_HEAD COMMIT_EDITMSG index gc.pid shallow; do
       filters literal "$admin/$p" "$admin/$p.lock"
     done
-    filters subpath "$admin/logs" "$admin/rebase-merge" "$admin/rebase-apply"
+    filters subpath "$admin/logs"
     for p in sessions log cache tmp ipc thread-writer-locks mcp-oauth-locks attachments; do
       filters subpath "$codex/$p"
     done
