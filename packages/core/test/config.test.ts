@@ -547,6 +547,20 @@ describe("the user-level preference file", () => {
 		expect(await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"))).toMatchObject({ code: "invalidValue" });
 	});
 
+	it("refuses an empty accept, which would accept nothing and so refuse no override", async () => {
+		const route = [
+			"models:",
+			"  heavy:",
+			"    model: anthropic/claude-opus-5-5",
+			"    accept: []",
+			"    acceptOverridden: false",
+		];
+		writeFiles(repo, { "melian.yaml": lines(...route) });
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", file: "melian.yaml", key: "models.heavy.accept" });
+		expect(error.message).toContain("lists no model");
+	});
+
 	it("refuses a policy key in melian.local.yaml too", async () => {
 		writeFiles(repo, { "melian.local.yaml": lines("models:", "  heavy:", "    acceptOverridden: true") });
 		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));

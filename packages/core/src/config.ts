@@ -730,6 +730,18 @@ function checkBands(config: MelianConfig, layers: readonly { site: Site; layer: 
 function checkRefusals(models: MelianConfig["models"], layers: readonly { site: Site; layer: MelianYaml }[]): void {
 	for (const tier of modelTiers) {
 		const route = models[tier];
+		// An empty accept would accept nothing, and the plan would read it as no accept at all, so a route that refuses
+		// overrides would refuse none of them.
+		if (route?.accept !== undefined && route.accept.length === 0) {
+			const site = layers.find(({ layer }) => layer.models?.[tier]?.accept !== undefined)!.site;
+			const key = `models.${tier}.accept`;
+			throw configError(
+				"invalidValue",
+				site,
+				`"${key}" lists no model; list the models that satisfy the tier, or leave it out to accept the route's own model and fallbacks`,
+				{ key },
+			);
+		}
 		if (route?.acceptOverridden !== false || route.model !== undefined || (route.accept?.length ?? 0) > 0) continue;
 		const site = layers.find(({ layer }) => layer.models?.[tier]?.acceptOverridden !== undefined)!.site;
 		const key = `models.${tier}.acceptOverridden`;
