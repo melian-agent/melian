@@ -131,7 +131,8 @@ async function abortReplacedRuns(harness: Harness, context: Context): Promise<vo
 	for (const { record } of live) {
 		const input = record.input as unknown as LensTaskInput;
 		const entry = index?.reviews[revisionKey(input.revision)];
-		const replaced = entry?.task !== undefined && entry.task !== record.id;
+		// An entry with no task is one a review that selected no lens rewrote: it names no run at all.
+		const replaced = entry !== undefined && entry.task !== record.id;
 		// An entry an older Melian stored names its lenses without their routes, so no review can attach to its task.
 		const stale =
 			entry !== undefined && entry.lenses.length > 0 && entry.lenses.every((lens) => !lens.includes(" on "));
@@ -139,15 +140,15 @@ async function abortReplacedRuns(harness: Harness, context: Context): Promise<vo
 	}
 }
 
-// Whether the review index names another lens task for the task's revision: a later review replaced this run.
+// Whether the review index names another lens task, or none, for the task's revision: a later review replaced this run.
 async function superseded(
 	reader: DocumentReader,
 	input: LensTaskInput,
 	taskId: number,
 	context: Context,
 ): Promise<boolean> {
-	const named = (await reader.snapshot(ReviewIndex, input.root, context))?.reviews[revisionKey(input.revision)]?.task;
-	return named !== undefined && named !== taskId;
+	const entry = (await reader.snapshot(ReviewIndex, input.root, context))?.reviews[revisionKey(input.revision)];
+	return entry !== undefined && entry.task !== taskId;
 }
 
 // Spawns every lens conversation in one commit, so a crash leaves all of them or none; then runs them in parallel.

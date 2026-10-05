@@ -260,7 +260,10 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		expect(verdict.ran?.filter((check) => check.name.startsWith("lens."))).toHaveLength(2);
 	});
 
-	it("aborts, on opening, a crashed lens run a later review replaced, so it asks no model", async () => {
+	it.each([
+		["replaced", 999_999],
+		["rewrote without a lens task, as one that selected no lens does", undefined],
+	])("aborts, on opening, a crashed lens run a later review %s, so it asks no model", async (_, named) => {
 		const database = join(dir, "replaced.sqlite");
 		const log = join(dir, "replaced.jsonl");
 		await killWhen("request", (events) => count(events, "model-request") === 2, database, log);
@@ -282,7 +285,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		await root.commit(async (tx) => {
 			const index = await tx.doc(ReviewIndex, root.id);
 			const entry = index.reviews[reviewedRevision()]!;
-			index.reviews[reviewedRevision()] = { ...entry, task: 999_999 };
+			index.reviews[reviewedRevision()] = named === undefined ? { lenses: [] } : { ...entry, task: named };
 		}, context);
 		await replace.close(context);
 

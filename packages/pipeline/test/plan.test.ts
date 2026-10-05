@@ -364,7 +364,7 @@ describe("a lens run a later review replaced", () => {
 	// Holds the correctness lens in its first model request, replaces its run in the review index, as a later review's
 	// commit does before it aborts the run, then lets the request answer with a report. With `stripTask`, the lens
 	// conversations' policies lose their task, as one an older Melian spawned never had it.
-	async function reportAfterReplacement(stripTask: boolean) {
+	async function reportAfterReplacement(stripTask: boolean, named: number | undefined) {
 		let release = () => {};
 		const held = new Promise<void>((resolve) => {
 			release = resolve;
@@ -401,7 +401,8 @@ describe("a lens run a later review replaced", () => {
 			const record = await tx.task(entry.task as TaskId);
 			const children = (record?.state as { checkpoint?: { children?: Record<string, number> } } | undefined)
 				?.checkpoint?.children;
-			index.reviews[revision] = { ...entry, task: 999_999 };
+			// A review that selected no lens leaves an entry that names no run.
+			index.reviews[revision] = named === undefined ? { lenses: [] } : { ...entry, task: named };
 			if (!stripTask) return;
 			for (const child of Object.values(children ?? {})) {
 				const document = await tx.doc(LensDocument, child as never);
@@ -414,7 +415,10 @@ describe("a lens run a later review replaced", () => {
 		return { requests, findings: await readFindings(harness, root.id, revision, context) };
 	}
 
-	it("asks no model on its next attempt once the index names another run", async () => {
+	it.each([
+		["another run", 999_999],
+		["no run, as a review that selected no lens leaves it", undefined],
+	])("asks no model on its next attempt once the index names %s", async (_, named) => {
 		let release = () => {};
 		const held = new Promise<void>((resolve) => {
 			release = resolve;
@@ -449,7 +453,7 @@ describe("a lens run a later review replaced", () => {
 		const revision = revisionKey(changeset.revision);
 		await root.commit(async (tx) => {
 			const index = await tx.doc(ReviewIndex, root.id);
-			index.reviews[revision] = { ...index.reviews[revision]!, task: 999_999 };
+			index.reviews[revision] = named === undefined ? { lenses: [] } : { ...index.reviews[revision]!, task: named };
 		}, context);
 		release();
 		await running;
@@ -459,10 +463,11 @@ describe("a lens run a later review replaced", () => {
 	});
 
 	it.each([
-		["", false],
-		[", even in a conversation whose policy names no task, as an older Melian's", true],
-	])("has its report refused once the index names another run%s", async (_, stripTask) => {
-		const { requests, findings } = await reportAfterReplacement(stripTask);
+		["another run", false, 999_999],
+		["another run, even in a conversation whose policy names no task, as an older Melian's", true, 999_999],
+		["no run, as a review that selected no lens leaves it", false, undefined],
+	])("has its report refused once the index names %s", async (_, stripTask, named) => {
+		const { requests, findings } = await reportAfterReplacement(stripTask, named);
 
 		const results = requests[correctness]![1]!.filter((message) => message.role === "toolResult");
 		expect(results.map((message) => JSON.stringify(message.content))).toEqual([

@@ -749,8 +749,8 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 		const at = revisionKey(review);
 		// A later review of the revision replaced this lens's run, and cleared its sightings; one written now would
 		// count in a verdict whose record says the replacement ran.
-		const named = (await tx.doc(ReviewIndex, lens.review)).reviews[at]?.task;
-		if (runner !== undefined && named !== undefined && named !== runner) {
+		const entry = (await tx.doc(ReviewIndex, lens.review)).reviews[at];
+		if (runner !== undefined && entry !== undefined && entry.task !== runner) {
 			throw new Error("superseded: a later review of this revision replaced this run; stop reporting and finish");
 		}
 		const own = hasSighting(state, id, at, source);
