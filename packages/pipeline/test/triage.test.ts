@@ -381,6 +381,31 @@ describe("triage", () => {
 		expect(fake.provider.state.callCount).toBe(0);
 	});
 
+	it.each([
+		["quick", ["quick", "careful", "deep"]],
+		["skip", ["skip", "quick", "careful", "deep"]],
+	] as const)(
+		"lets a policy floor of %s set on purpose beat the careful default of an untrusted head",
+		async (floor, options) => {
+			const decider = choosing("quick");
+			await open(decider);
+			scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+			const origin: ReviewOrigin = {
+				kind: "pull-request",
+				repository: { owner: "melian-agent", name: "melian" },
+				pullRequest: 62,
+				base: gitIn(repo, "rev-parse", "main"),
+				head: gitIn(repo, "rev-parse", "feature"),
+			};
+			const set = { ...config, lenses: { correctness: { level: { floor } } } } as const;
+
+			const pulled = await review({ decider, origin, config: set });
+
+			expect(decider.requests[0]!.questions[0]!.options).toEqual(options);
+			expect(lensRecord(pulled)).toMatchObject({ status: "ran", level: "quick" });
+		},
+	);
+
 	it("skips a lens only above a floor of skip, and the skip is allowed", async () => {
 		const decider = choosing("skip");
 		await open(decider);
@@ -776,6 +801,101 @@ describe("triage under a review plan", () => {
 		expect(index!.reviews[revision()]!.lenses[0]).toContain(
 			`capped since the plan refuses careful: ${plan.refusal("heavy")}`,
 		);
+	});
+});
+
+describe("escalation under a review plan", () => {
+	const severe = call("report_finding", crashFinding);
+
+	it("judges the escalated run's record on the model it finished on, and asks the plan about that run", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		const medium = `${fake.ref("medium").provider}/medium`;
+		const heavy = `${fake.ref("heavy").provider}/heavy`;
+		const models: MelianConfig["models"] = {
+			medium: { model: medium },
+			heavy: { model: heavy, accept: [heavy], acceptOverridden: false },
+		};
+		const planned = { ...config, models };
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config: planned,
+			routes: { committed: models, overridden: {}, lensTiers: {}, retiered: {} },
+			catalog,
+			credentials,
+			lenses,
+			checks: ["lens.correctness"],
+		});
+		const mark = vi.spyOn(plan, "mark");
+		const judge = vi.spyOn(plan, "judge");
+		scriptConversations(fake, [{ match: correctness, replies: [severe, done, done] }]);
+
+		const reviewed = await reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config: planned,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: ran,
+			decider,
+			plan,
+		});
+
+		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
+		expect(lensRecord(reviewed)!.reason).toContain("escalated from quick to careful");
+		// The map the plan marks from holds the careful run's model, not the quick run's.
+		const marked = mark.mock.calls.at(-1)![1]!;
+		expect(marked.get("correctness")).toEqual([{ scope: "", model: heavy }]);
+		// The refusal callback asked about the escalated run on the model it finished on.
+		expect(judge.mock.calls).toContainEqual(["correctness", "careful", heavy, ""]);
+	});
+
+	it("fails the escalated run's record when it finished on a model the plan refuses", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		const medium = `${fake.ref("medium").provider}/medium`;
+		const heavy = `${fake.ref("heavy").provider}/heavy`;
+		const models: MelianConfig["models"] = {
+			medium: { model: medium },
+			heavy: { model: heavy, accept: [heavy], acceptOverridden: false },
+		};
+		const planned = { ...config, models };
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config: planned,
+			routes: { committed: models, overridden: {}, lensTiers: {}, retiered: {} },
+			catalog,
+			credentials,
+			lenses,
+			checks: ["lens.correctness"],
+		});
+		// The run finishes on heavy, which the plan, as it judges the finished run, now refuses.
+		const real = plan.judge.bind(plan);
+		vi.spyOn(plan, "judge").mockImplementation((name, level, ran, scope) =>
+			ran === heavy && level === "careful"
+				? { refusal: "careful finished on a model policy refuses" }
+				: real(name, level, ran, scope),
+		);
+		scriptConversations(fake, [{ match: correctness, replies: [severe, done, done] }]);
+
+		const reviewed = await reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config: planned,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: ran,
+			decider,
+			plan,
+		});
+
+		expect(lensRecord(reviewed)).toMatchObject({
+			status: "failed",
+			level: "careful",
+			reason: "careful finished on a model policy refuses",
+		});
 	});
 });
 
