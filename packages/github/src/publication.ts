@@ -260,7 +260,8 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	parts.push(summary.join(" "));
 	if (verdict.notRun.length > 0) {
 		const checks = verdict.notRun.map(({ name, status: ran, reason, budgetEnded }) => {
-			const why = reason ?? (budgetEnded === undefined ? undefined : describeBudgetEnd(budgetEnded));
+			const ended = budgetEnded === undefined ? [] : [describeBudgetEnd(budgetEnded)];
+			const why = [...ended, ...(reason === undefined ? [] : [reason])].join("; ") || undefined;
 			return `- ${code(name)} ${ran}${why === undefined ? "" : `: ${inline(why)}`}`;
 		});
 		parts.push(["Checks that did not run:", "", ...checks].join("\n"));

@@ -14,6 +14,7 @@ import {
 	maxEvidenceLocations,
 	maxFailureScenarioLength,
 	maxSnippetBytes,
+	Rendering,
 	type RepositorySource,
 	type Verdict,
 } from "@melian-agent/core";
@@ -1317,7 +1318,7 @@ describe("reviewChangeset", () => {
 			}
 		});
 
-		it("keeps the note on a lens its budget ended when its level counts it as run, and never on an ended record", async () => {
+		it("keeps the note on a lens its budget ended, counted as run or ended, after the budget's description", async () => {
 			writeFiles(
 				repo,
 				Object.fromEntries(
@@ -1364,8 +1365,15 @@ describe("reviewChangeset", () => {
 					});
 				} else {
 					const record = verdict.notRun.find((check) => check.name === "lens.correctness");
-					expect(record).toMatchObject({ status: "ended", budgetEnded: { budget: "tokens", limit: 1 } });
-					expect(record?.reason).toBeUndefined();
+					expect(record).toMatchObject({
+						status: "ended",
+						budgetEnded: { budget: "tokens", limit: 1 },
+						reason: note,
+					});
+					// The description of the budget's end comes first, and the note never replaces it.
+					expect(verdict.render(new Rendering())).toMatch(
+						/lens\.correctness {2}ended at careful: its token budget .*; kept the defects/,
+					);
 				}
 			}
 		});

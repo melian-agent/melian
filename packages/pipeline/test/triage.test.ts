@@ -10,6 +10,7 @@ import {
 	Lens,
 	type LensBudget,
 	type MelianConfig,
+	Rendering,
 	type ScrutinyLevel,
 } from "@melian-agent/core";
 import { FallbackDecider, RecordedDecider } from "@melian-agent/decisions";
@@ -25,6 +26,7 @@ import {
 	openHarness,
 	openSqliteStorage,
 	type Review,
+	type ReviewError,
 	ReviewHarness,
 	type ReviewOrigin,
 	RouteTextModel,
@@ -463,6 +465,17 @@ describe("triage", () => {
 		expect(stored!.failure).toMatch(/…$/);
 	});
 
+	it("keeps the triage note on the record of a lens that did not finish, after the reason it did not", async () => {
+		const decider = new RecordedDecider({});
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [] }]);
+		const error = await review({ decider }).catch((caught: unknown) => caught);
+		const record = (error as ReviewError).verdict!.notRun.find((check) => check.name === "lens.correctness");
+		expect(record!.reason).toBe(
+			"the lens did not finish; triage failed, so it ran at its default level: no answer to correctness in triage is recorded",
+		);
+	});
+
 	it("refuses a decider the harness was not opened with", async () => {
 		await open();
 		await expect(review({ decider: choosing("quick") })).rejects.toMatchObject({ code: "notInstalled" });
@@ -599,6 +612,13 @@ describe("escalation", () => {
 
 		expect(lensRecord(reviewed)).toMatchObject({ status: "ended", level: "quick" });
 		expect(reviewed.verdict.status).toBe("not-reviewed");
+		// The note goes on the ended record too, and renders after the budget's description, never in its place.
+		const capping =
+			"escalation capped at quick, its ceiling: at quick its tools budget ended it before it reported anything";
+		expect(lensRecord(reviewed)!.reason).toBe(`${capping}; ${lightly}`);
+		expect(reviewed.verdict.render(new Rendering())).toMatch(
+			new RegExp(`lens\\.correctness {2}ended at quick: its tool call budget of 1 ran out .*; ${capping}`),
+		);
 	});
 
 	it("reports a severe quick finding with a note when the ceiling caps the escalation", async () => {

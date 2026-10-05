@@ -775,25 +775,27 @@ function settle(first: LensRun, result: LensResult | undefined, rule: Escalation
 }
 
 // `notes` say why the lens ran where it did: hand-offs its instructions left out for size, a triage that failed, and
-// each escalation. They go only on the record of a lens that ran, since an `ended` or `failed` record's reason is why it
-// did not run.
+// each escalation. A record of a lens that did not finish carries them after the reason it did not, and an `ended`
+// record carries them as its reason, which renders after the budget's description, so neither ever replaces it.
 function lensCheck(lens: LensRun, outcome: LensOutcome | undefined, completed: boolean, notes: string[]): CheckRecord {
 	const name = `lens.${lens.name}`;
 	const { level } = lens;
-	if (!completed) return { name, status: "failed", level, reason: "the lens task did not complete" };
+	const noted = notes.length === 0 ? {} : { reason: notes.join("; ") };
+	const failed = (why: string) => [why, ...notes].join("; ");
+	if (!completed) return { name, status: "failed", level, reason: failed("the lens task did not complete") };
 	if (outcome?.status === "done") {
 		const { budgetEnded } = outcome;
-		const noted = notes.length === 0 ? {} : { reason: notes.join("; ") };
 		if (budgetEnded === undefined) return { name, status: "ran", level, ...noted };
 		// A budget's end is reduced coverage, so it leaves the review not reviewed unless the level counts it.
 		if (lens.budget.ended === "count") return { name, status: "ran", level, budgetEnded, ...noted };
-		return { name, status: "ended", level, budgetEnded };
+		return { name, status: "ended", level, budgetEnded, ...noted };
 	}
 	if (outcome?.status === "exhausted") {
 		const error = `tried ${outcome.tried.join(", ")}; the last said: ${outcome.reason}`;
-		return { name, status: "failed", level, reason: "every model of its tier failed", error };
+		return { name, status: "failed", level, reason: failed("every model of its tier failed"), error };
 	}
-	return { name, status: "failed", level, reason: "the lens did not finish", error: outcome?.reason ?? "no outcome" };
+	const error = outcome?.reason ?? "no outcome";
+	return { name, status: "failed", level, reason: failed("the lens did not finish"), error };
 }
 
 // Records for the lenses and decision questions the tier names; the lens step owns `lens.*` and `decisions.*`, so a

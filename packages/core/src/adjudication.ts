@@ -485,7 +485,8 @@ export class Verdict {
 		const parts = [`Verdict: ${rendering.paint(color, label)}${blocking}`];
 		if (this.notRun.length > 0) {
 			const checks = this.notRun.map(({ name, status, level, reason, error, budgetEnded }) => {
-				const why = reason ?? (budgetEnded === undefined ? undefined : describeBudgetEnd(budgetEnded));
+				const ended = budgetEnded === undefined ? [] : [describeBudgetEnd(budgetEnded)];
+				const why = [...ended, ...(reason === undefined ? [] : [reason])].join("; ") || undefined;
 				return [
 					`  ${visibleText(name)}  ${status}${level === undefined ? "" : ` at ${level}`}${why === undefined ? "" : `: ${prose(why, "    ")}`}`,
 					...(error === undefined ? [] : [`    Error: ${prose(error, "      ")}`]),
