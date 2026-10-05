@@ -613,13 +613,18 @@ describe("triage", () => {
 describe("a decider that never answers", () => {
 	it("fails closed at the decision timeout, and every lens runs at its default level", async () => {
 		await reviewHarness?.close(context);
+		reviewHarness = undefined;
 		const registry = createReviewRegistry();
+		let keepAlive: NodeJS.Timeout | undefined;
 		registry.install(
 			decisionExtension(
 				{
 					name: "silent",
 					calibrated: false,
-					decide: () => new Promise<never>(() => setInterval(() => {}, 60_000)),
+					decide: () =>
+						new Promise<never>(() => {
+							keepAlive = setInterval(() => {}, 60_000);
+						}),
 				},
 				50,
 			),
@@ -632,12 +637,17 @@ describe("a decider that never answers", () => {
 		await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
 		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
 
-		const reviewed = await review({
-			decider: { name: "silent", calibrated: false, decide: async () => ({ answers: [] }) },
-		});
+		try {
+			const reviewed = await review({
+				decider: { name: "silent", calibrated: false, decide: async () => ({ answers: [] }) },
+			});
 
-		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
-		expect(lensRecord(reviewed)!.reason).toContain("triage failed, so it ran at its default level");
+			expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
+			expect(lensRecord(reviewed)!.reason).toContain("triage failed, so it ran at its default level");
+		} finally {
+			clearInterval(keepAlive);
+			await harness.close(context);
+		}
 	});
 });
 
@@ -1357,23 +1367,26 @@ describe("the LLM fallback", () => {
 		// Two reviews of one revision on one storage, the second with a fallback on `second`; how often triage asked.
 		async function asked(first: string, second: string): Promise<number> {
 			const dir = mkdtempSync(join(tmpdir(), "melian-triage-"));
-			const requests = scriptConversations(fake, [
-				{ match: fallback, replies: [answer, answer, answer] },
-				{ match: correctness, replies: [done, done, done] },
-			]);
-			for (const id of [first, second]) {
-				await reviewHarness?.close(context);
-				const decider = new FallbackDecider((await RouteTextModel.create(fake.review, [fake.ref(id)]))!);
-				reviewHarness = await ReviewHarness.open(await openSqliteStorage(join(dir, "db.sqlite")), fake.review, {
-					retry: false,
-					decider,
-				});
-				harness = reviewHarness.harness;
-				await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
-				await review({ decider });
+			try {
+				const requests = scriptConversations(fake, [
+					{ match: fallback, replies: [answer, answer, answer] },
+					{ match: correctness, replies: [done, done, done] },
+				]);
+				for (const id of [first, second]) {
+					await reviewHarness?.close(context);
+					const decider = new FallbackDecider((await RouteTextModel.create(fake.review, [fake.ref(id)]))!);
+					reviewHarness = await ReviewHarness.open(await openSqliteStorage(join(dir, "db.sqlite")), fake.review, {
+						retry: false,
+						decider,
+					});
+					harness = reviewHarness.harness;
+					await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+					await review({ decider });
+				}
+				return requests[fallback]!.length;
+			} finally {
+				rmSync(dir, { recursive: true, force: true });
 			}
-			rmSync(dir, { recursive: true, force: true });
-			return requests[fallback]!.length;
 		}
 
 		it("asks again when a later review routes triage to another model", async () => {
