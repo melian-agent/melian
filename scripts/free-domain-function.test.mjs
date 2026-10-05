@@ -57,6 +57,24 @@ describe("the free-domain-function Biome plugin", { timeout: 30_000 }, () => {
 		expect(lint("packages/core/src/scratch.ts", source)).toEqual([1]);
 	});
 
+	it.each(["Comparison", "ExternalFinding"])("reports a free function over a %s, wrapped or on one line", (type) => {
+		const wrapped = [
+			"function render(",
+			`\tvalue: ${type},`,
+			"\tverdict: Verdict,",
+			"): string {",
+			'\treturn "";',
+			"}",
+			"",
+		];
+		expect(lint("packages/cli/src/scratch.ts", wrapped.join("\n"))).toEqual([1]);
+		expect(lint("packages/cli/src/scratch.ts", `function where(values: readonly ${type}[]): void {}\n`)).toEqual([1]);
+	});
+
+	it("does not report a function over a type whose name only starts with a domain type's", () => {
+		expect(lint("packages/core/src/scratch.ts", "function f(error: ComparisonError): void {}\n")).toEqual([]);
+	});
+
 	it("does not report a class method that takes a Finding", () => {
 		const source = "export class Triage {\n\taccept(finding: Finding): void {}\n}\n";
 		expect(lint("packages/core/src/scratch.ts", source)).toEqual([]);
@@ -97,7 +115,18 @@ describe("the free-domain-function exclusion list", () => {
 });
 
 describe("the free-domain-function guardrail's pattern", () => {
-	const types = ["Finding", "ResolvedFinding", "Defect", "Verdict", "Manifest", "Lens", "Revision", "Changeset"];
+	const types = [
+		"Finding",
+		"ResolvedFinding",
+		"Defect",
+		"Verdict",
+		"Manifest",
+		"Lens",
+		"Revision",
+		"Changeset",
+		"Comparison",
+		"ExternalFinding",
+	];
 
 	it.each(types)("matches a free function over a %s", (type) => {
 		expect(guardrailPattern().test(`function f(finding: ${type}): void {}`)).toBe(true);
@@ -105,5 +134,6 @@ describe("the free-domain-function guardrail's pattern", () => {
 
 	it("does not match a type that only starts with a domain type's name", () => {
 		expect(guardrailPattern().test("function f(x: ResolvedFindingX) {}")).toBe(false);
+		expect(guardrailPattern().test("function f(error: ComparisonError) {}")).toBe(false);
 	});
 });
