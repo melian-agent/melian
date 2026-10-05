@@ -105,6 +105,20 @@ describe("a golden's standards and policy", () => {
 		}
 	});
 
+	it("carry every repository lens of Melian's in a tree that carries any, so a golden never runs half the hand-offs", () => {
+		const melian = join(goldensDirectory, "../../..");
+		const own = readdirSync(join(melian, ".melian/lenses")).sort();
+		expect(own).toEqual(expect.arrayContaining(["correctness", "durability", "removed-behaviour"]));
+		const trees = new Map<string, string[]>();
+		for (const copy of readdirSync(goldensDirectory, { recursive: true, withFileTypes: true })) {
+			if (copy.name !== "LENS.golden.md") continue;
+			const tree = join(copy.parentPath, "../../..");
+			trees.set(tree, [...(trees.get(tree) ?? []), basename(copy.parentPath)]);
+		}
+		expect(trees.size).toBeGreaterThan(0);
+		for (const [tree, names] of trees) expect(names.sort(), tree).toEqual(own);
+	});
+
 	it("carry Melian's own full tier, which keeps every check of the default full tier", async () => {
 		const melian = join(goldensDirectory, "../../..");
 		const fullTier = async (policy: string) => {
