@@ -202,12 +202,12 @@ export interface ProviderAuthKinds {
 }
 
 /**
- * The credentials a review reads: the named credentials of the secrets files first, in their order, then Pi's store.
- * The provider's environment variables apply after both, as pi-ai resolves them. A named credential applies when its
- * source is present: a literal key, an environment variable that is set, or a command, which counts as present until
- * it runs, at its provider's first use, once per process. API-key providers receive a key; OAuth-only providers receive
- * a bearer with no refresh token. JWT expiry is read without signature verification, bounded to 30 days ahead; other values get a rolling
- * one-hour lease on every read. A bearer inside the seven-minute cutoff reads as absent. Like Pi's store it never writes.
+ * The credentials a review reads: usable named credentials in precedence order, then Pi's store. The provider's
+ * environment variables apply after both, as pi-ai resolves them. Unread commands count as present during planning;
+ * unlocking runs a selected command once per process and refuses an unusable bearer before review storage opens.
+ * API-key providers receive a key; OAuth-only providers receive a bearer with no refresh token. JWT expiry is read
+ * without signature verification and bounded to 30 days ahead. Other values get a rolling one-hour lease on every
+ * read. A bearer inside the seven-minute cutoff reads as absent. Like Pi's store it never writes.
  */
 export class MelianCredentialStore implements CredentialStore {
 	readonly named: readonly NamedCredential[];

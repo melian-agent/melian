@@ -447,7 +447,7 @@ pi-ai provides providers, OAuth subscription auth, and the model catalogue. Meli
 - **Credential sources**: the [secrets files](#files-a-user-owns), then Pi's credential store, so one `pi` login covers Melian locally, then environment variables; GitHub App installation tokens on the server and Actions hosts.
 - **A credential pool provider** that holds several named credentials per provider and rotates on rate limit or failure, by stacking rules that name credentials. This is how subscriptions stack.
 
-A named credential for an OAuth-only provider is a bearer token, with expiry read from its JWT or one hour from first read, never refreshed by Melian.
+A named credential for an OAuth-only provider is a bearer token, never refreshed by Melian. The [named bearer decision](decisions/2026-10-06-named-bearer-credentials.md) bounds JWT expiry to 30 days ahead and gives other values a rolling one-hour lease. Unusable named values yield to the next before Pi's login. A selected command returning an unusable bearer fails before durable review state is written.
 
 ### The review plan
 
