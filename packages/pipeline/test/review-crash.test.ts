@@ -1,10 +1,10 @@
-import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { Changeset, type Decider, defaultConfig, Lens } from "@melian-agent/core";
+import { Changeset, type Decider, defaultConfig, Lens, type ReviewProvider } from "@melian-agent/core";
 import { RecordedDecider } from "@melian-agent/decisions";
 import {
 	type ConversationId,
@@ -13,7 +13,9 @@ import {
 	type Harness,
 	type Message,
 	openHarness,
+	openPublishHarness,
 	openSqliteStorage,
+	publishReview,
 	ReviewHarness,
 	readFindings,
 	readVerdict,
@@ -72,7 +74,8 @@ async function killWhen(
 		| "spent"
 		| "tokens"
 		| "escalation"
-		| "decision",
+		| "decision"
+		| "replacement",
 	reached: (events: ReturnType<typeof readEvents>) => boolean,
 	database: string,
 	log: string,
@@ -599,7 +602,126 @@ describe("an escalation across a crash", { timeout: 30_000 }, () => {
 	});
 });
 
-describe("a lens task from an earlier selection during triage", { timeout: 30_000 }, () => {
+describe("a lens task from an earlier selection during triage", { timeout: 60_000 }, () => {
+	it("clears the old verdict when a replacement decision commits, even across a crash", async () => {
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const directory = join(repo, ".git", "melian");
+		mkdirSync(directory, { recursive: true });
+		const database = join(directory, `${changeset.id}.sqlite`);
+		const log = join(dir, "replacement.jsonl");
+		await killWhen("replacement", (events) => count(events, "decision-asked") === 1, database, log);
+		expect(count(readEvents(log), "verdict-recorded")).toBe(1);
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "medium" }, { id: "heavy" }] });
+		const pullRequest = {
+			repository: { owner: "test", name: "repo" },
+			number: 62,
+			title: "Test",
+			url: "https://example.invalid/pull/62",
+			state: "open" as const,
+			base: { ref: "main", sha: changeset.revision.base },
+			head: { ref: "feature", sha: changeset.revision.head },
+			fetch: { url: repo, headRef: "feature" },
+		};
+		const provider: ReviewProvider = {
+			name: "fake",
+			pullRequest: vi.fn(async () => pullRequest),
+			postReview: vi.fn(async () => ({ id: "review", threads: {} })),
+			replyResolved: vi.fn(async () => undefined),
+			setStatus: vi.fn(async () => {}),
+			findPublished: vi.fn(async () => ({ threads: {}, replies: {} })),
+		};
+		const publisher = await openPublishHarness(await openSqliteStorage(database), fake.review, provider);
+		harness = publisher.harness;
+		const root = (await harness.root(context)).id;
+		const revision = revisionKey(changeset.revision);
+		expect((await harness.snapshot(ReviewIndex, root, context))!.reviews[revision]!.adjudication).toBeUndefined();
+		expect(await readVerdict(harness, root, revision, context)).toBeUndefined();
+		await expect(
+			publishReview({ harness, changeset, provider, pullRequest, base: changeset.revision.base }),
+		).rejects.toMatchObject({ code: "notReviewed" });
+		expect(provider.postReview).not.toHaveBeenCalled();
+		expect(provider.setStatus).not.toHaveBeenCalled();
+		await publisher.close(context);
+		harness = undefined;
+		const findings = () =>
+			spawnSync(
+				process.execPath,
+				[
+					fileURLToPath(new URL("../../cli/bin/melian.js", import.meta.url)),
+					"findings",
+					"main...feature",
+					"--json",
+				],
+				{
+					cwd: repo,
+					encoding: "utf8",
+					timeout: 60_000,
+					env: {
+						...process.env,
+						MELIAN_STATE_DIR: "",
+						MELIAN_TEST_SCRIPT: "",
+						PI_CODING_AGENT_DIR: dir,
+						XDG_CONFIG_HOME: dir,
+					},
+				},
+			);
+		const absent = findings();
+		expect(absent).toMatchObject({ status: 1, stderr: expect.stringContaining("Melian has no review"), stdout: "" });
+		const decider = new RecordedDecider({
+			triage: {
+				version: "1",
+				answers: { correctness: { distribution: { careful: 1 } }, contracts: { distribution: { careful: 1 } } },
+			},
+		});
+		const resumedDecider: Decider = {
+			name: "parked",
+			calibrated: false,
+			decide: (request) => decider.decide(request),
+		};
+		const reopened = await ReviewHarness.open(await openSqliteStorage(database), fake.review, {
+			retry: false,
+			decider: resumedDecider,
+		});
+		harness = reopened.harness;
+		const medium = fake.ref("medium");
+		const heavy = fake.ref("heavy");
+		const { verdict } = await reviewChangeset({
+			harness,
+			changeset,
+			config: {
+				...defaultConfig,
+				tiers: twoLensTiers,
+				models: {
+					medium: { model: `${medium.provider}/${medium.modelId}` },
+					heavy: { model: `${heavy.provider}/${heavy.modelId}` },
+				},
+			},
+			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
+			standards: [],
+			models: fake.review,
+			decider: resumedDecider,
+			policy: { kind: "revision", commit: changeset.revision.base },
+			origin: {
+				kind: "pull-request",
+				repository: { owner: "test", name: "repo" },
+				pullRequest: 62,
+				base: changeset.revision.base,
+				head: changeset.revision.head,
+			},
+		});
+		expect(await readVerdict(harness, root, revision, context)).toEqual(verdict);
+		expect(fake.provider.state.callCount).toBe(0);
+		await reopened.close(context);
+		harness = undefined;
+		expect(findings().status).toBe(0);
+		const completed = await openPublishHarness(await openSqliteStorage(database), fake.review, provider);
+		harness = completed.harness;
+		await expect(
+			publishReview({ harness, changeset, provider, pullRequest, base: changeset.revision.base }),
+		).resolves.toBeDefined();
+		expect(provider.postReview).toHaveBeenCalledOnce();
+	});
+
 	it("aborts its pending adjudication while a fresh decision chooses another selection", async () => {
 		const database = join(dir, "triage-adjudication.sqlite");
 		const log = join(dir, "triage-adjudication.jsonl");

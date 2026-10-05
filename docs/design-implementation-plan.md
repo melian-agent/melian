@@ -80,7 +80,7 @@ Done when the `melian/review` status is required on `main`, and every pull reque
 
 Open pull requests, in landing order:
 
-1. [#62](https://github.com/melian-agent/melian/pull/62), step 5. The fifteenth Melian round's [answer-cap fix](progress-log/2026-10-06-triage-answer-cap.md) raises the fallback limit to 1024 and tests 65 questions. [Failed-reply regressions](progress-log/2026-10-06-triage-model-failures.md) pin fail-closed triage for error and aborted replies.
+1. [#62](https://github.com/melian-agent/melian/pull/62), step 5. The sixteenth round's [verdict invalidation](progress-log/2026-10-06-triage-verdict-invalidation.md) clears the superseded verdict atomically with replacement triage. The fifteenth Melian round's [answer-cap fix](progress-log/2026-10-06-triage-answer-cap.md) raises the fallback limit to 1024 and tests 65 questions. [Failed-reply regressions](progress-log/2026-10-06-triage-model-failures.md) pin fail-closed triage for error and aborted replies.
 2. [#68](https://github.com/melian-agent/melian/pull/68), step 15 items 1 to 3. Three Melian rounds are done. It waits for [#62](https://github.com/melian-agent/melian/pull/62) to land before its final round.
 3. [#72](https://github.com/melian-agent/melian/pull/72), step 15 items 4 to 7, stacked on [#68](https://github.com/melian-agent/melian/pull/68). Codex wrote it. Its first fix pass is in progress, from three reviews.
 4. [#73](https://github.com/melian-agent/melian/pull/73), step 8, the ledger. Codex wrote it. Four reviews are in, and a fix pass is to come.

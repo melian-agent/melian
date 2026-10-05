@@ -42,6 +42,7 @@ import {
 	adjudicationInput,
 	type ReviewOrigin,
 	readVerdict,
+	VerdictDocument,
 } from "./adjudication.ts";
 import { checksExtension } from "./checks.ts";
 import {
@@ -1153,6 +1154,10 @@ async function triage(
 			// Waiting starts every pending task, before triage can choose the selection that replaces this live run.
 			if (record !== undefined && record.state.status !== "terminal") index.reviews[revision] = { lenses: [] };
 			else if (previous?.adjudication !== undefined) index.reviews[revision] = omit(previous, "adjudication");
+			const verdicts = await tx.doc(VerdictDocument, root.id);
+			delete verdicts.verdicts[revision];
+			if (verdicts.provenance !== undefined) delete verdicts.provenance[revision];
+			if (verdicts.decisions !== undefined) delete verdicts.decisions[revision];
 		}
 		return task;
 	}, context);
