@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderFindingsTerminal, type Verdict } from "@melian-agent/core";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const bin = join(root, "packages/cli/bin/melian.js");
@@ -22,11 +22,6 @@ const gitEnv = {
 
 let scratch: string;
 const repos: string[] = [];
-
-beforeAll(() => {
-	// The test runs the built binary, as a user would, so it builds the CLI and what it imports first.
-	execFileSync("npx", ["tsc", "-b", "packages/cli/tsconfig.build.json"], { cwd: root, stdio: "pipe" });
-}, 120_000);
 
 afterEach(() => {
 	for (const repo of repos.splice(0)) rmSync(repo, { recursive: true, force: true });
