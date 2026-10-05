@@ -29,7 +29,7 @@ import { AdjudicationTask, readDecision, readVerdict } from "../src/adjudication
 import { clearSightings } from "../src/findings.ts";
 import { reviewFiles } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
-import { type VerificationInput, VerificationTask } from "../src/verification.ts";
+import { startVerification, type VerificationInput, VerificationTask } from "../src/verification.ts";
 import { verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
 import { gitIn } from "./fixtures/repo.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
@@ -664,6 +664,66 @@ describe("verification ownership and budgets", () => {
 		);
 		expect((await harness.waitForTask(id, context)).state.outcome).toMatchObject({ status: "completed", result: {} });
 		expect(fake.provider.state.callCount).toBe(calls);
+	});
+	it("refuses a spawned verifier's report after a second verification replaces it", async () => {
+		const stored = await input();
+		stored.candidates[0]!.budget.tools = 20;
+		const entered = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		const requests = scriptConversations(fake, [
+			{
+				match: verifierMarker,
+				replies: [
+					async (messages) => {
+						entered.resolve();
+						await release.promise;
+						return scriptVerifier(messages);
+					},
+					(messages) =>
+						scriptVerifier(messages, {
+							[stored.candidates[0]!.state.claims[0]!.id]: {
+								verdict: "refuted",
+								reason: "A guard prevents the failure.",
+								evidence: [{ file: "src/user.ts", line: 7, role: "context" }],
+							},
+						}),
+					fauxAssistantMessage("Done."),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
+		const first = (await startVerification(harness, stored, selection, false, context))!;
+		const firstFinished = harness.waitForTask(first, context);
+		try {
+			await entered.promise;
+			const next = structuredClone(stored);
+			next.candidates[0]!.budget.tools = 21;
+			const second = (await startVerification(harness, next, selection, true, context))!;
+			expect(second).not.toBe(first);
+			expect((await harness.waitForTask(second, context)).state.outcome).toMatchObject({ status: "completed" });
+			expect((await readFindings(harness, root.id, revision, context))[0]!.properties.verification?.verdict).toBe(
+				"refuted",
+			);
+			release.resolve();
+			await firstFinished;
+			const results = requests[verifierMarker]!.flatMap((messages) =>
+				messages.filter((message) => message.role === "toolResult" && message.isError),
+			);
+			expect(results).toHaveLength(1);
+			expect(textOf(results[0]!)).toContain("superseded: this verification task no longer owns the revision");
+			expect((await readFindings(harness, root.id, revision, context))[0]!.properties.verification?.verdict).toBe(
+				"refuted",
+			);
+			expect((await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.verification!.task).toBe(
+				second,
+			);
+		} finally {
+			release.resolve();
+			await firstFinished;
+		}
 	});
 	it("ends a candidate when its read budget ends", async () => {
 		const stored = await input();
