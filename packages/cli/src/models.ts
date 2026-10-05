@@ -9,6 +9,7 @@ import {
 	type NamedCredential,
 	ReviewPlan,
 	resolveModelForTier,
+	visibleText,
 } from "@melian-agent/core";
 import { FallbackDecider } from "@melian-agent/decisions";
 import {
@@ -130,7 +131,7 @@ export function decisionProviderRefusal(config: MelianConfig): string | undefine
 	const { provider } = config.decisions;
 	return provider === undefined
 		? undefined
-		: `melian.yaml sets decisions.provider to ${provider}, and Melian has no adapter for a decision provider until milestone 4; remove the key, and triage runs on the LLM fallback`;
+		: `melian.yaml sets decisions.provider to ${visibleText(provider)}, and Melian has no adapter for a decision provider until milestone 4; remove the key, and triage runs on the LLM fallback`;
 }
 
 // Under the script variable every lens tier runs on the fake, routed as --model would route it.

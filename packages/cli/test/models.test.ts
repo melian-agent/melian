@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { type Decider, defaultConfig, type LoadedConfig, type MelianConfig, userFiles } from "@melian-agent/core";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fallbackDecider, reviewModels, Triage, triageProviders } from "../src/models.ts";
+import { decisionProviderRefusal, fallbackDecider, reviewModels, Triage, triageProviders } from "../src/models.ts";
 
 const models: MelianConfig["models"] = {
 	light: { model: "anthropic/claude-sonnet-5-5" },
@@ -71,6 +71,17 @@ describe("reviewModels triage", () => {
 		const triage = await fallbackDecider({ ...defaultConfig, models: plan.routes() }, collection);
 
 		expect(triage).toMatchObject({ model: "anthropic/claude-sonnet-4-5" });
+	});
+});
+
+describe("decisionProviderRefusal", () => {
+	it("prints the provider's control characters as visible text", () => {
+		const config = { ...defaultConfig, decisions: { provider: "evil\u001b[31m\nforged" } };
+
+		const refusal = decisionProviderRefusal(config);
+
+		expect(refusal).toContain("decisions.provider to evil\\u001b[31m\\u000aforged,");
+		expect(refusal).not.toMatch(/[\u001b\n]/);
 	});
 });
 
