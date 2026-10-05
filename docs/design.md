@@ -34,7 +34,7 @@ Melian follows Pi's philosophy: a minimal core, extensible by design, small enou
 
 ## Concepts
 
-Built in milestone 1, except level, whose declaration and budgets milestone 2 built, plan, which milestone 2 built, and verification, ledger, and decision, planned for milestone 2 (review of record), and knowledge, planned for milestone 4 (remembers and learns).
+Built in milestone 1, except level, whose declaration and budgets milestone 2 built, plan, which milestone 2 built, and verification, ledger, decision, and comparison, planned for milestone 2 (review of record), and knowledge, planned for milestone 4 (remembers and learns).
 
 | Term | Meaning |
 |---|---|
@@ -54,6 +54,7 @@ Built in milestone 1, except level, whose declaration and budgets milestone 2 bu
 | Ledger | The one comment Melian owns on a pull request, edited in place, recording what each review round did. |
 | Knowledge | A fact learned during review that should outlive the review. |
 | Decision | A typed answer to typed questions. A decision model gives a calibrated probability; without one, a text model answers the same questions in the same shape, uncalibrated. |
+| Comparison | One changeset's findings at one head from external reviewers beside Melian's, the matches between them, and the maintainer's adjudication of each. |
 
 ## Architecture
 
@@ -411,6 +412,7 @@ Jev (TypeSafe) and Clef (Cloudflare, open weights, Apache 2.0) share one request
 - Semantic dismissal matching against the calibration store.
 - Fast-tier semantic checks over the staged diff.
 - Comment intent: addressed to Melian, command and which, question, chatter, injection attempt.
+- [Comparison](#comparison-with-external-reviewers) matching: whether an external reviewer's finding and Melian's name the same defect, refining the mechanical match by site.
 - Knowledge placement.
 - Static result prioritisation.
 - Tool-call guardrail classification in the hook layer, for autofix later.
@@ -495,7 +497,7 @@ The primary host and the only thing the skills call. It has five commands:
 
 A command line Melian cannot read exits `64`.
 
-The CLI embeds the durable harness with SQLite storage under `.git/melian/`, one file per changeset, which holds its dismissals too, or under `MELIAN_STATE_DIR` with a directory per clone, for a host whose sandbox keeps `.git` read-only. `.git/melian/` sits in the git common directory, so every worktree of a clone shares one file per changeset, and so one set of dismissals. A dismissal lives only there: a second maintainer never sees it, and losing the clone loses it, until the state branch lands in milestone 3. It reaches a pull request only when `melian publish` posts the verdict it changed. It uses the developer's own credentials and the review plan the resolver builds, and reads the preference files only from the working tree. A pull request is reviewed under the policy of its base commit. A range whose head is the checked-out commit is reviewed under the working tree's, and any other range under its base's. Publication never posts a review of a range or a working tree: a pull request and a range have separate changeset identities, so they never share storage, and every verdict records its provenance, which publishing checks. `run` and `explain` commands are not yet scheduled. [docs/guidelines/cli.md](guidelines/cli.md) holds the detail.
+The CLI embeds the durable harness with SQLite storage under `.git/melian/`, one file per changeset, which holds its dismissals too, or under `MELIAN_STATE_DIR` with a directory per clone, for a host whose sandbox keeps `.git` read-only. `.git/melian/` sits in the git common directory, so every worktree of a clone shares one file per changeset, and so one set of dismissals. A dismissal lives only there: a second maintainer never sees it, and losing the clone loses it, until the state branch lands in milestone 3. It reaches a pull request only when `melian publish` posts the verdict it changed. It uses the developer's own credentials and the review plan the resolver builds, and reads the preference files only from the working tree. A pull request is reviewed under the policy of its base commit. A range whose head is the checked-out commit is reviewed under the working tree's, and any other range under its base's. Publication never posts a review of a range or a working tree: a pull request and a range have separate changeset identities, so they never share storage, and every verdict records its provenance, which publishing checks. `melian compare`, planned for milestone 2 step 15, imports other reviewers' findings and compares Melian's with them, as [Comparison with external reviewers](#comparison-with-external-reviewers) sets out. `run` and `explain` commands are not yet scheduled. [docs/guidelines/cli.md](guidelines/cli.md) holds the detail.
 
 Publishing from the CLI sets a commit status, context `melian/review`, not a check run, because a user's token cannot create check runs; check runs arrive with the GitHub App on the server and Actions hosts. `passed`, and `findings` with nothing blocking, map to `success` with a description counting the findings; `findings` with a blocking finding maps to `failure`; `not-reviewed` maps to `error` with what did not run. The review itself is posted with the event `COMMENT`, never `APPROVE` or `REQUEST_CHANGES`: Melian never approves, and the status alone says whether anything blocks. From milestone 2 the status links to the [ledger](#the-ledger).
 
@@ -713,7 +715,7 @@ The same file also shows what a team does when a static rule cannot express a co
 
 ## Evals and testing
 
-Built in milestone 1, with the golden corpus still growing. Goldens for the five backlog lenses were written in milestone 2 (review of record), calibration measurement for milestone 4 (calibration), and lens tests in the lens directory are not yet scheduled.
+Built in milestone 1, with the golden corpus still growing. Goldens for the five backlog lenses were written in milestone 2 (review of record). Comparison with external reviewers is planned for milestone 2, and calibration measurement for milestone 4 (calibration). Lens tests in the lens directory are not yet scheduled.
 
 Noise is where every reviewer fails, and the only defence is measurement. The evals package is first-class:
 
@@ -722,8 +724,8 @@ Noise is where every reviewer fails, and the only defence is measurement. The ev
 - Live runs scored on precision and recall per lens and per question set.
 - Calibration measurement for decision models before any threshold default is trusted.
 - Lens tests travel with the lens directory.
-- Comparison reviews: while Melian reviews its own pull requests, Claude Code's review skill and Codex's adversarial review run on the same pull requests as shadow reviewers. Every difference is adjudicated by a maintainer and becomes a golden, positive or negative. The shadows keep running until Melian's recall against them holds for a run of ten pull requests, a criterion the maintainer may tighten.
-- Goldens from the records: each lens in the backlog ships with five goldens drawn from the comparison records, and the records' other differences are listed for scripted goldens.
+- Comparison reviews: while Melian reviews its own pull requests, Claude Code's review skill and Codex's adversarial review run on the same pull requests as shadow reviewers. Every difference is adjudicated by a maintainer, as [Comparison with external reviewers](#comparison-with-external-reviewers) sets out. It becomes a golden, positive or negative, where the adjudication says one is owed. The shadows keep running until Melian's recall against them holds for a run of ten pull requests, a criterion the maintainer may tighten. `melian compare stats` will measure that recall.
+- Goldens from the records: each lens in the backlog ships with five goldens drawn from the comparison records, and the records' other differences are listed for scripted goldens. Every third comparison record is followed by a pull request that drains the backlog, as [the evals guideline](guidelines/evals.md#comparisons) sets out.
 
 The research behind a lens, a threshold, or a stance lives in [research/](research/), one dated note per topic, so the evidence is reviewable beside the decision it supports.
 
@@ -732,6 +734,60 @@ Public benchmarks worth running against: Martian's Code Review Bench (MIT, offli
 A repository built and reviewed entirely by agents, with every reviewer finding addressed by instruction, is a corpus of agent-written pull requests and a standards fixture, not a calibration source: acceptance there is compliance, not judgement. Human labels for calibration have to be produced deliberately.
 
 Unit tests use Vitest and Pi Durable's memory storage.
+
+### Comparison with external reviewers
+
+Planned for milestone 2 step 15. Until it lands, an agent writes each record by hand under `packages/evals/comparisons/`, in the form `melian compare export` will keep.
+
+Problem: Melian learns from other reviewers through comparison records an agent writes by hand, and the records have stopped turning into goldens or checks. Twenty-eight goldens came from them. The records for [pull requests #55](https://github.com/melian-agent/melian/pull/55), [#60](https://github.com/melian-agent/melian/pull/60), and [#61](https://github.com/melian-agent/melian/pull/61) owe none, because every finding sat outside what the lenses' goldens measure. [BACKLOG.md](../packages/evals/goldens/BACKLOG.md) still holds entries from records written in milestone 1. Many external findings came from running code, which no lens does. Nothing shows which findings repeat, so a repeat becomes a check, as `AGENTS.md` requires, only when someone remembers it. Recall and precision live in a sentence at the end of each record, so nothing sums them across records. And the loop cannot leave Melian's repository: the two customer repositories Melian will join run CodeRabbit, whose findings live in GitHub review threads.
+
+Example: on [pull request #61](https://github.com/melian-agent/melian/pull/61), Codex found that a malformed secrets file printed its key (A1). It found it by running the YAML library on a malformed mapping. `trust-boundary` has a rule for a secret that reaches an error and still missed it. The record's Golden column says "No", and nothing says why Melian missed it. A lens that read badly owes a golden; a defect only running the code shows is the verifier's and the tool manifest's to answer. The record cannot say which.
+
+Solution: comparison is a Melian capability. `melian compare` builds it, a stored document holds it, and the markdown record is an export.
+
+**Shape.** An external finding has one shape whatever its source:
+
+- the reviewer, `codex`, `claude-code`, `coderabbit`, or `human`, with a version where known;
+- the file and line range;
+- a title and a body;
+- the reviewer's own severity, if it gave one;
+- a stable source reference: a thread or comment ID and its URL, or the file and position it was read from;
+- when it was posted, and whether its thread was resolved.
+
+Its ID hashes the reviewer and the source reference, so importing again updates a finding rather than adding one. Melian's findings keep their own shape. A comparison holds, for one changeset at one head, the external findings, Melian's findings from its stored review of that head, and the matches between them. It is a `defineDoc()` document in the changeset's storage, beside the findings document, so it lives where dismissals live. A range compares as a pull request does, for reviewers run on a local branch.
+
+**Importers.** Each source is an object with a static `open`, like the other adapters. An import is replay safe: each finding upserts by its ID.
+
+- Review threads. `packages/github` reads a pull request's review threads through GitHub's GraphQL API, keeping comments whose author login is named. REST's comment list carries no thread state, and a resolved thread is how CodeRabbit marks a finding fixed. CodeRabbit posts as `coderabbitai[bot]`, which Melian knows by default; other bots and humans are named by login. A thread's line is GitHub's current placement at the compared head, or its original line, marked outdated, when GitHub no longer places it. CodeRabbit puts nitpicks and comments outside the diff in review bodies, which have no thread. The importer does not parse them, since [the anatomy of CodeRabbit's output](research/2026-10-04-review-output-anatomy.md) warns against parsing markdown, and it reports how many review bodies it skipped.
+- Files, for reviewers that run locally. Codex's adversarial review writes JSON under its own schema, which the importer reads. Any other reviewer, Claude Code's review among them, comes in as a JSON file in the external-finding shape, written by the agent that ran it. Melian never parses a reviewer's prose.
+
+**Matching.** Matching is mechanical first. An external finding matches a Melian finding in the same file whose lines overlap its own or lie within three lines of them. External findings from two reviewers at one site group the same way, so one defect counts once. A finding with no line, or an outdated one, matches nothing until the maintainer matches it by hand. A hand match, or unmatch, is recorded as the maintainer's and overrides the mechanical one. Each external finding ends matched or external-only, and each Melian finding matched or Melian-only. In milestone 4 a `Decider` question, "do these name the same defect?", refines the mechanical match.
+
+**Adjudication.** `melian compare adjudicate` records the maintainer's verdict on one finding, external or Melian's:
+
+- valid, noise, or a duplicate of another finding;
+- a severity on Melian's rubric, beside the reviewer's own;
+- for a valid finding Melian missed, one reason from a fixed list:
+  - `owned-missed`: a lens or check owns it and missed it;
+  - `no-owner`: no lens or check owns it;
+  - `needs-execution`: it was found by running code, not by reading it;
+  - `out-of-scope`: Melian does not review this kind of change;
+- whether a golden is owed, and the lens it targets;
+- optionally, a tag naming the rule that owns the finding, or would.
+
+An adjudication is recorded as a dismissal is: the git author, the time, and a note of at most 1,000 characters, in the changeset's storage. A second adjudication replaces the first and keeps it in its history. Adjudicating a Melian finding as noise does not dismiss it; `melian dismiss` does that.
+
+A golden is owed where the maintainer says so, not for every difference. The reason points the way. `owned-missed` usually owes a golden for the owning lens. A Melian finding judged noise owes a clean golden for the lens that raised it. `no-owner` points at a new rule, guardrail, or lens. `needs-execution` feeds the verifier and the tool manifest, below. `out-of-scope` owes nothing.
+
+**Aggregation.** `melian compare stats` reads every comparison in the clone, or those in a range of pull requests or dates. Per reviewer, it gives recall over the valid distinct findings and precision over what that reviewer raised. An `out-of-scope` miss does not count against Melian's recall, and an unadjudicated finding counts as pending, never guessed. It counts Melian's misses by reason. It clusters repeat findings by rule, by tag, or by normalised title, and a cluster seen on two pull requests is a candidate check, as `AGENTS.md` requires. It says when a drain pull request is due under [the drain rule](guidelines/evals.md#comparisons). `melian compare backlog` lists owed goldens with their target lens and the finding each comes from. It replaces BACKLOG.md's hand-kept list as the source. The file's present entries stay, frozen, until goldens drain them. Its later section is written by `melian compare backlog --markdown`, and the file retires when the frozen part is empty.
+
+**Export.** `melian compare export` writes a pull request's record in today's markdown form. It has a section per reviewer and round, each with its table, and the counts. The records already written stay as history and are never imported. The stored document is the source, and `--json` writes it whole.
+
+**Customer use.** In a repository that runs CodeRabbit, `melian compare "#12"` imports CodeRabbit's threads, reads Melian's stored review of the pull request's head, and matches them. With no stored review it says so and runs nothing. Adjudication stays in the maintainer's clone until the state branch lands in milestone 3. A comparison holds the reviewers' text and Melian's snippets, which quote the repository's code, so it is private. Nothing leaves the clone unless `melian compare export` writes it to a path the maintainer names, and nothing is posted to the pull request. External comment bodies are untrusted data: export escapes them as publication escapes findings, and the milestone 4 matcher reads them only inside prompt boundaries.
+
+**Needs execution.** A miss marked `needs-execution` is explicit scope for two steps. The [verifier](#verification) is judged on whether it would have caught what an executing reviewer caught, so each such miss joins its evals. The [tool manifest](#tool-provisioning) records which tool or run would have caught each, and that list orders the tools after Enola.
+
+[decisions/2026-10-05-comparison-as-a-capability.md](decisions/2026-10-05-comparison-as-a-capability.md) records why.
 
 ## Tech stack
 
@@ -785,7 +841,7 @@ docs/
 
 Milestone 1, the local CLI loop, is complete.
 
-Milestone 2 makes Melian the review of record for Melian. It brings the lens backlog, the verifier, and scrutiny levels with triage through the `Decider` port. It brings the review plan, the files a user owns, `melian dismiss`, the ledger, and the tool manifest with Enola. It ends with a required `melian/review` status on `main`, and takes the issues milestone 1 deferred. Authority over the Melian repository needs lens coverage, a verifier, dismissal, and a required status check, and none of them needs the Actions host. [The classification of 151 accepted findings](research/2026-10-04-review-findings-by-bucket.md) shows why coverage comes first: correctness, at 54, is the only bucket today's lenses plausibly cover, and trust boundary, at 28, and durability, at 17, have no check at all.
+Milestone 2 makes Melian the review of record for Melian. It brings the lens backlog, the verifier, and scrutiny levels with triage through the `Decider` port. It brings the review plan, the files a user owns, `melian dismiss`, the ledger, the tool manifest with Enola, and comparison with external reviewers as a capability. It ends with a required `melian/review` status on `main`, and takes the issues milestone 1 deferred. Authority over the Melian repository needs lens coverage, a verifier, dismissal, and a required status check, and none of them needs the Actions host. [The classification of 151 accepted findings](research/2026-10-04-review-findings-by-bucket.md) shows why coverage comes first: correctness, at 54, is the only bucket today's lenses plausibly cover, and trust boundary, at 28, and durability, at 17, have no check at all.
 
 Milestone 3, "Melian reviews pull requests on GitHub Actions", brings the Actions host completing the manifest from local records, the state branch, container isolation, the credential pool, and Opengrep and gitleaks.
 
@@ -799,6 +855,6 @@ Milestone 4 makes Melian remember and learn: comment commands including dismiss-
 
 - Can a range review seed a pull-request review? They are separate changesets with separate storage, so the findings a maintainer saw locally are raised again when the pull request is reviewed. No milestone is planned to settle it.
 - Should local routes ever apply to a pull-request review on the maintainer's own machine? Today they never do. A pull-request review reads its base's policy, routes included, and never a preference file, so it takes the base's routes, a derived route, or `--model`.
-- How long should the shadow reviewers run? For now, until Melian's recall against them holds for a run of ten pull requests, with every difference still becoming a golden. The criterion is the maintainer's to tighten once the numbers exist.
+- How long should the shadow reviewers run? For now, until Melian's recall against them holds for a run of ten pull requests, with every difference still adjudicated. The criterion is the maintainer's to tighten once the numbers exist.
 
 The scheduled sweep for the Actions host is a deferred decision: it is designed in the hosts section and will be revisited if event-driven recovery proves insufficient in practice.
