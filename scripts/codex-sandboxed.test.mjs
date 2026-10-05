@@ -212,6 +212,24 @@ describe("codex-sandboxed.sh profile", () => {
 		expect(allow).not.toContain("Library/Caches");
 	});
 
+	it("allows and denies every Codex subdirectory the script lists, and creates each one", () => {
+		const source = readFileSync(script, "utf8");
+		const names = /^codex_names=\((.*)\)$/m.exec(source)?.[1].split(" ");
+		expect(names).toHaveLength(8);
+		expect(source.match(/codex_names\[@\]/g)).toHaveLength(3);
+		const text = profile(linked);
+		const allow = block(text, "allow file-write*");
+		const deny = block(text, "deny file-write*");
+		const escaped = `${home}/.codex`.replace(/[[\\.*^$+?(){}|\]]/g, "\\$&");
+		for (const name of names) {
+			expect(allow, name).toContain(`(subpath "${home}/.codex/${name}")`);
+			expect(deny, name).toContain(`^${escaped}/${name}/(.*/)?[.][gG][iI][tT](/|$)`);
+			expect(text, name).toContain(
+				`^${escaped}/${name}/(.*/)?([hH][eE][aA][dD]|[cC][oO][mM][mM][oO][nN][dD][iI][rR])$`,
+			);
+		}
+	});
+
 	it("denies writes to hooks, config, info, pointer files, and Codex's config after the allow", () => {
 		const text = profile(linked);
 		const deny = block(text, "deny file-write*");

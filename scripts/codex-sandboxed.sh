@@ -13,6 +13,9 @@ case $codex_home in
   *) echo "codex-sandboxed: CODEX_HOME must be an absolute path: $codex_home" >&2; exit 64 ;;
 esac
 
+# The Codex subdirectories the profile allows, the deny covers, and the wrapper creates.
+codex_names=(sessions log cache tmp ipc thread-writer-locks mcp-oauth-locks attachments)
+
 # Prints the real path of $1, resolving symlinks in its directory and in its last component;
 # seatbelt matches real paths, so a filter naming a link would miss its target.
 real() {
@@ -77,7 +80,7 @@ dynamic_rules() {
     # git commit <paths> and git commit --only lock next-index-<pid>.lock; git stash writes index.stash.<pid> and its .lock.
     printf '  (regex #"^%s/next-index-[0-9]+\\.lock$")\n' "$(regex_path "$admin")"
     printf '  (regex #"^%s/index\\.stash\\.[0-9]+(\\.lock)?$")\n' "$(regex_path "$admin")"
-    for p in sessions log cache tmp ipc thread-writer-locks mcp-oauth-locks attachments; do
+    for p in "${codex_names[@]}"; do
       filters subpath "$codex/$p"
     done
     for p in history.jsonl session_index.jsonl models_cache.json installation_id version.json \
@@ -111,7 +114,7 @@ dynamic_rules() {
   # before the host could enter it. A scratch directory apart from it persists, so it keeps the deny.
   local codex_dirs=() persistent=("$worktree") d
   if [ "$(real "$scratch")" != "$(real "$run")" ]; then persistent+=("$scratch"); fi
-  for d in sessions log cache tmp ipc thread-writer-locks mcp-oauth-locks attachments; do codex_dirs+=("$codex/$d"); done
+  for d in "${codex_names[@]}"; do codex_dirs+=("$codex/$d"); done
   local trees=("${persistent[@]}" "$common/objects" "$common/refs" "$common/logs" "$admin/logs" \
     ${codex_dirs[@]+"${codex_dirs[@]}"})
   {
@@ -198,7 +201,7 @@ mkdir -p "$scratch/npm-cache"
 scratch=$(real "$scratch")
 # Codex fails on a first run if these are missing, and the profile allows only what exists by name.
 # Create them before the profile: real leaves a path unchanged when its parent is missing.
-for d in sessions log cache tmp ipc thread-writer-locks mcp-oauth-locks attachments; do mkdir -p "$codex_home/$d"; done
+for d in "${codex_names[@]}"; do mkdir -p "$codex_home/$d"; done
 codex_home=$(real "$codex_home")
 CODEX_HOME="$codex_home" "$0" --print-profile "$worktree" "$scratch" "$run" > "$profile"
 
