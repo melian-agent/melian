@@ -22,6 +22,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
+import type { TaskId } from "../src/harness.ts";
 import { SummaryTask, summarizeExtension } from "../src/summarize.ts";
 import { baseAndHead, isolatedGitEnv } from "./fixtures/repo.ts";
 
@@ -122,6 +123,68 @@ describe("walkthrough summaries", () => {
 		expect((await summarize({ config: { ...config, models: {} } }))?.walkthroughs?.[revision]?.summary).toBe(
 			"Changes a value.",
 		);
+	});
+	it("uses and records a credentialed fallback when the first light model has no credentials", async () => {
+		const unavailable = createFakeModels({
+			provider: "uncredentialed",
+			models: [{ id: "first-light" }],
+			auth: "none",
+		});
+		const first = unavailable.ref();
+		const fallback = models.ref("scripted");
+		const fallbackAuth = await models.models.checkAuth(fallback.provider);
+		vi.spyOn(models.models, "getModel").mockImplementation((provider, id) =>
+			provider === first.provider ? unavailable.models.getModel(provider, id) : models.provider.getModel(id),
+		);
+		vi.spyOn(models.models, "checkAuth").mockImplementation((provider, options) =>
+			provider === first.provider
+				? unavailable.models.checkAuth(provider, options)
+				: Promise.resolve(fallbackAuth),
+		);
+		expect(await unavailable.models.checkAuth(first.provider)).toBeUndefined();
+		const used: string[] = [];
+		scriptConversations(models, [
+			{
+				match: "You write Melian's walkthrough",
+				replies: [
+					(_messages, model) => {
+						used.push(model);
+						return success();
+					},
+				],
+			},
+		]);
+		const revision = revisionKey(changeset.revision);
+		const result = await summarize({
+			config: {
+				...config,
+				models: {
+					light: {
+						model: `${first.provider}/${first.modelId}`,
+						fallbacks: [`${fallback.provider}/${fallback.modelId}`],
+					},
+				},
+			},
+		});
+		expect(result?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
+		expect(used).toEqual([fallback.modelId]);
+		const index = defineDoc<{ tasks: Record<string, number>; counted: Record<string, number> }>({
+			kind: "melian.summaries",
+			version: 2,
+			scope: "conversation",
+			history: "rewindable",
+			fork: "asOf",
+			initial: () => ({ tasks: {}, counted: {} }),
+		});
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			const task = (await tx.doc(index, root.id)).tasks[revision]!;
+			expect((await tx.task(task as TaskId))?.input).toMatchObject({
+				root: root.id,
+				revision,
+				model: fallback,
+			});
+		}, context);
 	});
 	it("stores fixed notes for provider errors and no tool call, then stops after two attempts", async () => {
 		const revision = revisionKey(changeset.revision);
