@@ -53,7 +53,7 @@ Melian is our answer. It is built in the open, on [Pi](https://github.com/earend
 
 ## Bring your own models
 
-Melian does not sell you model access. You bring your own subscriptions and API keys, stack several of them, and decide which model does which job: a strong model for the security lens, a cheap one for triage, a fast open-weight decision model for the yes-or-no questions that do not need a paragraph of reasoning. Routing is configurable per repository, and a repository's `melian.yaml` may commit the team's default routes. A contributor without a route's credentials gets the same model from a provider they do hold, or the nearest by price, and every check run that way says so. Run `melian doctor` to see which model each tier would use, and from which credential.
+Melian does not sell you model access. You bring your own subscriptions and API keys, stack several of them, and decide which model does which job. A strong model takes the security lens, a cheap one triage, and a fast open-weight decision model the yes-or-no questions that do not need a paragraph of reasoning. Routing is configurable per repository, and a repository's `melian.yaml` may commit the team's default routes. A contributor without a route's credentials gets the same model from a provider they do hold, or the nearest by price, and every check run that way says so. Run `melian doctor` to see which model each tier would use, and from which credential.
 
 ### Your credentials
 
