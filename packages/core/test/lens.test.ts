@@ -121,6 +121,7 @@ describe("built-in lenses", () => {
 	// Melian's own repository extends two built-ins with a hand-off to its durability lens, which changes their versions.
 	it("give Melian's own durability lens and overrides their versions, under its root melian.yaml's paths too", async () => {
 		const melian = fileURLToPath(new URL("../../../", import.meta.url));
+		// The root melian.yaml narrows these lenses' paths, which changes the version every review of Melian records.
 		const own = [
 			"melian.yaml",
 			...["durability", "correctness", "removed-behaviour"].map((name) => `.melian/lenses/${name}/LENS.md`),
