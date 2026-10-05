@@ -1,0 +1,71 @@
+{
+  "correctness": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/migrate.ts",
+            "revision": "base"
+          },
+          "expectToolResult": "throw error;"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "search",
+          "arguments": {
+            "pattern": "migrate("
+          },
+          "expectToolResult": "src/start.ts:7:"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "src/migrate.ts",
+            "line": 16,
+            "rule": "unhandled-error",
+            "severity": "P1",
+            "explanation": {
+              "what": "migrate logs a failed migration and carries on: it records the migration as applied, runs the next one, and returns as if every migration succeeded.",
+              "why": "This change rewrote the catch around db.exec to log the error message and deleted its rethrow, so the failure never reaches start.",
+              "fix": "Rethrow after logging, so a failed migration is never recorded and start stops before it serves."
+            },
+            "failureScenario": "db.exec rejects 002-user-email's ALTER TABLE, say with SQLITE_BUSY while another process holds the lock. migrate logs the failure, records 002-user-email as applied, runs 003-user-email-index against a table with no email column, which fails and is recorded too, and returns 2, so start serves against a schema without the column. Both migrations are recorded as applied, so no later startup retries them. The base rethrew, and start stopped before serve.",
+            "evidence": [
+              {
+                "file": "src/migrate.ts",
+                "line": 15,
+                "endLine": 17,
+                "role": "cause"
+              },
+              {
+                "file": "src/migrate.ts",
+                "line": 16,
+                "endLine": 17,
+                "role": "context",
+                "revision": "base"
+              },
+              {
+                "file": "src/start.ts",
+                "line": 5,
+                "endLine": 7,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "as introduced"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ]
+}
