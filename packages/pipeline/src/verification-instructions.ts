@@ -26,13 +26,12 @@ export const verifierInstructions = [
 	"Call report_verdict once per claim with its label, the three answers, verdict, reason and any correction. A correction is shown beside the finding and changes none of its fields. You may read_file, search and list_files. You cannot report findings. Finish only after judging every claim.",
 ].join("\n\n");
 
-export const verifierVersion = createHash("sha256")
-	.update(
-		JSON.stringify({
-			instructions: verifierInstructions,
-			schema: reportVerdictSchema,
-			questions: verificationQuestions,
-		}),
-	)
-	.digest("hex")
-	.slice(0, 16);
+export function computeVerifierVersion(
+	instructions = verifierInstructions,
+	schema = reportVerdictSchema,
+	questions = verificationQuestions,
+): string {
+	return createHash("sha256").update(JSON.stringify({ instructions, schema, questions })).digest("hex").slice(0, 16);
+}
+
+export const verifierVersion = computeVerifierVersion();
