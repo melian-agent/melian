@@ -91,7 +91,7 @@ type StoredDecision = { task: number; findingsVersion: number };
 
 // Each revision's verdict, keyed by `revisionKey` of its base and head, on the changeset's root conversation, with what
 // it was decided from and the task that decided it under the same key.
-export const VerdictDocument = defineDoc<{
+type StoredVerdictState = {
 	verdicts: Record<string, StoredVerdict>;
 	provenance?: Record<string, StoredProvenance>;
 	decisions?: Record<string, StoredDecision>;
@@ -100,22 +100,19 @@ export const VerdictDocument = defineDoc<{
 	walkthroughNotes?: Record<string, string>;
 	// Finished or replaced summariser attempts since the last success; pending tasks spend no attempt.
 	walkthroughAttempts?: Record<string, number>;
-}>({
-	kind: "melian.verdicts",
-	version: 5,
-	scope: "conversation",
-	history: "rewindable",
-	fork: "asOf",
-	initial: () => ({ verdicts: {} }),
-	// Version 3 upgrades evidence; version 4 adds details and summaries; version 5 separates fallback notes.
-	migrate: (value, from) => {
+};
+
+class VerdictState {
+	readonly stored: StoredVerdictState;
+
+	constructor(stored: StoredVerdictState) {
+		this.stored = stored;
+	}
+
+	static upgrade(value: unknown, from: number): StoredVerdictState {
 		if (from < 2)
 			throw new Error(`the verdict document needs migrating from version ${from}, which Melian cannot do`);
-		const state = value as {
-			verdicts: Record<string, StoredVerdict>;
-			walkthroughs?: Record<string, Walkthrough>;
-			walkthroughNotes?: Record<string, string>;
-		};
+		const state = value as StoredVerdictState;
 		const walkthroughs = { ...state.walkthroughs };
 		const walkthroughNotes = { ...state.walkthroughNotes };
 		for (const [revision, walkthrough] of Object.entries(walkthroughs)) {
@@ -127,13 +124,28 @@ export const VerdictDocument = defineDoc<{
 		const verdicts = Object.fromEntries(
 			Object.entries(state.verdicts).map(([revision, verdict]) => [revision, Verdict.upgrade(verdict)]),
 		);
-		return {
-			...value,
+		return new VerdictState({
+			...state,
 			verdicts,
 			...(state.walkthroughs === undefined ? {} : { walkthroughs }),
 			...(Object.keys(walkthroughNotes).length === 0 ? {} : { walkthroughNotes }),
-		};
-	},
+		}).toJSON();
+	}
+
+	toJSON(): StoredVerdictState {
+		return this.stored;
+	}
+}
+
+export const VerdictDocument = defineDoc<StoredVerdictState>({
+	kind: "melian.verdicts",
+	version: 5,
+	scope: "conversation",
+	history: "rewindable",
+	fork: "asOf",
+	initial: () => new VerdictState({ verdicts: {} }).toJSON(),
+	// Version 3 upgrades evidence; version 4 adds details and summaries; version 5 separates fallback notes.
+	migrate: (value, from) => VerdictState.upgrade(value, from),
 });
 
 // What the adjudication task decides from. Everything is fixed when the review creates it, so a rerun decides alike.
