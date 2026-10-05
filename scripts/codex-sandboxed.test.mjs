@@ -30,7 +30,7 @@ const failure = (fn) => {
 	return { status: 0, stderr: "" };
 };
 
-describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () => {
+describe("codex-sandboxed.sh profile", () => {
 	let root;
 	let main;
 	let linked;
@@ -276,6 +276,9 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		const refused = failure(() => profile(main));
 		expect(refused.status).toBe(64);
 		expect(refused.stderr).toContain("not a linked worktree");
+	});
+
+	it.skipIf(!sandboxExec)("refuses the main checkout when running a task too", () => {
 		const prompt = join(root, "prompt.md");
 		writeFileSync(prompt, "do it\n");
 		const ran = failure(() => execFileSync(script, [main, "model", prompt], { stdio: "pipe", env: env() }));
@@ -293,7 +296,7 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		}
 	});
 
-	it("refuses an empty prompt instead of running Codex", () => {
+	it.skipIf(!sandboxExec)("refuses an empty prompt instead of running Codex", () => {
 		const prompt = join(root, "empty.md");
 		writeFileSync(prompt, "\n");
 		expect(() => execFileSync(script, [linked, "model", prompt], { stdio: "pipe", env: env() })).toThrow(
