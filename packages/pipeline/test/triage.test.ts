@@ -1679,6 +1679,49 @@ describe("the LLM fallback", () => {
 		});
 	});
 
+	it.each([
+		["error", "503 overloaded_error"],
+		["aborted", undefined],
+	] as const)(
+		"fails closed without recording an answer when the model stops with %s",
+		async (stopReason, errorMessage) => {
+			const decider = await fallbackDecider();
+			await open(decider);
+			const requests = scriptConversations(fake, [
+				{
+					match: fallback,
+					replies: [
+						fauxAssistantMessage(
+							fauxToolCall("answer", {
+								answers: [{ question: "correctness", probabilities: [{ option: "quick", probability: 1 }] }],
+							}),
+							{ stopReason, ...(errorMessage === undefined ? {} : { errorMessage }) },
+						),
+					],
+				},
+				{ match: correctness, replies: [done] },
+			]);
+
+			const reviewed = await review({ decider });
+
+			const reason = `${fake.ref("light").provider}/light failed: ${errorMessage ?? stopReason}`;
+			expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
+			expect(lensRecord(reviewed)!.reason).toContain("triage failed, so it ran at its default level");
+			expect(lensRecord(reviewed)!.reason).toContain(reason);
+			const stored = await readRecordedDecision(
+				harness,
+				(await harness.root(context)).id,
+				revision(),
+				"triage",
+				context,
+			);
+			expect(stored).toMatchObject({ failure: reason });
+			expect(stored!.decision).toBeUndefined();
+			expect(requests[fallback]).toHaveLength(1);
+			expect(requests[correctness]).toHaveLength(1);
+		},
+	);
+
 	it("fails closed to the default level when the model answers in prose", async () => {
 		const decider = await fallbackDecider();
 		await open(decider);
