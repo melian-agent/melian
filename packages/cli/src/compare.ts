@@ -8,6 +8,7 @@ import {
 	ComparisonSet,
 	type ExternalImporter,
 	Lens,
+	LensError,
 	type StoredComparisonAdjudication,
 	visibleText,
 } from "@melian-agent/core";
@@ -154,11 +155,16 @@ export async function adjudicateComparison(
 	const { stored, harness } = await openComparison(io, argument, false);
 	try {
 		if (fields.golden !== undefined && fields.golden !== "none") {
-			const lenses = await Lens.load(stored.changeset.repoRoot, { kind: "worktree" }, []);
-			if (!lenses.some((lens) => lens.name === fields.golden))
-				io.stdout(
-					`Warning: Melian knows no lens ${visibleText(fields.golden)}; golden debt will still target it.\n`,
-				);
+			try {
+				const lenses = await Lens.load(stored.changeset.repoRoot, { kind: "worktree" }, []);
+				if (!lenses.some((lens) => lens.name === fields.golden))
+					io.stdout(
+						`Warning: Melian knows no lens ${visibleText(fields.golden)}; golden debt will still target it.\n`,
+					);
+			} catch (error) {
+				if (!(error instanceof LensError)) throw error;
+				io.stdout(`Warning: could not read lenses: ${visibleText(error.message)}\n`);
+			}
 		}
 		const by = await gitAuthor(stored.changeset.repoRoot, "adjudicated a comparison finding");
 		const comparison = await harness.adjudicate({ ...stored.changeset.revision, target: argument }, id, {

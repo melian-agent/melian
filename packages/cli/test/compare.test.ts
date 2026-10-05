@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -578,6 +578,10 @@ describe("comparison review fixes", { timeout: 60_000 }, () => {
 			env,
 		);
 		expect(warned).toMatchObject({ status: 0, stdout: expect.stringContaining("Melian knows no lens new-lens") });
+		for (const golden of ["correctness", "none"])
+			expect(
+				melian(repo, ["compare", "adjudicate", range, id, "--verdict", "noise", "--golden", golden], env),
+			).toMatchObject({ status: 0, stdout: expect.not.stringContaining("Warning") });
 		for (const verdict of ["noise", "valid"]) {
 			const refused = melian(
 				repo,
@@ -586,6 +590,36 @@ describe("comparison review fixes", { timeout: 60_000 }, () => {
 			);
 			expect(refused).toMatchObject({ status: 1, stderr: expect.stringContaining("only to a valid external") });
 		}
+	});
+
+	it("records a judgement when a lens file cannot be read", () => {
+		const { repo, env, id } = reviewed();
+		expect(melian(repo, ["compare", range], env).status).toBe(0);
+		mkdirSync(join(repo, ".melian/lenses/broken"), { recursive: true });
+		writeFileSync(join(repo, ".melian/lenses/broken/LENS.md"), "no front matter here\n");
+		const result = melian(repo, ["compare", "adjudicate", range, id, "--verdict", "noise", "--golden", "other"], env);
+		expect(result).toMatchObject({
+			status: 0,
+			stdout: expect.stringContaining("Warning: could not read lenses:"),
+		});
+		expect(result.stdout).toContain(`Adjudicated ${id} as noise`);
+	});
+
+	it("adjudicates a stored-round finding after the head moved without a new review", () => {
+		const { repo, files, env, id } = reviewed();
+		const path = codexFile(files, [codexFinding(8, "Null manager")]);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		git(repo, "commit", "--quiet", "--allow-empty", "-m", "next revision");
+		expect(melian(repo, ["findings", range], env).status).toBe(1);
+		const result = melian(repo, ["compare", "adjudicate", range, id, "--verdict", "valid"], env);
+		expect(result).toMatchObject({ status: 0, stderr: "" });
+		const json = JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout) as {
+			comparisons: Record<string, { adjudications?: Record<string, { current: { verdict: string } }> }>;
+		};
+		expect(
+			Object.values(json.comparisons).find((round) => round.adjudications?.[id] !== undefined)?.adjudications?.[id]
+				?.current.verdict,
+		).toBe("valid");
 	});
 
 	it("says an unmatched reasonless finding becomes pending and accepts a duplicate target", () => {
