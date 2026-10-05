@@ -6,6 +6,7 @@ import {
 	Standards,
 	StandardsError,
 	StandardsInventory,
+	StandardsReading,
 	standardsLimits,
 } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -329,5 +330,19 @@ describe.each(sourceKinds)("standards inventory from the %s", (kind) => {
 		]);
 		expect(inventory.count()).toBe(5);
 		expect(inventory.bytes()).toBeGreaterThan(standardsLimits.fileBytes);
+	});
+});
+
+describe("standards omission scope", () => {
+	it("keeps a deep root import ahead of four package sections", () => {
+		const reading = StandardsReading.from([
+			{ path: "docs/deep/root/rules.md", importedBy: "AGENTS.md", content: "r".repeat(standardsLimits.fileBytes) },
+			...["a", "a/b", "a/b/c", "a/b/c/d"].map((directory) => ({
+				path: `${directory}/AGENTS.md`,
+				content: "p".repeat(standardsLimits.fileBytes),
+			})),
+		]);
+		expect(reading.omitted).toEqual(["a/b/c/d/AGENTS.md"]);
+		expect(reading.paths()).toContain("docs/deep/root/rules.md");
 	});
 });

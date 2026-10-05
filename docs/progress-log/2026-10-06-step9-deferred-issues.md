@@ -17,3 +17,5 @@ The manifest guideline now describes automatic checks when records are absent, m
 The standards and run-details paragraphs split the two long sentences flagged in review. Their contracts are unchanged.
 
 Ledger standards paths now use the code renderer, per lens. The ledger regression checks the rendered code spans.
+
+A five-section regression confirms that an imported file uses its importer's scope for omission priority. It keeps the deep root import and drops the deepest package section.
