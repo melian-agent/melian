@@ -181,6 +181,19 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.stdout).toBe("");
 	});
 
+	it("layers the user's own config.yaml over melian.yaml for a range on the checked-out commit", () => {
+		const golden = goldens["correctness-null-deref"]!;
+		const { repo, env } = goldenCheckout(golden);
+		const xdg = userDirectory("credentials: {}\n");
+		const plain = melian(repo, ["review", "main"], { ...env, ...xdg });
+		// A preference that lowers what the review's one P1 finding requires turns a blocking verdict into one that is not.
+		writeFileSync(join(xdg.XDG_CONFIG_HOME, "melian/config.yaml"), "resolution:\n  P1: advisory\n");
+		const preferred = melian(repo, ["review", "main", "--rerun"], { ...env, ...xdg });
+
+		expect(plain.status).toBe(1);
+		expect(preferred.status).toBe(3);
+	});
+
 	it("findings prints the plan the review stored, not one resolved now", () => {
 		const opus = "    model: anthropic/claude-opus-5-5\n";
 		const { repo, env } = goldenCheckout(
@@ -663,6 +676,19 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		expect(doctor.stdout).not.toContain("\u001b");
 		expect(doctor.stdout).not.toContain("pwned");
 		expect(doctor.stdout).not.toMatch(/^ok {4}plan {8}heavy: routed by melian\.yaml$/m);
+	});
+
+	it("fails, naming the credential, for a secrets file whose provider the catalogue does not know", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		const xdg = userDirectory("credentials:\n  typo: { provider: antropic, env: ANTHROPIC_API_KEY }\n");
+		const secrets = join(xdg.XDG_CONFIG_HOME, "melian/secrets.yaml");
+
+		const doctor = melian(repo, ["doctor"], xdg);
+
+		expect(doctor.status).toBe(1);
+		expect(doctor.stdout).toContain(
+			`fail  models      credential typo in ${secrets} names the provider antropic, which Melian's model catalogue does not know\n`,
+		);
 	});
 
 	it("fails when git tracks a maintainer's file under another case of its name", () => {

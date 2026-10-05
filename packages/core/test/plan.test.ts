@@ -192,6 +192,17 @@ describe("ReviewPlan.resolve", () => {
 			expect(derive(priced("small", 4, 20, { contextWindow: 32_000 }), priced("far", 1, 5))).toBe("other/far");
 		});
 
+		it("measures price distance as a ratio, not a difference", () => {
+			// From 24 dollars, 6 is 18 away and 60 is 36 away, but 60 is the nearer ratio, 2.5 to 4.
+			expect(derive(priced("cheap", 1, 5), priced("dear", 10, 50))).toBe("other/dear");
+		});
+
+		it("takes a window between 200,000 tokens and the wanted model's, and no smaller", () => {
+			const mid = priced("mid", 4, 20, { contextWindow: 500_000 });
+			expect(derive(mid, priced("far", 1, 5))).toBe("other/mid");
+			expect(derive(priced("small", 4, 20, { contextWindow: 150_000 }), priced("far", 1, 5))).toBe("other/far");
+		});
+
 		it("breaks a tie in price by the larger context window, then by provider and ID", () => {
 			expect(derive(priced("narrow", 4, 20, { contextWindow: 400_000 }), priced("wide", 4, 20))).toBe("other/wide");
 			expect(derive(priced("b", 4, 20), priced("a", 4, 20))).toBe("other/a");
