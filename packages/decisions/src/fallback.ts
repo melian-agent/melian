@@ -14,15 +14,19 @@ import Value from "typebox/value";
 const answerParameters = Type.Object({
 	answers: Type.Array(
 		Type.Object({
-			question: Type.String({ description: "The question's ID" }),
+			question: Type.String({ maxLength: 64, description: "The question's ID" }),
 			probabilities: Type.Array(
 				Type.Object({
-					option: Type.String(),
+					option: Type.String({ maxLength: 32 }),
 					probability: Type.Number({ minimum: 0, maximum: 1 }),
 				}),
-				{ description: "Every option of the question, each with the probability that it is the right answer" },
+				{
+					maxItems: 16,
+					description: "Every option of the question, each with the probability that it is the right answer",
+				},
 			),
 		}),
+		{ maxItems: 64 },
 	),
 });
 
@@ -73,11 +77,14 @@ export class FallbackDecider implements Decider {
 		const { answers } = called as Static<typeof answerParameters>;
 		for (const { question, probabilities } of answers) {
 			const options = probabilities.map(({ option }) => option);
-			if (new Set(options).size < options.length) {
-				throw new DecisionError("invalidAnswer", `${this.#model.name} weighed an option of ${question} twice`, {
-					question,
-				});
-			}
+			if (new Set(options).size === options.length) continue;
+			// The question ID came back from the model, so it is named only when it is one Melian asked.
+			const asked = request.questions.find((each) => each.id === question)?.id;
+			throw new DecisionError(
+				"invalidAnswer",
+				`${this.#model.name} weighed one option of ${asked ?? "a question"} twice`,
+				asked === undefined ? {} : { question: asked },
+			);
 		}
 		return {
 			answers: answers.map(({ question, probabilities }) => ({

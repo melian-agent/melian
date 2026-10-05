@@ -441,6 +441,28 @@ describe("triage", () => {
 		});
 	});
 
+	it("stores at most 200 characters of a decider's failure", async () => {
+		const decider: Decider = {
+			name: "verbose",
+			calibrated: false,
+			decide: async () => {
+				throw new Error(`model said: ${"x".repeat(500)}`);
+			},
+		};
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		await review({ decider });
+		const stored = await readRecordedDecision(
+			harness,
+			(await harness.root(context)).id,
+			revision(),
+			"triage",
+			context,
+		);
+		expect(stored!.failure).toHaveLength(200);
+		expect(stored!.failure).toMatch(/…$/);
+	});
+
 	it("refuses a decider the harness was not opened with", async () => {
 		await open();
 		await expect(review({ decider: choosing("quick") })).rejects.toMatchObject({ code: "notInstalled" });

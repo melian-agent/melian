@@ -130,15 +130,22 @@ export class Decision {
 		decider: Pick<Decider, "name" | "calibrated">,
 	): Decision {
 		const byQuestion = new Map<string, ChoiceAnswer>();
+		const asked = request.questions.map((question) => question.id);
 		for (const each of answer.answers) {
-			const asked = request.questions.some((question) => question.id === each.question);
-			if (!asked || byQuestion.has(each.question)) {
-				const why = asked ? "twice" : "though it was not asked";
-				throw new DecisionError("invalidAnswer", `${decider.name} answered ${each.question} ${why}`, {
-					question: each.question,
+			// The answer is a model's text, so a message names only what Melian asked, never what came back.
+			const known = request.questions.find((question) => question.id === each.question);
+			if (known === undefined) {
+				throw new DecisionError(
+					"invalidAnswer",
+					`${decider.name} answered a question it was not asked; it was asked ${asked.join(", ")}`,
+				);
+			}
+			if (byQuestion.has(known.id)) {
+				throw new DecisionError("invalidAnswer", `${decider.name} answered ${known.id} twice`, {
+					question: known.id,
 				});
 			}
-			byQuestion.set(each.question, each);
+			byQuestion.set(known.id, each);
 		}
 		const answers = request.questions.map((question) => {
 			const given = byQuestion.get(question.id);
@@ -179,12 +186,15 @@ function normalised(
 	weights: Readonly<Record<string, number>>,
 	decider: string,
 ): StoredDecision["answers"][number] {
+	const offered = question.options.join(", ");
 	const invalid = (detail: string) =>
-		new DecisionError("invalidAnswer", `${decider} answered ${question.id} ${detail}`, { question: question.id });
+		new DecisionError("invalidAnswer", `${decider} answered ${question.id} ${detail}; its options are ${offered}`, {
+			question: question.id,
+		});
 	for (const [option, weight] of Object.entries(weights)) {
-		if (!question.options.includes(option)) throw invalid(`with ${option}, which is not one of its options`);
+		if (!question.options.includes(option)) throw invalid("with an option it does not offer");
 		if (typeof weight !== "number" || !Number.isFinite(weight) || weight < 0) {
-			throw invalid(`with a weight of ${String(weight)} for ${option}`);
+			throw invalid(`with a weight for ${option} that is not a finite number of zero or more`);
 		}
 	}
 	const weightOf = (option: string) => (Object.hasOwn(weights, option) ? weights[option]! : 0);

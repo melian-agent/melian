@@ -44,6 +44,14 @@ const decisionTimeout = 120_000;
 
 export const decisionTaskName = "melian.decision";
 
+// The longest failure a decision stores, which reaches every lens's record and the review body: a provider's error can
+// quote what a model said, and a record is no place for a page of it.
+const maxFailure = 200;
+
+function capped(failure: string): string {
+	return failure.length <= maxFailure ? failure : `${failure.slice(0, maxFailure - 1)}…`;
+}
+
 // One question set's decision on one revision. The decider is asked in the phase and its answer committed with the
 // task's outcome, so a crash before the commit asks again and a repeat call attaches to the task: replay safe. A
 // decider that throws, times out, or answers what was not asked is recorded as a failure, and the caller fails closed.
@@ -62,7 +70,7 @@ export function decisionTask(decider: Decider) {
 					answer = { decision: Decision.parse(request as DecisionRequest, decided, decider).toJSON() };
 				} catch (error) {
 					if (runtime.signal.aborted) throw error;
-					answer = { failure: error instanceof Error ? error.message : String(error) };
+					answer = { failure: capped(error instanceof Error ? error.message : String(error)) };
 				}
 				await runtime.commit(async (tx) => {
 					const document = await tx.doc(DecisionDocument, root);
