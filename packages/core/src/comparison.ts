@@ -87,8 +87,14 @@ export const comparisonUnmatchSchema = Type.Object(
 	strict,
 );
 
-/** The last import from one source: when it ran, how many findings it read, and how many review bodies it skipped. */
-export const comparisonImportSchema = Type.Object({ at: text, findings: count, skippedBodies: count }, strict);
+/**
+ * The last import from one source: when it ran, the IDs of the findings it holds, and how many review bodies it skipped.
+ * The next import from the source replaces them.
+ */
+export const comparisonImportSchema = Type.Object(
+	{ at: text, ids: Type.Array(idSchema), skippedBodies: count },
+	strict,
+);
 
 /**
  * One changeset's comparison at one revision, as the pipeline's document stores it. `melian` lists the IDs of the
@@ -208,11 +214,13 @@ function schemaProblem(schema: TSchema, value: unknown): string | undefined {
 	return error === undefined ? undefined : `${error.instancePath || "(top level)"} ${error.message}`;
 }
 
-// What the ID hashes from the source: the thread, or the file and the finding's ref or position in it.
-function sourceKey(source: ExternalSource): string {
-	return source.kind === "thread"
-		? `thread:${source.thread}`
-		: `file:${source.path}#${source.ref === undefined ? source.position : `ref:${source.ref}`}`;
+// What the ID hashes besides the reviewer: the thread; or the file, and the finding's ref in it, or without one its
+// file, line, and title, so an unchanged finding keeps its ID when a rerun reorders the file.
+function sourceFields(input: ExternalFindingInput, title: string): string[] {
+	const { source } = input;
+	if (source.kind === "thread") return ["thread", source.thread];
+	if (source.ref !== undefined) return ["file", source.path, "ref", source.ref];
+	return ["file", source.path, "finding", input.file ?? "", String(input.line ?? ""), title];
 }
 
 // Whether two line ranges overlap or lie within `siteDistance` lines of each other.
@@ -288,7 +296,10 @@ export class ExternalFinding {
 				path: "/endLine",
 			});
 		}
-		const hashed = [input.reviewer.name, sourceKey(input.source)].map((field) => `${field.length}:${field}`).join("");
+		// Length-prefixed, so no character inside a field can move text from one field to the next.
+		const hashed = [input.reviewer.name, ...sourceFields(input, title)]
+			.map((field) => `${field.length}:${field}`)
+			.join("");
 		const id = createHash("sha256").update(hashed).digest("hex").slice(0, 16);
 		// Through JSON, so an undefined field at any depth is absent, as it will be once stored.
 		const stored = JSON.parse(JSON.stringify({ ...input, id, file, title })) as StoredExternalFinding;
@@ -340,16 +351,33 @@ export class ExternalFinding {
 			);
 		}
 		const file = value as ExternalFindingsFile;
-		return file.findings.map(({ ref, ...finding }, position) =>
-			create(
+		const refs = new Set<string>();
+		const found = new Map<string, ExternalFinding>();
+		for (const [position, { ref, ...finding }] of file.findings.entries()) {
+			if (ref !== undefined) {
+				if (refs.has(ref)) {
+					throw new ComparisonError(
+						"invalidFile",
+						`${path}: finding ${position} repeats an earlier finding's ref`,
+						{
+							path,
+						},
+					);
+				}
+				refs.add(ref);
+			}
+			const created = create(
 				{
 					...finding,
 					reviewer: { ...file.reviewer },
 					source: { kind: "file", path, position, ...(ref === undefined ? {} : { ref }) },
 				},
 				position,
-			),
-		);
+			);
+			// Two findings alike in file, line, and title are one finding.
+			if (!found.has(created.id)) found.set(created.id, created);
+		}
+		return [...found.values()];
 	}
 
 	/**
@@ -521,17 +549,30 @@ export class Comparison {
 	}
 
 	/**
-	 * Adds what `imported` read from `source`, replacing any external finding with the same ID, and records the import
-	 * at `at`. Call {@link Comparison.compare} after, so the new findings are matched.
+	 * Replaces what `source` last imported with what `imported` read, as of `at`. A finding the source no longer reports
+	 * goes, unless another source still holds it, and so do the hand matches and unmatches that name it. A finding it
+	 * reports again keeps its ID and its hand records. Call {@link Comparison.compare} after, so the new findings are
+	 * matched.
 	 */
 	import(source: string, imported: ExternalImport, at: string): void {
-		const external = { ...this.external };
+		const ids = [...new Set(imported.findings.map((finding) => finding.id))];
+		const others = new Set(
+			Object.entries(this.imports)
+				.filter(([name]) => name !== source)
+				.flatMap(([, each]) => each.ids),
+		);
+		const kept = new Set(ids);
+		const gone = new Set(
+			(Object.hasOwn(this.imports, source) ? this.imports[source]!.ids : []).filter(
+				(id) => !kept.has(id) && !others.has(id),
+			),
+		);
+		const external = Object.fromEntries(Object.entries(this.external).filter(([id]) => !gone.has(id)));
 		for (const finding of imported.findings) external[finding.id] = finding.toJSON();
 		this.external = external;
-		this.imports = {
-			...this.imports,
-			[source]: { at, findings: imported.findings.length, skippedBodies: imported.skippedBodies },
-		};
+		this.matches = this.matches.filter((match) => !gone.has(match.external));
+		this.unmatches = this.unmatches.filter((unmatch) => !gone.has(unmatch.external));
+		this.imports = { ...this.imports, [source]: { at, ids, skippedBodies: imported.skippedBodies } };
 	}
 
 	/**

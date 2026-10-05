@@ -58,9 +58,14 @@ describe("ExternalFinding", () => {
 		expect(again.id).toBe(first.id);
 		expect(first.id).toMatch(/^[0-9a-f]{16}$/);
 		expect(external({ reviewer: { name: "human", login: "octocat" }, source } as const).id).not.toBe(first.id);
+		// Without a ref, a file's finding is known by its file, line, and title, never its position.
 		const file = { kind: "file", path: "codex.json", position: 0 } as const;
-		expect(external({ source: file }).id).toBe(external({ source: file, line: 99 }).id);
-		expect(external({ source: { ...file, ref: "A1" } }).id).not.toBe(external({ source: file }).id);
+		expect(external({ source: file }).id).toBe(external({ source: { ...file, position: 7 } }).id);
+		expect(external({ source: file }).id).not.toBe(external({ source: file, line: 99 }).id);
+		expect(external({ source: file }).id).not.toBe(external({ source: file, title: "another" }).id);
+		const ref = { ...file, ref: "A1" } as const;
+		expect(external({ source: ref }).id).toBe(external({ source: ref, line: 99, title: "edited" }).id);
+		expect(external({ source: ref }).id).not.toBe(external({ source: file }).id);
 	});
 
 	it("keeps a title to its first line and a bounded length, and its file in canonical form", () => {
@@ -148,6 +153,30 @@ describe("ExternalFinding", () => {
 			"x.json",
 		);
 		expect([...finding!.title]).toHaveLength(maxExternalTitleLength);
+	});
+
+	it("refuses a file that repeats a ref, and keeps one of two findings alike", () => {
+		expect(() =>
+			ExternalFinding.fromFile(
+				{
+					reviewer: { name: "codex" },
+					findings: [
+						{ ref: "A1", title: "one", body: "" },
+						{ ref: "A1", title: "two", body: "" },
+					],
+				},
+				"x.json",
+			),
+		).toThrow(
+			expect.objectContaining({
+				code: "invalidFile",
+				message: "x.json: finding 1 repeats an earlier finding's ref",
+			}),
+		);
+		const twice = { file: "src/a.ts", line: 3, title: "same", body: "" };
+		expect(
+			ExternalFinding.fromFile({ reviewer: { name: "codex" }, findings: [twice, twice] }, "x.json"),
+		).toHaveLength(1);
 	});
 
 	it("refuses a file in neither shape, naming the file and what is wrong", () => {
@@ -295,21 +324,55 @@ describe("Comparison matching", () => {
 
 	it("updates a re-imported finding in place rather than adding another, and records each source's import", () => {
 		const finding = melian();
-		const comparison = compared([external({ source: { kind: "file", path: "codex.json", position: 0 } })], [finding]);
-		comparison.import(
-			"file:codex.json",
-			{
-				findings: [external({ source: { kind: "file", path: "codex.json", position: 0 }, line: 60 })],
-				skippedBodies: 2,
-			},
-			"later",
-		);
+		const source = { kind: "file", path: "codex.json", position: 0, ref: "A1" } as const;
+		const comparison = compared([external({ source })], [finding]);
+		const moved = external({ source, line: 60 });
+		comparison.import("file:codex.json", { findings: [moved], skippedBodies: 2 }, "later");
 		comparison.compare([finding]);
 		expect(comparison.externalFindings()).toHaveLength(1);
 		expect(comparison.externalFindings()[0]!.line).toBe(60);
 		expect(comparison.effectiveMatches()).toEqual([]);
 		expect(comparison.importsBySource()).toEqual({
-			"file:codex.json": { at: "later", findings: 1, skippedBodies: 2 },
+			"file:codex.json": { at: "later", ids: [moved.id], skippedBodies: 2 },
 		});
+	});
+
+	it("replaces what a source last imported, dropping a withdrawn finding and its hand records", () => {
+		const finding = melian();
+		const other = melian({ snippet: "eval(other)", startLine: 40, endLine: 40 });
+		const file = (line: number, title: string) => ({ file: "src/run.ts", line, title, body: "b" });
+		const first = ExternalFinding.fromFile(
+			{ reviewer: { name: "codex" }, findings: [file(12, "kept"), file(40, "withdrawn"), file(90, "also gone")] },
+			"codex.json",
+		);
+		const comparison = compared([], [finding, other]);
+		comparison.import("file:codex.json", { findings: first, skippedBodies: 0 }, "t1");
+		comparison.compare([finding, other]);
+		comparison.match(first[1]!.id, other.id, "M", "t2");
+		comparison.unmatch(first[2]!.id, finding.id, "M", "t2");
+		const second = ExternalFinding.fromFile(
+			{ reviewer: { name: "codex" }, findings: [file(12, "kept")] },
+			"codex.json",
+		);
+
+		comparison.import("file:codex.json", { findings: second, skippedBodies: 0 }, "t3");
+		comparison.compare([finding, other]);
+
+		expect(second[0]!.id).toBe(first[0]!.id);
+		expect(comparison.externalFindings().map((each) => each.id)).toEqual([first[0]!.id]);
+		expect(comparison.toJSON().matches).toEqual([{ external: first[0]!.id, melian: finding.id, kind: "site" }]);
+		expect(comparison.toJSON().unmatches).toEqual([]);
+		expect(comparison.importsBySource()["file:codex.json"]!.ids).toEqual([first[0]!.id]);
+	});
+
+	it("keeps a finding another source still holds when one source withdraws it", () => {
+		const shared = external({
+			source: { kind: "thread", thread: "PRRT_1", comment: "1", url: "https://github.com/o/r/pull/1#r1" },
+		});
+		const comparison = compared([], [melian()]);
+		comparison.import("github:coderabbitai[bot]", { findings: [shared], skippedBodies: 0 }, "t1");
+		comparison.import("github:coderabbitai", { findings: [shared], skippedBodies: 0 }, "t2");
+		comparison.import("github:coderabbitai[bot]", { findings: [], skippedBodies: 0 }, "t3");
+		expect(comparison.externalFindings().map((each) => each.id)).toEqual([shared.id]);
 	});
 });

@@ -424,7 +424,7 @@ type StoredComparison = {
 	melian: string[]; // the IDs of verdict.all() in the stored review: read from it, never copied
 	matches: { external: string; melian: string; kind: "site" | "hand"; by?: string; at?: string }[];
 	unmatches: { external: string; melian: string; by: string; at: string }[];
-	imports: Record<string, { at: string; findings: number; skippedBodies: number }>; // the last import, by source
+	imports: Record<string, { at: string; ids: string[]; skippedBodies: number }>; // the last import, by source
 };
 
 type StoredExternalFinding = {
@@ -450,7 +450,9 @@ A source is named by a string: `github:<login>` for a pull request's review thre
 
 Melian's findings are referenced by ID only. Problem: a copy of each finding would go stale when a dismissal decides the verdict again, and it would duplicate the snippets that quote the repository. Solution: `comparison.compare(verdict.all())` records the IDs of the stored review's findings, live and dismissed, each time it runs, and a reader takes the findings from the review.
 
-An external finding's ID is the first 16 hex digits of a sha256 over the length-prefixed reviewer name and source key, as `findingId` hashes its fields: `thread:<node ID>` for a thread, `file:<path>#<position>` for a file, or `file:<path>#ref:<ref>` when the file gives the finding a `ref`. Importing again upserts by ID, so an edited thread updates its finding and a re-run reviewer's file replaces its own. Neither the version, the lines, nor the text enters the ID.
+An external finding's ID is the first 16 hex digits of a sha256 over length-prefixed fields, as `findingId` hashes its own: the reviewer's name and the thread's node ID; or the reviewer's name, the file's path, and the finding's `ref`; or, for a finding without a `ref`, the path, the finding's file and line, and its title. Problem: a finding known by its position in the file took another finding's ID when a rerun dropped one above it, and a hand match moved with the ID. Solution: a finding without a `ref` is known by what it says, so an unchanged finding keeps its ID across reruns and a changed one is new. Two findings alike in file, line, and title are one, and a file that repeats a `ref` is `ComparisonError` `invalidFile`. Neither the version nor the body enters the ID.
+
+`comparison.import(source, imported, at)` replaces what the source last imported. A finding it no longer reports goes, unless another source still holds it, and so do the hand matches and unmatches that name it, so a re-run reviewer's file replaces its own and an edited thread updates its finding. `imports` keeps each source's IDs for that, and the CLI reports the count it stored.
 
 `ExternalFinding.create` puts the file in canonical form, refuses one that is not a repository-relative path and an `endLine` before `line` or without one with `ComparisonError` `invalidFinding`, and keeps the title to its first non-blank line, cut at `maxExternalTitleLength` with an ellipsis. Everything an external finding holds is untrusted: the CLI prints it through `visibleText`, and export will escape it as publication escapes findings.
 

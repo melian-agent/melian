@@ -146,7 +146,8 @@ export async function compare(io: Io, argument: string, sources: readonly Import
 		for (const { source, imported } of read) {
 			const bodies = imported.skippedBodies === 1 ? "1 review body" : `${imported.skippedBodies} review bodies`;
 			const skipped = imported.skippedBodies > 0 ? `, skipping ${bodies} without a thread` : "";
-			io.stdout(`Imported ${imported.findings.length} from ${visibleText(source)}${skipped}.\n`);
+			const stored = comparison.importsBySource()[source]?.ids.length ?? 0;
+			io.stdout(`Imported ${stored} from ${visibleText(source)}${skipped}.\n`);
 		}
 		const root = (await harness.harness.root(context)).id;
 		const verdict = await readVerdict(harness.harness, root, revisionKey(revision), context);
