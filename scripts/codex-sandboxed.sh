@@ -117,9 +117,12 @@ profile=$(mktemp "${tmpdir%/}/codex-seatbelt.XXXXXX")
 run=$(real "$(mktemp -d "${tmpdir%/}/codex-run.XXXXXX")")
 trap 'rm -rf "$profile" "$run"' EXIT
 scratch=${5:-${CODEX_SANDBOX_SCRATCH:-$run}}
+# Create scratch before resolving it: real leaves a path unchanged when its parent is missing, and
+# npm would resolve a relative cache path inside the worktree.
+mkdir -p "$scratch/npm-cache"
+scratch=$(real "$scratch")
 "$0" --print-profile "$worktree" "$scratch" "$run" > "$profile"
 # Codex fails on a first run if these are missing, and the profile allows only what exists by name.
-mkdir -p "$scratch/npm-cache"
 for d in sessions log cache tmp ipc thread-writer-locks mcp-oauth-locks attachments; do mkdir -p "$HOME/.codex/$d"; done
 
 # The sandbox confines writes, not secrets; pass only what a task needs and drop the rest, so an

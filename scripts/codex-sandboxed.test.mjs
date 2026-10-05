@@ -340,6 +340,28 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			expect(execFileSync("ls", [join(root, "tmp")]).toString()).not.toMatch(/codex-run\./);
 			expect(execFileSync("ls", [join(root, "tmp")]).toString()).not.toMatch(/codex-seatbelt/);
 		});
+
+		it("makes a relative scratch directory absolute for the profile and the npm cache", () => {
+			const relBin = join(root, "rel-bin");
+			mkdirSync(relBin);
+			writeFileSync(
+				join(relBin, "codex"),
+				'#!/bin/sh\necho "cache:$npm_config_cache"\ntouch "$npm_config_cache/probe" && echo cache-ok\n',
+			);
+			chmodSync(join(relBin, "codex"), 0o755);
+			const prompt = join(root, "rel.md");
+			writeFileSync(prompt, "go\n");
+			const log = join(root, "rel.log");
+			execFileSync(script, [linked, "m", prompt, log, "rel-scratch"], {
+				stdio: "pipe",
+				cwd: root,
+				env: { ...env(), PATH: `${relBin}:${process.env.PATH}` },
+			});
+			const out = readFileSync(log, "utf8");
+			expect(out).toContain(`cache:${root}/rel-scratch/npm-cache\n`);
+			expect(out).toContain("cache-ok");
+			expect(existsSync(join(linked, "rel-scratch"))).toBe(false);
+		});
 	});
 });
 
