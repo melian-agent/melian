@@ -17,8 +17,8 @@ test("lists only the unpaid invoices, in the order they were saved", () => {
 	store.save(new Invoice("inv-1", "Acme", 12_500, false));
 	store.save(new Invoice("inv-2", "Globex", 4_000, true));
 	store.save(new Invoice("inv-3", "Initech", 900, false));
-	assert.deepEqual(
-		store.unpaid().map((invoice) => invoice.id),
-		["inv-1", "inv-3"],
-	);
+	assert.deepEqual(store.unpaid(), [
+		new Invoice("inv-1", "Acme", 12_500, false),
+		new Invoice("inv-3", "Initech", 900, false),
+	]);
 });
