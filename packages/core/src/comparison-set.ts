@@ -121,7 +121,7 @@ export class ComparisonSet {
 
 	/**
 	 * Current debt once per changeset and finding, taking its newest judgement across rounds, even from a round that
-	 * has since dropped the finding. A discharged golden stays discharged; a finding no round holds owes nothing.
+	 * has since dropped the finding. A discharged golden stays discharged; a finding no round of the changeset holds owes nothing.
 	 */
 	backlog(): OwedGolden[] {
 		const latest = new Map<string, { entry: ComparisonEntry; id: string; record: ComparisonAdjudicationRecord }>();
@@ -132,9 +132,11 @@ export class ComparisonSet {
 					latest.set(key, { entry, id, record });
 			}
 		}
+		const heldBy = (changeset: string, id: string) =>
+			this.entries.some((each) => each.changeset === changeset && each.comparison.holds(id));
 		return [...latest.values()]
 			.flatMap(({ entry, id, record }) =>
-				!entry.comparison.holds(id) || record.current.golden === undefined || record.current.golden === "none"
+				!heldBy(entry.changeset, id) || record.current.golden === undefined || record.current.golden === "none"
 					? []
 					: [
 							{

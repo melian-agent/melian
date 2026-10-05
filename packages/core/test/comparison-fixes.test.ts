@@ -245,6 +245,29 @@ describe("comparison review fixes", () => {
 		).toEqual([]);
 	});
 
+	it("keeps a debt while any round of the changeset still holds the finding", () => {
+		const external = report();
+		const one = Comparison.of({ ...revision, head: "11".repeat(20) });
+		one.import("file:codex.json", { findings: [external], skippedBodies: 0 }, "2026-10-01T00:00:00Z");
+		one.record("2026-10-01T00:00:00Z", "a");
+		one.adjudicate(external.id, {
+			by: by.by,
+			at: "2026-10-01T00:00:00Z",
+			verdict: "valid",
+			reason: "no-owner",
+			golden: "correctness",
+		});
+		const two = Comparison.of({ ...revision, head: "22".repeat(20) });
+		two.import("file:codex.json", { findings: [], skippedBodies: 0 }, "2026-10-02T00:00:00Z");
+		two.record("2026-10-02T00:00:00Z", "a");
+		expect(
+			new ComparisonSet([
+				{ changeset: "a", comparison: one },
+				{ changeset: "a", comparison: two },
+			]).backlog(),
+		).toMatchObject([{ id: external.id, lens: "correctness" }]);
+	});
+
 	it("groups reviewer names and case-folded logins independently of versions", () => {
 		const reports = [
 			report({ reviewer: { name: "coderabbit", login: "CodeRabbitAI[bot]", version: "1" }, line: 10 }),
