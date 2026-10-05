@@ -675,7 +675,7 @@ describe("a decision task a later review replaced", { timeout: 30_000 }, () => {
 
 		const asked: string[] = [];
 		const decider: Decider = {
-			name: "counting",
+			name: "parked",
 			calibrated: false,
 			decide: async () => {
 				asked.push("asked");
@@ -693,6 +693,8 @@ describe("a decision task a later review replaced", { timeout: 30_000 }, () => {
 		});
 		const crashed = (await replace.inspect(context)).tasks.find((task) => task.record.kind === "melian.decision");
 		expect(crashed).toBeDefined();
+		const input = crashed!.record.input as unknown as { key: string };
+		expect(JSON.parse(input.key).decider).toBe(decider.name);
 		const root = await replace.root(context);
 		await root.commit(async (tx) => {
 			const document = await tx.doc(DecisionDocument, root.id);
@@ -711,5 +713,9 @@ describe("a decision task a later review replaced", { timeout: 30_000 }, () => {
 
 		expect(settled.state.outcome.status).toBe("aborted");
 		expect(asked).toEqual([]);
+		const recorded = await harness.snapshot(DecisionDocument, root.id, context);
+		expect(recorded!.decisions[reviewedRevision()]!.triage).toMatchObject({ task: 999_999 });
+		expect(recorded!.decisions[reviewedRevision()]!.triage!.decision).toBeUndefined();
+		expect(recorded!.decisions[reviewedRevision()]!.triage!.failure).toBeUndefined();
 	});
 });
