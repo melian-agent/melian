@@ -35,6 +35,14 @@ check_path() {
   esac
 }
 
+# Prints the real path of $1 escaped for a seatbelt regex.
+regex_path() {
+  local r
+  r=$(real "$1")
+  check_path "$r"
+  printf '%s\n' "$r" | sed 's/[][\.*^$+?(){}|]/\\&/g'
+}
+
 filters() {
   local kind=$1 p r; shift
   for p in "$@"; do
@@ -83,13 +91,25 @@ dynamic_rules() {
   filters literal "$common/config" "$common/config.lock" "$admin/commondir" "$admin/gitdir" "$admin/locked" \
     "$admin/config.worktree" "$codex/config.toml" "$codex/auth.json"
   filters subpath "$codex/hooks"
-  # Each component is spelt out in both cases: APFS ignores case, and git finds a repository at "<dir>/.GIT".
-  local wt_re
-  wt_re=$(real "$worktree" | sed 's/[][\.*^$+?(){}|]/\\&/g')
-  printf '  (regex #"^%s/.*/[.][gG][iI][tT](/|$)")\n' "$wt_re"
-  printf '  (regex #"^%s/[.][gG][iI][tT]$")\n' "$wt_re"
-  # Git also takes any directory holding HEAD, objects/ and refs/ as a bare repository, whose config could run a program.
-  printf '  (regex #"^%s/.*/[hH][eE][aA][dD]$")\n' "$wt_re"
+  # No allowed subtree may hold a repository a host could later enter through a symlink: a repository
+  # needs a .git directory, or a HEAD file beside objects/ and refs/, and its config could run a program.
+  # Each name is spelt out in both cases: APFS ignores case, and git finds "<dir>/.GIT".
+  # Git itself never writes a .git component. It writes HEAD under refs/ and logs/ (origin/HEAD,
+  # logs/HEAD), so those subtrees deny an objects component instead, which a repository also needs.
+  local codex_dirs=() d
+  for d in sessions log cache tmp ipc thread-writer-locks mcp-oauth-locks attachments; do codex_dirs+=("$codex/$d"); done
+  {
+    for p in "$worktree" "$scratch" "$run" "$common/objects" "$common/refs" "$common/logs" "$admin/logs" \
+      ${codex_dirs[@]+"${codex_dirs[@]}"}; do
+      printf '  (regex #"^%s/(.*/)?[.][gG][iI][tT](/|$)")\n' "$(regex_path "$p")"
+    done
+    for p in "$worktree" "$scratch" "$run" "$common/objects" ${codex_dirs[@]+"${codex_dirs[@]}"}; do
+      printf '  (regex #"^%s/(.*/)?[hH][eE][aA][dD]$")\n' "$(regex_path "$p")"
+    done
+    for p in "$common/refs" "$common/logs" "$admin/logs"; do
+      printf '  (regex #"^%s/(.*/)?[oO][bB][jJ][eE][cC][tT][sS](/|$)")\n' "$(regex_path "$p")"
+    done
+  } | awk '!seen[$0]++'
   echo ")"
 
   echo "(deny file-read*"

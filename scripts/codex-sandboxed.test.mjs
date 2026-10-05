@@ -162,9 +162,6 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			`(literal "${admin}/gitdir")`,
 			`(literal "${admin}/locked")`,
 			`(literal "${admin}/config.worktree")`,
-			`(regex #"^${linked.replace(/[[\].*^$+?(){}|\\]/g, "\\$&")}/.*/[.][gG][iI][tT](/|$)")`,
-			`(regex #"^${linked.replace(/[[\].*^$+?(){}|\\]/g, "\\$&")}/[.][gG][iI][tT]$")`,
-			`(regex #"^${linked.replace(/[[\].*^$+?(){}|\\]/g, "\\$&")}/.*/[hH][eE][aA][dD]$")`,
 			`(literal "${home}/.codex/config.toml")`,
 			`(literal "${home}/.codex/auth.json")`,
 			`(subpath "${home}/.codex/hooks")`,
@@ -172,6 +169,26 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			expect(deny).toContain(path);
 		}
 		expect(text.indexOf("(deny file-write*")).toBeGreaterThan(text.indexOf("(allow file-write*"));
+	});
+
+	it("denies a planted repository in every writable subtree, with the path escaped", () => {
+		const deny = block(profile(linked), "deny file-write*");
+		const esc = (path) => path.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
+		const dotGit = (path) => `(regex #"^${esc(path)}/(.*/)?[.][gG][iI][tT](/|$)")`;
+		const head = (path) => `(regex #"^${esc(path)}/(.*/)?[hH][eE][aA][dD]$")`;
+		const objects = (path) => `(regex #"^${esc(path)}/(.*/)?[oO][bB][jJ][eE][cC][tT][sS](/|$)")`;
+		expect(linked).toContain("a+b (c).d");
+		expect(deny).toContain("a\\+b \\(c\\)\\.d");
+		const codex = [`${home}/.codex/cache`, `${home}/.codex/sessions`, `${home}/.codex/attachments`];
+		const common = `${main}/.git`;
+		for (const path of [linked, run, `${common}/objects`, `${common}/refs`, `${common}/logs`, `${admin}/logs`, ...codex]) {
+			expect(deny).toContain(dotGit(path));
+		}
+		for (const path of [linked, run, `${common}/objects`, ...codex]) expect(deny).toContain(head(path));
+		for (const path of [`${common}/refs`, `${common}/logs`, `${admin}/logs`]) {
+			expect(deny).toContain(objects(path));
+			expect(deny).not.toContain(head(path));
+		}
 	});
 
 	it("denies reads of credentials and .env files, but not Codex's auth.json", () => {
@@ -328,6 +345,25 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			expect(failure(() => sh(linked, "mkdir -p deep/er/.git")).status).not.toBe(0);
 			expect(existsSync(join(linked, "sub", ".git"))).toBe(false);
 			sh(linked, "echo ok > sub/file");
+		});
+
+		it("cannot plant a repository in scratch, the object store, the refs, or Codex's directories", () => {
+			mkdirSync(join(home, ".codex", "cache"), { recursive: true });
+			mkdirSync(join(admin, "logs"), { recursive: true });
+			const planted = [
+				`mkdir -p '${run}/x/.git'`,
+				`echo x > '${run}/x/HEAD'`,
+				`mkdir -p '${main}/.git/objects/x/.git'`,
+				`echo x > '${main}/.git/objects/x/HEAD'`,
+				`mkdir -p '${main}/.git/refs/x/objects'`,
+				`mkdir -p '${admin}/logs/x/objects'`,
+				`mkdir -p '${home}/.codex/cache/x/.git'`,
+			];
+			for (const command of planted) expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
+			for (const path of [join(run, "x", ".git"), join(run, "x", "HEAD"), join(main, ".git", "refs", "x", "objects")])
+				expect(existsSync(path)).toBe(false);
+			sh(linked, "echo z > h && git add h && git commit -q -m after-plant");
+			expect(git(linked, "log", "-1", "--format=%s").toString().trim()).toBe("after-plant");
 		});
 
 		it("cannot create a .git in another case, nested or beside the pointer file", () => {
