@@ -2,6 +2,10 @@
 
 The github package implements core's `ReviewProvider` port for GitHub through Octokit, renders what a review posts, and reads Melian's markers back. The port is the class `GitHubProvider`, one per repository, which `createGitHubProvider` constructs. It holds the Octokit client and the token's user once it learns it; the publisher secret is not its state, and travels with each call, since it belongs to the changeset. The pipeline's publish task decides when to post and records each post; this package decides how a post looks and where GitHub puts it. [design.md](../design.md#cli) says why the CLI sets a commit status rather than a check run.
 
+## Identity reads
+
+`pullRequest` carries its author login. `login()` reads `/user` once and remembers a refusal. `permission(login)` reads the collaborator permission endpoint for that repository. A refused lookup or unknown role reads as absent. GitHub maps maintain to write and triage to read in that endpoint's permission field.
+
 ## Posting
 
 - One review per revision, with the event `COMMENT`. Never `APPROVE` or `REQUEST_CHANGES`: Melian never approves, and the status, not the review, says whether a change may merge.

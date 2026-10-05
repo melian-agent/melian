@@ -705,6 +705,8 @@ describe("documents stored before evidence became a list", () => {
 				fetch: { url: "https://github.com/melian-agent/example.git", headRef: "refs/pull/7/head" },
 			};
 			const provider: ReviewProvider = {
+				login: async () => undefined,
+				permission: async () => undefined,
 				name: "fake",
 				findLedger: async () => undefined,
 				writeLedger: async () => ({

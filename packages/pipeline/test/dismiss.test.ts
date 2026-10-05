@@ -205,6 +205,8 @@ async function publisher(path: string) {
 	};
 	const statuses: ReviewStatus[] = [];
 	const provider: ReviewProvider = {
+		login: async () => undefined,
+		permission: async () => undefined,
 		name: "fake",
 		findLedger: async () => undefined,
 		writeLedger: async () => ({

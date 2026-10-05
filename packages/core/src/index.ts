@@ -231,6 +231,7 @@ export {
 	type PublishedFinding,
 	type PublishedMarkers,
 	type PullRequest,
+	type RepositoryPermission,
 	type ReviewDraft,
 	type ReviewProvider,
 	type ReviewStatus,

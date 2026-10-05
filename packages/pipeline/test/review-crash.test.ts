@@ -623,6 +623,8 @@ describe("a lens task from an earlier selection during triage", { timeout: 60_00
 			fetch: { url: repo, headRef: "feature" },
 		};
 		const provider: ReviewProvider = {
+			login: async () => undefined,
+			permission: async () => undefined,
 			name: "fake",
 			resolveThread: vi.fn(async () => false),
 			findLedger: vi.fn(async () => undefined),
