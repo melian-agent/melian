@@ -19,7 +19,7 @@ export interface StandardsSection {
 }
 
 /** The largest standards file the loader reads, and the most it reads for one path in total. Past either is an error. */
-export const standardsLimits = { fileBytes: 256 * 1024, totalBytes: 1024 * 1024 } as const;
+export const standardsLimits = { fileBytes: 256 * 1024, totalBytes: 1024 * 1024, sections: 1024 } as const;
 
 // An `@path` token at the start of a line or after whitespace, so `tal@example.com` is not one. Trailing sentence
 // punctuation belongs to the prose, not the path.
@@ -220,6 +220,19 @@ class StandardsLoader implements SourceReader {
 	}
 }
 
+function listedPaths(paths: readonly string[]): string {
+	const listed: string[] = [];
+	let bytes = 0;
+	for (const path of paths) {
+		if (bytes + Buffer.byteLength(path) > 4096 || listed.length === 10) break;
+		listed.push(path);
+		bytes += Buffer.byteLength(path) + 2;
+	}
+	return [...listed, ...(listed.length === paths.length ? [] : [`and ${paths.length - listed.length} more`])].join(
+		", ",
+	);
+}
+
 /** The bounded standards a lens reads, with whole sections omitted to keep its prompt within the total limit. */
 export class StandardsReading {
 	readonly sections: readonly StandardsSection[];
@@ -232,15 +245,23 @@ export class StandardsReading {
 		this.refused = refused;
 	}
 
-	/** Unions sections in their first-seen order and drops the deepest sections first when the union exceeds 1 MiB. */
-	static from(sections: readonly StandardsSection[], refused: readonly string[] = []): StandardsReading {
+	/** Unions sections in their first-seen order and keeps nearest chains where possible within 1 MiB of rendered text and 1024 sections. */
+	static from(
+		sections: readonly StandardsSection[],
+		refused: readonly string[] = [],
+		nearest: readonly string[] = [],
+	): StandardsReading {
 		const seen = new Set<string>();
 		const unique = sections.filter((section) => {
 			if (seen.has(section.path)) return false;
 			seen.add(section.path);
 			return true;
 		});
-		let total = unique.reduce((bytes, section) => bytes + Buffer.byteLength(section.content), 0);
+		const bytes = (section: StandardsSection) =>
+			Buffer.byteLength(`### ${section.path}\n\n${section.content.trim()}`) + 128;
+		let total = 1024 + unique.reduce((total, section) => total + bytes(section), 0);
+		let count = unique.length;
+		const preferred = new Set(nearest);
 		const depth = (section: StandardsSection) => {
 			const path = section.importedBy ?? section.path;
 			const directory = posix.dirname(path).replace(/(?:^|\/)\.melian\/standards$/, "");
@@ -248,12 +269,18 @@ export class StandardsReading {
 		};
 		const order = unique
 			.map((section, index) => ({ section, index, depth: depth(section) }))
-			.sort((a, b) => b.depth - a.depth || b.index - a.index);
+			.sort(
+				(a, b) =>
+					Number(preferred.has(a.section.path)) - Number(preferred.has(b.section.path)) ||
+					b.depth - a.depth ||
+					b.index - a.index,
+			);
 		const omitted = new Set<string>();
 		for (const { section } of order) {
-			if (total <= standardsLimits.totalBytes) break;
+			if (total <= standardsLimits.totalBytes && count <= standardsLimits.sections) break;
 			omitted.add(section.path);
-			total -= Buffer.byteLength(section.content);
+			total -= bytes(section);
+			count--;
 		}
 		return new StandardsReading(
 			unique.filter((section) => !omitted.has(section.path)),
@@ -272,9 +299,9 @@ export class StandardsReading {
 		const omission =
 			this.omitted.length === 0
 				? undefined
-				: `left out ${this.omitted.length} standards section${this.omitted.length === 1 ? "" : "s"} past ${standardsLimits.totalBytes / 1024} KiB: ${this.omitted.join(", ")}`;
+				: `left out ${this.omitted.length} standards section${this.omitted.length === 1 ? "" : "s"} past ${standardsLimits.totalBytes / 1024} KiB: ${listedPaths(this.omitted)}`;
 		return (
-			[omission, ...(this.refused.length === 0 ? [] : [`refused standards imports: ${this.refused.join(", ")}`])]
+			[omission, ...(this.refused.length === 0 ? [] : [`refused standards imports: ${listedPaths(this.refused)}`])]
 				.filter(Boolean)
 				.join("; ") || undefined
 		);
@@ -340,7 +367,7 @@ export class Standards {
 
 	/**
 	 * The union of the files' chains, nearest first per file and deduplicated at the first occurrence. A lens over
-	 * many directories gets a bounded union, with whole sections farthest from the root omitted and named in its note.
+	 * many directories gets a bounded union, preferring each file's nearest rules and naming omissions in its note.
 	 */
 	forFiles(files: readonly string[]): StandardsReading {
 		return StandardsReading.from(
@@ -352,6 +379,14 @@ export class Standards {
 			files.flatMap((file) => {
 				const target = repoPath(this.#repoRoot, file);
 				return this.#refused.get(this.#directories.get(target) ?? posix.dirname(target)) ?? [];
+			}),
+			files.flatMap((file) => {
+				const target = repoPath(this.#repoRoot, file);
+				const chain = this.#chains.get(this.#directories.get(target) ?? posix.dirname(target));
+				const nearest = chain?.[0];
+				if (nearest === undefined) return [];
+				const scope = nearest.importedBy ?? nearest.path;
+				return chain!.filter((section) => (section.importedBy ?? section.path) === scope).map(({ path }) => path);
 			}),
 		);
 	}

@@ -219,9 +219,11 @@ describe("per-lens standards", () => {
 			changeset,
 			standards: await Standards.load(repo, { kind: "worktree" }, paths),
 		});
-		expect(result.verdict.ran!.find(({ name }) => name === "lens.correctness")!.reason).toContain(
-			"left out 3 standards sections past 1024 KiB: packages/core/p5/AGENTS.md, packages/core/p4/AGENTS.md, packages/core/p3/AGENTS.md",
-		);
+		expect(result.verdict.status).toBe("not-reviewed");
+		const record = result.verdict.notRun.find(({ name }) => name === "lens.correctness")!;
+		expect(record.status).toBe("ended");
+		expect(record.reason).toContain("left out 6 standards sections");
+		expect(record.reason).toContain("packages/core/p5/AGENTS.md");
 	});
 
 	it("keeps flat sections compatible and records none when a lens opts out", async () => {

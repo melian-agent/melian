@@ -27,3 +27,5 @@ An automatic-check regression fails a fake compiler, repairs it, confirms a repe
 Lens selection now fingerprints stable instruction inputs, including standards and provenance, while excluding fresh nonces. A fake-model regression reviews one revision twice after a standards edit and observes the new text in a second request. An unchanged repeat, including `rerun`, still attaches. The identity decision records the rule.
 
 Standards now retain resolved commit provenance. The pipeline trusts only readings matching the validated policy commit, and quotes flat arrays and mismatched readings. Fake-model tests cover head standards under base policy, flat inputs and equivalent commit names. The provenance decision replaces trust by source kind.
+
+The standards cap now counts rendered headings, content, separators, boundaries and the lead-in, with a 1024-section ceiling. Unions prefer the nearest rules for each file. Omitted rules record `ended` and leave the verdict not reviewed. Empty-section, long-heading and real-renderer regressions cover the bound. The rendered cap decision records the accounting, priority and status changes.

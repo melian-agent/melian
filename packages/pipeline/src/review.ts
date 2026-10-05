@@ -120,6 +120,7 @@ interface LensRun {
 	readonly route: readonly ModelReference[];
 	readonly instructions: string;
 	readonly instructionFingerprint?: string;
+	readonly standardsOmitted?: boolean;
 	readonly standards?: readonly string[];
 	readonly tools: readonly LensToolName[];
 	readonly severities: readonly Severity[];
@@ -1013,6 +1014,8 @@ function lensCheck(lens: LensRun, outcome: LensOutcome | undefined, completed: b
 	if (!completed) return { name, status: "failed", level, reason: failed("the lens task did not complete") };
 	if (outcome?.status === "done") {
 		const { budgetEnded } = outcome;
+		if (lens.standardsOmitted)
+			return { name, status: "ended", level, ...(budgetEnded === undefined ? {} : { budgetEnded }), ...noted };
 		if (budgetEnded === undefined) return { name, status: "ran", level, ...noted };
 		// A budget's end is reduced coverage, so it leaves the review not reviewed unless the level counts it.
 		if (lens.budget.ended === "count") return { name, status: "ran", level, budgetEnded, ...noted };
@@ -1477,6 +1480,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 								standardsSource,
 							),
 							standards: reading.sections,
+							standardsOmitted: reading.omitted.length > 0,
 							source: standards instanceof Standards ? standards.source : null,
 							trusted: standardsSource,
 							tools: lens.tools,
@@ -1489,6 +1493,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					)
 					.digest("hex"),
 				standards: reading.paths(),
+				standardsOmitted: reading.omitted.length > 0,
 				tools: lens.tools,
 				severities: lens.severities,
 				rules,

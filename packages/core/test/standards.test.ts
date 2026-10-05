@@ -1,6 +1,7 @@
 import { chmodSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import {
+	Lens,
 	loadStandards,
 	OutsideRepositoryError,
 	Standards,
@@ -266,14 +267,21 @@ describe.each(sourceKinds)("Standards from the %s", (kind) => {
 		);
 		const standards = await Standards.load(repo, sourceFor(repo, kind), paths);
 		const reading = standards.forFiles(paths);
-		expect(reading.omitted).toEqual(["packages/p5/AGENTS.md", "packages/p4/AGENTS.md", "packages/p3/AGENTS.md"]);
+		expect(reading.omitted).toEqual([
+			".melian/standards/naming.md",
+			"docs/guide.md",
+			"AGENTS.md",
+			"packages/p5/AGENTS.md",
+			"packages/p4/AGENTS.md",
+			"packages/p3/AGENTS.md",
+		]);
 		expect(
 			reading.sections.reduce((bytes, section) => bytes + Buffer.byteLength(section.content), 0),
 		).toBeLessThanOrEqual(standardsLimits.totalBytes);
 		expect(reading.sections[0]!.content).toHaveLength(standardsLimits.fileBytes);
-		expect(reading.paths()).toContain("AGENTS.md");
+		expect(reading.paths()).toContain("packages/p0/AGENTS.md");
 		expect(reading.note()).toBe(
-			"left out 3 standards sections past 1024 KiB: packages/p5/AGENTS.md, packages/p4/AGENTS.md, packages/p3/AGENTS.md",
+			"left out 6 standards sections past 1024 KiB: .melian/standards/naming.md, docs/guide.md, AGENTS.md, packages/p5/AGENTS.md, packages/p4/AGENTS.md, packages/p3/AGENTS.md",
 		);
 	});
 
@@ -342,7 +350,7 @@ describe("standards omission scope", () => {
 				content: "p".repeat(standardsLimits.fileBytes),
 			})),
 		]);
-		expect(reading.omitted).toEqual(["a/b/c/d/AGENTS.md"]);
+		expect(reading.omitted).toEqual(["a/b/c/d/AGENTS.md", "a/b/c/AGENTS.md"]);
 		expect(reading.paths()).toContain("docs/deep/root/rules.md");
 	});
 });
@@ -380,5 +388,30 @@ describe.each(sourceKinds)("standards import safety from %s", (kind) => {
 		const reading = (await Standards.load(repo, source, ["a.ts"])).forFiles(["a.ts"]);
 		expect(reading.sections.map(({ content }) => content).join("\n")).toContain("PUBLIC_BASE");
 		expect(reading.sections.map(({ content }) => content).join("\n")).not.toContain("SECRET");
+	});
+});
+
+describe("rendered standards bounds", () => {
+	it("caps empty sections, long headings and boundary markup", async () => {
+		const sections = Array.from({ length: 50_000 }, (_, i) => ({ path: `rules/${i}.md`, content: "" }));
+		const reading = StandardsReading.from(sections);
+		expect(reading.sections.length).toBeLessThanOrEqual(standardsLimits.sections);
+		expect(reading.omitted.length).toBeGreaterThan(0);
+		expect(Buffer.byteLength(reading.note()!)).toBeLessThan(8192);
+		const lens = (await Lens.load(repo, { kind: "worktree" }, ["a.ts"])).find(({ name }) => name === "correctness")!;
+		const quote = (text: string) =>
+			`<untrusted-${"a".repeat(24)} label="standards">\n${text}\n</untrusted-${"a".repeat(24)}>`;
+		const baseline = lens.renderInstructions([], "careful", [], quote, "worktree");
+		for (const entries of [
+			sections,
+			[{ path: "p".repeat(standardsLimits.totalBytes), content: "" }],
+			Array.from({ length: 4 }, (_, i) => ({ path: `${i}.md`, content: "x".repeat(standardsLimits.fileBytes) })),
+		]) {
+			const bounded = StandardsReading.from(entries);
+			const rendered = lens.renderInstructions(bounded.sections, "careful", [], quote, "worktree");
+			expect(Buffer.byteLength(rendered) - Buffer.byteLength(baseline)).toBeLessThanOrEqual(
+				standardsLimits.totalBytes,
+			);
+		}
 	});
 });
