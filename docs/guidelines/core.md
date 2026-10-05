@@ -511,6 +511,8 @@ An external finding's ID is the first 16 hex digits of a sha256 over length-pref
 }
 ```
 
+A ref-less finding hashes its canonical file path, line, title and body. Two file spellings that canonicalise alike therefore deduplicate on import.
+
 Every finding needs a `title` and a `body`; `ref`, `file`, `line`, `endLine`, `severity`, `postedAt`, and `resolved` are optional, and an unknown key is refused. A file holds at most 1,000 findings. A `file` holds at most 4,096 characters, and a `severity`, `ref`, `postedAt`, reviewer's `version`, or `login` at most 100, so a pasted log never lands in a short field; the stored shape holds the same bounds.
 
 ### Matching

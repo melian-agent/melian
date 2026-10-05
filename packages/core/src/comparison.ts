@@ -311,7 +311,7 @@ export class ExternalFinding {
 			});
 		}
 		// Length-prefixed, so no character inside a field can move text from one field to the next.
-		const hashed = sourceFields(input, title)
+		const hashed = sourceFields({ ...input, file }, title)
 			.map((field) => `${field.length}:${field}`)
 			.join("");
 		const id = createHash("sha256").update(hashed).digest("hex").slice(0, 16);

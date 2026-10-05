@@ -245,6 +245,17 @@ describe("ExternalFinding", () => {
 		).toHaveLength(1);
 	});
 
+	it("deduplicates ref-less findings whose file spellings canonicalise alike", () => {
+		const finding = { file: "src/run.ts", line: 12, title: "same", body: "same body" };
+		const imported = ExternalFinding.fromFile(
+			{ reviewer: { name: "codex" }, findings: [finding, { ...finding, file: "./src//run.ts" }] },
+			"codex.json",
+		);
+
+		expect(imported).toHaveLength(1);
+		expect(imported[0]!.file).toBe("src/run.ts");
+	});
+
 	it("refuses a file in neither shape, naming the file and what is wrong", () => {
 		expect(() => ExternalFinding.fromFile({ findings: [] }, "x.json")).toThrow(
 			/x\.json is not an external-finding file: it .*reviewer/,
