@@ -717,6 +717,41 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		).rejects.toThrow("another publisher");
 	});
 
+	it("prefers the earliest signed ledger over a later verbatim copy when the login is unknown", async () => {
+		const state = pullRequestState();
+		state.failUser = true;
+		const body = Ledger.from(verdict, { rounds: [round] }, options).render(links);
+		state.ledgers.push(
+			{
+				id: 17,
+				user: { login: state.login },
+				body,
+				html_url: "https://example.test/17",
+				created_at: "2026-01-01T00:00:00Z",
+			},
+			{
+				id: 18,
+				user: { login: "stranger" },
+				body,
+				html_url: "https://example.test/18",
+				created_at: "2026-01-02T00:00:00Z",
+			},
+		);
+		state.ledgers.reverse();
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test-token",
+			fetch: fakeGitHub(state),
+		});
+		const found = await provider.findLedger(7, secret);
+		expect(found?.id).toBe("17");
+		const edited = { ...options, verdict, publication: { rounds: [{ ...round, round: 2 }] } };
+		await provider.writeLedger(edited);
+		expect(state.calls.filter(({ method, path }) => method === "PATCH" && path.endsWith("/comments/18"))).toEqual([]);
+		expect(state.ledgers.find((comment) => comment.id === 18)?.body).toBe(body);
+	});
+
 	it("refuses a damaged stamp during marker discovery with deletion instructions", async () => {
 		const state = pullRequestState();
 		state.ledgers.push({

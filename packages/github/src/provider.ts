@@ -257,12 +257,21 @@ export class GitHubProvider implements ReviewProvider {
 				per_page: 100,
 			}),
 		);
-		for (const comment of comments) {
-			if (!/^<!-- melian:revision=.* ledger=/.test(firstLine(comment.body))) continue;
-			// The login only skips strangers early. Without one, the signature decides: readLedger refuses a lookalike.
-			if (login !== undefined && comment.user?.login !== login) continue;
-			return this.readLedger(comment, secret);
-		}
+		// A ledger body is public, so a stranger can copy one verbatim and its signature still verifies.
+		// Melian's own comment predates any copy, so the earliest signed candidate wins.
+		const candidates = comments
+			.filter(
+				(comment) =>
+					/^<!-- melian:revision=.* ledger=/.test(firstLine(comment.body)) &&
+					(login === undefined || comment.user?.login === login),
+			)
+			.sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
+		const signed = candidates.find((comment) => {
+			const found = parseMarker(firstLine(comment.body));
+			return found?.kind === "ledger" && verifyMarker(found, secret);
+		});
+		const chosen = signed ?? candidates[0];
+		if (chosen !== undefined) return this.readLedger(chosen, secret);
 		return undefined;
 	}
 

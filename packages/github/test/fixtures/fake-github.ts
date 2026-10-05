@@ -32,7 +32,9 @@ export type FakeState = {
 	lines: DiffLines;
 	reviews: FakeReview[];
 	comments: FakeComment[];
-	ledgers: { id: number; user: User; body: string; html_url: string }[];
+	ledgers: { id: number; user: User; body: string; html_url: string; created_at?: string }[];
+	/** When set, the review-thread query serves this many threads a page, with a cursor. */
+	threadPageSize?: number;
 	resolvedThreads: number[];
 	statuses: FakeStatus[];
 	nextId: number;
@@ -125,19 +127,23 @@ export function fakeGitHub(
 				await afterWrite(call);
 				return json({ data: { resolveReviewThread: { thread: { id: String(id), isResolved: true } } } });
 			}
+			const all = state.comments
+				.filter((comment) => comment.in_reply_to_id === undefined)
+				.map((comment) => ({
+					id: String(comment.id),
+					isResolved: state.resolvedThreads.includes(comment.id),
+					comments: { nodes: [{ databaseId: comment.id }] },
+				}));
+			const cursor = (body as { variables: { cursor?: string | null } }).variables.cursor;
+			const start = cursor == null ? 0 : Number(cursor);
+			const end = state.threadPageSize === undefined ? all.length : start + state.threadPageSize;
 			return json({
 				data: {
 					repository: {
 						pullRequest: {
 							reviewThreads: {
-								nodes: state.comments
-									.filter((comment) => comment.in_reply_to_id === undefined)
-									.map((comment) => ({
-										id: String(comment.id),
-										isResolved: state.resolvedThreads.includes(comment.id),
-										comments: { nodes: [{ databaseId: comment.id }] },
-									})),
-								pageInfo: { hasNextPage: false, endCursor: null },
+								nodes: all.slice(start, end),
+								pageInfo: { hasNextPage: end < all.length, endCursor: end < all.length ? String(end) : null },
 							},
 						},
 					},
@@ -145,7 +151,13 @@ export function fakeGitHub(
 			});
 		}
 		const issues = `${repoPath}/issues/${state.pull.number}/comments`;
-		if (method === "GET" && path === issues) return json(state.ledgers);
+		if (method === "GET" && path === issues)
+			return json(
+				state.ledgers.map((comment, index) => ({
+					...comment,
+					created_at: comment.created_at ?? new Date(index * 1000).toISOString(),
+				})),
+			);
 		if (method === "POST" && path === issues) {
 			if (state.failLedger) return json({ message: "Server Error" }, 500);
 			const id = state.nextId++;
