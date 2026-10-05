@@ -177,6 +177,34 @@ describe("compileGlob", () => {
 	it("matches the whole path, not a part of it", () => {
 		expect(compileGlob("a.ts").test("src/a.ts")).toBe(false);
 		expect(compileGlob("src").test("src/a.ts")).toBe(false);
+		expect(compileGlob("a.ts").test("a.ts\n")).toBe(false);
+	});
+
+	it("matches dotfiles, unlike Node's path.matchesGlob", () => {
+		expect(compileGlob("**").test(".github/workflows/ci.yml")).toBe(true);
+		expect(compileGlob("**/*.yml").test(".github/workflows/.ci.yml")).toBe(true);
+		expect(compileGlob("?env").test(".env")).toBe(true);
+	});
+
+	// Git allows a newline in a file name. A wildcard that stopped at it would hide the file from every lens.
+	it("lets every wildcard match a newline in a name", () => {
+		expect(compileGlob("src/*.ts").test("src/evil\nname.ts")).toBe(true);
+		expect(compileGlob("src/**").test("src/a\n/b.ts")).toBe(true);
+		expect(compileGlob("**/*.ts").test("a\nb/c.ts")).toBe(true);
+		expect(compileGlob("a?b").test("a\nb")).toBe(true);
+	});
+
+	// The backtracking RegExp lens paths once compiled to took 164, 208, and 179 seconds on these.
+	it("matches a crafted path in time linear in its length, where RegExp backtracks", () => {
+		for (const [glob, path] of [
+			["*a*a*a*a*a*b", "a".repeat(200)],
+			["**a**a**a**a**b", "a".repeat(400)],
+			["**a**a**a**a**b", "a/".repeat(400)],
+		] as const) {
+			const started = performance.now();
+			expect(compileGlob(glob).test(path)).toBe(false);
+			expect(performance.now() - started).toBeLessThan(1000);
+		}
 	});
 });
 
