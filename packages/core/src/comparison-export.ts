@@ -95,7 +95,7 @@ export class ComparisonExport {
 		if (notes === 0) out.push("No maintainer notes recorded.\n");
 		out.push(
 			"\n## Counts\n\n",
-			`${new ComparisonSet(this.entries).renderStats({}, false).trimEnd().split("\n").map(markdownText).join("\n")}\n`,
+			`${new ComparisonSet(this.entries).renderStats({ drain: false }).trimEnd().split("\n").map(markdownText).join("\n")}\n`,
 			"\n## Differences\n\n",
 		);
 		for (const { comparison } of this.entries) {

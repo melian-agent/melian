@@ -201,7 +201,7 @@ class StoredComparisons {
 		for (const name of names.filter((name) => /^(range|pull)-[0-9a-f]{16}\.sqlite$/.test(name)).sort()) {
 			const storage = await openStorage(join(directory, name));
 			try {
-				entries.push(...(await new ComparisonReader(storage).read(name.slice(0, -".sqlite".length))));
+				entries.push(...(await ComparisonReader.open(storage).read(name.slice(0, -".sqlite".length))));
 			} finally {
 				await storage.close(context);
 			}
@@ -236,7 +236,7 @@ export async function exportComparison(
 		throw new CliError(`no comparison recorded; run melian compare ${shellQuote(argument)} first`);
 	const storage = await openStorage(path);
 	try {
-		const entries = await new ComparisonReader(storage).read(stored.changeset.id);
+		const entries = await ComparisonReader.open(storage).read(stored.changeset.id);
 		if (entries.length === 0)
 			throw new CliError(`no comparison recorded; run melian compare ${shellQuote(argument)} first`);
 		const remote = await git(stored.changeset.repoRoot, ["remote", "get-url", "origin"]).catch(() => "");

@@ -250,8 +250,13 @@ export class CompareHarness {
 export class ComparisonReader {
 	private readonly storage: Storage;
 
-	constructor(storage: Storage) {
+	private constructor(storage: Storage) {
 		this.storage = storage;
+	}
+
+	/** A reader over `storage`, which the caller keeps and closes. */
+	static open(storage: Storage): ComparisonReader {
+		return new ComparisonReader(storage);
 	}
 
 	/** Reads the root's comparisons and verdicts through storage's detached read API. The caller owns storage. */

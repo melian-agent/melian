@@ -197,8 +197,9 @@ export class ComparisonSet {
 	}
 
 	/** The CLI's per-reviewer arithmetic, reasons, candidate checks, and drain notice. */
-	renderStats(options: { readonly since?: string; readonly last?: number } = {}, includeDrain = true): string {
+	renderStats(options: { readonly since?: string; readonly last?: number; readonly drain?: boolean } = {}): string {
 		const selected = this.select(options);
+		const includeDrain = options.drain ?? true;
 		const stats = this.stats();
 		const metrics = selected.stats();
 		const drain = this.drain();

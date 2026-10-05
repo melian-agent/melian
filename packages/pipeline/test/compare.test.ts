@@ -368,7 +368,7 @@ describe("comparison review fixes", () => {
 		);
 		const before = await storage.task(pending, context);
 		const commit = vi.spyOn(storage, "commit");
-		const entries = await new ComparisonReader(storage).read("change");
+		const entries = await ComparisonReader.open(storage).read("change");
 		expect(entries).toHaveLength(1);
 		expect(entries[0]?.verdict?.all()).toHaveLength(2);
 		expect(commit).not.toHaveBeenCalled();
@@ -378,7 +378,6 @@ describe("comparison review fixes", () => {
 
 	describe("documents of other versions", () => {
 		type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
-		type Tx = Parameters<Parameters<Awaited<ReturnType<CompareHarness["harness"]["root"]>>["commit"]>[0]>[0];
 		const legacy = (kind: string, version: number) =>
 			defineDoc<{ [key: string]: Json }>({
 				kind,
@@ -402,45 +401,46 @@ describe("comparison review fixes", () => {
 						)
 					: value;
 
-		async function readWith(write: (tx: Tx, id: string) => Promise<void>) {
+		async function openRoot() {
 			const storage = createMemoryStorage();
 			const harness = await CompareHarness.open(storage, createFakeModels().review);
 			open.push(harness);
-			const root = await harness.harness.root(context);
-			await root.commit((tx) => write(tx, root.id), context);
-			return await new ComparisonReader(storage).read("change");
+			return { storage, root: await harness.harness.root(context) };
 		}
-		const storeComparison = async (tx: Tx, id: string) => {
-			const document = await tx.doc(ComparisonDocument, id);
-			document.comparisons = { [revisionKey(revision)]: Comparison.of(revision).toJSON() };
-		};
+		const comparisons = () => ({ [revisionKey(revision)]: Comparison.of(revision).toJSON() });
 
 		it("migrates a version 2 verdict document through the reader", async () => {
 			const verdict = new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate();
-			const entries = await readWith(async (tx, id) => {
-				await storeComparison(tx, id);
-				const old = await tx.doc(legacy(VerdictDocument.definition.kind, 2), id);
+			const { storage, root } = await openRoot();
+			await root.commit(async (tx) => {
+				(await tx.doc(ComparisonDocument, root.id)).comparisons = comparisons();
+				const old = await tx.doc(legacy(VerdictDocument.definition.kind, 2), root.id);
 				old.verdicts = JSON.parse(JSON.stringify(oldEvidence({ [revisionKey(revision)]: verdict.toJSON() })));
-			});
+			}, context);
+			const entries = await ComparisonReader.open(storage).read("change");
 			expect(entries).toHaveLength(1);
 			expect(entries[0]?.verdict?.all()).toHaveLength(2);
 		});
 
 		it("refuses a comparison document newer than this Melian", async () => {
-			await expect(
-				readWith(async (tx, id) => {
-					(await tx.doc(legacy(ComparisonDocument.definition.kind, 99), id)).comparisons = {};
-				}),
-			).rejects.toMatchObject({ message: "comparison document has newer version 99" });
+			const { storage, root } = await openRoot();
+			await root.commit(async (tx) => {
+				(await tx.doc(legacy(ComparisonDocument.definition.kind, 99), root.id)).comparisons = {};
+			}, context);
+			await expect(ComparisonReader.open(storage).read("change")).rejects.toMatchObject({
+				message: "comparison document has newer version 99",
+			});
 		});
 
 		it("refuses a verdict document newer than this Melian", async () => {
-			await expect(
-				readWith(async (tx, id) => {
-					await storeComparison(tx, id);
-					(await tx.doc(legacy(VerdictDocument.definition.kind, 99), id)).verdicts = {};
-				}),
-			).rejects.toMatchObject({ message: "verdict document has newer version 99" });
+			const { storage, root } = await openRoot();
+			await root.commit(async (tx) => {
+				(await tx.doc(ComparisonDocument, root.id)).comparisons = comparisons();
+				(await tx.doc(legacy(VerdictDocument.definition.kind, 99), root.id)).verdicts = {};
+			}, context);
+			await expect(ComparisonReader.open(storage).read("change")).rejects.toMatchObject({
+				message: "verdict document has newer version 99",
+			});
 		});
 	});
 
@@ -448,7 +448,7 @@ describe("comparison review fixes", () => {
 		const storage = createMemoryStorage();
 		try {
 			const commit = vi.spyOn(storage, "commit");
-			expect(await new ComparisonReader(storage).read("change")).toEqual([]);
+			expect(await ComparisonReader.open(storage).read("change")).toEqual([]);
 			expect(commit).not.toHaveBeenCalled();
 			expect((await storage.scanConversations({}, 10, undefined, context)).items).toEqual([]);
 		} finally {
