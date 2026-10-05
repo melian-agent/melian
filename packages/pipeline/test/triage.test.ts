@@ -521,9 +521,8 @@ describe("triage", () => {
 			context,
 		);
 		expect(stored!.decision).toBeUndefined();
-		expect(stored!.failure).toBe(
-			"the decision was asked of asked, but this harness holds installed; open the harness with the same decider",
-		);
+		expect(stored!.failure).toBeUndefined();
+		expect(lensRecord(reviewed)!.reason).toContain("the decision task ended aborted");
 	});
 
 	describe("attaching to a stored decision", () => {
@@ -749,6 +748,72 @@ describe("a decision task another call replaced", () => {
 
 		expect(held.calls()).toBe(2);
 		expect(lensRecord(rerun)).toMatchObject({ level: "quick" });
+	});
+});
+
+describe("a decision resumed with another decider", () => {
+	it("leaves no answer and asks the original decider after another reopen", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "melian-triage-decider-"));
+		const path = join(dir, "review.sqlite");
+		const original = choosing("quick", "original");
+		const other = choosing("deep", "other");
+		const parked = vi.fn(
+			(_request: Parameters<Decider["decide"]>[0], signal: AbortSignal | undefined) =>
+				new Promise<never>((_, reject) => {
+					signal?.addEventListener("abort", () => reject(signal.reason), { once: true });
+				}),
+		);
+		const reopen = async (decider: Decider) => {
+			await reviewHarness?.close(context);
+			reviewHarness = await ReviewHarness.open(await openSqliteStorage(path), fake.review, {
+				retry: false,
+				decider,
+			});
+			harness = reviewHarness.harness;
+			await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+		};
+		try {
+			const waiting: Decider = { name: original.name, calibrated: false, decide: parked };
+			await reopen(waiting);
+			const interrupted = review({ decider: waiting }).catch(() => undefined);
+			await vi.waitFor(() => expect(parked).toHaveBeenCalledOnce());
+			const pending = await readRecordedDecision(
+				harness,
+				(await harness.root(context)).id,
+				revision(),
+				"triage",
+				context,
+			);
+			await reopen(other);
+			await interrupted;
+			scriptConversations(fake, [{ match: correctness, replies: [done, done] }]);
+
+			const mismatched = await review({ decider: original });
+
+			expect(other.requests).toHaveLength(0);
+			expect(original.requests).toHaveLength(0);
+			expect(lensRecord(mismatched)).toMatchObject({ status: "ran", level: "careful" });
+			const stored = await readRecordedDecision(
+				harness,
+				(await harness.root(context)).id,
+				revision(),
+				"triage",
+				context,
+			);
+			expect(stored).toEqual({ task: pending!.task });
+			expect((await harness.waitForTask(pending!.task as TaskId, context)).state.outcome.status).toBe("aborted");
+
+			await reopen(original);
+			const triaged = await review({ decider: original });
+
+			expect(original.requests).toHaveLength(1);
+			expect(other.requests).toHaveLength(0);
+			expect(lensRecord(triaged)).toMatchObject({ status: "ran", level: "quick" });
+		} finally {
+			await reviewHarness?.close(context);
+			reviewHarness = undefined;
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });
 
