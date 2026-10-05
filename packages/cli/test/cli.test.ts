@@ -15,7 +15,10 @@ import { fileURLToPath } from "node:url";
 import { type Decider, type DecisionRequest, Rendering, type StoredVerdict, Verdict } from "@melian-agent/core";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
+import { pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { review as reviewIn } from "../src/commands.ts";
+import { doctor as doctorIn } from "../src/doctor.ts";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const bin = join(root, "packages/cli/bin/melian.js");
@@ -592,12 +595,35 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 });
 
 describe("melian doctor", { timeout: 60_000 }, () => {
-	it("checks the tools and names where credentials come from, never their values", () => {
+	it("checks the tools and names where credentials come from, never their values", async () => {
 		const token = "test-token-never-printed";
 		const home = mkdtempSync(join(tmpdir(), "melian-doctor-"));
 		scratch = home;
 
-		const doctor = melian(root, ["doctor"], { GITHUB_TOKEN: token, PI_CODING_AGENT_DIR: home });
+		const state = pullRequestState();
+		state.owner = "melian-agent";
+		state.repo = "melian";
+		let stdout = "";
+		const status = await doctorIn(
+			{
+				cwd: root,
+				env: {
+					...process.env,
+					...gitEnv,
+					XDG_CONFIG_HOME: noUserFiles,
+					GITHUB_TOKEN: token,
+					PI_CODING_AGENT_DIR: home,
+				},
+				stdout: (text) => {
+					stdout += text;
+				},
+				stderr: () => {},
+				color: false,
+				executable: bin,
+			},
+			{ fetch: fakeGitHub(state) },
+		);
+		const doctor = { status, stdout };
 
 		expect(doctor.status).toBe(0);
 		expect(doctor.stdout).toMatch(/^ok {4}node {8}\d+\.\d+\.\d+; Melian needs 22\.19\.0 or later$/m);
