@@ -225,6 +225,7 @@ async function publisher(path: string) {
 		pullRequest: async () => pullRequest,
 		postReview: async () => ({ id: "201", threads: {} }),
 		replyResolved: async () => undefined,
+		resolveThread: async () => false,
 		setStatus: async (_, status) => {
 			statuses.push(status);
 		},

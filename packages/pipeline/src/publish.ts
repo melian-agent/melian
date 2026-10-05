@@ -598,8 +598,7 @@ function publishTask(provider: ReviewProvider) {
 						const found = (await marked({ fingerprint: record.verdict ?? "", round: record.rounds ?? 0 }))
 							.replies[key];
 						let recorded: string | null;
-						// A reply on the finding's own comment is the closed marker of the edit, which still owes the thread's
-						// resolution. A separate comment is an older Melian's reply, which resolved the thread when it posted.
+						// A resolution marker proves the edit or reply, but an older reply left the thread open.
 						if (found === undefined || found === entry.thread) {
 							await revalidate();
 							const reply = await provider.replyResolved(
@@ -611,6 +610,10 @@ function publishTask(provider: ReviewProvider) {
 							recorded = reply ?? null;
 							if (reply !== undefined) result.replies++;
 						} else {
+							if (entry.dismissal === undefined) {
+								await revalidate();
+								await provider.resolveThread(pullRequest, entry.thread);
+							}
 							recorded = found;
 							result.recovered++;
 						}

@@ -981,7 +981,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		expect(rounds.at(-1)).toMatchObject({ head: second.changeset.revision.head });
 	});
 
-	it("honours a resolved reply an older Melian posted as already addressed", async () => {
+	it("recovers an old resolved reply and still resolves its open thread", async () => {
 		const fake = scenarioModels();
 		const state = pullRequestState();
 		const provider = createGitHubProvider({
@@ -1020,7 +1020,11 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 				publisher.secret!,
 			),
 		});
+		expect(state.resolvedThreads).toEqual([]);
+		const repliesBefore = state.comments.length;
 		await publish(second.changeset);
+		expect(state.resolvedThreads).toEqual([opening.id]);
+		expect(state.comments).toHaveLength(repliesBefore);
 		expect(state.calls.filter(({ method, path }) => method === "PATCH" && path.includes("/pulls/comments/"))).toEqual(
 			[],
 		);

@@ -385,9 +385,14 @@ export class GitHubProvider implements ReviewProvider {
 				}),
 			);
 		}
+		const resolved = await this.resolveThread(pullRequest, finding.thread);
+		return editable && resolved ? finding.thread : undefined;
+	}
+
+	async resolveThread(pullRequest: number, comment: string): Promise<boolean> {
 		this.threads ??= this.readThreads(pullRequest);
-		const thread = (await this.threads).get(finding.thread);
-		if (thread === undefined) return undefined;
+		const thread = (await this.threads).get(comment);
+		if (thread === undefined) return false;
 		if (!thread.isResolved) {
 			await call("resolve the addressed finding's thread", () =>
 				this.octokit.graphql(
@@ -397,7 +402,7 @@ export class GitHubProvider implements ReviewProvider {
 			);
 			thread.isResolved = true;
 		}
-		return editable ? finding.thread : undefined;
+		return true;
 	}
 
 	private async readThreads(pullRequest: number): Promise<Map<string, { id: string; isResolved: boolean }>> {

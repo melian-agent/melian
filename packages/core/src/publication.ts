@@ -185,6 +185,8 @@ export interface ReviewProvider {
 		revision: string,
 		secret: string,
 	): Promise<string | undefined>;
+	/** Resolves an addressed thread, including one whose reply was posted by an older Melian. */
+	resolveThread(pullRequest: number, comment: string): Promise<boolean>;
 	/** Finds the one signed ledger across all heads; refuses an orphaned marker. */
 	findLedger(
 		pullRequest: number,
