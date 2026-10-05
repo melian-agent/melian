@@ -7,6 +7,9 @@ import { Changeset, defaultConfig, Lens, loadConfig, ReviewPlan } from "@melian-
 import {
 	backgroundContext as context,
 	createMemoryStorage,
+	createNodeExecutionEnv,
+	createReviewRegistry,
+	openHarness,
 	openReviewHarness,
 	openSqliteStorage,
 	type ReviewHarness,
@@ -86,8 +89,16 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 		const result = await reviewChangeset({ ...options, checks: [{ name: "guardrails", status: "ran" }] });
 		expect(result.verdict.status).toBe("not-reviewed");
 		expect(
-			(await options.harness.harness.inspect(context)).tasks.some(({ record }) => record.kind === "melian.checks"),
-		).toBe(false);
+			(
+				await options.harness.harness.snapshot(
+					ChecksDocument,
+					(
+						await options.harness.harness.root(context)
+					).id,
+					context,
+				)
+			)?.tasks ?? {},
+		).toEqual({});
 	});
 
 	it("an environment-less harness leaves missing records not reviewed", async () => {
@@ -97,6 +108,26 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 		expect(result.verdict.notRun.every((check) => check.status === "skipped" && check.reason === "no record")).toBe(
 			true,
 		);
+	});
+
+	it("a raw harness with an environment but no checks extension falls back to missing records", async () => {
+		const options = await setup(false);
+		const fake = createFakeModels();
+		const raw = await openHarness(createMemoryStorage(), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			env: () => createNodeExecutionEnv(repo),
+			settings: { retry: { enabled: false } },
+		});
+		try {
+			const result = await reviewChangeset({ ...options, harness: raw, models: fake.review });
+			expect(result.verdict.status).toBe("not-reviewed");
+			expect(
+				result.verdict.notRun.every((check) => check.status === "skipped" && check.reason === "no record"),
+			).toBe(true);
+		} finally {
+			await raw.close(context);
+		}
 	});
 
 	it("refuses missing policy before starting any task", async () => {

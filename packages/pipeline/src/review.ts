@@ -525,8 +525,9 @@ export interface ReviewHarnessOptions {
 }
 
 /**
- * A durable harness that runs reviews over one changeset's storage, with {@link lensExtension} installed. Pass its
- * `harness` to `reviewChangeset`, `runChecks`, and `readVerdict`, and close it when done, which closes the storage.
+ * A durable harness that runs reviews over one changeset's storage, with {@link lensExtension} installed. Pass this
+ * wrapper to `reviewChangeset` for automatic checks, and its `harness` to `runChecks` and `readVerdict`. Closing it
+ * closes the storage.
  */
 export class ReviewHarness {
 	/** Pi's harness, which the review functions take. */
