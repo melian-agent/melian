@@ -443,3 +443,7 @@ Only added lines take an inline comment. Problem: GitHub rejects the whole revie
 - Golden files live in `test/golden/`, compared with Vitest's `toMatchFileSnapshot`. A mismatch fails the gate. After a deliberate change, regenerate with `npx vitest --run -u packages/core/test/render.test.ts` and read the diff before committing. They use `.sarif`, `.json`, and `.txt` extensions, which Biome does not format: its `files.includes` lists only code.
 - Run every loader test against both sources with `describe.each(sourceKinds)`. `sourceFor(root, kind)` commits the working tree for a revision, so one body checks that the two agree. Test what only a revision guarantees, such as ignoring the checked-out branch, in a block of its own.
 - Await a rejection with `rejection(promise, ErrorClass)`, which fails unless the promise rejects with that class and returns the error typed.
+
+## Standalone tool manifest
+
+`ToolManifest.parse(text)` validates Melian's own root `tools.yaml` with TypeBox and the configuration YAML reader. It refuses unknown keys, unsafe archive paths, non-exact versions, invalid dates, and downloads outside HTTPS on github.com. A reviewed repository cannot override it. `tool(name)` and `artifact(name, platform)` refuse absent pins. `check(now, windowDays)` applies the npm quarantine; a dated, reviewed exception permits a young release. `toJSON()` returns a copy. The `misses` list reserves the execution misses described in the evals guideline.

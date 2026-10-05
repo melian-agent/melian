@@ -1,0 +1,27 @@
+format_version: 1
+tools:
+  enola:
+    version: 0.4.27
+    source: { repository: enola-labs/enola, tag: v0.4.27 }
+    published: '2026-10-05T16:37:02Z'
+    exception:
+      reason: Step 11 needs upstream impact; all four asset digests agree with the release checksum files.
+      added: '2026-10-05T22:03:35Z'
+    platforms:
+      darwin-amd64:
+        url: https://github.com/enola-labs/enola/releases/download/v0.4.27/enola-0.4.27-darwin-amd64.tar.gz
+        sha256: afc917d95bcd864595e5a1283128c22c9d774eba4eb5292fe35156b52045f9c6
+        binary: enola-0.4.27-darwin-amd64
+      darwin-arm64:
+        url: https://github.com/enola-labs/enola/releases/download/v0.4.27/enola-0.4.27-darwin-arm64.tar.gz
+        sha256: 59c2e30de948b5b70af9715f0a3adfb86162531e527e779b036b8483d73ae34d
+        binary: enola-0.4.27-darwin-arm64
+      linux-amd64:
+        url: https://github.com/enola-labs/enola/releases/download/v0.4.27/enola-0.4.27-linux-amd64.tar.gz
+        sha256: 196d456cf8e9f3594e21c8aa602074f877171e65125e852aa46efc9eb6bfbf06
+        binary: enola-0.4.27-linux-amd64
+      linux-arm64:
+        url: https://github.com/enola-labs/enola/releases/download/v0.4.27/enola-0.4.27-linux-arm64.tar.gz
+        sha256: 820b88baa3ef9efd984e850004c9decc1d0b5c2d5381bb04487c332dd9360ef3
+        binary: enola-0.4.27-linux-arm64
+misses: []

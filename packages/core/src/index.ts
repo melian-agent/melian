@@ -258,3 +258,12 @@ export {
 } from "./static.ts";
 
 export const packageName = "@melian-agent/core";
+
+export {
+	type ToolArtifact,
+	ToolManifest,
+	ToolManifestError,
+	type ToolManifestState,
+	type ToolPin,
+	toolManifestSchema,
+} from "./tool-manifest.ts";
