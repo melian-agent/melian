@@ -220,7 +220,9 @@ describe("codex-sandboxed.sh profile", () => {
 	it("allows the HEAD files git writes under the denied trees, after the deny", () => {
 		const text = profile(linked);
 		const files = block(text, "deny file-write-create file-write-data file-write-unlink");
-		const allow = text.slice(text.indexOf("(allow file-write-create file-write-data file-write-unlink\n"));
+		const allowAt = text.indexOf("(allow file-write-create file-write-data file-write-unlink\n");
+		expect(allowAt).toBeGreaterThan(text.indexOf(files));
+		const allow = text.slice(allowAt);
 		for (const path of ["logs/HEAD", "logs/HEAD.lock"]) expect(allow).toContain(`(literal "${main}/.git/${path}")`);
 		for (const path of ["logs/HEAD", "logs/HEAD.lock"]) expect(allow).toContain(`(literal "${admin}/${path}")`);
 		for (const tree of ["refs", "logs/refs"])
@@ -409,10 +411,7 @@ describe("codex-sandboxed.sh profile", () => {
 				`mkdir -p '${home}/.codex/cache/x/.git'`,
 			];
 			for (const command of planted) expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
-			for (const path of [
-				join(scratch, "x", ".git"),
-				join(scratch, "x", "HEAD"),
-			])
+			for (const path of [join(scratch, "x", ".git"), join(scratch, "x", "HEAD")])
 				expect(existsSync(path)).toBe(false);
 			sh(linked, "echo z > h && git add h && git commit -q -m after-plant");
 			expect(git(linked, "log", "-1", "--format=%s").toString().trim()).toBe("after-plant");
@@ -459,7 +458,10 @@ describe("codex-sandboxed.sh profile", () => {
 				`${common}/logs/refs/remotes/x/objects/f`,
 				`${linked}/sub/commondir`,
 			])
-				expect(failure(() => sh(linked, `mkdir -p '${join(path, "..")}' && echo x > '${path}'`)).status, path).not.toBe(0);
+				expect(
+					failure(() => sh(linked, `mkdir -p '${join(path, "..")}' && echo x > '${path}'`)).status,
+					path,
+				).not.toBe(0);
 			expect(existsSync(join(linked, "sub", "commondir"))).toBe(false);
 			git(linked, "branch", "objects/y");
 			sh(linked, "git branch objects/x && git branch -d objects/x");
@@ -473,7 +475,9 @@ describe("codex-sandboxed.sh profile", () => {
 			git(main, "push", "-q", remote, "HEAD:refs/heads/main");
 			git(main, "remote", "add", "headremote", `file://${remote}`);
 			sh(linked, "git fetch headremote && git remote set-head headremote -a");
-			expect(readFileSync(join(main, ".git", "refs", "remotes", "headremote", "HEAD"), "utf8")).toContain("headremote/main");
+			expect(readFileSync(join(main, ".git", "refs", "remotes", "headremote", "HEAD"), "utf8")).toContain(
+				"headremote/main",
+			);
 			git(main, "remote", "remove", "headremote");
 		});
 
