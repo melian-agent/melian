@@ -300,6 +300,32 @@ describe("walkthrough summaries", () => {
 		expect(JSON.stringify(doc)).not.toContain("private task detail");
 	});
 
+	it("bounds total input across large changed files", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		const files = Object.fromEntries(
+			Array.from({ length: 20 }, (_, index) => [
+				`src/file${String(index).padStart(2, "0")}.ts`,
+				`export const value = "${"x".repeat(6500)}";\n`,
+			]),
+		);
+		repo = baseAndHead({ "README.md": "Base.\n" }, files);
+		changeset = await Changeset.resolve(repo, "main...feature");
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).provenance = {
+				[revisionKey(changeset.revision)]: { kind: "pull-request", policy: "config", manifest: [], lenses: [] },
+			};
+		}, context);
+		const captured = scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+		await summarize();
+		const prompt = captured["You write Melian's walkthrough"]![0]!.map(textOf).join("\n");
+		const blocks = [...prompt.matchAll(/<untrusted-[a-f0-9]+ label="file">\n([\s\S]*?)\n<\/untrusted-[a-f0-9]+>/g)];
+		expect(blocks).toHaveLength(9);
+		expect(blocks.reduce((size, block) => size + block[1]!.length, 0)).toBe(100_000);
+		expect(prompt).toContain("[The remaining files were not read for the summary.]");
+		expect(prompt).not.toContain("src/file09.ts");
+	});
+
 	it("rejects extra properties and validates paths against the changed files", async () => {
 		const captured = scriptConversations(models, [
 			{
