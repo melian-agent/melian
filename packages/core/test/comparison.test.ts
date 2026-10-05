@@ -1,6 +1,8 @@
 import {
+	Adjudication,
 	Comparison,
 	ComparisonError,
+	defaultConfig,
 	ExternalFinding,
 	type ExternalFindingInput,
 	Finding,
@@ -30,10 +32,14 @@ function external(input: Partial<ExternalFindingInput> = {}): ExternalFinding {
 	});
 }
 
+// Melian's verdict over `findings`, as adjudication decides it under the default resolutions.
+const verdictOf = (findings: readonly Finding[]) =>
+	new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate();
+
 function compared(externals: readonly ExternalFinding[], findings: readonly Finding[]): Comparison {
 	const comparison = Comparison.of(revision);
 	comparison.import("file:codex.json", { findings: externals, skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
-	comparison.compare(findings);
+	comparison.compare(verdictOf(findings));
 	return comparison;
 }
 
@@ -222,6 +228,16 @@ describe("Comparison matching", () => {
 		expect(ids(comparison.externalOnly())).toEqual([{ external: [four.id], melian: [] }]);
 	});
 
+	it("leaves a silent finding out of the comparison, since the author never saw it", () => {
+		const nit = melian({ severity: "nit" });
+		const near = external({ line: 12 });
+		const comparison = compared([near], [nit]);
+		expect(comparison.melianFindings()).toEqual([]);
+		expect(comparison.effectiveMatches()).toEqual([]);
+		expect(ids(comparison.externalOnly())).toEqual([{ external: [near.id], melian: [] }]);
+		expect(comparison.melianOnly()).toEqual([]);
+	});
+
 	it("never matches another file", () => {
 		const comparison = compared([external({ file: "src/other.ts" })], [melian()]);
 		expect(comparison.effectiveMatches()).toEqual([]);
@@ -323,7 +339,7 @@ describe("Comparison matching", () => {
 		comparison.match(far.id, other.id, "M", "t2");
 		const again = Comparison.from(comparison.toJSON());
 		again.import("file:codex.json", { findings: [near, far], skippedBodies: 0 }, "t3");
-		again.compare([finding, other]);
+		again.compare(verdictOf([finding, other]));
 		expect(again.effectiveMatches()).toEqual([
 			{ external: far.id, melian: other.id, kind: "hand", by: "M", at: "t2" },
 		]);
@@ -353,7 +369,7 @@ describe("Comparison matching", () => {
 		const comparison = compared([external({ source })], [finding]);
 		const moved = external({ source, line: 60 });
 		comparison.import("file:codex.json", { findings: [moved], skippedBodies: 2 }, "later");
-		comparison.compare([finding]);
+		comparison.compare(verdictOf([finding]));
 		expect(comparison.externalFindings()).toHaveLength(1);
 		expect(comparison.externalFindings()[0]!.line).toBe(60);
 		expect(comparison.effectiveMatches()).toEqual([]);
@@ -372,7 +388,7 @@ describe("Comparison matching", () => {
 		);
 		const comparison = compared([], [finding, other]);
 		comparison.import("file:codex.json", { findings: first, skippedBodies: 0 }, "t1");
-		comparison.compare([finding, other]);
+		comparison.compare(verdictOf([finding, other]));
 		comparison.match(first[1]!.id, other.id, "M", "t2");
 		comparison.unmatch(first[2]!.id, finding.id, "M", "t2");
 		const second = ExternalFinding.fromFile(
@@ -381,7 +397,7 @@ describe("Comparison matching", () => {
 		);
 
 		comparison.import("file:codex.json", { findings: second, skippedBodies: 0 }, "t3");
-		comparison.compare([finding, other]);
+		comparison.compare(verdictOf([finding, other]));
 
 		expect(second[0]!.id).toBe(first[0]!.id);
 		expect(comparison.externalFindings().map((each) => each.id)).toEqual([first[0]!.id]);

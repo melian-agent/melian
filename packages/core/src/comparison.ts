@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
+import type { Verdict } from "./adjudication.ts";
 import { FindingError } from "./errors.ts";
 import { canonicalPath, type Finding } from "./findings.ts";
 
@@ -576,10 +577,12 @@ export class Comparison {
 	}
 
 	/**
-	 * Compares with `findings`, the findings of Melian's stored review of the revision: records their IDs and matches
-	 * each external finding with every one at its site, except a pair a maintainer unmatched. Hand matches stay.
+	 * Compares with `verdict`, Melian's stored review of the revision: records the IDs of the findings it shows, those
+	 * that need attention and those dismissed, and matches each external finding with every one at its site, except a
+	 * pair a maintainer unmatched. Hand matches stay. A silent finding was never shown to the author, so it takes no part.
 	 */
-	compare(findings: readonly Finding[]): void {
+	compare(verdict: Verdict): void {
+		const findings = [...verdict.attention(), ...verdict.dismissed];
 		this.melian = [...new Set(findings.map((finding) => finding.id))];
 		const hand = this.matches.filter((match) => match.kind === "hand");
 		const kept = new Set([...hand, ...this.unmatches].map(pairKey));

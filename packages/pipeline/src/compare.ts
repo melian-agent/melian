@@ -171,13 +171,13 @@ export class CompareHarness {
 				throw new CompareError("notReviewed", `Melian has no review of ${key} to compare against`);
 			}
 			// A copy through JSON: the stored verdict is the commit's own view, which structuredClone refuses.
-			const findings = Verdict.from(JSON.parse(JSON.stringify(verdicts[key]!)) as StoredVerdict).all();
+			const verdict = Verdict.from(JSON.parse(JSON.stringify(verdicts[key]!)) as StoredVerdict);
 			const document = await tx.doc(ComparisonDocument, root.id);
 			const stored = document.comparisons[key];
 			const comparison = stored === undefined ? Comparison.of(revision) : Comparison.from(stored);
-			comparison.compare(findings);
+			comparison.compare(verdict);
 			change(comparison);
-			comparison.compare(findings);
+			comparison.compare(verdict);
 			document.comparisons = { ...document.comparisons, [key]: comparison.toJSON() };
 			return comparison;
 		}, context);
