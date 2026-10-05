@@ -47,8 +47,12 @@
 (allow user-preference-read)
 (allow system-mac-syscall)
 (allow system-fsctl)
-(allow system-socket)
-(allow network*)
+; Network: IP, loopback servers, and the DNS resolver's socket. Other unix-domain sockets, such as
+; the ssh agent and the Docker daemon, stay closed.
+(allow network-outbound (remote ip))
+(allow network-bind (local ip "localhost:*"))
+(allow network-inbound (local ip "localhost:*"))
+(allow network-outbound (remote unix-socket (path-literal "/private/var/run/mDNSResponder")))
 (allow file-read*)
 (allow file-map-executable)
 (allow file-ioctl (regex #"^/dev/ttys[0-9]+"))

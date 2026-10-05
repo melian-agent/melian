@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import {
 	chmodSync,
 	existsSync,
@@ -11,8 +11,10 @@ import {
 	symlinkSync,
 	writeFileSync,
 } from "node:fs";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
+import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const script = join(import.meta.dirname, "codex-sandboxed.sh");
@@ -20,6 +22,13 @@ const git = (cwd, ...args) =>
 	execFileSync("git", ["-c", "user.email=t@example.com", "-c", "user.name=t", ...args], { cwd, stdio: "pipe" });
 
 const sandboxExec = existsSync("/usr/bin/sandbox-exec");
+const realAgentSocket = (() => {
+	try {
+		return execFileSync("launchctl", ["getenv", "SSH_AUTH_SOCK"], { encoding: "utf8" }).trim();
+	} catch {
+		return "";
+	}
+})();
 
 const failure = (fn) => {
 	try {
@@ -88,10 +97,22 @@ describe("codex-sandboxed.sh profile", () => {
 	it("looks up only named Mach services, never launchd or LaunchServices", () => {
 		const text = profile(linked, scratch);
 		expect(text).not.toMatch(/^\(allow mach-lookup\)$/m);
-		for (const name of ["com.apple.SecurityServer", "com.apple.trustd.agent", "com.apple.system.opendirectoryd.libinfo"])
+		for (const name of [
+			"com.apple.SecurityServer",
+			"com.apple.trustd.agent",
+			"com.apple.system.opendirectoryd.libinfo",
+		])
 			expect(text).toContain(`(global-name "${name}")`);
 		for (const name of ["com.apple.coreservices.launchservicesd", "com.apple.lsd.mapdb", "com.apple.xpc.launchd"])
 			expect(text).not.toContain(name);
+	});
+
+	it("filters the network: IP only, loopback servers, and the resolver's socket, with no blanket allow", () => {
+		const text = profile(linked, scratch);
+		expect(text).not.toMatch(/^\(allow network\*\)$/m);
+		expect(text).not.toMatch(/^\(allow system-socket\)$/m);
+		expect(text).toContain("(allow network-outbound (remote ip))");
+		expect(text).toContain('(remote unix-socket (path-literal "/private/var/run/mDNSResponder"))');
 	});
 
 	it("allows only the git state a commit needs, as literal files in the administrative directory", () => {
@@ -349,12 +370,34 @@ describe("codex-sandboxed.sh profile", () => {
 
 		it("resolves the user, yet cannot start a process through launchd or LaunchServices", () => {
 			expect(sh(linked, "id -un").toString().trim()).not.toBe("");
-			for (const command of [
-				"launchctl submit -l melian-probe -- /usr/bin/true",
-				"open -g -j -a Calculator",
-			])
+			for (const command of ["launchctl submit -l melian-probe -- /usr/bin/true", "open -g -j -a Calculator"])
 				expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
 		});
+
+		it("serves and fetches over loopback, but cannot connect to a unix-domain socket", async () => {
+			const loopback =
+				"const h=require('http').createServer((q,r)=>r.end('ok')).listen(0,'127.0.0.1',async()=>{console.log('served',await (await fetch('http://127.0.0.1:'+h.address().port)).text());h.close()})";
+			expect(sandboxedNode(loopback)).toContain("served ok");
+			const socketPath = join(root, "agent.sock");
+			const server = createServer((connection) => connection.end("secret"));
+			await new Promise((resolve) => server.listen(socketPath, resolve));
+			const connect = `require('net').connect(${JSON.stringify(socketPath)}).on('data',d=>console.log(String(d))).on('error',e=>{console.log(e.code);process.exit(3)})`;
+			try {
+				const direct = await promisify(execFile)(process.execPath, ["-e", connect]);
+				expect(direct.stdout).toContain("secret");
+				const sandboxed = promisify(execFile)("sandbox-exec", ["-f", profilePath, process.execPath, "-e", connect]);
+				await expect(sandboxed).rejects.toMatchObject({ code: 3 });
+			} finally {
+				server.close();
+			}
+		});
+
+		it.skipIf(!realAgentSocket)("cannot reach the user's ssh agent", () => {
+			expect(failure(() => sh(linked, `SSH_AUTH_SOCK='${realAgentSocket}' ssh-add -l`)).status).toBe(2);
+		});
+
+		const sandboxedNode = (code) =>
+			execFileSync("sandbox-exec", ["-f", profilePath, process.execPath, "-e", code], { env: env() }).toString();
 
 		it("commits in the linked worktree", () => {
 			sh(linked, "echo x > f && git add f && git commit -q -m sandboxed");
