@@ -561,6 +561,19 @@ describe("the user-level preference file", () => {
 		expect(error.message).toContain("lists no model");
 	});
 
+	it("refuses a committed route with fallbacks and no model or accept", async () => {
+		writeFiles(repo, { "melian.yaml": lines("models:", "  heavy:", "    fallbacks: [openai/gpt]") });
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", file: "melian.yaml", key: "models.heavy.model" });
+	});
+
+	it("accepts a preference file that restates only fallbacks under a committed route that names a model", async () => {
+		writeFiles(repo, { "melian.yaml": lines("models:", "  heavy:", "    model: anthropic/sonnet") });
+		writeFiles(home, { "config.yaml": lines("models:", "  heavy:", "    fallbacks: [user/fallback]") });
+		const { config } = await loadConfig(repo, worktree(), "a.ts");
+		expect(config.models.heavy).toEqual({ model: "anthropic/sonnet", fallbacks: ["user/fallback"] });
+	});
+
 	it("refuses a policy key in melian.local.yaml too", async () => {
 		writeFiles(repo, { "melian.local.yaml": lines("models:", "  heavy:", "    acceptOverridden: true") });
 		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
@@ -606,6 +619,7 @@ describe("the user-level preference file", () => {
 	});
 
 	it("records a preference file that changes only fallbacks as the route's override", async () => {
+		writeFiles(repo, { "melian.yaml": lines("models:", "  heavy:", "    model: anthropic/sonnet") });
 		writeFiles(home, { "config.yaml": lines("models:", "  heavy:", "    fallbacks: [user/fallback]") });
 		const { config, routes } = await loadConfig(repo, worktree(), "a.ts");
 		expect(config.models.heavy?.fallbacks).toEqual(["user/fallback"]);

@@ -723,6 +723,23 @@ function checkBands(config: MelianConfig, layers: readonly { site: Site; layer: 
 	}
 }
 
+// `model` is optional so a preference file can restate only `fallbacks`, but a merged route with fallbacks and neither a
+// model nor an accept would drop them without a word.
+function checkFallbacks(models: MelianConfig["models"], layers: readonly { site: Site; layer: MelianYaml }[]): void {
+	for (const tier of modelTiers) {
+		const route = models[tier];
+		if (route?.fallbacks === undefined || route.model !== undefined || (route.accept?.length ?? 0) > 0) continue;
+		const site = layers.find(({ layer }) => layer.models?.[tier]?.fallbacks !== undefined)!.site;
+		const key = `models.${tier}.model`;
+		throw configError(
+			"invalidValue",
+			site,
+			`"models.${tier}.fallbacks" has no model to follow; set "${key}", or accept, which a committed melian.yaml sets`,
+			{ key },
+		);
+	}
+}
+
 // A route that refuses every model outside accept, and accepts none, would fail every check on its tier whatever the
 // maintainer holds, so it is a mistake in the file rather than a policy.
 function checkRefusals(models: MelianConfig["models"], layers: readonly { site: Site; layer: MelianYaml }[]): void {
@@ -883,6 +900,7 @@ async function loadLayers(
 			merge({}, { models: {}, lenses: {} }),
 		);
 	checkRefusals(committed.models as MelianConfig["models"], layers.slice(preferences));
+	checkFallbacks(config.models, layers);
 	const lensTiers: Record<string, LensTier> = {};
 	for (const [name, settings] of Object.entries(committed.lenses as MelianConfig["lenses"])) {
 		if (settings.tier !== undefined) lensTiers[name] = settings.tier;
