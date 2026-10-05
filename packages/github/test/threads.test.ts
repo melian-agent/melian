@@ -46,7 +46,7 @@ describe("ReviewThreadImporter", () => {
 				file: "src/user.ts",
 				line: 7,
 				endLine: 8,
-				title: "**Guard the missing manager.**",
+				title: "Guard the missing manager.",
 				body: expect.stringContaining("is optional, so `managerName` throws"),
 				severity: "_\u26a0\ufe0f Potential issue_ | _\u{1f7e0} Major_",
 				source: {
@@ -59,7 +59,7 @@ describe("ReviewThreadImporter", () => {
 				resolved: true,
 			},
 			expect.objectContaining({
-				title: "**The heading names a command that no longer exists.**",
+				title: "The heading names a command that no longer exists.",
 				severity: "_\u{1f9f9} Nitpick_ | _\u{1f535} Trivial_",
 				file: "docs/removed.md",
 				line: 4,
@@ -76,6 +76,50 @@ describe("ReviewThreadImporter", () => {
 		expect(threads.map((request) => request.body.variables.after)).toEqual([null, "Y3Vyc29yOjI="]);
 		expect(requests.every((request) => request.url === "https://api.github.com/graphql")).toBe(true);
 	});
+
+	it.each([
+		["collapsed evidence", "<details>\n<summary>Evidence</summary>\n**Evidence heading**\n</details>"],
+		["nested evidence", "<details>\n<details>Nested</details>\nEvidence\n</details>"],
+		["inline evidence", "<details><summary>Evidence</summary>Evidence</details>"],
+	])("reads CodeRabbit's headline after %s", async (_name, evidence) => {
+		const pages = structuredClone(recording.graphql!.MelianReviewThreads!) as {
+			data: {
+				repository: { pullRequest: { reviewThreads: { nodes: { comments: { nodes: { body: string }[] } }[] } } };
+			};
+		}[];
+		const comment = pages[0]!.data.repository.pullRequest.reviewThreads.nodes[0]!.comments.nodes[0]!;
+		const category = "_Potential issue_ | _Major_";
+		comment.body = `${category}\n\n${evidence}\n\n**Guard the missing manager.**\nThe manager is optional.`;
+		const { opened } = importer(undefined, {
+			...recording,
+			graphql: { ...recording.graphql, MelianReviewThreads: pages },
+		});
+
+		const [finding] = (await opened.import()).findings;
+
+		expect(finding?.title).toBe("Guard the missing manager.");
+		expect(finding?.severity).toBe(category);
+		expect(finding?.body).toBe(comment.body);
+	});
+
+	it.each(["<details>\nEvidence\n</details>", "<details>\nEvidence"])(
+		"keeps CodeRabbit's second non-blank line when no headline follows %s",
+		async (evidence) => {
+			const pages = structuredClone(recording.graphql!.MelianReviewThreads!) as {
+				data: {
+					repository: { pullRequest: { reviewThreads: { nodes: { comments: { nodes: { body: string }[] } }[] } } };
+				};
+			}[];
+			pages[0]!.data.repository.pullRequest.reviewThreads.nodes[0]!.comments.nodes[0]!.body =
+				`_Potential issue_ | _Major_\n\n${evidence}`;
+			const { opened } = importer(undefined, {
+				...recording,
+				graphql: { ...recording.graphql, MelianReviewThreads: pages },
+			});
+
+			expect((await opened.import()).findings[0]?.title).toBe("<details>");
+		},
+	);
 
 	it("requests each thread's first comment so replies cannot decide attribution", async () => {
 		const { opened, requests } = importer();

@@ -215,11 +215,21 @@ export class ReviewThreadImporter implements ExternalImporter {
 		const sameSide = thread.startDiffSide === null || thread.startDiffSide === thread.diffSide;
 		const start = !sameSide ? null : placed ? thread.startLine : thread.originalStartLine;
 		const reviewer = reviewerOf(comment.author!);
-		// CodeRabbit opens with a line naming its category and severity, then its headline on the next line that is not
-		// blank. Melian selects the lines and parses no markdown.
 		const lines = comment.body.split(/\r?\n/).filter((each) => each.trim() !== "");
 		const rabbit = reviewer.name === "coderabbit" && lines.length > 1;
-		const title = rabbit ? lines[1]! : comment.body.trim() === "" ? "(empty comment)" : comment.body;
+		let title = rabbit ? lines[1]! : comment.body.trim() === "" ? "(empty comment)" : comment.body;
+		if (rabbit) {
+			// CodeRabbit can put collapsed evidence before the headline.
+			let depth = 0;
+			for (const line of lines.slice(1)) {
+				const inside = depth > 0;
+				const tags = [...line.matchAll(/<\/?details\b[^>]*>/gi)];
+				for (const [tag] of tags) depth = tag.startsWith("</") ? Math.max(0, depth - 1) : depth + 1;
+				if (inside || tags.length > 0) continue;
+				title = line.trim().replace(/^\*\*(.*)\*\*$/, "$1");
+				break;
+			}
+		}
 		return ExternalFinding.create({
 			reviewer,
 			file: thread.path,
