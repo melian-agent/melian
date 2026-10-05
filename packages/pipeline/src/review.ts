@@ -233,8 +233,13 @@ async function spawnLens(tx: Tx, taskId: TaskId, input: LensTaskInput, lens: Len
 	return created.id;
 }
 
-// Aborts every live lens task the review index no longer names for its revision, or names in the shape version 2 of the
-// index stored, which no selection matches, before anything resumes it. Problem:
+// Whether a stored selection string has the shape `selectionOf` writes: `name@version@level`, then the route.
+function isCurrentSelection(lens: string): boolean {
+	return /^[^@\s]+@[^@\s]+@[^@\s]+ .*\bon /.test(lens);
+}
+
+// Aborts every live lens task the review index no longer names for its revision, or names in a shape no selection
+// matches, before anything resumes it. Problem:
 // a review that replaced a run commits the replacement and then aborts the old task, and a process that dies between the
 // two leaves the old task live; its conversation, resumed mid-request, would ask its model again. Solution: sweep before
 // the harness resumes, at open, and at the start of every review.
@@ -248,9 +253,10 @@ async function abortReplacedRuns(harness: Harness, context: Context): Promise<vo
 		const entry = index?.reviews[revisionKey(input.revision)];
 		// An entry with no task is one a review that selected no lens rewrote: it names no run at all.
 		const replaced = entry !== undefined && entry.task !== record.id;
-		// An entry an older Melian stored names its lenses without their routes, so no review can attach to its task.
+		// An entry an older Melian stored names its lenses in a shape `selectionOf` no longer writes, so no review can
+		// attach to its task.
 		const stale =
-			entry !== undefined && entry.lenses.length > 0 && entry.lenses.every((lens) => !lens.includes(" on "));
+			entry !== undefined && entry.lenses.length > 0 && entry.lenses.every((lens) => !isCurrentSelection(lens));
 		if (replaced || stale) await harness.abortTask(record.id, context);
 	}
 }
