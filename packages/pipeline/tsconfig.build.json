@@ -4,6 +4,7 @@
 		"composite": true,
 		"rootDir": "src",
 		"outDir": "dist",
+		"tsBuildInfoFile": "../../.tsbuild/pipeline.tsbuildinfo",
 		"noEmit": false
 	},
 	"include": ["src/**/*"],

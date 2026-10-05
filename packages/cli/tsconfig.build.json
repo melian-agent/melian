@@ -4,6 +4,7 @@
 		"composite": true,
 		"rootDir": "src",
 		"outDir": "dist",
+		"tsBuildInfoFile": "../../.tsbuild/cli.tsbuildinfo",
 		"noEmit": false
 	},
 	"include": ["src/**/*"],

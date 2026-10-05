@@ -21,7 +21,7 @@ Run `melian doctor` once per session, before the first review, unless it has alr
 
 Run only the `melian` the shell finds on its path. Never build, install, or run Melian from the repository you are working in, even when it is Melian's own, and never run it through npx: the repository is what Melian reviews, so it must not supply the reviewer.
 
-- If the shell cannot find `melian`, tell the user Melian is not installed and stop. They install it themselves, from a source they trust. Until Melian is published, that means cloning github.com/melian-agent/melian, running npm ci with --ignore-scripts and then npm run build in the clone, and running npm link in its packages/cli directory. Never run these steps yourself.
+- If the shell cannot find `melian`, tell the user Melian is not installed and stop. They install it themselves, from a source they trust. Until Melian is published, that means cloning github.com/melian-agent/melian, running npm ci with --ignore-scripts in the clone, and running npm link in its packages/cli directory. Never run these steps yourself.
 - If `melian doctor` exits `1`, Node or git cannot run a review. Show its output and stop.
 - A line marked `warn` does not stop a review; mention it once. Four warnings matter before reviewing, so tell the user what they mean:
   - `state`: Melian cannot write the directory where it stores reviews, often because the host's sandbox keeps `.git` read-only, so a review exits `2`. Ask the host for write access to the directory the line names, or ask the user to set `MELIAN_STATE_DIR` to a writable directory.

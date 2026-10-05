@@ -28,6 +28,23 @@ jobs:
         run: npm install -g npm@11.19.0
       - run: npm ci --ignore-scripts
       - run: npm run check
-      - run: npm run build
+      # The publish check. The tests run the CLI from source, so nothing else builds dist/, packs it, or runs the
+      # shim's tarball branch. `! grep` would not fail a step under bash -e, hence the if.
+      - name: Pack, install, and run the published CLI
+        run: |
+          npm run pack -- "$RUNNER_TEMP/tarballs"
+          listing=$(tar tzf "$RUNNER_TEMP"/tarballs/melian-agent-cli-*.tgz)
+          grep -qx package/bin/melian.js <<<"$listing"
+          grep -qx package/dist/bin.js <<<"$listing"
+          if grep -q '^package/src/' <<<"$listing"; then echo "the cli tarball ships src/"; exit 1; fi
+          mkdir "$RUNNER_TEMP/project"
+          cp .npmrc "$RUNNER_TEMP/project/"
+          cd "$RUNNER_TEMP/project"
+          npm init -y > /dev/null
+          npm install --ignore-scripts "$RUNNER_TEMP"/tarballs/melian-agent-{cli,core,pipeline,github}-*.tgz
+          # An empty stderr proves src/warnings.ts still drops Node 22's SQLite warning in the built output.
+          node_modules/.bin/melian --help > "$RUNNER_TEMP/help.out" 2> "$RUNNER_TEMP/help.err"
+          grep -q '^Usage: melian ' "$RUNNER_TEMP/help.out"
+          if [ -s "$RUNNER_TEMP/help.err" ]; then cat "$RUNNER_TEMP/help.err"; echo "melian --help wrote to stderr"; exit 1; fi
       - name: Fail if check rewrote files
         run: git diff --exit-code
