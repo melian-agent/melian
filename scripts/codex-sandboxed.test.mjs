@@ -685,7 +685,16 @@ describe("codex-sandboxed.sh profile", () => {
 			const heredoc = (shell, flags) =>
 				execFileSync(
 					"sandbox-exec",
-					["-f", profilePath, "env", `TMPDIR=${run}`, `TMPPREFIX=${run}/zsh`, shell, flags, "cat <<EOF\nhello\nEOF"],
+					[
+						"-f",
+						profilePath,
+						"env",
+						`TMPDIR=${run}`,
+						`TMPPREFIX=${run}/zsh`,
+						shell,
+						flags,
+						"cat <<EOF\nhello\nEOF",
+					],
 					{ cwd: linked, encoding: "utf8", stdio: "pipe", env: env() },
 				);
 			expect(heredoc("/bin/zsh", "-lc")).toBe("hello\n");
