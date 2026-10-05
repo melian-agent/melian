@@ -1,6 +1,6 @@
 import { rmSync } from "node:fs";
 import { Adjudication, defaultConfig, Finding, type LedgerRound } from "@melian-agent/core";
-import { createGitHubProvider, Ledger, maxBodyLength, parseMarker, verifyMarker } from "@melian-agent/github";
+import { createGitHubProvider, Ledger, marker, maxBodyLength, parseMarker, verifyMarker } from "@melian-agent/github";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -156,16 +156,41 @@ describe("ledger rendering", () => {
 		expect(body.length).toBeLessThanOrEqual(maxBodyLength);
 		expect(Ledger.readStamp(body)).toEqual(ledger.stamp);
 		expect(body).toContain("This ledger was cut");
+		expect(body).toContain("Unsafe input");
 		expect(body.match(/<details>/g)?.length ?? 0).toBe(body.match(/<\/details>/g)?.length ?? 0);
 	});
+	it("drops the oldest earlier round first and keeps the current round", () => {
+		const rounds = Array.from({ length: 6 }, (_, index) => ({
+			...round,
+			round: index + 1,
+			walkthrough: { summary: (index === 5 ? "z" : "y").repeat(800), files: [] },
+		}));
+		const ledger = Ledger.from(verdict, { rounds }, options);
+		const roomy = ledger.render(links);
+		const size = roomy.length;
+		const body = ledger.render(links, size - 1500);
+		expect(body.length).toBeLessThanOrEqual(size - 1500);
+		expect(body).toContain("Unsafe input");
+		expect(Ledger.readStamp(body)).toEqual(ledger.stamp);
+		expect(body).toContain("This ledger was cut");
+		expect(body).toMatch(/Earlier round 1 at[^\n]*<\/summary>\n\n[^\n]*Details trimmed\./);
+		expect(body).toContain("y".repeat(800));
+		expect(body).toContain("z".repeat(800));
+	});
+
 	it("rejects visible tampering, truncation and a digest hidden in another marker field", () => {
 		const ledger = Ledger.from(verdict, { rounds: [round] }, options);
 		const body = ledger.render(links);
 		expect(Ledger.readStamp(body.replace("Reads input", "Different text"))).toBeUndefined();
 		expect(Ledger.readStamp(body.slice(0, -20))).toBeUndefined();
-		const original = parseMarker(body.split("\n")[0]!)!.id;
-		const wrong = body.replace(`ledger=${original}`, `ledger=0123456789abcdef extra=ledger=${original}`);
+		const opening = parseMarker(body.split("\n")[0]!)!;
+		const wrong = [marker(opening.revision, "ledger", "0123456789abcdef", secret), ...body.split("\n").slice(1)].join(
+			"\n",
+		);
+		expect(parseMarker(wrong.split("\n")[0]!)).toMatchObject({ kind: "ledger", id: "0123456789abcdef" });
+		expect(verifyMarker(parseMarker(wrong.split("\n")[0]!)!, secret)).toBe(true);
 		expect(Ledger.readStamp(wrong)).toBeUndefined();
+		expect(Ledger.readStamp(body)).toBeDefined();
 	});
 
 	it("renders no empty agent prompt or unrecorded verifier claim", () => {
@@ -260,6 +285,20 @@ describe("ledger rendering", () => {
 		expect(body).toContain("### Dismissals");
 		expect(body).toContain("Input is validated upstream.");
 		expect(Ledger.readStamp(body)).toBeDefined();
+	});
+
+	it("cuts a walkthrough over 12,000 characters and says so", () => {
+		const long = {
+			...round,
+			walkthrough: {
+				summary: "summary",
+				files: Array.from({ length: 100 }, (_, index) => ({ path: `src/f${index}.ts`, summary: "x".repeat(2000) })),
+			},
+		};
+		const body = Ledger.from(verdict, { rounds: [long] }, options).render(links);
+		expect(body).toContain("Walkthrough details trimmed.");
+		expect(body).not.toContain("src/f99.ts");
+		expect(body.length).toBeLessThan(40_000);
 	});
 
 	it("changes the stamp for each walkthrough switch alone", () => {
