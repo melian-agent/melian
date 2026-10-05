@@ -406,6 +406,21 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 		expect(allow).not.toContain("commondir");
 	});
 
+	it("denies objects and config beside the Melian and reflog HEAD exceptions after the allows", () => {
+		const text = profile(linked, scratch);
+		const allowAt = text.indexOf("(allow file-write-create file-write-data file-write-unlink\n");
+		const denyAt = text.indexOf("(deny file-write*\n", allowAt);
+		expect(denyAt).toBeGreaterThan(allowAt);
+		const deny = block(text.slice(denyAt), "deny file-write*");
+		const names = "([oO][bB][jJ][eE][cC][tT][sS]|[cC][oO][nN][fF][iI][gG])(/|$)";
+		const common = `${main}/.git`.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
+		expect(deny).toContain(`(regex #"^${common}/(logs/)?refs/melian/(.*/)?${names}")`);
+		for (const path of [`${main}/.git/logs`, `${admin}/logs`]) {
+			const escaped = path.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
+			expect(deny).toContain(`(regex #"^${escaped}/${names}")`);
+		}
+	});
+
 	it("denies nothing under the run directory, which the wrapper deletes, but everything under a separate scratch", () => {
 		expect(block(profile(linked), "deny file-write*")).not.toContain(`^${run}/`);
 		const text = profile(linked, scratch);
@@ -986,6 +1001,37 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 				0,
 			);
 			expect(failure(() => sh(linked, "git branch feature/head")).status).not.toBe(0);
+		});
+
+		it("cannot plant objects or config beside Melian refs or the literal reflog HEAD files", () => {
+			const roots = [
+				join(main, ".git", "refs", "melian", "pull", "7"),
+				join(main, ".git", "logs", "refs", "melian", "pull", "7"),
+				join(main, ".git", "logs"),
+				join(admin, "logs"),
+			];
+			try {
+				for (const directory of roots) {
+					sh(linked, `mkdir -p '${directory}'`);
+					for (const name of ["objects", "ObJeCtS", "config", "CoNfIg"]) {
+						const path = join(directory, name);
+						for (const command of [`mkdir -p '${path}'`, `echo x > '${path}'`])
+							expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
+						expect(existsSync(path), path).toBe(false);
+					}
+				}
+				sh(linked, "git update-ref --create-reflog refs/melian/pull/7/head HEAD");
+				expect(git(linked, "rev-parse", "refs/melian/pull/7/head").toString().trim()).toBe(
+					git(linked, "rev-parse", "HEAD").toString().trim(),
+				);
+				sh(linked, "echo safe > after-head-plant && git add after-head-plant && git commit -q -m after-head-plant");
+				expect(readFileSync(join(admin, "logs", "HEAD"), "utf8")).toContain("after-head-plant");
+			} finally {
+				for (const directory of roots)
+					for (const name of ["objects", "ObJeCtS", "config", "CoNfIg"])
+						rmSync(join(directory, name), { recursive: true, force: true });
+				git(linked, "update-ref", "-d", "refs/melian/pull/7/head");
+			}
 		});
 
 		it("cannot plant a repository through a commondir file or a HEAD file under refs, logs, or objects", () => {

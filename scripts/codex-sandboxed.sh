@@ -197,6 +197,14 @@ dynamic_rules() {
   printf '  (regex #"^%s/logs/refs/melian/(.*/)?head([.]lock)?$")\n' "$(regex_path "$common")"
   echo ")"
 
+  # Every HEAD exception must leave no objects or config beside it for a planted repository.
+  echo "(deny file-write*"
+  printf '  (regex #"^%s/(logs/)?refs/melian/(.*/)?([oO][bB][jJ][eE][cC][tT][sS]|[cC][oO][nN][fF][iI][gG])(/|$)")\n' "$(regex_path "$common")"
+  for p in "$common/logs" "$admin/logs"; do
+    printf '  (regex #"^%s/([oO][bB][jJ][eE][cC][tT][sS]|[cC][oO][nN][fF][iI][gG])(/|$)")\n' "$(regex_path "$p")"
+  done
+  echo ")"
+
   echo "(deny file-write*"
   printf '  (literal "%s/.env")\n' "$worktree"
   filters literal "$worktree/.env"
