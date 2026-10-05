@@ -955,6 +955,41 @@ describe("verification ownership and budgets", () => {
 			await firstFinished;
 		}
 	});
+	it("refuses report_verdict after the conversation's tools budget ended", async () => {
+		const stored = await input();
+		const requests = scriptConversations(fake, [
+			{
+				match: verifierMarker,
+				replies: [
+					fauxAssistantMessage(
+						[
+							fauxToolCall("read_file", { path: "src/user.ts" }),
+							fauxToolCall("read_file", { path: "src/user.ts", startLine: 7 }),
+						],
+						{ stopReason: "toolUse" },
+					),
+					(messages) => scriptVerifier(messages),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
+		const id = (await startVerification(harness, stored, selection, false, context))!;
+		expect((await harness.waitForTask(id, context)).state.outcome).toMatchObject({
+			status: "completed",
+			result: { [stored.candidates[0]!.key]: { status: "ended", budgetEnded: { budget: "tools", limit: 1 } } },
+		});
+		expect(requests[verifierMarker]).toHaveLength(3);
+		const reportResults = requests[verifierMarker]![2]!.filter(
+			(message) => message.role === "toolResult" && message.toolName === "report_verdict",
+		);
+		expect(reportResults).toHaveLength(1);
+		expect(reportResults[0]).toMatchObject({ isError: true });
+		expect(textOf(reportResults[0]!)).toContain("the verifier budget ended");
+		expect((await readFindings(harness, root.id, revision, context))[0]!.properties.verification).toBeUndefined();
+	});
 	it("ends a candidate when its read budget ends", async () => {
 		const stored = await input();
 		scriptConversations(fake, [
