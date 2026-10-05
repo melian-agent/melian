@@ -434,6 +434,37 @@ describe("triage", () => {
 		});
 	});
 
+	it("runs a lens at its runnable floor when triage chooses skip from a cut change prompt", async () => {
+		writeFiles(repo, { "src/large.ts": `export const text = "${"x".repeat(210 * 1024)}";\n` });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "a large change");
+		const decider = choosing("skip");
+		await open(decider);
+		const sent = scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		const optional = { ...config, lenses: { correctness: { level: { floor: "skip" } } } } as const;
+
+		const reviewed = await review({ decider, config: optional });
+
+		expect(decider.requests[0]!.state).toContain("[The diff continues; the remaining files are omitted.]");
+		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "quick" });
+		expect(lensRecord(reviewed)!.reason).toContain("triage input was cut, so no lens could skip");
+		expect(sent[correctness]).toHaveLength(1);
+		const stored = await readRecordedDecision(
+			harness,
+			(await harness.root(context)).id,
+			revision(),
+			"triage",
+			context,
+		);
+		expect(stored).toMatchObject({ inputCut: true });
+		expect(stored!.decision!.chosen("correctness")).toBe("skip");
+
+		const repeated = await review({ decider, config: optional });
+		expect(lensRecord(repeated)).toMatchObject({ status: "ran", level: "quick" });
+		expect(decider.requests).toHaveLength(1);
+		expect(sent[correctness]).toHaveLength(1);
+	});
+
 	it("removes a triage-skipped lens from another lens's hand-off instructions", async () => {
 		const contracts = "You are the contracts reviewer";
 		const twoLenses = {
@@ -566,6 +597,41 @@ describe("triage", () => {
 		expect(
 			reviewed.verdict.ran?.filter((check) => check.name === "lens.correctness").map((check) => check.lineage),
 		).toEqual([undefined, undefined]);
+	});
+
+	it("includes options only the later folder variant contributes to the shared question", async () => {
+		writeFiles(repo, {
+			"services/.melian/lenses/correctness/LENS.md": lines(
+				"---",
+				"name: correctness",
+				"extends: correctness",
+				"---",
+				"Check the payments too.",
+			),
+			"services/pay.ts": lines("export const pay = 1;"),
+		});
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "a payments service");
+		writeFiles(repo, {
+			"src/melian.yaml": lines("lenses:", "  correctness:", "    level: { floor: careful, ceiling: careful }"),
+			"services/melian.yaml": lines("lenses:", "  correctness:", "    level: { floor: deep, ceiling: deep }"),
+		});
+		const variants = (await Lens.load(repo, { kind: "worktree" }, ["src/user.ts", "services/pay.ts"]))
+			.filter((lens) => lens.name === "correctness")
+			.sort((a, b) => a.scope.localeCompare(b.scope));
+		expect(variants.map((lens) => lens.scope)).toEqual(["", "services"]);
+		const decider = choosing("deep");
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done, done] }]);
+
+		const reviewed = await review({ decider, policy: "worktree", lenses: variants });
+
+		expect(decider.requests[0]!.questions.map((question) => [question.id, question.options])).toEqual([
+			["correctness", ["careful", "deep"]],
+		]);
+		expect(
+			reviewed.verdict.ran?.filter((check) => check.name === "lens.correctness").map((check) => check.level),
+		).toEqual(["careful", "deep"]);
 	});
 
 	it("records a decision that failed, and runs every lens at its default level with a note", async () => {
@@ -889,6 +955,46 @@ describe("a decision task another call replaced", () => {
 
 		expect(held.calls()).toBe(2);
 		expect(lensRecord(rerun)).toMatchObject({ level: "quick" });
+	});
+});
+
+describe("decision task cancellation", () => {
+	it("forwards a mid-decision task abort to the decider's signal", async () => {
+		let received: AbortSignal | undefined;
+		let observedAbort = false;
+		const decide = vi.fn((_request: Parameters<Decider["decide"]>[0], signal: AbortSignal | undefined) => {
+			received = signal;
+			return new Promise<never>((_, reject) => {
+				signal?.addEventListener(
+					"abort",
+					() => {
+						observedAbort = true;
+						reject(signal.reason);
+					},
+					{ once: true },
+				);
+			});
+		});
+		const decider: Decider = { name: "cancellable", calibrated: false, decide };
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		const reviewing = review({ decider });
+		await vi.waitFor(() => expect(decide).toHaveBeenCalledOnce());
+		expect(received?.aborted).toBe(false);
+		const root = await harness.root(context);
+		const pending = await readRecordedDecision(harness, root.id, revision(), "triage", context);
+
+		await harness.abortTask(pending!.task as TaskId, context);
+		const reviewed = await reviewing;
+
+		expect(observedAbort).toBe(true);
+		expect(received?.aborted).toBe(true);
+		expect((await harness.waitForTask(pending!.task as TaskId, context)).state.outcome.status).toBe("aborted");
+		expect(await readRecordedDecision(harness, root.id, revision(), "triage", context)).toEqual({
+			task: pending!.task,
+		});
+		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
+		expect(lensRecord(reviewed)!.reason).toContain("the decision task ended aborted");
 	});
 });
 

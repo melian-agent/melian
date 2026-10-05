@@ -498,15 +498,13 @@ export async function readFindings(
 		options.producers === undefined
 			? undefined
 			: new Map(options.producers.map((source) => [producerKey(source), source.ids] as const));
-	// A producer named without a version counts every version of its check, such as a static tool's record that names none.
-	const anyVersion = new Set(
-		(options.producers ?? []).filter((source) => source.version === undefined).map((source) => source.check),
-	);
 	const counts = (key: string, sighting: ProducerFinding) => {
-		if (wanted === undefined || anyVersion.has(sighting.properties.source.check)) return true;
-		if (!wanted.has(key)) return false;
-		const ids = wanted.get(key);
-		return ids === undefined || ids.includes(sighting.properties.id);
+		if (wanted === undefined) return true;
+		return [key, producerKey({ check: sighting.properties.source.check })].some((producer) => {
+			if (!wanted.has(producer)) return false;
+			const ids = wanted.get(producer);
+			return ids === undefined || ids.includes(sighting.properties.id);
+		});
 	};
 	return Object.keys(items)
 		.sort()
