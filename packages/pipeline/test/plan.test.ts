@@ -16,9 +16,11 @@ import {
 	type Message,
 	openHarness,
 	planInputs,
+	readFindings,
 	readProvenance,
 	reviewChangeset,
 	revisionKey,
+	type TaskId,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -29,6 +31,7 @@ import {
 	systemPromptOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
@@ -307,5 +310,114 @@ describe("reviewChangeset with a plan", () => {
 
 		expect(answered).toEqual(["heavy", "heavy"]);
 		expect(review.verdict.ran?.every((check) => check.lineage === undefined)).toBe(true);
+	});
+});
+
+describe("a lens run a later review replaced", () => {
+	// Holds the correctness lens in its first model request, replaces its run in the review index, as a later review's
+	// commit does before it aborts the run, then lets the request answer with a report. With `stripTask`, the lens
+	// conversations' policies lose their task, as one an older Melian spawned never had it.
+	async function reportAfterReplacement(stripTask: boolean) {
+		let release = () => {};
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let reached = () => {};
+		const asked = new Promise<void>((resolve) => {
+			reached = resolve;
+		});
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					async () => {
+						reached();
+						await held;
+						return fauxAssistantMessage(fauxToolCall("report_finding", wrongResult), { stopReason: "toolUse" });
+					},
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("No findings.")] },
+		]);
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const config: MelianConfig = { ...defaultConfig, tiers: twoLensTiers, models: { heavy: { model: heavy } } };
+		const running = reviewChangeset({ harness, changeset, config, lenses, standards: [], models: fake.review }).catch(
+			(error: unknown) => error,
+		);
+		await asked;
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		await root.commit(async (tx) => {
+			const index = await tx.doc(ReviewIndex, root.id);
+			const entry = index.reviews[revision]!;
+			const record = await tx.task(entry.task as TaskId);
+			const children = (record?.state as { checkpoint?: { children?: Record<string, number> } }).checkpoint
+				?.children;
+			index.reviews[revision] = { ...entry, task: 999_999 };
+			if (!stripTask) return;
+			for (const child of Object.values(children ?? {})) {
+				const document = await tx.doc(LensDocument, child as never);
+				const { task: _, ...policy } = document.lens!;
+				document.lens = policy;
+			}
+		}, context);
+		release();
+		await running;
+		return { requests, findings: await readFindings(harness, root.id, revision, context) };
+	}
+
+	it("asks no model on its next attempt once the index names another run", async () => {
+		let release = () => {};
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let reached = () => {};
+		const asked = new Promise<void>((resolve) => {
+			reached = resolve;
+		});
+		const askedBy: string[] = [];
+		const answer = async (_: readonly Message[], model: string) => {
+			askedBy.push(model);
+			if (model === "backup") return fauxAssistantMessage("No findings.");
+			reached();
+			await held;
+			return fauxAssistantMessage("", { stopReason: "error", errorMessage: "503 overloaded_error" });
+		};
+		scriptConversations(fake, [
+			{ match: correctness, replies: [answer, answer] },
+			{ match: contracts, replies: [fauxAssistantMessage("No findings.")] },
+		]);
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const config: MelianConfig = {
+			...defaultConfig,
+			tiers: twoLensTiers,
+			models: { heavy: { model: heavy, fallbacks: [backup] } },
+		};
+		const running = reviewChangeset({ harness, changeset, config, lenses, standards: [], models: fake.review }).catch(
+			(error: unknown) => error,
+		);
+		await asked;
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		await root.commit(async (tx) => {
+			const index = await tx.doc(ReviewIndex, root.id);
+			index.reviews[revision] = { ...index.reviews[revision]!, task: 999_999 };
+		}, context);
+		release();
+		await running;
+
+		// The heavy model failed over, and the next attempt, on backup, never reached the model.
+		expect(askedBy).toEqual(["heavy"]);
+	});
+
+	it("has its report refused once the index names another run", async () => {
+		const { requests, findings } = await reportAfterReplacement(false);
+
+		const results = requests[correctness]![1]!.filter((message) => message.role === "toolResult");
+		expect(results.map((message) => JSON.stringify(message.content))).toEqual([
+			expect.stringContaining("superseded: a later review of this revision replaced this run"),
+		]);
+		expect(findings).toEqual([]);
 	});
 });

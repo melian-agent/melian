@@ -118,6 +118,22 @@ function modelName(model: ModelReference): string {
 const continuePrompt =
 	"The model reviewing this change failed, and you take over. Continue the review where it stopped: findings already recorded stay recorded, so report only what is still missing. Then answer with one line saying how many findings you reported.";
 
+// Aborts every live lens task the review index no longer names for its revision, before anything resumes it. Problem:
+// a review that replaced a run commits the replacement and then aborts the old task, and a process that dies between the
+// two leaves the old task live; its conversation, resumed mid-request, would ask its model again. Solution: sweep before
+// the harness resumes, at open, and at the start of every review.
+async function abortReplacedRuns(harness: Harness, context: Context): Promise<void> {
+	const live = (await harness.inspect(context)).tasks.filter((task) => task.record.kind === LensTask.definition.name);
+	if (live.length === 0) return;
+	const root = await harness.root(context);
+	const index = await harness.snapshot(ReviewIndex, root.id, context);
+	for (const { record } of live) {
+		const input = record.input as unknown as LensTaskInput;
+		const named = index?.reviews[revisionKey(input.revision)]?.task;
+		if (named !== undefined && named !== record.id) await harness.abortTask(record.id, context);
+	}
+}
+
 // Whether the review index names another lens task for the task's revision: a later review replaced this run.
 async function superseded(
 	reader: DocumentReader,
@@ -290,6 +306,7 @@ export class ReviewHarness {
 			await storage.close(backgroundContext).catch(() => undefined);
 			throw error;
 		});
+		await abortReplacedRuns(harness, context);
 		return new ReviewHarness(harness);
 	}
 
@@ -716,6 +733,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const options = planned(request);
 	const { harness, changeset, config, standards, models } = options;
 	const context = options.context ?? backgroundContext;
+	await abortReplacedRuns(harness, context);
 	const root = (await harness.root(context)).id;
 	// A file's old path too, so a move out of a lens's paths still runs the lens on what left them.
 	const paths = changeset.revision.paths();
