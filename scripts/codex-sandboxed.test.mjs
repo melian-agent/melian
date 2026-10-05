@@ -632,9 +632,18 @@ describe("codex-sandboxed.sh profile", () => {
 
 		it("cannot create a ref whose last component is head, a known limit of the HEAD deny", () => {
 			expect(failure(() => sh(linked, "git branch feature/head")).status).not.toBe(0);
+			expect(failure(() => sh(linked, "git branch melian/head")).status).not.toBe(0);
 			expect(failure(() => sh(linked, "git tag head")).status).not.toBe(0);
 			sh(linked, "git branch feature/ahead");
 			sh(linked, "git branch -D feature/ahead");
+		});
+
+		it("writes and deletes Melian's refs/melian/pull/<N>/head, though no other ref named head", () => {
+			sh(linked, "git update-ref --create-reflog refs/melian/pull/7/head HEAD");
+			expect(git(linked, "rev-parse", "refs/melian/pull/7/head").toString().trim()).toMatch(/^[0-9a-f]{40}$/);
+			sh(linked, "git update-ref -d refs/melian/pull/7/head");
+			expect(failure(() => git(linked, "rev-parse", "--verify", "-q", "refs/melian/pull/7/head")).status).not.toBe(0);
+			expect(failure(() => sh(linked, "git branch feature/head")).status).not.toBe(0);
 		});
 
 		it("cannot plant a repository through a commondir file or a HEAD file under refs, logs, or objects", () => {
@@ -808,6 +817,7 @@ describe("codex-sandboxed.sh profile", () => {
 			expect(out).toContain("arg:--\narg:--not-an-option please");
 			expect(out).toMatch(/env:TMPDIR=.*\/codex-run\.[A-Za-z0-9]+/);
 			expect(out).toMatch(/env:npm_config_cache=.*\/codex-run\.[A-Za-z0-9]+\/npm-cache/);
+			expect(out).toMatch(/env:MELIAN_STATE_DIR=.*\/codex-run\.[A-Za-z0-9]+\/melian\n/);
 			expect(out).toMatch(/env:TMPPREFIX=.*\/codex-run\.[A-Za-z0-9]+\/zsh\n/);
 			expect(out).toContain("zsh-heredoc-ok");
 			expect(out).not.toContain("zsh-heredoc-failed");

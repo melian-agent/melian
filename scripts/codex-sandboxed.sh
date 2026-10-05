@@ -151,6 +151,9 @@ dynamic_rules() {
   filters literal "$common/logs/HEAD" "$common/logs/HEAD.lock" "$admin/logs/HEAD" "$admin/logs/HEAD.lock"
   printf '  (regex #"^%s/refs/remotes/[^/]+/HEAD([.]lock)?$")\n' "$(regex_path "$common")"
   printf '  (regex #"^%s/logs/refs/remotes/[^/]+/HEAD([.]lock)?$")\n' "$(regex_path "$common")"
+  # Melian's own CLI writes refs/melian/pull/<N>/head for every pull-request review.
+  printf '  (regex #"^%s/refs/melian/(.*/)?head([.]lock)?$")\n' "$(regex_path "$common")"
+  printf '  (regex #"^%s/logs/refs/melian/(.*/)?head([.]lock)?$")\n' "$(regex_path "$common")"
   echo ")"
 
   echo "(deny file-read*"
