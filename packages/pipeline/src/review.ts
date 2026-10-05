@@ -899,7 +899,8 @@ function sharedQuestions(questions: readonly ChoiceQuestion[]): ChoiceQuestion[]
 
 // Triage's decision on the revision: one choice question per lens, asked through `decider` in a decision task, which
 // stores the whole distribution. A repeat call with the same questions attaches to the task the first call created,
-// so a crash or a second review keeps the levels the first chose; `rerun` asks again after a decision that failed.
+// so a crash or a second review keeps the levels the first chose; `rerun` asks again after any decision that did not
+// complete, never after one that did.
 // `undefined`, with why, when the decider gave no usable answer, so every lens runs at its default level.
 async function triage(
 	harness: Harness,
@@ -926,7 +927,8 @@ async function triage(
 	const taskId = await root.commit(async (tx) => {
 		const document = await tx.doc(DecisionDocument, root.id);
 		const known = document.decisions[revision]?.[set];
-		const retry = rerun && known?.failure !== undefined;
+		// A rerun asks again after any decision that did not complete: one that failed, and one a crash left undecided.
+		const retry = rerun && known?.decision === undefined;
 		if (known?.key === key && !retry && (await attachable(tx, known.task, undecided))) {
 			return known.task as TaskId<DecisionResult>;
 		}

@@ -107,6 +107,7 @@ async function review(
 		lenses?: Lens[];
 		policy?: "worktree";
 		origin?: ReviewOrigin;
+		rerun?: boolean;
 	} = {},
 ): Promise<Review> {
 	return reviewChangeset({
@@ -120,6 +121,7 @@ async function review(
 		...(options.decider === undefined ? {} : { decider: options.decider }),
 		...(options.policy === undefined ? {} : { policy: { kind: options.policy } }),
 		...(options.origin === undefined ? {} : { origin: options.origin }),
+		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
 	});
 }
 
@@ -371,6 +373,69 @@ describe("triage", () => {
 		);
 		expect(stored).toMatchObject({ failure: "no answer to correctness in triage is recorded" });
 		expect(stored!.decision).toBeUndefined();
+	});
+
+	describe("attaching to a stored decision", () => {
+		// Fails its first `failures` calls, then chooses quick.
+		function flaky(failures: number): Decider & { readonly calls: number } {
+			let calls = 0;
+			return {
+				name: "flaky",
+				calibrated: false,
+				get calls() {
+					return calls;
+				},
+				decide: async (request) => {
+					calls++;
+					if (calls <= failures) throw new Error("503 overloaded_error");
+					return {
+						answers: request.questions.map((question) => ({ question: question.id, distribution: { quick: 1 } })),
+					};
+				},
+			};
+		}
+
+		it("keeps a failed decision on a repeat review, and asks again with rerun", async () => {
+			const decider = flaky(1);
+			await open(decider);
+			scriptConversations(fake, [{ match: correctness, replies: [done, done] }]);
+			expect(lensRecord(await review({ decider }))!.reason).toContain("triage failed");
+			const repeat = await review({ decider });
+			expect(decider.calls).toBe(1);
+			expect(lensRecord(repeat)).toMatchObject({
+				level: "careful",
+				reason: expect.stringContaining("triage failed"),
+			});
+
+			const rerun = await review({ decider, rerun: true });
+
+			expect(decider.calls).toBe(2);
+			expect(lensRecord(rerun)).toMatchObject({ level: "quick" });
+		});
+
+		it("never asks again after a decision that completed, even with rerun", async () => {
+			const decider = flaky(0);
+			await open(decider);
+			scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+			await review({ decider });
+			await review({ decider, rerun: true });
+			expect(decider.calls).toBe(1);
+		});
+
+		it("asks a changed question again rather than attach", async () => {
+			const decider = flaky(0);
+			await open(decider);
+			scriptConversations(fake, [{ match: correctness, replies: [done, done] }]);
+			await review({ decider });
+			const floored = { ...config, lenses: { correctness: { level: { floor: "careful" } } } } as const;
+			const changed = await review({ decider, config: floored });
+			expect(decider.calls).toBe(2);
+			// quick is no longer offered, so the answer fails closed to careful.
+			expect(lensRecord(changed)).toMatchObject({
+				level: "careful",
+				reason: expect.stringContaining("triage failed"),
+			});
+		});
 	});
 
 	it("refuses a decider the harness was not opened with", async () => {
