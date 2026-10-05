@@ -770,16 +770,17 @@ export class Comparison {
 	}
 
 	/**
-	 * The external findings that matched more than one Melian finding by site, each with those Melian findings. Proximity
-	 * alone cannot say which defect a reviewer meant, so each waits for the maintainer to match or unmatch by hand; a
-	 * finding a maintainer matched by hand to several is not ambiguous.
+	 * The external findings with several matches and at least one site match, each with those Melian findings. A hand
+	 * match settles only its own pair; any remaining mechanical pairing waits for the maintainer to match or unmatch it.
+	 * A finding matched entirely by hand is not ambiguous.
 	 */
 	ambiguous(): { readonly external: ExternalFinding; readonly melian: readonly string[] }[] {
-		const site = this.effectiveMatches().filter((match) => match.kind === "site");
+		const matches = this.effectiveMatches();
 		return this.externalFindings()
+			.filter((external) => matches.some((match) => match.external === external.id && match.kind === "site"))
 			.map((external) => ({
 				external,
-				melian: site.filter((match) => match.external === external.id).map((match) => match.melian),
+				melian: matches.filter((match) => match.external === external.id).map((match) => match.melian),
 			}))
 			.filter((each) => each.melian.length > 1);
 	}

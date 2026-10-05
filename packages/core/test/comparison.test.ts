@@ -462,6 +462,27 @@ describe("Comparison matching", () => {
 		);
 	});
 
+	it("keeps a mechanical pairing ambiguous after a hand match settles only the other pair", () => {
+		const first = melian();
+		const second = melian({ snippet: "eval(other)", startLine: 15, endLine: 15 });
+		const between = external({ line: 13, endLine: 14 });
+		const comparison = compared([between], [first, second]);
+		comparison.match(between.id, first.id, "M", "t");
+		comparison.compare(verdictOf([first, second]));
+		expect(
+			comparison
+				.effectiveMatches()
+				.map((match) => match.kind)
+				.sort(),
+		).toEqual(["hand", "site"]);
+		expect(comparison.ambiguous()).toEqual([{ external: between, melian: [first.id, second.id].sort() }]);
+		expect(comparison.render(undefined)).toContain(
+			`  ${between.id}  codex  src/run.ts:13-14  near ${[first.id, second.id].sort().join(", ")}\n`,
+		);
+		comparison.unmatch(between.id, second.id, "M", "t2");
+		expect(comparison.ambiguous()).toEqual([]);
+	});
+
 	it("does not call a finding ambiguous that a maintainer matched by hand to two Melian findings", () => {
 		const first = melian();
 		const second = melian({ snippet: "eval(other)", startLine: 40, endLine: 40 });
