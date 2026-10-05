@@ -110,13 +110,16 @@ function staticCheckout(added: string) {
 	return { repo, env: scriptFile(Object.fromEntries(builtinLenses.map((name) => [name, quiet]))) };
 }
 
+const verifierWarnings =
+	"melian: Plan: lenses verify, but the verifier tier routes no model of its own; verification falls back to lens tiers, heavy then medium then light\nmelian: Plan: every verification candidate would be judged by its finder's own family\n";
+
 describe("melian review and findings", { timeout: 60_000 }, () => {
 	it("exits 0 for a review that passed, and prints the terminal rendering of its verdict", () => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
 
 		const review = melian(repo, ["review", "main"], env);
 
-		expect(review).toMatchObject({ status: 0, stderr: "" });
+		expect(review).toMatchObject({ status: 0, stderr: verifierWarnings });
 		const stored = melian(repo, ["findings", "main", "--json"], env);
 		expect(stored.status).toBe(0);
 		const verdict = Verdict.from(JSON.parse(stored.stdout) as StoredVerdict);
@@ -152,7 +155,8 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 
 		expect(review.status).toBe(0);
 		expect(review.stderr).toBe(
-			"melian: Plan: heavy runs faux/scripted, set by --model; the committed route wants anthropic/claude-opus-5-5, and does not accept faux/scripted\n",
+			"melian: Plan: heavy runs faux/scripted, set by --model; the committed route wants anthropic/claude-opus-5-5, and does not accept faux/scripted\n" +
+				verifierWarnings,
 		);
 		expect(review.stdout).toContain("left the committed routes:\n  lens.");
 		const stored = Verdict.from(
@@ -200,7 +204,8 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 
 		expect(review.status).toBe(2);
 		expect(review.stderr).toBe(
-			`melian: credential vault in ${join(xdg.XDG_CONFIG_HOME, "melian/secrets.yaml")}: its command failed (3)\n`,
+			verifierWarnings +
+				`melian: credential vault in ${join(xdg.XDG_CONFIG_HOME, "melian/secrets.yaml")}: its command failed (3)\n`,
 		);
 		expect(review.stdout).toBe("");
 	});
@@ -335,7 +340,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 
 		const review = melian(repo, ["review", "main"], scriptFile({ pay: [{ text: "Reported 0 findings." }] }));
 
-		expect(review).toMatchObject({ status: 0, stderr: "" });
+		expect(review).toMatchObject({ status: 0, stderr: verifierWarnings });
 		expect(review.stdout).toContain("lens.pay  careful");
 	});
 
@@ -344,7 +349,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 
 		const review = melian(repo, ["review", "main"], env);
 
-		expect(review).toMatchObject({ status: 0, stderr: "" });
+		expect(review).toMatchObject({ status: 0, stderr: verifierWarnings });
 		const verdict = JSON.parse(melian(repo, ["findings", "main", "--json"], env).stdout) as StoredVerdict;
 		expect(verdict.notRun.map((check) => check.name)).toEqual(["decisions.fast"]);
 	});
@@ -622,7 +627,7 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		expect(routed.stdout).toContain(
 			`ok    plan        ${lenses}: quick on medium (no model), careful on heavy (anthropic/claude-opus-5-5), deep on heavy (anthropic/claude-opus-5-5)\n`,
 		);
-		expect(routed.stdout).not.toMatch(/^warn {2}plan/m);
+		expect(routed.stdout).toContain("verifier: anthropic/claude-opus-5-5 (claude); fallback from lens tiers");
 		expect(user.stdout).toContain(
 			`ok    plan        heavy: anthropic/claude-sonnet-5-5 ${credential}; routed by ${preferences}\n`,
 		);

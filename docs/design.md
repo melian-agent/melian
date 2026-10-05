@@ -860,3 +860,5 @@ Milestone 4 makes Melian remember and learn: comment commands including dismiss-
 - How long should the shadow reviewers run? For now, until Melian's recall against them holds for a run of ten pull requests, with every difference still adjudicated. The criterion is the maintainer's to tighten once the numbers exist.
 
 The scheduled sweep for the Actions host is a deferred decision: it is designed in the hosts section and will be revisited if event-driven recovery proves insufficient in practice.
+
+The verifier route derives a model family from its catalogue name, after removing the vendor prefix and parenthesised qualifier. The first word is the family: Claude on Bedrock and OpenRouter is claude; GPT-5.5 is gpt. It orders models from another family first. An unrouted verifier falls back to heavy, medium, then light lens routes, with lineage recorded. Doctor shows the families and warns about fallback and a single family.

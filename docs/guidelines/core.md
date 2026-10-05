@@ -450,3 +450,5 @@ Only added lines take an inline comment. Problem: GitHub rejects the whole revie
 - Await a rejection with `rejection(promise, ErrorClass)`, which fails unless the promise rejects with that class and returns the error typed.
 
 Verification schemas live in `src/verification.ts`. The typed question set asks about code, guards, the base, and the verdict. Verification never writes confidence or changes finding identity.
+
+The plan derives a model family from the catalogue name: remove the vendor prefix and parenthesised qualifier, then take the first word. A verifier route tries another family first. With no verifier route, it falls back to lens routes, heavy then medium then light, and records that lineage. Refused verifier tiers never fall back. Doctor prints the route with families. Warnings name fallback routing and a review judged entirely within the finders\u2019 families.
