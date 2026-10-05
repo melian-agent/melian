@@ -579,7 +579,11 @@ export class ChangePrompt {
 			const part = quoteUntrusted("diff", [`${named(file)} (${file.status})`, ...hunks].join("\n"), nonce);
 			size += Buffer.byteLength(part);
 			if (size > maxPromptBytes) {
-				parts.push("[The diff continues; read the remaining files with read_file.]");
+				parts.push(
+					options.tools === false
+						? "[The diff continues; the remaining files are omitted.]"
+						: "[The diff continues; read the remaining files with read_file.]",
+				);
 				break;
 			}
 			parts.push(part);

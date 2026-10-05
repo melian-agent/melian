@@ -31,6 +31,7 @@ import {
 	openHarness,
 	openSqliteStorage,
 	type Review,
+	ChangePrompt,
 	ReviewError,
 	readVerdict,
 	reviewChangeset,
@@ -841,6 +842,20 @@ describe("reviewChangeset", () => {
 		const [base, head] = toolResults(requests[correctness]![1]!);
 		expect(quoted(base!, nonce, "file")).toEqual(['7\t\treturn user.manager?.name ?? "none";']);
 		expect(quoted(head!, nonce, "file")).toEqual(["7\t\treturn user.manager.name;"]);
+	});
+
+	it("marks a truncated change prompt by whether the reader has read_file", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		const big = lines(...Array.from({ length: 4000 }, (_, index) => `export const value${index} = ${index};`));
+		repo = baseAndHead({ "src/seed.ts": lines("export {};") }, { "src/a.ts": big, "src/b.ts": big });
+		const prompt = new ChangePrompt(await Changeset.resolve(repo, "main...feature"), "nonce");
+
+		const withTools = prompt.render();
+		const withoutTools = prompt.render(undefined, { tools: false });
+
+		expect(withTools).toContain("[The diff continues; read the remaining files with read_file.]");
+		expect(withoutTools).toContain("[The diff continues; the remaining files are omitted.]");
+		expect(withoutTools).not.toContain("read_file");
 	});
 
 	it("calls a finding affected when a cause location names a file the change renamed without editing", async () => {
