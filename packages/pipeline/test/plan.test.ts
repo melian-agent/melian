@@ -411,8 +411,11 @@ describe("a lens run a later review replaced", () => {
 		expect(askedBy).toEqual(["heavy"]);
 	});
 
-	it("has its report refused once the index names another run", async () => {
-		const { requests, findings } = await reportAfterReplacement(false);
+	it.each([
+		["", false],
+		[", even in a conversation whose policy names no task, as an older Melian's", true],
+	])("has its report refused once the index names another run%s", async (_, stripTask) => {
+		const { requests, findings } = await reportAfterReplacement(stripTask);
 
 		const results = requests[correctness]![1]!.filter((message) => message.role === "toolResult");
 		expect(results.map((message) => JSON.stringify(message.content))).toEqual([

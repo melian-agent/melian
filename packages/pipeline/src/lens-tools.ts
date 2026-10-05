@@ -741,7 +741,9 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 	const id = finding.properties.id;
 	const recorded = await api.commit(async (tx) => {
 		// One storage holds every review of a changeset, so the budget counts this lens's sightings at its own revision.
-		const runner = lens.task;
+		// The lens task that runs this conversation: its policy names it, and for a conversation an older Melian spawned,
+		// before policies did, the task that created it does. Read first: a commit reads no table after it writes.
+		const runner = lens.task ?? (await tx.conversation(api.conversationId))?.owner?.taskId;
 		const state = await tx.doc(FindingsDocument, lens.review);
 		const { source } = finding.properties;
 		const at = revisionKey(review);
