@@ -37,7 +37,13 @@ check_path() {
   esac
 }
 
-check_path "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}"
+pi_dir=${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}
+case $pi_dir in
+  "~") pi_dir=$HOME ;;
+  "~/"*) pi_dir=$HOME/${pi_dir#\~/} ;;
+  "~"*) echo "codex-sandboxed: PI_CODING_AGENT_DIR cannot name another user's home: $pi_dir" >&2; exit 64 ;;
+esac
+check_path "$pi_dir"
 
 regex_path() {
   local r
@@ -216,7 +222,7 @@ dynamic_rules() {
 
   echo "(deny file-read*"
   filters subpath "$HOME/.ssh" "$common/melian" "$worktree/.git/melian"
-  filters literal "$HOME/.pi/agent/auth.json" "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/auth.json" \
+  filters literal "$HOME/.pi/agent/auth.json" "$pi_dir/auth.json" \
     "$HOME/.npmrc" "$worktree/.env"
   [ "$(basename "$common")" = ".git" ] && filters literal "$(dirname "$common")/.env"
   echo ")"

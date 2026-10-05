@@ -492,6 +492,34 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("expands a leading tilde in the Pi directory before denying its auth file", () => {
+		for (const directory of ["~/pi", "~"]) {
+			const text = execFileSync(script, ["--print-profile", linked, scratch, run], {
+				encoding: "utf8",
+				env: { ...env(), PI_CODING_AGENT_DIR: directory },
+			});
+			const target = join(home, directory === "~" ? "" : "pi", "auth.json");
+			expect(block(text, "deny file-read*"), directory).toContain(`(literal "${target}")`);
+			expect(block(text, "deny file-read*"), directory).not.toContain(`(literal "${directory}/auth.json")`);
+		}
+	});
+
+	it("refuses a Pi directory naming another user's home before printing a profile", () => {
+		for (const directory of ["~other/pi", "~other"]) {
+			try {
+				execFileSync(script, ["--print-profile", linked, scratch, run], {
+					stdio: "pipe",
+					env: { ...env(), PI_CODING_AGENT_DIR: directory },
+				});
+				throw new Error(`accepted Pi directory: ${directory}`);
+			} catch (error) {
+				expect(error.status, directory).toBe(64);
+				expect(String(error.stdout), directory).toBe("");
+				expect(String(error.stderr), directory).toContain("PI_CODING_AGENT_DIR cannot name another user's home");
+			}
+		}
+	});
+
 	it("denies both Pi stores and resolves the configured store's symlinks", () => {
 		const store = join(root, "pi-store");
 		const target = join(root, "pi-auth.json");
@@ -1138,6 +1166,33 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 				expect(result.stderr).toContain("Operation not permitted");
 			} finally {
 				rmSync(state, { recursive: true, force: true });
+			}
+		});
+
+		it("cannot read Pi credentials configured with a leading tilde", () => {
+			const piProfile = join(root, "tilde-pi.sb");
+			for (const directory of ["~/pi", "~"]) {
+				const store = directory === "~" ? home : join(home, "pi");
+				const auth = join(store, "auth.json");
+				mkdirSync(store, { recursive: true });
+				writeFileSync(auth, "synthetic-pi-credential\n");
+				try {
+					writeFileSync(
+						piProfile,
+						execFileSync(script, ["--print-profile", linked, scratch, run], {
+							encoding: "utf8",
+							env: { ...env(), PI_CODING_AGENT_DIR: directory },
+						}),
+					);
+					const result = failure(() =>
+						execFileSync("sandbox-exec", ["-f", piProfile, "/bin/cat", auth], { env: env(), stdio: "pipe" }),
+					);
+					expect(result.status, directory).not.toBe(0);
+					expect(result.stderr, directory).toContain("Operation not permitted");
+				} finally {
+					rmSync(auth, { force: true });
+					rmSync(piProfile, { force: true });
+				}
 			}
 		});
 
