@@ -19,6 +19,7 @@ import {
 	type Verdict,
 } from "@melian-agent/core";
 import {
+	ChangePrompt,
 	backgroundContext as context,
 	createMemoryStorage,
 	createRegistry,
@@ -31,7 +32,6 @@ import {
 	openHarness,
 	openSqliteStorage,
 	type Review,
-	ChangePrompt,
 	ReviewError,
 	readVerdict,
 	reviewChangeset,
