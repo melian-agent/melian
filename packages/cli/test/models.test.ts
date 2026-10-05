@@ -1,6 +1,6 @@
 import { defaultConfig, type MelianConfig } from "@melian-agent/core";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fallbackDecider, reviewModels } from "../src/models.ts";
 
 const routed: MelianConfig = {
@@ -34,6 +34,23 @@ describe("reviewModels without a script", () => {
 		expect(setup.triageSkipped).toBe(
 			"no lens tier reaches a model for the LLM fallback: light is not routed; medium is not routed; no model of heavy has credentials",
 		);
+	});
+});
+
+describe("reviewModels triage under --model", () => {
+	afterEach(() => vi.unstubAllEnvs());
+
+	it("picks the triage model from the tiers --model rewrote, not from the configuration's own", async () => {
+		vi.stubEnv("PI_CODING_AGENT_DIR", "/nonexistent-melian-test");
+		vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+		const unrouted = { ...defaultConfig, models: {} };
+
+		const without = await reviewModels({}, unrouted, [], undefined);
+		const routedByFlag = await reviewModels({}, unrouted, [], "anthropic/claude-sonnet-4-5");
+
+		expect(without.decider).toBeUndefined();
+		expect(routedByFlag.triageSkipped).toBeUndefined();
+		expect(routedByFlag.decider).toBeDefined();
 	});
 });
 
