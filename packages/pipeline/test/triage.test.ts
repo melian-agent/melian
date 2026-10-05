@@ -670,6 +670,38 @@ describe("escalation", () => {
 		expect(lensRecord(reviewed)!.reason).toContain("1 finding quick carried at or above P1");
 	});
 
+	it("keeps a quick finding when the escalated run reports another rule at the same lines", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		const other = call("report_finding", { ...crashFinding, rule: "wrong-result" });
+		scriptConversations(fake, [{ match: correctness, replies: [severe, done, other, done] }]);
+
+		const reviewed = await review({ decider });
+
+		expect(reviewed.findings.map((finding) => finding.ruleId).sort()).toEqual(["null-dereference", "wrong-result"]);
+		expect(lensRecord(reviewed)!.reason).toContain(
+			"1 finding quick carried at or above P1, which careful neither restated nor refuted, still counts as quick reported it",
+		);
+	});
+
+	it("keeps a quick finding when the escalated run reports the same rule at lines that do not overlap", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		const apart = call("report_finding", {
+			...crashFinding,
+			line: 1,
+			evidence: [{ file: "src/user.ts", line: 1, role: "cause" }],
+		});
+		scriptConversations(fake, [{ match: correctness, replies: [severe, done, apart, done] }]);
+
+		const reviewed = await review({ decider });
+
+		expect(reviewed.findings.map((finding) => finding.ruleId)).toEqual(["null-dereference", "null-dereference"]);
+		expect(lensRecord(reviewed)!.reason).toContain(
+			"1 finding quick carried at or above P1, which careful neither restated nor refuted, still counts as quick reported it",
+		);
+	});
+
 	it("takes a refutation from an escalated run whose findings budget is spent", async () => {
 		const decider = choosing("quick");
 		await open(decider);
