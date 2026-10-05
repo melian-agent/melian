@@ -299,7 +299,7 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 			"Matched: 1 external finding, covering 1 Melian finding. External only: 1. Melian only: 0. Skipped review bodies: 1.",
 		);
 		expect(lines[lines.indexOf("External only:") + 1]).toMatch(
-			/^ {2}[0-9a-f]{16} {2}coderabbit {2}docs\/removed\.md:4 \(outdated\) {2}\*\*The heading names a command .* {2}\(read at 222222222222; match it by hand\)$/,
+			/^ {2}[0-9a-f]{16} {2}coderabbit {2}docs\/removed\.md:4 \(outdated\) {2}The heading names a command that no longer exists\. {2}\(read at 222222222222; match it by hand\)$/,
 		);
 		const human = melian(repo, ["compare", "#7", "--from", "github:octocat"], env);
 		expect(human.stdout).toContain("Imported 1 from github:octocat, skipping 1 review body without a thread.");
