@@ -284,7 +284,7 @@ export class ExternalFinding {
 	}
 
 	/**
-	 * Builds an external finding, deriving its ID from the reviewer and the source reference, putting its file in
+	 * Builds an external finding, deriving its ID from the source reference alone, putting its file in
 	 * canonical form, and cutting its title to its first line and {@link maxExternalTitleLength} characters. Throws
 	 * {@link ComparisonError} `invalidFinding` for a file that is not a repository-relative path, an `endLine` before
 	 * `line` or without one, or anything else {@link externalFindingSchema} refuses.
