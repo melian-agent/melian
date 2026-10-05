@@ -131,13 +131,13 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			`(subpath "${home}/.ssh")`,
 			`(literal "${home}/.pi/agent/auth.json")`,
 			`(literal "${home}/.npmrc")`,
-			`(literal "${home}/.config/gh/hosts.yml")`,
 			`(literal "${linked}/.env")`,
 			`(literal "${main}/.env")`,
 		]) {
 			expect(deny).toContain(path);
 		}
 		expect(deny).not.toContain(".codex/auth.json");
+		expect(deny).not.toContain(".config/gh");
 		expect(text.indexOf("(deny file-read*")).toBeGreaterThan(text.indexOf("(allow file-read*)"));
 	});
 
