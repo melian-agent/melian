@@ -1,27 +1,43 @@
 # Verifier as built
 
-Choice: Step 6 takes the brief's default 1: an instance of core's Merge holds findings and ConfigFor. Adjudication delegates its grouping to that instance. VerificationState keeps the speaker and each lens sighting's claim; static and guardrail members carry no claim. A TypeBox verification record holds verdict, reason, optional correction, executor, model, and version. The three code questions and the verdict choice form one typed question set. Confidence stays reserved for calibrated decision models.
+Choice: Step 6 takes all thirteen defaults in its brief, as follows.
 
-Why: Verification must judge exactly the defect adjudication groups. Shared grouping prevents drift after a dismissal splits one. Each claim must travel with its own proof. Optional fields preserve older findings and verdict fingerprints.
+| Default | Choice | Why |
+| --- | --- | --- |
+| 1 | An instance of core's Merge holds findings and ConfigFor. Adjudication delegates grouping to it; the pipeline uses the same grouping before verification. | A verifier must judge exactly the defect adjudication counts, including after a dismissal splits it. |
+| 2 | Live defects with a verifying lens claim or an escalation-kept quick claim are candidates. Judge every lens claim on a candidate. | A quick claim an escalated run leaves unanswered must still reach judgement. |
+| 3 | Remove a defect only when every lens claim is refuted and no deterministic check co-reported it. | One refutation cannot erase another claim or deterministic proof. |
+| 4 | Cap unjudged lens-only defects at advisory, retaining silent. | A static or guardrail report carries its own proof and keeps its existing resolution. |
+| 5 | A refutation requires evidence locations that Melian reads back. | A judge's unsupported assertion must not drop a real defect. |
+| 6 | An optional adjudication input flag, verificationRan, gates the cap. Old inputs omit it; dismissal keeps the stored flag and verifies nothing. | Applying the new cap to an old dismissal would silently unblock the review. |
+| 7 | Any unfinished, refused, superseded or failed candidate leaves a failed verifier check; budget exhaustion records ended. Adjudication stores not reviewed and capped findings before verifierFailed is thrown. | The advisory cap limits an unjudged blocker, while not reviewed prevents it passing. |
+| 8 | An unrouted verifier falls back to heavy, medium, then light lens routes, another family first. Refusal never falls back. Library calls without a plan use config.models.verifier or their finder route. | One provider can still review; a policy refusal must not spend tokens on a result it cannot count. |
+| 9 | LensDocument has an optional verifier role, labelled sighting keys and the current model. That role offers report_verdict and refuses report_finding. | Reusing read tools retains prompt boundaries, budgets and replay rules. |
+| 10 | Fix each candidate at 100,000 tokens and 20 tool calls, with at most eight conversations running together. | These limits bound this step without adding configuration. |
+| 11 | The verifier version is a 16-hex hash of instructions, report schema and question set. | A changed judge cannot attach to the previous task's input. |
+| 12 | Stateless fake replies match the verifier marker and answer every label, confirmed by default. A reserved verifier script key maps finding IDs to outcomes. | Parallel conversations must not consume one another's replies. |
+| 13 | packages/evals/verifier holds each case's base, head, candidate, expected verdicts, script and source README. Four execution-dependent misses accept confirmed or plausible; two decoys require refuted. | This measures whether verification drops real defects independently of finder recall. Lens scoring stays unchanged. |
 
-Choice: Default 8 falls back from an unrouted verifier to heavy, medium, then light lens routes. A refused verifier tier never falls back. Each planned model optionally stores its family, derived from its catalogue name. Cross-family routes preserve order inside each family. Providers include verification; doctor prints families and warns on fallback or same-family verification.
+Choice: VerificationState retains one original claim per sighting. A merged speaker carries the strongest judgement, but its original claim stays in otherClaims when it imports another sighting's proof or judgement. A correction never changes severity, location, cause or ID. The typed questions cover code, guard, base and verdict. Confidence remains reserved for calibrated decision models.
 
-Why: A contributor holding one provider can still review. A route policy refusal must not spend tokens on a result it cannot count. Family lookup is deterministic and survives a stored plan.
+Why: The verifier must never judge one sighting through another's evidence or verdict. Optional fields also preserve older findings and verdict fingerprints.
 
+Choice: A revision and input attach to one verification task through an optional ReviewIndex entry. Spawn creates all owned conversations in one commit. Failover commits the attempt and model together. Only rerun replaces an unfinished attachment. Every report commit checks ownership and budget, even on replay.
 
-Choice: Defaults 2, 9, 10, 11 and 12 select live defects with a verifying lens claim or an escalation-kept quick claim. Every lens claim on a candidate is judged. LensDocument has an optional verifier role, labelled sighting keys and the current model. The verifier uses the existing read tools and budget meter, with 100,000 tokens and 20 calls per candidate, at most eight conversations at once. Its version hashes instructions, report schema and question set. Scripted responses match a verifier marker and derive their replies from messages alone.
+Why: Replays must neither spend on replaced runs nor overwrite newer findings. beforeTool does not run when Pi replays a tool's execute phase.
 
-Why: A quick claim an escalated run leaves unanswered must still reach judgement. Reusing read tools retains the existing boundaries and replay rules. Fixed budgets bound this step without adding configuration. Stateless scripts answer parallel conversations correctly.
+Choice: Findings document version 6 adds optional verdict maps by revision, producer and verifier version beside sightings. Reads project the latest version onto each claim, and the strongest onto the merged finding. Clearing or replacing a sighting clears its verdicts. Version 5 reads unchanged; version 4 retains its existing evidence migration. Verdict and review-index documents need no new version.
 
-Choice: A revision and input attach to one verification task through an optional ReviewIndex entry. Spawn creates all owned conversations in one commit. Attempts and model changes commit together. Only rerun replaces an unanswered attachment. Every report commit checks task ownership. Findings document version 6 keeps optional verdict maps by revision, producer and verifier version beside each finding's sightings. Reads project the latest recorded version onto each claim and the strongest onto the merged finding. Clearing sightings clears their verdicts.
+Why: A verdict belongs to its sighting, not its speaker. Optional shapes avoid changing records or fingerprints that held no verification.
 
-Why: Replays must neither spend on replaced runs nor overwrite newer findings. A verdict belongs to its sighting, not its merged speaker. Version 5 migrates unchanged; version 4 also receives the existing evidence migration.
+Choice: A planned model optionally stores its family, derived from the catalogue name after removing the vendor prefix and parenthesised qualifier. Another family comes first, preserving order within each group. Provider unlocking includes verification. Doctor prints families and warns on fallback or same-family verification. The model flag still routes only lens tiers.
 
+Why: Family lookup is deterministic and survives stored plans. A maintainer can see weaker verification before spending on a review.
 
-Choice: Defaults 3, 4, 6 and 7 remove a defect only when every lens claim was refuted and no deterministic check co-reported it. An unjudged lens-only defect resolves no higher than advisory. The optional adjudication input flag verificationRan applies this cap only to new reviews. A dismissal keeps the stored flag and runs no verifier. Any unfinished candidate leaves a failed or budget-ended verifier check and a not-reviewed verdict.
+Choice: Refuted defects stay in an optional refuted group, outside publication and blocking counts. Terminal output reveals them with all; JSON retains every claim. Comments show escaped judgements and corrections. Verdict.verificationSummary supplies counts for the future ledger.
 
-Why: A refutation cannot erase another claim or deterministic proof. Capping an old review during dismissal would silently unblock it. The advisory cap limits unjudged findings; the not-reviewed status still prevents an incomplete review passing.
+Why: Authors can inspect a dropped claim without receiving an inline objection that verification rejected. Host integration stays within the pending ledger's edges.
 
-Choice: Default 13 puts execution-dependent misses under packages/evals/verifier, outside the lens corpus. Each has base and head trees, a planted candidate, acceptable verdicts, a script and a source README. Four real defects accept confirmed or plausible, never refuted. Two decoys require refuted. A fake finder plants each through report_finding; the verifier uses the durable task. Live runs select this suite separately and may route another verifier model.
+Choice: Scripted evals plant candidates through report_finding and use the durable verifier task. Live verifier runs require their own opt-in selector and accept a separate judge route. A fake finder may join an existing opaque model collection through the testing entry. The root policy excludes the seeded corpus from lenses.
 
-Why: The suite measures whether verification drops a real defect, independently of whether a finder notices it. Scripted tests exercise the integration without claiming to measure a model. Lens scoring stays unchanged.
+Why: Integration tests spend no real tokens. An opt-in run can isolate judge quality without asking a finder to rediscover each candidate.

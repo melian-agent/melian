@@ -139,7 +139,7 @@ export type LensScriptStep =
 	  }
 	| { readonly text: string };
 
-/** Each lens's turns, in order, by lens name. */
+/** Scripted judgements by finding ID, with evidence required when a supplied outcome refutes a claim. */
 export type VerifierScript = Readonly<
 	Record<
 		string,
