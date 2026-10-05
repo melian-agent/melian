@@ -107,7 +107,7 @@ async function review(
 		decider?: Decider;
 		config?: MelianConfig;
 		lenses?: Lens[];
-		policy?: "worktree";
+		policy?: "worktree" | "base";
 		origin?: ReviewOrigin;
 		rerun?: boolean;
 	} = {},
@@ -121,7 +121,14 @@ async function review(
 		models: fake.review,
 		checks: ran,
 		...(options.decider === undefined ? {} : { decider: options.decider }),
-		...(options.policy === undefined ? {} : { policy: { kind: options.policy } }),
+		...(options.policy === undefined
+			? {}
+			: {
+					policy:
+						options.policy === "base"
+							? { kind: "revision" as const, commit: gitIn(repo, "merge-base", "main", "feature") }
+							: { kind: "worktree" as const },
+				}),
 		...(options.origin === undefined ? {} : { origin: options.origin }),
 		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
 	});
@@ -254,6 +261,21 @@ describe("triage", () => {
 			level: "quick",
 			reason: lightly,
 		});
+	});
+
+	it("keeps a range's lenses at careful or above when its policy comes from the base, and quick from the worktree", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		// The host reads policy from the base for a head it did not check out, so it does not trust the head.
+		const fromBase = await review({ decider, policy: "base" });
+		expect(decider.requests[0]!.questions[0]!.options).toEqual(["careful", "deep"]);
+		expect(lensRecord(fromBase)).toMatchObject({ level: "careful" });
+
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		const fromWorktree = await review({ decider, policy: "worktree" });
+		expect(lensRecord(fromWorktree)).toMatchObject({ level: "quick" });
 	});
 
 	it("asks once per revision: a repeat review attaches to the decision and the lens task", async () => {

@@ -888,9 +888,12 @@ async function bandsOf(
 	options: Pick<ReviewOptions, "config" | "policy" | "changeset" | "origin" | "decider">,
 ): Promise<Map<Lens, LevelBand>> {
 	const { policy, config, changeset } = options;
-	// A pull request's head writes the change triage reads, so until a calibrated decision model answers, its default
-	// floor is careful: an uncalibrated model the head can steer never sends every lens to a quick look.
-	const floor = options.origin?.kind === "pull-request" && options.decider?.calibrated !== true ? "careful" : "quick";
+	// A head the host does not trust writes the change triage reads, so until a calibrated decision model answers, its
+	// default floor is careful: an uncalibrated model the head can steer never sends every lens to a quick look. The host
+	// says it does not trust the head the way the CLI does for policy: a pull request, or a range whose policy it reads
+	// from a revision rather than the working tree.
+	const untrusted = options.origin?.kind === "pull-request" || policy?.kind === "revision";
+	const floor = untrusted && options.decider?.calibrated !== true ? "careful" : "quick";
 	const lookup = policy === undefined ? undefined : configLookup(changeset.repoRoot, policy);
 	const bands = new Map<Lens, LevelBand>();
 	for (const { lens, covers } of selections) {
