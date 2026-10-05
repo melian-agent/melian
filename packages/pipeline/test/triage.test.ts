@@ -1053,6 +1053,52 @@ describe("escalation", () => {
 		);
 	});
 
+	it("ignores a refutation naming an ID the quick run did not carry", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		const stranger = () =>
+			call("report_finding", {
+				...crashFinding,
+				refuted: "0123456789abcdef",
+				failureScenario: "Every caller passes a user whose manager is set, so the dereference cannot fail.",
+			});
+		scriptConversations(fake, [{ match: correctness, replies: [severe, done, stranger(), done] }]);
+
+		const reviewed = await review({ decider });
+
+		expect(reviewed.findings.map((finding) => finding.properties.source)).toEqual([
+			{ check: "lens.correctness", version: `${version()}@quick` },
+		]);
+		expect(lensRecord(reviewed)!.reason).not.toContain("careful refuted");
+		expect(lensRecord(reviewed)!.reason).toContain(
+			"1 finding quick carried at or above P1, which careful neither restated nor refuted, still counts as quick reported it",
+		);
+	});
+
+	it("ignores a refutation of an ID the escalated run also restated", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		const both = (messages: readonly Message[]) =>
+			fauxAssistantMessage(
+				[
+					fauxToolCall("report_finding", crashFinding),
+					fauxToolCall("report_finding", {
+						...crashFinding,
+						refuted: carriedId(messages),
+						failureScenario: "Every caller passes a user whose manager is set, so the dereference cannot fail.",
+					}),
+				],
+				{ stopReason: "toolUse" },
+			);
+		scriptConversations(fake, [{ match: correctness, replies: [severe, done, both, done] }]);
+
+		const reviewed = await review({ decider });
+
+		expect(reviewed.findings).toHaveLength(1);
+		expect(lensRecord(reviewed)!.reason).toContain("careful restated 1 finding quick carried");
+		expect(lensRecord(reviewed)!.reason).not.toContain("careful refuted");
+	});
+
 	it("takes a refutation from an escalated run whose findings budget is spent", async () => {
 		const decider = choosing("quick");
 		await open(decider);
