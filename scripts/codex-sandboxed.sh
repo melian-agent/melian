@@ -38,7 +38,6 @@ check_path() {
   esac
 }
 
-# Prints the real path of $1 escaped for a seatbelt regex.
 regex_path() {
   local r
   r=$(real "$1")
