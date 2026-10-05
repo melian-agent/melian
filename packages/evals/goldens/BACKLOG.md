@@ -1,6 +1,6 @@
 # Goldens still to write
 
-The comparison records in [../comparisons/](../comparisons/) mark each accepted finding that should become a golden. Milestone 2 step 3 wrote five goldens for each of the four lenses it added, twenty in all, each with a README naming the finding it came from. This list holds the rest, grouped by the lens that should catch each, so a scripted golden can be written for any of them without reading every record again.
+The comparison records in [../comparisons/](../comparisons/) mark each accepted finding that should become a golden. Milestone 2 step 3 wrote five goldens for each of the five lenses it added, twenty-five in all, each with a README naming the finding it came from. This list holds the rest, grouped by the lens that should catch each, so a scripted golden can be written for any of them without reading every record again.
 
 Each entry names the record's finding number and what it found. A finding that restates another, or that a record marks "No", is left out. The record for [pull request #31](https://github.com/melian-agent/melian/pull/31) marks no goldens: every finding there is about documentation no lens reviewed.
 
@@ -33,15 +33,15 @@ Each entry names the record's finding number and what it found. A finding that r
 
 ## durability
 
-A repository lens under Melian's own `.melian/lenses/`, still to come in step 3.
+A repository lens under Melian's own `.melian/lenses/`. A scripted golden for it carries a copy of the lens as `.melian/lenses/durability/LENS.golden.md` in both trees, as its five goldens do.
 
-- [Pull request #11](https://github.com/melian-agent/melian/pull/11) ([record](../comparisons/2026-10-03-pr-11.md)): 9, a crash between a finding's commit and its tool result stores it twice.
 - [Pull request #13](https://github.com/melian-agent/melian/pull/13) ([record](../comparisons/2026-10-03-pr-13.md)): 4, a rerun's whole-record upsert erases a dismissal; 23, the findings document's owning conversation is unstated.
 - [Pull request #15](https://github.com/melian-agent/melian/pull/15) ([record](../comparisons/2026-10-03-pr-15.md)): A2, one mutable record per finding races across lenses and pushes; A3, the budget check blocks a replay; B2, a crash runs every lens twice.
-- [Pull request #16](https://github.com/melian-agent/melian/pull/16) ([record](../comparisons/2026-10-03-pr-16.md)): A3, a superseded adjudication still writes; A5, an aborted task poisons every repeat review; B6, a review after a dismissal returns the verdict from before it; B8, a failed adjudication is attached to for good.
-- [Pull request #18](https://github.com/melian-agent/melian/pull/18) ([record](../comparisons/2026-10-03-pr-18.md)): A8, check records keyed by head and tier return stale results; B5, a `fast` and a `full` run mix their records.
-- [Pull request #19](https://github.com/melian-agent/melian/pull/19) ([record](../comparisons/2026-10-03-pr-19.md)): A3, a resumed publish posts the review of the old diff; B1, a failed round's placeholder reposts findings; B7, recovery matches an older review with the same verdict.
+- [Pull request #16](https://github.com/melian-agent/melian/pull/16) ([record](../comparisons/2026-10-03-pr-16.md)): A5, an aborted task poisons every repeat review; B6, a review after a dismissal returns the verdict from before it; B8, a failed adjudication is attached to for good.
+- [Pull request #18](https://github.com/melian-agent/melian/pull/18) ([record](../comparisons/2026-10-03-pr-18.md)): B5, a `fast` and a `full` run mix their records.
+- [Pull request #19](https://github.com/melian-agent/melian/pull/19) ([record](../comparisons/2026-10-03-pr-19.md)): B1, a failed round's placeholder reposts findings; B7, recovery matches an older review with the same verdict.
 - [Pull request #34](https://github.com/melian-agent/melian/pull/34) ([record](../comparisons/2026-10-04-pr-34.md)): A3, author-controlled input stored durably with no byte bound; A4, a retarget that keeps the head and the findings posts nothing; D1 to D3, a dismissal must survive a fresh sighting through a hunk over 2 KiB.
+- [Pull request #50](https://github.com/melian-agent/melian/pull/50) ([record](../comparisons/2026-10-05-pr-50.md)): A1, a change that reshapes a finished task's result while a reader can still meet one an older Melian stored, expected `stored-shape`; A2, as a negative golden, a change that leaves an optional member `undefined` in a task's input or result, expected to draw nothing.
 
 ## correctness
 

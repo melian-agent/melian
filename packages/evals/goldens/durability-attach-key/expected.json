@@ -1,0 +1,28 @@
+{
+  "pr_title": "Ask once for a tier's checks",
+  "comments": [
+    {
+      "comment": "runChecks attaches a repeat call to the earlier task by head and tier alone, so a call with another base, configuration, or source gets the first run's records, and a failed run is returned for good.",
+      "severity": "Medium",
+      "category": "bug",
+      "file": "packages/pipeline/src/checks.ts",
+      "rule": "idempotency-key",
+      "cause": "introduced",
+      "failureScenario": "A maintainer reviews head H, and its fast tier runs under the working tree's melian.yaml. They add a forbidden-patterns rule to melian.yaml and review H again: the key `H fast` names the first task, so runChecks returns its records and the new rule never runs over the change. A review of H after a retarget onto another base, or after Biome failed on a timeout, gets the first run's records the same way, for good.",
+      "evidence": [
+        {
+          "file": "packages/pipeline/src/checks.ts",
+          "line": 48,
+          "endLine": 52,
+          "role": "cause"
+        },
+        {
+          "file": "packages/pipeline/src/checks.ts",
+          "line": 6,
+          "endLine": 14,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

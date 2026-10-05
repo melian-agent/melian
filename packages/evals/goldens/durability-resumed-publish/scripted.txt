@@ -1,0 +1,23 @@
+packages/pipeline/src/publish.ts
+
+  P1  line 67  stale-task-write  (introduced, new, unresolved)
+  The loop now resumes and waits for every unfinished publish task, and each posts the verdict of the revision its input was created with.
+    What: The loop now resumes and waits for every unfinished publish task, and each posts the verdict of the revision its input was created with.
+    Why here: The base aborted every publish task a crash left, so one created for an older target ended unposted. This change resumes them instead, and only the new call is checked against the pull request; a resumed task never asks whether its base and head are still the pull request's.
+    Failure scenario: Publishing A..H to pull request #7 crashes after the task is created and before its post. The parent lands and #7 is retargeted onto main, keeping head H; the maintainer reviews B..H and publishes. Where the base aborted the old task, the new loop resumes it, and its input still names A..H: it finds no marker for A..H and posts A..H's review, with findings on the parent's code, to #7. Then the new task posts B..H's review as well.
+    Evidence:
+      cause: packages/pipeline/src/publish.ts:65-68
+          harness.resume();
+          for (const each of (await harness.inspect(context)).tasks) {
+            if (each.record.kind === "melian.publish") await harness.waitForTask(each.record.id, context);
+          }
+      context: packages/pipeline/src/publish.ts:27-32
+                const { root, pullRequest, head, revision } = task.input;
+                const verdict = await readVerdict(runtime, root, revision, context);
+                if (verdict === undefined) throw new Error(`no verdict is recorded for ${revision}`);
+                const review =
+                  (await provider.findReview(pullRequest, head, revision)) ??
+                  (await provider.postReview(pullRequest, head, revision, renderReview(verdict)));
+    What to do: Record the target this call validated before resuming anything, and have the task end superseded, posting nothing, when its own target differs; ask the provider for the pull request again before each post.
+
+1 finding in 1 file.

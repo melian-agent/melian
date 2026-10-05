@@ -39,7 +39,7 @@ export function baseAndHead(base: Record<string, string>, head: Record<string, s
 	gitIn(repo, "checkout", "--quiet", "-b", "feature");
 	writeFiles(repo, head);
 	gitIn(repo, "add", "--all");
-	gitIn(repo, "commit", "--quiet", "-m", "head");
+	gitIn(repo, "commit", "--quiet", "--allow-empty", "-m", "head");
 	return repo;
 }
 

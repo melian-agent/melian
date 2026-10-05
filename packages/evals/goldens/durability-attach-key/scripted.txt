@@ -1,0 +1,27 @@
+packages/pipeline/src/checks.ts
+
+  P2  line 48  idempotency-key  (introduced, new, unresolved)
+  The key that attaches a repeat call to an earlier run is the head and the tier, but the run's result also depends on its base, its configuration, and the source that configuration came from.
+    What: The key that attaches a repeat call to an earlier run is the head and the tier, but the run's result also depends on its base, its configuration, and the source that configuration came from.
+    Why here: This change adds the attachment. Before it every call ran the checks it was given; now a call whose input differs only outside the key returns another run's records, and nothing ever replaces a run, failed or not.
+    Failure scenario: A maintainer reviews head H, and its fast tier runs under the working tree's melian.yaml. They add a forbidden-patterns rule to melian.yaml and review H again: the key `H fast` names the first task, so runChecks returns its records and the new rule never runs over the change. A review of H after a retarget onto another base, or after Biome failed on a timeout, gets the first run's records the same way, for good.
+    Evidence:
+      cause: packages/pipeline/src/checks.ts:48-52
+          const key = `${input.head} ${input.tier}`;
+          const id = await root.commit(async (tx) => {
+            const runs = await tx.doc(ChecksDocument, root.id);
+            const existing = runs.runs[key];
+            if (existing !== undefined) return existing;
+      context: packages/pipeline/src/checks.ts:6-14
+        export type ChecksInput = {
+          root: ConversationId;
+          base: string;
+          head: string;
+          tier: string;
+          checks: string[];
+          config: MelianConfig;
+          source: RepositorySource;
+        };
+    What to do: Key the run by every input that decides its result: base, head, tier, and a hash of the configuration and its source, as canonical JSON; and start a new run, rather than attach, when the run the key names failed.
+
+1 finding in 1 file.
