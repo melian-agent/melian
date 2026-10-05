@@ -245,6 +245,37 @@ describe("markers", () => {
 		);
 	});
 
+	it("names each lens that ran with a note, such as the hand-offs its instructions left out for size", () => {
+		const note = "kept the defects it hands to `durability`, whose files here would list past 40 files or 4 KiB";
+		const body = renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: "0123456789abcdef",
+				round: 1,
+				verdict: new Adjudication({
+					findings: [],
+					manifest: [],
+					checks: [
+						{ name: "lens.correctness", status: "ran", level: "careful", reason: note },
+						{ name: "lens.contracts", status: "ran", level: "careful" },
+					],
+					config: defaultConfig,
+				}).adjudicate(),
+				findings: [],
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+
+		// A reason renders as prose, so its backticks are escaped.
+		expect(body).toContain(`Lenses that ran with a note:\n\n- \`lens.correctness\`: ${note.replaceAll("`", "\\`")}`);
+		expect(body).not.toContain("`lens.contracts`:");
+	});
+
 	it("cuts findings from a body over GitHub's limit, keeping the marker and saying where they all are", () => {
 		const findings = Array.from({ length: 12 }, (_, index) =>
 			Finding.create({

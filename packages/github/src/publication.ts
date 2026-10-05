@@ -271,6 +271,10 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	if (counted.length > 0) {
 		parts.push(["Lenses a budget ended, counted with the findings they reported:", "", ...counted].join("\n"));
 	}
+	const noted = (verdict.ran ?? []).flatMap(({ name, reason }) =>
+		reason === undefined ? [] : [`- ${code(name)}: ${inline(reason)}`],
+	);
+	if (noted.length > 0) parts.push(["Lenses that ran with a note:", "", ...noted].join("\n"));
 	const named = (finding: ClosedFinding) => `- ${code(finding.ruleId)} in ${code(finding.path)} line ${finding.line}`;
 	const resolved = draft.resolved.filter((finding) => finding.dismissal === undefined).map(named);
 	if (resolved.length > 0) parts.push(["Resolved since the last review:", "", ...resolved].join("\n"));
