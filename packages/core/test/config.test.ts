@@ -125,6 +125,31 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		});
 	});
 
+	it("layers a lens's level band end by end, and reads the severity that escalates a quick lens", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines(
+				"lenses:",
+				"  trust-boundary:",
+				"    level: { floor: careful, ceiling: deep }",
+				"triage:",
+				"  escalateAt: P2",
+			),
+			"services/melian.yaml": lines("lenses:", "  trust-boundary:", "    level: { ceiling: careful }"),
+		});
+		const nested = (await load("services/a.ts")).config;
+		expect(nested.lenses["trust-boundary"]).toEqual({ level: { floor: "careful", ceiling: "careful" } });
+		expect(nested.triage).toEqual({ escalateAt: "P2" });
+		const root = (await load("src/a.ts")).config;
+		expect(root.lenses["trust-boundary"]).toEqual({ level: { floor: "careful", ceiling: "deep" } });
+		expect(defaultConfig.triage).toEqual({ escalateAt: "P1" });
+	});
+
+	it("refuses a ceiling of skip, which would let triage switch a lens off past its floor", async () => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", "  tests:", "    level: { ceiling: skip }") });
+		const error = await rejection(load("."));
+		expect(error).toMatchObject({ code: "invalidValue", key: "lenses.tests.level.ceiling" });
+	});
+
 	it("normalises lens paths in the root file the same way as in a nested one", async () => {
 		writeFiles(repo, {
 			"melian.yaml": lines("lenses:", "  security:", "    paths: [./src/**, 'lib/../api/**']"),

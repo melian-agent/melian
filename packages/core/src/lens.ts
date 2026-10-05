@@ -6,6 +6,7 @@ import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import { parseDocument } from "yaml";
 import { type LensTier, lensTierSchema, type MelianConfig, type Severity, severitySchema } from "./config.ts";
+import type { ChoiceQuestion, Decision } from "./decider.ts";
 import { LensError } from "./errors.ts";
 import { maxEvidenceLines, maxFailureScenarioLength } from "./findings.ts";
 import { selectedBy } from "./glob.ts";
@@ -13,6 +14,7 @@ import { anchorGlob, directoriesUpToRoot, melianPaths, repoPath } from "./paths.
 import { plural, visibleText } from "./render.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 import type { StandardsSection } from "./standards.ts";
+import type { LevelBand, TriageChoice } from "./triage.ts";
 
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
@@ -565,6 +567,17 @@ function renderBudget({ findings, tokens, tools }: LensBudget): string {
 	return `Budget: at most ${listed}.${ending}`;
 }
 
+// What each level means to triage, as its question offers it.
+const levelMeanings: Readonly<Record<ScrutinyLevel, string>> = {
+	quick: "a light look at the changed lines, on a small budget, for a change that barely touches this lens's concern.",
+	careful: "a full review of the change, for a change this lens's concern plainly covers.",
+	deep: "the closest review, reading the whole of each function the change touches, for a change where this lens's concern is at high risk.",
+};
+
+function isScrutinyLevel(value: string | undefined): value is ScrutinyLevel {
+	return (scrutinyLevels as readonly (string | undefined)[]).includes(value);
+}
+
 /**
  * A neighbour of a lens in one review: another lens the review runs, and the files it reviews among the lens's own,
  * `every` one or those listed. The lens leaves the neighbour its defects in those files and keeps them in the rest.
@@ -734,6 +747,47 @@ export class Lens {
 			lens: this.name,
 			level,
 		});
+	}
+
+	/** The levels the lens runs at, from `quick` to `deep`: always `careful`, and `quick` and `deep` where it declares them. */
+	declaredLevels(): ScrutinyLevel[] {
+		return scrutinyLevels.filter((level) => this.levels[level] !== undefined);
+	}
+
+	/**
+	 * The question triage asks about the lens: whether to skip it, or how closely it should look, at one of its levels.
+	 * A lens that declares no levels has only `careful`, so its question is whether to run at all. The question's ID is
+	 * the lens's name.
+	 */
+	triageQuestion(): ChoiceQuestion {
+		const levels = this.declaredLevels();
+		return {
+			id: this.name,
+			text: [
+				`How closely should the \`${this.name}\` lens review this change? It looks for: ${this.description}`,
+				`- skip: nothing in the change is this lens's concern.`,
+				...levels.map((level) => `- ${level}: ${levelMeanings[level]}`),
+			].join("\n"),
+			options: ["skip", ...levels],
+		};
+	}
+
+	/**
+	 * The lens's level for one review: the option `decision` chose for it, or the default level when there is no
+	 * decision or it holds no answer for this lens, held within `band` and moved to a level the lens has.
+	 */
+	triage(band: LevelBand, decision?: Decision): TriageChoice {
+		const chosen = decision?.chosen(this.name);
+		const choice = chosen === "skip" || isScrutinyLevel(chosen) ? chosen : defaultScrutinyLevel;
+		return band.bound(choice, this.declaredLevels());
+	}
+
+	/**
+	 * The level a run at `level` escalates to: the lens's next level that `band`'s ceiling allows, or `undefined` when the
+	 * ceiling stops it.
+	 */
+	escalation(level: ScrutinyLevel, band: LevelBand): ScrutinyLevel | undefined {
+		return band.above(level, this.declaredLevels());
 	}
 
 	/**
