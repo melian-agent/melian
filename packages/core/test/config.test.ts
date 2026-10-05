@@ -315,6 +315,13 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		expect(config.stages.hasOwnProperty).toBeUndefined();
 	});
 
+	it("rejects a lens name past 128 characters, and accepts one of exactly 128", async () => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", `  ${"a".repeat(128)}:`, "    tier: heavy") });
+		expect(Object.keys((await load("a.ts")).config.lenses)).toEqual(["a".repeat(128)]);
+		writeFiles(repo, { "melian.yaml": lines("lenses:", `  ${"a".repeat(129)}:`, "    tier: heavy") });
+		await expect(load("a.ts")).rejects.toBeInstanceOf(ConfigError);
+	});
+
 	it("rejects a value outside its set, listing the allowed values", async () => {
 		writeFiles(repo, { "melian.yaml": lines("resolution:", "  P0: blocker") });
 		const error = await rejection(load("a.ts"));

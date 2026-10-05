@@ -588,6 +588,7 @@ function validateRedacted(site: Site, value: unknown, schema: TSchema, document:
 function parseLayer(text: string, site: Site, directory: string): MelianYaml {
 	const value = parseYaml(text, site, melianYamlSchema);
 	checkPatterns(site, value as MelianYaml);
+	checkLensNames(site, value as MelianYaml);
 	checkRequire(site, value as MelianYaml);
 	checkRootOnly(site, value as MelianYaml);
 	if (site.preference === true) checkPreference(site, value as MelianYaml);
@@ -649,6 +650,19 @@ function checkRequire(site: Site, layer: MelianYaml): void {
 			`"${key}" has ${negated}; each require glob must be touched, so it cannot exclude. Narrow the glob instead`,
 			{ key },
 		);
+	}
+}
+
+// Triage's question ID is the lens name, and the decision tool's schema bounds an ID; the schema's Record does not
+// check key length.
+const maxLensName = 128;
+
+function checkLensNames(site: Site, layer: MelianYaml): void {
+	for (const name of Object.keys(layer.lenses ?? {})) {
+		if (name.length <= maxLensName) continue;
+		throw configError("invalidValue", site, `"lenses" names a lens of more than ${maxLensName} characters`, {
+			key: "lenses",
+		});
 	}
 }
 

@@ -14,7 +14,7 @@ import Value from "typebox/value";
 const answerParameters = Type.Object({
 	answers: Type.Array(
 		Type.Object({
-			question: Type.String({ maxLength: 64, description: "The question's ID" }),
+			question: Type.String({ maxLength: 256, description: "The question's ID" }),
 			probabilities: Type.Array(
 				Type.Object({
 					option: Type.String({ maxLength: 32 }),
