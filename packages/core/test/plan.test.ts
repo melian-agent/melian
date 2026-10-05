@@ -54,6 +54,7 @@ function plan(
 		preferences?: Routes;
 		model?: string;
 		checks?: string[];
+		disabled?: string[];
 		retier?: Record<string, LensTier>;
 		committedTiers?: Record<string, LensTier>;
 		catalog?: CatalogModel[];
@@ -70,9 +71,12 @@ function plan(
 		config: {
 			...defaultConfig,
 			models: models as Routes,
-			lenses: Object.fromEntries(
-				Object.entries({ ...committedTiers, ...retier }).map(([name, tier]) => [name, { tier }]),
-			),
+			lenses: {
+				...Object.fromEntries(
+					Object.entries({ ...committedTiers, ...retier }).map(([name, tier]) => [name, { tier }]),
+				),
+				...Object.fromEntries((options.disabled ?? []).map((name) => [name, { enabled: false }])),
+			},
 		},
 		routes: {
 			committed,
@@ -481,6 +485,12 @@ describe("ReviewPlan.resolve", () => {
 		expect(resolved.warnings()).toEqual([
 			"no model for heavy, for correctness and tests; set models.heavy.model in melian.local.yaml, or pass --model to review",
 		]);
+	});
+
+	it("leaves a lens with lenses.<name>.enabled: false out of the plan", () => {
+		const resolved = plan({}, {}, { checks: ["lens.correctness", "lens.tests"], disabled: ["tests"] });
+		expect(resolved.lenses.map((lens) => lens.name)).toContain("correctness");
+		expect(resolved.lenses.map((lens) => lens.name)).not.toContain("tests");
 	});
 
 	it("refuses a model that is not provider/model-id", () => {
