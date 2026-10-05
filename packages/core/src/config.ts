@@ -584,7 +584,6 @@ export interface ConfigLookup {
 
 const severityOrder: readonly Severity[] = ["P0", "P1", "P2", "P3", "nit"];
 
-/** The stricter of two severities, the one nearer P0. */
 export function stricter(left: Severity, right: Severity): Severity {
 	return severityOrder.indexOf(left) <= severityOrder.indexOf(right) ? left : right;
 }
