@@ -1,7 +1,9 @@
 import { parseArgs } from "node:util";
 import { dismissalReason, FindingError } from "@melian-agent/core";
 import { dismiss, findings, type Io, publish, review, reviewExitCodes } from "./commands.ts";
+import { compare, matchByHand, parseImportSource } from "./compare.ts";
 import { doctor } from "./doctor.ts";
+import { parseTarget } from "./target.ts";
 
 /** The exit code for a command line Melian cannot read, as `sysexits.h` numbers it. */
 export const usageExitCode = 64;
@@ -19,6 +21,13 @@ Commands:
                          dismisses every report merged into the finding unless --only names one report alone.
                          Exits 0 when recorded, 1 when the review or the finding is not found, or when the
                          dismissal was recorded but the verdict could not be decided again.
+  compare <range|#pr> [--from <source>]...
+                         Import other reviewers' findings and match them against the stored review of the head,
+                         by site. A source is github for CodeRabbit's review threads, github:<login> for another
+                         login's, or file:<path> for a reviewer's JSON file. Without --from, a pull request
+                         imports github, and a range matches again.
+  compare match|unmatch <range|#pr> <external-id> <melian-id>
+                         Match an external finding with a Melian finding by hand, or keep them apart.
   doctor                 Check Node, git, credentials, model routes, and GitHub access.
 
 Options:
@@ -28,6 +37,7 @@ Options:
   --open, --all, --json  For findings.
   --reason <text>        Why the finding does not apply, at most 1000 characters (dismiss).
   --only                 Dismiss the report the ID names alone, leaving the reports merged with it live (dismiss).
+  --from <source>        Where to import external findings from; repeat it for several (compare).
   --no-color             Print without colour.
   -h, --help             Show this help.
 
@@ -69,6 +79,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				all: { type: "boolean", default: false },
 				reason: { type: "string" },
 				only: { type: "boolean", default: false },
+				from: { type: "string", multiple: true, default: [] },
 				color: { type: "boolean", default: true },
 				help: { type: "boolean", short: "h", default: false },
 			},
@@ -108,6 +119,40 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				}
 				if (values.reason === undefined) throw new UsageError("dismiss needs --reason <text>");
 				return await dismiss(scoped, target, id, readableReason(values.reason), { only: values.only });
+			}
+			case "compare": {
+				const [first, ...others] = rest;
+				if (first === "match" || first === "unmatch") {
+					if (others.length !== 3) {
+						throw new UsageError(
+							`compare ${first} takes a range or pull request, an external ID, and a Melian ID`,
+						);
+					}
+					const [target, external, melian] = others as [string, string, string];
+					for (const id of [external, melian]) {
+						if (!/^[0-9a-f]{16}$/.test(id)) {
+							throw new UsageError(
+								`${id} is not a finding ID; an ID is 16 hex digits, as melian compare prints it`,
+							);
+						}
+					}
+					return await matchByHand(scoped, target, { external, melian }, first === "match");
+				}
+				const target = one(rest, name, "range or pull request");
+				const sources = values.from.map((value) => {
+					const source = parseImportSource(value);
+					if (source === undefined) {
+						throw new UsageError(`--from takes github, github:<login>, or file:<path>, not ${value}`);
+					}
+					return source;
+				});
+				const pullRequest = parseTarget(target).kind === "pullRequest";
+				if (sources.some((source) => source.kind === "github") && !pullRequest) {
+					throw new UsageError(`--from github reads a pull request's threads; name it as "#12", not a range`);
+				}
+				// A pull request's comparison imports CodeRabbit's threads unless told otherwise.
+				const fallback = pullRequest && sources.length === 0 ? [parseImportSource("github")!] : [];
+				return await compare(scoped, target, [...sources, ...fallback]);
 			}
 			case "doctor":
 				if (rest.length > 0) throw new UsageError("doctor takes no arguments");

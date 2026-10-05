@@ -290,10 +290,10 @@ describe.each(hosts)("skills/%s/SKILL.md", (host) => {
 		// A bare `melian` names the tool rather than running a command.
 		const used = shellCommands(body).filter((command) => command.executable === "melian" && command.args.length > 0);
 		const names = used.map((each) => each.args[0]);
-		expect(new Set(names)).toEqual(new Set(["doctor", "review", "findings", "dismiss", "publish"]));
+		expect(new Set(names)).toEqual(new Set(["doctor", "review", "findings", "dismiss", "publish", "compare"]));
 		for (const command of names) expect(commands).toContain(command);
 		const passed = used.flatMap((each) => each.args.filter((arg) => arg.startsWith("--")));
-		expect(new Set(passed)).toEqual(new Set(["--rerun", "--reason"]));
+		expect(new Set(passed)).toEqual(new Set(["--rerun", "--reason", "--from"]));
 		for (const option of [...passed, ...optionSpans(body)]) expect(options).toContain(option);
 	});
 

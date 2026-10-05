@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import {
 	Changeset,
 	ChangesetError,
@@ -12,6 +13,8 @@ import {
 	parseGitHubRemote,
 	resolveGitHubToken,
 } from "@melian-agent/github";
+import { type GitHubRecording, recordedGitHub } from "@melian-agent/github/testing";
+import { isScripted } from "./models.ts";
 import { CliError, fetchBase, fetchPullRequest, git, pullRequestRefs } from "./repository.ts";
 
 export type Target =
@@ -35,13 +38,39 @@ async function gitHubRepository(cwd: string): Promise<GitHubRepository> {
 	return parseGitHubRemote(url);
 }
 
-export async function gitHubFor(cwd: string, env: NodeJS.ProcessEnv): Promise<ReviewProvider> {
+/**
+ * The environment variable naming a recording of GitHub's answers, in `@melian-agent/github/testing`'s shape, which
+ * scripted mode reads GitHub from instead of the network.
+ */
+export const recordingVariable = "MELIAN_TEST_GITHUB";
+
+/** How Melian reaches the `origin` repository on GitHub: its owner and name, a token, and in tests a `fetch`. */
+export interface GitHubAccess {
+	readonly owner: string;
+	readonly repo: string;
+	readonly token: string;
+	readonly fetch?: typeof fetch;
+}
+
+// Under scripted mode with a recording, GitHub's answers come from the recording, and no token is needed or read.
+export async function gitHubAccess(cwd: string, env: NodeJS.ProcessEnv): Promise<GitHubAccess> {
 	const { owner, repo } = await gitHubRepository(cwd);
+	const recordingPath = env[recordingVariable] ?? "";
+	if (isScripted(env) && recordingPath !== "") {
+		const text = await readFile(recordingPath, "utf8").catch(() => {
+			throw new CliError(`${recordingVariable} names ${recordingPath}, which cannot be read`);
+		});
+		return { owner, repo, token: "scripted", fetch: recordedGitHub(JSON.parse(text) as GitHubRecording) };
+	}
 	const found = await resolveGitHubToken(env);
 	if (found === undefined) {
 		throw new GitHubError("noToken", "no GitHub token: set GITHUB_TOKEN or GH_TOKEN, or log in with gh auth login");
 	}
-	return createGitHubProvider({ owner, repo, token: found.token });
+	return { owner, repo, token: found.token };
+}
+
+export async function gitHubFor(cwd: string, env: NodeJS.ProcessEnv): Promise<ReviewProvider> {
+	return createGitHubProvider(await gitHubAccess(cwd, env));
 }
 
 // The range over the refs Melian fetched, under the pull request's own changeset ID. A range review of the same refs

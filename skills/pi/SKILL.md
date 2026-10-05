@@ -89,6 +89,10 @@ Prints the stored review exactly as `melian review` printed it, without running 
 
 Pass `--all` to print the silent and dismissed findings too, each dismissed one with who dismissed it and why.
 
+## Compare with other reviewers
+
+When the user asks how Melian's review compares with CodeRabbit's or another reviewer's, run `melian compare "#N" --from github`, or `--from file:<path>` for a reviewer's JSON file, with the range or `"#N"` a stored review used, and show what it prints; it posts nothing.
+
 ## Dismiss a finding
 
 A user who decides a finding does not apply can dismiss it with a reason. Melian then counts it out of the verdict, never raises it again, and keeps it dismissed across new reviews and pushes until the code that triggered it changes. Dismiss only when the user tells you to dismiss a finding; never to make a review pass, and never on your own judgement that a finding is wrong. Say what you think if asked, and let the user decide.
