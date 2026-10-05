@@ -278,6 +278,38 @@ describe("triage", () => {
 		expect(lensRecord(await review({ policy: "worktree" }))).toMatchObject({ status: "ran", level: "deep" });
 	});
 
+	it("keeps each folder variant of a lens to its own band, and asks one question for both", async () => {
+		writeFiles(repo, {
+			"services/.melian/lenses/correctness/LENS.md": lines(
+				"---",
+				"name: correctness",
+				"extends: correctness",
+				"---",
+				"Check the payments too.",
+			),
+			"services/pay.ts": lines("export const pay = 1;"),
+		});
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "a payments service");
+		writeFiles(repo, { "services/melian.yaml": lines("lenses:", "  correctness:", "    level: { floor: deep }") });
+		const variants = await Lens.load(repo, { kind: "worktree" }, ["src/user.ts", "services/pay.ts"]);
+		const decider = choosing("quick");
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done, done] }]);
+
+		const reviewed = await review({ decider, lenses: variants, policy: "worktree" });
+
+		const [request] = decider.requests;
+		expect(request!.questions.map((question) => [question.id, question.options])).toEqual([
+			["correctness", ["quick", "careful", "deep"]],
+		]);
+		const levels = (reviewed.verdict.ran ?? [])
+			.filter((check) => check.name === "lens.correctness")
+			.map((check) => check.level)
+			.sort();
+		expect(levels).toEqual(["deep", "quick"]);
+	});
+
 	it("records a decision that failed, and runs every lens at its default level with a note", async () => {
 		const decider = new RecordedDecider({});
 		await open(decider);

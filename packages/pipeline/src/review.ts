@@ -1,6 +1,7 @@
 import {
 	type Changeset,
 	type CheckRecord,
+	type ChoiceQuestion,
 	checksOfTier,
 	configLookup,
 	type Decider,
@@ -27,6 +28,7 @@ import {
 	type ScrutinyLevel,
 	type Severity,
 	type StandardsSection,
+	triageChoices,
 	triageQuestionSet,
 	type Verdict,
 	visibleText,
@@ -834,24 +836,39 @@ function account(
 	return { manifest, producers };
 }
 
-// The band each selected lens's level must lie in: the band of every file it reviews, each from the configuration of
+// The band each selected lens's level must lie in, per selection, so two folder variants of one name keep their own:
+// the band of every file it reviews, each from the configuration of
 // that file's path, read from the policy source, or `config` for every path without one.
 async function bandsOf(
 	selections: readonly { readonly lens: Lens; readonly covers: readonly string[] }[],
 	options: Pick<ReviewOptions, "config" | "policy" | "changeset">,
-): Promise<Map<string, LevelBand>> {
+): Promise<Map<Lens, LevelBand>> {
 	const { policy, config, changeset } = options;
 	const lookup = policy === undefined ? undefined : configLookup(changeset.repoRoot, policy);
-	const bands = new Map<string, LevelBand>();
+	const bands = new Map<Lens, LevelBand>();
 	for (const { lens, covers } of selections) {
 		const configs = lookup === undefined ? [config] : await Promise.all(covers.map((path) => lookup(path)));
 		const settings = configs.map((each) =>
 			Object.hasOwn(each.lenses, lens.name) ? each.lenses[lens.name] : undefined,
 		);
-		const own = LevelBand.across(settings.map((each) => LevelBand.of(each?.level)));
-		bands.set(lens.name, LevelBand.across([...(bands.has(lens.name) ? [bands.get(lens.name)!] : []), own]));
+		bands.set(lens, LevelBand.across(settings.map((each) => LevelBand.of(each?.level))));
 	}
 	return bands;
+}
+
+// One question per name: two variants of a lens in different folders share a name, and so its answer, which each
+// variant then holds to its own band. The shared question offers every option any variant offers.
+function sharedQuestions(questions: readonly ChoiceQuestion[]): ChoiceQuestion[] {
+	const byName = new Map<string, ChoiceQuestion>();
+	for (const question of questions) {
+		const known = byName.get(question.id);
+		const options = new Set([...(known?.options ?? []), ...question.options]);
+		byName.set(question.id, {
+			...(known ?? question),
+			options: triageChoices.filter((choice) => options.has(choice)),
+		});
+	}
+	return [...byName.values()];
 }
 
 // Triage's decision on the revision: one choice question per lens, asked through `decider` in a decision task, which
@@ -970,8 +987,8 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 	// runs, rather than run it below its floor.
 	const runnable = new Map(
 		covering.map(({ lens }) => {
-			const levels = lens.runnableLevels(bands.get(lens.name)!, routed);
-			if (levels.length === 0) throw noLevel(lens, bands.get(lens.name)!, routes);
+			const levels = lens.runnableLevels(bands.get(lens)!, routed);
+			if (levels.length === 0) throw noLevel(lens, bands.get(lens)!, routes);
 			return [lens, levels] as const;
 		}),
 	);
@@ -985,21 +1002,15 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 					{
 						questionSet: triageQuestionSet,
 						state: [triageBoundary(nonce), "## The change", prompt.render()].join("\n\n"),
-						// One question per name: two variants of a lens in different folders share a name, and so its answer.
-						questions: [
-							...new Map(
-								covering.map(({ lens }) => [
-									lens.name,
-									lens.triageQuestion(bands.get(lens.name)!, runnable.get(lens)!),
-								]),
-							).values(),
-						],
+						questions: sharedQuestions(
+							covering.map(({ lens }) => lens.triageQuestion(bands.get(lens)!, runnable.get(lens)!)),
+						),
 					},
 					options.rerun === true,
 					context,
 				);
 	const choices = new Map(
-		covering.map(({ lens }) => [lens, lens.triage(bands.get(lens.name)!, runnable.get(lens)!, triaged.decision)]),
+		covering.map(({ lens }) => [lens, lens.triage(bands.get(lens)!, runnable.get(lens)!, triaged.decision)]),
 	);
 	// A lens triage skipped is not running, so no lens hands it a defect.
 	const running = covering.filter(({ lens }) => choices.get(lens) !== "skip");
@@ -1062,7 +1073,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 			lenses.push(first);
 			continue;
 		}
-		const next = lens.escalation(level, bands.get(lens.name)!);
+		const next = lens.escalation(level, bands.get(lens)!);
 		const nextTier = next === undefined ? undefined : lens.level(next).tier;
 		const escalation =
 			next === undefined
