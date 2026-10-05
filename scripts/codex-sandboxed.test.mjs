@@ -115,6 +115,22 @@ describe("codex-sandboxed.sh profile", () => {
 		expect(text).toContain('(remote unix-socket (path-literal "/private/var/run/mDNSResponder"))');
 	});
 
+	it("denies symlinks and file flags in the worktree, with an allowance for node_modules after the deny", () => {
+		const text = profile(linked, scratch);
+		const deny = text.indexOf(
+			'(deny file-write-create\n  (require-all\n    (subpath "' + linked + '")\n    (vnode-type SYMLINK)))',
+		);
+		const allow = text.indexOf(
+			'(allow file-write-create\n  (require-all\n    (regex #"^' +
+				linked.replace(/[+().]/g, "\\$&") +
+				'/(.*/)?node_modules/")',
+		);
+		expect(deny).toBeGreaterThan(-1);
+		expect(allow).toBeGreaterThan(deny);
+		expect(text.indexOf("(deny file-write-flags)")).toBeGreaterThan(-1);
+		expect(text.indexOf("(deny file-write*")).toBeGreaterThan(allow);
+	});
+
 	it("allows only the git state a commit needs, as literal files in the administrative directory", () => {
 		const allow = block(profile(linked), "allow file-write*");
 		for (const path of ["objects", "refs", "logs"]) expect(allow).toContain(`(subpath "${main}/.git/${path}")`);
@@ -399,6 +415,54 @@ describe("codex-sandboxed.sh profile", () => {
 		const sandboxedNode = (code) =>
 			execFileSync("sandbox-exec", ["-f", profilePath, process.execPath, "-e", code], { env: env() }).toString();
 
+		it("cannot create a symlink in the worktree outside node_modules, nor move one in, nor set a file flag", () => {
+			sh(linked, `ln -s /tmp '${run}/outside-link'`);
+			const blocked = [
+				"ln -s /tmp link",
+				"mkdir -p src && ln -s /tmp src/link",
+				`mv '${run}/outside-link' moved-link`,
+				`cp -P '${run}/outside-link' copied-link`,
+				`ln -P '${run}/outside-link' hard-link`,
+				"touch flagged && chflags uchg flagged",
+				"mkdir -p node_modules/.bin && ln -s x node_modules/.bin/y && mv node_modules/.bin/y y-out",
+				"mkdir -p node_modules && ln -s x node_modules/HEAD",
+			];
+			for (const command of blocked) expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
+			for (const name of ["link", "moved-link", "copied-link", "hard-link", "y-out"])
+				expect(existsSync(join(linked, name))).toBe(false);
+			sh(linked, "mkdir -p node_modules/.bin && ln -s x node_modules/.bin/z && ln -sf w node_modules/.bin/z");
+			expect(readdirSync(join(linked, "node_modules", ".bin"))).toContain("z");
+			rmSync(join(run, "outside-link"), { force: true });
+		});
+
+		it("runs npm ci for a package whose dependency has a bin, which links it under node_modules/.bin", () => {
+			const dep = join(root, "dep-with-bin");
+			mkdirSync(join(dep, "bin"), { recursive: true });
+			writeFileSync(
+				join(dep, "package.json"),
+				'{"name":"dep-with-bin","version":"1.0.0","bin":{"depbin":"bin/x.js"}}',
+			);
+			writeFileSync(join(dep, "bin", "x.js"), '#!/usr/bin/env node\nconsole.log("bin-ok")\n');
+			chmodSync(join(dep, "bin", "x.js"), 0o755);
+			const app = join(linked, "npm-app");
+			mkdirSync(app);
+			execFileSync("npm", ["pack", "--silent", "--pack-destination", app], { cwd: dep, stdio: "pipe" });
+			writeFileSync(
+				join(app, "package.json"),
+				'{"name":"app","version":"1.0.0","dependencies":{"dep-with-bin":"file:dep-with-bin-1.0.0.tgz"}}',
+			);
+			execFileSync("npm", ["install", "--package-lock-only", "--offline", "--no-audit", "--no-fund", "--silent"], {
+				cwd: app,
+				stdio: "pipe",
+				env: { ...process.env, npm_config_cache: join(root, "npm-cache-outside") },
+			});
+			const out = sh(
+				app,
+				`npm_config_cache='${scratch}/npm-cache' npm ci --offline --no-audit --no-fund --silent && node_modules/.bin/depbin`,
+			).toString();
+			expect(out).toContain("bin-ok");
+		});
+
 		it("commits in the linked worktree", () => {
 			sh(linked, "echo x > f && git add f && git commit -q -m sandboxed");
 			expect(git(linked, "log", "-1", "--format=%s").toString().trim()).toBe("sandboxed");
@@ -662,6 +726,26 @@ describe("codex-sandboxed.sh profile", () => {
 			expect(out).toContain("nested:denied");
 			expect(existsSync(join(home, "escape"))).toBe(false);
 			expect(existsSync(join(linked, "sub-e2e", ".git"))).toBe(false);
+		});
+
+		it("kills a backgrounded child when the wrapper returns, and returns codex's exit status", () => {
+			const sleeperBin = join(root, "sleeper-bin");
+			mkdirSync(sleeperBin);
+			writeFileSync(join(sleeperBin, "codex"), "#!/bin/sh\nsleep 3017 &\necho $! > sleeper.pid\nexit 7\n");
+			chmodSync(join(sleeperBin, "codex"), 0o755);
+			const prompt = join(root, "sleeper.md");
+			writeFileSync(prompt, "go\n");
+			const result = failure(() =>
+				execFileSync(script, [linked, "m", prompt, join(root, "sleeper.log")], {
+					stdio: "pipe",
+					env: { ...env(), PATH: `${sleeperBin}:${env().PATH}` },
+				}),
+			);
+			expect(result.status).toBe(7);
+			const pid = Number(readFileSync(join(linked, "sleeper.pid"), "utf8"));
+			expect(pid).toBeGreaterThan(1);
+			expect(() => process.kill(pid, 0)).toThrow();
+			rmSync(join(linked, "sleeper.pid"));
 		});
 
 		it("creates the Codex directories under CODEX_HOME and passes it through", () => {

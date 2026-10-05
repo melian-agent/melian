@@ -89,6 +89,15 @@ dynamic_rules() {
   } | awk '!seen[$0]++'
   echo ")"
 
+  # No path may lead from the worktree to a directory outside it, such as the per-run directory,
+  # which a process that outlives the wrapper could refill after it deletes the directory. A symlink under
+  # node_modules is allowed, since npm links each package's bin there. These rules come before the
+  # denies below, so those still win for a link named HEAD or commondir. chflags would make a planted
+  # file immune to the wrapper's rm -rf.
+  printf '(deny file-write-create\n  (require-all\n    (subpath "%s")\n    (vnode-type SYMLINK)))\n' "$worktree"
+  printf '(allow file-write-create\n  (require-all\n    (regex #"^%s/(.*/)?node_modules/")\n    (vnode-type SYMLINK)))\n' "$(regex_path "$worktree")"
+  echo "(deny file-write-flags)"
+
   echo "(deny file-write*"
   filters subpath "$common/hooks" "$common/info"
   filters literal "$common/config" "$common/config.lock" "$admin/commondir" "$admin/gitdir" "$admin/locked" \
@@ -173,7 +182,15 @@ log="$(cd "$log_dir" && pwd -P)/$(basename "$log")"
 tmpdir=$(real "${TMPDIR:-/tmp}")
 profile=$(mktemp "${tmpdir%/}/codex-seatbelt.XXXXXX")
 run=$(real "$(mktemp -d "${tmpdir%/}/codex-run.XXXXXX")")
-trap 'rm -rf "$profile" "$run"' EXIT
+# The task runs in its own process group (job control), and the trap kills the group, so a background
+# child that outlives codex cannot refill the run directory after it is deleted.
+child=
+cleanup() {
+  [ -z "$child" ] || kill -KILL -- "-$child" 2>/dev/null || true
+  rm -rf "$profile" "$run"
+}
+trap cleanup EXIT
+trap 'exit 143' INT TERM
 scratch=${5:-${CODEX_SANDBOX_SCRATCH:-$run}}
 # Create scratch before resolving it: real leaves a path unchanged when its parent is missing, and
 # npm would resolve a relative cache path inside the worktree.
@@ -197,7 +214,13 @@ done < <(compgen -e)
 
 cd "$worktree"
 # No exec: it would replace the shell and skip the EXIT trap that removes the profile and run directory.
+# Backgrounded under set -m, the command leads a process group of its own, and wait returns its status.
 # stdin is /dev/null: codex exec reads a piped stdin as extra input and stalls waiting for it.
 # The prompt follows --, so one that starts with a dash is not read as an option.
+set -m
 sandbox-exec -f "$profile" env -i ${allowed[@]+"${allowed[@]}"} TMPDIR="$run" npm_config_cache="$scratch/npm-cache" \
-  codex exec --dangerously-bypass-approvals-and-sandbox --model "$model" -C "$worktree" -- "$prompt" < /dev/null > "$log" 2>&1
+  codex exec --dangerously-bypass-approvals-and-sandbox --model "$model" -C "$worktree" -- "$prompt" < /dev/null > "$log" 2>&1 &
+child=$!
+status=0
+wait "$child" || status=$?
+exit "$status"
