@@ -203,7 +203,7 @@ trap 'exit 143' INT TERM
 scratch=${5:-${CODEX_SANDBOX_SCRATCH:-$run}}
 # Create scratch before resolving it: real leaves a path unchanged when its parent is missing, and
 # npm would resolve a relative cache path inside the worktree.
-mkdir -p "$scratch/npm-cache"
+mkdir -p "$scratch/npm-cache" "$scratch/melian"
 scratch=$(real "$scratch")
 # Codex fails on a first run if these are missing, and the profile allows only what exists by name.
 # Create them before the profile: real leaves a path unchanged when its parent is missing.
@@ -228,7 +228,7 @@ cd "$worktree"
 # stdin is /dev/null: codex exec reads a piped stdin as extra input and stalls waiting for it.
 # The prompt follows --, so one that starts with a dash is not read as an option.
 set -m
-sandbox-exec -f "$profile" env -i ${allowed[@]+"${allowed[@]}"} TMPDIR="$run" TMPPREFIX="$run/zsh" npm_config_cache="$scratch/npm-cache" \
+sandbox-exec -f "$profile" env -i ${allowed[@]+"${allowed[@]}"} TMPDIR="$run" TMPPREFIX="$run/zsh" npm_config_cache="$scratch/npm-cache" MELIAN_STATE_DIR="$scratch/melian" \
   codex exec --dangerously-bypass-approvals-and-sandbox --model "$model" -C "$worktree" -- "$prompt" < /dev/null > "$log" 2>&1 &
 child=$!
 status=0

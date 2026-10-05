@@ -859,6 +859,30 @@ describe("codex-sandboxed.sh profile", () => {
 			expect(existsSync(join(linked, "sub-e2e"))).toBe(true);
 		});
 
+		it("points MELIAN_STATE_DIR into scratch, where Melian can write, and keeps the clone's own state closed", () => {
+			const stateBin = join(root, "state-bin");
+			mkdirSync(stateBin);
+			writeFileSync(
+				join(stateBin, "codex"),
+				`#!/bin/sh\necho "state:$MELIAN_STATE_DIR"\nmkdir -p "$MELIAN_STATE_DIR/clone" && touch "$MELIAN_STATE_DIR/clone/x.sqlite" && echo state:writable\nmkdir '${main}/.git/melian' 2>/dev/null && echo clone:allowed || echo clone:denied\n`,
+			);
+			chmodSync(join(stateBin, "codex"), 0o755);
+			const prompt = join(root, "state.md");
+			writeFileSync(prompt, "go\n");
+			const log = join(root, "state.log");
+			const stateScratch = join(root, "state-scratch");
+			execFileSync(script, [linked, "m", prompt, log, stateScratch], {
+				stdio: "pipe",
+				env: { ...env(), PATH: `${stateBin}:${env().PATH}` },
+			});
+			const out = readFileSync(log, "utf8");
+			expect(out).toContain(`state:${stateScratch}/melian\n`);
+			expect(out).toContain("state:writable");
+			expect(out).toContain("clone:denied");
+			expect(existsSync(join(stateScratch, "melian", "clone", "x.sqlite"))).toBe(true);
+			expect(existsSync(join(main, ".git", "melian"))).toBe(false);
+		});
+
 		it("kills a backgrounded child when the wrapper returns, and returns codex's exit status", () => {
 			const sleeperBin = join(root, "sleeper-bin");
 			mkdirSync(sleeperBin);
