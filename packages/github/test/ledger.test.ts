@@ -1,10 +1,13 @@
 import { rmSync } from "node:fs";
-import { Adjudication, defaultConfig, Finding, type LedgerRound } from "@melian-agent/core";
+import { join } from "node:path";
+import { Adjudication, defaultConfig, Finding, type LedgerRound, replyKey } from "@melian-agent/core";
 import { createGitHubProvider, Ledger, marker, maxBodyLength, parseMarker, verifyMarker } from "@melian-agent/github";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
+	defineDoc,
 	type Harness,
+	openSqliteStorage,
 	publishReview,
 	revisionKey,
 	summarizeReview,
@@ -1031,6 +1034,123 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		const stored = (await harness.snapshot(PublishedDocument, (await harness.root(context)).id, context))!;
 		expect(Object.values(stored.revisions[second.changeset.revision.head]!.replies)).toEqual(["9000"]);
 	});
+
+	it.each([
+		{ version: 2, earlier: false },
+		{ version: 5, earlier: false },
+		{ version: 2, earlier: true },
+		{ version: 5, earlier: true },
+	])(
+		"resolves a recorded version $version reply (earlier head: $earlier) without posting again",
+		async ({ version, earlier }) => {
+			const fake = scenarioModels();
+			const state = pullRequestState();
+			const provider = createGitHubProvider({
+				owner: state.owner,
+				repo: state.repo,
+				token: "test-token",
+				fetch: fakeGitHub(state),
+			});
+			const database = join(repo, ".git", "published.sqlite");
+			harness = await openPublishHarness(await openSqliteStorage(database), fake, provider);
+			const first = await reviewScenario(repo, harness, fake, lensScript(unsafeManager));
+			const firstReview = await first.review;
+			pushRevisionTwo(repo);
+			const second = await reviewScenario(repo, harness, fake, lensScript());
+			const reviewed = await second.review;
+			moveTo(state, second.changeset);
+			const id = Object.values(firstReview.verdict.findings).flat()[0]!.id;
+			const thread = "1002";
+			const key = replyKey(id, thread);
+			const entry = {
+				ruleId: "null-dereference",
+				path: "src/user.ts",
+				line: 7,
+				revision: first.changeset.revision.head,
+				thread,
+			};
+			const opening = {
+				id: Number(thread),
+				user: { login: state.login },
+				body: marker(entry.revision, "finding", id, secret),
+				path: entry.path,
+				line: entry.line,
+				side: "RIGHT",
+				pull_request_review_id: 1001,
+			};
+			state.comments.push(opening, {
+				...opening,
+				id: 9000,
+				in_reply_to_id: opening.id,
+				body: renderResolvedReply({ id, ...entry }, second.changeset.revision.head, secret),
+			});
+			state.reviews.push({
+				id: 1001,
+				user: opening.user,
+				body: "Old review",
+				commit_id: second.changeset.revision.head,
+				event: "COMMENT",
+			});
+			const record = {
+				reviews: ["1001"],
+				verdict: reviewed.verdict.fingerprint(),
+				verdictRevision: revisionKey(second.changeset.revision),
+				rounds: 1,
+				open: {},
+				resolved: { [id]: entry },
+				replies: { [version < 3 ? id : key]: "9000" },
+			};
+			const oldPublished = defineDoc<{ order: string[]; revisions: Record<string, typeof record> }>({
+				kind: "melian.published",
+				version,
+				scope: "conversation",
+				history: "latest",
+				fork: "current",
+				initial: () => ({ order: [], revisions: {} }),
+			});
+			let current = second;
+			if (earlier) {
+				pushRevisionThree(repo);
+				current = await reviewScenario(repo, harness, fake, lensScript());
+				await current.review;
+				moveTo(state, current.changeset);
+			}
+			let root = (await harness.root(context)).id;
+			await harness.commit(async (tx) => {
+				const doc = await tx.doc(oldPublished, root);
+				doc.order = [second.changeset.revision.head];
+				doc.revisions = { [second.changeset.revision.head]: record };
+				(await tx.doc(PublisherDocument, root)).secret = secret;
+			}, context);
+			await harness.close(context);
+			harness = await openPublishHarness(await openSqliteStorage(database), fake, provider);
+			root = (await harness.root(context)).id;
+			const publish = async () =>
+				publishReview({
+					harness: harness!,
+					provider,
+					changeset: current.changeset,
+					pullRequest: await provider.pullRequest(7),
+					base: current.changeset.revision.base,
+				});
+			expect(state.resolvedThreads).toEqual([]);
+			await publish();
+			expect(state.resolvedThreads).toEqual([opening.id]);
+			expect(state.comments).toHaveLength(2);
+			expect(state.reviews).toHaveLength(earlier ? 2 : 1);
+			expect(
+				state.calls.filter(({ method, path }) => method === "PATCH" && path.includes("/pulls/comments/")),
+			).toEqual([]);
+			const stored = (await harness.snapshot(PublishedDocument, root, context))!.revisions[
+				second.changeset.revision.head
+			]!;
+			expect(stored.replies).toEqual({ [key]: "9000" });
+			expect(stored.threadResolutions).toEqual({ [key]: true });
+			const writes = state.calls.filter(({ method }) => method === "POST" || method === "PATCH");
+			await publish();
+			expect(state.calls.filter(({ method }) => method === "POST" || method === "PATCH")).toEqual(writes);
+		},
+	);
 
 	it("starts a fresh ledger when the recorded comment was deleted by hand", async () => {
 		const state = pullRequestState();

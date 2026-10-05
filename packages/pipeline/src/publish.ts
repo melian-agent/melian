@@ -98,6 +98,7 @@ type StoredRevision = {
 	// Each reply by `replyKey` of the finding, its thread, and the dismissal it gave, if any; null when the thread was
 	// gone and there was nothing to reply to.
 	replies: Record<string, string | null>;
+	threadResolutions?: Record<string, true>;
 	status?: { state: ReviewStatus["state"]; description: string };
 	ledgerUrl?: string;
 };
@@ -593,40 +594,59 @@ function publishTask(provider: ReviewProvider) {
 						}, context);
 						result.dismissed += Object.keys(again).length;
 					}
-					const record = (await read()).revisions[head]!;
-					for (const id of Object.keys(record.resolved).sort()) {
-						const entry = record.resolved[id]!;
-						if (entry.thread === undefined) continue;
-						const key = replyKeyOf(id, { ...entry, thread: entry.thread });
-						if (Object.hasOwn(record.replies, key)) continue;
-						// Replies do not depend on the round, so any round's lookup serves; the last one is likely cached.
-						const found = (await marked({ fingerprint: record.verdict ?? "", round: record.rounds ?? 0 }))
-							.replies[key];
-						let recorded: string | null;
-						// A resolution marker proves the edit or reply, but an older reply left the thread open.
-						if (found === undefined || found === entry.thread) {
-							await revalidate();
-							const reply = await provider.replyResolved(
-								pullRequest,
-								{ id, ...entry, thread: entry.thread },
-								head,
-								secret,
-							);
-							recorded = reply ?? null;
-							if (reply !== undefined) result.replies++;
-						} else {
-							if (entry.dismissal === undefined) {
+					const closing = await read();
+					for (const [publishedHead, record] of Object.entries(closing.revisions)) {
+						for (const id of Object.keys(record.resolved).sort()) {
+							const entry = record.resolved[id]!;
+							if (entry.thread === undefined) continue;
+							const key = replyKeyOf(id, { ...entry, thread: entry.thread });
+							const replied = Object.hasOwn(record.replies, key);
+							if (publishedHead !== head && !replied) continue;
+							if (replied) {
+								if (entry.dismissal !== undefined || record.threadResolutions?.[key] === true) continue;
 								await revalidate();
 								await provider.resolveThread(pullRequest, entry.thread);
+								await runtime.commit(async (tx) => {
+									const stored = (await tx.doc(PublishedDocument, root)).revisions[publishedHead]!;
+									stored.threadResolutions = { ...stored.threadResolutions, [key]: true };
+									return undefined;
+								}, context);
+								result.recovered++;
+								continue;
 							}
-							recorded = found;
-							result.recovered++;
+							// Replies do not depend on the round, so any round's lookup serves; the last one is likely cached.
+							const found = (await marked({ fingerprint: record.verdict ?? "", round: record.rounds ?? 0 }))
+								.replies[key];
+							let recorded: string | null;
+							// A resolution marker proves the edit or reply, but an older reply left the thread open.
+							if (found === undefined || found === entry.thread) {
+								await revalidate();
+								const reply = await provider.replyResolved(
+									pullRequest,
+									{ id, ...entry, thread: entry.thread },
+									head,
+									secret,
+								);
+								recorded = reply ?? null;
+								if (reply !== undefined) result.replies++;
+							} else {
+								if (entry.dismissal === undefined) {
+									await revalidate();
+									await provider.resolveThread(pullRequest, entry.thread);
+								}
+								recorded = found;
+								result.recovered++;
+							}
+							await runtime.commit(async (tx) => {
+								const stored = (await tx.doc(PublishedDocument, root)).revisions[head]!;
+								stored.replies[key] = recorded;
+								if (entry.dismissal === undefined)
+									stored.threadResolutions = { ...stored.threadResolutions, [key]: true };
+								return undefined;
+							}, context);
 						}
-						await runtime.commit(async (tx) => {
-							(await tx.doc(PublishedDocument, root)).revisions[head]!.replies[key] = recorded;
-							return undefined;
-						}, context);
 					}
+					const record = closing.revisions[head]!;
 					const publication = await read();
 					const rounds = structuredClone(publication.ledgerRounds ?? []);
 					const storedVerdict = await runtime.snapshot(VerdictDocument, root, context);
