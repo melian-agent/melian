@@ -12,6 +12,7 @@ import {
 	type CredentialStore,
 	createProviderModels,
 	defaultProviderAuthContext,
+	type Models,
 } from "./harness.ts";
 import { type ReviewModels, wrapModels } from "./models.ts";
 
@@ -174,26 +175,57 @@ function runCommand(credential: NamedCredential, command: string): Promise<strin
 	});
 }
 
+function bearerExpiry(value: string): number {
+	const parts = value.split(".");
+	if (parts.length === 3) {
+		try {
+			const claims: unknown = JSON.parse(Buffer.from(parts[1]!, "base64url").toString("utf8"));
+			if (typeof claims === "object" && claims !== null && "exp" in claims) {
+				const expires = claims.exp;
+				if (typeof expires === "number" && Number.isFinite(expires * 1000)) return expires * 1000;
+			}
+		} catch {}
+	}
+	return Date.now() + 60 * 60_000;
+}
+
+/** The authentication kinds a provider accepts, read from the model collection's registry. */
+export interface ProviderAuthKinds {
+	readonly apiKey: boolean;
+	readonly oauth: boolean;
+}
+
 /**
  * The credentials a review reads: the named credentials of the secrets files first, in their order, then Pi's store.
  * The provider's environment variables apply after both, as pi-ai resolves them. A named credential applies when its
  * source is present: a literal key, an environment variable that is set, or a command, which counts as present until
- * it runs, at its provider's first use, once per process. Like Pi's store it never writes.
+ * it runs, at its provider's first use, once per process. API-key providers receive a key; OAuth-only providers receive
+ * a bearer with no refresh token. JWT expiry is read without signature verification; other values get one hour from
+ * first read. A bearer inside the seven-minute cutoff reads as absent. Like Pi's store it never writes.
  */
 export class MelianCredentialStore implements CredentialStore {
 	readonly named: readonly NamedCredential[];
 	readonly pi: PiCredentialStore;
 	readonly #env: NodeJS.ProcessEnv;
+	readonly #authKinds: (provider: string) => ProviderAuthKinds;
+	readonly #expires = new Map<NamedCredential, number>();
 	readonly #values = new Map<NamedCredential, Promise<string>>();
 
-	constructor(named: readonly NamedCredential[], pi: PiCredentialStore = new PiCredentialStore(), env = process.env) {
+	constructor(
+		named: readonly NamedCredential[],
+		authKinds: (provider: string) => ProviderAuthKinds,
+		pi: PiCredentialStore = new PiCredentialStore(),
+		env = process.env,
+	) {
 		this.named = named;
 		this.pi = pi;
 		this.#env = env;
+		this.#authKinds = authKinds;
 	}
 
 	/** The named credential that applies to `provider`, if any. */
 	credential(provider: string): NamedCredential | undefined {
+		if (this.type(provider) === undefined) return undefined;
 		return this.named.find(
 			(credential) =>
 				credential.provider === provider &&
@@ -204,9 +236,16 @@ export class MelianCredentialStore implements CredentialStore {
 	/** Where `provider`'s credential comes from, if this store holds one: a named credential and its file, or Pi's login. */
 	async describe(provider: string): Promise<string | undefined> {
 		const named = this.credential(provider);
-		if (named !== undefined) return `${named.name} in ${named.file}`;
+		if (
+			named !== undefined &&
+			((named.value.kind === "command" && !this.#values.has(named)) || (await this.resolve(named)) !== undefined)
+		) {
+			return `${named.name} in ${named.file}`;
+		}
 		const stored = await this.pi.read(provider).catch(() => undefined);
-		return stored === undefined ? undefined : `Pi's login in ${this.pi.path}`;
+		const auth = this.#authKinds(provider);
+		const accepted = stored?.type === "api_key" ? auth.apiKey : stored?.type === "oauth" && auth.oauth;
+		return accepted ? `Pi's login in ${this.pi.path}` : undefined;
 	}
 
 	/** The value of `provider`'s named credential, running its command if it has one. */
@@ -241,17 +280,33 @@ export class MelianCredentialStore implements CredentialStore {
 		options?.signal?.throwIfAborted();
 		const named = this.credential(provider);
 		if (named === undefined) return this.pi.read(provider, options);
-		return { type: "api_key", key: await this.value(named) };
+		return (await this.resolve(named)) ?? this.pi.read(provider, options);
 	}
 
 	async list(options?: AuthOperationOptions): Promise<readonly CredentialInfo[]> {
 		const stored = await this.pi.list(options);
 		const named = this.named.flatMap((credential) =>
 			this.credential(credential.provider) === credential
-				? [{ providerId: credential.provider, type: "api_key" as const }]
+				? [{ providerId: credential.provider, type: this.type(credential.provider)! }]
 				: [],
 		);
 		return [...named, ...stored.filter((each) => !named.some((other) => other.providerId === each.providerId))];
+	}
+
+	private type(provider: string): Credential["type"] | undefined {
+		const auth = this.#authKinds(provider);
+		return auth.apiKey ? "api_key" : auth.oauth ? "oauth" : undefined;
+	}
+
+	private async resolve(named: NamedCredential): Promise<Credential | undefined> {
+		const value = await this.value(named);
+		if (this.type(named.provider) === "api_key") return { type: "api_key", key: value };
+		let expires = this.#expires.get(named);
+		if (expires === undefined) {
+			expires = bearerExpiry(value);
+			this.#expires.set(named, expires);
+		}
+		return usable({ type: "oauth", access: value, refresh: "", expires });
 	}
 
 	modify(
@@ -290,16 +345,33 @@ function reviewAuthContext(): AuthContext {
  * The model collection a review runs on: every pi-ai built-in provider, each resolving its credentials from the named
  * `credentials` of the secrets files first, then Pi's credential store, then its environment variables, as pi-ai does.
  * `CLAUDE_CODE_OAUTH_TOKEN` stands in for an unset `ANTHROPIC_OAUTH_TOKEN`. `authPath` overrides where Pi's store is.
- * Throws {@link CredentialError} `unknownProvider` for a named credential whose provider the catalogue does not know.
+ * Throws {@link CredentialError} `unknownProvider` for a named credential whose provider the catalogue does not know,
+ * or `unsupportedAuth` when it accepts neither API keys nor OAuth tokens.
  */
 export function createReviewModels(
 	options: { readonly authPath?: string; readonly credentials?: readonly NamedCredential[] } = {},
 ): ReviewModels {
-	const store = new MelianCredentialStore(options.credentials ?? [], new PiCredentialStore(options.authPath));
-	const models = createProviderModels(store, reviewAuthContext());
+	let models: Models;
+	const store = new MelianCredentialStore(
+		options.credentials ?? [],
+		(id) => {
+			const auth = models.getProvider(id)?.auth;
+			return { apiKey: auth?.apiKey !== undefined, oauth: auth?.oauth !== undefined };
+		},
+		new PiCredentialStore(options.authPath),
+	);
+	models = createProviderModels(store, reviewAuthContext());
 	// A provider pi-ai does not know, such as a misspelt one, would leave the credential unused without a word.
 	for (const { name, provider, file } of store.named) {
-		if (models.getProvider(provider) !== undefined) continue;
+		const known = models.getProvider(provider);
+		if (known !== undefined) {
+			if (known.auth.apiKey !== undefined || known.auth.oauth !== undefined) continue;
+			throw new CredentialError(
+				"unsupportedAuth",
+				`credential ${visibleText(name)} in ${visibleText(file)} names the provider ${visibleText(provider)}, which accepts neither API keys nor OAuth tokens`,
+				{ credential: name, file },
+			);
+		}
 		throw new CredentialError(
 			"unknownProvider",
 			// A secrets file's names reach a terminal, so they print escaped.

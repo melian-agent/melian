@@ -365,7 +365,7 @@ Solution: preferences and credentials live in separate files.
 
 Both preference files take `melian.yaml`'s schema. The per-clone file wins over the user-level one, and both win over the committed files. A route's `accept`, `unavailable`, and `acceptOverridden` are policy, so only a committed `melian.yaml` sets them; a preference file that sets one is refused, naming the key, since it could otherwise wave its own override through. The user-level files live in `$XDG_CONFIG_HOME/melian/`, which is `~/.config/melian/` when the variable is unset.
 
-A credential entry has a name, a provider, a type, and a value that is literal (`key`), an environment variable name (`env`), or a command (`command`), as Pi's store takes `!command`. The type is `api_key` until the credential pool brings OAuth in milestone 3:
+A credential entry has a name, a provider, a type, and a value that is literal (`key`), an environment variable name (`env`), or a command (`command`), as Pi's store takes `!command`. The secrets-file type remains `api_key`; the credential pool brings managed OAuth logins in milestone 3:
 
 ```yaml
 # ~/.config/melian/secrets.yaml
@@ -446,6 +446,8 @@ pi-ai provides providers, OAuth subscription auth, and the model catalogue. Meli
 - **The review plan**, which a resolver builds from routes, the catalogue, and the credentials present, below.
 - **Credential sources**: the [secrets files](#files-a-user-owns), then Pi's credential store, so one `pi` login covers Melian locally, then environment variables; GitHub App installation tokens on the server and Actions hosts.
 - **A credential pool provider** that holds several named credentials per provider and rotates on rate limit or failure, by stacking rules that name credentials. This is how subscriptions stack.
+
+A named credential for an OAuth-only provider is a bearer token, with expiry read from its JWT or one hour from first read, never refreshed by Melian.
 
 ### The review plan
 

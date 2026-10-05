@@ -14,7 +14,9 @@ import {
 	providersWithCredentials,
 	unlockCredentials,
 } from "@melian-agent/pipeline";
+import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as harnessApi from "../src/harness.ts";
 import { modelsOf } from "../src/models.ts";
 
 let dir: string;
@@ -31,6 +33,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	vi.restoreAllMocks();
+	vi.useRealTimers();
 	vi.unstubAllEnvs();
 	rmSync(dir, { recursive: true, force: true });
 });
@@ -152,19 +156,134 @@ describe("MelianCredentialStore", () => {
 		file = "/home/me/.config/melian/secrets.yaml",
 	): NamedCredential => ({ name, provider, type: "api_key", value, file });
 
+	it("resolves a command bearer through checkAuth and getAuth with its JWT expiry and account claim", async () => {
+		const exp = Math.floor(Date.now() / 1000) + 3600;
+		const claims = { exp, "https://api.openai.com/auth": { chatgpt_account_id: "test-account" } };
+		const token = `e30.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.signature`;
+		const marker = join(dir, "bearer-ran");
+		const credential = named("codex-login", "fake-oauth", {
+			kind: "command",
+			command: `echo run >> ${marker}; printf '%s' '${token}'`,
+		});
+		const fake = createFakeModels({ provider: "fake-oauth", auth: "oauth", credentials: [credential], authPath });
+		expect((await planInputs(fake.review)).credentials["fake-oauth"]).toBe(`codex-login in ${credential.file}`);
+		expect(existsSync(marker)).toBe(false);
+		expect(await fake.models.checkAuth("fake-oauth")).toMatchObject({ type: "oauth" });
+		expect(await fake.models.getAuth("fake-oauth", { minOAuthValidityMs: 10 * 60_000 })).toMatchObject({
+			auth: { apiKey: token },
+		});
+		const store = new MelianCredentialStore(
+			[{ ...credential, value: { kind: "literal", key: token } }],
+			() => ({ apiKey: false, oauth: true }),
+			new PiCredentialStore(authPath),
+			{},
+		);
+		expect(await store.read("fake-oauth")).toEqual({
+			type: "oauth",
+			access: token,
+			refresh: "",
+			expires: exp * 1000,
+		});
+		expect(await store.list()).toEqual([{ providerId: "fake-oauth", type: "oauth" }]);
+		const bearer = (await fake.models.getAuth("fake-oauth"))!.auth.apiKey!;
+		expect(JSON.parse(Buffer.from(bearer.split(".")[1]!, "base64url").toString("utf8"))).toMatchObject(claims);
+		expect(readFileSync(marker, "utf8")).toBe("run\n");
+		const refresh = vi.spyOn(fake.provider.provider.auth.oauth!, "refresh");
+		await expect(fake.models.getAuth("fake-oauth", { minOAuthValidityMs: 2 * 3_600_000 })).rejects.toMatchObject({
+			code: "auth",
+		});
+		expect(refresh).not.toHaveBeenCalled();
+		expect(fake.provider.state.callCount).toBe(0);
+	});
+
+	it("keeps API keys for a provider that also accepts OAuth", async () => {
+		const credential = named("key", "fake-key", { kind: "command", command: "printf fake-key-value" });
+		const store = new MelianCredentialStore(
+			[credential],
+			() => ({ apiKey: true, oauth: true }),
+			new PiCredentialStore(authPath),
+			{},
+		);
+		expect(await store.read("fake-key")).toEqual({ type: "api_key", key: "fake-key-value" });
+		expect(await store.list()).toEqual([{ providerId: "fake-key", type: "api_key" }]);
+		const fake = createFakeModels({ provider: "fake-key", credentials: [credential], authPath });
+		expect(await fake.models.checkAuth("fake-key")).toMatchObject({ type: "api_key" });
+		expect(await fake.models.getAuth("fake-key")).toMatchObject({ auth: { apiKey: "fake-key-value" } });
+	});
+
+	it.each(["opaque", "e30.not-json.signature", "e30.eyJleHAiOiJvb3BzIn0.signature"])(
+		"gives %s a fixed hour from its first read",
+		async (token) => {
+			vi.useFakeTimers();
+			const now = 1_800_000_000_000;
+			vi.setSystemTime(now);
+			const credential = named("bearer", "fake-oauth", { kind: "literal", key: token });
+			const store = new MelianCredentialStore(
+				[credential],
+				() => ({ apiKey: false, oauth: true }),
+				new PiCredentialStore(authPath),
+				{},
+			);
+			expect(await store.read("fake-oauth")).toEqual({
+				type: "oauth",
+				access: token,
+				refresh: "",
+				expires: now + 3_600_000,
+			});
+			vi.setSystemTime(now + 60_000);
+			expect(await store.read("fake-oauth")).toMatchObject({ expires: now + 3_600_000 });
+		},
+	);
+
+	it.each([0, 4, 6, 7, 8])(
+		"only serves a JWT with %i minutes left outside the seven-minute cutoff",
+		async (minutes) => {
+			vi.useFakeTimers();
+			const now = 1_800_000_000_000;
+			vi.setSystemTime(now);
+			const token = `e30.${Buffer.from(JSON.stringify({ exp: now / 1000 + minutes * 60 })).toString("base64url")}.signature`;
+			const credential = named("bearer", "fake-oauth", { kind: "literal", key: token });
+			const fake = createFakeModels({ provider: "fake-oauth", auth: "oauth", credentials: [credential], authPath });
+			const present = minutes > 7;
+			expect((await fake.models.checkAuth("fake-oauth")) !== undefined).toBe(present);
+			expect((await fake.models.getAuth("fake-oauth")) !== undefined).toBe(present);
+			expect((await planInputs(fake.review)).credentials["fake-oauth"] !== undefined).toBe(present);
+		},
+	);
+
+	it("never counts a named credential for a provider without auth and refuses it when building review models", async () => {
+		const credential = named("unused", "fake-no-auth", { kind: "command", command: "exit 3" });
+		const fake = createFakeModels({ provider: "fake-no-auth", auth: "none", credentials: [credential], authPath });
+		expect((await planInputs(fake.review)).credentials).toEqual({});
+		expect(await fake.models.checkAuth("fake-no-auth")).toBeUndefined();
+		vi.spyOn(harnessApi, "createProviderModels").mockReturnValue(fake.models);
+		expect(() => createReviewModels({ authPath, credentials: [credential] })).toThrow(
+			expect.objectContaining({
+				code: "unsupportedAuth",
+				message: `credential unused in ${credential.file} names the provider fake-no-auth, which accepts neither API keys nor OAuth tokens`,
+			}),
+		);
+	});
+
 	it("reads a named credential before Pi's store, and Pi's store when the named one's variable is unset", async () => {
 		store({ anthropic: { type: "api_key", key: "sk-ant-stored" } });
 		const credentials = new MelianCredentialStore(
 			[named("work", "anthropic", { kind: "env", variable: "WORK_ANTHROPIC_KEY" })],
+			() => ({ apiKey: true, oauth: false }),
 			new PiCredentialStore(authPath),
 			{},
 		);
 		expect(await credentials.read("anthropic")).toEqual({ type: "api_key", key: "sk-ant-stored" });
 		expect(await credentials.describe("anthropic")).toBe(`Pi's login in ${authPath}`);
 
-		const set = new MelianCredentialStore(credentials.named, new PiCredentialStore(authPath), {
-			WORK_ANTHROPIC_KEY: "sk-ant-work",
-		});
+		const set = new MelianCredentialStore(
+			credentials.named,
+			() => ({ apiKey: true, oauth: false }),
+			new PiCredentialStore(authPath),
+			{
+				WORK_ANTHROPIC_KEY: "sk-ant-work",
+			},
+		);
 		expect(await set.read("anthropic")).toEqual({ type: "api_key", key: "sk-ant-work" });
 		expect(await set.describe("anthropic")).toBe("work in /home/me/.config/melian/secrets.yaml");
 		expect(await set.list()).toEqual([{ providerId: "anthropic", type: "api_key" }]);
@@ -176,6 +295,7 @@ describe("MelianCredentialStore", () => {
 				named("unset", "openai", { kind: "env", variable: "UNSET_KEY" }),
 				named("pinned", "openai", { kind: "literal", key: "sk-literal" }),
 			],
+			() => ({ apiKey: true, oauth: false }),
 			new PiCredentialStore(authPath),
 			{},
 		);
@@ -186,6 +306,7 @@ describe("MelianCredentialStore", () => {
 		const counter = join(dir, "runs");
 		const credentials = new MelianCredentialStore(
 			[named("vault", "openai", { kind: "command", command: `echo run >> ${counter}; printf ' sk-from-vault\\n'` })],
+			() => ({ apiKey: true, oauth: false }),
 			new PiCredentialStore(authPath),
 			{},
 		);
@@ -206,6 +327,7 @@ describe("MelianCredentialStore", () => {
 					"/clone/melian.secrets.yaml",
 				),
 			],
+			() => ({ apiKey: true, oauth: false }),
 			new PiCredentialStore(authPath),
 			{},
 		);
@@ -215,6 +337,7 @@ describe("MelianCredentialStore", () => {
 		expect((error as Error).message).toBe("credential vault in /clone/melian.secrets.yaml: its command failed (3)");
 		const empty = new MelianCredentialStore(
 			[named("vault", "openai", { kind: "command", command: "true" })],
+			() => ({ apiKey: true, oauth: false }),
 			new PiCredentialStore(authPath),
 			{},
 		);
@@ -231,6 +354,7 @@ describe("MelianCredentialStore", () => {
 					"/clone/melian.secrets.yaml",
 				),
 			],
+			() => ({ apiKey: true, oauth: false }),
 			new PiCredentialStore(authPath),
 			{},
 		);

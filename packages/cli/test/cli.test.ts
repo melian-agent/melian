@@ -749,6 +749,27 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		expect(existsSync(marker)).toBe(false);
 	});
 
+	it("prints an OAuth-only provider's named bearer source without running its command", () => {
+		const { repo } = goldenCheckout(
+			goldens["clean-rename"]!,
+			{},
+			"models:\n  heavy:\n    model: openai-codex/gpt-6.1-sol\n",
+		);
+		const marker = join(repo, ".git", "bearer-ran");
+		const xdg = userDirectory(
+			`credentials:\n  codex-login: { provider: openai-codex, command: "touch ${marker}; printf bearer-sentinel" }\n`,
+		);
+		const secrets = join(xdg.XDG_CONFIG_HOME, "melian/secrets.yaml");
+		const doctor = melian(repo, ["doctor"], { ...xdg, PI_CODING_AGENT_DIR: repo });
+		expect(doctor.status).toBe(0);
+		expect(doctor.stdout).toContain(`codex-login for openai-codex in ${secrets}`);
+		expect(doctor.stdout).toContain(
+			`ok    plan        heavy: openai-codex/gpt-6.1-sol with codex-login in ${secrets}; routed by melian.yaml\n`,
+		);
+		expect(existsSync(marker)).toBe(false);
+		expect(doctor.stdout).not.toContain("bearer-sentinel");
+	});
+
 	it("fails, naming the credential, for a secrets file whose provider the catalogue does not know", () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
 		const xdg = userDirectory("credentials:\n  typo: { provider: antropic, env: ANTHROPIC_API_KEY }\n");
