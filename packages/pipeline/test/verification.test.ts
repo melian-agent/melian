@@ -208,6 +208,43 @@ describe("the verifier", () => {
 		const index = await harness.snapshot(ReviewIndex, root.id, context);
 		expect(index?.reviews[revisionKey(changeset.revision)]?.verification).toBeDefined();
 	});
+	it("lets a replacement task refute a claim the failed task confirmed", async () => {
+		const requests = scriptConversations(fake, [
+			{
+				match: lenses[0]!.instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				match: verifierMarker,
+				replies: [
+					(messages) => scriptVerifier(messages),
+					...Array.from({ length: 2 }, () =>
+						fauxAssistantMessage("", { stopReason: "error", errorMessage: "HTTP 503 service unavailable" }),
+					),
+				],
+			},
+		]);
+		await expect(review()).rejects.toMatchObject({ code: "verifierFailed" });
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		const previous = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.verification!;
+		expect((await readFindings(harness, root.id, revision, context))[0]!.properties.verification?.verdict).toBe(
+			"confirmed",
+		);
+		expect(requests[verifierMarker]).toHaveLength(3);
+		const rerunRequests = scripts("refuted");
+		const result = await review(true);
+		expect((await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.verification!.task).not.toBe(
+			previous.task,
+		);
+		expect(rerunRequests[verifierMarker]).toHaveLength(2);
+		expect(result.findings[0]!.properties.verification?.verdict).toBe("refuted");
+		expect(result.verdict.refuted).toHaveLength(1);
+		expect(result.verdict.attention()).toEqual([]);
+	});
 	it("passes a rerun after the lens withdraws the only claim from a failed verification", async () => {
 		const requests = scriptConversations(fake, [
 			{

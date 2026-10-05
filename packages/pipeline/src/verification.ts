@@ -1,5 +1,5 @@
 import type { ModelReference, StoredVerificationState } from "@melian-agent/core";
-import { revisionKey, sightingVerification } from "./findings.ts";
+import { clearVerifications, revisionKey, sightingVerification } from "./findings.ts";
 import {
 	type Context,
 	type ConversationId,
@@ -222,6 +222,7 @@ export async function startVerification(
 				));
 		if (previous?.input === key && !(rerun && failed) && (await attachable(tx, previous.task, [])))
 			return previous.task as TaskId<VerificationResult>;
+		await clearVerifications(tx, input.root, revisionKey(input.revision));
 		const created = await tx.createTask(VerificationTask, input, { ownership: { kind: "conversation" } });
 		index.reviews[revisionKey(input.revision)] = {
 			...(known ?? { lenses: [...selection] }),

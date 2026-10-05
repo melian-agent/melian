@@ -532,6 +532,17 @@ export async function readFindings(
 		});
 }
 
+export async function clearVerifications(tx: Tx, root: ConversationId, revision: string): Promise<void> {
+	const state = await tx.doc(FindingsDocument, root);
+	let cleared = false;
+	for (const record of Object.values(state.items)) {
+		if (record.verifications?.[revision] === undefined) continue;
+		delete record.verifications[revision];
+		cleared = true;
+	}
+	if (cleared) bump(state, [revision]);
+}
+
 export async function upsertVerification(
 	tx: Tx,
 	root: ConversationId,
