@@ -7,11 +7,14 @@ import { fileURLToPath } from "node:url";
 import { createGitHubProvider, statusContext } from "@melian-agent/github";
 import {
 	backgroundContext as context,
+	defineDoc,
+	defineTask,
 	type Harness,
 	openPublishHarness as openPublisher,
 	openSqliteStorage,
 	publishReview,
 	readPublished,
+	revisionKey,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LedgerDocument } from "../../pipeline/src/publish.ts";
@@ -110,6 +113,94 @@ async function killAtReview(
 }
 
 describe("publishing across a crash", { timeout: 30_000 }, () => {
+	it("resumes an unfinished version-1 task from SQLite with legacy writer trust", async () => {
+		const database = join(dir, "review.sqlite");
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		harness = await openReviewOnlyHarness(await openSqliteStorage(database), fake);
+		const { changeset, review } = await reviewScenario(repo, harness, fake, lensScript(unsafeManager));
+		await review;
+		moveTo(state, changeset);
+		const root = await harness.root(context);
+		const fixture = JSON.parse(readFileSync(new URL("./fixtures/publish-v1.json", import.meta.url), "utf8")) as {
+			kind: string;
+			version: number;
+			input: {
+				root: number;
+				target: {
+					repository: string;
+					pullRequest: number;
+					baseRef: string;
+					baseTip: string;
+					base: string;
+					head: string;
+					revision: string;
+				};
+				lines: Record<string, [number, number][]>;
+			};
+			checkpoint: { phase: "publish" };
+		};
+		const input = {
+			...fixture.input,
+			root: root.id,
+			target: {
+				...fixture.input.target,
+				baseTip: state.pull.base.sha,
+				base: changeset.revision.base,
+				head: changeset.revision.head,
+				revision: revisionKey(changeset.revision),
+			},
+			lines: changeset.revision.diffLines(),
+		};
+		const legacyTask = defineTask<typeof input, { phase: "publish" }, never>({
+			name: fixture.kind,
+			version: fixture.version,
+			initial: () => fixture.checkpoint,
+			phases: {
+				publish: async () => {
+					throw new Error("legacy task must migrate before running");
+				},
+			},
+			abort: async () => {
+				throw new Error("legacy task must migrate before running");
+			},
+		});
+		const legacyPublisher = defineDoc<{ secret?: string; target?: typeof input.target }>({
+			kind: "melian.publisher",
+			version: 1,
+			scope: "conversation",
+			history: "latest",
+			fork: "current",
+			initial: () => ({}),
+		});
+		const task = await root.commit(async (tx) => {
+			const publisher = await tx.doc(legacyPublisher, root.id);
+			publisher.secret = "a".repeat(64);
+			publisher.target = input.target;
+			return tx.createTask(legacyTask, input, { ownership: { kind: "conversation" } });
+		}, context);
+		await harness.close(context);
+		harness = undefined;
+		const provider = providerFor(state);
+		const publisher = await openPublisher(await openSqliteStorage(database), scenarioModels().review, provider);
+		harness = publisher.harness;
+		const result = await publishReview({
+			harness,
+			provider,
+			changeset,
+			pullRequest: await provider.pullRequest(7),
+			base: changeset.revision.base,
+			trustedWriters: true,
+		});
+		expect(result.superseded).toEqual([]);
+		expect((await harness.getTask(task, context))?.input).toMatchObject({ publishedBy: { trustedWriters: true } });
+		expect((await readPublished(harness, root.id, changeset.revision.head, context))?.publishedBy).toMatchObject({
+			trustedWriters: true,
+		});
+		expect(state.reviews).toHaveLength(1);
+		expect(state.ledgers).toHaveLength(1);
+	});
+
 	it.each([
 		{ interruptedTrust: true, trustedWriters: true, changedPublisher: true },
 		{ interruptedTrust: true, trustedWriters: true, changedPublisher: false },

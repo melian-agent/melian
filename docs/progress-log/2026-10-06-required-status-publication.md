@@ -9,3 +9,5 @@ The first fix pass confirms that a changed publisher could resume with the old a
 The public publish API now requires explicit writer trust and refuses omission before writing. CLI regressions cover false trust at the base with true trust at the head, error text and exit 0, and a trusted clean review with success status.
 
 The fix pass changes the retirement decision to the ten most recent eligible merged pull requests after 2026-10-06T00:00:00Z. Missing records and pending adjudications block retirement within that window. At least one adjudicated valid in-scope distinct shadow finding is required. This tightens the maintainer’s criterion and needs their confirmation; the stats command remains deferred.
+
+A stored version-1 publish fixture now seeds an unfinished task in SQLite. Reopening with the current publisher migrates its input to trusted writers and posts one review and one ledger. The fixture also reopens the legacy publisher document without inventing an identity.
