@@ -418,6 +418,7 @@ function planned(options: ReviewOptions): ReviewOptions {
 	const manifest = checksOfTier(config, options.tier ?? config.stages["pull-request"] ?? "full");
 	const named = new Set(manifest.filter((name) => name.startsWith("lens.")).map((name) => name.slice("lens.".length)));
 	const level = defaultScrutinyLevel;
+	const dropped = new Set<string>();
 	const refused = new Map<string, CheckRecord>();
 	for (const { lens } of Lens.select(
 		options.lenses.filter((lens) => named.has(lens.name)),
@@ -425,14 +426,16 @@ function planned(options: ReviewOptions): ReviewOptions {
 		options.changeset.revision.paths(),
 	)) {
 		const { refusal: reason, lineage } = plan.judge(lens.name, level, undefined, lens.scope);
-		if (reason === undefined || refused.has(lens.name)) continue;
+		if (reason === undefined) continue;
+		dropped.add(`${lens.name}\0${lens.scope}`);
+		if (refused.has(lens.name)) continue;
 		const name = `lens.${lens.name}`;
 		refused.set(lens.name, { name, status: "failed", level, reason, ...(lineage === undefined ? {} : { lineage }) });
 	}
 	return {
 		...options,
 		config,
-		lenses: options.lenses.filter((lens) => !refused.has(lens.name)),
+		lenses: options.lenses.filter((lens) => !dropped.has(`${lens.name}\0${lens.scope}`)),
 		checks: [...checks, ...refused.values()],
 	};
 }
@@ -685,8 +688,10 @@ function account(
 ): { readonly manifest: Manifest; readonly producers: FindingSource[] } {
 	const { config } = options;
 	// The lens step owns `lens.*`, so the host's records of lenses never reach here; a plan's record of a lens it refused
-	// does, for a lens that never ran.
-	const supplied = (options.checks ?? []).filter((check) => !ran.some((lens) => check.name === `lens.${lens.name}`));
+	// does, for a lens that never ran or whose variant in another folder did.
+	const supplied = (options.checks ?? []).filter(
+		(check) => check.status === "failed" || !ran.some((lens) => check.name === `lens.${lens.name}`),
+	);
 	const manifest = new Manifest(
 		checks,
 		[...supplied, ...ran.map((lens) => lensCheck(lens, result, notes.get(lens.key)))],

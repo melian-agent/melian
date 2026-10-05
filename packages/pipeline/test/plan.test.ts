@@ -551,3 +551,113 @@ describe("a lens run a later review replaced", () => {
 		expect(findings).toEqual([]);
 	});
 });
+
+describe("reviewChangeset with a plan, for a lens two folders define", () => {
+	const variant = "Variant of sub/.";
+
+	// A root correctness lens and a variant for sub/, each with a change to review. `committed` and `effective` are the
+	// routes the committed files and the preference file give; `moved` has the preference file move both to light.
+	async function reviewVariants(options: {
+		tier?: "light";
+		committed: Record<string, ModelRoute>;
+		effective: Record<string, ModelRoute>;
+		moved?: boolean;
+		rerun?: boolean;
+	}) {
+		rmSync(repo, { recursive: true, force: true });
+		const own = ["name: correctness", "extends: correctness", ...(options.tier === undefined ? [] : ["tier: light"])];
+		repo = baseAndHead(
+			{
+				"src/a.ts": lines("export const a = 1;"),
+				"sub/b.ts": lines("export const b = 1;"),
+				"sub/.melian/lenses/correctness/LENS.md": lines("---", ...own, "---", variant),
+			},
+			{ "src/a.ts": lines("export const a = 2;"), "sub/b.ts": lines("export const b = 2;") },
+		);
+		lenses = await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, [
+			"src/a.ts",
+			"sub/b.ts",
+		]);
+		const config: MelianConfig = {
+			...defaultConfig,
+			tiers: { full: ["lens.correctness"] },
+			lenses: options.moved === true ? { correctness: { tier: "light" } } : {},
+			models: options.effective,
+		};
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config,
+			routes: {
+				committed: options.committed,
+				overridden: options.committed === options.effective ? {} : { light: "melian.local.yaml" },
+				lensTiers: options.moved === true ? { correctness: "heavy" } : {},
+				retiered: options.moved === true ? { correctness: "melian.local.yaml" } : {},
+			},
+			catalog,
+			credentials,
+			lenses,
+			checks: ["lens.correctness"],
+		});
+		const answered: string[] = [];
+		const reply = (messages: readonly Message[], modelId: string) => {
+			answered.push(modelId);
+			if (systemPromptOf(messages).includes(variant) && modelId === "heavy") {
+				return fauxAssistantMessage("", { stopReason: "error", errorMessage: "503 overloaded_error" });
+			}
+			return fauxAssistantMessage("No findings.");
+		};
+		const requests = scriptConversations(fake, [
+			{ match: variant, replies: [reply, reply] },
+			{ match: correctness, replies: [reply, reply] },
+		]);
+		const review = await reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			plan,
+			rerun: options.rerun === true,
+			checks: [{ name: "guardrails", status: "ran" }],
+		});
+		return { review, answered, requests };
+	}
+
+	it("drops the variant a plan refuses before any model is asked, and runs the root's lens", async () => {
+		const routes = {
+			heavy: { model: heavy },
+			light: { model: "nowhere/m", accept: ["nowhere/m"], unavailable: "fail" as const },
+		};
+		const { review, answered, requests } = await reviewVariants({
+			tier: "light",
+			committed: routes,
+			effective: routes,
+		});
+
+		expect(requests[variant]).toEqual([]);
+		expect(answered).toEqual(["heavy"]);
+		expect(review.verdict.status).toBe("not-reviewed");
+		expect(review.verdict.notRun.find((check) => check.name === "lens.correctness")).toMatchObject({
+			status: "failed",
+			reason: "none of nowhere/m, which models.light accepts, has credentials, and models.light.unavailable is fail",
+		});
+	});
+
+	it("runs again under --rerun a variant that finished on a refused fallback", async () => {
+		const committed = { heavy: { model: heavy, accept: [heavy], acceptOverridden: false as const } };
+		const effective = { ...committed, light: { model: heavy, fallbacks: [backup] } };
+		const options = { committed, effective, moved: true };
+		const first = await reviewVariants(options);
+		const again = await reviewVariants({ ...options, rerun: true });
+
+		// The root's lens runs on heavy; the variant fails over from heavy to backup, which heavy's policy refuses.
+		expect([...first.answered].sort()).toEqual(["backup", "heavy", "heavy"]);
+		expect(first.review.verdict.status).toBe("not-reviewed");
+		expect(first.review.verdict.notRun.find((check) => check.name === "lens.correctness")).toMatchObject({
+			status: "failed",
+			reason: expect.stringContaining("which models.heavy.accept does not list"),
+		});
+		expect([...again.answered].sort()).toEqual(["backup", "heavy", "heavy"]);
+	});
+});
