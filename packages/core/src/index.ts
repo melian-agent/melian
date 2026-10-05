@@ -254,3 +254,20 @@ export {
 } from "./static.ts";
 
 export const packageName = "@melian-agent/core";
+
+export {
+	Adjudication as ComparisonAdjudication,
+	type ComparisonAdjudicationRecord,
+	comparisonAdjudicationSchema,
+	missReasons,
+	type StoredComparisonAdjudication,
+} from "./comparison-adjudication.ts";
+export { ComparisonExport } from "./comparison-export.ts";
+export {
+	type ComparisonEntry,
+	ComparisonSet,
+	type ComparisonStats,
+	type OwedGolden,
+	type RepeatedFinding,
+	type ReviewerStats,
+} from "./comparison-set.ts";
