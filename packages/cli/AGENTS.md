@@ -13,5 +13,5 @@
 
 ## Running the tests
 
-- Whole package: `npm test --workspace @melian-agent/cli`. It builds the CLI first, so it takes a few seconds more than its tests.
-- By hand: `npm run build`, then `npx melian doctor` from the repository root.
+- Whole package: `npm test --workspace @melian-agent/cli`. It runs the CLI from source, with no build.
+- By hand: `npx melian doctor` from the repository root, straight after `npm ci`.
