@@ -432,6 +432,19 @@ describe("Comparison matching", () => {
 		);
 	});
 
+	it("lists each Melian-only finding with its ID, severity, rule, and place, or its ID alone without the verdict", () => {
+		const finding = melian();
+		const comparison = compared([external({ file: "src/far.ts", line: 90 })], [finding]);
+		expect(comparison.render(verdictOf([finding]))).toContain(
+			`Melian only:\n  ${finding.id}  P1 no-eval  src/run.ts:12\n`,
+		);
+		expect(comparison.render(undefined)).toContain(`Melian only:\n  ${finding.id}\n`);
+		const spanning = melian({ startLine: 20, endLine: 24 });
+		expect(compared([], [spanning]).render(verdictOf([spanning]))).toContain(
+			`  ${spanning.id}  P1 no-eval  src/run.ts:20-24\n`,
+		);
+	});
+
 	it("lets an unmatch override a site match, and keeps both kinds of hand record across a re-import", () => {
 		const finding = melian();
 		const other = melian({ snippet: "eval(other)", startLine: 40, endLine: 40 });

@@ -118,6 +118,19 @@ describe("melian compare", { timeout: 60_000 }, () => {
 		expect(result.stdout).not.toContain(id);
 	});
 
+	it("lists a Melian finding no reviewer raised, with its ID, severity, rule, and place", () => {
+		const { repo, files, env, id } = reviewed();
+		const path = codexFile(files, [codexFinding(30, "Somewhere else")]);
+
+		const result = melian(repo, ["compare", range, "--from", `file:${path}`], env);
+
+		expect(result).toMatchObject({ status: 0, stderr: "" });
+		expect(result.stdout).toContain("External only: 1. Melian only: 1. Skipped review bodies: 0.");
+		expect(result.stdout).toMatch(
+			new RegExp(`^Melian only:\\n {2}${id} {2}P\\d \\S+ {2}src/user\\.ts:\\d+(-\\d+)?$`, "m"),
+		);
+	});
+
 	it("keeps a hand unmatch and a hand match across a second import", () => {
 		const { repo, files, env, id } = reviewed();
 		const path = codexFile(files, [codexFinding(8, "Null manager"), codexFinding(30, "Somewhere else")]);
