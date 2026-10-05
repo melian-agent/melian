@@ -107,6 +107,36 @@ describe("the findings document", () => {
 		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(reworded)]);
 	});
 
+	it.each(["confirmed", "plausible", "refuted"] as const)(
+		"replays an identical %s verification without changing the findings version",
+		async (verdict) => {
+			const { harness, root } = await open(createMemoryStorage());
+			await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+			const before = await findingsVersion(harness, root.id, "rev1", context);
+			const verification: Verification = {
+				verdict,
+				reason: "Traced the code.",
+				correction: "Use the guarded value.",
+				executor: "llm",
+				model: "fake/judge",
+				version: "1",
+			};
+			await root.commit(
+				(tx) => upsertVerification(tx, root.id, "rev1", evalFinding.id, input.source, verification),
+				context,
+			);
+			const version = await findingsVersion(harness, root.id, "rev1", context);
+			expect(version).toBe(before + 1);
+			const findings = await readFindings(harness, root.id, "rev1", context);
+			expect(findings[0]!.properties.verification).toEqual(verification);
+			await root.commit(
+				(tx) => upsertVerification(tx, root.id, "rev1", evalFinding.id, input.source, { ...verification }),
+				context,
+			);
+			expect(await findingsVersion(harness, root.id, "rev1", context)).toBe(version);
+			expect(await readFindings(harness, root.id, "rev1", context)).toEqual(findings);
+		},
+	);
 	it.each([
 		["confirmed", "plausible"],
 		["confirmed", "refuted"],
