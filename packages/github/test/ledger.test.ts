@@ -984,6 +984,47 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		expect(rounds.at(-1)).toMatchObject({ head: second.changeset.revision.head });
 	});
 
+	it("refuses the ledger write when the head moves after the review posts", async () => {
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		const moved = "f".repeat(40);
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test-token",
+			fetch: fakeGitHub(state, ({ method, path }) => {
+				if (method === "POST" && path.endsWith("/reviews")) state.pull.head.sha = moved;
+			}),
+		});
+		harness = await openPublishHarness(createMemoryStorage(), fake, provider);
+		const { changeset, review } = await reviewScenario(repo, harness, fake, lensScript());
+		await review;
+		moveTo(state, changeset);
+		const waited = vi.spyOn(harness, "waitForTask");
+		const refused = await publishReview({
+			harness,
+			provider,
+			changeset,
+			pullRequest: await provider.pullRequest(7),
+			base: changeset.revision.base,
+		}).catch((error: unknown) => error);
+		expect(refused).toMatchObject({ code: "staleTarget", pullRequest: 7 });
+		expect((refused as Error).message).toContain(`its head moved to ${moved.slice(0, 12)}`);
+		expect(state.reviews).toHaveLength(1);
+		expect(state.ledgers).toEqual([]);
+		expect(state.calls.filter(({ path }) => path.includes("/issues/"))).toEqual([]);
+		const root = (await harness.root(context)).id;
+		expect(await harness.snapshot(LedgerDocument, root, context)).toBeUndefined();
+		const task = await harness.getTask(waited.mock.calls.at(-1)![0], context);
+		expect(task?.state).toMatchObject({
+			status: "terminal",
+			outcome: {
+				status: "completed",
+				result: { kind: "staleTarget", reason: `its head moved to ${moved.slice(0, 12)}` },
+			},
+		});
+	});
+
 	it("recovers an old resolved reply and still resolves its open thread", async () => {
 		const fake = scenarioModels();
 		const state = pullRequestState();
