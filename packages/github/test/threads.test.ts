@@ -77,6 +77,18 @@ describe("ReviewThreadImporter", () => {
 		expect(requests.every((request) => request.url === "https://api.github.com/graphql")).toBe(true);
 	});
 
+	it("requests each thread's first comment so replies cannot decide attribution", async () => {
+		const { opened, requests } = importer();
+
+		await opened.import();
+
+		const threads = requests.filter((request) => request.body.query.includes("MelianReviewThreads"));
+		expect(threads).toHaveLength(2);
+		for (const request of threads) {
+			expect(request.body.query).toMatch(/\bcomments\(first: 1\)/);
+		}
+	});
+
 	it("skips and counts the login's review bodies, which have no thread, without parsing them", async () => {
 		const { opened } = importer();
 

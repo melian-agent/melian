@@ -3,3 +3,5 @@
 The fifth-round fix pass merges main at `921d856`, including triage, the ledger, bearer credentials and the seatbelt wrapper. The CLI guideline keeps the comparison commands, main's doctor refusal and scripted triage rule, and recorded GitHub transport. No code fix was needed for this merge.
 
 Round five fixes ref-less external finding IDs to use the canonical file path. A regression imports `src/run.ts` and `./src//run.ts` with the same contents and keeps one finding.
+
+Round five adds a query assertion for `comments(first: 1)` on every thread page. Changing it to `last: 1` fails the new test while the ten recorded-response tests still pass.
