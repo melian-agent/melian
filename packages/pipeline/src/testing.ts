@@ -17,7 +17,7 @@ import {
 import { createModels, type MutableModels } from "@earendil-works/pi-ai/models";
 import type { NamedCredential, Verification } from "@melian-agent/core";
 import { MelianCredentialStore, PiCredentialStore } from "./credentials.ts";
-import type { CredentialStore, HarnessOptions, ModelRef } from "./harness.ts";
+import type { CredentialStore, ModelRef } from "./harness.ts";
 import { modelsOf, type ReviewModels, wrapModels } from "./models.ts";
 import { verifierMarker } from "./verification-instructions.ts";
 
@@ -25,7 +25,7 @@ export { type FauxProviderHandle, fauxAssistantMessage, fauxToolCall } from "@ea
 
 /** A scripted model provider for tests, registered in its own model collection. */
 export type FakeModels = {
-	readonly models: HarnessOptions["models"];
+	readonly models: MutableModels;
 	readonly provider: FauxProviderHandle;
 	/** The same collection as `models`, as the handle `reviewChangeset` and `openReviewHarness` take. */
 	readonly review: ReviewModels;
