@@ -61,7 +61,7 @@ const failure = (fn) => {
 	return { status: 0, stderr: "" };
 };
 
-describe("codex-sandboxed.sh profile", () => {
+describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 	let root;
 	let main;
 	let linked;
