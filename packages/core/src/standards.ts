@@ -297,7 +297,7 @@ export class Standards {
 		refused: ReadonlyMap<string, readonly string[]>,
 	) {
 		this.#repoRoot = repoRoot;
-		this.source = source;
+		this.source = Object.freeze({ ...source });
 		this.#chains = chains;
 		this.#directories = directories;
 		this.#refused = refused;
@@ -322,7 +322,20 @@ export class Standards {
 				refused.set(directory, loader.refused.get(target) ?? []);
 			}
 		}
-		return new Standards(repoRoot, source, chains, directories, refused);
+		return new Standards(
+			repoRoot,
+			source.kind === "revision" ? { kind: "revision", commit: loader.reader.commit! } : source,
+			chains,
+			directories,
+			refused,
+		);
+	}
+
+	/** True only when this reading and the validated policy resolve to the same commit. */
+	async trustedBy(policy: RepositorySource | undefined): Promise<boolean> {
+		if (this.source.kind !== "revision" || policy?.kind !== "revision") return false;
+		const reader = await openSource(this.#repoRoot, policy).catch(fromSource);
+		return reader.commit === this.source.commit;
 	}
 
 	/**

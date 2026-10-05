@@ -49,6 +49,7 @@ export class SourceError extends Error {
 // Neither implementation follows a symlink: a symlink is refused with `symlink`, and a path beneath a symlinked
 // directory does not exist, as in git's own trees.
 export interface SourceReader {
+	readonly commit?: string;
 	// Names a file for messages: the path for the working tree, git's `<commit>:<path>` for a revision.
 	label(path: string): string;
 	isIgnored(path: string): Promise<boolean>;
@@ -205,6 +206,10 @@ class RevisionSource implements SourceReader {
 	private constructor(repoRoot: string, sha: string) {
 		this.repoRoot = repoRoot;
 		this.sha = sha;
+	}
+
+	get commit(): string {
+		return this.sha;
 	}
 
 	static async open(repoRoot: string, commit: string): Promise<RevisionSource> {

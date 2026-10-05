@@ -25,3 +25,5 @@ Standards imports now refuse ignored and credential files before reading. Revisi
 An automatic-check regression fails a fake compiler, repairs it, confirms a repeat uses the cached failure, then verifies `rerun: true` clears it. The compiler runs once per revision on the retry.
 
 Lens selection now fingerprints stable instruction inputs, including standards and provenance, while excluding fresh nonces. A fake-model regression reviews one revision twice after a standards edit and observes the new text in a second request. An unchanged repeat, including `rerun`, still attaches. The identity decision records the rule.
+
+Standards now retain resolved commit provenance. The pipeline trusts only readings matching the validated policy commit, and quotes flat arrays and mismatched readings. Fake-model tests cover head standards under base policy, flat inputs and equivalent commit names. The provenance decision replaces trust by source kind.

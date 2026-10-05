@@ -145,6 +145,21 @@ describe("per-lens standards", () => {
 		expect(systemPromptOf(requests["You are the correctness reviewer"]![1]!)).toContain("SECOND_STANDARD");
 	});
 
+	it("quotes head standards under base policy, while resolving equivalent commit names", async () => {
+		const { options, requests } = await setup();
+		const standards = await Standards.load(
+			repo,
+			{ kind: "revision", commit: "feature" },
+			options.changeset.revision.paths(),
+		);
+		expect(standards.source).toEqual({ kind: "revision", commit: options.changeset.revision.head });
+		expect(await options.standards.trustedBy({ kind: "revision", commit: "main" })).toBe(true);
+		await reviewChangeset({ ...options, standards });
+		const prompt = systemPromptOf(requests["You are the correctness reviewer"]![0]!);
+		expect(prompt).toContain('label="standards"');
+		expect(prompt).toContain("# Added by the head");
+	});
+
 	it("includes both sides of a rename for a lens selected through the head path", async () => {
 		writeFiles(repo, { "packages/core/src/a.ts": "export const a = 1;\n" });
 		gitIn(repo, "mv", "packages/core/src/a.ts", "packages/github/src/moved.ts");
@@ -216,6 +231,7 @@ describe("per-lens standards", () => {
 		);
 		await reviewChangeset({ ...options, lenses, standards: [{ path: "AGENTS.md", content: "# Flat conventions" }] });
 		expect(systemPromptOf(requests["You are the contracts reviewer"]![0]!)).toContain("# Flat conventions");
+		expect(systemPromptOf(requests["You are the contracts reviewer"]![0]!)).toContain('label="standards"');
 		expect(systemPromptOf(requests["You are the correctness reviewer"]![0]!)).not.toContain("# Flat conventions");
 	});
 });

@@ -1286,6 +1286,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		: request.checks;
 	const options = planned({ ...request, checks: supplied });
 	const { changeset, config, standards, models } = options;
+	const standardsSource =
+		standards instanceof Standards && (await standards.trustedBy(options.policy)) ? "revision" : "worktree";
 	const context = options.context ?? backgroundContext;
 	await abortReplacedRuns(harness, context);
 	const root = (await harness.root(context)).id;
@@ -1425,7 +1427,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				? standards.forFiles(standardsFiles)
 				: StandardsReading.from(standards)
 			: StandardsReading.from([]);
-		const standardsSource = standards instanceof Standards ? standards.source.kind : options.policy?.kind;
+
 		const noted: string[] = [...(unrunnable.get(lens) ?? [])];
 		const omitted = reading.note();
 		if (omitted !== undefined) noted.push(omitted);
@@ -1476,6 +1478,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 							),
 							standards: reading.sections,
 							source: standards instanceof Standards ? standards.source : null,
+							trusted: standardsSource,
 							tools: lens.tools,
 							severities: lens.severities,
 							rules,
