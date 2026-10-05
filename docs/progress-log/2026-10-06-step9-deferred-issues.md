@@ -7,3 +7,5 @@
 Lens task version 3 and publication document version 6 preserve older inputs and snapshots with per-lens standards absent. The three skills describe doctor's standards line. Scripted tests cover nested golden instructions; no live eval ran.
 
 The final diff review replaced a live-task inspection assertion with the durable checks index, and added an environment-without-extension fallback test. The harness API documentation now names the wrapper needed for automatic checks. The worktree standards lead-in uses short sentences.
+
+Final verification found that [pull request #62](https://github.com/melian-agent/melian/pull/62) had landed and the shared main ref had advanced. This branch merges that result, retaining its complete-input skip rule and the standards omission note together. The combined result passes the gate.

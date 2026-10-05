@@ -12,7 +12,7 @@ import {
 
 // One question set's decision for a revision: the task that decides it, what it was asked as `key`, and, once the task
 // has run, the decision with its whole distribution, or why the decider gave none.
-type StoredEntry = { key: string; task: number; decision?: StoredDecision; failure?: string };
+type StoredEntry = { key: string; task: number; decision?: StoredDecision; failure?: string; inputCut?: boolean };
 
 type DecisionState = { decisions: Record<string, Record<string, StoredEntry>> };
 
@@ -34,7 +34,13 @@ type StoredRequest = {
 	questions: { id: string; text: string; options: string[] }[];
 };
 
-export type DecisionTaskInput = { root: ConversationId; revision: string; key: string; request: StoredRequest };
+export type DecisionTaskInput = {
+	root: ConversationId;
+	revision: string;
+	key: string;
+	request: StoredRequest;
+	inputCut?: boolean;
+};
 
 // `superseded` when a later call recorded another task for the revision's question set, so this one wrote nothing.
 export type DecisionResult = "recorded" | "superseded";
@@ -121,6 +127,8 @@ export function decisionExtension(decider: Decider, timeout?: number) {
 /** A question set's decision on a revision as stored: the task that made it, and the decision or why there is none. */
 export type RecordedDecision = {
 	readonly task: number;
+	/** Whether the decision's change prompt omitted diffs at its size limit. Absent on older records. */
+	readonly inputCut?: boolean;
 	readonly decision?: Decision;
 	readonly failure?: string;
 };
@@ -141,6 +149,7 @@ export async function readRecordedDecision(
 	if (entry === undefined) return undefined;
 	return {
 		task: entry.task,
+		...(entry.inputCut === undefined ? {} : { inputCut: entry.inputCut }),
 		...(entry.decision === undefined ? {} : { decision: Decision.from(structuredClone(entry.decision)) }),
 		...(entry.failure === undefined ? {} : { failure: entry.failure }),
 	};

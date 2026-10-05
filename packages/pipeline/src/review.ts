@@ -610,6 +610,14 @@ export class ChangePrompt {
 	 * With `tools: false`, for a reader with no tools such as a decider, it does not tell the reader to read the head.
 	 */
 	render(only?: readonly string[], options: { readonly tools?: boolean } = {}): string {
+		return this.renderInput(only, options).text;
+	}
+
+	/** The bounded prompt and whether its size limit omitted any file's diff. */
+	renderInput(
+		only?: readonly string[],
+		options: { readonly tools?: boolean } = {},
+	): { readonly text: string; readonly cut: boolean } {
 		const { nonce } = this;
 		const { base, head } = this.changeset.revision;
 		const files = this.changeset.revision.files.filter(
@@ -630,11 +638,13 @@ export class ChangePrompt {
 		].join("\n");
 		const parts = [header];
 		let size = Buffer.byteLength(header);
+		let cut = false;
 		for (const file of files) {
 			const hunks = file.binary ? ["(binary)"] : file.hunks.map((hunk) => `${hunk.header}\n${hunk.text}`);
 			const part = quoteUntrusted("diff", [`${named(file)} (${file.status})`, ...hunks].join("\n"), nonce);
 			size += Buffer.byteLength(part);
 			if (size > maxPromptBytes) {
+				cut = true;
 				parts.push(
 					options.tools === false
 						? "[The diff continues; the remaining files are omitted.]"
@@ -644,7 +654,7 @@ export class ChangePrompt {
 			}
 			parts.push(part);
 		}
-		return parts.join("\n\n");
+		return { text: parts.join("\n\n"), cut };
 	}
 }
 
@@ -1136,6 +1146,7 @@ async function triage(
 	revision: string,
 	decider: Decider,
 	request: DecisionRequest,
+	inputCut: boolean,
 	rerun: boolean,
 	context: Context,
 ): Promise<{ readonly decision?: Decision; readonly failure?: string }> {
@@ -1146,12 +1157,14 @@ async function triage(
 		decider: decider.name,
 		questionSet: request.questionSet,
 		questions: request.questions,
+		...(inputCut ? { inputCut: true } : {}),
 	});
 	const input: DecisionTaskInput = {
 		root: root.id,
 		revision,
 		key,
 		request: structuredClone(request) as DecisionTaskInput["request"],
+		...(inputCut ? { inputCut: true } : {}),
 	};
 	let replaced: number | undefined;
 	const taskId = await root.commit(async (tx) => {
@@ -1170,7 +1183,10 @@ async function triage(
 			replaced = known?.task;
 			document.decisions = {
 				...document.decisions,
-				[revision]: { ...document.decisions[revision], [set]: { key, task } },
+				[revision]: {
+					...document.decisions[revision],
+					[set]: { key, task, ...(inputCut ? { inputCut: true } : {}) },
+				},
 			};
 		}
 		if (!attach || (known.decision === undefined && known.failure === undefined)) {
@@ -1220,7 +1236,7 @@ async function triage(
  * With `options.decider`, triage asks it one choice question per lens, `skip` or one of the lens's levels, in a
  * decision task that stores the whole distribution; without one, or when it gives no usable answer, every lens runs at
  * its default level, `careful`. Either way the level stays within the band policy sets for the files the lens reviews,
- * `lenses.<name>.level`, `quick` to `deep` by default, and only a floor of `skip` lets triage skip a lens. A lens at
+ * `lenses.<name>.level`, `quick` to `deep` by default. Only a floor of `skip` and complete triage input let triage skip a lens. A lens at
  * `quick` that reports a finding at or above `triage.escalateAt`, or that a budget ended before it reported anything,
  * runs again at its next level the band allows, in a conversation of its own, and that run's record and findings stand
  * for the lens. Each lens starts on its tier's first configured model that has credentials, moves to the next when a
@@ -1335,6 +1351,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			return [lens, levels] as const;
 		}),
 	);
+	const triageInput = prompt.renderInput(undefined, { tools: false });
 	const triaged =
 		options.decider === undefined || covering.length === 0
 			? {}
@@ -1344,18 +1361,21 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					options.decider,
 					{
 						questionSet: triageQuestionSet,
-						state: [triageBoundary(nonce), "## The change", prompt.render(undefined, { tools: false })].join(
-							"\n\n",
-						),
+						state: [triageBoundary(nonce), "## The change", triageInput.text].join("\n\n"),
 						questions: sharedQuestions(
 							covering.map(({ lens }) => lens.triageQuestion(bands.get(lens)!, runnable.get(lens)!)),
 						),
 					},
+					triageInput.cut,
 					options.rerun === true,
 					context,
 				);
 	const choices = new Map(
-		covering.map(({ lens }) => [lens, lens.triage(bands.get(lens)!, runnable.get(lens)!, triaged.decision)]),
+		covering.map(({ lens }) => {
+			const levels = runnable.get(lens)!;
+			const choice = lens.triage(bands.get(lens)!, levels, triaged.decision);
+			return [lens, triageInput.cut && choice === "skip" ? levels[0]! : choice] as const;
+		}),
 	);
 	// The plan judges each lens at the level triage chose for it: a lens it refuses there records `failed` with the
 	// plan's reason and lineage, and asks no model.
@@ -1405,6 +1425,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const noted: string[] = [...(unrunnable.get(lens) ?? [])];
 		const omitted = reading.note();
 		if (omitted !== undefined) noted.push(omitted);
+		if (options.decider !== undefined && triageInput.cut) noted.push("triage input was cut, so no lens could skip");
+
 		if (triaged.failure !== undefined)
 			noted.push(`triage failed, so it ran at its default level: ${triaged.failure}`);
 		if (options.decider === undefined && options.triageSkipped !== undefined)
