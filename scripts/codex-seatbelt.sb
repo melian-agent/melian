@@ -1,0 +1,31 @@
+(version 1)
+; A seatbelt profile for running Codex in full-access mode under a sandbox of our own.
+; Writes are confined to the worktree, its git directory, scratch and temp directories,
+; and the caches Codex, npm, and gh need. Reads and the network are open.
+; @@WRITABLE@@ is replaced by scripts/codex-sandboxed.sh with (subpath "...") entries.
+(deny default)
+(allow process-exec)
+(allow process-fork)
+(allow signal (target same-sandbox))
+(allow process-info* (target same-sandbox))
+(allow sysctl-read)
+(allow sysctl-write (sysctl-name "kern.grade_cputype"))
+(allow iokit-open (iokit-registry-entry-class "RootDomainUserClient"))
+(allow mach-lookup)
+(allow ipc-posix-sem)
+(allow ipc-posix-shm*)
+(allow pseudo-tty)
+(allow user-preference-read)
+(allow system-mac-syscall)
+(allow system-fsctl)
+(allow system-socket)
+(allow network*)
+(allow file-read*)
+(allow file-map-executable)
+(allow file-ioctl (regex #"^/dev/ttys[0-9]+"))
+(allow file-read* file-write* file-ioctl (literal "/dev/ptmx"))
+(allow file-read* file-write* (regex #"^/dev/ttys[0-9]+"))
+(allow file-write-data (literal "/dev/null") (literal "/dev/zero") (subpath "/dev/fd"))
+(allow file-write*
+@@WRITABLE@@
+)
