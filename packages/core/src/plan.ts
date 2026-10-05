@@ -203,20 +203,28 @@ export class ReviewPlan {
 		if (route.length === 0 && accept.length === 0) {
 			return { ...base, status: "unrouted", models: [], reason: `no model is configured for the ${tier} tier` };
 		}
-		let chosen = route.filter(usable);
-		// The committed route stands for policy, so any model policy accepts may stand in for it; a route the
-		// maintainer chose is theirs, and is never swapped behind their back.
-		if (chosen.length === 0 && by === undefined) chosen = accept.filter(usable);
+		const accepted = (model: string) => accept.includes(model);
+		// The committed route stands for policy, so an accepted model with credentials, from the route or from accept,
+		// comes before any fallback outside accept; a route the maintainer chose is theirs, and is never reordered or
+		// swapped behind their back.
+		const inside =
+			by === undefined
+				? [...new Set([...route, ...accept])].filter((model) => usable(model) && accepted(model))
+				: [];
+		let chosen =
+			by === undefined
+				? [...inside, ...route.filter((model) => usable(model) && !accepted(model))]
+				: route.filter(usable);
+		if (by === undefined && inside.length === 0 && policy?.unavailable === "fail") {
+			return {
+				...base,
+				status: "unavailable",
+				models: [],
+				reason: `none of ${listed(accept)}, which models.${tier} accepts, has credentials, and models.${tier}.unavailable is fail`,
+			};
+		}
 		if (chosen.length === 0) {
 			const tried = by === undefined ? [...new Set([...route, ...accept])] : route;
-			if (by === undefined && policy?.unavailable === "fail") {
-				return {
-					...base,
-					status: "unavailable",
-					models: [],
-					reason: `none of ${listed(tried)}, which models.${tier} accepts, has credentials, and models.${tier}.unavailable is fail`,
-				};
-			}
 			const derived = by === undefined ? ReviewPlan.derive(tried, catalogue, credentials, tier) : undefined;
 			if (derived === undefined) {
 				return {

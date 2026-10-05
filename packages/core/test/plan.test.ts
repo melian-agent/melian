@@ -4,6 +4,7 @@ import {
 	Lens,
 	type LensTier,
 	type MelianConfig,
+	type ModelRoute,
 	ModelRoutingError,
 	type PlanInput,
 	ReviewPlan,
@@ -324,6 +325,34 @@ describe("ReviewPlan.resolve", () => {
 		expect(derived.judge("correctness", "careful").lineage).toMatchObject({
 			by: "derived",
 			moved: { by: "melian.local.yaml", from: "heavy", to: "light" },
+		});
+	});
+
+	describe("an accepted model with credentials comes before a fallback outside accept", () => {
+		const bedrock = "amazon-bedrock/anthropic.claude-opus-5-5";
+		const route = (extra: Partial<ModelRoute> = {}) => ({
+			heavy: { model: opus, fallbacks: [gpt], accept: [opus, bedrock], ...extra },
+		});
+		const both = { openai: "OPENAI_API_KEY", "amazon-bedrock": "AWS_PROFILE" };
+
+		it("under derive", () => {
+			const resolved = plan(route(), both);
+			expect(resolved.tier("heavy")).toMatchObject({
+				status: "routed",
+				models: [{ model: bedrock }, { model: gpt }],
+			});
+			expect(resolved.lineage("heavy")).toBeUndefined();
+		});
+
+		it("under acceptOverridden: false, which then drops the fallback", () => {
+			const resolved = plan(route({ acceptOverridden: false }), both);
+			expect(resolved.tier("heavy")).toMatchObject({ status: "routed", models: [{ model: bedrock }] });
+		});
+
+		it("under unavailable: fail, which fails only when no accepted model has credentials", () => {
+			expect(plan(route({ unavailable: "fail" }), both).tier("heavy").models[0]?.model).toBe(bedrock);
+			const onlyFallback = plan(route({ unavailable: "fail" }), { openai: "OPENAI_API_KEY" });
+			expect(onlyFallback.tier("heavy")).toMatchObject({ status: "unavailable" });
 		});
 	});
 
