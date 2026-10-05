@@ -201,6 +201,60 @@ describe("the verifier", () => {
 		expect(result.verdict.attention()).toHaveLength(1);
 		expect(result.verdict.refuted).toBeUndefined();
 	});
+	it.each([
+		{ name: "missing", evidence: undefined, reason: "requires evidence locations" },
+		{ name: "empty", evidence: [], reason: "must not have fewer than 1 items" },
+		{
+			name: "absent file",
+			evidence: [{ file: "src/absent.ts", line: 1, role: "context" }],
+			reason: "does not exist",
+		},
+		{
+			name: "past EOF",
+			evidence: [{ file: "src/user.ts", line: 999, role: "context" }],
+			reason: "past what Melian can read",
+		},
+		{ name: "blank", evidence: [{ file: "src/user.ts", line: 5, role: "context" }], reason: "is blank" },
+	])("rejects a refutation with $name evidence", async ({ evidence, reason }) => {
+		const requests = scriptConversations(fake, [
+			{
+				match: lenses[0]!.instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				match: verifierMarker,
+				replies: [
+					fauxAssistantMessage(
+						fauxToolCall("report_verdict", {
+							claim: "c1",
+							answers: { code: "yes", guard: "yes", base: "no" },
+							verdict: "refuted",
+							reason: "A guard prevents the failure.",
+							...(evidence === undefined ? {} : { evidence }),
+						}),
+						{ stopReason: "toolUse" },
+					),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+		await expect(review()).rejects.toMatchObject({
+			code: "verifierFailed",
+			verdict: { status: "not-reviewed", findings: { advisory: [expect.anything()] } },
+		});
+		const messages = requests[verifierMarker]![1]!;
+		const results = messages.filter((message) => message.role === "toolResult");
+		expect(results).toHaveLength(1);
+		expect(results[0]).toMatchObject({ isError: true });
+		expect(textOf(results[0]!)).toContain(reason);
+		const root = await harness.root(context);
+		expect(
+			(await readFindings(harness, root.id, revisionKey(changeset.revision), context))[0]!.properties.verification,
+		).toBeUndefined();
+	});
 	it("fails the verifier with plan reason and lineage for an uncredentialed explicit route", async () => {
 		const locked = fake.withoutCredentials("judge");
 		const model = `${locked.provider}/${locked.modelId}`;
