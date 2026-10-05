@@ -210,6 +210,8 @@ Problem: a commit hands the document's value as a view of its own, and `structur
 
 `FileImporter.open(path, { cwd, repoRoot })` reads a reviewer's JSON file, at most 4 MiB, through core's `ExternalFinding.fromFile`, and names it `file:` and its path relative to the repository when it lies inside, so the same file imported from another directory keeps its findings' IDs. It resolves both paths through `realpath`, since git reports the repository's real path and macOS's temporary directory is a symlink. A file it cannot read, or that is not JSON, is `CompareError` `unreadable`. Problem: V8's parse error can quote the bytes around the fault, and an unknown key's name is the file author's text, so either could carry an escape sequence to the terminal. Solution: the message names the file and the position only, and core names the object that holds an unknown key, never the key. The importer of a pull request's review threads lives in `packages/github`.
 
+Codex's companion script wraps the review in an envelope when asked for JSON, with the review output under `result`. The importer reads the review output only, so the agent that ran Codex saves that `result` field as the file. Teaching the importer the envelope would mean following a plugin's private shape, which differs between its commands; one sentence in the skills is smaller.
+
 ## Contracts that read like mistakes
 
 - A task phase reruns from its start after a crash. Work before the phase's checkpoint commit must be safe to repeat, or guarded by a durable record.
