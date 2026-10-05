@@ -3,10 +3,5 @@
 		"**/dist": true,
 		"**/.tsbuild": true,
 		"**/*.tsbuildinfo": true
-	},
-	"search.exclude": {
-		"**/dist": true,
-		"**/.tsbuild": true,
-		"**/*.tsbuildinfo": true
 	}
 }
