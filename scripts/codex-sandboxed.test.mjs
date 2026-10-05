@@ -70,7 +70,13 @@ describe("codex-sandboxed.sh profile", () => {
 	let admin;
 	let bin;
 
-	const env = () => ({ ...process.env, HOME: home, TMPDIR: join(root, "tmp"), PATH: `${bin}:${process.env.PATH}` });
+	const env = () => ({
+		...process.env,
+		HOME: home,
+		CODEX_HOME: join(home, ".codex"),
+		TMPDIR: join(root, "tmp"),
+		PATH: `${bin}:${process.env.PATH}`,
+	});
 	const profile = (cwd, scratchDir = run) =>
 		execFileSync(script, ["--print-profile", cwd, scratchDir, run], { encoding: "utf8", env: env() });
 	const block = (text, head) => {
@@ -478,6 +484,38 @@ describe("codex-sandboxed.sh profile", () => {
 			expect(refused.status).toBe(64);
 			expect(refused.stderr).toContain("backslash, quote, or newline");
 		}
+	});
+
+	it("builds the full-access Codex command with the model, worktree, and prompt", () => {
+		const launcher = join(root, "launcher-bin");
+		mkdirSync(launcher);
+		writeFileSync(join(launcher, "uname"), "#!/bin/sh\necho Darwin\n");
+		writeFileSync(
+			join(launcher, "sandbox-exec"),
+			'#!/bin/sh\n[ "$1" = "-f" ] || exit 99\n[ -f "$2" ] || exit 98\nshift 2\nexec "$@"\n',
+		);
+		for (const name of ["uname", "sandbox-exec"]) chmodSync(join(launcher, name), 0o755);
+		const prompt = join(root, "command.md");
+		const log = join(root, "command.log");
+		writeFileSync(prompt, "--not-an-option please\n");
+		execFileSync(script, [linked, "test-model", prompt, log], {
+			stdio: "pipe",
+			env: { ...env(), PATH: `${launcher}:${env().PATH}` },
+		});
+		const args = readFileSync(log, "utf8")
+			.split("\n")
+			.filter((line) => line.startsWith("arg:"))
+			.map((line) => line.slice(4));
+		expect(args).toEqual([
+			"exec",
+			"--dangerously-bypass-approvals-and-sandbox",
+			"--model",
+			"test-model",
+			"-C",
+			linked,
+			"--",
+			"--not-an-option please",
+		]);
 	});
 
 	it.skipIf(!sandboxExec)("refuses an empty prompt instead of running Codex", () => {
@@ -945,7 +983,16 @@ describe("codex-sandboxed.sh profile", () => {
 				env: { ...env(), ...kept, ...dropped },
 			});
 			const out = readFileSync(log, "utf8");
-			expect(out).toContain("arg:--\narg:--not-an-option please");
+			expect(out.split("\n").filter((line) => line.startsWith("arg:"))).toEqual([
+				"arg:exec",
+				"arg:--dangerously-bypass-approvals-and-sandbox",
+				"arg:--model",
+				"arg:m",
+				"arg:-C",
+				`arg:${linked}`,
+				"arg:--",
+				"arg:--not-an-option please",
+			]);
 			expect(out).toMatch(/env:TMPDIR=.*\/codex-run\.[A-Za-z0-9]+/);
 			expect(out).toMatch(/env:npm_config_cache=.*\/codex-run\.[A-Za-z0-9]+\/npm-cache/);
 			expect(out).toMatch(/env:MELIAN_STATE_DIR=.*\/codex-run\.[A-Za-z0-9]+\/melian\n/);
