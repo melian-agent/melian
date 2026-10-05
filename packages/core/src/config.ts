@@ -83,6 +83,22 @@ const ruleAliasSchema = Type.Union([
 export const melianYamlSchema = Type.Object(
 	{
 		trust: Type.Optional(Type.Object({ writers: Type.Optional(Type.Boolean()) }, strict)),
+		comparison: Type.Optional(
+			Type.Object(
+				{
+					retirement: Type.Optional(
+						Type.Object(
+							{
+								pullRequests: Type.Optional(Type.Integer({ minimum: 1 })),
+								recall: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
+							},
+							strict,
+						),
+					),
+				},
+				strict,
+			),
+		),
 		publish: Type.Optional(
 			Type.Object(
 				{
@@ -335,6 +351,7 @@ export interface PolicyChangeReview {
 /** The effective configuration for one path: built-in defaults with every applicable `melian.yaml` merged on top. */
 export interface MelianConfig {
 	readonly trust: { readonly writers: boolean };
+	readonly comparison: { readonly retirement: { readonly pullRequests: number; readonly recall: number } };
 	readonly publish: {
 		readonly walkthrough: { readonly enabled: boolean; readonly collapsed: boolean; readonly diagrams: boolean };
 	};
@@ -361,6 +378,7 @@ export interface MelianConfig {
 /** The built-in defaults every `melian.yaml` layers onto. */
 export const defaultConfig: MelianConfig = {
 	trust: { writers: true },
+	comparison: { retirement: { pullRequests: 10, recall: 0.75 } },
 	publish: { walkthrough: { enabled: true, collapsed: true, diagrams: true } },
 	tiers: {
 		fast: ["guardrails", "static", "decisions.fast"],
@@ -623,10 +641,12 @@ function parseLayer(text: string, site: Site, directory: string): MelianYaml {
 // The review plan reads routes from the root's configuration alone until it plans per path, so a nested file's route
 // policy would never apply: a stricter nested policy would fail open. Refusing it says so where it is written.
 function checkNested(site: Site, layer: MelianYaml): void {
-	if (layer.trust !== undefined)
-		throw configError("invalidValue", site, '"trust" is policy, which only a committed root melian.yaml sets', {
-			key: "trust",
-		});
+	for (const key of ["trust", "comparison"] as const) {
+		if (layer[key] !== undefined)
+			throw configError("invalidValue", site, `"${key}" is policy, which only a committed root melian.yaml sets`, {
+				key,
+			});
+	}
 
 	for (const [tier, route] of Object.entries(layer.models ?? {})) {
 		const key = routePolicyKeys.find((each) => route?.[each] !== undefined);
@@ -643,10 +663,12 @@ function checkNested(site: Site, layer: MelianYaml): void {
 // A route's policy keys decide whether a check ran inside policy, so a preference file setting one could wave its own
 // override through.
 function checkPreference(site: Site, layer: MelianYaml): void {
-	if (layer.trust !== undefined)
-		throw configError("invalidValue", site, '"trust" is policy, which only a committed root melian.yaml sets', {
-			key: "trust",
-		});
+	for (const key of ["trust", "comparison"] as const) {
+		if (layer[key] !== undefined)
+			throw configError("invalidValue", site, `"${key}" is policy, which only a committed root melian.yaml sets`, {
+				key,
+			});
+	}
 
 	for (const [tier, route] of Object.entries(layer.models ?? {})) {
 		const key = routePolicyKeys.find((each) => route?.[each] !== undefined);

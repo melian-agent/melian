@@ -2,7 +2,9 @@
 
 This document records how Melian works and why. It is the source of truth for architecture decisions. The [README](../README.md) describes what Melian does at the capability level; this document describes how.
 
-Status: milestone 1, the local CLI loop, closed on 2026-10-04 with [the first publication](../packages/evals/runs/2026-10-04-first-publish.md). Milestone 2 makes Melian the review of record for its own repository. Milestone 3, "Melian reviews pull requests on GitHub Actions", runs it there, and milestone 4 teaches it to remember and learn. [design-implementation-plan.md](design-implementation-plan.md) plans all three. Each section below opens with the milestone that built it, or will.
+Status: milestone 1, the local CLI loop, closed on 2026-10-04 with [the first publication](../packages/evals/runs/2026-10-04-first-publish.md). Milestone 2 makes Melian the review of record for its own repository. Shadow reviewers remain until Melian reaches recall of at least 0.75 against the shadows' adjudicated findings. Use the ten most recent pull requests with a comparison record. The maintainer alone may tighten the root policy. [The decision](decisions/2026-10-06-shadow-reviewer-retirement.md) closes that question.
+
+Milestone 3, "Melian reviews pull requests on GitHub Actions", runs it there, and milestone 4 teaches it to remember and learn. [design-implementation-plan.md](design-implementation-plan.md) plans all three. Each section below opens with the milestone that built it, or will.
 
 ## Goals
 
@@ -334,7 +336,7 @@ Built in milestone 1. The files a user owns beyond `melian.local.yaml`, and the 
 
 Problem: a multi-service monorepo needs different scrutiny for a payments service than for its docs, and a single root configuration cannot express that without becoming a rules engine.
 
-Solution: `melian.yaml` may exist at any folder level. For a touched path, the nearest file applies, merged upward to the root, in the way `CODEOWNERS` resolves. Root-only policy is an exception: `trust.writers` defaults to true and only the committed root `melian.yaml` sets it. Nested and preference files cannot change it. A pull request reads its base's value, so a head edit takes effect after merge.
+Solution: `melian.yaml` may exist at any folder level. For a touched path, the nearest file applies, merged upward to the root, in the way `CODEOWNERS` resolves. Root-only policy is an exception: `trust.writers` defaults to true and only the committed root `melian.yaml` sets it. The same restriction applies to `comparison.retirement`, defaulting to `pullRequests: 10` and `recall: 0.75`. Nested and preference files cannot change either policy. A pull request reads its base's values, so a head edit takes effect after merge.
 
 Other settings layer this way: checks, tiers, stages, lens routing, model routing, resolution levels, write-back permission, decision thresholds.
 
@@ -748,7 +750,7 @@ Noise is where every reviewer fails, and the only defence is measurement. The ev
 - Live runs scored on precision and recall per lens and per question set.
 - Calibration measurement for decision models before any threshold default is trusted.
 - Lens tests travel with the lens directory.
-- Comparison reviews: while Melian reviews its own pull requests, Claude Code's review skill and Codex's adversarial review run on the same pull requests as shadow reviewers. Every difference is adjudicated by a maintainer, as [Comparison with external reviewers](#comparison-with-external-reviewers) sets out. It becomes a golden, positive or negative, where the adjudication says one is owed. The shadows keep running until Melian's recall against them holds for a run of ten pull requests, a criterion the maintainer may tighten. `melian compare stats` will measure that recall.
+- Comparison reviews: while Melian reviews its own pull requests, Claude Code's review skill and Codex's adversarial review run on the same pull requests as shadow reviewers. Every difference is adjudicated by a maintainer, as [Comparison with external reviewers](#comparison-with-external-reviewers) sets out. It becomes a golden, positive or negative, where the adjudication says one is owed. The shadows keep running until Melian reaches recall of at least 0.75 against the shadows' adjudicated findings. Use the ten most recent pull requests with a comparison record. Only the maintainer may tighten it. The window counts pull requests, not rounds. Integration with `melian compare stats` follows [pull request #72](https://github.com/melian-agent/melian/pull/72).
 - Goldens from the records: each lens in the backlog ships with five goldens drawn from the comparison records, and the records' other differences are listed for scripted goldens. Every third comparison record is followed by a pull request that drains the backlog, as [the evals guideline](guidelines/evals.md#comparisons) sets out.
 
 The research behind a lens, a threshold, or a stance lives in [research/](research/), one dated note per topic, so the evidence is reviewable beside the decision it supports.
@@ -760,6 +762,8 @@ A repository built and reviewed entirely by agents, with every reviewer finding 
 Unit tests use Vitest and Pi Durable's memory storage.
 
 ### Comparison with external reviewers
+
+Shadow reviewers may retire when Melian reaches recall of at least 0.75 against the shadows' adjudicated findings. Use the ten most recent pull requests with a comparison record. The committed root key `comparison.retirement` stores the window and threshold. Only the maintainer may tighten them. Count each distinct finding once across the shadow reviewers. Exclude noise, duplicates and out-of-scope findings. Unadjudicated findings stay pending; absent records never count. A shorter window keeps the shadows running. Every difference is still adjudicated. The stats retirement line is a follow-up to [pull request #72](https://github.com/melian-agent/melian/pull/72), which is not on `main`.
 
 Planned for milestone 2 step 15. Until it lands, an agent writes each record by hand under `packages/evals/comparisons/`, in the form `melian compare export` will keep.
 
@@ -879,6 +883,5 @@ Milestone 4 makes Melian remember and learn: comment commands including dismiss-
 
 - Can a range review seed a pull-request review? They are separate changesets with separate storage, so the findings a maintainer saw locally are raised again when the pull request is reviewed. No milestone is planned to settle it.
 - Should local routes ever apply to a pull-request review on the maintainer's own machine? Today they never do. A pull-request review reads its base's policy, routes included, and never a preference file, so it takes the base's routes, a derived route, or `--model`.
-- How long should the shadow reviewers run? For now, until Melian's recall against them holds for a run of ten pull requests, with every difference still adjudicated. The criterion is the maintainer's to tighten once the numbers exist.
 
 The scheduled sweep for the Actions host is a deferred decision: it is designed in the hosts section and will be revisited if event-driven recovery proves insufficient in practice.

@@ -79,6 +79,36 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		expect(error.message).toContain("only a committed root melian.yaml");
 	});
 
+	it("defaults the retirement window and merges root overrides", async () => {
+		expect((await load("src/index.ts")).config.comparison.retirement).toEqual({ pullRequests: 10, recall: 0.75 });
+		writeFiles(repo, { "melian.yaml": "comparison: { retirement: { recall: 0.9 } }\n" });
+		expect((await load("src/index.ts")).config.comparison.retirement).toEqual({ pullRequests: 10, recall: 0.9 });
+		writeFiles(repo, { "melian.yaml": "comparison: { retirement: { pullRequests: 12, recall: 0.8 } }\n" });
+		expect((await load("src/index.ts")).config.comparison.retirement).toEqual({ pullRequests: 12, recall: 0.8 });
+	});
+
+	it.each([
+		["pullRequests", "0"],
+		["pullRequests", "1.5"],
+		["pullRequests", "many"],
+		["recall", "-0.01"],
+		["recall", "1.01"],
+		["recall", "high"],
+	])("refuses retirement %s: %s", async (key, value) => {
+		writeFiles(repo, { "melian.yaml": `comparison: { retirement: { ${key}: ${value} } }\n` });
+		expect(await rejection(load("src/index.ts"))).toMatchObject({
+			code: "invalidValue",
+			key: `comparison.retirement.${key}`,
+		});
+	});
+
+	it("refuses comparison policy in a nested file", async () => {
+		writeFiles(repo, { "services/melian.yaml": "comparison: { retirement: { recall: 0.1 } }\n" });
+		const error = await rejection(load("services/api.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", key: "comparison", file: "services/melian.yaml" });
+		expect(error.message).toContain("only a committed root melian.yaml");
+	});
+
 	it("defaults the walkthrough on and accepts each switch under publish.walkthrough", async () => {
 		writeFiles(repo, {
 			"melian.yaml": lines(
@@ -495,6 +525,15 @@ describe("melian.local.yaml", () => {
 		expect(sources).toEqual(["melian.local.yaml", "services/pay/melian.yaml", "melian.yaml"]);
 	});
 
+	it("refuses comparison policy in clone preferences", async () => {
+		writeFiles(repo, { "melian.local.yaml": "comparison: { retirement: { recall: 0.1 } }\n" });
+		expect(await rejection(loadConfig(repo, { kind: "worktree" }, "src/index.ts"))).toMatchObject({
+			code: "invalidValue",
+			key: "comparison",
+			file: "melian.local.yaml",
+		});
+	});
+
 	it("refuses trust in clone preferences", async () => {
 		writeFiles(repo, { "melian.local.yaml": "trust: { writers: false }\n" });
 		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "src/index.ts"));
@@ -556,6 +595,15 @@ describe("the user-level preference file", () => {
 
 	const preferences = () => join(home, "config.yaml");
 	const worktree = () => ({ kind: "worktree" as const, preferences: preferences() });
+
+	it("refuses comparison policy in user preferences", async () => {
+		writeFiles(home, { "config.yaml": "comparison: { retirement: { recall: 0.1 } }\n" });
+		expect(await rejection(loadConfig(repo, worktree(), "src/index.ts"))).toMatchObject({
+			code: "invalidValue",
+			key: "comparison",
+			file: preferences(),
+		});
+	});
 
 	it("refuses trust in user preferences", async () => {
 		writeFiles(home, { "config.yaml": "trust: { writers: false }\n" });

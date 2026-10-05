@@ -94,6 +94,8 @@ One defect can fit two lenses' rules, and each would report it under its own. De
 
 ## Comparisons
 
+The shadow reviewers keep running until Melian reaches recall of at least 0.75 against the shadows' adjudicated findings. Use the ten most recent pull requests with a comparison record. The committed root key `comparison.retirement` holds `pullRequests: 10` and `recall: 0.75`. Only the maintainer may tighten the criterion. Count each distinct valid in-scope finding once across the shadows, and each pull request once across rounds. Noise, duplicates and out-of-scope findings do not count. Unadjudicated findings stay pending and missing records stay absent. A shorter window keeps the shadows. The retirement line in `melian compare stats` follows [pull request #72](https://github.com/melian-agent/melian/pull/72).
+
 Every Melian pull request gets a comparison record under `packages/evals/comparisons/`. It lists what Codex's adversarial review, Claude Code's review, and Melian found, and the maintainer's adjudication of each. Until milestone 2's step 15 lands, an agent writes each record by hand. From then, `melian compare export` writes it from the stored comparison, in the same form. [design.md](../design.md#comparison-with-external-reviewers) says how a comparison is built, and how it serves a repository that runs CodeRabbit.
 
 Each finding is adjudicated valid, noise, or a duplicate, with a severity. A valid finding Melian missed takes one reason:
