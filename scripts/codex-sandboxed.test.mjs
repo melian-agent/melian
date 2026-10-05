@@ -99,6 +99,8 @@ describe("codex-sandboxed.sh profile", () => {
 		expect(text).not.toMatch(/^\(allow mach-lookup\)$/m);
 		for (const name of [
 			"com.apple.SecurityServer",
+			"com.apple.securityd.xpc",
+			"com.apple.trustd",
 			"com.apple.trustd.agent",
 			"com.apple.system.opendirectoryd.libinfo",
 		])
@@ -432,6 +434,16 @@ describe("codex-sandboxed.sh profile", () => {
 				server.close();
 			}
 		});
+
+		it.skipIf(process.env.MELIAN_SANDBOX_NETWORK !== "1")(
+			"reaches the registry over TLS and the keychain service",
+			() => {
+				const fetchRegistry = 'fetch("https://registry.npmjs.org/").then(r=>process.exit(r.ok?0:1))';
+				execFileSync("sandbox-exec", ["-f", profilePath, process.execPath, "-e", fetchRegistry], { env: env() });
+				const keychain = failure(() => sh(linked, "security find-generic-password -s nothing-here"));
+				expect(keychain.stderr).not.toMatch(/Operation not permitted|Sandbox|deny/i);
+			},
+		);
 
 		it.skipIf(!realAgentSocket)("cannot reach the user's ssh agent", () => {
 			expect(failure(() => sh(linked, `SSH_AUTH_SOCK='${realAgentSocket}' ssh-add -l`)).status).toBe(2);
