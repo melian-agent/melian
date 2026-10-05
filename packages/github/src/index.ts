@@ -27,4 +27,6 @@ export {
 	verifyMarker,
 } from "./publication.ts";
 
+export { coderabbitLogin, ReviewThreadImporter, type ReviewThreadImporterOptions } from "./threads.ts";
+
 export const packageName = "@melian-agent/github";

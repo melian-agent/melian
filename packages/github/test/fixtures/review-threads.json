@@ -1,0 +1,123 @@
+{
+	"owner": "melian-agent",
+	"repo": "example",
+	"graphql": {
+		"MelianReviewThreads": [
+			{
+				"data": {
+					"repository": {
+						"pullRequest": {
+							"headRefOid": "1111111111111111111111111111111111111111",
+							"reviewThreads": {
+								"pageInfo": { "hasNextPage": true, "endCursor": "Y3Vyc29yOjI=" },
+								"nodes": [
+									{
+										"id": "PRRT_kwDOAAABc0",
+										"isResolved": true,
+										"path": "src/user.ts",
+										"line": 8,
+										"startLine": 7,
+										"originalLine": 8,
+										"originalStartLine": 7,
+										"diffSide": "RIGHT",
+										"subjectType": "LINE",
+										"comments": {
+											"nodes": [
+												{
+													"databaseId": 2401,
+													"url": "https://github.com/melian-agent/example/pull/7#discussion_r2401",
+													"body": "_⚠️ Potential issue_ | _🟠 Major_\n\n**Guard the missing manager.**\n\n`user.manager` is optional, so `managerName` throws for a user without one.",
+													"createdAt": "2026-10-05T01:00:00Z",
+													"author": { "__typename": "Bot", "login": "coderabbitai" }
+												}
+											]
+										}
+									},
+									{
+										"id": "PRRT_kwDOAAABc1",
+										"isResolved": false,
+										"path": "src/user.ts",
+										"line": 20,
+										"startLine": null,
+										"originalLine": 20,
+										"originalStartLine": null,
+										"diffSide": "RIGHT",
+										"subjectType": "LINE",
+										"comments": {
+											"nodes": [
+												{
+													"databaseId": 2402,
+													"url": "https://github.com/melian-agent/example/pull/7#discussion_r2402",
+													"body": "Should this log the name too?",
+													"createdAt": "2026-10-05T01:05:00Z",
+													"author": { "__typename": "User", "login": "octocat" }
+												}
+											]
+										}
+									}
+								]
+							}
+						}
+					}
+				}
+			},
+			{
+				"data": {
+					"repository": {
+						"pullRequest": {
+							"headRefOid": "1111111111111111111111111111111111111111",
+							"reviewThreads": {
+								"pageInfo": { "hasNextPage": false, "endCursor": "Y3Vyc29yOjM=" },
+								"nodes": [
+									{
+										"id": "PRRT_kwDOAAABc2",
+										"isResolved": false,
+										"path": "docs/removed.md",
+										"line": null,
+										"startLine": null,
+										"originalLine": 4,
+										"originalStartLine": null,
+										"diffSide": "RIGHT",
+										"subjectType": "LINE",
+										"comments": {
+											"nodes": [
+												{
+													"databaseId": 2403,
+													"url": "https://github.com/melian-agent/example/pull/7#discussion_r2403",
+													"body": "_🧹 Nitpick_ | _🔵 Trivial_\n\n**The heading names a command that no longer exists.**",
+													"createdAt": "2026-10-05T01:00:00Z",
+													"author": { "__typename": "Bot", "login": "coderabbitai" }
+												}
+											]
+										}
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		],
+		"MelianReviews": [
+			{
+				"data": {
+					"repository": {
+						"pullRequest": {
+							"reviews": {
+								"pageInfo": { "hasNextPage": false, "endCursor": "cmV2aWV3OjM=" },
+								"nodes": [
+									{
+										"body": "**Actionable comments posted: 1**\n\n<details>\n<summary>🧹 Nitpick comments (1)</summary>\n\nsrc/user.ts: prefer a guard clause.\n</details>",
+										"author": { "__typename": "Bot", "login": "coderabbitai" }
+									},
+									{ "body": "", "author": { "__typename": "Bot", "login": "coderabbitai" } },
+									{ "body": "Looks good apart from the manager.", "author": { "__typename": "User", "login": "octocat" } }
+								]
+							}
+						}
+					}
+				}
+			}
+		]
+	}
+}
