@@ -5,7 +5,9 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { Changeset, defaultConfig, Lens } from "@melian-agent/core";
+import { RecordedDecider } from "@melian-agent/decisions";
 import {
+	type ConversationId,
 	backgroundContext as context,
 	createReviewRegistry,
 	type Harness,
@@ -26,6 +28,8 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { decisionExtension } from "../src/decisions.ts";
+import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { gitIn } from "./fixtures/repo.ts";
 import {
@@ -58,7 +62,7 @@ afterEach(async () => {
 });
 
 async function killWhen(
-	scenario: "finding" | "legacy" | "request" | "adjudication" | "read" | "spent" | "tokens",
+	scenario: "finding" | "legacy" | "request" | "adjudication" | "read" | "spent" | "tokens" | "escalation",
 	reached: (events: ReturnType<typeof readEvents>) => boolean,
 	database: string,
 	log: string,
@@ -482,4 +486,67 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			expect(ended?.budgetEnded?.tokens).toBeGreaterThan(1);
 		});
 	}
+});
+
+describe("an escalation across a crash", { timeout: 30_000 }, () => {
+	it("continues the escalated run on its own conversation, without asking triage again or escalating twice", async () => {
+		const database = join(dir, "review.sqlite");
+		const log = join(dir, "review.jsonl");
+		await killWhen("escalation", (events) => count(events, "model-request") === 1, database, log);
+
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "medium" }, { id: "heavy" }] });
+		const requests = scriptConversations(fake, [
+			{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const decider = new RecordedDecider({
+			triage: { version: "1", answers: { correctness: { distribution: { quick: 1 } } } },
+		});
+		const registry = createReviewRegistry();
+		registry.install(decisionExtension(decider));
+		harness = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry,
+			settings: { retry: { enabled: false } },
+		});
+		const medium = fake.ref("medium");
+		const heavy = fake.ref("heavy");
+		const { verdict } = await reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config: {
+				...defaultConfig,
+				tiers: { ...defaultConfig.tiers, full: ["standard"] },
+				models: {
+					medium: { model: `${medium.provider}/${medium.modelId}` },
+					heavy: { model: `${heavy.provider}/${heavy.modelId}` },
+				},
+			},
+			lenses: await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"]),
+			standards: [],
+			models: fake.review,
+			decider,
+			checks: [
+				{ name: "guardrails", status: "ran" },
+				{ name: "static.biome", status: "ran" },
+				{ name: "static.tsc", status: "ran" },
+			],
+		});
+
+		// The stored decision answered; the decider was never asked again.
+		expect(decider.requests).toEqual([]);
+		// Only the careful run's interrupted request was answered: the quick run did not run again.
+		expect(requests["You are the correctness reviewer"]).toHaveLength(1);
+		// The record follows the escalation the stored task made before the crash.
+		expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toMatchObject({
+			level: "careful",
+			reason: expect.stringMatching(/^escalated from quick to careful: at quick it reported a P1 finding/),
+		});
+		const levels: string[] = [];
+		for (let id = 1; id < 60; id++) {
+			const lens = (await harness.snapshot(LensDocument, id as ConversationId, context))?.lens;
+			if (lens !== undefined) levels.push(lens.level ?? "none");
+		}
+		// One conversation per level: the escalation's was created once, before the crash.
+		expect(levels.sort()).toEqual(["careful", "quick"]);
+	});
 });

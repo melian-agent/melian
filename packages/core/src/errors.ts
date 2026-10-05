@@ -256,3 +256,24 @@ export class ModelRoutingError extends Error {
 		this.model = options.model;
 	}
 }
+
+/** Why a decision could not be made. */
+export type DecisionErrorCode = "unanswered" | "invalidAnswer" | "unrecorded" | "staleRecording";
+
+/**
+ * A decider gave no usable answer: it left a question unanswered, answered one it was not asked or with an option or
+ * probability the question does not allow, or, for the recorded adapter, has no recording for it or one made for
+ * another version of its question set or another form of the question. `question` names
+ * the question, where one is at fault.
+ */
+export class DecisionError extends Error {
+	readonly code: DecisionErrorCode;
+	readonly question: string | undefined;
+
+	constructor(code: DecisionErrorCode, message: string, options: { question?: string; cause?: unknown } = {}) {
+		super(message, { cause: options.cause });
+		this.name = "DecisionError";
+		this.code = code;
+		this.question = options.question;
+	}
+}

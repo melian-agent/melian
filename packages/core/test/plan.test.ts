@@ -630,6 +630,15 @@ describe("a resolved plan", () => {
 		expect(resolved.summary()).toBe("");
 	});
 
+	it("names a provider only a level other than careful needs, since triage may choose it", () => {
+		const resolved = plan(
+			{ heavy: { model: opus }, medium: { model: gpt } },
+			{ anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" },
+		);
+		// medium serves only quick, yet a review that triages a lens to quick calls it.
+		expect(resolved.providers()).toEqual(["openai", "anthropic"]);
+	});
+
 	it("names the providers the review's lenses may call, and no other tier's", () => {
 		const resolved = plan(
 			{

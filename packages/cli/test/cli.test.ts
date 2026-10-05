@@ -125,6 +125,21 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.stdout).toMatch(/^Verdict: passed\n/);
 	});
 
+	it("refuses a decision provider it has no adapter for, saying how to triage without one (issue #24)", () => {
+		const { repo, env } = goldenCheckout(
+			goldens["clean-rename"]!,
+			undefined,
+			`${guardrailsOnly}decisions:\n  provider: clef\n`,
+		);
+
+		const review = melian(repo, ["review", "main"], env);
+
+		expect(review.status).toBe(2);
+		expect(review.stderr).toBe(
+			"melian: melian.yaml sets decisions.provider to clef, and Melian has no adapter for a decision provider until milestone 4; remove the key, and triage runs on the LLM fallback\n",
+		);
+	});
+
 	it("records each lens the scripted model ran off the committed route, and says so before the verdict", () => {
 		const opus = "    model: anthropic/claude-opus-5-5\n";
 		const { repo, env } = goldenCheckout(

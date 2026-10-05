@@ -6,7 +6,6 @@ import {
 	type ConfigFor,
 	configLookup,
 	type Finding,
-	type FindingSource,
 	loadConfig,
 	type MelianConfig,
 	type RepositorySource,
@@ -18,7 +17,7 @@ import {
 	type StoredVerdict,
 	Verdict,
 } from "@melian-agent/core";
-import { findingsVersion, readFindings, revisionKey } from "./findings.ts";
+import { findingsVersion, type Producer, readFindings, revisionKey } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
 import { ReviewIndex } from "./review-index.ts";
@@ -60,9 +59,9 @@ export type ReviewOrigin =
 /**
  * What a verdict was decided from, recorded beside it: its {@link ReviewOrigin}, where policy came from (`worktree`,
  * `revision:<sha>`, or `config` when the review named no source), the tier's checks, each lens that ran as
- * `name@version`, and the review plan, as `ReviewPlan.from` reads it, when the review had one. Publishing reads it to
- * refuse a verdict that must never reach a pull request; a summary reads the plan the review ran under, even after a
- * crash, rather than resolve another.
+ * `name@version@level`, the level of the run whose record stands for it, and the review plan, as `ReviewPlan.from`
+ * reads it, when the review had one. Publishing reads it to refuse a verdict that must never reach a pull request; a
+ * summary reads the plan the review ran under, even after a crash, rather than resolve another.
  */
 export type VerdictProvenance = ReviewOrigin & {
 	readonly policy: string;
@@ -129,9 +128,11 @@ export type AdjudicationTaskInput = {
 	findingsVersion: number;
 	allowSkip: string[];
 	// The producers whose sightings at the revision count, derived from the manifest: each lens the review ran, by check and
-	// version, and every other check of the manifest, by name and the tool version its record names. A lens that
-	// configuration has since disabled or retiered left sightings at this revision that are not this review's.
-	producers: { check: string; version?: string }[];
+	// version with the level of the run whose record stands for it, and every other check of the manifest, by name and
+	// the tool version its record names. A lens that configuration has since disabled or retiered, or a quick run that
+	// escalated, left sightings at this revision that are not this review's. One an older Melian recorded names a lens's
+	// version alone, and still reads its own sightings.
+	producers: { check: string; version?: string; ids?: string[] }[];
 	// Recorded with the verdict, so publishing can refuse one that came from a range or from the working tree.
 	provenance: StoredProvenance;
 };
@@ -220,7 +221,7 @@ export function adjudicationInput(options: {
 	checks: readonly CheckRecord[];
 	findingsVersion: number;
 	allowSkip: readonly string[];
-	producers: readonly FindingSource[];
+	producers: readonly Producer[];
 	origin: ReviewOrigin;
 	lenses: readonly string[];
 	plan?: ReviewPlan | undefined;
@@ -257,7 +258,10 @@ export function adjudicationInput(options: {
 		checks: checks.map((check) => structuredClone(check)),
 		findingsVersion,
 		allowSkip: [...allowSkip],
-		producers: producers.map((source) => ({ ...source })),
+		producers: producers.map(({ ids, ...source }) => ({
+			...source,
+			...(ids === undefined ? {} : { ids: [...ids] }),
+		})),
 		provenance,
 	};
 }
