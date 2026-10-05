@@ -588,10 +588,6 @@ const levelMeanings: Readonly<Record<ScrutinyLevel, string>> = {
 	deep: "the closest review, reading the whole of each function the change touches, for a change where this lens's concern is at high risk.",
 };
 
-function isScrutinyLevel(value: string | undefined): value is ScrutinyLevel {
-	return (scrutinyLevels as readonly (string | undefined)[]).includes(value);
-}
-
 /**
  * A neighbour of a lens in one review: another lens the review runs, and the files it reviews among the lens's own,
  * `every` one or those listed. The lens leaves the neighbour its defects in those files and keeps them in the rest.
@@ -817,7 +813,8 @@ export class Lens {
 	 */
 	triage(band: LevelBand, levels: readonly ScrutinyLevel[], decision?: Decision): TriageChoice {
 		const chosen = decision?.chosen(this.name);
-		const choice = chosen === "skip" || isScrutinyLevel(chosen) ? chosen : defaultScrutinyLevel;
+		const choice =
+			chosen === "skip" ? chosen : (scrutinyLevels.find((level) => level === chosen) ?? defaultScrutinyLevel);
 		return band.bound(choice, levels);
 	}
 
