@@ -810,6 +810,34 @@ describe("escalation", () => {
 		expect(reviewed.findings.map((finding) => finding.ruleId)).toEqual(["null-dereference"]);
 	});
 
+	it("leaves the whole-review note off every lens when only some stay at quick", async () => {
+		const decider = new RecordedDecider({
+			triage: {
+				version: "1",
+				answers: {
+					correctness: { distribution: { quick: 1 } },
+					contracts: { distribution: { careful: 1 } },
+				},
+			},
+		});
+		await open(decider);
+		const both = { ...config, tiers: { ...config.tiers, full: ["standard", "lens.contracts"] } };
+		scriptConversations(fake, [
+			{ match: correctness, replies: [done] },
+			{ match: "You are the contracts reviewer", replies: [done] },
+		]);
+
+		const reviewed = await review({ decider, config: both });
+
+		const records = (reviewed.verdict.ran ?? []).filter((check) => check.name.startsWith("lens."));
+		expect(records.map((check) => [check.name, check.level]).sort()).toEqual([
+			["lens.contracts", "careful"],
+			["lens.correctness", "quick"],
+		]);
+		expect(records.map((check) => check.reason ?? "")).not.toContain(lightly);
+		expect(JSON.stringify(records)).not.toContain("looked lightly");
+	});
+
 	it("fails the review when a lens's default level has no model, rather than run it at a lighter one", async () => {
 		const decider = choosing("quick");
 		await open(decider);
