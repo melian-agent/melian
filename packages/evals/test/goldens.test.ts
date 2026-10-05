@@ -49,6 +49,7 @@ describe("the golden corpus", () => {
 			"durability-replayed-append",
 			"durability-resumed-publish",
 			"durability-superseded-write",
+			"guardrails-bare-issue-reference",
 			"injection-in-comment",
 			"pre-existing-beside-change",
 			"removed-behaviour-clean-extract",
@@ -221,9 +222,30 @@ describe("a golden's standards and policy", () => {
 	});
 });
 
+describe("a guardrail golden", () => {
+	it.each(["bare-issue-reference"])(
+		"runs the %s rule as the root melian.yaml states it",
+		async (rule) => {
+			const golden = goldens.find((each) => each.name === `guardrails-${rule}`)!;
+			const { repo, base } = buildGoldenRepository(golden);
+			try {
+				const own = await loadConfig(repo, { kind: "revision", commit: base }, ".");
+				const root = await loadConfig(join(goldensDirectory, "../../.."), { kind: "worktree" }, ".");
+				const { paths, ...golden_ } = own.config.guardrails["forbidden-patterns"].rules[rule]!;
+				const { paths: _, ...live } = root.config.guardrails["forbidden-patterns"].rules[rule]!;
+				expect(paths).toEqual(["docs/**/*.md"]);
+				expect(golden_).toEqual(live);
+			} finally {
+				rmSync(repo, { recursive: true, force: true });
+			}
+		},
+	);
+});
+
 describe("the live flag", () => {
 	it("keeps a golden whose expected.json sets live: false out of live runs, while the scripted runs below cover it", () => {
 		expect(goldens.filter((golden) => !golden.live).map((golden) => golden.name)).toEqual([
+			"guardrails-bare-issue-reference",
 			"pre-existing-beside-change",
 		]);
 	});
