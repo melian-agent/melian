@@ -631,15 +631,16 @@ describe("Lens.select", () => {
 
 describe("Lens.renderInstructions", () => {
 	const every = (name: string): LensNeighbour => ({ name, files: "every" });
+	const asIs = (listing: string) => listing;
 
 	it("hands a defect to a neighbour only when the review runs that neighbour", async () => {
 		const [correctness] = named(await Lens.load(repo, { kind: "worktree" }, []), "correctness");
-		const alone = correctness!.renderInstructions([], "careful", [every("correctness")]);
+		const alone = correctness!.renderInstructions([], "careful", [every("correctness")], asIs);
 		expect(alone).toBe(correctness!.renderInstructions([]));
 		expect(alone).not.toContain("## Neighbouring lenses");
 		for (const neighbour of ["removed-behaviour", "trust-boundary", "`tests`", "tests lens"])
 			expect(alone).not.toContain(neighbour);
-		const beside = correctness!.renderInstructions([], "careful", [every("correctness"), every("tests")]);
+		const beside = correctness!.renderInstructions([], "careful", [every("correctness"), every("tests")], asIs);
 		expect(beside).toContain("## Neighbouring lenses");
 		expect(beside).toContain(
 			"These lenses review this change beside you. Each owns the defects listed against it: leave them to it, and do not report them under your own rules.\n\n- `tests`: A defect in a test.",
@@ -672,7 +673,7 @@ describe("Lens.renderInstructions", () => {
 
 	it("renders no hand-off to a neighbour that reviews none of the lens's files", async () => {
 		const [correctness] = named(await Lens.load(repo, { kind: "worktree" }, []), "correctness");
-		expect(correctness!.renderInstructions([], "careful", [{ name: "tests", files: [] }])).toBe(
+		expect(correctness!.renderInstructions([], "careful", [{ name: "tests", files: [] }], asIs)).toBe(
 			correctness!.renderInstructions([]),
 		);
 	});
@@ -683,10 +684,15 @@ describe("Lens.renderInstructions", () => {
 			"- `unhandled-error`: A failure the changed code can raise or receive is dropped, swallowed, or left to crash the caller.";
 		const handOver = "Leave a deleted throw, rethrow, or error branch to it";
 
-		const alone = correctness!.renderInstructions([], "careful", [every("correctness")]);
+		const alone = correctness!.renderInstructions([], "careful", [every("correctness")], asIs);
 		expect(alone).toContain(rule);
 		expect(alone).not.toContain(handOver);
-		const beside = correctness!.renderInstructions([], "careful", [every("correctness"), every("removed-behaviour")]);
+		const beside = correctness!.renderInstructions(
+			[],
+			"careful",
+			[every("correctness"), every("removed-behaviour")],
+			asIs,
+		);
 		expect(beside).toContain(rule);
 		expect(beside).toContain(handOver);
 	});
@@ -710,21 +716,26 @@ describe("Lens.renderInstructions", () => {
 		const keeps = "The repository's own conventions. A change that breaks one is a finding; cite the file.";
 		const handsOver = "A breach of one is the conventions lens's to report";
 
-		const alone = correctness!.renderInstructions(standards, "careful", [every("correctness")]);
+		const alone = correctness!.renderInstructions(standards, "careful", [every("correctness")], asIs);
 		expect(alone).toContain(keeps);
 		expect(alone).not.toContain(handsOver);
-		const beside = correctness!.renderInstructions(standards, "careful", [
-			every("correctness"),
-			every("conventions"),
-		]);
+		const beside = correctness!.renderInstructions(
+			standards,
+			"careful",
+			[every("correctness"), every("conventions")],
+			asIs,
+		);
 		expect(beside).toContain(handsOver);
 		expect(beside).not.toContain(keeps);
-		const some = correctness!.renderInstructions(standards, "careful", [
-			{ name: "conventions", files: ["src/a.ts"] },
-		]);
+		const some = correctness!.renderInstructions(
+			standards,
+			"careful",
+			[{ name: "conventions", files: ["src/a.ts"] }],
+			asIs,
+		);
 		expect(some).toContain(keeps);
 		expect(some).not.toContain(handsOver);
-		expect(conventions!.renderInstructions(standards, "careful", [every("conventions")])).toContain(keeps);
+		expect(conventions!.renderInstructions(standards, "careful", [every("conventions")], asIs)).toContain(keeps);
 	});
 
 	it("renders every declared rule ID, the severities, and the budget after the body", async () => {

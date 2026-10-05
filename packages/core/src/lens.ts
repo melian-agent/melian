@@ -565,6 +565,11 @@ export interface LensNeighbour {
 	readonly files: "every" | readonly string[];
 }
 
+// Only the overload without neighbours reaches this default, and then no list renders.
+function unquoted(): never {
+	throw new TypeError("renderInstructions needs a quote for a neighbour's list of files");
+}
+
 const handoffsIntro =
 	"These lenses review this change beside you. Each owns the defects listed against it: leave them to it, and do not report them under your own rules.";
 const partialHandoffs =
@@ -724,14 +729,21 @@ export class Lens {
 	 * level's budget and reading scope, and what a finding's failure scenario and evidence must be; then, unless the lens
 	 * opted out, the repository's standards, each under its path, whose breaches are the conventions lens's to report
 	 * when it is a neighbour over every file and this lens's own otherwise. `quote` wraps a neighbour's list of files,
-	 * which come from the change, so a pipeline can mark them as its data. Throws {@link LensError} `unknownLevel` for a
-	 * level the lens does not declare.
+	 * which come from the change, so the caller must mark them as its data: it is required with `neighbours`. Throws
+	 * {@link LensError} `unknownLevel` for a level the lens does not declare.
 	 */
+	renderInstructions(standards: readonly StandardsSection[], level?: ScrutinyLevel): string;
+	renderInstructions(
+		standards: readonly StandardsSection[],
+		level: ScrutinyLevel,
+		neighbours: readonly LensNeighbour[],
+		quote: (listing: string) => string,
+	): string;
 	renderInstructions(
 		standards: readonly StandardsSection[],
 		level: ScrutinyLevel = defaultScrutinyLevel,
 		neighbours: readonly LensNeighbour[] = [],
-		quote: (listing: string) => string = (listing) => listing,
+		quote: (listing: string) => string = unquoted,
 	): string {
 		const instructions = [
 			this.instructions,
