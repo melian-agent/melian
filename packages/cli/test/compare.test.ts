@@ -284,6 +284,28 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		expect(lines[4]).toMatch(
 			/^ {2}[0-9a-f]{16} {2}coderabbit {2}docs\/removed\.md:4 \(outdated\) {2}\*\*The heading names a command .* {2}\(read at 222222222222; match it by hand\)$/,
 		);
+		const missed = /^ {2}([0-9a-f]{16}) {2}coderabbit/m.exec(result.stdout)![1]!;
+		expect(
+			melian(
+				repo,
+				[
+					"compare",
+					"adjudicate",
+					"#7",
+					missed,
+					"--verdict",
+					"valid",
+					"--reason",
+					"out-of-scope",
+					"--golden",
+					"none",
+				],
+				env,
+			).status,
+		).toBe(0);
+		const exported = melian(repo, ["compare", "export", "#7"], env);
+		expect(exported).toMatchObject({ status: 0, stderr: "" });
+		expect(exported.stdout).toContain("https://github.com/melian-agent/example/pull/7");
 		const human = melian(repo, ["compare", "#7", "--from", "github:octocat"], env);
 		expect(human.stdout).toContain("Imported 1 from github:octocat, skipping 1 review body without a thread.");
 		expect(human.stdout).toMatch(/octocat {2}src\/user\.ts:20 {2}Should this log the name too\?/);
@@ -304,5 +326,187 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		writeFileSync(empty, JSON.stringify({ reviewer: { name: "claude-code" }, findings: [] }));
 		const after = melian(repo, ["compare", "#7", "--from", `file:${empty}`], env);
 		expect(after.stdout).toContain("Compared 0 external findings with Melian's 1");
+	});
+});
+
+describe("melian compare adjudicate", { timeout: 60_000 }, () => {
+	it("records a miss and says judging Melian noise does not dismiss it", () => {
+		const { repo, files, env, id } = reviewed();
+		const path = codexFile(files, [codexFinding(30, "Missed")]);
+		const imported = melian(repo, ["compare", range, "--from", `file:${path}`], env);
+		const external = /^ {2}([0-9a-f]{16}) {2}codex/m.exec(imported.stdout)![1]!;
+		const missing = melian(repo, ["compare", "adjudicate", range, external, "--verdict", "valid"], env);
+		expect(missing).toMatchObject({ status: 1, stderr: expect.stringContaining("needs a miss reason") });
+		const valid = melian(
+			repo,
+			[
+				"compare",
+				"adjudicate",
+				range,
+				external,
+				"--verdict",
+				"valid",
+				"--severity",
+				"P1",
+				"--reason",
+				"owned-missed",
+				"--golden",
+				"correctness",
+				"--rule",
+				"null-dereference",
+				"--note",
+				"Add a golden.",
+			],
+			env,
+		);
+		expect(valid).toMatchObject({
+			status: 0,
+			stderr: "",
+			stdout: expect.stringContaining("Melian Test <test@melian.invalid>"),
+		});
+		const before = melian(repo, ["findings", range, "--json"], env).stdout;
+		const noise = melian(
+			repo,
+			["compare", "adjudicate", range, id, "--verdict", "noise", "--golden", "correctness"],
+			env,
+		);
+		expect(noise).toMatchObject({ status: 0, stderr: "", stdout: expect.stringContaining("does not dismiss") });
+		expect(melian(repo, ["findings", range, "--json"], env).stdout).toBe(before);
+	});
+
+	it.each([
+		["--verdict", "wrong"],
+		["--severity", "high"],
+		["--reason", "unknown"],
+		["--golden", "bad lens"],
+		["--note", "x".repeat(1001)],
+	])("refuses invalid %s", (option, value) => {
+		const result = melian(root, [
+			"compare",
+			"adjudicate",
+			range,
+			"0".repeat(16),
+			"--verdict",
+			"valid",
+			option,
+			value,
+		]);
+		expect(result.status).toBe(64);
+	});
+});
+
+describe("melian compare stats and backlog", { timeout: 60_000 }, () => {
+	it("reads the clone's stored comparisons and lists current golden debt", () => {
+		const { repo, files, env } = reviewed();
+		const path = codexFile(files, [codexFinding(30, "Missed")]);
+		const imported = melian(repo, ["compare", range, "--from", `file:${path}`], env);
+		const external = /^ {2}([0-9a-f]{16}) {2}codex/m.exec(imported.stdout)![1]!;
+		expect(
+			melian(
+				repo,
+				[
+					"compare",
+					"adjudicate",
+					range,
+					external,
+					"--verdict",
+					"valid",
+					"--reason",
+					"needs-execution",
+					"--golden",
+					"correctness",
+				],
+				env,
+			).status,
+		).toBe(0);
+		const stats = melian(repo, ["compare", "stats", "--last", "1"], env);
+		expect(stats).toMatchObject({ status: 0, stderr: "" });
+		expect(stats.stdout).toContain("melian: recall 0/1 (0.000), precision 0/0 (1.000), pending 1.");
+		expect(stats.stdout).toContain("needs-execution: 1.");
+		expect(stats.stdout).toContain("Drain not due");
+		expect(melian(repo, ["compare", "stats", "--since", "2099-01-01"], env).stdout).toContain("Comparisons: 0.");
+		const backlog = melian(repo, ["compare", "backlog"], env);
+		expect(backlog).toMatchObject({
+			status: 0,
+			stderr: "",
+			stdout: expect.stringContaining(`correctness: ${range} ${external} Missed`),
+		});
+		expect(melian(repo, ["compare", "backlog", "--markdown"], env).stdout).toContain("## Stored comparison backlog");
+		expect(
+			melian(
+				repo,
+				[
+					"compare",
+					"adjudicate",
+					range,
+					external,
+					"--verdict",
+					"valid",
+					"--reason",
+					"needs-execution",
+					"--golden",
+					"none",
+				],
+				env,
+			).status,
+		).toBe(0);
+		expect(melian(repo, ["compare", "backlog"], env).stdout).toBe("No goldens owed.\n");
+	});
+
+	it.each([
+		["--last", "0"],
+		["--last", "-1"],
+		["--last", "1.5"],
+		["--since", "yesterday"],
+		["--since", "2026-99-99"],
+		["--since", "2026-02-31"],
+	])("refuses invalid %s", (option, value) => {
+		expect(melian(root, ["compare", "stats", option, value]).status).toBe(64);
+	});
+});
+
+describe("melian compare export", { timeout: 60_000 }, () => {
+	it("exports the record to stdout or a local path, and JSON keeps replacement history", () => {
+		const { repo, files, env, id } = reviewed();
+		const path = codexFile(files, [codexFinding(8, "Null | <img>")]);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		for (const verdict of ["valid", "noise"])
+			expect(
+				melian(
+					repo,
+					["compare", "adjudicate", range, id, "--verdict", verdict, "--note", "Maintainer choice."],
+					env,
+				).status,
+			).toBe(0);
+		const stdout = melian(repo, ["compare", "export", range], env);
+		expect(stdout).toMatchObject({ status: 0, stderr: "" });
+		expect(stdout.stdout).toContain("## A. codex, round 1");
+		expect(stdout.stdout).toContain("## B. Melian review, round 1");
+		expect(stdout.stdout).toContain("Maintainer choice.");
+		expect(stdout.stdout).toContain("&lt;img&gt;");
+		const output = join(files, "comparison.md");
+		expect(melian(repo, ["compare", "export", range, "--out", output], env)).toMatchObject({
+			status: 0,
+			stderr: "",
+			stdout: `Exported comparison to ${output}.\n`,
+		});
+		expect(readFileSync(output, "utf8")).toBe(stdout.stdout);
+		const json = melian(repo, ["compare", "export", range, "--json"], env);
+		expect(json).toMatchObject({ status: 0, stderr: "" });
+		const records = Object.values(JSON.parse(json.stdout).comparisons) as {
+			adjudications: Record<string, { current: { verdict: string }; history: { verdict: string }[] }>;
+		}[];
+		expect(records[0]?.adjudications[id]).toMatchObject({
+			current: { verdict: "noise" },
+			history: [{ verdict: "valid" }],
+		});
+	});
+
+	it("refuses export before a comparison exists", () => {
+		const { repo, env } = reviewed();
+		expect(melian(repo, ["compare", "export", range], env)).toMatchObject({
+			status: 1,
+			stderr: expect.stringContaining("no comparison recorded"),
+		});
 	});
 });

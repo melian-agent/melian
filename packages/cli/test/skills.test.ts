@@ -293,7 +293,9 @@ describe.each(hosts)("skills/%s/SKILL.md", (host) => {
 		expect(new Set(names)).toEqual(new Set(["doctor", "review", "findings", "dismiss", "publish", "compare"]));
 		for (const command of names) expect(commands).toContain(command);
 		const passed = used.flatMap((each) => each.args.filter((arg) => arg.startsWith("--")));
-		expect(new Set(passed)).toEqual(new Set(["--rerun", "--reason", "--from"]));
+		expect(new Set(passed)).toEqual(
+			new Set(["--rerun", "--reason", "--from", "--verdict", "--golden", "--last", "--markdown", "--out"]),
+		);
 		for (const option of [...passed, ...optionSpans(body)]) expect(options).toContain(option);
 	});
 

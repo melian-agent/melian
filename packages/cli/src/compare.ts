@@ -1,5 +1,15 @@
 import { existsSync } from "node:fs";
-import { ComparisonError, type ExternalImporter, visibleText } from "@melian-agent/core";
+import { readdir, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import {
+	type ComparisonEntry,
+	ComparisonError,
+	ComparisonExport,
+	ComparisonSet,
+	type ExternalImporter,
+	type StoredComparisonAdjudication,
+	visibleText,
+} from "@melian-agent/core";
 import { coderabbitLogin, ReviewThreadImporter } from "@melian-agent/github";
 import {
 	CompareHarness,
@@ -11,7 +21,7 @@ import {
 } from "@melian-agent/pipeline";
 import { gitAuthor, type Io, StoredReview, shellQuote, short } from "./commands.ts";
 import { idleModels, isScripted } from "./models.ts";
-import { CliError, openStorage, storagePath } from "./repository.ts";
+import { CliError, git, openStorage, stateDirectory, storagePath } from "./repository.ts";
 import { gitHubAccess, parseTarget } from "./target.ts";
 
 // Where `melian compare --from` imports from: a pull request's review threads by one login, or a reviewer's file.
@@ -78,7 +88,11 @@ export async function compare(io: Io, argument: string, sources: readonly Import
 			}
 			read.push({ source: importer.source, imported });
 		}
-		const comparison = await harness.importFindings(revision, read, new Date().toISOString());
+		const comparison = await harness.importFindings(
+			{ ...revision, target: argument },
+			read,
+			new Date().toISOString(),
+		);
 		for (const { source, imported } of read) {
 			const bodies = imported.skippedBodies === 1 ? "1 review body" : `${imported.skippedBodies} review bodies`;
 			const skipped = imported.skippedBodies > 0 ? `, skipping ${bodies} without a thread` : "";
@@ -123,6 +137,107 @@ export async function matchByHand(
 		const root = (await harness.harness.root(context)).id;
 		const verdict = await readVerdict(harness.harness, root, revisionKey(revision), context);
 		io.stdout(comparison.render(verdict));
+		return 0;
+	} finally {
+		await harness.close(context);
+	}
+}
+
+export async function adjudicateComparison(
+	io: Io,
+	argument: string,
+	id: string,
+	fields: Omit<StoredComparisonAdjudication, "by" | "at">,
+): Promise<number> {
+	const { stored, harness } = await openComparison(io, argument);
+	try {
+		const by = await gitAuthor(stored.changeset.repoRoot, "adjudicated a comparison finding");
+		await harness.adjudicate({ ...stored.changeset.revision, target: argument }, id, {
+			...fields,
+			by,
+			at: new Date().toISOString(),
+		});
+		io.stdout(`Adjudicated ${id} as ${fields.verdict} by ${visibleText(by)}.\n`);
+		if (fields.verdict === "noise") {
+			const comparison = await harness.read(stored.changeset.revision);
+			if (comparison?.melianFindings().includes(id))
+				io.stdout("This does not dismiss the Melian finding; melian dismiss records a dismissal.\n");
+		}
+		return 0;
+	} finally {
+		await harness.close(context);
+	}
+}
+
+class StoredComparisons {
+	readonly comparisons: ComparisonSet;
+
+	private constructor(comparisons: ComparisonSet) {
+		this.comparisons = comparisons;
+	}
+
+	static async read(io: Io): Promise<StoredComparisons> {
+		const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
+		const directory = join(await stateDirectory(repoRoot, io.env), ...(isScripted(io.env) ? ["scripted"] : []));
+		const names = await readdir(directory).catch((error: NodeJS.ErrnoException) => {
+			if (error.code === "ENOENT") return [];
+			throw new CliError(`cannot read comparisons at ${directory}: ${error.message}`);
+		});
+		const entries: ComparisonEntry[] = [];
+		for (const name of names.filter((name) => /^(range|pull)-[0-9a-f]{16}\.sqlite$/.test(name)).sort()) {
+			const harness = await CompareHarness.open(await openStorage(join(directory, name)), idleModels(io.env));
+			try {
+				entries.push(...(await harness.all(name.slice(0, -".sqlite".length))));
+			} finally {
+				await harness.close(context);
+			}
+		}
+		return new StoredComparisons(new ComparisonSet(entries));
+	}
+}
+
+export async function comparisonStats(
+	io: Io,
+	options: { readonly since?: string; readonly last?: number },
+): Promise<number> {
+	const { comparisons } = await StoredComparisons.read(io);
+	io.stdout(comparisons.select(options).renderStats());
+	return 0;
+}
+
+export async function comparisonBacklog(io: Io, markdown: boolean): Promise<number> {
+	const { comparisons } = await StoredComparisons.read(io);
+	io.stdout(comparisons.renderBacklog(markdown));
+	return 0;
+}
+
+export async function exportComparison(
+	io: Io,
+	argument: string,
+	options: { readonly out?: string; readonly json: boolean },
+): Promise<number> {
+	const { stored, harness } = await openComparison(io, argument);
+	try {
+		const entries = await harness.all(stored.changeset.id);
+		if (entries.length === 0)
+			throw new CliError(`no comparison recorded; run melian compare ${shellQuote(argument)} first`);
+		const remote = await git(stored.changeset.repoRoot, ["remote", "get-url", "origin"]).catch(() => "");
+		const repository =
+			/^(?:git@github\.com:|https:\/\/github\.com\/)([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?)(?:\.git)?$/.exec(
+				remote,
+			)?.[1];
+		const url =
+			repository !== undefined && /^#\d+$/.test(argument)
+				? `https://github.com/${repository}/pull/${argument.slice(1)}`
+				: undefined;
+		const record = new ComparisonExport(entries, argument, url);
+		const output = options.json ? record.renderJson() : record.render();
+		if (options.out === undefined) io.stdout(output);
+		else {
+			const path = resolve(io.cwd, options.out);
+			await writeFile(path, output, "utf8");
+			io.stdout(`Exported comparison to ${visibleText(path)}.\n`);
+		}
 		return 0;
 	} finally {
 		await harness.close(context);
