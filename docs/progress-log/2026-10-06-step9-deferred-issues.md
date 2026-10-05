@@ -15,3 +15,5 @@ The first fix pass for [pull request #85](https://github.com/melian-agent/melian
 The manifest guideline now describes automatic checks when records are absent, matching `reviewChangeset`. Hosts can still supply records.
 
 The standards and run-details paragraphs split the two long sentences flagged in review. Their contracts are unchanged.
+
+Ledger standards paths now use the code renderer, per lens. The ledger regression checks the rendered code spans.

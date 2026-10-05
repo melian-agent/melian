@@ -319,7 +319,7 @@ describe("ledger rendering", () => {
 		};
 		const body = Ledger.from(verdict, { rounds: [current] }, options).render(links);
 		expect(body).toContain("Standards: AGENTS.md, packages/core/AGENTS.md");
-		expect(body).toContain("; standards packages/core/AGENTS.md, AGENTS.md");
+		expect(body).toContain("; standards `packages/core/AGENTS.md`, `AGENTS.md`");
 	});
 
 	it("keeps markdown in a finding path inert inside the agent prompt", () => {
