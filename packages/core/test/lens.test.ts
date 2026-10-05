@@ -542,6 +542,17 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		});
 	});
 
+	it.each([
+		["src/*.{ts,js}", "; globs do not support braces or character classes, so list each glob"],
+		["[ab].ts", "; globs do not support braces or character classes, so list each glob"],
+		["src/", ", which matches no file; write src/**"],
+	])("refuses the glob %s, which would select nothing, when the lens loads", async (glob, rest) => {
+		writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile([...security, `paths: ["${glob}"]`]) });
+		const error = await rejection(load(["src/index.ts"]), LensError);
+		expect(error).toMatchObject({ code: "invalidValue", field: "paths", file: ".melian/lenses/security/LENS.md" });
+		expect(error.message).toBe(`.melian/lenses/security/LENS.md: "paths" has ${glob}${rest}`);
+	});
+
 	it("refuses a glob past the matching engine's step limit when the lens loads", async () => {
 		const glob = `src/${"a".repeat(2_000)}`;
 		writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile([...security, `paths: ["!${glob}", "**"]`]) });
