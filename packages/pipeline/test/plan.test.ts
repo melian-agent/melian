@@ -19,6 +19,7 @@ import {
 	planInputs,
 	readFindings,
 	readProvenance,
+	recordDismissal,
 	reviewChangeset,
 	revisionKey,
 	type TaskId,
@@ -304,6 +305,28 @@ describe("reviewChangeset with a plan", () => {
 		expect(second.review.findings).toEqual([]);
 		expect(second.review.verdict.attention()).toEqual([]);
 		expect(second.review.verdict.status).toBe("passed");
+	});
+
+	it("keeps a dismissal when a replacement run reports the finding again", async () => {
+		const first = await planned({ model: heavy, accept: [heavy] }, backup, { reports: "backup" });
+		const [finding] = first.review.verdict.attention();
+		const revision = (await Changeset.resolve(repo, "main...feature")).revision;
+		const dismissal = {
+			by: "Maintainer <m@melian.invalid>",
+			reason: "a is meant to be 2",
+			at: "2026-10-05T00:00:00.000Z",
+		};
+		await recordDismissal({ harness, revision, id: finding!.properties.id, dismissal, repoRoot: repo });
+
+		// Another route replaces the run, dropping its sightings, and reports the same finding afresh.
+		const again = await planned({ model: heavy, accept: [heavy] }, undefined, { reports: "heavy" });
+
+		expect(again.answered).toContain("heavy");
+		expect(again.review.findings.map((each) => each.properties.id)).toEqual([finding!.properties.id]);
+		expect(again.review.verdict.attention()).toEqual([]);
+		expect(again.review.verdict.dismissed.map((each) => each.properties.dismissal?.reason)).toEqual([
+			"a is meant to be 2",
+		]);
 	});
 
 	it("drops an earlier run's sightings even when a review that selected no lens left the index naming no run", async () => {
