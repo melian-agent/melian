@@ -8,6 +8,7 @@ import {
 	backgroundContext as context,
 	createMemoryStorage,
 	FileImporter,
+	type ImportedSource,
 	maxReviewerFileBytes,
 	openSqliteStorage,
 	revisionKey,
@@ -112,6 +113,45 @@ describe("CompareHarness", () => {
 		expect(comparison.melianOnly()).toEqual([findings[1]!.id]);
 		expect((await harness.read(revision))?.toJSON()).toEqual(comparison.toJSON());
 		expect(await harness.read({ ...revision, base: "c".repeat(40) })).toBeUndefined();
+	});
+
+	it("imports both file sources in one call and stores both findings and source records", async () => {
+		const harness = await memoryHarness();
+		await storeReview(harness);
+		const sources: ImportedSource[] = [];
+		for (const [name, reviewer, line] of [
+			["codex.json", "codex", 12],
+			["claude.json", "claude-code", 40],
+		] as const) {
+			writeFileSync(
+				join(directory, name),
+				JSON.stringify({
+					reviewer: { name: reviewer },
+					findings: [{ ref: "1", file: "src/run.ts", line, title: `eval at ${line}`, body: "eval runs input" }],
+				}),
+			);
+			const importer = await FileImporter.open(name, { cwd: directory, repoRoot: directory });
+			sources.push({ source: importer.source, imported: await importer.import() });
+		}
+		const external = sources.map((source) => source.imported.findings[0]!);
+
+		const comparison = await harness.importFindings(revision, sources, "t");
+
+		expect(comparison.externalFindings().map((finding) => finding.toJSON())).toEqual(
+			expect.arrayContaining(external.map((finding) => finding.toJSON())),
+		);
+		expect(comparison.externalFindings()).toHaveLength(2);
+		expect(comparison.effectiveMatches()).toEqual(
+			expect.arrayContaining([
+				{ external: external[0]!.id, melian: findings[0]!.id, kind: "site" },
+				{ external: external[1]!.id, melian: findings[1]!.id, kind: "site" },
+			]),
+		);
+		expect(comparison.importsBySource()).toEqual({
+			"file:codex.json": { at: "t", ids: [external[0]!.id], skippedBodies: 0 },
+			"file:claude.json": { at: "t", ids: [external[1]!.id], skippedBodies: 0 },
+		});
+		expect((await harness.read(revision))?.toJSON()).toEqual(comparison.toJSON());
 	});
 
 	it("compares a version 5 verdict without changing its plan, run details or walkthrough state", async () => {

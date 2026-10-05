@@ -121,6 +121,36 @@ describe("melian compare", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("imports both files from repeated --from arguments and keeps both findings", () => {
+		const { repo, files, env, id } = reviewed();
+		const codex = codexFile(files, [codexFinding(8, "Null manager")]);
+		const claude = join(files, "claude.json");
+		writeFileSync(
+			claude,
+			JSON.stringify({
+				reviewer: { name: "claude-code" },
+				findings: [{ ref: "1", file: "src/user.ts", line: 30, title: "Somewhere else", body: "Another problem." }],
+			}),
+		);
+
+		const result = melian(repo, ["compare", range, "--from", `file:${codex}`, "--from", `file:${claude}`], env);
+
+		expect(result).toMatchObject({ status: 0, stderr: "" });
+		expect(result.stdout.split("\n").slice(0, 2)).toEqual([
+			`Imported 1 from file:${codex}.`,
+			`Imported 1 from file:${claude}.`,
+		]);
+		expect(result.stdout).toMatch(/^Compared 2 external findings with Melian's 1 at [0-9a-f]{12}\.$/m);
+		expect(result.stdout).toContain(`Matched:\n  ${id}\n`);
+		expect(result.stdout).toMatch(/^ {4}[0-9a-f]{16} {2}codex {2}src\/user\.ts:8$/m);
+		expect(result.stdout).toMatch(
+			/^External only:\n {2}[0-9a-f]{16} {2}claude-code {2}src\/user\.ts:30 {2}Somewhere else$/m,
+		);
+		const again = melian(repo, ["compare", range], env);
+		expect(again).toMatchObject({ status: 0, stderr: "" });
+		expect(again.stdout).toBe(result.stdout.split("\n").slice(2).join("\n"));
+	});
+
 	it("lists a Melian finding no reviewer raised, with its ID, severity, rule, and place", () => {
 		const { repo, files, env, id } = reviewed();
 		const path = codexFile(files, [codexFinding(30, "Somewhere else")]);
