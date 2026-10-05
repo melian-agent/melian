@@ -51,7 +51,7 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { DecisionDocument } from "../src/decisions.ts";
+import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
@@ -558,6 +558,37 @@ describe("triage", () => {
 	it("refuses a decider the harness was not opened with", async () => {
 		await open();
 		await expect(review({ decider: choosing("quick") })).rejects.toMatchObject({ code: "notInstalled" });
+	});
+});
+
+describe("a decider that never answers", () => {
+	it("fails closed at the decision timeout, and every lens runs at its default level", async () => {
+		await reviewHarness?.close(context);
+		const registry = createReviewRegistry();
+		registry.install(
+			decisionExtension(
+				{
+					name: "silent",
+					calibrated: false,
+					decide: () => new Promise<never>(() => setInterval(() => {}, 60_000)),
+				},
+				50,
+			),
+		);
+		harness = await openHarness(createMemoryStorage(), {
+			models: fake.models,
+			registry,
+			settings: { retry: { enabled: false } },
+		});
+		await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+
+		const reviewed = await review({
+			decider: { name: "silent", calibrated: false, decide: async () => ({ answers: [] }) },
+		});
+
+		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
+		expect(lensRecord(reviewed)!.reason).toContain("triage failed, so it ran at its default level");
 	});
 });
 

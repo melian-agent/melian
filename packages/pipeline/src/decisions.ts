@@ -51,7 +51,7 @@ const maxFailure = 200;
 // One question set's decision on one revision. The decider is asked in the phase and its answer committed with the
 // task's outcome, so a crash before the commit asks again and a repeat call attaches to the task: replay safe. A
 // decider that throws, times out, or answers what was not asked is recorded as a failure, and the caller fails closed.
-export function decisionTask(decider: Decider) {
+export function decisionTask(decider: Decider, timeout = decisionTimeout) {
 	return defineTask<DecisionTaskInput, { phase: "decide" }, DecisionResult>({
 		name: decisionTaskName,
 		version: 1,
@@ -59,10 +59,23 @@ export function decisionTask(decider: Decider) {
 		phases: {
 			decide: async (task, runtime, context) => {
 				const { root, revision, request } = task.input;
-				const signal = AbortSignal.any([runtime.signal, AbortSignal.timeout(decisionTimeout)]);
+				const timedOut = AbortSignal.timeout(timeout);
+				const signal = AbortSignal.any([runtime.signal, timedOut]);
+				// A decider that ignores its signal would otherwise hold the task open past the timeout.
+				const expired = new Promise<never>((_, reject) => {
+					signal.addEventListener(
+						"abort",
+						() =>
+							reject(
+								timedOut.aborted ? new Error(`the decider did not answer within ${timeout} ms`) : signal.reason,
+							),
+						{ once: true },
+					);
+				});
+				expired.catch(() => undefined);
 				let answer: Pick<StoredEntry, "decision" | "failure">;
 				try {
-					const decided = await decider.decide(request as DecisionRequest, signal);
+					const decided = await Promise.race([decider.decide(request as DecisionRequest, signal), expired]);
 					answer = { decision: Decision.parse(request as DecisionRequest, decided, decider).toJSON() };
 				} catch (error) {
 					if (runtime.signal.aborted) throw error;
@@ -91,10 +104,11 @@ export function decisionTask(decider: Decider) {
 /**
  * The extension a review harness needs to decide through `decider`: the decision task, which asks it and stores the
  * whole distribution. `ReviewHarness.open` installs it when given a decider; install it again after a restart, so an
- * interrupted decision resumes.
+ * interrupted decision resumes. `timeout`, in milliseconds, is how long the decider may take before the decision fails
+ * closed; tests shorten it.
  */
-export function decisionExtension(decider: Decider) {
-	return defineExtension({ name: decisionTaskName, tasks: [decisionTask(decider)] });
+export function decisionExtension(decider: Decider, timeout?: number) {
+	return defineExtension({ name: decisionTaskName, tasks: [decisionTask(decider, timeout)] });
 }
 
 /** A question set's decision on a revision as stored: the task that made it, and the decision or why there is none. */
