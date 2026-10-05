@@ -141,7 +141,8 @@ export interface BudgetEnd {
 
 /**
  * What one check of a review did, such as a lens, a static tool, or a guardrail. `reason` says why a check was skipped
- * or failed, for the author; `error` carries the failure's own message, for the maintainer.
+ * or failed, or, for a lens that ran, which hand-offs its instructions left out for size, for the author; `error`
+ * carries the failure's own message, for the maintainer.
  */
 export interface CheckRecord {
 	/** The check's name as the tiers name it, such as `lens.security` or `static.biome`. */
@@ -495,8 +496,8 @@ export class Verdict {
 		const lenses = (this.ran ?? []).filter((check) => check.level !== undefined);
 		if (lenses.length > 0) {
 			const checks = lenses.map(
-				({ name, level, budgetEnded }) =>
-					`  ${visibleText(name)}  ${level}${budgetEnded === undefined ? "" : `, ended and counted: ${describeBudgetEnd(budgetEnded)}`}`,
+				({ name, level, budgetEnded, reason }) =>
+					`  ${visibleText(name)}  ${level}${budgetEnded === undefined ? "" : `, ended and counted: ${describeBudgetEnd(budgetEnded)}`}${reason === undefined ? "" : `; ${prose(reason, "    ")}`}`,
 			);
 			parts.push([`${plural(lenses.length, "lens", "lenses")} ran:`, ...checks].join("\n"));
 		}

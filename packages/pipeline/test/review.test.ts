@@ -1176,39 +1176,283 @@ describe("reviewChangeset", () => {
 		const handoffs = prompt.slice(prompt.indexOf("## Neighbouring lenses"), prompt.indexOf("## Rules, severities"));
 		expect(handoffs.split("\n").filter((line) => line.startsWith("- "))).toEqual([
 			"- `contracts`: A change to a function's declared contract, its signature, types, return shape, or thrown errors, and the callers it breaks.",
-			"- `removed-behaviour`: A cleanup, error path, or ordering the change deleted or moved with nothing in its place. Leave a deleted throw, rethrow, or error branch to it, even when a `catch` the change wrote now swallows the failure; `unhandled-error` keeps a failure that a line the change wrote drops or swallows.",
+			"- `removed-behaviour`: A cleanup, error path, or ordering the change deleted or moved with nothing in its place. Leave a deleted rethrow or error branch to it, even when a `catch` the change wrote now swallows the failure; `unhandled-error` keeps a failure that a line the change wrote drops or swallows. A deleted guard, a check that refused an input before an operation ran, is yours as well as its, so report what the input it refused now does.",
 			"- `trust-boundary`: A value an author or outside party controls that reaches a sink unescaped, makes a check pass, or carries a secret out.",
 			"- `tests`: A defect in a test.",
 		]);
 	});
 
-	it("keeps the defects and standards of a neighbour whose paths leave out some of its files", async () => {
-		writeFiles(repo, {
-			"src/report.ts": lines('import { managerName } from "./user.ts";', "export const line = 1;"),
-		});
-		gitIn(repo, "commit", "--quiet", "--all", "-m", "edit the report too");
+	describe("hands a defect to a neighbour in the files the neighbour reviews", () => {
 		const backlog = ["trust-boundary", "removed-behaviour", "tests", "conventions"].map(
 			(name) => `You are the ${name} reviewer`,
 		);
-		const requests = scriptConversations(
-			fake,
-			[correctness, contracts, ...backlog].map((match) => ({ match, replies: [fauxAssistantMessage("Done.")] })),
-		);
-		const narrow = { paths: ["src/user.ts"] };
+		const everyLens = () =>
+			scriptConversations(
+				fake,
+				[correctness, contracts, ...backlog].map((match) => ({ match, replies: [fauxAssistantMessage("Done.")] })),
+			);
+		// Each hand-off entry of the system prompt: its name, then the files it lists, or none for every file.
+		const handoffsOf = (messages: readonly Message[]): Record<string, string[] | "every"> => {
+			const prompt = systemPromptOf(messages);
+			const section = prompt.slice(prompt.indexOf("## Neighbouring lenses"), prompt.indexOf("## Rules, severities"));
+			const entries = section.split(/^- /m).slice(1);
+			return Object.fromEntries(
+				entries.map((entry) => {
+					const name = /^`([a-z-]+)`/.exec(entry)![1]!;
+					const [listing] = quoted(entry, nonceOf(messages), "listing");
+					return [name, listing === undefined ? "every" : listing.split("\n")];
+				}),
+			);
+		};
 
-		await reviewed({
-			config: { ...config, tiers: defaultConfig.tiers, lenses: { "trust-boundary": narrow, conventions: narrow } },
+		beforeEach(() => {
+			writeFiles(repo, {
+				"src/report.ts": lines('import { managerName } from "./user.ts";', "export const line = 1;"),
+			});
+			gitIn(repo, "commit", "--quiet", "--all", "-m", "edit the report too");
 		});
 
-		const prompt = systemPromptOf(requests[correctness]![0]!);
-		const handoffs = prompt.slice(prompt.indexOf("## Neighbouring lenses"), prompt.indexOf("## Rules, severities"));
-		expect(
-			handoffs.split("\n").flatMap((line) => (line.startsWith("- ") ? [line.slice(0, line.indexOf(":"))] : [])),
-		).toEqual(["- `contracts`", "- `removed-behaviour`", "- `tests`"]);
-		expect(prompt).toContain(
-			"The repository's own conventions. A change that breaks one is a finding; cite the file.",
-		);
-		expect(prompt).not.toContain("the conventions lens's to report");
+		it("lists the files of a neighbour whose paths leave out some of its own, quoted as the change's data", async () => {
+			const requests = everyLens();
+			const narrow = { paths: ["src/user.ts"] };
+
+			await reviewed({
+				config: {
+					...config,
+					tiers: defaultConfig.tiers,
+					lenses: { "trust-boundary": narrow, conventions: narrow },
+				},
+			});
+
+			const [first] = requests[correctness]!;
+			expect(handoffsOf(first!)).toEqual({
+				contracts: "every",
+				"removed-behaviour": "every",
+				"trust-boundary": ["src/user.ts"],
+				tests: "every",
+			});
+			const prompt = systemPromptOf(first!);
+			expect(prompt).toContain(
+				"- `trust-boundary`, in these files only: A value an author or outside party controls",
+			);
+			expect(prompt).toContain("report them under your own rules in every other file.");
+			// The standards stay this lens's own unless conventions reviews every one of its files.
+			expect(prompt).toContain(
+				"The repository's own conventions. A change that breaks one is a finding; cite the file.",
+			);
+			expect(prompt).not.toContain("the conventions lens's to report");
+		});
+
+		it("renders the short form, with no list, for a neighbour that reviews every file", async () => {
+			const requests = everyLens();
+
+			await reviewed({ config: { ...config, tiers: defaultConfig.tiers } });
+
+			const [first] = requests[correctness]!;
+			expect(handoffsOf(first!)).toEqual({
+				contracts: "every",
+				"removed-behaviour": "every",
+				"trust-boundary": "every",
+				tests: "every",
+			});
+			expect(systemPromptOf(first!)).not.toContain("these files only");
+		});
+
+		it("renders no hand-off to a neighbour that reviews none of its files", async () => {
+			const requests = everyLens();
+
+			await reviewed({
+				config: {
+					...config,
+					tiers: defaultConfig.tiers,
+					lenses: { correctness: { paths: ["src/user.ts"] }, "trust-boundary": { paths: ["src/report.ts"] } },
+				},
+			});
+
+			expect(requests["You are the trust-boundary reviewer"]).toHaveLength(1);
+			expect(handoffsOf(requests[correctness]![0]!)).toEqual({
+				contracts: "every",
+				"removed-behaviour": "every",
+				tests: "every",
+			});
+		});
+
+		it("leaves out a neighbour's hand-off past 40 files, and says so on the lens's record", async () => {
+			const many = (count: number) =>
+				Object.fromEntries(
+					Array.from({ length: count }, (_, index) => [
+						`src/many/${index}.ts`,
+						lines(`export const n = ${index};`),
+					]),
+				);
+			const narrow = { "trust-boundary": { paths: ["src/many/**"] } };
+			for (const [count, listed] of [
+				[40, true],
+				[41, false],
+			] as const) {
+				writeFiles(repo, many(count));
+				gitIn(repo, "add", "--all");
+				gitIn(repo, "commit", "--quiet", "-m", `${count} files`);
+				const requests = everyLens();
+
+				const { verdict } = await reviewed({ config: { ...config, tiers: defaultConfig.tiers, lenses: narrow } });
+
+				const entries = handoffsOf(requests[correctness]!.at(-1)!);
+				const ran = verdict.ran?.find((check) => check.name === "lens.correctness");
+				if (listed) {
+					expect(entries["trust-boundary"]).toHaveLength(40);
+					expect(ran?.reason).toBeUndefined();
+				} else {
+					expect(entries["trust-boundary"]).toBeUndefined();
+					expect(entries.contracts).toBe("every");
+					expect(ran?.reason).toBe(
+						"kept the defects it hands to `trust-boundary`, whose files here would list past 40 files or 4 KiB",
+					);
+					expect(verdict.render()).toContain(
+						"lens.correctness  careful; kept the defects it hands to `trust-boundary`",
+					);
+					// contracts hands nothing to trust-boundary, so its instructions left nothing out.
+					expect(verdict.ran?.find((check) => check.name === "lens.contracts")?.reason).toBeUndefined();
+				}
+			}
+		});
+
+		it("keeps the note on a lens its budget ended when its level counts it as run, and never on an ended record", async () => {
+			writeFiles(
+				repo,
+				Object.fromEntries(
+					Array.from({ length: 41 }, (_, index) => [`src/many/${index}.ts`, lines(`export const n = ${index};`)]),
+				),
+			);
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "41 files");
+			const narrow = {
+				...config,
+				tiers: defaultConfig.tiers,
+				lenses: { "trust-boundary": { paths: ["src/many/**"] } },
+			};
+			const note =
+				"kept the defects it hands to `trust-boundary`, whose files here would list past 40 files or 4 KiB";
+			for (const ended of ["count", undefined] as const) {
+				const spent = lenses.map((lens) =>
+					lens.name === "correctness"
+						? withBudget(lens, { tokens: 1, ...(ended === undefined ? {} : { ended }) })
+						: lens,
+				);
+				scriptConversations(fake, [
+					{
+						match: correctness,
+						replies: [call("report_finding", nullDeref), fauxAssistantMessage("Never asked.")],
+					},
+					...[contracts, ...backlog].map((match) => ({ match, replies: [fauxAssistantMessage("Done.")] })),
+				]);
+				await harness.close(context);
+				harness = await openHarness(createMemoryStorage(), {
+					models: fake.models,
+					registry: createReviewRegistry(),
+					settings: { retry: { enabled: false } },
+				});
+				await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+
+				const { verdict } = await reviewed({ lenses: spent, config: narrow });
+
+				if (ended === "count") {
+					expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toMatchObject({
+						status: "ran",
+						budgetEnded: { budget: "tokens", limit: 1 },
+						reason: note,
+					});
+				} else {
+					const record = verdict.notRun.find((check) => check.name === "lens.correctness");
+					expect(record).toMatchObject({ status: "ended", budgetEnded: { budget: "tokens", limit: 1 } });
+					expect(record?.reason).toBeUndefined();
+				}
+			}
+		});
+
+		it("counts a neighbour selected through a file's old path for its head path", async () => {
+			writeFiles(repo, {
+				"lib/report.ts": lines('import { managerName } from "./user.ts";', "export const line = managerName(me);"),
+			});
+			gitIn(repo, "rm", "--quiet", "src/report.ts");
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "move the report out of src");
+			const requests = everyLens();
+
+			await reviewed({
+				config: { ...config, tiers: defaultConfig.tiers, lenses: { "trust-boundary": { paths: ["src/**"] } } },
+			});
+
+			const [first] = requests[correctness]!;
+			const [listing] = quoted(
+				textOf(first!.find((message) => message.role === "user")!),
+				nonceOf(first!),
+				"listing",
+			);
+			expect(listing).toContain("renamed src/report.ts -> lib/report.ts");
+			// Its paths leave out lib/report.ts, which it covers through src/report.ts.
+			expect(handoffsOf(first!)["trust-boundary"]).toBe("every");
+		});
+
+		it("counts a neighbour selected through a file's head path for its old path", async () => {
+			writeFiles(repo, {
+				"lib/report.ts": lines('import { managerName } from "./user.ts";', "export const line = managerName(me);"),
+			});
+			gitIn(repo, "rm", "--quiet", "src/report.ts");
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "move the report out of src");
+			const requests = everyLens();
+			const lenses = { "trust-boundary": { paths: ["src/user.ts", "lib/**"] } };
+
+			await reviewed({ config: { ...config, tiers: defaultConfig.tiers, lenses } });
+
+			// Its paths leave out src/report.ts, the old path of the lib/report.ts it covers.
+			expect(handoffsOf(requests[correctness]![0]!)["trust-boundary"]).toBe("every");
+		});
+
+		it("hands Melian's own correctness defects to durability on durability's files alone", async () => {
+			const own = (path: string) =>
+				readFileSync(fileURLToPath(new URL(`../../../${path}`, import.meta.url)), "utf8");
+			const ownLenses = ["durability", "correctness", "removed-behaviour"].map(
+				(name) => `.melian/lenses/${name}/LENS.md`,
+			);
+			rmSync(repo, { recursive: true, force: true });
+			repo = baseAndHead(
+				{
+					"melian.yaml": own("melian.yaml"),
+					...Object.fromEntries(ownLenses.map((path) => [path, own(path)])),
+					"packages/pipeline/src/notes.ts": lines("export const notes = 1;"),
+					"docs/notes.md": lines("Notes."),
+				},
+				{
+					"packages/pipeline/src/notes.ts": lines("export const notes = 2;"),
+					"docs/notes.md": lines("Notes, revised."),
+				},
+			);
+			const base = { kind: "revision", commit: gitIn(repo, "rev-parse", "main") } as const;
+			const { revision } = await Changeset.resolve(repo, "main...feature");
+			const { config: melian } = await loadConfig(repo, base, ".");
+			const requests = scriptConversations(
+				fake,
+				[...backlog, correctness, contracts, "You are the durability reviewer"].map((match) => ({
+					match,
+					replies: [fauxAssistantMessage("Done.")],
+				})),
+			);
+
+			await reviewed({
+				config: { ...melian, models: config.models },
+				lenses: await Lens.load(
+					repo,
+					base,
+					revision.files.map((file) => file.path),
+				),
+			});
+
+			for (const lens of [correctness, "You are the removed-behaviour reviewer"])
+				expect(handoffsOf(requests[lens]![0]!).durability).toEqual(["packages/pipeline/src/notes.ts"]);
+			expect(handoffsOf(requests["You are the durability reviewer"]![0]!)).toEqual({ correctness: "every" });
+		});
 	});
 
 	it("holds a built-in lens at careful to the level's own limit of 30 tool calls", async () => {

@@ -1,0 +1,175 @@
+{
+  "correctness": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "packages/core/src/log-tail.ts"
+          },
+          "expectToolResult": "return lines.slice(lines.length - count);"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "packages/core/src/log-tail.ts",
+            "line": 7,
+            "rule": "wrong-result",
+            "severity": "P2",
+            "explanation": {
+              "what": "tail returns fewer lines than the log holds when the log is shorter than count.",
+              "why": "The change dropped Math.max(0, ...), so lines.length - count goes negative and slice counts from the end.",
+              "fix": "Restore lines.slice(Math.max(0, lines.length - count))."
+            },
+            "failureScenario": "tail(\"a\\nb\\nc\", 5) computes lines.slice(3 - 5), that is slice(-2), and returns [\"b\", \"c\"], where the doc comment says a log shorter than count lines comes back whole as [\"a\", \"b\", \"c\"].",
+            "evidence": [
+              {
+                "file": "packages/core/src/log-tail.ts",
+                "line": 7,
+                "role": "cause"
+              },
+              {
+                "file": "packages/core/src/log-tail.ts",
+                "line": 2,
+                "endLine": 3,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "recorded finding"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ],
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "trust-boundary": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "removed-behaviour": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "packages/core/src/tail.ts",
+            "revision": "base"
+          },
+          "expectToolResult": "Math.max(0, lines.length - count)"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "packages/core/src/log-tail.ts",
+            "line": 7,
+            "rule": "dropped-guard",
+            "severity": "P2",
+            "explanation": {
+              "what": "The rename deleted the bound that kept the slice start at 0 or above.",
+              "why": "The bound held the doc comment's promise that a log shorter than count lines comes back whole, and nothing in log-tail.ts holds it now.",
+              "fix": "Restore Math.max(0, lines.length - count)."
+            },
+            "failureScenario": "tail(\"a\\nb\\nc\", 5) used to clamp the start to 0 and return all three lines; with the clamp deleted it returns [\"b\", \"c\"], breaking the doc comment's promise that a log shorter than count lines comes back whole.",
+            "evidence": [
+              {
+                "file": "packages/core/src/tail.ts",
+                "line": 7,
+                "role": "cause",
+                "revision": "base"
+              },
+              {
+                "file": "packages/core/src/log-tail.ts",
+                "line": 7,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "recorded finding"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ],
+  "tests": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "conventions": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "durability": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "packages/pipeline/src/lens-run.ts",
+            "revision": "base"
+          },
+          "expectToolResult": "export type LensResult = Record<string, LensOutcome>;"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "packages/pipeline/src/lens-run.ts",
+            "line": 7,
+            "rule": "stored-shape",
+            "severity": "P1",
+            "explanation": {
+              "what": "The lens task's result changes shape while the task keeps version 1.",
+              "why": "Pi Durable never migrates a finished task's result, and a repeat review attaches to the lens task an older Melian finished, so failedLenses reads the old object as an array.",
+              "fix": "Give the new shape a task version of its own and read both shapes in failedLenses, or keep the record."
+            },
+            "failureScenario": "Melian before this change reviews head H and stores lens task T's result as { \"correctness@v1\": { status: \"done\" } }. After the upgrade, a repeat review of H attaches to T, and failedLenses calls outcome.result.flatMap on that stored object, which throws TypeError: outcome.result.flatMap is not a function, so every repeat review of a head reviewed before the upgrade fails.",
+            "evidence": [
+              {
+                "file": "packages/pipeline/src/lens-run.ts",
+                "line": 7,
+                "role": "cause"
+              },
+              {
+                "file": "packages/pipeline/src/lens-run.ts",
+                "line": 28,
+                "role": "context"
+              },
+              {
+                "file": "packages/pipeline/src/lens-run.ts",
+                "line": 14,
+                "role": "context"
+              }
+            ]
+          },
+          "expectToolResult": "recorded finding"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 finding."
+    }
+  ]
+}

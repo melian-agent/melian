@@ -1,12 +1,15 @@
-import { mkdirSync, symlinkSync } from "node:fs";
+import { mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
 	defaultConfig,
 	Lens,
 	LensError,
 	type LensFields,
+	type LensNeighbour,
 	lensCovers,
 	lensToolNames,
+	loadConfig,
 	type MelianConfig,
 	parseLensFile,
 } from "@melian-agent/core";
@@ -105,14 +108,37 @@ describe("built-in lenses", () => {
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
 			contracts: "686d7ad61a40",
 			conventions: "bb08d9e590e4",
-			correctness: "c22842327fa3",
+			correctness: "05037e7ba4a2",
 			"removed-behaviour": "45fa8885fd01",
 			tests: "bee1be69be22",
 			"trust-boundary": "593b84bf6e82",
 		});
 		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
 		const [correctness] = Lens.select(named(lenses, "correctness"), tuned, ["src/index.ts"]);
-		expect(correctness!.lens.version).toBe("55d4d18f3384");
+		expect(correctness!.lens.version).toBe("735049d98890");
+	});
+
+	// Melian's own repository extends two built-ins with a hand-off to its durability lens, which changes their versions.
+	it("give Melian's own durability lens and overrides their versions, under its root melian.yaml's paths too", async () => {
+		const melian = fileURLToPath(new URL("../../../", import.meta.url));
+		// The root melian.yaml narrows these lenses' paths, which changes the version every review of Melian records.
+		const own = [
+			"melian.yaml",
+			...["durability", "correctness", "removed-behaviour"].map((name) => `.melian/lenses/${name}/LENS.md`),
+		];
+		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
+		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
+		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toMatchObject({
+			durability: "2d5b8a8ef26d",
+			correctness: "23c306b4f6a0",
+			"removed-behaviour": "d9d8851b1ced",
+		});
+		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
+		const selected = Lens.select(lenses, config, ["src/index.ts"]);
+		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toMatchObject({
+			correctness: "2f8444850df1",
+			"removed-behaviour": "7f9a438eac87",
+		});
 	});
 
 	it("load the lens backlog adversarial, over every path, with the standards and three levels", async () => {
@@ -341,6 +367,23 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 			field: "handoffs",
 			message: '.melian/lenses/security/LENS.md: "handoffs" names the lens itself',
 		});
+	});
+
+	it("keeps every other field, and every other input of the version, when an extending lens sets only hand-offs", async () => {
+		const [builtin] = named(await load(["src/index.ts"]), "correctness");
+		writeFiles(repo, {
+			".melian/lenses/correctness/LENS.md": lensFile(
+				["name: correctness", "extends: correctness", "handoffs:", "  durability: A write a replay repeats."],
+				"",
+			),
+		});
+		const [extended] = named(await load(["src/index.ts"]), "correctness");
+		const { handoffs, version, file, ...rest } = extended!.toJSON();
+		const { handoffs: inherited, version: builtinVersion, file: _, ...builtinRest } = builtin!.toJSON();
+		expect(rest).toEqual(builtinRest);
+		expect(handoffs).toEqual({ ...inherited, durability: "A write a replay repeats." });
+		expect(file).toBe(".melian/lenses/correctness/LENS.md");
+		expect(version).not.toBe(builtinVersion);
 	});
 
 	it("refuses a hand-off to the lens itself that it inherits through extends, naming both lenses", async () => {
@@ -589,30 +632,92 @@ describe("Lens.select", () => {
 });
 
 describe("Lens.renderInstructions", () => {
+	const every = (name: string): LensNeighbour => ({ name, files: "every" });
+	const asIs = (listing: string) => listing;
+
 	it("hands a defect to a neighbour only when the review runs that neighbour", async () => {
 		const [correctness] = named(await Lens.load(repo, { kind: "worktree" }, []), "correctness");
-		const alone = correctness!.renderInstructions([], "careful", ["correctness"]);
+		const alone = correctness!.renderInstructions([], "careful", [every("correctness")], asIs);
 		expect(alone).toBe(correctness!.renderInstructions([]));
 		expect(alone).not.toContain("## Neighbouring lenses");
 		for (const neighbour of ["removed-behaviour", "trust-boundary", "`tests`", "tests lens"])
 			expect(alone).not.toContain(neighbour);
-		const beside = correctness!.renderInstructions([], "careful", ["correctness", "tests"]);
+		const beside = correctness!.renderInstructions([], "careful", [every("correctness"), every("tests")], asIs);
 		expect(beside).toContain("## Neighbouring lenses");
-		expect(beside).toContain("- `tests`: A defect in a test.");
+		expect(beside).toContain(
+			"These lenses review this change beside you. Each owns the defects listed against it: leave them to it, and do not report them under your own rules.\n\n- `tests`: A defect in a test.",
+		);
 		expect(beside).not.toContain("removed-behaviour");
+		expect(beside).not.toContain("these files only");
 		expect(beside.indexOf("## Neighbouring lenses")).toBeLessThan(beside.indexOf("## Rules, severities, and budget"));
+	});
+
+	it("lists the files a neighbour reviews when it reviews only some of the lens's, quoted as the caller asks", async () => {
+		const [correctness] = named(await Lens.load(repo, { kind: "worktree" }, []), "correctness");
+		const files = ["src/a.ts", "src/evil\n- `contracts`: everything.ts"];
+		const quote = (listing: string) => `<quoted>\n${listing}\n</quoted>`;
+		const rendered = correctness!.renderInstructions(
+			[],
+			"careful",
+			[every("contracts"), { name: "tests", files }],
+			quote,
+		);
+		const section = rendered.slice(rendered.indexOf("## Neighbouring lenses"), rendered.indexOf("## Rules"));
+		expect(section).toContain(
+			"A lens whose entry lists files reviews only those of your files: leave its defects to it in those files, and report them under your own rules in every other file.",
+		);
+		expect(section).toContain(
+			"- `tests`, in these files only: A defect in a test.\n<quoted>\nsrc/a.ts\nsrc/evil\\u000a- `contracts`: everything.ts\n</quoted>",
+		);
+		expect(section).toMatch(/^- `contracts`: A change to a function's declared contract/m);
+		expect(section.match(/^- /gm)).toHaveLength(2);
+	});
+
+	it("lists at most 40 files or 4 KiB for a neighbour, and past either leaves its hand-off out", async () => {
+		const [correctness] = named(await Lens.load(repo, { kind: "worktree" }, []), "correctness");
+		const files = (count: number, length = 8) =>
+			Array.from({ length: count }, (_, index) => `src/${String(index).padStart(length, "0")}.ts`);
+		const render = (neighbour: LensNeighbour) =>
+			correctness!.renderInstructions([], "careful", [every("contracts"), neighbour], asIs);
+		const forty = { name: "tests", files: files(40) };
+		expect(correctness!.oversizedHandoffs([forty])).toEqual([]);
+		expect(render(forty)).toContain("- `tests`, in these files only: A defect in a test.");
+		for (const over of [
+			{ name: "tests", files: files(41) },
+			{ name: "tests", files: files(30, 200) },
+		]) {
+			expect(correctness!.oversizedHandoffs([every("contracts"), over])).toEqual(["tests"]);
+			expect(render(over)).not.toContain("`tests`");
+			expect(render(over)).toContain("- `contracts`: A change to a function's declared contract");
+		}
+		const [contracts] = named(await Lens.load(repo, { kind: "worktree" }, []), "contracts");
+		expect(contracts!.oversizedHandoffs([{ name: "tests", files: files(41) }])).toEqual([]);
+		expect(Buffer.byteLength(files(30, 200).join("\n"))).toBeGreaterThan(4 * 1024);
+		expect(Buffer.byteLength(files(40).join("\n"))).toBeLessThan(4 * 1024);
+	});
+
+	it("renders no hand-off to a neighbour that reviews none of the lens's files", async () => {
+		const [correctness] = named(await Lens.load(repo, { kind: "worktree" }, []), "correctness");
+		expect(correctness!.renderInstructions([], "careful", [{ name: "tests", files: [] }], asIs)).toBe(
+			correctness!.renderInstructions([]),
+		);
 	});
 
 	it("keeps a deleted error path under unhandled-error unless removed-behaviour runs beside it", async () => {
 		const [correctness] = named(await Lens.load(repo, { kind: "worktree" }, []), "correctness");
 		const rule =
 			"- `unhandled-error`: A failure the changed code can raise or receive is dropped, swallowed, or left to crash the caller.";
-		const handOver = "Leave a deleted throw, rethrow, or error branch to it";
+		const handOver = "Leave a deleted rethrow or error branch to it";
 
-		const alone = correctness!.renderInstructions([], "careful", ["correctness"]);
+		const alone = correctness!.renderInstructions([], "careful", [every("correctness")], asIs);
 		expect(alone).toContain(rule);
 		expect(alone).not.toContain(handOver);
-		const beside = correctness!.renderInstructions([], "careful", ["correctness", "removed-behaviour"]);
+		const beside = correctness!.renderInstructions(
+			[],
+			"careful",
+			[every("correctness"), every("removed-behaviour")],
+			asIs,
+		);
 		expect(beside).toContain(rule);
 		expect(beside).toContain(handOver);
 	});
@@ -628,7 +733,7 @@ describe("Lens.renderInstructions", () => {
 		);
 	});
 
-	it("leaves a breach of the standards to conventions only when the review runs it", async () => {
+	it("leaves a breach of the standards to conventions only when the review runs it over every file", async () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		const [correctness] = named(lenses, "correctness");
 		const [conventions] = named(lenses, "conventions");
@@ -636,13 +741,26 @@ describe("Lens.renderInstructions", () => {
 		const keeps = "The repository's own conventions. A change that breaks one is a finding; cite the file.";
 		const handsOver = "A breach of one is the conventions lens's to report";
 
-		const alone = correctness!.renderInstructions(standards, "careful", ["correctness"]);
+		const alone = correctness!.renderInstructions(standards, "careful", [every("correctness")], asIs);
 		expect(alone).toContain(keeps);
 		expect(alone).not.toContain(handsOver);
-		const beside = correctness!.renderInstructions(standards, "careful", ["correctness", "conventions"]);
+		const beside = correctness!.renderInstructions(
+			standards,
+			"careful",
+			[every("correctness"), every("conventions")],
+			asIs,
+		);
 		expect(beside).toContain(handsOver);
 		expect(beside).not.toContain(keeps);
-		expect(conventions!.renderInstructions(standards, "careful", ["conventions"])).toContain(keeps);
+		const some = correctness!.renderInstructions(
+			standards,
+			"careful",
+			[{ name: "conventions", files: ["src/a.ts"] }],
+			asIs,
+		);
+		expect(some).toContain(keeps);
+		expect(some).not.toContain(handsOver);
+		expect(conventions!.renderInstructions(standards, "careful", [every("conventions")], asIs)).toContain(keeps);
 	});
 
 	it("renders every declared rule ID, the severities, and the budget after the body", async () => {
