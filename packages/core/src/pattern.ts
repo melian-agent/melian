@@ -466,13 +466,16 @@ export function compilePattern(source: string, options: { readonly ignoreCase?: 
 	}
 }
 
+// Unlike Node's `path.matchesGlob`, a wildcard matches a dotfile, and a newline too: git allows one in a file name, and
+// a wildcard that stopped at it would let a head name a file so that no lens or guardrail selected it.
 const notSlash: Node = { kind: "char", test: (code) => code !== 47 };
 
 /**
  * Compiles a path glob that must match a whole repository-relative path: `*` and `?` stay within one segment, `**`
  * crosses segments, and `**` followed by `/` matches zero or more whole directories, so `**` + `/*.ts` matches `a.ts`
- * and `src/a.ts`. Every other character is literal. Throws {@link Refused} for a glob past {@link maxProgram} steps;
- * `loadConfig` compiles every glob when it reads the file, so a review never meets one.
+ * and `src/a.ts`. Every wildcard matches a name starting with a dot and a newline in a name. Every other character is
+ * literal. Throws {@link Refused} for a glob past {@link maxProgram} steps; `loadConfig` and `Lens.load` compile every
+ * glob when they read the file, so a review never meets one.
  */
 export function compileGlob(glob: string): LinearPattern {
 	let compiled = globs.get(glob);
@@ -483,7 +486,8 @@ export function compileGlob(glob: string): LinearPattern {
 	return compiled;
 }
 
-// Globs come from configuration, so there are few; a guardrail matches each against every touched path.
+// Not bounded by configuration: the analyser also compiles globs from the head's biome.json, and a `/**` variant of each,
+// and guardrails compile `workspaces` globs from its package.json, so the head fills this within one process.
 const globs = new Map<string, LinearPattern>();
 
 function buildGlob(glob: string): LinearPattern {

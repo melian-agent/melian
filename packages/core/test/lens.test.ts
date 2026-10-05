@@ -542,6 +542,27 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		});
 	});
 
+	it.each([
+		["src/*.{ts,js}", "; globs do not support braces or character classes, so list each glob"],
+		["[ab].ts", "; globs do not support braces or character classes, so list each glob"],
+		["src/", ", which matches no file; write src/**"],
+	])("refuses the glob %s, which would select nothing, when the lens loads", async (glob, rest) => {
+		writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile([...security, `paths: ["${glob}"]`]) });
+		const error = await rejection(load(["src/index.ts"]), LensError);
+		expect(error).toMatchObject({ code: "invalidValue", field: "paths", file: ".melian/lenses/security/LENS.md" });
+		expect(error.message).toBe(`.melian/lenses/security/LENS.md: "paths" has ${glob}${rest}`);
+	});
+
+	it("refuses a glob past the matching engine's step limit when the lens loads", async () => {
+		const glob = `src/${"a".repeat(2_000)}`;
+		writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile([...security, `paths: ["!${glob}", "**"]`]) });
+		const error = await rejection(load(["src/index.ts"]), LensError);
+		expect(error).toMatchObject({ code: "invalidValue", field: "paths", file: ".melian/lenses/security/LENS.md" });
+		expect(error.message).toContain(
+			`"paths" has !${glob}, which is not a safe glob: the pattern compiles to more than`,
+		);
+	});
+
 	it("refuses a lens whose name differs from its directory", async () => {
 		writeFiles(repo, { ".melian/lenses/sec/LENS.md": lensFile(security) });
 		expect(await rejection(load(["src/index.ts"]), LensError)).toMatchObject({ code: "invalidValue", field: "name" });
@@ -599,6 +620,20 @@ describe("Lens.select", () => {
 		const forged = "src/evil\n- added src/forged.ts";
 		expect(Lens.select([lens({})], defaultConfig, [forged])).toHaveLength(1);
 		expect(Lens.select([lens({ paths: ["src/*.ts"] })], defaultConfig, ["src/evil\nname.ts"])).toHaveLength(1);
+	});
+
+	// Lens paths come from configuration and changed paths from the head. On a backtracking RegExp these took
+	// 164, 208, and 179 seconds.
+	it("selects over a crafted path in bounded time", () => {
+		for (const [glob, path] of [
+			["*a*a*a*a*a*b", "a".repeat(200)],
+			["**a**a**a**a**b", "a".repeat(400)],
+			["**a**a**a**a**b", "a/".repeat(400)],
+		] as const) {
+			const started = performance.now();
+			expect(Lens.select([lens({ paths: [glob] })], defaultConfig, [path])).toEqual([]);
+			expect(performance.now() - started).toBeLessThan(1000);
+		}
 	});
 
 	it("keeps a folder's lens to its folder", () => {

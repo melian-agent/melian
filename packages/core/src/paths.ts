@@ -73,3 +73,12 @@ export function anchorGlob(directory: string, glob: string): string | undefined 
 	if (anchored === ".." || anchored.startsWith("../")) return undefined;
 	return `${negated ? "!" : ""}${anchored}`;
 }
+
+// What is wrong with a glob the engine would read literally, as the words that follow `"<key>" has <glob>` in an error;
+// undefined when the glob is fine. Braces and character classes would match nothing, and so would a trailing `/`.
+export function globShapeProblem(glob: string): string | undefined {
+	if (/[{}[\]]/.test(glob)) return "; globs do not support braces or character classes, so list each glob";
+	// A gitignore habit: `secrets/` reads as the directory, but a glob matches whole paths.
+	if (glob.endsWith("/")) return `, which matches no file; write ${glob.replace(/\/+$/, "")}/**`;
+	return undefined;
+}
