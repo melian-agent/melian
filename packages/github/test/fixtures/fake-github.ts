@@ -40,6 +40,7 @@ export type FakeState = {
 	failReviews?: boolean;
 	// Set to make every reply fail, as GitHub does when it has an outage.
 	failReplies?: boolean;
+	failResolve?: boolean;
 	// Set to make every ledger write fail, as GitHub does when it has an outage.
 	failLedger?: boolean;
 	// Set to make /user refuse, as it does for an installation token.
@@ -119,7 +120,7 @@ export function fakeGitHub(
 			const query = body as { query: string; variables: { id?: string } };
 			if (query.query.includes("resolveReviewThread")) {
 				const id = Number(query.variables.id);
-				if (state.failReplies) return json({ message: "Server Error" }, 500);
+				if (state.failReplies || state.failResolve) return json({ message: "Server Error" }, 500);
 				state.resolvedThreads.push(id);
 				await afterWrite(call);
 				return json({ data: { resolveReviewThread: { thread: { id: String(id), isResolved: true } } } });

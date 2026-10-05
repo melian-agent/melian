@@ -628,6 +628,47 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.statuses.at(-1)).toMatchObject({ state: "failure", description: "3 findings, 1 blocking" });
 	});
 
+	it("resolves the thread again at the same head when an accepted edit's resolution failed", async () => {
+		const { fake, github, changeset, state } = await reviewedRevisionOne();
+		await publish(github, changeset);
+		pushRevisionTwo(repo);
+		const second = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries, trimmedGreeting));
+		await second.review;
+		moveTo(state, second.changeset);
+		state.failResolve = true;
+		await expect(publish(github, second.changeset)).rejects.toBeInstanceOf(PublishError);
+		expect(state.resolvedThreads).toEqual([]);
+		state.failResolve = false;
+
+		const result = await publish(github, second.changeset);
+
+		expect(result).toMatchObject({ replies: 1 });
+		expect(state.resolvedThreads).toHaveLength(1);
+	});
+
+	it("reads finding threads afresh for each publish", async () => {
+		const { fake, github, changeset, state } = await reviewedRevisionOne();
+		await publish(github, changeset);
+		const reads = () =>
+			state.calls.filter((call) => (call.body as { query?: string } | undefined)?.query?.includes("reviewThreads"))
+				.length;
+		pushRevisionTwo(repo);
+		const second = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries, trimmedGreeting));
+		await second.review;
+		moveTo(state, second.changeset);
+		await publish(github, second.changeset);
+		const afterSecond = reads();
+		expect(afterSecond).toBeGreaterThan(0);
+
+		pushRevisionThree(repo);
+		const third = await reviewScenario(repo, harness!, fake, lensScript(emptyName, nanRetries));
+		await third.review;
+		moveTo(state, third.changeset);
+		expect(await publish(github, third.changeset)).toMatchObject({ resolved: 1 });
+
+		expect(reads()).toBeGreaterThan(afterSecond);
+	});
+
 	it("replies for a pushed-over revision whose replies failed when the next one is published", async () => {
 		const { fake, github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);
