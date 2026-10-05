@@ -595,6 +595,13 @@ describe("codex-sandboxed.sh profile", () => {
 			expect(readdirSync(join(linked, "src")).filter((name) => /^head$/i.test(name))).toEqual([]);
 		});
 
+		it("cannot create a ref whose last component is head, a known limit of the HEAD deny", () => {
+			expect(failure(() => sh(linked, "git branch feature/head")).status).not.toBe(0);
+			expect(failure(() => sh(linked, "git tag head")).status).not.toBe(0);
+			sh(linked, "git branch feature/ahead");
+			sh(linked, "git branch -D feature/ahead");
+		});
+
 		it("cannot plant a repository through a commondir file or a HEAD file under refs, logs, or objects", () => {
 			sh(linked, "mkdir -p sub");
 			const common = `${main}/.git`;
