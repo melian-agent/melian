@@ -91,7 +91,18 @@ dynamic_rules() {
   for d in "${codex_names[@]}"; do codex_dirs+=("$codex/$d"); done
   local trees=("${persistent[@]}" "$common/objects" "$common/refs" "$common/logs" "$admin/logs" "$admin/sequencer" \
     ${codex_dirs[@]+"${codex_dirs[@]}"})
-  local env_files=("$worktree/.env") target tree
+  pi_dir=$(real "$pi_dir")
+  check_path "$pi_dir"
+  local tree
+  for tree in "$run" "${trees[@]}"; do
+    tree=$(real "$tree")
+    case $pi_dir in
+      "$tree" | "$tree"/*)
+        echo "codex-sandboxed: Pi's agent directory must lie outside the worktree and scratch: $pi_dir" >&2
+        exit 64 ;;
+    esac
+  done
+  local env_files=("$worktree/.env") target
   if [ "$(basename "$common")" = ".git" ]; then env_files+=("$(dirname "$common")/.env"); fi
   for p in "${env_files[@]}"; do
     [ -L "$p" ] || continue

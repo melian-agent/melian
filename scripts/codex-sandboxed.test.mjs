@@ -538,6 +538,32 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 		expect(text.slice(text.lastIndexOf("(deny file-read*\n"))).not.toMatch(/\(allow file-read/);
 	});
 
+	it("refuses a resolved Pi directory inside any writable subtree", () => {
+		const trees = [
+			linked,
+			scratch,
+			run,
+			...["objects", "refs", "logs"].map((name) => join(main, ".git", name)),
+			join(admin, "logs"),
+			join(admin, "sequencer"),
+			...codexNames.map((name) => join(home, ".codex", name)),
+		];
+		const store = join(linked, "pi-store");
+		const link = join(root, "pi-writable-link");
+		mkdirSync(store);
+		symlinkSync(store, link);
+		for (const directory of [...trees, ...trees.map((tree) => join(tree, "pi-store")), link]) {
+			const result = failure(() =>
+				execFileSync(script, ["--print-profile", linked, scratch, run], {
+					stdio: "pipe",
+					env: { ...env(), PI_CODING_AGENT_DIR: directory },
+				}),
+			);
+			expect(result.status, directory).toBe(64);
+			expect(result.stderr, directory).toContain("Pi's agent directory must lie outside the worktree and scratch");
+		}
+	});
+
 	it("refuses a Pi directory holding a quote, backslash, or newline before printing a profile", () => {
 		for (const name of ['pi"store', "pi\\store", "pi\nstore", "pi-store\n"]) {
 			try {
