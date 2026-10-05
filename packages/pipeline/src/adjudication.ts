@@ -158,6 +158,8 @@ export type AdjudicationTaskInput = {
 	producers: { check: string; version?: string }[];
 	// Recorded with the verdict, so publishing can refuse one that came from a range or from the working tree.
 	provenance: StoredProvenance;
+	// What the review ran, recorded in the commit that records the verdict.
+	details?: PublicationDetails;
 };
 
 const policyReview = "guardrail/policy-change-review";
@@ -223,6 +225,8 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 				const document = await tx.doc(VerdictDocument, root);
 				document.verdicts[revision] = structuredClone(verdict.toJSON());
 				document.provenance = { ...document.provenance, [revision]: structuredClone(task.input.provenance) };
+				if (task.input.details !== undefined)
+					document.details = { ...document.details, [revision]: structuredClone(task.input.details) };
 				document.decisions = { ...document.decisions, [revision]: { task: runtime.taskId, findingsVersion: seen } };
 				return { status: "terminal", outcome: { status: "completed", result: "recorded" } };
 			}, context);

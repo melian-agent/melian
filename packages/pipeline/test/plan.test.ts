@@ -33,6 +33,7 @@ import {
 	systemPromptOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { VerdictDocument } from "../src/adjudication.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
@@ -488,6 +489,11 @@ describe("a lens run a later review replaced", () => {
 		expect(entry?.lenses.every((lens) => lens.endsWith(` on ${heavy}`))).toBe(true);
 		const named = await harness.getTask(entry!.task as TaskId, context);
 		expect(named?.state).toMatchObject({ status: "terminal", outcome: { status: "completed" } });
+		const details = (await harness.snapshot(VerdictDocument, root.id, context))?.details?.[
+			revisionKey(changeset.revision)
+		];
+		expect(JSON.stringify(details)).toContain("heavy");
+		expect(JSON.stringify(details)).not.toContain("backup");
 	});
 
 	it.each([

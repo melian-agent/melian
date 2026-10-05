@@ -649,7 +649,8 @@ async function startAdjudication(
 	context: Context,
 ): Promise<TaskId<AdjudicationResult> | undefined> {
 	const root = await harness.root(context);
-	const key = JSON.stringify(input);
+	// The details ride with the verdict but are not part of what it was decided from.
+	const key = JSON.stringify({ ...input, details: undefined });
 	const selection = selectionOf(lenses);
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
@@ -873,6 +874,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				);
 	// Only the lenses this review ran count: one that configuration has since disabled or retiered leaves nothing behind.
 	const { manifest: accounted, producers } = account(manifest, lenses, lensResult, notes, options);
+	const checks = request.plan?.mark(accounted.records(), ranOn(lenses, lensResult)) ?? accounted.records();
+	const lensRan = (key: string) => {
+		const outcome = lensResult?.[key];
+		return outcome?.status === "done" ? outcome : undefined;
+	};
+	const lineageOf = (name: string) => checks.find((check) => check.name === `lens.${name}`)?.lineage;
 	const input = adjudicationInput({
 		root,
 		repoRoot,
@@ -881,7 +888,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		policy: options.policy,
 		config,
 		manifest,
-		checks: request.plan?.mark(accounted.records(), ranOn(lenses, lensResult)) ?? accounted.records(),
+		checks,
 		findingsVersion: await findingsVersion(harness, root, reviewed, context),
 		allowSkip: accounted.skippable(),
 		producers,
@@ -889,37 +896,26 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		lenses: lenses.map((lens) => lens.key),
 		plan: request.plan,
 	});
-	const lensRan = (key: string) => {
-		const outcome = lensResult?.[key];
-		return outcome?.status === "done" ? outcome : undefined;
-	};
-	const lineageOf = (name: string) => input.checks.find((check) => check.name === `lens.${name}`)?.lineage;
-	await (await harness.root(context)).commit(async (tx) => {
-		const document = await tx.doc(VerdictDocument, root);
-		document.details = {
-			...document.details,
-			[reviewed]: {
-				policy: input.provenance.policy,
-				manifest: [...manifest],
-				lenses: lenses.map(({ key, name, version, level, route, budget }) => ({
-					name,
-					version,
-					level,
-					models: route.map(modelName),
-					...(lensRan(key)?.model === undefined ? {} : { ran: lensRan(key)?.model }),
-					...(lineageOf(name) === undefined ? {} : { lineage: describeLineage(lineageOf(name)!) }),
-					...(lensRan(key)?.usage === undefined ? {} : { usage: structuredClone(lensRan(key)?.usage) }),
-					budget: {
-						findings: budget.findings,
-						...(budget.tokens === undefined ? {} : { tokens: budget.tokens }),
-						...(budget.tools === undefined ? {} : { tools: budget.tools }),
-					},
-				})),
-				standards: standards.map((section) => section.path),
+	// Recorded with the verdict by the adjudication task, so a run that a later review replaced leaves none behind.
+	input.details = {
+		policy: input.provenance.policy,
+		manifest: [...manifest],
+		lenses: lenses.map(({ key, name, version, level, route, budget }) => ({
+			name,
+			version,
+			level,
+			models: route.map(modelName),
+			...(lensRan(key)?.model === undefined ? {} : { ran: lensRan(key)?.model }),
+			...(lineageOf(name) === undefined ? {} : { lineage: describeLineage(lineageOf(name)!) }),
+			...(lensRan(key)?.usage === undefined ? {} : { usage: structuredClone(lensRan(key)?.usage) }),
+			budget: {
+				findings: budget.findings,
+				...(budget.tokens === undefined ? {} : { tokens: budget.tokens }),
+				...(budget.tools === undefined ? {} : { tools: budget.tools }),
 			},
-		};
-		return undefined;
-	}, context);
+		})),
+		standards: standards.map((section) => section.path),
+	};
 	const adjudication = await startAdjudication(harness, input, lenses, context);
 	if (adjudication === undefined) {
 		throw new ReviewError(
