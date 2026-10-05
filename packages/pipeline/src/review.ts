@@ -33,7 +33,6 @@ import {
 	adjudicationInput,
 	type ReviewOrigin,
 	readVerdict,
-	VerdictDocument,
 } from "./adjudication.ts";
 import { checksExtension } from "./checks.ts";
 import { ReviewError } from "./errors.ts";
