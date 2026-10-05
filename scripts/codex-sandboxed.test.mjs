@@ -522,6 +522,10 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 	});
 
 	it("refuses a writable .env symlink before starting a task", () => {
+		const launcher = join(root, "env-startup-bin");
+		mkdirSync(launcher);
+		writeFileSync(join(launcher, "uname"), "#!/bin/sh\necho Darwin\n");
+		chmodSync(join(launcher, "uname"), 0o755);
 		const prompt = join(root, "env-prompt.md");
 		writeFileSync(prompt, "go\n");
 		symlinkSync("env-target", join(linked, ".env"));
@@ -529,7 +533,7 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 			const result = failure(() =>
 				execFileSync(script, [linked, "m", prompt, join(root, "env-task.log")], {
 					stdio: "pipe",
-					env: env(),
+					env: { ...env(), PATH: `${launcher}:${env().PATH}` },
 				}),
 			);
 			expect(result.status).toBe(64);
@@ -588,6 +592,9 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 	);
 
 	it("builds the full-access Codex command with the model, worktree, and prompt", () => {
+		const freshHome = join(root, "command-home");
+		mkdirSync(freshHome);
+		expect(existsSync(join(freshHome, ".codex"))).toBe(false);
 		const launcher = join(root, "launcher-bin");
 		mkdirSync(launcher);
 		writeFileSync(join(launcher, "uname"), "#!/bin/sh\necho Darwin\n");
@@ -601,13 +608,13 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 		writeFileSync(prompt, "--not-an-option please\n");
 		execFileSync(script, [linked, "test-model", prompt, log], {
 			stdio: "pipe",
-			env: { ...env(), PATH: `${launcher}:${env().PATH}` },
+			env: { ...env(), HOME: freshHome, CODEX_HOME: join(freshHome, ".codex"), PATH: `${launcher}:${env().PATH}` },
 		});
 		const args = readFileSync(log, "utf8")
 			.split("\n")
 			.filter((line) => line.startsWith("arg:"))
 			.map((line) => line.slice(4));
-		for (const name of codexNames) expect(existsSync(join(home, ".codex", name)), name).toBe(true);
+		for (const name of codexNames) expect(existsSync(join(freshHome, ".codex", name)), name).toBe(true);
 		expect(args).toEqual([
 			"exec",
 			"--dangerously-bypass-approvals-and-sandbox",
@@ -1130,6 +1137,9 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 
 	describe.skipIf(!sandboxExec)("the wrapper end to end, with a stand-in codex", () => {
 		it("passes only an allow-list of variables, points TMPDIR and the npm cache at the run, passes the prompt after --, and cleans up", () => {
+			const freshHome = join(root, "runtime-home");
+			mkdirSync(freshHome);
+			expect(existsSync(join(freshHome, ".codex"))).toBe(false);
 			const prompt = join(root, "dash.md");
 			writeFileSync(prompt, "--not-an-option please\n");
 			const log = join(root, "wrapper.log");
@@ -1159,7 +1169,7 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 			execFileSync(script, [linked, "m", prompt, log], {
 				stdio: "pipe",
 				input: "pending input\n",
-				env: { ...env(), ...kept, ...dropped },
+				env: { ...env(), ...kept, ...dropped, HOME: freshHome, CODEX_HOME: join(freshHome, ".codex") },
 			});
 			const out = readFileSync(log, "utf8");
 			expect(out.split("\n").filter((line) => line.startsWith("arg:"))).toEqual([
@@ -1178,7 +1188,7 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 			expect(out).toMatch(/env:TMPPREFIX=.*\/codex-run\.[A-Za-z0-9]+\/zsh\n/);
 			expect(out).toContain("zsh-heredoc-ok");
 			expect(out).not.toContain("zsh-heredoc-failed");
-			expect(out).toContain(`env:HOME=${home}`);
+			expect(out).toContain(`env:HOME=${freshHome}`);
 			expect(out).toContain(`env:PATH=${bin}:`);
 			for (const [name, value] of Object.entries(kept)) expect(out).toContain(`env:${name}=${value}\n`);
 			for (const name of Object.keys(dropped)) expect(out).not.toContain(`env:${name}=`);
@@ -1186,8 +1196,8 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 			expect(out).toContain("cache-ok");
 			expect(out).toContain("stdin:eof");
 			for (const dir of ["shell_snapshots", "memories", ".tmp"])
-				expect(existsSync(join(home, ".codex", dir))).toBe(false);
-			for (const dir of codexNames) expect(existsSync(join(home, ".codex", dir))).toBe(true);
+				expect(existsSync(join(freshHome, ".codex", dir))).toBe(false);
+			for (const dir of codexNames) expect(existsSync(join(freshHome, ".codex", dir))).toBe(true);
 			expect(execFileSync("ls", [join(root, "tmp")]).toString()).not.toMatch(/codex-run\./);
 			expect(execFileSync("ls", [join(root, "tmp")]).toString()).not.toMatch(/codex-seatbelt/);
 		});
