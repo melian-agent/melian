@@ -956,7 +956,9 @@ async function undecidedVerdict(
 
 /**
  * Publishes the verdict recorded for a pull request's head: one review whose body is the verdict and whose comments
- * are the findings not already open, a reply in each resolved finding's thread, and the review's status. Every post is
+ * are the findings not already open. Each finding the head addressed gets its own comment edited to say so, and its
+ * thread resolved, where Melian signed the comment; no reply is posted. The review ledger, the one comment Melian
+ * keeps current across rounds, is created or edited, and the review's status links to it. Every post is
  * recorded in {@link PublishedDocument}, so publishing a revision again posts nothing, and a publication a crash
  * interrupted resumes, finding what it already posted by Melian's markers.
  *
