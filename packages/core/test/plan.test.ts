@@ -126,6 +126,20 @@ describe("ReviewPlan.resolve", () => {
 		]);
 	});
 
+	it("tells doctor a derived route was derived, and an accept-only route that it left accept", () => {
+		const derived = plan({ verifier: { accept: [opus] } }, { "amazon-bedrock": "AWS_PROFILE" }, { checks: [] });
+		expect(derived.lines()).toEqual([
+			{
+				state: "ok",
+				text: "verifier: amazon-bedrock/anthropic.claude-opus-5-5 with AWS_PROFILE; derived, since no model of the committed route has credentials",
+			},
+			{
+				state: "warn",
+				text: "verifier runs amazon-bedrock/anthropic.claude-opus-5-5, derived since no model of its route has credentials; the committed route does not accept amazon-bedrock/anthropic.claude-opus-5-5",
+			},
+		]);
+	});
+
 	it("matches a model across a provider's prefix in its name", () => {
 		const resolved = plan({ heavy: { model: opus } }, { openrouter: "OPENROUTER_API_KEY" });
 		expect(resolved.tier("heavy").models[0]?.model).toBe("openrouter/anthropic/claude-opus-5.5");

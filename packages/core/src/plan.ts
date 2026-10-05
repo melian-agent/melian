@@ -369,8 +369,8 @@ export class ReviewPlan {
 
 	private static lineageText({ wanted, by, outside, model }: CheckLineage): string {
 		const why = by === "derived" ? "derived since no model of its route has credentials" : `set by ${by}`;
-		const policy = wanted === undefined ? "" : `; the committed route wants ${wanted}`;
-		return `${why}${policy}${outside ? `, and does not accept ${model}` : ""}`;
+		if (wanted === undefined) return `${why}; the committed route does not accept ${model}`;
+		return `${why}; the committed route wants ${wanted}${outside ? `, and does not accept ${model}` : ""}`;
 	}
 
 	/**
@@ -382,7 +382,11 @@ export class ReviewPlan {
 		for (const { tier, status, models, by } of this.tiers) {
 			if (status !== "routed") continue;
 			const route = models.map(({ model, credential }) => `${model} with ${credential}`).join(", then ");
-			lines.push({ state: "ok", text: `${tier}: ${route}; routed by ${by ?? "melian.yaml"}` });
+			const origin =
+				by === "derived"
+					? "derived, since no model of the committed route has credentials"
+					: `routed by ${by ?? "melian.yaml"}`;
+			lines.push({ state: "ok", text: `${tier}: ${route}; ${origin}` });
 		}
 		const model = (tier: ModelTier) => {
 			const planned = this.tier(tier);
