@@ -584,6 +584,27 @@ describe("escalation", () => {
 		expect(results.at(-1)).toMatch(/^recorded that finding [0-9a-f]{16} is not a defect$/);
 	});
 
+	it("carries only the quick findings at or above escalateAt, and drops the rest", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		const mild = { ...crashFinding, line: 6, rule: "wrong-result", severity: "P2" };
+		const both = fauxAssistantMessage(
+			[fauxToolCall("report_finding", crashFinding), fauxToolCall("report_finding", mild)],
+			{ stopReason: "toolUse" },
+		);
+		const requests = scriptConversations(fake, [{ match: correctness, replies: [both, done, done] }]);
+
+		const reviewed = await review({ decider });
+
+		const input = textOf(requests[correctness]![2]!.find((message) => message.role === "user")!);
+		expect(input).toContain("P1 null-dereference at src/user.ts:7-7");
+		expect(input).not.toContain("wrong-result");
+		expect(reviewed.findings.map((finding) => [finding.ruleId, finding.properties.source.version])).toEqual([
+			["null-dereference", `${version()}@quick`],
+		]);
+		expect(lensRecord(reviewed)!.reason).toContain("1 finding quick carried at or above P1");
+	});
+
 	it("counts once a quick finding the escalated run restates at other lines of the same defect", async () => {
 		const decider = choosing("quick");
 		await open(decider);

@@ -238,6 +238,16 @@ describe("the escalation rule", () => {
 		expect(rule.trigger({ level: "quick", severities: [] })).toBeUndefined();
 	});
 
+	it("says which severities reach escalateAt", () => {
+		expect(["P0", "P1", "P2", "P3", "nit"].map((severity) => rule.reaches(severity as "P0"))).toEqual([
+			true,
+			true,
+			false,
+			false,
+			false,
+		]);
+	});
+
 	it("never escalates a lens above quick", () => {
 		expect(rule.trigger({ level: "careful", severities: ["P0"] })).toBeUndefined();
 		expect(rule.trigger({ level: "careful", severities: [], budgetEnded: "tools" })).toBeUndefined();
