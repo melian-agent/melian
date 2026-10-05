@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { Changeset, defaultConfig, Lens } from "@melian-agent/core";
+import { Changeset, type Decider, defaultConfig, Lens } from "@melian-agent/core";
 import { RecordedDecider } from "@melian-agent/decisions";
 import {
 	type ConversationId,
@@ -29,7 +29,7 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { decisionExtension } from "../src/decisions.ts";
+import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { gitIn } from "./fixtures/repo.ts";
@@ -73,7 +73,8 @@ async function killWhen(
 		| "tokens"
 		| "escalation"
 		| "verifier"
-		| "verdict",
+		| "verdict"
+		| "decision",
 	reached: (events: ReturnType<typeof readEvents>) => boolean,
 	database: string,
 	log: string,
@@ -348,6 +349,44 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		expect(requests["You are the contracts reviewer"]).toEqual([]);
 	});
 
+	it("aborts, on opening, a crashed lens run a Melian before the level key indexed, which no review can attach to", async () => {
+		const database = join(dir, "v3.sqlite");
+		const log = join(dir, "v3.jsonl");
+		await killWhen("request", (events) => count(events, "model-request") === 2, database, log);
+
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
+		const requests = scriptConversations(fake, [
+			{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+			{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+		]);
+		// The entry as before the level key: each lens by name and version, with its route and no level.
+		const older = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		const crashed = (await older.inspect(context)).tasks.find((task) => task.record.kind === "melian.lenses");
+		expect(crashed).toBeDefined();
+		const root = await older.root(context);
+		await root.commit(async (tx) => {
+			const index = await tx.doc(ReviewIndex, root.id);
+			const entry = index.reviews[reviewedRevision()]!;
+			index.reviews[reviewedRevision()] = {
+				...entry,
+				lenses: entry.lenses.map((lens) => lens.replace(/^([^@\s]+@[^@\s]+)@\S+/, "$1")),
+			};
+		}, context);
+		await older.close(context);
+
+		const reopened = await ReviewHarness.open(await openSqliteStorage(database), fake.review, { retry: false });
+		harness = reopened.harness;
+		const settled = await harness.waitForTask(crashed!.record.id, context);
+
+		expect(settled.state.outcome.status).toBe("aborted");
+		expect(requests["You are the correctness reviewer"]).toEqual([]);
+		expect(requests["You are the contracts reviewer"]).toEqual([]);
+	});
+
 	it("records no verdict from a crashed adjudication once a new lens selection reviews the head", async () => {
 		const database = join(dir, "superseded.sqlite");
 		const log = join(dir, "superseded.jsonl");
@@ -599,5 +638,52 @@ describe("verification across a crash", { timeout: 30_000 }, () => {
 		const after = await readFindings(harness, root.id, reviewedRevision(), context);
 		expect(after[0]!.properties.verification?.verdict).toBe("confirmed");
 		expect(requests["Melian adversarial verifier"]).toHaveLength(scenario === "verdict" ? 1 : 2);
+	});
+});
+
+describe("a decision task a later review replaced", { timeout: 30_000 }, () => {
+	it("is aborted on opening, after a crash between the repoint and the abort, so it asks no decider", async () => {
+		const database = join(dir, "decision.sqlite");
+		const log = join(dir, "decision.jsonl");
+		await killWhen("decision", (events) => count(events, "decision-asked") === 1, database, log);
+
+		const asked: string[] = [];
+		const decider: Decider = {
+			name: "counting",
+			calibrated: false,
+			decide: async () => {
+				asked.push("asked");
+				return { answers: [] };
+			},
+		};
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
+		// What a later review's commit leaves when the process dies before it aborts the task it replaced.
+		const registry = createReviewRegistry();
+		registry.install(decisionExtension(decider));
+		const replace = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry,
+			settings: { retry: { enabled: false } },
+		});
+		const crashed = (await replace.inspect(context)).tasks.find((task) => task.record.kind === "melian.decision");
+		expect(crashed).toBeDefined();
+		const root = await replace.root(context);
+		await root.commit(async (tx) => {
+			const document = await tx.doc(DecisionDocument, root.id);
+			const revision = reviewedRevision();
+			const entry = document.decisions[revision]!.triage!;
+			document.decisions = { ...document.decisions, [revision]: { triage: { ...entry, task: 999_999 } } };
+		}, context);
+		await replace.close(context);
+
+		const reopened = await ReviewHarness.open(await openSqliteStorage(database), fake.review, {
+			retry: false,
+			decider,
+		});
+		harness = reopened.harness;
+		const settled = await harness.waitForTask(crashed!.record.id, context);
+
+		expect(settled.state.outcome.status).toBe("aborted");
+		expect(asked).toEqual([]);
 	});
 });

@@ -315,6 +315,13 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		expect(config.stages.hasOwnProperty).toBeUndefined();
 	});
 
+	it("rejects a lens name past 128 characters, and accepts one of exactly 128", async () => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", `  ${"a".repeat(128)}:`, "    tier: heavy") });
+		expect(Object.keys((await load("a.ts")).config.lenses)).toEqual(["a".repeat(128)]);
+		writeFiles(repo, { "melian.yaml": lines("lenses:", `  ${"a".repeat(129)}:`, "    tier: heavy") });
+		await expect(load("a.ts")).rejects.toBeInstanceOf(ConfigError);
+	});
+
 	it("rejects a value outside its set, listing the allowed values", async () => {
 		writeFiles(repo, { "melian.yaml": lines("resolution:", "  P0: blocker") });
 		const error = await rejection(load("a.ts"));
@@ -455,6 +462,12 @@ describe("melian.local.yaml", () => {
 		expect(sources).toEqual(["melian.local.yaml", "services/pay/melian.yaml", "melian.yaml"]);
 	});
 
+	it("may set triage, which a nested melian.yaml may not", async () => {
+		writeFiles(repo, { "melian.local.yaml": lines("triage:", "  escalateAt: P2") });
+		const { config } = await loadConfig(repo, { kind: "worktree" }, "services/pay/a.ts");
+		expect(config.triage).toEqual({ escalateAt: "P2" });
+	});
+
 	it("is never read from a revision, even one that commits it", async () => {
 		commitLocalFile();
 		const { config, sources } = await loadConfig(repo, { kind: "revision", commit: "HEAD" }, "a.ts");
@@ -503,6 +516,12 @@ describe("the user-level preference file", () => {
 
 	const preferences = () => join(home, "config.yaml");
 	const worktree = () => ({ kind: "worktree" as const, preferences: preferences() });
+
+	it("may set triage, which a nested melian.yaml may not", async () => {
+		writeFiles(home, { "config.yaml": lines("triage:", "  escalateAt: P2") });
+		const { config } = await loadConfig(repo, worktree(), "services/pay/a.ts");
+		expect(config.triage).toEqual({ escalateAt: "P2" });
+	});
 
 	it("layers under melian.local.yaml and over every melian.yaml, its globs anchored at the root", async () => {
 		writeFiles(home, {

@@ -29,9 +29,16 @@ import {
 	reviewChangeset,
 	revisionKey,
 	runChecks,
-	unlockCredentials,
 } from "@melian-agent/pipeline";
-import { fallbackDecider, idleModels, isScripted, reviewModels, scriptVariable, triageProviders } from "./models.ts";
+import {
+	decisionProviderRefusal,
+	type fallbackDecider,
+	idleModels,
+	isScripted,
+	reviewModels,
+	scriptVariable,
+	Triage,
+} from "./models.ts";
 import { CliError, git, openStorage, storagePath } from "./repository.ts";
 import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
 
@@ -45,6 +52,8 @@ export interface Io {
 	readonly color: boolean;
 	/** The path the shell ran `melian` from, which `doctor` reports. */
 	readonly executable?: string;
+	/** A seam for tests: the decider triage asks, in place of the LLM fallback, which scripted mode never triages with. */
+	readonly decide?: typeof fallbackDecider;
 }
 
 /**
@@ -115,6 +124,8 @@ export async function review(
 	const tier = loaded.stages["pull-request"] ?? "full";
 	const secrets = await loadSecrets(repoRoot, userFiles(io.env).secrets);
 	for (const warning of secrets.warnings) io.stderr(`melian: ${warning}\n`);
+	const refusal = decisionProviderRefusal(loaded);
+	if (refusal !== undefined) throw new CliError(refusal);
 	const { models, plan, retry } = await reviewModels(io.env, policy, lenses, {
 		model: options.model,
 		checks: checksOfTier(loaded, tier),
@@ -122,20 +133,20 @@ export async function review(
 	});
 	for (const line of plan.summary().split("\n").filter(Boolean)) io.stderr(`melian: ${line}\n`);
 	// A command a secrets file names runs now, so one that fails stops the review before it starts, named.
-	// The providers triage may ask unlock with the lenses', unless a script stands in for every model.
-	const scripted = isScripted(io.env);
-	await unlockCredentials(models, [...plan.providers(), ...(scripted ? [] : triageProviders(plan))]);
-	// Scripted mode triages nothing, so every lens runs at the level its script was written for.
-	const triage = scripted ? undefined : await fallbackDecider({ ...loaded, models: plan.routes() }, models);
-	const decider = triage !== undefined && "decider" in triage ? triage.decider : undefined;
-	const triageSkipped = triage !== undefined && "skipped" in triage ? triage.skipped : undefined;
+	const triage = await Triage.create({
+		scripted: isScripted(io.env) && io.decide === undefined,
+		config: loaded,
+		plan,
+		models,
+		...(io.decide === undefined ? {} : { decide: io.decide }),
+	});
 	const path = await storagePath(repoRoot, changeset.id, io.env, isScripted(io.env));
 	// Without the publish extension, so a publication a crash interrupted waits for melian publish rather than posting
 	// from a review.
 	const reviewHarness = await openReviewHarness(await openStorage(path), models, {
 		retry,
 		checkout: repoRoot,
-		...(decider === undefined ? {} : { decider }),
+		...triage.harnessOptions(),
 	});
 	const { harness } = reviewHarness;
 	try {
@@ -158,8 +169,7 @@ export async function review(
 				standards,
 				models,
 				plan,
-				...(decider === undefined ? {} : { decider }),
-				...(triageSkipped === undefined ? {} : { triageSkipped }),
+				...triage.reviewOptions(),
 				policy: source,
 				tier,
 				checks: checks.records,

@@ -30,19 +30,27 @@ export type FakeModels = {
 	readonly review: ReviewModels;
 	/** The reference a conversation's agent uses to select `modelId`, or the first model. */
 	ref(modelId?: string): ModelRef;
+	/** Registers a provider of its own that holds a model `modelId` but no credentials, and returns that model's reference. */
+	withoutCredentials(modelId: string): ModelRef;
 };
 
 /** Creates a scripted provider in its own collection, or alongside an existing review collection for a planted finder. */
 export function createFakeModels(options?: RegisterFauxProviderOptions, review?: ReviewModels): FakeModels {
 	const provider = fauxProvider(options);
 	const models = review === undefined ? createModels() : modelsOf(review);
-	if (!("setProvider" in models) || typeof models.setProvider !== "function")
-		throw new TypeError("The review collection must allow a scripted provider.");
 	models.setProvider(provider.provider);
 	return {
 		models,
 		provider,
 		review: review ?? wrapModels(models),
+		withoutCredentials(modelId) {
+			const locked = fauxProvider({ provider: "locked", models: [{ id: modelId }] });
+			models.setProvider({
+				...locked.provider,
+				auth: { apiKey: { name: "Locked", resolve: async () => undefined } },
+			});
+			return { provider: "locked", modelId };
+		},
 		ref(modelId) {
 			const model: Model<string> | undefined =
 				modelId === undefined ? provider.getModel() : provider.getModel(modelId);

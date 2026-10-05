@@ -8,7 +8,8 @@
 // tool's result is stored: `spent` in the second read under a budget of one call, `tokens` in the first under a budget
 // of one token. `escalation` triages correctness to quick through a recorded decider, has it report a P1, and parks in
 // the first model request of the careful run it escalates to, after the commit that created that run's conversation.
-import { Changeset, defaultConfig, Lens, severitySchema } from "@melian-agent/core";
+// `decision` parks in the decider's first call, with the decision task live and named by the decision document.
+import { Changeset, type Decider, defaultConfig, Lens, severitySchema } from "@melian-agent/core";
 import { RecordedDecider } from "@melian-agent/decisions";
 import { AdjudicationTask } from "../../src/adjudication.ts";
 import { decisionExtension } from "../../src/decisions.ts";
@@ -55,6 +56,7 @@ const [scenario, repo, database, log] = process.argv.slice(2) as [
 		| "escalation"
 		| "verifier"
 		| "verdict"
+		| "decision"
 	),
 	string,
 	string,
@@ -142,7 +144,16 @@ registry.install(parked);
 const decider = new RecordedDecider({
 	triage: { version: "1", answers: { correctness: { distribution: { quick: 1 } } } },
 });
+const parkedDecider: Decider = {
+	name: "parked",
+	calibrated: false,
+	decide: () => {
+		record(log, { event: "decision-asked" });
+		return park();
+	},
+};
 if (scenario === "escalation") registry.install(decisionExtension(decider));
+if (scenario === "decision") registry.install(decisionExtension(parkedDecider));
 
 const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "medium" }, { id: "heavy" }] });
 const harness = await openHarness(await openSqliteStorage(database), {
@@ -169,6 +180,7 @@ const correctness: Readonly<Record<typeof scenario, readonly ScriptedReply[]>> =
 	spent: [toolUse("read_file", { path: "src/user.ts" }), toolUse("read_file", { path: "src/user.ts", startLine: 7 })],
 	tokens: [toolUse("read_file", { path: "src/user.ts" })],
 	escalation: [toolUse("report_finding", crashFinding), done, requested("correctness")],
+	decision: [done],
 };
 scriptConversations(fake, [
 	...(scenario === "verifier" || scenario === "verdict"
@@ -187,7 +199,7 @@ scriptConversations(fake, [
 	{ match: "You are the contracts reviewer", replies: [scenario === "request" ? requested("contracts") : done] },
 ]);
 function lensesFor(lenses: Lens[]) {
-	if (scenario === "escalation") return lenses;
+	if (scenario === "escalation" || scenario === "decision") return lenses;
 	if (scenario === "spent" || scenario === "tokens") return budgetLenses(lenses, endingBudgets[scenario]);
 	return scenario === "read" ? budgetLenses(lenses) : crashLenses(lenses);
 }
@@ -199,13 +211,16 @@ await reviewChangeset({
 	changeset: await Changeset.resolve(repo, "main...feature"),
 	config: {
 		...defaultConfig,
-		tiers: scenario === "escalation" ? { ...defaultConfig.tiers, full: ["standard"] } : twoLensTiers,
+		tiers:
+			scenario === "escalation" || scenario === "decision"
+				? { ...defaultConfig.tiers, full: ["standard"] }
+				: twoLensTiers,
 		models: {
 			medium: { model: `${medium.provider}/${medium.modelId}` },
 			heavy: { model: `${heavy.provider}/${heavy.modelId}` },
 		},
 	},
-	...(scenario === "escalation" ? { decider } : {}),
+	...(scenario === "escalation" ? { decider } : scenario === "decision" ? { decider: parkedDecider } : {}),
 	lenses: lensesFor(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 	standards: [],
 	models: fake.review,

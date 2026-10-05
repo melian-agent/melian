@@ -14,7 +14,7 @@ import Value from "typebox/value";
 const answerParameters = Type.Object({
 	answers: Type.Array(
 		Type.Object({
-			question: Type.String({ maxLength: 64, description: "The question's ID" }),
+			question: Type.String({ maxLength: 256, description: "The question's ID" }),
 			probabilities: Type.Array(
 				Type.Object({
 					option: Type.String({ maxLength: 32 }),
@@ -46,12 +46,13 @@ const instructions = `You answer typed questions about a code change for Melian,
  * once per {@link FallbackDecider.decide}.
  */
 export class FallbackDecider implements Decider {
-	readonly name = "llm-fallback";
+	readonly name: string;
 	readonly calibrated = false;
 	readonly #model: TextModel;
 
 	constructor(model: TextModel) {
 		this.#model = model;
+		this.name = `llm-fallback:${model.name}`;
 	}
 
 	/**

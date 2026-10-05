@@ -1,9 +1,10 @@
-import { homedir } from "node:os";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { defaultConfig, type LoadedConfig, type MelianConfig, userFiles } from "@melian-agent/core";
+import { type Decider, defaultConfig, type LoadedConfig, type MelianConfig, userFiles } from "@melian-agent/core";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fallbackDecider, reviewModels, triageProviders } from "../src/models.ts";
+import { decisionProviderRefusal, fallbackDecider, reviewModels, Triage, triageProviders } from "../src/models.ts";
 
 const models: MelianConfig["models"] = {
 	light: { model: "anthropic/claude-sonnet-5-5" },
@@ -73,6 +74,20 @@ describe("reviewModels triage", () => {
 	});
 });
 
+describe("decisionProviderRefusal", () => {
+	it("prints the provider's control characters as visible text", () => {
+		const config = {
+			...defaultConfig,
+			decisions: { ...defaultConfig.decisions, provider: "evil\u001b[31m\nforged" },
+		};
+
+		const refusal = decisionProviderRefusal(config);
+
+		expect(refusal).toContain("decisions.provider to evil\\u001b[31m\\u000aforged,");
+		expect(refusal).not.toMatch(/[\u001b\n]/);
+	});
+});
+
 describe("triageProviders", () => {
 	it("names the providers of every routed lens tier, which the fallback may ask", async () => {
 		const routedTiers = loadedOf({
@@ -108,8 +123,14 @@ describe("the triage model", () => {
 		expect(await choose({ medium: route("medium"), heavy: route("heavy") })).toMatchObject({
 			model: model("medium"),
 		});
-		// A model the collection does not know, as one without credentials, is passed over.
+		// A model the collection does not know is passed over, as one it knows without credentials is.
 		expect(await choose({ light: { model: "nowhere/light" }, heavy: route("heavy") })).toMatchObject({
+			model: model("heavy"),
+		});
+		const locked = fake.withoutCredentials("locked-light");
+		expect(
+			await choose({ light: { model: `${locked.provider}/${locked.modelId}` }, heavy: route("heavy") }),
+		).toMatchObject({
 			model: model("heavy"),
 		});
 	});
@@ -125,5 +146,69 @@ describe("the triage model", () => {
 			skipped:
 				'no lens tier reaches a model for the LLM fallback: models.light: "claude-haiku" is not provider/model-id; no model of medium has credentials; heavy is not routed',
 		});
+	});
+});
+
+describe("Triage", () => {
+	const decider: Decider = { name: "fake", calibrated: false, decide: async () => ({ answers: [] }) };
+	let dir: string | undefined;
+	afterEach(() => {
+		if (dir !== undefined) rmSync(dir, { recursive: true, force: true });
+		dir = undefined;
+	});
+
+	async function opened(options: { scripted: boolean; decide: typeof fallbackDecider }) {
+		dir = mkdtempSync(join(tmpdir(), "melian-triage-"));
+		const marker = join(dir, "unlocked");
+		const loaded = loadedOf({ light: { model: "openai/gpt-5.5" } });
+		const { models, plan } = await reviewModels({}, loaded, [], {
+			...setup,
+			credentials: [
+				{
+					name: "vault",
+					provider: "openai",
+					type: "api_key",
+					value: { kind: "command", command: `touch ${marker}; echo sk-key` },
+					file: "f",
+				},
+			],
+		});
+		const triage = await Triage.create({ ...options, config: loaded.config, plan, models });
+		return { triage, marker, plan };
+	}
+
+	it("hands the decider to the harness and the review, and unlocks the providers triage may ask", async () => {
+		const configs: MelianConfig[] = [];
+		const { triage, marker, plan } = await opened({
+			scripted: false,
+			decide: async (config) => {
+				configs.push(config);
+				return { decider, model: "fake" };
+			},
+		});
+
+		expect(triage.harnessOptions()).toEqual({ decider });
+		expect(triage.reviewOptions()).toEqual({ decider });
+		expect(existsSync(marker)).toBe(true);
+		expect(configs[0]!.models).toEqual(plan.routes());
+	});
+
+	it("says why triage did not run to the review, and gives the harness no decider", async () => {
+		const { triage } = await opened({ scripted: false, decide: async () => ({ skipped: "no model" }) });
+
+		expect(triage.harnessOptions()).toEqual({});
+		expect(triage.reviewOptions()).toEqual({ triageSkipped: "no model" });
+	});
+
+	it("triages nothing and unlocks only the lenses' providers under a script", async () => {
+		const { triage, marker } = await opened({
+			scripted: true,
+			decide: async () => {
+				throw new Error("a script stands in for every model");
+			},
+		});
+
+		expect(triage.reviewOptions()).toEqual({});
+		expect(existsSync(marker)).toBe(false);
 	});
 });

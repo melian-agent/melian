@@ -122,8 +122,24 @@ describe("the LLM fallback decider", () => {
 			model: "faux/light",
 		});
 		const decision = Decision.parse(request, answer, decider);
-		expect(decision.toJSON()).toMatchObject({ decider: "llm-fallback", calibrated: false, model: "faux/light" });
+		expect(decision.toJSON()).toMatchObject({
+			decider: "llm-fallback:faux/light",
+			calibrated: false,
+			model: "faux/light",
+		});
 		expect(decision.chosen("correctness")).toBe("careful");
+	});
+
+	it("answers a question whose ID is a 128-character lens name", async () => {
+		const id = "l".repeat(128);
+		const long: DecisionRequest = {
+			...request,
+			questions: [{ id, text: "How closely should it look?", options: ["quick", "careful"] }],
+		};
+		const text = model({ answers: [{ question: id, probabilities: [{ option: "careful", probability: 1 }] }] });
+		const decider = new FallbackDecider(text);
+		const decision = Decision.parse(long, await decider.decide(long), decider);
+		expect(decision.chosen(id)).toBe("careful");
 	});
 
 	it("refuses arguments its tool's schema does not allow, and an option weighed twice", async () => {

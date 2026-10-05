@@ -55,6 +55,7 @@ import {
 	type DecisionTaskInput,
 	decisionExtension,
 	decisionTask,
+	decisionTaskName,
 	readRecordedDecision,
 } from "./decisions.ts";
 import { ReviewError } from "./errors.ts";
@@ -248,16 +249,16 @@ async function spawnLens(tx: Tx, taskId: TaskId, input: LensTaskInput, lens: Len
 	return created.id;
 }
 
-// Aborts every live lens task the review index no longer names for its revision, or names in the shape version 2 of the
-// index stored, which no selection matches, before anything resumes it. Problem:
-// a review that replaced a run commits the replacement and then aborts the old task, and a process that dies between the
-// two leaves the old task live; its conversation, resumed mid-request, would ask its model again. Solution: sweep before
-// the harness resumes, at open, and at the start of every review.
+// A crash between replacing and aborting a task leaves live work behind. Pi cannot abort inside a commit, so sweep before resume.
 async function abortReplacedRuns(harness: Harness, context: Context): Promise<void> {
-	const live = (await harness.inspect(context)).tasks.filter((task) =>
+	const { tasks } = await harness.inspect(context);
+	const live = tasks.filter((task) =>
 		[LensTask.definition.name, VerificationTask.definition.name].includes(task.record.kind),
 	);
-	if (live.length === 0) return;
+	const decisions = tasks.filter(
+		(task) => task.record.kind === decisionTaskName && task.record.state.status !== "terminal",
+	);
+	if (live.length === 0 && decisions.length === 0) return;
 	const root = await harness.root(context);
 	const index = await harness.snapshot(ReviewIndex, root.id, context);
 	for (const { record } of live) {
@@ -268,10 +269,25 @@ async function abortReplacedRuns(harness: Harness, context: Context): Promise<vo
 			record.kind === VerificationTask.definition.name
 				? entry?.verification?.task !== record.id
 				: entry !== undefined && entry.task !== record.id;
-		// An entry an older Melian stored names its lenses without their routes, so no review can attach to its task.
+		// An older entry lacks a level or route, so no current selection can attach to its lens task.
 		const stale =
-			entry !== undefined && entry.lenses.length > 0 && entry.lenses.every((lens) => !lens.includes(" on "));
+			record.kind === LensTask.definition.name &&
+			entry !== undefined &&
+			entry.lenses.length > 0 &&
+			entry.lenses.every((lens) => !/^[^@\s]+@[^@\s]+@[^@\s]+ .*\bon /.test(lens));
 		if (replaced || stale) await harness.abortTask(record.id, context);
+	}
+	for (const { record } of decisions) {
+		const input = record.input as unknown as DecisionTaskInput;
+		const named = await readRecordedDecision(
+			harness,
+			input.root,
+			input.revision,
+			input.request.questionSet.name,
+			context,
+		);
+		// A harness opened without the decider has no definition to abort through; the task stays blocked, and unnamed.
+		if (named?.task !== record.id) await harness.abortTask(record.id, context).catch(() => undefined);
 	}
 }
 
@@ -578,7 +594,11 @@ export class ChangePrompt {
 			const part = quoteUntrusted("diff", [`${named(file)} (${file.status})`, ...hunks].join("\n"), nonce);
 			size += Buffer.byteLength(part);
 			if (size > maxPromptBytes) {
-				parts.push("[The diff continues; read the remaining files with read_file.]");
+				parts.push(
+					options.tools === false
+						? "[The diff continues; the remaining files are omitted.]"
+						: "[The diff continues; read the remaining files with read_file.]",
+				);
 				break;
 			}
 			parts.push(part);
@@ -965,8 +985,9 @@ function account(
 	// The lens step owns `lens.*` and `decisions.*`, so the host's records of them give way. The plan's `failed` record of
 	// a lens it refused at the level triage chose is the lens step's own, in `lenses.records`, beside the record of a
 	// variant in another folder that ran, so a refused lens never reads as one no lens is named for.
-	const owned = (check: CheckRecord) => check.name.startsWith("decisions.") || check.name.startsWith("lens.");
-	const supplied = (options.checks ?? []).filter((check) => !owned(check));
+	const supplied = (options.checks ?? []).filter(
+		(check) => !check.name.startsWith("decisions.") && !check.name.startsWith("lens."),
+	);
 	const manifest = new Manifest(checks, [...supplied, ...lenses.records], config.checks.allowSkip);
 	for (const name of lenses.skippable) manifest.allowSkip(name);
 	const recorded = new Set(manifest.records().map((check) => check.name));
@@ -1085,6 +1106,7 @@ async function triage(
 		key,
 		request: structuredClone(request) as DecisionTaskInput["request"],
 	};
+	let replaced: number | undefined;
 	const taskId = await root.commit(async (tx) => {
 		const document = await tx.doc(DecisionDocument, root.id);
 		const known = document.decisions[revision]?.[set];
@@ -1094,12 +1116,17 @@ async function triage(
 			return known.task as TaskId<DecisionResult>;
 		}
 		const created = await tx.createTask(decisionTask(decider), input, { ownership: { kind: "conversation" } });
+		replaced = known?.task;
 		document.decisions = {
 			...document.decisions,
 			[revision]: { ...document.decisions[revision], [set]: { key, task: created } },
 		};
 		return created;
 	}, context);
+	// A live replaced task would still ask its decider, and its answer lands nowhere.
+	if (replaced !== undefined && replaced !== taskId) {
+		await harness.abortTask(replaced as TaskId, context).catch(() => undefined);
+	}
 	const forget = async (tx: Tx, rootId: ConversationId) => {
 		const document = await tx.doc(DecisionDocument, rootId);
 		const entries = document.decisions[revision];
@@ -1381,8 +1408,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			...(triaged.decision === undefined
 				? {}
 				: {
-						triagedBy:
-							triaged.decision.decider === "llm-fallback" ? "the LLM fallback" : triaged.decision.decider,
+						triagedBy: triaged.decision.decider.startsWith("llm-fallback")
+							? "the LLM fallback"
+							: triaged.decision.decider,
 					}),
 		},
 		options,

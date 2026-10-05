@@ -1,6 +1,6 @@
 import type { CatalogModel, ModelReference, TextModel, ToolRequest } from "@melian-agent/core";
 import type { MelianCredentialStore } from "./credentials.ts";
-import type { Api, Model, Models } from "./harness.ts";
+import type { Api, Model, Models, MutableModels } from "./harness.ts";
 
 /**
  * The models a review runs on: an opaque handle over pi-ai's model collection, so callers outside the pipeline never
@@ -10,17 +10,17 @@ export interface ReviewModels {
 	readonly kind: "melian.reviewModels";
 }
 
-const collections = new WeakMap<ReviewModels, Models>();
+const collections = new WeakMap<ReviewModels, MutableModels>();
 const stores = new WeakMap<ReviewModels, MelianCredentialStore>();
 
-export function wrapModels(models: Models, store?: MelianCredentialStore): ReviewModels {
+export function wrapModels(models: MutableModels, store?: MelianCredentialStore): ReviewModels {
 	const handle: ReviewModels = Object.freeze({ kind: "melian.reviewModels" });
 	collections.set(handle, models);
 	if (store !== undefined) stores.set(handle, store);
 	return handle;
 }
 
-export function modelsOf(handle: ReviewModels): Models {
+export function modelsOf(handle: ReviewModels): MutableModels {
 	const models = collections.get(handle);
 	if (models === undefined) throw new TypeError("models must come from createReviewModels");
 	return models;
