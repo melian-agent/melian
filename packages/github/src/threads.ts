@@ -260,7 +260,6 @@ export class ReviewThreadImporter implements ExternalImporter {
 		return pullRequest;
 	}
 
-	// Runs `query` page by page until GitHub says there is no next page.
 	private async pages<T>(query: string, read: (page: T) => PageInfo): Promise<void> {
 		let after: string | null = null;
 		for (let count = 0; count < maxPages; count++) {
