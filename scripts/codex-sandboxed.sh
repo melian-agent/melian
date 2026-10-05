@@ -124,6 +124,7 @@ done < <(compgen -e)
 
 cd "$worktree"
 # No exec: it would replace the shell and skip the EXIT trap that removes the profile and run directory.
+# stdin is /dev/null: codex exec reads a piped stdin as extra input and stalls waiting for it.
 # The prompt follows --, so one that starts with a dash is not read as an option.
 sandbox-exec -f "$profile" env ${scrub[@]+"${scrub[@]}"} TMPDIR="$run" npm_config_cache="$scratch/npm-cache" \
-  codex exec --dangerously-bypass-approvals-and-sandbox --model "$model" -C "$worktree" -- "$prompt" > "$log" 2>&1
+  codex exec --dangerously-bypass-approvals-and-sandbox --model "$model" -C "$worktree" -- "$prompt" < /dev/null > "$log" 2>&1

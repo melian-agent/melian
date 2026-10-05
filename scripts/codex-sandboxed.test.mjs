@@ -240,7 +240,7 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			mkdirSync(bin);
 			writeFileSync(
 				join(bin, "codex"),
-				'#!/bin/sh\nfor a in "$@"; do echo "arg:$a"; done\necho "tmpdir:$TMPDIR"\necho "cache:$npm_config_cache"\necho "gh:$(printenv GH_TOKEN || echo unset)"\necho "key:$(printenv OPENAI_API_KEY || echo unset)"\necho "term:$(printenv TERM || echo unset)"\ntouch "$TMPDIR/probe" && echo probe-ok\n',
+				'#!/bin/sh\nfor a in "$@"; do echo "arg:$a"; done\necho "tmpdir:$TMPDIR"\necho "cache:$npm_config_cache"\necho "gh:$(printenv GH_TOKEN || echo unset)"\necho "key:$(printenv OPENAI_API_KEY || echo unset)"\necho "term:$(printenv TERM || echo unset)"\ntouch "$TMPDIR/probe" && echo probe-ok\nif read -r line; then echo "stdin:data"; else echo "stdin:eof"; fi\n',
 			);
 			chmodSync(join(bin, "codex"), 0o755);
 			const prompt = join(root, "dash.md");
@@ -248,6 +248,7 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			const log = join(root, "wrapper.log");
 			execFileSync(script, [linked, "m", prompt, log], {
 				stdio: "pipe",
+				input: "pending input\n",
 				env: { ...env(), PATH: `${bin}:${process.env.PATH}`, GH_TOKEN: "s", OPENAI_API_KEY: "s", TERM: "xterm" },
 			});
 			const out = readFileSync(log, "utf8");
@@ -258,6 +259,7 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			expect(out).toContain("key:unset");
 			expect(out).toContain("term:xterm");
 			expect(out).toContain("probe-ok");
+			expect(out).toContain("stdin:eof");
 			for (const dir of ["shell_snapshots", "memories", ".tmp"])
 				expect(existsSync(join(home, ".codex", dir))).toBe(false);
 			for (const dir of ["cache", "tmp", "ipc", "attachments"])
