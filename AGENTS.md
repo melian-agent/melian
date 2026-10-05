@@ -67,6 +67,46 @@ If you create or modify a test, run it and iterate until it passes. Tests use Vi
 
 A delegated agent shares your checkout. Do not `git checkout`, `git pull`, `git stash`, or rebase in the orchestrating session while one is working. Use a throwaway worktree for concurrent work on another branch. Read-only agents are safe to overlap; writers are not.
 
+## Delegation and the review loop
+
+Milestone 2 runs on three lanes of work and a fixed review loop. Read this before you start a step or review a pull request.
+
+### Who does what
+
+- Implementation steps go to Opus 5.5 agents or to Codex (GPT-6.1 Sol).
+- Small tasks go to Sonnet 5.5: a doc fix, a single test, a record fill-in, a merge chain.
+- Reviews of record go to Opus 5.5. A Sonnet 5.5 trial is under way, judged from the record for [pull request #73](https://github.com/melian-agent/melian/pull/73), where it ran beside the Opus review.
+- Codex tasks run through the companion's `task --write`, for editing and tests only. Its sandbox denies writes under `.git` and, before 2026-10-05, had no network. A Sonnet agent commits, runs the gate, pushes, and opens the draft from Codex's report. A seatbelt wrapper that lets Codex commit is under review in [pull request #74](https://github.com/melian-agent/melian/pull/74) and is not yet safe to use.
+
+### Three reviews before ready
+
+Every pull request gets all three before it is marked ready:
+
+1. Codex's adversarial review, through its companion. It uses GPT-5.6 Sol by default.
+2. A Claude review of record. It runs the code and does not only read it.
+3. Melian's own review, from the branch's own build. Repeat it after each fix pass until only policy notices and advisories remain.
+
+Melian reviews itself with `melian review main...HEAD`, run from a throwaway worktree beside the checkout. Raise every lens's budget to `budget: { findings: 8, tokens: 600000, tools: 90 }`:
+
+- For a built-in lens, write an uncommitted `.melian/lenses/<name>/LENS.md` that `extends` it and sets that budget.
+- For a repository lens, such as `durability`, edit the budget line of its committed file in place. An `extends` directory must match the lens name, so an extension cannot sit beside it.
+- Remove the uncommitted files before you commit anything.
+
+### The comparison record
+
+Every pull request gets a record under `packages/evals/comparisons/`. An agent writes it and updates it after each round. It lists each reviewer's findings, the adjudication with a miss reason, and the fix commits. [The evals guideline](docs/guidelines/evals.md#comparisons) sets out the form.
+
+### Ready and queued
+
+Mark a pull request ready and queue it with `gh pr merge --merge --auto` only when both hold:
+
+- CI is green on the exact head. Confirm the run with `gh run view <id> --json headSha`.
+- The last Melian round found nothing above advisory. Policy notices on configuration files are by design once a maintainer has read them.
+
+### Timeouts
+
+Parallel gates load the machine, and five-second test timeouts are common. Rerun a timed-out test alone before you draw a conclusion.
+
 ## Lessons live here, not in agent memory
 
 When you learn something non-obvious while working on Melian, such as a trap, a contract, a tooling gotcha, or a verification technique that actually works, record it in this repository as part of the same change: in this file, in `docs/`, or in the closest relevant document. Agent memory is private and goes stale. The repository is reviewed and inherited by everyone who touches it.
