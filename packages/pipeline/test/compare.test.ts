@@ -383,6 +383,63 @@ describe("comparison review fixes", () => {
 		expect((await harness.read(revision))?.adjudication(findings[0]!.id)?.current.verdict).toBe("noise");
 	});
 
+	it.each(["correctness", "none"])("carries the newest judgement's %s debt across rounds", async (golden) => {
+		const harness = await memoryHarness();
+		await storeReview(harness);
+		const id = findings[0]!.id;
+		const verdict = new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate();
+		const rounds = [revision, { ...revision, head: "c".repeat(40) }, { ...revision, head: "d".repeat(40) }].map(
+			(revision, index) => {
+				const comparison = Comparison.of(revision);
+				comparison.compare(verdict);
+				comparison.record(`2026-10-0${index + 1}T00:00:00Z`);
+				comparison.adjudicate(id, {
+					verdict: "noise",
+					by: "M",
+					at: `2026-10-0${6 - index}T00:00:00Z`,
+					golden: index === 0 ? golden : index === 1 ? "tests" : "removed-behaviour",
+				});
+				return comparison;
+			},
+		);
+		const root = await harness.harness.root(context);
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).verdicts = Object.fromEntries(
+				rounds.map((round) => [revisionKey(round), verdict.toJSON()]),
+			);
+			(await tx.doc(ComparisonDocument, root.id)).comparisons = Object.fromEntries(
+				rounds.map((round) => [revisionKey(round), round.toJSON()]),
+			);
+		}, context);
+		const judgement = { verdict: "valid", by: "N", at: "2026-10-07T00:00:00Z" } as const;
+		const updated = await harness.adjudicate(revision, id, judgement);
+		expect(updated.head).toBe(rounds[2]!.head);
+		expect(updated.adjudication(id)).toEqual({
+			current: { ...judgement, golden },
+			history: [rounds[2]!.adjudication(id)!.current],
+		});
+		expect((await harness.read({ base: updated.base, head: updated.head }))?.adjudication(id)?.current.golden).toBe(
+			golden,
+		);
+		for (const round of rounds.slice(0, 2))
+			expect((await harness.read({ base: round.base, head: round.head }))?.toJSON()).toEqual(round.toJSON());
+		expect(new ComparisonSet(await harness.all("change")).backlog()).toEqual(
+			golden === "none"
+				? []
+				: [
+						{
+							changeset: "change",
+							target: updated.label(),
+							id,
+							title: findings[0]!.properties.explanation.what,
+							lens: golden,
+							verdict: "valid",
+							at: judgement.at,
+						},
+					],
+		);
+	});
+
 	it("reads documents without committing or changing pending tasks", async () => {
 		const storage = createMemoryStorage();
 		const harness = await CompareHarness.open(storage, createFakeModels().review);
