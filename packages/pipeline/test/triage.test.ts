@@ -6,6 +6,7 @@ import {
 	type CheckRecord,
 	type Decider,
 	defaultConfig,
+	describeLineage,
 	Finding,
 	Lens,
 	type MelianConfig,
@@ -50,9 +51,11 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { VerdictDocument } from "../src/adjudication.ts";
 import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { VerificationTask } from "../src/verification.ts";
 import { gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
 
@@ -754,6 +757,59 @@ describe("a decider that never answers", () => {
 });
 
 describe("a decision task another call replaced", () => {
+	it("retires pending verification before triage after its lenses finished", async () => {
+		const entered = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		const spawn = VerificationTask.definition.phases.spawn;
+		const parked = vi
+			.spyOn(VerificationTask.definition.phases, "spawn")
+			.mockImplementationOnce(async (task, runtime, taskContext) => {
+				entered.resolve();
+				const aborted = () => release.resolve();
+				runtime.signal.addEventListener("abort", aborted, { once: true });
+				try {
+					await release.promise;
+					if (!runtime.signal.aborted) await spawn(task, runtime, taskContext);
+				} finally {
+					runtime.signal.removeEventListener("abort", aborted);
+				}
+			});
+		let old: TaskId | undefined;
+		const chooser = choosing("careful");
+		const decider: Decider = {
+			name: chooser.name,
+			calibrated: false,
+			decide: async (request) => {
+				const root = await harness.root(context);
+				expect(
+					(await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision()]!.verification,
+				).toBeUndefined();
+				return chooser.decide(request);
+			},
+		};
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [call("report_finding", crashFinding), done] }]);
+		const first = review().catch((error: unknown) => error);
+		try {
+			await entered.promise;
+			const root = await harness.root(context);
+			const before = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision()]!;
+			old = before.verification!.task as TaskId;
+			expect((await harness.getTask(before.task! as TaskId, context))!.state.status).toBe("terminal");
+			const result = await review({ decider });
+			expect(chooser.requests).toHaveLength(1);
+			expect((await harness.getTask(old!, context))!.state.outcome).toEqual({ status: "aborted" });
+			expect(result.verdict.ran?.find((check) => check.name === "verifier")).toBeDefined();
+			expect(
+				(await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision()]!.verification!.task,
+			).not.toBe(old);
+		} finally {
+			release.resolve();
+			await first;
+			parked.mockRestore();
+		}
+	});
+
 	// A decider that holds its first call until `release`, or until its signal aborts when `heeding`; later calls choose quick.
 	function holding(heeding: boolean) {
 		let release = () => {};
@@ -998,7 +1054,12 @@ describe("escalation under a review plan", () => {
 		const { catalog, credentials } = await planInputs(fake.review);
 		const plan = ReviewPlan.resolve({
 			config: planned,
-			routes: { committed: models, overridden: {}, lensTiers: {}, retiered: {} },
+			routes: {
+				committed: { ...models, heavy: { ...models.heavy, model: medium } },
+				overridden: { heavy: "melian.local.yaml" },
+				lensTiers: {},
+				retiered: {},
+			},
 			catalog,
 			credentials,
 			lenses,
@@ -1022,6 +1083,20 @@ describe("escalation under a review plan", () => {
 
 		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
 		expect(lensRecord(reviewed)!.reason).toContain("escalated from quick to careful");
+		const root = await harness.root(context);
+		const details = (await harness.snapshot(VerdictDocument, root.id, context))!.details![revision()]!;
+		expect(details.lenses).toEqual([
+			{
+				name: "correctness",
+				version: version(),
+				level: "careful",
+				models: [heavy],
+				ran: heavy,
+				lineage: describeLineage(lensRecord(reviewed)!.lineage!),
+				usage: expect.objectContaining({ models: [heavy], tokens: expect.any(Number), cost: expect.any(Number) }),
+				budget: expect.objectContaining({ findings: expect.any(Number) }),
+			},
+		]);
 		// The map the plan marks from holds the careful run's model, not the quick run's.
 		const marked = mark.mock.calls.at(-1)![1]!;
 		expect(marked.get("correctness")).toEqual([{ scope: "", level: "careful", model: heavy }]);
@@ -1049,11 +1124,11 @@ describe("escalation under a review plan", () => {
 			checks: ["lens.correctness"],
 		});
 		// The run finishes on heavy, which the plan, as it judges the finished run, now refuses.
-		const real = plan.judge.bind(plan);
+		const original = ReviewPlan.from(plan.toJSON());
 		vi.spyOn(plan, "judge").mockImplementation((name, level, ran, scope) =>
 			ran === heavy && level === "careful"
 				? { refusal: "careful finished on a model policy refuses" }
-				: real(name, level, ran, scope),
+				: original.judge(name, level, ran, scope),
 		);
 		scriptConversations(fake, [{ match: correctness, replies: [severe, done, done] }]);
 
@@ -1679,6 +1754,49 @@ describe("the LLM fallback", () => {
 		});
 	});
 
+	it.each([
+		["error", "503 overloaded_error"],
+		["aborted", undefined],
+	] as const)(
+		"fails closed without recording an answer when the model stops with %s",
+		async (stopReason, errorMessage) => {
+			const decider = await fallbackDecider();
+			await open(decider);
+			const requests = scriptConversations(fake, [
+				{
+					match: fallback,
+					replies: [
+						fauxAssistantMessage(
+							fauxToolCall("answer", {
+								answers: [{ question: "correctness", probabilities: [{ option: "quick", probability: 1 }] }],
+							}),
+							{ stopReason, ...(errorMessage === undefined ? {} : { errorMessage }) },
+						),
+					],
+				},
+				{ match: correctness, replies: [done] },
+			]);
+
+			const reviewed = await review({ decider });
+
+			const reason = `${fake.ref("light").provider}/light failed: ${errorMessage ?? stopReason}`;
+			expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
+			expect(lensRecord(reviewed)!.reason).toContain("triage failed, so it ran at its default level");
+			expect(lensRecord(reviewed)!.reason).toContain(reason);
+			const stored = await readRecordedDecision(
+				harness,
+				(await harness.root(context)).id,
+				revision(),
+				"triage",
+				context,
+			);
+			expect(stored).toMatchObject({ failure: reason });
+			expect(stored!.decision).toBeUndefined();
+			expect(requests[fallback]).toHaveLength(1);
+			expect(requests[correctness]).toHaveLength(1);
+		},
+	);
+
 	it("fails closed to the default level when the model answers in prose", async () => {
 		const decider = await fallbackDecider();
 		await open(decider);
@@ -1760,6 +1878,55 @@ describe("reviews recorded before levels joined the keys", () => {
 		// The fresh run of the lens replaces the earlier run's sightings at the revision, the bare-version one included.
 		const after = await readFindings(harness, root.id, revision(), context, { producers: [atVersion] });
 		expect(after).toEqual([]);
+	});
+
+	it("keeps a version-1 checkpoint's phase, child and attempt when upgrading mid-review", () => {
+		const lens = lenses.find((each) => each.name === "correctness")!;
+		const key = `correctness@${lens.version}`;
+		const input = {
+			root: 1 as ConversationId,
+			revision: {
+				repoRoot: repo,
+				nonce: "0".repeat(24),
+				base: gitIn(repo, "merge-base", "main", "feature"),
+				head: gitIn(repo, "rev-parse", "feature"),
+				files: [],
+			},
+			lenses: [
+				{
+					key,
+					name: lens.name,
+					version: lens.version,
+					level: "careful",
+					route: [fake.ref("medium"), fake.ref("heavy")],
+					instructions: correctness,
+					tools: [...lens.tools],
+					severities: [...lens.severities],
+					rules: lens.rules.map((rule) => ({ ...rule })),
+					budget: { findings: 8 },
+					coverage: { scope: "", paths: ["**"], nearer: [] },
+					prompt: "Review the change.",
+				},
+			],
+		};
+		const checkpoint = { phase: "review", children: { [key]: 2 as ConversationId }, attempts: { [key]: 1 } };
+		const definition = createReviewRegistry().snapshot().task("melian.lenses")!.definition;
+		const migrate = definition.migrate as (
+			input: unknown,
+			checkpoint: unknown,
+			from: number,
+		) => { input: unknown; checkpoint: unknown };
+
+		const upgraded = migrate(input, checkpoint, 1);
+
+		expect(definition.version).toBe(2);
+		expect(upgraded.input).toMatchObject({
+			root: input.root,
+			revision: input.revision,
+			lenses: [{ key, version: lens.version, route: input.lenses[0]!.route }],
+		});
+		expect(upgraded.input).not.toHaveProperty("lenses.0.level");
+		expect(upgraded.checkpoint).toEqual({ phase: "review", children: { [key]: 2 }, attempts: { [key]: 1 } });
 	});
 
 	it("resumes a lens task an older Melian created, at version 1, under the current definition", async () => {

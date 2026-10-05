@@ -277,3 +277,20 @@ export class DecisionError extends Error {
 		this.question = options.question;
 	}
 }
+
+/** Why a provider refused to read or edit the review ledger. */
+export type LedgerRefusalCode = "unverifiable" | "damaged" | "foreignPublisher" | "unknownPublisher";
+
+/**
+ * A provider refused the ledger on purpose: it is orphaned, damaged, or belongs to another publisher, and writing
+ * would overwrite or duplicate something Melian cannot vouch for. Any other error from a ledger write is a failed call.
+ */
+export class LedgerRefusal extends Error {
+	readonly code: LedgerRefusalCode;
+
+	constructor(code: LedgerRefusalCode, message: string) {
+		super(message);
+		this.name = "LedgerRefusal";
+		this.code = code;
+	}
+}

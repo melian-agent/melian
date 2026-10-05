@@ -8,6 +8,7 @@ import {
 	type Decision,
 	type DecisionRequest,
 	defaultScrutinyLevel,
+	describeLineage,
 	EscalationRule,
 	type EscalationTrigger,
 	type Finding,
@@ -46,6 +47,7 @@ import {
 	adjudicationInput,
 	type ReviewOrigin,
 	readVerdict,
+	VerdictDocument,
 } from "./adjudication.ts";
 import { checksExtension } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
@@ -88,6 +90,7 @@ import {
 	type Storage,
 	type TaskId,
 	type Tx,
+	UsageDoc,
 } from "./harness.ts";
 import {
 	budgetEnded,
@@ -104,6 +107,7 @@ import {
 } from "./lens-tools.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
 import { attachable, ReviewIndex, type ReviewIndexState, undecided } from "./review-index.ts";
+import { summarizeExtension } from "./summarize.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce, triageBoundary } from "./untrusted.ts";
 import {
 	startVerification,
@@ -192,6 +196,7 @@ type LensOutcome =
 				readonly kept?: readonly string[];
 				readonly refuted?: readonly string[];
 			};
+			readonly usage?: { models: string[]; tokens: number; cost: number };
 	  }
 	| { readonly status: "unanswered"; readonly reason: string }
 	| { readonly status: "exhausted"; readonly tried: string[]; readonly reason: string };
@@ -385,8 +390,14 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					const settled = await (await child.submit(request, context)).wait(context);
 					if (settled.status === "done") {
 						const ended = await budgetEnded(runtime, id, context);
+						const spend = (await runtime.snapshot(UsageDoc, id, context))?.models ?? {};
+						const usage = {
+							models: Object.keys(spend),
+							tokens: Object.values(spend).reduce((sum, item) => sum + item.totalTokens, 0),
+							cost: Object.values(spend).reduce((sum, item) => sum + item.cost.total, 0),
+						};
 						const model = modelName(lens.route[attempt]!);
-						return { status: "done", model, ...(ended === undefined ? {} : { budgetEnded: ended }) };
+						return { status: "done", model, usage, ...(ended === undefined ? {} : { budgetEnded: ended }) };
 					}
 					const reason = typeof settled.detail === "string" ? settled.detail : (settled.reason ?? "unanswered");
 					const failover =
@@ -511,6 +522,7 @@ export const lensExtension = defineExtension({
 export function createReviewRegistry(): Registry {
 	const registry = createRegistry();
 	registry.install(lensExtension);
+	registry.install(summarizeExtension);
 	return registry;
 }
 
@@ -930,7 +942,7 @@ async function startAdjudication(
 			deciding.findingsVersion = (await tx.doc(FindingsDocument, input.root)).versions[revision] ?? 0;
 			if (known?.verification !== undefined) known = omit(omit(known, "verification"), "adjudication");
 		}
-		const key = JSON.stringify(deciding);
+		const key = JSON.stringify({ ...deciding, details: undefined });
 		// A failed adjudication is always rerun: it is cheap, and its failure, such as a base commit a shallow clone had
 		// not fetched yet, may have passed.
 		const retry = [...undecided, "failed"];
@@ -1175,7 +1187,12 @@ async function triage(
 		if (!attach || (known.decision === undefined && known.failure === undefined)) {
 			// Waiting starts every pending task, before triage can choose the selection that replaces this live run.
 			if (record !== undefined && record.state.status !== "terminal") index.reviews[revision] = { lenses: [] };
-			else if (previous?.adjudication !== undefined) index.reviews[revision] = omit(previous, "adjudication");
+			else if (previous !== undefined)
+				index.reviews[revision] = omit(omit(previous, "adjudication"), "verification");
+			const verdicts = await tx.doc(VerdictDocument, root.id);
+			delete verdicts.verdicts[revision];
+			if (verdicts.provenance !== undefined) delete verdicts.provenance[revision];
+			if (verdicts.decisions !== undefined) delete verdicts.decisions[revision];
 		}
 		return task;
 	}, context);
@@ -1637,6 +1654,20 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			}
 		}
 	}
+	const checks =
+		request.plan?.mark(
+			accounted.records(),
+			ranOn(
+				settled.map(({ run }) => run),
+				lensResult,
+			),
+		) ?? accounted.records();
+	const lensRan = (key: string) => {
+		const outcome = lensResult?.[key];
+		return outcome?.status === "done" ? outcome : undefined;
+	};
+	const lineageOf = (name: string, level: ScrutinyLevel) =>
+		checks.find((check) => check.name === `lens.${name}` && check.level === level)?.lineage;
 	const input = adjudicationInput({
 		root,
 		repoRoot,
@@ -1645,14 +1676,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		policy: options.policy,
 		config,
 		manifest: verificationCheck === undefined ? manifest : [...manifest, "verifier"],
-		checks:
-			request.plan?.mark(
-				verificationCheck === undefined ? accounted.records() : [...accounted.records(), verificationCheck],
-				ranOn(
-					settled.map(({ run }) => run),
-					lensResult,
-				),
-			) ?? (verificationCheck === undefined ? accounted.records() : [...accounted.records(), verificationCheck]),
+		checks: verificationCheck === undefined ? checks : [...checks, verificationCheck],
 		verifierVersion,
 		verificationRan: true,
 		findingsVersion: await findingsVersion(harness, root, reviewed, context),
@@ -1662,6 +1686,28 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		lenses: settled.map(({ run }) => run.key),
 		plan: request.plan,
 	});
+	// Recorded with the verdict by the adjudication task, so a run that a later review replaced leaves none behind.
+	input.details = {
+		policy: input.provenance.policy,
+		manifest: [...input.manifest],
+		lenses: settled
+			.map(({ run }) => run)
+			.map(({ key, name, version, level, route, budget }) => ({
+				name,
+				version,
+				level,
+				models: route.map(modelName),
+				...(lensRan(key)?.model === undefined ? {} : { ran: lensRan(key)?.model }),
+				...(lineageOf(name, level) === undefined ? {} : { lineage: describeLineage(lineageOf(name, level)!) }),
+				...(lensRan(key)?.usage === undefined ? {} : { usage: structuredClone(lensRan(key)?.usage) }),
+				budget: {
+					findings: budget.findings,
+					...(budget.tokens === undefined ? {} : { tokens: budget.tokens }),
+					...(budget.tools === undefined ? {} : { tools: budget.tools }),
+				},
+			})),
+		standards: standards.map((section) => section.path),
+	};
 	const adjudication = await startAdjudication(
 		harness,
 		input,

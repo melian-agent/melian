@@ -29,6 +29,7 @@ Options:
   --open, --all, --json  For findings.
   --reason <text>        Why the finding does not apply, at most 1000 characters (dismiss).
   --only                 Dismiss the report the ID names alone, leaving the reports merged with it live (dismiss).
+  --no-walkthrough       Omit the walkthrough (review, publish).
   --no-color             Print without colour.
   -h, --help             Show this help.
 
@@ -66,6 +67,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				open: { type: "boolean", default: false },
 				json: { type: "boolean", default: false },
 				model: { type: "string" },
+				walkthrough: { type: "boolean", default: true },
 				rerun: { type: "boolean", default: false },
 				all: { type: "boolean", default: false },
 				reason: { type: "string" },
@@ -91,9 +93,10 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				return await review(scoped, one(rest, name, "range or pull request"), {
 					...(values.model === undefined ? {} : { model: values.model }),
 					rerun: values.rerun,
+					walkthrough: values.walkthrough,
 				});
 			case "publish":
-				return await publish(scoped, one(rest, name, "pull request"));
+				return await publish(scoped, one(rest, name, "pull request"), { walkthrough: values.walkthrough });
 			case "findings":
 				if (values.open && values.all) throw new UsageError("findings takes --open or --all, not both");
 				return await findings(scoped, one(rest, name, "range or pull request"), {

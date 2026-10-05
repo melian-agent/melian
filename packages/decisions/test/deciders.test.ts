@@ -130,6 +130,31 @@ describe("the LLM fallback decider", () => {
 		expect(decision.chosen("correctness")).toBe("careful");
 	});
 
+	it("answers all 65 questions in one request", async () => {
+		const many: DecisionRequest = {
+			...request,
+			questions: Array.from({ length: 65 }, (_, index) => ({
+				id: `lens-${index}`,
+				text: "How closely should it look?",
+				options: ["quick", "careful"],
+			})),
+		};
+		const text = model({
+			answers: many.questions.map((question) => ({
+				question: question.id,
+				probabilities: [{ option: "careful", probability: 1 }],
+			})),
+		});
+		const decider = new FallbackDecider(text);
+		const decision = Decision.parse(many, await decider.decide(many), decider);
+		expect(text.asked).toHaveLength(1);
+		expect(decision.answers).toHaveLength(65);
+		for (const question of many.questions) {
+			expect(text.asked[0]!.prompt).toContain(`### ${question.id}\n`);
+			expect(decision.chosen(question.id)).toBe("careful");
+		}
+	});
+
 	it("answers a question whose ID is a 128-character lens name", async () => {
 		const id = "l".repeat(128);
 		const long: DecisionRequest = {
@@ -171,5 +196,33 @@ describe("the LLM fallback decider", () => {
 			},
 		};
 		await expect(new FallbackDecider(failing).decide(request)).rejects.toThrow("503 overloaded_error");
+	});
+
+	it("passes cancellation to a model call already in progress", async () => {
+		const controller = new AbortController();
+		const reason = new Error("decision cancelled");
+		let received: AbortSignal | undefined;
+		let started = () => {};
+		const calling = new Promise<void>((resolve) => {
+			started = resolve;
+		});
+		const text: TextModel = {
+			name: "faux/light",
+			async answer(_request, signal) {
+				received = signal;
+				started();
+				if (signal === undefined) return answered;
+				return new Promise<never>((_resolve, reject) => {
+					signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+				});
+			},
+		};
+		const pending = new FallbackDecider(text).decide(request, controller.signal);
+		await calling;
+		expect(received).toBe(controller.signal);
+		expect(received!.aborted).toBe(false);
+		controller.abort(reason);
+		await expect(pending).rejects.toBe(reason);
+		expect(received!.aborted).toBe(true);
 	});
 });

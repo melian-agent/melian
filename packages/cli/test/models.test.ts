@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Decider, defaultConfig, type LoadedConfig, type MelianConfig, userFiles } from "@melian-agent/core";
+import { type Decider, defaultConfig, Lens, type LoadedConfig, type MelianConfig, userFiles } from "@melian-agent/core";
 import { buildGoldenRepository, loadGoldens } from "@melian-agent/evals";
 import * as pipeline from "@melian-agent/pipeline";
 import { createFakeModels, type FakeModels } from "@melian-agent/pipeline/testing";
@@ -164,8 +164,15 @@ describe("Triage", () => {
 	async function opened(options: { scripted: boolean; decide: typeof fallbackDecider }) {
 		dir = mkdtempSync(join(tmpdir(), "melian-triage-"));
 		const marker = join(dir, "unlocked");
-		const loaded = loadedOf({ light: { model: "openai/gpt-5.5" } });
-		const { models, plan } = await reviewModels({}, loaded, [], {
+		const lensMarker = join(dir, "lens-unlocked");
+		const loaded = loadedOf({
+			light: { model: "openai/gpt-5.5" },
+			heavy: { model: "anthropic/claude-opus-5-5" },
+		});
+		const lenses = (await Lens.load(process.cwd(), { kind: "worktree" }, ["src/user.ts"])).filter(
+			(lens) => lens.name === "correctness",
+		);
+		const { models, plan } = await reviewModels({}, loaded, lenses, {
 			...setup,
 			credentials: [
 				{
@@ -175,10 +182,17 @@ describe("Triage", () => {
 					value: { kind: "command", command: `touch ${marker}; echo sk-key` },
 					file: "f",
 				},
+				{
+					name: "lens-vault",
+					provider: "anthropic",
+					type: "api_key",
+					value: { kind: "command", command: `touch ${lensMarker}; echo sk-key` },
+					file: "f",
+				},
 			],
 		});
 		const triage = await Triage.create({ ...options, config: loaded.config, plan, models });
-		return { triage, marker, plan };
+		return { triage, marker, lensMarker, plan };
 	}
 
 	it("hands the decider to the harness and the review, and unlocks the providers triage may ask", async () => {
@@ -204,20 +218,97 @@ describe("Triage", () => {
 		expect(triage.reviewOptions()).toEqual({ triageSkipped: "no model" });
 	});
 
-	it("triages nothing and unlocks only the lenses' providers under a script", async () => {
-		const { triage, marker } = await opened({
-			scripted: true,
-			decide: async () => {
-				throw new Error("a script stands in for every model");
-			},
-		});
+	it("triages nothing and unlocks the lens and verifier providers under a script", async () => {
+		const decide = vi.fn(async () => ({ decider, model: "fake" }));
+		const { triage, marker, lensMarker, plan } = await opened({ scripted: true, decide });
 
+		expect(plan.lenses).toHaveLength(1);
+		expect(plan.providers()).toEqual(["anthropic", "openai"]);
+		expect(triage.harnessOptions()).toEqual({});
 		expect(triage.reviewOptions()).toEqual({});
-		expect(existsSync(marker)).toBe(false);
+		expect(existsSync(lensMarker)).toBe(true);
+		expect(existsSync(marker)).toBe(true);
+		expect(decide).not.toHaveBeenCalled();
 	});
 });
 
-describe("command bearer validation", () => {
+describe("command bearer validation", { timeout: 60_000 }, () => {
+	it.each(["disabled", "no paths"])("accepts a script naming a lens with %s", async (skipped) => {
+		const golden = loadGoldens().find((entry) => entry.name === "clean-rename")!;
+		const { repo } = buildGoldenRepository(golden);
+		const xdg = mkdtempSync(join(tmpdir(), "melian-script-lenses-"));
+		try {
+			const script = join(xdg, "script.json");
+			writeFileSync(script, JSON.stringify({ correctness: [{ text: "Done." }] }));
+			writeFileSync(
+				join(repo, "melian.yaml"),
+				`tiers:\n  full: [guardrails, lens.correctness]\nchecks:\n  allowSkip: [lens.correctness]\nlenses:\n  correctness: ${skipped === "disabled" ? "{ enabled: false }" : '{ paths: ["never/**"] }'}\n`,
+			);
+			const stdout = vi.fn();
+			const stderr = vi.fn();
+			const status = await main(["review", "main"], {
+				cwd: repo,
+				env: { XDG_CONFIG_HOME: xdg, MELIAN_STATE_DIR: xdg, MELIAN_TEST_SCRIPT: script },
+				color: false,
+				stdout,
+				stderr,
+			});
+			expect(status, stderr.mock.calls.flat().join("")).toBe(0);
+			expect(stdout.mock.calls.flat().join("")).toContain("passed");
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+			rmSync(xdg, { recursive: true, force: true });
+		}
+	});
+
+	it.each(["disabled", "no paths"])(
+		"reviews with every lens %s without unlocking a failing credential",
+		async (skipped) => {
+			const golden = loadGoldens().find((entry) => entry.name === "clean-rename")!;
+			const { repo } = buildGoldenRepository(golden);
+			const xdg = mkdtempSync(join(tmpdir(), "melian-no-lenses-"));
+			let fake: FakeModels | undefined;
+			try {
+				const marker = join(xdg, "ran");
+				mkdirSync(join(xdg, "melian"));
+				writeFileSync(
+					join(xdg, "melian", "secrets.yaml"),
+					`credentials:\n  vault: { provider: fake-idle, command: "touch ${marker}; exit 1" }\n`,
+					{ mode: 0o600 },
+				);
+				writeFileSync(
+					join(repo, "melian.yaml"),
+					`models:\n  heavy: { model: fake-idle/heavy }\ntiers:\n  full: [guardrails, lens.correctness]\nchecks:\n  allowSkip: [lens.correctness]\nlenses:\n  correctness: ${skipped === "disabled" ? "{ enabled: false }" : '{ paths: ["never/**"] }'}\n`,
+				);
+				vi.spyOn(pipeline, "createReviewModels").mockImplementation((options) => {
+					fake = createFakeModels({
+						provider: "fake-idle",
+						models: [{ id: "heavy" }],
+						credentials: options?.credentials ?? [],
+					});
+					return fake.review;
+				});
+				const stdout = vi.fn();
+				const stderr = vi.fn();
+				const status = await main(["review", "main"], {
+					cwd: repo,
+					env: { XDG_CONFIG_HOME: xdg, MELIAN_STATE_DIR: xdg },
+					color: false,
+					stdout,
+					stderr,
+				});
+				expect(status, stderr.mock.calls.flat().join("")).toBe(0);
+				expect(existsSync(marker)).toBe(false);
+				expect(fake!.provider.state.callCount).toBe(0);
+				expect(stdout).toHaveBeenCalled();
+			} finally {
+				vi.restoreAllMocks();
+				rmSync(repo, { recursive: true, force: true });
+				rmSync(xdg, { recursive: true, force: true });
+			}
+		},
+	);
+
 	it("fails review before opening storage or calling a model when a command bearer expired, despite a usable Pi login", async () => {
 		const golden = loadGoldens().find((entry) => entry.name === "clean-rename")!;
 		const { repo } = buildGoldenRepository(golden);

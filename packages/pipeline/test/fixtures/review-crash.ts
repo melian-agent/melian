@@ -9,6 +9,7 @@
 // of one token. `escalation` triages correctness to quick through a recorded decider, has it report a P1, and parks in
 // the first model request of the careful run it escalates to, after the commit that created that run's conversation.
 // `decision` parks in the decider's first call, with the decision task live and named by the decision document.
+// `replacement` first records a verdict, then parks in replacement triage after its decision commit.
 import { Changeset, type Decider, defaultConfig, Lens, severitySchema } from "@melian-agent/core";
 import { RecordedDecider } from "@melian-agent/decisions";
 import { AdjudicationTask } from "../../src/adjudication.ts";
@@ -58,6 +59,7 @@ const [scenario, repo, database, log] = process.argv.slice(2) as [
 		| "verdict"
 		| "conflicting-verdict"
 		| "decision"
+		| "replacement"
 	),
 	string,
 	string,
@@ -156,7 +158,7 @@ const parkedDecider: Decider = {
 	},
 };
 if (scenario === "escalation") registry.install(decisionExtension(decider));
-if (scenario === "decision") registry.install(decisionExtension(parkedDecider));
+if (scenario === "decision" || scenario === "replacement") registry.install(decisionExtension(parkedDecider));
 
 const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "medium" }, { id: "heavy" }] });
 const harness = await openHarness(await openSqliteStorage(database), {
@@ -185,6 +187,7 @@ const correctness: Readonly<Record<typeof scenario, readonly ScriptedReply[]>> =
 	tokens: [toolUse("read_file", { path: "src/user.ts" })],
 	escalation: [toolUse("report_finding", crashFinding), done, requested("correctness")],
 	decision: [done],
+	replacement: [done],
 };
 scriptConversations(fake, [
 	...(["verifier", "verdict", "conflicting-verdict"].includes(scenario)
@@ -223,9 +226,10 @@ function lensesFor(lenses: Lens[]) {
 const heavy = fake.ref("heavy");
 const medium = fake.ref("medium");
 record(log, { event: "review-started" });
-await reviewChangeset({
+const changeset = await Changeset.resolve(repo, "main...feature");
+const options = {
 	harness,
-	changeset: await Changeset.resolve(repo, "main...feature"),
+	changeset,
 	config: {
 		...defaultConfig,
 		tiers:
@@ -241,4 +245,21 @@ await reviewChangeset({
 	lenses: lensesFor(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 	standards: [],
 	models: fake.review,
-});
+	...(scenario === "replacement"
+		? {
+				policy: { kind: "revision" as const, commit: changeset.revision.base },
+				origin: {
+					kind: "pull-request" as const,
+					repository: { owner: "test", name: "repo" },
+					pullRequest: 62,
+					base: changeset.revision.base,
+					head: changeset.revision.head,
+				},
+			}
+		: {}),
+};
+await reviewChangeset(options);
+if (scenario === "replacement") {
+	record(log, { event: "verdict-recorded" });
+	await reviewChangeset({ ...options, decider: parkedDecider });
+}
