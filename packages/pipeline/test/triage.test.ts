@@ -431,6 +431,51 @@ describe("triage", () => {
 		});
 	});
 
+	it("removes a triage-skipped lens from another lens's hand-off instructions", async () => {
+		const contracts = "You are the contracts reviewer";
+		const twoLenses = {
+			...config,
+			tiers: { ...config.tiers, full: ["standard", "lens.contracts"] },
+			lenses: { contracts: { level: { floor: "skip" } } },
+		} as const;
+		await open();
+		const both = scriptConversations(fake, [
+			{ match: correctness, replies: [done] },
+			{ match: contracts, replies: [done] },
+		]);
+
+		await review({ config: twoLenses });
+
+		expect(systemPromptOf(both[correctness]![0]!)).toContain("- `contracts`:");
+		expect(both[contracts]).toHaveLength(1);
+		const decider = new RecordedDecider({
+			triage: {
+				version: "1",
+				answers: {
+					correctness: { distribution: { careful: 1 } },
+					contracts: { distribution: { skip: 1 } },
+				},
+			},
+		});
+		await open(decider);
+		const skipped = scriptConversations(fake, [
+			{ match: correctness, replies: [done] },
+			{ match: contracts, replies: [done] },
+		]);
+
+		const reviewed = await review({ decider, config: twoLenses });
+
+		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
+		expect(reviewed.verdict.notRun).toContainEqual({
+			name: "lens.contracts",
+			status: "skipped",
+			reason: "triage skipped it, as its floor allows",
+		});
+		expect(skipped[correctness]).toHaveLength(1);
+		expect(skipped[contracts]).toHaveLength(0);
+		expect(systemPromptOf(skipped[correctness]![0]!)).not.toContain("contracts");
+	});
+
 	it("reads each lens's band from the policy's configuration for every file it reviews", async () => {
 		writeFiles(repo, { "src/melian.yaml": lines("lenses:", "  correctness:", "    level: { floor: deep }") });
 		await open();
