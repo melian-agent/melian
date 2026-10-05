@@ -107,6 +107,23 @@ describe("per-lens standards", () => {
 		]);
 	});
 
+	it("reviews a head's nested import without sending ignored clone secrets", async () => {
+		writeFiles(repo, { "packages/core/src/AGENTS.md": "# Head rules\n@../../../melian.secrets.yaml\n" });
+		gitIn(repo, "commit", "--quiet", "-am", "head import");
+		writeFiles(repo, { ".gitignore": "melian.secrets.yaml\n", "melian.secrets.yaml": "CLONE_SECRET_VALUE" });
+		const { options, requests } = await setup();
+		const source = { kind: "revision", commit: options.changeset.revision.head } as const;
+		const result = await reviewChangeset({
+			...options,
+			standards: await Standards.load(repo, source, options.changeset.revision.paths()),
+		});
+		expect(requests["You are the correctness reviewer"]).toHaveLength(1);
+		expect(systemPromptOf(requests["You are the correctness reviewer"]![0]!)).not.toContain("CLONE_SECRET_VALUE");
+		expect(result.verdict.ran!.find(({ name }) => name === "lens.correctness")!.reason).toContain(
+			"packages/core/src/AGENTS.md -> melian.secrets.yaml",
+		);
+	});
+
 	it("includes both sides of a rename for a lens selected through the head path", async () => {
 		writeFiles(repo, { "packages/core/src/a.ts": "export const a = 1;\n" });
 		gitIn(repo, "mv", "packages/core/src/a.ts", "packages/github/src/moved.ts");

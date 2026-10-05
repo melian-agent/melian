@@ -118,7 +118,9 @@ export async function review(
 	const { repoRoot } = changeset;
 	const paths = changeset.revision.paths();
 	const lenses = await Lens.load(repoRoot, source, paths);
-	const standards = await Standards.load(repoRoot, source, paths);
+	const standardsSource =
+		source.kind === "revision" ? source : ({ kind: "revision", commit: changeset.revision.head } as const);
+	const standards = await Standards.load(repoRoot, standardsSource, paths);
 	const policy = await loadConfig(repoRoot, source, ".");
 	const { config: loaded } = policy;
 	const tier = loaded.stages["pull-request"] ?? "full";

@@ -2,6 +2,8 @@
 
 The cli package is the `melian` command. It is the primary host and the only thing the skills call, so every Melian capability must be reachable from it. It chooses what the domain leaves to a host: which revision policy comes from, where storage lives, which models run, and how the outcome reaches a shell. Review logic stays in core and the pipeline.
 
+Range reviews read standards from the checked-out head commit, or the base when the head is not checked out. They never import checkout files. Hosts reserve working tree standards for uncommitted changes.
+
 ## Commands
 
 | Command | Does | Exits |

@@ -1,5 +1,6 @@
 import { constants } from "node:fs";
-import { lstat, open, readdir, stat } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, open, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join, posix } from "node:path";
 import { git, isNotARepository } from "./git.ts";
 
@@ -50,6 +51,7 @@ export class SourceError extends Error {
 export interface SourceReader {
 	// Names a file for messages: the path for the working tree, git's `<commit>:<path>` for a revision.
 	label(path: string): string;
+	isIgnored(path: string): Promise<boolean>;
 	// Undefined when the path does not exist. Throws `symlink`, `tooLarge` past `maxBytes`, or `unreadable`.
 	readText(path: string, maxBytes: number): Promise<string | undefined>;
 	// Undefined when the directory does not exist. Throws `symlink` for a symlinked directory.
@@ -104,6 +106,13 @@ class WorktreeSource implements SourceReader {
 
 	label(path: string): string {
 		return path;
+	}
+
+	async isIgnored(path: string): Promise<boolean> {
+		const result = await git(this.root, ["check-ignore", "--no-index", "--quiet", "--", path]);
+		if (result.code > 1 || result.code < 0)
+			throw new SourceError("unreadable", path, `${path}: ${result.stderr.trim()}`);
+		return result.code === 0;
 	}
 
 	// lstat each component, so that a symlinked directory partway down hides what lies beneath it.
@@ -222,6 +231,38 @@ class RevisionSource implements SourceReader {
 
 	label(path: string): string {
 		return `${this.sha.slice(0, 12)}:${path}`;
+	}
+
+	async isIgnored(path: string): Promise<boolean> {
+		const directory = await mkdtemp(join(tmpdir(), "melian-standards-ignore-"));
+		try {
+			const parts = path.split("/");
+			for (let i = 0; i < parts.length; i++) {
+				const ignore = posix.join(...parts.slice(0, i), ".gitignore");
+				const content = await this.readText(ignore, 256 * 1024).catch((error: unknown) => {
+					if (error instanceof SourceError && error.code === "symlink") return undefined;
+					throw error;
+				});
+				if (content === undefined) continue;
+				const target = join(directory, ignore);
+				await mkdir(posix.dirname(target), { recursive: true });
+				await writeFile(target, content);
+			}
+			const result = await git(this.repoRoot, [
+				"--work-tree",
+				directory,
+				"check-ignore",
+				"--no-index",
+				"--quiet",
+				"--",
+				path,
+			]);
+			if (result.code > 1 || result.code < 0)
+				throw new SourceError("unreadable", this.label(path), `${this.label(path)}: ${result.stderr.trim()}`);
+			return result.code === 0;
+		} finally {
+			await rm(directory, { recursive: true, force: true });
+		}
 	}
 
 	async exists(path: string): Promise<EntryKind | undefined> {

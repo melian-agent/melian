@@ -19,3 +19,5 @@ The standards and run-details paragraphs split the two long sentences flagged in
 Ledger standards paths now use the code renderer, per lens. The ledger regression checks the rendered code spans.
 
 A five-section regression confirms that an imported file uses its importer's scope for omission priority. It keeps the deep root import and drops the deepest package section.
+
+Standards imports now refuse ignored and credential files before reading. Revision imports read only tracked blobs, with ignore rules from that revision. The CLI reads range standards from commits. Core probes and a fake-model review confirm that a head's nested import cannot send clone secrets, and that the check record names the refusal. The import safety decision records this boundary.

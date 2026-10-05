@@ -346,3 +346,39 @@ describe("standards omission scope", () => {
 		expect(reading.paths()).toContain("docs/deep/root/rules.md");
 	});
 });
+
+describe.each(sourceKinds)("standards import safety from %s", (kind) => {
+	it("refuses credential names and ignored imports without reading their contents", async () => {
+		writeFiles(repo, {
+			".gitignore": "private.md\n",
+			"AGENTS.md": "# Rules\n@melian.secrets.yaml\n@melian.local.yaml\n@.env.test\n@private.md\n",
+			"private.md": "PRIVATE_VALUE",
+			"melian.secrets.yaml": "SECRET_VALUE",
+			"melian.local.yaml": "LOCAL_VALUE",
+			".env.test": "ENV_VALUE",
+		});
+		const source = sourceFor(repo, kind);
+		const reader = await sourceModule.openSource(repo, source);
+		const read = vi.spyOn(reader, "readText");
+		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
+		const reading = (await Standards.load(repo, source, ["a.ts"])).forFiles(["a.ts"]);
+		expect(reading.paths()).toEqual(["AGENTS.md", ".melian/standards/naming.md"]);
+		for (const path of ["melian.secrets.yaml", "melian.local.yaml", ".env.test", "private.md"]) {
+			expect(reading.note()).toContain(`AGENTS.md -> ${path}`);
+			expect(read.mock.calls.some(([file]) => file === path)).toBe(false);
+		}
+	});
+
+	it("uses the revision's ignore rules and never reads untracked working tree imports", async () => {
+		writeFiles(repo, { "AGENTS.md": "# Rules\n@private.md\n@untracked.md\n", "private.md": "PUBLIC_BASE" });
+		const source = sourceFor(repo, "revision");
+		writeFiles(repo, {
+			".gitignore": "private.md\n",
+			"private.md": "LOCAL_SECRET",
+			"untracked.md": "UNTRACKED_SECRET",
+		});
+		const reading = (await Standards.load(repo, source, ["a.ts"])).forFiles(["a.ts"]);
+		expect(reading.sections.map(({ content }) => content).join("\n")).toContain("PUBLIC_BASE");
+		expect(reading.sections.map(({ content }) => content).join("\n")).not.toContain("SECRET");
+	});
+});

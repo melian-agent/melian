@@ -111,6 +111,8 @@ class StandardsLoader implements SourceReader {
 	readonly reader: SourceReader;
 	readonly texts = new Map<string, Promise<string | undefined>>();
 	readonly directories = new Map<string, Promise<readonly Entry[] | undefined>>();
+	readonly refused = new Map<string, string[]>();
+	readonly ignored = new Map<string, Promise<boolean>>();
 	readonly kinds = new Map<string, Promise<EntryKind | undefined>>();
 
 	private constructor(repoRoot: string, reader: SourceReader) {
@@ -149,6 +151,15 @@ class StandardsLoader implements SourceReader {
 		}
 		return read;
 	}
+	isIgnored(path: string): Promise<boolean> {
+		let ignored = this.ignored.get(path);
+		if (ignored === undefined) {
+			ignored = this.reader.isIgnored(path);
+			this.ignored.set(path, ignored);
+		}
+		return ignored;
+	}
+
 	findPaths(pattern: RegExp): Promise<string[]> {
 		return this.reader.findPaths(pattern);
 	}
@@ -156,6 +167,8 @@ class StandardsLoader implements SourceReader {
 	async load(path: string): Promise<StandardsSection[]> {
 		const target = repoPath(this.repoRoot, path);
 		const sections: StandardsSection[] = [];
+		const refused: string[] = [];
+		this.refused.set(target, refused);
 		const included = new Set<string>();
 		const expanded = new Set<string>();
 		let total = 0;
@@ -187,6 +200,13 @@ class StandardsLoader implements SourceReader {
 				for (const imported of found.paths) {
 					const importPath = importTarget(file, imported);
 					if (importPath === undefined || included.has(importPath)) continue;
+					if (
+						/^(?:melian\.(?:secrets|local)\.yaml|\.env[^/]*)$/i.test(posix.basename(importPath)) ||
+						(await this.isIgnored(importPath).catch(fromSource))
+					) {
+						refused.push(`${file} -> ${importPath}`);
+						continue;
+					}
 					// In running text, `@name` is often prose: a folder, a team, a package scope. Only a file is an import.
 					if ((await this.exists(importPath).catch(fromSource)) !== "file") continue;
 					const importedContent = await read(importPath);
@@ -204,14 +224,16 @@ class StandardsLoader implements SourceReader {
 export class StandardsReading {
 	readonly sections: readonly StandardsSection[];
 	readonly omitted: readonly string[];
+	readonly refused: readonly string[];
 
-	private constructor(sections: readonly StandardsSection[], omitted: readonly string[]) {
+	private constructor(sections: readonly StandardsSection[], omitted: readonly string[], refused: readonly string[]) {
 		this.sections = sections;
 		this.omitted = omitted;
+		this.refused = refused;
 	}
 
 	/** Unions sections in their first-seen order and drops the deepest sections first when the union exceeds 1 MiB. */
-	static from(sections: readonly StandardsSection[]): StandardsReading {
+	static from(sections: readonly StandardsSection[], refused: readonly string[] = []): StandardsReading {
 		const seen = new Set<string>();
 		const unique = sections.filter((section) => {
 			if (seen.has(section.path)) return false;
@@ -236,6 +258,7 @@ export class StandardsReading {
 		return new StandardsReading(
 			unique.filter((section) => !omitted.has(section.path)),
 			[...omitted],
+			[...new Set(refused)],
 		);
 	}
 
@@ -246,9 +269,15 @@ export class StandardsReading {
 
 	/** The omission note a lens's check record carries, absent when every section fits. */
 	note(): string | undefined {
-		return this.omitted.length === 0
-			? undefined
-			: `left out ${this.omitted.length} standards section${this.omitted.length === 1 ? "" : "s"} past ${standardsLimits.totalBytes / 1024} KiB: ${this.omitted.join(", ")}`;
+		const omission =
+			this.omitted.length === 0
+				? undefined
+				: `left out ${this.omitted.length} standards section${this.omitted.length === 1 ? "" : "s"} past ${standardsLimits.totalBytes / 1024} KiB: ${this.omitted.join(", ")}`;
+		return (
+			[omission, ...(this.refused.length === 0 ? [] : [`refused standards imports: ${this.refused.join(", ")}`])]
+				.filter(Boolean)
+				.join("; ") || undefined
+		);
 	}
 }
 
@@ -257,6 +286,7 @@ export class Standards {
 	readonly source: RepositorySource;
 	readonly #repoRoot: string;
 	readonly #chains: ReadonlyMap<string, readonly StandardsSection[]>;
+	readonly #refused: ReadonlyMap<string, readonly string[]>;
 	readonly #directories: ReadonlyMap<string, string>;
 
 	private constructor(
@@ -264,11 +294,13 @@ export class Standards {
 		source: RepositorySource,
 		chains: ReadonlyMap<string, readonly StandardsSection[]>,
 		directories: ReadonlyMap<string, string>,
+		refused: ReadonlyMap<string, readonly string[]>,
 	) {
 		this.#repoRoot = repoRoot;
 		this.source = source;
 		this.#chains = chains;
 		this.#directories = directories;
+		this.#refused = refused;
 	}
 
 	/**
@@ -279,14 +311,18 @@ export class Standards {
 		const loader = await StandardsLoader.open(repoRoot, source);
 		const chains = new Map<string, readonly StandardsSection[]>();
 		const directories = new Map<string, string>();
+		const refused = new Map<string, readonly string[]>();
 		for (const path of paths) {
 			const target = repoPath(repoRoot, path);
 			const directory =
 				(await loader.exists(target).catch(fromSource)) === "directory" ? target : posix.dirname(target);
 			directories.set(target, directory);
-			if (!chains.has(directory)) chains.set(directory, await loader.load(path));
+			if (!chains.has(directory)) {
+				chains.set(directory, await loader.load(path));
+				refused.set(directory, loader.refused.get(target) ?? []);
+			}
 		}
-		return new Standards(repoRoot, source, chains, directories);
+		return new Standards(repoRoot, source, chains, directories, refused);
 	}
 
 	/**
@@ -299,6 +335,10 @@ export class Standards {
 				const target = repoPath(this.#repoRoot, file);
 				const directory = this.#directories.get(target) ?? posix.dirname(target);
 				return this.#chains.get(directory) ?? [];
+			}),
+			files.flatMap((file) => {
+				const target = repoPath(this.#repoRoot, file);
+				return this.#refused.get(this.#directories.get(target) ?? posix.dirname(target)) ?? [];
 			}),
 		);
 	}
