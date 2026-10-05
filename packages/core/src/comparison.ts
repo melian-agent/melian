@@ -140,7 +140,7 @@ const fileFindingSchema = Type.Object(
 /**
  * The file a local reviewer's findings arrive in, written by the agent that ran the reviewer: the reviewer, and each
  * finding's file, lines, title, body, and the reviewer's own severity. `ref` is the reviewer's own label for a finding,
- * such as `A1`; without one, a finding is known by its file, line, and title.
+ * such as `A1`; without one, a finding is known by its file, line, title, and body.
  */
 export const externalFindingsFileSchema = Type.Object(
 	{
@@ -221,13 +221,15 @@ function schemaProblem(schema: TSchema, value: unknown): string | undefined {
 }
 
 // What the ID hashes: the thread's node ID; or the file's path, and the finding's ref in it, or without one its file,
-// line, and title, so an unchanged finding keeps its ID when a rerun reorders the file. The reviewer stays out, so a
+// line, title, and a digest of its body, so an unchanged finding keeps its ID when a rerun reorders the file and two
+// findings at one site under one generic title stay two. The reviewer stays out, so a
 // later change to how reviewers are named never orphans a hand record.
 function sourceFields(input: ExternalFindingInput, title: string): string[] {
 	const { source } = input;
 	if (source.kind === "thread") return ["thread", source.thread];
 	if (source.ref !== undefined) return ["file", source.path, "ref", source.ref];
-	return ["file", source.path, "finding", input.file ?? "", String(input.line ?? ""), title];
+	const body = createHash("sha256").update(input.body).digest("hex");
+	return ["file", source.path, "finding", input.file ?? "", String(input.line ?? ""), title, body];
 }
 
 // Whether two line ranges overlap or lie within `siteDistance` lines of each other.
@@ -381,7 +383,7 @@ export class ExternalFinding {
 				},
 				position,
 			);
-			// Two findings alike in file, line, and title are one finding.
+			// Two findings alike in file, line, title, and body are one finding.
 			if (!found.has(created.id)) found.set(created.id, created);
 		}
 		return [...found.values()];

@@ -182,6 +182,45 @@ describe("ExternalFinding", () => {
 		expect(() => external({ reviewer: { name: "human", login: "x".repeat(101) } })).toThrow(ComparisonError);
 	});
 
+	it("keeps two findings at one site under one title apart when their bodies differ, in both file shapes", () => {
+		const own = (body: string) => ({ file: "src/a.ts", line: 3, title: "Possible bug", body });
+		const shaped = ExternalFinding.fromFile(
+			{ reviewer: { name: "claude-code" }, findings: [own("Null manager."), own("Off by one.")] },
+			"claude.json",
+		);
+		const codex = (body: string) => ({
+			severity: "high",
+			title: "Possible bug",
+			body,
+			file: "src/a.ts",
+			line_start: 3,
+			line_end: 3,
+			confidence: 0.5,
+			recommendation: "",
+		});
+		const codexFindings = ExternalFinding.fromFile(
+			{
+				verdict: "needs-attention",
+				summary: "s",
+				findings: [codex("Null manager."), codex("Off by one.")],
+				next_steps: [],
+			},
+			"codex.json",
+		);
+		for (const findings of [shaped, codexFindings]) {
+			expect(findings).toHaveLength(2);
+			const comparison = compared([], [melian()]);
+			comparison.import("file:x", { findings, skippedBodies: 0 }, "t");
+			expect(comparison.externalFindings()).toHaveLength(2);
+		}
+		// An unchanged finding keeps its ID when a rerun moves it in the file.
+		const rerun = ExternalFinding.fromFile(
+			{ reviewer: { name: "claude-code" }, findings: [own("Off by one."), own("Null manager.")] },
+			"claude.json",
+		);
+		expect(rerun.map((each) => each.id).sort()).toEqual(shaped.map((each) => each.id).sort());
+	});
+
 	it("refuses a file that repeats a ref, and keeps one of two findings alike", () => {
 		expect(() =>
 			ExternalFinding.fromFile(

@@ -749,7 +749,7 @@ Solution: comparison is a Melian capability. `melian compare` builds it, a store
 - the file and line range;
 - a title and a body;
 - the reviewer's own severity, if it gave one;
-- a stable source reference: a thread's ID and its URL, or the file it was read from and the finding's own label there, or without one its place and title;
+- a stable source reference: a thread's ID and its URL, or the file it was read from and the finding's own label there, or without one its place, title, and body;
 - when it was posted, and whether its thread was resolved.
 
 Its ID hashes the source reference alone, so importing again updates a finding rather than adding one, and a later change to how reviewers are named never orphans a hand match. An import replaces what its source last imported, so a finding the reviewer withdrew goes. Melian's findings keep their own shape. A comparison holds, for one changeset at one head, the external findings, Melian's findings from its stored review of that head, and the matches between them. It is a `defineDoc()` document in the changeset's storage, beside the findings document, so it lives where dismissals live. A range compares as a pull request does, for reviewers run on a local branch.
