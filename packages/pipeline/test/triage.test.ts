@@ -1049,11 +1049,11 @@ describe("escalation under a review plan", () => {
 			checks: ["lens.correctness"],
 		});
 		// The run finishes on heavy, which the plan, as it judges the finished run, now refuses.
-		const real = plan.judge.bind(plan);
+		const original = ReviewPlan.from(plan.toJSON());
 		vi.spyOn(plan, "judge").mockImplementation((name, level, ran, scope) =>
 			ran === heavy && level === "careful"
 				? { refusal: "careful finished on a model policy refuses" }
-				: real(name, level, ran, scope),
+				: original.judge(name, level, ran, scope),
 		);
 		scriptConversations(fake, [{ match: correctness, replies: [severe, done, done] }]);
 
