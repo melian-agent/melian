@@ -334,7 +334,9 @@ Built in milestone 1. The files a user owns beyond `melian.local.yaml`, and the 
 
 Problem: a multi-service monorepo needs different scrutiny for a payments service than for its docs, and a single root configuration cannot express that without becoming a rules engine.
 
-Solution: `melian.yaml` may exist at any folder level. For a touched path, the nearest file applies, merged upward to the root, in the way `CODEOWNERS` resolves. Every setting layers this way: checks, tiers, stages, lens routing, model routing, resolution levels, write-back permission, decision thresholds.
+Solution: `melian.yaml` may exist at any folder level. For a touched path, the nearest file applies, merged upward to the root, in the way `CODEOWNERS` resolves. Root-only policy is an exception: `trust.writers` defaults to true and only the committed root `melian.yaml` sets it. Nested and preference files cannot change it. A pull request reads its base's value, so a head edit takes effect after merge.
+
+Other settings layer this way: checks, tiers, stages, lens routing, model routing, resolution levels, write-back permission, decision thresholds.
 
 Every file in the layering is read from one revision the host chooses, the base commit for a pull request, as [Trust and isolation](#policy-and-standards-come-from-a-revision-the-host-chooses) sets out. A pull request that edits a `melian.yaml` is reviewed under the policy it is changing, not the policy it proposes. A user's own preference files layer over every committed file, and only when the host reads policy from the working tree, as [Files a user owns](#files-a-user-owns) sets out.
 

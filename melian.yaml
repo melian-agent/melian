@@ -2,6 +2,8 @@
 # Its routes are defaults: a maintainer without their credentials gets a route derived from the credentials they hold,
 # which melian doctor prints and every check run on it records. Route your own tiers in melian.local.yaml or
 # ~/.config/melian/config.yaml, or pass --model; keep keys in melian.secrets.yaml or ~/.config/melian/secrets.yaml.
+trust: { writers: true }
+
 models:
   heavy:
     model: anthropic/claude-opus-5-5

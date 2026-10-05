@@ -61,6 +61,24 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		});
 	});
 
+	it("trusts writers by default and accepts false in the root policy", async () => {
+		expect((await load("src/index.ts")).config.trust).toEqual({ writers: true });
+		writeFiles(repo, { "melian.yaml": "trust: { writers: false }\n" });
+		expect((await load("src/index.ts")).config.trust).toEqual({ writers: false });
+	});
+
+	it("refuses a non-boolean trust switch", async () => {
+		writeFiles(repo, { "melian.yaml": "trust: { writers: yes }\n" });
+		expect(await rejection(load("src/index.ts"))).toMatchObject({ code: "invalidValue", key: "trust.writers" });
+	});
+
+	it("refuses trust in a nested policy", async () => {
+		writeFiles(repo, { "services/melian.yaml": "trust: { writers: false }\n" });
+		const error = await rejection(load("services/api.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", key: "trust", file: "services/melian.yaml" });
+		expect(error.message).toContain("only a committed root melian.yaml");
+	});
+
 	it("defaults the walkthrough on and accepts each switch under publish.walkthrough", async () => {
 		writeFiles(repo, {
 			"melian.yaml": lines(
@@ -477,6 +495,13 @@ describe("melian.local.yaml", () => {
 		expect(sources).toEqual(["melian.local.yaml", "services/pay/melian.yaml", "melian.yaml"]);
 	});
 
+	it("refuses trust in clone preferences", async () => {
+		writeFiles(repo, { "melian.local.yaml": "trust: { writers: false }\n" });
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "src/index.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", key: "trust", file: "melian.local.yaml" });
+		expect(error.message).toContain("only a committed root melian.yaml");
+	});
+
 	it("may set triage, which a nested melian.yaml may not", async () => {
 		writeFiles(repo, { "melian.local.yaml": lines("triage:", "  escalateAt: P2") });
 		const { config } = await loadConfig(repo, { kind: "worktree" }, "services/pay/a.ts");
@@ -531,6 +556,15 @@ describe("the user-level preference file", () => {
 
 	const preferences = () => join(home, "config.yaml");
 	const worktree = () => ({ kind: "worktree" as const, preferences: preferences() });
+
+	it("refuses trust in user preferences", async () => {
+		writeFiles(home, { "config.yaml": "trust: { writers: false }\n" });
+		expect(await rejection(loadConfig(repo, worktree(), "src/index.ts"))).toMatchObject({
+			code: "invalidValue",
+			key: "trust",
+			file: preferences(),
+		});
+	});
 
 	it("may set triage, which a nested melian.yaml may not", async () => {
 		writeFiles(home, { "config.yaml": lines("triage:", "  escalateAt: P2") });
