@@ -436,9 +436,12 @@ export class Verdict {
 	reviewStatus(): ReviewStatus {
 		const count = (number: number, noun: string) => `${number} ${noun}${number === 1 ? "" : "s"}`;
 		if (this.status === "not-reviewed") {
-			const reasons = this.notRun.map(
-				({ name, status, reason }) => `${name} ${status}${reason === undefined ? "" : ` (${reason})`}`,
-			);
+			// An ended lens's budget is why it stopped; a reason it carries is a note, so it comes after, never in place.
+			const reasons = this.notRun.map(({ name, status, reason, budgetEnded }) => {
+				const ended = budgetEnded === undefined ? [] : [describeBudgetEnd(budgetEnded)];
+				const why = [...ended, ...(reason === undefined ? [] : [reason])].join("; ");
+				return `${name} ${status}${why === "" ? "" : ` (${why})`}`;
+			});
 			return { state: "error", description: `Not reviewed: ${reasons.join("; ") || "the review did not complete"}` };
 		}
 		const shown = this.attention().length;
@@ -545,7 +548,8 @@ export class Verdict {
 		const parts = [`Verdict: ${rendering.paint(color, label)}${blocking}`];
 		if (this.notRun.length > 0) {
 			const checks = this.notRun.map(({ name, status, level, reason, error, budgetEnded }) => {
-				const why = reason ?? (budgetEnded === undefined ? undefined : describeBudgetEnd(budgetEnded));
+				const ended = budgetEnded === undefined ? [] : [describeBudgetEnd(budgetEnded)];
+				const why = [...ended, ...(reason === undefined ? [] : [reason])].join("; ") || undefined;
 				return [
 					`  ${visibleText(name)}  ${status}${level === undefined ? "" : ` at ${level}`}${why === undefined ? "" : `: ${prose(why, "    ")}`}`,
 					...(error === undefined ? [] : [`    Error: ${prose(error, "      ")}`]),

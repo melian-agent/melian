@@ -3,6 +3,7 @@ import {
 	capSnippet,
 	type EvidenceLocation,
 	Finding,
+	type FindingSource,
 	type FindingTrigger,
 	type LensRule,
 	type LensToolName,
@@ -19,6 +20,7 @@ import {
 	readRevisionFile,
 	reportFindingInputSchema,
 	repositoryPath,
+	type ScrutinyLevel,
 	type Severity,
 	searchRevision,
 	snippetHash,
@@ -85,6 +87,11 @@ export type ReviewState = {
 	files: ReviewFile[];
 };
 
+// A lens's findings name its version with the level it ran at, so one lens at two levels of a revision is two producers.
+export function lensSource(name: string, version: string, level: ScrutinyLevel | undefined): FindingSource {
+	return { check: `lens.${name}`, version: level === undefined ? version : `${version}@${level}` };
+}
+
 // The fields of `files` that the review document keeps.
 export function reviewFiles(files: readonly ChangedFile[]): ReviewFile[] {
 	return files.map(({ path, oldPath, status, binary, hunks }) => ({
@@ -115,6 +122,9 @@ export function reviewFiles(files: readonly ChangedFile[]): ReviewFile[] {
 export type LensPolicy = {
 	name: string;
 	version: string;
+	// The level it runs at, which its findings' source names; absent from a lens an older Melian created, whose findings
+	// name the lens's version alone.
+	level?: ScrutinyLevel;
 	// The root conversation, which owns the review and its findings document.
 	review: ConversationId;
 	// The revision this lens reviews. Each lens carries its own, so a later review of the same changeset, whose lens task
@@ -139,7 +149,13 @@ export type LensPolicy = {
 // never one it refused, the first budget the lens ran out of, recorded by the call that ended the conversation for it,
 // and the tool task of every `report_finding` call by the finding it reported. Pi mints a task per call and keeps it
 // across a replay, where a provider may reuse a call ID in every round.
-type LensSpend = { calls: number[]; ended?: "tokens" | "tools"; reports?: Record<string, number[]> };
+// `refuted` holds the IDs of findings the lens reported as not a defect, which an escalated run is asked to check.
+type LensSpend = {
+	calls: number[];
+	ended?: "tokens" | "tools";
+	reports?: Record<string, number[]>;
+	refuted?: string[];
+};
 
 export const LensDocument = defineDoc<{ lens?: LensPolicy; spend?: LensSpend }>({
 	kind: "melian.lens",
@@ -697,7 +713,7 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 			whyHere: args.explanation.why,
 			whatToDo: args.explanation.fix,
 		},
-		source: { check: `lens.${lens.name}`, version: lens.version },
+		source: lensSource(lens.name, lens.version, lens.level),
 	});
 }
 
@@ -739,6 +755,7 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 	const review = lens.revision;
 	const finding = await findingFromCall(args, lens, review);
 	const id = finding.properties.id;
+	const { refuted } = args;
 	const recorded = await api.commit(async (tx) => {
 		// One storage holds every review of a changeset, so the budget counts this lens's sightings at its own revision.
 		// The lens task that runs this conversation: its policy names it, and for a conversation an older Melian spawned,
@@ -754,7 +771,7 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 			throw new Error("superseded: a later review of this revision replaced this run; stop reporting and finish");
 		}
 		const own = hasSighting(state, id, at, source);
-		if (!own && sightingCount(state, at, source) >= lens.budget) {
+		if (refuted === undefined && !own && sightingCount(state, at, source) >= lens.budget) {
 			throw new Error(`budget reached: this lens may report ${lens.budget} findings; stop reporting and finish`);
 		}
 		// Each report reads the code at every location it cites, and quotes it back, so corrections are capped.
@@ -766,6 +783,13 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 			if (calls.length > maxCorrections) return false;
 			document.spend.reports[id] = [...calls, api.taskId];
 		}
+		// A refutation stores no sighting: the lens says the finding an earlier run reported, by the ID it was given, is
+		// not a defect, so the refutation never depends on reproducing that finding's snippet.
+		if (refuted !== undefined) {
+			const listed = document.spend.refuted ?? [];
+			if (!listed.includes(refuted)) document.spend.refuted = [...listed, refuted];
+			return true;
+		}
 		await upsertFinding(
 			tx,
 			lens.review,
@@ -775,6 +799,7 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 		);
 		return true;
 	}, context);
+	if (recorded && refuted !== undefined) return text(`recorded that finding ${refuted} is not a defect`);
 	if (!recorded) {
 		return text(
 			`[not recorded: this lens has corrected finding ${id} ${maxCorrections} times, the most it may; report another finding or finish]`,

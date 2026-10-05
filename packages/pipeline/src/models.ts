@@ -1,6 +1,6 @@
-import type { CatalogModel } from "@melian-agent/core";
+import type { CatalogModel, ModelReference, TextModel, ToolRequest } from "@melian-agent/core";
 import type { MelianCredentialStore } from "./credentials.ts";
-import type { Models } from "./harness.ts";
+import type { Api, Model, Models } from "./harness.ts";
 
 /**
  * The models a review runs on: an opaque handle over pi-ai's model collection, so callers outside the pipeline never
@@ -77,5 +77,53 @@ export async function unlockCredentials(models: ReviewModels, providers: readonl
 	if (store === undefined) return;
 	for (const provider of new Set(providers)) {
 		await store.unlock(provider);
+	}
+}
+
+/**
+ * Core's {@link TextModel} over a review's models: one model, asked one request that it must answer by calling the
+ * request's tool. The decision adapters ask a model through it without importing Pi.
+ */
+export class RouteTextModel implements TextModel {
+	readonly name: string;
+	readonly #models: Models;
+	readonly #model: Model<Api>;
+
+	private constructor(models: Models, model: Model<Api>) {
+		this.#models = models;
+		this.#model = model;
+		this.name = `${model.provider}/${model.id}`;
+	}
+
+	/** The first model of `route` that `models` knows and holds credentials for, or `undefined` when there is none. */
+	static async create(models: ReviewModels, route: readonly ModelReference[]): Promise<RouteTextModel | undefined> {
+		const collection = modelsOf(models);
+		for (const reference of route) {
+			const model = collection.getModel(reference.provider, reference.modelId);
+			if (model === undefined) continue;
+			if ((await collection.checkAuth(reference.provider).catch(() => undefined)) !== undefined) {
+				return new RouteTextModel(collection, model);
+			}
+		}
+		return undefined;
+	}
+
+	/** The arguments of the model's call to `request.tool`. Throws when the request fails or the model calls no tool. */
+	async answer(request: ToolRequest, signal?: AbortSignal): Promise<unknown> {
+		const reply = await this.#models.complete(
+			this.#model,
+			{
+				systemPrompt: request.system,
+				messages: [{ role: "user", content: request.prompt, timestamp: Date.now() }],
+				tools: [request.tool],
+			},
+			signal === undefined ? {} : { signal },
+		);
+		if (reply.stopReason === "error" || reply.stopReason === "aborted") {
+			throw new Error(`${this.name} failed: ${reply.errorMessage ?? reply.stopReason}`);
+		}
+		const call = reply.content.find((part) => part.type === "toolCall" && part.name === request.tool.name);
+		if (call?.type !== "toolCall") throw new Error(`${this.name} answered without calling ${request.tool.name}`);
+		return call.arguments;
 	}
 }

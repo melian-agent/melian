@@ -235,6 +235,23 @@ describe("Verdict.reviewStatus", () => {
 		});
 	});
 
+	it("names an ended lens's budget first, and any note after it", () => {
+		const checks: CheckRecord[] = [
+			{
+				name: "lens.correctness",
+				status: "ended",
+				level: "careful",
+				budgetEnded: { budget: "tokens", limit: 50_000, tokens: 51_200, tools: 4 },
+				reason: "escalated from quick to careful: at quick it reported a P1 finding, at or above P1",
+			},
+		];
+		expect(verdictOf([], checks).reviewStatus()).toEqual({
+			state: "error",
+			description:
+				"Not reviewed: lens.correctness ended (its token budget of 50,000 ran out after 4 tool calls and 51,200 tokens; escalated from quick to careful: at quick it reported a P1 finding, at or above P1)",
+		});
+	});
+
 	it("maps a review that did not complete to error, with what did not run", () => {
 		const checks: CheckRecord[] = [
 			{ name: "lens.correctness", status: "failed", reason: "the lens did not finish" },

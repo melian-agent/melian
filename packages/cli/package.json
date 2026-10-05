@@ -41,6 +41,7 @@
 	},
 	"dependencies": {
 		"@melian-agent/core": "*",
+		"@melian-agent/decisions": "*",
 		"@melian-agent/github": "*",
 		"@melian-agent/pipeline": "*"
 	},
