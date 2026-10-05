@@ -63,7 +63,7 @@ describe("ledger rendering", () => {
 	it("stamps the open, blocking and dismissed counts", () => {
 		const warning = Finding.from({
 			...finding.toJSON(),
-			properties: { ...finding.properties, id: "warning-finding", severity: "P3", resolution: "warn" },
+			properties: { ...finding.properties, id: "warning-finding", severity: "P3", resolution: "advisory" },
 		});
 		const dismissed = Finding.from({
 			...finding.toJSON(),
@@ -1169,7 +1169,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 			fetch: fakeGitHub(state),
 		});
 		harness = await openPublishHarness(createMemoryStorage(), fake, provider);
-		const changesets = [];
+		const changesets: Awaited<ReturnType<typeof reviewScenario>>["changeset"][] = [];
 		for (const range of ["main...feature", "parent...feature"]) {
 			const review = await reviewScenario(repo, harness, fake, lensScript(unsafeManager), false, { range });
 			await review.review;
