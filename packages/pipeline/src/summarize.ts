@@ -22,6 +22,7 @@ import {
 	defineTool,
 	type Harness,
 	type TaskId,
+	type Tx,
 	Type,
 } from "./harness.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
@@ -88,7 +89,7 @@ const recordWalkthrough = defineTool({
 
 type SummaryInput = { root: ConversationId; revision: string; prompt: string; model: ModelReference; paths?: string[] };
 type SummaryCheckpoint = { phase: "spawn" } | { phase: "summarize"; child: ConversationId };
-const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
+export const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 	name: "melian.summarize",
 	version: 1,
 	initial: () => ({ phase: "spawn" }),
@@ -121,6 +122,7 @@ const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 					if (document.walkthroughNotes !== undefined) delete document.walkthroughNotes[task.input.revision];
 					if (document.walkthroughAttempts !== undefined) delete document.walkthroughAttempts[task.input.revision];
 				} else {
+					await countAttempt(tx, task.input.root, task.input.revision, runtime.taskId);
 					if (document.walkthroughs !== undefined) delete document.walkthroughs[task.input.revision];
 					document.walkthroughNotes = {
 						...document.walkthroughNotes,
@@ -142,14 +144,29 @@ export const summarizeExtension = defineExtension({
 	tools: [recordWalkthrough],
 });
 
-const SummaryIndex = defineDoc<{ tasks: Record<string, number> }>({
+const SummaryIndex = defineDoc<{ tasks: Record<string, number>; counted: Record<string, number> }>({
 	kind: "melian.summaries",
-	version: 1,
+	version: 2,
+	migrate: (value) => {
+		const old = value as { tasks: Record<string, number> };
+		return { ...old, counted: { ...old.tasks } };
+	},
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
-	initial: () => ({ tasks: {} }),
+	initial: () => ({ tasks: {}, counted: {} }),
 });
+
+async function countAttempt(tx: Tx, root: ConversationId, revision: string, task: number): Promise<void> {
+	const index = await tx.doc(SummaryIndex, root);
+	if (index.counted[revision] === task) return;
+	const document = await tx.doc(VerdictDocument, root);
+	document.walkthroughAttempts = {
+		...document.walkthroughAttempts,
+		[revision]: (document.walkthroughAttempts?.[revision] ?? 0) + 1,
+	};
+	index.counted[revision] = task;
+}
 
 class WalkthroughPrompt {
 	private readonly changeset: Changeset;
@@ -246,20 +263,30 @@ export async function summarizeReview(options: {
 			}, context);
 			return;
 		}
-		const attempts = (await harness.snapshot(VerdictDocument, conversation.id, context))?.walkthroughAttempts?.[
-			revision
-		];
-		if (!options.rerun && (attempts ?? 0) >= maxWalkthroughAttempts) return;
 		const prompt = await WalkthroughPrompt.from(changeset).render();
 		const task = await conversation.commit(async (tx) => {
 			const index = await tx.doc(SummaryIndex, conversation.id);
 			const known = index.tasks[revision];
-			if (await attachable(tx, known, [...undecided, "failed", "completed"])) return known as TaskId<string>;
 			const document = await tx.doc(VerdictDocument, conversation.id);
-			document.walkthroughAttempts = {
-				...document.walkthroughAttempts,
-				[revision]: options.rerun ? 1 : (document.walkthroughAttempts?.[revision] ?? 0) + 1,
-			};
+			if (!options.rerun && document.walkthroughs?.[revision] !== undefined) return undefined;
+			if (await attachable(tx, known, [...undecided, "failed", "completed"])) {
+				if (index.counted[revision] === known) {
+					if (document.walkthroughAttempts !== undefined)
+						document.walkthroughAttempts[revision] = Math.max(
+							0,
+							(document.walkthroughAttempts[revision] ?? 0) - 1,
+						);
+					delete index.counted[revision];
+				}
+				return known as TaskId<string>;
+			}
+			const previous = known === undefined ? undefined : await tx.task(known as TaskId);
+			if (previous?.state.status === "terminal" && ["failed", "completed"].includes(previous.state.outcome.status))
+				await countAttempt(tx, conversation.id, revision, known!);
+			if (!options.rerun && (document.walkthroughAttempts?.[revision] ?? 0) >= maxWalkthroughAttempts)
+				return undefined;
+			if (known !== undefined) await countAttempt(tx, conversation.id, revision, known);
+			if (options.rerun) document.walkthroughAttempts = { ...document.walkthroughAttempts, [revision]: 0 };
 			const created = await tx.createTask(
 				SummaryTask,
 				{ root: conversation.id, revision, prompt, model, paths: changeset.revision.files.map(({ path }) => path) },
@@ -268,6 +295,7 @@ export async function summarizeReview(options: {
 			index.tasks[revision] = created;
 			return created;
 		}, context);
+		if (task === undefined) return;
 		harness.resume();
 		const blocked = (await harness.inspect(context)).tasks.find(
 			(each) => each.record.id === task && each.state.kind === "blocked",

@@ -5,6 +5,7 @@ import {
 	createMemoryStorage,
 	createRegistry,
 	createReviewRegistry,
+	defineDoc,
 	defineExtension,
 	defineTask,
 	type Harness,
@@ -21,6 +22,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
+import { SummaryTask, summarizeExtension } from "../src/summarize.ts";
 import { baseAndHead, isolatedGitEnv } from "./fixtures/repo.ts";
 
 let repo: string;
@@ -146,7 +148,8 @@ describe("walkthrough summaries", () => {
 		const captured = scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
 		const revision = revisionKey(changeset.revision);
 		expect((await summarize())?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
-		expect((await summarize())?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
+		const result = await summarize();
+		expect(result?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
 		expect(captured["You write Melian's walkthrough"]).toHaveLength(1);
 	});
 	it("asks a persistently failing summariser twice across three reviews, and again on a rerun", async () => {
@@ -185,6 +188,68 @@ describe("walkthrough summaries", () => {
 			"No walkthrough available. The summariser failed.",
 		);
 	});
+	it("resumes an indexed pending task even when the old start counter reached the limit", async () => {
+		await harness.close(context);
+		const registry = createRegistry();
+		harness = await openHarness(createMemoryStorage(), { models: models.models, registry });
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		const oldIndex = defineDoc<{ tasks: Record<string, number> }>({
+			kind: "melian.summaries",
+			version: 1,
+			scope: "conversation",
+			history: "rewindable",
+			fork: "asOf",
+			initial: () => ({ tasks: {} }),
+		});
+		await root.commit(async (tx) => {
+			const document = await tx.doc(VerdictDocument, root.id);
+			document.provenance = { [revision]: { kind: "pull-request", policy: "config", manifest: [], lenses: [] } };
+			document.walkthroughAttempts = { [revision]: 2 };
+			const task = await tx.createTask(
+				SummaryTask,
+				{
+					root: root.id,
+					revision,
+					prompt: "Summarise the change.",
+					model: models.ref("scripted"),
+					paths: ["src/a.ts"],
+				},
+				{ ownership: { kind: "conversation" } },
+			);
+			(await tx.doc(oldIndex, root.id)).tasks[revision] = task;
+		}, context);
+		harness.resume();
+		const pending = (await harness.inspect(context)).tasks.find(({ record }) => record.kind === "melian.summarize");
+		expect(pending?.state.kind).toBe("blocked");
+		const captured = scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+		registry.install(summarizeExtension);
+		const result = await summarize();
+		expect(result?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
+		expect(captured["You write Melian's walkthrough"]).toHaveLength(1);
+	});
+
+	it("does not charge repeated reviews for a task still pending without its extension", async () => {
+		await harness.close(context);
+		const registry = createRegistry();
+		harness = await openHarness(createMemoryStorage(), { models: models.models, registry });
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).provenance = {
+				[revision]: { kind: "pull-request", policy: "config", manifest: [], lenses: [] },
+			};
+		}, context);
+		await summarize();
+		await summarize();
+		expect((await stored())?.walkthroughAttempts?.[revision] ?? 0).toBe(0);
+		const captured = scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+		registry.install(summarizeExtension);
+		const result = await summarize();
+		expect(result?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
+		expect(captured["You write Melian's walkthrough"]).toHaveLength(1);
+	});
+
 	it("records a task failure as a fixed note and retries a new task", async () => {
 		const wait = vi.spyOn(harness, "waitForTask").mockRejectedValueOnce(new Error("task failed with private detail"));
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
