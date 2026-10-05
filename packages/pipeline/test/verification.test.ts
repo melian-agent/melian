@@ -12,6 +12,7 @@ import {
 	readFindings,
 	reviewChangeset,
 	revisionKey,
+	type TaskId,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -23,7 +24,8 @@ import {
 	systemPromptOf,
 	textOf,
 } from "@melian-agent/pipeline/testing";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AdjudicationTask, readDecision, readVerdict } from "../src/adjudication.ts";
 import { clearSightings } from "../src/findings.ts";
 import { reviewFiles } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -54,6 +56,7 @@ beforeEach(async () => {
 });
 afterEach(async () => {
 	await harness.close(context);
+	vi.restoreAllMocks();
 	rmSync(repo, { recursive: true, force: true });
 });
 
@@ -412,6 +415,88 @@ describe("the verifier", () => {
 		expect(result.findings[0]!.properties.verification?.verdict).toBe("refuted");
 		expect(result.verdict.refuted).toHaveLength(1);
 		expect(result.verdict.attention()).toEqual([]);
+	});
+	it("aborts parked adjudication when a rerun replaces failed verification", async () => {
+		const adjudicationEntered = Promise.withResolvers<void>();
+		const releaseAdjudication = Promise.withResolvers<void>();
+		const verificationEntered = Promise.withResolvers<void>();
+		const releaseVerification = Promise.withResolvers<void>();
+		const adjudicate = AdjudicationTask.definition.phases.adjudicate;
+		vi.spyOn(AdjudicationTask.definition.phases, "adjudicate").mockImplementationOnce(
+			async (task, runtime, taskContext) => {
+				adjudicationEntered.resolve();
+				const release = () => releaseAdjudication.resolve();
+				runtime.signal.addEventListener("abort", release, { once: true });
+				try {
+					await releaseAdjudication.promise;
+					if (!runtime.signal.aborted) await adjudicate(task, runtime, taskContext);
+				} finally {
+					runtime.signal.removeEventListener("abort", release);
+				}
+			},
+		);
+		scriptConversations(fake, [
+			{
+				match: lenses[0]!.instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				match: verifierMarker,
+				replies: [
+					...Array.from({ length: 2 }, () =>
+						fauxAssistantMessage("", { stopReason: "error", errorMessage: "HTTP 503 service unavailable" }),
+					),
+					async (messages) => {
+						verificationEntered.resolve();
+						await releaseVerification.promise;
+						const id = /Claim c1 finding ([0-9a-f]+)/.exec(systemPromptOf(messages))![1]!;
+						return scriptVerifier(messages, {
+							[id]: {
+								verdict: "refuted",
+								reason: "A guard prevents the failure.",
+								evidence: [{ file: "src/user.ts", line: 7, role: "context" }],
+							},
+						});
+					},
+					(messages) => scriptVerifier(messages),
+				],
+			},
+		]);
+		const first = review().catch((error: unknown) => error);
+		let replacement: Promise<Review> | undefined;
+		try {
+			await adjudicationEntered.promise;
+			const root = await harness.root(context);
+			const revision = revisionKey(changeset.revision);
+			const before = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+			const old = await harness.getTask(before.adjudication!.task as TaskId, context);
+			expect(old!.state.status).not.toBe("terminal");
+			replacement = review(true);
+			await verificationEntered.promise;
+			const during = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+			expect(during.verification!.task).not.toBe(before.verification!.task);
+			expect(during.task).toBe(before.task);
+			expect(during.adjudication).toBeUndefined();
+			releaseAdjudication.resolve();
+			expect((await harness.waitForTask(old!.id, context)).state.outcome).toEqual({ status: "aborted" });
+			expect(await readDecision(harness, root.id, revision, context)).toBeUndefined();
+			releaseVerification.resolve();
+			const result = await replacement;
+			expect(result.verdict.status).toBe("passed");
+			expect(result.verdict.refuted).toHaveLength(1);
+			const after = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+			expect((await readDecision(harness, root.id, revision, context))!.task).toBe(after.adjudication!.task);
+			expect(after.adjudication!.task).not.toBe(old!.id);
+			expect(await readVerdict(harness, root.id, revision, context)).toEqual(result.verdict);
+		} finally {
+			releaseAdjudication.resolve();
+			releaseVerification.resolve();
+			await first;
+			await replacement?.catch(() => undefined);
+		}
 	});
 	it("passes a rerun after the lens withdraws the only claim from a failed verification", async () => {
 		const requests = scriptConversations(fake, [

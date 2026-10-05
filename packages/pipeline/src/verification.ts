@@ -224,8 +224,9 @@ export async function startVerification(
 			return previous.task as TaskId<VerificationResult>;
 		await clearVerifications(tx, input.root, revisionKey(input.revision));
 		const created = await tx.createTask(VerificationTask, input, { ownership: { kind: "conversation" } });
+		const { adjudication: __, ...entry } = known ?? { lenses: [...selection] };
 		index.reviews[revisionKey(input.revision)] = {
-			...(known ?? { lenses: [...selection] }),
+			...entry,
 			verification: { task: created, input: key },
 		};
 		return created;
