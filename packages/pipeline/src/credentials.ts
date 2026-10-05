@@ -223,25 +223,22 @@ export class MelianCredentialStore implements CredentialStore {
 		this.#authKinds = authKinds;
 	}
 
-	/** The named credential that applies to `provider`, if any. */
-	credential(provider: string): NamedCredential | undefined {
+	/** The first usable named credential for `provider`; unread commands are provisional unless `runCommands` is set. */
+	async credential(provider: string, runCommands = false): Promise<NamedCredential | undefined> {
 		if (this.type(provider) === undefined) return undefined;
-		return this.named.find(
-			(credential) =>
-				credential.provider === provider &&
-				(credential.value.kind !== "env" || (this.#env[credential.value.variable] ?? "") !== ""),
-		);
+		for (const credential of this.named) {
+			if (credential.provider !== provider) continue;
+			if (credential.value.kind === "env" && (this.#env[credential.value.variable] ?? "") === "") continue;
+			if (credential.value.kind === "command" && !runCommands && !this.#values.has(credential)) return credential;
+			if ((await this.resolve(credential)) !== undefined) return credential;
+		}
+		return undefined;
 	}
 
 	/** Where `provider`'s credential comes from, if this store holds one: a named credential and its file, or Pi's login. */
 	async describe(provider: string): Promise<string | undefined> {
-		const named = this.credential(provider);
-		if (
-			named !== undefined &&
-			((named.value.kind === "command" && !this.#values.has(named)) || (await this.resolve(named)) !== undefined)
-		) {
-			return `${named.name} in ${named.file}`;
-		}
+		const named = await this.credential(provider);
+		if (named !== undefined) return `${named.name} in ${named.file}`;
 		const stored = await this.pi.read(provider).catch(() => undefined);
 		const auth = this.#authKinds(provider);
 		const accepted = stored?.type === "api_key" ? auth.apiKey : stored?.type === "oauth" && auth.oauth;
@@ -278,18 +275,19 @@ export class MelianCredentialStore implements CredentialStore {
 
 	async read(provider: string, options?: AuthOperationOptions): Promise<Credential | undefined> {
 		options?.signal?.throwIfAborted();
-		const named = this.credential(provider);
+		const named = await this.credential(provider, true);
 		if (named === undefined) return this.pi.read(provider, options);
 		return (await this.resolve(named)) ?? this.pi.read(provider, options);
 	}
 
 	async list(options?: AuthOperationOptions): Promise<readonly CredentialInfo[]> {
 		const stored = await this.pi.list(options);
-		const named = this.named.flatMap((credential) =>
-			this.credential(credential.provider) === credential
-				? [{ providerId: credential.provider, type: this.type(credential.provider)! }]
-				: [],
-		);
+		const named: CredentialInfo[] = [];
+		for (const providerId of new Set(this.named.map((credential) => credential.provider))) {
+			if ((await this.credential(providerId)) !== undefined) {
+				named.push({ providerId, type: this.type(providerId)! });
+			}
+		}
 		return [...named, ...stored.filter((each) => !named.some((other) => other.providerId === each.providerId))];
 	}
 

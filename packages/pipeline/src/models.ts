@@ -76,7 +76,7 @@ export async function unlockCredentials(models: ReviewModels, providers: readonl
 	const store = stores.get(models);
 	if (store === undefined) return;
 	for (const provider of new Set(providers)) {
-		const credential = store.credential(provider);
+		const credential = await store.credential(provider);
 		if (credential !== undefined) await store.value(credential);
 	}
 }
