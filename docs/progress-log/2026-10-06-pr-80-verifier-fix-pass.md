@@ -7,3 +7,5 @@ A rerun can now refute a claim the failed task confirmed. Task replacement clear
 Explicit verifier routes without credentials now fail with the plan’s reason and lineage. Only an unrouted tier uses lens routes. Core tests pin the doctor warning and fallback, and a fake-model review checks refusal before a verifier request.
 
 Refutation tests now reject missing, empty and unreadable evidence. The missing-evidence case fails when both non-empty guards are removed.
+
+Verifier execution errors now quote diagnostics inside findings boundaries and render control characters visibly. The regression commits an instruction-like filename with a newline, cites a line past EOF, and inspects the error the model receives.

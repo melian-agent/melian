@@ -343,10 +343,19 @@ type ToolResult = {
 
 // A throw ends a call with no result to carry the budget's ending, so an error becomes a result, rendered as Pi
 // renders a throw.
-function failed(error: unknown, context: Context): ToolResult {
+function failed(error: unknown, context: Context, nonce?: string): ToolResult {
 	if (context.abortSignal?.aborted) throw error;
 	const message = error instanceof Error ? error.message : String(error);
-	return { isError: true, diagnostics: [{ severity: "error", code: "tool_error", message }] };
+	return {
+		isError: true,
+		diagnostics: [
+			{
+				severity: "error",
+				code: "tool_error",
+				message: nonce === undefined ? message : quoteUntrusted("findings", visibleText(message), nonce),
+			},
+		],
+	};
 }
 
 function toolCalls(count: number | undefined): string {
@@ -817,7 +826,7 @@ export const reportVerdict = defineTool({
 			return text(
 				`recorded verdict for ${args.claim}\n${quoteUntrusted("evidence", JSON.stringify(evidence), review.nonce)}`,
 			);
-		})().catch((error: unknown) => failed(error, context));
+		})().catch((error: unknown) => failed(error, context, lens.revision.nonce));
 		return ending(result, lens, spent);
 	},
 });
