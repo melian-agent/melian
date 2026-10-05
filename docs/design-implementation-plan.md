@@ -72,7 +72,7 @@ Done when the `melian/review` status is required on `main`, and every pull reque
    - `[ ]` `melian compare adjudicate`. Valid, noise, or duplicate; severity; for a miss, `owned-missed`, `no-owner`, `needs-execution`, or `out-of-scope`; golden owed and its lens; an optional rule tag. Recorded with the git author and time, as a dismissal is.
    - `[ ]` `melian compare stats` and `melian compare backlog`. Recall and precision per reviewer against the adjudicated set, misses by reason, and repeat findings clustered by rule, tag, or title, with clusters on two pull requests listed as candidate checks. The backlog lists owed goldens by lens, and writes BACKLOG.md's section after its frozen hand-kept entries.
    - `[ ]` `melian compare export`. The record in today's markdown form, and the document as JSON with `--json`.
-   - `[ ]` The drain rule. [The evals guideline](guidelines/evals.md#comparisons) states it, and it holds from [pull request #PRNUM](https://github.com/melian-agent/melian/pull/PRNUM) on; this item has `melian compare stats` say when a drain pull request is due.
+   - `[ ]` The drain rule. [The evals guideline](guidelines/evals.md#comparisons) states it, and it holds from [pull request #65](https://github.com/melian-agent/melian/pull/65) on; this item has `melian compare stats` say when a drain pull request is due.
 
 ## Milestone 3: Melian reviews pull requests on GitHub Actions
 
