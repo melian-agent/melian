@@ -497,8 +497,11 @@ export class Verdict {
 		return createHash("sha256").update(JSON.stringify(old)).digest("hex").slice(0, 16);
 	}
 
-	/** A pasteable agent prompt. Every finding value remains untrusted data inside the fence. */
-	agentPrompt(target: string): string {
+	/**
+	 * A pasteable agent prompt. Every finding value remains untrusted data inside a boundary labelled with a random
+	 * nonce, or with `nonce` where the caller needs the same prompt on every render and keeps the value secret.
+	 */
+	agentPrompt(target: string, nonce: string = randomBytes(12).toString("hex")): string {
 		if (this.attention().length === 0) return "";
 		const data = (text: string) => visibleText(text).replace(/`/g, "\\u0060");
 		const quoted = `'${data(target).replace(/'/g, "'\\''")}'`;
@@ -510,7 +513,6 @@ export class Verdict {
 				`  Dismiss only on the user's instruction: melian dismiss ${quoted} ${finding.properties.id} --reason '<reason>'`,
 			].join("\n");
 		});
-		const nonce = randomBytes(12).toString("hex");
 		const tag = `quoted-${nonce}`;
 		return [
 			"```text",

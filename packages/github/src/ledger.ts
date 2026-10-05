@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import {
 	type LedgerDraft,
 	type LedgerHistory,
@@ -243,7 +243,12 @@ export class Ledger {
 					),
 				].join("\n\n"),
 			);
-		const prompt = withPrompt ? verdict.agentPrompt(`#${pullRequest}`) : "";
+		// A random boundary would change the body on every render; one keyed by the publisher's secret is stable and unguessable.
+		const nonce = createHmac("sha256", this.draft.secret)
+			.update(`agent-prompt:${verdict.fingerprint()}`)
+			.digest("hex")
+			.slice(0, 24);
+		const prompt = withPrompt ? verdict.agentPrompt(`#${pullRequest}`, nonce) : "";
 		if (prompt !== "") parts.push(details("Prompt for agents", prompt));
 		return parts;
 	}

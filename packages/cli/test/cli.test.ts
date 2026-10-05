@@ -247,14 +247,14 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const storedVerdict = Verdict.from(
 			JSON.parse(melian(repo, ["findings", "main", "--json"], env).stdout) as StoredVerdict,
 		);
-		expect(melian(repo, ["findings", "main"], env)).toMatchObject({
-			status: 0,
-			stdout: review.stdout + storedVerdict.agentPrompt("main"),
-		});
+		const nonce = (text: string) => text.replace(/quoted-[0-9a-f]{24}/g, "quoted-NONCE");
+		const found = melian(repo, ["findings", "main"], env);
+		expect(found.status).toBe(0);
+		expect(nonce(found.stdout)).toBe(nonce(review.stdout + storedVerdict.agentPrompt("main")));
 		const openText = melian(repo, ["findings", "main", "--open"], env);
 		expect(openText.status).toBe(0);
 		expect(openText.stdout).toContain("null-dereference");
-		expect(openText.stdout.endsWith(storedVerdict.agentPrompt("main"))).toBe(true);
+		expect(nonce(openText.stdout).endsWith(nonce(storedVerdict.agentPrompt("main")))).toBe(true);
 		const open = melian(repo, ["findings", "main", "--open", "--json"], env);
 		const log = JSON.parse(open.stdout) as { runs: { results: { ruleId: string }[] }[] };
 		expect(log.runs[0]!.results.map((result) => result.ruleId)).toEqual(["null-dereference"]);
