@@ -197,6 +197,11 @@ export function fakeGitHub(
 		if (method === "GET" && path === pulls) return json(pull());
 		if (method === "GET" && path === `${pulls}/reviews`) return json(state.reviews);
 		if (method === "GET" && path === `${pulls}/comments`) return json(state.comments);
+		const reviewId = new RegExp(`^${pulls}/reviews/(\\d+)$`).exec(path);
+		if (method === "GET" && reviewId !== null) {
+			const review = state.reviews.find((each) => each.id === Number(reviewId[1]));
+			return review === undefined ? json({ message: "Not Found" }, 404) : json(review);
+		}
 		const forReview = new RegExp(`^${pulls}/reviews/(\\d+)/comments$`).exec(path);
 		if (method === "GET" && forReview !== null) {
 			return json(state.comments.filter((comment) => comment.pull_request_review_id === Number(forReview[1])));

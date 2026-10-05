@@ -657,6 +657,7 @@ function publishTask(provider: ReviewProvider) {
 					writingLedger = true;
 					const ledger = await provider.writeLedger({
 						pullRequest,
+						review: record.reviews.at(-1),
 						verdict,
 						publication: { rounds },
 						walkthrough: task.input.walkthrough ?? { enabled: true, collapsed: true, diagrams: true },

@@ -186,7 +186,12 @@ export interface ReviewProvider {
 		secret: string,
 	): Promise<string | undefined>;
 	/** Finds the one signed ledger across all heads; refuses an orphaned marker. */
-	findLedger(pullRequest: number, secret: string, recorded?: PostedLedger): Promise<PostedLedger | undefined>;
+	findLedger(
+		pullRequest: number,
+		secret: string,
+		recorded?: PostedLedger,
+		review?: string,
+	): Promise<PostedLedger | undefined>;
 	/** Creates or edits the ledger, reading its stamp before a write. */
 	writeLedger(draft: LedgerDraft): Promise<PostedLedger>;
 	/** Sets the review's status on a commit. Setting it again replaces it. */
@@ -270,4 +275,6 @@ export interface LedgerDraft {
 	readonly walkthrough: { readonly enabled: boolean; readonly collapsed: boolean; readonly diagrams: boolean };
 	readonly secret: string;
 	readonly recorded?: PostedLedger;
+	/** The ID of Melian's posted or recovered review on this pull request. */
+	readonly review?: string;
 }

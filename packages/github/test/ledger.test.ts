@@ -797,7 +797,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		).rejects.toThrow("another publisher");
 	});
 
-	it("prefers the earliest signed ledger over a later verbatim copy when the login is unknown", async () => {
+	it("uses the posted review author instead of an edited older comment when the login is unknown", async () => {
 		const state = pullRequestState();
 		state.failUser = true;
 		const body = Ledger.from(verdict, { rounds: [round] }, options).render(links);
@@ -814,7 +814,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 				user: { login: "stranger" },
 				body,
 				html_url: "https://example.test/18",
-				created_at: "2026-01-02T00:00:00Z",
+				created_at: "2025-12-01T00:00:00Z",
 			},
 		);
 		state.ledgers.reverse();
@@ -824,9 +824,16 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 			token: "test-token",
 			fetch: fakeGitHub(state),
 		});
-		const found = await provider.findLedger(7, secret);
+		state.reviews.push({
+			id: 19,
+			user: { login: state.login },
+			body: "Posted review",
+			commit_id: head,
+			event: "COMMENT",
+		});
+		const found = await provider.findLedger(7, secret, undefined, "19");
 		expect(found?.id).toBe("17");
-		const edited = { ...options, verdict, publication: { rounds: [{ ...round, round: 2 }] } };
+		const edited = { ...options, verdict, review: "19", publication: { rounds: [{ ...round, round: 2 }] } };
 		await provider.writeLedger(edited);
 		expect(state.calls.filter(({ method, path }) => method === "PATCH" && path.endsWith("/comments/18"))).toEqual([]);
 		expect(state.ledgers.find((comment) => comment.id === 18)?.body).toBe(body);
@@ -874,7 +881,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 			author: state.login,
 		};
 		expect(await provider.findLedger(7, secret, recorded)).toEqual(recorded);
-		expect(await provider.findLedger(7, secret)).toEqual(recorded);
+		expect(await provider.findLedger(7, secret)).toBeUndefined();
 		const lookalike = {
 			id: 18,
 			user: { login: "stranger" },
@@ -882,19 +889,26 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 			html_url: "https://example.test/18",
 		};
 		state.ledgers.splice(0, state.ledgers.length, lookalike);
-		await expect(provider.findLedger(7, secret)).rejects.toThrow("cannot verify");
+		expect(await provider.findLedger(7, secret)).toBeUndefined();
 		state.ledgers.splice(0, state.ledgers.length, comment);
 		comment.user.login = "stranger";
 		await expect(provider.findLedger(7, secret, recorded)).rejects.toThrow("another publisher");
 		await expect(provider.findLedger(7, secret, { ...recorded, author: undefined })).rejects.toThrow("unknown");
 	});
 
-	it("finds a ledger created before a crash under an installation token and edits it", async () => {
+	it("finds an unrecorded ledger through its recorded review under an installation token", async () => {
 		const state = pullRequestState();
 		state.failUser = true;
 		const connect = () =>
 			createGitHubProvider({ owner: state.owner, repo: state.repo, token: "test-token", fetch: fakeGitHub(state) });
-		const draft = { ...options, verdict, publication: { rounds: [round] } };
+		state.reviews.push({
+			id: 19,
+			user: { login: state.login },
+			body: "Posted review",
+			commit_id: head,
+			event: "COMMENT",
+		});
+		const draft = { ...options, verdict, review: "19", publication: { rounds: [round] } };
 		await connect().writeLedger(draft);
 		expect(state.ledgers).toHaveLength(1);
 		const edited = { ...draft, publication: { rounds: [{ ...round, round: 2 }] } };
@@ -902,6 +916,24 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		expect(state.ledgers).toHaveLength(1);
 		expect(again.id).toBe(String(state.ledgers[0]!.id));
 		expect(state.ledgers[0]!.body).toBe(Ledger.from(verdict, edited.publication, options).render(links));
+	});
+
+	it("creates a fresh ledger when neither the login nor a posted review is known", async () => {
+		const state = pullRequestState();
+		state.failUser = true;
+		const body = Ledger.from(verdict, { rounds: [round] }, options).render(links);
+		state.ledgers.push({ id: 17, user: { login: "stranger" }, body, html_url: "https://example.test/17" });
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test-token",
+			fetch: fakeGitHub(state),
+		});
+		expect(await provider.findLedger(7, secret)).toBeUndefined();
+		const posted = await provider.writeLedger({ ...options, verdict, publication: { rounds: [round] } });
+		expect(posted.id).not.toBe("17");
+		expect(state.ledgers[0]!.body).toBe(body);
+		expect(state.ledgers).toHaveLength(2);
 	});
 
 	it("keeps the newest 50 rounds, so round 51 drops the oldest", async () => {

@@ -230,7 +230,12 @@ export class GitHubProvider implements ReviewProvider {
 		}
 	}
 
-	async findLedger(pullRequest: number, secret: string, recorded?: PostedLedger): Promise<PostedLedger | undefined> {
+	async findLedger(
+		pullRequest: number,
+		secret: string,
+		recorded?: PostedLedger,
+		review?: string,
+	): Promise<PostedLedger | undefined> {
 		const login = await this.login();
 		if (recorded !== undefined) {
 			const comment = await this.recordedLedger(recorded);
@@ -249,6 +254,19 @@ export class GitHubProvider implements ReviewProvider {
 				return this.readLedger(comment, secret);
 			}
 		}
+		let author = login ?? recorded?.author;
+		if (author === undefined && review !== undefined) {
+			const { data } = await call("read the publisher's review", () =>
+				this.octokit.rest.pulls.getReview({
+					owner: this.owner,
+					repo: this.repo,
+					pull_number: pullRequest,
+					review_id: Number(review),
+				}),
+			);
+			author = data.user?.login;
+		}
+		if (author === undefined) return undefined;
 		const comments = await call(`list ledger comments on pull request #${pullRequest}`, () =>
 			this.octokit.paginate(this.octokit.rest.issues.listComments, {
 				owner: this.owner,
@@ -257,15 +275,10 @@ export class GitHubProvider implements ReviewProvider {
 				per_page: 100,
 			}),
 		);
-		// A ledger body is public, so a stranger can copy one verbatim and its signature still verifies.
-		// Melian's own comment predates any copy, so the earliest signed candidate wins. A known author, from the
-		// token or the record, narrows the scan to that author's comments.
-		const author = login ?? recorded?.author;
 		const candidates = comments
 			.filter(
 				(comment) =>
-					/^<!-- melian:revision=.* ledger=/.test(firstLine(comment.body)) &&
-					(author === undefined || comment.user?.login === author),
+					/^<!-- melian:revision=.* ledger=/.test(firstLine(comment.body)) && comment.user?.login === author,
 			)
 			.sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
 		const signed = candidates.find((comment) => {
@@ -317,7 +330,7 @@ export class GitHubProvider implements ReviewProvider {
 	async writeLedger(draft: LedgerDraft): Promise<PostedLedger> {
 		const ledger = Ledger.from(draft.verdict, draft.publication, draft);
 		const body = ledger.render(this.links);
-		const existing = await this.findLedger(draft.pullRequest, draft.secret, draft.recorded);
+		const existing = await this.findLedger(draft.pullRequest, draft.secret, draft.recorded, draft.review);
 		if (existing !== undefined && !ledger.diff(existing.stamp)) return existing;
 		const { data } =
 			existing === undefined
