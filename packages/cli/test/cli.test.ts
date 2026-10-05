@@ -236,7 +236,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.stderr).toContain("melian: Plan: heavy, for ");
 	});
 
-	it("exits 1 for a blocking finding, and findings prints what review printed", () => {
+	it("exits 1 for a blocking finding, and findings adds its agent prompt", () => {
 		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!);
 
 		const review = melian(repo, ["review", "main"], env);
@@ -244,7 +244,17 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.status).toBe(1);
 		expect(review.stdout).toMatch(/^Verdict: findings, blocking\n/);
 		expect(review.stdout).toContain("null-dereference");
-		expect(melian(repo, ["findings", "main"], env)).toMatchObject({ status: 0, stdout: review.stdout });
+		const storedVerdict = Verdict.from(
+			JSON.parse(melian(repo, ["findings", "main", "--json"], env).stdout) as StoredVerdict,
+		);
+		const nonce = (text: string) => text.replace(/quoted-[0-9a-f]{24}/g, "quoted-NONCE");
+		const found = melian(repo, ["findings", "main"], env);
+		expect(found.status).toBe(0);
+		expect(nonce(found.stdout)).toBe(nonce(review.stdout + storedVerdict.agentPrompt("main")));
+		const openText = melian(repo, ["findings", "main", "--open"], env);
+		expect(openText.status).toBe(0);
+		expect(openText.stdout).toContain("null-dereference");
+		expect(nonce(openText.stdout).endsWith(nonce(storedVerdict.agentPrompt("main")))).toBe(true);
 		const open = melian(repo, ["findings", "main", "--open", "--json"], env);
 		const log = JSON.parse(open.stdout) as { runs: { results: { ruleId: string }[] }[] };
 		expect(log.runs[0]!.results.map((result) => result.ruleId)).toEqual(["null-dereference"]);
@@ -408,7 +418,10 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 			reason,
 		});
 		const rerun = melian(repo, ["review", range], env);
-		expect(rerun).toMatchObject({ status: 0, stdout: findings.stdout });
+		expect(rerun).toMatchObject({
+			status: 0,
+			stdout: findings.stdout.replace(Verdict.from(verdict).agentPrompt(range), ""),
+		});
 	});
 
 	it("updates the reason of a finding dismissed again and keeps the first", () => {
@@ -814,7 +827,13 @@ describe("Melian's state directory", { timeout: 60_000 }, () => {
 		expect(sqliteFiles(join(repo, ".git"))).toEqual([]);
 		expect(melian(repo, ["findings", "main"], { ...env, MELIAN_STATE_DIR: state })).toMatchObject({
 			status: 0,
-			stdout: review.stdout,
+			stdout:
+				review.stdout +
+				Verdict.from(
+					JSON.parse(
+						melian(repo, ["findings", "main", "--json"], { ...env, MELIAN_STATE_DIR: state }).stdout,
+					) as StoredVerdict,
+				).agentPrompt("main"),
 		});
 	});
 

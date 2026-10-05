@@ -348,6 +348,11 @@ describe("markers", () => {
 		expect(tiny).toContain(`This review was cut to fit GitHub's limit; \`melian findings "#7"\` lists them all.`);
 	});
 
+	it("breaks autolinks without changing the case of the text it breaks", () => {
+		expect(renderProse("WWW.x")).toBe("WWW\u2060.x");
+		expect(renderProse("Gh-1")).toBe("Gh-\u20601");
+	});
+
 	it("renders finding text as inert text, never live markdown, a mention, or a reference", () => {
 		const payload = [
 			"Click [here](https://evil.example/login) ![pixel](https://evil.example/p.png)",
