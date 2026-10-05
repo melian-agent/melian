@@ -397,6 +397,26 @@ describe("Comparison matching", () => {
 		expect(compared([octocat, human("OctoCat", 11)], [melian()]).externalOnly()).toHaveLength(2);
 	});
 
+	it("does not group a finding read at an earlier commit with another reviewer's finding at the same site", () => {
+		const thread = (line: number) =>
+			external({
+				reviewer: { name: "coderabbit", login: "coderabbitai[bot]", kind: "bot" },
+				source: { kind: "thread", thread: `PRRT_${line}`, url: `https://github.com/o/r/pull/1#PRRT_${line}` },
+				line,
+				commit: "c".repeat(40),
+			});
+		const peer = external({ reviewer: { name: "claude-code" }, line: 12 });
+		// Findings group in site order, so the earlier thread comes before the peer and after it.
+		for (const line of [11, 13]) {
+			const earlier = thread(line);
+			expect(earlier.meets(peer)).toBe(true);
+			const comparison = compared([earlier, peer], []);
+			expect(ids(comparison.externalOnly())).toEqual(
+				[earlier, peer].sort((a, b) => a.compareSite(b)).map((each) => ({ external: [each.id], melian: [] })),
+			);
+		}
+	});
+
 	it("keeps a reviewer's finding unmatched by hand out of the group another reviewer's match makes", () => {
 		const finding = melian();
 		const codex = external({ line: 12 });
@@ -431,6 +451,31 @@ describe("Comparison matching", () => {
 		expect(comparison.ambiguous()).toEqual([]);
 		expect(comparison.render(undefined)).toMatch(
 			/^Matched: 1 external finding, covering 1 Melian finding\. External only: 0\. Melian only: 1\./,
+		);
+	});
+
+	it("does not call a finding ambiguous that a maintainer matched by hand to two Melian findings", () => {
+		const first = melian();
+		const second = melian({ snippet: "eval(other)", startLine: 40, endLine: 40 });
+		const far = external({ line: 90 });
+		const comparison = compared([far], [first, second]);
+		comparison.match(far.id, first.id, "M", "t1");
+		comparison.match(far.id, second.id, "M", "t2");
+		expect(comparison.effectiveMatches().filter((match) => match.kind === "hand")).toHaveLength(2);
+		expect(comparison.ambiguous()).toEqual([]);
+		expect(comparison.render(undefined)).not.toContain("Ambiguous");
+	});
+
+	it("lists each Melian-only finding with its ID, severity, rule, and place, or its ID alone without the verdict", () => {
+		const finding = melian();
+		const comparison = compared([external({ file: "src/far.ts", line: 90 })], [finding]);
+		expect(comparison.render(verdictOf([finding]))).toContain(
+			`Melian only:\n  ${finding.id}  P1 no-eval  src/run.ts:12\n`,
+		);
+		expect(comparison.render(undefined)).toContain(`Melian only:\n  ${finding.id}\n`);
+		const spanning = melian({ startLine: 20, endLine: 24 });
+		expect(compared([], [spanning]).render(verdictOf([spanning]))).toContain(
+			`  ${spanning.id}  P1 no-eval  src/run.ts:20-24\n`,
 		);
 	});
 

@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -116,6 +116,19 @@ describe("melian compare", { timeout: 60_000 }, () => {
 		expect(lines[3]).toBe("External only:");
 		expect(lines[4]).toMatch(/^ {2}[0-9a-f]{16} {2}codex {2}src\/user\.ts:1 {2}Interface is wide$/);
 		expect(result.stdout).not.toContain(id);
+	});
+
+	it("lists a Melian finding no reviewer raised, with its ID, severity, rule, and place", () => {
+		const { repo, files, env, id } = reviewed();
+		const path = codexFile(files, [codexFinding(30, "Somewhere else")]);
+
+		const result = melian(repo, ["compare", range, "--from", `file:${path}`], env);
+
+		expect(result).toMatchObject({ status: 0, stderr: "" });
+		expect(result.stdout).toContain("External only: 1. Melian only: 1. Skipped review bodies: 0.");
+		expect(result.stdout).toMatch(
+			new RegExp(`^Melian only:\\n {2}${id} {2}P\\d \\S+ {2}src/user\\.ts:\\d+(-\\d+)?$`, "m"),
+		);
 	});
 
 	it("keeps a hand unmatch and a hand match across a second import", () => {
@@ -309,6 +322,19 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		const human = melian(repo, ["compare", "#7", "--from", "github:octocat"], env);
 		expect(human.stdout).toContain("Imported 1 from github:octocat, skipping 1 review body without a thread.");
 		expect(human.stdout).toMatch(/octocat {2}src\/user\.ts:20 {2}Should this log the name too\?/);
+	});
+
+	it("ignores the recording without scripted mode, and fails to find a GitHub token instead of answering from it", () => {
+		const { repo, env } = pullRequest();
+		const { MELIAN_TEST_SCRIPT: _script, ...unscripted } = env;
+		// A PATH with git alone keeps `gh` from supplying a token from the developer's login.
+		const bin = scratch("melian-compare-path-");
+		symlinkSync(execFileSync("which", ["git"], { encoding: "utf8" }).trim(), join(bin, "git"));
+
+		const result = melian(repo, ["review", "#7"], { ...unscripted, GITHUB_TOKEN: "", GH_TOKEN: "", PATH: bin });
+
+		expect(result).toMatchObject({ status: 2, stdout: "" });
+		expect(result.stderr).toContain("no GitHub token");
 	});
 
 	it("refuses a pull request that moved since Melian's review, and records nothing from any source", () => {
