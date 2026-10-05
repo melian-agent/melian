@@ -44,6 +44,8 @@ A review is keyed by its base and head, the merge base and the head commit, so `
 
 ## Checks, then lenses
 
+The review plan includes only lenses covering the changed paths, retaining each loaded lens's committed tier for lineage. When no enabled lens is named by the checks, the CLI unlocks no model credentials and opens no triage decider.
+
 `review` drives the deterministic checks and the lenses, in that order. The tier `melian.yaml` maps the `pull-request` stage to is the review's manifest, and every check in it needs a record, as [the pipeline guideline](pipeline.md#the-manifest) describes. `reviewChangeset` runs only the lenses, so the CLI first calls `runChecks` for that tier, which runs guardrails, Biome, and tsc on the base and head, and passes its records to `reviewChangeset` as `options.checks`. Without them every review of a default tier reads not reviewed, each deterministic check under "no record".
 
 - The harness opens with `checksExtension` and a Node execution environment in the checkout, through `openReviewHarness`'s `checkout` option. The static tools run the checkout's own Biome and tsc when its `node_modules` has them and git does not track it, and Melian's copies otherwise; `doctor` reports which.

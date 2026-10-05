@@ -126,7 +126,9 @@ export async function review(
 	for (const warning of secrets.warnings) io.stderr(`melian: ${warning}\n`);
 	const refusal = decisionProviderRefusal(loaded);
 	if (refusal !== undefined) throw new CliError(refusal);
-	const { models, plan, retry } = await reviewModels(io.env, policy, lenses, {
+	const selected = new Set(Lens.select(lenses, loaded, paths).map(({ lens }) => `${lens.name}\0${lens.scope}`));
+	const plannedLenses = lenses.filter((lens) => selected.has(`${lens.name}\0${lens.scope}`));
+	const { models, plan, retry } = await reviewModels(io.env, policy, plannedLenses, {
 		model: options.model,
 		checks: checksOfTier(loaded, tier),
 		credentials: secrets.credentials,

@@ -96,6 +96,7 @@ export class Triage {
 		readonly decide?: typeof fallbackDecider;
 	}): Promise<Triage> {
 		const { scripted, config, plan, models, decide = fallbackDecider } = options;
+		if (plan.lenses.length === 0) return new Triage(undefined, undefined);
 		await unlockCredentials(models, [...plan.providers(), ...(scripted ? [] : triageProviders(plan))]);
 		if (scripted) return new Triage(undefined, undefined);
 		const chosen = await decide({ ...config, models: plan.routes() }, models);

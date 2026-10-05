@@ -201,12 +201,10 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		});
 	});
 
-	// No lens reviews the change, so the review calls no model, while the plan still routes heavy to the named
-	// credential's provider and the review unlocks it before it starts.
 	const unreviewedLenses = builtinLenses.map((name) => `  ${name}: { paths: ["nothing/**"] }`).join("\n");
 	const namedPolicy = `${guardrailsOnly}lenses:\n${unreviewedLenses}\nmodels:\n  heavy:\n    model: openai/gpt-5.5\n`;
 
-	it("runs a named credential's command before the review, and prints no credential", () => {
+	it("does not run a named credential's command when no lens covers the change", () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, namedPolicy);
 		const runs = join(repo, ".git", "runs");
 		const xdg = userDirectory(
@@ -221,11 +219,11 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const review = melian(repo, ["review", "main"], xdg);
 
 		expect(review.status).toBe(0);
-		expect(readFileSync(runs, "utf8")).toBe("run\n");
+		expect(existsSync(runs)).toBe(false);
 		for (const output of [review.stdout, review.stderr]) expect(output).not.toMatch(/SENTINEL/);
 	});
 
-	it("stops a review whose named credential's command fails, naming the credential, and prints none of its output", () => {
+	it("ignores an unused failing credential command and prints none of its output", () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, namedPolicy);
 		const xdg = userDirectory(
 			'credentials:\n  vault: { provider: openai, command: "echo sk-COMMAND-SENTINEL; exit 3" }\n',
@@ -233,11 +231,9 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 
 		const review = melian(repo, ["review", "main"], xdg);
 
-		expect(review.status).toBe(2);
-		expect(review.stderr).toBe(
-			`melian: credential vault in ${join(xdg.XDG_CONFIG_HOME, "melian/secrets.yaml")}: its command failed (3)\n`,
-		);
-		expect(review.stdout).toBe("");
+		expect(review.status).toBe(0);
+		expect(review.stderr).toBe("");
+		expect(review.stdout).not.toContain("SENTINEL");
 	});
 
 	it("layers the user's own config.yaml over melian.yaml for a range on the checked-out commit", () => {

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Decider, defaultConfig, type LoadedConfig, type MelianConfig, userFiles } from "@melian-agent/core";
+import { type Decider, defaultConfig, Lens, type LoadedConfig, type MelianConfig, userFiles } from "@melian-agent/core";
 import { buildGoldenRepository, loadGoldens } from "@melian-agent/evals";
 import * as pipeline from "@melian-agent/pipeline";
 import { createFakeModels, type FakeModels } from "@melian-agent/pipeline/testing";
@@ -165,7 +165,8 @@ describe("Triage", () => {
 		dir = mkdtempSync(join(tmpdir(), "melian-triage-"));
 		const marker = join(dir, "unlocked");
 		const loaded = loadedOf({ light: { model: "openai/gpt-5.5" } });
-		const { models, plan } = await reviewModels({}, loaded, [], {
+		const lenses = options.scripted ? [] : await Lens.load(process.cwd(), { kind: "worktree" }, ["src/user.ts"]);
+		const { models, plan } = await reviewModels({}, loaded, lenses, {
 			...setup,
 			credentials: [
 				{
@@ -217,7 +218,55 @@ describe("Triage", () => {
 	});
 });
 
-describe("command bearer validation", () => {
+describe("command bearer validation", { timeout: 60_000 }, () => {
+	it.each(["disabled", "no paths"])(
+		"reviews with every lens %s without unlocking a failing credential",
+		async (skipped) => {
+			const golden = loadGoldens().find((entry) => entry.name === "clean-rename")!;
+			const { repo } = buildGoldenRepository(golden);
+			const xdg = mkdtempSync(join(tmpdir(), "melian-no-lenses-"));
+			let fake: FakeModels | undefined;
+			try {
+				const marker = join(xdg, "ran");
+				mkdirSync(join(xdg, "melian"));
+				writeFileSync(
+					join(xdg, "melian", "secrets.yaml"),
+					`credentials:\n  vault: { provider: fake-idle, command: "touch ${marker}; exit 1" }\n`,
+					{ mode: 0o600 },
+				);
+				writeFileSync(
+					join(repo, "melian.yaml"),
+					`models:\n  heavy: { model: fake-idle/heavy }\ntiers:\n  full: [guardrails, lens.correctness]\nchecks:\n  allowSkip: [lens.correctness]\nlenses:\n  correctness: ${skipped === "disabled" ? "{ enabled: false }" : '{ paths: ["never/**"] }'}\n`,
+				);
+				vi.spyOn(pipeline, "createReviewModels").mockImplementation((options) => {
+					fake = createFakeModels({
+						provider: "fake-idle",
+						models: [{ id: "heavy" }],
+						credentials: options?.credentials ?? [],
+					});
+					return fake.review;
+				});
+				const stdout = vi.fn();
+				const stderr = vi.fn();
+				const status = await main(["review", "main"], {
+					cwd: repo,
+					env: { XDG_CONFIG_HOME: xdg, MELIAN_STATE_DIR: xdg },
+					color: false,
+					stdout,
+					stderr,
+				});
+				expect(status, stderr.mock.calls.flat().join("")).toBe(0);
+				expect(existsSync(marker)).toBe(false);
+				expect(fake!.provider.state.callCount).toBe(0);
+				expect(stdout).toHaveBeenCalled();
+			} finally {
+				vi.restoreAllMocks();
+				rmSync(repo, { recursive: true, force: true });
+				rmSync(xdg, { recursive: true, force: true });
+			}
+		},
+	);
+
 	it("fails review before opening storage or calling a model when a command bearer expired, despite a usable Pi login", async () => {
 		const golden = loadGoldens().find((entry) => entry.name === "clean-rename")!;
 		const { repo } = buildGoldenRepository(golden);
