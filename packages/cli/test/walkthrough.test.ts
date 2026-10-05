@@ -82,12 +82,7 @@ describe("CLI walkthrough switch", { timeout: 60_000 }, () => {
 });
 
 describe("CLI publish walkthrough settings", { timeout: 60_000 }, () => {
-	async function published(
-		yaml: string,
-		options: { walkthrough?: boolean },
-		headYaml?: string,
-		throughMain = false,
-	) {
+	async function published(yaml: string, options: { walkthrough?: boolean }, headYaml?: string, throughMain = false) {
 		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 		repo = baseAndHead(
 			{ "src/a.ts": "export const a = 1;\n", "melian.yaml": `tiers:\n  full: [guardrails]\n${yaml}` },

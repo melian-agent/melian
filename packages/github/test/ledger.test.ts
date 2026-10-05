@@ -161,8 +161,8 @@ describe("ledger rendering", () => {
 	});
 	it("leaves earlier rounds that are already one line alone and cuts the walkthrough instead", () => {
 		const rounds = [
-			{ round: 1, base, head: "c".repeat(40), status: "pass" as const },
-			{ round: 2, base, head: "d".repeat(40), status: "pass" as const },
+			{ round: 1, base, head: "c".repeat(40), status: verdict.status },
+			{ round: 2, base, head: "d".repeat(40), status: verdict.status },
 			{ ...round, round: 3, walkthrough: { summary: "w".repeat(3000), files: [] } },
 		];
 		const ledger = Ledger.from(verdict, { rounds }, options);
@@ -291,9 +291,11 @@ describe("ledger rendering", () => {
 			checks: [],
 			config: defaultConfig,
 		}).adjudicate();
-		const body = Ledger.from(hostileVerdict, { rounds: [{ ...round, verdict: hostileVerdict.toJSON() }] }, options).render(
-			links,
-		);
+		const body = Ledger.from(
+			hostileVerdict,
+			{ rounds: [{ ...round, verdict: hostileVerdict.toJSON() }] },
+			options,
+		).render(links);
 		const prompt = body.slice(body.indexOf("<summary>Prompt for agents</summary>"));
 		const lines = prompt.split("\n");
 		expect(lines.filter((line) => /^\s*(`{3,}|~{3,})/.test(line))).toEqual(["```text", "```"]);
