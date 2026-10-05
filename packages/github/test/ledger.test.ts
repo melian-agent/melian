@@ -248,6 +248,29 @@ describe("ledger rendering", () => {
 		expect(body).not.toContain("one\\u000atwo");
 	});
 
+	it("renders a lens lineage in the run details", () => {
+		const current = {
+			...round,
+			details: {
+				policy: "policy",
+				manifest: [],
+				lenses: [
+					{
+						name: "security",
+						version: "1",
+						level: "careful",
+						models: ["a/b"],
+						lineage: "committed lens changed at head",
+						budget: { findings: 1 },
+					},
+				],
+				standards: [],
+			},
+		};
+		const body = Ledger.from(verdict, { rounds: [current] }, options).render(links);
+		expect(body).toContain("careful; route a/b; committed lens changed at head; budgets");
+	});
+
 	it("neutralises autolinks in walkthrough text", () => {
 		const payload = "https://evil.test www.evil.test _www.x.test *www.y.test (www.z.test user@evil.test GH-123";
 		const body = Ledger.from(
@@ -977,6 +1000,44 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		expect(Object.values(replies)).toEqual([null, null]);
 		await publish(second.changeset);
 		expect(state.resolvedThreads).toHaveLength(2);
+	});
+
+	it("reads every page of review threads before resolving addressed findings", async () => {
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		state.threadPageSize = 1;
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test-token",
+			fetch: fakeGitHub(state),
+		});
+		harness = await openPublishHarness(createMemoryStorage(), fake, provider);
+		const first = await reviewScenario(repo, harness, fake, lensScript(unsafeManager, emptyName));
+		await first.review;
+		moveTo(state, first.changeset);
+		const publish = async (changeset: typeof first.changeset) =>
+			publishReview({
+				harness: harness!,
+				provider,
+				changeset,
+				pullRequest: await provider.pullRequest(7),
+				base: changeset.revision.base,
+			});
+		await publish(first.changeset);
+		expect(state.comments.length).toBeGreaterThanOrEqual(2);
+		pushRevisionTwo(repo);
+		const second = await reviewScenario(repo, harness, fake, lensScript());
+		await second.review;
+		moveTo(state, second.changeset);
+		state.calls = [];
+		await publish(second.changeset);
+		expect(state.resolvedThreads).toHaveLength(2);
+		expect(
+			state.calls.filter(
+				({ path, body }) => path === "/graphql" && JSON.stringify(body).includes("reviewThreads(first:"),
+			),
+		).toHaveLength(2);
 	});
 
 	it("keeps the ledger link when a later round is abandoned", async () => {
