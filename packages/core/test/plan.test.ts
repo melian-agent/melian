@@ -49,7 +49,13 @@ type Routes = MelianConfig["models"];
 function plan(
 	committed: Routes,
 	credentials: Record<string, string>,
-	options: { preferences?: Routes; model?: string; checks?: string[]; retier?: Record<string, LensTier> } = {},
+	options: {
+		preferences?: Routes;
+		model?: string;
+		checks?: string[];
+		retier?: Record<string, LensTier>;
+		catalogue?: CatalogueModel[];
+	} = {},
 ): ReviewPlan {
 	const preferences = options.preferences ?? {};
 	const models: Record<string, unknown> = { ...committed };
@@ -70,7 +76,7 @@ function plan(
 			retiered: Object.fromEntries(Object.keys(retier).map((name) => [name, "melian.local.yaml"])),
 		},
 		...(options.model === undefined ? {} : { model: options.model }),
-		catalogue,
+		catalogue: options.catalogue ?? catalogue,
 		credentials,
 		lenses,
 		checks: options.checks ?? ["lens.correctness"],
@@ -159,6 +165,36 @@ describe("ReviewPlan.resolve", () => {
 		expect(resolved.tier("heavy")).toMatchObject({ status: "routed", by: "derived", models: [{ model: gpt }] });
 		const light = plan({ heavy: { model: "openai/gpt-5.4-mini" } }, { anthropic: "ANTHROPIC_API_KEY" });
 		expect(light.tier("heavy").models[0]?.model).toBe("anthropic/claude-sonnet-5-5");
+	});
+
+	describe("by price, when no provider with credentials serves the same model", () => {
+		// The wanted model, which no credential covers, and candidates from a provider that has credentials.
+		const wanted = model("anthropic", "wanted", "Wanted", 4, 20);
+		const derive = (...candidates: CatalogueModel[]) =>
+			plan(
+				{ heavy: { model: "anthropic/wanted" } },
+				{ other: "OTHER_API_KEY" },
+				{
+					catalogue: [wanted, ...candidates],
+				},
+			).tier("heavy").models[0]?.model;
+		const priced = (id: string, input: number, output: number, change: Partial<CatalogueModel> = {}) => ({
+			...model("other", id, id, input, output),
+			...change,
+		});
+
+		it("skips a model that differs in reasoning, however close its price", () => {
+			expect(derive(priced("flat", 4, 20, { reasoning: false }), priced("far", 1, 5))).toBe("other/far");
+		});
+
+		it("skips a model whose context window is below the wanted model's or 200,000 tokens", () => {
+			expect(derive(priced("small", 4, 20, { contextWindow: 32_000 }), priced("far", 1, 5))).toBe("other/far");
+		});
+
+		it("breaks a tie in price by the larger context window, then by provider and ID", () => {
+			expect(derive(priced("narrow", 4, 20, { contextWindow: 400_000 }), priced("wide", 4, 20))).toBe("other/wide");
+			expect(derive(priced("b", 4, 20), priced("a", 4, 20))).toBe("other/a");
+		});
 	});
 
 	it("leaves a route uncredentialed when nothing can be derived, so the review says no model has credentials", () => {
