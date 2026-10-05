@@ -172,7 +172,12 @@ async function standardsCheck(cwd: string): Promise<Check | undefined> {
 				(entry) =>
 					`${visibleText(entry.path)}${"symlink" in entry ? " (symlink skipped)" : entry.oversized ? ` (over ${limit})` : ""}`,
 			);
-		if (inventory.entries.length > 10) paths.push(`and ${inventory.entries.length - 10} more`);
+		const remaining = inventory.entries.slice(10);
+		const remainingFiles = remaining.filter((entry) => "bytes" in entry).length;
+		const remainingSymlinks = remaining.length - remainingFiles;
+		if (remainingFiles > 0) paths.push(`and ${remainingFiles} more${remainingSymlinks === 0 ? "" : " files"}`);
+		if (remainingSymlinks > 0)
+			paths.push(`${remainingSymlinks} more skipped symlink${remainingSymlinks === 1 ? "" : "s"}`);
 		const warnings = inventory.warnings();
 		const oversized = warnings.filter((entry) => "bytes" in entry).length;
 		const symlinks = warnings.length - oversized;

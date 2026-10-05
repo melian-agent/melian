@@ -651,6 +651,21 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("counts omitted regular standards separately from skipped symlinks", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		for (let index = 0; index < 12; index++) {
+			const directory = join(repo, `p${String(index).padStart(2, "0")}`);
+			mkdirSync(directory);
+			writeFileSync(join(directory, "AGENTS.md"), "x");
+		}
+		symlinkSync("AGENTS.md", join(repo, "p10/CLAUDE.md"));
+		const doctor = melian(repo, ["doctor"]);
+		const line = doctor.stdout.split("\n").find((line) => line.startsWith("warn  standards"))!;
+		expect(line).toContain("12 files, 12 bytes");
+		expect(line).toContain("and 2 more files, 1 more skipped symlink");
+		expect(line).not.toContain("and 3 more");
+	});
+
 	it("limits the standards path list to ten entries", () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
 		for (let index = 0; index < 12; index++) {
