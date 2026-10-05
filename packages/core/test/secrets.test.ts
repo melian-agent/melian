@@ -104,23 +104,20 @@ describe("loadSecrets", () => {
 		expect(error.message).toContain("git tracks MELIAN.SECRETS.YAML");
 	});
 
-	it("runs a per-clone command only when git ignores the file, and never when git cannot say", async () => {
-		const command = ["credentials:", "  a: { provider: openai, command: cat key }"];
-		secrets(repo, "melian.secrets.yaml", ...command);
-		const unignored = await rejection(loadSecrets(repo));
-		expect(unignored).toMatchObject({ code: "notIgnored", key: undefined });
-		expect(unignored.message).toContain("the credential at line 2, column 3 runs a command");
-		expect(unignored.message).toContain("git does not ignore melian.secrets.yaml");
-
+	it("never runs a command from the per-clone file, ignored and mode 600 or not, and says where it belongs", async () => {
 		writeFiles(repo, { ".gitignore": lines("/melian.secrets.yaml") });
-		expect((await loadSecrets(repo)).credentials).toHaveLength(1);
+		secrets(repo, "melian.secrets.yaml", "credentials:", "  a: { provider: openai, command: cat key }");
+		const user = join(home, "secrets.yaml");
+		const error = await rejection(loadSecrets(repo, user));
+		expect(error).toMatchObject({ code: "cloneCommand", key: undefined });
+		expect(error.message).toContain(
+			`the credential at line 2, column 3 runs a command, which Melian runs only from your own secrets file, ${user}; move it there, or use key or env here`,
+		);
+	});
 
+	it("reads the per-clone file when git cannot say whether it tracks it, since it holds no command", async () => {
 		const outside = temporaryDirectory();
 		try {
-			secrets(outside, "melian.secrets.yaml", ...command);
-			const unknown = await rejection(loadSecrets(outside));
-			expect(unknown.code).toBe("notIgnored");
-			expect(unknown.message).toMatch(/git could not say whether it tracks melian\.secrets\.yaml \(exit \d+\)/);
 			secrets(outside, "melian.secrets.yaml", "credentials:", "  a: { provider: openai, env: OPENAI_API_KEY }");
 			expect((await loadSecrets(outside)).credentials).toHaveLength(1);
 		} finally {
@@ -144,11 +141,10 @@ describe("loadSecrets", () => {
 		expect((await loadSecrets(repo, join(home, "secrets.yaml"))).credentials).toHaveLength(1);
 	});
 
-	it("refuses a command in a file others can read, as git leaves a file it checks out", async () => {
-		writeFiles(repo, { ".gitignore": lines("/melian.secrets.yaml") });
-		const file = secrets(repo, "melian.secrets.yaml", "credentials:", "  a: { provider: openai, command: cat key }");
+	it("refuses a command in a user-level file others can read", async () => {
+		const file = secrets(home, "secrets.yaml", "credentials:", "  a: { provider: openai, command: cat key }");
 		chmodSync(file, 0o644);
-		const error = await rejection(loadSecrets(repo));
+		const error = await rejection(loadSecrets(repo, file));
 		expect(error.code).toBe("notUserOwned");
 		expect(error.message).toContain(`${file} has mode 644; chmod 600 ${file}`);
 	});
@@ -230,7 +226,7 @@ describe("loadSecrets", () => {
 			"  sk-SENTINEL: { provider: openai, command: cat key }",
 		);
 		const error = await rejection(loadSecrets(repo));
-		expect(error).toMatchObject({ code: "notIgnored", file });
+		expect(error).toMatchObject({ code: "cloneCommand", file });
 		expect(error.message).not.toContain("SENTINEL");
 	});
 

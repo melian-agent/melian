@@ -68,10 +68,10 @@ Each credential names a provider and takes its key from one of three sources:
 credentials:
   pinned-anthropic: { provider: anthropic, key: sk-ant-... }          # the key itself
   work-anthropic: { provider: anthropic, env: WORK_ANTHROPIC_KEY }    # an environment variable
-  work-openai: { provider: openai, command: "op read op://dev/openai/key" }  # a command's output
+  work-openai: { provider: openai, command: "op read op://dev/openai/key" }  # a command's output, user-level file only
 ```
 
-A command runs only from a file you own, with mode 600, in a directory no one else can write. The per-clone file must also be ignored by git. Without those, Melian refuses the command, because a file someone else could write would run their command on your machine. Melian never prints a credential.
+A command runs only from your own `secrets.yaml` in `~/.config/melian/`, never from `melian.secrets.yaml`, which holds keys and environment variables only: a file inside a repository may have come from someone else's change. That file must be yours, with mode 600, in a directory no one else can write; otherwise Melian refuses the command. Melian never prints a credential.
 
 Whether a subscription may be used in automation, or shared across a team, is a question for the provider's contract. Melian takes no position on it.
 

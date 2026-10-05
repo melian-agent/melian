@@ -61,27 +61,19 @@ async function ownership(path: string, info: Stats): Promise<string | undefined>
 	return shared ? `others can replace files in ${directory}; chmod go-w ${directory}` : undefined;
 }
 
-// Why a command in the per-clone file must be refused, or `undefined` when git confirms it is the maintainer's own:
-// tracked under no case of its name and ignored. Problem: on a case-insensitive filesystem a committed
-// `MELIAN.SECRETS.YAML` opens as `melian.secrets.yaml`, and an exact-case lookup called it untracked. Solution: ask git
-// case-insensitively, refuse the file whole when it is tracked, and refuse its commands whenever git cannot say.
-async function cloneStanding(repoRoot: string, site: Site): Promise<string | undefined> {
-	const name = melianPaths.secrets;
-	const listed = await git(repoRoot, ["ls-files", "-z", "--", `:(icase)${name}`]);
-	if (listed.code !== 0) return `git could not say whether it tracks ${name} (exit ${listed.code})`;
-	const [tracked] = listed.stdout.split("\0").filter(Boolean);
-	if (tracked !== undefined) {
-		throw configError(
-			"tracked",
-			site,
-			`git tracks ${tracked}, so it is the repository's, not yours; Melian reads no credential from it. Run git rm --cached ${tracked} and keep the file ignored`,
-		);
-	}
-	const ignored = await git(repoRoot, ["check-ignore", "-q", "--", name]);
-	if (ignored.code === 0) return undefined;
-	return ignored.code === 1
-		? `git does not ignore ${name}; add /${name} to .gitignore`
-		: `git could not say whether it ignores ${name} (exit ${ignored.code})`;
+// Refuses the per-clone file when git tracks it under any case of its name: a head could then supply it. Problem: on a
+// case-insensitive filesystem a committed `MELIAN.SECRETS.YAML` opens as `melian.secrets.yaml`, and an exact-case
+// lookup called it untracked. Solution: ask git case-insensitively. The file never holds a command, so a git that cannot
+// answer leaves only literal and environment sources at stake, and the file is read.
+async function refuseTracked(repoRoot: string, site: Site): Promise<void> {
+	const listed = await git(repoRoot, ["ls-files", "-z", "--", `:(icase)${melianPaths.secrets}`]);
+	const [tracked] = listed.code === 0 ? listed.stdout.split("\0").filter(Boolean) : [];
+	if (tracked === undefined) return;
+	throw configError(
+		"tracked",
+		site,
+		`git tracks ${tracked}, so it is the repository's, not yours; Melian reads no credential from it. Run git rm --cached ${tracked} and keep the file ignored`,
+	);
 }
 
 // The file's metadata and text, from one open, so what was checked is what was read: a path checked and then opened
@@ -110,12 +102,16 @@ async function readOnce(path: string, site: Site, follow: boolean): Promise<{ in
 	}
 }
 
-async function readSecretsFile(path: string, repoRoot: string | undefined): Promise<LoadedSecrets> {
+async function readSecretsFile(
+	path: string,
+	repoRoot: string | undefined,
+	user: string | undefined,
+): Promise<LoadedSecrets> {
 	const site: Site = { file: path, where: path };
 	const read = await readOnce(path, site, repoRoot === undefined);
 	if (read === undefined) return { credentials: [], warnings: [] };
 	const { info, text } = read;
-	const standing = repoRoot === undefined ? undefined : await cloneStanding(repoRoot, site);
+	if (repoRoot !== undefined) await refuseTracked(repoRoot, site);
 	const parsed = parseYaml(text, site, secretsFileSchema, { redact: true }) as {
 		credentials?: Record<string, Record<string, string>>;
 	};
@@ -128,8 +124,15 @@ async function readSecretsFile(path: string, repoRoot: string | undefined): Prom
 			throw configError("invalidValue", site, `${at} must take its value from exactly one of key, env, and command`);
 		}
 		const [source] = sources as ["key" | "env" | "command"];
-		if (source === "command" && standing !== undefined) {
-			throw configError("notIgnored", site, `${at} runs a command, which Melian refuses here: ${standing}`);
+		// Problem: a file in the working tree may be a head's, and no check on it holds under every umask: a patch applied
+		// with umask 077 lands as the user's own file, mode 600, already ignored. Solution: a command runs only from the
+		// user's own secrets file, outside every repository.
+		if (source === "command" && repoRoot !== undefined) {
+			throw configError(
+				"cloneCommand",
+				site,
+				`${at} runs a command, which Melian runs only from your own secrets file, ${user ?? "$XDG_CONFIG_HOME/melian/secrets.yaml or ~/.config/melian/secrets.yaml"}; move it there, or use key or env here`,
+			);
 		}
 		if (source === "command" && owner !== undefined) {
 			throw configError(
@@ -157,17 +160,18 @@ async function readSecretsFile(path: string, repoRoot: string | undefined): Prom
 /**
  * Reads the secrets files: `melian.secrets.yaml` beside the root `melian.yaml` of `repoRoot`, then `user`, the
  * user-level file, when given. Either may be absent. A credential takes its value from the file (`key`), an
- * environment variable (`env`), or a command's output (`command`), which only a file the user owns, of mode 600, in a
- * directory no one else can replace it in, may hold. Each file is opened once and checked through that handle; the
- * per-clone file is never read through a symlink. Nothing is resolved here: no variable read and no command run. Throws {@link ConfigError}: `tracked`
- * for a per-clone file git tracks under any case of its name, since a head could supply it; `notIgnored` for a command
- * in a per-clone file git does not ignore, or when git cannot say; `notUserOwned` for a command in a file another user
- * could have written; and as `loadConfig` does for a file it cannot read or parse. No error quotes the file: each
- * names the file, its code, and a line and column, never a key or a value, and none carries a `key`.
+ * environment variable (`env`), or a command's output (`command`). Only the user-level file may hold a command, and
+ * only when the user owns it, its mode is 600, and no one else can replace it in its directory. Each file is opened once
+ * and checked through that handle; the per-clone file is never read through a symlink. Nothing is resolved here: no
+ * variable read and no command run. Throws {@link ConfigError}: `tracked` for a per-clone file git tracks under any case
+ * of its name, since a head could supply it; `cloneCommand` for a command in the per-clone file; `notUserOwned` for a
+ * command in a user-level file another user could have written; and as `loadConfig` does for a file it cannot read or
+ * parse. No error quotes the file: each names the file, its code, and a line and column, never a key or a value, and
+ * none carries a `key`.
  */
 export async function loadSecrets(repoRoot: string, user?: string): Promise<LoadedSecrets> {
-	const clone = await readSecretsFile(join(repoRoot, melianPaths.secrets), repoRoot);
-	const own = user === undefined ? { credentials: [], warnings: [] } : await readSecretsFile(user, undefined);
+	const clone = await readSecretsFile(join(repoRoot, melianPaths.secrets), repoRoot, user);
+	const own = user === undefined ? { credentials: [], warnings: [] } : await readSecretsFile(user, undefined, user);
 	return {
 		credentials: [...clone.credentials, ...own.credentials],
 		warnings: [...clone.warnings, ...own.warnings],
