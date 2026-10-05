@@ -233,32 +233,21 @@ export class GitHubProvider implements ReviewProvider {
 	async findLedger(pullRequest: number, secret: string, recorded?: PostedLedger): Promise<PostedLedger | undefined> {
 		const login = await this.login();
 		if (recorded !== undefined) {
-			let comment: Awaited<ReturnType<Octokit["rest"]["issues"]["getComment"]>>["data"];
-			try {
-				comment = (
-					await call("read the recorded ledger comment", () =>
-						this.octokit.rest.issues.getComment({
-							owner: this.owner,
-							repo: this.repo,
-							comment_id: Number(recorded.id),
-						}),
-					)
-				).data;
-			} catch (error) {
-				if (error instanceof GitHubError && error.status === 404) return undefined;
-				throw error;
+			const comment = await this.recordedLedger(recorded);
+			// A 404 means the recorded comment is gone; a ledger created since may not be recorded yet, so scan for it.
+			if (comment !== undefined) {
+				const author = login ?? recorded.author;
+				if (
+					author === undefined ||
+					comment.user?.login !== author ||
+					(recorded.author !== undefined && comment.user?.login !== recorded.author)
+				)
+					throw new LedgerRefusal(
+						"foreignPublisher",
+						"the recorded ledger belongs to another publisher or its author is unknown; restore the publisher before editing it",
+					);
+				return this.readLedger(comment, secret);
 			}
-			const author = login ?? recorded.author;
-			if (
-				author === undefined ||
-				comment.user?.login !== author ||
-				(recorded.author !== undefined && comment.user?.login !== recorded.author)
-			)
-				throw new LedgerRefusal(
-					"foreignPublisher",
-					"the recorded ledger belongs to another publisher or its author is unknown; restore the publisher before editing it",
-				);
-			return this.readLedger(comment, secret);
 		}
 		const comments = await call(`list ledger comments on pull request #${pullRequest}`, () =>
 			this.octokit.paginate(this.octokit.rest.issues.listComments, {
@@ -275,6 +264,23 @@ export class GitHubProvider implements ReviewProvider {
 			return this.readLedger(comment, secret);
 		}
 		return undefined;
+	}
+
+	private async recordedLedger(recorded: PostedLedger) {
+		try {
+			return (
+				await call("read the recorded ledger comment", () =>
+					this.octokit.rest.issues.getComment({
+						owner: this.owner,
+						repo: this.repo,
+						comment_id: Number(recorded.id),
+					}),
+				)
+			).data;
+		} catch (error) {
+			if (error instanceof GitHubError && error.status === 404) return undefined;
+			throw error;
+		}
 	}
 
 	private readLedger(

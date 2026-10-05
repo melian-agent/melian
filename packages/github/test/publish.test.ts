@@ -501,6 +501,19 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(answer(second.thread)).toEqual([`Dismissed at \`${short}\`: Every user here has a manager.`]);
 	});
 
+	it("edits an unrecorded signed ledger when the recorded one was deleted, and creates none", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		await publish(github, changeset);
+		const [original] = state.ledgers;
+		const copy = { ...original!, id: state.nextId++ };
+		state.ledgers = [copy];
+
+		await publish(github, changeset);
+
+		expect(state.ledgers).toEqual([copy]);
+		expect(state.statuses.at(-1)).toMatchObject({ target_url: copy.html_url });
+	});
+
 	it("sets the status and finishes when a resolved finding's thread was deleted", async () => {
 		const { fake, github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);
