@@ -12,7 +12,8 @@ import {
 import { fauxAssistantMessage, fauxToolCall, scriptConversations, textOf } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../../pipeline/src/adjudication.ts";
-import { LedgerDocument, PublishedDocument } from "../../pipeline/src/publish.ts";
+import { LedgerDocument, PublishedDocument, PublisherDocument } from "../../pipeline/src/publish.ts";
+import { renderResolvedReply } from "../src/publication.ts";
 import { fakeGitHub } from "./fixtures/fake-github.ts";
 import {
 	emptyName,
@@ -756,6 +757,53 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		expect(rounds).toHaveLength(50);
 		expect(rounds[0]).toMatchObject({ round: 2, head: "c".repeat(40) });
 		expect(rounds.at(-1)).toMatchObject({ head: second.changeset.revision.head });
+	});
+
+	it("honours a resolved reply an older Melian posted as already addressed", async () => {
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test-token",
+			fetch: fakeGitHub(state),
+		});
+		harness = await openPublishHarness(createMemoryStorage(), fake, provider);
+		const first = await reviewScenario(repo, harness, fake, lensScript(unsafeManager, emptyName));
+		await first.review;
+		moveTo(state, first.changeset);
+		const publish = async (changeset: typeof first.changeset) =>
+			publishReview({
+				harness: harness!,
+				provider,
+				changeset,
+				pullRequest: await provider.pullRequest(7),
+				base: changeset.revision.base,
+			});
+		await publish(first.changeset);
+		pushRevisionTwo(repo);
+		const second = await reviewScenario(repo, harness, fake, lensScript(emptyName));
+		await second.review;
+		moveTo(state, second.changeset);
+		const opening = state.comments[0]!;
+		const id = parseMarker(opening.body.split("\n")[0]!)!.id;
+		const publisher = (await harness.snapshot(PublisherDocument, (await harness.root(context)).id, context))!;
+		state.comments.push({
+			...opening,
+			id: 9000,
+			in_reply_to_id: opening.id,
+			body: renderResolvedReply(
+				{ id, ruleId: "x", path: opening.path, line: opening.line } as Parameters<typeof renderResolvedReply>[0],
+				second.changeset.revision.head,
+				publisher.secret!,
+			),
+		});
+		await publish(second.changeset);
+		expect(state.calls.filter(({ method, path }) => method === "PATCH" && path.includes("/pulls/comments/"))).toEqual(
+			[],
+		);
+		const stored = (await harness.snapshot(PublishedDocument, (await harness.root(context)).id, context))!;
+		expect(Object.values(stored.revisions[second.changeset.revision.head]!.replies)).toEqual(["9000"]);
 	});
 
 	it("starts a fresh ledger when the recorded comment was deleted by hand", async () => {
