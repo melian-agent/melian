@@ -102,7 +102,8 @@ export class CompareHarness {
 
 	/**
 	 * Adds what each source read to the comparison of `revision`, as of `at`, and matches it against Melian's stored
-	 * review of the revision, in one commit. Importing again upserts each finding by its ID, so the import is replay safe.
+	 * review of the revision, in one commit. Each source's import replaces what it last imported, so the import is replay
+	 * safe.
 	 * Throws {@link CompareError} `notReviewed` when Melian has no review of the revision.
 	 */
 	importFindings(

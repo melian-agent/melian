@@ -749,12 +749,12 @@ Solution: comparison is a Melian capability. `melian compare` builds it, a store
 - the file and line range;
 - a title and a body;
 - the reviewer's own severity, if it gave one;
-- a stable source reference: a thread or comment ID and its URL, or the file and position it was read from;
+- a stable source reference: a thread's ID and its URL, or the file it was read from and the finding's own label there, or without one its place and title;
 - when it was posted, and whether its thread was resolved.
 
 Its ID hashes the source reference alone, so importing again updates a finding rather than adding one, and a later change to how reviewers are named never orphans a hand match. An import replaces what its source last imported, so a finding the reviewer withdrew goes. Melian's findings keep their own shape. A comparison holds, for one changeset at one head, the external findings, Melian's findings from its stored review of that head, and the matches between them. It is a `defineDoc()` document in the changeset's storage, beside the findings document, so it lives where dismissals live. A range compares as a pull request does, for reviewers run on a local branch.
 
-**Importers.** Each source is an object with a static `open`, like the other adapters. An import is replay safe: each finding upserts by its ID.
+**Importers.** Each source is an object with a static `open`, like the other adapters. An import is replay safe: it replaces what its source last imported, and each finding keeps its ID.
 
 - Review threads. `packages/github` reads a pull request's review threads through GitHub's GraphQL API, keeping comments whose author login is named. REST's comment list carries no thread state, and a resolved thread is how CodeRabbit marks a finding fixed. CodeRabbit posts as `coderabbitai[bot]`, which Melian knows by default; other bots and humans are named by login. A thread's line is GitHub's current placement at the compared head, or its original line, marked outdated, when GitHub no longer places it. GitHub places threads at the pull request's head, so `melian compare` refuses a pull request that moved since Melian's review. CodeRabbit puts nitpicks and comments outside the diff in review bodies, which have no thread. The importer does not parse them, since [the anatomy of CodeRabbit's output](research/2026-10-04-review-output-anatomy.md) warns against parsing markdown, and it reports how many review bodies it skipped.
 - Files, for reviewers that run locally. Codex's adversarial review writes JSON under its own schema, which the importer reads. Any other reviewer, Claude Code's review among them, comes in as a JSON file in the external-finding shape, written by the agent that ran it. Melian never parses a reviewer's prose.

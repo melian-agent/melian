@@ -140,7 +140,7 @@ const fileFindingSchema = Type.Object(
 /**
  * The file a local reviewer's findings arrive in, written by the agent that ran the reviewer: the reviewer, and each
  * finding's file, lines, title, body, and the reviewer's own severity. `ref` is the reviewer's own label for a finding,
- * such as `A1`; without one, a finding is known by its position in the file.
+ * such as `A1`; without one, a finding is known by its file, line, and title.
  */
 export const externalFindingsFileSchema = Type.Object(
 	{
@@ -244,7 +244,7 @@ export interface ExternalSite {
 
 /**
  * A finding another reviewer raised, in one shape whatever the reviewer: Codex, Claude Code, CodeRabbit, or a human. Its
- * ID hashes the reviewer and the source reference, so importing it again updates it rather than adding another.
+ * ID hashes the source reference, so importing it again updates it rather than adding another.
  */
 export class ExternalFinding {
 	readonly id: string;
