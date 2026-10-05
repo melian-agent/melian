@@ -17,6 +17,7 @@ import {
 	type MelianConfig,
 	type ModelReference,
 	type RepositorySource,
+	type ReviewPlan,
 	resolveModelForTier,
 	type ScrutinyLevel,
 	type Severity,
@@ -362,6 +363,37 @@ async function chooseRoute(
 	);
 }
 
+// The options as the plan shapes them: each tier routed as the plan resolved it, and each lens on a tier the plan refuses
+// left out, with a `failed` record of why in place of the host's records of lenses, which the lens step owns.
+function planned(options: ReviewOptions): ReviewOptions {
+	const checks = (options.checks ?? []).filter((check) => !check.name.startsWith("lens."));
+	const { plan } = options;
+	if (plan === undefined) return { ...options, checks };
+	const config = { ...options.config, models: plan.routes() };
+	const manifest = checksOfTier(config, options.tier ?? config.stages["pull-request"] ?? "full");
+	const named = new Set(manifest.filter((name) => name.startsWith("lens.")).map((name) => name.slice("lens.".length)));
+	const level = defaultScrutinyLevel;
+	const refused = new Map<string, CheckRecord>();
+	for (const { lens } of Lens.select(
+		options.lenses.filter((lens) => named.has(lens.name)),
+		config,
+		options.changeset.revision.paths(),
+	)) {
+		const { tier } = lens.level(level);
+		const reason = plan.refusal(tier);
+		if (reason === undefined || refused.has(lens.name)) continue;
+		const lineage = plan.lineage(tier);
+		const name = `lens.${lens.name}`;
+		refused.set(lens.name, { name, status: "failed", level, reason, ...(lineage === undefined ? {} : { lineage }) });
+	}
+	return {
+		...options,
+		config,
+		lenses: options.lenses.filter((lens) => !refused.has(lens.name)),
+		checks: [...checks, ...refused.values()],
+	};
+}
+
 /** What {@link reviewChangeset} reviews, and with what. */
 export interface ReviewOptions {
 	/** A harness with {@link lensExtension} installed, over the changeset's own storage. */
@@ -373,6 +405,12 @@ export interface ReviewOptions {
 	readonly standards: readonly StandardsSection[];
 	/** The collection the harness was opened with, used to pick each tier's first model with credentials. */
 	readonly models: ReviewModels;
+	/**
+	 * The review plan the host resolved. Its routes replace `config`'s; a lens on a tier it refuses records `failed`
+	 * without running; a lens on a route off the committed one records that lineage; and the verdict's provenance
+	 * keeps the plan. Without it, `config`'s routes apply as written.
+	 */
+	readonly plan?: ReviewPlan;
 	/**
 	 * Where adjudication reads each finding's configuration, the source `config` came from, such as the base commit.
 	 * Without it, `config`'s resolution and rule aliases apply to every path.
@@ -554,7 +592,9 @@ function account(
 	options: Pick<ReviewOptions, "config" | "lenses" | "checks">,
 ): { readonly manifest: Manifest; readonly producers: FindingSource[] } {
 	const { config } = options;
-	const supplied = (options.checks ?? []).filter((check) => !check.name.startsWith("lens."));
+	// The lens step owns `lens.*`, so the host's records of lenses never reach here; a plan's record of a lens it refused
+	// does, for a lens that never ran.
+	const supplied = (options.checks ?? []).filter((check) => !ran.some((lens) => check.name === `lens.${lens.name}`));
 	const manifest = new Manifest(
 		checks,
 		[...supplied, ...ran.map((lens) => lensCheck(lens, result, notes.get(lens.key)))],
@@ -611,7 +651,8 @@ function account(
  * a lens did not finish for another reason. The last two carry the findings reported so far and the `not-reviewed`
  * verdict already recorded.
  */
-export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
+export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
+	const options = planned(request);
 	const { harness, changeset, config, standards, models } = options;
 	const context = options.context ?? backgroundContext;
 	const root = (await harness.root(context)).id;
@@ -710,12 +751,13 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		policy: options.policy,
 		config,
 		manifest,
-		checks: accounted.records(),
+		checks: request.plan?.mark(accounted.records()) ?? accounted.records(),
 		findingsVersion: await findingsVersion(harness, root, reviewed, context),
 		allowSkip: accounted.skippable(),
 		producers,
 		origin: options.origin ?? { kind: "range" },
 		lenses: lenses.map((lens) => lens.key),
+		plan: request.plan,
 	});
 	const adjudication = await startAdjudication(harness, input, lenses, context);
 	const forget = (index: ReviewIndexState) => {

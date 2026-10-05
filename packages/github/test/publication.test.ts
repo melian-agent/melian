@@ -276,6 +276,39 @@ describe("markers", () => {
 		expect(body).not.toContain("`lens.contracts`:");
 	});
 
+	it("names each check that left the committed routes, before the checks that did not run", () => {
+		const lineage = { model: "openai/gpt-5.5", wanted: "anthropic/claude-opus-5-5", by: "--model", outside: true };
+		const body = renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: "0123456789abcdef",
+				round: 1,
+				verdict: new Adjudication({
+					findings: [],
+					manifest: [],
+					checks: [
+						{ name: "lens.correctness", status: "ran", level: "careful", lineage },
+						{ name: "lens.contracts", status: "failed", level: "careful", reason: "refused", lineage },
+					],
+					config: defaultConfig,
+				}).adjudicate(),
+				findings: [],
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+
+		const said =
+			"on openai/gpt-5.5, set by --model, where policy wants anthropic/claude-opus-5-5 and does not accept openai/gpt-5.5";
+		expect(body).toContain(
+			`Checks that left the committed routes:\n\n- \`lens.correctness\` ${said}\n- \`lens.contracts\` ${said}\n\nChecks that did not run:`,
+		);
+	});
+
 	it("cuts findings from a body over GitHub's limit, keeping the marker and saying where they all are", () => {
 		const findings = Array.from({ length: 12 }, (_, index) =>
 			Finding.create({

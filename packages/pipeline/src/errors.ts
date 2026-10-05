@@ -16,6 +16,27 @@ export class PiCredentialsError extends Error {
 	}
 }
 
+/** Why a named credential's command could not give its value. */
+export type CredentialErrorCode = "commandFailed" | "noValue";
+
+/**
+ * A named credential from a secrets file could not be read: its command failed or timed out, or its source gave an
+ * empty value. `credential` and `file` name it; the message never quotes what the command printed.
+ */
+export class CredentialError extends Error {
+	readonly code: CredentialErrorCode;
+	readonly credential: string;
+	readonly file: string;
+
+	constructor(code: CredentialErrorCode, message: string, options: { credential: string; file: string }) {
+		super(message);
+		this.name = "CredentialError";
+		this.code = code;
+		this.credential = options.credential;
+		this.file = options.file;
+	}
+}
+
 /** Why a review could not be published. */
 export type PublishErrorCode =
 	| "staleReview"

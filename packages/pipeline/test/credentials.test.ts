@@ -1,7 +1,18 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { createReviewModels, PiCredentialsError, piAuthPath, piCredentialStore } from "@melian-agent/pipeline";
+import type { NamedCredential } from "@melian-agent/core";
+import {
+	CredentialError,
+	createReviewModels,
+	MelianCredentialStore,
+	PiCredentialStore,
+	PiCredentialsError,
+	piAuthPath,
+	piCredentialStore,
+	planInputs,
+	unlockCredentials,
+} from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { modelsOf } from "../src/models.ts";
 
@@ -129,5 +140,106 @@ describe("createReviewModels", () => {
 			.catch((e: unknown) => e)) as Error;
 		expect(error).toBeInstanceOf(PiCredentialsError);
 		expect(JSON.stringify({ message: error.message, cause: String(error.cause) })).not.toContain("sk-ant");
+	});
+});
+
+describe("MelianCredentialStore", () => {
+	const named = (
+		name: string,
+		provider: string,
+		value: NamedCredential["value"],
+		file = "/home/me/.config/melian/secrets.yaml",
+	): NamedCredential => ({ name, provider, type: "api_key", value, file });
+
+	it("reads a named credential before Pi's store, and Pi's store when the named one's variable is unset", async () => {
+		store({ anthropic: { type: "api_key", key: "sk-ant-stored" } });
+		const credentials = new MelianCredentialStore(
+			[named("work", "anthropic", { kind: "env", variable: "WORK_ANTHROPIC_KEY" })],
+			new PiCredentialStore(authPath),
+			{},
+		);
+		expect(await credentials.read("anthropic")).toEqual({ type: "api_key", key: "sk-ant-stored" });
+		expect(await credentials.describe("anthropic")).toBe(`Pi's login in ${authPath}`);
+
+		const set = new MelianCredentialStore(credentials.named, new PiCredentialStore(authPath), {
+			WORK_ANTHROPIC_KEY: "sk-ant-work",
+		});
+		expect(await set.read("anthropic")).toEqual({ type: "api_key", key: "sk-ant-work" });
+		expect(await set.describe("anthropic")).toBe("work in /home/me/.config/melian/secrets.yaml");
+		expect(await set.list()).toEqual([{ providerId: "anthropic", type: "api_key" }]);
+	});
+
+	it("takes the first named credential of a provider that is present, in file order", async () => {
+		const credentials = new MelianCredentialStore(
+			[
+				named("unset", "openai", { kind: "env", variable: "UNSET_KEY" }),
+				named("pinned", "openai", { kind: "literal", key: "sk-literal" }),
+			],
+			new PiCredentialStore(authPath),
+			{},
+		);
+		expect(await credentials.read("openai")).toEqual({ type: "api_key", key: "sk-literal" });
+	});
+
+	it("runs a command source once, at first use, and never when only asked where a credential comes from", async () => {
+		const counter = join(dir, "runs");
+		const credentials = new MelianCredentialStore(
+			[named("vault", "openai", { kind: "command", command: `echo run >> ${counter}; printf ' sk-from-vault\\n'` })],
+			new PiCredentialStore(authPath),
+			{},
+		);
+		expect(await credentials.describe("openai")).toBe("vault in /home/me/.config/melian/secrets.yaml");
+		expect(existsSync(counter)).toBe(false);
+		expect(await credentials.read("openai")).toEqual({ type: "api_key", key: "sk-from-vault" });
+		expect(await credentials.read("openai")).toEqual({ type: "api_key", key: "sk-from-vault" });
+		expect(readFileSync(counter, "utf8")).toBe("run\n");
+	});
+
+	it("names the credential and its file when a command fails or prints nothing, and never what it printed", async () => {
+		const failing = new MelianCredentialStore(
+			[
+				named(
+					"vault",
+					"openai",
+					{ kind: "command", command: "echo sk-leaked; exit 3" },
+					"/clone/melian.secrets.yaml",
+				),
+			],
+			new PiCredentialStore(authPath),
+			{},
+		);
+		const error = await failing.read("openai").catch((e: unknown) => e);
+		expect(error).toBeInstanceOf(CredentialError);
+		expect(error).toMatchObject({ code: "commandFailed", credential: "vault", file: "/clone/melian.secrets.yaml" });
+		expect((error as Error).message).toBe("credential vault in /clone/melian.secrets.yaml: its command failed (3)");
+		const empty = new MelianCredentialStore(
+			[named("vault", "openai", { kind: "command", command: "true" })],
+			new PiCredentialStore(authPath),
+			{},
+		);
+		expect(await empty.read("openai").catch((e: unknown) => e)).toMatchObject({ code: "noValue" });
+	});
+
+	it("resolves a review's models from a named credential before the provider's environment variable", async () => {
+		vi.stubEnv("OPENAI_API_KEY", "sk-env");
+		const models = createReviewModels({
+			authPath,
+			credentials: [named("pinned", "openai", { kind: "literal", key: "sk-named" })],
+		});
+		const { credentials } = await planInputs(models);
+		expect(credentials.openai).toBe("pinned in /home/me/.config/melian/secrets.yaml");
+		expect(await modelsOf(models).getAuth("openai")).toMatchObject({ auth: { apiKey: "sk-named" } });
+		await unlockCredentials(models, ["openai", "anthropic"]);
+	});
+
+	it("names an environment variable pi-ai found as the source, and lists catalogue models", async () => {
+		vi.stubEnv("OPENAI_API_KEY", "sk-env");
+		const { catalogue, credentials } = await planInputs(createReviewModels({ authPath }));
+		expect(credentials.openai).toBe("OPENAI_API_KEY");
+		expect(credentials.anthropic).toBeUndefined();
+		expect(catalogue.find((model) => model.provider === "openai" && model.id === "gpt-5.5")).toMatchObject({
+			name: "GPT-5.5",
+			reasoning: true,
+		});
 	});
 });
