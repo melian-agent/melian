@@ -1,8 +1,7 @@
 (version 1)
 ; A seatbelt profile for running Codex in full-access mode under a sandbox of our own.
-; Writes are confined to the worktree, its git directory, scratch and temp directories,
-; and the caches Codex, npm, and gh need. Reads and the network are open.
-; @@WRITABLE@@ is replaced by scripts/codex-sandboxed.sh with (subpath "...") entries.
+; This is the fixed part. scripts/codex-sandboxed.sh appends the write allowances, then the
+; write and read denials. Rules are evaluated last-match-wins, so a deny after an allow narrows it.
 (deny default)
 (allow process-exec)
 (allow process-fork)
@@ -26,6 +25,3 @@
 (allow file-read* file-write* file-ioctl (literal "/dev/ptmx"))
 (allow file-read* file-write* (regex #"^/dev/ttys[0-9]+"))
 (allow file-write-data (literal "/dev/null") (literal "/dev/zero") (subpath "/dev/fd"))
-(allow file-write*
-@@WRITABLE@@
-)
