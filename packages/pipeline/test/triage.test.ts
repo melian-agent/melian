@@ -51,6 +51,7 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DecisionDocument } from "../src/decisions.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
@@ -557,6 +558,89 @@ describe("triage", () => {
 	it("refuses a decider the harness was not opened with", async () => {
 		await open();
 		await expect(review({ decider: choosing("quick") })).rejects.toMatchObject({ code: "notInstalled" });
+	});
+});
+
+describe("a decision task another call replaced", () => {
+	// A decider that holds its first call until `release`, or until its signal aborts when `heeding`; later calls choose quick.
+	function holding(heeding: boolean) {
+		let release = () => {};
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let calls = 0;
+		const decider: Decider = {
+			name: "holding",
+			calibrated: false,
+			decide: async (request, signal) => {
+				calls++;
+				if (calls === 1) {
+					await new Promise<void>((resolve, reject) => {
+						gate.then(resolve);
+						if (heeding) signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+					});
+				}
+				return {
+					answers: request.questions.map((question) => ({ question: question.id, distribution: { quick: 1 } })),
+				};
+			},
+		};
+		return { decider, release, calls: () => calls };
+	}
+
+	const decisionTasks = async () =>
+		(await harness.inspect(context)).tasks.filter((task) => task.record.kind === "melian.decision");
+
+	it("aborts a pending decision task that a rerun replaces", async () => {
+		const held = holding(true);
+		await open(held.decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done, done] }]);
+		const first = review({ decider: held.decider });
+		await vi.waitFor(() => expect(held.calls()).toBe(1));
+		const [pending] = await decisionTasks();
+
+		const rerun = await review({ decider: held.decider, rerun: true });
+		await expect(first).rejects.toMatchObject({ code: "superseded" });
+
+		expect(lensRecord(rerun)).toMatchObject({ level: "quick" });
+		const settled = await harness.waitForTask(pending!.record.id, context);
+		expect(settled.state.outcome.status).toBe("aborted");
+	});
+
+	it("writes nothing from a decision task the document no longer names", async () => {
+		const held = holding(false);
+		await open(held.decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		const first = review({ decider: held.decider });
+		await vi.waitFor(() => expect(held.calls()).toBe(1));
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			const document = await tx.doc(DecisionDocument, root.id);
+			const entry = document.decisions[revision()]!.triage!;
+			document.decisions = { ...document.decisions, [revision()]: { triage: { ...entry, task: 999_999 } } };
+		}, context);
+
+		held.release();
+		const reviewed = await first;
+
+		expect(lensRecord(reviewed)).toMatchObject({ level: "careful" });
+		expect(lensRecord(reviewed)!.reason).toContain("the decision task ended superseded");
+		const stored = await readRecordedDecision(harness, root.id, revision(), "triage", context);
+		expect(stored).toMatchObject({ task: 999_999 });
+		expect(stored!.decision).toBeUndefined();
+	});
+
+	it("asks again on rerun after a crash left the decision undecided", async () => {
+		const held = holding(true);
+		await open(held.decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done, done] }]);
+		void review({ decider: held.decider }).catch(() => undefined);
+		await vi.waitFor(() => expect(held.calls()).toBe(1));
+
+		const rerun = await review({ decider: held.decider, rerun: true });
+
+		expect(held.calls()).toBe(2);
+		expect(lensRecord(rerun)).toMatchObject({ level: "quick" });
 	});
 });
 

@@ -1072,6 +1072,7 @@ async function triage(
 		key,
 		request: structuredClone(request) as DecisionTaskInput["request"],
 	};
+	let replaced: number | undefined;
 	const taskId = await root.commit(async (tx) => {
 		const document = await tx.doc(DecisionDocument, root.id);
 		const known = document.decisions[revision]?.[set];
@@ -1081,12 +1082,17 @@ async function triage(
 			return known.task as TaskId<DecisionResult>;
 		}
 		const created = await tx.createTask(decisionTask(decider), input, { ownership: { kind: "conversation" } });
+		replaced = known?.task;
 		document.decisions = {
 			...document.decisions,
 			[revision]: { ...document.decisions[revision], [set]: { key, task: created } },
 		};
 		return created;
 	}, context);
+	// A live replaced task would still ask its decider, and its answer lands nowhere.
+	if (replaced !== undefined && replaced !== taskId) {
+		await harness.abortTask(replaced as TaskId, context).catch(() => undefined);
+	}
 	const forget = async (tx: Tx, rootId: ConversationId) => {
 		const document = await tx.doc(DecisionDocument, rootId);
 		const entries = document.decisions[revision];
