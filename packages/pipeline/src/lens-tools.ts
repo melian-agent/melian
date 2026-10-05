@@ -412,15 +412,6 @@ export async function budgetEnded(
 	return { budget: ended, limit, tokens, tools: document?.spend?.calls.length ?? 0 };
 }
 
-// The IDs of the findings a lens conversation reported as not a defect.
-export async function refutedBy(
-	reader: DocumentReader,
-	conversationId: ConversationId,
-	context: Context,
-): Promise<string[]> {
-	return [...((await reader.snapshot(LensDocument, conversationId, context))?.spend?.refuted ?? [])];
-}
-
 // Core's BudgetEnd as a JSON type, for task results and stored check records.
 export type StoredBudgetEnd = { budget: "tokens" | "tools"; limit: number; tokens: number; tools: number };
 

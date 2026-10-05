@@ -87,7 +87,6 @@ import {
 	lensReadTools,
 	lensSource,
 	type ReviewState,
-	refutedBy,
 	reportFinding,
 	reviewFiles,
 	type StoredBudgetEnd,
@@ -361,9 +360,8 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 								finding.line <= each.endLine),
 					);
 				const restated = new Set(carried.filter(restates).map((finding) => finding.id));
-				const refuted = (await refutedBy(runtime, child!, context)).filter(
-					(id) => escalation.carried.includes(id) && !restated.has(id),
-				);
+				const reported = (await runtime.snapshot(LensDocument, child!, context))?.spend?.refuted ?? [];
+				const refuted = reported.filter((id) => escalation.carried.includes(id) && !restated.has(id));
 				const kept = escalation.carried.filter((id) => !restated.has(id) && !refuted.includes(id));
 				const moved = { trigger, to: next.key, carried: escalation.carried, kept, refuted };
 				return [
