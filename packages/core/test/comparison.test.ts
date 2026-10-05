@@ -452,6 +452,18 @@ describe("Comparison matching", () => {
 		);
 	});
 
+	it("does not call a finding ambiguous that a maintainer matched by hand to two Melian findings", () => {
+		const first = melian();
+		const second = melian({ snippet: "eval(other)", startLine: 40, endLine: 40 });
+		const far = external({ line: 90 });
+		const comparison = compared([far], [first, second]);
+		comparison.match(far.id, first.id, "M", "t1");
+		comparison.match(far.id, second.id, "M", "t2");
+		expect(comparison.effectiveMatches().filter((match) => match.kind === "hand")).toHaveLength(2);
+		expect(comparison.ambiguous()).toEqual([]);
+		expect(comparison.render(undefined)).not.toContain("Ambiguous");
+	});
+
 	it("lists each Melian-only finding with its ID, severity, rule, and place, or its ID alone without the verdict", () => {
 		const finding = melian();
 		const comparison = compared([external({ file: "src/far.ts", line: 90 })], [finding]);
