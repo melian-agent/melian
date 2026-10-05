@@ -65,7 +65,13 @@ afterEach(async () => {
 async function planned(
 	committed: ModelRoute,
 	local?: string,
-	options: { light?: string; lightFallbacks?: string[]; fails?: string; rerun?: boolean } = {},
+	options: {
+		light?: string;
+		lightFallbacks?: string[];
+		fails?: string;
+		rerun?: boolean;
+		contractsPaths?: string[];
+	} = {},
 ) {
 	const { light } = options;
 	const moved: Record<string, LensSettings> =
@@ -73,7 +79,12 @@ async function planned(
 	const config: MelianConfig = {
 		...defaultConfig,
 		tiers: twoLensTiers,
-		lenses: moved,
+		lenses: {
+			...moved,
+			...(options.contractsPaths === undefined
+				? {}
+				: { contracts: { ...moved.contracts, paths: options.contractsPaths } }),
+		},
 		models: {
 			heavy: local === undefined ? committed : { ...committed, model: local },
 			...(light === undefined ? {} : { light: { model: light, fallbacks: options.lightFallbacks ?? [] } }),
@@ -213,6 +224,18 @@ describe("reviewChangeset with a plan", () => {
 				{ name: "lens.correctness", status: "ran", level: "careful", lineage },
 			]),
 		);
+	});
+
+	it("records a lens on a refused tier whose paths the change does not touch as skipped, not failed", async () => {
+		const { review, answered } = await planned({ model: heavy, accept: [heavy], acceptOverridden: false }, backup, {
+			contractsPaths: ["docs/**"],
+		});
+
+		expect(answered).toEqual([]);
+		const record = (name: string) =>
+			[...review.verdict.notRun, ...(review.verdict.ran ?? [])].find((check) => check.name === name);
+		expect(record("lens.correctness")).toMatchObject({ status: "failed" });
+		expect(record("lens.contracts")).toEqual({ name: "lens.contracts", status: "skipped", reason: "no paths" });
 	});
 
 	it("runs again under --rerun a lens the plan failed for finishing on a refused fallback", async () => {
