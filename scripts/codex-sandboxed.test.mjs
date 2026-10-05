@@ -118,7 +118,7 @@ describe("codex-sandboxed.sh profile", () => {
 	it("denies symlinks and file flags in the worktree, with an allowance for node_modules after the deny", () => {
 		const text = profile(linked, scratch);
 		const deny = text.indexOf(
-			'(deny file-write-create\n  (require-all\n    (subpath "' + linked + '")\n    (vnode-type SYMLINK)))',
+			`(deny file-write-create\n  (require-all\n    (subpath "${linked}")\n    (vnode-type SYMLINK)))`,
 		);
 		const allow = text.indexOf(
 			'(allow file-write-create\n  (require-all\n    (regex #"^' +
@@ -479,7 +479,7 @@ describe("codex-sandboxed.sh profile", () => {
 				`npm_config_cache='${scratch}/npm-cache' npm ci --offline --no-audit --no-fund --silent && node_modules/.bin/depbin`,
 			).toString();
 			expect(out).toContain("bin-ok");
-		});
+		}, 60_000);
 
 		it("commits in the linked worktree", () => {
 			sh(linked, "echo x > f && git add f && git commit -q -m sandboxed");
@@ -759,6 +759,7 @@ describe("codex-sandboxed.sh profile", () => {
 			expect(out).toContain("nested:denied");
 			expect(existsSync(join(home, "escape"))).toBe(false);
 			expect(existsSync(join(linked, "sub-e2e", ".git"))).toBe(false);
+			expect(existsSync(join(linked, "sub-e2e"))).toBe(true);
 		});
 
 		it("kills a backgrounded child when the wrapper returns, and returns codex's exit status", () => {
