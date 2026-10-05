@@ -61,6 +61,10 @@ Both sources are classes implementing one interface, `SourceReader`, with `readT
 
 `.melian/` may sit in any directory, as `melian.yaml` may. For each directory from the path's up to the root, `loadStandards` reads `AGENTS.md`, `CLAUDE.md`, then `.melian/standards/*.md` in name order, so a service's own standards come before the root's. Lenses resolve the same way, as [Lenses](#lenses) describes; knowledge is read from the root `.melian/` only.
 
+`Standards.load(repoRoot, source, paths)` shares the one-path reader across changed paths, caching file reads and directory listings. It keeps chains by directory. `standards.forFiles(files)` returns a `StandardsReading`: its sections, actual paths, omitted paths, and the note the pipeline records. Files contribute their chains in the caller's order, nearest first within each chain; a duplicate stays at its first position. Both paths of a rename apply. Imports keep their importer's scope for omission priority.
+
+The file and single-chain bounds still throw `StandardsError`. A union across a lens's files holds at most 1 MiB. Whole sections leave from deepest scope first, later sections first at equal depth. The reading's note names each omitted path and the count. This keeps a lens spanning many packages reviewable without hiding what it could not read. `loadStandards` remains exported for one-path callers.
+
 ## Layering precedence
 
 Every `melian.yaml` from a path's directory up to the repository root applies, over the built-in defaults. The nearest file wins per key. Objects merge key by key; arrays and scalars replace whole. A lens's `paths` are relative to the file that declares them, a leading `/` included, and the loader rewrites them to be repository-relative before merging, keeping a leading `!` for exclusions. It normalises root and nested patterns alike, so `./src/**` becomes `src/**`, and a pattern whose `..` climbs out of the repository is an `invalidValue` error naming the file and `lenses.<name>.paths`.

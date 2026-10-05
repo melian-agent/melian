@@ -258,7 +258,7 @@ export {
 	secretsFileSchema,
 } from "./secrets.ts";
 export type { RepositorySource } from "./source.ts";
-export { loadStandards, type StandardsSection, standardsLimits } from "./standards.ts";
+export { loadStandards, Standards, StandardsReading, type StandardsSection, standardsLimits } from "./standards.ts";
 export {
 	normaliseBiomeSarif,
 	parseTscDiagnostics,

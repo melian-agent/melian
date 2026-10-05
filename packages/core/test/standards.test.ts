@@ -1,7 +1,8 @@
 import { chmodSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { loadStandards, OutsideRepositoryError, StandardsError, standardsLimits } from "@melian-agent/core";
+import { loadStandards, OutsideRepositoryError, Standards, StandardsError, standardsLimits } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as sourceModule from "../src/source.ts";
 import {
 	gitIn,
 	isolatedGitEnv,
@@ -38,6 +39,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	vi.restoreAllMocks();
 	vi.unstubAllEnvs();
 	removeDirectory(parent);
 });
@@ -199,5 +201,93 @@ describe("loadStandards from the worktree", () => {
 		chmodSync(join(repo, ".melian/standards/naming.md"), 0o000);
 		const error = await rejection(loadStandards(repo, { kind: "worktree" }, "README.md"), StandardsError);
 		expect(error).toMatchObject({ code: "unreadable", path: ".melian/standards/naming.md" });
+	});
+});
+
+describe.each(sourceKinds)("Standards from the %s", (kind) => {
+	it("keeps each file's nearest chain and unions in first-file order", async () => {
+		writeFiles(repo, { "packages/other/AGENTS.md": "# Other rules" });
+		const paths = ["packages/app/src/a.ts", "packages/other/src/b.ts", "packages/app/src/c.ts"];
+		const standards = await Standards.load(repo, sourceFor(repo, kind), paths);
+		expect(standards.forFiles([paths[0]!]).paths()).toEqual([
+			"packages/app/AGENTS.md",
+			"docs/app-guide.md",
+			"AGENTS.md",
+			"docs/guide.md",
+			".melian/standards/naming.md",
+		]);
+		expect(standards.forFiles(paths).paths()).toEqual([
+			"packages/app/AGENTS.md",
+			"docs/app-guide.md",
+			"AGENTS.md",
+			"docs/guide.md",
+			".melian/standards/naming.md",
+			"packages/other/AGENTS.md",
+		]);
+		expect(standards.forFiles([paths[1]!, paths[0]!]).paths()[0]).toBe("packages/other/AGENTS.md");
+	});
+
+	it("reads shared directories and imported files once across paths", async () => {
+		const paths = ["packages/app/src/a.ts", "packages/app/test/b.ts", "packages/app/src/c.ts"];
+		const source = sourceFor(repo, kind);
+		const reader = await sourceModule.openSource(repo, source);
+		const read = vi.spyOn(reader, "readText");
+		const list = vi.spyOn(reader, "list");
+		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
+		const standards = await Standards.load(repo, source, paths);
+		standards.forFiles(paths);
+		expect(read.mock.calls.filter(([path]) => path === "packages/app/AGENTS.md")).toHaveLength(1);
+		expect(read.mock.calls.filter(([path]) => path === "docs/app-guide.md")).toHaveLength(1);
+		expect(read.mock.calls.filter(([path]) => path === "AGENTS.md")).toHaveLength(1);
+		expect(list.mock.calls.filter(([path]) => path === ".melian/standards")).toHaveLength(1);
+	});
+
+	it("skips a nested symlink without following its target", async () => {
+		symlinkSync("../../../private.md", join(repo, "packages/app/linked.md"));
+		writeFiles(repo, { "packages/app/AGENTS.md": "# App rules\n@linked.md" });
+		const paths = ["packages/app/src/a.ts"];
+		const standards = await Standards.load(repo, sourceFor(repo, kind), paths);
+		expect(standards.forFiles(paths).paths()).not.toContain("packages/app/linked.md");
+	});
+
+	it("drops whole deepest sections across files and names each omission", async () => {
+		const paths = Array.from({ length: 6 }, (_, i) => `packages/p${i}/src/a.ts`);
+		writeFiles(
+			repo,
+			Object.fromEntries(paths.map((_, i) => [`packages/p${i}/AGENTS.md`, "x".repeat(standardsLimits.fileBytes)])),
+		);
+		const standards = await Standards.load(repo, sourceFor(repo, kind), paths);
+		const reading = standards.forFiles(paths);
+		expect(reading.omitted).toEqual(["packages/p5/AGENTS.md", "packages/p4/AGENTS.md", "packages/p3/AGENTS.md"]);
+		expect(
+			reading.sections.reduce((bytes, section) => bytes + Buffer.byteLength(section.content), 0),
+		).toBeLessThanOrEqual(standardsLimits.totalBytes);
+		expect(reading.sections[0]!.content).toHaveLength(standardsLimits.fileBytes);
+		expect(reading.paths()).toContain("AGENTS.md");
+		expect(reading.note()).toBe(
+			"left out 3 standards sections past 1024 KiB: packages/p5/AGENTS.md, packages/p4/AGENTS.md, packages/p3/AGENTS.md",
+		);
+	});
+
+	it("refuses one chain over the bound before per-lens omission", async () => {
+		writeFiles(
+			repo,
+			Object.fromEntries(
+				Array.from({ length: 5 }, (_, i) => [
+					`packages/app/.melian/standards/${i}.md`,
+					"x".repeat(standardsLimits.fileBytes),
+				]),
+			),
+		);
+		await expect(Standards.load(repo, sourceFor(repo, kind), ["packages/app/a.ts"])).rejects.toMatchObject({
+			code: "totalTooLarge",
+		});
+	});
+
+	it("refuses an oversized individual file", async () => {
+		writeFiles(repo, { "packages/app/AGENTS.md": "x".repeat(standardsLimits.fileBytes + 1) });
+		await expect(Standards.load(repo, sourceFor(repo, kind), ["packages/app/a.ts"])).rejects.toMatchObject({
+			code: "tooLarge",
+		});
 	});
 });

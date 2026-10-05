@@ -384,11 +384,13 @@ Melian resolves a credential from the secrets files first, the per-clone one bef
 
 ## Standards and knowledge
 
-Reading was built in milestone 1. Writing back is planned for milestone 4 (knowledge write-back).
+The one-path reader was built in milestone 1. Step 9 adds shared reads across changed paths and bounded per-lens unions. Writing back is planned for milestone 4 (knowledge write-back).
 
 ### Reading
 
 Melian reads `AGENTS.md`, `CLAUDE.md`, and `.melian/standards/*.md`, nearest-first for the touched paths, and renders them as a prompt section into every lens that has not opted out. When the review runs `conventions` beside a lens, the section is context: it says a breach is the `conventions` lens's to report, so the other lens reports one only when it is also a defect under its own rules. Without `conventions`, as in the `standard` tier, the section says a change that breaks a standard is a finding, so the lens keeps that coverage, as a hand-off does. It reads them from the revision the host chooses, as [Trust and isolation](#policy-and-standards-come-from-a-revision-the-host-chooses) sets out, so a pull request's changes to these files take effect once merged, not in the review of that pull request. A local run on the working tree sees them on the next request.
+
+`Standards.load` reads each directory and file once across changed paths. `forFiles` unions the chains of a lens's files in first-file order, each chain nearest first, with duplicate paths kept at their first position. Both sides of a rename count. Each file stays within 256 KiB and each single chain within 1 MiB; an overrun throws `StandardsError`. A lens's union holds at most 1 MiB. Past it, whole sections farthest from the repository root leave the union first, with later sections dropped first at equal depth. The lens's check record names the omitted paths and their count. [The cap decision](decisions/2026-10-06-per-lens-standards-cap.md) explains why.
 
 ### Writing back
 
