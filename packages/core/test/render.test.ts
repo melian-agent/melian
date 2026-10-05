@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import {
 	Adjudication,
 	defaultConfig,
+	describeLineage,
 	Finding,
 	FindingsLog,
 	findingsLogSchema,
@@ -267,6 +268,41 @@ describe("Verdict.render", () => {
 			config: defaultConfig,
 		}).adjudicate();
 		expect(passed.render()).toBe("Verdict: passed\n\nNo findings.\n");
+	});
+
+	it("names both what moved a lens to another tier and what routed that tier", () => {
+		const moved = { by: "melian.local.yaml", from: "heavy", to: "light" };
+		expect(
+			describeLineage({ model: "openai/gpt-5.5", wanted: "anthropic/opus", by: "--model", moved, outside: true }),
+		).toBe(
+			"on openai/gpt-5.5, moved from heavy to light by melian.local.yaml, whose route is set by --model, where policy wants anthropic/opus and does not accept openai/gpt-5.5",
+		);
+	});
+
+	it("names each check that left the committed routes, what put it there, and what policy wanted", () => {
+		const lineage = { model: "openai/gpt-5.5", wanted: "anthropic/claude-opus-5-5", by: "melian.local.yaml" };
+		const routed = new Adjudication({
+			findings: [],
+			manifest: [],
+			checks: [
+				{ name: "lens.correctness", status: "ran", level: "careful", lineage: { ...lineage, outside: false } },
+				{
+					name: "lens.tests",
+					status: "failed",
+					level: "careful",
+					reason: "models.heavy.acceptOverridden is false",
+					lineage: { model: "openai/gpt-5.4-mini", by: "derived", outside: true },
+				},
+			],
+			config: defaultConfig,
+		}).adjudicate();
+		expect(routed.render()).toContain(
+			[
+				"2 checks left the committed routes:",
+				"  lens.correctness  on openai/gpt-5.5, set by melian.local.yaml, where policy wants anthropic/claude-opus-5-5 and accepts openai/gpt-5.5",
+				"  lens.tests  on openai/gpt-5.4-mini, derived, since no model of its route has credentials, where policy does not accept openai/gpt-5.4-mini",
+			].join("\n"),
+		);
 	});
 
 	describe("with every finding and its ID", () => {

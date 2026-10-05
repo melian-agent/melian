@@ -1,0 +1,5 @@
+[The comparison record for pull request #73](../../packages/evals/comparisons/2026-10-05-pr-73.md#melian-review-later-rounds) now covers twelve rounds. Round seven switched from Opus 5.5 to Codex GPT-6.1 Sol lenses. Each later fix pass used the same model through the seatbelt wrapper and checked findings before changing code.
+
+Rounds seven to ten found ledger adoption, legacy thread resolution, summariser attempt accounting, dismissal target, and status reconciliation defects. Rounds eleven and twelve raised only tests and migration conventions. Round twelve found no defect, and [pull request #73](https://github.com/melian-agent/melian/pull/73) was queued. The identity-guard negative test and two inline migration refactors remain for `main`.
+
+The failed main-based attempt before round seven is recorded as a state-version lesson. The supplied logs omit round durations, so the record makes no timing claim. This entry extends the rounds-four-to-six entry; its pending round seven is now complete.
