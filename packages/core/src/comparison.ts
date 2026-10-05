@@ -10,6 +10,10 @@ const text = Type.String({ minLength: 1 });
 const line = Type.Integer({ minimum: 1 });
 const count = Type.Integer({ minimum: 0 });
 const idSchema = Type.String({ pattern: "^[0-9a-f]{16}$" });
+// Bounds on the short fields a reviewer or a file supplies, so a pasted log never lands in one: a path within PATH_MAX,
+// a login within GitHub's 39 characters and its `[bot]`, and a severity, version, ref, or time of a line at most.
+const pathText = Type.String({ minLength: 1, maxLength: 4096 });
+const shortText = Type.String({ minLength: 1, maxLength: 100 });
 
 /** The most characters an external finding's title keeps; a longer title, such as a thread's first line, is cut. */
 export const maxExternalTitleLength = 200;
@@ -36,8 +40,8 @@ export const externalReviewerNameSchema = Type.Union([
 export const externalReviewerSchema = Type.Object(
 	{
 		name: externalReviewerNameSchema,
-		version: Type.Optional(text),
-		login: Type.Optional(text),
+		version: Type.Optional(shortText),
+		login: Type.Optional(shortText),
 		kind: Type.Optional(Type.Union([Type.Literal("bot"), Type.Literal("user")])),
 	},
 	strict,
@@ -47,8 +51,8 @@ export const externalReviewerSchema = Type.Object(
  * Where an external finding was read: a review thread, by GitHub's node ID for the thread and its first comment's URL; or a file, by its path and the finding's position in it, or the `ref` the file gave.
  */
 export const externalSourceSchema = Type.Union([
-	Type.Object({ kind: Type.Literal("thread"), thread: text, url: text }, strict),
-	Type.Object({ kind: Type.Literal("file"), path: text, position: count, ref: Type.Optional(text) }, strict),
+	Type.Object({ kind: Type.Literal("thread"), thread: shortText, url: pathText }, strict),
+	Type.Object({ kind: Type.Literal("file"), path: pathText, position: count, ref: Type.Optional(shortText) }, strict),
 ]);
 
 /**
@@ -60,16 +64,16 @@ export const externalFindingSchema = Type.Object(
 	{
 		id: idSchema,
 		reviewer: externalReviewerSchema,
-		file: Type.Optional(text),
+		file: Type.Optional(pathText),
 		line: Type.Optional(line),
 		endLine: Type.Optional(line),
 		revision: Type.Optional(Type.Literal("base")),
 		outdated: Type.Optional(Type.Boolean()),
 		title: Type.String({ minLength: 1, maxLength: maxExternalTitleLength }),
 		body: Type.String({ maxLength: maxExternalBodyLength }),
-		severity: Type.Optional(text),
+		severity: Type.Optional(shortText),
 		source: externalSourceSchema,
-		postedAt: Type.Optional(text),
+		postedAt: Type.Optional(shortText),
 		resolved: Type.Optional(Type.Boolean()),
 	},
 	strict,
@@ -122,14 +126,14 @@ export const comparisonSchema = Type.Object(
 
 const fileFindingSchema = Type.Object(
 	{
-		ref: Type.Optional(text),
-		file: Type.Optional(text),
+		ref: Type.Optional(shortText),
+		file: Type.Optional(pathText),
 		line: Type.Optional(line),
 		endLine: Type.Optional(line),
 		title: text,
 		body: Type.String({ maxLength: maxExternalBodyLength }),
-		severity: Type.Optional(text),
-		postedAt: Type.Optional(text),
+		severity: Type.Optional(shortText),
+		postedAt: Type.Optional(shortText),
 		resolved: Type.Optional(Type.Boolean()),
 	},
 	strict,
@@ -142,7 +146,7 @@ const fileFindingSchema = Type.Object(
  */
 export const externalFindingsFileSchema = Type.Object(
 	{
-		reviewer: Type.Object({ name: externalReviewerNameSchema, version: Type.Optional(text) }, strict),
+		reviewer: Type.Object({ name: externalReviewerNameSchema, version: Type.Optional(shortText) }, strict),
 		findings: Type.Array(fileFindingSchema, { maxItems: maxExternalFileFindings }),
 	},
 	strict,

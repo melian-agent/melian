@@ -161,6 +161,27 @@ describe("ExternalFinding", () => {
 		expect([...finding!.title]).toHaveLength(maxExternalTitleLength);
 	});
 
+	it.each([
+		["a severity", { severity: "x".repeat(101) }],
+		["a ref", { ref: "x".repeat(101) }],
+		["a file", { file: `src/${"x".repeat(4093)}` }],
+		["a posting time", { postedAt: "x".repeat(101) }],
+	])("refuses %s longer than its bound", (_, field) => {
+		expect(() =>
+			ExternalFinding.fromFile(
+				{ reviewer: { name: "codex" }, findings: [{ title: "t", body: "", ...field }] },
+				"x.json",
+			),
+		).toThrow(expect.objectContaining({ code: "invalidFile" }));
+	});
+
+	it("refuses a reviewer's version or login longer than its bound", () => {
+		expect(() =>
+			ExternalFinding.fromFile({ reviewer: { name: "codex", version: "x".repeat(101) }, findings: [] }, "x.json"),
+		).toThrow(expect.objectContaining({ code: "invalidFile" }));
+		expect(() => external({ reviewer: { name: "human", login: "x".repeat(101) } })).toThrow(ComparisonError);
+	});
+
 	it("refuses a file that repeats a ref, and keeps one of two findings alike", () => {
 		expect(() =>
 			ExternalFinding.fromFile(
