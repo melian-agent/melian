@@ -470,7 +470,13 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 			reason,
 		});
 		const rerun = melian(repo, ["review", range], env);
-		expect(rerun).toMatchObject({ status: 0, stdout: findings.stdout });
+		expect(rerun.status).toBe(0);
+		expect(rerun.stdout).not.toContain("verifier  ran");
+		expect(melian(repo, ["findings", range], env).stdout).toBe(rerun.stdout);
+		expect(JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout)).toEqual({
+			...verdict,
+			ran: verdict.ran?.filter((check) => check.name !== "verifier"),
+		});
 	});
 
 	it("updates the reason of a finding dismissed again and keeps the first", () => {
