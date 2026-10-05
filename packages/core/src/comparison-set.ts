@@ -132,11 +132,11 @@ export class ComparisonSet {
 					latest.set(key, { entry, id, record });
 			}
 		}
-		const heldBy = (changeset: string, id: string) =>
-			this.entries.some((each) => each.changeset === changeset && each.comparison.holds(id));
 		return [...latest.values()]
 			.flatMap(({ entry, id, record }) =>
-				!heldBy(entry.changeset, id) || record.current.golden === undefined || record.current.golden === "none"
+				!this.entries.some((each) => each.changeset === entry.changeset && each.comparison.holds(id)) ||
+				record.current.golden === undefined ||
+				record.current.golden === "none"
 					? []
 					: [
 							{
