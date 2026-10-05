@@ -108,6 +108,15 @@ export function hasSighting(state: FindingsState, id: string, revision: string, 
 	return state.items[id]?.sightings[revision]?.[producerKey(source)] !== undefined;
 }
 
+// The severity of each finding `source` has sighted at `revision`.
+export function sightingSeverities(state: FindingsState, revision: string, source: FindingSource): Severity[] {
+	const key = producerKey(source);
+	return Object.values(state.items).flatMap((record) => {
+		const sighting = record.sightings[revision]?.[key];
+		return sighting === undefined ? [] : [sighting.properties.severity];
+	});
+}
+
 // How many findings `source` has sighted at `revision`.
 export function sightingCount(state: FindingsState, revision: string, source: FindingSource): number {
 	const key = producerKey(source);

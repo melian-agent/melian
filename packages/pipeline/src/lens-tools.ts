@@ -3,6 +3,7 @@ import {
 	capSnippet,
 	type EvidenceLocation,
 	Finding,
+	type FindingSource,
 	type FindingTrigger,
 	type LensRule,
 	type LensToolName,
@@ -19,6 +20,7 @@ import {
 	readRevisionFile,
 	reportFindingInputSchema,
 	repositoryPath,
+	type ScrutinyLevel,
 	type Severity,
 	searchRevision,
 	snippetHash,
@@ -84,6 +86,15 @@ export type ReviewState = {
 	files: ReviewFile[];
 };
 
+/**
+ * The source a lens's findings name: its check, and its version with the level it ran at, so the sightings of one lens
+ * at two levels of one revision are two producers', and a run at one level never stands in for a run at another. A
+ * lens an older Melian created names no level.
+ */
+export function lensSource(name: string, version: string, level: ScrutinyLevel | undefined): FindingSource {
+	return { check: `lens.${name}`, version: level === undefined ? version : `${version}@${level}` };
+}
+
 // The fields of `files` that the review document keeps.
 export function reviewFiles(files: readonly ChangedFile[]): ReviewFile[] {
 	return files.map(({ path, oldPath, status, binary, hunks }) => ({
@@ -114,6 +125,9 @@ export function reviewFiles(files: readonly ChangedFile[]): ReviewFile[] {
 export type LensPolicy = {
 	name: string;
 	version: string;
+	// The level it runs at, which its findings' source names; absent from a lens an older Melian created, whose findings
+	// name the lens's version alone.
+	level?: ScrutinyLevel;
 	// The root conversation, which owns the review and its findings document.
 	review: ConversationId;
 	// The revision this lens reviews. Each lens carries its own, so a later review of the same changeset, whose lens task
@@ -693,7 +707,7 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 			whyHere: args.explanation.why,
 			whatToDo: args.explanation.fix,
 		},
-		source: { check: `lens.${lens.name}`, version: lens.version },
+		source: lensSource(lens.name, lens.version, lens.level),
 	});
 }
 

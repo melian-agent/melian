@@ -4,7 +4,8 @@ import { defineDoc, type TaskId, type Tx } from "./harness.ts";
 type IndexedReview = {
 	// The lens task, absent when the review selected no lens.
 	task?: number;
-	// The selected lenses by `name@version`, sorted.
+	// The selected lenses by `name@version@level`, sorted: a review at another level is another selection. An entry an
+	// older Melian recorded names `name@version`, and no review after the upgrade attaches to it.
 	lenses: string[];
 	// The adjudication task and its input as JSON, so a repeat call with the same input attaches to it.
 	adjudication?: { task: number; input: string };

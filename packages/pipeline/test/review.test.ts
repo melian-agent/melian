@@ -258,7 +258,8 @@ describe("reviewChangeset", () => {
 				trigger: { file: "src/user.ts", index: 0, snippet: "\treturn user.manager.name;" },
 				severity: "P1",
 				status: "new",
-				source: { check: "lens.correctness", version: correctnessLens!.version },
+				// The level joins the lens's version, so a run at another level is another producer.
+				source: { check: "lens.correctness", version: `${correctnessLens!.version}@careful` },
 				explanation: { whatToDo: nullDeref.explanation.fix },
 			},
 		});
@@ -1095,7 +1096,7 @@ describe("reviewChangeset", () => {
 			expect(toolResults(requests[lens]![1]!)[0]).toMatch(/^recorded finding/);
 		}
 		expect(findings).toHaveLength(1);
-		const version = (name: string) => shared.find((lens) => lens.name === name)!.version;
+		const version = (name: string) => `${shared.find((lens) => lens.name === name)!.version}@careful`;
 		expect(findings[0]!.properties).toMatchObject({
 			severity: "P1",
 			source: { check: "lens.contracts" },
@@ -2018,32 +2019,36 @@ describe("adjudication", () => {
 		expect(verdict.findings.advisory).toHaveLength(1);
 	});
 
-	it("fails the review, rather than wait, when the policy cannot be read", async () => {
-		scriptConversations(fake, [
-			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
-			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
-		]);
+	it("refuses a review whose policy cannot be read before any lens runs, since the policy bounds each lens's level", async () => {
 		const missing = { kind: "revision", commit: "0".repeat(40) } as const;
 
 		const error = await reviewed({ policy: missing }).catch((caught: unknown) => caught);
 
-		expect(error).toMatchObject({ code: "adjudicationFailed" });
-		expect((error as ReviewError).findings).toHaveLength(1);
+		expect(error).toMatchObject({ code: "unknownCommit" });
+		expect(fake.provider.state.callCount).toBe(0);
 		expect(await readVerdict(harness, await rootId(), revision(), context)).toBeUndefined();
 	});
 
-	it("runs a failed adjudication again on the next call, so a policy fixed since then decides", async () => {
-		writeFiles(repo, { "src/melian.yaml": "resolution: [" });
+	it("fails the review, rather than wait, when adjudication cannot read a finding's policy, and decides again once it can", async () => {
+		// A static finding in a file the change leaves alone, whose folder's policy no lens reads.
+		writeFiles(repo, { "lib/melian.yaml": "resolution: [" });
+		const root = await harness.root(context);
+		const legacy = Finding.create({ ...staticFinding, file: "lib/legacy.ts", cause: "pre-existing" });
+		await root.commit((tx) => upsertFinding(tx, root.id, legacy, revision()), context);
 		scriptConversations(fake, [
 			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
 			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
 		]);
-		await expect(reviewed({ policy: { kind: "worktree" } })).rejects.toMatchObject({ code: "adjudicationFailed" });
-		writeFiles(repo, { "src/melian.yaml": lines("resolution:", "  P1: advisory") });
+		const error = await reviewed({ policy: { kind: "worktree" } }).catch((caught: unknown) => caught);
+		expect(error).toMatchObject({ code: "adjudicationFailed" });
+		expect((error as ReviewError).findings).toHaveLength(2);
+		expect(await readVerdict(harness, await rootId(), revision(), context)).toBeUndefined();
+		writeFiles(repo, { "lib/melian.yaml": lines("resolution:", "  P0: advisory") });
 
 		const { verdict } = await reviewed({ policy: { kind: "worktree" } });
 
-		expect(verdict).toMatchObject({ status: "findings", blocking: false });
+		expect(verdict).toMatchObject({ status: "findings", blocking: true });
+		expect(verdict.findings.advisory.map((finding) => finding.properties.path)).toEqual(["lib/legacy.ts"]);
 		expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
 	});
 
