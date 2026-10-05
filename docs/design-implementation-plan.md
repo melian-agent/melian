@@ -89,6 +89,8 @@ Open pull requests, in landing order:
 
 The records [#67](https://github.com/melian-agent/melian/pull/67) and [#69](https://github.com/melian-agent/melian/pull/69) wait on their pull requests' final rounds.
 
+The [verifier comparison record](../packages/evals/comparisons/2026-10-06-pr-80.md) covers [pull request #80](https://github.com/melian-agent/melian/pull/80)'s first fix pass and two Melian attempts. Its second fix pass, later rounds, and Claude review of record are pending.
+
 What remains after them:
 
 - Step 6, the verifier. Step 4 landed, so it is unblocked.
