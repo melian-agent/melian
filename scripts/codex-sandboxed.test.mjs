@@ -13,7 +13,7 @@ import {
 } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, join, relative } from "node:path";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -459,7 +459,8 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 	});
 
 	it("names the target of a symlinked .env, since seatbelt matches real paths", () => {
-		const target = join(run, "real.env");
+		const target = join(root, "readonly-env", "real.env");
+		mkdirSync(join(root, "readonly-env"));
 		writeFileSync(target, "SECRET=1\n");
 		symlinkSync(target, join(linked, ".env"));
 		try {
@@ -475,9 +476,10 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 	});
 
 	it("names the target of a relative symlinked .env too", () => {
-		const target = join(linked, "real.env");
+		const target = join(root, "relative-readonly-env", "real.env");
+		mkdirSync(join(root, "relative-readonly-env"));
 		writeFileSync(target, "SECRET=1\n");
-		symlinkSync("./real.env", join(linked, ".env"));
+		symlinkSync(relative(linked, target), join(linked, ".env"));
 		try {
 			const deny = block(profile(linked), "deny file-read*");
 			expect(deny).toContain(`(literal "${target}")`);
@@ -488,6 +490,52 @@ describe("codex-sandboxed.sh profile", { timeout: 60_000 }, () => {
 		} finally {
 			rmSync(join(linked, ".env"), { force: true });
 			rmSync(target, { force: true });
+		}
+	});
+
+	it("refuses root .env symlinks into every writable subtree", () => {
+		const trees = [
+			linked,
+			scratch,
+			run,
+			...["objects", "refs", "logs"].map((name) => join(main, ".git", name)),
+			...["logs", "sequencer"].map((name) => join(admin, name)),
+			...codexNames.map((name) => join(home, ".codex", name)),
+		];
+		for (const directory of [linked, main]) {
+			for (const tree of trees) {
+				const parent = join(tree, "env-parent");
+				const file = join(directory, ".env");
+				mkdirSync(parent, { recursive: true });
+				writeFileSync(join(parent, "secret"), "SYNTHETIC_TEST_SECRET=1\n");
+				symlinkSync(relative(directory, join(parent, "secret")), file);
+				try {
+					const result = failure(() => profile(linked, scratch));
+					expect(result.status, `${directory}: ${tree}`).toBe(64);
+					expect(result.stderr).toContain(".env must be a regular file or absent");
+				} finally {
+					rmSync(file);
+					rmSync(parent, { recursive: true, force: true });
+				}
+			}
+		}
+	});
+
+	it("refuses a writable .env symlink before starting a task", () => {
+		const prompt = join(root, "env-prompt.md");
+		writeFileSync(prompt, "go\n");
+		symlinkSync("env-target", join(linked, ".env"));
+		try {
+			const result = failure(() =>
+				execFileSync(script, [linked, "m", prompt, join(root, "env-task.log")], {
+					stdio: "pipe",
+					env: env(),
+				}),
+			);
+			expect(result.status).toBe(64);
+			expect(result.stderr).toContain(".env must be a regular file or absent");
+		} finally {
+			rmSync(join(linked, ".env"));
 		}
 	});
 

@@ -80,6 +80,26 @@ dynamic_rules() {
     exit 64
   fi
 
+  local codex_dirs=() persistent=("$worktree") d
+  if [ "$(real "$scratch")" != "$(real "$run")" ]; then persistent+=("$scratch"); fi
+  for d in "${codex_names[@]}"; do codex_dirs+=("$codex/$d"); done
+  local trees=("${persistent[@]}" "$common/objects" "$common/refs" "$common/logs" "$admin/logs" "$admin/sequencer" \
+    ${codex_dirs[@]+"${codex_dirs[@]}"})
+  local env_files=("$worktree/.env") target tree
+  if [ "$(basename "$common")" = ".git" ]; then env_files+=("$(dirname "$common")/.env"); fi
+  for p in "${env_files[@]}"; do
+    [ -L "$p" ] || continue
+    target=$(real "$p")
+    for tree in "$run" "${trees[@]}"; do
+      tree=$(real "$tree")
+      case $target in
+        "$tree" | "$tree"/*)
+          echo "codex-sandboxed: .env must be a regular file or absent: $p" >&2
+          exit 64 ;;
+      esac
+    done
+  done
+
   echo "(allow file-write*"
   {
     for p in "$worktree" "$scratch" "$run"; do
@@ -134,11 +154,6 @@ dynamic_rules() {
   # Each name is spelt out in both cases: APFS ignores case, and git finds "<dir>/.GIT".
   # The run directory needs no deny: the wrapper removes it on exit, so a repository planted there is gone
   # before the host could enter it. A scratch directory apart from it persists, so it keeps the deny.
-  local codex_dirs=() persistent=("$worktree") d
-  if [ "$(real "$scratch")" != "$(real "$run")" ]; then persistent+=("$scratch"); fi
-  for d in "${codex_names[@]}"; do codex_dirs+=("$codex/$d"); done
-  local trees=("${persistent[@]}" "$common/objects" "$common/refs" "$common/logs" "$admin/logs" "$admin/sequencer" \
-    ${codex_dirs[@]+"${codex_dirs[@]}"})
   {
     for p in "${trees[@]}"; do
       printf '  (regex #"^%s/(.*/)?[.][gG][iI][tT](/|$)")\n' "$(regex_path "$p")"
