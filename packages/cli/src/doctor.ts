@@ -63,14 +63,20 @@ async function secretsCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<{ chec
 	const none = { credentials: [], warnings: [] };
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return { checks: [], secrets: none };
-	const tracked = (await git(root, ["ls-files", "--", melianPaths.localConfig, melianPaths.secrets]).catch(() => ""))
-		.split("\n")
-		.filter(Boolean);
-	const checks: Check[] = tracked.map((file) => ({
-		name: "secrets",
-		state: "fail",
-		detail: `git tracks ${file}, which is yours alone; run git rm --cached ${file}`,
-	}));
+	// In any case of the name: a case-insensitive filesystem opens a committed MELIAN.SECRETS.YAML as the file itself.
+	const names = [melianPaths.localConfig, melianPaths.secrets].map((name) => `:(icase)${name}`);
+	const listed = await git(root, ["ls-files", "-z", "--", ...names]).catch(() => undefined);
+	const checks: Check[] =
+		listed === undefined
+			? [{ name: "secrets", state: "fail", detail: "git could not say whether it tracks a file only you may hold" }]
+			: listed
+					.split("\0")
+					.filter(Boolean)
+					.map((file) => ({
+						name: "secrets",
+						state: "fail",
+						detail: `git tracks ${file}, which is yours alone; run git rm --cached ${file}`,
+					}));
 	try {
 		const secrets = await loadSecrets(root, userFiles(env).secrets);
 		const named = secrets.credentials.map(({ name, provider, file }) => `${name} for ${provider} in ${file}`);

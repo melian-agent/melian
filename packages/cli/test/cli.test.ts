@@ -575,6 +575,19 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 			/^fail {2}secrets {5}.*git tracks melian\.secrets\.yaml, so it is the repository's/m,
 		);
 	});
+
+	it("fails when git tracks a maintainer's file under another case of its name", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		writeFileSync(join(repo, "melian.secrets.yaml"), "credentials: {}\n");
+		// A head's MELIAN.SECRETS.YAML, which a case-insensitive filesystem opens under the lower-case name.
+		const blob = git(repo, "hash-object", "-w", "melian.secrets.yaml");
+		git(repo, "update-index", "--add", "--cacheinfo", `100644,${blob},MELIAN.SECRETS.YAML`);
+
+		const doctor = melian(repo, ["doctor"]);
+
+		expect(doctor.status).toBe(1);
+		expect(doctor.stdout).toContain("fail  secrets     git tracks MELIAN.SECRETS.YAML, which is yours alone");
+	});
 });
 
 describe("Melian's state directory", { timeout: 60_000 }, () => {

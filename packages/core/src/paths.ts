@@ -16,13 +16,11 @@ export const melianPaths = {
 	knowledge: ".melian/knowledge",
 } as const;
 
-const policyNames = new Set([
-	melianPaths.config,
-	melianPaths.localConfig,
-	melianPaths.secrets,
-	"AGENTS.md",
-	"CLAUDE.md",
-]);
+const policyNames = new Set([melianPaths.config, "AGENTS.md", "CLAUDE.md"]);
+
+// A maintainer's own files, matched in any case: a case-insensitive filesystem opens a committed
+// `MELIAN.SECRETS.YAML` as `melian.secrets.yaml`, so a commit of either under another case is policy too.
+const ownNames = new Set<string>([melianPaths.localConfig, melianPaths.secrets]);
 
 /**
  * The names of the files that configure a static tool, in any directory. The head's copy drives the tool's run on the
@@ -50,7 +48,10 @@ export function isAnalyserConfig(path: string): boolean {
 export function isPolicyFile(path: string): boolean {
 	const segments = path.split("/");
 	return (
-		policyNames.has(segments.at(-1)!) || segments.slice(0, -1).includes(melianPaths.home) || isAnalyserConfig(path)
+		policyNames.has(segments.at(-1)!) ||
+		ownNames.has(segments.at(-1)!.toLowerCase()) ||
+		segments.slice(0, -1).includes(melianPaths.home) ||
+		isAnalyserConfig(path)
 	);
 }
 

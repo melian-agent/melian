@@ -51,6 +51,29 @@ function userOwned(mode: number, uid: number): boolean {
 	return (self === undefined || uid === self) && (mode & 0o022) === 0;
 }
 
+// Why a command in the per-clone file must be refused, or `undefined` when git confirms it is the maintainer's own:
+// tracked under no case of its name and ignored. Problem: on a case-insensitive filesystem a committed
+// `MELIAN.SECRETS.YAML` opens as `melian.secrets.yaml`, and an exact-case lookup called it untracked. Solution: ask git
+// case-insensitively, refuse the file whole when it is tracked, and refuse its commands whenever git cannot say.
+async function cloneStanding(repoRoot: string, site: Site): Promise<string | undefined> {
+	const name = melianPaths.secrets;
+	const listed = await git(repoRoot, ["ls-files", "-z", "--", `:(icase)${name}`]);
+	if (listed.code !== 0) return `git could not say whether it tracks ${name} (exit ${listed.code})`;
+	const [tracked] = listed.stdout.split("\0").filter(Boolean);
+	if (tracked !== undefined) {
+		throw configError(
+			"tracked",
+			site,
+			`git tracks ${tracked}, so it is the repository's, not yours; Melian reads no credential from it. Run git rm --cached ${tracked} and keep the file ignored`,
+		);
+	}
+	const ignored = await git(repoRoot, ["check-ignore", "-q", "--", name]);
+	if (ignored.code === 0) return undefined;
+	return ignored.code === 1
+		? `git does not ignore ${name}; add /${name} to .gitignore`
+		: `git could not say whether it ignores ${name} (exit ${ignored.code})`;
+}
+
 async function readSecretsFile(path: string, repoRoot: string | undefined): Promise<LoadedSecrets> {
 	const site: Site = { file: path, where: path };
 	const info = await stat(path).catch((error: NodeJS.ErrnoException) => {
@@ -58,16 +81,7 @@ async function readSecretsFile(path: string, repoRoot: string | undefined): Prom
 		throw configError("unreadable", site, error.message, { cause: error });
 	});
 	if (info === undefined) return { credentials: [], warnings: [] };
-	if (repoRoot !== undefined) {
-		const tracked = await git(repoRoot, ["ls-files", "--error-unmatch", "--", melianPaths.secrets]);
-		if (tracked.code === 0) {
-			throw configError(
-				"tracked",
-				site,
-				`git tracks ${melianPaths.secrets}, so it is the repository's, not yours; Melian reads no credential from it. Run git rm --cached ${melianPaths.secrets} and keep the file ignored`,
-			);
-		}
-	}
+	const standing = repoRoot === undefined ? undefined : await cloneStanding(repoRoot, site);
 	if (info.size > maxConfigBytes) {
 		throw configError("tooLarge", site, `${info.size} bytes; the limit is ${maxConfigBytes}`);
 	}
@@ -88,6 +102,11 @@ async function readSecretsFile(path: string, repoRoot: string | undefined): Prom
 			);
 		}
 		const [source] = sources as ["key" | "env" | "command"];
+		if (source === "command" && standing !== undefined) {
+			throw configError("notIgnored", site, `"${key}" runs a command, which Melian refuses here: ${standing}`, {
+				key: `${key}.command`,
+			});
+		}
 		if (source === "command" && !owned) {
 			throw configError(
 				"notUserOwned",
@@ -117,7 +136,8 @@ async function readSecretsFile(path: string, repoRoot: string | undefined): Prom
  * user-level file, when given. Either may be absent. A credential takes its value from the file (`key`), an
  * environment variable (`env`), or a command's output (`command`), which only a file the user owns and no one else can
  * write may hold. Nothing is resolved here: no variable read and no command run. Throws {@link ConfigError}: `tracked`
- * for a per-clone file git tracks, since a head could supply it; `notUserOwned` for a command in a file another user
+ * for a per-clone file git tracks under any case of its name, since a head could supply it; `notIgnored` for a command
+ * in a per-clone file git does not ignore, or when git cannot say; `notUserOwned` for a command in a file another user
  * could have written; and as `loadConfig` does for a file it cannot read or parse.
  */
 export async function loadSecrets(repoRoot: string, user?: string): Promise<LoadedSecrets> {

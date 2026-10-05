@@ -93,6 +93,40 @@ describe("loadSecrets", () => {
 		expect(error.message).toContain("git rm --cached melian.secrets.yaml");
 	});
 
+	it("refuses a per-clone file git tracks under another case of its name", async () => {
+		secrets(repo, "melian.secrets.yaml", "credentials:", "  a: { provider: openai, command: cat key }");
+		// The index holds the head's MELIAN.SECRETS.YAML, which a case-insensitive filesystem opens under the lower-case
+		// name; the entry is made directly, so the test means the same on a case-sensitive one.
+		const blob = gitIn(repo, "hash-object", "-w", "melian.secrets.yaml");
+		gitIn(repo, "update-index", "--add", "--cacheinfo", `100644,${blob},MELIAN.SECRETS.YAML`);
+		const error = await rejection(loadSecrets(repo));
+		expect(error.code).toBe("tracked");
+		expect(error.message).toContain("git tracks MELIAN.SECRETS.YAML");
+	});
+
+	it("runs a per-clone command only when git ignores the file, and never when git cannot say", async () => {
+		const command = ["credentials:", "  a: { provider: openai, command: cat key }"];
+		secrets(repo, "melian.secrets.yaml", ...command);
+		const unignored = await rejection(loadSecrets(repo));
+		expect(unignored).toMatchObject({ code: "notIgnored", key: "credentials.a.command" });
+		expect(unignored.message).toContain("git does not ignore melian.secrets.yaml");
+
+		writeFiles(repo, { ".gitignore": lines("/melian.secrets.yaml") });
+		expect((await loadSecrets(repo)).credentials).toHaveLength(1);
+
+		const outside = temporaryDirectory();
+		try {
+			secrets(outside, "melian.secrets.yaml", ...command);
+			const unknown = await rejection(loadSecrets(outside));
+			expect(unknown.code).toBe("notIgnored");
+			expect(unknown.message).toMatch(/git could not say whether it tracks melian\.secrets\.yaml \(exit \d+\)/);
+			secrets(outside, "melian.secrets.yaml", "credentials:", "  a: { provider: openai, env: OPENAI_API_KEY }");
+			expect((await loadSecrets(outside)).credentials).toHaveLength(1);
+		} finally {
+			removeDirectory(outside);
+		}
+	});
+
 	it("runs a command only from a file no one else can write", async () => {
 		const user = secrets(home, "secrets.yaml", "credentials:", "  a: { provider: openai, command: cat key }");
 		chmodSync(user, 0o620);
