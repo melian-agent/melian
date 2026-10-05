@@ -88,6 +88,9 @@ dynamic_rules() {
       filters literal "$codex/$p"
     done
     check_path "$(real "$codex")"
+    # Codex rewrites auth.json when it refreshes a ChatGPT login, so a task must be able to write it,
+    # and a temporary beside it that Codex renames over it, whatever name the binary gives it.
+    printf '  (regex #"^%s/(auth\\.json([.][^/]*)?|[.]tmp[^/]+)$")\n' "$(regex_path "$codex")"
     printf '  (regex #"^%s/[^/]+\\.sqlite(-shm|-wal)?$")\n' "$(real "$codex" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
   } | awk '!seen[$0]++'
   echo ")"
@@ -104,7 +107,7 @@ dynamic_rules() {
   echo "(deny file-write*"
   filters subpath "$common/hooks" "$common/info"
   filters literal "$common/config" "$common/config.lock" "$admin/commondir" "$admin/gitdir" "$admin/locked" \
-    "$admin/config.worktree" "$codex/config.toml" "$codex/auth.json"
+    "$admin/config.worktree" "$codex/config.toml"
   filters subpath "$codex/hooks"
   # No allowed subtree may hold a repository a host could later enter through a symlink. A repository
   # needs a .git directory, or a HEAD file that sits beside objects/ and refs/ or beside a commondir

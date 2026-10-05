@@ -167,6 +167,13 @@ describe("codex-sandboxed.sh profile", () => {
 		);
 	});
 
+	it("allows Codex to rewrite auth.json and a temporary beside it, which a login refresh needs", () => {
+		const escaped = `${home}/.codex`.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
+		expect(block(profile(linked), "allow file-write*")).toContain(
+			`(regex #"^${escaped}/(auth\\.json([.][^/]*)?|[.]tmp[^/]+)$")`,
+		);
+	});
+
 	it("names CODEX_HOME instead of ~/.codex when it is set, and refuses a relative one", () => {
 		const elsewhere = join(root, "elsewhere-codex");
 		const text = execFileSync(script, ["--print-profile", linked, run, run], {
@@ -243,11 +250,11 @@ describe("codex-sandboxed.sh profile", () => {
 			`(literal "${admin}/locked")`,
 			`(literal "${admin}/config.worktree")`,
 			`(literal "${home}/.codex/config.toml")`,
-			`(literal "${home}/.codex/auth.json")`,
 			`(subpath "${home}/.codex/hooks")`,
 		]) {
 			expect(deny).toContain(path);
 		}
+		expect(deny).not.toContain("auth.json");
 		expect(text.indexOf("(deny file-write*")).toBeGreaterThan(text.indexOf("(allow file-write*"));
 	});
 
@@ -641,6 +648,20 @@ describe("codex-sandboxed.sh profile", () => {
 			expect(failure(() => sh(linked, `mkdir -p '${home}/.npm/_npx'`)).status).not.toBe(0);
 			expect(failure(() => sh(linked, `touch '${tmpProbe()}'`)).status).not.toBe(0);
 			expect(failure(() => sh(linked, `touch '${join(root, "tmp")}/outside-run'`)).status).not.toBe(0);
+		});
+
+		it("rewrites auth.json through a temporary and a rename, as a login refresh does", () => {
+			mkdirSync(join(home, ".codex"), { recursive: true });
+			sh(
+				linked,
+				`echo old > '${home}/.codex/auth.json' && echo new > '${home}/.codex/.tmpAB12' && mv '${home}/.codex/.tmpAB12' '${home}/.codex/auth.json'`,
+			);
+			expect(readFileSync(join(home, ".codex", "auth.json"), "utf8")).toBe("new\n");
+			sh(linked, `touch '${home}/.codex/auth.json.bak'`);
+			rmSync(join(home, ".codex", "auth.json.bak"));
+			expect(failure(() => sh(linked, `touch '${home}/.codex/auth.jsonx'`)).status).not.toBe(0);
+			expect(failure(() => sh(linked, `touch '${home}/.codex/auth'`)).status).not.toBe(0);
+			rmSync(join(home, ".codex", "auth.json"));
 		});
 
 		it("writes Codex's sqlite files directly under ~/.codex only", () => {
