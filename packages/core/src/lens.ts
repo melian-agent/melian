@@ -72,7 +72,8 @@ const lensName = Type.String({ pattern: "^[a-z0-9][a-z0-9-]*$" });
 /**
  * The JSON Schema of a `LENS.md` front matter block. Only `name` is required; unknown fields are rejected. `levels` maps
  * a {@link ScrutinyLevel} to the fields that differ there; each field it leaves out comes from the top level.
- * `handoffs` maps another lens's name to the defects that lens owns, which this lens leaves to it when both run.
+ * `handoffs` maps another lens's name to the defects that lens owns, which this lens leaves to it in the files both
+ * review.
  */
 export const lensFrontMatterSchema = Type.Object(
 	{
