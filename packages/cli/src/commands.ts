@@ -1,9 +1,11 @@
 import { existsSync } from "node:fs";
 import {
 	Changeset,
+	checksOfTier,
 	FindingsLog,
 	Lens,
 	loadConfig,
+	loadSecrets,
 	loadStandards,
 	Rendering,
 	type RepositorySource,
@@ -24,8 +26,9 @@ import {
 	reviewChangeset,
 	revisionKey,
 	runChecks,
+	unlockCredentials,
 } from "@melian-agent/pipeline";
-import { idleModels, isScripted, reviewModels, scriptVariable } from "./models.ts";
+import { idleModels, isScripted, reviewModels, scriptVariable, userFiles } from "./models.ts";
 import { CliError, git, openStorage, storagePath } from "./repository.ts";
 import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
 
@@ -69,8 +72,9 @@ export class ReviewOutcome {
 	}
 }
 
-// A pull request reads policy from its base. A range on the checked-out commit reads it from the working tree, since
-// its author runs Melian; any other range reads it from its base.
+// A pull request reads policy from its base. A range on the checked-out commit reads it from the working tree, with the
+// preference files, since its author runs Melian; any other range reads it from its base. Credentials come from the
+// secrets files whatever the policy's source: they are the maintainer's, not the revision's.
 export async function review(
 	io: Io,
 	argument: string,
@@ -96,14 +100,26 @@ export async function review(
 		changeset = await Changeset.resolve(io.cwd, target.spec);
 		const checkedOut = await git(changeset.repoRoot, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "");
 		const own = checkedOut === changeset.revision.head;
-		source = own ? { kind: "worktree" } : { kind: "revision", commit: changeset.revision.base };
+		const preferences = userFiles(io.env).config;
+		source = own ? { kind: "worktree", preferences } : { kind: "revision", commit: changeset.revision.base };
 	}
 	const { repoRoot } = changeset;
 	const paths = changeset.revision.paths();
 	const lenses = await Lens.load(repoRoot, source, paths);
 	const standards = await loadStandards(repoRoot, source, ".");
-	const { config: loaded } = await loadConfig(repoRoot, source, ".");
-	const { models, config, retry } = await reviewModels(io.env, loaded, lenses, options.model);
+	const policy = await loadConfig(repoRoot, source, ".");
+	const { config: loaded } = policy;
+	const tier = loaded.stages["pull-request"] ?? "full";
+	const secrets = await loadSecrets(repoRoot, userFiles(io.env).secrets);
+	for (const warning of secrets.warnings) io.stderr(`melian: ${warning}\n`);
+	const { models, plan, retry } = await reviewModels(io.env, policy, lenses, {
+		model: options.model,
+		checks: checksOfTier(loaded, tier),
+		credentials: secrets.credentials,
+	});
+	for (const line of plan.summary().split("\n").filter(Boolean)) io.stderr(`melian: ${line}\n`);
+	// A command a secrets file names runs now, so one that fails stops the review before it starts, named.
+	await unlockCredentials(models, plan.providers());
 	const path = await storagePath(repoRoot, changeset.id, io.env, isScripted(io.env));
 	// Without the publish extension, so a publication a crash interrupted waits for melian publish rather than posting
 	// from a review.
@@ -111,9 +127,8 @@ export async function review(
 	const { harness } = reviewHarness;
 	try {
 		// The deterministic checks first, then the lenses: reviewChangeset reads the checks' records, and a check of the
-		// manifest without one makes the review not reviewed. The checks take the configuration as loaded, so a --model
-		// route does not change their run's identity and run them again.
-		const tier = loaded.stages["pull-request"] ?? "full";
+		// manifest without one makes the review not reviewed. The plan's routes reach only the lenses, so a different
+		// --model does not change the checks' run identity and run them again.
 		const rootConversationId = (await harness.root(context)).id;
 		const checks = await runChecks(
 			harness,
@@ -125,10 +140,11 @@ export async function review(
 			({ verdict } = await reviewChangeset({
 				harness,
 				changeset,
-				config,
+				config: loaded,
 				lenses,
 				standards,
 				models,
+				plan,
 				policy: source,
 				tier,
 				checks: checks.records,

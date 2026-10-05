@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Rendering, type StoredVerdict, Verdict } from "@melian-agent/core";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const bin = join(root, "packages/cli/bin/melian.js");
@@ -23,16 +23,21 @@ const gitEnv = {
 let scratch: string;
 const repos: string[] = [];
 
+// An empty configuration directory, so no test reads the developer's own ~/.config/melian.
+const noUserFiles = mkdtempSync(join(tmpdir(), "melian-xdg-"));
+
 afterEach(() => {
 	for (const repo of repos.splice(0)) rmSync(repo, { recursive: true, force: true });
 	if (scratch !== undefined) rmSync(scratch, { recursive: true, force: true });
 });
 
+afterAll(() => rmSync(noUserFiles, { recursive: true, force: true }));
+
 function melian(cwd: string, args: string[], env: Record<string, string> = {}) {
 	const result = spawnSync(process.execPath, [bin, ...args], {
 		cwd,
 		encoding: "utf8",
-		env: { ...process.env, ...gitEnv, NO_COLOR: "1", ...env },
+		env: { ...process.env, ...gitEnv, NO_COLOR: "1", XDG_CONFIG_HOME: noUserFiles, ...env },
 		timeout: 60_000,
 	});
 	return { status: result.status, stdout: result.stdout, stderr: result.stderr };
@@ -59,6 +64,15 @@ function goldenCheckout(golden: Golden, script: unknown = golden.script, policy:
 	repos.push(repo);
 	if (policy !== null) writeFileSync(join(repo, "melian.yaml"), policy);
 	return { repo, env: scriptFile(script) };
+}
+
+// A configuration directory holding the user's own secrets file, `secrets`, readable by its owner alone.
+function userDirectory(secrets: string): { XDG_CONFIG_HOME: string } {
+	const directory = mkdtempSync(join(tmpdir(), "melian-xdg-"));
+	repos.push(directory);
+	mkdirSync(join(directory, "melian"));
+	writeFileSync(join(directory, "melian/secrets.yaml"), secrets, { mode: 0o600 });
+	return { XDG_CONFIG_HOME: directory };
 }
 
 function git(repo: string, ...args: string[]): string {
@@ -100,6 +114,46 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(verdict.status).toBe("passed");
 		expect(review.stdout).toBe(verdict.render(new Rendering({ ids: true })));
 		expect(review.stdout).toMatch(/^Verdict: passed\n/);
+	});
+
+	it("records each lens the scripted model ran off the committed route, and says so before the verdict", () => {
+		const opus = "    model: anthropic/claude-opus-5-5\n";
+		const { repo, env } = goldenCheckout(
+			goldens["clean-rename"]!,
+			undefined,
+			`${guardrailsOnly}models:\n  heavy:\n${opus}`,
+		);
+
+		const review = melian(repo, ["review", "main"], env);
+
+		expect(review.status).toBe(0);
+		expect(review.stderr).toBe(
+			"melian: Plan: heavy runs faux/scripted, set by --model; the committed route wants anthropic/claude-opus-5-5, and does not accept faux/scripted\n",
+		);
+		expect(review.stdout).toContain("left the committed routes:\n  lens.");
+		const stored = Verdict.from(
+			JSON.parse(melian(repo, ["findings", "main", "--json"], env).stdout) as StoredVerdict,
+		);
+		expect(stored.ran?.find((check) => check.name === "lens.correctness")?.lineage).toEqual({
+			model: "faux/scripted",
+			wanted: "anthropic/claude-opus-5-5",
+			by: "--model",
+			outside: true,
+		});
+	});
+
+	it("fails every lens closed, exiting 2, where policy refuses a route outside accept", () => {
+		const route = "  heavy:\n    model: anthropic/claude-opus-5-5\n    acceptOverridden: false\n";
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, `${guardrailsOnly}models:\n${route}`);
+
+		const review = melian(repo, ["review", "main"], env);
+
+		expect(review.status).toBe(2);
+		expect(review.stdout).toMatch(/^Verdict: not reviewed\n/);
+		expect(review.stdout).toContain(
+			"lens.correctness  failed at careful: models.heavy.acceptOverridden is false, and --model puts it on faux/scripted, which models.heavy.accept does not list",
+		);
+		expect(review.stderr).toContain("melian: Plan: heavy, for ");
 	});
 
 	it("exits 1 for a blocking finding, and findings prints what review printed", () => {
@@ -437,31 +491,54 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		);
 	});
 
-	it("warns when melian.yaml routes no tier, names the routes when it does, and runs Melian's own Biome and tsc without an install", () => {
+	it("prints the plan: each routed tier with its credential and file, each lens's levels, and every warning", () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		// A literal key in the user's own secrets file, so the plan does not depend on this machine's credentials.
+		const xdg = userDirectory(
+			"credentials:\n  test-anthropic: { provider: anthropic, key: sk-ant-test-never-printed }\n",
+		);
+		const secrets = join(xdg.XDG_CONFIG_HOME, "melian/secrets.yaml");
+		const preferences = join(xdg.XDG_CONFIG_HOME, "melian/config.yaml");
+		const credential = `with test-anthropic in ${secrets}`;
 
-		const unrouted = melian(repo, ["doctor"]);
+		const unrouted = melian(repo, ["doctor"], xdg);
 		// The built-in lenses all run on heavy, so a route for light alone still leaves every review unable to run them.
-		writeFileSync(join(repo, "melian.yaml"), "models:\n  light:\n    model: anthropic/claude-haiku\n");
-		const partly = melian(repo, ["doctor"]);
+		writeFileSync(join(repo, "melian.yaml"), "models:\n  light:\n    model: anthropic/claude-haiku-4-5\n");
+		const partly = melian(repo, ["doctor"], xdg);
 		writeFileSync(join(repo, "melian.yaml"), "models:\n  heavy:\n    model: anthropic/claude-opus-5-5\n");
-		const routed = melian(repo, ["doctor"]);
-		writeFileSync(join(repo, "melian.local.yaml"), "models:\n  heavy:\n    model: amazon-bedrock/claude-opus\n");
-		const local = melian(repo, ["doctor"]);
+		const routed = melian(repo, ["doctor"], xdg);
+		writeFileSync(preferences, "models:\n  heavy:\n    model: anthropic/claude-sonnet-5-5\n");
+		const user = melian(repo, ["doctor"], xdg);
+		writeFileSync(join(repo, "melian.local.yaml"), "models:\n  heavy:\n    model: nowhere/opus\n");
+		const local = melian(repo, ["doctor"], xdg);
 
 		const heavy = [...builtinLenses].sort();
-		const needHeavy = `no model for heavy, for ${heavy.slice(0, -1).join(", ")}, and ${heavy.at(-1)}; `;
-		expect(unrouted.stdout).toMatch(
-			new RegExp(
-				`^warn {2}routes {6}no tier is routed to a model; ${needHeavy}.*melian\\.local\\.yaml.*--model`,
-				"m",
-			),
+		const lenses = `${heavy.slice(0, -1).join(", ")}, and ${heavy.at(-1)}`;
+		const needHeavy = `no model for heavy, for ${lenses}; set models.heavy.model in melian.local.yaml, or pass --model to review`;
+		expect(unrouted.stdout).toMatch(new RegExp(`^warn {2}plan {8}${needHeavy}$`, "m"));
+		expect(unrouted.stdout).toMatch(new RegExp(`^ok {4}secrets {5}test-anthropic for anthropic in ${secrets}$`, "m"));
+		expect(partly.stdout).toContain(
+			`ok    plan        light: anthropic/claude-haiku-4-5 ${credential}; routed by melian.yaml\n`,
 		);
-		expect(partly.stdout).toMatch(
-			new RegExp(`^warn {2}routes {6}light to anthropic/claude-haiku; ${needHeavy}`, "m"),
+		expect(partly.stdout).toMatch(new RegExp(`^warn {2}plan {8}${needHeavy}$`, "m"));
+		expect(routed.stdout).toContain(
+			`ok    plan        heavy: anthropic/claude-opus-5-5 ${credential}; routed by melian.yaml\n`,
 		);
-		expect(routed.stdout).toMatch(/^ok {4}routes {6}heavy to anthropic\/claude-opus-5-5$/m);
-		expect(local.stdout).toMatch(/^ok {4}routes {6}heavy to amazon-bedrock\/claude-opus$/m);
+		expect(routed.stdout).toContain(
+			`ok    plan        ${lenses}: quick on medium (no model), careful on heavy (anthropic/claude-opus-5-5), deep on heavy (anthropic/claude-opus-5-5)\n`,
+		);
+		expect(routed.stdout).not.toMatch(/^warn {2}plan/m);
+		expect(user.stdout).toContain(
+			`ok    plan        heavy: anthropic/claude-sonnet-5-5 ${credential}; routed by ${preferences}\n`,
+		);
+		expect(user.stdout).toContain(
+			`warn  plan        heavy runs anthropic/claude-sonnet-5-5, set by ${preferences}; the committed route wants anthropic/claude-opus-5-5, and does not accept anthropic/claude-sonnet-5-5\n`,
+		);
+		// The per-clone file wins over the user's, and a route the maintainer chose is never swapped for another.
+		expect(local.stdout).toMatch(
+			/^warn {2}plan {8}heavy, for .*: none of nowhere\/opus has credentials; log in with pi, set the provider's API key, or add a credential to melian\.secrets\.yaml$/m,
+		);
+		for (const run of [unrouted, partly, routed, user, local]) expect(run.stdout).not.toContain("sk-ant-test");
 		expect(routed.stdout).toMatch(/^ok {4}static {6}biome from Melian's own copy, tsc from Melian's own copy$/m);
 		expect(routed.stdout).toMatch(/^ok {4}melian {6}.*, outside this checkout$/m);
 	});
@@ -474,11 +551,28 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		writeFileSync(join(repo, "melian.yaml"), "tiers:\n  full: [standard]\n");
 		const one = melian(repo, ["doctor"]);
 
-		expect(two.stdout).toMatch(
-			/^warn {2}routes {6}no tier is routed to a model; no model for heavy, for contracts and correctness; /m,
+		expect(two.stdout).toMatch(/^warn {2}plan {8}no model for heavy, for contracts and correctness; /m);
+		expect(one.stdout).toMatch(/^warn {2}plan {8}no model for heavy, for correctness; /m);
+	});
+
+	it("fails when git tracks a file only a maintainer may hold, and refuses to read credentials from it", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		writeFileSync(
+			join(repo, "melian.secrets.yaml"),
+			"credentials:\n  a: { provider: openai, env: OPENAI_API_KEY }\n",
 		);
-		expect(one.stdout).toMatch(
-			/^warn {2}routes {6}no tier is routed to a model; no model for heavy, for correctness; /m,
+		writeFileSync(join(repo, "melian.local.yaml"), "resolution:\n  P0: block\n");
+		git(repo, "add", "--force", "melian.secrets.yaml", "melian.local.yaml");
+
+		const doctor = melian(repo, ["doctor"]);
+
+		expect(doctor.status).toBe(1);
+		expect(doctor.stdout).toContain(
+			"fail  secrets     git tracks melian.local.yaml, which is yours alone; run git rm --cached melian.local.yaml\n",
+		);
+		expect(doctor.stdout).toContain("fail  secrets     git tracks melian.secrets.yaml, which is yours alone");
+		expect(doctor.stdout).toMatch(
+			/^fail {2}secrets {5}.*git tracks melian\.secrets\.yaml, so it is the repository's/m,
 		);
 	});
 });
