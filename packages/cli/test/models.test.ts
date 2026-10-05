@@ -1,8 +1,8 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { defaultConfig, type LoadedConfig, type MelianConfig } from "@melian-agent/core";
+import { defaultConfig, type LoadedConfig, type MelianConfig, userFiles } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
-import { reviewModels, userFiles } from "../src/models.ts";
+import { reviewModels } from "../src/models.ts";
 
 const models: MelianConfig["models"] = {
 	light: { model: "anthropic/claude-sonnet-5-5" },

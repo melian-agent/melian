@@ -183,7 +183,7 @@ export {
 	scrutinyLevels,
 } from "./lens.ts";
 export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
-export { analyserConfigNames, melianPaths } from "./paths.ts";
+export { analyserConfigNames, melianPaths, userFiles } from "./paths.ts";
 export {
 	type CatalogueModel,
 	type PlanInput,

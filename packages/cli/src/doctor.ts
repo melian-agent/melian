@@ -10,11 +10,12 @@ import {
 	loadSecrets,
 	melianPaths,
 	type StaticTool,
+	userFiles,
 } from "@melian-agent/core";
 import { parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
 import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSource } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
-import { reviewModels, userFiles } from "./models.ts";
+import { reviewModels } from "./models.ts";
 import { git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
 
 type Check = { readonly name: string; readonly state: "ok" | "warn" | "fail"; readonly detail: string };

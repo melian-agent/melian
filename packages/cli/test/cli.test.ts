@@ -142,6 +142,25 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		});
 	});
 
+	it("findings prints the plan the review stored, not one resolved now", () => {
+		const opus = "    model: anthropic/claude-opus-5-5\n";
+		const { repo, env } = goldenCheckout(
+			goldens["clean-rename"]!,
+			undefined,
+			`${guardrailsOnly}models:\n  heavy:\n${opus}`,
+		);
+		const review = melian(repo, ["review", "main"], env);
+		// The routes change after the review; findings still tells what the review ran under.
+		writeFileSync(join(repo, "melian.yaml"), guardrailsOnly);
+
+		const findings = melian(repo, ["findings", "main"], env);
+
+		expect(findings.status).toBe(0);
+		expect(findings.stderr).toBe(review.stderr);
+		expect(findings.stderr).toContain("melian: Plan: heavy runs faux/scripted, set by --model");
+		expect(melian(repo, ["findings", "main", "--json"], env).stderr).toBe("");
+	});
+
 	it("fails every lens closed, exiting 2, where policy refuses a route outside accept", () => {
 		const route = "  heavy:\n    model: anthropic/claude-opus-5-5\n    acceptOverridden: false\n";
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, `${guardrailsOnly}models:\n${route}`);

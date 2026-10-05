@@ -1,6 +1,4 @@
 import { readFile } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { type Lens, type LoadedConfig, type NamedCredential, ReviewPlan } from "@melian-agent/core";
 import { createReviewModels, planInputs, type ReviewModels } from "@melian-agent/pipeline";
 import { createFakeModels, type LensScript, scriptLenses } from "@melian-agent/pipeline/testing";
@@ -13,19 +11,6 @@ import { CliError } from "./repository.ts";
  * tests can run the CLI end to end without a provider.
  */
 export const scriptVariable = "MELIAN_TEST_SCRIPT";
-
-/**
- * The user's own Melian files, for every repository: the preference file, which takes `melian.yaml`'s schema, and the
- * secrets file. They live in `$XDG_CONFIG_HOME/melian/`, or `~/.config/melian/` when that is unset.
- */
-export function userFiles(env: NodeJS.ProcessEnv): { readonly config: string; readonly secrets: string } {
-	const base =
-		env.XDG_CONFIG_HOME === undefined || env.XDG_CONFIG_HOME === ""
-			? join(homedir(), ".config")
-			: env.XDG_CONFIG_HOME;
-	const directory = join(base, "melian");
-	return { config: join(directory, "config.yaml"), secrets: join(directory, "secrets.yaml") };
-}
 
 export interface ReviewSetup {
 	readonly models: ReviewModels;

@@ -9,6 +9,8 @@ import {
 	loadStandards,
 	Rendering,
 	type RepositorySource,
+	ReviewPlan,
+	userFiles,
 	type Verdict,
 	visibleText,
 } from "@melian-agent/core";
@@ -21,6 +23,7 @@ import {
 	publishReview,
 	ReviewError,
 	type ReviewOrigin,
+	readProvenance,
 	readVerdict,
 	recordDismissal,
 	reviewChangeset,
@@ -28,7 +31,7 @@ import {
 	runChecks,
 	unlockCredentials,
 } from "@melian-agent/pipeline";
-import { idleModels, isScripted, reviewModels, scriptVariable, userFiles } from "./models.ts";
+import { idleModels, isScripted, reviewModels, scriptVariable } from "./models.ts";
 import { CliError, git, openStorage, storagePath } from "./repository.ts";
 import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
 
@@ -264,8 +267,16 @@ export async function findings(
 	const { harness } = reviewHarness;
 	try {
 		const root = (await harness.root(context)).id;
-		const verdict = await readVerdict(harness, root, revisionKey(changeset.revision), context);
+		const revision = revisionKey(changeset.revision);
+		const verdict = await readVerdict(harness, root, revision, context);
 		if (verdict === undefined) throw missing;
+		// The plan the review ran under, as stored with its verdict, never one resolved now: routes or credentials may have
+		// changed since, and a review a crash interrupted is summarised as it ran.
+		const stored = (await readProvenance(harness, root, revision, context))?.plan;
+		if (stored !== undefined && !options.json) {
+			for (const line of ReviewPlan.from(stored).summary().split("\n").filter(Boolean))
+				io.stderr(`melian: ${line}\n`);
+		}
 		const render = new Rendering({ color: io.color, ids: true, all: options.all });
 		if (!options.open) {
 			io.stdout(options.json ? verdict.renderJson() : verdict.render(render));

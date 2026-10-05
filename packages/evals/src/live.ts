@@ -2,11 +2,13 @@
  * Runs every golden against real models and prints precision and recall. Spends real tokens, so it runs only with
  * `MELIAN_EVAL_LIVE=1`, and never in `npm run check`. `MELIAN_EVAL_MODEL`, as `provider/model-id`, routes every tier a
  * golden's `melian.golden.yaml` leaves unrouted. `MELIAN_EVAL_GOLDEN` names one golden to run instead of all of them.
- * Credentials come from Pi's login or the providers' environment variables. A golden whose `expected.json` sets
+ * Credentials resolve as in a review: the named credentials of the secrets files, the per-clone one of the working
+ * directory's repository and the user's own, then Pi's login, then the providers' environment variables. A golden whose `expected.json` sets
  * `live: false` is skipped and left out of the corpus score.
  *
  * @module
  */
+import { loadSecrets, userFiles } from "@melian-agent/core";
 import { createReviewModels } from "@melian-agent/pipeline";
 import {
 	type Golden,
@@ -31,7 +33,8 @@ try {
 	console.error(error instanceof Error ? error.message : String(error));
 	process.exit(2);
 }
-const models = createReviewModels();
+const { credentials } = await loadSecrets(process.cwd(), userFiles().secrets);
+const models = createReviewModels({ credentials });
 const model = process.env.MELIAN_EVAL_MODEL;
 const scores: GoldenScore[] = [];
 for (const golden of goldens) {

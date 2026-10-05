@@ -1,4 +1,5 @@
-import { isAbsolute, posix, relative, resolve, sep } from "node:path";
+import { homedir } from "node:os";
+import { isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import { OutsideRepositoryError } from "./errors.ts";
 
 /**
@@ -80,4 +81,17 @@ export function anchorGlob(directory: string, glob: string): string | undefined 
 	const anchored = posix.normalize(posix.join(directory, pattern));
 	if (anchored === ".." || anchored.startsWith("../")) return undefined;
 	return `${negated ? "!" : ""}${anchored}`;
+}
+
+/**
+ * The user's own Melian files, for every repository: the preference file, which takes `melian.yaml`'s schema, and the
+ * secrets file. They live in `$XDG_CONFIG_HOME/melian/`, or `~/.config/melian/` when that is unset.
+ */
+export function userFiles(env: NodeJS.ProcessEnv = process.env): { readonly config: string; readonly secrets: string } {
+	const base =
+		env.XDG_CONFIG_HOME === undefined || env.XDG_CONFIG_HOME === ""
+			? join(homedir(), ".config")
+			: env.XDG_CONFIG_HOME;
+	const directory = join(base, "melian");
+	return { config: join(directory, "config.yaml"), secrets: join(directory, "secrets.yaml") };
 }
