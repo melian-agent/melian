@@ -989,6 +989,35 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		expect(second.id).toBe(String(state.ledgers[0]!.id));
 	});
 
+	it("never adopts a stranger's copy of the ledger when the recorded comment is gone and the login is unknown", async () => {
+		const state = pullRequestState();
+		state.failUser = true;
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test-token",
+			fetch: fakeGitHub(state),
+		});
+		const body = Ledger.from(verdict, { rounds: [round] }, options).render(links);
+		const copy = { id: 18, user: { login: "stranger" }, body, html_url: "https://example.test/18" };
+		state.ledgers.push(copy);
+		const recorded = {
+			id: "17",
+			url: "https://example.test/17",
+			stamp: Ledger.readStamp(body)!,
+			author: state.login,
+		};
+		expect(await provider.findLedger(7, secret, recorded)).toBeUndefined();
+		const written = await provider.writeLedger({
+			...options,
+			verdict,
+			publication: { rounds: [round] },
+			recorded,
+		});
+		expect(written.id).not.toBe("18");
+		expect(written.author).toBe(state.login);
+	});
+
 	it("resolves markerless finding threads, records null and shares one thread lookup", async () => {
 		const fake = scenarioModels();
 		const state = pullRequestState();

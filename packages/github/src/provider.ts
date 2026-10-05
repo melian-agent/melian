@@ -258,12 +258,14 @@ export class GitHubProvider implements ReviewProvider {
 			}),
 		);
 		// A ledger body is public, so a stranger can copy one verbatim and its signature still verifies.
-		// Melian's own comment predates any copy, so the earliest signed candidate wins.
+		// Melian's own comment predates any copy, so the earliest signed candidate wins. A known author, from the
+		// token or the record, narrows the scan to that author's comments.
+		const author = login ?? recorded?.author;
 		const candidates = comments
 			.filter(
 				(comment) =>
 					/^<!-- melian:revision=.* ledger=/.test(firstLine(comment.body)) &&
-					(login === undefined || comment.user?.login === login),
+					(author === undefined || comment.user?.login === author),
 			)
 			.sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
 		const signed = candidates.find((comment) => {
