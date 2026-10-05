@@ -713,7 +713,7 @@ The same file also shows what a team does when a static rule cannot express a co
 
 ## Evals and testing
 
-Built in milestone 1, with the golden corpus still growing. Goldens for the five backlog lenses were written in milestone 2 (review of record). Comparison with external reviewers is built in milestone 2: importing and matching were added in [pull request #68](https://github.com/melian-agent/melian/pull/68). The `compare-adjudicate` branch adds adjudication, statistics, the backlog, and export; its draft pull request is pending. Calibration measurement is planned for milestone 4 (calibration). Lens tests in the lens directory are not yet scheduled.
+Built in milestone 1, with the golden corpus still growing. Goldens for the five backlog lenses were written in milestone 2 (review of record). Comparison with external reviewers is built in milestone 2: importing and matching were added in [pull request #68](https://github.com/melian-agent/melian/pull/68). [Pull request #72](https://github.com/melian-agent/melian/pull/72) adds adjudication, statistics, the backlog, and export. Calibration measurement is planned for milestone 4 (calibration). Lens tests in the lens directory are not yet scheduled.
 
 Noise is where every reviewer fails, and the only defence is measurement. The evals package is first-class:
 
@@ -735,7 +735,7 @@ Unit tests use Vitest and Pi Durable's memory storage.
 
 ### Comparison with external reviewers
 
-Built in milestone 2 step 15. The shape, document, importers, and matching were added in [pull request #68](https://github.com/melian-agent/melian/pull/68). The `compare-adjudicate` branch adds adjudication, statistics, the backlog, and export; its draft pull request is pending. Export writes records under `packages/evals/comparisons/` only when given that destination.
+Built in milestone 2 step 15. The shape, document, importers, and matching were added in [pull request #68](https://github.com/melian-agent/melian/pull/68). [Pull request #72](https://github.com/melian-agent/melian/pull/72) adds adjudication, statistics, the backlog, and export. Export writes records under `packages/evals/comparisons/` only when given that destination.
 
 Problem: Melian learns from other reviewers through comparison records an agent writes by hand, and the records have stopped turning into goldens or checks. Twenty-eight goldens came from them. The records for [pull requests #55](https://github.com/melian-agent/melian/pull/55), [#60](https://github.com/melian-agent/melian/pull/60), and [#61](https://github.com/melian-agent/melian/pull/61) owe none, because every finding sat outside what the lenses' goldens measure. [BACKLOG.md](../packages/evals/goldens/BACKLOG.md) still holds entries from records written in milestone 1. Many external findings came from running code, which no lens does. Nothing shows which findings repeat, so a repeat becomes a check, as `AGENTS.md` requires, only when someone remembers it. Recall and precision live in a sentence at the end of each record, so nothing sums them across records. And the loop cannot leave Melian's repository: the two customer repositories Melian will join run CodeRabbit, whose findings live in GitHub review threads.
 
