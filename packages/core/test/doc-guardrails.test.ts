@@ -107,12 +107,22 @@ describe("the overlong-sentence guardrail", () => {
 		for (const stop of [".", "?", "!"]) expect(pattern.test(`${words(30)}${stop} ${words(30)}${stop}`)).toBe(false);
 	});
 
-	it("measures each table cell alone, and resets at a semicolon or colon", async () => {
+	it("measures each table cell alone", async () => {
 		const { pattern } = await rootRule("overlong-sentence");
 		const cell = words(30);
 		expect(pattern.test(`| ${cell} | ${cell} | ${cell} |`)).toBe(false);
-		expect(pattern.test(`${cell}; ${cell}: ${cell}`)).toBe(false);
 		expect(pattern.test(`| ${words(60)} |`)).toBe(true);
+	});
+
+	it("counts through a semicolon or colon, which join clauses into one sentence", async () => {
+		const { pattern } = await rootRule("overlong-sentence");
+		const clause = words(30);
+		expect(pattern.test(`${clause}; ${clause}: ${clause}`)).toBe(true);
+		expect(pattern.test(`${words(22)}; ${words(22)}`)).toBe(false);
+		expect(pattern.test(`${words(23)}; ${words(22)}`)).toBe(true);
+		expect(pattern.test(`${words(22)}: ${words(22)}`)).toBe(false);
+		expect(pattern.test(`${words(23)}: ${words(22)}`)).toBe(true);
+		expect(pattern.test(`${words(22)}; ${words(22)}. ${words(22)}: ${words(22)}`)).toBe(false);
 	});
 
 	it("scans a very long line in linear time", async () => {
