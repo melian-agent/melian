@@ -951,8 +951,9 @@ function account(
 	// The lens step owns `lens.*` and `decisions.*`, so the host's records of them give way. The plan's `failed` record of
 	// a lens it refused at the level triage chose is the lens step's own, in `lenses.records`, beside the record of a
 	// variant in another folder that ran, so a refused lens never reads as one no lens is named for.
-	const owned = (check: CheckRecord) => check.name.startsWith("decisions.") || check.name.startsWith("lens.");
-	const supplied = (options.checks ?? []).filter((check) => !owned(check));
+	const supplied = (options.checks ?? []).filter(
+		(check) => !check.name.startsWith("decisions.") && !check.name.startsWith("lens."),
+	);
 	const manifest = new Manifest(checks, [...supplied, ...lenses.records], config.checks.allowSkip);
 	for (const name of lenses.skippable) manifest.allowSkip(name);
 	const recorded = new Set(manifest.records().map((check) => check.name));
