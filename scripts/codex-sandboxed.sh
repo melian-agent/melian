@@ -6,6 +6,13 @@
 # macOS only: it uses sandbox-exec, the seatbelt Codex itself runs on.
 set -euo pipefail
 
+# CODEX_HOME relocates Codex's state directory, and CODEX_* passes through to the task.
+codex_home=${CODEX_HOME:-$HOME/.codex}
+case $codex_home in
+  /*) ;;
+  *) echo "codex-sandboxed: CODEX_HOME must be an absolute path: $codex_home" >&2; exit 64 ;;
+esac
+
 # Prints the real path of $1, resolving symlinks in its directory and in its last component;
 # seatbelt matches real paths, so a filter naming a link would miss its target.
 real() {
@@ -40,7 +47,7 @@ filters() {
 # Only a linked worktree is allowed: the main checkout's worktree allowance would cover its .git, which a task could rename.
 dynamic_rules() {
   local worktree=$1 scratch=$2 run=$3
-  local common admin codex="$HOME/.codex" p
+  local common admin codex=$codex_home p
   common=$(real "$(cd "$worktree" && git rev-parse --path-format=absolute --git-common-dir)")
   admin=$(real "$(cd "$worktree" && git rev-parse --path-format=absolute --git-dir)")
   if [ "$admin" = "$common" ] || [ ! -f "$worktree/.git" ]; then
@@ -126,7 +133,7 @@ mkdir -p "$scratch/npm-cache"
 scratch=$(real "$scratch")
 "$0" --print-profile "$worktree" "$scratch" "$run" > "$profile"
 # Codex fails on a first run if these are missing, and the profile allows only what exists by name.
-for d in sessions log cache tmp ipc thread-writer-locks mcp-oauth-locks attachments; do mkdir -p "$HOME/.codex/$d"; done
+for d in sessions log cache tmp ipc thread-writer-locks mcp-oauth-locks attachments; do mkdir -p "$codex_home/$d"; done
 
 # The sandbox confines writes, not secrets; pass only what a task needs and drop the rest, so an
 # agent socket, cloud credentials, tokens, and npm settings never reach it.

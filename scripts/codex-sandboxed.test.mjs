@@ -94,6 +94,26 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		);
 	});
 
+	it("names CODEX_HOME instead of ~/.codex when it is set, and refuses a relative one", () => {
+		const elsewhere = join(root, "elsewhere-codex");
+		const text = execFileSync(script, ["--print-profile", linked, run, run], {
+			encoding: "utf8",
+			env: { ...env(), CODEX_HOME: elsewhere },
+		});
+		const allow = block(text, "allow file-write*");
+		expect(allow).toContain(`(subpath "${elsewhere}/sessions")`);
+		expect(allow).toContain(`(literal "${elsewhere}/history.jsonl")`);
+		expect(allow).toContain(`^${elsewhere}/[^/]+\\.sqlite`);
+		expect(block(text, "deny file-write*")).toContain(`(literal "${elsewhere}/config.toml")`);
+		expect(block(text, "deny file-write*")).toContain(`(subpath "${elsewhere}/hooks")`);
+		expect(text).not.toContain(`${home}/.codex`);
+		const refused = failure(() =>
+			execFileSync(script, ["--print-profile", linked], { stdio: "pipe", env: { ...env(), CODEX_HOME: "rel" } }),
+		);
+		expect(refused.status).toBe(64);
+		expect(refused.stderr).toContain("CODEX_HOME must be an absolute path");
+	});
+
 	it("allows the per-run directory, never /private/tmp, /private/var/folders, or ~/.npm", () => {
 		const allow = block(profile(linked), "allow file-write*");
 		expect(allow).toContain(`(subpath "${run}")`);
@@ -379,6 +399,16 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 				expect(existsSync(join(home, ".codex", dir))).toBe(true);
 			expect(execFileSync("ls", [join(root, "tmp")]).toString()).not.toMatch(/codex-run\./);
 			expect(execFileSync("ls", [join(root, "tmp")]).toString()).not.toMatch(/codex-seatbelt/);
+		});
+
+		it("creates the Codex directories under CODEX_HOME and passes it through", () => {
+			const elsewhere = join(root, "elsewhere-codex");
+			const prompt = join(root, "home.md");
+			writeFileSync(prompt, "go\n");
+			const log = join(root, "home.log");
+			execFileSync(script, [linked, "m", prompt, log], { stdio: "pipe", env: { ...env(), CODEX_HOME: elsewhere } });
+			expect(readFileSync(log, "utf8")).toContain(`env:CODEX_HOME=${elsewhere}\n`);
+			for (const dir of ["sessions", "cache", "attachments"]) expect(existsSync(join(elsewhere, dir))).toBe(true);
 		});
 
 		it("makes a relative scratch directory absolute for the profile and the npm cache", () => {
