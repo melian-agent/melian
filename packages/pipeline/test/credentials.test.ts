@@ -196,6 +196,24 @@ describe("MelianCredentialStore", () => {
 		expect(fake.provider.state.callCount).toBe(0);
 	});
 
+	it("resolves a named OAuth-only credential through createReviewModels and the collection's provider registry", async () => {
+		const credential = named("login", "fake-oauth", { kind: "literal", key: "named-bearer" });
+		let fake: ReturnType<typeof createFakeModels> | undefined;
+		vi.spyOn(harnessApi, "createProviderModels").mockImplementation((credentialStore) => {
+			fake = createFakeModels({ provider: "fake-oauth", auth: "oauth", credentialStore });
+			return fake.models;
+		});
+		const review = createReviewModels({ authPath, credentials: [credential] });
+		const models = modelsOf(review);
+		expect(models.getProvider("fake-oauth")?.auth.apiKey).toBeUndefined();
+		expect(models.getProvider("fake-oauth")?.auth.oauth).toBeDefined();
+		expect((await planInputs(review)).credentials["fake-oauth"]).toBe(`login in ${credential.file}`);
+		await unlockCredentials(review, ["fake-oauth"]);
+		expect(await models.checkAuth("fake-oauth")).toMatchObject({ type: "oauth" });
+		expect(await models.getAuth("fake-oauth")).toMatchObject({ auth: { apiKey: "named-bearer" } });
+		expect(fake!.provider.state.callCount).toBe(0);
+	});
+
 	it("rejects an expired command bearer at unlock, while planning runs no command", async () => {
 		const token = `e30.${Buffer.from(JSON.stringify({ exp: 1 })).toString("base64url")}.signature`;
 		const marker = join(dir, "expired-command-ran");
@@ -321,6 +339,22 @@ describe("MelianCredentialStore", () => {
 		expect(await credentials.read("fake-oauth")).toMatchObject({ type: "oauth", access: fresh });
 		expect(await credentials.describe("fake-oauth")).toBe("user in /home/me/.config/melian/secrets.yaml");
 		expect(await credentials.list()).toEqual([{ providerId: "fake-oauth", type: "oauth" }]);
+	});
+
+	it("falls back to Pi's usable login after exhausting unusable named bearers", async () => {
+		const now = Date.now();
+		const token = `e30.${Buffer.from(JSON.stringify({ exp: Math.floor(now / 1000) + 6 * 60 })).toString("base64url")}.signature`;
+		const pi = { type: "oauth", access: "pi-login", refresh: "pi-refresh", expires: now + 3_600_000 };
+		store({ "fake-oauth": pi });
+		const fake = createFakeModels({
+			provider: "fake-oauth",
+			auth: "oauth",
+			authPath,
+			credentials: [named("stale", "fake-oauth", { kind: "literal", key: token })],
+		});
+		expect(await fake.models.checkAuth("fake-oauth")).toMatchObject({ type: "oauth" });
+		expect(await fake.models.getAuth("fake-oauth")).toMatchObject({ auth: { apiKey: "pi-login" } });
+		expect((await planInputs(fake.review)).credentials["fake-oauth"]).toBe(`Pi's login in ${authPath}`);
 	});
 
 	it("never counts a named credential for a provider without auth and refuses it when building review models", async () => {
