@@ -164,8 +164,14 @@ describe("Triage", () => {
 	async function opened(options: { scripted: boolean; decide: typeof fallbackDecider }) {
 		dir = mkdtempSync(join(tmpdir(), "melian-triage-"));
 		const marker = join(dir, "unlocked");
-		const loaded = loadedOf({ light: { model: "openai/gpt-5.5" } });
-		const lenses = options.scripted ? [] : await Lens.load(process.cwd(), { kind: "worktree" }, ["src/user.ts"]);
+		const lensMarker = join(dir, "lens-unlocked");
+		const loaded = loadedOf({
+			light: { model: "openai/gpt-5.5" },
+			heavy: { model: "anthropic/claude-opus-5-5" },
+		});
+		const lenses = (await Lens.load(process.cwd(), { kind: "worktree" }, ["src/user.ts"])).filter(
+			(lens) => lens.name === "correctness",
+		);
 		const { models, plan } = await reviewModels({}, loaded, lenses, {
 			...setup,
 			credentials: [
@@ -176,10 +182,17 @@ describe("Triage", () => {
 					value: { kind: "command", command: `touch ${marker}; echo sk-key` },
 					file: "f",
 				},
+				{
+					name: "lens-vault",
+					provider: "anthropic",
+					type: "api_key",
+					value: { kind: "command", command: `touch ${lensMarker}; echo sk-key` },
+					file: "f",
+				},
 			],
 		});
 		const triage = await Triage.create({ ...options, config: loaded.config, plan, models });
-		return { triage, marker, plan };
+		return { triage, marker, lensMarker, plan };
 	}
 
 	it("hands the decider to the harness and the review, and unlocks the providers triage may ask", async () => {
@@ -206,15 +219,16 @@ describe("Triage", () => {
 	});
 
 	it("triages nothing and unlocks only the lenses' providers under a script", async () => {
-		const { triage, marker } = await opened({
-			scripted: true,
-			decide: async () => {
-				throw new Error("a script stands in for every model");
-			},
-		});
+		const decide = vi.fn(async () => ({ decider, model: "fake" }));
+		const { triage, marker, lensMarker, plan } = await opened({ scripted: true, decide });
 
+		expect(plan.lenses).toHaveLength(1);
+		expect(plan.providers()).toEqual(["anthropic"]);
+		expect(triage.harnessOptions()).toEqual({});
 		expect(triage.reviewOptions()).toEqual({});
+		expect(existsSync(lensMarker)).toBe(true);
 		expect(existsSync(marker)).toBe(false);
+		expect(decide).not.toHaveBeenCalled();
 	});
 });
 
