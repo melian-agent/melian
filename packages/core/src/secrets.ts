@@ -1,5 +1,6 @@
-import { readFile, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { constants, type Stats } from "node:fs";
+import { open, stat } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import Type from "typebox";
 import { configError, maxConfigBytes, parseYaml, type Site } from "./config.ts";
 import { git } from "./git.ts";
@@ -44,11 +45,20 @@ export interface LoadedSecrets {
 	readonly warnings: readonly string[];
 }
 
-// Whether the file could have been written by anyone but the user running Melian: another owner, or write access for
-// the group or others. A command source runs on every review, so only the user's own file may hold one.
-function userOwned(mode: number, uid: number): boolean {
+// Why a command source in the file must be refused, or `undefined` when only the user running Melian could have
+// written it: theirs, readable and writable by no one else, in a directory no one else can replace it in. A command
+// runs on every review, so a file anyone else could have written, or swapped, must not hold one. git writes the files
+// it checks out readable by others, so the mode also rules out a file a head put in the working tree.
+async function ownership(path: string, info: Stats): Promise<string | undefined> {
 	const self = process.getuid?.();
-	return (self === undefined || uid === self) && (mode & 0o022) === 0;
+	if (self !== undefined && info.uid !== self) return `another user owns ${path}; chown it to yourself`;
+	if ((info.mode & 0o077) !== 0) return `${path} has mode ${(info.mode & 0o777).toString(8)}; chmod 600 ${path}`;
+	const directory = dirname(path);
+	const parent = await stat(directory).catch(() => undefined);
+	if (parent === undefined) return `Melian could not read ${directory}`;
+	// The sticky bit, which Node's fs.constants does not name: only a file's owner may then rename or remove it.
+	const shared = (parent.mode & 0o022) !== 0 && (parent.mode & 0o1000) === 0;
+	return shared ? `others can replace files in ${directory}; chmod go-w ${directory}` : undefined;
 }
 
 // Why a command in the per-clone file must be refused, or `undefined` when git confirms it is the maintainer's own:
@@ -74,24 +84,42 @@ async function cloneStanding(repoRoot: string, site: Site): Promise<string | und
 		: `git could not say whether it ignores ${name} (exit ${ignored.code})`;
 }
 
+// The file's metadata and text, from one open, so what was checked is what was read: a path checked and then opened
+// again could be swapped between the two. The per-clone file is never followed through a symlink; a user's own file
+// in their configuration directory may be, as dotfiles often are. A FIFO opens without blocking and is refused.
+async function readOnce(path: string, site: Site, follow: boolean): Promise<{ info: Stats; text: string } | undefined> {
+	const flags = constants.O_RDONLY | constants.O_NONBLOCK | (follow ? 0 : constants.O_NOFOLLOW);
+	const handle = await open(path, flags).catch((error: NodeJS.ErrnoException) => {
+		if (error.code === "ENOENT" || error.code === "ENOTDIR") return undefined;
+		if (error.code === "ELOOP") throw configError("symlink", site, "is a symlink; Melian reads it only as a file");
+		throw configError("unreadable", site, error.message, { cause: error });
+	});
+	if (handle === undefined) return undefined;
+	try {
+		const info = await handle.stat();
+		if (!info.isFile()) throw configError("unreadable", site, "is not a regular file");
+		if (info.size > maxConfigBytes) {
+			throw configError("tooLarge", site, `${info.size} bytes; the limit is ${maxConfigBytes}`);
+		}
+		const text = await handle.readFile("utf8").catch((error: NodeJS.ErrnoException) => {
+			throw configError("unreadable", site, error.message, { cause: error });
+		});
+		return { info, text };
+	} finally {
+		await handle.close();
+	}
+}
+
 async function readSecretsFile(path: string, repoRoot: string | undefined): Promise<LoadedSecrets> {
 	const site: Site = { file: path, where: path };
-	const info = await stat(path).catch((error: NodeJS.ErrnoException) => {
-		if (error.code === "ENOENT" || error.code === "ENOTDIR") return undefined;
-		throw configError("unreadable", site, error.message, { cause: error });
-	});
-	if (info === undefined) return { credentials: [], warnings: [] };
+	const read = await readOnce(path, site, repoRoot === undefined);
+	if (read === undefined) return { credentials: [], warnings: [] };
+	const { info, text } = read;
 	const standing = repoRoot === undefined ? undefined : await cloneStanding(repoRoot, site);
-	if (info.size > maxConfigBytes) {
-		throw configError("tooLarge", site, `${info.size} bytes; the limit is ${maxConfigBytes}`);
-	}
-	const text = await readFile(path, "utf8").catch((error: NodeJS.ErrnoException) => {
-		throw configError("unreadable", site, error.message, { cause: error });
-	});
 	const parsed = parseYaml(text, site, secretsFileSchema, { redact: true }) as {
 		credentials?: Record<string, Record<string, string>>;
 	};
-	const owned = userOwned(info.mode, info.uid);
+	const owner = await ownership(path, info);
 	const credentials = Object.entries(parsed.credentials ?? {}).map(([credential, entry]): NamedCredential => {
 		const key = `credentials.${credential}`;
 		const sources = (["key", "env", "command"] as const).filter((each) => entry[each] !== undefined);
@@ -109,11 +137,11 @@ async function readSecretsFile(path: string, repoRoot: string | undefined): Prom
 				key: `${key}.command`,
 			});
 		}
-		if (source === "command" && !owned) {
+		if (source === "command" && owner !== undefined) {
 			throw configError(
 				"notUserOwned",
 				site,
-				`"${key}" runs a command, which Melian runs only from a file you own and no one else can write; chmod 600 ${path}`,
+				`"${key}" runs a command, which Melian runs only from a file you own and no one else can read, write, or replace: ${owner}`,
 				{ key: `${key}.command` },
 			);
 		}
@@ -136,8 +164,9 @@ async function readSecretsFile(path: string, repoRoot: string | undefined): Prom
 /**
  * Reads the secrets files: `melian.secrets.yaml` beside the root `melian.yaml` of `repoRoot`, then `user`, the
  * user-level file, when given. Either may be absent. A credential takes its value from the file (`key`), an
- * environment variable (`env`), or a command's output (`command`), which only a file the user owns and no one else can
- * write may hold. Nothing is resolved here: no variable read and no command run. Throws {@link ConfigError}: `tracked`
+ * environment variable (`env`), or a command's output (`command`), which only a file the user owns, of mode 600, in a
+ * directory no one else can replace it in, may hold. Each file is opened once and checked through that handle; the
+ * per-clone file is never read through a symlink. Nothing is resolved here: no variable read and no command run. Throws {@link ConfigError}: `tracked`
  * for a per-clone file git tracks under any case of its name, since a head could supply it; `notIgnored` for a command
  * in a per-clone file git does not ignore, or when git cannot say; `notUserOwned` for a command in a file another user
  * could have written; and as `loadConfig` does for a file it cannot read or parse.

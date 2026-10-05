@@ -1,4 +1,4 @@
-import { chmodSync } from "node:fs";
+import { chmodSync, chownSync, mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { ConfigError, loadSecrets } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -132,6 +132,45 @@ describe("loadSecrets", () => {
 		chmodSync(user, 0o620);
 		const error = await rejection(loadSecrets(repo, user));
 		expect(error).toMatchObject({ code: "notUserOwned", key: "credentials.a.command", file: user });
+	});
+
+	it("never reads the per-clone file through a symlink, and follows the user's own", async () => {
+		const target = secrets(home, "real.yaml", "credentials:", "  a: { provider: openai, env: OPENAI_API_KEY }");
+		symlinkSync(target, join(repo, "melian.secrets.yaml"));
+		symlinkSync(target, join(home, "secrets.yaml"));
+		expect(await rejection(loadSecrets(repo))).toMatchObject({ code: "symlink" });
+		removeDirectory(join(repo, "melian.secrets.yaml"));
+		expect((await loadSecrets(repo, join(home, "secrets.yaml"))).credentials).toHaveLength(1);
+	});
+
+	it("refuses a command in a file others can read, as git leaves a file it checks out", async () => {
+		writeFiles(repo, { ".gitignore": lines("/melian.secrets.yaml") });
+		const file = secrets(repo, "melian.secrets.yaml", "credentials:", "  a: { provider: openai, command: cat key }");
+		chmodSync(file, 0o644);
+		const error = await rejection(loadSecrets(repo));
+		expect(error).toMatchObject({ code: "notUserOwned", key: "credentials.a.command" });
+		expect(error.message).toContain(`${file} has mode 644; chmod 600 ${file}`);
+	});
+
+	it("refuses a command in a file whose directory others can write, unless the directory is sticky", async () => {
+		const shared = join(home, "shared");
+		mkdirSync(shared);
+		const file = secrets(shared, "secrets.yaml", "credentials:", "  a: { provider: openai, command: cat key }");
+		chmodSync(shared, 0o777);
+		const error = await rejection(loadSecrets(repo, file));
+		expect(error.code).toBe("notUserOwned");
+		expect(error.message).toContain(`others can replace files in ${shared}; chmod go-w ${shared}`);
+		chmodSync(shared, 0o1777);
+		expect((await loadSecrets(repo, file)).credentials).toHaveLength(1);
+		chmodSync(shared, 0o700);
+	});
+
+	// Only root can give a file away, so elsewhere the owner check is left to the mode and directory cases above.
+	it.skipIf(process.getuid?.() !== 0)("refuses a command in a file another user owns, advising chown", async () => {
+		const file = secrets(home, "secrets.yaml", "credentials:", "  a: { provider: openai, command: cat key }");
+		chownSync(file, 65534, 65534);
+		const error = await rejection(loadSecrets(repo, file));
+		expect(error.message).toContain(`another user owns ${file}; chown it to yourself`);
 	});
 
 	it("reads an environment or literal source from a file others can read, and warns", async () => {
