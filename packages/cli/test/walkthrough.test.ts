@@ -89,6 +89,7 @@ describe("CLI publish walkthrough settings", { timeout: 60_000 }, () => {
 		throughMain: { review?: boolean; publish?: boolean } = {},
 	) {
 		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
+		rmSync(repo, { recursive: true, force: true });
 		repo = baseAndHead(
 			{ "src/a.ts": "export const a = 1;\n", "melian.yaml": `tiers:\n  full: [guardrails]\n${yaml}` },
 			{
