@@ -624,6 +624,24 @@ describe("a lens task from an earlier selection during triage", { timeout: 60_00
 		};
 		const provider: ReviewProvider = {
 			name: "fake",
+			resolveThread: vi.fn(async () => false),
+			findLedger: vi.fn(async () => undefined),
+			writeLedger: vi.fn(async () => ({
+				id: "ledger",
+				url: "https://example.invalid/ledger",
+				stamp: {
+					version: 1 as const,
+					base: changeset.revision.base,
+					head: changeset.revision.head,
+					round: 1,
+					verdict: "0".repeat(16),
+					counts: { open: 0, blocking: 0, dismissed: 0 },
+					lenses: [],
+					plan: null,
+					projection: "0".repeat(16),
+				},
+			})),
+			getStatus: vi.fn(async () => undefined),
 			pullRequest: vi.fn(async () => pullRequest),
 			postReview: vi.fn(async () => ({ id: "review", threads: {} })),
 			replyResolved: vi.fn(async () => undefined),
@@ -640,6 +658,7 @@ describe("a lens task from an earlier selection during triage", { timeout: 60_00
 			publishReview({ harness, changeset, provider, pullRequest, base: changeset.revision.base }),
 		).rejects.toMatchObject({ code: "notReviewed" });
 		expect(provider.postReview).not.toHaveBeenCalled();
+		expect(provider.writeLedger).not.toHaveBeenCalled();
 		expect(provider.setStatus).not.toHaveBeenCalled();
 		await publisher.close(context);
 		harness = undefined;

@@ -95,6 +95,8 @@ export {
 	type DecisionErrorCode,
 	FindingError,
 	type FindingErrorCode,
+	LedgerRefusal,
+	type LedgerRefusalCode,
 	LensError,
 	type LensErrorCode,
 	ModelRoutingError,
@@ -216,9 +218,15 @@ export {
 	type ClosedFinding,
 	type DiffLines,
 	dismissalVersion,
+	type LedgerDraft,
+	type LedgerHistory,
+	type LedgerRound,
+	type LedgerStamp,
 	type PlacedFinding,
 	type Placement,
+	type PostedLedger,
 	type PostedReview,
+	type PublicationDetails,
 	type PublicationPlan,
 	type PublishedFinding,
 	type PublishedMarkers,
@@ -227,6 +235,7 @@ export {
 	type ReviewProvider,
 	type ReviewStatus,
 	replyKey,
+	type Walkthrough,
 } from "./publication.ts";
 export { describeBudgetEnd, describeLineage, Rendering, type TerminalRenderOptions, visibleText } from "./render.ts";
 export {

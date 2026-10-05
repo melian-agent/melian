@@ -6,6 +6,7 @@ import {
 	type CheckRecord,
 	type Decider,
 	defaultConfig,
+	describeLineage,
 	Finding,
 	Lens,
 	type MelianConfig,
@@ -50,6 +51,7 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { VerdictDocument } from "../src/adjudication.ts";
 import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -998,7 +1000,12 @@ describe("escalation under a review plan", () => {
 		const { catalog, credentials } = await planInputs(fake.review);
 		const plan = ReviewPlan.resolve({
 			config: planned,
-			routes: { committed: models, overridden: {}, lensTiers: {}, retiered: {} },
+			routes: {
+				committed: { ...models, heavy: { ...models.heavy, model: medium } },
+				overridden: { heavy: "melian.local.yaml" },
+				lensTiers: {},
+				retiered: {},
+			},
 			catalog,
 			credentials,
 			lenses,
@@ -1022,6 +1029,20 @@ describe("escalation under a review plan", () => {
 
 		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
 		expect(lensRecord(reviewed)!.reason).toContain("escalated from quick to careful");
+		const root = await harness.root(context);
+		const details = (await harness.snapshot(VerdictDocument, root.id, context))!.details![revision()]!;
+		expect(details.lenses).toEqual([
+			{
+				name: "correctness",
+				version: version(),
+				level: "careful",
+				models: [heavy],
+				ran: heavy,
+				lineage: describeLineage(lensRecord(reviewed)!.lineage!),
+				usage: expect.objectContaining({ models: [heavy], tokens: expect.any(Number), cost: expect.any(Number) }),
+				budget: expect.objectContaining({ findings: expect.any(Number) }),
+			},
+		]);
 		// The map the plan marks from holds the careful run's model, not the quick run's.
 		const marked = mark.mock.calls.at(-1)![1]!;
 		expect(marked.get("correctness")).toEqual([{ scope: "", level: "careful", model: heavy }]);

@@ -82,6 +82,23 @@ const ruleAliasSchema = Type.Union([
 /** The JSON Schema of one `melian.yaml`. Every key is optional, and unknown keys are rejected. */
 export const melianYamlSchema = Type.Object(
 	{
+		publish: Type.Optional(
+			Type.Object(
+				{
+					walkthrough: Type.Optional(
+						Type.Object(
+							{
+								enabled: Type.Optional(Type.Boolean()),
+								collapsed: Type.Optional(Type.Boolean()),
+								diagrams: Type.Optional(Type.Boolean()),
+							},
+							strict,
+						),
+					),
+				},
+				strict,
+			),
+		),
 		tiers: Type.Optional(Type.Record(Type.String(), Type.Array(name))),
 		stages: Type.Optional(Type.Record(Type.String(), name)),
 		resolution: Type.Optional(
@@ -316,6 +333,9 @@ export interface PolicyChangeReview {
 
 /** The effective configuration for one path: built-in defaults with every applicable `melian.yaml` merged on top. */
 export interface MelianConfig {
+	readonly publish: {
+		readonly walkthrough: { readonly enabled: boolean; readonly collapsed: boolean; readonly diagrams: boolean };
+	};
 	readonly tiers: Readonly<Record<string, readonly string[]>>;
 	readonly stages: Readonly<Record<string, string>>;
 	readonly resolution: Readonly<Record<Severity, Resolution>>;
@@ -338,6 +358,7 @@ export interface MelianConfig {
 
 /** The built-in defaults every `melian.yaml` layers onto. */
 export const defaultConfig: MelianConfig = {
+	publish: { walkthrough: { enabled: true, collapsed: true, diagrams: true } },
 	tiers: {
 		fast: ["guardrails", "static", "decisions.fast"],
 		standard: ["fast", "lens.correctness"],
