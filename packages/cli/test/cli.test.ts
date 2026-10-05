@@ -623,6 +623,21 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		expect(routed.stdout).toMatch(/^ok {4}melian {6}.*, outside this checkout$/m);
 	});
 
+	it("leaves a disabled lens out of the plan", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		writeFileSync(join(repo, "melian.yaml"), "models:\n  heavy:\n    model: anthropic/claude-opus-5-5\n");
+		const before = melian(repo, ["doctor"]);
+		writeFileSync(
+			join(repo, "melian.yaml"),
+			"models:\n  heavy:\n    model: anthropic/claude-opus-5-5\nlenses:\n  correctness: { enabled: false }\n",
+		);
+		const after = melian(repo, ["doctor"]);
+
+		expect(before.stdout).toMatch(/^ok {4}plan {8}.*\bcorrectness\b.*: quick on/m);
+		expect(after.stdout).toMatch(/^ok {4}plan {8}.*: quick on/m);
+		expect(after.stdout).not.toMatch(/^.{0,16}plan.*\bcorrectness\b/m);
+	});
+
 	it("names one or two lenses on an unrouted tier without a series comma", () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
 
