@@ -55,6 +55,7 @@ function plan(
 		model?: string;
 		checks?: string[];
 		retier?: Record<string, LensTier>;
+		committedTiers?: Record<string, LensTier>;
 		catalogue?: CatalogueModel[];
 	} = {},
 ): ReviewPlan {
@@ -64,16 +65,19 @@ function plan(
 		models[tier] = { ...(committed[tier as keyof Routes] ?? {}), ...route };
 	}
 	const retier = options.retier ?? {};
+	const committedTiers = options.committedTiers ?? {};
 	const input: PlanInput = {
 		config: {
 			...defaultConfig,
 			models: models as Routes,
-			lenses: Object.fromEntries(Object.entries(retier).map(([name, tier]) => [name, { tier }])),
+			lenses: Object.fromEntries(
+				Object.entries({ ...committedTiers, ...retier }).map(([name, tier]) => [name, { tier }]),
+			),
 		},
 		routes: {
 			committed,
 			overridden: Object.fromEntries(Object.keys(preferences).map((tier) => [tier, "melian.local.yaml"])),
-			lensTiers: {},
+			lensTiers: committedTiers,
 			retiered: Object.fromEntries(Object.keys(retier).map((name) => [name, "melian.local.yaml"])),
 		},
 		...(options.model === undefined ? {} : { model: options.model }),
@@ -324,6 +328,22 @@ describe("ReviewPlan.resolve", () => {
 		expect(open.warnings()).toContain(
 			`correctness runs openai/gpt-5.4-mini, moved from heavy to light by melian.local.yaml, whose route is set by melian.local.yaml; the committed route wants ${opus}, and does not accept openai/gpt-5.4-mini`,
 		);
+	});
+
+	it("runs a lens the committed files retiered on that tier, under that tier's own policy", () => {
+		const credentials = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" };
+		const resolved = plan(
+			{ heavy: { model: opus, accept: [opus], acceptOverridden: false }, light: { model: gpt } },
+			credentials,
+			{ committedTiers: { correctness: "light" } },
+		);
+		expect(resolved.lenses.find((lens) => lens.name === "correctness")?.levels).toEqual([
+			{ level: "quick", tier: "light" },
+			{ level: "careful", tier: "light" },
+			{ level: "deep", tier: "light" },
+		]);
+		// The committed files chose light, so heavy's guard does not reach it, and nothing left a committed route.
+		expect(resolved.judge("correctness", "careful")).toEqual({});
 	});
 
 	it("records both what moved a lens and what routed the tier it moved to", () => {

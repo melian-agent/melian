@@ -687,6 +687,22 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		expect(doctor.stdout).not.toMatch(/^ok {4}plan {8}heavy: routed by melian\.yaml$/m);
 	});
 
+	it("plans a lens on the tier melian.yaml gives it", () => {
+		// Were the committed tier lost, heavy's guard would refuse correctness on light, a model it does not accept.
+		const heavy = "  heavy:\n    model: anthropic/claude-opus-5-5\n    acceptOverridden: false\n";
+		const light = "  light:\n    model: anthropic/claude-haiku-4-5\n";
+		const policy = `models:\n${heavy}${light}lenses:\n  correctness: { tier: light }\n`;
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, policy);
+		const xdg = userDirectory("credentials:\n  pinned: { provider: anthropic, key: sk-ant-test }\n");
+
+		const doctor = melian(repo, ["doctor"], xdg);
+
+		expect(doctor.stdout).toContain(
+			"ok    plan        correctness: quick on light (anthropic/claude-haiku-4-5), careful on light (anthropic/claude-haiku-4-5), deep on light (anthropic/claude-haiku-4-5)\n",
+		);
+		expect(doctor.stdout).not.toMatch(/^warn {2}plan {8}correctness/m);
+	});
+
 	it("names a command credential in the plan without running its command", () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, "models:\n  heavy:\n    model: openai/gpt-5.5\n");
 		const marker = join(repo, ".git", "ran");
