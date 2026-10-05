@@ -168,6 +168,16 @@ describe("melian compare", { timeout: 60_000 }, () => {
 		for (const result of [shown, bytes, key]) expect(result.stdout + result.stderr).not.toContain(control);
 	});
 
+	it("prints an error message's control characters as visible text", () => {
+		const { repo, env } = reviewed();
+
+		const result = melian(repo, ["compare", range, "--from", "gitlab\u001b[2J"], env);
+
+		expect(result.status).toBe(64);
+		expect(result.stderr).toContain("not gitlab\\u001b[2J");
+		expect(result.stdout + result.stderr).not.toContain("\u001b");
+	});
+
 	it("refuses a hand match naming a finding it does not hold", () => {
 		const { repo, files, env, id } = reviewed();
 		melian(repo, ["compare", range, "--from", `file:${codexFile(files, [codexFinding(8, "x")])}`], env);
