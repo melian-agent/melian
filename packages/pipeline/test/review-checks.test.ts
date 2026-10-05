@@ -84,6 +84,26 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 		).toHaveLength(1);
 	});
 
+	it("reruns a cached failed compiler through the automatic path", async () => {
+		const options = await setup();
+		const log = join(repo, "compiler.log");
+		fakeTool(
+			repo,
+			"tsc",
+			`if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\necho ran >> '${log}'\nexit 139`,
+		);
+		const first = await reviewChangeset(options);
+		expect(first.verdict.notRun.find(({ name }) => name === "static.tsc")!.status).toBe("failed");
+		const before = readFileSync(log, "utf8");
+		fakeTool(repo, "tsc", `if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\necho ran >> '${log}'`);
+		expect((await reviewChangeset(options)).verdict.status).toBe("not-reviewed");
+		expect(readFileSync(log, "utf8")).toBe(before);
+		const rerun = await reviewChangeset({ ...options, rerun: true });
+		expect(rerun.verdict.status).toBe("passed");
+		expect(rerun.verdict.ran!.find(({ name }) => name === "static.tsc")!.status).toBe("ran");
+		expect(readFileSync(log, "utf8").trim().split("\n")).toHaveLength(before.trim().split("\n").length + 2);
+	});
+
 	it("supplied records bypass checks even without policy", async () => {
 		const { policy: _, ...options } = await setup();
 		const result = await reviewChangeset({ ...options, checks: [{ name: "guardrails", status: "ran" }] });
