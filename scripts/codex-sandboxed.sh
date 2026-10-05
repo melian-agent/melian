@@ -22,7 +22,7 @@ filters() {
   done
 }
 
-# Prints the rules appended to the fixed profile. Arguments: worktree, scratch, tmpdir.
+# Prints the rules appended to the fixed profile: write allowances, then write and read denials. Arguments: worktree, scratch, tmpdir.
 dynamic_rules() {
   local worktree=$1 scratch=$2 tmpdir=$3
   local common admin codex="$HOME/.codex" p
@@ -57,6 +57,12 @@ dynamic_rules() {
   filters literal "$common/config" "$common/config.lock" "$admin/config.worktree" "$codex/config.toml" "$codex/auth.json"
   filters subpath "$codex/hooks"
   [ -f "$worktree/.git" ] && filters literal "$worktree/.git"
+  echo ")"
+
+  echo "(deny file-read*"
+  filters subpath "$HOME/.ssh"
+  filters literal "$HOME/.pi/agent/auth.json" "$HOME/.npmrc" "$HOME/.config/gh/hosts.yml" "$worktree/.env"
+  [ "$(basename "$common")" = ".git" ] && filters literal "$(dirname "$common")/.env"
   echo ")"
 }
 

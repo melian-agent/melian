@@ -91,4 +91,15 @@ Codex's own sandbox denies writes under `.git`, so a Codex task cannot commit or
 scripts/codex-sandboxed.sh <worktree> <model> <prompt-file> [log] [scratch]
 ```
 
-Writes are allowed in the worktree, the checkout's `.git`, the scratch directory, temp directories, and the Codex, npm, and gh caches. Everything else is denied, including the home directory and any other checkout. Reads and the network stay open, so commit, fetch, `gh`, and npm installs work. The sandbox does not limit what a task pushes. The brief should tell it to push only its own branch.
+Writes are allowed in:
+
+- the worktree, the scratch directory, `/private/tmp`, and `/private/var/folders` (which holds `TMPDIR`);
+- `~/.npm`;
+- in the common git directory, only `objects`, `refs`, `logs`, `packed-refs`, and `packed-refs.lock`, plus the worktree's own administrative directory (`.git/worktrees/<name>` for a linked worktree, or `HEAD`, `index`, and the other top-level state files in the main checkout);
+- in `~/.codex`, only `sessions`, `log`, `cache`, `tmp`, `.tmp`, `shell_snapshots`, `memories`, `ipc`, `thread-writer-locks`, `mcp-oauth-locks`, `attachments`, the `*.sqlite` databases, and a handful of state files such as `history.jsonl`.
+
+Writes are denied everywhere else, including the rest of the home directory and any other checkout. Three further rules block what a task could use to run code outside the sandbox: `.git/hooks`, `.git/config`, `.git/config.lock`, `.git/info`, the worktree's `config.worktree`, and the `.git` pointer file of a linked worktree; and in `~/.codex`, `config.toml`, `auth.json`, and `hooks`. In the main checkout, where the worktree contains `.git`, these denials narrow the worktree's allowance. `~/.config/gh` is read-only, since gh's keyring login needs no file writes.
+
+The sandbox confines writes, not secrets. Reads stay open except for `~/.ssh`, `~/.pi/agent/auth.json`, `~/.npmrc`, `~/.config/gh/hosts.yml`, and any `.env` file at the root of the worktree and of the main checkout. `~/.codex/auth.json` stays readable because Codex needs it. The keychain stays reachable because gh needs it, other files in the home directory stay readable, and the network is open, so a task can still send what it can read to anywhere. Commit, fetch, `gh`, and npm installs work. The sandbox does not limit what a task pushes. The brief should tell it to push only its own branch.
+
+`scripts/codex-sandboxed.sh --print-profile <worktree> [scratch]` prints the profile and exits without running Codex.
