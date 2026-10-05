@@ -12,7 +12,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const script = join(import.meta.dirname, "codex-sandboxed.sh");
@@ -69,7 +69,12 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		writeFileSync(join(home, ".codex", "config.toml"), "");
 	});
 
-	afterAll(() => rmSync(root, { recursive: true, force: true }));
+	const tmpProbe = () => `/private/tmp/codex-sandboxed-probe-${basename(root)}`;
+
+	afterAll(() => {
+		rmSync(tmpProbe(), { force: true });
+		rmSync(root, { recursive: true, force: true });
+	});
 
 	it("allows only the git state a commit needs, as literal files in the administrative directory", () => {
 		const allow = block(profile(linked), "allow file-write*");
@@ -190,6 +195,20 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			expect(deny).not.toContain(`(literal "${linked}/.env")`);
 		} finally {
 			rmSync(join(linked, ".env"), { force: true });
+		}
+	});
+
+	it("names the target of a relative symlinked .env too", () => {
+		const target = join(linked, "real.env");
+		writeFileSync(target, "SECRET=1\n");
+		symlinkSync("./real.env", join(linked, ".env"));
+		try {
+			const deny = block(profile(linked), "deny file-read*");
+			expect(deny).toContain(`(literal "${target}")`);
+			expect(deny).not.toContain(`(literal "${linked}/.env")`);
+		} finally {
+			rmSync(join(linked, ".env"), { force: true });
+			rmSync(target, { force: true });
 		}
 	});
 
@@ -329,7 +348,7 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		it("cannot write under the home directory, /private/tmp, or ~/.npm", () => {
 			expect(failure(() => sh(linked, `touch '${home}/escape'`)).status).not.toBe(0);
 			expect(failure(() => sh(linked, `mkdir -p '${home}/.npm/_npx'`)).status).not.toBe(0);
-			expect(failure(() => sh(linked, `touch '/private/tmp/codex-sandboxed-probe-${process.pid}'`)).status).not.toBe(
+			expect(failure(() => sh(linked, `touch '${tmpProbe()}'`)).status).not.toBe(
 				0,
 			);
 			expect(failure(() => sh(linked, `touch '${join(root, "tmp")}/outside-run'`)).status).not.toBe(0);
