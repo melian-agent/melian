@@ -29,3 +29,5 @@ Lens selection now fingerprints stable instruction inputs, including standards a
 Standards now retain resolved commit provenance. The pipeline trusts only readings matching the validated policy commit, and quotes flat arrays and mismatched readings. Fake-model tests cover head standards under base policy, flat inputs and equivalent commit names. The provenance decision replaces trust by source kind.
 
 The standards cap now counts rendered headings, content, separators, boundaries and the lead-in, with a 1024-section ceiling. Unions prefer the nearest rules for each file. Omitted rules record `ended` and leave the verdict not reviewed. Empty-section, long-heading and real-renderer regressions cover the bound. The rendered cap decision records the accounting, priority and status changes.
+
+The full gate found triage assertions tied to the old selection text. They now check instruction fingerprints while retaining the exact level, band, escalation and route expectations. The triage suite passes all 71 tests.

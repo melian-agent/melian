@@ -1247,7 +1247,11 @@ describe("escalation", () => {
 		const root = (await harness.root(context)).id;
 		const index = await harness.snapshot(ReviewIndex, root, context);
 		expect(index!.reviews[revision()]!.lenses).toEqual([
-			`correctness@${version()}@quick band quick-deep escalateAt P1 escalates to correctness@${version()}@careful (faux/heavy) on faux/medium`,
+			expect.stringMatching(
+				new RegExp(
+					`^correctness@${version()}@quick instructions [a-f0-9]{64} band quick-deep escalateAt P1 escalates to correctness@${version()}@careful \\(faux/heavy\\) [a-f0-9]{64} on faux/medium$`,
+				),
+			),
 		]);
 		expect((await readProvenance(harness, root, revision(), context))!.lenses).toEqual([
 			`correctness@${version()}@careful`,
@@ -1645,7 +1649,11 @@ describe("escalation", () => {
 		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
 		const index = await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context);
 		expect(index!.reviews[revision()]!.lenses).toEqual([
-			`correctness@${version()}@quick band quick-deep escalateAt P2 escalates to correctness@${version()}@careful (faux/heavy) on faux/medium`,
+			expect.stringMatching(
+				new RegExp(
+					`^correctness@${version()}@quick instructions [a-f0-9]{64} band quick-deep escalateAt P2 escalates to correctness@${version()}@careful \\(faux/heavy\\) [a-f0-9]{64} on faux/medium$`,
+				),
+			),
 		]);
 	});
 
@@ -1657,7 +1665,11 @@ describe("escalation", () => {
 		await review({ decider, config: capped });
 		const root = (await harness.root(context)).id;
 		expect((await harness.snapshot(ReviewIndex, root, context))!.reviews[revision()]!.lenses).toEqual([
-			`correctness@${version()}@quick band quick-quick escalateAt P1 capped at its ceiling on faux/medium`,
+			expect.stringMatching(
+				new RegExp(
+					`^correctness@${version()}@quick instructions [a-f0-9]{64} band quick-quick escalateAt P1 capped at its ceiling on faux/medium$`,
+				),
+			),
 		]);
 
 		scriptConversations(fake, [{ match: correctness, replies: [severe, done, done] }]);
@@ -1665,7 +1677,11 @@ describe("escalation", () => {
 
 		expect(lensRecord(second)).toMatchObject({ level: "careful" });
 		expect((await harness.snapshot(ReviewIndex, root, context))!.reviews[revision()]!.lenses).toEqual([
-			`correctness@${version()}@quick band quick-deep escalateAt P1 escalates to correctness@${version()}@careful (faux/heavy) on faux/medium`,
+			expect.stringMatching(
+				new RegExp(
+					`^correctness@${version()}@quick instructions [a-f0-9]{64} band quick-deep escalateAt P1 escalates to correctness@${version()}@careful \\(faux/heavy\\) [a-f0-9]{64} on faux/medium$`,
+				),
+			),
 		]);
 	});
 
@@ -1700,7 +1716,11 @@ describe("escalation", () => {
 		const root = (await harness.root(context)).id;
 		const index = await harness.snapshot(ReviewIndex, root, context);
 		expect(index!.reviews[revision()]!.lenses).toEqual([
-			`correctness@${version()}@deep band deep-deep escalateAt P1 on faux/heavy`,
+			expect.stringMatching(
+				new RegExp(
+					`^correctness@${version()}@deep instructions [a-f0-9]{64} band deep-deep escalateAt P1 on faux/heavy$`,
+				),
+			),
 		]);
 	});
 });
@@ -1926,7 +1946,11 @@ describe("reviews recorded before levels joined the keys", () => {
 		expect(reviewed.findings).toEqual([]);
 		const index = await harness.snapshot(ReviewIndex, root.id, context);
 		expect(index!.reviews[revision()]!.lenses).toEqual([
-			`correctness@${version()}@careful band quick-deep escalateAt P1 on faux/heavy`,
+			expect.stringMatching(
+				new RegExp(
+					`^correctness@${version()}@careful instructions [a-f0-9]{64} band quick-deep escalateAt P1 on faux/heavy$`,
+				),
+			),
 		]);
 		// The fresh run of the lens replaces the earlier run's sightings at the revision, the bare-version one included.
 		const after = await readFindings(harness, root.id, revision(), context, { producers: [atVersion] });
