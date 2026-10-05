@@ -222,6 +222,16 @@ describe("ReviewPlan.resolve", () => {
 		expect(resolved.warnings()[0]).toMatch(/^heavy, for correctness: none of .* has credentials; log in with pi/);
 	});
 
+	it("says nothing of a refused tier that no lens the review runs uses", () => {
+		const resolved = plan(
+			{ verifier: { model: opus, accept: [opus], acceptOverridden: false } },
+			{ anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" },
+			{ preferences: { verifier: { model: gpt } }, checks: [] },
+		);
+		expect(resolved.tier("verifier").status).toBe("refused");
+		expect(resolved.warnings()).toEqual([]);
+	});
+
 	it("says nothing of a tier with no credentials that no lens the review runs uses", () => {
 		const resolved = plan({ verifier: { model: gpt } }, {}, { checks: [] });
 		expect(resolved.tier("verifier").status).toBe("uncredentialed");

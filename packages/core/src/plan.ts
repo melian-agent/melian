@@ -444,7 +444,9 @@ export class ReviewPlan {
 					`${tier}${on}: ${reason}; log in with pi, set the provider's API key, or add a credential to melian.secrets.yaml`,
 				];
 			}
-			if (status === "unavailable" || status === "refused") return [`${tier}${on} fails every check: ${reason}`];
+			if (status === "unavailable" || status === "refused") {
+				return lenses === undefined ? [] : [`${tier}${on} fails every check: ${reason}`];
+			}
 			const lineage = this.lineage(tier);
 			if (lineage !== undefined) return [`${tier} runs ${lineage.model}, ${ReviewPlan.lineageText(lineage)}`];
 			const model = planned.models[0]?.model;
