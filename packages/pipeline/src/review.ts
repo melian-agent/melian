@@ -1225,7 +1225,7 @@ async function triage(
  * With `options.decider`, triage asks it one choice question per lens, `skip` or one of the lens's levels, in a
  * decision task that stores the whole distribution; without one, or when it gives no usable answer, every lens runs at
  * its default level, `careful`. Either way the level stays within the band policy sets for the files the lens reviews,
-	 * `lenses.<name>.level`, `quick` to `deep` by default. Only a floor of `skip` and complete triage input let triage skip a lens. A lens at
+ * `lenses.<name>.level`, `quick` to `deep` by default. Only a floor of `skip` and complete triage input let triage skip a lens. A lens at
  * `quick` that reports a finding at or above `triage.escalateAt`, or that a budget ended before it reported anything,
  * runs again at its next level the band allows, in a conversation of its own, and that run's record and findings stand
  * for the lens. Each lens starts on its tier's first configured model that has credentials, moves to the next when a

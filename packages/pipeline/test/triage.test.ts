@@ -904,6 +904,46 @@ describe("a decision task another call replaced", () => {
 	});
 });
 
+describe("decision task cancellation", () => {
+	it("forwards a mid-decision task abort to the decider's signal", async () => {
+		let received: AbortSignal | undefined;
+		let observedAbort = false;
+		const decide = vi.fn((_request: Parameters<Decider["decide"]>[0], signal: AbortSignal | undefined) => {
+			received = signal;
+			return new Promise<never>((_, reject) => {
+				signal?.addEventListener(
+					"abort",
+					() => {
+						observedAbort = true;
+						reject(signal.reason);
+					},
+					{ once: true },
+				);
+			});
+		});
+		const decider: Decider = { name: "cancellable", calibrated: false, decide };
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		const reviewing = review({ decider });
+		await vi.waitFor(() => expect(decide).toHaveBeenCalledOnce());
+		expect(received?.aborted).toBe(false);
+		const root = await harness.root(context);
+		const pending = await readRecordedDecision(harness, root.id, revision(), "triage", context);
+
+		await harness.abortTask(pending!.task as TaskId, context);
+		const reviewed = await reviewing;
+
+		expect(observedAbort).toBe(true);
+		expect(received?.aborted).toBe(true);
+		expect((await harness.waitForTask(pending!.task as TaskId, context)).state.outcome.status).toBe("aborted");
+		expect(await readRecordedDecision(harness, root.id, revision(), "triage", context)).toEqual({
+			task: pending!.task,
+		});
+		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
+		expect(lensRecord(reviewed)!.reason).toContain("the decision task ended aborted");
+	});
+});
+
 describe("a decision resumed with another decider", () => {
 	it("leaves no answer and asks the original decider after another reopen", async () => {
 		const dir = mkdtempSync(join(tmpdir(), "melian-triage-decider-"));
