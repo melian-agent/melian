@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, truncateSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, truncateSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Adjudication, ComparisonError, defaultConfig, ExternalFinding, Finding } from "@melian-agent/core";
@@ -252,6 +252,42 @@ describe("FileImporter", () => {
 			{ kind: "file", path: "reviews/claude.json", position: 0, ref: "1" },
 		]);
 	});
+
+	it.each(["real", "symlinked"])(
+		"keeps the source and finding IDs through a symlinked directory with a %s repository root",
+		async (kind) => {
+			const root = repo();
+			const linked = join(directory, "repo-link");
+			symlinkSync(root, linked, "dir");
+			writeFileSync(
+				join(root, "reviews/claude.json"),
+				JSON.stringify({
+					reviewer: { name: "claude-code" },
+					findings: [
+						{ ref: "1", file: "src/run.ts", line: 12, title: "eval", body: "eval runs input" },
+						{ file: "src/run.ts", line: 40, title: "eval", body: "eval runs other input" },
+					],
+				}),
+			);
+
+			const throughLink = await FileImporter.open("claude.json", {
+				cwd: join(linked, "reviews"),
+				repoRoot: kind === "real" ? root : linked,
+			});
+			const first = await throughLink.import();
+			const throughReal = await FileImporter.open("claude.json", { cwd: join(root, "reviews"), repoRoot: root });
+			const second = await throughReal.import();
+
+			expect(throughLink.source).toBe("file:reviews/claude.json");
+			expect(throughReal.source).toBe(throughLink.source);
+			expect(first.findings.map((finding) => finding.source)).toEqual([
+				{ kind: "file", path: "reviews/claude.json", position: 0, ref: "1" },
+				{ kind: "file", path: "reviews/claude.json", position: 1 },
+			]);
+			expect(first.findings).toHaveLength(2);
+			expect(second.findings.map((finding) => finding.id)).toEqual(first.findings.map((finding) => finding.id));
+		},
+	);
 
 	it("reads Codex's review output, and names a file outside the repository by its absolute path", async () => {
 		const root = repo();
