@@ -514,7 +514,23 @@ function parseLayer(text: string, site: Site, directory: string): MelianYaml {
 	checkPatterns(site, value as MelianYaml);
 	checkRequire(site, value as MelianYaml);
 	if (site.preference === true) checkPreference(site, value as MelianYaml);
+	else if (site.file !== melianPaths.config) checkNested(site, value as MelianYaml);
 	return anchorPaths(site, directory, value as MelianYaml);
+}
+
+// The review plan reads routes from the root's configuration alone until it plans per path, so a nested file's route
+// policy would never apply: a stricter nested policy would fail open. Refusing it says so where it is written.
+function checkNested(site: Site, layer: MelianYaml): void {
+	for (const [tier, route] of Object.entries(layer.models ?? {})) {
+		const key = routePolicyKeys.find((each) => route?.[each] !== undefined);
+		if (key === undefined) continue;
+		throw configError(
+			"invalidValue",
+			site,
+			`"models.${tier}.${key}" is route policy, which only the root melian.yaml sets until Melian plans routes per path`,
+			{ key: `models.${tier}.${key}` },
+		);
+	}
 }
 
 // A route's policy keys decide whether a check ran inside policy, so a preference file setting one could wave its own
