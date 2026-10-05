@@ -106,7 +106,7 @@ type StoredRevision = {
 // The ledger shows this many rounds, newest last; older ones fall off so the stored history stays bounded.
 const maxLedgerRounds = 50;
 
-type PublishedState = {
+type StoredPublishedState = {
 	order: string[];
 	revisions: Record<string, StoredRevision>;
 	ledgerRounds?: (LedgerRound | LedgerHistory)[];
@@ -138,19 +138,15 @@ function rekeyReplies(record: StoredRevision): StoredRevision {
 	return { ...record, replies };
 }
 
-// Keeps its latest value and forks as it stands: a post is a fact about the pull request, and a fork that forgot one
-// would post it twice.
-export const PublishedDocument = defineDoc<PublishedState>({
-	kind: "melian.published",
-	version: 5,
-	scope: "conversation",
-	history: "latest",
-	fork: "current",
-	initial: () => ({ order: [], revisions: {} }),
-	// Version 2 made a finding's evidence a list of locations, so a round left pending before it renders. Version 3 keys
-	// each reply by `replyKey`. Version 4 adds ledger snapshots; version 5 retains only one-line older rounds.
-	migrate: (value, from) => {
-		const state = value as PublishedState;
+class PublishedState {
+	readonly stored: StoredPublishedState;
+
+	constructor(stored: StoredPublishedState) {
+		this.stored = stored;
+	}
+
+	static upgrade(value: unknown, from: number): StoredPublishedState {
+		const state = value as StoredPublishedState;
 		const revisions = Object.fromEntries(
 			Object.entries(state.revisions).map(([head, record]): [string, StoredRevision] => {
 				const { pending } = record;
@@ -164,8 +160,30 @@ export const PublishedDocument = defineDoc<PublishedState>({
 				? round
 				: { base: round.base, head: round.head, round: round.round, status: round.verdict.status },
 		);
-		return { ...state, revisions, ...(ledgerRounds === undefined ? {} : { ledgerRounds }) };
-	},
+		return new PublishedState({
+			...state,
+			revisions,
+			...(ledgerRounds === undefined ? {} : { ledgerRounds }),
+		}).toJSON();
+	}
+
+	toJSON(): StoredPublishedState {
+		return this.stored;
+	}
+}
+
+// Keeps its latest value and forks as it stands: a post is a fact about the pull request, and a fork that forgot one
+// would post it twice.
+export const PublishedDocument = defineDoc<StoredPublishedState>({
+	kind: "melian.published",
+	version: 5,
+	scope: "conversation",
+	history: "latest",
+	fork: "current",
+	initial: () => new PublishedState({ order: [], revisions: {} }).toJSON(),
+	// Version 2 made a finding's evidence a list of locations, so a round left pending before it renders. Version 3 keys
+	// each reply by `replyKey`. Version 4 adds ledger snapshots; version 5 retains only one-line older rounds.
+	migrate: (value, from) => PublishedState.upgrade(value, from),
 });
 
 export const LedgerDocument = defineDoc<{ comment?: PostedLedger }>({
@@ -215,13 +233,13 @@ async function postedVerdictOf(
 }
 
 // Every reply recorded at any head, by `replyKey`.
-function repliedKeys(state: PublishedState): Set<string> {
+function repliedKeys(state: StoredPublishedState): Set<string> {
 	return new Set(Object.values(state.revisions).flatMap(({ replies }) => Object.keys(replies)));
 }
 
 // Resolutions an earlier head decided but never replied to, because a later push arrived first. They are still owed.
 // The caller carries each as its reply would read now, and skips one whose reply is recorded already.
-function unanswered(state: PublishedState, head: string): Record<string, PublishedEntry & { thread: string }> {
+function unanswered(state: StoredPublishedState, head: string): Record<string, PublishedEntry & { thread: string }> {
 	const answered = repliedKeys(state);
 	const owed: Record<string, PublishedEntry & { thread: string }> = {};
 	for (const each of state.order) {
@@ -239,7 +257,7 @@ function unanswered(state: PublishedState, head: string): Record<string, Publish
 // them, and each is resolved again at `head` with the dismissal it has now. A finding's thread is the one the newest
 // head naming it holds; a finding still open there, or answered without a dismissal, is a round's to answer.
 function redismissed(
-	state: PublishedState,
+	state: StoredPublishedState,
 	head: string,
 	dismissals: Readonly<Record<string, FindingDismissal>>,
 ): Record<string, PublishedEntry> {
@@ -266,7 +284,7 @@ function redismissed(
 // The round to post for `verdict` at `head`: against the head's own open findings if a review of it was posted, else
 // against those of the latest head that has one, with any resolution an earlier head still owes.
 function planRound(
-	state: PublishedState,
+	state: StoredPublishedState,
 	head: string,
 	revision: string,
 	verdict: Verdict,
