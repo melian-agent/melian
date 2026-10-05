@@ -663,6 +663,23 @@ function checkBands(config: MelianConfig, layers: readonly { site: Site; layer: 
 	}
 }
 
+// A route that refuses every model outside accept, and accepts none, would fail every check on its tier whatever the
+// maintainer holds, so it is a mistake in the file rather than a policy.
+function checkRefusals(models: MelianConfig["models"], layers: readonly { site: Site; layer: MelianYaml }[]): void {
+	for (const tier of modelTiers) {
+		const route = models[tier];
+		if (route?.acceptOverridden !== false || route.model !== undefined || (route.accept?.length ?? 0) > 0) continue;
+		const site = layers.find(({ layer }) => layer.models?.[tier]?.acceptOverridden !== undefined)!.site;
+		const key = `models.${tier}.acceptOverridden`;
+		throw configError(
+			"invalidValue",
+			site,
+			`"${key}" is false, but models.${tier} names no model and no accept, so no model could run; set models.${tier}.model or models.${tier}.accept`,
+			{ key },
+		);
+	}
+}
+
 /**
  * The effective configuration for each path a check visits, as {@link configLookup} opens it. Layering depends only
  * on the directory holding the path, so each directory is loaded once, as a directory: a head that turns a directory
@@ -793,6 +810,7 @@ async function loadLayers(
 			(merged, { layer }) => merge(merged, { models: layer.models ?? {}, lenses: layer.lenses ?? {} }),
 			merge({}, { models: {}, lenses: {} }),
 		);
+	checkRefusals(committed.models as MelianConfig["models"], layers.slice(preferences));
 	const lensTiers: Record<string, LensTier> = {};
 	for (const [name, settings] of Object.entries(committed.lenses as MelianConfig["lenses"])) {
 		if (settings.tier !== undefined) lensTiers[name] = settings.tier;

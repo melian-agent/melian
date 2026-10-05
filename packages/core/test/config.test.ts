@@ -525,6 +525,17 @@ describe("the user-level preference file", () => {
 		expect(error.message).toContain("only a committed melian.yaml sets");
 	});
 
+	it("refuses a committed route that refuses overrides and accepts nothing", async () => {
+		writeFiles(repo, { "melian.yaml": lines("models:", "  light:", "    acceptOverridden: false") });
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", file: "melian.yaml", key: "models.light.acceptOverridden" });
+		expect(error.message).toContain("set models.light.model or models.light.accept");
+		writeFiles(repo, {
+			"melian.yaml": lines("models:", "  light:", "    accept: []", "    acceptOverridden: false"),
+		});
+		expect(await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"))).toMatchObject({ code: "invalidValue" });
+	});
+
 	it("refuses a policy key in melian.local.yaml too", async () => {
 		writeFiles(repo, { "melian.local.yaml": lines("models:", "  heavy:", "    acceptOverridden: true") });
 		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
