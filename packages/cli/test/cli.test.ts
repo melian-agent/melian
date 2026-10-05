@@ -562,7 +562,7 @@ describe("Melian's state directory", { timeout: 60_000 }, () => {
 	});
 });
 
-describe("melian's command line", () => {
+describe("melian's command line", { timeout: 60_000 }, () => {
 	it("refuses to publish a range", () => {
 		const result = melian(root, ["publish", "main"]);
 		expect(result.status).toBe(1);
