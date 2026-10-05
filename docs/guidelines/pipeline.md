@@ -230,7 +230,7 @@ A task a crash left behind may be for a target that is gone. Problem: the waitin
 
 ## Ledger records and summaries
 
-Version 4 of `VerdictDocument` adds optional run details and walkthroughs under each revision key. Version 5 stores fallback notes apart from summaries and migrates old placeholders to fixed notes. Its migration preserves version 3 records; version 2 still upgrades evidence through `Verdict.upgrade`. An older verdict has no summary or run details and stays publishable.
+Version 4 of `VerdictDocument` adds optional run details and walkthroughs under each revision key. Version 5 stores fallback notes apart from summaries and migrates old placeholders to fixed notes. Its migration preserves version 3 records; version 2 still upgrades evidence through `Verdict.upgrade`. An older verdict has no summary or run details and stays publishable. `walkthroughAttempts`, optional and added without a version bump, counts the summariser tasks started per revision since its last success. A failed walkthrough retries on the next review until two attempts have failed, since each attempt spends one light-model call over up to about 100k characters; after that the stored note stands until `--rerun`, which asks again and restarts the count. A missing light model or credential costs no call and never counts.
 
 The review records its manifest, policy source, selected lenses and levels, routing order, budgets and standards paths, and for each finished lens the model it finished on and, when it left the committed route, the lineage the plan recorded. A successful lens carries the models it used, tokens and cost from Pi's durable usage record. These details are a projection for publication; they do not decide the verdict.
 

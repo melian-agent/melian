@@ -119,6 +119,7 @@ const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 				if (result !== undefined && settled.status === "done") {
 					document.walkthroughs = { ...document.walkthroughs, [task.input.revision]: structuredClone(result) };
 					if (document.walkthroughNotes !== undefined) delete document.walkthroughNotes[task.input.revision];
+					if (document.walkthroughAttempts !== undefined) delete document.walkthroughAttempts[task.input.revision];
 				} else {
 					if (document.walkthroughs !== undefined) delete document.walkthroughs[task.input.revision];
 					document.walkthroughNotes = {
@@ -193,6 +194,9 @@ class WalkthroughPrompt {
 	}
 }
 
+// Each attempt spends one light-model call over up to about 100k characters, so a persistent failure stops here.
+const maxWalkthroughAttempts = 2;
+
 /** Stores a pull-request walkthrough, retrying failures or an explicit rerun without publication credentials. */
 export async function summariseReview(options: {
 	readonly harness: Harness;
@@ -242,11 +246,20 @@ export async function summariseReview(options: {
 			}, context);
 			return;
 		}
+		const attempts = (await harness.snapshot(VerdictDocument, conversation.id, context))?.walkthroughAttempts?.[
+			revision
+		];
+		if (!options.rerun && (attempts ?? 0) >= maxWalkthroughAttempts) return;
 		const prompt = await WalkthroughPrompt.from(changeset).render();
 		const task = await conversation.commit(async (tx) => {
 			const index = await tx.doc(SummaryIndex, conversation.id);
 			const known = index.tasks[revision];
 			if (await attachable(tx, known, [...undecided, "failed", "completed"])) return known as TaskId<string>;
+			const document = await tx.doc(VerdictDocument, conversation.id);
+			document.walkthroughAttempts = {
+				...document.walkthroughAttempts,
+				[revision]: options.rerun ? 1 : (document.walkthroughAttempts?.[revision] ?? 0) + 1,
+			};
 			const created = await tx.createTask(
 				SummaryTask,
 				{ root: conversation.id, revision, prompt, model, paths: changeset.revision.files.map(({ path }) => path) },

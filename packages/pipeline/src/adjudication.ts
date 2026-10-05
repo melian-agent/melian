@@ -98,6 +98,8 @@ export const VerdictDocument = defineDoc<{
 	details?: Record<string, PublicationDetails>;
 	walkthroughs?: Record<string, Walkthrough>;
 	walkthroughNotes?: Record<string, string>;
+	// Summariser tasks started per revision since its last success; two failures stop the retries until a rerun.
+	walkthroughAttempts?: Record<string, number>;
 }>({
 	kind: "melian.verdicts",
 	version: 5,

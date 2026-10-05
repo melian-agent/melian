@@ -121,7 +121,7 @@ describe("walkthrough summaries", () => {
 			"Changes a value.",
 		);
 	});
-	it("stores fixed notes for provider errors and no tool call, then retries the same revision", async () => {
+	it("stores fixed notes for provider errors and no tool call, then stops after two attempts", async () => {
 		const revision = revisionKey(changeset.revision);
 		for (const reply of [
 			fauxAssistantMessage("", { stopReason: "error", errorMessage: "private provider detail" }),
@@ -138,9 +138,19 @@ describe("walkthrough summaries", () => {
 		const captured = scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
 		await summarise();
 		await summarise();
-		expect(captured["You write Melian's walkthrough"]).toHaveLength(1);
+		expect(captured["You write Melian's walkthrough"]).toHaveLength(0);
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success("Rerun summary.")] }]);
 		expect((await summarise({ rerun: true }))?.walkthroughs?.[revision]?.summary).toBe("Rerun summary.");
+	});
+	it("asks a persistently failing summariser twice across three reviews, and again on a rerun", async () => {
+		const fail = fauxAssistantMessage("", { stopReason: "error", errorMessage: "down" });
+		const captured = scriptConversations(models, [
+			{ match: "You write Melian's walkthrough", replies: [fail, fail, fail, fail] },
+		]);
+		for (let review = 0; review < 3; review++) await summarise();
+		expect(captured["You write Melian's walkthrough"]).toHaveLength(2);
+		await summarise({ rerun: true });
+		expect(captured["You write Melian's walkthrough"]).toHaveLength(3);
 	});
 	it("catches credential, prompt and missing-extension failures without failing review", async () => {
 		const revision = revisionKey(changeset.revision);
