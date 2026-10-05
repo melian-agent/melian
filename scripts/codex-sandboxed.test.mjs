@@ -82,7 +82,16 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		const allow = block(profile(linked), "allow file-write*");
 		for (const path of ["objects", "refs", "logs"]) expect(allow).toContain(`(subpath "${main}/.git/${path}")`);
 		expect(allow).toContain(`(literal "${main}/.git/packed-refs")`);
-		for (const file of ["HEAD", "index", "index.lock", "ORIG_HEAD", "MERGE_MSG", "COMMIT_EDITMSG", "FETCH_HEAD", "FETCH_HEAD.lock"]) {
+		for (const file of [
+			"HEAD",
+			"index",
+			"index.lock",
+			"ORIG_HEAD",
+			"MERGE_MSG",
+			"COMMIT_EDITMSG",
+			"FETCH_HEAD",
+			"FETCH_HEAD.lock",
+		]) {
 			expect(allow).toContain(`(literal "${admin}/${file}")`);
 		}
 		for (const file of ["gc.pid", "gc.pid.lock", "shallow", "shallow.lock"]) {
@@ -181,7 +190,15 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		expect(deny).toContain("a\\+b \\(c\\)\\.d");
 		const codex = [`${home}/.codex/cache`, `${home}/.codex/sessions`, `${home}/.codex/attachments`];
 		const common = `${main}/.git`;
-		for (const path of [linked, run, `${common}/objects`, `${common}/refs`, `${common}/logs`, `${admin}/logs`, ...codex]) {
+		for (const path of [
+			linked,
+			run,
+			`${common}/objects`,
+			`${common}/refs`,
+			`${common}/logs`,
+			`${admin}/logs`,
+			...codex,
+		]) {
 			expect(deny).toContain(dotGit(path));
 		}
 		for (const path of [linked, run, `${common}/objects`, ...codex]) expect(deny).toContain(head(path));
@@ -360,7 +377,11 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 				`mkdir -p '${home}/.codex/cache/x/.git'`,
 			];
 			for (const command of planted) expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
-			for (const path of [join(run, "x", ".git"), join(run, "x", "HEAD"), join(main, ".git", "refs", "x", "objects")])
+			for (const path of [
+				join(run, "x", ".git"),
+				join(run, "x", "HEAD"),
+				join(main, ".git", "refs", "x", "objects"),
+			])
 				expect(existsSync(path)).toBe(false);
 			sh(linked, "echo z > h && git add h && git commit -q -m after-plant");
 			expect(git(linked, "log", "-1", "--format=%s").toString().trim()).toBe("after-plant");
