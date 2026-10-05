@@ -38,7 +38,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, readDecision, readVerdict } from "../src/adjudication.ts";
 import { clearSightings } from "../src/findings.ts";
-import { reviewFiles } from "../src/lens-tools.ts";
+import { lensReadTools, reviewFiles } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { startVerification, type VerificationInput, VerificationTask } from "../src/verification.ts";
 import { verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
@@ -1163,6 +1163,44 @@ describe("verification ownership and budgets", () => {
 			release.resolve();
 			await firstFinished;
 		}
+	});
+	it("counts report_verdict before a read against the tools budget", async () => {
+		const stored = await input();
+		const read = vi.spyOn(lensReadTools.read_file, "execute");
+		const requests = scriptConversations(fake, [
+			{
+				match: verifierMarker,
+				replies: [
+					(messages) => scriptVerifier(messages),
+					fauxAssistantMessage(fauxToolCall("read_file", { path: "src/user.ts" }), { stopReason: "toolUse" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.lenses;
+		const id = (await startVerification(harness, stored, selection, false, context))!;
+		expect((await harness.waitForTask(id, context)).state.outcome).toMatchObject({
+			status: "completed",
+			result: {
+				[stored.candidates[0]!.key]: { status: "ended", budgetEnded: { budget: "tools", limit: 1, tools: 1 } },
+			},
+		});
+		expect(requests[verifierMarker]).toHaveLength(2);
+		const reportResults = requests[verifierMarker]![1]!.filter(
+			(message) => message.role === "toolResult" && message.toolName === "report_verdict",
+		);
+		expect(reportResults).toHaveLength(1);
+		expect(textOf(reportResults[0]!)).toContain("recorded verdict for c1");
+		expect(read).toHaveBeenCalledTimes(1);
+		await expect(read.mock.results[0]!.value).resolves.toMatchObject({
+			content: [expect.objectContaining({ text: "[not run]" }), expect.anything()],
+			control: { handoff: expect.any(String) },
+		});
+		expect((await readFindings(harness, root.id, revision, context))[0]!.properties.verification?.verdict).toBe(
+			"confirmed",
+		);
 	});
 	it("refuses report_verdict after the conversation's tools budget ended", async () => {
 		const stored = await input();
