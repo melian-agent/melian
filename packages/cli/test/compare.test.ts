@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -300,6 +300,19 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		const human = melian(repo, ["compare", "#7", "--from", "github:octocat"], env);
 		expect(human.stdout).toContain("Imported 1 from github:octocat, skipping 1 review body without a thread.");
 		expect(human.stdout).toMatch(/octocat {2}src\/user\.ts:20 {2}Should this log the name too\?/);
+	});
+
+	it("ignores the recording without scripted mode, and fails to find a GitHub token instead of answering from it", () => {
+		const { repo, env } = pullRequest();
+		const { MELIAN_TEST_SCRIPT: _script, ...unscripted } = env;
+		// A PATH with git alone keeps `gh` from supplying a token from the developer's login.
+		const bin = scratch("melian-compare-path-");
+		symlinkSync(execFileSync("which", ["git"], { encoding: "utf8" }).trim(), join(bin, "git"));
+
+		const result = melian(repo, ["review", "#7"], { ...unscripted, GITHUB_TOKEN: "", GH_TOKEN: "", PATH: bin });
+
+		expect(result).toMatchObject({ status: 2, stdout: "" });
+		expect(result.stderr).toContain("no GitHub token");
 	});
 
 	it("refuses a pull request that moved since Melian's review, and records nothing from any source", () => {
