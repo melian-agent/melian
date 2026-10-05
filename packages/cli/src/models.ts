@@ -30,12 +30,7 @@ async function readScript(path: string): Promise<LensScript> {
 	return script as LensScript;
 }
 
-/**
- * The models a review runs on and its plan, resolved from the routes `loaded` holds, the catalogue, and the credentials
- * present, the named `credentials` of the secrets files first. `model` routes every lens tier to one model, whatever
- * the configuration routes; under the script variable, every lens tier runs on the fake. `checks` are the checks the
- * review's tier names, which say which lenses it runs.
- */
+// Under the script variable every lens tier runs on the fake, routed as --model would route it.
 export async function reviewModels(
 	env: NodeJS.ProcessEnv,
 	loaded: LoadedConfig,
