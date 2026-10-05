@@ -78,6 +78,8 @@ export {
 	type ConfigErrorCode,
 	FindingError,
 	type FindingErrorCode,
+	LedgerRefusal,
+	type LedgerRefusalCode,
 	LensError,
 	type LensErrorCode,
 	ModelRoutingError,

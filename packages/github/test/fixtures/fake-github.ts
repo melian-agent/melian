@@ -40,6 +40,8 @@ export type FakeState = {
 	failReviews?: boolean;
 	// Set to make every reply fail, as GitHub does when it has an outage.
 	failReplies?: boolean;
+	// Set to make every ledger write fail, as GitHub does when it has an outage.
+	failLedger?: boolean;
 	// Set to make /user refuse, as it does for an installation token.
 	failUser?: boolean;
 	calls: Call[];
@@ -144,6 +146,7 @@ export function fakeGitHub(
 		const issues = `${repoPath}/issues/${state.pull.number}/comments`;
 		if (method === "GET" && path === issues) return json(state.ledgers);
 		if (method === "POST" && path === issues) {
+			if (state.failLedger) return json({ message: "Server Error" }, 500);
 			const id = state.nextId++;
 			const comment = {
 				id,

@@ -1,6 +1,7 @@
 import {
 	type ClosedFinding,
 	type LedgerDraft,
+	LedgerRefusal,
 	type PostedLedger,
 	type PostedReview,
 	type PublishedMarkers,
@@ -253,8 +254,8 @@ export class GitHubProvider implements ReviewProvider {
 				comment.user?.login !== author ||
 				(recorded.author !== undefined && comment.user?.login !== recorded.author)
 			)
-				throw new GitHubError(
-					"failed",
+				throw new LedgerRefusal(
+					"foreignPublisher",
 					"the recorded ledger belongs to another publisher or its author is unknown; restore the publisher before editing it",
 				);
 			return this.readLedger(comment, secret);
@@ -287,14 +288,14 @@ export class GitHubProvider implements ReviewProvider {
 		const body = comment.body ?? "";
 		const found = parseMarker(firstLine(body));
 		if (found?.kind !== "ledger" || !verifyMarker(found, secret))
-			throw new GitHubError(
-				"failed",
+			throw new LedgerRefusal(
+				"unverifiable",
 				"the pull request has a ledger Melian cannot verify; restore the changeset's storage, or delete the orphaned ledger comment by hand before publishing again",
 			);
 		const stamp = LedgerStamp.parse(body);
 		if (stamp === undefined)
-			throw new GitHubError(
-				"failed",
+			throw new LedgerRefusal(
+				"damaged",
 				"the signed ledger's stamp or visible body is missing or damaged; delete the ledger comment by hand before publishing again",
 			);
 		return { id: String(comment.id), url: comment.html_url, stamp, author: comment.user!.login };

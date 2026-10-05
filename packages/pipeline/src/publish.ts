@@ -5,6 +5,7 @@ import {
 	Finding,
 	type FindingDismissal,
 	type LedgerHistory,
+	LedgerRefusal,
 	type LedgerRound,
 	type Placement,
 	type PostedLedger,
@@ -695,7 +696,7 @@ function publishTask(provider: ReviewProvider) {
 					// An abandoned round leaves the head without a review, so its status says so: not reviewed, with why. The
 					// status is best effort here, since the provider has just refused a post.
 					let shown: ReviewStatus | undefined;
-					if (writingLedger) {
+					if (writingLedger && error instanceof LedgerRefusal) {
 						try {
 							await postStatus({
 								state: "error",

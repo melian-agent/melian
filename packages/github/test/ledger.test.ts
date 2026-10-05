@@ -553,6 +553,33 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		).toBeLessThan(state.calls.findIndex(({ method, path }) => method === "GET" && path.includes("/issues/")));
 	});
 
+	it("leaves the verdict's status alone when a ledger write fails for another reason", async () => {
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		state.failLedger = true;
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test-token",
+			fetch: fakeGitHub(state),
+		});
+		harness = await openPublishHarness(createMemoryStorage(), fake, provider);
+		const first = await reviewScenario(repo, harness, fake, lensScript(unsafeManager));
+		await first.review;
+		moveTo(state, first.changeset);
+		await expect(
+			publishReview({
+				harness,
+				provider,
+				changeset: first.changeset,
+				pullRequest: await provider.pullRequest(7),
+				base: first.changeset.revision.base,
+			}),
+		).rejects.toThrow("create the review ledger");
+		expect(state.statuses.map(({ state: each }) => each)).toEqual(["failure"]);
+		expect(state.statuses.some(({ description }) => description.includes("ledger"))).toBe(false);
+	});
+
 	it.each(["marker", "stamp", "body"])(
 		"fetches the recorded id and refuses a damaged %s without duplicating the ledger",
 		async (damaged) => {
