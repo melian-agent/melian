@@ -13,7 +13,6 @@ case $codex_home in
   *) echo "codex-sandboxed: CODEX_HOME must be an absolute path: $codex_home" >&2; exit 64 ;;
 esac
 
-# The Codex subdirectories the profile allows, the deny covers, and the wrapper creates.
 codex_names=(sessions log cache tmp ipc thread-writer-locks mcp-oauth-locks attachments)
 
 # Prints the real path of $1, resolving symlinks in its directory and in its last component;
