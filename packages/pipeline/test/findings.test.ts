@@ -349,6 +349,28 @@ describe("the findings document", () => {
 		const fromStyle = (severity: FindingInput["severity"]) =>
 			Finding.create({ ...input, severity, resolution: "advisory", source: style });
 
+		it("holds a versionless producer to its IDs across every version of its check", async () => {
+			const { harness, root } = await open(createMemoryStorage());
+			const versionless = { check: security.check };
+			const older = Finding.create({ ...input, rule: "older-eval", source: versionless });
+			await root.commit(async (tx) => {
+				await upsertFinding(tx, root.id, older, "rev1");
+				await upsertFinding(tx, root.id, evalFinding, "rev1");
+			}, context);
+
+			for (const finding of [older, evalFinding]) {
+				const read = await readFindings(harness, root.id, "rev1", context, {
+					producers: [{ ...versionless, ids: [finding.properties.id] }],
+				});
+				expect(read).toEqual([seen(finding)]);
+			}
+			expect(
+				await readFindings(harness, root.id, "rev1", context, {
+					producers: [{ ...versionless, ids: [] }, security],
+				}),
+			).toEqual([seen(evalFinding)]);
+		});
+
 		it("merges two lenses' sightings of one ID at one head, the higher severity winning", async () => {
 			const { harness, root } = await open(createMemoryStorage());
 			await root.commit(async (tx) => {
@@ -684,13 +706,31 @@ describe("documents stored before evidence became a list", () => {
 			};
 			const provider: ReviewProvider = {
 				name: "fake",
+				findLedger: async () => undefined,
+				writeLedger: async () => ({
+					id: "ledger",
+					url: "https://example.test/ledger",
+					stamp: {
+						version: 1,
+						base,
+						head,
+						round: 1,
+						verdict: "0".repeat(16),
+						counts: { open: 0, blocking: 0, dismissed: 0 },
+						lenses: [],
+						plan: null,
+						projection: "0".repeat(16),
+					},
+				}),
 				pullRequest: async () => pullRequest,
 				postReview: async (draft) => {
 					posted.push(draft);
 					return { id: String(200 + posted.length), threads: {} };
 				},
 				replyResolved: async () => undefined,
+				resolveThread: async () => false,
 				setStatus: async () => undefined,
+				getStatus: async () => undefined,
 				findPublished: async () => ({ threads: {}, replies: {} }),
 			};
 			return { provider, posted, pullRequest };

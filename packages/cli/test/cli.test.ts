@@ -12,9 +12,10 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Rendering, type StoredVerdict, Verdict } from "@melian-agent/core";
+import { type Decider, type DecisionRequest, Rendering, type StoredVerdict, Verdict } from "@melian-agent/core";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { review as reviewIn } from "../src/commands.ts";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const bin = join(root, "packages/cli/bin/melian.js");
@@ -111,6 +112,38 @@ function staticCheckout(added: string) {
 }
 
 describe("melian review and findings", { timeout: 60_000 }, () => {
+	it("triages through the decider the host hands it, and records the decision the lenses ran under", async () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+		const requests: DecisionRequest[] = [];
+		const decider: Decider = {
+			name: "test-decider",
+			calibrated: false,
+			decide: async (request) => {
+				requests.push(request);
+				return {
+					answers: request.questions.map(({ id }) => ({ question: id, distribution: { quick: 1 } })),
+				};
+			},
+		};
+		const out: string[] = [];
+		const io = {
+			cwd: repo,
+			env: { ...process.env, ...gitEnv, NO_COLOR: "1", XDG_CONFIG_HOME: noUserFiles, ...env },
+			stdout: (text: string) => void out.push(text),
+			stderr: () => undefined,
+			color: false,
+			decide: async () => ({ decider, model: "test-model" }),
+		};
+
+		await reviewIn(io, "main", { rerun: false });
+
+		expect(requests).toHaveLength(1);
+		expect(requests[0]!.questionSet.name).toBe("triage");
+		expect(requests[0]!.questions.map(({ id }) => id).sort()).toEqual([...builtinLenses].sort());
+		const stored = melian(repo, ["findings", "main", "--json"], env);
+		expect(stored.stdout.match(/"level": "quick"/g)).toHaveLength(builtinLenses.length);
+	});
+
 	it("exits 0 for a review that passed, and prints the terminal rendering of its verdict", () => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
 
@@ -123,6 +156,23 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(verdict.status).toBe("passed");
 		expect(review.stdout).toBe(verdict.render(new Rendering({ ids: true })));
 		expect(review.stdout).toMatch(/^Verdict: passed\n/);
+	});
+
+	it("refuses a decision provider it has no adapter for, saying how to triage without one (issue #24)", () => {
+		const { repo, env } = goldenCheckout(
+			goldens["clean-rename"]!,
+			undefined,
+			`${guardrailsOnly}decisions:\n  provider: clef\n`,
+		);
+
+		const review = melian(repo, ["review", "main"], env);
+
+		expect(review.status).toBe(2);
+		expect(review.stderr).toBe(
+			"melian: melian.yaml sets decisions.provider to clef, and Melian has no adapter for a decision provider until milestone 4; remove the key, and triage runs on the LLM fallback\n",
+		);
+		expect(review.stdout).toBe("");
+		expect(existsSync(join(repo, ".git/melian"))).toBe(false);
 	});
 
 	it("records each lens the scripted model ran off the committed route, and says so before the verdict", () => {
@@ -151,12 +201,10 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		});
 	});
 
-	// No lens reviews the change, so the review calls no model, while the plan still routes heavy to the named
-	// credential's provider and the review unlocks it before it starts.
 	const unreviewedLenses = builtinLenses.map((name) => `  ${name}: { paths: ["nothing/**"] }`).join("\n");
 	const namedPolicy = `${guardrailsOnly}lenses:\n${unreviewedLenses}\nmodels:\n  heavy:\n    model: openai/gpt-5.5\n`;
 
-	it("runs a named credential's command before the review, and prints no credential", () => {
+	it("does not run a named credential's command when no lens covers the change", () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, namedPolicy);
 		const runs = join(repo, ".git", "runs");
 		const xdg = userDirectory(
@@ -171,11 +219,11 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const review = melian(repo, ["review", "main"], xdg);
 
 		expect(review.status).toBe(0);
-		expect(readFileSync(runs, "utf8")).toBe("run\n");
+		expect(existsSync(runs)).toBe(false);
 		for (const output of [review.stdout, review.stderr]) expect(output).not.toMatch(/SENTINEL/);
 	});
 
-	it("stops a review whose named credential's command fails, naming the credential, and prints none of its output", () => {
+	it("ignores an unused failing credential command and prints none of its output", () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, namedPolicy);
 		const xdg = userDirectory(
 			'credentials:\n  vault: { provider: openai, command: "echo sk-COMMAND-SENTINEL; exit 3" }\n',
@@ -183,11 +231,9 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 
 		const review = melian(repo, ["review", "main"], xdg);
 
-		expect(review.status).toBe(2);
-		expect(review.stderr).toBe(
-			`melian: credential vault in ${join(xdg.XDG_CONFIG_HOME, "melian/secrets.yaml")}: its command failed (3)\n`,
-		);
-		expect(review.stdout).toBe("");
+		expect(review.status).toBe(0);
+		expect(review.stderr).toBe("");
+		expect(review.stdout).not.toContain("SENTINEL");
 	});
 
 	it("layers the user's own config.yaml over melian.yaml for a range on the checked-out commit", () => {
@@ -236,7 +282,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.stderr).toContain("melian: Plan: heavy, for ");
 	});
 
-	it("exits 1 for a blocking finding, and findings prints what review printed", () => {
+	it("exits 1 for a blocking finding, and findings adds its agent prompt", () => {
 		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!);
 
 		const review = melian(repo, ["review", "main"], env);
@@ -244,7 +290,17 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.status).toBe(1);
 		expect(review.stdout).toMatch(/^Verdict: findings, blocking\n/);
 		expect(review.stdout).toContain("null-dereference");
-		expect(melian(repo, ["findings", "main"], env)).toMatchObject({ status: 0, stdout: review.stdout });
+		const storedVerdict = Verdict.from(
+			JSON.parse(melian(repo, ["findings", "main", "--json"], env).stdout) as StoredVerdict,
+		);
+		const nonce = (text: string) => text.replace(/quoted-[0-9a-f]{24}/g, "quoted-NONCE");
+		const found = melian(repo, ["findings", "main"], env);
+		expect(found.status).toBe(0);
+		expect(nonce(found.stdout)).toBe(nonce(review.stdout + storedVerdict.agentPrompt("main")));
+		const openText = melian(repo, ["findings", "main", "--open"], env);
+		expect(openText.status).toBe(0);
+		expect(openText.stdout).toContain("null-dereference");
+		expect(nonce(openText.stdout).endsWith(nonce(storedVerdict.agentPrompt("main")))).toBe(true);
 		const open = melian(repo, ["findings", "main", "--open", "--json"], env);
 		const log = JSON.parse(open.stdout) as { runs: { results: { ruleId: string }[] }[] };
 		expect(log.runs[0]!.results.map((result) => result.ruleId)).toEqual(["null-dereference"]);
@@ -408,7 +464,10 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 			reason,
 		});
 		const rerun = melian(repo, ["review", range], env);
-		expect(rerun).toMatchObject({ status: 0, stdout: findings.stdout });
+		expect(rerun).toMatchObject({
+			status: 0,
+			stdout: findings.stdout.replace(Verdict.from(verdict).agentPrompt(range), ""),
+		});
 	});
 
 	it("updates the reason of a finding dismissed again and keeps the first", () => {
@@ -569,6 +628,27 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		expect(doctor.stdout).toContain(
 			"warn  levels      correctness: careful runs on light, below quick's medium; deep allows 400,000 tokens, fewer than careful's 500,000; set the level's own tier or budget",
 		);
+	});
+
+	it("reports a decision provider as its own failing line and still prints the plan", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		writeFileSync(
+			join(repo, "melian.yaml"),
+			"decisions:\n  provider: clef\nmodels:\n  light:\n    model: anthropic/claude-haiku-4-5\n",
+		);
+
+		// A literal key in the user's own secrets file, so the light tier resolves whatever credentials this machine holds.
+		const xdg = userDirectory(
+			"credentials:\n  test-anthropic: { provider: anthropic, key: sk-ant-test-never-printed }\n",
+		);
+
+		const doctor = melian(repo, ["doctor"], xdg);
+
+		expect(doctor.status).toBe(1);
+		expect(doctor.stdout).toMatch(
+			/^fail {2}decisions {3}melian\.yaml sets decisions\.provider to clef, and Melian has no adapter/m,
+		);
+		expect(doctor.stdout).toMatch(/^(ok|warn) {2,4}plan {8}light: /m);
 	});
 
 	it("prints the plan: each routed tier with its credential and file, each lens's levels, and every warning", () => {
@@ -814,7 +894,13 @@ describe("Melian's state directory", { timeout: 60_000 }, () => {
 		expect(sqliteFiles(join(repo, ".git"))).toEqual([]);
 		expect(melian(repo, ["findings", "main"], { ...env, MELIAN_STATE_DIR: state })).toMatchObject({
 			status: 0,
-			stdout: review.stdout,
+			stdout:
+				review.stdout +
+				Verdict.from(
+					JSON.parse(
+						melian(repo, ["findings", "main", "--json"], { ...env, MELIAN_STATE_DIR: state }).stdout,
+					) as StoredVerdict,
+				).agentPrompt("main"),
 		});
 	});
 

@@ -395,19 +395,22 @@ export class ReviewPlan {
 
 	/**
 	 * `records` with each lens's lineage added, judged on the model it finished on, from `ranOn`, each variant of a lens
-	 * name by its scope, or the first of its route. A lens that finished on a model its policy refuses, such as a
-	 * fallback outside `accept`, records `failed`, since its result cannot count; so does a lens of which any variant did.
+	 * name by its scope and level, or the first of its route. A lens that finished on a model its policy refuses, such as a
+	 * fallback outside `accept`, records `failed`, since its result cannot count; so does a lens of which any variant at that level did.
 	 */
 	mark(
 		records: readonly CheckRecord[],
-		ranOn: ReadonlyMap<string, readonly { readonly scope: string; readonly model: string }[]> = new Map(),
+		ranOn: ReadonlyMap<
+			string,
+			readonly { readonly scope: string; readonly level: ScrutinyLevel; readonly model: string }[]
+		> = new Map(),
 	): CheckRecord[] {
 		return records.map((record) => {
 			if (!record.name.startsWith("lens.") || record.level === undefined || record.lineage !== undefined)
 				return record;
 			const name = record.name.slice("lens.".length);
 			const { level } = record;
-			const ran = ranOn.get(name) ?? [];
+			const ran = (ranOn.get(name) ?? []).filter((variant) => variant.level === level);
 			const judged =
 				ran.length === 0
 					? [this.judge(name, level)]
@@ -420,20 +423,26 @@ export class ReviewPlan {
 		});
 	}
 
-	// The tiers the review's lenses run on, with the lenses on each. Every lens runs at its default level until triage
-	// chooses one per review, so only that level's tier counts.
-	private used(): Map<ModelTier, string[]> {
+	// The tiers the review's lenses run on, with the lenses on each: at their default level, which a review without a
+	// decider runs and whose tier must reach a model, or, with `every`, at any level, since triage may choose any level a
+	// lens declares and escalation may move it to the next.
+	private used(every = false): Map<ModelTier, string[]> {
 		const used = new Map<ModelTier, string[]>();
 		for (const lens of this.lenses) {
-			const tier = lens.levels.find(({ level }) => level === defaultScrutinyLevel)?.tier;
-			if (tier !== undefined) used.set(tier, [...(used.get(tier) ?? []), labelOf(lens)]);
+			const levels = lens.levels.filter(({ level }) => every || level === defaultScrutinyLevel);
+			for (const tier of new Set(levels.map(({ tier }) => tier))) {
+				used.set(tier, [...(used.get(tier) ?? []), labelOf(lens)]);
+			}
 		}
 		return used;
 	}
 
-	/** The providers the review's lenses may call, in the order their routes name them, each once. */
+	/**
+	 * The providers the review's lenses may call at any level, in the order their routes name them, each once, so a
+	 * credential only a quick or deep level needs is unlocked too.
+	 */
 	providers(): string[] {
-		const providers = [...this.used().keys()].flatMap((tier) => {
+		const providers = [...this.used(true).keys()].flatMap((tier) => {
 			const { status, models } = this.tier(tier);
 			return status === "routed" ? models.map(({ model }) => model.slice(0, model.indexOf("/"))) : [];
 		});

@@ -245,6 +245,36 @@ describe("markers", () => {
 		);
 	});
 
+	it("names an ended lens's budget first and its note after it, never the note alone", () => {
+		const ended = { budget: "tokens", limit: 50_000, tokens: 51_200, tools: 4 } as const;
+		const note = "escalation capped at quick, its ceiling: at quick it reported a P1 finding, at or above P1";
+		const body = renderReviewBody(
+			{
+				pullRequest: 7,
+				revision,
+				base,
+				fingerprint: "0123456789abcdef",
+				round: 1,
+				verdict: new Adjudication({
+					findings: [],
+					manifest: [],
+					checks: [
+						{ name: "lens.correctness", status: "ended", level: "quick", budgetEnded: ended, reason: note },
+					],
+					config: defaultConfig,
+				}).adjudicate(),
+				findings: [],
+				stillOpen: 0,
+				resolved: [],
+				secret,
+			},
+			links,
+		);
+		expect(body).toContain(
+			`- \`lens.correctness\` ended: its token budget of 50,000 ran out after 4 tool calls and 51,200 tokens; ${note}`,
+		);
+	});
+
 	it("names each lens that ran with a note, such as the hand-offs its instructions left out for size", () => {
 		const note = "kept the defects it hands to `durability`, whose files here would list past 40 files or 4 KiB";
 		const body = renderReviewBody(
@@ -346,6 +376,11 @@ describe("markers", () => {
 		expect(tiny.length).toBeLessThanOrEqual(260);
 		expect(tiny.split("\n")[0]).toBe(marker(revision, "verdict", "0123456789abcdef", secret, { round: 1 }));
 		expect(tiny).toContain(`This review was cut to fit GitHub's limit; \`melian findings "#7"\` lists them all.`);
+	});
+
+	it("breaks autolinks without changing the case of the text it breaks", () => {
+		expect(renderProse("WWW.x")).toBe("WWW\u2060.x");
+		expect(renderProse("Gh-1")).toBe("Gh-\u20601");
 	});
 
 	it("renders finding text as inert text, never live markdown, a mention, or a reference", () => {
