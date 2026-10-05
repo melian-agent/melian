@@ -515,7 +515,9 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 	});
 
 	it("repairs an unrecorded ledger-refusal status after publication succeeds", async () => {
-		const { github, changeset, state } = await reviewedRevisionOne(lensScript(emptyName, nanRetries, trimmedGreeting));
+		const { github, changeset, state } = await reviewedRevisionOne(
+			lensScript(emptyName, nanRetries, trimmedGreeting),
+		);
 		await publish(github, changeset);
 		const root = (await harness!.root(context)).id;
 		const head = changeset.revision.head;

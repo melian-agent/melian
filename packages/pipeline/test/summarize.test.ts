@@ -137,9 +137,7 @@ describe("walkthrough summaries", () => {
 			provider === first.provider ? unavailable.models.getModel(provider, id) : models.provider.getModel(id),
 		);
 		vi.spyOn(models.models, "checkAuth").mockImplementation((provider, options) =>
-			provider === first.provider
-				? unavailable.models.checkAuth(provider, options)
-				: Promise.resolve(fallbackAuth),
+			provider === first.provider ? unavailable.models.checkAuth(provider, options) : Promise.resolve(fallbackAuth),
 		);
 		expect(await unavailable.models.checkAuth(first.provider)).toBeUndefined();
 		const used: string[] = [];

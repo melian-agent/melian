@@ -424,7 +424,9 @@ function publishTask(provider: ReviewProvider) {
 					(await runtime.snapshot(PublishedDocument, root, context)) ?? { order: [], revisions: {} };
 				const postStatus = async (status: ReviewStatus) => {
 					await revalidate();
-					const ledgerUrl = (await runtime.snapshot(LedgerDocument, root, context))?.comment?.url;
+					const ledgerUrl =
+						(await runtime.snapshot(LedgerDocument, root, context))?.comment?.url ??
+						(await read()).revisions[head]?.ledgerUrl;
 					const shown = await provider.getStatus(head);
 					if (
 						shown?.state !== status.state ||

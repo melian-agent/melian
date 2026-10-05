@@ -144,17 +144,35 @@ export const summarizeExtension = defineExtension({
 	tools: [recordWalkthrough],
 });
 
-const SummaryIndex = defineDoc<{ tasks: Record<string, number>; counted: Record<string, number> }>({
+type StoredSummaryIndex = { tasks: Record<string, number>; counted: Record<string, number> };
+
+class SummaryIndexState {
+	readonly tasks: Record<string, number>;
+	readonly counted: Record<string, number>;
+
+	constructor(tasks: Record<string, number>, counted: Record<string, number>) {
+		this.tasks = tasks;
+		this.counted = counted;
+	}
+
+	static upgrade(value: unknown): StoredSummaryIndex {
+		const old = value as { tasks: Record<string, number> };
+		return new SummaryIndexState(old.tasks, { ...old.tasks }).toJSON();
+	}
+
+	toJSON(): StoredSummaryIndex {
+		return { tasks: this.tasks, counted: this.counted };
+	}
+}
+
+const SummaryIndex = defineDoc<StoredSummaryIndex>({
 	kind: "melian.summaries",
 	version: 2,
-	migrate: (value) => {
-		const old = value as { tasks: Record<string, number> };
-		return { ...old, counted: { ...old.tasks } };
-	},
+	migrate: (value) => SummaryIndexState.upgrade(value),
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
-	initial: () => ({ tasks: {}, counted: {} }),
+	initial: () => new SummaryIndexState({}, {}).toJSON(),
 });
 
 async function countAttempt(tx: Tx, root: ConversationId, revision: string, task: number): Promise<void> {
