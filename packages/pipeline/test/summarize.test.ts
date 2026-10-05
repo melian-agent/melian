@@ -142,6 +142,13 @@ describe("walkthrough summaries", () => {
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success("Rerun summary.")] }]);
 		expect((await summarize({ rerun: true }))?.walkthroughs?.[revision]?.summary).toBe("Rerun summary.");
 	});
+	it("summarises once across two reviews and reads the stored walkthrough the second time", async () => {
+		const captured = scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+		const revision = revisionKey(changeset.revision);
+		expect((await summarize())?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
+		expect((await summarize())?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
+		expect(captured["You write Melian's walkthrough"]).toHaveLength(1);
+	});
 	it("asks a persistently failing summariser twice across three reviews, and again on a rerun", async () => {
 		const fail = fauxAssistantMessage("", { stopReason: "error", errorMessage: "down" });
 		const captured = scriptConversations(models, [
