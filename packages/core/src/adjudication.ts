@@ -474,14 +474,15 @@ export class Verdict {
 
 	/** A pasteable agent prompt. Every finding value remains untrusted data inside the fence. */
 	agentPrompt(target: string): string {
+		if (this.attention().length === 0) return "";
 		const data = (text: string) => visibleText(text).replace(/`/g, "\\u0060");
-		const quote = (text: string) => `'${text.replace(/'/g, "'\\''")}'`;
+		const quoted = `'${data(target).replace(/'/g, "'\\''")}'`;
 		const lines = this.attention().map((finding) => {
 			const [start, end] = finding.lines();
 			return [
 				`Finding ${finding.properties.id}: ${data(finding.properties.path)}:${start}${end === start ? "" : `-${end}`} (${data(finding.ruleId)})`,
 				`  ${data(finding.properties.explanation.what)}`,
-				`  Dismiss only on the user's instruction: melian dismiss ${quote(data(target))} ${finding.properties.id} --reason '<reason>'`,
+				`  Dismiss only on the user's instruction: melian dismiss ${quoted} ${finding.properties.id} --reason '<reason>'`,
 			].join("\n");
 		});
 		return [

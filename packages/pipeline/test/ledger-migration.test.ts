@@ -1,7 +1,14 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Adjudication, defaultConfig, type StoredVerdict } from "@melian-agent/core";
+import {
+	Adjudication,
+	defaultConfig,
+	type LedgerRound,
+	type PostedLedger,
+	type StoredVerdict,
+	type Walkthrough,
+} from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createRegistry,
@@ -55,7 +62,7 @@ afterEach(async () => {
 });
 
 describe("ledger document migration", () => {
-	it("reads version 3 records without inventing history or changing replies, and writes version 4", async () => {
+	it("reads version 3 records without inventing history or changing replies, and writes the current versions", async () => {
 		dir = mkdtempSync(join(tmpdir(), "melian-ledger-migration-"));
 		const database = join(dir, "state.sqlite");
 		const fake = createFakeModels();
@@ -102,5 +109,97 @@ describe("ledger document migration", () => {
 		expect((await harness.snapshot(PublishedDocument, root.id, context))?.revisions[head]?.replies).toEqual(
 			record.replies,
 		);
+	});
+	it("migrates version 4 fallback notes and prunes old ledger detail after reopening", async () => {
+		dir = mkdtempSync(join(tmpdir(), "melian-ledger-migration-"));
+		const database = join(dir, "state.sqlite");
+		const fake = createFakeModels();
+		const open = async () =>
+			openHarness(await openSqliteStorage(database), { models: fake.models, registry: createRegistry() }, context);
+		const oldVerdicts = defineDoc<{
+			verdicts: Record<string, StoredVerdict>;
+			walkthroughs: Record<string, Walkthrough>;
+		}>({
+			kind: "melian.verdicts",
+			version: 4,
+			scope: "conversation",
+			history: "rewindable",
+			fork: "asOf",
+			initial: () => ({ verdicts: {}, walkthroughs: {} }),
+		});
+		const oldPublished = defineDoc<OldPublication & { ledgerRounds: LedgerRound[] }>({
+			kind: "melian.published",
+			version: 4,
+			scope: "conversation",
+			history: "latest",
+			fork: "current",
+			initial: () => ({ order: [], revisions: {}, ledgerRounds: [] }),
+		});
+		const oldLedger = defineDoc<{ comment?: PostedLedger }>({
+			kind: "melian.ledger",
+			version: 1,
+			scope: "conversation",
+			history: "latest",
+			fork: "current",
+			initial: () => ({}),
+		});
+		const verdict = new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig })
+			.adjudicate()
+			.toJSON();
+		const base = "a".repeat(40);
+		const head = "b".repeat(40);
+		const revision = `${base}..${head}`;
+		const round = {
+			base,
+			head,
+			round: 1,
+			verdict,
+			resolved: [],
+			walkthrough: { summary: "Stored summary.", files: [] },
+			details: { policy: "config", manifest: [], lenses: [], standards: [] },
+		};
+		const comment = {
+			id: "17",
+			url: "https://example.test/17",
+			stamp: {
+				version: 1 as const,
+				base,
+				head,
+				round: 1,
+				verdict: "0123456789abcdef",
+				counts: { open: 0, blocking: 0, dismissed: 0 },
+				lenses: [],
+				plan: null,
+				projection: "0123456789abcdef",
+			},
+		};
+		harness = await open();
+		let root = await harness.root(context);
+		await root.commit(async (tx) => {
+			const doc = await tx.doc(oldVerdicts, root.id);
+			doc.verdicts = { [revision]: verdict };
+			doc.walkthroughs = {
+				[revision]: {
+					summary: "No walkthrough available.",
+					files: [],
+					note: "The summariser done: private provider detail.",
+				},
+				success: { summary: "Real summary.", files: [] },
+			};
+			(await tx.doc(oldPublished, root.id)).ledgerRounds = [round, { ...round, round: 2 }];
+			(await tx.doc(oldLedger, root.id)).comment = comment;
+		}, context);
+		await harness.close(context);
+		harness = await open();
+		root = await harness.root(context);
+		const doc = await harness.snapshot(VerdictDocument, root.id, context);
+		expect(doc?.walkthroughs?.[revision]).toBeUndefined();
+		expect(doc?.walkthroughs?.success?.summary).toBe("Real summary.");
+		expect(doc?.walkthroughNotes?.[revision]).toBe("No walkthrough available. The summariser returned no summary.");
+		expect(JSON.stringify(doc)).not.toContain("private provider detail");
+		const rounds = (await harness.snapshot(PublishedDocument, root.id, context))?.ledgerRounds;
+		expect(rounds?.[0]).toEqual({ base, head, round: 1, status: "passed" });
+		expect(rounds?.[1]).toEqual({ ...round, round: 2 });
+		expect((await harness.snapshot(LedgerDocument, root.id, context))?.comment).toEqual(comment);
 	});
 });

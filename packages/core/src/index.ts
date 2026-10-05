@@ -184,6 +184,7 @@ export {
 	type DiffLines,
 	dismissalVersion,
 	type LedgerDraft,
+	type LedgerHistory,
 	type LedgerRound,
 	type LedgerStamp,
 	type PlacedFinding,

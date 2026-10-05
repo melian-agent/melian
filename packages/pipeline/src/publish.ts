@@ -4,6 +4,7 @@ import {
 	dismissalVersion,
 	Finding,
 	type FindingDismissal,
+	type LedgerHistory,
 	type LedgerRound,
 	type Placement,
 	type PostedLedger,
@@ -100,7 +101,11 @@ type StoredRevision = {
 	ledgerUrl?: string;
 };
 
-type PublishedState = { order: string[]; revisions: Record<string, StoredRevision>; ledgerRounds?: LedgerRound[] };
+type PublishedState = {
+	order: string[];
+	revisions: Record<string, StoredRevision>;
+	ledgerRounds?: (LedgerRound | LedgerHistory)[];
+};
 
 function unpublished(): StoredRevision {
 	return { reviews: [], open: {}, resolved: {}, replies: {} };
@@ -132,13 +137,13 @@ function rekeyReplies(record: StoredRevision): StoredRevision {
 // would post it twice.
 export const PublishedDocument = defineDoc<PublishedState>({
 	kind: "melian.published",
-	version: 4,
+	version: 5,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
 	initial: () => ({ order: [], revisions: {} }),
 	// Version 2 made a finding's evidence a list of locations, so a round left pending before it renders. Version 3 keys
-	// each reply by `replyKey`, where it was keyed by its finding's ID alone.
+	// each reply by `replyKey`. Version 4 adds ledger snapshots; version 5 retains only one-line older rounds.
 	migrate: (value, from) => {
 		const state = value as PublishedState;
 		const revisions = Object.fromEntries(
@@ -149,13 +154,19 @@ export const PublishedDocument = defineDoc<PublishedState>({
 				return [head, from >= 3 ? upgraded : rekeyReplies(upgraded)];
 			}),
 		);
-		return { ...state, revisions };
+		const ledgerRounds = state.ledgerRounds?.map((round, index, rounds) =>
+			index === rounds.length - 1 || !("verdict" in round)
+				? round
+				: { base: round.base, head: round.head, round: round.round, status: round.verdict.status },
+		);
+		return { ...state, revisions, ...(ledgerRounds === undefined ? {} : { ledgerRounds }) };
 	},
 });
 
 export const LedgerDocument = defineDoc<{ comment?: PostedLedger }>({
 	kind: "melian.ledger",
-	version: 1,
+	version: 2,
+	migrate: (value) => value,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
@@ -400,6 +411,7 @@ function publishTask(provider: ReviewProvider) {
 					return;
 				}
 				const { pullRequest, base, head, revision } = target;
+				provider.beginPublish?.();
 				const revalidate = async () => {
 					const moved = movedFrom(target, await provider.pullRequest(pullRequest));
 					if (moved !== undefined) throw new TargetMoved(moved);
@@ -424,6 +436,7 @@ function publishTask(provider: ReviewProvider) {
 				const result = { posted: 0, stillOpen: 0, resolved: 0, dismissed: 0, replies: 0, recovered: 0 };
 				// Set while the provider is asked to post a round, so a refusal counts against that round.
 				let posting = false;
+				let writingLedger = false;
 				try {
 					const secret = publisher?.secret;
 					if (secret === undefined) throw new Error("the changeset has no publisher secret");
@@ -437,7 +450,6 @@ function publishTask(provider: ReviewProvider) {
 					};
 					const verdict = await readVerdict(runtime, root, revision, context);
 					if (verdict === undefined) throw new Error(`no verdict is recorded for ${revision}`);
-					await provider.findLedger(pullRequest, secret);
 					const current = verdict.fingerprint();
 					const legacy = verdict.legacyFingerprint();
 					// A pending round planned for another revision of this head, such as the pull request before a retarget,
@@ -535,7 +547,19 @@ function publishTask(provider: ReviewProvider) {
 							const document = await tx.doc(PublishedDocument, root);
 							const record = document.revisions[head]!;
 							if (pending.ledger !== undefined)
-								document.ledgerRounds = [...(document.ledgerRounds ?? []), structuredClone(pending.ledger)];
+								document.ledgerRounds = [
+									...(document.ledgerRounds ?? []).map((round) =>
+										"verdict" in round
+											? {
+													base: round.base,
+													head: round.head,
+													round: round.round,
+													status: round.verdict.status,
+												}
+											: round,
+									),
+									structuredClone(pending.ledger),
+								];
 							record.reviews = [...record.reviews, posted.id];
 							record.verdict = pending.fingerprint;
 							record.verdictRevision = pending.revision;
@@ -593,10 +617,11 @@ function publishTask(provider: ReviewProvider) {
 					const rounds = structuredClone(publication.ledgerRounds ?? []);
 					const storedVerdict = await runtime.snapshot(VerdictDocument, root, context);
 					const latest = rounds.at(-1);
-					if (latest === undefined || latest.head !== head || latest.base !== base) {
+					if (latest === undefined || latest.head !== head || latest.round !== (record.rounds ?? 1)) {
 						rounds.push({ base, head, round: record.rounds ?? 1, verdict: verdict.toJSON(), resolved: [] });
 					}
-					const currentRound = rounds.at(-1)!;
+					const currentRound = rounds.at(-1)! as LedgerRound;
+					currentRound.base = base;
 					currentRound.verdict = verdict.toJSON();
 					currentRound.resolved = Object.entries(record.resolved).map(([id, entry]) => ({
 						id,
@@ -608,17 +633,24 @@ function publishTask(provider: ReviewProvider) {
 					}));
 					if (storedVerdict?.details?.[revision] !== undefined)
 						currentRound.details = structuredClone(storedVerdict.details[revision]);
+					delete currentRound.walkthrough;
+					delete currentRound.walkthroughNote;
 					if (storedVerdict?.walkthroughs?.[revision] !== undefined)
 						currentRound.walkthrough = structuredClone(storedVerdict.walkthroughs[revision]);
+					if (storedVerdict?.walkthroughNotes?.[revision] !== undefined)
+						currentRound.walkthroughNote = storedVerdict.walkthroughNotes[revision];
 					const previousLedger = (await runtime.snapshot(LedgerDocument, root, context))?.comment;
 					await revalidate();
+					writingLedger = true;
 					const ledger = await provider.writeLedger({
 						pullRequest,
 						verdict,
 						publication: { rounds },
 						walkthrough: task.input.walkthrough ?? { enabled: true, collapsed: true, diagrams: true },
 						secret,
+						...(previousLedger === undefined ? {} : { recorded: previousLedger }),
 					});
+					writingLedger = false;
 					if (JSON.stringify(previousLedger) !== JSON.stringify(ledger)) {
 						await runtime.commit(async (tx) => {
 							(await tx.doc(LedgerDocument, root)).comment = structuredClone(ledger);
@@ -663,6 +695,14 @@ function publishTask(provider: ReviewProvider) {
 					// An abandoned round leaves the head without a review, so its status says so: not reviewed, with why. The
 					// status is best effort here, since the provider has just refused a post.
 					let shown: ReviewStatus | undefined;
+					if (writingLedger) {
+						try {
+							await postStatus({
+								state: "error",
+								description: "ledger unavailable; restore storage or delete the ledger comment by hand",
+							});
+						} catch {}
+					}
 					if (refused !== undefined && (refused.refusals ?? 0) + 1 >= maxRefusals) {
 						const failed: ReviewStatus = {
 							state: "error",
@@ -670,7 +710,8 @@ function publishTask(provider: ReviewProvider) {
 						};
 						try {
 							await revalidate();
-							await provider.setStatus(head, failed);
+							const ledgerUrl = (await runtime.snapshot(LedgerDocument, root, context))?.comment?.url;
+							await provider.setStatus(head, failed, ledgerUrl);
 							shown = failed;
 						} catch {}
 					}

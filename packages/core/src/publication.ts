@@ -169,6 +169,8 @@ export interface PublishedMarkers {
 export interface ReviewProvider {
 	/** The host's name, such as `github`, for messages. */
 	readonly name: string;
+	/** Clears per-publication provider caches. */
+	beginPublish?(): void;
 	/** A pull request's base, head, and metadata. */
 	pullRequest(number: number): Promise<PullRequest>;
 	/** Posts one review for a revision, never approving or requesting changes. */
@@ -184,7 +186,7 @@ export interface ReviewProvider {
 		secret: string,
 	): Promise<string | undefined>;
 	/** Finds the one signed ledger across all heads; refuses an orphaned marker. */
-	findLedger(pullRequest: number, secret: string): Promise<PostedLedger | undefined>;
+	findLedger(pullRequest: number, secret: string, recorded?: PostedLedger): Promise<PostedLedger | undefined>;
 	/** Creates or edits the ledger, reading its stamp before a write. */
 	writeLedger(draft: LedgerDraft): Promise<PostedLedger>;
 	/** Sets the review's status on a commit. Setting it again replaces it. */
@@ -233,8 +235,12 @@ export type LedgerRound = {
 	verdict: StoredVerdict;
 	details?: PublicationDetails;
 	walkthrough?: Walkthrough;
+	walkthroughNote?: string;
 	resolved: { id: string; ruleId: string; path: string; line: number; commit: string; reason?: string }[];
 };
+
+/** The one-line history retained after a later round posts. */
+export type LedgerHistory = { base: string; head: string; round: number; status: StoredVerdict["status"] };
 
 /** The public stamp attached to the ledger. No git identity or secret enters it. */
 export type LedgerStamp = {
@@ -250,13 +256,14 @@ export type LedgerStamp = {
 };
 
 /** The ledger comment found or written on the host. */
-export type PostedLedger = { id: string; url: string; stamp: LedgerStamp };
+export type PostedLedger = { id: string; url: string; stamp: LedgerStamp; author?: string };
 
 /** The durable publication history projected through the current verdict. */
 export interface LedgerDraft {
 	readonly pullRequest: number;
 	readonly verdict: Verdict;
-	readonly publication: { readonly rounds: readonly LedgerRound[] };
+	readonly publication: { readonly rounds: readonly (LedgerRound | LedgerHistory)[] };
 	readonly walkthrough: { readonly enabled: boolean; readonly collapsed: boolean; readonly diagrams: boolean };
 	readonly secret: string;
+	readonly recorded?: PostedLedger;
 }

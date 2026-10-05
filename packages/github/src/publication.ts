@@ -7,6 +7,7 @@ import {
 	type Placement,
 	type ReviewDraft,
 	type Verdict,
+	visibleText,
 } from "@melian-agent/core";
 
 /** Where a revision's posts link to: the repository's web address, such as `https://github.com/owner/repo`. */
@@ -112,7 +113,10 @@ export function renderProse(text: string): string {
 		.replace(/>/g, "&gt;")
 		.replace(/[*_[\]()#!|~`]/g, "\\$&")
 		.replace(/@(?=[\p{L}\p{N}_-])/gu, "@\u2060")
-		.replace(/\\#(?=\d)/g, "\\#\u2060");
+		.replace(/\\#(?=\d)/g, "\\#\u2060")
+		.replace(/([a-z][a-z0-9+.-]*):(?=\/\/)/gi, "$1:\u2060")
+		.replace(/\bwww\./gi, "www\u2060.")
+		.replace(/\bGH-(?=\d)/gi, "GH-\u2060");
 }
 
 const controls = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
@@ -336,6 +340,6 @@ export function renderResolvedReply(finding: ClosedFinding, revision: string, se
 }
 
 // Prose on one line, for a list item or a reply's single line.
-function inline(text: string): string {
-	return renderProse(text).replace(/\r\n?|\n/g, " ");
+export function inline(text: string): string {
+	return renderProse(visibleText(text.replace(/\r\n?|\n/g, " ")));
 }

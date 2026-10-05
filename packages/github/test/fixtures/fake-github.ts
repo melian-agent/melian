@@ -156,11 +156,13 @@ export function fakeGitHub(
 			return json(comment, 201);
 		}
 		const ledgerId = new RegExp(`^${repoPath}/issues/comments/(\\d+)$`).exec(path);
-		if (method === "PATCH" && ledgerId !== null) {
+		if ((method === "GET" || method === "PATCH") && ledgerId !== null) {
 			const comment = state.ledgers.find((each) => each.id === Number(ledgerId[1]));
 			if (comment === undefined) return json({ message: "Not Found" }, 404);
-			comment.body = (body as { body: string }).body;
-			await afterWrite(call);
+			if (method === "PATCH") {
+				comment.body = (body as { body: string }).body;
+				await afterWrite(call);
+			}
 			return json(comment);
 		}
 		const commentId = new RegExp(`^${repoPath}/pulls/comments/(\\d+)$`).exec(path);
