@@ -278,6 +278,45 @@ describe("triage", () => {
 		expect(lensRecord(fromWorktree)).toMatchObject({ level: "quick" });
 	});
 
+	it("keeps the quick floor for a pull request when the decider is calibrated", async () => {
+		const decider = new RecordedDecider(
+			{ triage: { version: "1", answers: { correctness: { distribution: { quick: 1 } } } } },
+			{ calibrated: true },
+		);
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		const origin: ReviewOrigin = {
+			kind: "pull-request",
+			repository: { owner: "melian-agent", name: "melian" },
+			pullRequest: 62,
+			base: gitIn(repo, "rev-parse", "main"),
+			head: gitIn(repo, "rev-parse", "feature"),
+		};
+
+		const reviewed = await review({ decider, origin });
+
+		expect(decider.requests[0]!.questions[0]!.options).toEqual(["quick", "careful", "deep"]);
+		expect(lensRecord(reviewed)).toMatchObject({ level: "quick" });
+	});
+
+	it("notes why the host has no decider on each lens's record", async () => {
+		await open();
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		const reviewed = await reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: ran,
+			triageSkipped: "no lens tier reaches a model for the LLM fallback: light is not routed",
+		});
+		expect(lensRecord(reviewed)!.reason).toBe(
+			"triage did not run, so it ran at its default level: no lens tier reaches a model for the LLM fallback: light is not routed",
+		);
+	});
+
 	it("asks once per revision: a repeat review attaches to the decision and the lens task", async () => {
 		const decider = choosing("quick");
 		await open(decider);
@@ -629,6 +668,30 @@ describe("escalation", () => {
 			["null-dereference", `${version()}@quick`],
 		]);
 		expect(lensRecord(reviewed)!.reason).toContain("1 finding quick carried at or above P1");
+	});
+
+	it("takes a refutation from an escalated run whose findings budget is spent", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		const tight = lenses.map((lens) =>
+			lens.name === "correctness" ? budgeted(lens, "careful", { findings: 1 }) : lens,
+		);
+		const other = call("report_finding", { ...crashFinding, line: 6, rule: "wrong-result" });
+		const refute = (messages: readonly Message[]) =>
+			call("report_finding", {
+				...crashFinding,
+				refuted: carriedId(messages),
+				failureScenario: "Every caller passes a user whose manager is set, so the dereference cannot fail.",
+			});
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: [severe, done, other, refute, done] },
+		]);
+
+		const reviewed = await review({ decider, lenses: tight });
+
+		const results = requests[correctness]![4]!.filter((message) => message.role === "toolResult").map(textOf);
+		expect(results.at(-1)).toMatch(/^recorded that finding [0-9a-f]{16} is not a defect$/);
+		expect(reviewed.findings.map((finding) => finding.ruleId)).toEqual(["wrong-result"]);
 	});
 
 	it("counts once a quick finding the escalated run restates at other lines of the same defect", async () => {

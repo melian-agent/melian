@@ -26,6 +26,17 @@ describe("--model", () => {
 	});
 });
 
+describe("reviewModels without a script", () => {
+	it("says why no decider triages, for the review to note on each lens's record", async () => {
+		const unknown = { ...defaultConfig, models: { heavy: { model: "nowhere/opus" } } };
+		const setup = await reviewModels({}, unknown, [], undefined);
+		expect(setup.decider).toBeUndefined();
+		expect(setup.triageSkipped).toBe(
+			"no lens tier reaches a model for the LLM fallback: light is not routed; medium is not routed; no model of heavy has credentials",
+		);
+	});
+});
+
 describe("the triage model", () => {
 	const fake = createFakeModels({ models: [{ id: "light" }, { id: "medium" }, { id: "heavy" }] });
 	const route = (id: string) => ({ model: `${fake.ref(id).provider}/${id}` });
