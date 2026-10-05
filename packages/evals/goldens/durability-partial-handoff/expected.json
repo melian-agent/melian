@@ -1,0 +1,55 @@
+{
+  "pr_title": "List each lens's outcome in the order the lenses ran, and move the log tail",
+  "comments": [
+    {
+      "comment": "The lens task's result changes from an object keyed by lens to an array with no new task version, so failedLenses throws on a finished lens task an older Melian stored, which a repeat review attaches to.",
+      "severity": "High",
+      "category": "bug",
+      "file": "packages/pipeline/src/lens-run.ts",
+      "rule": "stored-shape",
+      "source": "lens.durability",
+      "cause": "introduced",
+      "failureScenario": "Melian before this change reviews head H and stores lens task T's result as { \"correctness@v1\": { status: \"done\" } }. After the upgrade, a repeat review of H attaches to T, and failedLenses calls outcome.result.flatMap on that stored object, which throws TypeError: outcome.result.flatMap is not a function, so every repeat review of a head reviewed before the upgrade fails.",
+      "evidence": [
+        {
+          "file": "packages/pipeline/src/lens-run.ts",
+          "line": 7,
+          "role": "cause"
+        },
+        {
+          "file": "packages/pipeline/src/lens-run.ts",
+          "line": 28,
+          "role": "context"
+        },
+        {
+          "file": "packages/pipeline/src/lens-run.ts",
+          "line": 14,
+          "role": "context"
+        }
+      ]
+    },
+    {
+      "comment": "tail slices from a negative index when the log is shorter than count, so it drops the first lines instead of returning the whole log.",
+      "severity": "Medium",
+      "category": "bug",
+      "file": "packages/core/src/log-tail.ts",
+      "rule": "wrong-result",
+      "source": "lens.correctness",
+      "cause": "introduced",
+      "failureScenario": "tail(\"a\\nb\\nc\", 5) computes lines.slice(3 - 5), that is slice(-2), and returns [\"b\", \"c\"], where the doc comment says a log shorter than count lines comes back whole as [\"a\", \"b\", \"c\"].",
+      "evidence": [
+        {
+          "file": "packages/core/src/log-tail.ts",
+          "line": 7,
+          "role": "cause"
+        },
+        {
+          "file": "packages/core/src/log-tail.ts",
+          "line": 2,
+          "endLine": 3,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

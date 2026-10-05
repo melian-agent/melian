@@ -44,6 +44,7 @@ describe("the golden corpus", () => {
 			"correctness-null-deref",
 			"durability-attach-key",
 			"durability-clean-upsert",
+			"durability-partial-handoff",
 			"durability-replayed-append",
 			"durability-resumed-publish",
 			"durability-superseded-write",
