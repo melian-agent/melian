@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { type MelianConfig, type Resolution, type RuleAlias, resolutionOrder } from "./config.ts";
+import type { EnolaSnapshot } from "./enola.ts";
 import {
 	type AlsoReportedAs,
 	Finding,
@@ -156,6 +157,8 @@ export interface CheckRecord {
 	 * counts only that version's findings for the check; without it, every version's.
 	 */
 	readonly version?: string;
+	/** Snapshot identities and their receipts when a graph tool ran. */
+	readonly snapshots?: readonly EnolaSnapshot[];
 	/** The scrutiny level a lens ran at, or was to run at when it failed. Other checks have none. */
 	readonly level?: ScrutinyLevel;
 	/**

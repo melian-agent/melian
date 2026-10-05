@@ -8,6 +8,7 @@ import {
 	checksOfTier,
 	type DeterministicCheck,
 	deterministicChecks,
+	type EnolaSnapshot,
 	evaluateGuardrails,
 	type MelianConfig,
 	type RepositorySource,
@@ -38,7 +39,7 @@ import { runStaticTool } from "./static.ts";
  * findings, so adjudication reports the revision as not reviewed by it rather than as clean.
  */
 export type CheckRunRecord =
-	| { name: string; status: "ran"; version?: string; findings: number; notes: string[] }
+	| { name: string; status: "ran"; version?: string; findings: number; notes: string[]; snapshots?: EnolaSnapshot[] }
 	| { name: string; status: "skipped"; reason: string }
 	| { name: string; status: "failed"; reason: string; error: string };
 
@@ -85,12 +86,18 @@ interface CheckInput {
 }
 
 type Outcome =
-	| { readonly status: "ran"; readonly report: CheckReport; readonly version?: string }
+	| {
+			readonly status: "ran";
+			readonly report: CheckReport;
+			readonly version?: string;
+			readonly snapshots?: EnolaSnapshot[];
+	  }
 	| { readonly status: "skipped"; readonly reason: string };
 
 const toolOf: Readonly<Record<Exclude<DeterministicCheck, "guardrails">, StaticTool>> = {
 	"static.biome": "biome",
 	"static.tsc": "tsc",
+	"static.enola": "enola",
 };
 
 async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, context: Context): Promise<Outcome> {
@@ -106,10 +113,12 @@ async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, conte
 	}
 	const { repoRoot } = input.changeset;
 	const revision = Revision.from(input.changeset.revision);
-	const run = (commit: string) => runStaticTool({ env, repoRoot, commit, tool, settings }, context);
+	const run = (commit: string) =>
+		runStaticTool({ env, repoRoot, commit, base: revision.base, tool, settings }, context);
 	const head = await run(revision.head);
 	if (head.status === "skipped") return head;
-	const base = await run(revision.base);
+	const base =
+		head.baseLog === undefined ? await run(revision.base) : { status: "ran" as const, log: head.baseLog, notes: [] };
 	// A base without the tool's project, such as before a repository adopted TypeScript, reports nothing to subtract.
 	const empty: ToolLog = { ...head.log, runs: [{ ...head.log.runs[0], results: [] }] };
 	const report = await staticFindings({
@@ -125,6 +134,7 @@ async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, conte
 		status: "ran",
 		report: { findings: report.findings, notes },
 		version: head.log.runs[0].tool.driver.version,
+		...(head.snapshots === undefined ? {} : { snapshots: head.snapshots }),
 	};
 }
 
@@ -170,6 +180,7 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 								status: "ran",
 								...(outcome.version === undefined ? {} : { version: outcome.version }),
 								findings: outcome.report.findings.length,
+								...(outcome.snapshots === undefined ? {} : { snapshots: outcome.snapshots }),
 								notes: [...outcome.report.notes],
 							};
 			} catch (error) {

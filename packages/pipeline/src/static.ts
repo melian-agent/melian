@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { dirname, posix } from "node:path";
 import {
 	CheckError,
+	type EnolaSnapshot,
 	normaliseBiomeSarif,
 	parseJsonc,
 	parseTscDiagnostics,
@@ -12,7 +13,9 @@ import {
 	type ToolLog,
 	type TscSettings,
 } from "@melian-agent/core";
+import { EnolaRun } from "./enola-static.ts";
 import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts";
+import { ToolProvisioning } from "./tool-provisioning.ts";
 
 /** The most a static tool may write, its report included. Past it the run fails with `outputTooLarge`. */
 export const staticOutputLimit = 16 * 1024 * 1024;
@@ -24,13 +27,21 @@ export interface StaticRunInput {
 	/** The repository's checkout, whose git directory the worktree is added to. It is never written to otherwise. */
 	readonly repoRoot: string;
 	readonly commit: string;
+	readonly base?: string;
+	readonly tools?: ToolProvisioning;
 	readonly tool: StaticTool;
 	readonly settings: StaticToolSettings | TscSettings;
 }
 
 /** A tool's log for one revision, with anything the run set aside, or why the tool does not apply to it. */
 export type StaticRun =
-	| { readonly status: "ran"; readonly log: ToolLog; readonly notes: readonly string[] }
+	| {
+			readonly status: "ran";
+			readonly log: ToolLog;
+			readonly notes: readonly string[];
+			readonly baseLog?: ToolLog;
+			readonly snapshots?: EnolaSnapshot[];
+	  }
 	| { readonly status: "skipped"; readonly reason: string };
 
 // Variables a git hook sets for its own repository; git would honour them over `-C`.
@@ -74,7 +85,9 @@ function git(repoRoot: string, args: string): string {
 	return `unset ${gitVariables.join(" ")}; git -C ${quote(repoRoot)} -c core.hooksPath=/dev/null -c core.fsmonitor=false ${args}`;
 }
 
-const toolBinaries: Readonly<Record<StaticTool, { readonly bin: string; readonly melian: () => string }>> = {
+const toolBinaries: Readonly<
+	Record<Exclude<StaticTool, "enola">, { readonly bin: string; readonly melian: () => string }>
+> = {
 	biome: { bin: "biome", melian: () => melianBinary("@biomejs/biome", "bin/biome") },
 	tsc: { bin: "tsc", melian: () => melianBinary("typescript", "bin/tsc") },
 };
@@ -88,7 +101,7 @@ interface Shell {
 	readonly output: string;
 }
 
-class Run {
+export class Run {
 	readonly input: StaticRunInput;
 	readonly context: Context;
 	readonly check: string;
@@ -97,6 +110,10 @@ class Run {
 		this.input = input;
 		this.context = context;
 		this.check = `static.${input.tool}`;
+	}
+
+	git(args: string, root = this.input.repoRoot): string {
+		return git(root, args);
 	}
 
 	fail(code: ConstructorParameters<typeof CheckError>[0], message: string, cause?: unknown): CheckError {
@@ -198,6 +215,7 @@ async function trackedFiles(run: Run, tree: string, listing: string, pathspec = 
 // `--version` would run the head's code. `installed` is the checkout's node_modules, or undefined when there is none
 // the runner may use; otherwise Melian's own tool runs.
 async function binaryFor(run: Run, installed: string | undefined): Promise<string> {
+	if (run.input.tool === "enola") return (await ToolProvisioning.open(run.input.repoRoot)).binary("enola");
 	const { bin, melian } = toolBinaries[run.input.tool];
 	const own = installed === undefined ? undefined : posix.join(installed, ".bin", bin);
 	if (own !== undefined && (await run.exists(own))) return own;
@@ -394,6 +412,7 @@ export type StaticToolSource =
  * the user trusts, never a revision's tree.
  */
 export function staticToolSource(repoRoot: string, tool: StaticTool): StaticToolSource {
+	if (tool === "enola") return { from: "missing" };
 	const { bin, melian } = toolBinaries[tool];
 	const own = posix.join(repoRoot, "node_modules", ".bin", bin);
 	const tracked = spawnSync("git", ["-C", repoRoot, "ls-files", "--", "node_modules"], { encoding: "utf8" });
@@ -444,6 +463,10 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 				return { status: "skipped", reason: `${commit} has no ${project}` };
 			}
 		}
+		if (tool === "enola") {
+			const tools = input.tools ?? (await ToolProvisioning.open(repoRoot));
+			return await (await EnolaRun.open(run, root, scratch, tools)).check();
+		}
 		const files = await trackedFiles(run, root, posix.join(scratch, "files"));
 		const notes: string[] = [];
 		// A tracked node_modules would let the head supply the dependencies, plugins, and type libraries the tool loads.
@@ -467,7 +490,7 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 				: await runTsc(run, root, scratch, binary, version, new Set(files), notes);
 		return { status: "ran", log, notes };
 	} finally {
-		await removeWorktree(env, repoRoot, scratch);
+		await removeWorktree(run, scratch);
 	}
 }
 
@@ -476,16 +499,12 @@ const lockReason = `melian-static pid ${process.pid}`;
 
 // Cleanup runs even when the caller cancelled, so it never takes the caller's context: a cancelled context makes every
 // command return at once, and the worktree would stay registered.
-async function removeWorktree(env: ExecutionEnv, repoRoot: string, scratch: string): Promise<void> {
-	const root = posix.join(scratch, "tree");
-	// Twice forced, because the worktree is locked. Never `git worktree prune`, which would also drop the user's own
-	// stale worktrees; removing by path works even when the directory is already gone.
-	await env.exec(
-		git(repoRoot, `worktree remove --force --force ${quote(root)}`),
-		{ ...toolEnvironment(), timeout: 60 },
-		backgroundContext,
-	);
-	await env.remove(scratch, { recursive: true, force: true }, backgroundContext);
+async function removeWorktree(run: Run, scratch: string): Promise<void> {
+	const cleanup = new Run({ ...run.input, settings: { ...run.input.settings, timeout: 60 } }, backgroundContext);
+	for (const root of [posix.join(scratch, "base", "tree"), posix.join(scratch, "tree")]) {
+		await cleanup.worktreeCommand(cleanup.git(`worktree remove --force --force ${quote(root)}`));
+	}
+	await run.input.env.remove(scratch, { recursive: true, force: true }, backgroundContext);
 }
 
 // A run killed with SIGKILL leaves its worktree registered and its directory in place, which `git worktree prune`
@@ -500,11 +519,12 @@ async function removeStaleWorktrees(run: Run, scratch: string): Promise<void> {
 		const fields = record.split("\0");
 		const path = fields.find((field) => field.startsWith("worktree "))?.slice("worktree ".length);
 		if (path === undefined || posix.basename(path) !== "tree") continue;
-		const owner = posix.dirname(path);
+		const parent = posix.dirname(path);
+		const owner = posix.basename(parent) === "base" ? posix.dirname(parent) : parent;
 		if (!posix.basename(owner).startsWith("melian-static-") || owner === scratch) continue;
 		const lock = fields.find((field) => field.startsWith("locked "))?.slice("locked ".length) ?? "";
 		const pid = /^melian-static pid (\d+)$/.exec(lock)?.[1];
 		if (pid !== undefined && (await run.shell(`kill -0 ${pid} 2> /dev/null`)).code === 0) continue;
-		await removeWorktree(run.input.env, run.input.repoRoot, owner);
+		await removeWorktree(run, owner);
 	}
 }

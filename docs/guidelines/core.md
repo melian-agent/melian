@@ -447,3 +447,11 @@ Only added lines take an inline comment. Problem: GitHub rejects the whole revie
 ## Standalone tool manifest
 
 `ToolManifest.parse(text)` validates Melian's own root `tools.yaml` with TypeBox and the configuration YAML reader. It refuses unknown keys, unsafe archive paths, non-exact versions, invalid dates, and downloads outside HTTPS on github.com. A reviewed repository cannot override it. `tool(name)` and `artifact(name, platform)` refuse absent pins. `check(now, windowDays)` applies the npm quarantine; a dated, reviewed exception permits a young release. `toJSON()` returns a copy. The `misses` list reserves the execution misses described in the evals guideline.
+
+## Enola policy and SARIF
+
+`static.enola` is a deterministic check, disabled by default and absent from the `static` group and default tiers. Its settings use the same timeout and severity map as Biome. Error maps to P2, warning to P3, and note to nit. Melian's own fast tier opts in.
+
+`EnolaPolicy.load(repoRoot, base)` reads Enola configuration, intent, constraints, and suppressions through the revision source, with 256 KiB per file and 1 MiB total. Its effective configuration disables providers and history and analyses only the reviewed repository. It hashes sorted policy names and contents, fixed flags, and cache schema version. `normaliseEnolaSarif` excludes resolved and explicitly suppressed findings. An unlocated finding sits on `enola-intent.yaml`, identified by message when that file is absent. `staticFindings` gives results `enola/<ruleId>` identities from snippets and occurrences.
+
+All Enola policy paths join analyser configuration in policy-change-review. A committed `.enola/baseline` does not.

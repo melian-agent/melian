@@ -614,7 +614,7 @@ Reading from the base does not hide the head's changes. Each revision lists the 
 
 ### Tool provisioning
 
-The manifest and its quarantine are built. The verified tool cache is built; Enola integration is in progress in milestone 2 (review of record). The container environment, Opengrep, and gitleaks are planned for milestone 3 (Actions host).
+The manifest and its quarantine are built. The verified tool cache is built; Enola's static check is built; the graph cache and callers are in progress in milestone 2 (review of record). The container environment, Opengrep, and gitleaks are planned for milestone 3 (Actions host).
 
 Problem: a finding's identity hashes its rule and snippet, and an analyser's version decides what it reports and under which rule. Biome and tsc arrive through npm, pinned by a lockfile; standalone analysers such as Opengrep and gitleaks do not. Example: a maintainer's Homebrew gitleaks is a release ahead of the one on the Actions runner. A rule renamed between them gives the same secret a new finding ID, so a dismissed finding returns and an open one is posted again. Whichever binary sits first on the host's `PATH` would also judge the change from outside the trust boundary.
 
@@ -641,10 +641,10 @@ Problem: a lens finds the callers of a changed symbol by searching, one call at 
 
 Solution: [Enola](research/2026-10-04-enola.md) (enola.tech, `enola-labs/enola`, Apache 2.0, written in Go) is the first tool in the manifest. It is deterministic, and its extractors are compiled in. It still runs in the execution environment, never in the Melian process, like every tool that loads repository configuration, because a `providers:` block in `enola.yaml` names an executable Enola runs with `--version` and with the repository path. Melian uses it two ways:
 
-- As a static check: `enola check` runs on the head against a baseline Melian builds from the base, and its SARIF is diffed as Biome's is.
+- As a static check: the opt-in `static.enola` runs `enola check` runs on the head against a baseline Melian builds from the base, and its SARIF is diffed as Biome's is.
 - As lens input: the callers of changed symbols outside the diff, rendered as quoted data. A lens confirms each candidate through `read_file` before citing it as `affected` evidence. Upstream v0.4.27 carries `enola impact --json`, merged in [pull request #342](https://github.com/enola-labs/enola/pull/342). Melian queries the subprocess, never MCP, and never rebuilds Enola's resolution algorithms. The contract artifacts `facts.jsonl`, `insights.json`, and `receipt.json` give identity and lineage. Their snapshot ID is output, so it cannot key a cache lookup. The spike measures imports and call pairs against tsc, including calls across packages.
 
-Enola's configuration files, for intent, constraints, suppressions, linking, and providers, are policy read from the base, and they join the policy-change list. A committed baseline is never used. The spike decides whether Melian runs Enola with providers disabled.
+Enola's configuration files, for intent, constraints, suppressions, linking, and providers, are policy read from the base, and they join the policy-change list. A committed baseline is never used. Melian disables providers in its effective configuration on both revisions. It keeps output and a temporary HOME in scratch, disables update checks, and never runs `upgrade`. Enola requires a repository-relative output path, so a runner-owned `.enola` link points at scratch. The runner replaces the head's policy files with the base's copies and records when they differ.
 
 The graph is a cache, not state. Its key is the commit's tree, the Enola version, and the configuration hash. Enola's snapshot ID cannot be the key, because it hashes the facts, the expensive output a lookup is meant to skip; the snapshot ID and Enola's receipt are stored as the entry's identity. Locally it lives in a cache Melian owns under the git common directory, and on runners in the Actions cache, never on the state branch. Every pull request on one base shares the base's snapshot. A miss recomputes, because Enola's output is byte-identical for the same inputs. The check record stores the snapshot IDs and Enola's receipt. Enola is pinned in the manifest and refuses to compare snapshots across its own versions, which matches Melian's rule that a tool's version is part of a check's identity.
 
@@ -656,7 +656,7 @@ Three kinds of coverage artifact live in the same cache, keyed by commit and too
 - Test coverage of changed lines. It runs the head's tests, so for an untrusted head it waits for container isolation.
 - Review coverage, computed from lens transcripts: which hunks and enclosing functions each lens read, giving what was not reviewed, per file.
 
-The spike's exit criterion: per-file call coverage for the graph is defined, and measured against the imports and calls tsc resolves on Melian's own tree, with every gap named. Melian's repository is small, so on Melian the direct value is one real layering constraint, that core never reaches the pipeline; the larger value is for users. Enola is pre-1.0, v0.4.26 with a release every two or three days, and a documented TypeScript alias bug once left thousands of call edges dangling. The pinned manifest, the exit criterion, and `search` left unrestricted until coverage is measured bound both risks.
+The spike's exit criterion: per-file call coverage for the graph is defined, and measured against the imports and calls tsc resolves on Melian's own tree, with every gap named. Melian's repository is small, so on Melian the direct value is one real layering constraint, that core never reaches the pipeline; the larger value is for users. Enola is pre-1.0, v0.4.27 with a release every two or three days, and a documented TypeScript alias bug once left thousands of call edges dangling. The pinned manifest, the exit criterion, and `search` left unrestricted until coverage is measured bound both risks.
 
 ## Interaction model
 

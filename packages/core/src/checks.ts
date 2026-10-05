@@ -2,7 +2,7 @@ import type { MelianConfig } from "./config.ts";
 import { CheckError } from "./errors.ts";
 
 /** The checks Melian runs without a model. Lenses (`lens.<name>`) and decision questions (`decisions.<name>`) run elsewhere. */
-export const deterministicChecks = ["guardrails", "static.biome", "static.tsc"] as const;
+export const deterministicChecks = ["guardrails", "static.biome", "static.tsc", "static.enola"] as const;
 
 /** A check Melian runs without a model. */
 export type DeterministicCheck = (typeof deterministicChecks)[number];

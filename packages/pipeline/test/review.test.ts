@@ -2562,6 +2562,7 @@ describe("adjudication", () => {
 
 			const { verdict } = await reviewed({
 				config: { ...melian, models: config.models },
+				checks: [{ name: "static.enola", status: "ran" }],
 				lenses: await Lens.load(
 					repo,
 					base,

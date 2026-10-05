@@ -251,3 +251,11 @@ An addressed inline finding keeps its first signed marker and appends a resoluti
 `ToolCache.open(root, { fetch })` opens a cache; opening never downloads. `materialise(tool, platform)` streams a pinned archive to a temporary file and checks its SHA-256 before extraction. A bounded tar reader accepts regular files and directories, rejects links and unsafe paths, and extracts only the manifest's binary. Limits are 128 MiB compressed, 256 MiB expanded, and 96 MiB for the executable. No system tar runs. Without an archive path, the verified download itself is the executable.
 
 Entries live under `tools/<name>/<version>/<platform>/<archive-sha256>/`. The binary has mode 0755. Its sidecar records both hashes. Every use hashes the binary through a file opened without following symlinks; a mismatch triggers a fresh pinned download. `readiness` reports verified, not fetched, or mismatch without fetching. The cache holds no open resources between calls.
+
+## Enola static runs
+
+`runStaticTool` runs `static.enola` in base and head worktrees under the execution environment. `ToolProvisioning` reads the reviewer build's manifest and materialises its binary, never a pin in the reviewed repository. `CacheLocation` follows the existing state-directory rule: the common git directory's `melian/`, or the clone subdirectory under `MELIAN_STATE_DIR`.
+
+`EnolaRun` replaces the head's Enola policy with bounded copies from the base. It disables executable providers, history, and update checks. A runner-owned `.enola` link points into scratch because upstream refuses an output path outside the repository. The baseline is generated from base and pinned in scratch; a committed baseline is removed. Base and head use the same label and policy. `check` exit 0 or 1 yields a SARIF report; 2 or 3 fails with Enola's message. Missing or unreadable artifacts fail closed.
+
+Every worktree command, including cleanup, passes through `Run.worktreeCommand`. Cleanup uses a background context and waits for the Enola promise to finish. The check record carries both snapshot identities and original receipts, plus a note when head policy differs. Receipts contain generation times and paths, so they are lineage, not byte-stable cache identity.

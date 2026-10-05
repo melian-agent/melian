@@ -136,6 +136,7 @@ export const melianYamlSchema = Type.Object(
 			Type.Object(
 				{
 					biome: Type.Optional(Type.Object(staticTool, strict)),
+					enola: Type.Optional(Type.Object(staticTool, strict)),
 					tsc: Type.Optional(Type.Object({ ...staticTool, project: Type.Optional(name) }, strict)),
 				},
 				strict,
@@ -259,6 +260,7 @@ export interface TscSettings extends StaticToolSettings {
 /** The static tools Melian runs, read from the repository root's configuration. */
 export interface StaticSettings {
 	readonly biome: StaticToolSettings;
+	readonly enola: StaticToolSettings;
 	readonly tsc: TscSettings;
 }
 
@@ -360,6 +362,7 @@ export const defaultConfig: MelianConfig = {
 	models: {},
 	static: {
 		biome: { enabled: true, timeout: 300, severity: {} },
+		enola: { enabled: false, timeout: 300, severity: {} },
 		tsc: { enabled: true, timeout: 300, severity: {}, project: "tsconfig.json" },
 	},
 	guardrails: {

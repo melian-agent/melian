@@ -259,6 +259,8 @@ export {
 
 export const packageName = "@melian-agent/core";
 
+export { EnolaPolicy, type EnolaPolicyState, type EnolaSnapshot, normaliseEnolaSarif } from "./enola.ts";
+export { enolaPolicyPattern } from "./enola-paths.ts";
 export {
 	type ToolArtifact,
 	ToolManifest,
