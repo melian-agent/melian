@@ -1516,7 +1516,11 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				});
 				return (
 					run !== undefined &&
-					((run.verify ?? run.level !== "quick") ||
+					((run.verify ??
+						covering
+							.find(({ lens }) => lens.name === run.name && lens.version === run.version)
+							?.lens.level(run.level ?? defaultScrutinyLevel).verify ??
+						run.level !== "quick") ||
 						producers.some(
 							(producer) =>
 								producer.check === claim.source.check &&

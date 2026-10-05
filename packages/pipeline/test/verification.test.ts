@@ -6,6 +6,7 @@ import {
 	createMemoryStorage,
 	createReviewRegistry,
 	type Harness,
+	lensExtension,
 	openHarness,
 	planInputs,
 	type Review,
@@ -60,7 +61,7 @@ afterEach(async () => {
 	rmSync(repo, { recursive: true, force: true });
 });
 
-async function review(rerun = false, plan?: ReviewPlan): Promise<Review> {
+async function review(rerun = false, plan?: ReviewPlan, quick = false): Promise<Review> {
 	const finder = fake.ref("finder");
 	const judge = fake.ref("judge");
 	return reviewChangeset({
@@ -73,9 +74,13 @@ async function review(rerun = false, plan?: ReviewPlan): Promise<Review> {
 		...(plan === undefined ? {} : { plan }),
 		config: {
 			...defaultConfig,
+			...(quick
+				? { lenses: { correctness: { level: { floor: "quick" as const, ceiling: "quick" as const } } } }
+				: {}),
 			tiers: { full: lenses.map((lens) => `lens.${lens.name}`) },
 			stages: { "pull-request": "full" },
 			models: plan?.routes() ?? {
+				medium: { model: `${finder.provider}/${finder.modelId}` },
 				heavy: { model: `${finder.provider}/${finder.modelId}` },
 				verifier: { model: `${judge.provider}/${judge.modelId}`, fallbacks: [`${judge.provider}/backup`] },
 			},
@@ -505,6 +510,40 @@ describe("the verifier", () => {
 		const stored = (await readVerdict(harness, root.id, revision, context))!;
 		expect(stored.refuted).toBeUndefined();
 		expect(stored.findings.advisory).toHaveLength(findings.length);
+	});
+	it("verifies an older version-2 quick input using the lens level's explicit setting", async () => {
+		const lens = lenses[0]!;
+		lenses = [
+			Lens.from({
+				...lens.toJSON(),
+				levels: { careful: lens.level("careful"), quick: { ...lens.level("quick"), verify: true } },
+			}),
+		];
+		scripts();
+		await review(false, undefined, true);
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+		const original = await root.commit((tx) => tx.task(entry.task as TaskId), context);
+		const stored = structuredClone(original!.input) as {
+			lenses: { verify?: boolean; level: string }[];
+		};
+		expect(stored.lenses[0]!.level).toBe("quick");
+		for (const run of stored.lenses) delete run.verify;
+		const definition = lensExtension.tasks!.find((task) => task.definition.name === "melian.lenses")!;
+		const older = await root.commit(async (tx) => {
+			const task = await tx.createTask(definition as never, stored as never, {
+				ownership: { kind: "conversation" },
+			});
+			(await tx.doc(ReviewIndex, root.id)).reviews[revision] = { task, lenses: entry.lenses };
+			return task;
+		}, context);
+		const requests = scripts();
+		const result = await review(false, undefined, true);
+		expect((await root.commit((tx) => tx.task(older), context))!.version).toBe(2);
+		expect(requests[verifierMarker]).toHaveLength(2);
+		expect(result.findings[0]!.properties.verification?.verdict).toBe("confirmed");
+		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
 	});
 	it("attaches a repeat review without asking another model", async () => {
 		const requests = scripts();

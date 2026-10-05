@@ -5,7 +5,7 @@ Choice: Step 6 takes all thirteen defaults in its brief, as follows.
 | Default | Choice | Why |
 | --- | --- | --- |
 | 1 | An instance of core's Merge holds findings and ConfigFor. Adjudication delegates grouping to it; the pipeline uses the same grouping before verification. | A verifier must judge exactly the defect adjudication counts, including after a dismissal splits it. |
-| 2 | Live defects with a verifying lens claim or an escalation-kept quick claim are candidates. Judge every lens claim on a candidate. | A quick claim an escalated run leaves unanswered must still reach judgement. |
+| 2 | Live defects with a verifying lens claim or an escalation-kept quick claim are candidates. Judge every lens claim on a candidate. A stored run without verify uses its lens definition at that level. | A quick claim an escalated run leaves unanswered must still reach judgement. |
 | 3 | Remove a defect only when every lens claim is refuted and no deterministic check co-reported it. | One refutation cannot erase another claim or deterministic proof. |
 | 4 | Cap unjudged lens-only defects at advisory, retaining silent. | A static or guardrail report carries its own proof and keeps its existing resolution. |
 | 5 | A refutation requires evidence locations that Melian reads back. | A judge's unsupported assertion must not drop a real defect. |
