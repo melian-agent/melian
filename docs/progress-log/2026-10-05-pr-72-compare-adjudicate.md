@@ -6,6 +6,6 @@ The [metrics decision](../decisions/2026-10-05-comparison-metrics.md) defines th
 
 [Pull request #72](https://github.com/melian-agent/melian/pull/72) carries this work. It is based on `compare-import`, [pull request #68](https://github.com/melian-agent/melian/pull/68).
 
-Validation: `npm run check` passes with 1,059 tests. No dependency changed.
+Initial validation: `npm run check` passed with 1,059 tests. Review fixes pass 165 tests across eight focused Vitest files, `npx tsc --noEmit`, and `npx biome check packages scripts docs`; the full gate is reserved for the committing agent. No dependency changed.
 
-Learning: Vitest 5 can consume the first file argument after `-u`, leaving that test outside the run. Put explicit file paths before `--update`, and confirm the reported file count before accepting a snapshot update.
+Review fixes retain empty participants, skip pending recall, expose reasonless misses, reach earlier rounds, and preserve debt without `--golden`. Stats and backlog read documents without a harness; filters leave the drain clone-wide. Export uses bounded six-column tables and author names without emails. Backlog markdown prints a replacement section and never writes BACKLOG.md. Duplicate judgements name their target.

@@ -94,7 +94,7 @@ One defect can fit two lenses' rules, and each would report it under its own. De
 
 Every Melian pull request gets a comparison record under `packages/evals/comparisons/`. It lists what Codex's adversarial review, Claude Code's review, and Melian found, and the maintainer's adjudication of each. `melian compare export` writes each new record from the stored comparison. Earlier hand-written records stay as history. [design.md](../design.md#comparison-with-external-reviewers) says how a comparison is built, and how it serves a repository that runs CodeRabbit.
 
-Each finding is adjudicated valid, noise, or a duplicate, with a severity. A valid finding Melian missed takes one reason:
+Each finding is adjudicated valid, noise, or a duplicate, with a severity. A duplicate names the finding it duplicates through `--of <id>`. It costs its reviewer recall as well as precision; only that reviewer's own valid report earns recall credit. A valid finding Melian missed takes one reason:
 
 - `owned-missed`: a lens or check owns it and missed it. It usually owes a golden for that lens.
 - `no-owner`: no lens or check owns it. It points at a new rule, guardrail, or lens, and a repeat on a second pull request is a candidate check.
@@ -103,7 +103,7 @@ Each finding is adjudicated valid, noise, or a duplicate, with a severity. A val
 
 A Melian finding judged noise owes a clean golden for the lens that raised it. A golden is owed only where the adjudication says so, naming its lens; a difference alone owes nothing. A golden drawn from a record names its finding in a `README.md` beside `expected.json`, since the expected file's schema is Martian's and has no field for it.
 
-[goldens/BACKLOG.md](../../packages/evals/goldens/BACKLOG.md) lists, by lens, the owed goldens not yet written. Its present entries are kept by hand until goldens drain them. `melian compare backlog --markdown` prints the later generated section; append it after the frozen entries.
+[goldens/BACKLOG.md](../../packages/evals/goldens/BACKLOG.md) lists, by lens, the owed goldens not yet written. Its present entries are kept by hand until goldens drain them. `melian compare backlog --markdown` prints the later generated section; replace the generated section after the frozen entries.
 
 A historical hand-written record has no field for the reason. Its Adjudication column carries the words above. New records use the stored reason.
 
@@ -111,6 +111,6 @@ A historical hand-written record has no field for the reason. Its Adjudication c
 
 Problem: records mark goldens faster than anyone writes them, and nothing forces the list down. BACKLOG.md still holds owed goldens from the record for [pull request #10](https://github.com/melian-agent/melian/pull/10).
 
-Solution: every third comparison record is followed by a backlog pull request. It ships at least two owed goldens, or every owed golden when fewer remain. It re-measures each new golden's lens with a live run of three passes, as [Two modes](#two-modes) requires, and records the run under `packages/evals/runs/`. Records count from [pull request #65](https://github.com/melian-agent/melian/pull/65) on, and an empty backlog owes no drain. `melian compare stats` reports the local drain due. It counts changesets once, preserving earlier rounds for metrics. After three comparisons, any remaining debt keeps it due. A maintainer records discharged debt with another adjudication using `--golden none`. Local state cannot verify that a backlog pull request shipped or that a live run passed. Hand-written historical records are not imported.
+Solution: every third comparison record is followed by a backlog pull request. It ships at least two owed goldens, or every owed golden when fewer remain. It re-measures each new golden's lens with a live run of three passes, as [Two modes](#two-modes) requires, and records the run under `packages/evals/runs/`. Records count from [pull request #65](https://github.com/melian-agent/melian/pull/65) on, and an empty backlog owes no drain. `melian compare stats` sees only this clone's stored changesets and self-declared discharge through `--golden none`. It counts changesets once, preserving all rounds for metrics. Its clone-wide notice remains due after the first threshold while debt remains, even with filtered metrics. It cannot see which drain pull requests shipped or which live runs passed, so it cannot verify the periodic drain. Hand-written historical records are not imported.
 
-Comparison adjudications name an owed lens through `--golden <lens>`, or owe none through `--golden none`. A later judgement replaces that debt and keeps the prior judgement in history. A noise judgement on Melian is a comparison label; use dismissal separately to change the review.
+Comparison adjudications name an owed lens through `--golden <lens>`, or owe none through `--golden none`. A later judgement changes debt only when it includes `--golden`; omitting the option carries the debt forward. Every replacement keeps the prior judgement in history. A noise judgement on Melian is a comparison label; use dismissal separately to change the review.
