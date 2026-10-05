@@ -226,7 +226,8 @@ describe("ReviewPlan.resolve", () => {
 			verifier: { model: opus, fallbacks: [] },
 		});
 		expect(resolved.lineage("heavy")).toEqual({ model: gpt, wanted: opus, by: "--model", outside: true });
-		expect(resolved.lineage("light")).toEqual({ model: gpt, by: "--model", outside: false });
+		// No committed route names light, so the flag leaves nothing.
+		expect(resolved.lineage("light")).toBeUndefined();
 	});
 
 	it("warns for a tier the lenses run on that no file routes, naming the lenses", () => {
@@ -283,6 +284,18 @@ describe("a resolved plan", () => {
 			},
 		]);
 		expect(resolved.summary()).toBe("");
+	});
+
+	it("names the providers the review's lenses may call, and no other tier's", () => {
+		const resolved = plan(
+			{
+				heavy: { model: opus, fallbacks: [gpt, "anthropic/claude-sonnet-5-5"] },
+				verifier: { model: "openai/gpt-5.4-mini" },
+			},
+			{ anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" },
+		);
+		expect(resolved.providers()).toEqual(["anthropic", "openai"]);
+		expect(plan({ verifier: { model: gpt } }, { openai: "OPENAI_API_KEY" }).providers()).toEqual([]);
 	});
 
 	it("survives its JSON", () => {

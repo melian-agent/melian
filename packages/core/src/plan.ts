@@ -182,7 +182,7 @@ export class ReviewPlan {
 		// maintainer chose is theirs, and is never swapped behind their back.
 		if (chosen.length === 0 && by === undefined) chosen = accept.filter(usable);
 		if (chosen.length === 0) {
-			const tried = [...new Set([...route, ...accept])];
+			const tried = by === undefined ? [...new Set([...route, ...accept])] : route;
 			if (by === undefined && policy?.unavailable === "fail") {
 				return {
 					...base,
@@ -295,7 +295,10 @@ export class ReviewPlan {
 	lineage(tier: ModelTier): CheckLineage | undefined {
 		const { models, wanted, by, outside } = this.tier(tier);
 		const model = models[0]?.model;
-		if (by === undefined || model === undefined || model === wanted) return undefined;
+		// With no committed model and nothing outside accept, there was no committed route to leave.
+		if (by === undefined || model === undefined || model === wanted || (wanted === undefined && !outside)) {
+			return undefined;
+		}
 		return { model, ...(wanted === undefined ? {} : { wanted }), by, outside: outside === true };
 	}
 
@@ -321,6 +324,15 @@ export class ReviewPlan {
 			if (tier !== undefined) used.set(tier, [...(used.get(tier) ?? []), lens.name]);
 		}
 		return used;
+	}
+
+	/** The providers the review's lenses may call, in the order their routes name them, each once. */
+	providers(): string[] {
+		const providers = [...this.used().keys()].flatMap((tier) => {
+			const { status, models } = this.tier(tier);
+			return status === "routed" ? models.map(({ model }) => model.slice(0, model.indexOf("/"))) : [];
+		});
+		return [...new Set(providers)];
 	}
 
 	/**
