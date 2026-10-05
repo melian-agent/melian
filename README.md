@@ -98,9 +98,9 @@ Writes are allowed in:
 - the worktree, the scratch directory, and a per-run directory the script creates under `$TMPDIR` and removes on exit. The task gets `TMPDIR` set to the per-run directory and its own npm cache at `<scratch>/npm-cache`, so `~/.npm` and `/private/tmp` stay closed. Scratch defaults to the per-run directory;
 - in the common git directory, only `objects`, `refs`, `logs`, `packed-refs`, `gc.pid`, `shallow`, and the `.lock` file of each of the last three. Git keeps `gc.pid` and `shallow` in the common directory even in a linked worktree;
 - in the worktree's administrative directory (`.git/worktrees/<name>`), only:
-  - the state files a commit, merge, or cherry-pick writes: `HEAD`, `ORIG_HEAD`, `FETCH_HEAD`, `MERGE_HEAD`, `MERGE_MSG`, `MERGE_MODE`, `AUTO_MERGE`, `CHERRY_PICK_HEAD`, `REVERT_HEAD`, `COMMIT_EDITMSG`, and `index`, each with its `.lock`;
+  - the state files a commit, merge, or cherry-pick writes: `HEAD`, `ORIG_HEAD`, `FETCH_HEAD`, `MERGE_HEAD`, `MERGE_MSG`, `MERGE_MODE`, `AUTO_MERGE`, `CHERRY_PICK_HEAD`, `REVERT_HEAD`, `SQUASH_MSG`, `COMMIT_EDITMSG`, and `index`, each with its `.lock`;
   - the `next-index-<pid>.lock` and `index.stash.<pid>` files that a partial commit and `git stash` write;
-  - the `logs` directory.
+  - the `logs` and `sequencer` directories, so `git merge --squash` and a multi-commit `git cherry-pick` work.
 
   `rebase-merge` and `rebase-apply` stay closed. A task does not rebase, since its brief says to commit and push. Those directories hold a todo file with `exec` lines, which the host would run later with `git rebase --continue`, outside the sandbox;
 - in `~/.codex` (or `$CODEX_HOME`, which must be absolute, when set; every rule below names that directory instead), only `sessions`, `log`, `cache`, `tmp`, `ipc`, `thread-writer-locks`, `mcp-oauth-locks`, `attachments`, the `*.sqlite` databases, and a handful of state files such as `history.jsonl`. The script creates the directories before it starts. `shell_snapshots`, `memories`, and `.tmp` stay closed; this was not tried against a live Codex run, so if Codex needs one, add it to the profile and this list.

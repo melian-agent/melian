@@ -70,10 +70,10 @@ dynamic_rules() {
     filters literal "$common/packed-refs" "$common/packed-refs.lock" "$common/gc.pid" "$common/gc.pid.lock" \
       "$common/shallow" "$common/shallow.lock"
     for p in HEAD ORIG_HEAD FETCH_HEAD MERGE_HEAD MERGE_MSG MERGE_MODE AUTO_MERGE CHERRY_PICK_HEAD \
-      REVERT_HEAD COMMIT_EDITMSG index; do
+      REVERT_HEAD SQUASH_MSG COMMIT_EDITMSG index; do
       filters literal "$admin/$p" "$admin/$p.lock"
     done
-    filters subpath "$admin/logs"
+    filters subpath "$admin/logs" "$admin/sequencer"
     # git commit <paths> and git commit --only lock next-index-<pid>.lock; git stash writes index.stash.<pid> and its .lock.
     printf '  (regex #"^%s/next-index-[0-9]+\\.lock$")\n' "$(regex_path "$admin")"
     printf '  (regex #"^%s/index\\.stash\\.[0-9]+(\\.lock)?$")\n' "$(regex_path "$admin")"

@@ -639,6 +639,21 @@ describe("codex-sandboxed.sh profile", () => {
 			rmSync(join(run, "repo"), { recursive: true, force: true });
 		});
 
+		it("squash-merges, and cherry-picks two commits, which write SQUASH_MSG and the sequencer directory", () => {
+			sh(
+				linked,
+				"git checkout -q -b topic-sq && echo s1 > sq1 && git add sq1 && git commit -q -m s1 && echo s2 > sq2 && git add sq2 && git commit -q -m s2",
+			);
+			const [one, two] = git(linked, "rev-list", "--reverse", "-2", "HEAD").toString().trim().split("\n");
+			sh(
+				linked,
+				"git checkout -q -b squash-target HEAD~2 && git merge --squash topic-sq && git commit -q -m squashed",
+			);
+			expect(existsSync(join(linked, "sq2"))).toBe(true);
+			sh(linked, `git checkout -q -b pick-target HEAD~1 && git cherry-pick ${one} ${two}`);
+			expect(git(linked, "log", "-2", "--format=%s").toString().trim().split("\n")).toEqual(["s2", "s1"]);
+		});
+
 		it("commits only the named paths, and stashes and restores changes", () => {
 			sh(linked, "echo a > pa && echo b > pb && git add pa pb && git commit -q -m both");
 			sh(linked, "echo a2 > pa && echo b2 > pb && git commit -q -m partial -- pa");
