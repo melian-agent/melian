@@ -914,12 +914,17 @@ export class Comparison {
 
 	/** Judgements of findings the comparison still holds; withdrawn findings keep their history in storage. */
 	adjudications(): Record<string, ComparisonAdjudicationRecord> {
-		const ids = new Set([...this.externalFindings().map((each) => each.id), ...this.melian]);
-		return Object.fromEntries(
-			Object.entries(this.judgements ?? {})
-				.filter(([id]) => ids.has(id))
-				.map(([id, record]) => [id, structuredClone(record)]),
-		);
+		return Object.fromEntries(Object.entries(this.judgedIncludingWithdrawn()).filter(([id]) => this.holds(id)));
+	}
+
+	/** Every stored judgement, including those of findings the comparison no longer holds. */
+	judgedIncludingWithdrawn(): Record<string, ComparisonAdjudicationRecord> {
+		return structuredClone(this.judgements ?? {});
+	}
+
+	/** Whether the comparison holds the finding, external or Melian's. */
+	holds(id: string): boolean {
+		return this.externalFinding(id) !== undefined || this.melian.includes(id);
 	}
 
 	/** Every external finding, in file, line, and ID order. */

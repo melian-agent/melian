@@ -189,6 +189,56 @@ describe("comparison review fixes", () => {
 		expect(comparison.toJSON().adjudications?.[external.id]?.current.golden).toBe("correctness");
 	});
 
+	it("lets the newest judgement win even from a round that dropped the finding", () => {
+		const external = report();
+		const round = (at: string, golden?: string, held = true) => {
+			const comparison = Comparison.of({ ...revision, head: at.slice(8, 10).repeat(20) });
+			comparison.import("file:codex.json", { findings: held ? [external] : [], skippedBodies: 0 }, at);
+			comparison.record(at, "a");
+			return comparison;
+		};
+		const one = round("2026-10-01T00:00:00Z");
+		one.adjudicate(external.id, {
+			by: by.by,
+			at: "2026-10-01T00:00:00Z",
+			verdict: "valid",
+			reason: "no-owner",
+			golden: "correctness",
+		});
+		const two = round("2026-10-02T00:00:00Z");
+		two.adjudicate(external.id, {
+			by: by.by,
+			at: "2026-10-02T00:00:00Z",
+			verdict: "valid",
+			reason: "no-owner",
+			golden: "none",
+		});
+		const three = round("2026-10-03T00:00:00Z", undefined, false);
+		const stored = two.toJSON().adjudications!;
+		expect(new ComparisonSet([{ changeset: "a", comparison: one }]).backlog()).toHaveLength(1);
+		const later = Comparison.from({ ...three.toJSON(), adjudications: stored });
+		expect(later.adjudications()).toEqual({});
+		expect(
+			new ComparisonSet([
+				{ changeset: "a", comparison: one },
+				{ changeset: "a", comparison: two },
+				{ changeset: "a", comparison: later },
+			]).backlog(),
+		).toEqual([]);
+		const newer = Comparison.from({
+			...three.toJSON(),
+			adjudications: {
+				[external.id]: { current: { ...stored[external.id]!.current, at: "2026-10-04T00:00:00Z" }, history: [] },
+			},
+		});
+		expect(
+			new ComparisonSet([
+				{ changeset: "a", comparison: one },
+				{ changeset: "a", comparison: newer },
+			]).backlog(),
+		).toEqual([]);
+	});
+
 	it("groups reviewer names and case-folded logins independently of versions", () => {
 		const reports = [
 			report({ reviewer: { name: "coderabbit", login: "CodeRabbitAI[bot]", version: "1" }, line: 10 }),
