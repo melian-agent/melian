@@ -1530,12 +1530,15 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	}
 	let verificationCheck: CheckRecord | undefined;
 	if (candidates.length === 0) {
-		const entry = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed];
-		if (entry?.verification !== undefined) {
-			const previous = await readVerdict(harness, root, reviewed, context);
-			verificationCheck = [...(previous?.ran ?? []), ...(previous?.notRun ?? [])].find(
-				(check) => check.name === "verifier",
-			);
+		const previous = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification;
+		if (previous !== undefined) {
+			const owner = await harness.root(context);
+			await owner.commit(async (tx) => {
+				const index = await tx.doc(ReviewIndex, root);
+				const entry = index.reviews[reviewed];
+				if (entry?.verification?.task === previous.task) index.reviews[reviewed] = omit(entry, "verification");
+			}, context);
+			await abortReplacedRuns(harness, context);
 		}
 	}
 	if (candidates.length > 0) {

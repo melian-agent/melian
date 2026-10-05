@@ -22,6 +22,7 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { clearSightings } from "../src/findings.ts";
 import { reviewFiles } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { type VerificationInput, VerificationTask } from "../src/verification.ts";
@@ -166,6 +167,47 @@ describe("the verifier", () => {
 		const root = await harness.root(context);
 		const index = await harness.snapshot(ReviewIndex, root.id, context);
 		expect(index?.reviews[revisionKey(changeset.revision)]?.verification).toBeDefined();
+	});
+	it("passes a rerun after the lens withdraws the only claim from a failed verification", async () => {
+		const requests = scriptConversations(fake, [
+			{
+				match: lenses[0]!.instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				match: verifierMarker,
+				replies: Array.from({ length: 2 }, () =>
+					fauxAssistantMessage("", { stopReason: "error", errorMessage: "HTTP 503 service unavailable" }),
+				),
+			},
+		]);
+		await expect(review()).rejects.toMatchObject({ code: "verifierFailed" });
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		const findings = await readFindings(harness, root.id, revision, context);
+		await root.commit(
+			(tx) =>
+				clearSightings(
+					tx,
+					root.id,
+					revision,
+					findings.map((finding) => finding.properties.source),
+				),
+			context,
+		);
+		expect((await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision]?.verification).toBeDefined();
+		const result = await review(true);
+		expect(result.verdict.status).toBe("passed");
+		expect(result.findings).toEqual([]);
+		expect(
+			[...(result.verdict.ran ?? []), ...(result.verdict.notRun ?? [])].some((check) => check.name === "verifier"),
+		).toBe(false);
+		expect((await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision]?.verification).toBeUndefined();
+		expect((await review(true)).verdict.status).toBe("passed");
+		expect(requests[verifierMarker]).toHaveLength(2);
 	});
 	it("fails over to the next verifier model", async () => {
 		const requests = scriptConversations(fake, [
