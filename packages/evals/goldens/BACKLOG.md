@@ -43,6 +43,7 @@ A repository lens under Melian's own `.melian/lenses/`, still to come in step 3.
 - [Pull request #18](https://github.com/melian-agent/melian/pull/18) ([record](../comparisons/2026-10-03-pr-18.md)): A8, check records keyed by head and tier return stale results; B5, a `fast` and a `full` run mix their records.
 - [Pull request #19](https://github.com/melian-agent/melian/pull/19) ([record](../comparisons/2026-10-03-pr-19.md)): A3, a resumed publish posts the review of the old diff; B1, a failed round's placeholder reposts findings; B7, recovery matches an older review with the same verdict.
 - [Pull request #34](https://github.com/melian-agent/melian/pull/34) ([record](../comparisons/2026-10-04-pr-34.md)): A3, author-controlled input stored durably with no byte bound; A4, a retarget that keeps the head and the findings posts nothing; D1 to D3, a dismissal must survive a fresh sighting through a hunk over 2 KiB.
+- [Pull request #50](https://github.com/melian-agent/melian/pull/50) ([record](../comparisons/2026-10-05-pr-50.md)): A1, a change that reshapes a finished task's result while a reader can still meet one an older Melian stored, expected `stored-shape`; A2, as a negative golden, a change that leaves an optional member `undefined` in a task's input or result, expected to draw nothing.
 
 ## correctness
 
