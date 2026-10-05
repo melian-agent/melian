@@ -3,23 +3,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+	Changeset,
 	type CheckRecord,
-	createFinding,
 	defaultConfig,
-	type Finding,
-	type Lens,
+	Finding,
+	Lens,
 	type LensBudget,
 	loadConfig,
-	loadLenses,
 	type MelianConfig,
 	ModelRoutingError,
 	maxEvidenceLocations,
 	maxFailureScenarioLength,
 	maxSnippetBytes,
 	type RepositorySource,
-	renderFindingsTerminal,
-	renderVerdictJson,
-	resolveRange,
 	type Verdict,
 } from "@melian-agent/core";
 import {
@@ -113,7 +109,7 @@ beforeEach(async () => {
 		settings: { retry: { enabled: false } },
 	});
 	await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
-	lenses = await loadLenses(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/user.ts"]);
+	lenses = await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/user.ts"]);
 });
 
 afterEach(async () => {
@@ -153,7 +149,7 @@ async function reviewed(options: ReviewWith = {}): Promise<Review> {
 	const ran = deterministicRan.filter((check) => !left.includes(check.name));
 	return reviewChangeset({
 		harness,
-		changeset: await resolveRange(repo, options.range ?? "main...feature"),
+		changeset: await Changeset.resolve(repo, options.range ?? "main...feature"),
 		config: options.config ?? config,
 		lenses: options.lenses ?? lenses,
 		standards: [{ path: "AGENTS.md", content: "Never use the non-null assertion operator." }],
@@ -337,7 +333,7 @@ describe("reviewChangeset", () => {
 			{ "src/notes.md": lines("-- src/fake.ts (added)", "keep") },
 			{ "src/notes.md": lines("keep"), "src/evil\n- added src/forged.ts": "x\n" },
 		);
-		const everything = lenses.map((lens) => ({ ...lens, paths: ["**"] }));
+		const everything = lenses.map((lens) => Lens.from({ ...lens.toJSON(), paths: ["**"] }));
 		const requests = scriptConversations(fake, [
 			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
 			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
@@ -373,7 +369,7 @@ describe("reviewChangeset", () => {
 			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
 		]);
 
-		await review({ lenses: lenses.map((lens) => ({ ...lens, paths: ["**"] })) });
+		await review({ lenses: lenses.map((lens) => Lens.from({ ...lens.toJSON(), paths: ["**"] })) });
 
 		const nonce = nonceOf(requests[correctness]![0]!);
 		const [searched, listed] = toolResults(requests[correctness]![1]!);
@@ -387,7 +383,7 @@ describe("reviewChangeset", () => {
 
 	it("searches and lists the head revision, and offers only the tools a lens lists", async () => {
 		const narrow = lenses.map((lens) =>
-			lens.name === "contracts" ? { ...lens, tools: ["read_file" as const] } : lens,
+			lens.name === "contracts" ? Lens.from({ ...lens.toJSON(), tools: ["read_file" as const] }) : lens,
 		);
 		const requests = scriptConversations(fake, [
 			{
@@ -431,7 +427,7 @@ describe("reviewChangeset", () => {
 			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
 		]);
 
-		const findings = await review({ lenses: lenses.map((lens) => ({ ...lens, paths: ["**"] })) });
+		const findings = await review({ lenses: lenses.map((lens) => Lens.from({ ...lens.toJSON(), paths: ["**"] })) });
 
 		const nonce = nonceOf(requests[correctness]![0]!);
 		const [first, tail] = toolResults(requests[correctness]![1]!);
@@ -470,7 +466,7 @@ describe("reviewChangeset", () => {
 			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
 		]);
 
-		const [finding] = await review({ lenses: lenses.map((lens) => ({ ...lens, paths: ["**"] })) });
+		const [finding] = await review({ lenses: lenses.map((lens) => Lens.from({ ...lens.toJSON(), paths: ["**"] })) });
 
 		const snippets = [
 			finding!.locations[0]!.physicalLocation.region.snippet!.text,
@@ -855,7 +851,7 @@ describe("reviewChangeset", () => {
 		);
 		gitIn(repo, "mv", "src/config.ts", "src/settings.ts");
 		gitIn(repo, "commit", "--quiet", "-m", "rename");
-		const changeset = await resolveRange(repo, "main...feature");
+		const changeset = await Changeset.resolve(repo, "main...feature");
 		expect(changeset.revision.files.find((file) => file.path === "src/settings.ts")).toMatchObject({
 			status: "renamed",
 			oldPath: "src/config.ts",
@@ -915,7 +911,7 @@ describe("reviewChangeset", () => {
 		]);
 
 		const findings = await review({
-			lenses: await loadLenses(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, [
+			lenses: await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, [
 				"src/settings.ts",
 			]),
 		});
@@ -1057,7 +1053,9 @@ describe("reviewChangeset", () => {
 	});
 
 	it("refuses a finding outside the paths a lens covers", async () => {
-		const narrow = lenses.map((lens) => (lens.name === "correctness" ? { ...lens, paths: ["src/user.ts"] } : lens));
+		const narrow = lenses.map((lens) =>
+			lens.name === "correctness" ? Lens.from({ ...lens.toJSON(), paths: ["src/user.ts"] }) : lens,
+		);
 		const requests = scriptConversations(fake, [
 			{
 				match: correctness,
@@ -1078,7 +1076,7 @@ describe("reviewChangeset", () => {
 	it("merges two lenses' reports of one ID at one head into one finding naming both", async () => {
 		const shared = lenses.map((lens) =>
 			lens.name === "contracts"
-				? { ...lens, rules: [...lens.rules, { id: "null-dereference", description: "d" }] }
+				? Lens.from({ ...lens.toJSON(), rules: [...lens.rules, { id: "null-dereference", description: "d" }] })
 				: lens,
 		);
 		const requests = scriptConversations(fake, [
@@ -1887,7 +1885,7 @@ describe("adjudication", () => {
 			},
 			{ "src/port.ts": port() },
 		);
-		const changeset = await resolveRange(repo, "main...feature");
+		const changeset = await Changeset.resolve(repo, "main...feature");
 		expect(changeset.revision.files[0]!.hunks.map(({ newLines, oldStart }) => [newLines, oldStart])).toEqual([
 			[0, 3],
 		]);
@@ -1921,9 +1919,7 @@ describe("adjudication", () => {
 		]);
 
 		const { verdict } = await reviewed({
-			lenses: await loadLenses(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, [
-				"src/port.ts",
-			]),
+			lenses: await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/port.ts"]),
 		});
 
 		expect(verdict.blocking).toBe(true);
@@ -2095,7 +2091,7 @@ describe("adjudication", () => {
 		it("counts a static tool's stored sighting, merged with a lens's report of the same line", async () => {
 			const ran: CheckRecord = { name: "static.biome", status: "ran", version: "2.2.0" };
 			const root = await harness.root(context);
-			const atHead = createFinding(staticFinding);
+			const atHead = Finding.create(staticFinding);
 			await root.commit((tx) => upsertFinding(tx, root.id, atHead, reviewedRevision()), context);
 			scriptConversations(fake, [
 				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
@@ -2115,7 +2111,7 @@ describe("adjudication", () => {
 
 		it("leaves out a static tool's sighting from another version than its record names", async () => {
 			const root = await harness.root(context);
-			const stale = createFinding({
+			const stale = Finding.create({
 				...staticFinding,
 				source: { check: "static.biome", version: "1.0.0" },
 			});
@@ -2169,13 +2165,15 @@ describe("adjudication", () => {
 				status: "passed",
 				notRun: [allowedDecisionSkip, noPaths("lens.correctness"), noPaths("lens.contracts")],
 			});
-			expect(renderFindingsTerminal(verdict)).toContain("  lens.correctness  skipped: no paths");
-			expect(JSON.parse(renderVerdictJson(verdict)).notRun).toContainEqual(noPaths("lens.contracts"));
+			expect(verdict.render()).toContain("  lens.correctness  skipped: no paths");
+			expect(JSON.parse(verdict.renderJson()).notRun).toContainEqual(noPaths("lens.contracts"));
 		});
 
 		it("records a lens with no changed file in its paths as an allowed skip beside one that ran", async () => {
 			scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
-			const one = lenses.map((lens) => (lens.name === "contracts" ? { ...lens, paths: ["docs/**"] } : lens));
+			const one = lenses.map((lens) =>
+				lens.name === "contracts" ? Lens.from({ ...lens.toJSON(), paths: ["docs/**"] }) : lens,
+			);
 			const { verdict } = await reviewed({ lenses: one });
 			expect(verdict).toMatchObject({
 				status: "passed",
@@ -2267,7 +2265,7 @@ describe("adjudication", () => {
 				{ "docs/notes.md": notes },
 			);
 			const base = { kind: "revision", commit: gitIn(repo, "rev-parse", "main") } as const;
-			const { revision } = await resolveRange(repo, "main...feature");
+			const { revision } = await Changeset.resolve(repo, "main...feature");
 			const { config: melian } = await loadConfig(repo, base, ".");
 			const everyBuiltIn = [
 				"correctness",
@@ -2287,7 +2285,7 @@ describe("adjudication", () => {
 
 			const { verdict } = await reviewed({
 				config: { ...melian, models: config.models },
-				lenses: await loadLenses(
+				lenses: await Lens.load(
 					repo,
 					base,
 					revision.files.map((file) => file.path),
@@ -2545,7 +2543,7 @@ describe("code over 2 KiB, which a finding stores cut", () => {
 		]);
 	}
 
-	const everywhere = () => lenses.map((lens) => ({ ...lens, paths: ["**"] }));
+	const everywhere = () => lenses.map((lens) => Lens.from({ ...lens.toJSON(), paths: ["**"] }));
 
 	async function statuses() {
 		const { findings } = await reviewed({ lenses: everywhere() });
@@ -2643,7 +2641,7 @@ describe("code over 2 KiB, which a finding stores cut", () => {
 	// A lens finding as a Melian before the cut built it: every snippet whole.
 	function wholeFinding(file: string, line: number, snippet: string, added: string): Finding {
 		const [correctnessLens] = lenses.filter((lens) => lens.name === "correctness");
-		const finding = createFinding({
+		const finding = Finding.create({
 			rule: nullDeref.rule,
 			message: nullDeref.explanation.what,
 			file,
@@ -2662,7 +2660,10 @@ describe("code over 2 KiB, which a finding stores cut", () => {
 		});
 		const [location] = finding.locations;
 		const region = { ...location.physicalLocation.region, snippet: { text: snippet } };
-		return { ...finding, locations: [{ physicalLocation: { ...location.physicalLocation, region } }] };
+		return Finding.from({
+			...finding.toJSON(),
+			locations: [{ physicalLocation: { ...location.physicalLocation, region } }],
+		});
 	}
 
 	it("keeps a dismissal stored with a whole trigger over 2 KiB when the same hunk is sighted again", async () => {

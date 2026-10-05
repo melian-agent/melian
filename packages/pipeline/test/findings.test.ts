@@ -3,10 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
 	type Changeset,
-	createFinding,
 	defaultConfig,
 	dismissalVersion,
-	type Finding,
+	Finding,
 	FindingError,
 	type FindingInput,
 	type FindingSource,
@@ -14,10 +13,12 @@ import {
 	type PullRequest,
 	type ReviewDraft,
 	type ReviewProvider,
+	Revision,
 	replyKey,
-	resolveFinding,
+	type StoredFinding,
+	type StoredVerdict,
 	snippetHash,
-	type Verdict,
+	Verdict,
 } from "@melian-agent/core";
 import {
 	backgroundContext as context,
@@ -38,9 +39,9 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { type StoredVerdict, upgradeStoredVerdict, VerdictDocument } from "../src/adjudication.ts";
+import { VerdictDocument } from "../src/adjudication.ts";
 import { FindingsDocument } from "../src/findings.ts";
-import { fingerprint, legacyFingerprint, PublishedDocument, PublisherDocument } from "../src/publish.ts";
+import { PublishedDocument, PublisherDocument } from "../src/publish.ts";
 
 const input: FindingInput = {
 	rule: "no-eval",
@@ -60,12 +61,12 @@ const input: FindingInput = {
 	source: { check: "lens.security", version: "1" },
 };
 
-const evalFinding = createFinding(input);
+const evalFinding = Finding.create(input);
 
 // A finding as readFindings returns it: merged from its sightings, naming every producer.
 function seen(finding: Finding, ...also: FindingSource[]): Finding {
 	const reportedBy = [finding.properties.source, ...also];
-	return { ...finding, properties: { ...finding.properties, reportedBy } };
+	return Finding.from({ ...finding.toJSON(), properties: { ...finding.properties, reportedBy } });
 }
 
 let dir: string;
@@ -96,7 +97,7 @@ describe("the findings document", () => {
 
 	it("stores a finding upserted twice under one ID once", async () => {
 		const { harness, root } = await open(createMemoryStorage());
-		const reworded = createFinding({ ...input, message: "eval runs the request body" });
+		const reworded = Finding.create({ ...input, message: "eval runs the request body" });
 		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
 		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
 		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(evalFinding)]);
@@ -107,7 +108,7 @@ describe("the findings document", () => {
 
 	it("keeps findings with different IDs apart, in ID order", async () => {
 		const { harness, root } = await open(createMemoryStorage());
-		const other = createFinding({ ...input, snippet: "eval(body)" });
+		const other = Finding.create({ ...input, snippet: "eval(body)" });
 		await root.commit(async (tx) => {
 			await upsertFinding(tx, root.id, evalFinding, "rev1");
 			await upsertFinding(tx, root.id, other, "rev1");
@@ -120,7 +121,8 @@ describe("the findings document", () => {
 
 	it("stores a finding with nested undefined values as its JSON form", async () => {
 		const { harness, root } = await open(createMemoryStorage());
-		const loose = { ...evalFinding, message: { text: evalFinding.message.text, markdown: undefined } } as Finding;
+		const message = { text: evalFinding.message.text, markdown: undefined };
+		const loose = Finding.from({ ...evalFinding.toJSON(), message } as StoredFinding);
 		await root.commit((tx) => upsertFinding(tx, root.id, loose, "rev1"), context);
 		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(evalFinding)]);
 	});
@@ -136,7 +138,7 @@ describe("the findings document", () => {
 
 	it("refuses an invalid finding and commits nothing", async () => {
 		const { harness, root } = await open(createMemoryStorage());
-		const invalid: Finding = { ...evalFinding, level: "note" };
+		const invalid = Finding.from({ ...evalFinding.toJSON(), level: "note" });
 		const committed = root.commit(async (tx) => {
 			await upsertFinding(tx, root.id, evalFinding, "rev1");
 			await upsertFinding(tx, root.id, invalid, "rev1");
@@ -148,7 +150,7 @@ describe("the findings document", () => {
 	describe("lifecycle", () => {
 		const dismissal = { by: "tal", reason: "eval input is a constant here", at: "2026-10-03T00:00:00.000Z" };
 		const triggered = (snippet: string) =>
-			createFinding({
+			Finding.create({
 				...input,
 				trigger: { file: "src/run.ts", index: 0, snippet },
 			});
@@ -197,7 +199,7 @@ describe("the findings document", () => {
 
 		it("keeps a dismissal when the trigger only moves or is rewrapped", async () => {
 			const finding = triggered("eval(input)");
-			const moved = createFinding({
+			const moved = Finding.create({
 				...input,
 				trigger: { file: "src/run.ts", index: 2, snippet: "  eval(\n    input\n  )\n" },
 			});
@@ -241,7 +243,7 @@ describe("the findings document", () => {
 			const lib = snippetHash("+export const run = eval;");
 			const util = snippetHash("+export const parse = JSON.parse;");
 			const affected = (trigger: FindingInput["trigger"]) =>
-				createFinding({
+				Finding.create({
 					...input,
 					cause: "affected",
 					evidence: [
@@ -345,7 +347,7 @@ describe("the findings document", () => {
 		const security = input.source;
 		const style = { check: "lens.style", version: "7" };
 		const fromStyle = (severity: FindingInput["severity"]) =>
-			createFinding({ ...input, severity, resolution: "advisory", source: style });
+			Finding.create({ ...input, severity, resolution: "advisory", source: style });
 
 		it("merges two lenses' sightings of one ID at one head, the higher severity winning", async () => {
 			const { harness, root } = await open(createMemoryStorage());
@@ -373,9 +375,9 @@ describe("the findings document", () => {
 				},
 			];
 			const failureScenario = "run('process.exit()') stops the server.";
-			const evidenced = createFinding({ ...input, cause: "affected", evidence, failureScenario });
+			const evidenced = Finding.create({ ...input, cause: "affected", evidence, failureScenario });
 			const contextOnly = [{ ...evidence[0]!, role: "context" as const }];
-			const unproven = createFinding({
+			const unproven = Finding.create({
 				...input,
 				severity: "P0",
 				cause: "pre-existing",
@@ -398,7 +400,7 @@ describe("the findings document", () => {
 					{ id: evidenced.properties.id, ruleId: "no-eval", source: security, failureScenario, evidence },
 				],
 			});
-			expect(resolveFinding(merged!, defaultConfig)).toBe("block");
+			expect(merged!.resolve(defaultConfig)).toBe("block");
 		});
 
 		it("breaks a severity tie by lens name", async () => {
@@ -413,7 +415,7 @@ describe("the findings document", () => {
 
 		it("lets a replay or correction replace only the same lens's sighting at that head", async () => {
 			const { harness, root } = await open(createMemoryStorage());
-			const corrected = createFinding({ ...input, message: "corrected" });
+			const corrected = Finding.create({ ...input, message: "corrected" });
 			await root.commit(async (tx) => {
 				await upsertFinding(tx, root.id, evalFinding, "rev1");
 				await upsertFinding(tx, root.id, fromStyle("P3"), "rev1");
@@ -428,12 +430,12 @@ describe("the findings document", () => {
 		it("never lets a resumed review of an old head change what the newer head reads", async () => {
 			const { harness, root } = await open(createMemoryStorage());
 			const dismissal = { by: "tal", reason: "constant input", at: "2026-10-03T00:00:00.000Z" };
-			const old = createFinding({
+			const old = Finding.create({
 				...input,
 				message: "old head",
 				trigger: { file: "src/run.ts", index: 0, snippet: "a()" },
 			});
-			const current = createFinding({ ...input, trigger: { file: "src/run.ts", index: 0, snippet: "b()" } });
+			const current = Finding.create({ ...input, trigger: { file: "src/run.ts", index: 0, snippet: "b()" } });
 			await root.commit((tx) => recordRevision(tx, root.id, "old"), context);
 			await root.commit(async (tx) => {
 				await recordRevision(tx, root.id, "new");
@@ -483,7 +485,7 @@ describe("documents stored before evidence became a list", () => {
 		const evidence = [
 			{ file: "src/api.ts", startLine: 3, role: "cause" as const, revision: "head" as const, snippet: "run(body)" },
 		];
-		const current = createFinding({ ...input, cause: "affected", evidence });
+		const current = Finding.create({ ...input, cause: "affected", evidence });
 		const { status: _, ...properties } = current.properties;
 		const { role: __, revision: ___, ...old } = evidence[0]!;
 		const sighting = { ...current, properties: { ...properties, evidence: old } };
@@ -504,7 +506,7 @@ describe("documents stored before evidence became a list", () => {
 
 		const { harness, root } = await open(await openSqliteStorage(path));
 		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(current)]);
-		const later = createFinding({
+		const later = Finding.create({
 			...input,
 			snippet: "eval(body)",
 			evidence,
@@ -536,7 +538,7 @@ describe("documents stored before evidence became a list", () => {
 		const evidence = [
 			{ file: "src/api.ts", startLine: 3, role: "cause" as const, revision: "head" as const, snippet: "run(body)" },
 		];
-		const current = createFinding({ ...input, cause: "affected", evidence });
+		const current = Finding.create({ ...input, cause: "affected", evidence });
 		const { role: _, revision: __, ...old } = evidence[0]!;
 		const stored = { ...current, properties: { ...current.properties, evidence: old } };
 		const verdict = (finding: unknown) => ({
@@ -579,27 +581,30 @@ describe("documents stored before evidence became a list", () => {
 		const evidence = [
 			{ file: "src/api.ts", startLine: 3, role: "cause" as const, revision: "head" as const, snippet: "run(body)" },
 		];
-		const current = createFinding({ ...input, cause: "affected", evidence });
+		const current = Finding.create({ ...input, cause: "affected", evidence });
 		const { role: _, revision: __, ...old } = evidence[0]!;
 		const stored = { ...current, properties: { ...current.properties, evidence: old } };
-		const plain = createFinding({ ...input, snippet: "eval(body)" });
-		const verdict = (finding: unknown) =>
+		const plain = Finding.create({ ...input, snippet: "eval(body)" });
+		const verdict = (finding: unknown): StoredVerdict =>
 			({
 				status: "findings",
 				blocking: true,
-				findings: { block: [finding, plain], acknowledge: [], advisory: [], silent: [] },
+				findings: { block: [finding, plain.toJSON()], acknowledge: [], advisory: [], silent: [] },
 				dismissed: [],
 				notRun: [],
-			}) as unknown as Verdict;
-		const published = fingerprint(verdict(stored));
-		const migrated = upgradeStoredVerdict(verdict(stored) as StoredVerdict) as Verdict;
+			}) as StoredVerdict;
+		// What an older Melian's fingerprint gave this verdict as stored, so both sides do not come from the code under test.
+		const published = "3e32f949baf5d54e";
+		const migrated = Verdict.from(Verdict.upgrade(verdict(stored)));
 
-		expect(fingerprint(migrated)).not.toBe(published);
-		expect(legacyFingerprint(migrated)).toBe(published);
-		const scenario = createFinding({ ...input, cause: "affected", evidence, failureScenario: "run(1) throws." });
-		expect(legacyFingerprint(verdict(scenario))).toBeUndefined();
+		expect(Verdict.from(verdict(stored)).fingerprint()).toBe(published);
+		expect(migrated.fingerprint()).toBe("3f63e3f3f6c2216a");
+		expect(migrated.legacyFingerprint()).toBe(published);
+		const scenario = Finding.create({ ...input, cause: "affected", evidence, failureScenario: "run(1) throws." });
+		expect(Verdict.from(verdict(scenario.toJSON())).legacyFingerprint()).toBeUndefined();
 		const contextOnly = [{ ...evidence[0]!, role: "context" as const }];
-		expect(legacyFingerprint(verdict(createFinding({ ...input, evidence: contextOnly })))).toBeUndefined();
+		const contextual = Finding.create({ ...input, evidence: contextOnly }).toJSON();
+		expect(Verdict.from(verdict(contextual)).legacyFingerprint()).toBeUndefined();
 	});
 
 	it("keys each reply an older Melian recorded by its finding, its thread, and the dismissal it gave", async () => {
@@ -641,7 +646,7 @@ describe("documents stored before evidence became a list", () => {
 		const evidence = [
 			{ file: "src/api.ts", startLine: 3, role: "cause" as const, revision: "head" as const, snippet: "run(body)" },
 		];
-		const current = createFinding({ ...input, cause: "affected", evidence });
+		const current = Finding.create({ ...input, cause: "affected", evidence });
 		const { role: _, revision: __, ...old } = evidence[0]!;
 		const stored = { ...current, properties: { ...current.properties, evidence: old } };
 		// The verdict as an older Melian recorded it, for A..H and, identically, for B..H after a retarget.
@@ -652,6 +657,8 @@ describe("documents stored before evidence became a list", () => {
 			dismissed: [],
 			notRun: [],
 		};
+		// What an older Melian's fingerprint gave `oldVerdict`, and the review it posted records.
+		const oldFingerprint = "b03f395c48ffe2ed";
 		const provenance = (base: string) => ({
 			kind: "pull-request" as const,
 			repository,
@@ -705,7 +712,7 @@ describe("documents stored before evidence became a list", () => {
 				published.revisions = json({
 					[head]: {
 						reviews: ["101"],
-						verdict: fingerprint(oldVerdict as unknown as Verdict),
+						verdict: oldFingerprint,
 						rounds: 1,
 						open: {},
 						resolved: {},
@@ -720,7 +727,7 @@ describe("documents stored before evidence became a list", () => {
 			const { provider, posted, pullRequest } = fakeProvider(base);
 			const publisher = await openPublishHarness(await openSqliteStorage(path), createFakeModels().review, provider);
 			try {
-				const changeset = { revision: { base, head, files: [] } } as unknown as Changeset;
+				const changeset = { revision: Revision.from({ base, head, files: [] }) } as unknown as Changeset;
 				const publication = await publishReview({
 					harness: publisher.harness,
 					provider,
@@ -734,6 +741,12 @@ describe("documents stored before evidence became a list", () => {
 			}
 		}
 
+		it("fingerprints the old verdict, and its upgrade's legacy form, as an older Melian did", () => {
+			const stored = oldVerdict as unknown as StoredVerdict;
+			expect(Verdict.from(stored).fingerprint()).toBe(oldFingerprint);
+			expect(Verdict.from(Verdict.upgrade(stored)).legacyFingerprint()).toBe(oldFingerprint);
+		});
+
 		it("posts nothing again for the revision that review was of", async () => {
 			const { publication, posted } = await publishAfterUpgrade([baseA], baseA);
 			expect(posted).toEqual([]);
@@ -742,7 +755,7 @@ describe("documents stored before evidence became a list", () => {
 
 		it("posts a review of a retargeted revision whose verdict matches the one published under the old base", async () => {
 			const path = join(dir, "published.sqlite");
-			const verdict = upgradeStoredVerdict(oldVerdict as unknown as StoredVerdict);
+			const verdict = Verdict.upgrade(oldVerdict as unknown as StoredVerdict);
 			const first = await open(await openSqliteStorage(path));
 			await first.root.commit(async (tx) => {
 				const verdicts = await tx.doc(VerdictDocument, first.root.id);
@@ -764,7 +777,7 @@ describe("documents stored before evidence became a list", () => {
 					provider,
 				);
 				try {
-					const changeset = { revision: { base, head, files: [] } } as unknown as Changeset;
+					const changeset = { revision: Revision.from({ base, head, files: [] }) } as unknown as Changeset;
 					await publishReview({ harness: publisher.harness, provider, changeset, pullRequest, base });
 					return posted;
 				} finally {

@@ -2,14 +2,13 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+	Changeset,
 	defaultConfig,
-	type Lens,
-	loadLenses,
+	Lens,
 	type MelianConfig,
 	type PullRequest,
 	type ReviewProvider,
 	type ReviewStatus,
-	resolveRange,
 } from "@melian-agent/core";
 import {
 	type Context,
@@ -110,7 +109,7 @@ beforeEach(async () => {
 		tiers: twoLensTiers,
 		models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
 	};
-	lenses = await loadLenses(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/user.ts"]);
+	lenses = await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/user.ts"]);
 });
 
 afterEach(async () => {
@@ -146,7 +145,7 @@ function scriptFinding(merged = false): void {
 
 // Reviews main...feature, as a range, or as pull request #7 under its base's policy, which only can be published.
 async function reviewed(harness: Harness, asPullRequest = false): Promise<Review> {
-	const changeset = await resolveRange(repo, "main...feature");
+	const changeset = await Changeset.resolve(repo, "main...feature");
 	const { base, head } = changeset.revision;
 	const pullRequest = {
 		origin: {
@@ -177,7 +176,7 @@ async function adjudicationTask(harness: Harness): Promise<number | undefined> {
 }
 
 async function revision() {
-	return (await resolveRange(repo, "main...feature")).revision;
+	return (await Changeset.resolve(repo, "main...feature")).revision;
 }
 
 async function dismiss(harness: Harness, id: string, with_ = dismissal) {
@@ -215,7 +214,7 @@ async function publisher(path: string) {
 		},
 		findPublished: async () => ({ threads: {}, replies: {} }),
 	};
-	const changeset = await resolveRange(repo, "main...feature");
+	const changeset = await Changeset.resolve(repo, "main...feature");
 	const publish = async () => {
 		const publishing = await openPublishHarness(await openSqliteStorage(path), fake.review, provider);
 		try {
@@ -352,7 +351,7 @@ describe("recording a dismissal", () => {
 			{ "src/user.ts": user("manager", '\treturn user.manager?.name ?? "none";'), "src/org.ts": org },
 			{ "src/user.ts": user("boss", [unsafe, ...padding("first")].join("\n")) },
 		);
-		lenses = await loadLenses(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/user.ts"]);
+		lenses = await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, ["src/user.ts"]);
 		const caller = {
 			...nullDeref,
 			file: "src/org.ts",
@@ -439,7 +438,7 @@ describe("recording a dismissal", () => {
 				},
 				{ "src/user.ts": user("boss", unsafe), "src/team.ts": team("5") },
 			);
-			lenses = await loadLenses(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, [
+			lenses = await Lens.load(repo, { kind: "revision", commit: gitIn(repo, "rev-parse", "main") }, [
 				"src/user.ts",
 			]);
 		});

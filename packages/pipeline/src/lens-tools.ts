@@ -1,12 +1,8 @@
 import {
 	type ChangedFile,
 	capSnippet,
-	causeOverlap,
-	changeOverlap,
-	classifyCause,
-	createFinding,
 	type EvidenceLocation,
-	type Finding,
+	Finding,
 	type FindingTrigger,
 	type LensRule,
 	type LensToolName,
@@ -17,6 +13,7 @@ import {
 	maxFailureScenarioLength,
 	type ProvingHunk,
 	type ReportFindingInput,
+	Revision,
 	type RevisionEntry,
 	RevisionError,
 	readRevisionFile,
@@ -110,13 +107,6 @@ export function reviewFiles(files: readonly ChangedFile[]): ReviewFile[] {
 				changes: changes.join("\n"),
 			};
 		}),
-	}));
-}
-
-function changedFiles(files: readonly ReviewFile[]): ChangedFile[] {
-	return files.map((file) => ({
-		...file,
-		hunks: file.hunks.map(({ added: _, changes: __, ...hunk }) => ({ ...hunk, header: "", text: "" })),
 	}));
 }
 
@@ -527,15 +517,15 @@ function overlapping(file: ReviewFile | undefined, startLine: number, endLine: n
 // never changes which hunk an affected finding's trigger names. A rename proves without a hunk, and adds none.
 function provingHunks(
 	evidence: readonly EvidenceLocation[],
-	files: readonly ReviewFile[],
+	review: ReviewState,
+	revision: Revision,
 	findingFile: string,
 ): ReviewHunk[] {
-	const changed = { files: changedFiles(files) };
 	const proven = evidence.flatMap((location) => {
-		const overlap = location.proves === true ? causeOverlap(location, changed, findingFile) : undefined;
+		const overlap = location.proves === true ? revision.causeOverlap(location, findingFile) : undefined;
 		return overlap?.kind === "hunk" ? [overlap.hunk] : [];
 	});
-	return files
+	return review.files
 		.flatMap((file) => file.hunks)
 		.filter((hunk) => proven.some((each) => each.file === hunk.file && each.index === hunk.index))
 		.sort((a, b) => (a.file === b.file ? a.index - b.index : a.file < b.file ? -1 : 1));
@@ -613,6 +603,7 @@ function malformed(args: unknown): string | undefined {
 async function evidenceFrom(
 	args: ReportFindingInput["evidence"],
 	review: ReviewState,
+	changed: Revision,
 	findingFile: string,
 ): Promise<EvidenceLocation[]> {
 	// A call an older Melian stored before a crash resumes here without passing prepareArguments or the schema again.
@@ -632,9 +623,8 @@ async function evidenceFrom(
 					: "";
 			const { snippet } = await linesAt(review, revision, file, line, endLine, hint);
 			const site = { file, startLine: line, endLine, role, revision };
-			const changed = { files: changedFiles(review.files) };
-			const deleted = revision === "base" && changeOverlap(site, changed, findingFile) !== undefined;
-			const proves = causeOverlap(site, changed, findingFile) !== undefined;
+			const deleted = revision === "base" && changed.changeOverlap(site, findingFile) !== undefined;
+			const proves = changed.causeOverlap(site, findingFile) !== undefined;
 			return {
 				file,
 				startLine: line,
@@ -658,12 +648,21 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 	}
 	const endLine = args.endLine ?? args.line;
 	const { content, snippet } = await linesAt(review, "head", path, args.line, endLine);
-	const evidence = await evidenceFrom(args.evidence, review, path);
+	// The lens tools never read a hunk's text, so the review state does not keep it.
+	const revision = Revision.from({
+		base: review.base,
+		head: review.head,
+		files: review.files.map((file) => ({
+			...file,
+			hunks: file.hunks.map(({ added: _, changes: __, ...hunk }) => ({ ...hunk, header: "", text: "" })),
+		})),
+	});
+	const evidence = await evidenceFrom(args.evidence, review, revision, path);
 	const location = { file: path, startLine: args.line, endLine };
-	const cause = classifyCause(location, { files: changedFiles(review.files) }, evidence);
+	const cause = revision.classifyCause(location, evidence);
 	const changed = review.files.find((file) => file.path === path);
 	const introducing = cause === "introduced" ? overlapping(changed, args.line, endLine) : undefined;
-	const proving = cause === "affected" ? provingHunks(evidence, review.files, path) : [];
+	const proving = cause === "affected" ? provingHunks(evidence, review, revision, path) : [];
 	// An introduced finding's trigger hashes its hunk's added lines whole, so a dismissal reopens only when that code
 	// changes, however long it is.
 	const trigger: FindingTrigger | undefined =
@@ -676,7 +675,7 @@ async function findingFromCall(args: ReportFindingInput, lens: LensPolicy, revie
 					hash: snippetHash(introducing.added),
 				};
 	const { severity } = args;
-	return createFinding({
+	return Finding.create({
 		rule: args.rule,
 		message: args.explanation.what,
 		file: path,

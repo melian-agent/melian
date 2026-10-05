@@ -5,13 +5,11 @@ import { join, sep } from "node:path";
 import {
 	checksOfTier,
 	defaultScrutinyLevel,
-	type Lens,
+	Lens,
 	type LensTier,
 	loadConfig,
-	loadLenses,
 	type MelianConfig,
 	type StaticTool,
-	scrutinyLevels,
 } from "@melian-agent/core";
 import { parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
 import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSource } from "@melian-agent/pipeline";
@@ -70,7 +68,7 @@ async function tiersInUse(root: string, config: MelianConfig): Promise<Map<LensT
 			.map((check) => check.slice("lens.".length)),
 	);
 	const used = new Map<LensTier, string[]>();
-	for (const lens of await loadLenses(root, { kind: "worktree" }, ["."])) {
+	for (const lens of await Lens.load(root, { kind: "worktree" }, ["."])) {
 		const settings = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name] : undefined;
 		if (!names.has(lens.name) || settings?.enabled === false) continue;
 		const tier = settings?.tier ?? lens.levels[defaultScrutinyLevel].tier;
@@ -109,41 +107,13 @@ async function routesCheck(cwd: string): Promise<Check | undefined> {
 	}
 }
 
-// Where a lens's level is cheaper than the level below it. Each level takes what it leaves out from the top level, so a
-// lens that extends another and sets a top-level tier or budget moves the levels that name none, and can leave
-// `careful` on a lighter tier than `quick`, or allowing more than `deep`.
-function inversions(lens: Lens): string[] {
-	const declared = scrutinyLevels.flatMap((level) => {
-		const settings = lens.levels[level];
-		return settings === undefined ? [] : [{ level, ...settings }];
-	});
-	return declared.slice(1).flatMap((upper, index) => {
-		const lower = declared[index]!;
-		const tier =
-			tiers.indexOf(upper.tier) < tiers.indexOf(lower.tier)
-				? [`${upper.level} runs on ${upper.tier}, below ${lower.level}'s ${lower.tier}`]
-				: [];
-		const budgets = (["tokens", "tools"] as const).flatMap((budget) => {
-			const mine = upper.budget[budget] ?? Number.POSITIVE_INFINITY;
-			const below = lower.budget[budget] ?? Number.POSITIVE_INFINITY;
-			if (mine >= below) return [];
-			const unit = budget === "tokens" ? "tokens" : "tool calls";
-			const theirs = below === Number.POSITIVE_INFINITY ? "no limit" : below.toLocaleString("en-AU");
-			return [
-				`${upper.level} allows ${mine.toLocaleString("en-AU")} ${unit}, fewer than ${lower.level}'s ${theirs}`,
-			];
-		});
-		return [...tier, ...budgets];
-	});
-}
-
 // Triage will choose a level by how hard a lens should look, so a higher level that costs less inverts its choice.
 async function levelsCheck(cwd: string): Promise<Check | undefined> {
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return undefined;
 	try {
-		const inverted = (await loadLenses(root, { kind: "worktree" }, ["."])).flatMap((lens) => {
-			const found = inversions(lens);
+		const inverted = (await Lens.load(root, { kind: "worktree" }, ["."])).flatMap((lens) => {
+			const found = lens.inversions();
 			return found.length === 0 ? [] : [`${lens.name}: ${found.join("; ")}`];
 		});
 		return inverted.length === 0

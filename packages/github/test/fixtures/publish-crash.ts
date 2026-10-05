@@ -3,7 +3,7 @@
 // record it, logging `review-posted`; with `before-review`, it parks before GitHub has anything, logging
 // `review-requested`. The fake GitHub's state is written to a file after every write, so a post outlives the child.
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
-import { resolveRange } from "@melian-agent/core";
+import { Changeset } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
 import { openSqliteStorage, publishReview } from "@melian-agent/pipeline";
 import { type Call, type FakeState, fakeGitHub } from "./fake-github.ts";
@@ -38,7 +38,7 @@ const fetch = fakeGitHub(
 );
 const provider = createGitHubProvider({ owner: state.owner, repo: state.repo, token: "test-token", fetch });
 const harness = await openPublishHarness(await openSqliteStorage(database), scenarioModels(), provider);
-const changeset = await resolveRange(repo, range);
+const changeset = await Changeset.resolve(repo, range);
 await publishReview({
 	harness,
 	provider,
