@@ -51,8 +51,6 @@ async function storeReview(harness: CompareHarness, reviewFindings: readonly Fin
 	}, context);
 }
 
-const imported = (...each: ExternalFinding[]) => ({ findings: each, skippedBodies: 0 });
-
 function codex(line: number, position: number): ExternalFinding {
 	return ExternalFinding.create({
 		reviewer: { name: "codex" },
@@ -87,7 +85,11 @@ describe("CompareHarness", () => {
 		const harness = await memoryHarness();
 		expect(await harness.reviewed(revision)).toBe(false);
 
-		const refused = harness.importFindings(revision, [{ source: "file:codex.json", imported: imported() }], "t");
+		const refused = harness.importFindings(
+			revision,
+			[{ source: "file:codex.json", imported: { findings: [], skippedBodies: 0 } }],
+			"t",
+		);
 
 		await expect(refused).rejects.toThrow(CompareError);
 		await expect(refused).rejects.toMatchObject({ code: "notReviewed" });
@@ -103,7 +105,7 @@ describe("CompareHarness", () => {
 
 		const comparison = await harness.importFindings(
 			revision,
-			[{ source: "file:codex.json", imported: imported(near, far) }],
+			[{ source: "file:codex.json", imported: { findings: [near, far], skippedBodies: 0 } }],
 			"t",
 		);
 
@@ -187,7 +189,7 @@ describe("CompareHarness", () => {
 		expect(await harness.reviewed(revision)).toBe(true);
 		const comparison = await harness.importFindings(
 			revision,
-			[{ source: "file:codex.json", imported: imported(near) }],
+			[{ source: "file:codex.json", imported: { findings: [near], skippedBodies: 0 } }],
 			"t",
 		);
 		const pair = { external: near.id, melian: findings[0]!.id };
@@ -203,7 +205,7 @@ describe("CompareHarness", () => {
 		const first = findings[0]!;
 		const second = findings[1]!;
 		const far = codex(90, 0);
-		const sources = [{ source: "file:codex.json", imported: imported(far) }];
+		const sources = [{ source: "file:codex.json", imported: { findings: [far], skippedBodies: 0 } }];
 		await storeReview(harness, [first]);
 		await harness.importFindings(revision, sources, "t1");
 		await storeReview(harness, [second]);
@@ -230,7 +232,11 @@ describe("CompareHarness", () => {
 		const first = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review);
 		open.push(first);
 		await storeReview(first);
-		await first.importFindings(revision, [{ source: "file:codex.json", imported: imported(near, far) }], "t1");
+		await first.importFindings(
+			revision,
+			[{ source: "file:codex.json", imported: { findings: [near, far], skippedBodies: 0 } }],
+			"t1",
+		);
 		const hand = { by: "Maintainer <m@example.com>", at: "t2" };
 		await first.unmatch(revision, { external: near.id, melian: findings[0]!.id }, hand);
 		await first.match(revision, { external: far.id, melian: findings[1]!.id }, hand);
@@ -240,7 +246,7 @@ describe("CompareHarness", () => {
 		open.push(second);
 		const again = await second.importFindings(
 			revision,
-			[{ source: "file:codex.json", imported: imported(near, far) }],
+			[{ source: "file:codex.json", imported: { findings: [near, far], skippedBodies: 0 } }],
 			"t3",
 		);
 
@@ -252,7 +258,11 @@ describe("CompareHarness", () => {
 	it("refuses a hand match naming a finding the comparison does not hold, and changes nothing", async () => {
 		const harness = await memoryHarness();
 		await storeReview(harness);
-		await harness.importFindings(revision, [{ source: "file:codex.json", imported: imported(codex(13, 0)) }], "t");
+		await harness.importFindings(
+			revision,
+			[{ source: "file:codex.json", imported: { findings: [codex(13, 0)], skippedBodies: 0 } }],
+			"t",
+		);
 		const before = (await harness.read(revision))?.toJSON();
 
 		const refused = harness.match(

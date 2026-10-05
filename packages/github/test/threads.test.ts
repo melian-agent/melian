@@ -185,7 +185,9 @@ describe("ReviewThreadImporter", () => {
 								pullRequest: {
 									reviews: {
 										pageInfo: { hasNextPage: true, endCursor: "review-1" },
-										nodes: [{ body: "First review body", author: { __typename: "Bot", login: "coderabbitai" } }],
+										nodes: [
+											{ body: "First review body", author: { __typename: "Bot", login: "coderabbitai" } },
+										],
 									},
 								},
 							},
@@ -197,7 +199,9 @@ describe("ReviewThreadImporter", () => {
 								pullRequest: {
 									reviews: {
 										pageInfo: { hasNextPage: false, endCursor: "review-2" },
-										nodes: [{ body: "Second review body", author: { __typename: "Bot", login: "coderabbitai" } }],
+										nodes: [
+											{ body: "Second review body", author: { __typename: "Bot", login: "coderabbitai" } },
+										],
 									},
 								},
 							},
