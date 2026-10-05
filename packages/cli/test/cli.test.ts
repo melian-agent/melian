@@ -102,6 +102,21 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.stdout).toMatch(/^Verdict: passed\n/);
 	});
 
+	it("refuses a decision provider it has no adapter for, saying how to triage without one (issue #24)", () => {
+		const { repo, env } = goldenCheckout(
+			goldens["clean-rename"]!,
+			undefined,
+			`${guardrailsOnly}decisions:\n  provider: clef\n`,
+		);
+
+		const review = melian(repo, ["review", "main"], env);
+
+		expect(review.status).toBe(2);
+		expect(review.stderr).toBe(
+			"melian: melian.yaml sets decisions.provider to clef, and Melian has no adapter for a decision provider until milestone 4; remove the key, and triage runs on the LLM fallback\n",
+		);
+	});
+
 	it("exits 1 for a blocking finding, and findings prints what review printed", () => {
 		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!);
 

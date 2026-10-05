@@ -1,6 +1,14 @@
 import { readFile } from "node:fs/promises";
-import type { Lens, LensTier, MelianConfig, ModelRoute } from "@melian-agent/core";
-import { createReviewModels, type ReviewModels } from "@melian-agent/pipeline";
+import {
+	type Decider,
+	type Lens,
+	type LensTier,
+	type MelianConfig,
+	type ModelRoute,
+	resolveModelForTier,
+} from "@melian-agent/core";
+import { FallbackDecider } from "@melian-agent/decisions";
+import { createReviewModels, type ReviewModels, RouteTextModel } from "@melian-agent/pipeline";
 import { createFakeModels, type LensScript, scriptLenses } from "@melian-agent/pipeline/testing";
 import { CliError } from "./repository.ts";
 
@@ -25,6 +33,20 @@ export interface ReviewSetup {
 	readonly config: MelianConfig;
 	/** Whether a failed model request is retried with backoff; scripted mode fails it at once. */
 	readonly retry: boolean;
+	/** The decider triage asks, or none, and every lens runs at its default level. */
+	readonly decider?: Decider;
+}
+
+// Triage's LLM fallback, on the cheapest lens tier routed to a model with credentials: the plan's cheapest text route,
+// until the review plan resolves one. None when no tier has such a model, and every lens runs at its default level.
+async function fallbackDecider(config: MelianConfig, models: ReviewModels): Promise<Decider | undefined> {
+	for (const tier of tiers) {
+		if (config.models[tier] === undefined) continue;
+		const { model, fallbacks } = resolveModelForTier(tier, config.models);
+		const text = await RouteTextModel.open(models, [model, ...fallbacks]);
+		if (text !== undefined) return new FallbackDecider(text);
+	}
+	return undefined;
 }
 
 async function readScript(path: string): Promise<LensScript> {
@@ -38,20 +60,26 @@ async function readScript(path: string): Promise<LensScript> {
 	return script as LensScript;
 }
 
-// `model` routes every tier, whatever the configuration routes; under the script variable, every tier runs on the fake.
+// `model` routes every tier, whatever the configuration routes; under the script variable, every tier runs on the fake,
+// and no decider triages, so every lens runs at its default level as the scripts expect.
 export async function reviewModels(
 	env: NodeJS.ProcessEnv,
 	config: MelianConfig,
 	lenses: readonly Lens[],
 	model: string | undefined,
 ): Promise<ReviewSetup> {
+	const { provider } = config.decisions;
+	if (provider !== undefined) {
+		throw new CliError(
+			`melian.yaml sets decisions.provider to ${provider}, and Melian has no adapter for a decision provider until milestone 4; remove the key, and triage runs on the LLM fallback`,
+		);
+	}
 	const scriptPath = env[scriptVariable];
 	if (scriptPath === undefined || scriptPath === "") {
-		return {
-			models: createReviewModels(),
-			retry: true,
-			config: model === undefined ? config : routeTiers(config, model),
-		};
+		const models = createReviewModels();
+		const routed = model === undefined ? config : routeTiers(config, model);
+		const decider = await fallbackDecider(routed, models);
+		return { models, retry: true, config: routed, ...(decider === undefined ? {} : { decider }) };
 	}
 	const fake = createFakeModels({ models: [{ id: "scripted" }] });
 	scriptLenses(fake, lenses, await readScript(scriptPath));
