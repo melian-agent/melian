@@ -205,7 +205,7 @@ describe("ledger rendering", () => {
 	});
 
 	it("neutralises autolinks in walkthrough text", () => {
-		const payload = "https://evil.test www.evil.test user@evil.test GH-123";
+		const payload = "https://evil.test www.evil.test _www.x.test *www.y.test (www.z.test user@evil.test GH-123";
 		const body = Ledger.from(
 			verdict,
 			{
@@ -224,6 +224,7 @@ describe("ledger rendering", () => {
 		).render(links);
 		expect(body).not.toContain("https://evil.test");
 		expect(body).not.toContain("www.evil.test");
+		for (const host of ["www.x.test", "www.y.test", "www.z.test"]) expect(body).not.toContain(host);
 		expect(body).not.toContain("user@evil.test");
 		expect(body).not.toContain("GH-123");
 	});
