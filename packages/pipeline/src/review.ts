@@ -61,6 +61,7 @@ import {
 import { ReviewError } from "./errors.ts";
 import {
 	clearSightings,
+	clearVerifications,
 	FindingsDocument,
 	findingsVersion,
 	type Producer,
@@ -911,27 +912,35 @@ async function startAdjudication(
 	harness: Harness,
 	input: AdjudicationTaskInput,
 	selection: readonly string[],
+	verificationRefused: boolean,
 	context: Context,
 ): Promise<TaskId<AdjudicationResult> | undefined> {
 	const root = await harness.root(context);
-	const key = JSON.stringify(input);
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
-		const known = index.reviews[revisionKey(input)];
+		const revision = revisionKey(input);
+		let known = index.reviews[revision];
 		// A review whose lenses ran owns the entry only while it still names their selection. Problem: once a later review
 		// replaced this one's lens task, rewriting the entry here dropped the newer run's task, and the guards then read
 		// that live run as superseded. Solution: a replaced review adjudicates nothing.
 		if (selection.length > 0 && known?.lenses.join("\n") !== selection.join("\n")) return undefined;
+		const deciding = { ...input };
+		if (verificationRefused) {
+			await clearVerifications(tx, input.root, revision);
+			deciding.findingsVersion = (await tx.doc(FindingsDocument, input.root)).versions[revision] ?? 0;
+			if (known?.verification !== undefined) known = omit(omit(known, "verification"), "adjudication");
+		}
+		const key = JSON.stringify(deciding);
 		// A failed adjudication is always rerun: it is cheap, and its failure, such as a base commit a shallow clone had
 		// not fetched yet, may have passed.
 		const retry = [...undecided, "failed"];
 		if (known?.adjudication?.input === key && (await attachable(tx, known.adjudication.task, retry))) {
 			return known.adjudication.task as TaskId<AdjudicationResult>;
 		}
-		const created = await tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } });
+		const created = await tx.createTask(AdjudicationTask, deciding, { ownership: { kind: "conversation" } });
 		const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
 		const entry = same ? known : { lenses: [...selection] };
-		index.reviews[revisionKey(input)] = { ...entry, adjudication: { task: created, input: key } };
+		index.reviews[revision] = { ...entry, adjudication: { task: created, input: key } };
 		return created;
 	}, context);
 }
@@ -1539,6 +1548,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		});
 	}
 	let verificationCheck: CheckRecord | undefined;
+	let verificationRefused = false;
 	if (candidates.length === 0) {
 		const previous = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification;
 		if (previous !== undefined) {
@@ -1555,6 +1565,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const refusal = request.plan?.refusal("verifier");
 		const missing = candidates.some((candidate) => candidate.route.length === 0);
 		if (refusal !== undefined || missing) {
+			verificationRefused = true;
 			verificationCheck = {
 				name: "verifier",
 				status: "failed",
@@ -1651,7 +1662,13 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		lenses: settled.map(({ run }) => run.key),
 		plan: request.plan,
 	});
-	const adjudication = await startAdjudication(harness, input, selectionOf(lenses, escalateAt), context);
+	const adjudication = await startAdjudication(
+		harness,
+		input,
+		selectionOf(lenses, escalateAt),
+		verificationRefused,
+		context,
+	);
 	if (adjudication === undefined) {
 		throw new ReviewError(
 			"superseded",
@@ -1659,6 +1676,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			{ lenses: lenses.map((lens) => lens.name) },
 		);
 	}
+	if (verificationRefused) await abortReplacedRuns(harness, context);
 	const forget = (index: ReviewIndexState) => {
 		const entry = index.reviews[reviewed];
 		if (entry?.adjudication?.task !== adjudication) return;

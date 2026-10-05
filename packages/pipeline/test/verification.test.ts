@@ -434,6 +434,78 @@ describe("the verifier", () => {
 		});
 		expect(requests[verifierMarker]).toEqual([]);
 	});
+	it.each([
+		["refused", "confirmed"],
+		["refused", "refuted"],
+		["uncredentialed", "confirmed"],
+		["uncredentialed", "refuted"],
+		["missing credentials", "confirmed"],
+		["missing credentials", "refuted"],
+	] as const)("clears ownership and prior judgements when %s follows %s", async (failure, verdict) => {
+		scripts(verdict);
+		await review();
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		const previous = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+		expect(previous.verification).toBeDefined();
+		expect((await readFindings(harness, root.id, revision, context))[0]!.properties.verification?.verdict).toBe(
+			verdict,
+		);
+		const wanted = `${fake.ref("judge").provider}/judge`;
+		const alternative = failure === "refused" ? fake.ref("backup") : fake.withoutCredentials("judge");
+		const config = {
+			...defaultConfig,
+			tiers: { full: ["lens.correctness"] },
+			stages: { "pull-request": "full" },
+			models: {
+				heavy: { model: `${fake.ref("finder").provider}/finder` },
+				verifier: { model: `${alternative.provider}/${alternative.modelId}` },
+			},
+		};
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config,
+			catalog,
+			credentials,
+			lenses,
+			checks: ["lens.correctness"],
+			routes: {
+				committed: { heavy: config.models.heavy, verifier: { model: wanted, acceptOverridden: false } },
+				overridden: { verifier: "melian.local.yaml" },
+				lensTiers: {},
+				retiered: {},
+			},
+		});
+		if (failure !== "missing credentials") expect(plan.tier("verifier").status).toBe(failure);
+		const requests = scripts();
+		const reason =
+			failure === "missing credentials" ? "the verifier has no model with credentials" : plan.refusal("verifier");
+		await expect(
+			failure === "missing credentials"
+				? reviewChangeset({ harness, changeset, lenses, standards: [], models: fake.review, config })
+				: review(false, plan),
+		).rejects.toMatchObject({
+			code: "verifierFailed",
+			verdict: {
+				status: "not-reviewed",
+				blocking: false,
+				notRun: [expect.objectContaining({ name: "verifier", status: "failed", reason })],
+				findings: { advisory: [expect.anything()], block: [], acknowledge: [] },
+			},
+		});
+		expect(requests[verifierMarker]).toEqual([]);
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+		expect(entry.task).toBe(previous.task);
+		expect(entry.verification).toBeUndefined();
+		const findings = await readFindings(harness, root.id, revision, context);
+		expect(findings).toHaveLength(1);
+		expect(findings.every((finding) => finding.claims().every((claim) => claim.verification === undefined))).toBe(
+			true,
+		);
+		const stored = (await readVerdict(harness, root.id, revision, context))!;
+		expect(stored.refuted).toBeUndefined();
+		expect(stored.findings.advisory).toHaveLength(findings.length);
+	});
 	it("attaches a repeat review without asking another model", async () => {
 		const requests = scripts();
 		await review();
