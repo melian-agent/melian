@@ -4,6 +4,8 @@ Choice: Secrets entries keep the `api_key` schema. Melian adapts their values to
 
 Melian tries named credentials in precedence order: per-clone before user-level, then each file's order. An unusable value yields to the next named credential. Pi's login applies only after all named values are exhausted. An unread command counts as present during planning.
 
-Why: An OAuth-only provider discards an API-key credential. Adapting the value lets a named token reach it without managing the owning tool's login. A stale per-clone bearer must not bypass a usable user-level bearer for an unrelated Pi login.
+Before opening durable review storage, Melian unlocks each selected command and checks its bearer against the seven-minute cutoff. An unusable bearer fails the review with a credential error asking for refresh through the owning tool. It never silently replaces that planned source with Pi's login. Doctor runs no command.
+
+Why: An OAuth-only provider discards an API-key credential. Adapting the value lets a named token reach it without managing the owning tool's login. A stale per-clone bearer must not bypass a usable user-level bearer for an unrelated Pi login. A command's result is unknown during planning, so failing closed keeps the stored plan from naming a source the review did not use.
 
 Supersedes: [2026-10-05-review-plan-resolution.md](2026-10-05-review-plan-resolution.md), only its restriction that secrets files hold API-key credentials only. The schema and source restrictions remain.

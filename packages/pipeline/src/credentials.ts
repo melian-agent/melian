@@ -273,6 +273,19 @@ export class MelianCredentialStore implements CredentialStore {
 		return resolved;
 	}
 
+	/** Unlocks the selected named source and refuses an unusable bearer before a review starts. */
+	async unlock(provider: string): Promise<void> {
+		const named = await this.credential(provider);
+		if (named === undefined) return;
+		if ((await this.resolve(named)) === undefined) {
+			throw new CredentialError(
+				"tokenExpired",
+				`credential ${visibleText(named.name)} in ${visibleText(named.file)}: its token has expired; refresh it with the tool that owns it`,
+				{ credential: named.name, file: named.file },
+			);
+		}
+	}
+
 	async read(provider: string, options?: AuthOperationOptions): Promise<Credential | undefined> {
 		options?.signal?.throwIfAborted();
 		const named = await this.credential(provider, true);

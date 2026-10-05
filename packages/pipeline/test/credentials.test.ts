@@ -196,6 +196,28 @@ describe("MelianCredentialStore", () => {
 		expect(fake.provider.state.callCount).toBe(0);
 	});
 
+	it("rejects an expired command bearer at unlock, while planning runs no command", async () => {
+		const token = `e30.${Buffer.from(JSON.stringify({ exp: 1 })).toString("base64url")}.signature`;
+		const marker = join(dir, "expired-command-ran");
+		const credential = named("expired-login", "fake-oauth", {
+			kind: "command",
+			command: `touch ${marker}; printf '%s' '${token}'`,
+		});
+		store({
+			"fake-oauth": { type: "oauth", access: "pi-token", refresh: "pi-refresh", expires: Date.now() + 3_600_000 },
+		});
+		const fake = createFakeModels({ provider: "fake-oauth", auth: "oauth", credentials: [credential], authPath });
+		expect((await planInputs(fake.review)).credentials["fake-oauth"]).toBe(`expired-login in ${credential.file}`);
+		expect(existsSync(marker)).toBe(false);
+		await expect(unlockCredentials(fake.review, ["fake-oauth"])).rejects.toMatchObject({
+			code: "tokenExpired",
+			credential: credential.name,
+			file: credential.file,
+			message: `credential expired-login in ${credential.file}: its token has expired; refresh it with the tool that owns it`,
+		});
+		expect(fake.provider.state.callCount).toBe(0);
+	});
+
 	it("keeps API keys for a provider that also accepts OAuth", async () => {
 		const credential = named("key", "fake-key", { kind: "command", command: "printf fake-key-value" });
 		const store = new MelianCredentialStore(
