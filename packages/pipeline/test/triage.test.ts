@@ -598,6 +598,41 @@ describe("triage", () => {
 		).toEqual([undefined, undefined]);
 	});
 
+	it("includes options only the later folder variant contributes to the shared question", async () => {
+		writeFiles(repo, {
+			"services/.melian/lenses/correctness/LENS.md": lines(
+				"---",
+				"name: correctness",
+				"extends: correctness",
+				"---",
+				"Check the payments too.",
+			),
+			"services/pay.ts": lines("export const pay = 1;"),
+		});
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "a payments service");
+		writeFiles(repo, {
+			"src/melian.yaml": lines("lenses:", "  correctness:", "    level: { floor: careful, ceiling: careful }"),
+			"services/melian.yaml": lines("lenses:", "  correctness:", "    level: { floor: deep, ceiling: deep }"),
+		});
+		const variants = (await Lens.load(repo, { kind: "worktree" }, ["src/user.ts", "services/pay.ts"]))
+			.filter((lens) => lens.name === "correctness")
+			.sort((a, b) => a.scope.localeCompare(b.scope));
+		expect(variants.map((lens) => lens.scope)).toEqual(["", "services"]);
+		const decider = choosing("deep");
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done, done] }]);
+
+		const reviewed = await review({ decider, policy: "worktree", lenses: variants });
+
+		expect(decider.requests[0]!.questions.map((question) => [question.id, question.options])).toEqual([
+			["correctness", ["careful", "deep"]],
+		]);
+		expect(
+			reviewed.verdict.ran?.filter((check) => check.name === "lens.correctness").map((check) => check.level),
+		).toEqual(["careful", "deep"]);
+	});
+
 	it("records a decision that failed, and runs every lens at its default level with a note", async () => {
 		const decider = new RecordedDecider({});
 		await open(decider);
