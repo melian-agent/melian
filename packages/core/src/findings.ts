@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { posix } from "node:path";
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
+import type { Revision } from "./changeset.ts";
 import {
 	type MelianConfig,
 	type Resolution,
@@ -325,8 +326,8 @@ export const findingsLogSchema = Type.Object(
  * failure scenario, and evidence locations. Melian derives the rest so that a finding's identity never depends on the
  * model's wording: the snippet is read from the head revision at the reported lines, never taken from the model, and
  * each evidence location's snippet from the revision it names; `source` is the lens and its version; `cause` is
- * {@link classifyCause} of the location and its evidence; `resolution` comes from configuration; and `status` from the
- * findings document. {@link FindingInput} is the full internal input.
+ * {@link Revision.classifyCause} of the location and its evidence; `resolution` comes from configuration; and `status`
+ * from the findings document. {@link FindingInput} is the full internal input.
  */
 export type ReportFindingInput = Static<typeof reportFindingInputSchema>;
 
@@ -377,8 +378,8 @@ export type EvidenceRevision = Static<typeof evidenceRevisionSchema>;
  * finding outside the diff `affected`. `deleted` marks a base location whose lines the change deleted or replaced, or
  * whose file it renamed without editing when it did not only move the finding's own file, as Melian found when it
  * read the location; a base location without it names code the change left alone. `proves` marks a `cause` location
- * that overlaps the change by {@link causeOverlap}, the location that makes the finding `affected`, so a merge can keep
- * it when it must cut others.
+ * that overlaps the change by {@link Revision.causeOverlap}, the location that makes the finding `affected`, so a merge
+ * can keep it when it must cut others.
  */
 export type EvidenceLocation = Static<typeof evidenceLocationSchema>;
 
@@ -657,8 +658,8 @@ export interface FindingInput {
 	/** Required without a snippet: what tells this finding apart, such as the enclosing symbol or the hunk index. */
 	readonly discriminator?: string;
 	/**
-	 * Usually {@link classifyCause} of the location and its evidence. `affected` needs a `cause` location in `evidence`;
-	 * this function cannot see the change, so the caller confirms that location overlaps it.
+	 * Usually {@link Revision.classifyCause} of the location and its evidence. `affected` needs a `cause` location in
+	 * `evidence`; this function cannot see the change, so the caller confirms that location overlaps it.
 	 */
 	readonly cause: Cause;
 	/** The input, state, or sequence that makes the code fail, and the wrong outcome. Every lens finding has one. */
