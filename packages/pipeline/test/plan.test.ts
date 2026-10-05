@@ -62,7 +62,11 @@ afterEach(async () => {
 
 // A review whose committed melian.yaml routes heavy as `committed`, with melian.local.yaml routing it to `local`, or,
 // with `light`, moving both lenses to a light tier it routes to that model.
-async function planned(committed: ModelRoute, local?: string, options: { light?: string; fails?: string } = {}) {
+async function planned(
+	committed: ModelRoute,
+	local?: string,
+	options: { light?: string; lightFallbacks?: string[]; fails?: string; rerun?: boolean } = {},
+) {
 	const { light } = options;
 	const moved: Record<string, LensSettings> =
 		light === undefined ? {} : { correctness: { tier: "light" }, contracts: { tier: "light" } };
@@ -72,7 +76,7 @@ async function planned(committed: ModelRoute, local?: string, options: { light?:
 		lenses: moved,
 		models: {
 			heavy: local === undefined ? committed : { ...committed, model: local },
-			...(light === undefined ? {} : { light: { model: light } }),
+			...(light === undefined ? {} : { light: { model: light, fallbacks: options.lightFallbacks ?? [] } }),
 		},
 	};
 	const { catalogue, credentials } = await planInputs(fake.review);
@@ -112,6 +116,7 @@ async function planned(committed: ModelRoute, local?: string, options: { light?:
 		standards: [],
 		models: fake.review,
 		plan,
+		rerun: options.rerun === true,
 		checks: [
 			{ name: "guardrails", status: "ran" },
 			{ name: "static.biome", status: "ran" },
@@ -208,6 +213,22 @@ describe("reviewChangeset with a plan", () => {
 				{ name: "lens.correctness", status: "ran", level: "careful", lineage },
 			]),
 		);
+	});
+
+	it("runs again under --rerun a lens the plan failed for finishing on a refused fallback", async () => {
+		// Each lens moves to light, whose route starts inside heavy's accept and falls back outside it.
+		const committed = { model: heavy, accept: [heavy], acceptOverridden: false };
+		const options = { light: heavy, lightFallbacks: [backup], fails: "heavy" };
+		const first = await planned(committed, undefined, options);
+		const again = await planned(committed, undefined, { ...options, rerun: true });
+
+		expect([...first.answered].sort()).toEqual(["backup", "backup", "heavy", "heavy"]);
+		expect(first.review.verdict.notRun.find((check) => check.name === "lens.correctness")).toMatchObject({
+			status: "failed",
+			reason: expect.stringContaining(`light runs ${backup}, which models.heavy.accept does not list`),
+		});
+		// The stored outcome says done, but the plan refuses the model it finished on, so --rerun does not reuse it.
+		expect([...again.answered].sort()).toEqual(["backup", "backup", "heavy", "heavy"]);
 	});
 
 	it("runs the committed route with no lineage when the preference file stays on it", async () => {

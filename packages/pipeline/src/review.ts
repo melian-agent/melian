@@ -508,6 +508,7 @@ async function runLenses(
 	input: LensTaskInput,
 	rerun: boolean,
 	context: Context,
+	refused: (key: string, model: string) => boolean = () => false,
 ): Promise<LensResult | undefined> {
 	const root = await harness.root(context);
 	const revision = revisionKey(input.revision);
@@ -517,7 +518,9 @@ async function runLenses(
 		const known = index.reviews[revision];
 		const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
 		const attach =
-			same && (await attachable(tx, known.task, undecided)) && !(rerun && (await anyLensFailed(tx, known.task)));
+			same &&
+			(await attachable(tx, known.task, undecided)) &&
+			!(rerun && (await anyLensFailed(tx, known.task, refused)));
 		if (attach) return known.task as TaskId<LensResult>;
 		await recordRevision(tx, root.id, revision);
 		const created = await tx.createTask(LensTask, input, { ownership: { kind: "conversation" } });
@@ -539,12 +542,20 @@ async function runLenses(
 }
 
 // Whether a finished lens task left a lens without an answer, which `rerun` asks to try again.
-async function anyLensFailed(tx: Tx, id: number | undefined): Promise<boolean> {
+// A lens that finished on a model the plan refuses, such as a fallback outside a guarded accept, counts as failed, as
+// its record does once `plan.mark` judges it, so `rerun` runs it again rather than reuse the refused result.
+async function anyLensFailed(
+	tx: Tx,
+	id: number | undefined,
+	refused: (key: string, model: string) => boolean,
+): Promise<boolean> {
 	const record = id === undefined ? undefined : await tx.task(id as TaskId);
 	if (record?.state.status !== "terminal") return false;
 	const { outcome } = record.state;
 	if (outcome.status !== "completed") return true;
-	return Object.values(outcome.result as LensResult).some((lens) => lens.status !== "done");
+	return Object.entries(outcome.result as LensResult).some(
+		([key, lens]) => lens.status !== "done" || (lens.model !== undefined && refused(key, lens.model)),
+	);
 }
 
 // One adjudication task per head and input. A repeat call with the same input, such as a rerun after a crash, attaches
@@ -758,7 +769,16 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const lensResult =
 		lenses.length === 0
 			? {}
-			: await runLenses(harness, { root, revision: state, lenses }, options.rerun === true, context);
+			: await runLenses(
+					harness,
+					{ root, revision: state, lenses },
+					options.rerun === true,
+					context,
+					(key, model) => {
+						const lens = lenses.find((each) => each.key === key);
+						return lens !== undefined && request.plan?.judge(lens.name, lens.level, model).refusal !== undefined;
+					},
+				);
 	// Only the lenses this review ran count: one that configuration has since disabled or retiered leaves nothing behind.
 	const { manifest: accounted, producers } = account(manifest, lenses, lensResult, notes, options);
 	const input = adjudicationInput({
