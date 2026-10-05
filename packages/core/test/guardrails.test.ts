@@ -443,6 +443,26 @@ describe("forbidden-patterns", () => {
 		expect(summary(findings).map(({ file, line }) => [file, line])).toEqual([["a.test.ts", 1]]);
 	});
 
+	it("reports what it could not scan at the strictest severity of the rules it could not check", { timeout: 60_000 }, async () => {
+		const strict = lines(
+			quiet,
+			"  forbidden-patterns:",
+			"    rules:",
+			"      note:",
+			"        pattern: '\\.only\\('",
+			"        severity: P3",
+			"        message: note it",
+			"      block:",
+			"        pattern: '\\.skip\\('",
+			"        severity: P1",
+			"        message: block it",
+		);
+		const row = `it(${"x".repeat(1_000)})`;
+		const rows = Array.from({ length: 4_300 }, () => row);
+		const { findings } = await guardrails({ "melian.yaml": strict }, { "a.test.ts": lines(...rows, "it.only(hidden)") });
+		expect(summary(findings).map(({ severity }) => severity)).toEqual(["P1"]);
+	});
+
 	it("reports what is past the scan limit as a finding, never only a note", { timeout: 60_000 }, async () => {
 		const row = `it(${"x".repeat(1_000)})`;
 		const rows = Array.from({ length: 4_300 }, () => row);

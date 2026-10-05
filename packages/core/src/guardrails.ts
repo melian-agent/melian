@@ -46,6 +46,11 @@ export const guardrailLimits = { fileBytes: 4 * 1024 * 1024, scanBytes: 4 * 1024
 
 const check = "guardrails";
 
+// What a line must meet when several rules apply to it: the strictest severity any of them sets.
+function strictestOf(rules: readonly (readonly [string, ForbiddenPatternRule])[], fallback: Severity): Severity {
+	return rules.map(([, rule]) => rule.severity ?? fallback).reduce((left, right) => stricter(left, right));
+}
+
 interface Hit {
 	readonly guardrail: GuardrailName;
 	readonly file: string;
@@ -357,7 +362,7 @@ async function forbiddenPatterns(
 			file: file.path,
 			line,
 			discriminator: "unscanned",
-			severity: guardrail.severity,
+			severity: strictestOf(rules, guardrail.severity),
 			message: "line could not be scanned.",
 			explanation: {
 				what: `forbidden-patterns could not scan ${what}, so the rule ${rules.map(([name]) => name).join(", ")} was not checked there.`,
@@ -423,9 +428,7 @@ async function forbiddenPatterns(
 				occurrence: byCode ? snippetOccurrence(text, added.text, { startLine: added.line }) : undefined,
 				discriminator: byCode ? undefined : `line ${added.line}`,
 				trigger: hunk === undefined ? undefined : { file: file.path, index: hunk.index, snippet: added.text },
-				severity: matched
-					.map(([, rule]) => rule.severity ?? guardrail.severity)
-					.reduce((left, right) => stricter(left, right)),
+				severity: strictestOf(matched, guardrail.severity),
 				message: sentences(messages),
 				explanation: {
 					what: `This line matches the forbidden-patterns rule ${matched.map(([name]) => name).join(", ")}.`,
