@@ -45,7 +45,7 @@ import {
 	readVerdict,
 	VerdictDocument,
 } from "./adjudication.ts";
-import { checksExtension } from "./checks.ts";
+import { checksExtension, runChecks } from "./checks.ts";
 import {
 	DecisionDocument,
 	type DecisionResult,
@@ -526,9 +526,12 @@ export interface ReviewHarnessOptions {
 export class ReviewHarness {
 	/** Pi's harness, which the review functions take. */
 	readonly harness: Harness;
+	/** Whether this harness holds the checks extension and an execution environment. */
+	readonly checksAvailable: boolean;
 
-	private constructor(harness: Harness) {
+	private constructor(harness: Harness, checksAvailable: boolean) {
 		this.harness = harness;
+		this.checksAvailable = checksAvailable;
 	}
 
 	/**
@@ -560,7 +563,7 @@ export class ReviewHarness {
 			throw error;
 		});
 		await abortReplacedRuns(harness, context);
-		return new ReviewHarness(harness);
+		return new ReviewHarness(harness, checkout !== undefined);
 	}
 
 	/** Closes the harness and its storage. Idempotent. */
@@ -701,7 +704,7 @@ function ranOn(
 /** What {@link reviewChangeset} reviews, and with what. */
 export interface ReviewOptions {
 	/** A harness with {@link lensExtension} installed, over the changeset's own storage. */
-	readonly harness: Harness;
+	readonly harness: Harness | ReviewHarness;
 	readonly changeset: Changeset;
 	readonly config: MelianConfig;
 	/** The lenses that may run; configuration and the changed paths select among them. */
@@ -733,7 +736,8 @@ export interface ReviewOptions {
 	 */
 	readonly tier?: string;
 	/**
-	 * What the review's other checks did, such as static analysis and guardrails, one record per check. A check of the
+	 * What the review's other checks did, such as static analysis and guardrails, one record per check. Supplying
+	 * these opts out of automatic checks. Otherwise a ReviewHarness with checkout runs them under config and policy. A check of the
 	 * manifest with no record makes the verdict not reviewed. The lens step records every `lens.*` check itself, so a
 	 * record here under such a name is ignored.
 	 */
@@ -1216,16 +1220,45 @@ async function triage(
  * provider failure outlasts pi-ai's retries or authentication fails, and becomes a check named `lens.<name>` beside
  * `options.checks`.
  *
+ * With a `ReviewHarness` opened with `checkout`, runs deterministic checks first unless `checks` was supplied,
+ * including an empty array. Checks use the original `config`, before the plan replaces its routes. `rerun` maps to
+ * `rerunFailed`. Raw harnesses and wrappers without an environment use the supplied records; missing records leave
+ * the verdict not reviewed. A check run that does not complete propagates its `CheckError` without adjudicating.
+ *
  * Throws {@link ReviewError}: `noAvailableModel` when a lens has no level in its band whose tier routes to a model with
- * credentials, naming each level and why, `notInstalled` when the harness lacks {@link lensExtension}, or the decision extension for
+ * credentials, naming each level and why, `missingPolicy` before any task starts when automatic checks lack a source, `notInstalled` when the harness lacks {@link lensExtension}, or the decision extension for
  * a decider, `adjudicationFailed` when no verdict was recorded, `superseded` when a later review replaced this one's lens run,
  * `allModelsFailed` when every model of a lens's route
  * failed, naming them, and `lensFailed` when a lens did not finish for another reason. The last two carry the findings
  * reported so far and the `not-reviewed` verdict already recorded.
  */
 export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
-	const options = planned(request);
-	const { harness, changeset, config, standards, models } = options;
+	const harness = request.harness instanceof ReviewHarness ? request.harness.harness : request.harness;
+	const automatic =
+		request.checks === undefined && request.harness instanceof ReviewHarness && request.harness.checksAvailable;
+	if (automatic && request.policy === undefined) {
+		throw new ReviewError("missingPolicy", "automatic checks require the policy source the host chose", {
+			lenses: [],
+		});
+	}
+	const supplied = automatic
+		? (
+				await runChecks(
+					harness,
+					{
+						rootConversationId: (await harness.root(request.context ?? backgroundContext)).id,
+						changeset: request.changeset,
+						config: request.config,
+						source: request.policy!,
+						tier: request.tier ?? request.config.stages["pull-request"] ?? "full",
+						rerunFailed: request.rerun,
+					},
+					request.context ?? backgroundContext,
+				)
+			).records
+		: request.checks;
+	const options = planned({ ...request, checks: supplied });
+	const { changeset, config, standards, models } = options;
 	const context = options.context ?? backgroundContext;
 	await abortReplacedRuns(harness, context);
 	const root = (await harness.root(context)).id;

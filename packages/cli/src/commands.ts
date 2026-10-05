@@ -28,7 +28,6 @@ import {
 	recordDismissal,
 	reviewChangeset,
 	revisionKey,
-	runChecks,
 	summarizeReview,
 } from "@melian-agent/pipeline";
 import {
@@ -154,19 +153,10 @@ export async function review(
 	});
 	const { harness } = reviewHarness;
 	try {
-		// The deterministic checks first, then the lenses: reviewChangeset reads the checks' records, and a check of the
-		// manifest without one makes the review not reviewed. The plan's routes reach only the lenses, so a different
-		// --model does not change the checks' run identity and run them again.
-		const rootConversationId = (await harness.root(context)).id;
-		const checks = await runChecks(
-			harness,
-			{ rootConversationId, changeset, config: loaded, source, tier, rerunFailed: options.rerun },
-			context,
-		);
 		let verdict: Verdict;
 		try {
 			({ verdict } = await reviewChangeset({
-				harness,
+				harness: reviewHarness,
 				changeset,
 				config: loaded,
 				lenses,
@@ -176,7 +166,6 @@ export async function review(
 				...triage.reviewOptions(),
 				policy: source,
 				tier,
-				checks: checks.records,
 				rerun: options.rerun,
 				origin,
 			}));
