@@ -5,6 +5,14 @@ import type { Finding, FindingDismissal } from "./findings.ts";
 /** A repository role returned by a provider's permission lookup. */
 export type RepositoryPermission = "admin" | "maintain" | "write" | "triage" | "read" | "none";
 
+/** Who published a revision and the root policy under which it was published. */
+export type PublishedBy = {
+	login?: string;
+	permission?: RepositoryPermission;
+	authorPermission?: RepositoryPermission;
+	trustedWriters: boolean;
+};
+
 /** A pull request as its provider reports it. Commit hashes are full. */
 export interface PullRequest {
 	/** The repository the pull request belongs to, as the provider names it. */
@@ -254,6 +262,7 @@ export type LedgerRound = {
 	base: string;
 	head: string;
 	round: number;
+	publishedBy?: PublishedBy;
 	verdict: StoredVerdict;
 	details?: PublicationDetails;
 	walkthrough?: Walkthrough;

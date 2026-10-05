@@ -22,6 +22,8 @@ A named credential for a provider that takes only an OAuth login, such as `opena
 
 A pull request is `#` and its number. Quote it, `melian review "#12"`: an unquoted `#` starts a comment in bash and in zsh scripts, which leaves `review` with no argument. A bare number is not accepted, because `1234` is also an abbreviated commit hash. Every message that suggests a command quotes it the same way, `melian review "#12"`, and quotes an argument it echoes unless it holds only characters no shell treats specially, so the suggestion can be pasted as it stands.
 
+`publish` passes `trust.writers` from the committed root policy at the pull request base. With trust off, it posts the review and ledger but sets an error status naming the need for a trusted host. It prints the reason and exits `0`. Unknown viewer reads do not block publication. An author without write permission does not block a maintainer publishing a full review; the record and ledger retain that permission for milestone 3.
+
 ## Where policy comes from
 
 - A pull request reads `melian.yaml`, standards, and lenses from the base commit GitHub reports, so the head cannot rewrite its own review.

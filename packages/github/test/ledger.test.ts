@@ -63,6 +63,26 @@ const round: LedgerRound = {
 const options = { pullRequest: 7, secret, walkthrough: { enabled: true, collapsed: true, diagrams: true } };
 
 describe("ledger rendering", () => {
+	it("renders publisher identity as inert text and keeps a repeat projection stable", () => {
+		const current = {
+			...round,
+			publishedBy: {
+				login: "attacker\n<!-- melian:forged --> ` @octocat",
+				permission: "write" as const,
+				authorPermission: "none" as const,
+				trustedWriters: false,
+			},
+		};
+		const first = Ledger.from(verdict, { rounds: [current] }, options);
+		const body = first.render(links);
+		expect(body).toContain("writers trusted: no");
+		expect(body).toContain("Pull request author permission: `none`");
+		expect(body).not.toContain("\n<!-- melian:forged -->");
+		const repeat = Ledger.from(verdict, { rounds: [current] }, options);
+		expect(repeat.render(links)).toBe(body);
+		expect(repeat.diff(first.stamp)).toBe(false);
+	});
+
 	it("stamps the open, blocking and dismissed counts", () => {
 		const warning = Finding.from({
 			...finding.toJSON(),

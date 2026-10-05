@@ -10,6 +10,7 @@ import {
 	type Placement,
 	type PostedLedger,
 	type PostedReview,
+	type PublishedBy,
 	type PublishedMarkers,
 	type PullRequest,
 	type ReviewProvider,
@@ -82,6 +83,7 @@ type AbandonedRound = { fingerprint: string; refusals: number; error: string };
 const maxRefusals = 3;
 
 type StoredRevision = {
+	publishedBy?: PublishedBy;
 	// One review per verdict published at this head: a second review of the same head can change the verdict.
 	reviews: string[];
 	// The fingerprint of the verdict the last review posted, and the revisionKey of the review that verdict is of. A
@@ -152,12 +154,20 @@ class PublishedState {
 				const { pending } = record;
 				const upgraded =
 					pending === undefined || from >= 2 ? record : { ...record, pending: upgradePending(pending) };
-				return [head, from >= 3 ? upgraded : rekeyReplies(upgraded)];
+				return [
+					head,
+					{
+						...(from >= 3 ? upgraded : rekeyReplies(upgraded)),
+						publishedBy: upgraded.publishedBy ?? { trustedWriters: true },
+					},
+				];
 			}),
 		);
 		const ledgerRounds = state.ledgerRounds?.map((round, index, rounds) =>
 			index === rounds.length - 1 || !("verdict" in round)
-				? round
+				? "verdict" in round
+					? { ...round, publishedBy: round.publishedBy ?? { trustedWriters: true } }
+					: round
 				: { base: round.base, head: round.head, round: round.round, status: round.verdict.status },
 		);
 		return new PublishedState({
@@ -176,13 +186,13 @@ class PublishedState {
 // would post it twice.
 export const PublishedDocument = defineDoc<StoredPublishedState>({
 	kind: "melian.published",
-	version: 5,
+	version: 6,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
 	initial: () => new PublishedState({ order: [], revisions: {} }).toJSON(),
 	// Version 2 made a finding's evidence a list of locations, so a round left pending before it renders. Version 3 keys
-	// each reply by `replyKey`. Version 4 adds ledger snapshots; version 5 retains only one-line older rounds.
+	// each reply by `replyKey`. Version 4 adds ledger snapshots; version 5 retains only one-line older rounds. Version 6 records the publisher.
 	migrate: (value, from) => PublishedState.upgrade(value, from),
 });
 
@@ -200,7 +210,7 @@ export const LedgerDocument = defineDoc<{ comment?: PostedLedger }>({
 // and kept as long as the storage. A marker counts only when it verifies, whoever the provider says posted it, so
 // recovery does not depend on the token knowing who it is.
 // It also holds the target the latest publish validated, which a resumed task compares with its own.
-export const PublisherDocument = defineDoc<{ secret?: string; target?: PublishTarget }>({
+export const PublisherDocument = defineDoc<{ secret?: string; target?: PublishTarget; trustedWriters?: boolean }>({
 	kind: "melian.publisher",
 	version: 1,
 	scope: "conversation",
@@ -375,6 +385,7 @@ function movedFrom(target: PublishTarget, now: PullRequest): string | undefined 
 class TargetMoved extends Error {}
 
 type PublishInput = {
+	publishedBy: PublishedBy;
 	root: ConversationId;
 	target: PublishTarget;
 	lines: Record<string, [number, number][]>;
@@ -404,17 +415,26 @@ type PublishOutcome =
 
 const publishTaskName = "melian.publish";
 
+const untrustedWriterStatus: ReviewStatus = {
+	state: "error",
+	description: "not reviewed here: writers are not trusted; a trusted host sets this status",
+};
+
 // Not replay-safe: a post and the commit that records it are two steps, and the host takes no idempotency key. Every
 // post is recorded in its own commit, and before posting anything the phase reads Melian's markers back from the pull
 // request, so a rerun after a crash between a post and its record finds the post instead of repeating it.
 function publishTask(provider: ReviewProvider) {
 	return defineTask<PublishInput, { phase: "publish" }, PublishOutcome>({
 		name: publishTaskName,
-		version: 1,
+		version: 2,
+		migrate: (input, checkpoint) => ({
+			input: { ...(input as unknown as PublishInput), publishedBy: { trustedWriters: true } },
+			checkpoint: checkpoint as { phase: "publish" },
+		}),
 		initial: () => ({ phase: "publish" }),
 		phases: {
 			publish: async (task, runtime, context) => {
-				const { root, lines } = task.input;
+				const { root, lines, publishedBy } = task.input;
 				// A task created before targets were recorded has none, and is superseded like any other stale one.
 				const target = task.input.target as PublishTarget | undefined;
 				const publisher = await runtime.snapshot(PublisherDocument, root, context);
@@ -422,8 +442,9 @@ function publishTask(provider: ReviewProvider) {
 				// another base, head, or pull request ends here, before any post.
 				const change =
 					publisher?.target === undefined ? "no target is recorded" : targetChange(target, publisher.target);
-				if (target === undefined || change !== undefined) {
-					const reason = change ?? "the task recorded no target";
+				const trustChanged = publishedBy.trustedWriters !== (publisher?.trustedWriters ?? true);
+				if (target === undefined || change !== undefined || trustChanged) {
+					const reason = trustChanged ? "writer trust policy changed" : (change ?? "the task recorded no target");
 					await runtime.commit(
 						() => ({
 							status: "terminal",
@@ -442,6 +463,7 @@ function publishTask(provider: ReviewProvider) {
 				const read = async () =>
 					(await runtime.snapshot(PublishedDocument, root, context)) ?? { order: [], revisions: {} };
 				const postStatus = async (status: ReviewStatus) => {
+					if (!publishedBy.trustedWriters) status = untrustedWriterStatus;
 					await revalidate();
 					const ledgerUrl =
 						(await runtime.snapshot(LedgerDocument, root, context))?.comment?.url ??
@@ -458,6 +480,7 @@ function publishTask(provider: ReviewProvider) {
 						if (!document.order.includes(head)) document.order = [...document.order, head];
 						document.revisions[head] = {
 							...(document.revisions[head] ?? unpublished()),
+							publishedBy: { ...publishedBy },
 							status: { ...status },
 							...(ledgerUrl === undefined ? {} : { ledgerUrl }),
 						};
@@ -494,7 +517,7 @@ function publishTask(provider: ReviewProvider) {
 					}
 					// The status comes first, so the head carries one even when its review cannot be posted, and before the
 					// replies, so a thread that cannot take a reply never holds back the check.
-					const status = verdict.reviewStatus();
+					const status = publishedBy.trustedWriters ? verdict.reviewStatus() : untrustedWriterStatus;
 					await postStatus(status);
 					// A pending round left by a failed run is posted as planned, under its own verdict. If the head's verdict
 					// changed since, a second round then posts the current one, so the last review matches the status.
@@ -509,6 +532,7 @@ function publishTask(provider: ReviewProvider) {
 							const details = storedVerdict?.details?.[revision];
 							const walkthrough = storedVerdict?.walkthroughs?.[revision];
 							planned.ledger = {
+								publishedBy: { ...publishedBy },
 								base,
 								head,
 								round: (state.revisions[head]?.reviews.length ?? 0) + 1,
@@ -680,6 +704,7 @@ function publishTask(provider: ReviewProvider) {
 						rounds.splice(0, rounds.length - maxLedgerRounds);
 					}
 					const currentRound = rounds.at(-1)! as LedgerRound;
+					currentRound.publishedBy = { ...publishedBy };
 					currentRound.base = base;
 					currentRound.verdict = verdict.toJSON();
 					currentRound.resolved = Object.entries(record.resolved).map(([id, entry]) => ({
@@ -757,10 +782,12 @@ function publishTask(provider: ReviewProvider) {
 						} catch {}
 					}
 					if (refused !== undefined && (refused.refusals ?? 0) + 1 >= maxRefusals) {
-						const failed: ReviewStatus = {
-							state: "error",
-							description: `review could not be posted: ${message}`,
-						};
+						const failed: ReviewStatus = publishedBy.trustedWriters
+							? {
+									state: "error",
+									description: `review could not be posted: ${message}`,
+								}
+							: untrustedWriterStatus;
 						try {
 							await revalidate();
 							const ledgerUrl = (await runtime.snapshot(LedgerDocument, root, context))?.comment?.url;
@@ -856,6 +883,8 @@ export function openPublishHarness(
 
 /** What {@link publishReview} publishes. */
 export interface PublishOptions {
+	/** Root writer-trust policy, true by default; false leaves the status for a trusted host. */
+	readonly trustedWriters?: boolean;
 	/** A harness over the changeset's storage, with {@link publishExtension} for `provider` installed. */
 	readonly harness: Harness;
 	readonly provider: ReviewProvider;
@@ -914,6 +943,7 @@ export interface AbandonedReview {
 
 /** What a revision's publication recorded: its review, each posted finding's thread, its replies, and status. */
 export interface PublishedRecord {
+	readonly publishedBy: PublishedBy;
 	readonly review: string;
 	readonly threads: Readonly<Record<string, string>>;
 	/** Each resolved finding's reply, by ID; `null` when its thread was gone. */
@@ -930,7 +960,7 @@ export async function readPublished(
 ): Promise<PublishedRecord | undefined> {
 	const document = await reader.snapshot(PublishedDocument, rootConversationId, context);
 	if (document === undefined || !Object.hasOwn(document.revisions, revision)) return undefined;
-	const { reviews, open, replies, status } = document.revisions[revision]!;
+	const { reviews, open, replies, status, publishedBy } = document.revisions[revision]!;
 	const review = reviews.at(-1);
 	if (review === undefined) return undefined;
 	const threads = Object.fromEntries(
@@ -938,7 +968,13 @@ export async function readPublished(
 			entry.revision === revision && entry.thread !== undefined ? [[id, entry.thread]] : [],
 		),
 	);
-	return structuredClone({ review, threads, replies, ...(status === undefined ? {} : { status }) });
+	return structuredClone({
+		review,
+		threads,
+		replies,
+		publishedBy: publishedBy ?? { trustedWriters: true },
+		...(status === undefined ? {} : { status }),
+	});
 }
 
 function short(commit: string): string {
@@ -1063,6 +1099,21 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 			where,
 		);
 	}
+	const login = await options.provider.login();
+	const permission = login === undefined ? undefined : await options.provider.permission(login);
+	const authorPermission =
+		pullRequest.author === undefined
+			? undefined
+			: pullRequest.author === login
+				? permission
+				: await options.provider.permission(pullRequest.author);
+	const publishedBy: PublishedBy = {
+		trustedWriters: options.trustedWriters ?? true,
+		...(login === undefined ? {} : { login }),
+		...(permission === undefined ? {} : { permission }),
+		...(authorPermission === undefined ? {} : { authorPermission }),
+	};
+
 	const target: PublishTarget = {
 		repository: `${pullRequest.repository.owner}/${pullRequest.repository.name}`,
 		pullRequest: pullRequest.number,
@@ -1077,6 +1128,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		const publisher = await tx.doc(PublisherDocument, root);
 		publisher.secret ??= randomBytes(32).toString("hex");
 		publisher.target = { ...target };
+		publisher.trustedWriters = publishedBy.trustedWriters;
 		return undefined;
 	}, context);
 	harness.resume();
@@ -1090,6 +1142,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		if (result?.kind === "superseded") superseded.push({ task: String(each.record.id), reason: result.reason });
 	}
 	const input: PublishInput = {
+		publishedBy,
 		root,
 		target,
 		lines: changeset.revision.diffLines(),

@@ -69,9 +69,16 @@ async function reviewedRevisionOne(script = lensScript(unsafeManager, emptyName,
 	return { fake, github, changeset, state };
 }
 
-async function publish(github: ReviewProvider, changeset: Changeset) {
+async function publish(github: ReviewProvider, changeset: Changeset, trustedWriters = true) {
 	const pullRequest = await github.pullRequest(7);
-	return publishReview({ harness: harness!, provider: github, changeset, pullRequest, base: changeset.revision.base });
+	return publishReview({
+		harness: harness!,
+		provider: github,
+		changeset,
+		pullRequest,
+		base: changeset.revision.base,
+		trustedWriters,
+	});
 }
 
 describe("reading markers back", () => {
@@ -158,6 +165,66 @@ describe("reading markers back", () => {
 });
 
 describe("publishing a review", { timeout: 30_000 }, () => {
+	it("records the publisher and a read-only author's permission without blocking publication", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		const result = await publish(github, changeset);
+		expect(result.status.state).toBe("failure");
+		const record = await readPublished(harness!, (await harness!.root(context)).id, changeset.revision.head, context);
+		expect(record?.publishedBy).toEqual({
+			login: "melian-user",
+			permission: "write",
+			authorPermission: "read",
+			trustedWriters: true,
+		});
+		expect(state.ledgers[0]!.body).toContain("Published by `melian-user` (`write`); writers trusted: yes");
+		expect(state.ledgers[0]!.body).toContain("Pull request author permission: `read`");
+		const body = state.ledgers[0]!.body;
+		state.calls = [];
+		await publish(github, changeset);
+		expect(posts(state)).toEqual([]);
+		expect(state.ledgers[0]!.body).toBe(body);
+	});
+
+	it.each(["viewer", "permission"])("publishes with an unknown %s when its lookup is refused", async (refused) => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		state.failUser = refused === "viewer";
+		state.failPermission = refused === "permission";
+		await publish(github, changeset);
+		const record = await readPublished(harness!, (await harness!.root(context)).id, changeset.revision.head, context);
+		expect(record?.publishedBy).toEqual(
+			refused === "viewer"
+				? {
+						trustedWriters: true,
+						authorPermission: "read",
+					}
+				: { trustedWriters: true, login: "melian-user" },
+		);
+		expect(state.reviews).toHaveLength(1);
+		expect(state.ledgers).toHaveLength(1);
+	});
+
+	it.each([false, true])("leaves the status to a trusted host with writers off (blocking: %s)", async (blocking) => {
+		const { github, changeset, state } = await reviewedRevisionOne(
+			blocking ? lensScript(unsafeManager) : lensScript(),
+		);
+		const result = await publish(github, changeset, false);
+		expect(result.status).toEqual({
+			state: "error",
+			description: "not reviewed here: writers are not trusted; a trusted host sets this status",
+		});
+		expect(state.statuses.every(({ state }) => state === "error")).toBe(true);
+		expect(state.reviews).toHaveLength(1);
+		expect(state.ledgers[0]!.body).toContain("writers trusted: no");
+		const record = await readPublished(harness!, (await harness!.root(context)).id, changeset.revision.head, context);
+		expect(record?.publishedBy.trustedWriters).toBe(false);
+		state.calls = [];
+		await publish(github, changeset, false);
+		expect(posts(state)).toEqual([]);
+		await publish(github, changeset, true);
+		expect(state.statuses.at(-1)?.state).toBe(blocking ? "failure" : "success");
+		expect(state.reviews).toHaveLength(1);
+	});
+
 	it("posts one commenting review, each finding on its line, its nearest changed line, or the body, all marked", async () => {
 		const { github, changeset, state } = await reviewedRevisionOne();
 		const head = changeset.revision.head;

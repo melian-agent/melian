@@ -228,6 +228,7 @@ export {
 	type PostedReview,
 	type PublicationDetails,
 	type PublicationPlan,
+	type PublishedBy,
 	type PublishedFinding,
 	type PublishedMarkers,
 	type PullRequest,

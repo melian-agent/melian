@@ -62,16 +62,26 @@ async function killAtReview(
 	database: string,
 	stateFile: string,
 	log: string,
-	event: "review-posted" | "review-requested" | "ledger-edited" | "ledger-status-posted" = "review-posted",
+	event:
+		| "review-posted"
+		| "review-requested"
+		| "ledger-edited"
+		| "ledger-status-posted"
+		| "status-posted"
+		| "untrusted-status-posted" = "review-posted",
 ): Promise<void> {
 	const mode =
-		event === "review-posted"
-			? "after-review"
-			: event === "ledger-edited"
-				? "after-ledger-edit"
-				: event === "ledger-status-posted"
-					? "after-ledger-status"
-					: "before-review";
+		event === "status-posted"
+			? "after-status"
+			: event === "untrusted-status-posted"
+				? "after-untrusted-status"
+				: event === "review-posted"
+					? "after-review"
+					: event === "ledger-edited"
+						? "after-ledger-edit"
+						: event === "ledger-status-posted"
+							? "after-ledger-status"
+							: "before-review";
 	// The condition resolves workspace packages to their sources, as Vitest does, rather than to a stale or absent build.
 	const child = spawn(
 		process.execPath,
@@ -100,6 +110,68 @@ async function killAtReview(
 }
 
 describe("publishing across a crash", { timeout: 30_000 }, () => {
+	it.each([
+		{ interruptedTrust: true, trustedWriters: true },
+		{ interruptedTrust: false, trustedWriters: false },
+		{ interruptedTrust: true, trustedWriters: false },
+		{ interruptedTrust: false, trustedWriters: true },
+	])(
+		"keeps publisher attribution across a status crash (trust: $interruptedTrust -> $trustedWriters)",
+		async ({ interruptedTrust, trustedWriters }) => {
+			const database = join(dir, "review.sqlite");
+			const stateFile = join(dir, "github.json");
+			const log = join(dir, "publish.log");
+			const fake = scenarioModels();
+			const state = pullRequestState();
+			harness = await openReviewOnlyHarness(await openSqliteStorage(database), fake);
+			const { changeset, review } = await reviewScenario(repo, harness, fake, lensScript(unsafeManager));
+			await review;
+			await harness.close(context);
+			harness = undefined;
+			moveTo(state, changeset);
+			writeFileSync(stateFile, JSON.stringify(state));
+			await killAtReview(database, stateFile, log, interruptedTrust ? "status-posted" : "untrusted-status-posted");
+
+			const persisted = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
+			expect(persisted.statuses).toHaveLength(1);
+			expect(persisted.reviews).toHaveLength(0);
+			const provider = providerFor(persisted);
+			const publisher = await openPublisher(await openSqliteStorage(database), scenarioModels().review, provider);
+			harness = publisher.harness;
+			const pullRequest = await provider.pullRequest(7);
+			const publish = () =>
+				publishReview({
+					harness: harness!,
+					provider,
+					changeset,
+					pullRequest,
+					base: changeset.revision.base,
+					trustedWriters,
+				});
+			const result = await publish();
+			if (interruptedTrust !== trustedWriters)
+				expect(result.superseded).toEqual([expect.objectContaining({ reason: "writer trust policy changed" })]);
+			const record = await readPublished(
+				harness,
+				(await harness.root(context)).id,
+				changeset.revision.head,
+				context,
+			);
+			expect(record?.publishedBy).toEqual({
+				trustedWriters,
+				login: "melian-user",
+				permission: "write",
+				authorPermission: "read",
+			});
+			expect(persisted.reviews).toHaveLength(1);
+			expect(persisted.ledgers).toHaveLength(1);
+			persisted.calls = [];
+			await publish();
+			expect(posts(persisted)).toEqual([]);
+			if (!trustedWriters) expect(persisted.statuses.slice(1).every(({ state }) => state === "error")).toBe(true);
+		},
+	);
+
 	it.each(["matches", "state differs", "URL differs"])(
 		"recovers an unrecorded ledger status when the provider status %s",
 		async (current) => {

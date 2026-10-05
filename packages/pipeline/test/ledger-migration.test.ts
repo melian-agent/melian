@@ -95,7 +95,7 @@ describe("ledger document migration", () => {
 		root = await harness.root(context);
 		expect(await harness.snapshot(PublishedDocument, root.id, context)).toEqual({
 			order: [head],
-			revisions: { [head]: record },
+			revisions: { [head]: { ...record, publishedBy: { trustedWriters: true } } },
 		});
 		expect((await harness.snapshot(VerdictDocument, root.id, context))?.verdicts[revision]).toEqual(verdict);
 		expect(await harness.snapshot(LedgerDocument, root.id, context)).toBeUndefined();
@@ -199,7 +199,7 @@ describe("ledger document migration", () => {
 		expect(JSON.stringify(doc)).not.toContain("private provider detail");
 		const rounds = (await harness.snapshot(PublishedDocument, root.id, context))?.ledgerRounds;
 		expect(rounds?.[0]).toEqual({ base, head, round: 1, status: "passed" });
-		expect(rounds?.[1]).toEqual({ ...round, round: 2 });
+		expect(rounds?.[1]).toEqual({ ...round, round: 2, publishedBy: { trustedWriters: true } });
 		expect((await harness.snapshot(LedgerDocument, root.id, context))?.comment).toEqual(comment);
 	});
 });

@@ -596,11 +596,15 @@ Version one on a developer's own machine reviews the developer's own code and ne
 
 ### Writers are trusted
 
-Planned for milestone 2. Milestone 3 binds the required check to the GitHub App.
+The CLI records writer trust and publication identity. Enabling the required status remains a maintainer step. Milestone 3 binds it to the GitHub App.
 
 Problem: milestone 2 makes `melian/review` a required status, and the CLI sets it with a user's token. GitHub lets anyone with write permission set any status context on any commit. Example: a writer, or a bot with write access, sets `melian/review` to `success` on a head Melian never reviewed, and the merge goes through. The same writer could push a forged local review record for the Actions host to rely on.
 
 Solution: writers are trusted, by decision. A commit status or a local review record from an identity with write permission on the repository counts. `trust.writers: false` in the root `melian.yaml` turns this off; then only a run on a trusted host counts. A pull request from anyone without write permission never relies on a local record, and the trusted host, the Actions host in milestone 3, runs the full gate for it.
+
+The CLI reads writer trust from the committed root policy at the pull request base. With trust off, it still posts the review and ledger. It sets `melian/review` to `error`: "not reviewed here: writers are not trusted; a trusted host sets this status". Publication exits successfully and prints that reason. Only milestone 3's Actions host will count under this policy.
+
+Each published revision records the viewer login, repository permission, author permission and writer trust setting. Refused identity reads stay unknown. The ledger shows these fields. An author without write permission does not block the maintainer publishing a full review. Nothing consumes local records today; milestone 3 must refuse them for such authors. Older records migrate to trusted writers with no known poster.
 
 The milestone 2 gate rests on that trust and nothing stronger. Milestone 3 binds the required check to the GitHub App as its expected source, so a status set with a user's token no longer satisfies it.
 

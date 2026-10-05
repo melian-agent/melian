@@ -597,6 +597,7 @@ describe("documents stored before evidence became a list", () => {
 		expect(await readVerdict(harness, root.id, "base..head", context)).toEqual(verdict(current));
 		const published = await harness.snapshot(PublishedDocument, root.id, context);
 		expect(published?.revisions.head?.pending).toEqual(pending(current));
+		expect(published?.revisions.head?.publishedBy).toEqual({ trustedWriters: true });
 	});
 
 	it("knows a migrated verdict by the fingerprint it was published under, so its head takes no second review", async () => {
