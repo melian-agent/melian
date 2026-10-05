@@ -11,6 +11,7 @@ import {
 	type LensBudget,
 	type MelianConfig,
 	Rendering,
+	ReviewPlan,
 	type ScrutinyLevel,
 } from "@melian-agent/core";
 import { FallbackDecider, RecordedDecider } from "@melian-agent/decisions";
@@ -25,6 +26,7 @@ import {
 	type Message,
 	openHarness,
 	openSqliteStorage,
+	planInputs,
 	type Review,
 	type ReviewError,
 	ReviewHarness,
@@ -555,6 +557,77 @@ describe("triage", () => {
 	it("refuses a decider the harness was not opened with", async () => {
 		await open();
 		await expect(review({ decider: choosing("quick") })).rejects.toMatchObject({ code: "notInstalled" });
+	});
+});
+
+describe("triage under a review plan", () => {
+	// heavy, careful's and deep's tier, fails: its only accepted model has no credentials. medium, quick's, is routed.
+	async function refusingHeavy() {
+		const medium = `${fake.ref("medium").provider}/medium`;
+		const models: MelianConfig["models"] = {
+			medium: { model: medium },
+			heavy: { accept: ["nowhere/opus"], unavailable: "fail" },
+		};
+		const planned = { ...config, models };
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config: planned,
+			routes: { committed: models, overridden: {}, lensTiers: {}, retiered: {} },
+			catalog,
+			credentials,
+			lenses,
+			checks: ["lens.correctness"],
+		});
+		return { planned, plan };
+	}
+
+	async function reviewUnder(decider: Decider, planned: MelianConfig, plan: ReviewPlan): Promise<Review> {
+		return reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config: planned,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: ran,
+			decider,
+			plan,
+		});
+	}
+
+	it("records a lens triaged to a level whose tier the plan refuses as failed, with the plan's reason", async () => {
+		const decider = choosing("careful");
+		await open(decider);
+		const { planned, plan } = await refusingHeavy();
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+
+		const reviewed = await reviewUnder(decider, planned, plan);
+
+		expect(fake.provider.state.callCount).toBe(0);
+		expect(lensRecord(reviewed)).toMatchObject({
+			name: "lens.correctness",
+			status: "failed",
+			level: "careful",
+			reason: plan.refusal("heavy"),
+		});
+		expect(reviewed.verdict.status).toBe("not-reviewed");
+	});
+
+	it("runs a lens triaged to a level whose tier the plan routes, though its careful tier is refused", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		const { planned, plan } = await refusingHeavy();
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+
+		const reviewed = await reviewUnder(decider, planned, plan);
+
+		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "quick" });
+		expect(reviewed.verdict.status).toBe("passed");
+		// Its escalation to careful would be refused, so the run is keyed as capped by the plan.
+		const index = await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context);
+		expect(index!.reviews[revision()]!.lenses[0]).toContain(
+			`capped since the plan refuses careful: ${plan.refusal("heavy")}`,
+		);
 	});
 });
 

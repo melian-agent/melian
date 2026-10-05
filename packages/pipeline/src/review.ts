@@ -599,36 +599,13 @@ function noLevel(name: string, band: LevelBand, why: string): ReviewError {
 	);
 }
 
-// The options as the plan shapes them: each tier routed as the plan resolved it, and each lens on a tier the plan refuses
-// left out, with a `failed` record of why in place of the host's records of lenses, which the lens step owns.
+// The options as the plan shapes them: each tier routed as the plan resolved it, and the host's records of lenses left
+// out, which the lens step owns. The plan refuses a lens later, for the tier of the level triage chose for it.
 function planned(options: ReviewOptions): ReviewOptions {
 	const checks = (options.checks ?? []).filter((check) => !check.name.startsWith("lens."));
 	const { plan } = options;
 	if (plan === undefined) return { ...options, checks };
-	const config = { ...options.config, models: plan.routes() };
-	const manifest = checksOfTier(config, options.tier ?? config.stages["pull-request"] ?? "full");
-	const named = new Set(manifest.filter((name) => name.startsWith("lens.")).map((name) => name.slice("lens.".length)));
-	const level = defaultScrutinyLevel;
-	const dropped = new Set<string>();
-	const refused = new Map<string, CheckRecord>();
-	for (const { lens } of Lens.select(
-		options.lenses.filter((lens) => named.has(lens.name)),
-		config,
-		options.changeset.revision.paths(),
-	)) {
-		const { refusal: reason, lineage } = plan.judge(lens.name, level, undefined, lens.scope);
-		if (reason === undefined) continue;
-		dropped.add(`${lens.name}\0${lens.scope}`);
-		if (refused.has(lens.name)) continue;
-		const name = `lens.${lens.name}`;
-		refused.set(lens.name, { name, status: "failed", level, reason, ...(lineage === undefined ? {} : { lineage }) });
-	}
-	return {
-		...options,
-		config,
-		lenses: options.lenses.filter((lens) => !dropped.has(`${lens.name}\0${lens.scope}`)),
-		checks: [...checks, ...refused.values()],
-	};
+	return { ...options, config: { ...options.config, models: plan.routes() }, checks };
 }
 
 // Each lens that finished, by name, to the scope of each variant that ran and the model it finished on, so its lineage
@@ -1177,7 +1154,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const routes = new Map(
 		await Promise.all([...tiers].map(async (tier) => [tier, await routeOf(tier, config, models)] as const)),
 	);
-	const routed = (tier: LensTier) => "route" in routes.get(tier)!;
+	// A tier the plan refuses has no route, yet triage may still choose it: the lens then records the plan's refusal, as
+	// it would at that level, rather than quietly run at another.
+	const { plan } = request;
+	const routed = (tier: LensTier) => "route" in routes.get(tier)! || plan?.refusal(tier) !== undefined;
 	// A lens runs only at a level its band holds whose tier reaches a model; with none, the review fails before any lens
 	// runs, rather than run it below its floor.
 	const unrouted = (tier: LensTier) => {
@@ -1235,8 +1215,22 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const choices = new Map(
 		covering.map(({ lens }) => [lens, lens.triage(bands.get(lens)!, runnable.get(lens)!, triaged.decision)]),
 	);
-	// A lens triage skipped is not running, so no lens hands it a defect.
-	const running = covering.filter(({ lens }) => choices.get(lens) !== "skip");
+	// The plan judges each lens at the level triage chose for it: a lens it refuses there records `failed` with the
+	// plan's reason and lineage, and asks no model.
+	const refusals = new Map<string, CheckRecord>();
+	const refused = new Set<Lens>();
+	for (const { lens } of covering) {
+		const level = choices.get(lens);
+		if (plan === undefined || level === undefined || level === "skip") continue;
+		const { refusal: reason, lineage } = plan.judge(lens.name, level, undefined, lens.scope);
+		if (reason === undefined) continue;
+		refused.add(lens);
+		if (refusals.has(lens.name)) continue;
+		const name = `lens.${lens.name}`;
+		refusals.set(lens.name, { name, status: "failed", level, reason, ...(lineage === undefined ? {} : { lineage }) });
+	}
+	// A lens triage skipped or the plan refused is not running, so no lens hands it a defect.
+	const running = covering.filter(({ lens }) => choices.get(lens) !== "skip" && !refused.has(lens));
 	const skipped = covering.filter(({ lens }) => choices.get(lens) === "skip").map(({ lens }) => lens.name);
 	const lenses: LensRun[] = [];
 	const notes = new Map<string, string[]>();
@@ -1300,12 +1294,16 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		}
 		const next = lens.escalation(level, bands.get(lens)!);
 		const nextTier = next === undefined ? undefined : lens.level(next).tier;
+		// The plan judges the escalation's next level as it judged the first: a level it refuses caps the escalation.
+		const nextRefusal = next === undefined ? undefined : plan?.judge(lens.name, next, undefined, lens.scope).refusal;
 		const escalation =
 			next === undefined
 				? {}
-				: nextTier !== undefined && !routed(nextTier)
-					? { cap: `since ${next} runs on ${nextTier}, which reaches no model with credentials` }
-					: { next: await runAt(next) };
+				: nextRefusal !== undefined
+					? { cap: `since the plan refuses ${next}: ${nextRefusal}` }
+					: nextTier !== undefined && !("route" in routes.get(nextTier)!)
+						? { cap: `since ${next} runs on ${nextTier}, which reaches no model with credentials` }
+						: { next: await runAt(next) };
 		lenses.push({ ...first, escalation });
 	}
 	const state: ReviewState = {
@@ -1349,6 +1347,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				reason: "triage skipped it, as its floor allows",
 			}),
 		),
+		...refusals.values(),
 	];
 	// Only the lenses this review ran count, each at the level whose record stands for it: one that configuration has
 	// since disabled or retiered, or a quick run that escalated, leaves nothing behind.
