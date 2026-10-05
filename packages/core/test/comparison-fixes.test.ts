@@ -3,7 +3,6 @@ import { fileURLToPath } from "node:url";
 import {
 	Adjudication,
 	Comparison,
-	ComparisonError,
 	ComparisonExport,
 	ComparisonSet,
 	defaultConfig,
@@ -198,7 +197,7 @@ describe("comparison review fixes", () => {
 
 	it("lets the newest judgement win even from a round that dropped the finding", () => {
 		const external = report();
-		const round = (at: string, golden?: string, held = true) => {
+		const round = (at: string, held = true) => {
 			const comparison = Comparison.of({ ...revision, head: at.slice(8, 10).repeat(20) });
 			comparison.import("file:codex.json", { findings: held ? [external] : [], skippedBodies: 0 }, at);
 			comparison.record(at, "a");
@@ -220,7 +219,7 @@ describe("comparison review fixes", () => {
 			reason: "no-owner",
 			golden: "none",
 		});
-		const three = round("2026-10-03T00:00:00Z", undefined, false);
+		const three = round("2026-10-03T00:00:00Z", false);
 		const stored = two.toJSON().adjudications!;
 		expect(new ComparisonSet([{ changeset: "a", comparison: one }]).backlog()).toHaveLength(1);
 		const later = Comparison.from({ ...three.toJSON(), adjudications: stored });
