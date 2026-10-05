@@ -11,7 +11,7 @@
 		"typecheck": "tsc --noEmit",
 		"test": "vitest --run",
 		"build": "tsc -b tsconfig.build.json",
-		"clean": "npm run clean --workspaces --if-present"
+		"clean": "npm run clean --workspaces --if-present && rm -rf .tsbuild"
 	},
 	"engines": {
 		"node": ">=22.19.0",

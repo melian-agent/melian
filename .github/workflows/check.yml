@@ -28,6 +28,8 @@ jobs:
         run: npm install -g npm@11.19.0
       - run: npm ci --ignore-scripts
       - run: npm run check
-      - run: npm run build
+      # A publish check, not a step the tests need: they run from source, and dist/ exists only for npm pack.
+      - name: Build dist, as npm pack does
+        run: npm run build
       - name: Fail if check rewrote files
         run: git diff --exit-code
