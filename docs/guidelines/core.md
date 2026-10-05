@@ -440,6 +440,7 @@ type StoredExternalFinding = {
 	endLine?: number;
 	revision?: "base"; // a thread on the diff's left side
 	outdated?: boolean; // a thread GitHub no longer places; its lines are its original ones
+	commit?: string; // the commit the reviewer read, as a thread's first comment names it
 	title: string; // one line, at most 200 characters
 	body: string; // at most 65,536 characters
 	severity?: string; // the reviewer's own word, such as "high" or "P1"
@@ -479,6 +480,8 @@ Every finding needs a `title` and a `body`; `ref`, `file`, `line`, `endLine`, `s
 ### Matching
 
 `comparison.compare(findings)` matches by site. An external finding meets a Melian finding when they name the same file and their lines overlap or lie within `siteDistance`, three lines, of each other, at the Melian finding's own location or at one of its `cause` evidence locations at head. Problem: an `affected` finding sits in a file the change did not edit, and a reviewer reading the diff points at the changed line that breaks it. Solution: a `cause` location at head is a site of the finding too. A `context` location, or a `cause` location at the base, is not.
+
+A finding whose `commit` is not the compared head matches nothing by site either. Problem: a thread stays on the pull request after a push, and GitHub carries its line forward even when the push fixed what it named, so a resolved thread from an earlier head sat on a current line and matched a Melian finding it never saw. Solution: `externalFinding.readAt(head)` says whether the reviewer read the compared head, and only such a finding matches by site or groups with others; `comparison.render` lists any other as external-only, with the commit it was read at and a note to match it by hand. A file's findings name no commit and count as read at the head.
 
 An external finding with no file or line, an `outdated` one, and one on the base side match nothing by site; only a maintainer matches them. `comparison.match(external, melian, by, at)` records a hand match and drops any unmatch of the pair; `comparison.unmatch(...)` drops any match of the pair, by site or by hand, and records the unmatch. `compare` rebuilds the site matches and keeps every hand record, so both survive every import. An ID the comparison does not hold is `ComparisonError` `unknownExternal` or `unknownMelian`.
 

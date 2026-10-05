@@ -55,6 +55,7 @@ describe("ReviewThreadImporter", () => {
 					url: "https://github.com/melian-agent/example/pull/7#discussion_r2401",
 				},
 				postedAt: "2026-10-05T01:00:00Z",
+				commit: "1".repeat(40),
 				resolved: true,
 			},
 			expect.objectContaining({
@@ -64,6 +65,7 @@ describe("ReviewThreadImporter", () => {
 				line: 4,
 				endLine: 4,
 				outdated: true,
+				commit: "2".repeat(40),
 				resolved: false,
 				source: expect.objectContaining({ thread: "PRRT_kwDOAAABc2" }),
 			}),

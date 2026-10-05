@@ -26,7 +26,7 @@ const threadsQuery = `query MelianReviewThreads($owner: String!, $name: String!,
           startDiffSide
           subjectType
           comments(first: 1) {
-            nodes { url body createdAt author { __typename login } }
+            nodes { url body createdAt originalCommit { oid } author { __typename login } }
           }
         }
       }
@@ -60,7 +60,13 @@ type ThreadNode = {
 	startDiffSide: "LEFT" | "RIGHT" | null;
 	subjectType?: "LINE" | "FILE";
 	comments: {
-		nodes: { url: string; body: string; createdAt: string; author: Author }[];
+		nodes: {
+			url: string;
+			body: string;
+			createdAt: string;
+			originalCommit: { oid: string } | null;
+			author: Author;
+		}[];
 	};
 };
 
@@ -223,6 +229,7 @@ export class ReviewThreadImporter implements ExternalImporter {
 				url: comment.url,
 			},
 			postedAt: comment.createdAt,
+			...(comment.originalCommit === null ? {} : { commit: comment.originalCommit.oid }),
 			resolved: thread.isResolved,
 		});
 	}

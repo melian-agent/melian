@@ -230,7 +230,8 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		const ssh = join(files, "ssh");
 		writeFileSync(ssh, `#!/bin/sh\nexec git upload-pack '${bare}'\n`);
 		chmodSync(ssh, 0o755);
-		const recorded = structuredClone(threads);
+		// The fixture's threads read at 1111…, its head, except the outdated one, read at an earlier commit.
+		const recorded = JSON.parse(JSON.stringify(threads).replaceAll("1".repeat(40), head)) as typeof threads;
 		for (const page of recorded.graphql.MelianReviewThreads) {
 			page.data.repository.pullRequest.headRefOid = moved ? "f".repeat(40) : head;
 		}
@@ -271,7 +272,7 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		expect(lines[0]).toBe("Imported 2 from github:coderabbitai[bot], skipping 1 review body without a thread.");
 		expect(lines[2]).toBe("Matched: 1. External only: 1. Melian only: 0. Skipped review bodies: 1.");
 		expect(lines[4]).toMatch(
-			/^ {2}[0-9a-f]{16} {2}coderabbit {2}docs\/removed\.md:4 \(outdated\) {2}\*\*The heading names a command/,
+			/^ {2}[0-9a-f]{16} {2}coderabbit {2}docs\/removed\.md:4 \(outdated\) {2}\*\*The heading names a command .* {2}\(read at 222222222222; match it by hand\)$/,
 		);
 		const human = melian(repo, ["compare", "#7", "--from", "github:octocat"], env);
 		expect(human.stdout).toContain("Imported 1 from github:octocat, skipping 1 review body without a thread.");

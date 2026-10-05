@@ -58,7 +58,9 @@ export const externalSourceSchema = Type.Union([
 /**
  * An external finding as the comparison document stores it. `line` and `endLine` are where the reviewer put it at the
  * compared head. `outdated` marks a thread GitHub no longer places, whose lines are its original ones, and `revision:
- * "base"` one on the diff's left side; neither matches by site. A finding with no line matches only by hand.
+ * "base"` one on the diff's left side; neither matches by site. A finding with no line matches only by hand. `commit` is
+ * the commit the reviewer read, where the source knows it, such as a thread's first comment's; a finding read at a
+ * commit other than the compared head matches only by hand.
  */
 export const externalFindingSchema = Type.Object(
 	{
@@ -69,6 +71,7 @@ export const externalFindingSchema = Type.Object(
 		endLine: Type.Optional(line),
 		revision: Type.Optional(Type.Literal("base")),
 		outdated: Type.Optional(Type.Boolean()),
+		commit: Type.Optional(Type.String({ pattern: "^([0-9a-f]{40}|[0-9a-f]{64})$" })),
 		title: Type.String({ minLength: 1, maxLength: maxExternalTitleLength }),
 		body: Type.String({ maxLength: maxExternalBodyLength }),
 		severity: Type.Optional(shortText),
@@ -256,6 +259,7 @@ export class ExternalFinding {
 	readonly endLine: number | undefined;
 	readonly revision: "base" | undefined;
 	readonly outdated: boolean | undefined;
+	readonly commit: string | undefined;
 	readonly title: string;
 	readonly body: string;
 	readonly severity: string | undefined;
@@ -272,6 +276,7 @@ export class ExternalFinding {
 		this.endLine = stored.endLine;
 		this.revision = stored.revision;
 		this.outdated = stored.outdated;
+		this.commit = stored.commit;
 		this.title = stored.title;
 		this.body = stored.body;
 		this.severity = stored.severity;
@@ -462,6 +467,7 @@ export class ExternalFinding {
 			endLine: this.endLine,
 			revision: this.revision,
 			outdated: this.outdated,
+			commit: this.commit,
 			title: this.title,
 			body: this.body,
 			severity: this.severity,
@@ -483,6 +489,15 @@ export class ExternalFinding {
 			this.endLine === undefined || this.endLine === this.line ? `${this.line}` : `${this.line}-${this.endLine}`;
 		const note = this.outdated ? " (outdated)" : this.revision === "base" ? " (base)" : "";
 		return `${file}:${lines}${note}`;
+	}
+
+	/**
+	 * Whether the reviewer read another commit than `head`. A thread stays on the pull request after a push, and GitHub
+	 * carries its line forward even when the push fixed what it named, so only a finding read at the compared head
+	 * matches by site.
+	 */
+	readAt(head: string): boolean {
+		return this.commit === undefined || this.commit === head;
 	}
 
 	/** Who raised the finding, as the terminal shows it: a human by login, any other reviewer by name. */
@@ -621,7 +636,7 @@ export class Comparison {
 		const hand = this.matches.filter((match) => match.kind === "hand");
 		const kept = new Set([...hand, ...this.unmatches].map(pairKey));
 		const site: ComparisonMatch[] = [];
-		for (const external of this.externalFindings()) {
+		for (const external of this.externalFindings().filter((each) => each.readAt(this.head))) {
 			for (const finding of findings) {
 				const pair = { external: external.id, melian: finding.id };
 				if (!kept.has(pairKey(pair)) && external.meetsFinding(finding)) {
@@ -709,11 +724,15 @@ export class Comparison {
 		}));
 		const alone: ExternalFinding[][] = [];
 		for (const finding of external.filter((each) => !matched.has(each.id))) {
-			const group = alone.find(
-				(members) =>
-					members.some((member) => member.meets(finding)) &&
-					!members.some((member) => member.sameReviewer(finding)),
-			);
+			// A finding read at another commit waits alone for a hand match, as it never matches by site.
+			const group = !finding.readAt(this.head)
+				? undefined
+				: alone.find(
+						(members) =>
+							members.every((member) => member.readAt(this.head)) &&
+							members.some((member) => member.meets(finding)) &&
+							!members.some((member) => member.sameReviewer(finding)),
+					);
 			if (group === undefined) alone.push([finding]);
 			else group.push(finding);
 		}
@@ -767,7 +786,8 @@ export class Comparison {
 		];
 		if (externalOnly.length > 0) out.push("External only:\n");
 		for (const finding of externalOnly.flatMap((group) => group.external)) {
-			out.push(`  ${finding.id}  ${finding.by()}  ${finding.where()}  ${visibleText(finding.title)}\n`);
+			const read = finding.readAt(this.head) ? "" : `  (read at ${finding.commit!.slice(0, 12)}; match it by hand)`;
+			out.push(`  ${finding.id}  ${finding.by()}  ${finding.where()}  ${visibleText(finding.title)}${read}\n`);
 		}
 		if (melianOnly.length > 0) out.push("Melian only:\n");
 		const findings = new Map((verdict?.all() ?? []).map((finding) => [finding.id, finding]));

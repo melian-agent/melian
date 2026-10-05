@@ -298,6 +298,24 @@ describe("Comparison matching", () => {
 		expect(comparison.melianOnly()).toEqual([]);
 	});
 
+	it("site-matches a thread only when its reviewer read the compared head, and says why another waits", () => {
+		const finding = melian();
+		const thread = (id: string, commit: string) =>
+			external({
+				reviewer: { name: "coderabbit", login: "coderabbitai[bot]", kind: "bot" },
+				source: { kind: "thread", thread: id, url: `https://github.com/o/r/pull/1#${id}` },
+				commit,
+			});
+		const current = thread("PRRT_now", revision.head);
+		const earlier = thread("PRRT_then", "c".repeat(40));
+		const comparison = compared([current, earlier], [finding]);
+		expect(comparison.effectiveMatches()).toEqual([{ external: current.id, melian: finding.id, kind: "site" }]);
+		expect(ids(comparison.externalOnly())).toEqual([{ external: [earlier.id], melian: [] }]);
+		expect(comparison.render(undefined)).toContain(`(read at ${"c".repeat(12)}; match it by hand)`);
+		comparison.match(earlier.id, finding.id, "M", "t");
+		expect(comparison.externalOnly()).toEqual([]);
+	});
+
 	it("never matches another file", () => {
 		const comparison = compared([external({ file: "src/other.ts" })], [melian()]);
 		expect(comparison.effectiveMatches()).toEqual([]);
