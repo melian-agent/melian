@@ -348,9 +348,7 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		it("cannot write under the home directory, /private/tmp, or ~/.npm", () => {
 			expect(failure(() => sh(linked, `touch '${home}/escape'`)).status).not.toBe(0);
 			expect(failure(() => sh(linked, `mkdir -p '${home}/.npm/_npx'`)).status).not.toBe(0);
-			expect(failure(() => sh(linked, `touch '${tmpProbe()}'`)).status).not.toBe(
-				0,
-			);
+			expect(failure(() => sh(linked, `touch '${tmpProbe()}'`)).status).not.toBe(0);
 			expect(failure(() => sh(linked, `touch '${join(root, "tmp")}/outside-run'`)).status).not.toBe(0);
 		});
 
