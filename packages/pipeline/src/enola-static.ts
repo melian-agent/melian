@@ -1,5 +1,14 @@
 import { posix } from "node:path";
-import { EnolaPolicy, type EnolaSnapshot, normaliseEnolaSarif, type ToolLog } from "@melian-agent/core";
+import {
+	EnolaPolicy,
+	type EnolaSnapshot,
+	type GraphFiles,
+	GraphSnapshot,
+	graphFiles,
+	normaliseEnolaSarif,
+	type ToolLog,
+} from "@melian-agent/core";
+import { GraphCache } from "./graph-cache.ts";
 import { type Run, type StaticRun, staticOutputLimit } from "./static.ts";
 import type { ToolProvisioning } from "./tool-provisioning.ts";
 
@@ -14,20 +23,43 @@ export class EnolaRun {
 	readonly #binary: string;
 	readonly #version: string;
 	readonly #policy: EnolaPolicy;
-	private constructor(run: Run, root: string, scratch: string, binary: string, version: string, policy: EnolaPolicy) {
+	readonly #cache: GraphCache;
+	readonly #digest: string;
+	readonly #notes: string[] = [];
+	private constructor(
+		run: Run,
+		root: string,
+		scratch: string,
+		binary: string,
+		version: string,
+		policy: EnolaPolicy,
+		cache: GraphCache,
+		digest: string,
+	) {
 		this.#run = run;
 		this.#root = root;
 		this.#scratch = scratch;
 		this.#binary = binary;
 		this.#version = version;
 		this.#policy = policy;
+		this.#cache = cache;
+		this.#digest = digest;
 	}
 
 	static async open(run: Run, root: string, scratch: string, tools: ToolProvisioning): Promise<EnolaRun> {
 		const binary = await tools.binary("enola");
 		const version = tools.tool("enola").version;
 		const policy = await EnolaPolicy.load(run.input.repoRoot, run.input.base ?? run.input.commit);
-		return new EnolaRun(run, root, scratch, binary, version, policy);
+		return new EnolaRun(
+			run,
+			root,
+			scratch,
+			binary,
+			version,
+			policy,
+			await GraphCache.open(tools.cache.root),
+			await tools.cache.digest(tools.tool("enola"), tools.platform),
+		);
 	}
 
 	async #required(command: string, phase: string): Promise<void> {
@@ -60,6 +92,23 @@ export class EnolaRun {
 
 	async #generate(root: string, output: string, commit: string): Promise<EnolaSnapshot> {
 		await this.#prepare(root, output);
+		const tree = await this.#run.shell(this.#run.git(`rev-parse ${commit}^{tree}`));
+		if (tree.code !== 0) throw this.#run.fail("worktreeFailed", "Could not resolve graph tree");
+		const parts = { tree: tree.output, version: this.#version, binary: this.#digest, config: this.#policy.hash };
+		const cached = await this.#cache.read(parts);
+		if (cached) {
+			for (const [name, text] of Object.entries(cached.files())) {
+				const written = await this.#run.input.env.writeFile(posix.join(output, name), text, this.#run.context);
+				if (!written.ok) throw this.#run.fail("toolFailed", `Could not restore graph ${name}`);
+			}
+			this.#notes.push(`Enola graph cache hit: ${cached.key}`);
+			return {
+				commit,
+				snapshotId: cached.snapshotId,
+				receipt: cached.files()["receipt.json"],
+				cacheKey: cached.key,
+			};
+		}
 		const log = posix.join(output, "generate.log");
 		const result = await this.#run.shell(`${this.#command(root, output, "--generate")} > ${quote(log)} 2>&1`);
 		if (result.code !== 0)
@@ -85,7 +134,20 @@ export class EnolaRun {
 			stored.enola_version !== this.#version
 		)
 			throw this.#run.fail("invalidOutput", "Enola receipt has an unsupported format, identity, or version");
-		return { commit, snapshotId: stored.snapshot_id, receipt };
+		const files: Partial<GraphFiles> = {};
+		for (const name of graphFiles) {
+			const text = await this.#run.readOutput(posix.join(output, name));
+			if (text !== undefined) files[name] = text;
+		}
+		let snapshot: GraphSnapshot;
+		try {
+			snapshot = GraphSnapshot.create(parts, files as GraphFiles);
+		} catch (cause) {
+			throw this.#run.fail("invalidOutput", "Enola graph artifacts are invalid", cause);
+		}
+		await this.#cache.store(snapshot);
+		this.#notes.push(`Enola graph cache miss: ${snapshot.key}`);
+		return { commit, snapshotId: stored.snapshot_id, receipt, cacheKey: snapshot.key };
 	}
 
 	async #sarif(root: string, output: string, baseline: string): Promise<ToolLog> {
@@ -132,6 +194,7 @@ export class EnolaRun {
 		const notes = [
 			"Enola used the base's policy with providers and history disabled; output and HOME were in scratch.",
 		];
+		notes.push(...this.#notes);
 		if (differs) notes.push("Enola configuration differs at head; the base's copies judged both revisions.");
 		return { status: "ran", log, baseLog, notes, snapshots: [before, after] };
 	}

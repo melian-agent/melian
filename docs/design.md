@@ -868,3 +868,5 @@ Milestone 4 makes Melian remember and learn: comment commands including dismiss-
 - How long should the shadow reviewers run? For now, until Melian's recall against them holds for a run of ten pull requests, with every difference still adjudicated. The criterion is the maintainer's to tighten once the numbers exist.
 
 The scheduled sweep for the Actions host is a deferred decision: it is designed in the hosts section and will be revisited if event-driven recovery proves insufficient in practice.
+
+The graph cache is built. Its atomic entries hash each artifact and preserve upstream restore metadata beside facts, insights, and the receipt. Corruption is a cache miss. Enola receipts carry timestamps; fact identity, rather than receipt byte identity, survives a recomputation.

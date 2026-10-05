@@ -259,3 +259,7 @@ Entries live under `tools/<name>/<version>/<platform>/<archive-sha256>/`. The bi
 `EnolaRun` replaces the head's Enola policy with bounded copies from the base. It disables executable providers, history, and update checks. A runner-owned `.enola` link points into scratch because upstream refuses an output path outside the repository. The baseline is generated from base and pinned in scratch; a committed baseline is removed. Base and head use the same label and policy. `check` exit 0 or 1 yields a SARIF report; 2 or 3 fails with Enola's message. Missing or unreadable artifacts fail closed.
 
 Every worktree command, including cleanup, passes through `Run.worktreeCommand`. Cleanup uses a background context and waits for the Enola promise to finish. The check record carries both snapshot identities and original receipts, plus a note when head policy differs. Receipts contain generation times and paths, so they are lineage, not byte-stable cache identity.
+
+## Graph cache
+
+`GraphCache.open(root)` uses the tool cache root. `GraphSnapshot` validates receipt format 1, key parts, and artifact hashes. Its key hashes tree, version, binary digest, and base policy hash with NUL separators. Reads of corrupt entries return a miss; writes rename a complete directory. Upstream restore metadata travels beside contract artifacts. Nothing ages out by clock, and nothing enters the state branch.

@@ -96,6 +96,21 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		expect(report.findings[0]?.properties.cause).toBe("introduced");
 		expect(result.notes).toContain("Enola configuration differs at head; the base's copies judged both revisions.");
 		expect(result.snapshots?.map((s) => s.commit)).toEqual([base, head]);
+		const repeated = await runStaticTool(
+			{
+				env: createNodeExecutionEnv(repo),
+				repoRoot: repo,
+				base,
+				commit: head,
+				tool: "enola",
+				settings: defaultConfig.static.enola,
+				tools: await fake(),
+			},
+			context,
+		);
+		if (repeated.status !== "ran") throw new Error("Enola did not repeat");
+		expect(repeated.notes.filter((note) => note.includes("cache hit"))).toHaveLength(2);
+		expect(repeated.snapshots).toEqual(result.snapshots);
 		expect(readFileSync(join(repo, "enola.yaml"), "utf8")).toContain("evil");
 		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
 	});

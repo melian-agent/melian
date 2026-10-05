@@ -98,7 +98,7 @@ What remains after them:
 - Step 6, the verifier. Step 4 landed, so it is unblocked.
 - Step 9's issues [#26](https://github.com/melian-agent/melian/issues/26) and [#46](https://github.com/melian-agent/melian/issues/46).
 - Step 10's rehearsal.
-- Step 11 is in build on `tool-manifest`, without a pull request yet. The strict manifest, quarantine, and verified binary cache are built; the Enola static check and policy boundary are built; the graph cache and spike follow.
+- Step 11 is in build on `tool-manifest`, without a pull request yet. The strict manifest, quarantine, and verified binary cache are built; the Enola static check and policy boundary are built; the graph cache is built; the coverage spike follows.
 - Step 14's leftovers, including a durability tuning round. Worst precision was 0.56 after run 9.
 
 Two experiments are running, and each has a record that decides it:

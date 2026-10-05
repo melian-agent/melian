@@ -63,6 +63,14 @@ export class ToolCache {
 		}
 	}
 
+	/** Returns the extracted executable's digest after re-verifying the cached pin. */
+	async digest(tool: ToolPin, platform: string): Promise<string> {
+		const path = await this.materialise(tool, platform);
+		return createHash("sha256")
+			.update(await readFile(path))
+			.digest("hex");
+	}
+
 	/** Returns a verified executable, repairing a missing or swapped entry from the pinned download. */
 	async materialise(tool: ToolPin, platform: string): Promise<string> {
 		const pin = this.#pin(tool, platform);

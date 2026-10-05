@@ -262,6 +262,15 @@ export const packageName = "@melian-agent/core";
 export { EnolaPolicy, type EnolaPolicyState, type EnolaSnapshot, normaliseEnolaSarif } from "./enola.ts";
 export { enolaPolicyPattern } from "./enola-paths.ts";
 export {
+	type GraphEntryState,
+	GraphError,
+	type GraphFiles,
+	type GraphKeyParts,
+	GraphSnapshot,
+	graphFiles,
+	graphKeySchema,
+} from "./graph.ts";
+export {
 	type ToolArtifact,
 	ToolManifest,
 	ToolManifestError,

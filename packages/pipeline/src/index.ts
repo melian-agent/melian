@@ -85,8 +85,7 @@ export {
 
 export const packageName = "@melian-agent/pipeline";
 
+export { GraphCache } from "./graph-cache.ts";
 export { summarizeReview } from "./summarize.ts";
-
 export { type ToolBinaryReceipt, ToolCache, ToolCacheError, type ToolFetch } from "./tool-cache.ts";
-
 export { CacheLocation, ToolProvisioning } from "./tool-provisioning.ts";

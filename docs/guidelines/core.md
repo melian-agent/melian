@@ -455,3 +455,5 @@ Only added lines take an inline comment. Problem: GitHub rejects the whole revie
 `EnolaPolicy.load(repoRoot, base)` reads Enola configuration, intent, constraints, and suppressions through the revision source, with 256 KiB per file and 1 MiB total. Its effective configuration disables providers and history and analyses only the reviewed repository. It hashes sorted policy names and contents, fixed flags, and cache schema version. `normaliseEnolaSarif` excludes resolved and explicitly suppressed findings. An unlocated finding sits on `enola-intent.yaml`, identified by message when that file is absent. `staticFindings` gives results `enola/<ruleId>` identities from snippets and occurrences.
 
 All Enola policy paths join analyser configuration in policy-change-review. A committed `.enola/baseline` does not.
+
+`GraphSnapshot` holds validated graph artifacts and a `GraphEntryState`. Snapshot IDs identify Enola's facts; cache keys identify inputs. Keep these separate in records.
