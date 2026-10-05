@@ -159,9 +159,13 @@ describe("ReviewThreadImporter", () => {
 			data: { repository: { pullRequest: { reviewThreads: { nodes: unknown[] } } } };
 		}[];
 		for (const page of pages) page.data.repository.pullRequest.reviewThreads.nodes = [];
+		const reviewPages = changed.graphql!.MelianReviews! as {
+			data: { repository: { pullRequest: { reviews: { nodes: unknown[] } } } };
+		}[];
+		for (const page of reviewPages) page.data.repository.pullRequest.reviews.nodes = [];
 		const bot = await importer(undefined, changed).opened.import();
 		expect(bot.findings).toEqual([]);
-		expect(bot.reviewers).toContainEqual({ name: "coderabbit", login: "coderabbitai[bot]", kind: "bot" });
+		expect(bot.reviewers).toEqual([{ name: "coderabbit", login: "coderabbitai[bot]", kind: "bot" }]);
 	});
 
 	it("gives a thread the same ID on every import, so importing again updates it", async () => {
