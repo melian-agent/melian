@@ -11,6 +11,7 @@ import {
 	melianPaths,
 	type StaticTool,
 	userFiles,
+	visibleText,
 } from "@melian-agent/core";
 import { parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
 import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSource } from "@melian-agent/pipeline";
@@ -70,22 +71,27 @@ async function secretsCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<{ chec
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return { checks: [], secrets: none };
 	// In any case of the name: a case-insensitive filesystem opens a committed MELIAN.SECRETS.YAML as the file itself.
-	const names = [melianPaths.localConfig, melianPaths.secrets].map((name) => `:(icase)${name}`);
-	const listed = await git(root, ["ls-files", "-z", "--", ...names]).catch(() => undefined);
+	// A pathspec also matches every file beneath a directory of that name, so only the two names count, and a path, the
+	// head's text, prints escaped.
+	const names: readonly string[] = [melianPaths.localConfig, melianPaths.secrets];
+	const pathspecs = names.map((name) => `:(icase,top,literal)${name}`);
+	const listed = await git(root, ["ls-files", "-z", "--", ...pathspecs]).catch(() => undefined);
 	const checks: Check[] =
 		listed === undefined
 			? [{ name: "secrets", state: "fail", detail: "git could not say whether it tracks a file only you may hold" }]
 			: listed
 					.split("\0")
-					.filter(Boolean)
+					.filter((file) => names.includes(file.toLowerCase()))
 					.map((file) => ({
 						name: "secrets",
 						state: "fail",
-						detail: `git tracks ${file}, which is yours alone; run git rm --cached ${file}`,
+						detail: `git tracks ${visibleText(file)}, which is yours alone; run git rm --cached ${visibleText(file)}`,
 					}));
 	try {
 		const secrets = await loadSecrets(root, userFiles(env).secrets);
-		const named = secrets.credentials.map(({ name, provider, file }) => `${name} for ${provider} in ${file}`);
+		const named = secrets.credentials.map(
+			({ name, provider, file }) => `${visibleText(name)} for ${visibleText(provider)} in ${visibleText(file)}`,
+		);
 		checks.push(...secrets.warnings.map((detail): Check => ({ name: "secrets", state: "warn", detail })), {
 			name: "secrets",
 			state: "ok",

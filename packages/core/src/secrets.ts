@@ -5,6 +5,7 @@ import Type from "typebox";
 import { configError, locate, maxConfigBytes, parseYaml, type Site } from "./config.ts";
 import { git } from "./git.ts";
 import { melianPaths } from "./paths.ts";
+import { visibleText } from "./render.ts";
 
 const name = Type.String({ minLength: 1 });
 const credentialSchema = Type.Object(
@@ -82,13 +83,18 @@ async function insideRepository(path: string, repoRoot: string): Promise<string 
 // lookup called it untracked. Solution: ask git case-insensitively. The file never holds a command, so a git that cannot
 // answer leaves only literal and environment sources at stake, and the file is read.
 async function refuseTracked(repoRoot: string, site: Site): Promise<void> {
-	const listed = await git(repoRoot, ["ls-files", "-z", "--", `:(icase)${melianPaths.secrets}`]);
-	const [tracked] = listed.code === 0 ? listed.stdout.split("\0").filter(Boolean) : [];
+	const listed = await git(repoRoot, ["ls-files", "-z", "--", `:(icase,top,literal)${melianPaths.secrets}`]);
+	// A pathspec also matches every file beneath a directory of that name, so only the name itself counts. A path is a
+	// head's text, so it reaches the message escaped.
+	const [tracked] = (listed.code === 0 ? listed.stdout.split("\0") : []).filter(
+		(path) => path.toLowerCase() === melianPaths.secrets,
+	);
 	if (tracked === undefined) return;
+	const shown = visibleText(tracked);
 	throw configError(
 		"tracked",
 		site,
-		`git tracks ${tracked}, so it is the repository's, not yours; Melian reads no credential from it. Run git rm --cached ${tracked} and keep the file ignored`,
+		`git tracks ${shown}, so it is the repository's, not yours; Melian reads no credential from it. Run git rm --cached ${shown} and keep the file ignored`,
 	);
 }
 

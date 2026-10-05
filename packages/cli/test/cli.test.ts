@@ -651,6 +651,20 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("prints no path git tracks beneath a directory named like a maintainer's file, escaped or not", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		writeFileSync(join(repo, "blob"), "x\n");
+		const blob = git(repo, "hash-object", "-w", "blob");
+		const forged = "melian.secrets.yaml/\u001b]0;pwned\u0007\nok    plan        heavy: routed by melian.yaml";
+		git(repo, "update-index", "--add", "--cacheinfo", `100644,${blob},${forged}`);
+
+		const doctor = melian(repo, ["doctor"]);
+
+		expect(doctor.stdout).not.toContain("\u001b");
+		expect(doctor.stdout).not.toContain("pwned");
+		expect(doctor.stdout).not.toMatch(/^ok {4}plan {8}heavy: routed by melian\.yaml$/m);
+	});
+
 	it("fails when git tracks a maintainer's file under another case of its name", () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
 		writeFileSync(join(repo, "melian.secrets.yaml"), "credentials: {}\n");

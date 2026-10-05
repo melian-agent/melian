@@ -104,6 +104,20 @@ describe("loadSecrets", () => {
 		expect(error.message).toContain("git tracks MELIAN.SECRETS.YAML");
 	});
 
+	it("counts only the file's own name as tracked, not a file beneath a directory of that name", async () => {
+		secrets(repo, "melian.secrets.yaml", "credentials:", "  a: { provider: openai, env: OPENAI_API_KEY }");
+		const blob = gitIn(repo, "hash-object", "-w", "melian.secrets.yaml");
+		// A head's path holding an escape sequence and a newline, which a pathspec of the bare name would also match.
+		gitIn(
+			repo,
+			"update-index",
+			"--add",
+			"--cacheinfo",
+			`100644,${blob},melian.secrets.yaml/\u001b]0;pwned\u0007\nok`,
+		);
+		expect((await loadSecrets(repo)).credentials).toHaveLength(1);
+	});
+
 	it("never runs a command from the per-clone file, ignored and mode 600 or not, and says where it belongs", async () => {
 		writeFiles(repo, { ".gitignore": lines("/melian.secrets.yaml") });
 		secrets(repo, "melian.secrets.yaml", "credentials:", "  a: { provider: openai, command: cat key }");
