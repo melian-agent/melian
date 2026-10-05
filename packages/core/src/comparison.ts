@@ -790,12 +790,13 @@ export class Comparison {
 	 * Melian findings they cover beside it, so one reviewer's finding near two of Melian's counts once. Then the
 	 * external-only and Melian-only counts, and of review bodies skipped when given; each ambiguous match; and every
 	 * finding's ID, with matched external findings beside the Melian findings they matched.
-	 * `verdict` is the stored review, which names each Melian-only finding's rule and place. Every string is untrusted, so
-	 * each prints through `visibleText`.
+	 * `verdict` is the stored review, which names each Melian-only finding's rule and place and identifies dismissed
+	 * findings in either group. Every string is untrusted, so each prints through `visibleText`.
 	 */
 	render(verdict: Verdict | undefined, skippedBodies?: number): string {
 		const groups = this.groups();
 		const matches = this.effectiveMatches();
+		const dismissed = new Set((verdict?.dismissed ?? []).map((finding) => finding.id));
 		const matched = new Set(matches.map((match) => match.external)).size;
 		const covered = new Set(matches.map((match) => match.melian)).size;
 		const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
@@ -813,7 +814,8 @@ export class Comparison {
 		const matchedGroups = groups.filter((group) => group.external.length > 0 && group.melian.length > 0);
 		if (matchedGroups.length > 0) out.push("Matched:\n");
 		for (const group of matchedGroups) {
-			out.push(`  ${group.melian[0]}\n`);
+			const id = group.melian[0]!;
+			out.push(`  ${id}${dismissed.has(id) ? "  (dismissed)" : ""}\n`);
 			for (const finding of group.external) {
 				out.push(`    ${finding.id}  ${finding.by()}  ${finding.where()}\n`);
 			}
@@ -834,7 +836,9 @@ export class Comparison {
 			const [start, end] = finding.lines();
 			const lines = start === end ? `${start}` : `${start}-${end}`;
 			const { severity, path } = finding.properties;
-			out.push(`  ${id}  ${severity} ${visibleText(finding.ruleId)}  ${visibleText(path)}:${lines}\n`);
+			out.push(
+				`  ${id}  ${severity} ${visibleText(finding.ruleId)}  ${visibleText(path)}:${lines}${dismissed.has(id) ? "  (dismissed)" : ""}\n`,
+			);
 		}
 		return out.join("");
 	}

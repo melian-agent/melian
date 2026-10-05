@@ -308,6 +308,25 @@ describe("Comparison matching", () => {
 		expect(comparison.melianOnly()).toEqual([]);
 	});
 
+	it.each([true, false])("includes and labels a dismissed Melian finding (matched: %s)", (matched) => {
+		const finding = melian({ status: "dismissed" });
+		const verdict = verdictOf([finding]);
+		expect(verdict.attention()).toEqual([]);
+		expect(verdict.dismissed.map((each) => each.id)).toEqual([finding.id]);
+		const outside = external();
+		const comparison = compared(matched ? [outside] : [], [finding]);
+		expect(comparison.melianFindings()).toEqual([finding.id]);
+		if (matched) {
+			expect(comparison.effectiveMatches()).toEqual([{ external: outside.id, melian: finding.id, kind: "site" }]);
+			expect(comparison.render(verdict)).toContain(`Matched:\n  ${finding.id}  (dismissed)\n`);
+		} else {
+			expect(comparison.melianOnly()).toEqual([finding.id]);
+			expect(comparison.render(verdict)).toContain(
+				`Melian only:\n  ${finding.id}  P1 no-eval  src/run.ts:12  (dismissed)\n`,
+			);
+		}
+	});
+
 	it("site-matches a thread only when its reviewer read the compared head, and says why another waits", () => {
 		const finding = melian();
 		const thread = (id: string, commit: string) =>
