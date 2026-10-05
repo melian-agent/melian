@@ -104,18 +104,31 @@ dynamic_rules() {
   local codex_dirs=() persistent=("$worktree") d
   if [ "$(real "$scratch")" != "$(real "$run")" ]; then persistent+=("$scratch"); fi
   for d in sessions log cache tmp ipc thread-writer-locks mcp-oauth-locks attachments; do codex_dirs+=("$codex/$d"); done
+  local trees=("${persistent[@]}" "$common/objects" "$common/refs" "$common/logs" "$admin/logs" \
+    ${codex_dirs[@]+"${codex_dirs[@]}"})
   {
-    for p in "${persistent[@]}" "$common/objects" "$common/refs" "$common/logs" "$admin/logs" \
-      ${codex_dirs[@]+"${codex_dirs[@]}"}; do
+    for p in "${trees[@]}"; do
       printf '  (regex #"^%s/(.*/)?[.][gG][iI][tT](/|$)")\n' "$(regex_path "$p")"
-    done
-    for p in "${persistent[@]}" "$common/objects" ${codex_dirs[@]+"${codex_dirs[@]}"}; do
-      printf '  (regex #"^%s/(.*/)?[hH][eE][aA][dD]$")\n' "$(regex_path "$p")"
     done
     for p in "$common/refs" "$common/logs" "$admin/logs"; do
       printf '  (regex #"^%s/(.*/)?[oO][bB][jJ][eE][cC][tT][sS](/|$)")\n' "$(regex_path "$p")"
     done
   } | awk '!seen[$0]++'
+  echo ")"
+
+  # A directory may be named head: the deny covers anything that is not a directory, so a task
+  # cannot create, write, link, or rename a file with that name.
+  echo "(deny file-write-create file-write-data file-write-unlink"
+  echo "  (require-all"
+  echo "    (require-any"
+  {
+    for p in "${persistent[@]}" "$common/objects" ${codex_dirs[@]+"${codex_dirs[@]}"}; do
+      printf '      (regex #"^%s/(.*/)?[hH][eE][aA][dD]$")\n' "$(regex_path "$p")"
+    done
+  } | awk '!seen[$0]++'
+  echo "    )"
+  echo "    (require-not (vnode-type DIRECTORY))"
+  echo "  )"
   echo ")"
 
   echo "(deny file-read*"

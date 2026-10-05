@@ -188,7 +188,9 @@ describe("codex-sandboxed.sh profile", () => {
 	});
 
 	it("denies a planted repository in every persistent writable subtree, with the path escaped", () => {
-		const deny = block(profile(linked, scratch), "deny file-write*");
+		const text = profile(linked, scratch);
+		const deny = block(text, "deny file-write*");
+		const names = block(text, "deny file-write-create file-write-data file-write-unlink");
 		const esc = (path) => path.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
 		const dotGit = (path) => `(regex #"^${esc(path)}/(.*/)?[.][gG][iI][tT](/|$)")`;
 		const head = (path) => `(regex #"^${esc(path)}/(.*/)?[hH][eE][aA][dD]$")`;
@@ -208,20 +210,21 @@ describe("codex-sandboxed.sh profile", () => {
 		]) {
 			expect(deny).toContain(dotGit(path));
 		}
-		for (const path of [linked, scratch, `${common}/objects`, ...codex]) expect(deny).toContain(head(path));
+		for (const path of [linked, scratch, `${common}/objects`, ...codex]) expect(names).toContain(head(path));
+		expect(names).toContain("(require-not (vnode-type DIRECTORY))");
+		expect(deny).not.toContain("[hH][eE][aA][dD]");
 		for (const path of [`${common}/refs`, `${common}/logs`, `${admin}/logs`]) {
 			expect(deny).toContain(objects(path));
-			expect(deny).not.toContain(head(path));
+			expect(names).not.toContain(head(path));
 		}
 	});
 
 	it("denies nothing under the run directory, which the wrapper deletes, but everything under a separate scratch", () => {
-		const same = block(profile(linked), "deny file-write*");
-		expect(same).not.toContain(`^${run}/`);
-		const apart = block(profile(linked, scratch), "deny file-write*");
-		expect(apart).not.toContain(`^${run}/`);
-		for (const name of ["[.][gG][iI][tT](/|$)", "[hH][eE][aA][dD]$"])
-			expect(apart).toContain(`^${scratch}/(.*/)?${name}`);
+		expect(profile(linked)).not.toContain(`^${run}/`);
+		const text = profile(linked, scratch);
+		expect(text).not.toContain(`^${run}/`);
+		for (const name of ["[.][gG][iI][tT](/|$)", "[hH][eE][aA][dD]$"]) expect(text).toContain(`^${scratch}/(.*/)?${name}`);
+		const apart = block(text, "deny file-write*");
 		expect(apart).not.toContain(`(subpath "${run}")`);
 	});
 
@@ -425,6 +428,15 @@ describe("codex-sandboxed.sh profile", () => {
 			expect(existsSync(join(linked, "bare", "HEAD"))).toBe(false);
 			const gitDir = git(join(linked, "bare"), "rev-parse", "--absolute-git-dir").toString().trim();
 			expect(realpathSync(gitDir)).toBe(realpathSync(admin));
+		});
+
+		it("can create, rename, and remove a directory named head, though no file", () => {
+			sh(linked, "mkdir -p src/head && mv src/head src/Head && rmdir src/Head");
+			expect(existsSync(join(linked, "src", "Head"))).toBe(false);
+			sh(linked, "mkdir -p src/head/inner && touch src/head/inner/f && rm -r src/head");
+			for (const command of ["touch src/HEAD", "ln -s x src/HEAD", "echo x > src/x && mv src/x src/head"])
+				expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
+			expect(readdirSync(join(linked, "src")).filter((name) => /^head$/i.test(name))).toEqual([]);
 		});
 
 		it("cannot start a rebase, whose todo file the host would later run", () => {
