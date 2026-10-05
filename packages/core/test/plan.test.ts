@@ -1,5 +1,5 @@
 import {
-	type CatalogueModel,
+	type CatalogModel,
 	defaultConfig,
 	Lens,
 	type LensTier,
@@ -12,11 +12,11 @@ import {
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv, lines, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
 
-function model(provider: string, id: string, name: string, input: number, output: number): CatalogueModel {
+function model(provider: string, id: string, name: string, input: number, output: number): CatalogModel {
 	return { provider, id, name, contextWindow: 1_000_000, reasoning: true, cost: { input, output } };
 }
 
-const catalogue: CatalogueModel[] = [
+const catalog: CatalogModel[] = [
 	model("amazon-bedrock", "us.anthropic.claude-opus-5-5", "Claude Opus 5.5 (US)", 4.4, 22),
 	model("amazon-bedrock", "anthropic.claude-opus-5-5", "Claude Opus 5.5", 4, 20),
 	model("anthropic", "claude-opus-5-5", "Claude Opus 5.5", 4, 20),
@@ -56,7 +56,7 @@ function plan(
 		checks?: string[];
 		retier?: Record<string, LensTier>;
 		committedTiers?: Record<string, LensTier>;
-		catalogue?: CatalogueModel[];
+		catalog?: CatalogModel[];
 	} = {},
 ): ReviewPlan {
 	const preferences = options.preferences ?? {};
@@ -81,7 +81,7 @@ function plan(
 			retiered: Object.fromEntries(Object.keys(retier).map((name) => [name, "melian.local.yaml"])),
 		},
 		...(options.model === undefined ? {} : { model: options.model }),
-		catalogue: options.catalogue ?? catalogue,
+		catalog: options.catalog ?? catalog,
 		credentials,
 		lenses,
 		checks: options.checks ?? ["lens.correctness"],
@@ -175,15 +175,15 @@ describe("ReviewPlan.resolve", () => {
 	describe("by price, when no provider with credentials serves the same model", () => {
 		// The wanted model, which no credential covers, and candidates from a provider that has credentials.
 		const wanted = model("anthropic", "wanted", "Wanted", 4, 20);
-		const derive = (...candidates: CatalogueModel[]) =>
+		const derive = (...candidates: CatalogModel[]) =>
 			plan(
 				{ heavy: { model: "anthropic/wanted" } },
 				{ other: "OTHER_API_KEY" },
 				{
-					catalogue: [wanted, ...candidates],
+					catalog: [wanted, ...candidates],
 				},
 			).tier("heavy").models[0]?.model;
-		const priced = (id: string, input: number, output: number, change: Partial<CatalogueModel> = {}) => ({
+		const priced = (id: string, input: number, output: number, change: Partial<CatalogModel> = {}) => ({
 			...model("other", id, id, input, output),
 			...change,
 		});
@@ -459,7 +459,7 @@ describe("a lens two folders define", () => {
 					lensTiers: {},
 					retiered: {},
 				},
-				catalogue,
+				catalog,
 				credentials,
 				lenses: variants,
 				checks: ["lens.correctness"],

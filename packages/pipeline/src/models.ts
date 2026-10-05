@@ -1,4 +1,4 @@
-import type { CatalogueModel } from "@melian-agent/core";
+import type { CatalogModel } from "@melian-agent/core";
 import type { MelianCredentialStore } from "./credentials.ts";
 import type { Models } from "./harness.ts";
 
@@ -34,7 +34,7 @@ export async function providersWithCredentials(models: ReviewModels): Promise<st
 /** What the review plan resolves against, read from a model collection. */
 export interface PlanSources {
 	/** Every chat model the collection knows, in its order. */
-	readonly catalogue: readonly CatalogueModel[];
+	readonly catalog: readonly CatalogModel[];
 	/** Each provider with credentials, to where they come from: a named credential and its file, Pi's login, or the environment variable pi-ai names. */
 	readonly credentials: Readonly<Record<string, string>>;
 }
@@ -46,8 +46,8 @@ export interface PlanSources {
 export async function planInputs(models: ReviewModels): Promise<PlanSources> {
 	const collection = modelsOf(models);
 	const store = stores.get(models);
-	const catalogue = collection.getModels().map(
-		(model): CatalogueModel => ({
+	const catalog = collection.getModels().map(
+		(model): CatalogModel => ({
 			provider: model.provider,
 			id: model.id,
 			name: model.name,
@@ -64,7 +64,7 @@ export async function planInputs(models: ReviewModels): Promise<PlanSources> {
 		const source = described ?? (checked === undefined ? undefined : (checked.source ?? `${provider.id}'s own`));
 		if (source !== undefined) credentials[provider.id] = source;
 	}
-	return { catalogue, credentials };
+	return { catalog, credentials };
 }
 
 /**

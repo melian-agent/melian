@@ -278,10 +278,10 @@ describe("MelianCredentialStore", () => {
 
 	it("names an environment variable pi-ai found as the source, and lists catalogue models", async () => {
 		vi.stubEnv("OPENAI_API_KEY", "sk-env");
-		const { catalogue, credentials } = await planInputs(createReviewModels({ authPath }));
+		const { catalog, credentials } = await planInputs(createReviewModels({ authPath }));
 		expect(credentials.openai).toBe("OPENAI_API_KEY");
 		expect(credentials.anthropic).toBeUndefined();
-		expect(catalogue.find((model) => model.provider === "openai" && model.id === "gpt-5.5")).toMatchObject({
+		expect(catalog.find((model) => model.provider === "openai" && model.id === "gpt-5.5")).toMatchObject({
 			name: "GPT-5.5",
 			reasoning: true,
 		});

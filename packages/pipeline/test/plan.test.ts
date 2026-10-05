@@ -109,7 +109,7 @@ async function planned(
 			...(light === undefined ? {} : { light: { model: light, fallbacks: options.lightFallbacks ?? [] } }),
 		},
 	};
-	const { catalogue, credentials } = await planInputs(fake.review);
+	const { catalog, credentials } = await planInputs(fake.review);
 	const plan = ReviewPlan.resolve({
 		config,
 		routes: {
@@ -121,7 +121,7 @@ async function planned(
 			lensTiers: {},
 			retiered: Object.fromEntries(Object.keys(moved).map((name) => [name, "melian.local.yaml"])),
 		},
-		catalogue,
+		catalog,
 		credentials,
 		lenses,
 		checks: ["lens.correctness", "lens.contracts"],

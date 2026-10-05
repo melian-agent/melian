@@ -12,7 +12,7 @@ import { parseModelReference } from "./models.ts";
 import { visibleText } from "./render.ts";
 
 /** One chat model of the catalogue the resolver reads: pi-ai's, or a test's. `cost` is dollars per million tokens. */
-export interface CatalogueModel {
+export interface CatalogModel {
 	readonly provider: string;
 	readonly id: string;
 	readonly name: string;
@@ -29,7 +29,7 @@ export interface PlanInput {
 	readonly routes: RouteLineage;
 	/** `--model`, which routes every lens tier to one model. */
 	readonly model?: string;
-	readonly catalogue: readonly CatalogueModel[];
+	readonly catalog: readonly CatalogModel[];
 	/** Each provider that holds credentials, to where they come from, such as `ANTHROPIC_API_KEY`. Never a value. */
 	readonly credentials: Readonly<Record<string, string>>;
 	/** The lenses loaded for the review, and the checks its tiers name: a lens runs only where a `lens.<name>` is named. */
@@ -179,7 +179,7 @@ export class ReviewPlan {
 	}
 
 	private static resolveTier(tier: ModelTier, input: PlanInput): PlannedTier {
-		const { config, routes, catalogue, credentials } = input;
+		const { config, routes, catalog, credentials } = input;
 		const policy: ModelRoute | undefined = routes.committed[tier];
 		const effective: ModelRoute | undefined = config.models[tier];
 		const accept = policy?.accept ?? (policy?.model === undefined ? [] : [policy.model, ...(policy.fallbacks ?? [])]);
@@ -199,7 +199,7 @@ export class ReviewPlan {
 		for (const name of [...route, ...accept]) parseModelReference(name, tier);
 		const entry = (name: string) => {
 			const { provider, modelId } = parseModelReference(name, tier);
-			return catalogue.find((model) => model.provider === provider && model.id === modelId);
+			return catalog.find((model) => model.provider === provider && model.id === modelId);
 		};
 		const usable = (name: string) => entry(name) !== undefined && Object.hasOwn(credentials, entry(name)!.provider);
 		const planned = (names: readonly string[]) =>
@@ -238,7 +238,7 @@ export class ReviewPlan {
 		}
 		if (chosen.length === 0) {
 			const tried = by === undefined ? [...new Set([...route, ...accept])] : route;
-			const derived = by === undefined ? ReviewPlan.derive(tried, catalogue, credentials, tier) : undefined;
+			const derived = by === undefined ? ReviewPlan.derive(tried, catalog, credentials, tier) : undefined;
 			if (derived === undefined) {
 				return {
 					...base,
@@ -282,17 +282,17 @@ export class ReviewPlan {
 	// provider and ID.
 	private static derive(
 		wanted: readonly string[],
-		catalogue: readonly CatalogueModel[],
+		catalog: readonly CatalogModel[],
 		credentials: Readonly<Record<string, string>>,
 		tier: ModelTier,
 	): string | undefined {
-		const covered = catalogue.filter((model) => Object.hasOwn(credentials, model.provider));
+		const covered = catalog.filter((model) => Object.hasOwn(credentials, model.provider));
 		const known = wanted.flatMap((name) => {
 			const { provider, modelId } = parseModelReference(name, tier);
-			const found = catalogue.find((model) => model.provider === provider && model.id === modelId);
+			const found = catalog.find((model) => model.provider === provider && model.id === modelId);
 			return found === undefined ? [] : [found];
 		});
-		const named = (model: CatalogueModel) => `${model.provider}/${model.id}`;
+		const named = (model: CatalogModel) => `${model.provider}/${model.id}`;
 		for (const target of known) {
 			const same = covered.filter((model) => sameModel(model.name) === sameModel(target.name));
 			const plain = same.find((model) => !/\(/.test(model.name)) ?? same[0];
@@ -300,7 +300,7 @@ export class ReviewPlan {
 		}
 		const reference = known[0];
 		if (reference === undefined) return undefined;
-		const price = (model: CatalogueModel) => Math.log(model.cost.input + model.cost.output + 0.01);
+		const price = (model: CatalogModel) => Math.log(model.cost.input + model.cost.output + 0.01);
 		const floor = Math.min(reference.contextWindow, 200_000);
 		const [nearest] = covered
 			.filter((model) => model.reasoning === reference.reasoning && model.contextWindow >= floor)

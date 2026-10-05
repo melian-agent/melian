@@ -54,12 +54,12 @@ export async function reviewModels(
 	} else {
 		models = createReviewModels({ credentials: options.credentials });
 	}
-	const { catalogue, credentials } = await planInputs(models);
+	const { catalog, credentials } = await planInputs(models);
 	const plan = ReviewPlan.resolve({
 		config: loaded.config,
 		routes: loaded.routes,
 		...(model === undefined ? {} : { model }),
-		catalogue,
+		catalog,
 		credentials,
 		lenses,
 		checks: options.checks,

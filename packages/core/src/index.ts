@@ -185,7 +185,7 @@ export {
 export { type ModelReference, parseModelReference, type ResolvedModelRoute, resolveModelForTier } from "./models.ts";
 export { analyserConfigNames, melianPaths, userFiles } from "./paths.ts";
 export {
-	type CatalogueModel,
+	type CatalogModel,
 	type PlanInput,
 	type PlanLine,
 	type PlannedLens,
