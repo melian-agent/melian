@@ -28,7 +28,6 @@ check_path() {
   esac
 }
 
-# Emits one seatbelt filter per path: (subpath) for a directory, (literal) otherwise.
 filters() {
   local kind=$1 p r; shift
   for p in "$@"; do
@@ -38,9 +37,7 @@ filters() {
   done
 }
 
-# Prints the rules appended to the fixed profile: write allowances, then write and read denials.
-# Arguments: worktree, scratch, run directory. Only a linked worktree is allowed: the main checkout's
-# worktree allowance would cover its .git, and a task could rename it and put its own in place.
+# Only a linked worktree is allowed: the main checkout's worktree allowance would cover its .git, which a task could rename.
 dynamic_rules() {
   local worktree=$1 scratch=$2 run=$3
   local common admin codex="$HOME/.codex" p
