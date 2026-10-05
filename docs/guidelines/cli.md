@@ -27,10 +27,10 @@ A pull request is `#` and its number. Quote it, `melian review "#12"`: an unquot
 ## Where policy comes from
 
 - A pull request reads `melian.yaml`, standards, and lenses from the base commit GitHub reports, so the head cannot rewrite its own review.
-- A range whose head is the checked-out commit reads them from the working tree: its author is the one running Melian, and an uncommitted `melian.yaml` edit should apply.
+- A range whose head is the checked-out commit reads configuration and lens definitions from the working tree, so uncommitted policy edits apply. It reads standards from the committed head, including their imports.
 - Any other range reads them from its base.
 
-The lenses always read the head commit, never the working tree.
+Lens tools always read reviewed code from the head commit, never the working tree.
 
 The preference files, `melian.local.yaml` beside the root `melian.yaml` and ignored by git, and `config.yaml` in the user's configuration directory, are where a maintainer keeps personal model routes and provider choices; [the core guideline](core.md#layering-precedence) says how they layer. The user's configuration directory is `$XDG_CONFIG_HOME/melian/`, or `~/.config/melian/` when the variable is unset; Core's `userFiles` names both files there, for the CLI and for live evals. Core reads the preference files only from the working tree, so they apply to a range on the checked-out commit and never to a pull request, which reads its base and its base's routes. The secrets files, `melian.secrets.yaml` beside the root `melian.yaml` and `secrets.yaml` in the user's configuration directory, are credentials, not policy, so every review reads them, a pull request's included. A credential's `command` source runs only from the user-level file: `melian.secrets.yaml` sits in the working tree, where a pull request's head could have written it, so it holds `key` and `env` sources only, and the loader refuses a command there with a message naming the user-level file. Review a pull request in a repository that routes no tier with `--model`.
 
@@ -48,7 +48,7 @@ A review is keyed by its base and head, the merge base and the head commit, so `
 
 The review plan and scripts receive every loaded lens. Credential unlocking uses only lenses covering the changed paths, retaining their committed tiers for lineage. When no enabled lens is named by the checks, the CLI unlocks no model credentials and opens no triage decider.
 
-`review` passes its `ReviewHarness` to `reviewChangeset`, which runs deterministic checks before the lenses. The tier mapped to the `pull-request` stage is the manifest; every check needs a record, as [the pipeline guideline](pipeline.md#the-manifest) describes. The CLI passes the configuration as loaded and its chosen policy source. The pipeline calls `runChecks` and reads its records. `review` builds `Standards.load(repoRoot, source, paths)` for the changed paths. Each lens receives only its covered files' chains, including both sides of a rename.
+`review` passes its `ReviewHarness` to `reviewChangeset`, which runs deterministic checks before the lenses. The tier mapped to the `pull-request` stage is the manifest; every check needs a record, as [the pipeline guideline](pipeline.md#the-manifest) describes. The CLI passes the configuration as loaded and its chosen policy source. The pipeline calls `runChecks` and reads its records. `review` builds `Standards.load(repoRoot, standardsSource, paths)` for the changed paths. Each lens receives only its covered files' chains, including both sides of a rename.
 
 - The harness opens with `checksExtension` and a Node execution environment in the checkout, through `openReviewHarness`'s `checkout` option. The static tools run the checkout's own Biome and tsc when its `node_modules` has them and git does not track it, and Melian's copies otherwise; `doctor` reports which.
 - `runChecks` takes the configuration as loaded, before `--model` replaces its routes, so a different `--model` does not change the run's identity and run the tools again.
