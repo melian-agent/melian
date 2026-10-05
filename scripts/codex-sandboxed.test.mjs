@@ -242,29 +242,53 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 	});
 
 	describe.skipIf(!sandboxExec)("the wrapper end to end, with a stand-in codex", () => {
-		it("scrubs secrets, points TMPDIR and the npm cache at the run, passes the prompt after --, and cleans up", () => {
+		it("passes only an allow-list of variables, points TMPDIR and the npm cache at the run, passes the prompt after --, and cleans up", () => {
 			const bin = join(root, "bin");
 			mkdirSync(bin);
 			writeFileSync(
 				join(bin, "codex"),
-				'#!/bin/sh\nfor a in "$@"; do echo "arg:$a"; done\necho "tmpdir:$TMPDIR"\necho "cache:$npm_config_cache"\necho "gh:$(printenv GH_TOKEN || echo unset)"\necho "key:$(printenv OPENAI_API_KEY || echo unset)"\necho "term:$(printenv TERM || echo unset)"\ntouch "$TMPDIR/probe" && echo probe-ok\nif read -r line; then echo "stdin:data"; else echo "stdin:eof"; fi\n',
+				'#!/bin/sh\nfor a in "$@"; do echo "arg:$a"; done\nenv | sed \'s/^/env:/\'\ntouch "$TMPDIR/probe" && echo probe-ok\nif read -r line; then echo "stdin:data"; else echo "stdin:eof"; fi\n',
 			);
 			chmodSync(join(bin, "codex"), 0o755);
 			const prompt = join(root, "dash.md");
 			writeFileSync(prompt, "--not-an-option please\n");
 			const log = join(root, "wrapper.log");
+			const kept = {
+				USER: "u",
+				LOGNAME: "u",
+				SHELL: "/bin/sh",
+				TERM: "xterm",
+				LANG: "en_AU.UTF-8",
+				LC_ALL: "en_AU.UTF-8",
+				TZ: "UTC",
+				EDITOR: "vi",
+				CODEX_FOO: "c",
+				GIT_AUTHOR_NAME: "a",
+				GIT_COMMITTER_NAME: "c",
+			};
+			const dropped = {
+				SSH_AUTH_SOCK: "/tmp/agent",
+				AWS_SECRET_ACCESS_KEY: "s",
+				NPM_CONFIG_FOO: "s",
+				OPENAI_API_KEY: "s",
+				GH_TOKEN: "s",
+				DATABASE_URL: "s",
+				SOME_SECRET_X: "s",
+				DB_PASSWORD: "s",
+			};
 			execFileSync(script, [linked, "m", prompt, log], {
 				stdio: "pipe",
 				input: "pending input\n",
-				env: { ...env(), PATH: `${bin}:${process.env.PATH}`, GH_TOKEN: "s", OPENAI_API_KEY: "s", TERM: "xterm" },
+				env: { ...env(), PATH: `${bin}:${process.env.PATH}`, ...kept, ...dropped },
 			});
 			const out = readFileSync(log, "utf8");
 			expect(out).toContain("arg:--\narg:--not-an-option please");
-			expect(out).toMatch(/tmpdir:.*\/codex-run\.[A-Za-z0-9]+/);
-			expect(out).toMatch(/cache:.*\/codex-run\.[A-Za-z0-9]+\/npm-cache/);
-			expect(out).toContain("gh:unset");
-			expect(out).toContain("key:unset");
-			expect(out).toContain("term:xterm");
+			expect(out).toMatch(/env:TMPDIR=.*\/codex-run\.[A-Za-z0-9]+/);
+			expect(out).toMatch(/env:npm_config_cache=.*\/codex-run\.[A-Za-z0-9]+\/npm-cache/);
+			expect(out).toContain(`env:HOME=${home}`);
+			expect(out).toContain(`env:PATH=${bin}:`);
+			for (const [name, value] of Object.entries(kept)) expect(out).toContain(`env:${name}=${value}\n`);
+			for (const name of Object.keys(dropped)) expect(out).not.toContain(`env:${name}=`);
 			expect(out).toContain("probe-ok");
 			expect(out).toContain("stdin:eof");
 			for (const dir of ["shell_snapshots", "memories", ".tmp"])

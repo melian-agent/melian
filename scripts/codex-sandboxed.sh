@@ -114,11 +114,13 @@ scratch=${5:-${CODEX_SANDBOX_SCRATCH:-$run}}
 mkdir -p "$scratch/npm-cache"
 for d in sessions log cache tmp ipc thread-writer-locks mcp-oauth-locks attachments; do mkdir -p "$HOME/.codex/$d"; done
 
-# The sandbox confines writes, not secrets; drop the variables that obviously hold one.
-scrub=()
+# The sandbox confines writes, not secrets; pass only what a task needs and drop the rest, so an
+# agent socket, cloud credentials, tokens, and npm settings never reach it.
+allowed=()
 while IFS= read -r name; do
   case $name in
-    GH_TOKEN | GITHUB_TOKEN | NPM_TOKEN | CLAUDE_CODE_OAUTH_TOKEN | CLOUDFLARE_* | *_API_KEY) scrub+=(-u "$name") ;;
+    PATH | HOME | USER | LOGNAME | SHELL | TERM | LANG | LC_* | TZ | EDITOR | CODEX_* | GIT_AUTHOR_* | GIT_COMMITTER_*)
+      allowed+=("$name=${!name}") ;;
   esac
 done < <(compgen -e)
 
@@ -126,5 +128,5 @@ cd "$worktree"
 # No exec: it would replace the shell and skip the EXIT trap that removes the profile and run directory.
 # stdin is /dev/null: codex exec reads a piped stdin as extra input and stalls waiting for it.
 # The prompt follows --, so one that starts with a dash is not read as an option.
-sandbox-exec -f "$profile" env ${scrub[@]+"${scrub[@]}"} TMPDIR="$run" npm_config_cache="$scratch/npm-cache" \
+sandbox-exec -f "$profile" env -i ${allowed[@]+"${allowed[@]}"} TMPDIR="$run" npm_config_cache="$scratch/npm-cache" \
   codex exec --dangerously-bypass-approvals-and-sandbox --model "$model" -C "$worktree" -- "$prompt" < /dev/null > "$log" 2>&1
