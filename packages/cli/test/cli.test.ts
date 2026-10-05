@@ -687,6 +687,21 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		expect(doctor.stdout).not.toMatch(/^ok {4}plan {8}heavy: routed by melian\.yaml$/m);
 	});
 
+	it("warns, in doctor and in review, of a secrets file others can read", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+		const xdg = userDirectory("credentials:\n  pinned: { provider: openai, key: sk-test }\n");
+		const secrets = join(xdg.XDG_CONFIG_HOME, "melian/secrets.yaml");
+		chmodSync(secrets, 0o644);
+		const warning = `${secrets} is readable by others (mode 644); chmod 600 ${secrets}`;
+
+		const doctor = melian(repo, ["doctor"], xdg);
+		const review = melian(repo, ["review", "main"], { ...env, ...xdg });
+
+		expect(doctor.stdout).toContain(`warn  secrets     ${warning}\n`);
+		expect(review.status).toBe(0);
+		expect(review.stderr).toContain(`melian: ${warning}\n`);
+	});
+
 	it("plans a lens on the tier melian.yaml gives it", () => {
 		// Were the committed tier lost, heavy's guard would refuse correctness on light, a model it does not accept.
 		const heavy = "  heavy:\n    model: anthropic/claude-opus-5-5\n    acceptOverridden: false\n";
