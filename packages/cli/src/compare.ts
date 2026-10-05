@@ -1,12 +1,5 @@
 import { existsSync } from "node:fs";
-import {
-	type Comparison,
-	ComparisonError,
-	type ExternalFinding,
-	type ExternalImporter,
-	type Verdict,
-	visibleText,
-} from "@melian-agent/core";
+import { ComparisonError, type ExternalImporter, visibleText } from "@melian-agent/core";
 import { coderabbitLogin, ReviewThreadImporter } from "@melian-agent/github";
 import {
 	CompareHarness,
@@ -21,12 +14,12 @@ import { idleModels, isScripted } from "./models.ts";
 import { CliError, openStorage, storagePath } from "./repository.ts";
 import { gitHubAccess, parseTarget } from "./target.ts";
 
-/** Where `melian compare --from` imports from: a pull request's review threads by one login, or a reviewer's file. */
+// Where `melian compare --from` imports from: a pull request's review threads by one login, or a reviewer's file.
 export type ImportSource =
 	| { readonly kind: "github"; readonly login: string }
 	| { readonly kind: "file"; readonly path: string };
 
-/** Reads a `--from` value: `github`, `github:<login>`, or `file:<path>`. `undefined` for anything else. */
+// Reads a `--from` value: `github`, `github:<login>`, or `file:<path>`; `undefined` for anything else.
 export function parseImportSource(value: string): ImportSource | undefined {
 	if (value === "github") return { kind: "github", login: coderabbitLogin };
 	if (value.startsWith("github:") && value.length > "github:".length) {
@@ -56,65 +49,7 @@ async function openComparison(io: Io, argument: string) {
 	return { stored, harness };
 }
 
-function where(finding: ExternalFinding): string {
-	if (finding.file === undefined) return "(no file)";
-	const file = visibleText(finding.file);
-	if (finding.line === undefined) return `${file} (no line)`;
-	const lines =
-		finding.endLine === undefined || finding.endLine === finding.line
-			? `${finding.line}`
-			: `${finding.line}-${finding.endLine}`;
-	const note = finding.outdated ? " (outdated)" : finding.revision === "base" ? " (base)" : "";
-	return `${file}:${lines}${note}`;
-}
-
-function reviewerOf(finding: ExternalFinding): string {
-	const { name, login } = finding.reviewer;
-	return visibleText(name === "human" && login !== undefined ? login : name);
-}
-
-// The counts, then each finding nothing matched, by ID, so a maintainer can match one by hand.
-function summary(comparison: Comparison, verdict: Verdict | undefined, skippedBodies?: number): string {
-	const groups = comparison.groups();
-	const matched = groups.filter((group) => group.external.length > 0 && group.melian.length > 0).length;
-	const externalOnly = groups.filter((group) => group.melian.length === 0);
-	const melianOnly = groups.filter((group) => group.external.length === 0).flatMap((group) => group.melian);
-	const skipped = skippedBodies === undefined ? "" : ` Skipped review bodies: ${skippedBodies}.`;
-	const out = [
-		`Matched: ${matched}. External only: ${externalOnly.length}. Melian only: ${melianOnly.length}.${skipped}\n`,
-	];
-	if (externalOnly.length > 0) {
-		out.push("External only:\n");
-		for (const group of externalOnly) {
-			for (const finding of group.external) {
-				out.push(`  ${finding.id}  ${reviewerOf(finding)}  ${where(finding)}  ${visibleText(finding.title)}\n`);
-			}
-		}
-	}
-	if (melianOnly.length > 0) {
-		out.push("Melian only:\n");
-		const findings = new Map((verdict?.all() ?? []).map((finding) => [finding.id, finding]));
-		for (const id of melianOnly) {
-			const finding = findings.get(id);
-			if (finding === undefined) {
-				out.push(`  ${id}\n`);
-				continue;
-			}
-			const [start, end] = finding.lines();
-			const lines = start === end ? `${start}` : `${start}-${end}`;
-			out.push(
-				`  ${id}  ${finding.properties.severity} ${visibleText(finding.ruleId)}  ${visibleText(finding.properties.path)}:${lines}\n`,
-			);
-		}
-	}
-	return out.join("");
-}
-
-/**
- * `melian compare`: imports each source's findings, matches them against the stored review of the target's head, records
- * the comparison in the changeset's storage, and prints the counts. Every import runs before anything is written, so a
- * source that fails records nothing.
- */
+// Every source is read before anything is written, so a source that fails records nothing.
 export async function compare(io: Io, argument: string, sources: readonly ImportSource[]): Promise<number> {
 	const target = parseTarget(argument);
 	const { stored, harness } = await openComparison(io, argument);
@@ -158,17 +93,13 @@ export async function compare(io: Io, argument: string, sources: readonly Import
 			`Compared ${external} external ${external === 1 ? "finding" : "findings"} with Melian's ${melian} at ${short(revision.head)}.\n`,
 		);
 		const skippedBodies = read.reduce((sum, each) => sum + each.imported.skippedBodies, 0);
-		io.stdout(summary(comparison, verdict, skippedBodies));
+		io.stdout(comparison.render(verdict, skippedBodies));
 		return 0;
 	} finally {
 		await harness.close(context);
 	}
 }
 
-/**
- * `melian compare match` and `melian compare unmatch`: records, as the git author, that an external finding and a
- * Melian finding are one defect, or are not, overriding the match by site.
- */
 export async function matchByHand(
 	io: Io,
 	argument: string,
@@ -191,7 +122,7 @@ export async function matchByHand(
 		);
 		const root = (await harness.harness.root(context)).id;
 		const verdict = await readVerdict(harness.harness, root, revisionKey(revision), context);
-		io.stdout(summary(comparison, verdict));
+		io.stdout(comparison.render(verdict));
 		return 0;
 	} finally {
 		await harness.close(context);

@@ -38,13 +38,10 @@ async function gitHubRepository(cwd: string): Promise<GitHubRepository> {
 	return parseGitHubRemote(url);
 }
 
-/**
- * The environment variable naming a recording of GitHub's answers, in `@melian-agent/github/testing`'s shape, which
- * scripted mode reads GitHub from instead of the network.
- */
+// Names a recording of GitHub's answers, in `@melian-agent/github/testing`'s shape, which scripted mode reads GitHub
+// from instead of the network.
 export const recordingVariable = "MELIAN_TEST_GITHUB";
 
-/** How Melian reaches the `origin` repository on GitHub: its owner and name, a token, and in tests a `fetch`. */
 export interface GitHubAccess {
 	readonly owner: string;
 	readonly repo: string;

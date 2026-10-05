@@ -4,6 +4,7 @@ import Value from "typebox/value";
 import type { Verdict } from "./adjudication.ts";
 import { FindingError } from "./errors.ts";
 import { canonicalPath, type Finding } from "./findings.ts";
+import { visibleText } from "./render.ts";
 
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
@@ -27,7 +28,7 @@ export const maxExternalFileFindings = 1_000;
 /** How many lines apart an external finding and another may lie and still be one site. */
 export const siteDistance = 3;
 
-/** The reviewers Melian compares itself with. A reviewer on GitHub other than CodeRabbit is `human`, named by login. */
+// The reviewers Melian compares itself with. A GitHub author other than CodeRabbit's or Copilot's bot is `human`.
 export const externalReviewerNameSchema = Type.Union([
 	Type.Literal("codex"),
 	Type.Literal("claude-code"),
@@ -36,7 +37,7 @@ export const externalReviewerNameSchema = Type.Union([
 	Type.Literal("human"),
 ]);
 
-/** Who raised an external finding: the reviewer, its version where known, and its login on a code host. */
+// Who raised an external finding: the reviewer, its version where known, and on a code host its login and kind.
 export const externalReviewerSchema = Type.Object(
 	{
 		name: externalReviewerNameSchema,
@@ -47,9 +48,8 @@ export const externalReviewerSchema = Type.Object(
 	strict,
 );
 
-/**
- * Where an external finding was read: a review thread, by GitHub's node ID for the thread and its first comment's URL; or a file, by its path and the finding's position in it, or the `ref` the file gave.
- */
+// Where an external finding was read: a review thread, by GitHub's node ID and its first comment's URL; or a file, by
+// its path, the finding's position in it, and the `ref` the file gave.
 export const externalSourceSchema = Type.Union([
 	Type.Object({ kind: Type.Literal("thread"), thread: shortText, url: pathText }, strict),
 	Type.Object({ kind: Type.Literal("file"), path: pathText, position: count, ref: Type.Optional(shortText) }, strict),
@@ -79,7 +79,7 @@ export const externalFindingSchema = Type.Object(
 	strict,
 );
 
-/** A match between an external finding and a Melian finding: by `site`, or by `hand`, with who matched them and when. */
+// A match between an external finding and a Melian finding: by `site`, or by `hand`, with who matched them and when.
 export const comparisonMatchSchema = Type.Object(
 	{
 		external: idSchema,
@@ -91,16 +91,14 @@ export const comparisonMatchSchema = Type.Object(
 	strict,
 );
 
-/** A maintainer's word that an external finding and a Melian finding are not one defect, whatever their sites say. */
+// A maintainer's word that an external finding and a Melian finding are not one defect, whatever their sites say.
 export const comparisonUnmatchSchema = Type.Object(
 	{ external: idSchema, melian: idSchema, by: text, at: text },
 	strict,
 );
 
-/**
- * The last import from one source: when it ran, the IDs of the findings it holds, and how many review bodies it skipped.
- * The next import from the source replaces them.
- */
+// The last import from one source: when it ran, the IDs of the findings it holds, and how many review bodies it
+// skipped. The next import from the source replaces them.
 export const comparisonImportSchema = Type.Object(
 	{ at: text, ids: Type.Array(idSchema), skippedBodies: count },
 	strict,
@@ -454,7 +452,7 @@ export class ExternalFinding {
 	}
 
 	toJSON(): StoredExternalFinding {
-		return withoutUndefined({
+		const fields = {
 			id: this.id,
 			reviewer: this.reviewer,
 			file: this.file,
@@ -468,7 +466,27 @@ export class ExternalFinding {
 			source: this.source,
 			postedAt: this.postedAt,
 			resolved: this.resolved,
-		});
+		};
+		return Object.fromEntries(
+			Object.entries(fields).filter(([, each]) => each !== undefined),
+		) as StoredExternalFinding;
+	}
+
+	/** Where the finding sits, as the terminal shows it: its file and lines, and whether it is outdated or on the base. */
+	where(): string {
+		if (this.file === undefined) return "(no file)";
+		const file = visibleText(this.file);
+		if (this.line === undefined) return `${file} (no line)`;
+		const lines =
+			this.endLine === undefined || this.endLine === this.line ? `${this.line}` : `${this.line}-${this.endLine}`;
+		const note = this.outdated ? " (outdated)" : this.revision === "base" ? " (base)" : "";
+		return `${file}:${lines}${note}`;
+	}
+
+	/** Who raised the finding, as the terminal shows it: a human by login, any other reviewer by name. */
+	by(): string {
+		const { name, login } = this.reviewer;
+		return visibleText(name === "human" && login !== undefined ? login : name);
 	}
 }
 
@@ -479,10 +497,6 @@ function titleOf(title: string): string {
 	return points.length <= maxExternalTitleLength
 		? points.join("")
 		: `${points.slice(0, maxExternalTitleLength - 1).join("")}…`;
-}
-
-function withoutUndefined<T extends object>(value: T): T {
-	return Object.fromEntries(Object.entries(value).filter(([, each]) => each !== undefined)) as T;
 }
 
 /** What one importer read: the findings, and how many review bodies it skipped because they have no thread. */
@@ -732,6 +746,41 @@ export class Comparison {
 			imports: this.imports,
 			...this.later,
 		});
+	}
+
+	/**
+	 * The comparison as the terminal shows it: the counts of matched, external-only, and Melian-only defects, and of
+	 * review bodies skipped when given, then each finding nothing matched, by ID, so a maintainer can match one by hand.
+	 * `verdict` is the stored review, which names each Melian-only finding's rule and place. Every string is untrusted, so
+	 * each prints through `visibleText`.
+	 */
+	render(verdict: Verdict | undefined, skippedBodies?: number): string {
+		const groups = this.groups();
+		const matched = groups.filter((group) => group.external.length > 0 && group.melian.length > 0).length;
+		const externalOnly = groups.filter((group) => group.melian.length === 0);
+		const melianOnly = groups.filter((group) => group.external.length === 0).flatMap((group) => group.melian);
+		const skipped = skippedBodies === undefined ? "" : ` Skipped review bodies: ${skippedBodies}.`;
+		const out = [
+			`Matched: ${matched}. External only: ${externalOnly.length}. Melian only: ${melianOnly.length}.${skipped}\n`,
+		];
+		if (externalOnly.length > 0) out.push("External only:\n");
+		for (const finding of externalOnly.flatMap((group) => group.external)) {
+			out.push(`  ${finding.id}  ${finding.by()}  ${finding.where()}  ${visibleText(finding.title)}\n`);
+		}
+		if (melianOnly.length > 0) out.push("Melian only:\n");
+		const findings = new Map((verdict?.all() ?? []).map((finding) => [finding.id, finding]));
+		for (const id of melianOnly) {
+			const finding = findings.get(id);
+			if (finding === undefined) {
+				out.push(`  ${id}\n`);
+				continue;
+			}
+			const [start, end] = finding.lines();
+			const lines = start === end ? `${start}` : `${start}-${end}`;
+			const { severity, path } = finding.properties;
+			out.push(`  ${id}  ${severity} ${visibleText(finding.ruleId)}  ${visibleText(path)}:${lines}\n`);
+		}
+		return out.join("");
 	}
 
 	private known(external: string, melian: string): void {
