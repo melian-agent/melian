@@ -60,7 +60,7 @@ Each changeset has one SQLite file, `melian/<changeset-id>.sqlite` in the clone'
 
 ## Scripted mode
 
-`MELIAN_TEST_SCRIPT=<script.json>` runs every tier on the fake model, answering each lens from a script in a golden's `script.json` shape, through `scriptLenses` from `@melian-agent/pipeline/testing`. It exists so the gate can run the built binary end to end without a provider. Storage moves under `melian/scripted/`, and `publish` refuses to run, so nothing a script produced can reach a pull request.
+`MELIAN_TEST_SCRIPT=<script.json>` runs every tier on the fake model, answering each lens from a script in a golden's `script.json` shape, through `scriptLenses` from `@melian-agent/pipeline/testing`. It exists so the gate can run the `melian` command end to end, through the shim and a real process, without a provider. Storage moves under `melian/scripted/`, and `publish` refuses to run, so nothing a script produced can reach a pull request.
 
 ## The binary
 

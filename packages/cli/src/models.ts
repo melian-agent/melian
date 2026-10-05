@@ -7,7 +7,8 @@ import { CliError } from "./repository.ts";
 /**
  * The environment variable that switches the CLI to scripted mode: the path of a lens script, in a golden's
  * `script.json` shape. Every tier routes to a fake model that answers each lens from it, and storage moves under
- * `melian/scripted/` so nothing a script produced can be published. It exists for tests of the built binary.
+ * `melian/scripted/` so nothing a script produced can be published. It exists so tests can run the CLI end to end
+ * without a provider.
  */
 export const scriptVariable = "MELIAN_TEST_SCRIPT";
 
