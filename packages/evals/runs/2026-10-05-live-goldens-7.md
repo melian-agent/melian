@@ -93,3 +93,58 @@ Tuned, over three passes:
 ## Cost
 
 Untuned, each pass made 150 to 154 requests in 185 to 213 seconds, about 39,000 output tokens, $1.95 to $2.08 at list price. Tuned, 143 to 152 requests in 174 to 185 seconds, about 39,000 output tokens, $1.95 to $1.98. An OAuth subscription is not billed per token.
+
+## Results, corrected
+
+After review, the lens body was corrected to state Pi Durable's contracts as its source keeps them, `5525ca6`. The changes: what restarts a task; that a finished task's result is never migrated; that a non-JSON value fails its commit; that `afterTool` runs on a replay; and that a keyed replace is safe unless two calls for one key can be pending at once. `0d6222d` added `packages/cli/src/**` to its paths. The goldens changed too. `6a93bb0` wrote their Pi Durable calls as working code. `5525ca6` reseeded `durability-resumed-publish`: its base now aborts leftover publish tasks, and its head swaps that abort for resume-and-wait. No tuning followed. This is the measurement of the lens as it ships.
+
+- Melian under test: `993570d`, built with `npm run build`, on Node 24.18.0.
+- Lens versions: `durability` `1e23dea9f30d`; the six built-in lenses as above.
+- Method, model, and scoring as above: three passes one after another.
+
+Per golden, over three passes:
+
+| Golden | Expected | Reported | Precision worst | Precision mean | Recall worst | Recall mean |
+| --- | --- | --- | --- | --- | --- | --- |
+| `durability-attach-key` | 1 | 5, 6, 7 | 0.14 | 0.17 | 1.00 | 1.00 |
+| `durability-clean-upsert` | 0 | 0, 1, 0 | 0.00 | 0.67 | 1.00 | 1.00 |
+| `durability-replayed-append` | 1 | 1, 1, 1 | 1.00 | 1.00 | 1.00 | 1.00 |
+| `durability-resumed-publish` | 1 | 3, 2, 3 | 0.33 | 0.39 | 1.00 | 1.00 |
+| `durability-superseded-write` | 1 | 2, 2, 2 | 0.50 | 0.50 | 1.00 | 1.00 |
+
+| Goldens | Precision per pass | Worst | Mean | Recall per pass | Worst | Mean |
+| --- | --- | --- | --- | --- | --- | --- |
+| `durability-*` | 0.36, 0.33, 0.31 | 0.31 | 0.33 | 1.00, 1.00, 1.00 | 1.00 | 1.00 |
+
+By the lens that reported each finding, per pass:
+
+| Lens | Reported | Matched | Extra |
+| --- | --- | --- | --- |
+| `durability` | 5, 6, 5 | 4, 4, 4 | 1, 2, 1 |
+| `correctness` | 4, 3, 4 | 0, 0, 0 | 4, 3, 4 |
+| `removed-behaviour` | 2, 2, 3 | 0, 0, 0 | 2, 2, 3 |
+| `trust-boundary` | 0, 1, 1 | 0, 0, 0 | 0, 1, 1 |
+| `contracts`, `tests`, `conventions` | 0, 0, 0 | 0, 0, 0 | 0, 0, 0 |
+
+`durability` still found all four seeded defects in every pass, at the expected file and rule. Of the 24 extras over three passes, 20 are other lenses':
+
+- `correctness`, 11: the attach key in every pass as `wrong-result`, twice in each, once for the inputs the key leaves out and once for a failed run kept for good; the superseded walkthrough task as `state-ordering` in every pass; and the resumed publish as `wrong-result` in passes 1 and 3, now naming the seeded defect each time.
+- `removed-behaviour`, 7: the attach key in every pass, as `moved-code-lost-anchor`, `dropped-error-path`, or `dropped-guard`, and the resumed publish in every pass as `dropped-guard`. The reseed invited that one: the head now deletes the base's abort, and [the boundaries decision](../../../docs/decisions/2026-10-04-lens-backlog-boundaries.md) gives `removed-behaviour` what a deleted line stopped doing.
+- `trust-boundary`, 2: the attach key in passes 2 and 3, as `head-controls-judge`, because the key leaves out the configuration that names the checks.
+
+The other 4 are `durability`'s own, where the tuned lens had none:
+
+- 3 on `durability-attach-key`, one per pass: the failed run kept for good, which the golden declares as one more outcome of the key's defect, reported as a second finding at line 51, as `idempotency-key` in passes 1 and 2 and as `stale-task-write` in pass 3. The instruction to report one defect once is unchanged, but it held in none of the three passes.
+- 1 on `durability-clean-upsert`, pass 2: `replay-duplicate` on `add_note`, citing the corrected exemption. The tool's comment says any conversation may call it for the root's notes, so the lens argued that two calls for one line can be pending at once and that a replay of the earlier one overwrites the later one's note. Under the corrected contract that interleaving exists, so the clean golden is no longer plainly clean; whether to narrow the golden's comment or accept the finding is the maintainer's call.
+
+Tuned, `durability`'s own precision was 1.00 in every pass; corrected, it is 0.80, 0.67, and 0.80.
+
+### The bars, corrected
+
+| Lens | Worst precision on its goldens | Worst recall on its goldens | Meets the bars |
+| --- | --- | --- | --- |
+| `durability` | 0.31 | 1.00 | No: precision |
+
+The corrected lens ships below the precision bar of 0.8, at a worst of 0.31 against the tuned lens's 0.44. Most of the extras on its goldens, 20 of 24, still come from other lenses restating the defects it owns, which the one-sided hand-off explains. The rest, 4 of 24, are its own. No tuning followed, so the next round starts from these figures.
+
+Each pass made 140 to 161 requests in 149 to 194 seconds, 40,000 to 44,000 output tokens, $2.04 to $2.21 at list price.
