@@ -675,7 +675,7 @@ describe("a lens task from an earlier selection during triage", { timeout: 30_00
 			]),
 		});
 		expect(await readVerdict(harness, root, revision, context)).toEqual(verdict);
-		await harness.resume(context);
+		harness.resume();
 		expect(await readVerdict(harness, root, revision, context)).toEqual(verdict);
 		expect(requests["You are the correctness reviewer"]).toHaveLength(1);
 	});
