@@ -91,7 +91,7 @@ Pass `--all` to print the silent and dismissed findings too, each dismissed one 
 
 ## Compare with other reviewers
 
-When the user asks how Melian's review compares with CodeRabbit's or another reviewer's, run `melian compare "#N" --from github`, or `--from file:<path>` for a reviewer's JSON file, with the range or `"#N"` a stored review used, and show what it prints; it posts nothing. For Codex's adversarial review, save the "result" field of the companion's JSON output as that file, not the whole output.
+When the user asks how Melian's review compares with CodeRabbit's or another reviewer's, run `melian compare "#N" --from github`. Use `--from file:<path>` for a reviewer's JSON file, with the range or `"#N"` a stored review used. Show what it prints; it posts nothing. For Codex's adversarial review, save the "result" field of the companion's JSON output as that file, not the whole output.
 
 ## Dismiss a finding
 

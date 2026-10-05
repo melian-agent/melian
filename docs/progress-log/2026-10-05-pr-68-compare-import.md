@@ -9,3 +9,5 @@ Round five adds a query assertion for `comments(first: 1)` on every thread page.
 Round five keeps the first thread page's head and refuses any later page placed at another head. A two-page regression failed before the check because the importer returned mixed placements under the last head.
 
 Round five tests a replacement verdict at the same revision. A hand match to its new finding persists through storage and re-import, while a match to the removed finding fails. Removing the comparison refresh before the change fails the regression with `unknownMelian` for the new finding.
+
+Round five splits the skills' comparison instruction at the file-source alternative and the output instruction. All four copies keep identical comparison prose, and the CLI skills tests pass.
