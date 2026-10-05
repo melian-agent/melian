@@ -117,8 +117,10 @@ describe("the overlong-sentence guardrail", () => {
 
 	it("scans a very long line in linear time", async () => {
 		const { pattern } = await rootRule("overlong-sentence");
+		const line = Array.from({ length: 20_000 }, (_, index) => `word${index}`).join(". ");
+		expect(pattern.test(line)).toBe(false);
 		const started = performance.now();
-		pattern.test(words(20_000));
+		pattern.test(line);
 		expect(performance.now() - started).toBeLessThan(5_000);
 	});
 });

@@ -141,9 +141,11 @@ describe("a golden's standards and policy", () => {
 			(entry) => entry.name === "melian.golden.yaml",
 		);
 		expect(copies.length).toBeGreaterThan(0);
-		// A policy that sets no tiers, as a guardrail golden's does, runs the default tiers: it names no lens of its own.
-		const tiered = copies.filter((copy) => /^tiers:/m.test(readFileSync(join(copy.parentPath, copy.name), "utf8")));
+		// A guardrail golden names no lens of its own, so its policy sets no tiers and runs the default ones.
+		const exempt = ["guardrails-bare-issue-reference", "guardrails-overlong-sentence"];
+		const tiered = copies.filter((copy) => !exempt.includes(basename(copy.parentPath)));
 		expect(tiered.length).toBeGreaterThan(0);
+		expect(copies.length - tiered.length).toBe(exempt.length);
 		for (const copy of tiered) {
 			const path = join(copy.parentPath, copy.name);
 			expect(await fullTier(readFileSync(path, "utf8")), path).toEqual(root);
