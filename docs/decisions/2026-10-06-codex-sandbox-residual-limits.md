@@ -8,6 +8,11 @@ Choice: Keep the per-run exemption. The host treats everything under the worktre
 
 Why: Denying directory renames into the worktree would break `npm ci` and git. Removing the temp-directory exemption would break Melian's tests, which create repositories there. The host rule already applies to task-written hooks, scripts and symlinks. It also covers repositories moved out of temp storage.
 
+The sandbox leaves these outside its scope:
+
+- What the host runs from task-written files or repositories. The host rule above governs those actions.
+- A task has no credential for a live review and runs Melian only on throwaway repositories under its temp directory, never on its own worktree. Melian's static step needs new administrative directories under the common git directory; the profile allows only existing administrative state.
+
 The sandbox still closes these routes, within the limits the [README](../../README.md#running-codex-tasks) records:
 
 - Direct creation of `.git` components and `HEAD` or `commondir` files anywhere persistently writable, apart from git's documented state-file allowances. These path checks do not inspect a renamed directory's descendants.
