@@ -11,3 +11,5 @@ The public publish API now requires explicit writer trust and refuses omission b
 The fix pass changes the retirement decision to the ten most recent eligible merged pull requests after 2026-10-06T00:00:00Z. Missing records and pending adjudications block retirement within that window. At least one adjudicated valid in-scope distinct shadow finding is required. This tightens the maintainer’s criterion and needs their confirmation; the stats command remains deferred.
 
 A stored version-1 publish fixture now seeds an unfinished task in SQLite. Reopening with the current publisher migrates its input to trusted writers and posts one review and one ledger. The fixture also reopens the legacy publisher document without inventing an identity.
+
+The first status write may repeat after a crash before its record commit. This is accepted and the crash regression pins three statuses, compared with two normally. The recovery guarantee avoids duplicate reviews and ledger comments, not every external write.

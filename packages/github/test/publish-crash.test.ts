@@ -261,6 +261,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 				permission: changedPublisher ? "maintain" : "write",
 				authorPermission: "read",
 			});
+			expect(persisted.statuses).toHaveLength(3);
 			expect(persisted.reviews).toHaveLength(1);
 			expect(persisted.ledgers).toHaveLength(1);
 			if (changedPublisher) {
