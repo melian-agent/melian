@@ -150,6 +150,34 @@ describe("ExternalFinding", () => {
 		expect([...finding!.title]).toHaveLength(maxExternalTitleLength);
 	});
 
+	it.each(["external-finding", "Codex"])("refuses more than 1,000 findings in the %s file shape", (shape) => {
+		const findings = Array.from({ length: 1_001 }, (_, index) => ({ title: `Finding ${index}`, body: "b" }));
+		const file =
+			shape === "Codex"
+				? {
+						verdict: "needs-attention",
+						summary: "s",
+						findings: findings.map((finding) => ({
+							...finding,
+							severity: "high",
+							file: "a.ts",
+							line_start: 1,
+							line_end: 1,
+							confidence: 0.5,
+							recommendation: "",
+						})),
+						next_steps: [],
+					}
+				: { reviewer: { name: "human" }, findings };
+
+		expect(ExternalFinding.fromFile({ ...file, findings: file.findings.slice(0, 1_000) }, "x.json")).toHaveLength(
+			1_000,
+		);
+		expect(() => ExternalFinding.fromFile(file, "x.json")).toThrow(
+			expect.objectContaining({ code: "invalidFile", path: "x.json" }),
+		);
+	});
+
 	it.each([
 		["a severity", { severity: "x".repeat(101) }],
 		["a ref", { ref: "x".repeat(101) }],
