@@ -34,7 +34,7 @@ Melian follows Pi's philosophy: a minimal core, extensible by design, small enou
 
 ## Concepts
 
-Built in milestone 1, except level, whose declaration and budgets milestone 2 built, and verification, plan, ledger, and decision, planned for milestone 2 (review of record), and knowledge, planned for milestone 4 (remembers and learns).
+Built in milestone 1, except level, whose declaration and budgets milestone 2 built, plan, which milestone 2 built, and verification, ledger, and decision, planned for milestone 2 (review of record), and knowledge, planned for milestone 4 (remembers and learns).
 
 | Term | Meaning |
 |---|---|
@@ -323,7 +323,7 @@ The split keeps the verdict deterministic: a model proposes, policy bounds, and 
 
 ## Configuration and layering
 
-Built in milestone 1. The files a user owns beyond `melian.local.yaml`, and the route keys `accept`, `unavailable`, and `acceptOverridden`, are planned for milestone 2 (review of record). The maintainer comment that overrides a block and the confidence threshold for agentic findings are planned for milestone 4 (comment commands and decision models).
+Built in milestone 1. The files a user owns beyond `melian.local.yaml`, and the route keys `accept`, `unavailable`, and `acceptOverridden`, were built in milestone 2 (review of record). The maintainer comment that overrides a block and the confidence threshold for agentic findings are planned for milestone 4 (comment commands and decision models).
 
 Problem: a multi-service monorepo needs different scrutiny for a payments service than for its docs, and a single root configuration cannot express that without becoming a rules engine.
 
@@ -348,7 +348,7 @@ A maintainer comment can override a block. Deterministic guardrails may block at
 
 ### Files a user owns
 
-Planned for milestone 2, except `melian.local.yaml`, built in milestone 1.
+Built in milestone 2, except `melian.local.yaml`, built in milestone 1, and the secrets file in a repository secret, planned for milestone 3 (Actions host).
 
 Problem: routes and secrets want different handling. A route is a preference a team may share. A key is a secret nobody should commit. A reference to a secrets manager, such as the name of an environment variable, is not a secret at all. The one file a user owns today, `melian.local.yaml`, is per clone, so an engineer repeats routes in every repository, and a key has nowhere to live but Pi's store or the environment.
 
@@ -362,9 +362,9 @@ Solution: preferences and credentials live in separate files.
 | `~/.config/melian/secrets.yaml` | One user's credentials for every repository | the user's configuration directory | no, mode 0600 |
 | `melian.secrets.yaml` | One clone's credentials | beside the root `melian.yaml` | no, git-ignored, mode 0600 |
 
-Both preference files take `melian.yaml`'s schema. The per-clone file wins over the user-level one, and both win over the committed files.
+Both preference files take `melian.yaml`'s schema. The per-clone file wins over the user-level one, and both win over the committed files. A route's `accept`, `unavailable`, and `acceptOverridden` are policy, so only a committed `melian.yaml` sets them; a preference file that sets one is refused, naming the key, since it could otherwise wave its own override through. The user-level files live in `$XDG_CONFIG_HOME/melian/`, which is `~/.config/melian/` when the variable is unset.
 
-A credential entry has a name, a provider, a type, and a value that is literal, an environment variable name, or a command, as Pi's store takes `!command`:
+A credential entry has a name, a provider, a type, and a value that is literal (`key`), an environment variable name (`env`), or a command (`command`), as Pi's store takes `!command`. The type is `api_key` until the credential pool brings OAuth in milestone 3:
 
 ```yaml
 # ~/.config/melian/secrets.yaml
@@ -373,9 +373,9 @@ credentials:
   work-openai: { provider: openai, type: api_key, command: "op read op://dev/openai/key" }
 ```
 
-A command source is allowed only in a file the user owns, never in a committed `melian.yaml`. Problem: a merged change that adds a command source runs that command on every engineer's machine at their next review, a supply-chain hole. Solution: committed policy may name credentials and environment variables, and nothing that executes. Routes and stacking rules name credentials and never contain them.
+A command source is allowed only in a file the user owns, never in a committed `melian.yaml`. Problem: a merged change that adds a command source runs that command on every engineer's machine at their next review, a supply-chain hole. Solution: committed policy may name credentials and environment variables, and nothing that executes. Routes and stacking rules name credentials and never contain them. A secrets file is the user's own only if git does not track it, the user owns it, and neither its group nor others may write it: Melian refuses a tracked `melian.secrets.yaml` outright, since a head could supply one, and refuses a command source in a file anyone else could have written. A command runs once per review, when the review starts, and never in a message: an error names the credential and its file, never what the command printed. `melian doctor` names where each credential comes from without running one.
 
-Melian resolves a credential from the secrets files first, the per-clone one before the user-level one, then Pi's store, then environment variables. `.gitignore` lists `melian.local.yaml` and `melian.secrets.yaml`, a guardrail blocks committing either, and `melian doctor` fails when either is tracked. A change to the credential references in a `melian.yaml` is a policy change.
+Melian resolves a credential from the secrets files first, the per-clone one before the user-level one, each in its own order, then Pi's store, then environment variables. A named credential applies when its source is present: a literal, a set variable, or a command. `.gitignore` lists `melian.local.yaml` and `melian.secrets.yaml`, policy-change review reports a change that commits either, and `melian doctor` fails when either is tracked. A change to the credential references in a `melian.yaml` is a policy change.
 
 ## Standards and knowledge
 
@@ -436,7 +436,7 @@ Advisory only, never authority. Fail closed on timeout or error. Inputs come fro
 
 ## Models and credentials
 
-Model routing and the local credential sources were built in milestone 1. The review plan, its resolver, and named credentials are planned for milestone 2 (review of record). GitHub App installation tokens and the credential pool are planned for milestone 3 (Actions host). Routing scores learned from calibration are planned for milestone 4.
+Model routing and the local credential sources were built in milestone 1. The review plan, its resolver, and named credentials were built in milestone 2 (review of record); routing each candidate's verifier to a family other than its finder's arrives with the verifier, in milestone 2 step 6. GitHub App installation tokens and the credential pool are planned for milestone 3 (Actions host). Routing scores learned from calibration are planned for milestone 4.
 
 pi-ai provides providers, OAuth subscription auth, and the model catalogue. Melian adds:
 
@@ -449,7 +449,7 @@ pi-ai provides providers, OAuth subscription auth, and the model catalogue. Meli
 
 Problem: a committed route chose every contributor's provider. Melian's own root `melian.yaml` once routed every tier to Anthropic, and a contributor with only Bedrock credentials saw `melian doctor` pass and every review exit not reviewed. Forbidding committed routes was the blunt fix: a team could share no default, and rolling Melian out meant every engineer writing routes by hand.
 
-Solution: which model plays which role is a lookup, never a model's judgement. At intake a deterministic resolver reads the routes, pi-ai's catalogue (family, context window, price), the credentials present, and, from milestone 4, the calibration store's scores per lens, and writes the review plan as a durable document. The plan routes each lens's finder; each candidate's verifier, on a different family from its finder when one is credentialed; and the walkthrough. It routes no deduper: the mechanical [merge](#the-pipeline) runs before verification, and detecting duplicates by meaning waits for a decision model in milestone 4. `melian doctor` prints the plan it would resolve now.
+Solution: which model plays which role is a lookup, never a model's judgement. At intake a deterministic resolver reads the routes, pi-ai's catalogue (each model's name, context window, and price), the credentials present, and, from milestone 4, the calibration store's scores per lens, and builds the review plan, `ReviewPlan` in core, which the verdict's provenance stores. The plan routes each lens's finder; each candidate's verifier, on a different family from its finder when one is credentialed; and the walkthrough. Milestone 2 step 4 resolves a route per tier, the `verifier` tier's among them; pi-ai's catalogue names no family, so step 6 reads one from each model's name when it routes a verifier. It routes no deduper: the mechanical [merge](#the-pipeline) runs before verification, and detecting duplicates by meaning waits for a decision model in milestone 4. `melian doctor` prints the plan it would resolve now.
 
 A committed `melian.yaml` may carry the team's default routes. A committed route is a default: an engineer without its credential gets a derived route and a doctor line saying so, so rolling Melian out to a team is mostly distributing credentials. A route gains three keys:
 
@@ -467,9 +467,11 @@ models:
 
 - `accept` lists the models that satisfy the tier.
 - `unavailable` is `derive`, the default, or `fail`. With `derive` the resolver prefers a credentialed model from `accept`. When none is credentialed it may pick another from the catalogue, and every check that runs on it records the same outside-policy lineage an override does. With `fail` and no accepted model credentialed, every check on that tier records `failed` with the reason, and the verdict is not reviewed.
-- `acceptOverridden: false` refuses a check on the tier that ran outside policy, below. In milestone 2 the key fails closed everywhere, locally too: such a check records `failed` with the reason, and the verdict is not reviewed. From milestone 3, a host completing the manifest reruns such a check instead.
+- `acceptOverridden: false` refuses a check on the tier that ran outside policy, below. In milestone 2 the key fails closed everywhere, locally too: such a check records `failed` with the reason, and the verdict is not reviewed. The check never runs, since its result could not count: the lens asks no model. A failover never leaves policy either, because the plan drops from such a route every fallback `accept` does not list. From milestone 3, a host completing the manifest reruns such a check instead.
 
-A local file, `--model`, or a derived route may put a tier outside `accept`. The review runs, and every check that ran outside policy records in its lineage the lens, the model it ran on, the model policy wanted, and the file, flag, or derivation that put it there. That record appears in the CLI's output, in `melian findings --json`, in the review body, and uncollapsed at the top of the [ledger](#the-ledger). Routes stay overridable per path, and a local file may pin one lens to a model or cap its level.
+Without `accept`, a committed route accepts its own model and fallbacks. A route may name `accept` and no model, as the verifier's does above: any accepted model with credentials satisfies it, the first in its order. The resolver is a lookup in a fixed order. `--model` routes every lens tier to its model. Otherwise the effective route runs, its model and fallbacks, and only the models the catalogue holds and some credential covers count. When none of a committed route does, the first accepted model with credentials stands in, and `melian doctor` says so. When none of those does either, `fail` fails the tier, and `derive` takes the same model from another provider with credentials, matched by its catalogue name, so Anthropic's Claude Opus 5.5 is found on Bedrock or OpenRouter; failing that, the model with credentials whose price is nearest, alike in reasoning, with a context window at least the wanted model's or 200,000 tokens. A route from a preference file or `--model` is never replaced: the maintainer chose it, so a model without credentials there fails the review, as it always has, rather than run something they did not name. [decisions/2026-10-05-review-plan-resolution.md](decisions/2026-10-05-review-plan-resolution.md) records these choices.
+
+A local file, `--model`, or a derived route may put a tier outside `accept`. The review runs, and every check that ran outside policy records in its lineage the lens, the model it ran on, the model policy wanted, and the file, flag, or derivation that put it there. A check on a route a preference file or `--model` moved off the committed model records the same lineage while inside `accept`, marked as inside, so a reader sees every route the committed file did not choose. Where no committed route names the tier, there is nothing to leave, and nothing is recorded. That record appears in the CLI's output, in `melian findings --json`, in the review body, and, once it lands, uncollapsed at the top of the [ledger](#the-ledger). The CLI prints the plan's warnings to standard error before the verdict, and the verdict's provenance stores the whole plan, so a summary written after a crash quotes the plan the review ran under rather than resolve another. Routes stay overridable per path. A local file pinning one lens to a model, or capping its level, is not yet built.
 
 Preference files apply only to a range review on the checked-out commit, whose policy comes from the working tree. Policy, routes included, is read from the base for a pull request, and a pull-request review reads no preference file: it takes the base's routes, a derived route, or `--model`. Both kinds of review can produce an outside-policy record: a range review through a local file, `--model`, or derivation, and a pull-request review through `--model` or derivation.
 
@@ -485,7 +487,7 @@ The CLI and the skills were built in milestone 1, and `melian dismiss` in milest
 
 The primary host and the only thing the skills call. It has five commands:
 
-- `melian review <range|#pr>` reviews a range of the checkout, or fetches a pull request and reviews it, and prints the verdict. It exits `0` passed, `1` findings with one blocking, `2` not reviewed, or `3` findings with none blocking, so a hook or a script can act on it. `--model <provider/id>` routes every tier to one model for that run, over any route, and from milestone 2 every check it puts outside policy records the override in its lineage. A repeat review of the same base and head prints what was stored and spends nothing; `--rerun` runs the failed checks and lenses again.
+- `melian review <range|#pr>` reviews a range of the checkout, or fetches a pull request and reviews it, and prints the verdict. It exits `0` passed, `1` findings with one blocking, `2` not reviewed, or `3` findings with none blocking, so a hook or a script can act on it. `--model <provider/id>` routes every lens tier to one model for that run, over any route, and every check it moves off a committed route records the override in its lineage. A repeat review of the same base and head prints what was stored and spends nothing; `--rerun` runs the failed checks and lenses again.
 - `melian publish <#pr>` posts the stored review of the pull request's current head, and refuses a head or base the stored review does not cover. It exits `0` published, or `1` refused or failed.
 - `melian findings <range|#pr> [--open|--all] [--json]` reads the stored verdict, and exits `1` when nothing is stored. Its text counts silent and dismissed findings, and `--all` prints them, each dismissed one with who dismissed it, when, and why.
 - `melian doctor` checks Node, git, credentials, model routes, GitHub access, and where the static tools come from, and from milestone 2 prints the review plan it would resolve. It exits `1` when Node or git cannot run a review, and from milestone 2 when `melian.local.yaml` or `melian.secrets.yaml` is tracked.
