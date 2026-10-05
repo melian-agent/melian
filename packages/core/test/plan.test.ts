@@ -174,6 +174,12 @@ describe("ReviewPlan.resolve", () => {
 		expect(resolved.warnings()[0]).toMatch(/^heavy, for correctness: none of .* has credentials; log in with pi/);
 	});
 
+	it("says nothing of a tier with no credentials that no lens the review runs uses", () => {
+		const resolved = plan({ verifier: { model: gpt } }, {}, { checks: [] });
+		expect(resolved.tier("verifier").status).toBe("uncredentialed");
+		expect(resolved.warnings()).toEqual([]);
+	});
+
 	it("fails every check on a tier whose policy says unavailable: fail and none of whose accepted models has credentials", () => {
 		const resolved = plan(
 			{ heavy: { model: opus, accept: [opus, gpt], unavailable: "fail" } },

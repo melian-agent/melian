@@ -137,26 +137,36 @@ export class PiCredentialStore implements CredentialStore {
 
 // Long enough for a password manager to ask for a fingerprint, short enough that a hung command fails the review.
 const commandTimeoutMs = 60_000;
+// Far more than any key; a command printing more is not printing a key.
+const commandOutputBytes = 64 * 1024;
 
 function runCommand(credential: NamedCredential, command: string): Promise<string> {
 	const { name, file } = credential;
 	return new Promise((resolve, reject) => {
-		execFile("/bin/sh", ["-c", command], { timeout: commandTimeoutMs, maxBuffer: 64 * 1024 }, (error, stdout) => {
-			// Never the command's output in a message: what it printed may be the key, or part of it.
-			if (error !== null) {
-				const how = error.killed
-					? `did not finish in ${commandTimeoutMs / 1000} seconds`
-					: `failed (${error.code ?? error.signal})`;
-				reject(
-					new CredentialError("commandFailed", `credential ${name} in ${file}: its command ${how}`, {
-						credential: name,
-						file,
-					}),
-				);
-				return;
-			}
-			resolve(stdout.trim());
-		});
+		execFile(
+			"/bin/sh",
+			["-c", command],
+			{ timeout: commandTimeoutMs, maxBuffer: commandOutputBytes },
+			(error, stdout) => {
+				// Never the command's output in a message: what it printed may be the key, or part of it.
+				if (error !== null) {
+					const how =
+						(error as { code?: unknown }).code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"
+							? `printed more than ${commandOutputBytes / 1024} KiB`
+							: error.killed
+								? `did not finish in ${commandTimeoutMs / 1000} seconds`
+								: `failed (${error.code ?? error.signal})`;
+					reject(
+						new CredentialError("commandFailed", `credential ${name} in ${file}: its command ${how}`, {
+							credential: name,
+							file,
+						}),
+					);
+					return;
+				}
+				resolve(stdout.trim());
+			},
+		);
 	});
 }
 
@@ -272,10 +282,21 @@ function reviewAuthContext(): AuthContext {
  * The model collection a review runs on: every pi-ai built-in provider, each resolving its credentials from the named
  * `credentials` of the secrets files first, then Pi's credential store, then its environment variables, as pi-ai does.
  * `CLAUDE_CODE_OAUTH_TOKEN` stands in for an unset `ANTHROPIC_OAUTH_TOKEN`. `authPath` overrides where Pi's store is.
+ * Throws {@link CredentialError} `unknownProvider` for a named credential whose provider the catalogue does not know.
  */
 export function createReviewModels(
 	options: { readonly authPath?: string; readonly credentials?: readonly NamedCredential[] } = {},
 ): ReviewModels {
 	const store = new MelianCredentialStore(options.credentials ?? [], new PiCredentialStore(options.authPath));
-	return wrapModels(createProviderModels(store, reviewAuthContext()), store);
+	const models = createProviderModels(store, reviewAuthContext());
+	// A provider pi-ai does not know, such as a misspelt one, would leave the credential unused without a word.
+	for (const { name, provider, file } of store.named) {
+		if (models.getProvider(provider) !== undefined) continue;
+		throw new CredentialError(
+			"unknownProvider",
+			`credential ${name} in ${file} names the provider ${provider}, which Melian's model catalogue does not know`,
+			{ credential: name, file },
+		);
+	}
+	return wrapModels(models, store);
 }

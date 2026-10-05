@@ -51,7 +51,12 @@ async function gitCheck(cwd: string): Promise<Check> {
 }
 
 async function credentialsCheck(secrets: LoadedSecrets): Promise<Check> {
-	const configured = await providersWithCredentials(createReviewModels({ credentials: secrets.credentials }));
+	let configured: string[];
+	try {
+		configured = await providersWithCredentials(createReviewModels({ credentials: secrets.credentials }));
+	} catch (error) {
+		return { name: "models", state: "fail", detail: error instanceof Error ? error.message : String(error) };
+	}
 	return configured.length === 0
 		? { name: "models", state: "warn", detail: "no provider has credentials; log in with pi or set an API key" }
 		: { name: "models", state: "ok", detail: `credentials for ${configured.join(", ")}` };

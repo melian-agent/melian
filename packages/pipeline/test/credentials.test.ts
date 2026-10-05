@@ -220,6 +220,37 @@ describe("MelianCredentialStore", () => {
 		expect(await empty.read("openai").catch((e: unknown) => e)).toMatchObject({ code: "noValue" });
 	});
 
+	it("says a command that prints more than any key would is too large, not slow", async () => {
+		const credentials = new MelianCredentialStore(
+			[
+				named(
+					"vault",
+					"openai",
+					{ kind: "command", command: "head -c 100000 /dev/zero" },
+					"/clone/melian.secrets.yaml",
+				),
+			],
+			new PiCredentialStore(authPath),
+			{},
+		);
+		const error = await credentials.read("openai").catch((e: unknown) => e);
+		expect((error as Error).message).toBe(
+			"credential vault in /clone/melian.secrets.yaml: its command printed more than 64 KiB",
+		);
+	});
+
+	it("refuses a named credential for a provider the catalogue does not know", () => {
+		expect(() =>
+			createReviewModels({ authPath, credentials: [named("typo", "antropic", { kind: "literal", key: "k" })] }),
+		).toThrow(
+			expect.objectContaining({
+				code: "unknownProvider",
+				message:
+					"credential typo in /home/me/.config/melian/secrets.yaml names the provider antropic, which Melian's model catalogue does not know",
+			}),
+		);
+	});
+
 	it("resolves a review's models from a named credential before the provider's environment variable", async () => {
 		vi.stubEnv("OPENAI_API_KEY", "sk-env");
 		const models = createReviewModels({

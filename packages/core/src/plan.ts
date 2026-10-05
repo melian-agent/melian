@@ -423,6 +423,7 @@ export class ReviewPlan {
 				];
 			}
 			if (status === "uncredentialed") {
+				if (lenses === undefined) return [];
 				return [
 					`${tier}${on}: ${reason}; log in with pi, set the provider's API key, or add a credential to melian.secrets.yaml`,
 				];
