@@ -317,7 +317,12 @@ describe("forbidden-patterns", () => {
 	])("reports a line at the strictest severity of the rules that match it, with %s", async (_, order) => {
 		const rule = {
 			note: ["      note:", "        pattern: 'TODO'", "        severity: P3", "        message: finish it"],
-			block: ["      block:", "        pattern: 'TODO'", "        severity: P1", "        message: do not commit it"],
+			block: [
+				"      block:",
+				"        pattern: 'TODO'",
+				"        severity: P1",
+				"        message: do not commit it",
+			],
 		};
 		const withSeverity = lines(
 			quiet,
@@ -443,7 +448,9 @@ describe("forbidden-patterns", () => {
 		expect(summary(findings).map(({ file, line }) => [file, line])).toEqual([["a.test.ts", 1]]);
 	});
 
-	it("reports what it could not scan at the strictest severity of the rules it could not check", { timeout: 60_000 }, async () => {
+	it("reports what it could not scan at the strictest severity of the rules it could not check", {
+		timeout: 60_000,
+	}, async () => {
 		const strict = lines(
 			quiet,
 			"  forbidden-patterns:",
@@ -459,7 +466,10 @@ describe("forbidden-patterns", () => {
 		);
 		const row = `it(${"x".repeat(1_000)})`;
 		const rows = Array.from({ length: 4_300 }, () => row);
-		const { findings } = await guardrails({ "melian.yaml": strict }, { "a.test.ts": lines(...rows, "it.only(hidden)") });
+		const { findings } = await guardrails(
+			{ "melian.yaml": strict },
+			{ "a.test.ts": lines(...rows, "it.only(hidden)") },
+		);
 		expect(summary(findings).map(({ severity }) => severity)).toEqual(["P1"]);
 	});
 
