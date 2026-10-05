@@ -311,19 +311,19 @@ describe("forbidden-patterns", () => {
 		expect(finding!.properties.explanation.what).toContain("focused-test, skipped-test");
 	});
 
-	it("reports a line at its rule's severity, and at the strictest when rules at two severities match it", async () => {
+	it.each([
+		["the stricter rule first", ["block", "note"]],
+		["the stricter rule last", ["note", "block"]],
+	])("reports a line at the strictest severity of the rules that match it, with %s", async (_, order) => {
+		const rule = {
+			note: ["      note:", "        pattern: 'TODO'", "        severity: P3", "        message: finish it"],
+			block: ["      block:", "        pattern: 'TODO'", "        severity: P1", "        message: do not commit it"],
+		};
 		const withSeverity = lines(
 			quiet,
 			"  forbidden-patterns:",
 			"    rules:",
-			"      note:",
-			"        pattern: 'TODO'",
-			"        severity: P3",
-			"        message: finish it",
-			"      block:",
-			"        pattern: 'TODO'",
-			"        severity: P1",
-			"        message: do not commit it",
+			...order.flatMap((name) => rule[name as keyof typeof rule]),
 			"      plain:",
 			"        pattern: 'FIXME'",
 			"        message: fix it",
