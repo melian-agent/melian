@@ -36,8 +36,9 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 	let home;
 	let run;
 	let admin;
+	let bin;
 
-	const env = () => ({ ...process.env, HOME: home, TMPDIR: join(root, "tmp") });
+	const env = () => ({ ...process.env, HOME: home, TMPDIR: join(root, "tmp"), PATH: `${bin}:${process.env.PATH}` });
 	const profile = (cwd) => execFileSync(script, ["--print-profile", cwd, run, run], { encoding: "utf8", env: env() });
 	const block = (text, head) => {
 		const start = text.indexOf(`(${head}\n`);
@@ -56,6 +57,13 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		git(main, "commit", "-q", "--allow-empty", "-m", "init");
 		git(main, "worktree", "add", "-q", linked);
 		admin = join(main, ".git", "worktrees", "linked");
+		bin = join(root, "bin");
+		mkdirSync(bin);
+		writeFileSync(
+			join(bin, "codex"),
+			'#!/bin/sh\nfor a in "$@"; do echo "arg:$a"; done\nenv | sed \'s/^/env:/\'\ntouch "$TMPDIR/probe" && echo probe-ok\ntouch "$npm_config_cache/probe" && echo cache-ok\nif read -r line; then echo "stdin:data"; else echo "stdin:eof"; fi\n',
+		);
+		chmodSync(join(bin, "codex"), 0o755);
 		for (const dir of ["sessions", "log", "hooks"]) mkdirSync(join(home, ".codex", dir), { recursive: true });
 		writeFileSync(join(home, ".codex", "config.toml"), "");
 	});
@@ -76,6 +84,13 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		expect(allow).not.toContain(`"${main}/.git")`);
 		for (const path of ["hooks", "config", "info", "commondir", "gitdir"])
 			expect(allow).not.toContain(`/.git/${path}`);
+	});
+
+	it("allows Codex's sqlite databases by a regex over the escaped home path", () => {
+		const escaped = `${home}/.codex`.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
+		expect(block(profile(linked), "allow file-write*")).toContain(
+			`(regex #"^${escaped}/[^/]+\\.sqlite(-shm|-wal)?$")`,
+		);
 	});
 
 	it("allows the per-run directory, never /private/tmp, /private/var/folders, or ~/.npm", () => {
@@ -180,7 +195,9 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 	it("refuses an empty prompt instead of running Codex", () => {
 		const prompt = join(root, "empty.md");
 		writeFileSync(prompt, "\n");
-		expect(() => execFileSync(script, [linked, "model", prompt], { stdio: "pipe" })).toThrow(/prompt file is empty/);
+		expect(() => execFileSync(script, [linked, "model", prompt], { stdio: "pipe", env: env() })).toThrow(
+			/prompt file is empty/,
+		);
 	});
 
 	describe.skipIf(!sandboxExec)("under sandbox-exec", () => {
@@ -277,6 +294,14 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			expect(failure(() => sh(linked, `touch '${join(root, "tmp")}/outside-run'`)).status).not.toBe(0);
 		});
 
+		it("writes Codex's sqlite files directly under ~/.codex only", () => {
+			mkdirSync(join(home, ".codex", "deep"), { recursive: true });
+			sh(linked, `touch '${home}/.codex/x.sqlite' '${home}/.codex/x.sqlite-wal'`);
+			expect(existsSync(join(home, ".codex", "x.sqlite-wal"))).toBe(true);
+			expect(failure(() => sh(linked, `touch '${home}/.codex/deep/x.sqlite'`)).status).not.toBe(0);
+			expect(failure(() => sh(linked, `touch '${home}/.codex/other.txt'`)).status).not.toBe(0);
+		});
+
 		it("can write the per-run directory", () => {
 			sh(linked, `touch '${run}/ok'`);
 			expect(existsSync(join(run, "ok"))).toBe(true);
@@ -285,13 +310,6 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 
 	describe.skipIf(!sandboxExec)("the wrapper end to end, with a stand-in codex", () => {
 		it("passes only an allow-list of variables, points TMPDIR and the npm cache at the run, passes the prompt after --, and cleans up", () => {
-			const bin = join(root, "bin");
-			mkdirSync(bin);
-			writeFileSync(
-				join(bin, "codex"),
-				'#!/bin/sh\nfor a in "$@"; do echo "arg:$a"; done\nenv | sed \'s/^/env:/\'\ntouch "$TMPDIR/probe" && echo probe-ok\nif read -r line; then echo "stdin:data"; else echo "stdin:eof"; fi\n',
-			);
-			chmodSync(join(bin, "codex"), 0o755);
 			const prompt = join(root, "dash.md");
 			writeFileSync(prompt, "--not-an-option please\n");
 			const log = join(root, "wrapper.log");
@@ -321,7 +339,7 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			execFileSync(script, [linked, "m", prompt, log], {
 				stdio: "pipe",
 				input: "pending input\n",
-				env: { ...env(), PATH: `${bin}:${process.env.PATH}`, ...kept, ...dropped },
+				env: { ...env(), ...kept, ...dropped },
 			});
 			const out = readFileSync(log, "utf8");
 			expect(out).toContain("arg:--\narg:--not-an-option please");
@@ -332,6 +350,7 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			for (const [name, value] of Object.entries(kept)) expect(out).toContain(`env:${name}=${value}\n`);
 			for (const name of Object.keys(dropped)) expect(out).not.toContain(`env:${name}=`);
 			expect(out).toContain("probe-ok");
+			expect(out).toContain("cache-ok");
 			expect(out).toContain("stdin:eof");
 			for (const dir of ["shell_snapshots", "memories", ".tmp"])
 				expect(existsSync(join(home, ".codex", dir))).toBe(false);
@@ -342,25 +361,30 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		});
 
 		it("makes a relative scratch directory absolute for the profile and the npm cache", () => {
-			const relBin = join(root, "rel-bin");
-			mkdirSync(relBin);
-			writeFileSync(
-				join(relBin, "codex"),
-				'#!/bin/sh\necho "cache:$npm_config_cache"\ntouch "$npm_config_cache/probe" && echo cache-ok\n',
-			);
-			chmodSync(join(relBin, "codex"), 0o755);
 			const prompt = join(root, "rel.md");
 			writeFileSync(prompt, "go\n");
 			const log = join(root, "rel.log");
-			execFileSync(script, [linked, "m", prompt, log, "rel-scratch"], {
-				stdio: "pipe",
-				cwd: root,
-				env: { ...env(), PATH: `${relBin}:${process.env.PATH}` },
-			});
+			execFileSync(script, [linked, "m", prompt, log, "rel-scratch"], { stdio: "pipe", cwd: root, env: env() });
 			const out = readFileSync(log, "utf8");
-			expect(out).toContain(`cache:${root}/rel-scratch/npm-cache\n`);
+			expect(out).toContain(`env:npm_config_cache=${root}/rel-scratch/npm-cache\n`);
 			expect(out).toContain("cache-ok");
+			expect(existsSync(join(root, "rel-scratch", "npm-cache", "probe"))).toBe(true);
 			expect(existsSync(join(linked, "rel-scratch"))).toBe(false);
+		});
+
+		it("allows a scratch directory that differs from the run directory, and points the cache at it", () => {
+			const scratch = join(root, "scratch-abs");
+			const prompt = join(root, "abs.md");
+			writeFileSync(prompt, "go\n");
+			const log = join(root, "abs.log");
+			execFileSync(script, [linked, "m", prompt, log, scratch], { stdio: "pipe", env: env() });
+			const out = readFileSync(log, "utf8");
+			expect(out).toContain(`env:npm_config_cache=${scratch}/npm-cache\n`);
+			expect(out).toMatch(/env:TMPDIR=.*\/codex-run\.[A-Za-z0-9]+\n/);
+			expect(out).not.toContain(`env:TMPDIR=${scratch}`);
+			expect(out).toContain("cache-ok");
+			const text = execFileSync(script, ["--print-profile", linked, scratch, run], { encoding: "utf8", env: env() });
+			expect(block(text, "allow file-write*")).toContain(`(subpath "${scratch}")`);
 		});
 	});
 });
