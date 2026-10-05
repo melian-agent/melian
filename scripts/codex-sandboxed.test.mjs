@@ -466,6 +466,28 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			for (const dir of ["sessions", "cache", "attachments"]) expect(existsSync(join(elsewhere, dir))).toBe(true);
 		});
 
+		it("writes under a CODEX_HOME that does not exist yet and sits behind a symlinked parent", () => {
+			const realParent = join(root, "real-codex-parent");
+			mkdirSync(realParent);
+			symlinkSync(realParent, join(root, "link-codex-parent"));
+			const spy = join(root, "spy-bin");
+			mkdirSync(spy);
+			writeFileSync(
+				join(spy, "codex"),
+				'#!/bin/sh\ntouch "$CODEX_HOME/sessions/probe" 2>/dev/null && echo sessions:allowed || echo sessions:denied\n',
+			);
+			chmodSync(join(spy, "codex"), 0o755);
+			const prompt = join(root, "link.md");
+			writeFileSync(prompt, "go\n");
+			const log = join(root, "link.log");
+			execFileSync(script, [linked, "m", prompt, log], {
+				stdio: "pipe",
+				env: { ...env(), PATH: `${spy}:${env().PATH}`, CODEX_HOME: join(root, "link-codex-parent", "codex-home") },
+			});
+			expect(readFileSync(log, "utf8")).toContain("sessions:allowed");
+			expect(existsSync(join(realParent, "codex-home", "sessions", "probe"))).toBe(true);
+		});
+
 		it("makes a relative scratch directory absolute for the profile and the npm cache", () => {
 			const prompt = join(root, "rel.md");
 			writeFileSync(prompt, "go\n");

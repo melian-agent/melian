@@ -133,9 +133,11 @@ scratch=${5:-${CODEX_SANDBOX_SCRATCH:-$run}}
 # npm would resolve a relative cache path inside the worktree.
 mkdir -p "$scratch/npm-cache"
 scratch=$(real "$scratch")
-"$0" --print-profile "$worktree" "$scratch" "$run" > "$profile"
 # Codex fails on a first run if these are missing, and the profile allows only what exists by name.
+# Create them before the profile: real leaves a path unchanged when its parent is missing.
 for d in sessions log cache tmp ipc thread-writer-locks mcp-oauth-locks attachments; do mkdir -p "$codex_home/$d"; done
+codex_home=$(real "$codex_home")
+CODEX_HOME="$codex_home" "$0" --print-profile "$worktree" "$scratch" "$run" > "$profile"
 
 # The sandbox confines writes, not secrets; pass only what a task needs and drop the rest, so an
 # agent socket, cloud credentials, tokens, and npm settings never reach it.
