@@ -545,7 +545,10 @@ export async function upsertVerification(
 	const producer = producerKey(source);
 	if (record?.sightings[revision]?.[producer] === undefined) throw new Error("the claim no longer has a sighting");
 	const before = record.verifications?.[revision]?.[producer] ?? {};
-	if (JSON.stringify(before[verification.version]) === JSON.stringify(verification)) return;
+	const previous = before[verification.version];
+	const strength = { confirmed: 2, plausible: 1, refuted: 0 };
+	if (previous !== undefined && strength[previous.verdict] > strength[verification.verdict]) return;
+	if (JSON.stringify(previous) === JSON.stringify(verification)) return;
 	const { [verification.version]: _, ...rest } = before;
 	record.verifications = {
 		...record.verifications,

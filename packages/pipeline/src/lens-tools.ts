@@ -762,6 +762,7 @@ export const reportFinding = defineTool({
 
 export const reportVerdict = defineTool({
 	name: "report_verdict",
+	executionMode: "sequential",
 	description:
 		"Judge one labelled claim with code, guard and base answers, a verdict, reason, optional correction, and evidence locations required for a refutation.",
 	parameters: reportVerdictSchema,

@@ -19,6 +19,7 @@ import {
 	type StoredVerdict,
 	snippetHash,
 	Verdict,
+	type Verification,
 } from "@melian-agent/core";
 import {
 	backgroundContext as context,
@@ -40,7 +41,7 @@ import {
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
-import { FindingsDocument } from "../src/findings.ts";
+import { FindingsDocument, findingsVersion, upsertVerification } from "../src/findings.ts";
 import { PublishedDocument, PublisherDocument } from "../src/publish.ts";
 
 const input: FindingInput = {
@@ -106,6 +107,41 @@ describe("the findings document", () => {
 		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(reworded)]);
 	});
 
+	it.each([
+		["confirmed", "plausible"],
+		["confirmed", "refuted"],
+		["plausible", "refuted"],
+	] as const)("keeps %s over %s under parallel commits and retries", async (stronger, weaker) => {
+		const { harness, root } = await open(createMemoryStorage());
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		const verdict = (value: Verification["verdict"]): Verification => ({
+			verdict: value,
+			reason: `Reported ${value}.`,
+			executor: "llm",
+			model: "fake/judge",
+			version: "1",
+		});
+		await Promise.all(
+			[stronger, weaker].map((value) =>
+				root.commit(
+					(tx) => upsertVerification(tx, root.id, "rev1", evalFinding.id, input.source, verdict(value)),
+					context,
+				),
+			),
+		);
+		expect((await readFindings(harness, root.id, "rev1", context))[0]!.properties.verification?.verdict).toBe(
+			stronger,
+		);
+		const version = await findingsVersion(harness, root.id, "rev1", context);
+		await root.commit(
+			(tx) => upsertVerification(tx, root.id, "rev1", evalFinding.id, input.source, verdict(weaker)),
+			context,
+		);
+		expect(await findingsVersion(harness, root.id, "rev1", context)).toBe(version);
+		expect((await readFindings(harness, root.id, "rev1", context))[0]!.properties.verification?.verdict).toBe(
+			stronger,
+		);
+	});
 	it("keeps findings with different IDs apart, in ID order", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		const other = Finding.create({ ...input, snippet: "eval(body)" });

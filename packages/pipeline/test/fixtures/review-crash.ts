@@ -56,6 +56,7 @@ const [scenario, repo, database, log] = process.argv.slice(2) as [
 		| "escalation"
 		| "verifier"
 		| "verdict"
+		| "conflicting-verdict"
 		| "decision"
 	),
 	string,
@@ -78,6 +79,7 @@ const parkedVerdict = defineTool({
 	...reportVerdict,
 	execute: async (args, api, context) => {
 		const result = await reportVerdict.execute(args, api, context);
+		if (scenario === "conflicting-verdict" && args.verdict !== "refuted") return result;
 		record(log, { event: "verdict-committed" });
 		await park();
 		return result;
@@ -125,11 +127,12 @@ const parkedAdjudication = defineTask({
 const parked = defineExtension({
 	...lensExtension,
 	tools: lensExtension.tools?.map((tool) =>
-		tool.name === "report_verdict" && scenario === "verdict"
+		tool.name === "report_verdict" && ["verdict", "conflicting-verdict"].includes(scenario)
 			? parkedVerdict
 			: tool.name === lensReadTools.read_file.name && ["read", "spent", "tokens"].includes(scenario)
 				? parkedRead
-				: tool.name !== reportFinding.name || ["escalation", "verifier", "verdict"].includes(scenario)
+				: tool.name !== reportFinding.name ||
+						["escalation", "verifier", "verdict", "conflicting-verdict"].includes(scenario)
 					? tool
 					: scenario === "legacy"
 						? legacyReport
@@ -172,6 +175,7 @@ const done = fauxAssistantMessage("Done.");
 const correctness: Readonly<Record<typeof scenario, readonly ScriptedReply[]>> = {
 	verifier: [toolUse("report_finding", crashFinding), done],
 	verdict: [toolUse("report_finding", crashFinding), done],
+	"conflicting-verdict": [toolUse("report_finding", crashFinding), done],
 	finding: [toolUse("report_finding", crashFinding)],
 	legacy: [toolUse("report_finding", legacyCrashFinding)],
 	request: [requested("correctness")],
@@ -183,14 +187,27 @@ const correctness: Readonly<Record<typeof scenario, readonly ScriptedReply[]>> =
 	decision: [done],
 };
 scriptConversations(fake, [
-	...(scenario === "verifier" || scenario === "verdict"
+	...(["verifier", "verdict", "conflicting-verdict"].includes(scenario)
 		? [
 				{
 					match: "Melian adversarial verifier",
 					replies: [
 						scenario === "verifier"
 							? requested("verifier")
-							: (messages: Parameters<typeof scriptVerifier>[0]) => scriptVerifier(messages),
+							: scenario === "conflicting-verdict"
+								? fauxAssistantMessage(
+										["confirmed", "refuted"].map((verdict) =>
+											fauxToolCall("report_verdict", {
+												claim: "c1",
+												answers: { code: "yes", guard: "no", base: "no" },
+												verdict,
+												reason: `Reported ${verdict}.`,
+												evidence: [{ file: "src/user.ts", line: 7, role: "context" }],
+											}),
+										),
+										{ stopReason: "toolUse" },
+									)
+								: (messages: Parameters<typeof scriptVerifier>[0]) => scriptVerifier(messages),
 					],
 				},
 			]

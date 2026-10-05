@@ -42,7 +42,7 @@ beforeEach(async () => {
 	harness = await openHarness(createMemoryStorage(), {
 		models: fake.models,
 		registry: createReviewRegistry(),
-		settings: { retry: { enabled: false } },
+		settings: { retry: { enabled: false }, toolExecution: "parallel" },
 	});
 	await harness.root(context, { agent: { model: fake.ref("finder") } });
 	changeset = await Changeset.resolve(repo, "main...feature");
@@ -159,6 +159,46 @@ describe("the verifier", () => {
 			expect(result.verdict.attention()).toHaveLength(verdict === "refuted" ? 0 : 1);
 		},
 	);
+	it.each([
+		["confirmed", "plausible", "refuted"],
+		["confirmed", "refuted", "plausible"],
+		["plausible", "confirmed", "refuted"],
+		["plausible", "refuted", "confirmed"],
+		["refuted", "confirmed", "plausible"],
+		["refuted", "plausible", "confirmed"],
+	])("keeps confirmed for conflicting same-label calls in order %s, %s, %s", async (...verdicts) => {
+		scriptConversations(fake, [
+			{
+				match: lenses[0]!.instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				match: verifierMarker,
+				replies: [
+					fauxAssistantMessage(
+						verdicts.map((verdict) =>
+							fauxToolCall("report_verdict", {
+								claim: "c1",
+								answers: { code: "yes", guard: "no", base: "no" },
+								verdict,
+								reason: `Reported ${verdict}.`,
+								evidence: [{ file: "src/user.ts", line: 7, role: "context" }],
+							}),
+						),
+						{ stopReason: "toolUse" },
+					),
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+		const result = await review();
+		expect(result.findings[0]!.properties.verification?.verdict).toBe("confirmed");
+		expect(result.verdict.attention()).toHaveLength(1);
+		expect(result.verdict.refuted).toBeUndefined();
+	});
 	it("attaches a repeat review without asking another model", async () => {
 		const requests = scripts();
 		await review();
