@@ -430,6 +430,24 @@ describe("triage", () => {
 		expect(lensRecord(await review({ policy: "worktree" }))).toMatchObject({ status: "ran", level: "deep" });
 	});
 
+	it("combines the bands of two folders a lens reviews, the floor winning where they cross", async () => {
+		writeFiles(repo, {
+			"src/melian.yaml": lines("lenses:", "  correctness:", "    level: { floor: careful }"),
+			"services/melian.yaml": lines("lenses:", "  correctness:", "    level: { ceiling: quick }"),
+			"services/pay.ts": lines("export const pay = 1;"),
+		});
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "a payments service");
+		const decider = choosing("quick");
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+
+		const reviewed = await review({ decider, policy: "worktree" });
+
+		expect(decider.requests[0]!.questions[0]!.options).toEqual(["careful"]);
+		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
+	});
+
 	it("keeps each folder variant of a lens to its own band, and asks one question for both", async () => {
 		writeFiles(repo, {
 			"services/.melian/lenses/correctness/LENS.md": lines(
