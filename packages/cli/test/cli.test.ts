@@ -12,9 +12,10 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Rendering, type StoredVerdict, Verdict } from "@melian-agent/core";
+import { type Decider, type DecisionRequest, Rendering, type StoredVerdict, Verdict } from "@melian-agent/core";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { review as reviewIn } from "../src/commands.ts";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const bin = join(root, "packages/cli/bin/melian.js");
@@ -111,6 +112,38 @@ function staticCheckout(added: string) {
 }
 
 describe("melian review and findings", { timeout: 60_000 }, () => {
+	it("triages through the decider the host hands it, and records the decision the lenses ran under", async () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
+		const requests: DecisionRequest[] = [];
+		const decider: Decider = {
+			name: "test-decider",
+			calibrated: false,
+			decide: async (request) => {
+				requests.push(request);
+				return {
+					answers: request.questions.map(({ id }) => ({ question: id, distribution: { quick: 1 } })),
+				};
+			},
+		};
+		const out: string[] = [];
+		const io = {
+			cwd: repo,
+			env: { ...process.env, ...gitEnv, NO_COLOR: "1", XDG_CONFIG_HOME: noUserFiles, ...env },
+			stdout: (text: string) => void out.push(text),
+			stderr: () => undefined,
+			color: false,
+			decide: async () => ({ decider, model: "test-model" }),
+		};
+
+		await reviewIn(io, "main", { rerun: false });
+
+		expect(requests).toHaveLength(1);
+		expect(requests[0]!.questionSet.name).toBe("triage");
+		expect(requests[0]!.questions.map(({ id }) => id).sort()).toEqual([...builtinLenses].sort());
+		const stored = melian(repo, ["findings", "main", "--json"], env);
+		expect(stored.stdout.match(/"level": "quick"/g)).toHaveLength(builtinLenses.length);
+	});
+
 	it("exits 0 for a review that passed, and prints the terminal rendering of its verdict", () => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
 

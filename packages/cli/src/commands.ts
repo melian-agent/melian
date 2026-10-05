@@ -30,7 +30,15 @@ import {
 	revisionKey,
 	runChecks,
 } from "@melian-agent/pipeline";
-import { decisionProviderRefusal, idleModels, isScripted, reviewModels, scriptVariable, Triage } from "./models.ts";
+import {
+	decisionProviderRefusal,
+	type fallbackDecider,
+	idleModels,
+	isScripted,
+	reviewModels,
+	scriptVariable,
+	Triage,
+} from "./models.ts";
 import { CliError, git, openStorage, storagePath } from "./repository.ts";
 import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
 
@@ -44,6 +52,8 @@ export interface Io {
 	readonly color: boolean;
 	/** The path the shell ran `melian` from, which `doctor` reports. */
 	readonly executable?: string;
+	/** A seam for tests: the decider triage asks, in place of the LLM fallback, which scripted mode never triages with. */
+	readonly decide?: typeof fallbackDecider;
 }
 
 /**
@@ -123,7 +133,13 @@ export async function review(
 	});
 	for (const line of plan.summary().split("\n").filter(Boolean)) io.stderr(`melian: ${line}\n`);
 	// A command a secrets file names runs now, so one that fails stops the review before it starts, named.
-	const triage = await Triage.open({ scripted: isScripted(io.env), config: loaded, plan, models });
+	const triage = await Triage.open({
+		scripted: isScripted(io.env) && io.decide === undefined,
+		config: loaded,
+		plan,
+		models,
+		...(io.decide === undefined ? {} : { decide: io.decide }),
+	});
 	const path = await storagePath(repoRoot, changeset.id, io.env, isScripted(io.env));
 	// Without the publish extension, so a publication a crash interrupted waits for melian publish rather than posting
 	// from a review.
