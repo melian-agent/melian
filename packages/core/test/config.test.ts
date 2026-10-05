@@ -455,6 +455,12 @@ describe("melian.local.yaml", () => {
 		expect(sources).toEqual(["melian.local.yaml", "services/pay/melian.yaml", "melian.yaml"]);
 	});
 
+	it("may set triage, which a nested melian.yaml may not", async () => {
+		writeFiles(repo, { "melian.local.yaml": lines("triage:", "  escalateAt: P2") });
+		const { config } = await loadConfig(repo, { kind: "worktree" }, "services/pay/a.ts");
+		expect(config.triage).toEqual({ escalateAt: "P2" });
+	});
+
 	it("is never read from a revision, even one that commits it", async () => {
 		commitLocalFile();
 		const { config, sources } = await loadConfig(repo, { kind: "revision", commit: "HEAD" }, "a.ts");
