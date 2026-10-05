@@ -528,10 +528,12 @@ function lensCheck(lens: LensRun, result: LensResult | undefined, note: string |
 	const outcome = result[lens.key];
 	if (outcome?.status === "done") {
 		const { budgetEnded } = outcome;
-		if (budgetEnded === undefined)
-			return { name, status: "ran", level, ...(note === undefined ? {} : { reason: note }) };
-		// A budget's end is reduced coverage, so it leaves the review not reviewed unless the level counts it.
-		return { name, status: lens.budget.ended === "count" ? "ran" : "ended", level, budgetEnded };
+		const noted = note === undefined ? {} : { reason: note };
+		if (budgetEnded === undefined) return { name, status: "ran", level, ...noted };
+		// A budget's end is reduced coverage, so it leaves the review not reviewed unless the level counts it. An `ended`
+		// record's reason is why it did not run, so the note goes only on one counted as run.
+		if (lens.budget.ended === "count") return { name, status: "ran", level, budgetEnded, ...noted };
+		return { name, status: "ended", level, budgetEnded };
 	}
 	if (outcome?.status === "exhausted") {
 		const error = `tried ${outcome.tried.join(", ")}; the last said: ${outcome.reason}`;

@@ -1315,6 +1315,59 @@ describe("reviewChangeset", () => {
 			}
 		});
 
+		it("keeps the note on a lens its budget ended when its level counts it as run, and never on an ended record", async () => {
+			writeFiles(
+				repo,
+				Object.fromEntries(
+					Array.from({ length: 41 }, (_, index) => [`src/many/${index}.ts`, lines(`export const n = ${index};`)]),
+				),
+			);
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "41 files");
+			const narrow = {
+				...config,
+				tiers: defaultConfig.tiers,
+				lenses: { "trust-boundary": { paths: ["src/many/**"] } },
+			};
+			const note =
+				"kept the defects it hands to `trust-boundary`, whose files here would list past 40 files or 4 KiB";
+			for (const ended of ["count", undefined] as const) {
+				const spent = lenses.map((lens) =>
+					lens.name === "correctness"
+						? withBudget(lens, { tokens: 1, ...(ended === undefined ? {} : { ended }) })
+						: lens,
+				);
+				scriptConversations(fake, [
+					{
+						match: correctness,
+						replies: [call("report_finding", nullDeref), fauxAssistantMessage("Never asked.")],
+					},
+					...[contracts, ...backlog].map((match) => ({ match, replies: [fauxAssistantMessage("Done.")] })),
+				]);
+				await harness.close(context);
+				harness = await openHarness(createMemoryStorage(), {
+					models: fake.models,
+					registry: createReviewRegistry(),
+					settings: { retry: { enabled: false } },
+				});
+				await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+
+				const { verdict } = await reviewed({ lenses: spent, config: narrow });
+
+				if (ended === "count") {
+					expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toMatchObject({
+						status: "ran",
+						budgetEnded: { budget: "tokens", limit: 1 },
+						reason: note,
+					});
+				} else {
+					const record = verdict.notRun.find((check) => check.name === "lens.correctness");
+					expect(record).toMatchObject({ status: "ended", budgetEnded: { budget: "tokens", limit: 1 } });
+					expect(record?.reason).toBeUndefined();
+				}
+			}
+		});
+
 		it("counts a neighbour selected through a file's old path for its head path", async () => {
 			writeFiles(repo, {
 				"lib/report.ts": lines('import { managerName } from "./user.ts";', "export const line = managerName(me);"),
