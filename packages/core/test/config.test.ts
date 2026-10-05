@@ -1,4 +1,4 @@
-import { symlinkSync } from "node:fs";
+import { mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import {
 	Changeset,
@@ -636,6 +636,26 @@ describe("the user-level preference file", () => {
 		writeFiles(home, { "config.yaml": lines("tier: fast") });
 		const error = await rejection(loadConfig(repo, worktree(), "a.ts"));
 		expect(error).toMatchObject({ code: "unknownKey", file: preferences() });
+	});
+
+	it("refuses a file over the size limit instead of truncating it", async () => {
+		writeFiles(home, { "config.yaml": `# ${"x".repeat(maxConfigBytes)}\n` });
+		const error = await rejection(loadConfig(repo, worktree(), "a.ts"));
+		expect(error).toMatchObject({ code: "tooLarge", file: preferences() });
+	});
+
+	it("refuses a path it cannot read as a file, naming it", async () => {
+		mkdirSync(preferences());
+		const error = await rejection(loadConfig(repo, worktree(), "a.ts"));
+		expect(error).toMatchObject({ code: "unreadable", file: preferences() });
+	});
+
+	it("follows a symlinked file, as dotfiles are often linked", async () => {
+		writeFiles(home, { "dotfiles/config.yaml": lines("models:", "  medium:", "    model: linked/medium") });
+		symlinkSync(join(home, "dotfiles/config.yaml"), preferences());
+		const { config, sources } = await loadConfig(repo, worktree(), "a.ts");
+		expect(config.models.medium).toEqual({ model: "linked/medium" });
+		expect(sources).toContain(preferences());
 	});
 
 	it("reports each lens tier the committed files set, and each lens a preference file moved", async () => {

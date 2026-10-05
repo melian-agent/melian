@@ -694,6 +694,21 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		expect(routed.stdout).toMatch(/^ok {4}melian {6}.*, outside this checkout$/m);
 	});
 
+	it("leaves a disabled lens out of the plan", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		writeFileSync(join(repo, "melian.yaml"), "models:\n  heavy:\n    model: anthropic/claude-opus-5-5\n");
+		const before = melian(repo, ["doctor"]);
+		writeFileSync(
+			join(repo, "melian.yaml"),
+			"models:\n  heavy:\n    model: anthropic/claude-opus-5-5\nlenses:\n  correctness: { enabled: false }\n",
+		);
+		const after = melian(repo, ["doctor"]);
+
+		expect(before.stdout).toMatch(/^ok {4}plan {8}.*\bcorrectness\b.*: quick on/m);
+		expect(after.stdout).toMatch(/^ok {4}plan {8}.*: quick on/m);
+		expect(after.stdout).not.toMatch(/^.{0,16}plan.*\bcorrectness\b/m);
+	});
+
 	it("names one or two lenses on an unrouted tier without a series comma", () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
 
@@ -803,6 +818,28 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 			`ok    plan        heavy: openai/gpt-5.5 with vault in ${secrets}; routed by melian.yaml\n`,
 		);
 		expect(existsSync(marker)).toBe(false);
+	});
+
+	it("prints an expired command bearer's source in doctor without running its command", () => {
+		const { repo } = goldenCheckout(
+			goldens["clean-rename"]!,
+			{},
+			"models:\n  heavy:\n    model: openai-codex/gpt-6.1-sol\n",
+		);
+		const marker = join(repo, ".git", "bearer-ran");
+		const token = `e30.${Buffer.from(JSON.stringify({ exp: 1 })).toString("base64url")}.signature`;
+		const xdg = userDirectory(
+			`credentials:\n  codex-login: { provider: openai-codex, command: "touch ${marker}; printf '${token}'" }\n`,
+		);
+		const secrets = join(xdg.XDG_CONFIG_HOME, "melian/secrets.yaml");
+		const doctor = melian(repo, ["doctor"], { ...xdg, PI_CODING_AGENT_DIR: repo });
+		expect(doctor.status).toBe(0);
+		expect(doctor.stdout).toContain(`codex-login for openai-codex in ${secrets}`);
+		expect(doctor.stdout).toContain(
+			`ok    plan        heavy: openai-codex/gpt-6.1-sol with codex-login in ${secrets}; routed by melian.yaml\n`,
+		);
+		expect(existsSync(marker)).toBe(false);
+		expect(doctor.stdout).not.toContain(token);
 	});
 
 	it("fails, naming the credential, for a secrets file whose provider the catalogue does not know", () => {

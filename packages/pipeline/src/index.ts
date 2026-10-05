@@ -12,6 +12,7 @@ export {
 	createReviewModels,
 	MelianCredentialStore,
 	PiCredentialStore,
+	type ProviderAuthKinds,
 	piAuthPath,
 	piCredentialStore,
 } from "./credentials.ts";
