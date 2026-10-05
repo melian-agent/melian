@@ -121,7 +121,7 @@ describe("ReviewThreadImporter", () => {
 		},
 	);
 
-	it("requests each thread's first comment so replies cannot decide attribution", async () => {
+	it("requests every field it reads and each thread's first comment so replies cannot decide attribution", async () => {
 		const { opened, requests } = importer();
 
 		await opened.import();
@@ -129,7 +129,20 @@ describe("ReviewThreadImporter", () => {
 		const threads = requests.filter((request) => request.body.query.includes("MelianReviewThreads"));
 		expect(threads).toHaveLength(2);
 		for (const request of threads) {
-			expect(request.body.query).toMatch(/\bcomments\(first: 1\)/);
+			const query = request.body.query.replace(/\s+/g, " ");
+			expect(query).toContain("headRefOid reviewThreads(first: 100, after: $after) {");
+			expect(query).toContain("pageInfo { hasNextPage endCursor }");
+			expect(query).toContain(
+				"nodes { id isResolved path line startLine originalLine originalStartLine diffSide startDiffSide subjectType comments(first: 1) { nodes { url body createdAt originalCommit { oid } author { __typename login } } } }",
+			);
+		}
+		const reviews = requests.filter((request) => request.body.query.includes("MelianReviews"));
+		expect(reviews).toHaveLength(1);
+		for (const request of reviews) {
+			const query = request.body.query.replace(/\s+/g, " ");
+			expect(query).toContain("reviews(first: 100, after: $after) {");
+			expect(query).toContain("pageInfo { hasNextPage endCursor }");
+			expect(query).toContain("nodes { body author { __typename login } }");
 		}
 	});
 

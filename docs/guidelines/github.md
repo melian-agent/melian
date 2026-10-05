@@ -46,6 +46,7 @@ Finding text is never live markdown either. Problem: Melian posts from the maint
 - Answer Octokit with the fake in `test/fixtures/fake-github.ts`, passed as `fetch`. It records every call, applies writes to a plain state object, and refuses an inline comment outside the diff as GitHub does. Never call the network.
 - Answer the importer's GraphQL with `recordedGitHub` from `@melian-agent/github/testing`, over a recording such as `test/fixtures/review-threads.json`: the pages of each operation by name, written by hand from GitHub's documented shape. A request gets the page after the one whose end cursor it names. The CLI's scripted mode reads GitHub through the same helper, so its end-to-end tests never reach the network.
 - `test/fixtures/scenario.ts` builds a pull request in two revisions and reviews it on the fake model, so publication tests run against a real verdict and findings document.
+- The recording answers by operation and cursor, regardless of the selection. Assert every field the reader uses in its query, including nested fields; a recorded value cannot prove the query requests it.
 - The crash test, `test/publish-crash.test.ts`, runs `test/fixtures/publish-crash.ts` in a child process that parks once the fake has accepted the review, kills it, and publishes again in the test process. The child writes the fake's state to a file after every write, so the post outlives the process. It runs once with `/user` answering and once with it refusing, as for an installation token, so recovery never leans on knowing the author.
 
 ## The ledger
