@@ -411,9 +411,12 @@ export class Verdict {
 	reviewStatus(): ReviewStatus {
 		const count = (number: number, noun: string) => `${number} ${noun}${number === 1 ? "" : "s"}`;
 		if (this.status === "not-reviewed") {
-			const reasons = this.notRun.map(
-				({ name, status, reason }) => `${name} ${status}${reason === undefined ? "" : ` (${reason})`}`,
-			);
+			// An ended lens's budget is why it stopped; a reason it carries is a note, so it comes after, never in place.
+			const reasons = this.notRun.map(({ name, status, reason, budgetEnded }) => {
+				const ended = budgetEnded === undefined ? [] : [describeBudgetEnd(budgetEnded)];
+				const why = [...ended, ...(reason === undefined ? [] : [reason])].join("; ");
+				return `${name} ${status}${why === "" ? "" : ` (${why})`}`;
+			});
 			return { state: "error", description: `Not reviewed: ${reasons.join("; ") || "the review did not complete"}` };
 		}
 		const shown = this.attention().length;
