@@ -82,8 +82,33 @@ File and rule is a coarse match. Two findings under one rule in one file count a
 
 A lens body's examples never restate a golden. Problem: an example drawn from a golden tells the lens the answer, so the golden measures recall of the prompt rather than judgement. Example: `removed-behaviour` once named "the worktree is removed even when the task throws" as an invariant, the very defect `removed-behaviour-dropped-cleanup` seeds. Solution: write examples in shapes no golden seeds, and when a golden is added, check the lens bodies for its shape.
 
+A repeated review finding that becomes a guardrail gets a golden too, named `guardrails-<rule>`. Its `melian.golden.yaml` carries the rule, copied from the root `melian.yaml`, and a test fails when the copy drifts. `expected.json` names `guardrail/forbidden-patterns` as the rule. `runGolden` runs the guardrails for a golden that expects a `guardrail/` rule and for no other. Problem: the default guardrails would add notices to every fixture's `package.json`. A guardrail finding has no failure scenario and no evidence, so a scripted run holds it to its cause alone. The golden sets `live: false`, since no model takes part. The lenses still run, scripted to report nothing.
+
 `live.ts` runs every golden, or the one `MELIAN_EVAL_GOLDEN` names, unless its `expected.json` sets `"live": false`. It prints `<golden>: skipped, live: false` for such a golden and leaves it out of the corpus score; the scripted run still covers it. Problem: some goldens test plumbing a live lens has no reason to exercise. `pre-existing-beside-change` proves that a `context` location in changed code does not promote an old defect, so it expects a `pre-existing` finding, and a live lens that rightly declines to audit old code never reports one. Live, that golden could only cost recall. Set `live: false` only for such a golden, never to hide a lens's miss. `injection-in-comment` checks that a lens reports an instruction planted in the change under `melian/injection-attempt` and still finds the defect beside it; on a live run, a lens that obeys the comment scores a recall of zero. Each backlog lens has a targeted one too, `trust-boundary-injection`, `removed-behaviour-injection`, `tests-injection`, and `conventions-injection`: the planted comment names that lens and sits beside a defect only it owns, and the injection attempt is expected with `source` set to that lens, so a lens that obeys loses recall even when `correctness` reports the comment. `correctness-deleted-guard` is a pure deletion: the finding beside the deleted guard has no new lines to overlap, so only its `cause` location at the base, read with `read_file` and `revision: "base"`, makes it `affected`.
 
-Comparison reviews in `comparisons/` feed the corpus: each adjudicated difference between reviewers becomes a golden, positive or negative. A golden drawn from a record says which in a `README.md` beside `expected.json`, since the expected file's schema is Martian's and has no field for it. [goldens/BACKLOG.md](../../packages/evals/goldens/BACKLOG.md) lists, by lens, the findings the records mark as goldens that none has become yet.
+Comparison records feed the corpus where an adjudication owes a golden, as [Comparisons](#comparisons) sets out.
 
 One defect can fit two lenses' rules, and each would report it under its own. Declare a second finding only where the second lens's instructions claim that kind of defect, as both `correctness` and `removed-behaviour` claim a removed guard: `correctness-deleted-guard` and `removed-behaviour-dropped-guard` each expect `correctness`'s `wrong-result` and `removed-behaviour`'s `dropped-guard`. Otherwise the defect has one owner, and the other lens's report of it is an extra that says its boundary leaks.
+
+## Comparisons
+
+Every Melian pull request gets a comparison record under `packages/evals/comparisons/`. It lists what Codex's adversarial review, Claude Code's review, and Melian found, and the maintainer's adjudication of each. Until milestone 2's step 15 lands, an agent writes each record by hand. From then, `melian compare export` writes it from the stored comparison, in the same form. [design.md](../design.md#comparison-with-external-reviewers) says how a comparison is built, and how it serves a repository that runs CodeRabbit.
+
+Each finding is adjudicated valid, noise, or a duplicate, with a severity. A valid finding Melian missed takes one reason:
+
+- `owned-missed`: a lens or check owns it and missed it. It usually owes a golden for that lens.
+- `no-owner`: no lens or check owns it. It points at a new rule, guardrail, or lens, and a repeat on a second pull request is a candidate check.
+- `needs-execution`: it was found by running code, not by reading it. It joins the verifier's evals and the tool manifest's list, not the golden corpus.
+- `out-of-scope`: Melian does not review this kind of change. It owes nothing, and does not count against Melian's recall.
+
+A Melian finding judged noise owes a clean golden for the lens that raised it. A golden is owed only where the adjudication says so, naming its lens; a difference alone owes nothing. A golden drawn from a record names its finding in a `README.md` beside `expected.json`, since the expected file's schema is Martian's and has no field for it.
+
+[goldens/BACKLOG.md](../../packages/evals/goldens/BACKLOG.md) lists, by lens, the owed goldens not yet written. Its present entries are kept by hand until goldens drain them. From step 15, `melian compare backlog` lists the rest and writes the file's later section.
+
+A hand-written record has no field for the reason. Until step 15, write it in the Adjudication column in the words above, so the records use the export's terms before the export exists.
+
+### The drain rule
+
+Problem: records mark goldens faster than anyone writes them, and nothing forces the list down. BACKLOG.md still holds owed goldens from the record for [pull request #10](https://github.com/melian-agent/melian/pull/10).
+
+Solution: every third comparison record is followed by a backlog pull request. It ships at least two owed goldens, or every owed golden when fewer remain. It re-measures each new golden's lens with a live run of three passes, as [Two modes](#two-modes) requires, and records the run under `packages/evals/runs/`. Records count from [pull request #65](https://github.com/melian-agent/melian/pull/65) on, and an empty backlog owes no drain. `melian compare stats` will say when a drain is due; until it does, count the progress log's comparison entries.

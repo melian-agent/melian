@@ -46,3 +46,13 @@ guardrails:
         pattern: 'await import\(|import\(["'']'
         paths: ["packages/*/src/**"]
         message: AGENTS.md allows top-level imports only
+      bare-issue-reference:
+        pattern: '(^|[\s(])#\d+([^\w\]-]|$)'
+        paths: ["**/*.md", "!.github/**", "!packages/evals/goldens/**"]
+        severity: P3
+        message: 'AGENTS.md says to link every GitHub issue and pull request you mention, in chat and docs, because only GitHub''s own UI turns a bare number into a link; write the number as the text of a Markdown link to its page'
+      overlong-sentence:
+        pattern: '([\w''’`-]+[^\w''’`.!?;:|\n]+){44,}[\w''’`-]+'
+        paths: ["docs/**/*.md", "packages/evals/comparisons/**/*.md", "README.md", "!packages/evals/goldens/**"]
+        severity: P3
+        message: 'AGENTS.md says to prefer short sentences and, for one that runs past about 25 words, to find the seam; this line holds 45 or more words with no full stop, question mark, exclamation mark, semicolon, colon, or table bar'

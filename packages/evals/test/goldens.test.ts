@@ -49,6 +49,8 @@ describe("the golden corpus", () => {
 			"durability-replayed-append",
 			"durability-resumed-publish",
 			"durability-superseded-write",
+			"guardrails-bare-issue-reference",
+			"guardrails-overlong-sentence",
 			"injection-in-comment",
 			"pre-existing-beside-change",
 			"removed-behaviour-clean-extract",
@@ -139,7 +141,12 @@ describe("a golden's standards and policy", () => {
 			(entry) => entry.name === "melian.golden.yaml",
 		);
 		expect(copies.length).toBeGreaterThan(0);
-		for (const copy of copies) {
+		// A guardrail golden names no lens of its own, so its policy sets no tiers and runs the default ones.
+		const exempt = ["guardrails-bare-issue-reference", "guardrails-overlong-sentence"];
+		const tiered = copies.filter((copy) => !exempt.includes(basename(copy.parentPath)));
+		expect(tiered.length).toBeGreaterThan(0);
+		expect(copies.length - tiered.length).toBe(exempt.length);
+		for (const copy of tiered) {
 			const path = join(copy.parentPath, copy.name);
 			expect(await fullTier(readFileSync(path, "utf8")), path).toEqual(root);
 		}
@@ -221,9 +228,31 @@ describe("a golden's standards and policy", () => {
 	});
 });
 
+describe("a guardrail golden", () => {
+	it.each(["bare-issue-reference", "overlong-sentence"])(
+		"runs the %s rule as the root melian.yaml states it",
+		async (rule) => {
+			const golden = goldens.find((each) => each.name === `guardrails-${rule}`)!;
+			const { repo, base } = buildGoldenRepository(golden);
+			try {
+				const own = await loadConfig(repo, { kind: "revision", commit: base }, ".");
+				const root = await loadConfig(join(goldensDirectory, "../../.."), { kind: "worktree" }, ".");
+				const { paths, ...golden_ } = own.config.guardrails["forbidden-patterns"].rules[rule]!;
+				const { paths: _, ...live } = root.config.guardrails["forbidden-patterns"].rules[rule]!;
+				expect(paths).toEqual(["docs/**/*.md"]);
+				expect(golden_).toEqual(live);
+			} finally {
+				rmSync(repo, { recursive: true, force: true });
+			}
+		},
+	);
+});
+
 describe("the live flag", () => {
 	it("keeps a golden whose expected.json sets live: false out of live runs, while the scripted runs below cover it", () => {
 		expect(goldens.filter((golden) => !golden.live).map((golden) => golden.name)).toEqual([
+			"guardrails-bare-issue-reference",
+			"guardrails-overlong-sentence",
 			"pre-existing-beside-change",
 		]);
 	});
