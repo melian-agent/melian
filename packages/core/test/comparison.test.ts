@@ -268,6 +268,16 @@ describe("ExternalFinding", () => {
 });
 
 describe("Comparison matching", () => {
+	it("lists a uniquely matched external finding beside its Melian finding, with its reviewer and site", () => {
+		const finding = melian();
+		const outside = external({ line: 11, endLine: 13 });
+		const comparison = compared([outside], [finding]);
+		expect(comparison.ambiguous()).toEqual([]);
+		expect(comparison.render(verdictOf([finding]))).toContain(
+			`Matched:\n  ${finding.id}\n    ${outside.id}  codex  src/run.ts:11-13\n`,
+		);
+	});
+
 	it("matches by site: the same file, with lines that overlap", () => {
 		const finding = melian();
 		const outside = external({ line: 11, endLine: 13 });

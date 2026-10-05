@@ -787,8 +787,8 @@ export class Comparison {
 	/**
 	 * The comparison as the terminal shows it. The matched count is of distinct external findings, with the distinct
 	 * Melian findings they cover beside it, so one reviewer's finding near two of Melian's counts once. Then the
-	 * external-only and Melian-only counts, and of review bodies skipped when given; each ambiguous match; and each finding
-	 * nothing matched, by ID, so a maintainer can match one by hand.
+	 * external-only and Melian-only counts, and of review bodies skipped when given; each ambiguous match; and every
+	 * finding's ID, with matched external findings beside the Melian findings they matched.
 	 * `verdict` is the stored review, which names each Melian-only finding's rule and place. Every string is untrusted, so
 	 * each prints through `visibleText`.
 	 */
@@ -808,6 +808,14 @@ export class Comparison {
 		if (ambiguous.length > 0) out.push("Ambiguous, near several Melian findings; match or unmatch by hand:\n");
 		for (const { external, melian } of ambiguous) {
 			out.push(`  ${external.id}  ${external.by()}  ${external.where()}  near ${melian.join(", ")}\n`);
+		}
+		const matchedGroups = groups.filter((group) => group.external.length > 0 && group.melian.length > 0);
+		if (matchedGroups.length > 0) out.push("Matched:\n");
+		for (const group of matchedGroups) {
+			out.push(`  ${group.melian[0]}\n`);
+			for (const finding of group.external) {
+				out.push(`    ${finding.id}  ${finding.by()}  ${finding.where()}\n`);
+			}
 		}
 		if (externalOnly.length > 0) out.push("External only:\n");
 		for (const finding of externalOnly.flatMap((group) => group.external)) {
