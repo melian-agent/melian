@@ -32,17 +32,6 @@ function external(input: Partial<ExternalFindingInput> = {}): ExternalFinding {
 	});
 }
 
-// Melian's verdict over `findings`, as adjudication decides it under the default resolutions.
-const verdictOf = (findings: readonly Finding[]) =>
-	new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate();
-
-function compared(externals: readonly ExternalFinding[], findings: readonly Finding[]): Comparison {
-	const comparison = Comparison.of(revision);
-	comparison.import("file:codex.json", { findings: externals, skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
-	comparison.compare(verdictOf(findings));
-	return comparison;
-}
-
 const ids = (groups: ReturnType<Comparison["groups"]>) =>
 	groups.map((group) => ({ external: group.external.map((each) => each.id), melian: [...group.melian] }));
 
@@ -209,7 +198,11 @@ describe("ExternalFinding", () => {
 		);
 		for (const findings of [shaped, codexFindings]) {
 			expect(findings).toHaveLength(2);
-			const comparison = compared([], [melian()]);
+			const comparison = Comparison.of(revision);
+			comparison.import("file:codex.json", { findings: [], skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
+			comparison.compare(
+				new Adjudication({ findings: [melian()], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+			);
 			comparison.import("file:x", { findings, skippedBodies: 0 }, "t");
 			expect(comparison.externalFindings()).toHaveLength(2);
 		}
@@ -282,17 +275,27 @@ describe("Comparison matching", () => {
 	it("lists a uniquely matched external finding beside its Melian finding, with its reviewer and site", () => {
 		const finding = melian();
 		const outside = external({ line: 11, endLine: 13 });
-		const comparison = compared([outside], [finding]);
-		expect(comparison.ambiguous()).toEqual([]);
-		expect(comparison.render(verdictOf([finding]))).toContain(
-			`Matched:\n  ${finding.id}\n    ${outside.id}  codex  src/run.ts:11-13\n`,
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [outside], skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
 		);
+		expect(comparison.ambiguous()).toEqual([]);
+		expect(
+			comparison.render(
+				new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+			),
+		).toContain(`Matched:\n  ${finding.id}\n    ${outside.id}  codex  src/run.ts:11-13\n`);
 	});
 
 	it("matches by site: the same file, with lines that overlap", () => {
 		const finding = melian();
 		const outside = external({ line: 11, endLine: 13 });
-		const comparison = compared([outside], [finding]);
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [outside], skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		expect(comparison.effectiveMatches()).toEqual([{ external: outside.id, melian: finding.id, kind: "site" }]);
 		expect(ids(comparison.matched())).toEqual([{ external: [outside.id], melian: [finding.id] }]);
 		expect(comparison.externalOnly()).toEqual([]);
@@ -304,7 +307,15 @@ describe("Comparison matching", () => {
 		const three = external({ line: 15 });
 		const four = external({ line: 16 });
 		const before = external({ line: 6, endLine: 9 });
-		const comparison = compared([three, four, before], [finding]);
+		const comparison = Comparison.of(revision);
+		comparison.import(
+			"file:codex.json",
+			{ findings: [three, four, before], skippedBodies: 0 },
+			"2026-10-05T00:00:00.000Z",
+		);
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		expect(comparison.effectiveMatches().map((match) => match.external)).toEqual([three.id, before.id].sort());
 		expect(ids(comparison.externalOnly())).toEqual([{ external: [four.id], melian: [] }]);
 	});
@@ -312,7 +323,11 @@ describe("Comparison matching", () => {
 	it("leaves a silent finding out of the comparison, since the author never saw it", () => {
 		const nit = melian({ severity: "nit" });
 		const near = external({ line: 12 });
-		const comparison = compared([near], [nit]);
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [near], skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
+		comparison.compare(
+			new Adjudication({ findings: [nit], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		expect(comparison.melianFindings()).toEqual([]);
 		expect(comparison.effectiveMatches()).toEqual([]);
 		expect(ids(comparison.externalOnly())).toEqual([{ external: [near.id], melian: [] }]);
@@ -321,11 +336,24 @@ describe("Comparison matching", () => {
 
 	it.each([true, false])("includes and labels a dismissed Melian finding (matched: %s)", (matched) => {
 		const finding = melian({ status: "dismissed" });
-		const verdict = verdictOf([finding]);
+		const verdict = new Adjudication({
+			findings: [finding],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
 		expect(verdict.attention()).toEqual([]);
 		expect(verdict.dismissed.map((each) => each.id)).toEqual([finding.id]);
 		const outside = external();
-		const comparison = compared(matched ? [outside] : [], [finding]);
+		const comparison = Comparison.of(revision);
+		comparison.import(
+			"file:codex.json",
+			{ findings: matched ? [outside] : [], skippedBodies: 0 },
+			"2026-10-05T00:00:00.000Z",
+		);
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		expect(comparison.melianFindings()).toEqual([finding.id]);
 		if (matched) {
 			expect(comparison.effectiveMatches()).toEqual([{ external: outside.id, melian: finding.id, kind: "site" }]);
@@ -348,7 +376,15 @@ describe("Comparison matching", () => {
 			});
 		const current = thread("PRRT_now", revision.head);
 		const earlier = thread("PRRT_then", "c".repeat(40));
-		const comparison = compared([current, earlier], [finding]);
+		const comparison = Comparison.of(revision);
+		comparison.import(
+			"file:codex.json",
+			{ findings: [current, earlier], skippedBodies: 0 },
+			"2026-10-05T00:00:00.000Z",
+		);
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		expect(comparison.effectiveMatches()).toEqual([{ external: current.id, melian: finding.id, kind: "site" }]);
 		expect(ids(comparison.externalOnly())).toEqual([{ external: [earlier.id], melian: [] }]);
 		expect(comparison.render(undefined)).toContain(`(read at ${"c".repeat(12)}; match it by hand)`);
@@ -357,7 +393,15 @@ describe("Comparison matching", () => {
 	});
 
 	it("never matches another file", () => {
-		const comparison = compared([external({ file: "src/other.ts" })], [melian()]);
+		const comparison = Comparison.of(revision);
+		comparison.import(
+			"file:codex.json",
+			{ findings: [external({ file: "src/other.ts" })], skippedBodies: 0 },
+			"2026-10-05T00:00:00.000Z",
+		);
+		comparison.compare(
+			new Adjudication({ findings: [melian()], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		expect(comparison.effectiveMatches()).toEqual([]);
 		expect(comparison.melianOnly()).toEqual([melian().id]);
 	});
@@ -374,7 +418,15 @@ describe("Comparison matching", () => {
 		const atCause = external({ file: "src/api.ts", line: 4 });
 		const atBase = external({ file: "src/old.ts", line: 3 });
 		const atContext = external({ file: "src/context.ts", line: 3 });
-		const comparison = compared([atCause, atBase, atContext], [finding]);
+		const comparison = Comparison.of(revision);
+		comparison.import(
+			"file:codex.json",
+			{ findings: [atCause, atBase, atContext], skippedBodies: 0 },
+			"2026-10-05T00:00:00.000Z",
+		);
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		expect(comparison.effectiveMatches().map((match) => match.external)).toEqual([atCause.id]);
 	});
 
@@ -383,7 +435,15 @@ describe("Comparison matching", () => {
 		const noLine = external({ line: undefined });
 		const outdated = external({ outdated: true });
 		const base = external({ revision: "base" });
-		const comparison = compared([noLine, outdated, base], [finding]);
+		const comparison = Comparison.of(revision);
+		comparison.import(
+			"file:codex.json",
+			{ findings: [noLine, outdated, base], skippedBodies: 0 },
+			"2026-10-05T00:00:00.000Z",
+		);
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		expect(comparison.effectiveMatches()).toEqual([]);
 		comparison.match(noLine.id, finding.id, "Maintainer <m@example.com>", "2026-10-05T02:00:00Z");
 		expect(comparison.effectiveMatches()).toEqual([
@@ -405,7 +465,11 @@ describe("Comparison matching", () => {
 			line: 13,
 			source: { kind: "thread", thread: "PRRT_9", url: "https://github.com/o/r/pull/1#r9" },
 		});
-		const comparison = compared([codex, rabbit], [finding]);
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [codex, rabbit], skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		expect(comparison.matched()).toHaveLength(1);
 		expect(ids(comparison.matched())[0]!.external.sort()).toEqual([codex.id, rabbit.id].sort());
 	});
@@ -414,13 +478,25 @@ describe("Comparison matching", () => {
 		const codex = external({ file: "src/b.ts", line: 30 });
 		const codexAgain = external({ file: "src/b.ts", line: 31 });
 		const claude = external({ reviewer: { name: "claude-code" }, file: "src/b.ts", line: 33 });
-		const comparison = compared([codex, codexAgain, claude], [melian()]);
+		const comparison = Comparison.of(revision);
+		comparison.import(
+			"file:codex.json",
+			{ findings: [codex, codexAgain, claude], skippedBodies: 0 },
+			"2026-10-05T00:00:00.000Z",
+		);
+		comparison.compare(
+			new Adjudication({ findings: [melian()], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		// In site order: Codex at 30 starts a group, Codex at 31 cannot join it, and Claude Code at 33 joins the first.
 		expect(ids(comparison.externalOnly())).toEqual([
 			{ external: [codex.id, claude.id], melian: [] },
 			{ external: [codexAgain.id], melian: [] },
 		]);
-		const apart = compared([codex, codexAgain], [melian()]);
+		const apart = Comparison.of(revision);
+		apart.import("file:codex.json", { findings: [codex, codexAgain], skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
+		apart.compare(
+			new Adjudication({ findings: [melian()], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		expect(apart.externalOnly()).toHaveLength(2);
 	});
 
@@ -431,8 +507,26 @@ describe("Comparison matching", () => {
 		expect(octocat.sameReviewer(human("OctoCat", 11))).toBe(true);
 		expect(octocat.sameReviewer(human("hubot", 11))).toBe(false);
 		expect(octocat.sameReviewer(external({ reviewer: { name: "codex" }, file: "src/b.ts", line: 11 }))).toBe(false);
-		expect(compared([octocat, human("hubot", 11)], [melian()]).externalOnly()).toHaveLength(1);
-		expect(compared([octocat, human("OctoCat", 11)], [melian()]).externalOnly()).toHaveLength(2);
+		const differentLogin = Comparison.of(revision);
+		differentLogin.import(
+			"file:codex.json",
+			{ findings: [octocat, human("hubot", 11)], skippedBodies: 0 },
+			"2026-10-05T00:00:00.000Z",
+		);
+		differentLogin.compare(
+			new Adjudication({ findings: [melian()], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
+		expect(differentLogin.externalOnly()).toHaveLength(1);
+		const sameLogin = Comparison.of(revision);
+		sameLogin.import(
+			"file:codex.json",
+			{ findings: [octocat, human("OctoCat", 11)], skippedBodies: 0 },
+			"2026-10-05T00:00:00.000Z",
+		);
+		sameLogin.compare(
+			new Adjudication({ findings: [melian()], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
+		expect(sameLogin.externalOnly()).toHaveLength(2);
 	});
 
 	it("does not group a finding read at an earlier commit with another reviewer's finding at the same site", () => {
@@ -448,7 +542,15 @@ describe("Comparison matching", () => {
 		for (const line of [11, 13]) {
 			const earlier = thread(line);
 			expect(earlier.meets(peer)).toBe(true);
-			const comparison = compared([earlier, peer], []);
+			const comparison = Comparison.of(revision);
+			comparison.import(
+				"file:codex.json",
+				{ findings: [earlier, peer], skippedBodies: 0 },
+				"2026-10-05T00:00:00.000Z",
+			);
+			comparison.compare(
+				new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+			);
 			expect(ids(comparison.externalOnly())).toEqual(
 				[earlier, peer].sort((a, b) => a.compareSite(b)).map((each) => ({ external: [each.id], melian: [] })),
 			);
@@ -459,7 +561,11 @@ describe("Comparison matching", () => {
 		const finding = melian();
 		const codex = external({ line: 12 });
 		const claude = external({ reviewer: { name: "claude-code" }, line: 13 });
-		const comparison = compared([codex, claude], [finding]);
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [codex, claude], skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		comparison.unmatch(claude.id, finding.id, "M", "t");
 		expect(ids(comparison.matched())).toEqual([{ external: [codex.id], melian: [finding.id] }]);
 		expect(ids(comparison.externalOnly())).toEqual([{ external: [claude.id], melian: [] }]);
@@ -469,7 +575,11 @@ describe("Comparison matching", () => {
 		const first = melian();
 		const second = melian({ snippet: "eval(other)", startLine: 15, endLine: 15 });
 		const between = external({ line: 13, endLine: 14 });
-		const comparison = compared([between], [first, second]);
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [between], skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
+		comparison.compare(
+			new Adjudication({ findings: [first, second], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		expect(ids(comparison.matched())).toEqual([
 			{ external: [between.id], melian: [first.id] },
 			{ external: [between.id], melian: [second.id] },
@@ -496,9 +606,15 @@ describe("Comparison matching", () => {
 		const first = melian();
 		const second = melian({ snippet: "eval(other)", startLine: 15, endLine: 15 });
 		const between = external({ line: 13, endLine: 14 });
-		const comparison = compared([between], [first, second]);
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [between], skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
+		comparison.compare(
+			new Adjudication({ findings: [first, second], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		comparison.match(between.id, first.id, "M", "t");
-		comparison.compare(verdictOf([first, second]));
+		comparison.compare(
+			new Adjudication({ findings: [first, second], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		expect(
 			comparison
 				.effectiveMatches()
@@ -517,7 +633,11 @@ describe("Comparison matching", () => {
 		const first = melian();
 		const second = melian({ snippet: "eval(other)", startLine: 40, endLine: 40 });
 		const far = external({ line: 90 });
-		const comparison = compared([far], [first, second]);
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [far], skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
+		comparison.compare(
+			new Adjudication({ findings: [first, second], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		comparison.match(far.id, first.id, "M", "t1");
 		comparison.match(far.id, second.id, "M", "t2");
 		expect(comparison.effectiveMatches().filter((match) => match.kind === "hand")).toHaveLength(2);
@@ -527,15 +647,32 @@ describe("Comparison matching", () => {
 
 	it("lists each Melian-only finding with its ID, severity, rule, and place, or its ID alone without the verdict", () => {
 		const finding = melian();
-		const comparison = compared([external({ file: "src/far.ts", line: 90 })], [finding]);
-		expect(comparison.render(verdictOf([finding]))).toContain(
-			`Melian only:\n  ${finding.id}  P1 no-eval  src/run.ts:12\n`,
+		const comparison = Comparison.of(revision);
+		comparison.import(
+			"file:codex.json",
+			{ findings: [external({ file: "src/far.ts", line: 90 })], skippedBodies: 0 },
+			"2026-10-05T00:00:00.000Z",
 		);
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
+		expect(
+			comparison.render(
+				new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+			),
+		).toContain(`Melian only:\n  ${finding.id}  P1 no-eval  src/run.ts:12\n`);
 		expect(comparison.render(undefined)).toContain(`Melian only:\n  ${finding.id}\n`);
 		const spanning = melian({ startLine: 20, endLine: 24 });
-		expect(compared([], [spanning]).render(verdictOf([spanning]))).toContain(
-			`  ${spanning.id}  P1 no-eval  src/run.ts:20-24\n`,
+		const spanningComparison = Comparison.of(revision);
+		spanningComparison.import("file:codex.json", { findings: [], skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
+		spanningComparison.compare(
+			new Adjudication({ findings: [spanning], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
 		);
+		expect(
+			spanningComparison.render(
+				new Adjudication({ findings: [spanning], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+			),
+		).toContain(`  ${spanning.id}  P1 no-eval  src/run.ts:20-24\n`);
 	});
 
 	it("lets an unmatch override a site match, and keeps both kinds of hand record across a re-import", () => {
@@ -543,12 +680,18 @@ describe("Comparison matching", () => {
 		const other = melian({ snippet: "eval(other)", startLine: 40, endLine: 40 });
 		const near = external({ line: 12 });
 		const far = external({ line: 40, file: "src/far.ts" });
-		const comparison = compared([near, far], [finding, other]);
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [near, far], skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
+		comparison.compare(
+			new Adjudication({ findings: [finding, other], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		comparison.unmatch(near.id, finding.id, "M", "t1");
 		comparison.match(far.id, other.id, "M", "t2");
 		const again = Comparison.from(comparison.toJSON());
 		again.import("file:codex.json", { findings: [near, far], skippedBodies: 0 }, "t3");
-		again.compare(verdictOf([finding, other]));
+		again.compare(
+			new Adjudication({ findings: [finding, other], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		expect(again.effectiveMatches()).toEqual([
 			{ external: far.id, melian: other.id, kind: "hand", by: "M", at: "t2" },
 		]);
@@ -562,17 +705,28 @@ describe("Comparison matching", () => {
 
 	it("keeps a field a newer Melian stored, through an import and a comparison", () => {
 		const finding = melian();
-		const stored = { ...compared([], [finding]).toJSON(), adjudications: { later: { verdict: "valid" } } };
+		const original = Comparison.of(revision);
+		original.import("file:codex.json", { findings: [], skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
+		original.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
+		const stored = { ...original.toJSON(), adjudications: { later: { verdict: "valid" } } };
 		const comparison = Comparison.from(stored);
 		comparison.import("file:codex.json", { findings: [external()], skippedBodies: 0 }, "t");
-		comparison.compare(verdictOf([finding]));
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		expect(comparison.toJSON()).toMatchObject({ adjudications: { later: { verdict: "valid" } } });
 	});
 
 	it("refuses a hand match naming a finding it does not hold", () => {
 		const finding = melian();
 		const near = external();
-		const comparison = compared([near], [finding]);
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [near], skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		expect(() => comparison.match("0".repeat(16), finding.id, "M", "t")).toThrow(
 			expect.objectContaining({ code: "unknownExternal" }),
 		);
@@ -584,10 +738,20 @@ describe("Comparison matching", () => {
 	it("updates a re-imported finding in place rather than adding another, and records each source's import", () => {
 		const finding = melian();
 		const source = { kind: "file", path: "codex.json", position: 0, ref: "A1" } as const;
-		const comparison = compared([external({ source })], [finding]);
+		const comparison = Comparison.of(revision);
+		comparison.import(
+			"file:codex.json",
+			{ findings: [external({ source })], skippedBodies: 0 },
+			"2026-10-05T00:00:00.000Z",
+		);
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		const moved = external({ source, line: 60 });
 		comparison.import("file:codex.json", { findings: [moved], skippedBodies: 2 }, "later");
-		comparison.compare(verdictOf([finding]));
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		expect(comparison.externalFindings()).toHaveLength(1);
 		expect(comparison.externalFindings()[0]!.line).toBe(60);
 		expect(comparison.effectiveMatches()).toEqual([]);
@@ -604,9 +768,15 @@ describe("Comparison matching", () => {
 			{ reviewer: { name: "codex" }, findings: [file(12, "kept"), file(40, "withdrawn"), file(90, "also gone")] },
 			"codex.json",
 		);
-		const comparison = compared([], [finding, other]);
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [], skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
+		comparison.compare(
+			new Adjudication({ findings: [finding, other], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		comparison.import("file:codex.json", { findings: first, skippedBodies: 0 }, "t1");
-		comparison.compare(verdictOf([finding, other]));
+		comparison.compare(
+			new Adjudication({ findings: [finding, other], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		comparison.match(first[1]!.id, other.id, "M", "t2");
 		comparison.unmatch(first[2]!.id, finding.id, "M", "t2");
 		const second = ExternalFinding.fromFile(
@@ -615,7 +785,9 @@ describe("Comparison matching", () => {
 		);
 
 		comparison.import("file:codex.json", { findings: second, skippedBodies: 0 }, "t3");
-		comparison.compare(verdictOf([finding, other]));
+		comparison.compare(
+			new Adjudication({ findings: [finding, other], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 
 		expect(second[0]!.id).toBe(first[0]!.id);
 		expect(comparison.externalFindings().map((each) => each.id)).toEqual([first[0]!.id]);
@@ -628,7 +800,11 @@ describe("Comparison matching", () => {
 		const shared = external({
 			source: { kind: "thread", thread: "PRRT_1", url: "https://github.com/o/r/pull/1#r1" },
 		});
-		const comparison = compared([], [melian()]);
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [], skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
+		comparison.compare(
+			new Adjudication({ findings: [melian()], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
 		comparison.import("github:coderabbitai[bot]", { findings: [shared], skippedBodies: 0 }, "t1");
 		comparison.import("github:coderabbitai", { findings: [shared], skippedBodies: 0 }, "t2");
 		comparison.import("github:coderabbitai[bot]", { findings: [], skippedBodies: 0 }, "t3");
