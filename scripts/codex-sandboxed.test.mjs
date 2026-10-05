@@ -271,6 +271,16 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			expect(git(linked, "log", "-1", "--format=%s").toString().trim()).toBe("sandboxed");
 		});
 
+		it("fetches from a file:// remote, writing FETCH_HEAD to the administrative directory", () => {
+			const remote = join(root, "remote.git");
+			git(root, "init", "-q", "--bare", remote);
+			git(main, "push", "-q", remote, "HEAD:refs/heads/upstream");
+			git(main, "remote", "add", "origin", `file://${remote}`);
+			sh(linked, "git fetch origin");
+			expect(existsSync(join(admin, "FETCH_HEAD"))).toBe(true);
+			expect(git(linked, "rev-parse", "refs/remotes/origin/upstream").toString().trim()).toMatch(/^[0-9a-f]{40}$/);
+		});
+
 		it("cannot rename .git in the worktree or the checkout to swap in its own", () => {
 			expect(failure(() => sh(linked, "mv .git .git-old")).status).not.toBe(0);
 			expect(failure(() => sh(linked, "rm .git")).status).not.toBe(0);
