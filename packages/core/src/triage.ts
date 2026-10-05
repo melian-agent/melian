@@ -29,9 +29,12 @@ export class LevelBand {
 		this.ceiling = rank(floor) > rank(ceiling) ? (floor as ScrutinyLevel) : ceiling;
 	}
 
-	/** The band one path's settings set, each end they leave out at the default's. */
-	static of(settings: LevelBandSettings | undefined): LevelBand {
-		return new LevelBand(settings?.floor ?? "quick", settings?.ceiling ?? "deep");
+	/**
+	 * The band one path's settings set, each end they leave out at the default's: `floor`, `quick` unless the caller
+	 * names another, and `deep`.
+	 */
+	static of(settings: LevelBandSettings | undefined, floor: TriageChoice = "quick"): LevelBand {
+		return new LevelBand(settings?.floor ?? floor, settings?.ceiling ?? "deep");
 	}
 
 	/**

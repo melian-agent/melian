@@ -26,6 +26,7 @@ import {
 	openSqliteStorage,
 	type Review,
 	ReviewHarness,
+	type ReviewOrigin,
 	RouteTextModel,
 	readFindings,
 	readProvenance,
@@ -100,7 +101,13 @@ const ran: CheckRecord[] = [
 ];
 
 async function review(
-	options: { decider?: Decider; config?: MelianConfig; lenses?: Lens[]; policy?: "worktree" } = {},
+	options: {
+		decider?: Decider;
+		config?: MelianConfig;
+		lenses?: Lens[];
+		policy?: "worktree";
+		origin?: ReviewOrigin;
+	} = {},
 ): Promise<Review> {
 	return reviewChangeset({
 		harness,
@@ -112,6 +119,7 @@ async function review(
 		checks: ran,
 		...(options.decider === undefined ? {} : { decider: options.decider }),
 		...(options.policy === undefined ? {} : { policy: { kind: options.policy } }),
+		...(options.origin === undefined ? {} : { origin: options.origin }),
 	});
 }
 
@@ -127,6 +135,9 @@ function call(name: string, args: Parameters<typeof fauxToolCall>[1]) {
 }
 
 const done = fauxAssistantMessage("Done.");
+
+const lightly =
+	"triage chose quick for every lens, so the whole review looked lightly, at a change that can steer triage";
 
 function choosing(level: "skip" | ScrutinyLevel, name = "recorded"): RecordedDecider {
 	return new RecordedDecider({ triage: { correctness: { [level]: 1 } } }, { name });
@@ -176,7 +187,8 @@ describe("triage", () => {
 
 			const reviewed = await review({ decider });
 
-			expect(lensRecord(reviewed)).toEqual({ name: "lens.correctness", status: "ran", level });
+			const light = level === "quick" ? { reason: lightly } : {};
+			expect(lensRecord(reviewed)).toEqual({ name: "lens.correctness", status: "ran", level, ...light });
 			expect(systemPromptOf(requests[correctness]![0]!)).toContain(statedBudget[level]);
 			const root = (await harness.root(context)).id;
 			const stored = await readRecordedDecision(harness, root, revision(), "triage", context);
@@ -196,6 +208,35 @@ describe("triage", () => {
 			expect(request!.state).toContain("give it no weight");
 		},
 	);
+
+	it("keeps a pull request's lenses at careful or above, and warns when a range review looks quickly everywhere", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		const origin: ReviewOrigin = {
+			kind: "pull-request",
+			repository: { owner: "melian-agent", name: "melian" },
+			pullRequest: 62,
+			base: gitIn(repo, "rev-parse", "main"),
+			head: gitIn(repo, "rev-parse", "feature"),
+		};
+
+		const pulled = await review({ decider, origin });
+
+		expect(decider.requests[0]!.questions[0]!.options).toEqual(["careful", "deep"]);
+		expect(lensRecord(pulled)).toMatchObject({ status: "ran", level: "careful" });
+		expect(lensRecord(pulled)!.reason).toContain("triage failed");
+
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		const ranged = await review({ decider });
+		expect(lensRecord(ranged)).toEqual({
+			name: "lens.correctness",
+			status: "ran",
+			level: "quick",
+			reason: lightly,
+		});
+	});
 
 	it("asks once per revision: a repeat review attaches to the decision and the lens task", async () => {
 		const decider = choosing("quick");
@@ -480,7 +521,7 @@ describe("escalation", () => {
 			name: "lens.correctness",
 			status: "ran",
 			level: "quick",
-			reason: "escalation capped at quick, its ceiling: at quick it reported a P1 finding, at or above P1",
+			reason: `escalation capped at quick, its ceiling: at quick it reported a P1 finding, at or above P1; ${lightly}`,
 		});
 		expect(reviewed.findings.map((finding) => finding.ruleId)).toEqual(["null-dereference"]);
 	});
@@ -498,8 +539,7 @@ describe("escalation", () => {
 			name: "lens.correctness",
 			status: "ran",
 			level: "quick",
-			reason:
-				"escalation capped at quick, since careful runs on heavy, which reaches no model with credentials: at quick it reported a P1 finding, at or above P1",
+			reason: `escalation capped at quick, since careful runs on heavy, which reaches no model with credentials: at quick it reported a P1 finding, at or above P1; ${lightly}`,
 		});
 	});
 
@@ -512,6 +552,7 @@ describe("escalation", () => {
 			name: "lens.correctness",
 			status: "ran",
 			level: "quick",
+			reason: lightly,
 		});
 
 		await open(decider);

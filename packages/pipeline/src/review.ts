@@ -841,9 +841,12 @@ function account(
 // that file's path, read from the policy source, or `config` for every path without one.
 async function bandsOf(
 	selections: readonly { readonly lens: Lens; readonly covers: readonly string[] }[],
-	options: Pick<ReviewOptions, "config" | "policy" | "changeset">,
+	options: Pick<ReviewOptions, "config" | "policy" | "changeset" | "origin" | "decider">,
 ): Promise<Map<Lens, LevelBand>> {
 	const { policy, config, changeset } = options;
+	// A pull request's head writes the change triage reads, so until a calibrated decision model answers, its default
+	// floor is careful: an uncalibrated model the head can steer never sends every lens to a quick look.
+	const floor = options.origin?.kind === "pull-request" && options.decider?.calibrated !== true ? "careful" : "quick";
 	const lookup = policy === undefined ? undefined : configLookup(changeset.repoRoot, policy);
 	const bands = new Map<Lens, LevelBand>();
 	for (const { lens, covers } of selections) {
@@ -851,7 +854,7 @@ async function bandsOf(
 		const settings = configs.map((each) =>
 			Object.hasOwn(each.lenses, lens.name) ? each.lenses[lens.name] : undefined,
 		);
-		bands.set(lens, LevelBand.across(settings.map((each) => LevelBand.of(each?.level))));
+		bands.set(lens, LevelBand.across(settings.map((each) => LevelBand.of(each?.level, floor))));
 	}
 	return bands;
 }
@@ -1096,10 +1099,16 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 			? {}
 			: await runLenses(harness, { root, revision: state, lenses, escalateAt }, options.rerun === true, context);
 	const rule = new EscalationRule(escalateAt);
-	const settled = lenses.map((lens) => {
-		const settledLens = settle(lens, lensResult, rule);
-		const noted = notes.get(`${lens.name}@${lens.version}`) ?? [];
-		return { ...settledLens, notes: [...noted, ...settledLens.notes] };
+	const settling = lenses.map((lens) => settle(lens, lensResult, rule));
+	// The change triage reads can steer it, so a review in which every lens stayed at quick says so.
+	const light =
+		triaged.decision !== undefined && settling.length > 0 && settling.every(({ run }) => run.level === "quick")
+			? ["triage chose quick for every lens, so the whole review looked lightly, at a change that can steer triage"]
+			: [];
+	const settled = settling.map((settledLens) => {
+		const { run } = settledLens;
+		const noted = notes.get(`${run.name}@${run.version}`) ?? [];
+		return { ...settledLens, notes: [...noted, ...settledLens.notes, ...light] };
 	});
 	const records = [
 		...settled.map(({ run, outcome, notes: noted }) => lensCheck(run, outcome, lensResult !== undefined, noted)),
