@@ -8,8 +8,8 @@ import { parseDocument } from "yaml";
 import { type LensTier, lensTierSchema, type MelianConfig, type Severity, severitySchema } from "./config.ts";
 import { LensError } from "./errors.ts";
 import { maxEvidenceLines, maxFailureScenarioLength } from "./findings.ts";
-import { selectedBy } from "./glob.ts";
 import { anchorGlob, directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
+import { matchesGlobs } from "./pattern.ts";
 import { plural, visibleText } from "./render.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 import type { StandardsSection } from "./standards.ts";
@@ -521,7 +521,7 @@ export function lensCovers(coverage: LensCoverage, path: string): boolean {
 		coverage.moved?.includes(path) === true ||
 		(beneath(coverage.scope, path) &&
 			!coverage.nearer.some((scope) => beneath(scope, path)) &&
-			selectedBy(coverage.paths, path))
+			matchesGlobs(coverage.paths, path))
 	);
 }
 
