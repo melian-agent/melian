@@ -15,7 +15,7 @@ export interface RepositoryLinks {
 }
 
 /** What a marker carries: a finding's thread, a review's verdict, or a reply that resolves a finding. */
-export type MarkerKind = "finding" | "verdict" | "resolved";
+export type MarkerKind = "finding" | "verdict" | "resolved" | "ledger";
 
 /** What a marker carries beyond its kind and ID. */
 export interface MarkerDetail {
@@ -64,7 +64,7 @@ export function marker(
 }
 
 const markerLine =
-	/^<!-- melian:revision=([0-9a-f]{40,64}) (finding|verdict|resolved)=([0-9a-f]{16})(?: round=([1-9][0-9]{0,8}))?(?: dismissal=([0-9a-f]{16}))? sig=([0-9a-f]{32}) -->$/;
+	/^<!-- melian:revision=([0-9a-f]{40,64}) (finding|verdict|resolved|ledger)=([0-9a-f]{16})(?: round=([1-9][0-9]{0,8}))?(?: dismissal=([0-9a-f]{16}))? sig=([0-9a-f]{32}) -->$/;
 
 /**
  * The marker on a line of its own, or `undefined`. Untrusted text cannot start a line with one; see
@@ -119,7 +119,7 @@ const controls = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
 
 // A code span, for paths and rule IDs. Control characters are shown as \uXXXX, so a path holding a line break cannot
 // start a line of its own, and the fence is longer than any run of backticks inside.
-function code(text: string): string {
+export function code(text: string): string {
 	const visible = text.replace(controls, (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`);
 	const longest = Math.max(0, ...(visible.match(/`+/g) ?? []).map((run) => run.length));
 	const fence = "`".repeat(longest + 1);

@@ -1,5 +1,7 @@
 import {
 	type ClosedFinding,
+	type LedgerDraft,
+	type PostedLedger,
 	type PostedReview,
 	type PublishedMarkers,
 	type PullRequest,
@@ -10,9 +12,13 @@ import {
 } from "@melian-agent/core";
 import { Octokit } from "@octokit/rest";
 import { GitHubError } from "./errors.ts";
+import { Ledger, parseLedgerStamp } from "./ledger.ts";
 import {
 	type Marker,
 	type MarkerKind,
+	marker,
+	markersIn,
+	maxBodyLength,
 	parseMarker,
 	type RepositoryLinks,
 	ReviewComment,
@@ -200,6 +206,7 @@ export class GitHubProvider implements ReviewProvider {
 		secret: string,
 	): Promise<string | undefined> {
 		try {
+			if (finding.dismissal === undefined) return await this.address(pullRequest, finding, revision, secret);
 			const { data } = await call(`reply on pull request #${pullRequest}`, () =>
 				this.octokit.rest.pulls.createReplyForReviewComment({
 					owner: this.owner,
@@ -217,7 +224,136 @@ export class GitHubProvider implements ReviewProvider {
 		}
 	}
 
-	async setStatus(revision: string, status: ReviewStatus): Promise<void> {
+	async findLedger(pullRequest: number, secret: string): Promise<PostedLedger | undefined> {
+		const comments = await call(`list ledger comments on pull request #${pullRequest}`, () =>
+			this.octokit.paginate(this.octokit.rest.issues.listComments, {
+				owner: this.owner,
+				repo: this.repo,
+				issue_number: pullRequest,
+				per_page: 100,
+			}),
+		);
+		for (const comment of comments) {
+			const body = comment.body ?? "";
+			if (!/^<!-- melian:revision=.* ledger=/.test(firstLine(body))) continue;
+			const found = parseMarker(firstLine(body));
+			if (found?.kind !== "ledger" || !verifyMarker(found, secret)) {
+				throw new GitHubError(
+					"failed",
+					"the pull request has a ledger Melian cannot verify; restore the changeset's storage, or delete the orphaned ledger comment by hand before publishing again",
+				);
+			}
+			if (!(await this.ours(comment.user)))
+				throw new GitHubError(
+					"failed",
+					"the signed ledger belongs to another publisher; restore that publisher before editing it",
+				);
+			const stamp = parseLedgerStamp(body);
+			if (stamp === undefined || stamp.head !== found.revision)
+				throw new GitHubError(
+					"failed",
+					"the signed ledger's stamp is missing or damaged; restore it before publishing again",
+				);
+			return { id: String(comment.id), url: comment.html_url, stamp };
+		}
+		return undefined;
+	}
+
+	async writeLedger(draft: LedgerDraft): Promise<PostedLedger> {
+		const ledger = Ledger.from(draft.verdict, draft.publication, draft);
+		const existing = await this.findLedger(draft.pullRequest, draft.secret);
+		if (existing !== undefined && !ledger.diff(existing.stamp)) return existing;
+		const body = ledger.render(this.links);
+		const { data } =
+			existing === undefined
+				? await call("create the review ledger", () =>
+						this.octokit.rest.issues.createComment({
+							owner: this.owner,
+							repo: this.repo,
+							issue_number: draft.pullRequest,
+							body,
+						}),
+					)
+				: await call("edit the review ledger", () =>
+						this.octokit.rest.issues.updateComment({
+							owner: this.owner,
+							repo: this.repo,
+							comment_id: Number(existing.id),
+							body,
+						}),
+					);
+		return { id: String(data.id), url: data.html_url, stamp: ledger.stamp };
+	}
+
+	private async address(
+		pullRequest: number,
+		finding: ClosedFinding & { thread: string },
+		revision: string,
+		secret: string,
+	): Promise<string | undefined> {
+		const { data } = await call("read the finding to address", () =>
+			this.octokit.rest.pulls.getReviewComment({
+				owner: this.owner,
+				repo: this.repo,
+				comment_id: Number(finding.thread),
+			}),
+		);
+		const opening = signedMarker(data.body, "finding", finding.revision, secret);
+		if (opening?.id !== finding.id || !(await this.ours(data.user)))
+			throw new GitHubError("failed", "the finding comment no longer carries Melian's signed marker");
+		const closed = marker(finding.addressedIn ?? revision, "resolved", finding.id, secret);
+		if (!data.body.split(/\r?\n/).includes(closed)) {
+			const suffix = `\n\nAddressed in commit ${(finding.addressedIn ?? revision).slice(0, 12)}.\n${closed}`;
+			await call("edit the addressed finding", () =>
+				this.octokit.rest.pulls.updateReviewComment({
+					owner: this.owner,
+					repo: this.repo,
+					comment_id: Number(finding.thread),
+					body: data.body.slice(0, maxBodyLength - suffix.length) + suffix,
+				}),
+			);
+		}
+		let cursor: string | null = null;
+		do {
+			const response: {
+				repository: {
+					pullRequest: {
+						reviewThreads: {
+							nodes: { id: string; isResolved: boolean; comments: { nodes: { databaseId: number }[] } }[];
+							pageInfo: { hasNextPage: boolean; endCursor: string | null };
+						};
+					};
+				};
+			} = await call("read finding threads", () =>
+				this.octokit.graphql(
+					`query($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
+    repository(owner: $owner, name: $repo) { pullRequest(number: $number) { reviewThreads(first: 100, after: $cursor) {
+     nodes { id isResolved comments(first: 1) { nodes { databaseId } } } pageInfo { hasNextPage endCursor }
+    } } }
+   }`,
+					{ owner: this.owner, repo: this.repo, number: pullRequest, cursor },
+				),
+			);
+			const page = response.repository.pullRequest.reviewThreads;
+			const thread = page.nodes.find((node) =>
+				node.comments.nodes.some((comment) => String(comment.databaseId) === finding.thread),
+			);
+			if (thread !== undefined) {
+				if (!thread.isResolved)
+					await call("resolve the addressed finding's thread", () =>
+						this.octokit.graphql(
+							`mutation($id: ID!) { resolveReviewThread(input: { threadId: $id }) { thread { id isResolved } } }`,
+							{ id: thread.id },
+						),
+					);
+				return finding.thread;
+			}
+			cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+		} while (cursor !== null);
+		throw new GitHubError("failed", "the finding comment has no review thread to resolve");
+	}
+
+	async setStatus(revision: string, status: ReviewStatus, ledgerUrl?: string): Promise<void> {
 		const description =
 			status.description.length <= maxDescription
 				? status.description
@@ -230,6 +366,7 @@ export class GitHubProvider implements ReviewProvider {
 				state: status.state,
 				description,
 				context: statusContext,
+				...(ledgerUrl === undefined ? {} : { target_url: ledgerUrl }),
 			}),
 		);
 	}
@@ -263,6 +400,13 @@ export class GitHubProvider implements ReviewProvider {
 		const replies: Record<string, string> = {};
 		for (const comment of comments) {
 			// GitHub may send a top-level comment's in_reply_to_id as null rather than leave it out.
+			for (const resolved of markersIn(comment.body).filter(
+				(found) => found.kind === "resolved" && found.revision === revision,
+			)) {
+				if (verifyMarker(resolved, secret) && (await this.ours(comment.user)))
+					replies[replyKey(resolved.id, String(comment.in_reply_to_id ?? comment.id), resolved.dismissal)] ??=
+						String(comment.id);
+			}
 			const thread = comment.in_reply_to_id;
 			const reply = typeof thread === "number";
 			const found = signedMarker(comment.body, reply ? "resolved" : "finding", revision, secret);
