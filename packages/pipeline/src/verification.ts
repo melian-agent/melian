@@ -197,6 +197,7 @@ export async function startVerification(
 	selection: readonly string[],
 	rerun: boolean,
 	context: Context,
+	refused: (model: string) => boolean = () => false,
 ): Promise<TaskId<VerificationResult> | undefined> {
 	const root = await harness.root(context);
 	const { nonce: _, ...revision } = input.revision;
@@ -219,7 +220,11 @@ export async function startVerification(
 				? (record.state.outcome.result as VerificationResult)
 				: undefined;
 		const failed =
-			results !== undefined && input.candidates.some((candidate) => results[candidate.key]?.status !== "done");
+			results !== undefined &&
+			input.candidates.some((candidate) => {
+				const result = results[candidate.key];
+				return result?.status !== "done" || refused(result.model);
+			});
 		if (previous?.input === key) {
 			if (failed && !rerun && input.candidates.every((candidate) => results![candidate.key] !== undefined))
 				return previous.task as TaskId<VerificationResult>;

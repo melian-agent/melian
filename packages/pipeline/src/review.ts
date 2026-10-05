@@ -1628,6 +1628,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				selectionOf(lenses, escalateAt),
 				options.rerun === true,
 				context,
+				(model) =>
+					request.plan?.tier("verifier").acceptOverridden === false &&
+					request.plan.verifierLineage(model)?.outside === true,
 			);
 			if (verifying === undefined)
 				verificationCheck = { name: "verifier", status: "failed", version: verifierVersion, reason: "superseded" };
