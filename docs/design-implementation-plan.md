@@ -84,7 +84,7 @@ Open pull requests, in landing order:
 2. [#68](https://github.com/melian-agent/melian/pull/68), step 15 items 1 to 3. Three Melian rounds are done. It waits for [#62](https://github.com/melian-agent/melian/pull/62) to land before its final round.
 3. [#72](https://github.com/melian-agent/melian/pull/72), step 15 items 4 to 7, stacked on [#68](https://github.com/melian-agent/melian/pull/68). Codex wrote it. Its first fix pass is in progress, from three reviews.
 4. [#73](https://github.com/melian-agent/melian/pull/73), step 8, the ledger. Codex wrote it. Four reviews are in, and a fix pass is to come.
-5. [#74](https://github.com/melian-agent/melian/pull/74), the Codex seatbelt wrapper. Two bypasses were found and are being fixed.
+5. [#74](https://github.com/melian-agent/melian/pull/74), the Codex seatbelt wrapper. Its [comparison record](../packages/evals/comparisons/2026-10-05-pr-74.md) covers two Sonnet reviews and ten Melian rounds. Fixes reach `4928866`; five rounds were incomplete, and no Codex adversarial review ran.
 6. [#75](https://github.com/melian-agent/melian/pull/75), follow-ups from [#61](https://github.com/melian-agent/melian/pull/61). Under review.
 
 The records [#67](https://github.com/melian-agent/melian/pull/67) and [#69](https://github.com/melian-agent/melian/pull/69) wait on their pull requests' final rounds.
