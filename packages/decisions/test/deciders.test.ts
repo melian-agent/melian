@@ -130,6 +130,31 @@ describe("the LLM fallback decider", () => {
 		expect(decision.chosen("correctness")).toBe("careful");
 	});
 
+	it("answers all 65 questions in one request", async () => {
+		const many: DecisionRequest = {
+			...request,
+			questions: Array.from({ length: 65 }, (_, index) => ({
+				id: `lens-${index}`,
+				text: "How closely should it look?",
+				options: ["quick", "careful"],
+			})),
+		};
+		const text = model({
+			answers: many.questions.map((question) => ({
+				question: question.id,
+				probabilities: [{ option: "careful", probability: 1 }],
+			})),
+		});
+		const decider = new FallbackDecider(text);
+		const decision = Decision.parse(many, await decider.decide(many), decider);
+		expect(text.asked).toHaveLength(1);
+		expect(decision.answers).toHaveLength(65);
+		for (const question of many.questions) {
+			expect(text.asked[0]!.prompt).toContain(`### ${question.id}\n`);
+			expect(decision.chosen(question.id)).toBe("careful");
+		}
+	});
+
 	it("answers a question whose ID is a 128-character lens name", async () => {
 		const id = "l".repeat(128);
 		const long: DecisionRequest = {

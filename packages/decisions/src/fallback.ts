@@ -26,7 +26,7 @@ const answerParameters = Type.Object({
 				},
 			),
 		}),
-		{ maxItems: 64 },
+		{ maxItems: 1024 },
 	),
 });
 
