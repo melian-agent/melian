@@ -611,6 +611,20 @@ describe("Lens.select", () => {
 		expect(Lens.select([lens({ paths: ["src/*.ts"] })], defaultConfig, ["src/evil\nname.ts"])).toHaveLength(1);
 	});
 
+	// Lens paths come from configuration and changed paths from the head. On a backtracking RegExp these took
+	// 164, 208, and 179 seconds.
+	it("selects over a crafted path in bounded time", () => {
+		for (const [glob, path] of [
+			["*a*a*a*a*a*b", "a".repeat(200)],
+			["**a**a**a**a**b", "a".repeat(400)],
+			["**a**a**a**a**b", "a/".repeat(400)],
+		] as const) {
+			const started = performance.now();
+			expect(Lens.select([lens({ paths: [glob] })], defaultConfig, [path])).toEqual([]);
+			expect(performance.now() - started).toBeLessThan(1000);
+		}
+	});
+
 	it("keeps a folder's lens to its folder", () => {
 		const scoped = lens({ scope: "services/pay", paths: ["services/pay/**"] });
 		expect(Lens.select([scoped], defaultConfig, ["src/a.ts"])).toEqual([]);
