@@ -1,4 +1,4 @@
-import type { BudgetEnd, VerdictStatus } from "./adjudication.ts";
+import type { BudgetEnd, CheckLineage, VerdictStatus } from "./adjudication.ts";
 import type { Severity } from "./config.ts";
 import type { EvidenceLocation } from "./findings.ts";
 
@@ -71,6 +71,16 @@ const budgetNames: Readonly<Record<BudgetEnd["budget"], string>> = { tokens: "to
 export function describeBudgetEnd({ budget, limit, tokens, tools }: BudgetEnd): string {
 	const used = `${plural(tools, "tool call")} and ${plural(tokens, "token")}`;
 	return `its ${budgetNames[budget]} budget of ${limit.toLocaleString("en-AU")} ran out after ${used}`;
+}
+
+/**
+ * Says what put a check on the model it ran on, for an author: "on openai/gpt-5.5, set by melian.local.yaml, where
+ * policy wants anthropic/claude-opus-5-5 and does not accept openai/gpt-5.5".
+ */
+export function describeLineage({ model, wanted, by, outside }: CheckLineage): string {
+	const why = by === "derived" ? "derived, since no model of its route has credentials" : `set by ${by}`;
+	const policy = wanted === undefined ? "where policy" : `where policy wants ${wanted} and`;
+	return `on ${model}, ${why}, ${policy} ${outside ? "does not accept" : "accepts"} ${model}`;
 }
 
 /**

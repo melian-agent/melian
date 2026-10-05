@@ -4,18 +4,25 @@ import { OutsideRepositoryError } from "./errors.ts";
 /**
  * Where Melian's files live, relative to a directory in the repository. `melian.yaml` and `.melian/` may sit in any
  * directory; `standards` and `lenses` resolve nearest-first like `melian.yaml`. `knowledge` is read only at the root.
- * `localConfig`, beside the root `melian.yaml`, is a maintainer's own and is read only from the working tree.
+ * `localConfig` and `secrets`, beside the root `melian.yaml`, are a maintainer's own, read only from the working tree.
  */
 export const melianPaths = {
 	config: "melian.yaml",
 	localConfig: "melian.local.yaml",
+	secrets: "melian.secrets.yaml",
 	home: ".melian",
 	lenses: ".melian/lenses",
 	standards: ".melian/standards",
 	knowledge: ".melian/knowledge",
 } as const;
 
-const policyNames = new Set([melianPaths.config, melianPaths.localConfig, "AGENTS.md", "CLAUDE.md"]);
+const policyNames = new Set([
+	melianPaths.config,
+	melianPaths.localConfig,
+	melianPaths.secrets,
+	"AGENTS.md",
+	"CLAUDE.md",
+]);
 
 /**
  * The names of the files that configure a static tool, in any directory. The head's copy drives the tool's run on the

@@ -21,6 +21,7 @@ import type {
 import {
 	capitalised,
 	describeBudgetEnd,
+	describeLineage,
 	plural,
 	prose,
 	Rendering,
@@ -162,6 +163,21 @@ export interface CheckRecord {
 	 * `ended` record, or on a `ran` record when the lens's level counts a budget's end as a run.
 	 */
 	readonly budgetEnded?: BudgetEnd;
+	/** Why a lens ran, or was to run, on a model other than the one the committed routes chose. */
+	readonly lineage?: CheckLineage;
+}
+
+/**
+ * Why a check ran on `model` rather than the route the committed `melian.yaml` set: `by` names the preference file,
+ * the `--model` flag, or `derived` when the resolver picked a model because none of the route had credentials.
+ * `wanted` is the model policy routes the tier to, where it names one. `outside` says policy's `accept` does not list
+ * `model`.
+ */
+export interface CheckLineage {
+	readonly model: string;
+	readonly wanted?: string;
+	readonly by: string;
+	readonly outside: boolean;
 }
 
 /** The reason a {@link Manifest} gives a check it names that has no record. */
@@ -254,6 +270,7 @@ export type StoredCheckRecord = {
 	version?: string;
 	level?: ScrutinyLevel;
 	budgetEnded?: { budget: "tokens" | "tools"; limit: number; tokens: number; tools: number };
+	lineage?: { model: string; wanted?: string; by: string; outside: boolean };
 };
 
 /** A {@link Verdict} as JSON, which a Pi Durable document can hold. */
@@ -500,6 +517,13 @@ export class Verdict {
 					`  ${visibleText(name)}  ${level}${budgetEnded === undefined ? "" : `, ended and counted: ${describeBudgetEnd(budgetEnded)}`}${reason === undefined ? "" : `; ${prose(reason, "    ")}`}`,
 			);
 			parts.push([`${plural(lenses.length, "lens", "lenses")} ran:`, ...checks].join("\n"));
+		}
+		const lineage = [...(this.ran ?? []), ...this.notRun].filter((check) => check.lineage !== undefined);
+		if (lineage.length > 0) {
+			const checks = lineage.map(
+				({ name, lineage }) => `  ${visibleText(name)}  ${prose(describeLineage(lineage!), "    ")}`,
+			);
+			parts.push([`${plural(lineage.length, "check")} left the committed routes:`, ...checks].join("\n"));
 		}
 		const groups = shownResolutions.map((resolution): [string, readonly Finding[]] => [
 			resolution,
