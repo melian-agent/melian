@@ -36,11 +36,13 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 	let linked;
 	let home;
 	let run;
+	let scratch;
 	let admin;
 	let bin;
 
 	const env = () => ({ ...process.env, HOME: home, TMPDIR: join(root, "tmp"), PATH: `${bin}:${process.env.PATH}` });
-	const profile = (cwd) => execFileSync(script, ["--print-profile", cwd, run, run], { encoding: "utf8", env: env() });
+	const profile = (cwd, scratchDir = run) =>
+		execFileSync(script, ["--print-profile", cwd, scratchDir, run], { encoding: "utf8", env: env() });
 	const block = (text, head) => {
 		const start = text.indexOf(`(${head}\n`);
 		return text.slice(start, text.indexOf("\n)", start));
@@ -53,7 +55,9 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		linked = join(root, "a+b (c).d", "linked");
 		home = join(root, "home");
 		run = join(root, "tmp", "codex-run");
+		scratch = join(root, "scratch");
 		mkdirSync(run, { recursive: true });
+		mkdirSync(scratch);
 		mkdirSync(main);
 		git(main, "init", "-q");
 		git(main, "commit", "-q", "--allow-empty", "-m", "init");
@@ -180,8 +184,8 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		expect(text.indexOf("(deny file-write*")).toBeGreaterThan(text.indexOf("(allow file-write*"));
 	});
 
-	it("denies a planted repository in every writable subtree, with the path escaped", () => {
-		const deny = block(profile(linked), "deny file-write*");
+	it("denies a planted repository in every persistent writable subtree, with the path escaped", () => {
+		const deny = block(profile(linked, scratch), "deny file-write*");
 		const esc = (path) => path.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
 		const dotGit = (path) => `(regex #"^${esc(path)}/(.*/)?[.][gG][iI][tT](/|$)")`;
 		const head = (path) => `(regex #"^${esc(path)}/(.*/)?[hH][eE][aA][dD]$")`;
@@ -192,7 +196,7 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		const common = `${main}/.git`;
 		for (const path of [
 			linked,
-			run,
+			scratch,
 			`${common}/objects`,
 			`${common}/refs`,
 			`${common}/logs`,
@@ -201,11 +205,27 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		]) {
 			expect(deny).toContain(dotGit(path));
 		}
-		for (const path of [linked, run, `${common}/objects`, ...codex]) expect(deny).toContain(head(path));
+		for (const path of [linked, scratch, `${common}/objects`, ...codex]) expect(deny).toContain(head(path));
 		for (const path of [`${common}/refs`, `${common}/logs`, `${admin}/logs`]) {
 			expect(deny).toContain(objects(path));
 			expect(deny).not.toContain(head(path));
 		}
+	});
+
+	it("denies nothing under the run directory, which the wrapper deletes, but everything under a separate scratch", () => {
+		const same = block(profile(linked), "deny file-write*");
+		expect(same).not.toContain(`^${run}/`);
+		const apart = block(profile(linked, scratch), "deny file-write*");
+		expect(apart).not.toContain(`^${run}/`);
+		for (const name of ["[.][gG][iI][tT](/|$)", "[hH][eE][aA][dD]$"]) expect(apart).toContain(`^${scratch}/(.*/)?${name}`);
+		expect(apart).not.toContain(`(subpath "${run}")`);
+	});
+
+	it("allows the lock and temporary index files of a partial commit and a stash, by regex in the administrative directory", () => {
+		const allow = block(profile(linked), "allow file-write*");
+		const esc = admin.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
+		expect(allow).toContain(`(regex #"^${esc}/next-index-[0-9]+\\.lock$")`);
+		expect(allow).toContain(`(regex #"^${esc}/index\\.stash\\.[0-9]+(\\.lock)?$")`);
 	});
 
 	it("denies reads of credentials and .env files, but not Codex's auth.json", () => {
@@ -299,7 +319,7 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 
 		beforeAll(() => {
 			profilePath = join(root, "profile.sb");
-			writeFileSync(profilePath, profile(linked));
+			writeFileSync(profilePath, profile(linked, scratch));
 		});
 
 		it("commits in the linked worktree", () => {
@@ -368,8 +388,8 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			mkdirSync(join(home, ".codex", "cache"), { recursive: true });
 			mkdirSync(join(admin, "logs"), { recursive: true });
 			const planted = [
-				`mkdir -p '${run}/x/.git'`,
-				`echo x > '${run}/x/HEAD'`,
+				`mkdir -p '${scratch}/x/.git'`,
+				`echo x > '${scratch}/x/HEAD'`,
 				`mkdir -p '${main}/.git/objects/x/.git'`,
 				`echo x > '${main}/.git/objects/x/HEAD'`,
 				`mkdir -p '${main}/.git/refs/x/objects'`,
@@ -378,8 +398,8 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			];
 			for (const command of planted) expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
 			for (const path of [
-				join(run, "x", ".git"),
-				join(run, "x", "HEAD"),
+				join(scratch, "x", ".git"),
+				join(scratch, "x", "HEAD"),
 				join(main, ".git", "refs", "x", "objects"),
 			])
 				expect(existsSync(path)).toBe(false);
@@ -431,6 +451,21 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			expect(existsSync(join(home, ".codex", "x.sqlite-wal"))).toBe(true);
 			expect(failure(() => sh(linked, `touch '${home}/.codex/deep/x.sqlite'`)).status).not.toBe(0);
 			expect(failure(() => sh(linked, `touch '${home}/.codex/other.txt'`)).status).not.toBe(0);
+		});
+
+		it("can create repositories and commit under the per-run directory, which the wrapper deletes", () => {
+			sh(run, "git init -q repo && cd repo && echo x > f && git add f && git commit -q -m inner");
+			expect(git(join(run, "repo"), "log", "-1", "--format=%s").toString().trim()).toBe("inner");
+			rmSync(join(run, "repo"), { recursive: true, force: true });
+		});
+
+		it("commits only the named paths, and stashes and restores changes", () => {
+			sh(linked, "echo a > pa && echo b > pb && git add pa pb && git commit -q -m both");
+			sh(linked, "echo a2 > pa && echo b2 > pb && git commit -q -m partial -- pa");
+			expect(git(linked, "show", "--stat", "--format=%s", "HEAD").toString()).toContain("pa");
+			expect(git(linked, "show", "--stat", "--format=%s", "HEAD").toString()).not.toContain("pb");
+			sh(linked, "git stash && git stash pop");
+			expect(readFileSync(join(linked, "pb"), "utf8")).toBe("b2\n");
 		});
 
 		it("can write the per-run directory", () => {

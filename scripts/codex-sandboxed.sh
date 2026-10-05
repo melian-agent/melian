@@ -74,6 +74,9 @@ dynamic_rules() {
       filters literal "$admin/$p" "$admin/$p.lock"
     done
     filters subpath "$admin/logs"
+    # git commit <paths> and git commit --only lock next-index-<pid>.lock; git stash writes index.stash.<pid> and its .lock.
+    printf '  (regex #"^%s/next-index-[0-9]+\\.lock$")\n' "$(regex_path "$admin")"
+    printf '  (regex #"^%s/index\\.stash\\.[0-9]+(\\.lock)?$")\n' "$(regex_path "$admin")"
     for p in sessions log cache tmp ipc thread-writer-locks mcp-oauth-locks attachments; do
       filters subpath "$codex/$p"
     done
@@ -96,14 +99,17 @@ dynamic_rules() {
   # Each name is spelt out in both cases: APFS ignores case, and git finds "<dir>/.GIT".
   # Git itself never writes a .git component. It writes HEAD under refs/ and logs/ (origin/HEAD,
   # logs/HEAD), so those subtrees deny an objects component instead, which a repository also needs.
-  local codex_dirs=() d
+  # The run directory needs no deny: the wrapper removes it on exit, so a repository planted there is gone
+  # before the host could enter it. A scratch directory apart from it persists, so it keeps the deny.
+  local codex_dirs=() persistent=("$worktree") d
+  if [ "$(real "$scratch")" != "$(real "$run")" ]; then persistent+=("$scratch"); fi
   for d in sessions log cache tmp ipc thread-writer-locks mcp-oauth-locks attachments; do codex_dirs+=("$codex/$d"); done
   {
-    for p in "$worktree" "$scratch" "$run" "$common/objects" "$common/refs" "$common/logs" "$admin/logs" \
+    for p in "${persistent[@]}" "$common/objects" "$common/refs" "$common/logs" "$admin/logs" \
       ${codex_dirs[@]+"${codex_dirs[@]}"}; do
       printf '  (regex #"^%s/(.*/)?[.][gG][iI][tT](/|$)")\n' "$(regex_path "$p")"
     done
-    for p in "$worktree" "$scratch" "$run" "$common/objects" ${codex_dirs[@]+"${codex_dirs[@]}"}; do
+    for p in "${persistent[@]}" "$common/objects" ${codex_dirs[@]+"${codex_dirs[@]}"}; do
       printf '  (regex #"^%s/(.*/)?[hH][eE][aA][dD]$")\n' "$(regex_path "$p")"
     done
     for p in "$common/refs" "$common/logs" "$admin/logs"; do
