@@ -638,12 +638,15 @@ function planned(options: ReviewOptions): ReviewOptions {
 function ranOn(
 	lenses: readonly LensRun[],
 	result: LensResult | undefined,
-): Map<string, { scope: string; model: string }[]> {
-	const ran = new Map<string, { scope: string; model: string }[]>();
+): Map<string, { scope: string; level: ScrutinyLevel; model: string }[]> {
+	const ran = new Map<string, { scope: string; level: ScrutinyLevel; model: string }[]>();
 	for (const lens of lenses) {
 		const outcome = result?.[lens.key];
 		if (outcome?.status !== "done" || outcome.model === undefined) continue;
-		ran.set(lens.name, [...(ran.get(lens.name) ?? []), { scope: lens.coverage.scope, model: outcome.model }]);
+		ran.set(lens.name, [
+			...(ran.get(lens.name) ?? []),
+			{ scope: lens.coverage.scope, level: lens.level, model: outcome.model },
+		]);
 	}
 	return ran;
 }

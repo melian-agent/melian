@@ -467,7 +467,7 @@ describe("triage", () => {
 		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
 	});
 
-	it("keeps each folder variant of a lens to its own band, and asks one question for both", async () => {
+	it("judges each folder variant on its own level's model, and asks one question for both", async () => {
 		writeFiles(repo, {
 			"services/.melian/lenses/correctness/LENS.md": lines(
 				"---",
@@ -482,11 +482,38 @@ describe("triage", () => {
 		gitIn(repo, "commit", "--quiet", "-m", "a payments service");
 		writeFiles(repo, { "services/melian.yaml": lines("lenses:", "  correctness:", "    level: { floor: deep }") });
 		const variants = await Lens.load(repo, { kind: "worktree" }, ["src/user.ts", "services/pay.ts"]);
+		const medium = `${fake.ref("medium").provider}/medium`;
+		const heavy = `${fake.ref("heavy").provider}/heavy`;
+		const models: MelianConfig["models"] = {
+			medium: { model: medium, accept: [medium], acceptOverridden: false },
+			heavy: { model: heavy, accept: [heavy], acceptOverridden: false },
+		};
+		const planned = { ...config, models };
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config: planned,
+			routes: { committed: models, overridden: {}, lensTiers: {}, retiered: {} },
+			catalog,
+			credentials,
+			lenses: variants,
+			checks: ["lens.correctness"],
+		});
 		const decider = choosing("quick");
 		await open(decider);
 		scriptConversations(fake, [{ match: correctness, replies: [done, done] }]);
 
-		const reviewed = await review({ decider, lenses: variants, policy: "worktree" });
+		const reviewed = await reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config: planned,
+			lenses: variants,
+			standards: [],
+			models: fake.review,
+			checks: ran,
+			policy: { kind: "worktree" },
+			decider,
+			plan,
+		});
 
 		const [request] = decider.requests;
 		expect(request!.questions.map((question) => [question.id, question.options])).toEqual([
@@ -497,6 +524,10 @@ describe("triage", () => {
 			.map((check) => check.level)
 			.sort();
 		expect(levels).toEqual(["deep", "quick"]);
+		expect(reviewed.verdict.status).toBe("passed");
+		expect(
+			reviewed.verdict.ran?.filter((check) => check.name === "lens.correctness").map((check) => check.lineage),
+		).toEqual([undefined, undefined]);
 	});
 
 	it("records a decision that failed, and runs every lens at its default level with a note", async () => {
@@ -958,7 +989,7 @@ describe("escalation under a review plan", () => {
 		expect(lensRecord(reviewed)!.reason).toContain("escalated from quick to careful");
 		// The map the plan marks from holds the careful run's model, not the quick run's.
 		const marked = mark.mock.calls.at(-1)![1]!;
-		expect(marked.get("correctness")).toEqual([{ scope: "", model: heavy }]);
+		expect(marked.get("correctness")).toEqual([{ scope: "", level: "careful", model: heavy }]);
 		// The refusal callback asked about the escalated run on the model it finished on.
 		expect(judge.mock.calls).toContainEqual(["correctness", "careful", heavy, ""]);
 	});
