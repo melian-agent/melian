@@ -1,6 +1,7 @@
 import { rmSync } from "node:fs";
 import {
 	Changeset,
+	type CheckRecord,
 	defaultConfig,
 	Lens,
 	type LensSettings,
@@ -414,6 +415,57 @@ describe("a lens run a later review replaced", () => {
 		await running;
 		return { requests, findings: await readFindings(harness, root.id, revision, context) };
 	}
+
+	it("records no verdict and leaves the newer run in the index when a review's lens run was replaced", async () => {
+		let release = () => {};
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let reached = () => {};
+		const asked = new Promise<void>((resolve) => {
+			reached = resolve;
+		});
+		const answer = async (_: readonly Message[], model: string) => {
+			if (model === "backup") {
+				reached();
+				await held;
+			}
+			return fauxAssistantMessage("No findings.");
+		};
+		scriptConversations(fake, [
+			{ match: correctness, replies: [answer, answer, answer] },
+			{ match: contracts, replies: [answer, answer, answer] },
+		]);
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const checks: CheckRecord[] = [
+			{ name: "guardrails", status: "ran" },
+			{ name: "static.biome", status: "ran" },
+			{ name: "static.tsc", status: "ran" },
+			{ name: "decisions.fast", status: "skipped", reason: "no decision provider is configured" },
+		];
+		const on = (model: string): MelianConfig => ({
+			...defaultConfig,
+			tiers: twoLensTiers,
+			models: { heavy: { model } },
+		});
+		const review = (model: string) =>
+			reviewChangeset({ harness, changeset, config: on(model), lenses, standards: [], models: fake.review, checks });
+		// Route A holds its lenses mid-run; route B replaces the run and finishes; then A's held request answers.
+		const first = review(backup).catch((error: unknown) => error);
+		await asked;
+		const second = review(heavy);
+		release();
+		const [replaced, current] = [await first, await second];
+
+		expect(replaced).toMatchObject({ code: "superseded" });
+		expect(current.verdict.status).toBe("passed");
+		const root = await harness.root(context);
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revisionKey(changeset.revision)];
+		expect(entry?.task).toBeDefined();
+		expect(entry?.lenses.every((lens) => lens.endsWith(` on ${heavy}`))).toBe(true);
+		const named = await harness.getTask(entry!.task as TaskId, context);
+		expect(named?.state).toMatchObject({ status: "terminal", outcome: { status: "completed" } });
+	});
 
 	it.each([
 		["another run", 999_999],

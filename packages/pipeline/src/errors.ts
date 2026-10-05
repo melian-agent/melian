@@ -74,7 +74,8 @@ export type ReviewErrorCode =
 	| "notInstalled"
 	| "lensFailed"
 	| "allModelsFailed"
-	| "adjudicationFailed";
+	| "adjudicationFailed"
+	| "superseded";
 
 /**
  * A review could not run or finish. `lenses` names the lenses involved, `models` the models tried when every model of

@@ -625,13 +625,17 @@ async function startAdjudication(
 	input: AdjudicationTaskInput,
 	lenses: readonly LensRun[],
 	context: Context,
-): Promise<TaskId<AdjudicationResult>> {
+): Promise<TaskId<AdjudicationResult> | undefined> {
 	const root = await harness.root(context);
 	const key = JSON.stringify(input);
 	const selection = selectionOf(lenses);
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const known = index.reviews[revisionKey(input)];
+		// A review whose lenses ran owns the entry only while it still names their selection. Problem: once a later review
+		// replaced this one's lens task, rewriting the entry here dropped the newer run's task, and the guards then read
+		// that live run as superseded. Solution: a replaced review adjudicates nothing.
+		if (lenses.length > 0 && known?.lenses.join("\n") !== selection.join("\n")) return undefined;
 		// A failed adjudication is always rerun: it is cheap, and its failure, such as a base commit a shallow clone had
 		// not fetched yet, may have passed.
 		const retry = [...undecided, "failed"];
@@ -735,7 +739,7 @@ function account(
  *
  * Throws core's `ModelRoutingError` for a tier with no model, and {@link ReviewError}: `noAvailableModel` when no model
  * of a tier has credentials, `notInstalled` when the harness lacks {@link lensExtension}, `adjudicationFailed` when no
- * verdict was recorded, `allModelsFailed` when every model of a lens's route failed, naming them, and `lensFailed` when
+ * verdict was recorded, `superseded` when a later review replaced this one's lens run, `allModelsFailed` when every model of a lens's route failed, naming them, and `lensFailed` when
  * a lens did not finish for another reason. The last two carry the findings reported so far and the `not-reviewed`
  * verdict already recorded.
  */
@@ -862,6 +866,13 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		plan: request.plan,
 	});
 	const adjudication = await startAdjudication(harness, input, lenses, context);
+	if (adjudication === undefined) {
+		throw new ReviewError(
+			"superseded",
+			`a later review of ${reviewed} replaced this one's lens run, so this review records no verdict`,
+			{ lenses: lenses.map((lens) => lens.name) },
+		);
+	}
 	const forget = (index: ReviewIndexState) => {
 		const entry = index.reviews[reviewed];
 		if (entry?.adjudication?.task !== adjudication) return;
