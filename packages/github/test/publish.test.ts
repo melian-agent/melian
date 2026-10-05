@@ -514,6 +514,32 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.statuses.at(-1)).toMatchObject({ target_url: copy.html_url });
 	});
 
+	it("repairs an unrecorded ledger-refusal status after publication succeeds", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne(lensScript(emptyName, nanRetries, trimmedGreeting));
+		await publish(github, changeset);
+		const root = (await harness!.root(context)).id;
+		const head = changeset.revision.head;
+		const recorded = await readPublished(harness!, root, head, context);
+		expect(recorded?.status?.state).toBe("success");
+		state.statuses.push({
+			sha: head,
+			state: "error",
+			description: "ledger unavailable; restore storage or delete the ledger comment by hand",
+			context: statusContext,
+			target_url: state.ledgers[0]!.html_url,
+		});
+		expect((await readPublished(harness!, root, head, context))?.status).toEqual(recorded?.status);
+
+		await publish(github, changeset);
+
+		expect(state.statuses.at(-1)).toMatchObject({
+			sha: head,
+			state: "success",
+			description: recorded!.status!.description,
+			target_url: state.ledgers[0]!.html_url,
+		});
+	});
+
 	it("sets the status and finishes when a resolved finding's thread was deleted", async () => {
 		const { fake, github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);

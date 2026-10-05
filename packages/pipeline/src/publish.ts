@@ -425,7 +425,13 @@ function publishTask(provider: ReviewProvider) {
 				const postStatus = async (status: ReviewStatus) => {
 					await revalidate();
 					const ledgerUrl = (await runtime.snapshot(LedgerDocument, root, context))?.comment?.url;
-					await provider.setStatus(head, status, ledgerUrl);
+					const shown = await provider.getStatus(head);
+					if (
+						shown?.state !== status.state ||
+						(await read()).revisions[head]?.status?.description !== status.description ||
+						shown.targetUrl !== ledgerUrl
+					)
+						await provider.setStatus(head, status, ledgerUrl);
 					await runtime.commit(async (tx) => {
 						const document = await tx.doc(PublishedDocument, root);
 						if (!document.order.includes(head)) document.order = [...document.order, head];
@@ -468,10 +474,7 @@ function publishTask(provider: ReviewProvider) {
 					// The status comes first, so the head carries one even when its review cannot be posted, and before the
 					// replies, so a thread that cannot take a reply never holds back the check.
 					const status = verdict.reviewStatus();
-					const shown = (await read()).revisions[head]?.status;
-					if (shown?.state !== status.state || shown.description !== status.description) {
-						await postStatus(status);
-					}
+					await postStatus(status);
 					// A pending round left by a failed run is posted as planned, under its own verdict. If the head's verdict
 					// changed since, a second round then posts the current one, so the last review matches the status.
 					for (let round = 0; round < 2; round++) {
@@ -675,16 +678,7 @@ function publishTask(provider: ReviewProvider) {
 							return undefined;
 						}, context);
 					}
-					if ((await read()).revisions[head]?.ledgerUrl !== ledger.url) {
-						await revalidate();
-						const shown = await provider.getStatus(head);
-						if (shown?.state !== status.state || shown.targetUrl !== ledger.url)
-							await provider.setStatus(head, status, ledger.url);
-						await runtime.commit(async (tx) => {
-							(await tx.doc(PublishedDocument, root)).revisions[head]!.ledgerUrl = ledger.url;
-							return undefined;
-						}, context);
-					}
+					await postStatus(status);
 					await runtime.commit(() => {
 						const abandoned = structuredClone(record.abandoned ?? []);
 						const done: PublishOutcome = {
