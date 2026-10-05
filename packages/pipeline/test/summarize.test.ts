@@ -362,6 +362,51 @@ describe("walkthrough summaries", () => {
 		);
 		expect(JSON.stringify(doc)).not.toContain("private task detail");
 	});
+	it("starts no third task after two terminal failed summaries across reviews", async () => {
+		await harness.close(context);
+		const started: TaskId[] = [];
+		const failure = defineTask<unknown, { phase: "spawn" }, string>({
+			name: "melian.summarize",
+			version: 1,
+			initial: () => ({ phase: "spawn" }),
+			phases: {
+				spawn: async (_task, runtime, context) => {
+					started.push(runtime.taskId);
+					await runtime.commit(
+						() => ({ status: "terminal", outcome: { status: "failed", error: { message: "Summary failed." } } }),
+						context,
+					);
+				},
+			},
+			abort: async (_task, runtime, context) => {
+				await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+			},
+		});
+		const registry = createRegistry();
+		registry.install(defineExtension({ name: "summary-failure", tasks: [failure] }));
+		harness = await openHarness(createMemoryStorage(), { models: models.models, registry });
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).provenance = {
+				[revision]: { kind: "pull-request", policy: "config", manifest: [], lenses: [] },
+			};
+		}, context);
+		for (let review = 0; review < 2; review++) {
+			await summarize();
+			expect(started).toHaveLength(review + 1);
+			expect((await harness.getTask(started[review]!, context))?.state).toMatchObject({
+				status: "terminal",
+				outcome: { status: "failed" },
+			});
+		}
+		expect(new Set(started).size).toBe(2);
+		const doc = await summarize();
+		expect(started).toHaveLength(2);
+		expect(doc?.walkthroughAttempts?.[revision]).toBe(2);
+		expect(doc?.walkthroughs?.[revision]).toBeUndefined();
+		expect(doc?.walkthroughNotes?.[revision]).toBe("No walkthrough available. The summariser failed.");
+	});
 
 	it("bounds total input across large changed files", async () => {
 		rmSync(repo, { recursive: true, force: true });
