@@ -14,49 +14,62 @@ real() {
   if [ -d "$dir" ]; then echo "$(cd "$dir" && pwd -P)/$(basename "$1")"; else echo "$1"; fi
 }
 
+# Exits 64 on a path with a backslash, double quote, or newline: it would break out of a profile string.
+check_path() {
+  case $1 in
+    *[\\\"]* | *$'\n'*) echo "codex-sandboxed: path holds a backslash, quote, or newline: $1" >&2; exit 64 ;;
+  esac
+}
+
 # Emits one seatbelt filter per path: (subpath) for a directory, (literal) otherwise.
 filters() {
-  local kind=$1 p; shift
+  local kind=$1 p r; shift
   for p in "$@"; do
-    printf '  (%s "%s")\n' "$kind" "$(real "$p")"
+    r=$(real "$p")
+    check_path "$r"
+    printf '  (%s "%s")\n' "$kind" "$r"
   done
 }
 
-# Prints the rules appended to the fixed profile: write allowances, then write and read denials. Arguments: worktree, scratch, tmpdir.
+# Prints the rules appended to the fixed profile: write allowances, then write and read denials.
+# Arguments: worktree, scratch, run directory. Only a linked worktree is allowed: the main checkout's
+# worktree allowance would cover its .git, and a task could rename it and put its own in place.
 dynamic_rules() {
-  local worktree=$1 scratch=$2 tmpdir=$3
+  local worktree=$1 scratch=$2 run=$3
   local common admin codex="$HOME/.codex" p
   common=$(real "$(cd "$worktree" && git rev-parse --path-format=absolute --git-common-dir)")
   admin=$(real "$(cd "$worktree" && git rev-parse --path-format=absolute --git-dir)")
+  if [ "$admin" = "$common" ] || [ ! -f "$worktree/.git" ]; then
+    echo "codex-sandboxed: $worktree is not a linked worktree; run from one beside the checkout (git worktree add)" >&2
+    exit 64
+  fi
 
   echo "(allow file-write*"
-  for p in "$worktree" "$scratch" "$tmpdir" /private/tmp /private/var/folders "$HOME/.npm" \
-    "$common/objects" "$common/refs" "$common/logs"; do
-    [ -e "$p" ] && filters subpath "$p"
-  done
-  for p in "$common/packed-refs" "$common/packed-refs.lock"; do filters literal "$p"; done
-  if [ "$admin" != "$common" ]; then
-    filters subpath "$admin"
-  else
-    for p in HEAD HEAD.lock ORIG_HEAD ORIG_HEAD.lock FETCH_HEAD index index.lock COMMIT_EDITMSG; do
-      filters literal "$common/$p"
+  {
+    filters subpath "$worktree" "$scratch" "$run" "$common/objects" "$common/refs" "$common/logs"
+    filters literal "$common/packed-refs" "$common/packed-refs.lock"
+    for p in HEAD ORIG_HEAD FETCH_HEAD MERGE_HEAD MERGE_MSG MERGE_MODE AUTO_MERGE CHERRY_PICK_HEAD \
+      REVERT_HEAD COMMIT_EDITMSG index gc.pid shallow; do
+      filters literal "$admin/$p" "$admin/$p.lock"
     done
-  fi
-  for p in sessions log cache tmp .tmp shell_snapshots memories ipc thread-writer-locks mcp-oauth-locks attachments; do
-    [ -e "$codex/$p" ] && filters subpath "$codex/$p"
-  done
-  for p in history.jsonl session_index.jsonl models_cache.json installation_id version.json \
-    cloud-requirements-cache.json .sqlite-maintenance.lock; do
-    filters literal "$codex/$p"
-  done
-  printf '  (regex #"^%s/[^/]+\\.sqlite(-shm|-wal)?$")\n' "$(real "$codex" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
+    filters subpath "$admin/logs" "$admin/rebase-merge" "$admin/rebase-apply"
+    for p in sessions log cache tmp ipc thread-writer-locks mcp-oauth-locks attachments; do
+      filters subpath "$codex/$p"
+    done
+    for p in history.jsonl session_index.jsonl models_cache.json installation_id version.json \
+      cloud-requirements-cache.json .sqlite-maintenance.lock; do
+      filters literal "$codex/$p"
+    done
+    check_path "$(real "$codex")"
+    printf '  (regex #"^%s/[^/]+\\.sqlite(-shm|-wal)?$")\n' "$(real "$codex" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
+  } | awk '!seen[$0]++'
   echo ")"
 
   echo "(deny file-write*"
   filters subpath "$common/hooks" "$common/info"
-  filters literal "$common/config" "$common/config.lock" "$admin/config.worktree" "$codex/config.toml" "$codex/auth.json"
+  filters literal "$common/config" "$common/config.lock" "$admin/commondir" "$admin/gitdir" "$admin/locked" \
+    "$admin/config.worktree" "$worktree/.git" "$codex/config.toml" "$codex/auth.json"
   filters subpath "$codex/hooks"
-  [ -f "$worktree/.git" ] && filters literal "$worktree/.git"
   echo ")"
 
   echo "(deny file-read*"
@@ -67,12 +80,13 @@ dynamic_rules() {
 }
 
 if [ "${1:-}" = "--print-profile" ]; then
-  [ $# -ge 2 ] || { echo "usage: codex-sandboxed.sh --print-profile <worktree> [scratch-dir]" >&2; exit 64; }
+  [ $# -ge 2 ] || { echo "usage: codex-sandboxed.sh --print-profile <worktree> [scratch-dir [run-dir]]" >&2; exit 64; }
   worktree=$(cd "$2" && pwd -P)
   tmpdir=$(real "${TMPDIR:-/tmp}")
-  scratch=${3:-${CODEX_SANDBOX_SCRATCH:-$tmpdir}}
+  run=${4:-$tmpdir/codex-run}
+  scratch=${3:-${CODEX_SANDBOX_SCRATCH:-$run}}
   cat "$(cd "$(dirname "$0")" && pwd -P)/codex-seatbelt.sb"
-  dynamic_rules "$worktree" "$scratch" "$tmpdir"
+  dynamic_rules "$worktree" "$scratch" "$run"
   exit 0
 fi
 
@@ -91,10 +105,25 @@ log_dir=$(dirname "$log")
 [ -d "$log_dir" ] || { echo "codex-sandboxed: log directory not found: $log_dir" >&2; exit 64; }
 log="$(cd "$log_dir" && pwd -P)/$(basename "$log")"
 tmpdir=$(real "${TMPDIR:-/tmp}")
-scratch=${5:-${CODEX_SANDBOX_SCRATCH:-$tmpdir}}
 profile=$(mktemp "${tmpdir%/}/codex-seatbelt.XXXXXX")
-trap 'rm -f "$profile"' EXIT
-"$0" --print-profile "$worktree" "$scratch" > "$profile"
+run=$(real "$(mktemp -d "${tmpdir%/}/codex-run.XXXXXX")")
+trap 'rm -rf "$profile" "$run"' EXIT
+scratch=${5:-${CODEX_SANDBOX_SCRATCH:-$run}}
+"$0" --print-profile "$worktree" "$scratch" "$run" > "$profile"
+# Codex fails on a first run if these are missing, and the profile allows only what exists by name.
+mkdir -p "$scratch/npm-cache"
+for d in sessions log cache tmp ipc thread-writer-locks mcp-oauth-locks attachments; do mkdir -p "$HOME/.codex/$d"; done
+
+# The sandbox confines writes, not secrets; drop the variables that obviously hold one.
+scrub=()
+while IFS= read -r name; do
+  case $name in
+    GH_TOKEN | GITHUB_TOKEN | NPM_TOKEN | CLAUDE_CODE_OAUTH_TOKEN | CLOUDFLARE_* | *_API_KEY) scrub+=(-u "$name") ;;
+  esac
+done < <(compgen -e)
+
 cd "$worktree"
-# No exec: it would replace the shell and skip the EXIT trap that removes the profile.
-sandbox-exec -f "$profile" codex exec --dangerously-bypass-approvals-and-sandbox --model "$model" -C "$worktree" "$prompt" > "$log" 2>&1
+# No exec: it would replace the shell and skip the EXIT trap that removes the profile and run directory.
+# The prompt follows --, so one that starts with a dash is not read as an option.
+sandbox-exec -f "$profile" env ${scrub[@]+"${scrub[@]}"} TMPDIR="$run" npm_config_cache="$scratch/npm-cache" \
+  codex exec --dangerously-bypass-approvals-and-sandbox --model "$model" -C "$worktree" -- "$prompt" > "$log" 2>&1
