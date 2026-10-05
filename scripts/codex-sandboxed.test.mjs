@@ -4,6 +4,7 @@ import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	readdirSync,
 	readFileSync,
 	realpathSync,
 	rmSync,
@@ -130,8 +131,8 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			`(literal "${admin}/gitdir")`,
 			`(literal "${admin}/locked")`,
 			`(literal "${admin}/config.worktree")`,
-			`(literal "${linked}/.git")`,
-			`(regex #"^${linked.replace(/[[\].*^$+?(){}|\\]/g, "\\$&")}/.*/\\.git(/|$)")`,
+			`(regex #"^${linked.replace(/[[\].*^$+?(){}|\\]/g, "\\$&")}/.*/[.][gG][iI][tT](/|$)")`,
+			`(regex #"^${linked.replace(/[[\].*^$+?(){}|\\]/g, "\\$&")}/[.][gG][iI][tT]$")`,
 			`(literal "${home}/.codex/config.toml")`,
 			`(literal "${home}/.codex/auth.json")`,
 			`(subpath "${home}/.codex/hooks")`,
@@ -271,6 +272,15 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			expect(failure(() => sh(linked, "mkdir -p deep/er/.git")).status).not.toBe(0);
 			expect(existsSync(join(linked, "sub", ".git"))).toBe(false);
 			sh(linked, "echo ok > sub/file");
+		});
+
+		it("cannot create a .git in another case, nested or beside the pointer file", () => {
+			sh(linked, "mkdir -p casesub");
+			expect(failure(() => sh(linked, "mkdir -p casesub/.GIT")).status).not.toBe(0);
+			expect(failure(() => sh(linked, "echo x > casesub/.Git")).status).not.toBe(0);
+			expect(failure(() => sh(linked, "echo x > .GiT")).status).not.toBe(0);
+			expect(readdirSync(join(linked, "casesub"))).toEqual([]);
+			expect(existsSync(join(linked, ".git"))).toBe(true);
 		});
 
 		it("cannot start a rebase, whose todo file the host would later run", () => {

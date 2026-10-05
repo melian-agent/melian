@@ -72,9 +72,13 @@ dynamic_rules() {
   echo "(deny file-write*"
   filters subpath "$common/hooks" "$common/info"
   filters literal "$common/config" "$common/config.lock" "$admin/commondir" "$admin/gitdir" "$admin/locked" \
-    "$admin/config.worktree" "$worktree/.git" "$codex/config.toml" "$codex/auth.json"
+    "$admin/config.worktree" "$codex/config.toml" "$codex/auth.json"
   filters subpath "$codex/hooks"
-  printf '  (regex #"^%s/.*/\\.git(/|$)")\n' "$(real "$worktree" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
+  # Each component is spelt out in both cases: APFS ignores case, and git finds a repository at "<dir>/.GIT".
+  local wt_re
+  wt_re=$(real "$worktree" | sed 's/[][\.*^$+?(){}|]/\\&/g')
+  printf '  (regex #"^%s/.*/[.][gG][iI][tT](/|$)")\n' "$wt_re"
+  printf '  (regex #"^%s/[.][gG][iI][tT]$")\n' "$wt_re"
   echo ")"
 
   echo "(deny file-read*"
