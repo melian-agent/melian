@@ -626,7 +626,12 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 			"decisions:\n  provider: clef\nmodels:\n  light:\n    model: anthropic/claude-haiku-4-5\n",
 		);
 
-		const doctor = melian(repo, ["doctor"]);
+		// A literal key in the user's own secrets file, so the light tier resolves whatever credentials this machine holds.
+		const xdg = userDirectory(
+			"credentials:\n  test-anthropic: { provider: anthropic, key: sk-ant-test-never-printed }\n",
+		);
+
+		const doctor = melian(repo, ["doctor"], xdg);
 
 		expect(doctor.status).toBe(1);
 		expect(doctor.stdout).toMatch(
