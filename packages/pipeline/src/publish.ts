@@ -677,7 +677,9 @@ function publishTask(provider: ReviewProvider) {
 					}
 					if ((await read()).revisions[head]?.ledgerUrl !== ledger.url) {
 						await revalidate();
-						await provider.setStatus(head, status, ledger.url);
+						const shown = await provider.getStatus(head);
+						if (shown?.state !== status.state || shown.targetUrl !== ledger.url)
+							await provider.setStatus(head, status, ledger.url);
 						await runtime.commit(async (tx) => {
 							(await tx.doc(PublishedDocument, root)).revisions[head]!.ledgerUrl = ledger.url;
 							return undefined;

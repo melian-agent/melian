@@ -242,6 +242,9 @@ export function fakeGitHub(
 			await afterWrite(call);
 			return json(created, 201);
 		}
+		const statuses = new RegExp(`^${repoPath}/commits/([0-9a-f]+)/statuses$`).exec(path);
+		if (method === "GET" && statuses !== null)
+			return json(state.statuses.filter((each) => each.sha === statuses[1]).toReversed());
 		const status = new RegExp(`^${repoPath}/statuses/([0-9a-f]+)$`).exec(path);
 		if (method === "POST" && status !== null) {
 			const posted = body as Omit<FakeStatus, "sha">;

@@ -438,6 +438,21 @@ export class GitHubProvider implements ReviewProvider {
 		return threads;
 	}
 
+	async getStatus(revision: string): Promise<{ readonly state: string; readonly targetUrl?: string } | undefined> {
+		const statuses = await call(`read the status of ${revision}`, () =>
+			this.octokit.paginate(this.octokit.rest.repos.listCommitStatusesForRef, {
+				owner: this.owner,
+				repo: this.repo,
+				ref: revision,
+				per_page: 100,
+			}),
+		);
+		const status = statuses.find((each) => each.context === statusContext);
+		return status === undefined
+			? undefined
+			: { state: status.state, ...(status.target_url === null ? {} : { targetUrl: status.target_url }) };
+	}
+
 	async setStatus(revision: string, status: ReviewStatus, ledgerUrl?: string): Promise<void> {
 		const description =
 			status.description.length <= maxDescription

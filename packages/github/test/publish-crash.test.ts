@@ -62,10 +62,16 @@ async function killAtReview(
 	database: string,
 	stateFile: string,
 	log: string,
-	event: "review-posted" | "review-requested" | "ledger-edited" = "review-posted",
+	event: "review-posted" | "review-requested" | "ledger-edited" | "ledger-status-posted" = "review-posted",
 ): Promise<void> {
 	const mode =
-		event === "review-posted" ? "after-review" : event === "ledger-edited" ? "after-ledger-edit" : "before-review";
+		event === "review-posted"
+			? "after-review"
+			: event === "ledger-edited"
+				? "after-ledger-edit"
+				: event === "ledger-status-posted"
+					? "after-ledger-status"
+					: "before-review";
 	// The condition resolves workspace packages to their sources, as Vitest does, rather than to a stale or absent build.
 	const child = spawn(
 		process.execPath,
@@ -94,6 +100,50 @@ async function killAtReview(
 }
 
 describe("publishing across a crash", { timeout: 30_000 }, () => {
+	it.each(["matches", "state differs", "URL differs"])(
+		"recovers an unrecorded ledger status when the provider status %s",
+		async (current) => {
+			const database = join(dir, "review.sqlite");
+			const stateFile = join(dir, "github.json");
+			const log = join(dir, "publish.log");
+			const fake = scenarioModels();
+			const reviewing = pullRequestState();
+			harness = await openPublishHarness(await openSqliteStorage(database), fake, providerFor(reviewing));
+			const { changeset, review } = await reviewScenario(repo, harness, fake, lensScript(unsafeManager));
+			await review;
+			await harness.close(context);
+			harness = undefined;
+			moveTo(reviewing, changeset);
+			writeFileSync(stateFile, JSON.stringify(reviewing));
+
+			await killAtReview(database, stateFile, log, "ledger-status-posted");
+
+			const state = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
+			expect(state.statuses).toHaveLength(2);
+			const linked = state.statuses.at(-1)!;
+			expect(linked).toMatchObject({ state: "failure", target_url: state.ledgers[0]!.html_url });
+			if (current === "state differs") state.statuses.push({ ...linked, state: "success" });
+			if (current === "URL differs") state.statuses.push({ ...linked, target_url: "https://example.test/other" });
+			state.calls = [];
+			const github = providerFor(state);
+			harness = await openPublishHarness(await openSqliteStorage(database), scenarioModels(), github);
+			await publishReview({
+				harness,
+				provider: github,
+				changeset,
+				pullRequest: await github.pullRequest(7),
+				base: changeset.revision.base,
+			});
+
+			expect(posts(state).map(({ path }) => path)).toEqual(
+				current === "matches" ? [] : [`/repos/melian-agent/example/statuses/${changeset.revision.head}`],
+			);
+			expect(state.statuses.at(-1)).toEqual(linked);
+			expect(state.reviews).toHaveLength(1);
+			expect(state.ledgers).toHaveLength(1);
+		},
+	);
+
 	// An installation token cannot read /user, so the rerun cannot tell who posted the review; the signature alone has
 	// to prove it is Melian's.
 	it.each([

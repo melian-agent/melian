@@ -708,6 +708,7 @@ describe("documents stored before evidence became a list", () => {
 				replyResolved: async () => undefined,
 				resolveThread: async () => false,
 				setStatus: async () => undefined,
+				getStatus: async () => undefined,
 				findPublished: async () => ({ threads: {}, replies: {} }),
 			};
 			return { provider, posted, pullRequest };

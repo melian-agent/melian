@@ -229,6 +229,7 @@ async function publisher(path: string) {
 		setStatus: async (_, status) => {
 			statuses.push(status);
 		},
+		getStatus: async () => undefined,
 		findPublished: async () => ({ threads: {}, replies: {} }),
 	};
 	const changeset = await Changeset.resolve(repo, "main...feature");
