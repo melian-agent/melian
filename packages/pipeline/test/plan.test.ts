@@ -288,6 +288,36 @@ describe("reviewChangeset with a plan", () => {
 		expect(second.review.verdict.status).toBe("passed");
 	});
 
+	it("drops an earlier run's sightings even when a review that selected no lens left the index naming no run", async () => {
+		await planned({ model: heavy, accept: [heavy] }, backup, { reports: "backup" });
+		// A review of the fast tier selects no lens, and rewrites the revision's entry without a lens task.
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const config: MelianConfig = { ...defaultConfig, tiers: twoLensTiers, models: { heavy: { model: heavy } } };
+		await reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			tier: "fast",
+			checks: [
+				{ name: "guardrails", status: "ran" },
+				{ name: "static.biome", status: "ran" },
+				{ name: "static.tsc", status: "ran" },
+				{ name: "decisions.fast", status: "skipped", reason: "no decision provider is configured" },
+			],
+		});
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		expect((await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision]?.task).toBeUndefined();
+
+		const again = await planned({ model: heavy, accept: [heavy] });
+
+		expect(again.answered).toEqual(["heavy", "heavy"]);
+		expect(again.review.verdict.attention()).toEqual([]);
+	});
+
 	it("treats an index entry from before routes joined its key as stale, and reads only the run that replaces it", async () => {
 		await planned({ model: heavy, accept: [heavy] }, undefined, { reports: "heavy" });
 		// The entry as review index version 2 stored it: each lens by name and version, with no route.

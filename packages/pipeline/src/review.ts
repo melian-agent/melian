@@ -561,11 +561,10 @@ async function runLenses(
 			!(rerun && (await anyLensFailed(tx, known.task, refused)));
 		if (attach) return known.task as TaskId<LensResult>;
 		await recordRevision(tx, root.id, revision);
-		// The replacement run reports afresh, so the replaced run's sightings leave the revision in the same commit.
-		if (known?.task !== undefined) {
-			const sources = input.lenses.map((lens) => ({ check: `lens.${lens.name}`, version: lens.version }));
-			await clearSightings(tx, root.id, revision, sources);
-		}
+		// The new run reports afresh, so any earlier run's sightings of these lenses leave the revision in the same commit,
+		// whether or not the index still names that run: a review that selected no lens rewrites the entry without one.
+		const sources = input.lenses.map((lens) => ({ check: `lens.${lens.name}`, version: lens.version }));
+		await clearSightings(tx, root.id, revision, sources);
 		const created = await tx.createTask(LensTask, input, { ownership: { kind: "conversation" } });
 		replaced = known?.task;
 		index.reviews[revision] = { task: created, lenses: selection };
