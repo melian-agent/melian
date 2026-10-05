@@ -6,6 +6,10 @@ Adjudication searches every stored round newest first and writes to the round ho
 
 Metrics filters select whole changesets by first comparison time. Candidate checks, backlog, and drain use the whole clone. Candidates cluster valid external findings Melian missed; Melian's own findings remain available through the lower-level repeat query.
 
+Backlog takes the newest judgement of each finding across every round, even from a round that has since dropped the finding, so a golden discharged with `--golden none` stays discharged; a finding no round holds owes nothing.
+
+The export has no Fix commit column: the six columns are those the adjudication can fill, and a column that always read "Not recorded" implied data Melian does not keep.
+
 Stats, backlog, and export use storage reads without a harness or durable commit. SQLite schema setup still requires writable storage. Export reaches stored rounds without a current-head review, uses six-column tables with bounded first-paragraph summaries, prints author names without emails, and omits the drain notice.
 
 Why: A reviewer that reports nothing must still be measured. A pending report must not become an assumed miss. Debt from a finding dropped in a later review must remain reachable until the maintainer declares it discharged. A date filter must not hide that debt.
