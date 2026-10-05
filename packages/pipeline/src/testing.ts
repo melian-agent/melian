@@ -17,7 +17,7 @@ import {
 import { createModels, type MutableModels } from "@earendil-works/pi-ai/models";
 import type { NamedCredential } from "@melian-agent/core";
 import { MelianCredentialStore, PiCredentialStore } from "./credentials.ts";
-import type { HarnessOptions, ModelRef } from "./harness.ts";
+import type { CredentialStore, HarnessOptions, ModelRef } from "./harness.ts";
 import { type ReviewModels, wrapModels } from "./models.ts";
 
 export { type FauxProviderHandle, fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
@@ -37,6 +37,7 @@ export function createFakeModels(
 	options: RegisterFauxProviderOptions & {
 		readonly auth?: "oauth" | "none";
 		readonly credentials?: readonly NamedCredential[];
+		readonly credentialStore?: CredentialStore;
 		readonly authPath?: string;
 	} = {},
 ): FakeModels {
@@ -53,7 +54,8 @@ export function createFakeModels(
 					new PiCredentialStore(options.authPath),
 					{},
 				);
-	const models: MutableModels = createModels({ ...(store === undefined ? {} : { credentials: store }) });
+	const credentials = options.credentialStore ?? store;
+	const models: MutableModels = createModels({ ...(credentials === undefined ? {} : { credentials }) });
 	let auth = provider.provider.auth;
 	if (options.auth === "none") {
 		auth = {};
