@@ -215,6 +215,49 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		expect(lensTasks).toEqual([]);
 	});
 
+	it("does not resume a crashed run on one route once a review on another starts, and reads only the new run", async () => {
+		const database = join(dir, "rerouted.sqlite");
+		const log = join(dir, "rerouted.jsonl");
+		await killWhen("request", (events) => count(events, "model-request") === 2, database, log);
+
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "backup" }] });
+		const askedBy: string[] = [];
+		const answer = (_: readonly Message[], model: string) => {
+			askedBy.push(model);
+			return fauxAssistantMessage("Done.");
+		};
+		scriptConversations(fake, [
+			{ match: "You are the correctness reviewer", replies: [answer, answer] },
+			{ match: "You are the contracts reviewer", replies: [answer, answer] },
+		]);
+		harness = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		const crashed = (await harness.inspect(context)).tasks.find((task) => task.record.kind === "melian.lenses");
+		expect(crashed).toBeDefined();
+		const backup = fake.ref("backup");
+		const { verdict } = await reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config: {
+				...defaultConfig,
+				tiers: twoLensTiers,
+				models: { heavy: { model: `${backup.provider}/${backup.modelId}` } },
+			},
+			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
+			standards: [],
+			models: fake.review,
+		});
+
+		// The crashed run on heavy is aborted before anything resumes it, so only the new run's model is asked.
+		expect(askedBy).toEqual(["backup", "backup"]);
+		const old = await harness.getTask(crashed!.record.id, context);
+		expect(old?.state).toMatchObject({ status: "terminal", outcome: { status: "aborted" } });
+		expect(verdict.ran?.filter((check) => check.name.startsWith("lens."))).toHaveLength(2);
+	});
+
 	it("records no verdict from a crashed adjudication once a new lens selection reviews the head", async () => {
 		const database = join(dir, "superseded.sqlite");
 		const log = join(dir, "superseded.jsonl");

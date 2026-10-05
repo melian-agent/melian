@@ -35,7 +35,7 @@ import {
 } from "./adjudication.ts";
 import { checksExtension } from "./checks.ts";
 import { ReviewError } from "./errors.ts";
-import { findingsVersion, readFindings, recordRevision, revisionKey } from "./findings.ts";
+import { clearSightings, findingsVersion, readFindings, recordRevision, revisionKey } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
@@ -43,6 +43,7 @@ import {
 	configure,
 	createNodeExecutionEnv,
 	createRegistry,
+	type DocumentReader,
 	defineExtension,
 	defineTask,
 	type Harness,
@@ -117,6 +118,17 @@ function modelName(model: ModelReference): string {
 const continuePrompt =
 	"The model reviewing this change failed, and you take over. Continue the review where it stopped: findings already recorded stay recorded, so report only what is still missing. Then answer with one line saying how many findings you reported.";
 
+// Whether the review index names another lens task for the task's revision: a later review replaced this run.
+async function superseded(
+	reader: DocumentReader,
+	input: LensTaskInput,
+	taskId: number,
+	context: Context,
+): Promise<boolean> {
+	const named = (await reader.snapshot(ReviewIndex, input.root, context))?.reviews[revisionKey(input.revision)]?.task;
+	return named !== undefined && named !== taskId;
+}
+
 // Spawns every lens conversation in one commit, so a crash leaves all of them or none; then runs them in parallel.
 // The orchestrating conversation's model is never asked which lenses to run.
 const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
@@ -150,6 +162,7 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 						severities: [...lens.severities],
 						rules: lens.rules.map((rule) => ({ ...rule })),
 						budget: budget.findings,
+						task: runtime.taskId,
 						limits: {
 							...(budget.tokens === undefined ? {} : { tokens: budget.tokens }),
 							...(budget.tools === undefined ? {} : { tools: budget.tools }),
@@ -175,6 +188,13 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 					const lens = task.input.lenses.find((each) => each.key === key)!;
 					// A request ID per attempt: a rerun after a crash finds the attempt it had reached, settled or not.
 					for (let attempt = attempts[key] ?? 0; ; attempt++) {
+						// A task a later review replaced asks no model again, even when a resume restarts it.
+						if (await superseded(runtime, task.input, runtime.taskId, context)) {
+							return [
+								key,
+								{ status: "unanswered", reason: "a later review of this revision replaced this run" },
+							];
+						}
 						const content = attempt === 0 ? lens.prompt : continuePrompt;
 						const request = { type: "input", content, requestId: `lens:${key}:${attempt}` } as const;
 						const settled = await (await child.submit(request, context)).wait(context);
@@ -513,6 +533,7 @@ async function runLenses(
 	const root = await harness.root(context);
 	const revision = revisionKey(input.revision);
 	const selection = selectionOf(input.lenses);
+	let replaced: number | undefined;
 	const taskId = await root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const known = index.reviews[revision];
@@ -523,10 +544,21 @@ async function runLenses(
 			!(rerun && (await anyLensFailed(tx, known.task, refused)));
 		if (attach) return known.task as TaskId<LensResult>;
 		await recordRevision(tx, root.id, revision);
+		// The replacement run reports afresh, so the replaced run's sightings leave the revision in the same commit.
+		if (known?.task !== undefined) {
+			const sources = input.lenses.map((lens) => ({ check: `lens.${lens.name}`, version: lens.version }));
+			await clearSightings(tx, root.id, revision, sources);
+		}
 		const created = await tx.createTask(LensTask, input, { ownership: { kind: "conversation" } });
+		replaced = known?.task;
 		index.reviews[revision] = { task: created, lenses: selection };
 		return created;
 	}, context);
+	// Before anything resumes the replaced run: it asks no model again and its reports no longer count, but a live
+	// task would still hold its conversations open.
+	if (replaced !== undefined && replaced !== taskId) {
+		await harness.abortTask(replaced as TaskId, context).catch(() => undefined);
+	}
 	const forget = (index: ReviewIndexState) => {
 		if (index.reviews[revision]?.task === taskId) index.reviews = omit(index.reviews, revision);
 	};

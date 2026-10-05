@@ -13,6 +13,7 @@ import {
 	createMemoryStorage,
 	createReviewRegistry,
 	type Harness,
+	type Message,
 	openHarness,
 	planInputs,
 	readProvenance,
@@ -23,13 +24,26 @@ import {
 	createFakeModels,
 	type FakeModels,
 	fauxAssistantMessage,
+	fauxToolCall,
 	scriptConversations,
+	systemPromptOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
 const correctness = "You are the correctness reviewer";
+
+// The one finding a reporting model's correctness lens reports, on the line the change rewrites.
+const wrongResult = {
+	file: "src/a.ts",
+	line: 1,
+	rule: "wrong-result",
+	severity: "P2",
+	explanation: { what: "a is 2 now.", why: "This change rewrote it.", fix: "Restore 1." },
+	failureScenario: "Reading a returns 2 where every caller expects 1.",
+	evidence: [{ file: "src/a.ts", line: 1, role: "cause" }],
+};
 const contracts = "You are the contracts reviewer";
 
 let repo: string;
@@ -69,6 +83,7 @@ async function planned(
 		light?: string;
 		lightFallbacks?: string[];
 		fails?: string;
+		reports?: string;
 		rerun?: boolean;
 		contractsPaths?: string[];
 	} = {},
@@ -109,15 +124,19 @@ async function planned(
 	});
 	const changeset = await Changeset.resolve(repo, "main...feature");
 	const answered: string[] = [];
-	const answer = (_: unknown, modelId: string) => {
+	const answer = (messages: readonly Message[], modelId: string) => {
 		answered.push(modelId);
 		if (modelId === options.fails)
 			return fauxAssistantMessage("", { stopReason: "error", errorMessage: "503 overloaded_error" });
+		const reporting = modelId === options.reports && systemPromptOf(messages).includes(correctness);
+		if (reporting && !messages.some((message) => message.role === "toolResult")) {
+			return fauxAssistantMessage(fauxToolCall("report_finding", wrongResult), { stopReason: "toolUse" });
+		}
 		return fauxAssistantMessage("No findings.");
 	};
 	scriptConversations(fake, [
-		{ match: correctness, replies: [answer, answer] },
-		{ match: contracts, replies: [answer, answer] },
+		{ match: correctness, replies: [answer, answer, answer] },
+		{ match: contracts, replies: [answer, answer, answer] },
 	]);
 	const review = await reviewChangeset({
 		harness,
@@ -252,6 +271,17 @@ describe("reviewChangeset with a plan", () => {
 		});
 		// The stored outcome says done, but the plan refuses the model it finished on, so --rerun does not reuse it.
 		expect([...again.answered].sort()).toEqual(["backup", "backup", "heavy", "heavy"]);
+	});
+
+	it("reads only the sightings of the run on the route the review ran, not an earlier run's", async () => {
+		const first = await planned({ model: heavy, accept: [heavy] }, backup, { reports: "backup" });
+		const second = await planned({ model: heavy, accept: [heavy] });
+
+		expect(first.review.verdict.attention().map((finding) => finding.ruleId)).toEqual(["wrong-result"]);
+		expect(second.answered).toEqual(["heavy", "heavy"]);
+		expect(second.review.findings).toEqual([]);
+		expect(second.review.verdict.attention()).toEqual([]);
+		expect(second.review.verdict.status).toBe("passed");
 	});
 
 	it("runs the committed route with no lineage when the preference file stays on it", async () => {

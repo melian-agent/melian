@@ -361,6 +361,31 @@ export async function dismissFinding(
 	return replaced;
 }
 
+/**
+ * Drops every sighting `sources` made at `revision`, in the commit that starts their replacement run, so a verdict reads
+ * only the run the review index names. Lifecycle records stay, so a dismissal survives the rerun of a finding.
+ */
+export async function clearSightings(
+	tx: Tx,
+	rootConversationId: ConversationId,
+	revision: string,
+	sources: readonly FindingSource[],
+): Promise<void> {
+	const state = await tx.doc(FindingsDocument, rootConversationId);
+	const keys = new Set(sources.map(producerKey));
+	let cleared = false;
+	for (const [id, record] of Object.entries(state.items)) {
+		const atRevision = record.sightings[revision];
+		if (atRevision === undefined || !Object.keys(atRevision).some((key) => keys.has(key))) continue;
+		const kept = Object.fromEntries(Object.entries(atRevision).filter(([key]) => !keys.has(key)));
+		const sightings = { ...record.sightings, [revision]: kept };
+		if (Object.keys(kept).length === 0) delete sightings[revision];
+		state.items[id] = { ...record, sightings };
+		cleared = true;
+	}
+	if (cleared) bump(state, [revision]);
+}
+
 function bump(state: FindingsState, revisions: readonly string[]): void {
 	state.versions = {
 		...state.versions,
