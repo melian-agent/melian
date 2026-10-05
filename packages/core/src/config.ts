@@ -4,7 +4,7 @@ import Type, { type Static, type TSchema } from "typebox";
 import Value from "typebox/value";
 import { parseDocument } from "yaml";
 import { ConfigError, type ConfigErrorCode } from "./errors.ts";
-import { anchorGlob, directoriesUpToRoot, melianPaths, repoPath } from "./paths.ts";
+import { anchorGlob, directoriesUpToRoot, globShapeProblem, melianPaths, repoPath } from "./paths.ts";
 import { compileGlob, compilePattern, Refused } from "./pattern.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 
@@ -589,22 +589,8 @@ const globLists: readonly (readonly string[])[] = [
 // Globs are written relative to their melian.yaml; merging would lose which file that was.
 function anchorPaths(site: Site, directory: string, layer: MelianYaml): MelianYaml {
 	const anchor = (key: string, path: string) => {
-		// The glob engine reads these literally, so `*.{ts,js}` would silently match nothing.
-		if (/[{}[\]]/.test(path)) {
-			throw configError(
-				"invalidValue",
-				site,
-				`"${key}" has ${path}; globs do not support braces or character classes, so list each glob`,
-				{ key },
-			);
-		}
-		// A gitignore habit: `secrets/` reads as the directory, but a glob matches whole paths, so it would match nothing.
-		if (path.endsWith("/")) {
-			const suggestion = `${path.replace(/\/+$/, "")}/**`;
-			throw configError("invalidValue", site, `"${key}" has ${path}, which matches no file; write ${suggestion}`, {
-				key,
-			});
-		}
+		const shape = globShapeProblem(path);
+		if (shape !== undefined) throw configError("invalidValue", site, `"${key}" has ${path}${shape}`, { key });
 		const anchored = anchorGlob(directory, path);
 		if (anchored === undefined) {
 			throw configError("invalidValue", site, `"${key}" has ${path}, which leaves the repository`, { key });
