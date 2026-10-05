@@ -204,8 +204,9 @@ async function spawnLens(tx: Tx, taskId: TaskId, input: LensTaskInput, lens: Len
 	(await tx.doc(LensDocument, created.id)).lens = {
 		name: lens.name,
 		version: lens.version,
-		// A task an older Melian created names no level, and its findings keep naming the lens's version alone.
-		...(lens.level === undefined ? {} : { level: lens.level }),
+		// A run of a version 1 task has no level, since its migration strips it, so its findings name the lens's version
+		// alone, as the review that created it expects.
+		...((lens.level as ScrutinyLevel | undefined) === undefined ? {} : { level: lens.level }),
 		review: input.root,
 		revision: input.revision,
 		tools: [...lens.tools],
@@ -232,13 +233,19 @@ async function spawnLens(tx: Tx, taskId: TaskId, input: LensTaskInput, lens: Len
 const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 	name: "melian.lenses",
 	// Version 2 added escalation: a run's `escalation`, the input's `escalateAt`, the checkpoint's `escalations`, and an
-	// outcome's `escalation`. A version 1 task holds none of them, and runs as it did.
+	// outcome's `escalation`. A version 1 task holds none of them, and runs as it did. Its runs lose their `level`, so
+	// its findings name the lens's version alone, as its review's producers do, and never share a producer with a review
+	// after the upgrade that runs the lens at the same level.
 	version: 2,
 	initial: () => ({ phase: "spawn" }),
-	migrate: (input, checkpoint) => ({
-		input: input as unknown as LensTaskInput,
-		checkpoint: checkpoint as unknown as LensCheckpoint,
-	}),
+	migrate: (input, checkpoint) => {
+		const stored = input as unknown as { lenses: (LensRun & { level?: ScrutinyLevel })[] };
+		const lenses = stored.lenses.map(({ level: _, ...run }) => run);
+		return {
+			input: { ...stored, lenses } as unknown as LensTaskInput,
+			checkpoint: checkpoint as unknown as LensCheckpoint,
+		};
+	},
 	phases: {
 		spawn: async (task, runtime, context) => {
 			await runtime.commit(async (tx) => {

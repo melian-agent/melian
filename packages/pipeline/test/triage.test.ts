@@ -812,8 +812,9 @@ describe("reviews recorded before levels joined the keys", () => {
 				result: { [`correctness@${lens.version}`]: { status: "done" } },
 			});
 			const findings = await readFindings(current, root.id, revisionKey({ base, head }), context);
+			// The migration strips the run's level, so its findings name the version alone, as its own review expects.
 			expect(findings.map((finding) => finding.properties.source)).toEqual([
-				{ check: "lens.correctness", version: `${lens.version}@careful` },
+				{ check: "lens.correctness", version: lens.version },
 			]);
 		} finally {
 			await current.close(context);
