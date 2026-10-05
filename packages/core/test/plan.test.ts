@@ -511,6 +511,15 @@ describe("a resolved plan", () => {
 		expect(plan({ verifier: { model: gpt } }, { openai: "OPENAI_API_KEY" }).providers()).toEqual([]);
 	});
 
+	it("escapes a model name from melian.yaml in every line it prints", () => {
+		const forged = "openai/gpt-5.5\u001b]0;pwned\u0007";
+		const resolved = plan({ heavy: { model: forged } }, { openai: "OPENAI_API_KEY" });
+		const printed = [...resolved.lines().map(({ text }) => text), resolved.summary()].join("\n");
+		expect(printed).toContain("\\u001b]0;pwned\\u0007");
+		expect(printed).not.toContain("\u001b");
+		expect(printed).not.toContain("\u0007");
+	});
+
 	it("survives its JSON", () => {
 		const resolved = plan({ heavy: { model: opus } }, { "amazon-bedrock": "AWS_PROFILE" });
 		const stored = JSON.parse(JSON.stringify(resolved));

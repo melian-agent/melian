@@ -9,6 +9,7 @@ import {
 } from "./config.ts";
 import { defaultScrutinyLevel, type Lens, type ScrutinyLevel, scrutinyLevels } from "./lens.ts";
 import { parseModelReference } from "./models.ts";
+import { visibleText } from "./render.ts";
 
 /** One chat model of the catalogue the resolver reads: pi-ai's, or a test's. `cost` is dollars per million tokens. */
 export interface CatalogueModel {
@@ -419,6 +420,11 @@ export class ReviewPlan {
 	 * credentials, or a check that will fail; and every route off the committed one, with what put it there.
 	 */
 	warnings(): string[] {
+		// Model and file names come from a melian.yaml in the working tree, which a change may write.
+		return this.warningsUnescaped().map(visibleText);
+	}
+
+	private warningsUnescaped(): string[] {
 		const used = this.used();
 		const moved = this.lenses.flatMap((lens): string[] => {
 			const entry = lens.levels.find(({ level }) => level === defaultScrutinyLevel);
@@ -481,7 +487,7 @@ export class ReviewPlan {
 				by === "derived"
 					? "derived, since no model of the committed route has credentials"
 					: `routed by ${by ?? "melian.yaml"}`;
-			lines.push({ state: "ok", text: `${tier}: ${route}; ${origin}` });
+			lines.push({ state: "ok", text: visibleText(`${tier}: ${route}; ${origin}`) });
 		}
 		const model = (tier: ModelTier) => {
 			const planned = this.tier(tier);
@@ -492,7 +498,9 @@ export class ReviewPlan {
 			const levels = lens.levels.map(({ level, tier }) => `${level} on ${tier} (${model(tier)})`).join(", ");
 			groups.set(levels, [...(groups.get(levels) ?? []), lens.name]);
 		}
-		for (const [levels, names] of groups) lines.push({ state: "ok", text: `${listed(names)}: ${levels}` });
+		for (const [levels, names] of groups) {
+			lines.push({ state: "ok", text: visibleText(`${listed(names)}: ${levels}`) });
+		}
 		for (const warning of this.warnings()) lines.push({ state: "warn", text: warning });
 		return lines;
 	}
