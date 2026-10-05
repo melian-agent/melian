@@ -401,6 +401,28 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			expect(execFileSync("ls", [join(root, "tmp")]).toString()).not.toMatch(/codex-seatbelt/);
 		});
 
+		it("runs codex inside the sandbox: a write to the home directory and a nested .git both fail", () => {
+			const escapeBin = join(root, "escape-bin");
+			mkdirSync(escapeBin);
+			writeFileSync(
+				join(escapeBin, "codex"),
+				'#!/bin/sh\ntouch "$HOME/escape" 2>/dev/null && echo escape:allowed || echo escape:denied\nmkdir -p sub-e2e && mkdir sub-e2e/.git 2>/dev/null && echo nested:allowed || echo nested:denied\n',
+			);
+			chmodSync(join(escapeBin, "codex"), 0o755);
+			const prompt = join(root, "escape.md");
+			writeFileSync(prompt, "go\n");
+			const log = join(root, "escape.log");
+			execFileSync(script, [linked, "m", prompt, log], {
+				stdio: "pipe",
+				env: { ...env(), PATH: `${escapeBin}:${env().PATH}` },
+			});
+			const out = readFileSync(log, "utf8");
+			expect(out).toContain("escape:denied");
+			expect(out).toContain("nested:denied");
+			expect(existsSync(join(home, "escape"))).toBe(false);
+			expect(existsSync(join(linked, "sub-e2e", ".git"))).toBe(false);
+		});
+
 		it("creates the Codex directories under CODEX_HOME and passes it through", () => {
 			const elsewhere = join(root, "elsewhere-codex");
 			const prompt = join(root, "home.md");
