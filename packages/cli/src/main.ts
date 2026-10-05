@@ -44,7 +44,7 @@ Commands:
   compare match|unmatch <range|#pr> <external-id> <melian-id>
                          Match an external finding with a Melian finding by hand, or keep them apart.
   compare adjudicate <range|#pr> <finding-id> --verdict valid|noise|duplicate
-                         Record a local judgement, with --severity, --reason, --golden, --rule, and --note.
+                         Record a local judgement, with --severity, --reason, --golden, --rule, --note, and --of.
   compare stats [--since <date>|--last <n>]
                          Show recall, precision, pending findings, miss reasons, candidate checks, and drain due.
   compare backlog [--markdown]
@@ -63,6 +63,7 @@ Options:
   --from <source>        Where to import external findings from; repeat it for several (compare).
   --verdict <value>     valid, noise, or duplicate (compare adjudicate).
   --severity <value>    P0, P1, P2, P3, or nit (compare adjudicate).
+  --of <finding-id>    The finding duplicated (compare adjudicate).
   --golden <lens|none>  The lens owed a golden (compare adjudicate).
   --rule <tag>          Cluster repeated valid findings under this rule (compare adjudicate).
   --note <text>         Maintainer decision, at most 1000 characters (compare adjudicate).
@@ -117,6 +118,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				last: { type: "string" },
 				markdown: { type: "boolean", default: false },
 				golden: { type: "string" },
+				of: { type: "string" },
 				rule: { type: "string" },
 				note: { type: "string" },
 				only: { type: "boolean", default: false },
@@ -207,6 +209,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 							severity: values.severity,
 							reason: values.reason,
 							golden: values.golden,
+							of: values.of,
 							rule: values.rule,
 							note: values.note,
 							by: "CLI",

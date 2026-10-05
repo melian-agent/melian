@@ -190,15 +190,27 @@ export class ReviewThreadImporter implements ExternalImporter {
 			}
 			return pullRequest.reviewThreads.pageInfo;
 		});
+		const reviewers: ExternalReviewer[] = findings.map((finding) => finding.reviewer);
 		let skippedBodies = 0;
 		await this.pages<ReviewsPage>(reviewsQuery, (page) => {
 			const { reviews } = this.found(page.repository?.pullRequest);
 			for (const review of reviews.nodes) {
-				if (wrote(review.author, this.login) && review.body.trim() !== "") skippedBodies++;
+				if (wrote(review.author, this.login)) {
+					reviewers.push(reviewerOf(review.author!));
+					if (review.body.trim() !== "") skippedBodies++;
+				}
 			}
 			return reviews.pageInfo;
 		});
-		return { findings, skippedBodies, head: head! };
+		if (reviewers.length === 0)
+			reviewers.push(
+				reviewerOf({
+					login: this.login,
+					__typename:
+						this.login.endsWith("[bot]") || Object.hasOwn(botNames, this.login.toLowerCase()) ? "Bot" : "User",
+				}),
+			);
+		return { findings, skippedBodies, head: head!, reviewers };
 	}
 
 	private finding(thread: ThreadNode, comment: ThreadNode["comments"]["nodes"][number]): ExternalFinding {

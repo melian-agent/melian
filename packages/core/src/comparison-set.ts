@@ -20,6 +20,7 @@ export interface ReviewerStats {
 export interface ComparisonStats {
 	readonly reviewers: readonly ReviewerStats[];
 	readonly pendingMatches: number;
+	readonly reasonlessMisses: number;
 	readonly misses: Record<(typeof missReasons)[number], number>;
 }
 
@@ -76,10 +77,12 @@ export class ComparisonSet {
 	stats(): ComparisonStats {
 		const counts = new Map<string, ReviewerStats>();
 		let pendingMatches = 0;
+		let reasonlessMisses = 0;
 		const misses = Object.fromEntries(missReasons.map((reason) => [reason, 0])) as ComparisonStats["misses"];
 		for (const { comparison } of this.entries) {
 			const stats = comparison.stats();
 			pendingMatches += stats.pendingMatches;
+			reasonlessMisses += stats.reasonlessMisses;
 			for (const next of stats.reviewers) {
 				const previous = counts.get(next.reviewer);
 				counts.set(
@@ -101,6 +104,7 @@ export class ComparisonSet {
 		}
 		return {
 			pendingMatches,
+			reasonlessMisses,
 			reviewers: [...counts.values()]
 				.sort((a, b) => a.reviewer.localeCompare(b.reviewer))
 				.map((each) => ({
@@ -151,7 +155,11 @@ export class ComparisonSet {
 	candidates(): RepeatedFinding[] {
 		const clusters = new Map<string, { title: string; ids: Set<string>; changesets: Set<string> }>();
 		for (const { changeset, comparison, verdict } of this.entries) {
+			const missed = new Set(
+				comparison.externalOnly().flatMap((group) => group.external.map((finding) => finding.id)),
+			);
 			for (const repeat of comparison.repeats(verdict)) {
+				if (!repeat.ids.some((id) => missed.has(id) && comparison.judgement(id)?.verdict === "valid")) continue;
 				const cluster = clusters.get(repeat.key) ?? {
 					title: repeat.title,
 					ids: new Set<string>(),
@@ -186,28 +194,32 @@ export class ComparisonSet {
 	}
 
 	/** The CLI's per-reviewer arithmetic, reasons, candidate checks, and drain notice. */
-	renderStats(): string {
+	renderStats(options: { readonly since?: string; readonly last?: number } = {}, includeDrain = true): string {
+		const selected = this.select(options);
 		const stats = this.stats();
+		const metrics = selected.stats();
 		const drain = this.drain();
-		const out = [`Comparisons: ${drain.comparisons}. Pending matches: ${stats.pendingMatches}.\n`];
-		for (const each of stats.reviewers)
+		const out = [`Comparisons: ${selected.drain().comparisons}. Pending matches: ${stats.pendingMatches}.\n`];
+		for (const each of metrics.reviewers)
 			out.push(
 				`${visibleText(each.reviewer)}: recall ${each.found}/${each.total} (${each.recall.toFixed(3)}), precision ${each.valid}/${each.valid + each.noise + each.duplicate} (${each.precision.toFixed(3)}), pending ${each.pending}.\n`,
 			);
 		for (const reason of missReasons) out.push(`${reason}: ${stats.misses[reason]}.\n`);
+		out.push(`Valid misses without a reason: ${stats.reasonlessMisses}.\n`);
 		for (const candidate of this.candidates())
 			out.push(
 				`Candidate check: ${visibleText(candidate.key)}, seen on ${candidate.changesets.length} changesets (${candidate.changesets.map(visibleText).join(", ")}).\n`,
 			);
-		out.push(
-			drain.due
-				? `Drain due: ship ${drain.goldens} owed goldens and re-measure their lenses.\n`
-				: `Drain not due; next comparison threshold: ${drain.next}.\n`,
-		);
+		if (includeDrain)
+			out.push(
+				drain.due
+					? `Drain due: ship ${drain.goldens} owed goldens and re-measure their lenses.\n`
+					: `Drain not due; next comparison threshold: ${drain.next}.\n`,
+			);
 		return out.join("");
 	}
 
-	/** The generated section appended after BACKLOG.md's frozen entries, or a terminal list. */
+	/** The generated section replacing generated entries after BACKLOG.md's frozen entries, or a terminal list. */
 	renderBacklog(markdown = false): string {
 		const owed = this.backlog();
 		if (!markdown)

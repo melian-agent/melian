@@ -1,7 +1,7 @@
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
-import { ComparisonError } from "./comparison.ts";
 import { severitySchema } from "./config.ts";
+import { ComparisonError } from "./errors.ts";
 
 /** The four actions a valid miss calls for. */
 export const missReasons = ["owned-missed", "no-owner", "needs-execution", "out-of-scope"] as const;
@@ -13,6 +13,7 @@ export const comparisonAdjudicationSchema = Type.Object(
 		by: Type.String({ minLength: 1, maxLength: 1000 }),
 		at: Type.String({ minLength: 1 }),
 		severity: Type.Optional(severitySchema),
+		of: Type.Optional(Type.String({ pattern: "^[0-9a-f]{16}$" })),
 		reason: Type.Optional(
 			Type.Union([
 				Type.Literal("owned-missed"),
@@ -63,6 +64,7 @@ export class Adjudication {
 				by: input.by.trim(),
 				at: input.at,
 				severity: input.severity,
+				of: input.of,
 				reason: input.reason,
 				golden: input.golden,
 				rule: input.rule?.trim(),
@@ -75,6 +77,11 @@ export class Adjudication {
 				"adjudication needs valid fields, an author, a time, and a note of at most 1000 characters",
 			);
 		}
+		if ((stored.verdict === "duplicate") !== (stored.of !== undefined))
+			throw new ComparisonError(
+				"invalidAdjudication",
+				"duplicate requires --of <id>; other verdicts cannot use --of",
+			);
 		return new Adjudication(stored);
 	}
 

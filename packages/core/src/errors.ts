@@ -248,3 +248,25 @@ export class ModelRoutingError extends Error {
 		this.model = options.model;
 	}
 }
+
+/** Why an external finding, a reviewer's file, or a match was refused. */
+export type ComparisonErrorCode =
+	| "invalidFinding"
+	| "invalidFile"
+	| "unknownExternal"
+	| "unknownMelian"
+	| "unknownFinding"
+	| "invalidAdjudication";
+
+/** An external finding, a reviewer's file, or a match was refused. `path` names the file or JSON pointer at fault. */
+export class ComparisonError extends Error {
+	readonly code: ComparisonErrorCode;
+	readonly path: string | undefined;
+
+	constructor(code: ComparisonErrorCode, message: string, options: { path?: string; cause?: unknown } = {}) {
+		super(message, { cause: options.cause });
+		this.name = "ComparisonError";
+		this.code = code;
+		this.path = options.path;
+	}
+}

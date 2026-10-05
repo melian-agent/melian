@@ -1,10 +1,18 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, truncateSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Adjudication, ComparisonError, defaultConfig, ExternalFinding, Finding } from "@melian-agent/core";
+import {
+	Adjudication,
+	ComparisonError,
+	ComparisonSet,
+	defaultConfig,
+	ExternalFinding,
+	Finding,
+} from "@melian-agent/core";
 import {
 	CompareError,
 	CompareHarness,
+	ComparisonReader,
 	backgroundContext as context,
 	createMemoryStorage,
 	FileImporter,
@@ -13,9 +21,10 @@ import {
 	revisionKey,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { ComparisonDocument } from "../src/compare.ts";
+import { defineTask } from "../src/harness.ts";
 
 const revision = { base: "a".repeat(40), head: "b".repeat(40) };
 
@@ -272,5 +281,123 @@ describe("all stored comparisons", () => {
 		expect(entries[0]?.comparison.recordedAt()).toBe("2026-10-05T00:00:00Z");
 		expect(entries[0]?.comparison.label()).toBe("main...feature");
 		expect(entries[0]?.verdict?.all()).toHaveLength(2);
+	});
+});
+
+describe("comparison review fixes", () => {
+	it("discharges a first round's debt after a second review drops the finding", async () => {
+		const harness = await memoryHarness();
+		await storeReview(harness);
+		await harness.importFindings(revision, [], "2026-10-05T00:00:00Z");
+		const debt = { verdict: "noise", by: "M", at: "2026-10-05T01:00:00Z", golden: "correctness" } as const;
+		await harness.adjudicate(revision, findings[0]!.id, debt);
+		const next = { ...revision, head: "c".repeat(40) };
+		const root = await harness.harness.root(context);
+		await root.commit(async (tx) => {
+			const document = await tx.doc(VerdictDocument, root.id);
+			document.verdicts = {
+				...document.verdicts,
+				[revisionKey(next)]: new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig })
+					.adjudicate()
+					.toJSON(),
+			};
+		}, context);
+		await harness.importFindings(next, [], "2026-10-06T00:00:00Z");
+		expect(new ComparisonSet(await harness.all("change")).backlog()).toHaveLength(1);
+		const discharged = { ...debt, at: "2026-10-07T00:00:00Z", golden: "none" } as const;
+		const round = await harness.adjudicate(next, findings[0]!.id, discharged);
+		expect(round.head).toBe(revision.head);
+		expect(round.adjudication(findings[0]!.id)).toEqual({ current: discharged, history: [debt] });
+		expect(new ComparisonSet(await harness.all("change")).backlog()).toEqual([]);
+	});
+
+	it("chooses the newest round containing an ID and carries earlier debt forward", async () => {
+		const harness = await memoryHarness();
+		await storeReview(harness);
+		await harness.importFindings(revision, [], "2026-10-05T00:00:00Z");
+		await harness.adjudicate(revision, findings[0]!.id, {
+			verdict: "noise",
+			by: "M",
+			at: "2026-10-05T01:00:00Z",
+			golden: "correctness",
+		});
+		const next = { ...revision, head: "c".repeat(40) };
+		const root = await harness.harness.root(context);
+		await root.commit(async (tx) => {
+			const document = await tx.doc(VerdictDocument, root.id);
+			document.verdicts = { ...document.verdicts, [revisionKey(next)]: document.verdicts[revisionKey(revision)]! };
+		}, context);
+		await harness.importFindings(next, [], "2026-10-06T00:00:00Z");
+		const round = await harness.adjudicate(revision, findings[0]!.id, {
+			verdict: "valid",
+			by: "M",
+			at: "2026-10-07T00:00:00Z",
+		});
+		expect(round.head).toBe(next.head);
+		expect(round.adjudication(findings[0]!.id)?.current.golden).toBe("correctness");
+		expect((await harness.read(revision))?.adjudication(findings[0]!.id)?.current.verdict).toBe("noise");
+	});
+
+	it("reads documents without committing or changing pending tasks", async () => {
+		const storage = createMemoryStorage();
+		const harness = await CompareHarness.open(storage, createFakeModels().review);
+		open.push(harness);
+		await storeReview(harness);
+		await harness.importFindings(revision, [], "2026-10-05T00:00:00Z");
+		const root = await harness.harness.root(context);
+		const task = defineTask<Record<string, never>, { phase: "wait" }, Record<string, never>>({
+			name: "test.pending",
+			version: 1,
+			initial: () => ({ phase: "wait" }),
+			abort: async (_task, runtime, context) => {
+				await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+			},
+			phases: {
+				wait: async (_task, runtime, context) => {
+					await runtime.commit(
+						() => ({ status: "terminal", outcome: { status: "completed", result: {} } }),
+						context,
+					);
+				},
+			},
+		});
+		const pending = await root.commit(
+			(tx) => tx.createTask(task, {}, { ownership: { kind: "conversation" } }),
+			context,
+		);
+		const before = await storage.task(pending, context);
+		const commit = vi.spyOn(storage, "commit");
+		const entries = await new ComparisonReader(storage).read("change");
+		expect(entries).toHaveLength(1);
+		expect(entries[0]?.verdict?.all()).toHaveLength(2);
+		expect(commit).not.toHaveBeenCalled();
+		expect(await storage.task(pending, context)).toEqual(before);
+		commit.mockRestore();
+	});
+
+	it("reads an empty storage without creating a root or a comparison document", async () => {
+		const storage = createMemoryStorage();
+		try {
+			const commit = vi.spyOn(storage, "commit");
+			expect(await new ComparisonReader(storage).read("change")).toEqual([]);
+			expect(commit).not.toHaveBeenCalled();
+			expect((await storage.scanConversations({}, 10, undefined, context)).items).toEqual([]);
+		} finally {
+			await storage.close(context);
+		}
+	});
+
+	it.each(["codex", "claude-code"])("keeps %s participant identity in an empty file import", async (name) => {
+		const path = join(directory, "empty.json");
+		writeFileSync(
+			path,
+			JSON.stringify(
+				name === "codex"
+					? { verdict: "approve", summary: "Clean", findings: [], next_steps: [] }
+					: { reviewer: { name, version: "2" }, findings: [] },
+			),
+		);
+		const importer = await FileImporter.open(path, { cwd: directory, repoRoot: directory });
+		expect(await importer.import()).toMatchObject({ findings: [], reviewers: [{ name }] });
 	});
 });

@@ -35,10 +35,10 @@ export class ComparisonExport {
 		const target = /^#\d+$/.test(this.target) ? `pull request ${this.target}` : this.target;
 		const link = this.url === undefined ? markdownText(this.target) : `[${markdownText(this.target)}](${this.url})`;
 		const out = [
-			`# Comparison review: ${/^#\d+$/.test(this.target) ? target : markdownText(target)}\n\n`,
+			`# Comparison review: ${/^#\d+$/.test(this.target) ? `pull request ${link}` : markdownText(target)}\n\n`,
 			`Target: ${link}.\n\n`,
 			`Reviewers: ${[...reviewers].sort().map(markdownText).join("; ")}${reviewers.size === 0 ? "" : "; "}Melian's own review, in ${this.entries.length} stored ${this.entries.length === 1 ? "round" : "rounds"}.\n\n`,
-			"Adjudication records valid, noise, or duplicate, with severity and a miss reason where required. Pending findings await the maintainer. Fix commits are not recorded by comparison adjudication.\n\n",
+			"Adjudication records valid, noise, or duplicate, with severity and a miss reason where required. Pending findings await the maintainer.\n\n",
 		];
 		let section = 0;
 		for (const [round, { comparison, verdict }] of this.entries.entries()) {
@@ -55,9 +55,9 @@ export class ComparisonExport {
 					tableHeader,
 				);
 				for (const [index, finding] of findings.entries()) {
-					const judgement = comparison.adjudication(finding.id)?.current;
+					const judgement = comparison.judgement(finding.id);
 					out.push(
-						`| ${letter}${index + 1} | ${markdownText(name)} | ${markdownText(finding.where())} | ${markdownText(`${finding.title}: ${finding.body}`)} | ${markdownText(finding.severity ?? "Not given")} | ${this.judgement(judgement)} | Not recorded | ${markdownText(judgement?.golden ?? "Not decided")} |\n`,
+						`| ${letter}${index + 1} | ${markdownText(name)} | ${markdownText(finding.where())} | ${markdownText(`${finding.title}: ${firstParagraph(finding.body)}`)} | ${this.judgement(judgement)} | ${markdownText(judgement?.golden ?? "Not decided")} |\n`,
 					);
 				}
 				out.push("\n");
@@ -71,10 +71,10 @@ export class ComparisonExport {
 			);
 			for (const [index, finding] of findings.entries()) {
 				const [start, end] = finding.lines();
-				const { explanation, path, severity, source } = finding.properties;
-				const judgement = comparison.adjudication(finding.id)?.current;
+				const { explanation, path, source } = finding.properties;
+				const judgement = comparison.judgement(finding.id);
 				out.push(
-					`| ${letter}${index + 1} | ${markdownText(`Melian, ${source.check}`)} | ${markdownText(`${path}:${start}${start === end ? "" : `-${end}`}`)} | ${markdownText(`${finding.ruleId}: ${explanation.what}`)} | ${severity} | ${this.judgement(judgement)} | Not recorded | ${markdownText(judgement?.golden ?? "Not decided")} |\n`,
+					`| ${letter}${index + 1} | ${markdownText(`Melian, ${source.check}`)} | ${markdownText(`${path}:${start}${start === end ? "" : `-${end}`}`)} | ${markdownText(`${finding.ruleId}: ${firstParagraph(explanation.what)}`)} | ${this.judgement(judgement)} | ${markdownText(judgement?.golden ?? "Not decided")} |\n`,
 				);
 			}
 			out.push("\n");
@@ -87,7 +87,7 @@ export class ComparisonExport {
 			)) {
 				if (current.note === undefined || current.note === "") continue;
 				out.push(
-					`- ${markdownText(current.note)} From ${id} at ${comparison.head.slice(0, 12)}, by ${markdownText(current.by)} (${markdownText(current.at)}).\n`,
+					`- ${markdownText(current.note)} From ${id} at ${comparison.head.slice(0, 12)}, by ${markdownText(current.by.replace(/\s*<[^>]*>\s*$/, "").trim())} (${markdownText(current.at)}).\n`,
 				);
 				notes++;
 			}
@@ -95,7 +95,7 @@ export class ComparisonExport {
 		if (notes === 0) out.push("No maintainer notes recorded.\n");
 		out.push(
 			"\n## Counts\n\n",
-			`${new ComparisonSet(this.entries).renderStats().trimEnd().split("\n").map(markdownText).join("\n")}\n`,
+			`${new ComparisonSet(this.entries).renderStats({}, false).trimEnd().split("\n").map(markdownText).join("\n")}\n`,
 			"\n## Differences\n\n",
 		);
 		for (const { comparison } of this.entries) {
@@ -110,13 +110,18 @@ export class ComparisonExport {
 	private judgement(value: StoredComparisonAdjudication | undefined): string {
 		if (value === undefined) return "Pending";
 		return markdownText(
-			[value.verdict, value.severity, value.reason].filter((each) => each !== undefined).join(", "),
+			[
+				value.verdict === "duplicate" ? `duplicate of ${value.of ?? "not recorded"}` : value.verdict,
+				value.severity,
+				value.reason,
+			]
+				.filter((each) => each !== undefined)
+				.join(", "),
 		);
 	}
 }
 
-const tableHeader =
-	"| # | Reviewer | File | Summary | Severity | Adjudication | Fix commit | Golden |\n|---|---|---|---|---|---|---|---|\n";
+const tableHeader = "| # | Reviewer | File | Summary | Adjudication | Golden |\n|---|---|---|---|---|---|\n";
 
 function sectionLetter(index: number): string {
 	let remaining = index + 1;
@@ -127,4 +132,13 @@ function sectionLetter(index: number): string {
 		remaining = Math.floor(remaining / 26);
 	}
 	return result;
+}
+
+function firstParagraph(body: string): string {
+	const paragraph = body
+		.trim()
+		.split(/\r?\n[\t ]*\r?\n/, 1)[0]!
+		.replace(/\s+/gu, " ");
+	const points = [...paragraph];
+	return points.length <= 300 ? paragraph : `${points.slice(0, 300).join("")}…`;
 }

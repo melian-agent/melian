@@ -150,6 +150,20 @@ describe("ReviewThreadImporter", () => {
 		expect(rabbit.findings).toEqual([]);
 	});
 
+	it("retains reviewer identity when an import contains no threads", async () => {
+		const human = await importer("absent-reviewer").opened.import();
+		expect(human.findings).toEqual([]);
+		expect(human.reviewers).toEqual([{ name: "human", login: "absent-reviewer", kind: "user" }]);
+		const changed = structuredClone(recording);
+		const pages = changed.graphql!.MelianReviewThreads! as {
+			data: { repository: { pullRequest: { reviewThreads: { nodes: unknown[] } } } };
+		}[];
+		for (const page of pages) page.data.repository.pullRequest.reviewThreads.nodes = [];
+		const bot = await importer(undefined, changed).opened.import();
+		expect(bot.findings).toEqual([]);
+		expect(bot.reviewers).toContainEqual({ name: "coderabbit", login: "coderabbitai[bot]", kind: "bot" });
+	});
+
 	it("gives a thread the same ID on every import, so importing again updates it", async () => {
 		const first = await importer().opened.import();
 		const second = await importer().opened.import();

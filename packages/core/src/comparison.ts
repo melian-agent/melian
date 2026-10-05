@@ -10,7 +10,7 @@ import {
 	type StoredComparisonAdjudication,
 } from "./comparison-adjudication.ts";
 import type { ComparisonStats, OwedGolden, RepeatedFinding } from "./comparison-set.ts";
-import { FindingError } from "./errors.ts";
+import { ComparisonError, FindingError } from "./errors.ts";
 import { canonicalPath, type Finding } from "./findings.ts";
 import { visibleText } from "./render.ts";
 
@@ -111,7 +111,12 @@ export const comparisonUnmatchSchema = Type.Object(
 // The last import from one source: when it ran, the IDs of the findings it holds, and how many review bodies it
 // skipped. The next import from the source replaces them.
 export const comparisonImportSchema = Type.Object(
-	{ at: text, ids: Type.Array(idSchema), skippedBodies: count },
+	{
+		at: text,
+		ids: Type.Array(idSchema),
+		skippedBodies: count,
+		reviewers: Type.Optional(Type.Array(externalReviewerSchema)),
+	},
 	strict,
 );
 
@@ -215,28 +220,6 @@ export type ExternalFindingsFile = Static<typeof externalFindingsFileSchema>;
 
 /** An external finding before Melian gives it an ID. */
 export type ExternalFindingInput = Omit<StoredExternalFinding, "id">;
-
-/** Why an external finding, a reviewer's file, or a match was refused. */
-export type ComparisonErrorCode =
-	| "invalidFinding"
-	| "invalidFile"
-	| "unknownExternal"
-	| "unknownMelian"
-	| "unknownFinding"
-	| "invalidAdjudication";
-
-/** An external finding, a reviewer's file, or a match was refused. `path` names the file or JSON pointer at fault. */
-export class ComparisonError extends Error {
-	readonly code: ComparisonErrorCode;
-	readonly path: string | undefined;
-
-	constructor(code: ComparisonErrorCode, message: string, options: { path?: string; cause?: unknown } = {}) {
-		super(message, { cause: options.cause });
-		this.name = "ComparisonError";
-		this.code = code;
-		this.path = options.path;
-	}
-}
 
 // The first schema error in `value`, as a pointer and a message, or undefined when it conforms.
 function schemaProblem(schema: TSchema, value: unknown): string | undefined {
@@ -419,6 +402,15 @@ export class ExternalFinding {
 		return [...found.values()];
 	}
 
+	/** Reads a file's findings and participant identity, even when its findings list is empty. */
+	static importFile(value: unknown, path: string): ExternalImport {
+		const findings = ExternalFinding.fromFile(value, path);
+		const reviewer: ExternalReviewer = Value.Check(codexReviewSchema, value)
+			? { name: "codex" }
+			: (value as ExternalFindingsFile).reviewer;
+		return { findings, skippedBodies: 0, reviewers: [reviewer] };
+	}
+
 	/**
 	 * Where the finding sits for matching by site, or `undefined` when it matches only by hand: it has no file or line,
 	 * GitHub no longer places it, or it sits on the base side of the diff.
@@ -545,6 +537,8 @@ function titleOf(title: string): string {
 export interface ExternalImport {
 	readonly findings: readonly ExternalFinding[];
 	readonly skippedBodies: number;
+	/** Reviewers who participated, including those who reported nothing. */
+	readonly reviewers?: readonly ExternalReviewer[];
 	/** The head commit the source reports, where it knows one, such as a pull request's. */
 	readonly head?: string;
 }
@@ -654,7 +648,15 @@ export class Comparison {
 		this.external = external;
 		this.matches = this.matches.filter((match) => !gone.has(match.external));
 		this.unmatches = this.unmatches.filter((unmatch) => !gone.has(unmatch.external));
-		this.imports = { ...this.imports, [source]: { at, ids, skippedBodies: imported.skippedBodies } };
+		this.imports = {
+			...this.imports,
+			[source]: {
+				at,
+				ids,
+				skippedBodies: imported.skippedBodies,
+				reviewers: [...(imported.reviewers ?? imported.findings.map((finding) => finding.reviewer))],
+			},
+		};
 	}
 
 	/**
@@ -750,35 +752,55 @@ export class Comparison {
 			]),
 		);
 		for (const id of this.melian) reviewers.set(id, "melian");
-		for (const reviewer of new Set(["melian", ...reviewers.values()]))
+		for (const reviewer of new Set([
+			"melian",
+			...reviewers.values(),
+			...Object.values(this.imports).flatMap((each) =>
+				(each.reviewers ?? []).map(
+					(reviewer) =>
+						`${reviewer.name}${reviewer.login === undefined ? "" : `:${reviewer.login.toLowerCase()}`}`,
+				),
+			),
+		]))
 			counts.set(reviewer, { reviewer, found: 0, total: 0, valid: 0, noise: 0, duplicate: 0, pending: 0 });
 		const ambiguous = new Set(this.ambiguous().map((each) => each.external.id));
 		for (const [id, reviewer] of reviewers) {
-			const judgement = this.adjudication(id)?.current;
+			const judgement = this.judgement(id);
 			const count = counts.get(reviewer)!;
 			if (judgement === undefined) count.pending++;
 			else count[judgement.verdict]++;
 		}
 		const misses = Object.fromEntries(missReasons.map((reason) => [reason, 0])) as ComparisonStats["misses"];
+		const reasonlessMisses = this.externalFindings().filter((finding) => this.needsReason(finding.id)).length;
 		for (const group of this.groups()) {
-			const ids = [...group.melian, ...group.external.map((each) => each.id).filter((id) => !ambiguous.has(id))];
-			const valid = ids.filter((id) => this.adjudication(id)?.current.verdict === "valid");
+			const reports = [...group.melian, ...group.external.map((each) => each.id)];
+			const ids = reports.filter((id) => !ambiguous.has(id));
+			const valid = ids.filter((id) => this.judgement(id)?.verdict === "valid");
 			if (valid.length === 0) continue;
 			const excluded =
 				group.melian.length === 0 && valid.every((id) => this.adjudication(id)?.current.reason === "out-of-scope");
 			for (const count of counts.values()) {
 				if (count.reviewer === "melian" && excluded) continue;
+				if (
+					reports.some(
+						(id) =>
+							reviewers.get(id) === count.reviewer && (ambiguous.has(id) || this.judgement(id) === undefined),
+					)
+				)
+					continue;
 				count.total++;
 				if (valid.some((id) => reviewers.get(id) === count.reviewer)) count.found++;
 			}
 			if (group.melian.length === 0) {
 				const reasons = valid.map((id) => this.adjudication(id)?.current.reason);
-				const reason = reasons.find((reason) => reason !== undefined && reason !== "out-of-scope") ?? reasons[0];
-				if (reason !== undefined) misses[reason]++;
+				const reason =
+					reasons.find((reason) => reason !== undefined && reason !== "out-of-scope") ?? "out-of-scope";
+				misses[reason]++;
 			}
 		}
 		return {
 			pendingMatches: ambiguous.size,
+			reasonlessMisses,
 			reviewers: [...counts.values()]
 				.sort((a, b) => compareText(a.reviewer, b.reviewer))
 				.map((count) => ({
@@ -791,6 +813,22 @@ export class Comparison {
 				})),
 			misses,
 		};
+	}
+
+	/** Whether a valid external finding has become a miss without a reason. */
+	needsReason(id: string): boolean {
+		const current = this.adjudication(id)?.current;
+		return (
+			current?.verdict === "valid" &&
+			current.reason === undefined &&
+			this.externalFinding(id) !== undefined &&
+			!this.effectiveMatches().some((match) => match.external === id)
+		);
+	}
+
+	/** The judgement that can enter metrics, or undefined while a new miss awaits a reason. */
+	judgement(id: string): StoredComparisonAdjudication | undefined {
+		return this.needsReason(id) ? undefined : this.adjudication(id)?.current;
 	}
 
 	/** Goldens the current judgements owe, each with its target lens. */
@@ -838,7 +876,19 @@ export class Comparison {
 		if (this.externalFinding(id) === undefined && !this.melian.includes(id)) {
 			throw new ComparisonError("unknownFinding", `the comparison has no finding ${id}`);
 		}
-		const judgement = Adjudication.create(input).toJSON();
+		const previous = this.adjudication(id);
+		const judgement = Adjudication.create({ ...input, golden: input.golden ?? previous?.current.golden }).toJSON();
+		if (judgement.reason !== undefined && (judgement.verdict !== "valid" || this.externalFinding(id) === undefined))
+			throw new ComparisonError("invalidAdjudication", "a miss reason applies only to a valid external finding");
+		if (
+			judgement.verdict === "duplicate" &&
+			(judgement.of === id ||
+				(this.externalFinding(judgement.of!) === undefined && !this.melian.includes(judgement.of!)))
+		)
+			throw new ComparisonError(
+				"invalidAdjudication",
+				"a duplicate must name another finding in the comparison with --of",
+			);
 		if (
 			judgement.verdict === "valid" &&
 			this.externalFinding(id) !== undefined &&
@@ -848,7 +898,6 @@ export class Comparison {
 			throw new ComparisonError("invalidAdjudication", "a valid external-only finding needs a miss reason");
 		}
 		this.record(judgement.at);
-		const previous = this.adjudication(id);
 		if (previous !== undefined && JSON.stringify(previous.current) === JSON.stringify(judgement)) return;
 		this.judgements = {
 			...this.judgements,

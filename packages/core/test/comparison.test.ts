@@ -533,7 +533,7 @@ describe("Comparison matching", () => {
 		expect(comparison.externalFindings()[0]!.line).toBe(60);
 		expect(comparison.effectiveMatches()).toEqual([]);
 		expect(comparison.importsBySource()).toEqual({
-			"file:codex.json": { at: "later", ids: [moved.id], skippedBodies: 2 },
+			"file:codex.json": { at: "later", ids: [moved.id], skippedBodies: 2, reviewers: [moved.reviewer] },
 		});
 	});
 
@@ -692,7 +692,7 @@ describe("Comparison statistics", () => {
 		comparison.adjudicate(missed.id, { ...by, verdict: "valid", reason: "owned-missed", golden: "correctness" });
 		comparison.adjudicate(outside.id, { ...by, verdict: "valid", reason: "out-of-scope" });
 		for (const id of [noise.id, falseAlarm.id]) comparison.adjudicate(id, { ...by, verdict: "noise" });
-		comparison.adjudicate(duplicate.id, { ...by, verdict: "duplicate" });
+		comparison.adjudicate(duplicate.id, { ...by, verdict: "duplicate", of: matched.id });
 		const stats = comparison.stats();
 		expect(stats.reviewers).toEqual([
 			{

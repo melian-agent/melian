@@ -34,8 +34,6 @@ export {
 export { checksOfTier, type DeterministicCheck, deterministicChecks } from "./checks.ts";
 export {
 	Comparison,
-	ComparisonError,
-	type ComparisonErrorCode,
 	type ComparisonGroup,
 	type ComparisonImport,
 	type ComparisonMatch,
@@ -271,3 +269,5 @@ export {
 	type RepeatedFinding,
 	type ReviewerStats,
 } from "./comparison-set.ts";
+
+export { ComparisonError, type ComparisonErrorCode } from "./errors.ts";

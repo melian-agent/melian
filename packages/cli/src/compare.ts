@@ -7,12 +7,14 @@ import {
 	ComparisonExport,
 	ComparisonSet,
 	type ExternalImporter,
+	Lens,
 	type StoredComparisonAdjudication,
 	visibleText,
 } from "@melian-agent/core";
 import { coderabbitLogin, ReviewThreadImporter } from "@melian-agent/github";
 import {
 	CompareHarness,
+	ComparisonReader,
 	backgroundContext as context,
 	FileImporter,
 	type ImportedSource,
@@ -40,9 +42,7 @@ export function parseImportSource(value: string): ImportSource | undefined {
 	return undefined;
 }
 
-// The comparison's storage for the stored review `argument` names, opened only when the review exists: a comparison
-// with no review runs nothing.
-async function openComparison(io: Io, argument: string) {
+async function openComparison(io: Io, argument: string, requireReview = true) {
 	const stored = await StoredReview.open(io, argument);
 	const { changeset } = stored;
 	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, isScripted(io.env));
@@ -52,7 +52,7 @@ async function openComparison(io: Io, argument: string) {
 		await harness.close(context);
 		throw error;
 	});
-	if (!reviewed) {
+	if (requireReview && !reviewed) {
 		await harness.close(context);
 		throw stored.missing();
 	}
@@ -134,6 +134,8 @@ export async function matchByHand(
 		io.stdout(
 			`${matched ? "Matched" : "Unmatched"} ${pair.external} ${matched ? "with" : "from"} ${pair.melian} as ${visibleText(hand.by)}.\n`,
 		);
+		if (!matched && comparison.needsReason(pair.external))
+			io.stdout(`Finding ${pair.external} is pending until re-adjudicated with a miss reason.\n`);
 		const root = (await harness.harness.root(context)).id;
 		const verdict = await readVerdict(harness.harness, root, revisionKey(revision), context);
 		io.stdout(comparison.render(verdict));
@@ -149,18 +151,24 @@ export async function adjudicateComparison(
 	id: string,
 	fields: Omit<StoredComparisonAdjudication, "by" | "at">,
 ): Promise<number> {
-	const { stored, harness } = await openComparison(io, argument);
+	const { stored, harness } = await openComparison(io, argument, false);
 	try {
+		if (fields.golden !== undefined && fields.golden !== "none") {
+			const lenses = await Lens.load(stored.changeset.repoRoot, { kind: "worktree" }, []);
+			if (!lenses.some((lens) => lens.name === fields.golden))
+				io.stdout(
+					`Warning: Melian knows no lens ${visibleText(fields.golden)}; golden debt will still target it.\n`,
+				);
+		}
 		const by = await gitAuthor(stored.changeset.repoRoot, "adjudicated a comparison finding");
-		await harness.adjudicate({ ...stored.changeset.revision, target: argument }, id, {
+		const comparison = await harness.adjudicate({ ...stored.changeset.revision, target: argument }, id, {
 			...fields,
 			by,
 			at: new Date().toISOString(),
 		});
 		io.stdout(`Adjudicated ${id} as ${fields.verdict} by ${visibleText(by)}.\n`);
 		if (fields.verdict === "noise") {
-			const comparison = await harness.read(stored.changeset.revision);
-			if (comparison?.melianFindings().includes(id))
+			if (comparison.melianFindings().includes(id))
 				io.stdout("This does not dismiss the Melian finding; melian dismiss records a dismissal.\n");
 		}
 		return 0;
@@ -185,11 +193,11 @@ class StoredComparisons {
 		});
 		const entries: ComparisonEntry[] = [];
 		for (const name of names.filter((name) => /^(range|pull)-[0-9a-f]{16}\.sqlite$/.test(name)).sort()) {
-			const harness = await CompareHarness.open(await openStorage(join(directory, name)), idleModels(io.env));
+			const storage = await openStorage(join(directory, name));
 			try {
-				entries.push(...(await harness.all(name.slice(0, -".sqlite".length))));
+				entries.push(...(await new ComparisonReader(storage).read(name.slice(0, -".sqlite".length))));
 			} finally {
-				await harness.close(context);
+				await storage.close(context);
 			}
 		}
 		return new StoredComparisons(new ComparisonSet(entries));
@@ -201,7 +209,7 @@ export async function comparisonStats(
 	options: { readonly since?: string; readonly last?: number },
 ): Promise<number> {
 	const { comparisons } = await StoredComparisons.read(io);
-	io.stdout(comparisons.select(options).renderStats());
+	io.stdout(comparisons.renderStats(options));
 	return 0;
 }
 
@@ -216,9 +224,13 @@ export async function exportComparison(
 	argument: string,
 	options: { readonly out?: string; readonly json: boolean },
 ): Promise<number> {
-	const { stored, harness } = await openComparison(io, argument);
+	const stored = await StoredReview.open(io, argument);
+	const path = await storagePath(stored.changeset.repoRoot, stored.changeset.id, io.env, isScripted(io.env));
+	if (!existsSync(path))
+		throw new CliError(`no comparison recorded; run melian compare ${shellQuote(argument)} first`);
+	const storage = await openStorage(path);
 	try {
-		const entries = await harness.all(stored.changeset.id);
+		const entries = await new ComparisonReader(storage).read(stored.changeset.id);
 		if (entries.length === 0)
 			throw new CliError(`no comparison recorded; run melian compare ${shellQuote(argument)} first`);
 		const remote = await git(stored.changeset.repoRoot, ["remote", "get-url", "origin"]).catch(() => "");
@@ -240,6 +252,6 @@ export async function exportComparison(
 		}
 		return 0;
 	} finally {
-		await harness.close(context);
+		await storage.close(context);
 	}
 }

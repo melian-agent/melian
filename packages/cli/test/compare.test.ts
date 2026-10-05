@@ -536,3 +536,102 @@ describe("melian compare export", { timeout: 60_000 }, () => {
 		});
 	});
 });
+
+describe("comparison review fixes", { timeout: 60_000 }, () => {
+	it("exports without a review of the current head and clears a first round's debt after another review", () => {
+		const { repo, files, env, id } = reviewed();
+		expect(melian(repo, ["compare", range], env).status).toBe(0);
+		expect(
+			melian(repo, ["compare", "adjudicate", range, id, "--verdict", "noise", "--golden", "correctness"], env)
+				.status,
+		).toBe(0);
+		git(repo, "commit", "--quiet", "--allow-empty", "-m", "next revision");
+		expect(melian(repo, ["findings", range], env).status).toBe(1);
+		expect(melian(repo, ["compare", "export", range], env)).toMatchObject({ status: 0, stderr: "" });
+		const clean = Object.fromEntries(
+			Object.keys(golden.script).map((lens) => [lens, [{ text: "Reported 0 findings." }]]),
+		);
+		writeFileSync(join(files, "script.json"), JSON.stringify(clean));
+		expect(melian(repo, ["review", range], env).status).toBe(0);
+		expect(melian(repo, ["compare", range], env).status).toBe(0);
+		expect(melian(repo, ["compare", "backlog"], env).stdout).toContain(id);
+		const cleared = melian(repo, ["compare", "adjudicate", range, id, "--verdict", "noise", "--golden", "none"], env);
+		expect(cleared).toMatchObject({ status: 0, stderr: "", stdout: expect.stringContaining("does not dismiss") });
+		expect(melian(repo, ["compare", "backlog"], env).stdout).toBe("No goldens owed.\n");
+		const json = JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout) as {
+			comparisons: Record<
+				string,
+				{ adjudications?: Record<string, { current: { golden: string }; history: { golden: string }[] }> }
+			>;
+		};
+		const record = Object.values(json.comparisons).find((round) => round.adjudications?.[id] !== undefined)
+			?.adjudications?.[id];
+		expect(record).toMatchObject({ current: { golden: "none" }, history: [{ golden: "correctness" }] });
+	});
+
+	it("warns for unknown golden lenses and refuses reasons on noise or Melian findings", () => {
+		const { repo, env, id } = reviewed();
+		expect(melian(repo, ["compare", range], env).status).toBe(0);
+		const warned = melian(
+			repo,
+			["compare", "adjudicate", range, id, "--verdict", "noise", "--golden", "new-lens"],
+			env,
+		);
+		expect(warned).toMatchObject({ status: 0, stdout: expect.stringContaining("Melian knows no lens new-lens") });
+		for (const verdict of ["noise", "valid"]) {
+			const refused = melian(
+				repo,
+				["compare", "adjudicate", range, id, "--verdict", verdict, "--reason", "no-owner"],
+				env,
+			);
+			expect(refused).toMatchObject({ status: 1, stderr: expect.stringContaining("only to a valid external") });
+		}
+	});
+
+	it("says an unmatched reasonless finding becomes pending and accepts a duplicate target", () => {
+		const { repo, files, env, id } = reviewed();
+		const path = codexFile(files, [codexFinding(8, "Null manager")]);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		const json = JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout) as {
+			comparisons: Record<string, { external: Record<string, unknown> }>;
+		};
+		const external = Object.keys(Object.values(json.comparisons)[0]!.external)[0]!;
+		expect(melian(repo, ["compare", "adjudicate", range, external, "--verdict", "valid"], env).status).toBe(0);
+		expect(melian(repo, ["compare", "unmatch", range, external, id], env)).toMatchObject({
+			status: 0,
+			stdout: expect.stringContaining("pending until re-adjudicated with a miss reason"),
+		});
+		expect(melian(repo, ["compare", "stats"], env).stdout).toContain("Valid misses without a reason: 1.");
+		expect(melian(repo, ["compare", "adjudicate", range, external, "--verdict", "duplicate"], env).status).toBe(64);
+		expect(
+			melian(repo, ["compare", "adjudicate", range, external, "--verdict", "duplicate", "--of", id], env).status,
+		).toBe(0);
+		expect(melian(repo, ["compare", "export", range], env).stdout).toContain(`duplicate of ${id}`);
+	});
+
+	it("keeps the drain clone-wide when the metrics filter excludes owed changesets", () => {
+		const { repo, env, id } = reviewed();
+		expect(melian(repo, ["compare", range], env).status).toBe(0);
+		expect(
+			melian(repo, ["compare", "adjudicate", range, id, "--verdict", "noise", "--golden", "correctness"], env)
+				.status,
+		).toBe(0);
+		for (const branch of ["second", "third"]) {
+			git(repo, "branch", branch, "feature");
+			const target = `main...${branch}`;
+			expect(melian(repo, ["review", target], env).status).toBe(1);
+			expect(melian(repo, ["compare", target], env).status).toBe(0);
+		}
+		for (const filter of [
+			["--last", "1"],
+			["--since", "2099-01-01"],
+		]) {
+			const stats = melian(repo, ["compare", "stats", ...filter], env);
+			expect(stats).toMatchObject({
+				status: 0,
+				stderr: "",
+				stdout: expect.stringContaining("Drain due: ship 1 owed goldens"),
+			});
+		}
+	});
+});
