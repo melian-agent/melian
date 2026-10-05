@@ -352,8 +352,8 @@ describe("a lens run a later review replaced", () => {
 			const index = await tx.doc(ReviewIndex, root.id);
 			const entry = index.reviews[revision]!;
 			const record = await tx.task(entry.task as TaskId);
-			const children = (record?.state as { checkpoint?: { children?: Record<string, number> } }).checkpoint
-				?.children;
+			const children = (record?.state as { checkpoint?: { children?: Record<string, number> } } | undefined)
+				?.checkpoint?.children;
 			index.reviews[revision] = { ...entry, task: 999_999 };
 			if (!stripTask) return;
 			for (const child of Object.values(children ?? {})) {
