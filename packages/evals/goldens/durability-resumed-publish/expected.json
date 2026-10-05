@@ -1,0 +1,28 @@
+{
+  "pr_title": "Finish interrupted publications rather than abort them",
+  "comments": [
+    {
+      "comment": "publishReview now resumes and waits for every publish task a crash left, where it used to abort them, but those tasks post the revision in their own input without checking the pull request still has that base, so a retargeted pull request gets the review of its old diff.",
+      "severity": "High",
+      "category": "bug",
+      "file": "packages/pipeline/src/publish.ts",
+      "rule": "stale-task-write",
+      "cause": "introduced",
+      "failureScenario": "Publishing A..H to pull request #7 crashes after the task is created and before its post. The parent lands and #7 is retargeted onto main, keeping head H; the maintainer reviews B..H and publishes. Where the base aborted the old task, the new loop resumes it, and its input still names A..H: it finds no marker for A..H and posts A..H's review, with findings on the parent's code, to #7. Then the new task posts B..H's review as well.",
+      "evidence": [
+        {
+          "file": "packages/pipeline/src/publish.ts",
+          "line": 65,
+          "endLine": 68,
+          "role": "cause"
+        },
+        {
+          "file": "packages/pipeline/src/publish.ts",
+          "line": 27,
+          "endLine": 32,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

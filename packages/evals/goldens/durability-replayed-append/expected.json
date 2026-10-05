@@ -1,0 +1,27 @@
+{
+  "pr_title": "Add the summariser's add_note tool",
+  "comments": [
+    {
+      "comment": "add_note is marked replay-safe but appends its note to a list, so the rerun after a crash between the tool's commit and its result appends the same note again.",
+      "severity": "High",
+      "category": "bug",
+      "file": "packages/pipeline/src/notes.ts",
+      "rule": "replay-duplicate",
+      "cause": "introduced",
+      "failureScenario": "The summariser calls add_note for src/a.ts line 12. The tool's commit appends the note, and the process is killed before the call's result is committed. On resume Pi Durable reruns the replay-safe tool, whose commit appends the same note again, so the walkthrough lists it twice; each further crash at that point adds another copy.",
+      "evidence": [
+        {
+          "file": "packages/pipeline/src/notes.ts",
+          "line": 45,
+          "endLine": 50,
+          "role": "cause"
+        },
+        {
+          "file": "packages/pipeline/src/notes.ts",
+          "line": 43,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

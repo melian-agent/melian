@@ -1,0 +1,33 @@
+{
+  "pr_title": "Store a walkthrough for each verdict",
+  "comments": [
+    {
+      "comment": "The walkthrough task writes its walkthrough without checking that the review index still names it, so a task a crash left behind overwrites the walkthrough of a newer verdict with an older one.",
+      "severity": "High",
+      "category": "bug",
+      "file": "packages/pipeline/src/walkthrough.ts",
+      "rule": "stale-task-write",
+      "cause": "introduced",
+      "failureScenario": "writeWalkthrough for revision R creates task T1, and the process is killed while summarise waits on the model. A dismissal decides R's verdict again, and the next writeWalkthrough creates T2 and names it in the index. Its harness.resume() also restarts T1, which reruns with the old verdict in its input; when T1's model call returns after T2's, T1 commits the old walkthrough over T2's, and publish renders a walkthrough that still lists the dismissed finding.",
+      "evidence": [
+        {
+          "file": "packages/pipeline/src/walkthrough.ts",
+          "line": 30,
+          "endLine": 34,
+          "role": "cause"
+        },
+        {
+          "file": "packages/pipeline/src/walkthrough.ts",
+          "line": 62,
+          "role": "context"
+        },
+        {
+          "file": "packages/pipeline/src/adjudication.ts",
+          "line": 19,
+          "endLine": 20,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

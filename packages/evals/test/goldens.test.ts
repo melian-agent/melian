@@ -10,9 +10,9 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { evaluateGuardrails, resolveRange } from "@melian-agent/core";
+import { defaultConfig, evaluateGuardrails, loadConfig, resolveRange } from "@melian-agent/core";
 import {
 	buildGoldenRepository,
 	type Golden,
@@ -41,6 +41,11 @@ describe("the golden corpus", () => {
 			"conventions-unpinned-action",
 			"correctness-deleted-guard",
 			"correctness-null-deref",
+			"durability-attach-key",
+			"durability-clean-upsert",
+			"durability-replayed-append",
+			"durability-resumed-publish",
+			"durability-superseded-write",
 			"injection-in-comment",
 			"pre-existing-beside-change",
 			"removed-behaviour-clean-extract",
@@ -70,12 +75,57 @@ describe("the golden corpus", () => {
 
 describe("a golden's standards and policy", () => {
 	it("are stored under inert names, so the repository the corpus sits in never reads them as its own", () => {
-		const live = new Set(["AGENTS.md", "CLAUDE.md", "melian.yaml", "melian.local.yaml", ".melian", ".agents"]);
-		const named = readdirSync(goldensDirectory, { recursive: true, withFileTypes: true }).filter((entry) =>
-			live.has(entry.name),
-		);
+		const live = new Set(["AGENTS.md", "CLAUDE.md", "melian.yaml", "melian.local.yaml", "LENS.md"]);
+		const entries = readdirSync(goldensDirectory, { recursive: true, withFileTypes: true });
+		const named = entries.filter((entry) => live.has(entry.name));
 		// The corpus's own melian.yaml is Melian's policy for the tree, not a golden's.
 		expect(named.map((entry) => join(entry.parentPath, entry.name))).toEqual([join(goldensDirectory, "melian.yaml")]);
+		// A .melian or .agents directory holds only a repository lens under its inert name: anything else beneath one,
+		// such as a standards file, is read by Melian whatever its name.
+		const homes = /(?:^|\/)\.(?:melian|agents)\/(.*)$/s;
+		const beneath = entries
+			.filter((entry) => entry.isFile())
+			.map((entry) => relative(goldensDirectory, join(entry.parentPath, entry.name)).split(sep).join("/"))
+			.flatMap((path) => homes.exec(path)?.[1] ?? []);
+		expect(beneath.filter((path) => !/^lenses\/[a-z0-9-]+\/LENS\.golden\.md$/.test(path))).toEqual([]);
+	});
+
+	it("carry each repository lens as an exact copy of Melian's own, so a golden measures the lens Melian runs", () => {
+		const melian = join(goldensDirectory, "../../..");
+		const copies = readdirSync(goldensDirectory, { recursive: true, withFileTypes: true }).filter(
+			(entry) => entry.name === "LENS.golden.md",
+		);
+		expect(copies.length).toBeGreaterThan(0);
+		for (const copy of copies) {
+			const original = readFileSync(join(melian, ".melian/lenses", basename(copy.parentPath), "LENS.md"), "utf8");
+			expect(readFileSync(join(copy.parentPath, copy.name), "utf8"), join(copy.parentPath, copy.name)).toBe(
+				original,
+			);
+		}
+	});
+
+	it("carry Melian's own full tier, which keeps every check of the default full tier", async () => {
+		const melian = join(goldensDirectory, "../../..");
+		const fullTier = async (policy: string) => {
+			const repo = realpathSync(mkdtempSync(join(tmpdir(), "melian-goldens-tier-")));
+			try {
+				execFileSync("git", ["init", "--quiet"], { cwd: repo });
+				writeFileSync(join(repo, "melian.yaml"), policy);
+				return (await loadConfig(repo, { kind: "worktree" }, ".")).config.tiers.full;
+			} finally {
+				rmSync(repo, { recursive: true, force: true });
+			}
+		};
+		const root = await fullTier(readFileSync(join(melian, "melian.yaml"), "utf8"));
+		expect(root).toEqual(expect.arrayContaining([...defaultConfig.tiers.full!]));
+		const copies = readdirSync(goldensDirectory, { recursive: true, withFileTypes: true }).filter(
+			(entry) => entry.name === "melian.golden.yaml",
+		);
+		expect(copies.length).toBeGreaterThan(0);
+		for (const copy of copies) {
+			const path = join(copy.parentPath, copy.name);
+			expect(await fullTier(readFileSync(path, "utf8")), path).toEqual(root);
+		}
 	});
 
 	it("leave policy-change-review to a change of Melian's own configuration, the corpus's included, not a golden's", async () => {
@@ -132,6 +182,21 @@ describe("a golden's standards and policy", () => {
 			for (const ref of ["main", "feature"]) {
 				expect(tracked(ref)).toContain("AGENTS.md");
 				expect(tracked(ref)).not.toContain("AGENTS.golden.md");
+			}
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("reach the golden's own repository with its repository lens under its live name", () => {
+		const golden = goldens.find((each) => each.name === "durability-clean-upsert")!;
+		const { repo } = buildGoldenRepository(golden);
+		try {
+			const tracked = (ref: string) =>
+				execFileSync("git", ["ls-tree", "-r", "--name-only", ref], { cwd: repo, encoding: "utf8" }).split("\n");
+			for (const ref of ["main", "feature"]) {
+				expect(tracked(ref)).toContain(".melian/lenses/durability/LENS.md");
+				expect(tracked(ref)).not.toContain(".melian/lenses/durability/LENS.golden.md");
 			}
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
