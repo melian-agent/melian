@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { Changeset, defaultConfig, Lens } from "@melian-agent/core";
+import { Changeset, type Decider, defaultConfig, Lens } from "@melian-agent/core";
 import { RecordedDecider } from "@melian-agent/decisions";
 import {
 	type ConversationId,
@@ -28,7 +28,7 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { decisionExtension } from "../src/decisions.ts";
+import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { gitIn } from "./fixtures/repo.ts";
@@ -62,7 +62,16 @@ afterEach(async () => {
 });
 
 async function killWhen(
-	scenario: "finding" | "legacy" | "request" | "adjudication" | "read" | "spent" | "tokens" | "escalation",
+	scenario:
+		| "finding"
+		| "legacy"
+		| "request"
+		| "adjudication"
+		| "read"
+		| "spent"
+		| "tokens"
+		| "escalation"
+		| "decision",
 	reached: (events: ReturnType<typeof readEvents>) => boolean,
 	database: string,
 	log: string,
@@ -586,5 +595,52 @@ describe("an escalation across a crash", { timeout: 30_000 }, () => {
 		}
 		// One conversation per level: the escalation's was created once, before the crash.
 		expect(levels.sort()).toEqual(["careful", "quick"]);
+	});
+});
+
+describe("a decision task a later review replaced", { timeout: 30_000 }, () => {
+	it("is aborted on opening, after a crash between the repoint and the abort, so it asks no decider", async () => {
+		const database = join(dir, "decision.sqlite");
+		const log = join(dir, "decision.jsonl");
+		await killWhen("decision", (events) => count(events, "decision-asked") === 1, database, log);
+
+		const asked: string[] = [];
+		const decider: Decider = {
+			name: "counting",
+			calibrated: false,
+			decide: async () => {
+				asked.push("asked");
+				return { answers: [] };
+			},
+		};
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
+		// What a later review's commit leaves when the process dies before it aborts the task it replaced.
+		const registry = createReviewRegistry();
+		registry.install(decisionExtension(decider));
+		const replace = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry,
+			settings: { retry: { enabled: false } },
+		});
+		const crashed = (await replace.inspect(context)).tasks.find((task) => task.record.kind === "melian.decision");
+		expect(crashed).toBeDefined();
+		const root = await replace.root(context);
+		await root.commit(async (tx) => {
+			const document = await tx.doc(DecisionDocument, root.id);
+			const revision = reviewedRevision();
+			const entry = document.decisions[revision]!.triage!;
+			document.decisions = { ...document.decisions, [revision]: { triage: { ...entry, task: 999_999 } } };
+		}, context);
+		await replace.close(context);
+
+		const reopened = await ReviewHarness.open(await openSqliteStorage(database), fake.review, {
+			retry: false,
+			decider,
+		});
+		harness = reopened.harness;
+		const settled = await harness.waitForTask(crashed!.record.id, context);
+
+		expect(settled.state.outcome.status).toBe("aborted");
+		expect(asked).toEqual([]);
 	});
 });

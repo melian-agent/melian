@@ -50,6 +50,7 @@ import {
 	type DecisionTaskInput,
 	decisionExtension,
 	decisionTask,
+	decisionTaskName,
 	readRecordedDecision,
 } from "./decisions.ts";
 import { ReviewError } from "./errors.ts";
@@ -233,31 +234,45 @@ async function spawnLens(tx: Tx, taskId: TaskId, input: LensTaskInput, lens: Len
 	return created.id;
 }
 
-// Whether a stored selection string has the shape `selectionOf` writes: `name@version@level`, then the route.
-function isCurrentSelection(lens: string): boolean {
-	return /^[^@\s]+@[^@\s]+@[^@\s]+ .*\bon /.test(lens);
-}
-
 // Aborts every live lens task the review index no longer names for its revision, or names in a shape no selection
-// matches, before anything resumes it. Problem:
+// matches, and every live decision task the decision document no longer names, before anything resumes it. Problem:
 // a review that replaced a run commits the replacement and then aborts the old task, and a process that dies between the
-// two leaves the old task live; its conversation, resumed mid-request, would ask its model again. Solution: sweep before
-// the harness resumes, at open, and at the start of every review.
+// two leaves the old task live; its conversation, resumed mid-request, would ask its model again, and a decision task
+// would ask its decider. Pi Durable allows no abort inside a commit, so the sweep stands in: it runs before the harness
+// resumes, at open, and at the start of every review.
 async function abortReplacedRuns(harness: Harness, context: Context): Promise<void> {
-	const live = (await harness.inspect(context)).tasks.filter((task) => task.record.kind === LensTask.definition.name);
-	if (live.length === 0) return;
+	const { tasks } = await harness.inspect(context);
+	const lensTasks = tasks.filter((task) => task.record.kind === LensTask.definition.name);
+	const decisions = tasks.filter(
+		(task) => task.record.kind === decisionTaskName && task.record.state.status !== "terminal",
+	);
+	if (lensTasks.length === 0 && decisions.length === 0) return;
 	const root = await harness.root(context);
 	const index = await harness.snapshot(ReviewIndex, root.id, context);
-	for (const { record } of live) {
+	for (const { record } of lensTasks) {
 		const input = record.input as unknown as LensTaskInput;
 		const entry = index?.reviews[revisionKey(input.revision)];
 		// An entry with no task is one a review that selected no lens rewrote: it names no run at all.
 		const replaced = entry !== undefined && entry.task !== record.id;
-		// An entry an older Melian stored names its lenses in a shape `selectionOf` no longer writes, so no review can
-		// attach to its task.
+		// An entry an older Melian stored names its lenses in a shape `selectionOf` no longer writes (`name@version@level`,
+		// then the route), so no review can attach to its task.
 		const stale =
-			entry !== undefined && entry.lenses.length > 0 && entry.lenses.every((lens) => !isCurrentSelection(lens));
+			entry !== undefined &&
+			entry.lenses.length > 0 &&
+			entry.lenses.every((lens) => !/^[^@\s]+@[^@\s]+@[^@\s]+ .*\bon /.test(lens));
 		if (replaced || stale) await harness.abortTask(record.id, context);
+	}
+	for (const { record } of decisions) {
+		const input = record.input as unknown as DecisionTaskInput;
+		const named = await readRecordedDecision(
+			harness,
+			input.root,
+			input.revision,
+			input.request.questionSet.name,
+			context,
+		);
+		// A harness opened without the decider has no definition to abort through; the task stays blocked, and unnamed.
+		if (named?.task !== record.id) await harness.abortTask(record.id, context).catch(() => undefined);
 	}
 }
 
@@ -1373,8 +1388,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			...(triaged.decision === undefined
 				? {}
 				: {
-						triagedBy:
-							triaged.decision.decider.startsWith("llm-fallback") ? "the LLM fallback" : triaged.decision.decider,
+						triagedBy: triaged.decision.decider.startsWith("llm-fallback")
+							? "the LLM fallback"
+							: triaged.decision.decider,
 					}),
 		},
 		options,
