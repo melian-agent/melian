@@ -1,12 +1,16 @@
 import { existsSync } from "node:fs";
 import {
 	Changeset,
+	checksOfTier,
 	FindingsLog,
 	Lens,
 	loadConfig,
+	loadSecrets,
 	loadStandards,
 	Rendering,
 	type RepositorySource,
+	ReviewPlan,
+	userFiles,
 	type Verdict,
 	visibleText,
 } from "@melian-agent/core";
@@ -19,11 +23,14 @@ import {
 	publishReview,
 	ReviewError,
 	type ReviewOrigin,
+	readProvenance,
 	readVerdict,
 	recordDismissal,
 	reviewChangeset,
 	revisionKey,
 	runChecks,
+	summarizeReview,
+	unlockCredentials,
 } from "@melian-agent/pipeline";
 import { idleModels, isScripted, reviewModels, scriptVariable } from "./models.ts";
 import { CliError, git, openStorage, storagePath } from "./repository.ts";
@@ -69,12 +76,13 @@ export class ReviewOutcome {
 	}
 }
 
-// A pull request reads policy from its base. A range on the checked-out commit reads it from the working tree, since
-// its author runs Melian; any other range reads it from its base.
+// A pull request reads policy from its base. A range on the checked-out commit reads it from the working tree, with the
+// preference files, since its author runs Melian; any other range reads it from its base. Credentials come from the
+// secrets files whatever the policy's source: they are the maintainer's, not the revision's.
 export async function review(
 	io: Io,
 	argument: string,
-	options: { readonly model?: string; readonly rerun: boolean },
+	options: { readonly model?: string; readonly rerun: boolean; readonly walkthrough?: boolean },
 ): Promise<number> {
 	const target = parseTarget(argument);
 	let changeset: Changeset;
@@ -96,14 +104,26 @@ export async function review(
 		changeset = await Changeset.resolve(io.cwd, target.spec);
 		const checkedOut = await git(changeset.repoRoot, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "");
 		const own = checkedOut === changeset.revision.head;
-		source = own ? { kind: "worktree" } : { kind: "revision", commit: changeset.revision.base };
+		const preferences = userFiles(io.env).config;
+		source = own ? { kind: "worktree", preferences } : { kind: "revision", commit: changeset.revision.base };
 	}
 	const { repoRoot } = changeset;
 	const paths = changeset.revision.paths();
 	const lenses = await Lens.load(repoRoot, source, paths);
 	const standards = await loadStandards(repoRoot, source, ".");
-	const { config: loaded } = await loadConfig(repoRoot, source, ".");
-	const { models, config, retry } = await reviewModels(io.env, loaded, lenses, options.model);
+	const policy = await loadConfig(repoRoot, source, ".");
+	const { config: loaded } = policy;
+	const tier = loaded.stages["pull-request"] ?? "full";
+	const secrets = await loadSecrets(repoRoot, userFiles(io.env).secrets);
+	for (const warning of secrets.warnings) io.stderr(`melian: ${warning}\n`);
+	const { models, plan, retry } = await reviewModels(io.env, policy, lenses, {
+		model: options.model,
+		checks: checksOfTier(loaded, tier),
+		credentials: secrets.credentials,
+	});
+	for (const line of plan.summary().split("\n").filter(Boolean)) io.stderr(`melian: ${line}\n`);
+	// A command a secrets file names runs now, so one that fails stops the review before it starts, named.
+	await unlockCredentials(models, plan.providers());
 	const path = await storagePath(repoRoot, changeset.id, io.env, isScripted(io.env));
 	// Without the publish extension, so a publication a crash interrupted waits for melian publish rather than posting
 	// from a review.
@@ -111,9 +131,8 @@ export async function review(
 	const { harness } = reviewHarness;
 	try {
 		// The deterministic checks first, then the lenses: reviewChangeset reads the checks' records, and a check of the
-		// manifest without one makes the review not reviewed. The checks take the configuration as loaded, so a --model
-		// route does not change their run's identity and run them again.
-		const tier = loaded.stages["pull-request"] ?? "full";
+		// manifest without one makes the review not reviewed. The plan's routes reach only the lenses, so a different
+		// --model does not change the checks' run identity and run them again.
 		const rootConversationId = (await harness.root(context)).id;
 		const checks = await runChecks(
 			harness,
@@ -125,10 +144,11 @@ export async function review(
 			({ verdict } = await reviewChangeset({
 				harness,
 				changeset,
-				config,
+				config: loaded,
 				lenses,
 				standards,
 				models,
+				plan,
 				policy: source,
 				tier,
 				checks: checks.records,
@@ -140,6 +160,8 @@ export async function review(
 			io.stderr(`melian: ${error.message}\n`);
 			verdict = error.verdict;
 		}
+		if (target.kind === "pullRequest" && options.walkthrough !== false)
+			await summarizeReview({ harness, changeset, config: loaded, models, rerun: options.rerun });
 		const outcome = new ReviewOutcome(verdict);
 		io.stdout(outcome.render(io.color));
 		return outcome.exitCode();
@@ -159,7 +181,11 @@ function shellQuote(argument: string): string {
 	return `'${argument.replace(/'/g, `'\\''`)}'`;
 }
 
-export async function publish(io: Io, argument: string): Promise<number> {
+export async function publish(
+	io: Io,
+	argument: string,
+	options: { readonly walkthrough?: boolean } = {},
+): Promise<number> {
 	const target = parseTarget(argument);
 	if (target.kind !== "pullRequest") {
 		throw new CliError(`publish takes a pull request, such as "#12"; Melian never posts a review of a range`);
@@ -169,6 +195,7 @@ export async function publish(io: Io, argument: string): Promise<number> {
 	const pullRequest = await provider.pullRequest(target.number);
 	const changeset = await pullRequestChangeset(io.cwd, target.number);
 	const base = await currentBase(io.cwd, pullRequest);
+	const { config } = await loadConfig(changeset.repoRoot, { kind: "revision", commit: pullRequest.base.sha }, ".");
 	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, false);
 	// Only the publish task: a review a crash interrupted must not resume here and spend tokens on real models.
 	const publishHarness = await openPublishHarness(await openStorage(path), idleModels(io.env), provider);
@@ -181,6 +208,10 @@ export async function publish(io: Io, argument: string): Promise<number> {
 			changeset,
 			pullRequest,
 			base: base ?? pullRequest.base.sha,
+			walkthrough: {
+				...config.publish.walkthrough,
+				enabled: options.walkthrough !== false && config.publish.walkthrough.enabled,
+			},
 		});
 		const parts = [
 			`${published.posted} new ${published.posted === 1 ? "finding" : "findings"}`,
@@ -248,15 +279,23 @@ export async function findings(
 	const { harness } = reviewHarness;
 	try {
 		const root = (await harness.root(context)).id;
-		const verdict = await readVerdict(harness, root, revisionKey(changeset.revision), context);
+		const revision = revisionKey(changeset.revision);
+		const verdict = await readVerdict(harness, root, revision, context);
 		if (verdict === undefined) throw missing;
+		// The plan the review ran under, as stored with its verdict, never one resolved now: routes or credentials may have
+		// changed since, and a review a crash interrupted is summarised as it ran.
+		const stored = (await readProvenance(harness, root, revision, context))?.plan;
+		if (stored !== undefined && !options.json) {
+			for (const line of ReviewPlan.from(stored).summary().split("\n").filter(Boolean))
+				io.stderr(`melian: ${line}\n`);
+		}
 		const render = new Rendering({ color: io.color, ids: true, all: options.all });
 		if (!options.open) {
-			io.stdout(options.json ? verdict.renderJson() : verdict.render(render));
+			io.stdout(options.json ? verdict.renderJson() : verdict.render(render) + verdict.agentPrompt(argument));
 			return 0;
 		}
 		const open = FindingsLog.of(verdict.attention());
-		io.stdout(options.json ? open.renderJson() : open.render(render));
+		io.stdout(options.json ? open.renderJson() : open.render(render) + verdict.agentPrompt(argument));
 		return 0;
 	} finally {
 		await reviewHarness.close(context);

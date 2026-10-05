@@ -4,7 +4,11 @@ import {
 	dismissalVersion,
 	Finding,
 	type FindingDismissal,
+	type LedgerHistory,
+	LedgerRefusal,
+	type LedgerRound,
 	type Placement,
+	type PostedLedger,
 	type PostedReview,
 	type PublishedMarkers,
 	type PullRequest,
@@ -51,6 +55,7 @@ type PublishedEntry = {
 	revision: string;
 	thread?: string;
 	dismissal?: { by: string; reason: string; at: string };
+	addressedIn?: string;
 };
 
 // What one round of a revision will post, committed before posting so a rerun posts exactly this: the verdict it
@@ -68,6 +73,7 @@ type PendingRound = {
 	resolved: Record<string, PublishedEntry>;
 	// How many times the provider refused to post it.
 	refusals: number;
+	ledger?: LedgerRound;
 };
 
 // A round the provider refused `maxRefusals` times. It is dropped so the next publish of the head plans afresh.
@@ -92,10 +98,19 @@ type StoredRevision = {
 	// Each reply by `replyKey` of the finding, its thread, and the dismissal it gave, if any; null when the thread was
 	// gone and there was nothing to reply to.
 	replies: Record<string, string | null>;
+	threadResolutions?: Record<string, true>;
 	status?: { state: ReviewStatus["state"]; description: string };
+	ledgerUrl?: string;
 };
 
-type PublishedState = { order: string[]; revisions: Record<string, StoredRevision> };
+// The ledger shows this many rounds, newest last; older ones fall off so the stored history stays bounded.
+const maxLedgerRounds = 50;
+
+type StoredPublishedState = {
+	order: string[];
+	revisions: Record<string, StoredRevision>;
+	ledgerRounds?: (LedgerRound | LedgerHistory)[];
+};
 
 function unpublished(): StoredRevision {
 	return { reviews: [], open: {}, resolved: {}, replies: {} };
@@ -123,19 +138,15 @@ function rekeyReplies(record: StoredRevision): StoredRevision {
 	return { ...record, replies };
 }
 
-// Keeps its latest value and forks as it stands: a post is a fact about the pull request, and a fork that forgot one
-// would post it twice.
-export const PublishedDocument = defineDoc<PublishedState>({
-	kind: "melian.published",
-	version: 3,
-	scope: "conversation",
-	history: "latest",
-	fork: "current",
-	initial: () => ({ order: [], revisions: {} }),
-	// Version 2 made a finding's evidence a list of locations, so a round left pending before it renders. Version 3 keys
-	// each reply by `replyKey`, where it was keyed by its finding's ID alone.
-	migrate: (value, from) => {
-		const state = value as PublishedState;
+class PublishedState {
+	readonly stored: StoredPublishedState;
+
+	constructor(stored: StoredPublishedState) {
+		this.stored = stored;
+	}
+
+	static upgrade(value: unknown, from: number): StoredPublishedState {
+		const state = value as StoredPublishedState;
 		const revisions = Object.fromEntries(
 			Object.entries(state.revisions).map(([head, record]): [string, StoredRevision] => {
 				const { pending } = record;
@@ -144,8 +155,45 @@ export const PublishedDocument = defineDoc<PublishedState>({
 				return [head, from >= 3 ? upgraded : rekeyReplies(upgraded)];
 			}),
 		);
-		return { ...state, revisions };
-	},
+		const ledgerRounds = state.ledgerRounds?.map((round, index, rounds) =>
+			index === rounds.length - 1 || !("verdict" in round)
+				? round
+				: { base: round.base, head: round.head, round: round.round, status: round.verdict.status },
+		);
+		return new PublishedState({
+			...state,
+			revisions,
+			...(ledgerRounds === undefined ? {} : { ledgerRounds }),
+		}).toJSON();
+	}
+
+	toJSON(): StoredPublishedState {
+		return this.stored;
+	}
+}
+
+// Keeps its latest value and forks as it stands: a post is a fact about the pull request, and a fork that forgot one
+// would post it twice.
+export const PublishedDocument = defineDoc<StoredPublishedState>({
+	kind: "melian.published",
+	version: 5,
+	scope: "conversation",
+	history: "latest",
+	fork: "current",
+	initial: () => new PublishedState({ order: [], revisions: {} }).toJSON(),
+	// Version 2 made a finding's evidence a list of locations, so a round left pending before it renders. Version 3 keys
+	// each reply by `replyKey`. Version 4 adds ledger snapshots; version 5 retains only one-line older rounds.
+	migrate: (value, from) => PublishedState.upgrade(value, from),
+});
+
+export const LedgerDocument = defineDoc<{ comment?: PostedLedger }>({
+	kind: "melian.ledger",
+	version: 2,
+	migrate: (value) => value,
+	scope: "conversation",
+	history: "latest",
+	fork: "current",
+	initial: () => ({}),
 });
 
 // The changeset's publisher secret, which signs every marker Melian posts for it: 32 random bytes as hex, generated once
@@ -185,13 +233,13 @@ async function postedVerdictOf(
 }
 
 // Every reply recorded at any head, by `replyKey`.
-function repliedKeys(state: PublishedState): Set<string> {
+function repliedKeys(state: StoredPublishedState): Set<string> {
 	return new Set(Object.values(state.revisions).flatMap(({ replies }) => Object.keys(replies)));
 }
 
 // Resolutions an earlier head decided but never replied to, because a later push arrived first. They are still owed.
 // The caller carries each as its reply would read now, and skips one whose reply is recorded already.
-function unanswered(state: PublishedState, head: string): Record<string, PublishedEntry & { thread: string }> {
+function unanswered(state: StoredPublishedState, head: string): Record<string, PublishedEntry & { thread: string }> {
 	const answered = repliedKeys(state);
 	const owed: Record<string, PublishedEntry & { thread: string }> = {};
 	for (const each of state.order) {
@@ -209,7 +257,7 @@ function unanswered(state: PublishedState, head: string): Record<string, Publish
 // them, and each is resolved again at `head` with the dismissal it has now. A finding's thread is the one the newest
 // head naming it holds; a finding still open there, or answered without a dismissal, is a round's to answer.
 function redismissed(
-	state: PublishedState,
+	state: StoredPublishedState,
 	head: string,
 	dismissals: Readonly<Record<string, FindingDismissal>>,
 ): Record<string, PublishedEntry> {
@@ -236,7 +284,7 @@ function redismissed(
 // The round to post for `verdict` at `head`: against the head's own open findings if a review of it was posted, else
 // against those of the latest head that has one, with any resolution an earlier head still owes.
 function planRound(
-	state: PublishedState,
+	state: StoredPublishedState,
 	head: string,
 	revision: string,
 	verdict: Verdict,
@@ -250,7 +298,10 @@ function planRound(
 	const base = own?.open ?? (previous === undefined ? {} : state.revisions[previous]!.open);
 	const plan = verdict.publication(base, lines, head);
 	const resolved: Record<string, PublishedEntry> = Object.fromEntries(
-		plan.resolved.map(({ id, ...entry }) => [id, structuredClone(entry)]),
+		plan.resolved.map(({ id, ...entry }) => [
+			id,
+			{ ...structuredClone(entry), ...(entry.dismissal === undefined ? { addressedIn: head } : {}) },
+		]),
 	);
 	if (own === undefined) {
 		const held = new Set(
@@ -327,6 +378,7 @@ type PublishInput = {
 	root: ConversationId;
 	target: PublishTarget;
 	lines: Record<string, [number, number][]>;
+	walkthrough?: { enabled: boolean; collapsed: boolean; diagrams: boolean };
 };
 
 type PublishResult = {
@@ -382,6 +434,7 @@ function publishTask(provider: ReviewProvider) {
 					return;
 				}
 				const { pullRequest, base, head, revision } = target;
+				provider.beginPublish?.();
 				const revalidate = async () => {
 					const moved = movedFrom(target, await provider.pullRequest(pullRequest));
 					if (moved !== undefined) throw new TargetMoved(moved);
@@ -390,17 +443,31 @@ function publishTask(provider: ReviewProvider) {
 					(await runtime.snapshot(PublishedDocument, root, context)) ?? { order: [], revisions: {} };
 				const postStatus = async (status: ReviewStatus) => {
 					await revalidate();
-					await provider.setStatus(head, status);
+					const ledgerUrl =
+						(await runtime.snapshot(LedgerDocument, root, context))?.comment?.url ??
+						(await read()).revisions[head]?.ledgerUrl;
+					const shown = await provider.getStatus(head);
+					if (
+						shown?.state !== status.state ||
+						(await read()).revisions[head]?.status?.description !== status.description ||
+						shown.targetUrl !== ledgerUrl
+					)
+						await provider.setStatus(head, status, ledgerUrl);
 					await runtime.commit(async (tx) => {
 						const document = await tx.doc(PublishedDocument, root);
 						if (!document.order.includes(head)) document.order = [...document.order, head];
-						document.revisions[head] = { ...(document.revisions[head] ?? unpublished()), status: { ...status } };
+						document.revisions[head] = {
+							...(document.revisions[head] ?? unpublished()),
+							status: { ...status },
+							...(ledgerUrl === undefined ? {} : { ledgerUrl }),
+						};
 						return undefined;
 					}, context);
 				};
 				const result = { posted: 0, stillOpen: 0, resolved: 0, dismissed: 0, replies: 0, recovered: 0 };
 				// Set while the provider is asked to post a round, so a refusal counts against that round.
 				let posting = false;
+				let writingLedger = false;
 				try {
 					const secret = publisher?.secret;
 					if (secret === undefined) throw new Error("the changeset has no publisher secret");
@@ -428,10 +495,7 @@ function publishTask(provider: ReviewProvider) {
 					// The status comes first, so the head carries one even when its review cannot be posted, and before the
 					// replies, so a thread that cannot take a reply never holds back the check.
 					const status = verdict.reviewStatus();
-					const shown = (await read()).revisions[head]?.status;
-					if (shown?.state !== status.state || shown.description !== status.description) {
-						await postStatus(status);
-					}
+					await postStatus(status);
 					// A pending round left by a failed run is posted as planned, under its own verdict. If the head's verdict
 					// changed since, a second round then posts the current one, so the last review matches the status.
 					for (let round = 0; round < 2; round++) {
@@ -441,6 +505,25 @@ function publishTask(provider: ReviewProvider) {
 							if (await postedVerdictOf(before, revision, head, [current, legacy], runtime, root, context))
 								break;
 							const planned = planRound(state, head, revision, verdict, lines);
+							const storedVerdict = await runtime.snapshot(VerdictDocument, root, context);
+							const details = storedVerdict?.details?.[revision];
+							const walkthrough = storedVerdict?.walkthroughs?.[revision];
+							planned.ledger = {
+								base,
+								head,
+								round: (state.revisions[head]?.reviews.length ?? 0) + 1,
+								verdict: structuredClone(planned.verdict),
+								...(details === undefined ? {} : { details: structuredClone(details) }),
+								...(walkthrough === undefined ? {} : { walkthrough: structuredClone(walkthrough) }),
+								resolved: Object.entries(planned.resolved).map(([id, entry]) => ({
+									id,
+									ruleId: entry.ruleId,
+									path: entry.path,
+									line: entry.line,
+									commit: entry.addressedIn ?? head,
+									...(entry.dismissal === undefined ? {} : { reason: entry.dismissal.reason }),
+								})),
+							};
 							await runtime.commit(async (tx) => {
 								const document = await tx.doc(PublishedDocument, root);
 								document.order = [...document.order.filter((each) => each !== head), head];
@@ -489,7 +572,22 @@ function publishTask(provider: ReviewProvider) {
 							}),
 						);
 						await runtime.commit(async (tx) => {
-							const record = (await tx.doc(PublishedDocument, root)).revisions[head]!;
+							const document = await tx.doc(PublishedDocument, root);
+							const record = document.revisions[head]!;
+							if (pending.ledger !== undefined)
+								document.ledgerRounds = [
+									...(document.ledgerRounds ?? []).map((round) =>
+										"verdict" in round
+											? {
+													base: round.base,
+													head: round.head,
+													round: round.round,
+													status: round.verdict.status,
+												}
+											: round,
+									),
+									structuredClone(pending.ledger),
+								].slice(-maxLedgerRounds);
 							record.reviews = [...record.reviews, posted.id];
 							record.verdict = pending.fingerprint;
 							record.verdictRevision = pending.revision;
@@ -514,35 +612,113 @@ function publishTask(provider: ReviewProvider) {
 						}, context);
 						result.dismissed += Object.keys(again).length;
 					}
-					const record = (await read()).revisions[head]!;
-					for (const id of Object.keys(record.resolved).sort()) {
-						const entry = record.resolved[id]!;
-						if (entry.thread === undefined) continue;
-						const key = replyKeyOf(id, { ...entry, thread: entry.thread });
-						if (Object.hasOwn(record.replies, key)) continue;
-						// Replies do not depend on the round, so any round's lookup serves; the last one is likely cached.
-						const found = (await marked({ fingerprint: record.verdict ?? "", round: record.rounds ?? 0 }))
-							.replies[key];
-						let recorded: string | null;
-						if (found === undefined) {
-							await revalidate();
-							const reply = await provider.replyResolved(
-								pullRequest,
-								{ id, ...entry, thread: entry.thread },
-								head,
-								secret,
-							);
-							recorded = reply ?? null;
-							if (reply !== undefined) result.replies++;
-						} else {
-							recorded = found;
-							result.recovered++;
+					const closing = await read();
+					for (const [publishedHead, record] of Object.entries(closing.revisions)) {
+						for (const id of Object.keys(record.resolved).sort()) {
+							const entry = record.resolved[id]!;
+							if (entry.thread === undefined) continue;
+							const key = replyKeyOf(id, { ...entry, thread: entry.thread });
+							const replied = Object.hasOwn(record.replies, key);
+							if (publishedHead !== head && !replied) continue;
+							if (replied) {
+								if (entry.dismissal !== undefined || record.threadResolutions?.[key] === true) continue;
+								await revalidate();
+								await provider.resolveThread(pullRequest, entry.thread);
+								await runtime.commit(async (tx) => {
+									const stored = (await tx.doc(PublishedDocument, root)).revisions[publishedHead]!;
+									stored.threadResolutions = { ...stored.threadResolutions, [key]: true };
+									return undefined;
+								}, context);
+								result.recovered++;
+								continue;
+							}
+							// Replies do not depend on the round, so any round's lookup serves; the last one is likely cached.
+							const found = (await marked({ fingerprint: record.verdict ?? "", round: record.rounds ?? 0 }))
+								.replies[key];
+							let recorded: string | null;
+							// A resolution marker proves the edit or reply, but an older reply left the thread open.
+							if (found === undefined || found === entry.thread) {
+								await revalidate();
+								const reply = await provider.replyResolved(
+									pullRequest,
+									{ id, ...entry, thread: entry.thread },
+									head,
+									secret,
+								);
+								recorded = reply ?? null;
+								if (reply !== undefined) result.replies++;
+							} else {
+								if (entry.dismissal === undefined) {
+									await revalidate();
+									await provider.resolveThread(pullRequest, entry.thread);
+								}
+								recorded = found;
+								result.recovered++;
+							}
+							await runtime.commit(async (tx) => {
+								const stored = (await tx.doc(PublishedDocument, root)).revisions[head]!;
+								stored.replies[key] = recorded;
+								if (entry.dismissal === undefined)
+									stored.threadResolutions = { ...stored.threadResolutions, [key]: true };
+								return undefined;
+							}, context);
 						}
+					}
+					const record = closing.revisions[head]!;
+					const publication = await read();
+					const rounds = structuredClone(publication.ledgerRounds ?? []);
+					const storedVerdict = await runtime.snapshot(VerdictDocument, root, context);
+					const latest = rounds.at(-1);
+					if (latest === undefined || latest.head !== head) {
+						rounds.push({
+							base,
+							head,
+							round: record.reviews.length || 1,
+							verdict: verdict.toJSON(),
+							resolved: [],
+						});
+						rounds.splice(0, rounds.length - maxLedgerRounds);
+					}
+					const currentRound = rounds.at(-1)! as LedgerRound;
+					currentRound.base = base;
+					currentRound.verdict = verdict.toJSON();
+					currentRound.resolved = Object.entries(record.resolved).map(([id, entry]) => ({
+						id,
+						ruleId: entry.ruleId,
+						path: entry.path,
+						line: entry.line,
+						commit: entry.addressedIn ?? head,
+						...(entry.dismissal === undefined ? {} : { reason: entry.dismissal.reason }),
+					}));
+					if (storedVerdict?.details?.[revision] !== undefined)
+						currentRound.details = structuredClone(storedVerdict.details[revision]);
+					delete currentRound.walkthrough;
+					delete currentRound.walkthroughNote;
+					if (storedVerdict?.walkthroughs?.[revision] !== undefined)
+						currentRound.walkthrough = structuredClone(storedVerdict.walkthroughs[revision]);
+					if (storedVerdict?.walkthroughNotes?.[revision] !== undefined)
+						currentRound.walkthroughNote = storedVerdict.walkthroughNotes[revision];
+					const previousLedger = (await runtime.snapshot(LedgerDocument, root, context))?.comment;
+					await revalidate();
+					writingLedger = true;
+					const ledger = await provider.writeLedger({
+						pullRequest,
+						review: record.reviews.at(-1),
+						verdict,
+						publication: { rounds },
+						walkthrough: task.input.walkthrough ?? { enabled: true, collapsed: true, diagrams: true },
+						secret,
+						...(previousLedger === undefined ? {} : { recorded: previousLedger }),
+					});
+					writingLedger = false;
+					if (JSON.stringify(previousLedger) !== JSON.stringify(ledger)) {
 						await runtime.commit(async (tx) => {
-							(await tx.doc(PublishedDocument, root)).revisions[head]!.replies[key] = recorded;
+							(await tx.doc(LedgerDocument, root)).comment = structuredClone(ledger);
+							(await tx.doc(PublishedDocument, root)).ledgerRounds = rounds;
 							return undefined;
 						}, context);
 					}
+					await postStatus(status);
 					await runtime.commit(() => {
 						const abandoned = structuredClone(record.abandoned ?? []);
 						const done: PublishOutcome = {
@@ -572,6 +748,14 @@ function publishTask(provider: ReviewProvider) {
 					// An abandoned round leaves the head without a review, so its status says so: not reviewed, with why. The
 					// status is best effort here, since the provider has just refused a post.
 					let shown: ReviewStatus | undefined;
+					if (writingLedger && error instanceof LedgerRefusal) {
+						try {
+							await postStatus({
+								state: "error",
+								description: "ledger unavailable; restore storage or delete the ledger comment by hand",
+							});
+						} catch {}
+					}
 					if (refused !== undefined && (refused.refusals ?? 0) + 1 >= maxRefusals) {
 						const failed: ReviewStatus = {
 							state: "error",
@@ -579,7 +763,8 @@ function publishTask(provider: ReviewProvider) {
 						};
 						try {
 							await revalidate();
-							await provider.setStatus(head, failed);
+							const ledgerUrl = (await runtime.snapshot(LedgerDocument, root, context))?.comment?.url;
+							await provider.setStatus(head, failed, ledgerUrl);
 							shown = failed;
 						} catch {}
 					}
@@ -683,6 +868,7 @@ export interface PublishOptions {
 	 * with git, since the provider reports only the branch's tip.
 	 */
 	readonly base: string;
+	readonly walkthrough?: { readonly enabled: boolean; readonly collapsed: boolean; readonly diagrams: boolean };
 	readonly context?: Context;
 }
 
@@ -816,7 +1002,9 @@ async function undecidedVerdict(
 
 /**
  * Publishes the verdict recorded for a pull request's head: one review whose body is the verdict and whose comments
- * are the findings not already open, a reply in each resolved finding's thread, and the review's status. Every post is
+ * are the findings not already open. Each finding the head addressed gets its own comment edited to say so, and its
+ * thread resolved, where Melian signed the comment; no reply is posted. The review ledger, the one comment Melian
+ * keeps current across rounds, is created or edited, and the review's status links to it. Every post is
  * recorded in {@link PublishedDocument}, so publishing a revision again posts nothing, and a publication a crash
  * interrupted resumes, finding what it already posted by Melian's markers.
  *
@@ -901,7 +1089,12 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		const result = outcome.status === "completed" ? (outcome.result as PublishOutcome) : undefined;
 		if (result?.kind === "superseded") superseded.push({ task: String(each.record.id), reason: result.reason });
 	}
-	const input: PublishInput = { root, target, lines: changeset.revision.diffLines() };
+	const input: PublishInput = {
+		root,
+		target,
+		lines: changeset.revision.diffLines(),
+		...(options.walkthrough === undefined ? {} : { walkthrough: { ...options.walkthrough } }),
+	};
 	const taskId = await (await harness.root(context)).commit(
 		(tx) => tx.createTask(publishTask(options.provider), input, { ownership: { kind: "conversation" } }),
 		context,

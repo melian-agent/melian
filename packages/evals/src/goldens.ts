@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import {
 	Changeset,
 	causeSchema,
+	evaluateGuardrails,
 	evidenceRevisionSchema,
 	evidenceRoleSchema,
 	type Finding,
@@ -248,6 +249,20 @@ function routeEveryTier(config: MelianConfig, model: string, override: boolean):
 	return { ...config, models: { ...config.models, ...models } };
 }
 
+// A golden that expects a `guardrail/` finding also runs the guardrails, under the policy it commits. The others do not:
+// the lenses are what they measure, and the default guardrails would add notices on every fixture's package.json.
+async function guardrailFindings(
+	golden: Golden,
+	repoRoot: string,
+	changeset: Changeset,
+	source: RepositorySource,
+	config: MelianConfig,
+): Promise<Finding[]> {
+	if (!golden.expected.comments.some((comment) => comment.rule.startsWith("guardrail/"))) return [];
+	const { findings } = await evaluateGuardrails({ repoRoot, revision: changeset.revision, source });
+	return findings.map((finding) => finding.resolved(config));
+}
+
 /**
  * Reviews a golden's change the way the CLI will: policy, standards, and lenses from the base commit, the range
  * `main...feature`, and every lens the change selects. Scripted runs answer each lens from `script.json` on the fake
@@ -279,8 +294,9 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 		const { harness } = reviewHarness;
 		try {
 			const review = { harness, changeset, config, lenses, standards, models, policy: source };
-			const { findings } = await reviewChangeset(review);
-			const rendered = FindingsLog.of([...findings]).render();
+			const reviewed = await reviewChangeset(review);
+			const findings = [...reviewed.findings, ...(await guardrailFindings(golden, repo, changeset, source, loaded))];
+			const rendered = FindingsLog.of(findings).render();
 			return { golden, findings, rendered, toolMismatches };
 		} finally {
 			await reviewHarness.close(backgroundContext);
@@ -301,6 +317,9 @@ export function scriptedMismatches(golden: Golden, findings: readonly Finding[])
 		const found = findings.find((each) => answers(comment, each));
 		if (found === undefined) return [`${name}: not reported`];
 		const { cause, failureScenario, evidence = [] } = found.properties;
+		// A guardrail finding has neither a failure scenario nor evidence, so only its cause is held to the golden.
+		if (comment.rule.startsWith("guardrail/"))
+			return cause === comment.cause ? [] : [`${name}: cause ${cause}, expected ${comment.cause}`];
 		const reported = evidence.map(({ file, startLine, endLine, role, revision }) => ({
 			file,
 			line: startLine,

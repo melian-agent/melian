@@ -1,0 +1,8 @@
+guardrails:
+  forbidden-patterns:
+    rules:
+      overlong-sentence:
+        pattern: '([\w''’`-]+[^\w''’`.!?|\n]+){44,}[\w''’`-]+'
+        paths: ["docs/**/*.md"]
+        severity: P3
+        message: 'AGENTS.md says to prefer short sentences and, for one that runs past about 25 words, to find the seam; this line holds 45 or more words with no full stop, question mark, exclamation mark, or table bar'

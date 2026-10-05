@@ -9,12 +9,16 @@ import {
 	type FindingSource,
 	loadConfig,
 	type MelianConfig,
+	type PublicationDetails,
 	type RepositorySource,
 	type Resolution,
+	type ReviewPlan,
 	type ScrutinyLevel,
 	type Severity,
+	type StoredPlan,
 	type StoredVerdict,
 	Verdict,
+	type Walkthrough,
 } from "@melian-agent/core";
 import { findingsVersion, readFindings, revisionKey } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
@@ -31,6 +35,13 @@ type StoredCheck = {
 	version?: string;
 	level?: ScrutinyLevel;
 	budgetEnded?: StoredBudgetEnd;
+	lineage?: {
+		model: string;
+		wanted?: string;
+		by: string;
+		moved?: { by: string; from: string; to: string };
+		outside: boolean;
+	};
 };
 
 /**
@@ -50,13 +61,16 @@ export type ReviewOrigin =
 
 /**
  * What a verdict was decided from, recorded beside it: its {@link ReviewOrigin}, where policy came from (`worktree`,
- * `revision:<sha>`, or `config` when the review named no source), the tier's checks, and each lens that ran as
- * `name@version`. Publishing reads it to refuse a verdict that must never reach a pull request.
+ * `revision:<sha>`, or `config` when the review named no source), the tier's checks, each lens that ran as
+ * `name@version`, and the review plan, as `ReviewPlan.from` reads it, when the review had one. Publishing reads it to
+ * refuse a verdict that must never reach a pull request; a summary reads the plan the review ran under, even after a
+ * crash, rather than resolve another.
  */
 export type VerdictProvenance = ReviewOrigin & {
 	readonly policy: string;
 	readonly manifest: readonly string[];
 	readonly lenses: readonly string[];
+	readonly plan?: StoredPlan;
 };
 
 type StoredProvenance = {
@@ -68,6 +82,7 @@ type StoredProvenance = {
 	policy: string;
 	manifest: string[];
 	lenses: string[];
+	plan?: StoredPlan;
 };
 
 // The adjudication task that recorded a verdict, and the findings version it read before deciding. Absent for a verdict
@@ -76,27 +91,61 @@ type StoredDecision = { task: number; findingsVersion: number };
 
 // Each revision's verdict, keyed by `revisionKey` of its base and head, on the changeset's root conversation, with what
 // it was decided from and the task that decided it under the same key.
-export const VerdictDocument = defineDoc<{
+type StoredVerdictState = {
 	verdicts: Record<string, StoredVerdict>;
 	provenance?: Record<string, StoredProvenance>;
 	decisions?: Record<string, StoredDecision>;
-}>({
-	kind: "melian.verdicts",
-	version: 3,
-	scope: "conversation",
-	history: "rewindable",
-	fork: "asOf",
-	initial: () => ({ verdicts: {} }),
-	// Version 3 made a finding's evidence a list of locations.
-	migrate: (value, from) => {
+	details?: Record<string, PublicationDetails>;
+	walkthroughs?: Record<string, Walkthrough>;
+	walkthroughNotes?: Record<string, string>;
+	// Finished or replaced summariser attempts since the last success; pending tasks spend no attempt.
+	walkthroughAttempts?: Record<string, number>;
+};
+
+class VerdictState {
+	readonly stored: StoredVerdictState;
+
+	constructor(stored: StoredVerdictState) {
+		this.stored = stored;
+	}
+
+	static upgrade(value: unknown, from: number): StoredVerdictState {
 		if (from < 2)
 			throw new Error(`the verdict document needs migrating from version ${from}, which Melian cannot do`);
-		const state = value as { verdicts: Record<string, StoredVerdict> };
+		const state = value as StoredVerdictState;
+		const walkthroughs = { ...state.walkthroughs };
+		const walkthroughNotes = { ...state.walkthroughNotes };
+		for (const [revision, walkthrough] of Object.entries(walkthroughs)) {
+			if (walkthrough.note !== undefined) {
+				walkthroughNotes[revision] = "No walkthrough available. The summariser returned no summary.";
+				delete walkthroughs[revision];
+			}
+		}
 		const verdicts = Object.fromEntries(
 			Object.entries(state.verdicts).map(([revision, verdict]) => [revision, Verdict.upgrade(verdict)]),
 		);
-		return { ...value, verdicts };
-	},
+		return new VerdictState({
+			...state,
+			verdicts,
+			...(state.walkthroughs === undefined ? {} : { walkthroughs }),
+			...(Object.keys(walkthroughNotes).length === 0 ? {} : { walkthroughNotes }),
+		}).toJSON();
+	}
+
+	toJSON(): StoredVerdictState {
+		return this.stored;
+	}
+}
+
+export const VerdictDocument = defineDoc<StoredVerdictState>({
+	kind: "melian.verdicts",
+	version: 5,
+	scope: "conversation",
+	history: "rewindable",
+	fork: "asOf",
+	initial: () => new VerdictState({ verdicts: {} }).toJSON(),
+	// Version 3 upgrades evidence; version 4 adds details and summaries; version 5 separates fallback notes.
+	migrate: (value, from) => VerdictState.upgrade(value, from),
 });
 
 // What the adjudication task decides from. Everything is fixed when the review creates it, so a rerun decides alike.
@@ -121,6 +170,8 @@ export type AdjudicationTaskInput = {
 	producers: { check: string; version?: string }[];
 	// Recorded with the verdict, so publishing can refuse one that came from a range or from the working tree.
 	provenance: StoredProvenance;
+	// What the review ran, recorded in the commit that records the verdict.
+	details?: PublicationDetails;
 };
 
 const policyReview = "guardrail/policy-change-review";
@@ -186,6 +237,8 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 				const document = await tx.doc(VerdictDocument, root);
 				document.verdicts[revision] = structuredClone(verdict.toJSON());
 				document.provenance = { ...document.provenance, [revision]: structuredClone(task.input.provenance) };
+				if (task.input.details !== undefined)
+					document.details = { ...document.details, [revision]: structuredClone(task.input.details) };
 				document.decisions = { ...document.decisions, [revision]: { task: runtime.taskId, findingsVersion: seen } };
 				return { status: "terminal", outcome: { status: "completed", result: "recorded" } };
 			}, context);
@@ -210,6 +263,7 @@ export function adjudicationInput(options: {
 	producers: readonly FindingSource[];
 	origin: ReviewOrigin;
 	lenses: readonly string[];
+	plan?: ReviewPlan | undefined;
 }): AdjudicationTaskInput {
 	const { root, repoRoot, base, head, policy, config, manifest, checks, findingsVersion, allowSkip, producers } =
 		options;
@@ -227,6 +281,7 @@ export function adjudicationInput(options: {
 		policy: policy === undefined ? "config" : policy.kind === "worktree" ? "worktree" : `revision:${policy.commit}`,
 		manifest: [...manifest],
 		lenses: [...options.lenses].sort(),
+		...(options.plan === undefined ? {} : { plan: options.plan.toJSON() }),
 	};
 	return {
 		root,

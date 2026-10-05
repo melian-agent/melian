@@ -28,3 +28,5 @@ export {
 } from "./publication.ts";
 
 export const packageName = "@melian-agent/github";
+
+export { Ledger } from "./ledger.ts";

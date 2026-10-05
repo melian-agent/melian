@@ -1,0 +1,5 @@
+# conventions-free-constructor
+
+Seeded from D5 of the [comparison record](../../comparisons/2026-10-05-pr-51.md) for [pull request #51](https://github.com/melian-agent/melian/pull/51): the change added `revisionOf(review)`, a module-level free function that built a `Revision` from a `ReviewState`, where `AGENTS.md` makes a construction into a domain object a static factory. The record marked no golden, because the fix deleted the function. The backlog owes one anyway: the `free-domain-function` guardrail and its Biome rule read only a function's first parameter, and here that parameter is not a domain object, so only the `conventions` lens can catch the next one.
+
+The change adds `invoiceOf(row: InvoiceRow): Invoice`, a module-private function that builds an `Invoice` from a stored row, for the store's two new readers. The fixture's `AGENTS.md` makes building an `Invoice` a static factory and exempts only a helper that touches no domain object. Unlike `conventions-free-domain-function`, whose function takes a `Finding` and formats it, this one takes a plain row and returns the domain object.

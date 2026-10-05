@@ -7,8 +7,12 @@ import { git, isNotARepository } from "./git.ts";
  * Where policy (`melian.yaml`) and standards are read from. The host chooses, because only the host knows who wrote
  * what: for a pull request it passes the base commit, so a head cannot rewrite the policy or prompts of its own review;
  * for a maintainer's local run it may pass the working tree. Core never decides trust, and one load never mixes sources.
+ * A working tree may name `preferences`, the user-level preference file, by absolute path, which `loadConfig` layers
+ * under `melian.local.yaml`; a revision never reads one.
  */
-export type RepositorySource = { readonly kind: "revision"; readonly commit: string } | { readonly kind: "worktree" };
+export type RepositorySource =
+	| { readonly kind: "revision"; readonly commit: string }
+	| { readonly kind: "worktree"; readonly preferences?: string };
 
 export type EntryKind = "file" | "directory" | "symlink" | "other";
 

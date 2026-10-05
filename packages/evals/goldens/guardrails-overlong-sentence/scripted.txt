@@ -1,0 +1,9 @@
+docs/progress-log/2026-09-29-receipt-vat.md
+
+  P3  line 3  guardrail/forbidden-patterns  (introduced, new, advisory)
+  AGENTS.md says to prefer short sentences and, for one that runs past about 25 words, to find the seam; this line holds 45 or more words with no full stop, question mark, exclamation mark, or table bar.
+    What: This line matches the forbidden-patterns rule overlong-sentence.
+    Why here: AGENTS.md says to prefer short sentences and, for one that runs past about 25 words, to find the seam; this line holds 45 or more words with no full stop, question mark, exclamation mark, or table bar.
+    What to do: Rewrite the line so it no longer matches.
+
+1 finding in 1 file.

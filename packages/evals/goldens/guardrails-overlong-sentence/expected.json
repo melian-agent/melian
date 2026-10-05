@@ -1,0 +1,22 @@
+{
+  "pr_title": "Record the VAT change",
+  "live": false,
+  "comments": [
+    {
+      "comment": "AGENTS.md says to prefer short sentences and, for one that runs past about 25 words, to find the seam; this line holds 45 or more words with no full stop, question mark, or exclamation mark",
+      "severity": "Low",
+      "category": "convention",
+      "file": "docs/progress-log/2026-09-29-receipt-vat.md",
+      "rule": "guardrail/forbidden-patterns",
+      "cause": "introduced",
+      "failureScenario": "The progress-log entry holds one sentence of 60 words. A reader must carry the whole claim to its end, and AGENTS.md asks for a split past about 25 words.",
+      "evidence": [
+        {
+          "file": "docs/progress-log/2026-09-29-receipt-vat.md",
+          "line": 3,
+          "role": "cause"
+        }
+      ]
+    }
+  ]
+}
