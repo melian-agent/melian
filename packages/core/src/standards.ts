@@ -410,11 +410,15 @@ export class Standards {
 	/**
 	 * The union of the files' chains, nearest first per file and deduplicated at the first occurrence. A lens over
 	 * many directories gets a bounded union, preferring each file's nearest rules and naming omissions in its note.
+	 * Throws {@link StandardsError} with `pathNotLoaded` for a path not passed to {@link load}.
 	 */
 	forFiles(files: readonly string[]): StandardsReading {
 		for (const file of files) {
 			const target = repoPath(this.#repoRoot, file);
-			const directory = this.#directories.get(target) ?? posix.dirname(target);
+			const directory = this.#directories.get(target);
+			if (directory === undefined) {
+				throw new StandardsError("pathNotLoaded", target, `standards were not loaded for ${target}`);
+			}
 			const error = this.#rootErrors.get(directory)?.[0];
 			if (error !== undefined) throw error;
 		}

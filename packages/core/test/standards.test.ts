@@ -236,6 +236,15 @@ describe.each(sourceKinds)("Standards from the %s", (kind) => {
 		expect(standards.forFiles([paths[1]!, paths[0]!]).paths()[0]).toBe("packages/other/AGENTS.md");
 	});
 
+	it.each(["packages/app/src/not-loaded.ts", "unknown/a.ts"])("refuses an unloaded path %s", async (path) => {
+		const standards = await Standards.load(repo, sourceFor(repo, kind), ["packages/app/src/a.ts"]);
+		const error = await rejection(
+			Promise.resolve().then(() => standards.forFiles([path])),
+			StandardsError,
+		);
+		expect(error).toMatchObject({ code: "pathNotLoaded", path });
+	});
+
 	it("reads shared directories and imported files once across paths", async () => {
 		const paths = ["packages/app/src/a.ts", "packages/app/test/b.ts", "packages/app/src/c.ts"];
 		const source = sourceFor(repo, kind);
