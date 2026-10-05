@@ -31,3 +31,7 @@ Standards now retain resolved commit provenance. The pipeline trusts only readin
 The standards cap now counts rendered headings, content, separators, boundaries and the lead-in, with a 1024-section ceiling. Unions prefer the nearest rules for each file. Omitted rules record `ended` and leave the verdict not reviewed. Empty-section, long-heading and real-renderer regressions cover the bound. The rendered cap decision records the accounting, priority and status changes.
 
 The full gate found triage assertions tied to the old selection text. They now check instruction fingerprints while retaining the exact level, band, escalation and route expectations. The triage suite passes all 71 tests.
+
+The review API requires the wrapper for automatic checks and explicit records for raw harnesses. Missing raw records now throw before tasks start. The golden runner passes its wrapper; raw test fixtures opt out explicitly. Type checking enforces the contract, and regressions cover both documented raw misuse and an environment-only harness. The harness contract decision records this refusal.
+
+The fix pass passes the full gate with two Vitest workers: 57 test files, 1439 tests passed and 50 skipped, with no audit vulnerabilities. No real provider ran.

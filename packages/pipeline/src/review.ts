@@ -720,10 +720,14 @@ function ranOn(
 	return ran;
 }
 
-/** What {@link reviewChangeset} reviews, and with what. */
-export interface ReviewOptions {
-	/** A harness with {@link lensExtension} installed, over the changeset's own storage. */
-	readonly harness: Harness | ReviewHarness;
+/** What {@link reviewChangeset} reviews, and with what. Raw harnesses must supply check records. */
+export type ReviewOptions = ReviewSettings &
+	(
+		| { readonly harness: ReviewHarness; readonly checks?: readonly CheckRecord[] }
+		| { readonly harness: Harness; readonly checks: readonly CheckRecord[] }
+	);
+
+interface ReviewSettings {
 	readonly changeset: Changeset;
 	readonly config: MelianConfig;
 	/** The lenses that may run; configuration and the changed paths select among them. */
@@ -755,13 +759,6 @@ export interface ReviewOptions {
 	 * `pull-request` stage to. Only lenses the manifest names run.
 	 */
 	readonly tier?: string;
-	/**
-	 * What the review's other checks did, such as static analysis and guardrails, one record per check. Supplying
-	 * these opts out of automatic checks. Otherwise a ReviewHarness with checkout runs them under config and policy. A check of the
-	 * manifest with no record makes the verdict not reviewed. The lens step records every `lens.*` check itself, so a
-	 * record here under such a name is ignored.
-	 */
-	readonly checks?: readonly CheckRecord[];
 	/**
 	 * Run again a lens task of this head and selection that left a lens failed, and ask triage again after a decision
 	 * that failed, rather than attach to either. Without it a repeat review attaches to the finished tasks and reports
@@ -1252,8 +1249,7 @@ async function triage(
  *
  * With a `ReviewHarness` opened with `checkout`, runs deterministic checks first unless `checks` was supplied,
  * including an empty array. Checks use the original `config`, before the plan replaces its routes. `rerun` maps to
- * `rerunFailed`. Raw harnesses and wrappers without an environment use the supplied records; missing records leave
- * the verdict not reviewed. A check run that does not complete propagates its `CheckError` without adjudicating.
+ * `rerunFailed`. Raw harnesses must supply records or throw `notInstalled`. Wrappers without an environment leave missing records not reviewed. A check run that does not complete propagates its `CheckError` without adjudicating.
  *
  * Throws {@link ReviewError}: `noAvailableModel` when a lens has no level in its band whose tier routes to a model with
  * credentials, naming each level and why, `missingPolicy` before any task starts when automatic checks lack a source, `notInstalled` when the harness lacks {@link lensExtension}, or the decision extension for
@@ -1263,6 +1259,13 @@ async function triage(
  * reported so far and the `not-reviewed` verdict already recorded.
  */
 export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
+	if (request.checks === undefined && !(request.harness instanceof ReviewHarness)) {
+		throw new ReviewError(
+			"notInstalled",
+			"automatic checks require ReviewHarness; raw harness callers must supply checks, including an empty array",
+			{ lenses: [] },
+		);
+	}
 	const harness = request.harness instanceof ReviewHarness ? request.harness.harness : request.harness;
 	const automatic =
 		request.checks === undefined && request.harness instanceof ReviewHarness && request.harness.checksAvailable;
@@ -1287,7 +1290,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				)
 			).records
 		: request.checks;
-	const options = planned({ ...request, checks: supplied });
+	const options = planned({ ...request, checks: supplied ?? [] });
 	const { changeset, config, standards, models } = options;
 	const standardsSource =
 		standards instanceof Standards && (await standards.trustedBy(options.policy)) ? "revision" : "worktree";

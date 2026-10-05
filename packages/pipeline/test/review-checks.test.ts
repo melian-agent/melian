@@ -13,6 +13,7 @@ import {
 	openReviewHarness,
 	openSqliteStorage,
 	type ReviewHarness,
+	type ReviewOptions,
 	reviewChangeset,
 } from "@melian-agent/pipeline";
 import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@melian-agent/pipeline/testing";
@@ -130,7 +131,7 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 		);
 	});
 
-	it("a raw harness with an environment but no checks extension falls back to missing records", async () => {
+	it("refuses a raw harness without records even when it has an environment", async () => {
 		const options = await setup(false);
 		const fake = createFakeModels();
 		const raw = await openHarness(createMemoryStorage(), {
@@ -140,7 +141,11 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 			settings: { retry: { enabled: false } },
 		});
 		try {
-			const result = await reviewChangeset({ ...options, harness: raw, models: fake.review });
+			await expect(
+				reviewChangeset({ ...options, harness: raw, models: fake.review } as unknown as ReviewOptions),
+			).rejects.toMatchObject({ code: "notInstalled" });
+			expect((await raw.inspect(context)).tasks).toEqual([]);
+			const result = await reviewChangeset({ ...options, harness: raw, models: fake.review, checks: [] });
 			expect(result.verdict.status).toBe("not-reviewed");
 			expect(
 				result.verdict.notRun.every((check) => check.status === "skipped" && check.reason === "no record"),
@@ -148,6 +153,15 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 		} finally {
 			await raw.close(context);
 		}
+	});
+
+	it("refuses the capable wrapper's raw harness instead of silently skipping checks", async () => {
+		const options = await setup();
+		await expect(
+			reviewChangeset({ ...options, harness: options.harness.harness } as unknown as ReviewOptions),
+		).rejects.toMatchObject({ code: "notInstalled" });
+		expect((await options.harness.harness.inspect(context)).tasks).toEqual([]);
+		expect((await reviewChangeset(options)).verdict.status).toBe("passed");
 	});
 
 	it("refuses missing policy before starting any task", async () => {
