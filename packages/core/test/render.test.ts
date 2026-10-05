@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import {
 	Adjudication,
 	defaultConfig,
+	describeLineage,
 	Finding,
 	FindingsLog,
 	findingsLogSchema,
@@ -267,6 +268,15 @@ describe("Verdict.render", () => {
 			config: defaultConfig,
 		}).adjudicate();
 		expect(passed.render()).toBe("Verdict: passed\n\nNo findings.\n");
+	});
+
+	it("names both what moved a lens to another tier and what routed that tier", () => {
+		const moved = { by: "melian.local.yaml", from: "heavy", to: "light" };
+		expect(
+			describeLineage({ model: "openai/gpt-5.5", wanted: "anthropic/opus", by: "--model", moved, outside: true }),
+		).toBe(
+			"on openai/gpt-5.5, moved from heavy to light by melian.local.yaml, whose route is set by --model, where policy wants anthropic/opus and does not accept openai/gpt-5.5",
+		);
 	});
 
 	it("names each check that left the committed routes, what put it there, and what policy wanted", () => {

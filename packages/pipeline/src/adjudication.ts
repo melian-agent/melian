@@ -33,7 +33,13 @@ type StoredCheck = {
 	version?: string;
 	level?: ScrutinyLevel;
 	budgetEnded?: StoredBudgetEnd;
-	lineage?: { model: string; wanted?: string; by: string; outside: boolean };
+	lineage?: {
+		model: string;
+		wanted?: string;
+		by: string;
+		moved?: { by: string; from: string; to: string };
+		outside: boolean;
+	};
 };
 
 /**

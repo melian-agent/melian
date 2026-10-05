@@ -283,7 +283,13 @@ describe("ReviewPlan.resolve", () => {
 			retier: { correctness: "light" },
 		});
 		const refusal = `lenses.correctness.tier moves it from heavy to light, and models.heavy.acceptOverridden is false; light runs openai/gpt-5.4-mini, which models.heavy.accept does not list`;
-		const lineage = { model: "openai/gpt-5.4-mini", wanted: opus, by: "melian.local.yaml", outside: true };
+		const lineage = {
+			model: "openai/gpt-5.4-mini",
+			wanted: opus,
+			by: "melian.local.yaml",
+			moved: { by: "melian.local.yaml", from: "heavy", to: "light" },
+			outside: true,
+		};
 		expect(moved.judge("correctness", "careful")).toEqual({ refusal, lineage });
 		expect(moved.warnings()).toContain(`correctness fails: ${refusal}`);
 		expect(moved.mark([{ name: "lens.correctness", status: "ran", level: "careful" }])[0]?.lineage).toEqual(lineage);
@@ -293,6 +299,32 @@ describe("ReviewPlan.resolve", () => {
 			retier: { correctness: "light" },
 		});
 		expect(open.judge("correctness", "careful")).toEqual({ lineage });
+		expect(open.warnings()).toContain(
+			`correctness runs openai/gpt-5.4-mini, moved from heavy to light by melian.local.yaml, whose route is set by melian.local.yaml; the committed route wants ${opus}, and does not accept openai/gpt-5.4-mini`,
+		);
+	});
+
+	it("records both what moved a lens and what routed the tier it moved to", () => {
+		const credentials = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" };
+		const flagged = plan({ heavy: { model: opus } }, credentials, { model: gpt, retier: { correctness: "light" } });
+		expect(flagged.judge("correctness", "careful").lineage).toEqual({
+			model: gpt,
+			wanted: opus,
+			by: "--model",
+			moved: { by: "melian.local.yaml", from: "heavy", to: "light" },
+			outside: true,
+		});
+		const derived = plan(
+			{ heavy: { model: opus }, light: { model: gpt } },
+			{ "amazon-bedrock": "AWS_PROFILE" },
+			{
+				retier: { correctness: "light" },
+			},
+		);
+		expect(derived.judge("correctness", "careful").lineage).toMatchObject({
+			by: "derived",
+			moved: { by: "melian.local.yaml", from: "heavy", to: "light" },
+		});
 	});
 
 	it("refuses a derived route outside accept where policy says acceptOverridden: false", () => {
@@ -370,7 +402,13 @@ describe("a resolved plan", () => {
 		expect(fallback).toMatchObject({
 			status: "failed",
 			reason: expect.stringContaining("light runs openai/gpt-5.4-mini, which models.heavy.accept does not list"),
-			lineage: { model: "openai/gpt-5.4-mini", wanted: opus, by: "melian.local.yaml", outside: true },
+			lineage: {
+				model: "openai/gpt-5.4-mini",
+				wanted: opus,
+				by: "melian.local.yaml",
+				moved: { by: "melian.local.yaml", from: "heavy", to: "light" },
+				outside: true,
+			},
 		});
 	});
 

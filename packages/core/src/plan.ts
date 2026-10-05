@@ -349,8 +349,16 @@ export class ReviewPlan {
 		const model = ran ?? planned.models[0]?.model;
 		const policyTier = entry.committed ?? entry.tier;
 		const policy = this.tier(policyTier);
-		const by = entry.committed === undefined ? planned.by : entry.by;
-		const lineage = model === undefined ? undefined : ReviewPlan.leaving(policy, model, by);
+		// A moved lens owes its model to two things: the file that moved it, and whatever routed the tier it moved to,
+		// a preference file, --model, a derivation, or the committed route itself.
+		const moved =
+			entry.committed === undefined
+				? undefined
+				: { by: entry.by ?? "a preference file", from: policyTier, to: entry.tier };
+		const by = moved === undefined ? planned.by : moved.by;
+		const left = model === undefined ? undefined : ReviewPlan.leaving(policy, model, by);
+		const lineage: CheckLineage | undefined =
+			left === undefined || moved === undefined ? left : { ...left, by: planned.by ?? "melian.yaml", moved };
 		const outside = policy.acceptOverridden === false && lineage?.outside === true;
 		const unlisted = `which models.${policyTier}.accept does not list`;
 		const why =
@@ -440,8 +448,12 @@ export class ReviewPlan {
 		return [...tiers, ...moved];
 	}
 
-	private static lineageText({ wanted, by, outside, model }: CheckLineage): string {
-		const why = by === "derived" ? "derived since no model of its route has credentials" : `set by ${by}`;
+	private static lineageText({ wanted, by, moved, outside, model }: CheckLineage): string {
+		const routed = by === "derived" ? "derived since no model of its route has credentials" : `set by ${by}`;
+		const why =
+			moved === undefined
+				? routed
+				: `moved from ${moved.from} to ${moved.to} by ${moved.by}, whose route is ${routed}`;
 		if (wanted === undefined) return `${why}; the committed route does not accept ${model}`;
 		return `${why}; the committed route wants ${wanted}${outside ? `, and does not accept ${model}` : ""}`;
 	}

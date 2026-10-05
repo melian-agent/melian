@@ -177,6 +177,8 @@ export interface CheckLineage {
 	readonly model: string;
 	readonly wanted?: string;
 	readonly by: string;
+	/** For a lens a preference file moved to another tier: that file, and the tiers it moved the lens from and to. */
+	readonly moved?: { readonly by: string; readonly from: string; readonly to: string };
 	readonly outside: boolean;
 }
 
@@ -270,7 +272,13 @@ export type StoredCheckRecord = {
 	version?: string;
 	level?: ScrutinyLevel;
 	budgetEnded?: { budget: "tokens" | "tools"; limit: number; tokens: number; tools: number };
-	lineage?: { model: string; wanted?: string; by: string; outside: boolean };
+	lineage?: {
+		model: string;
+		wanted?: string;
+		by: string;
+		moved?: { by: string; from: string; to: string };
+		outside: boolean;
+	};
 };
 
 /** A {@link Verdict} as JSON, which a Pi Durable document can hold. */

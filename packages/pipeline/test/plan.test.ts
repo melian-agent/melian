@@ -174,7 +174,13 @@ describe("reviewChangeset with a plan", () => {
 			status: "failed",
 			level: "careful",
 			reason,
-			lineage: { model: backup, wanted: heavy, by: "melian.local.yaml", outside: true },
+			lineage: {
+				model: backup,
+				wanted: heavy,
+				by: "melian.local.yaml",
+				moved: { by: "melian.local.yaml", from: "heavy", to: "light" },
+				outside: true,
+			},
 		});
 	});
 
