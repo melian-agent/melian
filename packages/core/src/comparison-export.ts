@@ -63,8 +63,12 @@ export class ComparisonExport {
 				);
 				for (const [index, finding] of findings.entries()) {
 					const judgement = comparison.judgement(finding.id);
+					const adjudication = comparison.needsReason(finding.id)
+						? "Pending: miss reason required"
+						: this.judgement(judgement);
+					const golden = comparison.adjudication(finding.id)?.current.golden;
 					out.push(
-						`| ${letter}${index + 1} | ${markdownText(name)} | ${markdownText(finding.where())} | ${markdownText(`${finding.title}: ${firstParagraph(finding.body)}`)} | ${this.judgement(judgement)} | ${markdownText(judgement?.golden ?? "Not decided")} |\n`,
+						`| ${letter}${index + 1} | ${markdownText(name)} | ${markdownText(finding.where())} | ${markdownText(`${finding.title}: ${firstParagraph(finding.body)}`)} | ${adjudication} | ${markdownText(golden ?? "Not decided")} |\n`,
 					);
 				}
 				out.push("\n");

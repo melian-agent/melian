@@ -429,6 +429,37 @@ describe("comparison review fixes", () => {
 		expect(output).toContain("## C. Melian review, round 1");
 	});
 
+	it("exports golden debt while an unmatched valid finding awaits a miss reason", () => {
+		const finding = own();
+		const external = report();
+		const comparison = compared([external], finding);
+		const judgement = { ...by, verdict: "valid", golden: "correctness" } as const;
+		comparison.adjudicate(external.id, judgement);
+		expect(comparison.effectiveMatches()).toEqual([{ external: external.id, melian: finding.id, kind: "site" }]);
+		comparison.unmatch(external.id, finding.id, by.by, by.at);
+		comparison.compare(verdictOf(finding));
+		expect(comparison.needsReason(external.id)).toBe(true);
+		expect(comparison.judgement(external.id)).toBeUndefined();
+		expect(comparison.adjudication(external.id)?.current).toEqual(judgement);
+		expect(comparison.backlog()).toEqual([
+			{
+				id: external.id,
+				lens: "correctness",
+				target: comparison.label(),
+				title: external.title,
+				verdict: "valid",
+				at: by.at,
+			},
+		]);
+		const output = new ComparisonExport(
+			[{ changeset: "a", comparison, verdict: verdictOf(finding) }],
+			"range",
+		).render();
+		expect(output).toContain(
+			"| A1 | codex | src/run.ts:12 | Null manager: First paragraph. | Pending: miss reason required | correctness |\n",
+		);
+	});
+
 	it("exports matched IDs and dismissal labels beside adjudicated findings", () => {
 		const finding = Finding.create({ ...evalInput, status: "dismissed" });
 		const external = report();
