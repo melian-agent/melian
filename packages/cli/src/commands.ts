@@ -5,6 +5,7 @@ import {
 	Lens,
 	loadConfig,
 	loadStandards,
+	Rendering,
 	type RepositorySource,
 	type Verdict,
 	visibleText,
@@ -64,7 +65,7 @@ export class ReviewOutcome {
 
 	/** The verdict as the terminal shows it, with each finding's ID, which `melian dismiss` takes. */
 	render(color: boolean): string {
-		return this.verdict.render({ color, ids: true });
+		return this.verdict.render(new Rendering({ color, ids: true }));
 	}
 }
 
@@ -249,7 +250,7 @@ export async function findings(
 		const root = (await harness.root(context)).id;
 		const verdict = await readVerdict(harness, root, revisionKey(changeset.revision), context);
 		if (verdict === undefined) throw missing;
-		const render = { color: io.color, ids: true, all: options.all };
+		const render = new Rendering({ color: io.color, ids: true, all: options.all });
 		if (!options.open) {
 			io.stdout(options.json ? verdict.renderJson() : verdict.render(render));
 			return 0;

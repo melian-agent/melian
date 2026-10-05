@@ -1,4 +1,4 @@
-import { Adjudication, defaultConfig, Finding, FindingsLog, findingsLogSchema } from "@melian-agent/core";
+import { Adjudication, defaultConfig, Finding, FindingsLog, findingsLogSchema, Rendering } from "@melian-agent/core";
 import Value from "typebox/value";
 import { describe, expect, it } from "vitest";
 import { evalInput, minimalInput } from "./fixtures/findings.ts";
@@ -90,11 +90,11 @@ describe("renderFindingsTerminal", () => {
 
 	it("uses no escape codes unless asked", () => {
 		expect(log.render()).not.toContain("\u001b");
-		expect(log.render({ color: false })).toBe(log.render());
+		expect(log.render(new Rendering({ color: false }))).toBe(log.render());
 	});
 
 	it("colours severities and file names when asked", async () => {
-		await expect(log.render({ color: true })).toMatchFileSnapshot("./golden/findings.ansi.txt");
+		await expect(log.render(new Rendering({ color: true }))).toMatchFileSnapshot("./golden/findings.ansi.txt");
 	});
 
 	const invisible =
@@ -115,7 +115,7 @@ describe("renderFindingsTerminal", () => {
 	it.each([false, true])("escapes ESC, BEL, newline, tab, and bidi overrides in a path, colour %s", (color) => {
 		const file = "src/\u001b[2Jrun\u0007\nfake.ts\tx\u202egnp.ts";
 		const hostile = Finding.create({ ...evalInput, file, trigger: undefined });
-		const text = FindingsLog.of([hostile]).render({ color });
+		const text = FindingsLog.of([hostile]).render(new Rendering({ color }));
 		const header = "src/\\u001b[2Jrun\\u0007\\u000afake.ts\\u0009x\\u202egnp.ts";
 		expect(text.split("\n")[0]).toBe(color ? `\u001b[1m${header}\u001b[0m` : header);
 		expect(text.replaceAll(/\u001b\[[0-9;]*m/g, "")).not.toMatch(invisible);
@@ -238,7 +238,7 @@ describe("renderFindingsTerminal with a verdict", () => {
 	});
 
 	it("colours the status when asked", async () => {
-		await expect(verdict.render({ color: true })).toMatchFileSnapshot("./golden/verdict.ansi.txt");
+		await expect(verdict.render(new Rendering({ color: true }))).toMatchFileSnapshot("./golden/verdict.ansi.txt");
 	});
 
 	it("says a review passed when it did", () => {
@@ -282,7 +282,7 @@ describe("renderFindingsTerminal with a verdict", () => {
 		}).adjudicate();
 
 		it("prints silent and dismissed findings, each dismissal with who, when, and why", () => {
-			const text = shown.render({ all: true, ids: true });
+			const text = shown.render(new Rendering({ all: true, ids: true }));
 			expect(text).toContain("Silent: 1 finding");
 			expect(text).toContain("Dismissed: 1 finding");
 			expect(text).not.toContain("not shown");
@@ -324,7 +324,7 @@ describe("renderFindingsTerminal with a verdict", () => {
 			findings: [speaker, merged, answered],
 		}).adjudicate();
 
-		const text = verdict.render({ ids: true });
+		const text = verdict.render(new Rendering({ ids: true }));
 
 		expect(text).toContain(
 			[

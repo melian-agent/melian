@@ -4,6 +4,7 @@ import {
 	type AlsoReportedAs,
 	Finding,
 	type FindingDismissal,
+	FindingsLog,
 	levelForSeverity,
 	type ResolvedFinding,
 	type StoredFinding,
@@ -17,7 +18,16 @@ import type {
 	PublishedFinding,
 	ReviewStatus,
 } from "./publication.ts";
-import { Rendering, type TerminalRenderOptions } from "./render.ts";
+import {
+	capitalised,
+	describeBudgetEnd,
+	plural,
+	prose,
+	Rendering,
+	shownResolutions,
+	statusLabel,
+	visibleText,
+} from "./render.ts";
 
 /**
  * The configuration that applies at a repository-relative path, usually through `loadConfig` for that path. Given
@@ -461,9 +471,53 @@ export class Verdict {
 		return createHash("sha256").update(JSON.stringify(old)).digest("hex").slice(0, 16);
 	}
 
-	/** The verdict as plain text for a terminal, as {@link Rendering} renders it. */
-	render(options: TerminalRenderOptions = {}): string {
-		return new Rendering(options).verdict(this);
+	/**
+	 * The verdict as plain text for a terminal: a header with its status and whether it blocks; the checks that did not
+	 * run and why, a lens its budget ended among them; each lens that ran with its scrutiny level and any budget that
+	 * ended it while its level counted it as run; then its findings grouped by resolution, strictest first, each group by
+	 * file as {@link FindingsLog.files} groups them. Silent and dismissed findings are counted, not shown, unless the
+	 * rendering's `all` is set; then they follow, each dismissed one with who dismissed it and why.
+	 */
+	render(rendering: Rendering = new Rendering()): string {
+		const [color, label] = statusLabel[this.status];
+		const blocking = this.blocking ? `, ${rendering.paint("31", "blocking")}` : "";
+		const parts = [`Verdict: ${rendering.paint(color, label)}${blocking}`];
+		if (this.notRun.length > 0) {
+			const checks = this.notRun.map(({ name, status, level, reason, error, budgetEnded }) => {
+				const why = reason ?? (budgetEnded === undefined ? undefined : describeBudgetEnd(budgetEnded));
+				return [
+					`  ${visibleText(name)}  ${status}${level === undefined ? "" : ` at ${level}`}${why === undefined ? "" : `: ${prose(why, "    ")}`}`,
+					...(error === undefined ? [] : [`    Error: ${prose(error, "      ")}`]),
+				].join("\n");
+			});
+			parts.push([`${plural(this.notRun.length, "check")} did not run:`, ...checks].join("\n"));
+		}
+		const lenses = (this.ran ?? []).filter((check) => check.level !== undefined);
+		if (lenses.length > 0) {
+			const checks = lenses.map(
+				({ name, level, budgetEnded }) =>
+					`  ${visibleText(name)}  ${level}${budgetEnded === undefined ? "" : `, ended and counted: ${describeBudgetEnd(budgetEnded)}`}`,
+			);
+			parts.push([`${plural(lenses.length, "lens", "lenses")} ran:`, ...checks].join("\n"));
+		}
+		const groups = shownResolutions.map((resolution): [string, readonly Finding[]] => [
+			resolution,
+			this.findings[resolution],
+		]);
+		if (rendering.all) groups.push(["silent", this.findings.silent], ["dismissed", this.dismissed]);
+		for (const [name, findings] of groups) {
+			if (findings.length === 0) continue;
+			parts.push(rendering.paint("1", `${capitalised(name)}: ${plural(findings.length, "finding")}`));
+			parts.push(...FindingsLog.of(findings).files(rendering));
+		}
+		const hidden = [
+			...(this.findings.silent.length > 0 ? [`${plural(this.findings.silent.length, "silent finding")}`] : []),
+			...(this.dismissed.length > 0 ? [`${plural(this.dismissed.length, "dismissed finding")}`] : []),
+		];
+		if (hidden.length > 0 && !rendering.all) parts.push(`${capitalised(hidden.join(" and "))} not shown.`);
+		const shown = this.attention();
+		parts.push(shown.length === 0 ? "No findings." : FindingsLog.of(shown).summary());
+		return `${parts.join("\n\n")}\n`;
 	}
 
 	/** The verdict as JSON text, indented by two spaces and ending in a newline. Its findings are SARIF results. */

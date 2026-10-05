@@ -3,7 +3,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, w
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type StoredVerdict, Verdict } from "@melian-agent/core";
+import { Rendering, type StoredVerdict, Verdict } from "@melian-agent/core";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
@@ -103,7 +103,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(stored.status).toBe(0);
 		const verdict = Verdict.from(JSON.parse(stored.stdout) as StoredVerdict);
 		expect(verdict.status).toBe("passed");
-		expect(review.stdout).toBe(verdict.render({ ids: true }));
+		expect(review.stdout).toBe(verdict.render(new Rendering({ ids: true })));
 		expect(review.stdout).toMatch(/^Verdict: passed\n/);
 	});
 

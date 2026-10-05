@@ -13,7 +13,7 @@ import {
 import { FindingError } from "./errors.ts";
 import { melianPaths } from "./paths.ts";
 import type { DiffLines, Placement } from "./publication.ts";
-import { Rendering, type TerminalRenderOptions } from "./render.ts";
+import { evidenceLines, messageContinuation, plural, prose, Rendering, severityColor, visibleText } from "./render.ts";
 
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
@@ -1003,6 +1003,56 @@ export class Finding {
 		};
 	}
 
+	/**
+	 * The finding as one block of terminal text: its severity, lines, rule, cause, status, and resolution; each other
+	 * report of its defect, merged into it or dismissed beside it, with its severity, rule, and check; who dismissed it
+	 * and why, and each earlier dismissal; then the message, the explanation's three parts, its failure scenario, and
+	 * each evidence location with its role and the code read there.
+	 */
+	render(rendering: Rendering = new Rendering()): string {
+		const { ids } = rendering;
+		const { severity, cause, evidence, failureScenario, status, explanation, resolution, id } = this.properties;
+		// The other reports of its defect: those adjudication merged into it, which a dismissal of it dismisses too, and
+		// the dismissed ones it lists beside it.
+		const reports = (this.properties.alsoReportedAs ?? []).map((other) => {
+			const what = `${other.severity === undefined ? "" : `${other.severity} `}${visibleText(other.ruleId)} from ${visibleText(other.check)}`;
+			return `    ${other.dismissed ? "Also reported, dismissed" : "Merged report"}: ${what}${ids ? `  ${visibleText(other.id)}` : ""}`;
+		});
+		const { region } = this.locations[0]!.physicalLocation;
+		const lines =
+			region.endLine === undefined || region.endLine === region.startLine
+				? `line ${region.startLine}`
+				: `lines ${region.startLine}-${region.endLine}`;
+		return [
+			`  ${rendering.paint(severityColor[severity], severity)}  ${lines}  ${visibleText(this.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"})${ids ? `  ${visibleText(id)}` : ""}`,
+			...reports,
+			...this.#dismissals(),
+			`  ${prose(this.message.text, messageContinuation)}`,
+			`    What: ${prose(explanation.what, "      ")}`,
+			`    Why here: ${prose(explanation.whyHere, "      ")}`,
+			...(failureScenario === undefined ? [] : [`    Failure scenario: ${prose(failureScenario, "      ")}`]),
+			...(evidence === undefined ? [] : ["    Evidence:", ...evidenceLines(evidence)]),
+			`    What to do: ${prose(explanation.whatToDo, "      ")}`,
+		].join("\n");
+	}
+
+	// Who dismissed the finding and why, and each dismissal before that no longer stands.
+	#dismissals(): string[] {
+		const { dismissal, pastDismissals = [] } = this.properties;
+		const said = ({ by, at, reason }: { by: string; at: string; reason: string }) =>
+			`by ${visibleText(by)} at ${visibleText(at)}: ${prose(reason, "      ")}`;
+		return [
+			...(dismissal === undefined ? [] : [`    Dismissed ${said(dismissal)}`]),
+			...pastDismissals.map((past) => {
+				const ended =
+					past.replacedAt === undefined
+						? `reopened at ${visibleText(past.reopenedRevision ?? "a later revision")}`
+						: `replaced at ${visibleText(past.replacedAt)}`;
+				return `    Earlier dismissal, ${ended}, ${said(past)}`;
+			}),
+		];
+	}
+
 	/** The IDs of the reports the finding holds: its own, then each it lists in `alsoReportedAs`. */
 	reportIds(): string[] {
 		return [this.properties.id, ...(this.properties.alsoReportedAs ?? []).map((other) => other.id)];
@@ -1154,9 +1204,36 @@ export class FindingsLog {
 		return this.#findings;
 	}
 
-	/** The log as plain text for a terminal, as {@link Rendering} renders it. */
-	render(options: TerminalRenderOptions = {}): string {
-		return new Rendering(options).log(this);
+	/**
+	 * The log as plain text for a terminal: its findings grouped by file, as {@link FindingsLog.files} groups them, then
+	 * how many there are and in how many files.
+	 */
+	render(rendering: Rendering = new Rendering()): string {
+		if (this.#findings.length === 0) return "No findings.\n";
+		return `${[...this.files(rendering), this.summary()].join("\n\n")}\n`;
+	}
+
+	/**
+	 * One block of text for each file the log's findings are in, in path order: the file's name, then each of its
+	 * findings by severity, then line, then ID, as {@link Finding.render} renders it.
+	 */
+	files(rendering: Rendering): string[] {
+		const byFile = new Map<string, Finding[]>();
+		for (const finding of [...this.#findings].sort((a, b) => a.compareReading(b))) {
+			const file = finding.properties.path;
+			byFile.set(file, [...(byFile.get(file) ?? []), finding]);
+		}
+		return [...byFile].map(([file, findings]) =>
+			[rendering.paint("1", visibleText(file)), ...findings.map((finding) => finding.render(rendering))].join(
+				"\n\n",
+			),
+		);
+	}
+
+	/** How many findings the log holds, and in how many files: "3 findings in 2 files." */
+	summary(): string {
+		const files = new Set(this.#findings.map((finding) => finding.properties.path)).size;
+		return `${plural(this.#findings.length, "finding")} in ${plural(files, "file")}.`;
 	}
 
 	/** The log as SARIF JSON text, indented by two spaces and ending in a newline. */
