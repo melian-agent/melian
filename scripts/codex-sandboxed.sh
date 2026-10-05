@@ -82,7 +82,10 @@ dynamic_rules() {
 
   echo "(allow file-write*"
   {
-    filters subpath "$worktree" "$scratch" "$run" "$common/objects" "$common/refs" "$common/logs"
+    for p in "$worktree" "$scratch" "$run"; do
+      printf '  (regex #"^%s/")\n' "$(regex_path "$p")"
+    done
+    filters subpath "$common/objects" "$common/refs" "$common/logs"
     # gc.pid and shallow live in the common directory, even in a linked worktree.
     filters literal "$common/packed-refs" "$common/packed-refs.lock" "$common/gc.pid" "$common/gc.pid.lock" \
       "$common/shallow" "$common/shallow.lock"
@@ -120,6 +123,7 @@ dynamic_rules() {
   echo "(deny file-write-flags)"
 
   echo "(deny file-write*"
+  filters literal "$worktree" "$scratch"
   filters subpath "$common/hooks" "$common/info"
   filters literal "$common/config" "$common/config.lock" "$admin/commondir" "$admin/gitdir" "$admin/locked" \
     "$admin/config.worktree" "$codex/config.toml"

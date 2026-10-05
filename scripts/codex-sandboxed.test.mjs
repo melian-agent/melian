@@ -196,7 +196,8 @@ describe("codex-sandboxed.sh profile", () => {
 		}
 		expect(allow).toContain(`(subpath "${admin}/logs")`);
 		for (const dir of ["rebase-merge", "rebase-apply"]) expect(allow).not.toContain(dir);
-		expect(allow).toContain(`(subpath "${linked}")`);
+		const escaped = linked.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
+		expect(allow).toContain(`(regex #"^${escaped}/")`);
 		expect(allow).not.toContain(`(subpath "${admin}")`);
 		expect(allow).not.toContain(`"${main}/.git")`);
 		for (const path of ["hooks", "config", "info", "commondir", "gitdir"])
@@ -240,10 +241,24 @@ describe("codex-sandboxed.sh profile", () => {
 
 	it("allows the per-run directory, never /private/tmp, /private/var/folders, or ~/.npm", () => {
 		const allow = block(profile(linked), "allow file-write*");
-		expect(allow).toContain(`(subpath "${run}")`);
+		const escaped = run.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
+		expect(allow).toContain(`(regex #"^${escaped}/")`);
 		expect(allow).not.toContain('"/private/tmp"');
 		expect(allow).not.toContain('"/private/var/folders"');
 		expect(allow).not.toContain(".npm");
+	});
+
+	it("allows only children of the worktree, scratch, and run, and fixes the persistent roots after the allow", () => {
+		const text = profile(linked, scratch);
+		const allow = block(text, "allow file-write*");
+		for (const path of [linked, scratch, run]) {
+			const escaped = path.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
+			expect(allow).toContain(`(regex #"^${escaped}/")`);
+			expect(allow).not.toContain(`(subpath "${path}")`);
+		}
+		const deny = block(text, "deny file-write*");
+		for (const path of [linked, scratch]) expect(deny).toContain(`(literal "${path}")`);
+		expect(text.indexOf(deny)).toBeGreaterThan(text.indexOf(allow));
 	});
 
 	it("lists each allowed entry once", () => {
@@ -372,10 +387,10 @@ describe("codex-sandboxed.sh profile", () => {
 	});
 
 	it("denies nothing under the run directory, which the wrapper deletes, but everything under a separate scratch", () => {
-		expect(profile(linked)).not.toContain(`^${run}/`);
+		expect(block(profile(linked), "deny file-write*")).not.toContain(`^${run}/`);
 		const text = profile(linked, scratch);
 		const escaped = scratch.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
-		expect(text).not.toContain(`^${run}/`);
+		expect(block(text, "deny file-write*")).not.toContain(`^${run}/`);
 		for (const name of ["[.][gG][iI][tT](/|$)", "([hH][eE][aA][dD]|[cC][oO][mM][mM][oO][nN][dD][iI][rR])$"])
 			expect(text).toContain(`^${escaped}/(.*/)?${name}`);
 		const apart = block(text, "deny file-write*");
@@ -552,6 +567,63 @@ describe("codex-sandboxed.sh profile", () => {
 					GIT_COMMITTER_EMAIL: "t@example.com",
 				},
 			});
+
+		it("cannot move the worktree or scratch into the run directory or to a sibling", () => {
+			for (const [index, path] of [linked, scratch].entries()) {
+				for (const destination of [join(run, `moved-root-${index}`), `${path}2`]) {
+					const result = failure(() => sh(root, `mv '${path}' '${destination}'`));
+					expect(result.status, destination).not.toBe(0);
+					expect(result.stderr, destination).toContain("Operation not permitted");
+					expect(existsSync(path), path).toBe(true);
+					expect(existsSync(destination), destination).toBe(false);
+				}
+			}
+		});
+
+		it("cannot remove or replace empty worktree and scratch roots, even under an allowed parent", () => {
+			const emptyWorktree = join(run, "empty-worktree");
+			const emptyScratch = join(run, "empty-scratch");
+			const emptyProfile = join(root, "empty-roots.sb");
+			git(main, "worktree", "add", "-q", "--detach", emptyWorktree);
+			mkdirSync(emptyScratch);
+			writeFileSync(emptyProfile, profile(emptyWorktree, emptyScratch));
+			const pointer = readFileSync(join(emptyWorktree, ".git"));
+			rmSync(join(emptyWorktree, ".git"));
+			try {
+				for (const [index, path] of [emptyWorktree, emptyScratch].entries()) {
+					expect(readdirSync(path)).toEqual([]);
+					const removed = failure(() =>
+						execFileSync("sandbox-exec", ["-f", emptyProfile, "/bin/rmdir", path], { env: env() }),
+					);
+					expect(removed.status, path).not.toBe(0);
+					expect(removed.stderr, path).toContain("Operation not permitted");
+					const replacement = join(run, `replacement-${index}`);
+					mkdirSync(replacement);
+					const replaced = failure(() =>
+						execFileSync(
+							"sandbox-exec",
+							[
+								"-f",
+								emptyProfile,
+								process.execPath,
+								"-e",
+								"require('fs').renameSync(process.argv[1], process.argv[2])",
+								replacement,
+								path,
+							],
+							{ env: env() },
+						),
+					);
+					expect(replaced.status, path).not.toBe(0);
+					expect(replaced.stderr, path).toContain("EPERM");
+					expect(existsSync(replacement)).toBe(true);
+				}
+			} finally {
+				mkdirSync(emptyWorktree, { recursive: true });
+				writeFileSync(join(emptyWorktree, ".git"), pointer);
+				git(main, "worktree", "remove", "--force", emptyWorktree);
+			}
+		});
 
 		it("resolves the user, yet cannot start a process through launchd or LaunchServices", () => {
 			expect(sh(linked, "id -un").toString().trim()).not.toBe("");
@@ -1194,7 +1266,8 @@ describe("codex-sandboxed.sh profile", () => {
 			expect(out).not.toContain(`env:TMPDIR=${scratch}`);
 			expect(out).toContain("cache-ok");
 			const text = execFileSync(script, ["--print-profile", linked, scratch, run], { encoding: "utf8", env: env() });
-			expect(block(text, "allow file-write*")).toContain(`(subpath "${scratch}")`);
+			const escaped = scratch.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
+			expect(block(text, "allow file-write*")).toContain(`(regex #"^${escaped}/")`);
 		});
 	});
 });
