@@ -88,7 +88,7 @@ export class Triage {
 	// Unlocks the lenses' providers, and the triage providers unless a script stands in for every model, since a
 	// command credential runs now and one that fails stops the review before it starts. Scripted mode triages nothing,
 	// so every lens runs at the level its script was written for.
-	static async open(options: {
+	static async create(options: {
 		readonly scripted: boolean;
 		readonly config: MelianConfig;
 		readonly plan: ReviewPlan;

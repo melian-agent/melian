@@ -133,7 +133,7 @@ export async function review(
 	});
 	for (const line of plan.summary().split("\n").filter(Boolean)) io.stderr(`melian: ${line}\n`);
 	// A command a secrets file names runs now, so one that fails stops the review before it starts, named.
-	const triage = await Triage.open({
+	const triage = await Triage.create({
 		scripted: isScripted(io.env) && io.decide === undefined,
 		config: loaded,
 		plan,

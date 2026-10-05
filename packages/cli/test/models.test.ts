@@ -170,7 +170,7 @@ describe("Triage", () => {
 				},
 			],
 		});
-		const triage = await Triage.open({ ...options, config: loaded.config, plan, models });
+		const triage = await Triage.create({ ...options, config: loaded.config, plan, models });
 		return { triage, marker, plan };
 	}
 

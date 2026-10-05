@@ -171,6 +171,8 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.stderr).toBe(
 			"melian: melian.yaml sets decisions.provider to clef, and Melian has no adapter for a decision provider until milestone 4; remove the key, and triage runs on the LLM fallback\n",
 		);
+		expect(review.stdout).toBe("");
+		expect(existsSync(join(repo, ".git/melian"))).toBe(false);
 	});
 
 	it("records each lens the scripted model ran off the committed route, and says so before the verdict", () => {
