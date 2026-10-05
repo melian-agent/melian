@@ -57,6 +57,21 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		});
 	});
 
+	it("defaults the walkthrough on and accepts each switch under publish.walkthrough", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines(
+				"publish:",
+				"  walkthrough:",
+				"    enabled: false",
+				"    collapsed: false",
+				"    diagrams: false",
+			),
+		});
+		const { config } = await load("src/index.ts");
+		expect(defaultConfig.publish.walkthrough).toEqual({ enabled: true, collapsed: true, diagrams: true });
+		expect(config.publish.walkthrough).toEqual({ enabled: false, collapsed: false, diagrams: false });
+	});
+
 	// The precedence example in docs/guidelines/core.md.
 	describe("with a root file and a service file", () => {
 		beforeEach(() => {

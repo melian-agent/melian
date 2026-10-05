@@ -183,9 +183,14 @@ export {
 	type ClosedFinding,
 	type DiffLines,
 	dismissalVersion,
+	type LedgerDraft,
+	type LedgerRound,
+	type LedgerStamp,
 	type PlacedFinding,
 	type Placement,
+	type PostedLedger,
 	type PostedReview,
+	type PublicationDetails,
 	type PublicationPlan,
 	type PublishedFinding,
 	type PublishedMarkers,
@@ -194,6 +199,7 @@ export {
 	type ReviewProvider,
 	type ReviewStatus,
 	replyKey,
+	type Walkthrough,
 } from "./publication.ts";
 export { describeBudgetEnd, Rendering, type TerminalRenderOptions, visibleText } from "./render.ts";
 export {

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { Verdict } from "./adjudication.ts";
+import type { StoredVerdict, Verdict } from "./adjudication.ts";
 import type { Finding, FindingDismissal } from "./findings.ts";
 
 /** A pull request as its provider reports it. Commit hashes are full. */
@@ -60,6 +60,8 @@ export interface PublishedFinding {
 export interface ClosedFinding extends PublishedFinding {
 	readonly id: string;
 	readonly dismissal?: FindingDismissal;
+	/** The head that first recorded this resolution, kept when a later publication carries it. */
+	readonly addressedIn?: string;
 }
 
 /**
@@ -172,9 +174,8 @@ export interface ReviewProvider {
 	/** Posts one review for a revision, never approving or requesting changes. */
 	postReview(draft: ReviewDraft): Promise<PostedReview>;
 	/**
-	 * Replies in a resolved finding's thread that `revision` resolved it, or, for a finding with a `dismissal`, that it
-	 * was dismissed and why. Returns the reply's ID, or `undefined` when the thread is gone, such as a comment someone
-	 * deleted, so there is nothing to reply to.
+	 * Edits an addressed finding and resolves its thread, or replies with a dismissal's reason. Returns the edited
+	 * comment or reply ID, or `undefined` when the thread is gone.
 	 */
 	replyResolved(
 		pullRequest: number,
@@ -182,8 +183,12 @@ export interface ReviewProvider {
 		revision: string,
 		secret: string,
 	): Promise<string | undefined>;
+	/** Finds the one signed ledger across all heads; refuses an orphaned marker. */
+	findLedger(pullRequest: number, secret: string): Promise<PostedLedger | undefined>;
+	/** Creates or edits the ledger, reading its stamp before a write. */
+	writeLedger(draft: LedgerDraft): Promise<PostedLedger>;
 	/** Sets the review's status on a commit. Setting it again replaces it. */
-	setStatus(revision: string, status: ReviewStatus): Promise<void>;
+	setStatus(revision: string, status: ReviewStatus, ledgerUrl?: string): Promise<void>;
 	/**
 	 * What the pull request already shows of `revision`'s publication, from posts that carry Melian's markers signed
 	 * with `secret`: the review of `review`'s round, posting the verdict its fingerprint names, and every thread and
@@ -195,4 +200,63 @@ export interface ReviewProvider {
 		review: { readonly fingerprint: string; readonly round: number },
 		secret: string,
 	): Promise<PublishedMarkers>;
+}
+
+/** The summarise task's bounded, untrusted description of a revision. */
+export type Walkthrough = {
+	summary: string;
+	files: { path: string; summary: string }[];
+	diagram?: string;
+	note?: string;
+};
+
+/** The routes and limits fixed when a review started, without credentials. */
+export type PublicationDetails = {
+	policy: string;
+	manifest: string[];
+	lenses: {
+		name: string;
+		version: string;
+		level: string;
+		models: string[];
+		usage?: { models: string[]; tokens: number; cost: number };
+		budget: { findings: number; tokens?: number; tools?: number };
+	}[];
+	standards: string[];
+};
+
+/** One posted round, kept across heads for the ledger's history. */
+export type LedgerRound = {
+	base: string;
+	head: string;
+	round: number;
+	verdict: StoredVerdict;
+	details?: PublicationDetails;
+	walkthrough?: Walkthrough;
+	resolved: { id: string; ruleId: string; path: string; line: number; commit: string; reason?: string }[];
+};
+
+/** The public stamp attached to the ledger. No git identity or secret enters it. */
+export type LedgerStamp = {
+	version: 1;
+	base: string;
+	head: string;
+	round: number;
+	verdict: string;
+	counts: { open: number; blocking: number; dismissed: number };
+	lenses: string[];
+	plan: string | null;
+	projection: string;
+};
+
+/** The ledger comment found or written on the host. */
+export type PostedLedger = { id: string; url: string; stamp: LedgerStamp };
+
+/** The durable publication history projected through the current verdict. */
+export interface LedgerDraft {
+	readonly pullRequest: number;
+	readonly verdict: Verdict;
+	readonly publication: { readonly rounds: readonly LedgerRound[] };
+	readonly walkthrough: { readonly enabled: boolean; readonly collapsed: boolean; readonly diagrams: boolean };
+	readonly secret: string;
 }
