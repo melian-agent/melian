@@ -1,0 +1,1 @@
+The full gate for the thirteenth-round fixes to [pull request #62](https://github.com/melian-agent/melian/pull/62) caught an argument passed to `Harness.resume` in the new crash regression. Pi's declaration takes no arguments and returns `void`. The test now calls that API directly, then reads the verdict to confirm it still stands.

@@ -19,6 +19,7 @@ import {
 	readVerdict,
 	reviewChangeset,
 	revisionKey,
+	type TaskId,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -672,6 +673,86 @@ describe("verification across a crash", { timeout: 30_000 }, () => {
 });
 
 describe("a lens task from an earlier selection during triage", { timeout: 30_000 }, () => {
+	it("aborts its pending adjudication while a fresh decision chooses another selection", async () => {
+		const database = join(dir, "triage-adjudication.sqlite");
+		const log = join(dir, "triage-adjudication.jsonl");
+		await killWhen("adjudication", (events) => count(events, "adjudication-started") === 1, database, log);
+		let release = () => {};
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const decide = vi.fn(async (request: Parameters<Decider["decide"]>[0]) => {
+			await gate;
+			return {
+				answers: request.questions.map((question) => ({ question: question.id, distribution: { quick: 1 } })),
+			};
+		});
+		const decider: Decider = { name: "holding", calibrated: false, decide };
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "medium" }, { id: "heavy" }] });
+		const requests = scriptConversations(fake, [
+			{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const reopened = await ReviewHarness.open(await openSqliteStorage(database), fake.review, {
+			retry: false,
+			decider,
+		});
+		harness = reopened.harness;
+		const { tasks } = await harness.inspect(context);
+		const previous = tasks.find((task) => task.record.kind === "melian.adjudication")!;
+		expect(previous.record.state.status).not.toBe("terminal");
+		const conversation = await harness.root(context);
+		const root = conversation.id;
+		const revision = reviewedRevision();
+		const entry = (await harness.snapshot(ReviewIndex, root, context))!.reviews[revision]!;
+		const lenses = await conversation.commit((tx) => tx.task(entry.task as TaskId), context);
+		expect(lenses!.state).toMatchObject({ status: "terminal", outcome: { status: "completed" } });
+		expect(entry.adjudication!.task).toBe(previous.record.id);
+		const medium = fake.ref("medium");
+		const heavy = fake.ref("heavy");
+		const pending = reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config: {
+				...defaultConfig,
+				tiers: { ...defaultConfig.tiers, full: ["standard"] },
+				models: {
+					medium: { model: `${medium.provider}/${medium.modelId}` },
+					heavy: { model: `${heavy.provider}/${heavy.modelId}` },
+				},
+			},
+			lenses: await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"]),
+			standards: [],
+			models: fake.review,
+			decider,
+			checks: [
+				{ name: "guardrails", status: "ran" },
+				{ name: "static.biome", status: "ran" },
+				{ name: "static.tsc", status: "ran" },
+			],
+		});
+		try {
+			await vi.waitFor(() => expect(decide).toHaveBeenCalledOnce());
+			const old = await harness.waitForTask(previous.record.id, context);
+			expect(old.state.outcome.status).toBe("aborted");
+			expect(await readVerdict(harness, root, revision, context)).toBeUndefined();
+			expect(fake.provider.state.callCount).toBe(0);
+		} finally {
+			release();
+			await pending.catch(() => undefined);
+		}
+		const { verdict } = await pending;
+		expect(verdict).toMatchObject({
+			status: "passed",
+			ran: expect.arrayContaining([
+				{ name: "lens.correctness", status: "ran", level: "quick", reason: expect.any(String) },
+			]),
+		});
+		expect(await readVerdict(harness, root, revision, context)).toEqual(verdict);
+		harness.resume();
+		expect(await readVerdict(harness, root, revision, context)).toEqual(verdict);
+		expect(requests["You are the correctness reviewer"]).toHaveLength(1);
+	});
+
 	it("cannot resume while a fresh decision is pending", async () => {
 		const database = join(dir, "triage.sqlite");
 		const log = join(dir, "triage.jsonl");

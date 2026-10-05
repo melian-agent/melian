@@ -431,6 +431,51 @@ describe("triage", () => {
 		});
 	});
 
+	it("removes a triage-skipped lens from another lens's hand-off instructions", async () => {
+		const contracts = "You are the contracts reviewer";
+		const twoLenses = {
+			...config,
+			tiers: { ...config.tiers, full: ["standard", "lens.contracts"] },
+			lenses: { contracts: { level: { floor: "skip" } } },
+		} as const;
+		await open();
+		const both = scriptConversations(fake, [
+			{ match: correctness, replies: [done] },
+			{ match: contracts, replies: [done] },
+		]);
+
+		await review({ config: twoLenses });
+
+		expect(systemPromptOf(both[correctness]![0]!)).toContain("- `contracts`:");
+		expect(both[contracts]).toHaveLength(1);
+		const decider = new RecordedDecider({
+			triage: {
+				version: "1",
+				answers: {
+					correctness: { distribution: { careful: 1 } },
+					contracts: { distribution: { skip: 1 } },
+				},
+			},
+		});
+		await open(decider);
+		const skipped = scriptConversations(fake, [
+			{ match: correctness, replies: [done] },
+			{ match: contracts, replies: [done] },
+		]);
+
+		const reviewed = await review({ decider, config: twoLenses });
+
+		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
+		expect(reviewed.verdict.notRun).toContainEqual({
+			name: "lens.contracts",
+			status: "skipped",
+			reason: "triage skipped it, as its floor allows",
+		});
+		expect(skipped[correctness]).toHaveLength(1);
+		expect(skipped[contracts]).toHaveLength(0);
+		expect(systemPromptOf(skipped[correctness]![0]!)).not.toContain("contracts");
+	});
+
 	it("reads each lens's band from the policy's configuration for every file it reviews", async () => {
 		writeFiles(repo, { "src/melian.yaml": lines("lenses:", "  correctness:", "    level: { floor: deep }") });
 		await open();
@@ -1265,6 +1310,54 @@ describe("escalation", () => {
 			{ check: "lens.correctness", version: `${version()}@careful` },
 		]);
 		expect(lensRecord(reviewed)!.reason).toContain("careful restated 1 finding quick carried");
+	});
+
+	it("keeps a quick finding when the escalated run reports the same rule at overlapping lines in another file", async () => {
+		writeFiles(repo, { "src/other.ts": `${gitIn(repo, "show", "feature:src/user.ts")}\n` });
+		gitIn(repo, "add", "src/other.ts");
+		gitIn(repo, "commit", "-qm", "add another user file");
+		const decider = choosing("quick");
+		await open(decider);
+		const spanning = call("report_finding", { ...crashFinding, line: 6, endLine: 7 });
+		const other = call("report_finding", {
+			...crashFinding,
+			file: "src/other.ts",
+			evidence: [{ file: "src/other.ts", line: 7, role: "cause" }],
+		});
+		scriptConversations(fake, [{ match: correctness, replies: [spanning, done, other, done] }]);
+
+		const reviewed = await review({ decider });
+
+		expect(
+			reviewed.findings.map((finding) => ({
+				path: finding.properties.path,
+				rule: finding.ruleId,
+				line: finding.lines()[0],
+				endLine: finding.lines()[1],
+				source: finding.properties.source,
+			})),
+		).toEqual(
+			expect.arrayContaining([
+				{
+					path: "src/user.ts",
+					rule: "null-dereference",
+					line: 6,
+					endLine: 7,
+					source: { check: "lens.correctness", version: `${version()}@quick` },
+				},
+				{
+					path: "src/other.ts",
+					rule: "null-dereference",
+					line: 7,
+					endLine: 7,
+					source: { check: "lens.correctness", version: `${version()}@careful` },
+				},
+			]),
+		);
+		expect(reviewed.findings).toHaveLength(2);
+		expect(reviewed.verdict.all()).toHaveLength(2);
+		expect(lensRecord(reviewed)!.reason).toContain("1 finding quick carried at or above P1");
+		expect(lensRecord(reviewed)!.reason).not.toContain("careful restated");
 	});
 
 	it("runs a lens again when a budget ended it at quick before it reported anything", async () => {

@@ -287,7 +287,10 @@ async function abortReplacedRuns(harness: Harness, context: Context): Promise<vo
 	const decisions = tasks.filter(
 		(task) => task.record.kind === decisionTaskName && task.record.state.status !== "terminal",
 	);
-	if (live.length === 0 && decisions.length === 0) return;
+	const adjudications = tasks.filter(
+		(task) => task.record.kind === AdjudicationTask.definition.name && task.record.state.status !== "terminal",
+	);
+	if (live.length === 0 && decisions.length === 0 && adjudications.length === 0) return;
 	const root = await harness.root(context);
 	const index = await harness.snapshot(ReviewIndex, root.id, context);
 	for (const { record } of live) {
@@ -305,6 +308,12 @@ async function abortReplacedRuns(harness: Harness, context: Context): Promise<vo
 			entry.lenses.length > 0 &&
 			entry.lenses.every((lens) => !/^[^@\s]+@[^@\s]+@[^@\s]+ .*\bon /.test(lens));
 		if (replaced || stale) await harness.abortTask(record.id, context);
+	}
+	for (const { record } of adjudications) {
+		const input = record.input as unknown as AdjudicationTaskInput;
+		if (index?.reviews[revisionKey(input)]?.adjudication?.task !== record.id) {
+			await harness.abortTask(record.id, context);
+		}
 	}
 	for (const { record } of decisions) {
 		const input = record.input as unknown as DecisionTaskInput;
@@ -1142,8 +1151,8 @@ async function triage(
 		const retry = rerun && known?.decision === undefined;
 		const attach = known?.key === key && !retry && (await attachable(tx, known.task, undecided));
 		const index = await tx.doc(ReviewIndex, root.id);
-		const previous = index.reviews[revision]?.task;
-		const record = previous === undefined ? undefined : await tx.task(previous as TaskId);
+		const previous = index.reviews[revision];
+		const record = previous?.task === undefined ? undefined : await tx.task(previous.task as TaskId);
 		const task = attach
 			? (known.task as TaskId<DecisionResult>)
 			: await tx.createTask(decisionTask(decider), input, { ownership: { kind: "conversation" } });
@@ -1157,6 +1166,7 @@ async function triage(
 		if (!attach || (known.decision === undefined && known.failure === undefined)) {
 			// Waiting starts every pending task, before triage can choose the selection that replaces this live run.
 			if (record !== undefined && record.state.status !== "terminal") index.reviews[revision] = { lenses: [] };
+			else if (previous?.adjudication !== undefined) index.reviews[revision] = omit(previous, "adjudication");
 		}
 		return task;
 	}, context);
