@@ -116,4 +116,4 @@ melian publish "#N"
 
 It posts a review, creates or edits one ledger comment, and sets a `melian/review` commit status linked to that ledger on GitHub, where other people see them, and exits `0`. It exits `1` when it refuses or fails; show its message. When it refuses because the pull request moved on, or because the stored review is not one Melian publishes, the message ends with the review to run, quoted to paste as it stands. Run that review, show the new findings, and offer again.
 
-The ledger’s walkthrough is a summary, never a verdict. To omit it, pass `--no-walkthrough` to `melian publish` after the user authorises publication. The same option on `melian review` skips summarisation.
+The ledger's walkthrough is a summary, never a verdict. To omit it, pass `--no-walkthrough` to `melian publish` after the user authorises publication. The same option on `melian review` skips summarisation. Only pull-request reviews create walkthroughs. A failed summary can retry on the next review.
