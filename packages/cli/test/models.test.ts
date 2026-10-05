@@ -76,7 +76,10 @@ describe("reviewModels triage", () => {
 
 describe("decisionProviderRefusal", () => {
 	it("prints the provider's control characters as visible text", () => {
-		const config = { ...defaultConfig, decisions: { provider: "evil\u001b[31m\nforged" } };
+		const config = {
+			...defaultConfig,
+			decisions: { ...defaultConfig.decisions, provider: "evil\u001b[31m\nforged" },
+		};
 
 		const refusal = decisionProviderRefusal(config);
 
