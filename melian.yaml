@@ -1,5 +1,19 @@
 # Melian's policy for its own repository. A pull request is reviewed under the base commit's copy of this file.
-# It routes no model: each maintainer routes tiers in melian.local.yaml, which git ignores, or passes --model.
+# Its routes are defaults: a maintainer without their credentials gets a route derived from the credentials they hold,
+# which melian doctor prints and every check run on it records. Route your own tiers in melian.local.yaml or
+# ~/.config/melian/config.yaml, or pass --model; keep keys in melian.secrets.yaml or ~/.config/melian/secrets.yaml.
+models:
+  heavy:
+    model: anthropic/claude-opus-5-5
+    fallbacks: [openai/gpt-5.5]
+    accept: [anthropic/claude-opus-5-5, openai/gpt-5.5]
+  medium:
+    model: anthropic/claude-sonnet-5-5
+    fallbacks: [openai/gpt-5.5]
+  # The verifier, from milestone 2 step 6, takes either; the plan prefers the family its finder is not.
+  verifier:
+    accept: [openai/gpt-5.5, anthropic/claude-opus-5-5]
+
 tiers:
   fast: [guardrails, static.biome, static.tsc]
   # The default full tier, plus Melian's own repository lens under .melian/lenses/.
