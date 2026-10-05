@@ -1,22 +1,18 @@
 import {
-	adjudicate,
+	Adjudication,
 	type ChangedFile,
 	type CheckRecord,
-	createFinding,
 	defaultConfig,
-	diffLines,
-	type Finding,
+	Finding,
 	type FindingInput,
-	placeFinding,
-	planPublication,
-	reviewStatus,
+	Revision,
 	type Verdict,
 } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
 import { evalInput } from "./fixtures/findings.ts";
 
 const finding = (input: Partial<FindingInput>): Finding =>
-	createFinding({ ...evalInput, trigger: undefined, startColumn: undefined, endColumn: undefined, ...input });
+	Finding.create({ ...evalInput, trigger: undefined, startColumn: undefined, endColumn: undefined, ...input });
 
 const hunk = (file: string, index: number, newStart: number, newLines: number) => ({
 	file,
@@ -37,7 +33,7 @@ const changed = (path: string, hunks: ReturnType<typeof hunk>[], extra: Partial<
 	...extra,
 });
 
-describe("diffLines", () => {
+describe("Revision.diffLines", () => {
 	it("lists each file's added lines at head, and nothing for deletions, binaries, or deleted files", () => {
 		const files = [
 			changed("src/run.ts", [
@@ -49,7 +45,7 @@ describe("diffLines", () => {
 			changed("logo.png", [], { binary: true }),
 			changed("only-deletes.ts", [hunk("only-deletes.ts", 0, 4, 0)]),
 		];
-		expect(diffLines(files)).toEqual({
+		expect(Revision.from({ base: "a".repeat(40), head: "b".repeat(40), files: files }).diffLines()).toEqual({
 			"src/run.ts": [
 				[3, 4],
 				[20, 20],
@@ -58,7 +54,7 @@ describe("diffLines", () => {
 	});
 });
 
-describe("placeFinding", () => {
+describe("Finding.place", () => {
 	const lines = {
 		"src/run.ts": [
 			[10, 14],
@@ -67,12 +63,12 @@ describe("placeFinding", () => {
 	};
 
 	it("posts a finding inside the diff on its own lines", () => {
-		expect(placeFinding(finding({ startLine: 12, endLine: 12 }), lines)).toEqual({
+		expect(finding({ startLine: 12, endLine: 12 }).place(lines)).toEqual({
 			kind: "lines",
 			startLine: 12,
 			line: 12,
 		});
-		expect(placeFinding(finding({ startLine: 11, endLine: 13 }), lines)).toEqual({
+		expect(finding({ startLine: 11, endLine: 13 }).place(lines)).toEqual({
 			kind: "lines",
 			startLine: 11,
 			line: 13,
@@ -80,7 +76,7 @@ describe("placeFinding", () => {
 	});
 
 	it("clips a finding that runs past a hunk to the changed lines", () => {
-		expect(placeFinding(finding({ startLine: 8, endLine: 11 }), lines)).toEqual({
+		expect(finding({ startLine: 8, endLine: 11 }).place(lines)).toEqual({
 			kind: "lines",
 			startLine: 10,
 			line: 11,
@@ -88,21 +84,26 @@ describe("placeFinding", () => {
 	});
 
 	it("anchors a finding outside the diff to the nearest changed line of its file", () => {
-		expect(placeFinding(finding({ startLine: 25, endLine: 25 }), lines)).toEqual({ kind: "nearest", line: 30 });
-		expect(placeFinding(finding({ startLine: 2, endLine: 2 }), lines)).toEqual({ kind: "nearest", line: 10 });
-		expect(placeFinding(finding({ startLine: 20, endLine: 20 }), lines)).toEqual({ kind: "nearest", line: 14 });
+		expect(finding({ startLine: 25, endLine: 25 }).place(lines)).toEqual({ kind: "nearest", line: 30 });
+		expect(finding({ startLine: 2, endLine: 2 }).place(lines)).toEqual({ kind: "nearest", line: 10 });
+		expect(finding({ startLine: 20, endLine: 20 }).place(lines)).toEqual({ kind: "nearest", line: 14 });
 	});
 
 	it("puts a finding in a file the change does not touch in the body", () => {
-		expect(placeFinding(finding({ file: "src/other.ts" }), lines)).toEqual({ kind: "body" });
+		expect(finding({ file: "src/other.ts" }).place(lines)).toEqual({ kind: "body" });
 	});
 });
 
 function verdictOf(findings: readonly Finding[], checks: readonly CheckRecord[] = []): Verdict {
-	return adjudicate({ findings, manifest: checks.map((check) => check.name), checks, config: defaultConfig });
+	return new Adjudication({
+		findings,
+		manifest: checks.map((check) => check.name),
+		checks,
+		config: defaultConfig,
+	}).adjudicate();
 }
 
-describe("planPublication", () => {
+describe("Verdict.publication", () => {
 	const head = "b".repeat(40);
 	const lines = { "src/run.ts": [[12, 12]] as [number, number][] };
 	const open = finding({ snippet: "eval(input)" });
@@ -118,7 +119,7 @@ describe("planPublication", () => {
 
 	it("posts new findings, keeps open ones without reposting, and resolves the ones that went away", () => {
 		const previous = { [open.properties.id]: posted("101"), [fixed.properties.id]: posted("102") };
-		const plan = planPublication(verdictOf([open, fresh]), previous, lines, head);
+		const plan = verdictOf([open, fresh]).publication(previous, lines, head);
 
 		expect(plan.post.map((each) => [each.finding.properties.id, each.placement])).toEqual([
 			[fresh.properties.id, { kind: "body" }],
@@ -133,16 +134,9 @@ describe("planPublication", () => {
 
 	it("resolves an open finding that was dismissed, with its dismissal, and never posts a dismissed one", () => {
 		const dismissal = { by: "Tal <tal@melian.invalid>", reason: "Constant input.", at: "2026-10-04T00:00:00Z" };
-		const as = (each: Finding): Finding => ({
-			...each,
-			properties: { ...each.properties, status: "dismissed", dismissal },
-		});
-		const plan = planPublication(
-			verdictOf([as(fixed), as(fresh)]),
-			{ [fixed.properties.id]: posted("102") },
-			lines,
-			head,
-		);
+		const as = (each: Finding): Finding =>
+			Finding.from({ ...each.toJSON(), properties: { ...each.properties, status: "dismissed", dismissal } });
+		const plan = verdictOf([as(fixed), as(fresh)]).publication({ [fixed.properties.id]: posted("102") }, lines, head);
 
 		expect(plan).toMatchObject({ post: [], stillOpen: [] });
 		expect(plan.resolved).toEqual([{ id: fixed.properties.id, ...posted("102"), dismissal }]);
@@ -160,12 +154,13 @@ describe("planPublication", () => {
 			source: { check: "lens.contracts" },
 		});
 		const dismissed = [fixed, member].map(
-			(each): Finding => ({ ...each, properties: { ...each.properties, status: "dismissed", dismissal } }),
+			(each): Finding =>
+				Finding.from({ ...each.toJSON(), properties: { ...each.properties, status: "dismissed", dismissal } }),
 		);
 		const verdict = verdictOf(dismissed);
 		expect(verdict.dismissed.map((each) => each.properties.id)).toEqual([fixed.properties.id]);
 
-		const plan = planPublication(verdict, { [member.properties.id]: posted("103") }, lines, head);
+		const plan = verdict.publication({ [member.properties.id]: posted("103") }, lines, head);
 
 		expect(plan.resolved).toEqual([{ id: member.properties.id, ...posted("103"), dismissal }]);
 		expect(plan.open).toEqual({});
@@ -183,13 +178,19 @@ describe("planPublication", () => {
 			source: { check: "lens.contracts" },
 		});
 		const dismissed = [
-			{ ...fixed, properties: { ...fixed.properties, status: "dismissed" as const, dismissal: later } },
-			{ ...member, properties: { ...member.properties, status: "dismissed" as const, dismissal: own } },
+			Finding.from({
+				...fixed.toJSON(),
+				properties: { ...fixed.properties, status: "dismissed", dismissal: later },
+			}),
+			Finding.from({
+				...member.toJSON(),
+				properties: { ...member.properties, status: "dismissed", dismissal: own },
+			}),
 		];
 		const verdict = verdictOf(dismissed);
 		expect(verdict.dismissed.map((each) => each.properties.id)).toEqual([fixed.properties.id]);
 
-		const plan = planPublication(verdict, { [member.properties.id]: posted("103") }, lines, head);
+		const plan = verdict.publication({ [member.properties.id]: posted("103") }, lines, head);
 
 		expect(plan.dismissals).toEqual({ [fixed.properties.id]: later, [member.properties.id]: own });
 		expect(plan.resolved).toEqual([{ id: member.properties.id, ...posted("103"), dismissal: own }]);
@@ -200,8 +201,8 @@ describe("planPublication", () => {
 		const loud = finding({ severity: "P3" });
 		const previous = { [loud.properties.id]: posted("101") };
 
-		const silent = planPublication(verdictOf([quiet]), previous, lines, head);
-		const again = planPublication(verdictOf([loud]), silent.open, lines, head);
+		const silent = verdictOf([quiet]).publication(previous, lines, head);
+		const again = verdictOf([loud]).publication(silent.open, lines, head);
 
 		expect(silent).toMatchObject({ post: [], resolved: [], open: previous });
 		expect(again).toMatchObject({ post: [], stillOpen: [loud.properties.id], resolved: [] });
@@ -209,26 +210,26 @@ describe("planPublication", () => {
 
 	it("posts nothing for silent findings", () => {
 		const nit = finding({ severity: "nit" });
-		expect(planPublication(verdictOf([nit]), {}, lines, head).post).toEqual([]);
+		expect(verdictOf([nit]).publication({}, lines, head).post).toEqual([]);
 	});
 });
 
-describe("reviewStatus", () => {
+describe("Verdict.reviewStatus", () => {
 	it("maps a passed review to success", () => {
-		expect(reviewStatus(verdictOf([]))).toEqual({ state: "success", description: "Passed" });
+		expect(verdictOf([]).reviewStatus()).toEqual({ state: "success", description: "Passed" });
 	});
 
 	it("maps findings with nothing blocking to success, counting them", () => {
 		const advisory = finding({ severity: "P3" });
 		const acknowledge = finding({ severity: "P2", snippet: "eval(body)" });
-		expect(reviewStatus(verdictOf([advisory, acknowledge]))).toEqual({
+		expect(verdictOf([advisory, acknowledge]).reviewStatus()).toEqual({
 			state: "success",
 			description: "2 findings, none blocking",
 		});
 	});
 
 	it("maps a blocking finding to failure", () => {
-		expect(reviewStatus(verdictOf([finding({ severity: "P0" })]))).toEqual({
+		expect(verdictOf([finding({ severity: "P0" })]).reviewStatus()).toEqual({
 			state: "failure",
 			description: "1 finding, 1 blocking",
 		});
@@ -239,7 +240,7 @@ describe("reviewStatus", () => {
 			{ name: "lens.correctness", status: "failed", reason: "the lens did not finish" },
 			{ name: "lens.contracts", status: "ran" },
 		];
-		expect(reviewStatus(verdictOf([finding({ severity: "P0" })], checks))).toEqual({
+		expect(verdictOf([finding({ severity: "P0" })], checks).reviewStatus()).toEqual({
 			state: "error",
 			description: "Not reviewed: lens.correctness failed (the lens did not finish)",
 		});

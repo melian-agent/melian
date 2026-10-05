@@ -1,29 +1,25 @@
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import {
 	type Changeset,
-	diffLines,
 	dismissalVersion,
-	type Finding,
+	Finding,
 	type FindingDismissal,
 	type Placement,
 	type PostedReview,
 	type PublishedMarkers,
 	type PullRequest,
-	planPublication,
 	type ReviewProvider,
 	type ReviewStatus,
 	replyKey,
-	reviewStatus,
-	upgradeStoredFinding,
-	type Verdict,
+	type StoredFinding,
+	type StoredVerdict,
+	Verdict,
 } from "@melian-agent/core";
 import {
 	type AdjudicationResult,
 	readDecision,
 	readProvenance,
 	readVerdict,
-	type StoredVerdict,
-	upgradeStoredVerdict,
 	VerdictDocument,
 	type VerdictProvenance,
 } from "./adjudication.ts";
@@ -48,7 +44,7 @@ import { ReviewIndex } from "./review-index.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
 // `dismissal` is set on a finding resolved because someone dismissed it, so its reply says why.
-type StoredFinding = {
+type PublishedEntry = {
 	ruleId: string;
 	path: string;
 	line: number;
@@ -66,10 +62,10 @@ type PendingRound = {
 	round: number;
 	fingerprint: string;
 	verdict: StoredVerdict;
-	post: { finding: Finding; placement: Placement }[];
+	post: { finding: StoredFinding; placement: Placement }[];
 	stillOpen: number;
-	open: Record<string, StoredFinding>;
-	resolved: Record<string, StoredFinding>;
+	open: Record<string, PublishedEntry>;
+	resolved: Record<string, PublishedEntry>;
 	// How many times the provider refused to post it.
 	refusals: number;
 };
@@ -91,8 +87,8 @@ type StoredRevision = {
 	rounds?: number;
 	pending?: PendingRound;
 	abandoned?: AbandonedRound[];
-	open: Record<string, StoredFinding>;
-	resolved: Record<string, StoredFinding>;
+	open: Record<string, PublishedEntry>;
+	resolved: Record<string, PublishedEntry>;
 	// Each reply by `replyKey` of the finding, its thread, and the dismissal it gave, if any; null when the thread was
 	// gone and there was nothing to reply to.
 	replies: Record<string, string | null>;
@@ -106,14 +102,14 @@ function unpublished(): StoredRevision {
 }
 
 // The key a reply to `entry`, resolved or dismissed, is recorded under.
-function replyKeyOf(id: string, entry: StoredFinding & { thread: string }): string {
+function replyKeyOf(id: string, entry: PublishedEntry & { thread: string }): string {
 	return replyKey(id, entry.thread, entry.dismissal === undefined ? undefined : dismissalVersion(entry.dismissal));
 }
 
 // A round left pending before evidence became a list, with each finding in the current shape.
 function upgradePending(pending: PendingRound): PendingRound {
-	const post = pending.post.map((each) => ({ ...each, finding: upgradeStoredFinding(each.finding) }));
-	return { ...pending, verdict: upgradeStoredVerdict(pending.verdict), post };
+	const post = pending.post.map((each) => ({ ...each, finding: Finding.upgrade(each.finding) }));
+	return { ...pending, verdict: Verdict.upgrade(pending.verdict), post };
 }
 
 // A reply recorded by its finding's ID alone, keyed as the reply to the entry its head resolved.
@@ -165,50 +161,6 @@ export const PublisherDocument = defineDoc<{ secret?: string; target?: PublishTa
 	initial: () => ({}),
 });
 
-// Who dismissed each finding, why, and when stay out of the fingerprint, a merged report's own dismissal included: a
-// reason changed by a second dismissal is answered in the finding's thread, and a review saying nothing new would only
-// repeat the last one. A verdict without them hashes as it always has.
-export function fingerprint(verdict: Verdict): string {
-	const bare = (finding: Finding): Finding => {
-		const { dismissal: _, pastDismissals: __, ...properties } = finding.properties;
-		const { alsoReportedAs } = properties;
-		if (alsoReportedAs === undefined) return { ...finding, properties };
-		const reports = alsoReportedAs.map(({ dismissal: ___, ...report }) => report);
-		return { ...finding, properties: { ...properties, alsoReportedAs: reports } };
-	};
-	const findings = Object.fromEntries(
-		Object.entries(verdict.findings).map(([resolution, group]) => [resolution, group.map(bare)]),
-	);
-	const kept = { ...verdict, findings, dismissed: verdict.dismissed.map(bare) };
-	return createHash("sha256").update(JSON.stringify(kept)).digest("hex").slice(0, 16);
-}
-
-// The fingerprint a verdict migrated from version 2 of the verdict document had before, when it could have been one:
-// each finding's evidence is the single cause at head that the migration made of its one location, and no finding has
-// a failure scenario. A head published before the upgrade then reads as published, rather than taking a second review
-// of the same verdict.
-export function legacyFingerprint(verdict: Verdict): string | undefined {
-	const findings = [...Object.values(verdict.findings).flat(), ...verdict.dismissed];
-	const legacy = (finding: Finding) => {
-		const { evidence, failureScenario, otherClaims } = finding.properties;
-		if (failureScenario !== undefined || otherClaims !== undefined) return false;
-		if (evidence === undefined) return true;
-		return evidence.length === 1 && evidence[0]!.role === "cause" && evidence[0]!.revision === "head";
-	};
-	if (!findings.every(legacy)) return undefined;
-	const downgrade = (finding: Finding) => {
-		const [location] = finding.properties.evidence ?? [];
-		if (location === undefined) return finding;
-		const { role: _, revision: __, ...old } = location;
-		return { ...finding, properties: { ...finding.properties, evidence: old } };
-	};
-	const groups = Object.fromEntries(
-		Object.entries(verdict.findings).map(([resolution, group]) => [resolution, group.map(downgrade)]),
-	);
-	const old = { ...verdict, findings: groups, dismissed: verdict.dismissed.map(downgrade) };
-	return createHash("sha256").update(JSON.stringify(old)).digest("hex").slice(0, 16);
-}
-
 // Whether the last review posted at `head`, as `record` holds it, posted this revision's verdict, by its current or
 // legacy fingerprint. A record an older Melian wrote names no revision; it counts only when no other revision reviewed
 // at the head has a verdict with the same fingerprint, so an identical verdict after a retarget is never taken for the
@@ -227,7 +179,8 @@ async function postedVerdictOf(
 	const verdicts = (await reader.snapshot(VerdictDocument, root, context))?.verdicts ?? {};
 	return !Object.entries(verdicts).some(([other, verdict]) => {
 		if (other === revision || !other.endsWith(`..${head}`)) return false;
-		return [fingerprint(verdict), legacyFingerprint(verdict)].includes(record.verdict);
+		const decided = Verdict.from(verdict);
+		return [decided.fingerprint(), decided.legacyFingerprint()].includes(record.verdict);
 	});
 }
 
@@ -238,9 +191,9 @@ function repliedKeys(state: PublishedState): Set<string> {
 
 // Resolutions an earlier head decided but never replied to, because a later push arrived first. They are still owed.
 // The caller carries each as its reply would read now, and skips one whose reply is recorded already.
-function unanswered(state: PublishedState, head: string): Record<string, StoredFinding & { thread: string }> {
+function unanswered(state: PublishedState, head: string): Record<string, PublishedEntry & { thread: string }> {
 	const answered = repliedKeys(state);
-	const owed: Record<string, StoredFinding & { thread: string }> = {};
+	const owed: Record<string, PublishedEntry & { thread: string }> = {};
 	for (const each of state.order) {
 		if (each === head) continue;
 		for (const [id, entry] of Object.entries(state.revisions[each]!.resolved)) {
@@ -259,10 +212,10 @@ function redismissed(
 	state: PublishedState,
 	head: string,
 	dismissals: Readonly<Record<string, FindingDismissal>>,
-): Record<string, StoredFinding> {
+): Record<string, PublishedEntry> {
 	const answered = repliedKeys(state);
 	const planned = state.revisions[head]?.resolved ?? {};
-	const again: Record<string, StoredFinding> = {};
+	const again: Record<string, PublishedEntry> = {};
 	for (const [id, dismissal] of Object.entries(dismissals)) {
 		const latest = state.order.findLast((each) => {
 			const record = state.revisions[each]!;
@@ -295,8 +248,8 @@ function planRound(
 	const own = postedAt(head) ? state.revisions[head] : undefined;
 	const previous = state.order.filter((each) => each !== head && postedAt(each)).at(-1);
 	const base = own?.open ?? (previous === undefined ? {} : state.revisions[previous]!.open);
-	const plan = planPublication(verdict, base, lines, head);
-	const resolved: Record<string, StoredFinding> = Object.fromEntries(
+	const plan = verdict.publication(base, lines, head);
+	const resolved: Record<string, PublishedEntry> = Object.fromEntries(
 		plan.resolved.map(({ id, ...entry }) => [id, structuredClone(entry)]),
 	);
 	if (own === undefined) {
@@ -324,9 +277,9 @@ function planRound(
 	return {
 		revision,
 		round: (state.revisions[head]?.rounds ?? 0) + 1,
-		fingerprint: fingerprint(verdict),
-		verdict: structuredClone(verdict) as StoredVerdict,
-		post: structuredClone(plan.post.map(({ finding, placement }) => ({ finding, placement }))),
+		fingerprint: verdict.fingerprint(),
+		verdict: structuredClone(verdict.toJSON()),
+		post: structuredClone(plan.post.map(({ finding, placement }) => ({ finding: finding.toJSON(), placement }))),
 		stillOpen: plan.stillOpen.length,
 		open: Object.fromEntries(Object.entries(plan.open).map(([id, entry]) => [id, { ...entry }])),
 		resolved,
@@ -461,8 +414,8 @@ function publishTask(provider: ReviewProvider) {
 					};
 					const verdict = await readVerdict(runtime, root, revision, context);
 					if (verdict === undefined) throw new Error(`no verdict is recorded for ${revision}`);
-					const current = fingerprint(verdict);
-					const legacy = legacyFingerprint(verdict);
+					const current = verdict.fingerprint();
+					const legacy = verdict.legacyFingerprint();
 					// A pending round planned for another revision of this head, such as the pull request before a retarget,
 					// is dropped unless the provider already shows it, in which case the loop below records it as posted.
 					const left = (await read()).revisions[head]?.pending;
@@ -474,7 +427,7 @@ function publishTask(provider: ReviewProvider) {
 					}
 					// The status comes first, so the head carries one even when its review cannot be posted, and before the
 					// replies, so a thread that cannot take a reply never holds back the check.
-					const status = reviewStatus(verdict);
+					const status = verdict.reviewStatus();
 					const shown = (await read()).revisions[head]?.status;
 					if (shown?.state !== status.state || shown.description !== status.description) {
 						await postStatus(status);
@@ -512,8 +465,11 @@ function publishTask(provider: ReviewProvider) {
 								base,
 								fingerprint: pending.fingerprint,
 								round: pending.round,
-								verdict: pending.verdict,
-								findings: pending.post,
+								verdict: Verdict.from(pending.verdict),
+								findings: pending.post.map(({ finding, placement }) => ({
+									finding: Finding.from(finding),
+									placement,
+								})),
 								stillOpen: pending.stillOpen,
 								resolved: Object.entries(pending.resolved)
 									.filter(([, entry]) => entry.thread === undefined)
@@ -527,7 +483,7 @@ function publishTask(provider: ReviewProvider) {
 							result.recovered++;
 						}
 						const open = Object.fromEntries(
-							Object.entries(pending.open).map(([id, entry]): [string, StoredFinding] => {
+							Object.entries(pending.open).map(([id, entry]): [string, PublishedEntry] => {
 								const thread = entry.thread ?? (entry.revision === head ? posted.threads[id] : undefined);
 								return [id, { ...entry, ...(thread === undefined ? {} : { thread }) }];
 							}),
@@ -548,7 +504,7 @@ function publishTask(provider: ReviewProvider) {
 					}
 					// A reason changed by a second dismissal takes a reply alone, under the status already set.
 					// The dismissals a publication of the verdict answers, whatever the pull request already shows.
-					const { dismissals } = planPublication(verdict, {}, lines, head);
+					const { dismissals } = verdict.publication({}, lines, head);
 					const again = redismissed(await read(), head, dismissals);
 					if (Object.keys(again).length > 0) {
 						await runtime.commit(async (tx) => {
@@ -945,7 +901,7 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		const result = outcome.status === "completed" ? (outcome.result as PublishOutcome) : undefined;
 		if (result?.kind === "superseded") superseded.push({ task: String(each.record.id), reason: result.reason });
 	}
-	const input: PublishInput = { root, target, lines: diffLines(changeset.revision.files) };
+	const input: PublishInput = { root, target, lines: changeset.revision.diffLines() };
 	const taskId = await (await harness.root(context)).commit(
 		(tx) => tx.createTask(publishTask(options.provider), input, { ownership: { kind: "conversation" } }),
 		context,

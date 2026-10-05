@@ -10,8 +10,7 @@ import {
 import type { ChangedFile, Hunk } from "./diff.ts";
 import { CheckError } from "./errors.ts";
 import {
-	createFinding,
-	type Finding,
+	Finding,
 	type FindingExplanation,
 	type FindingTrigger,
 	normaliseSnippet,
@@ -60,7 +59,7 @@ interface Hit {
 }
 
 function finding(hit: Hit): Finding {
-	return createFinding({
+	return Finding.create({
 		rule: `guardrail/${hit.guardrail}`,
 		message: hit.message,
 		file: hit.file,

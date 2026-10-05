@@ -3,7 +3,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, w
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { renderFindingsTerminal, type Verdict } from "@melian-agent/core";
+import { Rendering, type StoredVerdict, Verdict } from "@melian-agent/core";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -96,9 +96,9 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review).toMatchObject({ status: 0, stderr: "" });
 		const stored = melian(repo, ["findings", "main", "--json"], env);
 		expect(stored.status).toBe(0);
-		const verdict = JSON.parse(stored.stdout) as Verdict;
+		const verdict = Verdict.from(JSON.parse(stored.stdout) as StoredVerdict);
 		expect(verdict.status).toBe("passed");
-		expect(review.stdout).toBe(renderFindingsTerminal(verdict, { ids: true }));
+		expect(review.stdout).toBe(verdict.render(new Rendering({ ids: true })));
 		expect(review.stdout).toMatch(/^Verdict: passed\n/);
 	});
 
@@ -196,7 +196,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const review = melian(repo, ["review", "main"], env);
 
 		expect(review).toMatchObject({ status: 0, stderr: "" });
-		const verdict = JSON.parse(melian(repo, ["findings", "main", "--json"], env).stdout) as Verdict;
+		const verdict = JSON.parse(melian(repo, ["findings", "main", "--json"], env).stdout) as StoredVerdict;
 		expect(verdict.notRun.map((check) => check.name)).toEqual(["decisions.fast"]);
 	});
 
@@ -238,7 +238,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 	function reviewedNullDeref() {
 		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!);
 		expect(melian(repo, ["review", range], env).status).toBe(1);
-		const stored = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as Verdict;
+		const stored = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as StoredVerdict;
 		const id = stored.findings.block[0]!.properties.id;
 		return { repo, env, id };
 	}
@@ -268,7 +268,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 				`\\(introduced, dismissed, block\\)  ${id}\\n    Dismissed by Melian Test <test@melian\\.invalid> at \\d{4}-[^:]+:\\d\\d:[^:]+: ${reason}\\n`,
 			),
 		);
-		const verdict = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as Verdict;
+		const verdict = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as StoredVerdict;
 		expect(verdict.dismissed[0]!.properties.dismissal).toMatchObject({
 			by: "Melian Test <test@melian.invalid>",
 			reason,
@@ -306,7 +306,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		const { repo, env } = goldenCheckout(golden, { ...script, contracts });
 		const review = melian(repo, ["review", range], env);
 		expect(review.status).toBe(1);
-		const stored = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as Verdict;
+		const stored = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as StoredVerdict;
 		const [speaker] = stored.findings.block;
 		const [member] = speaker!.properties.alsoReportedAs!;
 		return { repo, env, review, id: speaker!.properties.id, member: member!.id };
@@ -341,7 +341,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		expect(dismissed).toMatchObject({ status: 0, stderr: "" });
 		expect(dismissed.stdout).not.toContain("Also dismissed");
 		expect(dismissed.stdout).toContain("Verdict now: findings.\n");
-		const verdict = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as Verdict;
+		const verdict = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as StoredVerdict;
 		expect(verdict.dismissed.map((each) => each.properties.id)).toEqual([id]);
 		const live = Object.values(verdict.findings).flat();
 		expect(live.map((each) => each.properties.id)).toEqual([member]);

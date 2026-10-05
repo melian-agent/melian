@@ -1,11 +1,4 @@
-import {
-	adjudicate,
-	ConfigError,
-	evaluateGuardrails,
-	type Finding,
-	loadConfig,
-	resolveRange,
-} from "@melian-agent/core";
+import { Adjudication, Changeset, ConfigError, evaluateGuardrails, Finding, loadConfig } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	gitIn,
@@ -46,7 +39,7 @@ async function guardrails(
 	const baseCommit = commit(base, "base");
 	for (const path of remove) gitIn(repo, "rm", "--quiet", path);
 	const headCommit = commit(head, "head");
-	const { revision } = await resolveRange(repo, `${baseCommit}..${headCommit}`);
+	const { revision } = await Changeset.resolve(repo, `${baseCommit}..${headCommit}`);
 	return evaluateGuardrails({ repoRoot: repo, revision, source: { kind: "revision", commit: baseCommit } });
 }
 
@@ -146,7 +139,7 @@ describe("forbidden-paths", () => {
 		const baseCommit = commit(base, "base");
 		gitIn(repo, "rm", "--quiet", "-r", "legacy");
 		const headCommit = commit({ legacy: lines("now a file"), "server.pem": lines("secret") }, "head");
-		const { revision } = await resolveRange(repo, `${baseCommit}..${headCommit}`);
+		const { revision } = await Changeset.resolve(repo, `${baseCommit}..${headCommit}`);
 		const { findings } = await evaluateGuardrails({
 			repoRoot: repo,
 			revision,
@@ -600,17 +593,17 @@ describe("policy-change-review", () => {
 			{ "melian.yaml": lines(root, "guardrails:", "  forbidden-paths:", "    enabled: false") },
 			"head",
 		);
-		const { revision } = await resolveRange(repo, `${baseCommit}..${headCommit}`);
+		const { revision } = await Changeset.resolve(repo, `${baseCommit}..${headCommit}`);
 		const source = { kind: "revision", commit: baseCommit } as const;
 		const { findings } = await evaluateGuardrails({ repoRoot: repo, revision, source });
 		const { config } = await loadConfig(repo, source, "melian.yaml");
 
-		const verdict = adjudicate({
+		const verdict = new Adjudication({
 			findings,
 			manifest: ["guardrails"],
 			checks: [{ name: "guardrails", status: "ran" }],
 			config,
-		});
+		}).adjudicate();
 
 		expect(verdict.status).toBe("findings");
 		expect(verdict.findings.acknowledge.map((finding) => [finding.ruleId, finding.properties.path])).toEqual([
@@ -622,7 +615,7 @@ describe("policy-change-review", () => {
 		const root = lines("resolution:", "  P2: silent");
 		const baseCommit = commit({ "melian.yaml": root }, "base");
 		const headCommit = commit({ "melian.yaml": lines(root, "  P3: silent") }, "head");
-		const { revision } = await resolveRange(repo, `${baseCommit}..${headCommit}`);
+		const { revision } = await Changeset.resolve(repo, `${baseCommit}..${headCommit}`);
 		const source = { kind: "revision", commit: baseCommit } as const;
 		const { findings } = await evaluateGuardrails({ repoRoot: repo, revision, source });
 		const { config } = await loadConfig(repo, source, "melian.yaml");
@@ -630,8 +623,8 @@ describe("policy-change-review", () => {
 		const [location] = notice.locations;
 		const region = { ...location!.physicalLocation.region, snippet: { text: "resolution:" } };
 		// Sorts first, so were the two merged it would speak for them, and its rule would escape the acknowledge floor.
-		const lens: Finding = {
-			...notice,
+		const lens = Finding.from({
+			...notice.toJSON(),
 			ruleId: "lens.correctness/wrong-result",
 			locations: [{ ...location!, physicalLocation: { ...location!.physicalLocation, region } }],
 			properties: {
@@ -640,14 +633,14 @@ describe("policy-change-review", () => {
 				occurrence: 0,
 				source: { check: "lens.correctness" },
 			},
-		};
+		});
 
-		const verdict = adjudicate({
+		const verdict = new Adjudication({
 			findings: [notice, lens],
 			manifest: ["guardrails"],
 			checks: [{ name: "guardrails", status: "ran" }],
 			config,
-		});
+		}).adjudicate();
 
 		expect(verdict.status).toBe("findings");
 		expect(verdict.findings.acknowledge.map(({ ruleId, properties }) => [ruleId, properties.alsoReportedAs])).toEqual(
@@ -660,7 +653,7 @@ describe("policy-change-review", () => {
 			const baseCommit = commit({ "melian.yaml": quiet }, "base");
 			const headCommit = commit({ "melian.yaml": lines(quiet, "    severity: P3") }, "head");
 			writeFiles(repo, { "melian.local.yaml": local });
-			const { revision } = await resolveRange(repo, `${baseCommit}..${headCommit}`);
+			const { revision } = await Changeset.resolve(repo, `${baseCommit}..${headCommit}`);
 			const { findings } = await evaluateGuardrails({ repoRoot: repo, revision, source: { kind: "worktree" } });
 			return summary(findings).map(({ file, severity }) => ({ file, severity }));
 		}

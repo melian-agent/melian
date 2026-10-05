@@ -1,0 +1,33 @@
+{
+  "pr_title": "Link each finding from a pull request comment",
+  "comments": [
+    {
+      "comment": "The change adds commentLine, a free function whose first parameter is a Finding, though AGENTS.md says \"Behaviour belongs to the object it is about. A function whose first parameter is a `Finding` is a method of `Finding`, whether it asks the finding something, changes it, or formats it.\"",
+      "severity": "Low",
+      "category": "convention",
+      "file": "src/comment.ts",
+      "rule": "quoted-rule-violation",
+      "source": "lens.conventions",
+      "cause": "introduced",
+      "failureScenario": "commentLine takes a Finding as its first parameter and formats it, so it is a free function where AGENTS.md asks for a method. AGENTS.md says \"Behaviour belongs to the object it is about. A function whose first parameter is a `Finding` is a method of `Finding`, whether it asks the finding something, changes it, or formats it.\", so a reader looking on Finding for how a finding is shown in a comment does not find commentLine, and the next formatter is written beside it in another file.",
+      "evidence": [
+        {
+          "file": "src/comment.ts",
+          "line": 4,
+          "endLine": 5,
+          "role": "cause"
+        },
+        {
+          "file": "src/finding.ts",
+          "line": 3,
+          "role": "context"
+        },
+        {
+          "file": "AGENTS.md",
+          "line": 7,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

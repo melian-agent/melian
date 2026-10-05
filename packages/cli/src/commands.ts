@@ -1,15 +1,12 @@
 import { existsSync } from "node:fs";
 import {
-	type Changeset,
-	createFindingsLog,
+	Changeset,
+	FindingsLog,
+	Lens,
 	loadConfig,
-	loadLenses,
 	loadStandards,
+	Rendering,
 	type RepositorySource,
-	renderFindingsJson,
-	renderFindingsTerminal,
-	renderVerdictJson,
-	resolveRange,
 	type Verdict,
 	visibleText,
 } from "@melian-agent/core";
@@ -50,11 +47,26 @@ export interface Io {
  */
 export const reviewExitCodes = { passed: 0, blocking: 1, notReviewed: 2, findings: 3 } as const;
 
-/** The exit code `melian review` ends with for `verdict`. */
-export function exitCodeFor(verdict: Verdict): number {
-	if (verdict.status === "not-reviewed") return reviewExitCodes.notReviewed;
-	if (verdict.blocking) return reviewExitCodes.blocking;
-	return verdict.status === "passed" ? reviewExitCodes.passed : reviewExitCodes.findings;
+/** What `melian review` prints for a verdict, and the exit code it ends with. */
+export class ReviewOutcome {
+	readonly verdict: Verdict;
+
+	constructor(verdict: Verdict) {
+		this.verdict = verdict;
+	}
+
+	/** One of {@link reviewExitCodes}. */
+	exitCode(): number {
+		const { verdict } = this;
+		if (verdict.status === "not-reviewed") return reviewExitCodes.notReviewed;
+		if (verdict.blocking) return reviewExitCodes.blocking;
+		return verdict.status === "passed" ? reviewExitCodes.passed : reviewExitCodes.findings;
+	}
+
+	/** The verdict as the terminal shows it, with each finding's ID, which `melian dismiss` takes. */
+	render(color: boolean): string {
+		return this.verdict.render(new Rendering({ color, ids: true }));
+	}
 }
 
 // A pull request reads policy from its base. A range on the checked-out commit reads it from the working tree, since
@@ -81,16 +93,14 @@ export async function review(
 			head: pullRequest.head.sha,
 		};
 	} else {
-		changeset = await resolveRange(io.cwd, target.spec);
+		changeset = await Changeset.resolve(io.cwd, target.spec);
 		const checkedOut = await git(changeset.repoRoot, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "");
 		const own = checkedOut === changeset.revision.head;
 		source = own ? { kind: "worktree" } : { kind: "revision", commit: changeset.revision.base };
 	}
 	const { repoRoot } = changeset;
-	const paths = changeset.revision.files.flatMap((file) =>
-		file.oldPath === undefined ? [file.path] : [file.oldPath, file.path],
-	);
-	const lenses = await loadLenses(repoRoot, source, paths);
+	const paths = changeset.revision.paths();
+	const lenses = await Lens.load(repoRoot, source, paths);
 	const standards = await loadStandards(repoRoot, source, ".");
 	const { config: loaded } = await loadConfig(repoRoot, source, ".");
 	const { models, config, retry } = await reviewModels(io.env, loaded, lenses, options.model);
@@ -130,8 +140,9 @@ export async function review(
 			io.stderr(`melian: ${error.message}\n`);
 			verdict = error.verdict;
 		}
-		io.stdout(renderFindingsTerminal(verdict, { color: io.color, ids: true }));
-		return exitCodeFor(verdict);
+		const outcome = new ReviewOutcome(verdict);
+		io.stdout(outcome.render(io.color));
+		return outcome.exitCode();
 	} finally {
 		await reviewHarness.close(context);
 	}
@@ -195,18 +206,32 @@ export async function publish(io: Io, argument: string): Promise<number> {
 	}
 }
 
-// The changeset a stored review is read from: the refs `review` fetched for a pull request, or the range. No network.
-async function storedChangeset(io: Io, argument: string): Promise<Changeset> {
-	const target = parseTarget(argument);
-	return target.kind === "pullRequest"
-		? await pullRequestChangeset(io.cwd, target.number)
-		: await resolveRange(io.cwd, target.spec);
-}
+// A review stored in the clone's storage, named by `argument`: the refs `review` fetched for a pull request, or the
+// range. Opening it reads only local refs, never the network.
+class StoredReview {
+	readonly changeset: Changeset;
+	readonly argument: string;
 
-function noReview(changeset: Changeset, argument: string): CliError {
-	return new CliError(
-		`Melian has no review of ${short(changeset.revision.head)}; run melian review ${shellQuote(argument)}`,
-	);
+	private constructor(changeset: Changeset, argument: string) {
+		this.changeset = changeset;
+		this.argument = argument;
+	}
+
+	static async open(io: Io, argument: string): Promise<StoredReview> {
+		const target = parseTarget(argument);
+		const changeset =
+			target.kind === "pullRequest"
+				? await pullRequestChangeset(io.cwd, target.number)
+				: await Changeset.resolve(io.cwd, target.spec);
+		return new StoredReview(changeset, argument);
+	}
+
+	// The error for a head Melian has no review of, saying how to make one.
+	missing(): CliError {
+		return new CliError(
+			`Melian has no review of ${short(this.changeset.revision.head)}; run melian review ${shellQuote(this.argument)}`,
+		);
+	}
 }
 
 export async function findings(
@@ -214,9 +239,10 @@ export async function findings(
 	argument: string,
 	options: { readonly open: boolean; readonly all: boolean; readonly json: boolean },
 ): Promise<number> {
-	const changeset = await storedChangeset(io, argument);
+	const stored = await StoredReview.open(io, argument);
+	const { changeset } = stored;
 	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, isScripted(io.env));
-	const missing = noReview(changeset, argument);
+	const missing = stored.missing();
 	if (!existsSync(path)) throw missing;
 	const reviewHarness = await openReviewHarness(await openStorage(path), idleModels(io.env));
 	const { harness } = reviewHarness;
@@ -224,17 +250,13 @@ export async function findings(
 		const root = (await harness.root(context)).id;
 		const verdict = await readVerdict(harness, root, revisionKey(changeset.revision), context);
 		if (verdict === undefined) throw missing;
-		const render = { color: io.color, ids: true, all: options.all };
+		const render = new Rendering({ color: io.color, ids: true, all: options.all });
 		if (!options.open) {
-			io.stdout(options.json ? renderVerdictJson(verdict) : renderFindingsTerminal(verdict, render));
+			io.stdout(options.json ? verdict.renderJson() : verdict.render(render));
 			return 0;
 		}
-		const open = createFindingsLog([
-			...verdict.findings.block,
-			...verdict.findings.acknowledge,
-			...verdict.findings.advisory,
-		]);
-		io.stdout(options.json ? renderFindingsJson(open) : renderFindingsTerminal(open, render));
+		const open = FindingsLog.of(verdict.attention());
+		io.stdout(options.json ? open.renderJson() : open.render(render));
 		return 0;
 	} finally {
 		await reviewHarness.close(context);
@@ -269,9 +291,10 @@ export async function dismiss(
 	reason: string,
 	options: { readonly only: boolean } = { only: false },
 ): Promise<number> {
-	const changeset = await storedChangeset(io, argument);
+	const stored = await StoredReview.open(io, argument);
+	const { changeset } = stored;
 	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, isScripted(io.env));
-	if (!existsSync(path)) throw noReview(changeset, argument);
+	if (!existsSync(path)) throw stored.missing();
 	const by = await gitAuthor(changeset.repoRoot);
 	// Only the adjudication task: a review or publication a crash interrupted must not resume here.
 	const dismissHarness = await DismissHarness.open(await openStorage(path), idleModels(io.env));
@@ -286,7 +309,7 @@ export async function dismiss(
 			repoRoot: changeset.repoRoot,
 		}).catch((error: unknown) => {
 			if (!(error instanceof DismissError)) throw error;
-			if (error.code === "notReviewed") throw noReview(changeset, argument);
+			if (error.code === "notReviewed") throw stored.missing();
 			if (error.code === "unknownFinding") {
 				throw new CliError(
 					`the review of ${short(changeset.revision.head)} has no finding ${id}; melian findings ${shellQuote(argument)} --all lists them`,

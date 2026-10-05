@@ -4,20 +4,19 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+	Changeset,
 	causeSchema,
-	createFindingsLog,
 	evidenceRevisionSchema,
 	evidenceRoleSchema,
 	type Finding,
+	FindingsLog,
+	Lens,
 	type LensTier,
 	loadConfig,
-	loadLenses,
 	loadStandards,
 	type MelianConfig,
 	type ModelRoute,
 	type RepositorySource,
-	renderFindingsTerminal,
-	resolveRange,
 } from "@melian-agent/core";
 import {
 	backgroundContext,
@@ -258,11 +257,9 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 	const { repo, base } = buildGoldenRepository(golden);
 	try {
 		const source: RepositorySource = { kind: "revision", commit: base };
-		const changeset = await resolveRange(repo, "main...feature");
-		const paths = changeset.revision.files.flatMap((file) =>
-			file.oldPath === undefined ? [file.path] : [file.oldPath, file.path],
-		);
-		const lenses = await loadLenses(repo, source, paths);
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const paths = changeset.revision.paths();
+		const lenses = await Lens.load(repo, source, paths);
 		const standards = await loadStandards(repo, source, ".");
 		const { config: loaded } = await loadConfig(repo, source, ".");
 		let models: ReviewModels;
@@ -283,7 +280,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 		try {
 			const review = { harness, changeset, config, lenses, standards, models, policy: source };
 			const { findings } = await reviewChangeset(review);
-			const rendered = renderFindingsTerminal(createFindingsLog([...findings]));
+			const rendered = FindingsLog.of([...findings]).render();
 			return { golden, findings, rendered, toolMismatches };
 		} finally {
 			await reviewHarness.close(backgroundContext);

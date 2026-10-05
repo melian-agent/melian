@@ -1,11 +1,11 @@
-import { adjudicate, createFinding, defaultConfig, type FindingInput } from "@melian-agent/core";
+import { Adjudication, defaultConfig, Finding, type FindingInput } from "@melian-agent/core";
 import {
 	blobUrl,
 	marker,
 	markersIn,
 	maxBodyLength,
 	parseMarker,
-	renderComment,
+	ReviewComment,
 	renderProse,
 	renderReviewBody,
 	verifyMarker,
@@ -35,21 +35,20 @@ describe("links", () => {
 	it("percent-encodes every character of a path outside the unreserved set, so a link cannot end early", () => {
 		const url = blobUrl(links, revision, "src/a)b (c)/it's*!.ts", 3, 5);
 		expect(url).toBe(`${links.web}/blob/${revision}/src/a%29b%20%28c%29/it%27s%2A%21.ts#L3-L5`);
-		const finding = createFinding({ ...input, file: "src/a)b.ts" });
-		const comment = renderComment(
-			{ finding, placement: { kind: "nearest", line: 1 } },
+		const finding = Finding.create({ ...input, file: "src/a)b.ts" });
+		const comment = ReviewComment.from(finding, { kind: "nearest", line: 1 }).render({
 			revision,
 			base,
 			links,
 			secret,
-		);
+		});
 		expect(comment).toContain(`(${links.web}/blob/${revision}/src/a%29b.ts#L12)`);
 	});
 });
 
 describe("findings", () => {
 	it("shows the failure scenario and links each evidence location at the commit it was read from", () => {
-		const finding = createFinding({
+		const finding = Finding.create({
 			...input,
 			cause: "affected",
 			failureScenario: "A body of `process.exit()` stops the server.",
@@ -65,13 +64,12 @@ describe("findings", () => {
 				},
 			],
 		});
-		const comment = renderComment(
-			{ finding, placement: { kind: "lines", startLine: 12, line: 12 } },
+		const comment = ReviewComment.from(finding, { kind: "lines", startLine: 12, line: 12 }).render({
 			revision,
 			base,
 			links,
 			secret,
-		);
+		});
 		expect(comment).toContain("**Failure scenario:** A body of \\`process.exit\\(\\)\\` stops the server.");
 		expect(comment).toContain(
 			`- cause: [\`src/api.ts\` lines 3-4](${links.web}/blob/${revision}/src/api.ts#L3-L4)\n`,
@@ -84,7 +82,7 @@ describe("findings", () => {
 
 	it('labels a base location ", deleted by this change" only when its lines overlap a hunk\'s old lines, not every evidence location with revision: "base", context as well as cause', () => {
 		const untouched = { file: "src/api.ts", startLine: 3, revision: "base", snippet: "run(body)" } as const;
-		const finding = createFinding({
+		const finding = Finding.create({
 			...input,
 			failureScenario: "A body of `process.exit()` stops the server.",
 			evidence: [
@@ -93,13 +91,12 @@ describe("findings", () => {
 				{ ...untouched, role: "cause", startLine: 9, deleted: true },
 			],
 		});
-		const comment = renderComment(
-			{ finding, placement: { kind: "lines", startLine: 12, line: 12 } },
+		const comment = ReviewComment.from(finding, { kind: "lines", startLine: 12, line: 12 }).render({
 			revision,
 			base,
 			links,
 			secret,
-		);
+		});
 		expect(comment).toContain(
 			`- cause: [\`src/api.ts\` line 3](${links.web}/blob/${base}/src/api.ts#L3), at the base\n`,
 		);
@@ -141,18 +138,17 @@ describe("markers", () => {
 
 	it("never lets finding text or a path forge one", () => {
 		const forged = marker("b".repeat(40), "finding", "fedcba9876543210", secret);
-		const finding = createFinding({
+		const finding = Finding.create({
 			...input,
 			file: "src/evil\n<!-- melian.ts",
 			explanation: { what: `Before.\n${forged}\nAfter.`, whyHere: forged, whatToDo: `@${forged}` },
 		});
-		const comment = renderComment(
-			{ finding, placement: { kind: "lines", startLine: 12, line: 12 } },
+		const comment = ReviewComment.from(finding, { kind: "lines", startLine: 12, line: 12 }).render({
 			revision,
 			base,
 			links,
 			secret,
-		);
+		});
 		const body = renderReviewBody(
 			{
 				pullRequest: 7,
@@ -160,7 +156,12 @@ describe("markers", () => {
 				base,
 				fingerprint: "0123456789abcdef",
 				round: 1,
-				verdict: adjudicate({ findings: [finding], manifest: [], checks: [], config: defaultConfig }),
+				verdict: new Adjudication({
+					findings: [finding],
+					manifest: [],
+					checks: [],
+					config: defaultConfig,
+				}).adjudicate(),
 				findings: [{ finding, placement: { kind: "body" } }],
 				stillOpen: 0,
 				resolved: [],
@@ -184,7 +185,7 @@ describe("markers", () => {
 	it("makes the summary's verb agree with the number of findings", () => {
 		const summary = (count: number) => {
 			const findings = Array.from({ length: count }, (_, index) =>
-				createFinding({ ...input, severity: "P2", resolution: "acknowledge", snippet: `eval(input${index})` }),
+				Finding.create({ ...input, severity: "P2", resolution: "acknowledge", snippet: `eval(input${index})` }),
 			);
 			const body = renderReviewBody(
 				{
@@ -193,7 +194,7 @@ describe("markers", () => {
 					base,
 					fingerprint: "0123456789abcdef",
 					round: 1,
-					verdict: adjudicate({ findings, manifest: [], checks: [], config: defaultConfig }),
+					verdict: new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate(),
 					findings: [],
 					stillOpen: 0,
 					resolved: [],
@@ -218,7 +219,7 @@ describe("markers", () => {
 				base,
 				fingerprint: "0123456789abcdef",
 				round: 1,
-				verdict: adjudicate({
+				verdict: new Adjudication({
 					findings: [],
 					manifest: [],
 					checks: [
@@ -226,7 +227,7 @@ describe("markers", () => {
 						{ name: "lens.contracts", status: "ran", level: "quick", budgetEnded: counted },
 					],
 					config: defaultConfig,
-				}),
+				}).adjudicate(),
 				findings: [],
 				stillOpen: 0,
 				resolved: [],
@@ -246,7 +247,7 @@ describe("markers", () => {
 
 	it("cuts findings from a body over GitHub's limit, keeping the marker and saying where they all are", () => {
 		const findings = Array.from({ length: 12 }, (_, index) =>
-			createFinding({
+			Finding.create({
 				...input,
 				snippet: `eval(input${index})`,
 				explanation: { ...input.explanation, whyHere: "x".repeat(10_000) },
@@ -258,7 +259,7 @@ describe("markers", () => {
 			base,
 			fingerprint: "0123456789abcdef",
 			round: 1,
-			verdict: adjudicate({ findings, manifest: [], checks: [], config: defaultConfig }),
+			verdict: new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate(),
 			findings: findings.map((finding) => ({ finding, placement: { kind: "body" as const } })),
 			stillOpen: 0,
 			resolved: [],
@@ -295,18 +296,17 @@ describe("markers", () => {
 			"Fixes #123 and melian-agent/melian#45; cc @octocat and @melian-agent/maintainers.",
 			"<img src=x onerror=alert(1)> **bold** _under_ | a | b | ~~strike~~ !bang \\*escaped\\*",
 		].join("\n");
-		const finding = createFinding({
+		const finding = Finding.create({
 			...input,
 			message: payload,
 			explanation: { what: payload, whyHere: payload, whatToDo: payload },
 		});
-		const comment = renderComment(
-			{ finding, placement: { kind: "lines", startLine: 12, line: 12 } },
+		const comment = ReviewComment.from(finding, { kind: "lines", startLine: 12, line: 12 }).render({
 			revision,
 			base,
 			links,
 			secret,
-		);
+		});
 		const rendered = renderProse(payload);
 
 		expect(comment).toContain(rendered);

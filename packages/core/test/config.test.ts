@@ -1,12 +1,12 @@
 import { symlinkSync } from "node:fs";
 import { join } from "node:path";
 import {
+	Changeset,
 	ConfigError,
 	defaultConfig,
 	loadConfig,
 	maxConfigBytes,
 	OutsideRepositoryError,
-	resolveRange,
 } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -351,7 +351,7 @@ describe("loadConfig from a revision", () => {
 	});
 
 	it("reads the base's policy for a pull request whose head rewrites it", async () => {
-		const { revision } = await resolveRange(repo, "main...feature");
+		const { revision } = await Changeset.resolve(repo, "main...feature");
 		const { config } = await loadConfig(repo, { kind: "revision", commit: revision.base }, "src/a.ts");
 		expect(config.resolution).toMatchObject({ P0: "block", P1: "block", P2: "block" });
 	});
@@ -424,7 +424,7 @@ describe("melian.local.yaml", () => {
 
 	it("is a policy file, so a change that commits one is reviewed as policy", async () => {
 		commitLocalFile();
-		const { revision } = await resolveRange(repo, "HEAD~1..HEAD");
+		const { revision } = await Changeset.resolve(repo, "HEAD~1..HEAD");
 		expect(revision.policyFiles).toEqual(["melian.local.yaml"]);
 	});
 

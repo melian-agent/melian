@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, renameSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { ChangesetError, parseRangeSpec, resolveRange } from "@melian-agent/core";
+import { Changeset, ChangesetError, parseRangeSpec } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	gitIn,
@@ -81,9 +81,9 @@ describe("parseRangeSpec", () => {
 	});
 });
 
-describe("resolveRange", () => {
+describe("Changeset.resolve", () => {
 	it("lists every changed file with its status, and hunks with exact ranges", async () => {
-		const changeset = await resolveRange(repo, "main...feature");
+		const changeset = await Changeset.resolve(repo, "main...feature");
 		const files = Object.fromEntries(changeset.revision.files.map((file) => [file.path, file]));
 
 		expect(Object.keys(files).sort()).toEqual(["added.txt", "gone.txt", "logo.png", "new-name.txt", "poem.txt"]);
@@ -156,7 +156,7 @@ describe("resolveRange", () => {
 		gitIn(repo, "checkout", "--quiet", "feature");
 		gitIn(repo, "update-index", "--chmod=+x", "poem.txt");
 		gitIn(repo, "commit", "--quiet", "-m", "executable");
-		const changeset = await resolveRange(repo, "feature~1..feature");
+		const changeset = await Changeset.resolve(repo, "feature~1..feature");
 		expect(changeset.revision.files).toEqual([
 			{
 				status: "modified",
@@ -179,7 +179,7 @@ describe("resolveRange", () => {
 		rmSync(join(repo, "added.txt"));
 		writeFiles(repo, { "added.txt": lines("a file again") });
 		gitIn(repo, "commit", "--quiet", "-am", "file");
-		const changeset = await resolveRange(repo, "feature~1..feature");
+		const changeset = await Changeset.resolve(repo, "feature~1..feature");
 		expect(changeset.revision.files).toEqual([
 			expect.objectContaining({ path: "added.txt", oldKind: "symlink", newKind: "file", oldMode: "120000" }),
 		]);
@@ -188,7 +188,7 @@ describe("resolveRange", () => {
 	it("reports a submodule pointer as a submodule on both sides", async () => {
 		commitGitlink(repo, "vendor/lib", gitIn(repo, "rev-parse", "main~1"));
 		commitGitlink(repo, "vendor/lib", gitIn(repo, "rev-parse", "feature"));
-		const changeset = await resolveRange(repo, "main~1..main");
+		const changeset = await Changeset.resolve(repo, "main~1..main");
 		expect(changeset.revision.files).toEqual([
 			expect.objectContaining({
 				status: "modified",
@@ -206,8 +206,8 @@ describe("resolveRange", () => {
 		const main = gitIn(repo, "rev-parse", "main");
 		const feature = gitIn(repo, "rev-parse", "feature");
 
-		const threeDot = await resolveRange(repo, "main...feature");
-		const twoDot = await resolveRange(repo, "main..feature");
+		const threeDot = await Changeset.resolve(repo, "main...feature");
+		const twoDot = await Changeset.resolve(repo, "main..feature");
 
 		expect(threeDot.revision).toMatchObject({ base: mergeBase, head: feature });
 		expect(twoDot.revision).toMatchObject({ base: main, head: feature });
@@ -217,8 +217,8 @@ describe("resolveRange", () => {
 
 	it("defaults a single ref to the three-dot view of HEAD", async () => {
 		gitIn(repo, "checkout", "--quiet", "feature");
-		const single = await resolveRange(repo, "main");
-		const explicit = await resolveRange(repo, "main...feature");
+		const single = await Changeset.resolve(repo, "main");
+		const explicit = await Changeset.resolve(repo, "main...feature");
 		expect(single.revision).toEqual(explicit.revision);
 	});
 
@@ -227,7 +227,7 @@ describe("resolveRange", () => {
 		rmSync(join(repo, "added.txt"));
 		symlinkSync("poem.txt", join(repo, "added.txt"));
 		gitIn(repo, "commit", "--quiet", "-am", "symlink");
-		const changeset = await resolveRange(repo, "feature~1..feature");
+		const changeset = await Changeset.resolve(repo, "feature~1..feature");
 		expect(changeset.revision.files).toEqual([
 			{
 				status: "modified",
@@ -264,7 +264,7 @@ describe("resolveRange", () => {
 		gitIn(repo, "checkout", "--quiet", "feature");
 		commitGitlink(repo, "vendor/lib", gitIn(repo, "rev-parse", "main"));
 		gitIn(repo, "checkout", "--quiet", "main");
-		const plain = await resolveRange(repo, "main...feature");
+		const plain = await Changeset.resolve(repo, "main...feature");
 		expect(plain.revision.files.map(({ path }) => path)).toContain("vendor/lib");
 		const orderFile = join(repo, ".git", "order");
 		writeFiles(repo, { ".git/order": lines("poem.txt", "logo.png", "*") });
@@ -281,7 +281,7 @@ describe("resolveRange", () => {
 		]) {
 			gitIn(repo, "config", key!, value!);
 		}
-		expect(await resolveRange(repo, "main...feature")).toEqual(plain);
+		expect(await Changeset.resolve(repo, "main...feature")).toEqual(plain);
 	});
 
 	describe("with a submodule whose pointer moves", () => {
@@ -300,13 +300,13 @@ describe("resolveRange", () => {
 		});
 
 		it("reports the pointer even when the repository's .gitmodules ignores the submodule", async () => {
-			const changeset = await resolveRange(repo, "main~1..main");
+			const changeset = await Changeset.resolve(repo, "main~1..main");
 			expect(changeset.revision.files.map(({ path }) => path)).toEqual(["vendor/lib"]);
 		});
 
 		it("reports the pointer even when the user's configuration ignores submodules", async () => {
 			gitIn(repo, "config", "diff.ignoreSubmodules", "all");
-			const changeset = await resolveRange(repo, "main~1..main");
+			const changeset = await Changeset.resolve(repo, "main~1..main");
 			expect(changeset.revision.files.map(({ path }) => path)).toEqual(["vendor/lib"]);
 		});
 	});
@@ -317,11 +317,11 @@ describe("resolveRange", () => {
 		});
 
 		it("reads diff attributes from the base, so the head cannot hide its hunks", async () => {
-			const before = await resolveRange(repo, "main...feature");
+			const before = await Changeset.resolve(repo, "main...feature");
 			writeFiles(repo, { ".gitattributes": lines("*.txt -diff") });
 			gitIn(repo, "add", ".gitattributes");
 			gitIn(repo, "commit", "--quiet", "-m", "hide text changes");
-			const after = await resolveRange(repo, "main...feature");
+			const after = await Changeset.resolve(repo, "main...feature");
 			const poem = (files: readonly { path: string }[]) => files.find(({ path }) => path === "poem.txt");
 			expect(poem(after.revision.files)).toEqual(poem(before.revision.files));
 			expect(poem(after.revision.files)).toMatchObject({ binary: false });
@@ -335,7 +335,7 @@ describe("resolveRange", () => {
 			gitIn(repo, "add", ".gitmodules");
 			gitIn(repo, "update-index", "--cacheinfo", `160000,${gitIn(repo, "rev-parse", "main~1")},vendor/lib`);
 			gitIn(repo, "commit", "--quiet", "-m", "move the pointer and hide it");
-			const changeset = await resolveRange(repo, "feature~1..feature");
+			const changeset = await Changeset.resolve(repo, "feature~1..feature");
 			expect(changeset.revision.files.map(({ path }) => path)).toEqual([".gitmodules", "vendor/lib"]);
 		});
 	});
@@ -349,21 +349,21 @@ describe("resolveRange", () => {
 			input: Buffer.concat([Buffer.from(`100644 ${blob}\t`), name, Buffer.from("\n")]),
 		});
 		gitIn(repo, "commit", "--quiet", "-m", "latin-1 name");
-		const changeset = await resolveRange(repo, "main~1..main");
+		const changeset = await Changeset.resolve(repo, "main~1..main");
 		expect(changeset.revision.files).toEqual([
 			expect.objectContaining({ status: "added", path: "caf%E9.txt", percentEncoded: true }),
 		]);
-		expect((await resolveRange(repo, "main...feature")).revision.files[0]).not.toHaveProperty("percentEncoded");
+		expect((await Changeset.resolve(repo, "main...feature")).revision.files[0]).not.toHaveProperty("percentEncoded");
 	});
 
 	it("resolves an empty diff to no files", async () => {
-		const changeset = await resolveRange(repo, "main...main");
+		const changeset = await Changeset.resolve(repo, "main...main");
 		expect(changeset.revision.files).toEqual([]);
 		expect(changeset.revision.policyFiles).toEqual([]);
 	});
 
 	it("lists the policy and standards files a revision changes", async () => {
-		expect((await resolveRange(repo, "main...feature")).revision.policyFiles).toEqual([]);
+		expect((await Changeset.resolve(repo, "main...feature")).revision.policyFiles).toEqual([]);
 		gitIn(repo, "checkout", "--quiet", "feature");
 		writeFiles(repo, {
 			"melian.yaml": lines("resolution:", "  P0: silent"),
@@ -381,7 +381,7 @@ describe("resolveRange", () => {
 		gitIn(repo, "mv", "poem.txt", "CLAUDE.md");
 		gitIn(repo, "add", "--all");
 		gitIn(repo, "commit", "--quiet", "-m", "policy");
-		const { revision } = await resolveRange(repo, "main...feature");
+		const { revision } = await Changeset.resolve(repo, "main...feature");
 		expect(revision.policyFiles).toEqual([
 			".melian/lenses/security/LENS.md",
 			"CLAUDE.md",
@@ -401,13 +401,13 @@ describe("resolveRange", () => {
 		try {
 			gitIn(other, "init", "--quiet", "--initial-branch=main");
 			gitIn(other, "commit", "--quiet", "--allow-empty", "-m", "elsewhere");
-			const expected = await resolveRange(repo, "main...feature");
+			const expected = await Changeset.resolve(repo, "main...feature");
 			vi.stubEnv("GIT_DIR", join(other, ".git"));
 			vi.stubEnv("GIT_WORK_TREE", other);
 			vi.stubEnv("GIT_INDEX_FILE", join(other, ".git", "index"));
 			vi.stubEnv("GIT_PREFIX", "nested/");
 			vi.stubEnv("GIT_COMMON_DIR", join(other, ".git"));
-			expect(await resolveRange(repo, "main...feature")).toEqual(expected);
+			expect(await Changeset.resolve(repo, "main...feature")).toEqual(expected);
 		} finally {
 			removeDirectory(other);
 		}
@@ -415,29 +415,29 @@ describe("resolveRange", () => {
 
 	it("resolves from a subdirectory to the repository root", async () => {
 		mkdirSync(join(repo, "nested"));
-		const changeset = await resolveRange(join(repo, "nested"), "main...feature");
+		const changeset = await Changeset.resolve(join(repo, "nested"), "main...feature");
 		expect(changeset.repoRoot).toBe(repo);
 	});
 
 	it("keeps one identity across revisions and spellings of a range", async () => {
-		const before = await resolveRange(repo, "main...feature");
+		const before = await Changeset.resolve(repo, "main...feature");
 		gitIn(repo, "checkout", "--quiet", "feature");
 		writeFiles(repo, { "added.txt": lines("first", "second", "third") });
 		gitIn(repo, "commit", "--quiet", "-am", "another revision");
-		const after = await resolveRange(repo, "heads/main...refs/heads/feature");
-		const fromHead = await resolveRange(repo, "main");
+		const after = await Changeset.resolve(repo, "heads/main...refs/heads/feature");
+		const fromHead = await Changeset.resolve(repo, "main");
 
 		expect(after.id).toBe(before.id);
 		expect(fromHead.id).toBe(before.id);
 		expect(after.revision.head).not.toBe(before.revision.head);
-		expect((await resolveRange(repo, "main..feature")).id).not.toBe(before.id);
+		expect((await Changeset.resolve(repo, "main..feature")).id).not.toBe(before.id);
 	});
 
 	it("refuses a path outside any repository", async () => {
 		const outside = temporaryDirectory();
 		try {
-			expect((await rejection(resolveRange(outside, "main"))).code).toBe("notARepository");
-			expect((await rejection(resolveRange(join(outside, "missing"), "main"))).code).toBe("notARepository");
+			expect((await rejection(Changeset.resolve(outside, "main"))).code).toBe("notARepository");
+			expect((await rejection(Changeset.resolve(join(outside, "missing"), "main"))).code).toBe("notARepository");
 		} finally {
 			removeDirectory(outside);
 		}
@@ -445,40 +445,40 @@ describe("resolveRange", () => {
 
 	it("passes on git's own complaint rather than guessing it means no repository", async () => {
 		writeFiles(repo, { ".git/config": lines("[core", "not valid") });
-		const error = await rejection(resolveRange(repo, "main...feature"));
+		const error = await rejection(Changeset.resolve(repo, "main...feature"));
 		expect(error.code).toBe("gitFailed");
 		expect(error.message).toMatch(/bad config/);
 	});
 
 	it("names an unknown ref", async () => {
-		const error = await rejection(resolveRange(repo, "main...no-such-branch"));
+		const error = await rejection(Changeset.resolve(repo, "main...no-such-branch"));
 		expect(error.code).toBe("unknownRef");
 		expect(error.ref).toBe("no-such-branch");
 	});
 
 	it.each(["^main..feature", "main...^feature", "^main"])("refuses the negated ref in %j", async (range) => {
-		expect((await rejection(resolveRange(repo, range))).code).toBe("invalidRange");
+		expect((await rejection(Changeset.resolve(repo, range))).code).toBe("invalidRange");
 	});
 
 	it("refuses a malformed range before running git", async () => {
-		expect((await rejection(resolveRange(repo, "a..b..c"))).code).toBe("invalidRange");
-		const error = await rejection(resolveRange(repo, { base: "--output=x", head: "HEAD", mode: "twoDot" }));
+		expect((await rejection(Changeset.resolve(repo, "a..b..c"))).code).toBe("invalidRange");
+		const error = await rejection(Changeset.resolve(repo, { base: "--output=x", head: "HEAD", mode: "twoDot" }));
 		expect(error.code).toBe("invalidRange");
 	});
 
 	it("reports unrelated histories for three dots but diffs them for two", async () => {
 		gitIn(repo, "checkout", "--quiet", "--orphan", "unrelated");
 		gitIn(repo, "commit", "--quiet", "-m", "unrelated root");
-		expect((await rejection(resolveRange(repo, "main...unrelated"))).code).toBe("noMergeBase");
-		await expect(resolveRange(repo, "main..unrelated")).resolves.toMatchObject({ kind: "range" });
+		expect((await rejection(Changeset.resolve(repo, "main...unrelated"))).code).toBe("noMergeBase");
+		await expect(Changeset.resolve(repo, "main..unrelated")).resolves.toMatchObject({ kind: "range" });
 	});
 
 	it("refuses a dirty working tree only when asked to", async () => {
 		writeFiles(repo, { "poem.txt": lines("uncommitted"), "stray.txt": lines("untracked") });
 		renameSync(join(repo, "gone.txt"), join(repo, "moved.txt"));
 		gitIn(repo, "add", "--intent-to-add", "moved.txt");
-		await expect(resolveRange(repo, "main...feature")).resolves.toMatchObject({ kind: "range" });
-		const error = await rejection(resolveRange(repo, "main...feature", { requireClean: true }));
+		await expect(Changeset.resolve(repo, "main...feature")).resolves.toMatchObject({ kind: "range" });
+		const error = await rejection(Changeset.resolve(repo, "main...feature", { requireClean: true }));
 		expect(error.code).toBe("dirtyWorktree");
 		expect([...error.paths].sort()).toEqual(["moved.txt", "poem.txt", "stray.txt"]);
 	});

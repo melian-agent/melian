@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { defaultConfig, loadLenses, resolveRange } from "@melian-agent/core";
+import { Changeset, defaultConfig, Lens } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createReviewRegistry,
@@ -197,13 +197,13 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		const heavy = fake.ref("heavy");
 		await reviewChangeset({
 			harness,
-			changeset: await resolveRange(repo, "main...feature"),
+			changeset: await Changeset.resolve(repo, "main...feature"),
 			config: {
 				...defaultConfig,
 				tiers: twoLensTiers,
 				models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
 			},
-			lenses: crashLenses(await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"])),
+			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
 			models: fake.review,
 		});
@@ -243,14 +243,14 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		const heavy = fake.ref("heavy");
 		const reviewing = reviewChangeset({
 			harness,
-			changeset: await resolveRange(repo, "main...feature"),
+			changeset: await Changeset.resolve(repo, "main...feature"),
 			config: {
 				...defaultConfig,
 				tiers: twoLensTiers,
 				models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
 				lenses: { contracts: { enabled: false } },
 			},
-			lenses: crashLenses(await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"])),
+			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
 			models: fake.review,
 		});
@@ -296,13 +296,13 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		const heavy = fake.ref("heavy");
 		const { verdict } = await reviewChangeset({
 			harness,
-			changeset: await resolveRange(repo, "main...feature"),
+			changeset: await Changeset.resolve(repo, "main...feature"),
 			config: {
 				...defaultConfig,
 				tiers: twoLensTiers,
 				models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
 			},
-			lenses: budgetLenses(await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"])),
+			lenses: budgetLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
 			models: fake.review,
 		});
@@ -342,16 +342,13 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			const heavy = fake.ref("heavy");
 			const { verdict } = await reviewChangeset({
 				harness,
-				changeset: await resolveRange(repo, "main...feature"),
+				changeset: await Changeset.resolve(repo, "main...feature"),
 				config: {
 					...defaultConfig,
 					tiers: twoLensTiers,
 					models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
 				},
-				lenses: budgetLenses(
-					await loadLenses(repo, { kind: "worktree" }, ["src/user.ts"]),
-					endingBudgets[scenario],
-				),
+				lenses: budgetLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"]), endingBudgets[scenario]),
 				standards: [],
 				models: fake.review,
 			});

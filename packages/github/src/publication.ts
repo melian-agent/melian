@@ -4,7 +4,7 @@ import {
 	describeBudgetEnd,
 	dismissalVersion,
 	type Finding,
-	type PlacedFinding,
+	type Placement,
 	type ReviewDraft,
 	type Verdict,
 } from "@melian-agent/core";
@@ -139,11 +139,6 @@ function lineSpan(start: number, end: number): string {
 	return end === start ? `line ${start}` : `lines ${start}-${end}`;
 }
 
-function span(finding: Finding): [number, number] {
-	const { startLine, endLine = startLine } = finding.locations[0]!.physicalLocation.region;
-	return [startLine, endLine];
-}
-
 /** A link to `path` at `revision`, on lines `start` to `end`. */
 export function blobUrl(links: RepositoryLinks, revision: string, path: string, start: number, end = start): string {
 	// encodeURIComponent leaves `!'()*`, and a `)` ends a markdown link's destination; only unreserved characters stay.
@@ -153,68 +148,82 @@ export function blobUrl(links: RepositoryLinks, revision: string, path: string, 
 	return `${links.web}/blob/${revision}/${encoded}#L${start}${end === start ? "" : `-L${end}`}`;
 }
 
-// The commits a finding's links point at: the head reviewed, and the base its deleted lines are read from.
-interface Commits {
-	readonly head: string;
+/** What a finding's comment needs to render: the head reviewed, the base its deleted lines are read from, where its links point, and the changeset's publisher secret, which signs its marker. */
+export interface CommentContext {
+	readonly revision: string;
 	readonly base: string;
-}
-
-// Each evidence location links to its lines at the commit it was read from, rather than quoting the code. A base
-// location says the change deleted its lines only when Melian found so when it read them.
-function evidenceText(finding: Finding, commits: Commits, links: RepositoryLinks): string[] {
-	const { evidence } = finding.properties;
-	if (evidence === undefined) return [];
-	const items = evidence.map(({ file, startLine, endLine = startLine, role, revision, deleted }) => {
-		const at = revision === "base" ? commits.base : commits.head;
-		const link = `[${code(file)} ${lineSpan(startLine, endLine)}](${blobUrl(links, at, file, startLine, endLine)})`;
-		const where = revision === "base" ? (deleted === true ? ", deleted by this change" : ", at the base") : "";
-		return `- ${role}: ${link}${where}`;
-	});
-	return ["", "**Evidence:**", "", ...items];
-}
-
-function findingText(finding: Finding, commits: Commits, links: RepositoryLinks): string[] {
-	const { severity, cause, resolution, explanation, failureScenario } = finding.properties;
-	return [
-		`**${severity}** ${code(finding.ruleId)} (${cause}, ${resolution ?? "unresolved"})`,
-		"",
-		// A lens's message is its explanation's first part, which would otherwise print twice.
-		...(finding.message.text === explanation.what ? [] : [renderProse(finding.message.text), ""]),
-		`**What:** ${renderProse(explanation.what)}`,
-		"",
-		`**Why here:** ${renderProse(explanation.whyHere)}`,
-		...(failureScenario === undefined ? [] : ["", `**Failure scenario:** ${renderProse(failureScenario)}`]),
-		...evidenceText(finding, commits, links),
-		"",
-		`**What to do:** ${renderProse(explanation.whatToDo)}`,
-	];
+	readonly links: RepositoryLinks;
+	readonly secret: string;
 }
 
 /**
- * The body of a finding's inline comment. A finding anchored to the nearest changed line links to where it is.
- * `revision` is the head reviewed, and `base` the commit evidence on deleted lines links to.
+ * A finding as a pull request shows it: an inline comment on the line its placement names, or, for a finding in a file
+ * the change does not touch, a section of the review's body. Each opens with the finding's marker.
  */
-export function renderComment(
-	placed: PlacedFinding,
-	revision: string,
-	base: string,
-	links: RepositoryLinks,
-	secret: string,
-): string {
-	const { finding, placement } = placed;
-	const [start, end] = span(finding);
-	const where =
-		placement.kind === "nearest"
-			? [
-					`This finding is at [${code(finding.properties.path)} ${lineSpan(start, end)}](${blobUrl(links, revision, finding.properties.path, start, end)}), outside the diff, so it is anchored to the nearest changed line.`,
-					"",
-				]
-			: [];
-	return [
-		marker(revision, "finding", finding.properties.id, secret),
-		...where,
-		...findingText(finding, { head: revision, base }, links),
-	].join("\n");
+export class ReviewComment {
+	readonly finding: Finding;
+	readonly placement: Placement;
+
+	private constructor(finding: Finding, placement: Placement) {
+		this.finding = finding;
+		this.placement = placement;
+	}
+
+	/** The comment for `finding` at `placement`; in the review's body unless placed. */
+	static from(finding: Finding, placement: Placement = { kind: "body" }): ReviewComment {
+		return new ReviewComment(finding, placement);
+	}
+
+	/**
+	 * The comment's markdown. A finding anchored to the nearest changed line links to where it is; one in the body
+	 * links to its lines. Evidence links to its lines at the commit it was read from.
+	 */
+	render(context: CommentContext): string {
+		const { finding, placement } = this;
+		const { revision, links } = context;
+		const { path, id } = finding.properties;
+		const [start, end] = finding.lines();
+		const link = `[${code(path)} ${lineSpan(start, end)}](${blobUrl(links, revision, path, start, end)})`;
+		const where =
+			placement.kind === "body"
+				? [link, ""]
+				: placement.kind === "nearest"
+					? [`This finding is at ${link}, outside the diff, so it is anchored to the nearest changed line.`, ""]
+					: [];
+		return [marker(revision, "finding", id, context.secret), ...where, ...this.#text(context)].join("\n");
+	}
+
+	#text(context: CommentContext): string[] {
+		const { finding } = this;
+		const { severity, cause, resolution, explanation, failureScenario } = finding.properties;
+		return [
+			`**${severity}** ${code(finding.ruleId)} (${cause}, ${resolution ?? "unresolved"})`,
+			"",
+			// A lens's message is its explanation's first part, which would otherwise print twice.
+			...(finding.message.text === explanation.what ? [] : [renderProse(finding.message.text), ""]),
+			`**What:** ${renderProse(explanation.what)}`,
+			"",
+			`**Why here:** ${renderProse(explanation.whyHere)}`,
+			...(failureScenario === undefined ? [] : ["", `**Failure scenario:** ${renderProse(failureScenario)}`]),
+			...this.#evidence(context),
+			"",
+			`**What to do:** ${renderProse(explanation.whatToDo)}`,
+		];
+	}
+
+	// Each evidence location links to its lines at the commit it was read from, rather than quoting the code. A base
+	// location says the change deleted its lines only when Melian found so when it read them.
+	#evidence({ revision, base, links }: CommentContext): string[] {
+		const { evidence } = this.finding.properties;
+		if (evidence === undefined) return [];
+		const items = evidence.map(({ file, startLine, endLine = startLine, role, revision: side, deleted }) => {
+			const at = side === "base" ? base : revision;
+			const link = `[${code(file)} ${lineSpan(startLine, endLine)}](${blobUrl(links, at, file, startLine, endLine)})`;
+			const where = side === "base" ? (deleted === true ? ", deleted by this change" : ", at the base") : "";
+			return `- ${role}: ${link}${where}`;
+		});
+		return ["", "**Evidence:**", "", ...items];
+	}
 }
 
 const statusWords: Readonly<Record<Verdict["status"], string>> = {
@@ -238,7 +247,7 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	const counts = (["block", "acknowledge", "advisory"] as const)
 		.filter((resolution) => verdict.findings[resolution].length > 0)
 		.map((resolution) => `${verdict.findings[resolution].length} ${resolution}`);
-	const shown = verdict.findings.block.length + verdict.findings.acknowledge.length + verdict.findings.advisory.length;
+	const shown = verdict.attention().length;
 	const summary = [
 		shown === 0
 			? "No findings need attention."
@@ -270,16 +279,9 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	);
 	if (dismissed.length > 0) parts.push(["Dismissed since the last review:", "", ...dismissed].join("\n"));
 	const inBody = draft.findings.filter((placed) => placed.placement.kind === "body");
-	const sections = inBody.map(({ finding }) => {
-		const [start, end] = span(finding);
-		const link = `[${code(finding.properties.path)} ${lineSpan(start, end)}](${blobUrl(links, revision, finding.properties.path, start, end)})`;
-		return [
-			marker(revision, "finding", finding.properties.id, secret),
-			link,
-			"",
-			...findingText(finding, { head: revision, base: draft.base }, links),
-		].join("\n");
-	});
+	const sections = inBody.map(({ finding }) =>
+		ReviewComment.from(finding).render({ revision, base: draft.base, links, secret }),
+	);
 	const heading = options.inlineRefused
 		? "### Findings\n\nGitHub refused this review's inline comments, so every finding is listed here."
 		: "### In files this change does not touch";

@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import type { AlsoReportedAs, Finding, Verdict } from "@melian-agent/core";
+import { type AlsoReportedAs, type Finding, Verdict } from "@melian-agent/core";
 import {
 	type AdjudicationResult,
 	AdjudicationTask,
@@ -62,38 +62,6 @@ export class DismissHarness {
 	}
 }
 
-// What dismissing an ID takes from a verdict: the finding the ID names, and the other reports adjudication merged into
-// it. The finding with that ID wins, else the one it was merged into. A live finding's `alsoReportedAs` also lists the
-// dismissed reports of its defect, which it never absorbed, so they neither lead to it nor are dismissed with it. A
-// verdict recorded before Melian marked those reports `dismissed` still lists each among its own dismissed findings.
-class DismissalTarget {
-	readonly finding: Finding;
-	readonly members: readonly AlsoReportedAs[];
-
-	private constructor(finding: Finding, members: readonly AlsoReportedAs[]) {
-		this.finding = finding;
-		this.members = members;
-	}
-
-	static named(verdict: Verdict, id: string): DismissalTarget | undefined {
-		const dismissed = new Set(
-			verdict.dismissed.flatMap((each) => [
-				each.properties.id,
-				...(each.properties.alsoReportedAs ?? []).map((other) => other.id),
-			]),
-		);
-		const membersOf = ({ properties }: Finding) =>
-			(properties.alsoReportedAs ?? []).filter(
-				(other) => properties.status === "dismissed" || (other.dismissed !== true && !dismissed.has(other.id)),
-			);
-		const all = [...Object.values(verdict.findings).flat(), ...verdict.dismissed];
-		const finding =
-			all.find((each) => each.properties.id === id) ??
-			all.find((each) => membersOf(each).some((other) => other.id === id));
-		return finding === undefined ? undefined : new DismissalTarget(finding, membersOf(finding));
-	}
-}
-
 /** What {@link recordDismissal} dismisses. */
 export interface DismissalOptions {
 	/** A harness over the changeset's storage that defines the adjudication task, such as a {@link DismissHarness}'s. */
@@ -150,15 +118,15 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		// Read in the commit, so a review that recorded another verdict a moment before decides what the ID names.
 		const stored = (await tx.doc(VerdictDocument, root.id)).verdicts[revision];
 		if (stored === undefined) throw new DismissError("notReviewed", `Melian has no review of ${revision}`, where);
-		const found = DismissalTarget.named(stored, id);
+		const found = Verdict.from(stored).defect(id);
 		if (found === undefined) {
 			throw new DismissError("unknownFinding", `the review of ${revision} has no finding ${id}`, where);
 		}
 		// The finding as the verdict shows it: its own report and every report adjudication merged into it, so dismissing
 		// one defect never leaves another check's report of it live, unless the caller asked for the one report alone.
-		const own = options.only ? id : found.finding.properties.id;
+		const reports = found.dismiss(options.only ? id : undefined);
+		const [own] = reports;
 		const members = options.only ? [] : found.members;
-		const reports = [own, ...members.map((other) => other.id)];
 		const index = await tx.doc(ReviewIndex, root.id);
 		const entry = index.reviews[revision];
 		const known = entry?.adjudication;
@@ -213,7 +181,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		}
 	}
 	const verdict = await readVerdict(harness, root.id, revision, context);
-	const finding = verdict === undefined ? undefined : DismissalTarget.named(verdict, id)?.finding;
+	const finding = verdict?.defect(id)?.speaker;
 	if (
 		outcome.status !== "completed" ||
 		outcome.result !== "recorded" ||

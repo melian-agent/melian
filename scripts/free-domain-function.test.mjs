@@ -11,6 +11,11 @@ const plugin = plugins.find((each) => each.path.endsWith("free-domain-function.g
 
 let dir;
 
+// The source files the plugin's includes leave out, as repository-relative paths.
+function excluded() {
+	return plugin.includes.filter((glob) => glob.startsWith("!")).map((glob) => glob.replace(/^!\*\*\//, ""));
+}
+
 // Lints one file at `path` under the scratch repository with the plugin as biome.json wires it, and returns the line of each diagnostic.
 function lint(path, source) {
 	mkdirSync(dirname(join(dir, path)), { recursive: true });
@@ -47,6 +52,11 @@ describe("the free-domain-function Biome plugin", { timeout: 30_000 }, () => {
 		expect(lint("packages/core/src/scratch.ts", "export default function (lens: Lens): void {}\n")).toEqual([1]);
 	});
 
+	it("reports a free function over a ResolvedFinding", () => {
+		const source = "function f(finding: ResolvedFinding): void {}\n";
+		expect(lint("packages/core/src/scratch.ts", source)).toEqual([1]);
+	});
+
 	it("does not report a class method that takes a Finding", () => {
 		const source = "export class Triage {\n\taccept(finding: Finding): void {}\n}\n";
 		expect(lint("packages/core/src/scratch.ts", source)).toEqual([]);
@@ -57,9 +67,10 @@ describe("the free-domain-function Biome plugin", { timeout: 30_000 }, () => {
 		expect(lint("packages/core/src/scratch.ts", source)).toEqual([]);
 	});
 
-	it("leaves a grandfathered file alone", () => {
+	it("leaves each grandfathered file alone, and checks every other source file", () => {
 		const source = "export function triageFinding(finding: Finding): void {}\n";
-		expect(lint("packages/core/src/adjudication.ts", source)).toEqual([]);
+		for (const path of excluded()) expect(lint(path, source), path).toEqual([]);
+		expect(lint("packages/core/src/adjudication.ts", source)).toEqual([1]);
 	});
 });
 
@@ -81,9 +92,6 @@ describe("the free-domain-function exclusion list", () => {
 				return files.map((file) => join(src, file));
 			})
 			.filter((file) => pattern.test(readFileSync(join(root, file), "utf8")));
-		const excluded = plugin.includes
-			.filter((glob) => glob.startsWith("!"))
-			.map((glob) => glob.replace(/^!\*\*\//, ""));
-		expect(excluded.sort()).toEqual(offenders.sort());
+		expect(excluded().sort()).toEqual(offenders.sort());
 	});
 });

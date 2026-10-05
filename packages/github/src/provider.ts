@@ -15,7 +15,7 @@ import {
 	type MarkerKind,
 	parseMarker,
 	type RepositoryLinks,
-	renderComment,
+	ReviewComment,
 	renderResolvedReply,
 	renderReviewBody,
 	verifyMarker,
@@ -143,7 +143,12 @@ export class GitHubProvider implements ReviewProvider {
 					line: placement.line,
 					side: "RIGHT" as const,
 					...range,
-					body: renderComment(placed, draft.revision, draft.base, this.links, draft.secret),
+					body: ReviewComment.from(placed.finding, placed.placement).render({
+						revision: draft.revision,
+						base: draft.base,
+						links: this.links,
+						secret: draft.secret,
+					}),
 				},
 			];
 		});

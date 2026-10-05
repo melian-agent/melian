@@ -1,10 +1,9 @@
 import {
-	type Changeset,
+	Changeset,
 	ChangesetError,
 	type PullRequest,
 	pullRequestChangesetId,
 	type ReviewProvider,
-	resolveRange,
 } from "@melian-agent/core";
 import {
 	createGitHubProvider,
@@ -48,9 +47,9 @@ export async function gitHubFor(cwd: string, env: NodeJS.ProcessEnv): Promise<Re
 // The range over the refs Melian fetched, under the pull request's own changeset ID. A range review of the same refs
 // keeps its range ID, so it never shares the pull request's storage, or its verdicts.
 async function asPullRequest(cwd: string, number: number): Promise<Changeset> {
-	const range = await resolveRange(cwd, pullRequestRefs(number).range);
+	const range = await Changeset.resolve(cwd, pullRequestRefs(number).range);
 	const { owner, repo } = await gitHubRepository(cwd);
-	return { ...range, id: pullRequestChangesetId("github", { owner, name: repo }, number) };
+	return range.withId(pullRequestChangesetId("github", { owner, name: repo }, number));
 }
 
 export async function pullRequestChangeset(cwd: string, number: number): Promise<Changeset> {

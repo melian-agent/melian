@@ -1,0 +1,18 @@
+src/comment.ts
+
+  P3  lines 4-5  quoted-rule-violation  (introduced, new, unresolved)
+  commentLine is a free function whose first parameter is a Finding.
+    What: commentLine is a free function whose first parameter is a Finding.
+    Why here: AGENTS.md says "Behaviour belongs to the object it is about. A function whose first parameter is a `Finding` is a method of `Finding`, whether it asks the finding something, changes it, or formats it.", and this change added the function.
+    Failure scenario: commentLine takes a Finding as its first parameter and formats it, so it is a free function where AGENTS.md asks for a method. AGENTS.md says "Behaviour belongs to the object it is about. A function whose first parameter is a `Finding` is a method of `Finding`, whether it asks the finding something, changes it, or formats it.", so a reader looking on Finding for how a finding is shown in a comment does not find commentLine, and the next formatter is written beside it in another file.
+    Evidence:
+      cause: src/comment.ts:4-5
+        export function commentLine(
+          finding: Finding,
+      context: src/finding.ts:3
+        export class Finding {
+      context: AGENTS.md:7
+        - Behaviour belongs to the object it is about. A function whose first parameter is a `Finding` is a method of `Finding`, whether it asks the finding something, changes it, or formats it.
+    What to do: Make it a method of Finding, such as finding.commentLine(repository), and call it on the finding.
+
+1 finding in 1 file.
