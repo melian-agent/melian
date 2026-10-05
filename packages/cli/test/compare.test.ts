@@ -113,9 +113,12 @@ describe("melian compare", { timeout: 60_000 }, () => {
 		expect(lines[2]).toBe(
 			"Matched: 1 external finding, covering 1 Melian finding. External only: 1. Melian only: 0. Skipped review bodies: 0.",
 		);
-		expect(lines[3]).toBe("External only:");
-		expect(lines[4]).toMatch(/^ {2}[0-9a-f]{16} {2}codex {2}src\/user\.ts:1 {2}Interface is wide$/);
-		expect(result.stdout).not.toContain(id);
+		expect(lines[3]).toBe("Matched:");
+		expect(lines[4]).toBe(`  ${id}`);
+		expect(lines[5]).toMatch(/^ {4}[0-9a-f]{16} {2}codex {2}src\/user\.ts:8$/);
+		expect(lines[lines.indexOf("External only:") + 1]).toMatch(
+			/^ {2}[0-9a-f]{16} {2}codex {2}src\/user\.ts:1 {2}Interface is wide$/,
+		);
 	});
 
 	it("lists a Melian finding no reviewer raised, with its ID, severity, rule, and place", () => {
@@ -135,13 +138,14 @@ describe("melian compare", { timeout: 60_000 }, () => {
 		const { repo, files, env, id } = reviewed();
 		const path = codexFile(files, [codexFinding(8, "Null manager"), codexFinding(30, "Somewhere else")]);
 		const first = melian(repo, ["compare", range, "--from", `file:${path}`], env);
+		const near = /^ {4}([0-9a-f]{16}) {2}codex {2}src\/user\.ts:8/m.exec(first.stdout)![1]!;
 		const far = /^ {2}([0-9a-f]{16}) {2}codex {2}src\/user\.ts:30/m.exec(first.stdout)![1]!;
 
 		const matched = melian(repo, ["compare", "match", range, far, id], env);
 
 		expect(matched).toMatchObject({ status: 0, stderr: "" });
 		expect(matched.stdout).toBe(
-			`Matched ${far} with ${id} as Melian Test <test@melian.invalid>.\nMatched: 2 external findings, covering 1 Melian finding. External only: 0. Melian only: 0.\n`,
+			`Matched ${far} with ${id} as Melian Test <test@melian.invalid>.\nMatched: 2 external findings, covering 1 Melian finding. External only: 0. Melian only: 0.\nMatched:\n  ${id}\n    ${near}  codex  src/user.ts:8\n    ${far}  codex  src/user.ts:30\n`,
 		);
 		const again = melian(repo, ["compare", range, "--from", `file:${path}`], env);
 		expect(again.stdout).toContain(
@@ -294,7 +298,7 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		expect(lines[2]).toBe(
 			"Matched: 1 external finding, covering 1 Melian finding. External only: 1. Melian only: 0. Skipped review bodies: 1.",
 		);
-		expect(lines[4]).toMatch(
+		expect(lines[lines.indexOf("External only:") + 1]).toMatch(
 			/^ {2}[0-9a-f]{16} {2}coderabbit {2}docs\/removed\.md:4 \(outdated\) {2}\*\*The heading names a command .* {2}\(read at 222222222222; match it by hand\)$/,
 		);
 		const human = melian(repo, ["compare", "#7", "--from", "github:octocat"], env);
