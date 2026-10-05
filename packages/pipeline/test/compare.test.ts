@@ -221,7 +221,7 @@ describe("FileImporter", () => {
 		});
 		await expect(FileImporter.open("broken.json", options)).rejects.toMatchObject({
 			code: "unreadable",
-			message: expect.stringContaining("broken.json: it is not JSON"),
+			message: expect.stringContaining("broken.json: it is not JSON at position 2"),
 		});
 		await expect(FileImporter.open("wrong.json", options)).rejects.toMatchObject({ code: "invalidFile" });
 		await expect(FileImporter.open("reviews", options)).rejects.toMatchObject({

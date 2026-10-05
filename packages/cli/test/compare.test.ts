@@ -138,6 +138,36 @@ describe("melian compare", { timeout: 60_000 }, () => {
 		expect(rerun.stdout).toContain("Matched: 1. External only: 1. Melian only: 0.");
 	});
 
+	it("never prints a control character a reviewer's file holds, in its text, its bytes, or its keys", () => {
+		const { repo, files, env } = reviewed();
+		const escape = "\u001b";
+		const titled = join(files, "titled.json");
+		writeFileSync(
+			titled,
+			JSON.stringify({ reviewer: { name: "codex" }, findings: [{ title: `${escape}[2Jgone`, body: "", line: 1 }] }),
+		);
+		const raw = join(files, "raw.json");
+		writeFileSync(raw, `{"reviewer": {"name": "codex"}, "findings": [{"title": "${escape}[2J", "body": ""}]}`);
+		const keyed = join(files, "keyed.json");
+		writeFileSync(
+			keyed,
+			JSON.stringify({ reviewer: { name: "codex" }, findings: [{ title: "t", body: "", [escape]: 1 }] }),
+		);
+
+		const shown = melian(repo, ["compare", range, "--from", `file:${titled}`], env);
+		const bytes = melian(repo, ["compare", range, "--from", `file:${raw}`], env);
+		const key = melian(repo, ["compare", range, "--from", `file:${keyed}`], env);
+
+		expect(shown.status).toBe(0);
+		expect(shown.stdout).toContain("\\u001b[2Jgone");
+		expect(bytes).toMatchObject({
+			status: 1,
+			stderr: expect.stringMatching(/raw\.json: it is not JSON at position \d+\n$/),
+		});
+		expect(key).toMatchObject({ status: 1, stderr: expect.stringContaining("has an unknown key in /findings/0") });
+		for (const result of [shown, bytes, key]) expect(result.stdout + result.stderr).not.toContain(escape);
+	});
+
 	it("refuses a hand match naming a finding it does not hold", () => {
 		const { repo, files, env, id } = reviewed();
 		melian(repo, ["compare", range, "--from", `file:${codexFile(files, [codexFinding(8, "x")])}`], env);

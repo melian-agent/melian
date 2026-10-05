@@ -215,7 +215,7 @@ describe("ExternalFinding", () => {
 				{ reviewer: { name: "codex" }, findings: [{ title: "t", body: "", extra: 1 }] },
 				"x.json",
 			),
-		).toThrow(/unknown key at \/findings\/0\/extra/);
+		).toThrow(/unknown key in \/findings\/0$/);
 		expect(() =>
 			ExternalFinding.fromFile(
 				{ reviewer: { name: "codex" }, findings: [{ title: "t", body: "", file: "/abs.ts", line: 1 }] },

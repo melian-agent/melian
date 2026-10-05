@@ -51,7 +51,9 @@ export class FileImporter implements ExternalImporter {
 		try {
 			value = JSON.parse(text);
 		} catch (error) {
-			throw unreadable(`it is not JSON: ${(error as Error).message}`, error);
+			// V8 can quote the bytes around the fault, which the file's author chose; name only where it is.
+			const position = /at position (\d+)/.exec((error as Error).message)?.[1];
+			throw unreadable(position === undefined ? "it is not JSON" : `it is not JSON at position ${position}`);
 		}
 		const findings = ExternalFinding.fromFile(value, named);
 		return new FileImporter(`file:${named}`, findings);

@@ -216,10 +216,8 @@ export class ComparisonError extends Error {
 function schemaProblem(schema: TSchema, value: unknown): string | undefined {
 	const errors = Value.Errors(schema, value);
 	const unknown = errors.find((error) => error.keyword === "additionalProperties");
-	if (unknown !== undefined) {
-		const [key] = (unknown.params as { additionalProperties: string[] }).additionalProperties;
-		return `has an unknown key at ${unknown.instancePath}/${key}`;
-	}
+	// The key's own text is the file author's to choose, so the message names only the object that holds it.
+	if (unknown !== undefined) return `has an unknown key in ${unknown.instancePath || "(top level)"}`;
 	const error = errors[0];
 	return error === undefined ? undefined : `${error.instancePath || "(top level)"} ${error.message}`;
 }
