@@ -22,7 +22,8 @@ import {
 	Verdict,
 } from "@melian-agent/core";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
-import { afterAll, afterEach, describe, expect, it } from "vitest";
+import * as pipelineTesting from "@melian-agent/pipeline/testing";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { review as reviewIn } from "../src/commands.ts";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
@@ -45,6 +46,7 @@ const repos: string[] = [];
 const noUserFiles = mkdtempSync(join(tmpdir(), "melian-xdg-"));
 
 afterEach(() => {
+	vi.restoreAllMocks();
 	for (const repo of repos.splice(0)) rmSync(repo, { recursive: true, force: true });
 	if (scratch !== undefined) rmSync(scratch, { recursive: true, force: true });
 });
@@ -150,6 +152,35 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(requests[0]!.questions.map(({ id }) => id).sort()).toEqual([...builtinLenses].sort());
 		const stored = melian(repo, ["findings", "main", "--json"], env);
 		expect(stored.stdout.match(/"level": "quick"/g)).toHaveLength(builtinLenses.length);
+	});
+
+	it("reads committed nested standards despite uncommitted checkout-only imports", async () => {
+		const { repo, env } = staticCheckout("export const b = 2;\n");
+		writeFileSync(join(repo, "src/AGENTS.md"), "COMMITTED_HEAD_STANDARD\n");
+		git(repo, "add", "src/AGENTS.md");
+		git(repo, "commit", "--quiet", "-m", "head standards");
+		writeFileSync(join(repo, "src/AGENTS.md"), "UNCOMMITTED_STANDARD\n@checkout-only.md\n");
+		writeFileSync(join(repo, "src/checkout-only.md"), "CHECKOUT_ONLY_IMPORT\n");
+		writeFileSync(join(repo, "melian.yaml"), "tiers:\n  full: [lens.correctness]\n");
+		const capture = vi.spyOn(pipelineTesting, "scriptLenses");
+		const code = await reviewIn(
+			{
+				cwd: repo,
+				env: { ...process.env, ...gitEnv, XDG_CONFIG_HOME: noUserFiles, ...env },
+				stdout: () => undefined,
+				stderr: () => undefined,
+				color: false,
+			},
+			"main",
+			{ rerun: false },
+		);
+		expect(code).toBe(0);
+		const requests = capture.mock.results[0]!.value as ReturnType<typeof pipelineTesting.scriptLenses>;
+		const prompts = Object.values(requests).flat().map(pipelineTesting.systemPromptOf);
+		expect(prompts).toHaveLength(1);
+		expect(prompts[0]).toContain("COMMITTED_HEAD_STANDARD");
+		expect(prompts[0]).not.toContain("UNCOMMITTED_STANDARD");
+		expect(prompts[0]).not.toContain("CHECKOUT_ONLY_IMPORT");
 	});
 
 	it("exits 0 for a review that passed, and prints the terminal rendering of its verdict", () => {
