@@ -227,4 +227,28 @@ describe("ReviewThreadImporter", () => {
 		await expect(refused).rejects.toMatchObject({ code: "unauthorized", status: 401 });
 		await expect(refused).rejects.not.toThrow(/secret-token-value/);
 	});
+
+	it("fails past the page cap instead of reading threads without end", async () => {
+		const page = (cursor: number) => ({
+			data: {
+				repository: {
+					pullRequest: {
+						headRefOid: "1".repeat(40),
+						reviewThreads: { pageInfo: { hasNextPage: true, endCursor: `cursor-${cursor}` }, nodes: [] },
+					},
+				},
+			},
+		});
+		const answers: GitHubRecording = {
+			...recording,
+			graphql: { MelianReviewThreads: Array.from({ length: 51 }, (_, index) => page(index)) },
+		};
+		const { opened, requests } = importer(undefined, answers);
+
+		await expect(opened.import()).rejects.toMatchObject({
+			code: "failed",
+			message: expect.stringContaining("has more than 5000 threads or reviews"),
+		});
+		expect(requests).toHaveLength(50);
+	});
 });
