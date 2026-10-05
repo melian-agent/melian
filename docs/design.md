@@ -249,7 +249,7 @@ Each is written adversarially: it looks for the strongest reasons the change sho
 
 ## Verification
 
-The LLM executor, schemas, routes and durable reports are built in milestone 2. Adjudication and hosts are in progress. The decision-model executor is planned for milestone 4.
+The LLM executor, schemas, routes and durable reports are built in milestone 2. Adjudication counts these judgements; hosts are in progress. The decision-model executor is planned for milestone 4.
 
 Problem: a lens reports what it half-believes, and Melian counts every report. Example: a lens reports a null dereference on a value that a guard two lines above already checks; the finding blocks the merge, and the author spends a round proving the lens wrong. Claude Code's review skill, in its variants that use subagents, and a private repository's review skill both attack each candidate before reporting it, and their precision rests on that pass, as [the comparison of review tools](research/2026-10-04-review-tools-compared.md) sets out. The variant that ran as Melian's shadow reviewer was not one of those: it ran eight angles inline, deduplicated, and verified nothing. The LLM verifier now attacks each claim; its `confidence` field stays reserved for calibrated decision models.
 
@@ -266,7 +266,7 @@ The verifier runs on a model tier of its own, `verifier`. The [review plan](#the
 
 Thresholds are asymmetric at first. A decision model may confirm a candidate or escalate it to the LLM verifier; a refutation needs the LLM verifier until calibration data shows the decision model's refutations hold. The failure to design against is a real P1 dropped on a 9B-parameter model's word.
 
-A `refuted` finding leaves the verdict and stays in the store with its verdict, so the evals and the ledger can show what was dropped and why. `plausible` and `confirmed` findings count, and the ledger marks which is which. A level that does not verify, `quick` by default, passes its findings on without a `verification` record. Unverified findings cannot block: adjudication caps a lens finding no verifier judged at advisory, as it caps a `pre-existing` one. [Escalation](#scrutiny-levels) reruns a severe quick finding at a level that verifies, so a finding that could block always passes a verifier.
+A defect leaves the resolution groups only when every lens claim was refuted and no static or guardrail check co-reported it. The optional `refuted` group keeps it visible to evals and the ledger. An unjudged claim beside a refutation keeps the defect at advisory. `plausible` and `confirmed` findings count, and the ledger marks which is which. A level that does not verify, `quick` by default, passes its findings on without a `verification` record. New reviews set an optional adjudication input flag that caps unjudged lens-only defects at advisory, as it caps a `pre-existing` one. Deterministic co-reports keep their resolution. Old reviews leave the flag absent, so a dismissal never silently lowers their resolution. An unfinished, refused or budget-ended verifier records a failed or ended check and leaves the review not reviewed. [Escalation](#scrutiny-levels) reruns a severe quick finding at a level that verifies, so a finding that could block always passes a verifier.
 
 ## Checks, tiers, and stages
 

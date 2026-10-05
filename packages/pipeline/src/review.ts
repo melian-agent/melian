@@ -1562,6 +1562,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				),
 			) ?? (verificationCheck === undefined ? accounted.records() : [...accounted.records(), verificationCheck]),
 		verifierVersion,
+		verificationRan: true,
 		findingsVersion: await findingsVersion(harness, root, reviewed, context),
 		allowSkip: accounted.skippable(),
 		producers,

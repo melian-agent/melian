@@ -16,3 +16,8 @@ Why: A quick claim an escalated run leaves unanswered must still reach judgement
 Choice: A revision and input attach to one verification task through an optional ReviewIndex entry. Spawn creates all owned conversations in one commit. Attempts and model changes commit together. Only rerun replaces an unanswered attachment. Every report commit checks task ownership. Findings document version 6 keeps optional verdict maps by revision, producer and verifier version beside each finding's sightings. Reads project the latest recorded version onto each claim and the strongest onto the merged finding. Clearing sightings clears their verdicts.
 
 Why: Replays must neither spend on replaced runs nor overwrite newer findings. A verdict belongs to its sighting, not its merged speaker. Version 5 migrates unchanged; version 4 also receives the existing evidence migration.
+
+
+Choice: Defaults 3, 4, 6 and 7 remove a defect only when every lens claim was refuted and no deterministic check co-reported it. An unjudged lens-only defect resolves no higher than advisory. The optional adjudication input flag verificationRan applies this cap only to new reviews. A dismissal keeps the stored flag and runs no verifier. Any unfinished candidate leaves a failed or budget-ended verifier check and a not-reviewed verdict.
+
+Why: A refutation cannot erase another claim or deterministic proof. Capping an old review during dismissal would silently unblock it. The advisory cap limits unjudged findings; the not-reviewed status still prevents an incomplete review passing.

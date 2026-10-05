@@ -154,6 +154,8 @@ describe("the verifier", () => {
 				correction: "Use the guarded value.",
 			});
 			expect(result.findings[0]!.properties.confidence).toBeUndefined();
+			expect(result.verdict.refuted?.length ?? 0).toBe(verdict === "refuted" ? 1 : 0);
+			expect(result.verdict.attention()).toHaveLength(verdict === "refuted" ? 0 : 1);
 		},
 	);
 	it("attaches a repeat review without asking another model", async () => {
@@ -205,7 +207,12 @@ describe("the verifier", () => {
 		]);
 		await expect(review()).rejects.toMatchObject({
 			code: "verifierFailed",
-			verdict: { status: "not-reviewed", notRun: [expect.objectContaining({ name: "verifier", status: "failed" })] },
+			verdict: {
+				status: "not-reviewed",
+				blocking: false,
+				findings: { advisory: [expect.anything()] },
+				notRun: [expect.objectContaining({ name: "verifier", status: "failed" })],
+			},
 		});
 		await expect(review()).rejects.toMatchObject({ code: "verifierFailed" });
 		expect(requests[verifierMarker]).toHaveLength(2);

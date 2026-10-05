@@ -302,7 +302,7 @@ Everything the renderer prints is untrusted. A lens writes finding text after re
 
 ## Adjudication
 
-Adjudication turns the findings a review collected into what the change requires. It is plain functions over plain values, in `src/adjudication.ts`; the pipeline loads configuration and stores the result.
+Adjudication turns the findings a review collected into what the change requires. It is domain objects over stored values, in `src/adjudication.ts`; the pipeline loads configuration and stores the result.
 
 ### Resolution
 
@@ -452,3 +452,6 @@ Only added lines take an inline comment. Problem: GitHub rejects the whole revie
 Verification schemas live in `src/verification.ts`. The typed question set asks about code, guards, the base, and the verdict. Verification never writes confidence or changes finding identity.
 
 The plan derives a model family from the catalogue name: remove the vendor prefix and parenthesised qualifier, then take the first word. A verifier route tries another family first. With no verifier route, it falls back to lens routes, heavy then medium then light, and records that lineage. Refused verifier tiers never fall back. Doctor prints the route with families. Warnings name fallback routing and a review judged entirely within the finders\u2019 families.
+
+
+Verification-aware adjudication uses an optional verificationRan input flag. Old stored inputs leave it absent and keep their resolutions. New reviews cap an unjudged lens-only defect at advisory. Deterministic co-reports keep their resolution. Every lens claim must be refuted before a lens-only defect leaves the resolution groups. Verdict.refuted is optional and absent when empty, preserving fingerprints without verification. Verdict.all includes it; attention and publication leave it out.

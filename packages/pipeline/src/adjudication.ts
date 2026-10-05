@@ -134,6 +134,7 @@ export type AdjudicationTaskInput = {
 	producers: { check: string; version?: string; ids?: string[] }[];
 	// Recorded with the verdict, so publishing can refuse one that came from a range or from the working tree.
 	provenance: StoredProvenance;
+	verificationRan?: boolean;
 };
 
 // `superseded` when a later review of the revision created another adjudication task before this one recorded.
@@ -158,7 +159,14 @@ export const AdjudicationTask = defineTask<AdjudicationTaskInput, { phase: "adju
 			let verdict: Verdict;
 			try {
 				const configFor = policy === undefined ? () => config : await configsFor(repoRoot, policy, findings);
-				verdict = new Adjudication({ findings, manifest, checks, config: configFor, allowSkip }).adjudicate();
+				verdict = new Adjudication({
+					findings,
+					manifest,
+					checks,
+					config: configFor,
+					allowSkip,
+					verificationRan: task.input.verificationRan,
+				}).adjudicate();
 			} catch (error) {
 				// A policy that cannot be read is the task's outcome rather than a fault. It may not fail the same way next
 				// time, as when a shallow clone fetches the base later, so the next review starts a new task.
@@ -205,6 +213,7 @@ export function adjudicationInput(options: {
 	lenses: readonly string[];
 	plan?: ReviewPlan | undefined;
 	verifierVersion?: string;
+	verificationRan?: boolean;
 }): AdjudicationTaskInput {
 	const { root, repoRoot, base, head, policy, config, manifest, checks, findingsVersion, allowSkip, producers } =
 		options;
@@ -244,6 +253,7 @@ export function adjudicationInput(options: {
 			...(ids === undefined ? {} : { ids: [...ids] }),
 		})),
 		provenance,
+		...(options.verificationRan === undefined ? {} : { verificationRan: options.verificationRan }),
 	};
 }
 
