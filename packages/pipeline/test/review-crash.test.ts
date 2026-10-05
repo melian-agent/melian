@@ -295,6 +295,41 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		expect(requests["You are the contracts reviewer"]).toEqual([]);
 	});
 
+	it("aborts, on opening, a crashed lens run an older Melian indexed, which no review can attach to", async () => {
+		const database = join(dir, "v2.sqlite");
+		const log = join(dir, "v2.jsonl");
+		await killWhen("request", (events) => count(events, "model-request") === 2, database, log);
+
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
+		const requests = scriptConversations(fake, [
+			{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+			{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+		]);
+		// The entry as version 2 of the review index stored it: each lens by name and version, with no route.
+		const older = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		const crashed = (await older.inspect(context)).tasks.find((task) => task.record.kind === "melian.lenses");
+		expect(crashed).toBeDefined();
+		const root = await older.root(context);
+		await root.commit(async (tx) => {
+			const index = await tx.doc(ReviewIndex, root.id);
+			const entry = index.reviews[reviewedRevision()]!;
+			index.reviews[reviewedRevision()] = { ...entry, lenses: entry.lenses.map((lens) => lens.split(" on ")[0]!) };
+		}, context);
+		await older.close(context);
+
+		const reopened = await ReviewHarness.open(await openSqliteStorage(database), fake.review, { retry: false });
+		harness = reopened.harness;
+		const settled = await harness.waitForTask(crashed!.record.id, context);
+
+		expect(settled.state.outcome.status).toBe("aborted");
+		expect(requests["You are the correctness reviewer"]).toEqual([]);
+		expect(requests["You are the contracts reviewer"]).toEqual([]);
+	});
+
 	it("records no verdict from a crashed adjudication once a new lens selection reviews the head", async () => {
 		const database = join(dir, "superseded.sqlite");
 		const log = join(dir, "superseded.jsonl");

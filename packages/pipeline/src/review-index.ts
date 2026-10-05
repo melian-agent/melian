@@ -16,7 +16,8 @@ export type ReviewIndexState = { reviews: Record<string, IndexedReview> };
 // root conversation, so a later call for the same revision and lenses finds the tasks, whether they finished, are
 // running, or crashed. A head retargeted onto another base is another revision, with tasks of its own.
 // Version 3 keys each selected lens by its route too. An entry stored before reads unchanged and never matches a
-// selection, so the next review of its revision replaces it, aborting its task and dropping its sightings.
+// selection, so a review harness aborts its task as it opens, before anything resumes it, and the next review of its
+// revision replaces it and drops its sightings.
 export const ReviewIndex = defineDoc<ReviewIndexState>({
 	kind: "melian.reviews",
 	version: 3,

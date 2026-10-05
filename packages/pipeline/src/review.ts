@@ -118,7 +118,8 @@ function modelName(model: ModelReference): string {
 const continuePrompt =
 	"The model reviewing this change failed, and you take over. Continue the review where it stopped: findings already recorded stay recorded, so report only what is still missing. Then answer with one line saying how many findings you reported.";
 
-// Aborts every live lens task the review index no longer names for its revision, before anything resumes it. Problem:
+// Aborts every live lens task the review index no longer names for its revision, or names in the shape version 2 of the
+// index stored, which no selection matches, before anything resumes it. Problem:
 // a review that replaced a run commits the replacement and then aborts the old task, and a process that dies between the
 // two leaves the old task live; its conversation, resumed mid-request, would ask its model again. Solution: sweep before
 // the harness resumes, at open, and at the start of every review.
@@ -129,8 +130,12 @@ async function abortReplacedRuns(harness: Harness, context: Context): Promise<vo
 	const index = await harness.snapshot(ReviewIndex, root.id, context);
 	for (const { record } of live) {
 		const input = record.input as unknown as LensTaskInput;
-		const named = index?.reviews[revisionKey(input.revision)]?.task;
-		if (named !== undefined && named !== record.id) await harness.abortTask(record.id, context);
+		const entry = index?.reviews[revisionKey(input.revision)];
+		const replaced = entry?.task !== undefined && entry.task !== record.id;
+		// An entry an older Melian stored names its lenses without their routes, so no review can attach to its task.
+		const stale =
+			entry !== undefined && entry.lenses.length > 0 && entry.lenses.every((lens) => !lens.includes(" on "));
+		if (replaced || stale) await harness.abortTask(record.id, context);
 	}
 }
 
