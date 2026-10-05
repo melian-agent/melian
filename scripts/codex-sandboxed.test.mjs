@@ -214,6 +214,24 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 			expect(git(linked, "log", "-1", "--format=%s").toString().trim()).toBe("again");
 		});
 
+		it("denies commondir, gitdir, and config even under a broader allow of the administrative directory", () => {
+			const text = profile(linked).replace(
+				"(deny file-write*",
+				`(allow file-write* (subpath "${admin}") (subpath "${main}/.git"))\n(deny file-write*`,
+			);
+			const widened = join(root, "widened.sb");
+			writeFileSync(widened, text);
+			const widenedSh = (command) =>
+				execFileSync("sandbox-exec", ["-f", widened, "/bin/sh", "-c", command], { cwd: linked, stdio: "pipe" });
+			widenedSh(`touch '${admin}/probe-allowed'`);
+			expect(existsSync(join(admin, "probe-allowed"))).toBe(true);
+			for (const file of [`${admin}/commondir`, `${admin}/gitdir`, `${main}/.git/config`]) {
+				const before = readFileSync(file, "utf8");
+				expect(failure(() => widenedSh(`echo evil > '${file}'`)).status).not.toBe(0);
+				expect(readFileSync(file, "utf8")).toBe(before);
+			}
+		});
+
 		it("cannot start a rebase, whose todo file the host would later run", () => {
 			for (const dir of ["rebase-merge", "rebase-apply"]) {
 				expect(failure(() => sh(linked, `mkdir '${admin}/${dir}'`)).status).not.toBe(0);
