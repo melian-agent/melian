@@ -418,7 +418,7 @@ function planned(options: ReviewOptions): ReviewOptions {
 		config,
 		options.changeset.revision.paths(),
 	)) {
-		const { refusal: reason, lineage } = plan.judge(lens.name, level);
+		const { refusal: reason, lineage } = plan.judge(lens.name, level, undefined, lens.scope);
 		if (reason === undefined || refused.has(lens.name)) continue;
 		const name = `lens.${lens.name}`;
 		refused.set(lens.name, { name, status: "failed", level, reason, ...(lineage === undefined ? {} : { lineage }) });
@@ -431,14 +431,19 @@ function planned(options: ReviewOptions): ReviewOptions {
 	};
 }
 
-// Each lens that finished, by name, to the model it finished on, so its lineage names the model that ran.
-function ranOn(lenses: readonly LensRun[], result: LensResult | undefined): Map<string, string> {
-	return new Map(
-		lenses.flatMap((lens) => {
-			const outcome = result?.[lens.key];
-			return outcome?.status === "done" && outcome.model !== undefined ? [[lens.name, outcome.model] as const] : [];
-		}),
-	);
+// Each lens that finished, by name, to the scope of each variant that ran and the model it finished on, so its lineage
+// names the model that ran.
+function ranOn(
+	lenses: readonly LensRun[],
+	result: LensResult | undefined,
+): Map<string, { scope: string; model: string }[]> {
+	const ran = new Map<string, { scope: string; model: string }[]>();
+	for (const lens of lenses) {
+		const outcome = result?.[lens.key];
+		if (outcome?.status !== "done" || outcome.model === undefined) continue;
+		ran.set(lens.name, [...(ran.get(lens.name) ?? []), { scope: lens.coverage.scope, model: outcome.model }]);
+	}
+	return ran;
 }
 
 /** What {@link reviewChangeset} reviews, and with what. */
@@ -825,7 +830,11 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					context,
 					(key, model) => {
 						const lens = lenses.find((each) => each.key === key);
-						return lens !== undefined && request.plan?.judge(lens.name, lens.level, model).refusal !== undefined;
+						const judged =
+							lens === undefined
+								? undefined
+								: request.plan?.judge(lens.name, lens.level, model, lens.coverage.scope);
+						return judged?.refusal !== undefined;
 					},
 				);
 	// Only the lenses this review ran count: one that configuration has since disabled or retiered leaves nothing behind.

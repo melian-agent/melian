@@ -75,8 +75,12 @@ export type PlannedTier = {
  */
 export type PlannedLevel = { level: ScrutinyLevel; tier: LensTier; committed?: LensTier; by?: string };
 
-/** A lens the review runs, and the tier each of its levels runs on. */
-export type PlannedLens = { name: string; levels: PlannedLevel[] };
+/**
+ * A lens the review runs, and the tier each of its levels runs on. `scope` is the folder whose `.melian/` defined it,
+ * empty for the root's and the built-ins: two folders may each define a lens of one name, on different tiers. Absent
+ * from a plan stored before Melian kept it.
+ */
+export type PlannedLens = { name: string; scope?: string; levels: PlannedLevel[] };
 
 /** What the plan says of one lens check: why it must fail without counting, and the lineage it records. */
 export interface LensJudgement {
@@ -104,6 +108,11 @@ function sameModel(name: string): string {
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, " ")
 		.trim();
+}
+
+// A lens as a reader tells it from another of its name: the root's and the built-ins by name, a folder's with its folder.
+function labelOf({ name, scope }: PlannedLens): string {
+	return scope === undefined || scope === "" ? name : `${name} in ${scope}/`;
 }
 
 function listed(names: readonly string[]): string {
@@ -151,7 +160,8 @@ export class ReviewPlan {
 		const planned = new Map<string, PlannedLens>();
 		for (const lens of lenses) {
 			const settings = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name] : undefined;
-			if (!named.has(lens.name) || settings?.enabled === false || planned.has(lens.name)) continue;
+			const key = `${lens.name}\0${lens.scope}`;
+			if (!named.has(lens.name) || settings?.enabled === false || planned.has(key)) continue;
 			const levels = scrutinyLevels.flatMap((level): PlannedLevel[] => {
 				const declared = lens.levels[level];
 				if (declared === undefined) return [];
@@ -161,9 +171,11 @@ export class ReviewPlan {
 				const by = Object.hasOwn(routes.retiered, lens.name) ? routes.retiered[lens.name]! : "a preference file";
 				return [{ level, tier, committed, by }];
 			});
-			planned.set(lens.name, { name: lens.name, levels });
+			planned.set(key, { name: lens.name, scope: lens.scope, levels });
 		}
-		return [...planned.values()].sort((left, right) => left.name.localeCompare(right.name));
+		return [...planned.values()].sort(
+			(left, right) => left.name.localeCompare(right.name) || (left.scope ?? "").localeCompare(right.scope ?? ""),
+		);
 	}
 
 	private static resolveTier(tier: ModelTier, input: PlanInput): PlannedTier {
@@ -351,8 +363,10 @@ export class ReviewPlan {
 	 * on that tier's route but stays under its committed tier's policy, so it cannot leave a route
 	 * `acceptOverridden: false` guards by moving to a tier that guards nothing.
 	 */
-	judge(name: string, level: ScrutinyLevel, ran?: string): LensJudgement {
-		const entry = this.lenses.find((each) => each.name === name)?.levels.find((each) => each.level === level);
+	judge(name: string, level: ScrutinyLevel, ran?: string, scope?: string): LensJudgement {
+		const variants = this.lenses.filter((each) => each.name === name);
+		const lens = scope === undefined ? variants[0] : variants.find((each) => (each.scope ?? "") === scope);
+		const entry = lens?.levels.find((each) => each.level === level);
 		if (entry === undefined) return {};
 		const planned = this.tier(entry.tier);
 		const model = ran ?? planned.models[0]?.model;
@@ -379,18 +393,28 @@ export class ReviewPlan {
 	}
 
 	/**
-	 * `records` with each lens's lineage added, judged on the model it finished on, from `ranOn` by lens name, or the
-	 * first of its route. A lens that finished on a model its policy refuses, such as a fallback outside `accept`,
-	 * records `failed`, since its result cannot count.
+	 * `records` with each lens's lineage added, judged on the model it finished on, from `ranOn`, each variant of a lens
+	 * name by its scope, or the first of its route. A lens that finished on a model its policy refuses, such as a
+	 * fallback outside `accept`, records `failed`, since its result cannot count; so does a lens of which any variant did.
 	 */
-	mark(records: readonly CheckRecord[], ranOn: ReadonlyMap<string, string> = new Map()): CheckRecord[] {
+	mark(
+		records: readonly CheckRecord[],
+		ranOn: ReadonlyMap<string, readonly { readonly scope: string; readonly model: string }[]> = new Map(),
+	): CheckRecord[] {
 		return records.map((record) => {
 			if (!record.name.startsWith("lens.") || record.level === undefined || record.lineage !== undefined)
 				return record;
 			const name = record.name.slice("lens.".length);
-			const { refusal, lineage } = this.judge(name, record.level, ranOn.get(name));
+			const { level } = record;
+			const ran = ranOn.get(name) ?? [];
+			const judged =
+				ran.length === 0
+					? [this.judge(name, level)]
+					: ran.map(({ scope, model }) => this.judge(name, level, model, scope));
+			const refusal = judged.find((each) => each.refusal !== undefined)?.refusal;
+			const lineage = judged.find((each) => each.lineage !== undefined)?.lineage;
 			const marked = lineage === undefined ? record : { ...record, lineage };
-			if (refusal === undefined || record.status === "failed" || !ranOn.has(name)) return marked;
+			if (refusal === undefined || record.status === "failed" || ran.length === 0) return marked;
 			return { ...marked, status: "failed", reason: refusal };
 		});
 	}
@@ -401,7 +425,7 @@ export class ReviewPlan {
 		const used = new Map<ModelTier, string[]>();
 		for (const lens of this.lenses) {
 			const tier = lens.levels.find(({ level }) => level === defaultScrutinyLevel)?.tier;
-			if (tier !== undefined) used.set(tier, [...(used.get(tier) ?? []), lens.name]);
+			if (tier !== undefined) used.set(tier, [...(used.get(tier) ?? []), labelOf(lens)]);
 		}
 		return used;
 	}
@@ -429,10 +453,10 @@ export class ReviewPlan {
 		const moved = this.lenses.flatMap((lens): string[] => {
 			const entry = lens.levels.find(({ level }) => level === defaultScrutinyLevel);
 			if (entry?.committed === undefined) return [];
-			const { refusal, lineage } = this.judge(lens.name, entry.level);
-			if (refusal !== undefined) return [`${lens.name} fails: ${refusal}`];
+			const { refusal, lineage } = this.judge(lens.name, entry.level, undefined, lens.scope ?? "");
+			if (refusal !== undefined) return [`${labelOf(lens)} fails: ${refusal}`];
 			if (lineage === undefined) return [];
-			return [`${lens.name} runs ${lineage.model}, ${ReviewPlan.lineageText(lineage)}`];
+			return [`${labelOf(lens)} runs ${lineage.model}, ${ReviewPlan.lineageText(lineage)}`];
 		});
 		const tiers = this.tiers.flatMap((planned): string[] => {
 			const { tier, status, reason } = planned;
@@ -496,7 +520,7 @@ export class ReviewPlan {
 		const groups = new Map<string, string[]>();
 		for (const lens of this.lenses) {
 			const levels = lens.levels.map(({ level, tier }) => `${level} on ${tier} (${model(tier)})`).join(", ");
-			groups.set(levels, [...(groups.get(levels) ?? []), lens.name]);
+			groups.set(levels, [...(groups.get(levels) ?? []), labelOf(lens)]);
 		}
 		for (const [levels, names] of groups) {
 			lines.push({ state: "ok", text: visibleText(`${listed(names)}: ${levels}`) });

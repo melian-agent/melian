@@ -10,7 +10,7 @@ import {
 	ReviewPlan,
 } from "@melian-agent/core";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { gitIn, isolatedGitEnv, removeDirectory, temporaryDirectory } from "./fixtures/repo.ts";
+import { gitIn, isolatedGitEnv, lines, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
 
 function model(provider: string, id: string, name: string, input: number, output: number): CatalogueModel {
 	return { provider, id, name, contextWindow: 1_000_000, reasoning: true, cost: { input, output } };
@@ -434,6 +434,69 @@ describe("ReviewPlan.resolve", () => {
 	});
 });
 
+describe("a lens two folders define", () => {
+	it("judges each variant by its own tier, so one on a refused tier fails and the other runs", async () => {
+		const folder = temporaryDirectory();
+		try {
+			gitIn(folder, "init", "--quiet", "--initial-branch=main");
+			writeFiles(folder, {
+				"services/pay/.melian/lenses/correctness/LENS.md": lines(
+					"---",
+					"name: correctness",
+					"extends: correctness",
+					"tier: light",
+					"---",
+				),
+				"services/pay/a.ts": lines("export {};"),
+			});
+			const variants = await Lens.load(folder, { kind: "worktree" }, ["a.ts", "services/pay/a.ts"]);
+			const credentials = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" };
+			const input: PlanInput = {
+				config: { ...defaultConfig, models: { heavy: { model: opus }, light: { model: "openai/gpt-5.4-mini" } } },
+				routes: {
+					committed: { heavy: { model: opus }, light: { model: gpt, acceptOverridden: false } },
+					overridden: { light: "melian.local.yaml" },
+					lensTiers: {},
+					retiered: {},
+				},
+				catalogue,
+				credentials,
+				lenses: variants,
+				checks: ["lens.correctness"],
+			};
+			const resolved = ReviewPlan.resolve(input);
+
+			expect(resolved.lenses.filter((lens) => lens.name === "correctness").map((lens) => lens.scope)).toEqual([
+				"",
+				"services/pay",
+			]);
+			expect(resolved.judge("correctness", "careful", undefined, "").refusal).toBeUndefined();
+			expect(resolved.judge("correctness", "careful", undefined, "services/pay").refusal).toContain(
+				"models.light.acceptOverridden is false",
+			);
+			expect(resolved.warnings()).toContain(
+				`light, for correctness in services/pay/ fails every check: ${resolved.refusal("light")}`,
+			);
+			const ran = new Map([
+				[
+					"correctness",
+					[
+						{ scope: "", model: opus },
+						{ scope: "services/pay", model: "openai/gpt-5.4-mini" },
+					],
+				],
+			]);
+			const [record] = resolved.mark([{ name: "lens.correctness", status: "ran", level: "careful" }], ran);
+			expect(record).toMatchObject({
+				status: "failed",
+				reason: expect.stringContaining("acceptOverridden is false"),
+			});
+		} finally {
+			removeDirectory(folder);
+		}
+	});
+});
+
 describe("a resolved plan", () => {
 	it("marks each lens record whose level's tier left the committed route, and only those", () => {
 		const resolved = plan(
@@ -467,8 +530,11 @@ describe("a resolved plan", () => {
 		// The first model of the moved lens's route is inside accept, so the plan lets it run.
 		expect(resolved.judge("correctness", "careful").refusal).toBeUndefined();
 		const record = { name: "lens.correctness", status: "ran", level: "careful" } as const;
-		expect(resolved.mark([record], new Map([["correctness", opus]]))).toEqual([record]);
-		const [fallback] = resolved.mark([record], new Map([["correctness", "openai/gpt-5.4-mini"]]));
+		expect(resolved.mark([record], new Map([["correctness", [{ scope: "", model: opus }]]]))).toEqual([record]);
+		const [fallback] = resolved.mark(
+			[record],
+			new Map([["correctness", [{ scope: "", model: "openai/gpt-5.4-mini" }]]]),
+		);
 		expect(fallback).toMatchObject({
 			status: "failed",
 			reason: expect.stringContaining("light runs openai/gpt-5.4-mini, which models.heavy.accept does not list"),
