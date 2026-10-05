@@ -684,6 +684,22 @@ describe("documents stored before evidence became a list", () => {
 			};
 			const provider: ReviewProvider = {
 				name: "fake",
+				findLedger: async () => undefined,
+				writeLedger: async () => ({
+					id: "ledger",
+					url: "https://example.test/ledger",
+					stamp: {
+						version: 1,
+						base,
+						head,
+						round: 1,
+						verdict: "0".repeat(16),
+						counts: { open: 0, blocking: 0, dismissed: 0 },
+						lenses: [],
+						plan: null,
+						projection: "0".repeat(16),
+					},
+				}),
 				pullRequest: async () => pullRequest,
 				postReview: async (draft) => {
 					posted.push(draft);

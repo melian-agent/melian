@@ -206,6 +206,22 @@ async function publisher(path: string) {
 	const statuses: ReviewStatus[] = [];
 	const provider: ReviewProvider = {
 		name: "fake",
+		findLedger: async () => undefined,
+		writeLedger: async () => ({
+			id: "ledger",
+			url: "https://example.test/ledger",
+			stamp: {
+				version: 1,
+				base,
+				head,
+				round: 1,
+				verdict: "0".repeat(16),
+				counts: { open: 0, blocking: 0, dismissed: 0 },
+				lenses: [],
+				plan: null,
+				projection: "0".repeat(16),
+			},
+		}),
 		pullRequest: async () => pullRequest,
 		postReview: async () => ({ id: "201", threads: {} }),
 		replyResolved: async () => undefined,
@@ -628,7 +644,10 @@ describe("recording a dismissal", () => {
 		expect(await adjudicationTask(dismissing.harness)).toBe(task);
 		await dismissing.close(context);
 		await publish();
-		expect(statuses).toEqual([{ state: "success", description: "Passed" }]);
+		expect(statuses).toEqual([
+			{ state: "success", description: "Passed" },
+			{ state: "success", description: "Passed" },
+		]);
 	});
 
 	it("lets a later review attach to the adjudication a cut-short dismissal left pending", async () => {

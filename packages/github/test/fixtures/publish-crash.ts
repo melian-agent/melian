@@ -31,6 +31,8 @@ const fetch = fakeGitHub(
 	async (call) => {
 		writeFileSync(stateFile, JSON.stringify(state));
 		if (mode === "after-review" && isReview(call)) await park("review-posted");
+		if (mode === "after-ledger-edit" && call.method === "PATCH" && call.path.includes("/issues/comments/"))
+			await park("ledger-edited");
 	},
 	async (call) => {
 		if (mode === "before-review" && isReview(call)) await park("review-requested");

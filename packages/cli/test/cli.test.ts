@@ -102,7 +102,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.stdout).toMatch(/^Verdict: passed\n/);
 	});
 
-	it("exits 1 for a blocking finding, and findings prints what review printed", () => {
+	it("exits 1 for a blocking finding, and findings adds its agent prompt", () => {
 		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!);
 
 		const review = melian(repo, ["review", "main"], env);
@@ -110,7 +110,13 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.status).toBe(1);
 		expect(review.stdout).toMatch(/^Verdict: findings, blocking\n/);
 		expect(review.stdout).toContain("null-dereference");
-		expect(melian(repo, ["findings", "main"], env)).toMatchObject({ status: 0, stdout: review.stdout });
+		const storedVerdict = Verdict.from(
+			JSON.parse(melian(repo, ["findings", "main", "--json"], env).stdout) as StoredVerdict,
+		);
+		expect(melian(repo, ["findings", "main"], env)).toMatchObject({
+			status: 0,
+			stdout: review.stdout + storedVerdict.agentPrompt("main"),
+		});
 		const open = melian(repo, ["findings", "main", "--open", "--json"], env);
 		const log = JSON.parse(open.stdout) as { runs: { results: { ruleId: string }[] }[] };
 		expect(log.runs[0]!.results.map((result) => result.ruleId)).toEqual(["null-dereference"]);
@@ -274,7 +280,10 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 			reason,
 		});
 		const rerun = melian(repo, ["review", range], env);
-		expect(rerun).toMatchObject({ status: 0, stdout: findings.stdout });
+		expect(rerun).toMatchObject({
+			status: 0,
+			stdout: findings.stdout.replace(Verdict.from(verdict).agentPrompt(range), ""),
+		});
 	});
 
 	it("updates the reason of a finding dismissed again and keeps the first", () => {
@@ -499,7 +508,13 @@ describe("Melian's state directory", { timeout: 60_000 }, () => {
 		expect(sqliteFiles(join(repo, ".git"))).toEqual([]);
 		expect(melian(repo, ["findings", "main"], { ...env, MELIAN_STATE_DIR: state })).toMatchObject({
 			status: 0,
-			stdout: review.stdout,
+			stdout:
+				review.stdout +
+				Verdict.from(
+					JSON.parse(
+						melian(repo, ["findings", "main", "--json"], { ...env, MELIAN_STATE_DIR: state }).stdout,
+					) as StoredVerdict,
+				).agentPrompt("main"),
 		});
 	});
 

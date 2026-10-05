@@ -207,6 +207,13 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 
 		expect(state.statuses).toEqual([
 			{ sha: head, state: "failure", description: "3 findings, 1 blocking", context: statusContext },
+			{
+				sha: head,
+				state: "failure",
+				description: "3 findings, 1 blocking",
+				context: statusContext,
+				target_url: state.ledgers[0]!.html_url,
+			},
 		]);
 		const recorded = await readPublished(harness!, (await harness!.root(context)).id, head, context);
 		expect(recorded?.review).toBe(String(review!.id));
@@ -227,7 +234,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.reviews).toHaveLength(1);
 	});
 
-	it("replies in a resolved finding's thread, names a dismissed one in the body, and reposts neither", async () => {
+	it("edits and resolves an addressed finding's thread, names a dismissed one in the body, and reposts neither", async () => {
 		const { fake, github, changeset, state } = await reviewedRevisionOne();
 		await publish(github, changeset);
 		const root = (await harness!.root(context)).id;
@@ -261,9 +268,8 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const posted = state.comments.filter((comment) => comment.pull_request_review_id === state.reviews[1]!.id);
 		expect(posted).toHaveLength(1);
 		const [greeting] = posted;
-		const replies = state.comments.filter((comment) => comment.in_reply_to_id !== undefined);
-		expect(replies).toHaveLength(1);
-		const [reply] = replies;
+		expect(state.comments.filter((comment) => comment.in_reply_to_id !== undefined)).toEqual([]);
+		const reply = state.comments.find((comment) => String(comment.id) === thread)!;
 		expect(greeting).toMatchObject({ path: "src/user.ts", line: 11, side: "RIGHT" });
 		expect(greeting!.body).toContain("trim\\(\\) changes the greeting.");
 		// The dismissed finding was posted in the body, so it has no thread, and the next body says why it went.
@@ -272,14 +278,15 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		);
 		expect(state.reviews[1]!.body).not.toContain("RETRIES may be unset.");
 		expect(state.reviews[1]!.body).toContain("1 of them was posted on an earlier revision.");
-		expect(reply).toMatchObject({ in_reply_to_id: Number(thread) });
-		expect(parseMarker(reply!.body.split("\n")[0]!)).toMatchObject({
+		expect(state.resolvedThreads).toContain(Number(thread));
+		expect(parseMarker(reply!.body.split("\n").at(-1)!)).toMatchObject({
 			revision: head,
 			kind: "resolved",
 			id: manager.properties.id,
 		});
-		expect(reply!.body).toContain(`Resolved at \`${head.slice(0, 12)}\``);
+		expect(reply!.body).toContain(`Addressed in commit ${head.slice(0, 12)}`);
 		expect(state.statuses.at(-1)).toEqual({
+			target_url: state.ledgers[0]!.html_url,
 			sha: head,
 			state: "success",
 			description: "2 findings, none blocking",
@@ -320,6 +327,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const head = changeset.revision.head;
 		expect(result).toMatchObject({ posted: 0, stillOpen: 2, resolved: 0, dismissed: 1, replies: 1 });
 		expect(state.statuses.at(-1)).toEqual({
+			target_url: state.ledgers[0]!.html_url,
 			sha: head,
 			state: "success",
 			description: "2 findings, none blocking",
@@ -625,7 +633,7 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		const result = await publish(github, third.changeset);
 
 		expect(result).toMatchObject({ resolved: 2, replies: 2 });
-		const replied = state.comments.filter((comment) => comment.in_reply_to_id !== undefined);
+		const replied = state.comments.filter((comment) => state.resolvedThreads.includes(comment.id));
 		expect(replied.map((comment) => /`([a-z-]+)`/.exec(comment.body)?.[1]).sort()).toEqual([
 			"null-dereference",
 			"wrong-result",
@@ -738,12 +746,13 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 
 		await publish(github, changeset);
 
-		expect(state.statuses).toEqual([
+		expect(state.statuses).toHaveLength(2);
+		expect(state.statuses.at(-1)).toEqual(
 			expect.objectContaining({
 				state: "error",
 				description: expect.stringMatching(/^Not reviewed: lens\.contracts failed/),
 			}),
-		]);
+		);
 		expect(state.reviews[0]!.body).toContain("**not reviewed, blocking**");
 	});
 
