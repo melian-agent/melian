@@ -18,6 +18,8 @@ import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const script = join(import.meta.dirname, "codex-sandboxed.sh");
+// Codex fails on a first run without these directories.
+const codexNames = ["sessions", "log", "cache", "tmp", "ipc", "thread-writer-locks", "mcp-oauth-locks", "attachments"];
 const git = (cwd, ...args) =>
 	execFileSync("git", ["-c", "user.email=t@example.com", "-c", "user.name=t", ...args], { cwd, stdio: "pipe" });
 
@@ -262,16 +264,12 @@ describe("codex-sandboxed.sh profile", () => {
 		expect(allow).not.toContain("Library/Caches");
 	});
 
-	it("allows and denies every Codex subdirectory the script lists, and creates each one", () => {
-		const source = readFileSync(script, "utf8");
-		const names = /^codex_names=\((.*)\)$/m.exec(source)?.[1].split(" ");
-		expect(names).toHaveLength(8);
-		expect(source.match(/codex_names\[@\]/g)).toHaveLength(4);
+	it("allows and denies each required Codex runtime directory", () => {
 		const text = profile(linked);
 		const allow = block(text, "allow file-write*");
 		const deny = block(text, "deny file-write*");
 		const escaped = `${home}/.codex`.replace(/[[\\.*^$+?(){}|\]]/g, "\\$&");
-		for (const name of names) {
+		for (const name of codexNames) {
 			expect(allow, name).toContain(`(regex #"^${escaped}/${name}/")`);
 			expect(allow, name).not.toContain(`(subpath "${home}/.codex/${name}")`);
 			expect(deny, name).toContain(`^${escaped}/${name}/(.*/)?[.][gG][iI][tT](/|$)`);
@@ -288,18 +286,7 @@ describe("codex-sandboxed.sh profile", () => {
 	});
 
 	it("refuses symlinked Codex paths before printing a profile", () => {
-		const names = [
-			"sessions",
-			"log",
-			"cache",
-			"tmp",
-			"ipc",
-			"thread-writer-locks",
-			"mcp-oauth-locks",
-			"attachments",
-			"auth.json",
-			".",
-		];
+		const names = [...codexNames, "auth.json", "."];
 		for (const [index, name] of names.entries()) {
 			const fakeHome = join(root, `symlink-home-${index}`);
 			const codex = join(fakeHome, ".codex");
@@ -486,6 +473,30 @@ describe("codex-sandboxed.sh profile", () => {
 		}
 	});
 
+	it.skipIf(process.platform !== "darwin")(
+		"refuses a symlinked cache before creating a profile or running Codex",
+		() => {
+			const fakeHome = join(root, "wrapper-symlink-home");
+			const temp = join(root, "wrapper-symlink-tmp");
+			mkdirSync(join(fakeHome, ".codex"), { recursive: true });
+			mkdirSync(temp);
+			symlinkSync(run, join(fakeHome, ".codex", "cache"));
+			const prompt = join(root, "symlink.md");
+			const log = join(root, "symlink.log");
+			writeFileSync(prompt, "go\n");
+			const result = failure(() =>
+				execFileSync(script, [linked, "m", prompt, log], {
+					env: { ...env(), HOME: fakeHome, CODEX_HOME: join(fakeHome, ".codex"), TMPDIR: temp },
+					stdio: "pipe",
+				}),
+			);
+			expect(result.status).toBe(64);
+			expect(result.stderr).toContain("symlink");
+			expect(readdirSync(temp)).toEqual([]);
+			expect(existsSync(log)).toBe(false);
+		},
+	);
+
 	it("builds the full-access Codex command with the model, worktree, and prompt", () => {
 		const launcher = join(root, "launcher-bin");
 		mkdirSync(launcher);
@@ -506,6 +517,7 @@ describe("codex-sandboxed.sh profile", () => {
 			.split("\n")
 			.filter((line) => line.startsWith("arg:"))
 			.map((line) => line.slice(4));
+		for (const name of codexNames) expect(existsSync(join(home, ".codex", name)), name).toBe(true);
 		expect(args).toEqual([
 			"exec",
 			"--dangerously-bypass-approvals-and-sandbox",
@@ -1008,31 +1020,9 @@ describe("codex-sandboxed.sh profile", () => {
 			expect(out).toContain("stdin:eof");
 			for (const dir of ["shell_snapshots", "memories", ".tmp"])
 				expect(existsSync(join(home, ".codex", dir))).toBe(false);
-			for (const dir of ["cache", "tmp", "ipc", "attachments"])
-				expect(existsSync(join(home, ".codex", dir))).toBe(true);
+			for (const dir of codexNames) expect(existsSync(join(home, ".codex", dir))).toBe(true);
 			expect(execFileSync("ls", [join(root, "tmp")]).toString()).not.toMatch(/codex-run\./);
 			expect(execFileSync("ls", [join(root, "tmp")]).toString()).not.toMatch(/codex-seatbelt/);
-		});
-
-		it("refuses a symlinked cache before creating a profile or running Codex", () => {
-			const fakeHome = join(root, "wrapper-symlink-home");
-			const temp = join(root, "wrapper-symlink-tmp");
-			mkdirSync(join(fakeHome, ".codex"), { recursive: true });
-			mkdirSync(temp);
-			symlinkSync(run, join(fakeHome, ".codex", "cache"));
-			const prompt = join(root, "symlink.md");
-			const log = join(root, "symlink.log");
-			writeFileSync(prompt, "go\n");
-			const result = failure(() =>
-				execFileSync(script, [linked, "m", prompt, log], {
-					env: { ...env(), HOME: fakeHome, CODEX_HOME: join(fakeHome, ".codex"), TMPDIR: temp },
-					stdio: "pipe",
-				}),
-			);
-			expect(result.status).toBe(64);
-			expect(result.stderr).toContain("symlink");
-			expect(readdirSync(temp)).toEqual([]);
-			expect(existsSync(log)).toBe(false);
 		});
 
 		it("runs codex inside the sandbox: a write to the home directory and a nested .git both fail", () => {
