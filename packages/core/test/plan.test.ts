@@ -171,6 +171,16 @@ describe("ReviewPlan.resolve", () => {
 		expect(resolved.tier("heavy").models[0]?.model).toBe("openrouter/anthropic/claude-opus-5.5");
 	});
 
+	it("matches a model whose only listing carries a qualifier such as a region", () => {
+		const decoy = model("amazon-bedrock", "aaa-decoy", "Decoy", 4, 20);
+		const resolved = plan(
+			{ heavy: { model: opus } },
+			{ "amazon-bedrock": "AWS_PROFILE" },
+			{ catalog: [catalog[2]!, catalog[0]!, decoy] },
+		);
+		expect(resolved.tier("heavy").models[0]?.model).toBe("amazon-bedrock/us.anthropic.claude-opus-5-5");
+	});
+
 	it("derives the model whose price is nearest when no provider with credentials serves the same one", () => {
 		const resolved = plan({ heavy: { model: opus } }, { openai: "OPENAI_API_KEY" });
 		expect(resolved.tier("heavy")).toMatchObject({ status: "routed", by: "derived", models: [{ model: gpt }] });
