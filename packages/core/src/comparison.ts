@@ -770,20 +770,45 @@ export class Comparison {
 	}
 
 	/**
-	 * The comparison as the terminal shows it: the counts of matched, external-only, and Melian-only defects, and of
-	 * review bodies skipped when given, then each finding nothing matched, by ID, so a maintainer can match one by hand.
+	 * The external findings that matched more than one Melian finding by site, each with those Melian findings. Proximity
+	 * alone cannot say which defect a reviewer meant, so each waits for the maintainer to match or unmatch by hand; a
+	 * finding a maintainer matched by hand to several is not ambiguous.
+	 */
+	ambiguous(): { readonly external: ExternalFinding; readonly melian: readonly string[] }[] {
+		const site = this.effectiveMatches().filter((match) => match.kind === "site");
+		return this.externalFindings()
+			.map((external) => ({
+				external,
+				melian: site.filter((match) => match.external === external.id).map((match) => match.melian),
+			}))
+			.filter((each) => each.melian.length > 1);
+	}
+
+	/**
+	 * The comparison as the terminal shows it. The matched count is of distinct external findings, with the distinct
+	 * Melian findings they cover beside it, so one reviewer's finding near two of Melian's counts once. Then the
+	 * external-only and Melian-only counts, and of review bodies skipped when given; each ambiguous match; and each finding
+	 * nothing matched, by ID, so a maintainer can match one by hand.
 	 * `verdict` is the stored review, which names each Melian-only finding's rule and place. Every string is untrusted, so
 	 * each prints through `visibleText`.
 	 */
 	render(verdict: Verdict | undefined, skippedBodies?: number): string {
 		const groups = this.groups();
-		const matched = groups.filter((group) => group.external.length > 0 && group.melian.length > 0).length;
+		const matches = this.effectiveMatches();
+		const matched = new Set(matches.map((match) => match.external)).size;
+		const covered = new Set(matches.map((match) => match.melian)).size;
+		const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
 		const externalOnly = groups.filter((group) => group.melian.length === 0);
 		const melianOnly = groups.filter((group) => group.external.length === 0).flatMap((group) => group.melian);
 		const skipped = skippedBodies === undefined ? "" : ` Skipped review bodies: ${skippedBodies}.`;
 		const out = [
-			`Matched: ${matched}. External only: ${externalOnly.length}. Melian only: ${melianOnly.length}.${skipped}\n`,
+			`Matched: ${plural(matched, "external finding")}, covering ${plural(covered, "Melian finding")}. External only: ${externalOnly.length}. Melian only: ${melianOnly.length}.${skipped}\n`,
 		];
+		const ambiguous = this.ambiguous();
+		if (ambiguous.length > 0) out.push("Ambiguous, near several Melian findings; match or unmatch by hand:\n");
+		for (const { external, melian } of ambiguous) {
+			out.push(`  ${external.id}  ${external.by()}  ${external.where()}  near ${melian.join(", ")}\n`);
+		}
 		if (externalOnly.length > 0) out.push("External only:\n");
 		for (const finding of externalOnly.flatMap((group) => group.external)) {
 			const read = finding.readAt(this.head) ? "" : `  (read at ${finding.commit!.slice(0, 12)}; match it by hand)`;

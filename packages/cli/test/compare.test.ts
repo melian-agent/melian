@@ -110,7 +110,9 @@ describe("melian compare", { timeout: 60_000 }, () => {
 		const lines = result.stdout.split("\n");
 		expect(lines[0]).toBe(`Imported 2 from file:${path}.`);
 		expect(lines[1]).toMatch(/^Compared 2 external findings with Melian's 1 at [0-9a-f]{12}\.$/);
-		expect(lines[2]).toBe("Matched: 1. External only: 1. Melian only: 0. Skipped review bodies: 0.");
+		expect(lines[2]).toBe(
+			"Matched: 1 external finding, covering 1 Melian finding. External only: 1. Melian only: 0. Skipped review bodies: 0.",
+		);
 		expect(lines[3]).toBe("External only:");
 		expect(lines[4]).toMatch(/^ {2}[0-9a-f]{16} {2}codex {2}src\/user\.ts:1 {2}Interface is wide$/);
 		expect(result.stdout).not.toContain(id);
@@ -126,16 +128,22 @@ describe("melian compare", { timeout: 60_000 }, () => {
 
 		expect(matched).toMatchObject({ status: 0, stderr: "" });
 		expect(matched.stdout).toBe(
-			`Matched ${far} with ${id} as Melian Test <test@melian.invalid>.\nMatched: 1. External only: 0. Melian only: 0.\n`,
+			`Matched ${far} with ${id} as Melian Test <test@melian.invalid>.\nMatched: 2 external findings, covering 1 Melian finding. External only: 0. Melian only: 0.\n`,
 		);
 		const again = melian(repo, ["compare", range, "--from", `file:${path}`], env);
-		expect(again.stdout).toContain("Matched: 1. External only: 0. Melian only: 0.");
+		expect(again.stdout).toContain(
+			"Matched: 2 external findings, covering 1 Melian finding. External only: 0. Melian only: 0.",
+		);
 		const unmatched = melian(repo, ["compare", "unmatch", range, far, id], env);
 		expect(unmatched.stdout).toContain(`Unmatched ${far} from ${id}`);
-		expect(unmatched.stdout).toContain("Matched: 1. External only: 1. Melian only: 0.");
+		expect(unmatched.stdout).toContain(
+			"Matched: 1 external finding, covering 1 Melian finding. External only: 1. Melian only: 0.",
+		);
 		// Without --from, it matches again against the stored review, keeping the unmatch.
 		const rerun = melian(repo, ["compare", range], env);
-		expect(rerun.stdout).toContain("Matched: 1. External only: 1. Melian only: 0.");
+		expect(rerun.stdout).toContain(
+			"Matched: 1 external finding, covering 1 Melian finding. External only: 1. Melian only: 0.",
+		);
 	});
 
 	it("never prints a control character a reviewer's file holds, in its text, its bytes, or its keys", () => {
@@ -270,7 +278,9 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		expect(result).toMatchObject({ status: 0, stderr: "" });
 		const lines = result.stdout.split("\n");
 		expect(lines[0]).toBe("Imported 2 from github:coderabbitai[bot], skipping 1 review body without a thread.");
-		expect(lines[2]).toBe("Matched: 1. External only: 1. Melian only: 0. Skipped review bodies: 1.");
+		expect(lines[2]).toBe(
+			"Matched: 1 external finding, covering 1 Melian finding. External only: 1. Melian only: 0. Skipped review bodies: 1.",
+		);
 		expect(lines[4]).toMatch(
 			/^ {2}[0-9a-f]{16} {2}coderabbit {2}docs\/removed\.md:4 \(outdated\) {2}\*\*The heading names a command .* {2}\(read at 222222222222; match it by hand\)$/,
 		);

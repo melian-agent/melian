@@ -416,6 +416,20 @@ describe("Comparison matching", () => {
 		]);
 		expect(comparison.melianOnly()).toEqual([]);
 		expect(comparison.externalOnly()).toEqual([]);
+		// Counted once, and marked for the maintainer, since proximity cannot say which defect the reviewer meant.
+		const shown = comparison.render(undefined);
+		expect(shown).toMatch(
+			/^Matched: 1 external finding, covering 2 Melian findings\. External only: 0\. Melian only: 0\.\n/,
+		);
+		expect(comparison.ambiguous().map((each) => each.external.id)).toEqual([between.id]);
+		expect(shown).toContain(
+			`Ambiguous, near several Melian findings; match or unmatch by hand:\n  ${between.id}  codex`,
+		);
+		comparison.unmatch(between.id, second.id, "M", "t");
+		expect(comparison.ambiguous()).toEqual([]);
+		expect(comparison.render(undefined)).toMatch(
+			/^Matched: 1 external finding, covering 1 Melian finding\. External only: 0\. Melian only: 1\./,
+		);
 	});
 
 	it("lets an unmatch override a site match, and keeps both kinds of hand record across a re-import", () => {
