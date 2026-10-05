@@ -331,6 +331,16 @@ describe("comparison review fixes", () => {
 		expect(set.renderStats({ since: "2099-01-01" })).toContain("no-owner: 4.");
 	});
 
+	it("titles a golden owed for a Melian finding from the stored verdict's explanation", () => {
+		const finding = own();
+		const comparison = compared([], finding);
+		comparison.adjudicate(finding.id, { ...by, verdict: "valid", golden: "correctness" });
+		const set = new ComparisonSet([{ changeset: "a", comparison, verdict: verdictOf(finding) }]);
+		expect(set.backlog()).toMatchObject([{ id: finding.id, title: finding.properties.explanation.what }]);
+		expect(set.renderBacklog()).toContain(`${finding.id} ${finding.properties.explanation.what} (valid).`);
+		expect(new ComparisonSet([{ changeset: "a", comparison }]).backlog()).toMatchObject([{ title: finding.id }]);
+	});
+
 	it("retains Melian repeat keys but offers candidates only for valid missed findings", () => {
 		const entries = [own("eval(first)"), own("eval(second)")].map((finding, index) => {
 			const external = report();

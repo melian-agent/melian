@@ -493,7 +493,7 @@ describe("melian compare stats and backlog", { timeout: 60_000 }, () => {
 		expect(stats).toMatchObject({ status: 0, stderr: "" });
 		expect(stats.stdout).toContain("melian: recall 0/1 (0.000), precision 0/0 (1.000), pending 1.");
 		expect(stats.stdout).toContain("needs-execution: 1.");
-		expect(stats.stdout).toContain("Drain not due");
+		expect(stats.stdout).toContain("Drain not due; next comparison threshold: 3.\n");
 		expect(melian(repo, ["compare", "stats", "--since", "2099-01-01"], env).stdout).toMatch(
 			/Comparisons: 0\.\nClone-wide, not narrowed by the filter:\nPending matches: \d+\./,
 		);
@@ -523,6 +523,52 @@ describe("melian compare stats and backlog", { timeout: 60_000 }, () => {
 			).status,
 		).toBe(0);
 		expect(melian(repo, ["compare", "backlog"], env).stdout).toBe("No goldens owed.\n");
+	});
+
+	it("titles a Melian golden from its verdict and keeps candidate checks clone-wide", () => {
+		const { repo, files, env, id } = reviewed();
+		const stored = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as StoredVerdict;
+		const what = stored.findings.block[0]!.properties.explanation.what;
+		expect(melian(repo, ["compare", range], env).status).toBe(0);
+		expect(
+			melian(repo, ["compare", "adjudicate", range, id, "--verdict", "valid", "--golden", "correctness"], env)
+				.status,
+		).toBe(0);
+		expect(melian(repo, ["compare", "backlog"], env).stdout).toContain(
+			`correctness: ${range} ${id} ${what} (valid).`,
+		);
+		const path = codexFile(files, [codexFinding(30, "Missed")]);
+		const targets = [range];
+		git(repo, "branch", "second", "feature");
+		targets.push("main...second");
+		for (const target of targets) {
+			if (target !== range) expect(melian(repo, ["review", target], env).status).toBe(1);
+			const imported = melian(repo, ["compare", target, "--from", `file:${path}`], env);
+			const external = /^ {2}([0-9a-f]{16}) {2}codex/m.exec(imported.stdout)![1]!;
+			expect(
+				melian(
+					repo,
+					[
+						"compare",
+						"adjudicate",
+						target,
+						external,
+						"--verdict",
+						"valid",
+						"--reason",
+						"no-owner",
+						"--rule",
+						"null-dereference",
+					],
+					env,
+				).status,
+			).toBe(0);
+		}
+		for (const filter of [[], ["--last", "1"], ["--since", "2099-01-01"]]) {
+			expect(melian(repo, ["compare", "stats", ...filter], env).stdout).toMatch(
+				/^Candidate check: rule:null-dereference, seen on 2 changesets \(.+\)\.$/m,
+			);
+		}
 	});
 
 	it.each([

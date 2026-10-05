@@ -755,17 +755,21 @@ describe("Comparison statistics", () => {
 		] as const)
 			comparison.adjudicate(id, { ...by, verdict: "valid", reason: "no-owner", rule: "unowned-rule" });
 		expect(set.candidates()).toMatchObject([{ key: "rule:unowned-rule", changesets: ["a", "b"] }]);
+		const line = "Candidate check: rule:unowned-rule, seen on 2 changesets (a, b).\n";
+		expect(set.renderStats()).toContain(line);
+		expect(set.renderStats({ last: 1 })).toContain(line);
+		expect(set.renderStats({ since: "2099-01-01" })).toContain(line);
 	});
 
 	it.each([
-		[0, 0, false, 0],
-		[2, 1, false, 1],
-		[3, 0, false, 0],
-		[3, 1, true, 1],
-		[3, 2, true, 2],
-		[4, 2, true, 2],
-		[6, 2, true, 2],
-	])("drain with %i comparisons and %i debts is due=%s", (count, debt, due, goldens) => {
+		[0, 0, false, 0, 3],
+		[2, 1, false, 1, 3],
+		[3, 0, false, 0, 6],
+		[3, 1, true, 1, 6],
+		[3, 2, true, 2, 6],
+		[4, 2, true, 2, 6],
+		[6, 2, true, 2, 9],
+	])("drain with %i comparisons and %i debts is due=%s", (count, debt, due, goldens, next) => {
 		const entries = Array.from({ length: count }, (_, index) => {
 			const miss = external({ line: 90 });
 			const comparison = compared([miss], []);
@@ -779,7 +783,8 @@ describe("Comparison statistics", () => {
 			return { changeset: String(index), comparison };
 		});
 		const set = new ComparisonSet(entries);
-		expect(set.drain()).toMatchObject({ comparisons: count, due, goldens });
+		expect(set.drain()).toMatchObject({ comparisons: count, due, goldens, next });
+		expect(set.renderStats()).toContain(due ? "Drain due" : `Drain not due; next comparison threshold: ${next}.\n`);
 		if (count > 0) expect(set.select({ last: 1 }).drain().comparisons).toBe(1);
 		expect(set.select({ since: "2026-10-10" }).drain().comparisons).toBe(0);
 	});
