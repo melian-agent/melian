@@ -14,10 +14,10 @@ import {
 	Lens,
 	type LensTier,
 	loadConfig,
-	loadStandards,
 	type MelianConfig,
 	type ModelRoute,
 	type RepositorySource,
+	Standards,
 } from "@melian-agent/core";
 import {
 	backgroundContext,
@@ -275,7 +275,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 		const changeset = await Changeset.resolve(repo, "main...feature");
 		const paths = changeset.revision.paths();
 		const lenses = await Lens.load(repo, source, paths);
-		const standards = await loadStandards(repo, source, ".");
+		const standards = await Standards.load(repo, source, paths);
 		const { config: loaded } = await loadConfig(repo, source, ".");
 		let models: ReviewModels;
 		let config: MelianConfig;

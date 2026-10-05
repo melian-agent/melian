@@ -24,7 +24,8 @@ import {
 	scriptedMismatches,
 	selectGoldens,
 } from "@melian-agent/evals";
-import { describe, expect, it } from "vitest";
+import * as testing from "@melian-agent/pipeline/testing";
+import { describe, expect, it, vi } from "vitest";
 
 const goldens = loadGoldens();
 
@@ -81,6 +82,28 @@ describe("the golden corpus", () => {
 });
 
 describe("a golden's standards and policy", () => {
+	it("renders a nested base AGENTS.md into the scripted lens's instructions", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "melian-nested-standards-golden-"));
+		const scripted = vi.spyOn(testing, "scriptLenses");
+		try {
+			const golden = goldens.find((each) => each.name === "clean-rename")!;
+			const copy = join(directory, golden.name);
+			cpSync(golden.directory, copy, { recursive: true });
+			for (const side of ["base", "head"])
+				writeFileSync(join(copy, side, "src/AGENTS.golden.md"), "# Nested golden conventions\n");
+			const run = await runGolden({ ...golden, directory: copy }, { kind: "scripted" });
+			expect(run.toolMismatches).toEqual([]);
+			const requests = scripted.mock.results[0]!.value as ReturnType<typeof testing.scriptLenses>;
+			const instructions = Object.values(requests).flat().map(testing.systemPromptOf);
+			expect(instructions.length).toBeGreaterThan(0);
+			for (const prompt of instructions)
+				expect(prompt).toContain("### src/AGENTS.md\n\n# Nested golden conventions");
+		} finally {
+			scripted.mockRestore();
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
 	it("are stored under inert names, so the repository the corpus sits in never reads them as its own", () => {
 		const live = new Set(["AGENTS.md", "CLAUDE.md", "melian.yaml", "melian.local.yaml", "LENS.md"]);
 		const entries = readdirSync(goldensDirectory, { recursive: true, withFileTypes: true });

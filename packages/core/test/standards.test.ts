@@ -1,6 +1,13 @@
 import { chmodSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { loadStandards, OutsideRepositoryError, Standards, StandardsError, standardsLimits } from "@melian-agent/core";
+import {
+	loadStandards,
+	OutsideRepositoryError,
+	Standards,
+	StandardsError,
+	StandardsInventory,
+	standardsLimits,
+} from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as sourceModule from "../src/source.ts";
 import {
@@ -289,5 +296,38 @@ describe.each(sourceKinds)("Standards from the %s", (kind) => {
 		await expect(Standards.load(repo, sourceFor(repo, kind), ["packages/app/a.ts"])).rejects.toMatchObject({
 			code: "tooLarge",
 		});
+	});
+});
+
+describe.each(sourceKinds)("standards inventory from the %s", (kind) => {
+	it("finds nested carriers without following imports or counting other markdown", async () => {
+		writeFiles(repo, { "packages/app/.melian/standards/style.md": "# Style\n" });
+		const inventory = await StandardsInventory.inspect(repo, sourceFor(repo, kind));
+		expect(inventory.entries.map((entry) => entry.path)).toEqual([
+			".melian/standards/naming.md",
+			"AGENTS.md",
+			"CLAUDE.md",
+			"packages/app/.melian/standards/style.md",
+			"packages/app/AGENTS.md",
+			"packages/app/CLAUDE.md",
+		]);
+		expect(inventory.count()).toBe(6);
+		expect(inventory.bytes()).toBe(
+			inventory.entries.reduce((total, entry) => total + ("bytes" in entry ? entry.bytes : 0), 0),
+		);
+		expect(inventory.warnings()).toEqual([]);
+	});
+
+	it("counts an oversized file's size and warns for a skipped symlink", async () => {
+		writeFiles(repo, { "packages/large/AGENTS.md": "x".repeat(standardsLimits.fileBytes + 1) });
+		rmSync(join(repo, "packages/app/CLAUDE.md"));
+		symlinkSync("AGENTS.md", join(repo, "packages/app/CLAUDE.md"));
+		const inventory = await StandardsInventory.inspect(repo, sourceFor(repo, kind));
+		expect(inventory.warnings()).toEqual([
+			{ path: "packages/app/CLAUDE.md", symlink: true },
+			{ path: "packages/large/AGENTS.md", bytes: standardsLimits.fileBytes + 1, oversized: true },
+		]);
+		expect(inventory.count()).toBe(5);
+		expect(inventory.bytes()).toBeGreaterThan(standardsLimits.fileBytes);
 	});
 });

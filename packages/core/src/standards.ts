@@ -303,3 +303,57 @@ export class Standards {
 		);
 	}
 }
+
+/** A standards carrier found in the source, with its size or the symlink the reader skipped. */
+export type StandardsEntry =
+	| { readonly path: string; readonly bytes: number; readonly oversized: boolean }
+	| { readonly path: string; readonly symlink: true };
+
+/** A source's standards carriers at every depth, without following imports or reviewing their contents. */
+export class StandardsInventory {
+	readonly entries: readonly StandardsEntry[];
+
+	private constructor(entries: readonly StandardsEntry[]) {
+		this.entries = entries;
+	}
+
+	/**
+	 * Finds AGENTS.md, CLAUDE.md and .melian/standards/*.md through the source's path listing. Reads stay within the
+	 * per-file bound; an oversized file contributes its reported size, and a symlink contributes a warning alone.
+	 * Throws {@link StandardsError} for other source failures.
+	 */
+	static async inspect(repoRoot: string, source: RepositorySource): Promise<StandardsInventory> {
+		const reader = await openSource(repoRoot, source).catch(fromSource);
+		const paths = await reader
+			.findPaths(/(?:^|\/)(?:AGENTS\.md|CLAUDE\.md)$|(?:^|\/)\.melian\/standards\/[^/]+\.md$/s)
+			.catch(fromSource);
+		const entries: StandardsEntry[] = [];
+		for (const path of paths.sort()) {
+			try {
+				const content = await reader.readText(path, standardsLimits.fileBytes);
+				if (content !== undefined) entries.push({ path, bytes: Buffer.byteLength(content), oversized: false });
+			} catch (error) {
+				if (error instanceof SourceError && error.code === "symlink") entries.push({ path, symlink: true });
+				else if (error instanceof SourceError && error.code === "tooLarge" && error.size !== undefined)
+					entries.push({ path, bytes: error.size, oversized: true });
+				else fromSource(error);
+			}
+		}
+		return new StandardsInventory(entries);
+	}
+
+	/** The number of regular files found; skipped symlinks do not count. */
+	count(): number {
+		return this.entries.filter((entry) => "bytes" in entry).length;
+	}
+
+	/** The total size of the regular files, including those too large to read. */
+	bytes(): number {
+		return this.entries.reduce((total, entry) => total + ("bytes" in entry ? entry.bytes : 0), 0);
+	}
+
+	/** The oversized files and skipped symlinks. */
+	warnings(): readonly StandardsEntry[] {
+		return this.entries.filter((entry) => "symlink" in entry || entry.oversized);
+	}
+}

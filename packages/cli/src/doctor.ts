@@ -9,7 +9,9 @@ import {
 	loadConfig,
 	loadSecrets,
 	melianPaths,
+	StandardsInventory,
 	type StaticTool,
+	standardsLimits,
 	userFiles,
 	visibleText,
 } from "@melian-agent/core";
@@ -158,6 +160,36 @@ async function staticCheck(cwd: string): Promise<Check | undefined> {
 	};
 }
 
+async function standardsCheck(cwd: string): Promise<Check | undefined> {
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return undefined;
+	try {
+		const inventory = await StandardsInventory.inspect(root, { kind: "worktree" });
+		const limit = `${standardsLimits.fileBytes / 1024} KiB`;
+		const paths = inventory.entries
+			.slice(0, 10)
+			.map(
+				(entry) =>
+					`${visibleText(entry.path)}${"symlink" in entry ? " (symlink skipped)" : entry.oversized ? ` (over ${limit})` : ""}`,
+			);
+		if (inventory.entries.length > 10) paths.push(`and ${inventory.entries.length - 10} more`);
+		const warnings = inventory.warnings();
+		const oversized = warnings.filter((entry) => "bytes" in entry).length;
+		const symlinks = warnings.length - oversized;
+		return {
+			name: "standards",
+			state: warnings.length === 0 ? "ok" : "warn",
+			detail: `${inventory.count()} file${inventory.count() === 1 ? "" : "s"}, ${inventory.bytes()} bytes${paths.length === 0 ? "" : `; ${paths.join(", ")}`}${oversized === 0 ? "" : `; ${oversized} over ${limit}`}${symlinks === 0 ? "" : `; ${symlinks} symlink${symlinks === 1 ? "" : "s"} skipped`}`,
+		};
+	} catch (error) {
+		return {
+			name: "standards",
+			state: "warn",
+			detail: visibleText(error instanceof Error ? error.message : String(error)),
+		};
+	}
+}
+
 // A melian the checkout provides runs code the change under review can rewrite.
 async function executableCheck(cwd: string, executable: string | undefined): Promise<Check | undefined> {
 	if (executable === undefined) return undefined;
@@ -241,6 +273,7 @@ export async function doctor(io: Io): Promise<number> {
 			await stateCheck(io.cwd, io.env),
 			await levelsCheck(io.cwd),
 			await staticCheck(io.cwd),
+			await standardsCheck(io.cwd),
 		].filter((check) => check !== undefined),
 		...(await planChecks(io.cwd, io.env, secrets)),
 	];

@@ -33,12 +33,14 @@ export type SourceErrorCode =
 export class SourceError extends Error {
 	readonly code: SourceErrorCode;
 	readonly path: string;
+	readonly size?: number;
 
-	constructor(code: SourceErrorCode, path: string, message: string, options: { cause?: unknown } = {}) {
+	constructor(code: SourceErrorCode, path: string, message: string, options: { cause?: unknown; size?: number } = {}) {
 		super(message, { cause: options.cause });
 		this.name = "SourceError";
 		this.code = code;
 		this.path = path;
+		if (options.size !== undefined) this.size = options.size;
 	}
 }
 
@@ -70,7 +72,7 @@ export async function openSource(repoRoot: string, source: RepositorySource): Pr
 }
 
 function tooLarge(label: string, size: number, maxBytes: number): SourceError {
-	return new SourceError("tooLarge", label, `${label} is ${size} bytes; the limit is ${maxBytes}`);
+	return new SourceError("tooLarge", label, `${label} is ${size} bytes; the limit is ${maxBytes}`, { size });
 }
 
 function symlink(label: string): SourceError {

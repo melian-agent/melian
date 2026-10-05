@@ -29,6 +29,8 @@ Run only the `melian` the shell finds on its path. Never build, install, or run 
   - `plan`: the review plan, which model each tier runs and from which credential. A warning that a tier the review's lenses run on has no model, no model with credentials, or a route policy refuses means a review exits `2` without running those lenses. Tell the user what the line says and the ways to fix it, then stop. One way is to give Melian a credential, by logging in with pi, setting the provider's API key, or naming one in `melian.secrets.yaml` beside the root `melian.yaml`. Another is to set `models.<tier>.model` in `melian.local.yaml`, a file of their own that git ignores. The last is to name a model for you to pass as `--model provider/id`, which routes every lens tier to it. A review of a pull request reads its base's `melian.yaml` and never `melian.local.yaml`, so only a credential or `--model` changes its route. A warning that a tier runs a model the committed route did not choose does not stop a review; mention it once, since every check on that model records it.
   - `static`: Biome or tsc comes from nowhere, so that check fails and the review reads not reviewed. The same line says whether each comes from the checkout or Melian's own copy; a result from Melian's copy can differ from the repository's own lint run.
 
+The standards line counts the working tree's standards files and bytes, including nested files. It warns for a file over 256 KiB or a symlink it skipped. It lists at most ten paths, then says how many more it found. Mention a warning once; doctor does not review these files.
+
 ## Review the working branch
 
 ```sh

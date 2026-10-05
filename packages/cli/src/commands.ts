@@ -6,10 +6,10 @@ import {
 	Lens,
 	loadConfig,
 	loadSecrets,
-	loadStandards,
 	Rendering,
 	type RepositorySource,
 	ReviewPlan,
+	Standards,
 	userFiles,
 	type Verdict,
 	visibleText,
@@ -118,7 +118,7 @@ export async function review(
 	const { repoRoot } = changeset;
 	const paths = changeset.revision.paths();
 	const lenses = await Lens.load(repoRoot, source, paths);
-	const standards = await loadStandards(repoRoot, source, ".");
+	const standards = await Standards.load(repoRoot, source, paths);
 	const policy = await loadConfig(repoRoot, source, ".");
 	const { config: loaded } = policy;
 	const tier = loaded.stages["pull-request"] ?? "full";

@@ -7,12 +7,20 @@ import {
 	readdirSync,
 	readFileSync,
 	rmSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type Decider, type DecisionRequest, Rendering, type StoredVerdict, Verdict } from "@melian-agent/core";
+import {
+	type Decider,
+	type DecisionRequest,
+	Rendering,
+	type StoredVerdict,
+	standardsLimits,
+	Verdict,
+} from "@melian-agent/core";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { review as reviewIn } from "../src/commands.ts";
@@ -613,6 +621,47 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		expect(doctor.stdout).toContain(
 			`warn  melian      ${bin}, inside this checkout, so the change can alter its reviewer`,
 		);
+	});
+
+	it("lists nested standards carriers and their total bytes", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		const files = {
+			"AGENTS.md": "root\n",
+			"src/CLAUDE.md": "@AGENTS.md\n",
+			"src/.melian/standards/style.md": "style\n",
+		};
+		for (const [path, text] of Object.entries(files)) {
+			mkdirSync(join(repo, path, ".."), { recursive: true });
+			writeFileSync(join(repo, path), text);
+		}
+		const doctor = melian(repo, ["doctor"]);
+		expect(doctor.stdout).toContain(
+			"ok    standards   3 files, 22 bytes; AGENTS.md, src/.melian/standards/style.md, src/CLAUDE.md",
+		);
+	});
+
+	it("warns for oversized nested standards and skipped symlinks", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		writeFileSync(join(repo, "src/AGENTS.md"), "x".repeat(standardsLimits.fileBytes + 1));
+		symlinkSync("AGENTS.md", join(repo, "src/CLAUDE.md"));
+		const doctor = melian(repo, ["doctor"]);
+		expect(doctor.status).toBe(0);
+		expect(doctor.stdout).toContain(
+			`warn  standards   1 file, ${standardsLimits.fileBytes + 1} bytes; src/AGENTS.md (over 256 KiB), src/CLAUDE.md (symlink skipped); 1 over 256 KiB; 1 symlink skipped`,
+		);
+	});
+
+	it("limits the standards path list to ten entries", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		for (let index = 0; index < 12; index++) {
+			mkdirSync(join(repo, `p${String(index).padStart(2, "0")}`));
+			writeFileSync(join(repo, `p${String(index).padStart(2, "0")}/AGENTS.md`), "x");
+		}
+		const doctor = melian(repo, ["doctor"]);
+		const line = doctor.stdout.split("\n").find((line) => line.startsWith("ok    standards"))!;
+		expect(line).toContain("12 files, 12 bytes");
+		expect(line).toContain("p09/AGENTS.md, and 2 more");
+		expect(line).not.toContain("p10/AGENTS.md");
 	});
 
 	it("warns when an extending lens's top-level tier or budget leaves a level cheaper than the one below it", () => {
