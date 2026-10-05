@@ -37,6 +37,7 @@ describe("codex-sandboxed.sh profile", () => {
 	let home;
 	let run;
 	let scratch;
+	let profilePath;
 	let admin;
 	let bin;
 
@@ -73,6 +74,8 @@ describe("codex-sandboxed.sh profile", () => {
 		chmodSync(join(bin, "codex"), 0o755);
 		for (const dir of ["sessions", "log", "hooks"]) mkdirSync(join(home, ".codex", dir), { recursive: true });
 		writeFileSync(join(home, ".codex", "config.toml"), "");
+		profilePath = join(root, "profile.sb");
+		writeFileSync(profilePath, profile(linked, scratch));
 	});
 
 	const tmpProbe = () => `/private/tmp/codex-sandboxed-probe-${basename(root)}`;
@@ -217,7 +220,8 @@ describe("codex-sandboxed.sh profile", () => {
 		expect(same).not.toContain(`^${run}/`);
 		const apart = block(profile(linked, scratch), "deny file-write*");
 		expect(apart).not.toContain(`^${run}/`);
-		for (const name of ["[.][gG][iI][tT](/|$)", "[hH][eE][aA][dD]$"]) expect(apart).toContain(`^${scratch}/(.*/)?${name}`);
+		for (const name of ["[.][gG][iI][tT](/|$)", "[hH][eE][aA][dD]$"])
+			expect(apart).toContain(`^${scratch}/(.*/)?${name}`);
 		expect(apart).not.toContain(`(subpath "${run}")`);
 	});
 
@@ -305,7 +309,6 @@ describe("codex-sandboxed.sh profile", () => {
 	});
 
 	describe.skipIf(!sandboxExec)("under sandbox-exec", () => {
-		let profilePath;
 		const sh = (cwd, command) =>
 			execFileSync("sandbox-exec", ["-f", profilePath, "/bin/sh", "-c", command], {
 				cwd,
@@ -319,11 +322,6 @@ describe("codex-sandboxed.sh profile", () => {
 					GIT_COMMITTER_EMAIL: "t@example.com",
 				},
 			});
-
-		beforeAll(() => {
-			profilePath = join(root, "profile.sb");
-			writeFileSync(profilePath, profile(linked, scratch));
-		});
 
 		it("commits in the linked worktree", () => {
 			sh(linked, "echo x > f && git add f && git commit -q -m sandboxed");
