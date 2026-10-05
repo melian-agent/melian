@@ -6,6 +6,7 @@ import {
 	type ForbiddenPatternRule,
 	type MelianConfig,
 	type Severity,
+	stricter,
 } from "./config.ts";
 import type { ChangedFile, Hunk } from "./diff.ts";
 import { CheckError } from "./errors.ts";
@@ -422,7 +423,9 @@ async function forbiddenPatterns(
 				occurrence: byCode ? snippetOccurrence(text, added.text, { startLine: added.line }) : undefined,
 				discriminator: byCode ? undefined : `line ${added.line}`,
 				trigger: hunk === undefined ? undefined : { file: file.path, index: hunk.index, snippet: added.text },
-				severity: guardrail.severity,
+				severity: matched
+					.map(([, rule]) => rule.severity ?? guardrail.severity)
+					.reduce((left, right) => stricter(left, right)),
 				message: sentences(messages),
 				explanation: {
 					what: `This line matches the forbidden-patterns rule ${matched.map(([name]) => name).join(", ")}.`,

@@ -311,6 +311,38 @@ describe("forbidden-patterns", () => {
 		expect(finding!.properties.explanation.what).toContain("focused-test, skipped-test");
 	});
 
+	it("reports a line at its rule's severity, and at the strictest when rules at two severities match it", async () => {
+		const withSeverity = lines(
+			quiet,
+			"  forbidden-patterns:",
+			"    rules:",
+			"      note:",
+			"        pattern: 'TODO'",
+			"        severity: P3",
+			"        message: finish it",
+			"      block:",
+			"        pattern: 'TODO'",
+			"        severity: P1",
+			"        message: do not commit it",
+			"      plain:",
+			"        pattern: 'FIXME'",
+			"        message: fix it",
+			"      loud:",
+			"        pattern: 'HACK'",
+			"        severity: P3",
+			"        message: remove it",
+		);
+		const { findings } = await guardrails(
+			{ "melian.yaml": withSeverity },
+			{ "a.ts": lines("// TODO", "// FIXME", "// HACK") },
+		);
+		expect(summary(findings).map(({ line, severity }) => [line, severity])).toEqual([
+			[1, "P1"],
+			[2, "P2"],
+			[3, "P3"],
+		]);
+	});
+
 	it("gives identical lines their own occurrence, so neither replaces the other", async () => {
 		const { findings } = await guardrails(
 			{ "melian.yaml": config },
