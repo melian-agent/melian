@@ -190,11 +190,11 @@ describe("codex-sandboxed.sh profile", () => {
 	it("denies a planted repository in every persistent writable subtree, with the path escaped", () => {
 		const text = profile(linked, scratch);
 		const deny = block(text, "deny file-write*");
-		const names = block(text, "deny file-write-create file-write-data file-write-unlink");
+		const files = block(text, "deny file-write-create file-write-data file-write-unlink");
 		const esc = (path) => path.replace(/[[\].*^$+?(){}|\\]/g, "\\$&");
 		const dotGit = (path) => `(regex #"^${esc(path)}/(.*/)?[.][gG][iI][tT](/|$)")`;
-		const head = (path) => `(regex #"^${esc(path)}/(.*/)?[hH][eE][aA][dD]$")`;
-		const objects = (path) => `(regex #"^${esc(path)}/(.*/)?[oO][bB][jJ][eE][cC][tT][sS](/|$)")`;
+		const names = (path) =>
+			`(regex #"^${esc(path)}/(.*/)?([hH][eE][aA][dD]|[cC][oO][mM][mM][oO][nN][dD][iI][rR])$")`;
 		expect(linked).toContain("a+b (c).d");
 		expect(deny).toContain("a\\+b \\(c\\)\\.d");
 		const codex = [`${home}/.codex/cache`, `${home}/.codex/sessions`, `${home}/.codex/attachments`];
@@ -210,20 +210,31 @@ describe("codex-sandboxed.sh profile", () => {
 		]) {
 			expect(deny).toContain(dotGit(path));
 		}
-		for (const path of [linked, scratch, `${common}/objects`, ...codex]) expect(names).toContain(head(path));
-		expect(names).toContain("(require-not (vnode-type DIRECTORY))");
+		for (const path of [linked, scratch, `${common}/objects`, `${common}/refs`, `${common}/logs`, `${admin}/logs`, ...codex])
+			expect(files).toContain(names(path));
+		expect(files).toContain("(require-not (vnode-type DIRECTORY))");
 		expect(deny).not.toContain("[hH][eE][aA][dD]");
-		for (const path of [`${common}/refs`, `${common}/logs`, `${admin}/logs`]) {
-			expect(deny).toContain(objects(path));
-			expect(names).not.toContain(head(path));
-		}
+		expect(deny).not.toContain("/(.*/)?[oO][bB][jJ][eE][cC][tT][sS]");
+		expect(deny).toContain("/(logs/)?refs/remotes/[^/]+/[oO][bB][jJ][eE][cC][tT][sS](/|$)");
+	});
+
+	it("allows the HEAD files git writes under the denied trees, after the deny", () => {
+		const text = profile(linked);
+		const files = block(text, "deny file-write-create file-write-data file-write-unlink");
+		const allow = text.slice(text.indexOf("(allow file-write-create file-write-data file-write-unlink\n"));
+		for (const path of ["logs/HEAD", "logs/HEAD.lock"]) expect(allow).toContain(`(literal "${main}/.git/${path}")`);
+		for (const path of ["logs/HEAD", "logs/HEAD.lock"]) expect(allow).toContain(`(literal "${admin}/${path}")`);
+		for (const tree of ["refs", "logs/refs"])
+			expect(allow).toContain(`(regex #"^${main}/\\.git/${tree}/remotes/[^/]+/HEAD([.]lock)?$")`);
+		expect(allow).not.toContain("commondir");
 	});
 
 	it("denies nothing under the run directory, which the wrapper deletes, but everything under a separate scratch", () => {
 		expect(profile(linked)).not.toContain(`^${run}/`);
 		const text = profile(linked, scratch);
 		expect(text).not.toContain(`^${run}/`);
-		for (const name of ["[.][gG][iI][tT](/|$)", "[hH][eE][aA][dD]$"]) expect(text).toContain(`^${scratch}/(.*/)?${name}`);
+		for (const name of ["[.][gG][iI][tT](/|$)", "([hH][eE][aA][dD]|[cC][oO][mM][mM][oO][nN][dD][iI][rR])$"])
+			expect(text).toContain(`^${scratch}/(.*/)?${name}`);
 		const apart = block(text, "deny file-write*");
 		expect(apart).not.toContain(`(subpath "${run}")`);
 	});
@@ -396,15 +407,12 @@ describe("codex-sandboxed.sh profile", () => {
 				`echo x > '${scratch}/x/HEAD'`,
 				`mkdir -p '${main}/.git/objects/x/.git'`,
 				`echo x > '${main}/.git/objects/x/HEAD'`,
-				`mkdir -p '${main}/.git/refs/x/objects'`,
-				`mkdir -p '${admin}/logs/x/objects'`,
 				`mkdir -p '${home}/.codex/cache/x/.git'`,
 			];
 			for (const command of planted) expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
 			for (const path of [
 				join(scratch, "x", ".git"),
 				join(scratch, "x", "HEAD"),
-				join(main, ".git", "refs", "x", "objects"),
 			])
 				expect(existsSync(path)).toBe(false);
 			sh(linked, "echo z > h && git add h && git commit -q -m after-plant");
@@ -437,6 +445,37 @@ describe("codex-sandboxed.sh profile", () => {
 			for (const command of ["touch src/HEAD", "ln -s x src/HEAD", "echo x > src/x && mv src/x src/head"])
 				expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
 			expect(readdirSync(join(linked, "src")).filter((name) => /^head$/i.test(name))).toEqual([]);
+		});
+
+		it("cannot plant a repository through a commondir file or a HEAD file under refs, logs, or objects", () => {
+			sh(linked, "mkdir -p sub");
+			const common = `${main}/.git`;
+			for (const path of [
+				`${common}/refs/x/commondir`,
+				`${common}/refs/x/HEAD`,
+				`${common}/objects/x/HEAD`,
+				`${common}/logs/x/HEAD`,
+				`${admin}/logs/x/commondir`,
+				`${common}/refs/remotes/x/objects/f`,
+				`${common}/logs/refs/remotes/x/objects/f`,
+				`${linked}/sub/commondir`,
+			])
+				expect(failure(() => sh(linked, `mkdir -p '${join(path, "..")}' && echo x > '${path}'`)).status, path).not.toBe(0);
+			expect(existsSync(join(linked, "sub", "commondir"))).toBe(false);
+			git(linked, "branch", "objects/y");
+			sh(linked, "git branch objects/x && git branch -d objects/x");
+		});
+
+		it("writes logs/HEAD on a commit and refs/remotes/origin/HEAD on set-head", () => {
+			sh(linked, "echo lh > lh && git add lh && git commit -q -m logged");
+			expect(readFileSync(join(admin, "logs", "HEAD"), "utf8")).toContain("logged");
+			const remote = join(root, "remote-head.git");
+			git(root, "init", "-q", "--bare", "-b", "main", remote);
+			git(main, "push", "-q", remote, "HEAD:refs/heads/main");
+			git(main, "remote", "add", "headremote", `file://${remote}`);
+			sh(linked, "git fetch headremote && git remote set-head headremote -a");
+			expect(readFileSync(join(main, ".git", "refs", "remotes", "headremote", "HEAD"), "utf8")).toContain("headremote/main");
+			git(main, "remote", "remove", "headremote");
 		});
 
 		it("cannot start a rebase, whose todo file the host would later run", () => {

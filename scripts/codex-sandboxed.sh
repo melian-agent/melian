@@ -94,11 +94,10 @@ dynamic_rules() {
   filters literal "$common/config" "$common/config.lock" "$admin/commondir" "$admin/gitdir" "$admin/locked" \
     "$admin/config.worktree" "$codex/config.toml" "$codex/auth.json"
   filters subpath "$codex/hooks"
-  # No allowed subtree may hold a repository a host could later enter through a symlink: a repository
-  # needs a .git directory, or a HEAD file beside objects/ and refs/, and its config could run a program.
+  # No allowed subtree may hold a repository a host could later enter through a symlink. A repository
+  # needs a .git directory, or a HEAD file that sits beside objects/ and refs/ or beside a commondir
+  # file naming a directory that holds them, and its config could run a program.
   # Each name is spelt out in both cases: APFS ignores case, and git finds "<dir>/.GIT".
-  # Git itself never writes a .git component. It writes HEAD under refs/ and logs/ (origin/HEAD,
-  # logs/HEAD), so those subtrees deny an objects component instead, which a repository also needs.
   # The run directory needs no deny: the wrapper removes it on exit, so a repository planted there is gone
   # before the host could enter it. A scratch directory apart from it persists, so it keeps the deny.
   local codex_dirs=() persistent=("$worktree") d
@@ -110,25 +109,33 @@ dynamic_rules() {
     for p in "${trees[@]}"; do
       printf '  (regex #"^%s/(.*/)?[.][gG][iI][tT](/|$)")\n' "$(regex_path "$p")"
     done
-    for p in "$common/refs" "$common/logs" "$admin/logs"; do
-      printf '  (regex #"^%s/(.*/)?[oO][bB][jJ][eE][cC][tT][sS](/|$)")\n' "$(regex_path "$p")"
-    done
+    # The remote HEAD allowance below makes refs/remotes/<name> a place git may write HEAD, so a
+    # repository there still needs objects/; deny that directory, whose name only a remote branch could use.
+    printf '  (regex #"^%s/(logs/)?refs/remotes/[^/]+/[oO][bB][jJ][eE][cC][tT][sS](/|$)")\n' "$(regex_path "$common")"
   } | awk '!seen[$0]++'
   echo ")"
 
-  # A directory may be named head: the deny covers anything that is not a directory, so a task
-  # cannot create, write, link, or rename a file with that name.
+  # A directory may be named head or commondir: the deny covers anything that is not a directory,
+  # so a task cannot create, write, link, or rename a file with either name, and git's own writes follow it.
   echo "(deny file-write-create file-write-data file-write-unlink"
   echo "  (require-all"
   echo "    (require-any"
   {
-    for p in "${persistent[@]}" "$common/objects" ${codex_dirs[@]+"${codex_dirs[@]}"}; do
-      printf '      (regex #"^%s/(.*/)?[hH][eE][aA][dD]$")\n' "$(regex_path "$p")"
+    for p in "${trees[@]}"; do
+      printf '      (regex #"^%s/(.*/)?([hH][eE][aA][dD]|[cC][oO][mM][mM][oO][nN][dD][iI][rR])$")\n' "$(regex_path "$p")"
     done
   } | awk '!seen[$0]++'
   echo "    )"
   echo "    (require-not (vnode-type DIRECTORY))"
   echo "  )"
+  echo ")"
+
+  # The HEAD files git itself writes under the denied trees. They come after the deny, which wins
+  # otherwise, and name the same operations: a rule on a specific operation outranks one on file-write*.
+  echo "(allow file-write-create file-write-data file-write-unlink"
+  filters literal "$common/logs/HEAD" "$common/logs/HEAD.lock" "$admin/logs/HEAD" "$admin/logs/HEAD.lock"
+  printf '  (regex #"^%s/refs/remotes/[^/]+/HEAD([.]lock)?$")\n' "$(regex_path "$common")"
+  printf '  (regex #"^%s/logs/refs/remotes/[^/]+/HEAD([.]lock)?$")\n' "$(regex_path "$common")"
   echo ")"
 
   echo "(deny file-read*"
