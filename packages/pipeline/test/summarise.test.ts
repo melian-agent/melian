@@ -100,6 +100,27 @@ describe("walkthrough summaries", () => {
 		expect(doc?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
 		expect(doc?.walkthroughNotes?.[revision]).toBeUndefined();
 	});
+	it("resolves the light model through the review's stored plan, not the configuration", async () => {
+		const revision = revisionKey(changeset.revision);
+		const ref = models.ref("scripted");
+		const withPlan = async (light: {
+			status: "routed" | "unrouted";
+			models: { model: string; credential: string }[];
+		}) => {
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				const stored = (await tx.doc(VerdictDocument, root.id)).provenance![revision]!;
+				stored.plan = { tiers: [{ tier: "light", ...light }], lenses: [] };
+			}, context);
+		};
+		await withPlan({ status: "unrouted", models: [] });
+		expect((await summarise())?.walkthroughNotes?.[revision]).toContain("No light model is configured.");
+		await withPlan({ status: "routed", models: [{ model: `${ref.provider}/${ref.modelId}`, credential: "test" }] });
+		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+		expect((await summarise({ config: { ...config, models: {} } }))?.walkthroughs?.[revision]?.summary).toBe(
+			"Changes a value.",
+		);
+	});
 	it("stores fixed notes for provider errors and no tool call, then retries the same revision", async () => {
 		const revision = revisionKey(changeset.revision);
 		for (const reply of [

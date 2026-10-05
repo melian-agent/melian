@@ -17,3 +17,5 @@ Once a later round posts, older stored rounds retain only base, head, round numb
 Why: the durable store remains the source of truth. The status must describe the current review even when its optional ledger needs recovery. A mutable comment needs ownership as well as a public signature. Display history and summary prose must have bounds independent of the findings that need action.
 
 Upgrade: the document upgrades are one way. A Melian from before this change that opens a state directory a newer one has migrated fails every command, because Pi Durable refuses a document newer than its code (`PublishedDocument` 5, `VerdictDocument` 5, `LedgerDocument` 2). Pruned rounds cannot be restored. Share a state directory only between Melians of one version.
+
+With the review plan: run details read the model a lens finished on and its lineage from the plan's records, and the summariser resolves its light model through the plan stored with the verdict's provenance.

@@ -236,8 +236,8 @@ export class Ledger {
 						`Manifest: ${plan.manifest.map(prose).join(", ")}`,
 						`Standards: ${plan.standards.map(prose).join(", ") || "none"}`,
 						...plan.lenses.map(
-							({ name, version, level, models, budget, usage }) =>
-								`- ${prose(name)}@${prose(version)}, ${prose(level)}; route ${models.map(prose).join(", ")}; budgets ${prose(JSON.stringify(budget))}${usage === undefined ? "" : `; used ${usage.models.map(prose).join(", ")}, ${usage.tokens} tokens, $${usage.cost.toFixed(6)}`}`,
+							({ name, version, level, models, ran, lineage, budget, usage }) =>
+								`- ${prose(name)}@${prose(version)}, ${prose(level)}; route ${models.map(prose).join(", ")}${ran === undefined ? "" : `; ran on ${prose(ran)}`}${lineage === undefined ? "" : `; ${prose(lineage)}`}; budgets ${prose(JSON.stringify(budget))}${usage === undefined ? "" : `; used ${usage.models.map(prose).join(", ")}, ${usage.tokens} tokens, $${usage.cost.toFixed(6)}`}`,
 						),
 					];
 		return details("Run details", lines.join("\n\n"));

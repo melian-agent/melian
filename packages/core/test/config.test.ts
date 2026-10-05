@@ -1,4 +1,4 @@
-import { symlinkSync } from "node:fs";
+import { mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import {
 	Changeset,
@@ -41,7 +41,11 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 
 	it("returns the design's defaults when no melian.yaml exists", async () => {
 		const loaded = await load("src/index.ts");
-		expect(loaded).toEqual({ config: defaultConfig, sources: [] });
+		expect(loaded).toEqual({
+			config: defaultConfig,
+			sources: [],
+			routes: { committed: {}, overridden: {}, lensTiers: {}, retiered: {} },
+		});
 		expect(loaded.config.stages).toEqual({
 			"pre-commit": "fast",
 			"pre-push": "standard",
@@ -209,7 +213,11 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 	it("ignores a melian.yaml beneath a symlinked directory", async () => {
 		writeFiles(repo, { "real/melian.yaml": lines("knowledge:", "  writeBack: true") });
 		symlinkSync("real", join(repo, "linked"));
-		expect(await load("linked/a.ts")).toEqual({ config: defaultConfig, sources: [] });
+		expect(await load("linked/a.ts")).toEqual({
+			config: defaultConfig,
+			sources: [],
+			routes: { committed: {}, overridden: {}, lensTiers: {}, retiered: {} },
+		});
 	});
 
 	it("refuses a melian.yaml over the size limit instead of truncating it", async () => {
@@ -447,5 +455,209 @@ describe("melian.local.yaml", () => {
 		writeFiles(repo, { "melian.local.yaml": lines("tier: fast") });
 		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
 		expect(error).toMatchObject({ code: "unknownKey", file: "melian.local.yaml" });
+	});
+});
+
+describe("the user-level preference file", () => {
+	let home: string;
+
+	beforeEach(() => {
+		home = temporaryDirectory();
+		writeFiles(repo, {
+			"melian.yaml": lines(
+				"models:",
+				"  heavy:",
+				"    model: root/heavy",
+				"    fallbacks: [root/fallback]",
+				"    accept: [root/heavy, root/fallback]",
+				"  medium:",
+				"    model: root/medium",
+				"  verifier:",
+				"    accept: [root/verifier]",
+				"    unavailable: fail",
+				"    acceptOverridden: false",
+			),
+		});
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "policy");
+	});
+
+	afterEach(() => removeDirectory(home));
+
+	const preferences = () => join(home, "config.yaml");
+	const worktree = () => ({ kind: "worktree" as const, preferences: preferences() });
+
+	it("layers under melian.local.yaml and over every melian.yaml, its globs anchored at the root", async () => {
+		writeFiles(home, {
+			"config.yaml": lines(
+				"models:",
+				"  heavy:",
+				"    model: user/heavy",
+				"  medium:",
+				"    model: user/medium",
+				"lenses:",
+				"  security: { paths: [src/**] }",
+			),
+		});
+		writeFiles(repo, { "melian.local.yaml": lines("models:", "  medium:", "    model: clone/medium") });
+
+		const { config, sources, routes } = await loadConfig(repo, worktree(), "a.ts");
+
+		expect(config.models.heavy).toEqual({
+			model: "user/heavy",
+			fallbacks: ["root/fallback"],
+			accept: ["root/heavy", "root/fallback"],
+		});
+		expect(config.models.medium).toEqual({ model: "clone/medium" });
+		expect(config.lenses.security).toEqual({ paths: ["src/**"] });
+		expect(sources).toEqual(["melian.local.yaml", preferences(), "melian.yaml"]);
+		expect(routes.committed.heavy).toEqual({
+			model: "root/heavy",
+			fallbacks: ["root/fallback"],
+			accept: ["root/heavy", "root/fallback"],
+		});
+		expect(routes.committed.medium).toEqual({ model: "root/medium" });
+		expect(routes.overridden).toEqual({ heavy: preferences(), medium: "melian.local.yaml" });
+	});
+
+	it("is never read for a revision", async () => {
+		writeFiles(home, { "config.yaml": lines("models:", "  heavy:", "    model: user/heavy") });
+		const source = { kind: "revision" as const, commit: "HEAD" };
+		const { config, sources, routes } = await loadConfig(repo, source, "a.ts");
+		expect(config.models.heavy?.model).toBe("root/heavy");
+		expect(sources).toEqual(["melian.yaml"]);
+		expect(routes.overridden).toEqual({});
+	});
+
+	it.each([
+		["accept", "accept: [user/heavy]"],
+		["unavailable", "unavailable: derive"],
+		["acceptOverridden", "acceptOverridden: true"],
+	])("refuses %s, which only a committed melian.yaml sets", async (key, line) => {
+		writeFiles(home, { "config.yaml": lines("models:", "  verifier:", `    ${line}`) });
+		const error = await rejection(loadConfig(repo, worktree(), "a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", file: preferences(), key: `models.verifier.${key}` });
+		expect(error.message).toContain("only a committed melian.yaml sets");
+	});
+
+	it("refuses route policy in a nested melian.yaml, which the plan would never read", async () => {
+		writeFiles(repo, { "services/pay/melian.yaml": lines("models:", "  heavy:", "    acceptOverridden: false") });
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "services/pay/a.ts"));
+		expect(error).toMatchObject({
+			code: "invalidValue",
+			file: "services/pay/melian.yaml",
+			key: "models.heavy.acceptOverridden",
+		});
+		expect(error.message).toContain("only the root melian.yaml sets");
+	});
+
+	it("refuses a committed route that refuses overrides and accepts nothing", async () => {
+		writeFiles(repo, { "melian.yaml": lines("models:", "  light:", "    acceptOverridden: false") });
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", file: "melian.yaml", key: "models.light.acceptOverridden" });
+		expect(error.message).toContain("set models.light.model or models.light.accept");
+		writeFiles(repo, {
+			"melian.yaml": lines("models:", "  light:", "    accept: []", "    acceptOverridden: false"),
+		});
+		expect(await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"))).toMatchObject({ code: "invalidValue" });
+	});
+
+	it("refuses an empty accept, which would accept nothing and so refuse no override", async () => {
+		const route = [
+			"models:",
+			"  heavy:",
+			"    model: anthropic/claude-opus-5-5",
+			"    accept: []",
+			"    acceptOverridden: false",
+		];
+		writeFiles(repo, { "melian.yaml": lines(...route) });
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", file: "melian.yaml", key: "models.heavy.accept" });
+		expect(error.message).toContain("lists no model");
+	});
+
+	it("refuses a committed route with fallbacks and no model or accept", async () => {
+		writeFiles(repo, { "melian.yaml": lines("models:", "  heavy:", "    fallbacks: [openai/gpt]") });
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", file: "melian.yaml", key: "models.heavy.model" });
+	});
+
+	it("accepts a preference file that restates only fallbacks under a committed route that names a model", async () => {
+		writeFiles(repo, { "melian.yaml": lines("models:", "  heavy:", "    model: anthropic/sonnet") });
+		writeFiles(home, { "config.yaml": lines("models:", "  heavy:", "    fallbacks: [user/fallback]") });
+		const { config } = await loadConfig(repo, worktree(), "a.ts");
+		expect(config.models.heavy).toEqual({ model: "anthropic/sonnet", fallbacks: ["user/fallback"] });
+	});
+
+	it("refuses a policy key in melian.local.yaml too", async () => {
+		writeFiles(repo, { "melian.local.yaml": lines("models:", "  heavy:", "    acceptOverridden: true") });
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", file: "melian.local.yaml" });
+	});
+
+	it("names itself in an error, and is optional", async () => {
+		expect((await loadConfig(repo, worktree(), "a.ts")).sources).toEqual(["melian.yaml"]);
+		writeFiles(home, { "config.yaml": lines("tier: fast") });
+		const error = await rejection(loadConfig(repo, worktree(), "a.ts"));
+		expect(error).toMatchObject({ code: "unknownKey", file: preferences() });
+	});
+
+	it("refuses a file over the size limit instead of truncating it", async () => {
+		writeFiles(home, { "config.yaml": `# ${"x".repeat(maxConfigBytes)}\n` });
+		const error = await rejection(loadConfig(repo, worktree(), "a.ts"));
+		expect(error).toMatchObject({ code: "tooLarge", file: preferences() });
+	});
+
+	it("refuses a path it cannot read as a file, naming it", async () => {
+		mkdirSync(preferences());
+		const error = await rejection(loadConfig(repo, worktree(), "a.ts"));
+		expect(error).toMatchObject({ code: "unreadable", file: preferences() });
+	});
+
+	it("follows a symlinked file, as dotfiles are often linked", async () => {
+		writeFiles(home, { "dotfiles/config.yaml": lines("models:", "  medium:", "    model: linked/medium") });
+		symlinkSync(join(home, "dotfiles/config.yaml"), preferences());
+		const { config, sources } = await loadConfig(repo, worktree(), "a.ts");
+		expect(config.models.medium).toEqual({ model: "linked/medium" });
+		expect(sources).toContain(preferences());
+	});
+
+	it("reports each lens tier the committed files set, and each lens a preference file moved", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("lenses:", "  security: { tier: heavy }", "  contracts: { tier: medium }"),
+			"services/melian.yaml": lines("lenses:", "  tests: { tier: light }"),
+		});
+		writeFiles(home, {
+			"config.yaml": lines("lenses:", "  correctness: { tier: light }", "  contracts: { tier: light }"),
+		});
+		writeFiles(repo, { "melian.local.yaml": lines("lenses:", "  contracts: { tier: heavy }") });
+
+		const { config, routes } = await loadConfig(repo, worktree(), "services/a.ts");
+
+		expect(routes.lensTiers).toEqual({ security: "heavy", contracts: "medium", tests: "light" });
+		// The per-clone file wins over the user's, and a lens it leaves alone keeps the user file as its mover.
+		expect(routes.retiered).toEqual({ correctness: preferences(), contracts: "melian.local.yaml" });
+		expect(config.lenses.contracts?.tier).toBe("heavy");
+	});
+
+	it("reports no retier where only the committed files set a lens's tier", async () => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", "  security: { tier: heavy }") });
+		const { routes } = await loadConfig(repo, worktree(), "a.ts");
+		expect(routes).toMatchObject({ lensTiers: { security: "heavy" }, retiered: {} });
+	});
+
+	it("reports a retier where only a preference file sets a lens's tier", async () => {
+		writeFiles(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+		writeFiles(home, { "config.yaml": lines("lenses:", "  correctness: { tier: light }") });
+		const { routes } = await loadConfig(repo, worktree(), "a.ts");
+		expect(routes).toMatchObject({ lensTiers: {}, retiered: { correctness: preferences() } });
+	});
+
+	it("records a preference file that changes only fallbacks as the route's override", async () => {
+		writeFiles(repo, { "melian.yaml": lines("models:", "  heavy:", "    model: anthropic/sonnet") });
+		writeFiles(home, { "config.yaml": lines("models:", "  heavy:", "    fallbacks: [user/fallback]") });
+		const { config, routes } = await loadConfig(repo, worktree(), "a.ts");
+		expect(config.models.heavy?.fallbacks).toEqual(["user/fallback"]);
+		expect(routes.overridden).toEqual({ heavy: preferences() });
 	});
 });

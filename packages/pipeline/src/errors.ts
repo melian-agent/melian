@@ -16,6 +16,27 @@ export class PiCredentialsError extends Error {
 	}
 }
 
+/** Why a named credential could not be used: its command failed, its source gave nothing, or its provider is unknown. */
+export type CredentialErrorCode = "commandFailed" | "noValue" | "unknownProvider";
+
+/**
+ * A named credential from a secrets file could not be read: its command failed or timed out, or its source gave an
+ * empty value. `credential` and `file` name it; the message never quotes what the command printed.
+ */
+export class CredentialError extends Error {
+	readonly code: CredentialErrorCode;
+	readonly credential: string;
+	readonly file: string;
+
+	constructor(code: CredentialErrorCode, message: string, options: { credential: string; file: string }) {
+		super(message);
+		this.name = "CredentialError";
+		this.code = code;
+		this.credential = options.credential;
+		this.file = options.file;
+	}
+}
+
 /** Why a review could not be published. */
 export type PublishErrorCode =
 	| "staleReview"
@@ -53,7 +74,8 @@ export type ReviewErrorCode =
 	| "notInstalled"
 	| "lensFailed"
 	| "allModelsFailed"
-	| "adjudicationFailed";
+	| "adjudicationFailed"
+	| "superseded";
 
 /**
  * A review could not run or finish. `lenses` names the lenses involved, `models` the models tried when every model of

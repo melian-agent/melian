@@ -1,0 +1,36 @@
+{
+  "pr_title": "Log why a migration failed",
+  "comments": [
+    {
+      "comment": "The change deleted the rethrow from migrate's catch, so a failed migration is logged, recorded as applied, and startup serves against a half-migrated schema.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/migrate.ts",
+      "rule": "unhandled-error",
+      "source": "lens.correctness",
+      "cause": "introduced",
+      "failureScenario": "db.exec rejects 002-user-email's ALTER TABLE, say with SQLITE_BUSY while another process holds the lock. migrate logs the failure, records 002-user-email as applied, runs 003-user-email-index against a table with no email column, which fails and is recorded too, and returns 2, so start serves against a schema without the column. Both migrations are recorded as applied, so no later startup retries them. The base rethrew, and start stopped before serve.",
+      "evidence": [
+        {
+          "file": "src/migrate.ts",
+          "line": 15,
+          "endLine": 17,
+          "role": "cause"
+        },
+        {
+          "file": "src/migrate.ts",
+          "line": 16,
+          "endLine": 17,
+          "role": "context",
+          "revision": "base"
+        },
+        {
+          "file": "src/start.ts",
+          "line": 5,
+          "endLine": 7,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

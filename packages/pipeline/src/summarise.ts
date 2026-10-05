@@ -2,6 +2,7 @@ import {
 	type Changeset,
 	type MelianConfig,
 	type ModelReference,
+	ReviewPlan,
 	RevisionError,
 	readRevisionFile,
 	resolveModelForTier,
@@ -217,7 +218,8 @@ export async function summariseReview(options: {
 			(await harness.snapshot(VerdictDocument, conversation.id, context))?.walkthroughs?.[revision] !== undefined
 		)
 			return;
-		const route = config.models.light === undefined ? undefined : resolveModelForTier("light", config.models);
+		const routes = provenance.plan === undefined ? config.models : ReviewPlan.from(provenance.plan).routes();
+		const route = routes.light === undefined ? undefined : resolveModelForTier("light", routes);
 		let model: ModelReference | undefined;
 		for (const candidate of route === undefined ? [] : [route.model, ...route.fallbacks]) {
 			if (

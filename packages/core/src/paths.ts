@@ -1,21 +1,27 @@
-import { isAbsolute, posix, relative, resolve, sep } from "node:path";
+import { homedir } from "node:os";
+import { isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import { OutsideRepositoryError } from "./errors.ts";
 
 /**
  * Where Melian's files live, relative to a directory in the repository. `melian.yaml` and `.melian/` may sit in any
  * directory; `standards` and `lenses` resolve nearest-first like `melian.yaml`. `knowledge` is read only at the root.
- * `localConfig`, beside the root `melian.yaml`, is a maintainer's own and is read only from the working tree.
+ * `localConfig` and `secrets`, beside the root `melian.yaml`, are a maintainer's own, read only from the working tree.
  */
 export const melianPaths = {
 	config: "melian.yaml",
 	localConfig: "melian.local.yaml",
+	secrets: "melian.secrets.yaml",
 	home: ".melian",
 	lenses: ".melian/lenses",
 	standards: ".melian/standards",
 	knowledge: ".melian/knowledge",
 } as const;
 
-const policyNames = new Set([melianPaths.config, melianPaths.localConfig, "AGENTS.md", "CLAUDE.md"]);
+const policyNames = new Set([melianPaths.config, "AGENTS.md", "CLAUDE.md"]);
+
+// A maintainer's own files, matched in any case: a case-insensitive filesystem opens a committed
+// `MELIAN.SECRETS.YAML` as `melian.secrets.yaml`, so a commit of either under another case is policy too.
+const ownNames = new Set<string>([melianPaths.localConfig, melianPaths.secrets]);
 
 /**
  * The names of the files that configure a static tool, in any directory. The head's copy drives the tool's run on the
@@ -43,7 +49,10 @@ export function isAnalyserConfig(path: string): boolean {
 export function isPolicyFile(path: string): boolean {
 	const segments = path.split("/");
 	return (
-		policyNames.has(segments.at(-1)!) || segments.slice(0, -1).includes(melianPaths.home) || isAnalyserConfig(path)
+		policyNames.has(segments.at(-1)!) ||
+		ownNames.has(segments.at(-1)!.toLowerCase()) ||
+		segments.slice(0, -1).includes(melianPaths.home) ||
+		isAnalyserConfig(path)
 	);
 }
 
@@ -81,4 +90,17 @@ export function globShapeProblem(glob: string): string | undefined {
 	// A gitignore habit: `secrets/` reads as the directory, but a glob matches whole paths.
 	if (glob.endsWith("/")) return `, which matches no file; write ${glob.replace(/\/+$/, "")}/**`;
 	return undefined;
+}
+
+/**
+ * The user's own Melian files, for every repository: the preference file, which takes `melian.yaml`'s schema, and the
+ * secrets file. They live in `$XDG_CONFIG_HOME/melian/`, or `~/.config/melian/` when that is unset.
+ */
+export function userFiles(env: NodeJS.ProcessEnv = process.env): { readonly config: string; readonly secrets: string } {
+	const base =
+		env.XDG_CONFIG_HOME === undefined || env.XDG_CONFIG_HOME === ""
+			? join(homedir(), ".config")
+			: env.XDG_CONFIG_HOME;
+	const directory = join(base, "melian");
+	return { config: join(directory, "config.yaml"), secrets: join(directory, "secrets.yaml") };
 }

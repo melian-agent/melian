@@ -21,6 +21,7 @@ import type {
 import {
 	capitalised,
 	describeBudgetEnd,
+	describeLineage,
 	plural,
 	prose,
 	Rendering,
@@ -162,6 +163,23 @@ export interface CheckRecord {
 	 * `ended` record, or on a `ran` record when the lens's level counts a budget's end as a run.
 	 */
 	readonly budgetEnded?: BudgetEnd;
+	/** Why a lens ran, or was to run, on a model other than the one the committed routes chose. */
+	readonly lineage?: CheckLineage;
+}
+
+/**
+ * Why a check ran on `model` rather than the route the committed `melian.yaml` set: `by` names the preference file,
+ * the `--model` flag, or `derived` when the resolver picked a model because none of the route had credentials.
+ * `wanted` is the model policy routes the tier to, where it names one. `outside` says policy's `accept` does not list
+ * `model`.
+ */
+export interface CheckLineage {
+	readonly model: string;
+	readonly wanted?: string;
+	readonly by: string;
+	/** For a lens a preference file moved to another tier: that file, and the tiers it moved the lens from and to. */
+	readonly moved?: { readonly by: string; readonly from: string; readonly to: string };
+	readonly outside: boolean;
 }
 
 /** The reason a {@link Manifest} gives a check it names that has no record. */
@@ -254,6 +272,13 @@ export type StoredCheckRecord = {
 	version?: string;
 	level?: ScrutinyLevel;
 	budgetEnded?: { budget: "tokens" | "tools"; limit: number; tokens: number; tools: number };
+	lineage?: {
+		model: string;
+		wanted?: string;
+		by: string;
+		moved?: { by: string; from: string; to: string };
+		outside: boolean;
+	};
 };
 
 /** A {@link Verdict} as JSON, which a Pi Durable document can hold. */
@@ -498,7 +523,8 @@ export class Verdict {
 	/**
 	 * The verdict as plain text for a terminal: a header with its status and whether it blocks; the checks that did not
 	 * run and why, a lens its budget ended among them; each lens that ran with its scrutiny level and any budget that
-	 * ended it while its level counted it as run; then its findings grouped by resolution, strictest first, each group by
+	 * ended it while its level counted it as run; each check that left the committed routes, as `describeLineage` says it;
+	 * then its findings grouped by resolution, strictest first, each group by
 	 * file as {@link FindingsLog.files} groups them. Silent and dismissed findings are counted, not shown, unless the
 	 * rendering's `all` is set; then they follow, each dismissed one with who dismissed it and why.
 	 */
@@ -523,6 +549,13 @@ export class Verdict {
 					`  ${visibleText(name)}  ${level}${budgetEnded === undefined ? "" : `, ended and counted: ${describeBudgetEnd(budgetEnded)}`}${reason === undefined ? "" : `; ${prose(reason, "    ")}`}`,
 			);
 			parts.push([`${plural(lenses.length, "lens", "lenses")} ran:`, ...checks].join("\n"));
+		}
+		const lineage = [...(this.ran ?? []), ...this.notRun].filter((check) => check.lineage !== undefined);
+		if (lineage.length > 0) {
+			const checks = lineage.map(
+				({ name, lineage }) => `  ${visibleText(name)}  ${prose(describeLineage(lineage!), "    ")}`,
+			);
+			parts.push([`${plural(lineage.length, "check")} left the committed routes:`, ...checks].join("\n"));
 		}
 		const groups = shownResolutions.map((resolution): [string, readonly Finding[]] => [
 			resolution,

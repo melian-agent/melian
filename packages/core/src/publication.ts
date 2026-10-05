@@ -221,6 +221,10 @@ export type PublicationDetails = {
 		version: string;
 		level: string;
 		models: string[];
+		/** The model the lens finished on, after any failover. */
+		ran?: string;
+		/** Why the lens ran off the committed route, as `describeLineage` says it. */
+		lineage?: string;
 		usage?: { models: string[]; tokens: number; cost: number };
 		budget: { findings: number; tokens?: number; tools?: number };
 	}[];

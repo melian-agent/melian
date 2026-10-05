@@ -341,6 +341,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 				expect.objectContaining({
 					name: "correctness",
 					level: "careful",
+					ran: expect.any(String),
 					usage: expect.objectContaining({ tokens: expect.any(Number), cost: expect.any(Number) }),
 				}),
 			]),
@@ -350,6 +351,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 			`correctness@${details!.lenses.find(({ name }) => name === "correctness")!.version}`,
 		);
 		expect(state.ledgers[0]!.body).toContain("tokens, $");
+		expect(state.ledgers[0]!.body).toContain(`ran on ${details!.lenses[0]!.ran}`);
 		expect(LedgerStamp.parse(state.ledgers[0]!.body)?.plan).not.toBeNull();
 		const patchesBefore = state.calls.filter(({ method }) => method === "PATCH").length;
 		await publish(first.changeset, false);
