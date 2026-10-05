@@ -8,8 +8,8 @@
  *
  * @module
  */
-import { loadSecrets, userFiles } from "@melian-agent/core";
 import { createReviewModels } from "@melian-agent/pipeline";
+import { liveCredentials } from "./credentials.ts";
 import {
 	type Golden,
 	type GoldenScore,
@@ -33,8 +33,7 @@ try {
 	console.error(error instanceof Error ? error.message : String(error));
 	process.exit(2);
 }
-const { credentials } = await loadSecrets(process.cwd(), userFiles().secrets);
-const models = createReviewModels({ credentials });
+const models = createReviewModels({ credentials: await liveCredentials(process.cwd()) });
 const model = process.env.MELIAN_EVAL_MODEL;
 const scores: GoldenScore[] = [];
 for (const golden of goldens) {
