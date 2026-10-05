@@ -32,7 +32,7 @@ export interface ReviewSetup {
 	readonly retry: boolean;
 }
 
-// Triage's LLM fallback, on the cheapest lens tier routed to a model with credentials. A tier whose route cannot be
+// Triage's LLM fallback, on the first of the plan's lens tier routes with a model that has credentials. A tier whose route cannot be
 // read is passed over, as one without credentials is, so a broken route no lens uses never stops a review. With none,
 // every lens runs at its default level, and `skipped` says why.
 export async function fallbackDecider(
