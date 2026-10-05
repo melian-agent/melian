@@ -1,0 +1,22 @@
+{
+  "pr_title": "Record the VAT change",
+  "live": false,
+  "comments": [
+    {
+      "comment": "AGENTS.md says to link every GitHub issue and pull request you mention, in chat and docs, because only GitHub's own UI turns a bare number into a link; write the number as the text of a Markdown link to its page",
+      "severity": "Low",
+      "category": "convention",
+      "file": "docs/progress-log/2026-09-29-receipt-vat.md",
+      "rule": "guardrail/forbidden-patterns",
+      "cause": "introduced",
+      "failureScenario": "The progress-log entry writes #14 as plain text. GitHub turns a bare number into a link only in its own UI, so a reader of the file in an editor or a rendered document has no link to follow to the request.",
+      "evidence": [
+        {
+          "file": "docs/progress-log/2026-09-29-receipt-vat.md",
+          "line": 5,
+          "role": "cause"
+        }
+      ]
+    }
+  ]
+}
