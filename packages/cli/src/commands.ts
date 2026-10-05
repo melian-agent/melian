@@ -24,6 +24,7 @@ import {
 	reviewChangeset,
 	revisionKey,
 	runChecks,
+	summariseReview,
 } from "@melian-agent/pipeline";
 import { idleModels, isScripted, reviewModels, scriptVariable } from "./models.ts";
 import { CliError, git, openStorage, storagePath } from "./repository.ts";
@@ -74,7 +75,7 @@ export class ReviewOutcome {
 export async function review(
 	io: Io,
 	argument: string,
-	options: { readonly model?: string; readonly rerun: boolean },
+	options: { readonly model?: string; readonly rerun: boolean; readonly walkthrough?: boolean },
 ): Promise<number> {
 	const target = parseTarget(argument);
 	let changeset: Changeset;
@@ -140,6 +141,7 @@ export async function review(
 			io.stderr(`melian: ${error.message}\n`);
 			verdict = error.verdict;
 		}
+		if (options.walkthrough !== false) await summariseReview({ harness, changeset, config, models });
 		const outcome = new ReviewOutcome(verdict);
 		io.stdout(outcome.render(io.color));
 		return outcome.exitCode();
@@ -159,7 +161,11 @@ function shellQuote(argument: string): string {
 	return `'${argument.replace(/'/g, `'\\''`)}'`;
 }
 
-export async function publish(io: Io, argument: string): Promise<number> {
+export async function publish(
+	io: Io,
+	argument: string,
+	options: { readonly walkthrough?: boolean } = {},
+): Promise<number> {
 	const target = parseTarget(argument);
 	if (target.kind !== "pullRequest") {
 		throw new CliError(`publish takes a pull request, such as "#12"; Melian never posts a review of a range`);
@@ -169,6 +175,7 @@ export async function publish(io: Io, argument: string): Promise<number> {
 	const pullRequest = await provider.pullRequest(target.number);
 	const changeset = await pullRequestChangeset(io.cwd, target.number);
 	const base = await currentBase(io.cwd, pullRequest);
+	const { config } = await loadConfig(changeset.repoRoot, { kind: "revision", commit: pullRequest.base.sha }, ".");
 	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, false);
 	// Only the publish task: a review a crash interrupted must not resume here and spend tokens on real models.
 	const publishHarness = await openPublishHarness(await openStorage(path), idleModels(io.env), provider);
@@ -181,6 +188,10 @@ export async function publish(io: Io, argument: string): Promise<number> {
 			changeset,
 			pullRequest,
 			base: base ?? pullRequest.base.sha,
+			walkthrough: {
+				...config.publish.walkthrough,
+				enabled: options.walkthrough !== false && config.publish.walkthrough.enabled,
+			},
 		});
 		const parts = [
 			`${published.posted} new ${published.posted === 1 ? "finding" : "findings"}`,
@@ -252,11 +263,11 @@ export async function findings(
 		if (verdict === undefined) throw missing;
 		const render = new Rendering({ color: io.color, ids: true, all: options.all });
 		if (!options.open) {
-			io.stdout(options.json ? verdict.renderJson() : verdict.render(render));
+			io.stdout(options.json ? verdict.renderJson() : verdict.render(render) + verdict.agentPrompt(argument));
 			return 0;
 		}
 		const open = FindingsLog.of(verdict.attention());
-		io.stdout(options.json ? open.renderJson() : open.render(render));
+		io.stdout(options.json ? open.renderJson() : open.render(render) + verdict.agentPrompt(argument));
 		return 0;
 	} finally {
 		await reviewHarness.close(context);
