@@ -219,6 +219,34 @@ describe("Triage", () => {
 });
 
 describe("command bearer validation", { timeout: 60_000 }, () => {
+	it.each(["disabled", "no paths"])("accepts a script naming a lens with %s", async (skipped) => {
+		const golden = loadGoldens().find((entry) => entry.name === "clean-rename")!;
+		const { repo } = buildGoldenRepository(golden);
+		const xdg = mkdtempSync(join(tmpdir(), "melian-script-lenses-"));
+		try {
+			const script = join(xdg, "script.json");
+			writeFileSync(script, JSON.stringify({ correctness: [{ text: "Done." }] }));
+			writeFileSync(
+				join(repo, "melian.yaml"),
+				`tiers:\n  full: [guardrails, lens.correctness]\nchecks:\n  allowSkip: [lens.correctness]\nlenses:\n  correctness: ${skipped === "disabled" ? "{ enabled: false }" : '{ paths: ["never/**"] }'}\n`,
+			);
+			const stdout = vi.fn();
+			const stderr = vi.fn();
+			const status = await main(["review", "main"], {
+				cwd: repo,
+				env: { XDG_CONFIG_HOME: xdg, MELIAN_STATE_DIR: xdg, MELIAN_TEST_SCRIPT: script },
+				color: false,
+				stdout,
+				stderr,
+			});
+			expect(status, stderr.mock.calls.flat().join("")).toBe(0);
+			expect(stdout.mock.calls.flat().join("")).toContain("passed");
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+			rmSync(xdg, { recursive: true, force: true });
+		}
+	});
+
 	it.each(["disabled", "no paths"])(
 		"reviews with every lens %s without unlocking a failing credential",
 		async (skipped) => {

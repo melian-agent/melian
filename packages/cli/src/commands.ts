@@ -126,19 +126,20 @@ export async function review(
 	for (const warning of secrets.warnings) io.stderr(`melian: ${warning}\n`);
 	const refusal = decisionProviderRefusal(loaded);
 	if (refusal !== undefined) throw new CliError(refusal);
-	const selected = new Set(Lens.select(lenses, loaded, paths).map(({ lens }) => `${lens.name}\0${lens.scope}`));
-	const plannedLenses = lenses.filter((lens) => selected.has(`${lens.name}\0${lens.scope}`));
-	const { models, plan, retry } = await reviewModels(io.env, policy, plannedLenses, {
+	const { models, plan, retry } = await reviewModels(io.env, policy, lenses, {
 		model: options.model,
 		checks: checksOfTier(loaded, tier),
 		credentials: secrets.credentials,
 	});
 	for (const line of plan.summary().split("\n").filter(Boolean)) io.stderr(`melian: ${line}\n`);
+	const selected = new Set(Lens.select(lenses, loaded, paths).map(({ lens }) => `${lens.name}\0${lens.scope}`));
+	const credentialPlan = plan.toJSON();
+	credentialPlan.lenses = credentialPlan.lenses.filter((lens) => selected.has(`${lens.name}\0${lens.scope ?? ""}`));
 	// A command a secrets file names runs now, so one that fails stops the review before it starts, named.
 	const triage = await Triage.create({
 		scripted: isScripted(io.env) && io.decide === undefined,
 		config: loaded,
-		plan,
+		plan: ReviewPlan.from(credentialPlan),
 		models,
 		...(io.decide === undefined ? {} : { decide: io.decide }),
 	});
