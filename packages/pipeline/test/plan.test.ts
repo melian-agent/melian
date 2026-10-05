@@ -169,6 +169,20 @@ async function planned(
 }
 
 describe("reviewChangeset with a plan", () => {
+	it("stores each lens's accepted model lineage in publication details", async () => {
+		const { review, answered } = await planned({ model: heavy, accept: [heavy, backup] }, backup);
+		expect(answered).toEqual(["backup", "backup"]);
+		expect(review.verdict.status).toBe("passed");
+		const root = await harness.root(context);
+		const revision = revisionKey((await Changeset.resolve(repo, "main...feature")).revision);
+		const stored = await harness.snapshot(VerdictDocument, root.id, context);
+		const lineage = `on ${backup}, set by melian.local.yaml, where policy wants ${heavy} and accepts ${backup}`;
+		expect(stored?.details?.[revision]?.lenses.map(({ name, lineage }) => ({ name, lineage }))).toEqual([
+			{ name: "contracts", lineage },
+			{ name: "correctness", lineage },
+		]);
+	});
+
 	it("runs each lens on the plan's route, records the lineage of one a preference file moved, and keeps the plan", async () => {
 		const { plan, review, answered, provenance } = await planned({ model: heavy, accept: [heavy] }, backup);
 
