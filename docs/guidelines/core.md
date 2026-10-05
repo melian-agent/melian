@@ -200,7 +200,7 @@ The plan answers:
 - `lineage(tier)`, the `CheckLineage` of a check on the tier's first model.
 - `judge(name, level, ran?, scope?)`, the refusal and lineage of one lens check, of the variant a folder's `scope` names, on the model it finished on. A lens a preference file moved is judged under its committed tier's policy.
 - `mark(records, ranOn)`, the lens records with their lineage added, and `failed` where a lens finished on a model its policy refuses.
-- `verifierRoute(finder)`, credentialed models ordered across families; an unrouted tier uses heavy, medium, then light routes. A refused tier returns no route.
+- `verifierRoute(finder)`, credentialed models ordered across families; an unrouted tier uses heavy, medium, then light routes. A refused or uncredentialed explicit verifier tier returns no route and keeps its reason and lineage.
 - `verifierLineage(model)`, lineage for the judge that finished, including lens-tier fallback.
 - `providers()`, the providers verification and the review's lenses may call at any level they declare, since triage may choose any of them and escalation may move a lens to the next, so a credential only a `quick` or `deep` level needs is unlocked too.
 - `warnings()`, `lines()` for `melian doctor`, and `summary()` for the CLI's standard error, each line escaped with `visibleText`.

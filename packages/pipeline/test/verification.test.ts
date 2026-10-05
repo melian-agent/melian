@@ -1,11 +1,12 @@
 import { rmSync } from "node:fs";
-import { Changeset, defaultConfig, Lens, type Verification, VerificationState } from "@melian-agent/core";
+import { Changeset, defaultConfig, Lens, ReviewPlan, type Verification, VerificationState } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
 	createReviewRegistry,
 	type Harness,
 	openHarness,
+	planInputs,
 	type Review,
 	readFindings,
 	reviewChangeset,
@@ -55,7 +56,7 @@ afterEach(async () => {
 	rmSync(repo, { recursive: true, force: true });
 });
 
-async function review(rerun = false): Promise<Review> {
+async function review(rerun = false, plan?: ReviewPlan): Promise<Review> {
 	const finder = fake.ref("finder");
 	const judge = fake.ref("judge");
 	return reviewChangeset({
@@ -65,11 +66,12 @@ async function review(rerun = false): Promise<Review> {
 		standards: [],
 		models: fake.review,
 		rerun,
+		...(plan === undefined ? {} : { plan }),
 		config: {
 			...defaultConfig,
 			tiers: { full: lenses.map((lens) => `lens.${lens.name}`) },
 			stages: { "pull-request": "full" },
-			models: {
+			models: plan?.routes() ?? {
 				heavy: { model: `${finder.provider}/${finder.modelId}` },
 				verifier: { model: `${judge.provider}/${judge.modelId}`, fallbacks: [`${judge.provider}/backup`] },
 			},
@@ -198,6 +200,45 @@ describe("the verifier", () => {
 		expect(result.findings[0]!.properties.verification?.verdict).toBe("confirmed");
 		expect(result.verdict.attention()).toHaveLength(1);
 		expect(result.verdict.refuted).toBeUndefined();
+	});
+	it("fails the verifier with plan reason and lineage for an uncredentialed explicit route", async () => {
+		const locked = fake.withoutCredentials("judge");
+		const model = `${locked.provider}/${locked.modelId}`;
+		const wanted = `${fake.ref("judge").provider}/judge`;
+		const config = {
+			...defaultConfig,
+			models: { heavy: { model: `${fake.ref("finder").provider}/finder` }, verifier: { model } },
+		};
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config,
+			catalog,
+			credentials,
+			lenses,
+			checks: ["lens.correctness"],
+			routes: {
+				committed: { heavy: config.models.heavy, verifier: { model: wanted } },
+				overridden: { verifier: "melian.local.yaml" },
+				lensTiers: {},
+				retiered: {},
+			},
+		});
+		const requests = scripts();
+		await expect(review(false, plan)).rejects.toMatchObject({
+			code: "verifierFailed",
+			verdict: {
+				status: "not-reviewed",
+				notRun: [
+					expect.objectContaining({
+						name: "verifier",
+						status: "failed",
+						reason: plan.tier("verifier").reason,
+						lineage: { model, wanted, by: "melian.local.yaml", outside: true },
+					}),
+				],
+			},
+		});
+		expect(requests[verifierMarker]).toEqual([]);
 	});
 	it("attaches a repeat review without asking another model", async () => {
 		const requests = scripts();

@@ -723,6 +723,31 @@ describe("verifier routing", () => {
 		expect(resolved.verifierLineage(gpt)?.by).toBe("lens tiers");
 	});
 
+	it("refuses an explicit verifier route without credentials and warns doctor", () => {
+		const resolved = plan(
+			{ heavy: { model: opus }, verifier: { model: opus } },
+			{ anthropic: "key" },
+			{ preferences: { verifier: { model: gpt } } },
+		);
+		expect(resolved.tier("verifier")).toMatchObject({
+			status: "uncredentialed",
+			reason: `none of ${gpt} has credentials`,
+		});
+		expect(resolved.verifierRoute(opus)).toEqual([]);
+		expect(resolved.refusal("verifier")).toBe(`none of ${gpt} has credentials`);
+		expect(resolved.lineage("verifier")).toEqual({
+			model: gpt,
+			wanted: opus,
+			by: "melian.local.yaml",
+			outside: true,
+		});
+		expect(resolved.warnings()).toContain(`verifier fails: none of ${gpt} has credentials`);
+		expect(resolved.warnings()).not.toContain(fallbackWarning);
+		expect(resolved.lines()).toContainEqual({
+			state: "warn",
+			text: `verifier fails: none of ${gpt} has credentials`,
+		});
+	});
 	it("fails closed instead of falling back when verifier policy refuses", () => {
 		const resolved = plan(
 			{ heavy: { model: gpt }, verifier: { model: opus, unavailable: "fail" } },

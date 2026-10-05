@@ -340,11 +340,11 @@ export class ReviewPlan {
 		const own = this.tier("verifier");
 		if (this.refusal("verifier") !== undefined) return [];
 		const tiers =
-			own.status === "routed"
-				? [own]
-				: (["heavy", "medium", "light"] as const)
+			own.status === "unrouted"
+				? (["heavy", "medium", "light"] as const)
 						.map((tier) => this.tier(tier))
-						.filter((tier) => tier.status === "routed");
+						.filter((tier) => tier.status === "routed")
+				: [own];
 		const models = [...new Map(tiers.flatMap((tier) => tier.models).map((model) => [model.model, model])).values()];
 		const family = this.tiers.flatMap((tier) => tier.models).find((model) => model.model === finder)?.family;
 		return models.sort(
@@ -357,7 +357,7 @@ export class ReviewPlan {
 	/** The lineage of the verifier on the model it actually used, including a lens-tier fallback. */
 	verifierLineage(model: string): CheckLineage | undefined {
 		const own = this.tier("verifier");
-		if (own.status === "routed" || own.status === "refused") return ReviewPlan.leaving(own, model, own.by);
+		if (own.status !== "unrouted") return ReviewPlan.leaving(own, model, own.by);
 		const fallback = (["heavy", "medium", "light"] as const)
 			.map((tier) => this.tier(tier))
 			.find((tier) => tier.models.some((each) => each.model === model));
@@ -372,7 +372,9 @@ export class ReviewPlan {
 	/** Why a check on `tier` from the review's lens must fail without running, or `undefined` when it may run. */
 	refusal(tier: ModelTier): string | undefined {
 		const { status, reason } = this.tier(tier);
-		return status === "unavailable" || status === "refused" ? reason : undefined;
+		return status === "unavailable" || status === "refused" || (tier === "verifier" && status === "uncredentialed")
+			? reason
+			: undefined;
 	}
 
 	/** Why a check on `tier` runs on a model the committed route did not choose, or `undefined` when it does not. */
@@ -542,13 +544,14 @@ export class ReviewPlan {
 		const verification: string[] = [];
 		if (this.lenses.length > 0) {
 			const own = this.tier("verifier");
-			if (own.status !== "routed" && this.refusal("verifier") === undefined)
+			if (own.status === "unrouted")
 				verification.push(
 					"lenses verify, but the verifier tier routes no model of its own; verification falls back to lens tiers, heavy then medium then light",
 				);
 			if (this.refusal("verifier") !== undefined) verification.push(`verifier fails: ${this.refusal("verifier")}`);
 			const finders = [...used.keys()].flatMap((tier) => this.tier(tier).models);
 			if (
+				this.refusal("verifier") === undefined &&
 				finders.length > 0 &&
 				finders.every((finder) => this.verifierRoute(finder.model).every((model) => model.family === finder.family))
 			)

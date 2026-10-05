@@ -1560,9 +1560,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				status: "failed",
 				version: verifierVersion,
 				reason: refusal ?? "the verifier has no model with credentials",
-				...(request.plan?.verifierLineage(candidates[0]!.finder) === undefined
-					? {}
-					: { lineage: request.plan.verifierLineage(candidates[0]!.finder)! }),
+				...(request.plan?.lineage("verifier") === undefined ? {} : { lineage: request.plan.lineage("verifier")! }),
 			};
 		} else {
 			const verificationInput: VerificationInput = {

@@ -264,7 +264,7 @@ The built task uses fixed limits of 100,000 tokens and 20 tool calls per candida
 
 Both executors write the same record, `verification` on the finding: verdict, reason, correction, executor, model, and version. A correction is text shown beside the finding; it never changes the finding's severity, location, or ID. Uniform records across executors become the calibration set. `confidence` stays reserved for a decision model's calibrated probability.
 
-The verifier runs on a model tier of its own, `verifier`. The [review plan](#the-review-plan) routes it to a different model family from the finder whose candidate it judges whenever one is credentialed, because checking across families is the cheap substitute for a stronger judge.
+The verifier runs on a model tier of its own, `verifier`. Only an unrouted tier falls back to lens tiers. An explicit route without credentials fails with its plan reason and lineage; doctor warns. The [review plan](#the-review-plan) routes it to a different model family from the finder whose candidate it judges whenever one is credentialed, because checking across families is the cheap substitute for a stronger judge.
 
 Thresholds are asymmetric at first. A decision model may confirm a candidate or escalate it to the LLM verifier; a refutation needs the LLM verifier until calibration data shows the decision model's refutations hold. The failure to design against is a real P1 dropped on a 9B-parameter model's word.
 
