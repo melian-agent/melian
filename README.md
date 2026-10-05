@@ -13,7 +13,7 @@ It takes its name from Melian the Maia, queen of Doriath, whose Girdle held back
 - **Quiet.** Good changes pass without ceremony. Findings stay in scope, and a dismissal with a reason is never raised again.
 - **Remembers in your repository.** Acquired knowledge goes to `AGENTS.md` and its siblings, by pull request, where every person and every agent inherits it, not in propietary products to lock you in.
 - **Runs anywhere you do.** Locally before a pull request exists, as a skill inside Claude Code, Codex, or Pi, on pull requests as a colleague, in a devcontainer, or in GitHub Actions.
-- **Built for monorepos.** Every setting, from which lenses run to what blocks a merge, is configurable per folder.
+- **Built for monorepos.** Which lenses run, and what blocks a merge, is configurable per folder. A model route's `accept`, `unavailable`, and `acceptOverridden` are set once, in the root `melian.yaml`.
 
 ## Why
 
