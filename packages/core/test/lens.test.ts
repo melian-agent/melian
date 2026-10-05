@@ -99,6 +99,22 @@ describe("built-in lenses", () => {
 		expect(correctness!.version).toMatch(/^[0-9a-f]{12}$/);
 	});
 
+	// A finding names its lens's version and the verdict fingerprint hashes it, so a changed version posts a second review.
+	it("keep their versions, and the version melian.yaml's tier and paths give one", async () => {
+		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
+		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
+			contracts: "686d7ad61a40",
+			conventions: "bb08d9e590e4",
+			correctness: "c22842327fa3",
+			"removed-behaviour": "45fa8885fd01",
+			tests: "bee1be69be22",
+			"trust-boundary": "593b84bf6e82",
+		});
+		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
+		const [correctness] = Lens.select(named(lenses, "correctness"), tuned, ["src/index.ts"]);
+		expect(correctness!.lens.version).toBe("55d4d18f3384");
+	});
+
 	it("load the lens backlog adversarial, over every path, with the standards and three levels", async () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, ["src/index.ts"]);
 		const backlog = lenses.filter((lens) => lens.name !== "contracts" && lens.name !== "correctness");
