@@ -85,6 +85,15 @@ describe("codex-sandboxed.sh profile", () => {
 		rmSync(root, { recursive: true, force: true });
 	});
 
+	it("looks up only named Mach services, never launchd or LaunchServices", () => {
+		const text = profile(linked, scratch);
+		expect(text).not.toMatch(/^\(allow mach-lookup\)$/m);
+		for (const name of ["com.apple.SecurityServer", "com.apple.trustd.agent", "com.apple.system.opendirectoryd.libinfo"])
+			expect(text).toContain(`(global-name "${name}")`);
+		for (const name of ["com.apple.coreservices.launchservicesd", "com.apple.lsd.mapdb", "com.apple.xpc.launchd"])
+			expect(text).not.toContain(name);
+	});
+
 	it("allows only the git state a commit needs, as literal files in the administrative directory", () => {
 		const allow = block(profile(linked), "allow file-write*");
 		for (const path of ["objects", "refs", "logs"]) expect(allow).toContain(`(subpath "${main}/.git/${path}")`);
@@ -337,6 +346,15 @@ describe("codex-sandboxed.sh profile", () => {
 					GIT_COMMITTER_EMAIL: "t@example.com",
 				},
 			});
+
+		it("resolves the user, yet cannot start a process through launchd or LaunchServices", () => {
+			expect(sh(linked, "id -un").toString().trim()).not.toBe("");
+			for (const command of [
+				"launchctl submit -l melian-probe -- /usr/bin/true",
+				"open -g -j -a Calculator",
+			])
+				expect(failure(() => sh(linked, command)).status, command).not.toBe(0);
+		});
 
 		it("commits in the linked worktree", () => {
 			sh(linked, "echo x > f && git add f && git commit -q -m sandboxed");
