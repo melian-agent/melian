@@ -235,7 +235,6 @@ function sourceFields(input: ExternalFindingInput, title: string): string[] {
 	return ["file", source.path, "finding", input.file ?? "", String(input.line ?? ""), title, body];
 }
 
-// Whether two line ranges overlap or lie within `siteDistance` lines of each other.
 function near(start: number, end: number, otherStart: number, otherEnd: number): boolean {
 	return start <= otherEnd + siteDistance && otherStart <= end + siteDistance;
 }
