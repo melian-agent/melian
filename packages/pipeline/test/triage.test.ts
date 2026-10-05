@@ -420,7 +420,9 @@ describe("escalation", () => {
 		]);
 		const root = (await harness.root(context)).id;
 		const index = await harness.snapshot(ReviewIndex, root, context);
-		expect(index!.reviews[revision()]!.lenses).toEqual([`correctness@${version()}@quick`]);
+		expect(index!.reviews[revision()]!.lenses).toEqual([
+			`correctness@${version()}@quick band quick-deep escalateAt P1`,
+		]);
 		expect((await readProvenance(harness, root, revision(), context))!.lenses).toEqual([
 			`correctness@${version()}@careful`,
 		]);
@@ -561,6 +563,25 @@ describe("escalation", () => {
 		expect(lensRecord(await review({ decider, config: lower }))).toMatchObject({ status: "ran", level: "careful" });
 	});
 
+	it("runs the lenses again, rather than attach, when the severity that escalates them changes", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		const mild = call("report_finding", { ...crashFinding, severity: "P2" });
+		scriptConversations(fake, [{ match: correctness, replies: [mild, done] }]);
+		expect(lensRecord(await review({ decider }))).toMatchObject({ level: "quick" });
+
+		// The same revision and levels, but a P2 now escalates: the earlier task decided under the old rule.
+		scriptConversations(fake, [{ match: correctness, replies: [mild, done, done] }]);
+		const lower = { ...config, triage: { escalateAt: "P2" } } as const;
+		const reviewed = await review({ decider, config: lower });
+
+		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
+		const index = await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context);
+		expect(index!.reviews[revision()]!.lenses).toEqual([
+			`correctness@${version()}@quick band quick-deep escalateAt P2`,
+		]);
+	});
+
 	it("never lets a review at one level attach to a review of the revision at another", async () => {
 		// Chooses the least look each question offers.
 		const decider: Decider = {
@@ -591,7 +612,9 @@ describe("escalation", () => {
 		expect(second.findings).toEqual([]);
 		const root = (await harness.root(context)).id;
 		const index = await harness.snapshot(ReviewIndex, root, context);
-		expect(index!.reviews[revision()]!.lenses).toEqual([`correctness@${version()}@deep`]);
+		expect(index!.reviews[revision()]!.lenses).toEqual([
+			`correctness@${version()}@deep band deep-deep escalateAt P1`,
+		]);
 	});
 });
 
@@ -724,7 +747,9 @@ describe("reviews recorded before levels joined the keys", () => {
 		expect(fake.provider.state.callCount).toBe(1);
 		expect(reviewed.findings).toEqual([]);
 		const index = await harness.snapshot(ReviewIndex, root.id, context);
-		expect(index!.reviews[revision()]!.lenses).toEqual([`correctness@${version()}@careful`]);
+		expect(index!.reviews[revision()]!.lenses).toEqual([
+			`correctness@${version()}@careful band quick-deep escalateAt P1`,
+		]);
 		const stored = await readFindings(harness, root.id, revision(), context, { producers: [atVersion] });
 		expect(stored.map((finding) => finding.properties.id)).toEqual([old.properties.id]);
 	});

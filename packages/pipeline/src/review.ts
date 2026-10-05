@@ -116,6 +116,8 @@ interface LensRun {
 	// The change as this lens sees it: only the files it covers.
 	readonly prompt: string;
 	readonly escalation?: { readonly next?: LensRun; readonly cap?: string };
+	// The band triage held the level to, as `<floor>-<ceiling>`; absent from a task an older Melian created.
+	readonly band?: string;
 }
 
 // `escalateAt` is absent from a task an older Melian created, which escalates nothing.
@@ -633,6 +635,21 @@ function omit<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K>
 	return rest;
 }
 
+// A review's lens selection as the review index keys it: each run's key, with the band its level was held to and the
+// severity that escalates it, so a review under a changed band or `escalateAt` starts a task of its own rather than
+// attach to one that escalated under the old rule. A task an older Melian created names neither.
+function selectionOf(lenses: readonly LensRun[], escalateAt: Severity | undefined): string[] {
+	return lenses
+		.map((lens) =>
+			[
+				lens.key,
+				...(lens.band === undefined ? [] : [`band ${lens.band}`]),
+				...(escalateAt === undefined ? [] : [`escalateAt ${escalateAt}`]),
+			].join(" "),
+		)
+		.sort();
+}
+
 // One lens task per head and selection. A repeat call, such as a rerun after a crash, attaches to the task the first
 // call created, which the harness resumes, rather than running every lens a second time. `undefined` when the task did
 // not complete.
@@ -644,7 +661,7 @@ async function runLenses(
 ): Promise<LensResult | undefined> {
 	const root = await harness.root(context);
 	const revision = revisionKey(input.revision);
-	const selection = input.lenses.map((lens) => lens.key).sort();
+	const selection = selectionOf(input.lenses, input.escalateAt);
 	const taskId = await root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const known = index.reviews[revision];
@@ -686,12 +703,11 @@ async function anyLensFailed(tx: Tx, id: number | undefined): Promise<boolean> {
 async function startAdjudication(
 	harness: Harness,
 	input: AdjudicationTaskInput,
-	lenses: readonly LensRun[],
+	selection: readonly string[],
 	context: Context,
 ): Promise<TaskId<AdjudicationResult>> {
 	const root = await harness.root(context);
 	const key = JSON.stringify(input);
-	const selection = lenses.map((lens) => lens.key).sort();
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const known = index.reviews[revisionKey(input)];
@@ -703,7 +719,7 @@ async function startAdjudication(
 		}
 		const created = await tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } });
 		const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
-		const entry = same ? known : { lenses: selection };
+		const entry = same ? known : { lenses: [...selection] };
 		index.reviews[revisionKey(input)] = { ...entry, adjudication: { task: created, input: key } };
 		return created;
 	}, context);
@@ -1053,8 +1069,10 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		const ruled = Lens.from({ ...lens.toJSON(), rules });
 		const runAt = async (level: ScrutinyLevel): Promise<LensRun> => {
 			const settings = lens.level(level);
+			const band = bands.get(lens)!;
 			return {
 				key: `${lens.name}@${lens.version}@${level}`,
+				band: `${band.floor}-${band.ceiling}`,
 				name: lens.name,
 				version: lens.version,
 				level,
@@ -1143,7 +1161,7 @@ export async function reviewChangeset(options: ReviewOptions): Promise<Review> {
 		origin: options.origin ?? { kind: "range" },
 		lenses: settled.map(({ run }) => run.key),
 	});
-	const adjudication = await startAdjudication(harness, input, lenses, context);
+	const adjudication = await startAdjudication(harness, input, selectionOf(lenses, escalateAt), context);
 	const forget = (index: ReviewIndexState) => {
 		const entry = index.reviews[reviewed];
 		if (entry?.adjudication?.task !== adjudication) return;
