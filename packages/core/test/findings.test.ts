@@ -36,7 +36,7 @@ function rejection(value: unknown): FindingError {
 		expect(error).toBeInstanceOf(FindingError);
 		return error as FindingError;
 	}
-	throw new Error("parseFinding accepted an invalid finding");
+	throw new Error("Finding.parse accepted an invalid finding");
 }
 
 describe("findingId", () => {
@@ -272,7 +272,7 @@ describe("levelForSeverity", () => {
 	});
 });
 
-describe("createFinding", () => {
+describe("Finding.create", () => {
 	it("builds a SARIF result with Melian's extensions in its property bag", () => {
 		expect(Finding.create(evalInput)).toEqual({
 			ruleId: "no-eval",
@@ -482,7 +482,7 @@ describe("a findings log", () => {
 	});
 });
 
-describe("parseFinding", () => {
+describe("Finding.parse", () => {
 	const finding = Finding.create(evalInput);
 
 	it.each([
@@ -600,7 +600,7 @@ describe("parseFinding", () => {
 	});
 });
 
-describe("upgradeStoredFinding", () => {
+describe("Finding.upgrade", () => {
 	it("reads a single old-shape evidence location as one cause at head", () => {
 		const evidence = [
 			{ file: "src/api.ts", startLine: 3, role: "cause" as const, revision: "head" as const, snippet: "rename(id)" },

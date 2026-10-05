@@ -75,7 +75,7 @@ const log = FindingsLog.of([
 	Finding.create(evalInput),
 ]);
 
-describe("renderFindingsJson", () => {
+describe("FindingsLog.renderJson", () => {
 	it("renders the SARIF log", async () => {
 		const json = log.renderJson();
 		expect(Value.Check(findingsLogSchema, JSON.parse(json))).toBe(true);
@@ -83,7 +83,7 @@ describe("renderFindingsJson", () => {
 	});
 });
 
-describe("renderFindingsTerminal", () => {
+describe("FindingsLog.render", () => {
 	it("groups by file and orders by severity, then line", async () => {
 		await expect(log.render()).toMatchFileSnapshot("./golden/findings.txt");
 	});
@@ -224,7 +224,7 @@ const verdict = new Adjudication({
 	config: defaultConfig,
 }).adjudicate();
 
-describe("renderVerdictJson", () => {
+describe("Verdict.renderJson", () => {
 	it("renders the verdict with its findings as SARIF results", async () => {
 		const json = verdict.renderJson();
 		expect(JSON.parse(json)).toEqual(verdict);
@@ -232,7 +232,7 @@ describe("renderVerdictJson", () => {
 	});
 });
 
-describe("renderFindingsTerminal with a verdict", () => {
+describe("Verdict.render", () => {
 	it("leads with the verdict, the checks that did not run, a lens its budget ended, and each lens's level, then groups findings by resolution", async () => {
 		await expect(verdict.render()).toMatchFileSnapshot("./golden/verdict.txt");
 	});
