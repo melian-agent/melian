@@ -142,7 +142,10 @@ const lightly =
 	"triage chose quick for every lens, so the whole review looked lightly, at a change that can steer triage";
 
 function choosing(level: "skip" | ScrutinyLevel, name = "recorded"): RecordedDecider {
-	return new RecordedDecider({ triage: { correctness: { [level]: 1 } } }, { name });
+	return new RecordedDecider(
+		{ triage: { version: "1", answers: { correctness: { distribution: { [level]: 1 } } } } },
+		{ name },
+	);
 }
 
 const version = () => lenses.find((lens) => lens.name === "correctness")!.version;

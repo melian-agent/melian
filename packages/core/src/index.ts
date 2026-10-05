@@ -73,6 +73,7 @@ export {
 	Decision,
 	type DecisionRequest,
 	type QuestionSet,
+	questionFingerprint,
 	type StoredDecision,
 	type TextModel,
 	type ToolRequest,

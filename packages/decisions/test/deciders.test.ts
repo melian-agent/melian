@@ -1,4 +1,11 @@
-import { Decision, DecisionError, type DecisionRequest, type TextModel, type ToolRequest } from "@melian-agent/core";
+import {
+	Decision,
+	DecisionError,
+	type DecisionRequest,
+	questionFingerprint,
+	type TextModel,
+	type ToolRequest,
+} from "@melian-agent/core";
 import { FallbackDecider, RecordedDecider } from "@melian-agent/decisions";
 import { describe, expect, it } from "vitest";
 
@@ -18,7 +25,13 @@ const request: DecisionRequest = {
 describe("the recorded decider", () => {
 	it("answers each question from its recording, and keeps every request", async () => {
 		const decider = new RecordedDecider({
-			triage: { correctness: { quick: 0.7, careful: 0.3 }, tests: { skip: 1 } },
+			triage: {
+				version: "1",
+				answers: {
+					correctness: { distribution: { quick: 0.7, careful: 0.3 } },
+					tests: { distribution: { skip: 1 }, fingerprint: questionFingerprint(request.questions[1]!) },
+				},
+			},
 		});
 		const answer = await decider.decide(request);
 		expect(answer.answers).toEqual([
@@ -30,9 +43,36 @@ describe("the recorded decider", () => {
 	});
 
 	it("fails a question it holds no recording for", async () => {
-		const decider = new RecordedDecider({ triage: { correctness: { careful: 1 } } });
+		const decider = new RecordedDecider({
+			triage: { version: "1", answers: { correctness: { distribution: { careful: 1 } } } },
+		});
 		await expect(decider.decide(request)).rejects.toMatchObject({ code: "unrecorded", question: "tests" });
 		await expect(new RecordedDecider({}).decide(request)).rejects.toBeInstanceOf(DecisionError);
+	});
+
+	it("refuses a recording made for another version of the question set, or another form of a question", async () => {
+		const answers = { correctness: { distribution: { careful: 1 } }, tests: { distribution: { careful: 1 } } };
+		await expect(new RecordedDecider({ triage: { version: "0", answers } }).decide(request)).rejects.toMatchObject({
+			code: "staleRecording",
+		});
+		const recorded = new RecordedDecider({
+			triage: {
+				version: "1",
+				answers: {
+					...answers,
+					correctness: { distribution: { careful: 1 }, fingerprint: questionFingerprint(request.questions[0]!) },
+				},
+			},
+		});
+		await expect(recorded.decide(request)).resolves.toBeDefined();
+		const changed = {
+			...request,
+			questions: [
+				{ ...request.questions[0]!, text: "How closely should correctness look at the payments?" },
+				request.questions[1]!,
+			],
+		};
+		await expect(recorded.decide(changed)).rejects.toMatchObject({ code: "staleRecording", question: "correctness" });
 	});
 });
 

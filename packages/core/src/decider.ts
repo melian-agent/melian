@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { TSchema } from "typebox";
 import { DecisionError } from "./errors.ts";
 
@@ -6,6 +7,15 @@ export interface ChoiceQuestion {
 	readonly id: string;
 	readonly text: string;
 	readonly options: readonly string[];
+}
+
+/**
+ * A fingerprint of `question`, its ID, text, and options, so a recorded answer can be refused for a question that has
+ * changed since it was recorded.
+ */
+export function questionFingerprint(question: ChoiceQuestion): string {
+	const shape = JSON.stringify([question.id, question.text, question.options]);
+	return createHash("sha256").update(shape).digest("hex").slice(0, 16);
 }
 
 /** A named, versioned set of questions, such as triage's. Every decision records the version it answered. */
