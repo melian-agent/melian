@@ -1,4 +1,4 @@
-import { execFile, execFileSync } from "node:child_process";
+import { execFile, execFileSync, spawn } from "node:child_process";
 import {
 	chmodSync,
 	existsSync,
@@ -881,6 +881,45 @@ describe("codex-sandboxed.sh profile", () => {
 			expect(out).toContain("clone:denied");
 			expect(existsSync(join(stateScratch, "melian", "clone", "x.sqlite"))).toBe(true);
 			expect(existsSync(join(main, ".git", "melian"))).toBe(false);
+		});
+
+		it("exits 143 on TERM, killing the task's background child and removing the run directory and profile", async () => {
+			const termBin = join(root, "term-bin");
+			const termTmp = join(root, "tmp-term");
+			mkdirSync(termBin);
+			mkdirSync(termTmp);
+			writeFileSync(
+				join(termBin, "codex"),
+				"#!/bin/sh\nsleep 3019 &\necho $! > term-sleeper.pid\nsleep 3018\n",
+			);
+			chmodSync(join(termBin, "codex"), 0o755);
+			const prompt = join(root, "term.md");
+			writeFileSync(prompt, "go\n");
+			const pidFile = join(linked, "term-sleeper.pid");
+			const wrapper = spawn(script, [linked, "m", prompt, join(root, "term.log")], {
+				stdio: "ignore",
+				env: { ...env(), TMPDIR: termTmp, PATH: `${termBin}:${env().PATH}` },
+			});
+			const exited = new Promise((resolve) => wrapper.on("exit", (code, signal) => resolve({ code, signal })));
+			try {
+				for (let i = 0; i < 300 && !(existsSync(pidFile) && readFileSync(pidFile, "utf8").trim()); i++)
+					await new Promise((resolve) => setTimeout(resolve, 100));
+				const pid = Number(readFileSync(pidFile, "utf8"));
+				expect(pid).toBeGreaterThan(1);
+				expect(readdirSync(termTmp).some((name) => name.startsWith("codex-run."))).toBe(true);
+				wrapper.kill("SIGTERM");
+				expect(await exited).toEqual({ code: 143, signal: null });
+				expect(() => process.kill(pid, 0)).toThrow();
+				expect(readdirSync(termTmp)).toEqual([]);
+			} finally {
+				if (wrapper.exitCode === null && wrapper.signalCode === null) wrapper.kill("SIGKILL");
+				if (existsSync(pidFile)) {
+					try {
+						process.kill(Number(readFileSync(pidFile, "utf8")), "SIGKILL");
+					} catch {}
+					rmSync(pidFile);
+				}
+			}
 		});
 
 		it("kills a backgrounded child when the wrapper returns, and returns codex's exit status", () => {
