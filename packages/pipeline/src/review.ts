@@ -69,7 +69,7 @@ import {
 } from "./lens-tools.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
 import { attachable, ReviewIndex, type ReviewIndexState, undecided } from "./review-index.ts";
-import { summariseExtension } from "./summarise.ts";
+import { summarizeExtension } from "./summarize.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
 
 // One lens as the lens task runs it, at one level: everything resolved, nothing left to look up.
@@ -288,7 +288,7 @@ export const lensExtension = defineExtension({
 export function createReviewRegistry(): Registry {
 	const registry = createRegistry();
 	registry.install(lensExtension);
-	registry.install(summariseExtension);
+	registry.install(summarizeExtension);
 	return registry;
 }
 

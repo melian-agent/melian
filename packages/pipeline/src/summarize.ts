@@ -87,9 +87,9 @@ const recordWalkthrough = defineTool({
 });
 
 type SummaryInput = { root: ConversationId; revision: string; prompt: string; model: ModelReference; paths?: string[] };
-type SummaryCheckpoint = { phase: "spawn" } | { phase: "summarise"; child: ConversationId };
+type SummaryCheckpoint = { phase: "spawn" } | { phase: "summarize"; child: ConversationId };
 const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
-	name: "melian.summarise",
+	name: "melian.summarize",
 	version: 1,
 	initial: () => ({ phase: "spawn" }),
 	phases: {
@@ -101,13 +101,13 @@ const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 					model: task.input.model,
 					instructions,
 					tools: [recordWalkthrough],
-					extensions: [summariseExtension],
+					extensions: [summarizeExtension],
 				});
-				return { status: "running", checkpoint: { phase: "summarise", child: child.id } };
+				return { status: "running", checkpoint: { phase: "summarize", child: child.id } };
 			}, context);
 		},
-		summarise: async (task, runtime, context) => {
-			const checkpoint = task.state.checkpoint as { phase: "summarise"; child: ConversationId };
+		summarize: async (task, runtime, context) => {
+			const checkpoint = task.state.checkpoint as { phase: "summarize"; child: ConversationId };
 			const child = (await runtime.conversation(checkpoint.child, context))!;
 			const settled = await (
 				await child.submit({ type: "input", content: task.input.prompt, requestId: "walkthrough" }, context)
@@ -136,8 +136,8 @@ const SummaryTask = defineTask<SummaryInput, SummaryCheckpoint, string>({
 	},
 });
 
-export const summariseExtension = defineExtension({
-	name: "melian.summarise",
+export const summarizeExtension = defineExtension({
+	name: "melian.summarize",
 	tasks: [SummaryTask],
 	tools: [recordWalkthrough],
 });
@@ -198,7 +198,7 @@ class WalkthroughPrompt {
 const maxWalkthroughAttempts = 2;
 
 /** Stores a pull-request walkthrough, retrying failures or an explicit rerun without publication credentials. */
-export async function summariseReview(options: {
+export async function summarizeReview(options: {
 	readonly harness: Harness;
 	readonly changeset: Changeset;
 	readonly config: MelianConfig;
@@ -272,9 +272,9 @@ export async function summariseReview(options: {
 		const blocked = (await harness.inspect(context)).tasks.find(
 			(each) => each.record.id === task && each.state.kind === "blocked",
 		);
-		if (blocked !== undefined) throw new Error("the harness has no melian.summarise extension");
+		if (blocked !== undefined) throw new Error("the harness has no melian.summarize extension");
 		const { outcome } = (await harness.waitForTask(task, context)).state;
-		if (outcome.status !== "completed") throw new Error("the summarise task failed");
+		if (outcome.status !== "completed") throw new Error("the summarize task failed");
 	} catch {
 		if (root === undefined) return;
 		const conversationId = root.id;

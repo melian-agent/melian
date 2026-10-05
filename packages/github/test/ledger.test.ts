@@ -7,7 +7,7 @@ import {
 	type Harness,
 	publishReview,
 	revisionKey,
-	summariseReview,
+	summarizeReview,
 } from "@melian-agent/pipeline";
 import { fauxAssistantMessage, fauxToolCall, scriptConversations, textOf } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -453,7 +453,7 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 			},
 		]);
 		const ref = fake.ref("scripted");
-		await summariseReview({
+		await summarizeReview({
 			harness,
 			changeset: first.changeset,
 			config: { ...defaultConfig, models: { light: { model: `${ref.provider}/${ref.modelId}` } } },

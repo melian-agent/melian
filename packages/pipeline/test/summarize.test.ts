@@ -10,7 +10,7 @@ import {
 	type Harness,
 	openHarness,
 	revisionKey,
-	summariseReview,
+	summarizeReview,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -62,8 +62,8 @@ afterEach(async () => {
 async function stored() {
 	return harness.snapshot(VerdictDocument, (await harness.root(context)).id, context);
 }
-async function summarise(overrides: Partial<Parameters<typeof summariseReview>[0]> = {}) {
-	await summariseReview({ harness, changeset, config, models: models.review, ...overrides });
+async function summarize(overrides: Partial<Parameters<typeof summarizeReview>[0]> = {}) {
+	await summarizeReview({ harness, changeset, config, models: models.review, ...overrides });
 	return stored();
 }
 function success(summary = "Changes a value.") {
@@ -75,28 +75,28 @@ function success(summary = "Changes a value.") {
 describe("walkthrough summaries", () => {
 	it("skips disabled walkthroughs and range reviews", async () => {
 		const auth = vi.spyOn(models.models, "checkAuth");
-		await summarise({
+		await summarize({
 			config: { ...config, publish: { walkthrough: { ...config.publish.walkthrough, enabled: false } } },
 		});
 		const root = await harness.root(context);
 		await root.commit(async (tx) => {
 			(await tx.doc(VerdictDocument, root.id)).provenance![revisionKey(changeset.revision)]!.kind = "range";
 		}, context);
-		await summarise();
+		await summarize();
 		expect(auth).not.toHaveBeenCalled();
 		expect((await stored())?.walkthroughs).toBeUndefined();
 		expect((await stored())?.walkthroughNotes).toBeUndefined();
 	});
 	it("distinguishes no route from no credentials and retries after credentials arrive", async () => {
 		const revision = revisionKey(changeset.revision);
-		expect((await summarise({ config: { ...config, models: {} } }))?.walkthroughNotes?.[revision]).toContain(
+		expect((await summarize({ config: { ...config, models: {} } }))?.walkthroughNotes?.[revision]).toContain(
 			"No light model is configured.",
 		);
 		const auth = vi.spyOn(models.models, "checkAuth").mockResolvedValue(undefined);
-		expect((await summarise())?.walkthroughNotes?.[revision]).toContain("No light model has credentials.");
+		expect((await summarize())?.walkthroughNotes?.[revision]).toContain("No light model has credentials.");
 		auth.mockRestore();
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
-		const doc = await summarise();
+		const doc = await summarize();
 		expect(doc?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
 		expect(doc?.walkthroughNotes?.[revision]).toBeUndefined();
 	});
@@ -114,10 +114,10 @@ describe("walkthrough summaries", () => {
 			}, context);
 		};
 		await withPlan({ status: "unrouted", models: [] });
-		expect((await summarise())?.walkthroughNotes?.[revision]).toContain("No light model is configured.");
+		expect((await summarize())?.walkthroughNotes?.[revision]).toContain("No light model is configured.");
 		await withPlan({ status: "routed", models: [{ model: `${ref.provider}/${ref.modelId}`, credential: "test" }] });
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
-		expect((await summarise({ config: { ...config, models: {} } }))?.walkthroughs?.[revision]?.summary).toBe(
+		expect((await summarize({ config: { ...config, models: {} } }))?.walkthroughs?.[revision]?.summary).toBe(
 			"Changes a value.",
 		);
 	});
@@ -128,7 +128,7 @@ describe("walkthrough summaries", () => {
 			fauxAssistantMessage("No tool used."),
 		]) {
 			scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [reply] }]);
-			const doc = await summarise();
+			const doc = await summarize();
 			expect(doc?.walkthroughs?.[revision]).toBeUndefined();
 			expect(doc?.walkthroughNotes?.[revision]).toBe(
 				"No walkthrough available. The summariser returned no summary.",
@@ -136,33 +136,33 @@ describe("walkthrough summaries", () => {
 			expect(JSON.stringify(doc?.walkthroughNotes)).not.toContain("private provider detail");
 		}
 		const captured = scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
-		await summarise();
-		await summarise();
+		await summarize();
+		await summarize();
 		expect(captured["You write Melian's walkthrough"]).toHaveLength(0);
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success("Rerun summary.")] }]);
-		expect((await summarise({ rerun: true }))?.walkthroughs?.[revision]?.summary).toBe("Rerun summary.");
+		expect((await summarize({ rerun: true }))?.walkthroughs?.[revision]?.summary).toBe("Rerun summary.");
 	});
 	it("asks a persistently failing summariser twice across three reviews, and again on a rerun", async () => {
 		const fail = fauxAssistantMessage("", { stopReason: "error", errorMessage: "down" });
 		const captured = scriptConversations(models, [
 			{ match: "You write Melian's walkthrough", replies: [fail, fail, fail, fail] },
 		]);
-		for (let review = 0; review < 3; review++) await summarise();
+		for (let review = 0; review < 3; review++) await summarize();
 		expect(captured["You write Melian's walkthrough"]).toHaveLength(2);
-		await summarise({ rerun: true });
+		await summarize({ rerun: true });
 		expect(captured["You write Melian's walkthrough"]).toHaveLength(3);
 	});
 	it("catches credential, prompt and missing-extension failures without failing review", async () => {
 		const revision = revisionKey(changeset.revision);
 		const auth = vi.spyOn(models.models, "checkAuth").mockRejectedValue(new Error("private credential error"));
-		expect((await summarise())?.walkthroughNotes?.[revision]).toBe(
+		expect((await summarize())?.walkthroughNotes?.[revision]).toBe(
 			"No walkthrough available. The summariser failed.",
 		);
 		auth.mockRestore();
 		const files = vi.spyOn(changeset.revision.files, Symbol.iterator).mockImplementationOnce(() => {
 			throw new Error("private prompt error");
 		});
-		expect((await summarise())?.walkthroughNotes?.[revision]).toBe(
+		expect((await summarize())?.walkthroughNotes?.[revision]).toBe(
 			"No walkthrough available. The summariser failed.",
 		);
 		files.mockRestore();
@@ -174,27 +174,27 @@ describe("walkthrough summaries", () => {
 				[revision]: { kind: "pull-request", policy: "config", manifest: [], lenses: [] },
 			};
 		}, context);
-		expect((await summarise())?.walkthroughNotes?.[revision]).toBe(
+		expect((await summarize())?.walkthroughNotes?.[revision]).toBe(
 			"No walkthrough available. The summariser failed.",
 		);
 	});
 	it("records a task failure as a fixed note and retries a new task", async () => {
 		const wait = vi.spyOn(harness, "waitForTask").mockRejectedValueOnce(new Error("task failed with private detail"));
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
-		expect((await summarise())?.walkthroughNotes?.[revisionKey(changeset.revision)]).toContain(
+		expect((await summarize())?.walkthroughNotes?.[revisionKey(changeset.revision)]).toContain(
 			"The summariser failed.",
 		);
 		wait.mockRestore();
 		await harness.waitForIdle(context);
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success("Recovered.")] }]);
-		expect((await summarise({ rerun: true }))?.walkthroughs?.[revisionKey(changeset.revision)]?.summary).toBe(
+		expect((await summarize({ rerun: true }))?.walkthroughs?.[revisionKey(changeset.revision)]?.summary).toBe(
 			"Recovered.",
 		);
 	});
 	it("records a failed task outcome without throwing", async () => {
 		await harness.close(context);
 		const failure = defineTask<unknown, { phase: "fail" }, string>({
-			name: "melian.summarise",
+			name: "melian.summarize",
 			version: 1,
 			initial: () => ({ phase: "fail" }),
 			phases: {
@@ -221,7 +221,7 @@ describe("walkthrough summaries", () => {
 				[revisionKey(changeset.revision)]: { kind: "pull-request", policy: "config", manifest: [], lenses: [] },
 			};
 		}, context);
-		const doc = await summarise();
+		const doc = await summarize();
 		expect(doc?.walkthroughNotes?.[revisionKey(changeset.revision)]).toBe(
 			"No walkthrough available. The summariser failed.",
 		);
@@ -262,7 +262,7 @@ describe("walkthrough summaries", () => {
 				],
 			},
 		]);
-		const doc = await summarise();
+		const doc = await summarize();
 		const walkthrough = doc?.walkthroughs?.[revisionKey(changeset.revision)];
 		expect(walkthrough).toBeDefined();
 		expect(walkthrough?.files.every(({ path }) => path === "src/a.ts")).toBe(true);

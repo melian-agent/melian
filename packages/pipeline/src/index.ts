@@ -84,4 +84,4 @@ export {
 
 export const packageName = "@melian-agent/pipeline";
 
-export { summariseReview } from "./summarise.ts";
+export { summarizeReview } from "./summarize.ts";
