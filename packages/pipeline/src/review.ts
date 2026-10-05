@@ -3,6 +3,7 @@ import {
 	type CheckRecord,
 	checksOfTier,
 	defaultScrutinyLevel,
+	describeLineage,
 	type Finding,
 	type FindingSource,
 	Lens,
@@ -53,6 +54,7 @@ import {
 	type Storage,
 	type TaskId,
 	type Tx,
+	UsageDoc,
 } from "./harness.ts";
 import {
 	budgetEnded,
@@ -67,6 +69,7 @@ import {
 } from "./lens-tools.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
 import { attachable, ReviewIndex, type ReviewIndexState, undecided } from "./review-index.ts";
+import { summarizeExtension } from "./summarize.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
 
 // One lens as the lens task runs it, at one level: everything resolved, nothing left to look up.
@@ -95,7 +98,12 @@ interface LensTaskInput {
 
 type LensOutcome =
 	// `model` is the model the lens finished on, after any failover; absent from an outcome an older Melian stored.
-	| { readonly status: "done"; readonly model?: string; readonly budgetEnded?: StoredBudgetEnd }
+	| {
+			readonly status: "done";
+			readonly model?: string;
+			readonly budgetEnded?: StoredBudgetEnd;
+			readonly usage?: { models: string[]; tokens: number; cost: number };
+	  }
 	| { readonly status: "unanswered"; readonly reason: string }
 	| { readonly status: "exhausted"; readonly tried: string[]; readonly reason: string };
 
@@ -222,8 +230,17 @@ const LensTask = defineTask<LensTaskInput, LensCheckpoint, LensResult>({
 						const settled = await (await child.submit(request, context)).wait(context);
 						if (settled.status === "done") {
 							const ended = await budgetEnded(runtime, id, context);
+							const spend = (await runtime.snapshot(UsageDoc, id, context))?.models ?? {};
+							const usage = {
+								models: Object.keys(spend),
+								tokens: Object.values(spend).reduce((sum, item) => sum + item.totalTokens, 0),
+								cost: Object.values(spend).reduce((sum, item) => sum + item.cost.total, 0),
+							};
 							const model = modelName(lens.route[attempt]!);
-							return [key, { status: "done", model, ...(ended === undefined ? {} : { budgetEnded: ended }) }];
+							return [
+								key,
+								{ status: "done", model, usage, ...(ended === undefined ? {} : { budgetEnded: ended }) },
+							];
 						}
 						const reason = typeof settled.detail === "string" ? settled.detail : (settled.reason ?? "unanswered");
 						const failover =
@@ -271,6 +288,7 @@ export const lensExtension = defineExtension({
 export function createReviewRegistry(): Registry {
 	const registry = createRegistry();
 	registry.install(lensExtension);
+	registry.install(summarizeExtension);
 	return registry;
 }
 
@@ -630,7 +648,8 @@ async function startAdjudication(
 	context: Context,
 ): Promise<TaskId<AdjudicationResult> | undefined> {
 	const root = await harness.root(context);
-	const key = JSON.stringify(input);
+	// The details ride with the verdict but are not part of what it was decided from.
+	const key = JSON.stringify({ ...input, details: undefined });
 	const selection = selectionOf(lenses);
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
@@ -854,6 +873,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				);
 	// Only the lenses this review ran count: one that configuration has since disabled or retiered leaves nothing behind.
 	const { manifest: accounted, producers } = account(manifest, lenses, lensResult, notes, options);
+	const checks = request.plan?.mark(accounted.records(), ranOn(lenses, lensResult)) ?? accounted.records();
+	const lensRan = (key: string) => {
+		const outcome = lensResult?.[key];
+		return outcome?.status === "done" ? outcome : undefined;
+	};
+	const lineageOf = (name: string) => checks.find((check) => check.name === `lens.${name}`)?.lineage;
 	const input = adjudicationInput({
 		root,
 		repoRoot,
@@ -862,7 +887,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		policy: options.policy,
 		config,
 		manifest,
-		checks: request.plan?.mark(accounted.records(), ranOn(lenses, lensResult)) ?? accounted.records(),
+		checks,
 		findingsVersion: await findingsVersion(harness, root, reviewed, context),
 		allowSkip: accounted.skippable(),
 		producers,
@@ -870,6 +895,26 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		lenses: lenses.map((lens) => lens.key),
 		plan: request.plan,
 	});
+	// Recorded with the verdict by the adjudication task, so a run that a later review replaced leaves none behind.
+	input.details = {
+		policy: input.provenance.policy,
+		manifest: [...manifest],
+		lenses: lenses.map(({ key, name, version, level, route, budget }) => ({
+			name,
+			version,
+			level,
+			models: route.map(modelName),
+			...(lensRan(key)?.model === undefined ? {} : { ran: lensRan(key)?.model }),
+			...(lineageOf(name) === undefined ? {} : { lineage: describeLineage(lineageOf(name)!) }),
+			...(lensRan(key)?.usage === undefined ? {} : { usage: structuredClone(lensRan(key)?.usage) }),
+			budget: {
+				findings: budget.findings,
+				...(budget.tokens === undefined ? {} : { tokens: budget.tokens }),
+				...(budget.tools === undefined ? {} : { tools: budget.tools }),
+			},
+		})),
+		standards: standards.map((section) => section.path),
+	};
 	const adjudication = await startAdjudication(harness, input, lenses, context);
 	if (adjudication === undefined) {
 		throw new ReviewError(
