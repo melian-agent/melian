@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
 	Adjudication,
+	Comparison,
 	ComparisonError,
 	ComparisonSet,
 	defaultConfig,
@@ -24,7 +25,7 @@ import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { ComparisonDocument } from "../src/compare.ts";
-import { defineTask } from "../src/harness.ts";
+import { defineDoc, defineTask } from "../src/harness.ts";
 
 const revision = { base: "a".repeat(40), head: "b".repeat(40) };
 
@@ -373,6 +374,74 @@ describe("comparison review fixes", () => {
 		expect(commit).not.toHaveBeenCalled();
 		expect(await storage.task(pending, context)).toEqual(before);
 		commit.mockRestore();
+	});
+
+	describe("documents of other versions", () => {
+		type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+		type Tx = Parameters<Parameters<Awaited<ReturnType<CompareHarness["harness"]["root"]>>["commit"]>[0]>[0];
+		const legacy = (kind: string, version: number) =>
+			defineDoc<{ [key: string]: Json }>({
+				kind,
+				version,
+				scope: "conversation",
+				history: "rewindable",
+				fork: "asOf",
+				initial: () => ({}),
+			});
+		const oldEvidence = (value: unknown): unknown =>
+			Array.isArray(value)
+				? value.map(oldEvidence)
+				: value !== null && typeof value === "object"
+					? Object.fromEntries(
+							Object.entries(value).map(([key, each]) => [
+								key,
+								key === "evidence" && Array.isArray(each)
+									? (({ role: _, revision: __, ...first }) => first)(each[0] as Record<string, unknown>)
+									: oldEvidence(each),
+							]),
+						)
+					: value;
+
+		async function readWith(write: (tx: Tx, id: string) => Promise<void>) {
+			const storage = createMemoryStorage();
+			const harness = await CompareHarness.open(storage, createFakeModels().review);
+			open.push(harness);
+			const root = await harness.harness.root(context);
+			await root.commit((tx) => write(tx, root.id), context);
+			return await new ComparisonReader(storage).read("change");
+		}
+		const storeComparison = async (tx: Tx, id: string) => {
+			const document = await tx.doc(ComparisonDocument, id);
+			document.comparisons = { [revisionKey(revision)]: Comparison.of(revision).toJSON() };
+		};
+
+		it("migrates a version 2 verdict document through the reader", async () => {
+			const verdict = new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate();
+			const entries = await readWith(async (tx, id) => {
+				await storeComparison(tx, id);
+				const old = await tx.doc(legacy(VerdictDocument.definition.kind, 2), id);
+				old.verdicts = JSON.parse(JSON.stringify(oldEvidence({ [revisionKey(revision)]: verdict.toJSON() })));
+			});
+			expect(entries).toHaveLength(1);
+			expect(entries[0]?.verdict?.all()).toHaveLength(2);
+		});
+
+		it("refuses a comparison document newer than this Melian", async () => {
+			await expect(
+				readWith(async (tx, id) => {
+					(await tx.doc(legacy(ComparisonDocument.definition.kind, 99), id)).comparisons = {};
+				}),
+			).rejects.toMatchObject({ message: "comparison document has newer version 99" });
+		});
+
+		it("refuses a verdict document newer than this Melian", async () => {
+			await expect(
+				readWith(async (tx, id) => {
+					await storeComparison(tx, id);
+					(await tx.doc(legacy(VerdictDocument.definition.kind, 99), id)).verdicts = {};
+				}),
+			).rejects.toMatchObject({ message: "verdict document has newer version 99" });
+		});
 	});
 
 	it("reads an empty storage without creating a root or a comparison document", async () => {
