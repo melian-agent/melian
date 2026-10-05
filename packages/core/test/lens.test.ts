@@ -119,15 +119,16 @@ describe("built-in lenses", () => {
 	});
 
 	// Melian's own repository extends two built-ins with a hand-off to its durability lens, which changes their versions.
-	it("give Melian's own overrides their versions, under its root melian.yaml's paths too", async () => {
+	it("give Melian's own durability lens and overrides their versions, under its root melian.yaml's paths too", async () => {
 		const melian = fileURLToPath(new URL("../../../", import.meta.url));
 		const own = [
 			"melian.yaml",
-			...["correctness", "removed-behaviour"].map((name) => `.melian/lenses/${name}/LENS.md`),
+			...["durability", "correctness", "removed-behaviour"].map((name) => `.melian/lenses/${name}/LENS.md`),
 		];
 		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toMatchObject({
+			durability: "2d5b8a8ef26d",
 			correctness: "4b100d521191",
 			"removed-behaviour": "d9d8851b1ced",
 		});
