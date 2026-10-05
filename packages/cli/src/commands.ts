@@ -31,7 +31,7 @@ import {
 	runChecks,
 	unlockCredentials,
 } from "@melian-agent/pipeline";
-import { fallbackDecider, idleModels, isScripted, reviewModels, scriptVariable } from "./models.ts";
+import { fallbackDecider, idleModels, isScripted, reviewModels, scriptVariable, triageProviders } from "./models.ts";
 import { CliError, git, openStorage, storagePath } from "./repository.ts";
 import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
 
@@ -122,9 +122,11 @@ export async function review(
 	});
 	for (const line of plan.summary().split("\n").filter(Boolean)) io.stderr(`melian: ${line}\n`);
 	// A command a secrets file names runs now, so one that fails stops the review before it starts, named.
-	await unlockCredentials(models, plan.providers());
+	// The providers triage may ask unlock with the lenses', unless a script stands in for every model.
+	const scripted = isScripted(io.env);
+	await unlockCredentials(models, [...plan.providers(), ...(scripted ? [] : triageProviders(plan))]);
 	// Scripted mode triages nothing, so every lens runs at the level its script was written for.
-	const triage = isScripted(io.env) ? undefined : await fallbackDecider({ ...loaded, models: plan.routes() }, models);
+	const triage = scripted ? undefined : await fallbackDecider({ ...loaded, models: plan.routes() }, models);
 	const decider = triage !== undefined && "decider" in triage ? triage.decider : undefined;
 	const triageSkipped = triage !== undefined && "skipped" in triage ? triage.skipped : undefined;
 	const path = await storagePath(repoRoot, changeset.id, io.env, isScripted(io.env));

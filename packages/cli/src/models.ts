@@ -60,6 +60,15 @@ export async function fallbackDecider(
 	return { skipped: `no lens tier reaches a model for the LLM fallback: ${passed.join("; ")}` };
 }
 
+// The providers triage's LLM fallback may call: each routed lens tier's models, since the fallback takes the cheapest
+// with credentials, so a command credential it needs runs before the review starts, with the others.
+export function triageProviders(plan: ReviewPlan): string[] {
+	return tiers.flatMap((tier) => {
+		const { status, models } = plan.tier(tier);
+		return status === "routed" ? models.map(({ model }) => model.slice(0, model.indexOf("/"))) : [];
+	});
+}
+
 async function readScript(path: string): Promise<LensScript> {
 	const text = await readFile(path, "utf8").catch(() => {
 		throw new CliError(`${scriptVariable} names ${path}, which cannot be read`);

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { defaultConfig, type LoadedConfig, type MelianConfig, userFiles } from "@melian-agent/core";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fallbackDecider, reviewModels } from "../src/models.ts";
+import { fallbackDecider, reviewModels, triageProviders } from "../src/models.ts";
 
 const models: MelianConfig["models"] = {
 	light: { model: "anthropic/claude-sonnet-5-5" },
@@ -70,6 +70,29 @@ describe("reviewModels triage", () => {
 		const triage = await fallbackDecider({ ...defaultConfig, models: plan.routes() }, collection);
 
 		expect(triage).toMatchObject({ model: "anthropic/claude-sonnet-4-5" });
+	});
+});
+
+describe("triageProviders", () => {
+	it("names the providers of every routed lens tier, which the fallback may ask", async () => {
+		const routedTiers = loadedOf({
+			light: { model: "openai/gpt-5.5" },
+			heavy: { model: "anthropic/claude-opus-5-5" },
+		});
+		const { plan } = await reviewModels({}, routedTiers, [], {
+			...setup,
+			credentials: [
+				{ name: "o", provider: "openai", type: "api_key", value: { kind: "literal", key: "sk-o" }, file: "f" },
+				{
+					name: "a",
+					provider: "anthropic",
+					type: "api_key",
+					value: { kind: "literal", key: "sk-a" },
+					file: "f",
+				},
+			],
+		});
+		expect(triageProviders(plan)).toEqual(["openai", "anthropic"]);
 	});
 });
 
