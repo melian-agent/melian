@@ -1134,6 +1134,44 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		expect(state.statuses.at(-1)).toMatchObject({ state: "error", target_url: url });
 	});
 
+	it("numbers ledger rounds by posted rounds and keeps one for a repeat publish after an abandoned round", async () => {
+		stackOnParent(repo);
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test-token",
+			fetch: fakeGitHub(state),
+		});
+		harness = await openPublishHarness(createMemoryStorage(), fake, provider);
+		const changesets = [];
+		for (const range of ["main...feature", "parent...feature"]) {
+			const review = await reviewScenario(repo, harness, fake, lensScript(unsafeManager), false, { range });
+			await review.review;
+			changesets.push(review.changeset);
+		}
+		const publish = async (changeset: (typeof changesets)[number]) => {
+			moveTo(state, changeset);
+			return publishReview({
+				harness: harness!,
+				provider,
+				changeset,
+				pullRequest: await provider.pullRequest(7),
+				base: changeset.revision.base,
+			});
+		};
+		await publish(changesets[0]!);
+		state.failReviews = true;
+		for (let i = 0; i < 3; i++) await expect(publish(changesets[1]!)).rejects.toThrow();
+		state.failReviews = false;
+		await publish(changesets[0]!);
+		const rounds = (await harness.snapshot(PublishedDocument, (await harness.root(context)).id, context))!
+			.ledgerRounds!;
+		expect(rounds.map(({ round }) => round)).toEqual([1]);
+		expect(rounds[0]).toHaveProperty("verdict");
+	});
+
 	it("adds one round for a base-only retarget and prunes older stored detail", async () => {
 		stackOnParent(repo);
 		const fake = scenarioModels();

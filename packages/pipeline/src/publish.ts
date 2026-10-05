@@ -487,7 +487,7 @@ function publishTask(provider: ReviewProvider) {
 							planned.ledger = {
 								base,
 								head,
-								round: planned.round,
+								round: (state.revisions[head]?.reviews.length ?? 0) + 1,
 								verdict: structuredClone(planned.verdict),
 								...(details === undefined ? {} : { details: structuredClone(details) }),
 								...(walkthrough === undefined ? {} : { walkthrough: structuredClone(walkthrough) }),
@@ -623,8 +623,14 @@ function publishTask(provider: ReviewProvider) {
 					const rounds = structuredClone(publication.ledgerRounds ?? []);
 					const storedVerdict = await runtime.snapshot(VerdictDocument, root, context);
 					const latest = rounds.at(-1);
-					if (latest === undefined || latest.head !== head || latest.round !== (record.rounds ?? 1)) {
-						rounds.push({ base, head, round: record.rounds ?? 1, verdict: verdict.toJSON(), resolved: [] });
+					if (latest === undefined || latest.head !== head) {
+						rounds.push({
+							base,
+							head,
+							round: record.reviews.length || 1,
+							verdict: verdict.toJSON(),
+							resolved: [],
+						});
 						rounds.splice(0, rounds.length - maxLedgerRounds);
 					}
 					const currentRound = rounds.at(-1)! as LedgerRound;
