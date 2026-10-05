@@ -241,3 +241,36 @@ describe("FileImporter", () => {
 		});
 	});
 });
+
+describe("comparison judgements", () => {
+	it("records author, time and replacement history without changing the verdict", async () => {
+		const harness = await memoryHarness();
+		await storeReview(harness);
+		const root = await harness.harness.root(context);
+		const before = await harness.harness.snapshot(VerdictDocument, root.id, context);
+		await harness.importFindings(revision, [], "2026-10-05T00:00:00Z");
+		const first = { verdict: "valid", by: "M", at: "2026-10-05T01:00:00Z" } as const;
+		await harness.adjudicate(revision, findings[0]!.id, first);
+		const second = { verdict: "noise", by: "N", at: "2026-10-05T02:00:00Z", golden: "correctness" } as const;
+		await harness.adjudicate(revision, findings[0]!.id, second);
+		expect((await harness.read(revision))?.adjudication(findings[0]!.id)).toEqual({
+			current: second,
+			history: [first],
+		});
+		expect(await harness.harness.snapshot(VerdictDocument, root.id, context)).toEqual(before);
+	});
+});
+
+describe("all stored comparisons", () => {
+	it("returns each revision with its review and first comparison time, without writing on read", async () => {
+		const harness = await memoryHarness();
+		await storeReview(harness);
+		await harness.importFindings({ ...revision, target: "main...feature" }, [], "2026-10-05T00:00:00Z");
+		await harness.importFindings(revision, [], "2026-10-06T00:00:00Z");
+		const entries = await harness.all("changeset");
+		expect(entries).toHaveLength(1);
+		expect(entries[0]?.comparison.recordedAt()).toBe("2026-10-05T00:00:00Z");
+		expect(entries[0]?.comparison.label()).toBe("main...feature");
+		expect(entries[0]?.verdict?.all()).toHaveLength(2);
+	});
+});

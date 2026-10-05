@@ -1,7 +1,9 @@
 import {
 	Comparison,
+	type ComparisonEntry,
 	type ExternalImport,
 	type StoredComparison,
+	type StoredComparisonAdjudication,
 	type StoredVerdict,
 	Verdict,
 } from "@melian-agent/core";
@@ -50,7 +52,7 @@ export interface ImportedSource {
 	readonly imported: ExternalImport;
 }
 
-type Revision = { readonly base: string; readonly head: string };
+type Revision = { readonly base: string; readonly head: string; readonly target?: string };
 
 /**
  * A durable harness over one changeset's storage that reads and records its comparisons with external reviewers. It
@@ -100,6 +102,21 @@ export class CompareHarness {
 			: Comparison.from(comparisons[key]!);
 	}
 
+	/** Reads every comparison beside its stored verdict, refreshing matches without writing. */
+	async all(changeset: string, context: Context = backgroundContext): Promise<ComparisonEntry[]> {
+		const root = await this.harness.root(context);
+		const comparisons = (await this.harness.snapshot(ComparisonDocument, root.id, context))?.comparisons ?? {};
+		const verdicts = (await this.harness.snapshot(VerdictDocument, root.id, context))?.verdicts ?? {};
+		return Object.entries(comparisons).map(([key, stored]) => {
+			const comparison = Comparison.from(stored);
+			const verdict = Object.hasOwn(verdicts, key)
+				? Verdict.from(JSON.parse(JSON.stringify(verdicts[key])) as StoredVerdict)
+				: undefined;
+			if (verdict !== undefined) comparison.compare(verdict);
+			return { changeset, comparison, ...(verdict === undefined ? {} : { verdict }) };
+		});
+	}
+
 	/**
 	 * Adds what each source read to the comparison of `revision`, as of `at`, and matches it against Melian's stored
 	 * review of the revision, in one commit. Each source's import replaces what it last imported, so the import is replay
@@ -115,6 +132,7 @@ export class CompareHarness {
 		return this.update(
 			revision,
 			(comparison) => {
+				comparison.record(at, revision.target);
 				for (const { source, imported } of sources) comparison.import(source, imported, at);
 			},
 			context,
@@ -148,6 +166,23 @@ export class CompareHarness {
 		return this.update(
 			revision,
 			(comparison) => comparison.unmatch(pair.external, pair.melian, hand.by, hand.at),
+			context,
+		);
+	}
+
+	/** Records a local comparison judgement in one commit; never changes the verdict or lifecycle. */
+	adjudicate(
+		revision: Revision,
+		id: string,
+		judgement: StoredComparisonAdjudication,
+		context: Context = backgroundContext,
+	): Promise<Comparison> {
+		return this.update(
+			revision,
+			(comparison) => {
+				comparison.adjudicate(id, judgement);
+				comparison.record(judgement.at, revision.target);
+			},
 			context,
 		);
 	}
