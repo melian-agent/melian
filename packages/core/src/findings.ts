@@ -1003,6 +1003,11 @@ export class Finding {
 		};
 	}
 
+	/** The IDs of the reports the finding holds: its own, then each it lists in `alsoReportedAs`. */
+	reportIds(): string[] {
+		return [this.properties.id, ...(this.properties.alsoReportedAs ?? []).map((other) => other.id)];
+	}
+
 	/** Negative when the finding comes first in reading order: by path, then severity, then line, then ID. */
 	compareReading(other: Finding): number {
 		const order = (left: string, right: string) => (left < right ? -1 : left > right ? 1 : 0);

@@ -1,5 +1,6 @@
 import {
 	Adjudication,
+	type AlsoReportedAs,
 	defaultConfig,
 	Finding,
 	type FindingInput,
@@ -423,6 +424,37 @@ function reportOf(finding: Finding) {
 	const { id, source, severity } = finding.properties;
 	return { id, ruleId: finding.ruleId, check: source.check, severity };
 }
+
+describe("Adjudication.defects", () => {
+	const listing = (each: Finding, alsoReportedAs: AlsoReportedAs[]) =>
+		Finding.from({ ...each.toJSON(), properties: { ...each.properties, alsoReportedAs } });
+
+	it("gives each defect the members verdict.defect reads back", () => {
+		const lens = finding({ severity: "P1" });
+		const eslint = finding({ rule: "detect-eval", severity: "P2", source: { check: "static.eslint" } });
+		const elsewhere = finding({ file: "src/other.ts", status: "dismissed" });
+		// As a verdict recorded before Melian marked a dismissed report it never absorbed.
+		const lone = listing(finding({ file: "src/lone.ts" }), [reportOf(elsewhere)]);
+		const gone = listing(finding({ file: "src/gone.ts", status: "dismissed" }), [
+			{ ...reportOf(elsewhere), dismissed: true },
+		]);
+		const adjudication = new Adjudication({
+			findings: [lens, eslint, lone, gone, elsewhere],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		});
+		const verdict = adjudication.adjudicate();
+		const defects = adjudication.defects();
+		expect(defects.map((defect) => defect.speaker.properties.id)).toEqual(
+			[lens, lone, gone, elsewhere].map((each) => each.properties.id),
+		);
+		for (const defect of defects) {
+			expect(defect.members).toEqual(verdict.defect(defect.speaker.properties.id)!.members);
+		}
+		expect(defects[0]!.members).toEqual([reportOf(eslint)]);
+	});
+});
 
 describe("Adjudication.adjudicate", () => {
 	const ran = (name: string) => ({ name, status: "ran" }) as const;

@@ -47,7 +47,7 @@ function distinct(aliases: Aliases, left: string, right: string): boolean {
 
 /**
  * One defect, as a verdict holds it: the finding that speaks for it, and the reports adjudication merged into that
- * finding, which a dismissal of the defect dismisses with it. A dismissed report of the defect that the finding never
+ * finding, which a dismissal of the defect dismisses with it. A dismissed report of the defect that a live finding never
  * absorbed is listed in its `alsoReportedAs` with `dismissed: true`, and is no member.
  */
 export class Defect {
@@ -60,12 +60,32 @@ export class Defect {
 	}
 
 	/**
+	 * The defect `speaker` speaks for. A dismissed speaker's members are every report it lists in `alsoReportedAs`. A
+	 * live one's leave out each report marked `dismissed` and each that `dismissed` names: the reports the review's
+	 * dismissed findings hold, which a verdict recorded before Melian marked them lists unmarked.
+	 */
+	static of(speaker: Finding, dismissed: ReadonlySet<string>): Defect {
+		const { status, alsoReportedAs = [] } = speaker.properties;
+		if (status === "dismissed") return new Defect(speaker, alsoReportedAs);
+		return new Defect(
+			speaker,
+			alsoReportedAs.filter((other) => other.dismissed !== true && !dismissed.has(other.id)),
+		);
+	}
+
+	/**
 	 * Merges `findings`, the reports of one defect, under `keeper`, the one among them that speaks for it. The speaker
 	 * takes the highest severity any of them reported and their merged claims ({@link Finding.mergeClaims}), so a merge
 	 * never lowers what blocks and drops no claim. It lists each other report's ID, rule, check, and severity in
 	 * `properties.alsoReportedAs`, then each report in `context`: the dismissed reports of the defect it never absorbed.
+	 * Its members are as {@link Defect.of} reads them, given the IDs of the review's `dismissed` reports.
 	 */
-	static merge(keeper: Finding, findings: readonly Finding[], context: readonly AlsoReportedAs[]): Defect {
+	static merge(
+		keeper: Finding,
+		findings: readonly Finding[],
+		context: readonly AlsoReportedAs[],
+		dismissed: ReadonlySet<string>,
+	): Defect {
 		const members = [
 			...(keeper.properties.alsoReportedAs ?? []),
 			...findings
@@ -80,10 +100,7 @@ export class Defect {
 			level: levelForSeverity(severity),
 			properties: { ...properties, ...keeper.mergeClaims(findings), severity, alsoReportedAs },
 		});
-		return new Defect(
-			speaker,
-			members.filter((member) => member.dismissed !== true),
-		);
+		return Defect.of(speaker, dismissed);
 	}
 
 	/**
@@ -316,20 +333,12 @@ export class Verdict {
 	 * `dismissed` still lists each among its own dismissed findings. `undefined` when no finding has the ID.
 	 */
 	defect(id: string): Defect | undefined {
-		const dismissed = new Set(
-			this.dismissed.flatMap((each) => [
-				each.id,
-				...(each.properties.alsoReportedAs ?? []).map((other) => other.id),
-			]),
+		const dismissed = new Set(this.dismissed.flatMap((each) => each.reportIds()));
+		const defects = this.all().map((each) => Defect.of(each, dismissed));
+		return (
+			defects.find((each) => each.speaker.id === id) ??
+			defects.find((each) => each.members.some((other) => other.id === id))
 		);
-		const membersOf = ({ properties }: Finding) =>
-			(properties.alsoReportedAs ?? []).filter(
-				(other) => properties.status === "dismissed" || (other.dismissed !== true && !dismissed.has(other.id)),
-			);
-		const all = this.all();
-		const finding =
-			all.find((each) => each.id === id) ?? all.find((each) => membersOf(each).some((other) => other.id === id));
-		return finding === undefined ? undefined : new Defect(finding, membersOf(finding));
 	}
 
 	/**
@@ -534,6 +543,7 @@ export class Adjudication {
 			else into.push(finding);
 		}
 		const dismissed = this.findings.filter((finding) => finding.properties.status === "dismissed");
+		const elsewhere = new Set(dismissed.flatMap((finding) => finding.reportIds()));
 		const defects = new Map<Finding, Defect>();
 		for (const group of groups) {
 			// A live defect names the dismissed reports of it, for context, and is never absorbed by them.
@@ -545,12 +555,11 @@ export class Adjudication {
 							.map((other) => ({ ...other.report(), dismissed: true as const }));
 			if (group.length === 1 && context.length === 0) {
 				const [alone] = group as [Finding];
-				const members = (alone.properties.alsoReportedAs ?? []).filter((member) => member.dismissed !== true);
-				defects.set(alone, new Defect(alone, members));
+				defects.set(alone, Defect.of(alone, elsewhere));
 				continue;
 			}
 			const keeper = this.#keeper(group);
-			defects.set(keeper, Defect.merge(keeper, group, context));
+			defects.set(keeper, Defect.merge(keeper, group, context, elsewhere));
 		}
 		return this.findings.flatMap((finding) => {
 			const defect = defects.get(finding);
