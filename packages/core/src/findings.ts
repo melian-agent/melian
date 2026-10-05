@@ -1026,7 +1026,8 @@ export class Finding {
 	 */
 	render(rendering: Rendering = new Rendering()): string {
 		const { ids } = rendering;
-		const { severity, cause, evidence, failureScenario, status, explanation, resolution, id } = this.properties;
+		const { severity, cause, evidence, failureScenario, status, explanation, resolution, id, verification, source } =
+			this.properties;
 		// The other reports of its defect: those adjudication merged into it, which a dismissal of it dismisses too, and
 		// the dismissed ones it lists beside it.
 		const reports = (this.properties.alsoReportedAs ?? []).map((other) => {
@@ -1039,8 +1040,16 @@ export class Finding {
 				? `line ${region.startLine}`
 				: `lines ${region.startLine}-${region.endLine}`;
 		return [
-			`  ${rendering.paint(severityColor[severity], severity)}  ${lines}  ${visibleText(this.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"})${ids ? `  ${visibleText(id)}` : ""}`,
+			`  ${rendering.paint(severityColor[severity], severity)}  ${lines}  ${visibleText(this.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"}${verification === undefined ? (source.check.startsWith("lens.") ? ", unverified" : "") : `, ${verification.verdict}`})${ids ? `  ${visibleText(id)}` : ""}`,
 			...reports,
+			...(verification === undefined
+				? []
+				: [
+						`    Verified: ${visibleText(verification.model)}: ${prose(verification.reason, "      ")}`,
+						...(verification.correction === undefined
+							? []
+							: [`    Correction: ${prose(verification.correction, "      ")}`]),
+					]),
 			...this.#dismissals(),
 			`  ${prose(this.message.text, messageContinuation)}`,
 			`    What: ${prose(explanation.what, "      ")}`,

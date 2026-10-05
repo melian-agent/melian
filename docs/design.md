@@ -125,7 +125,7 @@ Pi Durable is pinned to an exact version and imported by one internal module, be
 
 ## Findings
 
-Built in milestone 1, except the failure scenario and evidence for every finding and `melian dismiss`, built in milestone 2 (review of record); verification and editing a resolved finding's comment, planned for milestone 2; and dismissal from a pull-request thread, planned for milestone 4 (comment commands).
+Built in milestone 1, except the failure scenario and evidence, verification and `melian dismiss`, built in milestone 2 (review of record); editing a resolved finding's comment, planned for milestone 2; and dismissal from a pull-request thread, planned for milestone 4 (comment commands).
 
 ### Schema
 
@@ -249,7 +249,7 @@ Each is written adversarially: it looks for the strongest reasons the change sho
 
 ## Verification
 
-The LLM executor, schemas, routes and durable reports are built in milestone 2. Adjudication counts these judgements; hosts are in progress. The decision-model executor is planned for milestone 4.
+The LLM executor, schemas, routes and durable reports are built in milestone 2. Adjudication counts these judgements; terminal and GitHub renderers show them. The decision-model executor is planned for milestone 4.
 
 Problem: a lens reports what it half-believes, and Melian counts every report. Example: a lens reports a null dereference on a value that a guard two lines above already checks; the finding blocks the merge, and the author spends a round proving the lens wrong. Claude Code's review skill, in its variants that use subagents, and a private repository's review skill both attack each candidate before reporting it, and their precision rests on that pass, as [the comparison of review tools](research/2026-10-04-review-tools-compared.md) sets out. The variant that ran as Melian's shadow reviewer was not one of those: it ran eight angles inline, deduplicated, and verified nothing. The LLM verifier now attacks each claim; its `confidence` field stays reserved for calibrated decision models.
 

@@ -419,3 +419,26 @@ describe("markers", () => {
 		expect(rendered).toContain("\\\\\\*escaped\\\\\\*");
 	});
 });
+
+describe("verification comments", () => {
+	it("shows the judgement and escapes its model, reason and correction", () => {
+		const finding = Finding.create({
+			...input,
+			verification: {
+				verdict: "plausible",
+				reason: "[run](https://evil.example) @octocat <!-- forged -->",
+				correction: "#123 **change**",
+				executor: "llm",
+				model: "fake/judge`model",
+				version: "v1",
+			},
+		});
+		const rendered = ReviewComment.from(finding).render({ revision, base, links, secret });
+		expect(rendered).toContain("Verification: **plausible**");
+		expect(rendered).toContain(
+			`**Verified:** \`\`fake/judge\`model\`\`: ${renderProse(finding.properties.verification!.reason)}`,
+		);
+		expect(rendered).toContain(`**Correction:** ${renderProse(finding.properties.verification!.correction!)}`);
+		expect(markersIn(rendered)).toHaveLength(1);
+	});
+});

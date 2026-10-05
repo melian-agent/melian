@@ -403,6 +403,28 @@ export class Verdict {
 		return [...Object.values(this.findings).flat(), ...this.dismissed, ...(this.refuted ?? [])];
 	}
 
+	/** Counts each sighting's judgement once, including refuted and dismissed findings. */
+	verificationCounts(): Record<"confirmed" | "plausible" | "refuted" | "unverified", number> {
+		const counts = { confirmed: 0, plausible: 0, refuted: 0, unverified: 0 };
+		const seen = new Set<string>();
+		for (const finding of this.all()) {
+			for (const claim of VerificationState.from(finding).claims) {
+				const key = JSON.stringify([claim.id, claim.source.check, claim.source.version]);
+				if (seen.has(key)) continue;
+				seen.add(key);
+				counts[claim.verification?.verdict ?? "unverified"]++;
+			}
+		}
+		return counts;
+	}
+
+	/** The verification outcomes the CLI and ledger can show. */
+	verificationSummary(): string {
+		return Object.entries(this.verificationCounts())
+			.map(([verdict, count]) => `${count} ${verdict}`)
+			.join(", ");
+	}
+
 	/**
 	 * The defect a finding's ID names: the finding with that ID, else the one it was merged into, with the reports merged
 	 * into that finding. A live finding's `alsoReportedAs` also lists the dismissed reports of its defect, which it never
@@ -569,6 +591,8 @@ export class Verdict {
 			});
 			parts.push([`${plural(this.notRun.length, "check")} did not run:`, ...checks].join("\n"));
 		}
+		const verifier = (this.ran ?? []).find((check) => check.name === "verifier");
+		if (verifier !== undefined) parts.push(`verifier  ran: ${this.verificationSummary()}`);
 		const lenses = (this.ran ?? []).filter((check) => check.level !== undefined);
 		if (lenses.length > 0) {
 			const checks = lenses.map(
@@ -588,7 +612,8 @@ export class Verdict {
 			resolution,
 			this.findings[resolution],
 		]);
-		if (rendering.all) groups.push(["silent", this.findings.silent], ["dismissed", this.dismissed]);
+		if (rendering.all)
+			groups.push(["silent", this.findings.silent], ["dismissed", this.dismissed], ["refuted", this.refuted ?? []]);
 		for (const [name, findings] of groups) {
 			if (findings.length === 0) continue;
 			parts.push(rendering.paint("1", `${capitalised(name)}: ${plural(findings.length, "finding")}`));
@@ -597,6 +622,7 @@ export class Verdict {
 		const hidden = [
 			...(this.findings.silent.length > 0 ? [`${plural(this.findings.silent.length, "silent finding")}`] : []),
 			...(this.dismissed.length > 0 ? [`${plural(this.dismissed.length, "dismissed finding")}`] : []),
+			...((this.refuted?.length ?? 0) > 0 ? [plural(this.refuted!.length, "refuted finding")] : []),
 		];
 		if (hidden.length > 0 && !rendering.all) parts.push(`${capitalised(hidden.join(" and "))} not shown.`);
 		const shown = this.attention();
