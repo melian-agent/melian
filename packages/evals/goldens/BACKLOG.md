@@ -30,6 +30,7 @@ Each entry names the record's finding number and what it found. A finding that r
 
 - [Pull request #10](https://github.com/melian-agent/melian/pull/10) ([record](../comparisons/2026-10-03-pr-10.md)): 6, `AGENTS.md` promises guidance files that do not exist; 8, the plan leaves a finished track unticked.
 - [Pull request #12](https://github.com/melian-agent/melian/pull/12) ([record](../comparisons/2026-10-03-pr-12.md)): 24, the design says two things about where standards live.
+- [Pull request #51](https://github.com/melian-agent/melian/pull/51) ([record](../comparisons/2026-10-05-pr-51.md)): D5, a free function that constructs a domain object rather than taking one as its first parameter, such as `function revisionOf(review: ReviewState): Revision`, expected `quoted-rule-violation`. The record marks no golden because the fix deleted the function, but neither the `free-domain-function` guardrail nor the Biome rule can see the shape, since both read only the first parameter, so only the lens catches the next one.
 
 ## durability
 
@@ -55,6 +56,7 @@ A repository lens under Melian's own `.melian/lenses/`. A scripted golden for it
 - [Pull request #19](https://github.com/melian-agent/melian/pull/19) ([record](../comparisons/2026-10-03-pr-19.md)): B2, every marker read repeats the refused `/user` request.
 - [Pull request #34](https://github.com/melian-agent/melian/pull/34) ([record](../comparisons/2026-10-04-pr-34.md)): A1, a `cause` location on an unrelated changed line makes an old defect block, expected advisory once the verifier lands; B1, the comment says "deleted by this change" for lines the change never touched; C1 and C2, two lenses sighting one defect must keep both claims; E1 and E2, a directory move must leave a finding in a moved file `pre-existing`; E3, a merge must keep the location that proves its cause.
 - [Pull request #36](https://github.com/melian-agent/melian/pull/36) ([record](../comparisons/2026-10-04-pr-36.md)): C1 to C4, the two goldens [the fifth live run](../runs/2026-10-04-live-goldens-5.md) proposes for the declared-input rule: a documented contract the base already holds, and an input only a parameter's type allows, expected to draw nothing.
+- [Pull request #42](https://github.com/melian-agent/melian/pull/42) ([record](../comparisons/2026-10-05-pr-42.md)): A1 and E3, a deleted rethrow, so a `catch` that used to rethrow now swallows the failure, reviewed under the `standard` tier, expected `unhandled-error` with `source` `lens.correctness`. A test pins the rendered instructions; no golden pins the finding.
 - [Pull request #48](https://github.com/melian-agent/melian/pull/48) ([record](../comparisons/2026-10-05-pr-48.md)): C1, a root that maps `P2` to `silent` passes an edit to itself, because its policy notice resolves under the root's own configuration rather than the one that judged it; D1, a negative golden: a change that keys a resolution floor on the `ruleId` of a deduplicated finding, where the rule's findings carry no snippet and so never merge, expected to draw nothing.
 
 ## contracts
