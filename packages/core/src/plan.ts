@@ -60,12 +60,28 @@ export type PlannedTier = {
 	by?: string;
 	/** Whether the route's first model is outside the committed `accept`. */
 	outside?: boolean;
+	/** The models the committed route accepts: its `accept`, else its own model and fallbacks. */
+	accept?: string[];
+	/** Present, as `false`, when the committed route refuses a check that runs outside `accept`. */
+	acceptOverridden?: false;
 	/** Why the tier is not routed, or why a check on it fails. */
 	reason?: string;
 };
 
+/**
+ * One level of a lens: the tier it runs on, and, where a preference file moved it there, the tier the committed files
+ * give it, whose route's policy still judges it, and the file that moved it.
+ */
+export type PlannedLevel = { level: ScrutinyLevel; tier: LensTier; committed?: LensTier; by?: string };
+
 /** A lens the review runs, and the tier each of its levels runs on. */
-export type PlannedLens = { name: string; levels: { level: ScrutinyLevel; tier: LensTier }[] };
+export type PlannedLens = { name: string; levels: PlannedLevel[] };
+
+/** What the plan says of one lens check: why it must fail without counting, and the lineage it records. */
+export interface LensJudgement {
+	readonly refusal?: string;
+	readonly lineage?: CheckLineage;
+}
 
 /** A {@link ReviewPlan} as stored. */
 export type StoredPlan = { tiers: PlannedTier[]; lenses: PlannedLens[] };
@@ -129,15 +145,20 @@ export class ReviewPlan {
 		return new ReviewPlan({ tiers, lenses });
 	}
 
-	private static lensesOf({ config, lenses, checks }: PlanInput): PlannedLens[] {
+	private static lensesOf({ config, routes, lenses, checks }: PlanInput): PlannedLens[] {
 		const named = new Set(checks.filter((check) => check.startsWith("lens.")).map((check) => check.slice(5)));
 		const planned = new Map<string, PlannedLens>();
 		for (const lens of lenses) {
 			const settings = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name] : undefined;
 			if (!named.has(lens.name) || settings?.enabled === false || planned.has(lens.name)) continue;
-			const levels = scrutinyLevels.flatMap((level) => {
+			const levels = scrutinyLevels.flatMap((level): PlannedLevel[] => {
 				const declared = lens.levels[level];
-				return declared === undefined ? [] : [{ level, tier: settings?.tier ?? declared.tier }];
+				if (declared === undefined) return [];
+				const tier = settings?.tier ?? declared.tier;
+				const committed = Object.hasOwn(routes.lensTiers, lens.name) ? routes.lensTiers[lens.name]! : declared.tier;
+				if (committed === tier) return [{ level, tier }];
+				const by = Object.hasOwn(routes.retiered, lens.name) ? routes.retiered[lens.name]! : "a preference file";
+				return [{ level, tier, committed, by }];
 			});
 			planned.set(lens.name, { name: lens.name, levels });
 		}
@@ -173,7 +194,12 @@ export class ReviewPlan {
 				model,
 				credential: credentials[parseModelReference(model, tier).provider] ?? "none",
 			}));
-		const base = { tier, ...(wanted === undefined ? {} : { wanted }) };
+		const base = {
+			tier,
+			...(wanted === undefined ? {} : { wanted }),
+			...(accept.length === 0 ? {} : { accept: [...accept] }),
+			...(policy?.acceptOverridden === false ? { acceptOverridden: false as const } : {}),
+		};
 		if (route.length === 0 && accept.length === 0) {
 			return { ...base, status: "unrouted", models: [], reason: `no model is configured for the ${tier} tier` };
 		}
@@ -293,25 +319,61 @@ export class ReviewPlan {
 
 	/** Why a check on `tier` runs on a model the committed route did not choose, or `undefined` when it does not. */
 	lineage(tier: ModelTier): CheckLineage | undefined {
-		const { models, wanted, by, outside } = this.tier(tier);
+		const { models, by } = this.tier(tier);
 		const model = models[0]?.model;
-		// With no committed model and nothing outside accept, there was no committed route to leave.
-		if (by === undefined || model === undefined || model === wanted || (wanted === undefined && !outside)) {
-			return undefined;
-		}
-		return { model, ...(wanted === undefined ? {} : { wanted }), by, outside: outside === true };
+		return model === undefined ? undefined : ReviewPlan.leaving(this.tier(tier), model, by);
+	}
+
+	// The lineage of a check on `model` judged by `policy`'s route, `by` having put it there. Nothing when the committed
+	// route put it there inside its own accept, when it is the model policy wants, or when there was no committed route
+	// to leave. A model outside accept always records, the committed route's own fallback included.
+	private static leaving(policy: PlannedTier, model: string, by: string | undefined): CheckLineage | undefined {
+		const { wanted } = policy;
+		const accept = policy.accept ?? [];
+		const outside = accept.length > 0 && !accept.includes(model);
+		if (model === wanted || (by === undefined && !outside) || (wanted === undefined && !outside)) return undefined;
+		return { model, ...(wanted === undefined ? {} : { wanted }), by: by ?? "melian.yaml", outside };
 	}
 
 	/**
-	 * `records` with each lens's lineage added, for every lens that ran, or was to run, at a level whose tier the plan
-	 * routed off the committed route.
+	 * What the plan says of the check of lens `name` at `level`: why it must fail, and its lineage. A lens a preference
+	 * file moved to another tier runs on that tier's route but stays under its committed tier's policy, so it cannot
+	 * leave a route `acceptOverridden: false` guards by moving to a tier that guards nothing.
+	 */
+	judge(name: string, level: ScrutinyLevel): LensJudgement {
+		const entry = this.lenses.find((each) => each.name === name)?.levels.find((each) => each.level === level);
+		if (entry === undefined) return {};
+		const refused = this.refusal(entry.tier);
+		const planned = this.tier(entry.tier);
+		const model = planned.models[0]?.model;
+		if (entry.committed === undefined) {
+			const lineage = this.lineage(entry.tier);
+			return {
+				...(refused === undefined ? {} : { refusal: refused }),
+				...(lineage === undefined ? {} : { lineage }),
+			};
+		}
+		const policy = this.tier(entry.committed);
+		const lineage = model === undefined ? undefined : ReviewPlan.leaving(policy, model, entry.by);
+		const moved = `lenses.${name}.tier moves it from ${entry.committed} to ${entry.tier}`;
+		const refusal =
+			refused ??
+			(policy.acceptOverridden === false && lineage?.outside === true
+				? `${moved}, and models.${entry.committed}.acceptOverridden is false; ${entry.tier} runs ${model}, which models.${entry.committed}.accept does not list`
+				: undefined);
+		return { ...(refusal === undefined ? {} : { refusal }), ...(lineage === undefined ? {} : { lineage }) };
+	}
+
+	/**
+	 * `records` with each lens's lineage added, for every lens that ran, or was to run, at a level the plan routed off
+	 * its committed route.
 	 */
 	mark(records: readonly CheckRecord[]): CheckRecord[] {
 		return records.map((record) => {
-			const lens = this.lenses.find((each) => `lens.${each.name}` === record.name);
-			const tier = lens?.levels.find((each) => each.level === record.level)?.tier;
-			const lineage = tier === undefined ? undefined : this.lineage(tier);
-			return lineage === undefined || record.lineage !== undefined ? record : { ...record, lineage };
+			if (!record.name.startsWith("lens.") || record.level === undefined || record.lineage !== undefined)
+				return record;
+			const { lineage } = this.judge(record.name.slice("lens.".length), record.level);
+			return lineage === undefined ? record : { ...record, lineage };
 		});
 	}
 
@@ -341,7 +403,15 @@ export class ReviewPlan {
 	 */
 	warnings(): string[] {
 		const used = this.used();
-		return this.tiers.flatMap((planned): string[] => {
+		const moved = this.lenses.flatMap((lens): string[] => {
+			const entry = lens.levels.find(({ level }) => level === defaultScrutinyLevel);
+			if (entry?.committed === undefined) return [];
+			const { refusal, lineage } = this.judge(lens.name, entry.level);
+			if (refusal !== undefined) return [`${lens.name} fails: ${refusal}`];
+			if (lineage === undefined) return [];
+			return [`${lens.name} runs ${lineage.model}, ${ReviewPlan.lineageText(lineage)}`];
+		});
+		const tiers = this.tiers.flatMap((planned): string[] => {
 			const { tier, status, reason } = planned;
 			const lenses = used.get(tier);
 			const on = lenses === undefined ? "" : `, for ${listed(lenses)}`;
@@ -365,6 +435,7 @@ export class ReviewPlan {
 				`${tier} runs ${model}, which the committed route accepts, since ${planned.wanted} has no credentials`,
 			];
 		});
+		return [...tiers, ...moved];
 	}
 
 	private static lineageText({ wanted, by, outside, model }: CheckLineage): string {

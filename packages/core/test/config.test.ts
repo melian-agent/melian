@@ -41,7 +41,11 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 
 	it("returns the design's defaults when no melian.yaml exists", async () => {
 		const loaded = await load("src/index.ts");
-		expect(loaded).toEqual({ config: defaultConfig, sources: [], routes: { committed: {}, overridden: {} } });
+		expect(loaded).toEqual({
+			config: defaultConfig,
+			sources: [],
+			routes: { committed: {}, overridden: {}, lensTiers: {}, retiered: {} },
+		});
 		expect(loaded.config.stages).toEqual({
 			"pre-commit": "fast",
 			"pre-push": "standard",
@@ -197,7 +201,7 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		expect(await load("linked/a.ts")).toEqual({
 			config: defaultConfig,
 			sources: [],
-			routes: { committed: {}, overridden: {} },
+			routes: { committed: {}, overridden: {}, lensTiers: {}, retiered: {} },
 		});
 	});
 

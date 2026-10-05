@@ -379,10 +379,8 @@ function planned(options: ReviewOptions): ReviewOptions {
 		config,
 		options.changeset.revision.paths(),
 	)) {
-		const { tier } = lens.level(level);
-		const reason = plan.refusal(tier);
+		const { refusal: reason, lineage } = plan.judge(lens.name, level);
 		if (reason === undefined || refused.has(lens.name)) continue;
-		const lineage = plan.lineage(tier);
 		const name = `lens.${lens.name}`;
 		refused.set(lens.name, { name, status: "failed", level, reason, ...(lineage === undefined ? {} : { lineage }) });
 	}

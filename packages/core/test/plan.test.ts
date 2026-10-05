@@ -2,6 +2,7 @@ import {
 	type CatalogueModel,
 	defaultConfig,
 	Lens,
+	type LensTier,
 	type MelianConfig,
 	ModelRoutingError,
 	type PlanInput,
@@ -48,18 +49,25 @@ type Routes = MelianConfig["models"];
 function plan(
 	committed: Routes,
 	credentials: Record<string, string>,
-	options: { preferences?: Routes; model?: string; checks?: string[] } = {},
+	options: { preferences?: Routes; model?: string; checks?: string[]; retier?: Record<string, LensTier> } = {},
 ): ReviewPlan {
 	const preferences = options.preferences ?? {};
 	const models: Record<string, unknown> = { ...committed };
 	for (const [tier, route] of Object.entries(preferences)) {
 		models[tier] = { ...(committed[tier as keyof Routes] ?? {}), ...route };
 	}
+	const retier = options.retier ?? {};
 	const input: PlanInput = {
-		config: { ...defaultConfig, models: models as Routes },
+		config: {
+			...defaultConfig,
+			models: models as Routes,
+			lenses: Object.fromEntries(Object.entries(retier).map(([name, tier]) => [name, { tier }])),
+		},
 		routes: {
 			committed,
 			overridden: Object.fromEntries(Object.keys(preferences).map((tier) => [tier, "melian.local.yaml"])),
+			lensTiers: {},
+			retiered: Object.fromEntries(Object.keys(retier).map((name) => [name, "melian.local.yaml"])),
 		},
 		...(options.model === undefined ? {} : { model: options.model }),
 		catalogue,
@@ -81,6 +89,7 @@ describe("ReviewPlan.resolve", () => {
 			tier: "heavy",
 			status: "routed",
 			wanted: opus,
+			accept: [opus, "nowhere/model", "openai/gpt-5.4-mini", gpt],
 			models: [
 				{ model: opus, credential: "ANTHROPIC_API_KEY" },
 				{ model: "openai/gpt-5.4-mini", credential: "work-openai in melian.secrets.yaml" },
@@ -220,6 +229,26 @@ describe("ReviewPlan.resolve", () => {
 		// A fallback outside accept is dropped, so a failover never leaves policy either.
 		expect(kept.tier("heavy")).toMatchObject({ status: "routed", models: [{ model: gpt }] });
 		expect(kept.refusal("heavy")).toBeUndefined();
+	});
+
+	it("judges a lens a preference file moved to another tier by its committed tier's policy", () => {
+		const credentials = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" };
+		const committed = { heavy: { model: opus, accept: [opus], acceptOverridden: false } };
+		const moved = plan(committed, credentials, {
+			preferences: { light: { model: "openai/gpt-5.4-mini" } },
+			retier: { correctness: "light" },
+		});
+		const refusal = `lenses.correctness.tier moves it from heavy to light, and models.heavy.acceptOverridden is false; light runs openai/gpt-5.4-mini, which models.heavy.accept does not list`;
+		const lineage = { model: "openai/gpt-5.4-mini", wanted: opus, by: "melian.local.yaml", outside: true };
+		expect(moved.judge("correctness", "careful")).toEqual({ refusal, lineage });
+		expect(moved.warnings()).toContain(`correctness fails: ${refusal}`);
+		expect(moved.mark([{ name: "lens.correctness", status: "ran", level: "careful" }])[0]?.lineage).toEqual(lineage);
+		// Without the guard, the move only records the lineage.
+		const open = plan({ heavy: { model: opus } }, credentials, {
+			preferences: { light: { model: "openai/gpt-5.4-mini" } },
+			retier: { correctness: "light" },
+		});
+		expect(open.judge("correctness", "careful")).toEqual({ lineage });
 	});
 
 	it("refuses a derived route outside accept where policy says acceptOverridden: false", () => {

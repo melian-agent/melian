@@ -12,7 +12,7 @@ const models: MelianConfig["models"] = {
 const routed: LoadedConfig = {
 	config: { ...defaultConfig, models },
 	sources: ["melian.yaml"],
-	routes: { committed: models, overridden: {} },
+	routes: { committed: models, overridden: {}, lensTiers: {}, retiered: {} },
 };
 const setup = { checks: ["lens.correctness"], credentials: [] };
 

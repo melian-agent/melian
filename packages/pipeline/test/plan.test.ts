@@ -1,5 +1,13 @@
 import { rmSync } from "node:fs";
-import { Changeset, defaultConfig, Lens, type MelianConfig, type ModelRoute, ReviewPlan } from "@melian-agent/core";
+import {
+	Changeset,
+	defaultConfig,
+	Lens,
+	type LensSettings,
+	type MelianConfig,
+	type ModelRoute,
+	ReviewPlan,
+} from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -52,19 +60,32 @@ afterEach(async () => {
 	rmSync(repo, { recursive: true, force: true });
 });
 
-// A review whose committed melian.yaml routes heavy as `committed`, with melian.local.yaml routing it to `local`.
-async function planned(committed: ModelRoute, local?: string) {
+// A review whose committed melian.yaml routes heavy as `committed`, with melian.local.yaml routing it to `local`, or,
+// with `light`, moving both lenses to a light tier it routes to that model.
+async function planned(committed: ModelRoute, local?: string, options: { light?: string } = {}) {
+	const { light } = options;
+	const moved: Record<string, LensSettings> =
+		light === undefined ? {} : { correctness: { tier: "light" }, contracts: { tier: "light" } };
 	const config: MelianConfig = {
 		...defaultConfig,
 		tiers: twoLensTiers,
-		models: { heavy: local === undefined ? committed : { ...committed, model: local } },
+		lenses: moved,
+		models: {
+			heavy: local === undefined ? committed : { ...committed, model: local },
+			...(light === undefined ? {} : { light: { model: light } }),
+		},
 	};
 	const { catalogue, credentials } = await planInputs(fake.review);
 	const plan = ReviewPlan.resolve({
 		config,
 		routes: {
 			committed: { heavy: committed },
-			overridden: local === undefined ? {} : { heavy: "melian.local.yaml" },
+			overridden: {
+				...(local === undefined ? {} : { heavy: "melian.local.yaml" }),
+				...(light === undefined ? {} : { light: "melian.local.yaml" }),
+			},
+			lensTiers: {},
+			retiered: Object.fromEntries(Object.keys(moved).map((name) => [name, "melian.local.yaml"])),
 		},
 		catalogue,
 		credentials,
@@ -132,6 +153,27 @@ describe("reviewChangeset with a plan", () => {
 			{ name: "lens.contracts", status: "failed", level: "careful", reason, lineage },
 			{ name: "lens.correctness", status: "failed", level: "careful", reason, lineage },
 		]);
+	});
+
+	it("keeps a lens a preference file moved to another tier under its committed tier's policy", async () => {
+		const { review, answered } = await planned(
+			{ model: heavy, accept: [heavy], acceptOverridden: false },
+			undefined,
+			{
+				light: backup,
+			},
+		);
+
+		expect(answered).toEqual([]);
+		expect(review.verdict.status).toBe("not-reviewed");
+		const reason = `lenses.correctness.tier moves it from heavy to light, and models.heavy.acceptOverridden is false; light runs ${backup}, which models.heavy.accept does not list`;
+		expect(review.verdict.notRun.find((check) => check.name === "lens.correctness")).toEqual({
+			name: "lens.correctness",
+			status: "failed",
+			level: "careful",
+			reason,
+			lineage: { model: backup, wanted: heavy, by: "melian.local.yaml", outside: true },
+		});
 	});
 
 	it("runs the committed route with no lineage when the preference file stays on it", async () => {

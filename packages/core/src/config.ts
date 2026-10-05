@@ -358,6 +358,10 @@ export const defaultConfig: MelianConfig = {
 export interface RouteLineage {
 	readonly committed: MelianConfig["models"];
 	readonly overridden: Readonly<Partial<Record<ModelTier, string>>>;
+	/** Each lens tier the committed files set, by lens name; a lens they leave alone runs on its own tier. */
+	readonly lensTiers: Readonly<Record<string, LensTier>>;
+	/** Each lens a preference file moved to another tier, by name, to the nearest such file. */
+	readonly retiered: Readonly<Record<string, string>>;
 }
 
 /**
@@ -785,7 +789,20 @@ async function loadLayers(
 	checkGuardrailRules(config, layers);
 	const committed = layers
 		.slice(preferences)
-		.reduceRight((merged, { layer }) => merge(merged, { models: layer.models ?? {} }), merge({}, { models: {} }));
+		.reduceRight(
+			(merged, { layer }) => merge(merged, { models: layer.models ?? {}, lenses: layer.lenses ?? {} }),
+			merge({}, { models: {}, lenses: {} }),
+		);
+	const lensTiers: Record<string, LensTier> = {};
+	for (const [name, settings] of Object.entries(committed.lenses as MelianConfig["lenses"])) {
+		if (settings.tier !== undefined) lensTiers[name] = settings.tier;
+	}
+	const retiered: Record<string, string> = {};
+	for (const { site, layer } of layers.slice(0, preferences).reverse()) {
+		for (const [name, settings] of Object.entries(layer.lenses ?? {})) {
+			if (settings?.tier !== undefined) retiered[name] = site.file;
+		}
+	}
 	const overridden: Partial<Record<ModelTier, string>> = {};
 	for (const tier of modelTiers) {
 		const nearest = layers
@@ -795,6 +812,6 @@ async function loadLayers(
 			);
 		if (nearest !== undefined) overridden[tier] = nearest.site.file;
 	}
-	const routes = { committed: committed.models as MelianConfig["models"], overridden };
+	const routes = { committed: committed.models as MelianConfig["models"], overridden, lensTiers, retiered };
 	return { config, sources: layers.map(({ site }) => site.file), routes, layers };
 }
