@@ -512,9 +512,12 @@ export class Comparison {
 		});
 	}
 
-	/** The comparison a stored one describes, trusted as stored, and copied, since a comparison changes. */
+	/**
+	 * The comparison a stored one describes, trusted as stored, and copied through JSON, since a comparison changes and a
+	 * document's value inside a commit is a view `structuredClone` refuses.
+	 */
 	static from(stored: StoredComparison): Comparison {
-		return new Comparison(structuredClone(stored));
+		return new Comparison(JSON.parse(JSON.stringify(stored)) as StoredComparison);
 	}
 
 	/**

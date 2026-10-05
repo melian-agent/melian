@@ -8,6 +8,12 @@ export {
 	readCheckRecords,
 	runChecks,
 } from "./checks.ts";
+export {
+	CompareError,
+	type CompareErrorCode,
+	CompareHarness,
+	type ImportedSource,
+} from "./compare.ts";
 export { createReviewModels, PiCredentialStore, piAuthPath, piCredentialStore } from "./credentials.ts";
 export { type DismissalOptions, DismissHarness, type RecordedDismissal, recordDismissal } from "./dismiss.ts";
 export {
@@ -20,6 +26,7 @@ export {
 	ReviewError,
 	type ReviewErrorCode,
 } from "./errors.ts";
+export { FileImporter, maxReviewerFileBytes } from "./file-import.ts";
 export {
 	type Dismissal,
 	dismissFinding,
