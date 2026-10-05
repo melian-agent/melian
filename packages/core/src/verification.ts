@@ -34,7 +34,7 @@ export const verificationQuestionSet: QuestionSet = {
 };
 
 /** Fixed per-candidate limits until configurable verifier budgets arrive. */
-export const verificationBudget = { tokens: 100_000, tools: 20 } as const;
+export const verificationBudget = { tokens: 300_000, tools: 60 } as const;
 
 /** One merged defect and the lens sightings the verifier judges separately. */
 export type StoredVerificationState = { speaker: StoredFinding; claims: MemberClaim[] };

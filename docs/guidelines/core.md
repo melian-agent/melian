@@ -308,7 +308,7 @@ Everything the renderer prints is untrusted. A lens writes finding text after re
 
 ### Verification
 
-`verificationSchema` holds verdict, reason, optional correction, executor, model and version. It follows confidence in finding properties and also belongs to each member claim. The LLM executor writes no confidence. `verificationQuestions` and `verificationQuestionSet` type the code, guard, base and verdict questions. The shared budget is 100,000 tokens and 20 calls per candidate.
+`verificationSchema` holds verdict, reason, optional correction, executor, model and version. It follows confidence in finding properties and also belongs to each member claim. The LLM executor writes no confidence. `verificationQuestions` and `verificationQuestionSet` type the code, guard, base and verdict questions. The shared budget is 300,000 tokens and 60 calls per candidate.
 
 `VerificationState.from(speaker)` keeps one original claim per lens sighting. A merged speaker shows the strongest verdict, confirmed over plausible over refuted. When the speaker imports another claim's proof or judgement, its original claim stays in otherClaims. A verifier therefore never judges one sighting through another's evidence or verdict.
 
