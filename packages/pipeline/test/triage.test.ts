@@ -611,6 +611,11 @@ describe("triage under a review plan", () => {
 			reason: plan.refusal("heavy"),
 		});
 		expect(reviewed.verdict.status).toBe("not-reviewed");
+		// The refusal is the lens's one record, never "no lens is named".
+		const records = [...(reviewed.verdict.ran ?? []), ...reviewed.verdict.notRun].filter(
+			(check) => check.name === "lens.correctness",
+		);
+		expect(records).toHaveLength(1);
 	});
 
 	it("runs a lens triaged to a level whose tier the plan routes, though its careful tier is refused", async () => {

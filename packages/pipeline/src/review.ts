@@ -942,10 +942,10 @@ function account(
 	options: Pick<ReviewOptions, "config" | "lenses" | "checks">,
 ): { readonly manifest: Manifest; readonly producers: Producer[] } {
 	const { config } = options;
-	// The lens step owns `lens.*` and `decisions.*`, so the host's records of them give way; a plan's `failed` record of a
-	// lens it refused does not, for a lens that never ran or whose variant in another folder did.
-	const owned = (check: CheckRecord) =>
-		check.name.startsWith("decisions.") || (check.name.startsWith("lens.") && check.status !== "failed");
+	// The lens step owns `lens.*` and `decisions.*`, so the host's records of them give way. The plan's `failed` record of
+	// a lens it refused at the level triage chose is the lens step's own, in `lenses.records`, beside the record of a
+	// variant in another folder that ran, so a refused lens never reads as one no lens is named for.
+	const owned = (check: CheckRecord) => check.name.startsWith("decisions.") || check.name.startsWith("lens.");
 	const supplied = (options.checks ?? []).filter((check) => !owned(check));
 	const manifest = new Manifest(checks, [...supplied, ...lenses.records], config.checks.allowSkip);
 	for (const name of lenses.skippable) manifest.allowSkip(name);
