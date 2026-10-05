@@ -38,6 +38,6 @@ Choice: Refuted defects stay in an optional refuted group, outside publication a
 
 Why: Authors can inspect a dropped claim without receiving an inline objection that verification rejected. Host integration stays within the pending ledger's edges.
 
-Choice: Scripted evals plant candidates through report_finding and use the durable verifier task. Live verifier runs require their own opt-in selector and accept a separate judge route. A fake finder may join an existing opaque model collection through the testing entry. The root policy excludes the seeded corpus from lenses.
+Choice: Scripted evals plant candidates through report_finding and use the durable verifier task. Live verifier runs require their own opt-in selector and accept a separate judge route. An unfinished verifier scores that golden as an unjudged failure and continues the corpus. Other errors still stop the run. A fake finder may join an existing opaque model collection through the testing entry. The root policy excludes the seeded corpus from lenses.
 
 Why: Integration tests spend no real tokens. An opt-in run can isolate judge quality without asking a finder to rediscover each candidate.

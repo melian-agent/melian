@@ -755,7 +755,7 @@ A repository built and reviewed entirely by agents, with every reviewer finding 
 
 Unit tests use Vitest and Pi Durable's memory storage.
 
-The built verifier corpus lives under `packages/evals/verifier/`, separate from lens goldens. Four execution-dependent misses must remain confirmed or plausible; two decoys must be refuted. Its scripted runner plants candidates through `report_finding` and exercises the durable verifier task. Live verifier evals remain opt-in and accept a separate model route.
+The built verifier corpus lives under `packages/evals/verifier/`, separate from lens goldens. Four execution-dependent misses must remain confirmed or plausible; two decoys must be refuted. Its scripted runner plants candidates through `report_finding` and exercises the durable verifier task. Live verifier evals remain opt-in and accept a separate model route. An unfinished judge scores its golden as an unjudged failure; the corpus continues.
 
 ### Comparison with external reviewers
 

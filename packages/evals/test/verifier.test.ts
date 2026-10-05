@@ -1,6 +1,11 @@
 import type { Verification } from "@melian-agent/core";
 import { loadVerifierGoldens, runVerifierGolden, scoreVerifierGolden } from "@melian-agent/evals";
-import { createFakeModels, scriptConversations, scriptVerifier } from "@melian-agent/pipeline/testing";
+import {
+	createFakeModels,
+	fauxAssistantMessage,
+	scriptConversations,
+	scriptVerifier,
+} from "@melian-agent/pipeline/testing";
 import { describe, expect, it } from "vitest";
 
 const goldens = loadVerifierGoldens();
@@ -69,6 +74,35 @@ describe("the verifier corpus", { timeout: 60_000 }, () => {
 		expect(run.verification?.model).toBe(`${ref.provider}/${ref.modelId}`);
 		expect(requests["Melian adversarial verifier"]).toHaveLength(2);
 		expect(scoreVerifierGolden(golden, run).passed).toBe(true);
+	});
+	it("scores an unfinished judge as unjudged and continues to the next golden", async () => {
+		const judge = createFakeModels({ provider: "unfinished-judge", models: [{ id: "separate" }] });
+		const requests = scriptConversations(judge, [
+			{
+				match: "Melian adversarial verifier",
+				replies: [
+					fauxAssistantMessage("Done without reporting a verdict."),
+					(messages) => scriptVerifier(messages),
+					(messages) => scriptVerifier(messages),
+				],
+			},
+		]);
+		const ref = judge.ref();
+		const scores = [];
+		for (const golden of goldens.filter((each) => each.expected.kind === "needs-execution").slice(0, 2)) {
+			const run = await runVerifierGolden(golden, {
+				kind: "live",
+				models: judge.review,
+				verifierModel: `${ref.provider}/${ref.modelId}`,
+			});
+			scores.push(scoreVerifierGolden(golden, run));
+			if (scores.length === 1) expect(run.rendered).toContain("not reviewed");
+		}
+		expect(scores).toMatchObject([
+			{ verdict: undefined, passed: false },
+			{ verdict: "confirmed", passed: true },
+		]);
+		expect(requests["Melian adversarial verifier"]).toHaveLength(3);
 	});
 	it("rejects a live suite without a verifier route before opening a repository or model", async () => {
 		await expect(runVerifierGolden(goldens[0]!, { kind: "live", models: createFakeModels().review })).rejects.toThrow(

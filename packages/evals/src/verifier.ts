@@ -9,7 +9,13 @@ import {
 	reportFindingInputSchema,
 	type Verification,
 } from "@melian-agent/core";
-import { backgroundContext, createMemoryStorage, openReviewHarness, reviewChangeset } from "@melian-agent/pipeline";
+import {
+	backgroundContext,
+	createMemoryStorage,
+	openReviewHarness,
+	ReviewError,
+	reviewChangeset,
+} from "@melian-agent/pipeline";
 import {
 	createFakeModels,
 	fauxAssistantMessage,
@@ -165,12 +171,16 @@ export async function runVerifierGolden(golden: VerifierGolden, mode: GoldenMode
 						verifier: { model: verifierModel ?? `${judge.provider}/${judge.modelId}` },
 					},
 				},
+			}).catch((error: unknown) => {
+				if (!(error instanceof ReviewError) || error.code !== "verifierFailed" || error.verdict === undefined)
+					throw error;
+				return error;
 			});
 			if (result.findings.length !== 1)
 				throw new Error(`${golden.name}: expected one planted finding, got ${result.findings.length}`);
 			return {
-				verification: result.findings[0]!.properties.verification,
-				rendered: result.verdict.render(new Rendering({ all: true })),
+				verification: result instanceof ReviewError ? undefined : result.findings[0]!.properties.verification,
+				rendered: result.verdict!.render(new Rendering({ all: true })),
 				verifierRequests: requests[marker]?.length ?? 0,
 			};
 		} finally {
