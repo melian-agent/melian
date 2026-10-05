@@ -9,3 +9,7 @@ Explicit verifier routes without credentials now fail with the plan’s reason a
 Refutation tests now reject missing, empty and unreadable evidence. The missing-evidence case fails when both non-empty guards are removed.
 
 Verifier execution errors now quote diagnostics inside findings boundaries and render control characters visibly. The regression commits an instruction-like filename with a newline, cites a line past EOF, and inspects the error the model receives.
+
+A failed-task regression keeps candidates unchanged. A repeat review attaches without requests; rerun replaces only the verifier task and records a fresh judgement. Removing the retry-on-rerun condition makes the test fail.
+
+The Node 24 gate passed with MELIAN_STATE_DIR unset: 51 files and 1,306 tests passed; one test was skipped. No test timed out. Biome, type checking, dependency checks and audit passed.

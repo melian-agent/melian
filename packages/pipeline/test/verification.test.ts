@@ -446,6 +446,39 @@ describe("the verifier", () => {
 		expect(requests[verifierMarker]).toHaveLength(3);
 		expect(result.findings[0]!.properties.verification?.model).toBe(`${fake.ref("backup").provider}/backup`);
 	});
+	it("retries a failed verification on rerun with unchanged candidates", async () => {
+		const requests = scriptConversations(fake, [
+			{
+				match: lenses[0]!.instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				match: verifierMarker,
+				replies: Array.from({ length: 2 }, () =>
+					fauxAssistantMessage("", { stopReason: "error", errorMessage: "HTTP 503 service unavailable" }),
+				),
+			},
+		]);
+		await expect(review()).rejects.toMatchObject({ code: "verifierFailed" });
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		const before = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+		await expect(review()).rejects.toMatchObject({ code: "verifierFailed" });
+		expect(requests[verifierMarker]).toHaveLength(2);
+		const rerunRequests = scripts();
+		const result = await review(true);
+		const after = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+		expect(after.verification!.input).toBe(before.verification!.input);
+		expect(after.verification!.task).not.toBe(before.verification!.task);
+		expect(after.task).toBe(before.task);
+		expect(rerunRequests[lenses[0]!.instructions]).toEqual([]);
+		expect(rerunRequests[verifierMarker]).toHaveLength(2);
+		expect(result.findings[0]!.properties.verification?.verdict).toBe("confirmed");
+		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
+	});
 	it("fails closed when every verifier model fails and does not retry without rerun", async () => {
 		const requests = scriptConversations(fake, [
 			{
