@@ -81,11 +81,14 @@ describe("CLI walkthrough switch", { timeout: 60_000 }, () => {
 });
 
 describe("CLI publish walkthrough settings", { timeout: 60_000 }, () => {
-	async function published(yaml: string, options: { walkthrough?: boolean }) {
+	async function published(yaml: string, options: { walkthrough?: boolean }, headYaml?: string) {
 		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 		repo = baseAndHead(
 			{ "src/a.ts": "export const a = 1;\n", "melian.yaml": `tiers:\n  full: [guardrails]\n${yaml}` },
-			{ "src/a.ts": "export const a = 2;\n" },
+			{
+				"src/a.ts": "export const a = 2;\n",
+				...(headYaml === undefined ? {} : { "melian.yaml": `tiers:\n  full: [guardrails]\n${headYaml}` }),
+			},
 		);
 		changeset = await Changeset.resolve(repo, "main...feature");
 		const state = pullRequestState();
@@ -107,7 +110,8 @@ describe("CLI publish walkthrough settings", { timeout: 60_000 }, () => {
 		writeFileSync(script, "{}");
 		env = { ...process.env, MELIAN_TEST_SCRIPT: script };
 		const io = { cwd: repo, env, stdout: () => {}, stderr: () => {}, color: false };
-		expect(await review(io, "#7", { rerun: false })).toBe(0);
+		// A head that edits melian.yaml draws a policy finding, which exits 3.
+		expect(await review(io, "#7", { rerun: false })).toBe(headYaml === undefined ? 0 : 3);
 		// publish refuses a scripted run and reads the unscripted storage, so the scripted review moves there.
 		copyFileSync(await storagePath(repo, changeset.id, env, true), await storagePath(repo, changeset.id, env, false));
 		const { MELIAN_TEST_SCRIPT: _, ...clean } = env;
@@ -124,5 +128,15 @@ describe("CLI publish walkthrough settings", { timeout: 60_000 }, () => {
 		vi.restoreAllMocks();
 		rmSync(repo, { recursive: true, force: true });
 		expect(await published("publish:\n  walkthrough:\n    enabled: false\n", {})).not.toContain("Walkthrough");
+		vi.restoreAllMocks();
+		rmSync(repo, { recursive: true, force: true });
+		// The head turns the walkthrough back on; the base's setting still wins.
+		expect(
+			await published(
+				"publish:\n  walkthrough:\n    enabled: false\n",
+				{},
+				"publish:\n  walkthrough:\n    enabled: true\n",
+			),
+		).not.toContain("Walkthrough");
 	});
 });
