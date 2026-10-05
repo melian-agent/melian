@@ -80,8 +80,12 @@ describe.skipIf(process.platform !== "darwin")("codex-sandboxed.sh profile", () 
 		const allow = block(profile(linked), "allow file-write*");
 		for (const path of ["objects", "refs", "logs"]) expect(allow).toContain(`(subpath "${main}/.git/${path}")`);
 		expect(allow).toContain(`(literal "${main}/.git/packed-refs")`);
-		for (const file of ["HEAD", "index", "index.lock", "ORIG_HEAD", "MERGE_MSG", "COMMIT_EDITMSG", "gc.pid"]) {
+		for (const file of ["HEAD", "index", "index.lock", "ORIG_HEAD", "MERGE_MSG", "COMMIT_EDITMSG", "FETCH_HEAD", "FETCH_HEAD.lock"]) {
 			expect(allow).toContain(`(literal "${admin}/${file}")`);
+		}
+		for (const file of ["gc.pid", "gc.pid.lock", "shallow", "shallow.lock"]) {
+			expect(allow).toContain(`(literal "${main}/.git/${file}")`);
+			expect(allow).not.toContain(`(literal "${admin}/${file}")`);
 		}
 		expect(allow).toContain(`(subpath "${admin}/logs")`);
 		for (const dir of ["rebase-merge", "rebase-apply"]) expect(allow).not.toContain(dir);

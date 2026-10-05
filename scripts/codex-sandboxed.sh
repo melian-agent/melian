@@ -58,9 +58,11 @@ dynamic_rules() {
   echo "(allow file-write*"
   {
     filters subpath "$worktree" "$scratch" "$run" "$common/objects" "$common/refs" "$common/logs"
-    filters literal "$common/packed-refs" "$common/packed-refs.lock"
+    # gc.pid and shallow live in the common directory, even in a linked worktree.
+    filters literal "$common/packed-refs" "$common/packed-refs.lock" "$common/gc.pid" "$common/gc.pid.lock" \
+      "$common/shallow" "$common/shallow.lock"
     for p in HEAD ORIG_HEAD FETCH_HEAD MERGE_HEAD MERGE_MSG MERGE_MODE AUTO_MERGE CHERRY_PICK_HEAD \
-      REVERT_HEAD COMMIT_EDITMSG index gc.pid shallow; do
+      REVERT_HEAD COMMIT_EDITMSG index; do
       filters literal "$admin/$p" "$admin/$p.lock"
     done
     filters subpath "$admin/logs"
