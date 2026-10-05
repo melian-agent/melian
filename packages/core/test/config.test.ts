@@ -560,6 +560,37 @@ describe("the user-level preference file", () => {
 		expect(error).toMatchObject({ code: "unknownKey", file: preferences() });
 	});
 
+	it("reports each lens tier the committed files set, and each lens a preference file moved", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("lenses:", "  security: { tier: heavy }", "  contracts: { tier: medium }"),
+			"services/melian.yaml": lines("lenses:", "  tests: { tier: light }"),
+		});
+		writeFiles(home, {
+			"config.yaml": lines("lenses:", "  correctness: { tier: light }", "  contracts: { tier: light }"),
+		});
+		writeFiles(repo, { "melian.local.yaml": lines("lenses:", "  contracts: { tier: heavy }") });
+
+		const { config, routes } = await loadConfig(repo, worktree(), "services/a.ts");
+
+		expect(routes.lensTiers).toEqual({ security: "heavy", contracts: "medium", tests: "light" });
+		// The per-clone file wins over the user's, and a lens it leaves alone keeps the user file as its mover.
+		expect(routes.retiered).toEqual({ correctness: preferences(), contracts: "melian.local.yaml" });
+		expect(config.lenses.contracts?.tier).toBe("heavy");
+	});
+
+	it("reports no retier where only the committed files set a lens's tier", async () => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", "  security: { tier: heavy }") });
+		const { routes } = await loadConfig(repo, worktree(), "a.ts");
+		expect(routes).toMatchObject({ lensTiers: { security: "heavy" }, retiered: {} });
+	});
+
+	it("reports a retier where only a preference file sets a lens's tier", async () => {
+		writeFiles(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+		writeFiles(home, { "config.yaml": lines("lenses:", "  correctness: { tier: light }") });
+		const { routes } = await loadConfig(repo, worktree(), "a.ts");
+		expect(routes).toMatchObject({ lensTiers: {}, retiered: { correctness: preferences() } });
+	});
+
 	it("records a preference file that changes only fallbacks as the route's override", async () => {
 		writeFiles(home, { "config.yaml": lines("models:", "  heavy:", "    fallbacks: [user/fallback]") });
 		const { config, routes } = await loadConfig(repo, worktree(), "a.ts");
