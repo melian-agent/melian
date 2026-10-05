@@ -1,4 +1,13 @@
-import { Adjudication, defaultConfig, Finding, FindingsLog, findingsLogSchema, Rendering } from "@melian-agent/core";
+import { readFileSync } from "node:fs";
+import {
+	Adjudication,
+	defaultConfig,
+	Finding,
+	FindingsLog,
+	findingsLogSchema,
+	Rendering,
+	Verdict,
+} from "@melian-agent/core";
 import Value from "typebox/value";
 import { describe, expect, it } from "vitest";
 import { evalInput, minimalInput } from "./fixtures/findings.ts";
@@ -229,6 +238,15 @@ describe("Verdict.renderJson", () => {
 		const json = verdict.renderJson();
 		expect(JSON.parse(json)).toEqual(verdict);
 		await expect(json).toMatchFileSnapshot("./golden/verdict.json");
+	});
+});
+
+describe("Verdict.fingerprint", () => {
+	// The value Melian computed for this verdict before verdicts were classes, so a published head keeps its review.
+	it("hashes the golden verdict to the value an older Melian published it under", () => {
+		const stored = JSON.parse(readFileSync(new URL("./golden/verdict.json", import.meta.url), "utf8"));
+		expect(Verdict.from(stored).fingerprint()).toBe("9bd5cfd9b352dee8");
+		expect(verdict.fingerprint()).toBe("9bd5cfd9b352dee8");
 	});
 });
 

@@ -593,10 +593,12 @@ describe("documents stored before evidence became a list", () => {
 				dismissed: [],
 				notRun: [],
 			}) as StoredVerdict;
-		const published = Verdict.from(verdict(stored)).fingerprint();
+		// What an older Melian's fingerprint gave this verdict as stored, so both sides do not come from the code under test.
+		const published = "3e32f949baf5d54e";
 		const migrated = Verdict.from(Verdict.upgrade(verdict(stored)));
 
-		expect(migrated.fingerprint()).not.toBe(published);
+		expect(Verdict.from(verdict(stored)).fingerprint()).toBe(published);
+		expect(migrated.fingerprint()).toBe("3f63e3f3f6c2216a");
 		expect(migrated.legacyFingerprint()).toBe(published);
 		const scenario = Finding.create({ ...input, cause: "affected", evidence, failureScenario: "run(1) throws." });
 		expect(Verdict.from(verdict(scenario.toJSON())).legacyFingerprint()).toBeUndefined();
@@ -655,6 +657,8 @@ describe("documents stored before evidence became a list", () => {
 			dismissed: [],
 			notRun: [],
 		};
+		// What an older Melian's fingerprint gave `oldVerdict`, and the review it posted records.
+		const oldFingerprint = "b03f395c48ffe2ed";
 		const provenance = (base: string) => ({
 			kind: "pull-request" as const,
 			repository,
@@ -708,7 +712,7 @@ describe("documents stored before evidence became a list", () => {
 				published.revisions = json({
 					[head]: {
 						reviews: ["101"],
-						verdict: Verdict.from(oldVerdict as unknown as StoredVerdict).fingerprint(),
+						verdict: oldFingerprint,
 						rounds: 1,
 						open: {},
 						resolved: {},
@@ -736,6 +740,12 @@ describe("documents stored before evidence became a list", () => {
 				await publisher.close();
 			}
 		}
+
+		it("fingerprints the old verdict, and its upgrade's legacy form, as an older Melian did", () => {
+			const stored = oldVerdict as unknown as StoredVerdict;
+			expect(Verdict.from(stored).fingerprint()).toBe(oldFingerprint);
+			expect(Verdict.from(Verdict.upgrade(stored)).legacyFingerprint()).toBe(oldFingerprint);
+		});
 
 		it("posts nothing again for the revision that review was of", async () => {
 			const { publication, posted } = await publishAfterUpgrade([baseA], baseA);
