@@ -1299,6 +1299,49 @@ describe("reviewChangeset", () => {
 			expect(handoffsOf(first!)["trust-boundary"]).toBe("every");
 		});
 
+		it("hands Melian's own correctness defects to durability on durability's files alone", async () => {
+			const own = (path: string) =>
+				readFileSync(fileURLToPath(new URL(`../../../${path}`, import.meta.url)), "utf8");
+			const ownLenses = ["durability", "correctness", "removed-behaviour"].map(
+				(name) => `.melian/lenses/${name}/LENS.md`,
+			);
+			rmSync(repo, { recursive: true, force: true });
+			repo = baseAndHead(
+				{
+					"melian.yaml": own("melian.yaml"),
+					...Object.fromEntries(ownLenses.map((path) => [path, own(path)])),
+					"packages/pipeline/src/notes.ts": lines("export const notes = 1;"),
+					"docs/notes.md": lines("Notes."),
+				},
+				{
+					"packages/pipeline/src/notes.ts": lines("export const notes = 2;"),
+					"docs/notes.md": lines("Notes, revised."),
+				},
+			);
+			const base = { kind: "revision", commit: gitIn(repo, "rev-parse", "main") } as const;
+			const { revision } = await Changeset.resolve(repo, "main...feature");
+			const { config: melian } = await loadConfig(repo, base, ".");
+			const requests = scriptConversations(
+				fake,
+				[...backlog, correctness, contracts, "You are the durability reviewer"].map((match) => ({
+					match,
+					replies: [fauxAssistantMessage("Done.")],
+				})),
+			);
+
+			await reviewed({
+				config: { ...melian, models: config.models },
+				lenses: await Lens.load(
+					repo,
+					base,
+					revision.files.map((file) => file.path),
+				),
+			});
+
+			for (const lens of [correctness, "You are the removed-behaviour reviewer"])
+				expect(handoffsOf(requests[lens]![0]!).durability).toEqual(["packages/pipeline/src/notes.ts"]);
+			expect(handoffsOf(requests["You are the durability reviewer"]![0]!)).toEqual({ correctness: "every" });
+		});
 	});
 
 	it("holds a built-in lens at careful to the level's own limit of 30 tool calls", async () => {

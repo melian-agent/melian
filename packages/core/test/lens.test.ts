@@ -1,5 +1,6 @@
-import { mkdirSync, symlinkSync } from "node:fs";
+import { mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
 	defaultConfig,
 	Lens,
@@ -8,6 +9,7 @@ import {
 	type LensNeighbour,
 	lensCovers,
 	lensToolNames,
+	loadConfig,
 	type MelianConfig,
 	parseLensFile,
 } from "@melian-agent/core";
@@ -116,6 +118,26 @@ describe("built-in lenses", () => {
 		expect(correctness!.lens.version).toBe("55d4d18f3384");
 	});
 
+	// Melian's own repository extends two built-ins with a hand-off to its durability lens, which changes their versions.
+	it("give Melian's own overrides their versions, under its root melian.yaml's paths too", async () => {
+		const melian = fileURLToPath(new URL("../../../", import.meta.url));
+		const own = [
+			"melian.yaml",
+			...["correctness", "removed-behaviour"].map((name) => `.melian/lenses/${name}/LENS.md`),
+		];
+		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
+		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
+		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toMatchObject({
+			correctness: "4b100d521191",
+			"removed-behaviour": "d9d8851b1ced",
+		});
+		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
+		const selected = Lens.select(lenses, config, ["src/index.ts"]);
+		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toMatchObject({
+			correctness: "ad214def24d2",
+			"removed-behaviour": "7f9a438eac87",
+		});
+	});
 
 	it("load the lens backlog adversarial, over every path, with the standards and three levels", async () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, ["src/index.ts"]);
