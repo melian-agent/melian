@@ -365,7 +365,7 @@ Solution: preferences and credentials live in separate files.
 
 Both preference files take `melian.yaml`'s schema. The per-clone file wins over the user-level one, and both win over the committed files. A route's `accept`, `unavailable`, and `acceptOverridden` are policy, so only a committed `melian.yaml` sets them; a preference file that sets one is refused, naming the key, since it could otherwise wave its own override through. The user-level files live in `$XDG_CONFIG_HOME/melian/`, which is `~/.config/melian/` when the variable is unset.
 
-A credential entry has a name, a provider, a type, and a value that is literal (`key`), an environment variable name (`env`), or a command (`command`), as Pi's store takes `!command`. The secrets-file type remains `api_key`; the credential pool brings managed OAuth logins in milestone 3:
+A credential entry has a name, a provider, a type, and a value that is literal (`key`), an environment variable name (`env`), or a command (`command`), as Pi's store takes `!command`. The secrets-file type remains `api_key`. Melian uses a value as an API key where supported, or a bearer for an OAuth-only provider. Bearers carry no refresh token, and Melian never refreshes them. A numeric JWT `exp` claim, read without signature verification, supplies the expiry when at most 30 days ahead. Other tokens receive a rolling one-hour lease on every read. A bearer inside the seven-minute cutoff reads as absent. The credential pool brings managed OAuth logins in milestone 3:
 
 ```yaml
 # ~/.config/melian/secrets.yaml

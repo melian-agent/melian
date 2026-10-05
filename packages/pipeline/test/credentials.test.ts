@@ -234,7 +234,7 @@ describe("MelianCredentialStore", () => {
 	});
 
 	it.each(["opaque", "e30.not-json.signature", "e30.eyJleHAiOiJvb3BzIn0.signature"])(
-		"gives %s a fixed hour from its first read",
+		"gives %s a rolling hour on every read, including after the first lease cutoff",
 		async (token) => {
 			vi.useFakeTimers();
 			const now = 1_800_000_000_000;
@@ -252,8 +252,35 @@ describe("MelianCredentialStore", () => {
 				refresh: "",
 				expires: now + 3_600_000,
 			});
-			vi.setSystemTime(now + 60_000);
-			expect(await store.read("fake-oauth")).toMatchObject({ expires: now + 3_600_000 });
+			for (const minutes of [1, 53, 54, 120]) {
+				vi.setSystemTime(now + minutes * 60_000);
+				expect(await store.read("fake-oauth")).toMatchObject({ expires: Date.now() + 3_600_000 });
+			}
+		},
+	);
+
+	it.each([30, 31, 3650])(
+		"bounds a JWT claim %i days ahead to 30 days, otherwise using a rolling lease",
+		async (days) => {
+			vi.useFakeTimers();
+			const now = 1_800_000_000_000;
+			vi.setSystemTime(now);
+			const expires = now + days * 24 * 3_600_000;
+			const token = `e30.${Buffer.from(JSON.stringify({ exp: expires / 1000 })).toString("base64url")}.signature`;
+			const credential = named("bearer", "fake-oauth", { kind: "literal", key: token });
+			const credentials = new MelianCredentialStore(
+				[credential],
+				() => ({ apiKey: false, oauth: true }),
+				new PiCredentialStore(authPath),
+				{},
+			);
+			expect(await credentials.read("fake-oauth")).toMatchObject({
+				expires: days === 30 ? expires : now + 3_600_000,
+			});
+			vi.setSystemTime(now + 54 * 60_000);
+			expect(await credentials.read("fake-oauth")).toMatchObject({
+				expires: days === 30 ? expires : Date.now() + 3_600_000,
+			});
 		},
 	);
 

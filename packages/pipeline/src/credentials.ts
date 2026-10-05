@@ -176,17 +176,23 @@ function runCommand(credential: NamedCredential, command: string): Promise<strin
 }
 
 function bearerExpiry(value: string): number {
+	const now = Date.now();
 	const parts = value.split(".");
 	if (parts.length === 3) {
 		try {
 			const claims: unknown = JSON.parse(Buffer.from(parts[1]!, "base64url").toString("utf8"));
 			if (typeof claims === "object" && claims !== null && "exp" in claims) {
 				const expires = claims.exp;
-				if (typeof expires === "number" && Number.isFinite(expires * 1000)) return expires * 1000;
+				if (
+					typeof expires === "number" &&
+					Number.isFinite(expires * 1000) &&
+					expires * 1000 <= now + 30 * 24 * 60 * 60_000
+				)
+					return expires * 1000;
 			}
 		} catch {}
 	}
-	return Date.now() + 60 * 60_000;
+	return now + 60 * 60_000;
 }
 
 /** The authentication kinds a provider accepts, read from the model collection's registry. */
@@ -200,15 +206,14 @@ export interface ProviderAuthKinds {
  * The provider's environment variables apply after both, as pi-ai resolves them. A named credential applies when its
  * source is present: a literal key, an environment variable that is set, or a command, which counts as present until
  * it runs, at its provider's first use, once per process. API-key providers receive a key; OAuth-only providers receive
- * a bearer with no refresh token. JWT expiry is read without signature verification; other values get one hour from
- * first read. A bearer inside the seven-minute cutoff reads as absent. Like Pi's store it never writes.
+ * a bearer with no refresh token. JWT expiry is read without signature verification, bounded to 30 days ahead; other values get a rolling
+ * one-hour lease on every read. A bearer inside the seven-minute cutoff reads as absent. Like Pi's store it never writes.
  */
 export class MelianCredentialStore implements CredentialStore {
 	readonly named: readonly NamedCredential[];
 	readonly pi: PiCredentialStore;
 	readonly #env: NodeJS.ProcessEnv;
 	readonly #authKinds: (provider: string) => ProviderAuthKinds;
-	readonly #expires = new Map<NamedCredential, number>();
 	readonly #values = new Map<NamedCredential, Promise<string>>();
 
 	constructor(
@@ -312,12 +317,7 @@ export class MelianCredentialStore implements CredentialStore {
 	private async resolve(named: NamedCredential): Promise<Credential | undefined> {
 		const value = await this.value(named);
 		if (this.type(named.provider) === "api_key") return { type: "api_key", key: value };
-		let expires = this.#expires.get(named);
-		if (expires === undefined) {
-			expires = bearerExpiry(value);
-			this.#expires.set(named, expires);
-		}
-		return usable({ type: "oauth", access: value, refresh: "", expires });
+		return usable({ type: "oauth", access: value, refresh: "", expires: bearerExpiry(value) });
 	}
 
 	modify(
