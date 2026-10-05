@@ -261,4 +261,6 @@ Version 4 of `PublishedDocument` adds optional ledger round snapshots and a pend
 
 An addressed inline finding keeps its first signed marker and appends a resolution marker. The provider skips an accepted edit but retries GraphQL resolution until the pipeline records the action. An older separate resolution reply also owes thread resolution, since milestone 1 left the thread open. Each publication records thread resolution apart from its reply. A recorded reply without that checkpoint still resolves the thread, including replies recorded at older heads, without posting or editing again. A dismissal still posts its reason as a reply. If a finding's marker was removed, publication skips its edit, still resolves the thread and records null. Thread discovery is cached for one publish. An abandoned round keeps the ledger link. Neither the ledger nor the hidden stamp carries the git identity of the dismisser.
 
+The three standards version bumps establish a reader boundary for per-lens provenance and explicitly migrate records that predate it, even though the fields are optional.
+
 Lens task version 3 keeps per-lens standards paths beside the instructions. Upgrading version 2 preserves its levels, routes and checkpoint; version 1 still loses its level as before. Publication snapshots use version 6 and leave the new field absent on older rounds.

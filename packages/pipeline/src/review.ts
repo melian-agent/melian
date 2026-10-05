@@ -1274,6 +1274,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			lenses: [],
 		});
 	}
+	const tier = request.tier ?? request.config.stages["pull-request"] ?? "full";
 	const supplied = automatic
 		? (
 				await runChecks(
@@ -1283,7 +1284,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						changeset: request.changeset,
 						config: request.config,
 						source: request.policy!,
-						tier: request.tier ?? request.config.stages["pull-request"] ?? "full",
+						tier,
 						rerunFailed: request.rerun,
 					},
 					request.context ?? backgroundContext,
@@ -1299,7 +1300,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const root = (await harness.root(context)).id;
 	// A file's old path too, so a move out of a lens's paths still runs the lens on what left them.
 	const paths = changeset.revision.paths();
-	const manifest = checksOfTier(config, options.tier ?? config.stages["pull-request"] ?? "full");
+	const manifest = checksOfTier(config, tier);
 	const named = new Set(manifest.filter((name) => name.startsWith("lens.")).map((name) => name.slice("lens.".length)));
 	const selected = Lens.select(
 		options.lenses.filter((lens) => named.has(lens.name)),
