@@ -189,6 +189,15 @@ describe("triage of a lens", () => {
 		expect(() => triage(carefulOnly, LevelBand.of({ floor: "deep" }))).toThrow(RangeError);
 	});
 
+	it("explains when the lens declares none of the levels its band holds", () => {
+		const unrouted = vi.fn(() => "no route");
+
+		expect(carefulOnly.unrunnable(LevelBand.of({ floor: "deep" }), unrouted)).toBe(
+			"it declares none of them, only careful",
+		);
+		expect(unrouted).not.toHaveBeenCalled();
+	});
+
 	it("takes the highest floor and the lowest ceiling across paths, the floor winning where they cross", () => {
 		const across = LevelBand.across([
 			LevelBand.of({ floor: "careful" }),

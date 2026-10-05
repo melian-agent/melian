@@ -381,6 +381,25 @@ describe("triage", () => {
 		expect(fake.provider.state.callCount).toBe(0);
 	});
 
+	it("fails the review when a careful-only lens declares no level within a deep floor", async () => {
+		const decider = choosing("deep");
+		await open(decider);
+		const lens = lenses.find((each) => each.name === "correctness")!;
+		const carefulOnly = Lens.from({ ...lens.toJSON(), levels: { careful: lens.levels.careful } });
+		const floored = { ...config, lenses: { correctness: { level: { floor: "deep" } } } } as const;
+
+		const error = await review({ decider, config: floored, lenses: [carefulOnly] }).catch(
+			(caught: unknown) => caught,
+		);
+
+		expect(error).toMatchObject({ code: "noAvailableModel", lenses: ["correctness"] });
+		expect((error as Error).message).toBe(
+			"lens correctness may run from deep to deep, and no level there can run: it declares none of them, only careful. Route the tier in melian.local.yaml, log in with pi, or set the provider's API key",
+		);
+		expect(decider.requests).toHaveLength(0);
+		expect(fake.provider.state.callCount).toBe(0);
+	});
+
 	it.each([
 		["quick", ["quick", "careful", "deep"]],
 		["skip", ["skip", "quick", "careful", "deep"]],
