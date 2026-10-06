@@ -5,7 +5,7 @@ import { randomBytes } from "node:crypto";
  * code at a finding's evidence locations, or the findings an earlier run reported, which a model wrote after reading the
  * change.
  */
-export type UntrustedLabel = "diff" | "file" | "search" | "listing" | "evidence" | "findings" | "callers";
+export type UntrustedLabel = "diff" | "file" | "search" | "listing" | "evidence" | "findings" | "callers" | "standards";
 
 /**
  * A fresh random nonce for one review. Quoted content cannot close a boundary it cannot name, and the head is fixed

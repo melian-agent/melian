@@ -35,6 +35,8 @@ A manifest tool line saying “not yet fetched” is advisory. A review fetches 
 
 When the user asks about pinned tools, run `melian tools` and relay readiness. When they ask to fetch Enola, run `melian tools fetch enola`. This downloads the pinned archive, verifies it and repairs a mismatched entry. It does not run the analyser. Doctor alone remains the only command to run without a trigger.
 
+The standards line counts the working tree's standards files and bytes, including nested files. It warns for a file over 256 KiB or a symlink it skipped. It lists at most ten paths, then says how many more it found. Mention a warning once; doctor does not review these files.
+
 ## Review the working branch
 
 ```sh

@@ -176,13 +176,14 @@ class PublishedState {
 // would post it twice.
 export const PublishedDocument = defineDoc<StoredPublishedState>({
 	kind: "melian.published",
-	version: 5,
+	version: 6,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
 	initial: () => new PublishedState({ order: [], revisions: {} }).toJSON(),
 	// Version 2 made a finding's evidence a list of locations, so a round left pending before it renders. Version 3 keys
 	// each reply by `replyKey`. Version 4 adds ledger snapshots; version 5 retains only one-line older rounds.
+	// Version 6 adds optional standards paths per lens; older snapshots leave them absent.
 	migrate: (value, from) => PublishedState.upgrade(value, from),
 });
 

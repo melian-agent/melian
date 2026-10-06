@@ -243,6 +243,7 @@ const options = {
 	},
 	...(scenario === "escalation" ? { decider } : scenario === "decision" ? { decider: parkedDecider } : {}),
 	lenses: lensesFor(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
+	checks: [],
 	standards: [],
 	models: fake.review,
 	...(scenario === "replacement"

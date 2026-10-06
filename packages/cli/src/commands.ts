@@ -6,10 +6,10 @@ import {
 	Lens,
 	loadConfig,
 	loadSecrets,
-	loadStandards,
 	Rendering,
 	type RepositorySource,
 	ReviewPlan,
+	Standards,
 	userFiles,
 	type Verdict,
 	visibleText,
@@ -121,7 +121,9 @@ export async function review(
 	const { repoRoot } = changeset;
 	const paths = changeset.revision.paths();
 	const lenses = await Lens.load(repoRoot, source, paths);
-	const standards = await loadStandards(repoRoot, source, ".");
+	const standardsSource =
+		source.kind === "revision" ? source : ({ kind: "revision", commit: changeset.revision.head } as const);
+	const standards = await Standards.load(repoRoot, standardsSource, paths);
 	const policy = await loadConfig(repoRoot, source, ".");
 	const { config: loaded } = policy;
 	const tier = loaded.stages["pull-request"] ?? "full";
@@ -156,9 +158,7 @@ export async function review(
 	});
 	const { harness } = reviewHarness;
 	try {
-		// The deterministic checks first, then the lenses: reviewChangeset reads the checks' records, and a check of the
-		// manifest without one makes the review not reviewed. The plan's routes reach only the lenses, so a different
-		// --model does not change the checks' run identity and run them again.
+		// Caller context needs the graph that deterministic checks produce.
 		const rootConversationId = (await harness.root(context)).id;
 		const checks = await runChecks(
 			harness,
@@ -197,7 +197,7 @@ export async function review(
 		let verdict: Verdict;
 		try {
 			({ verdict } = await reviewChangeset({
-				harness,
+				harness: reviewHarness,
 				changeset,
 				config: loaded,
 				lenses,

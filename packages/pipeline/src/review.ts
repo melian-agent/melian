@@ -33,6 +33,8 @@ import {
 	resolveModelForTier,
 	type ScrutinyLevel,
 	type Severity,
+	Standards,
+	StandardsReading,
 	type StandardsSection,
 	triageChoices,
 	triageQuestionSet,
@@ -51,7 +53,7 @@ import {
 	VerdictDocument,
 } from "./adjudication.ts";
 import type { CallerContext } from "./callers.ts";
-import { checksExtension } from "./checks.ts";
+import { checksExtension, runChecks } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
 import {
 	DecisionDocument,
@@ -135,6 +137,9 @@ interface LensRun {
 	readonly verify?: boolean;
 	readonly instructions: string;
 	readonly callers?: string;
+	readonly instructionFingerprint?: string;
+	readonly standardsOmitted?: boolean;
+	readonly standards?: readonly string[];
 	readonly tools: readonly LensToolName[];
 	readonly severities: readonly Severity[];
 	readonly rules: readonly LensRule[];
@@ -168,9 +173,10 @@ class LensTaskInput {
 		if (escalateAt !== undefined) this.escalateAt = escalateAt;
 	}
 
-	static upgrade(input: unknown): StoredLensTaskInput {
+	static upgrade(input: unknown, from: number): StoredLensTaskInput {
 		const stored = input as StoredLensTaskInput;
-		const lenses = stored.lenses.map(({ level: _, ...run }) => run) as unknown as LensRun[];
+		const lenses =
+			from >= 2 ? stored.lenses : (stored.lenses.map(({ level: _, ...run }) => run) as unknown as LensRun[]);
 		return new LensTaskInput(stored.root, stored.revision, lenses, stored.escalateAt).toJSON();
 	}
 
@@ -358,10 +364,11 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 	// outcome's `escalation`. A version 1 task holds none of them, and runs as it did. Its runs lose their `level`, so
 	// its findings name the lens's version alone, as its review's producers do, and never share a producer with a review
 	// after the upgrade that runs the lens at the same level.
-	version: 2,
+	// Version 3 records each run's standards paths; older runs leave them absent.
+	version: 3,
 	initial: () => ({ phase: "spawn" }),
-	migrate: (input, checkpoint) => ({
-		input: LensTaskInput.upgrade(input),
+	migrate: (input, checkpoint, from) => ({
+		input: LensTaskInput.upgrade(input, from),
 		checkpoint: checkpoint as unknown as LensCheckpoint,
 	}),
 	phases: {
@@ -543,15 +550,19 @@ export interface ReviewHarnessOptions {
 }
 
 /**
- * A durable harness that runs reviews over one changeset's storage, with {@link lensExtension} installed. Pass its
- * `harness` to `reviewChangeset`, `runChecks`, and `readVerdict`, and close it when done, which closes the storage.
+ * A durable harness that runs reviews over one changeset's storage, with {@link lensExtension} installed. Pass this
+ * wrapper to `reviewChangeset` for automatic checks, and its `harness` to `runChecks` and `readVerdict`. Closing it
+ * closes the storage.
  */
 export class ReviewHarness {
 	/** Pi's harness, which the review functions take. */
 	readonly harness: Harness;
+	/** Whether this harness holds the checks extension and an execution environment. */
+	readonly checksAvailable: boolean;
 
-	private constructor(harness: Harness) {
+	private constructor(harness: Harness, checksAvailable: boolean) {
 		this.harness = harness;
+		this.checksAvailable = checksAvailable;
 	}
 
 	/**
@@ -583,7 +594,7 @@ export class ReviewHarness {
 			throw error;
 		});
 		await abortReplacedRuns(harness, context);
-		return new ReviewHarness(harness);
+		return new ReviewHarness(harness, checkout !== undefined);
 	}
 
 	/** Closes the harness and its storage. Idempotent. */
@@ -731,17 +742,22 @@ function ranOn(
 	return ran;
 }
 
-/** What {@link reviewChangeset} reviews, and with what. */
-export interface ReviewOptions {
-	/** A harness with {@link lensExtension} installed, over the changeset's own storage. */
-	readonly harness: Harness;
+/** What {@link reviewChangeset} reviews, and with what. Raw harnesses must supply check records. */
+export type ReviewOptions = ReviewSettings &
+	(
+		| { readonly harness: ReviewHarness; readonly checks?: readonly CheckRecord[] }
+		| { readonly harness: Harness; readonly checks: readonly CheckRecord[] }
+	);
+
+interface ReviewSettings {
 	readonly changeset: Changeset;
 	readonly config: MelianConfig;
 	/** Precomputed advisory callers; the host opens them after deterministic graph checks. */
 	readonly callers?: CallerContext;
 	/** The lenses that may run; configuration and the changed paths select among them. */
 	readonly lenses: readonly Lens[];
-	readonly standards: readonly StandardsSection[];
+	/** Chains for changed paths, or flat sections shared by every lens for older callers. */
+	readonly standards: Standards | readonly StandardsSection[];
 	/** The collection the harness was opened with, used to pick each tier's first model with credentials. */
 	readonly models: ReviewModels;
 	/**
@@ -767,12 +783,6 @@ export interface ReviewOptions {
 	 * `pull-request` stage to. Only lenses the manifest names run.
 	 */
 	readonly tier?: string;
-	/**
-	 * What the review's other checks did, such as static analysis and guardrails, one record per check. A check of the
-	 * manifest with no record makes the verdict not reviewed. The lens step records every `lens.*` check itself, so a
-	 * record here under such a name is ignored.
-	 */
-	readonly checks?: readonly CheckRecord[];
 	/**
 	 * Run again a lens task of this head and selection that left a lens failed, and ask triage again after a decision
 	 * that failed, rather than attach to either. Without it a repeat review attaches to the finished tasks and reports
@@ -836,7 +846,8 @@ function omit<T extends object, K extends keyof T>(value: T, key: K): Omit<T, K>
 // change to any of them runs the lenses again. A task an older Melian created names none of them.
 function escalatesTo(escalation: NonNullable<LensRun["escalation"]>): string {
 	const { next } = escalation;
-	if (next !== undefined) return `escalates to ${next.key} (${next.route.map(modelName).join(", ")})`;
+	if (next !== undefined)
+		return `escalates to ${next.key} (${next.route.map(modelName).join(", ")}) ${next.instructionFingerprint ?? ""}`;
 	return `capped ${escalation.cap ?? "at its ceiling"}`;
 }
 
@@ -846,6 +857,7 @@ function selectionOf(lenses: readonly LensRun[], escalateAt: Severity | undefine
 			[
 				lens.key,
 				...(lens.callers === undefined ? [] : [`callers ${lens.callers}`]),
+				...(lens.instructionFingerprint === undefined ? [] : [`instructions ${lens.instructionFingerprint}`]),
 				...(lens.band === undefined ? [] : [`band ${lens.band}`]),
 				...(escalateAt === undefined ? [] : [`escalateAt ${escalateAt}`]),
 				...(lens.escalation === undefined ? [] : [escalatesTo(lens.escalation)]),
@@ -1031,6 +1043,8 @@ function lensCheck(lens: LensRun, outcome: LensOutcome | undefined, completed: b
 	if (!completed) return { name, status: "failed", level, reason: failed("the lens task did not complete") };
 	if (outcome?.status === "done") {
 		const { budgetEnded } = outcome;
+		if (lens.standardsOmitted)
+			return { name, status: "ended", level, ...(budgetEnded === undefined ? {} : { budgetEnded }), ...noted };
 		if (budgetEnded === undefined) return { name, status: "ran", level, ...noted };
 		// A budget's end is reduced coverage, so it leaves the review not reviewed unless the level counts it.
 		if (lens.budget.ended === "count") return { name, status: "ran", level, budgetEnded, ...noted };
@@ -1266,22 +1280,60 @@ async function triage(
  * provider failure outlasts pi-ai's retries or authentication fails, and becomes a check named `lens.<name>` beside
  * `options.checks`.
  *
+ * With a `ReviewHarness` opened with `checkout`, runs deterministic checks first unless `checks` was supplied,
+ * including an empty array. Checks use the original `config`, before the plan replaces its routes. `rerun` maps to
+ * `rerunFailed`. Raw harnesses must supply records or throw `notInstalled`. Wrappers without an environment leave missing records not reviewed. A check run that does not complete propagates its `CheckError` without adjudicating.
+ *
  * Throws {@link ReviewError}: `noAvailableModel` when a lens has no level in its band whose tier routes to a model with
- * credentials, naming each level and why, `notInstalled` when the harness lacks {@link lensExtension}, or the decision extension for
+ * credentials, naming each level and why, `missingPolicy` before any task starts when automatic checks lack a source, `notInstalled` when the harness lacks {@link lensExtension}, or the decision extension for
  * a decider, `adjudicationFailed` when no verdict was recorded, `superseded` when a later review replaced this one's lens run,
  * `allModelsFailed` when every model of a lens's route
  * failed, naming them, and `lensFailed` when a lens did not finish for another reason. The last two carry the findings
  * reported so far and the `not-reviewed` verdict already recorded.
  */
 export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
-	const options = planned(request);
-	const { harness, changeset, config, standards, models } = options;
+	if (request.checks === undefined && !(request.harness instanceof ReviewHarness)) {
+		throw new ReviewError(
+			"notInstalled",
+			"automatic checks require ReviewHarness; raw harness callers must supply checks, including an empty array",
+			{ lenses: [] },
+		);
+	}
+	const harness = request.harness instanceof ReviewHarness ? request.harness.harness : request.harness;
+	const automatic =
+		request.checks === undefined && request.harness instanceof ReviewHarness && request.harness.checksAvailable;
+	if (automatic && request.policy === undefined) {
+		throw new ReviewError("missingPolicy", "automatic checks require the policy source the host chose", {
+			lenses: [],
+		});
+	}
+	const tier = request.tier ?? request.config.stages["pull-request"] ?? "full";
+	const supplied = automatic
+		? (
+				await runChecks(
+					harness,
+					{
+						rootConversationId: (await harness.root(request.context ?? backgroundContext)).id,
+						changeset: request.changeset,
+						config: request.config,
+						source: request.policy!,
+						tier,
+						rerunFailed: request.rerun,
+					},
+					request.context ?? backgroundContext,
+				)
+			).records
+		: request.checks;
+	const options = planned({ ...request, checks: supplied ?? [] });
+	const { changeset, config, standards, models } = options;
+	const standardsSource =
+		standards instanceof Standards && (await standards.trustedBy(options.policy)) ? "revision" : "worktree";
 	const context = options.context ?? backgroundContext;
 	await abortReplacedRuns(harness, context);
 	const root = (await harness.root(context)).id;
 	// A file's old path too, so a move out of a lens's paths still runs the lens on what left them.
 	const paths = changeset.revision.paths();
-	const manifest = checksOfTier(config, options.tier ?? config.stages["pull-request"] ?? "full");
+	const manifest = checksOfTier(config, tier);
 	const named = new Set(manifest.filter((name) => name.startsWith("lens.")).map((name) => name.slice("lens.".length)));
 	const selected = Lens.select(
 		options.lenses.filter((lens) => named.has(lens.name)),
@@ -1404,10 +1456,25 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			if (shared.length === 0) return [];
 			return [{ name, files: shared.length === covers.length ? "every" : shared }];
 		});
+		const standardsFiles = [
+			...covers,
+			...changeset.revision.files
+				.filter((file) => file.oldPath !== undefined && covers.includes(file.path))
+				.map((file) => file.oldPath!),
+		];
+		const reading = lens.standards
+			? standards instanceof Standards
+				? standards.forFiles(standardsFiles)
+				: StandardsReading.from(standards)
+			: StandardsReading.from([]);
+
 		const noted: string[] = [...(unrunnable.get(lens) ?? [])];
 		if (config.static.enola.enabled)
 			noted.push(...(options.callers?.notes(covers) ?? ["Callers unavailable: the host supplied no graph context"]));
+		const omitted = reading.note();
+		if (omitted !== undefined) noted.push(omitted);
 		if (options.decider !== undefined && triageInput.cut) noted.push("triage input was cut, so no lens could skip");
+
 		if (triaged.failure !== undefined)
 			noted.push(`triage failed, so it ran at its default level: ${triaged.failure}`);
 		if (options.decider === undefined && options.triageSkipped !== undefined)
@@ -1438,12 +1505,39 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				verify: settings.verify,
 				...(callerSection === "" ? {} : { callers: createHash("sha256").update(callerSection).digest("hex") }),
 				instructions: ruled.renderInstructions(
-					standards,
+					reading.sections,
 					level,
 					neighbours,
-					(listing) => quoteUntrusted("listing", listing, nonce),
+					(text, label = "listing") => quoteUntrusted(label, text, nonce),
+					standardsSource,
 					options.callers?.render(covers, nonce),
 				),
+				instructionFingerprint: createHash("sha256")
+					.update(
+						JSON.stringify({
+							instructions: ruled.renderInstructions(
+								reading.sections,
+								level,
+								neighbours,
+								(text, label = "listing") => quoteUntrusted(label, text, "0".repeat(24)),
+								standardsSource,
+								options.callers?.render(covers, "0".repeat(24)),
+							),
+							standards: reading.sections,
+							standardsOmitted: reading.omitted.length > 0,
+							source: standards instanceof Standards ? standards.source : null,
+							trusted: standardsSource,
+							tools: lens.tools,
+							severities: lens.severities,
+							rules,
+							budget: settings.budget,
+							coverage,
+							prompt: new ChangePrompt(changeset, "0".repeat(24)).render(files),
+						}),
+					)
+					.digest("hex"),
+				standards: reading.paths(),
+				standardsOmitted: reading.omitted.length > 0,
 				tools: lens.tools,
 				severities: lens.severities,
 				rules,
@@ -1772,11 +1866,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		manifest: [...input.manifest],
 		lenses: settled
 			.map(({ run }) => run)
-			.map(({ key, name, version, level, route, budget }) => ({
+			.map(({ key, name, version, level, route, budget, standards: paths }) => ({
 				name,
 				version,
 				level,
 				models: route.map(modelName),
+				...(paths === undefined ? {} : { standards: [...paths] }),
 				...(lensRan(key)?.model === undefined ? {} : { ran: lensRan(key)?.model }),
 				...(lineageOf(name, level) === undefined ? {} : { lineage: describeLineage(lineageOf(name, level)!) }),
 				...(lensRan(key)?.usage === undefined ? {} : { usage: structuredClone(lensRan(key)?.usage) }),
@@ -1786,7 +1881,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					...(budget.tools === undefined ? {} : { tools: budget.tools }),
 				},
 			})),
-		standards: standards.map((section) => section.path),
+		standards: [...new Set(settled.flatMap(({ run }) => run.standards ?? []))],
 	};
 	const adjudication = await startAdjudication(
 		harness,
