@@ -62,4 +62,34 @@ describe("compiler graph extraction", { timeout: 60_000 }, () => {
 			}
 		},
 	);
+	it("extracts constructions and tagged templates into the coverage denominator", async () => {
+		root = mkdtempSync(join(tmpdir(), "melian-new-tag-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["a.ts"] }));
+		writeFileSync(
+			join(root, "a.ts"),
+			"class Box {}\nfunction tag(s: TemplateStringsArray) {}\nfunction run() { new Box(); tag`x`; }\n",
+		);
+		const compiler = CompilerGraph.open(root);
+		try {
+			const truth = compiler.read();
+			expect(truth.files[0]?.pairs).toMatchObject([
+				{
+					caller: { name: "run", file: "a.ts", line: 3 },
+					callee: { name: "Box", file: "a.ts", line: 1, kind: "class" },
+					kind: "new",
+				},
+				{
+					caller: { name: "run", file: "a.ts", line: 3 },
+					callee: { name: "tag", file: "a.ts", line: 2, kind: "function" },
+					kind: "tag",
+				},
+			]);
+			const coverage = await EnolaCoverage.open(truth, EnolaFacts.parse(""), async () => undefined);
+			const measured = coverage.measure("a".repeat(40), "0.4.27").toJSON();
+			expect(measured.totals.calls).toBe(2);
+			expect(measured.causes).toEqual({ "call:class construction": 1, "call:tagged template": 1 });
+		} finally {
+			compiler.close();
+		}
+	});
 });
