@@ -431,6 +431,27 @@ describe("standards omission scope", () => {
 });
 
 describe.each(sourceKinds)("standards import safety from %s", (kind) => {
+	it.each(["present", "missing", "ignored"] as const)(
+		"treats pathspec syntax as a literal import when the file is %s",
+		async (state) => {
+			const path = ":(glob)rules.md";
+			writeFiles(repo, { "AGENTS.md": lines("# Rules", `@${path}`) });
+			if (state !== "missing") writeFiles(repo, { [path]: "LITERAL_RULE\n" });
+			if (state === "ignored") {
+				writeFiles(repo, { ".gitignore": `${path}\n` });
+				gitIn(repo, "--literal-pathspecs", "add", "--force", "--", path);
+			}
+			const reading = (await Standards.load(repo, sourceFor(repo, kind), ["a.ts"])).forFiles(["a.ts"]);
+			if (state === "present") {
+				expect(reading.sections).toContainEqual({ path, content: "LITERAL_RULE\n", importedBy: "AGENTS.md" });
+			} else {
+				expect(reading.paths()).not.toContain(path);
+				expect(reading.sections.map(({ content }) => content).join("\n")).not.toContain("LITERAL_RULE");
+			}
+			if (state === "ignored") expect(reading.refused).toContain(`AGENTS.md -> ${path}`);
+		},
+	);
+
 	it("refuses credential names and ignored imports without reading their contents", async () => {
 		writeFiles(repo, {
 			".gitignore": "private.md\n",

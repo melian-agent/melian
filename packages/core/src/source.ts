@@ -110,7 +110,8 @@ class WorktreeSource implements SourceReader {
 	}
 
 	async isIgnored(path: string): Promise<boolean> {
-		const result = await git(this.root, ["check-ignore", "--no-index", "--quiet", "--", path]);
+		// check-ignore rejects literal pathspec magic; ./ keeps a leading colon in the filename.
+		const result = await git(this.root, ["check-ignore", "--no-index", "--quiet", "--", `./${path}`]);
 		if (result.code > 1 || result.code < 0)
 			throw new SourceError("unreadable", path, `${path}: ${result.stderr.trim()}`);
 		return result.code === 0;
@@ -260,7 +261,7 @@ class RevisionSource implements SourceReader {
 				"--no-index",
 				"--quiet",
 				"--",
-				path,
+				`./${path}`,
 			]);
 			if (result.code > 1 || result.code < 0)
 				throw new SourceError("unreadable", this.label(path), `${this.label(path)}: ${result.stderr.trim()}`);
