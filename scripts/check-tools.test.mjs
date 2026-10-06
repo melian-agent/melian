@@ -10,6 +10,7 @@ const tools = {
 	},
 };
 const release = {
+	draft: false,
 	tag_name: "v1.2.3",
 	published_at: tools.tool.published,
 	assets: [{ browser_download_url: pin.url, digest: `sha256:${pin.sha256}` }],
@@ -18,6 +19,18 @@ const release = {
 describe("tool release verification", () => {
 	it("checks publication time and every digest with an injected fetch", async () => {
 		expect(await verifyReleases({ tools, fetch: async () => Response.json(release) })).toEqual([]);
+	});
+	it.each([
+		{ label: "draft", change: { draft: true } },
+		{ label: "wrong tag", change: { tag_name: "v9.0.0" } },
+	])("rejects a $label release locally and in CI with valid dates and digests", async ({ change }) => {
+		for (const ci of [false, true]) {
+			const note = vi.fn();
+			expect(
+				await verifyReleases({ tools, ci, note, fetch: async () => Response.json({ ...release, ...change }) }),
+			).toEqual(["tool: release unverified: release tag or publication time differs from the manifest"]);
+			expect(note).not.toHaveBeenCalled();
+		}
 	});
 	it("fails closed for a moved digest, changed date, absent asset, or unavailable release", async () => {
 		for (const response of [
