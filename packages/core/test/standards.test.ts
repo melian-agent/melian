@@ -339,9 +339,8 @@ describe.each(sourceKinds)("Standards from the %s", (kind) => {
 				]),
 			),
 		);
-		await expect(Standards.load(repo, sourceFor(repo, kind), ["packages/app/a.ts"])).rejects.toMatchObject({
-			code: "totalTooLarge",
-		});
+		const error = await rejection(Standards.load(repo, sourceFor(repo, kind), ["packages/app/a.ts"]), StandardsError);
+		expect(error.code).toBe("totalTooLarge");
 	});
 
 	it("omits an oversized vendor carrier only from the chains that reach it", async () => {
@@ -360,8 +359,12 @@ describe.each(sourceKinds)("Standards from the %s", (kind) => {
 		const paths = ["packages/app/a.ts"];
 		const standards = await Standards.load(repo, sourceFor(repo, kind), paths);
 		expect(standards.forFiles([]).paths()).toEqual([]);
-		expect(() => standards.forFiles(paths)).toThrow(StandardsError);
-		expect(() => standards.forFiles(paths)).toThrow(/AGENTS\.md/);
+		const error = await rejection(
+			Promise.resolve().then(() => standards.forFiles(paths)),
+			StandardsError,
+		);
+		expect(error.code).toBe("tooLarge");
+		expect(error.path).toMatch(/AGENTS\.md$/);
 	});
 });
 
