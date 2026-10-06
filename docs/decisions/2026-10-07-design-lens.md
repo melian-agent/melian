@@ -1,0 +1,7 @@
+# A design lens reads the decisions a branch touches
+
+Choice: build a `design` lens in the heavy tier with `verify: true`. It reads the diff plus the decision files and design sections the branch touches. Its rule catalogue is `identity-missing-input`, `trust-by-label`, `bound-on-wrong-measure`, `capability-by-class`, `fail-open-default`, `resumed-identity`, `criterion-selection-bias`, `unshipped-artifact`, and `single-slot-overwrite`. It ships with nine goldens, each with Codex as its source. It is built after the documentation pull request that records this, before step 14, What step 3 left, and before the mutation static check.
+
+Why: Codex's adversarial review found defects on [pull request #85](https://github.com/melian-agent/melian/pull/85), [pull request #86](https://github.com/melian-agent/melian/pull/86), and [pull request #89](https://github.com/melian-agent/melian/pull/89) that no Melian lens owned. Example: a cache key that omits an input changes the answer without changing the key (`identity-missing-input`). Another example: a record trusted because of its label, not because anything checked it (`trust-by-label`). The other lenses read the diff and the repository's standards. None asks whether the change keeps what a decision file says. The comparison records mark these misses `no-owner`, and a repeat on a second pull request is a candidate check under `AGENTS.md`.
+
+The lens reads only the decisions and design sections the branch touches. A lens that read the whole design would spend its budget on rules the change does not reach.
