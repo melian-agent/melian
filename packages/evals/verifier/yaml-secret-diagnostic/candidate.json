@@ -1,0 +1,19 @@
+{
+  "file": "credentials.mjs",
+  "line": 5,
+  "rule": "wrong-result",
+  "severity": "P1",
+  "explanation": {
+    "what": "The YAML diagnostic may quote a literal key from the malformed line.",
+    "why": "The changed path appears to allow this outcome.",
+    "fix": "Check the preventing code before accepting the claim."
+  },
+  "failureScenario": "readCredentials(\"provider: { key: SENTINEL_SECRET\") prints the diagnostic with SENTINEL_SECRET to standard error.",
+  "evidence": [
+    {
+      "file": "credentials.mjs",
+      "line": 5,
+      "role": "cause"
+    }
+  ]
+}

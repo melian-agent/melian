@@ -1,6 +1,7 @@
 src/review.ts
 
-  P1  line 15  head-controls-judge  (introduced, new, unresolved)
+  P1  line 15  head-controls-judge  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   loadPolicy reads policy.json from the checkout, and verdict runs on a checkout of the pull request's head, so the head supplies the policy that judges it.
     What: loadPolicy reads policy.json from the checkout, and verdict runs on a checkout of the pull request's head, so the head supplies the policy that judges it.
     Why here: The change replaced git show of the base commit's policy.json with a read of the working tree, and dropped the base commit from verdict, whose base documentation says the policy comes from the base commit.

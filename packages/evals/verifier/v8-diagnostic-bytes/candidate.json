@@ -1,0 +1,19 @@
+{
+  "file": "import.mjs",
+  "line": 5,
+  "rule": "wrong-result",
+  "severity": "P1",
+  "explanation": {
+    "what": "JSON parse diagnostics may print reviewer-controlled terminal bytes.",
+    "why": "The changed path appears to allow this outcome.",
+    "fix": "Check the preventing code before accepting the claim."
+  },
+  "failureScenario": "importReview with malformed JSON containing a terminal escape writes the diagnostic and those bytes to standard error.",
+  "evidence": [
+    {
+      "file": "import.mjs",
+      "line": 5,
+      "role": "cause"
+    }
+  ]
+}

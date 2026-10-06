@@ -1,6 +1,7 @@
 packages/pipeline/src/publish.ts
 
-  P1  line 67  stale-task-write  (introduced, new, unresolved)
+  P1  line 67  stale-task-write  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   The loop now resumes and waits for every unfinished publish task, and each posts the verdict of the revision its input was created with.
     What: The loop now resumes and waits for every unfinished publish task, and each posts the verdict of the revision its input was created with.
     Why here: The base aborted every publish task a crash left, so one created for an older target ended unposted. This change resumes them instead, and only the new call is checked against the pull request; a resumed task never asks whether its base and head are still the pull request's.

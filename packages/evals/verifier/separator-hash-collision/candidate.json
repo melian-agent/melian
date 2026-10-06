@@ -1,0 +1,19 @@
+{
+  "file": "import.mjs",
+  "line": 5,
+  "rule": "wrong-result",
+  "severity": "P1",
+  "explanation": {
+    "what": "Two path/ref pairs may hash to one ID and replace a finding.",
+    "why": "The changed path appears to allow this outcome.",
+    "fix": "Check the preventing code before accepting the claim."
+  },
+  "failureScenario": "importFindings([{path:\"a|b\",ref:\"c\"},{path:\"a\",ref:\"b|c\"}]) returns one finding instead of two.",
+  "evidence": [
+    {
+      "file": "import.mjs",
+      "line": 5,
+      "role": "cause"
+    }
+  ]
+}

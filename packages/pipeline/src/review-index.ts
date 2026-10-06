@@ -11,6 +11,7 @@ type IndexedReview = {
 	lenses: string[];
 	// The adjudication task and its input as JSON, so a repeat call with the same input attaches to it.
 	adjudication?: { task: number; input: string };
+	verification?: { task: number; input: string };
 };
 
 export type ReviewIndexState = { reviews: Record<string, IndexedReview> };
