@@ -1,5 +1,8 @@
-import { CallerContext } from "@melian-agent/pipeline";
-import { expect, it } from "vitest";
+import { join } from "node:path";
+import { defaultConfig } from "@melian-agent/core";
+import { backgroundContext, CallerContext, createNodeExecutionEnv, ToolProvisioning } from "@melian-agent/pipeline";
+import { afterEach, expect, it } from "vitest";
+import { commit, createRepository, removeRepository } from "./fixtures/repo.ts";
 
 it("escapes a known nonce and bounds each symbol's caller data", () => {
 	const callers = CallerContext.from({
@@ -51,4 +54,69 @@ it("delivers exactly 40 short callers and reports the remaining count", () => {
 		...Array.from({ length: 40 }, (_, i) => `a.ts:1 c${i}`),
 		"10 callers cut locally; upstream cap not reached.",
 	]);
+});
+
+const repos: string[] = [];
+afterEach(() => {
+	for (const repo of repos.splice(0)) removeRepository(repo);
+});
+
+it("opens bundled provisioning and leaves an unfetched pin advisory", async () => {
+	const repo = createRepository();
+	repos.push(repo);
+	const head = commit(repo, { "a.ts": "export function alpha() {}\n" });
+	const callers = await CallerContext.open(
+		{
+			repoRoot: repo,
+			commit: head,
+			base: head,
+			tool: "enola",
+			settings: defaultConfig.static.enola,
+			env: createNodeExecutionEnv(repo),
+		},
+		[{ path: "a.ts", status: "modified", binary: false, hunks: [] }],
+		backgroundContext,
+	);
+	expect(callers.notes(["a.ts"])).toEqual(["Callers unavailable: Enola executable not-fetched"]);
+	const tools = await ToolProvisioning.open(repo, { root: join(repo, "unused") });
+	const injected = await CallerContext.open(
+		{
+			repoRoot: repo,
+			commit: head,
+			base: head,
+			tool: "enola",
+			settings: defaultConfig.static.enola,
+			tools,
+			env: createNodeExecutionEnv(repo),
+		},
+		[{ path: "a.ts", status: "modified", binary: false, hunks: [] }],
+		backgroundContext,
+	);
+	expect(injected.notes(["a.ts"])).toEqual(["Callers unavailable: Enola executable not-fetched"]);
+});
+
+it("omits oversized headings and caps the whole quoted caller section", () => {
+	const oversized = CallerContext.from({
+		groups: [{ file: "a.ts", symbol: "a".repeat(3073), callers: [], truncated: false }],
+		notes: [],
+		issues: [],
+		paths: [],
+	});
+	expect(oversized.render(["a.ts"], "N")).toBe("1 caller symbol sections omitted at the prompt limit.");
+	const callers = CallerContext.from({
+		groups: Array.from({ length: 48 }, (_, i) => ({
+			file: "a.ts",
+			symbol: `${i}-${"a".repeat(3000)}`,
+			callers: [],
+			truncated: false,
+		})),
+		notes: [],
+		issues: [],
+		paths: [],
+	});
+	const text = callers.render(["a.ts"], "N");
+	const body = /label="callers">\n([\s\S]*?)\n<\/untrusted-N>/.exec(text)![1]!;
+	expect(Buffer.byteLength(body)).toBeLessThanOrEqual(64 * 1024);
+	expect(body.split("\n\n")).toHaveLength(21);
+	expect(text).toContain("27 symbol sections omitted at the prompt limit.");
 });

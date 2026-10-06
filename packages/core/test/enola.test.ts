@@ -1,6 +1,9 @@
+import { rmSync, symlinkSync } from "node:fs";
+import { join } from "node:path";
 import { CheckError, EnolaPolicy, normaliseEnolaSarif, staticSeverity } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isPolicyFile } from "../src/paths.ts";
+import { SourceError } from "../src/source.ts";
 import { gitIn, isolatedGitEnv, rejection, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
 
 describe("Enola policy and reports", () => {
@@ -101,5 +104,31 @@ describe("revision Enola policy limits", () => {
 		const error = await rejection(EnolaPolicy.load(repo, "HEAD"), CheckError);
 		expect(error.code).toBe("outputTooLarge");
 		expect(error.message).toContain("Enola policy exceeds 1 MiB");
+	});
+	it.each(["symlink", "tooLarge"])("treats %s head policy as changed", async (kind) => {
+		writeFiles(repo, { "enola.yaml": "rules: []\n" });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "base");
+		const policy = await EnolaPolicy.load(repo, "HEAD");
+		if (kind === "symlink") {
+			rmSync(join(repo, "enola.yaml"));
+			symlinkSync("outside.yaml", join(repo, "enola.yaml"));
+		} else writeFiles(repo, { "enola.yaml": "#".repeat(256 * 1024 + 1) });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "head");
+		expect(await policy.differs(repo, "HEAD")).toBe(true);
+	});
+	it("propagates unreadable head policy instead of treating it as changed", async () => {
+		writeFiles(repo, { "enola/constraints/a.yaml": "base\n" });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "base");
+		const policy = await EnolaPolicy.load(repo, "HEAD");
+		writeFiles(repo, { "enola/constraints/a.yaml": "head\n" });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "head");
+		const blob = gitIn(repo, "rev-parse", "HEAD:enola/constraints/a.yaml");
+		rmSync(join(repo, ".git", "objects", blob.slice(0, 2), blob.slice(2)));
+		const error = await rejection(policy.differs(repo, "HEAD"), SourceError);
+		expect(error.code).toBe("unreadable");
 	});
 });

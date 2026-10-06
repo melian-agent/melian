@@ -205,6 +205,7 @@ describe("runStaticTool with the repository's own tools", () => {
 		timeout: 60_000,
 	}, async () => {
 		vi.stubEnv("MELIAN_TEST_SECRET", "hunter2");
+		vi.stubEnv("NODE_V8_COVERAGE", "");
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
 		const seen = join(repo, ".git", "tool-env.txt");
 		fakeTool(repo, "tsc", `if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\nenv > '${seen}'`);

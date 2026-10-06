@@ -419,7 +419,8 @@ before its post, retargets, reviews again, and publishes.
 - A fake reply carrying tool calls needs `stopReason: "toolUse"`; the default `"stop"` ends the run without running them.
 - An inverted rejection guard can fail on valid fixtures while no test reaches its rejection. Delete the guard too. A surviving deletion needs a regression or proof that another check enforces the same contract.
 - Assert on what the model was shown, not only on what the harness returned. `captured()` in `test/fixtures/spike.ts` keeps each request's messages.
-
+- External c8 runs need worker data and Vite's source maps. Vitest 5 ends fork workers with SIGTERM; flush node:v8 coverage first. Debugger.scriptParsed exposes each generated script's inline map, and Debugger.getScriptSource supplies its line lengths. Capture maps when scripts load; a worker can discard modules before exit. Put maps and line lengths in the raw report's source-map-cache. Give each generated script a URL keyed by its source hash. Keep native Node scripts separate until c8 maps each to source. Use c8 report --exclude-after-remap to select original paths. Without this, executed lines appear uncovered because generated offsets are applied to source text.
+- Node forwards NODE_V8_COVERAGE into children even when options.env names a restricted environment. Clear that variable in a test of the environment contract; keep its assertions unchanged.
 
 ## Verifying a changeset
 
