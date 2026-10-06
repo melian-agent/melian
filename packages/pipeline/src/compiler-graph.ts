@@ -123,7 +123,11 @@ export class CompilerGraph {
 				isInterfaceDeclaration(parent) ||
 				callable(parent)
 			) {
-				const label = named(parent);
+				const label = named(
+					(isArrowFunction(parent) || isFunctionExpression(parent)) && isVariableDeclaration(parent.parent)
+						? parent.parent
+						: parent,
+				);
 				if (label) parents.unshift(label);
 			}
 		}
