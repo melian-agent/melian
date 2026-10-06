@@ -3,7 +3,12 @@ import { ToolProvisioning } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
 import { git, stateDirectory } from "./repository.ts";
 
-type ToolReadiness = { name: string; version: string; state: "verified" | "not-fetched" | "mismatch" | "unavailable"; detail: string };
+type ToolReadiness = {
+	name: string;
+	version: string;
+	state: "verified" | "not-fetched" | "mismatch" | "unavailable";
+	detail: string;
+};
 
 export class ToolInventory {
 	readonly #tools: ToolProvisioning;
