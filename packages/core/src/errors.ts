@@ -69,6 +69,7 @@ export class ConfigError extends Error {
 
 /** Why standards could not be collected. */
 export type StandardsErrorCode =
+	| "pathNotLoaded"
 	| "missingRoot"
 	| "notARepository"
 	| "unknownCommit"

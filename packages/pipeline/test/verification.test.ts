@@ -78,6 +78,7 @@ async function review(rerun = false, plan?: ReviewPlan, quick = false): Promise<
 	const judge = fake.ref("judge");
 	return reviewChangeset({
 		harness,
+		checks: [],
 		changeset,
 		lenses,
 		standards: [],
@@ -499,7 +500,7 @@ describe("the verifier", () => {
 			failure === "missing credentials" ? "the verifier has no model with credentials" : plan.refusal("verifier");
 		await expect(
 			failure === "missing credentials"
-				? reviewChangeset({ harness, changeset, lenses, standards: [], models: fake.review, config })
+				? reviewChangeset({ harness, checks: [], changeset, lenses, standards: [], models: fake.review, config })
 				: review(false, plan),
 		).rejects.toMatchObject({
 			code: "verifierFailed",
@@ -544,15 +545,19 @@ describe("the verifier", () => {
 		for (const run of stored.lenses) delete run.verify;
 		const definition = lensExtension.tasks!.find((task) => task.definition.name === "melian.lenses")!;
 		const older = await root.commit(async (tx) => {
-			const task = await tx.createTask(definition as never, stored as never, {
-				ownership: { kind: "conversation" },
-			});
+			const task = await tx.createTask(
+				{ definition: { ...definition.definition, version: 2 } } as never,
+				stored as never,
+				{
+					ownership: { kind: "conversation" },
+				},
+			);
 			(await tx.doc(ReviewIndex, root.id)).reviews[revision] = { task, lenses: entry.lenses };
 			return task;
 		}, context);
 		const requests = scripts();
 		const result = await review(false, undefined, true);
-		expect((await root.commit((tx) => tx.task(older), context))!.version).toBe(2);
+		expect((await root.commit((tx) => tx.task(older), context))!.version).toBe(3);
 		expect(requests[verifierMarker]).toHaveLength(2);
 		expect(result.findings[0]!.properties.verification?.verdict).toBe("confirmed");
 		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");

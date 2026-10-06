@@ -31,6 +31,8 @@ Run only the `melian` the shell finds on its path. Never build, install, or run 
   - Verification: a plan warning that verification falls back to lens tiers, or uses the finder's own family, does not stop a review; mention it once. Doctor prints the route and families. A refused verifier tier means exit `2` and no verifier request. Ask the user to fix its route or credentials as for the plan warning. The `--model` option routes lens tiers only; those routes supply verification when the verifier has no route of its own.
   - `static`: Biome or tsc comes from nowhere, so that check fails and the review reads not reviewed. The same line says whether each comes from the checkout or Melian's own copy; a result from Melian's copy can differ from the repository's own lint run.
 
+The standards line counts the working tree's standards files and bytes, including nested files. It warns for a file over 256 KiB or a symlink it skipped. It lists at most ten paths, then says how many more it found. Mention a warning once; doctor does not review these files.
+
 ## Review the working branch
 
 ```sh

@@ -70,6 +70,7 @@ export class PublishError extends Error {
 
 /** Why a review could not run or finish. */
 export type ReviewErrorCode =
+	| "missingPolicy"
 	| "noAvailableModel"
 	| "notInstalled"
 	| "lensFailed"
