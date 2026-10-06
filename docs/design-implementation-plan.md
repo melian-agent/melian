@@ -173,3 +173,4 @@ Step 11 execution-miss mapping is built. The tool-manifest comparison maps thirt
    - Mutation inventory: Three filesystem failure cases prove root error propagation and both legacy-stat recovery branches. The restored scratch suite passes all six tests.
    - Mutation inventory: Three compiler tests prove physical-path lookup, overload selection, unused symbols and worker closure. All five uncovered mutations fail; all 11 restored compiler tests pass.
    - Mutation inventory: The injected release test now checks its AbortSignal and 30-second deadline. The deadline mutation fails; all six restored script tests pass.
+   - Mutation inventory: Six coverage cache cases prove byte-identical symlink refusal, handle closure, failed-write cleanup and explicit matcher identity. All four uncovered mutations fail; the restored suite passes.
