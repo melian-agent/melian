@@ -304,6 +304,25 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		expect(readFileSync(join(repo, "enola.yaml"), "utf8")).toContain("evil");
 		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
 	});
+	it("records exit one with empty SARIF as clean with an explicit note", async () => {
+		const base = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+		const result = await runStaticTool(
+			{
+				env: createNodeExecutionEnv(repo),
+				repoRoot: repo,
+				base,
+				commit: base,
+				tool: "enola",
+				settings: defaultConfig.static.enola,
+				tools: await fake(1),
+			},
+			context,
+		);
+		expect(result.status).toBe("ran");
+		if (result.status !== "ran") throw new Error("Enola failed");
+		expect(result.log.runs[0].results).toEqual([]);
+		expect(result.notes).toContain("Enola check exited 1 with no unsuppressed SARIF results; treated as clean.");
+	});
 	it.each([2, 3])("fails exit %s closed with Enola's message", async (exit) => {
 		const base = commit(repo, { "src/a.ts": "export const a = 1;\n" });
 		await expect(

@@ -188,7 +188,10 @@ export class EnolaRun {
 			);
 		const text = await this.#run.readOutput(report);
 		if (text === undefined) throw this.#run.fail("invalidOutput", "Enola check wrote no SARIF");
-		return normaliseEnolaSarif(text, { root, version: this.#version });
+		const log = normaliseEnolaSarif(text, { root, version: this.#version });
+		if (result.code === 1 && log.runs.every((run) => run.results.length === 0))
+			this.#notes.push("Enola check exited 1 with no unsuppressed SARIF results; treated as clean.");
+		return log;
 	}
 
 	async callers(files: readonly ChangedFile[], changedPaths: readonly string[]): Promise<CallerData> {
