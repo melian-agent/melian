@@ -1,4 +1,5 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, truncateSync, writeFileSync } from "node:fs";
+import * as fs from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Adjudication, ComparisonError, defaultConfig, ExternalFinding, Finding } from "@melian-agent/core";
@@ -17,6 +18,8 @@ import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { ComparisonDocument } from "../src/compare.ts";
+
+vi.mock("node:fs/promises", { spy: true });
 
 const revision = { base: "a".repeat(40), head: "b".repeat(40) };
 
@@ -423,6 +426,24 @@ describe("FileImporter", () => {
 		await expect(FileImporter.open("reviews", options)).rejects.toMatchObject({
 			message: expect.stringContaining("not a file"),
 		});
+	});
+
+	it("keeps a read failure's cause and names the repository-relative file", async () => {
+		const root = repo();
+		writeFileSync(join(root, "reviews/claude.json"), "{}");
+		const failure = Object.assign(new Error("read denied"), { code: "EACCES" });
+		const read = vi.spyOn(fs, "readFile").mockRejectedValueOnce(failure);
+		try {
+			await expect(FileImporter.open("reviews/claude.json", { cwd: root, repoRoot: root })).rejects.toMatchObject({
+				name: "CompareError",
+				code: "unreadable",
+				message: "Melian cannot read reviews/claude.json: read denied",
+				cause: failure,
+			});
+			expect(read).toHaveBeenCalledExactlyOnceWith(join(root, "reviews/claude.json"), "utf8");
+		} finally {
+			read.mockRestore();
+		}
 	});
 
 	it("imports valid JSON at exactly maxReviewerFileBytes", async () => {
