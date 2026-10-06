@@ -109,6 +109,31 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		expect(error.message).toContain("only a committed root melian.yaml");
 	});
 
+	it.each(["trust: {}", "comparison: {}", "comparison: { retirement: {} }"])(
+		"keeps defaults for empty policy objects: %s",
+		async (yaml) => {
+			writeFiles(repo, { "melian.yaml": `${yaml}\n` });
+			const { config } = await load("src/index.ts");
+			expect(config.trust).toEqual({ writers: true });
+			expect(config.comparison.retirement).toEqual({ pullRequests: 10, recall: 0.75 });
+		},
+	);
+
+	it.each([0, 1])("accepts recall boundary %s and a one-pull-request window", async (recall) => {
+		writeFiles(repo, { "melian.yaml": `comparison: { retirement: { pullRequests: 1, recall: ${recall} } }\n` });
+		expect((await load("src/index.ts")).config.comparison.retirement).toEqual({ pullRequests: 1, recall });
+	});
+
+	it.each(["trust: { extra: true }", "comparison: { extra: true }", "comparison: { retirement: { extra: true } }"])(
+		"refuses unknown keys in writer policy objects: %s",
+		async (yaml) => {
+			writeFiles(repo, { "melian.yaml": `${yaml}\n` });
+			const error = await rejection(load("src/index.ts"));
+			expect(error).toMatchObject({ code: "unknownKey", file: "melian.yaml" });
+			expect(error.message).toContain("extra");
+		},
+	);
+
 	it("defaults the walkthrough on and accepts each switch under publish.walkthrough", async () => {
 		writeFiles(repo, {
 			"melian.yaml": lines(
