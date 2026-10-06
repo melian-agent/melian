@@ -544,6 +544,28 @@ describe.each(sourceKinds)("standards import safety from %s", (kind) => {
 		expect(read.mock.calls.some(([path]) => path === "private.md")).toBe(false);
 	});
 
+	it("refuses a force-added import excluded by the clone's core.excludesFile before reading", async () => {
+		writeFiles(parent, { "local-excludes": "private.md\n" });
+		gitIn(repo, "config", "core.excludesFile", join(parent, "local-excludes"));
+		writeFiles(repo, {
+			"AGENTS.md": "# Rules\n@private.md\n",
+			"private.md": "LOCALLY_EXCLUDED_PRIVATE_VALUE",
+		});
+		gitIn(repo, "add", "--force", "private.md");
+		const source = sourceFor(repo, kind);
+		expect(gitIn(repo, "ls-files", "private.md")).toBe("private.md");
+		const reader = await sourceModule.openSource(repo, source);
+		const read = vi.spyOn(reader, "readText");
+		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
+		const reading = (await Standards.load(repo, source, ["a.ts"])).forFiles(["a.ts"]);
+
+		expect(reading.paths()).not.toContain("private.md");
+		expect(reading.refused).toContain("AGENTS.md -> private.md");
+		expect(reading.note()).toContain("AGENTS.md -> private.md");
+		expect(read.mock.calls.some(([path]) => path === "private.md")).toBe(false);
+		expect(reading.sections.map(({ content }) => content).join("\n")).not.toContain("LOCALLY_EXCLUDED_PRIVATE_VALUE");
+	});
+
 	it("refuses a force-added nested import excluded by an ancestor ignore file", async () => {
 		writeFiles(repo, {
 			"AGENTS.md": "# Rules\n@docs/private.md\n",
