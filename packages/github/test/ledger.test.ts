@@ -780,52 +780,69 @@ describe("ledger publication", { timeout: 60_000 }, () => {
 		expect(state.calls.filter(({ method, path }) => method === "PATCH" && path.endsWith("/17"))).toEqual([]);
 	});
 
-	it("posts the current status and review before refusing an orphaned own ledger", async () => {
-		const fake = scenarioModels();
-		const state = pullRequestState();
-		state.ledgers.push({
-			id: 17,
-			user: { login: state.login },
-			body: Ledger.from(verdict, { rounds: [round] }, options).render(links),
-			html_url: "https://example.test/17",
-		});
-		const provider = createGitHubProvider({
-			owner: state.owner,
-			repo: state.repo,
-			token: "test-token",
-			fetch: fakeGitHub(state),
-		});
-		harness = await openPublishHarness(createMemoryStorage(), fake, provider);
-		const first = await reviewScenario(repo, harness, fake, lensScript(unsafeManager));
-		await first.review;
-		moveTo(state, first.changeset);
-		state.statuses.push({
-			sha: first.changeset.revision.head,
-			state: "success",
-			description: "old pass",
-			context: "melian/review",
-		});
-		await expect(
-			publishReview({
-				trustedWriters: true,
-				harness,
-				provider,
-				changeset: first.changeset,
-				pullRequest: await provider.pullRequest(7),
-				base: first.changeset.revision.base,
-			}),
-		).rejects.toThrow("delete the orphaned ledger");
-		expect(state.statuses[1]?.state).toBe("failure");
-		expect(state.statuses.at(-1)).toMatchObject({
-			state: "error",
-			description: expect.stringContaining("delete the ledger comment"),
-		});
-		expect(state.reviews).toHaveLength(1);
-		expect(state.ledgers).toHaveLength(1);
-		expect(
-			state.calls.findIndex(({ method, path }) => method === "POST" && path.includes("/statuses/")),
-		).toBeLessThan(state.calls.findIndex(({ method, path }) => method === "GET" && path.includes("/issues/")));
-	});
+	it.each([true, false])(
+		"posts the current status and review before refusing an orphaned own ledger (writers trusted: %s)",
+		async (trustedWriters) => {
+			const fake = scenarioModels();
+			const state = pullRequestState();
+			state.ledgers.push({
+				id: 17,
+				user: { login: state.login },
+				body: Ledger.from(verdict, { rounds: [round] }, options).render(links),
+				html_url: "https://example.test/17",
+			});
+			const provider = createGitHubProvider({
+				owner: state.owner,
+				repo: state.repo,
+				token: "test-token",
+				fetch: fakeGitHub(state),
+			});
+			harness = await openPublishHarness(createMemoryStorage(), fake, provider);
+			const first = await reviewScenario(repo, harness, fake, lensScript(unsafeManager));
+			await first.review;
+			moveTo(state, first.changeset);
+			state.statuses.push({
+				sha: first.changeset.revision.head,
+				state: "success",
+				description: "old pass",
+				context: "melian/review",
+			});
+			await expect(
+				publishReview({
+					trustedWriters,
+					harness,
+					provider,
+					changeset: first.changeset,
+					pullRequest: await provider.pullRequest(7),
+					base: first.changeset.revision.base,
+				}),
+			).rejects.toThrow("delete the orphaned ledger");
+			expect(state.statuses[1]?.state).toBe(trustedWriters ? "failure" : "error");
+			expect(state.statuses.at(-1)).toMatchObject({
+				state: "error",
+				description: trustedWriters
+					? expect.stringContaining("delete the ledger comment")
+					: "not reviewed here: writers are not trusted; a trusted host sets this status",
+			});
+			if (!trustedWriters) {
+				expect(state.statuses.slice(1)).toHaveLength(1);
+				expect(
+					state.statuses
+						.slice(1)
+						.every(
+							({ state: value, description }) =>
+								value === "error" &&
+								description === "not reviewed here: writers are not trusted; a trusted host sets this status",
+						),
+				).toBe(true);
+			}
+			expect(state.reviews).toHaveLength(1);
+			expect(state.ledgers).toHaveLength(1);
+			expect(
+				state.calls.findIndex(({ method, path }) => method === "POST" && path.includes("/statuses/")),
+			).toBeLessThan(state.calls.findIndex(({ method, path }) => method === "GET" && path.includes("/issues/")));
+		},
+	);
 
 	it("leaves the verdict's status alone when a ledger write fails for another reason", async () => {
 		const fake = scenarioModels();

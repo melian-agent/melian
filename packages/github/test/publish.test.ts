@@ -717,32 +717,57 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		expect(state.statuses.at(-1)).toMatchObject({ state: "failure", description: "3 findings, 1 blocking" });
 	});
 
-	it("abandons a round the provider refuses three times, and plans a new one on the next publish", async () => {
-		const { github, changeset, state } = await reviewedRevisionOne();
-		state.failReviews = true;
-		const refusals = [];
-		for (let attempt = 0; attempt < 3; attempt++) {
-			refusals.push(await publish(github, changeset).catch((error: unknown) => error));
-			// The head carries a status from the first attempt, though no review could be posted.
-			if (attempt === 0) expect(state.statuses).toEqual([expect.objectContaining({ state: "failure" })]);
-		}
-		expect(state.statuses.at(-1)).toMatchObject({
-			sha: changeset.revision.head,
-			state: "error",
-			description: expect.stringMatching(/^review could not be posted: GitHub refused to post a review/),
-		});
-		state.failReviews = false;
+	it.each([true, false])(
+		"abandons a round the provider refuses three times, and plans a new one on the next publish (writers trusted: %s)",
+		async (trustedWriters) => {
+			const { github, changeset, state } = await reviewedRevisionOne();
+			state.failReviews = true;
+			const refusals = [];
+			for (let attempt = 0; attempt < 3; attempt++) {
+				refusals.push(await publish(github, changeset, trustedWriters).catch((error: unknown) => error));
+				// The head carries a status from the first attempt, though no review could be posted.
+				if (attempt === 0)
+					expect(state.statuses).toEqual([
+						expect.objectContaining({ state: trustedWriters ? "failure" : "error" }),
+					]);
+			}
+			expect(state.statuses.at(-1)).toMatchObject({
+				sha: changeset.revision.head,
+				state: "error",
+				description: trustedWriters
+					? expect.stringMatching(/^review could not be posted: GitHub refused to post a review/)
+					: "not reviewed here: writers are not trusted; a trusted host sets this status",
+			});
+			if (!trustedWriters) {
+				expect(state.statuses).toHaveLength(2);
+				expect(
+					state.statuses.every(
+						({ state: value, description }) =>
+							value === "error" &&
+							description === "not reviewed here: writers are not trusted; a trusted host sets this status",
+					),
+				).toBe(true);
+			}
+			state.failReviews = false;
 
-		const result = await publish(github, changeset);
+			const result = await publish(github, changeset, trustedWriters);
 
-		for (const refused of refusals) expect(refused).toBeInstanceOf(PublishError);
-		expect((refusals[1] as Error).message).not.toContain("abandoned");
-		expect((refusals[2] as Error).message).toContain("3 times, so Melian abandoned it");
-		expect(result).toMatchObject({ posted: 3 });
-		expect(result.abandoned).toEqual([{ fingerprint: expect.any(String), refusals: 3, error: expect.any(String) }]);
-		expect(state.reviews).toHaveLength(1);
-		expect(state.statuses.at(-1)).toMatchObject({ state: "failure", description: "3 findings, 1 blocking" });
-	});
+			for (const refused of refusals) expect(refused).toBeInstanceOf(PublishError);
+			expect((refusals[1] as Error).message).not.toContain("abandoned");
+			expect((refusals[2] as Error).message).toContain("3 times, so Melian abandoned it");
+			expect(result).toMatchObject({ posted: 3 });
+			expect(result.abandoned).toEqual([
+				{ fingerprint: expect.any(String), refusals: 3, error: expect.any(String) },
+			]);
+			expect(state.reviews).toHaveLength(1);
+			expect(state.statuses.at(-1)).toMatchObject({
+				state: trustedWriters ? "failure" : "error",
+				description: trustedWriters
+					? "3 findings, 1 blocking"
+					: "not reviewed here: writers are not trusted; a trusted host sets this status",
+			});
+		},
+	);
 
 	it("resolves the thread again at the same head when an accepted edit's resolution failed", async () => {
 		const { fake, github, changeset, state } = await reviewedRevisionOne();
