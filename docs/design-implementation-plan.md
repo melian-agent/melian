@@ -192,3 +192,5 @@ Step 11 execution-miss mapping is built. The tool-manifest comparison maps thirt
 Step 11 main merge: verifier and step 9 remain built. Reviews combine per-lens standards, policy-commit trust and instruction identity with Enola static checks, graph caching and advisory callers. The CLI runs checks before opening caller context; library reviews retain automatic checks.
 
 Step 11 merge fixtures now pass advisory context after the standards source and give raw harness reviews explicit check records.
+
+Step 11 delivery also includes main at 2826b841, which closes the step 9 comparison record without changing source code.
