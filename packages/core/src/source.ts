@@ -55,6 +55,7 @@ export interface SourceReader {
 	isIgnored(path: string): Promise<boolean>;
 	// Undefined when the path does not exist. Throws `symlink`, `tooLarge` past `maxBytes`, or `unreadable`.
 	readText(path: string, maxBytes: number): Promise<string | undefined>;
+	readBytes(path: string, maxBytes: number): Promise<Buffer | undefined>;
 	// Undefined when the directory does not exist. Throws `symlink` for a symlinked directory.
 	list(directory: string): Promise<readonly Entry[] | undefined>;
 	exists(path: string): Promise<EntryKind | undefined>;
@@ -135,6 +136,10 @@ class WorktreeSource implements SourceReader {
 	}
 
 	async readText(path: string, maxBytes: number): Promise<string | undefined> {
+		return (await this.readBytes(path, maxBytes))?.toString("utf8");
+	}
+
+	async readBytes(path: string, maxBytes: number): Promise<Buffer | undefined> {
 		const kind = await this.exists(path);
 		if (kind === undefined) return undefined;
 		if (kind === "symlink") throw symlink(path);
@@ -150,7 +155,7 @@ class WorktreeSource implements SourceReader {
 		try {
 			const { size } = await handle.stat();
 			if (size > maxBytes) throw tooLarge(path, size, maxBytes);
-			return await handle.readFile("utf8");
+			return await handle.readFile();
 		} catch (error) {
 			if (error instanceof SourceError) throw error;
 			return unreadable(path)(error as NodeJS.ErrnoException);
@@ -276,6 +281,10 @@ class RevisionSource implements SourceReader {
 	}
 
 	async readText(path: string, maxBytes: number): Promise<string | undefined> {
+		return (await this.readBytes(path, maxBytes))?.toString("utf8");
+	}
+
+	async readBytes(path: string, maxBytes: number): Promise<Buffer | undefined> {
 		const found = await this.entry(path);
 		if (found === undefined) return undefined;
 		const label = this.label(path);
@@ -295,22 +304,22 @@ class RevisionSource implements SourceReader {
 
 	async findPaths(pattern: RegExp): Promise<string[]> {
 		const output = await this.run("", ["ls-tree", "-r", "-z", "--name-only", "--full-tree", this.sha]);
-		return nulSeparated(output).filter((path) => pattern.test(path));
+		return nulSeparated(output.toString("utf8")).filter((path) => pattern.test(path));
 	}
 
-	private async run(path: string, args: readonly string[]): Promise<string> {
+	private async run(path: string, args: readonly string[]): Promise<Buffer> {
 		const result = await git(this.repoRoot, args);
 		if (result.code !== 0) {
 			const label = this.label(path);
 			throw new SourceError("unreadable", label, `${label}: ${result.stderr.trim()}`);
 		}
-		return result.stdout;
+		return result.stdoutBytes;
 	}
 
 	// --literal-pathspecs, so that a `*` or `:` in a name is that character and nothing else.
 	private async lsTree(path: string, pathspec: readonly string[]): Promise<TreeEntry[]> {
 		const args = ["--literal-pathspecs", "ls-tree", "-z", "-l", "--full-tree", this.sha, "--", ...pathspec];
-		return parseTree(await this.run(path, args));
+		return parseTree((await this.run(path, args)).toString("utf8"));
 	}
 
 	private async entry(path: string): Promise<TreeEntry | undefined> {

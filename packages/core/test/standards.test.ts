@@ -384,6 +384,25 @@ describe.each(sourceKinds)("Standards from the %s", (kind) => {
 });
 
 describe.each(sourceKinds)("standards inventory from the %s", (kind) => {
+	it("counts raw bytes even when a carrier is not valid UTF-8", async () => {
+		for (const path of ["AGENTS.md", "CLAUDE.md", "packages/app/AGENTS.md", "packages/app/CLAUDE.md"])
+			rmSync(join(repo, path));
+		writeFiles(repo, {
+			"AGENTS.md": Buffer.from([0xe9]),
+			"CLAUDE.md": "éé",
+			".melian/standards/naming.md": "",
+		});
+		const inventory = await StandardsInventory.inspect(repo, sourceFor(repo, kind));
+		expect(inventory.entries).toEqual([
+			{ path: ".melian/standards/naming.md", bytes: 0, oversized: false },
+			{ path: "AGENTS.md", bytes: 1, oversized: false },
+			{ path: "CLAUDE.md", bytes: 4, oversized: false },
+		]);
+		expect(inventory.count()).toBe(3);
+		expect(inventory.bytes()).toBe(5);
+		expect(inventory.warnings()).toEqual([]);
+	});
+
 	it("finds nested carriers without following imports or counting other markdown", async () => {
 		writeFiles(repo, { "packages/app/.melian/standards/style.md": "# Style\n" });
 		const inventory = await StandardsInventory.inspect(repo, sourceFor(repo, kind));
@@ -665,7 +684,7 @@ describe.each(sourceKinds)("standards branch regressions from %s", (kind) => {
 	it("omits an inventory entry that disappears before its read", async () => {
 		const source = sourceFor(repo, kind);
 		const reader = await sourceModule.openSource(repo, source);
-		vi.spyOn(reader, "readText").mockResolvedValueOnce(undefined);
+		vi.spyOn(reader, "readBytes").mockResolvedValueOnce(undefined);
 		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
 		const inventory = await StandardsInventory.inspect(repo, source);
 		expect(inventory.entries.map(({ path }) => path)).not.toContain(".melian/standards/naming.md");
@@ -678,7 +697,7 @@ describe.each(sourceKinds)("standards branch regressions from %s", (kind) => {
 			const source = sourceFor(repo, kind);
 			const reader = await sourceModule.openSource(repo, source);
 			const failure = new sourceModule.SourceError(code, "AGENTS.md", "read failed");
-			vi.spyOn(reader, "readText").mockRejectedValueOnce(failure);
+			vi.spyOn(reader, "readBytes").mockRejectedValueOnce(failure);
 			vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
 			const error = await rejection(StandardsInventory.inspect(repo, source), StandardsError);
 			expect(error).toMatchObject({ code, path: "AGENTS.md", cause: failure });

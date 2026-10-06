@@ -63,7 +63,7 @@ function skippingSymlinks<T>(read: Promise<T>): Promise<T | undefined> {
 	});
 }
 
-async function standardsFiles(source: SourceReader, directory: string): Promise<string[]> {
+async function standardsFiles(source: Pick<SourceReader, "list">, directory: string): Promise<string[]> {
 	const standards = posix.join(directory, melianPaths.standards);
 	const entries = (await skippingSymlinks(source.list(standards))) ?? [];
 	return [
@@ -106,7 +106,7 @@ export async function loadStandards(
 	return (await StandardsLoader.open(repoRoot, source)).load(path);
 }
 
-class StandardsLoader implements SourceReader {
+class StandardsLoader implements Omit<SourceReader, "readBytes"> {
 	readonly repoRoot: string;
 	readonly reader: SourceReader;
 	readonly texts = new Map<string, Promise<string | undefined>>();
@@ -488,8 +488,8 @@ export class StandardsInventory {
 		const entries: StandardsEntry[] = [];
 		for (const path of paths.sort()) {
 			try {
-				const content = await reader.readText(path, standardsLimits.fileBytes);
-				if (content !== undefined) entries.push({ path, bytes: Buffer.byteLength(content), oversized: false });
+				const content = await reader.readBytes(path, standardsLimits.fileBytes);
+				if (content !== undefined) entries.push({ path, bytes: content.length, oversized: false });
 			} catch (error) {
 				if (error instanceof SourceError && error.code === "symlink") entries.push({ path, symlink: true });
 				else if (error instanceof SourceError && error.code === "tooLarge" && error.size !== undefined)
