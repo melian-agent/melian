@@ -261,7 +261,7 @@ An addressed inline finding keeps its first signed marker and appends a resoluti
 
 `ToolCache.open(root, { fetch })` opens a cache; opening never downloads. `materialise(tool, platform)` streams a pinned archive to a temporary file and checks its SHA-256 before extraction. A bounded tar reader accepts regular files and directories, rejects links and unsafe paths, and extracts only the manifest's binary. Limits are 128 MiB compressed, 256 MiB expanded, and 96 MiB for the executable. No system tar runs. Without an archive path, the verified download itself is the executable.
 
-Entries live under `tools/<name>/<version>/<platform>/<archive-sha256>/`. The binary has mode 0755. Its sidecar records both hashes. Every use hashes the binary through a file opened without following symlinks; a mismatch triggers a fresh pinned download. `readiness` reports verified, not fetched, or mismatch without fetching. The cache holds no open resources between calls.
+Entries live under `tools/<name>/<version>/<platform>/<archive-sha256>/`. The binary has mode 0755. Its sidecar records both hashes but is not their authority. Every use verifies the retained archive against the manifest, derives the executable from it, and compares that digest with the cached binary. Files are opened without following symlinks; a mismatch triggers a fresh pinned download. `readiness` reports verified, not fetched, or mismatch without fetching. The cache holds no open resources between calls.
 
 ## Enola static runs
 

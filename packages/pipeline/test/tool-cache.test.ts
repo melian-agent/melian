@@ -1,6 +1,7 @@
+import { createHash } from "node:crypto";
 import { lstat, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToolCache } from "../src/tool-cache.ts";
 import { testTool, toolArchive } from "./fixtures/tool-archive.ts";
@@ -45,6 +46,29 @@ describe("ToolCache", () => {
 		await cache.materialise(tool, "darwin-arm64");
 		expect(download).toHaveBeenCalledTimes(2);
 		expect(await readFile(binary, "utf8")).toBe(script);
+	});
+
+	it("refuses a forged executable and sidecar without trusting their matching hashes", async () => {
+		const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
+		const download = vi.fn(async () => new Response(bytes));
+		const cache = await ToolCache.open(root, { fetch: download });
+		const tool = testTool(bytes);
+		const binary = await cache.materialise(tool, "darwin-arm64");
+		await writeFile(binary, "forged");
+		await writeFile(
+			join(dirname(binary), "receipt.json"),
+			JSON.stringify({
+				format_version: 1,
+				archive: tool.platforms["darwin-arm64"]!.sha256,
+				binary: createHash("sha256").update("forged").digest("hex"),
+			}),
+		);
+		expect(await cache.readiness(tool, "darwin-arm64")).toBe("mismatch");
+		await cache.materialise(tool, "darwin-arm64");
+		expect(await readFile(binary, "utf8")).toBe("trusted");
+		expect(download).toHaveBeenCalledTimes(2);
+		await writeFile(join(dirname(binary), "archive"), "forged archive");
+		expect(await cache.readiness(tool, "darwin-arm64")).toBe("mismatch");
 	});
 
 	it("refuses a wrong digest before attempting extraction, and fetch errors", async () => {

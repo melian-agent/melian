@@ -52,7 +52,7 @@ export class ToolCache {
 	/** Checks readiness without downloading or running the binary. */
 	async readiness(tool: ToolPin, platform: string): Promise<"verified" | "not-fetched" | "mismatch"> {
 		const pin = this.#pin(tool, platform);
-		if (await this.#verified(pin.directory, pin.sha256)) return "verified";
+		if (await this.#verified(pin.directory, pin.sha256, pin.binary)) return "verified";
 		try {
 			await lstat(pin.directory);
 			return "mismatch";
@@ -73,7 +73,7 @@ export class ToolCache {
 	/** Returns a verified executable, repairing a missing or swapped entry from the pinned download. */
 	async materialise(tool: ToolPin, platform: string): Promise<string> {
 		const pin = this.#pin(tool, platform);
-		if (await this.#verified(pin.directory, pin.sha256)) return join(pin.directory, "binary");
+		if (await this.#verified(pin.directory, pin.sha256, pin.binary)) return join(pin.directory, "binary");
 		await mkdir(dirname(pin.directory), { recursive: true });
 		const temporary = await mkdtemp(join(dirname(pin.directory), ".fetch-"));
 		try {
@@ -90,15 +90,14 @@ export class ToolCache {
 				binary: createHash("sha256").update(binary).digest("hex"),
 			};
 			await writeFile(join(temporary, "receipt.json"), JSON.stringify(receipt), { flag: "wx" });
-			await rm(archive);
-			if (await this.#verified(pin.directory, pin.sha256)) return join(pin.directory, "binary");
+			if (await this.#verified(pin.directory, pin.sha256, pin.binary)) return join(pin.directory, "binary");
 			await rm(pin.directory, { recursive: true, force: true });
 			try {
 				await rename(temporary, pin.directory);
 			} catch (error) {
-				if (!(await this.#verified(pin.directory, pin.sha256))) throw error;
+				if (!(await this.#verified(pin.directory, pin.sha256, pin.binary))) throw error;
 			}
-			if (!(await this.#verified(pin.directory, pin.sha256)))
+			if (!(await this.#verified(pin.directory, pin.sha256, pin.binary)))
 				throw new ToolCacheError("invalidOutput", "Materialised tool failed verification");
 			return join(pin.directory, "binary");
 		} catch (cause) {
@@ -113,7 +112,7 @@ export class ToolCache {
 		}
 	}
 
-	async #verified(directory: string, archive: string): Promise<boolean> {
+	async #verified(directory: string, archive: string, wanted?: string): Promise<boolean> {
 		try {
 			if (!(await lstat(directory)).isDirectory()) return false;
 			const receiptPath = join(directory, "receipt.json");
@@ -124,13 +123,27 @@ export class ToolCache {
 			const stored = receipt as Partial<ToolBinaryReceipt>;
 			if (stored.format_version !== 1 || stored.archive !== archive || !/^[a-f0-9]{64}$/.test(stored.binary ?? ""))
 				return false;
+			const download = await open(join(directory, "archive"), constants.O_RDONLY | constants.O_NOFOLLOW);
+			let bytes: Buffer;
+			try {
+				const stat = await download.stat();
+				if (!stat.isFile() || stat.size > archiveLimit) return false;
+				bytes = await download.readFile();
+			} finally {
+				await download.close();
+			}
+			if (createHash("sha256").update(bytes).digest("hex") !== archive) return false;
+			const extracted = wanted === undefined ? bytes : this.#extract(bytes, wanted);
+			if (extracted.length > binaryLimit) return false;
+			const expected = createHash("sha256").update(extracted).digest("hex");
+			if (stored.binary !== expected) return false;
 			const binary = await open(join(directory, "binary"), constants.O_RDONLY | constants.O_NOFOLLOW);
 			try {
 				const stat = await binary.stat();
 				if (!stat.isFile() || stat.size > binaryLimit || !(stat.mode & 0o111)) return false;
 				const hash = createHash("sha256");
 				for await (const chunk of binary.createReadStream({ autoClose: false })) hash.update(chunk);
-				return hash.digest("hex") === stored.binary;
+				return hash.digest("hex") === expected;
 			} finally {
 				await binary.close();
 			}

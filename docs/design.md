@@ -630,7 +630,7 @@ Enola uses the official v0.4.27 release, which includes `enola impact --json`. M
 
 One manifest builds two execution environments:
 
-- Local, for trusted runs. Melian materialises the manifest into a cache it owns, verifies each download by its hash, and passes the binary's absolute path to the execution environment. Every cached use checks the extracted binary against its receipt.
+- Local, for trusted runs. Melian materialises the manifest into a cache it owns, verifies each download by its hash, and passes the binary's absolute path to the execution environment. Every cached use re-hashes the retained archive against the manifest pin and checks the executable against bytes extracted from that verified archive. A writable receipt cannot authenticate the executable.
 - Container, for untrusted heads. An image built from the same manifest runs with no network, the worktree mounted read-only, and resource limits.
 
 Where a tool comes from depends on what it loads. A tool whose configuration loads repository code, such as Biome, eslint, or tsc, comes from the checkout's lockfile install, as [the static tool binaries decision](decisions/2026-10-03-static-tool-binaries.md) sets. Its configuration and plugins are written for that version. Where the checkout installs none, Melian's own copy runs, and `melian doctor` says which one will. A standalone analyser, such as Opengrep or gitleaks, comes from Melian's manifest. Either way it executes inside the environment, never in the Melian process. Melian never depends on a host-installed analyser: version drift breaks finding identity, and the host is outside the trust boundary.
