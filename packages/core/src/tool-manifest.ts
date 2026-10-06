@@ -97,13 +97,17 @@ export class ToolManifest {
 						url.password ||
 						url.port ||
 						url.search ||
-						url.hash
+						url.hash ||
+						!pin.url.startsWith(
+							`https://github.com/${tool.source.repository}/releases/download/${encodeURIComponent(tool.source.tag)}/`,
+						)
 					)
-						throw new Error(`${name}: download must use HTTPS on github.com`);
+						throw new Error(`${name}: download must use its declared GitHub repository and release tag`);
 					if (
 						pin.binary !== undefined &&
 						(/^[\\/]/.test(pin.binary) ||
 							pin.binary.includes("\\") ||
+							pin.binary.includes("\0") ||
 							pin.binary.split("/").some((part) => ["..", ".", ""].includes(part)))
 					)
 						throw new Error(`${name}: unsafe archive path`);

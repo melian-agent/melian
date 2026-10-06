@@ -621,7 +621,7 @@ Only added lines take an inline comment. Problem: GitHub rejects the whole revie
 
 ## Standalone tool manifest
 
-`ToolManifest.parse(text)` validates Melian's own root `tools.yaml` with TypeBox and the configuration YAML reader. It refuses unknown keys, unsafe archive paths, non-exact versions, invalid dates, and downloads outside HTTPS on github.com. A reviewed repository cannot override it. `tool(name)` and `artifact(name, platform)` refuse absent pins. `check(now, windowDays)` applies the npm quarantine; a dated, reviewed exception permits a young release. `toJSON()` returns a copy. The `misses` list reserves the execution misses described in the evals guideline.
+`ToolManifest.parse(text)` validates Melian's own root `tools.yaml` with TypeBox and the configuration YAML reader. It refuses unknown keys, unsafe archive paths, non-exact versions, invalid dates, and downloads outside the declared GitHub repository and release tag. A reviewed repository cannot override it. `tool(name)` and `artifact(name, platform)` refuse absent pins. `check(now, windowDays)` applies the npm quarantine; a dated, reviewed exception permits a young release. `toJSON()` returns a copy. The `misses` list reserves the execution misses described in the evals guideline.
 
 ## Enola policy and SARIF
 

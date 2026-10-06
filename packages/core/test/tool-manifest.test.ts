@@ -28,6 +28,9 @@ describe("ToolManifest", () => {
 
 	it.each([
 		{ url: "http://github.com/x" },
+		{ url: "https://github.com/other/repo/releases/download/v0.4.27/enola.tar.gz" },
+		{ url: "https://github.com/enola-labs/enola/releases/download/v9/enola.tar.gz" },
+		{ binary: "enola\0hidden" },
 		{ url: "https://example.com/x" },
 		{ url: "https://github.com:8443/x" },
 		{ sha256: "x" },
