@@ -377,6 +377,22 @@ describe("FileImporter", () => {
 		},
 	);
 
+	it("uses the supplied repository root when its real path cannot be read", async () => {
+		const root = repo();
+		const path = join(root, "reviews/claude.json");
+		writeFileSync(path, JSON.stringify({ reviewer: { name: "claude-code" }, findings: [] }));
+		const realpath = vi.spyOn(fs, "realpath").mockResolvedValueOnce(path).mockRejectedValueOnce(new Error("root unavailable"));
+		try {
+			const importer = await FileImporter.open("reviews/claude.json", { cwd: root, repoRoot: root });
+
+			expect(importer.source).toBe("file:reviews/claude.json");
+			expect(await importer.import()).toEqual({ findings: [], skippedBodies: 0 });
+			expect(realpath.mock.calls).toEqual([[path], [root]]);
+		} finally {
+			realpath.mockRestore();
+		}
+	});
+
 	it("reads Codex's review output, and names a file outside the repository by its absolute path", async () => {
 		const root = repo();
 		const outside = join(directory, "codex.json");
