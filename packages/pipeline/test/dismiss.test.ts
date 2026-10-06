@@ -275,7 +275,7 @@ async function dismissCutShort(harness: Harness, id: string, with_ = dismissal):
 }
 
 describe("recording a dismissal", () => {
-	it("counts a dismissed finding out of a verdict it decides again, and a later review attaches to it", async () => {
+	it("counts a dismissed finding out of later reviews without more model calls", async () => {
 		const harness = await reviewHarness(createMemoryStorage());
 		scriptFinding();
 		const first = await reviewed(harness);
@@ -296,9 +296,16 @@ describe("recording a dismissal", () => {
 
 		const again = await reviewed(harness);
 
-		expect(again.verdict).toEqual(recorded.verdict);
+		expect(again.verdict.toJSON()).toEqual({
+			...recorded.verdict.toJSON(),
+			ran: recorded.verdict.ran?.filter((check) => check.name !== "verifier"),
+		});
 		expect(fake.provider.state.callCount).toBe(calls);
-		expect((await harness.snapshot(ReviewIndex, root, context))?.reviews[key]?.adjudication?.task).toBe(task);
+		const updated = (await harness.snapshot(ReviewIndex, root, context))?.reviews[key]?.adjudication?.task;
+		expect(updated).not.toBe(task);
+		expect((await reviewed(harness)).verdict).toEqual(again.verdict);
+		expect((await harness.snapshot(ReviewIndex, root, context))?.reviews[key]?.adjudication?.task).toBe(updated);
+		expect(fake.provider.state.callCount).toBe(calls);
 	});
 
 	it("replaces the reason of a finding dismissed again, keeping the first in its history", async () => {
@@ -652,7 +659,7 @@ describe("recording a dismissal", () => {
 		]);
 	});
 
-	it("lets a later review attach to the adjudication a cut-short dismissal left pending", async () => {
+	it("finishes a cut-short dismissal and drops the verifier check on a later review", async () => {
 		const path = join(dir, "changeset.sqlite");
 		const first = await reviewHarness(await openSqliteStorage(path));
 		scriptFinding();
@@ -671,7 +678,8 @@ describe("recording a dismissal", () => {
 		expect(verdict).toMatchObject({ status: "passed", blocking: false });
 		expect(verdict.dismissed.map((each) => each.properties.dismissal)).toEqual([dismissal]);
 		expect(fake.provider.state.callCount).toBe(calls);
-		expect(await adjudicationTask(reopened)).toBe(pending);
+		expect(await adjudicationTask(reopened)).not.toBe(pending);
+		expect(verdict.ran?.some((check) => check.name === "verifier")).toBe(false);
 		const task = await reopened.getTask(pending as TaskId, context);
 		expect(task?.state).toMatchObject({ status: "terminal", outcome: { status: "completed", result: "recorded" } });
 	});
@@ -822,8 +830,15 @@ describe("recording a dismissal", () => {
 		const reopened = await reviewHarness(await openSqliteStorage(path));
 		const { verdict } = await reviewed(reopened);
 
-		expect(verdict).toEqual(recorded.verdict);
+		expect(verdict.toJSON()).toEqual({
+			...recorded.verdict.toJSON(),
+			ran: recorded.verdict.ran?.filter((check) => check.name !== "verifier"),
+		});
 		expect(fake.provider.state.callCount).toBe(calls);
-		expect(await adjudicationTask(reopened)).toBe(task);
+		const updated = await adjudicationTask(reopened);
+		expect(updated).not.toBe(task);
+		expect((await reviewed(reopened)).verdict).toEqual(verdict);
+		expect(await adjudicationTask(reopened)).toBe(updated);
+		expect(fake.provider.state.callCount).toBe(calls);
 	});
 });

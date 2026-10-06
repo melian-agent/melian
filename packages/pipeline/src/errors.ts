@@ -74,6 +74,7 @@ export type ReviewErrorCode =
 	| "noAvailableModel"
 	| "notInstalled"
 	| "lensFailed"
+	| "verifierFailed"
 	| "allModelsFailed"
 	| "adjudicationFailed"
 	| "superseded";

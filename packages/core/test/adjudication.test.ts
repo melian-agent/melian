@@ -260,7 +260,7 @@ describe("Adjudication.dedupe", () => {
 					cause: "affected",
 					failureScenario: "A guess.",
 					evidence: [...context, ...evidence],
-					otherClaims: [claimOf(evidenced)],
+					otherClaims: [claimOf(unproven), claimOf(evidenced)],
 				});
 				expect(Finding.parse(kept)).toEqual(kept);
 				expect(kept!.resolve(defaultConfig)).toBe("block");
@@ -277,7 +277,7 @@ describe("Adjudication.dedupe", () => {
 				cause: "affected",
 				failureScenario: "The owner's scenario.",
 				evidence: [...context, ...evidence],
-				otherClaims: [claimOf(evidenced)],
+				otherClaims: [claimOf(owner), claimOf(evidenced)],
 			});
 			expect(kept!.resolve(defaultConfig)).toBe("block");
 		});
@@ -291,7 +291,7 @@ describe("Adjudication.dedupe", () => {
 			const crowded = finding({ ...unprovenInput, evidence: many });
 			const [kept] = dedupe([crowded, evidenced], () => defaultConfig);
 			expect(kept!.properties.evidence).toEqual([...many.slice(0, 9), evidence[0]]);
-			expect(kept!.properties.otherClaims).toEqual([claimOf(evidenced)]);
+			expect(kept!.properties.otherClaims).toEqual([claimOf(crowded), claimOf(evidenced)]);
 			expect(kept!.resolve(defaultConfig)).toBe("block");
 		});
 
@@ -370,7 +370,7 @@ describe("Adjudication.dedupe", () => {
 				cause: "introduced",
 				failureScenario,
 				evidence: [...evidence, ...own],
-				otherClaims: [claimOf(introduced)],
+				otherClaims: [claimOf(brokenCaller), claimOf(introduced)],
 			});
 			expect(Finding.parse(kept)).toEqual(kept);
 			const tsc = finding({
@@ -395,7 +395,7 @@ describe("Adjudication.dedupe", () => {
 				source: { check: "lens.security", version: "1" },
 			});
 			const [kept] = dedupe([first!, third], () => defaultConfig);
-			expect(kept!.properties.otherClaims).toEqual([claimOf(evidenced), claimOf(third)]);
+			expect(kept!.properties.otherClaims).toEqual([claimOf(unproven), claimOf(evidenced), claimOf(third)]);
 		});
 
 		it("never merges two rules an alias entry marks distinct", () => {

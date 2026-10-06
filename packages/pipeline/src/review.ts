@@ -24,8 +24,10 @@ import {
 	lensLimits,
 	Manifest,
 	type MelianConfig,
+	Merge,
 	type ModelReference,
 	ModelRoutingError,
+	parseModelReference,
 	type RepositorySource,
 	type ReviewPlan,
 	resolveModelForTier,
@@ -37,6 +39,8 @@ import {
 	triageChoices,
 	triageQuestionSet,
 	type Verdict,
+	VerificationState,
+	verificationBudget,
 	visibleText,
 } from "@melian-agent/core";
 import {
@@ -49,6 +53,7 @@ import {
 	VerdictDocument,
 } from "./adjudication.ts";
 import { checksExtension, runChecks } from "./checks.ts";
+import { configsFor } from "./configurations.ts";
 import {
 	DecisionDocument,
 	type DecisionResult,
@@ -61,6 +66,7 @@ import {
 import { ReviewError } from "./errors.ts";
 import {
 	clearSightings,
+	clearVerifications,
 	FindingsDocument,
 	findingsVersion,
 	type Producer,
@@ -98,6 +104,7 @@ import {
 	lensSource,
 	type ReviewState,
 	reportFinding,
+	reportVerdict,
 	reviewFiles,
 	type StoredBudgetEnd,
 } from "./lens-tools.ts";
@@ -105,6 +112,14 @@ import { modelsOf, type ReviewModels } from "./models.ts";
 import { attachable, ReviewIndex, type ReviewIndexState, undecided } from "./review-index.ts";
 import { summarizeExtension } from "./summarize.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce, triageBoundary } from "./untrusted.ts";
+import {
+	startVerification,
+	type VerificationCandidate,
+	type VerificationInput,
+	type VerificationResult,
+	VerificationTask,
+} from "./verification.ts";
+import { verifierVersion } from "./verification-instructions.ts";
 
 // One lens as the lens task runs it, at one level: everything resolved, nothing left to look up. `key` names the lens
 // with its version and level, so a run at one level never stands in for a run at another: it keys the task's children,
@@ -118,6 +133,7 @@ interface LensRun {
 	readonly level: ScrutinyLevel;
 	// The level's tier's models that were known with credentials when the review started, in routing order.
 	readonly route: readonly ModelReference[];
+	readonly verify?: boolean;
 	readonly instructions: string;
 	readonly instructionFingerprint?: string;
 	readonly standardsOmitted?: boolean;
@@ -275,33 +291,32 @@ async function spawnLens(tx: Tx, taskId: TaskId, input: StoredLensTaskInput, len
 	return created.id;
 }
 
-// Aborts every live lens task the review index no longer names for its revision, or names in a shape no selection
-// matches, every live adjudication task the index no longer names, and every live decision task the decision document
-// no longer names, before anything resumes it. Problem:
-// a review that replaced a run commits the replacement and then aborts the old task, and a process that dies between the
-// two leaves the old task live; its conversation, resumed mid-request, would ask its model again, and a decision task
-// would ask its decider. Pi Durable allows no abort inside a commit, so the sweep stands in: it runs before the harness
-// resumes, at open, and at the start of every review.
+// A crash between replacing and aborting a task leaves live work behind. Pi cannot abort inside a commit, so sweep before resume.
 async function abortReplacedRuns(harness: Harness, context: Context): Promise<void> {
 	const { tasks } = await harness.inspect(context);
-	const lensTasks = tasks.filter((task) => task.record.kind === LensTask.definition.name);
+	const live = tasks.filter((task) =>
+		[LensTask.definition.name, VerificationTask.definition.name].includes(task.record.kind),
+	);
 	const decisions = tasks.filter(
 		(task) => task.record.kind === decisionTaskName && task.record.state.status !== "terminal",
 	);
 	const adjudications = tasks.filter(
 		(task) => task.record.kind === AdjudicationTask.definition.name && task.record.state.status !== "terminal",
 	);
-	if (lensTasks.length === 0 && decisions.length === 0 && adjudications.length === 0) return;
+	if (live.length === 0 && decisions.length === 0 && adjudications.length === 0) return;
 	const root = await harness.root(context);
 	const index = await harness.snapshot(ReviewIndex, root.id, context);
-	for (const { record } of lensTasks) {
+	for (const { record } of live) {
 		const input = record.input as unknown as StoredLensTaskInput;
 		const entry = index?.reviews[revisionKey(input.revision)];
 		// An entry with no task is one a review that selected no lens rewrote: it names no run at all.
-		const replaced = entry !== undefined && entry.task !== record.id;
-		// An entry an older Melian stored names its lenses in a shape `selectionOf` no longer writes (`name@version@level`,
-		// then the route), so no review can attach to its task.
+		const replaced =
+			record.kind === VerificationTask.definition.name
+				? entry?.verification?.task !== record.id
+				: entry !== undefined && entry.task !== record.id;
+		// An older entry lacks a level or route, so no current selection can attach to its lens task.
 		const stale =
+			record.kind === LensTask.definition.name &&
 			entry !== undefined &&
 			entry.lenses.length > 0 &&
 			entry.lenses.every((lens) => !/^[^@\s]+@[^@\s]+@[^@\s]+ .*\bon /.test(lens));
@@ -505,10 +520,10 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
  */
 export const lensExtension = defineExtension({
 	name: "melian.lenses",
-	tools: [...Object.values(lensReadTools), reportFinding],
+	tools: [...Object.values(lensReadTools), reportFinding, reportVerdict],
 	sections: [injectionPolicySection],
 	hooks: [lensPolicyHook],
-	tasks: [LensTask, AdjudicationTask],
+	tasks: [LensTask, VerificationTask, AdjudicationTask],
 });
 
 /** A registry holding {@link lensExtension}. */
@@ -932,28 +947,35 @@ async function startAdjudication(
 	harness: Harness,
 	input: AdjudicationTaskInput,
 	selection: readonly string[],
+	verificationRefused: boolean,
 	context: Context,
 ): Promise<TaskId<AdjudicationResult> | undefined> {
 	const root = await harness.root(context);
-	// The details ride with the verdict but are not part of what it was decided from.
-	const key = JSON.stringify({ ...input, details: undefined });
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
-		const known = index.reviews[revisionKey(input)];
+		const revision = revisionKey(input);
+		let known = index.reviews[revision];
 		// A review whose lenses ran owns the entry only while it still names their selection. Problem: once a later review
 		// replaced this one's lens task, rewriting the entry here dropped the newer run's task, and the guards then read
 		// that live run as superseded. Solution: a replaced review adjudicates nothing.
 		if (selection.length > 0 && known?.lenses.join("\n") !== selection.join("\n")) return undefined;
+		const deciding = { ...input };
+		if (verificationRefused) {
+			await clearVerifications(tx, input.root, revision);
+			deciding.findingsVersion = (await tx.doc(FindingsDocument, input.root)).versions[revision] ?? 0;
+			if (known?.verification !== undefined) known = omit(omit(known, "verification"), "adjudication");
+		}
+		const key = JSON.stringify({ ...deciding, details: undefined });
 		// A failed adjudication is always rerun: it is cheap, and its failure, such as a base commit a shallow clone had
 		// not fetched yet, may have passed.
 		const retry = [...undecided, "failed"];
 		if (known?.adjudication?.input === key && (await attachable(tx, known.adjudication.task, retry))) {
 			return known.adjudication.task as TaskId<AdjudicationResult>;
 		}
-		const created = await tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } });
+		const created = await tx.createTask(AdjudicationTask, deciding, { ownership: { kind: "conversation" } });
 		const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
 		const entry = same ? known : { lenses: [...selection] };
-		index.reviews[revisionKey(input)] = { ...entry, adjudication: { task: created, input: key } };
+		index.reviews[revision] = { ...entry, adjudication: { task: created, input: key } };
 		return created;
 	}, context);
 }
@@ -1196,7 +1218,8 @@ async function triage(
 		if (!attach || (known.decision === undefined && known.failure === undefined)) {
 			// Waiting starts every pending task, before triage can choose the selection that replaces this live run.
 			if (record !== undefined && record.state.status !== "terminal") index.reviews[revision] = { lenses: [] };
-			else if (previous?.adjudication !== undefined) index.reviews[revision] = omit(previous, "adjudication");
+			else if (previous !== undefined)
+				index.reviews[revision] = omit(omit(previous, "adjudication"), "verification");
 			const verdicts = await tx.doc(VerdictDocument, root.id);
 			delete verdicts.verdicts[revision];
 			if (verdicts.provenance !== undefined) delete verdicts.provenance[revision];
@@ -1466,6 +1489,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				version: lens.version,
 				level,
 				route: [...(routes.get(settings.tier) as { route: ModelReference[] }).route],
+				verify: settings.verify,
 				instructions: ruled.renderInstructions(
 					reading.sections,
 					level,
@@ -1587,6 +1611,180 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		},
 		options,
 	);
+	const storedFindings = await readFindings(harness, root, reviewed, context, { producers });
+	const configFor =
+		options.policy === undefined
+			? () => config
+			: await configsFor(repoRoot, options.policy, storedFindings).catch((error: unknown) => {
+					throw new ReviewError("adjudicationFailed", error instanceof Error ? error.message : String(error), {
+						lenses: [],
+						findings: storedFindings,
+					});
+				});
+	const allRuns = runsOf(ran.lenses);
+	const candidates: VerificationCandidate[] = [];
+	for (const defect of new Merge(storedFindings, configFor).defects()) {
+		if (defect.speaker.properties.status === "dismissed") continue;
+		const candidateState = VerificationState.from(defect.speaker).toJSON();
+		if (
+			!candidateState.claims.some((claim) => {
+				const run = allRuns.find((each) => {
+					const source = lensSource(each.name, each.version, each.level);
+					return source.check === claim.source.check && source.version === claim.source.version;
+				});
+				return (
+					run !== undefined &&
+					((run.verify ??
+						covering
+							.find(({ lens }) => lens.name === run.name && lens.version === run.version)
+							?.lens.level(run.level ?? defaultScrutinyLevel).verify ??
+						run.level !== "quick") ||
+						producers.some(
+							(producer) =>
+								producer.check === claim.source.check &&
+								producer.version === claim.source.version &&
+								producer.ids?.includes(claim.id),
+						))
+				);
+			})
+		)
+			continue;
+		const finderClaim =
+			candidateState.claims.find(
+				(claim) =>
+					claim.source.check === defect.speaker.properties.source.check &&
+					claim.source.version === defect.speaker.properties.source.version,
+			) ?? candidateState.claims[0]!;
+		const run = allRuns.find((each) => {
+			const source = lensSource(each.name, each.version, each.level);
+			return source.check === finderClaim.source.check && source.version === finderClaim.source.version;
+		})!;
+		const outcome = lensResult?.[run.key];
+		const finder =
+			outcome?.status === "done" && outcome.model !== undefined ? outcome.model : modelName(run.route[0]!);
+		let route = request.plan?.verifierRoute(finder).map(({ model }) => parseModelReference(model, "verifier"));
+		if (route === undefined) {
+			const configured = config.models.verifier;
+			if (configured !== undefined) {
+				const resolved = resolveModelForTier("verifier", config.models);
+				route = [resolved.model, ...resolved.fallbacks];
+			} else route = [...run.route];
+		}
+		const available: ModelReference[] = [];
+		const collection = modelsOf(models);
+		for (const model of route)
+			if (
+				collection.getModel(model.provider, model.modelId) !== undefined &&
+				(await collection.checkAuth(model.provider).catch(() => undefined)) !== undefined
+			)
+				available.push(model);
+		candidates.push({
+			key: defect.speaker.id,
+			state: candidateState,
+			finder,
+			route: available,
+			budget: { ...verificationBudget },
+		});
+	}
+	let verificationCheck: CheckRecord | undefined;
+	let verificationRefused = false;
+	if (candidates.length === 0) {
+		const previous = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification;
+		if (previous !== undefined) {
+			const owner = await harness.root(context);
+			await owner.commit(async (tx) => {
+				const index = await tx.doc(ReviewIndex, root);
+				const entry = index.reviews[reviewed];
+				if (entry?.verification?.task === previous.task) index.reviews[reviewed] = omit(entry, "verification");
+			}, context);
+			await abortReplacedRuns(harness, context);
+		}
+	}
+	if (candidates.length > 0) {
+		const refusal = request.plan?.refusal("verifier");
+		const missing = candidates.some((candidate) => candidate.route.length === 0);
+		if (refusal !== undefined || missing) {
+			verificationRefused = true;
+			verificationCheck = {
+				name: "verifier",
+				status: "failed",
+				version: verifierVersion,
+				reason: refusal ?? "the verifier has no model with credentials",
+				...(request.plan?.lineage("verifier") === undefined ? {} : { lineage: request.plan.lineage("verifier")! }),
+			};
+		} else {
+			const verificationInput: VerificationInput = {
+				root,
+				revision: ran.revision,
+				version: verifierVersion,
+				candidates,
+			};
+			const verifying = await startVerification(
+				harness,
+				verificationInput,
+				selectionOf(lenses, escalateAt),
+				options.rerun === true,
+				context,
+				(model) =>
+					request.plan?.tier("verifier").acceptOverridden === false &&
+					request.plan.verifierLineage(model)?.outside === true,
+			);
+			if (verifying === undefined)
+				verificationCheck = { name: "verifier", status: "failed", version: verifierVersion, reason: "superseded" };
+			else {
+				await abortReplacedRuns(harness, context);
+				await refuseIfBlocked(
+					harness,
+					verifying,
+					[],
+					inIndex((index) => {
+						const entry = index.reviews[reviewed];
+						if (entry?.verification?.task === verifying) index.reviews[reviewed] = omit(entry, "verification");
+					}),
+					context,
+				);
+				const finished = (await harness.waitForTask(verifying, context)).state.outcome;
+				const results = finished.status === "completed" ? (finished.result as VerificationResult) : {};
+				const ended = Object.values(results).find((result) => result.status === "ended");
+				const failed = candidates
+					.map((candidate) => results[candidate.key])
+					.find((result) => result?.status !== "done");
+				verificationCheck =
+					ended?.status === "ended"
+						? { name: "verifier", status: "ended", version: verifierVersion, budgetEnded: ended.budgetEnded }
+						: Object.keys(results).length !== candidates.length || failed !== undefined
+							? {
+									name: "verifier",
+									status: "failed",
+									version: verifierVersion,
+									reason:
+										failed !== undefined && "reason" in failed
+											? failed.reason
+											: "the verification task did not complete",
+								}
+							: { name: "verifier", status: "ran", version: verifierVersion };
+				const completed = Object.values(results).filter((result) => result.status === "done");
+				const model =
+					completed.find(
+						(result) =>
+							request.plan?.tier("verifier").acceptOverridden === false &&
+							request.plan.verifierLineage(result.model)?.outside === true,
+					) ?? completed[0];
+				const lineage = request.plan?.verifierLineage(
+					model?.status === "done" ? model.model : modelName(candidates[0]!.route[0]!),
+				);
+				if (lineage !== undefined) {
+					verificationCheck = { ...verificationCheck, lineage };
+					if (lineage.outside && request.plan?.tier("verifier").acceptOverridden === false)
+						verificationCheck = {
+							...verificationCheck,
+							status: "failed",
+							reason: "the verifier finished outside its guarded accepted route",
+						};
+				}
+			}
+		}
+	}
 	const checks =
 		request.plan?.mark(
 			accounted.records(),
@@ -1608,8 +1806,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		head,
 		policy: options.policy,
 		config,
-		manifest,
-		checks,
+		manifest: verificationCheck === undefined ? manifest : [...manifest, "verifier"],
+		checks: verificationCheck === undefined ? checks : [...checks, verificationCheck],
+		verifierVersion,
+		verificationRan: true,
 		findingsVersion: await findingsVersion(harness, root, reviewed, context),
 		allowSkip: accounted.skippable(),
 		producers,
@@ -1620,7 +1820,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// Recorded with the verdict by the adjudication task, so a run that a later review replaced leaves none behind.
 	input.details = {
 		policy: input.provenance.policy,
-		manifest: [...manifest],
+		manifest: [...input.manifest],
 		lenses: settled
 			.map(({ run }) => run)
 			.map(({ key, name, version, level, route, budget, standards: paths }) => ({
@@ -1640,7 +1840,13 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			})),
 		standards: [...new Set(settled.flatMap(({ run }) => run.standards ?? []))],
 	};
-	const adjudication = await startAdjudication(harness, input, selectionOf(lenses, escalateAt), context);
+	const adjudication = await startAdjudication(
+		harness,
+		input,
+		selectionOf(lenses, escalateAt),
+		verificationRefused,
+		context,
+	);
 	if (adjudication === undefined) {
 		throw new ReviewError(
 			"superseded",
@@ -1648,6 +1854,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			{ lenses: lenses.map((lens) => lens.name) },
 		);
 	}
+	if (verificationRefused) await abortReplacedRuns(harness, context);
 	const forget = (index: ReviewIndexState) => {
 		const entry = index.reviews[reviewed];
 		if (entry?.adjudication?.task !== adjudication) return;
@@ -1692,5 +1899,11 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			verdict,
 		});
 	}
+	if (verificationCheck !== undefined && verificationCheck.status !== "ran")
+		throw new ReviewError("verifierFailed", "the verifier did not judge every claim", {
+			lenses: [],
+			findings,
+			verdict,
+		});
 	return { findings, verdict };
 }
