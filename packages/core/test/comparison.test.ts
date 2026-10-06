@@ -621,6 +621,36 @@ describe("Comparison matching", () => {
 		expect(comparison.effectiveMatches().map((match) => match.external)).toEqual([atCause.id]);
 	});
 
+	it("matches the end of a cause-evidence span and its three-line margin", () => {
+		const finding = melian({
+			file: "src/run.ts",
+			cause: "affected",
+			evidence: [{ file: "src/api.ts", startLine: 3, endLine: 20, role: "cause", revision: "head", snippet: "x" }],
+		});
+		const atEnd = external({ file: "src/api.ts", line: 20 });
+		const nearEnd = external({ file: "src/api.ts", line: 23 });
+		const pastEnd = external({ file: "src/api.ts", line: 24 });
+		const comparison = Comparison.of(revision);
+		comparison.import(
+			"file:codex.json",
+			{ findings: [atEnd, nearEnd, pastEnd], skippedBodies: 0 },
+			"2026-10-06T00:00:00.000Z",
+		);
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
+		expect(comparison.effectiveMatches()).toHaveLength(2);
+		expect(comparison.effectiveMatches()).toEqual(
+			expect.arrayContaining([
+				{ external: atEnd.id, melian: finding.id, kind: "site" },
+				{ external: nearEnd.id, melian: finding.id, kind: "site" },
+			]),
+		);
+		expect(ids(comparison.matched())).toEqual([{ external: [atEnd.id, nearEnd.id], melian: [finding.id] }]);
+		expect(ids(comparison.externalOnly())).toEqual([{ external: [pastEnd.id], melian: [] }]);
+		expect(comparison.melianOnly()).toEqual([]);
+	});
+
 	it("matches a finding with no line, an outdated one, or one on the base side only by hand", () => {
 		const finding = melian();
 		const noLine = external({ line: undefined });
