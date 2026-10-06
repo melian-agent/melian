@@ -213,7 +213,6 @@ export class ComparisonError extends Error {
 	}
 }
 
-// The first schema error in `value`, as a pointer and a message, or undefined when it conforms.
 function schemaProblem(schema: TSchema, value: unknown): string | undefined {
 	const errors = Value.Errors(schema, value);
 	const unknown = errors.find((error) => error.keyword === "additionalProperties");
