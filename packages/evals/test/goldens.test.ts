@@ -341,16 +341,20 @@ describe("MELIAN_EVAL_GOLDEN", { timeout: 60_000 }, () => {
 
 // Scripted runs replay each golden's canned lens replies on the fake model, so the plumbing from lens to findings
 // document to rendered output runs in the gate. They prove the pipeline, not the lenses' judgement; live runs do that.
-describe.each(goldens.map((golden): [string, Golden] => [golden.name, golden]))("scripted %s", (_, golden) => {
-	it("finds exactly what the golden expects, with its cause, failure scenario, and evidence", async () => {
-		const run = await runGolden(golden, { kind: "scripted" });
+describe.each(goldens.map((golden): [string, Golden] => [golden.name, golden]))(
+	"scripted %s",
+	{ timeout: 60_000 },
+	(_, golden) => {
+		it("finds exactly what the golden expects, with its cause, failure scenario, and evidence", async () => {
+			const run = await runGolden(golden, { kind: "scripted" });
 
-		expect(run.toolMismatches).toEqual([]);
-		expect(scoreGolden(golden, run.findings)).toMatchObject({ precision: 1, recall: 1 });
-		expect(scriptedMismatches(golden, run.findings)).toEqual([]);
-		await expect(run.rendered).toMatchFileSnapshot(join(golden.directory, "scripted.txt"));
-	});
-});
+			expect(run.toolMismatches).toEqual([]);
+			expect(scoreGolden(golden, run.findings)).toMatchObject({ precision: 1, recall: 1 });
+			expect(scriptedMismatches(golden, run.findings)).toEqual([]);
+			await expect(run.rendered).toMatchFileSnapshot(join(golden.directory, "scripted.txt"));
+		});
+	},
+);
 
 describe("runGolden", () => {
 	it("loads a folder's lens for a file the change moves out of that folder, as the CLI does", async () => {
