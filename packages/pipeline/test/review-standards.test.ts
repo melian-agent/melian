@@ -146,6 +146,144 @@ describe("per-lens standards", () => {
 		expect(systemPromptOf(requests["You are the correctness reviewer"]![1]!)).toContain("SECOND_STANDARD");
 	});
 
+	it("refreshes raw standards that collide under the fingerprint nonce", async () => {
+		const zeros = "0".repeat(24);
+		writeFiles(repo, { "AGENTS.md": `ID: ${zeros}` });
+		const { options, requests } = await setup("worktree");
+		await reviewChangeset(options);
+		const root = await options.harness.harness.root(context);
+		const revision = revisionKey(options.changeset.revision);
+		const before = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.task;
+		expect(before).toBeDefined();
+		expect(systemPromptOf(requests["You are the correctness reviewer"]![0]!)).toContain(`ID: ${zeros}`);
+		writeFiles(repo, { "AGENTS.md": "ID: [nonce]" });
+		const standards = await Standards.load(repo, options.policy, options.changeset.revision.paths());
+		expect(standards.source).toEqual(options.standards.source);
+		expect(standards.forFiles(options.changeset.revision.paths()).paths()).toEqual(
+			options.standards.forFiles(options.changeset.revision.paths()).paths(),
+		);
+
+		await reviewChangeset({ ...options, standards });
+
+		const after = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.task;
+		expect(after).toBeDefined();
+		expect(after).not.toBe(before);
+		expect(requests["You are the correctness reviewer"]).toHaveLength(2);
+		expect(systemPromptOf(requests["You are the correctness reviewer"]![1]!)).toContain("ID: [nonce]");
+		expect(systemPromptOf(requests["You are the correctness reviewer"]![1]!)).not.toContain(`ID: ${zeros}`);
+	});
+
+	it("refreshes rendered lens instructions when the lens version stays unchanged", async () => {
+		const { options: loaded, requests } = await setup("worktree");
+		const options = {
+			...loaded,
+			config: { ...loaded.config, lenses: {} },
+			lenses: loaded.lenses.map((lens) =>
+				lens.name === "correctness"
+					? Lens.from({ ...lens.toJSON(), paths: ["packages/**"], handoffs: { contracts: "Contract defects" } })
+					: Lens.from({ ...lens.toJSON(), paths: ["packages/github/**"] }),
+			),
+		};
+		await reviewChangeset(options);
+		const original = systemPromptOf(requests["You are the correctness reviewer"]![0]!);
+		expect(original).toMatch(/label="listing">\npackages\/github\/src\/b.ts\n<\/untrusted-/);
+		expect(original).toContain('label="standards"');
+		await reviewChangeset(options);
+		expect(requests["You are the correctness reviewer"]).toHaveLength(1);
+		const root = await options.harness.harness.root(context);
+		const revision = revisionKey(options.changeset.revision);
+		const before = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.task;
+		const lenses = options.lenses.map((lens) =>
+			lens.name === "correctness"
+				? Lens.from({ ...lens.toJSON(), instructions: `${lens.instructions}\nREVISED_LENS_WORDING` })
+				: lens,
+		);
+		expect(lenses.map((lens) => lens.version)).toEqual(options.lenses.map((lens) => lens.version));
+
+		await reviewChangeset({ ...options, lenses });
+
+		const after = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.task;
+		expect(before).toBeDefined();
+		expect(after).toBeDefined();
+		expect(after).not.toBe(before);
+		expect(requests["You are the correctness reviewer"]).toHaveLength(2);
+		expect(systemPromptOf(requests["You are the correctness reviewer"]![1]!)).toContain("REVISED_LENS_WORDING");
+	});
+
+	it.each(["revision", "flat"] as const)(
+		"refreshes identical standards when their provenance changes to %s",
+		async (kind) => {
+			rmSync(`${repo}/packages/core/src/AGENTS.md`);
+			gitIn(repo, "commit", "--quiet", "-am", "remove head carrier");
+			const { options, requests } = await setup("worktree");
+			const paths = options.changeset.revision.paths();
+			const standards = await Standards.load(
+				repo,
+				{ kind: "revision", commit: options.changeset.revision.base },
+				paths,
+			);
+			const config = { ...options.config, tiers: { full: ["lens.correctness"] } };
+			await reviewChangeset({ ...options, config, standards });
+			const root = await options.harness.harness.root(context);
+			const revision = revisionKey(options.changeset.revision);
+			const before = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!
+				.task;
+			const sections = standards.forFiles(["packages/core/src/a.ts"]).sections;
+			const changed =
+				kind === "revision"
+					? await Standards.load(repo, { kind: "revision", commit: options.changeset.revision.head }, paths)
+					: sections;
+			expect(changed instanceof Standards ? changed.forFiles(["packages/core/src/a.ts"]).sections : changed).toEqual(
+				sections,
+			);
+
+			await reviewChangeset({ ...options, config, standards: changed });
+
+			const after = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.task;
+			expect(before).toBeDefined();
+			expect(after).toBeDefined();
+			expect(after).not.toBe(before);
+			expect(requests["You are the correctness reviewer"]).toHaveLength(2);
+			const first = systemPromptOf(requests["You are the correctness reviewer"]![0]!);
+			const second = systemPromptOf(requests["You are the correctness reviewer"]![1]!);
+			expect(first).toContain('label="standards"');
+			expect(second).toContain('label="standards"');
+			expect(second.replace(/untrusted-[a-f0-9]{24}/g, "untrusted-NONCE")).toBe(
+				first.replace(/untrusted-[a-f0-9]{24}/g, "untrusted-NONCE"),
+			);
+		},
+	);
+
+	it("refreshes a lens without sections when standards trust alone changes", async () => {
+		const { options, requests } = await setup();
+		const lenses = options.lenses.map((lens) => Lens.from({ ...lens.toJSON(), standards: false }));
+		const config = {
+			...options.config,
+			lenses: {
+				correctness: { level: { floor: "careful" as const } },
+				contracts: { level: { floor: "careful" as const } },
+			},
+		};
+		await reviewChangeset({ ...options, lenses, config });
+		const root = await options.harness.harness.root(context);
+		const revision = revisionKey(options.changeset.revision);
+		const before = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.task;
+
+		await reviewChangeset({ ...options, lenses, config, policy: undefined });
+
+		const after = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.task;
+		expect(before).toBeDefined();
+		expect(after).toBeDefined();
+		expect(after).not.toBe(before);
+		expect(requests["You are the correctness reviewer"]).toHaveLength(2);
+		const first = systemPromptOf(requests["You are the correctness reviewer"]![0]!);
+		const second = systemPromptOf(requests["You are the correctness reviewer"]![1]!);
+		expect(first).not.toContain("## Repository standards");
+		expect(second.replace(/untrusted-[a-f0-9]{24}/g, "untrusted-NONCE")).toBe(
+			first.replace(/untrusted-[a-f0-9]{24}/g, "untrusted-NONCE"),
+		);
+	});
+
 	it("replaces a completed lens task when only standards omissions change", async () => {
 		rmSync(`${repo}/packages/core/src/AGENTS.md`);
 		const { options, requests } = await setup("worktree");
