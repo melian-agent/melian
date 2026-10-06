@@ -7,3 +7,5 @@ Fix pass: the fake analyser now requires base constraint, intent and suppression
 Fix pass: runStaticTool API documentation now distinguishes Biome and tsc dependency sourcing from Enola’s manifest cache, and states the base-policy rule and disabled providers.
 
 Fix pass: cleanup attempts base and head worktree removal independently and removes scratch in finally. It still reports the first execution error after all cleanup attempts. An injected timeout proves the second removal runs and scratch disappears.
+
+Type checking caught a missing Error.name on the injected timeout fixture. The fixture now supplies the full ExecutionError shape; its cleanup assertions still pass.
