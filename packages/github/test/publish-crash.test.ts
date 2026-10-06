@@ -211,12 +211,14 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 	it.each([
 		{ interruptedTrust: true, trustedWriters: true, changedPublisher: true },
 		{ interruptedTrust: true, trustedWriters: true, changedPublisher: false },
+		{ interruptedTrust: true, trustedWriters: true, changedPermission: "permission" },
+		{ interruptedTrust: true, trustedWriters: true, changedPermission: "authorPermission" },
 		{ interruptedTrust: false, trustedWriters: false },
 		{ interruptedTrust: true, trustedWriters: false },
 		{ interruptedTrust: false, trustedWriters: true },
 	])(
-		"keeps publisher attribution across a status crash (trust: $interruptedTrust -> $trustedWriters)",
-		async ({ interruptedTrust, trustedWriters, changedPublisher }) => {
+		"keeps publisher attribution across a status crash (trust: $interruptedTrust -> $trustedWriters, permission: $changedPermission)",
+		async ({ interruptedTrust, trustedWriters, changedPublisher, changedPermission }) => {
 			const database = join(dir, "review.sqlite");
 			const stateFile = join(dir, "github.json");
 			const log = join(dir, "publish.log");
@@ -238,6 +240,13 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 				persisted.login = "new-publisher";
 				persisted.permissions = { ...persisted.permissions, "new-publisher": "maintain" };
 			}
+			if (changedPermission !== undefined) {
+				const login = changedPermission === "permission" ? persisted.login : (persisted.author ?? "pr-author");
+				persisted.permissions = {
+					...persisted.permissions,
+					[login]: changedPermission === "permission" ? "maintain" : "write",
+				};
+			}
 			const provider = providerFor(persisted);
 			const publisher = await openPublisher(await openSqliteStorage(database), scenarioModels().review, provider);
 			harness = publisher.harness;
@@ -256,6 +265,10 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 				expect(result.superseded).toEqual([expect.objectContaining({ reason: "writer trust policy changed" })]);
 			if (changedPublisher)
 				expect(result.superseded).toEqual([expect.objectContaining({ reason: "publisher login changed" })]);
+			if (changedPermission !== undefined)
+				expect(result.superseded).toEqual([
+					expect.objectContaining({ reason: `publisher ${changedPermission} changed` }),
+				]);
 			const record = await readPublished(
 				harness,
 				(await harness.root(context)).id,
@@ -265,8 +278,8 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			expect(record?.publishedBy).toEqual({
 				trustedWriters,
 				login: changedPublisher ? "new-publisher" : "melian-user",
-				permission: changedPublisher ? "maintain" : "write",
-				authorPermission: "read",
+				permission: changedPublisher || changedPermission === "permission" ? "maintain" : "write",
+				authorPermission: changedPermission === "authorPermission" ? "write" : "read",
 			});
 			expect(persisted.statuses).toHaveLength(3);
 			expect(persisted.reviews).toHaveLength(1);
