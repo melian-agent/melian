@@ -154,7 +154,6 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				if (sources.some((source) => source.kind === "github") && !pullRequest) {
 					throw new UsageError(`--from github reads a pull request's threads; name it as "#12", not a range`);
 				}
-				// A pull request's comparison imports CodeRabbit's threads unless told otherwise.
 				const fallback = pullRequest && sources.length === 0 ? [parseImportSource("github")!] : [];
 				return await compare(scoped, target, [...sources, ...fallback]);
 			}
