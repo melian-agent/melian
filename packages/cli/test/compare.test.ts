@@ -5,7 +5,9 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { StoredVerdict } from "@melian-agent/core";
 import { buildGoldenRepository, loadGoldens } from "@melian-agent/evals";
-import { afterEach, describe, expect, it } from "vitest";
+import { ReviewThreadImporter } from "@melian-agent/github";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { compare } from "../src/compare.ts";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const bin = join(root, "packages/cli/bin/melian.js");
@@ -28,6 +30,7 @@ const gitEnv = {
 const cleanup: string[] = [];
 
 afterEach(() => {
+	vi.restoreAllMocks();
 	for (const path of cleanup.splice(0)) rmSync(path, { recursive: true, force: true });
 });
 
@@ -334,6 +337,27 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		const human = melian(repo, ["compare", "#7", "--from", "github:octocat"], env);
 		expect(human.stdout).toContain("Imported 1 from github:octocat, skipping 1 review body without a thread.");
 		expect(human.stdout).toMatch(/octocat {2}src\/user\.ts:20 {2}Should this log the name too\?/);
+	});
+
+	it("passes the repository, pull request and author to the thread importer", async () => {
+		const { repo, env } = pullRequest();
+		expect(melian(repo, ["review", "#7"], env).status).toBe(1);
+		const open = vi.spyOn(ReviewThreadImporter, "open");
+
+		expect(
+			await compare({ cwd: repo, env, color: false, stdout: () => {}, stderr: () => {} }, "#7", [
+				{ kind: "github", login: "octocat" },
+			]),
+		).toBe(0);
+
+		expect(open).toHaveBeenCalledExactlyOnceWith({
+			owner: "melian-agent",
+			repo: "example",
+			pullRequest: 7,
+			login: "octocat",
+			token: "scripted",
+			fetch: expect.any(Function),
+		});
 	});
 
 	it("ignores the recording without scripted mode, and fails to find a GitHub token instead of answering from it", () => {

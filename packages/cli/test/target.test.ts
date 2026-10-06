@@ -27,7 +27,12 @@ describe("GitHub access", () => {
 
 		const access = await gitHubAccess(repo, { MELIAN_TEST_SCRIPT: "script.json", MELIAN_TEST_GITHUB: recording });
 
-		expect(access).toMatchObject({ owner: "melian-agent", repo: "example", token: "scripted", fetch: expect.any(Function) });
+		expect(access).toMatchObject({
+			owner: "melian-agent",
+			repo: "example",
+			token: "scripted",
+			fetch: expect.any(Function),
+		});
 		expect(token).not.toHaveBeenCalled();
 		const response = await access.fetch!("https://api.github.com/repos/melian-agent/example/pulls/7");
 		expect(await response.json()).toEqual({ number: 7 });
@@ -39,7 +44,9 @@ describe("GitHub access", () => {
 		{ MELIAN_TEST_SCRIPT: "script.json" },
 		{ MELIAN_TEST_SCRIPT: "script.json", MELIAN_TEST_GITHUB: "" },
 	])("resolves a token without a scripted recording: %j", async (env) => {
-		const token = vi.spyOn(github, "resolveGitHubToken").mockResolvedValue({ token: "test-token", source: "GITHUB_TOKEN" });
+		const token = vi
+			.spyOn(github, "resolveGitHubToken")
+			.mockResolvedValue({ token: "test-token", source: "GITHUB_TOKEN" });
 
 		expect(await gitHubAccess(repo, env)).toEqual({ owner: "melian-agent", repo: "example", token: "test-token" });
 		expect(token).toHaveBeenCalledExactlyOnceWith(env);
@@ -49,8 +56,11 @@ describe("GitHub access", () => {
 		const token = vi.spyOn(github, "resolveGitHubToken").mockResolvedValue(undefined);
 		const path = join(repo, "missing.json");
 
-		await expect(gitHubAccess(repo, { MELIAN_TEST_SCRIPT: "script.json", MELIAN_TEST_GITHUB: path })).rejects.toMatchObject({
-			name: "CliError", message: `MELIAN_TEST_GITHUB names ${path}, which cannot be read`,
+		await expect(
+			gitHubAccess(repo, { MELIAN_TEST_SCRIPT: "script.json", MELIAN_TEST_GITHUB: path }),
+		).rejects.toMatchObject({
+			name: "CliError",
+			message: `MELIAN_TEST_GITHUB names ${path}, which cannot be read`,
 		});
 		expect(token).not.toHaveBeenCalled();
 	});
