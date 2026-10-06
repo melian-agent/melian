@@ -20,7 +20,6 @@ function json(data: unknown, status = 200): Response {
 	return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json" } });
 }
 
-// The first `pageInfo.endCursor` in a response, wherever the operation nests its connection.
 function endCursor(value: unknown): string | null | undefined {
 	if (typeof value !== "object" || value === null) return undefined;
 	if ("pageInfo" in value && typeof value.pageInfo === "object" && value.pageInfo !== null) {

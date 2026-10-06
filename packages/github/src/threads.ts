@@ -159,8 +159,9 @@ export class ReviewThreadImporter implements ExternalImporter {
 	}
 
 	/**
-	 * An importer for one pull request's threads by `options.login`. Any login other than CodeRabbit's names a `human`
-	 * reviewer, kept by login. Throws {@link GitHubError} `failed` for a login GitHub could not hold.
+	 * An importer for one pull request's threads by `options.login`. CodeRabbit's and Copilot's bots are named
+	 * `coderabbit` and `copilot`. Other authors name a `human` reviewer, kept by login.
+	 * Throws {@link GitHubError} `failed` for a login GitHub could not hold.
 	 */
 	static open(options: ReviewThreadImporterOptions): ReviewThreadImporter {
 		const login = options.login ?? coderabbitLogin;
