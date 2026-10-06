@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
-import { chmod, lstat, mkdir, mkdtemp, open, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, mkdtemp, open, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { ToolManifest, type ToolPin } from "@melian-agent/core";
@@ -52,7 +52,7 @@ export class ToolCache {
 	/** Checks readiness without downloading or running the binary. */
 	async readiness(tool: ToolPin, platform: string): Promise<"verified" | "not-fetched" | "mismatch"> {
 		const pin = this.#pin(tool, platform);
-		if (await this.#verified(pin.directory, pin.sha256, pin.binary)) return "verified";
+		if (await this.#cached(pin.directory, pin.sha256, pin.binary)) return "verified";
 		try {
 			await lstat(pin.directory);
 			return "mismatch";
@@ -73,7 +73,8 @@ export class ToolCache {
 	/** Returns a verified executable, repairing a missing or swapped entry from the pinned download. */
 	async materialise(tool: ToolPin, platform: string): Promise<string> {
 		const pin = this.#pin(tool, platform);
-		if (await this.#verified(pin.directory, pin.sha256, pin.binary)) return join(pin.directory, "binary");
+		const cached = await this.#cached(pin.directory, pin.sha256, pin.binary);
+		if (cached) return cached;
 		await mkdir(dirname(pin.directory), { recursive: true });
 		const temporary = await mkdtemp(join(dirname(pin.directory), ".fetch-"));
 		try {
@@ -90,16 +91,14 @@ export class ToolCache {
 				binary: createHash("sha256").update(binary).digest("hex"),
 			};
 			await writeFile(join(temporary, "receipt.json"), JSON.stringify(receipt), { flag: "wx" });
-			if (await this.#verified(pin.directory, pin.sha256, pin.binary)) return join(pin.directory, "binary");
-			await rm(pin.directory, { recursive: true, force: true });
-			try {
-				await rename(temporary, pin.directory);
-			} catch (error) {
-				if (!(await this.#verified(pin.directory, pin.sha256, pin.binary))) throw error;
-			}
-			if (!(await this.#verified(pin.directory, pin.sha256, pin.binary)))
+			const winner = await this.#cached(pin.directory, pin.sha256, pin.binary);
+			if (winner) return winner;
+			await mkdir(pin.directory, { recursive: true });
+			const entry = join(pin.directory, `entry-${crypto.randomUUID()}`);
+			await rename(temporary, entry);
+			if (!(await this.#verified(entry, pin.sha256, pin.binary)))
 				throw new ToolCacheError("invalidOutput", "Materialised tool failed verification");
-			return join(pin.directory, "binary");
+			return join(entry, "binary");
 		} catch (cause) {
 			if (cause instanceof ToolCacheError) throw cause;
 			throw new ToolCacheError(
@@ -110,6 +109,21 @@ export class ToolCache {
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}
+	}
+
+	async #cached(directory: string, archive: string, wanted?: string): Promise<string | undefined> {
+		if (await this.#verified(directory, archive, wanted)) return join(directory, "binary");
+		try {
+			if (!(await lstat(directory)).isDirectory()) return undefined;
+			for (const entry of await readdir(directory, { withFileTypes: true })) {
+				if (!entry.isDirectory() || !entry.name.startsWith("entry-")) continue;
+				const path = join(directory, entry.name);
+				if (await this.#verified(path, archive, wanted)) return join(path, "binary");
+			}
+		} catch {
+			return undefined;
+		}
+		return undefined;
 	}
 
 	async #verified(directory: string, archive: string, wanted?: string): Promise<boolean> {

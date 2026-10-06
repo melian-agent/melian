@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type * as fs from "node:fs/promises";
 import { lstat, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -6,8 +7,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToolCache } from "../src/tool-cache.ts";
 import { testTool, toolArchive } from "./fixtures/tool-archive.ts";
 
+vi.mock("node:fs/promises", async (importOriginal) => {
+	const original = await importOriginal<typeof fs>();
+	return { ...original, rm: vi.fn(original.rm) };
+});
+
 let root: string;
 beforeEach(async () => {
+	vi.clearAllMocks();
 	root = await mkdtemp(join(tmpdir(), "melian-tools-"));
 });
 afterEach(async () => {
@@ -43,9 +50,9 @@ describe("ToolCache", () => {
 		expect(download).toHaveBeenCalledTimes(1);
 		await writeFile(binary, "swapped");
 		expect(await cache.readiness(tool, "darwin-arm64")).toBe("mismatch");
-		await cache.materialise(tool, "darwin-arm64");
+		const repaired = await cache.materialise(tool, "darwin-arm64");
 		expect(download).toHaveBeenCalledTimes(2);
-		expect(await readFile(binary, "utf8")).toBe(script);
+		expect(await readFile(repaired, "utf8")).toBe(script);
 	});
 
 	it("refuses a forged executable and sidecar without trusting their matching hashes", async () => {
@@ -64,11 +71,38 @@ describe("ToolCache", () => {
 			}),
 		);
 		expect(await cache.readiness(tool, "darwin-arm64")).toBe("mismatch");
-		await cache.materialise(tool, "darwin-arm64");
-		expect(await readFile(binary, "utf8")).toBe("trusted");
+		const repaired = await cache.materialise(tool, "darwin-arm64");
+		expect(await readFile(repaired, "utf8")).toBe("trusted");
 		expect(download).toHaveBeenCalledTimes(2);
-		await writeFile(join(dirname(binary), "archive"), "forged archive");
+		await writeFile(join(dirname(repaired), "archive"), "forged archive");
 		expect(await cache.readiness(tool, "darwin-arm64")).toBe("mismatch");
+	});
+
+	it("publishes concurrent downloads without removing a returned executable", async () => {
+		const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
+		let release!: () => void;
+		const barrier = new Promise<void>((done) => {
+			release = done;
+		});
+		const download = vi.fn(async () => {
+			if (download.mock.calls.length === 2) release();
+			await barrier;
+			return new Response(bytes);
+		});
+		const first = await ToolCache.open(root, { fetch: download });
+		const second = await ToolCache.open(root, { fetch: download });
+		const tool = testTool(bytes);
+		const binaries = await Promise.all([
+			first.materialise(tool, "darwin-arm64"),
+			second.materialise(tool, "darwin-arm64"),
+		]);
+		for (const binary of binaries) expect(await readFile(binary, "utf8")).toBe("trusted");
+		const removals = vi.mocked(rm).mock.calls.filter(([path]) => !String(path).includes(".fetch-"));
+		expect(removals).toEqual([]);
+		await writeFile(binaries[0]!, "corrupt");
+		const repaired = await first.materialise(tool, "darwin-arm64");
+		expect(await readFile(repaired, "utf8")).toBe("trusted");
+		expect(vi.mocked(rm).mock.calls.filter(([path]) => !String(path).includes(".fetch-"))).toEqual([]);
 	});
 
 	it("refuses a wrong digest before attempting extraction, and fetch errors", async () => {
