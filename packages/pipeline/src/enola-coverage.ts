@@ -61,7 +61,6 @@ export class EnolaCoverage {
 		return this.#collisions.has(`${dirname(site.file)}.${site.name}`);
 	}
 	#call(pair: CallPair, source: "combined" | "facts" | "impact"): string | undefined {
-		if (/\.test\.[cm]?tsx?$/.test(pair.caller.file)) return "test file excluded";
 		if (this.#ambiguous(pair.caller) || this.#ambiguous(pair.callee)) return "directory-scoped name collision";
 		const callers = this.#facts.symbols(pair.caller),
 			callees = this.#facts.symbols(pair.callee);
@@ -75,6 +74,7 @@ export class EnolaCoverage {
 			)
 		)
 			return undefined;
+		if (/\.test\.[cm]?tsx?$/.test(pair.caller.file)) return "test file excluded";
 		if (pair.caller.kind === "anonymous" || pair.callee.kind === "anonymous")
 			return "anonymous callback or function value";
 		if (pair.callee.kind === "signature") return "interface or union method declaration";

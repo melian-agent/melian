@@ -5621,3 +5621,5 @@ The directory-only core-to-pipeline rule failed to catch a scratch `@melian-agen
 `constraints init` found no recipe whose directories bound. `constraints lint` accepted the committed file and resolved 41 core-import members and 514 pipeline members. On the ad303b5 tree with the policy, clean check exited 0 with no results. A tracked scratch file imported `@melian-agent/pipeline`, `@melian-agent/pipeline/testing` and `../../pipeline/src/static.ts`. Check exited 1 and reported three errors at lines 1, 2 and 3 under the package and path rules. Providers and history were disabled; HOME was temporary.
 
 The harness-free test remains broader and deterministic. It forbids Pi and every other Melian package, including import forms the extractor may miss. Neither guard makes the other redundant.
+
+The review fix pass checks explicit call evidence before the test-file gap diagnosis, matching import ordering. The recorded 825 matched calls stay unchanged: that extraction matched no test-file pair. No analyser was rerun. Widened globs can now count proven test edges. Getter calls use the invoked signature rather than the accessor declaration.

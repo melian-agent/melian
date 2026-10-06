@@ -72,6 +72,43 @@ describe("compiler call coverage", { timeout: 60_000 }, () => {
 		expect(state.files.find((file) => file.path === "packages/a/Alpha.ts")?.calls.ratio).toBeNull();
 		expect(state.causes["call:test file excluded"]).toBe(1);
 		expect(comparison.measure("a".repeat(40), "0.4.27", "facts").toJSON().totals.matchedCalls).toBe(0);
+		for (const [kind, target, matched] of [
+			["calls", "a", 2],
+			["instantiates", "a", 2],
+			["has_method", "a", 0],
+			["calls", "wrong", 0],
+		] as const) {
+			const explicit = EnolaFacts.parse(
+				[
+					{ id: "a", kind: "symbol", name: "packages/a.alpha", file: "packages/a/Alpha.ts", line: 1 },
+					{
+						id: "b",
+						kind: "symbol",
+						name: "packages/b.run",
+						file: "packages/b/b.ts",
+						line: 2,
+						relations: [{ kind, target: "packages/a.alpha", target_id: target }],
+					},
+					{
+						id: "test",
+						kind: "symbol",
+						name: "packages/b.testCaller",
+						file: "packages/b/b.test.ts",
+						line: 2,
+						relations: [{ kind, target: "packages/a.alpha", target_id: target }],
+					},
+				]
+					.map((fact) => JSON.stringify(fact))
+					.join("\n"),
+			);
+			const measured = await EnolaCoverage.open(truth, explicit, async () => undefined);
+			for (const source of ["facts", "combined"] as const) {
+				const result = measured.measure("a".repeat(40), "0.4.27", source).toJSON();
+				expect(result.totals.matchedCalls, `${source}/${kind}/${target}`).toBe(matched);
+				expect(result.files.find((file) => file.path.endsWith("b.test.ts"))?.calls.matched).toBe(matched / 2);
+			}
+			expect(measured.measure("a".repeat(40), "0.4.27", "impact").toJSON().totals.matchedCalls).toBe(0);
+		}
 		const importFacts = EnolaFacts.parse(
 			[
 				{
