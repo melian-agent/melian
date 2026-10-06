@@ -109,7 +109,19 @@ describe("ledger document migration", () => {
 		harness = await open();
 		root = await harness.root(context);
 		expect(await harness.snapshot(VerdictDocument, root.id, context)).toEqual(recorded.verdicts);
-		expect(await harness.snapshot(PublishedDocument, root.id, context)).toEqual(recorded.published);
+		expect(await harness.snapshot(PublishedDocument, root.id, context)).toEqual({
+			...recorded.published,
+			revisions: Object.fromEntries(
+				Object.entries(recorded.published.revisions).map(([head, record]) => [
+					head,
+					{ ...record, publishedBy: { trustedWriters: true } },
+				]),
+			),
+			ledgerRounds: recorded.published.ledgerRounds.map((round) => ({
+				...round,
+				publishedBy: { trustedWriters: true },
+			})),
+		});
 		const revision = Object.keys(recorded.verdicts.verdicts)[0]!;
 		expect(recorded.verdicts.details[revision]!.lenses[0]).not.toHaveProperty("standards");
 		await root.commit(async (tx) => {
@@ -126,7 +138,7 @@ describe("ledger document migration", () => {
 		const round = (await harness.snapshot(PublishedDocument, root.id, context))!.ledgerRounds!.at(-1)!;
 		expect(round).toHaveProperty("details.lenses.0.standards", ["AGENTS.md"]);
 		await expect(harness.snapshot(oldVerdicts, root.id, context)).rejects.toThrow(/newer version 6 than 5/);
-		await expect(harness.snapshot(oldPublished, root.id, context)).rejects.toThrow(/newer version 6 than 5/);
+		await expect(harness.snapshot(oldPublished, root.id, context)).rejects.toThrow(/newer version 7 than 5/);
 	});
 
 	it.each([1, 2, 3, 4, 5])(
@@ -277,69 +289,76 @@ describe("ledger document migration", () => {
 			record.replies,
 		);
 	});
-	it("upgrades version-5 publisher attribution without inventing identities after reopening", async () => {
-		dir = mkdtempSync(join(tmpdir(), "melian-ledger-migration-"));
-		const database = join(dir, "state.sqlite");
-		const fake = createFakeModels();
-		const open = async () =>
-			openHarness(await openSqliteStorage(database), { models: fake.models, registry: createRegistry() }, context);
-		const previous = defineDoc<OldPublication & { ledgerRounds: (LedgerRound | LedgerHistory)[] }>({
-			kind: "melian.published",
-			version: 5,
-			scope: "conversation",
-			history: "latest",
-			fork: "current",
-			initial: () => ({ order: [], revisions: {}, ledgerRounds: [] }),
-		});
-		const base = "a".repeat(40);
-		const head = "b".repeat(40);
-		const record = {
-			reviews: ["201"],
-			verdict: "0123456789abcdef",
-			verdictRevision: `${base}..${head}`,
-			rounds: 1,
-			open: {},
-			resolved: {},
-			replies: { "finding thread": "203" },
-			status: { state: "success" as const, description: "passed" },
-		};
-		const verdict = new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig })
-			.adjudicate()
-			.toJSON();
-		const history = { base, head: "c".repeat(40), round: 1, status: "passed" as const };
-		const round = {
-			base,
-			head,
-			round: 1,
-			verdict,
-			resolved: [],
-			details: { policy: "config", manifest: [], lenses: [], standards: [] },
-		};
-		harness = await open();
-		let root = await harness.root(context);
-		await root.commit(async (tx) => {
-			const doc = await tx.doc(previous, root.id);
-			doc.order = [head];
-			doc.revisions = { [head]: record };
-			doc.ledgerRounds = [history, round];
-		}, context);
-		await harness.close(context);
-		harness = await open();
-		root = await harness.root(context);
-		const upgraded = {
-			order: [head],
-			revisions: { [head]: { ...record, publishedBy: { trustedWriters: true } } },
-			ledgerRounds: [history, { ...round, publishedBy: { trustedWriters: true } }],
-		};
-		expect(await harness.snapshot(PublishedDocument, root.id, context)).toEqual(upgraded);
-		await root.commit(async (tx) => {
-			await tx.doc(PublishedDocument, root.id);
-		}, context);
-		await harness.close(context);
-		harness = await open();
-		root = await harness.root(context);
-		expect(await harness.snapshot(PublishedDocument, root.id, context)).toEqual(upgraded);
-	});
+	it.each([5, 6])(
+		"upgrades version-%i publisher attribution without inventing identities after reopening",
+		async (version) => {
+			dir = mkdtempSync(join(tmpdir(), "melian-ledger-migration-"));
+			const database = join(dir, "state.sqlite");
+			const fake = createFakeModels();
+			const open = async () =>
+				openHarness(
+					await openSqliteStorage(database),
+					{ models: fake.models, registry: createRegistry() },
+					context,
+				);
+			const previous = defineDoc<OldPublication & { ledgerRounds: (LedgerRound | LedgerHistory)[] }>({
+				kind: "melian.published",
+				version,
+				scope: "conversation",
+				history: "latest",
+				fork: "current",
+				initial: () => ({ order: [], revisions: {}, ledgerRounds: [] }),
+			});
+			const base = "a".repeat(40);
+			const head = "b".repeat(40);
+			const record = {
+				reviews: ["201"],
+				verdict: "0123456789abcdef",
+				verdictRevision: `${base}..${head}`,
+				rounds: 1,
+				open: {},
+				resolved: {},
+				replies: { "finding thread": "203" },
+				status: { state: "success" as const, description: "passed" },
+			};
+			const verdict = new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig })
+				.adjudicate()
+				.toJSON();
+			const history = { base, head: "c".repeat(40), round: 1, status: "passed" as const };
+			const round = {
+				base,
+				head,
+				round: 1,
+				verdict,
+				resolved: [],
+				details: { policy: "config", manifest: [], lenses: [], standards: [] },
+			};
+			harness = await open();
+			let root = await harness.root(context);
+			await root.commit(async (tx) => {
+				const doc = await tx.doc(previous, root.id);
+				doc.order = [head];
+				doc.revisions = { [head]: record };
+				doc.ledgerRounds = [history, round];
+			}, context);
+			await harness.close(context);
+			harness = await open();
+			root = await harness.root(context);
+			const upgraded = {
+				order: [head],
+				revisions: { [head]: { ...record, publishedBy: { trustedWriters: true } } },
+				ledgerRounds: [history, { ...round, publishedBy: { trustedWriters: true } }],
+			};
+			expect(await harness.snapshot(PublishedDocument, root.id, context)).toEqual(upgraded);
+			await root.commit(async (tx) => {
+				await tx.doc(PublishedDocument, root.id);
+			}, context);
+			await harness.close(context);
+			harness = await open();
+			root = await harness.root(context);
+			expect(await harness.snapshot(PublishedDocument, root.id, context)).toEqual(upgraded);
+		},
+	);
 
 	it("migrates version 4 fallback notes and prunes old ledger detail after reopening", async () => {
 		dir = mkdtempSync(join(tmpdir(), "melian-ledger-migration-"));
