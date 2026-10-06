@@ -187,6 +187,28 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(prompts[0]).not.toContain("CHECKOUT_ONLY_IMPORT");
 	});
 
+	it.each([
+		["\u0007", "\\u0007"],
+		["\u001b[2J", "\\u001b[2J"],
+	])("renders standards error paths containing %j as visible text", (control, escaped) => {
+		const { repo, env } = staticCheckout("export const b = 2;\n");
+		const directory = `unsafe${control}`;
+		mkdirSync(join(repo, directory, ".melian/standards"), { recursive: true });
+		for (let i = 0; i < 5; i++) {
+			writeFileSync(join(repo, directory, `.melian/standards/${i}.md`), "x".repeat(220 * 1024));
+		}
+		git(repo, "add", "--all");
+		git(repo, "commit", "--quiet", "-m", "nested standards exceed the chain bound");
+
+		const result = melian(repo, ["review", "main"], env);
+
+		expect(result.status).toBe(2);
+		expect(result.stdout).toBe("");
+		expect(result.stderr).toContain("exceed 1048576 bytes");
+		expect(result.stderr).toContain(`unsafe${escaped}`);
+		expect(result.stderr).not.toContain(control);
+	});
+
 	it("exits 0 for a review that passed, and prints the terminal rendering of its verdict", () => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
 
