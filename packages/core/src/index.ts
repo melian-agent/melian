@@ -36,8 +36,6 @@ export {
 export { checksOfTier, type DeterministicCheck, deterministicChecks } from "./checks.ts";
 export {
 	Comparison,
-	ComparisonError,
-	type ComparisonErrorCode,
 	type ComparisonGroup,
 	type ComparisonImport,
 	type ComparisonMatch,
@@ -118,6 +116,8 @@ export {
 	type ChangesetErrorCode,
 	CheckError,
 	type CheckErrorCode,
+	ComparisonError,
+	type ComparisonErrorCode,
 	ConfigError,
 	type ConfigErrorCode,
 	DecisionError,

@@ -10,7 +10,7 @@ import {
 	type StoredComparisonAdjudication,
 } from "./comparison-adjudication.ts";
 import type { ComparisonStats, OwedGolden, RepeatedFinding } from "./comparison-set.ts";
-import { FindingError } from "./errors.ts";
+import { ComparisonError, FindingError } from "./errors.ts";
 import { canonicalPath, type Finding } from "./findings.ts";
 import { visibleText } from "./render.ts";
 
@@ -220,28 +220,6 @@ export type ExternalFindingsFile = Static<typeof externalFindingsFileSchema>;
 
 /** An external finding before Melian gives it an ID. */
 export type ExternalFindingInput = Omit<StoredExternalFinding, "id">;
-
-/** Why an external finding, a reviewer's file, or a match was refused. */
-export type ComparisonErrorCode =
-	| "invalidFinding"
-	| "invalidFile"
-	| "unknownExternal"
-	| "unknownMelian"
-	| "unknownFinding"
-	| "invalidAdjudication";
-
-/** An external finding, a reviewer's file, or a match was refused. `path` names the file or JSON pointer at fault. */
-export class ComparisonError extends Error {
-	readonly code: ComparisonErrorCode;
-	readonly path: string | undefined;
-
-	constructor(code: ComparisonErrorCode, message: string, options: { path?: string; cause?: unknown } = {}) {
-		super(message, { cause: options.cause });
-		this.name = "ComparisonError";
-		this.code = code;
-		this.path = options.path;
-	}
-}
 
 function schemaProblem(schema: TSchema, value: unknown): string | undefined {
 	const errors = Value.Errors(schema, value);
