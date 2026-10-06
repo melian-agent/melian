@@ -23,7 +23,21 @@ const release = {
 
 describe("tool release verification", () => {
 	it("checks publication time and every digest with an injected fetch", async () => {
-		expect(await verifyReleases({ tools, fetch: async () => Response.json(release) })).toEqual([]);
+		const deadline = vi.spyOn(AbortSignal, "timeout");
+		try {
+			expect(
+				await verifyReleases({
+					tools,
+					fetch: async (_url, options) => {
+						expect(options.signal).toBeInstanceOf(AbortSignal);
+						return Response.json(release);
+					},
+				}),
+			).toEqual([]);
+			expect(deadline).toHaveBeenCalledWith(30_000);
+		} finally {
+			deadline.mockRestore();
+		}
 	});
 	it.each([
 		{ label: "draft", change: { draft: true } },
