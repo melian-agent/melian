@@ -1,3 +1,8 @@
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { verifyReleases } from "./check-tools.mjs";
 
@@ -48,7 +53,7 @@ describe("tool release verification", () => {
 					throw new Error("offline");
 				},
 			}),
-		).toHaveLength(1);
+		).toEqual(["tool: release unverified: GitHub network unavailable; CI requires release verification"]);
 	});
 });
 
@@ -70,4 +75,43 @@ it("authenticates GitHub metadata and visibly skips unavailable networking only 
 	expect(
 		await verifyReleases({ tools, ci: false, note, fetch: async () => Response.json({ ...release, assets: [] }) }),
 	).toHaveLength(1);
+});
+
+it("sets the release gate status and prints only applicable age exceptions", () => {
+	const directory = mkdtempSync(join(tmpdir(), "melian-release-entry-"));
+	try {
+		const script = fileURLToPath(new URL("./check-tools.mjs", import.meta.url));
+		const hook = join(directory, "fetch.mjs");
+		writeFileSync(join(directory, ".npmrc"), "min-release-age=2\n");
+		for (const age of ["old", "excepted", "young"]) {
+			const published = age === "old" ? tools.tool.published : new Date(Date.now() - 3_600_000).toISOString();
+			const exception =
+				age === "excepted" ? { exception: { reason: "reviewed test fixture", added: "2026-01-01" } } : {};
+			writeFileSync(
+				join(directory, "tools.yaml"),
+				JSON.stringify({
+					format_version: 1,
+					tools: { tool: { ...tools.tool, version: "1.2.3", published, ...exception } },
+					misses: [],
+				}),
+			);
+			writeFileSync(
+				hook,
+				`globalThis.fetch = async () => Response.json(${JSON.stringify({ ...release, published_at: published })});`,
+			);
+			const child = spawnSync(process.execPath, ["--import", hook, script], { cwd: directory, encoding: "utf8" });
+			expect(child.status).toBe(age === "young" ? 1 : 0);
+			expect(child.stdout).toBe(
+				age === "excepted" ? "tool release-age exception used: tool@1.2.3 (reviewed test fixture)\n" : "",
+			);
+			if (age === "young") expect(child.stderr).toContain("inside the 2-day window");
+			else expect(child.stderr).toBe("");
+		}
+		writeFileSync(join(directory, "tools.yaml"), "{}");
+		const child = spawnSync(process.execPath, ["--import", hook, script], { cwd: directory, encoding: "utf8" });
+		expect(child.status).toBe(1);
+		expect(child.stderr).toContain("format_version");
+	} finally {
+		rmSync(directory, { recursive: true, force: true });
+	}
 });
