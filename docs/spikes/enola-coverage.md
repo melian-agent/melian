@@ -4,7 +4,7 @@
 
 Enola v0.4.27 is not good enough to budget search on Melian. It matches **825/5,723 call pairs (14.4%)** and **207/407 import edges (50.9%)**. Production files alone reach 825/1,643 calls (50.2%). Five files with calls reach 100%; 21 files have no repository call pairs and are n/a. Search stays unrestricted over every file.
 
-The exit criterion is met: per-file coverage is defined and measured against the same compiler project as static.tsc, with every unmatched pair and import named below. Matching a graph edge does not prove behaviour. The layering constraint is proved below. Caller plumbing remains a separate deliverable.
+The exit criterion is met: per-file coverage is defined and measured against the same compiler project as static.tsc. All 4,898 missing call pairs and 200 missing imports are named below. Matching a graph edge does not prove behaviour. The layering constraint is proved below. Advisory caller input is built and tested separately from this measurement.
 
 Measured commit: `ad303b56fac7e40b13a1a7e51140fa05a9a4b570`, origin/main at the branch point. Tree: `06dd48e8c19ca89cc03589b772c7ee39a5e6b1b9`. Ground truth includes 122 files, including 47 test files. Root tsconfig includes source and tests directly; it has no project references. Enola scans 962 files, identifies 67 test files, and skips 68. Its extra files are outside the compiler denominator. External calls (13,019) and unresolved calls (67) are counted separately.
 
@@ -74,6 +74,8 @@ Two generations produced identical fact bytes and the same snapshot ID. Receipts
 The official archive was verified before extraction. Its executable is enola-0.4.27-darwin-arm64; it also holds LICENSE and NOTICE. All four platform hashes agree with GitHub's API and the release checksum files. The young release has an explicit quarantine exception because this step needs impact. It ages out at 2026-10-07 16:37:02 UTC. There is no fork or updater.
 
 The static probe proves that two temporary worktrees agree on repository identity, generate graphs, pin base, and compare head. Providers and history are disabled, with temporary HOME and output. Tests use local fake archives and scripts, never real downloads, providers, or GitHub calls. Bounds, digest mismatch, unsafe tar entries, young releases, wrong hosts, swapped binaries, and exit-2 queries have refusal tests.
+
+Fake-model tests prove scoped caller queries, quoted prompt boundaries and transcript coverage on an attached review. They do not measure whether a live lens finds more defects with caller input. The measurement's five fully covered files do not justify a budget: their ratios prove known edges, not every runtime caller.
 
 This spike does not prove runtime dispatch, execution paths, test coverage, or semantic correctness. Test coverage stays unavailable until container isolation. Search remains unrestricted. The sandbox denies new worktrees in the original common directory, so real probes use exempt temporary repositories fetched locally from the named commit, with no remote added. That preserves the exact tree. The requested external scratch directory is denied; logs and measurements use ignored tmp/step11-scratch in this worktree.
 
