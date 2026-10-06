@@ -108,7 +108,6 @@ function wrote(author: Author, login: string): boolean {
 	return own.replace(/\[bot\]$/, "") === wanted.replace(/\[bot\]$/, "");
 }
 
-// The bots Melian names, by bare login.
 const botNames: Readonly<Record<string, ExternalReviewer["name"]>> = {
 	coderabbitai: "coderabbit",
 	"copilot-pull-request-reviewer": "copilot",
