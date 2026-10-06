@@ -328,7 +328,18 @@ describe("per-lens standards", () => {
 		expect(prompt).toContain("# Added by the head");
 	});
 
-	it("includes both sides of a rename for a lens selected through the head path", async () => {
+	it.each([
+		{
+			side: "head",
+			reviewer: "contracts",
+			paths: ["packages/github/AGENTS.md", "AGENTS.md", "packages/core/AGENTS.md", "docs/core.md"],
+		},
+		{
+			side: "old",
+			reviewer: "correctness",
+			paths: ["packages/core/AGENTS.md", "docs/core.md", "AGENTS.md", "packages/github/AGENTS.md"],
+		},
+	])("includes both sides of a rename for a lens selected through the $side path", async ({ reviewer, paths }) => {
 		writeFiles(repo, { "packages/core/src/a.ts": "export const a = 1;\n" });
 		gitIn(repo, "mv", "packages/core/src/a.ts", "packages/github/src/moved.ts");
 		gitIn(repo, "commit", "--quiet", "-am", "move");
@@ -339,9 +350,19 @@ describe("per-lens standards", () => {
 			),
 		).toBe(true);
 		await reviewChangeset(options);
-		const github = systemPromptOf(requests["You are the contracts reviewer"]![0]!);
-		expect(github).toContain("# GitHub conventions");
-		expect(github).toContain("# Core conventions");
+		const prompt = systemPromptOf(requests[`You are the ${reviewer} reviewer`]![0]!);
+		expect(prompt).toContain("# GitHub conventions");
+		expect(prompt).toContain("# Core conventions");
+		expect(prompt).toContain("# Core imports");
+		expect(prompt).toContain("# Root conventions");
+		const details = (await options.harness.harness.snapshot(
+			VerdictDocument,
+			(
+				await options.harness.harness.root(context)
+			).id,
+			context,
+		))!.details![revisionKey(options.changeset.revision)]!;
+		expect(details.lenses.find(({ name }) => name === reviewer)!.standards).toEqual(paths);
 	});
 
 	it("quotes worktree conventions in separate boundaries and refuses a nonce embedded in a section", async () => {
