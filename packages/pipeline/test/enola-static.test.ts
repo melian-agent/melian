@@ -281,6 +281,136 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
 		},
 	);
+	it("stores quick and escalated careful reads together on repeat attachment", async () => {
+		const before = [
+			"export function Alpha() {",
+			...Array.from({ length: 18 }, (_, index) => `  // padding ${index}`),
+			"  return 1;",
+			"}",
+			"",
+		].join("\n");
+		const base = commit(repo, { "src/a.ts": before, "src/caller.ts": "export const Caller = Alpha();\n" });
+		const head = commit(repo, { "src/a.ts": before.replace("return 1;", "return 2; // BROKEN") });
+		const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+		const tools = await fake(0);
+		const input = {
+			env: createNodeExecutionEnv(repo),
+			repoRoot: repo,
+			base,
+			commit: head,
+			tool: "enola" as const,
+			settings: defaultConfig.static.enola,
+			tools,
+		};
+		expect((await runStaticTool(input, context)).status).toBe("ran");
+		const callers = await CallerContext.open(input, changeset.revision.files, context);
+		expect(callers.callers(["src/a.ts"])).toHaveLength(1);
+		const models = createFakeModels({ models: [{ id: "heavy" }] });
+		const model = models.ref("heavy");
+		const decider: Decider = {
+			name: "fixture",
+			calibrated: false,
+			decide: async (request) => ({
+				answers: request.questions.map((question) => ({ question: question.id, distribution: { quick: 1 } })),
+			}),
+		};
+		const registry = createReviewRegistry();
+		registry.install(decisionExtension(decider));
+		const harness = await openHarness(createMemoryStorage(), {
+			models: models.models,
+			registry,
+			settings: { retry: { enabled: false } },
+		});
+		try {
+			await harness.root(context, { agent: { model } });
+			const lenses = (await Lens.load(repo, { kind: "revision", commit: base }, ["src/a.ts"])).filter(
+				(lens) => lens.name === "correctness",
+			);
+			const read = (startLine: number) =>
+				fauxAssistantMessage(fauxToolCall("read_file", { path: "src/a.ts", startLine, maxLines: 1 }), {
+					stopReason: "toolUse",
+				});
+			const requests = scriptConversations(models, [
+				{
+					match: "You are the correctness reviewer",
+					replies: [
+						read(1),
+						fauxAssistantMessage(
+							fauxToolCall("report_finding", {
+								file: "src/a.ts",
+								line: 20,
+								rule: "wrong-result",
+								severity: "P1",
+								explanation: {
+									what: "Alpha returns two instead of one.",
+									why: "The changed return breaks its callers.",
+									fix: "Return one.",
+								},
+								failureScenario: "Calling Alpha() returns 2 where the caller expects 1.",
+								evidence: [{ file: "src/a.ts", line: 20, role: "cause" }],
+							}),
+							{ stopReason: "toolUse" },
+						),
+						fauxAssistantMessage("Done."),
+						read(20),
+						fauxAssistantMessage("Done."),
+					],
+				},
+			]);
+			const options = {
+				harness,
+				changeset,
+				config: {
+					...defaultConfig,
+					tiers: { full: ["lens.correctness"] },
+					models: {
+						heavy: { model: `${model.provider}/${model.modelId}` },
+						medium: { model: `${model.provider}/${model.modelId}` },
+					},
+				},
+				lenses,
+				standards: [],
+				models: models.review,
+				decider,
+				callers,
+				checks: [],
+			};
+			const reviewed = await reviewChangeset(options);
+			const attached = await reviewChangeset(options);
+			expect(requests["You are the correctness reviewer"]).toHaveLength(5);
+			expect(reviewed.findings).toHaveLength(1);
+			const record = reviewed.verdict.ran?.find((record) => record.name === "lens.correctness");
+			expect(record?.level).toBe("careful");
+			expect(record?.reason).toContain("escalated from quick to careful");
+			expect(record?.coverage?.review).toMatch(/^[a-f0-9]{64}$/);
+			const repeated = attached.verdict.ran?.find((record) => record.name === "lens.correctness");
+			expect(repeated?.coverage?.review).toBe(record?.coverage?.review);
+			const cache = await CoverageCache.open(tools.cache.root);
+			const parts = {
+				tree: gitIn(repo, "rev-parse", `${head}^{tree}`),
+				version: "0.0.1",
+				binary: await tools.cache.digest(tools.tool("enola"), tools.platform),
+				config: (await EnolaPolicy.load(repo, base)).hash,
+			};
+			for (const id of [record?.coverage?.review, repeated?.coverage?.review]) {
+				const coverage = await cache.read(parts, "review", { id });
+				expect(coverage).toBeInstanceOf(ReviewCoverage);
+				if (!(coverage instanceof ReviewCoverage)) throw new Error("No review coverage");
+				expect(
+					coverage.toJSON().lenses[0]?.files.find((file) => file.path === "src/a.ts" && file.revision === "head"),
+				).toMatchObject({
+					lines: [
+						{ start: 1, end: 1 },
+						{ start: 20, end: 20 },
+					],
+					hunks: [0],
+					status: "read",
+				});
+			}
+		} finally {
+			await harness.close(context);
+		}
+	});
 	it("judges a diverged PR with target-tip policy and reuses that policy for callers", async () => {
 		const base = commit(repo, { "src/a.ts": "export function Alpha() { return 1; }\n" });
 		const policy = commit(repo, {
