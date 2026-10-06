@@ -1,15 +1,21 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import * as core from "@melian-agent/core";
+import * as githubProvider from "@melian-agent/github";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
 import { fakeGitHub, fakeState } from "../../github/test/fixtures/fake-github.ts";
+import type { Io } from "../src/commands.ts";
 import { doctor } from "../src/doctor.ts";
 
 let repo: string;
 let home: string;
 
 beforeEach(() => {
+	const fallback = github();
+	fallback.login = "global-viewer";
+	vi.stubGlobal("fetch", fakeGitHub(fallback));
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 	repo = mkdtempSync(join(tmpdir(), "melian-doctor-trust-"));
 	home = mkdtempSync(join(tmpdir(), "melian-doctor-home-"));
@@ -25,6 +31,8 @@ beforeEach(() => {
 afterEach(() => {
 	vi.useRealTimers();
 	vi.unstubAllEnvs();
+	vi.unstubAllGlobals();
+	vi.restoreAllMocks();
 	rmSync(repo, { recursive: true, force: true });
 	rmSync(home, { recursive: true, force: true });
 });
@@ -43,25 +51,29 @@ function github() {
 	);
 }
 
-async function run(state: ReturnType<typeof github>, fetch: typeof globalThis.fetch = fakeGitHub(state)) {
+async function run(
+	state: ReturnType<typeof github>,
+	fetch: typeof globalThis.fetch = fakeGitHub(state),
+	overrides: Partial<Io> = {},
+	defaultTransport = false,
+) {
 	let stdout = "";
-	const status = await doctor(
-		{
-			cwd: repo,
-			env: {
-				...process.env,
-				XDG_CONFIG_HOME: home,
-				PI_CODING_AGENT_DIR: home,
-				GITHUB_TOKEN: "test-token-never-printed",
-			},
-			stdout: (text) => {
-				stdout += text;
-			},
-			stderr: () => {},
-			color: false,
+	const io: Io = {
+		cwd: repo,
+		env: {
+			...process.env,
+			XDG_CONFIG_HOME: home,
+			PI_CODING_AGENT_DIR: home,
+			GITHUB_TOKEN: "test-token-never-printed",
 		},
-		{ fetch },
-	);
+		stdout: (text) => {
+			stdout += text;
+		},
+		stderr: () => {},
+		color: false,
+		...overrides,
+	};
+	const status = defaultTransport ? await doctor(io) : await doctor(io, { fetch });
 	return { status, stdout, trust: stdout.split("\n").find((line) => / {2}trust\s+/.test(line)) };
 }
 
@@ -111,6 +123,8 @@ describe("doctor writer trust", () => {
 		expect(result.status).toBe(0);
 		expect(result.trust).toMatch(/^warn /);
 		expect(result.trust).toContain("(unknown); cannot establish whether melian publish can set a status here");
+		expect(result.trust).toContain(`viewer ${refusal === "viewer" ? "unknown" : "melian-user"} (unknown)`);
+		expect(state.calls.filter(({ path }) => path.endsWith("/permission"))).toHaveLength(refusal === "viewer" ? 0 : 1);
 	});
 
 	it.each(["viewer", "permission"])(
@@ -215,11 +229,134 @@ describe("doctor writer trust", () => {
 	});
 
 	it("warns when HEAD is the only committed policy available", async () => {
+		writeFileSync(join(repo, "melian.yaml"), "trust: { writers: true }\n");
+		gitIn(repo, "add", "melian.yaml");
+		gitIn(repo, "commit", "--quiet", "-m", "trusted HEAD policy");
 		gitIn(repo, "update-ref", "-d", "refs/remotes/origin/HEAD");
 		gitIn(repo, "update-ref", "-d", "refs/remotes/origin/main");
 		gitIn(repo, "branch", "-m", "feature");
 		const result = await run(github());
 		expect(result.status).toBe(0);
+		expect(result.trust).toMatch(/^warn /);
 		expect(result.trust).toContain("base policy is unknown; using committed HEAD");
 	});
+});
+
+describe("doctor trust boundaries", () => {
+	it("warns outside a repository without reading GitHub", async () => {
+		const state = github();
+		const result = await run(state, undefined, { cwd: home });
+		expect(result.status).toBe(0);
+		expect(result.trust).toMatch(/^warn /);
+		expect(result.trust).toContain("not inside a git repository; root policy is unknown");
+		expect(state.calls).toEqual([]);
+	});
+
+	it("warns when no committed policy is available", async () => {
+		gitIn(repo, "symbolic-ref", "--delete", "refs/remotes/origin/HEAD");
+		gitIn(repo, "update-ref", "-d", "refs/remotes/origin/main");
+		gitIn(repo, "update-ref", "-d", "refs/heads/main");
+		const state = github();
+		const result = await run(state);
+		expect(result.trust).toMatch(/^warn /);
+		expect(result.trust).toContain("no committed root policy is available");
+		expect(state.calls).toEqual([]);
+	});
+
+	it.each([new Error("failed\n\u001b[31m"), "failed\n\u001b[31m"])(
+		"renders policy failures as visible warning text: %s",
+		async (failure) => {
+			vi.spyOn(core, "loadConfig").mockRejectedValueOnce(failure);
+			const state = github();
+			const result = await run(state);
+			expect(result.status).toBe(0);
+			expect(result.trust).toMatch(/^warn /);
+			expect(result.trust).toContain("failed\\u000a\\u001b[31m");
+			expect(result.trust).not.toContain("\u001b");
+			expect(state.calls).toEqual([]);
+		},
+	);
+
+	it("warns about a missing GitHub token without reading viewer identity", async () => {
+		vi.spyOn(githubProvider, "resolveGitHubToken").mockResolvedValueOnce(undefined);
+		const state = github();
+		const result = await run(state);
+		expect(result.trust).toMatch(/^warn /);
+		expect(result.trust).toContain("; no GitHub token");
+		expect(state.calls).toEqual([]);
+	});
+
+	it.each(["missing", "non-GitHub"])("warns about a %s origin without reading viewer identity", async (kind) => {
+		if (kind === "missing") gitIn(repo, "remote", "remove", "origin");
+		else gitIn(repo, "config", "remote.origin.url", "https://example.invalid/test/repo.git");
+		const state = github();
+		const result = await run(state);
+		expect(result.trust).toMatch(/^warn /);
+		expect(result.trust).toContain("no GitHub origin; viewer permission is unknown");
+		expect(state.calls).toEqual([]);
+	});
+
+	it("uses the global transport when options are omitted", async () => {
+		const state = github();
+		vi.stubGlobal("fetch", fakeGitHub(state));
+		const result = await run(state, undefined, {}, true);
+		expect(result.trust).toContain("viewer melian-user (write)");
+		expect(state.calls.filter(({ path }) => path === "/user")).toHaveLength(1);
+	});
+
+	it("escapes viewer control characters", async () => {
+		const state = github();
+		state.login = "viewer\n\u001b[31m";
+		const result = await run(state);
+		expect(result.trust).toContain("viewer viewer\\u000a\\u001b[31m (write)");
+		expect(result.trust).not.toContain("\u001b");
+	});
+
+	it("clears the deadline after successful response parsing", async () => {
+		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+		const result = await run(github());
+		expect(result.trust).toContain("viewer melian-user (write)");
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it.each(["deadline", "caller"])(
+		"combines a caller signal with the %s abort",
+		async (trigger) => {
+			const state = github();
+			const upstream = new AbortController();
+			const create = githubProvider.createGitHubProvider;
+			vi.spyOn(githubProvider, "createGitHubProvider").mockImplementation((options) =>
+				create({
+					...options,
+					fetch: (input, init) => options.fetch!(input, { ...init, signal: upstream.signal }),
+				}),
+			);
+			const started = Promise.withResolvers<void>();
+			let signal: AbortSignal | null | undefined;
+			const fetch: typeof globalThis.fetch = (_input, init) => {
+				signal = init?.signal;
+				started.resolve();
+				return new Promise<Response>(() => {});
+			};
+			vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+			const pending = run(state, fetch);
+			try {
+				await started.promise;
+				if (trigger === "caller") {
+					upstream.abort();
+					expect(signal?.aborted).toBe(true);
+				}
+				await vi.advanceTimersByTimeAsync(10_000);
+				vi.useRealTimers();
+				const result = await pending;
+				expect(result.trust).toContain("GitHub read timed out after 10 seconds");
+				expect(signal?.aborted).toBe(true);
+			} finally {
+				if (vi.isFakeTimers()) await vi.advanceTimersByTimeAsync(10_000);
+				vi.useRealTimers();
+				await pending;
+			}
+		},
+		5_000,
+	);
 });
