@@ -177,3 +177,4 @@ Step 11 execution-miss mapping is built. The tool-manifest comparison maps thirt
    - Mutation inventory: Five graph cache cases prove disappeared and denied entries, concurrent-winner recovery, reader closure and scratch cleanup. All seven uncovered mutations fail; all 14 restored graph cache tests pass.
    - Mutation inventory: Download refusals retain Error and string diagnostics. A pre-stream stat refusal proves all three handle closures. Seven mutations fail, including both no-follow flags; all 66 restored tool cache tests pass.
    - Mutation inventory: Five caller cases prove advisory errors, separator bytes, renamed base coverage and optional test evidence. All four uncovered mutations fail; all nine restored caller tests pass.
+   - Mutation inventory: A review with refused coverage still records completed lenses and preserves caller notes. All three uncovered mutations fail, including caller prompt identity; both focused restored review tests pass.

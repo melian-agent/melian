@@ -226,6 +226,29 @@ function offered(messages: readonly Message[]): string[] {
 }
 
 describe("reviewChangeset", () => {
+	it("keeps caller and coverage failures advisory on completed lens records", async () => {
+		const callers = CallerContext.unavailable("fixture graph missing");
+		const failed = vi.spyOn(callers, "recordCoverage").mockRejectedValue("fixture cache refused");
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		try {
+			const result = await reviewed({
+				callers,
+				config: { ...config, static: { ...config.static, enola: { ...config.static.enola, enabled: true } } },
+			});
+			const records = result.verdict.ran!.filter((record) => record.name.startsWith("lens."));
+			expect(records).toHaveLength(2);
+			for (const record of records) {
+				expect(record.status).toBe("ran");
+				expect(record.reason).toContain("Callers unavailable: fixture graph missing");
+				expect(record.reason).toContain("Review coverage unavailable: transcript or cache could not be read");
+			}
+		} finally {
+			failed.mockRestore();
+		}
+	});
 	it("keeps caller names and paths inside the model-visible boundary", async () => {
 		const callers = CallerContext.from({
 			groups: [
