@@ -141,3 +141,5 @@ Steps to be written when milestone 3 closes.
 Step 11 coverage artifacts: classes and atomic cache storage are built. Static records hold unavailable test-coverage identities and measured graph identities when present. Durable-transcript parsing is built; attaching review artifacts to lens records follows with the lens-input change.
 
 Step 11 layering constraint is built and proved on the branch-point tree. Package, subpath and relative imports each caused a SARIF error; the clean tree passed. The harness-free test stays.
+
+Step 11 execution-miss mapping is built with an empty list. No comparison row assigns `needs-execution`; the manifest test checks each future record and finding reference.

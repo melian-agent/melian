@@ -7,6 +7,15 @@ const stored = JSON.parse(
 );
 
 describe("ToolManifest", () => {
+	it("links every execution miss to its comparison finding", () => {
+		const manifest = ToolManifest.parse(JSON.stringify(stored));
+		for (const miss of manifest.toJSON().misses) {
+			expect(miss.record).toMatch(/^packages\/evals\/comparisons\/[^/]+\.md$/);
+			const record = readFileSync(new URL(`../../../${miss.record}`, import.meta.url), "utf8");
+			expect(record).toContain(miss.finding);
+		}
+	});
+
 	it("reads all four pins and an empty needs-execution map", () => {
 		const manifest = ToolManifest.parse(JSON.stringify(stored));
 		expect(manifest.tool("enola").version).toBe("0.4.27");
