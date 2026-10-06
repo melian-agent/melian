@@ -95,3 +95,24 @@ it("renders control characters in a missing tool name as visible text", async ()
 	expect(io.errors.join("")).toContain("\\u001b[2J\\u000aforged");
 	expect(io.errors.join("")).not.toContain("\u001b");
 });
+
+it("renders control characters in a fetched executable path as visible text", async () => {
+	const bytes = toolArchive([{ name: "enola", text: "#!/bin/sh\nexit 0\n" }]);
+	const { name, ...pin } = testTool(bytes);
+	const io = output();
+	io.env.MELIAN_STATE_DIR = join(repo, "cache\u001b]0;forged title\u0007");
+	const provisioning = await ToolProvisioning.open(repo, {
+		manifest: ToolManifest.parse(JSON.stringify({ format_version: 1, tools: { [name]: pin }, misses: [] })),
+		root: await stateDirectory(repo, io.env),
+		platform: "darwin-arm64",
+		fetch: async () => new Response(bytes),
+	});
+	const inventory = await ToolInventory.open(repo, io.env, provisioning);
+	vi.spyOn(ToolInventory, "open").mockResolvedValue(inventory);
+	expect(await main(["tools", "fetch", "enola"], io)).toBe(0);
+	expect(io.lines.join("")).toBe(
+		`${(await inventory.fetch("enola")).replace("\u001b", "\\u001b").replace("\u0007", "\\u0007")}\n`,
+	);
+	expect(io.lines.join("")).not.toContain("\u001b");
+	expect(io.lines.join("")).not.toContain("\u0007");
+});

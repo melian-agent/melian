@@ -63,6 +63,6 @@ export class ToolInventory {
 
 export async function tools(io: Io, name?: string): Promise<number> {
 	const inventory = await ToolInventory.open(io.cwd, io.env);
-	io.stdout(name === undefined ? await inventory.render() : `${await inventory.fetch(name)}\n`);
+	io.stdout(name === undefined ? await inventory.render() : `${visibleText(await inventory.fetch(name))}\n`);
 	return 0;
 }
