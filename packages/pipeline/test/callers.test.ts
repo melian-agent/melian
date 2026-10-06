@@ -1,8 +1,21 @@
 import { join } from "node:path";
-import { defaultConfig } from "@melian-agent/core";
-import { backgroundContext, CallerContext, createNodeExecutionEnv, ToolProvisioning } from "@melian-agent/pipeline";
-import { afterEach, expect, it } from "vitest";
+import { defaultConfig, GraphSnapshot, ReviewCoverage, TestCoverage, ToolManifest } from "@melian-agent/core";
+import {
+	backgroundContext,
+	CallerContext,
+	CoverageCache,
+	createMemoryStorage,
+	createNodeExecutionEnv,
+	createReviewRegistry,
+	GraphCache,
+	openHarness,
+	ToolProvisioning,
+} from "@melian-agent/pipeline";
+import { createFakeModels } from "@melian-agent/pipeline/testing";
+import { afterEach, expect, it, vi } from "vitest";
+import { EnolaRun } from "../src/enola-static.ts";
 import { commit, createRepository, removeRepository } from "./fixtures/repo.ts";
+import { testTool, toolArchive } from "./fixtures/tool-archive.ts";
 
 it("escapes a known nonce and bounds each symbol's caller data", () => {
 	const callers = CallerContext.from({
@@ -58,7 +71,121 @@ it("delivers exactly 40 short callers and reports the remaining count", () => {
 
 const repos: string[] = [];
 afterEach(() => {
+	vi.restoreAllMocks();
 	for (const repo of repos.splice(0)) removeRepository(repo);
+});
+
+it.each([new Error("cache denied"), "cache denied"])("keeps a caller-open error advisory: %s", async (failure) => {
+	const repo = createRepository();
+	repos.push(repo);
+	const head = commit(repo, { "a.ts": "function a() {}\n" });
+	const tools = await ToolProvisioning.open(repo);
+	vi.spyOn(tools.cache, "readiness").mockRejectedValue(failure);
+	const callers = await CallerContext.open(
+		{
+			repoRoot: repo,
+			commit: head,
+			tool: "enola",
+			settings: defaultConfig.static.enola,
+			env: createNodeExecutionEnv(repo),
+			tools,
+		},
+		[{ path: "a.ts", status: "modified", binary: false, hunks: [] }],
+		backgroundContext,
+	);
+	expect(callers.notes(["a.ts"])).toEqual(["Callers unavailable: cache denied"]);
+});
+
+it("counts separators against the total caller prompt limit", () => {
+	const suffix = " in a.ts\n0 callers cut locally; upstream cap not reached.";
+	const full = Buffer.byteLength("a".repeat(3000) + suffix);
+	const remaining = 64 * 1024 - 21 * (full + 2) + 1;
+	const groups = [...Array.from({ length: 21 }, () => 3000), remaining - Buffer.byteLength(suffix)].map((length) => ({
+		file: "a.ts",
+		symbol: "a".repeat(length),
+		callers: [],
+		truncated: false,
+	}));
+	const text = CallerContext.from({ groups, notes: [], issues: [], paths: [] }).render(["a.ts"], "N");
+	expect(text).toContain("1 symbol sections omitted at the prompt limit.");
+	expect(/label="callers">\n([\s\S]*?)\n<\/untrusted-N>/.exec(text)![1]!.split("\n\n")).toHaveLength(21);
+});
+
+it.each([false, true])("records renamed coverage and includes test evidence only when cached: %s", async (withTest) => {
+	const repo = createRepository();
+	repos.push(repo);
+	const head = commit(repo, { "new.ts": "function a() {}\n" });
+	const bytes = toolArchive([{ name: "enola", text: "unused" }]);
+	const { name, ...pin } = testTool(bytes);
+	const tools = await ToolProvisioning.open(repo, {
+		root: join(repo, "cache"),
+		platform: "darwin-arm64",
+		manifest: ToolManifest.parse(JSON.stringify({ format_version: 1, tools: { [name]: pin }, misses: [] })),
+		fetch: async () => new Response(bytes),
+	});
+	await tools.binary("enola");
+	const parts = { tree: "a".repeat(40), version: "0.0.1", binary: "b".repeat(64), config: "c".repeat(64) };
+	await (await GraphCache.open(tools.cache.root)).store(
+		GraphSnapshot.create(parts, {
+			"facts.jsonl": "",
+			"insights.json": "[]",
+			"receipt.json": JSON.stringify({
+				format_version: 1,
+				enola_version: parts.version,
+				snapshot_id: `sha256:${"d".repeat(64)}`,
+			}),
+		}),
+	);
+	const cache = await CoverageCache.open(tools.cache.root);
+	const test = TestCoverage.unavailable(parts.tree, parts.version);
+	if (withTest) await cache.store(parts, test);
+	vi.spyOn(EnolaRun.prototype, "callers").mockResolvedValue({
+		groups: [],
+		issues: [],
+		notes: [],
+		paths: ["new.ts", "old.ts"],
+		parts,
+	});
+	const files = [{ path: "new.ts", oldPath: "old.ts", status: "renamed" as const, binary: false, hunks: [] }];
+	const callers = await CallerContext.open(
+		{
+			repoRoot: repo,
+			commit: head,
+			base: head,
+			tool: "enola",
+			settings: defaultConfig.static.enola,
+			env: createNodeExecutionEnv(repo),
+			tools,
+		},
+		files,
+		backgroundContext,
+	);
+	const models = createFakeModels({ models: [{ id: "fixture" }] });
+	const harness = await openHarness(createMemoryStorage(), {
+		registry: createReviewRegistry(),
+		models: models.models,
+	});
+	try {
+		const conversation = await harness.root(backgroundContext, { agent: { model: models.ref("fixture") } });
+		const ids = await callers.recordCoverage({
+			harness,
+			children: { lens: conversation.id },
+			lenses: [{ key: "lens", name: "correctness" }],
+			files,
+			nonce: "N",
+			context: backgroundContext,
+		});
+		expect(ids?.test).toBe(withTest ? test.id : undefined);
+		const stored = await cache.read(parts, "review", { id: ids?.review });
+		expect(stored).toBeInstanceOf(ReviewCoverage);
+		if (!(stored instanceof ReviewCoverage)) throw new Error("Review coverage missing");
+		expect(stored.toJSON().lenses[0]!.files.map((file) => [file.path, file.revision])).toEqual([
+			["new.ts", "head"],
+			["old.ts", "base"],
+		]);
+	} finally {
+		await harness.close(backgroundContext);
+	}
 });
 
 it("opens bundled provisioning and leaves an unfetched pin advisory", async () => {
