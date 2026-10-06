@@ -2010,70 +2010,77 @@ describe("reviews recorded before levels joined the keys", () => {
 		expect(previous.checkpoint).toEqual(checkpoint);
 	});
 
-	it("resumes a lens task an older Melian created, at version 1, under the current definition", async () => {
-		const path = join(dir, "review.sqlite");
-		// The definition as an older Melian registered it; only its name and version reach storage.
-		const LegacyLensTask = defineTask<unknown, { phase: "spawn" }, unknown>({
-			name: "melian.lenses",
-			version: 1,
-			initial: () => ({ phase: "spawn" }),
-			phases: { spawn: async () => undefined },
-			abort: async () => undefined,
-		});
-		const head = gitIn(repo, "rev-parse", "feature");
-		const base = gitIn(repo, "merge-base", "main", "feature");
-		const lens = lenses.find((each) => each.name === "correctness")!;
-		const legacy = await openHarness(await openSqliteStorage(path), {
-			models: fake.models,
-			registry: createRegistry(),
-		});
-		const root = await legacy.root(context, { agent: { model: fake.ref("orchestrator") } });
-		const input = {
-			root: root.id,
-			revision: { repoRoot: repo, nonce: "0".repeat(24), base, head, files: [] },
-			lenses: [
-				{
-					key: `correctness@${lens.version}`,
-					name: "correctness",
-					version: lens.version,
-					level: "careful",
-					route: [fake.ref("heavy")],
-					instructions: correctness,
-					tools: [...lens.tools],
-					severities: [...lens.severities],
-					rules: lens.rules.map((rule) => ({ ...rule })),
-					budget: { findings: 8 },
-					coverage: { scope: "", paths: ["**"], nearer: [] },
-					prompt: "Review the change.",
-				},
-			],
-		};
-		const taskId = await root.commit(
-			(tx) => tx.createTask(LegacyLensTask, input, { ownership: { kind: "conversation" } }),
-			context,
-		);
-		await legacy.close(context);
-		scriptConversations(fake, [{ match: correctness, replies: [call("report_finding", crashFinding), done] }]);
-
-		const current = await openHarness(await openSqliteStorage(path), {
-			models: fake.models,
-			registry: createReviewRegistry(),
-			settings: { retry: { enabled: false } },
-		});
-		try {
-			current.resume();
-			const settled = await current.waitForTask(taskId as TaskId<Record<string, { status: string }>>, context);
-			expect(settled.state.outcome).toMatchObject({
-				status: "completed",
-				result: { [`correctness@${lens.version}`]: { status: "done" } },
+	it.each([1, 2])(
+		"resumes a lens task an older Melian created, at version %i, under the current definition",
+		async (version) => {
+			const path = join(dir, "review.sqlite");
+			// The definition as an older Melian registered it; only its name and version reach storage.
+			const LegacyLensTask = defineTask<unknown, { phase: "spawn" }, unknown>({
+				name: "melian.lenses",
+				version,
+				initial: () => ({ phase: "spawn" }),
+				phases: { spawn: async () => undefined },
+				abort: async () => undefined,
 			});
-			const findings = await readFindings(current, root.id, revisionKey({ base, head }), context);
-			// The migration strips the run's level, so its findings name the version alone, as its own review expects.
-			expect(findings.map((finding) => finding.properties.source)).toEqual([
-				{ check: "lens.correctness", version: lens.version },
-			]);
-		} finally {
-			await current.close(context);
-		}
-	});
+			const head = gitIn(repo, "rev-parse", "feature");
+			const base = gitIn(repo, "merge-base", "main", "feature");
+			const lens = lenses.find((each) => each.name === "correctness")!;
+			const key = `correctness@${lens.version}${version === 1 ? "" : "@careful"}`;
+			const legacy = await openHarness(await openSqliteStorage(path), {
+				models: fake.models,
+				registry: createRegistry(),
+			});
+			const root = await legacy.root(context, { agent: { model: fake.ref("orchestrator") } });
+			const input = {
+				root: root.id,
+				revision: { repoRoot: repo, nonce: "0".repeat(24), base, head, files: [] },
+				lenses: [
+					{
+						key,
+						name: "correctness",
+						version: lens.version,
+						level: "careful",
+						route: [fake.ref("heavy")],
+						instructions: correctness,
+						tools: [...lens.tools],
+						severities: [...lens.severities],
+						rules: lens.rules.map((rule) => ({ ...rule })),
+						budget: { findings: 8 },
+						coverage: { scope: "", paths: ["**"], nearer: [] },
+						prompt: "Review the change.",
+					},
+				],
+			};
+			const taskId = await root.commit(
+				(tx) => tx.createTask(LegacyLensTask, input, { ownership: { kind: "conversation" } }),
+				context,
+			);
+			await legacy.close(context);
+			scriptConversations(fake, [{ match: correctness, replies: [call("report_finding", crashFinding), done] }]);
+
+			const current = await openHarness(await openSqliteStorage(path), {
+				models: fake.models,
+				registry: createReviewRegistry(),
+				settings: { retry: { enabled: false } },
+			});
+			try {
+				current.resume();
+				const settled = await current.waitForTask(taskId as TaskId<Record<string, { status: string }>>, context);
+				expect(settled.state.outcome).toMatchObject({
+					status: "completed",
+					result: { [key]: { status: "done" } },
+				});
+				if (version === 2) {
+					expect(settled.input).toEqual(input);
+					expect(settled.input).not.toHaveProperty("lenses.0.standards");
+				}
+				const findings = await readFindings(current, root.id, revisionKey({ base, head }), context);
+				expect(findings.map((finding) => finding.properties.source)).toEqual([
+					{ check: "lens.correctness", version: `${lens.version}${version === 1 ? "" : "@careful"}` },
+				]);
+			} finally {
+				await current.close(context);
+			}
+		},
+	);
 });

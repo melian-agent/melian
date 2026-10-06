@@ -122,6 +122,17 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 		).toEqual({});
 	});
 
+	it("an empty supplied list opts out of checks on a capable wrapper", async () => {
+		const { policy: _, ...options } = await setup();
+		const result = await reviewChangeset({ ...options, checks: [] });
+		expect(result.verdict.status).toBe("not-reviewed");
+		expect(result.verdict.notRun.every((check) => check.status === "skipped" && check.reason === "no record")).toBe(
+			true,
+		);
+		const root = await options.harness.harness.root(context);
+		expect((await options.harness.harness.snapshot(ChecksDocument, root.id, context))?.tasks ?? {}).toEqual({});
+	});
+
 	it("an environment-less harness leaves missing records not reviewed", async () => {
 		const options = await setup(false);
 		const result = await reviewChangeset(options);
