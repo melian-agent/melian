@@ -98,7 +98,7 @@ export class EnolaCoverage {
 		return "resolved declaration edge absent";
 	}
 	#import(file: string, edge: ImportEdge, source: "combined" | "facts" | "impact"): string | undefined {
-		if (this.#facts.imports(file, edge.target)) return undefined;
+		if (source !== "impact" && this.#facts.imports(file, edge.target)) return undefined;
 		const target = this.#facts.file(edge.target);
 		if (source !== "facts" && target && this.#answers.get(target.id)?.imports(file, edge.line, target))
 			return undefined;

@@ -72,6 +72,50 @@ describe("compiler call coverage", { timeout: 60_000 }, () => {
 		expect(state.files.find((file) => file.path === "packages/a/Alpha.ts")?.calls.ratio).toBeNull();
 		expect(state.causes["call:test file excluded"]).toBe(1);
 		expect(comparison.measure("a".repeat(40), "0.4.27", "facts").toJSON().totals.matchedCalls).toBe(0);
+		const importFacts = EnolaFacts.parse(
+			[
+				{
+					id: "index",
+					kind: "file_ref",
+					name: "packages/a/index.ts",
+					file: "packages/a/index.ts",
+					relations: [{ kind: "imports", target: "packages/a/Alpha.ts" }],
+				},
+				{ id: "alpha-file", kind: "file_ref", name: "packages/a/Alpha.ts", file: "packages/a/Alpha.ts" },
+			]
+				.map((fact) => JSON.stringify(fact))
+				.join("\n"),
+		);
+		const noAnswers = await EnolaCoverage.open(truth, importFacts, async () => undefined);
+		expect(noAnswers.measure("a".repeat(40), "0.4.27", "facts").toJSON().totals.matchedImports).toBe(1);
+		expect(noAnswers.measure("a".repeat(40), "0.4.27", "impact").toJSON().totals.matchedImports).toBe(0);
+		for (const [line, target, matched] of [
+			[1, "packages/a/index.ts", 1],
+			[2, "packages/a/index.ts", 0],
+			[1, "wrong.ts", 0],
+		] as const) {
+			const imports = await EnolaCoverage.open(truth, importFacts, async (fact) =>
+				fact.id === "index"
+					? EnolaImpact.parse(
+							JSON.stringify({
+								target: fact.name,
+								by_depth: { "1": [{ name: "import-site", kind: "file_ref", file: "packages/b/b.ts", line }] },
+								edges: [{ source: "import-site", target, kind: "imports" }],
+								stats: { truncated: false },
+							}),
+							0,
+						)
+					: undefined,
+			);
+			const impact = imports.measure("a".repeat(40), "0.4.27", "impact").toJSON();
+			expect(impact.totals.matchedImports).toBe(matched);
+			expect(impact.files.find((file) => file.path === "packages/b/b.ts")?.imports).toEqual({
+				matched,
+				total: 1,
+				ratio: matched,
+			});
+			expect(imports.measure("a".repeat(40), "0.4.27").toJSON().totals.matchedImports).toBe(1 + matched);
+		}
 	});
 	it("uses a function value's binding declaration rather than the next line's arrow", () => {
 		root = mkdtempSync(join(tmpdir(), "melian-binding-"));
