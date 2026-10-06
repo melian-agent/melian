@@ -12,7 +12,7 @@ import {
 	type CredentialStore,
 	createProviderModels,
 	defaultProviderAuthContext,
-	type Models,
+	type MutableModels,
 } from "./harness.ts";
 import { type ReviewModels, wrapModels } from "./models.ts";
 
@@ -362,7 +362,7 @@ function reviewAuthContext(): AuthContext {
 export function createReviewModels(
 	options: { readonly authPath?: string; readonly credentials?: readonly NamedCredential[] } = {},
 ): ReviewModels {
-	let models: Models;
+	let models: MutableModels;
 	const store = new MelianCredentialStore(
 		options.credentials ?? [],
 		(id) => {

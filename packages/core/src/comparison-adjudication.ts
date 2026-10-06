@@ -1,7 +1,7 @@
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import { severitySchema } from "./config.ts";
-import { ComparisonError } from "./errors.ts";
+import { ComparisonError } from "./comparison.ts";
 
 /** The four actions a valid miss calls for. */
 export const missReasons = ["owned-missed", "no-owner", "needs-execution", "out-of-scope"] as const;

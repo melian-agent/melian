@@ -8,6 +8,7 @@ export {
 	type ConfigFor,
 	Defect,
 	Manifest,
+	Merge,
 	noRecord,
 	type StoredCheckRecord,
 	type StoredVerdict,
@@ -35,6 +36,8 @@ export {
 export { checksOfTier, type DeterministicCheck, deterministicChecks } from "./checks.ts";
 export {
 	Comparison,
+	ComparisonError,
+	type ComparisonErrorCode,
 	type ComparisonGroup,
 	type ComparisonImport,
 	type ComparisonMatch,
@@ -70,6 +73,7 @@ export {
 	type GuardrailSettings,
 	type LensSettings,
 	type LensTier,
+	type LevelBandSettings,
 	type LoadedConfig,
 	lensTierSchema,
 	loadConfig,
@@ -94,6 +98,20 @@ export {
 	severitySchema,
 	type TscSettings,
 } from "./config.ts";
+export {
+	type ChoiceAnswer,
+	type ChoiceQuestion,
+	type DecidedAnswer,
+	type Decider,
+	type DeciderAnswer,
+	Decision,
+	type DecisionRequest,
+	type QuestionSet,
+	questionFingerprint,
+	type StoredDecision,
+	type TextModel,
+	type ToolRequest,
+} from "./decider.ts";
 export type { ChangedFile, FileKind, FileStatus, Hunk } from "./diff.ts";
 export {
 	ChangesetError,
@@ -102,6 +120,8 @@ export {
 	type CheckErrorCode,
 	ConfigError,
 	type ConfigErrorCode,
+	DecisionError,
+	type DecisionErrorCode,
 	FindingError,
 	type FindingErrorCode,
 	LedgerRefusal,
@@ -267,7 +287,15 @@ export {
 	secretsFileSchema,
 } from "./secrets.ts";
 export type { RepositorySource } from "./source.ts";
-export { loadStandards, type StandardsSection, standardsLimits } from "./standards.ts";
+export {
+	loadStandards,
+	Standards,
+	type StandardsEntry,
+	StandardsInventory,
+	StandardsReading,
+	type StandardsSection,
+	standardsLimits,
+} from "./standards.ts";
 export {
 	normaliseBiomeSarif,
 	parseTscDiagnostics,
@@ -282,6 +310,15 @@ export {
 	toolLogSchema,
 	toolResultSchema,
 } from "./static.ts";
+export {
+	type EscalationEvidence,
+	EscalationRule,
+	type EscalationTrigger,
+	LevelBand,
+	type TriageChoice,
+	triageChoices,
+	triageQuestionSet,
+} from "./triage.ts";
 
 export const packageName = "@melian-agent/core";
 
@@ -302,4 +339,12 @@ export {
 	type ReviewerStats,
 } from "./comparison-set.ts";
 
-export { ComparisonError, type ComparisonErrorCode } from "./errors.ts";
+export {
+	type StoredVerificationState,
+	type Verification,
+	VerificationState,
+	verificationBudget,
+	verificationQuestionSet,
+	verificationQuestions,
+	verificationSchema,
+} from "./verification.ts";

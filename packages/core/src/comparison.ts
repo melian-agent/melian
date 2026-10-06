@@ -10,7 +10,7 @@ import {
 	type StoredComparisonAdjudication,
 } from "./comparison-adjudication.ts";
 import type { ComparisonStats, OwedGolden, RepeatedFinding } from "./comparison-set.ts";
-import { ComparisonError, FindingError } from "./errors.ts";
+import { FindingError } from "./errors.ts";
 import { canonicalPath, type Finding } from "./findings.ts";
 import { visibleText } from "./render.ts";
 
@@ -221,7 +221,28 @@ export type ExternalFindingsFile = Static<typeof externalFindingsFileSchema>;
 /** An external finding before Melian gives it an ID. */
 export type ExternalFindingInput = Omit<StoredExternalFinding, "id">;
 
-// The first schema error in `value`, as a pointer and a message, or undefined when it conforms.
+/** Why an external finding, a reviewer's file, or a match was refused. */
+export type ComparisonErrorCode =
+	| "invalidFinding"
+	| "invalidFile"
+	| "unknownExternal"
+	| "unknownMelian"
+	| "unknownFinding"
+	| "invalidAdjudication";
+
+/** An external finding, a reviewer's file, or a match was refused. `path` names the file or JSON pointer at fault. */
+export class ComparisonError extends Error {
+	readonly code: ComparisonErrorCode;
+	readonly path: string | undefined;
+
+	constructor(code: ComparisonErrorCode, message: string, options: { path?: string; cause?: unknown } = {}) {
+		super(message, { cause: options.cause });
+		this.name = "ComparisonError";
+		this.code = code;
+		this.path = options.path;
+	}
+}
+
 function schemaProblem(schema: TSchema, value: unknown): string | undefined {
 	const errors = Value.Errors(schema, value);
 	const unknown = errors.find((error) => error.keyword === "additionalProperties");
@@ -243,7 +264,6 @@ function sourceFields(input: ExternalFindingInput, title: string): string[] {
 	return ["file", source.path, "finding", input.file ?? "", String(input.line ?? ""), title, body];
 }
 
-// Whether two line ranges overlap or lie within `siteDistance` lines of each other.
 function near(start: number, end: number, otherStart: number, otherEnd: number): boolean {
 	return start <= otherEnd + siteDistance && otherStart <= end + siteDistance;
 }
@@ -319,7 +339,7 @@ export class ExternalFinding {
 			});
 		}
 		// Length-prefixed, so no character inside a field can move text from one field to the next.
-		const hashed = sourceFields(input, title)
+		const hashed = sourceFields({ ...input, file }, title)
 			.map((field) => `${field.length}:${field}`)
 			.join("");
 		const id = createHash("sha256").update(hashed).digest("hex").slice(0, 16);
@@ -353,8 +373,13 @@ export class ExternalFinding {
 		};
 		if (codex) {
 			const review = value as Static<typeof codexReviewSchema>;
-			return review.findings.map((finding, position) =>
-				create(
+			return review.findings.map((finding, position) => {
+				const hasRecommendation = finding.recommendation.trim() !== "";
+				const body = hasRecommendation
+					? `${finding.body}\n\nRecommendation: ${finding.recommendation}`
+					: finding.body;
+				const points = [...body];
+				return create(
 					{
 						reviewer: { name: "codex" },
 						file: finding.file,
@@ -362,15 +387,15 @@ export class ExternalFinding {
 						endLine: Math.max(finding.line_start, finding.line_end),
 						title: finding.title,
 						body:
-							finding.recommendation.trim() === ""
-								? finding.body
-								: `${finding.body}\n\nRecommendation: ${finding.recommendation}`,
+							!hasRecommendation || points.length <= maxExternalBodyLength
+								? body
+								: `${points.slice(0, maxExternalBodyLength - 1).join("")}…`,
 						severity: finding.severity,
 						source: { kind: "file", path, position },
 					},
 					position,
-				),
-			);
+				);
+			});
 		}
 		const file = value as ExternalFindingsFile;
 		const refs = new Set<string>();
@@ -524,7 +549,6 @@ export class ExternalFinding {
 	}
 }
 
-// A title is one line: the first that is not blank, cut to the limit on a code point boundary.
 function titleOf(title: string): string {
 	const first = title.split(/\r?\n/).find((each) => each.trim() !== "") ?? "";
 	const points = [...first.trim()];

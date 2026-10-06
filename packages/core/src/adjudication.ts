@@ -29,6 +29,7 @@ import {
 	statusLabel,
 	visibleText,
 } from "./render.ts";
+import { VerificationState } from "./verification.ts";
 
 /**
  * The configuration that applies at a repository-relative path, usually through `loadConfig` for that path. Given
@@ -112,6 +113,28 @@ export class Defect {
 			properties: { ...properties, ...keeper.mergeClaims(findings), severity, alsoReportedAs },
 		});
 		return Defect.of(speaker, dismissed);
+	}
+
+	/** Whether lenses alone reported this defect. */
+	lensOnly(): boolean {
+		const checks = [
+			this.speaker.properties.source.check,
+			...(this.speaker.properties.reportedBy ?? []).map((source) => source.check),
+			...this.members.map((member) => member.check),
+		];
+		return checks.every((check) => check.startsWith("lens."));
+	}
+
+	/** Whether every lens claim was refuted, with no deterministic co-report. */
+	refuted(): boolean {
+		const claims = VerificationState.from(this.speaker).claims;
+		return this.lensOnly() && claims.length > 0 && claims.every((claim) => claim.verification?.verdict === "refuted");
+	}
+
+	/** Whether a lens-only defect still has an unjudged claim. */
+	unverified(): boolean {
+		const claims = VerificationState.from(this.speaker).claims;
+		return this.lensOnly() && (claims.length === 0 || claims.some((claim) => claim.verification === undefined));
 	}
 
 	/**
@@ -290,6 +313,7 @@ export type StoredVerdict = {
 	notRun: StoredCheckRecord[];
 	// Absent from a verdict recorded before Melian kept the checks that ran.
 	ran?: StoredCheckRecord[];
+	refuted?: StoredFinding[];
 };
 
 /** What a {@link Verdict} holds. */
@@ -300,6 +324,8 @@ export interface VerdictFields {
 	readonly dismissed: readonly ResolvedFinding[];
 	readonly notRun: readonly CheckRecord[];
 	readonly ran?: readonly CheckRecord[];
+	/** Defects whose lens claims were all refuted. Absent when empty. */
+	readonly refuted?: readonly ResolvedFinding[];
 }
 
 /** What a review concluded: a runtime view over a {@link StoredVerdict}. */
@@ -321,6 +347,8 @@ export class Verdict {
 	 * verdict recorded before Melian kept it.
 	 */
 	readonly ran?: readonly CheckRecord[];
+	/** Defects whose lens claims were all refuted. Absent when empty. */
+	readonly refuted?: readonly ResolvedFinding[];
 
 	// Declared in the order a stored verdict holds them, so its JSON, and its fingerprint, is unchanged.
 	constructor(fields: VerdictFields) {
@@ -330,6 +358,7 @@ export class Verdict {
 		this.dismissed = fields.dismissed;
 		this.notRun = fields.notRun;
 		this.ran = fields.ran;
+		this.refuted = fields.refuted;
 	}
 
 	/** The verdict a stored one describes, trusted as stored. */
@@ -338,7 +367,12 @@ export class Verdict {
 		const findings = Object.fromEntries(
 			Object.entries(stored.findings).map(([resolution, group]) => [resolution, group.map(resolved)]),
 		) as Record<Resolution, ResolvedFinding[]>;
-		return new Verdict({ ...stored, findings, dismissed: stored.dismissed.map(resolved) });
+		return new Verdict({
+			...stored,
+			findings,
+			dismissed: stored.dismissed.map(resolved),
+			refuted: stored.refuted?.map(resolved),
+		});
 	}
 
 	/** A verdict stored before evidence became a list, each finding in the current shape by {@link Finding.upgrade}. */
@@ -349,7 +383,14 @@ export class Verdict {
 				group.map((finding) => Finding.upgrade(finding)),
 			]),
 		) as StoredVerdict["findings"];
-		return { ...stored, findings, dismissed: stored.dismissed.map((finding) => Finding.upgrade(finding)) };
+		return {
+			...stored,
+			findings,
+			dismissed: stored.dismissed.map((finding) => Finding.upgrade(finding)),
+			...(stored.refuted === undefined
+				? {}
+				: { refuted: stored.refuted.map((finding) => Finding.upgrade(finding)) }),
+		};
 	}
 
 	/** The findings that need attention: those that resolve to `block`, `acknowledge`, or `advisory`. */
@@ -359,7 +400,29 @@ export class Verdict {
 
 	/** Every finding the verdict holds, by resolution, strictest first, then the dismissed ones. */
 	all(): ResolvedFinding[] {
-		return [...Object.values(this.findings).flat(), ...this.dismissed];
+		return [...Object.values(this.findings).flat(), ...this.dismissed, ...(this.refuted ?? [])];
+	}
+
+	/** Counts each sighting's judgement once, including refuted and dismissed findings. */
+	verificationCounts(): Record<"confirmed" | "plausible" | "refuted" | "unverified", number> {
+		const counts = { confirmed: 0, plausible: 0, refuted: 0, unverified: 0 };
+		const seen = new Set<string>();
+		for (const finding of this.all()) {
+			for (const claim of VerificationState.from(finding).claims) {
+				const key = JSON.stringify([claim.id, claim.source.check, claim.source.version]);
+				if (seen.has(key)) continue;
+				seen.add(key);
+				counts[claim.verification?.verdict ?? "unverified"]++;
+			}
+		}
+		return counts;
+	}
+
+	/** The verification outcomes the CLI and ledger can show. */
+	verificationSummary(): string {
+		return Object.entries(this.verificationCounts())
+			.map(([verdict, count]) => `${count} ${verdict}`)
+			.join(", ");
 	}
 
 	/**
@@ -436,9 +499,12 @@ export class Verdict {
 	reviewStatus(): ReviewStatus {
 		const count = (number: number, noun: string) => `${number} ${noun}${number === 1 ? "" : "s"}`;
 		if (this.status === "not-reviewed") {
-			const reasons = this.notRun.map(
-				({ name, status, reason }) => `${name} ${status}${reason === undefined ? "" : ` (${reason})`}`,
-			);
+			// An ended lens's budget is why it stopped; a reason it carries is a note, so it comes after, never in place.
+			const reasons = this.notRun.map(({ name, status, reason, budgetEnded }) => {
+				const ended = budgetEnded === undefined ? [] : [describeBudgetEnd(budgetEnded)];
+				const why = [...ended, ...(reason === undefined ? [] : [reason])].join("; ");
+				return `${name} ${status}${why === "" ? "" : ` (${why})`}`;
+			});
 			return { state: "error", description: `Not reviewed: ${reasons.join("; ") || "the review did not complete"}` };
 		}
 		const shown = this.attention().length;
@@ -466,7 +532,12 @@ export class Verdict {
 		const findings = Object.fromEntries(
 			Object.entries(this.findings).map(([resolution, group]) => [resolution, group.map(bare)]),
 		);
-		const kept = { ...this.toJSON(), findings, dismissed: this.dismissed.map(bare) };
+		const kept = {
+			...this.toJSON(),
+			findings,
+			dismissed: this.dismissed.map(bare),
+			...(this.refuted === undefined ? {} : { refuted: this.refuted.map(bare) }),
+		};
 		return createHash("sha256").update(JSON.stringify(kept)).digest("hex").slice(0, 16);
 	}
 
@@ -545,7 +616,8 @@ export class Verdict {
 		const parts = [`Verdict: ${rendering.paint(color, label)}${blocking}`];
 		if (this.notRun.length > 0) {
 			const checks = this.notRun.map(({ name, status, level, reason, error, budgetEnded }) => {
-				const why = reason ?? (budgetEnded === undefined ? undefined : describeBudgetEnd(budgetEnded));
+				const ended = budgetEnded === undefined ? [] : [describeBudgetEnd(budgetEnded)];
+				const why = [...ended, ...(reason === undefined ? [] : [reason])].join("; ") || undefined;
 				return [
 					`  ${visibleText(name)}  ${status}${level === undefined ? "" : ` at ${level}`}${why === undefined ? "" : `: ${prose(why, "    ")}`}`,
 					...(error === undefined ? [] : [`    Error: ${prose(error, "      ")}`]),
@@ -553,6 +625,8 @@ export class Verdict {
 			});
 			parts.push([`${plural(this.notRun.length, "check")} did not run:`, ...checks].join("\n"));
 		}
+		const verifier = (this.ran ?? []).find((check) => check.name === "verifier");
+		if (verifier !== undefined) parts.push(`verifier  ran: ${this.verificationSummary()}`);
 		const lenses = (this.ran ?? []).filter((check) => check.level !== undefined);
 		if (lenses.length > 0) {
 			const checks = lenses.map(
@@ -572,7 +646,8 @@ export class Verdict {
 			resolution,
 			this.findings[resolution],
 		]);
-		if (rendering.all) groups.push(["silent", this.findings.silent], ["dismissed", this.dismissed]);
+		if (rendering.all)
+			groups.push(["silent", this.findings.silent], ["dismissed", this.dismissed], ["refuted", this.refuted ?? []]);
 		for (const [name, findings] of groups) {
 			if (findings.length === 0) continue;
 			parts.push(rendering.paint("1", `${capitalised(name)}: ${plural(findings.length, "finding")}`));
@@ -581,6 +656,7 @@ export class Verdict {
 		const hidden = [
 			...(this.findings.silent.length > 0 ? [`${plural(this.findings.silent.length, "silent finding")}`] : []),
 			...(this.dismissed.length > 0 ? [`${plural(this.dismissed.length, "dismissed finding")}`] : []),
+			...((this.refuted?.length ?? 0) > 0 ? [plural(this.refuted!.length, "refuted finding")] : []),
 		];
 		if (hidden.length > 0 && !rendering.all) parts.push(`${capitalised(hidden.join(" and "))} not shown.`);
 		const shown = this.attention();
@@ -606,6 +682,7 @@ export class Verdict {
 			dismissed: this.dismissed.map(stored),
 			notRun: [...this.notRun],
 			...(this.ran === undefined ? {} : { ran: [...this.ran] }),
+			...(this.refuted === undefined ? {} : { refuted: this.refuted.map(stored) }),
 		};
 	}
 }
@@ -625,6 +702,8 @@ export interface AdjudicationInput {
 	readonly config: Pick<MelianConfig, "resolution" | "ruleAliases"> | ConfigFor;
 	/** Names of checks whose skip still lets a review pass, such as a tool with no files in its language to check. */
 	readonly allowSkip?: readonly string[];
+	/** Apply the unverified advisory cap only to reviews that ran the verifier step. */
+	readonly verificationRan?: boolean;
 }
 
 /** A review's findings, the checks it accounts for, and the configuration that decides them, ready to decide. */
@@ -632,10 +711,12 @@ export class Adjudication {
 	readonly findings: readonly Finding[];
 	readonly manifest: Manifest;
 	readonly #configFor: ConfigFor;
+	readonly #verificationRan: boolean;
 
-	constructor({ findings, manifest, checks, config, allowSkip = [] }: AdjudicationInput) {
+	constructor({ findings, manifest, checks, config, allowSkip = [], verificationRan = false }: AdjudicationInput) {
 		this.findings = findings;
 		this.manifest = new Manifest(manifest, checks, allowSkip);
+		this.#verificationRan = verificationRan;
 		this.#configFor = typeof config === "function" ? config : () => config;
 	}
 
@@ -655,6 +736,78 @@ export class Adjudication {
 	 * beside a dismissed report of the same defect stays live, and blocks if it blocks, listing the dismissed one in
 	 * `alsoReportedAs` with `dismissed: true`.
 	 */
+	defects(): Defect[] {
+		return new Merge(this.findings, this.#configFor).defects();
+	}
+
+	/** The finding that speaks for each of {@link Adjudication.defects}, in input order. */
+	dedupe(): Finding[] {
+		return this.defects().map((defect) => defect.speaker);
+	}
+
+	/**
+	 * Decides the review: merges findings two checks reported for one problem ({@link Adjudication.defects}), resolves
+	 * each under its path's configuration ({@link Finding.resolved}), and derives the status. Every finding is resolved
+	 * here, whether it arrives without a resolution, as a producer stores it, or with one, which is replaced; none is
+	 * dropped or counted as `silent` for lacking one. A failed check, one its budget ended, a skipped one not allowed to
+	 * skip, or a check of the manifest with no record makes the review `not-reviewed`, even with no findings. Otherwise
+	 * a finding above `silent` makes it `findings`, and nothing does `passed`. A dismissed finding counts toward neither.
+	 */
+	adjudicate(): Verdict {
+		const defects = this.defects();
+		const refutedIds = new Set(defects.filter((defect) => defect.refuted()).map((defect) => defect.speaker.id));
+		const resolved = defects
+			.map((defect) => {
+				const finding = defect.speaker;
+				const resolved = finding.resolved(this.#configFor(finding.properties.path, finding.ruleId));
+				if (
+					!this.#verificationRan ||
+					!defect.unverified() ||
+					resolutionOrder.indexOf(resolved.properties.resolution) >= resolutionOrder.indexOf("advisory")
+				)
+					return resolved;
+				return Finding.from({
+					...resolved.toJSON(),
+					properties: { ...resolved.properties, resolution: "advisory" },
+				}) as ResolvedFinding;
+			})
+			.sort((a, b) => a.compareReading(b));
+		const counted = resolved.filter(
+			(finding) => finding.properties.status !== "dismissed" && !refutedIds.has(finding.id),
+		);
+		const refuted = resolved.filter(
+			(finding) => finding.properties.status !== "dismissed" && refutedIds.has(finding.id),
+		);
+		const grouped = Object.fromEntries(
+			resolutionOrder.map((resolution) => [
+				resolution,
+				counted.filter((finding) => finding.properties.resolution === resolution),
+			]),
+		) as Record<Resolution, ResolvedFinding[]>;
+		const attention = counted.some((finding) => finding.properties.resolution !== "silent");
+		return new Verdict({
+			status: this.manifest.complete() ? (attention ? "findings" : "passed") : "not-reviewed",
+			blocking: grouped.block.length > 0,
+			findings: grouped,
+			dismissed: resolved.filter((finding) => finding.properties.status === "dismissed"),
+			notRun: this.manifest.notRun(),
+			ran: this.manifest.ran(),
+			...(refuted.length === 0 ? {} : { refuted }),
+		});
+	}
+}
+
+/** A review's findings grouped mechanically, before verification and again at adjudication. */
+export class Merge {
+	readonly findings: readonly Finding[];
+	readonly #configFor: ConfigFor;
+
+	constructor(findings: readonly Finding[], config: Pick<MelianConfig, "resolution" | "ruleAliases"> | ConfigFor) {
+		this.findings = findings;
+		this.#configFor = typeof config === "function" ? config : () => config;
+	}
+
+	/** The defects in speaker order, preserving each claim and separating lifecycle statuses. */
 	defects(): Defect[] {
 		const groups: Finding[][] = [];
 		for (const finding of [...this.findings].sort((a, b) => a.compareStrength(b))) {
@@ -686,41 +839,6 @@ export class Adjudication {
 		return this.findings.flatMap((finding) => {
 			const defect = defects.get(finding);
 			return defect === undefined ? [] : [defect];
-		});
-	}
-
-	/** The finding that speaks for each of {@link Adjudication.defects}, in input order. */
-	dedupe(): Finding[] {
-		return this.defects().map((defect) => defect.speaker);
-	}
-
-	/**
-	 * Decides the review: merges findings two checks reported for one problem ({@link Adjudication.defects}), resolves
-	 * each under its path's configuration ({@link Finding.resolved}), and derives the status. Every finding is resolved
-	 * here, whether it arrives without a resolution, as a producer stores it, or with one, which is replaced; none is
-	 * dropped or counted as `silent` for lacking one. A failed check, one its budget ended, a skipped one not allowed to
-	 * skip, or a check of the manifest with no record makes the review `not-reviewed`, even with no findings. Otherwise
-	 * a finding above `silent` makes it `findings`, and nothing does `passed`. A dismissed finding counts toward neither.
-	 */
-	adjudicate(): Verdict {
-		const resolved = this.dedupe()
-			.map((finding) => finding.resolved(this.#configFor(finding.properties.path, finding.ruleId)))
-			.sort((a, b) => a.compareReading(b));
-		const counted = resolved.filter((finding) => finding.properties.status !== "dismissed");
-		const grouped = Object.fromEntries(
-			resolutionOrder.map((resolution) => [
-				resolution,
-				counted.filter((finding) => finding.properties.resolution === resolution),
-			]),
-		) as Record<Resolution, ResolvedFinding[]>;
-		const attention = counted.some((finding) => finding.properties.resolution !== "silent");
-		return new Verdict({
-			status: this.manifest.complete() ? (attention ? "findings" : "passed") : "not-reviewed",
-			blocking: grouped.block.length > 0,
-			findings: grouped,
-			dismissed: resolved.filter((finding) => finding.properties.status === "dismissed"),
-			notRun: this.manifest.notRun(),
-			ran: this.manifest.ran(),
 		});
 	}
 

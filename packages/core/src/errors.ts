@@ -69,6 +69,7 @@ export class ConfigError extends Error {
 
 /** Why standards could not be collected. */
 export type StandardsErrorCode =
+	| "pathNotLoaded"
 	| "missingRoot"
 	| "notARepository"
 	| "unknownCommit"
@@ -257,25 +258,24 @@ export class ModelRoutingError extends Error {
 	}
 }
 
-/** Why an external finding, a reviewer's file, or a match was refused. */
-export type ComparisonErrorCode =
-	| "invalidFinding"
-	| "invalidFile"
-	| "unknownExternal"
-	| "unknownMelian"
-	| "unknownFinding"
-	| "invalidAdjudication";
+/** Why a decision could not be made. */
+export type DecisionErrorCode = "unanswered" | "invalidAnswer" | "unrecorded" | "staleRecording";
 
-/** An external finding, a reviewer's file, or a match was refused. `path` names the file or JSON pointer at fault. */
-export class ComparisonError extends Error {
-	readonly code: ComparisonErrorCode;
-	readonly path: string | undefined;
+/**
+ * A decider gave no usable answer: it left a question unanswered, answered one it was not asked or with an option or
+ * probability the question does not allow, or, for the recorded adapter, has no recording for it or one made for
+ * another version of its question set or another form of the question. `question` names
+ * the question, where one is at fault.
+ */
+export class DecisionError extends Error {
+	readonly code: DecisionErrorCode;
+	readonly question: string | undefined;
 
-	constructor(code: ComparisonErrorCode, message: string, options: { path?: string; cause?: unknown } = {}) {
+	constructor(code: DecisionErrorCode, message: string, options: { question?: string; cause?: unknown } = {}) {
 		super(message, { cause: options.cause });
-		this.name = "ComparisonError";
+		this.name = "DecisionError";
 		this.code = code;
-		this.path = options.path;
+		this.question = options.question;
 	}
 }
 

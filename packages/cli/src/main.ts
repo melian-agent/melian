@@ -56,7 +56,8 @@ Commands:
 Options:
   --model <provider/id>  Route every tier to this model, over any route melian.yaml sets (review).
   --rerun                Run again the checks and lenses that failed in the last review of this base and head,
-                         rather than print the failures it stored (review).
+                         and ask triage again if its decision did not complete, rather than print what it
+                         stored; a completed triage decision is never asked again (review).
   --open, --all, --json  For findings.
   --reason <text>        Dismissal reason, or owned-missed, no-owner, needs-execution, out-of-scope (adjudicate).
   --only                 Dismiss the report the ID names alone, leaving the reports merged with it live (dismiss).
@@ -252,7 +253,6 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				if (sources.some((source) => source.kind === "github") && !pullRequest) {
 					throw new UsageError(`--from github reads a pull request's threads; name it as "#12", not a range`);
 				}
-				// A pull request's comparison imports CodeRabbit's threads unless told otherwise.
 				const fallback = pullRequest && sources.length === 0 ? [parseImportSource("github")!] : [];
 				return await compare(scoped, target, [...sources, ...fallback]);
 			}

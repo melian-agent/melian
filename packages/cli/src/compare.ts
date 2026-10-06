@@ -27,12 +27,10 @@ import { idleModels, isScripted } from "./models.ts";
 import { CliError, git, openStorage, stateDirectory, storagePath } from "./repository.ts";
 import { gitHubAccess, parseTarget } from "./target.ts";
 
-// Where `melian compare --from` imports from: a pull request's review threads by one login, or a reviewer's file.
 export type ImportSource =
 	| { readonly kind: "github"; readonly login: string }
 	| { readonly kind: "file"; readonly path: string };
 
-// Reads a `--from` value: `github`, `github:<login>`, or `file:<path>`; `undefined` for anything else.
 export function parseImportSource(value: string): ImportSource | undefined {
 	if (value === "github") return { kind: "github", login: coderabbitLogin };
 	if (value.startsWith("github:") && value.length > "github:".length) {
@@ -107,7 +105,10 @@ export async function compare(io: Io, argument: string, sources: readonly Import
 		io.stdout(
 			`Compared ${external} external ${external === 1 ? "finding" : "findings"} with Melian's ${melian} at ${short(revision.head)}.\n`,
 		);
-		const skippedBodies = read.reduce((sum, each) => sum + each.imported.skippedBodies, 0);
+		const skippedBodies = Object.values(comparison.importsBySource()).reduce(
+			(sum, each) => sum + each.skippedBodies,
+			0,
+		);
 		io.stdout(comparison.render(verdict, skippedBodies));
 		return 0;
 	} finally {

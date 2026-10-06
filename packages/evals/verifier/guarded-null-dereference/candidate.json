@@ -1,0 +1,19 @@
+{
+  "file": "user.mjs",
+  "line": 4,
+  "rule": "wrong-result",
+  "severity": "P1",
+  "explanation": {
+    "what": "Reading manager.name may dereference an absent manager.",
+    "why": "The changed path appears to allow this outcome.",
+    "fix": "Check the preventing code before accepting the claim."
+  },
+  "failureScenario": "managerName({name:\"Ada\"}) throws when reading name of undefined.",
+  "evidence": [
+    {
+      "file": "user.mjs",
+      "line": 4,
+      "role": "cause"
+    }
+  ]
+}

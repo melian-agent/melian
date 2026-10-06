@@ -11,6 +11,7 @@ import {
 	type ReviewStatus,
 } from "@melian-agent/core";
 import {
+	CompareHarness,
 	type Context,
 	backgroundContext as context,
 	createMemoryStorage,
@@ -38,6 +39,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, type AdjudicationTaskInput } from "../src/adjudication.ts";
+import { ComparisonDocument } from "../src/compare.ts";
 import { FindingsDocument } from "../src/findings.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
@@ -275,7 +277,7 @@ async function dismissCutShort(harness: Harness, id: string, with_ = dismissal):
 }
 
 describe("recording a dismissal", () => {
-	it("counts a dismissed finding out of a verdict it decides again, and a later review attaches to it", async () => {
+	it("counts a dismissed finding out of later reviews without more model calls", async () => {
 		const harness = await reviewHarness(createMemoryStorage());
 		scriptFinding();
 		const first = await reviewed(harness);
@@ -296,9 +298,16 @@ describe("recording a dismissal", () => {
 
 		const again = await reviewed(harness);
 
-		expect(again.verdict).toEqual(recorded.verdict);
+		expect(again.verdict.toJSON()).toEqual({
+			...recorded.verdict.toJSON(),
+			ran: recorded.verdict.ran?.filter((check) => check.name !== "verifier"),
+		});
 		expect(fake.provider.state.callCount).toBe(calls);
-		expect((await harness.snapshot(ReviewIndex, root, context))?.reviews[key]?.adjudication?.task).toBe(task);
+		const updated = (await harness.snapshot(ReviewIndex, root, context))?.reviews[key]?.adjudication?.task;
+		expect(updated).not.toBe(task);
+		expect((await reviewed(harness)).verdict).toEqual(again.verdict);
+		expect((await harness.snapshot(ReviewIndex, root, context))?.reviews[key]?.adjudication?.task).toBe(updated);
+		expect(fake.provider.state.callCount).toBe(calls);
 	});
 
 	it("replaces the reason of a finding dismissed again, keeping the first in its history", async () => {
@@ -623,6 +632,55 @@ describe("recording a dismissal", () => {
 		expect(await adjudicationTask(harness)).toBe(task);
 	});
 
+	it("refuses comparison writes after a cut-short dismissal until its adjudication records", async () => {
+		const path = join(dir, "changeset.sqlite");
+		const first = await reviewHarness(await openSqliteStorage(path));
+		scriptFinding();
+		const id = (await reviewed(first)).findings[0]!.properties.id;
+		await first.close(context);
+		const killed = await DismissHarness.open(await openSqliteStorage(path), fake.review);
+		opened.push(killed);
+		await dismissCutShort(killed.harness, id);
+		const pending = await adjudicationTask(killed.harness);
+		await killed.close(context);
+		const calls = fake.provider.state.callCount;
+		const compared = await CompareHarness.open(await openSqliteStorage(path), fake.review);
+		opened.push(compared);
+		const rev = await revision();
+		const key = revisionKey(rev);
+		const root = (await compared.harness.root(context)).id;
+		expect((await compared.harness.snapshot(FindingsDocument, root, context))?.items[id]?.lifecycle.status).toBe(
+			"dismissed",
+		);
+		expect((await readVerdict(compared.harness, root, key, context))?.dismissed).toEqual([]);
+		const before = await compared.harness.snapshot(ComparisonDocument, root, context);
+
+		await expect(compared.importFindings(rev, [], "t")).rejects.toMatchObject({ code: "notReviewed" });
+		await expect(compared.match(rev, { external: "missing", melian: id }, dismissal)).rejects.toMatchObject({
+			code: "notReviewed",
+		});
+		await expect(compared.unmatch(rev, { external: "missing", melian: id }, dismissal)).rejects.toMatchObject({
+			code: "notReviewed",
+		});
+		expect(await compared.reviewed(rev)).toBe(false);
+		expect(await compared.harness.snapshot(ComparisonDocument, root, context)).toEqual(before);
+		expect((await compared.harness.getTask(pending as TaskId, context))?.state.status).not.toBe("terminal");
+		expect(fake.provider.state.callCount).toBe(calls);
+		await compared.close(context);
+
+		const dismissing = await DismissHarness.open(await openSqliteStorage(path), fake.review);
+		opened.push(dismissing);
+		const recorded = await dismiss(dismissing.harness, id);
+		expect(await adjudicationTask(dismissing.harness)).toBe(pending);
+		await dismissing.close(context);
+		const repaired = await CompareHarness.open(await openSqliteStorage(path), fake.review);
+		opened.push(repaired);
+		expect(await repaired.reviewed(rev)).toBe(true);
+		const comparison = await repaired.importFindings(rev, [], "t");
+		expect(comparison.render(recorded.verdict)).toContain("(dismissed)");
+		expect(fake.provider.state.callCount).toBe(calls);
+	});
+
 	it("refuses to publish a verdict a cut-short dismissal left undecided, and finishes it when dismissed again", async () => {
 		const path = join(dir, "changeset.sqlite");
 		const first = await reviewHarness(await openSqliteStorage(path));
@@ -652,7 +710,7 @@ describe("recording a dismissal", () => {
 		]);
 	});
 
-	it("lets a later review attach to the adjudication a cut-short dismissal left pending", async () => {
+	it("finishes a cut-short dismissal and drops the verifier check on a later review", async () => {
 		const path = join(dir, "changeset.sqlite");
 		const first = await reviewHarness(await openSqliteStorage(path));
 		scriptFinding();
@@ -671,7 +729,8 @@ describe("recording a dismissal", () => {
 		expect(verdict).toMatchObject({ status: "passed", blocking: false });
 		expect(verdict.dismissed.map((each) => each.properties.dismissal)).toEqual([dismissal]);
 		expect(fake.provider.state.callCount).toBe(calls);
-		expect(await adjudicationTask(reopened)).toBe(pending);
+		expect(await adjudicationTask(reopened)).not.toBe(pending);
+		expect(verdict.ran?.some((check) => check.name === "verifier")).toBe(false);
 		const task = await reopened.getTask(pending as TaskId, context);
 		expect(task?.state).toMatchObject({ status: "terminal", outcome: { status: "completed", result: "recorded" } });
 	});
@@ -822,8 +881,15 @@ describe("recording a dismissal", () => {
 		const reopened = await reviewHarness(await openSqliteStorage(path));
 		const { verdict } = await reviewed(reopened);
 
-		expect(verdict).toEqual(recorded.verdict);
+		expect(verdict.toJSON()).toEqual({
+			...recorded.verdict.toJSON(),
+			ran: recorded.verdict.ran?.filter((check) => check.name !== "verifier"),
+		});
 		expect(fake.provider.state.callCount).toBe(calls);
-		expect(await adjudicationTask(reopened)).toBe(task);
+		const updated = await adjudicationTask(reopened);
+		expect(updated).not.toBe(task);
+		expect((await reviewed(reopened)).verdict).toEqual(verdict);
+		expect(await adjudicationTask(reopened)).toBe(updated);
+		expect(fake.provider.state.callCount).toBe(calls);
 	});
 });

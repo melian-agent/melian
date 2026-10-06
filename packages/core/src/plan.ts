@@ -47,7 +47,7 @@ export type TierStatus = "routed" | "unrouted" | "uncredentialed" | "unavailable
 
 // Type aliases with mutable arrays: the plan is stored as JSON in a durable task's input.
 /** One model of a tier's route, and where its credentials come from, or `none`. */
-export type PlannedModel = { model: string; credential: string };
+export type PlannedModel = { model: string; credential: string; family?: string };
 
 /** One tier of a {@link ReviewPlan}, as stored. */
 export type PlannedTier = {
@@ -207,6 +207,7 @@ export class ReviewPlan {
 			names.map((model) => ({
 				model,
 				credential: credentials[parseModelReference(model, tier).provider] ?? "none",
+				...(entry(model) === undefined ? {} : { family: sameModel(entry(model)!.name).split(" ")[0]! }),
 			}));
 		const base = {
 			tier,
@@ -334,10 +335,46 @@ export class ReviewPlan {
 		return routes;
 	}
 
+	/** The verifier route for a finder, other families first, preserving order within each family. */
+	verifierRoute(finder: string): PlannedModel[] {
+		const own = this.tier("verifier");
+		if (this.refusal("verifier") !== undefined) return [];
+		const tiers =
+			own.status === "unrouted"
+				? (["heavy", "medium", "light"] as const)
+						.map((tier) => this.tier(tier))
+						.filter((tier) => tier.status === "routed")
+				: [own];
+		const models = [...new Map(tiers.flatMap((tier) => tier.models).map((model) => [model.model, model])).values()];
+		const family = this.tiers.flatMap((tier) => tier.models).find((model) => model.model === finder)?.family;
+		return models.sort(
+			(left, right) =>
+				Number(left.family === family || left.family === undefined) -
+				Number(right.family === family || right.family === undefined),
+		);
+	}
+
+	/** The lineage of the verifier on the model it actually used, including a lens-tier fallback. */
+	verifierLineage(model: string): CheckLineage | undefined {
+		const own = this.tier("verifier");
+		if (own.status !== "unrouted") return ReviewPlan.leaving(own, model, own.by);
+		const fallback = (["heavy", "medium", "light"] as const)
+			.map((tier) => this.tier(tier))
+			.find((tier) => tier.models.some((each) => each.model === model));
+		return {
+			model,
+			...(own.wanted === undefined ? {} : { wanted: own.wanted }),
+			by: `lens tiers${fallback?.by === undefined ? "" : ` via ${fallback.by}`}`,
+			outside: (own.accept?.length ?? 0) > 0 && !own.accept!.includes(model),
+		};
+	}
+
 	/** Why a check on `tier` from the review's lens must fail without running, or `undefined` when it may run. */
 	refusal(tier: ModelTier): string | undefined {
 		const { status, reason } = this.tier(tier);
-		return status === "unavailable" || status === "refused" ? reason : undefined;
+		return status === "unavailable" || status === "refused" || (tier === "verifier" && status === "uncredentialed")
+			? reason
+			: undefined;
 	}
 
 	/** Why a check on `tier` runs on a model the committed route did not choose, or `undefined` when it does not. */
@@ -395,19 +432,22 @@ export class ReviewPlan {
 
 	/**
 	 * `records` with each lens's lineage added, judged on the model it finished on, from `ranOn`, each variant of a lens
-	 * name by its scope, or the first of its route. A lens that finished on a model its policy refuses, such as a
-	 * fallback outside `accept`, records `failed`, since its result cannot count; so does a lens of which any variant did.
+	 * name by its scope and level, or the first of its route. A lens that finished on a model its policy refuses, such as a
+	 * fallback outside `accept`, records `failed`, since its result cannot count; so does a lens of which any variant at that level did.
 	 */
 	mark(
 		records: readonly CheckRecord[],
-		ranOn: ReadonlyMap<string, readonly { readonly scope: string; readonly model: string }[]> = new Map(),
+		ranOn: ReadonlyMap<
+			string,
+			readonly { readonly scope: string; readonly level: ScrutinyLevel; readonly model: string }[]
+		> = new Map(),
 	): CheckRecord[] {
 		return records.map((record) => {
 			if (!record.name.startsWith("lens.") || record.level === undefined || record.lineage !== undefined)
 				return record;
 			const name = record.name.slice("lens.".length);
 			const { level } = record;
-			const ran = ranOn.get(name) ?? [];
+			const ran = (ranOn.get(name) ?? []).filter((variant) => variant.level === level);
 			const judged =
 				ran.length === 0
 					? [this.judge(name, level)]
@@ -420,24 +460,39 @@ export class ReviewPlan {
 		});
 	}
 
-	// The tiers the review's lenses run on, with the lenses on each. Every lens runs at its default level until triage
-	// chooses one per review, so only that level's tier counts.
-	private used(): Map<ModelTier, string[]> {
+	// The tiers the review's lenses run on, with the lenses on each: at their default level, which a review without a
+	// decider runs and whose tier must reach a model, or, with `every`, at any level, since triage may choose any level a
+	// lens declares and escalation may move it to the next.
+	private used(every = false): Map<ModelTier, string[]> {
 		const used = new Map<ModelTier, string[]>();
 		for (const lens of this.lenses) {
-			const tier = lens.levels.find(({ level }) => level === defaultScrutinyLevel)?.tier;
-			if (tier !== undefined) used.set(tier, [...(used.get(tier) ?? []), labelOf(lens)]);
+			const levels = lens.levels.filter(({ level }) => every || level === defaultScrutinyLevel);
+			for (const tier of new Set(levels.map(({ tier }) => tier))) {
+				used.set(tier, [...(used.get(tier) ?? []), labelOf(lens)]);
+			}
 		}
 		return used;
 	}
 
-	/** The providers the review's lenses may call, in the order their routes name them, each once. */
+	/**
+	 * The providers the review's lenses may call at any level, in the order their routes name them, each once, so a
+	 * credential only a quick or deep level needs is unlocked too.
+	 */
 	providers(): string[] {
-		const providers = [...this.used().keys()].flatMap((tier) => {
-			const { status, models } = this.tier(tier);
-			return status === "routed" ? models.map(({ model }) => model.slice(0, model.indexOf("/"))) : [];
-		});
-		return [...new Set(providers)];
+		const providers = [...this.used(true).keys(), ...(this.lenses.length === 0 ? [] : ["verifier" as const])].flatMap(
+			(tier) => {
+				const { status, models } = this.tier(tier);
+				return status === "routed" ? models.map(({ model }) => model.slice(0, model.indexOf("/"))) : [];
+			},
+		);
+		return [
+			...new Set([
+				...providers,
+				...(this.lenses.length === 0
+					? []
+					: this.verifierRoute("").map(({ model }) => model.slice(0, model.indexOf("/")))),
+			]),
+		];
 	}
 
 	/**
@@ -486,7 +541,23 @@ export class ReviewPlan {
 				`${tier} runs ${model}, which the committed route accepts, since ${planned.wanted} has no credentials`,
 			];
 		});
-		return [...tiers, ...moved];
+		const verification: string[] = [];
+		if (this.lenses.length > 0) {
+			const own = this.tier("verifier");
+			if (own.status === "unrouted")
+				verification.push(
+					"lenses verify, but the verifier tier routes no model of its own; verification falls back to lens tiers, heavy then medium then light",
+				);
+			if (this.refusal("verifier") !== undefined) verification.push(`verifier fails: ${this.refusal("verifier")}`);
+			const finders = [...used.keys()].flatMap((tier) => this.tier(tier).models);
+			if (
+				this.refusal("verifier") === undefined &&
+				finders.length > 0 &&
+				finders.every((finder) => this.verifierRoute(finder.model).every((model) => model.family === finder.family))
+			)
+				verification.push("every verification candidate would be judged by its finder's own family");
+		}
+		return [...tiers, ...moved, ...verification];
 	}
 
 	private static lineageText({ wanted, by, moved, outside, model }: CheckLineage): string {
@@ -507,12 +578,24 @@ export class ReviewPlan {
 		const lines: PlanLine[] = [];
 		for (const { tier, status, models, by } of this.tiers) {
 			if (status !== "routed") continue;
-			const route = models.map(({ model, credential }) => `${model} with ${credential}`).join(", then ");
+			const route = models
+				.map(
+					({ model, credential, family }) =>
+						`${model}${tier === "verifier" ? ` (${family ?? "unknown family"})` : ""} with ${credential}`,
+				)
+				.join(", then ");
 			const origin =
 				by === "derived"
 					? "derived, since no model of the committed route has credentials"
 					: `routed by ${by ?? "melian.yaml"}`;
 			lines.push({ state: "ok", text: visibleText(`${tier}: ${route}; ${origin}`) });
+		}
+		if (this.lenses.length > 0 && this.tier("verifier").status !== "routed") {
+			const route = this.verifierRoute("")
+				.map(({ model, family }) => `${model} (${family ?? "unknown family"})`)
+				.join(", then ");
+			if (route !== "")
+				lines.push({ state: "warn", text: visibleText(`verifier: ${route}; fallback from lens tiers`) });
 		}
 		const model = (tier: ModelTier) => {
 			const planned = this.tier(tier);

@@ -48,5 +48,8 @@
 		"@earendil-works/pi-durable": "1.0.0",
 		"@melian-agent/core": "*",
 		"typescript": "7.0.2"
+	},
+	"devDependencies": {
+		"@melian-agent/decisions": "*"
 	}
 }

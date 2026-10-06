@@ -19,6 +19,7 @@ import {
 	type StoredVerdict,
 	snippetHash,
 	Verdict,
+	type Verification,
 } from "@melian-agent/core";
 import {
 	backgroundContext as context,
@@ -40,7 +41,7 @@ import {
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
-import { FindingsDocument } from "../src/findings.ts";
+import { FindingsDocument, findingsVersion, upsertVerification } from "../src/findings.ts";
 import { PublishedDocument, PublisherDocument } from "../src/publish.ts";
 
 const input: FindingInput = {
@@ -106,6 +107,100 @@ describe("the findings document", () => {
 		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(reworded)]);
 	});
 
+	it.each(["confirmed", "plausible", "refuted"] as const)(
+		"clears a %s verdict when a lens replaces its sighting",
+		async (verdict) => {
+			const { harness, root } = await open(createMemoryStorage());
+			await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+			await root.commit(
+				(tx) =>
+					upsertVerification(tx, root.id, "rev1", evalFinding.id, input.source, {
+						verdict,
+						reason: "Traced the original claim.",
+						executor: "llm",
+						model: "fake/judge",
+						version: "1",
+					}),
+				context,
+			);
+			expect((await readFindings(harness, root.id, "rev1", context))[0]!.properties.verification?.verdict).toBe(
+				verdict,
+			);
+			const reworded = Finding.create({ ...input, message: "eval runs the request body" });
+			expect(reworded.id).toBe(evalFinding.id);
+			await root.commit((tx) => upsertFinding(tx, root.id, reworded, "rev1"), context);
+			const state = (await harness.snapshot(FindingsDocument, root.id, context))!;
+			expect(state.items[evalFinding.id]!.verifications?.rev1).toEqual({});
+			const findings = await readFindings(harness, root.id, "rev1", context);
+			expect(findings).toEqual([seen(reworded)]);
+			expect(findings[0]!.properties.verification).toBeUndefined();
+		},
+	);
+	it.each(["confirmed", "plausible", "refuted"] as const)(
+		"replays an identical %s verification without changing the findings version",
+		async (verdict) => {
+			const { harness, root } = await open(createMemoryStorage());
+			await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+			const before = await findingsVersion(harness, root.id, "rev1", context);
+			const verification: Verification = {
+				verdict,
+				reason: "Traced the code.",
+				correction: "Use the guarded value.",
+				executor: "llm",
+				model: "fake/judge",
+				version: "1",
+			};
+			await root.commit(
+				(tx) => upsertVerification(tx, root.id, "rev1", evalFinding.id, input.source, verification),
+				context,
+			);
+			const version = await findingsVersion(harness, root.id, "rev1", context);
+			expect(version).toBe(before + 1);
+			const findings = await readFindings(harness, root.id, "rev1", context);
+			expect(findings[0]!.properties.verification).toEqual(verification);
+			await root.commit(
+				(tx) => upsertVerification(tx, root.id, "rev1", evalFinding.id, input.source, { ...verification }),
+				context,
+			);
+			expect(await findingsVersion(harness, root.id, "rev1", context)).toBe(version);
+			expect(await readFindings(harness, root.id, "rev1", context)).toEqual(findings);
+		},
+	);
+	it.each([
+		["confirmed", "plausible"],
+		["confirmed", "refuted"],
+		["plausible", "refuted"],
+	] as const)("keeps %s over %s under parallel commits and retries", async (stronger, weaker) => {
+		const { harness, root } = await open(createMemoryStorage());
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		const verdict = (value: Verification["verdict"]): Verification => ({
+			verdict: value,
+			reason: `Reported ${value}.`,
+			executor: "llm",
+			model: "fake/judge",
+			version: "1",
+		});
+		await Promise.all(
+			[stronger, weaker].map((value) =>
+				root.commit(
+					(tx) => upsertVerification(tx, root.id, "rev1", evalFinding.id, input.source, verdict(value)),
+					context,
+				),
+			),
+		);
+		expect((await readFindings(harness, root.id, "rev1", context))[0]!.properties.verification?.verdict).toBe(
+			stronger,
+		);
+		const version = await findingsVersion(harness, root.id, "rev1", context);
+		await root.commit(
+			(tx) => upsertVerification(tx, root.id, "rev1", evalFinding.id, input.source, verdict(weaker)),
+			context,
+		);
+		expect(await findingsVersion(harness, root.id, "rev1", context)).toBe(version);
+		expect((await readFindings(harness, root.id, "rev1", context))[0]!.properties.verification?.verdict).toBe(
+			stronger,
+		);
+	});
 	it("keeps findings with different IDs apart, in ID order", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		const other = Finding.create({ ...input, snippet: "eval(body)" });
@@ -349,6 +444,28 @@ describe("the findings document", () => {
 		const fromStyle = (severity: FindingInput["severity"]) =>
 			Finding.create({ ...input, severity, resolution: "advisory", source: style });
 
+		it("holds a versionless producer to its IDs across every version of its check", async () => {
+			const { harness, root } = await open(createMemoryStorage());
+			const versionless = { check: security.check };
+			const older = Finding.create({ ...input, rule: "older-eval", source: versionless });
+			await root.commit(async (tx) => {
+				await upsertFinding(tx, root.id, older, "rev1");
+				await upsertFinding(tx, root.id, evalFinding, "rev1");
+			}, context);
+
+			for (const finding of [older, evalFinding]) {
+				const read = await readFindings(harness, root.id, "rev1", context, {
+					producers: [{ ...versionless, ids: [finding.properties.id] }],
+				});
+				expect(read).toEqual([seen(finding)]);
+			}
+			expect(
+				await readFindings(harness, root.id, "rev1", context, {
+					producers: [{ ...versionless, ids: [] }, security],
+				}),
+			).toEqual([seen(evalFinding)]);
+		});
+
 		it("merges two lenses' sightings of one ID at one head, the higher severity winning", async () => {
 			const { harness, root } = await open(createMemoryStorage());
 			await root.commit(async (tx) => {
@@ -397,6 +514,13 @@ describe("the findings document", () => {
 				evidence: [...contextOnly, ...evidence],
 				failureScenario: "A guess.",
 				otherClaims: [
+					{
+						id: unproven.properties.id,
+						ruleId: "no-eval",
+						source: style,
+						failureScenario: "A guess.",
+						evidence: contextOnly,
+					},
 					{ id: evidenced.properties.id, ruleId: "no-eval", source: security, failureScenario, evidence },
 				],
 			});
@@ -469,6 +593,36 @@ describe("the findings document", () => {
 type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 type Legacy = { [key: string]: Json };
 const json = (value: unknown) => value as Json;
+
+describe("version 5 findings", () => {
+	it("reads through version 6 after an SQLite reopen", async () => {
+		const legacy = defineDoc<Legacy>({
+			kind: "melian.findings",
+			version: 5,
+			scope: "conversation",
+			history: "rewindable",
+			fork: "asOf",
+			initial: () => ({}),
+		});
+		const path = join(dir, "version-five.sqlite");
+		const first = await open(await openSqliteStorage(path));
+		const { status: _, ...properties } = evalFinding.properties;
+		await first.root.commit(async (tx) => {
+			const state = await tx.doc(legacy, first.root.id);
+			state.revisions = ["rev1"];
+			state.items = json({
+				[evalFinding.id]: {
+					lifecycle: { status: "new", firstSeenRevision: "rev1", lastSeenRevision: "rev1", history: [] },
+					sightings: { rev1: { "lens.security@1": { ...evalFinding.toJSON(), properties } } },
+				},
+			});
+			state.versions = { rev1: 1 };
+		}, context);
+		await first.harness.close(context);
+		const { harness, root } = await open(await openSqliteStorage(path));
+		expect(await readFindings(harness, root.id, "rev1", context)).toEqual([seen(evalFinding)]);
+	});
+});
 
 describe("documents stored before evidence became a list", () => {
 	// The document as version 4 stored it: an affected sighting carried one evidence location, and none a scenario.

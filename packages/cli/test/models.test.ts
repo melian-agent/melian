@@ -1,13 +1,13 @@
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { defaultConfig, type LoadedConfig, type MelianConfig, userFiles } from "@melian-agent/core";
+import { type Decider, defaultConfig, Lens, type LoadedConfig, type MelianConfig, userFiles } from "@melian-agent/core";
 import { buildGoldenRepository, loadGoldens } from "@melian-agent/evals";
 import * as pipeline from "@melian-agent/pipeline";
 import { createFakeModels, type FakeModels } from "@melian-agent/pipeline/testing";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { main } from "../src/main.ts";
-import { reviewModels } from "../src/models.ts";
+import { decisionProviderRefusal, fallbackDecider, reviewModels, Triage, triageProviders } from "../src/models.ts";
 import * as repository from "../src/repository.ts";
 
 const models: MelianConfig["models"] = {
@@ -52,7 +52,263 @@ describe("userFiles", () => {
 	});
 });
 
-describe("command bearer validation", () => {
+// A configuration as the loader returns it, every route committed.
+function loadedOf(models: MelianConfig["models"]): LoadedConfig {
+	return {
+		config: { ...defaultConfig, models },
+		sources: ["melian.yaml"],
+		routes: { committed: models, overridden: {}, lensTiers: {}, retiered: {} },
+	};
+}
+
+describe("reviewModels triage", () => {
+	afterEach(() => vi.unstubAllEnvs());
+
+	it("triages on the plan's routes, which --model rewrites", async () => {
+		vi.stubEnv("PI_CODING_AGENT_DIR", "/nonexistent-melian-test");
+		vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+
+		const { models: collection, plan } = await reviewModels({}, loadedOf({}), [], {
+			...setup,
+			model: "anthropic/claude-sonnet-4-5",
+		});
+		const triage = await fallbackDecider({ ...defaultConfig, models: plan.routes() }, collection);
+
+		expect(triage).toMatchObject({ model: "anthropic/claude-sonnet-4-5" });
+	});
+});
+
+describe("decisionProviderRefusal", () => {
+	it("prints the provider's control characters as visible text", () => {
+		const config = {
+			...defaultConfig,
+			decisions: { ...defaultConfig.decisions, provider: "evil\u001b[31m\nforged" },
+		};
+
+		const refusal = decisionProviderRefusal(config);
+
+		expect(refusal).toContain("decisions.provider to evil\\u001b[31m\\u000aforged,");
+		expect(refusal).not.toMatch(/[\u001b\n]/);
+	});
+});
+
+describe("triageProviders", () => {
+	it("names the providers of every routed lens tier, which the fallback may ask", async () => {
+		const routedTiers = loadedOf({
+			light: { model: "openai/gpt-5.5" },
+			heavy: { model: "anthropic/claude-opus-5-5" },
+		});
+		const { plan } = await reviewModels({}, routedTiers, [], {
+			...setup,
+			credentials: [
+				{ name: "o", provider: "openai", type: "api_key", value: { kind: "literal", key: "sk-o" }, file: "f" },
+				{
+					name: "a",
+					provider: "anthropic",
+					type: "api_key",
+					value: { kind: "literal", key: "sk-a" },
+					file: "f",
+				},
+			],
+		});
+		expect(triageProviders(plan)).toEqual(["openai", "anthropic"]);
+	});
+});
+
+describe("the triage model", () => {
+	const fake = createFakeModels({ models: [{ id: "light" }, { id: "medium" }, { id: "heavy" }] });
+	const route = (id: string) => ({ model: `${fake.ref(id).provider}/${id}` });
+	const choose = (models: MelianConfig["models"]) => fallbackDecider({ ...defaultConfig, models }, fake.review);
+
+	it("triages on the cheapest routed tier with credentials, passing over unrouted and uncredentialed ones", async () => {
+		const model = (id: string) => `${fake.ref(id).provider}/${id}`;
+		const all = { light: route("light"), medium: route("medium"), heavy: route("heavy") };
+		expect(await choose(all)).toMatchObject({ model: model("light") });
+		expect(await choose({ medium: route("medium"), heavy: route("heavy") })).toMatchObject({
+			model: model("medium"),
+		});
+		// A model the collection does not know is passed over, as one it knows without credentials is.
+		expect(await choose({ light: { model: "nowhere/light" }, heavy: route("heavy") })).toMatchObject({
+			model: model("heavy"),
+		});
+		const locked = fake.withoutCredentials("locked-light");
+		expect(
+			await choose({ light: { model: `${locked.provider}/${locked.modelId}` }, heavy: route("heavy") }),
+		).toMatchObject({
+			model: model("heavy"),
+		});
+	});
+
+	it("passes over a tier whose route cannot be read, rather than stop the review", async () => {
+		const chosen = await choose({ light: { model: "claude-haiku" }, medium: route("medium") });
+		expect(chosen).toMatchObject({ model: `${fake.ref("medium").provider}/medium` });
+	});
+
+	it("says why no decider runs when no tier reaches a model", async () => {
+		const chosen = await choose({ light: { model: "claude-haiku" }, medium: { model: "nowhere/medium" } });
+		expect(chosen).toEqual({
+			skipped:
+				'no lens tier reaches a model for the LLM fallback: models.light: "claude-haiku" is not provider/model-id; no model of medium has credentials; heavy is not routed',
+		});
+	});
+});
+
+describe("Triage", () => {
+	const decider: Decider = { name: "fake", calibrated: false, decide: async () => ({ answers: [] }) };
+	let dir: string | undefined;
+	afterEach(() => {
+		if (dir !== undefined) rmSync(dir, { recursive: true, force: true });
+		dir = undefined;
+	});
+
+	async function opened(options: { scripted: boolean; decide: typeof fallbackDecider }) {
+		dir = mkdtempSync(join(tmpdir(), "melian-triage-"));
+		const marker = join(dir, "unlocked");
+		const lensMarker = join(dir, "lens-unlocked");
+		const loaded = loadedOf({
+			light: { model: "openai/gpt-5.5" },
+			heavy: { model: "anthropic/claude-opus-5-5" },
+		});
+		const lenses = (await Lens.load(process.cwd(), { kind: "worktree" }, ["src/user.ts"])).filter(
+			(lens) => lens.name === "correctness",
+		);
+		const { models, plan } = await reviewModels({}, loaded, lenses, {
+			...setup,
+			credentials: [
+				{
+					name: "vault",
+					provider: "openai",
+					type: "api_key",
+					value: { kind: "command", command: `touch ${marker}; echo sk-key` },
+					file: "f",
+				},
+				{
+					name: "lens-vault",
+					provider: "anthropic",
+					type: "api_key",
+					value: { kind: "command", command: `touch ${lensMarker}; echo sk-key` },
+					file: "f",
+				},
+			],
+		});
+		const triage = await Triage.create({ ...options, config: loaded.config, plan, models });
+		return { triage, marker, lensMarker, plan };
+	}
+
+	it("hands the decider to the harness and the review, and unlocks the providers triage may ask", async () => {
+		const configs: MelianConfig[] = [];
+		const { triage, marker, plan } = await opened({
+			scripted: false,
+			decide: async (config) => {
+				configs.push(config);
+				return { decider, model: "fake" };
+			},
+		});
+
+		expect(triage.harnessOptions()).toEqual({ decider });
+		expect(triage.reviewOptions()).toEqual({ decider });
+		expect(existsSync(marker)).toBe(true);
+		expect(configs[0]!.models).toEqual(plan.routes());
+	});
+
+	it("says why triage did not run to the review, and gives the harness no decider", async () => {
+		const { triage } = await opened({ scripted: false, decide: async () => ({ skipped: "no model" }) });
+
+		expect(triage.harnessOptions()).toEqual({});
+		expect(triage.reviewOptions()).toEqual({ triageSkipped: "no model" });
+	});
+
+	it("triages nothing and unlocks the lens and verifier providers under a script", async () => {
+		const decide = vi.fn(async () => ({ decider, model: "fake" }));
+		const { triage, marker, lensMarker, plan } = await opened({ scripted: true, decide });
+
+		expect(plan.lenses).toHaveLength(1);
+		expect(plan.providers()).toEqual(["anthropic", "openai"]);
+		expect(triage.harnessOptions()).toEqual({});
+		expect(triage.reviewOptions()).toEqual({});
+		expect(existsSync(lensMarker)).toBe(true);
+		expect(existsSync(marker)).toBe(true);
+		expect(decide).not.toHaveBeenCalled();
+	});
+});
+
+describe("command bearer validation", { timeout: 60_000 }, () => {
+	it.each(["disabled", "no paths"])("accepts a script naming a lens with %s", async (skipped) => {
+		const golden = loadGoldens().find((entry) => entry.name === "clean-rename")!;
+		const { repo } = buildGoldenRepository(golden);
+		const xdg = mkdtempSync(join(tmpdir(), "melian-script-lenses-"));
+		try {
+			const script = join(xdg, "script.json");
+			writeFileSync(script, JSON.stringify({ correctness: [{ text: "Done." }] }));
+			writeFileSync(
+				join(repo, "melian.yaml"),
+				`tiers:\n  full: [guardrails, lens.correctness]\nchecks:\n  allowSkip: [lens.correctness]\nlenses:\n  correctness: ${skipped === "disabled" ? "{ enabled: false }" : '{ paths: ["never/**"] }'}\n`,
+			);
+			const stdout = vi.fn();
+			const stderr = vi.fn();
+			const status = await main(["review", "main"], {
+				cwd: repo,
+				env: { XDG_CONFIG_HOME: xdg, MELIAN_STATE_DIR: xdg, MELIAN_TEST_SCRIPT: script },
+				color: false,
+				stdout,
+				stderr,
+			});
+			expect(status, stderr.mock.calls.flat().join("")).toBe(0);
+			expect(stdout.mock.calls.flat().join("")).toContain("passed");
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+			rmSync(xdg, { recursive: true, force: true });
+		}
+	});
+
+	it.each(["disabled", "no paths"])(
+		"reviews with every lens %s without unlocking a failing credential",
+		async (skipped) => {
+			const golden = loadGoldens().find((entry) => entry.name === "clean-rename")!;
+			const { repo } = buildGoldenRepository(golden);
+			const xdg = mkdtempSync(join(tmpdir(), "melian-no-lenses-"));
+			let fake: FakeModels | undefined;
+			try {
+				const marker = join(xdg, "ran");
+				mkdirSync(join(xdg, "melian"));
+				writeFileSync(
+					join(xdg, "melian", "secrets.yaml"),
+					`credentials:\n  vault: { provider: fake-idle, command: "touch ${marker}; exit 1" }\n`,
+					{ mode: 0o600 },
+				);
+				writeFileSync(
+					join(repo, "melian.yaml"),
+					`models:\n  heavy: { model: fake-idle/heavy }\ntiers:\n  full: [guardrails, lens.correctness]\nchecks:\n  allowSkip: [lens.correctness]\nlenses:\n  correctness: ${skipped === "disabled" ? "{ enabled: false }" : '{ paths: ["never/**"] }'}\n`,
+				);
+				vi.spyOn(pipeline, "createReviewModels").mockImplementation((options) => {
+					fake = createFakeModels({
+						provider: "fake-idle",
+						models: [{ id: "heavy" }],
+						credentials: options?.credentials ?? [],
+					});
+					return fake.review;
+				});
+				const stdout = vi.fn();
+				const stderr = vi.fn();
+				const status = await main(["review", "main"], {
+					cwd: repo,
+					env: { XDG_CONFIG_HOME: xdg, MELIAN_STATE_DIR: xdg },
+					color: false,
+					stdout,
+					stderr,
+				});
+				expect(status, stderr.mock.calls.flat().join("")).toBe(0);
+				expect(existsSync(marker)).toBe(false);
+				expect(fake!.provider.state.callCount).toBe(0);
+				expect(stdout).toHaveBeenCalled();
+			} finally {
+				vi.restoreAllMocks();
+				rmSync(repo, { recursive: true, force: true });
+				rmSync(xdg, { recursive: true, force: true });
+			}
+		},
+	);
+
 	it("fails review before opening storage or calling a model when a command bearer expired, despite a usable Pi login", async () => {
 		const golden = loadGoldens().find((entry) => entry.name === "clean-rename")!;
 		const { repo } = buildGoldenRepository(golden);

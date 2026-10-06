@@ -108,14 +108,11 @@ function wrote(author: Author, login: string): boolean {
 	return own.replace(/\[bot\]$/, "") === wanted.replace(/\[bot\]$/, "");
 }
 
-// The bots Melian names, by bare login.
 const botNames: Readonly<Record<string, ExternalReviewer["name"]>> = {
 	coderabbitai: "coderabbit",
 	"copilot-pull-request-reviewer": "copilot",
 };
 
-// The reviewer an author is: CodeRabbit's and Copilot's bots by name, and anyone else a human kept by login, as REST
-// spells it.
 function reviewerOf(author: NonNullable<Author>): ExternalReviewer {
 	const bot = author.__typename === "Bot";
 	const bare = author.login.replace(/\[bot\]$/i, "");
@@ -162,12 +159,13 @@ export class ReviewThreadImporter implements ExternalImporter {
 	}
 
 	/**
-	 * An importer for one pull request's threads by `options.login`. Any login other than CodeRabbit's names a `human`
-	 * reviewer, kept by login. Throws {@link GitHubError} `failed` for a login GitHub could not hold.
+	 * An importer for one pull request's threads by `options.login`. CodeRabbit's and Copilot's bots are named
+	 * `coderabbit` and `copilot`. Other authors name a `human` reviewer, kept by login.
+	 * Throws {@link GitHubError} `failed` for a login GitHub could not hold.
 	 */
 	static open(options: ReviewThreadImporterOptions): ReviewThreadImporter {
 		const login = options.login ?? coderabbitLogin;
-		if (!/^[A-Za-z0-9][A-Za-z0-9-]*(\[bot\])?$/.test(login)) {
+		if (!/^[A-Za-z0-9][A-Za-z0-9_-]*(\[bot\])?$/.test(login)) {
 			throw new GitHubError("failed", `${JSON.stringify(login)} is not a GitHub login`);
 		}
 		return new ReviewThreadImporter({ ...options, login });
@@ -183,7 +181,13 @@ export class ReviewThreadImporter implements ExternalImporter {
 		const findings: ExternalFinding[] = [];
 		await this.pages<ThreadsPage>(threadsQuery, (page) => {
 			const pullRequest = this.found(page.repository?.pullRequest);
-			head = pullRequest.headRefOid;
+			if (head !== undefined && head !== pullRequest.headRefOid) {
+				throw new GitHubError(
+					"failed",
+					`pull request #${this.pullRequest} in ${this.owner}/${this.repo} moved while reading review threads; run compare again`,
+				);
+			}
+			head ??= pullRequest.headRefOid;
 			for (const thread of pullRequest.reviewThreads.nodes) {
 				const [first] = thread.comments.nodes;
 				if (first !== undefined && wrote(first.author, this.login)) findings.push(this.finding(thread, first));
@@ -221,11 +225,21 @@ export class ReviewThreadImporter implements ExternalImporter {
 		const sameSide = thread.startDiffSide === null || thread.startDiffSide === thread.diffSide;
 		const start = !sameSide ? null : placed ? thread.startLine : thread.originalStartLine;
 		const reviewer = reviewerOf(comment.author!);
-		// CodeRabbit opens with a line naming its category and severity, then its headline on the next line that is not
-		// blank. Melian selects the lines and parses no markdown.
 		const lines = comment.body.split(/\r?\n/).filter((each) => each.trim() !== "");
 		const rabbit = reviewer.name === "coderabbit" && lines.length > 1;
-		const title = rabbit ? lines[1]! : comment.body.trim() === "" ? "(empty comment)" : comment.body;
+		let title = rabbit ? lines[1]! : comment.body.trim() === "" ? "(empty comment)" : comment.body;
+		if (rabbit) {
+			// CodeRabbit can put collapsed evidence before the headline.
+			let depth = 0;
+			for (const line of lines.slice(1)) {
+				const inside = depth > 0;
+				const tags = [...line.matchAll(/<\/?details\b[^>]*>/gi)];
+				for (const [tag] of tags) depth = tag.startsWith("</") ? Math.max(0, depth - 1) : depth + 1;
+				if (inside || tags.length > 0) continue;
+				title = line.trim().replace(/^\*\*(.*)\*\*$/, "$1");
+				break;
+			}
+		}
 		return ExternalFinding.create({
 			reviewer,
 			file: thread.path,
@@ -256,7 +270,6 @@ export class ReviewThreadImporter implements ExternalImporter {
 		return pullRequest;
 	}
 
-	// Runs `query` page by page until GitHub says there is no next page.
 	private async pages<T>(query: string, read: (page: T) => PageInfo): Promise<void> {
 		let after: string | null = null;
 		for (let count = 0; count < maxPages; count++) {

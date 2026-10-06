@@ -1,0 +1,3 @@
+Fixed the Codex recommendation overflow from the eleventh Melian round on [pull request #68](https://github.com/melian-agent/melian/pull/68). A valid 65,536-character body failed import after its recommendation was appended. The importer now bounds the combined text before stored-shape validation, keeping 65,535 code points and an ellipsis when it overflows.
+
+Both new regressions failed on the original code with `invalidFile`. They cover ASCII and astral characters, accepting an exact-limit combined body intact and cutting overflow at a code-point boundary. No schema limit or design decision changed.

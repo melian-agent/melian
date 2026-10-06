@@ -6,10 +6,10 @@ import {
 	Lens,
 	loadConfig,
 	loadSecrets,
-	loadStandards,
 	Rendering,
 	type RepositorySource,
 	ReviewPlan,
+	Standards,
 	userFiles,
 	type Verdict,
 	visibleText,
@@ -28,11 +28,17 @@ import {
 	recordDismissal,
 	reviewChangeset,
 	revisionKey,
-	runChecks,
 	summarizeReview,
-	unlockCredentials,
 } from "@melian-agent/pipeline";
-import { idleModels, isScripted, reviewModels, scriptVariable } from "./models.ts";
+import {
+	decisionProviderRefusal,
+	type fallbackDecider,
+	idleModels,
+	isScripted,
+	reviewModels,
+	scriptVariable,
+	Triage,
+} from "./models.ts";
 import { CliError, git, openStorage, storagePath } from "./repository.ts";
 import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
 
@@ -46,6 +52,8 @@ export interface Io {
 	readonly color: boolean;
 	/** The path the shell ran `melian` from, which `doctor` reports. */
 	readonly executable?: string;
+	/** A seam for tests: the decider triage asks, in place of the LLM fallback, which scripted mode never triages with. */
+	readonly decide?: typeof fallbackDecider;
 }
 
 /**
@@ -110,48 +118,56 @@ export async function review(
 	const { repoRoot } = changeset;
 	const paths = changeset.revision.paths();
 	const lenses = await Lens.load(repoRoot, source, paths);
-	const standards = await loadStandards(repoRoot, source, ".");
+	const standardsSource =
+		source.kind === "revision" ? source : ({ kind: "revision", commit: changeset.revision.head } as const);
+	const standards = await Standards.load(repoRoot, standardsSource, paths);
 	const policy = await loadConfig(repoRoot, source, ".");
 	const { config: loaded } = policy;
 	const tier = loaded.stages["pull-request"] ?? "full";
 	const secrets = await loadSecrets(repoRoot, userFiles(io.env).secrets);
 	for (const warning of secrets.warnings) io.stderr(`melian: ${warning}\n`);
+	const refusal = decisionProviderRefusal(loaded);
+	if (refusal !== undefined) throw new CliError(refusal);
 	const { models, plan, retry } = await reviewModels(io.env, policy, lenses, {
 		model: options.model,
 		checks: checksOfTier(loaded, tier),
 		credentials: secrets.credentials,
 	});
 	for (const line of plan.summary().split("\n").filter(Boolean)) io.stderr(`melian: ${line}\n`);
+	const selected = new Set(Lens.select(lenses, loaded, paths).map(({ lens }) => `${lens.name}\0${lens.scope}`));
+	const credentialPlan = plan.toJSON();
+	credentialPlan.lenses = credentialPlan.lenses.filter((lens) => selected.has(`${lens.name}\0${lens.scope ?? ""}`));
 	// A command a secrets file names runs now, so one that fails stops the review before it starts, named.
-	await unlockCredentials(models, plan.providers());
+	const triage = await Triage.create({
+		scripted: isScripted(io.env) && io.decide === undefined,
+		config: loaded,
+		plan: ReviewPlan.from(credentialPlan),
+		models,
+		...(io.decide === undefined ? {} : { decide: io.decide }),
+	});
 	const path = await storagePath(repoRoot, changeset.id, io.env, isScripted(io.env));
 	// Without the publish extension, so a publication a crash interrupted waits for melian publish rather than posting
 	// from a review.
-	const reviewHarness = await openReviewHarness(await openStorage(path), models, { retry, checkout: repoRoot });
+	const reviewHarness = await openReviewHarness(await openStorage(path), models, {
+		retry,
+		checkout: repoRoot,
+		...triage.harnessOptions(),
+	});
 	const { harness } = reviewHarness;
 	try {
-		// The deterministic checks first, then the lenses: reviewChangeset reads the checks' records, and a check of the
-		// manifest without one makes the review not reviewed. The plan's routes reach only the lenses, so a different
-		// --model does not change the checks' run identity and run them again.
-		const rootConversationId = (await harness.root(context)).id;
-		const checks = await runChecks(
-			harness,
-			{ rootConversationId, changeset, config: loaded, source, tier, rerunFailed: options.rerun },
-			context,
-		);
 		let verdict: Verdict;
 		try {
 			({ verdict } = await reviewChangeset({
-				harness,
+				harness: reviewHarness,
 				changeset,
 				config: loaded,
 				lenses,
 				standards,
 				models,
 				plan,
+				...triage.reviewOptions(),
 				policy: source,
 				tier,
-				checks: checks.records,
 				rerun: options.rerun,
 				origin,
 			}));

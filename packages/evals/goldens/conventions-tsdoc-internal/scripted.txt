@@ -1,6 +1,7 @@
 src/receipt.ts
 
-  P3  line 11  quoted-rule-violation  (introduced, new, unresolved)
+  P3  line 11  quoted-rule-violation  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   add carries a TSDoc block, and it is internal to src/receipt.ts.
     What: add carries a TSDoc block, and it is internal to src/receipt.ts.
     Why here: AGENTS.md says "TSDoc only on exported package API. Nothing on internals.", and this change added the block.

@@ -14,7 +14,9 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { StoredVerdict } from "@melian-agent/core";
 import { buildGoldenRepository, loadGoldens } from "@melian-agent/evals";
-import { afterEach, describe, expect, it } from "vitest";
+import { ReviewThreadImporter } from "@melian-agent/github";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { compare } from "../src/compare.ts";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const bin = join(root, "packages/cli/bin/melian.js");
@@ -37,6 +39,7 @@ const gitEnv = {
 const cleanup: string[] = [];
 
 afterEach(() => {
+	vi.restoreAllMocks();
 	for (const path of cleanup.splice(0)) rmSync(path, { recursive: true, force: true });
 });
 
@@ -128,6 +131,36 @@ describe("melian compare", { timeout: 60_000 }, () => {
 		expect(lines[lines.indexOf("External only:") + 1]).toMatch(
 			/^ {2}[0-9a-f]{16} {2}codex {2}src\/user\.ts:1 {2}Interface is wide$/,
 		);
+	});
+
+	it("imports both files from repeated --from arguments and keeps both findings", () => {
+		const { repo, files, env, id } = reviewed();
+		const codex = codexFile(files, [codexFinding(8, "Null manager")]);
+		const claude = join(files, "claude.json");
+		writeFileSync(
+			claude,
+			JSON.stringify({
+				reviewer: { name: "claude-code" },
+				findings: [{ ref: "1", file: "src/user.ts", line: 30, title: "Somewhere else", body: "Another problem." }],
+			}),
+		);
+
+		const result = melian(repo, ["compare", range, "--from", `file:${codex}`, "--from", `file:${claude}`], env);
+
+		expect(result).toMatchObject({ status: 0, stderr: "" });
+		expect(result.stdout.split("\n").slice(0, 2)).toEqual([
+			`Imported 1 from file:${codex}.`,
+			`Imported 1 from file:${claude}.`,
+		]);
+		expect(result.stdout).toMatch(/^Compared 2 external findings with Melian's 1 at [0-9a-f]{12}\.$/m);
+		expect(result.stdout).toContain(`Matched:\n  ${id}\n`);
+		expect(result.stdout).toMatch(/^ {4}[0-9a-f]{16} {2}codex {2}src\/user\.ts:8$/m);
+		expect(result.stdout).toMatch(
+			/^External only:\n {2}[0-9a-f]{16} {2}claude-code {2}src\/user\.ts:30 {2}Somewhere else$/m,
+		);
+		const again = melian(repo, ["compare", range], env);
+		expect(again).toMatchObject({ status: 0, stderr: "" });
+		expect(again.stdout).toBe(result.stdout.split("\n").slice(2).join("\n"));
 	});
 
 	it("lists a Melian finding no reviewer raised, with its ID, severity, rule, and place", () => {
@@ -308,7 +341,7 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 			"Matched: 1 external finding, covering 1 Melian finding. External only: 1. Melian only: 0. Skipped review bodies: 1.",
 		);
 		expect(lines[lines.indexOf("External only:") + 1]).toMatch(
-			/^ {2}[0-9a-f]{16} {2}coderabbit {2}docs\/removed\.md:4 \(outdated\) {2}\*\*The heading names a command .* {2}\(read at 222222222222; match it by hand\)$/,
+			/^ {2}[0-9a-f]{16} {2}coderabbit {2}docs\/removed\.md:4 \(outdated\) {2}The heading names a command that no longer exists\. {2}\(read at 222222222222; match it by hand\)$/,
 		);
 		const missed = /^ {2}([0-9a-f]{16}) {2}coderabbit/m.exec(result.stdout)![1]!;
 		expect(
@@ -369,6 +402,38 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 			status: 0,
 			stderr: "",
 			stdout: expect.stringContaining(`correctness: #7 ${missed}`),
+		});
+	});
+
+	it("counts the review bodies skipped by every source the comparison holds, not only this run's", () => {
+		const { repo, env } = pullRequest();
+		expect(melian(repo, ["review", "#7"], env).status).toBe(1);
+		expect(melian(repo, ["compare", "#7"], env).stdout).toContain("Skipped review bodies: 1.");
+
+		const human = melian(repo, ["compare", "#7", "--from", "github:octocat"], env);
+
+		expect(human.stdout).toContain("Imported 1 from github:octocat, skipping 1 review body without a thread.");
+		expect(human.stdout).toContain("Skipped review bodies: 2.");
+	});
+
+	it("passes the repository, pull request and author to the thread importer", async () => {
+		const { repo, env } = pullRequest();
+		expect(melian(repo, ["review", "#7"], env).status).toBe(1);
+		const open = vi.spyOn(ReviewThreadImporter, "open");
+
+		expect(
+			await compare({ cwd: repo, env, color: false, stdout: () => {}, stderr: () => {} }, "#7", [
+				{ kind: "github", login: "octocat" },
+			]),
+		).toBe(0);
+
+		expect(open).toHaveBeenCalledExactlyOnceWith({
+			owner: "melian-agent",
+			repo: "example",
+			pullRequest: 7,
+			login: "octocat",
+			token: "scripted",
+			fetch: expect.any(Function),
 		});
 	});
 

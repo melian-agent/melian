@@ -1,0 +1,19 @@
+{
+  "file": "retry.ts",
+  "line": 3,
+  "rule": "wrong-result",
+  "severity": "P1",
+  "explanation": {
+    "what": "The new division may produce Infinity when attempts is zero.",
+    "why": "The changed path appears to allow this outcome.",
+    "fix": "Check the preventing code before accepting the claim."
+  },
+  "failureScenario": "allowance({attempts:0}) returns Infinity and callers receive an invalid retry allowance.",
+  "evidence": [
+    {
+      "file": "retry.ts",
+      "line": 3,
+      "role": "cause"
+    }
+  ]
+}

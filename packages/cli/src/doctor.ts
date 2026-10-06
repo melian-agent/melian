@@ -9,14 +9,16 @@ import {
 	loadConfig,
 	loadSecrets,
 	melianPaths,
+	StandardsInventory,
 	type StaticTool,
+	standardsLimits,
 	userFiles,
 	visibleText,
 } from "@melian-agent/core";
 import { parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
 import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSource } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
-import { reviewModels } from "./models.ts";
+import { decisionProviderRefusal, reviewModels } from "./models.ts";
 import { git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
 
 type Check = { readonly name: string; readonly state: "ok" | "warn" | "fail"; readonly detail: string };
@@ -115,7 +117,11 @@ async function planChecks(cwd: string, env: NodeJS.ProcessEnv, secrets: LoadedSe
 		const checks = Object.values(loaded.config.stages).flatMap((stage) => checksOfTier(loaded.config, stage));
 		const lenses = await Lens.load(root, source, ["."]);
 		const { plan } = await reviewModels({}, loaded, lenses, { checks, credentials: secrets.credentials });
-		return plan.lines().map(({ state, text }) => ({ name: "plan", state, detail: text }));
+		const refusal = decisionProviderRefusal(loaded.config);
+		return [
+			...(refusal === undefined ? [] : [{ name: "decisions", state: "fail", detail: refusal } satisfies Check]),
+			...plan.lines().map(({ state, text }): Check => ({ name: "plan", state, detail: text })),
+		];
 	} catch (error) {
 		return [{ name: "plan", state: "warn", detail: error instanceof Error ? error.message : String(error) }];
 	}
@@ -152,6 +158,41 @@ async function staticCheck(cwd: string): Promise<Check | undefined> {
 		state: sources.some((source) => source.from === "missing") ? "warn" : "ok",
 		detail: sources.map((source) => `${source.tool} from ${where[source.from]}`).join(", "),
 	};
+}
+
+async function standardsCheck(cwd: string): Promise<Check | undefined> {
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return undefined;
+	try {
+		const inventory = await StandardsInventory.inspect(root, { kind: "worktree" });
+		const limit = `${standardsLimits.fileBytes / 1024} KiB`;
+		const paths = inventory.entries
+			.slice(0, 10)
+			.map(
+				(entry) =>
+					`${visibleText(entry.path)}${"symlink" in entry ? " (symlink skipped)" : entry.oversized ? ` (over ${limit})` : ""}`,
+			);
+		const remaining = inventory.entries.slice(10);
+		const remainingFiles = remaining.filter((entry) => "bytes" in entry).length;
+		const remainingSymlinks = remaining.length - remainingFiles;
+		if (remainingFiles > 0) paths.push(`and ${remainingFiles} more${remainingSymlinks === 0 ? "" : " files"}`);
+		if (remainingSymlinks > 0)
+			paths.push(`${remainingSymlinks} more skipped symlink${remainingSymlinks === 1 ? "" : "s"}`);
+		const warnings = inventory.warnings();
+		const oversized = warnings.filter((entry) => "bytes" in entry).length;
+		const symlinks = warnings.length - oversized;
+		return {
+			name: "standards",
+			state: warnings.length === 0 ? "ok" : "warn",
+			detail: `${inventory.count()} file${inventory.count() === 1 ? "" : "s"}, ${inventory.bytes()} bytes${paths.length === 0 ? "" : `; ${paths.join(", ")}`}${oversized === 0 ? "" : `; ${oversized} over ${limit}`}${symlinks === 0 ? "" : `; ${symlinks} symlink${symlinks === 1 ? "" : "s"} skipped`}`,
+		};
+	} catch (error) {
+		return {
+			name: "standards",
+			state: "warn",
+			detail: visibleText(error instanceof Error ? error.message : String(error)),
+		};
+	}
 }
 
 // A melian the checkout provides runs code the change under review can rewrite.
@@ -237,6 +278,7 @@ export async function doctor(io: Io): Promise<number> {
 			await stateCheck(io.cwd, io.env),
 			await levelsCheck(io.cwd),
 			await staticCheck(io.cwd),
+			await standardsCheck(io.cwd),
 		].filter((check) => check !== undefined),
 		...(await planChecks(io.cwd, io.env, secrets)),
 	];

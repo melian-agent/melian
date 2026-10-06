@@ -16,6 +16,8 @@ import { melianPaths } from "./paths.ts";
 import type { DiffLines, Placement } from "./publication.ts";
 import { evidenceLines, messageContinuation, plural, prose, Rendering, severityColor, visibleText } from "./render.ts";
 
+import { type Verification, verificationSchema } from "./verification.ts";
+
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
 const line = Type.Integer({ minimum: 1 });
@@ -115,6 +117,7 @@ export const memberClaimSchema = Type.Object(
 		source: findingSourceSchema,
 		failureScenario: Type.Optional(text),
 		evidence: Type.Optional(findingEvidenceSchema),
+		verification: Type.Optional(verificationSchema),
 	},
 	strict,
 );
@@ -144,6 +147,7 @@ export const findingPropertiesSchema = Type.Object(
 		trigger: Type.Optional(findingTriggerSchema),
 		severity: severitySchema,
 		confidence: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
+		verification: Type.Optional(verificationSchema),
 		resolution: Type.Optional(resolutionSchema),
 		status: findingStatusSchema,
 		dismissal: Type.Optional(findingDismissalSchema),
@@ -282,6 +286,13 @@ export const reportFindingInputSchema = Type.Object(
 				description:
 					"The code the claim rests on, as locations, never prose. A finding outside the change is caused by it only when a cause location overlaps lines the change added, modified, or deleted, or names a file it renamed without editing, unless it only moved the finding's own file",
 			},
+		),
+		refuted: Type.Optional(
+			Type.String({
+				pattern: "^[0-9a-f]{16}$",
+				description:
+					"Only for a finding an earlier, quicker look reported that you were asked to check: its ID, as you were given it, when the code shows it is not a defect. Report it at the finding's file, lines, and rule, with failureScenario saying why it cannot fail and evidence holding the code that prevents it",
+			}),
 		),
 	},
 	strict,
@@ -669,6 +680,8 @@ export interface FindingInput {
 	readonly trigger?: FindingTrigger;
 	readonly severity: Severity;
 	readonly confidence?: number;
+	/** The verifier judgement; never changes identity or severity. */
+	readonly verification?: Verification;
 	/** What the finding requires. Only adjudication sets it; a producer leaves it out, and the finding is unresolved. */
 	readonly resolution?: Resolution;
 	/** Defaults to `new`. */
@@ -805,6 +818,7 @@ export class Finding {
 				trigger,
 				severity: input.severity,
 				confidence: input.confidence,
+				verification: input.verification,
 				resolution: input.resolution,
 				status: input.status ?? "new",
 				explanation: input.explanation,
@@ -1012,7 +1026,8 @@ export class Finding {
 	 */
 	render(rendering: Rendering = new Rendering()): string {
 		const { ids } = rendering;
-		const { severity, cause, evidence, failureScenario, status, explanation, resolution, id } = this.properties;
+		const { severity, cause, evidence, failureScenario, status, explanation, resolution, id, verification, source } =
+			this.properties;
 		// The other reports of its defect: those adjudication merged into it, which a dismissal of it dismisses too, and
 		// the dismissed ones it lists beside it.
 		const reports = (this.properties.alsoReportedAs ?? []).map((other) => {
@@ -1025,8 +1040,16 @@ export class Finding {
 				? `line ${region.startLine}`
 				: `lines ${region.startLine}-${region.endLine}`;
 		return [
-			`  ${rendering.paint(severityColor[severity], severity)}  ${lines}  ${visibleText(this.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"})${ids ? `  ${visibleText(id)}` : ""}`,
+			`  ${rendering.paint(severityColor[severity], severity)}  ${lines}  ${visibleText(this.ruleId)}  (${cause}, ${status}, ${resolution ?? "unresolved"}${verification === undefined ? (source.check.startsWith("lens.") ? ", unverified" : "") : `, ${verification.verdict}`})${ids ? `  ${visibleText(id)}` : ""}`,
 			...reports,
+			...(verification === undefined
+				? []
+				: [
+						`    Verified: ${visibleText(verification.model)}: ${prose(verification.reason, "      ")}`,
+						...(verification.correction === undefined
+							? []
+							: [`    Correction: ${prose(verification.correction, "      ")}`]),
+					]),
 			...this.#dismissals(),
 			`  ${prose(this.message.text, messageContinuation)}`,
 			`    What: ${prose(explanation.what, "      ")}`,
@@ -1079,7 +1102,11 @@ export class Finding {
 
 	/** The finding's own failure scenario and evidence, as a finding it merges into keeps them; none without either. */
 	claims(): MemberClaim[] {
-		const { id, source, failureScenario, evidence } = this.properties;
+		const { id, source, failureScenario, evidence, verification } = this.properties;
+		const original = this.properties.otherClaims?.find(
+			(claim) => claim.id === id && claim.source.check === source.check && claim.source.version === source.version,
+		);
+		if (original !== undefined) return [original];
 		if (failureScenario === undefined && evidence === undefined) return [];
 		return [
 			{
@@ -1088,6 +1115,7 @@ export class Finding {
 				source,
 				...(failureScenario === undefined ? {} : { failureScenario }),
 				...(evidence === undefined ? {} : { evidence }),
+				...(verification === undefined ? {} : { verification }),
 			},
 		];
 	}
@@ -1104,7 +1132,7 @@ export class Finding {
 	 */
 	mergeClaims(
 		members: readonly Finding[],
-	): Pick<FindingProperties, "cause" | "evidence" | "failureScenario" | "otherClaims"> {
+	): Pick<FindingProperties, "cause" | "evidence" | "failureScenario" | "otherClaims" | "verification"> {
 		if (!members.includes(this)) throw new RangeError("mergeClaims needs the speaker among the members");
 		const best = Math.min(...members.map((member) => member.causeRank()));
 		const prover =
@@ -1122,7 +1150,24 @@ export class Finding {
 				.filter((member) => member !== this)
 				.flatMap((member) => [...member.claims(), ...(member.properties.otherClaims ?? [])]),
 		];
+		const rank = { confirmed: 0, plausible: 1, refuted: 2 };
+		const verification = [...members.flatMap((member) => member.claims()), ...otherClaims]
+			.flatMap((claim) => (claim.verification === undefined ? [] : [claim.verification]))
+			.sort((left, right) => rank[left.verdict] - rank[right.verdict])[0];
+		if (JSON.stringify(verification) !== JSON.stringify(this.claims()[0]?.verification) || proof.length > 0) {
+			for (const claim of this.claims())
+				if (
+					!otherClaims.some(
+						(each) =>
+							each.id === claim.id &&
+							each.source.check === claim.source.check &&
+							each.source.version === claim.source.version,
+					)
+				)
+					otherClaims.unshift(claim);
+		}
 		return {
+			...(verification === undefined ? {} : { verification }),
 			cause: (["introduced", "affected", "pre-existing"] as const)[best]!,
 			...(evidence === undefined ? {} : { evidence }),
 			...(failureScenario === undefined ? {} : { failureScenario }),

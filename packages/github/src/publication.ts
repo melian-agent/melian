@@ -195,7 +195,22 @@ export class ReviewComment {
 				: placement.kind === "nearest"
 					? [`This finding is at ${link}, outside the diff, so it is anchored to the nearest changed line.`, ""]
 					: [];
-		return [marker(revision, "finding", id, context.secret), ...where, ...this.#text(context)].join("\n");
+		const verification = finding.properties.verification;
+		const judged =
+			verification === undefined
+				? finding.properties.source.check.startsWith("lens.")
+					? ["Verification: unverified", ""]
+					: []
+				: [
+						`Verification: **${verification.verdict}**`,
+						"",
+						`**Verified:** ${code(verification.model)}: ${renderProse(verification.reason)}`,
+						"",
+						...(verification.correction === undefined
+							? []
+							: [`**Correction:** ${renderProse(verification.correction)}`, ""]),
+					];
+		return [marker(revision, "finding", id, context.secret), ...where, ...judged, ...this.#text(context)].join("\n");
 	}
 
 	#text(context: CommentContext): string[] {
@@ -263,7 +278,13 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 			: []),
 		...(verdict.dismissed.length > 0 ? [`${plural(verdict.dismissed.length, "dismissed finding")} not shown.`] : []),
 	];
-	parts.push(summary.join(" "));
+	parts.push(
+		summary.join(" ") +
+			(verdict.all().some((finding) => finding.properties.verification !== undefined) ||
+			[...(verdict.ran ?? []), ...verdict.notRun].some((check) => check.name === "verifier")
+				? ` Verification: ${verdict.verificationSummary()}; ${plural(verdict.refuted?.length ?? 0, "refuted finding")} not posted.`
+				: ""),
+	);
 	// A check off the committed routes ran under a maintainer's own choice, so it leads, before anything else said.
 	const routed = [...(verdict.ran ?? []), ...verdict.notRun].flatMap(({ name, lineage }) =>
 		lineage === undefined ? [] : [`- ${code(name)} ${inline(describeLineage(lineage))}`],
@@ -271,7 +292,8 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	if (routed.length > 0) parts.push(["Checks that left the committed routes:", "", ...routed].join("\n"));
 	if (verdict.notRun.length > 0) {
 		const checks = verdict.notRun.map(({ name, status: ran, reason, budgetEnded }) => {
-			const why = reason ?? (budgetEnded === undefined ? undefined : describeBudgetEnd(budgetEnded));
+			const ended = budgetEnded === undefined ? [] : [describeBudgetEnd(budgetEnded)];
+			const why = [...ended, ...(reason === undefined ? [] : [reason])].join("; ") || undefined;
 			return `- ${code(name)} ${ran}${why === undefined ? "" : `: ${inline(why)}`}`;
 		});
 		parts.push(["Checks that did not run:", "", ...checks].join("\n"));

@@ -11,14 +11,15 @@ import {
 	type LensBudget,
 	loadConfig,
 	type MelianConfig,
-	ModelRoutingError,
 	maxEvidenceLocations,
 	maxFailureScenarioLength,
 	maxSnippetBytes,
+	Rendering,
 	type RepositorySource,
 	type Verdict,
 } from "@melian-agent/core";
 import {
+	ChangePrompt,
 	backgroundContext as context,
 	createMemoryStorage,
 	createRegistry,
@@ -258,7 +259,8 @@ describe("reviewChangeset", () => {
 				trigger: { file: "src/user.ts", index: 0, snippet: "\treturn user.manager.name;" },
 				severity: "P1",
 				status: "new",
-				source: { check: "lens.correctness", version: correctnessLens!.version },
+				// The level joins the lens's version, so a run at another level is another producer.
+				source: { check: "lens.correctness", version: `${correctnessLens!.version}@careful` },
 				explanation: { whatToDo: nullDeref.explanation.fix },
 			},
 		});
@@ -279,7 +281,7 @@ describe("reviewChangeset", () => {
 		]);
 		expect(requests[contracts]).toHaveLength(1);
 		// Three correctness requests and one contracts request; the orchestrating conversation's model is never asked.
-		expect(fake.provider.state.callCount).toBe(4);
+		expect(fake.provider.state.callCount).toBe(6);
 	});
 
 	it("puts the injection policy first and every piece of head content inside a nonce boundary", async () => {
@@ -842,6 +844,20 @@ describe("reviewChangeset", () => {
 		expect(quoted(head!, nonce, "file")).toEqual(["7\t\treturn user.manager.name;"]);
 	});
 
+	it("marks a truncated change prompt by whether the reader has read_file", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		const big = lines(...Array.from({ length: 4000 }, (_, index) => `export const value${index} = ${index};`));
+		repo = baseAndHead({ "src/seed.ts": lines("export {};") }, { "src/a.ts": big, "src/b.ts": big });
+		const prompt = new ChangePrompt(await Changeset.resolve(repo, "main...feature"), "nonce");
+
+		const withTools = prompt.render();
+		const withoutTools = prompt.render(undefined, { tools: false });
+
+		expect(withTools).toContain("[The diff continues; read the remaining files with read_file.]");
+		expect(withoutTools).toContain("[The diff continues; the remaining files are omitted.]");
+		expect(withoutTools).not.toContain("read_file");
+	});
+
 	it("calls a finding affected when a cause location names a file the change renamed without editing", async () => {
 		rmSync(repo, { recursive: true, force: true });
 		repo = baseAndHead(
@@ -1095,7 +1111,7 @@ describe("reviewChangeset", () => {
 			expect(toolResults(requests[lens]![1]!)[0]).toMatch(/^recorded finding/);
 		}
 		expect(findings).toHaveLength(1);
-		const version = (name: string) => shared.find((lens) => lens.name === name)!.version;
+		const version = (name: string) => `${shared.find((lens) => lens.name === name)!.version}@careful`;
 		expect(findings[0]!.properties).toMatchObject({
 			severity: "P1",
 			source: { check: "lens.contracts" },
@@ -1317,7 +1333,7 @@ describe("reviewChangeset", () => {
 			}
 		});
 
-		it("keeps the note on a lens its budget ended when its level counts it as run, and never on an ended record", async () => {
+		it("keeps the note on a lens its budget ended, counted as run or ended, after the budget's description", async () => {
 			writeFiles(
 				repo,
 				Object.fromEntries(
@@ -1364,8 +1380,15 @@ describe("reviewChangeset", () => {
 					});
 				} else {
 					const record = verdict.notRun.find((check) => check.name === "lens.correctness");
-					expect(record).toMatchObject({ status: "ended", budgetEnded: { budget: "tokens", limit: 1 } });
-					expect(record?.reason).toBeUndefined();
+					expect(record).toMatchObject({
+						status: "ended",
+						budgetEnded: { budget: "tokens", limit: 1 },
+						reason: note,
+					});
+					// The description of the budget's end comes first, and the note never replaces it.
+					expect(verdict.render(new Rendering())).toMatch(
+						/lens\.correctness {2}ended at careful: its token budget .*; kept the defects/,
+					);
 				}
 			}
 		});
@@ -1892,8 +1915,13 @@ describe("reviewChangeset", () => {
 		expect(toolResults(requests[correctness]![2]!).at(-1)).toContain("budget reached");
 	});
 
-	it("refuses a tier with no model, or none with credentials", async () => {
-		await expect(review({ config: { ...config, models: {} } })).rejects.toThrow(ModelRoutingError);
+	it("refuses a lens whose band holds no level on a tier with a model, or none with credentials", async () => {
+		const error = await review({ config: { ...config, models: {} } }).catch((caught: unknown) => caught);
+		expect(error).toMatchObject({ code: "noAvailableModel", lenses: ["contracts"] });
+		expect((error as Error).message).toMatch(
+			/^lens contracts may run from quick to deep, and no level there can run: quick runs on medium, and no model is configured for the medium tier/,
+		);
+		expect(fake.provider.state.callCount).toBe(0);
 		const unknown = { ...config, models: { heavy: { model: "nowhere/opus", fallbacks: ["faux/missing"] } } };
 		await expect(review({ config: unknown })).rejects.toMatchObject({ code: "noAvailableModel" });
 	});
@@ -2049,32 +2077,37 @@ describe("adjudication", () => {
 		expect(verdict.findings.advisory).toHaveLength(1);
 	});
 
-	it("fails the review, rather than wait, when the policy cannot be read", async () => {
-		scriptConversations(fake, [
-			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
-			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
-		]);
+	it("refuses a review whose policy cannot be read before any lens runs, since the policy bounds each lens's level", async () => {
 		const missing = { kind: "revision", commit: "0".repeat(40) } as const;
 
 		const error = await reviewed({ policy: missing }).catch((caught: unknown) => caught);
 
-		expect(error).toMatchObject({ code: "adjudicationFailed" });
-		expect((error as ReviewError).findings).toHaveLength(1);
+		expect(error).toMatchObject({ code: "unknownCommit" });
+		expect(fake.provider.state.callCount).toBe(0);
 		expect(await readVerdict(harness, await rootId(), revision(), context)).toBeUndefined();
 	});
 
-	it("runs a failed adjudication again on the next call, so a policy fixed since then decides", async () => {
-		writeFiles(repo, { "src/melian.yaml": "resolution: [" });
+	it("fails the review, rather than wait, when adjudication cannot read a finding's policy, and decides again once it can", async () => {
+		// A static finding in a file the change leaves alone, whose folder's policy no lens reads.
+		writeFiles(repo, { "lib/melian.yaml": "resolution: [" });
+		const root = await harness.root(context);
+		const legacy = Finding.create({ ...staticFinding, file: "lib/legacy.ts", cause: "pre-existing" });
+		await root.commit((tx) => upsertFinding(tx, root.id, legacy, revision()), context);
 		scriptConversations(fake, [
 			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
 			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
 		]);
-		await expect(reviewed({ policy: { kind: "worktree" } })).rejects.toMatchObject({ code: "adjudicationFailed" });
-		writeFiles(repo, { "src/melian.yaml": lines("resolution:", "  P1: advisory") });
+		const error = await reviewed({ policy: { kind: "worktree" } }).catch((caught: unknown) => caught);
+		expect(error).toMatchObject({ code: "adjudicationFailed" });
+		expect((error as ReviewError).findings).toHaveLength(2);
+		expect(await readVerdict(harness, await rootId(), revision(), context)).toBeUndefined();
+		// A pre-existing finding never resolves above advisory, so only silent shows that the fixed policy decided.
+		writeFiles(repo, { "lib/melian.yaml": lines("resolution:", "  P0: silent") });
 
 		const { verdict } = await reviewed({ policy: { kind: "worktree" } });
 
-		expect(verdict).toMatchObject({ status: "findings", blocking: false });
+		expect(verdict).toMatchObject({ status: "findings", blocking: true });
+		expect(verdict.findings.silent.map((finding) => finding.properties.path)).toEqual(["lib/legacy.ts"]);
 		expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
 	});
 

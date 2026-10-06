@@ -1,6 +1,7 @@
 src/standards.ts
 
-  P2  line 9  dropped-error-path  (introduced, new, unresolved)
+  P2  line 9  dropped-error-path  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   readStandards returns undefined for any error, so a standard that exists but cannot be read is treated as absent.
     What: readStandards returns undefined for any error, so a standard that exists but cannot be read is treated as absent.
     Why here: This change replaced the catch that returned undefined only for ENOENT and rethrew the rest with one that swallows everything.
