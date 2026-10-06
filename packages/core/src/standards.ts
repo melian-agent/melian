@@ -187,13 +187,13 @@ class StandardsLoader implements SourceReader {
 		const expanded = new Set<string>();
 		let total = 0;
 		const counted = new Set<string>();
-		const read = async (file: string, directory: string): Promise<string | undefined> => {
+		const read = async (file: string, rootCarrier: boolean): Promise<string | undefined> => {
 			let content: string | undefined;
 			try {
 				content = await skippingSymlinks(this.readText(file, standardsLimits.fileBytes));
 			} catch (error) {
 				if (!omitOversized || !(error instanceof StandardsError) || error.code !== "tooLarge") throw error;
-				if (directory === "") rootErrors.push(error);
+				if (rootCarrier) rootErrors.push(error);
 				else oversized.push(file);
 				return undefined;
 			}
@@ -213,7 +213,7 @@ class StandardsLoader implements SourceReader {
 			for (const file of await standardsFiles(this, directory)) {
 				// A file already imported from a nearer directory keeps that position, but its own imports still apply.
 				if (expanded.has(file)) continue;
-				const content = await read(file, directory);
+				const content = await read(file, directory === "");
 				if (content === undefined) continue;
 				expanded.add(file);
 				const found = imports(content);
@@ -231,7 +231,7 @@ class StandardsLoader implements SourceReader {
 					}
 					// In running text, `@name` is often prose: a folder, a team, a package scope. Only a file is an import.
 					if ((await this.exists(importPath).catch(fromSource)) !== "file") continue;
-					const importedContent = await read(importPath, directory);
+					const importedContent = await read(importPath, false);
 					if (importedContent === undefined) continue;
 					included.add(importPath);
 					sections.push({ path: importPath, content: importedContent, importedBy: file });

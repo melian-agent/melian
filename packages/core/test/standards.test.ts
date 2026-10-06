@@ -354,6 +354,21 @@ describe.each(sourceKinds)("Standards from the %s", (kind) => {
 		expect(standards.forFiles([paths[1]!]).omitted).toEqual([]);
 	});
 
+	it("omits an oversized import from a root carrier and keeps the remaining standards", async () => {
+		writeFiles(repo, {
+			"AGENTS.md": "# Rules\n@docs/rules.md\n",
+			"docs/rules.md": "x".repeat(300 * 1024),
+		});
+		const paths = ["src/a.ts"];
+		const standards = await Standards.load(repo, sourceFor(repo, kind), paths);
+		const reading = standards.forFiles(paths);
+		expect(reading.paths()).toEqual(["AGENTS.md", ".melian/standards/naming.md"]);
+		expect(reading.sections[0]!.content).toBe("# Rules\n@docs/rules.md\n");
+		expect(reading.oversized).toEqual(["docs/rules.md"]);
+		expect(reading.omitted).toEqual(["docs/rules.md"]);
+		expect(reading.note()).toContain("over 256 KiB: docs/rules.md");
+	});
+
 	it("defers an oversized root carrier error until a lens needs its chain", async () => {
 		writeFiles(repo, { "AGENTS.md": "x".repeat(standardsLimits.fileBytes + 1) });
 		const paths = ["packages/app/a.ts"];
