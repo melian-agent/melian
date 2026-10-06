@@ -7,6 +7,8 @@ import {
 	defaultConfig,
 	ExternalFinding,
 	type ExternalFindingInput,
+	externalFindingSchema,
+	externalFindingsFileSchema,
 	Finding,
 	type FindingInput,
 	maxExternalBodyLength,
@@ -37,6 +39,73 @@ function external(input: Partial<ExternalFindingInput> = {}): ExternalFinding {
 
 const ids = (groups: ReturnType<Comparison["groups"]>) =>
 	groups.map((group) => ({ external: group.external.map((each) => each.id), melian: [...group.melian] }));
+
+describe("comparison schema contracts", () => {
+	it.each([
+		["stored title", "title", 200],
+		["stored body", "body", 65_536],
+		["external file body", "body", 65_536],
+		["Codex body", "body", 65_536],
+	] as const)("enforces the exact bound for %s", (kind, field, limit) => {
+		const stored = external().toJSON();
+		for (const length of [limit, limit + 1]) {
+			const finding = { ...stored, [field]: "x".repeat(length) };
+			if (kind.startsWith("stored")) {
+				expect(Value.Check(externalFindingSchema, finding)).toBe(length === limit);
+			} else if (kind === "external file body") {
+				expect(
+					Value.Check(externalFindingsFileSchema, {
+						reviewer: { name: "human" },
+						findings: [{ title: "t", body: finding.body }],
+					}),
+				).toBe(length === limit);
+			} else {
+				expect(
+					Value.Check(codexReviewSchema, {
+						verdict: "approve",
+						summary: "",
+						next_steps: [],
+						findings: [
+							{
+								severity: "low",
+								title: "t",
+								body: finding.body,
+								file: "a.ts",
+								line_start: 1,
+								line_end: 1,
+								confidence: 1,
+								recommendation: "",
+							},
+						],
+					}),
+				).toBe(length === limit);
+			}
+		}
+	});
+
+	it("validates stored finding IDs and both commit hash lengths", () => {
+		const stored = external().toJSON();
+		for (const id of ["a".repeat(16), "x".repeat(16), "a".repeat(15), "a".repeat(17)]) {
+			expect(Value.Check(externalFindingSchema, { ...stored, id })).toBe(id === "a".repeat(16));
+		}
+		for (const commit of ["a".repeat(40), "a".repeat(64), "x".repeat(40), "a".repeat(39), "a".repeat(65)]) {
+			expect(Value.Check(externalFindingSchema, { ...stored, commit })).toBe(
+				commit === "a".repeat(40) || commit === "a".repeat(64),
+			);
+		}
+	});
+
+	it("keeps error metadata optional and preserves a supplied cause", () => {
+		const absent = new ComparisonError("invalidFile", "invalid input");
+		expect(absent).toMatchObject({ name: "ComparisonError", code: "invalidFile", message: "invalid input" });
+		expect(absent.path).toBeUndefined();
+		expect(absent.cause).toBeUndefined();
+		const cause = new Error("read failed");
+		const supplied = new ComparisonError("invalidFile", "invalid input", { path: "review.json", cause });
+		expect(supplied.path).toBe("review.json");
+		expect(supplied.cause).toBe(cause);
+	});
+});
 
 describe("ExternalFinding", () => {
 	it.each([
