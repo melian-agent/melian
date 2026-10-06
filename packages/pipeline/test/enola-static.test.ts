@@ -58,7 +58,9 @@ ${
 }
 case "$1" in
 --generate)
-  printf '%s' '{"id":"alpha","kind":"symbol","name":"Alpha","file":"src/a.ts","line":1}' > .enola/facts.jsonl
+  marker=base
+  if grep BROKEN src/a.ts > /dev/null; then marker=head; fi
+  printf '%s' '{"id":"alpha","kind":"symbol","name":"Alpha","file":"src/a.ts","line":1,"generation":"'"$marker"'"}' > .enola/facts.jsonl
   printf '%s' '[]' > .enola/insights.json
   printf '%s' '{"format_version":1,"snapshot_id":"sha256:${"a".repeat(64)}","enola_version":"0.0.1"}' > .enola/receipt.json
   grep -F 'providers: []' "$config" > /dev/null || exit 9
@@ -66,10 +68,17 @@ case "$1" in
   printf '%s' "$HOME" > .enola/home.txt
   exit 0;;
 baseline)
+  [ "$2" = pin ] || exit 9
   mkdir -p .enola/baseline
   cp .enola/facts.jsonl .enola/insights.json .enola/receipt.json .enola/baseline/
   exit 0;;
 check)
+  baseline=
+  for arg in "$@"; do
+    case "$arg" in --baseline=*) baseline="\${arg#--baseline=}";; esac
+  done
+  [ -n "$baseline" ] || exit 9
+  grep -F '"generation":"base"' "$baseline/facts.jsonl" > /dev/null || exit 9
   if [ ${exit} -ge 2 ]; then echo declined >&2; exit ${exit}; fi
   if grep BROKEN src/a.ts > /dev/null; then
     printf '%s' '{"version":"2.1.0","runs":[{"results":[{"ruleId":"constraints/core-layer","level":"error","message":{"text":"Core reaches pipeline"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"src/a.ts"},"region":{"startLine":1}}}]}]}]}'
