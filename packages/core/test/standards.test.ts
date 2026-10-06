@@ -710,7 +710,7 @@ describe("standards source failures and trust", () => {
 		"preserves an untranslated source-opening error: %s",
 		async (failure) => {
 			vi.spyOn(sourceModule, "openSource").mockRejectedValueOnce(failure);
-			await expect(Standards.load(repo, { kind: "worktree" }, ["a.ts"])).rejects.toBe(failure);
+			expect(await rejection(Standards.load(repo, { kind: "worktree" }, ["a.ts"]), Error)).toBe(failure);
 		},
 	);
 

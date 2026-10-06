@@ -90,7 +90,7 @@ describe("revision source reader", () => {
 		const reader = await openSource(repo, sourceFor(repo, "revision"));
 		const error = new Error("ignore read failed");
 		vi.spyOn(reader, "readText").mockRejectedValueOnce(error);
-		await expect(reader.isIgnored("rules.md")).rejects.toBe(error);
+		expect(await rejection(reader.isIgnored("rules.md"), Error)).toBe(error);
 	});
 
 	it("refuses revision syntax starting with a caret", async () => {
