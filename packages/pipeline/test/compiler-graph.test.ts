@@ -16,6 +16,33 @@ afterEach(() => {
 });
 
 describe("compiler graph extraction", { timeout: 60_000 }, () => {
+	it("counts CommonJS import-equals declarations and their uncovered edges", async () => {
+		root = mkdtempSync(join(tmpdir(), "melian-import-equals-"));
+		writeFileSync(
+			join(root, "tsconfig.json"),
+			JSON.stringify({ compilerOptions: { module: "CommonJS" }, include: ["*.ts"] }),
+		);
+		writeFileSync(join(root, "a.ts"), "import b = require('./b');\nimport type B = require('./b');\n");
+		writeFileSync(join(root, "b.ts"), "export = 1;\n");
+		const compiler = CompilerGraph.open(root);
+		try {
+			const truth = compiler.read();
+			const file = truth.files.find((file) => file.path === "a.ts")!;
+			expect(file.imports).toEqual([
+				{ target: "b.ts", line: 1, specifier: "./b", kind: "import", typeOnly: false },
+				{ target: "b.ts", line: 2, specifier: "./b", kind: "import", typeOnly: true },
+			]);
+			const coverage = await EnolaCoverage.open(truth, EnolaFacts.parse(""), async () => undefined);
+			const measured = coverage.measure("a".repeat(40), "fixture").toJSON();
+			expect(measured.totals).toMatchObject({ imports: 2, matchedImports: 0 });
+			expect(measured.files.find((file) => file.path === "a.ts")?.gaps).toMatchObject([
+				{ kind: "import", line: 1, detail: "import ./b -> b.ts" },
+				{ kind: "import", line: 2, detail: "import ./b -> b.ts" },
+			]);
+		} finally {
+			compiler.close();
+		}
+	});
 	it.each(["() =>", "function()", "function local()"])(
 		"qualifies nested %s values by their enclosing bindings",
 		async (value) => {

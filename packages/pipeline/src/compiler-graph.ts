@@ -9,10 +9,12 @@ import {
 	isClassExpression,
 	isConstructorDeclaration,
 	isExportDeclaration,
+	isExternalModuleReference,
 	isFunctionDeclaration,
 	isFunctionExpression,
 	isGetAccessorDeclaration,
 	isImportDeclaration,
+	isImportEqualsDeclaration,
 	isInterfaceDeclaration,
 	isMethodDeclaration,
 	isNewExpression,
@@ -210,6 +212,8 @@ export class CompilerGraph {
 					let specifier: Node | undefined;
 					let importKind: "import" | "re-export" | "dynamic" = "import";
 					if (isImportDeclaration(node)) specifier = node.moduleSpecifier;
+					if (isImportEqualsDeclaration(node) && isExternalModuleReference(node.moduleReference))
+						specifier = node.moduleReference.expression;
 					if (isExportDeclaration(node)) {
 						specifier = node.moduleSpecifier;
 						importKind = "re-export";
@@ -229,7 +233,7 @@ export class CompilerGraph {
 								kind: importKind,
 								typeOnly: isImportDeclaration(node)
 									? node.importClause?.phaseModifier === SyntaxKind.TypeKeyword
-									: isExportDeclaration(node)
+									: isExportDeclaration(node) || isImportEqualsDeclaration(node)
 										? node.isTypeOnly
 										: false,
 							});
