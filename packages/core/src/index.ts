@@ -8,6 +8,7 @@ export {
 	type ConfigFor,
 	Defect,
 	Manifest,
+	Merge,
 	noRecord,
 	type StoredCheckRecord,
 	type StoredVerdict,
@@ -323,3 +324,12 @@ export {
 	type ToolPin,
 	toolManifestSchema,
 } from "./tool-manifest.ts";
+export {
+	type StoredVerificationState,
+	type Verification,
+	VerificationState,
+	verificationBudget,
+	verificationQuestionSet,
+	verificationQuestions,
+	verificationSchema,
+} from "./verification.ts";

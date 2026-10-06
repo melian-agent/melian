@@ -1,0 +1,4 @@
+{
+  "verdict": "plausible",
+  "reason": "Run the pinned YAML parser on a malformed flow mapping with a sentinel key and check standard error for the sentinel."
+}

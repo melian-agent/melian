@@ -20,6 +20,15 @@ export {
 	selectGoldens,
 } from "./goldens.ts";
 
+export {
+	loadVerifierGoldens,
+	runVerifierGolden,
+	scoreVerifierGolden,
+	type VerifierGolden,
+	type VerifierRun,
+	verifierDirectory,
+} from "./verifier.ts";
+
 export const packageName = "@melian-agent/evals";
 
 export { EnolaCoverage } from "./enola-coverage.ts";

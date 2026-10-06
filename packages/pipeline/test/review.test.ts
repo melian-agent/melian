@@ -313,7 +313,7 @@ describe("reviewChangeset", () => {
 		]);
 		expect(requests[contracts]).toHaveLength(1);
 		// Three correctness requests and one contracts request; the orchestrating conversation's model is never asked.
-		expect(fake.provider.state.callCount).toBe(4);
+		expect(fake.provider.state.callCount).toBe(6);
 	});
 
 	it("puts the injection policy first and every piece of head content inside a nonce boundary", async () => {

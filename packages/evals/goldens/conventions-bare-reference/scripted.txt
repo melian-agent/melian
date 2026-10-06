@@ -1,6 +1,7 @@
 docs/progress-log/2026-10-02-item-count.md
 
-  P3  line 3  quoted-rule-violation  (introduced, new, unresolved)
+  P3  line 3  quoted-rule-violation  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   The entry mentions pull request #14 and issue #9 without links.
     What: The entry mentions pull request #14 and issue #9 without links.
     Why here: AGENTS.md says "Link every GitHub issue and pull request you mention in a document" and "Never write a bare #12.", and this change added the entry.

@@ -4,9 +4,11 @@ import { join } from "node:path";
 import {
 	Adjudication,
 	defaultConfig,
+	Finding,
 	type LedgerRound,
 	type PostedLedger,
 	type StoredVerdict,
+	Verdict,
 	type Walkthrough,
 } from "@melian-agent/core";
 import {
@@ -62,6 +64,106 @@ afterEach(async () => {
 });
 
 describe("ledger document migration", () => {
+	it.each([1, 2, 3, 4, 5])(
+		"preserves a version %i verdict across a reopen and current-version write",
+		async (version) => {
+			dir = mkdtempSync(join(tmpdir(), "melian-verdict-migration-"));
+			const database = join(dir, "state.sqlite");
+			const fake = createFakeModels();
+			const open = async () =>
+				openHarness(
+					await openSqliteStorage(database),
+					{ models: fake.models, registry: createRegistry() },
+					context,
+				);
+			const previous = defineDoc<{
+				verdicts: Record<string, StoredVerdict>;
+				provenance?: Record<
+					string,
+					{ kind: "range"; policy: string; manifest: string[]; lenses: string[]; verifierVersion: string }
+				>;
+				decisions?: Record<string, { task: number; findingsVersion: number }>;
+			}>({
+				kind: "melian.verdicts",
+				version,
+				scope: "conversation",
+				history: "rewindable",
+				fork: "asOf",
+				initial: () => ({ verdicts: {} }),
+			});
+			const finding = Finding.create({
+				rule: "unsafe",
+				message: "Unsafe input",
+				file: "src/run.ts",
+				startLine: 1,
+				snippet: "run(input)",
+				occurrence: 0,
+				severity: "P1",
+				cause: "introduced",
+				source: { check: "lens.security", version: "1@careful" },
+				failureScenario: "Passing unchecked input runs it.",
+				evidence: [{ file: "src/run.ts", startLine: 1, role: "context", revision: "head", snippet: "run(input)" }],
+				explanation: { what: "Unsafe input", whyHere: "New input", whatToDo: "Validate it" },
+			});
+			const verified = Finding.from({
+				...finding.toJSON(),
+				properties: {
+					...finding.properties,
+					verification: {
+						verdict: "refuted",
+						reason: "A guard checks input.",
+						executor: "llm",
+						model: "fake/judge",
+						version: "verifier-v1",
+					},
+				},
+			});
+			const verdict = new Adjudication({
+				findings: [version < 3 ? finding : verified],
+				manifest: [],
+				checks: [],
+				config: defaultConfig,
+			})
+				.adjudicate()
+				.toJSON();
+			const head = "b".repeat(40);
+			const revision = version === 1 ? head : `${"a".repeat(40)}..${head}`;
+			const stored = {
+				verdicts: { [revision]: verdict },
+				...(version < 3
+					? {}
+					: {
+							provenance: {
+								[revision]: {
+									kind: "range" as const,
+									policy: "config",
+									manifest: [],
+									lenses: [],
+									verifierVersion: "verifier-v1",
+								},
+							},
+							decisions: { [revision]: { task: 42, findingsVersion: 7 } },
+						}),
+			};
+			harness = await open();
+			let root = await harness.root(context);
+			await root.commit(async (tx) => Object.assign(await tx.doc(previous, root.id), stored), context);
+			await harness.close(context);
+			harness = await open();
+			root = await harness.root(context);
+			expect(await harness.snapshot(VerdictDocument, root.id, context)).toEqual(stored);
+			await root.commit(async (tx) => {
+				(await tx.doc(VerdictDocument, root.id)).walkthroughNotes = { [revision]: "No walkthrough stored." };
+			}, context);
+			await harness.close(context);
+			harness = await open();
+			root = await harness.root(context);
+			const migrated = await harness.snapshot(VerdictDocument, root.id, context);
+			expect(migrated).toEqual({ ...stored, walkthroughNotes: { [revision]: "No walkthrough stored." } });
+			expect(Verdict.from(migrated!.verdicts[revision]!).fingerprint()).toBe(Verdict.from(verdict).fingerprint());
+		},
+	);
+
 	it("reads version 3 records without inventing history or changing replies, and writes the current versions", async () => {
 		dir = mkdtempSync(join(tmpdir(), "melian-ledger-migration-"));
 		const database = join(dir, "state.sqlite");
