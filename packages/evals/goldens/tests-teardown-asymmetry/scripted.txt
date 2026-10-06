@@ -1,6 +1,7 @@
 test/store.test.ts
 
-  P3  line 41  teardown-asymmetry  (introduced, new, unresolved)
+  P3  line 41  teardown-asymmetry  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   forgets a deleted key calls store.close() as its last statement rather than in finally, unlike the other tests in the file.
     What: forgets a deleted key calls store.close() as its last statement rather than in finally, unlike the other tests in the file.
     Why here: This change added the test without the try and finally the file's other tests use, though they share one store directory.

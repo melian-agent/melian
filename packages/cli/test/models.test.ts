@@ -218,16 +218,16 @@ describe("Triage", () => {
 		expect(triage.reviewOptions()).toEqual({ triageSkipped: "no model" });
 	});
 
-	it("triages nothing and unlocks only the lenses' providers under a script", async () => {
+	it("triages nothing and unlocks the lens and verifier providers under a script", async () => {
 		const decide = vi.fn(async () => ({ decider, model: "fake" }));
 		const { triage, marker, lensMarker, plan } = await opened({ scripted: true, decide });
 
 		expect(plan.lenses).toHaveLength(1);
-		expect(plan.providers()).toEqual(["anthropic"]);
+		expect(plan.providers()).toEqual(["anthropic", "openai"]);
 		expect(triage.harnessOptions()).toEqual({});
 		expect(triage.reviewOptions()).toEqual({});
 		expect(existsSync(lensMarker)).toBe(true);
-		expect(existsSync(marker)).toBe(false);
+		expect(existsSync(marker)).toBe(true);
 		expect(decide).not.toHaveBeenCalled();
 	});
 });

@@ -35,6 +35,9 @@ Finding text is never live markdown either. Problem: Melian posts from the maint
 - `test/fixtures/scenario.ts` builds a pull request in two revisions and reviews it on the fake model, so publication tests run against a real verdict and findings document.
 - The crash test, `test/publish-crash.test.ts`, runs `test/fixtures/publish-crash.ts` in a child process that parks once the fake has accepted the review, kills it, and publishes again in the test process. The child writes the fake's state to a file after every write, so the post outlives the process. It runs once with `/user` answering and once with it refusing, as for an installation token, so recovery never leans on knowing the author.
 
+
+ReviewComment.render shows verification, its model, reason and optional correction through the existing escaping. The review body counts sighting judgements and the refuted defects it did not post. Verdict.verificationSummary supplies the ledger's outcomes.
+
 ## The ledger
 
 `Ledger.from(verdict, publication, options)` projects the durable rounds into one comment. Its `render` bounds the body and its `diff` compares the public stamp. The signed ledger marker names a hash of the hidden JSON stamp. The stamp holds the base, head, round, verdict, counts, lens versions, plan fingerprint and projection fingerprint. It carries no dismissal identity.

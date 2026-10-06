@@ -1,6 +1,7 @@
 src/comment.ts
 
-  P3  lines 4-5  quoted-rule-violation  (introduced, new, unresolved)
+  P3  lines 4-5  quoted-rule-violation  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   commentLine is a free function whose first parameter is a Finding.
     What: commentLine is a free function whose first parameter is a Finding.
     Why here: AGENTS.md says "Behaviour belongs to the object it is about. A function whose first parameter is a `Finding` is a method of `Finding`, whether it asks the finding something, changes it, or formats it.", and this change added the function.

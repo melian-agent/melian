@@ -1,6 +1,7 @@
 .github/workflows/check.yml
 
-  P3  line 11  quoted-rule-violation  (introduced, new, unresolved)
+  P3  line 11  quoted-rule-violation  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   actions/cache is referenced by the tag v4, not by a commit SHA.
     What: actions/cache is referenced by the tag v4, not by a commit SHA.
     Why here: AGENTS.md says "Pin every GitHub Action to a full commit SHA, with its version in a comment", and this change added the step.

@@ -341,7 +341,7 @@ describe("Verdict.render", () => {
 			expect(text).toContain("Dismissed: 1 finding");
 			expect(text).not.toContain("not shown");
 			expect(text).toContain(
-				`  P1  line 12  magic-number  (introduced, dismissed, block)  ${dismissed.properties.id}\n    Dismissed by Tal <tal@melian.invalid> at 2026-10-04T00:00:00Z: Retries are fixed.\n      See the runbook.\n`,
+				`  P1  line 12  magic-number  (introduced, dismissed, block, unverified)  ${dismissed.properties.id}\n    Dismissed by Tal <tal@melian.invalid> at 2026-10-04T00:00:00Z: Retries are fixed.\n      See the runbook.\n`,
 			);
 			expect(text).toContain(
 				"    Earlier dismissal, reopened at a..b, by Tal <tal@melian.invalid> at 2026-10-04T00:00:00Z: Constant\\u001b[2J.\n",
@@ -382,7 +382,7 @@ describe("Verdict.render", () => {
 
 		expect(text).toContain(
 			[
-				`  P1  line 12  no-eval  (introduced, new, block)  ${speaker.properties.id}`,
+				`  P1  line 12  no-eval  (introduced, new, block, unverified)  ${speaker.properties.id}`,
 				`    Merged report: P2 code-injection from lens.contracts  ${merged.properties.id}`,
 				`    Also reported, dismissed: P3 unsafe-call from static.biome  ${answered.properties.id}`,
 				"  eval runs request input",
@@ -400,5 +400,38 @@ describe("Verdict.render", () => {
 		}).adjudicate();
 		const text = hostile.render();
 		expect(text).toContain("  lens.x\\u001b[2J  failed: bad\n    line\n    Error: \\u202egnp.ts\n");
+	});
+});
+
+describe("verification rendering", () => {
+	it("escapes verification text, shows corrections, and reveals refutations only with all", async () => {
+		const finding = Finding.create({
+			...evalInput,
+			failureScenario: "The input fails.",
+			verification: {
+				verdict: "refuted",
+				reason: "A guard prevents it.\u001b[2J\nMore proof.",
+				correction: "Use the guarded value.",
+				executor: "llm",
+				model: "fake/judge",
+				version: "v1",
+			},
+		});
+		const verdict = new Adjudication({
+			findings: [finding],
+			manifest: ["verifier"],
+			checks: [{ name: "verifier", status: "ran" }],
+			config: defaultConfig,
+			verificationRan: true,
+		}).adjudicate();
+		expect(verdict.render()).toContain("1 refuted finding not shown.");
+		expect(verdict.render()).not.toContain("Verified:");
+		const rendered = verdict.render(new Rendering({ all: true }));
+		expect(rendered).toContain("Refuted: 1 finding");
+		expect(rendered).toContain("refuted)");
+		expect(rendered).toContain("Verified: fake/judge: A guard prevents it.\\u001b[2J");
+		expect(rendered).toContain("Correction: Use the guarded value.");
+		expect(verdict.verificationCounts()).toEqual({ confirmed: 0, plausible: 0, refuted: 1, unverified: 0 });
+		await expect(rendered).toMatchFileSnapshot("./golden/verification.txt");
 	});
 });

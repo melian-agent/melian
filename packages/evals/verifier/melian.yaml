@@ -1,0 +1,4 @@
+# The verifier corpus deliberately seeds defects in temporary repositories.
+guardrails:
+  policy-change-review:
+    enabled: false

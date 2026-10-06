@@ -1,0 +1,24 @@
+{
+  "file": "comparison.mjs",
+  "line": 1,
+  "rule": "wrong-result",
+  "severity": "P1",
+  "explanation": {
+    "what": "A schema may read an uninitialised binding through the new circular import.",
+    "why": "The changed path appears to allow this outcome.",
+    "fix": "Check the preventing code before accepting the claim."
+  },
+  "failureScenario": "Import comparison.mjs first: adjudication.mjs reads baseSchema before comparison.mjs initialises it and throws ReferenceError. Import adjudication.mjs first succeeds.",
+  "evidence": [
+    {
+      "file": "comparison.mjs",
+      "line": 1,
+      "role": "cause"
+    },
+    {
+      "file": "adjudication.mjs",
+      "line": 2,
+      "role": "context"
+    }
+  ]
+}

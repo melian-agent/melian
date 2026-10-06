@@ -1,6 +1,7 @@
 packages/pipeline/src/walkthrough.ts
 
-  P1  line 32  stale-task-write  (introduced, new, unresolved)
+  P1  line 32  stale-task-write  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   The walkthrough task's final commit stores its walkthrough for the revision whichever task the review index names for it now.
     What: The walkthrough task's final commit stores its walkthrough for the revision whichever task the review index names for it now.
     Why here: This change records each walkthrough task in the index in place of the last, but a crashed task resumes whenever the harness does, and nothing stops it writing after its replacement. Adjudication guards the same case in its final commit.

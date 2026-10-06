@@ -1,6 +1,7 @@
 src/migrate.ts
 
-  P1  line 16  unhandled-error  (introduced, new, unresolved)
+  P1  line 16  unhandled-error  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   migrate logs a failed migration and carries on: it records the migration as applied, runs the next one, and returns as if every migration succeeded.
     What: migrate logs a failed migration and carries on: it records the migration as applied, runs the next one, and returns as if every migration succeeded.
     Why here: This change rewrote the catch around db.exec to log the error message and deleted its rethrow, so the failure never reaches start.
