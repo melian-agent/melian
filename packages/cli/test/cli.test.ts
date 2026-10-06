@@ -597,9 +597,13 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		const home = mkdtempSync(join(tmpdir(), "melian-doctor-"));
 		scratch = home;
 
-		const doctor = melian(root, ["doctor"], { GITHUB_TOKEN: token, PI_CODING_AGENT_DIR: home });
+		const doctor = melian(root, ["doctor"], {
+			GITHUB_TOKEN: token,
+			PI_CODING_AGENT_DIR: home,
+			MELIAN_STATE_DIR: join(home, "state"),
+		});
 
-		expect(doctor.status).toBe(0);
+		expect(doctor.status, doctor.stdout).toBe(0);
 		expect(doctor.stdout).toMatch(/^ok {4}node {8}\d+\.\d+\.\d+; Melian needs 22\.19\.0 or later$/m);
 		expect(doctor.stdout).toMatch(/^ok {4}git {9}\d+\.\d+(\.\d+)?, --attr-source supported$/m);
 		expect(doctor.stdout).toContain(`${join(home, "auth.json")} not found`);

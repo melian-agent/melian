@@ -76,7 +76,8 @@ describe("runStaticTool with Melian's own tools", () => {
 		vi.spyOn(env, "exec").mockImplementation(async (command, options, executionContext) => {
 			if (command.includes("worktree remove --force --force")) {
 				cleanup.push(command);
-				if (cleanup.length === 1) return { ok: false, error: { name: "ExecutionError", code: "timeout", message: "cleanup timed out" } };
+				if (cleanup.length === 1)
+					return { ok: false, error: { name: "ExecutionError", code: "timeout", message: "cleanup timed out" } };
 			}
 			return execute(command, options, executionContext);
 		});

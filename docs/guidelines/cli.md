@@ -102,3 +102,5 @@ To install a skill, first put `melian` on `PATH`: in a clone of Melian, `npm ci 
 `review` prepares `CallerContext` after deterministic checks when static.enola is enabled. It supplies only changed files selected by the lenses, using the base’s policy and the existing verified snapshot. A failure is advisory context on lens records; static.enola’s own failed record still makes the review not reviewed.
 
 `ToolInventory` uses the host’s environment for the state-directory rule. Listing and doctor re-hash cached executables without fetching. Only fetch repairs a mismatched entry. Fake-archive tests cover command routing, all three readiness states and repair.
+
+A doctor test that reads the development checkout must set MELIAN_STATE_DIR to fresh temporary state. Otherwise the clone’s older cached pins can change its exit status when verification changes. Keep node_modules in the checkout for sourcing assertions.
