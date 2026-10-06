@@ -62,13 +62,8 @@ export class ToolProvisioning {
 
 	/** Reads the manifest shipped with Melian, never one from repoRoot. */
 	static async manifest(): Promise<ToolManifest> {
-		let text: string;
-		try {
-			text = await readFile(new URL("../tools.yaml", import.meta.url), "utf8");
-		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-			text = await readFile(new URL("../../../tools.yaml", import.meta.url), "utf8");
-		}
+		const path = import.meta.url.endsWith(".ts") ? "../../../tools.yaml" : "../tools.yaml";
+		const text = await readFile(new URL(path, import.meta.url), "utf8");
 		return ToolManifest.parse(text);
 	}
 
