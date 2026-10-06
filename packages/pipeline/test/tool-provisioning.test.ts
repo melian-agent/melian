@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { execFile } from "node:child_process";
+import type * as processes from "node:child_process";
 import { readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { ToolManifest } from "@melian-agent/core";
@@ -6,6 +8,11 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { CacheLocation, ToolProvisioning } from "../src/tool-provisioning.ts";
 import { createRepository, removeRepository } from "./fixtures/repo.ts";
 import { testTool, toolArchive } from "./fixtures/tool-archive.ts";
+
+vi.mock("node:child_process", async (importOriginal) => {
+	const original = await importOriginal<typeof processes>();
+	return { ...original, execFile: vi.fn(original.execFile) };
+});
 
 let repo: string;
 beforeEach(() => {
@@ -28,6 +35,7 @@ it("shares the git common directory and namespaces an explicit state location", 
 			})
 		).root,
 	).toBe(join(common, "melian"));
+	expect(vi.mocked(execFile).mock.calls.at(-1)?.[2]).toMatchObject({ timeout: 10_000 });
 	const identity = createHash("sha256").update(realpathSync(common)).digest("hex").slice(0, 16);
 	expect((await CacheLocation.open(repo, { ...process.env, MELIAN_STATE_DIR: "cache" })).root).toBe(
 		join(repo, "cache", identity),
