@@ -14,7 +14,6 @@ import { idleModels, isScripted } from "./models.ts";
 import { CliError, openStorage, storagePath } from "./repository.ts";
 import { gitHubAccess, parseTarget } from "./target.ts";
 
-// Where `melian compare --from` imports from: a pull request's review threads by one login, or a reviewer's file.
 export type ImportSource =
 	| { readonly kind: "github"; readonly login: string }
 	| { readonly kind: "file"; readonly path: string };
@@ -29,8 +28,6 @@ export function parseImportSource(value: string): ImportSource | undefined {
 	return undefined;
 }
 
-// The comparison's storage for the stored review `argument` names, opened only when the review exists: a comparison
-// with no review runs nothing.
 async function openComparison(io: Io, argument: string) {
 	const stored = await StoredReview.open(io, argument);
 	const { changeset } = stored;
