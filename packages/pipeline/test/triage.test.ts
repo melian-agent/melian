@@ -1312,6 +1312,42 @@ describe("escalation", () => {
 		]);
 	});
 
+	it("refreshes a quick review when only its careful escalation budget changes", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: [severe, done, done, severe, done, done] },
+		]);
+		await review({ decider });
+		const root = (await harness.root(context)).id;
+		const before = (await harness.snapshot(ReviewIndex, root, context))!.reviews[revision()]!;
+		await review({ decider });
+		expect(requests[correctness]).toHaveLength(3);
+		const changed = lenses.map((lens) => {
+			if (lens.name !== "correctness") return lens;
+			const settings = lens.level("careful");
+			return Lens.from({
+				...lens.toJSON(),
+				levels: { ...lens.levels, careful: { ...settings, budget: { ...settings.budget, findings: 9 } } },
+			});
+		});
+		expect(changed.map((lens) => lens.version)).toEqual(lenses.map((lens) => lens.version));
+		expect(changed.find((lens) => lens.name === "correctness")!.level("quick")).toEqual(
+			lenses.find((lens) => lens.name === "correctness")!.level("quick"),
+		);
+
+		const reviewed = await review({ decider, lenses: changed });
+
+		const after = (await harness.snapshot(ReviewIndex, root, context))!.reviews[revision()]!;
+		expect(after.task).not.toBe(before.task);
+		expect(after.lenses[0]!.split(" escalates to ")[0]).toBe(before.lenses[0]!.split(" escalates to ")[0]);
+		expect(after.lenses).not.toEqual(before.lenses);
+		expect(requests[correctness]).toHaveLength(6);
+		expect(systemPromptOf(requests[correctness]![2]!)).toContain(statedBudget.careful);
+		expect(systemPromptOf(requests[correctness]![5]!)).toContain("at most 9 findings");
+		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
+	});
+
 	it("counts a quick finding the escalated run restates once, with the escalated run speaking for it", async () => {
 		const decider = choosing("quick");
 		await open(decider);
