@@ -69,6 +69,9 @@ describe("the free-domain-function Biome plugin", { timeout: 30_000 }, () => {
 		];
 		expect(lint("packages/cli/src/scratch.ts", wrapped.join("\n"))).toEqual([1]);
 		expect(lint("packages/cli/src/scratch.ts", `function where(values: readonly ${type}[]): void {}\n`)).toEqual([1]);
+		expect(lint("packages/cli/src/scratch.ts", `function where(values: ReadonlyArray<${type}>): void {}\n`)).toEqual([
+			1,
+		]);
 	});
 
 	it("does not report a function over a type whose name only starts with a domain type's", () => {
