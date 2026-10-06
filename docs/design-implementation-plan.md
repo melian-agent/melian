@@ -166,3 +166,4 @@ Step 11 layering constraint is built and proved on the branch-point tree. Packag
 Step 11 execution-miss mapping is built. The tool-manifest comparison maps thirteen execution misses to tests or the installed-tarball reproduction. The manifest test checks every record and finding reference.
 
    - Mutation inventory: nested graph-coverage schemas reject malformed persisted data. Ratio, total, location and extra-field mutations fail.
+   - Mutation inventory: A direct classification test proves the Enola policy guard. The restored suite passes.
