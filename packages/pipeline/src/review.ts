@@ -1666,7 +1666,13 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 											: "the verification task did not complete",
 								}
 							: { name: "verifier", status: "ran", version: verifierVersion };
-				const model = Object.values(results).find((result) => result.status === "done");
+				const completed = Object.values(results).filter((result) => result.status === "done");
+				const model =
+					completed.find(
+						(result) =>
+							request.plan?.tier("verifier").acceptOverridden === false &&
+							request.plan.verifierLineage(result.model)?.outside === true,
+					) ?? completed[0];
 				const lineage = request.plan?.verifierLineage(
 					model?.status === "done" ? model.model : modelName(candidates[0]!.route[0]!),
 				);

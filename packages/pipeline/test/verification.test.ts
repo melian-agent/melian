@@ -850,6 +850,99 @@ describe("the verifier", () => {
 		expect(result.findings[0]!.properties.verification?.model).toBe(judge);
 		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
 	});
+	it("refuses a rejected fallback after another candidate finishes on the accepted judge", async () => {
+		const finder = `${fake.ref("finder").provider}/finder`;
+		const judge = `${fake.ref("judge").provider}/judge`;
+		const backup = `${fake.ref("backup").provider}/backup`;
+		const config = {
+			...defaultConfig,
+			models: { heavy: { model: finder }, verifier: { model: judge, fallbacks: [backup] } },
+		};
+		const { catalog, credentials } = await planInputs(fake.review);
+		const resolved = ReviewPlan.resolve({
+			config,
+			catalog,
+			credentials,
+			lenses,
+			checks: ["lens.correctness"],
+			routes: { committed: config.models, overridden: {}, lensTiers: {}, retiered: {} },
+		});
+		const plan = ReviewPlan.from({
+			...resolved.toJSON(),
+			tiers: resolved.tiers.map((tier) =>
+				tier.tier === "verifier" ? { ...tier, accept: [judge], acceptOverridden: false } : tier,
+			),
+		});
+		let accepted: string | undefined;
+		const models: Record<string, string[]> = {};
+		const requests = scriptConversations(fake, [
+			{
+				match: lenses[0]!.instructions,
+				replies: [
+					fauxAssistantMessage(
+						[
+							fauxToolCall("report_finding", crashFinding),
+							fauxToolCall("report_finding", { ...crashFinding, line: 6 }),
+						],
+						{ stopReason: "toolUse" },
+					),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				match: verifierMarker,
+				replies: Array.from(
+					{ length: 5 },
+					() => (messages: Parameters<typeof scriptVerifier>[0], modelId: string) => {
+						const id = /Claim c1 finding ([0-9a-f]+)/.exec(systemPromptOf(messages))![1]!;
+						accepted ??= id;
+						models[id] ??= [];
+						models[id].push(modelId);
+						if (id !== accepted && modelId === "judge")
+							return fauxAssistantMessage("", {
+								stopReason: "error",
+								errorMessage: "HTTP 503 service unavailable",
+							});
+						return scriptVerifier(messages);
+					},
+				),
+			},
+		]);
+		let failure: unknown;
+		try {
+			await review(false, plan);
+		} catch (error) {
+			failure = error;
+		}
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!;
+		const finished = await harness.getTask(entry.verification!.task as TaskId, context);
+		if (finished?.state.status !== "terminal" || finished.state.outcome.status !== "completed")
+			throw new Error("The mixed-candidate verification did not complete.");
+		expect(Object.values(finished.state.outcome.result as Record<string, unknown>)).toEqual([
+			{ status: "done", model: judge },
+			{ status: "done", model: backup },
+		]);
+		expect(models[accepted!]).toEqual(["judge", "judge"]);
+		expect(Object.values(models).find((route) => route.includes("backup"))).toEqual(["judge", "backup", "backup"]);
+		expect(requests[verifierMarker]).toHaveLength(5);
+		expect(failure).toMatchObject({
+			code: "verifierFailed",
+			verdict: {
+				status: "not-reviewed",
+				notRun: [
+					expect.objectContaining({
+						name: "verifier",
+						status: "failed",
+						reason: "the verifier finished outside its guarded accepted route",
+						lineage: expect.objectContaining({ outside: true, model: backup }),
+					}),
+				],
+			},
+		});
+		expect((await readVerdict(harness, root.id, revision, context))?.status).toBe("not-reviewed");
+	});
 	it("retries a failed verification on rerun with unchanged candidates", async () => {
 		const requests = scriptConversations(fake, [
 			{
