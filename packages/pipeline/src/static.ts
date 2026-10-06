@@ -28,6 +28,8 @@ export interface StaticRunInput {
 	readonly repoRoot: string;
 	readonly commit: string;
 	readonly base?: string;
+	/** Trusted Enola policy commit, separate from the comparison base. Defaults to base, then commit. */
+	readonly policyCommit?: string;
 	readonly tools?: ToolProvisioning;
 	readonly tool: StaticTool;
 	readonly settings: StaticToolSettings | TscSettings;

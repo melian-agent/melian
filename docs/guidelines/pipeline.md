@@ -472,13 +472,13 @@ Entries publish into unique directories under `tools/<name>/<version>/<platform>
 
 `runStaticTool` runs `static.enola` in base and head worktrees under the execution environment. `ToolProvisioning` reads the reviewer build's manifest and materialises its binary, never a pin in the reviewed repository. `CacheLocation` follows the existing state-directory rule: the common git directory's `melian/`, or the clone subdirectory under `MELIAN_STATE_DIR`.
 
-`EnolaRun` replaces the head's Enola policy with bounded copies from the base. It disables executable providers, history, and update checks. A runner-owned `.enola` link points into scratch because upstream refuses an output path outside the repository. The baseline is generated from base and pinned in scratch; a committed baseline is removed. Base and head use the same label and policy. `check` exit 0 or 1 yields a SARIF report; 2 or 3 fails with Enola's message. Exit 1 with no unsuppressed results remains clean and adds a note. Missing or unreadable artifacts fail closed.
+`EnolaRun` replaces both trees’ Enola policy with bounded copies from the host’s trusted policy commit. A revision source supplies that commit; local worktree policy retains the comparison base. `StaticRunInput.policyCommit` separates policy authority from the diff’s merge base and defaults to `base`, then `commit`, for direct callers. It disables executable providers, history, and update checks. A runner-owned `.enola` link points into scratch because upstream refuses an output path outside the repository. The baseline is generated from base and pinned in scratch; a committed baseline is removed. Base and head use the same label and policy. `check` exit 0 or 1 yields a SARIF report; 2 or 3 fails with Enola's message. Exit 1 with no unsuppressed results remains clean and adds a note. Missing or unreadable artifacts fail closed.
 
 Every worktree command, including cleanup, passes through `Run.worktreeCommand`. Cleanup uses a background context and waits for the Enola promise to finish. The check record carries both snapshot identities and original receipts, plus a note when head policy differs. Receipts contain generation times and paths, so they are lineage, not byte-stable cache identity.
 
 ## Graph cache
 
-`GraphCache.open(root)` uses the tool cache root. `GraphSnapshot` validates receipt format 1, key parts, and artifact hashes. Its key hashes tree, version, binary digest, and base policy hash with NUL separators. Reads of corrupt entries return a miss; writes rename a complete directory. Upstream restore metadata travels beside contract artifacts. Nothing ages out by clock, and nothing enters the state branch.
+`GraphCache.open(root)` uses the tool cache root. `GraphSnapshot` validates receipt format 1, key parts, and artifact hashes. Its key hashes tree, version, binary digest, and trusted policy hash with NUL separators. Reads of corrupt entries return a miss; writes rename a complete directory. Upstream restore metadata travels beside contract artifacts. Nothing ages out by clock, and nothing enters the state branch.
 
 ## Per-file graph coverage
 
@@ -496,7 +496,7 @@ Melian’s layering policy lives in `enola/constraints/layers.yaml`. Imports rid
 
 ## Advisory caller input
 
-`CallerContext.open` reads an existing verified graph after deterministic checks. It neither fetches a missing executable nor generates an absent graph. `EnolaRun.callers` restores the head snapshot under base policy in an execution-environment worktree. It queries the full fact name scoped by file, with flags before the target, depth 1 and at most 50 nodes. Exit 2, an ambiguous name or another resolved target supplies no answer. The lens runs with the reason on its record.
+`CallerContext.open` reads an existing verified graph after deterministic checks. It neither fetches a missing executable nor generates an absent graph. `EnolaRun.callers` restores the head snapshot under the same trusted policy as deterministic checks in an execution-environment worktree. It queries the full fact name scoped by file, with flags before the target, depth 1 and at most 50 nodes. Exit 2, an ambiguous name or another resolved target supplies no answer. The lens runs with the reason on its record.
 
 Facts supply declaration starts, without end lines. Changed hunks select the preceding declaration and declarations inside the hunk, using the next distinct start line as a conservative boundary. Declarations sharing a start line share that boundary, so each remains eligible. This can query an extra symbol; it cannot prove the whole blast radius. Only files selected by a lens enter its caller section. Callers in any changed file stay out, including files another lens reviews.
 

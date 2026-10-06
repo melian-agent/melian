@@ -114,7 +114,18 @@ async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, conte
 	const { repoRoot } = input.changeset;
 	const revision = Revision.from(input.changeset.revision);
 	const run = (commit: string) =>
-		runStaticTool({ env, repoRoot, commit, base: revision.base, tool, settings }, context);
+		runStaticTool(
+			{
+				env,
+				repoRoot,
+				commit,
+				base: revision.base,
+				tool,
+				settings,
+				...(input.source.kind === "revision" ? { policyCommit: input.source.commit } : {}),
+			},
+			context,
+		);
 	const head = await run(revision.head);
 	if (head.status === "skipped") return head;
 	const base =

@@ -6,7 +6,9 @@ import {
 	defaultConfig,
 	EnolaImpact,
 	EnolaPolicy,
+	GraphSnapshot,
 	Lens,
+	loadConfig,
 	ReviewCoverage,
 	staticFindings,
 	ToolManifest,
@@ -14,13 +16,17 @@ import {
 import {
 	CallerContext,
 	CoverageCache,
+	checksExtension,
 	backgroundContext as context,
 	createMemoryStorage,
 	createNodeExecutionEnv,
 	createReviewRegistry,
 	decisionExtension,
 	openHarness,
+	readFindings,
 	reviewChangeset,
+	revisionKey,
+	runChecks,
 	runStaticTool,
 	ToolProvisioning,
 } from "@melian-agent/pipeline";
@@ -43,7 +49,13 @@ afterEach(() => {
 	removeRepository(repo);
 });
 
-async function fake(exit = 1, impactExit = 0, requirePolicy = false, impactTarget = "Alpha") {
+async function fake(
+	exit = 1,
+	impactExit = 0,
+	requirePolicy = false,
+	impactTarget = "Alpha",
+	constraintRequired = false,
+) {
 	const script = `#!/bin/sh
 if [ "$1" = "--version" ]; then echo 0.0.1; exit 0; fi
 for config in "$@"; do :; done
@@ -82,7 +94,7 @@ check)
   [ -n "$baseline" ] || exit 9
   grep -F '"generation":"base"' "$baseline/facts.jsonl" > /dev/null || exit 9
   if [ ${exit} -ge 2 ]; then echo declined >&2; exit ${exit}; fi
-  if grep BROKEN src/a.ts > /dev/null; then
+  if grep BROKEN src/a.ts > /dev/null && ${constraintRequired ? "[ -f enola/constraints/layer.yaml ]" : "true"}; then
     printf '%s' '{"version":"2.1.0","runs":[{"results":[{"ruleId":"constraints/core-layer","level":"error","message":{"text":"Core reaches pipeline"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"src/a.ts"},"region":{"startLine":1}}}]}]}]}'
   else printf '%s' '{"version":"2.1.0","runs":[{"results":[]}]}' ; fi
   exit ${exit};;
@@ -269,6 +281,78 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
 		},
 	);
+	it("judges a diverged PR with target-tip policy and reuses that policy for callers", async () => {
+		const base = commit(repo, { "src/a.ts": "export function Alpha() { return 1; }\n" });
+		const policy = commit(repo, {
+			"melian.yaml": "tiers:\n  fast: [static.enola]\nstatic:\n  enola: { enabled: true }\n",
+			"enola/constraints/layer.yaml": "rules: [] # target constraint\n",
+		});
+		gitIn(repo, "checkout", "-b", "feature", base);
+		const head = commit(repo, { "src/a.ts": "export function Alpha() { return 2; } // BROKEN\n" });
+		const changeset = await Changeset.resolve(repo, `${policy}...${head}`);
+		expect(changeset.revision.base).toBe(base);
+		const source = { kind: "revision" as const, commit: policy };
+		const { config } = await loadConfig(repo, source, "");
+		const tools = await fake(1, 0, false, "Alpha", true);
+		vi.spyOn(ToolProvisioning, "open").mockResolvedValue(tools);
+		const models = createFakeModels();
+		const registry = createReviewRegistry();
+		registry.install(checksExtension);
+		const harness = await openHarness(createMemoryStorage(), {
+			models: models.models,
+			registry,
+			env: () => createNodeExecutionEnv(repo),
+		});
+		try {
+			const root = await harness.root(context, { agent: { model: models.ref() } });
+			const result = await runChecks(harness, { rootConversationId: root.id, changeset, config, source }, context);
+			expect(result.records).toEqual([
+				expect.objectContaining({ name: "static.enola", status: "ran", findings: 1 }),
+			]);
+			const record = result.records[0];
+			if (record?.status !== "ran") throw new Error("Enola did not run");
+			expect(record.snapshots?.map((snapshot) => snapshot.commit)).toEqual([base, head]);
+			const findings = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+			expect(findings).toEqual([
+				expect.objectContaining({
+					ruleId: "enola/constraints/core-layer",
+					properties: expect.objectContaining({ cause: "introduced" }),
+				}),
+			]);
+			const policyHash = (await EnolaPolicy.load(repo, policy)).hash;
+			const binary = await tools.cache.digest(tools.tool("enola"), tools.platform);
+			expect(record.snapshots?.map((snapshot) => snapshot.cacheKey)).toEqual(
+				[base, head].map((commit) =>
+					GraphSnapshot.key({
+						tree: gitIn(repo, "rev-parse", `${commit}^{tree}`),
+						version: "0.0.1",
+						binary,
+						config: policyHash,
+					}),
+				),
+			);
+			const callers = await CallerContext.open(
+				{
+					env: createNodeExecutionEnv(repo),
+					repoRoot: repo,
+					base,
+					commit: head,
+					policyCommit: policy,
+					tool: "enola",
+					settings: config.static.enola,
+					tools,
+				},
+				changeset.revision.files,
+				context,
+			);
+			expect(callers.callers(["src/a.ts"])[0]?.callers).toEqual([
+				{ name: "Caller", kind: "symbol", file: "src/caller.ts", line: 1 },
+			]);
+			expect(callers.notes(["src/a.ts"]).join(" ")).not.toContain("unavailable");
+		} finally {
+			await harness.close(context);
+		}
+	});
 	it("compares head against a generated base, applies base policy, and leaves no worktree", async () => {
 		const base = commit(repo, {
 			"src/a.ts": "export const a = 1;\n",

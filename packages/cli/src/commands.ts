@@ -183,6 +183,7 @@ export async function review(
 						env: createNodeExecutionEnv(repoRoot),
 						repoRoot,
 						base: changeset.revision.base,
+						...(source.kind === "revision" ? { policyCommit: source.commit } : {}),
 						commit: changeset.revision.head,
 						tool: "enola",
 						settings: loaded.static.enola,

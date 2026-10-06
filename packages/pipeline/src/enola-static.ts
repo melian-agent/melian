@@ -55,7 +55,10 @@ export class EnolaRun {
 	static async open(run: Run, root: string, scratch: string, tools: ToolProvisioning): Promise<EnolaRun> {
 		const binary = await tools.binary("enola");
 		const version = tools.tool("enola").version;
-		const policy = await EnolaPolicy.load(run.input.repoRoot, run.input.base ?? run.input.commit);
+		const policy = await EnolaPolicy.load(
+			run.input.repoRoot,
+			run.input.policyCommit ?? run.input.base ?? run.input.commit,
+		);
 		return new EnolaRun(
 			run,
 			root,
@@ -300,10 +303,17 @@ export class EnolaRun {
 		const log = await this.#sarif(this.#root, headOutput, baseline);
 		const differs = await this.#policy.differs(this.#run.input.repoRoot, this.#run.input.commit);
 		const notes = [
-			"Enola used the base's policy with providers and history disabled; output and HOME were in scratch.",
+			this.#run.input.policyCommit === undefined
+				? "Enola used the base's policy with providers and history disabled; output and HOME were in scratch."
+				: `Enola used policy commit ${this.#run.input.policyCommit} with providers and history disabled; output and HOME were in scratch.`,
 		];
 		notes.push(...this.#notes);
-		if (differs) notes.push("Enola configuration differs at head; the base's copies judged both revisions.");
+		if (differs)
+			notes.push(
+				this.#run.input.policyCommit === undefined
+					? "Enola configuration differs at head; the base's copies judged both revisions."
+					: "Enola configuration differs at head; the trusted policy commit's copies judged both revisions.",
+			);
 		return { status: "ran", log, baseLog, notes, snapshots: [before, after] };
 	}
 }
