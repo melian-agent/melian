@@ -16,6 +16,7 @@ import {
 	revisionKey,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { PublishedDocument } from "../../pipeline/src/publish.ts";
 import { type FakeState, fakeGitHub, posts } from "./fixtures/fake-github.ts";
 import {
 	emptyName,
@@ -238,6 +239,11 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		await publish(github, changeset, true);
 		expect(state.statuses.at(-1)?.state).toBe(blocking ? "failure" : "success");
 		expect(state.reviews).toHaveLength(1);
+		expect(state.ledgers).toHaveLength(1);
+		expect(state.ledgers[0]!.body).toContain("writers trusted: yes");
+		const published = await harness!.snapshot(PublishedDocument, (await harness!.root(context)).id, context);
+		const latest = published?.ledgerRounds?.at(-1);
+		expect(latest).toHaveProperty("publishedBy.trustedWriters", true);
 	});
 
 	it("posts one commenting review, each finding on its line, its nearest changed line, or the body, all marked", async () => {
