@@ -36,7 +36,6 @@ const evalAt = (startLine: number, snippet: string) =>
 
 const findings = [evalAt(12, "eval(input)"), evalAt(40, "eval(other)")];
 
-// Stores Melian's verdict of `revision`, as a review would, over these findings.
 async function storeReview(harness: CompareHarness, reviewFindings: readonly Finding[] = findings): Promise<void> {
 	const verdict = new Adjudication({
 		findings: reviewFindings,
