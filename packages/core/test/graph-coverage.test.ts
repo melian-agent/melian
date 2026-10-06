@@ -45,3 +45,31 @@ it("renders measured ratios, empty denominators and escaped named gaps", () => {
 		unresolved: 1,
 	});
 });
+
+it("refuses malformed persisted coverage at every nested boundary", () => {
+	const state = GraphCoverage.compute(
+		"a".repeat(40),
+		"fixture",
+		{
+			format_version: 1,
+			compiler: "fixture",
+			symbols: [],
+			files: [{ path: "a.ts", pairs: [], imports: [], external: 0, unresolved: 0 }],
+		},
+		{ call: () => undefined, import: () => undefined },
+	).toJSON();
+	const file = state.files[0]!;
+	const gap = { kind: "call", cause: "missing", detail: "callee", line: 1 } as const;
+	const missing = { ...file, calls: { matched: 0, total: 1, ratio: 0 }, gaps: [gap] };
+	for (const invalid of [
+		{ ...state, tree: "invalid" },
+		{ ...state, extra: true },
+		{ ...state, totals: { ...state.totals, calls: -1 } },
+		{ ...state, totals: { ...state.totals, extra: true } },
+		{ ...state, files: [{ ...file, extra: true }] },
+		{ ...state, files: [{ ...file, calls: { ...file.calls, extra: true } }] },
+		{ ...state, files: [{ ...missing, gaps: [{ ...gap, line: 0 }] }] },
+		{ ...state, files: [{ ...missing, gaps: [{ ...gap, extra: true }] }] },
+	])
+		expect(() => GraphCoverage.from(invalid)).toThrow("Invalid graph coverage artifact");
+});

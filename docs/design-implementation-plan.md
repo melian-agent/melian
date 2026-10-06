@@ -164,3 +164,5 @@ Step 11 coverage artifacts: classes and atomic cache storage are built. Static r
 Step 11 layering constraint is built and proved on the branch-point tree. Package, subpath and relative imports each caused a SARIF error; the clean tree passed. The harness-free test stays.
 
 Step 11 execution-miss mapping is built. The tool-manifest comparison maps thirteen execution misses to tests or the installed-tarball reproduction. The manifest test checks every record and finding reference.
+
+   - Mutation inventory: nested graph-coverage schemas reject malformed persisted data. Ratio, total, location and extra-field mutations fail.
