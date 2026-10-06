@@ -107,7 +107,7 @@ What remains after them:
 
 - Step 9's issues [#26](https://github.com/melian-agent/melian/issues/26) and [#46](https://github.com/melian-agent/melian/issues/46).
 - Step 10's rehearsal.
-- Step 11 is built on `tool-manifest` in [pull request #89](https://github.com/melian-agent/melian/pull/89). The first Melian and adversarial fix pass is complete, with regressions for cache trust, publication, coverage identity, legacy transcripts and installed packaging. All build sub-items above are done. [The spike](spikes/enola-coverage.md) meets the measurement exit criterion and leaves search unrestricted. Main’s verifier is merged. The Claude and second Melian fix pass is in progress; landing remains.
+- Step 11 is built on `tool-manifest` in [pull request #89](https://github.com/melian-agent/melian/pull/89). The first Melian and adversarial fix pass is complete, with regressions for cache trust, publication, coverage identity, legacy transcripts and installed packaging. All build sub-items above are done. [The spike](spikes/enola-coverage.md) meets the measurement exit criterion and leaves search unrestricted. Main’s verifier is merged. The Claude and second Melian fix pass is complete, with mutation proofs for safety guards, baseline use, fact calls, CLI caller wiring and transcript pagination. Final gate verification and landing remain.
 - Step 14's leftovers, including a durability tuning round. Worst precision was 0.56 after run 9.
 
 Two experiments are running, and each has a record that decides it:
@@ -151,4 +151,4 @@ Step 11 coverage artifacts: classes and atomic cache storage are built. Static r
 
 Step 11 layering constraint is built and proved on the branch-point tree. Package, subpath and relative imports each caused a SARIF error; the clean tree passed. The harness-free test stays.
 
-Step 11 execution-miss mapping is built with an empty list. No comparison row assigns `needs-execution`; the manifest test checks each future record and finding reference.
+Step 11 execution-miss mapping is built. The tool-manifest comparison maps thirteen execution misses to tests or the installed-tarball reproduction. The manifest test checks every record and finding reference.

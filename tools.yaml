@@ -24,4 +24,17 @@ tools:
         url: https://github.com/enola-labs/enola/releases/download/v0.4.27/enola-0.4.27-linux-arm64.tar.gz
         sha256: 820b88baa3ef9efd984e850004c9decc1d0b5c2d5381bb04487c332dd9360ef3
         binary: enola-0.4.27-linux-arm64
-misses: []
+misses:
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "M1", tool: repro-run }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "M2", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L1", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L2", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L3", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L4", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L5", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L6", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L8", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L10", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L11", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L12", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L13", tool: tests }

@@ -16,12 +16,26 @@ describe("ToolManifest", () => {
 		}
 	});
 
-	it("reads all four pins and an empty needs-execution map", () => {
+	it("reads all four pins and the recorded execution misses", () => {
 		const manifest = ToolManifest.parse(JSON.stringify(stored));
 		expect(manifest.tool("enola").version).toBe("0.4.27");
 		expect(Object.keys(manifest.tool("enola").platforms)).toHaveLength(4);
 		expect(manifest.artifact("enola", "darwin-arm64").binary).toBe("enola-0.4.27-darwin-arm64");
-		expect(manifest.toJSON().misses).toEqual([]);
+		expect(manifest.toJSON().misses.map((miss) => miss.finding)).toEqual([
+			"M1",
+			"M2",
+			"L1",
+			"L2",
+			"L3",
+			"L4",
+			"L5",
+			"L6",
+			"L8",
+			"L10",
+			"L11",
+			"L12",
+			"L13",
+		]);
 		expect(() => manifest.tool("constructor")).toThrow("No tool");
 		expect(() => manifest.artifact("enola", "windows-amd64")).toThrow("no pin");
 	});
