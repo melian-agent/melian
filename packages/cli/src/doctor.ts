@@ -18,6 +18,7 @@ import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSou
 import type { Io } from "./commands.ts";
 import { decisionProviderRefusal, reviewModels } from "./models.ts";
 import { git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
+import { ToolInventory } from "./tools.ts";
 
 type Check = { readonly name: string; readonly state: "ok" | "warn" | "fail"; readonly detail: string };
 
@@ -144,6 +145,20 @@ async function levelsCheck(cwd: string): Promise<Check | undefined> {
 
 const staticTools: readonly StaticTool[] = ["biome", "tsc"];
 
+async function toolChecks(cwd: string, env: NodeJS.ProcessEnv): Promise<Check[]> {
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return [];
+	try {
+		return (await (await ToolInventory.open(root, env)).readiness()).map((tool) => ({
+			name: `tool ${tool.name}`,
+			state: tool.state === "verified" ? "ok" : tool.state === "not-fetched" ? "warn" : "fail",
+			detail: `${tool.version}; ${tool.detail}`,
+		}));
+	} catch (error) {
+		return [{ name: "tools", state: "fail", detail: error instanceof Error ? error.message : String(error) }];
+	}
+}
+
 // The static checks run the checkout's own Biome and tsc when it has them installed, and Melian's copy otherwise, so a
 // result can differ from the repository's own lint run.
 async function staticCheck(cwd: string): Promise<Check | undefined> {
@@ -236,6 +251,7 @@ export async function doctor(io: Io): Promise<number> {
 			? { name: "gh", state: "warn", detail: "not found on PATH" }
 			: { name: "gh", state: "ok", detail: gh.split("\n")[0]! },
 		await repositoryCheck(io.cwd),
+		...(await toolChecks(io.cwd, io.env)),
 		...[
 			await executableCheck(io.cwd, io.executable),
 			await stateCheck(io.cwd, io.env),

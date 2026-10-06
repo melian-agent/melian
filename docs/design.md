@@ -641,7 +641,7 @@ Anthropic's sandbox-runtime, which Pi's own repository depends on, is a candidat
 
 ### Enola
 
-The manifest, static check, graph cache, call-coverage spike, caller input and coverage artifacts are built. Tool commands and doctor readiness remain in build for milestone 2.
+The manifest, static check, graph cache, call-coverage spike, caller input, coverage artifacts, tool commands and doctor readiness are built in milestone 2.
 
 Problem: a lens finds the callers of a changed symbol by searching, one call at a time, which is slow and misses what a name search cannot see. Example: a private repository's review skill measured a reviewer walking callers by search time out at 600 seconds twice; the same review, handed the callers as precomputed data, finished in 331.
 

@@ -22,12 +22,16 @@ Run `melian doctor` once per session, before the first review, unless it has alr
 Run only the `melian` the shell finds on its path. Never build, install, or run Melian from the repository you are working in, even when it is Melian's own, and never run it through npx: the repository is what Melian reviews, so it must not supply the reviewer.
 
 - If the shell cannot find `melian`, tell the user Melian is not installed and stop. They install it themselves, from a source they trust. Until Melian is published, that means cloning github.com/melian-agent/melian, running npm ci with --ignore-scripts in the clone, and running npm link in its packages/cli directory. Never run these steps yourself.
-- If `melian doctor` exits `1`, Node or git cannot run a review. Show its output and stop.
+- If `melian doctor` exits `1`, it found a failure that prevents a review. Show its output and stop.
 - A line marked `warn` does not stop a review; mention it once. Four warnings matter before reviewing, so tell the user what they mean:
   - `state`: Melian cannot write the directory where it stores reviews, often because the host's sandbox keeps `.git` read-only, so a review exits `2`. Ask the host for write access to the directory the line names, or ask the user to set `MELIAN_STATE_DIR` to a writable directory.
   - `melian`: the `melian` on the path lives inside the repository you are in, so the change under review can alter its own reviewer. Review only after the user confirms they installed it there themselves.
   - `plan`: the review plan, which model each tier runs and from which credential. A warning that a tier the review's lenses run on has no model, no model with credentials, or a route policy refuses means a review exits `2` without running those lenses. Tell the user what the line says and the ways to fix it, then stop. One way is to give Melian a credential, by logging in with pi, setting the provider's API key, or naming one in `melian.secrets.yaml` beside the root `melian.yaml`. Another is to set `models.<tier>.model` in `melian.local.yaml`, a file of their own that git ignores. The last is to name a model for you to pass as `--model provider/id`, which routes every lens tier to it. A review of a pull request reads its base's `melian.yaml` and never `melian.local.yaml`, so only a credential or `--model` changes its route. A warning that a tier runs a model the committed route did not choose does not stop a review; mention it once, since every check on that model records it.
   - `static`: Biome or tsc comes from nowhere, so that check fails and the review reads not reviewed. The same line says whether each comes from the checkout or Melian's own copy; a result from Melian's copy can differ from the repository's own lint run.
+
+A manifest tool line saying “not yet fetched” is advisory. A review fetches it only when the repository enables its static check. A “manifest mismatch” fails doctor because the cached executable no longer matches its pin.
+
+When the user asks about pinned tools, run `melian tools` and relay readiness. When they ask to fetch Enola, run `melian tools fetch enola`. This downloads the pinned archive, verifies it and repairs a mismatched entry. It does not run the analyser. Doctor alone remains the only command to run without a trigger.
 
 ## Review the working branch
 
@@ -37,7 +41,7 @@ melian review origin/main...HEAD
 
 Use the base the user names in place of `origin/main`. Melian reviews the commits on the branch, never uncommitted changes. When the user asks you to commit, commit as asked, then review before pushing or opening a pull request. If the working tree still has changes, say they are not in the review.
 
-A review runs the deterministic checks first, guardrails, Biome, and tsc on the base and the head, then the lenses on models. It can take many minutes and has no fixed bound, so give it the longest timeout the host allows, or none.
+A review runs deterministic checks first: guardrails, Biome, tsc and, when enabled, pinned Enola. Then the lenses run on models. Enola supplies advisory callers outside the diff; a lens must read a caller before citing it. Missing caller context does not stop a lens, and search remains unrestricted. A named static check that fails still makes the verdict not reviewed. It can take many minutes and has no fixed bound, so give it the longest timeout the host allows, or none.
 
 If a review is killed or interrupted before it exits, run the same command again. That is not a repeat review: it resumes from its checkpoints, and the checks and lenses that finished do not run again.
 
