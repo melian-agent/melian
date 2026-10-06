@@ -72,8 +72,13 @@ describe("revision source reader", () => {
 		symlinkSync("ignore-rules", join(repo, ".gitignore"));
 		const reader = await openSource(repo, sourceFor(repo, "revision"));
 		const read = vi.spyOn(reader, "readText");
+		const remove = vi.spyOn(fs, "rm");
 		expect(await reader.isIgnored("rules.md")).toBe(false);
 		expect(read.mock.calls.some(([path]) => path === "ignore-rules")).toBe(false);
+		expect(remove).toHaveBeenCalledWith(expect.stringMatching(/melian-standards-ignore-/), {
+			recursive: true,
+			force: true,
+		});
 	});
 
 	it("propagates an oversized ignore file instead of admitting the import", async () => {
@@ -89,8 +94,13 @@ describe("revision source reader", () => {
 	it("propagates a non-source error while reading ignore rules", async () => {
 		const reader = await openSource(repo, sourceFor(repo, "revision"));
 		const error = new Error("ignore read failed");
+		const remove = vi.spyOn(fs, "rm");
 		vi.spyOn(reader, "readText").mockRejectedValueOnce(error);
 		expect(await rejection(reader.isIgnored("rules.md"), Error)).toBe(error);
+		expect(remove).toHaveBeenCalledWith(expect.stringMatching(/melian-standards-ignore-/), {
+			recursive: true,
+			force: true,
+		});
 	});
 
 	it("refuses revision syntax starting with a caret", async () => {
