@@ -376,8 +376,18 @@ describe("CompareHarness", () => {
 			]),
 		);
 		expect(comparison.importsBySource()).toEqual({
-			"file:codex.json": { at: "t", ids: [external[0]!.id], skippedBodies: 0 },
-			"file:claude.json": { at: "t", ids: [external[1]!.id], skippedBodies: 0 },
+			"file:codex.json": {
+				at: "t",
+				ids: [external[0]!.id],
+				skippedBodies: 0,
+				reviewers: [{ name: "codex" }],
+			},
+			"file:claude.json": {
+				at: "t",
+				ids: [external[1]!.id],
+				skippedBodies: 0,
+				reviewers: [{ name: "claude-code" }],
+			},
 		});
 		expect((await harness.read(revision))?.toJSON()).toEqual(comparison.toJSON());
 	});
@@ -578,7 +588,11 @@ describe("FileImporter", () => {
 			const importer = await FileImporter.open("reviews/claude.json", { cwd: root, repoRoot: root });
 
 			expect(importer.source).toBe("file:reviews/claude.json");
-			expect(await importer.import()).toEqual({ findings: [], skippedBodies: 0 });
+			expect(await importer.import()).toEqual({
+				findings: [],
+				skippedBodies: 0,
+				reviewers: [{ name: "claude-code" }],
+			});
 			expect(realpath.mock.calls).toEqual([[path], [root]]);
 		} finally {
 			realpath.mockRestore();
@@ -664,7 +678,7 @@ describe("FileImporter", () => {
 		const importer = await FileImporter.open("limit.json", { cwd: root, repoRoot: root });
 
 		expect(importer.source).toBe("file:limit.json");
-		expect(await importer.import()).toEqual({ findings: [], skippedBodies: 0 });
+		expect(await importer.import()).toEqual({ findings: [], skippedBodies: 0, reviewers: [{ name: "human" }] });
 	});
 
 	it("refuses a file larger than maxReviewerFileBytes without reading it", async () => {

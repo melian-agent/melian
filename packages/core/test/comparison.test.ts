@@ -905,7 +905,14 @@ describe("Comparison matching", () => {
 		const comparison = Comparison.of(revision);
 		comparison.import("file:x.json", { findings: [first, last], skippedBodies: 0 }, "t");
 		expect(comparison.externalFindings().map((each) => each.toJSON())).toEqual([last.toJSON()]);
-		expect(comparison.importsBySource()).toEqual({ "file:x.json": { at: "t", ids: [last.id], skippedBodies: 0 } });
+		expect(comparison.importsBySource()).toEqual({
+			"file:x.json": {
+				at: "t",
+				ids: [last.id],
+				skippedBodies: 0,
+				reviewers: [{ name: "codex" }, { name: "codex" }],
+			},
+		});
 	});
 
 	it("counts a repeated Melian finding and its generated pair once", () => {
