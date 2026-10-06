@@ -39,10 +39,21 @@ afterEach(() => {
 	removeRepository(repo);
 });
 
-async function fake(exit = 1, impactExit = 0) {
+async function fake(exit = 1, impactExit = 0, requirePolicy = false) {
 	const script = `#!/bin/sh
 if [ "$1" = "--version" ]; then echo 0.0.1; exit 0; fi
 for config in "$@"; do :; done
+${
+	requirePolicy
+		? `
+[ "$(cat enola/constraints/layer.yaml)" = 'rules: [] # base constraint' ] || exit 9
+[ "$(cat enola-intent.yaml)" = 'rules: [] # base intent' ] || exit 9
+[ "$(cat .enola/suppressions.yaml)" = 'suppressions: [] # base suppression' ] || exit 9
+[ ! -e enola/constraints/head-only.yaml ] || exit 9
+[ ! -e mcp-arch.yaml ] || exit 9
+`
+		: ""
+}
 case "$1" in
 --generate)
   printf '%s' '{"id":"alpha","kind":"symbol","name":"Alpha","file":"src/a.ts","line":1}' > .enola/facts.jsonl
@@ -203,12 +214,19 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		const base = commit(repo, {
 			"src/a.ts": "export const a = 1;\n",
 			"enola.yaml": "providers: []\n",
-			"enola/constraints/layer.yaml": "rules: []\n",
+			"enola/constraints/layer.yaml": "rules: [] # base constraint\n",
+			"enola-intent.yaml": "rules: [] # base intent\n",
+			".enola/suppressions.yaml": "suppressions: [] # base suppression\n",
 			".enola/baseline/facts.jsonl": "do not reuse\n",
 		});
 		const head = commit(repo, {
 			"src/a.ts": "export const BROKEN = 1;\n",
 			"enola.yaml": "providers: [{ command: [evil] }]\n",
+			"enola/constraints/layer.yaml": "rules: [] # head constraint\n",
+			"enola-intent.yaml": "rules: [] # head intent\n",
+			".enola/suppressions.yaml": "suppressions: [] # head suppression\n",
+			"enola/constraints/head-only.yaml": "rules: []\n",
+			"mcp-arch.yaml": "providers: [{ command: [evil] }]\n",
 		});
 		const result = await runStaticTool(
 			{
@@ -218,7 +236,7 @@ describe("static.enola", { timeout: 60_000 }, () => {
 				commit: head,
 				tool: "enola",
 				settings: defaultConfig.static.enola,
-				tools: await fake(),
+				tools: await fake(1, 0, true),
 			},
 			context,
 		);
@@ -246,7 +264,7 @@ describe("static.enola", { timeout: 60_000 }, () => {
 				commit: head,
 				tool: "enola",
 				settings: defaultConfig.static.enola,
-				tools: await fake(),
+				tools: await fake(1, 0, true),
 			},
 			context,
 		);
