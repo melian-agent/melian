@@ -102,13 +102,26 @@ it.each([new Error("pin unreadable"), "pin unreadable"])(
 			{
 				name: "enola",
 				version: "0.4.27",
-				state: "mismatch",
-				detail: "manifest mismatch: pin unreadable",
+				state: "unavailable",
+				detail: "cannot check: pin unreadable",
 			},
 		]);
 		expect(fetch).not.toHaveBeenCalled();
 	},
 );
+
+it("reports a platform with no pin as unavailable, never as a mismatch", async () => {
+	const provisioning = await ToolProvisioning.open(repo, { root: join(repo, "cache"), platform: "linux-s390x" });
+	const inventory = await ToolInventory.open(repo, {}, provisioning);
+	expect(await inventory.readiness()).toEqual([
+		{
+			name: "enola",
+			version: "0.4.27",
+			state: "unavailable",
+			detail: "cannot check: enola has no pin for linux-s390x",
+		},
+	]);
+});
 
 it.each([
 	["tools", "fetch"],

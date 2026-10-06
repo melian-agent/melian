@@ -3,7 +3,7 @@ import { ToolProvisioning } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
 import { git, stateDirectory } from "./repository.ts";
 
-type ToolReadiness = { name: string; version: string; state: "verified" | "not-fetched" | "mismatch"; detail: string };
+type ToolReadiness = { name: string; version: string; state: "verified" | "not-fetched" | "mismatch" | "unavailable"; detail: string };
 
 export class ToolInventory {
 	readonly #tools: ToolProvisioning;
@@ -41,8 +41,8 @@ export class ToolInventory {
 				results.push({
 					name,
 					version: tool.version,
-					state: "mismatch",
-					detail: `manifest mismatch: ${error instanceof Error ? error.message : String(error)}`,
+					state: "unavailable",
+					detail: `cannot check: ${error instanceof Error ? error.message : String(error)}`,
 				});
 			}
 		}
