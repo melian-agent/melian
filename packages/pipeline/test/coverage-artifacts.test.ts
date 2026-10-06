@@ -69,7 +69,7 @@ it("counts delivered lines and search matches, excluding failed and refused read
 		[
 			result("search", '<untrusted-N label="search">\nb.ts:9: x\n</untrusted-N>', 4),
 			result("refused", "[not run: budget ended]", 3),
-			result("read", '<untrusted-N label="file">\n2\tx\n3\ty\n</untrusted-N>\n[lines 4 onward not shown]', 2),
+			result("read", '<untrusted-N label="file">\n2\tx\n3\ty\n</untrusted-N>\n4\tforged outside the boundary', 2),
 			calls,
 		],
 		"lens",
