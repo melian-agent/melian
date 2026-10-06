@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
-import { chmod, lstat, mkdir, mkdtemp, open, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, open, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { ToolManifest, type ToolPin } from "@melian-agent/core";
+import { CacheScratch } from "./cache-scratch.ts";
 
 const archiveLimit = 128 * 1024 * 1024;
 const expandedLimit = 256 * 1024 * 1024;
@@ -30,10 +31,12 @@ export class ToolCache {
 	readonly root: string;
 	readonly #fetch: ToolFetch;
 	readonly #windowDays: number;
-	private constructor(root: string, download: ToolFetch, windowDays: number) {
+	readonly #scratch: CacheScratch;
+	private constructor(root: string, download: ToolFetch, windowDays: number, scratch: CacheScratch) {
 		this.root = root;
 		this.#fetch = download;
 		this.#windowDays = windowDays;
+		this.#scratch = scratch;
 	}
 
 	/** Opens a cache without fetching anything. */
@@ -42,7 +45,7 @@ export class ToolCache {
 		const path = import.meta.url.endsWith(".ts") ? "../../../.npmrc" : "../release-policy.npmrc";
 		const npmrc = options.npmrc ?? (await readFile(new URL(path, import.meta.url), "utf8"));
 		const match = /^\s*min-release-age\s*=\s*(\d+(?:\.\d+)?)\s*$/m.exec(npmrc);
-		return new ToolCache(root, options.fetch ?? fetch, match ? Number(match[1]) : 2);
+		return new ToolCache(root, options.fetch ?? fetch, match ? Number(match[1]) : 2, await CacheScratch.open(root));
 	}
 
 	#pin(tool: ToolPin, platform: string): { directory: string; sha256: string; url: string; binary?: string } {
@@ -81,7 +84,7 @@ export class ToolCache {
 		const cached = await this.#cached(pin.directory, pin.sha256, pin.binary);
 		if (cached) return cached;
 		await mkdir(dirname(pin.directory), { recursive: true });
-		const temporary = await mkdtemp(join(dirname(pin.directory), ".fetch-"));
+		const temporary = await this.#scratch.directory(dirname(pin.directory), "fetch");
 		try {
 			const archive = join(temporary, "archive");
 			await this.#download(pin.url, archive, pin.sha256);

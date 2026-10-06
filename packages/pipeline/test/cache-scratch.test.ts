@@ -1,0 +1,72 @@
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import { lstat, mkdir, mkdtemp, rm, symlink, utimes, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, expect, it } from "vitest";
+import { CoverageCache } from "../src/coverage-cache.ts";
+import { GraphCache } from "../src/graph-cache.ts";
+import { ToolCache } from "../src/tool-cache.ts";
+
+let root: string;
+afterEach(async () => {
+	if (root) await rm(root, { recursive: true, force: true });
+});
+
+it("sweeps a killed cache writer on the next open while retaining live and published paths", async () => {
+	root = await mkdtemp(join(tmpdir(), "melian-scratch-"));
+	const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
+	await once(child, "spawn");
+	try {
+		const platform = join(root, "tools", "enola", "1", "platform");
+		const graph = join(root, "graphs");
+		const coverage = join(root, "coverage", "key", "artifacts");
+		for (const directory of [platform, graph, coverage]) await mkdir(directory, { recursive: true });
+		const abandoned = [
+			join(platform, `.fetch-${child.pid}-partial`),
+			join(graph, `.graph-${child.pid}-partial`),
+			join(graph, `.graph-${child.pid}-partial-rejected`),
+		];
+		for (const directory of abandoned) await mkdir(directory);
+		const partialFile = join(coverage, `review.json.${child.pid}.${crypto.randomUUID()}.tmp`);
+		await writeFile(partialFile, "partial");
+		abandoned.push(partialFile);
+		const live = join(platform, `.fetch-${process.pid}-live`);
+		const published = join(platform, "entry-winner");
+		await mkdir(live);
+		await mkdir(published);
+		await ToolCache.open(root);
+		for (const path of abandoned) expect(await lstat(path)).toBeDefined();
+		const exited = once(child, "exit");
+		child.kill("SIGKILL");
+		await exited;
+		await GraphCache.open(root);
+		await CoverageCache.open(root);
+		for (const path of abandoned) await expect(lstat(path)).rejects.toMatchObject({ code: "ENOENT" });
+		expect((await lstat(live)).isDirectory()).toBe(true);
+		expect((await lstat(published)).isDirectory()).toBe(true);
+	} finally {
+		child.kill("SIGKILL");
+	}
+});
+
+it("sweeps old legacy scratch but keeps recent legacy writes and ignores directory symlinks", async () => {
+	root = await mkdtemp(join(tmpdir(), "melian-scratch-legacy-"));
+	const graph = join(root, "graphs");
+	await mkdir(graph);
+	const old = join(graph, ".graph-old-rejected"),
+		recent = join(graph, ".graph-recent");
+	await mkdir(old);
+	await mkdir(recent);
+	await utimes(old, new Date(0), new Date(0));
+	const outside = join(root, "outside");
+	await mkdir(outside);
+	const sentinel = join(outside, ".graph-old");
+	await mkdir(sentinel);
+	await utimes(sentinel, new Date(0), new Date(0));
+	await symlink(outside, join(graph, "linked"));
+	await GraphCache.open(root);
+	await expect(lstat(old)).rejects.toMatchObject({ code: "ENOENT" });
+	expect((await lstat(recent)).isDirectory()).toBe(true);
+	expect((await lstat(sentinel)).isDirectory()).toBe(true);
+});

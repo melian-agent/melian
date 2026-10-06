@@ -495,3 +495,5 @@ Facts supply declaration starts, without end lines. Changed hunks select the pre
 The host passes caller context through `Lens.renderInstructions`. The selection hashes the bounded caller section with a fixed nonce, so changed context replaces the task. Identical context attaches despite a fresh review nonce. Coverage capture reads durable conversations, including failover and escalation history. A finished task stores each run’s conversation ID; older receipts without it confer no transcript coverage. Cache or transcript failures leave an explicit note and do not stop the lens.
 
 ToolCache.open and readiness create no directories. Materialisation creates its parents when it fetches. A read-only git directory must leave an absent pin as not fetched, rather than fail a readiness read.
+
+CacheScratch gives fetch, graph and coverage writes process-owned temporary names. Every cache open sweeps dead owners. ESRCH proves absence; EPERM does not, so denied probes keep the writer’s paths. Symlinks and published tool entries are never traversed. Legacy scratch without process ownership has a one-day grace period. Concurrent disappearance is harmless.

@@ -10,6 +10,7 @@ import {
 	ReviewCoverage,
 	TestCoverage,
 } from "@melian-agent/core";
+import { CacheScratch } from "./cache-scratch.ts";
 import { coverageCompiler, coverageMatcher } from "./coverage-identity.ts";
 import { GraphCache } from "./graph-cache.ts";
 
@@ -20,10 +21,12 @@ type CoverageKind = "graph" | "review" | "test";
 /** Content-addressed evidence and producer indexes for verified graphs. */
 export class CoverageCache {
 	readonly #graphs: GraphCache;
+	readonly #scratch: CacheScratch;
 	readonly #compiler: string;
 	readonly #matcher: string;
-	private constructor(graphs: GraphCache, compiler: string, matcher: string) {
+	private constructor(graphs: GraphCache, compiler: string, matcher: string, scratch: CacheScratch) {
 		this.#graphs = graphs;
+		this.#scratch = scratch;
 		this.#compiler = compiler;
 		this.#matcher = matcher;
 	}
@@ -33,6 +36,7 @@ export class CoverageCache {
 			await GraphCache.open(root),
 			producer.compiler ?? coverageCompiler,
 			producer.matcher ?? coverageMatcher,
+			await CacheScratch.open(root),
 		);
 	}
 
@@ -52,7 +56,7 @@ export class CoverageCache {
 	}
 
 	async #write(path: string, text: string): Promise<void> {
-		const temporary = `${path}.${crypto.randomUUID()}.tmp`;
+		const temporary = this.#scratch.file(path);
 		try {
 			await writeFile(temporary, text, { flag: "wx" });
 			await rename(temporary, path);

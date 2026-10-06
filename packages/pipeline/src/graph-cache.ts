@@ -1,7 +1,8 @@
 import { constants } from "node:fs";
-import { mkdir, mkdtemp, open, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, open, rename, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { type GraphFiles, type GraphKeyParts, GraphSnapshot, graphFiles } from "@melian-agent/core";
+import { CacheScratch } from "./cache-scratch.ts";
 
 const limit = 16 * 1024 * 1024;
 async function bounded(path: string): Promise<string> {
@@ -20,14 +21,16 @@ async function bounded(path: string): Promise<string> {
 /** A disposable graph cache under the same root as tool binaries. */
 export class GraphCache {
 	readonly root: string;
-	private constructor(root: string) {
+	readonly #scratch: CacheScratch;
+	private constructor(root: string, scratch: CacheScratch) {
 		this.root = root;
+		this.#scratch = scratch;
 	}
 	/** Opens directories without holding files or locks. */
 	static async open(root: string): Promise<GraphCache> {
 		root = resolve(root);
 		await mkdir(join(root, "graphs"), { recursive: true });
-		return new GraphCache(root);
+		return new GraphCache(root, await CacheScratch.open(root));
 	}
 	/** Treats every incomplete, corrupt, or incompatible entry as a miss. */
 	async read(parts: GraphKeyParts): Promise<GraphSnapshot | undefined> {
@@ -55,7 +58,7 @@ export class GraphCache {
 		const parts = snapshot.toJSON().parts;
 		if (await this.read(parts)) return;
 		const directory = join(this.root, "graphs", snapshot.key);
-		const temporary = await mkdtemp(join(this.root, "graphs", ".graph-"));
+		const temporary = await this.#scratch.directory(join(this.root, "graphs"), "graph");
 		try {
 			for (const [name, text] of Object.entries(snapshot.files()))
 				await writeFile(join(temporary, name), text, { flag: "wx" });
