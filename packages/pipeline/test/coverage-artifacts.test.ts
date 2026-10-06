@@ -107,6 +107,65 @@ it("counts delivered lines and search matches, excluding failed and refused read
 		TestCoverage.from({ format_version: 1, tree: parts.tree, version: parts.version, status: "available" }),
 	).toThrow();
 });
+it.each(["read_file", "search"])("correlates reused IDs with preceding calls before a later %s", async (name) => {
+	const first = transcriptRecords("read_file", { path: "a.ts" }, "file", "2\tx\n3\ty");
+	const second = transcriptRecords(
+		name,
+		{ path: "b.ts", revision: "base" },
+		name === "read_file" ? "file" : "search",
+		name === "read_file" ? "20\tz\n21\tw" : "b.ts:25: z",
+	);
+	const records = [
+		...first,
+		...second.map((record) => ({ ...record, id: (record.id + 2) as EntryRecord["id"] })),
+	].reverse();
+	const expected = [
+		{ lens: "lens", path: "a.ts", revision: "head", kind: "read", lines: [2, 3] },
+		{
+			lens: "lens",
+			path: "b.ts",
+			revision: name === "read_file" ? "base" : "head",
+			kind: name === "read_file" ? "read" : "search",
+			lines: name === "read_file" ? [20, 21] : [25],
+		},
+	];
+	const transcript = ReviewTranscript.from(records, "lens", ["a.ts", "b.ts"], "N");
+	expect(transcript.reads()).toEqual(expected);
+	const entries = vi
+		.fn<Conversation["entries"]>()
+		.mockResolvedValueOnce({
+			items: records.slice(0, 3),
+			next: { before: 2 },
+		})
+		.mockResolvedValueOnce({ items: records.slice(3) });
+	expect((await ReviewTranscript.read({ entries }, backgroundContext, "lens", ["a.ts", "b.ts"], "N")).reads()).toEqual(
+		expected,
+	);
+	const files = ReviewCoverage.compute(
+		parts.tree,
+		parts.version,
+		["lens"],
+		[changed, { ...changed, path: "b.ts", hunks: [] }],
+		transcript.reads(),
+	).toJSON().lenses[0]!.files;
+	expect(files.find((file) => file.path === "a.ts" && file.revision === "head")).toMatchObject({
+		status: "read",
+		hunks: [0],
+		lines: [
+			{ start: 2, end: 2 },
+			{ start: 3, end: 3 },
+		],
+	});
+	expect(files.find((file) => file.path === "b.ts" && file.revision === "head")).toMatchObject({
+		status: name === "read_file" ? "not read" : "searched only",
+		lines: [],
+	});
+});
+it("does not correlate a result with a later call", () => {
+	const records = transcriptRecords("read_file", { path: "a.ts" }, "file", "2\tx");
+	const reversed = records.map((record) => ({ ...record, id: (3 - record.id) as EntryRecord["id"] }));
+	expect(ReviewTranscript.from(reversed, "lens", ["a.ts"], "N").reads()).toEqual([]);
+});
 it("stores three content identities beside a verified graph and treats corruption as absent", async () => {
 	root = await mkdtemp(join(tmpdir(), "melian-artifacts-"));
 	const graph = GraphSnapshot.create(parts, {

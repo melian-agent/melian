@@ -32,16 +32,16 @@ export class ReviewTranscript {
 		nonce: string,
 	): ReviewTranscript {
 		const calls = new Map<string, ToolCall>();
-		for (const record of records)
-			for (const message of record.model ?? [])
-				if (message.role === "assistant")
-					for (const content of message.content) if (content.type === "toolCall") calls.set(content.id, content);
 		const reads: ReviewRead[] = [];
 		const rendered = paths
 			.map((path) => ({ path, prefix: `${visibleText(path)}:` }))
 			.sort((a, b) => b.prefix.length - a.prefix.length);
-		for (const record of records)
+		for (const record of records.toSorted((a, b) => a.id - b.id))
 			for (const result of record.model ?? []) {
+				if (result.role === "assistant") {
+					for (const content of result.content) if (content.type === "toolCall") calls.set(content.id, content);
+					continue;
+				}
 				if (result.role !== "toolResult" || result.isError) continue;
 				const call = calls.get(result.toolCallId);
 				if (!call || !["read_file", "search"].includes(call.name)) continue;
