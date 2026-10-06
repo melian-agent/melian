@@ -40,6 +40,42 @@ function emptyImpact(truncated = false): EnolaImpact {
 	return EnolaImpact.parse(JSON.stringify({ target: "src.Callee", by_depth: {}, edges: [], stats: { truncated } }), 0);
 }
 
+it.each([
+	["matching location", { file: caller.file, line: caller.line }, 1],
+	["wrong file", { file: "src/other.ts", line: caller.line }, 0],
+	["wrong start line", { file: caller.file, line: 99 }, 0],
+	["missing location", {}, 0],
+] satisfies [string, { file?: string; line?: number }, number][])(
+	"measures impact calls with %s",
+	async (_name, location, matchedCalls) => {
+		const coverage = await EnolaCoverage.open(
+			truthFor([pair]),
+			EnolaFacts.parse(
+				factsFor([caller, callee])
+					.map((fact) => JSON.stringify(fact))
+					.join("\n"),
+			),
+			async () =>
+				EnolaImpact.parse(
+					JSON.stringify({
+						target: "src.Callee",
+						by_depth: { "1": [{ name: "src.Caller", kind: "symbol", ...location }] },
+						edges: [{ source: "src.Caller", target: "src.Callee", kind: "calls" }],
+						stats: { truncated: false },
+					}),
+					0,
+				),
+		);
+		const result = coverage.measure("a".repeat(40), "fixture", "impact").toJSON();
+		expect(result.totals).toMatchObject({ calls: 1, matchedCalls });
+		expect(result.files[0]?.gaps).toEqual(
+			matchedCalls === 1
+				? []
+				: [expect.objectContaining({ kind: "call", cause: "resolved declaration edge absent" })],
+		);
+	},
+);
+
 it.each(["facts", "impact", "combined"] as const)(
 	"does not borrow a nested helper's same-line call through %s",
 	async (source) => {
