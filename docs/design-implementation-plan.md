@@ -171,3 +171,4 @@ Step 11 execution-miss mapping is built. The tool-manifest comparison maps thirt
    - Mutation inventory: Default configuration tests assert the 300-second Enola deadline. Its zero-deadline mutation fails; all 120 restored configuration tests pass.
    - Mutation inventory: Two direct graph tests prove all five uncovered schema mutations. The restored graph suite passes.
    - Mutation inventory: Three filesystem failure cases prove root error propagation and both legacy-stat recovery branches. The restored scratch suite passes all six tests.
+   - Mutation inventory: Three compiler tests prove physical-path lookup, overload selection, unused symbols and worker closure. All five uncovered mutations fail; all 11 restored compiler tests pass.

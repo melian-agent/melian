@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,6 +16,62 @@ afterEach(() => {
 });
 
 describe("compiler graph extraction", { timeout: 60_000 }, () => {
+	it("retains unused declarations and selects the implementation of an overload", () => {
+		root = mkdtempSync(join(tmpdir(), "melian-compiler-declarations-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+		writeFileSync(
+			join(root, "a.ts"),
+			"function overloaded(x: string): string;\nfunction overloaded(x: number): number;\nfunction overloaded(x: unknown) { return x; }\nfunction run() { overloaded(1); }\nfunction unused() {}\nclass Unused {}\n",
+		);
+		const compiler = CompilerGraph.open(root);
+		try {
+			const truth = compiler.read();
+			expect(truth.files[0]?.pairs[0]?.callee).toMatchObject({ name: "overloaded", line: 3 });
+			expect(truth.symbols).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ name: "unused", line: 5, kind: "function" }),
+					expect.objectContaining({ name: "Unused", line: 6, kind: "class" }),
+				]),
+			);
+		} finally {
+			compiler.close();
+		}
+	});
+	it("uses physical paths for mixed-case symlink imports", () => {
+		root = mkdtempSync(join(tmpdir(), "melian-compiler-case-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["a.ts"] }));
+		writeFileSync(join(root, "a.ts"), "import { target } from './Link';\nfunction run() { target(); }\n");
+		writeFileSync(join(root, "target.ts"), "export function target() {}\n");
+		symlinkSync(join(root, "target.ts"), join(root, "Link.ts"));
+		const compiler = CompilerGraph.open(root);
+		try {
+			const truth = compiler.read();
+			expect(truth.files.map((file) => file.path)).toEqual(["a.ts", "target.ts"]);
+			expect(truth.files[0]?.pairs[0]?.callee.file).toBe("target.ts");
+		} finally {
+			compiler.close();
+		}
+	});
+	it("closes the compiler API before its worker exits", () => {
+		root = mkdtempSync(join(tmpdir(), "melian-compiler-close-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["a.ts"] }));
+		writeFileSync(join(root, "a.ts"), "function unused() {}\n");
+		const marker = join(root, "closed");
+		const preload = join(root, "observe-close.mjs");
+		writeFileSync(
+			preload,
+			`import { API } from ${JSON.stringify(import.meta.resolve("typescript/unstable/sync"))};\nimport { writeFileSync } from 'node:fs';\nAPI.prototype.close = new Proxy(API.prototype.close, { apply(method, receiver, args) { writeFileSync(${JSON.stringify(marker)}, 'closed'); return Reflect.apply(method, receiver, args); } });\n`,
+		);
+		execFileSync(process.execPath, [
+			"--conditions=@melian-agent/source",
+			"--import",
+			preload,
+			fileURLToPath(new URL("../src/compiler-graph.ts", import.meta.url)),
+			root,
+			join(root, "truth.json"),
+		]);
+		expect(readFileSync(marker, "utf8")).toBe("closed");
+	});
 	it("counts CommonJS import-equals declarations and their uncovered edges", async () => {
 		root = mkdtempSync(join(tmpdir(), "melian-import-equals-"));
 		writeFileSync(
