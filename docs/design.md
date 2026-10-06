@@ -751,7 +751,7 @@ The same file also shows what a team does when a static rule cannot express a co
 
 ## Evals and testing
 
-Built in milestone 1, with the golden corpus still growing. Goldens for the five backlog lenses were written in milestone 2 (review of record). Comparison with external reviewers is planned for milestone 2, and calibration measurement for milestone 4 (calibration). Lens tests in the lens directory are not yet scheduled.
+Built in milestone 1, with the golden corpus still growing. Goldens for the five backlog lenses were written in milestone 2 (review of record). Comparison with external reviewers is in progress in milestone 2: importing and matching were built in [pull request #68](https://github.com/melian-agent/melian/pull/68), and adjudication, statistics, the backlog, and export are planned. Calibration measurement is planned for milestone 4 (calibration). Lens tests in the lens directory are not yet scheduled.
 
 Noise is where every reviewer fails, and the only defence is measurement. The evals package is first-class:
 
@@ -775,7 +775,7 @@ The built verifier corpus lives under `packages/evals/verifier/`, separate from 
 
 ### Comparison with external reviewers
 
-Planned for milestone 2 step 15. Until it lands, an agent writes each record by hand under `packages/evals/comparisons/`, in the form `melian compare export` will keep.
+In progress in milestone 2 step 15. The shape, the document, the importers, and matching were built in [pull request #68](https://github.com/melian-agent/melian/pull/68). Adjudication, statistics, the backlog, and export are planned. Until export lands, an agent writes each record by hand under `packages/evals/comparisons/`, in the form `melian compare export` will keep.
 
 Problem: Melian learns from other reviewers through comparison records an agent writes by hand, and the records have stopped turning into goldens or checks. Twenty-eight goldens came from them. The records for [pull requests #55](https://github.com/melian-agent/melian/pull/55), [#60](https://github.com/melian-agent/melian/pull/60), and [#61](https://github.com/melian-agent/melian/pull/61) owe none, because every finding sat outside what the lenses' goldens measure. [BACKLOG.md](../packages/evals/goldens/BACKLOG.md) still holds entries from records written in milestone 1. Many external findings came from running code, which no lens does. Nothing shows which findings repeat, so a repeat becomes a check, as `AGENTS.md` requires, only when someone remembers it. Recall and precision live in a sentence at the end of each record, so nothing sums them across records. And the loop cannot leave Melian's repository: the two customer repositories Melian will join run CodeRabbit, whose findings live in GitHub review threads.
 
@@ -785,21 +785,23 @@ Solution: comparison is a Melian capability. `melian compare` builds it, a store
 
 **Shape.** An external finding has one shape whatever its source:
 
-- the reviewer, `codex`, `claude-code`, `coderabbit`, or `human`, with a version where known;
+- the reviewer, `codex`, `claude-code`, `coderabbit`, `copilot`, or `human`, with a version where known, and on GitHub its login and whether it is a bot;
 - the file and line range;
 - a title and a body;
 - the reviewer's own severity, if it gave one;
-- a stable source reference: a thread or comment ID and its URL, or the file and position it was read from;
+- a stable source reference: a thread's ID and its URL, or the file it was read from and the finding's own label there, or without one its place, title, and body;
 - when it was posted, and whether its thread was resolved.
 
-Its ID hashes the reviewer and the source reference, so importing again updates a finding rather than adding one. Melian's findings keep their own shape. A comparison holds, for one changeset at one head, the external findings, Melian's findings from its stored review of that head, and the matches between them. It is a `defineDoc()` document in the changeset's storage, beside the findings document, so it lives where dismissals live. A range compares as a pull request does, for reviewers run on a local branch.
+Its ID hashes the source reference alone, so importing again updates a finding rather than adding one, and a later change to how reviewers are named never orphans a hand match. An import replaces what its source last imported, so a finding the reviewer withdrew goes. Melian's findings keep their own shape. A comparison holds, for one changeset at one head, the external findings, Melian's findings from its stored review of that head, and the matches between them. It is a `defineDoc()` document in the changeset's storage, beside the findings document, so it lives where dismissals live. A range compares as a pull request does, for reviewers run on a local branch.
 
-**Importers.** Each source is an object with a static `open`, like the other adapters. An import is replay safe: each finding upserts by its ID.
+A comparison accepts only a current, decided verdict. An interrupted dismissal can leave the old verdict stored beside a newer adjudication task. Comparison checks that task and the findings version inside the commit that writes its record. Until adjudication records the current verdict, comparison refuses with `notReviewed` and asks for another review. It never resumes tasks or calls a model. [The decision](decisions/2026-10-06-comparison-refuses-superseded-verdict.md) records why.
 
-- Review threads. `packages/github` reads a pull request's review threads through GitHub's GraphQL API, keeping comments whose author login is named. REST's comment list carries no thread state, and a resolved thread is how CodeRabbit marks a finding fixed. CodeRabbit posts as `coderabbitai[bot]`, which Melian knows by default; other bots and humans are named by login. A thread's line is GitHub's current placement at the compared head, or its original line, marked outdated, when GitHub no longer places it. CodeRabbit puts nitpicks and comments outside the diff in review bodies, which have no thread. The importer does not parse them, since [the anatomy of CodeRabbit's output](research/2026-10-04-review-output-anatomy.md) warns against parsing markdown, and it reports how many review bodies it skipped.
+**Importers.** Each source is an object with a static `open`, like the other adapters. An import is replay safe: it replaces what its source last imported, and each finding keeps its ID.
+
+- Review threads. `packages/github` reads a pull request's review threads through GitHub's GraphQL API, keeping comments whose author login is named. REST's comment list carries no thread state, and a resolved thread is how CodeRabbit marks a finding fixed. CodeRabbit posts as `coderabbitai[bot]`, which Melian knows by default; other bots and humans are named by login. A thread's line is GitHub's current placement at the compared head, or its original line, marked outdated, when GitHub no longer places it. GitHub places threads at the pull request's head, so `melian compare` refuses a pull request that moved since Melian's review. CodeRabbit puts nitpicks and comments outside the diff in review bodies, which have no thread. The importer does not parse them, since [the anatomy of CodeRabbit's output](research/2026-10-04-review-output-anatomy.md) warns against parsing markdown, and it reports how many review bodies it skipped.
 - Files, for reviewers that run locally. Codex's adversarial review writes JSON under its own schema, which the importer reads. Any other reviewer, Claude Code's review among them, comes in as a JSON file in the external-finding shape, written by the agent that ran it. Melian never parses a reviewer's prose.
 
-**Matching.** Matching is mechanical first. An external finding matches a Melian finding in the same file whose lines overlap its own or lie within three lines of them. External findings from two reviewers at one site group the same way, so one defect counts once. A finding with no line, or an outdated one, matches nothing until the maintainer matches it by hand. A hand match, or unmatch, is recorded as the maintainer's and overrides the mechanical one. Each external finding ends matched or external-only, and each Melian finding matched or Melian-only. In milestone 4 a `Decider` question, "do these name the same defect?", refines the mechanical match.
+**Matching.** Matching is mechanical first. An external finding matches a Melian finding in the same file whose lines overlap its own or lie within three lines of them. A Melian finding's `cause` evidence locations at head are its sites too, because an `affected` finding sits in a file the change did not edit, and a reviewer of the diff points at the changed line that breaks it. External findings from two reviewers at one site group the same way, so one defect counts once. One reviewer's two findings at one site stay two, as two reports from one check do. A finding with no line, or an outdated one, matches nothing until the maintainer matches it by hand. A hand match, or unmatch, is recorded as the maintainer's and overrides the mechanical one. Each external finding ends matched or external-only, and each Melian finding matched or Melian-only. In milestone 4 a `Decider` question, "do these name the same defect?", refines the mechanical match.
 
 **Adjudication.** `melian compare adjudicate` records the maintainer's verdict on one finding, external or Melian's:
 

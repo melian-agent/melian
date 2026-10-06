@@ -24,6 +24,8 @@ Behaviour belongs to the object it is about, as [AGENTS.md](../../AGENTS.md) say
 | `Lens` | `Lens.load(repoRoot, source, paths)`, `Lens.from(fields)`; `Lens.select(lenses, config, paths)` picks a review's lenses | `level(level)`, `declaredLevels()`, `runnableLevels(band, routed)`, `unrunnable(band, unrouted)`, `triageQuestion(band, levels)`, `triage(band, levels, decision?)`, `escalation(level, band)`, `renderInstructions(standards, level, neighbours, quote, standardsSource)`, `oversizedHandoffs(neighbours)`, `inversions()`, `toJSON()` |
 | `Revision` | `Revision.from({ head, base, files })`, deriving `policyFiles` unless given | `paths()`, `diffLines()`, `trigger(path, startLine, endLine)`, `changeOverlap(location, findingFile?)`, `causeOverlap(site, findingFile?)`, `classifyCause(location, evidence?)`, `toJSON()` |
 | `Changeset` | `Changeset.resolve(repoRoot, range, options)` from git, `Changeset.from(fields)` from a task's input | `withId(id)`, `toJSON()` |
+| `ExternalFinding` | `ExternalFinding.create(input)` from an importer's values, `ExternalFinding.fromFile(value, path)` from a reviewer's file, `ExternalFinding.from(stored)` trusting what Melian stored | `site()`, `meetsFinding(finding)`, `meets(other)`, `sameReviewer(other)`, `compareSite(other)`, `where()`, `by()`, `toJSON()` |
+| `Comparison` | `Comparison.of(revision)` empty, `Comparison.from(stored)` from the pipeline's document | `import(source, imported, at)`, `compare(verdict)`, `match(external, melian, by, at)`, `unmatch(...)`, `externalFindings()`, `externalFinding(id)`, `melianFindings()`, `effectiveMatches()`, `importsBySource()`, `groups()`, `matched()`, `externalOnly()`, `melianOnly()`, `ambiguous()`, `render(verdict, skippedBodies?)`, `toJSON()` |
 
 `Adjudication` holds a review's findings, its `Manifest`, and its configuration, and `adjudicate()` decides the `Verdict`. `Rendering` holds the terminal options that `finding.render(rendering)`, `log.render(rendering)`, and `verdict.render(rendering)` share, `ids`, `all`, and `paint()` for colour, so each object renders itself and no method takes the object it renders as a parameter. A verdict renders each resolution group as a `FindingsLog`, through `log.files(rendering)`.
 
@@ -525,30 +527,7 @@ A rename can move a file into a rule's scope. Problem: forbidden-patterns scanne
 
 A file git calls binary has no hunks, and one NUL byte is enough to make git call it that; so is a `-diff` attribute in the base's `.gitattributes`, which the diff reads on purpose. Problem: forbidden-patterns read only hunks, so a head could add a NUL to any file and nothing in it was scanned. Solution: a binary file at head that is UTF-8 and within 4 MiB is scanned line by line, skipping lines its base version already had, and its findings carry no trigger. Any other binary file adds a note naming it and why.
 
-Melian holds its own code to the rule that behaviour belongs to the object it is about with two
-checks. Problem: forbidden-patterns tests each added line alone. Example: Biome wraps a long
-signature, so `export function triageFinding(` sits on one line and `finding: Finding,` on the next,
-and no line-by-line pattern can see the first parameter without matching every parameter line.
-Solution: the guardrail `free-domain-function` in the root `melian.yaml` catches the common
-single-line case on changed lines in every file under `packages/*/src`. The Biome GritQL rule
-`biome/free-domain-function.grit` catches the wrapped and other forms, since it reads the syntax
-tree: a type parameter list before the parameters, a `ReadonlyArray`, or a signature split anywhere.
-forbidden-patterns scans only added lines, so the guardrail needs no grandfather list: an untouched
-legacy declaration never fires, and touching one means refactoring it. The Biome rule scans whole
-files. It carried an exclusion list of the files that broke it until step 12 refactored the last of
-them, and the list is empty: a file that breaks the rule fails the gate. The plugin reports a
-function declaration, exported or not, default-exported without a name, async or not, whose first
-parameter is annotated with `Finding`, `ResolvedFinding`, `Defect`, `Verdict`, `Manifest`, `Lens`,
-`Revision`, or `Changeset`, an array of one, `readonly` or not, or a `ReadonlyArray` of one. It
-reports neither a class method, a function expression, an arrow function, nor an overload signature
-without a body, and it does not see a type it would have to resolve: a qualified name such as
-`core.Finding`, a union such as `Finding | undefined`, a generic bound such as `<T extends
-Finding>(finding: T)`, or a mapped type such as `Pick<Finding, "properties">`.
-`scripts/free-domain-function.test.mjs` runs the Biome binary with the plugin over scratch files,
-checks that a file the list does not name is linted, and fails if the exclusion list differs from
-the files under `packages/*/src` that the guardrail's pattern matches, so a list can neither hide a
-clean file nor miss a dirty one. The `conventions-free-domain-function` golden covers what neither
-check sees: the `conventions` lens quoting a repository's own wording of the rule.
+Melian holds its own code to the rule that behaviour belongs to the object it is about with two checks. Problem: forbidden-patterns tests each added line alone. Example: Biome wraps a long signature, so `export function triageFinding(` sits on one line and `finding: Finding,` on the next, and no line-by-line pattern can see the first parameter without matching every parameter line. Solution: the guardrail `free-domain-function` in the root `melian.yaml` catches the common single-line case on changed lines in every file under `packages/*/src`. The Biome GritQL rule `biome/free-domain-function.grit` catches the wrapped and other forms, since it reads the syntax tree: a type parameter list before the parameters, a `ReadonlyArray`, or a signature split anywhere. forbidden-patterns scans only added lines, so the guardrail needs no grandfather list: an untouched legacy declaration never fires, and touching one means refactoring it. The Biome rule scans whole files. It carried an exclusion list of the files that broke it until step 12 refactored the last of them, and the list is empty: a file that breaks the rule fails the gate. The plugin reports a function declaration, exported or not, default-exported without a name, async or not. Its first parameter must be annotated with `Finding`, `ResolvedFinding`, `Defect`, `Verdict`, `Manifest`, `Lens`, `Revision`, `Changeset`, `Comparison`, or `ExternalFinding`; an array of one, `readonly` or not, or a `ReadonlyArray` of one, counts too. It reports neither a class method, a function expression, an arrow function, nor an overload signature without a body, and it does not see a type it would have to resolve: a qualified name such as `core.Finding`, a union such as `Finding | undefined`, a generic bound such as `<T extends Finding>(finding: T)`, or a mapped type such as `Pick<Finding, "properties">`. `scripts/free-domain-function.test.mjs` runs the Biome binary with the plugin over scratch files and checks that a file the list does not name is linted. It fails if the exclusion list differs from the files under `packages/*/src` that the guardrail's pattern matches, so a list can neither hide a clean file nor miss a dirty one. The `conventions-free-domain-function` golden covers what neither check sees: the `conventions` lens quoting a repository's own wording of the rule.
 
 Two guardrails hold Melian's documents to the writing rules in `AGENTS.md`. Each is `P3`, which is advisory. Problem: Melian's own reviews raised both findings five or more times, and a lens spends model calls on what a pattern can see. `bare-issue-reference` reads a `#` and digits in every Markdown file but `.github/` and the goldens. The `#` must follow the start of a line, a space, or `(`, and no `]`, word character, or `-` may follow the digits. Example: a hash and digits after a space fire, and a number that a `]` follows, as in link text, does not. Without lookaround the rule cannot tell link text from prose. A number inside the text of a longer link fires. A number after a quote mark or a backtick, such as `melian review "#41"`, does not. `overlong-sentence` reads 45 or more words in a row on one line, in `docs/`, the comparison records, and `README.md`. A full stop, question mark, exclamation mark, or `|` ends the run. Example: a sentence of 60 words fires, and one of 24 does not. A word is a run of word characters, apostrophes, backticks, and hyphens. The pattern counts words instead of skipping up to 40 characters between them, because each repeat costs steps against the engine's 2,000-step cap. A line is the unit, so a list item that runs on with no mark fires. A table bar ends the run, so each cell is measured alone. A semicolon or colon does not end it, because clauses joined by either read as one sentence. An earlier version let a 100-word sentence of semicolons pass, and the conventions lens flagged it. A full stop inside a version number or a path ends it as well. Both rules sit in the root `melian.yaml` and carry a `severity`, which is why a rule can set one. `packages/core/test/doc-guardrails.test.ts` pins them, and the `guardrails-bare-issue-reference` and `guardrails-overlong-sentence` goldens run each through a review.
 
@@ -616,8 +595,93 @@ Only added lines take an inline comment. Problem: GitHub rejects the whole revie
 
 `verdict.reviewStatus()` maps a verdict to a commit status: `passed`, and `findings` with nothing blocking, are `success` with a count; a blocking finding is `failure`; `not-reviewed` is `error`, naming each check that did not run. `success` means only that nothing blocks: Melian never approves.
 
+## Comparison
+
+`src/comparison.ts` holds the shape of another reviewer's finding and the comparison of those findings with Melian's, as [design.md](../design.md#comparison-with-external-reviewers) sets out. The pipeline stores a comparison in the changeset's storage; the github package and the pipeline import findings into it; core decides what matches.
+
+### The stored shape
+
+The pipeline's comparison document is at version 1. It keys a `StoredComparison` by the `revisionKey` of the stored review it compares against, and each one holds:
+
+```ts
+type StoredComparison = {
+	base: string; // the revision compared: the stored review's base and head
+	head: string;
+	external: Record<string, StoredExternalFinding>; // by ID
+	melian: string[]; // the IDs of the stored review's shown and dismissed findings: read from it, never copied
+	matches: { external: string; melian: string; kind: "site" | "hand"; by?: string; at?: string }[];
+	unmatches: { external: string; melian: string; by: string; at: string }[];
+	imports: Record<string, { at: string; ids: string[]; skippedBodies: number }>; // the last import, by source
+};
+
+type StoredExternalFinding = {
+	id: string;
+	reviewer: {
+		name: "codex" | "claude-code" | "coderabbit" | "copilot" | "human";
+		version?: string;
+		login?: string; // on GitHub, as REST spells it
+		kind?: "bot" | "user"; // on GitHub, from the author's GraphQL type
+	};
+	file?: string; // canonical, as a finding's path is
+	line?: number;
+	endLine?: number;
+	revision?: "base"; // a thread on the diff's left side
+	outdated?: boolean; // a thread GitHub no longer places; its lines are its original ones
+	commit?: string; // the commit the reviewer read, as a thread's first comment names it
+	title: string; // one line, at most 200 characters
+	body: string; // at most 65,536 characters
+	severity?: string; // the reviewer's own word, such as "high" or "P1"
+	source:
+		| { kind: "thread"; thread: string; url: string } // GitHub's node ID, the first comment's URL
+		| { kind: "file"; path: string; position: number; ref?: string };
+	postedAt?: string;
+	resolved?: boolean;
+};
+```
+
+A source is named by a string: `github:<login>` for a pull request's review threads, `file:<path>` for a file. Adjudication, statistics, the backlog, and export, the later items of step 15, read this shape; adjudication adds a field of its own beside `matches`, so a comparison stored now still reads. `Comparison` carries a top-level field it does not know through every change and back out of `toJSON()`. Problem: an older binary that read a newer comparison and wrote it back would drop the newer field, such as the maintainer's adjudications. Solution: unknown fields survive, so only the binary that knows a field ever changes it.
+
+Melian's findings are referenced by ID only. Problem: a copy of each finding would go stale when a dismissal decides the verdict again, and it would duplicate the snippets that quote the repository. Solution: `comparison.compare(verdict)` records the IDs of the stored review's findings each time it runs, and a reader takes the findings from the review. It takes those that need attention and those dismissed. The renderer marks dismissed findings in both the matched and Melian-only groups when given the verdict. A silent finding was never shown to the author, so it takes no part in matching or counts: a nit Melian kept quiet is neither a match for a reviewer's comment nor a Melian-only finding.
+
+An external finding's ID is the first 16 hex digits of a sha256 over length-prefixed fields, as `findingId` hashes its own. A thread uses its node ID. A file uses its path and the finding's `ref`. Without a `ref`, it uses the path, the finding's file and line, its title, and a sha256 of its body. The reviewer stays out, so a later change to how reviewers are named never orphans a hand record. Problem: a finding known by its position in the file took another finding's ID when a rerun dropped one above it, and a hand match moved with the ID. Solution: a finding without a `ref` is known by what it says, so an unchanged finding keeps its ID across reruns and a changed one is new. Problem: a reviewer that titles findings generically, such as "Possible bug", gave two findings at one site one ID, and the second overwrote the first. Solution: the body's digest enters a `ref`-less finding's ID, so only findings alike in file, line, title, and body are one. A file that repeats a `ref` is `ComparisonError` `invalidFile`. The version never enters the ID, and the body enters only when the file gives no `ref`.
+
+`comparison.import(source, imported, at)` replaces what the source last imported. A finding it no longer reports goes, unless another source still holds it, and so do the hand matches and unmatches that name it, so a re-run reviewer's file replaces its own and an edited thread updates its finding. `imports` keeps each source's IDs for that, and the CLI reports the count it stored.
+
+`ExternalFinding.create` puts the file in canonical form, refuses one that is not a repository-relative path and an `endLine` before `line` or without one with `ComparisonError` `invalidFinding`, and keeps the title to its first non-blank line, cut at `maxExternalTitleLength` with an ellipsis. Everything an external finding holds is untrusted: the CLI prints it through `visibleText`, and export will escape it as publication escapes findings.
+
+### Reviewers' files
+
+`ExternalFinding.fromFile(value, path)` reads a parsed JSON file in one of two shapes, and throws `ComparisonError` `invalidFile` naming the path and the first fault for anything else. A file whose top level has `next_steps` is Codex's adversarial review output, read under Codex's own schema: `line_start` and `line_end` become the lines, and a non-empty `recommendation` follows the body. When that combined text exceeds 65,536 code points, the importer keeps its first 65,535 and an ellipsis. A valid body at the limit still imports. Any other file is the external-finding shape, which the agent that ran a reviewer writes:
+
+```json
+{
+	"reviewer": { "name": "claude-code", "version": "2.1.0" },
+	"findings": [
+		{ "ref": "A1", "file": "src/a.ts", "line": 3, "endLine": 5, "title": "One line", "body": "Prose", "severity": "P1" }
+	]
+}
+```
+
+A ref-less finding hashes its canonical file path, line, title and body. Two file spellings that canonicalise alike therefore deduplicate on import.
+
+Every finding needs a `title` and a `body`; `ref`, `file`, `line`, `endLine`, `severity`, `postedAt`, and `resolved` are optional, and an unknown key is refused. A file holds at most 1,000 findings. A `file` holds at most 4,096 characters, and a `severity`, `ref`, `postedAt`, reviewer's `version`, or `login` at most 100, so a pasted log never lands in a short field; the stored shape holds the same bounds.
+
+### Matching
+
+`comparison.compare(verdict)` takes the stored review's verdict, reads its `attention()` and `dismissed` findings, and matches them by site. An external finding meets a Melian finding when they name the same file and their lines overlap or lie within `siteDistance`, three lines, of each other, at the Melian finding's own location or at one of its `cause` evidence locations at head. Problem: an `affected` finding sits in a file the change did not edit, and a reviewer reading the diff points at the changed line that breaks it. Solution: a `cause` location at head is a site of the finding too. A `context` location, or a `cause` location at the base, is not.
+
+A finding whose `commit` is not the compared head matches nothing by site either. Problem: a thread stays on the pull request after a push. GitHub carries its line forward even when the push fixed what it named, so a resolved thread from an earlier head sat on a current line and matched a Melian finding it never saw. Solution: `externalFinding.readAt(head)` says whether the reviewer read the compared head, and only such a finding matches by site or groups with others; `comparison.render` lists any other as external-only, with the commit it was read at and a note to match it by hand. A file's findings name no commit and count as read at the head.
+
+An external finding with no file or line, an `outdated` one, and one on the base side match nothing by site; only a maintainer matches them. `comparison.match(external, melian, by, at)` records a hand match and drops any unmatch of the pair; `comparison.unmatch(...)` drops any match of the pair, by site or by hand, and records the unmatch. `compare` rebuilds the site matches and keeps every hand record, so both survive every import. An ID the comparison does not hold is `ComparisonError` `unknownExternal` or `unknownMelian`.
+
+`comparison.groups()` counts each defect once. Each Melian finding is one group, with every external finding matched with it, so three reviewers at one Melian finding are one matched defect. An external finding that matches two Melian findings sits in both groups and never joins them. Problem: grouping by union joined two Melian findings through one external finding near both, and chained one reviewer's findings into a single defect. Solution: external findings that match nothing grow groups in site order, and one joins the first group holding a finding it meets and none from its own reviewer, a reviewer being its name and login. So a group holds at most one finding from each reviewer, as two reports from one check stay two. An unmatched finding never joins a Melian finding's group through another reviewer's match, so an unmatch holds. `matched()`, `externalOnly()`, and `melianOnly()` read the groups. Problem: an external finding near two Melian findings sits in both groups, so counting groups counted it twice and gave one reviewer's comment double weight. Solution: `comparison.render(verdict)` counts matched external findings by distinct ID and reports the distinct Melian findings they cover beside them, as `Matched: 1 external finding, covering 2 Melian findings`. `comparison.ambiguous()` lists each external finding with several matches and at least one site match. The render lists them for the maintainer to match or unmatch by hand, since proximity cannot say which defect the reviewer meant. A hand match settles only its own pair. A finding matched entirely by hand is the maintainer's choice and is not ambiguous. The render lists every external finding's ID, reviewer, and site. Matched findings sit under the ID of each Melian finding they matched. The render computes the groups once and prints through `visibleText`, as every terminal renderer does.
+
 ## Tests
 
+- Test exported schemas directly at their bounds. Downstream validation or normalisation can hide a weakened schema when tests only call an importer.
+- With c8 and Vitest 5, flush `node:v8.takeCoverage()` in `afterAll` before workers discard their modules. Supply each transformed script’s source map. Remap each capture before merging: native fixtures and Vitest use different offsets for the same source path. Run environment-isolation tests separately, since Node adds `NODE_V8_COVERAGE` to child environments. Use Istanbul’s `getLineCoverage()` for changed-line intersections; the text reporter can list an uncalled statement on a line another statement exercised.
+- Inventory every changed source file and its contract before a mutation sweep, including supporting importers. Mutate identity fields as well as branch outcomes. Vary a thread’s URL and node ID independently; test a byte limit at the limit and one byte beyond. Record files and mutation operators the sweep excludes.
+- To audit a branch, force each outcome and move numeric bounds by one. Inverting a predicate alone can fail its positive test while leaving its negative case untested. Keep surviving mutations and their new failing assertions in the fix report.
 - Run the package's tests with `npm test --workspace @melian-agent/core`, or one file with `npx vitest --run packages/core/test/changeset.test.ts` from the repository root.
 - Build real repositories in a temporary directory in `beforeEach` with `test/fixtures/repo.ts`, and delete them in `afterEach`. Never mock git.
 - To test a signalled git command, call the real spawn, stop only the target child, and assert its PID and signalCode. For check-ignore, use --stdin with its input left open so it cannot exit before the signal arrives. A Vitest spy keeps the same mock function when spied on again. Copy the real module exports through importOriginal before capturing spawn, or the spy calls itself.
