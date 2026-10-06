@@ -240,6 +240,32 @@ describe("CompareHarness", () => {
 
 			expect(await harness.reviewed(revision)).toBe(false);
 		});
+
+		describe("a verdict stored before decision records existed", () => {
+			it.each([
+				["accepts one whose indexed input names the current findings version", 0, true],
+				["refuses one whose indexed input names an older findings version", 1, false],
+			])("%s", async (_name, indexedVersion, accepted) => {
+				const path = join(directory, "changeset.sqlite");
+				const { deciding, root, key, create, point, run, input } = await reviewedWithTasks(path);
+				const task = (await create(0)) as TaskId;
+				await point(task);
+				expect(await run(task)).toMatchObject({ outcome: { result: "recorded" } });
+				await root.commit(async (tx) => {
+					const index = await tx.doc(ReviewIndex, root.id);
+					index.reviews = {
+						...index.reviews,
+						[key]: { adjudication: { task, input: JSON.stringify(input(indexedVersion)) } },
+					} as typeof index.reviews;
+					delete (await tx.doc(VerdictDocument, root.id)).decisions![key];
+				}, context);
+				await deciding.close(context);
+				const harness = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review);
+				open.push(harness);
+
+				expect(await harness.reviewed(revision)).toBe(accepted);
+			});
+		});
 	});
 
 	it("closes storage after a cancelled open", async () => {
