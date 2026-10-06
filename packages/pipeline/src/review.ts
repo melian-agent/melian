@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
 	type Changeset,
 	type CheckRecord,
@@ -133,6 +134,7 @@ interface LensRun {
 	readonly route: readonly ModelReference[];
 	readonly verify?: boolean;
 	readonly instructions: string;
+	readonly callers?: string;
 	readonly tools: readonly LensToolName[];
 	readonly severities: readonly Severity[];
 	readonly rules: readonly LensRule[];
@@ -843,6 +845,7 @@ function selectionOf(lenses: readonly LensRun[], escalateAt: Severity | undefine
 		.map((lens) =>
 			[
 				lens.key,
+				...(lens.callers === undefined ? [] : [`callers ${lens.callers}`]),
 				...(lens.band === undefined ? [] : [`band ${lens.band}`]),
 				...(escalateAt === undefined ? [] : [`escalateAt ${escalateAt}`]),
 				...(lens.escalation === undefined ? [] : [escalatesTo(lens.escalation)]),
@@ -1432,6 +1435,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				level,
 				route: [...(routes.get(settings.tier) as { route: ModelReference[] }).route],
 				verify: settings.verify,
+				callers: createHash("sha256")
+					.update(options.callers?.render(covers, "selection") ?? "")
+					.digest("hex"),
 				instructions: ruled.renderInstructions(
 					standards,
 					level,

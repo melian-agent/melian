@@ -255,6 +255,37 @@ describe("reviewChangeset", () => {
 		expect(outside).not.toContain("ignore previous instructions");
 		expect(outside).not.toContain("src/evil");
 	});
+	it("replaces a lens run when supplied callers change, and attaches identical callers", async () => {
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: Array.from({ length: 4 }, () => fauxAssistantMessage("Done.")) },
+			{ match: contracts, replies: Array.from({ length: 4 }, () => fauxAssistantMessage("Done.")) },
+		]);
+		const callers = (name: string) =>
+			CallerContext.from({
+				groups: [
+					{
+						file: "src/user.ts",
+						symbol: "managerName",
+						callers: [{ name, kind: "symbol", file: "caller.ts", line: 1 }],
+						truncated: false,
+					},
+				],
+				issues: [],
+				notes: [],
+				paths: [],
+			});
+		await review();
+		await review({ callers: callers("First") });
+		expect(requests[correctness]).toHaveLength(2);
+		expect(systemPromptOf(requests[correctness]![1]!)).toContain("First");
+		await review({ callers: callers("First") });
+		expect(requests[correctness]).toHaveLength(2);
+		await review({ callers: callers("Second") });
+		expect(requests[correctness]).toHaveLength(3);
+		expect(systemPromptOf(requests[correctness]![2]!)).toContain("Second");
+		await review();
+		expect(requests[correctness]).toHaveLength(4);
+	});
 	it("runs each lens as its own conversation and returns the findings on the root", async () => {
 		writeFiles(repo, { "src/user.ts": "uncommitted edits the lens must not see\n" });
 		const requests = scriptConversations(fake, [
