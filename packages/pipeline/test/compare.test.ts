@@ -477,6 +477,41 @@ describe("comparison review fixes", () => {
 		commit.mockRestore();
 	});
 
+	it("refreshes detached comparisons and drops stale matches and debt after a clean review", async () => {
+		const storage = createMemoryStorage();
+		const harness = await CompareHarness.open(storage, createFakeModels().review);
+		open.push(harness);
+		await storeReview(harness);
+		const external = codex(13, 0);
+		const comparison = await harness.importFindings(
+			revision,
+			[{ source: "file:codex.json", imported: imported(external) }],
+			"2026-10-05T00:00:00Z",
+		);
+		expect(comparison.effectiveMatches()).toEqual([{ external: external.id, melian: findings[0]!.id, kind: "site" }]);
+		const adjudicated = await harness.adjudicate(revision, findings[0]!.id, {
+			verdict: "valid",
+			golden: "correctness",
+			by: "Ada",
+			at: "2026-10-05T01:00:00Z",
+		});
+		expect(adjudicated.backlog()).toMatchObject([{ id: findings[0]!.id, lens: "correctness" }]);
+		const root = await harness.harness.root(context);
+		const clean = new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig }).adjudicate();
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).verdicts[revisionKey(revision)] = clean.toJSON();
+		}, context);
+
+		const entries = await ComparisonReader.open(storage).read("change");
+		expect(entries).toHaveLength(1);
+		expect(entries[0]!.verdict?.all()).toEqual([]);
+		expect(entries[0]!.comparison.externalFindings().map((each) => each.id)).toEqual([external.id]);
+		expect.soft(entries[0]!.comparison.effectiveMatches()).toEqual([]);
+		expect.soft(entries[0]!.comparison.melianFindings()).toEqual([]);
+		expect.soft(new ComparisonSet(entries).backlog()).toEqual([]);
+		expect((await harness.read(revision))?.toJSON()).toEqual(adjudicated.toJSON());
+	});
+
 	describe("documents of other versions", () => {
 		type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 		const legacy = (kind: string, version: number) =>
