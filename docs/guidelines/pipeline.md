@@ -478,7 +478,7 @@ Every worktree command, including cleanup, passes through `Run.worktreeCommand`.
 
 Count each repository-resolved import or re-export declaration and literal dynamic import. Count distinct enclosing-function/callee pairs for calls, new expressions, and tagged templates, following aliases. Top-level calls use a module sentinel. Named function values use the binding declaration; anonymous functions retain their own identity. Declaration files, node_modules, and libraries are outside the denominator. Count external and unresolved calls separately.
 
-`EnolaCoverage` matches explicit resolved facts and upstream impact edges. It requires declaration identity, rejects directory name collisions, and never counts has_method as a call. A file's calls and imports each retain matched/total and every named gap. Zero total means n/a. A proposed future threshold is 1.0 for both ratios; it is not applied. Search stays unrestricted. [The spike](../spikes/enola-coverage.md) holds the measurements.
+`EnolaCoverage` matches explicit resolved facts and upstream impact edges. It requires the full directory-prefixed declaration name and its file and start line. A suffix match can borrow a same-line nested declaration's edges. It rejects directory name collisions and never counts has_method as a call. A file's calls and imports each retain matched/total and every named gap. Zero total means n/a. A proposed future threshold is 1.0 for both ratios; it is not applied. Search stays unrestricted. [The spike](../spikes/enola-coverage.md) holds the measurements.
 
 ### Coverage storage and transcripts
 

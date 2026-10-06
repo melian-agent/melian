@@ -1,3 +1,4 @@
+import { dirname } from "node:path";
 import {
 	type CallGroundTruth,
 	type CallPair,
@@ -18,7 +19,7 @@ function factsFor(sites: SymbolSite[]): EnolaFact[] {
 	return sites.map((site) => ({
 		id: site.name,
 		kind: "symbol",
-		name: `src.${site.name}`,
+		name: `${dirname(site.file)}.${site.name}`,
 		file: site.file,
 		line: site.line,
 	}));
@@ -38,6 +39,51 @@ function truthFor(
 function emptyImpact(truncated = false): EnolaImpact {
 	return EnolaImpact.parse(JSON.stringify({ target: "src.Callee", by_depth: {}, edges: [], stats: { truncated } }), 0);
 }
+
+it.each(["facts", "impact", "combined"] as const)(
+	"does not borrow a nested helper's same-line call through %s",
+	async (source) => {
+		const helper = { ...caller, name: "helper", endLine: 1 };
+		const nested = { ...helper, name: "outer.helper" };
+		const target = { ...helper, name: "target" };
+		const facts = EnolaFacts.parse(
+			factsFor([helper, nested, target])
+				.map((fact) =>
+					JSON.stringify({
+						...fact,
+						...(fact.id === nested.name
+							? { relations: [{ kind: "calls", target: "src.target", target_id: "target" }] }
+							: {}),
+					}),
+				)
+				.join("\n"),
+		);
+		const coverage = await EnolaCoverage.open(
+			truthFor(
+				[helper, nested].map((caller) => ({ ...pair, caller, callee: target, line: 1, expression: "target()" })),
+				[],
+				[helper, nested, target],
+			),
+			facts,
+			async () =>
+				EnolaImpact.parse(
+					JSON.stringify({
+						target: "src.target",
+						by_depth: { "1": [{ name: "src.outer.helper", kind: "symbol", file: helper.file, line: 1 }] },
+						edges: [{ source: "src.outer.helper", target: "src.target", kind: "calls" }],
+						stats: { truncated: false },
+					}),
+					0,
+				),
+		);
+		const result = coverage.measure("a".repeat(40), "fixture", source).toJSON();
+		expect(result.totals).toMatchObject({ calls: 2, matchedCalls: 1 });
+		expect(result.files[0]?.gaps).toHaveLength(1);
+		expect(result.files[0]?.gaps[0]?.cause).toBe("resolved declaration edge absent");
+		expect(facts.symbols(helper).map((fact) => fact.name)).toEqual(["src.helper"]);
+		expect(facts.symbols(nested).map((fact) => fact.name)).toEqual(["src.outer.helper"]);
+	},
+);
 
 it.each([
 	["test file excluded", { caller: { ...caller, file: "src/a.test.ts" } }, [caller, callee]],

@@ -1,3 +1,4 @@
+import { dirname } from "node:path";
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import type { SymbolSite } from "./graph-coverage.ts";
@@ -71,7 +72,7 @@ export class EnolaFacts {
 		return (this.#byFile.get(site.file) ?? []).filter((fact) =>
 			site.kind === "module"
 				? fact.kind === "file_ref"
-				: fact.kind === "symbol" && fact.line === site.line && fact.name.endsWith(`.${site.name}`),
+				: fact.kind === "symbol" && fact.line === site.line && fact.name === `${dirname(site.file)}.${site.name}`,
 		);
 	}
 	/** Returns symbol declarations in one changed file. */
