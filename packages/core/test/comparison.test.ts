@@ -2,6 +2,7 @@ import {
 	Adjudication,
 	Comparison,
 	ComparisonError,
+	comparisonSchema,
 	defaultConfig,
 	ExternalFinding,
 	type ExternalFindingInput,
@@ -9,6 +10,7 @@ import {
 	type FindingInput,
 	maxExternalTitleLength,
 } from "@melian-agent/core";
+import Value from "typebox/value";
 import { describe, expect, it } from "vitest";
 import { evalInput } from "./fixtures/findings.ts";
 
@@ -148,6 +150,135 @@ describe("ExternalFinding", () => {
 			"x.json",
 		);
 		expect([...finding!.title]).toHaveLength(maxExternalTitleLength);
+		expect(external({ title: "x".repeat(200) }).title).toBe("x".repeat(200));
+		expect(external({ title: "x".repeat(201) }).title).toBe(`${"x".repeat(199)}…`);
+	});
+
+	it.each(["external-finding", "Codex"])("checks numeric boundaries in the %s file shape", (shape) => {
+		const codex = shape === "Codex";
+		const finding = codex
+			? {
+					severity: "high",
+					title: "t",
+					body: "b",
+					file: "a.ts",
+					line_start: 1,
+					line_end: 1,
+					confidence: 0.5,
+					recommendation: "",
+				}
+			: { title: "t", body: "b", line: 1 };
+		const file = codex
+			? { verdict: "needs-attention", summary: "", next_steps: [] }
+			: { reviewer: { name: "human" } };
+		const cases: { field: string; accepted: (string | number)[]; rejected: (string | number)[] }[] = [
+			{
+				field: "body",
+				accepted: [codex ? "b" : "", "x".repeat(65_536)],
+				rejected: codex ? ["", "x".repeat(65_537)] : ["x".repeat(65_537)],
+			},
+			{ field: "title", accepted: ["t"], rejected: [""] },
+			{ field: "file", accepted: ["a", "x".repeat(4096)], rejected: ["", "x".repeat(4097)] },
+			...(codex ? ["line_start", "line_end"] : ["line", "endLine"]).map((field) => ({
+				field,
+				accepted: [1],
+				rejected: [0, 1.5],
+			})),
+			...(codex
+				? [{ field: "confidence", accepted: [0, 1], rejected: [-0.01, 1.01] }]
+				: ["severity", "ref", "postedAt"].map((field) => ({
+						field,
+						accepted: ["x", "x".repeat(100)],
+						rejected: ["", "x".repeat(101)],
+					}))),
+		];
+		for (const { field, accepted, rejected } of cases) {
+			for (const value of accepted) {
+				const imported = ExternalFinding.fromFile(
+					{ ...file, findings: [{ ...finding, [field]: value }] },
+					"x.json",
+				);
+				expect(imported, field).toHaveLength(1);
+				if (field === "body") expect(imported[0]!.body).toBe(value);
+			}
+			for (const value of rejected) {
+				expect(
+					() => ExternalFinding.fromFile({ ...file, findings: [{ ...finding, [field]: value }] }, "x.json"),
+					field,
+				).toThrow(expect.objectContaining({ code: "invalidFile", path: "x.json" }));
+			}
+		}
+		if (!codex) {
+			for (const length of [1, 100, 101, 0]) {
+				const value = {
+					reviewer: { name: "human", version: "x".repeat(length) },
+					findings: [{ title: "t", body: "" }],
+				};
+				if (length === 1 || length === 100) expect(ExternalFinding.fromFile(value, "x.json")).toHaveLength(1);
+				else
+					expect(() => ExternalFinding.fromFile(value, "x.json")).toThrow(
+						expect.objectContaining({ code: "invalidFile" }),
+					);
+			}
+		}
+		const value = { ...file, findings: [finding] };
+		expect(ExternalFinding.fromFile(value, "x".repeat(4096))).toHaveLength(1);
+		for (const path of ["", "x".repeat(4097)]) {
+			expect(() => ExternalFinding.fromFile(value, path)).toThrow(
+				expect.objectContaining({ code: "invalidFile", path }),
+			);
+		}
+	});
+
+	it("checks numeric boundaries on thread metadata and source positions", () => {
+		for (const field of ["login", "version"] as const) {
+			for (const length of [1, 100]) {
+				expect(external({ reviewer: { name: "human", [field]: "x".repeat(length) } }).reviewer[field]).toBe(
+					"x".repeat(length),
+				);
+			}
+			for (const length of [0, 101]) {
+				expect(() => external({ reviewer: { name: "human", [field]: "x".repeat(length) } })).toThrow(
+					expect.objectContaining({ code: "invalidFinding" }),
+				);
+			}
+		}
+		for (const [field, limit] of [
+			["thread", 100],
+			["url", 4096],
+		] as const) {
+			const source = { kind: "thread", thread: "t", url: "u" } as const;
+			for (const length of [1, limit]) {
+				expect(external({ source: { ...source, [field]: "x".repeat(length) } }).source).toEqual({
+					...source,
+					[field]: "x".repeat(length),
+				});
+			}
+			for (const length of [0, limit + 1]) {
+				expect(() => external({ source: { ...source, [field]: "x".repeat(length) } })).toThrow(
+					expect.objectContaining({ code: "invalidFinding" }),
+				);
+			}
+		}
+		const source = { kind: "file", path: "x.json", position: 0 } as const;
+		expect(external({ source }).source).toEqual(source);
+		for (const position of [-1, 0.5]) {
+			expect(() => external({ source: { ...source, position } })).toThrow(
+				expect.objectContaining({ code: "invalidFinding" }),
+			);
+		}
+		const comparison = Comparison.of(revision);
+		comparison.import("file:x.json", { findings: [], skippedBodies: 0 }, "t");
+		const stored = comparison.toJSON();
+		expect(Value.Check(comparisonSchema, stored)).toBe(true);
+		for (const skippedBodies of [-1, 0.5]) {
+			expect(
+				Value.Check(comparisonSchema, {
+					...stored,
+					imports: { "file:x.json": { at: "t", ids: [], skippedBodies } },
+				}),
+			).toBe(false);
+		}
 	});
 
 	it.each(["external-finding", "Codex"])("refuses more than 1,000 findings in the %s file shape", (shape) => {
