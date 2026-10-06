@@ -242,6 +242,10 @@ class StandardsLoader implements SourceReader {
 	}
 }
 
+function standardsDirectory(path: string): string {
+	return posix.dirname(path).replace(/(?:^|\/)\.melian\/standards$/, "") || ".";
+}
+
 function listedPaths(paths: readonly string[]): string {
 	const listed: string[] = [];
 	let bytes = 0;
@@ -294,7 +298,7 @@ export class StandardsReading {
 		const preferred = new Set(nearest);
 		const depth = (section: StandardsSection) => {
 			const path = section.importedBy ?? section.path;
-			const directory = posix.dirname(path).replace(/(?:^|\/)\.melian\/standards$/, "");
+			const directory = standardsDirectory(path);
 			return directory === "." || directory === "" ? 0 : directory.split("/").length;
 		};
 		const order = unique
@@ -445,8 +449,10 @@ export class Standards {
 				const chain = this.#chains.get(this.#directories.get(target) ?? posix.dirname(target));
 				const nearest = chain?.[0];
 				if (nearest === undefined) return [];
-				const scope = nearest.importedBy ?? nearest.path;
-				return chain!.filter((section) => (section.importedBy ?? section.path) === scope).map(({ path }) => path);
+				const scope = standardsDirectory(nearest.importedBy ?? nearest.path);
+				return chain!
+					.filter((section) => standardsDirectory(section.importedBy ?? section.path) === scope)
+					.map(({ path }) => path);
 			}),
 			files.flatMap((file) => {
 				const target = repoPath(this.#repoRoot, file);

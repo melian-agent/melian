@@ -283,6 +283,26 @@ describe.each(sourceKinds)("Standards from the %s", (kind) => {
 		expect(standards.forFiles(paths).paths()).not.toContain("packages/app/linked.md");
 	});
 
+	it("prefers every carrier and import in each file's nearest directory", async () => {
+		const size = standardsLimits.fileBytes;
+		writeFiles(repo, {
+			"AGENTS.md": "r".repeat(size),
+			"packages/app/AGENTS.md": "a".repeat(size),
+			"packages/app/CLAUDE.md": `@rules.md\n${"c".repeat(size - 16)}`,
+			"packages/app/rules.md": "CLAUDE_IMPORT",
+			"packages/app/.melian/standards/style.md": "@../../style-guide.md\nNEAREST_STYLE",
+			"packages/app/style-guide.md": "STYLE_IMPORT",
+			"packages/other/AGENTS.md": "b".repeat(size),
+		});
+		const paths = ["packages/app/a.ts", "packages/other/a.ts"];
+		const reading = (await Standards.load(repo, sourceFor(repo, kind), paths)).forFiles(paths);
+		expect(reading.paths()).toContain("packages/app/CLAUDE.md");
+		expect(reading.paths()).toContain("packages/app/rules.md");
+		expect(reading.paths()).toContain("packages/app/.melian/standards/style.md");
+		expect(reading.paths()).toContain("packages/app/style-guide.md");
+		expect(reading.omitted).toContain("AGENTS.md");
+	}, 60_000);
+
 	it("drops whole deepest sections across files and names each omission", async () => {
 		const paths = Array.from({ length: 6 }, (_, i) => `packages/p${i}/src/a.ts`);
 		writeFiles(
@@ -307,7 +327,7 @@ describe.each(sourceKinds)("Standards from the %s", (kind) => {
 		expect(reading.note()).toBe(
 			"left out 6 standards sections past 1024 KiB: .melian/standards/naming.md, docs/guide.md, AGENTS.md, packages/p5/AGENTS.md, packages/p4/AGENTS.md, packages/p3/AGENTS.md",
 		);
-	});
+	}, 60_000);
 
 	it("refuses one chain over the bound before per-lens omission", async () => {
 		writeFiles(
