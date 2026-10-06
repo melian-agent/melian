@@ -5,3 +5,5 @@ Built `static.enola`, pinned provisioning, base-policy copying, disabled provide
 Fix pass: the fake analyser now requires base constraint, intent and suppression contents in both runs, and rejects head-only policy files. Removing the copy loop fails the test instead of leaving the verdict boundary untested.
 
 Fix pass: runStaticTool API documentation now distinguishes Biome and tsc dependency sourcing from Enola’s manifest cache, and states the base-policy rule and disabled providers.
+
+Fix pass: cleanup attempts base and head worktree removal independently and removes scratch in finally. It still reports the first execution error after all cleanup attempts. An injected timeout proves the second removal runs and scratch disappears.

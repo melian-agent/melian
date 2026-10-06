@@ -68,6 +68,26 @@ describe("runStaticTool with Melian's own tools", () => {
 		expectCheckoutUntouched();
 	});
 
+	it("attempts both worktree removals and scratch removal after a cleanup timeout", { timeout: 60_000 }, async () => {
+		const head = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+		const env = createNodeExecutionEnv(repo);
+		const execute = env.exec.bind(env);
+		const cleanup: string[] = [];
+		vi.spyOn(env, "exec").mockImplementation(async (command, options, executionContext) => {
+			if (command.includes("worktree remove --force --force")) {
+				cleanup.push(command);
+				if (cleanup.length === 1) return { ok: false, error: { code: "timeout", message: "cleanup timed out" } };
+			}
+			return execute(command, options, executionContext);
+		});
+		const remove = vi.spyOn(env, "remove");
+		await expect(runStaticTool({ ...input("biome", head), env }, context)).rejects.toMatchObject({ code: "timeout" });
+		expect(cleanup).toHaveLength(2);
+		expect(remove).toHaveBeenCalledWith(expect.any(String), { recursive: true, force: true }, context);
+		expect(existsSync(remove.mock.calls[0]![0])).toBe(false);
+		expectCheckoutUntouched();
+	});
+
 	it("runs tsc with the commit's own tsconfig.json", { timeout: 60_000 }, async () => {
 		const head = commit(repo, { "tsconfig.json": tsconfig, "src/a.ts": lines("export const n: number = 'x';") });
 		const tsc = await log("tsc", head);
