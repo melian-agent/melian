@@ -119,7 +119,7 @@ A lens at `quick` carries `escalation`: the run at its next level the band allow
 
 ### Prompt boundaries
 
-Everything that originates from the head revision reaches a lens inside a boundary from `quoteUntrusted(label, text, nonce)` in `src/untrusted.ts`: `<untrusted-NONCE label="LABEL">`, the text, `</untrusted-NONCE>`. Labels are `diff`, `file`, `search`, `listing`, `evidence` and `findings`. `reviewChangeset` draws the nonce once per review with `reviewNonce()` and stores it in the lens's `ReviewState`, so a replayed tool quotes with the same one.
+Everything that originates from the head revision reaches a lens inside a boundary from `quoteUntrusted(label, text, nonce)` in `src/untrusted.ts`: `<untrusted-NONCE label="LABEL">`, the text, `</untrusted-NONCE>`. Labels are `diff`, `file`, `search`, `listing`, `evidence`, `findings` and `standards`. `reviewChangeset` draws the nonce once per review with `reviewNonce()` and stores it in the lens's `ReviewState`, so a replayed tool quotes with the same one.
 
 - A `ChangePrompt` over the changeset and the review's nonce renders each lens's input, `render(only?)`: it puts the changed-file list in one `listing` block and each file's diff in its own `diff` block whose first line names the file. Problem: a removed line `-- src/fake.ts` renders as `--- src/fake.ts`, a header for a file that is not there. Solution: a file starts where its block starts, not at a line that looks like a header.
 - `read_file`, `search`, and `list_files` quote their results, and `report_finding` quotes the first line of each evidence location. Melian's own notes, such as "more matches not shown", stay outside the block, and never repeat a path from the head.
