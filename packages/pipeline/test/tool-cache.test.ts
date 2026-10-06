@@ -123,10 +123,14 @@ describe("ToolCache", () => {
 	it.each([{ name: "enola", kind: "2" }, { name: "enola", kind: "1" }, { name: "../enola" }, { name: "/enola" }])(
 		"refuses dangerous archive entries %j",
 		async (entry) => {
-			const bytes = toolArchive([{ ...entry, text: "outside" }]);
+			const bytes = toolArchive([
+				{ ...entry, text: "outside" },
+				{ name: "enola", text: "trusted" },
+			]);
 			const cache = await ToolCache.open(root, { fetch: async () => new Response(bytes) });
 			await expect(cache.materialise(testTool(bytes), "darwin-arm64")).rejects.toMatchObject({
 				code: "invalidOutput",
+				message: expect.stringContaining("Unsafe tar entry"),
 			});
 		},
 	);

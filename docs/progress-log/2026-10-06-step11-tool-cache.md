@@ -5,3 +5,5 @@ Built `ToolCache` with a faked fetch and tests for digest mismatch, links, paren
 Fix pass: cached executable identity now comes from the retained, manifest-verified archive. A regression swaps both binary and receipt and proves readiness rejects the forgery. Archive corruption is also a miss. Old entries without retained archives repair through fetch.
 
 Fix pass: downloads and repairs publish into unique entry directories, preserving every returned executable path. A barrier forces two cold downloads to overlap and checks that neither publication nor repair removes an entry. The publication decision records the extra cache space and deferred pruning.
+
+Fix pass: unsafe archive fixtures now include a valid pinned binary and require the unsafe-entry error. Removing path validation passes the old tests but fails both traversal and absolute-path regressions.
