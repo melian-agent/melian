@@ -48,6 +48,14 @@ There is one gate: `npm run check`. It runs Biome, type checking, dependency aud
 
 Do not pipe test or check output through `tail`, `head`, or `cat`. Without `pipefail`, a pipeline reports the last command's status, so `npm run check | tail` exits 0 even when the check failed, and the failure scrolls past above the summary. Redirect to a file and read that, or run the command directly.
 
+A guard, branch, bound, or early return counts as tested only when a test fails with it inverted or removed. A test that passes either way proves nothing. Prove it by running the mutation before you commit, and say so in the pull request. [decisions/2026-10-07-tested-means-a-failing-mutation.md](docs/decisions/2026-10-07-tested-means-a-failing-mutation.md) records why. Five instances recur:
+
+- A fake answers only what the request asks. A fake that returns a canned reply to every call hides a request that asks the wrong question.
+- A stored-shape fixture is written by the version it claims, and every version bump ships a reopen test. A hand-built fixture of an old shape drifts from what that version wrote.
+- Every numeric bound has a test at the bound and one past it. A test far from the bound passes when the bound is off by one, or absent.
+- A fallback test asserts that the request reached the fallback, not a stored label. A label records what the code meant to do.
+- The pass that writes a test runs its mutation and records it in its report. A later reviewer should not have to find the gap again.
+
 If you create or modify a test, run it and iterate until it passes. Tests use Vitest and the fake model from the pipeline's testing entry, `@melian-agent/pipeline/testing`; never real providers, keys, or paid tokens. Use Pi Durable's memory storage unless the test is about surviving a reopen or a crash; then use SQLite in a temporary directory.
 
 ## Commits and pull requests
@@ -95,6 +103,18 @@ Melian reviews itself with `melian review main...HEAD`, run from a throwaway wor
 ### The comparison record
 
 Every pull request gets a record under `packages/evals/comparisons/`. An agent writes it and updates it after each round. It lists each reviewer's findings, the adjudication with a miss reason, and the fix commits. [The evals guideline](docs/guidelines/evals.md#comparisons) sets out the form.
+
+A code branch never edits `packages/evals/comparisons/`. The record has its own branch and pull request. When fix passes on [pull request #85](https://github.com/melian-agent/melian/pull/85) wrote the record into the code branch, the record branch hit an add/add conflict with `main`. Tell every fix brief: progress-log entry files only, never the comparison record.
+
+### Briefs
+
+Every brief for a fix pass or an implementation step requires a mutation inventory: each guard, branch, bound, and early return on the changed lines, each proven by a test that fails with it removed. The inventory pass on [pull request #85](https://github.com/melian-agent/melian/pull/85) found 27 unproven guards, and the one on [pull request #68](https://github.com/melian-agent/melian/pull/68) found 56. A brief also tells the task to push after each file's commit and to append the inventory file as it goes. A whole-branch inventory on a large branch can pass the two-hour task limit, and a cut then leaves unpushed commits and no report. Scope one pass per package when the branch is large.
+
+A brief states plainly whether the full gate passed, and reruns the whole gate when it did not, never a single file.
+
+### The plan
+
+A fix pass adds a progress-log entry and leaves `docs/design-implementation-plan.md` alone. The plan changes when a step's status flips, and gets a refresh after every two or three landings.
 
 ### Ready and queued
 
@@ -162,3 +182,9 @@ Add important learnings here, newest last. Each entry names the symptom, the cau
 - A migrated version-2 lens task loses its valid scrutiny level. Cause: the version-1 migration removes levels to preserve the old producer identity. Branch migrations on `fromVersion`; preserve version-2 levels and checkpoints.
 - Targeted CLI storage tests fail under a host-provided state directory. Cause: `MELIAN_STATE_DIR` changes their storage location. Unset it for targeted tests as well as the full gate.
 - A remote base changes while a linked worktree's head stays put. Cause: linked worktrees share remote refs, so another fetch advances them. Record the starting SHA and check the base again before delivery.
+- `git push` to a queued branch fails with `GH006 ... Branches that are queued for merging cannot be updated`, and `gh pr merge --disable-auto` answers `already queued to merge`. Cause: the merge queue locks a branch once its pull request enters, and the CLI has no dequeue. Either let it land and open a follow-up, or dequeue with `gh api graphql -f query='mutation { dequeuePullRequest(input:{id:"<node id>"}) { mergeQueueEntry { state } } }'`, taking the node id from `gh pr view <number> --json id`. Run Melian's last round before `gh pr ready`, never after queueing.
+- A pull request queued and merged after a round that read `Verdict: not reviewed`. Cause: the round script's queue rule counted findings only, and five lenses had failed at a provider's usage limit, leaving none. A queue rule must read the verdict line and proceed only on `Verdict: passed` or `Verdict: findings`. It must also count every acknowledge finding other than `policy-change-review` as above advisory. `not reviewed` with no findings is the dangerous case.
+- A shell script misbehaves or ends oddly after you edited it. Cause: the shell reads a script as it runs, so an in-place edit of a running script moves its read position. Write the new version to a temporary file and `mv` it over the old one.
+- A docs-only gate takes fifteen minutes and fails dozens of tests across unrelated files, with timeouts and spawn errors. Cause: seven Codex tasks and their gates ran at once, load average reached 40 to 49, and every spawning test missed its deadline. Cap concurrent lanes at four. A gate that failed under load is rerun whole once the load drops, never validated by two single-file reruns.
+- A whole-branch mutation inventory ends at the two-hour task limit with commits unpushed and no report. Cause: the pass pushes once, at the end. Push after each file's commit and append the inventory file as the pass goes, so a cut leaves nothing unpushed and the report can be rebuilt from the file and the commits.
+- A coverage sweep fails for want of a provider. Cause: `@vitest/coverage-v8` is not a dependency. Run the sweep through c8 with `npx`, and do not add the provider for one pass.
