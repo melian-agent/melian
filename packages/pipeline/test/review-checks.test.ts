@@ -3,8 +3,17 @@ import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { Changeset, defaultConfig, Lens, loadConfig, ReviewPlan } from "@melian-agent/core";
 import {
+	Changeset,
+	CheckError,
+	defaultConfig,
+	Lens,
+	loadConfig,
+	type MelianConfig,
+	ReviewPlan,
+} from "@melian-agent/core";
+import {
+	type Context,
 	backgroundContext as context,
 	createMemoryStorage,
 	createNodeExecutionEnv,
@@ -14,10 +23,13 @@ import {
 	openSqliteStorage,
 	type ReviewHarness,
 	type ReviewOptions,
+	readVerdict,
 	reviewChangeset,
+	revisionKey,
 } from "@melian-agent/pipeline";
 import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@melian-agent/pipeline/testing";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as checks from "../src/checks.ts";
 import { ChecksDocument } from "../src/checks.ts";
 import { commit, createRepository, fakeTool, lines } from "./fixtures/repo.ts";
 
@@ -29,6 +41,7 @@ beforeEach(() => {
 });
 afterEach(async () => {
 	await Promise.all(opened.map((review) => review.close()));
+	vi.restoreAllMocks();
 	rmSync(repo, { recursive: true, force: true });
 });
 
@@ -55,6 +68,7 @@ async function setup(checkout = true) {
 describe("review drives checks", { timeout: 60_000 }, () => {
 	it("runs a clean change and attaches to the same check task after a model override", async () => {
 		const options = await setup();
+		const automatic = vi.spyOn(checks, "runChecks");
 		const first = await reviewChangeset(options);
 		expect(first.verdict.status).toBe("passed");
 		expect(first.verdict.ran!.map(({ name, status }) => [name, status])).toEqual([
@@ -72,6 +86,7 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 			credentials: {},
 		});
 		await reviewChangeset({ ...options, plan });
+		expect(automatic.mock.calls.map(([, request]) => request.config)).toEqual([options.config, options.config]);
 		expect(
 			Object.keys(
 				(await options.harness.harness.snapshot(
@@ -109,6 +124,7 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 		const { policy: _, ...options } = await setup();
 		const result = await reviewChangeset({ ...options, checks: [{ name: "guardrails", status: "ran" }] });
 		expect(result.verdict.status).toBe("not-reviewed");
+		expect(result.verdict.ran).toEqual([{ name: "guardrails", status: "ran" }]);
 		expect(
 			(
 				await options.harness.harness.snapshot(
@@ -135,12 +151,51 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 
 	it("an environment-less harness leaves missing records not reviewed", async () => {
 		const options = await setup(false);
+		const automatic = vi.spyOn(checks, "runChecks").mockRejectedValue(new Error("unexpected automatic checks"));
 		const result = await reviewChangeset(options);
+		expect(automatic).not.toHaveBeenCalled();
 		expect(result.verdict.status).toBe("not-reviewed");
 		expect(result.verdict.notRun.every((check) => check.status === "skipped" && check.reason === "no record")).toBe(
 			true,
 		);
 	});
+
+	it.each(["explicit", "stage", "default"] as const)(
+		"uses the %s tier and the host's invocation for automatic checks",
+		async (choice) => {
+			const options = await setup();
+			const config: MelianConfig = {
+				...options.config,
+				stages: choice === "default" ? {} : { "pull-request": "standard" },
+				tiers: { full: ["guardrails"], standard: ["guardrails"], fast: [] },
+			};
+			const invocation: Context = {
+				abortSignal: new AbortController().signal,
+				value: (key) => context.value(key),
+				toString: () => "automatic-checks-test",
+			};
+			const automatic = vi.spyOn(checks, "runChecks");
+			const result = await reviewChangeset({
+				...options,
+				config,
+				context: invocation,
+				...(choice === "explicit" ? { tier: "fast" } : {}),
+			});
+			expect(result.verdict.status).toBe("passed");
+			expect(result.verdict.ran!.map(({ name }) => name)).toEqual(choice === "explicit" ? [] : ["guardrails"]);
+			expect(automatic).toHaveBeenCalledTimes(1);
+			const [calledHarness, request, calledContext] = automatic.mock.calls[0]!;
+			expect(calledHarness).toBe(options.harness.harness);
+			expect(calledContext).toBe(invocation);
+			expect(request).toMatchObject({
+				rootConversationId: (await options.harness.harness.root(invocation)).id,
+				tier: choice === "explicit" ? "fast" : choice === "stage" ? "standard" : "full",
+			});
+			expect(request.changeset).toBe(options.changeset);
+			expect(request.config).toBe(config);
+			expect(request.source).toBe(options.policy);
+		},
+	);
 
 	it("refuses a raw harness without records even when it has an environment", async () => {
 		const options = await setup(false);
@@ -154,7 +209,12 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 		try {
 			await expect(
 				reviewChangeset({ ...options, harness: raw, models: fake.review } as unknown as ReviewOptions),
-			).rejects.toMatchObject({ code: "notInstalled" });
+			).rejects.toMatchObject({
+				code: "notInstalled",
+				message:
+					"automatic checks require ReviewHarness; raw harness callers must supply checks, including an empty array",
+				lenses: [],
+			});
 			expect((await raw.inspect(context)).tasks).toEqual([]);
 			const result = await reviewChangeset({ ...options, harness: raw, models: fake.review, checks: [] });
 			expect(result.verdict.status).toBe("not-reviewed");
@@ -177,8 +237,25 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 
 	it("refuses missing policy before starting any task", async () => {
 		const { policy: _, ...options } = await setup();
-		await expect(reviewChangeset(options)).rejects.toMatchObject({ code: "missingPolicy" });
+		await expect(reviewChangeset(options)).rejects.toMatchObject({
+			code: "missingPolicy",
+			message: "automatic checks require the policy source the host chose",
+			lenses: [],
+		});
 		expect((await options.harness.harness.inspect(context)).tasks).toEqual([]);
+	});
+	it("propagates an unfinished automatic check without recording a verdict", async () => {
+		const options = await setup();
+		const error = new CheckError("notCompleted", "full", "checks were interrupted");
+		vi.spyOn(checks, "runChecks").mockRejectedValue(error);
+
+		await expect(reviewChangeset(options)).rejects.toBe(error);
+
+		const raw = options.harness.harness;
+		expect((await raw.inspect(context)).tasks).toEqual([]);
+		expect(
+			await readVerdict(raw, (await raw.root(context)).id, revisionKey(options.changeset.revision), context),
+		).toBeUndefined();
 	});
 	it("resumes after checks committed without running a tool twice", async () => {
 		const options = await setup();

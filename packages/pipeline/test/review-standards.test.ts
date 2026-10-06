@@ -11,6 +11,7 @@ import {
 import {
 	createFakeModels,
 	fauxAssistantMessage,
+	fauxToolCall,
 	scriptConversations,
 	systemPromptOf,
 } from "@melian-agent/pipeline/testing";
@@ -79,7 +80,7 @@ async function setup(kind: "revision" | "worktree" = "revision") {
 		standards: await Standards.load(repo, policy, paths),
 		models: fake.review,
 	};
-	return { options, requests };
+	return { options, requests, fake };
 }
 
 describe("per-lens standards", () => {
@@ -128,6 +129,137 @@ describe("per-lens standards", () => {
 		expect(systemPromptOf(requests["You are the correctness reviewer"]![0]!)).not.toContain("CLONE_SECRET_VALUE");
 		expect(result.verdict.ran!.find(({ name }) => name === "lens.correctness")!.reason).toContain(
 			"packages/core/src/AGENTS.md -> melian.secrets.yaml",
+		);
+	});
+
+	it.each(["tools", "coverage", "prompt", "rules", "severities"] as const)(
+		"refreshes a completed review when only its %s changes",
+		async (field) => {
+			const { options: loaded, requests } = await setup();
+			const options = {
+				...loaded,
+				config: { ...loaded.config, tiers: { full: ["lens.correctness"] }, lenses: {} },
+				lenses: loaded.lenses
+					.filter((lens) => lens.name === "correctness")
+					.map((lens) =>
+						Lens.from({
+							...lens.toJSON(),
+							paths: ["packages/core/**"],
+							...(field === "rules" ? { rules: [{ id: "first", description: "Alpha\n- `second`: Beta" }] } : {}),
+						}),
+					),
+			};
+			await reviewChangeset(options);
+			await reviewChangeset(options);
+			expect(requests["You are the correctness reviewer"]).toHaveLength(1);
+			const lenses = options.lenses.map((lens) =>
+				Lens.from({
+					...lens.toJSON(),
+					...(field === "tools" ? { tools: ["read_file" as const] } : {}),
+					...(field === "severities" ? { severities: ["P1" as const] } : {}),
+					...(field === "coverage" ? { paths: [...lens.paths, "unseen/**"] } : {}),
+					...(field === "rules"
+						? {
+								rules: [
+									{ id: "first", description: "Alpha" },
+									{ id: "second", description: "Beta" },
+								],
+							}
+						: {}),
+				}),
+			);
+			const stored = options.changeset.toJSON();
+			const changeset =
+				field === "prompt"
+					? Changeset.from({
+							...stored,
+							revision: {
+								...stored.revision,
+								files: stored.revision.files.map((file) => ({
+									...file,
+									hunks: file.hunks.map((hunk) => ({ ...hunk, text: hunk.text.replace("= 2", "= 3") })),
+								})),
+							},
+						})
+					: options.changeset;
+			expect(lenses.map(({ version }) => version)).toEqual(options.lenses.map(({ version }) => version));
+			const root = await options.harness.harness.root(context);
+			const revision = revisionKey(changeset.revision);
+			const before = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!
+				.task;
+
+			await reviewChangeset({ ...options, lenses, changeset });
+
+			const after = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.task;
+			expect(before).toBeDefined();
+			expect(after).toBeDefined();
+			expect(after).not.toBe(before);
+			expect(requests["You are the correctness reviewer"]).toHaveLength(2);
+			const first = systemPromptOf(requests["You are the correctness reviewer"]![0]!);
+			const second = systemPromptOf(requests["You are the correctness reviewer"]![1]!);
+			if (field === "severities") {
+				expect(first).not.toContain("Severities you may report: P1.");
+				expect(second).toContain("Severities you may report: P1.");
+			} else {
+				expect(second.replace(/untrusted-[a-f0-9]{24}/g, "untrusted-NONCE")).toBe(
+					first.replace(/untrusted-[a-f0-9]{24}/g, "untrusted-NONCE"),
+				);
+			}
+			if (field === "prompt")
+				expect(JSON.stringify(requests["You are the correctness reviewer"]![1]!)).toContain("= 3");
+		},
+	);
+
+	it("refreshes a completed review when only its budget ending policy changes", async () => {
+		const { options: loaded, fake } = await setup();
+		const options = {
+			...loaded,
+			config: { ...loaded.config, tiers: { full: ["lens.correctness"] }, lenses: {} },
+			lenses: loaded.lenses.map((lens) =>
+				Lens.from({
+					...lens.toJSON(),
+					levels: {
+						...lens.levels,
+						careful: { ...lens.level("careful"), budget: { ...lens.level("careful").budget, tokens: 1 } },
+					},
+				}),
+			),
+		};
+		const read = fauxAssistantMessage(fauxToolCall("read_file", { path: "packages/core/src/a.ts" }), {
+			stopReason: "toolUse",
+		});
+		const requests = scriptConversations(fake, [
+			{ match: "You are the correctness reviewer", replies: [read, read] },
+		]);
+		const first = await reviewChangeset(options);
+		expect(first.verdict.status).toBe("not-reviewed");
+		const lenses = options.lenses.map((lens) => {
+			const careful = lens.level("careful");
+			return Lens.from({
+				...lens.toJSON(),
+				levels: { ...lens.levels, careful: { ...careful, budget: { ...careful.budget, ended: "count" } } },
+			});
+		});
+		expect(lenses.map(({ version }) => version)).toEqual(options.lenses.map(({ version }) => version));
+
+		const second = await reviewChangeset({ ...options, lenses });
+
+		expect(second.verdict.status).toBe("passed");
+		expect(second.verdict.ran![0]).toMatchObject({
+			name: "lens.correctness",
+			budgetEnded: { budget: "tokens", limit: 1 },
+		});
+		expect(requests["You are the correctness reviewer"]).toHaveLength(2);
+		expect(
+			systemPromptOf(requests["You are the correctness reviewer"]![1]!).replace(
+				/untrusted-[a-f0-9]{24}/g,
+				"untrusted-NONCE",
+			),
+		).toBe(
+			systemPromptOf(requests["You are the correctness reviewer"]![0]!).replace(
+				/untrusted-[a-f0-9]{24}/g,
+				"untrusted-NONCE",
+			),
 		);
 	});
 
@@ -311,6 +443,51 @@ describe("per-lens standards", () => {
 		expect(after).toBeDefined();
 		expect(after).not.toBe(before);
 		expect(requests["You are the correctness reviewer"]).toHaveLength(2);
+	});
+
+	it("keeps omitted standards ended when the level counts a spent token budget", async () => {
+		writeFiles(repo, { "packages/core/src/AGENTS.md": "x".repeat(300 * 1024) });
+		const { options, fake } = await setup("worktree");
+		const lenses = options.lenses.map((lens) =>
+			lens.name === "correctness"
+				? Lens.from({
+						...lens.toJSON(),
+						levels: {
+							...lens.levels,
+							careful: {
+								...lens.level("careful"),
+								budget: { ...lens.level("careful").budget, tokens: 1, ended: "count" },
+							},
+						},
+					})
+				: lens,
+		);
+		const requests = scriptConversations(fake, [
+			{
+				match: "You are the correctness reviewer",
+				replies: [
+					fauxAssistantMessage(fauxToolCall("read_file", { path: "packages/core/src/a.ts" }), {
+						stopReason: "toolUse",
+					}),
+					fauxAssistantMessage("Never asked."),
+				],
+			},
+			{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const result = await reviewChangeset({ ...options, lenses });
+
+		expect(requests["You are the correctness reviewer"]).toHaveLength(1);
+		expect(result.verdict.status).toBe("not-reviewed");
+		const record = result.verdict.notRun.find(({ name }) => name === "lens.correctness")!;
+		expect(record).toMatchObject({
+			status: "ended",
+			level: "careful",
+			budgetEnded: { budget: "tokens", limit: 1, tools: 0 },
+		});
+		expect(record.budgetEnded!.tokens).toBeGreaterThan(1);
+		expect(record.reason).toContain("packages/core/src/AGENTS.md");
+		expect(result.verdict.ran!.map(({ name }) => name)).toEqual(["lens.contracts"]);
 	});
 
 	it("quotes head standards under base policy, while resolving equivalent commit names", async () => {
