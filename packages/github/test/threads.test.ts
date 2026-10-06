@@ -74,6 +74,23 @@ function importer(login?: string, answers?: GitHubRecording) {
 }
 
 describe("ReviewThreadImporter", () => {
+	it.each(["MelianReviewThreads", "MelianReviews"])(
+		"binds repository and pull request arguments to their variables in %s",
+		async (operation) => {
+			const { opened, requests } = importer();
+
+			await opened.import();
+
+			const pages = requests.filter((request) => request.body.query.includes(operation));
+			expect(pages.length).toBeGreaterThan(0);
+			for (const request of pages) {
+				const query = request.body.query.replace(/\s+/g, " ");
+				expect(query).toContain("repository(owner: $owner, name: $name) {");
+				expect(query).toContain("pullRequest(number: $number) {");
+			}
+		},
+	);
+
 	it.each([
 		["MelianReviewThreads", [null, "Y3Vyc29yOjI="]],
 		["MelianReviews", [null]],
