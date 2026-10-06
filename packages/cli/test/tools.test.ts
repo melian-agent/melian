@@ -73,6 +73,35 @@ it("lists Melian's own manifest using the host's state directory", async () => {
 	expect(io.errors).toEqual([]);
 });
 
+it.each([new Error("inventory unavailable"), "inventory unavailable"])(
+	"reports inventory read failures in doctor: %s",
+	async (failure) => {
+		vi.spyOn(ToolInventory, "open").mockRejectedValue(failure);
+		const io = output();
+		expect(await main(["doctor"], io)).toBe(1);
+		expect(io.lines.join("")).toMatch(/fail\s+tools\s+inventory unavailable/);
+	},
+);
+
+it.each([new Error("pin unreadable"), "pin unreadable"])(
+	"reports a failed readiness probe without fetching: %s",
+	async (failure) => {
+		const provisioning = await ToolProvisioning.open(repo, { root: join(repo, "cache") });
+		const inventory = await ToolInventory.open(repo, {}, provisioning);
+		vi.spyOn(provisioning.cache, "readiness").mockRejectedValue(failure);
+		const fetch = vi.spyOn(provisioning, "binary");
+		expect(await inventory.readiness()).toEqual([
+			{
+				name: "enola",
+				version: "0.4.27",
+				state: "mismatch",
+				detail: "manifest mismatch: pin unreadable",
+			},
+		]);
+		expect(fetch).not.toHaveBeenCalled();
+	},
+);
+
 it.each([
 	["tools", "fetch"],
 	["tools", "fetch", "enola", "extra"],
