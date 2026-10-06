@@ -23,7 +23,6 @@ const melian = (input: Partial<FindingInput> = {}) =>
 	Finding.create({ ...evalInput, trigger: undefined, resolution: undefined, ...input });
 
 let position = 0;
-// An external finding from a file, at the position this call gives it unless `input` names a source.
 function external(input: Partial<ExternalFindingInput> = {}): ExternalFinding {
 	return ExternalFinding.create({
 		reviewer: { name: "codex" },
