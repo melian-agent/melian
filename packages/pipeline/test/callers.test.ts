@@ -1,5 +1,12 @@
 import { join } from "node:path";
-import { defaultConfig, GraphSnapshot, ReviewCoverage, TestCoverage, ToolManifest } from "@melian-agent/core";
+import {
+	defaultConfig,
+	GraphCoverage,
+	GraphSnapshot,
+	ReviewCoverage,
+	TestCoverage,
+	ToolManifest,
+} from "@melian-agent/core";
 import {
 	backgroundContext,
 	CallerContext,
@@ -13,6 +20,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, expect, it, vi } from "vitest";
+import { coverageCompiler } from "../src/coverage-identity.ts";
 import { EnolaRun } from "../src/enola-static.ts";
 import { commit, createRepository, removeRepository } from "./fixtures/repo.ts";
 import { testTool, toolArchive } from "./fixtures/tool-archive.ts";
@@ -111,82 +119,97 @@ it("counts separators against the total caller prompt limit", () => {
 	expect(/label="callers">\n([\s\S]*?)\n<\/untrusted-N>/.exec(text)![1]!.split("\n\n")).toHaveLength(21);
 });
 
-it.each([false, true])("records renamed coverage and includes test evidence only when cached: %s", async (withTest) => {
-	const repo = createRepository();
-	repos.push(repo);
-	const head = commit(repo, { "new.ts": "function a() {}\n" });
-	const bytes = toolArchive([{ name: "enola", text: "unused" }]);
-	const { name, ...pin } = testTool(bytes);
-	const tools = await ToolProvisioning.open(repo, {
-		root: join(repo, "cache"),
-		platform: "darwin-arm64",
-		manifest: ToolManifest.parse(JSON.stringify({ format_version: 1, tools: { [name]: pin }, misses: [] })),
-		fetch: async () => new Response(bytes),
-	});
-	await tools.binary("enola");
-	const parts = { tree: "a".repeat(40), version: "0.0.1", binary: "b".repeat(64), config: "c".repeat(64) };
-	await (await GraphCache.open(tools.cache.root)).store(
-		GraphSnapshot.create(parts, {
-			"facts.jsonl": "",
-			"insights.json": "[]",
-			"receipt.json": JSON.stringify({
-				format_version: 1,
-				enola_version: parts.version,
-				snapshot_id: `sha256:${"d".repeat(64)}`,
-			}),
-		}),
-	);
-	const cache = await CoverageCache.open(tools.cache.root);
-	const test = TestCoverage.unavailable(parts.tree, parts.version);
-	if (withTest) await cache.store(parts, test);
-	vi.spyOn(EnolaRun.prototype, "callers").mockResolvedValue({
-		groups: [],
-		issues: [],
-		notes: [],
-		paths: ["new.ts", "old.ts"],
-		parts,
-	});
-	const files = [{ path: "new.ts", oldPath: "old.ts", status: "renamed" as const, binary: false, hunks: [] }];
-	const callers = await CallerContext.open(
-		{
-			repoRoot: repo,
-			commit: head,
-			base: head,
-			tool: "enola",
-			settings: defaultConfig.static.enola,
-			env: createNodeExecutionEnv(repo),
-			tools,
-		},
-		files,
-		backgroundContext,
-	);
-	const models = createFakeModels({ models: [{ id: "fixture" }] });
-	const harness = await openHarness(createMemoryStorage(), {
-		registry: createReviewRegistry(),
-		models: models.models,
-	});
-	try {
-		const conversation = await harness.root(backgroundContext, { agent: { model: models.ref("fixture") } });
-		const ids = await callers.recordCoverage({
-			harness,
-			children: { lens: conversation.id },
-			lenses: [{ key: "lens", name: "correctness" }],
-			files,
-			nonce: "N",
-			context: backgroundContext,
+it.each([
+	[false, false],
+	[true, false],
+	[false, true],
+])(
+	"records renamed coverage and includes test %s and graph %s evidence only when cached",
+	async (withTest, withGraph) => {
+		const repo = createRepository();
+		repos.push(repo);
+		const head = commit(repo, { "new.ts": "function a() {}\n" });
+		const bytes = toolArchive([{ name: "enola", text: "unused" }]);
+		const { name, ...pin } = testTool(bytes);
+		const tools = await ToolProvisioning.open(repo, {
+			root: join(repo, "cache"),
+			platform: "darwin-arm64",
+			manifest: ToolManifest.parse(JSON.stringify({ format_version: 1, tools: { [name]: pin }, misses: [] })),
+			fetch: async () => new Response(bytes),
 		});
-		expect(ids?.test).toBe(withTest ? test.id : undefined);
-		const stored = await cache.read(parts, "review", { id: ids?.review });
-		expect(stored).toBeInstanceOf(ReviewCoverage);
-		if (!(stored instanceof ReviewCoverage)) throw new Error("Review coverage missing");
-		expect(stored.toJSON().lenses[0]!.files.map((file) => [file.path, file.revision])).toEqual([
-			["new.ts", "head"],
-			["old.ts", "base"],
-		]);
-	} finally {
-		await harness.close(backgroundContext);
-	}
-});
+		await tools.binary("enola");
+		const parts = { tree: "a".repeat(40), version: "0.0.1", binary: "b".repeat(64), config: "c".repeat(64) };
+		await (await GraphCache.open(tools.cache.root)).store(
+			GraphSnapshot.create(parts, {
+				"facts.jsonl": "",
+				"insights.json": "[]",
+				"receipt.json": JSON.stringify({
+					format_version: 1,
+					enola_version: parts.version,
+					snapshot_id: `sha256:${"d".repeat(64)}`,
+				}),
+			}),
+		);
+		const cache = await CoverageCache.open(tools.cache.root);
+		const test = TestCoverage.unavailable(parts.tree, parts.version);
+		if (withTest) await cache.store(parts, test);
+		const graphCoverage = GraphCoverage.compute(
+			parts.tree,
+			parts.version,
+			{ format_version: 1, compiler: coverageCompiler, files: [], symbols: [] },
+			{ call: () => undefined, import: () => undefined },
+		);
+		if (withGraph) await cache.store(parts, graphCoverage);
+		vi.spyOn(EnolaRun.prototype, "callers").mockResolvedValue({
+			groups: [],
+			issues: [],
+			notes: [],
+			paths: ["new.ts", "old.ts"],
+			parts,
+		});
+		const files = [{ path: "new.ts", oldPath: "old.ts", status: "renamed" as const, binary: false, hunks: [] }];
+		const callers = await CallerContext.open(
+			{
+				repoRoot: repo,
+				commit: head,
+				base: head,
+				tool: "enola",
+				settings: defaultConfig.static.enola,
+				env: createNodeExecutionEnv(repo),
+				tools,
+			},
+			files,
+			backgroundContext,
+		);
+		const models = createFakeModels({ models: [{ id: "fixture" }] });
+		const harness = await openHarness(createMemoryStorage(), {
+			registry: createReviewRegistry(),
+			models: models.models,
+		});
+		try {
+			const conversation = await harness.root(backgroundContext, { agent: { model: models.ref("fixture") } });
+			const ids = await callers.recordCoverage({
+				harness,
+				children: { lens: conversation.id },
+				lenses: [{ key: "lens", name: "correctness" }],
+				files,
+				nonce: "N",
+				context: backgroundContext,
+			});
+			expect(ids?.test).toBe(withTest ? test.id : undefined);
+			expect(ids?.graph).toBe(withGraph ? graphCoverage.id : undefined);
+			const stored = await cache.read(parts, "review", { id: ids?.review });
+			expect(stored).toBeInstanceOf(ReviewCoverage);
+			if (!(stored instanceof ReviewCoverage)) throw new Error("Review coverage missing");
+			expect(stored.toJSON().lenses[0]!.files.map((file) => [file.path, file.revision])).toEqual([
+				["new.ts", "head"],
+				["old.ts", "base"],
+			]);
+		} finally {
+			await harness.close(backgroundContext);
+		}
+	},
+);
 
 it("opens bundled provisioning and leaves an unfetched pin advisory", async () => {
 	const repo = createRepository();
