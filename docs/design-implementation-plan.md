@@ -167,3 +167,4 @@ Step 11 execution-miss mapping is built. The tool-manifest comparison maps thirt
 
    - Mutation inventory: nested graph-coverage schemas reject malformed persisted data. Ratio, total, location and extra-field mutations fail.
    - Mutation inventory: A direct classification test proves the Enola policy guard. The restored suite passes.
+   - Mutation inventory: The lens context branch now has an exact rendering assertion. Its inversion fails; the restored lens suite passes.

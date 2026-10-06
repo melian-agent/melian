@@ -670,6 +670,15 @@ describe("Lens.renderInstructions", () => {
 	const every = (name: string): LensNeighbour => ({ name, files: "every" });
 	const asIs = (listing: string) => listing;
 
+	it("appends advisory context only when the host supplies it", async () => {
+		const [correctness] = named(await Lens.load(repo, { kind: "worktree" }, []), "correctness");
+		const plain = correctness!.renderInstructions([], "careful", [], asIs);
+		expect(correctness!.renderInstructions([], "careful", [], asIs, "Caller evidence")).toBe(
+			`${plain}\n\nCaller evidence`,
+		);
+		expect(correctness!.renderInstructions([], "careful", [], asIs, "")).toBe(plain);
+	});
+
 	it("hands a defect to a neighbour only when the review runs that neighbour", async () => {
 		const [correctness] = named(await Lens.load(repo, { kind: "worktree" }, []), "correctness");
 		const alone = correctness!.renderInstructions([], "careful", [every("correctness")], asIs);
