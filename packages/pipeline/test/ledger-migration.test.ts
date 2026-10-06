@@ -24,7 +24,7 @@ import {
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
-import { LedgerDocument, PublishedDocument } from "../src/publish.ts";
+import { LedgerDocument, PublishedDocument, PublisherDocument } from "../src/publish.ts";
 
 type OldPublication = {
 	order: string[];
@@ -289,9 +289,21 @@ describe("ledger document migration", () => {
 			record.replies,
 		);
 	});
-	it.each([5, 6])(
-		"upgrades version-%i publisher attribution without inventing identities after reopening",
-		async (version) => {
+	it.each([
+		{ version: 5, publishedBy: undefined },
+		{ version: 6, publishedBy: undefined },
+		{
+			version: 6,
+			publishedBy: {
+				login: "earlier-publisher",
+				permission: "maintain" as const,
+				authorPermission: "read" as const,
+				trustedWriters: false,
+			},
+		},
+	])(
+		"upgrades version-$version publisher attribution without inventing identities after reopening ($publishedBy)",
+		async ({ version, publishedBy }) => {
 			dir = mkdtempSync(join(tmpdir(), "melian-ledger-migration-"));
 			const database = join(dir, "state.sqlite");
 			const fake = createFakeModels();
@@ -312,6 +324,7 @@ describe("ledger document migration", () => {
 			const base = "a".repeat(40);
 			const head = "b".repeat(40);
 			const record = {
+				...(publishedBy === undefined ? {} : { publishedBy }),
 				reviews: ["201"],
 				verdict: "0123456789abcdef",
 				verdictRevision: `${base}..${head}`,
@@ -326,6 +339,7 @@ describe("ledger document migration", () => {
 				.toJSON();
 			const history = { base, head: "c".repeat(40), round: 1, status: "passed" as const };
 			const round = {
+				...(publishedBy === undefined ? {} : { publishedBy }),
 				base,
 				head,
 				round: 1,
@@ -346,8 +360,8 @@ describe("ledger document migration", () => {
 			root = await harness.root(context);
 			const upgraded = {
 				order: [head],
-				revisions: { [head]: { ...record, publishedBy: { trustedWriters: true } } },
-				ledgerRounds: [history, { ...round, publishedBy: { trustedWriters: true } }],
+				revisions: { [head]: { ...record, publishedBy: publishedBy ?? { trustedWriters: true } } },
+				ledgerRounds: [history, { ...round, publishedBy: publishedBy ?? { trustedWriters: true } }],
 			};
 			expect(await harness.snapshot(PublishedDocument, root.id, context)).toEqual(upgraded);
 			await root.commit(async (tx) => {
@@ -359,6 +373,43 @@ describe("ledger document migration", () => {
 			expect(await harness.snapshot(PublishedDocument, root.id, context)).toEqual(upgraded);
 		},
 	);
+
+	it.each([undefined, true, false])("migrates legacy publisher trust %s through SQLite", async (trustedWriters) => {
+		dir = mkdtempSync(join(tmpdir(), "melian-publisher-migration-"));
+		const database = join(dir, "state.sqlite");
+		const fake = createFakeModels();
+		const open = async () =>
+			openHarness(await openSqliteStorage(database), { models: fake.models, registry: createRegistry() }, context);
+		const previous = defineDoc<{ secret?: string; trustedWriters?: boolean }>({
+			kind: "melian.publisher",
+			version: 1,
+			scope: "conversation",
+			history: "latest",
+			fork: "current",
+			initial: () => ({}),
+		});
+		const secret = "ab".repeat(32);
+		harness = await open();
+		let root = await harness.root(context);
+		await root.commit(async (tx) => {
+			const document = await tx.doc(previous, root.id);
+			document.secret = secret;
+			if (trustedWriters !== undefined) document.trustedWriters = trustedWriters;
+		}, context);
+		await harness.close(context);
+		harness = await open();
+		root = await harness.root(context);
+		const expected = { secret, publishedBy: { trustedWriters: trustedWriters ?? true } };
+		expect(await harness.snapshot(PublisherDocument, root.id, context)).toEqual(expected);
+		await root.commit(async (tx) => {
+			await tx.doc(PublisherDocument, root.id);
+		}, context);
+		await harness.close(context);
+		harness = await open();
+		root = await harness.root(context);
+		expect(await harness.snapshot(PublisherDocument, root.id, context)).toEqual(expected);
+		await expect(harness.snapshot(previous, root.id, context)).rejects.toThrow(/newer version 2 than 1/);
+	});
 
 	it("migrates version 4 fallback notes and prunes old ledger detail after reopening", async () => {
 		dir = mkdtempSync(join(tmpdir(), "melian-ledger-migration-"));
