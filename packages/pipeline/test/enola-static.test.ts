@@ -542,7 +542,8 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			context,
 		);
 		if (repeated.status !== "ran") throw new Error("Enola did not repeat");
-		expect(repeated.notes.filter((note) => note.includes("cache hit"))).toHaveLength(2);
+		// A note that named the cache's state made a rerun's check record, and so the verdict's fingerprint, differ.
+		expect(repeated.notes).toEqual(result.notes);
 		expect(repeated.snapshots).toEqual(result.snapshots);
 		expect(readFileSync(join(repo, "enola.yaml"), "utf8")).toContain("evil");
 		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);

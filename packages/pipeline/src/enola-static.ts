@@ -120,7 +120,6 @@ export class EnolaRun {
 				const written = await this.#run.input.env.writeFile(posix.join(output, name), text, this.#run.context);
 				if (!written.ok) throw this.#run.fail("toolFailed", `Could not restore graph ${name}`);
 			}
-			this.#notes.push(`Enola graph cache hit: ${cached.key}`);
 			return {
 				commit,
 				snapshotId: cached.snapshotId,
@@ -166,7 +165,6 @@ export class EnolaRun {
 			throw this.#run.fail("invalidOutput", "Enola graph artifacts are invalid", cause);
 		}
 		await this.#cache.store(snapshot);
-		this.#notes.push(`Enola graph cache miss: ${snapshot.key}`);
 		return {
 			commit,
 			snapshotId: stored.snapshot_id,
