@@ -2,6 +2,7 @@ import {
 	Adjudication,
 	Comparison,
 	ComparisonError,
+	codexReviewSchema,
 	comparisonSchema,
 	defaultConfig,
 	ExternalFinding,
@@ -12,7 +13,7 @@ import {
 	maxExternalTitleLength,
 } from "@melian-agent/core";
 import Value from "typebox/value";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { evalInput } from "./fixtures/findings.ts";
 
 const revision = { base: "a".repeat(40), head: "b".repeat(40) };
@@ -39,6 +40,193 @@ const ids = (groups: ReturnType<Comparison["groups"]>) =>
 	groups.map((group) => ({ external: group.external.map((each) => each.id), melian: [...group.melian] }));
 
 describe("ExternalFinding", () => {
+	it.each([
+		[{ name: "human", login: "octocat" }, "octocat"],
+		[{ name: "human" }, "human"],
+		[{ name: "codex", login: "octocat" }, "codex"],
+		[{ name: "claude-code" }, "claude-code"],
+		[{ name: "coderabbit", login: "coderabbitai[bot]", kind: "bot" }, "coderabbit"],
+		[{ name: "copilot", login: "copilot-pull-request-reviewer[bot]", kind: "bot" }, "copilot"],
+	] satisfies [ExternalFindingInput["reviewer"], string][])("labels reviewer %j as %s", (reviewer, label) => {
+		expect(external({ reviewer }).by()).toBe(label);
+	});
+
+	it("keeps an unexpected path-reader error unchanged", () => {
+		const failure = new Error("path accessor failed");
+		const input: ExternalFindingInput = {
+			reviewer: { name: "human" },
+			title: "t",
+			body: "b",
+			source: { kind: "file", path: "x.json", position: 0 },
+		};
+		Object.defineProperty(input, "file", {
+			get() {
+				throw failure;
+			},
+		});
+		expect(() => ExternalFinding.create(input)).toThrow(failure);
+	});
+
+	it("keeps an unexpected finding-construction error unchanged", () => {
+		const failure = new Error("construction failed");
+		const create = vi.spyOn(ExternalFinding, "create").mockImplementationOnce(() => {
+			throw failure;
+		});
+		try {
+			expect(() =>
+				ExternalFinding.fromFile({ reviewer: { name: "human" }, findings: [{ title: "t", body: "b" }] }, "x.json"),
+			).toThrow(failure);
+		} finally {
+			create.mockRestore();
+		}
+	});
+
+	it("distinguishes files and length-prefixed source fields in finding IDs", () => {
+		const source = { kind: "file", path: "x.json", position: 0 } as const;
+		expect(external({ source, file: "src/a.ts" }).id).not.toBe(external({ source, file: "src/b.ts" }).id);
+		expect(external({ source, file: undefined, line: undefined }).id).not.toBe(
+			external({ source, file: undefined, line: 1 }).id,
+		);
+		expect(external({ source: { ...source, path: "a", ref: "refb" } }).id).not.toBe(
+			external({ source: { ...source, path: "aref", ref: "b" } }).id,
+		);
+	});
+
+	it("orders absent sites first, then files, lines and IDs in both directions", () => {
+		const fields: Partial<ExternalFindingInput>[] = [
+			{ file: undefined, line: undefined },
+			{ file: "src/a.ts", line: undefined },
+			{ file: "src/a.ts", line: 1 },
+			{ file: "src/a.ts", line: 2 },
+			{ file: "src/a.ts", line: 2 },
+			{ file: "src/b.ts", line: 1 },
+		];
+		const ordered = fields.map((input, index) =>
+			ExternalFinding.from({ ...external(input).toJSON(), id: String(index + 1).repeat(16) }),
+		);
+		for (const [index, first] of ordered.entries()) {
+			expect(first.compareSite(first)).toBe(0);
+			for (const second of ordered.slice(index + 1)) {
+				expect(first.compareSite(second)).toBeLessThan(0);
+				expect(second.compareSite(first)).toBeGreaterThan(0);
+			}
+		}
+		const comparison = Comparison.of(revision);
+		comparison.import("file:x.json", { findings: [...ordered].reverse(), skippedBodies: 0 }, "t");
+		expect(comparison.externalFindings().map((each) => each.id)).toEqual(ordered.map((each) => each.id));
+	});
+
+	it.each([
+		[{ file: undefined, line: undefined }, "(no file)"],
+		[{ line: undefined }, "src/run.ts (no line)"],
+		[{}, "src/run.ts:12"],
+		[{ endLine: 12 }, "src/run.ts:12"],
+		[{ endLine: 14 }, "src/run.ts:12-14"],
+		[{ outdated: true }, "src/run.ts:12 (outdated)"],
+		[{ revision: "base" }, "src/run.ts:12 (base)"],
+	] satisfies [Partial<ExternalFindingInput>, string][])("renders placement %j as %s", (input, shown) => {
+		expect(external(input).where()).toBe(shown);
+	});
+
+	it("refuses an empty stored title after trimming blank lines", () => {
+		expect(() => external({ title: " \r\n\t\n" })).toThrow(expect.objectContaining({ code: "invalidFinding" }));
+	});
+
+	it("clamps a reversed Codex span and ignores a blank recommendation", () => {
+		const [finding] = ExternalFinding.fromFile(
+			{
+				verdict: "needs-attention",
+				summary: "",
+				next_steps: [],
+				findings: [
+					{
+						severity: "low",
+						title: "t",
+						body: "body",
+						file: "a.ts",
+						line_start: 12,
+						line_end: 7,
+						confidence: 0,
+						recommendation: " \t\n",
+					},
+				],
+			},
+			"codex.json",
+		);
+		expect(finding!.line).toBe(12);
+		expect(finding!.endLine).toBe(12);
+		expect(finding!.body).toBe("body");
+	});
+
+	it("checks minimum lengths in exported schemas before normalisation", () => {
+		const stored = Comparison.of(revision).toJSON();
+		for (const field of ["base", "head"] as const) {
+			expect(Value.Check(comparisonSchema, { ...stored, [field]: "" })).toBe(false);
+		}
+		const review = {
+			verdict: "approve",
+			summary: "",
+			next_steps: [],
+			findings: [
+				{
+					severity: "low",
+					title: "t",
+					body: "b",
+					file: "a.ts",
+					line_start: 1,
+					line_end: 1,
+					confidence: 0,
+					recommendation: "",
+				},
+			],
+		};
+		expect(Value.Check(codexReviewSchema, review)).toBe(true);
+		for (const field of ["title", "file"] as const) {
+			expect(Value.Check(codexReviewSchema, { ...review, findings: [{ ...review.findings[0], [field]: "" }] })).toBe(
+				false,
+			);
+		}
+	});
+
+	it.each([
+		{ file: undefined },
+		{ line: undefined },
+		{ outdated: true },
+		{ revision: "base" },
+	] satisfies Partial<ExternalFindingInput>[])("has no matchable site for %j", (input) => {
+		const finding = external(input);
+		expect(finding.site()).toBeUndefined();
+		expect(finding.meetsFinding(melian())).toBe(false);
+	});
+
+	it.each([null, undefined, 1, "file"])("refuses primitive file input %j with a typed error", (value) => {
+		expect(() => ExternalFinding.fromFile(value, "x.json")).toThrow(/\(top level\)/);
+		expect(() => ExternalFinding.fromFile(value, "x.json")).toThrow(
+			expect.objectContaining({ code: "invalidFile", path: "x.json" }),
+		);
+	});
+
+	it("keeps the first source position when identical ref-less findings deduplicate", () => {
+		const finding = { file: "a.ts", line: 1, title: "t", body: "b" };
+		const imported = ExternalFinding.fromFile(
+			{ reviewer: { name: "human" }, findings: [finding, finding] },
+			"x.json",
+		);
+		expect(imported.map((each) => each.source)).toEqual([{ kind: "file", path: "x.json", position: 0 }]);
+	});
+
+	it("names unknown-key containers without repeating the key's text", () => {
+		const key = "private-key-text";
+		for (const [value, container] of [
+			[{ reviewer: { name: "human" }, findings: [], [key]: 1 }, "(top level)"],
+			[{ reviewer: { name: "human", version: 1, [key]: 1 }, findings: [] }, "/reviewer"],
+		] as const) {
+			expect(() => ExternalFinding.fromFile(value, "x.json")).toThrow(
+				`x.json is not an external-finding file: it has an unknown key in ${container}`,
+			);
+		}
+	});
+
 	it("hashes the source reference into its ID, so importing again gives the same ID", () => {
 		const source = {
 			kind: "thread",
@@ -463,6 +651,208 @@ describe("ExternalFinding", () => {
 });
 
 describe("Comparison matching", () => {
+	it.each([
+		["three lines apart", { line: 30 }, { line: 33 }, true],
+		["four lines apart", { line: 30 }, { line: 34 }, false],
+		["far apart", { line: 30 }, { line: 100 }, false],
+		["overlapping spans", { line: 30, endLine: 80 }, { line: 60, endLine: 100 }, true],
+		["near a span's end", { line: 30, endLine: 80 }, { line: 83 }, true],
+		["past a span's end", { line: 30, endLine: 80 }, { line: 84 }, false],
+		["different files", { file: "src/a.ts", line: 30 }, { file: "src/b.ts", line: 30 }, false],
+		["missing file", { file: undefined }, { line: 12 }, false],
+		["missing line", { line: undefined }, { line: 12 }, false],
+		["outdated", { outdated: true }, { line: 12 }, false],
+		["at base", { revision: "base" }, { line: 12 }, false],
+	] satisfies [string, Partial<ExternalFindingInput>, Partial<ExternalFindingInput>, boolean][])(
+		"groups different reviewers only at a matchable site: %s",
+		(_, first, second, grouped) => {
+			const codex = external({ ...first, source: { kind: "file", path: "codex.json", position: 0, ref: "A" } });
+			const claude = external({
+				...second,
+				reviewer: { name: "claude-code" },
+				source: { kind: "file", path: "claude.json", position: 0, ref: "B" },
+			});
+			expect(codex.meets(claude)).toBe(grouped);
+			expect(claude.meets(codex)).toBe(grouped);
+			const comparison = Comparison.of(revision);
+			comparison.import("file:reviews", { findings: [claude, codex], skippedBodies: 0 }, "t");
+			comparison.compare(
+				new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+			);
+			expect(comparison.externalOnly()).toHaveLength(grouped ? 1 : 2);
+			expect(comparison.matched()).toEqual([]);
+			expect(comparison.render(undefined)).toContain("\nExternal only:\n");
+			expect(comparison.render(undefined)).not.toContain("\nMatched:\n");
+			expect(
+				comparison
+					.externalOnly()
+					.flatMap((group) => group.external.map((each) => each.id))
+					.sort(),
+			).toEqual([codex.id, claude.id].sort());
+			expect(comparison.render(undefined)).toContain(`External only: ${grouped ? 1 : 2}. Melian only: 0.`);
+		},
+	);
+
+	it("reads only its own external IDs, including before the first import", () => {
+		const comparison = Comparison.of(revision);
+		expect(comparison.externalFinding("toString")).toBeUndefined();
+		expect(comparison.externalFinding("0".repeat(16))).toBeUndefined();
+		const finding = external();
+		comparison.import("file:codex.json", { findings: [finding], skippedBodies: 0 }, "t");
+		expect(comparison.externalFinding(finding.id)?.toJSON()).toEqual(finding.toJSON());
+	});
+
+	it("replaces an earlier unmatch of the same pair", () => {
+		const finding = melian();
+		const outside = external();
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [outside], skippedBodies: 0 }, "t");
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
+		comparison.unmatch(outside.id, finding.id, "first", "t1");
+		comparison.unmatch(outside.id, finding.id, "second", "t2");
+		expect(comparison.toJSON().unmatches).toEqual([
+			{ external: outside.id, melian: finding.id, by: "second", at: "t2" },
+		]);
+		expect(comparison.effectiveMatches()).toEqual([]);
+	});
+
+	it("keeps another pair's unmatch when replacing one", () => {
+		const first = melian();
+		const second = melian({ startLine: 14, endLine: 14, snippet: "eval(second)" });
+		const outside = external({ line: 13 });
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [outside], skippedBodies: 0 }, "t");
+		comparison.compare(
+			new Adjudication({ findings: [first, second], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
+		comparison.unmatch(outside.id, first.id, "M", "t1");
+		comparison.unmatch(outside.id, second.id, "M", "t2");
+		comparison.unmatch(outside.id, first.id, "other", "t3");
+		expect(comparison.toJSON().unmatches).toEqual([
+			{ external: outside.id, melian: second.id, by: "M", at: "t2" },
+			{ external: outside.id, melian: first.id, by: "other", at: "t3" },
+		]);
+		comparison.compare(
+			new Adjudication({ findings: [first, second], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
+		expect(comparison.effectiveMatches()).toEqual([]);
+	});
+
+	it("ignores stale hand matches while retaining their stored history", () => {
+		const finding = melian();
+		const outside = external();
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [outside], skippedBodies: 0 }, "t");
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
+		const matches = [
+			{ external: outside.id, melian: finding.id, kind: "hand" as const, by: "M", at: "t" },
+			{ external: "0".repeat(16), melian: finding.id, kind: "hand" as const, by: "M", at: "t" },
+			{ external: outside.id, melian: "f".repeat(16), kind: "hand" as const, by: "M", at: "t" },
+		];
+		const restored = Comparison.from({ ...comparison.toJSON(), matches });
+		expect(restored.effectiveMatches()).toEqual([matches[0]]);
+		expect(restored.toJSON().matches).toEqual(matches);
+		expect(ids(restored.groups())).toEqual([{ external: [outside.id], melian: [finding.id] }]);
+	});
+
+	it.each([undefined, 0, 2])("renders skipped review bodies only when supplied: %s", (skipped) => {
+		const comparison = Comparison.of(revision);
+		const suffix = skipped === undefined ? "" : ` Skipped review bodies: ${skipped}.`;
+		expect(comparison.render(undefined, skipped)).toBe(
+			`Matched: 0 external findings, covering 0 Melian findings. External only: 0. Melian only: 0.${suffix}\n`,
+		);
+	});
+
+	it("replaces a site match and then an earlier hand match without duplicating the pair", () => {
+		const finding = melian();
+		const outside = external();
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [outside], skippedBodies: 0 }, "t");
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
+		comparison.match(outside.id, finding.id, "first", "t1");
+		expect(comparison.effectiveMatches()).toEqual([
+			{ external: outside.id, melian: finding.id, kind: "hand", by: "first", at: "t1" },
+		]);
+		comparison.match(outside.id, finding.id, "second", "t2");
+		expect(comparison.effectiveMatches()).toEqual([
+			{ external: outside.id, melian: finding.id, kind: "hand", by: "second", at: "t2" },
+		]);
+	});
+
+	it("keeps a Melian-only group out of matched groups and their rendered section", () => {
+		const finding = melian();
+		const comparison = Comparison.of(revision);
+		comparison.compare(
+			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
+		);
+		expect(comparison.matched()).toEqual([]);
+		expect(comparison.externalOnly()).toEqual([]);
+		expect(comparison.melianOnly()).toEqual([finding.id]);
+		expect(comparison.render(undefined)).toBe(
+			`Matched: 0 external findings, covering 0 Melian findings. External only: 0. Melian only: 1.\nMelian only:\n  ${finding.id}\n`,
+		);
+	});
+
+	it("stores duplicate input IDs once and keeps the final imported value", () => {
+		const source = { kind: "file", path: "x.json", position: 0, ref: "A" } as const;
+		const first = external({ source, title: "first" });
+		const last = external({ source, title: "last" });
+		const comparison = Comparison.of(revision);
+		comparison.import("file:x.json", { findings: [first, last], skippedBodies: 0 }, "t");
+		expect(comparison.externalFindings().map((each) => each.toJSON())).toEqual([last.toJSON()]);
+		expect(comparison.importsBySource()).toEqual({ "file:x.json": { at: "t", ids: [last.id], skippedBodies: 0 } });
+	});
+
+	it("counts a repeated Melian finding and its generated pair once", () => {
+		const finding = melian();
+		const outside = external();
+		const verdict = new Adjudication({
+			findings: [finding],
+			manifest: [],
+			checks: [],
+			config: defaultConfig,
+		}).adjudicate();
+		const shown = verdict.attention()[0]!;
+		const attention = vi.spyOn(verdict, "attention").mockReturnValue([shown, shown]);
+		try {
+			const comparison = Comparison.of(revision);
+			comparison.import("file:x.json", { findings: [outside], skippedBodies: 0 }, "t");
+			comparison.compare(verdict);
+			expect(comparison.melianFindings()).toEqual([finding.id]);
+			expect(comparison.effectiveMatches()).toEqual([{ external: outside.id, melian: finding.id, kind: "site" }]);
+			expect(ids(comparison.groups())).toEqual([{ external: [outside.id], melian: [finding.id] }]);
+		} finally {
+			attention.mockRestore();
+		}
+	});
+
+	it("keeps ambiguity local to each external finding when hand and site pairs coexist", () => {
+		const first = melian();
+		const second = melian({ startLine: 15, endLine: 15, snippet: "eval(second)" });
+		const third = melian({ startLine: 40, endLine: 40, snippet: "eval(third)" });
+		const near = external({ line: 13 });
+		const far = external({ line: 90 });
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [near, far], skippedBodies: 0 }, "t");
+		comparison.compare(
+			new Adjudication({
+				findings: [first, second, third],
+				manifest: [],
+				checks: [],
+				config: defaultConfig,
+			}).adjudicate(),
+		);
+		comparison.match(far.id, first.id, "M", "t1");
+		comparison.match(far.id, third.id, "M", "t1");
+		expect(comparison.ambiguous()).toEqual([{ external: near, melian: [first.id, second.id].sort() }]);
+	});
+
 	it("lists a uniquely matched external finding beside its Melian finding, with its reviewer and site", () => {
 		const finding = melian();
 		const outside = external({ line: 11, endLine: 13 });

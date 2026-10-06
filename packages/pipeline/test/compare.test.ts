@@ -14,7 +14,7 @@ import {
 	revisionKey,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { ComparisonDocument } from "../src/compare.ts";
 
@@ -81,6 +81,42 @@ async function memoryHarness(): Promise<CompareHarness> {
 }
 
 describe("CompareHarness", () => {
+	it("reads an absent comparison and distinguishes an unreviewed base at a reviewed head", async () => {
+		const harness = await memoryHarness();
+		expect(await harness.read(revision)).toBeUndefined();
+		await storeReview(harness);
+		expect(await harness.reviewed(revision)).toBe(true);
+		expect(await harness.reviewed({ ...revision, base: "c".repeat(40) })).toBe(false);
+		expect(await harness.read(revision)).toBeUndefined();
+	});
+
+	it("closes storage after a cancelled open", async () => {
+		const storage = createMemoryStorage();
+		const controller = new AbortController();
+		controller.abort();
+		const cancelled = { abortSignal: controller.signal, value: () => undefined, toString: () => "cancelled" };
+		await expect(CompareHarness.open(storage, createFakeModels().review, cancelled)).rejects.toThrow();
+		await expect(storage.mintId()).rejects.toThrow("MemoryStorage is closed");
+	});
+
+	it("preserves an open failure when closing storage also fails", async () => {
+		const storage = createMemoryStorage();
+		const controller = new AbortController();
+		controller.abort();
+		const cancelled = { abortSignal: controller.signal, value: () => undefined, toString: () => "cancelled" };
+		const closeFailure = new Error("close failed");
+		const close = vi.spyOn(storage, "close").mockRejectedValueOnce(closeFailure);
+		try {
+			await expect(CompareHarness.open(storage, createFakeModels().review, cancelled)).rejects.toBe(
+				controller.signal.reason,
+			);
+			expect(close).toHaveBeenCalledExactlyOnceWith(context);
+		} finally {
+			close.mockRestore();
+			await storage.close(context);
+		}
+	});
+
 	it("refuses to compare a revision Melian has not reviewed, and writes nothing", async () => {
 		const harness = await memoryHarness();
 		expect(await harness.reviewed(revision)).toBe(false);

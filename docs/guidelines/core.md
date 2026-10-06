@@ -670,6 +670,7 @@ An external finding with no file or line, an `outdated` one, and one on the base
 
 ## Tests
 
+- To audit a branch, force each outcome and move numeric bounds by one. Inverting a predicate alone can fail its positive test while leaving its negative case untested. Keep surviving mutations and their new failing assertions in the fix report.
 - Run the package's tests with `npm test --workspace @melian-agent/core`, or one file with `npx vitest --run packages/core/test/changeset.test.ts` from the repository root.
 - Build real repositories in a temporary directory in `beforeEach` with `test/fixtures/repo.ts`, and delete them in `afterEach`. Never mock git.
 - Isolate git from the developer's configuration. `isolatedGitEnv` points `GIT_CONFIG_GLOBAL` at `/dev/null` and sets an author; without it, a developer who signs commits sees every fixture commit fail. Stub the same variables into `process.env` while code under test runs git.
