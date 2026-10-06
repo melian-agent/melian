@@ -397,6 +397,18 @@ again; when the head, base branch, base tip, or repository differ from its targe
 not count against the round. `test/publish-crash.test.ts` in `packages/github` kills a publish
 before its post, retargets, reviews again, and publishes.
 
+## Comparing with external reviewers
+
+`ComparisonDocument` in `src/compare.ts`, kind `melian.comparisons` at version 1, holds a changeset's comparisons with other reviewers on its root conversation, keyed by the `revisionKey` of the stored review each compares against; [the core guideline](core.md#comparison) gives the shape and the matching rules. It keeps its latest value, as the review index does: the hand matches are the maintainer's record, and a fork that forgot them would lose it.
+
+Open the harness with `CompareHarness.open(storage, models)`, which installs no task, so a review or publication a crash interrupted does not resume in it, and asks no model. `reviewed(revision)` says whether Melian has a review to compare against, so a host can refuse before it imports anything. `importFindings(revision, sources, at)`, `match`, and `unmatch` each read the stored verdict and the comparison in one commit, apply the change, and match against the verdict again, its shown and dismissed findings but not its silent ones. A revision with no current, decided verdict is `CompareError` `notReviewed`, and the commit writes nothing. Both the preflight and the write commit check the indexed adjudication task, its recorded decision and the current findings version. A pending, missing or unsuccessful task cannot supply a verdict. A verdict predating decision records uses the indexed input’s findings version; one with neither an index nor a decision remains readable. An import replaces what its source last imported, so a replay or a second run writes the same state.
+
+Problem: a commit hands the document's value as a view of its own, and `structuredClone` refuses it with a `DataCloneError`. Solution: copy a stored verdict or comparison read inside a commit through JSON, as `Comparison.from` does.
+
+`FileImporter.open(path, { cwd, repoRoot })` reads a reviewer's JSON file, at most 4 MiB, through core's `ExternalFinding.fromFile`, and names it `file:` and its path relative to the repository when it lies inside, so the same file imported from another directory keeps its findings' IDs. It resolves both paths through `realpath`, since git reports the repository's real path and macOS's temporary directory is a symlink. A symlink regression checks the source and finding IDs through real and symlinked repository roots; bypassing either resolution fails it. A file it cannot read, or that is not JSON, is `CompareError` `unreadable`. Problem: V8's parse error can quote the bytes around the fault, and an unknown key's name is the file author's text, so either could carry an escape sequence to the terminal. Solution: the message names the file and the position only, and core names the object that holds an unknown key, never the key. The importer of a pull request's review threads lives in `packages/github`.
+
+Codex's companion script wraps the review in an envelope when asked for JSON, with the review output under `result`. The importer reads the review output only, so the agent that ran Codex saves that `result` field as the file. Teaching the importer the envelope would mean following a plugin's private shape, which differs between its commands; one sentence in the skills is smaller.
+
 ## Contracts that read like mistakes
 
 - A task phase reruns from its start after a crash. Work before the phase's checkpoint commit must be safe to repeat, or guarded by a durable record.

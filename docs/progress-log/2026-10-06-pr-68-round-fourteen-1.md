@@ -1,0 +1,5 @@
+Closed two test gaps from the fourteenth Melian round on [pull request #68](https://github.com/melian-agent/melian/pull/68). A thread keeps its finding ID when only its first-comment URL changes. Changing only its node ID changes the finding ID. The file importer accepts valid JSON padded with whitespace to exactly 4,194,304 bytes; the existing test refuses one byte more.
+
+Replacing the thread node ID with its URL and changing the file-size comparison from `>` to `>=` each passed all 188 existing comparison and thread tests. Each mutation fails its new regression.
+
+The 388-mutation sweep omitted identity-field substitutions. It changed the thread/file branch condition, which existing tests already guarded, but never substituted the URL for the node ID. Its file inventory included only core’s and pipeline’s comparison modules, so it omitted the size guard in the separate file importer. The core testing guideline now requires a file and contract inventory, identity-field substitutions and explicit scope limits. Production behaviour and design decisions stay unchanged.
