@@ -1,9 +1,9 @@
-import { execFileSync } from "node:child_process";
+import * as childProcess from "node:child_process";
+import { type ChildProcess, execFileSync } from "node:child_process";
 import { chmodSync, rmSync, symlinkSync } from "node:fs";
 import * as fs from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import * as gitModule from "../src/git.ts";
 import { openSource, SourceError } from "../src/source.ts";
 import {
 	gitIn,
@@ -17,6 +17,7 @@ import {
 } from "./fixtures/repo.ts";
 
 vi.mock("node:fs/promises", { spy: true });
+vi.mock("node:child_process", async (original) => ({ ...(await original<typeof childProcess>()) }));
 
 let repo: string;
 
@@ -224,16 +225,21 @@ describe.each(sourceKinds)("source reader bounds from %s", (kind) => {
 
 	it("reports an ignore command stopped by a signal", async () => {
 		const reader = await openSource(repo, sourceFor(repo, kind));
-		vi.spyOn(reader, "readText").mockResolvedValue(undefined);
-		vi.spyOn(gitModule, "git").mockResolvedValueOnce({
-			code: -1,
-			stdout: "",
-			stdoutBytes: Buffer.alloc(0),
-			stderr: "terminated by signal",
+		const spawn = childProcess.spawn;
+		let child: ChildProcess | undefined;
+		vi.spyOn(childProcess, "spawn").mockImplementation((command, args, options) => {
+			const running = spawn(command, args, options);
+			if (command === "git" && args.includes("check-ignore")) {
+				child = running;
+				child.kill("SIGTERM");
+			}
+			return running;
 		});
 		expect(await rejection(reader.isIgnored("docs/rules.md"), SourceError)).toMatchObject({
 			code: "unreadable",
 			path: reader.label("docs/rules.md"),
 		});
+		expect(child?.pid).toBeDefined();
+		expect(child?.signalCode).toBe("SIGTERM");
 	});
 });
