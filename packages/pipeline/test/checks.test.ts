@@ -1,4 +1,4 @@
-import { rmSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import {
 	Changeset,
@@ -9,6 +9,7 @@ import {
 	loadConfig,
 	normaliseEnolaSarif,
 	type RepositorySource,
+	ToolManifest,
 } from "@melian-agent/core";
 import {
 	checksExtension,
@@ -29,6 +30,7 @@ import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { findingsVersion } from "../src/findings.ts";
 import * as staticRunner from "../src/static.ts";
+import { ToolProvisioning } from "../src/tool-provisioning.ts";
 import { commit, createRepository, fakeTool, lines, removeRepository } from "./fixtures/repo.ts";
 
 let repo: string;
@@ -199,6 +201,21 @@ describe("runChecks", () => {
 		expect((await runChecks(harness, stricter, context)).records).toEqual([
 			{ name: "guardrails", status: "ran", findings: 1, notes: [] },
 		]);
+	});
+
+	it("runs again when Melian's tool pins differ, rather than returning the earlier run", {
+		timeout: 60_000,
+	}, async () => {
+		const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+		const head = commit(repo, { "src/a.ts": lines("a") });
+		const { harness, input } = await checks(base, head);
+		const first = await runChecks(harness, input, context);
+		const text = readFileSync(new URL("../../../tools.yaml", import.meta.url), "utf8");
+		const newer = ToolManifest.parse(text.replace("version: 0.4.27", "version: 0.4.28"));
+		vi.spyOn(ToolProvisioning, "manifest").mockResolvedValue(newer);
+		const second = await runChecks(harness, input, context);
+		expect(second.identity.policy).not.toBe(first.identity.policy);
+		expect(second.identity.task).not.toBe(first.identity.task);
 	});
 
 	it("records a fast and a full run of one head apart", { timeout: 120_000 }, async () => {

@@ -29,6 +29,7 @@ import {
 	type TaskId,
 } from "./harness.ts";
 import { runStaticTool } from "./static.ts";
+import { ToolProvisioning } from "./tool-provisioning.ts";
 
 // Type aliases, not interfaces: a document's value must satisfy Pi's JsonObject, which an interface never does.
 
@@ -353,11 +354,13 @@ function canonical(value: unknown): string {
 	return JSON.stringify(value);
 }
 
-// What decides a run's results: both commits, the tier, and the policy it ran under.
-function runIdentity(input: RunChecksInput, tier: string): Omit<RunIdentity, "task"> {
+// What decides a run's results: both commits, the tier, and the policy it ran under, with Melian's own tool pins, so a
+// build that pins another Enola does not take the finished run of an older one.
+async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<RunIdentity, "task">> {
 	const { base, head } = input.changeset.revision;
+	const tools = (await ToolProvisioning.manifest()).toJSON();
 	const policy = createHash("sha256")
-		.update(canonical({ config: input.config, source: input.source }))
+		.update(canonical({ config: input.config, source: input.source, tools }))
 		.digest("hex")
 		.slice(0, 16);
 	return { base, head, tier, policy };
@@ -383,8 +386,8 @@ function rerunOf(outcome: {
  * under the run's identity, in one commit. Resolves with the run's identity and one record per check the tier names, in
  * the tier's order.
  *
- * Asking again with the same base, head, tier, configuration, and source, even from a new process after a crash, finds
- * the task already started and waits for it, so the checks run once. A different base, configuration, or source runs
+ * Asking again with the same base, head, tier, configuration, source, and tool pins, even from a new process after a crash, finds
+ * the task already started and waits for it, so the checks run once. A different base, configuration, source, or tool pin runs
  * them again. `rerunFailed` runs again the checks that failed, as a new task with its own identity, so a transient
  * failure is not kept for good. Lens checks are recorded as skipped, since they run in the lens step; a name that is no
  * check is recorded as failed with `unknownCheck`. Rejects when the tier is unknown or includes
@@ -396,7 +399,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 	if (root === undefined) {
 		throw new CheckError("unknownConversation", tier, `no conversation has ID ${input.rootConversationId}`);
 	}
-	const identity = runIdentity(input, tier);
+	const identity = await runIdentity(input, tier);
 	const key = identityKey({ ...identity, task: 0 });
 	const task: ChecksInput = {
 		identity,
