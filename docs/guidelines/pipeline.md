@@ -499,3 +499,5 @@ The host passes caller context through `Lens.renderInstructions`. The selection 
 ToolCache.open and readiness create no directories. Materialisation creates its parents when it fetches. A read-only git directory must leave an absent pin as not fetched, rather than fail a readiness read.
 
 CacheScratch gives fetch, graph and coverage writes process-owned temporary names. Every cache open sweeps dead owners. ESRCH proves absence; EPERM does not, so denied probes keep the writer’s paths. Symlinks and published tool entries are never traversed. Legacy scratch without process ownership has a one-day grace period. Concurrent disappearance is harmless.
+
+A file-handle read stream may call close on destruction even with autoClose disabled. To prove the explicit verification finally closes a handle, refuse its stat before creating the stream.

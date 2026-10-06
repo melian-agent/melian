@@ -175,3 +175,4 @@ Step 11 execution-miss mapping is built. The tool-manifest comparison maps thirt
    - Mutation inventory: The injected release test now checks its AbortSignal and 30-second deadline. The deadline mutation fails; all six restored script tests pass.
    - Mutation inventory: Six coverage cache cases prove byte-identical symlink refusal, handle closure, failed-write cleanup and explicit matcher identity. All four uncovered mutations fail; the restored suite passes.
    - Mutation inventory: Five graph cache cases prove disappeared and denied entries, concurrent-winner recovery, reader closure and scratch cleanup. All seven uncovered mutations fail; all 14 restored graph cache tests pass.
+   - Mutation inventory: Download refusals retain Error and string diagnostics. A pre-stream stat refusal proves all three handle closures. Seven mutations fail, including both no-follow flags; all 66 restored tool cache tests pass.

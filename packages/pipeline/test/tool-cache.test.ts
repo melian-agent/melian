@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type * as fs from "node:fs/promises";
 import {
 	chmod,
+	type FileHandle,
 	lstat,
 	mkdir,
 	mkdtemp,
@@ -38,6 +39,53 @@ beforeEach(async () => {
 });
 afterEach(async () => {
 	await rm(root, { recursive: true, force: true });
+});
+
+it.each([new Error("local download refused"), "local download refused"])(
+	"preserves a download error and removes its partial directory: %s",
+	async (failure) => {
+		const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
+		const cache = await ToolCache.open(root, {
+			fetch: async () => {
+				throw failure;
+			},
+		});
+		await expect(cache.materialise(testTool(bytes), "darwin-arm64")).rejects.toMatchObject({
+			code: "toolFailed",
+			message: "Could not materialise enola: local download refused",
+			cause: failure,
+		});
+		expect((await readdir(root, { recursive: true })).filter((path) => path.includes(".fetch-"))).toEqual([]);
+	},
+);
+
+it("closes download and verification handles after a binary stat refusal", async () => {
+	const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
+	const original = await vi.importActual<typeof fs>("node:fs/promises");
+	const handles: FileHandle[] = [];
+	vi.mocked(open).mockImplementation(async (...args) => {
+		const handle = await original.open(...args);
+		vi.spyOn(handle, "close");
+		if (String(args[0]).endsWith("/binary")) {
+			const stat = await handle.stat();
+			vi.spyOn(stat, "isFile").mockReturnValue(false);
+			vi.spyOn(handle, "stat").mockResolvedValue(stat);
+		}
+		handles.push(handle);
+		return handle;
+	});
+	try {
+		const cache = await ToolCache.open(root, { fetch: async () => new Response(bytes) });
+		await expect(cache.materialise(testTool(bytes), "darwin-arm64")).rejects.toMatchObject({
+			code: "invalidOutput",
+			message: "Materialised tool failed verification",
+		});
+		expect(handles).toHaveLength(3);
+		for (const handle of handles) expect(handle.close).toHaveBeenCalledOnce();
+	} finally {
+		for (const handle of handles) await handle.close();
+		vi.mocked(open).mockImplementation(original.open);
+	}
 });
 
 describe("ToolCache", () => {
