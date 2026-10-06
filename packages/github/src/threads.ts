@@ -113,8 +113,6 @@ const botNames: Readonly<Record<string, ExternalReviewer["name"]>> = {
 	"copilot-pull-request-reviewer": "copilot",
 };
 
-// The reviewer an author is: CodeRabbit's and Copilot's bots by name, and anyone else a human kept by login, as REST
-// spells it.
 function reviewerOf(author: NonNullable<Author>): ExternalReviewer {
 	const bot = author.__typename === "Bot";
 	const bare = author.login.replace(/\[bot\]$/i, "");
