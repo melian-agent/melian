@@ -298,6 +298,8 @@ export type StoredCheckRecord = {
 	reason?: string;
 	error?: string;
 	version?: string;
+	snapshots?: EnolaSnapshot[];
+	coverage?: { graph?: string; review?: string; test?: string };
 	level?: ScrutinyLevel;
 	budgetEnded?: { budget: "tokens" | "tools"; limit: number; tokens: number; tools: number };
 	lineage?: {
@@ -308,6 +310,14 @@ export type StoredCheckRecord = {
 		outside: boolean;
 	};
 };
+
+function storedCheck(record: CheckRecord): StoredCheckRecord {
+	const { snapshots, ...fields } = record;
+	return {
+		...fields,
+		...(snapshots === undefined ? {} : { snapshots: snapshots.map((snapshot) => ({ ...snapshot })) }),
+	};
+}
 
 /** A {@link Verdict} as JSON, which a Pi Durable document can hold. */
 export type StoredVerdict = {
@@ -685,8 +695,8 @@ export class Verdict {
 			blocking: this.blocking,
 			findings,
 			dismissed: this.dismissed.map(stored),
-			notRun: [...this.notRun],
-			...(this.ran === undefined ? {} : { ran: [...this.ran] }),
+			notRun: this.notRun.map(storedCheck),
+			...(this.ran === undefined ? {} : { ran: this.ran.map(storedCheck) }),
 			...(this.refuted === undefined ? {} : { refuted: this.refuted.map(stored) }),
 		};
 	}
