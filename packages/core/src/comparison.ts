@@ -343,8 +343,13 @@ export class ExternalFinding {
 		};
 		if (codex) {
 			const review = value as Static<typeof codexReviewSchema>;
-			return review.findings.map((finding, position) =>
-				create(
+			return review.findings.map((finding, position) => {
+				const hasRecommendation = finding.recommendation.trim() !== "";
+				const body = hasRecommendation
+					? `${finding.body}\n\nRecommendation: ${finding.recommendation}`
+					: finding.body;
+				const points = [...body];
+				return create(
 					{
 						reviewer: { name: "codex" },
 						file: finding.file,
@@ -352,15 +357,15 @@ export class ExternalFinding {
 						endLine: Math.max(finding.line_start, finding.line_end),
 						title: finding.title,
 						body:
-							finding.recommendation.trim() === ""
-								? finding.body
-								: `${finding.body}\n\nRecommendation: ${finding.recommendation}`,
+							!hasRecommendation || points.length <= maxExternalBodyLength
+								? body
+								: `${points.slice(0, maxExternalBodyLength - 1).join("")}…`,
 						severity: finding.severity,
 						source: { kind: "file", path, position },
 					},
 					position,
-				),
-			);
+				);
+			});
 		}
 		const file = value as ExternalFindingsFile;
 		const refs = new Set<string>();

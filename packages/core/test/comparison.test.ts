@@ -8,6 +8,7 @@ import {
 	type ExternalFindingInput,
 	Finding,
 	type FindingInput,
+	maxExternalBodyLength,
 	maxExternalTitleLength,
 } from "@melian-agent/core";
 import Value from "typebox/value";
@@ -142,6 +143,37 @@ describe("ExternalFinding", () => {
 			body: "The diagnostic quotes the line.\n\nRecommendation: Drop the source line.",
 			source: { kind: "file", path: "codex.json", position: 0 },
 		});
+	});
+
+	it.each(["x", "\u{10400}"])("bounds Codex's body and recommendation on a %s boundary", (character) => {
+		const suffix = "\n\nRecommendation: Fix it";
+		for (const length of [maxExternalBodyLength - suffix.length, maxExternalBodyLength]) {
+			const body = character.repeat(length);
+			const [finding] = ExternalFinding.fromFile(
+				{
+					verdict: "needs-attention",
+					summary: "s",
+					next_steps: [],
+					findings: [
+						{
+							severity: "high",
+							title: "t",
+							body,
+							file: "a.ts",
+							line_start: 1,
+							line_end: 1,
+							confidence: 0.5,
+							recommendation: "Fix it",
+						},
+					],
+				},
+				"codex.json",
+			);
+			expect(finding!.body).toBe(
+				length === maxExternalBodyLength ? `${character.repeat(maxExternalBodyLength - 1)}…` : `${body}${suffix}`,
+			);
+			expect([...finding!.body]).toHaveLength(maxExternalBodyLength);
+		}
 	});
 
 	it("cuts a file's long title as it cuts a thread's", () => {

@@ -643,7 +643,7 @@ An external finding's ID is the first 16 hex digits of a sha256 over length-pref
 
 ### Reviewers' files
 
-`ExternalFinding.fromFile(value, path)` reads a parsed JSON file in one of two shapes, and throws `ComparisonError` `invalidFile` naming the path and the first fault for anything else. A file whose top level has `next_steps` is Codex's adversarial review output, read under Codex's own schema: `line_start` and `line_end` become the lines, and a non-empty `recommendation` follows the body. Any other file is the external-finding shape, which the agent that ran a reviewer writes:
+`ExternalFinding.fromFile(value, path)` reads a parsed JSON file in one of two shapes, and throws `ComparisonError` `invalidFile` naming the path and the first fault for anything else. A file whose top level has `next_steps` is Codex's adversarial review output, read under Codex's own schema: `line_start` and `line_end` become the lines, and a non-empty `recommendation` follows the body. When that combined text exceeds 65,536 code points, the importer keeps its first 65,535 and an ellipsis. A valid body at the limit still imports. Any other file is the external-finding shape, which the agent that ran a reviewer writes:
 
 ```json
 {
