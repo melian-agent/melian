@@ -1,0 +1,1 @@
+Removed the stored-review helper’s redundant comment from Melian’s sixteenth round on [pull request #68](https://github.com/melian-agent/melian/pull/68). The helper’s name and body already state that it adjudicates the supplied findings and stores the verdict under the revision key. Test behaviour and design decisions stay unchanged.

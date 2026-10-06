@@ -1,0 +1,7 @@
+Closed the external-site-distance test gap from the thirteenth Melian round on [pull request #68](https://github.com/melian-agent/melian/pull/68). Different reviewers group at three lines, but remain separate at four. Overlapping spans group; a finding beyond a span's three-line margin stays separate. Tests pin both matching directions and the rendered miss count.
+
+Replacing the distance return with true passed all 77 old comparison tests. The new tests fail it for four lines apart, distant findings and a finding past a span's margin.
+
+Read both comparison files and tested 388 mutations of their guards, bounds, fallbacks and early returns. Two mutations were invalid syntax. The old core and pipeline suites killed 317 valid mutations and left 69 alive. One survivor is equivalent: without a recommendation, the validated body already meets its length bound. The other 68 variants identify 56 distinct checks without a failing assertion. Tests cover reviewer labels, missing and outdated sites, placement text, source identity, schema errors and minimum lengths. They also cover duplicate IDs and hand records, stale matches, ambiguity, rendered sections and failed-open cleanup. The fix report lists every mutation and its result.
+
+Inverting a condition alone can hide a missing negative assertion, because its positive test fails first. Force both outcomes during a branch sweep. The core testing guideline now records that technique. Production behaviour and design decisions stay unchanged. New harnesses use fake models and memory storage.

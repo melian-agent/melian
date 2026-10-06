@@ -1,0 +1,13 @@
+[Pull request #68](https://github.com/melian-agent/melian/pull/68) builds the first three items of step 15: the comparison's shape and document, the importers with CodeRabbit first, and matching. Core's `ExternalFinding` holds another reviewer's finding in one shape, with an ID hashed from the source reference alone, so a re-import updates it. Core's `Comparison` holds one revision's external findings, the IDs of the stored review's findings, and the matches by site or by hand. The pipeline stores it at version 1 beside the findings, and refuses a revision Melian has not reviewed. `packages/github` reads a pull request's review threads through GraphQL, keeping those CodeRabbit or another login opened and counting its review bodies unparsed. The pipeline reads Codex's review output or the external-finding file another agent writes. `melian compare` imports and matches, and `melian compare match` and `unmatch` record a maintainer's override, which every later import keeps. Scripted mode answers GitHub from a recording, so the CLI tests review and compare a pull request end to end without the network. [The comparison sites decision](../decisions/2026-10-05-comparison-sites.md) records where matching looks and why a moved pull request is refused. Adjudication, statistics, the backlog, export, and the drain rule's count follow in the next pull request.
+
+The fifth-round fix pass merges main at `921d856`, including triage, the ledger, bearer credentials and the seatbelt wrapper. The CLI guideline keeps the comparison commands, main's doctor refusal and scripted triage rule, and recorded GitHub transport. No code fix was needed for this merge.
+
+Round five fixes ref-less external finding IDs to use the canonical file path. A regression imports `src/run.ts` and `./src//run.ts` with the same contents and keeps one finding.
+
+Round five adds a query assertion for `comments(first: 1)` on every thread page. Changing it to `last: 1` fails the new test while the ten recorded-response tests still pass.
+
+Round five keeps the first thread page's head and refuses any later page placed at another head. A two-page regression failed before the check because the importer returned mixed placements under the last head.
+
+Round five tests a replacement verdict at the same revision. A hand match to its new finding persists through storage and re-import, while a match to the removed finding fails. Removing the comparison refresh before the change fails the regression with `unknownMelian` for the new finding.
+
+Round five splits the skills' comparison instruction at the file-source alternative and the output instruction. All four copies keep identical comparison prose, and the CLI skills tests pass.

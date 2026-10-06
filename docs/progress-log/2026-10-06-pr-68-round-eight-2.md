@@ -1,0 +1,1 @@
+Fixed the pagination-comment advisory from the eighth Melian round on [pull request #68](https://github.com/melian-agent/melian/pull/68). The comment above `pages` repeated its loop and termination predicate. Removed it under the default-no-comment rule. The diff changes no executable code or design decision.

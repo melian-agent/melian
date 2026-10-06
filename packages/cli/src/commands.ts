@@ -186,12 +186,12 @@ export async function review(
 	}
 }
 
-function short(commit: string): string {
+export function short(commit: string): string {
 	return commit.slice(0, 12);
 }
 
 // An argument echoed in a command to run, quoted so it can be pasted into a shell: an unquoted `#` starts a comment.
-function shellQuote(argument: string): string {
+export function shellQuote(argument: string): string {
 	if (/^[\w@%+=:,./-]+$/.test(argument)) return argument;
 	if (!/["$`\\!]/.test(argument)) return `"${argument}"`;
 	return `'${argument.replace(/'/g, `'\\''`)}'`;
@@ -255,7 +255,7 @@ export async function publish(
 
 // A review stored in the clone's storage, named by `argument`: the refs `review` fetched for a pull request, or the
 // range. Opening it reads only local refs, never the network.
-class StoredReview {
+export class StoredReview {
 	readonly changeset: Changeset;
 	readonly argument: string;
 
@@ -320,12 +320,12 @@ export async function findings(
 
 // The git author, as `Name <email>`, in git's own order: GIT_AUTHOR_NAME and GIT_AUTHOR_EMAIL, then user.name and
 // user.email.
-async function gitAuthor(repoRoot: string): Promise<string> {
+export async function gitAuthor(repoRoot: string, act = "dismissed a finding"): Promise<string> {
 	const ident = await git(repoRoot, ["var", "GIT_AUTHOR_IDENT"]).catch((error: Error) => {
 		// git explains a missing identity over several lines; its first says what is wrong.
 		const why = error.message.split("\n")[0]!.trim();
 		throw new CliError(
-			`Melian records who dismissed a finding as the git author, and git has none: ${why}; set user.name and user.email`,
+			`Melian records who ${act} as the git author, and git has none: ${why}; set user.name and user.email`,
 		);
 	});
 	return ident.replace(/ \d+ [+-]\d{4}$/, "");

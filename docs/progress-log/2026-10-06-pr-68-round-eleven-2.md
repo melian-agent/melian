@@ -1,0 +1,3 @@
+Closed the cause-span test gap from the eleventh Melian round on [pull request #68](https://github.com/melian-agent/melian/pull/68). The regression places the primary finding in `src/run.ts` and its head cause evidence at `src/api.ts:3–20`. External findings at lines 20 and 23 match; line 24 remains external-only. Assertions pin the site matches and group counts.
+
+Replacing the cause location’s end with its start passed all 48 old comparison tests. The same mutation fails the new regression with zero matches. All 49 tests pass after restoration. No production behaviour or design decision changed.
