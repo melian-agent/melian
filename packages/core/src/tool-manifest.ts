@@ -23,11 +23,12 @@ export const toolManifestSchema = Type.Object(
 						strict,
 					),
 					published: date,
-					platforms: Type.Record(Type.String({ pattern: "^[a-z]+-(?:amd64|arm64)$" }), artifact),
+					platforms: Type.Record(Type.String({ pattern: "^[a-z]+-(?:amd64|arm64)$" }), artifact, strict),
 					exception: Type.Optional(Type.Object({ reason: text, added: date }, strict)),
 				},
 				strict,
 			),
+			strict,
 		),
 		misses: Type.Array(
 			Type.Object(

@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { ToolManifest } from "@melian-agent/core";
+import { ToolManifest, ToolManifestError } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
 
 const stored = JSON.parse(
@@ -7,6 +7,42 @@ const stored = JSON.parse(
 );
 
 describe("ToolManifest", () => {
+	it.each([
+		{ change: { published: "2026-99-01T00:00:00Z" }, message: "enola: invalid publication timestamp" },
+		{ change: { published: "2026-01-01" }, message: "enola: invalid publication timestamp" },
+		{ change: { exception: { added: "2026-99-01", reason: "reviewed" } }, message: "enola: invalid exception" },
+		{ change: { exception: { added: "2026-01-01", reason: " " } }, message: "enola: invalid exception" },
+		{ change: { platforms: {} }, message: "enola: no platforms" },
+	])("retains the typed manifest refusal: $message ($change)", ({ change, message }) => {
+		const state = structuredClone(stored);
+		Object.assign(state.tools.enola, change);
+		try {
+			ToolManifest.parse(JSON.stringify(state));
+			throw new Error("accepted invalid manifest");
+		} catch (error) {
+			expect(error).toBeInstanceOf(ToolManifestError);
+			expect(error).toMatchObject({ name: "ToolManifestError", code: "invalidManifest", message });
+		}
+	});
+	it("refuses malformed record keys, date formats, repository names and empty miss references", () => {
+		const named = structuredClone(stored);
+		named.tools["../enola"] = named.tools.enola;
+		delete named.tools.enola;
+		const platform = structuredClone(stored);
+		platform.tools.enola.platforms.invalid = platform.tools.enola.platforms["darwin-arm64"];
+		const repository = structuredClone(stored);
+		repository.tools.enola.source.repository = "owner/repo/sub";
+		for (const pin of Object.values(repository.tools.enola.platforms) as { url: string }[])
+			pin.url = pin.url.replace("enola-labs/enola", "owner/repo/sub");
+		const date = structuredClone(stored);
+		date.tools.enola.published = "2026-01-01T00:00:00+01:00";
+		const exception = structuredClone(stored);
+		exception.tools.enola.exception.added = "January 1, 2026";
+		const miss = structuredClone(stored);
+		miss.misses[0].record = "";
+		for (const [label, state] of Object.entries({ named, platform, repository, date, exception, miss }))
+			expect(() => ToolManifest.parse(JSON.stringify(state)), label).toThrow(ToolManifestError);
+	});
 	it("links every execution miss to its comparison finding", () => {
 		const manifest = ToolManifest.parse(JSON.stringify(stored));
 		for (const miss of manifest.toJSON().misses) {
