@@ -83,6 +83,32 @@ async function memoryHarness(): Promise<CompareHarness> {
 }
 
 describe("CompareHarness", () => {
+	it("keeps error causes optional and preserves a supplied cause", () => {
+		const absent = new CompareError("notReviewed", "no review");
+		expect(absent).toMatchObject({ name: "CompareError", code: "notReviewed", message: "no review" });
+		expect(absent.cause).toBeUndefined();
+		const cause = new Error("read failed");
+		expect(new CompareError("unreadable", "cannot read", { cause }).cause).toBe(cause);
+	});
+
+	it("forwards the default and explicit close contexts to its harness", async () => {
+		const harness = await memoryHarness();
+		const close = vi.spyOn(harness.harness, "close");
+		const supplied = {
+			abortSignal: new AbortController().signal,
+			value: () => undefined,
+			toString: () => "supplied",
+		};
+		try {
+			await harness.close();
+			await harness.close(supplied);
+
+			expect(close.mock.calls).toEqual([[context], [supplied]]);
+		} finally {
+			close.mockRestore();
+		}
+	});
+
 	it("reads an absent comparison and distinguishes an unreviewed base at a reviewed head", async () => {
 		const harness = await memoryHarness();
 		expect(await harness.read(revision)).toBeUndefined();
@@ -381,7 +407,10 @@ describe("FileImporter", () => {
 		const root = repo();
 		const path = join(root, "reviews/claude.json");
 		writeFileSync(path, JSON.stringify({ reviewer: { name: "claude-code" }, findings: [] }));
-		const realpath = vi.spyOn(fs, "realpath").mockResolvedValueOnce(path).mockRejectedValueOnce(new Error("root unavailable"));
+		const realpath = vi
+			.spyOn(fs, "realpath")
+			.mockResolvedValueOnce(path)
+			.mockRejectedValueOnce(new Error("root unavailable"));
 		try {
 			const importer = await FileImporter.open("reviews/claude.json", { cwd: root, repoRoot: root });
 
