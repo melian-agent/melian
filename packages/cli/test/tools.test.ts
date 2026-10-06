@@ -88,3 +88,10 @@ it("uses one clone-directory rule for tools and review storage", async () => {
 		expect(await stateDirectory(repo, env)).toBe((await CacheLocation.open(repo, env)).root);
 	}
 });
+
+it("renders control characters in a missing tool name as visible text", async () => {
+	const io = output();
+	expect(await main(["tools", "fetch", "\u001b[2J\nforged"], io)).toBe(1);
+	expect(io.errors.join("")).toContain("\\u001b[2J\\u000aforged");
+	expect(io.errors.join("")).not.toContain("\u001b");
+});
