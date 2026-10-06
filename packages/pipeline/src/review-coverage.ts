@@ -9,7 +9,7 @@ export class ReviewTranscript {
 	}
 	/** Fetches every history page before correlating successful results with calls. */
 	static async read(
-		conversation: Conversation,
+		conversation: Pick<Conversation, "entries">,
 		context: Context,
 		lens: string,
 		paths: readonly string[],

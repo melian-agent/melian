@@ -3,9 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ChangedFile, GraphCoverage, GraphSnapshot, ReviewCoverage, TestCoverage } from "@melian-agent/core";
 import { CoverageCache, GraphCache, ReviewTranscript } from "@melian-agent/pipeline";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { coverageCompiler, coverageMatcher } from "../src/coverage-identity.ts";
-import type { EntryRecord, Message } from "../src/harness.ts";
+import type { Conversation, EntryRecord, Message } from "../src/harness.ts";
+import { backgroundContext } from "../src/harness.ts";
 
 let root: string;
 afterEach(async () => {
@@ -251,4 +252,57 @@ it("invalidates graph coverage on compiler or matcher upgrades while retaining e
 		),
 	);
 	expect(await cache.read(parts, "graph", { id: measured.id })).toBeUndefined();
+});
+
+it("reads a later history page and correlates a call across the page boundary", async () => {
+	const cursor = { after: 200 };
+	const call = entry(
+		{
+			role: "assistant",
+			content: [{ type: "toolCall", id: "later", name: "read_file", arguments: { path: "a.ts" } }],
+			api: "test",
+			provider: "test",
+			model: "test",
+			usage: {
+				input: 0,
+				output: 0,
+				cacheRead: 0,
+				cacheWrite: 0,
+				totalTokens: 0,
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+			},
+			stopReason: "toolUse",
+			timestamp: 0,
+		},
+		200,
+	);
+	const result = entry(
+		{
+			role: "toolResult",
+			toolCallId: "later",
+			toolName: "read_file",
+			content: [{ type: "text", text: '<untrusted-N label="file">\n2\tx\n</untrusted-N>' }],
+			isError: false,
+			timestamp: 0,
+		},
+		201,
+	);
+	const entries = vi
+		.fn<Conversation["entries"]>()
+		.mockResolvedValueOnce({
+			items: [
+				...Array.from({ length: 199 }, (_, i) => entry({ role: "user", content: "earlier", timestamp: 0 }, i + 1)),
+				call,
+			],
+			next: cursor,
+		})
+		.mockResolvedValueOnce({ items: [result] });
+	const transcript = await ReviewTranscript.read({ entries }, backgroundContext, "lens", ["a.ts"], "N");
+	expect(entries.mock.calls.map((call) => call[2])).toEqual([undefined, cursor]);
+	expect(transcript.reads()).toEqual([{ lens: "lens", path: "a.ts", revision: "head", kind: "read", lines: [2] }]);
+	const coverage = ReviewCoverage.compute(parts.tree, parts.version, ["lens"], [changed], transcript.reads());
+	expect(coverage.toJSON().lenses[0]!.files.find((file) => file.revision === "head")).toMatchObject({
+		lines: [{ start: 2, end: 2 }],
+		hunks: [0],
+	});
 });
