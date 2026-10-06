@@ -210,18 +210,34 @@ export const LedgerDocument = defineDoc<{ comment?: PostedLedger }>({
 // and kept as long as the storage. A marker counts only when it verifies, whoever the provider says posted it, so
 // recovery does not depend on the token knowing who it is.
 // It also holds the target the latest publish validated, which a resumed task compares with its own.
-export const PublisherDocument = defineDoc<{ secret?: string; target?: PublishTarget; publishedBy?: PublishedBy }>({
-	kind: "melian.publisher",
-	version: 2,
-	migrate: (value) => {
+type StoredPublisherState = { secret?: string; target?: PublishTarget; publishedBy?: PublishedBy };
+
+class PublisherState {
+	readonly stored: StoredPublisherState;
+
+	constructor(stored: StoredPublisherState) {
+		this.stored = stored;
+	}
+
+	static upgrade(value: unknown): StoredPublisherState {
 		const stored = value as { secret?: string; target?: PublishTarget; trustedWriters?: boolean };
 		const { trustedWriters, ...publisher } = stored;
-		return { ...publisher, publishedBy: { trustedWriters: trustedWriters ?? true } };
-	},
+		return new PublisherState({ ...publisher, publishedBy: { trustedWriters: trustedWriters ?? true } }).toJSON();
+	}
+
+	toJSON(): StoredPublisherState {
+		return this.stored;
+	}
+}
+
+export const PublisherDocument = defineDoc<StoredPublisherState>({
+	kind: "melian.publisher",
+	version: 2,
+	migrate: (value) => PublisherState.upgrade(value),
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
-	initial: () => ({}),
+	initial: () => new PublisherState({}).toJSON(),
 });
 
 // Whether the last review posted at `head`, as `record` holds it, posted this revision's verdict, by its current or

@@ -193,7 +193,14 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			trustedWriters: true,
 		});
 		expect(result.superseded).toEqual([]);
-		expect((await harness.getTask(task, context))?.input).toMatchObject({ publishedBy: { trustedWriters: true } });
+		expect(await harness.getTask(task, context)).toMatchObject({
+			version: 2,
+			input: { publishedBy: { trustedWriters: true } },
+			state: {
+				status: "terminal",
+				outcome: { status: "completed", result: { kind: "published", review: String(state.reviews[0]!.id) } },
+			},
+		});
 		expect((await readPublished(harness, root.id, changeset.revision.head, context))?.publishedBy).toMatchObject({
 			trustedWriters: true,
 		});

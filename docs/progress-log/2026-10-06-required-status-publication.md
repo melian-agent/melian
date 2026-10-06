@@ -19,3 +19,5 @@ Version-5 published-document coverage now checks trusted-writer defaults on the 
 Doctor now warns that the base may be stale when only local main is available. A regression proves origin/main wins over a different local policy. A second probe reproduced the old ok state for the local-main fallback and now requires a warning with exit 0. Test setup must delete a symbolic ref with git symbolic-ref --delete; git update-ref -d deletes its referent.
 
 Doctor’s hanging-viewer probe timed out on the original code. The full identity-and-permission read now has a ten-second deadline and an abort signal. Hanging viewer and permission transports produce a warning and exit 0. The deadline covers response parsing as well as receiving headers.
+
+The fix-pass diff review moves publisher migration into PublisherState.upgrade, following the stored-shape rule. The legacy fixture now checks that its own migrated task completes publication with the one posted review’s ID. A fresh task cannot hide a failed legacy resume behind the final state.
