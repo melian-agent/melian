@@ -618,7 +618,7 @@ Only added lines take an inline comment. Problem: GitHub rejects the whole revie
 
 - Run the package's tests with `npm test --workspace @melian-agent/core`, or one file with `npx vitest --run packages/core/test/changeset.test.ts` from the repository root.
 - Build real repositories in a temporary directory in `beforeEach` with `test/fixtures/repo.ts`, and delete them in `afterEach`. Never mock git.
-- To test a signalled git command, call the real spawn, stop only the target child, and assert its PID and signalCode. A Vitest spy keeps the same mock function when spied on again. Copy the real module exports through importOriginal before capturing spawn, or the spy calls itself.
+- To test a signalled git command, call the real spawn, stop only the target child, and assert its PID and signalCode. For check-ignore, use --stdin with its input left open so it cannot exit before the signal arrives. A Vitest spy keeps the same mock function when spied on again. Copy the real module exports through importOriginal before capturing spawn, or the spy calls itself.
 - Isolate git from the developer's configuration. `isolatedGitEnv` points `GIT_CONFIG_GLOBAL` at `/dev/null` and sets an author; without it, a developer who signs commits sees every fixture commit fail. Stub the same variables into `process.env` while code under test runs git.
 - Take temporary directories through `temporaryDirectory()`, which resolves symlinks. On macOS the system temporary directory is a symlink, and git reports the resolved path, so a comparison with the unresolved one fails.
 - Assert exact hunk ranges against a diff small enough to check by eye.
