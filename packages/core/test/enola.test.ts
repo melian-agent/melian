@@ -16,11 +16,16 @@ describe("Enola policy and reports", () => {
 	});
 	it("disables executable providers and names only declared constraints as gate policy", () => {
 		const policy = EnolaPolicy.from([
-			{ path: "enola.yaml", text: "providers:\n  - command: [evil]\noutput: {dir: outside}\n" },
+			{
+				path: "enola.yaml",
+				text: "providers:\n  - command: [evil]\noutput: {dir: outside}\nhistory: {enabled: true}\nrepos: [outside]\n",
+			},
 			{ path: "enola/constraints/core.yaml", text: "rules: []\n" },
 		]);
 		expect(policy.toJSON().config).toContain("providers: []");
 		expect(policy.toJSON().config).toContain("dir: .enola");
+		expect(policy.toJSON().config).toContain("enabled: false");
+		expect(policy.toJSON().config).not.toContain("repos:");
 		expect(policy.toJSON().failOn).toEqual(["constraints"]);
 		expect(EnolaPolicy.from([]).toJSON().failOn).toEqual([]);
 	});
