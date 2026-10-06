@@ -143,6 +143,50 @@ describe("doctor writer trust", () => {
 		30_000,
 	);
 
+	it.each(["viewer", "permission"])(
+		"bounds %s body parsing after response headers arrive",
+		async (read) => {
+			const state = github();
+			const transport = fakeGitHub(state);
+			const started = Promise.withResolvers<void>();
+			let signal: AbortSignal | null | undefined;
+			let body: ReadableStreamDefaultController<Uint8Array> | undefined;
+			const fetch: typeof globalThis.fetch = (input, init) => {
+				const path = new URL(String(input)).pathname;
+				if (path === (read === "viewer" ? "/user" : `/repos/test/repo/collaborators/${state.login}/permission`)) {
+					signal = init?.signal;
+					return Promise.resolve(
+						new Response(
+							new ReadableStream<Uint8Array>({
+								start(controller) {
+									body = controller;
+									started.resolve();
+								},
+							}),
+							{ headers: { "content-type": "application/json" } },
+						),
+					);
+				}
+				return transport(input, init);
+			};
+			vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+			try {
+				const pending = run(state, fetch);
+				await started.promise;
+				await vi.advanceTimersByTimeAsync(10_000);
+				vi.useRealTimers();
+				const result = await pending;
+				expect(result.status).toBe(0);
+				expect(result.trust).toMatch(/^warn /);
+				expect(result.trust).toContain("GitHub read timed out after 10 seconds; viewer permission is unknown");
+				expect(signal?.aborted).toBe(true);
+			} finally {
+				body?.close();
+			}
+		},
+		5_000,
+	);
+
 	it("prefers origin/main over a stale local main", async () => {
 		gitIn(repo, "symbolic-ref", "--delete", "refs/remotes/origin/HEAD");
 		writeFileSync(join(repo, "melian.yaml"), "trust: { writers: true }\n");
