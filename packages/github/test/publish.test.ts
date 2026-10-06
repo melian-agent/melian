@@ -49,6 +49,7 @@ afterEach(async () => {
 	await harness?.close(context);
 	harness = undefined;
 	vi.unstubAllEnvs();
+	vi.restoreAllMocks();
 	rmSync(repo, { recursive: true, force: true });
 });
 
@@ -82,20 +83,24 @@ async function publish(github: ReviewProvider, changeset: Changeset, trustedWrit
 	});
 }
 
-it("refuses publication without explicit writer trust before any write", async () => {
-	const { github, changeset, state } = await reviewedRevisionOne(lensScript());
-	const options = {
-		harness: harness!,
-		provider: github,
-		changeset,
-		pullRequest: await github.pullRequest(7),
-		base: changeset.revision.base,
-	};
-	await expect(Reflect.apply(publishReview, undefined, [options])).rejects.toThrow(
-		"requires an explicit root writer-trust policy",
-	);
-	expect(posts(state)).toEqual([]);
-});
+it.each([undefined, null, 0, "false"])(
+	"refuses publication without explicit writer trust before any write: %s",
+	async (trustedWriters) => {
+		const { github, changeset, state } = await reviewedRevisionOne(lensScript());
+		const options = {
+			harness: harness!,
+			provider: github,
+			changeset,
+			pullRequest: await github.pullRequest(7),
+			base: changeset.revision.base,
+			...(trustedWriters === undefined ? {} : { trustedWriters }),
+		};
+		const refused = Reflect.apply(publishReview, undefined, [options]) as Promise<unknown>;
+		await expect(refused).rejects.toMatchObject({ code: "notPublishable", pullRequest: 7 });
+		await expect(refused).rejects.toThrow("requires an explicit root writer-trust policy");
+		expect(posts(state)).toEqual([]);
+	},
+);
 
 describe("reading markers back", () => {
 	const head = "a".repeat(40);
@@ -199,6 +204,34 @@ describe("publishing a review", { timeout: 30_000 }, () => {
 		await publish(github, changeset);
 		expect(posts(state)).toEqual([]);
 		expect(state.ledgers[0]!.body).toBe(body);
+	});
+
+	it("reuses viewer permission when the publisher is the author", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		state.author = state.login;
+		await publish(github, changeset);
+		const record = await readPublished(harness!, (await harness!.root(context)).id, changeset.revision.head, context);
+		expect(record?.publishedBy).toEqual({
+			login: "melian-user",
+			permission: "write",
+			authorPermission: "write",
+			trustedWriters: true,
+		});
+		expect(state.calls.filter(({ path }) => path.endsWith("/permission")).map(({ path }) => path)).toEqual([
+			`/repos/${state.owner}/${state.repo}/collaborators/melian-user/permission`,
+		]);
+	});
+
+	it("does not look up a permission for an absent author", async () => {
+		const { github, changeset, state } = await reviewedRevisionOne();
+		const { author: _, ...pullRequest } = await github.pullRequest(7);
+		vi.spyOn(github, "pullRequest").mockResolvedValueOnce(pullRequest);
+		await publish(github, changeset);
+		const record = await readPublished(harness!, (await harness!.root(context)).id, changeset.revision.head, context);
+		expect(record?.publishedBy).toEqual({ login: "melian-user", permission: "write", trustedWriters: true });
+		expect(state.calls.filter(({ path }) => path.endsWith("/permission")).map(({ path }) => path)).toEqual([
+			`/repos/${state.owner}/${state.repo}/collaborators/melian-user/permission`,
+		]);
 	});
 
 	it.each(["viewer", "permission"])("publishes with an unknown %s when its lookup is refused", async (refused) => {
