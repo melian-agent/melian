@@ -63,6 +63,33 @@ const round: LedgerRound = {
 const options = { pullRequest: 7, secret, walkthrough: { enabled: true, collapsed: true, diagrams: true } };
 
 describe("ledger rendering", () => {
+	it.each([undefined, true, false])("renders unknown attribution with writer trust %s", (trustedWriters) => {
+		const current = {
+			...round,
+			...(trustedWriters === undefined ? {} : { publishedBy: { trustedWriters } }),
+		};
+		const body = Ledger.from(verdict, { rounds: [current] }, options).render(links);
+		expect(body).toContain(
+			`Published by \`unknown\` (\`unknown\`); writers trusted: ${trustedWriters === false ? "no" : "yes"}`,
+		);
+		expect(body).toContain("Pull request author permission: `unknown`");
+	});
+
+	it("renders known publisher and author attribution", () => {
+		const current = {
+			...round,
+			publishedBy: {
+				login: "melian-user",
+				permission: "admin" as const,
+				authorPermission: "read" as const,
+				trustedWriters: true,
+			},
+		};
+		const body = Ledger.from(verdict, { rounds: [current] }, options).render(links);
+		expect(body).toContain("Published by `melian-user` (`admin`); writers trusted: yes");
+		expect(body).toContain("Pull request author permission: `read`");
+	});
+
 	it("renders publisher identity as inert text and keeps a repeat projection stable", () => {
 		const current = {
 			...round,
