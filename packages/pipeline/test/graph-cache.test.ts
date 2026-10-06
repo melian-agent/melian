@@ -1,7 +1,7 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { GraphSnapshot } from "@melian-agent/core";
+import { GraphSnapshot, graphFiles } from "@melian-agent/core";
 import { GraphCache } from "@melian-agent/pipeline";
 import { afterEach, expect, it } from "vitest";
 
@@ -21,6 +21,25 @@ const files = {
 	"snapshot.meta.json": "{}",
 	"run.json": "{}",
 };
+it.each([...graphFiles, "entry.json"])("rejects byte-identical symlinked %s artifacts", async (name) => {
+	root = await mkdtemp(join(tmpdir(), "melian-graph-symlink-"));
+	const cache = await GraphCache.open(root);
+	const snapshot = GraphSnapshot.create(parts, files);
+	await cache.store(snapshot);
+	expect((await cache.read(parts))?.files()).toEqual(files);
+	const artifact = join(root, "graphs", snapshot.key, name);
+	const outside = join(root, `${name}.outside`);
+	const bytes = await readFile(artifact);
+	await rename(artifact, outside);
+	await symlink(outside, artifact);
+	expect(await readFile(artifact)).toEqual(bytes);
+	expect(await cache.read(parts)).toBeUndefined();
+	expect(await readFile(outside)).toEqual(bytes);
+	await rm(artifact);
+	await rename(outside, artifact);
+	expect((await cache.read(parts))?.files()).toEqual(files);
+});
+
 it("publishes once under concurrency and shares an identical tree across commits", async () => {
 	root = await mkdtemp(join(tmpdir(), "melian-graph-"));
 	const cache = await GraphCache.open(root);
