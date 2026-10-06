@@ -165,7 +165,7 @@ export class ReviewThreadImporter implements ExternalImporter {
 	 */
 	static open(options: ReviewThreadImporterOptions): ReviewThreadImporter {
 		const login = options.login ?? coderabbitLogin;
-		if (!/^[A-Za-z0-9][A-Za-z0-9-]*(\[bot\])?$/.test(login)) {
+		if (!/^[A-Za-z0-9][A-Za-z0-9_-]*(\[bot\])?$/.test(login)) {
 			throw new GitHubError("failed", `${JSON.stringify(login)} is not a GitHub login`);
 		}
 		return new ReviewThreadImporter({ ...options, login });

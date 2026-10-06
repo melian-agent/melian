@@ -423,6 +423,12 @@ describe("ReviewThreadImporter", () => {
 		expect(imported.skippedBodies).toBe(1);
 	});
 
+	it("accepts an Enterprise Managed Users login, which carries an underscore", () => {
+		const { opened } = importer("alice_acme");
+
+		expect(opened.source).toBe("github:alice_acme");
+	});
+
 	it("knows CodeRabbit by its bare login too, which GraphQL spells without [bot]", async () => {
 		const { opened } = importer("CodeRabbitAI");
 
