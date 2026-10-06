@@ -510,7 +510,6 @@ export class ExternalFinding {
 	}
 }
 
-// A title is one line: the first that is not blank, cut to the limit on a code point boundary.
 function titleOf(title: string): string {
 	const first = title.split(/\r?\n/).find((each) => each.trim() !== "") ?? "";
 	const points = [...first.trim()];
