@@ -372,6 +372,14 @@ describe("ledger rendering", () => {
 						budget: { findings: 8 },
 						standards: ["packages/core/AGENTS.md", "AGENTS.md", hostile],
 					},
+					{
+						name: "correctness",
+						version: "1",
+						level: "careful",
+						models: [],
+						budget: { findings: 8 },
+						standards: [],
+					},
 				],
 			},
 		};
@@ -385,6 +393,7 @@ describe("ledger rendering", () => {
 		expect(runDetails).not.toContain(hostile);
 		expect(runDetails).not.toContain("\n# Approved");
 		expect(runDetails).not.toContain("\u2028");
+		expect(runDetails.split("\n").find((line) => line.startsWith("- correctness@"))).toMatch(/; standards none$/);
 	});
 
 	it("keeps markdown in a finding path inert inside the agent prompt", () => {
