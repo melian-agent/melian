@@ -29,6 +29,10 @@ const catalog: CatalogModel[] = [
 const opus = "anthropic/claude-opus-5-5";
 const gpt = "openai/gpt-5.5";
 
+const fallbackWarning =
+	"lenses verify, but the verifier tier routes no model of its own; verification falls back to lens tiers, heavy then medium then light";
+const familyWarning = "every verification candidate would be judged by its finder's own family";
+
 let lenses: Lens[];
 let repo: string;
 
@@ -106,14 +110,14 @@ describe("ReviewPlan.resolve", () => {
 			wanted: opus,
 			accept: [opus, "nowhere/model", "openai/gpt-5.4-mini", gpt],
 			models: [
-				{ model: opus, credential: "ANTHROPIC_API_KEY" },
-				{ model: "openai/gpt-5.4-mini", credential: "work-openai in melian.secrets.yaml" },
-				{ model: gpt, credential: "work-openai in melian.secrets.yaml" },
+				{ model: opus, credential: "ANTHROPIC_API_KEY", family: "claude" },
+				{ model: "openai/gpt-5.4-mini", credential: "work-openai in melian.secrets.yaml", family: "gpt" },
+				{ model: gpt, credential: "work-openai in melian.secrets.yaml", family: "gpt" },
 			],
 		});
 		expect(resolved.routes()).toEqual({ heavy: { model: opus, fallbacks: ["openai/gpt-5.4-mini", gpt] } });
 		expect(resolved.lineage("heavy")).toBeUndefined();
-		expect(resolved.warnings()).toEqual([]);
+		expect(resolved.warnings()).toEqual([fallbackWarning]);
 	});
 
 	it("routes a route that names only accept to its first accepted model with credentials, saying nothing", () => {
@@ -153,6 +157,8 @@ describe("ReviewPlan.resolve", () => {
 		expect(resolved.lineage("heavy")).toBeUndefined();
 		expect(resolved.warnings()).toEqual([
 			`heavy runs ${gpt}, which the committed route accepts, since ${opus} has no credentials`,
+			fallbackWarning,
+			familyWarning,
 		]);
 	});
 
@@ -172,6 +178,8 @@ describe("ReviewPlan.resolve", () => {
 		});
 		expect(resolved.warnings()).toEqual([
 			`heavy runs amazon-bedrock/anthropic.claude-opus-5-5, derived since no model of its route has credentials; the committed route wants ${opus}, and does not accept amazon-bedrock/anthropic.claude-opus-5-5`,
+			fallbackWarning,
+			familyWarning,
 		]);
 	});
 
@@ -180,7 +188,7 @@ describe("ReviewPlan.resolve", () => {
 		expect(derived.lines()).toEqual([
 			{
 				state: "ok",
-				text: "verifier: amazon-bedrock/anthropic.claude-opus-5-5 with AWS_PROFILE; derived, since no model of the committed route has credentials",
+				text: "verifier: amazon-bedrock/anthropic.claude-opus-5-5 (claude) with AWS_PROFILE; derived, since no model of the committed route has credentials",
 			},
 			{
 				state: "warn",
@@ -351,7 +359,11 @@ describe("ReviewPlan.resolve", () => {
 		expect(refused.refusal("heavy")).toBe(
 			"models.heavy.acceptOverridden is false, and melian.local.yaml puts it on openai/gpt-5.4-mini, which models.heavy.accept does not list",
 		);
-		expect(refused.warnings()).toEqual([`heavy, for correctness fails every check: ${refused.refusal("heavy")}`]);
+		expect(refused.warnings()).toEqual([
+			`heavy, for correctness fails every check: ${refused.refusal("heavy")}`,
+			fallbackWarning,
+			familyWarning,
+		]);
 		expect(flagged.refusal("heavy")).toContain("--model puts it on openai/gpt-5.4-mini");
 		// A fallback outside accept is dropped, so a failover never leaves policy either.
 		expect(kept.tier("heavy")).toMatchObject({ status: "routed", models: [{ model: gpt }] });
@@ -484,6 +496,7 @@ describe("ReviewPlan.resolve", () => {
 		// Every lens runs at careful until triage chooses a level, so quick's medium tier needs no route yet.
 		expect(resolved.warnings()).toEqual([
 			"no model for heavy, for correctness and tests; set models.heavy.model in melian.local.yaml, or pass --model to review",
+			fallbackWarning,
 		]);
 	});
 
@@ -625,11 +638,17 @@ describe("a resolved plan", () => {
 			{ state: "ok", text: "medium: anthropic/claude-sonnet-5-5 with ANTHROPIC_API_KEY; routed by melian.yaml" },
 			{ state: "ok", text: `heavy: ${opus} with ANTHROPIC_API_KEY; routed by melian.yaml` },
 			{
+				state: "warn",
+				text: "verifier: anthropic/claude-opus-5-5 (claude), then anthropic/claude-sonnet-5-5 (claude); fallback from lens tiers",
+			},
+			{
 				state: "ok",
 				text: `correctness and tests: quick on medium (anthropic/claude-sonnet-5-5), careful on heavy (${opus}), deep on heavy (${opus})`,
 			},
+			{ state: "warn", text: fallbackWarning },
+			{ state: "warn", text: familyWarning },
 		]);
-		expect(resolved.summary()).toBe("");
+		expect(resolved.summary()).toBe(`Plan: ${fallbackWarning}\nPlan: ${familyWarning}\n`);
 	});
 
 	it("names a provider only a level other than careful needs, since triage may choose it", () => {
@@ -650,7 +669,7 @@ describe("a resolved plan", () => {
 			{ anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" },
 		);
 		expect(resolved.providers()).toEqual(["anthropic", "openai"]);
-		expect(plan({ verifier: { model: gpt } }, { openai: "OPENAI_API_KEY" }).providers()).toEqual([]);
+		expect(plan({ verifier: { model: gpt } }, { openai: "OPENAI_API_KEY" }).providers()).toEqual(["openai"]);
 	});
 
 	it("escapes a model name from melian.yaml in every line it prints", () => {
@@ -666,6 +685,75 @@ describe("a resolved plan", () => {
 		const resolved = plan({ heavy: { model: opus } }, { "amazon-bedrock": "AWS_PROFILE" });
 		const stored = JSON.parse(JSON.stringify(resolved));
 		expect(ReviewPlan.from(stored).toJSON()).toEqual(resolved.toJSON());
-		expect(ReviewPlan.from(stored).summary()).toBe(`Plan: ${resolved.warnings()[0]}\n`);
+		expect(ReviewPlan.from(stored).summary()).toBe(resolved.summary());
+	});
+});
+
+describe("verifier routing", () => {
+	it("recognises Bedrock and OpenRouter Claude names and puts GPT first", () => {
+		const resolved = plan(
+			{
+				heavy: { model: opus },
+				verifier: {
+					accept: ["amazon-bedrock/us.anthropic.claude-opus-5-5", "openrouter/anthropic/claude-opus-5.5", gpt],
+				},
+			},
+			{ anthropic: "key", "amazon-bedrock": "key", openrouter: "key", openai: "key" },
+		);
+		expect(resolved.verifierRoute(opus).map((model) => [model.model, model.family])).toEqual([
+			[gpt, "gpt"],
+			["amazon-bedrock/us.anthropic.claude-opus-5-5", "claude"],
+			["openrouter/anthropic/claude-opus-5.5", "claude"],
+		]);
+		expect(resolved.lines().some((line) => line.text.includes("(gpt)"))).toBe(true);
+	});
+
+	it("keeps a single-family route in order and warns", () => {
+		const resolved = plan(
+			{ heavy: { model: opus }, verifier: { model: opus, fallbacks: ["anthropic/claude-sonnet-5-5"] } },
+			{ anthropic: "key" },
+		);
+		expect(resolved.verifierRoute(opus).map((model) => model.model)).toEqual([opus, "anthropic/claude-sonnet-5-5"]);
+		expect(resolved.warnings()).toContain(familyWarning);
+	});
+
+	it("falls back heavy then medium then light, another family first, with lineage", () => {
+		const resolved = plan({ heavy: { model: opus }, medium: { model: gpt } }, { anthropic: "key", openai: "key" });
+		expect(resolved.verifierRoute(opus).map((model) => model.model)).toEqual([gpt, opus]);
+		expect(resolved.verifierLineage(gpt)?.by).toBe("lens tiers");
+	});
+
+	it("refuses an explicit verifier route without credentials and warns doctor", () => {
+		const resolved = plan(
+			{ heavy: { model: opus }, verifier: { model: opus } },
+			{ anthropic: "key" },
+			{ preferences: { verifier: { model: gpt } } },
+		);
+		expect(resolved.tier("verifier")).toMatchObject({
+			status: "uncredentialed",
+			reason: `none of ${gpt} has credentials`,
+		});
+		expect(resolved.verifierRoute(opus)).toEqual([]);
+		expect(resolved.refusal("verifier")).toBe(`none of ${gpt} has credentials`);
+		expect(resolved.lineage("verifier")).toEqual({
+			model: gpt,
+			wanted: opus,
+			by: "melian.local.yaml",
+			outside: true,
+		});
+		expect(resolved.warnings()).toContain(`verifier fails: none of ${gpt} has credentials`);
+		expect(resolved.warnings()).not.toContain(fallbackWarning);
+		expect(resolved.lines()).toContainEqual({
+			state: "warn",
+			text: `verifier fails: none of ${gpt} has credentials`,
+		});
+	});
+	it("fails closed instead of falling back when verifier policy refuses", () => {
+		const resolved = plan(
+			{ heavy: { model: gpt }, verifier: { model: opus, unavailable: "fail" } },
+			{ openai: "key" },
+		);
+		expect(resolved.refusal("verifier")).toContain("unavailable is fail");
+		expect(resolved.verifierRoute(gpt)).toEqual([]);
 	});
 });

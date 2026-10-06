@@ -63,6 +63,63 @@ const round: LedgerRound = {
 const options = { pullRequest: 7, secret, walkthrough: { enabled: true, collapsed: true, diagrams: true } };
 
 describe("ledger rendering", () => {
+	it("renders run details beside verification outcomes, including refuted claims", () => {
+		const judged = Finding.from({
+			...finding.toJSON(),
+			properties: {
+				...finding.properties,
+				failureScenario: "Passing unchecked input runs it.",
+				evidence: [{ file: "src/run.ts", startLine: 7, role: "context", revision: "head", snippet: "run(input)" }],
+				verification: {
+					verdict: "confirmed",
+					reason: "Traced the failure.",
+					executor: "llm",
+					model: "fake/judge",
+					version: "1",
+				},
+			},
+		});
+		const refuted = Finding.from({
+			...judged.toJSON(),
+			properties: {
+				...judged.properties,
+				id: "refuted-finding",
+				verification: { ...judged.properties.verification!, verdict: "refuted" },
+			},
+		});
+		const current = new Adjudication({
+			findings: [judged, refuted],
+			manifest: ["verifier"],
+			checks: [{ name: "verifier", status: "ran" }],
+			config: defaultConfig,
+		}).adjudicate();
+		const posted: LedgerRound = {
+			...round,
+			verdict: current.toJSON(),
+			details: {
+				policy: "config",
+				manifest: ["lens.security", "verifier"],
+				standards: ["AGENTS.md"],
+				lenses: [
+					{
+						name: "security",
+						version: "1",
+						level: "careful",
+						models: ["fake/finder"],
+						ran: "fake/finder",
+						budget: { findings: 8 },
+					},
+				],
+			},
+		};
+		const body = Ledger.from(current, { rounds: [posted] }, options).render(links);
+		expect(body).toContain("1 confirmed, 0 plausible, 1 refuted, 0 unverified");
+		expect(body).toContain("1 refuted finding not posted");
+		expect(body).toContain("<summary>Run details</summary>");
+		expect(body).toContain("security@1, careful; route fake/finder; ran on fake/finder");
+		expect(body).toContain("Manifest: lens.security, verifier");
+	});
+
 	it("stamps the open, blocking and dismissed counts", () => {
 		const warning = Finding.from({
 			...finding.toJSON(),

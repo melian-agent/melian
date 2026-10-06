@@ -1,0 +1,11 @@
+{
+  "verdict": "refuted",
+  "reason": "The early return two lines above prevents the claimed dereference for an absent manager.",
+  "evidence": [
+    {
+      "file": "user.mjs",
+      "line": 2,
+      "role": "context"
+    }
+  ]
+}

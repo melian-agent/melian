@@ -1,6 +1,7 @@
 src/port.ts
 
-  P1  line 3  dropped-guard  (affected, new, unresolved)
+  P1  line 3  dropped-guard  (affected, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   Nothing at head rejects a port that is not an integer from 1 to 65535: parsePort returns what Number makes of its input.
     What: Nothing at head rejects a port that is not an integer from 1 to 65535: parsePort returns what Number makes of its input.
     Why here: This change deleted the guard that held that invariant, and neither parsePort nor its caller restores it.
@@ -15,7 +16,8 @@ src/port.ts
           return createServer().listen(parsePort(value));
     What to do: Restore the guard in parsePort.
 
-  P1  line 3  wrong-result  (affected, new, unresolved)
+  P1  line 3  wrong-result  (affected, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   parsePort returns whatever Number makes of its input, so an empty, fractional, or out-of-range port reaches listen.
     What: parsePort returns whatever Number makes of its input, so an empty, fractional, or out-of-range port reaches listen.
     Why here: This change deleted the guard that threw for a port that is not an integer from 1 to 65535.

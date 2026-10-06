@@ -1,0 +1,3 @@
+# Verifier comparison record
+
+The [comparison record](../../packages/evals/comparisons/2026-10-06-pr-80.md) covers [pull request #80](https://github.com/melian-agent/melian/pull/80), stacked on [pull request #62](https://github.com/melian-agent/melian/pull/62). It traces both Codex highs to the first fix pass and records two Melian attempts on the fixed head. The complete round found five verifier findings: four confirmed and one plausible. Their second-pass fixes are pending. The record separates merged main findings, flags a disputed documentation refutation, and lists golden candidates without assigning debt. Later rounds and the Claude review of record remain open.

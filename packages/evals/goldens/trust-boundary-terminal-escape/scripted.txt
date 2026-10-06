@@ -1,6 +1,7 @@
 src/render.ts
 
-  P1  line 21  terminal-escape  (introduced, new, unresolved)
+  P1  line 21  terminal-escape  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   renderSummary interpolates finding.path into terminal output without passing it through printable.
     What: renderSummary interpolates finding.path into terminal output without passing it through printable.
     Why here: This change added renderSummary and printed it from printReview; the existing line renderer escapes every path, the new one does not.
