@@ -1424,6 +1424,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			? lens.rules
 			: [...lens.rules, injectionAttemptRule];
 		const ruled = Lens.from({ ...lens.toJSON(), rules });
+		const callerSection = options.callers?.render(covers, "selection") ?? "";
 		const runAt = async (level: ScrutinyLevel): Promise<LensRun> => {
 			const settings = lens.level(level);
 			const band = bands.get(lens)!;
@@ -1435,9 +1436,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				level,
 				route: [...(routes.get(settings.tier) as { route: ModelReference[] }).route],
 				verify: settings.verify,
-				callers: createHash("sha256")
-					.update(options.callers?.render(covers, "selection") ?? "")
-					.digest("hex"),
+				...(callerSection === "" ? {} : { callers: createHash("sha256").update(callerSection).digest("hex") }),
 				instructions: ruled.renderInstructions(
 					standards,
 					level,
