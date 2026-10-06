@@ -11,7 +11,7 @@ import { ToolCache } from "../src/tool-cache.ts";
 
 vi.mock("node:fs/promises", async (importOriginal) => {
 	const original = await importOriginal<typeof filesystem>();
-	return { ...original, lstat: vi.fn(original.lstat), readdir: vi.fn(original.readdir) };
+	return { ...original, lstat: vi.fn(original.lstat), rm: vi.fn(original.rm), readdir: vi.fn(original.readdir) };
 });
 
 let root: string;
@@ -20,11 +20,11 @@ afterEach(async () => {
 	if (root) await rm(root, { recursive: true, force: true });
 });
 
-it("propagates filesystem failures while sweeping cache roots", async () => {
+it("opens despite filesystem failures while sweeping cache roots", async () => {
 	root = await mkdtemp(join(tmpdir(), "melian-scratch-error-"));
 	const failure = Object.assign(new Error("cache root denied"), { code: "EACCES" });
 	vi.mocked(lstat).mockRejectedValueOnce(failure);
-	await expect(GraphCache.open(root)).rejects.toBe(failure);
+	await expect(GraphCache.open(root)).resolves.toBeInstanceOf(GraphCache);
 });
 
 it.each(["ENOENT", "EACCES"])("handles a legacy scratch stat failure with %s", async (code) => {
@@ -38,8 +38,22 @@ it.each(["ENOENT", "EACCES"])("handles a legacy scratch stat failure with %s", a
 		if (args[0] === legacy) throw failure;
 		return original(...args);
 	});
-	if (code === "ENOENT") await expect(GraphCache.open(root)).resolves.toBeInstanceOf(GraphCache);
-	else await expect(GraphCache.open(root)).rejects.toBe(failure);
+	await expect(GraphCache.open(root)).resolves.toBeInstanceOf(GraphCache);
+});
+
+it("opens when a dead writer's scratch cannot be removed", async () => {
+	root = await mkdtemp(join(tmpdir(), "melian-scratch-readonly-"));
+	const child = spawn(process.execPath, ["-e", ""], { stdio: "ignore" });
+	await once(child, "exit");
+	const dead = join(root, "graphs", `.graph-${child.pid}-partial`);
+	const old = join(root, "graphs", ".graph-old");
+	for (const directory of [dead, old]) await mkdir(directory, { recursive: true });
+	await utimes(old, new Date(0), new Date(0));
+	const failure = Object.assign(new Error("read-only file system"), { code: "EROFS" });
+	vi.mocked(rm).mockRejectedValueOnce(failure).mockRejectedValueOnce(failure);
+	await expect(GraphCache.open(root)).resolves.toBeInstanceOf(GraphCache);
+	expect(rm).toHaveBeenCalledWith(dead, { recursive: true, force: true });
+	expect(rm).toHaveBeenCalledWith(old, { recursive: true, force: true });
 });
 
 it("retains process-owned scratch and its contents when liveness probes are denied", async () => {

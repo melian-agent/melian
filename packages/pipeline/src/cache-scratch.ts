@@ -18,15 +18,20 @@ export class CacheScratch {
 	file(path: string): string {
 		return `${path}.${process.pid}.${crypto.randomUUID()}.tmp`;
 	}
+	// Cleanup is best effort: a read-only or unreadable cache must still open, so readiness can report not fetched.
+	async #remove(path: string): Promise<void> {
+		try {
+			await rm(path, { recursive: true, force: true });
+		} catch {}
+	}
 	async #sweep(directory: string, depth: number): Promise<void> {
 		if (depth > 6) return;
 		let entries: Dirent[];
 		try {
 			if (!(await lstat(directory)).isDirectory()) return;
 			entries = await readdir(directory, { withFileTypes: true });
-		} catch (error) {
-			if (["ENOENT", "ENOTDIR"].includes((error as NodeJS.ErrnoException).code ?? "")) return;
-			throw error;
+		} catch {
+			return;
 		}
 		for (const entry of entries) {
 			if (entry.isSymbolicLink() || entry.name.startsWith("entry-")) continue;
@@ -37,7 +42,7 @@ export class CacheScratch {
 				try {
 					process.kill(Number(pid), 0);
 				} catch (error) {
-					if ((error as NodeJS.ErrnoException).code === "ESRCH") await rm(path, { recursive: true, force: true });
+					if ((error as NodeJS.ErrnoException).code === "ESRCH") await this.#remove(path);
 				}
 				continue;
 			}
@@ -47,11 +52,8 @@ export class CacheScratch {
 				/\.[0-9a-f-]{36}\.tmp$/.test(entry.name)
 			) {
 				try {
-					if ((await lstat(path)).mtimeMs < Date.now() - 86_400_000)
-						await rm(path, { recursive: true, force: true });
-				} catch (error) {
-					if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-				}
+					if ((await lstat(path)).mtimeMs < Date.now() - 86_400_000) await this.#remove(path);
+				} catch {}
 				continue;
 			}
 			if (entry.isDirectory()) await this.#sweep(path, depth + 1);
