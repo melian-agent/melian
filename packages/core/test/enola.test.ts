@@ -1,6 +1,7 @@
-import { EnolaPolicy, normaliseEnolaSarif, staticSeverity } from "@melian-agent/core";
-import { describe, expect, it } from "vitest";
+import { CheckError, EnolaPolicy, normaliseEnolaSarif, staticSeverity } from "@melian-agent/core";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isPolicyFile } from "../src/paths.ts";
+import { gitIn, isolatedGitEnv, rejection, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
 
 describe("Enola policy and reports", () => {
 	it("recognises every policy path and leaves a committed baseline out", () => {
@@ -69,5 +70,36 @@ describe("Enola policy and reports", () => {
 	});
 	it.each(["", "{}", '{"version":"2.1.0","runs":[{"results":[{}]}]}'])("fails unreadable SARIF closed", (text) => {
 		expect(() => normaliseEnolaSarif(text, { root: "/repo", version: "0.4.27" })).toThrow();
+	});
+});
+
+describe("revision Enola policy limits", () => {
+	let repo: string;
+	beforeEach(() => {
+		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
+		repo = temporaryDirectory();
+		gitIn(repo, "init", "--quiet", "--initial-branch=main");
+	});
+	afterEach(() => {
+		vi.unstubAllEnvs();
+		removeDirectory(repo);
+	});
+	it.each([1, 230 * 1024])("rejects an aggregate exceeding 1 MiB by %i bytes", async (extra) => {
+		writeFiles(
+			repo,
+			Object.fromEntries(
+				Array.from({ length: 4 }, (_, i) => [`enola/constraints/${i}.yaml`, "#".repeat(256 * 1024)]),
+			),
+		);
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "boundary");
+		const boundary = await EnolaPolicy.load(repo, "HEAD");
+		expect(boundary.toJSON().files.reduce((sum, file) => sum + Buffer.byteLength(file.text), 0)).toBe(1024 * 1024);
+		writeFiles(repo, { "enola/constraints/4.yaml": "#".repeat(extra) });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "oversize");
+		const error = await rejection(EnolaPolicy.load(repo, "HEAD"), CheckError);
+		expect(error.code).toBe("outputTooLarge");
+		expect(error.message).toContain("Enola policy exceeds 1 MiB");
 	});
 });
