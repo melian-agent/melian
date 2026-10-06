@@ -181,3 +181,4 @@ Step 11 execution-miss mapping is built. The tool-manifest comparison maps thirt
    - Mutation inventory: The common-directory test now checks the ten-second git deadline. Its zero-deadline mutation fails; both restored provisioning tests pass with MELIAN_STATE_DIR unset.
    - Mutation inventory: A forged numbered line after the closing tag must not count as delivered evidence. Removing the body end bound fails; all 17 restored artifact tests pass.
    - Mutation inventory: The local spike checks TMPDIR and LANG overrides and its compiler close. All three uncovered mutations fail; both restored spike tests pass.
+   - Mutation inventory: Two static tests prove canonicalisation fallback and Enola discovery. Both mutations fail; both focused restored tests pass.

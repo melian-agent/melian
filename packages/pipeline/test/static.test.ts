@@ -12,6 +12,7 @@ import {
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { commit, createRepository, fakeTool, gitIn, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
+import { Run, staticToolSource } from "../src/static.ts";
 
 let repo: string;
 
@@ -20,7 +21,27 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	vi.restoreAllMocks();
 	removeRepository(repo);
+});
+
+it("keeps Enola provisioning out of checkout binary discovery", () => {
+	expect(staticToolSource(repo, "enola")).toEqual({ from: "missing" });
+});
+
+it("uses the created scratch path when canonicalisation fails", { timeout: 60_000 }, async () => {
+	const head = commit(repo, { "a.ts": "function a() {}\n" });
+	const env = createNodeExecutionEnv(repo);
+	vi.spyOn(env, "canonicalPath").mockResolvedValueOnce({
+		ok: false,
+		error: Object.assign(new Error("canonicalisation refused"), { code: "permission_denied" as const }),
+	});
+	const run = new Run({ ...input("biome", head), env }, context);
+	await expect(run.inWorktree(async (root, scratch) => {
+		expect(root).toBe(join(scratch, "tree"));
+		expect(existsSync(root)).toBe(true);
+		return "done";
+	})).resolves.toBe("done");
 });
 
 const tsconfig = JSON.stringify({
