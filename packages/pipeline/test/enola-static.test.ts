@@ -193,6 +193,7 @@ describe("static.enola", { timeout: 60_000 }, () => {
 						config: (await EnolaPolicy.load(repo, base)).hash,
 					},
 					"review",
+					{ id: record?.coverage?.review },
 				);
 				expect(coverage).toBeInstanceOf(ReviewCoverage);
 				if (!(coverage instanceof ReviewCoverage)) throw new Error("No review coverage");

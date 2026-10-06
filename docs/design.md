@@ -662,7 +662,9 @@ On Melian at ad303b56fac7e40b13a1a7e51140fa05a9a4b570, the graph matches 825/572
 
 Enola's own coverage report, `coverage_report` or `enola coverage`, measures edges between repositories and needs two or more in one graph. It says nothing about a file's calls inside one repository. An absent edge proves no absence of callers. The spike now measures per-file coverage against tsc, and its result leaves `search` unrestricted over every file. Budgeting search remains a later experiment. Each budgeted call would carry a reason the hook records, so the ledger and evals show how often it fires.
 
-Three kinds of coverage artifact live in the same cache, keyed by commit and tool version, with their IDs in the check record:
+Three kinds of coverage artifact live in the same cache, stored by content ID under the verified graph input key, with their IDs in the check record. Producer indexes select compatible output: graph coverage names the installed TypeScript compiler and matcher/schema versions; review coverage names the durable run's nonce and conversations. Reading an ID returns that exact historical evidence, while automatic reuse validates the current producer. Coverage storage sits outside replaceable graph directories so graph repair cannot erase recorded evidence. Older single-slot files without producer identities are misses.
+
+The artifacts are:
 
 - Graph coverage: the per-file coverage the spike defines.
 - Test coverage of changed lines. It runs the head's tests, so for an untrusted head it waits for container isolation.

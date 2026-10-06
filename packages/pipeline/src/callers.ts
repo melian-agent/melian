@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
 	type ChangedFile,
 	CoverageError,
@@ -150,7 +151,10 @@ export class CallerContext {
 			transcripts.flatMap((transcript) => transcript.reads()),
 		);
 		const cache = await CoverageCache.open(this.#root);
-		const review = await cache.store(parts, coverage);
+		const identity = createHash("sha256")
+			.update(JSON.stringify({ nonce: input.nonce, children: input.children }))
+			.digest("hex");
+		const review = await cache.store(parts, coverage, { review: identity });
 		const graph = await cache.read(parts, "graph");
 		const test = await cache.read(parts, "test");
 		return { review, ...(graph ? { graph: graph.id } : {}), ...(test ? { test: test.id } : {}) };

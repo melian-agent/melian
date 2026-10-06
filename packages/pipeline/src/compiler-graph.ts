@@ -27,6 +27,8 @@ import {
 } from "typescript/unstable/ast";
 import { API, type Symbol as CompilerSymbol, type Project, type Snapshot, SymbolFlags } from "typescript/unstable/sync";
 
+import { coverageCompiler } from "./coverage-identity.ts";
+
 function callable(node: Node): boolean {
 	return (
 		isFunctionDeclaration(node) ||
@@ -286,7 +288,7 @@ export class CompilerGraph {
 		}
 		return {
 			format_version: 1,
-			compiler: "typescript@7.0.2/unstable/sync",
+			compiler: coverageCompiler,
 			files: [...files.values()].sort((a, b) => a.path.localeCompare(b.path)),
 			symbols: [...symbols.values()],
 		};
