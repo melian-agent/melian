@@ -471,6 +471,48 @@ describe.each(sourceKinds)("standards import safety from %s", (kind) => {
 		expect(read.mock.calls.some(([path]) => path === "private.md")).toBe(false);
 	});
 
+	it("refuses a force-added nested import excluded by an ancestor ignore file", async () => {
+		writeFiles(repo, {
+			"AGENTS.md": "# Rules\n@docs/private.md\n",
+			"docs/.gitignore": "private.md\n",
+			"docs/private.md": "PRIVATE_VALUE",
+		});
+		gitIn(repo, "add", "--force", "docs/private.md");
+		const source = sourceFor(repo, kind);
+		expect(gitIn(repo, "ls-files", "docs/private.md")).toBe("docs/private.md");
+		const reader = await sourceModule.openSource(repo, source);
+		const read = vi.spyOn(reader, "readText");
+		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
+		const reading = (await Standards.load(repo, source, ["a.ts"])).forFiles(["a.ts"]);
+		expect(reading.paths()).not.toContain("docs/private.md");
+		expect(reading.note()).toContain("AGENTS.md -> docs/private.md");
+		expect(read.mock.calls.some(([path]) => path === "docs/private.md")).toBe(false);
+	});
+
+	it("lets a nested negation override the root's import exclusion", async () => {
+		writeFiles(repo, {
+			"AGENTS.md": "# Rules\n@docs/public.md\n@docs/private.md\n",
+			".gitignore": "docs/*.md\n",
+			"docs/.gitignore": "!public.md\n",
+			"docs/public.md": "PUBLIC_RULE",
+			"docs/private.md": "PRIVATE_VALUE",
+		});
+		gitIn(repo, "add", "--force", "docs/private.md");
+		const source = sourceFor(repo, kind);
+		const reader = await sourceModule.openSource(repo, source);
+		const read = vi.spyOn(reader, "readText");
+		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
+		const reading = (await Standards.load(repo, source, ["a.ts"])).forFiles(["a.ts"]);
+		expect(reading.sections).toContainEqual({
+			path: "docs/public.md",
+			content: "PUBLIC_RULE",
+			importedBy: "AGENTS.md",
+		});
+		expect(reading.note()).toContain("AGENTS.md -> docs/private.md");
+		expect(reading.note()).not.toContain("AGENTS.md -> docs/public.md");
+		expect(read.mock.calls.some(([path]) => path === "docs/private.md")).toBe(false);
+	});
+
 	it("uses the revision's ignore rules and never reads untracked working tree imports", async () => {
 		writeFiles(repo, { "AGENTS.md": "# Rules\n@private.md\n@untracked.md\n", "private.md": "PUBLIC_BASE" });
 		const source = sourceFor(repo, "revision");
