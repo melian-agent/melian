@@ -295,6 +295,14 @@ describe("ExternalFinding", () => {
 		}
 	});
 
+	it.each([
+		["thread", { kind: "thread", thread: "PRRT_1", url: "https://github.com/o/r/pull/1#r11" }, "69adbde5d94450d9"],
+		["file with a ref", { kind: "file", path: "codex.json", position: 0, ref: "A1" }, "92511b68b984b476"],
+		["file without a ref", { kind: "file", path: "codex.json", position: 0 }, "f82a480419b2d1c9"],
+	] as const)("pins the persistent external ID for a %s", (_name, source, expected) => {
+		expect(external({ source }).id).toBe(expected);
+	});
+
 	it("hashes the source reference into its ID, so importing again gives the same ID", () => {
 		const source = {
 			kind: "thread",
