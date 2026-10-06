@@ -40,8 +40,19 @@ export class EnolaQueryError extends Error {
 /** Validated facts; names are data and never executable instructions. */
 export class EnolaFacts {
 	readonly #facts: EnolaFact[];
+	readonly #byFile = new Map<string, EnolaFact[]>();
+	readonly #imports = new Map<string, Set<string>>();
 	private constructor(facts: EnolaFact[]) {
 		this.#facts = facts;
+		for (const fact of facts) {
+			if (fact.file === undefined) continue;
+			const inFile = this.#byFile.get(fact.file) ?? [];
+			inFile.push(fact);
+			this.#byFile.set(fact.file, inFile);
+			const targets = this.#imports.get(fact.file) ?? new Set<string>();
+			for (const relation of fact.relations ?? []) if (relation.kind === "imports") targets.add(relation.target);
+			this.#imports.set(fact.file, targets);
+		}
 	}
 	/** Parses the receipt-versioned JSONL contract. */
 	static parse(text: string): EnolaFacts {
@@ -57,30 +68,25 @@ export class EnolaFacts {
 	}
 	/** Returns symbol facts with exact declaration identity; anonymous functions have no guessed name. */
 	symbols(site: SymbolSite): EnolaFact[] {
-		return this.#facts.filter(
-			(fact) =>
-				fact.file === site.file &&
-				(site.kind === "module"
-					? fact.kind === "file_ref"
-					: fact.kind === "symbol" && fact.line === site.line && fact.name.endsWith(`.${site.name}`)),
+		return (this.#byFile.get(site.file) ?? []).filter((fact) =>
+			site.kind === "module"
+				? fact.kind === "file_ref"
+				: fact.kind === "symbol" && fact.line === site.line && fact.name.endsWith(`.${site.name}`),
 		);
 	}
 	/** Returns symbol declarations in one changed file. */
 	inFile(file: string): EnolaFact[] {
-		return this.#facts
-			.filter((fact) => fact.file === file && fact.kind === "symbol")
+		return (this.#byFile.get(file) ?? [])
+			.filter((fact) => fact.kind === "symbol")
 			.map((fact) => structuredClone(fact));
 	}
 	/** Returns a file node without treating a directory module as a file. */
 	file(file: string): EnolaFact | undefined {
-		return this.#facts.find((fact) => fact.kind === "file_ref" && fact.file === file && fact.name === file);
+		return (this.#byFile.get(file) ?? []).find((fact) => fact.kind === "file_ref" && fact.name === file);
 	}
 	/** Tests an explicit contract import edge without inferring module aliases. */
 	imports(file: string, target: string): boolean {
-		return this.#facts.some(
-			(fact) =>
-				fact.file === file && fact.relations?.some((edge) => edge.kind === "imports" && edge.target === target),
-		);
+		return this.#imports.get(file)?.has(target) ?? false;
 	}
 	/** Tests an explicitly resolved call or construction edge. */
 	calls(caller: EnolaFact, callee: EnolaFact): boolean {

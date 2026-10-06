@@ -85,6 +85,7 @@ export class CallerContext {
 	/** Quotes every repository name and path inside this review's existing boundary. */
 	render(paths: readonly string[], nonce: string): string {
 		const sections: string[] = [];
+		let sectionBytes = 0;
 		let skipped = 0;
 		for (const group of this.callers(paths)) {
 			const heading = `${visibleText(group.symbol)} in ${visibleText(group.file)}`;
@@ -94,10 +95,13 @@ export class CallerContext {
 			}
 			const lines = [heading];
 			let kept = 0;
+			let lineBytes = Buffer.byteLength(heading);
 			for (const caller of group.callers) {
 				if (caller.file === undefined || caller.line === undefined) continue;
 				const line = `${visibleText(caller.file)}:${caller.line} ${visibleText(caller.name)}`;
-				if (kept === 40 || Buffer.byteLength([...lines, line].join("\n")) > 3968) break;
+				const bytes = Buffer.byteLength(line) + 1;
+				if (kept === 40 || lineBytes + bytes > 3968) break;
+				lineBytes += bytes;
 				lines.push(line);
 				kept++;
 			}
@@ -105,10 +109,12 @@ export class CallerContext {
 				`${group.callers.length - kept} callers cut locally; upstream cap ${group.truncated ? "reached (additional count unknown)" : "not reached"}.`,
 			);
 			const section = lines.join("\n");
-			if (Buffer.byteLength([...sections, section].join("\n\n")) > 64 * 1024) {
+			const bytes = Buffer.byteLength(section) + (sections.length ? 2 : 0);
+			if (sectionBytes + bytes > 64 * 1024) {
 				skipped++;
 				continue;
 			}
+			sectionBytes += bytes;
 			sections.push(section);
 		}
 		if (sections.length === 0) return skipped ? `${skipped} caller symbol sections omitted at the prompt limit.` : "";
@@ -140,9 +146,9 @@ export class CallerContext {
 			transcripts.push(await ReviewTranscript.read(conversation, input.context, lens.name, paths, input.nonce));
 		}
 		const files: ChangedFile[] = [...input.files];
+		const changed = new Set(input.files.flatMap((file) => [file.path, ...(file.oldPath ? [file.oldPath] : [])]));
 		for (const path of paths)
-			if (!files.some((file) => file.path === path || file.oldPath === path))
-				files.push({ path, status: "modified", binary: false, hunks: [] });
+			if (!changed.has(path)) files.push({ path, status: "modified", binary: false, hunks: [] });
 		const coverage = ReviewCoverage.compute(
 			parts.tree,
 			parts.version,

@@ -80,6 +80,20 @@ export class ReviewCoverage {
 		reads: readonly ReviewRead[],
 		symbols: readonly SymbolSite[] = [],
 	): ReviewCoverage {
+		const grouped = new Map<string, ReviewRead[]>();
+		for (const read of reads) {
+			const key = JSON.stringify([read.lens, read.path, read.revision]);
+			const delivered = grouped.get(key) ?? [];
+			delivered.push(read);
+			grouped.set(key, delivered);
+		}
+		const declarations = new Map<string, SymbolSite[]>();
+		for (const symbol of symbols) {
+			if (symbol.kind === "module") continue;
+			const inFile = declarations.get(symbol.file) ?? [];
+			inFile.push(symbol);
+			declarations.set(symbol.file, inFile);
+		}
 		const state: ReviewCoverageState = {
 			format_version: 1,
 			tree,
@@ -89,9 +103,7 @@ export class ReviewCoverage {
 				files: files.flatMap((file) =>
 					(["head", "base"] as const).map((revision) => {
 						const path = revision === "base" ? (file.oldPath ?? file.path) : file.path;
-						const delivered = reads.filter(
-							(read) => read.lens === name && read.path === path && read.revision === revision,
-						);
+						const delivered = grouped.get(JSON.stringify([name, path, revision])) ?? [];
 						const lines = [
 							...new Set(delivered.filter((read) => read.kind === "read").flatMap((read) => read.lines)),
 						].sort((a, b) => a - b);
@@ -107,13 +119,8 @@ export class ReviewCoverage {
 							.map((hunk) => hunk.index);
 						const functions =
 							revision === "head"
-								? symbols
-										.filter(
-											(symbol) =>
-												symbol.file === path &&
-												symbol.kind !== "module" &&
-												lines.some((line) => line >= symbol.line && line <= symbol.endLine),
-										)
+								? (declarations.get(path) ?? [])
+										.filter((symbol) => lines.some((line) => line >= symbol.line && line <= symbol.endLine))
 										.map((symbol) => ({ name: symbol.name, line: symbol.line }))
 								: [];
 						return {

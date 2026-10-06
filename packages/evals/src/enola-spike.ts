@@ -23,7 +23,7 @@ import { EnolaCoverage } from "./enola-coverage.ts";
 function quote(text: string): string {
 	return `'${text.replaceAll("'", "'\\''")}'`;
 }
-/** A local measurement on a prepared, disposable copy of a trusted commit. */
+
 export class EnolaSpike {
 	readonly #tree: string;
 	readonly #output: string;
@@ -33,7 +33,7 @@ export class EnolaSpike {
 		this.#output = output;
 		this.#tools = tools;
 	}
-	/** Opens output under an agreed scratch directory, never loading repository-selected binaries. */
+
 	static async open(tree: string, output: string, tools?: ToolProvisioning): Promise<EnolaSpike> {
 		tree = resolve(tree);
 		output = resolve(output);
@@ -44,7 +44,7 @@ export class EnolaSpike {
 			tools ?? (await ToolProvisioning.open(tree, { root: join(output, "cache") })),
 		);
 	}
-	/** Measures compiler truth, explicit graph edges, resolved impact edges, and cold/warm costs. */
+
 	async run(options: { reuseQueries?: boolean } = {}): Promise<void> {
 		const env = createNodeExecutionEnv(this.#tree);
 		const home = join(this.#output, "home"),
