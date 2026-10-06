@@ -83,7 +83,7 @@ Milestone 2 runs on three lanes of work and a fixed review loop. Read this befor
 
 - Implementation steps go to Opus 5.5 agents or to Codex (GPT-6.1 Sol).
 - Small tasks go to Sonnet 5.5: a doc fix, a single test, a record fill-in, a merge chain.
-- Reviews of record go to Opus 5.5. A Sonnet 5.5 trial is under way, judged from the record for [pull request #73](https://github.com/melian-agent/melian/pull/73), where it ran beside the Opus review.
+- Reviews of record go to Sonnet 5.5, once per step pull request after the Codex adversarial review and Melian's rounds have converged, then its fix pass and a final round. Opus 5.5 is held back for a lens round on a step with a new trust surface. The trial that decided this is in the record for [pull request #73](https://github.com/melian-agent/melian/pull/73).
 - Codex tasks run through the companion's `task --write`, for editing and tests only. Its sandbox denies writes under `.git` and, before 2026-10-05, had no network. A Sonnet agent commits, runs the gate, pushes, and opens the draft from Codex's report. A seatbelt wrapper that lets Codex commit is under review in [pull request #74](https://github.com/melian-agent/melian/pull/74) and is not yet safe to use.
 
 ### Three reviews before ready
