@@ -74,6 +74,19 @@ function importer(login?: string, answers?: GitHubRecording) {
 }
 
 describe("ReviewThreadImporter", () => {
+	it.each([
+		["MelianReviewThreads", [null, "Y3Vyc29yOjI="]],
+		["MelianReviews", [null]],
+	])("sends the repository and pull request on every page of %s", async (operation, cursors) => {
+		const { opened, requests } = importer();
+
+		await opened.import();
+
+		expect(
+			requests.filter((request) => request.body.query.includes(operation)).map((request) => request.body.variables),
+		).toEqual(cursors.map((after) => ({ owner: "melian-agent", name: "example", number: 7, after })));
+	});
+
 	it("imports CodeRabbit's threads by default, resolved and outdated alike, across pages", async () => {
 		const { opened, requests } = importer();
 
