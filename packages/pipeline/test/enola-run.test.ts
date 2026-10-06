@@ -222,6 +222,38 @@ it("filters callers without locations and callers inside the diff", async () => 
 	expect(data.paths).toEqual(["src/a.ts", "src/caller.ts"]);
 });
 
+it.each([1, 2])("queries every declaration sharing the changed range at line %i", async (start) => {
+	const f = await fixture();
+	f.artifacts["facts.jsonl"] = [
+		{ id: "a", kind: "symbol", name: "src.a", file: "src/a.ts", line: 1 },
+		{ id: "b", kind: "symbol", name: "src.b", file: "src/a.ts", line: 1 },
+		{ id: "later", kind: "symbol", name: "src.later", file: "src/a.ts", line: 10 },
+	]
+		.map((fact) => JSON.stringify(fact))
+		.join("\n");
+	f.files[0] = { ...f.files[0]!, hunks: [{ ...f.files[0]!.hunks[0]!, newStart: start }] };
+	f.shell.mockImplementation(async (command) => {
+		for (const name of ["a", "b"])
+			if (command.includes(`file:src/a.ts src.${name}'`))
+				f.artifacts["impact.json"] = JSON.stringify({
+					target: `src.${name}`,
+					by_depth: { "1": [{ name: `src.calls${name}`, kind: "symbol", file: "src/caller.ts", line: 1 }] },
+					edges: [],
+					stats: { truncated: false },
+				});
+		return { code: 0, output: "a".repeat(40) };
+	});
+	const data = await f.enola.callers(f.files, ["src/a.ts"]);
+	expect(data.groups.map((group) => ({ symbol: group.symbol, callers: group.callers }))).toEqual(
+		["a", "b"].map((name) => ({
+			symbol: `src.${name}`,
+			callers: [{ name: `src.calls${name}`, kind: "symbol", file: "src/caller.ts", line: 1 }],
+		})),
+	);
+	expect(data.issues).toEqual([]);
+	expect(f.shell.mock.calls.filter(([command]) => command.includes("impact --json"))).toHaveLength(2);
+});
+
 it.each([
 	[
 		"different target",

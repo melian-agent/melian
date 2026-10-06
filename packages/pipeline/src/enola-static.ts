@@ -214,9 +214,11 @@ export class EnolaRun {
 				.inFile(file.path)
 				.filter((fact) => fact.line !== undefined)
 				.sort((a, b) => a.line! - b.line!);
-			const changed = symbols.filter((fact, index) =>
+			const starts = [...new Set(symbols.map((fact) => fact.line!))];
+			const nextLines = new Map(starts.map((line, index) => [line, starts[index + 1] ?? Infinity]));
+			const changed = symbols.filter((fact) =>
 				file.hunks.some((hunk) => {
-					const next = symbols[index + 1]?.line ?? Infinity;
+					const next = nextLines.get(fact.line!)!;
 					return fact.line! < hunk.newStart + Math.max(1, hunk.newLines) && next > hunk.newStart;
 				}),
 			);
