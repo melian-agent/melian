@@ -213,12 +213,14 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 		{ interruptedTrust: true, trustedWriters: true, changedPublisher: false },
 		{ interruptedTrust: true, trustedWriters: true, changedPermission: "permission" },
 		{ interruptedTrust: true, trustedWriters: true, changedPermission: "authorPermission" },
+		{ interruptedTrust: true, trustedWriters: true, changedPermission: "permission", unknownPermission: true },
+		{ interruptedTrust: true, trustedWriters: true, changedPermission: "authorPermission", unknownPermission: true },
 		{ interruptedTrust: false, trustedWriters: false },
 		{ interruptedTrust: true, trustedWriters: false },
 		{ interruptedTrust: false, trustedWriters: true },
 	])(
-		"keeps publisher attribution across a status crash (trust: $interruptedTrust -> $trustedWriters, permission: $changedPermission)",
-		async ({ interruptedTrust, trustedWriters, changedPublisher, changedPermission }) => {
+		"keeps publisher attribution across a status crash (trust: $interruptedTrust -> $trustedWriters, permission: $changedPermission, unknown: $unknownPermission)",
+		async ({ interruptedTrust, trustedWriters, changedPublisher, changedPermission, unknownPermission }) => {
 			const database = join(dir, "review.sqlite");
 			const stateFile = join(dir, "github.json");
 			const log = join(dir, "publish.log");
@@ -244,7 +246,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 				const login = changedPermission === "permission" ? persisted.login : (persisted.author ?? "pr-author");
 				persisted.permissions = {
 					...persisted.permissions,
-					[login]: changedPermission === "permission" ? "maintain" : "write",
+					[login]: unknownPermission ? "unclassified" : changedPermission === "permission" ? "maintain" : "write",
 				};
 			}
 			const provider = providerFor(persisted);
@@ -278,8 +280,16 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			expect(record?.publishedBy).toEqual({
 				trustedWriters,
 				login: changedPublisher ? "new-publisher" : "melian-user",
-				permission: changedPublisher || changedPermission === "permission" ? "maintain" : "write",
-				authorPermission: changedPermission === "authorPermission" ? "write" : "read",
+				...(unknownPermission && changedPermission === "permission"
+					? {}
+					: {
+							permission: changedPublisher || changedPermission === "permission" ? "maintain" : "write",
+						}),
+				...(unknownPermission && changedPermission === "authorPermission"
+					? {}
+					: {
+							authorPermission: changedPermission === "authorPermission" ? "write" : "read",
+						}),
 			});
 			expect(persisted.statuses).toHaveLength(3);
 			expect(persisted.reviews).toHaveLength(1);
