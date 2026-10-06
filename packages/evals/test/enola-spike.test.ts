@@ -49,6 +49,7 @@ if [ "$1" = "--generate" ]; then
   printf '{}' > .enola/snapshot.meta.json
   printf '{}' > .enola/run.json
 else
+  [ "$4" = 1 ] && [ "$6" = 500 ] || exit 9
   cat fixture-impact
 fi
 `;
@@ -93,6 +94,11 @@ fi
 		expect(timing.peakBytes).toBe(peak);
 		expect(timing.peakBytes).toBeGreaterThan(0);
 	}
+	await writeFile(join(repo, "fixture-impact"), impact.padEnd(32 * 1024 * 1024, " "));
+	await spike.run();
+	expect(JSON.parse(await readFile(join(output, "summary.json"), "utf8"))).toMatchObject({ noAnswer: 1 });
+	await writeFile(join(repo, "fixture-impact"), impact);
+	await spike.run();
 	await writeFile(join(repo, "fixture-impact"), "invalid report");
 	await spike.run({ reuseQueries: true });
 	expect(JSON.parse(await readFile(join(output, "summary.json"), "utf8"))).toMatchObject({
