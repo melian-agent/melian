@@ -1494,7 +1494,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					outcome.conversation === undefined ? [] : [[key, outcome.conversation]],
 				),
 			),
-			lenses: runsOf(ran.lenses),
+			lenses: ran.lenses.flatMap((lens) => {
+				const next = lens.escalation?.next;
+				return [lens, ...(next && lensResult?.[next.key] !== undefined ? [next] : [])];
+			}),
 			files: revision.files,
 			nonce: ran.revision.nonce,
 			context,

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
 	Changeset,
+	type Decider,
 	defaultConfig,
 	EnolaPolicy,
 	Lens,
@@ -16,6 +17,7 @@ import {
 	createMemoryStorage,
 	createNodeExecutionEnv,
 	createReviewRegistry,
+	decisionExtension,
 	openHarness,
 	reviewChangeset,
 	runStaticTool,
@@ -93,9 +95,13 @@ exit 9
 }
 
 describe("static.enola", { timeout: 60_000 }, () => {
-	it.each([0, 2])(
-		"offers scoped callers or records exit %s as no answer, and attaches transcript coverage",
-		async (exit) => {
+	it.each([
+		[0, "careful"],
+		[2, "careful"],
+		[0, "quick"],
+	] as const)(
+		"offers scoped callers or records exit %s as no answer, and attaches %s transcript coverage",
+		async (exit, level) => {
 			const base = commit(repo, {
 				"src/a.ts": "export function Alpha() {\n return 1;\n}\n",
 				"src/caller.ts": "export const Caller = Alpha();\n",
@@ -132,9 +138,18 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			expect(callers.render([], "NONCE")).toBe("");
 			const models = createFakeModels({ models: [{ id: "heavy" }] });
 			const model = models.ref("heavy");
+			const decider: Decider = {
+				name: "fixture",
+				calibrated: false,
+				decide: async (request) => ({
+					answers: request.questions.map((question) => ({ question: question.id, distribution: { [level]: 1 } })),
+				}),
+			};
+			const registry = createReviewRegistry();
+			registry.install(decisionExtension(decider));
 			const harness = await openHarness(createMemoryStorage(), {
 				models: models.models,
-				registry: createReviewRegistry(),
+				registry,
 				settings: { retry: { enabled: false } },
 			});
 			try {
@@ -169,11 +184,15 @@ describe("static.enola", { timeout: 60_000 }, () => {
 					config: {
 						...defaultConfig,
 						tiers: { full: ["lens.correctness"] },
-						models: { heavy: { model: `${model.provider}/${model.modelId}` } },
+						models: {
+							heavy: { model: `${model.provider}/${model.modelId}` },
+							medium: { model: `${model.provider}/${model.modelId}` },
+						},
 					},
 					lenses,
 					standards: [],
 					models: models.review,
+					decider,
 					callers,
 				};
 				const reviewed = await reviewChangeset(options);
@@ -182,6 +201,7 @@ describe("static.enola", { timeout: 60_000 }, () => {
 					reviewed.verdict.ran?.find((record) => record.name === "lens.correctness")?.coverage?.review,
 				);
 				const record = reviewed.verdict.ran?.find((record) => record.name === "lens.correctness");
+				expect(record?.level).toBe(level);
 				expect(record?.coverage?.review).toMatch(/^[a-f0-9]{64}$/);
 				if (check.status !== "ran") throw new Error("No Enola check");
 				const cache = await CoverageCache.open(tools.cache.root);
