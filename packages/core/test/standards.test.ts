@@ -452,6 +452,26 @@ describe.each(sourceKinds)("standards import safety from %s", (kind) => {
 		}
 	});
 
+	it("refuses mixed-case credential basenames before reading, including nested imports", async () => {
+		const paths = ["MELIAN.SECRETS.YAML", "docs/MeLiAn.LoCaL.YaMl", "docs/.ENV.TEST"];
+		writeFiles(repo, {
+			"AGENTS.md": lines("# Rules", ...paths.map((path) => `@${path}`)),
+			...Object.fromEntries(paths.map((path) => [path, `CREDENTIAL_VALUE:${path}`])),
+		});
+		const source = sourceFor(repo, kind);
+		const reader = await sourceModule.openSource(repo, source);
+		const read = vi.spyOn(reader, "readText");
+		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
+		const reading = (await Standards.load(repo, source, ["a.ts"])).forFiles(["a.ts"]);
+
+		for (const path of paths) {
+			expect(reading.refused).toContain(`AGENTS.md -> ${path}`);
+			expect(reading.note()).toContain(`AGENTS.md -> ${path}`);
+			expect(read.mock.calls.some(([file]) => file === path)).toBe(false);
+		}
+		expect(reading.sections.map(({ content }) => content).join("\n")).not.toContain("CREDENTIAL_VALUE");
+	});
+
 	it("refuses a force-added import excluded by the source's ignore rules", async () => {
 		writeFiles(repo, {
 			"AGENTS.md": "# Rules\n@private.md\n",
@@ -549,5 +569,203 @@ describe("rendered standards bounds", () => {
 				standardsLimits.totalBytes,
 			);
 		}
+	});
+});
+
+describe.each(sourceKinds)("standards branch regressions from %s", (kind) => {
+	it("drops absolute imports before querying or reading them", async () => {
+		writeFiles(repo, { "AGENTS.md": "# Rules\n@/docs/guide.md\n" });
+		const source = sourceFor(repo, kind);
+		const reader = await sourceModule.openSource(repo, source);
+		const read = vi.spyOn(reader, "readText");
+		const exists = vi.spyOn(reader, "exists");
+		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
+		const reading = (await Standards.load(repo, source, ["a.ts"])).forFiles(["a.ts"]);
+		expect(reading.paths()).toEqual(["AGENTS.md", ".melian/standards/naming.md"]);
+		expect(read.mock.calls.some(([path]) => path.startsWith("/"))).toBe(false);
+		expect(exists.mock.calls.some(([path]) => path.startsWith("/"))).toBe(false);
+	});
+
+	it("loads the chain of a directory itself without sharing it with siblings or parent files", async () => {
+		writeFiles(repo, { "packages/other/AGENTS.md": "# Other rules" });
+		const paths = ["packages/app", "packages/other", "packages/a.ts"];
+		const standards = await Standards.load(repo, sourceFor(repo, kind), paths);
+		expect(standards.forFiles([paths[0]!]).paths()[0]).toBe("packages/app/AGENTS.md");
+		expect(standards.forFiles([paths[1]!]).paths()[0]).toBe("packages/other/AGENTS.md");
+		expect(standards.forFiles([paths[2]!]).paths()[0]).toBe("AGENTS.md");
+	});
+
+	it("returns an empty reading when the loaded file has no standards", async () => {
+		rmSync(join(repo, "AGENTS.md"));
+		rmSync(join(repo, "CLAUDE.md"));
+		rmSync(join(repo, ".melian"), { recursive: true });
+		const reading = (await Standards.load(repo, sourceFor(repo, kind), ["a.ts"])).forFiles(["a.ts"]);
+		expect(reading.paths()).toEqual([]);
+		expect(reading.note()).toBeUndefined();
+	});
+
+	it("accepts a chain at the exact byte bound", async () => {
+		writeFiles(
+			repo,
+			Object.fromEntries(
+				["AGENTS.md", "CLAUDE.md", ".melian/standards/naming.md", ".melian/standards/other.md"].map((path) => [
+					path,
+					"x".repeat(standardsLimits.fileBytes),
+				]),
+			),
+		);
+		const sections = await loadStandards(repo, sourceFor(repo, kind), ".");
+		expect(sections).toHaveLength(4);
+		expect(sections.reduce((total, { content }) => total + Buffer.byteLength(content), 0)).toBe(
+			standardsLimits.totalBytes,
+		);
+	});
+
+	it("names the repository root when its chain exceeds the byte bound", async () => {
+		writeFiles(
+			repo,
+			Object.fromEntries(Array.from({ length: 5 }, (_, i) => [`.melian/standards/${i}.md`, "x".repeat(220 * 1024)])),
+		);
+		const error = await rejection(loadStandards(repo, sourceFor(repo, kind), "."), StandardsError);
+		expect(error.code).toBe("totalTooLarge");
+		expect(error.message).toContain("standards for the repository root exceed");
+	});
+
+	it("propagates an ignore failure instead of recording a refusal", async () => {
+		const source = sourceFor(repo, kind);
+		const reader = await sourceModule.openSource(repo, source);
+		const failure = new sourceModule.SourceError("unreadable", "docs/guide.md", "ignore check failed");
+		vi.spyOn(reader, "isIgnored").mockRejectedValueOnce(failure);
+		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
+		const error = await rejection(Standards.load(repo, source, ["a.ts"]), StandardsError);
+		expect(error).toMatchObject({ code: "unreadable", path: "docs/guide.md", cause: failure });
+	});
+
+	it("omits an inventory entry that disappears before its read", async () => {
+		const source = sourceFor(repo, kind);
+		const reader = await sourceModule.openSource(repo, source);
+		vi.spyOn(reader, "readText").mockResolvedValueOnce(undefined);
+		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
+		const inventory = await StandardsInventory.inspect(repo, source);
+		expect(inventory.entries.map(({ path }) => path)).not.toContain(".melian/standards/naming.md");
+		expect(inventory.count()).toBe(4);
+	});
+
+	it.each(["unreadable", "tooLarge"] as const)(
+		"propagates an inventory %s error without a reported size",
+		async (code) => {
+			const source = sourceFor(repo, kind);
+			const reader = await sourceModule.openSource(repo, source);
+			const failure = new sourceModule.SourceError(code, "AGENTS.md", "read failed");
+			vi.spyOn(reader, "readText").mockRejectedValueOnce(failure);
+			vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
+			const error = await rejection(StandardsInventory.inspect(repo, source), StandardsError);
+			expect(error).toMatchObject({ code, path: "AGENTS.md", cause: failure });
+		},
+	);
+});
+
+describe("standards source failures and trust", () => {
+	it.each([new Error("reader failed"), new sourceModule.SourceError("symlink", "root", "symlinked source")])(
+		"preserves an untranslated source-opening error: %s",
+		async (failure) => {
+			vi.spyOn(sourceModule, "openSource").mockRejectedValueOnce(failure);
+			await expect(Standards.load(repo, { kind: "worktree" }, ["a.ts"])).rejects.toBe(failure);
+		},
+	);
+
+	it("trusts only a policy resolving to the same pinned revision", async () => {
+		const source = sourceFor(repo, "revision");
+		const standards = await Standards.load(repo, { kind: "revision", commit: "HEAD" }, ["a.ts"]);
+		expect(await standards.trustedBy(source)).toBe(true);
+		expect(await standards.trustedBy({ kind: "revision", commit: "main" })).toBe(true);
+		expect(await standards.trustedBy(undefined)).toBe(false);
+		expect(await standards.trustedBy({ kind: "worktree" })).toBe(false);
+		gitIn(repo, "commit", "--quiet", "--allow-empty", "-m", "another revision");
+		expect(await standards.trustedBy({ kind: "revision", commit: "HEAD" })).toBe(false);
+		expect(
+			await rejection(standards.trustedBy({ kind: "revision", commit: "missing" }), StandardsError),
+		).toMatchObject({ code: "unknownCommit" });
+		const worktree = await Standards.load(repo, { kind: "worktree" }, ["a.ts"]);
+		expect(await worktree.trustedBy(source)).toBe(false);
+	});
+});
+
+describe("standards reading boundaries", () => {
+	it("keeps a union at the exact rendered byte bound", () => {
+		const path = "AGENTS.md";
+		const content = "x".repeat(standardsLimits.totalBytes - 1024 - 128 - Buffer.byteLength(`### ${path}\n\n`));
+		expect(StandardsReading.from([{ path, content }]).paths()).toEqual([path]);
+		expect(StandardsReading.from([{ path, content: `${content}x` }]).paths()).toEqual([]);
+	});
+
+	it("keeps exactly the allowed section count", () => {
+		const sections = Array.from({ length: standardsLimits.sections }, (_, i) => ({ path: `${i}.md`, content: "" }));
+		expect(StandardsReading.from(sections).sections).toHaveLength(standardsLimits.sections);
+		const overflow = StandardsReading.from([...sections, { path: "extra.md", content: "" }]);
+		expect(overflow.omitted).toEqual(["extra.md"]);
+		expect(overflow.note()).toContain("left out 1 standards section past");
+	});
+
+	it.each([4096, 4097])("bounds omission labels at %i UTF-8 bytes", (bytes) => {
+		const path = `${"é".repeat(2048)}${bytes === 4097 ? "x" : ""}`;
+		const reading = StandardsReading.from([{ path, content: "x".repeat(standardsLimits.totalBytes) }]);
+		if (bytes === 4096) expect(reading.note()).toContain(path);
+		else {
+			expect(reading.note()).not.toContain(path);
+			expect(reading.note()).toContain("and 1 more");
+		}
+	});
+});
+
+describe.each(sourceKinds)("standards import branches from %s", (kind) => {
+	it("does not treat an empty carrier as an import-only stub", async () => {
+		writeFiles(repo, { "AGENTS.md": "" });
+		const sections = await loadStandards(repo, sourceFor(repo, kind), ".");
+		expect(sections).toContainEqual({ path: "AGENTS.md", content: "" });
+	});
+
+	it("keeps a different fence marker inside its enclosing code block", async () => {
+		writeFiles(repo, { "AGENTS.md": lines("# Rules", "~~~", "```", "@docs/guide.md", "~~~") });
+		const sections = await loadStandards(repo, sourceFor(repo, kind), ".");
+		expect(sections.map(({ path }) => path)).toEqual(["AGENTS.md", ".melian/standards/naming.md"]);
+	});
+
+	it("counts an imported carrier only once at the chain bound", async () => {
+		const imported = "@../AGENTS.md\n";
+		writeFiles(repo, {
+			"child/AGENTS.md": imported + "x".repeat(standardsLimits.fileBytes - Buffer.byteLength(imported)),
+			...Object.fromEntries(
+				["AGENTS.md", "CLAUDE.md", ".melian/standards/naming.md"].map((path) => [
+					path,
+					"x".repeat(standardsLimits.fileBytes),
+				]),
+			),
+		});
+		const sections = await loadStandards(repo, sourceFor(repo, kind), "child/a.ts");
+		expect(sections).toHaveLength(4);
+		expect(sections.filter(({ path }) => path === "AGENTS.md")).toHaveLength(1);
+	});
+});
+
+describe("standards note path counts", () => {
+	it("lists ten omitted paths and counts the rest", () => {
+		const paths = Array.from({ length: 11 }, (_, i) => `${i}.md`);
+		expect(StandardsReading.from([], [], [], paths.slice(0, 10)).note()).toBe(
+			`left out standards over 256 KiB: ${paths.slice(0, 10).join(", ")}`,
+		);
+		expect(StandardsReading.from([], [], [], paths).note()).toBe(
+			`left out standards over 256 KiB: ${paths.slice(0, 10).join(", ")}, and 1 more`,
+		);
+	});
+});
+
+describe.each(sourceKinds)("standards fenced carriers from %s", (kind) => {
+	it("retains a carrier with an import and a code block", async () => {
+		const content = lines("@docs/guide.md", "```", "code example", "```");
+		writeFiles(repo, { "AGENTS.md": content });
+		const sections = await loadStandards(repo, sourceFor(repo, kind), ".");
+		expect(sections[0]).toEqual({ path: "AGENTS.md", content });
+		expect(sections[1]!.path).toBe("docs/guide.md");
 	});
 });

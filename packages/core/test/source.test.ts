@@ -3,6 +3,7 @@ import { chmodSync, rmSync, symlinkSync } from "node:fs";
 import * as fs from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as gitModule from "../src/git.ts";
 import { openSource, SourceError } from "../src/source.ts";
 import {
 	gitIn,
@@ -205,5 +206,34 @@ describe("worktree source reader", () => {
 		} finally {
 			chmodSync(join(repo, "docs"), 0o700);
 		}
+	});
+});
+
+describe.each(sourceKinds)("source reader bounds from %s", (kind) => {
+	it("accepts the exact byte bound and refuses the next byte", async () => {
+		writeFiles(repo, { "utf8.md": "éé", "empty.md": "" });
+		const reader = await openSource(repo, sourceFor(repo, kind));
+		expect(await reader.readText("utf8.md", 4)).toBe("éé");
+		expect(await rejection(reader.readText("utf8.md", 3), SourceError)).toMatchObject({
+			code: "tooLarge",
+			path: reader.label("utf8.md"),
+			size: 4,
+		});
+		expect(await reader.readText("empty.md", 0)).toBe("");
+	});
+
+	it("reports an ignore command stopped by a signal", async () => {
+		const reader = await openSource(repo, sourceFor(repo, kind));
+		vi.spyOn(reader, "readText").mockResolvedValue(undefined);
+		vi.spyOn(gitModule, "git").mockResolvedValueOnce({
+			code: -1,
+			stdout: "",
+			stdoutBytes: Buffer.alloc(0),
+			stderr: "terminated by signal",
+		});
+		expect(await rejection(reader.isIgnored("docs/rules.md"), SourceError)).toMatchObject({
+			code: "unreadable",
+			path: reader.label("docs/rules.md"),
+		});
 	});
 });
