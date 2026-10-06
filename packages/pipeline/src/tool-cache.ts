@@ -37,7 +37,6 @@ export class ToolCache {
 	/** Opens a cache without fetching anything. */
 	static async open(root: string, options: { fetch?: ToolFetch } = {}): Promise<ToolCache> {
 		root = resolve(root);
-		await mkdir(join(root, "tools"), { recursive: true });
 		return new ToolCache(root, options.fetch ?? fetch);
 	}
 

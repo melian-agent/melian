@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,6 +14,16 @@ afterEach(async () => {
 });
 
 describe("ToolCache", () => {
+	it("checks a missing cache without creating directories", async () => {
+		const directory = join(root, "absent");
+		const bytes = toolArchive([{ name: "enola", text: "binary" }]);
+		const download = vi.fn(async () => new Response(bytes));
+		const cache = await ToolCache.open(directory, { fetch: download });
+		expect(await cache.readiness(testTool(bytes), "darwin-arm64")).toBe("not-fetched");
+		await expect(lstat(directory)).rejects.toMatchObject({ code: "ENOENT" });
+		expect(download).not.toHaveBeenCalled();
+	});
+
 	it("extracts only the pinned binary and verifies every cached use, repairing a swap", async () => {
 		const script = "#!/bin/sh\nprintf '%s' '{\"runs\":[{\"results\":[]}]}'\n";
 		const bytes = toolArchive([
