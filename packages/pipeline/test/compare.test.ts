@@ -8,15 +8,17 @@ import {
 	CompareHarness,
 	backgroundContext as context,
 	createMemoryStorage,
+	DismissHarness,
 	FileImporter,
 	type ImportedSource,
 	maxReviewerFileBytes,
 	openSqliteStorage,
 	revisionKey,
+	type TaskId,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { VerdictDocument } from "../src/adjudication.ts";
+import { AdjudicationTask, adjudicationInput, VerdictDocument } from "../src/adjudication.ts";
 import { ComparisonDocument } from "../src/compare.ts";
 import { FindingsDocument } from "../src/findings.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -146,6 +148,99 @@ describe("CompareHarness", () => {
 			expect((await harness.read(revision))!.toJSON()).toEqual(before);
 		},
 	);
+
+	describe("a verdict whose adjudication task is not the current decision", () => {
+		async function reviewedWithTasks(path: string) {
+			const deciding = await DismissHarness.open(await openSqliteStorage(path), createFakeModels().review);
+			const { harness } = deciding;
+			const root = await harness.root(context);
+			const key = revisionKey(revision);
+			const input = (findingsVersion: number) =>
+				adjudicationInput({
+					root: root.id,
+					repoRoot: directory,
+					...revision,
+					policy: undefined,
+					config: defaultConfig,
+					manifest: [],
+					checks: [],
+					findingsVersion,
+					allowSkip: [],
+					producers: [],
+					origin: { kind: "range" },
+					lenses: [],
+				});
+			const create = (version: number) =>
+				root.commit(
+					(tx) => tx.createTask(AdjudicationTask, input(version), { ownership: { kind: "conversation" } }),
+					context,
+				);
+			const point = (task: TaskId) =>
+				root.commit(async (tx) => {
+					const index = await tx.doc(ReviewIndex, root.id);
+					index.reviews = {
+						...index.reviews,
+						[key]: { adjudication: { task, input: "{}" } },
+					} as typeof index.reviews;
+				}, context);
+			const run = async (task: TaskId) => {
+				harness.resume();
+				return (await harness.waitForTask(task, context)).state;
+			};
+			return { deciding, root, key, create, point, run, input };
+		}
+
+		it("refuses one that ended superseded, which no decision record vouches for", async () => {
+			const path = join(directory, "changeset.sqlite");
+			const { deciding, root, key, create, point, run, input } = await reviewedWithTasks(path);
+			const first = (await create(0)) as TaskId;
+			await point(first);
+			expect((await run(first)).status).toBe("terminal");
+			const other = (await create(0)) as TaskId;
+			expect(await run(other)).toMatchObject({ outcome: { result: "superseded" } });
+			await root.commit(async (tx) => {
+				const index = await tx.doc(ReviewIndex, root.id);
+				index.reviews = {
+					...index.reviews,
+					[key]: { adjudication: { task: other, input: JSON.stringify(input(0)) } },
+				} as typeof index.reviews;
+				delete (await tx.doc(VerdictDocument, root.id)).decisions![key];
+			}, context);
+			await deciding.close(context);
+			const harness = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review);
+			open.push(harness);
+
+			expect(await harness.reviewed(revision)).toBe(false);
+			await expect(harness.importFindings(revision, [], "t")).rejects.toMatchObject({ code: "notReviewed" });
+		});
+
+		it("refuses a recorded decision made by a task the review index no longer names", async () => {
+			const path = join(directory, "changeset.sqlite");
+			const { deciding, root, key, create, point, run } = await reviewedWithTasks(path);
+			const first = (await create(0)) as TaskId;
+			await point(first);
+			await run(first);
+			const second = (await create(0)) as TaskId;
+			await point(second);
+			expect(await run(second)).toMatchObject({ outcome: { result: "recorded" } });
+			await deciding.close(context);
+			const control = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review);
+			open.push(control);
+			expect(await control.reviewed(revision)).toBe(true);
+			await control.close(context);
+			const stale = await DismissHarness.open(await openSqliteStorage(path), createFakeModels().review);
+			const staleRoot = await stale.harness.root(context);
+			await staleRoot.commit(async (tx) => {
+				(await tx.doc(VerdictDocument, staleRoot.id)).decisions = { [key]: { task: first, findingsVersion: 0 } };
+			}, context);
+			await stale.close(context);
+			expect(root.id).toBe(staleRoot.id);
+			const harness = await CompareHarness.open(await openSqliteStorage(path), createFakeModels().review);
+			open.push(harness);
+
+			expect(await harness.reviewed(revision)).toBe(false);
+		});
+	});
 
 	it("closes storage after a cancelled open", async () => {
 		const storage = createMemoryStorage();
