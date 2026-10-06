@@ -187,6 +187,45 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(prompts[0]).not.toContain("CHECKOUT_ONLY_IMPORT");
 	});
 
+	it("reads base nested standards and imports when the range head is not checked out", async () => {
+		const { repo, env } = staticCheckout("export const b = 2;\n");
+		git(repo, "checkout", "--quiet", "main");
+		writeFileSync(join(repo, "melian.yaml"), "tiers:\n  full: [lens.correctness]\n");
+		writeFileSync(join(repo, "src/AGENTS.md"), "BASE_STANDARD\n@rules.md\n");
+		writeFileSync(join(repo, "src/rules.md"), "BASE_IMPORT\n");
+		git(repo, "add", "--all");
+		git(repo, "commit", "--quiet", "-m", "base standards");
+		git(repo, "checkout", "--quiet", "-b", "standards-head");
+		writeFileSync(join(repo, "src/AGENTS.md"), "HEAD_STANDARD\n@rules.md\n");
+		writeFileSync(join(repo, "src/rules.md"), "HEAD_IMPORT\n");
+		writeFileSync(join(repo, "src/b.ts"), "export const b = 2;\n");
+		git(repo, "add", "--all");
+		git(repo, "commit", "--quiet", "-m", "head standards");
+		git(repo, "checkout", "--quiet", "main");
+		writeFileSync(join(repo, "src/AGENTS.md"), "CHECKOUT_STANDARD\n@rules.md\n");
+		writeFileSync(join(repo, "src/rules.md"), "CHECKOUT_IMPORT\n");
+		const capture = vi.spyOn(pipelineTesting, "scriptLenses");
+		const code = await reviewIn(
+			{
+				cwd: repo,
+				env: { ...process.env, ...gitEnv, XDG_CONFIG_HOME: noUserFiles, ...env },
+				stdout: () => undefined,
+				stderr: () => undefined,
+				color: false,
+			},
+			"main...standards-head",
+			{ rerun: false },
+		);
+		expect(code).toBe(0);
+		const requests = capture.mock.results[0]!.value as ReturnType<typeof pipelineTesting.scriptLenses>;
+		const prompts = Object.values(requests).flat().map(pipelineTesting.systemPromptOf);
+		expect(prompts).toHaveLength(1);
+		expect(prompts[0]).toContain("BASE_STANDARD");
+		expect(prompts[0]).toContain("BASE_IMPORT");
+		for (const excluded of ["HEAD_STANDARD", "HEAD_IMPORT", "CHECKOUT_STANDARD", "CHECKOUT_IMPORT"])
+			expect(prompts[0]).not.toContain(excluded);
+	});
+
 	it.each([
 		["\u0007", "\\u0007"],
 		["\u001b[2J", "\\u001b[2J"],
