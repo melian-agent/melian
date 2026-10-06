@@ -202,6 +202,15 @@ export class ToolCache {
 					.subarray(start, start + length)
 					.toString("utf8")
 					.split("\0")[0]!;
+			for (const [start, length] of [
+				[0, 100],
+				[345, 155],
+			]) {
+				const field = header.subarray(start, start + length);
+				const end = field.indexOf(0);
+				if (end >= 0 && field.subarray(end).some((byte) => byte !== 0))
+					throw new ToolCacheError("invalidOutput", "Embedded NUL in tar name");
+			}
 			const name = [string(345, 155), string(0, 100)].filter(Boolean).join("/");
 			const kind = string(156, 1);
 			const sizeText = string(124, 12).trim();

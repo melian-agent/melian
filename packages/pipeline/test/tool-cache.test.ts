@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import type * as fs from "node:fs/promises";
-import { lstat, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToolCache } from "../src/tool-cache.ts";
 import { testTool, toolArchive } from "./fixtures/tool-archive.ts";
@@ -134,6 +135,37 @@ describe("ToolCache", () => {
 			});
 		},
 	);
+
+	it("refuses a symlink to a byte-identical binary", async () => {
+		const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
+		const cache = await ToolCache.open(root, { fetch: async () => new Response(bytes) });
+		const tool = testTool(bytes);
+		const binary = await cache.materialise(tool, "darwin-arm64");
+		const target = join(root, "identical");
+		await writeFile(target, "trusted", { mode: 0o755 });
+		await rm(binary);
+		await symlink(target, binary);
+		expect(await cache.readiness(tool, "darwin-arm64")).toBe("mismatch");
+	});
+
+	it.each(["duplicate", "unterminated"])("refuses a %s binary archive", async (kind) => {
+		let bytes = toolArchive([
+			{ name: "enola", text: "trusted" },
+			...(kind === "duplicate" ? [{ name: "enola", text: "trusted" }] : []),
+		]);
+		if (kind === "unterminated") bytes = gzipSync(gunzipSync(bytes).subarray(0, -1024));
+		const cache = await ToolCache.open(root, { fetch: async () => new Response(bytes) });
+		await expect(cache.materialise(testTool(bytes), "darwin-arm64")).rejects.toMatchObject({ code: "invalidOutput" });
+	});
+
+	it("refuses bytes hidden after a tar name terminator", async () => {
+		const bytes = toolArchive([{ name: "enola\0../../x", text: "trusted" }]);
+		const cache = await ToolCache.open(root, { fetch: async () => new Response(bytes) });
+		await expect(cache.materialise(testTool(bytes), "darwin-arm64")).rejects.toMatchObject({
+			code: "invalidOutput",
+			message: expect.stringContaining("NUL"),
+		});
+	});
 
 	it("refuses absent binary, unsupported platform, and a young release", async () => {
 		const bytes = toolArchive([{ name: "LICENSE", text: "licence" }]);
