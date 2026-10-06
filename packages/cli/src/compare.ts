@@ -91,7 +91,10 @@ export async function compare(io: Io, argument: string, sources: readonly Import
 		io.stdout(
 			`Compared ${external} external ${external === 1 ? "finding" : "findings"} with Melian's ${melian} at ${short(revision.head)}.\n`,
 		);
-		const skippedBodies = read.reduce((sum, each) => sum + each.imported.skippedBodies, 0);
+		const skippedBodies = Object.values(comparison.importsBySource()).reduce(
+			(sum, each) => sum + each.skippedBodies,
+			0,
+		);
 		io.stdout(comparison.render(verdict, skippedBodies));
 		return 0;
 	} finally {

@@ -339,6 +339,17 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		expect(human.stdout).toMatch(/octocat {2}src\/user\.ts:20 {2}Should this log the name too\?/);
 	});
 
+	it("counts the review bodies skipped by every source the comparison holds, not only this run's", () => {
+		const { repo, env } = pullRequest();
+		expect(melian(repo, ["review", "#7"], env).status).toBe(1);
+		expect(melian(repo, ["compare", "#7"], env).stdout).toContain("Skipped review bodies: 1.");
+
+		const human = melian(repo, ["compare", "#7", "--from", "github:octocat"], env);
+
+		expect(human.stdout).toContain("Imported 1 from github:octocat, skipping 1 review body without a thread.");
+		expect(human.stdout).toContain("Skipped review bodies: 2.");
+	});
+
 	it("passes the repository, pull request and author to the thread importer", async () => {
 		const { repo, env } = pullRequest();
 		expect(melian(repo, ["review", "#7"], env).status).toBe(1);
