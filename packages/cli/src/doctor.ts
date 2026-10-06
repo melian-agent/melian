@@ -248,18 +248,51 @@ async function trustCheck(
 	} catch {
 		return { name, state: "warn", detail: `${details.join("; ")}; no GitHub origin; viewer permission is unknown` };
 	}
-	const provider = createGitHubProvider({ ...repository, token, ...(fetch === undefined ? {} : { fetch }) });
-	const login = await provider.login();
-	const permission = login === undefined ? undefined : await provider.permission(login);
-	details.push(`viewer ${visibleText(login ?? "unknown")} (${permission ?? "unknown"})`);
-	if (permission === undefined) {
-		state = "warn";
-		details.push("cannot establish whether melian publish can set a status here");
-	} else if (!["admin", "maintain", "write"].includes(permission)) {
-		state = "warn";
-		details.push("melian publish cannot set a status here");
+	const controller = new AbortController();
+	const transport = fetch ?? globalThis.fetch;
+	const provider = createGitHubProvider({
+		...repository,
+		token,
+		fetch: (input, init) =>
+			transport(input, {
+				...init,
+				signal: init?.signal == null ? controller.signal : AbortSignal.any([init.signal, controller.signal]),
+			}),
+	});
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const deadline = new Promise<never>((_, reject) => {
+		timer = setTimeout(() => {
+			controller.abort();
+			reject(new Error("GitHub read timed out"));
+		}, 10_000);
+	});
+	try {
+		const { login, permission } = await Promise.race([
+			(async () => {
+				const login = await provider.login();
+				const permission = login === undefined ? undefined : await provider.permission(login);
+				return { login, permission };
+			})(),
+			deadline,
+		]);
+		details.push(`viewer ${visibleText(login ?? "unknown")} (${permission ?? "unknown"})`);
+		if (permission === undefined) {
+			state = "warn";
+			details.push("cannot establish whether melian publish can set a status here");
+		} else if (!["admin", "maintain", "write"].includes(permission)) {
+			state = "warn";
+			details.push("melian publish cannot set a status here");
+		}
+		return { name, state, detail: details.join("; ") };
+	} catch {
+		return {
+			name,
+			state: "warn",
+			detail: `${details.join("; ")}; GitHub read timed out after 10 seconds; viewer permission is unknown`,
+		};
+	} finally {
+		clearTimeout(timer);
 	}
-	return { name, state, detail: details.join("; ") };
 }
 
 // Names credentials by provider and source, never by value.

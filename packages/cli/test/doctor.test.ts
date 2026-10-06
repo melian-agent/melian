@@ -23,6 +23,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	vi.useRealTimers();
 	vi.unstubAllEnvs();
 	rmSync(repo, { recursive: true, force: true });
 	rmSync(home, { recursive: true, force: true });
@@ -42,7 +43,7 @@ function github() {
 	);
 }
 
-async function run(state: ReturnType<typeof github>) {
+async function run(state: ReturnType<typeof github>, fetch: typeof globalThis.fetch = fakeGitHub(state)) {
 	let stdout = "";
 	const status = await doctor(
 		{
@@ -59,7 +60,7 @@ async function run(state: ReturnType<typeof github>) {
 			stderr: () => {},
 			color: false,
 		},
-		{ fetch: fakeGitHub(state) },
+		{ fetch },
 	);
 	return { status, stdout, trust: stdout.split("\n").find((line) => / {2}trust\s+/.test(line)) };
 }
@@ -111,6 +112,36 @@ describe("doctor writer trust", () => {
 		expect(result.trust).toMatch(/^warn /);
 		expect(result.trust).toContain("(unknown); cannot establish whether melian publish can set a status here");
 	});
+
+	it.each(["viewer", "permission"])(
+		"warns instead of hanging on a %s read",
+		async (read) => {
+			const state = github();
+			const transport = fakeGitHub(state);
+			const started = Promise.withResolvers<void>();
+			let signal: AbortSignal | null | undefined;
+			const fetch: typeof globalThis.fetch = (input, init) => {
+				const path = new URL(String(input)).pathname;
+				if (path === (read === "viewer" ? "/user" : `/repos/test/repo/collaborators/${state.login}/permission`)) {
+					signal = init?.signal;
+					started.resolve();
+					return new Promise<Response>(() => {});
+				}
+				return transport(input, init);
+			};
+			vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+			const pending = run(state, fetch);
+			await started.promise;
+			await vi.advanceTimersByTimeAsync(10_000);
+			vi.useRealTimers();
+			const result = await pending;
+			expect(result.status).toBe(0);
+			expect(result.trust).toMatch(/^warn /);
+			expect(result.trust).toContain("GitHub read timed out after 10 seconds; viewer permission is unknown");
+			expect(signal?.aborted).toBe(true);
+		},
+		30_000,
+	);
 
 	it("prefers origin/main over a stale local main", async () => {
 		gitIn(repo, "symbolic-ref", "--delete", "refs/remotes/origin/HEAD");

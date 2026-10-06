@@ -17,3 +17,5 @@ The first status write may repeat after a crash before its record commit. This i
 Version-5 published-document coverage now checks trusted-writer defaults on the revision and latest ledger round after reopening SQLite. It checks that no identity is invented and that statuses, replies and earlier one-line history survive. The migrated shape is written and reopened again. Existing version-5 reply migration coverage remains.
 
 Doctor now warns that the base may be stale when only local main is available. A regression proves origin/main wins over a different local policy. A second probe reproduced the old ok state for the local-main fallback and now requires a warning with exit 0. Test setup must delete a symbolic ref with git symbolic-ref --delete; git update-ref -d deletes its referent.
+
+Doctor’s hanging-viewer probe timed out on the original code. The full identity-and-permission read now has a ten-second deadline and an abort signal. Hanging viewer and permission transports produce a warning and exit 0. The deadline covers response parsing as well as receiving headers.
