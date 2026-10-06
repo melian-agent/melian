@@ -882,3 +882,5 @@ The scheduled sweep for the Actions host is a deferred decision: it is designed 
 The graph cache is built. Its atomic entries hash each artifact and preserve upstream restore metadata beside facts, insights, and the receipt. Corruption is a cache miss. Enola receipts carry timestamps; fact identity, rather than receipt byte identity, survives a recomputation.
 
 The coverage artifact classes and cache storage are built. Review coverage distinguishes delivered reads, search matches and untouched files; it records intersected hunks and supplied declaration ranges. Static Enola stores test coverage as unavailable pending container isolation. A missing graph-coverage artifact does not imply complete coverage. Search remains unrestricted.
+
+Melian’s committed Enola constraint forbids core importing the pipeline by package name, subpath or resolved relative path. The scratch proof caught all three forms. A directory-only selector missed the workspace alias, so named targets accompany the path rule. The broader harness-free test remains.

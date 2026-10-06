@@ -286,3 +286,5 @@ Count each repository-resolved import or re-export declaration and literal dynam
 ### Coverage storage and transcripts
 
 `CoverageCache` writes the three coverage files atomically beside a verified graph. Their tree and version must match; unreadable artifacts are absent. `ReviewTranscript` reads all durable history pages, including reads before compaction. It matches successful tool results to calls and counts only numbered lines inside this review’s boundary. A requested range, a budget refusal and “No matches” confer no coverage. Search matches count as “searched only”. Static Enola records the unavailable test-coverage ID, and the graph-coverage ID when measured for that input. Lens integration follows with the callers seam.
+
+Melian’s layering policy lives in `enola/constraints/layers.yaml`. Imports ride dependency facts; the source selector opts into that kind. Workspace aliases require upstream’s `to_name` list, because directory grounding cannot resolve them. Keep the path rule too. Prove selectors with a breach as well as linting their member counts. A skipped-target advisory is not proof of compliance.

@@ -4,9 +4,19 @@
 
 Enola v0.4.27 is not good enough to budget search on Melian. It matches **825/5,723 call pairs (14.4%)** and **207/407 import edges (50.9%)**. Production files alone reach 825/1,643 calls (50.2%). Five files with calls reach 100%; 21 files have no repository call pairs and are n/a. Search stays unrestricted over every file.
 
-The exit criterion is met: per-file coverage is defined and measured against the same compiler project as static.tsc, with every unmatched pair and import named below. Matching a graph edge does not prove behaviour. The layering constraint and caller plumbing are separate deliverables.
+The exit criterion is met: per-file coverage is defined and measured against the same compiler project as static.tsc, with every unmatched pair and import named below. Matching a graph edge does not prove behaviour. The layering constraint is proved below. Caller plumbing remains a separate deliverable.
 
 Measured commit: `ad303b56fac7e40b13a1a7e51140fa05a9a4b570`, origin/main at the branch point. Tree: `06dd48e8c19ca89cc03589b772c7ee39a5e6b1b9`. Ground truth includes 122 files, including 47 test files. Root tsconfig includes source and tests directly; it has no project references. Enola scans 962 files, identifies 67 test files, and skips 68. Its extra files are outside the compiler denominator. External calls (13,019) and unresolved calls (67) are counted separately.
+
+## Measurement
+
+| Unit | Matched | Compiler units | Coverage | Named gaps |
+|---|---:|---:|---:|---:|
+| Call pairs, all files | 825 | 5,723 | 14.4% | 4,898 |
+| Call pairs, production | 825 | 1,643 | 50.2% | 818 |
+| Import edges, all files | 207 | 407 | 50.9% | 200 |
+
+The [per-file table](#per-file-table) and the gap list retain every denominator and missing unit. The exit criterion measures coverage; it does not require a passing coverage threshold.
 
 ## Definition and method
 
@@ -5601,3 +5611,11 @@ The first full gate ran beside the measurement and hit ten five-second timeouts.
 - Line 15, call, test file excluded: <anonymous@14:72>@14:72 -> packages/pipeline/src/untrusted.ts:13:1 reviewNonce (reviewNonce)
 - Line 17, call, test file excluded: <anonymous@14:72>@14:72 -> packages/pipeline/src/untrusted.ts:23:1 quoteUntrusted (quoteUntrusted)
 - Line 1, import, test file excluded: import @melian-agent/pipeline -> packages/pipeline/src/index.ts
+
+## Layering proof
+
+The directory-only core-to-pipeline rule failed to catch a scratch `@melian-agent/pipeline` import. Enola emitted a skipped-target advisory in insights and no SARIF findings; check exited 0. Alias globs also failed because grounding requires a measured file. The final policy uses dependency facts as the source, named package targets for workspace imports, and a directory target for resolved paths.
+
+`constraints init` found no recipe whose directories bound. `constraints lint` accepted the committed file and resolved 41 core-import members and 514 pipeline members. On the ad303b5 tree with the policy, clean check exited 0 with no results. A tracked scratch file imported `@melian-agent/pipeline`, `@melian-agent/pipeline/testing` and `../../pipeline/src/static.ts`. Check exited 1 and reported three errors at lines 1, 2 and 3 under the package and path rules. Providers and history were disabled; HOME was temporary.
+
+The harness-free test remains broader and deterministic. It forbids Pi and every other Melian package, including import forms the extractor may miss. Neither guard makes the other redundant.
