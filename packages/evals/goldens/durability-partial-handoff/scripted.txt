@@ -1,6 +1,7 @@
 packages/core/src/log-tail.ts
 
-  P2  line 7  dropped-guard  (introduced, new, unresolved)
+  P2  line 7  dropped-guard  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   The rename deleted the bound that kept the slice start at 0 or above.
     What: The rename deleted the bound that kept the slice start at 0 or above.
     Why here: The bound held the doc comment's promise that a log shorter than count lines comes back whole, and nothing in log-tail.ts holds it now.
@@ -12,7 +13,8 @@ packages/core/src/log-tail.ts
           return lines.slice(lines.length - count);
     What to do: Restore Math.max(0, lines.length - count).
 
-  P2  line 7  wrong-result  (introduced, new, unresolved)
+  P2  line 7  wrong-result  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   tail returns fewer lines than the log holds when the log is shorter than count.
     What: tail returns fewer lines than the log holds when the log is shorter than count.
     Why here: The change dropped Math.max(0, ...), so lines.length - count goes negative and slice counts from the end.
@@ -27,7 +29,8 @@ packages/core/src/log-tail.ts
 
 packages/pipeline/src/lens-run.ts
 
-  P1  line 7  stored-shape  (introduced, new, unresolved)
+  P1  line 7  stored-shape  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   The lens task's result changes shape while the task keeps version 1.
     What: The lens task's result changes shape while the task keeps version 1.
     Why here: Pi Durable never migrates a finished task's result, and a repeat review attaches to the lens task an older Melian finished, so failedLenses reads the old object as an array.

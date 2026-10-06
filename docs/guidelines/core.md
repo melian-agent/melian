@@ -16,9 +16,11 @@ Behaviour belongs to the object it is about, as [AGENTS.md](../../AGENTS.md) say
 | --- | --- | --- |
 | `Finding` | `Finding.create(input)` from a producer's values, `Finding.parse(input)` validating anything from outside, `Finding.from(stored)` trusting what Melian stored, `Finding.upgrade(stored)` migrating an older stored shape | `id`, `lines()`, `site()`, `overlaps(other)`, `place(lines)`, `causeRank()`, `compareStrength(other)`, `compareReading(other)`, `claims()`, `mergeClaims(members)`, `report()`, `reportIds()`, `resolve(config)`, `resolved(config)`, `render(rendering)`, `toJSON()` |
 | `FindingsLog` | `FindingsLog.of(findings)` | `findings()`, `render(rendering)`, `files(rendering)`, `summary()`, `renderJson()`, `toJSON()`, the SARIF log |
-| `Defect` | `Defect.merge(keeper, findings, context, dismissed)` and `Defect.of(speaker, dismissed)` in adjudication, `verdict.defect(id)` from a verdict, both reading members by `Defect.of`'s rule | `speaker`, `members`, the reports merged into the speaker, and `dismiss(only?)`, the report IDs a dismissal records |
+| `Defect` | `Defect.merge(keeper, findings, context, dismissed)` and `Defect.of(speaker, dismissed)` in adjudication, `verdict.defect(id)` from a verdict, both reading members by `Defect.of`'s rule | `speaker`, `members`, the reports merged into the speaker, `dismiss(only?)`, the report IDs a dismissal records, and `lensOnly()`, `refuted()`, `unverified()` |
+| `VerificationState` | `VerificationState.from(speaker)` | `speaker`, `claims`, one per lens sighting with its original proof and judgement, and `toJSON()` |
+| `Merge` | `new Merge(findings, config)` | `defects()`, the shared grouping for verification and adjudication |
 | `Manifest` | `new Manifest(checks, records, allowSkip)` | `record(check)`, `allowSkip(name)`, `records()`, `skippable()`, `missing()`, `notRun()`, `ran()`, `complete()` |
-| `Verdict` | `new Adjudication(input).adjudicate()`, `Verdict.from(stored)`, `Verdict.upgrade(stored)` | `attention()`, `all()`, `defect(id)`, `publication(previous, lines, revision)`, `reviewStatus()`, `fingerprint()`, `legacyFingerprint()`, `render(rendering)`, `renderJson()`, `toJSON()` |
+| `Verdict` | `new Adjudication(input).adjudicate()`, `Verdict.from(stored)`, `Verdict.upgrade(stored)` | `attention()`, `all()`, `verificationCounts()`, `verificationSummary()`, `defect(id)`, `publication(previous, lines, revision)`, `reviewStatus()`, `fingerprint()`, `legacyFingerprint()`, `render(rendering)`, `renderJson()`, `toJSON()` |
 | `Lens` | `Lens.load(repoRoot, source, paths)`, `Lens.from(fields)`; `Lens.select(lenses, config, paths)` picks a review's lenses | `level(level)`, `declaredLevels()`, `runnableLevels(band, routed)`, `unrunnable(band, unrouted)`, `triageQuestion(band, levels)`, `triage(band, levels, decision?)`, `escalation(level, band)`, `renderInstructions(standards, level, neighbours, quote)`, `oversizedHandoffs(neighbours)`, `inversions()`, `toJSON()` |
 | `Revision` | `Revision.from({ head, base, files })`, deriving `policyFiles` unless given | `paths()`, `diffLines()`, `trigger(path, startLine, endLine)`, `changeOverlap(location, findingFile?)`, `causeOverlap(site, findingFile?)`, `classifyCause(location, evidence?)`, `toJSON()` |
 | `Changeset` | `Changeset.resolve(repoRoot, range, options)` from git, `Changeset.from(fields)` from a task's input | `withId(id)`, `toJSON()` |
@@ -157,7 +159,22 @@ A lens is a directory holding `LENS.md`: YAML front matter between `---` lines, 
 
 A lens defined in a folder applies only beneath it. Problem: `services/pay/.melian/lenses/security/` extends the root's `security` and inherits its `paths: ["**"]`, which would make the payments variant review the whole repository. Solution: every lens carries a `scope`, the directory that defined it, and a lens covers only files beneath it. The reverse holds too: where a nearer folder defines a lens of the same name, the farther one no longer covers that folder, so the root's `security` does not review `services/pay/` once payments has its own. That holds even when no changed file lies beneath `services/pay/`: `Lens.load` records on each lens, as `nearer`, every folder in the whole source that defines its name, and `Lens.select` adds those to the coverage. Built only from the lenses the changed paths reached, the root's lens would accept a finding in `services/pay/` whenever the change touched nothing there. `nearer` is not part of `version`. `Lens.select` returns each selected lens with its `coverage` and the changed files it reviews, and `lensCovers` answers for any path, so the pipeline can refuse a finding outside it. A coverage's `moved` paths, the head paths of files a review moved out of it, are covered whatever its scope and paths say. Two variants of one name can then run on one changeset, each over its own folder; `version`, a hash of everything that shapes the lens, tells their findings apart.
 
-`lens.renderInstructions(standards, level, neighbours, quote)` builds a lens conversation's instructions at a level, `careful` by default: the body, then a "Neighbouring lenses" section listing the `handoffs` of each lens in `neighbours`, then a fixed block listing every rule as `` `id`: description ``, the severities the lens may report, the level's budgets and reading scope, then what a failure scenario and evidence must be, then the repository's standards unless the lens opts out, introduced as context whose breaches the `conventions` lens reports when `neighbours` holds it over every file, and otherwise as rules whose breach is a finding for this lens. Problem: the rules lived only in front matter, so the model guessed rule IDs; in the first live run three of the four lenses that reported anything opened with a rule the hook refused, a wasted round each. Solution: the model reads the exact IDs. The block on failure scenarios and evidence is Melian's, not the lens's, so a repository lens that never mentions them is still told what `report_finding` refuses without them: a scenario naming values and the wrong result, `cause` and `context` locations, `revision: "base"` for deleted lines and `read_file` with `revision: "base"` to number them, that `report_finding` quotes back each location's first line so a wrong number can be corrected by reporting again, and that only a `cause` location overlapping the change makes a finding outside it count.
+`lens.renderInstructions(standards, level, neighbours, quote)` builds a lens conversation's
+instructions at a level, `careful` by default: the body, then a "Neighbouring lenses" section
+listing the `handoffs` of each lens in `neighbours`, then a fixed block listing every rule as ``
+`id`: description ``, the severities the lens may report, the level's budgets and reading scope,
+then what a failure scenario and evidence must be, then the repository's standards unless the lens
+opts out, introduced as context whose breaches the `conventions` lens reports when `neighbours`
+holds it over every file, and otherwise as rules whose breach is a finding for this lens. Problem:
+the rules lived only in front matter, so the model guessed rule IDs; in the first live run three of
+the four lenses that reported anything opened with a rule the hook refused, a wasted round each.
+Solution: the model reads the exact IDs. The block on failure scenarios and evidence is Melian's,
+not the lens's, so a repository lens that never mentions them is still told what `report_finding`
+refuses without them: a scenario naming values and the wrong result, `cause` and `context`
+locations, `revision: "base"` for deleted lines and `read_file` with `revision: "base"` to number
+them, that `report_finding` quotes back each location's first line so a wrong number can be
+corrected by reporting again, and that only a `cause` location overlapping the change makes a
+finding outside it count.
 
 Each `LensNeighbour` in `neighbours` is another lens the review selected and the files it covers among this lens's own: `every`, or a list. Problem: a hand-off that rendered only when the neighbour covered every file this lens reviews never rendered for a neighbour with narrower paths. Example: Melian's `durability` reviews three source folders and `correctness` reviews every file a pull request changes, documents included, so `correctness` restated `durability`'s defects in nearly every review. Solution: an entry for a neighbour over some of the files says `in these files only` and lists them, and the section tells the lens to report the neighbour's defects under its own rules in every other file. An entry for a neighbour over every file reads as it did before per-file hand-offs, so a review whose neighbours all cover every file renders the same instructions. A neighbour with an empty list renders nothing, and so does one whose list passes `lensLimits.handoffFiles`, 40 files, or `lensLimits.handoffBytes`, 4 KiB: `lens.oversizedHandoffs(neighbours)` names those neighbours, so the pipeline can say on the lens's check record that the lens kept their defects. The files come from the change, so `quote` wraps the list, one `visibleText` path per line, and the pipeline passes a quote that puts it inside the review's boundary for the change's data. `quote` is required whenever `neighbours` is given. The pipeline computes each list; core only renders it, and a lens's version never includes its neighbours.
 
@@ -171,7 +188,10 @@ Triage chooses a lens's level through its own methods. `lens.runnableLevels(band
 
 `LevelBand`, in `src/triage.ts`, is the policy's floor and ceiling. `LevelBand.of(settings)` builds one from a path's `lenses.<name>.level`, with `quick` to `deep` for an end it leaves out. `LevelBand.across(bands)` combines the bands of every file a lens reviews: the highest floor and the lowest ceiling, the floor winning where they cross. Problem: a path that sets no floor could be read as no opinion. Example: `docs/melian.yaml` sets `floor: skip` for `tests`, and the change also touches `src/`, which sets nothing. Taking the lowest floor would let triage skip `tests` on `src/` code. Solution: an end left out is the default's, so the band across both files keeps `quick`. `EscalationRule` holds `triage.escalateAt`. `rule.trigger(run)` says why a run at `quick` should run again: a finding at or above the severity, or a budget's end before it reported anything. It never triggers for a run above `quick`. `rule.describe(trigger, from, to)` is the note its check record carries.
 
-A problem with a level is a `LensError` whose message names the lens and the level, with `lens`, `level`, and `field` set: `unknownLevel` for a name other than `quick`, `careful`, and `deep`, `unknownField` and `invalidValue` inside a level, and `missingField` for a level with no tier anywhere.
+A problem with a level is a `LensError` whose message names the lens and the level, with `lens`,
+`level`, and `field` set: `unknownLevel` for a name other than `quick`, `careful`, and `deep`,
+`unknownField` and `invalidValue` inside a level, and `missingField` for a level with no tier
+anywhere.
 
 ## Decisions
 
@@ -201,7 +221,9 @@ The plan answers:
 - `lineage(tier)`, the `CheckLineage` of a check on the tier's first model.
 - `judge(name, level, ran?, scope?)`, the refusal and lineage of one lens check, of the variant a folder's `scope` names, on the model it finished on. A lens a preference file moved is judged under its committed tier's policy.
 - `mark(records, ranOn)`, the lens records with their lineage added, and `failed` where a lens finished on a model its policy refuses.
-- `providers()`, the providers the review's lenses may call at any level they declare, since triage may choose any of them and escalation may move a lens to the next, so a credential only a `quick` or `deep` level needs is unlocked too.
+- `verifierRoute(finder)`, credentialed models ordered across families; an unrouted tier uses heavy, medium, then light routes. A refused or uncredentialed explicit verifier tier returns no route and keeps its reason and lineage.
+- `verifierLineage(model)`, lineage for the judge that finished, including lens-tier fallback.
+- `providers()`, the providers verification and the review's lenses may call at any level they declare. Triage may choose any level, and escalation may move a lens to the next. A credential needed only at `quick` or `deep` is unlocked too.
 - `warnings()`, `lines()` for `melian doctor`, and `summary()` for the CLI's standard error, each line escaped with `visibleText`.
 - `toJSON()`, which a verdict's provenance stores and `ReviewPlan.from` reads.
 
@@ -209,6 +231,7 @@ Problem: a warning that counted every level's tier warned about `medium` for eve
 
 `loadSecrets(repoRoot, user)` reads `melian.secrets.yaml` beside the root `melian.yaml` and the user-level secrets file, and returns their `NamedCredential`s, per-clone first, and warnings for a file others can read. It resolves nothing: the pipeline reads a variable or runs a command when a review needs the value. A syntax error in a secrets file names only its YAML error code, line, and column, and keeps no cause. Problem: the YAML library's diagnostic quotes the offending line, so a malformed line holding a literal key reached the review's standard error and doctor's output. Solution: `parseYaml` with `redact` reports the position and nothing of the text. The same holds for every error a secrets file can raise: an unknown key, a reserved key, a wrong type, a missing field, and the loader's own refusals name a line and column, never a key or a value, and carry no `key`. Problem: the shared schema check quoted an unknown key's path, so a line missing its colon, `key sk-...`, put the secret into the error as a key. Solution: a redacted validation that locates the node in the document instead. It asks git case-insensitively, with the `:(icase)` pathspec, whether it tracks the per-clone file. It throws `ConfigError`. `tracked` is for a per-clone file git tracks under any case of its name. `cloneCommand` is for a command source in the per-clone file, which holds only `key` and `env` sources. `userFileInRepository` is for a command source in a user-level file whose directory is a symlink or whose real path lies inside the repository under review. `notUserOwned` is for a command source in a user-level file another user owns, with any permission for group or others, or in a directory others can write without the sticky bit. `symlink` is for a per-clone file that is a symlink. It throws the error too, as `loadConfig` does, for a file it cannot read or parse. It opens each file once, the per-clone one with `O_NOFOLLOW`, and checks owner, mode, type, and size through that handle before reading from it. Problem: a check on the path and a read of the path could see two files, if another user swapped one in between. Solution: what is checked is what is read. Problem: any file in the working tree may be a head's, and no check on it holds everywhere. Example: a patch applied under umask 077 lands as the user's own file, mode 600, and `.gitignore` already ignores `melian.secrets.yaml`, so ownership, mode, and ignore checks all pass. Solution: a command runs only from the user-level file, outside every repository, and the per-clone file is refused whole when git tracks it, which `melian doctor` also fails on.
 
+The plan stores each model's optional family. It derives that family from the catalogue name after removing a vendor prefix and parenthesised qualifier, then taking the first word. Another family comes first in each candidate's verifier route. Doctor prints those families and warns on fallback or same-family verification. A library caller without a plan uses config.models.verifier or its finder route.
 A named credential for a provider that takes only an OAuth login is used as a bearer token, from any supported source. Melian reads its JWT `exp` claim without checking the signature. A numeric claim at most 30 days ahead supplies the expiry. A token without a credible expiry gets a rolling one-hour lease on every read. Melian never refreshes it. A token expiring within seven minutes reads as absent, so the next named credential applies before Pi's store: pi-ai would refresh within five minutes, and two more cover the gap before use. A selected command returning an unusable bearer fails the review before durable state is written, even when Pi has a usable login. The error names the credential and asks for refresh through the tool that owns it. Doctor runs no command. Refresh it with the tool that owns it, then review again. Providers accepting API keys still receive a key, even when they also accept OAuth.
 
 ## Findings
@@ -224,7 +247,22 @@ A `Finding` is a SARIF 2.1.0 `result`. SARIF forbids unknown keys on a result, s
 - Never store `undefined` in a finding. JSON drops it, so a round trip would change the value. `Finding.parse`, and so `Finding.create`, returns a copy with every `undefined`-valued key removed at any depth, so a nested `trigger.snippet: undefined` neither fails as a `TypeError` in storage nor makes the stored copy differ from the value in hand.
 - `reportedBy` lists every producer that reported the finding at one head, when the pipeline merged several sightings of its ID. `source` names the one whose record won.
 - `dismissal` is who dismissed the finding, why, and when, present while its status is `dismissed`; `pastDismissals` lists the dismissals that no longer stand, each with the `reopenedRevision` whose changed trigger reopened it or the `replacedAt` time a later dismissal replaced it. Both come from the pipeline's lifecycle record, never from a producer. `dismissalReason` trims a reason and refuses one that is blank or over `maxDismissalReasonLength`, 1,000 characters, with `FindingError` `invalidDismissal`: the reason reaches a pull request thread, and a bound keeps a pasted log out of it.
-- `trigger` names the hunk that caused the finding by its `file` and `index`, as a `Hunk` names itself, rather than copying its line ranges. It is optional: a pre-existing finding has no triggering hunk. Its optional `snippet` is the changed code as the producer saw it, and its optional `hash` is `snippetHash` of that code whole: the sha256 of its `normaliseSnippet`. An `affected` finding can be proved by several hunks, so its trigger names the first by file then index, its snippet is that hunk's, and it has no `hash`; its `proof` lists every proving hunk as a `ProvingHunk`, `{ file, hash }`, the hash being `snippetHash` of the hunk's added and removed lines, each keeping its `+` or `-`. A proving hunk names no index, so one that moves within its file is the same proof. `Finding.create` and `Finding.parse` hold each proof file to the canonical form, as they do the trigger's own. The pipeline reopens a dismissed finding when the code changes: for an `introduced` finding it compares `hash`, or the hash of the normalised `snippet` for a trigger without one; for an `affected` one it checks the proof against the new revision's hunks, as the pipeline guideline describes. A lens finding stores its trigger's snippet cut, so only the hash sees the whole hunk. A trigger stored before the cut holds the whole hunk and no hash; hashing its snippet gives what a new trigger of the same code stores as `hash`, so its dismissal survives the upgrade.
+- `trigger` names the hunk that caused the finding by its `file` and `index`, as a `Hunk` names
+  itself, rather than copying its line ranges. It is optional: a pre-existing finding has no
+  triggering hunk. Its optional `snippet` is the changed code as the producer saw it, and its
+  optional `hash` is `snippetHash` of that code whole: the sha256 of its `normaliseSnippet`. An
+  `affected` finding can be proved by several hunks, so its trigger names the first by file then
+  index, its snippet is that hunk's, and it has no `hash`; its `proof` lists every proving hunk as a
+  `ProvingHunk`, `{ file, hash }`, the hash being `snippetHash` of the hunk's added and removed
+  lines, each keeping its `+` or `-`. A proving hunk names no index, so one that moves within its
+  file is the same proof. `Finding.create` and `Finding.parse` hold each proof file to the canonical
+  form, as they do the trigger's own. The pipeline reopens a dismissed finding when the code
+  changes: for an `introduced` finding it compares `hash`, or the hash of the normalised `snippet`
+  for a trigger without one; for an `affected` one it checks the proof against the new revision's
+  hunks, as the pipeline guideline describes. A lens finding stores its trigger's snippet cut, so
+  only the hash sees the whole hunk. A trigger stored before the cut holds the whole hunk and no
+  hash; hashing its snippet gives what a new trigger of the same code stores as `hash`, so its
+  dismissal survives the upgrade.
 
 ### Paths and URIs
 
@@ -243,7 +281,19 @@ Problem: a finding's ID hashes its rule and snippet, so if the model supplies th
 
 - The snippet is the head revision's text at the reported lines, read through the revision source with `git show`, never taken from the model. `snippetOccurrence` on that file then gives the occurrence.
 - Each evidence location's snippet is the text at its lines in the revision it names, read the same way and stored beside it as an `EvidenceLocation`: `{ file, startLine, endLine?, role, revision, deleted?, proves?, snippet }`, with `revision` always written. `deleted: true` marks a base location that `Revision.changeOverlap` places on the change, lines a hunk deleted or replaced or a file the change renamed without editing, unless the change only moved the finding's own file, so a renderer can say the change deleted them without seeing the diff. `proves: true` marks a `cause` location that `Revision.causeOverlap` places on the change, the one that makes a finding outside the diff `affected`, so a merge that must cut evidence knows which location to keep. Neither flag enters the finding's ID. A location spans at most `maxEvidenceLines` (60) lines.
-- Every snippet a lens finding stores, the finding's own, its trigger's, and each evidence location's, is a display copy made by `capSnippet`, which keeps it whole within `maxSnippetBytes` (2 KiB) of UTF-8 and otherwise cuts it at a character boundary and appends ` [cut at 2 KiB]`. Problem: 60 lines bound nothing when one line holds megabytes. Example: a lens cites a generated file's single 3 MB line as ten evidence locations and reports a finding on it; the record nears 40 MB before the commit. Solution: a byte cap on what is stored, never on what identifies. Identity comes from the whole text: `Finding.create` computes the ID from the whole snippet and stores the cut copy, the occurrence is counted for the whole snippet, and a trigger stores the hash of its whole hunk. A cut that fed identity would land at a raw byte offset, so a formatter's reindent would change the ID and reopen a dismissal, and a finding stored whole before the cap would never match its cut successor. The cut copy no longer holds the code its ID came from, so `Finding.parse` skips the ID check for a cut snippet, and `Adjudication.defects` places a cut finding by its lines as well as its snippet.
+- Every snippet a lens finding stores, the finding's own, its trigger's, and each evidence
+  location's, is a display copy made by `capSnippet`, which keeps it whole within `maxSnippetBytes`
+  (2 KiB) of UTF-8 and otherwise cuts it at a character boundary and appends ` [cut at 2 KiB]`.
+  Problem: 60 lines bound nothing when one line holds megabytes. Example: a lens cites a generated
+  file's single 3 MB line as ten evidence locations and reports a finding on it; the record nears 40
+  MB before the commit. Solution: a byte cap on what is stored, never on what identifies. Identity
+  comes from the whole text: `Finding.create` computes the ID from the whole snippet and stores the
+  cut copy, the occurrence is counted for the whole snippet, and a trigger stores the hash of its
+  whole hunk. A cut that fed identity would land at a raw byte offset, so a formatter's reindent
+  would change the ID and reopen a dismissal, and a finding stored whole before the cap would never
+  match its cut successor. The cut copy no longer holds the code its ID came from, so
+  `Finding.parse` skips the ID check for a cut snippet, and `Adjudication.defects` places a cut
+  finding by its lines as well as its snippet.
 - Neither the failure scenario nor the evidence enters `findingId`, so rewording one or citing other lines keeps the finding's ID and any dismissal of it.
 - `rule` must be one of the rules the lens declares in its front matter's `rules` list; the hook rejects any other.
 - `source` is the lens's identity and version.
@@ -259,7 +309,15 @@ Evidence was once a single location, `{ file, startLine, endLine?, snippet }`, w
 
 Publication fingerprints a verdict by its JSON to tell whether a head's verdict was already posted, and the migrated verdict's JSON differs from what was posted. Problem: publishing again at a head published before the upgrade saw a new verdict and posted a second review of the same findings. Solution: the publish task also accepts `verdict.legacyFingerprint()`, the fingerprint it had in the old shape, which exists only while no finding carries a failure scenario, other claims, or more than its one migrated `cause`. The old record names no revision, so the publish task accepts it only when no other revision of the head has a verdict with the same fingerprint; [the pipeline guideline](pipeline.md#publishing) says why.
 
-The upgrade runs one way. Problem: Pi Durable migrates a document on read and stores the new version on its next write, and it refuses to read a stored document whose version is newer than its definition. Example: a maintainer upgrades, reviews a pull request, which writes the findings document at version 5, then reinstalls the release before failure scenarios; that release's definition is version 4, so every read of the changeset fails with `has newer version 5 than 4`, and it can neither review nor publish the pull request again. Solution: none in code. Roll back only with the changeset storage written before the upgrade, or delete the storage of each changeset reviewed since, under `.git/melian/`, and review those pull requests again; the dismissals they held are lost.
+The upgrade runs one way. Problem: Pi Durable migrates a document on read and stores the new version
+on its next write, and it refuses to read a stored document whose version is newer than its
+definition. Example: a maintainer upgrades, reviews a pull request, which writes the findings
+document at version 5, then reinstalls the release before failure scenarios; that release's
+definition is version 4, so every read of the changeset fails with `has newer version 5 than 4`, and
+it can neither review nor publish the pull request again. Solution: none in code. Roll back only
+with the changeset storage written before the upgrade, or delete the storage of each changeset
+reviewed since, under `.git/melian/`, and review those pull requests again; the dismissals they held
+are lost.
 
 ### Level mapping
 
@@ -267,7 +325,12 @@ The upgrade runs one way. Problem: Pi Durable migrates a document on read and st
 
 ### Stable IDs
 
-`findingId` hashes the repository-relative path, the rule ID, the snippet, and a discriminator with sha256, and keeps the first 16 hex characters. Each field enters the hash as its length in UTF-16 code units, a colon, and the field, so no character in one field, NUL included, can make two different findings hash alike: joining by NUL let `a\0b` and `b` collide with `a` and `b\0b`. Before hashing it normalises the snippet with `normaliseSnippet`, described below. Line numbers are not an input.
+`findingId` hashes the repository-relative path, the rule ID, the snippet, and a discriminator with
+sha256, and keeps the first 16 hex characters. Each field enters the hash as its length in UTF-16
+code units, a colon, and the field, so no character in one field, NUL included, can make two
+different findings hash alike: joining by NUL let `a\0b` and `b` collide with `a` and `b\0b`. Before
+hashing it normalises the snippet with `normaliseSnippet`, described below. Line numbers are not an
+input.
 
 Problem: cross-revision diffing and dismissals match findings by ID, so the ID must survive edits that leave the flagged code alone. Example: a commit adds an import at the top of `src/run.ts`, and `eval(input)` moves from line 12 to line 13. A line-keyed ID would call that a new finding and reopen a dismissed one. Solution: hash what the finding is about, not where it sits. Reindenting or rewrapping the snippet keeps the ID; changing one token, such as `eval(input)` to `eval(body)`, changes it, and so does moving the code to another file.
 
@@ -304,9 +367,19 @@ The cost is the other direction: a renamed parameter that breaks a caller is `pr
 
 Everything the renderer prints is untrusted. A lens writes finding text after reading the change under review, which anyone opening a pull request controls, and that author also chooses the file paths. Example: a file named `src/run.ts` followed by ESC `[2J` clears the reviewer's screen, a newline in a path or rule ID forges a second header, and a right-to-left override makes `gnp.ts` read as `ts.png`. The terminal renderer therefore prints every control character, C1 control, line or paragraph separator, and bidi control in every string, paths and rule IDs included, as a visible `\uXXXX`, with colour on or off. Prose keeps its newlines as indented continuation lines, so a multi-line explanation stays inside its block; a newline anywhere else is escaped. Every continuation line sits deeper than any header it could imitate. A message's first line shares a finding header's two-space indent, so its later lines take four spaces and a `| ` marker: at two spaces, a message line reading `P0  line 1  no-eval` passed for a finding of its own. Any new renderer for a terminal does the same. `visibleText` is that escaping, exported so the pipeline applies it to every path it puts in a prompt.
 
+### Verification
+
+`verificationSchema` holds verdict, reason, optional correction, executor, model and version. It follows confidence in finding properties and also belongs to each member claim. The LLM executor writes no confidence. `verificationQuestions` and `verificationQuestionSet` type the code, guard, base and verdict questions. The shared budget is 300,000 tokens and 60 calls per candidate.
+
+`VerificationState.from(speaker)` keeps one original claim per lens sighting. A merged speaker shows the strongest verdict, confirmed over plausible over refuted. When the speaker imports another claim's proof or judgement, its original claim stays in otherClaims. A verifier therefore never judges one sighting through another's evidence or verdict.
+
+`AdjudicationInput.verificationRan` is optional. New reviews set it; old stored inputs omit it. Only new reviews cap unjudged lens-only defects at advisory, and silent stays silent. A partially refuted defect with an unjudged claim stays capped. Deterministic co-reports retain their resolution. Only defects whose lens claims were all refuted leave the resolution groups. The optional refuted group keeps those findings in JSON and in all findings without changing older fingerprints. A dismissal reuses the stored flag and never verifies.
+
+`Finding.render()` names the verdict, or unverified for a lens finding without one. Verified names the model and reason; Correction follows when present. `Verdict.verificationCounts()` counts each lens sighting once, including dismissed and refuted claims. `verificationSummary()` supplies those counts to hosts and the ledger. Refuted findings appear only with the rendering's all option. Model names, reasons and corrections are escaped as other finding text is.
+
 ## Adjudication
 
-Adjudication turns the findings a review collected into what the change requires. It is plain functions over plain values, in `src/adjudication.ts`; the pipeline loads configuration and stores the result.
+Adjudication turns the findings a review collected into what the change requires. It is domain objects over stored values, in `src/adjudication.ts`; the pipeline loads configuration and stores the result.
 
 ### Resolution
 
@@ -334,9 +407,35 @@ With that table, the contracts lens's `broken-caller` speaks for the defect abov
 
 A merge never lowers what blocks. Problem: the speaker kept its own cause. Example: the correctness lens reports `src/cart.ts:10` as a `P0` with no evidence, so `pre-existing`, and the contracts lens reports it as a `P1` citing the changed signature in `src/price.ts`, so `affected`. The `P0` spoke, stayed `pre-existing`, and resolved to `advisory`; the evidenced blocker vanished. Solution: the speaker takes the highest severity any member reported, with its level to match, and the strongest cause of the members: `introduced` over `affected` over `pre-existing`.
 
-A merge never drops a claim either. Problem: the first fix moved the proving member's evidence and failure scenario onto the speaker and dropped the speaker's own. Example: in the case above, the merged `P0` carried the correctness lens's explanation beside the contracts lens's scenario and evidence, so a verifier would judge one lens's claim against another's proof, and the correctness lens's scenario was gone. Solution: `speaker.mergeClaims(members)`. The speaker keeps its own explanation, failure scenario, and evidence. When another member proves the cause, the most severe such member adds its `cause` locations to the speaker's evidence, ten locations in all, those marked `proves` first; if the speaker already cites ten, the first of those takes the speaker's last place, so the merged cause never lacks its proof. Problem: they once went in the order the lens listed them. Example: the correctness lens cites ten `context` locations for `src/cart.ts:10`, and the contracts lens cites `cause` at `src/cart.ts:10`, its own unchanged line, then `cause` at the changed `src/price.ts:1`; the cap kept the unchanged line, and the merged finding blocked with no proof in its evidence. Solution: the proving locations go first, and `Finding.mergeClaims` reads `proves` because it cannot see the change. Every other member's failure scenario and evidence, with its ID, rule, and source, stay whole in `properties.otherClaims`, as do claims a member already carries from an earlier merge. The speaker lists each other finding's ID, rule, check, and severity in `properties.alsoReportedAs`, and a report's own `dismissal` when it has one, so two reports dismissed apart and merged later keep their own reasons. The pipeline's merge of sightings by ID, in `readFindings`, applies `Finding.mergeClaims` too. [The merged finding claims decision](../decisions/2026-10-04-merged-finding-claims.md) records the rule.
+A merge never drops a claim either. Problem: the first fix moved the proving member's evidence and
+failure scenario onto the speaker and dropped the speaker's own. Example: in the case above, the
+merged `P0` carried the correctness lens's explanation beside the contracts lens's scenario and
+evidence, so a verifier would judge one lens's claim against another's proof, and the correctness
+lens's scenario was gone. Solution: `speaker.mergeClaims(members)`. The speaker keeps its own
+explanation, failure scenario, and evidence. When another member proves the cause, the most severe
+such member adds its `cause` locations to the speaker's evidence, ten locations in all, those marked
+`proves` first; if the speaker already cites ten, the first of those takes the speaker's last place,
+so the merged cause never lacks its proof. Problem: they once went in the order the lens listed
+them. Example: the correctness lens cites ten `context` locations for `src/cart.ts:10`, and the
+contracts lens cites `cause` at `src/cart.ts:10`, its own unchanged line, then `cause` at the
+changed `src/price.ts:1`; the cap kept the unchanged line, and the merged finding blocked with no
+proof in its evidence. Solution: the proving locations go first, and `Finding.mergeClaims` reads
+`proves` because it cannot see the change. Every other member's failure scenario and evidence, with
+its ID, rule, and source, stay whole in `properties.otherClaims`, as do claims a member already
+carries from an earlier merge. The speaker lists each other finding's ID, rule, check, and severity
+in `properties.alsoReportedAs`, and a report's own `dismissal` when it has one, so two reports
+dismissed apart and merged later keep their own reasons. The pipeline's merge of sightings by ID, in
+`readFindings`, applies `Finding.mergeClaims` too. [The merged finding claims
+decision](../decisions/2026-10-04-merged-finding-claims.md) records the rule.
 
-Only findings with the same lifecycle status merge. Problem: dedupe ignored status, so the speaker's status became the defect's. Example: an author dismisses the security lens's `P3` under `no-eval`, which `ruleAliases` names as the owner, and ESLint reports the same `eval(input)` as a `P0` under its own rule; the merged finding was the dismissed `P3`, and the `P0` blocked nothing. Solution: a dismissed finding never absorbs a live one. The live finding stays live and blocks if it blocks, and lists the dismissed one in `alsoReportedAs` with `dismissed: true`, so the author sees that the defect was answered once under another rule, and a dismissal of the live finding never takes the dismissed report as one of its own.
+Only findings with the same lifecycle status merge. Problem: dedupe ignored status, so the speaker's
+status became the defect's. Example: an author dismisses the security lens's `P3` under `no-eval`,
+which `ruleAliases` names as the owner, and ESLint reports the same `eval(input)` as a `P0` under
+its own rule; the merged finding was the dismissed `P3`, and the `P0` blocked nothing. Solution: a
+dismissed finding never absorbs a live one. The live finding stays live and blocks if it blocks, and
+lists the dismissed one in `alsoReportedAs` with `dismissed: true`, so the author sees that the
+defect was answered once under another rule, and a dismissal of the live finding never takes the
+dismissed report as one of its own.
 
 The merge is general on purpose, and that has a cost. Two distinct defects on one expression, such as a null dereference and an unhandled rejection on the same call, collapse into one finding that lists both rules in `alsoReportedAs`. That is accepted: the live runs showed one defect filed under different rules by different lenses far more often, and a merge that waited for an alias would hide nothing but show every such defect twice. `ruleAliases` is how a repository says two rules are different defects. An entry with `distinct: true` lists rules that never merge with its key, in either direction:
 
@@ -349,7 +448,7 @@ ruleAliases:
 
 ### The verdict
 
-`new Adjudication({ findings, manifest, checks, config, allowSkip }).adjudicate()` dedupes, resolves, and returns a `Verdict`: a `status`, a `blocking` flag, the findings grouped by resolution (`block`, `acknowledge`, `advisory`, `silent`), the `dismissed` findings, `notRun`, every check that was skipped, failed, or ended by its budget, with its reason, and `ran`, every check that ran. A verdict recorded before Melian kept `ran` has none, so a reader treats it as optional, and the stored verdict is never filled in on read: a publication's fingerprint hashes the verdict as stored. `config` is one configuration for every path or a `ConfigFor` function.
+`new Adjudication({ findings, manifest, checks, config, allowSkip, verificationRan }).adjudicate()` dedupes, resolves, and returns a `Verdict`. It carries a `status` and a `blocking` flag. It groups findings by resolution (`block`, `acknowledge`, `advisory`, `silent`) and lists the `dismissed` findings. `notRun` lists every check that was skipped, failed, or ended by its budget, with its reason. `ran` lists every check that ran. A verdict recorded before Melian kept `ran` has none, so a reader treats it as optional, and the stored verdict is never filled in on read: a publication's fingerprint hashes the verdict as stored. `config` is one configuration for every path or a `ConfigFor` function.
 
 The status has three states, because a check that reports green while the review never ran is the incumbent failure the design names:
 
@@ -384,7 +483,19 @@ The manifest is the tier's check list, and every check in it must account for it
 
 Policy includes the static tools' configuration. Problem: the static tools run on the head with the head's own configuration, so the head decides how its own results are judged. Example: a head adds `"noCheck": true` to `tsconfig.json` and tsc reports nothing. Solution: `revision.policyFiles` lists, besides `melian.yaml` and the standards files, every file named `biome.json`, `biome.jsonc`, `tsconfig*.json`, `package.json`, `package-lock.json`, `.eslintrc*`, or `eslint.config.*`, at any depth, and policy-change-review reports each one changed, with one exception. A `package.json` counts only at the root and in a workspace package the root manifest's `workspaces` names, at base or at head, since those are the ones Biome and tsc load. Problem: Melian's own review of the skills branch blocked at `P1` on `skills/pi/package.json`, the manifest of a Pi package that no build reads. Solution: any other `package.json` is an ordinary file; a `workspaces` glob core cannot compile makes every one count again. `policy-change-review.files` adds globs to that list, anchored to their file like any guardrail glob; layering replaces a farther file's list, never the built-in names. A tree of fixtures carries its own `melian.yaml` setting `guardrails.policy-change-review.enabled: false`, as Melian's `packages/evals/goldens/melian.yaml` does: a fixture's `tsconfig.json` configures a test repository, not an analyser that runs here, and layering applies the switch to every path beneath that file and nowhere else, so a root `tsconfig.json` is still reported.
 
-A configuration file never switches off the review of itself. Problem: that `melian.yaml` lies beneath its own switch, so an edit to it, even one that widened what it switches off, raised no notice. Solution: policy-change-review judges a `melian.yaml` under the configuration of the directory above the one holding it, so a change to `packages/evals/goldens/melian.yaml` is reported while a golden's `tsconfig.json` beneath it is not. The root `melian.yaml` has no directory above it, so its own settings judge it, and they may make that review stricter than the defaults, never more lenient. Problem: judged under its own settings alone, a root that switched the guardrail off hid every later edit to itself; judged under the defaults alone, a root that raised the severity to `P1` so that policy edits block saw an edit to itself acknowledged at `P2`. Solution: for the root's own file the guardrail stays on, and its `severity` and `analyserSeverity` are each the stricter of the root's and the default's. What the root sets still governs every path beneath it. On a working-tree review the floor applies after `melian.local.yaml` merges, so the maintainer's file can tighten the review of the root but not loosen it.
+A configuration file never switches off the review of itself. Problem: that `melian.yaml` lies
+beneath its own switch, so an edit to it, even one that widened what it switches off, raised no
+notice. Solution: policy-change-review judges a `melian.yaml` under the configuration of the
+directory above the one holding it, so a change to `packages/evals/goldens/melian.yaml` is reported
+while a golden's `tsconfig.json` beneath it is not. The root `melian.yaml` has no directory above
+it, so its own settings judge it, and they may make that review stricter than the defaults, never
+more lenient. Problem: judged under its own settings alone, a root that switched the guardrail off
+hid every later edit to itself; judged under the defaults alone, a root that raised the severity to
+`P1` so that policy edits block saw an edit to itself acknowledged at `P2`. Solution: for the root's
+own file the guardrail stays on, and its `severity` and `analyserSeverity` are each the stricter of
+the root's and the default's. What the root sets still governs every path beneath it. On a
+working-tree review the floor applies after `melian.local.yaml` merges, so the maintainer's file can
+tighten the review of the root but not loosen it.
 
 A policy-change-review finding on a `melian.yaml` resolves under the configuration that judged it, and never below `acknowledge`. Problem: resolved under the file's own configuration, a root that maps `P2` to `silent` passed a change to itself with no notice, and a nested file that did the same overrode the stricter resolution of the directory above it. All of this holds under the policy source the host chose. A pull-request review reads the base, so a head cannot hide a change to its own root policy. A review of a checked-out range reads the working tree by design, because its author is the maintainer: the head's own `melian.yaml` then also chooses the tier and the resolutions that review runs under.
 
@@ -394,7 +505,15 @@ Each path is judged by its own configuration, so a rule in `services/payments/me
 
 Problem: forbidden-patterns runs a pattern from configuration over lines the head's author wrote, and JavaScript's `RegExp` backtracks. Example: `.*foo.*bar` over a line of 20,000 `foo`s takes cubic time, and a pull request chooses the line. Solution: `src/pattern.ts` compiles a pattern to a Thompson NFA and runs every thread in step, so a line costs at most its length times the program size. It supports literals, `.`, classes, `\d \w \s` and their negations, `\b \B`, `^ $`, groups, alternation, and greedy or lazy quantifiers, and it refuses backreferences and lookaround, which no linear-time engine runs. A rule's `ignoreCase: true` matches as `RegExp`'s `i` flag does: each literal and class folds to its other case before a class negates. An inline `(?i)` is refused with a message pointing at the option. It refuses `\0` followed by a digit, which `RegExp` reads as an octal escape and this engine would read as NUL and a digit. It matches what `RegExp` without flags matches: `.` excludes `\n`, `\r`, U+2028, and U+2029, and `\s` includes them. A differential fuzz against `RegExp` over two million random patterns found only `.` matching line terminators, since fixed. forbidden-patterns strips one trailing `\r` from a line before matching, so `TODO$` matches in a CRLF file. `loadConfig` compiles every pattern when it reads the file, so a refused pattern is a `ConfigError` `invalidValue` naming the file and key rather than a failed review. Repetition counts stop at 100, group nesting at 100 levels, and programs at 2,000 steps, where each member of a character class counts as a step, since the simulation tests members one by one. Without the depth limit, five thousand nested groups threw a `RangeError` from the recursive parser; without counting class members, a 30,000-member class repeated 100 times took hundreds of milliseconds a line. Globs, a guardrail's and a lens's alike, compile to the same engine, so a path cannot make a glob backtrack either: `*` and `?` stay within a segment, `**` crosses segments, and `**/` matches zero or more whole directories. Braces and character classes are not implemented, and the engine would read `*.{ts,js}` literally and match nothing, so a glob holding `{`, `}`, `[`, or `]` is refused until brace expansion exists. From `melian.yaml` it is a `ConfigError` `invalidValue` naming the file and key; from a `LENS.md`, a `LensError` `invalidValue` naming the file and the glob. Globs are not gitignore patterns. A glob matches a whole repository-relative path from its file's directory, so a bare `secrets` matches only the file or directory entry `secrets` beside that `melian.yaml`, never `src/secrets`; write `**/secrets` for anywhere and `secrets/**` for what is inside. A glob ending in `/` would match nothing, so it is refused the same way, with a message that suggests `secrets/**`. `loadConfig` compiles every glob, as it does every pattern, so a glob past the step limit is refused there too, and in `Lens.load` as a `LensError`; `compileGlob` throws `Refused`, an `Error`, rather than a plain object a caller cannot handle.
 
-forbidden-patterns fails closed. Problem: a line over 10,000 characters was skipped with only a note, so a head padded `it.only(` with spaces and the rule never saw it. Solution: every line is scanned whole by the linear engine, up to 4 MiB of added text per file (`guardrailLimits.scanBytes`). What it still cannot scan becomes a finding at the rule's severity with the message "line could not be scanned": the first line past the budget, a binary file that is text but over 4 MiB, or a file whose name is not UTF-8. A binary file that is not UTF-8 holds no line a pattern is about, so it gets a note instead. A file over 4 MiB at head is still scanned, but its findings are identified by line number, since its text cannot be read whole to count occurrences.
+forbidden-patterns fails closed. Problem: a line over 10,000 characters was skipped with only a
+note, so a head padded `it.only(` with spaces and the rule never saw it. Solution: every line is
+scanned whole by the linear engine, up to 4 MiB of added text per file
+(`guardrailLimits.scanBytes`). What it still cannot scan becomes a finding at the rule's severity
+with the message "line could not be scanned": the first line past the budget, a binary file that is
+text but over 4 MiB, or a file whose name is not UTF-8. A binary file that is not UTF-8 holds no
+line a pattern is about, so it gets a note instead. A file over 4 MiB at head is still scanned, but
+its findings are identified by line number, since its text cannot be read whole to count
+occurrences.
 
 A rename can move a file into a rule's scope. Problem: forbidden-patterns scanned only added lines, so `git mv a.ts a.test.ts` brought an old `it.only(` under the focused-test rule unflagged. Solution: for a renamed file, a rule whose `paths` match the new path but not the old one scans every line at head, under the same limits; other rules scan only added lines.
 
@@ -408,7 +527,10 @@ Two guardrails hold Melian's documents to the writing rules in `AGENTS.md`. Each
 
 Static tools report through SARIF. A runner, which lives in the pipeline because it executes repository code, produces one SARIF log per tool per revision; core turns the base and head logs into findings.
 
-- `normaliseBiomeSarif` reads Biome's own SARIF reporter output. Biome writes absolute paths as URIs and no tool version, so the normaliser makes paths relative to the worktree it ran in, drops results outside it or under a `node_modules` directory, and records the version the runner read from `biome --version` as `tool.driver.version`.
+- `normaliseBiomeSarif` reads Biome's own SARIF reporter output. Biome writes absolute paths as URIs
+  and no tool version, so the normaliser makes paths relative to the worktree it ran in, drops
+  results outside it or under a `node_modules` directory, and records the version the runner read
+  from `biome --version` as `tool.driver.version`.
 - `parseTscDiagnostics` reads `tsc --noEmit --pretty false`: `file(line,col): error TS1234: message`, with indented lines continuing the message. A diagnostic without a file, such as an unreadable `tsconfig.json`, sits at the project file's line 1. Problem: the head writes the code whose types appear in messages, and a greedy match took the last `(n,n): error TSn:` on the line. Example: `src/a.ts(1,14): error TS2322: Type '"(9,9): error TS6133: x"' is not assignable` became rule `TS6133` in a file that does not exist, and a forged rule can hit a severity override or a path the parser drops. Solution: the file is the shortest prefix ending where a location could that names a file in the revision's tree, which the caller's `exists` answers; the runner lists the worktree with `git ls-files`.
 
 Severity, by default:
@@ -422,7 +544,19 @@ Severity, by default:
 
 `static.<tool>.severity` overrides one rule, keyed by its Melian rule ID.
 
-`staticFindings` matches results across the two runs by finding identity, never by line. A result's snippet is the full text of its lines at that revision, read through git's object store, and its occurrence is counted in that revision's file, so a result moved by an edit above it keeps its ID. A renamed file's base results are identified under its head path, through `revision.files`; otherwise a pure rename would make every old result `introduced` and blocking. A result at head whose ID is absent at base is `introduced`; one present at both is `pre-existing` and never blocks; one only at base is resolved and not reported. Two results of one rule on the same lines share an ID, so they are one finding whose message counts the rest. Presence alone would then hide a second error added beside an old one, so the count matters: when the head has more results under an ID than the base, the base's count is the `pre-existing` finding and the difference is a second, `introduced` finding, identified by the discriminator `beyond the base at <id>`. A result on a blank line, in a file too large to read, or in a symlink is identified by its message instead. Any other failure to read the file fails the check with `CheckError` `unreadable`: only absence is silent, as for the loaders.
+`staticFindings` matches results across the two runs by finding identity, never by line. A result's
+snippet is the full text of its lines at that revision, read through git's object store, and its
+occurrence is counted in that revision's file, so a result moved by an edit above it keeps its ID. A
+renamed file's base results are identified under its head path, through `revision.files`; otherwise
+a pure rename would make every old result `introduced` and blocking. A result at head whose ID is
+absent at base is `introduced`; one present at both is `pre-existing` and never blocks; one only at
+base is resolved and not reported. Two results of one rule on the same lines share an ID, so they
+are one finding whose message counts the rest. Presence alone would then hide a second error added
+beside an old one, so the count matters: when the head has more results under an ID than the base,
+the base's count is the `pre-existing` finding and the difference is a second, `introduced` finding,
+identified by the discriminator `beyond the base at <id>`. A result on a blank line, in a file too
+large to read, or in a symlink is identified by its message instead. Any other failure to read the
+file fails the check with `CheckError` `unreadable`: only absence is silent, as for the loaders.
 
 ## Publication
 
@@ -430,7 +564,16 @@ Severity, by default:
 
 `ReviewProvider` is the surface a code host offers Melian. It reads pull-request metadata, posts reviews, closes addressed findings with an edit and thread resolution, and replies with dismissals. It finds and writes the ledger, sets the status with its ledger link, and reads back markers. A second host implements this port.
 
-`verdict.publication(previous, lines, revision)` decides what one revision posts. A finding that resolves to `block`, `acknowledge`, or `advisory` and was not open after the previous revision is posted; one already open is not posted again; an open finding the verdict no longer holds, in any group, is resolved. A dismissed finding is never posted. An open finding the verdict holds as dismissed is resolved with its `dismissal`, so the host can answer its thread with the reason, and leaves the plan's `open` set: if a changed trigger reopens it, it is a new question and gets a new thread. An open finding that turns silent stays in the plan's `open` set. Problem: a lens that wavers on severity reports one ID as `P3`, then `nit`, then `P3` again; dropping it while silent made the third revision post it in a second thread and leave the first unanswered. Solution: it keeps its thread while quiet.
+`verdict.publication(previous, lines, revision)` decides what one revision posts. A finding that
+resolves to `block`, `acknowledge`, or `advisory` and was not open after the previous revision is
+posted; one already open is not posted again; an open finding the verdict no longer holds, in any
+group, is resolved. A dismissed finding is never posted. An open finding the verdict holds as
+dismissed is resolved with its `dismissal`, so the host can answer its thread with the reason, and
+leaves the plan's `open` set: if a changed trigger reopens it, it is a new question and gets a new
+thread. An open finding that turns silent stays in the plan's `open` set. Problem: a lens that
+wavers on severity reports one ID as `P3`, then `nit`, then `P3` again; dropping it while silent
+made the third revision post it in a second thread and leave the first unanswered. Solution: it
+keeps its thread while quiet.
 
 `finding.place(lines)` decides where a finding goes, given `revision.diffLines()`, the lines each changed file adds at head:
 

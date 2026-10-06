@@ -1,0 +1,4 @@
+{
+  "verdict": "plausible",
+  "reason": "Run the two separator-split pairs through importFindings and assert that both survive."
+}

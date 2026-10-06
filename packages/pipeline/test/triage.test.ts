@@ -55,6 +55,7 @@ import { VerdictDocument } from "../src/adjudication.ts";
 import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { VerificationTask } from "../src/verification.ts";
 import { gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
 
@@ -822,6 +823,59 @@ describe("a decider that never answers", () => {
 });
 
 describe("a decision task another call replaced", () => {
+	it("retires pending verification before triage after its lenses finished", async () => {
+		const entered = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		const spawn = VerificationTask.definition.phases.spawn;
+		const parked = vi
+			.spyOn(VerificationTask.definition.phases, "spawn")
+			.mockImplementationOnce(async (task, runtime, taskContext) => {
+				entered.resolve();
+				const aborted = () => release.resolve();
+				runtime.signal.addEventListener("abort", aborted, { once: true });
+				try {
+					await release.promise;
+					if (!runtime.signal.aborted) await spawn(task, runtime, taskContext);
+				} finally {
+					runtime.signal.removeEventListener("abort", aborted);
+				}
+			});
+		let old: TaskId | undefined;
+		const chooser = choosing("careful");
+		const decider: Decider = {
+			name: chooser.name,
+			calibrated: false,
+			decide: async (request) => {
+				const root = await harness.root(context);
+				expect(
+					(await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision()]!.verification,
+				).toBeUndefined();
+				return chooser.decide(request);
+			},
+		};
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [call("report_finding", crashFinding), done] }]);
+		const first = review().catch((error: unknown) => error);
+		try {
+			await entered.promise;
+			const root = await harness.root(context);
+			const before = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision()]!;
+			old = before.verification!.task as TaskId;
+			expect((await harness.getTask(before.task! as TaskId, context))!.state.status).toBe("terminal");
+			const result = await review({ decider });
+			expect(chooser.requests).toHaveLength(1);
+			expect((await harness.getTask(old!, context))!.state.outcome).toEqual({ status: "aborted" });
+			expect(result.verdict.ran?.find((check) => check.name === "verifier")).toBeDefined();
+			expect(
+				(await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision()]!.verification!.task,
+			).not.toBe(old);
+		} finally {
+			release.resolve();
+			await first;
+			parked.mockRestore();
+		}
+	});
+
 	// A decider that holds its first call until `release`, or until its signal aborts when `heeding`; later calls choose quick.
 	function holding(heeding: boolean) {
 		let release = () => {};

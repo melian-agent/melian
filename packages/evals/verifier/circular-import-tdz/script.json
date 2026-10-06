@@ -1,0 +1,4 @@
+{
+  "verdict": "plausible",
+  "reason": "Run each entry import in a fresh Node process; the cycle permits a temporal dead zone for one order."
+}
