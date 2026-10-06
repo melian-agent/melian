@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { lstat, mkdir, mkdtemp, readFile, rm, symlink, utimes, writeFile } from "node:fs/promises";
+import type * as filesystem from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
@@ -8,10 +9,37 @@ import { CoverageCache } from "../src/coverage-cache.ts";
 import { GraphCache } from "../src/graph-cache.ts";
 import { ToolCache } from "../src/tool-cache.ts";
 
+vi.mock("node:fs/promises", async (importOriginal) => {
+	const original = await importOriginal<typeof filesystem>();
+	return { ...original, lstat: vi.fn(original.lstat), readdir: vi.fn(original.readdir) };
+});
+
 let root: string;
 afterEach(async () => {
 	vi.restoreAllMocks();
 	if (root) await rm(root, { recursive: true, force: true });
+});
+
+it("propagates filesystem failures while sweeping cache roots", async () => {
+	root = await mkdtemp(join(tmpdir(), "melian-scratch-error-"));
+	const failure = Object.assign(new Error("cache root denied"), { code: "EACCES" });
+	vi.mocked(lstat).mockRejectedValueOnce(failure);
+	await expect(GraphCache.open(root)).rejects.toBe(failure);
+});
+
+it.each(["ENOENT", "EACCES"])("handles a legacy scratch stat failure with %s", async (code) => {
+	root = await mkdtemp(join(tmpdir(), "melian-scratch-race-"));
+	const graph = join(root, "graphs");
+	const legacy = join(graph, ".graph-legacy");
+	await mkdir(legacy, { recursive: true });
+	const original = vi.mocked(lstat).getMockImplementation()!;
+	const failure = Object.assign(new Error("legacy stat failed"), { code });
+	vi.mocked(lstat).mockImplementation(async (...args) => {
+		if (args[0] === legacy) throw failure;
+		return original(...args);
+	});
+	if (code === "ENOENT") await expect(GraphCache.open(root)).resolves.toBeInstanceOf(GraphCache);
+	else await expect(GraphCache.open(root)).rejects.toBe(failure);
 });
 
 it("retains process-owned scratch and its contents when liveness probes are denied", async () => {
