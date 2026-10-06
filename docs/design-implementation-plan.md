@@ -98,7 +98,7 @@ What remains after them:
 - Step 6, the verifier. Step 4 landed, so it is unblocked.
 - Step 9's issues [#26](https://github.com/melian-agent/melian/issues/26) and [#46](https://github.com/melian-agent/melian/issues/46).
 - Step 10's rehearsal.
-- Step 11 is in build on `tool-manifest`, without a pull request yet. The strict manifest, quarantine, and verified binary cache are built; the Enola static check and policy boundary are built; the graph cache is built; the compiler reader and coverage definition are built; the measured table is in the spike report. Coverage artifacts and the layering proof are built. Caller input, lens-record coverage attachment and CLI access remain.
+- Step 11 is in build on `tool-manifest`, without a pull request yet. The strict manifest, quarantine, and verified binary cache are built; the Enola static check and policy boundary are built; the graph cache is built; the compiler reader and coverage definition are built; the measured table is in the spike report. Coverage artifacts and the layering proof are built. Caller input and lens-record coverage attachment are built. Tool commands and doctor readiness remain.
 - Step 14's leftovers, including a durability tuning round. Worst precision was 0.56 after run 9.
 
 Two experiments are running, and each has a record that decides it:
@@ -138,7 +138,7 @@ Steps to be written when milestone 3 closes.
 
 [progress-log/](progress-log/) records what landed, one file per entry, oldest first in name order.
 
-Step 11 coverage artifacts: classes and atomic cache storage are built. Static records hold unavailable test-coverage identities and measured graph identities when present. Durable-transcript parsing is built; attaching review artifacts to lens records follows with the lens-input change.
+Step 11 coverage artifacts: classes and atomic cache storage are built. Static records hold unavailable test-coverage identities and measured graph identities when present. Durable-transcript parsing and lens-record attachment are built. Enclosing functions count only when declaration ranges were supplied; the graph’s declaration starts do not invent ranges.
 
 Step 11 layering constraint is built and proved on the branch-point tree. Package, subpath and relative imports each caused a SARIF error; the clean tree passed. The harness-free test stays.
 

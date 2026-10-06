@@ -834,7 +834,8 @@ export class Lens {
 	 * opted out, the repository's standards, each under its path, whose breaches are the conventions lens's to report
 	 * when it is a neighbour over every file and this lens's own otherwise. `quote` wraps a neighbour's list of files,
 	 * which come from the change, so the caller must mark them as its data: it is required with `neighbours`. Throws
-	 * {@link LensError} `unknownLevel` for a level the lens does not declare.
+	 * {@link LensError} `unknownLevel` for a level the lens does not declare. `context` adds advisory sections after the
+	 * lens policy; the host must quote any repository data they contain.
 	 */
 	renderInstructions(standards: readonly StandardsSection[], level?: ScrutinyLevel): string;
 	renderInstructions(
@@ -842,17 +843,20 @@ export class Lens {
 		level: ScrutinyLevel,
 		neighbours: readonly LensNeighbour[],
 		quote: (listing: string) => string,
+		context?: string,
 	): string;
 	renderInstructions(
 		standards: readonly StandardsSection[],
 		level: ScrutinyLevel = defaultScrutinyLevel,
 		neighbours: readonly LensNeighbour[] = [],
 		quote: (listing: string) => string = unquoted,
+		context = "",
 	): string {
 		const instructions = [
 			this.instructions,
 			...this.#handoffs(neighbours, quote),
 			this.#policy(this.level(level)),
+			...(context ? [context] : []),
 		].join("\n\n");
 		if (!this.standards || standards.length === 0) return instructions;
 		const sections = standards.map((section) => `### ${section.path}\n\n${section.content.trim()}`);

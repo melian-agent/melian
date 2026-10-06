@@ -620,7 +620,7 @@ Reading from the base does not hide the head's changes. Each revision lists the 
 
 ### Tool provisioning
 
-The manifest and its quarantine are built. The verified tool cache is built; Enola's static check is built; the graph cache and callers are in progress in milestone 2 (review of record). The container environment, Opengrep, and gitleaks are planned for milestone 3 (Actions host).
+The manifest and its quarantine are built. The verified tool cache is built; Enola's static check is built; the graph cache and caller input are built in milestone 2 (review of record). The container environment, Opengrep, and gitleaks are planned for milestone 3 (Actions host).
 
 Problem: a finding's identity hashes its rule and snippet, and an analyser's version decides what it reports and under which rule. Biome and tsc arrive through npm, pinned by a lockfile; standalone analysers such as Opengrep and gitleaks do not. Example: a maintainer's Homebrew gitleaks is a release ahead of the one on the Actions runner. A rule renamed between them gives the same secret a new finding ID, so a dismissed finding returns and an open one is posted again. Whichever binary sits first on the host's `PATH` would also judge the change from outside the trust boundary.
 
@@ -641,14 +641,16 @@ Anthropic's sandbox-runtime, which Pi's own repository depends on, is a candidat
 
 ### Enola
 
-The manifest, static check, graph cache, and call-coverage spike are built. Callers and the remaining coverage artifacts are in build for milestone 2.
+The manifest, static check, graph cache, call-coverage spike, caller input and coverage artifacts are built. Tool commands and doctor readiness remain in build for milestone 2.
 
 Problem: a lens finds the callers of a changed symbol by searching, one call at a time, which is slow and misses what a name search cannot see. Example: a private repository's review skill measured a reviewer walking callers by search time out at 600 seconds twice; the same review, handed the callers as precomputed data, finished in 331.
 
 Solution: [Enola](research/2026-10-04-enola.md) (enola.tech, `enola-labs/enola`, Apache 2.0, written in Go) is the first tool in the manifest. It is deterministic, and its extractors are compiled in. It still runs in the execution environment, never in the Melian process, like every tool that loads repository configuration, because a `providers:` block in `enola.yaml` names an executable Enola runs with `--version` and with the repository path. Melian uses it two ways:
 
-- As a static check: the opt-in `static.enola` runs `enola check` runs on the head against a baseline Melian builds from the base, and its SARIF is diffed as Biome's is.
+- As a static check: the opt-in `static.enola` runs `enola check` on the head against a baseline Melian builds from the base. Its SARIF is diffed as Biome's is.
 - As lens input: the callers of changed symbols outside the diff, rendered as quoted data. A lens confirms each candidate through `read_file` before citing it as `affected` evidence. Upstream v0.4.27 carries `enola impact --json`, merged in [pull request #342](https://github.com/enola-labs/enola/pull/342). Melian queries the subprocess, never MCP, and never rebuilds Enola's resolution algorithms. The contract artifacts `facts.jsonl`, `insights.json`, and `receipt.json` give identity and lineage. Their snapshot ID is output, so it cannot key a cache lookup. The spike measures imports and call pairs against tsc, including calls across packages.
+
+Static Enola fails closed when the tier names it and the tool cannot run or its output cannot be read. Caller input is advisory and fails open: a missing executable, absent snapshot, timeout or failed query leaves the lens running, with the reason on its record. Caller input never fetches a missing tool or builds an absent snapshot.
 
 Enola's configuration files, for intent, constraints, suppressions, linking, and providers, are policy read from the base, and they join the policy-change list. A committed baseline is never used. Melian disables providers in its effective configuration on both revisions. It keeps output and a temporary HOME in scratch, disables update checks, and never runs `upgrade`. Enola requires a repository-relative output path, so a runner-owned `.enola` link points at scratch. The runner replaces the head's policy files with the base's copies and records when they differ.
 
@@ -658,7 +660,7 @@ Per-file coverage compares graph edges with the files included by the same root 
 
 On Melian at ad303b56fac7e40b13a1a7e51140fa05a9a4b570, the graph matches 825/5723 call pairs (14.4%) and 207/407 imports (50.9%). It is not adequate to budget search. [The spike](spikes/enola-coverage.md) lists every file and gap. A future experiment could propose graphCoverage.searchThreshold = 1.0 for both ratios, but this step applies no threshold.
 
-Search may become break-glass, but not yet. Enola's own coverage report, `coverage_report` or `enola coverage`, measures edges between repositories and needs two or more in one graph; it says nothing about a file's calls inside one repository, and an absent edge is not proof that no relationship exists. So `search` stays unrestricted until the spike defines per-file call coverage for the graph and measures it against ground truth: for TypeScript, the imports and calls tsc resolves on Melian's own tree. Only then may coverage budget `search`: where the graph covers a file's calls, `search` keeps a call budget per lens, and each call carries a reason the hook records, so the ledger and the evals show how often it fires.
+Enola's own coverage report, `coverage_report` or `enola coverage`, measures edges between repositories and needs two or more in one graph. It says nothing about a file's calls inside one repository. An absent edge proves no absence of callers. The spike now measures per-file coverage against tsc, and its result leaves `search` unrestricted over every file. Budgeting search remains a later experiment. Each budgeted call would carry a reason the hook records, so the ledger and evals show how often it fires.
 
 Three kinds of coverage artifact live in the same cache, keyed by commit and tool version, with their IDs in the check record:
 
@@ -825,7 +827,7 @@ Match Pi's conventions unless there is a reason not to.
 | Models | pi-ai, with the review plan's resolver (planned, milestone 2) and the credential-pool provider (planned, milestone 3) |
 | Secrets | `melian.secrets.yaml` and `~/.config/melian/secrets.yaml`, then Pi's credential store, then environment variables (planned, milestone 2) |
 | Decisions | `Decider` port in core; recorded and LLM fallback adapters in `packages/decisions`; Jev and Clef adapters (planned, milestone 4) |
-| Code graph | Enola v0.4.27, pinned from its official release; `enola plan --json` for constraint verdicts, `enola check` for the static check, its contract artifacts for identity and the cache (planned, milestone 2) |
+| Code graph | Enola v0.4.27, pinned from its official release; `enola check` for static constraints, `enola impact --json` for advisory caller input, contract artifacts for identity and the verified graph cache (built, milestone 2) |
 | Durability | pi-durable, exact-pinned, wrapped behind one module |
 | Storage | memory for tests, SQLite locally, SQLite on the server (planned), JSONL on the state branch for Actions (planned, milestone 3) |
 | Execution | Node environment locally, container environment for untrusted code (planned, milestone 3) |

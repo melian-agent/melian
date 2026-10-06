@@ -1,5 +1,8 @@
 import { posix } from "node:path";
 import {
+	type ChangedFile,
+	EnolaFacts,
+	EnolaImpact,
 	EnolaPolicy,
 	type EnolaSnapshot,
 	type GraphFiles,
@@ -9,6 +12,7 @@ import {
 	TestCoverage,
 	type ToolLog,
 } from "@melian-agent/core";
+import type { CallerData, CallerGroup } from "./callers.ts";
 import { CoverageCache } from "./coverage-cache.ts";
 import { GraphCache } from "./graph-cache.ts";
 import { type Run, type StaticRun, staticOutputLimit } from "./static.ts";
@@ -100,12 +104,14 @@ export class EnolaRun {
 		return { ...(graph ? { graph: graph.id } : {}), test };
 	}
 
-	async #generate(root: string, output: string, commit: string): Promise<EnolaSnapshot> {
+	async #generate(root: string, output: string, commit: string, cachedOnly = false): Promise<EnolaSnapshot> {
 		await this.#prepare(root, output);
 		const tree = await this.#run.shell(this.#run.git(`rev-parse ${commit}^{tree}`));
 		if (tree.code !== 0) throw this.#run.fail("worktreeFailed", "Could not resolve graph tree");
 		const parts = { tree: tree.output, version: this.#version, binary: this.#digest, config: this.#policy.hash };
 		const cached = await this.#cache.read(parts);
+		if (!cached && cachedOnly)
+			throw this.#run.fail("toolMissing", "No verified Enola snapshot for this tree and policy");
 		if (cached) {
 			for (const [name, text] of Object.entries(cached.files())) {
 				const written = await this.#run.input.env.writeFile(posix.join(output, name), text, this.#run.context);
@@ -183,6 +189,86 @@ export class EnolaRun {
 		const text = await this.#run.readOutput(report);
 		if (text === undefined) throw this.#run.fail("invalidOutput", "Enola check wrote no SARIF");
 		return normaliseEnolaSarif(text, { root, version: this.#version });
+	}
+
+	async callers(files: readonly ChangedFile[], changedPaths: readonly string[]): Promise<CallerData> {
+		const output = posix.join(this.#scratch, "head-output");
+		await this.#generate(this.#root, output, this.#run.input.commit, true);
+		const text = await this.#run.readOutput(posix.join(output, "facts.jsonl"));
+		if (text === undefined) throw this.#run.fail("invalidOutput", "Enola snapshot has no facts");
+		const facts = EnolaFacts.parse(text);
+		const groups: CallerGroup[] = [];
+		const notes: string[] = [];
+		const issues: CallerData["issues"] = [];
+		const names = new Map<string, number>();
+		for (const fact of facts.toJSON())
+			if (fact.kind === "symbol") names.set(fact.name, (names.get(fact.name) ?? 0) + 1);
+		const deadline = Date.now() + this.#run.input.settings.timeout * 1000;
+		let omitted = 0;
+		let attempted = 0;
+		for (const file of files) {
+			const symbols = facts
+				.inFile(file.path)
+				.filter((fact) => fact.line !== undefined)
+				.sort((a, b) => a.line! - b.line!);
+			const changed = symbols.filter((fact, index) =>
+				file.hunks.some((hunk) => {
+					const next = symbols[index + 1]?.line ?? Infinity;
+					return fact.line! < hunk.newStart + Math.max(1, hunk.newLines) && next > hunk.newStart;
+				}),
+			);
+			for (const symbol of changed) {
+				if (attempted === 128) {
+					omitted++;
+					continue;
+				}
+				attempted++;
+				try {
+					if (names.get(symbol.name) !== 1) throw new Error("directory-scoped name is ambiguous");
+					if (Date.now() >= deadline) throw new Error("caller-query time budget ended");
+					const report = posix.join(output, "impact.json");
+					const error = posix.join(output, "impact.err");
+					const result = await this.#run.shell(
+						`${this.#command(this.#root, output, `impact --json --max-depth 1 --max-nodes 50 ${quote(`file:${file.path} ${symbol.name}`)}`)} > ${quote(report)} 2> ${quote(error)}`,
+						Math.max(1, Math.ceil((deadline - Date.now()) / 1000)),
+					);
+					const impact = EnolaImpact.parse((await this.#run.readOutput(report)) ?? "", result.code);
+					if (!impact.matchesTarget(symbol.name)) throw new Error("impact selected another full target name");
+					groups.push({
+						file: file.path,
+						symbol: symbol.name,
+						callers: impact
+							.callers()
+							.filter(
+								(node) =>
+									node.file !== undefined && node.line !== undefined && !changedPaths.includes(node.file),
+							),
+						truncated: impact.truncated,
+					});
+				} catch (error) {
+					issues.push({
+						file: file.path,
+						reason: `line ${symbol.line}: ${error instanceof Error ? error.message : String(error)}`,
+					});
+				}
+			}
+		}
+		if (omitted) notes.push(`${omitted} changed symbols omitted at the caller-query limit of 128.`);
+		const tree = await this.#run.shell(this.#run.git(`rev-parse ${this.#run.input.commit}^{tree}`));
+		if (tree.code !== 0) throw this.#run.fail("worktreeFailed", "Could not resolve caller graph tree");
+		const listing = posix.join(output, "paths");
+		const listed = await this.#run.shell(
+			`${this.#run.git(`ls-tree -r --name-only -z ${this.#run.input.commit}`)} > ${quote(listing)}`,
+		);
+		const paths = listed.code === 0 ? await this.#run.readOutput(listing) : undefined;
+		if (paths === undefined) throw this.#run.fail("worktreeFailed", "Could not list caller graph files");
+		return {
+			groups,
+			issues,
+			notes,
+			paths: paths.split("\0").filter(Boolean),
+			parts: { tree: tree.output, version: this.#version, binary: this.#digest, config: this.#policy.hash },
+		};
 	}
 
 	async check(): Promise<StaticRun> {

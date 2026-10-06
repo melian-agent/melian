@@ -45,6 +45,7 @@ import {
 	readVerdict,
 	VerdictDocument,
 } from "./adjudication.ts";
+import type { CallerContext } from "./callers.ts";
 import { checksExtension } from "./checks.ts";
 import {
 	DecisionDocument,
@@ -217,7 +218,7 @@ type ReviewCheckpoint = {
 
 type LensCheckpoint = { phase: "spawn" } | ReviewCheckpoint;
 
-type LensResult = Record<string, LensOutcome>;
+type LensResult = Record<string, LensOutcome & { readonly conversation?: ConversationId }>;
 
 function modelName(model: ModelReference): string {
 	return `${model.provider}/${model.modelId}`;
@@ -481,8 +482,13 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				];
 			};
 			const chains = await Promise.all(input.lenses.map(chain));
-			const result = Object.fromEntries(chains.flat());
-			await runtime.commit(() => ({ status: "terminal", outcome: { status: "completed", result } }), context);
+			await runtime.commit(async (tx) => {
+				const checkpoint = (await tx.task(runtime.taskId))!.state.checkpoint as ReviewCheckpoint;
+				const result = Object.fromEntries(
+					chains.flat().map(([key, outcome]) => [key, { ...outcome, conversation: checkpoint.children[key] }]),
+				);
+				return { status: "terminal", outcome: { status: "completed", result } };
+			}, context);
 		},
 	},
 	abort: async (_task, runtime, context) => {
@@ -714,6 +720,8 @@ export interface ReviewOptions {
 	readonly harness: Harness;
 	readonly changeset: Changeset;
 	readonly config: MelianConfig;
+	/** Precomputed advisory callers; the host opens them after deterministic graph checks. */
+	readonly callers?: CallerContext;
 	/** The lenses that may run; configuration and the changed paths select among them. */
 	readonly lenses: readonly Lens[];
 	readonly standards: readonly StandardsSection[];
@@ -1371,6 +1379,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			return [{ name, files: shared.length === covers.length ? "every" : shared }];
 		});
 		const noted: string[] = [...(unrunnable.get(lens) ?? [])];
+		if (config.static.enola.enabled)
+			noted.push(...(options.callers?.notes(covers) ?? ["Callers unavailable: the host supplied no graph context"]));
 		if (options.decider !== undefined && triageInput.cut) noted.push("triage input was cut, so no lens could skip");
 		if (triaged.failure !== undefined)
 			noted.push(`triage failed, so it ran at its default level: ${triaged.failure}`);
@@ -1398,8 +1408,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				version: lens.version,
 				level,
 				route: [...(routes.get(settings.tier) as { route: ModelReference[] }).route],
-				instructions: ruled.renderInstructions(standards, level, neighbours, (listing) =>
-					quoteUntrusted("listing", listing, nonce),
+				instructions: ruled.renderInstructions(
+					standards,
+					level,
+					neighbours,
+					(listing) => quoteUntrusted("listing", listing, nonce),
+					options.callers?.render(covers, nonce),
 				),
 				tools: lens.tools,
 				severities: lens.severities,
@@ -1472,6 +1486,30 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		),
 		...refusals.values(),
 	];
+	try {
+		const coverage = await options.callers?.recordCoverage({
+			harness,
+			children: Object.fromEntries(
+				Object.entries(lensResult ?? {}).flatMap(([key, outcome]) =>
+					outcome.conversation === undefined ? [] : [[key, outcome.conversation]],
+				),
+			),
+			lenses: runsOf(ran.lenses),
+			files: revision.files,
+			nonce: ran.revision.nonce,
+			context,
+		});
+		if (coverage)
+			for (let index = 0; index < settled.length; index++) records[index] = { ...records[index]!, coverage };
+	} catch {
+		for (let index = 0; index < settled.length; index++)
+			records[index] = {
+				...records[index]!,
+				reason: [records[index]!.reason, "Review coverage unavailable: transcript or cache could not be read"]
+					.filter(Boolean)
+					.join("; "),
+			};
+	}
 	// Only the lenses this review ran count, each at the level whose record stands for it: one that configuration has
 	// since disabled or retiered, or a quick run that escalated, leaves nothing behind.
 	const { manifest: accounted, producers } = account(

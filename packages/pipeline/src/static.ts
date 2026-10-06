@@ -121,13 +121,13 @@ export class Run {
 	}
 
 	// Runs a command, keeping the start of what it prints for error messages.
-	async shell(command: string): Promise<Shell> {
+	async shell(command: string, timeout = this.input.settings.timeout): Promise<Shell> {
 		let output = "";
 		const result = await this.input.env.exec(
 			command,
 			{
 				...toolEnvironment(),
-				timeout: this.input.settings.timeout,
+				timeout,
 				onOutput: (text) => {
 					if (output.length < 8192) output += text;
 				},
@@ -136,11 +136,7 @@ export class Run {
 		);
 		if (!result.ok) {
 			if (result.error.code === "timeout") {
-				throw this.fail(
-					"timeout",
-					`${this.input.tool} ran past its ${this.input.settings.timeout}-second timeout`,
-					result.error,
-				);
+				throw this.fail("timeout", `${this.input.tool} ran past its ${timeout}-second timeout`, result.error);
 			}
 			if (result.error.code === "aborted") {
 				throw this.fail("aborted", `${this.input.tool} was cancelled before it finished`, result.error);
@@ -164,6 +160,26 @@ export class Run {
 	async exists(path: string): Promise<boolean> {
 		const result = await this.input.env.exists(path, this.context);
 		return result.ok && result.value;
+	}
+
+	async inWorktree<T>(use: (root: string, scratch: string) => Promise<T>): Promise<T> {
+		const { env, commit } = this.input;
+		if (!/^[0-9a-f]{40,64}$/.test(commit)) throw this.fail("worktreeFailed", `${commit} is not a full commit hash`);
+		const created = await env.createTempDir("melian-static-", this.context);
+		if (!created.ok) throw this.fail("worktreeFailed", `no temporary directory: ${created.error.message}`);
+		const canonical = await env.canonicalPath(created.value, this.context);
+		const scratch = canonical.ok ? canonical.value : created.value;
+		const root = posix.join(scratch, "tree");
+		try {
+			await removeStaleWorktrees(this, scratch);
+			const added = await this.worktreeCommand(
+				this.git(`worktree add --detach --quiet --lock --reason ${quote(lockReason)} ${quote(root)} ${commit}`),
+			);
+			if (added.code !== 0) throw this.fail("worktreeFailed", `git worktree add failed: ${added.output}`);
+			return await use(root, scratch);
+		} finally {
+			await removeWorktree(this, scratch);
+		}
 	}
 
 	// Reads a file the tool wrote, refusing one past the output limit rather than truncating it.
@@ -441,19 +457,8 @@ export function staticToolSource(repoRoot: string, tool: StaticTool): StaticTool
  */
 export async function runStaticTool(input: StaticRunInput, context: Context): Promise<StaticRun> {
 	const run = new Run(input, context);
-	const { env, repoRoot, commit, tool } = input;
-	if (!/^[0-9a-f]{40,64}$/.test(commit)) throw run.fail("worktreeFailed", `${commit} is not a full commit hash`);
-	const scratchDir = await env.createTempDir("melian-static-", context);
-	if (!scratchDir.ok) throw run.fail("worktreeFailed", `no temporary directory: ${scratchDir.error.message}`);
-	const canonical = await env.canonicalPath(scratchDir.value, context);
-	const scratch = canonical.ok ? canonical.value : scratchDir.value;
-	const root = posix.join(scratch, "tree");
-	try {
-		await removeStaleWorktrees(run, scratch);
-		const added = await run.worktreeCommand(
-			git(repoRoot, `worktree add --detach --quiet --lock --reason ${quote(lockReason)} ${quote(root)} ${commit}`),
-		);
-		if (added.code !== 0) throw run.fail("worktreeFailed", `git worktree add failed: ${added.output}`);
+	const { repoRoot, commit, tool } = input;
+	return run.inWorktree(async (root, scratch) => {
 		if (tool === "tsc") {
 			const { project } = input.settings as TscSettings;
 			if (posix.isAbsolute(project) || posix.normalize(project).startsWith("..")) {
@@ -489,9 +494,7 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 				? await runBiome(run, root, scratch, binary, version)
 				: await runTsc(run, root, scratch, binary, version, new Set(files), notes);
 		return { status: "ran", log, notes };
-	} finally {
-		await removeWorktree(run, scratch);
-	}
+	});
 }
 
 // Each worktree is locked with the adding process's ID, so a later run can tell a crashed run's worktree from a live one.

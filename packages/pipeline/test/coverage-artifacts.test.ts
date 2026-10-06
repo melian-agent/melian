@@ -140,4 +140,6 @@ it("stores three content identities beside a verified graph and treats corruptio
 	await writeFile(join(root, "graphs", graph.key, "review-coverage.json"), "{}");
 	expect(await cache.read(parts, "review")).toBeUndefined();
 	await expect(cache.store({ ...parts, tree: "e".repeat(40) }, review)).rejects.toThrow();
+	const oversized = ReviewCoverage.compute(parts.tree, parts.version, ["x".repeat(16 * 1024 * 1024)], [], []);
+	await expect(cache.store(parts, oversized)).rejects.toThrow("16 MiB cache limit");
 });
