@@ -266,6 +266,8 @@ describe.each(sourceKinds)("Standards from the %s", (kind) => {
 		const reader = await sourceModule.openSource(repo, source);
 		const read = vi.spyOn(reader, "readText");
 		const list = vi.spyOn(reader, "list");
+		const exists = vi.spyOn(reader, "exists");
+		const ignored = vi.spyOn(reader, "isIgnored");
 		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
 		const standards = await Standards.load(repo, source, paths);
 		standards.forFiles(paths);
@@ -273,6 +275,8 @@ describe.each(sourceKinds)("Standards from the %s", (kind) => {
 		expect(read.mock.calls.filter(([path]) => path === "docs/app-guide.md")).toHaveLength(1);
 		expect(read.mock.calls.filter(([path]) => path === "AGENTS.md")).toHaveLength(1);
 		expect(list.mock.calls.filter(([path]) => path === ".melian/standards")).toHaveLength(1);
+		expect(exists.mock.calls.filter(([path]) => path === paths[0])).toHaveLength(1);
+		expect(ignored.mock.calls.filter(([path]) => path === "docs/app-guide.md")).toHaveLength(1);
 	});
 
 	it("skips a nested symlink without following its target", async () => {
@@ -283,25 +287,31 @@ describe.each(sourceKinds)("Standards from the %s", (kind) => {
 		expect(standards.forFiles(paths).paths()).not.toContain("packages/app/linked.md");
 	});
 
-	it("prefers every carrier and import in each file's nearest directory", async () => {
-		const size = standardsLimits.fileBytes;
-		writeFiles(repo, {
-			"AGENTS.md": "r".repeat(size),
-			"packages/app/AGENTS.md": "a".repeat(size),
-			"packages/app/CLAUDE.md": `@rules.md\n${"c".repeat(size - 16)}`,
-			"packages/app/rules.md": "CLAUDE_IMPORT",
-			"packages/app/.melian/standards/style.md": "@../../style-guide.md\nNEAREST_STYLE",
-			"packages/app/style-guide.md": "STYLE_IMPORT",
-			"packages/other/AGENTS.md": "b".repeat(size),
-		});
-		const paths = ["packages/app/a.ts", "packages/other/a.ts"];
-		const reading = (await Standards.load(repo, sourceFor(repo, kind), paths)).forFiles(paths);
-		expect(reading.paths()).toContain("packages/app/CLAUDE.md");
-		expect(reading.paths()).toContain("packages/app/rules.md");
-		expect(reading.paths()).toContain("packages/app/.melian/standards/style.md");
-		expect(reading.paths()).toContain("packages/app/style-guide.md");
-		expect(reading.omitted).toContain("AGENTS.md");
-	}, 60_000);
+	it.each(["file", "directory"])(
+		"prefers every carrier and import in each file's nearest directory for %s paths",
+		async (kindOfPath) => {
+			const size = standardsLimits.fileBytes;
+			writeFiles(repo, {
+				"AGENTS.md": "r".repeat(size),
+				"packages/app/AGENTS.md": "a".repeat(size),
+				"packages/app/CLAUDE.md": `@rules.md\n${"c".repeat(size - 16)}`,
+				"packages/app/rules.md": "CLAUDE_IMPORT",
+				"packages/app/.melian/standards/style.md": "@../../style-guide.md\nNEAREST_STYLE",
+				"packages/app/style-guide.md": "STYLE_IMPORT",
+				"packages/other/AGENTS.md": "b".repeat(size),
+			});
+			const paths = ["packages/app", "packages/other"].map((path) =>
+				kindOfPath === "file" ? `${path}/a.ts` : path,
+			);
+			const reading = (await Standards.load(repo, sourceFor(repo, kind), paths)).forFiles(paths);
+			expect(reading.paths()).toContain("packages/app/CLAUDE.md");
+			expect(reading.paths()).toContain("packages/app/rules.md");
+			expect(reading.paths()).toContain("packages/app/.melian/standards/style.md");
+			expect(reading.paths()).toContain("packages/app/style-guide.md");
+			expect(reading.omitted).toContain("AGENTS.md");
+		},
+		60_000,
+	);
 
 	it("drops whole deepest sections across files and names each omission", async () => {
 		const paths = Array.from({ length: 6 }, (_, i) => `packages/p${i}/src/a.ts`);
@@ -404,7 +414,10 @@ describe.each(sourceKinds)("standards inventory from the %s", (kind) => {
 	});
 
 	it("finds nested carriers without following imports or counting other markdown", async () => {
-		writeFiles(repo, { "packages/app/.melian/standards/style.md": "# Style\n" });
+		writeFiles(repo, {
+			"packages/app/.melian/standards/style.md": "# Style\n",
+			"packages/app/.melian/standards/deep/notes.md": "not a carrier\n",
+		});
 		const inventory = await StandardsInventory.inspect(repo, sourceFor(repo, kind));
 		expect(inventory.entries.map((entry) => entry.path)).toEqual([
 			".melian/standards/naming.md",
@@ -613,6 +626,116 @@ describe("rendered standards bounds", () => {
 });
 
 describe.each(sourceKinds)("standards branch regressions from %s", (kind) => {
+	it("preserves refusals and oversized omissions for loaded directories", async () => {
+		writeFiles(repo, {
+			"docs/AGENTS.md": "x".repeat(standardsLimits.fileBytes + 1),
+			"docs/CLAUDE.md": "# Docs\n@private.md\n",
+			"docs/.gitignore": "private.md\n",
+			"docs/private.md": "PRIVATE",
+		});
+		const reading = (await Standards.load(repo, sourceFor(repo, kind), ["docs"])).forFiles(["docs"]);
+		expect(reading.refused).toContain("docs/CLAUDE.md -> docs/private.md");
+		expect(reading.oversized).toEqual(["docs/AGENTS.md"]);
+		expect(reading.note()).toContain("over 256 KiB: docs/AGENTS.md");
+	});
+
+	it("preserves a read error with an unrecognised class and a size-error code", async () => {
+		const source = sourceFor(repo, kind);
+		const reader = await sourceModule.openSource(repo, source);
+		const failure = Object.assign(new Error("carrier read failed"), { code: "tooLarge" });
+		vi.spyOn(reader, "readText").mockRejectedValueOnce(failure);
+		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
+		expect(await rejection(Standards.load(repo, source, ["packages/app/a.ts"]), Error)).toBe(failure);
+	});
+
+	it("propagates an unreadable nested carrier during shared loading", async () => {
+		const source = sourceFor(repo, kind);
+		const reader = await sourceModule.openSource(repo, source);
+		const failure = new sourceModule.SourceError("unreadable", "packages/app/AGENTS.md", "read failed");
+		vi.spyOn(reader, "readText").mockRejectedValueOnce(failure);
+		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
+		expect(await rejection(Standards.load(repo, source, ["packages/app/a.ts"]), StandardsError)).toMatchObject({
+			code: "unreadable",
+			path: failure.path,
+			cause: failure,
+		});
+	});
+
+	it.each(["a.ts", "docs/guide.md"])("translates a lookup failure at %s", async (failedPath) => {
+		const source = sourceFor(repo, kind);
+		const reader = await sourceModule.openSource(repo, source);
+		const original = await sourceModule.openSource(repo, source);
+		const failure = new sourceModule.SourceError("unreadable", failedPath, "lookup failed");
+		vi.spyOn(reader, "exists").mockImplementation((path) =>
+			path === failedPath ? Promise.reject(failure) : original.exists(path),
+		);
+		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
+		expect(await rejection(Standards.load(repo, source, ["a.ts"]), StandardsError)).toMatchObject({
+			code: "unreadable",
+			path: failedPath,
+			cause: failure,
+		});
+	});
+
+	it("translates a lookup failure in the legacy loader", async () => {
+		const source = sourceFor(repo, kind);
+		const reader = await sourceModule.openSource(repo, source);
+		const failure = new sourceModule.SourceError("unreadable", "a.ts", "lookup failed");
+		vi.spyOn(reader, "exists").mockRejectedValueOnce(failure);
+		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
+		expect(await rejection(loadStandards(repo, source, "a.ts"), StandardsError)).toMatchObject({
+			code: "unreadable",
+			cause: failure,
+		});
+	});
+
+	it("translates an inventory listing failure", async () => {
+		const source = sourceFor(repo, kind);
+		const reader = await sourceModule.openSource(repo, source);
+		const failure = new sourceModule.SourceError("unreadable", "root", "listing failed");
+		vi.spyOn(reader, "findPaths").mockRejectedValueOnce(failure);
+		vi.spyOn(sourceModule, "openSource").mockResolvedValue(reader);
+		expect(await rejection(StandardsInventory.inspect(repo, source), StandardsError)).toMatchObject({
+			code: "unreadable",
+			cause: failure,
+		});
+	});
+
+	it("prefers root standards carriers beside other files' nearest chains", async () => {
+		writeFiles(repo, {
+			"AGENTS.md": "r".repeat(standardsLimits.fileBytes),
+			"packages/app/AGENTS.md": "a".repeat(standardsLimits.fileBytes),
+			"packages/app/CLAUDE.md": "c".repeat(standardsLimits.fileBytes),
+			"packages/other/AGENTS.md": "b".repeat(standardsLimits.fileBytes),
+			"packages/other/CLAUDE.md": "d".repeat(standardsLimits.fileBytes),
+		});
+		const paths = ["a.ts", "packages/app/a.ts", "packages/other/a.ts"];
+		const reading = (await Standards.load(repo, sourceFor(repo, kind), paths)).forFiles(paths);
+		expect(reading.omitted.length).toBeGreaterThan(0);
+		expect(reading.paths()).toContain(".melian/standards/naming.md");
+	});
+
+	it("keeps an import-only carrier's whole nearest scope during omission", async () => {
+		writeFiles(repo, {
+			"AGENTS.md": "r".repeat(standardsLimits.fileBytes),
+			"packages/app/AGENTS.md": "@../../docs/deep/rules.md\n",
+			"docs/deep/rules.md": "i".repeat(standardsLimits.fileBytes),
+			"packages/app/CLAUDE.md": "c".repeat(standardsLimits.fileBytes),
+			"packages/app/.melian/standards/style.md": "NEAREST_STYLE",
+			"packages/other/AGENTS.md": "b".repeat(standardsLimits.fileBytes),
+		});
+		const paths = ["packages/app/a.ts", "packages/other/a.ts"];
+		const reading = (await Standards.load(repo, sourceFor(repo, kind), paths)).forFiles(paths);
+		expect(reading.omitted).toContain("AGENTS.md");
+		expect(reading.paths()).toEqual(
+			expect.arrayContaining([
+				"docs/deep/rules.md",
+				"packages/app/CLAUDE.md",
+				"packages/app/.melian/standards/style.md",
+			]),
+		);
+	});
+
 	it("drops absolute imports before querying or reading them", async () => {
 		writeFiles(repo, { "AGENTS.md": "# Rules\n@/docs/guide.md\n" });
 		const source = sourceFor(repo, kind);
@@ -706,6 +829,15 @@ describe.each(sourceKinds)("standards branch regressions from %s", (kind) => {
 });
 
 describe("standards source failures and trust", () => {
+	it("translates an inventory source-opening failure", async () => {
+		const failure = new sourceModule.SourceError("unreadable", "root", "open failed");
+		vi.spyOn(sourceModule, "openSource").mockRejectedValueOnce(failure);
+		expect(await rejection(StandardsInventory.inspect(repo, { kind: "worktree" }), StandardsError)).toMatchObject({
+			code: "unreadable",
+			cause: failure,
+		});
+	});
+
 	it.each([new Error("reader failed"), new sourceModule.SourceError("symlink", "root", "symlinked source")])(
 		"preserves an untranslated source-opening error: %s",
 		async (failure) => {
@@ -789,6 +921,13 @@ describe.each(sourceKinds)("standards import branches from %s", (kind) => {
 });
 
 describe("standards note path counts", () => {
+	it("counts separators within the omission label's byte bound", () => {
+		const first = "é".repeat(2047);
+		expect(StandardsReading.from([], [], [], [first, "z"]).note()).toBe(
+			`left out standards over 256 KiB: ${first}, and 1 more`,
+		);
+	});
+
 	it("lists ten omitted paths and counts the rest", () => {
 		const paths = Array.from({ length: 11 }, (_, i) => `${i}.md`);
 		expect(StandardsReading.from([], [], [], paths.slice(0, 10)).note()).toBe(
