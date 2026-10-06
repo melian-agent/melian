@@ -36,11 +36,12 @@
 	"files": [
 		"dist",
 		"README.md",
-		"tools.yaml"
+		"tools.yaml",
+		"release-policy.npmrc"
 	],
 	"scripts": {
-		"build": "tsc -b tsconfig.build.json && cp ../../tools.yaml tools.yaml",
-		"clean": "rm -rf dist ../../.tsbuild/pipeline.tsbuildinfo tools.yaml",
+		"build": "tsc -b tsconfig.build.json && cp ../../tools.yaml tools.yaml && cp ../../.npmrc release-policy.npmrc",
+		"clean": "rm -rf dist ../../.tsbuild/pipeline.tsbuildinfo tools.yaml release-policy.npmrc",
 		"prepack": "npm run build",
 		"postpack": "npm run clean",
 		"test": "vitest --run --root ../.. --passWithNoTests packages/pipeline/"

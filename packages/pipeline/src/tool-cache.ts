@@ -29,21 +29,26 @@ export type ToolFetch = (url: string, options: { signal: AbortSignal }) => Promi
 export class ToolCache {
 	readonly root: string;
 	readonly #fetch: ToolFetch;
-	private constructor(root: string, download: ToolFetch) {
+	readonly #windowDays: number;
+	private constructor(root: string, download: ToolFetch, windowDays: number) {
 		this.root = root;
 		this.#fetch = download;
+		this.#windowDays = windowDays;
 	}
 
 	/** Opens a cache without fetching anything. */
-	static async open(root: string, options: { fetch?: ToolFetch } = {}): Promise<ToolCache> {
+	static async open(root: string, options: { fetch?: ToolFetch; npmrc?: string } = {}): Promise<ToolCache> {
 		root = resolve(root);
-		return new ToolCache(root, options.fetch ?? fetch);
+		const path = import.meta.url.endsWith(".ts") ? "../../../.npmrc" : "../release-policy.npmrc";
+		const npmrc = options.npmrc ?? (await readFile(new URL(path, import.meta.url), "utf8"));
+		const match = /^\s*min-release-age\s*=\s*(\d+(?:\.\d+)?)\s*$/m.exec(npmrc);
+		return new ToolCache(root, options.fetch ?? fetch, match ? Number(match[1]) : 2);
 	}
 
 	#pin(tool: ToolPin, platform: string): { directory: string; sha256: string; url: string; binary?: string } {
 		const { name, ...fields } = tool;
 		const manifest = ToolManifest.parse(JSON.stringify({ format_version: 1, tools: { [name]: fields }, misses: [] }));
-		const problems = manifest.check(Date.now(), 2);
+		const problems = manifest.check(Date.now(), this.#windowDays);
 		if (problems.length) throw new ToolCacheError("toolFailed", problems.join("; "));
 		const artifact = manifest.artifact(name, platform);
 		return { ...artifact, directory: join(this.root, "tools", name, tool.version, platform, artifact.sha256) };

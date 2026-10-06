@@ -186,3 +186,14 @@ describe("ToolCache", () => {
 		expect(await readFile(await cache.materialise(tool, "darwin-arm64"))).toEqual(bytes);
 	});
 });
+
+it("reads the configured quarantine window rather than assuming two days", async () => {
+	const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
+	const tool = { ...testTool(bytes), published: new Date(Date.now() - 3 * 86_400_000).toISOString() };
+	const download = vi.fn(async () => new Response(bytes));
+	const strict = await ToolCache.open(root, { fetch: download, npmrc: "min-release-age=4\n" });
+	await expect(strict.materialise(tool, "darwin-arm64")).rejects.toMatchObject({ code: "toolFailed" });
+	expect(download).not.toHaveBeenCalled();
+	const relaxed = await ToolCache.open(root, { fetch: download, npmrc: "min-release-age=2.5\n" });
+	expect(await relaxed.materialise(tool, "darwin-arm64")).toBeTruthy();
+});

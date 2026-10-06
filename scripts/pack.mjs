@@ -14,4 +14,8 @@ mkdirSync(directory, { recursive: true });
 const npm = (...args) => execFileSync("npm", args, { stdio: "inherit" });
 npm("run", "build");
 copyFileSync(new URL("../tools.yaml", import.meta.url), new URL("../packages/pipeline/tools.yaml", import.meta.url));
+copyFileSync(
+	new URL("../.npmrc", import.meta.url),
+	new URL("../packages/pipeline/release-policy.npmrc", import.meta.url),
+);
 npm("pack", "--workspaces", "--ignore-scripts", "--pack-destination", directory);
