@@ -218,6 +218,11 @@ describe("ReviewThreadImporter", () => {
 		["A single-line comment", "A single-line comment", undefined],
 		["_Major_\nAn unbolded headline", "An unbolded headline", "_Major_"],
 		["_Major_\n</details>\n**Headline after an unmatched close.**", "Headline after an unmatched close.", "_Major_"],
+		[
+			"_Major_\n</details>\n<details>\n**Hidden evidence.**\n</details>\n**Visible headline.**",
+			"Visible headline.",
+			"_Major_",
+		],
 		[`${"\u{1f600}".repeat(101)}\n**Headline.**`, "Headline.", "\u{1f600}".repeat(100)],
 	])("reads the title and severity of %j", async (body, title, severity) => {
 		const page = recording.graphql!.MelianReviewThreads![0] as RecordedThreadsPage;
