@@ -607,7 +607,9 @@ describe.each(sourceKinds)("standards import safety from %s", (kind) => {
 		expect(reading.note()).not.toContain("AGENTS.md -> docs/public.md");
 		expect(read.mock.calls.some(([path]) => path === "docs/private.md")).toBe(false);
 	});
+});
 
+describe("standards import safety from the revision", () => {
 	it("uses the revision's ignore rules and never reads untracked working tree imports", async () => {
 		writeFiles(repo, { "AGENTS.md": "# Rules\n@private.md\n@untracked.md\n", "private.md": "PUBLIC_BASE" });
 		const source = sourceFor(repo, "revision");
