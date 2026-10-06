@@ -146,7 +146,13 @@ export class CompilerGraph {
 		if (declarations.length && declarations.every((declaration) => !this.#path(declaration.getSourceFile().fileName)))
 			return "external";
 		const eligible = declarations.flatMap((declaration) => {
-			if (callable(declaration) || isClassDeclaration(declaration) || isClassExpression(declaration))
+			if (
+				(callable(declaration) &&
+					!isGetAccessorDeclaration(declaration) &&
+					!isSetAccessorDeclaration(declaration)) ||
+				isClassDeclaration(declaration) ||
+				isClassExpression(declaration)
+			)
 				return [declaration];
 			if (
 				isVariableDeclaration(declaration) &&

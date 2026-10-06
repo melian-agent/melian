@@ -133,6 +133,22 @@ describe("compiler call coverage", { timeout: 60_000 }, () => {
 			compiler.close();
 		}
 	});
+	it("resolves a function returned by a getter as the invoked callee", () => {
+		root = mkdtempSync(join(tmpdir(), "melian-getter-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["a.ts"] }));
+		writeFileSync(
+			join(root, "a.ts"),
+			"function alpha() {}\nclass Box { get result() { return alpha; } }\nfunction run(box: Box) { box.result(); }\n",
+		);
+		const compiler = CompilerGraph.open(root);
+		try {
+			expect(compiler.read().files[0]!.pairs).toMatchObject([
+				{ caller: { name: "run" }, callee: { name: "alpha", line: 1 } },
+			]);
+		} finally {
+			compiler.close();
+		}
+	});
 	it("accepts upstream's null edges only for a successful empty report", () => {
 		const text = JSON.stringify({
 			target: "empty",
