@@ -1,12 +1,13 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ToolManifest } from "@melian-agent/core";
-import { ToolProvisioning } from "@melian-agent/pipeline";
+import { CacheLocation, ToolProvisioning } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createRepository, removeRepository } from "../../pipeline/test/fixtures/repo.ts";
 import { testTool, toolArchive } from "../../pipeline/test/fixtures/tool-archive.ts";
 import type { Io } from "../src/commands.ts";
 import { main } from "../src/main.ts";
+import { stateDirectory } from "../src/repository.ts";
 import { ToolInventory } from "../src/tools.ts";
 
 let repo: string;
@@ -80,4 +81,10 @@ it.each([
 	const io = output();
 	expect(await main(args, io)).toBe(64);
 	expect(io.errors.join("")).toContain("tools takes no arguments or fetch <name>");
+});
+
+it("uses one clone-directory rule for tools and review storage", async () => {
+	for (const env of [{}, { MELIAN_STATE_DIR: "relative-state" }, { MELIAN_STATE_DIR: join(repo, "host-state") }]) {
+		expect(await stateDirectory(repo, env)).toBe((await CacheLocation.open(repo, env)).root);
+	}
 });
