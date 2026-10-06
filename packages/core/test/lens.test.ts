@@ -673,10 +673,10 @@ describe("Lens.renderInstructions", () => {
 	it("appends advisory context only when the host supplies it", async () => {
 		const [correctness] = named(await Lens.load(repo, { kind: "worktree" }, []), "correctness");
 		const plain = correctness!.renderInstructions([], "careful", [], asIs);
-		expect(correctness!.renderInstructions([], "careful", [], asIs, "Caller evidence")).toBe(
+		expect(correctness!.renderInstructions([], "careful", [], asIs, "revision", "Caller evidence")).toBe(
 			`${plain}\n\nCaller evidence`,
 		);
-		expect(correctness!.renderInstructions([], "careful", [], asIs, "")).toBe(plain);
+		expect(correctness!.renderInstructions([], "careful", [], asIs, "revision", "")).toBe(plain);
 	});
 
 	it("hands a defect to a neighbour only when the review runs that neighbour", async () => {

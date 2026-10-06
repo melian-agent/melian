@@ -190,3 +190,5 @@ Step 11 execution-miss mapping is built. The tool-manifest comparison maps thirt
    - Inventory continuation: the release-gate subprocess test allows 60 seconds under load. The saved results reconstruct 600 proven rows, including 445 with existing failing tests.
 
 Step 11 main merge: verifier and step 9 remain built. Reviews combine per-lens standards, policy-commit trust and instruction identity with Enola static checks, graph caching and advisory callers. The CLI runs checks before opening caller context; library reviews retain automatic checks.
+
+Step 11 merge fixtures now pass advisory context after the standards source and give raw harness reviews explicit check records.

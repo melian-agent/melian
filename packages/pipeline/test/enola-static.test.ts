@@ -231,6 +231,7 @@ describe("static.enola", { timeout: 60_000 }, () => {
 					models: models.review,
 					decider,
 					callers,
+					checks: [],
 				};
 				const reviewed = await reviewChangeset(options);
 				const attached = await reviewChangeset(options);
