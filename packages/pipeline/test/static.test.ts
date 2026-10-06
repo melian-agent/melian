@@ -11,8 +11,8 @@ import {
 	type StaticRunInput,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { commit, createRepository, fakeTool, gitIn, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
 import { Run, staticToolSource } from "../src/static.ts";
+import { commit, createRepository, fakeTool, gitIn, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
 
 let repo: string;
 
@@ -37,11 +37,13 @@ it("uses the created scratch path when canonicalisation fails", { timeout: 60_00
 		error: Object.assign(new Error("canonicalisation refused"), { code: "permission_denied" as const }),
 	});
 	const run = new Run({ ...input("biome", head), env }, context);
-	await expect(run.inWorktree(async (root, scratch) => {
-		expect(root).toBe(join(scratch, "tree"));
-		expect(existsSync(root)).toBe(true);
-		return "done";
-	})).resolves.toBe("done");
+	await expect(
+		run.inWorktree(async (root, scratch) => {
+			expect(root).toBe(join(scratch, "tree"));
+			expect(existsSync(root)).toBe(true);
+			return "done";
+		}),
+	).resolves.toBe("done");
 });
 
 const tsconfig = JSON.stringify({

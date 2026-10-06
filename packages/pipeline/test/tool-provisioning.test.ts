@@ -1,6 +1,6 @@
-import { createHash } from "node:crypto";
-import { execFile } from "node:child_process";
 import type * as processes from "node:child_process";
+import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { ToolManifest } from "@melian-agent/core";

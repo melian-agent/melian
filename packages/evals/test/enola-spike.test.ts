@@ -7,8 +7,8 @@ import { ToolProvisioning } from "@melian-agent/pipeline";
 import { afterEach, expect, it, vi } from "vitest";
 import { commit, createRepository, removeRepository } from "../../pipeline/test/fixtures/repo.ts";
 import { testTool, toolArchive } from "../../pipeline/test/fixtures/tool-archive.ts";
-import { EnolaSpike } from "../src/enola-spike.ts";
 import { CompilerGraph } from "../src/compiler-graph.ts";
+import { EnolaSpike } from "../src/enola-spike.ts";
 
 let repo: string;
 afterEach(() => {
