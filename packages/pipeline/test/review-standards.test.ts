@@ -16,6 +16,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
+import { ReviewIndex } from "../src/review-index.ts";
 import * as untrusted from "../src/untrusted.ts";
 import { baseAndHead, gitIn, writeFiles } from "./fixtures/repo.ts";
 
@@ -143,6 +144,35 @@ describe("per-lens standards", () => {
 		});
 		expect(requests["You are the correctness reviewer"]).toHaveLength(2);
 		expect(systemPromptOf(requests["You are the correctness reviewer"]![1]!)).toContain("SECOND_STANDARD");
+	});
+
+	it("replaces a completed lens task when only standards omissions change", async () => {
+		rmSync(`${repo}/packages/core/src/AGENTS.md`);
+		const { options, requests } = await setup("worktree");
+		const first = await reviewChangeset(options);
+		expect(first.verdict.status).toBe("passed");
+		const root = await options.harness.harness.root(context);
+		const revision = revisionKey(options.changeset.revision);
+		const before = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.task;
+		expect(before).toBeDefined();
+		writeFiles(repo, { "packages/core/src/AGENTS.md": "x".repeat(300 * 1024) });
+		const paths = options.changeset.revision.paths();
+		const standards = await Standards.load(repo, options.policy, paths);
+		expect(standards.source).toEqual(options.standards.source);
+		expect(standards.forFiles(paths).sections).toEqual(options.standards.forFiles(paths).sections);
+		expect(options.standards.forFiles(paths).omitted).toEqual([]);
+		expect(standards.forFiles(paths).omitted).toEqual(["packages/core/src/AGENTS.md"]);
+
+		const second = await reviewChangeset({ ...options, standards });
+
+		expect(second.verdict.status).toBe("not-reviewed");
+		const record = second.verdict.notRun.find(({ name }) => name === "lens.correctness")!;
+		expect(record.status).toBe("ended");
+		expect(record.reason).toContain("packages/core/src/AGENTS.md");
+		const after = (await options.harness.harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.task;
+		expect(after).toBeDefined();
+		expect(after).not.toBe(before);
+		expect(requests["You are the correctness reviewer"]).toHaveLength(2);
 	});
 
 	it("quotes head standards under base policy, while resolving equivalent commit names", async () => {
