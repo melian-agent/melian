@@ -405,13 +405,30 @@ function movedFrom(target: PublishTarget, now: PullRequest): string | undefined 
 
 class TargetMoved extends Error {}
 
-type PublishInput = {
+type StoredPublishInput = {
 	publishedBy: PublishedBy;
 	root: ConversationId;
 	target: PublishTarget;
 	lines: Record<string, [number, number][]>;
 	walkthrough?: { enabled: boolean; collapsed: boolean; diagrams: boolean };
 };
+
+class PublishInput {
+	readonly stored: StoredPublishInput;
+
+	constructor(stored: StoredPublishInput) {
+		this.stored = stored;
+	}
+
+	static upgrade(value: unknown): StoredPublishInput {
+		const stored = value as Omit<StoredPublishInput, "publishedBy">;
+		return new PublishInput({ ...stored, publishedBy: { trustedWriters: true } }).toJSON();
+	}
+
+	toJSON(): StoredPublishInput {
+		return this.stored;
+	}
+}
 
 type PublishResult = {
 	review: string;
@@ -445,11 +462,11 @@ const untrustedWriterStatus: ReviewStatus = {
 // post is recorded in its own commit, and before posting anything the phase reads Melian's markers back from the pull
 // request, so a rerun after a crash between a post and its record finds the post instead of repeating it.
 function publishTask(provider: ReviewProvider) {
-	return defineTask<PublishInput, { phase: "publish" }, PublishOutcome>({
+	return defineTask<StoredPublishInput, { phase: "publish" }, PublishOutcome>({
 		name: publishTaskName,
 		version: 2,
 		migrate: (input, checkpoint) => ({
-			input: { ...(input as unknown as PublishInput), publishedBy: { trustedWriters: true } },
+			input: PublishInput.upgrade(input),
 			checkpoint: checkpoint as { phase: "publish" },
 		}),
 		initial: () => ({ phase: "publish" }),
@@ -1173,13 +1190,13 @@ export async function publishReview(options: PublishOptions): Promise<Publicatio
 		const result = outcome.status === "completed" ? (outcome.result as PublishOutcome) : undefined;
 		if (result?.kind === "superseded") superseded.push({ task: String(each.record.id), reason: result.reason });
 	}
-	const input: PublishInput = {
+	const input = new PublishInput({
 		publishedBy,
 		root,
 		target,
 		lines: changeset.revision.diffLines(),
 		...(options.walkthrough === undefined ? {} : { walkthrough: { ...options.walkthrough } }),
-	};
+	}).toJSON();
 	const taskId = await (await harness.root(context)).commit(
 		(tx) => tx.createTask(publishTask(options.provider), input, { ownership: { kind: "conversation" } }),
 		context,
