@@ -13,3 +13,5 @@ The fix pass changes the retirement decision to the ten most recent eligible mer
 A stored version-1 publish fixture now seeds an unfinished task in SQLite. Reopening with the current publisher migrates its input to trusted writers and posts one review and one ledger. The fixture also reopens the legacy publisher document without inventing an identity.
 
 The first status write may repeat after a crash before its record commit. This is accepted and the crash regression pins three statuses, compared with two normally. The recovery guarantee avoids duplicate reviews and ledger comments, not every external write.
+
+Version-5 published-document coverage now checks trusted-writer defaults on the revision and latest ledger round after reopening SQLite. It checks that no identity is invented and that statuses, replies and earlier one-line history survive. The migrated shape is written and reopened again. Existing version-5 reply migration coverage remains.
