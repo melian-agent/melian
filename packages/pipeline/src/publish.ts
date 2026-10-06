@@ -192,7 +192,8 @@ export const PublishedDocument = defineDoc<StoredPublishedState>({
 	fork: "current",
 	initial: () => new PublishedState({ order: [], revisions: {} }).toJSON(),
 	// Version 2 made a finding's evidence a list of locations, so a round left pending before it renders. Version 3 keys
-	// each reply by `replyKey`. Version 4 adds ledger snapshots; version 5 retains only one-line older rounds. Version 6 records the publisher.
+	// each reply by `replyKey`. Version 4 adds ledger snapshots; version 5 retains only one-line older rounds.
+	// Version 6 records the publisher and optional standards paths per lens.
 	migrate: (value, from) => PublishedState.upgrade(value, from),
 });
 

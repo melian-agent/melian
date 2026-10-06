@@ -7,14 +7,24 @@ import {
 	readdirSync,
 	readFileSync,
 	rmSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type Decider, type DecisionRequest, Rendering, type StoredVerdict, Verdict } from "@melian-agent/core";
+import {
+	type Decider,
+	type DecisionRequest,
+	findingId,
+	Rendering,
+	type StoredVerdict,
+	standardsLimits,
+	Verdict,
+} from "@melian-agent/core";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
-import { afterAll, afterEach, describe, expect, it } from "vitest";
+import * as pipelineTesting from "@melian-agent/pipeline/testing";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { review as reviewIn } from "../src/commands.ts";
@@ -40,6 +50,7 @@ const repos: string[] = [];
 const noUserFiles = mkdtempSync(join(tmpdir(), "melian-xdg-"));
 
 afterEach(() => {
+	vi.restoreAllMocks();
 	for (const repo of repos.splice(0)) rmSync(repo, { recursive: true, force: true });
 	if (scratch !== undefined) rmSync(scratch, { recursive: true, force: true });
 });
@@ -114,6 +125,9 @@ function staticCheckout(added: string) {
 	return { repo, env: scriptFile(Object.fromEntries(builtinLenses.map((name) => [name, quiet]))) };
 }
 
+const verifierWarnings =
+	"melian: Plan: lenses verify, but the verifier tier routes no model of its own; verification falls back to lens tiers, heavy then medium then light\nmelian: Plan: every verification candidate would be judged by its finder's own family\n";
+
 describe("melian review and findings", { timeout: 60_000 }, () => {
 	it("triages through the decider the host hands it, and records the decision the lenses ran under", async () => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
@@ -147,12 +161,102 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(stored.stdout.match(/"level": "quick"/g)).toHaveLength(builtinLenses.length);
 	});
 
+	it("reads committed nested standards despite uncommitted checkout-only imports", async () => {
+		const { repo, env } = staticCheckout("export const b = 2;\n");
+		writeFileSync(join(repo, "src/AGENTS.md"), "COMMITTED_HEAD_STANDARD\n");
+		git(repo, "add", "src/AGENTS.md");
+		git(repo, "commit", "--quiet", "-m", "head standards");
+		writeFileSync(join(repo, "src/AGENTS.md"), "UNCOMMITTED_STANDARD\n@checkout-only.md\n");
+		writeFileSync(join(repo, "src/checkout-only.md"), "CHECKOUT_ONLY_IMPORT\n");
+		writeFileSync(join(repo, "melian.yaml"), "tiers:\n  full: [lens.correctness]\n");
+		const capture = vi.spyOn(pipelineTesting, "scriptLenses");
+		const code = await reviewIn(
+			{
+				cwd: repo,
+				env: { ...process.env, ...gitEnv, XDG_CONFIG_HOME: noUserFiles, ...env },
+				stdout: () => undefined,
+				stderr: () => undefined,
+				color: false,
+			},
+			"main",
+			{ rerun: false },
+		);
+		expect(code).toBe(0);
+		const requests = capture.mock.results[0]!.value as ReturnType<typeof pipelineTesting.scriptLenses>;
+		const prompts = Object.values(requests).flat().map(pipelineTesting.systemPromptOf);
+		expect(prompts).toHaveLength(1);
+		expect(prompts[0]).toContain("COMMITTED_HEAD_STANDARD");
+		expect(prompts[0]).not.toContain("UNCOMMITTED_STANDARD");
+		expect(prompts[0]).not.toContain("CHECKOUT_ONLY_IMPORT");
+	});
+
+	it("reads base nested standards and imports when the range head is not checked out", async () => {
+		const { repo, env } = staticCheckout("export const b = 2;\n");
+		git(repo, "checkout", "--quiet", "main");
+		writeFileSync(join(repo, "melian.yaml"), "tiers:\n  full: [lens.correctness]\n");
+		writeFileSync(join(repo, "src/AGENTS.md"), "BASE_STANDARD\n@rules.md\n");
+		writeFileSync(join(repo, "src/rules.md"), "BASE_IMPORT\n");
+		git(repo, "add", "--all");
+		git(repo, "commit", "--quiet", "-m", "base standards");
+		git(repo, "checkout", "--quiet", "-b", "standards-head");
+		writeFileSync(join(repo, "src/AGENTS.md"), "HEAD_STANDARD\n@rules.md\n");
+		writeFileSync(join(repo, "src/rules.md"), "HEAD_IMPORT\n");
+		writeFileSync(join(repo, "src/b.ts"), "export const b = 2;\n");
+		git(repo, "add", "--all");
+		git(repo, "commit", "--quiet", "-m", "head standards");
+		git(repo, "checkout", "--quiet", "main");
+		writeFileSync(join(repo, "src/AGENTS.md"), "CHECKOUT_STANDARD\n@rules.md\n");
+		writeFileSync(join(repo, "src/rules.md"), "CHECKOUT_IMPORT\n");
+		const capture = vi.spyOn(pipelineTesting, "scriptLenses");
+		const code = await reviewIn(
+			{
+				cwd: repo,
+				env: { ...process.env, ...gitEnv, XDG_CONFIG_HOME: noUserFiles, ...env },
+				stdout: () => undefined,
+				stderr: () => undefined,
+				color: false,
+			},
+			"main...standards-head",
+			{ rerun: false },
+		);
+		expect(code).toBe(0);
+		const requests = capture.mock.results[0]!.value as ReturnType<typeof pipelineTesting.scriptLenses>;
+		const prompts = Object.values(requests).flat().map(pipelineTesting.systemPromptOf);
+		expect(prompts).toHaveLength(1);
+		expect(prompts[0]).toContain("BASE_STANDARD");
+		expect(prompts[0]).toContain("BASE_IMPORT");
+		for (const excluded of ["HEAD_STANDARD", "HEAD_IMPORT", "CHECKOUT_STANDARD", "CHECKOUT_IMPORT"])
+			expect(prompts[0]).not.toContain(excluded);
+	});
+
+	it.each([
+		["\u0007", "\\u0007"],
+		["\u001b[2J", "\\u001b[2J"],
+	])("renders standards error paths containing %j as visible text", (control, escaped) => {
+		const { repo, env } = staticCheckout("export const b = 2;\n");
+		const directory = `unsafe${control}`;
+		mkdirSync(join(repo, directory, ".melian/standards"), { recursive: true });
+		for (let i = 0; i < 5; i++) {
+			writeFileSync(join(repo, directory, `.melian/standards/${i}.md`), "x".repeat(220 * 1024));
+		}
+		git(repo, "add", "--all");
+		git(repo, "commit", "--quiet", "-m", "nested standards exceed the chain bound");
+
+		const result = melian(repo, ["review", "main"], env);
+
+		expect(result.status).toBe(2);
+		expect(result.stdout).toBe("");
+		expect(result.stderr).toContain("exceed 1048576 bytes");
+		expect(result.stderr).toContain(`unsafe${escaped}`);
+		expect(result.stderr).not.toContain(control);
+	});
+
 	it("exits 0 for a review that passed, and prints the terminal rendering of its verdict", () => {
 		const { repo, env } = goldenCheckout(goldens["clean-rename"]!);
 
 		const review = melian(repo, ["review", "main"], env);
 
-		expect(review).toMatchObject({ status: 0, stderr: "" });
+		expect(review).toMatchObject({ status: 0, stderr: verifierWarnings });
 		const stored = melian(repo, ["findings", "main", "--json"], env);
 		expect(stored.status).toBe(0);
 		const verdict = Verdict.from(JSON.parse(stored.stdout) as StoredVerdict);
@@ -190,7 +294,8 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 
 		expect(review.status).toBe(0);
 		expect(review.stderr).toBe(
-			"melian: Plan: heavy runs faux/scripted, set by --model; the committed route wants anthropic/claude-opus-5-5, and does not accept faux/scripted\n",
+			"melian: Plan: heavy runs faux/scripted, set by --model; the committed route wants anthropic/claude-opus-5-5, and does not accept faux/scripted\n" +
+				verifierWarnings,
 		);
 		expect(review.stdout).toContain("left the committed routes:\n  lens.");
 		const stored = Verdict.from(
@@ -235,7 +340,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const review = melian(repo, ["review", "main"], xdg);
 
 		expect(review.status).toBe(0);
-		expect(review.stderr).toBe("");
+		expect(review.stderr).toBe(verifierWarnings);
 		expect(review.stdout).not.toContain("SENTINEL");
 	});
 
@@ -379,7 +484,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 
 		const review = melian(repo, ["review", "main"], scriptFile({ pay: [{ text: "Reported 0 findings." }] }));
 
-		expect(review).toMatchObject({ status: 0, stderr: "" });
+		expect(review).toMatchObject({ status: 0, stderr: verifierWarnings });
 		expect(review.stdout).toContain("lens.pay  careful");
 	});
 
@@ -388,7 +493,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 
 		const review = melian(repo, ["review", "main"], env);
 
-		expect(review).toMatchObject({ status: 0, stderr: "" });
+		expect(review).toMatchObject({ status: 0, stderr: verifierWarnings });
 		const verdict = JSON.parse(melian(repo, ["findings", "main", "--json"], env).stdout) as StoredVerdict;
 		expect(verdict.notRun.map((check) => check.name)).toEqual(["decisions.fast"]);
 	});
@@ -458,7 +563,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		expect(all.stdout).toContain("Dismissed: 1 finding");
 		expect(all.stdout).toMatch(
 			new RegExp(
-				`\\(introduced, dismissed, block\\)  ${id}\\n    Dismissed by Melian Test <test@melian\\.invalid> at \\d{4}-[^:]+:\\d\\d:[^:]+: ${reason}\\n`,
+				`\\(introduced, dismissed, block, confirmed\\)  ${id}\\n    Verified:[^\\n]+\\n    Dismissed by Melian Test <test@melian\\.invalid> at \\d{4}-[^:]+:\\d\\d:[^:]+: ${reason}\\n`,
 			),
 		);
 		const verdict = JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout) as StoredVerdict;
@@ -467,9 +572,14 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 			reason,
 		});
 		const rerun = melian(repo, ["review", range], env);
-		expect(rerun).toMatchObject({
-			status: 0,
-			stdout: findings.stdout.replace(Verdict.from(verdict).agentPrompt(range), ""),
+		expect(rerun.status).toBe(0);
+		expect(rerun.stdout).not.toContain("verifier  ran");
+		expect(melian(repo, ["findings", range], env).stdout).toBe(
+			rerun.stdout + Verdict.from(verdict).agentPrompt(range),
+		);
+		expect(JSON.parse(melian(repo, ["findings", range, "--json"], env).stdout)).toEqual({
+			...verdict,
+			ran: verdict.ran?.filter((check) => check.name !== "verifier"),
 		});
 	});
 
@@ -511,7 +621,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 	it("prints a finding's merged reports, and names each one dismissing the finding dismisses with it", () => {
 		const { repo, env, review, id, member } = reviewedMerged();
 		expect(review.stdout).toContain(
-			`null-dereference  (introduced, new, block)  ${id}\n    Merged report: P2 changed-return from lens.contracts  ${member}\n`,
+			`null-dereference  (introduced, new, block, confirmed)  ${id}\n    Merged report: P2 changed-return from lens.contracts  ${member}\n`,
 		);
 
 		const dismissed = melian(repo, ["dismiss", range, id, "--reason", reason], env);
@@ -542,7 +652,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		const live = Object.values(verdict.findings).flat();
 		expect(live.map((each) => each.properties.id)).toEqual([member]);
 		expect(melian(repo, ["findings", range], env).stdout).toContain(
-			`changed-return  (introduced, new, acknowledge)  ${member}\n    Also reported, dismissed: P1 null-dereference from lens.correctness  ${id}\n`,
+			`changed-return  (introduced, new, acknowledge, confirmed)  ${member}\n    Also reported, dismissed: P1 null-dereference from lens.correctness  ${id}\n`,
 		);
 	});
 
@@ -641,6 +751,62 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("lists nested standards carriers and their total bytes", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		const files = {
+			"AGENTS.md": "root\n",
+			"src/CLAUDE.md": "@AGENTS.md\n",
+			"src/.melian/standards/style.md": "style\n",
+		};
+		for (const [path, text] of Object.entries(files)) {
+			mkdirSync(join(repo, path, ".."), { recursive: true });
+			writeFileSync(join(repo, path), text);
+		}
+		const doctor = melian(repo, ["doctor"]);
+		expect(doctor.stdout).toContain(
+			"ok    standards   3 files, 22 bytes; AGENTS.md, src/.melian/standards/style.md, src/CLAUDE.md",
+		);
+	});
+
+	it("warns for oversized nested standards and skipped symlinks", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		writeFileSync(join(repo, "src/AGENTS.md"), "x".repeat(standardsLimits.fileBytes + 1));
+		symlinkSync("AGENTS.md", join(repo, "src/CLAUDE.md"));
+		const doctor = melian(repo, ["doctor"]);
+		expect(doctor.status).toBe(0);
+		expect(doctor.stdout).toContain(
+			`warn  standards   1 file, ${standardsLimits.fileBytes + 1} bytes; src/AGENTS.md (over 256 KiB), src/CLAUDE.md (symlink skipped); 1 over 256 KiB; 1 symlink skipped`,
+		);
+	});
+
+	it("counts omitted regular standards separately from skipped symlinks", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		for (let index = 0; index < 12; index++) {
+			const directory = join(repo, `p${String(index).padStart(2, "0")}`);
+			mkdirSync(directory);
+			writeFileSync(join(directory, "AGENTS.md"), "x");
+		}
+		symlinkSync("AGENTS.md", join(repo, "p10/CLAUDE.md"));
+		const doctor = melian(repo, ["doctor"]);
+		const line = doctor.stdout.split("\n").find((line) => line.startsWith("warn  standards"))!;
+		expect(line).toContain("12 files, 12 bytes");
+		expect(line).toMatch(/, and 2 more files, 1 more skipped symlink; 1 symlink skipped$/);
+		expect(line).not.toContain("and 3 more");
+	});
+
+	it("limits the standards path list to ten entries", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		for (let index = 0; index < 12; index++) {
+			mkdirSync(join(repo, `p${String(index).padStart(2, "0")}`));
+			writeFileSync(join(repo, `p${String(index).padStart(2, "0")}/AGENTS.md`), "x");
+		}
+		const doctor = melian(repo, ["doctor"]);
+		const line = doctor.stdout.split("\n").find((line) => line.startsWith("ok    standards"))!;
+		expect(line).toContain("12 files, 12 bytes");
+		expect(line).toContain("p09/AGENTS.md, and 2 more");
+		expect(line).not.toContain("p10/AGENTS.md");
+	});
+
 	it("warns when an extending lens's top-level tier or budget leaves a level cheaper than the one below it", () => {
 		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
 		mkdirSync(join(repo, ".melian/lenses/correctness"), { recursive: true });
@@ -713,7 +879,7 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		expect(routed.stdout).toContain(
 			`ok    plan        ${lenses}: quick on medium (no model), careful on heavy (anthropic/claude-opus-5-5), deep on heavy (anthropic/claude-opus-5-5)\n`,
 		);
-		expect(routed.stdout).not.toMatch(/^warn {2}plan/m);
+		expect(routed.stdout).toContain("verifier: anthropic/claude-opus-5-5 (claude); fallback from lens tiers");
 		expect(user.stdout).toContain(
 			`ok    plan        heavy: anthropic/claude-sonnet-5-5 ${credential}; routed by ${preferences}\n`,
 		);
@@ -995,5 +1161,50 @@ describe("melian's command line", { timeout: 60_000 }, () => {
 			status: 64,
 			stderr: expect.stringContaining("unknown command reveiw"),
 		});
+	});
+});
+
+describe("scripted verification", { timeout: 60_000 }, () => {
+	it("exits 2 when the verifier tier cannot run", () => {
+		const { repo, env } = goldenCheckout(
+			goldens["correctness-null-deref"]!,
+			undefined,
+			`${guardrailsOnly}models:\n  verifier:\n    model: faux/missing\n    unavailable: fail\n`,
+		);
+		const reviewed = melian(repo, ["review", "main"], env);
+		expect(reviewed.status).toBe(2);
+		expect(reviewed.stdout).toMatch(/^Verdict: not reviewed/);
+		expect(reviewed.stdout).toContain("verifier  failed");
+		expect(reviewed.stderr).toContain("the verifier did not judge every claim");
+	});
+
+	it("shows verification in JSON and corrections in text, with refutations behind all", () => {
+		const golden = goldens["correctness-null-deref"]!;
+		const id = findingId({
+			file: "src/user.ts",
+			rule: "null-dereference",
+			snippet: "const manager = user.manager as User;\nreturn manager.name.trim();",
+			occurrence: 0,
+		});
+		const { repo, env } = goldenCheckout(golden, {
+			...golden.script,
+			verifier: {
+				[id]: {
+					verdict: "refuted",
+					reason: "The scripted guard prevents the failure.",
+					correction: "Keep the guarded value.",
+					evidence: [{ file: "src/user.ts", line: 7, role: "context" }],
+				},
+			},
+		});
+		const reviewed = melian(repo, ["review", "main"], env);
+		expect(reviewed.status).toBe(0);
+		expect(reviewed.stdout).toContain("1 refuted finding not shown.");
+		const stored = JSON.parse(melian(repo, ["findings", "main", "--json"], env).stdout) as StoredVerdict;
+		expect(stored.refuted?.[0]?.properties.verification?.verdict).toBe("refuted");
+		expect(stored.ran?.some((check) => check.name === "verifier")).toBe(true);
+		const all = melian(repo, ["findings", "main", "--all"], env);
+		expect(all.stdout).toContain("Refuted: 1 finding");
+		expect(all.stdout).toContain("Correction: Keep the guarded value.");
 	});
 });

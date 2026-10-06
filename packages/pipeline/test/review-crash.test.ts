@@ -28,10 +28,12 @@ import {
 	fauxAssistantMessage,
 	fauxToolCall,
 	scriptConversations,
+	scriptVerifier,
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
+import { findingsVersion } from "../src/findings.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { gitIn } from "./fixtures/repo.ts";
@@ -74,6 +76,9 @@ async function killWhen(
 		| "spent"
 		| "tokens"
 		| "escalation"
+		| "verifier"
+		| "verdict"
+		| "conflicting-verdict"
 		| "decision"
 		| "replacement",
 	reached: (events: ReturnType<typeof readEvents>) => boolean,
@@ -224,6 +229,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			},
 			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
+			checks: [],
 			models: fake.review,
 		});
 
@@ -267,6 +273,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			},
 			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
+			checks: [],
 			models: fake.review,
 		});
 
@@ -425,6 +432,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			},
 			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
+			checks: [],
 			models: fake.review,
 		});
 		const root = (await harness.root(context)).id;
@@ -477,6 +485,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			},
 			lenses: budgetLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
+			checks: [],
 			models: fake.review,
 		});
 
@@ -523,6 +532,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 				},
 				lenses: budgetLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"]), endingBudgets[scenario]),
 				standards: [],
+				checks: [],
 				models: fake.review,
 			});
 
@@ -595,10 +605,78 @@ describe("an escalation across a crash", { timeout: 30_000 }, () => {
 		const levels: string[] = [];
 		for (let id = 1; id < 60; id++) {
 			const lens = (await harness.snapshot(LensDocument, id as ConversationId, context))?.lens;
-			if (lens !== undefined) levels.push(lens.level ?? "none");
+			if (lens !== undefined && lens.role !== "verifier") levels.push(lens.level ?? "none");
 		}
 		// One conversation per level: the escalation's was created once, before the crash.
 		expect(levels.sort()).toEqual(["careful", "quick"]);
+		expect(verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
+		expect(verdict.attention()[0]!.properties.verification?.verdict).toBe("confirmed");
+		expect(verdict.attention()[0]!.properties.source.version).toMatch(/@quick$/);
+	});
+});
+
+describe("verification across a crash", { timeout: 30_000 }, () => {
+	it("does not downgrade a confirmed claim when the second conflicting call replays after a real kill", async () => {
+		const database = join(dir, "conflicting-verdict.sqlite");
+		const log = join(dir, "conflicting-verdict.jsonl");
+		await killWhen("conflicting-verdict", (events) => count(events, "verdict-committed") === 1, database, log);
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "medium" }] });
+		const requests = scriptConversations(fake, [
+			{
+				match: "Melian adversarial verifier",
+				replies: [fauxAssistantMessage("Done.")],
+			},
+		]);
+		harness = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false }, toolExecution: "parallel" },
+		});
+		const root = await harness.root(context);
+		const before = await readFindings(harness, root.id, reviewedRevision(), context);
+		expect(before[0]!.properties.verification?.verdict).toBe("confirmed");
+		const version = await findingsVersion(harness, root.id, reviewedRevision(), context);
+		harness.resume();
+		const task = (await harness.inspect(context)).tasks.find((task) => task.record.kind === "melian.verification")!;
+		expect((await harness.waitForTask(task.record.id, context)).state.outcome.status).toBe("completed");
+		const after = await readFindings(harness, root.id, reviewedRevision(), context);
+		expect(after[0]!.properties.verification).toEqual(before[0]!.properties.verification);
+		expect(await findingsVersion(harness, root.id, reviewedRevision(), context)).toBe(version);
+		expect(requests["Melian adversarial verifier"]).toHaveLength(1);
+	});
+	it.each(["verifier", "verdict"] as const)("resumes %s after a real kill", async (scenario) => {
+		const database = join(dir, "verifier.sqlite");
+		const log = join(dir, "verifier.jsonl");
+		await killWhen(
+			scenario,
+			(events) =>
+				scenario === "verifier"
+					? events.some((event) => event.event === "model-request" && event.lens === "verifier")
+					: count(events, "verdict-committed") === 1,
+			database,
+			log,
+		);
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "medium" }] });
+		const requests = scriptConversations(fake, [
+			{
+				match: "Melian adversarial verifier",
+				replies: [(messages) => scriptVerifier(messages), (messages) => scriptVerifier(messages)],
+			},
+		]);
+		harness = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		const root = await harness.root(context);
+		const before = await readFindings(harness, root.id, reviewedRevision(), context);
+		expect(before[0]?.properties.verification !== undefined).toBe(scenario === "verdict");
+		harness.resume();
+		const task = (await harness.inspect(context)).tasks.find((task) => task.record.kind === "melian.verification")!;
+		expect((await harness.waitForTask(task.record.id, context)).state.outcome.status).toBe("completed");
+		const after = await readFindings(harness, root.id, reviewedRevision(), context);
+		expect(after[0]!.properties.verification?.verdict).toBe("confirmed");
+		expect(requests["Melian adversarial verifier"]).toHaveLength(scenario === "verdict" ? 1 : 2);
 	});
 });
 
@@ -726,6 +804,7 @@ describe("a lens task from an earlier selection during triage", { timeout: 60_00
 			},
 			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
+			checks: [],
 			models: fake.review,
 			decider: resumedDecider,
 			policy: { kind: "revision", commit: changeset.revision.base },

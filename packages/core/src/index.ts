@@ -8,6 +8,7 @@ export {
 	type ConfigFor,
 	Defect,
 	Manifest,
+	Merge,
 	noRecord,
 	type StoredCheckRecord,
 	type StoredVerdict,
@@ -260,7 +261,15 @@ export {
 	secretsFileSchema,
 } from "./secrets.ts";
 export type { RepositorySource } from "./source.ts";
-export { loadStandards, type StandardsSection, standardsLimits } from "./standards.ts";
+export {
+	loadStandards,
+	Standards,
+	type StandardsEntry,
+	StandardsInventory,
+	StandardsReading,
+	type StandardsSection,
+	standardsLimits,
+} from "./standards.ts";
 export {
 	normaliseBiomeSarif,
 	parseTscDiagnostics,
@@ -286,3 +295,13 @@ export {
 } from "./triage.ts";
 
 export const packageName = "@melian-agent/core";
+
+export {
+	type StoredVerificationState,
+	type Verification,
+	VerificationState,
+	verificationBudget,
+	verificationQuestionSet,
+	verificationQuestions,
+	verificationSchema,
+} from "./verification.ts";

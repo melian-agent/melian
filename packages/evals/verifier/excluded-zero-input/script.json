@@ -1,0 +1,11 @@
+{
+  "verdict": "refuted",
+  "reason": "The private function has one caller, passing three attempts. The declared union excludes zero.",
+  "evidence": [
+    {
+      "file": "retry.ts",
+      "line": 5,
+      "role": "context"
+    }
+  ]
+}

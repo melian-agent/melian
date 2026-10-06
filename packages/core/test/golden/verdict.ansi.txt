@@ -14,19 +14,19 @@ Verdict: [31mnot reviewed[0m, [31mblocking[0m
 
 [1msrc/run.ts[0m
 
-  [31mP0[0m  line 40  sql-injection  (introduced, new, block)
+  [31mP0[0m  line 40  sql-injection  (introduced, new, block, unverified)
   The query interpolates the user's name
     What: The query splices the name into SQL text.
     Why here: This change passes the name straight from the request.
     What to do: Pass the name as a bound parameter.
 
-  [31mP1[0m  line 12  no-eval  (introduced, new, block)
+  [31mP1[0m  line 12  no-eval  (introduced, new, block, unverified)
   eval runs request input
     What: The handler passes the request body to eval.
     Why here: This change routes the body into run() without parsing it.
     What to do: Parse the body with JSON.parse and validate it.
 
-  [31mP1[0m  line 50  no-eval  (introduced, new, block)
+  [31mP1[0m  line 50  no-eval  (introduced, new, block, unverified)
   eval runs a stored template
     What: The renderer evaluates a template from the database.
     Why here: This change lets users edit that template.
@@ -36,7 +36,7 @@ Verdict: [31mnot reviewed[0m, [31mblocking[0m
 
 [1msrc/total.ts[0m
 
-  [33mP2[0m  line 9  missing-test  (introduced, new, acknowledge)
+  [33mP2[0m  line 9  missing-test  (introduced, new, acknowledge, unverified)
   No test covers the new branch
     What: The new limit branch has no test.
     Why here: This change adds the branch.
@@ -46,7 +46,7 @@ Verdict: [31mnot reviewed[0m, [31mblocking[0m
 
 [1msrc/run.ts[0m
 
-  [36mP3[0m  lines 30-32  unchecked-result  (affected, new, advisory)
+  [36mP3[0m  lines 30-32  unchecked-result  (affected, new, advisory, unverified)
   The write's result is ignored
     What: fs.write can write fewer bytes than asked.
     Why here: The new caller passes larger buffers than before.

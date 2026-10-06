@@ -1,6 +1,7 @@
 src/cart.ts
 
-  P0  line 10  broken-caller  (affected, new, unresolved)
+  P0  line 10  broken-caller  (affected, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   summary calls formatPrice with the amount alone.
     What: summary calls formatPrice with the amount alone.
     Why here: This change made currency a required second parameter of formatPrice, and summary was not updated.
@@ -14,7 +15,8 @@ src/cart.ts
 
 src/price.ts
 
-  P1  line 2  wrong-result  (introduced, new, unresolved)
+  P1  line 2  wrong-result  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   formatPrice divides every amount by 100, so formatPrice(500, "JPY") renders "JPY 5" for 500 yen.
     What: formatPrice divides every amount by 100, so formatPrice(500, "JPY") renders "JPY 5" for 500 yen.
     Why here: The base formatted dollars only; this change accepts any currency but keeps the two-decimal conversion, and yen has no minor unit.

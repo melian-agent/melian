@@ -1,6 +1,7 @@
 packages/pipeline/src/notes.ts
 
-  P1  line 48  replay-duplicate  (introduced, new, unresolved)
+  P1  line 48  replay-duplicate  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   add_note is marked replay: "safe", but its commit appends the note to the revision's list rather than writing it under a stable key.
     What: add_note is marked replay: "safe", but its commit appends the note to the revision's list rather than writing it under a stable key.
     Why here: This change adds the tool. Pi Durable reruns a replay-safe tool in full after a crash between its commit and its result, so every write it makes must be an idempotent upsert.

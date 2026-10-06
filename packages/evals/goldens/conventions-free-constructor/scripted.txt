@@ -1,6 +1,7 @@
 src/store.ts
 
-  P3  lines 11-13  quoted-rule-violation  (introduced, new, unresolved)
+  P3  lines 11-13  quoted-rule-violation  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   invoiceOf is a free function that constructs an Invoice from an InvoiceRow.
     What: invoiceOf is a free function that constructs an Invoice from an InvoiceRow.
     Why here: AGENTS.md says "`Invoice` is the domain object. Building an `Invoice` from anything else, such as a request body or a stored row, is a static factory on `Invoice`, as `Invoice.from(id, body)` is, never a free function. A free function is for a module-private helper that touches no domain object." This change added invoiceOf, and its exemption for module-private helpers covers only those that touch no domain object.

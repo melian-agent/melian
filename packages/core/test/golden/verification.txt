@@ -1,0 +1,19 @@
+Verdict: passed
+
+verifier  ran: 0 confirmed, 0 plausible, 1 refuted, 0 unverified
+
+Refuted: 1 finding
+
+src/run.ts
+
+  P1  line 12  no-eval  (introduced, new, block, refuted)
+    Verified: fake/judge: A guard prevents it.\u001b[2J
+      More proof.
+    Correction: Use the guarded value.
+  eval runs request input
+    What: The handler passes the request body to eval.
+    Why here: This change routes the body into run() without parsing it.
+    Failure scenario: The input fails.
+    What to do: Parse the body with JSON.parse and validate it.
+
+No findings.

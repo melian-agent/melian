@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import { dismissalReason, FindingError } from "@melian-agent/core";
+import { dismissalReason, FindingError, visibleText } from "@melian-agent/core";
 import { dismiss, findings, type Io, publish, review, reviewExitCodes } from "./commands.ts";
 import { doctor } from "./doctor.ts";
 
@@ -121,7 +121,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 		}
 	} catch (error) {
 		const usageError = error instanceof UsageError || (error as { code?: string }).code?.startsWith("ERR_PARSE_ARGS");
-		io.stderr(`melian: ${error instanceof Error ? error.message : String(error)}\n`);
+		io.stderr(`melian: ${visibleText(error instanceof Error ? error.message : String(error))}\n`);
 		if (usageError) {
 			io.stderr("Run melian --help for usage.\n");
 			return usageExitCode;
