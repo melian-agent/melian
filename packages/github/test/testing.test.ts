@@ -46,6 +46,22 @@ describe("recordedGitHub", () => {
 		expect(await response.json()).toEqual({ message: "no recorded page of Review after missing" });
 	});
 
+	it("searches past an empty object for a nested page cursor", async () => {
+		const next = { data: { pageInfo: { endCursor: null } } };
+		const answer = recordedGitHub({
+			...recording,
+			graphql: { Review: [{ data: { empty: {}, connection: { pageInfo: { endCursor: "next" } } } }, next] },
+		});
+
+		const response = await answer("https://api.github.com/graphql", {
+			method: "POST",
+			body: JSON.stringify({ query: "query Review { viewer { login } }", variables: { after: "next" } }),
+		});
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual(next);
+	});
+
 	it.each(["query Missing { viewer { login } }", "{ viewer { login } }"])(
 		"refuses a query with no recorded operation: %s",
 		async (query) => {
