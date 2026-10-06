@@ -23,7 +23,12 @@ it("supplies CLI caller context to the model and retains its coverage in the sto
 	repo = createRepository();
 	commit(repo, {
 		"src/a.ts": "export const a = 1;\n",
-		"melian.yaml": "tiers:\n  fast: [lens.correctness]\n  full: [fast]\nstatic:\n  enola: {enabled: true}\n",
+		"melian.yaml":
+			"tiers:\n  fast: [lens.correctness]\n  full: [fast]\nstatic:\n  enola: {enabled: true}\n" +
+			"lenses:\n" +
+			["contracts", "trust-boundary", "removed-behaviour", "tests", "conventions"]
+				.map((name) => `  ${name}: {enabled: false}\n`)
+				.join(""),
 	});
 	gitIn(repo, "checkout", "-b", "feature");
 	commit(repo, { "src/a.ts": "export const a = 2;\n" });
@@ -74,6 +79,12 @@ it("supplies CLI caller context to the model and retains its coverage in the sto
 		color: false,
 	};
 	expect(await main(["review", "main...feature"], io), errors.join("")).toBe(0);
+	expect(CallerContext.open).toHaveBeenCalledWith(
+		expect.objectContaining({ commit: gitIn(repo, "rev-parse", "HEAD").trim() }),
+		[expect.objectContaining({ path: "src/a.ts" })],
+		expect.anything(),
+		["src/a.ts"],
+	);
 	expect(systemPromptOf(requests["You are the correctness reviewer"]![0]!)).toContain("OutsideCaller");
 	lines.length = 0;
 	expect(await main(["findings", "main...feature", "--json"], io)).toBe(0);
