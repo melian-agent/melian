@@ -1,16 +1,40 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { lstat, mkdir, mkdtemp, rm, symlink, utimes, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, rm, symlink, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { CoverageCache } from "../src/coverage-cache.ts";
 import { GraphCache } from "../src/graph-cache.ts";
 import { ToolCache } from "../src/tool-cache.ts";
 
 let root: string;
 afterEach(async () => {
+	vi.restoreAllMocks();
 	if (root) await rm(root, { recursive: true, force: true });
+});
+
+it("retains process-owned scratch and its contents when liveness probes are denied", async () => {
+	root = await mkdtemp(join(tmpdir(), "melian-scratch-denied-"));
+	const fetch = join(root, "tools", "enola", `.fetch-${process.pid}-partial`);
+	const graph = join(root, "graphs", `.graph-${process.pid}-partial`);
+	const coverage = join(root, "coverage", "key", "artifacts");
+	for (const directory of [fetch, graph, coverage]) await mkdir(directory, { recursive: true });
+	const partials = [
+		join(fetch, "archive.part"),
+		join(graph, "facts.jsonl"),
+		join(coverage, `review.json.${process.pid}.${crypto.randomUUID()}.tmp`),
+	];
+	for (const path of partials) await writeFile(path, "active writer data");
+	const probe = vi.spyOn(process, "kill").mockImplementation(() => {
+		throw Object.assign(new Error("liveness probe denied"), { code: "EPERM" });
+	});
+	await GraphCache.open(root);
+	expect(probe).toHaveBeenCalledTimes(3);
+	expect(probe).toHaveBeenCalledWith(process.pid, 0);
+	for (const directory of [fetch, graph])
+		await expect(lstat(directory).then((info) => info.isDirectory())).resolves.toBe(true);
+	for (const path of partials) await expect(readFile(path, "utf8")).resolves.toBe("active writer data");
 });
 
 it("sweeps a killed cache writer on the next open while retaining live and published paths", async () => {
