@@ -1,0 +1,411 @@
+{
+  "recordedBy": "5b79a4e",
+  "verdictVersion": 5,
+  "publishedVersion": 5,
+  "verdicts": {
+    "verdicts": {
+      "f5a91d14cfc6310dce5b4447dbb8e50db389c15d..a53cd0287aac24508ffd50c59dcb5ddbe772416a": {
+        "status": "findings",
+        "blocking": true,
+        "findings": {
+          "block": [
+            {
+              "ruleId": "null-dereference",
+              "level": "error",
+              "message": {
+                "text": "manager may be absent."
+              },
+              "partialFingerprints": {
+                "melian/v1": "4998b25271b2fd2e"
+              },
+              "locations": [
+                {
+                  "physicalLocation": {
+                    "artifactLocation": {
+                      "uri": "src/user.ts"
+                    },
+                    "region": {
+                      "startLine": 7,
+                      "snippet": {
+                        "text": "\treturn (user.manager as User).name;"
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "id": "4998b25271b2fd2e",
+                "path": "src/user.ts",
+                "occurrence": 0,
+                "cause": "introduced",
+                "trigger": {
+                  "file": "src/user.ts",
+                  "index": 0,
+                  "snippet": "\treturn (user.manager as User).name;",
+                  "hash": "99e7eff9d8a63b8a1e62246f9b4ee1e0c099e42a13bfa8a74bfefa993f867fde"
+                },
+                "severity": "P1",
+                "explanation": {
+                  "what": "manager may be absent.",
+                  "whyHere": "manager may be absent. Why.",
+                  "whatToDo": "manager may be absent. Fix."
+                },
+                "source": {
+                  "check": "lens.correctness",
+                  "version": "05037e7ba4a2@careful"
+                },
+                "evidence": [
+                  {
+                    "file": "src/user.ts",
+                    "startLine": 7,
+                    "role": "cause",
+                    "revision": "head",
+                    "proves": true,
+                    "snippet": "\treturn (user.manager as User).name;"
+                  }
+                ],
+                "failureScenario": "manager may be absent. Scenario.",
+                "status": "new",
+                "reportedBy": [
+                  {
+                    "check": "lens.correctness",
+                    "version": "05037e7ba4a2@careful"
+                  }
+                ],
+                "resolution": "block"
+              }
+            }
+          ],
+          "acknowledge": [],
+          "advisory": [],
+          "silent": []
+        },
+        "dismissed": [],
+        "notRun": [
+          {
+            "name": "decisions.fast",
+            "status": "skipped",
+            "reason": "no decision provider is configured"
+          }
+        ],
+        "ran": [
+          {
+            "name": "guardrails",
+            "status": "ran"
+          },
+          {
+            "name": "static.biome",
+            "status": "ran"
+          },
+          {
+            "name": "static.tsc",
+            "status": "ran"
+          },
+          {
+            "name": "lens.contracts",
+            "status": "ran",
+            "level": "careful"
+          },
+          {
+            "name": "lens.correctness",
+            "status": "ran",
+            "level": "careful"
+          }
+        ]
+      }
+    },
+    "provenance": {
+      "f5a91d14cfc6310dce5b4447dbb8e50db389c15d..a53cd0287aac24508ffd50c59dcb5ddbe772416a": {
+        "kind": "pull-request",
+        "repository": {
+          "owner": "melian-agent",
+          "name": "example"
+        },
+        "pullRequest": 7,
+        "base": "f5a91d14cfc6310dce5b4447dbb8e50db389c15d",
+        "head": "a53cd0287aac24508ffd50c59dcb5ddbe772416a",
+        "policy": "revision:f5a91d14cfc6310dce5b4447dbb8e50db389c15d",
+        "manifest": [
+          "guardrails",
+          "static.biome",
+          "static.tsc",
+          "decisions.fast",
+          "lens.correctness",
+          "lens.contracts"
+        ],
+        "lenses": [
+          "contracts@686d7ad61a40@careful",
+          "correctness@05037e7ba4a2@careful"
+        ]
+      }
+    },
+    "details": {
+      "f5a91d14cfc6310dce5b4447dbb8e50db389c15d..a53cd0287aac24508ffd50c59dcb5ddbe772416a": {
+        "policy": "revision:f5a91d14cfc6310dce5b4447dbb8e50db389c15d",
+        "manifest": [
+          "guardrails",
+          "static.biome",
+          "static.tsc",
+          "decisions.fast",
+          "lens.correctness",
+          "lens.contracts"
+        ],
+        "lenses": [
+          {
+            "name": "contracts",
+            "version": "686d7ad61a40",
+            "level": "careful",
+            "models": [
+              "faux/scripted"
+            ],
+            "ran": "faux/scripted",
+            "usage": {
+              "models": [
+                "faux/scripted"
+              ],
+              "tokens": 2951,
+              "cost": 0
+            },
+            "budget": {
+              "findings": 8,
+              "tokens": 200000,
+              "tools": 30
+            }
+          },
+          {
+            "name": "correctness",
+            "version": "05037e7ba4a2",
+            "level": "careful",
+            "models": [
+              "faux/scripted"
+            ],
+            "ran": "faux/scripted",
+            "usage": {
+              "models": [
+                "faux/scripted"
+              ],
+              "tokens": 6404,
+              "cost": 0
+            },
+            "budget": {
+              "findings": 8,
+              "tokens": 200000,
+              "tools": 30
+            }
+          }
+        ],
+        "standards": []
+      }
+    },
+    "decisions": {
+      "f5a91d14cfc6310dce5b4447dbb8e50db389c15d..a53cd0287aac24508ffd50c59dcb5ddbe772416a": {
+        "task": 35,
+        "findingsVersion": 1
+      }
+    }
+  },
+  "published": {
+    "order": [
+      "a53cd0287aac24508ffd50c59dcb5ddbe772416a"
+    ],
+    "revisions": {
+      "a53cd0287aac24508ffd50c59dcb5ddbe772416a": {
+        "reviews": [
+          "1001"
+        ],
+        "open": {
+          "4998b25271b2fd2e": {
+            "ruleId": "null-dereference",
+            "path": "src/user.ts",
+            "line": 7,
+            "revision": "a53cd0287aac24508ffd50c59dcb5ddbe772416a",
+            "thread": "1002"
+          }
+        },
+        "resolved": {},
+        "replies": {},
+        "status": {
+          "state": "failure",
+          "description": "1 finding, 1 blocking"
+        },
+        "rounds": 1,
+        "verdict": "fabbaaa9ea33a0c9",
+        "verdictRevision": "f5a91d14cfc6310dce5b4447dbb8e50db389c15d..a53cd0287aac24508ffd50c59dcb5ddbe772416a",
+        "ledgerUrl": "https://github.com/melian-agent/example/pull/7#issuecomment-1003"
+      }
+    },
+    "ledgerRounds": [
+      {
+        "base": "f5a91d14cfc6310dce5b4447dbb8e50db389c15d",
+        "head": "a53cd0287aac24508ffd50c59dcb5ddbe772416a",
+        "round": 1,
+        "verdict": {
+          "status": "findings",
+          "blocking": true,
+          "findings": {
+            "block": [
+              {
+                "ruleId": "null-dereference",
+                "level": "error",
+                "message": {
+                  "text": "manager may be absent."
+                },
+                "partialFingerprints": {
+                  "melian/v1": "4998b25271b2fd2e"
+                },
+                "locations": [
+                  {
+                    "physicalLocation": {
+                      "artifactLocation": {
+                        "uri": "src/user.ts"
+                      },
+                      "region": {
+                        "startLine": 7,
+                        "snippet": {
+                          "text": "\treturn (user.manager as User).name;"
+                        }
+                      }
+                    }
+                  }
+                ],
+                "properties": {
+                  "id": "4998b25271b2fd2e",
+                  "path": "src/user.ts",
+                  "occurrence": 0,
+                  "cause": "introduced",
+                  "trigger": {
+                    "file": "src/user.ts",
+                    "index": 0,
+                    "snippet": "\treturn (user.manager as User).name;",
+                    "hash": "99e7eff9d8a63b8a1e62246f9b4ee1e0c099e42a13bfa8a74bfefa993f867fde"
+                  },
+                  "severity": "P1",
+                  "explanation": {
+                    "what": "manager may be absent.",
+                    "whyHere": "manager may be absent. Why.",
+                    "whatToDo": "manager may be absent. Fix."
+                  },
+                  "source": {
+                    "check": "lens.correctness",
+                    "version": "05037e7ba4a2@careful"
+                  },
+                  "evidence": [
+                    {
+                      "file": "src/user.ts",
+                      "startLine": 7,
+                      "role": "cause",
+                      "revision": "head",
+                      "proves": true,
+                      "snippet": "\treturn (user.manager as User).name;"
+                    }
+                  ],
+                  "failureScenario": "manager may be absent. Scenario.",
+                  "status": "new",
+                  "reportedBy": [
+                    {
+                      "check": "lens.correctness",
+                      "version": "05037e7ba4a2@careful"
+                    }
+                  ],
+                  "resolution": "block"
+                }
+              }
+            ],
+            "acknowledge": [],
+            "advisory": [],
+            "silent": []
+          },
+          "dismissed": [],
+          "notRun": [
+            {
+              "name": "decisions.fast",
+              "status": "skipped",
+              "reason": "no decision provider is configured"
+            }
+          ],
+          "ran": [
+            {
+              "name": "guardrails",
+              "status": "ran"
+            },
+            {
+              "name": "static.biome",
+              "status": "ran"
+            },
+            {
+              "name": "static.tsc",
+              "status": "ran"
+            },
+            {
+              "name": "lens.contracts",
+              "status": "ran",
+              "level": "careful"
+            },
+            {
+              "name": "lens.correctness",
+              "status": "ran",
+              "level": "careful"
+            }
+          ]
+        },
+        "details": {
+          "policy": "revision:f5a91d14cfc6310dce5b4447dbb8e50db389c15d",
+          "manifest": [
+            "guardrails",
+            "static.biome",
+            "static.tsc",
+            "decisions.fast",
+            "lens.correctness",
+            "lens.contracts"
+          ],
+          "lenses": [
+            {
+              "name": "contracts",
+              "version": "686d7ad61a40",
+              "level": "careful",
+              "models": [
+                "faux/scripted"
+              ],
+              "ran": "faux/scripted",
+              "usage": {
+                "models": [
+                  "faux/scripted"
+                ],
+                "tokens": 2951,
+                "cost": 0
+              },
+              "budget": {
+                "findings": 8,
+                "tokens": 200000,
+                "tools": 30
+              }
+            },
+            {
+              "name": "correctness",
+              "version": "05037e7ba4a2",
+              "level": "careful",
+              "models": [
+                "faux/scripted"
+              ],
+              "ran": "faux/scripted",
+              "usage": {
+                "models": [
+                  "faux/scripted"
+                ],
+                "tokens": 6404,
+                "cost": 0
+              },
+              "budget": {
+                "findings": 8,
+                "tokens": 200000,
+                "tools": 30
+              }
+            }
+          ],
+          "standards": []
+        },
+        "resolved": []
+      }
+    ]
+  }
+}
