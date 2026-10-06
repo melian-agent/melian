@@ -41,7 +41,7 @@ afterEach(() => {
 	removeRepository(repo);
 });
 
-async function fake(exit = 1, impactExit = 0, requirePolicy = false) {
+async function fake(exit = 1, impactExit = 0, requirePolicy = false, impactTarget = "Alpha") {
 	const script = `#!/bin/sh
 if [ "$1" = "--version" ]; then echo 0.0.1; exit 0; fi
 for config in "$@"; do :; done
@@ -86,7 +86,7 @@ check)
   exit ${exit};;
 impact)
   [ "$7" = 'file:src/a.ts Alpha' ] || exit 9
-  printf '%s' '{"target":"Alpha","by_depth":{"1":[{"name":"Caller","kind":"symbol","file":"src/caller.ts","line":1}]},"edges":[],"stats":{"truncated":false}}'
+  printf '%s' '{"target":"${impactTarget}","by_depth":{"1":[{"name":"Caller","kind":"symbol","file":"src/caller.ts","line":1}]},"edges":[],"stats":{"truncated":false}}'
   exit ${impactExit};;
 esac
 exit 9
@@ -105,18 +105,19 @@ exit 9
 
 describe("static.enola", { timeout: 60_000 }, () => {
 	it.each([
-		[0, "careful"],
-		[2, "careful"],
-		[0, "quick"],
+		[0, "careful", "Alpha"],
+		[2, "careful", "Alpha"],
+		[0, "quick", "Alpha"],
+		[0, "careful", "Beta"],
 	] as const)(
-		"offers scoped callers or records exit %s as no answer, and attaches %s transcript coverage",
-		async (exit, level) => {
+		"offers scoped callers or records exit %s as no answer, and attaches %s transcript coverage for target %s",
+		async (exit, level, target) => {
 			const base = commit(repo, {
 				"src/a.ts": "export function Alpha() {\n return 1;\n}\n",
 				"src/caller.ts": "export const Caller = Alpha();\n",
 			});
 			const head = commit(repo, { "src/a.ts": "export function Alpha() {\n return 2;\n}\n" });
-			const tools = await fake(0, exit);
+			const tools = await fake(0, exit, false, target);
 			const input = {
 				env: createNodeExecutionEnv(repo),
 				repoRoot: repo,
@@ -135,13 +136,16 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			const check = await runStaticTool(input, context);
 			expect(check.status).toBe("ran");
 			const callers = await CallerContext.open(input, changeset.revision.files, context);
-			if (exit === 0) {
+			if (exit === 0 && target === "Alpha") {
 				expect(callers.callers(["src/a.ts"])[0]?.callers).toEqual([
 					{ name: "Caller", kind: "symbol", file: "src/caller.ts", line: 1 },
 				]);
 				expect(callers.render(["src/a.ts"], "NONCE")).toContain("src/caller.ts:1 Caller");
 			} else {
-				expect(callers.notes(["src/a.ts"]).join(" ")).toContain("Enola impact exited 2");
+				expect(callers.notes(["src/a.ts"]).join(" ")).toContain(
+					target === "Beta" ? "impact selected another full target name" : "Enola impact exited 2",
+				);
+				expect(callers.callers(["src/a.ts"])).toEqual([]);
 				expect(callers.render(["src/a.ts"], "NONCE")).toBe("");
 			}
 			expect(callers.render([], "NONCE")).toBe("");

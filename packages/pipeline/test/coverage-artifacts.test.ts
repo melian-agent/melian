@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ChangedFile, GraphCoverage, GraphSnapshot, ReviewCoverage, TestCoverage } from "@melian-agent/core";
 import { CoverageCache, GraphCache, ReviewTranscript } from "@melian-agent/pipeline";
+import { fauxAssistantMessage, fauxToolCall } from "@melian-agent/pipeline/testing";
 import { afterEach, expect, it, vi } from "vitest";
 import { coverageCompiler, coverageMatcher } from "../src/coverage-identity.ts";
 import type { Conversation, EntryRecord, Message } from "../src/harness.ts";
@@ -305,4 +306,96 @@ it("reads a later history page and correlates a call across the page boundary", 
 		lines: [{ start: 2, end: 2 }],
 		hunks: [0],
 	});
+});
+
+it("attributes delivered base reads without crediting head hunks", () => {
+	const transcript = ReviewTranscript.from(
+		transcriptRecords("read_file", { path: "a.ts", revision: "base" }, "file", "2\tx"),
+		"lens",
+		["a.ts"],
+		"N",
+	);
+	expect(transcript.reads()).toEqual([{ lens: "lens", path: "a.ts", revision: "base", kind: "read", lines: [2] }]);
+	const files = ReviewCoverage.compute(parts.tree, parts.version, ["lens"], [changed], transcript.reads()).toJSON()
+		.lenses[0]!.files;
+	expect(files.find((file) => file.revision === "base")).toMatchObject({
+		status: "read",
+		hunks: [0],
+		lines: [{ start: 2, end: 2 }],
+	});
+	expect(files.find((file) => file.revision === "head")).toMatchObject({ status: "not read", hunks: [], lines: [] });
+});
+
+function transcriptRecords(
+	name: string,
+	args: Parameters<typeof fauxToolCall>[1],
+	label: string,
+	body: string,
+): EntryRecord[] {
+	return [
+		entry(fauxAssistantMessage(fauxToolCall(name, args, { id: "call" }), { stopReason: "toolUse" }), 1),
+		entry(
+			{
+				role: "toolResult",
+				toolCallId: "call",
+				toolName: name,
+				content: [{ type: "text", text: `<untrusted-N label="${label}">\n${body}\n</untrusted-N>` }],
+				isError: false,
+				timestamp: 0,
+			},
+			2,
+		),
+	];
+}
+
+it.each([
+	["unknown tool", "other", { path: "a.ts" }, "file", "2\tx"],
+	["unknown path", "read_file", { path: "outside.ts" }, "file", "2\tx"],
+	["non-string path", "read_file", { path: 1 }, "file", "2\tx"],
+	["wrong boundary label", "read_file", { path: "a.ts" }, "search", "2\tx"],
+	["unmatched search path", "search", {}, "search", "outside.ts:2: x"],
+	["invalid search line", "search", {}, "search", "a.ts:bad: x"],
+	["zero search line", "search", {}, "search", "a.ts:0: x"],
+] as const)("confers no coverage for %s", (_case, name, args, label, body) => {
+	expect(ReviewTranscript.from(transcriptRecords(name, args, label, body), "lens", ["a.ts"], "N").reads()).toEqual([]);
+});
+
+it("ignores missing calls, model entries and closing boundaries", () => {
+	const records = transcriptRecords("read_file", { path: "a.ts" }, "file", "2\tx");
+	expect(ReviewTranscript.from([records[1]!], "lens", ["a.ts"], "N").reads()).toEqual([]);
+	const result = records[1]!.model![0]!;
+	if (result.role !== "toolResult" || result.content[0]?.type !== "text") throw new Error("No result");
+	result.content[0].text = '<untrusted-N label="file">\n2\tx';
+	expect(
+		ReviewTranscript.from([...records, { ...records[0]!, model: undefined }], "lens", ["a.ts"], "N").reads(),
+	).toEqual([]);
+});
+
+it("records only delivered positive read lines and returns defensive copies", () => {
+	const transcript = ReviewTranscript.from(
+		transcriptRecords("read_file", { path: "a.ts" }, "file", "0\tx\nbad\tx\n 2\ty"),
+		"lens",
+		["a.ts"],
+		"N",
+	);
+	expect(transcript.reads()[0]?.lines).toEqual([2]);
+	transcript.reads()[0]!.lines.push(99);
+	expect(transcript.reads()[0]?.lines).toEqual([2]);
+});
+
+it("matches the longest visible filename before parsing search lines", () => {
+	const records = transcriptRecords("search", {}, "search", "a.ts:2: b.ts:3: hit\ncontrol\\u001b.ts:4: hit");
+	expect(ReviewTranscript.from(records, "lens", ["a.ts", "a.ts:2: b.ts", "control\u001b.ts"], "N").reads()).toEqual([
+		{ lens: "lens", path: "a.ts:2: b.ts", revision: "head", kind: "search", lines: [3] },
+		{ lens: "lens", path: "control\u001b.ts", revision: "head", kind: "search", lines: [4] },
+	]);
+});
+
+it("ignores image parts when correlating a delivered text result", () => {
+	const records = transcriptRecords("read_file", { path: "a.ts" }, "file", "2\tx");
+	const result = records[1]!.model![0]!;
+	if (result.role !== "toolResult") throw new Error("No result");
+	result.content.unshift({ type: "image", data: "AA==", mimeType: "image/png" });
+	records.unshift(entry(fauxAssistantMessage("An earlier answer"), 0));
+	expect(ReviewTranscript.from(records, "lens", ["a.ts"], "N").reads()[0]?.lines).toEqual([2]);
 });

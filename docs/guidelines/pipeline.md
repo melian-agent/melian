@@ -417,6 +417,7 @@ before its post, retargets, reviews again, and publishes.
 - Test a crash with a real process kill. Run the first half in `test/fixtures/crash.ts`, have it append events to a log synchronously, SIGKILL it at a known event, and resume in the test process against the same file. Count reruns from the log.
 - The parent polls that log while the child writes it, so ignore text after the last newline: it is an event still being written. Detect an early death through `signalCode` as well as `exitCode`, which stays null when a signal kills the child, and kill the child in a `finally`.
 - A fake reply carrying tool calls needs `stopReason: "toolUse"`; the default `"stop"` ends the run without running them.
+- An inverted rejection guard can fail on valid fixtures while no test reaches its rejection. Delete the guard too. A surviving deletion needs a regression or proof that another check enforces the same contract.
 - Assert on what the model was shown, not only on what the harness returned. `captured()` in `test/fixtures/spike.ts` keeps each request's messages.
 
 
