@@ -103,3 +103,5 @@ To install a skill, first put `melian` on `PATH`: in a clone of Melian, `npm ci 
 ## Tests
 
 `test/cli.test.ts` runs `bin/melian.js` with plain Node, as a user of a clone would, with no build, against golden repositories from `@melian-agent/evals` in scripted mode. It checks exit codes, and that `review` prints exactly `verdict.render()` of the verdict `findings --json` reads back. The goldens have no `tsconfig.json`, so their tests keep the deterministic checks to guardrails with an uncommitted `melian.yaml`; a TypeScript repository the test builds runs the default tiers, Biome and tsc included, clean and with a Biome finding. Publication is tested in `packages/github` against a fake GitHub; nothing here calls the network.
+
+Doctor reads committed policy from local `origin/HEAD`, then `origin/main`, then `main`, then `HEAD`. The local `main` fallback warns that the base may be stale. The `HEAD` fallback warns that the base is unknown. Neither fetches. In a test, remove the `origin/HEAD` symbolic ref with `git symbolic-ref --delete`: `git update-ref -d` dereferences it and deletes `origin/main` instead.

@@ -112,6 +112,33 @@ describe("doctor writer trust", () => {
 		expect(result.trust).toContain("(unknown); cannot establish whether melian publish can set a status here");
 	});
 
+	it("prefers origin/main over a stale local main", async () => {
+		gitIn(repo, "symbolic-ref", "--delete", "refs/remotes/origin/HEAD");
+		writeFileSync(join(repo, "melian.yaml"), "trust: { writers: true }\n");
+		gitIn(repo, "add", "melian.yaml");
+		gitIn(repo, "commit", "--quiet", "-m", "local policy");
+		const state = github();
+		state.permissions = { [state.login]: "write" };
+		const result = await run(state);
+		expect(result.status).toBe(0);
+		expect(result.trust).toContain("writers trusted: no; policy origin/main");
+	});
+
+	it("warns that local main may be stale when no remote base ref exists", async () => {
+		gitIn(repo, "symbolic-ref", "--delete", "refs/remotes/origin/HEAD");
+		gitIn(repo, "update-ref", "-d", "refs/remotes/origin/main");
+		writeFileSync(join(repo, "melian.yaml"), "trust: { writers: true }\n");
+		gitIn(repo, "add", "melian.yaml");
+		gitIn(repo, "commit", "--quiet", "-m", "local policy");
+		const state = github();
+		state.permissions = { [state.login]: "write" };
+		const result = await run(state);
+		expect(result.status).toBe(0);
+		expect(result.trust).toMatch(/^warn /);
+		expect(result.trust).toContain("policy main");
+		expect(result.trust).toContain("base policy may be stale; using local main");
+	});
+
 	it("warns when HEAD is the only committed policy available", async () => {
 		gitIn(repo, "update-ref", "-d", "refs/remotes/origin/HEAD");
 		gitIn(repo, "update-ref", "-d", "refs/remotes/origin/main");

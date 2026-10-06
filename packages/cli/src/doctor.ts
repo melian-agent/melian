@@ -234,10 +234,11 @@ async function trustCheck(
 	} catch (error) {
 		return { name, state: "warn", detail: visibleText(error instanceof Error ? error.message : String(error)) };
 	}
-	let state: Check["state"] = writers && base.ref !== "HEAD" ? "ok" : "warn";
+	let state: Check["state"] = writers && base.ref !== "HEAD" && base.ref !== "main" ? "ok" : "warn";
 	const details = [`writers trusted: ${writers ? "yes" : "no"}; policy ${base.ref} (${base.commit.slice(0, 7)})`];
 	if (!writers) details.push("a trusted host must set the status");
 	if (base.ref === "HEAD") details.push("base policy is unknown; using committed HEAD");
+	if (base.ref === "main") details.push("base policy may be stale; using local main");
 	if (token === undefined) return { name, state: "warn", detail: `${details.join("; ")}; no GitHub token` };
 	const url = await git(root, ["remote", "get-url", "origin"]).catch(() => undefined);
 	let repository: { owner: string; repo: string };
