@@ -65,7 +65,7 @@ export class GraphCache {
 				await rename(temporary, directory);
 			} catch (error) {
 				if (await this.read(parts)) return;
-				if (!["ENOTEMPTY", "EEXIST"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error;
+				if (!["ENOTEMPTY", "EEXIST", "ENOTDIR"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error;
 				const rejected = `${temporary}-rejected`;
 				try {
 					await rename(directory, rejected);

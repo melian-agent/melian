@@ -54,3 +54,13 @@ it("recomputes corrupt and incompatible entries, ignoring abandoned temporary di
 	expect(() => GraphSnapshot.create(parts, { ...files, "facts.jsonl": "{}" })).toThrow();
 	expect(() => GraphSnapshot.create(parts, { ...files, "receipt.json": '{"format_version":2}' })).toThrow();
 });
+
+it("repairs a regular file occupying the graph entry directory", async () => {
+	root = await mkdtemp(join(tmpdir(), "melian-graph-file-"));
+	const cache = await GraphCache.open(root);
+	const snapshot = GraphSnapshot.create(parts, files);
+	await writeFile(join(root, "graphs", snapshot.key), "corrupt");
+	expect(await cache.read(parts)).toBeUndefined();
+	await cache.store(snapshot);
+	expect((await cache.read(parts))?.files()).toEqual(files);
+});
