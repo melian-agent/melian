@@ -4,6 +4,7 @@ import {
 	Changeset,
 	type Decider,
 	defaultConfig,
+	EnolaImpact,
 	EnolaPolicy,
 	Lens,
 	ReviewCoverage,
@@ -29,7 +30,7 @@ import {
 	fauxToolCall,
 	scriptConversations,
 } from "@melian-agent/pipeline/testing";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { commit, createRepository, gitIn, removeRepository } from "./fixtures/repo.ts";
 import { testTool, toolArchive } from "./fixtures/tool-archive.ts";
 
@@ -38,6 +39,7 @@ beforeEach(() => {
 	repo = createRepository();
 });
 afterEach(() => {
+	vi.restoreAllMocks();
 	removeRepository(repo);
 });
 
@@ -104,6 +106,28 @@ exit 9
 }
 
 describe("static.enola", { timeout: 60_000 }, () => {
+	it.each([new Error("query refused"), "query refused"])("retains a caller query rejection: %s", async (failure) => {
+		const base = commit(repo, { "src/a.ts": "export function Alpha() { return 1; }\n" });
+		const head = commit(repo, { "src/a.ts": "export function Alpha() { return 2; }\n" });
+		const tools = await fake(0);
+		const input = {
+			repoRoot: repo,
+			base,
+			commit: head,
+			tool: "enola" as const,
+			settings: defaultConfig.static.enola,
+			tools,
+			env: createNodeExecutionEnv(repo),
+		};
+		expect((await runStaticTool(input, context)).status).toBe("ran");
+		vi.spyOn(EnolaImpact, "parse").mockImplementation(() => {
+			throw failure;
+		});
+		const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+		const callers = await CallerContext.open(input, changeset.revision.files, context);
+		expect(callers.notes(["src/a.ts"])).toEqual(["Callers unavailable for src/a.ts: line 1: query refused"]);
+		expect(callers.callers(["src/a.ts"])).toEqual([]);
+	});
 	it.each([
 		[0, "careful", "Alpha"],
 		[2, "careful", "Alpha"],
