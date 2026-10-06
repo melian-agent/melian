@@ -186,3 +186,4 @@ Step 11 execution-miss mapping is built. The tool-manifest comparison maps thirt
    - Mutation inventory: The analyser fixture enforces query depth and node caps. A 32 MiB padded report proves the subprocess file limit. All three command mutations fail; both restored spike tests pass.
    - Mutation inventory: Doctor now has a regression outside git. Removing the repository-discovery recovery fails; all 13 restored CLI tool tests pass.
    - Mutation inventory: Biome formats the new mutation fixtures. The first full gate passes formatting, type checking and audit; timeout failures are being rerun alone.
+   - Inventory continuation: the release-gate subprocess test allows 60 seconds under load. The saved results reconstruct 600 proven rows, including 445 with existing failing tests.

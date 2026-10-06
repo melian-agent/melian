@@ -91,7 +91,7 @@ it("authenticates GitHub metadata and visibly skips unavailable networking only 
 	).toHaveLength(1);
 });
 
-it("sets the release gate status and prints only applicable age exceptions", () => {
+it("sets the release gate status and prints only applicable age exceptions", { timeout: 60_000 }, () => {
 	const directory = mkdtempSync(join(tmpdir(), "melian-release-entry-"));
 	try {
 		const script = fileURLToPath(new URL("./check-tools.mjs", import.meta.url));
