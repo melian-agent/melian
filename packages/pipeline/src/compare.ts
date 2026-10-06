@@ -6,17 +6,21 @@ import {
 	Verdict,
 } from "@melian-agent/core";
 import { VerdictDocument } from "./adjudication.ts";
-import { revisionKey } from "./findings.ts";
+import { FindingsDocument, revisionKey } from "./findings.ts";
 import {
 	backgroundContext,
 	type Context,
+	type ConversationId,
 	createRegistry,
 	defineDoc,
 	type Harness,
 	openHarness,
 	type Storage,
+	type TaskId,
+	type Tx,
 } from "./harness.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
+import { ReviewIndex } from "./review-index.ts";
 
 // Each revision's comparison, keyed by `revisionKey` of the stored review it compares against, on the changeset's root
 // conversation beside the findings. It keeps its latest value, as the review index does: a comparison is the
@@ -83,11 +87,13 @@ export class CompareHarness {
 		return new CompareHarness(harness);
 	}
 
-	/** Whether Melian has a stored review of `revision` to compare against. */
+	/** Whether Melian has a current, decided review of `revision` to compare against. */
 	async reviewed(revision: Revision, context: Context = backgroundContext): Promise<boolean> {
 		const root = await this.harness.root(context);
-		const document = await this.harness.snapshot(VerdictDocument, root.id, context);
-		return document !== undefined && Object.hasOwn(document.verdicts, revisionKey(revision));
+		return root.commit(
+			async (tx) => (await this.currentVerdict(tx, root.id, revisionKey(revision))) !== undefined,
+			context,
+		);
 	}
 
 	/** The comparison recorded for `revision`, or `undefined` when there is none. */
@@ -157,6 +163,29 @@ export class CompareHarness {
 		return this.harness.close(context);
 	}
 
+	private async currentVerdict(tx: Tx, root: ConversationId, key: string): Promise<StoredVerdict | undefined> {
+		const document = await tx.doc(VerdictDocument, root);
+		if (!Object.hasOwn(document.verdicts, key)) return undefined;
+		const deciding = (await tx.doc(ReviewIndex, root)).reviews[key]?.adjudication;
+		const now = (await tx.doc(FindingsDocument, root)).versions[key] ?? 0;
+		const decision = document.decisions?.[key];
+		if (deciding === undefined) {
+			if (decision !== undefined && decision.findingsVersion !== now) return undefined;
+		} else {
+			const task = await tx.task(deciding.task as TaskId);
+			if (task?.state.status !== "terminal") return undefined;
+			const { outcome } = task.state;
+			if (outcome.status !== "completed" || outcome.result !== "recorded") return undefined;
+			const decided = decision ?? {
+				task: deciding.task,
+				findingsVersion: (JSON.parse(deciding.input) as { findingsVersion: number }).findingsVersion,
+			};
+			if (decided.task !== deciding.task || decided.findingsVersion !== now) return undefined;
+		}
+		// Pi's commit view cannot be structured-cloned or retained after the commit settles.
+		return JSON.parse(JSON.stringify(document.verdicts[key]!)) as StoredVerdict;
+	}
+
 	// Reads the stored review and the comparison in one commit, so a review that records another verdict a moment before
 	// is the one compared against; matches against the review after `change`, so a hand match names a finding it holds.
 	private async update(
@@ -167,12 +196,14 @@ export class CompareHarness {
 		const root = await this.harness.root(context);
 		const key = revisionKey(revision);
 		return root.commit(async (tx) => {
-			const verdicts = (await tx.doc(VerdictDocument, root.id)).verdicts;
-			if (!Object.hasOwn(verdicts, key)) {
-				throw new CompareError("notReviewed", `Melian has no review of ${key} to compare against`);
+			const storedVerdict = await this.currentVerdict(tx, root.id, key);
+			if (storedVerdict === undefined) {
+				throw new CompareError(
+					"notReviewed",
+					`Melian has no current, decided review of ${key} to compare against; run melian review again`,
+				);
 			}
-			// A copy through JSON: the stored verdict is the commit's own view, which structuredClone refuses.
-			const verdict = Verdict.from(JSON.parse(JSON.stringify(verdicts[key]!)) as StoredVerdict);
+			const verdict = Verdict.from(storedVerdict);
 			const document = await tx.doc(ComparisonDocument, root.id);
 			const stored = document.comparisons[key];
 			const comparison = stored === undefined ? Comparison.of(revision) : Comparison.from(stored);

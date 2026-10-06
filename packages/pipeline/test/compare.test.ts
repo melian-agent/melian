@@ -18,6 +18,8 @@ import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { ComparisonDocument } from "../src/compare.ts";
+import { FindingsDocument } from "../src/findings.ts";
+import { ReviewIndex } from "../src/review-index.ts";
 
 vi.mock("node:fs/promises", { spy: true });
 
@@ -117,6 +119,33 @@ describe("CompareHarness", () => {
 		expect(await harness.reviewed({ ...revision, base: "c".repeat(40) })).toBe(false);
 		expect(await harness.read(revision)).toBeUndefined();
 	});
+
+	it.each(["changed findings", "missing task"])(
+		"refuses a stored verdict with %s without changing an existing comparison",
+		async (stale) => {
+			const harness = await memoryHarness();
+			await storeReview(harness);
+			await harness.importFindings(revision, [], "before");
+			const before = (await harness.read(revision))!.toJSON();
+			const root = await harness.harness.root(context);
+			const key = revisionKey(revision);
+			await root.commit(async (tx) => {
+				if (stale === "changed findings") {
+					(await tx.doc(VerdictDocument, root.id)).decisions = { [key]: { task: 999, findingsVersion: 0 } };
+					(await tx.doc(FindingsDocument, root.id)).versions[key] = 1;
+				} else {
+					(await tx.doc(ReviewIndex, root.id)).reviews[key] = {
+						lenses: [],
+						adjudication: { task: 999, input: JSON.stringify({ findingsVersion: 0 }) },
+					};
+				}
+			}, context);
+
+			expect(await harness.reviewed(revision)).toBe(false);
+			await expect(harness.importFindings(revision, [], "after")).rejects.toMatchObject({ code: "notReviewed" });
+			expect((await harness.read(revision))!.toJSON()).toEqual(before);
+		},
+	);
 
 	it("closes storage after a cancelled open", async () => {
 		const storage = createMemoryStorage();
@@ -242,6 +271,7 @@ describe("CompareHarness", () => {
 				},
 			};
 			document.decisions = { [key]: { task: 1, findingsVersion: 2 } };
+			(await tx.doc(FindingsDocument, root.id)).versions[key] = 2;
 			document.details = { [key]: { policy: "config", manifest: [], lenses: [], standards: ["AGENTS.md"] } };
 			document.walkthroughs = { [key]: { summary: "Changes the runner.", files: [] } };
 			document.walkthroughNotes = { [key]: "A previous attempt failed." };
