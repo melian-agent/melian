@@ -817,6 +817,10 @@ A golden is owed where the maintainer says so, not for every difference. The rea
 
 **Needs execution.** A miss marked `needs-execution` joins [verifier evals](guidelines/evals.md#verifier-evals) and is explicit scope for two steps. The [verifier](#verification) is judged on whether it would have caught what an executing reviewer caught, so each such miss joins its evals. The [tool manifest](#tool-provisioning) records which tool or run would have caught each, and that list orders the tools after Enola.
 
+**Retiring the shadow reviewers.** [Pull request #86](https://github.com/melian-agent/melian/pull/86) states the criterion in its decision file, `docs/decisions/2026-10-06-shadow-reviewer-retirement.md`. The window is the ten most recent eligible merged pull requests after 2026-10-06. A missing or pending record blocks, and at least one shadow finding must be adjudicated. Meeting the criterion retires nothing by itself. Work pauses and the maintainer decides.
+
+**The `design` lens.** Planned, not built. Problem: on [pull requests #85](https://github.com/melian-agent/melian/pull/85), [#86](https://github.com/melian-agent/melian/pull/86), and [#89](https://github.com/melian-agent/melian/pull/89), Codex's adversarial review found defects that no Melian lens owned. Each broke a decision the design or a decision file states, and the lenses read the diff, not the decisions. Solution: a `design` lens in the heavy tier with `verify: true`. It reads the diff plus the decision files and design sections the branch touches. Its rule catalogue comes from those findings: `identity-missing-input`, `trust-by-label`, `bound-on-wrong-measure`, `capability-by-class`, `fail-open-default`, `resumed-identity`, `criterion-selection-bias`, `unshipped-artifact`, and `single-slot-overwrite`. Nine goldens carry Codex as their source. [decisions/2026-10-07-design-lens.md](decisions/2026-10-07-design-lens.md) records the choice. It is built after the documentation pull request that records it, and before step 14.
+
 [decisions/2026-10-05-comparison-as-a-capability.md](decisions/2026-10-05-comparison-as-a-capability.md) records why.
 
 ## Tech stack
@@ -885,6 +889,6 @@ Milestone 4 makes Melian remember and learn: comment commands including dismiss-
 
 - Can a range review seed a pull-request review? They are separate changesets with separate storage, so the findings a maintainer saw locally are raised again when the pull request is reviewed. No milestone is planned to settle it.
 - Should local routes ever apply to a pull-request review on the maintainer's own machine? Today they never do. A pull-request review reads its base's policy, routes included, and never a preference file, so it takes the base's routes, a derived route, or `--model`.
-- How long should the shadow reviewers run? For now, until Melian's recall against them holds for a run of ten pull requests, with every difference still adjudicated. The criterion is the maintainer's to tighten once the numbers exist.
+- How long should the shadow reviewers run? For now, until Melian's recall against them holds for a run of ten pull requests, with every difference still adjudicated. The criterion is the maintainer's to tighten once the numbers exist. Meeting the criterion pauses work for the maintainer's decision, and retires nothing by itself.
 
 The scheduled sweep for the Actions host is a deferred decision: it is designed in the hosts section and will be revisited if event-driven recovery proves insufficient in practice.
