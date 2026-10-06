@@ -89,15 +89,17 @@ describe("a golden's standards and policy", () => {
 			const golden = goldens.find((each) => each.name === "clean-rename")!;
 			const copy = join(directory, golden.name);
 			cpSync(golden.directory, copy, { recursive: true });
-			for (const side of ["base", "head"])
-				writeFileSync(join(copy, side, "src/AGENTS.golden.md"), "# Nested golden conventions\n");
+			writeFileSync(join(copy, "base", "src/AGENTS.golden.md"), "# Base golden conventions\n");
+			writeFileSync(join(copy, "head", "src/AGENTS.golden.md"), "# Head golden conventions\n");
 			const run = await runGolden({ ...golden, directory: copy }, { kind: "scripted" });
 			expect(run.toolMismatches).toEqual([]);
 			const requests = scripted.mock.results[0]!.value as ReturnType<typeof testing.scriptLenses>;
 			const instructions = Object.values(requests).flat().map(testing.systemPromptOf);
 			expect(instructions.length).toBeGreaterThan(0);
-			for (const prompt of instructions)
-				expect(prompt).toContain("### src/AGENTS.md\n\n# Nested golden conventions");
+			for (const prompt of instructions) {
+				expect(prompt).toContain("### src/AGENTS.md\n\n# Base golden conventions");
+				expect(prompt).not.toContain("# Head golden conventions");
+			}
 		} finally {
 			scripted.mockRestore();
 			rmSync(directory, { recursive: true, force: true });
