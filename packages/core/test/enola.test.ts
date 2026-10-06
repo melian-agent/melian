@@ -7,6 +7,42 @@ import { SourceError } from "../src/source.ts";
 import { gitIn, isolatedGitEnv, rejection, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
 
 describe("Enola policy and reports", () => {
+	it("orders policy inputs before hashing and leaves configuration-only policy out of the gate", () => {
+		const files = [
+			{ path: "mcp-arch.yaml", text: "rules: [fallback]\n" },
+			{ path: "enola.yaml", text: "rules: [primary]\n" },
+			{ path: ".enola/suppressions.yaml", text: "[]\n" },
+		];
+		const policy = EnolaPolicy.from(files);
+		expect(policy.toJSON().files.map((file) => file.path)).toEqual([
+			".enola/suppressions.yaml",
+			"enola.yaml",
+			"mcp-arch.yaml",
+		]);
+		expect(policy.hash).toBe(EnolaPolicy.from([...files].reverse()).hash);
+		expect(policy.toJSON().failOn).toEqual([]);
+		expect(policy.toJSON().config).toContain("primary");
+		expect(policy.toJSON().config).not.toContain("fallback");
+		expect(EnolaPolicy.from([files[0]!]).toJSON().config).toContain("fallback");
+	});
+	it("refuses YAML warnings before using a configuration mapping", () => {
+		expect(() => EnolaPolicy.from([{ path: "enola.yaml", text: "foo: !unknown value\n" }])).toThrow(
+			"Invalid Enola configuration",
+		);
+	});
+	it("retains the typed SARIF refusal and its exact diagnostic", () => {
+		try {
+			normaliseEnolaSarif("{}", { root: "/repo", version: "0.4.27" });
+			throw new Error("accepted invalid report");
+		} catch (error) {
+			expect(error).toMatchObject({
+				name: "CheckError",
+				code: "invalidOutput",
+				check: "static.enola",
+				message: "Enola wrote unreadable SARIF: Not one SARIF 2.1.0 run",
+			});
+		}
+	});
 	it("recognises every policy path and leaves a committed baseline out", () => {
 		for (const path of [
 			"enola.yaml",
@@ -86,6 +122,19 @@ describe("revision Enola policy limits", () => {
 	afterEach(() => {
 		vi.unstubAllEnvs();
 		removeDirectory(repo);
+	});
+	it("detects unchanged policy and refuses each file beyond 256 KiB", async () => {
+		writeFiles(repo, { "enola/constraints/a.yaml": "rules: []\n" });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "policy");
+		const policy = await EnolaPolicy.load(repo, "HEAD");
+		expect(await policy.differs(repo, "HEAD")).toBe(false);
+		const text = "#".repeat(256 * 1024 + 1);
+		writeFiles(repo, { "enola/constraints/a.yaml": text });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "oversized policy");
+		await expect(EnolaPolicy.load(repo, "HEAD")).rejects.toMatchObject({ code: "tooLarge" });
+		expect(await EnolaPolicy.from([{ path: "enola/constraints/a.yaml", text }]).differs(repo, "HEAD")).toBe(true);
 	});
 	it.each([1, 230 * 1024])("rejects an aggregate exceeding 1 MiB by %i bytes", async (extra) => {
 		writeFiles(
