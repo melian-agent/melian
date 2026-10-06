@@ -7,6 +7,48 @@ const recording = JSON.parse(
 	readFileSync(new URL("./fixtures/review-threads.json", import.meta.url), "utf8"),
 ) as GitHubRecording;
 
+type RecordedThread = {
+	id: string;
+	line: number | null;
+	startLine: number | null;
+	originalLine: number | null;
+	originalStartLine: number | null;
+	diffSide: "LEFT" | "RIGHT";
+	startDiffSide: "LEFT" | "RIGHT" | null;
+	subjectType: "LINE" | "FILE";
+	comments: {
+		nodes: {
+			body: string;
+			originalCommit: { oid: string } | null;
+			author: { __typename: string; login: string } | null;
+		}[];
+	};
+};
+
+type RecordedThreadsPage = {
+	data: {
+		repository: {
+			pullRequest: {
+				headRefOid: string;
+				reviewThreads: {
+					pageInfo: { hasNextPage: boolean; endCursor: string | null };
+					nodes: RecordedThread[];
+				};
+			};
+		};
+	};
+};
+
+function threadsWith(...patches: Partial<RecordedThread>[]): GitHubRecording {
+	const page = structuredClone(recording.graphql!.MelianReviewThreads![0]) as RecordedThreadsPage;
+	const [thread] = page.data.repository.pullRequest.reviewThreads.nodes;
+	page.data.repository.pullRequest.reviewThreads = {
+		pageInfo: { hasNextPage: false, endCursor: null },
+		nodes: patches.map((patch, index) => ({ ...thread!, id: `PRRT_test_${index}`, ...patch })),
+	};
+	return { ...recording, graphql: { ...recording.graphql, MelianReviewThreads: [page] } };
+}
+
 // Every request the importer sent, so a test can see it paged and never left the recording.
 function recorded(answers: GitHubRecording = recording) {
 	const requests: { url: string; body: { query: string; variables: Record<string, unknown> } }[] = [];
@@ -75,6 +117,115 @@ describe("ReviewThreadImporter", () => {
 		const threads = requests.filter((request) => request.body.query.includes("MelianReviewThreads"));
 		expect(threads.map((request) => request.body.variables.after)).toEqual([null, "Y3Vyc29yOjI="]);
 		expect(requests.every((request) => request.url === "https://api.github.com/graphql")).toBe(true);
+	});
+
+	it("preserves and renders an outdated thread's original multiline span", async () => {
+		const answers = threadsWith({
+			line: null,
+			startLine: null,
+			originalStartLine: 7,
+			originalLine: 12,
+		});
+
+		const [finding] = (await importer(undefined, answers).opened.import()).findings;
+
+		expect(finding?.toJSON()).toMatchObject({ line: 7, endLine: 12, outdated: true });
+		expect(finding?.where()).toBe("src/user.ts:7-12 (outdated)");
+		expect(finding?.site()).toBeUndefined();
+	});
+
+	it.each([
+		["current placement", { line: 12, startLine: 9, originalStartLine: 2, originalLine: 5 }, 9, 12, false],
+		["single current line", { line: 12, startLine: null, startDiffSide: null }, 12, 12, false],
+		["unspecified start side", { line: 12, startLine: 9, startDiffSide: null }, 9, 12, false],
+		["start past the end", { line: 12, startLine: 15 }, 12, 12, false],
+		[
+			"outdated across sides",
+			{ line: null, originalLine: 12, originalStartLine: 7, startDiffSide: "LEFT" },
+			12,
+			12,
+			true,
+		],
+		[
+			"missing original lines",
+			{ line: null, originalLine: null, originalStartLine: null },
+			undefined,
+			undefined,
+			false,
+		],
+		[
+			"file thread with stale lines",
+			{ subjectType: "FILE", line: 12, startLine: 9, originalLine: 5 },
+			undefined,
+			undefined,
+			false,
+		],
+	] as const)("uses the right lines for %s", async (_name, patch, line, endLine, outdated) => {
+		const [finding] = (await importer(undefined, threadsWith(patch)).opened.import()).findings;
+
+		expect(finding?.line).toBe(line);
+		expect(finding?.endLine).toBe(endLine);
+		expect(finding?.outdated === true).toBe(outdated);
+	});
+
+	it("skips threads without a first comment and omits an absent original commit", async () => {
+		const page = recording.graphql!.MelianReviewThreads![0] as RecordedThreadsPage;
+		const comment = page.data.repository.pullRequest.reviewThreads.nodes[0]!.comments.nodes[0]!;
+		const answers = threadsWith(
+			{ comments: { nodes: [] } },
+			{ comments: { nodes: [{ ...comment, originalCommit: null }] } },
+		);
+
+		const imported = await importer(undefined, answers).opened.import();
+
+		expect(imported.findings).toHaveLength(1);
+		expect(imported.findings[0]!.toJSON()).not.toHaveProperty("commit");
+	});
+
+	it.each([
+		["", "(empty comment)", undefined],
+		[" \r\n\t", "(empty comment)", undefined],
+		["A single-line comment", "A single-line comment", undefined],
+		["_Major_\nAn unbolded headline", "An unbolded headline", "_Major_"],
+		["_Major_\n</details>\n**Headline after an unmatched close.**", "Headline after an unmatched close.", "_Major_"],
+		[`${"\u{1f600}".repeat(101)}\n**Headline.**`, "Headline.", "\u{1f600}".repeat(100)],
+	])("reads the title and severity of %j", async (body, title, severity) => {
+		const page = recording.graphql!.MelianReviewThreads![0] as RecordedThreadsPage;
+		const comment = page.data.repository.pullRequest.reviewThreads.nodes[0]!.comments.nodes[0]!;
+		const answers = threadsWith({ comments: { nodes: [{ ...comment, body }] } });
+
+		const [finding] = (await importer(undefined, answers).opened.import()).findings;
+
+		expect(finding?.title).toBe(title);
+		expect(finding?.severity).toBe(severity);
+		expect(finding?.body).toBe(body);
+	});
+
+	it("accepts a bot's suffixed login and keeps a human's multiline comment without bot severity", async () => {
+		const page = recording.graphql!.MelianReviewThreads![0] as RecordedThreadsPage;
+		const comment = page.data.repository.pullRequest.reviewThreads.nodes[0]!.comments.nodes[0]!;
+		const answers = threadsWith(
+			{ comments: { nodes: [{ ...comment, author: { __typename: "Bot", login: "CodeRabbitAI[bot]" } }] } },
+			{
+				comments: {
+					nodes: [
+						{ ...comment, body: "Human title\nHuman detail", author: { __typename: "User", login: "OctoCat" } },
+					],
+				},
+			},
+			{ comments: { nodes: [{ ...comment, author: { __typename: "Bot", login: "constructor" } }] } },
+		);
+
+		const rabbit = await importer(undefined, answers).opened.import();
+		const human = await importer("octocat", answers).opened.import();
+		const other = await importer("constructor", answers).opened.import();
+
+		expect(rabbit.findings).toHaveLength(1);
+		expect(rabbit.findings[0]!.reviewer).toEqual({ name: "coderabbit", kind: "bot", login: "CodeRabbitAI[bot]" });
+		expect(human.findings).toHaveLength(1);
+		expect(human.findings[0]!.title).toBe("Human title");
+		expect(human.findings[0]!.severity).toBeUndefined();
+		expect(other.findings[0]!.reviewer).toEqual({ name: "human", kind: "bot", login: "constructor[bot]" });
 	});
 
 	it.each([
@@ -362,20 +513,187 @@ describe("ReviewThreadImporter", () => {
 		await expect(refused).rejects.not.toThrow(/secret-token-value/);
 	});
 
-	it("fails past the page cap instead of reading threads without end", async () => {
+	it.each([
+		[401, "unauthorized"],
+		[403, "forbidden"],
+		[404, "notFound"],
+		[500, "failed"],
+	])("maps HTTP %i to a typed GitHub error", async (status, code) => {
+		const opened = ReviewThreadImporter.open({
+			owner: "melian-agent",
+			repo: "example",
+			pullRequest: 7,
+			token: "test-token",
+			fetch: async () =>
+				new Response(JSON.stringify({ message: "Refused" }), {
+					status,
+					headers: { "content-type": "application/json" },
+				}),
+		});
+
+		await expect(opened.import()).rejects.toMatchObject({
+			code,
+			status,
+		});
+	});
+
+	it("reports GraphQL errors without inventing an HTTP status", async () => {
+		const opened = ReviewThreadImporter.open({
+			owner: "melian-agent",
+			repo: "example",
+			pullRequest: 7,
+			token: "test-token",
+			fetch: async () =>
+				new Response(JSON.stringify({ errors: [{ message: "Query refused" }] }), {
+					headers: { "content-type": "application/json" },
+				}),
+		});
+		const refused = opened.import();
+
+		await expect(refused).rejects.toMatchObject({
+			code: "failed",
+			message: expect.stringContaining("Query refused"),
+		});
+		await expect(refused).rejects.toHaveProperty("status", undefined);
+	});
+
+	it.each([
+		[null, "null", undefined],
+		["response failed", "response failed", undefined],
+		[{ status: "503" }, "[object Object]", undefined],
+		[{ status: 503 }, "[object Object]", 503],
+		[new Error("response failed"), "response failed", undefined],
+	])("wraps an unexpected response-reading failure %j", async (failure, message, status) => {
+		const opened = ReviewThreadImporter.open({
+			owner: "melian-agent",
+			repo: "example",
+			pullRequest: 7,
+			token: "test-token",
+			fetch: async () => {
+				const response = new Response();
+				Object.defineProperty(response, "status", {
+					get: () => {
+						// Octokit's request logger reads error.response before the importer catches the rejection.
+						throw Object.defineProperty(new Error("unreadable response"), "response", {
+							get: () => {
+								throw failure;
+							},
+						});
+					},
+				});
+				return response;
+			},
+		});
+		const refused = opened.import();
+
+		await expect(refused).rejects.toBeInstanceOf(GitHubError);
+		await expect(refused).rejects.toMatchObject({
+			code: "failed",
+			message: `GitHub refused to read the review threads of pull request #7: ${status === undefined ? "" : `${status} `}${message}`,
+			status,
+		});
+	});
+
+	it.each([null, {}, { pullRequest: null }, { pullRequest: undefined }])(
+		"refuses a missing repository or pull request %j in either query",
+		async (repository) => {
+			for (const operation of ["MelianReviewThreads", "MelianReviews"]) {
+				const answers = {
+					...recording,
+					graphql: { ...recording.graphql, [operation]: [{ data: { repository } }] },
+				};
+				await expect(importer(undefined, answers).opened.import()).rejects.toMatchObject({ code: "notFound" });
+			}
+		},
+	);
+
+	it("uses an enterprise GraphQL endpoint", async () => {
+		const requests: string[] = [];
+		const answer = recordedGitHub(recording);
+		const opened = ReviewThreadImporter.open({
+			owner: "melian-agent",
+			repo: "example",
+			pullRequest: 7,
+			token: "test-token",
+			apiUrl: "https://github.example/api/v3",
+			fetch: async (input, init) => {
+				requests.push(String(input));
+				const url = new URL(String(input));
+				url.pathname = "/graphql";
+				return answer(url, init);
+			},
+		});
+
+		await opened.import();
+
+		expect(requests).toEqual(Array.from({ length: 3 }, () => "https://github.example/api/graphql"));
+	});
+
+	it("opens with the default transport without making a request", () => {
+		expect(
+			ReviewThreadImporter.open({ owner: "melian-agent", repo: "example", pullRequest: 7, token: "test-token" })
+				.source,
+		).toBe("github:coderabbitai[bot]");
+	});
+
+	it.each(["MelianReviewThreads", "MelianReviews"])("stops %s when a next page has no cursor", async (operation) => {
+		const pages = structuredClone(recording.graphql![operation]!) as {
+			data: {
+				repository: {
+					pullRequest: Record<string, { pageInfo: { hasNextPage: boolean; endCursor: string | null } }>;
+				};
+			};
+		}[];
+		const connection = operation === "MelianReviewThreads" ? "reviewThreads" : "reviews";
+		pages[0]!.data.repository.pullRequest[connection]!.pageInfo = { hasNextPage: true, endCursor: null };
+		const { opened, requests } = importer(undefined, {
+			...recording,
+			graphql: { ...recording.graphql, [operation]: pages },
+		});
+
+		await opened.import();
+
+		expect(requests.filter((request) => request.body.query.includes(operation))).toHaveLength(1);
+	});
+
+	it.each(["MelianReviewThreads", "MelianReviews"])("accepts the last allowed page of %s", async (operation) => {
+		const connection = operation === "MelianReviewThreads" ? "reviewThreads" : "reviews";
+		const pages = Array.from({ length: 50 }, (_, index) => ({
+			data: {
+				repository: {
+					pullRequest: {
+						headRefOid: "1".repeat(40),
+						[connection]: { pageInfo: { hasNextPage: index < 49, endCursor: `last-${index}` }, nodes: [] },
+					},
+				},
+			},
+		}));
+		const { opened, requests } = importer(undefined, {
+			...recording,
+			graphql: { ...recording.graphql, [operation]: pages },
+		});
+
+		const imported = await opened.import();
+
+		expect(imported.head).toBe("1".repeat(40));
+		expect(requests.filter((request) => request.body.query.includes(operation))).toHaveLength(50);
+	});
+
+	it.each(["MelianReviewThreads", "MelianReviews"])("fails past the page cap for %s", async (operation) => {
+		const connection = operation === "MelianReviewThreads" ? "reviewThreads" : "reviews";
 		const page = (cursor: number) => ({
 			data: {
 				repository: {
 					pullRequest: {
 						headRefOid: "1".repeat(40),
-						reviewThreads: { pageInfo: { hasNextPage: true, endCursor: `cursor-${cursor}` }, nodes: [] },
+						[connection]: { pageInfo: { hasNextPage: true, endCursor: `cursor-${cursor}` }, nodes: [] },
 					},
 				},
 			},
 		});
 		const answers: GitHubRecording = {
 			...recording,
-			graphql: { MelianReviewThreads: Array.from({ length: 51 }, (_, index) => page(index)) },
+			graphql: { ...recording.graphql, [operation]: Array.from({ length: 51 }, (_, index) => page(index)) },
 		};
 		const { opened, requests } = importer(undefined, answers);
 
@@ -383,6 +701,6 @@ describe("ReviewThreadImporter", () => {
 			code: "failed",
 			message: expect.stringContaining("has more than 5000 threads or reviews"),
 		});
-		expect(requests).toHaveLength(50);
+		expect(requests.filter((request) => request.body.query.includes(operation))).toHaveLength(50);
 	});
 });
