@@ -141,16 +141,14 @@ export class EnolaImpact {
 	}
 	/** Tests a resolved import with the importing declaration's own file and line. */
 	imports(file: string, line: number, target: EnolaFact): boolean {
+		const sources = new Set(
+			this.#state.edges
+				.filter((edge) => edge.target === target.name && edge.kind === "imports")
+				.map((edge) => edge.source),
+		);
 		return Object.values(this.#state.by_depth)
 			.flat()
-			.some(
-				(node) =>
-					node.file === file &&
-					node.line === line &&
-					this.#state.edges.some(
-						(edge) => edge.source === node.name && edge.target === target.name && edge.kind === "imports",
-					),
-			);
+			.some((node) => node.file === file && node.line === line && sources.has(node.name));
 	}
 	/** Refuses a fuzzy resolution that selected another full name. */
 	matchesTarget(name: string): boolean {

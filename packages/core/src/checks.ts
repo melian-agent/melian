@@ -12,7 +12,7 @@ const groups: Readonly<Record<string, readonly string[]>> = { static: ["static.b
 
 /**
  * The checks a tier names, in order and without repeats. A name that is itself a tier expands to that tier's checks, and
- * `static` expands to every static tool. Throws `CheckError` `unknownTier` for a tier the configuration does not define,
+ * `static` expands to Biome and tsc; name `static.enola` explicitly. Throws `CheckError` `unknownTier` for a tier the configuration does not define,
  * and `tierCycle` for a tier that includes itself.
  */
 export function checksOfTier(config: Pick<MelianConfig, "tiers">, tier: string): string[] {
