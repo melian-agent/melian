@@ -1,5 +1,6 @@
 import {
 	type ChangedFile,
+	CoverageError,
 	type CoverageIds,
 	type EnolaImpact,
 	type GraphKeyParts,
@@ -132,10 +133,10 @@ export class CallerContext {
 		const transcripts = [];
 		for (const lens of input.lenses) {
 			const child = input.children[lens.key];
-			if (child === undefined) continue;
+			if (child === undefined) throw new CoverageError("Lens conversation unavailable for review coverage");
 			const conversation = await input.harness.conversation(child, input.context);
-			if (conversation)
-				transcripts.push(await ReviewTranscript.read(conversation, input.context, lens.name, paths, input.nonce));
+			if (!conversation) throw new CoverageError("Lens conversation unavailable for review coverage");
+			transcripts.push(await ReviewTranscript.read(conversation, input.context, lens.name, paths, input.nonce));
 		}
 		const files: ChangedFile[] = [...input.files];
 		for (const path of paths)

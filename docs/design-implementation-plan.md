@@ -106,7 +106,7 @@ What remains after them:
 - Step 6, the verifier. Step 4 landed, so it is unblocked.
 - Step 9's issues [#26](https://github.com/melian-agent/melian/issues/26) and [#46](https://github.com/melian-agent/melian/issues/46).
 - Step 10's rehearsal.
-- Step 11 is built on `tool-manifest`, without a pull request yet. All build sub-items above are done. [The spike](spikes/enola-coverage.md) meets the measurement exit criterion and leaves search unrestricted. External review and landing remain.
+- Step 11 is built on `tool-manifest` in [pull request #89](https://github.com/melian-agent/melian/pull/89). The first Melian and adversarial fix pass is in progress. All build sub-items above are done. [The spike](spikes/enola-coverage.md) meets the measurement exit criterion and leaves search unrestricted. External review and landing remain.
 - Step 14's leftovers, including a durability tuning round. Worst precision was 0.56 after run 9.
 
 Two experiments are running, and each has a record that decides it:

@@ -131,6 +131,16 @@ describe("static.enola", { timeout: 60_000 }, () => {
 				const lenses = (await Lens.load(repo, { kind: "revision", commit: base }, ["src/a.ts"])).filter(
 					(lens) => lens.name === "correctness",
 				);
+				await expect(
+					callers.recordCoverage({
+						harness,
+						children: {},
+						lenses: [{ key: "correctness@1@careful", name: "correctness" }],
+						files: changeset.revision.files,
+						nonce: "legacy",
+						context,
+					}),
+				).rejects.toThrow("conversation unavailable");
 				scriptConversations(models, [
 					{
 						match: "correctness",
