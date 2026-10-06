@@ -442,13 +442,15 @@ export function staticToolSource(repoRoot: string, tool: StaticTool): StaticTool
 
 /**
  * Runs one static tool on one commit, entirely inside `env`. Checks the commit out into a temporary worktree with
- * `git worktree add --detach`, runs the tool there, so it reads that revision's own configuration, and removes the
+ * `git worktree add --detach`, runs the tool there, and removes the
  * worktree, whatever happens. The user's checkout is only read: its `node_modules` is linked into the worktree, so the
  * tool resolves the repository's dependencies. A `node_modules` the revision tracks is removed from the worktree and
  * named in the run's notes.
  *
- * The tool is never a binary from the revision's tree: it is the checkout's `node_modules/.bin/<tool>`, installed from
- * the lockfile, when the checkout does not track it, and otherwise the one Melian depends on. Runtime is
+ * Biome and tsc read that revision's configuration. They use the checkout's `node_modules/.bin/<tool>`, installed from
+ * the lockfile, when the checkout does not track it, and otherwise Melian's dependency. Enola uses Melian's
+ * manifest-pinned, verified cache executable and judges both revisions with policy copied from `input.base`
+ * (or `input.commit` when no base is supplied), with executable providers disabled. Runtime is
  * bounded by `settings.timeout` and output by {@link staticOutputLimit}. tsc is skipped when the revision has no
  * `settings.project`.
  *
