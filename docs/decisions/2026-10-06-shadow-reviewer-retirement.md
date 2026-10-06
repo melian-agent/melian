@@ -9,3 +9,5 @@ The window counts pull requests, not review rounds. Recall counts valid, in-scop
 Only the maintainer may tighten the criterion. Every difference is still adjudicated. This records a retirement criterion; it does not retire either reviewer or claim that Melian meets it.
 
 The retirement line in `melian compare stats` is a follow-up to [pull request #72](https://github.com/melian-agent/melian/pull/72), which has not landed.
+
+Meeting the criterion never retires the shadows by itself. When `melian compare stats` reports it met, work pauses and the maintainer decides, as agreed on 2026-10-06. The retirement is a decision file of its own, not a side effect of a number.
