@@ -78,6 +78,7 @@ async function review(rerun = false, plan?: ReviewPlan, quick = false): Promise<
 	const judge = fake.ref("judge");
 	return reviewChangeset({
 		harness,
+		checks: [],
 		changeset,
 		lenses,
 		standards: [],
@@ -499,7 +500,7 @@ describe("the verifier", () => {
 			failure === "missing credentials" ? "the verifier has no model with credentials" : plan.refusal("verifier");
 		await expect(
 			failure === "missing credentials"
-				? reviewChangeset({ harness, changeset, lenses, standards: [], models: fake.review, config })
+				? reviewChangeset({ harness, checks: [], changeset, lenses, standards: [], models: fake.review, config })
 				: review(false, plan),
 		).rejects.toMatchObject({
 			code: "verifierFailed",

@@ -157,6 +157,7 @@ export async function runVerifierGolden(golden: VerifierGolden, mode: GoldenMode
 		try {
 			const result = await reviewChangeset({
 				harness: reviewHarness.harness,
+				checks: [],
 				changeset,
 				lenses: [lens],
 				standards: [],

@@ -96,7 +96,7 @@ The records [#67](https://github.com/melian-agent/melian/pull/67) and [#69](http
 
 The [verifier comparison record](../packages/evals/comparisons/2026-10-06-pr-80.md) covers [pull request #80](https://github.com/melian-agent/melian/pull/80)'s first fix pass and two Melian attempts. Its second fix pass, later rounds, and Claude review of record are pending.
 
-Steps 6 and 9 are complete. [The step 9 main merge](progress-log/2026-10-06-step9-main-merge.md) preserves automatic checks, standards provenance and verification together.
+Steps 6 and 9 are complete. The merged verifier fixtures and eval supply explicit empty check records to satisfy the raw-harness contract. [The step 9 main merge](progress-log/2026-10-06-step9-main-merge.md) preserves automatic checks, standards provenance and verification together.
 
 What remains after them:
 
