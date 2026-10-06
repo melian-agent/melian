@@ -437,14 +437,15 @@ describe.each(sourceKinds)("standards import safety from %s", (kind) => {
 		}
 	});
 
-	it("refuses a force-added import excluded by the revision's ignore rules", async () => {
+	it("refuses a force-added import excluded by the source's ignore rules", async () => {
 		writeFiles(repo, {
 			"AGENTS.md": "# Rules\n@private.md\n",
 			".gitignore": "private.md\n",
 			"private.md": "FORCE_ADDED_PRIVATE_VALUE",
 		});
 		gitIn(repo, "add", "--force", "private.md");
-		const source = sourceFor(repo, "revision");
+		const source = sourceFor(repo, kind);
+		writeFiles(repo, { "private.md": "LOCAL_SECRET" });
 		expect(gitIn(repo, "ls-files", "private.md")).toBe("private.md");
 		const reader = await sourceModule.openSource(repo, source);
 		const read = vi.spyOn(reader, "readText");

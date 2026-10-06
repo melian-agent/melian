@@ -1,0 +1,3 @@
+# Test tracked ignored imports from the worktree
+
+[Pull request #85](https://github.com/melian-agent/melian/pull/85), third fix pass, finding 633571c55abfb109. The force-added import fixture now uses each parameterised source instead of always selecting a revision. It edits the tracked private file after selecting the source and asserts refusal before readText. Removing --no-index from WorktreeSource.isIgnored fails the worktree case while the revision case passes. The flag was restored. This corrects the incomplete coverage described in the [second-pass entry](2026-10-06-fix85b-10-force-added.md) and updates the [implementation plan](../design-implementation-plan.md).
