@@ -38,6 +38,40 @@ describe("provider identity", () => {
 		]);
 	});
 
+	it.each(["admin", "maintain", "write", "triage", "read", "none"])(
+		"classifies repository permission %s",
+		async (permission) => {
+			const { state, provider } = fixture();
+			state.permissions = { publisher: permission };
+			expect(await provider.permission("publisher")).toBe(permission);
+			expect(state.calls).toEqual([
+				{
+					method: "GET",
+					path: "/repos/owner/repo/collaborators/publisher/permission",
+				},
+			]);
+		},
+	);
+
+	it.each(["null", "absent"])("keeps a %s author unknown", async (kind) => {
+		const { state } = fixture();
+		const transport = fakeGitHub(state);
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test-token",
+			fetch: async (input, init) => {
+				const response = await transport(input, init);
+				if (new URL(String(input)).pathname !== "/repos/owner/repo/pulls/7") return response;
+				const data = (await response.json()) as Record<string, unknown>;
+				if (kind === "null") data.user = null;
+				else delete data.user;
+				return new Response(JSON.stringify(data), { status: response.status, headers: response.headers });
+			},
+		});
+		expect(await provider.pullRequest(7)).not.toHaveProperty("author");
+	});
+
 	it("remembers a refused viewer lookup", async () => {
 		const { state, provider } = fixture();
 		state.failUser = true;
