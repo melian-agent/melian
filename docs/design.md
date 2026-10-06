@@ -628,7 +628,7 @@ The manifest and its quarantine are built. The verified tool cache is built; Eno
 
 Problem: a finding's identity hashes its rule and snippet, and an analyser's version decides what it reports and under which rule. Biome and tsc arrive through npm, pinned by a lockfile; standalone analysers such as Opengrep and gitleaks do not. Example: a maintainer's Homebrew gitleaks is a release ahead of the one on the Actions runner. A rule renamed between them gives the same secret a new finding ID, so a dismissed finding returns and an open one is posted again. Whichever binary sits first on the host's `PATH` would also judge the change from outside the trust boundary.
 
-Solution: Melian pins every external tool in a `tools.yaml` manifest of its own: the version, and per platform a download URL and a sha256. The manifest takes the same release-age quarantine as npm dependencies, so a release younger than the window is refused, and a bump is a reviewed pull request.
+Solution: Melian pins every external tool in a `tools.yaml` manifest of its own: the version, and per platform a download URL and a sha256. The gate checks release metadata with GITHUB_TOKEN when set. A network outage skips that metadata check with a visible note locally; CI requires it. Digest or release mismatches still fail everywhere. The manifest takes the same release-age quarantine as npm dependencies, so a release younger than the window is refused, and a bump is a reviewed pull request.
 
 Enola uses the official v0.4.27 release, which includes `enola impact --json`. Melian disables update checks and never runs `upgrade`. No fork is needed. [The manifest decision](decisions/2026-10-06-tool-manifest.md) replaces the fork plan.
 

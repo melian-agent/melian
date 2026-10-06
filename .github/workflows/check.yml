@@ -28,6 +28,8 @@ jobs:
         run: npm install -g npm@11.19.0
       - run: npm ci --ignore-scripts
       - run: npm run check
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       # The publish check. The tests run the CLI from source, so nothing else builds dist/, packs it, or runs the
       # shim's tarball branch. `! grep` would not fail a step under bash -e, hence the if.
       - name: Pack, install, and run the published CLI

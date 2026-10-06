@@ -3,17 +3,37 @@ import { pathToFileURL } from "node:url";
 import { ToolManifest } from "../packages/core/src/tool-manifest.ts";
 import { readWindowDays } from "./check-release-age.mjs";
 
-export async function verifyReleases({ tools, fetch: download = fetch }) {
+export async function verifyReleases({
+	tools,
+	fetch: download = fetch,
+	token = process.env.GITHUB_TOKEN,
+	ci = Boolean(process.env.CI),
+	note = console.warn,
+}) {
 	const failures = [];
 	for (const [name, tool] of Object.entries(tools)) {
 		try {
-			const response = await download(
-				`https://api.github.com/repos/${tool.source.repository}/releases/tags/${encodeURIComponent(tool.source.tag)}`,
-				{
-					signal: AbortSignal.timeout(30_000),
-					headers: { "User-Agent": "melian-tool-manifest" },
-				},
-			);
+			let response;
+			try {
+				response = await download(
+					`https://api.github.com/repos/${tool.source.repository}/releases/tags/${encodeURIComponent(tool.source.tag)}`,
+					{
+						signal: AbortSignal.timeout(30_000),
+						headers: {
+							"User-Agent": "melian-tool-manifest",
+							...(token ? { Authorization: `Bearer ${token}` } : {}),
+						},
+					},
+				);
+			} catch {
+				if (ci) throw new Error("GitHub network unavailable; CI requires release verification");
+				note(`${name}: release verification skipped: GitHub network unavailable`);
+				continue;
+			}
+			if (!ci && [403, 429, 502, 503, 504].includes(response.status)) {
+				note(`${name}: release verification skipped: GitHub unavailable (HTTP ${response.status})`);
+				continue;
+			}
 			if (!response.ok) throw new Error(`HTTP ${response.status}`);
 			const release = await response.json();
 			if (release.draft || release.tag_name !== tool.source.tag || release.published_at !== tool.published)
