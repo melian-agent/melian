@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ToolManifest } from "@melian-agent/core";
 import { CacheLocation, ToolProvisioning } from "@melian-agent/pipeline";
@@ -70,6 +70,14 @@ it("lists Melian's own manifest using the host's state directory", async () => {
 	expect(await main(["tools"], io)).toBe(0);
 	expect(io.lines.join("")).toContain("enola@0.4.27");
 	expect(io.lines.join("")).toContain("not yet fetched");
+	expect(io.errors).toEqual([]);
+});
+
+it("reports doctor checks outside a git repository", async () => {
+	await rm(join(repo, ".git"), { recursive: true });
+	const io = output();
+	expect(await main(["doctor"], io)).toBe(0);
+	expect(io.lines.join("")).toContain("Melian needs 22.19.0 or later");
 	expect(io.errors).toEqual([]);
 });
 

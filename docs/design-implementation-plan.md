@@ -184,3 +184,4 @@ Step 11 execution-miss mapping is built. The tool-manifest comparison maps thirt
    - Mutation inventory: Two static tests prove canonicalisation fallback and Enola discovery. Both mutations fail; both focused restored tests pass.
    - Mutation inventory: Two local analyser cases preserve Error and string query refusals as scoped advisories. The formatting mutation fails; both focused restored tests pass.
    - Mutation inventory: The analyser fixture enforces query depth and node caps. A 32 MiB padded report proves the subprocess file limit. All three command mutations fail; both restored spike tests pass.
+   - Mutation inventory: Doctor now has a regression outside git. Removing the repository-discovery recovery fails; all 13 restored CLI tool tests pass.
