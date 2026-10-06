@@ -123,6 +123,14 @@ it("reports a platform with no pin as unavailable, never as a mismatch", async (
 	]);
 });
 
+it("warns in doctor about a tool it cannot check, and exits 0", async () => {
+	const provisioning = await ToolProvisioning.open(repo, { root: join(repo, "cache"), platform: "linux-s390x" });
+	vi.spyOn(ToolInventory, "open").mockResolvedValue(await ToolInventory.open(repo, {}, provisioning));
+	const io = output();
+	expect(await main(["doctor"], io)).toBe(0);
+	expect(io.lines.join("")).toMatch(/warn\s+tool enola\s+0\.4\.27; cannot check: enola has no pin for linux-s390x/);
+});
+
 it.each([
 	["tools", "fetch"],
 	["tools", "fetch", "enola", "extra"],

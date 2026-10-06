@@ -153,7 +153,7 @@ async function toolChecks(cwd: string, env: NodeJS.ProcessEnv): Promise<Check[]>
 	try {
 		return (await (await ToolInventory.open(root, env)).readiness()).map((tool) => ({
 			name: `tool ${tool.name}`,
-			state: tool.state === "verified" ? "ok" : tool.state === "not-fetched" ? "warn" : "fail",
+			state: tool.state === "verified" ? "ok" : tool.state === "mismatch" ? "fail" : "warn",
 			detail: `${tool.version}; ${tool.detail}`,
 		}));
 	} catch (error) {
