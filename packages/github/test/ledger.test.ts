@@ -355,7 +355,8 @@ describe("ledger rendering", () => {
 		expect(body).toContain("careful; route a/b; committed lens changed at head; budgets");
 	});
 
-	it("names the standards each lens received alongside their union", () => {
+	it("names each lens's standards and keeps hostile paths inert", () => {
+		const hostile = "docs/`[log in](https://evil.test)\n# Approved\u2028@octocat.md";
 		const current = {
 			...round,
 			details: {
@@ -369,14 +370,21 @@ describe("ledger rendering", () => {
 						level: "careful",
 						models: [],
 						budget: { findings: 8 },
-						standards: ["packages/core/AGENTS.md", "AGENTS.md"],
+						standards: ["packages/core/AGENTS.md", "AGENTS.md", hostile],
 					},
 				],
 			},
 		};
 		const body = Ledger.from(verdict, { rounds: [current] }, options).render(links);
 		expect(body).toContain("Standards: AGENTS.md, packages/core/AGENTS.md");
-		expect(body).toContain("; standards `packages/core/AGENTS.md`, `AGENTS.md`");
+		const start = body.indexOf("<summary>Run details</summary>");
+		const runDetails = body.slice(start, body.indexOf("</details>", start));
+		expect(runDetails).toContain(
+			"; standards `packages/core/AGENTS.md`, `AGENTS.md`, ``docs/`[log in](https://evil.test)\\u000a# Approved\\u2028@octocat.md``",
+		);
+		expect(runDetails).not.toContain(hostile);
+		expect(runDetails).not.toContain("\n# Approved");
+		expect(runDetails).not.toContain("\u2028");
 	});
 
 	it("keeps markdown in a finding path inert inside the agent prompt", () => {
