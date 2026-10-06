@@ -8,15 +8,20 @@ import { afterEach, expect, it, vi } from "vitest";
 import { commit, createRepository, removeRepository } from "../../pipeline/test/fixtures/repo.ts";
 import { testTool, toolArchive } from "../../pipeline/test/fixtures/tool-archive.ts";
 import { EnolaSpike } from "../src/enola-spike.ts";
+import { CompilerGraph } from "../src/compiler-graph.ts";
 
 let repo: string;
 afterEach(() => {
 	vi.restoreAllMocks();
+	vi.unstubAllEnvs();
 	if (repo) removeRepository(repo);
 });
 
 it("measures a local analyser and reuses only queries for the same snapshot", async () => {
 	repo = createRepository();
+	vi.stubEnv("TMPDIR", repo);
+	vi.stubEnv("LANG", "C");
+	const closed = vi.spyOn(CompilerGraph.prototype, "close");
 	const facts = [
 		{ id: "a", name: "src.a", kind: "symbol", file: "src/a.ts", line: 1 },
 		{ id: "b", name: "src.b", kind: "symbol", file: "src/a.ts", line: 2 },
@@ -36,6 +41,7 @@ it("measures a local analyser and reuses only queries for the same snapshot", as
 		"fixture-impact": impact,
 	});
 	const script = `#!/bin/sh
+printf '%s|%s\n' "$TMPDIR" "$LANG" > fixture-env
 if [ "$1" = "--generate" ]; then
   cp fixture-facts .enola/facts.jsonl
   printf '[]' > .enola/insights.json
@@ -59,6 +65,8 @@ fi
 	const output = join(repo, "measurement");
 	const spike = await EnolaSpike.open(repo, output);
 	await spike.run();
+	expect(await readFile(join(repo, "fixture-env"), "utf8")).toBe(`${repo}|C\n`);
+	expect(closed).toHaveBeenCalledOnce();
 	const summary = JSON.parse(await readFile(join(output, "summary.json"), "utf8"));
 	expect(summary).toMatchObject({
 		files: 1,
