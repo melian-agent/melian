@@ -157,3 +157,8 @@ Add important learnings here, newest last. Each entry names the symptom, the cau
 - A test over a long body takes seconds and times out under load, though it passes alone. Cause: a regex on model or finding text that starts with an unbounded class, such as `/([a-z][a-z0-9+.-]*):(?=\/\/)/`, rescans to the end of the text from every start, which is quadratic on a 100 KB run of letters. Anchor on the delimiter, as `/:(?=\/\/)/` does, and time a new `renderProse` rule on `"x".repeat(120_000)`.
 
 - `melian review` run with another branch's build fails with "Document N (melian.verdicts) has newer version X than Y". Cause: Melian shares storage across every worktree of a checkout under the git common directory. A build with an older document version cannot read a changeset a newer branch's build wrote. Review a branch with its own build, or set `MELIAN_STATE_DIR` to a directory of its own for the other build.
+
+- A completed check appears absent from `Harness.inspect`. Cause: inspect lists live tasks only. Assert completed check runs through the durable `ChecksDocument` task index.
+- A migrated version-2 lens task loses its valid scrutiny level. Cause: the version-1 migration removes levels to preserve the old producer identity. Branch migrations on `fromVersion`; preserve version-2 levels and checkpoints.
+- Targeted CLI storage tests fail under a host-provided state directory. Cause: `MELIAN_STATE_DIR` changes their storage location. Unset it for targeted tests as well as the full gate.
+- A remote base changes while a linked worktree's head stays put. Cause: linked worktrees share remote refs, so another fetch advances them. Record the starting SHA and check the base again before delivery.

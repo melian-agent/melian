@@ -229,6 +229,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			},
 			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
+			checks: [],
 			models: fake.review,
 		});
 
@@ -272,6 +273,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			},
 			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
+			checks: [],
 			models: fake.review,
 		});
 
@@ -430,6 +432,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			},
 			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
+			checks: [],
 			models: fake.review,
 		});
 		const root = (await harness.root(context)).id;
@@ -482,6 +485,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			},
 			lenses: budgetLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
+			checks: [],
 			models: fake.review,
 		});
 
@@ -528,6 +532,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 				},
 				lenses: budgetLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"]), endingBudgets[scenario]),
 				standards: [],
+				checks: [],
 				models: fake.review,
 			});
 
@@ -790,6 +795,7 @@ describe("a lens task from an earlier selection during triage", { timeout: 60_00
 			},
 			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
+			checks: [],
 			models: fake.review,
 			decider: resumedDecider,
 			policy: { kind: "revision", commit: changeset.revision.base },

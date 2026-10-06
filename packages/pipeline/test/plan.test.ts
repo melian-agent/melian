@@ -428,9 +428,15 @@ describe("a lens run a later review replaced", () => {
 		]);
 		const changeset = await Changeset.resolve(repo, "main...feature");
 		const config: MelianConfig = { ...defaultConfig, tiers: twoLensTiers, models: { heavy: { model: heavy } } };
-		const running = reviewChangeset({ harness, changeset, config, lenses, standards: [], models: fake.review }).catch(
-			(error: unknown) => error,
-		);
+		const running = reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: [],
+		}).catch((error: unknown) => error);
 		await asked;
 		const root = await harness.root(context);
 		const revision = revisionKey(changeset.revision);
@@ -540,9 +546,15 @@ describe("a lens run a later review replaced", () => {
 			tiers: twoLensTiers,
 			models: { heavy: { model: heavy, fallbacks: [backup] } },
 		};
-		const running = reviewChangeset({ harness, changeset, config, lenses, standards: [], models: fake.review }).catch(
-			(error: unknown) => error,
-		);
+		const running = reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: [],
+		}).catch((error: unknown) => error);
 		await asked;
 		const root = await harness.root(context);
 		const revision = revisionKey(changeset.revision);

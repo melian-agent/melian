@@ -234,6 +234,8 @@ export type PublicationDetails = {
 		ran?: string;
 		/** Why the lens ran off the committed route, as `describeLineage` says it. */
 		lineage?: string;
+		/** The standards sections this lens received, absent from older records. */
+		standards?: string[];
 		usage?: { models: string[]; tokens: number; cost: number };
 		budget: { findings: number; tokens?: number; tools?: number };
 	}[];
