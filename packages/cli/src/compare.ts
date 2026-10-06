@@ -19,7 +19,6 @@ export type ImportSource =
 	| { readonly kind: "github"; readonly login: string }
 	| { readonly kind: "file"; readonly path: string };
 
-// Reads a `--from` value: `github`, `github:<login>`, or `file:<path>`; `undefined` for anything else.
 export function parseImportSource(value: string): ImportSource | undefined {
 	if (value === "github") return { kind: "github", login: coderabbitLogin };
 	if (value.startsWith("github:") && value.length > "github:".length) {
