@@ -254,6 +254,16 @@ describe("ExternalFinding", () => {
 		expect(external({ source: ref }).id).not.toBe(external({ source: file }).id);
 	});
 
+	it("identifies a thread by its node ID when its first-comment URL changes", () => {
+		const source = { kind: "thread", thread: "PRRT_1", url: "https://github.com/o/r/pull/1#r11" } as const;
+		const first = external({ source });
+		const edited = external({ source: { ...source, url: "https://github.com/o/r/pull/1#r12" } });
+		const another = external({ source: { ...source, thread: "PRRT_2" } });
+
+		expect(edited.id).toBe(first.id);
+		expect(another.id).not.toBe(first.id);
+	});
+
 	it("keeps a title to its first line and a bounded length, and its file in canonical form", () => {
 		const finding = external({ title: `\n  **${"long ".repeat(100)}**\nsecond line`, file: "./src//run.ts" });
 		expect(finding.title.split("\n")).toHaveLength(1);

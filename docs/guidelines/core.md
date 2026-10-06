@@ -670,6 +670,7 @@ An external finding with no file or line, an `outdated` one, and one on the base
 
 ## Tests
 
+- Inventory every changed source file and its contract before a mutation sweep, including supporting importers. Mutate identity fields as well as branch outcomes. Vary a thread’s URL and node ID independently; test a byte limit at the limit and one byte beyond. Record files and mutation operators the sweep excludes.
 - To audit a branch, force each outcome and move numeric bounds by one. Inverting a predicate alone can fail its positive test while leaving its negative case untested. Keep surviving mutations and their new failing assertions in the fix report.
 - Run the package's tests with `npm test --workspace @melian-agent/core`, or one file with `npx vitest --run packages/core/test/changeset.test.ts` from the repository root.
 - Build real repositories in a temporary directory in `beforeEach` with `test/fixtures/repo.ts`, and delete them in `afterEach`. Never mock git.

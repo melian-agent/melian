@@ -426,6 +426,19 @@ describe("FileImporter", () => {
 		});
 	});
 
+	it("imports valid JSON at exactly maxReviewerFileBytes", async () => {
+		const root = repo();
+		const json = JSON.stringify({ reviewer: { name: "human" }, findings: [] });
+		const text = json + " ".repeat(maxReviewerFileBytes - Buffer.byteLength(json));
+		expect(Buffer.byteLength(text)).toBe(4_194_304);
+		writeFileSync(join(root, "limit.json"), text);
+
+		const importer = await FileImporter.open("limit.json", { cwd: root, repoRoot: root });
+
+		expect(importer.source).toBe("file:limit.json");
+		expect(await importer.import()).toEqual({ findings: [], skippedBodies: 0 });
+	});
+
 	it("refuses a file larger than maxReviewerFileBytes without reading it", async () => {
 		const root = repo();
 		writeFileSync(join(root, "huge.json"), "");
