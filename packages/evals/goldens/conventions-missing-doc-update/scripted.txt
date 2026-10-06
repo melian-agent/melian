@@ -1,6 +1,7 @@
 docs/design.md
 
-  P2  line 7  missing-doc-update  (affected, new, unresolved)
+  P2  line 7  missing-doc-update  (affected, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   docs/design.md says a half cent rounds up, and the export now rounds it to the even cent.
     What: docs/design.md says a half cent rounds up, and the export now rounds it to the even cent.
     Why here: AGENTS.md says "If you change a behaviour that docs/design.md describes, change the document in the same commit.", and this change altered the rounding without touching the document.

@@ -1,0 +1,61 @@
+(version 1)
+; A seatbelt profile for running Codex in full-access mode under a sandbox of our own.
+; This is the fixed part. scripts/codex-sandboxed.sh appends the write allowances, then the
+; write and read denials. Rules are evaluated last-match-wins, so a deny after an allow narrows it.
+(deny default)
+(allow process-exec)
+(allow process-fork)
+(allow signal (target same-sandbox))
+(allow process-info* (target same-sandbox))
+(allow sysctl-read)
+(allow sysctl-write (sysctl-name "kern.grade_cputype"))
+(allow iokit-open (iokit-registry-entry-class "RootDomainUserClient"))
+; Only these Mach services can be looked up. A bare (allow mach-lookup) reaches launchd and
+; LaunchServices, which start processes outside the sandbox (launchctl submit, open -a).
+; Needed by gh, git, npm and node: the keychain, TLS trust, and user and group lookups.
+(allow mach-lookup
+  (global-name "com.apple.SecurityServer")
+  (global-name "com.apple.securityd.xpc")
+  (global-name "com.apple.trustd")
+  (global-name "com.apple.trustd.agent")
+  (global-name "com.apple.system.opendirectoryd.libinfo")
+)
+; Codex's own macOS policy allows these for Codex itself: directory and group lookups, logging,
+; notifications, preferences, DNS and proxy configuration, certificate status, and power state.
+(allow mach-lookup
+  (global-name "com.apple.system.opendirectoryd.membership")
+  (global-name "com.apple.system.DirectoryService.libinfo_v1")
+  (global-name "com.apple.bsd.dirhelper")
+  (global-name "com.apple.logd")
+  (global-name "com.apple.logd.events")
+  (global-name "com.apple.diagnosticd")
+  (global-name "com.apple.system.logger")
+  (global-name "com.apple.system.notification_center")
+  (global-name "com.apple.cfprefsd.daemon")
+  (global-name "com.apple.cfprefsd.agent")
+  (global-name "com.apple.networkd")
+  (global-name "com.apple.SystemConfiguration.DNSConfiguration")
+  (global-name "com.apple.SystemConfiguration.configd")
+  (global-name "com.apple.ocspd")
+  (global-name "com.apple.TrustEvaluationAgent")
+  (global-name "com.apple.secinitd")
+  (global-name "com.apple.PowerManagement.control")
+)
+(allow ipc-posix-sem)
+(allow ipc-posix-shm*)
+(allow pseudo-tty)
+(allow user-preference-read)
+(allow system-mac-syscall)
+(allow system-fsctl)
+; Network: IP, loopback servers, and the DNS resolver's socket. Other unix-domain sockets, such as
+; the ssh agent and the Docker daemon, stay closed.
+(allow network-outbound (remote ip))
+(allow network-bind (local ip "localhost:*"))
+(allow network-inbound (local ip "localhost:*"))
+(allow network-outbound (remote unix-socket (path-literal "/private/var/run/mDNSResponder")))
+(allow file-read*)
+(allow file-map-executable)
+(allow file-ioctl (regex #"^/dev/ttys[0-9]+"))
+(allow file-read* file-write* file-ioctl (literal "/dev/ptmx"))
+(allow file-read* file-write* (regex #"^/dev/ttys[0-9]+"))
+(allow file-write-data (literal "/dev/null") (literal "/dev/zero") (subpath "/dev/fd"))

@@ -14,31 +14,96 @@ import {
 	type Model,
 	type RegisterFauxProviderOptions,
 } from "@earendil-works/pi-ai";
-import { createModels } from "@earendil-works/pi-ai/models";
-import type { HarnessOptions, ModelRef } from "./harness.ts";
-import { type ReviewModels, wrapModels } from "./models.ts";
+import { createModels, type MutableModels } from "@earendil-works/pi-ai/models";
+import type { NamedCredential, Verification } from "@melian-agent/core";
+import { MelianCredentialStore, PiCredentialStore } from "./credentials.ts";
+import type { CredentialStore, ModelRef } from "./harness.ts";
+import { modelsOf, type ReviewModels, wrapModels } from "./models.ts";
+import { verifierMarker } from "./verification-instructions.ts";
 
 export { type FauxProviderHandle, fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
 
 /** A scripted model provider for tests, registered in its own model collection. */
 export type FakeModels = {
-	readonly models: HarnessOptions["models"];
+	readonly models: MutableModels;
 	readonly provider: FauxProviderHandle;
 	/** The same collection as `models`, as the handle `reviewChangeset` and `openReviewHarness` take. */
 	readonly review: ReviewModels;
 	/** The reference a conversation's agent uses to select `modelId`, or the first model. */
 	ref(modelId?: string): ModelRef;
+	/** Registers a provider of its own that holds a model `modelId` but no credentials, and returns that model's reference. */
+	withoutCredentials(modelId: string): ModelRef;
 };
 
-/** Create a scripted model provider that answers from queued responses, so tests need no credentials. */
-export function createFakeModels(options?: RegisterFauxProviderOptions): FakeModels {
+/** Creates a scripted provider in its own collection, or alongside an existing review collection for a planted finder. */
+export function createFakeModels(
+	options: RegisterFauxProviderOptions & {
+		readonly auth?: "oauth" | "none";
+		readonly credentials?: readonly NamedCredential[];
+		readonly credentialStore?: CredentialStore;
+		readonly authPath?: string;
+	} = {},
+	review?: ReviewModels,
+): FakeModels {
 	const provider = fauxProvider(options);
-	const models = createModels();
-	models.setProvider(provider.provider);
+	const store =
+		options.credentials === undefined
+			? undefined
+			: new MelianCredentialStore(
+					options.credentials,
+					(id) => {
+						const auth = models.getProvider(id)?.auth;
+						return { apiKey: auth?.apiKey !== undefined, oauth: auth?.oauth !== undefined };
+					},
+					new PiCredentialStore(options.authPath),
+					{},
+				);
+	const credentials = options.credentialStore ?? store;
+	const models: MutableModels =
+		review === undefined ? createModels({ ...(credentials === undefined ? {} : { credentials }) }) : modelsOf(review);
+	let auth = provider.provider.auth;
+	if (options.auth === "none") {
+		auth = {};
+	} else if (options.auth === "oauth") {
+		auth = {
+			oauth: {
+				name: "Fake OAuth",
+				async login(): Promise<never> {
+					throw new Error("Fake OAuth never logs in");
+				},
+				async refresh(): Promise<never> {
+					throw new Error("Fake OAuth never refreshes");
+				},
+				async toAuth(credential) {
+					return { apiKey: credential.access };
+				},
+			},
+		};
+	} else if (options.credentials !== undefined) {
+		auth = {
+			apiKey: {
+				name: "Fake API key",
+				async resolve({ credential }) {
+					return credential?.key === undefined ? undefined : { auth: { apiKey: credential.key } };
+				},
+			},
+		};
+	}
+	const registered = { ...provider.provider, auth };
+	models.setProvider(registered);
 	return {
 		models,
-		provider,
-		review: wrapModels(models),
+		provider: { ...provider, provider: registered },
+		review: review ?? wrapModels(models, store),
+		withoutCredentials(modelId) {
+			const locked = fauxProvider({ provider: "locked", models: [{ id: modelId }] });
+			models.setProvider({
+				...locked.provider,
+				auth: { apiKey: { name: "Locked", resolve: async () => undefined } },
+			});
+			return { provider: "locked", modelId };
+		},
+
 		ref(modelId) {
 			const model: Model<string> | undefined =
 				modelId === undefined ? provider.getModel() : provider.getModel(modelId);
@@ -91,6 +156,7 @@ export function textOf(message: Message): string {
 export function scriptConversations(
 	fake: FakeModels,
 	scripts: readonly ConversationScript[],
+	verdicts: VerifierScript = {},
 ): Record<string, Message[][]> {
 	const requests: Record<string, Message[][]> = Object.fromEntries(scripts.map((script) => [script.match, []]));
 	const respond = (
@@ -101,6 +167,11 @@ export function scriptConversations(
 	): AssistantMessage | Promise<AssistantMessage> => {
 		const prompt = systemPromptOf(context.messages);
 		const script = scripts.find((each) => prompt.includes(each.match));
+		if (script === undefined && prompt.includes(verifierMarker)) {
+			requests[verifierMarker] ??= [];
+			requests[verifierMarker]!.push(structuredClone([...context.messages]));
+			return scriptVerifier(context.messages, verdicts);
+		}
 		if (script === undefined) return fauxAssistantMessage("", { stopReason: "error", errorMessage: "no script" });
 		const seen = requests[script.match]!;
 		seen.push(structuredClone([...context.messages]));
@@ -111,7 +182,7 @@ export function scriptConversations(
 		return typeof reply === "function" ? reply(context.messages, model.id) : reply;
 	};
 	const total = scripts.reduce((sum, script) => sum + script.replies.length, 0);
-	fake.provider.setResponses(Array.from({ length: total + scripts.length + 8 }, () => respond));
+	fake.provider.setResponses(Array.from({ length: total + scripts.length + 256 }, () => respond));
 	return requests;
 }
 
@@ -129,8 +200,27 @@ export type LensScriptStep =
 	  }
 	| { readonly text: string };
 
-/** Each lens's turns, in order, by lens name. */
-export type LensScript = Readonly<Record<string, readonly LensScriptStep[]>>;
+/** Scripted judgements by finding ID, with evidence required when a supplied outcome refutes a claim. */
+export type VerifierScript = Readonly<
+	Record<
+		string,
+		| Verification["verdict"]
+		| {
+				verdict: Verification["verdict"];
+				reason?: string;
+				correction?: string;
+				evidence?: readonly {
+					file: string;
+					line: number;
+					endLine?: number;
+					role: "cause" | "context";
+					revision?: "head" | "base";
+				}[];
+		  }
+	>
+>;
+
+export type LensScript = Readonly<Record<string, readonly LensScriptStep[] | VerifierScript>>;
 
 // The text of each tool result answering the last assistant turn in `messages`, by tool call ID.
 function lastResults(messages: readonly Message[]): Map<string, string> {
@@ -180,11 +270,42 @@ export function scriptLenses(
 	mismatches: string[] = [],
 ): Record<string, Message[][]> {
 	const scripts = Object.entries(script)
+		.filter(([name]) => name !== "verifier")
 		.map(([name, steps]) => {
 			const lens = lenses.find((each) => each.name === name);
 			if (lens === undefined) throw new Error(`the script names ${name}, which is not a lens here`);
-			return { match: lens.instructions, replies: lensReplies(name, steps, mismatches) };
+			return {
+				match: lens.instructions,
+				replies: lensReplies(name, steps as readonly LensScriptStep[], mismatches),
+			};
 		})
 		.sort((a, b) => b.match.length - a.match.length);
-	return scriptConversations(fake, scripts);
+	return scriptConversations(fake, scripts, script.verifier as VerifierScript | undefined);
+}
+
+/** Answers verifier requests from their messages alone, safely across parallel conversations. */
+export function scriptVerifier(messages: readonly Message[], verdicts: VerifierScript = {}): AssistantMessage {
+	if (
+		messages.some(
+			(message) =>
+				message.role === "assistant" &&
+				message.content.some((block) => block.type === "toolCall" && block.name === "report_verdict"),
+		)
+	)
+		return fauxAssistantMessage("Every claim judged.");
+	const prompt = systemPromptOf(messages);
+	const calls = [...prompt.matchAll(/Claim (c[1-9][0-9]*) finding ([0-9a-f]+)/g)].map((match) => {
+		const scripted = verdicts[match[2]!] ?? "confirmed";
+		const outcome = typeof scripted === "string" ? { verdict: scripted } : scripted;
+		const reason = outcome.reason ?? "The scripted verifier traced the claim.";
+		return fauxToolCall("report_verdict", {
+			claim: match[1]!,
+			answers: { code: "yes", guard: outcome.verdict === "refuted" ? "yes" : "no", base: "no" },
+			verdict: outcome.verdict,
+			reason,
+			...("correction" in outcome && outcome.correction !== undefined ? { correction: outcome.correction } : {}),
+			...("evidence" in outcome && outcome.evidence !== undefined ? { evidence: [...outcome.evidence] } : {}),
+		});
+	});
+	return fauxAssistantMessage(calls, { stopReason: "toolUse" });
 }

@@ -1,4 +1,4 @@
-import { symlinkSync } from "node:fs";
+import { mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import {
 	Changeset,
@@ -59,6 +59,21 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 			P3: "advisory",
 			nit: "silent",
 		});
+	});
+
+	it("defaults the walkthrough on and accepts each switch under publish.walkthrough", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines(
+				"publish:",
+				"  walkthrough:",
+				"    enabled: false",
+				"    collapsed: false",
+				"    diagrams: false",
+			),
+		});
+		const { config } = await load("src/index.ts");
+		expect(defaultConfig.publish.walkthrough).toEqual({ enabled: true, collapsed: true, diagrams: true });
+		expect(config.publish.walkthrough).toEqual({ enabled: false, collapsed: false, diagrams: false });
 	});
 
 	// The precedence example in docs/guidelines/core.md.
@@ -127,6 +142,38 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 			security: { paths: ["src/**", "!src/generated/**"] },
 			contracts: { paths: ["services/api/**", "!services/api/generated/**"] },
 		});
+	});
+
+	it("layers a lens's level band end by end, and reads the severity that escalates a quick lens", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines(
+				"lenses:",
+				"  trust-boundary:",
+				"    level: { floor: careful, ceiling: deep }",
+				"triage:",
+				"  escalateAt: P2",
+			),
+			"services/melian.yaml": lines("lenses:", "  trust-boundary:", "    level: { ceiling: careful }"),
+		});
+		const nested = (await load("services/a.ts")).config;
+		expect(nested.lenses["trust-boundary"]).toEqual({ level: { floor: "careful", ceiling: "careful" } });
+		expect(nested.triage).toEqual({ escalateAt: "P2" });
+		const root = (await load("src/a.ts")).config;
+		expect(root.lenses["trust-boundary"]).toEqual({ level: { floor: "careful", ceiling: "deep" } });
+		expect(defaultConfig.triage).toEqual({ escalateAt: "P1" });
+	});
+
+	it("refuses triage in a nested melian.yaml, since a review reads it from the root alone", async () => {
+		writeFiles(repo, { "services/melian.yaml": lines("triage:", "  escalateAt: P2") });
+		const error = await rejection(load("services/a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", key: "triage", file: "services/melian.yaml" });
+		expect(error.message).toContain("only the root melian.yaml may set it");
+	});
+
+	it("refuses a ceiling of skip, which would let triage switch a lens off past its floor", async () => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", "  tests:", "    level: { ceiling: skip }") });
+		const error = await rejection(load("."));
+		expect(error).toMatchObject({ code: "invalidValue", key: "lenses.tests.level.ceiling" });
 	});
 
 	it("normalises lens paths in the root file the same way as in a nested one", async () => {
@@ -283,6 +330,13 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		expect(config.stages.hasOwnProperty).toBeUndefined();
 	});
 
+	it("rejects a lens name past 128 characters, and accepts one of exactly 128", async () => {
+		writeFiles(repo, { "melian.yaml": lines("lenses:", `  ${"a".repeat(128)}:`, "    tier: heavy") });
+		expect(Object.keys((await load("a.ts")).config.lenses)).toEqual(["a".repeat(128)]);
+		writeFiles(repo, { "melian.yaml": lines("lenses:", `  ${"a".repeat(129)}:`, "    tier: heavy") });
+		await expect(load("a.ts")).rejects.toBeInstanceOf(ConfigError);
+	});
+
 	it("rejects a value outside its set, listing the allowed values", async () => {
 		writeFiles(repo, { "melian.yaml": lines("resolution:", "  P0: blocker") });
 		const error = await rejection(load("a.ts"));
@@ -423,6 +477,12 @@ describe("melian.local.yaml", () => {
 		expect(sources).toEqual(["melian.local.yaml", "services/pay/melian.yaml", "melian.yaml"]);
 	});
 
+	it("may set triage, which a nested melian.yaml may not", async () => {
+		writeFiles(repo, { "melian.local.yaml": lines("triage:", "  escalateAt: P2") });
+		const { config } = await loadConfig(repo, { kind: "worktree" }, "services/pay/a.ts");
+		expect(config.triage).toEqual({ escalateAt: "P2" });
+	});
+
 	it("is never read from a revision, even one that commits it", async () => {
 		commitLocalFile();
 		const { config, sources } = await loadConfig(repo, { kind: "revision", commit: "HEAD" }, "a.ts");
@@ -471,6 +531,12 @@ describe("the user-level preference file", () => {
 
 	const preferences = () => join(home, "config.yaml");
 	const worktree = () => ({ kind: "worktree" as const, preferences: preferences() });
+
+	it("may set triage, which a nested melian.yaml may not", async () => {
+		writeFiles(home, { "config.yaml": lines("triage:", "  escalateAt: P2") });
+		const { config } = await loadConfig(repo, worktree(), "services/pay/a.ts");
+		expect(config.triage).toEqual({ escalateAt: "P2" });
+	});
 
 	it("layers under melian.local.yaml and over every melian.yaml, its globs anchored at the root", async () => {
 		writeFiles(home, {
@@ -585,6 +651,26 @@ describe("the user-level preference file", () => {
 		writeFiles(home, { "config.yaml": lines("tier: fast") });
 		const error = await rejection(loadConfig(repo, worktree(), "a.ts"));
 		expect(error).toMatchObject({ code: "unknownKey", file: preferences() });
+	});
+
+	it("refuses a file over the size limit instead of truncating it", async () => {
+		writeFiles(home, { "config.yaml": `# ${"x".repeat(maxConfigBytes)}\n` });
+		const error = await rejection(loadConfig(repo, worktree(), "a.ts"));
+		expect(error).toMatchObject({ code: "tooLarge", file: preferences() });
+	});
+
+	it("refuses a path it cannot read as a file, naming it", async () => {
+		mkdirSync(preferences());
+		const error = await rejection(loadConfig(repo, worktree(), "a.ts"));
+		expect(error).toMatchObject({ code: "unreadable", file: preferences() });
+	});
+
+	it("follows a symlinked file, as dotfiles are often linked", async () => {
+		writeFiles(home, { "dotfiles/config.yaml": lines("models:", "  medium:", "    model: linked/medium") });
+		symlinkSync(join(home, "dotfiles/config.yaml"), preferences());
+		const { config, sources } = await loadConfig(repo, worktree(), "a.ts");
+		expect(config.models.medium).toEqual({ model: "linked/medium" });
+		expect(sources).toContain(preferences());
 	});
 
 	it("reports each lens tier the committed files set, and each lens a preference file moved", async () => {

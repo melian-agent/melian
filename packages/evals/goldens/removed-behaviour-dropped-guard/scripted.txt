@@ -1,6 +1,7 @@
 src/config-files.ts
 
-  P1  line 12  dropped-guard  (introduced, new, unresolved)
+  P1  line 12  dropped-guard  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   configFiles stops only when dir equals root, so any start that is not beneath root as spelled walks to the top and spins there.
     What: configFiles stops only when dir equals root, so any start that is not beneath root as spelled walks to the top and spins there.
     Why here: This change deleted the guard that broke the loop when dirname returned the directory itself.
@@ -16,7 +17,8 @@ src/config-files.ts
         for (const found of configFiles(root, dirname(join(root, file)))) console.log(found);
     What to do: Restore the check: compute the parent, and break when it equals dir.
 
-  P1  line 12  wrong-result  (introduced, new, unresolved)
+  P1  line 12  wrong-result  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   The loop ends only when dir equals root, and dirname of the top directory is itself, so a root that the walk never spells the same way spins forever.
     What: The loop ends only when dir equals root, and dirname of the top directory is itself, so a root that the walk never spells the same way spins forever.
     Why here: This change replaced the parent check with a bare dir = dirname(dir).

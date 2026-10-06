@@ -36,6 +36,7 @@ export type CredentialValue =
 export interface NamedCredential {
 	readonly name: string;
 	readonly provider: string;
+	/** The secrets-file tag; the provider determines the runtime auth kind. */
 	readonly type: "api_key";
 	readonly value: CredentialValue;
 	readonly file: string;

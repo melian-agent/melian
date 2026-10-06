@@ -8,6 +8,7 @@ export {
 	type ConfigFor,
 	Defect,
 	Manifest,
+	Merge,
 	noRecord,
 	type StoredCheckRecord,
 	type StoredVerdict,
@@ -44,6 +45,7 @@ export {
 	type GuardrailSettings,
 	type LensSettings,
 	type LensTier,
+	type LevelBandSettings,
 	type LoadedConfig,
 	lensTierSchema,
 	loadConfig,
@@ -68,6 +70,20 @@ export {
 	severitySchema,
 	type TscSettings,
 } from "./config.ts";
+export {
+	type ChoiceAnswer,
+	type ChoiceQuestion,
+	type DecidedAnswer,
+	type Decider,
+	type DeciderAnswer,
+	Decision,
+	type DecisionRequest,
+	type QuestionSet,
+	questionFingerprint,
+	type StoredDecision,
+	type TextModel,
+	type ToolRequest,
+} from "./decider.ts";
 export type { ChangedFile, FileKind, FileStatus, Hunk } from "./diff.ts";
 export {
 	ChangesetError,
@@ -76,8 +92,12 @@ export {
 	type CheckErrorCode,
 	ConfigError,
 	type ConfigErrorCode,
+	DecisionError,
+	type DecisionErrorCode,
 	FindingError,
 	type FindingErrorCode,
+	LedgerRefusal,
+	type LedgerRefusalCode,
 	LensError,
 	type LensErrorCode,
 	ModelRoutingError,
@@ -199,9 +219,15 @@ export {
 	type ClosedFinding,
 	type DiffLines,
 	dismissalVersion,
+	type LedgerDraft,
+	type LedgerHistory,
+	type LedgerRound,
+	type LedgerStamp,
 	type PlacedFinding,
 	type Placement,
+	type PostedLedger,
 	type PostedReview,
+	type PublicationDetails,
 	type PublicationPlan,
 	type PublishedFinding,
 	type PublishedMarkers,
@@ -210,6 +236,7 @@ export {
 	type ReviewProvider,
 	type ReviewStatus,
 	replyKey,
+	type Walkthrough,
 } from "./publication.ts";
 export { describeBudgetEnd, describeLineage, Rendering, type TerminalRenderOptions, visibleText } from "./render.ts";
 export {
@@ -247,5 +274,24 @@ export {
 	toolLogSchema,
 	toolResultSchema,
 } from "./static.ts";
+export {
+	type EscalationEvidence,
+	EscalationRule,
+	type EscalationTrigger,
+	LevelBand,
+	type TriageChoice,
+	triageChoices,
+	triageQuestionSet,
+} from "./triage.ts";
 
 export const packageName = "@melian-agent/core";
+
+export {
+	type StoredVerificationState,
+	type Verification,
+	VerificationState,
+	verificationBudget,
+	verificationQuestionSet,
+	verificationQuestions,
+	verificationSchema,
+} from "./verification.ts";

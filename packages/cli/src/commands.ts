@@ -29,9 +29,17 @@ import {
 	reviewChangeset,
 	revisionKey,
 	runChecks,
-	unlockCredentials,
+	summarizeReview,
 } from "@melian-agent/pipeline";
-import { idleModels, isScripted, reviewModels, scriptVariable } from "./models.ts";
+import {
+	decisionProviderRefusal,
+	type fallbackDecider,
+	idleModels,
+	isScripted,
+	reviewModels,
+	scriptVariable,
+	Triage,
+} from "./models.ts";
 import { CliError, git, openStorage, storagePath } from "./repository.ts";
 import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
 
@@ -45,6 +53,8 @@ export interface Io {
 	readonly color: boolean;
 	/** The path the shell ran `melian` from, which `doctor` reports. */
 	readonly executable?: string;
+	/** A seam for tests: the decider triage asks, in place of the LLM fallback, which scripted mode never triages with. */
+	readonly decide?: typeof fallbackDecider;
 }
 
 /**
@@ -81,7 +91,7 @@ export class ReviewOutcome {
 export async function review(
 	io: Io,
 	argument: string,
-	options: { readonly model?: string; readonly rerun: boolean },
+	options: { readonly model?: string; readonly rerun: boolean; readonly walkthrough?: boolean },
 ): Promise<number> {
 	const target = parseTarget(argument);
 	let changeset: Changeset;
@@ -115,18 +125,33 @@ export async function review(
 	const tier = loaded.stages["pull-request"] ?? "full";
 	const secrets = await loadSecrets(repoRoot, userFiles(io.env).secrets);
 	for (const warning of secrets.warnings) io.stderr(`melian: ${warning}\n`);
+	const refusal = decisionProviderRefusal(loaded);
+	if (refusal !== undefined) throw new CliError(refusal);
 	const { models, plan, retry } = await reviewModels(io.env, policy, lenses, {
 		model: options.model,
 		checks: checksOfTier(loaded, tier),
 		credentials: secrets.credentials,
 	});
 	for (const line of plan.summary().split("\n").filter(Boolean)) io.stderr(`melian: ${line}\n`);
+	const selected = new Set(Lens.select(lenses, loaded, paths).map(({ lens }) => `${lens.name}\0${lens.scope}`));
+	const credentialPlan = plan.toJSON();
+	credentialPlan.lenses = credentialPlan.lenses.filter((lens) => selected.has(`${lens.name}\0${lens.scope ?? ""}`));
 	// A command a secrets file names runs now, so one that fails stops the review before it starts, named.
-	await unlockCredentials(models, plan.providers());
+	const triage = await Triage.create({
+		scripted: isScripted(io.env) && io.decide === undefined,
+		config: loaded,
+		plan: ReviewPlan.from(credentialPlan),
+		models,
+		...(io.decide === undefined ? {} : { decide: io.decide }),
+	});
 	const path = await storagePath(repoRoot, changeset.id, io.env, isScripted(io.env));
 	// Without the publish extension, so a publication a crash interrupted waits for melian publish rather than posting
 	// from a review.
-	const reviewHarness = await openReviewHarness(await openStorage(path), models, { retry, checkout: repoRoot });
+	const reviewHarness = await openReviewHarness(await openStorage(path), models, {
+		retry,
+		checkout: repoRoot,
+		...triage.harnessOptions(),
+	});
 	const { harness } = reviewHarness;
 	try {
 		// The deterministic checks first, then the lenses: reviewChangeset reads the checks' records, and a check of the
@@ -148,6 +173,7 @@ export async function review(
 				standards,
 				models,
 				plan,
+				...triage.reviewOptions(),
 				policy: source,
 				tier,
 				checks: checks.records,
@@ -159,6 +185,8 @@ export async function review(
 			io.stderr(`melian: ${error.message}\n`);
 			verdict = error.verdict;
 		}
+		if (target.kind === "pullRequest" && options.walkthrough !== false)
+			await summarizeReview({ harness, changeset, config: loaded, models, rerun: options.rerun });
 		const outcome = new ReviewOutcome(verdict);
 		io.stdout(outcome.render(io.color));
 		return outcome.exitCode();
@@ -178,7 +206,11 @@ function shellQuote(argument: string): string {
 	return `'${argument.replace(/'/g, `'\\''`)}'`;
 }
 
-export async function publish(io: Io, argument: string): Promise<number> {
+export async function publish(
+	io: Io,
+	argument: string,
+	options: { readonly walkthrough?: boolean } = {},
+): Promise<number> {
 	const target = parseTarget(argument);
 	if (target.kind !== "pullRequest") {
 		throw new CliError(`publish takes a pull request, such as "#12"; Melian never posts a review of a range`);
@@ -188,6 +220,7 @@ export async function publish(io: Io, argument: string): Promise<number> {
 	const pullRequest = await provider.pullRequest(target.number);
 	const changeset = await pullRequestChangeset(io.cwd, target.number);
 	const base = await currentBase(io.cwd, pullRequest);
+	const { config } = await loadConfig(changeset.repoRoot, { kind: "revision", commit: pullRequest.base.sha }, ".");
 	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, false);
 	// Only the publish task: a review a crash interrupted must not resume here and spend tokens on real models.
 	const publishHarness = await openPublishHarness(await openStorage(path), idleModels(io.env), provider);
@@ -200,6 +233,10 @@ export async function publish(io: Io, argument: string): Promise<number> {
 			changeset,
 			pullRequest,
 			base: base ?? pullRequest.base.sha,
+			walkthrough: {
+				...config.publish.walkthrough,
+				enabled: options.walkthrough !== false && config.publish.walkthrough.enabled,
+			},
 		});
 		const parts = [
 			`${published.posted} new ${published.posted === 1 ? "finding" : "findings"}`,
@@ -279,11 +316,11 @@ export async function findings(
 		}
 		const render = new Rendering({ color: io.color, ids: true, all: options.all });
 		if (!options.open) {
-			io.stdout(options.json ? verdict.renderJson() : verdict.render(render));
+			io.stdout(options.json ? verdict.renderJson() : verdict.render(render) + verdict.agentPrompt(argument));
 			return 0;
 		}
 		const open = FindingsLog.of(verdict.attention());
-		io.stdout(options.json ? open.renderJson() : open.render(render));
+		io.stdout(options.json ? open.renderJson() : open.render(render) + verdict.agentPrompt(argument));
 		return 0;
 	} finally {
 		await reviewHarness.close(context);

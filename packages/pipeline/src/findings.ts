@@ -13,8 +13,9 @@ import {
 	type Severity,
 	type StoredFinding,
 	snippetHash,
+	type Verification,
 } from "@melian-agent/core";
-import { type Context, type ConversationId, defineDoc, type Harness, type Tx } from "./harness.ts";
+import { type Context, type ConversationId, type DocumentReader, defineDoc, type Harness, type Tx } from "./harness.ts";
 
 // Type aliases, not interfaces: a document's value must satisfy Pi's JsonObject, which an interface never does.
 
@@ -54,17 +55,21 @@ type ProducerFinding = Omit<StoredFinding, "properties"> & {
 
 // Sightings are keyed by revision, `revisionKey` of a base and head, then by producer, a lens's check and version. Only
 // the same producer at the same revision ever rewrites a sighting, so two lenses or two pushes never race for one record.
-type FindingRecord = { lifecycle: FindingLifecycle; sightings: Record<string, Record<string, ProducerFinding>> };
+type FindingRecord = {
+	lifecycle: FindingLifecycle;
+	sightings: Record<string, Record<string, ProducerFinding>>;
+	verifications?: Record<string, Record<string, Record<string, Verification>>>;
+};
 
 // `revisions` lists the revisions reviewed, oldest first, so a resumed review of an old one cannot move a lifecycle back.
 // `versions` counts, per revision, the writes that could change what a read of it returns: a sighting there, or a
 // lifecycle change of a finding sighted there. Adjudication's input carries it, so a dismissal decides afresh.
 type FindingsState = { revisions: string[]; items: Record<string, FindingRecord>; versions: Record<string, number> };
 
-// Version 5 made evidence a list of locations; a sighting stored before reads with its one location as a cause.
+// Version 6 adds optional per-sighting verification records. Version 5 made evidence a list of locations; a sighting stored before reads with its one location as a cause.
 export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
-	version: 5,
+	version: 6,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
@@ -106,6 +111,33 @@ function producerKey(source: FindingSource): string {
 // Whether `source` has sighted finding `id` at `revision`.
 export function hasSighting(state: FindingsState, id: string, revision: string, source: FindingSource): boolean {
 	return state.items[id]?.sightings[revision]?.[producerKey(source)] !== undefined;
+}
+
+// A finding as one producer sighted it, as much as escalation reads.
+export type SightedFinding = {
+	readonly id: string;
+	readonly ruleId: string;
+	readonly severity: Severity;
+	readonly path: string;
+	readonly line: number;
+	readonly endLine: number;
+	readonly message: string;
+};
+
+// Each finding `source` has sighted at `revision`, in ID order.
+export function sightedBy(state: FindingsState, revision: string, source: FindingSource): SightedFinding[] {
+	const key = producerKey(source);
+	return Object.keys(state.items)
+		.sort()
+		.flatMap((id) => {
+			const sighting = state.items[id]!.sightings[revision]?.[key];
+			if (sighting === undefined) return [];
+			const { severity, path } = sighting.properties;
+			const region = sighting.locations[0]?.physicalLocation.region;
+			const line = region?.startLine ?? 1;
+			const endLine = region?.endLine ?? line;
+			return [{ id, ruleId: sighting.ruleId, severity, path, line, endLine, message: sighting.message.text }];
+		});
 }
 
 // How many findings `source` has sighted at `revision`.
@@ -223,9 +255,15 @@ export async function upsertFinding(
 		return;
 	}
 	const sightings = { ...previous.sightings, [revision]: { ...previous.sightings[revision], [key]: producer } };
+	const verifications =
+		previous.verifications === undefined
+			? undefined
+			: { ...previous.verifications, [revision]: { ...previous.verifications[revision] } };
+	if (verifications?.[revision] !== undefined) delete verifications[revision]![key];
+	const verified = verifications === undefined ? {} : { verifications };
 	const last = previous.lifecycle.lastSeenRevision;
 	if (state.revisions.indexOf(revision) < state.revisions.indexOf(last)) {
-		state.items[properties.id] = { lifecycle: previous.lifecycle, sightings };
+		state.items[properties.id] = { lifecycle: previous.lifecycle, sightings, ...verified };
 		return;
 	}
 	const { dismissedBy, dismissedReason, dismissedAt, ...kept } = previous.lifecycle;
@@ -264,7 +302,7 @@ export async function upsertFinding(
 				...tied,
 			}
 		: { ...previous.lifecycle, lastSeenRevision: revision, ...tied };
-	state.items[properties.id] = { lifecycle, sightings };
+	state.items[properties.id] = { lifecycle, sightings, ...verified };
 }
 
 /**
@@ -378,7 +416,13 @@ export async function clearSightings(
 		const kept = Object.fromEntries(Object.entries(atRevision).filter(([key]) => !keys.has(key)));
 		const sightings = { ...record.sightings, [revision]: kept };
 		if (Object.keys(kept).length === 0) delete sightings[revision];
-		state.items[id] = { ...record, sightings };
+		const verifications = {
+			...record.verifications,
+			[revision]: Object.fromEntries(
+				Object.entries(record.verifications?.[revision] ?? {}).filter(([key]) => !keys.has(key)),
+			),
+		};
+		state.items[id] = { ...record, sightings, ...(record.verifications === undefined ? {} : { verifications }) };
 		cleared = true;
 	}
 	if (cleared) bump(state, [revision]);
@@ -422,14 +466,18 @@ function dismissalsOf(lifecycle: FindingLifecycle): Pick<FindingProperties, "dis
 	};
 }
 
+/** A producer whose sightings a read counts: all of them, or only the findings `ids` names. */
+export type Producer = FindingSource & { readonly ids?: readonly string[] };
+
 /** Which sightings {@link readFindings} merges. */
 export interface ReadFindingsOptions {
 	/**
 	 * Only these producers' sightings, such as the lenses and versions selected for the review being read. A lens that
 	 * configuration has since disabled or retiered then leaves nothing behind. A producer without a version stands for
-	 * every version of its check. Every producer when absent.
+	 * every version of its check, and one with `ids` counts only those findings, as a quick run whose escalated run
+	 * neither restated nor refuted them. Every producer when absent.
 	 */
-	readonly producers?: readonly FindingSource[];
+	readonly producers?: readonly Producer[];
 }
 
 /**
@@ -446,23 +494,91 @@ export async function readFindings(
 	options: ReadFindingsOptions = {},
 ): Promise<readonly Finding[]> {
 	const items = (await reader.snapshot(FindingsDocument, rootConversationId, context))?.items ?? {};
-	const wanted = options.producers === undefined ? undefined : new Set(options.producers.map(producerKey));
-	// A producer named without a version counts every version of its check, such as a static tool's record that names none.
-	const anyVersion = new Set(
-		(options.producers ?? []).filter((source) => source.version === undefined).map((source) => source.check),
-	);
-	const counts = (key: string, sighting: ProducerFinding) =>
-		wanted === undefined || wanted.has(key) || anyVersion.has(sighting.properties.source.check);
+	const wanted =
+		options.producers === undefined
+			? undefined
+			: new Map(options.producers.map((source) => [producerKey(source), source.ids] as const));
+	const counts = (key: string, sighting: ProducerFinding) => {
+		if (wanted === undefined) return true;
+		return [key, producerKey({ check: sighting.properties.source.check })].some((producer) => {
+			if (!wanted.has(producer)) return false;
+			const ids = wanted.get(producer);
+			return ids === undefined || ids.includes(sighting.properties.id);
+		});
+	};
 	return Object.keys(items)
 		.sort()
 		.flatMap((id) => {
-			const { lifecycle, sightings } = items[id]!;
+			const { lifecycle, sightings, verifications } = items[id]!;
 			const atHead = Object.fromEntries(
-				Object.entries(sightings[revision] ?? {}).filter(([key, sighting]) => counts(key, sighting)),
+				Object.entries(sightings[revision] ?? {})
+					.filter(([key, sighting]) => counts(key, sighting))
+					.map(([key, sighting]) => {
+						const verification = Object.values(verifications?.[revision]?.[key] ?? {}).at(-1);
+						return [
+							key,
+							verification === undefined
+								? sighting
+								: { ...sighting, properties: { ...sighting.properties, verification } },
+						];
+					}),
 			);
 			if (Object.keys(atHead).length === 0) return [];
 			const { winner, reportedBy } = adjudicate(atHead);
 			const properties = { ...winner.properties, status: lifecycle.status, ...dismissalsOf(lifecycle), reportedBy };
 			return [Finding.from(structuredClone({ ...winner, properties }))];
 		});
+}
+
+export async function clearVerifications(tx: Tx, root: ConversationId, revision: string): Promise<void> {
+	const state = await tx.doc(FindingsDocument, root);
+	let cleared = false;
+	for (const record of Object.values(state.items)) {
+		if (record.verifications?.[revision] === undefined) continue;
+		delete record.verifications[revision];
+		cleared = true;
+	}
+	if (cleared) bump(state, [revision]);
+}
+
+export async function upsertVerification(
+	tx: Tx,
+	root: ConversationId,
+	revision: string,
+	id: string,
+	source: FindingSource,
+	verification: Verification,
+): Promise<void> {
+	const state = await tx.doc(FindingsDocument, root);
+	const record = state.items[id];
+	const producer = producerKey(source);
+	if (record?.sightings[revision]?.[producer] === undefined) throw new Error("the claim no longer has a sighting");
+	const before = record.verifications?.[revision]?.[producer] ?? {};
+	const previous = before[verification.version];
+	const strength = { confirmed: 2, plausible: 1, refuted: 0 };
+	if (previous !== undefined && strength[previous.verdict] > strength[verification.verdict]) return;
+	if (JSON.stringify(previous) === JSON.stringify(verification)) return;
+	const { [verification.version]: _, ...rest } = before;
+	record.verifications = {
+		...record.verifications,
+		[revision]: {
+			...record.verifications?.[revision],
+			[producer]: { ...rest, [verification.version]: verification },
+		},
+	};
+	bump(state, [revision]);
+}
+
+export async function sightingVerification(
+	reader: DocumentReader,
+	root: ConversationId,
+	revision: string,
+	id: string,
+	source: FindingSource,
+	version: string,
+	context: Context,
+): Promise<Verification | undefined> {
+	return (await reader.snapshot(FindingsDocument, root, context))?.items[id]?.verifications?.[revision]?.[
+		producerKey(source)
+	]?.[version];
 }

@@ -8,6 +8,7 @@ import {
 	type Placement,
 	type ReviewDraft,
 	type Verdict,
+	visibleText,
 } from "@melian-agent/core";
 
 /** Where a revision's posts link to: the repository's web address, such as `https://github.com/owner/repo`. */
@@ -16,7 +17,7 @@ export interface RepositoryLinks {
 }
 
 /** What a marker carries: a finding's thread, a review's verdict, or a reply that resolves a finding. */
-export type MarkerKind = "finding" | "verdict" | "resolved";
+export type MarkerKind = "finding" | "verdict" | "resolved" | "ledger";
 
 /** What a marker carries beyond its kind and ID. */
 export interface MarkerDetail {
@@ -65,7 +66,7 @@ export function marker(
 }
 
 const markerLine =
-	/^<!-- melian:revision=([0-9a-f]{40,64}) (finding|verdict|resolved)=([0-9a-f]{16})(?: round=([1-9][0-9]{0,8}))?(?: dismissal=([0-9a-f]{16}))? sig=([0-9a-f]{32}) -->$/;
+	/^<!-- melian:revision=([0-9a-f]{40,64}) (finding|verdict|resolved|ledger)=([0-9a-f]{16})(?: round=([1-9][0-9]{0,8}))?(?: dismissal=([0-9a-f]{16}))? sig=([0-9a-f]{32}) -->$/;
 
 /**
  * The marker on a line of its own, or `undefined`. Untrusted text cannot start a line with one; see
@@ -113,14 +114,17 @@ export function renderProse(text: string): string {
 		.replace(/>/g, "&gt;")
 		.replace(/[*_[\]()#!|~`]/g, "\\$&")
 		.replace(/@(?=[\p{L}\p{N}_-])/gu, "@\u2060")
-		.replace(/\\#(?=\d)/g, "\\#\u2060");
+		.replace(/\\#(?=\d)/g, "\\#\u2060")
+		.replace(/:(?=\/\/)/g, ":\u2060")
+		.replace(/www\./gi, (match) => `${match.slice(0, -1)}\u2060.`)
+		.replace(/\bGH-(?=\d)/gi, (match) => `${match}\u2060`);
 }
 
 const controls = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g;
 
 // A code span, for paths and rule IDs. Control characters are shown as \uXXXX, so a path holding a line break cannot
 // start a line of its own, and the fence is longer than any run of backticks inside.
-function code(text: string): string {
+export function code(text: string): string {
 	const visible = text.replace(controls, (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`);
 	const longest = Math.max(0, ...(visible.match(/`+/g) ?? []).map((run) => run.length));
 	const fence = "`".repeat(longest + 1);
@@ -191,7 +195,22 @@ export class ReviewComment {
 				: placement.kind === "nearest"
 					? [`This finding is at ${link}, outside the diff, so it is anchored to the nearest changed line.`, ""]
 					: [];
-		return [marker(revision, "finding", id, context.secret), ...where, ...this.#text(context)].join("\n");
+		const verification = finding.properties.verification;
+		const judged =
+			verification === undefined
+				? finding.properties.source.check.startsWith("lens.")
+					? ["Verification: unverified", ""]
+					: []
+				: [
+						`Verification: **${verification.verdict}**`,
+						"",
+						`**Verified:** ${code(verification.model)}: ${renderProse(verification.reason)}`,
+						"",
+						...(verification.correction === undefined
+							? []
+							: [`**Correction:** ${renderProse(verification.correction)}`, ""]),
+					];
+		return [marker(revision, "finding", id, context.secret), ...where, ...judged, ...this.#text(context)].join("\n");
 	}
 
 	#text(context: CommentContext): string[] {
@@ -259,7 +278,13 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 			: []),
 		...(verdict.dismissed.length > 0 ? [`${plural(verdict.dismissed.length, "dismissed finding")} not shown.`] : []),
 	];
-	parts.push(summary.join(" "));
+	parts.push(
+		summary.join(" ") +
+			(verdict.all().some((finding) => finding.properties.verification !== undefined) ||
+			[...(verdict.ran ?? []), ...verdict.notRun].some((check) => check.name === "verifier")
+				? ` Verification: ${verdict.verificationSummary()}; ${plural(verdict.refuted?.length ?? 0, "refuted finding")} not posted.`
+				: ""),
+	);
 	// A check off the committed routes ran under a maintainer's own choice, so it leads, before anything else said.
 	const routed = [...(verdict.ran ?? []), ...verdict.notRun].flatMap(({ name, lineage }) =>
 		lineage === undefined ? [] : [`- ${code(name)} ${inline(describeLineage(lineage))}`],
@@ -267,7 +292,8 @@ export function renderReviewBody(draft: ReviewDraft, links: RepositoryLinks, opt
 	if (routed.length > 0) parts.push(["Checks that left the committed routes:", "", ...routed].join("\n"));
 	if (verdict.notRun.length > 0) {
 		const checks = verdict.notRun.map(({ name, status: ran, reason, budgetEnded }) => {
-			const why = reason ?? (budgetEnded === undefined ? undefined : describeBudgetEnd(budgetEnded));
+			const ended = budgetEnded === undefined ? [] : [describeBudgetEnd(budgetEnded)];
+			const why = [...ended, ...(reason === undefined ? [] : [reason])].join("; ") || undefined;
 			return `- ${code(name)} ${ran}${why === undefined ? "" : `: ${inline(why)}`}`;
 		});
 		parts.push(["Checks that did not run:", "", ...checks].join("\n"));
@@ -343,6 +369,6 @@ export function renderResolvedReply(finding: ClosedFinding, revision: string, se
 }
 
 // Prose on one line, for a list item or a reply's single line.
-function inline(text: string): string {
-	return renderProse(text).replace(/\r\n?|\n/g, " ");
+export function inline(text: string): string {
+	return renderProse(visibleText(text.replace(/\r\n?|\n/g, " ")));
 }

@@ -12,9 +12,16 @@ export {
 	createReviewModels,
 	MelianCredentialStore,
 	PiCredentialStore,
+	type ProviderAuthKinds,
 	piAuthPath,
 	piCredentialStore,
 } from "./credentials.ts";
+export {
+	type DecisionResult,
+	decisionExtension,
+	type RecordedDecision,
+	readRecordedDecision,
+} from "./decisions.ts";
 export { type DismissalOptions, DismissHarness, type RecordedDismissal, recordDismissal } from "./dismiss.ts";
 export {
 	CredentialError,
@@ -43,6 +50,7 @@ export {
 	planInputs,
 	providersWithCredentials,
 	type ReviewModels,
+	RouteTextModel,
 	unlockCredentials,
 } from "./models.ts";
 export {
@@ -64,6 +72,7 @@ export {
 	openReviewHarness,
 	type Review,
 	ReviewHarness,
+	type ReviewHarnessOptions,
 	type ReviewOptions,
 	reviewChangeset,
 } from "./review.ts";
@@ -83,3 +92,5 @@ export {
 } from "./untrusted.ts";
 
 export const packageName = "@melian-agent/pipeline";
+
+export { summarizeReview } from "./summarize.ts";
