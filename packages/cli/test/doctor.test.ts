@@ -91,6 +91,7 @@ describe("doctor writer trust", () => {
 		const result = await run(state);
 		expect(result.status).toBe(0);
 		expect(result.trust).toMatch(/^warn {2}trust\s+writers trusted: no; policy origin\/HEAD/);
+		expect(result.trust).toContain(`policy origin/HEAD (${gitIn(repo, "rev-parse", "origin/HEAD").slice(0, 7)})`);
 		expect(result.trust).toContain("a trusted host must set the status; viewer melian-user (write)");
 		expect(state.calls.filter(({ path }) => path === "/user")).toHaveLength(1);
 		expect(state.calls.filter(({ path }) => path.endsWith("/permission"))).toHaveLength(1);
