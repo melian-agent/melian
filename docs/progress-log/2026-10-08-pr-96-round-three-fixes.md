@@ -1,0 +1,3 @@
+# Pull request 96, round three fixes
+
+Two findings from Melian's third round. Commit 6c24eff3 restores the catch at `RouteTextModel.create` and the verifier route loop, so a Pi store that cannot be read passes a provider over and a later tier with a named credential still serves; `hasCredentials` and the lens route keep raising the store's error. Commit ebf5caf8 records the triage question fingerprints by version in `questions.json` and has the gate compare every recorded version with `origin/main`, so a version's hash cannot be rewritten without a new version. The decision and the evals guideline say what the gate holds.
