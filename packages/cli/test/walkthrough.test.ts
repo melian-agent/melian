@@ -83,13 +83,19 @@ describe("CLI walkthrough switch", { timeout: 60_000 }, () => {
 });
 
 describe("CLI walkthrough credentials", { timeout: 60_000 }, () => {
-	it("gives the summariser the review's credential unlock, to run before it asks a model", async () => {
+	it("gives the summariser the review's credential unlock, which runs the credentials once", async () => {
 		const summarize = vi.spyOn(pipeline, "summarizeReview").mockResolvedValue(undefined);
+		const unlock = vi.spyOn(pipeline, "unlockCredentials").mockResolvedValue(undefined);
 		const io = { cwd: repo, env, stdout: () => {}, stderr: () => {}, color: false };
 
 		expect(await review(io, "#7", { rerun: false })).toBe(0);
 
-		expect(summarize).toHaveBeenCalledWith(expect.objectContaining({ unlockModels: expect.any(Function) }));
+		const { unlockModels } = summarize.mock.calls[0]![0];
+		const before = unlock.mock.calls.length;
+		await unlockModels!();
+		expect(unlock.mock.calls.length).toBe(before + 1);
+		await unlockModels!();
+		expect(unlock.mock.calls.length).toBe(before + 1);
 	});
 });
 
