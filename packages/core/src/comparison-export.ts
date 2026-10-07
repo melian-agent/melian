@@ -1,6 +1,7 @@
 import type { StoredComparisonAdjudication } from "./comparison-adjudication.ts";
 import type { ComparisonEntry } from "./comparison-set.ts";
 import { ComparisonSet, markdownText } from "./comparison-set.ts";
+import { visibleText } from "./render.ts";
 
 /** The markdown record of one changeset's comparison rounds; no output leaves the process here. */
 export class ComparisonExport {
@@ -18,9 +19,18 @@ export class ComparisonExport {
 		this.url = url;
 	}
 
-	/** The whole comparison document for this changeset, including replacement history. */
+	/** The whole comparison document for this changeset, including replacement history. Control characters appear as JSON `\\uXXXX` escapes, so the text is safe on a terminal and parses to the same value. */
 	renderJson(): string {
-		return `${JSON.stringify({ comparisons: Object.fromEntries(this.entries.map(({ comparison }) => [`${comparison.base}..${comparison.head}`, comparison.toJSON()])) }, null, 2)}\n`;
+		const json = JSON.stringify(
+			{
+				comparisons: Object.fromEntries(
+					this.entries.map(({ comparison }) => [`${comparison.base}..${comparison.head}`, comparison.toJSON()]),
+				),
+			},
+			null,
+			2,
+		);
+		return `${json.split("\n").map(visibleText).join("\n")}\n`;
 	}
 
 	/** Today's comparison form: reviewers, lettered tables, notes, counts, and a differences heading. */

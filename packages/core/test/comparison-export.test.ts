@@ -250,3 +250,14 @@ describe("ComparisonExport paragraphs", () => {
 		expect(summary("😀".repeat(400))).toBe(`${"😀".repeat(300)}…`);
 	});
 });
+
+describe("ComparisonExport.renderJson", () => {
+	it("writes C1, bidi, and separator characters as escapes and keeps the value intact", () => {
+		const body = "x\u001b[2Jy\u009b2Jz\u202eevil\u2028end\u007f";
+		const text = new ComparisonExport([entry({ externals: [report({ body })] })], "range").renderJson();
+		expect(text).not.toMatch(/[\u0000-\u0009\u000b-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/u);
+		expect(text).toContain("\\u009b2J");
+		expect(text).toContain("\\u202e");
+		expect(JSON.stringify(JSON.parse(text))).toContain(JSON.stringify(body).slice(1, -1));
+	});
+});
