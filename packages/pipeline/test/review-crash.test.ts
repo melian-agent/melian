@@ -36,6 +36,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CallerContext } from "../src/callers.ts";
 import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
+import { EnclosingFunctions } from "../src/enclosing-functions.ts";
 import { findingsVersion } from "../src/findings.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -76,6 +77,7 @@ async function killWhen(
 		| "legacy"
 		| "request"
 		| "callers"
+		| "functions"
 		| "adjudication"
 		| "read"
 		| "spent"
@@ -364,6 +366,58 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		for (const [match, [request]] of Object.entries(requests)) {
 			expect(systemPromptOf(request!), match).toContain("First");
 		}
+	});
+
+	it("attaches a repeat call that cannot read the functions, and keeps the first call's function blocks", async () => {
+		const database = join(dir, "functions.sqlite");
+		const log = join(dir, "functions.jsonl");
+		await killWhen("functions", (events) => count(events, "model-request") === 2, database, log);
+
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "medium" }, { id: "heavy" }] });
+		const requests = scriptConversations(fake, [
+			{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+			{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+		]);
+		harness = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		vi.spyOn(EnclosingFunctions, "read").mockImplementation(async () =>
+			Object.assign(EnclosingFunctions.none(), { unavailable: "no compiler on the repeat" }),
+		);
+		const heavy = fake.ref("heavy");
+		const medium = fake.ref("medium");
+		const { verdict } = await reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config: {
+				...defaultConfig,
+				tiers: twoLensTiers,
+				models: {
+					medium: { model: `${medium.provider}/${medium.modelId}` },
+					heavy: { model: `${heavy.provider}/${heavy.modelId}` },
+				},
+				lenses: { correctness: { level: { floor: "deep", ceiling: "deep" } } },
+			},
+			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
+			standards: [],
+			checks: [],
+			models: fake.review,
+		});
+
+		expect(requests["You are the correctness reviewer"]).toHaveLength(1);
+		expect(requests["You are the contracts reviewer"]).toHaveLength(1);
+		expect(fake.provider.state.callCount).toBe(2);
+		const [resumed] = requests["You are the correctness reviewer"]!;
+		const prompt = resumed!
+			.filter((message) => message.role === "user")
+			.map(textOf)
+			.join("\n");
+		expect(prompt).toMatch(/label="function">\nsrc\/user\.ts:6-8 managerName\n/);
+		expect(verdict.ran?.find((check) => check.name === "lens.correctness")?.reason ?? "").not.toContain(
+			"could not be read",
+		);
 	});
 
 	it("records the caller notes and coverage of the call that rendered the section a repeat call finished", async () => {

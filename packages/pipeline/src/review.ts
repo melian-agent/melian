@@ -153,8 +153,13 @@ interface LensRun {
 	readonly rules: readonly LensRule[];
 	readonly budget: LensBudget;
 	readonly coverage: LensCoverage;
-	// The change as this lens sees it: only the files it covers.
+	// The change as this lens sees it: only the files it covers, with the head's functions the first call read. Outside
+	// the instruction fingerprint and so the attach key: reading them is best effort, and a repeat call attaches to
+	// the first call's prompt whether or not it could read them.
 	readonly prompt: string;
+	// Why the first call could not read the head's functions for this run, when it could not; absent from a task an
+	// older Melian created, whose records carry no such note.
+	readonly unread?: string;
 	readonly escalation?: { readonly next?: LensRun; readonly cap?: string };
 	// The band triage held the level to, as `<floor>-<ceiling>`; absent from a task an older Melian created.
 	readonly band?: string;
@@ -1673,7 +1678,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			const settings = lens.level(level);
 			// The head's functions around the hunks, read once for the review, at the levels that read functions.
 			const functions = settings.reads === "functions" ? await enclosing() : undefined;
-			if (functions?.unavailable !== undefined) noted.push(unreadFunctions(functions.unavailable));
 			const band = bands.get(lens)!;
 			return {
 				key: `${lens.name}@${lens.version}@${level}`,
@@ -1710,9 +1714,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 							rules,
 							budget: settings.budget,
 							coverage,
-							prompt: new ChangePrompt(changeset, "0".repeat(24)).render(files, {
-								...(functions === undefined ? {} : { functions }),
-							}),
+							prompt: new ChangePrompt(changeset, "0".repeat(24)).render(files),
 						}),
 					)
 					.digest("hex"),
@@ -1724,6 +1726,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				budget: settings.budget,
 				coverage,
 				prompt: prompt.render(files, { ...(functions === undefined ? {} : { functions }) }),
+				...(functions?.unavailable === undefined ? {} : { unread: functions.unavailable }),
 			};
 		};
 		const level = choices.get(lens) as ScrutinyLevel;
@@ -1825,12 +1828,18 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const key = `${run.name}@${run.version}`;
 		const noted = notes.get(key) ?? [];
 		const at = leading.get(key) ?? 0;
+		// From the stored runs, so a repeat call that could not read the functions repeats the first call's record.
+		const first = ran.lenses.find((each) => each.name === run.name && each.version === run.version);
+		const unread = [...new Set([first?.unread, first?.escalation?.next?.unread])].flatMap((reason) =>
+			reason === undefined ? [] : [unreadFunctions(reason)],
+		);
 		return {
 			...settledLens,
 			notes: [
 				...noted.slice(0, at),
 				...(callers.notes[key] ?? []),
 				...noted.slice(at),
+				...unread,
 				...settledLens.notes,
 				...light,
 			],

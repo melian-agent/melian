@@ -53,6 +53,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
+import { EnclosingFunctions } from "../src/enclosing-functions.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { VerificationTask } from "../src/verification.ts";
@@ -1364,6 +1365,42 @@ describe("escalation", () => {
 			`correctness@${version()}@careful`,
 		]);
 	});
+
+	it.each([
+		["both runs read functions", true],
+		["only the escalated run reads functions", false],
+	])(
+		"keeps one note that the first call could not read the functions when %s, whether a repeat call could or not",
+		async (_, quickReads) => {
+			const reading = lenses.map((lens) =>
+				lens.name === "correctness"
+					? Lens.from({
+							...lens.toJSON(),
+							levels: {
+								...lens.levels,
+								quick: { ...lens.levels.quick!, reads: quickReads ? "functions" : "hunks" },
+								careful: { ...lens.levels.careful, reads: "functions" },
+							},
+						})
+					: lens,
+			);
+			const decider = choosing("quick");
+			await open(decider);
+			scriptConversations(fake, [{ match: correctness, replies: [severe, done, done] }]);
+			const unreadable = vi
+				.spyOn(EnclosingFunctions, "read")
+				.mockImplementation(async () => Object.assign(EnclosingFunctions.none(), { unavailable: "no compiler" }));
+			const note = "the head's functions could not be read (no compiler), so it read them with read_file";
+
+			const first = await review({ decider, lenses: reading });
+			unreadable.mockRestore();
+			const repeat = await review({ decider, lenses: reading });
+
+			expect(lensRecord(first)?.reason?.startsWith(`${note}; escalated from quick to careful`)).toBe(true);
+			expect(lensRecord(first)?.reason?.split(note)).toHaveLength(2);
+			expect(lensRecord(repeat)?.reason).toBe(lensRecord(first)?.reason);
+		},
+	);
 
 	it("refreshes a quick review when only its careful escalation budget changes", async () => {
 		const decider = choosing("quick");
