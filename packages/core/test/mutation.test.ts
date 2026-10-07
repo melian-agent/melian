@@ -15,6 +15,7 @@ interface Mutant {
 	mutatorName?: string;
 	replacement?: string;
 	reason?: string;
+	outsideTests?: boolean;
 }
 
 function report(files: Record<string, Mutant[]>): string {
@@ -32,6 +33,7 @@ function report(files: Record<string, Mutant[]>): string {
 						replacement: mutant.replacement ?? "true",
 						status: mutant.status,
 						...(mutant.reason === undefined ? {} : { statusReason: mutant.reason }),
+						...(mutant.outsideTests === undefined ? {} : { static: mutant.outsideTests }),
 						location: {
 							start: { line: mutant.line, column: 3 },
 							end: { line: mutant.endLine ?? mutant.line, column: 9 },
@@ -153,6 +155,26 @@ describe("normaliseMutationReport", () => {
 			"1 RuntimeError mutant(s) on changed lines were set aside: a hang or a crash is not a survivor, so no finding is raised for it.",
 			"1 CompileError mutant(s) on changed lines were set aside: a hang or a crash is not a survivor, so no finding is raised for it.",
 		]);
+	});
+
+	describe("a survivor that code outside any test also reaches", () => {
+		const warning = "Stryker also reached this line outside any test";
+		const adviceOf = (mutant: Mutant) => read({ "src/a.ts": [mutant] }).log.runs[0].results[0]!.advice!.whatToDo;
+
+		it("is told that the call may sit in a hook, a describe body, or module level", () => {
+			expect(adviceOf({ status: "Survived", line: 10, outsideTests: true })).toContain(warning);
+			expect(adviceOf({ status: "Survived", line: 10, outsideTests: true })).toMatch(
+				/^Add or tighten a test in test\/a\.test\.ts /,
+			);
+		});
+
+		it.each([
+			["a survivor Stryker did not reach outside a test", { status: "Survived", line: 10, outsideTests: false }],
+			["a survivor with no static flag", { status: "Survived", line: 10 }],
+			["a mutant with no coverage", { status: "NoCoverage", line: 10, outsideTests: true }],
+		])("is not told so for %s", (_name, mutant) => {
+			expect(adviceOf(mutant)).not.toContain(warning);
+		});
 	});
 
 	const staticReason = 'Static mutant (and "ignoreStatic" was enabled)';

@@ -9,6 +9,7 @@ const mutant = Type.Object({
 	replacement: Type.Optional(Type.String()),
 	status: Type.String(),
 	statusReason: Type.Optional(Type.String()),
+	static: Type.Optional(Type.Boolean()),
 	location: Type.Object({ start: position, end: position }),
 });
 const report = Type.Object({ files: Type.Record(Type.String(), Type.Object({ mutants: Type.Array(mutant) })) });
@@ -28,6 +29,12 @@ const excludedReason = /^Ignored because of excluded mutation ".*"$/;
 function ignoredByConfiguration(reason: string | undefined): boolean {
 	return reason === staticReason || excludedReason.test(String(reason));
 }
+
+// Under `ignoreStatic`, a mutant that code outside any test also reaches, such as a `beforeAll` hook, a `describe` body, or
+// module level, runs only the tests that reach it from inside a test. A test that asserts on that outside call is not run, so
+// the mutant reads as surviving though it is killed.
+const reachedOutsideTests =
+	"Stryker also reached this line outside any test, such as in a beforeAll hook or a describe body, and runs only the tests that reach it from inside one; if a test asserts on that call, move the call into the test.";
 
 const longestCode = 160;
 
@@ -145,7 +152,9 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 					whyHere: survived
 						? "A mutant of this changed line survived the test run, so no test fails when this behaviour changes."
 						: "No test runs this changed line, so no test fails when this behaviour changes.",
-					whatToDo: `Add or tighten a test in ${test} so it fails when this code is changed as the mutant changed it, then restore the code.`,
+					whatToDo: `Add or tighten a test in ${test} so it fails when this code is changed as the mutant changed it, then restore the code.${
+						survived && each.static === true ? ` ${reachedOutsideTests}` : ""
+					}`,
 				},
 				locations: [
 					{
