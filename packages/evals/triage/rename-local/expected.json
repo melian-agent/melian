@@ -1,0 +1,7 @@
+{
+  "title": "Rename a local variable",
+  "levels": {
+    "correctness": "quick",
+    "trust-boundary": "quick"
+  }
+}

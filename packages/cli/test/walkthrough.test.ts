@@ -2,6 +2,7 @@ import { copyFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Changeset } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
+import * as pipeline from "@melian-agent/pipeline";
 import {
 	backgroundContext as context,
 	createRegistry,
@@ -78,6 +79,79 @@ describe("CLI walkthrough switch", { timeout: 60_000 }, () => {
 		expect(await review(io, "#7", { rerun: false })).toBe(0);
 		expect((await recorded())?.walkthroughNotes?.[revisionKey(changeset.revision)]).toBeDefined();
 		expect(output.every((text) => !text.includes("summariser"))).toBe(true);
+	});
+});
+
+describe("CLI walkthrough credentials", { timeout: 60_000 }, () => {
+	it("gives the summariser the review's credential unlock, which runs the credentials once", async () => {
+		const summarize = vi.spyOn(pipeline, "summarizeReview").mockResolvedValue(undefined);
+		const unlock = vi.spyOn(pipeline, "unlockCredentials").mockResolvedValue(undefined);
+		const io = { cwd: repo, env, stdout: () => {}, stderr: () => {}, color: false };
+
+		expect(await review(io, "#7", { rerun: false })).toBe(0);
+
+		const { unlockModels } = summarize.mock.calls[0]![0];
+		const before = unlock.mock.calls.length;
+		await unlockModels!();
+		expect(unlock.mock.calls.length).toBe(before + 1);
+		await unlockModels!();
+		expect(unlock.mock.calls.length).toBe(before + 1);
+	});
+});
+
+describe("CLI walkthrough credential failure", { timeout: 60_000 }, () => {
+	it("names the failing credential on stderr, stores the fixed note, and keeps the exit code", async () => {
+		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{
+				"src/a.ts": "export const a = 1;\n",
+				"melian.yaml": "tiers:\n  full: [guardrails]\nmodels:\n  light:\n    model: faux/scripted\n",
+			},
+			{ "src/a.ts": "export const a = 2;\n" },
+		);
+		changeset = await Changeset.resolve(repo, "main...feature");
+		writeFileSync(join(repo, "script.json"), "{}");
+		env = { ...process.env, MELIAN_TEST_SCRIPT: join(repo, "script.json") };
+		const state = pullRequestState();
+		moveTo(state, changeset);
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test-token",
+			fetch: fakeGitHub(state),
+		});
+		vi.spyOn(targets, "gitHubFor").mockResolvedValue(provider);
+		vi.spyOn(targets, "fetchedPullRequest").mockResolvedValue({
+			pullRequest: await provider.pullRequest(7),
+			changeset,
+		});
+		const failure = new pipeline.CredentialError(
+			"commandFailed",
+			"credential vault in /xdg/melian/secrets.yaml: its command failed (3)",
+			{ credential: "vault", file: "/xdg/melian/secrets.yaml" },
+		);
+		const unlock = vi.spyOn(pipeline, "unlockCredentials").mockImplementation(async (_models, providers) => {
+			if (providers.includes("faux")) throw failure;
+		});
+		let stderr = "";
+		const io = {
+			cwd: repo,
+			env,
+			stdout: () => {},
+			stderr: (text: string) => {
+				stderr += text;
+			},
+			color: false,
+		};
+
+		expect(await review(io, "#7", { rerun: false })).toBe(0);
+
+		expect(unlock.mock.calls.map(([, providers]) => providers)).toContainEqual(["faux"]);
+		expect(stderr).toContain("melian: credential vault in /xdg/melian/secrets.yaml: its command failed (3)\n");
+		const note = (await recorded())?.walkthroughNotes?.[revisionKey(changeset.revision)];
+		expect(note).toBe("No walkthrough available. The summariser failed.");
+		expect(note).not.toContain("vault");
 	});
 });
 

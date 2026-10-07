@@ -53,6 +53,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, adjudicationInput } from "../src/adjudication.ts";
 import { strykerNotInstalled } from "../src/mutation-static.ts";
+import { EnclosingFunctions } from "../src/enclosing-functions.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
@@ -133,6 +134,7 @@ type ReviewWith = {
 	policy?: RepositorySource;
 	rerun?: boolean;
 	range?: string;
+	unlockModels?: () => Promise<void>;
 };
 
 // The default tiers' checks that run without a model, recorded as ran: `static` expands to each static tool.
@@ -164,6 +166,7 @@ async function reviewed(options: ReviewWith = {}): Promise<Review> {
 		...(options.callers === undefined ? {} : { callers: options.callers }),
 		...(options.policy === undefined ? {} : { policy: options.policy }),
 		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
+		...(options.unlockModels === undefined ? {} : { unlockModels: options.unlockModels }),
 	});
 }
 
@@ -1166,6 +1169,66 @@ describe("reviewChangeset", () => {
 		expect(fake.provider.state.callCount).toBe(calls);
 	});
 
+	describe("unlocking credentials", () => {
+		// Each call records how many requests the models had taken by then.
+		const unlocking = () => {
+			const before: number[] = [];
+			const unlockModels = vi.fn(async () => {
+				before.push(fake.provider.state.callCount);
+			});
+			return { before, unlockModels };
+		};
+		const failing = fauxAssistantMessage("", { stopReason: "error", errorMessage: "HTTP 503 service unavailable" });
+		const lensesDone = () =>
+			scriptConversations(fake, [
+				{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+		it("runs once, before any lens asks a model, and not for a repeat review that spends no tokens", async () => {
+			lensesDone();
+			const first = unlocking();
+			await review({ unlockModels: first.unlockModels });
+			expect(first.before).toEqual([0]);
+
+			const repeat = unlocking();
+			await review({ unlockModels: repeat.unlockModels });
+			expect(repeat.unlockModels).not.toHaveBeenCalled();
+		});
+
+		it("runs for a review whose lens selection changed", async () => {
+			lensesDone();
+			await review();
+			const retiered = { ...config, lenses: { ...config.lenses, contracts: { enabled: false } } };
+			scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
+			const changed = unlocking();
+			await review({ config: retiered, unlockModels: changed.unlockModels });
+			expect(changed.unlockModels).toHaveBeenCalledTimes(1);
+		});
+
+		it("runs for a rerun that retries a failed lens, and for none that has nothing to retry", async () => {
+			scriptConversations(fake, [
+				{ match: correctness, replies: [failing, failing, failing] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+			await expect(review()).rejects.toMatchObject({ code: "allModelsFailed" });
+
+			const repeat = unlocking();
+			await expect(review({ unlockModels: repeat.unlockModels })).rejects.toMatchObject({ code: "allModelsFailed" });
+			expect(repeat.unlockModels).not.toHaveBeenCalled();
+
+			lensesDone();
+			const retried = unlocking();
+			const calls = fake.provider.state.callCount;
+			await review({ rerun: true, unlockModels: retried.unlockModels });
+			expect(retried.before).toEqual([calls]);
+
+			const settled = unlocking();
+			await review({ rerun: true, unlockModels: settled.unlockModels });
+			expect(settled.unlockModels).not.toHaveBeenCalled();
+		});
+	});
+
 	describe("returns only the findings of the lenses this review ran", () => {
 		const both = () =>
 			scriptConversations(fake, [
@@ -1356,6 +1419,261 @@ describe("reviewChangeset", () => {
 			"- `trust-boundary`: A value an author or outside party controls that reaches a sink unescaped, makes a check pass, or carries a secret out.",
 			"- `tests`: A defect in a test.",
 		]);
+	});
+
+	describe("the head's functions in a lens's prompt", () => {
+		const deep = () =>
+			({ ...config, lenses: { correctness: { level: { floor: "deep", ceiling: "deep" } } } }) as MelianConfig;
+		const userText = (messages: readonly Message[]) =>
+			messages
+				.filter((message) => message.role === "user")
+				.map(textOf)
+				.join("\n");
+		const script = () =>
+			scriptConversations(fake, [
+				{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+		it("carries the function around each hunk at a level that reads functions", async () => {
+			const requests = script();
+
+			await reviewed({ config: deep() });
+
+			const prompt = userText(requests[correctness]![0]!);
+			expect(prompt).toContain("Enclosing functions:");
+			expect(prompt).toMatch(/label="function">\nsrc\/user\.ts:6-8 managerName\n6\texport function managerName/);
+			expect(prompt).toContain("7\t\treturn user.manager.name;");
+			const instructions = systemPromptOf(requests[correctness]![0]!);
+			expect(instructions).toContain(
+				'The change may carry the function around a hunk of a TypeScript file under "Enclosing functions". For every hunk with no such block, read the whole function',
+			);
+		});
+
+		it("carries none at a level that reads hunks", async () => {
+			const requests = script();
+
+			await reviewed();
+
+			expect(userText(requests[correctness]![0]!)).not.toContain("Enclosing functions");
+		});
+
+		it("says on the lens's record that it read the functions itself when the compiler could not be asked", async () => {
+			script();
+			vi.spyOn(EnclosingFunctions, "read").mockImplementation(async () =>
+				Object.assign(EnclosingFunctions.none(), { unavailable: "no compiler" }),
+			);
+
+			const { verdict } = await reviewed({ config: deep() });
+
+			expect(verdict.ran?.find((check) => check.name === "lens.correctness")?.reason).toBe(
+				"the head's functions could not be read (no compiler), so it read them with read_file",
+			);
+		});
+
+		it("reads the functions once for the whole review", async () => {
+			script();
+			const read = vi.spyOn(EnclosingFunctions, "read");
+			const everyDeep = {
+				...config,
+				lenses: { correctness: deep().lenses.correctness, contracts: deep().lenses.correctness },
+			} as MelianConfig;
+
+			await reviewed({ config: everyDeep });
+
+			expect(read).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe("a neighbour that ran out of findings budget", () => {
+		const changedReturn = { ...nullDeref, rule: "changed-return" };
+		const second = { ...changedReturn, line: 6, endLine: 7 };
+		const capped = (budget: number) =>
+			lenses.map((lens) => (lens.name === "contracts" ? withBudget(lens, { findings: budget }) : lens));
+		const correctnessDone = { match: correctness, replies: [fauxAssistantMessage("Done.")] };
+
+		it("leaves the review not reviewed when a lens could have handed it defects, since one may be unreported", async () => {
+			scriptConversations(fake, [
+				correctnessDone,
+				{
+					match: contracts,
+					replies: [
+						call("report_finding", changedReturn),
+						call("report_finding", second),
+						fauxAssistantMessage("Done."),
+					],
+				},
+			]);
+
+			const { findings, verdict } = await reviewed({ lenses: capped(1) });
+
+			expect(findings).toHaveLength(1);
+			expect(verdict.status).toBe("not-reviewed");
+			expect(verdict.notRun.find((check) => check.name === "lens.contracts")).toEqual({
+				name: "lens.contracts",
+				status: "ended",
+				level: "careful",
+				reason:
+					"its findings budget of 1 ran out while `correctness` could have handed it defects, so one may be unreported",
+			});
+			expect(verdict.ran?.map((check) => check.name)).not.toContain("lens.contracts");
+		});
+
+		it("names every lens that could have handed it defects", async () => {
+			const design = "You are the design reviewer";
+			scriptConversations(fake, [
+				correctnessDone,
+				{ match: design, replies: [fauxAssistantMessage("Done.")] },
+				{
+					match: contracts,
+					replies: [
+						call("report_finding", changedReturn),
+						call("report_finding", second),
+						fauxAssistantMessage("Done."),
+					],
+				},
+			]);
+			const trio = {
+				...config,
+				tiers: { ...config.tiers, full: ["lens.correctness", "lens.design", "lens.contracts"] },
+			};
+
+			const { verdict } = await reviewed({ lenses: capped(1), config: trio });
+
+			expect(verdict.notRun.find((check) => check.name === "lens.contracts")?.reason).toBe(
+				"its findings budget of 1 ran out while `correctness`, `design` could have handed it defects, so one may be unreported",
+			);
+		});
+
+		it("holds when ended: count would count a tokens budget's end as run", async () => {
+			const counted = lenses.map((lens) =>
+				lens.name === "contracts" ? withBudget(lens, { findings: 1, ended: "count" }) : lens,
+			);
+			scriptConversations(fake, [
+				correctnessDone,
+				{
+					match: contracts,
+					replies: [
+						call("report_finding", changedReturn),
+						call("report_finding", second),
+						fauxAssistantMessage("Done."),
+					],
+				},
+			]);
+
+			const { verdict } = await reviewed({ lenses: counted });
+
+			expect(verdict.status).toBe("not-reviewed");
+			expect(verdict.notRun.map((check) => check.name)).toContain("lens.contracts");
+		});
+
+		it("leaves the review not reviewed for a lens that stopped at its budget without a refused report, since it obeyed the cap", async () => {
+			scriptConversations(fake, [
+				correctnessDone,
+				{ match: contracts, replies: [call("report_finding", changedReturn), fauxAssistantMessage("Done.")] },
+			]);
+
+			const { verdict } = await reviewed({ lenses: capped(1) });
+
+			expect(verdict.status).toBe("not-reviewed");
+			expect(verdict.notRun.find((check) => check.name === "lens.contracts")).toEqual({
+				name: "lens.contracts",
+				status: "ended",
+				level: "careful",
+				reason:
+					"its findings budget of 1 ran out while `correctness` could have handed it defects, so one may be unreported",
+			});
+		});
+
+		it("counts a lens that reported under its budget as run", async () => {
+			scriptConversations(fake, [
+				correctnessDone,
+				{ match: contracts, replies: [call("report_finding", changedReturn), fauxAssistantMessage("Done.")] },
+			]);
+
+			const { verdict } = await reviewed({ lenses: capped(2) });
+
+			expect(verdict.status).toBe("findings");
+			expect(verdict.ran?.find((check) => check.name === "lens.contracts")).toEqual({
+				name: "lens.contracts",
+				status: "ran",
+				level: "careful",
+			});
+		});
+
+		it("counts a lens at its budget as run when nothing could have handed it a defect", async () => {
+			scriptConversations(fake, [
+				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+			const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 1 }) : lens));
+
+			const { verdict } = await reviewed({ lenses: tight });
+
+			expect(verdict.status).toBe("findings");
+			expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toMatchObject({ status: "ran" });
+		});
+
+		it("counts a lens nothing handed a defect to as run", async () => {
+			scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [
+						call("report_finding", nullDeref),
+						call("report_finding", { ...nullDeref, line: 6, endLine: 7 }),
+						fauxAssistantMessage("Done."),
+					],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+			const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 1 }) : lens));
+
+			const { verdict } = await reviewed({ lenses: tight });
+
+			expect(verdict.status).toBe("findings");
+			expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toMatchObject({ status: "ran" });
+		});
+
+		it("counts a lens as run when the hand-off to it was left out for size", async () => {
+			const many = (count: number) =>
+				Object.fromEntries(
+					Array.from({ length: count }, (_, index) => [
+						`src/many/${index}.ts`,
+						lines(`export const n = ${index};`),
+					]),
+				);
+			const inMany = {
+				...changedReturn,
+				file: "src/many/0.ts",
+				line: 1,
+				evidence: [{ file: "src/many/0.ts", line: 1, role: "cause" }],
+			};
+			const narrow = { ...config, lenses: { contracts: { paths: ["src/many/**"] } } };
+			for (const [count, handed] of [
+				[40, true],
+				[41, false],
+			] as const) {
+				writeFiles(repo, many(count));
+				gitIn(repo, "add", "--all");
+				gitIn(repo, "commit", "--quiet", "-m", `${count} files`);
+				scriptConversations(fake, [
+					correctnessDone,
+					{
+						match: contracts,
+						replies: [
+							call("report_finding", inMany),
+							call("report_finding", { ...inMany, rule: "broken-caller" }),
+							fauxAssistantMessage("Done."),
+						],
+					},
+				]);
+
+				const { verdict } = await reviewed({ lenses: capped(1), config: narrow });
+
+				const record = [...(verdict.ran ?? []), ...verdict.notRun].find((check) => check.name === "lens.contracts");
+				expect(record?.status).toBe(handed ? "ended" : "ran");
+			}
+		});
 	});
 
 	describe("hands a defect to a neighbour in the files the neighbour reviews", () => {
@@ -2981,10 +3299,35 @@ describe("on a repeat review after a task ended without deciding", () => {
 		expect(await first).toMatchObject({ code: "lensFailed" });
 		bothDone();
 
-		const { verdict } = await reviewed();
+		const unlockModels = vi.fn(async () => {});
+		const { verdict } = await reviewed({ unlockModels });
 
+		expect(unlockModels).toHaveBeenCalledTimes(1);
 		expect((await entry())?.task).not.toBe(aborted);
 		expect(verdict.notRun.filter((check) => check.name.startsWith("lens."))).toEqual([]);
+	});
+
+	it("unlocks credentials for a review that attaches to a lens task still running", async () => {
+		const release = Promise.withResolvers<void>();
+		scriptConversations(fake, [
+			{ match: correctness, replies: [async () => release.promise.then(() => fauxAssistantMessage("Done."))] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const first = reviewed();
+		let running: number | undefined;
+		while (running === undefined) {
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			running = (await entry())?.task;
+		}
+		const unlockModels = vi.fn(async () => {});
+		const second = reviewed({ unlockModels });
+		try {
+			await vi.waitFor(() => expect(unlockModels).toHaveBeenCalledTimes(1));
+		} finally {
+			release.resolve();
+		}
+		await Promise.all([first, second]);
+		expect((await entry())?.task).toBe(running);
 	});
 
 	it("starts an adjudication task in place of an aborted one when no lens runs", async () => {

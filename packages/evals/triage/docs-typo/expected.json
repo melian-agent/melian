@@ -1,0 +1,7 @@
+{
+  "title": "Fix a typo in the README",
+  "levels": {
+    "correctness": "quick",
+    "trust-boundary": "quick"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "title": "Retry one more time and back off",
+  "levels": {
+    "correctness": "careful",
+    "trust-boundary": "quick"
+  }
+}

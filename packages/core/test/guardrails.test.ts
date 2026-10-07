@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { Adjudication, Changeset, ConfigError, evaluateGuardrails, Finding, loadConfig } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { maxProgram } from "../src/pattern.ts";
 import {
 	gitIn,
 	isolatedGitEnv,
@@ -596,6 +597,49 @@ describe("policy-change-review", () => {
 				["guardrail/policy-change-review", "stryker.config.json", "P1"],
 			],
 		);
+	});
+
+	describe("a Biome glob past the step limit", () => {
+		// The analyser also compiles the glob with `/**` appended, which costs seven steps over the glob's own.
+		const oversized = "a".repeat(maxProgram - 6);
+		const biome = (ignore: string) => lines(JSON.stringify({ files: { ignore: [ignore] } }));
+
+		it("fails the check with its reason when the head's config holds it", async () => {
+			await expect(
+				guardrails(
+					{ "biome.json": biome("src"), "src/a.ts": lines("a") },
+					{ "biome.json": biome(oversized), "src/a.ts": lines("b") },
+				),
+			).rejects.toMatchObject({
+				name: "CheckError",
+				code: "unreadable",
+				check: "guardrails",
+				message: expect.stringContaining(
+					`biome.json holds a glob Melian refuses: the pattern compiles to more than ${maxProgram} steps`,
+				),
+			});
+		});
+
+		it("fails the check when only the base's config holds it and the head's glob matches", async () => {
+			await expect(
+				guardrails(
+					{ "biome.json": biome(oversized), "src/a.ts": lines("a") },
+					{ "biome.json": biome("src"), "src/a.ts": lines("b") },
+				),
+			).rejects.toMatchObject({
+				code: "unreadable",
+				message: expect.stringContaining("biome.json holds a glob Melian refuses"),
+			});
+		});
+
+		it("accepts a glob at the limit", async () => {
+			const atLimit = "a".repeat(maxProgram - 7);
+			const { findings } = await guardrails(
+				{ "biome.json": biome("src"), "src/a.ts": lines("a") },
+				{ "biome.json": biome(atLimit), "src/a.ts": lines("b") },
+			);
+			expect(findings.map((finding) => finding.properties.path)).toEqual(["biome.json"]);
+		});
 	});
 
 	it("counts a package.json only at the root and at the workspace packages Biome and tsc load", async () => {

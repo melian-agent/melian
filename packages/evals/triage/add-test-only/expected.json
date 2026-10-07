@@ -1,0 +1,7 @@
+{
+  "title": "Add a test for an existing function",
+  "levels": {
+    "correctness": "quick",
+    "trust-boundary": "quick"
+  }
+}

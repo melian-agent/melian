@@ -1,0 +1,3 @@
+# Pull request 96, round nine fixes
+
+Round nine found two things. Commit f4359426 fixes the heap in `enclosing-functions.ts`: for callables that start on one line it returned the outer function, because it preferred the earlier visit. It now prefers the shorter span, then the later visit, and a new test covers a multi-line and a one-line nest. Commit fccf126e prints a failing credential command's error to stderr from the CLI's `unlockModels`, so a locked vault no longer hides behind the fixed walkthrough note; the stored note and exit code are unchanged, and the credential decision says so. Each guard was proven by a mutation that fails its test.

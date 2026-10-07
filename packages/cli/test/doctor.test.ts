@@ -1,4 +1,4 @@
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as core from "@melian-agent/core";
@@ -430,5 +430,84 @@ describe("doctor mutation testing", () => {
 	it("says nothing while the check is off", async () => {
 		const { stdout } = await run(github());
 		expect(line(stdout)).toBeUndefined();
+	});
+});
+
+describe("doctor clone check", () => {
+	let clone: string;
+	let linked: string;
+
+	beforeEach(() => {
+		clone = realpathSync(mkdtempSync(join(tmpdir(), "melian-doctor-clone-")));
+		gitIn(clone, "init", "--quiet", "--initial-branch=main");
+		mkdirSync(join(clone, "bin"));
+		linked = join(clone, "bin", "melian.js");
+		writeFileSync(linked, "// shim\n");
+	});
+
+	afterEach(() => rmSync(clone, { recursive: true, force: true }));
+
+	async function cloneLine(executable: string | undefined): Promise<string | undefined> {
+		const { stdout } = await run(github(), undefined, executable === undefined ? {} : { executable });
+		return stdout.split("\n").find((line) => / {2}clone\s+/.test(line));
+	}
+
+	function commit(): string {
+		gitIn(clone, "add", "-A");
+		gitIn(clone, "commit", "--quiet", "-m", "clone");
+		return gitIn(clone, "rev-parse", "--short=12", "HEAD").trim();
+	}
+
+	it("prints the commit of a clean clone", async () => {
+		const sha = commit();
+		expect(await cloneLine(linked)).toBe(`ok    clone       ${clone} at ${sha}, tree clean`);
+	});
+
+	it("warns when a tracked file is edited", async () => {
+		const sha = commit();
+		writeFileSync(linked, "// edited\n");
+		expect(await cloneLine(linked)).toContain(`${clone} at ${sha}, tree dirty`);
+		expect(await cloneLine(linked)).toMatch(/^warn /);
+	});
+
+	it("warns when a file is untracked", async () => {
+		commit();
+		writeFileSync(join(clone, "new.ts"), "");
+		expect(await cloneLine(linked)).toMatch(/^warn .*tree dirty/);
+	});
+
+	it("follows a symlink to the clone", async () => {
+		const sha = commit();
+		const link = join(home, "melian");
+		symlinkSync(linked, link);
+		expect(await cloneLine(link)).toContain(`${clone} at ${sha}, tree clean`);
+	});
+
+	it("warns for a clone with no commit", async () => {
+		expect(await cloneLine(linked)).toMatch(/^warn .*with no commit/);
+	});
+
+	it("warns when git cannot read the tree", async () => {
+		const sha = commit();
+		writeFileSync(join(clone, ".git", "index"), "not an index");
+		expect(await cloneLine(linked)).toMatch(new RegExp(`^warn .*at ${sha}; git could not read its tree`));
+	});
+
+	it("prints nothing for an install under node_modules", async () => {
+		const installed = join(clone, "node_modules", "@melian-agent", "cli", "bin");
+		mkdirSync(installed, { recursive: true });
+		writeFileSync(join(installed, "melian.js"), "// shim\n");
+		commit();
+		expect(await cloneLine(join(installed, "melian.js"))).toBeUndefined();
+	});
+
+	it("prints nothing when the executable is outside a clone", async () => {
+		const outside = join(home, "melian.js");
+		writeFileSync(outside, "");
+		expect(await cloneLine(outside)).toBeUndefined();
+	});
+
+	it("prints nothing without an executable", async () => {
+		expect(await cloneLine(undefined)).toBeUndefined();
 	});
 });

@@ -88,7 +88,7 @@ Done when the `melian/review` status is required on `main`, and every pull reque
    - Triage golden eval. Six changes with known right levels, measured scripted and live, with the question set versioned and hashed.
    - `melian doctor` prints the linked clone's commit and whether its tree is dirty.
    - The analyser's `excludes` turns a refused glob into a guardrails failure that names the reason.
-   - Credential commands run only when a lens, triage, or the verifier will call a model, not on a repeat review that spends no tokens. From [pull request #61](https://github.com/melian-agent/melian/pull/61).
+   - Credential commands run only when a lens, triage, or the verifier will call a model, not on a repeat review that spends no tokens, as [decisions/2026-10-07-credential-commands-run-when-a-model-is-asked.md](decisions/2026-10-07-credential-commands-run-when-a-model-is-asked.md) records. From [pull request #61](https://github.com/melian-agent/melian/pull/61).
    - `[ ]` Durability tuning round. Worst precision was 0.56 after run 9. It is not in the pull request.
    - `[ ]` Bedrock derivation, deferred. The resolver prefers a bare model ID, such as `amazon-bedrock/anthropic.claude-opus-5-5`, over its `global.` and regional inference profiles, and some Bedrock models answer only through a profile. Verify with one live run on Bedrock credentials, and prefer the `global.` profile if the bare ID is refused. From [pull request #61](https://github.com/melian-agent/melian/pull/61).
 

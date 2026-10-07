@@ -9,6 +9,7 @@
 // of one token. `escalation` triages correctness to quick through a recorded decider, has it report a P1, and parks in
 // the first model request of the careful run it escalates to, after the commit that created that run's conversation.
 // `callers` is `request` with a caller section in each lens's instructions.
+// `functions` is `request` with correctness at `deep`, which reads the head's functions into its prompt.
 // `decision` parks in the decider's first call, with the decision task live and named by the decision document.
 // `replacement` first records a verdict, then parks in replacement triage after its decision commit.
 import { Changeset, type Decider, defaultConfig, Lens, severitySchema } from "@melian-agent/core";
@@ -53,6 +54,7 @@ const [scenario, repo, database, log] = process.argv.slice(2) as [
 		| "legacy"
 		| "request"
 		| "callers"
+		| "functions"
 		| "adjudication"
 		| "read"
 		| "spent"
@@ -185,6 +187,7 @@ const correctness: Readonly<Record<typeof scenario, readonly ScriptedReply[]>> =
 	legacy: [toolUse("report_finding", legacyCrashFinding)],
 	request: [requested("correctness")],
 	callers: [requested("correctness")],
+	functions: [requested("correctness")],
 	adjudication: [done],
 	read: [toolUse("read_file", { path: "src/user.ts" })],
 	spent: [toolUse("read_file", { path: "src/user.ts" }), toolUse("read_file", { path: "src/user.ts", startLine: 7 })],
@@ -222,7 +225,9 @@ scriptConversations(fake, [
 	{ match: "You are the correctness reviewer", replies: correctness[scenario] },
 	{
 		match: "You are the contracts reviewer",
-		replies: [scenario === "request" || scenario === "callers" ? requested("contracts") : done],
+		replies: [
+			scenario === "request" || scenario === "callers" || scenario === "functions" ? requested("contracts") : done,
+		],
 	},
 ]);
 function lensesFor(lenses: Lens[]) {
@@ -239,6 +244,9 @@ const options = {
 	changeset,
 	config: {
 		...defaultConfig,
+		...(scenario === "functions"
+			? { lenses: { correctness: { level: { floor: "deep" as const, ceiling: "deep" as const } } } }
+			: {}),
 		...(scenario === "callers"
 			? { static: { ...defaultConfig.static, enola: { ...defaultConfig.static.enola, enabled: true } } }
 			: {}),
