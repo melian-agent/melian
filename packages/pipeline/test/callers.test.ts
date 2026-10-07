@@ -270,3 +270,53 @@ it("omits oversized headings and caps the whole quoted caller section", () => {
 	expect(body.split("\n\n")).toHaveLength(21);
 	expect(text).toContain("27 symbol sections omitted at the prompt limit.");
 });
+
+const bodyOf = (text: string, nonce: string) =>
+	new RegExp(`label="callers">\\n([\\s\\S]*?)\\n</untrusted-${nonce}>`).exec(text)![1]!;
+
+it.each([
+	[3072, true],
+	[3073, false],
+])("keeps a heading of exactly %i bytes only up to the limit", (bytes, kept) => {
+	// "<symbol> in a.ts" adds 8 bytes to the symbol.
+	const callers = CallerContext.from({
+		groups: [{ file: "a.ts", symbol: "a".repeat(bytes - 8), callers: [], truncated: false }],
+		notes: [],
+		issues: [],
+		paths: [],
+	});
+	const text = callers.render(["a.ts"], "N");
+	if (kept) expect(bodyOf(text, "N").split("\n")[0]).toHaveLength(3072);
+	else expect(text).toBe("1 caller symbol sections omitted at the prompt limit.");
+});
+
+it.each([
+	[99, 37],
+	[100, 36],
+])(
+	"delivers callers up to exactly 3968 bytes with the heading: a last name of %i characters keeps %i",
+	(last, kept) => {
+		// The heading "s in a.ts" is 9 bytes; each line is 106 characters and a newline, so 37 lines end at 3968.
+		const callers = CallerContext.from({
+			groups: [
+				{
+					file: "a.ts",
+					symbol: "s",
+					truncated: false,
+					callers: Array.from({ length: 38 }, (_, i) => ({
+						kind: "symbol",
+						name: "n".repeat(i === 36 ? last : 99),
+						file: "f.ts",
+						line: 1,
+					})),
+				},
+			],
+			notes: [],
+			issues: [],
+			paths: [],
+		});
+		const lines = bodyOf(callers.render(["a.ts"], "N"), "N").split("\n");
+		expect(lines).toHaveLength(kept + 2);
+		expect(lines.at(-1)).toBe(`${38 - kept} callers cut locally; upstream cap not reached.`);
+	},
+);
