@@ -2,6 +2,7 @@ import { rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { Changeset } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HeadProgram } from "../src/compiler-graph.ts";
 import {
 	cutDiffNote,
 	type EnclosingFunction,
@@ -88,6 +89,11 @@ describe("EnclosingFunctions", () => {
 			"};",
 			"return inner(); }",
 		);
+		const signature = multiline.replace("outer()", "outer(x = 1)");
+		expect(summary(await around({ "src/a.ts": multiline }, { "src/a.ts": signature }))).toEqual([
+			"src/a.ts inner 1-3",
+			"src/a.ts outer 1-4",
+		]);
 		const edited = multiline.replace("\treturn 2;", "\treturn 3;");
 		expect(summary(await around({ "src/a.ts": multiline }, { "src/a.ts": edited }))).toEqual(["src/a.ts inner 1-3"]);
 		const closing = multiline.replace("return inner(); }", "return inner() + 1; }");
@@ -97,6 +103,23 @@ describe("EnclosingFunctions", () => {
 		const changed = oneLine.replace("=> 1;", "=> 2;");
 		expect(summary(await around({ "src/b.ts": oneLine }, { "src/b.ts": changed }))).toEqual(["src/b.ts inner 1-1"]);
 	});
+	it("carries both callables on a shared closing line, and refuses one outside a deletion anchor", async () => {
+		const closing = lines("function outer() {", " const inner = () => {", "  return 1;", " }; return inner(); }");
+		const edited = closing.replace("return inner()", "return inner() + 1");
+		expect(summary(await around({ "src/a.ts": closing }, { "src/a.ts": edited }))).toEqual([
+			"src/a.ts outer 1-4",
+			"src/a.ts inner 2-4",
+		]);
+		const atStart = lines("function outer() { const inner = () => 1;", " const a = 1;", " return inner();", "}");
+		expect(
+			summary(await around({ "src/a.ts": atStart }, { "src/a.ts": atStart.replace(" const a = 1;\n", "") })),
+		).toEqual(["src/a.ts outer 1-3"]);
+		const deleting = lines("function outer() {", " const a = 1;", " const inner = () => 2;", " return inner();", "}");
+		expect(
+			summary(await around({ "src/a.ts": deleting }, { "src/a.ts": deleting.replace(" const a = 1;\n", "") })),
+		).toEqual(["src/a.ts outer 1-4"]);
+	});
+
 	it("takes the named function around an anonymous callback, and the innermost named one around a nested value", async () => {
 		const edited = source.replace("\t[1].map((item) => item + a);", "\t[1].map((item) => item + a + 1);");
 		expect(summary(await around({ "src/a.ts": source }, { "src/a.ts": edited }))).toEqual(["src/a.ts outer 1-5"]);
@@ -409,6 +432,20 @@ describe("EnclosingFunctions", () => {
 			expect(found.blocks(undefined, nonce).at(-1)?.startsWith("Some functions were not read, because")).toBe(
 				capped.length > 0,
 			);
+		});
+
+		it("stops asking the compiler once the found cap has refused a function", async () => {
+			const source = vi.spyOn(HeadProgram.prototype, "source");
+			try {
+				const found = await around(
+					{ "src/a.ts": oneLiners(2_001, 0), "src/b.ts": "function b() { return 0; }" },
+					{ "src/a.ts": oneLiners(2_001, 2_001), "src/b.ts": "function b() { return 1; }" },
+				);
+				expect(found.capped).toEqual(["found"]);
+				expect(source.mock.calls).toEqual([["src/a.ts"]]);
+			} finally {
+				source.mockRestore();
+			}
 		});
 
 		it("keeps the limits it documents", () => {
