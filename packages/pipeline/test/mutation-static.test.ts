@@ -26,7 +26,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { strykerVersion } from "../src/mutation-static.ts";
+import { strykerNotInstalled, strykerVersion } from "../src/mutation-static.ts";
 import { staticToolSource } from "../src/static.ts";
 import {
 	commit as commitTo,
@@ -697,6 +697,18 @@ exit 1`,
 			expect(fake.calls()).toEqual([]);
 		});
 
+		it("records a skip, not a pass, when the checkout has no Stryker, and Melian carries none", async () => {
+			const base = commit(repo, {
+				"melian.yaml": policy,
+				"stryker.config.json": config,
+				"packages/p/src/a.ts": a,
+			});
+			const tip = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+			const { run } = await checks(base, tip);
+			expect(run.records).toEqual([{ name: "static.mutation", status: "skipped", reason: strykerNotInstalled }]);
+			expect(mutationSkipHasLeave(strykerNotInstalled)).toBe(false);
+		});
+
 		it("runs again when the installed Stryker version changes, and not when the check is off", async () => {
 			const installed = (version: string) =>
 				writeFiles(repo, { "node_modules/@stryker-mutator/core/package.json": JSON.stringify({ version }) });
@@ -720,11 +732,8 @@ exit 1`,
 });
 
 describe("staticToolSource for Stryker", () => {
-	it("is the checkout's install when it has one, and Melian's own otherwise", () => {
-		const own = staticToolSource(repo, "mutation");
-		expect(own).toMatchObject({ from: "melian" });
-		expect((own as { path: string }).path).toMatch(/@stryker-mutator\/core\/bin\/stryker\.js$/);
-		expect(existsSync((own as { path: string }).path)).toBe(true);
+	it("is the checkout's install when it has one, and missing otherwise, since Melian carries none", () => {
+		expect(staticToolSource(repo, "mutation")).toEqual({ from: "missing" });
 		stryker();
 		expect(staticToolSource(repo, "mutation")).toEqual({
 			from: "checkout",
@@ -734,7 +743,8 @@ describe("staticToolSource for Stryker", () => {
 });
 
 describe("strykerVersion", () => {
-	it("reads the checkout's install, and Melian's own when the checkout's has no version to read", () => {
+	it("reads the checkout's install, and is unavailable when it has none or none that names a version", () => {
+		expect(strykerVersion(repo)).toBe("unavailable");
 		mkdirSync(join(repo, "node_modules/@stryker-mutator/core"), { recursive: true });
 		writeFileSync(
 			join(repo, "node_modules/@stryker-mutator/core/package.json"),
@@ -745,9 +755,9 @@ describe("strykerVersion", () => {
 			join(repo, "node_modules/@stryker-mutator/core/package.json"),
 			JSON.stringify({ name: "no version" }),
 		);
-		expect(strykerVersion(repo)).toBe("10.0.0");
+		expect(strykerVersion(repo)).toBe("unavailable");
 		writeFileSync(join(repo, "node_modules/@stryker-mutator/core/package.json"), "not json");
-		expect(strykerVersion(repo)).toBe("10.0.0");
-		expect(strykerVersion(join(repo, "missing"))).toBe("10.0.0");
+		expect(strykerVersion(repo)).toBe("unavailable");
+		expect(strykerVersion(join(repo, "missing"))).toBe("unavailable");
 	});
 });

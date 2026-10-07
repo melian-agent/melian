@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { posix } from "node:path";
 import {
 	CheckError,
@@ -11,12 +10,12 @@ import {
 } from "@melian-agent/core";
 import type { Run, StaticRun } from "./static.ts";
 
+const config = "stryker.config.json";
 
 // The head's own tests run under this limit, and some write files past `staticOutputLimit`: Melian's own cache tests write
 // 128 MiB archives, and a limit of 16 MiB ended their processes with SIGXFSZ and failed Stryker's initial run. A runaway
 // write is what this stops, so it is set above what a test suite writes. bash counts 1,024-byte blocks.
 const mutationFileLimit = 1024 * 1024 * 1024;
-const config = "stryker.config.json";
 const report = "reports/mutation/mutation.json";
 
 // Production TypeScript only: a test, a fixture, a golden, built output, or a tool's own configuration is not what the
@@ -49,20 +48,21 @@ function quote(text: string): string {
 	return `'${text.replaceAll("'", "'\\''")}'`;
 }
 
+/** Why a checkout with no Stryker install gets no mutation run: Melian carries no copy of its own. */
+export const strykerNotInstalled =
+	"Stryker is not installed in the checkout, and Melian carries none: add @stryker-mutator/core and @stryker-mutator/vitest-runner to the reviewed repository's dev dependencies";
+
 /**
- * The version of `@stryker-mutator/core` a run would use: the checkout's install, else Melian's own, else
- * `unavailable`. A run's identity holds it, so a bump runs the check again.
+ * The version of `@stryker-mutator/core` the checkout has installed, else `unavailable`. A run's identity holds it, so a
+ * bump runs the check again.
  */
 export function strykerVersion(repoRoot: string): string {
-	const own = createRequire(import.meta.url);
-	for (const path of [posix.join(repoRoot, "node_modules/@stryker-mutator/core/package.json"), undefined]) {
-		try {
-			const file = path ?? own.resolve("@stryker-mutator/core/package.json");
-			const { version } = JSON.parse(readFileSync(file, "utf8")) as { version?: unknown };
-			if (typeof version === "string") return version;
-		} catch {
-			// An absent install is not an error here: the run itself fails closed when it finds no Stryker.
-		}
+	try {
+		const file = posix.join(repoRoot, "node_modules/@stryker-mutator/core/package.json");
+		const { version } = JSON.parse(readFileSync(file, "utf8")) as { version?: unknown };
+		if (typeof version === "string") return version;
+	} catch {
+		// An absent install is not an error here: the run itself skips when it finds no Stryker.
 	}
 	return "unavailable";
 }
