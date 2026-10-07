@@ -302,8 +302,8 @@ export async function summarizeReview(options: {
 				["failed", "completed"].includes(record.state.outcome.status) &&
 				index?.counted[revision] !== known;
 			const spent =
-				((await harness.snapshot(VerdictDocument, conversation.id, context))?.walkthroughAttempts?.[revision] ?? 0) +
-				(uncounted ? 1 : 0);
+				((await harness.snapshot(VerdictDocument, conversation.id, context))?.walkthroughAttempts?.[revision] ??
+					0) + (uncounted ? 1 : 0);
 			if (attaches || options.rerun || spent < maxWalkthroughAttempts) await options.unlockModels();
 		}
 		const prompt = await WalkthroughPrompt.from(changeset).render();
