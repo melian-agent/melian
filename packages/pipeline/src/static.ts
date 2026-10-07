@@ -254,8 +254,8 @@ async function binaryFor(run: Run, installed: string | undefined): Promise<strin
 	const own = installed === undefined ? undefined : posix.join(installed, ".bin", bin);
 	if (own !== undefined && (await run.exists(own))) return own;
 	try {
-		if (melian === undefined) throw new Error(`Melian carries no ${bin}`);
-		return melian();
+		// Absent for Stryker, which Melian carries no copy of: calling it fails into the catch as a missing tool does.
+		return melian!();
 	} catch (cause) {
 		throw run.fail("toolMissing", `${bin} is in neither the checkout's node_modules nor Melian's`, cause);
 	}
@@ -452,9 +452,9 @@ export function staticToolSource(repoRoot: string, tool: StaticTool): StaticTool
 	const own = posix.join(repoRoot, "node_modules", ".bin", bin);
 	const tracked = spawnSync("git", ["-C", repoRoot, "ls-files", "--", "node_modules"], { encoding: "utf8" });
 	if (tracked.status === 0 && tracked.stdout === "" && existsSync(own)) return { from: "checkout", path: own };
-	if (melian === undefined) return { from: "missing" };
 	try {
-		return { from: "melian", path: melian() };
+		// Absent for Stryker, which Melian carries no copy of: calling it fails into the catch, as a missing install does.
+		return { from: "melian", path: melian!() };
 	} catch {
 		return { from: "missing" };
 	}
