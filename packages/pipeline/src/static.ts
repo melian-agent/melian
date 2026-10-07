@@ -74,13 +74,16 @@ const gitVariables = [
 // or key from the Melian process, even on a maintainer's own machine.
 const passedVariables = ["PATH", "HOME", "TMPDIR", "LANG"] as const;
 
-function toolEnvironment(): { env: Record<string, string>; inheritEnv: false } {
+function toolEnvironment(replaced: Readonly<Record<string, string>>): {
+	env: Record<string, string>;
+	inheritEnv: false;
+} {
 	const env: Record<string, string> = {};
 	for (const name of passedVariables) {
 		const value = process.env[name];
 		if (value !== undefined) env[name] = value;
 	}
-	return { env, inheritEnv: false };
+	return { env: { ...env, ...replaced }, inheritEnv: false };
 }
 
 function quote(value: string): string {
@@ -92,14 +95,14 @@ function git(repoRoot: string, args: string): string {
 	return `unset ${gitVariables.join(" ")}; git -C ${quote(repoRoot)} -c core.hooksPath=/dev/null -c core.fsmonitor=false ${args}`;
 }
 
+// Stryker has no Melian copy: it and its Vitest runner are 161 packages that the reviewed repository installs, as it does
+// for the tests Stryker runs.
 const toolBinaries: Readonly<
 	Record<Exclude<StaticTool, "enola">, { readonly bin: string; readonly melian?: () => string }>
 > = {
-// Stryker has no Melian copy: it and its Vitest runner are 161 packages that the reviewed repository installs, as it does
-// for the tests Stryker runs.
 	biome: { bin: "biome", melian: () => melianBinary("@biomejs/biome", "bin/biome") },
 	tsc: { bin: "tsc", melian: () => melianBinary("typescript", "bin/tsc") },
-	mutation: { bin: "stryker", melian: () => melianBinary("@stryker-mutator/core", "bin/stryker.js") },
+	mutation: { bin: "stryker" },
 };
 
 function melianBinary(packageName: string, bin: string): string {
@@ -130,13 +133,18 @@ export class Run {
 		return new CheckError(code, this.check, message, { cause });
 	}
 
-	// Runs a command, keeping the start of what it prints for error messages.
-	async shell(command: string, timeout = this.input.settings.timeout): Promise<Shell> {
+	// Runs a command, keeping the start of what it prints for error messages. `replaced` overrides a passed variable, such
+	// as the `HOME` of a command that runs the revision's own code.
+	async shell(
+		command: string,
+		timeout = this.input.settings.timeout,
+		replaced: Readonly<Record<string, string>> = {},
+	): Promise<Shell> {
 		let output = "";
 		const result = await this.input.env.exec(
 			command,
 			{
-				...toolEnvironment(),
+				...toolEnvironment(replaced),
 				timeout,
 				onOutput: (text) => {
 					if (output.length < 8192) output += text;
@@ -246,6 +254,7 @@ async function binaryFor(run: Run, installed: string | undefined): Promise<strin
 	const own = installed === undefined ? undefined : posix.join(installed, ".bin", bin);
 	if (own !== undefined && (await run.exists(own))) return own;
 	try {
+		if (melian === undefined) throw new Error(`Melian carries no ${bin}`);
 		return melian();
 	} catch (cause) {
 		throw run.fail("toolMissing", `${bin} is in neither the checkout's node_modules nor Melian's`, cause);
@@ -254,7 +263,6 @@ async function binaryFor(run: Run, installed: string | undefined): Promise<strin
 
 // Links the checkout's installed dependencies into the worktree entry by entry. Problem: one link to the checkout's
 // node_modules made its workspace links, such as `node_modules/b -> ../packages/b`, resolve to the checkout's own
-		if (melian === undefined) throw new Error(`Melian carries no ${bin}`);
 // sources, so base and head type-checked against one tree. Solution: an entry that resolves inside the checkout, outside
 // any node_modules, is a workspace package, linked to the worktree's own copy; every other entry links to the install.
 async function linkDependencies(run: Run, root: string, scratch: string, notes: string[]): Promise<void> {
@@ -444,6 +452,7 @@ export function staticToolSource(repoRoot: string, tool: StaticTool): StaticTool
 	const own = posix.join(repoRoot, "node_modules", ".bin", bin);
 	const tracked = spawnSync("git", ["-C", repoRoot, "ls-files", "--", "node_modules"], { encoding: "utf8" });
 	if (tracked.status === 0 && tracked.stdout === "" && existsSync(own)) return { from: "checkout", path: own };
+	if (melian === undefined) return { from: "missing" };
 	try {
 		return { from: "melian", path: melian() };
 	} catch {
@@ -452,7 +461,6 @@ export function staticToolSource(repoRoot: string, tool: StaticTool): StaticTool
 }
 
 /**
-	if (melian === undefined) return { from: "missing" };
  * Runs one static tool on one commit, entirely inside `env`. Checks the commit out into a temporary worktree with
  * `git worktree add --detach`, runs the tool there, and removes the
  * worktree, whatever happens. The user's checkout is only read: its `node_modules` is linked into the worktree, so the
@@ -501,6 +509,12 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		const installed =
 			checkoutTracked.length === 0 && (await run.exists(checkoutModules)) ? checkoutModules : undefined;
 		if (installed !== undefined) await linkDependencies(run, root, scratch, notes);
+		if (
+			tool === "mutation" &&
+			!(installed !== undefined && (await run.exists(posix.join(installed, ".bin", "stryker"))))
+		) {
+			return { status: "skipped", reason: strykerNotInstalled };
+		}
 		const binary = await binaryFor(run, installed);
 		const version = await versionOf(run, binary);
 		if (tool === "mutation") return new MutationRun(run, root, scratch, binary, version, notes).check();
@@ -509,12 +523,6 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 				? await runBiome(run, root, scratch, binary, version)
 				: await runTsc(run, root, scratch, binary, version, new Set(files), notes);
 		return { status: "ran", log, notes };
-		if (
-			tool === "mutation" &&
-			!(installed !== undefined && (await run.exists(posix.join(installed, ".bin", "stryker"))))
-		) {
-			return { status: "skipped", reason: strykerNotInstalled };
-		}
 	});
 }
 

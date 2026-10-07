@@ -7,8 +7,10 @@ import {
 	loadConfig,
 	loadSecrets,
 	Rendering,
+	type RepositoryPermission,
 	type RepositorySource,
 	ReviewPlan,
+	type ReviewProvider,
 	Standards,
 	userFiles,
 	type Verdict,
@@ -32,6 +34,7 @@ import {
 	revisionKey,
 	runChecks,
 	summarizeReview,
+	type WriterTrust,
 } from "@melian-agent/pipeline";
 import {
 	decisionProviderRefusal,
@@ -99,6 +102,9 @@ export async function review(
 	let changeset: Changeset;
 	let source: RepositorySource;
 	let origin: ReviewOrigin = { kind: "range" };
+	// A range is the reviewer's own to run, as `npm test` is. A pull request's head is run only for an author the
+	// repository has given write permission, the rule `trust.writers` sets for publication.
+	let writer: WriterTrust = { trusted: true };
 	if (target.kind === "pullRequest") {
 		const provider = await gitHubFor(io.cwd, io.env);
 		const { pullRequest, changeset: fetched } = await fetchedPullRequest(io.cwd, provider, target.number);
@@ -111,6 +117,7 @@ export async function review(
 			base: pullRequest.base.sha,
 			head: pullRequest.head.sha,
 		};
+		writer = await writerTrust(provider, pullRequest.author);
 	} else {
 		changeset = await Changeset.resolve(io.cwd, target.spec);
 		const checkedOut = await git(changeset.repoRoot, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "");
@@ -162,7 +169,7 @@ export async function review(
 		const rootConversationId = (await harness.root(context)).id;
 		const checks = await runChecks(
 			harness,
-			{ rootConversationId, changeset, config: loaded, source, tier, rerunFailed: options.rerun },
+			{ rootConversationId, changeset, config: loaded, source, tier, rerunFailed: options.rerun, writer },
 			context,
 		);
 		const callerLenses = new Set(
@@ -226,6 +233,20 @@ export async function review(
 	} finally {
 		await reviewHarness.close(context);
 	}
+}
+
+const writePermissions: readonly RepositoryPermission[] = ["write", "maintain", "admin"];
+
+// Whether a pull request's author may have the head's own code run by a check. Whoever the provider cannot name, or
+// cannot give a permission for, is not trusted.
+async function writerTrust(provider: ReviewProvider, author: string | undefined): Promise<WriterTrust> {
+	if (author === undefined) return { trusted: false, detail: "the provider names no author for the pull request" };
+	const permission = await provider.permission(author);
+	if (permission !== undefined && writePermissions.includes(permission)) return { trusted: true };
+	return {
+		trusted: false,
+		detail: `${author} has ${permission === undefined ? "no known" : permission} permission on the repository`,
+	};
 }
 
 export function short(commit: string): string {

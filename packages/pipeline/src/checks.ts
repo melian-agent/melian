@@ -11,6 +11,7 @@ import {
 	type EnolaSnapshot,
 	evaluateGuardrails,
 	type MelianConfig,
+	mutationSkips,
 	type RepositorySource,
 	Revision,
 	type StaticTool,
@@ -73,6 +74,13 @@ export const ChecksDocument = defineDoc<Runs>({
 	initial: () => ({ runs: {}, tasks: {} }),
 });
 
+/**
+ * Whether the writer of the head under review is one Melian runs the head's own code for. A check that executes head
+ * code, as `static.mutation` does through the head's tests, runs only for a trusted writer; every other writer, and a
+ * review that names none, records a skip. `detail` says why a writer is not trusted.
+ */
+export type WriterTrust = { trusted: true } | { trusted: false; detail: string };
+
 function identityKey({ base, head, tier, policy, task }: RunIdentity): string {
 	return `${base} ${head} ${tier} ${policy} ${task}`;
 }
@@ -85,6 +93,7 @@ interface CheckInput {
 	readonly changeset: ChangesetFields;
 	readonly config: MelianConfig;
 	readonly source: RepositorySource;
+	readonly writer?: WriterTrust;
 }
 
 type Outcome =
@@ -103,10 +112,22 @@ const toolOf: Readonly<Record<Exclude<DeterministicCheck, "guardrails">, StaticT
 	"static.mutation": "mutation",
 };
 
+// Why the head's writer may not have its code run, or undefined when it may. The committed `trust.writers` policy is the
+// one publication reads; it must hold, and the host must have vouched for this head's writer.
+function untrusted(input: CheckInput): string | undefined {
+	if (!input.config.trust.writers) return "trust.writers is false in the repository's policy";
+	if (input.writer === undefined) return "the review named no writer for this head";
+	return input.writer.trusted ? undefined : input.writer.detail;
+}
+
 async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, context: Context): Promise<Outcome> {
 	const tool = toolOf[input.check as keyof typeof toolOf];
 	const settings = input.config.static[tool];
 	if (!settings.enabled) return { status: "skipped", reason: `static.${tool}.enabled is false` };
+	if (tool === "mutation") {
+		const detail = untrusted(input);
+		if (detail !== undefined) return { status: "skipped", reason: mutationSkips.untrustedWriter(detail) };
+	}
 	if (env === undefined) {
 		throw new CheckError(
 			"noEnvironment",
@@ -222,6 +243,7 @@ interface ChecksInput {
 	readonly config: MelianConfig;
 	readonly source: RepositorySource;
 	readonly tier: string;
+	readonly writer?: WriterTrust;
 	// A rerun runs only `checks`, and keeps the earlier run's records for the rest.
 	readonly rerun?: { readonly checks: readonly string[]; readonly kept: Readonly<Record<string, CheckRunRecord>> };
 }
@@ -241,7 +263,7 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 	initial: () => ({ phase: "start" }),
 	phases: {
 		start: async (task, runtime, context) => {
-			const { changeset, config, source, tier, rerun } = task.input;
+			const { changeset, config, source, tier, rerun, writer } = task.input;
 			const run = identityKey({ ...task.input.identity, task: runtime.taskId });
 			let checks: string[];
 			try {
@@ -265,7 +287,14 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 					if ((deterministicChecks as readonly string[]).includes(check)) {
 						tasks[check] = await tx.createTask(
 							CheckTask,
-							{ run, check: check as DeterministicCheck, changeset, config, source },
+							{
+								run,
+								check: check as DeterministicCheck,
+								changeset,
+								config,
+								source,
+								...(writer === undefined ? {} : { writer }),
+							},
 							{ ownership: { kind: "task", taskId: runtime.taskId } },
 						);
 						continue;
@@ -342,6 +371,11 @@ export interface RunChecksInput {
 	readonly source: RepositorySource;
 	/** Defaults to `fast`. */
 	readonly tier?: string;
+	/**
+	 * Whether the head's writer is trusted to have its own code run, which `static.mutation` does. Without it that check
+	 * records a skip. Part of the run's identity when mutation testing is on, so a change of trust runs it again.
+	 */
+	readonly writer?: WriterTrust;
 	/** Run again the checks that failed in an earlier run with the same identity, or the whole tier if that run did not complete. */
 	readonly rerunFailed?: boolean;
 }
@@ -364,8 +398,9 @@ async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<Ru
 	const { base, head } = input.changeset.revision;
 	const tools = (await ToolProvisioning.manifest()).toJSON();
 	const stryker = input.config.static.mutation.enabled ? strykerVersion(input.changeset.repoRoot) : undefined;
+	const writer = stryker === undefined ? undefined : (input.writer ?? null);
 	const policy = createHash("sha256")
-		.update(canonical({ config: input.config, source: input.source, tools, stryker }))
+		.update(canonical({ config: input.config, source: input.source, tools, stryker, writer }))
 		.digest("hex")
 		.slice(0, 16);
 	return { base, head, tier, policy };
@@ -412,6 +447,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 		config: input.config,
 		source: input.source,
 		tier,
+		...(input.writer === undefined ? {} : { writer: input.writer }),
 	};
 	// Starts a run unless one with this key exists, or replaces `stale` with a rerun when it is still the key's task.
 	const start = (rerun?: ChecksInput["rerun"], stale?: number) =>

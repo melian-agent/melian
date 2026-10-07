@@ -54,7 +54,7 @@ import {
 	VerdictDocument,
 } from "./adjudication.ts";
 import { CallerContext, type CoverageSource } from "./callers.ts";
-import { checksExtension, runChecks } from "./checks.ts";
+import { checksExtension, runChecks, type WriterTrust } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
 import {
 	DecisionDocument,
@@ -811,6 +811,8 @@ interface ReviewSettings {
 	 * revision can be published. A range by default.
 	 */
 	readonly origin?: ReviewOrigin;
+	/** Whether the head's writer is trusted to have its own code run by `static.mutation`; see {@link WriterTrust}. */
+	readonly writer?: WriterTrust;
 	readonly context?: Context;
 }
 
@@ -1378,6 +1380,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						source: request.policy!,
 						tier,
 						rerunFailed: request.rerun,
+						...(request.writer === undefined ? {} : { writer: request.writer }),
 					},
 					request.context ?? backgroundContext,
 				)

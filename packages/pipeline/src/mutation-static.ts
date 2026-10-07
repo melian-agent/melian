@@ -122,8 +122,11 @@ export class MutationRun {
 	// directory of its own in scratch, where the reviewer's credential files are not, and none of the Melian process's variables.
 	async #execute(entries: readonly string[]): Promise<string | { skipped: string }> {
 		const log = posix.join(this.#scratch, "stryker.log");
+		const home = posix.join(this.#scratch, "home");
+		const temporary = posix.join(this.#scratch, "tmp");
 		// A report the revision committed must not stand in for the one this run writes.
 		const command = [
+			`mkdir -p ${quote(home)} ${quote(temporary)}`,
 			`cd ${quote(this.#root)}`,
 			`ulimit -f ${mutationFileLimit / 1024}`,
 			`rm -f ${quote(report)}`,

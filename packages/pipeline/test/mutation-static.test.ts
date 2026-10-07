@@ -25,6 +25,7 @@ import {
 	revisionKey,
 	runChecks,
 	runStaticTool,
+	type WriterTrust,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -262,6 +263,32 @@ describe("static.mutation", { timeout: 60_000 }, () => {
 		expect(result.notes).toContain("Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.");
 		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
 		expect(gitIn(repo, "status", "--porcelain", "--untracked-files=no")).toBe("");
+	});
+
+	it("runs Stryker with a home and a temporary directory in scratch, and with none of the Melian process's variables", async () => {
+		const { base, head } = twoCommits();
+		const seen = join(artifacts, "seen.txt");
+		fakeTool(
+			repo,
+			"stryker",
+			`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+printf '%s\\n' "$(pwd)" "$HOME" "$TMPDIR" "\${MELIAN_CANARY:-unset}" "$([ -d "$HOME" ] && echo home-exists)" "$([ -d "$TMPDIR" ] && echo tmp-exists)" > '${seen}'
+mkdir -p reports/mutation
+echo '{"files":{}}' > reports/mutation/mutation.json`,
+		);
+		process.env.MELIAN_CANARY = "a-secret";
+		try {
+			await mutate(base, head);
+		} finally {
+			delete process.env.MELIAN_CANARY;
+		}
+		const [cwd, home, temporary, canary, homeExists, tmpExists] = readFileSync(seen, "utf8").trimEnd().split("\n");
+		const scratch = cwd!.replace(/\/tree$/, "");
+		expect(scratch).toMatch(/\/melian-static-[^/]+$/);
+		expect(home).toBe(`${scratch}/home`);
+		expect(temporary).toBe(`${scratch}/tmp`);
+		expect(home).not.toBe(process.env.HOME);
+		expect([canary, homeExists, tmpExists]).toEqual(["unset", "home-exists", "tmp-exists"]);
 	});
 
 	describe("the lines it mutates", () => {
@@ -624,14 +651,23 @@ exit 1`,
 			return { harness, root: await harness.root(context, { agent: { model: fake.ref() } }) };
 		}
 
-		async function checks(base: string, head: string) {
+		const trusted: WriterTrust = { trusted: true };
+
+		async function checks(base: string, head: string, writer: WriterTrust | null = trusted) {
 			const { harness, root } = await open();
 			const changeset = await Changeset.resolve(repo, `${base}..${head}`);
 			const source: RepositorySource = { kind: "revision", commit: base };
 			const { config: loaded } = await loadConfig(repo, source, "");
 			const run = await runChecks(
 				harness,
-				{ rootConversationId: root.id, changeset, config: loaded, source, tier: "full" },
+				{
+					rootConversationId: root.id,
+					changeset,
+					config: loaded,
+					source,
+					tier: "full",
+					...(writer === null ? {} : { writer }),
+				},
 				context,
 			);
 			return { harness, root, run };
@@ -683,6 +719,81 @@ exit 1`,
 				},
 			]);
 			expect(fake.calls()).toEqual([]);
+		});
+
+		describe("for the writer of the head", () => {
+			const head = () => {
+				const base = commit(repo, {
+					"melian.yaml": policy,
+					"stryker.config.json": config,
+					"packages/p/src/a.ts": a,
+				});
+				return { base, head: commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") }) };
+			};
+
+			it("runs nothing, and records a skip with leave that says the writer is not trusted, for an untrusted writer", async () => {
+				const { base, head: tip } = head();
+				const fake = stryker({ report: report({}) });
+				const detail = "octocat has read permission on the repository";
+				const { run } = await checks(base, tip, { trusted: false, detail });
+				expect(run.records).toEqual([
+					{ name: "static.mutation", status: "skipped", reason: mutationSkips.untrustedWriter(detail) },
+				]);
+				expect(run.records[0]).toMatchObject({
+					reason: expect.stringContaining("the writer is not a trusted one"),
+				});
+				expect(mutationSkipHasLeave((run.records[0] as { reason: string }).reason)).toBe(true);
+				expect(fake.calls()).toEqual([]);
+			});
+
+			it("runs for a trusted writer", async () => {
+				const { base, head: tip } = head();
+				const fake = stryker({ report: report({}) });
+				const { run } = await checks(base, tip, { trusted: true });
+				expect(run.records[0]).toMatchObject({ name: "static.mutation", status: "ran" });
+				expect(fake.calls()).toHaveLength(1);
+			});
+
+			it("skips when the review names no writer", async () => {
+				const { base, head: tip } = head();
+				const fake = stryker({ report: report({}) });
+				const { run } = await checks(base, tip, null);
+				expect(run.records).toEqual([
+					{
+						name: "static.mutation",
+						status: "skipped",
+						reason: mutationSkips.untrustedWriter("the review named no writer for this head"),
+					},
+				]);
+				expect(fake.calls()).toEqual([]);
+			});
+
+			it("skips, even for a trusted writer, when the repository's policy does not trust writers", async () => {
+				const base = commit(repo, {
+					"melian.yaml": `trust: { writers: false }\n${policy}`,
+					"stryker.config.json": config,
+					"packages/p/src/a.ts": a,
+				});
+				const tip = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+				const fake = stryker({ report: report({}) });
+				const { run } = await checks(base, tip, { trusted: true });
+				expect(run.records).toEqual([
+					{
+						name: "static.mutation",
+						status: "skipped",
+						reason: mutationSkips.untrustedWriter("trust.writers is false in the repository's policy"),
+					},
+				]);
+				expect(fake.calls()).toEqual([]);
+			});
+
+			it("runs again when the writer's trust changes", async () => {
+				const { base, head: tip } = head();
+				stryker({ report: report({}) });
+				const trustedRun = (await checks(base, tip, { trusted: true })).run.identity.policy;
+				const untrustedRun = (await checks(base, tip, { trusted: false, detail: "x" })).run.identity.policy;
+				expect(trustedRun).not.toBe(untrustedRun);
+			});
 		});
 
 		it("is off unless a melian.yaml turns it on", async () => {
