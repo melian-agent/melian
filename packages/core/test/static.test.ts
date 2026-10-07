@@ -282,6 +282,36 @@ describe("staticFindings", () => {
 		expect(findings[0]!.properties.source.check).toBe("static.mutation");
 	});
 
+	it("explains a pre-existing result as one the base has too, and keeps a pre-existing result's own advice", async () => {
+		const base = commit({ "a.ts": lines("export const a: number = 'x';", "export const b: number = 'y';") });
+		const head = commit({
+			"a.ts": lines("export const a: number = 'x';", "export const b: number = 'y';", "export const c = 3;"),
+		});
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const old = () => log(["a.ts", 1, "TS2322"], ["a.ts", 2, "TS2322"]);
+		const before = old();
+		before.runs[0].results[1]!.advice = { whyHere: "Own reason.", whatToDo: "Own fix." };
+		const { findings } = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "tsc",
+			settings: defaultConfig.static.tsc,
+			base: before,
+			head: before,
+		});
+		expect(findings.map((finding) => [finding.properties.cause, finding.properties.explanation])).toEqual([
+			[
+				"pre-existing",
+				{
+					what: "TS2322 at a.ts:1",
+					whyHere: "tsc reports this at the base too, so it predates this change.",
+					whatToDo: "Change the code so tsc no longer reports tsc/TS2322.",
+				},
+			],
+			["pre-existing", { what: "TS2322 at a.ts:2", whyHere: "Own reason.", whatToDo: "Own fix." }],
+		]);
+	});
+
 	it("identifies a renamed file's base results under its head path, so a pure rename introduces nothing", async () => {
 		const base = commit({ "src/a.ts": lines("export const n: number = 'x';") });
 		gitIn(repo, "mv", "src/a.ts", "src/b.ts");
