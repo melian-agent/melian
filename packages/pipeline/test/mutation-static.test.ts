@@ -1330,6 +1330,32 @@ exit 1`,
 			expect(offFirst).toBe(offSecond);
 		});
 
+		it("runs again, in the same storage, once a missing Stryker executable is restored with no change of version", async () => {
+			const base = commit(repo, {
+				"melian.yaml": policy,
+				"stryker.config.json": config,
+				"packages/p/src/a.ts": a,
+			});
+			const tip = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+			writeFiles(repo, { "node_modules/@stryker-mutator/core/package.json": JSON.stringify({ version: "10.0.0" }) });
+			const { harness, root } = await open();
+			const changeset = await Changeset.resolve(repo, `${base}..${tip}`);
+			const source: RepositorySource = { kind: "revision", commit: base };
+			const { config: loaded } = await loadConfig(repo, source, "");
+			const again = () =>
+				runChecks(
+					harness,
+					{ rootConversationId: root.id, changeset, config: loaded, source, tier: "full", writer: trusted },
+					context,
+				);
+			const missing = await again();
+			expect(missing.records).toEqual([{ name: "static.mutation", status: "skipped", reason: strykerNotInstalled }]);
+			stryker({ report: report({}) });
+			const repaired = await again();
+			expect(repaired.records).toMatchObject([{ name: "static.mutation", status: "ran" }]);
+			expect(repaired.identity.policy).not.toBe(missing.identity.policy);
+		});
+
 		it("runs again when the host's sandbox changes, and not when the check is off", async () => {
 			const identities = async (yaml: string) => {
 				const base = commit(repo, { "melian.yaml": yaml, "stryker.config.json": config, "packages/p/src/a.ts": a });
