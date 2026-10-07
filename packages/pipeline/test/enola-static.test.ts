@@ -56,6 +56,7 @@ async function fake(
 	impactTarget = "Alpha",
 	constraintRequired = false,
 	resultUri = "src/a.ts",
+	sarifResults?: { base?: string; head: string },
 ) {
 	const script = `#!/bin/sh
 if [ "$1" = "--version" ]; then echo 0.0.1; exit 0; fi
@@ -96,8 +97,8 @@ check)
   grep -F '"generation":"base"' "$baseline/facts.jsonl" > /dev/null || exit 9
   if [ ${exit} -ge 2 ]; then echo declined >&2; exit ${exit}; fi
   if grep BROKEN src/a.ts > /dev/null && ${constraintRequired ? "[ -f enola/constraints/layer.yaml ]" : "true"}; then
-    printf '%s' '{"version":"2.1.0","runs":[{"results":[{"ruleId":"constraints/core-layer","level":"error","message":{"text":"Core reaches pipeline"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"${resultUri}"},"region":{"startLine":1}}}]}]}]}'
-  else printf '%s' '{"version":"2.1.0","runs":[{"results":[]}]}' ; fi
+    printf '%s' '{"version":"2.1.0","runs":[{"results":${sarifResults?.head ?? `[{"ruleId":"constraints/core-layer","level":"error","message":{"text":"Core reaches pipeline"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"${resultUri}"},"region":{"startLine":1}}}]}]`}}]}'
+  else printf '%s' '{"version":"2.1.0","runs":[{"results":${sarifResults?.base ?? "[]"}}]}' ; fi
   exit ${exit};;
 impact)
   [ "$7" = 'file:src/a.ts Alpha' ] || exit 9
@@ -567,6 +568,44 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		if (result.status !== "ran") throw new Error("Enola failed");
 		expect(result.log.runs[0].results).toEqual([]);
 		expect(result.notes).toContain("Enola check exited 1 with no unsuppressed SARIF results; treated as clean.");
+	});
+	const oldFinding = (extra = "") =>
+		`{"ruleId":"constraints/old","level":"error","message":{"text":"Old"},${extra}"locations":[{"physicalLocation":{"artifactLocation":{"uri":"src/a.ts"},"region":{"startLine":1}}}]}`;
+	const leak = `{"ruleId":"constraints/core-layer","level":"error","message":{"text":"Core reaches pipeline"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"packages/core/src/node_modules/leak.ts"},"region":{"startLine":1}}}]}`;
+	async function runWith(exit: number, results: { base?: string; head: string }) {
+		const base = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+		const head = commit(repo, { "src/a.ts": "export const BROKEN = 1;\n" });
+		return runStaticTool(
+			{
+				env: createNodeExecutionEnv(repo),
+				repoRoot: repo,
+				base,
+				commit: head,
+				tool: "enola",
+				settings: defaultConfig.static.enola,
+				tools: await fake(exit, 0, false, "Alpha", false, "src/a.ts", results),
+			},
+			context,
+		);
+	}
+	it.each([
+		["suppressed", oldFinding('"suppressions":[{"kind":"external"}],')],
+		["resolved", oldFinding('"properties":{"bucket":"resolved"},')],
+	])("keeps exit one clean when its only results are %s", async (_name, result) => {
+		const run = await runWith(1, { head: `[${result}]` });
+		if (run.status !== "ran") throw new Error("Enola failed");
+		expect(run.log.runs[0].results).toEqual([]);
+		expect(run.notes).toContain("Enola check exited 1 with no unsuppressed SARIF results; treated as clean.");
+	});
+	it.each([
+		["a kept result sits beside it", 1, `[${oldFinding()},${leak}]`],
+		["a suppressed result sits beside it", 1, `[${oldFinding('"suppressions":[{"kind":"external"}],')},${leak}]`],
+		["exit zero", 0, `[${leak}]`],
+		["exit zero with a kept result beside it", 0, `[${oldFinding()},${leak}]`],
+	])("fails closed when a result outside the repository is dropped and %s", async (_name, exit, results) => {
+		await expect(runWith(exit, { base: `[${oldFinding()}]`, head: results })).rejects.toMatchObject({
+			code: "invalidOutput",
+		});
 	});
 	it("fails closed when every result Enola reported lies where Melian does not read", async () => {
 		const base = commit(repo, { "src/a.ts": "export const a = 1;\n" });

@@ -191,11 +191,8 @@ export class EnolaRun {
 		if (text === undefined) throw this.#run.fail("invalidOutput", "Enola check wrote no SARIF");
 		const log = normaliseEnolaSarif(text, { root, version: this.#version });
 		const kept = log.runs.reduce((count, run) => count + run.results.length, 0);
-		if (result.code === 1 && kept === 0 && reportedResults(text) > 0)
-			throw this.#run.fail(
-				"invalidOutput",
-				"Enola check exited 1 with results Melian cannot place in the repository",
-			);
+		if (kept < countedResults(text))
+			throw this.#run.fail("invalidOutput", "Enola check reported results Melian cannot place in the repository");
 		if (result.code === 1 && kept === 0)
 			this.#notes.push("Enola check exited 1 with no unsuppressed SARIF results; treated as clean.");
 		return log;
@@ -322,11 +319,18 @@ export class EnolaRun {
 	}
 }
 
-function reportedResults(sarif: string): number {
-	try {
-		const runs = (JSON.parse(sarif) as { runs?: { results?: unknown }[] }).runs ?? [];
-		return runs.reduce((count, run) => count + (Array.isArray(run.results) ? run.results.length : 0), 0);
-	} catch {
-		return 0;
-	}
+// The results Enola reported that normaliseEnolaSarif does not exclude as resolved or suppressed. A shortfall in what
+// it kept was therefore dropped for its location.
+function countedResults(sarif: string): number {
+	const runs = (
+		JSON.parse(sarif) as { runs: { results: { properties?: { bucket?: unknown }; suppressions?: unknown[] }[] }[] }
+	).runs;
+	return runs.reduce(
+		(count, run) =>
+			count +
+			run.results.filter(
+				(result) => result.properties?.bucket !== "resolved" && (result.suppressions?.length ?? 0) === 0,
+			).length,
+		0,
+	);
 }
