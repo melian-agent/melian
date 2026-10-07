@@ -17,7 +17,7 @@ const by = { by: "Ada <ada@example.com>", at: "2026-10-05T01:00:00Z" };
 const revision = { base: "a".repeat(40), head: "b".repeat(40) };
 const own = (snippet = "eval(input)", startLine = 12) =>
 	Finding.create({ ...evalInput, snippet, startLine, endLine: startLine });
-const verdictOf = (...findings: Finding[]) =>
+const verdictOf = ({ findings }: { findings: readonly Finding[] }) =>
 	new Adjudication({ findings, checks: [], manifest: [], config: defaultConfig }).adjudicate();
 let sequence = 0;
 const report = (input: Partial<ExternalFindingInput> = {}) =>
@@ -33,7 +33,7 @@ const report = (input: Partial<ExternalFindingInput> = {}) =>
 const compared = ({ reports, findings = [] }: { reports: ExternalFinding[]; findings?: Finding[] }) => {
 	const comparison = Comparison.of(revision);
 	comparison.import("file:codex.json", { findings: reports, skippedBodies: 0 }, by.at);
-	comparison.compare(verdictOf(...findings));
+	comparison.compare(verdictOf({ findings }));
 	return comparison;
 };
 
@@ -119,7 +119,7 @@ describe("comparison review fixes", () => {
 			for (const finding of [first, second]) comparison.adjudicate(finding.id, { ...by, verdict: "valid" });
 			comparison.adjudicate(external.id, { ...by, verdict: "valid" });
 			comparison.match(external.id, first.id, by.by, by.at);
-			comparison.compare(verdictOf(first, second));
+			comparison.compare(verdictOf({ findings: [first, second] }));
 			expect(
 				comparison
 					.effectiveMatches()
@@ -135,7 +135,7 @@ describe("comparison review fixes", () => {
 				precision: 1,
 			});
 			comparison[action](external.id, second.id, by.by, by.at);
-			comparison.compare(verdictOf(first, second));
+			comparison.compare(verdictOf({ findings: [first, second] }));
 			expect(comparison.stats().pendingMatches).toBe(0);
 			expect(comparison.stats().reviewers.find((each) => each.reviewer === "codex")).toMatchObject({
 				found: action === "match" ? 2 : 1,
@@ -180,7 +180,7 @@ describe("comparison review fixes", () => {
 				{ findings: [ExternalFinding.create({ ...external.toJSON(), line: 90 })], skippedBodies: 0 },
 				by.at,
 			);
-		comparison.compare(change === "review" ? verdictOf() : verdictOf(finding));
+		comparison.compare(change === "review" ? verdictOf({ findings: [] }) : verdictOf({ findings: [finding] }));
 		expect(comparison.needsReason(external.id)).toBe(true);
 		expect(comparison.stats()).toMatchObject({ reasonlessMisses: 1 });
 		expect(comparison.stats().reviewers.find((each) => each.reviewer === "codex")).toMatchObject({
@@ -200,7 +200,7 @@ describe("comparison review fixes", () => {
 		const comparison = compared({ reports: [pending, outside], findings: [finding] });
 		comparison.adjudicate(pending.id, { ...by, verdict: "valid" });
 		comparison.adjudicate(outside.id, { ...by, verdict: "valid", reason: "out-of-scope" });
-		comparison.compare(verdictOf());
+		comparison.compare(verdictOf({ findings: [] }));
 		expect(comparison.stats()).toMatchObject({ reasonlessMisses: 1, misses: { "out-of-scope": 1 } });
 		expect(comparison.stats().reviewers.find((each) => each.reviewer === "melian")?.total).toBe(0);
 		expect(comparison.stats().reviewers.find((each) => each.reviewer === "codex")).toMatchObject({
@@ -417,7 +417,7 @@ describe("comparison review fixes", () => {
 		const finding = own();
 		const comparison = compared({ reports: [], findings: [finding] });
 		comparison.adjudicate(finding.id, { ...by, verdict: "valid", golden: "correctness" });
-		const set = new ComparisonSet([{ changeset: "a", comparison, verdict: verdictOf(finding) }]);
+		const set = new ComparisonSet([{ changeset: "a", comparison, verdict: verdictOf({ findings: [finding] }) }]);
 		expect(set.backlog()).toMatchObject([{ id: finding.id, title: finding.properties.explanation.what }]);
 		expect(set.renderBacklog()).toContain(`${finding.id} ${finding.properties.explanation.what} (valid).`);
 		expect(new ComparisonSet([{ changeset: "a", comparison }]).backlog()).toMatchObject([{ title: finding.id }]);
@@ -433,7 +433,7 @@ describe("comparison review fixes", () => {
 		comparison.record(by.at, "[range](x) @team #72 & <tag> \\route\n- forged");
 		comparison.adjudicate(external.id, { ...by, verdict: "valid", golden: "correctness" });
 		comparison.adjudicate(finding.id, { ...by, verdict: "noise", golden: "tests" });
-		const set = new ComparisonSet([{ changeset: "a", comparison, verdict: verdictOf(finding) }]);
+		const set = new ComparisonSet([{ changeset: "a", comparison, verdict: verdictOf({ findings: [finding] }) }]);
 		const target = "\\[range\\]\\(x\\) @\u2060team \\#\u206072 &amp; &lt;tag&gt; \\\\route\\\\u000a- forged";
 		expect(set.renderBacklog(true)).toBe(
 			"## Stored comparison backlog\n\n" +
@@ -450,7 +450,7 @@ describe("comparison review fixes", () => {
 			const comparison = compared({ reports: [external], findings: [finding] });
 			comparison.adjudicate(finding.id, { ...by, verdict: "valid" });
 			comparison.adjudicate(external.id, { ...by, verdict: "valid" });
-			const verdict = verdictOf(finding);
+			const verdict = verdictOf({ findings: [finding] });
 			expect(comparison.repeats(verdict)).toContainEqual({
 				key: `rule:${finding.ruleId}`,
 				title: finding.properties.explanation.what,
@@ -487,7 +487,7 @@ describe("comparison review fixes", () => {
 		comparison.adjudicate(external.id, judgement);
 		expect(comparison.effectiveMatches()).toEqual([{ external: external.id, melian: finding.id, kind: "site" }]);
 		comparison.unmatch(external.id, finding.id, by.by, by.at);
-		comparison.compare(verdictOf(finding));
+		comparison.compare(verdictOf({ findings: [finding] }));
 		expect(comparison.needsReason(external.id)).toBe(true);
 		expect(comparison.judgement(external.id)).toBeUndefined();
 		expect(comparison.adjudication(external.id)?.current).toEqual(judgement);
@@ -502,7 +502,7 @@ describe("comparison review fixes", () => {
 			},
 		]);
 		const output = new ComparisonExport(
-			[{ changeset: "a", comparison, verdict: verdictOf(finding) }],
+			[{ changeset: "a", comparison, verdict: verdictOf({ findings: [finding] }) }],
 			"range",
 		).render();
 		expect(output).toContain(
@@ -517,7 +517,7 @@ describe("comparison review fixes", () => {
 		comparison.adjudicate(external.id, { ...by, verdict: "valid" });
 		comparison.adjudicate(finding.id, { ...by, verdict: "noise" });
 		const output = new ComparisonExport(
-			[{ changeset: "a", comparison, verdict: verdictOf(finding) }],
+			[{ changeset: "a", comparison, verdict: verdictOf({ findings: [finding] }) }],
 			"range",
 		).render();
 		expect(output).toContain(" \\(dismissed\\) | noise |");
@@ -572,7 +572,7 @@ describe("comparison guards", () => {
 		const external = report();
 		const comparison = Comparison.of(revision);
 		comparison.import("file:codex.json", { findings: [external], skippedBodies: 0 }, "2026-10-06T00:00:00Z");
-		comparison.compare(verdictOf());
+		comparison.compare(verdictOf({ findings: [] }));
 		comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "no-owner" });
 		expect(comparison.recordedAt()).toBe(by.at);
 	});
@@ -584,7 +584,7 @@ describe("comparison guards", () => {
 			{ findings: [], skippedBodies: 0, reviewers: [{ name: "claude-code" }] },
 			by.at,
 		);
-		comparison.compare(verdictOf());
+		comparison.compare(verdictOf({ findings: [] }));
 		expect(comparison.stats().reviewers.find((each) => each.reviewer === "claude-code")).toMatchObject({
 			total: 0,
 			recall: 1,
@@ -648,7 +648,7 @@ describe("comparison guards", () => {
 		const second = report({ reviewer: { name: "claude-code" } });
 		const comparison = Comparison.of(revision);
 		comparison.import("file:codex.json", { findings: [first, second], skippedBodies: 0 }, by.at);
-		comparison.compare(verdictOf());
+		comparison.compare(verdictOf({ findings: [] }));
 		comparison.adjudicate(first.id, { ...by, verdict: "valid", reason: "owned-missed" });
 		comparison.adjudicate(second.id, { ...by, verdict: "valid", reason: "no-owner" });
 		expect(comparison.stats().misses).toMatchObject({ "owned-missed": 1, "no-owner": 0 });

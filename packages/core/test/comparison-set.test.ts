@@ -27,7 +27,7 @@ const report = (input: Partial<ExternalFindingInput> = {}) =>
 		source: { kind: "file", path: "codex.json", position: 0, ref: String(sequence++) },
 		...input,
 	});
-const verdictOf = (...findings: Finding[]) =>
+const verdictOf = ({ findings }: { findings: readonly Finding[] }) =>
 	new Adjudication({ findings, checks: [], manifest: [], config: defaultConfig }).adjudicate();
 
 function round(
@@ -36,14 +36,14 @@ function round(
 	const { externals = [], findings = [] } = options;
 	const comparison = Comparison.of(revision);
 	comparison.import("file:codex.json", { findings: externals, skippedBodies: 0 }, options.at ?? at);
-	comparison.compare(verdictOf(...findings));
+	comparison.compare(verdictOf({ findings }));
 	if (options.target !== undefined) comparison.record(options.at ?? at, options.target);
 	return comparison;
 }
 const entry = (changeset: string, comparison: Comparison, findings: Finding[] = []): ComparisonEntry => ({
 	changeset,
 	comparison,
-	verdict: verdictOf(...findings),
+	verdict: verdictOf({ findings }),
 });
 const owing = (
 	changeset: string,
@@ -168,7 +168,7 @@ describe("ComparisonSet statistics", () => {
 		const clean = (changeset: string, name: "claude-code" | "codex") => {
 			const comparison = Comparison.of(revision);
 			comparison.import(`file:${name}.json`, { findings: [], skippedBodies: 0, reviewers: [{ name }] }, at);
-			comparison.compare(verdictOf());
+			comparison.compare(verdictOf({ findings: [] }));
 			return entry(changeset, comparison);
 		};
 		const stats = new ComparisonSet([clean("a", "codex"), clean("b", "claude-code")]).stats();
@@ -199,7 +199,7 @@ describe("ComparisonSet backlog", () => {
 	it("owes nothing for a finding no round of its changeset holds, even when another changeset holds it", () => {
 		const finding = own(12);
 		const withdrawn = owing("a", finding, "alpha");
-		withdrawn.comparison.compare(verdictOf());
+		withdrawn.comparison.compare(verdictOf({ findings: [] }));
 		const holder = entry("b", round({ findings: [finding] }), [finding]);
 		expect(new ComparisonSet([withdrawn, holder]).backlog()).toEqual([]);
 		expect(new ComparisonSet([withdrawn]).backlog()).toEqual([]);

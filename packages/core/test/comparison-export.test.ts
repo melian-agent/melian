@@ -27,7 +27,7 @@ const report = (input: Partial<ExternalFindingInput> = {}) =>
 		source: { kind: "file", path: "codex.json", position: sequence, ref: String(sequence++) },
 		...input,
 	});
-const verdictOf = (...findings: Finding[]) =>
+const verdictOf = ({ findings }: { findings: readonly Finding[] }) =>
 	new Adjudication({ findings, checks: [], manifest: [], config: defaultConfig }).adjudicate();
 
 function entry(
@@ -50,7 +50,7 @@ function entry(
 		},
 		options.at ?? at,
 	);
-	const verdict = verdictOf(...findings);
+	const verdict = verdictOf({ findings });
 	comparison.compare(verdict);
 	return { changeset: "c", comparison, verdict };
 }
@@ -159,7 +159,7 @@ describe("ComparisonExport sections", () => {
 		const extra = own(50);
 		const record = entry({ findings: [single, range] });
 		record.comparison.adjudicate(single.id, { ...by, verdict: "valid", golden: "correctness" });
-		const withExtra = { ...record, verdict: verdictOf(single, range, extra) };
+		const withExtra = { ...record, verdict: verdictOf({ findings: [single, range, extra] }) };
 		const text = render([withExtra]);
 		expect(text).toContain("2 findings at");
 		expect(text).toContain(`verdict ${withExtra.verdict.status}`);
