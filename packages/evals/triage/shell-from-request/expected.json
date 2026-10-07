@@ -1,0 +1,7 @@
+{
+  "title": "Add a thumbnail endpoint that shells out",
+  "levels": {
+    "correctness": "careful",
+    "trust-boundary": "deep"
+  }
+}

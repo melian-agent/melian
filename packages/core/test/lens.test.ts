@@ -201,7 +201,11 @@ describe("built-in lenses", () => {
 		expect(overEverything).toContain("design");
 		const unexcluded = overEverything.filter((name) => {
 			const paths = config.lenses[name]?.paths ?? [];
-			return !paths.includes("!packages/evals/goldens/**") || !paths.includes("!packages/evals/verifier/**");
+			return (
+				!paths.includes("!packages/evals/goldens/**") ||
+				!paths.includes("!packages/evals/verifier/**") ||
+				!paths.includes("!packages/evals/triage/**")
+			);
 		});
 		expect(unexcluded).toEqual([]);
 	});

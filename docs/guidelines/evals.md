@@ -66,6 +66,20 @@ One run cannot tell a fixed lens from a lucky draw. In the [second](../../packag
 
 A lens meets the bar when, over three passes, its goldens' worst precision is at least 0.8 and their worst recall at least 0.6. A lens's goldens are those whose names start with its name, scored together as one corpus and counting every lens's findings on them, since a golden scores the whole review. A lens below either bar may still ship, marked below the bar in its run record and in the plan; its goldens are never loosened to lift it over.
 
+## Triage evals
+
+The triage corpus under `packages/evals/triage/<name>/` holds changes whose right level, for each lens, the maintainer has judged: `base/`, `head/`, `expected.json` (`title`, and `levels`, a lens name to `quick`, `careful`, or `deep`), `script.json` (a lens name to the probability the scripted model gives each level), and a `README.md` saying why those levels are right. `melian.yaml` beside them switches off policy notices, and the root `melian.yaml` keeps every lens off the corpus. The levels are a judgement, not a measurement; change one only with the reason in that golden's README.
+
+`runTriageGolden(golden, mode, passes)` reviews the change with the lenses the golden names, on a fake model that answers "Done.", under the real `FallbackDecider`, and reads what the decider chose for each lens from the stored decision, before the lens's band holds it. A scripted run answers through a stub text model, which answers only the questions the request asks and throws for one the script lacks, so it proves the plumbing: the questions reach the decider, its answer is read, and the choice is stored. It says nothing about the questions. A live run gives the decider a real model, `MELIAN_EVAL_MODEL`, and spends tokens on that one request a pass:
+
+```bash
+MELIAN_EVAL_LIVE=1 MELIAN_EVAL_TRIAGE=1 MELIAN_EVAL_MODEL=anthropic/claude-sonnet-5-5 npm run eval:live --workspace @melian-agent/evals
+```
+
+It asks each golden three times, or `MELIAN_EVAL_TRIAGE_PASSES`, and prints exact share, mean distance in levels, and the count of choices below the right level, which let a change through with less of a look than it needed. `MELIAN_EVAL_TRIAGE_OUT` writes the measurement as JSON, with the question set's version and the questions' fingerprint. `MELIAN_EVAL_TRIAGE_BASELINE` names an earlier measurement: the script prints whether the questions choose better, worse, or the same, a lower mean distance first and then a higher exact share, and exits 1 when worse. It also says when the questions changed and their version did not, or the reverse.
+
+A changed question ships with its version bumped. `triageQuestionSet.version` in `packages/core/src/triage.ts` stands for the questions every shipped lens asks, in `lens.triageQuestion`. `packages/evals/triage/questions.json` records the version and a hash of those questions, and a gate test fails when the hash moves with the version unchanged, or the version moves with the record unchanged. After editing a question, bump the version, record both in `questions.json`, run the live measurement against the last version's recorded measurement, and put the comparison in the pull request. A measurement of one pass over a stochastic model is a draw, so compare three passes, as the lens corpus does.
+
 ## Verifier evals
 
 Execution-dependent misses live under `packages/evals/verifier/<name>/`, separate from the lens corpus. Each directory holds `base/`, `head/`, `candidate.json`, `expected.json`, `script.json` and a `README.md` naming the comparison record and finding. The four initial misses come from [pull request #68](https://github.com/melian-agent/melian/pull/68), C5 and C8, [pull request #72](https://github.com/melian-agent/melian/pull/72), C9, and [pull request #61](https://github.com/melian-agent/melian/pull/61), A1. The decoys cover a null guard and a type with one caller that excludes zero.
