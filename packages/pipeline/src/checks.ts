@@ -93,7 +93,7 @@ interface CheckInput {
 	readonly changeset: ChangesetFields;
 	readonly config: MelianConfig;
 	readonly source: RepositorySource;
-	readonly writer?: WriterTrust;
+	readonly writer?: WriterTrust | undefined;
 }
 
 type Outcome =
@@ -243,7 +243,7 @@ interface ChecksInput {
 	readonly config: MelianConfig;
 	readonly source: RepositorySource;
 	readonly tier: string;
-	readonly writer?: WriterTrust;
+	readonly writer?: WriterTrust | undefined;
 	// A rerun runs only `checks`, and keeps the earlier run's records for the rest.
 	readonly rerun?: { readonly checks: readonly string[]; readonly kept: Readonly<Record<string, CheckRunRecord>> };
 }
@@ -293,7 +293,7 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 								changeset,
 								config,
 								source,
-								...(writer === undefined ? {} : { writer }),
+								writer,
 							},
 							{ ownership: { kind: "task", taskId: runtime.taskId } },
 						);
@@ -447,7 +447,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 		config: input.config,
 		source: input.source,
 		tier,
-		...(input.writer === undefined ? {} : { writer: input.writer }),
+		writer: input.writer,
 	};
 	// Starts a run unless one with this key exists, or replaces `stale` with a rerun when it is still the key's task.
 	const start = (rerun?: ChecksInput["rerun"], stale?: number) =>
