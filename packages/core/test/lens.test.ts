@@ -186,14 +186,24 @@ describe("built-in lenses", () => {
 		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
-		const named = config.tiers.full.filter((entry) => entry.startsWith("lens.")).map((entry) => entry.slice(5));
+		const named = [
+			...new Set(
+				Object.values(config.tiers)
+					.flat()
+					.filter((entry) => entry.startsWith("lens."))
+					.map((entry) => entry.slice(5)),
+			),
+		];
 		expect(named).toContain("design");
-		const unscoped = named.filter((name) => {
-			const lens = lenses.find((candidate) => candidate.name === name);
-			return !config.lenses[name]?.paths && lens?.paths.includes("**");
+		const overEverything = named.filter((name) =>
+			lenses.find((candidate) => candidate.name === name)?.paths.includes("**"),
+		);
+		expect(overEverything).toContain("design");
+		const unexcluded = overEverything.filter((name) => {
+			const paths = config.lenses[name]?.paths ?? [];
+			return !paths.includes("!packages/evals/goldens/**") || !paths.includes("!packages/evals/verifier/**");
 		});
-		expect(unscoped).toEqual([]);
-		expect(config.lenses.design?.paths).toContain("!packages/evals/goldens/**");
+		expect(unexcluded).toEqual([]);
 	});
 
 	it("load the lens backlog adversarial, over every path, with the standards and three levels", async () => {
