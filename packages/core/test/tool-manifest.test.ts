@@ -87,6 +87,12 @@ describe("ToolManifest", () => {
 		{ binary: "../enola" },
 		{ binary: "/enola" },
 		{ binary: "dir/../enola" },
+		{ url: "https://github.com/enola-labs/enola/releases/download/v0.4.27/enola.tar.gz?x=1" },
+		{ url: "https://github.com/enola-labs/enola/releases/download/v0.4.27/enola.tar.gz#x" },
+		{ binary: "dir\\enola" },
+		{ binary: "./enola" },
+		{ binary: "a//b" },
+		{ binary: "enola/" },
 	])("refuses unsafe downloads %j", (change) => {
 		const state = structuredClone(stored);
 		Object.assign(state.tools.enola.platforms["darwin-arm64"], change);
