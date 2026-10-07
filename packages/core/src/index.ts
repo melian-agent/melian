@@ -35,6 +35,32 @@ export {
 } from "./changeset.ts";
 export { checksOfTier, type DeterministicCheck, deterministicChecks } from "./checks.ts";
 export {
+	Comparison,
+	type ComparisonGroup,
+	type ComparisonImport,
+	type ComparisonMatch,
+	type ComparisonUnmatch,
+	codexReviewSchema,
+	comparisonSchema,
+	ExternalFinding,
+	type ExternalFindingInput,
+	type ExternalFindingsFile,
+	type ExternalImport,
+	type ExternalImporter,
+	type ExternalReviewer,
+	type ExternalReviewerName,
+	type ExternalSite,
+	type ExternalSource,
+	externalFindingSchema,
+	externalFindingsFileSchema,
+	maxExternalBodyLength,
+	maxExternalFileFindings,
+	maxExternalTitleLength,
+	type StoredComparison,
+	type StoredExternalFinding,
+	siteDistance,
+} from "./comparison.ts";
+export {
 	type Band,
 	type ConfigLookup,
 	configLookup,
@@ -90,6 +116,8 @@ export {
 	type ChangesetErrorCode,
 	CheckError,
 	type CheckErrorCode,
+	ComparisonError,
+	type ComparisonErrorCode,
 	ConfigError,
 	type ConfigErrorCode,
 	DecisionError,
@@ -295,6 +323,23 @@ export {
 } from "./triage.ts";
 
 export const packageName = "@melian-agent/core";
+
+export {
+	Adjudication as ComparisonAdjudication,
+	type ComparisonAdjudicationRecord,
+	comparisonAdjudicationSchema,
+	missReasons,
+	type StoredComparisonAdjudication,
+} from "./comparison-adjudication.ts";
+export { ComparisonExport } from "./comparison-export.ts";
+export {
+	type ComparisonEntry,
+	ComparisonSet,
+	type ComparisonStats,
+	type OwedGolden,
+	type RepeatedFinding,
+	type ReviewerStats,
+} from "./comparison-set.ts";
 
 export {
 	type StoredVerificationState,

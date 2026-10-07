@@ -1,0 +1,3 @@
+# Round seven on the adjudication branch
+
+[Pull request #72](https://github.com/melian-agent/melian/pull/72), Melian's seventh round. `markdownText` in the comparison export now breaks bare URLs, `www.` hosts and `GH-123` forms, as `renderProse` does in the github package, so a reviewer's text cannot plant a live link in a committed record. New tests pin the first in-scope miss reason in a mixed group, the https and failing-remote cases of the export's pull request link, and the autolink escapes. The two test helpers that took a domain object first, `row` and `compared`, and the one-call helper `owedOrder` are gone. The earlier merge entry now links the pull requests it names.

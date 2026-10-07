@@ -11,6 +11,7 @@ import {
 	type ReviewStatus,
 } from "@melian-agent/core";
 import {
+	CompareHarness,
 	type Context,
 	backgroundContext as context,
 	createMemoryStorage,
@@ -38,6 +39,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, type AdjudicationTaskInput } from "../src/adjudication.ts";
+import { ComparisonDocument } from "../src/compare.ts";
 import { FindingsDocument } from "../src/findings.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
@@ -637,6 +639,55 @@ describe("recording a dismissal", () => {
 		expect(again.finding.properties.pastDismissals).toBeUndefined();
 		expect(again.verdict).toEqual(first.verdict);
 		expect(await adjudicationTask(harness)).toBe(task);
+	});
+
+	it("refuses comparison writes after a cut-short dismissal until its adjudication records", async () => {
+		const path = join(dir, "changeset.sqlite");
+		const first = await reviewHarness(await openSqliteStorage(path));
+		scriptFinding();
+		const id = (await reviewed(first)).findings[0]!.properties.id;
+		await first.close(context);
+		const killed = await DismissHarness.open(await openSqliteStorage(path), fake.review);
+		opened.push(killed);
+		await dismissCutShort(killed.harness, id);
+		const pending = await adjudicationTask(killed.harness);
+		await killed.close(context);
+		const calls = fake.provider.state.callCount;
+		const compared = await CompareHarness.open(await openSqliteStorage(path), fake.review);
+		opened.push(compared);
+		const rev = await revision();
+		const key = revisionKey(rev);
+		const root = (await compared.harness.root(context)).id;
+		expect((await compared.harness.snapshot(FindingsDocument, root, context))?.items[id]?.lifecycle.status).toBe(
+			"dismissed",
+		);
+		expect((await readVerdict(compared.harness, root, key, context))?.dismissed).toEqual([]);
+		const before = await compared.harness.snapshot(ComparisonDocument, root, context);
+
+		await expect(compared.importFindings(rev, [], "t")).rejects.toMatchObject({ code: "notReviewed" });
+		await expect(compared.match(rev, { external: "missing", melian: id }, dismissal)).rejects.toMatchObject({
+			code: "notReviewed",
+		});
+		await expect(compared.unmatch(rev, { external: "missing", melian: id }, dismissal)).rejects.toMatchObject({
+			code: "notReviewed",
+		});
+		expect(await compared.reviewed(rev)).toBe(false);
+		expect(await compared.harness.snapshot(ComparisonDocument, root, context)).toEqual(before);
+		expect((await compared.harness.getTask(pending as TaskId, context))?.state.status).not.toBe("terminal");
+		expect(fake.provider.state.callCount).toBe(calls);
+		await compared.close(context);
+
+		const dismissing = await DismissHarness.open(await openSqliteStorage(path), fake.review);
+		opened.push(dismissing);
+		const recorded = await dismiss(dismissing.harness, id);
+		expect(await adjudicationTask(dismissing.harness)).toBe(pending);
+		await dismissing.close(context);
+		const repaired = await CompareHarness.open(await openSqliteStorage(path), fake.review);
+		opened.push(repaired);
+		expect(await repaired.reviewed(rev)).toBe(true);
+		const comparison = await repaired.importFindings(rev, [], "t");
+		expect(comparison.render(recorded.verdict)).toContain("(dismissed)");
+		expect(fake.provider.state.callCount).toBe(calls);
 	});
 
 	it("refuses to publish a verdict a cut-short dismissal left undecided, and finishes it when dismissed again", async () => {

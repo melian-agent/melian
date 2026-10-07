@@ -1,0 +1,3 @@
+Fixed pending golden debt in [pull request #72](https://github.com/melian-agent/melian/pull/72). An unmatched valid external finding now exports "Pending: miss reason required" beside its recorded golden lens. The Golden cell reads stored adjudication rather than the metrics judgement, which stays pending until a miss reason is recorded.
+
+The regression adjudicates a matched finding with correctness debt, unmatches its only pair, and refreshes against the same verdict. It pins the unchanged stored judgement, the owed backlog entry, and the exported row. The row assertion failed before the fix. Both core comparison files passed after it: 83 tests, including the existing export snapshot.

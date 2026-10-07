@@ -94,6 +94,10 @@ Prints the stored review and a fenced agent prompt, without running a new review
 
 Pass `--all` to print silent, dismissed and refuted findings too, each dismissed one with who dismissed it and why. Refuted findings do not count in the verdict. Each verified finding names the judge and reason, with a correction when supplied; relay both.
 
+## Compare with other reviewers
+
+When the user asks how Melian's review compares with CodeRabbit's or another reviewer's, run `melian compare "#N" --from github`. Use `--from file:<path>` for a reviewer's JSON file, with the range or `"#N"` a stored review used. Show what it prints; it posts nothing. For Codex's adversarial review, save the "result" field of the companion's JSON output as that file, not the whole output.
+
 ## Dismiss a finding
 
 A user who decides a finding does not apply can dismiss it with a reason. Melian then counts it out of the verdict, never raises it again, and keeps it dismissed across new reviews and pushes until the code that triggered it changes. Dismiss only when the user tells you to dismiss a finding; never to make a review pass, and never on your own judgement that a finding is wrong. Say what you think if asked, and let the user decide.
@@ -123,3 +127,11 @@ It posts a review, creates or edits one ledger comment, and sets a `melian/revie
 Once `melian/review` is required, the pull request is blocked until a review of its current head is published. Every new head needs another review and publish. Run `melian publish` only when the user has seen the findings and told you to publish. With writer trust off, publication still succeeds but leaves an error status for a trusted host.
 
 The ledger's walkthrough is a summary, never a verdict. To omit it, pass `--no-walkthrough` to `melian publish` after the user authorises publication. The same option on `melian review` skips summarisation. Only pull-request reviews create walkthroughs. A failed summary can retry on the next review.
+
+Use `melian compare adjudicate "#N" <finding-id> --verdict valid --reason owned-missed --golden <lens>` to record the maintainer's judgement and golden debt locally.
+
+Use `melian compare stats --last 10` to measure adjudicated recall, precision, repeats, and the drain due.
+
+Use `melian compare backlog --markdown` to print the generated list of owed goldens by lens.
+
+Use `melian compare export "#N" --out <path>` to save the local record for review.
