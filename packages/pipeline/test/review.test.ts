@@ -1599,7 +1599,7 @@ describe("reviewChangeset", () => {
 			});
 		});
 
-		it("counts a lens at its budget as run when nothing could have handed it a defect", async () => {
+		it("ends a lens at its budget even when nothing could have handed it a defect", async () => {
 			scriptConversations(fake, [
 				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
 				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
@@ -1608,11 +1608,14 @@ describe("reviewChangeset", () => {
 
 			const { verdict } = await reviewed({ lenses: tight });
 
-			expect(verdict.status).toBe("findings");
-			expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toMatchObject({ status: "ran" });
+			expect(verdict.status).toBe("not-reviewed");
+			expect(verdict.notRun.find((check) => check.name === "lens.correctness")).toMatchObject({
+				status: "ended",
+				reason: "its findings budget of 1 ran out, so defects may be unreported",
+			});
 		});
 
-		it("counts a lens nothing handed a defect to as run", async () => {
+		it("ends a lens refused a report even when nothing handed a defect to it", async () => {
 			scriptConversations(fake, [
 				{
 					match: correctness,
@@ -1628,11 +1631,14 @@ describe("reviewChangeset", () => {
 
 			const { verdict } = await reviewed({ lenses: tight });
 
-			expect(verdict.status).toBe("findings");
-			expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toMatchObject({ status: "ran" });
+			expect(verdict.status).toBe("not-reviewed");
+			expect(verdict.notRun.find((check) => check.name === "lens.correctness")).toMatchObject({
+				status: "ended",
+				reason: "its findings budget of 1 ran out, so defects may be unreported",
+			});
 		});
 
-		it("counts a lens as run when the hand-off to it was left out for size", async () => {
+		it("ends a capped lens when the hand-off to it was left out for size", async () => {
 			const many = (count: number) =>
 				Object.fromEntries(
 					Array.from({ length: count }, (_, index) => [
@@ -1647,10 +1653,7 @@ describe("reviewChangeset", () => {
 				evidence: [{ file: "src/many/0.ts", line: 1, role: "cause" }],
 			};
 			const narrow = { ...config, lenses: { contracts: { paths: ["src/many/**"] } } };
-			for (const [count, handed] of [
-				[40, true],
-				[41, false],
-			] as const) {
+			for (const count of [40, 41]) {
 				writeFiles(repo, many(count));
 				gitIn(repo, "add", "--all");
 				gitIn(repo, "commit", "--quiet", "-m", `${count} files`);
@@ -1669,7 +1672,7 @@ describe("reviewChangeset", () => {
 				const { verdict } = await reviewed({ lenses: capped(1), config: narrow });
 
 				const record = [...(verdict.ran ?? []), ...verdict.notRun].find((check) => check.name === "lens.contracts");
-				expect(record?.status).toBe(handed ? "ended" : "ran");
+				expect(record?.status).toBe("ended");
 			}
 		});
 	});

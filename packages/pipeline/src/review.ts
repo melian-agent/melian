@@ -1216,10 +1216,11 @@ function lensCheck(
 	if (!completed) return { name, status: "failed", level, reason: failed("the lens task did not complete") };
 	if (outcome?.status === "done") {
 		const { budgetEnded } = outcome;
-		// Another lens left this one a defect, and the findings budget refused a report: that defect may be in neither
-		// report, so the review cannot read as complete, whatever `ended: count` says of the tokens and tools budgets.
-		if (outcome.capped !== undefined && handedBy.length > 0) {
-			const lost = `its findings budget of ${outcome.capped} ran out while ${handedBy.map((name) => `\`${name}\``).join(", ")} could have handed it defects, so one may be unreported`;
+		if (outcome.capped !== undefined) {
+			const lost =
+				handedBy.length === 0
+					? `its findings budget of ${outcome.capped} ran out, so defects may be unreported`
+					: `its findings budget of ${outcome.capped} ran out while ${handedBy.map((name) => `\`${name}\``).join(", ")} could have handed it defects, so one may be unreported`;
 			return {
 				name,
 				status: "ended",
