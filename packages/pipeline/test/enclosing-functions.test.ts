@@ -3,7 +3,13 @@ import { Changeset } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type EnclosingFunction, EnclosingFunctions, enclosingLimits } from "../src/enclosing-functions.ts";
 import { ChangePrompt } from "../src/review.ts";
+import { quoteUntrusted } from "../src/untrusted.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
+
+vi.mock("../src/untrusted.ts", async (importOriginal) => {
+	const original = await importOriginal<{ quoteUntrusted: typeof quoteUntrusted }>();
+	return { ...original, quoteUntrusted: vi.fn(original.quoteUntrusted) };
+});
 
 let repo: string;
 
@@ -282,6 +288,162 @@ describe("EnclosingFunctions", () => {
 		const found = await around(many("1"), many("2"));
 		expect(found.functions).toHaveLength(enclosingLimits.files);
 		expect(found.functions.at(-1)!.path).toBe(`src/f${String(enclosingLimits.files - 1).padStart(3, "0")}.ts`);
+	});
+
+	describe("work limits", { timeout: 120_000 }, () => {
+		const oneLiners = (count: number, changed: number) =>
+			lines(...Array.from({ length: count }, (_, index) => `function f${index}(){${index < changed ? "0" : ""}}`));
+		const addedLines = (count: number, mark: string) =>
+			lines(
+				"export function big() {",
+				...Array.from({ length: count }, (_, index) => `\tvoid ${index}${mark};`),
+				"}",
+			);
+		const filesOf = (names: readonly string[], make: (changed: boolean) => string, extra?: string) => {
+			const build = (changed: boolean) => ({
+				...Object.fromEntries(names.map((name) => [name, make(changed)])),
+				...(extra === undefined ? {} : { [extra]: changed ? "function z(){0}\n" : "function z(){}\n" }),
+			});
+			return [build(false), build(true)] as const;
+		};
+		const names = (count: number) => Array.from({ length: count }, (_, index) => `src/a${index}.ts`);
+		const nonce = "b".repeat(24);
+
+		it.each([
+			[enclosingLimits.anchorsPerFile, []],
+			[enclosingLimits.anchorsPerFile + 1, ["anchorsPerFile"]],
+		] as const)("takes a file of %i added lines and holds back %j", async (count, capped) => {
+			const found = await around({ "src/a.ts": addedLines(count, "") }, { "src/a.ts": addedLines(count, "+ 1") });
+			expect(found.functions).toHaveLength(capped.length === 0 ? 1 : 0);
+			expect(found.capped).toEqual(capped);
+			expect(found.blocks(undefined, nonce).join("\n").includes("Some functions were not read, because")).toBe(
+				capped.length > 0,
+			);
+		});
+
+		it.each([
+			[false, 4, []],
+			[true, 4, ["anchors"]],
+		] as const)(
+			"takes files together, with an extra file past the total %j, from %i files of the per-file limit",
+			async (past, count, capped) => {
+				const [base, head] = filesOf(
+					names(count),
+					(changed) => addedLines(enclosingLimits.anchorsPerFile, changed ? "+ 1" : ""),
+					past ? "src/z.ts" : undefined,
+				);
+				const found = await around(base, head);
+				expect(found.capped).toEqual(capped);
+				expect(found.functions.map((each) => each.path)).toEqual(names(count));
+			},
+		);
+
+		it.each([
+			[enclosingLimits.callablesPerFile, []],
+			[enclosingLimits.callablesPerFile + 1, ["callablesPerFile"]],
+		] as const)("takes a file of %i named functions and holds back %j", async (count, capped) => {
+			const found = await around({ "src/a.ts": oneLiners(count, 0) }, { "src/a.ts": oneLiners(count, 1) });
+			expect(found.functions).toHaveLength(capped.length === 0 ? 1 : 0);
+			expect(found.capped).toEqual(capped);
+		});
+
+		it.each([
+			[false, []],
+			[true, ["callables"]],
+		] as const)("takes the files together up to %j past the total of named functions", async (past, capped) => {
+			const count = enclosingLimits.callables / enclosingLimits.callablesPerFile;
+			const [base, head] = filesOf(
+				names(count),
+				(changed) => oneLiners(enclosingLimits.callablesPerFile, changed ? 1 : 0),
+				past ? "src/z.ts" : undefined,
+			);
+			const found = await around(base, head);
+			expect(found.capped).toEqual(capped);
+			expect(found.functions.map((each) => each.path)).toEqual(names(count));
+		});
+
+		it.each([
+			[enclosingLimits.found, []],
+			[enclosingLimits.found + 1, ["found"]],
+		] as const)("holds %i functions and holds back %j", async (count, capped) => {
+			const found = await around({ "src/a.ts": oneLiners(count, 0) }, { "src/a.ts": oneLiners(count, count) });
+			expect(found.functions).toHaveLength(enclosingLimits.found);
+			expect(found.capped).toEqual(capped);
+			expect(found.blocks(undefined, nonce).at(-1)?.startsWith("Some functions were not read, because")).toBe(
+				capped.length > 0,
+			);
+		});
+
+		it("keeps the limits it documents", () => {
+			expect({ ...enclosingLimits }).toMatchObject({
+				anchorsPerFile: 5_000,
+				anchors: 20_000,
+				callablesPerFile: 20_000,
+				callables: 100_000,
+				found: 2_000,
+			});
+		});
+
+		it("renders no block once the byte budget has no room for it", async () => {
+			const body = (mark: string) =>
+				lines(
+					...Array.from({ length: 100 }, (_, fn) => [
+						`function g${fn}() {`,
+						`\tvoid ${mark}0;`,
+						...Array.from({ length: 98 }, (_, row) => `\tvoid ${"y".repeat(20)} + ${row};`),
+						"}",
+					]).flat(),
+				);
+			repo = baseAndHead({ "src/a.ts": body("") }, { "src/a.ts": body("1 + ") });
+			const found = await EnclosingFunctions.read(await Changeset.resolve(repo, "main...feature"));
+			expect(found.functions).toHaveLength(100);
+			vi.mocked(quoteUntrusted).mockClear();
+			const parts = found.blocks(undefined, nonce);
+			const rendered = vi.mocked(quoteUntrusted).mock.calls.filter(([label]) => label === "function").length;
+			const shown = parts.filter((part) => part.includes('label="function"')).length;
+			expect(shown).toBeGreaterThan(5);
+			expect(shown).toBeLessThan(40);
+			expect(rendered).toBeLessThanOrEqual(shown + 2);
+		});
+
+		it("finds the function around each added line of the files at the limits in under a second", async () => {
+			const files = names(enclosingLimits.anchors / enclosingLimits.anchorsPerFile);
+			const [base, head] = filesOf(files, (changed) =>
+				oneLiners(enclosingLimits.callablesPerFile, changed ? enclosingLimits.anchorsPerFile : 0),
+			);
+			repo = baseAndHead(base, head);
+			const changeset = await Changeset.resolve(repo, "main...feature");
+			const started = performance.now();
+			const found = await EnclosingFunctions.read(changeset);
+			const elapsed = performance.now() - started;
+			console.log(`enclosing-functions timing: ${elapsed.toFixed(0)} ms`);
+			expect(found.capped).toEqual(["found"]);
+			expect(found.functions).toHaveLength(enclosingLimits.found);
+			expect(elapsed).toBeLessThan(1_000);
+		});
+
+		it("never filters a file's whole list of functions once per added line", async () => {
+			repo = baseAndHead({ "src/a.ts": oneLiners(20_000, 0) }, { "src/a.ts": oneLiners(20_000, 2_000) });
+			const changeset = await Changeset.resolve(repo, "main...feature");
+			const filter = vi.spyOn(Array.prototype, "filter");
+			try {
+				await EnclosingFunctions.read(changeset);
+				expect(filter.mock.contexts.filter((list) => (list as unknown[]).length >= 10_000)).toHaveLength(0);
+			} finally {
+				filter.mockRestore();
+			}
+		});
+
+		it("finds the function around each of 2,000 added lines among 20,000 in under a second", async () => {
+			repo = baseAndHead({ "src/a.ts": oneLiners(20_000, 0) }, { "src/a.ts": oneLiners(20_000, 2_000) });
+			const changeset = await Changeset.resolve(repo, "main...feature");
+			const started = performance.now();
+			const found = await EnclosingFunctions.read(changeset);
+			const elapsed = performance.now() - started;
+			console.log(`enclosing-functions timing: ${elapsed.toFixed(0)} ms`);
+			expect(found.functions).toHaveLength(2_000);
+			expect(elapsed).toBeLessThan(1_000);
+		});
 	});
 });
 

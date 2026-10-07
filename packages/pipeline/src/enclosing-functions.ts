@@ -24,6 +24,9 @@ import { quoteUntrusted } from "./untrusted.ts";
  * the blocks past `promptBytes` are left to the lens's own `read_file`, which its instructions say; so are files past
  * `files`. A function left out is listed by name, and `promptBytes` counts that listing too: a name keeps its first
  * `nameBytes` bytes, and past `listed` entries, or the bytes the blocks left, the listing says how many more it left out.
+ * The work is bounded too. A file with more than `anchorsPerFile` added lines or `callablesPerFile` named functions is left
+ * to `read_file` whole, as is one that would take the review past `anchors` or `callables` across its files, and once
+ * `found` functions are held no more are taken. The prompt says when any of these held something back.
  */
 export const enclosingLimits = {
 	files: 200,
@@ -32,6 +35,19 @@ export const enclosingLimits = {
 	promptBytes: 64 * 1024,
 	nameBytes: 200,
 	listed: 100,
+	anchorsPerFile: 5_000,
+	anchors: 20_000,
+	callablesPerFile: 20_000,
+	callables: 100_000,
+	found: 2_000,
+} as const;
+
+const cappedWhy = {
+	anchorsPerFile: `a file had more than ${enclosingLimits.anchorsPerFile} added lines`,
+	anchors: `the files together had more than ${enclosingLimits.anchors} added lines`,
+	callablesPerFile: `a file had more than ${enclosingLimits.callablesPerFile} named functions`,
+	callables: `the files together had more than ${enclosingLimits.callables} named functions`,
+	found: `more than ${enclosingLimits.found} functions held a change`,
 } as const;
 
 const typescriptFile = /\.(?:[cm]?ts|tsx)$/;
@@ -109,10 +125,12 @@ function lineAt(starts: readonly number[], offset: number): number {
 	return low + 1;
 }
 
-function callables(source: SourceFile, text: string): Callable[] {
+// The named functions of a file in the order the compiler visits them, or `undefined` once there are more than `limit`.
+function callables(source: SourceFile, text: string, limit: number): Callable[] | undefined {
 	const starts = lineStarts(text);
 	const found: Callable[] = [];
 	const visit = (node: Node): void => {
+		if (found.length > limit) return;
 		const name = declaredName(node);
 		if (name !== undefined) {
 			found.push({
@@ -124,22 +142,95 @@ function callables(source: SourceFile, text: string): Callable[] {
 		node.forEachChild(visit);
 	};
 	source.forEachChild(visit);
+	return found.length > limit ? undefined : found;
+}
+
+// A max-heap of the callables whose start the sweep has passed: the latest start first, and for one start the one the
+// compiler visited first, as the innermost function around a line is the one that starts last.
+class Open {
+	readonly #items: { readonly callable: Callable; readonly order: number }[] = [];
+
+	static #before(a: { callable: Callable; order: number }, b: { callable: Callable; order: number }): boolean {
+		return (
+			a.callable.startLine > b.callable.startLine ||
+			(a.callable.startLine === b.callable.startLine && a.order < b.order)
+		);
+	}
+
+	push(callable: Callable, order: number): void {
+		const items = this.#items;
+		let at = items.length;
+		items.push({ callable, order });
+		while (at > 0) {
+			const parent = (at - 1) >> 1;
+			if (!Open.#before(items[at]!, items[parent]!)) break;
+			[items[at], items[parent]] = [items[parent]!, items[at]!];
+			at = parent;
+		}
+	}
+
+	top(): Callable | undefined {
+		return this.#items[0]?.callable;
+	}
+
+	pop(): void {
+		const items = this.#items;
+		const last = items.pop();
+		if (last === undefined || items.length === 0) return;
+		items[0] = last;
+		let at = 0;
+		for (;;) {
+			const left = 2 * at + 1;
+			const right = left + 1;
+			let best = at;
+			if (left < items.length && Open.#before(items[left]!, items[best]!)) best = left;
+			if (right < items.length && Open.#before(items[right]!, items[best]!)) best = right;
+			if (best === at) return;
+			[items[at], items[best]] = [items[best]!, items[at]!];
+			at = best;
+		}
+	}
+}
+
+// The innermost callable around each anchor, in the anchors' order sorted by line. An anchor's last line is its first or
+// the next, so once a callable ends before an anchor's last line it ends before every later anchor's too, and is dropped
+// for good when it surfaces.
+function holders(around: readonly Callable[], anchors: readonly (readonly [number, number])[]): Callable[] {
+	const byStart = around
+		.map((callable, order) => ({ callable, order }))
+		.sort((a, b) => a.callable.startLine - b.callable.startLine || a.order - b.order);
+	const sorted = [...anchors].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+	const open = new Open();
+	const found: Callable[] = [];
+	let next = 0;
+	for (const [first, last] of sorted) {
+		while (next < byStart.length && byStart[next]!.callable.startLine <= first) {
+			open.push(byStart[next]!.callable, byStart[next]!.order);
+			next++;
+		}
+		for (let top = open.top(); top !== undefined && top.endLine < last; top = open.top()) open.pop();
+		const holding = open.top();
+		if (holding !== undefined) found.push(holding);
+	}
 	return found;
 }
 
 // The head lines a file's hunks put the change on: each line a hunk added, and for a hunk that only deleted, the pair of
 // lines the deletion sits between, so a function counts only when it holds both.
-function anchors(file: ChangedFile): (readonly [number, number])[] {
+// `undefined` once there are more than `limit`.
+function anchors(file: ChangedFile, limit: number): (readonly [number, number])[] | undefined {
 	const lines: (readonly [number, number])[] = [];
 	for (const hunk of file.hunks) {
 		if (hunk.newLines === 0) {
 			lines.push([hunk.newStart, hunk.newStart + 1]);
-			continue;
+		} else {
+			let line = hunk.newStart;
+			for (const row of hunk.text.split("\n")) {
+				if (row.startsWith("+")) lines.push([line, line++]);
+				if (lines.length > limit) return undefined;
+			}
 		}
-		let line = hunk.newStart;
-		for (const row of hunk.text.split("\n")) {
-			if (row.startsWith("+")) lines.push([line, line++]);
-		}
+		if (lines.length > limit) return undefined;
 	}
 	return lines;
 }
@@ -153,15 +244,22 @@ export class EnclosingFunctions {
 	readonly functions: readonly EnclosingFunction[];
 	/** Why the compiler could not be asked, when it could not; the functions are then empty. */
 	readonly unavailable: string | undefined;
+	/** The work limits that held something back, each named once; the lens reads what they left out with `read_file`. */
+	readonly capped: readonly string[];
 
-	private constructor(functions: readonly EnclosingFunction[], unavailable: string | undefined) {
+	private constructor(
+		functions: readonly EnclosingFunction[],
+		unavailable: string | undefined,
+		capped: readonly string[],
+	) {
 		this.functions = functions;
 		this.unavailable = unavailable;
+		this.capped = capped;
 	}
 
 	/** An instance holding no function, for a review that asks none. */
 	static none(): EnclosingFunctions {
-		return new EnclosingFunctions([], undefined);
+		return new EnclosingFunctions([], undefined, []);
 	}
 
 	/** Reads the functions around `changeset`'s hunks at its head. Never throws: a failure is `unavailable`. */
@@ -180,32 +278,51 @@ export class EnclosingFunctions {
 		}
 		if (texts.size === 0) return EnclosingFunctions.none();
 		try {
-			return new EnclosingFunctions(EnclosingFunctions.#parse(candidates, texts), undefined);
+			const { functions, capped } = EnclosingFunctions.#parse(candidates, texts);
+			return new EnclosingFunctions(functions, undefined, capped);
 		} catch (error) {
-			return new EnclosingFunctions([], visibleText(error instanceof Error ? error.message : String(error)));
+			return new EnclosingFunctions([], visibleText(error instanceof Error ? error.message : String(error)), []);
 		}
 	}
 
-	static #parse(files: readonly ChangedFile[], texts: ReadonlyMap<string, string>): EnclosingFunction[] {
+	static #parse(
+		files: readonly ChangedFile[],
+		texts: ReadonlyMap<string, string>,
+	): { functions: EnclosingFunction[]; capped: string[] } {
 		const program = HeadProgram.open(texts);
 		try {
-			const found: EnclosingFunction[] = [];
+			const functions: EnclosingFunction[] = [];
+			const capped = new Set<string>();
+			let anchorsLeft: number = enclosingLimits.anchors;
+			let callablesLeft: number = enclosingLimits.callables;
 			for (const file of files) {
 				const source = program.source(file.path);
 				if (source === undefined) continue;
+				const anchored = anchors(file, Math.min(enclosingLimits.anchorsPerFile, anchorsLeft));
+				if (anchored === undefined) {
+					capped.add(anchorsLeft < enclosingLimits.anchorsPerFile ? "anchors" : "anchorsPerFile");
+					continue;
+				}
 				const text = texts.get(file.path)!;
-				const around = callables(source, text);
+				const around = callables(source, text, Math.min(enclosingLimits.callablesPerFile, callablesLeft));
+				if (around === undefined) {
+					capped.add(callablesLeft < enclosingLimits.callablesPerFile ? "callables" : "callablesPerFile");
+					continue;
+				}
+				anchorsLeft -= anchored.length;
+				callablesLeft -= around.length;
 				const lines = text.split("\n");
 				const taken = new Set<string>();
-				for (const [first, last] of anchors(file)) {
-					const holding = around
-						.filter((each) => each.startLine <= first && last <= each.endLine)
-						.sort((a, b) => b.startLine - a.startLine)[0];
-					if (holding === undefined) continue;
+				const own: EnclosingFunction[] = [];
+				for (const holding of holders(around, anchored)) {
 					const key = `${holding.startLine}:${holding.endLine}`;
 					if (taken.has(key)) continue;
+					if (functions.length + own.length >= enclosingLimits.found) {
+						capped.add("found");
+						break;
+					}
 					taken.add(key);
-					found.push({
+					own.push({
 						path: file.path,
 						name: holding.name,
 						startLine: holding.startLine,
@@ -215,12 +332,10 @@ export class EnclosingFunctions {
 							: { lines: lines.slice(holding.startLine - 1, holding.endLine) }),
 					});
 				}
+				own.sort((a, b) => a.startLine - b.startLine || a.endLine - b.endLine);
+				functions.push(...own);
 			}
-			return found.sort(
-				(a, b) =>
-					files.findIndex((file) => file.path === a.path) - files.findIndex((file) => file.path === b.path) ||
-					a.startLine - b.startLine,
-			);
+			return { functions, capped: [...capped] };
 		} finally {
 			program.close();
 		}
@@ -232,13 +347,16 @@ export class EnclosingFunctions {
 	 */
 	blocks(only: readonly string[] | undefined, nonce: string): string[] {
 		const shown = this.functions.filter((each) => only === undefined || only.includes(each.path));
-		if (shown.length === 0) return [];
+		const held = this.capped.map((reason) => cappedWhy[reason as keyof typeof cappedWhy]);
+		const heldNote = `Some functions were not read, because ${held.join(" and ")}; read the changed TypeScript files with read_file.`;
+		if (shown.length === 0) return held.length === 0 ? [] : [heldNote];
 		const parts = [
 			"Enclosing functions: the head's whole function around each hunk of a TypeScript file, with line numbers. Each block's first line names the file, the function, and its lines.",
 		];
 		const left: string[] = [];
 		let omitted = 0;
 		let size = 0;
+		const smallest = Buffer.byteLength(quoteUntrusted("function", "", nonce));
 		const leave = (label: string) => {
 			const bytes = Buffer.byteLength(label) + 1;
 			if (left.length >= enclosingLimits.listed || size + bytes > enclosingLimits.promptBytes) {
@@ -251,6 +369,14 @@ export class EnclosingFunctions {
 		for (const each of shown) {
 			const label = `${visibleText(each.path)}:${each.startLine}-${each.endLine} ${visibleText(each.name)}`;
 			if (each.lines === undefined) {
+				leave(label);
+				continue;
+			}
+			// The budget is spent once not even an empty block fits, and a block is at least as long as its lines.
+			if (
+				size + smallest + each.lines.reduce((sum, line) => sum + line.length + 1, 0) >
+				enclosingLimits.promptBytes
+			) {
 				leave(label);
 				continue;
 			}
@@ -276,6 +402,7 @@ export class EnclosingFunctions {
 			if (omitted > 0)
 				parts.push(`and ${omitted} more not listed here; read the changed TypeScript files with read_file.`);
 		}
+		if (held.length > 0) parts.push(heldNote);
 		return parts;
 	}
 }

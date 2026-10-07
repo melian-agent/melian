@@ -12,4 +12,11 @@ Choice: the fingerprint renders the prompt without the blocks, and `selectionOf`
 
 Gives up: a changed function read on the same head does not re-run lenses, and `--rerun` does not refresh it. A new head, or a rerun after a failed lens, reads fresh. A task an older Melian created carries no `unread`, so its records carry no such note.
 
+## The read is bounded in work as well as in bytes
+
+Problem: the limits on files, bytes, lines and prompt size left the work unbounded. A 512 KiB file of `function f1(){}` lines holds about 32,000 named functions and as many added lines, and a scan of every function for every added line costs a billion comparisons per file, run synchronously before any lens exists.
+
+Choice: a sweep with a heap finds each added line's innermost function in one pass over the file's sorted functions, so the cost is linear in lines and functions, never their product. Five caps bound the rest, and each leaves what it cuts to `read_file`: `anchorsPerFile` (5,000 added lines) and `callablesPerFile` (20,000 named functions) skip a file whole, `anchors` (20,000) and `callables` (100,000) skip a file that would take the files together past them, and `found` (2,000) stops taking functions. A skipped file carries no function, never a partial list, since a partial list would show an outer function as the innermost. When any cap held something back, the prompt says so in a closing note. `blocks()` skips a block it can already tell will not fit, so a spent budget costs no rendering.
+
+
 Supersedes: [2026-10-04-reading-scope-as-an-instruction.md](2026-10-04-reading-scope-as-an-instruction.md).
