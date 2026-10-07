@@ -79,15 +79,25 @@ export function triageProviders(plan: ReviewPlan): string[] {
 export class Triage {
 	readonly decider: Decider | undefined;
 	readonly skipped: string | undefined;
+	readonly #models: ReviewModels;
+	readonly #providers: readonly string[];
 
-	private constructor(decider: Decider | undefined, skipped: string | undefined) {
+	private constructor(
+		decider: Decider | undefined,
+		skipped: string | undefined,
+		models: ReviewModels,
+		providers: readonly string[],
+	) {
 		this.decider = decider;
 		this.skipped = skipped;
+		this.#models = models;
+		this.#providers = providers;
 	}
 
-	// Unlocks the lenses' providers, and the triage providers unless a script stands in for every model, since a
-	// command credential runs now and one that fails stops the review before it starts. Scripted mode triages nothing,
-	// so every lens runs at the level its script was written for.
+	// Chooses triage's decider, and names the lenses' providers, and the triage providers unless a script stands in
+	// for every model. Scripted mode triages nothing, so every lens runs at the level its script was written for. It
+	// runs no command credential: `unlockModels` does, when the review is about to start a task that may call a model,
+	// so a repeat review that spends no tokens runs none.
 	static async create(options: {
 		readonly scripted: boolean;
 		readonly config: MelianConfig;
@@ -96,19 +106,31 @@ export class Triage {
 		readonly decide?: typeof fallbackDecider;
 	}): Promise<Triage> {
 		const { scripted, config, plan, models, decide = fallbackDecider } = options;
-		if (plan.lenses.length === 0) return new Triage(undefined, undefined);
-		await unlockCredentials(models, [...plan.providers(), ...(scripted ? [] : triageProviders(plan))]);
-		if (scripted) return new Triage(undefined, undefined);
+		if (plan.lenses.length === 0) return new Triage(undefined, undefined, models, []);
+		const providers = [...plan.providers(), ...(scripted ? [] : triageProviders(plan))];
+		if (scripted) return new Triage(undefined, undefined, models, providers);
 		const chosen = await decide({ ...config, models: plan.routes() }, models);
-		return "decider" in chosen ? new Triage(chosen.decider, undefined) : new Triage(undefined, chosen.skipped);
+		return "decider" in chosen
+			? new Triage(chosen.decider, undefined, models, providers)
+			: new Triage(undefined, chosen.skipped, models, providers);
+	}
+
+	/** Runs the command credentials of the providers the review's lenses and triage may call; one that fails stops the review. */
+	unlockModels(): Promise<void> {
+		return unlockCredentials(this.#models, this.#providers);
 	}
 
 	harnessOptions(): { readonly decider?: Decider } {
 		return this.decider === undefined ? {} : { decider: this.decider };
 	}
 
-	reviewOptions(): { readonly decider?: Decider; readonly triageSkipped?: string } {
+	reviewOptions(): {
+		readonly decider?: Decider;
+		readonly triageSkipped?: string;
+		readonly unlockModels: () => Promise<void>;
+	} {
 		return {
+			unlockModels: () => this.unlockModels(),
 			...this.harnessOptions(),
 			...(this.skipped === undefined ? {} : { triageSkipped: this.skipped }),
 		};

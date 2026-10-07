@@ -108,8 +108,8 @@ import {
 	reviewFiles,
 	type StoredBudgetEnd,
 } from "./lens-tools.ts";
-import { modelsOf, type ReviewModels } from "./models.ts";
-import { attachable, ReviewIndex, type ReviewIndexState, undecided } from "./review-index.ts";
+import { hasCredentials, modelsOf, type ReviewModels } from "./models.ts";
+import { attachable, finished, ReviewIndex, type ReviewIndexState, undecided } from "./review-index.ts";
 import { summarizeExtension } from "./summarize.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce, triageBoundary } from "./untrusted.ts";
 import {
@@ -692,7 +692,7 @@ async function routeOf(tier: LensTier, config: MelianConfig, review: ReviewModel
 	const available: ModelReference[] = [];
 	for (const candidate of [route.model, ...route.fallbacks]) {
 		if (models.getModel(candidate.provider, candidate.modelId) === undefined) continue;
-		if ((await models.checkAuth(candidate.provider)) !== undefined) available.push(candidate);
+		if (await hasCredentials(review, candidate.provider)) available.push(candidate);
 	}
 	if (available.length > 0) return { route: available };
 	const tried = [route.model, ...route.fallbacks].map(modelName).join(", ");
@@ -780,6 +780,13 @@ interface ReviewSettings {
 	 * the same outcome, so it spends no tokens unasked.
 	 */
 	readonly rerun?: boolean;
+	/**
+	 * Called once, before the review first creates or resumes a task that may call a model. The host unlocks
+	 * credentials there, so one that fails stops the review before the model is asked. A repeat review that attaches
+	 * to finished tasks never calls it, and so runs no credential command. A task a crash left unfinished starts at
+	 * the harness's first wait, ahead of this call, and reads its credential when it asks.
+	 */
+	readonly unlockModels?: () => Promise<void>;
 	/**
 	 * Where the revision came from, recorded with the verdict. Only a `pull-request` review whose policy came from a
 	 * revision can be published. A range by default.
@@ -872,10 +879,23 @@ async function runLenses(
 	rerun: boolean,
 	context: Context,
 	refused: (key: string, model: string) => boolean = () => false,
+	unlockModels?: () => Promise<void>,
 ): Promise<{ readonly result: LensResult | undefined; readonly ran: StoredLensTaskInput }> {
 	const root = await harness.root(context);
 	const revision = revisionKey(input.revision);
 	const selection = selectionOf(input.lenses, input.escalateAt);
+	if (unlockModels !== undefined) {
+		// What the commit below decides, read ahead of it: only a finished task of this selection, with no failed lens to
+		// rerun, is attached to without asking a model.
+		const known = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision];
+		const record = known?.task === undefined ? undefined : await harness.getTask(known.task as TaskId, context);
+		const attaches =
+			known !== undefined &&
+			known.lenses.join("\n") === selection.join("\n") &&
+			finished(record, undecided) &&
+			!(rerun && lensFailed(record!, refused));
+		if (!attaches) await unlockModels();
+	}
 	let replaced: number | undefined;
 	const taskId = await root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
@@ -932,8 +952,20 @@ async function anyLensFailed(
 	refused: (key: string, model: string) => boolean,
 ): Promise<boolean> {
 	const record = id === undefined ? undefined : await tx.task(id as TaskId);
-	if (record?.state.status !== "terminal") return false;
+	return record !== undefined && lensFailed(record, refused);
+}
+
+function lensFailed(
+	record: {
+		readonly state: {
+			readonly status: string;
+			readonly outcome?: { readonly status: string; readonly result?: unknown };
+		};
+	},
+	refused: (key: string, model: string) => boolean,
+): boolean {
 	const { outcome } = record.state;
+	if (record.state.status !== "terminal" || outcome === undefined) return false;
 	if (outcome.status !== "completed") return true;
 	return Object.entries(outcome.result as LensResult).some(
 		([key, lens]) => lens.status !== "done" || (lens.model !== undefined && refused(key, lens.model)),
@@ -1175,6 +1207,7 @@ async function triage(
 	inputCut: boolean,
 	rerun: boolean,
 	context: Context,
+	unlockModels?: () => Promise<void>,
 ): Promise<{ readonly decision?: Decision; readonly failure?: string }> {
 	const root = await harness.root(context);
 	const set = request.questionSet.name;
@@ -1192,6 +1225,14 @@ async function triage(
 		request: structuredClone(request) as DecisionTaskInput["request"],
 		...(inputCut ? { inputCut: true } : {}),
 	};
+	if (unlockModels !== undefined) {
+		// What the commit below decides, read ahead of it: only a finished decision of these questions is attached to
+		// without asking a model, and a rerun asks again after one that recorded none.
+		const entry = (await harness.snapshot(DecisionDocument, root.id, context))?.decisions[revision]?.[set];
+		const record = entry === undefined ? undefined : await harness.getTask(entry.task as TaskId, context);
+		const attaches = entry?.key === key && !(rerun && entry.decision === undefined) && finished(record, undecided);
+		if (!attaches) await unlockModels();
+	}
 	let replaced: number | undefined;
 	const taskId = await root.commit(async (tx) => {
 		const document = await tx.doc(DecisionDocument, root.id);
@@ -1331,6 +1372,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		paths,
 	);
 	const nonce = reviewNonce();
+	let unlocking: Promise<void> | undefined;
+	const unlockModels = options.unlockModels === undefined ? undefined : () => (unlocking ??= options.unlockModels!());
 	const prompt = new ChangePrompt(changeset, nonce);
 	const { repoRoot, revision } = changeset;
 	const { base, head } = revision;
@@ -1405,6 +1448,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					triageInput.cut,
 					options.rerun === true,
 					context,
+					unlockModels,
 				);
 	const choices = new Map(
 		covering.map(({ lens }) => {
@@ -1562,12 +1606,21 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const { result: lensResult, ran } =
 		lenses.length === 0
 			? { result: {}, ran: lensInput }
-			: await runLenses(harness, lensInput, options.rerun === true, context, (key, model) => {
-					const run = runsOf(lenses).find((each) => each.key === key);
-					const judged =
-						run === undefined ? undefined : request.plan?.judge(run.name, run.level, model, run.coverage.scope);
-					return judged?.refusal !== undefined;
-				});
+			: await runLenses(
+					harness,
+					lensInput,
+					options.rerun === true,
+					context,
+					(key, model) => {
+						const run = runsOf(lenses).find((each) => each.key === key);
+						const judged =
+							run === undefined
+								? undefined
+								: request.plan?.judge(run.name, run.level, model, run.coverage.scope);
+						return judged?.refusal !== undefined;
+					},
+					unlockModels,
+				);
 	// Escalation is settled from the runs the task stored, which decided it, never from this call's own computation.
 	const rule = new EscalationRule(ran.escalateAt ?? escalateAt);
 	const stored = new Map(ran.lenses.map((run) => [run.key, run]));
@@ -1675,7 +1728,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		for (const model of route)
 			if (
 				collection.getModel(model.provider, model.modelId) !== undefined &&
-				(await collection.checkAuth(model.provider).catch(() => undefined)) !== undefined
+				(await hasCredentials(models, model.provider))
 			)
 				available.push(model);
 		candidates.push({
@@ -1728,6 +1781,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				(model) =>
 					request.plan?.tier("verifier").acceptOverridden === false &&
 					request.plan.verifierLineage(model)?.outside === true,
+				unlockModels,
 			);
 			if (verifying === undefined)
 				verificationCheck = { name: "verifier", status: "failed", version: verifierVersion, reason: "superseded" };

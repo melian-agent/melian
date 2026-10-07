@@ -35,6 +35,15 @@ export const ReviewIndex = defineDoc<ReviewIndexState>({
 // Outcomes that decided nothing: a cancelled task, one that broke the task contract, and one whose definition is gone.
 export const undecided: readonly string[] = ["aborted", "faulted", "orphaned"];
 
+// Whether a repeat call attaching to `record` finds a decided outcome: it ran to the end, and its outcome is not one of
+// `retry`. Nothing runs again then, so no model is asked.
+export function finished(
+	record: { readonly state: { readonly status: string; readonly outcome?: { readonly status: string } } } | undefined,
+	retry: readonly string[],
+): boolean {
+	return record?.state.status === "terminal" && !retry.includes(record.state.outcome?.status ?? "");
+}
+
 // Whether a repeat call may attach to the task the index names: one that is live, crashed, or decided something, and
 // whose outcome is not one of `retry`. A task that ended without deciding would hand every later call the same
 // non-result.

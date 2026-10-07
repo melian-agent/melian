@@ -128,6 +128,7 @@ type ReviewWith = {
 	policy?: RepositorySource;
 	rerun?: boolean;
 	range?: string;
+	unlockModels?: () => Promise<void>;
 };
 
 // The default tiers' checks that run without a model, recorded as ran: `static` expands to each static tool.
@@ -158,6 +159,7 @@ async function reviewed(options: ReviewWith = {}): Promise<Review> {
 		checks: [...ran, ...supplied],
 		...(options.policy === undefined ? {} : { policy: options.policy }),
 		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
+		...(options.unlockModels === undefined ? {} : { unlockModels: options.unlockModels }),
 	});
 }
 
@@ -1004,6 +1006,66 @@ describe("reviewChangeset", () => {
 
 		expect(await review()).toEqual(first);
 		expect(fake.provider.state.callCount).toBe(calls);
+	});
+
+	describe("unlocking credentials", () => {
+		// Each call records how many requests the models had taken by then.
+		const unlocking = () => {
+			const before: number[] = [];
+			const unlockModels = vi.fn(async () => {
+				before.push(fake.provider.state.callCount);
+			});
+			return { before, unlockModels };
+		};
+		const failing = fauxAssistantMessage("", { stopReason: "error", errorMessage: "HTTP 503 service unavailable" });
+		const lensesDone = () =>
+			scriptConversations(fake, [
+				{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+		it("runs once, before any lens asks a model, and not for a repeat review that spends no tokens", async () => {
+			lensesDone();
+			const first = unlocking();
+			await review({ unlockModels: first.unlockModels });
+			expect(first.before).toEqual([0]);
+
+			const repeat = unlocking();
+			await review({ unlockModels: repeat.unlockModels });
+			expect(repeat.unlockModels).not.toHaveBeenCalled();
+		});
+
+		it("runs for a review whose lens selection changed", async () => {
+			lensesDone();
+			await review();
+			const retiered = { ...config, lenses: { ...config.lenses, contracts: { enabled: false } } };
+			scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
+			const changed = unlocking();
+			await review({ config: retiered, unlockModels: changed.unlockModels });
+			expect(changed.unlockModels).toHaveBeenCalledTimes(1);
+		});
+
+		it("runs for a rerun that retries a failed lens, and for none that has nothing to retry", async () => {
+			scriptConversations(fake, [
+				{ match: correctness, replies: [failing, failing, failing] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+			await expect(review()).rejects.toMatchObject({ code: "allModelsFailed" });
+
+			const repeat = unlocking();
+			await expect(review({ unlockModels: repeat.unlockModels })).rejects.toMatchObject({ code: "allModelsFailed" });
+			expect(repeat.unlockModels).not.toHaveBeenCalled();
+
+			lensesDone();
+			const retried = unlocking();
+			const calls = fake.provider.state.callCount;
+			await review({ rerun: true, unlockModels: retried.unlockModels });
+			expect(retried.before).toEqual([calls]);
+
+			const settled = unlocking();
+			await review({ rerun: true, unlockModels: settled.unlockModels });
+			expect(settled.unlockModels).not.toHaveBeenCalled();
+		});
 	});
 
 	describe("returns only the findings of the lenses this review ran", () => {
@@ -2768,10 +2830,35 @@ describe("on a repeat review after a task ended without deciding", () => {
 		expect(await first).toMatchObject({ code: "lensFailed" });
 		bothDone();
 
-		const { verdict } = await reviewed();
+		const unlockModels = vi.fn(async () => {});
+		const { verdict } = await reviewed({ unlockModels });
 
+		expect(unlockModels).toHaveBeenCalledTimes(1);
 		expect((await entry())?.task).not.toBe(aborted);
 		expect(verdict.notRun.filter((check) => check.name.startsWith("lens."))).toEqual([]);
+	});
+
+	it("unlocks credentials for a review that attaches to a lens task still running", async () => {
+		const release = Promise.withResolvers<void>();
+		scriptConversations(fake, [
+			{ match: correctness, replies: [async () => release.promise.then(() => fauxAssistantMessage("Done."))] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const first = reviewed();
+		let running: number | undefined;
+		while (running === undefined) {
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			running = (await entry())?.task;
+		}
+		const unlockModels = vi.fn(async () => {});
+		const second = reviewed({ unlockModels });
+		try {
+			await vi.waitFor(() => expect(unlockModels).toHaveBeenCalledTimes(1));
+		} finally {
+			release.resolve();
+		}
+		await Promise.all([first, second]);
+		expect((await entry())?.task).toBe(running);
 	});
 
 	it("starts an adjudication task in place of an aborted one when no lens runs", async () => {
