@@ -29,9 +29,11 @@ import {
 	fauxToolCall,
 	scriptConversations,
 	scriptVerifier,
+	systemPromptOf,
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CallerContext } from "../src/callers.ts";
 import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
 import { findingsVersion } from "../src/findings.ts";
 import { LensDocument } from "../src/lens-tools.ts";
@@ -71,6 +73,7 @@ async function killWhen(
 		| "finding"
 		| "legacy"
 		| "request"
+		| "callers"
 		| "adjudication"
 		| "read"
 		| "spent"
@@ -238,6 +241,45 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		expect(fake.provider.state.callCount).toBe(2);
 		const lensTasks = (await harness.inspect(context)).tasks.filter((task) => task.record.kind === "melian.lenses");
 		expect(lensTasks).toEqual([]);
+	});
+
+	it("attaches a repeat call whose caller context is unavailable, and keeps the first call's caller section", async () => {
+		const database = join(dir, "callers.sqlite");
+		const log = join(dir, "callers.jsonl");
+		await killWhen("callers", (events) => count(events, "model-request") === 2, database, log);
+
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
+		const requests = scriptConversations(fake, [
+			{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+			{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+		]);
+		harness = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		const heavy = fake.ref("heavy");
+		await reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config: {
+				...defaultConfig,
+				tiers: twoLensTiers,
+				models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
+			},
+			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
+			standards: [],
+			checks: [],
+			models: fake.review,
+			callers: CallerContext.unavailable("graph missing on the rerun"),
+		});
+
+		expect(requests["You are the correctness reviewer"]).toHaveLength(1);
+		expect(requests["You are the contracts reviewer"]).toHaveLength(1);
+		expect(fake.provider.state.callCount).toBe(2);
+		for (const [match, [request]] of Object.entries(requests)) {
+			expect(systemPromptOf(request!), match).toContain("First");
+		}
 	});
 
 	it("does not resume a crashed run on one route once a review on another starts, and reads only the new run", async () => {

@@ -136,7 +136,6 @@ interface LensRun {
 	readonly route: readonly ModelReference[];
 	readonly verify?: boolean;
 	readonly instructions: string;
-	readonly callers?: string;
 	readonly instructionFingerprint?: string;
 	readonly standardsOmitted?: boolean;
 	readonly standards?: readonly string[];
@@ -856,7 +855,6 @@ function selectionOf(lenses: readonly LensRun[], escalateAt: Severity | undefine
 		.map((lens) =>
 			[
 				lens.key,
-				...(lens.callers === undefined ? [] : [`callers ${lens.callers}`]),
 				...(lens.instructionFingerprint === undefined ? [] : [`instructions ${lens.instructionFingerprint}`]),
 				...(lens.band === undefined ? [] : [`band ${lens.band}`]),
 				...(escalateAt === undefined ? [] : [`escalateAt ${escalateAt}`]),
@@ -1491,7 +1489,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			? lens.rules
 			: [...lens.rules, injectionAttemptRule];
 		const ruled = Lens.from({ ...lens.toJSON(), rules });
-		const callerSection = options.callers?.render(covers, "selection") ?? "";
 		const runAt = async (level: ScrutinyLevel): Promise<LensRun> => {
 			const settings = lens.level(level);
 			const band = bands.get(lens)!;
@@ -1503,7 +1500,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				level,
 				route: [...(routes.get(settings.tier) as { route: ModelReference[] }).route],
 				verify: settings.verify,
-				...(callerSection === "" ? {} : { callers: createHash("sha256").update(callerSection).digest("hex") }),
 				instructions: ruled.renderInstructions(
 					reading.sections,
 					level,
@@ -1521,7 +1517,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 								neighbours,
 								(text, label = "listing") => quoteUntrusted(label, text, "0".repeat(24)),
 								standardsSource,
-								options.callers?.render(covers, "0".repeat(24)),
 							),
 							standards: reading.sections,
 							standardsOmitted: reading.omitted.length > 0,

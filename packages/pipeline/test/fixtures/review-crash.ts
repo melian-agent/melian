@@ -8,11 +8,13 @@
 // tool's result is stored: `spent` in the second read under a budget of one call, `tokens` in the first under a budget
 // of one token. `escalation` triages correctness to quick through a recorded decider, has it report a P1, and parks in
 // the first model request of the careful run it escalates to, after the commit that created that run's conversation.
+// `callers` is `request` with a caller section in each lens's instructions.
 // `decision` parks in the decider's first call, with the decision task live and named by the decision document.
 // `replacement` first records a verdict, then parks in replacement triage after its decision commit.
 import { Changeset, type Decider, defaultConfig, Lens, severitySchema } from "@melian-agent/core";
 import { RecordedDecider } from "@melian-agent/decisions";
 import { AdjudicationTask } from "../../src/adjudication.ts";
+import { CallerContext } from "../../src/callers.ts";
 import { decisionExtension } from "../../src/decisions.ts";
 import {
 	backgroundContext,
@@ -50,6 +52,7 @@ const [scenario, repo, database, log] = process.argv.slice(2) as [
 		| "finding"
 		| "legacy"
 		| "request"
+		| "callers"
 		| "adjudication"
 		| "read"
 		| "spent"
@@ -181,6 +184,7 @@ const correctness: Readonly<Record<typeof scenario, readonly ScriptedReply[]>> =
 	finding: [toolUse("report_finding", crashFinding)],
 	legacy: [toolUse("report_finding", legacyCrashFinding)],
 	request: [requested("correctness")],
+	callers: [requested("correctness")],
 	adjudication: [done],
 	read: [toolUse("read_file", { path: "src/user.ts" })],
 	spent: [toolUse("read_file", { path: "src/user.ts" }), toolUse("read_file", { path: "src/user.ts", startLine: 7 })],
@@ -216,7 +220,10 @@ scriptConversations(fake, [
 			]
 		: []),
 	{ match: "You are the correctness reviewer", replies: correctness[scenario] },
-	{ match: "You are the contracts reviewer", replies: [scenario === "request" ? requested("contracts") : done] },
+	{
+		match: "You are the contracts reviewer",
+		replies: [scenario === "request" || scenario === "callers" ? requested("contracts") : done],
+	},
 ]);
 function lensesFor(lenses: Lens[]) {
 	if (scenario === "escalation" || scenario === "decision") return lenses;
@@ -242,6 +249,23 @@ const options = {
 		},
 	},
 	...(scenario === "escalation" ? { decider } : scenario === "decision" ? { decider: parkedDecider } : {}),
+	...(scenario === "callers"
+		? {
+				callers: CallerContext.from({
+					groups: [
+						{
+							file: "src/user.ts",
+							symbol: "managerName",
+							callers: [{ name: "First", kind: "symbol", file: "caller.ts", line: 1 }],
+							truncated: false,
+						},
+					],
+					issues: [],
+					notes: [],
+					paths: [],
+				}),
+			}
+		: {}),
 	lenses: lensesFor(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 	checks: [],
 	standards: [],
