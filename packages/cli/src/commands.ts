@@ -244,7 +244,7 @@ const writePermissions: readonly RepositoryPermission[] = ["write", "maintain", 
 async function writerTrust(provider: ReviewProvider, author: string | undefined): Promise<WriterTrust> {
 	if (author === undefined) return { trusted: false, detail: "the provider names no author for the pull request" };
 	const permission = await provider.permission(author);
-	if (permission !== undefined && writePermissions.includes(permission)) return { trusted: true };
+	if (writePermissions.some((each) => each === permission)) return { trusted: true };
 	return {
 		trusted: false,
 		detail: `${author} has ${permission === undefined ? "no known" : permission} permission on the repository`,
