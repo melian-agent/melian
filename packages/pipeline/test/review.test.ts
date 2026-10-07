@@ -1565,7 +1565,7 @@ describe("reviewChangeset", () => {
 			expect(verdict.notRun.map((check) => check.name)).toContain("lens.contracts");
 		});
 
-		it("counts a lens that reported exactly its budget as run, since nothing was refused", async () => {
+		it("leaves the review not reviewed for a lens that stopped at its budget without a refused report, since it obeyed the cap", async () => {
 			scriptConversations(fake, [
 				correctnessDone,
 				{ match: contracts, replies: [call("report_finding", changedReturn), fauxAssistantMessage("Done.")] },
@@ -1573,12 +1573,43 @@ describe("reviewChangeset", () => {
 
 			const { verdict } = await reviewed({ lenses: capped(1) });
 
+			expect(verdict.status).toBe("not-reviewed");
+			expect(verdict.notRun.find((check) => check.name === "lens.contracts")).toEqual({
+				name: "lens.contracts",
+				status: "ended",
+				level: "careful",
+				reason:
+					"its findings budget of 1 ran out while `correctness` could have handed it defects, so one may be unreported",
+			});
+		});
+
+		it("counts a lens that reported under its budget as run", async () => {
+			scriptConversations(fake, [
+				correctnessDone,
+				{ match: contracts, replies: [call("report_finding", changedReturn), fauxAssistantMessage("Done.")] },
+			]);
+
+			const { verdict } = await reviewed({ lenses: capped(2) });
+
 			expect(verdict.status).toBe("findings");
 			expect(verdict.ran?.find((check) => check.name === "lens.contracts")).toEqual({
 				name: "lens.contracts",
 				status: "ran",
 				level: "careful",
 			});
+		});
+
+		it("counts a lens at its budget as run when nothing could have handed it a defect", async () => {
+			scriptConversations(fake, [
+				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+			const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 1 }) : lens));
+
+			const { verdict } = await reviewed({ lenses: tight });
+
+			expect(verdict.status).toBe("findings");
+			expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toMatchObject({ status: "ran" });
 		});
 
 		it("counts a lens nothing handed a defect to as run", async () => {

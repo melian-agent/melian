@@ -432,7 +432,12 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					const settled = await (await child.submit(request, context)).wait(context);
 					if (settled.status === "done") {
 						const ended = await budgetEnded(runtime, id, context);
-						const capped = await findingsCapped(runtime, id, context);
+						// A refused report is the evidence a lens wanted more, and a lens told its budget stops at it without
+						// asking, so a run that reached its budget counts as capped too.
+						const budget = typeof lens.budget === "number" ? lens.budget : lens.budget.findings;
+						const capped =
+							(await findingsCapped(runtime, id, context)) ??
+							((await sighted(lens)).length >= budget ? budget : undefined);
 						const spend = (await runtime.snapshot(UsageDoc, id, context))?.models ?? {};
 						const usage = {
 							models: Object.keys(spend),

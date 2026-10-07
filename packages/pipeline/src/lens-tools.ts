@@ -449,7 +449,8 @@ export async function budgetEnded(
 }
 
 // The findings budget a lens ran into, when a report past it was refused: some finding it wanted to report went
-// unreported. `undefined` when it never asked for more than its budget.
+// unreported. `undefined` when it never asked for more than its budget; a lens that stopped at its budget unasked is
+// counted by the review.
 export async function findingsCapped(
 	reader: DocumentReader,
 	conversationId: ConversationId,
