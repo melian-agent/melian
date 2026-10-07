@@ -25,16 +25,16 @@ tools:
         sha256: 820b88baa3ef9efd984e850004c9decc1d0b5c2d5381bb04487c332dd9360ef3
         binary: enola-0.4.27-linux-arm64
 misses:
-  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "M1", tool: repro-run }
-  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "M2", tool: tests }
-  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L1", tool: tests }
-  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L2", tool: tests }
-  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L3", tool: tests }
-  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L4", tool: tests }
-  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L5", tool: tests }
-  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L6", tool: tests }
-  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L8", tool: tests }
-  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L10", tool: tests }
-  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L11", tool: tests }
-  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L12", tool: tests }
-  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "L13", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C1", tool: repro-run }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C2", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C3", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C4", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C5", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C6", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C7", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C8", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C10", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C12", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C13", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C14", tool: tests }
+  - { record: packages/evals/comparisons/2026-10-06-pr-89.md, finding: "C15", tool: tests }

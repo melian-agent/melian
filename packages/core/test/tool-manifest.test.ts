@@ -90,22 +90,36 @@ describe("ToolManifest", () => {
 		expect(Object.keys(manifest.tool("enola").platforms)).toHaveLength(4);
 		expect(manifest.artifact("enola", "darwin-arm64").binary).toBe("enola-0.4.27-darwin-arm64");
 		expect(manifest.toJSON().misses.map((miss) => miss.finding)).toEqual([
-			"M1",
-			"M2",
-			"L1",
-			"L2",
-			"L3",
-			"L4",
-			"L5",
-			"L6",
-			"L8",
-			"L10",
-			"L11",
-			"L12",
-			"L13",
+			"C1",
+			"C2",
+			"C3",
+			"C4",
+			"C5",
+			"C6",
+			"C7",
+			"C8",
+			"C10",
+			"C12",
+			"C13",
+			"C14",
+			"C15",
 		]);
 		expect(() => manifest.tool("constructor")).toThrow("No tool");
 		expect(() => manifest.artifact("enola", "windows-amd64")).toThrow("no pin");
+	});
+
+	it("names only findings that have a row in the record it cites", () => {
+		const manifest = ToolManifest.parse(JSON.stringify(stored));
+		const misses = manifest.toJSON().misses;
+		expect(misses.length).toBeGreaterThan(0);
+		for (const miss of misses) {
+			const text = readFileSync(new URL(`../../../${miss.record}`, import.meta.url), "utf8");
+			const firstCells = text
+				.split("\n")
+				.filter((line) => line.startsWith("|"))
+				.map((line) => line.split("|")[1]?.trim());
+			expect(firstCells, `${miss.record} has no row for ${miss.finding}`).toContain(miss.finding);
+		}
 	});
 
 	it.each([
