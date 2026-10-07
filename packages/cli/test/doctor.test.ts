@@ -117,6 +117,10 @@ describe("doctor writer trust", () => {
 	);
 
 	it.each(["viewer", "permission"])("warns on a refused %s read", async (refusal) => {
+		writeFileSync(join(repo, "melian.yaml"), "trust: { writers: true }\n");
+		gitIn(repo, "add", "melian.yaml");
+		gitIn(repo, "commit", "--quiet", "-m", "trust writers");
+		gitIn(repo, "update-ref", "refs/remotes/origin/main", "HEAD");
 		const state = github();
 		state.failUser = refusal === "viewer";
 		state.failPermission = refusal === "permission";
