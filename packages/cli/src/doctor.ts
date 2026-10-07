@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { join, sep } from "node:path";
+import { dirname, join, sep } from "node:path";
 import {
 	checksOfTier,
 	Lens,
@@ -213,6 +213,28 @@ async function executableCheck(cwd: string, executable: string | undefined): Pro
 		: { name: "melian", state: "ok", detail: `${shown}, outside this checkout` };
 }
 
+// Which Melian reviewed a change: the clone the executable links to, its commit, and whether its tree holds edits no commit
+// names. An install from the registry sits under node_modules and has no clone.
+async function cloneCheck(executable: string | undefined): Promise<Check | undefined> {
+	if (executable === undefined) return undefined;
+	const real = realpathSync(executable);
+	if (real.split(sep).includes("node_modules")) return undefined;
+	const root = await git(dirname(real), ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return undefined;
+	const commit = await git(root, ["rev-parse", "--short=12", "HEAD"]).catch(() => undefined);
+	if (commit === undefined) return { name: "clone", state: "warn", detail: `${root}, with no commit` };
+	const status = await git(root, ["status", "--porcelain"]).catch(() => undefined);
+	if (status === undefined)
+		return { name: "clone", state: "warn", detail: `${root} at ${commit}; git could not read its tree` };
+	return status === ""
+		? { name: "clone", state: "ok", detail: `${root} at ${commit}, tree clean` }
+		: {
+				name: "clone",
+				state: "warn",
+				detail: `${root} at ${commit}, tree dirty: this Melian runs edits no commit holds`,
+			};
+}
+
 // A sandbox can keep .git read-only, and every review then fails to open its storage. Writing a file is the only test a
 // sandbox answers truthfully; it may pass a permission check and still refuse the write.
 async function stateCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<Check | undefined> {
@@ -361,6 +383,7 @@ export async function doctor(io: Io, options: { readonly fetch?: typeof globalTh
 		await trustCheck(io.cwd, token?.token, options.fetch),
 		...[
 			await executableCheck(io.cwd, io.executable),
+			await cloneCheck(io.executable),
 			await stateCheck(io.cwd, io.env),
 			await levelsCheck(io.cwd),
 			await staticCheck(io.cwd),
