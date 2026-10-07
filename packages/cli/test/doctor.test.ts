@@ -162,6 +162,36 @@ describe("doctor writer trust", () => {
 		30_000,
 	);
 
+	it("keeps waiting until the ten-second deadline", async () => {
+		const state = github();
+		const transport = fakeGitHub(state);
+		const started = Promise.withResolvers<void>();
+		let signal: AbortSignal | null | undefined;
+		const fetch: typeof globalThis.fetch = (input, init) => {
+			if (new URL(String(input)).pathname === "/user") {
+				signal = init?.signal;
+				started.resolve();
+				return new Promise<Response>(() => {});
+			}
+			return transport(input, init);
+		};
+		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+		const pending = run(state, fetch);
+		let settled = false;
+		void pending.then(() => {
+			settled = true;
+		});
+		await started.promise;
+		await vi.advanceTimersByTimeAsync(9_999);
+		expect(settled).toBe(false);
+		expect(signal?.aborted).toBe(false);
+		await vi.advanceTimersByTimeAsync(1);
+		vi.useRealTimers();
+		const result = await pending;
+		expect(result.trust).toContain("GitHub read timed out after 10 seconds");
+		expect(signal?.aborted).toBe(true);
+	}, 30_000);
+
 	it.each(["viewer", "permission"])(
 		"bounds %s body parsing after response headers arrive",
 		async (read) => {
