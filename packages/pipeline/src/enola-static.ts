@@ -11,12 +11,31 @@ import {
 	normaliseEnolaSarif,
 	TestCoverage,
 	type ToolLog,
+	visibleText,
 } from "@melian-agent/core";
 import type { CallerData, CallerGroup } from "./callers.ts";
 import { CoverageCache } from "./coverage-cache.ts";
 import { GraphCache } from "./graph-cache.ts";
 import { type Run, type StaticRun, staticOutputLimit } from "./static.ts";
 import type { ToolProvisioning } from "./tool-provisioning.ts";
+
+const uncalledExtensions: ReadonlySet<string> = new Set([
+	".md",
+	".mdx",
+	".markdown",
+	".txt",
+	".rst",
+	".adoc",
+	".yaml",
+	".yml",
+	".json",
+	".jsonc",
+	".toml",
+	".csv",
+	".xml",
+	".html",
+	".svg",
+]);
 
 function quote(text: string): string {
 	return `'${text.replaceAll("'", "'\\''")}'`;
@@ -229,12 +248,19 @@ export class EnolaRun {
 			return { file, changed };
 		});
 		const work: { file: ChangedFile; symbol: (typeof queues)[number]["changed"][number] }[] = [];
-		for (let round = 0; queues.some((queue) => round < queue.changed.length); round++)
-			for (const { file, changed } of queues)
-				if (round < changed.length) work.push({ file, symbol: changed[round]! });
+		// Files whose symbols can have callers spend the cap first; a heading or a key has none.
+		for (const group of [
+			queues.filter(({ file }) => !uncalledExtensions.has(posix.extname(file.path).toLowerCase())),
+			queues.filter(({ file }) => uncalledExtensions.has(posix.extname(file.path).toLowerCase())),
+		])
+			for (let round = 0; group.some((queue) => round < queue.changed.length); round++)
+				for (const { file, changed } of group)
+					if (round < changed.length) work.push({ file, symbol: changed[round]! });
+		const omittedFiles = new Set<string>();
 		for (const { file, symbol } of work) {
 			if (attempted === 128) {
 				omitted++;
+				omittedFiles.add(file.path);
 				continue;
 			}
 			attempted++;
@@ -266,7 +292,13 @@ export class EnolaRun {
 				});
 			}
 		}
-		if (omitted) notes.push(`${omitted} changed symbols omitted at the caller-query limit of 128.`);
+		if (omitted) {
+			const named = [...omittedFiles].slice(0, 5).map((path) => visibleText(path));
+			const more = omittedFiles.size > named.length ? ` and ${omittedFiles.size - named.length} more` : "";
+			notes.push(
+				`${omitted} changed symbols omitted at the caller-query limit of 128, never queried in: ${named.join(", ")}${more}.`,
+			);
+		}
 		const tree = await this.#run.shell(this.#run.git(`rev-parse ${this.#run.input.commit}^{tree}`));
 		if (tree.code !== 0) throw this.#run.fail("worktreeFailed", "Could not resolve caller graph tree");
 		const listing = posix.join(output, "paths");

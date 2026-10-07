@@ -340,8 +340,74 @@ it("caps changed-symbol queries at 128 and records the omitted count", async () 
 	const data = await f.enola.callers(f.files, ["src/a.ts"]);
 	expect(data.groups).toHaveLength(128);
 	expect(data.issues).toEqual([]);
-	expect(data.notes).toEqual(["1 changed symbols omitted at the caller-query limit of 128."]);
+	expect(data.notes).toEqual([
+		"1 changed symbols omitted at the caller-query limit of 128, never queried in: src/a.ts.",
+	]);
 	expect(f.shell.mock.calls.filter(([command]) => command.includes("impact --json"))).toHaveLength(128);
+});
+
+async function crowded(code: number, docs: number) {
+	const f = await fixture();
+	const hunk = (file: string) => ({
+		file,
+		index: 0,
+		oldStart: 1,
+		oldLines: 1,
+		newStart: 1,
+		newLines: 1,
+		header: "",
+		text: "",
+	});
+	const paths = [
+		...Array.from({ length: docs }, (_, i) => `docs/d${String(i).padStart(3, "0")}.md`),
+		...Array.from({ length: code }, (_, i) => `packages/p${String(i).padStart(3, "0")}.ts`),
+	];
+	f.artifacts["facts.jsonl"] = paths
+		.map((path, i) => JSON.stringify({ id: `s${i}`, kind: "symbol", name: `Sym${i}`, file: path, line: 1 }))
+		.join("\n");
+	f.files.splice(
+		0,
+		f.files.length,
+		...paths.map((path): ChangedFile => ({ path, status: "modified", binary: false, hunks: [hunk(path)] })),
+	);
+	f.shell.mockImplementation(async (command) => {
+		const target = /file:\S+ (Sym\d+)/.exec(command)?.[1];
+		if (target)
+			f.artifacts["impact.json"] = JSON.stringify({ target, by_depth: {}, edges: [], stats: { truncated: false } });
+		return { code: 0, output: "a".repeat(40) };
+	});
+	return f;
+}
+
+it("queries code symbols before 130 Markdown headings, and names the files it never queried", async () => {
+	const f = await crowded(1, 130);
+	const data = await f.enola.callers(f.files, []);
+	expect(data.groups.map((group) => group.file)).toContain("packages/p000.ts");
+	expect(data.groups).toHaveLength(128);
+	expect(data.notes).toEqual([
+		"3 changed symbols omitted at the caller-query limit of 128, never queried in: docs/d127.md, docs/d128.md, docs/d129.md.",
+	]);
+});
+
+it("queries exactly 128 code files without an omission note, and names the one it omits at 129", async () => {
+	const exact = await crowded(128, 0);
+	const all = await exact.enola.callers(exact.files, []);
+	expect(all.groups).toHaveLength(128);
+	expect(all.notes).toEqual([]);
+	const over = await crowded(129, 0);
+	const data = await over.enola.callers(over.files, []);
+	expect(data.groups).toHaveLength(128);
+	expect(data.notes).toEqual([
+		"1 changed symbols omitted at the caller-query limit of 128, never queried in: packages/p128.ts.",
+	]);
+});
+
+it("names the first five omitted files and counts the rest", async () => {
+	const f = await crowded(135, 0);
+	const data = await f.enola.callers(f.files, []);
+	expect(data.notes).toEqual([
+		"7 changed symbols omitted at the caller-query limit of 128, never queried in: packages/p128.ts, packages/p129.ts, packages/p130.ts, packages/p131.ts, packages/p132.ts and 2 more.",
+	]);
 });
 
 it("uses head as the baseline when no base is supplied", async () => {
