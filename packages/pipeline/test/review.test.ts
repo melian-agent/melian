@@ -278,6 +278,52 @@ describe("reviewChangeset", () => {
 		expect(await adjudication()).toBe(task);
 		for (const record of lensRecords(repeat)) expect(record.reason ?? "").not.toContain("Callers unavailable");
 	});
+	it("never stores a replaced lens task's caller record on the task that replaced it", async () => {
+		const enabled = { ...config, static: { ...config.static, enola: { ...config.static.enola, enabled: true } } };
+		const context1 = CallerContext.from({ groups: [], issues: [], notes: [], paths: [] });
+		const gates = [Promise.withResolvers<void>(), Promise.withResolvers<void>()];
+		const coverage = vi.spyOn(CallerContext.prototype, "recordCoverage").mockImplementation(async () => {
+			const at = coverage.mock.calls.length - 1;
+			await gates[at]?.promise;
+			return { review: ["first", "second", "third"][at]! };
+		});
+		const entry = async () =>
+			(await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context))?.reviews[reviewedRevision()];
+		scriptConversations(fake, [
+			{ match: correctness, replies: [] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const firstCall = reviewed({ callers: context1, config: enabled }).catch((caught: unknown) => caught);
+		await vi.waitFor(() => expect(coverage).toHaveBeenCalledTimes(1));
+		const stale = (await entry())!.task;
+		scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const secondCall = reviewed({ callers: context1, config: enabled, rerun: true });
+		await vi.waitFor(() => expect(coverage).toHaveBeenCalledTimes(2));
+		expect((await entry())!.task).not.toBe(stale);
+
+		gates[0]!.resolve();
+		await expect(firstCall).resolves.toMatchObject({ code: "lensFailed" });
+		expect((await entry())!.callers).toBeUndefined();
+
+		gates[1]!.resolve();
+		const second = await secondCall;
+		const records = second.verdict.ran!.filter((record) => record.name.startsWith("lens."));
+		for (const record of records) expect(record.coverage).toEqual({ review: "second" });
+		expect((await entry())!.callers).toMatchObject({ coverage: { review: "second" }, task: (await entry())!.task });
+
+		// A record of another task, such as one an earlier build stored, is never read back.
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			const index = await tx.doc(ReviewIndex, root.id);
+			index.reviews[reviewedRevision()]!.callers = { notes: {}, coverage: { review: "stale" }, task: stale! };
+		}, context);
+		const repeat = await reviewed({ callers: context1, config: enabled });
+		for (const record of repeat.verdict.ran!.filter((each) => each.name.startsWith("lens.")))
+			expect(record.coverage).toEqual({ review: "third" });
+	});
 	it("keeps caller names and paths inside the model-visible boundary", async () => {
 		const callers = CallerContext.from({
 			groups: [

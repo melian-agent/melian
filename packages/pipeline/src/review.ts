@@ -897,7 +897,7 @@ async function runLenses(
 	rerun: boolean,
 	context: Context,
 	refused: (key: string, model: string) => boolean = () => false,
-): Promise<{ readonly result: LensResult | undefined; readonly ran: StoredLensTaskInput }> {
+): Promise<{ readonly result: LensResult | undefined; readonly ran: StoredLensTaskInput; readonly task: number }> {
 	const root = await harness.root(context);
 	const revision = revisionKey(input.revision);
 	const selection = selectionOf(input.lenses, input.escalateAt);
@@ -945,6 +945,7 @@ async function runLenses(
 	return {
 		result: outcome.status === "completed" ? outcome.result : undefined,
 		ran: settled.input as unknown as StoredLensTaskInput,
+		task: taskId,
 	};
 }
 
@@ -973,6 +974,7 @@ async function anyLensFailed(
 async function callersFor(
 	harness: Harness,
 	input: StoredLensTaskInput,
+	task: number | undefined,
 	settledLenses: boolean,
 	notes: Record<string, string[]>,
 	coverage: () => Promise<Pick<CallerRecord, "coverage" | "coverageUnavailable">>,
@@ -985,15 +987,16 @@ async function callersFor(
 		const entry = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision];
 		return entry?.lenses.join("\n") === selection.join("\n") ? entry : undefined;
 	};
+	// A record names the lens task it was computed from. A rerun that replaced the task leaves a record of the old one.
 	const stored = (await entryOf())?.callers;
-	if (stored !== undefined) return stored;
-	const fresh: CallerRecord = { notes, ...(await coverage()) };
-	if (!settledLenses) return fresh;
+	if (stored !== undefined && stored.task === task) return stored;
+	const fresh: CallerRecord = { notes, ...(await coverage()), task };
+	if (!settledLenses || task === undefined) return fresh;
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const entry = index.reviews[revision];
-		if (entry?.lenses.join("\n") !== selection.join("\n")) return fresh;
-		entry.callers ??= fresh;
+		if (entry?.lenses.join("\n") !== selection.join("\n") || entry.task !== task) return fresh;
+		if (entry.callers?.task !== task) entry.callers = fresh;
 		return JSON.parse(JSON.stringify(entry.callers)) as CallerRecord;
 	}, context);
 }
@@ -1629,15 +1632,18 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		? { notes: callerNotes, ...(coverageSource ? { coverage: coverageSource } : {}) }
 		: undefined;
 	const lensInput = new LensTaskInput(root, state, lenses, escalateAt, callersInput).toJSON();
-	const { result: lensResult, ran } =
-		lenses.length === 0
-			? { result: {}, ran: lensInput }
-			: await runLenses(harness, lensInput, options.rerun === true, context, (key, model) => {
-					const run = runsOf(lenses).find((each) => each.key === key);
-					const judged =
-						run === undefined ? undefined : request.plan?.judge(run.name, run.level, model, run.coverage.scope);
-					return judged?.refusal !== undefined;
-				});
+	const {
+		result: lensResult,
+		ran,
+		task: lensTask,
+	} = lenses.length === 0
+		? { result: {} as LensResult, ran: lensInput, task: undefined }
+		: await runLenses(harness, lensInput, options.rerun === true, context, (key, model) => {
+				const run = runsOf(lenses).find((each) => each.key === key);
+				const judged =
+					run === undefined ? undefined : request.plan?.judge(run.name, run.level, model, run.coverage.scope);
+				return judged?.refusal !== undefined;
+			});
 	// Escalation is settled from the runs the task stored, which decided it, never from this call's own computation.
 	const rule = new EscalationRule(ran.escalateAt ?? escalateAt);
 	const stored = new Map(ran.lenses.map((run) => [run.key, run]));
@@ -1652,6 +1658,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const callers = await callersFor(
 		harness,
 		lensInput,
+		lensTask,
 		lenses.length > 0 && lensResult !== undefined,
 		rendered?.notes ?? callerNotes,
 		async () => {

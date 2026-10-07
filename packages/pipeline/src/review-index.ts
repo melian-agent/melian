@@ -23,6 +23,8 @@ export type CallerRecord = {
 	notes: Record<string, string[]>;
 	coverage?: CoverageIds;
 	coverageUnavailable?: true;
+	// The lens task the record was computed from; a record of another task is stale.
+	task?: number;
 };
 
 export type ReviewIndexState = { reviews: Record<string, IndexedReview> };
