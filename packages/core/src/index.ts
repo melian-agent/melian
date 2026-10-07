@@ -340,7 +340,44 @@ export {
 	type RepeatedFinding,
 	type ReviewerStats,
 } from "./comparison-set.ts";
-
+export {
+	type CoverageIds,
+	ReviewCoverage,
+	type ReviewCoverageState,
+	type ReviewRead,
+	TestCoverage,
+	type TestCoverageState,
+} from "./coverage-artifacts.ts";
+export { EnolaPolicy, type EnolaPolicyState, type EnolaSnapshot, normaliseEnolaSarif } from "./enola.ts";
+export { type EnolaFact, EnolaFacts, EnolaImpact, type EnolaImpactState, EnolaQueryError } from "./enola-graph.ts";
+export { enolaPolicyPattern } from "./enola-paths.ts";
+export {
+	type GraphEntryState,
+	GraphError,
+	type GraphFiles,
+	type GraphKeyParts,
+	GraphSnapshot,
+	graphFiles,
+	graphKeySchema,
+} from "./graph.ts";
+export {
+	type CallGroundTruth,
+	type CallPair,
+	CoverageError,
+	type CoverageGap,
+	GraphCoverage,
+	type GraphCoverageState,
+	type ImportEdge,
+	type SymbolSite,
+} from "./graph-coverage.ts";
+export {
+	type ToolArtifact,
+	ToolManifest,
+	ToolManifestError,
+	type ToolManifestState,
+	type ToolPin,
+	toolManifestSchema,
+} from "./tool-manifest.ts";
 export {
 	type StoredVerificationState,
 	type Verification,

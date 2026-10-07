@@ -19,6 +19,7 @@ import {
 } from "./compare.ts";
 import { doctor } from "./doctor.ts";
 import { parseTarget } from "./target.ts";
+import { tools } from "./tools.ts";
 
 /** The exit code for a command line Melian cannot read, as `sysexits.h` numbers it. */
 export const usageExitCode = 64;
@@ -51,7 +52,8 @@ Commands:
                          List owed goldens by lens; --markdown prints BACKLOG.md's generated section.
   compare export <range|#pr> [--out <path>] [--json]
                          Write the local comparison record as markdown, or its whole document as JSON.
-  doctor                 Check Node, git, credentials, model routes, and GitHub access.
+  tools [fetch <name>]   List pinned tool readiness, or fetch and verify one tool. Exits 0 success, 1 failure.
+  doctor                 Check Node, git, credentials, model routes, tool readiness, and GitHub access.
 
 Options:
   --model <provider/id>  Route every tier to this model, over any route melian.yaml sets (review).
@@ -259,11 +261,16 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			case "doctor":
 				if (rest.length > 0) throw new UsageError("doctor takes no arguments");
 				return await doctor(scoped);
+			case "tools":
+				if (rest.length === 0) return await tools(scoped);
+				if (rest.length === 2 && rest[0] === "fetch") return await tools(scoped, rest[1]!);
+				throw new UsageError("tools takes no arguments or fetch <name>");
 			default:
 				throw new UsageError(`unknown command ${name}`);
 		}
 	} catch (error) {
-		const usageError = error instanceof UsageError || (error as { code?: string }).code?.startsWith("ERR_PARSE_ARGS");
+		const usageError =
+			error instanceof UsageError || String((error as { code?: unknown }).code).startsWith("ERR_PARSE_ARGS");
 		// A message can quote what a repository, a reviewer's file, or GitHub supplied, so it prints as visible text.
 		io.stderr(`melian: ${visibleText(error instanceof Error ? error.message : String(error))}\n`);
 		if (usageError) {

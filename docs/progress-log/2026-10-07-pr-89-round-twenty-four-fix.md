@@ -1,0 +1,3 @@
+# Pull request 89, round twenty-four fix
+
+Round twenty-four found that no CLI test told the caller-context wiring in `review` from simpler wrong choices: the one test changed a single file with no rename. The fix commit, "test(cli): pin the files and changed paths given to CallerContext.open", adds a case with a lens-selected file, an unselected file, and a rename a lens selects only through its old path. It asserts the exact `files` and `changedPaths` arguments. Passing only the filtered paths as `changedPaths`, dropping the `oldPath` clause, and passing every changed file as `files` each fail it.

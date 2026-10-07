@@ -52,6 +52,7 @@ import {
 	readVerdict,
 	VerdictDocument,
 } from "./adjudication.ts";
+import { CallerContext, type CoverageSource } from "./callers.ts";
 import { checksExtension, runChecks } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
 import {
@@ -109,7 +110,7 @@ import {
 	type StoredBudgetEnd,
 } from "./lens-tools.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
-import { attachable, ReviewIndex, type ReviewIndexState, undecided } from "./review-index.ts";
+import { attachable, type CallerRecord, ReviewIndex, type ReviewIndexState, undecided } from "./review-index.ts";
 import { summarizeExtension } from "./summarize.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce, triageBoundary } from "./untrusted.ts";
 import {
@@ -150,12 +151,20 @@ interface LensRun {
 	readonly band?: string;
 }
 
+// The caller notes and coverage source of the call that rendered the lens instructions, kept beside them. Absent from a
+// task an older Melian created, and from one a review without Enola created.
+interface StoredCallers {
+	readonly notes: Record<string, string[]>;
+	readonly coverage?: CoverageSource;
+}
+
 // `escalateAt` is absent from a task an older Melian created, which escalates nothing.
 interface StoredLensTaskInput {
 	readonly root: ConversationId;
 	readonly revision: ReviewState;
 	readonly lenses: readonly LensRun[];
 	readonly escalateAt?: Severity;
+	readonly callers?: StoredCallers;
 }
 
 class LensTaskInput {
@@ -163,19 +172,27 @@ class LensTaskInput {
 	readonly revision: ReviewState;
 	readonly lenses: readonly LensRun[];
 	readonly escalateAt?: Severity;
+	readonly callers?: StoredCallers;
 
-	constructor(root: ConversationId, revision: ReviewState, lenses: readonly LensRun[], escalateAt?: Severity) {
+	constructor(
+		root: ConversationId,
+		revision: ReviewState,
+		lenses: readonly LensRun[],
+		escalateAt?: Severity,
+		callers?: StoredCallers,
+	) {
 		this.root = root;
 		this.revision = revision;
 		this.lenses = lenses;
 		if (escalateAt !== undefined) this.escalateAt = escalateAt;
+		if (callers !== undefined) this.callers = callers;
 	}
 
 	static upgrade(input: unknown, from: number): StoredLensTaskInput {
 		const stored = input as StoredLensTaskInput;
 		const lenses =
 			from >= 2 ? stored.lenses : (stored.lenses.map(({ level: _, ...run }) => run) as unknown as LensRun[]);
-		return new LensTaskInput(stored.root, stored.revision, lenses, stored.escalateAt).toJSON();
+		return new LensTaskInput(stored.root, stored.revision, lenses, stored.escalateAt, stored.callers).toJSON();
 	}
 
 	toJSON(): StoredLensTaskInput {
@@ -184,6 +201,7 @@ class LensTaskInput {
 			revision: this.revision,
 			lenses: this.lenses,
 			...(this.escalateAt === undefined ? {} : { escalateAt: this.escalateAt }),
+			...(this.callers === undefined ? {} : { callers: this.callers }),
 		};
 	}
 }
@@ -240,7 +258,7 @@ type ReviewCheckpoint = {
 
 type LensCheckpoint = { phase: "spawn" } | ReviewCheckpoint;
 
-type LensResult = Record<string, LensOutcome>;
+type LensResult = Record<string, LensOutcome & { readonly conversation?: ConversationId }>;
 
 function modelName(model: ModelReference): string {
 	return `${model.provider}/${model.modelId}`;
@@ -504,8 +522,13 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				];
 			};
 			const chains = await Promise.all(input.lenses.map(chain));
-			const result = Object.fromEntries(chains.flat());
-			await runtime.commit(() => ({ status: "terminal", outcome: { status: "completed", result } }), context);
+			await runtime.commit(async (tx) => {
+				const checkpoint = (await tx.task(runtime.taskId))!.state.checkpoint as ReviewCheckpoint;
+				const result = Object.fromEntries(
+					chains.flat().map(([key, outcome]) => [key, { ...outcome, conversation: checkpoint.children[key] }]),
+				);
+				return { status: "terminal", outcome: { status: "completed", result } };
+			}, context);
 		},
 	},
 	abort: async (_task, runtime, context) => {
@@ -745,6 +768,8 @@ export type ReviewOptions = ReviewSettings &
 interface ReviewSettings {
 	readonly changeset: Changeset;
 	readonly config: MelianConfig;
+	/** Precomputed advisory callers; the host opens them after deterministic graph checks. */
+	readonly callers?: CallerContext;
 	/** The lenses that may run; configuration and the changed paths select among them. */
 	readonly lenses: readonly Lens[];
 	/** Chains for changed paths, or flat sections shared by every lens for older callers. */
@@ -872,7 +897,7 @@ async function runLenses(
 	rerun: boolean,
 	context: Context,
 	refused: (key: string, model: string) => boolean = () => false,
-): Promise<{ readonly result: LensResult | undefined; readonly ran: StoredLensTaskInput }> {
+): Promise<{ readonly result: LensResult | undefined; readonly ran: StoredLensTaskInput; readonly task: number }> {
 	const root = await harness.root(context);
 	const revision = revisionKey(input.revision);
 	const selection = selectionOf(input.lenses, input.escalateAt);
@@ -920,6 +945,7 @@ async function runLenses(
 	return {
 		result: outcome.status === "completed" ? outcome.result : undefined,
 		ran: settled.input as unknown as StoredLensTaskInput,
+		task: taskId,
 	};
 }
 
@@ -938,6 +964,41 @@ async function anyLensFailed(
 	return Object.entries(outcome.result as LensResult).some(
 		([key, lens]) => lens.status !== "done" || (lens.model !== undefined && refused(key, lens.model)),
 	);
+}
+
+// The caller notes and coverage a review's records carry. Problem: they come from this call's graph cache, which a
+// repeat call of the same head may not find, so a repeat rewrote the records, keyed a new adjudication task and
+// fingerprinted a new verdict for the same findings. Solution: the first call that finishes the lens task stores them
+// on the review's index entry, and a repeat call that attaches to that task reads them back. They derive from the task's
+// stored input, which holds what the call that created it rendered, never from the finishing call's own context.
+async function callersFor(
+	harness: Harness,
+	input: StoredLensTaskInput,
+	task: number | undefined,
+	settledLenses: boolean,
+	notes: Record<string, string[]>,
+	coverage: () => Promise<Pick<CallerRecord, "coverage" | "coverageUnavailable">>,
+	context: Context,
+): Promise<CallerRecord> {
+	const root = await harness.root(context);
+	const revision = revisionKey(input.revision);
+	const selection = selectionOf(input.lenses, input.escalateAt);
+	const entryOf = async () => {
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision];
+		return entry?.lenses.join("\n") === selection.join("\n") ? entry : undefined;
+	};
+	// A record names the lens task it was computed from. A rerun that replaced the task leaves a record of the old one.
+	const stored = (await entryOf())?.callers;
+	if (stored !== undefined && stored.task === task) return stored;
+	const fresh: CallerRecord = { notes, ...(await coverage()), task };
+	if (!settledLenses || task === undefined) return fresh;
+	return root.commit(async (tx) => {
+		const index = await tx.doc(ReviewIndex, root.id);
+		const entry = index.reviews[revision];
+		if (entry?.lenses.join("\n") !== selection.join("\n") || entry.task !== task) return fresh;
+		if (entry.callers?.task !== task) entry.callers = fresh;
+		return JSON.parse(JSON.stringify(entry.callers)) as CallerRecord;
+	}, context);
 }
 
 // One adjudication task per head and input. A repeat call with the same input, such as a rerun after a crash, attaches
@@ -1432,6 +1493,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const skipped = covering.filter(({ lens }) => choices.get(lens) === "skip").map(({ lens }) => lens.name);
 	const lenses: LensRun[] = [];
 	const notes = new Map<string, string[]>();
+	const leading = new Map<string, number>();
+	const callerNotes: Record<string, string[]> = {};
 	for (const { lens, coverage: configured, files, moved, covers } of running) {
 		const coverage = moved.length === 0 ? configured : { ...configured, moved };
 		// A neighbour takes defects off this lens only in the files it reviews too; this lens keeps them in the rest,
@@ -1459,6 +1522,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			: StandardsReading.from([]);
 
 		const noted: string[] = [...(unrunnable.get(lens) ?? [])];
+		if (config.static.enola.enabled)
+			callerNotes[`${lens.name}@${lens.version}`] = options.callers?.notes(covers) ?? [
+				"Callers unavailable: the host supplied no graph context",
+			];
 		const omitted = reading.note();
 		if (omitted !== undefined) noted.push(omitted);
 		if (options.decider !== undefined && triageInput.cut) noted.push("triage input was cut, so no lens could skip");
@@ -1474,6 +1541,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			noted.push(`kept the defects it hands to ${listed}, whose files here would list past ${limit}`);
 		}
 		notes.set(`${lens.name}@${lens.version}`, noted);
+		leading.set(`${lens.name}@${lens.version}`, unrunnable.get(lens)?.length ?? 0);
 		// Every lens may report an injection attempt, so the policy section never names a rule the hook refuses.
 		const rules = lens.rules.some((rule) => rule.id === injectionAttemptRule.id)
 			? lens.rules
@@ -1496,6 +1564,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					neighbours,
 					(text, label = "listing") => quoteUntrusted(label, text, nonce),
 					standardsSource,
+					options.callers?.render(covers, nonce),
 				),
 				instructionFingerprint: createHash("sha256")
 					.update(
@@ -1558,16 +1627,23 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		files: reviewFiles(revision.files),
 	};
 	const { escalateAt } = config.triage;
-	const lensInput = new LensTaskInput(root, state, lenses, escalateAt).toJSON();
-	const { result: lensResult, ran } =
-		lenses.length === 0
-			? { result: {}, ran: lensInput }
-			: await runLenses(harness, lensInput, options.rerun === true, context, (key, model) => {
-					const run = runsOf(lenses).find((each) => each.key === key);
-					const judged =
-						run === undefined ? undefined : request.plan?.judge(run.name, run.level, model, run.coverage.scope);
-					return judged?.refusal !== undefined;
-				});
+	const coverageSource = options.callers?.coverageSource();
+	const callersInput: StoredCallers | undefined = config.static.enola.enabled
+		? { notes: callerNotes, ...(coverageSource ? { coverage: coverageSource } : {}) }
+		: undefined;
+	const lensInput = new LensTaskInput(root, state, lenses, escalateAt, callersInput).toJSON();
+	const {
+		result: lensResult,
+		ran,
+		task: lensTask,
+	} = lenses.length === 0
+		? { result: {} as LensResult, ran: lensInput, task: undefined }
+		: await runLenses(harness, lensInput, options.rerun === true, context, (key, model) => {
+				const run = runsOf(lenses).find((each) => each.key === key);
+				const judged =
+					run === undefined ? undefined : request.plan?.judge(run.name, run.level, model, run.coverage.scope);
+				return judged?.refusal !== undefined;
+			});
 	// Escalation is settled from the runs the task stored, which decided it, never from this call's own computation.
 	const rule = new EscalationRule(ran.escalateAt ?? escalateAt);
 	const stored = new Map(ran.lenses.map((run) => [run.key, run]));
@@ -1577,10 +1653,54 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		triaged.decision !== undefined && settling.length > 0 && settling.every(({ run }) => run.level === "quick")
 			? ["triage chose quick for every lens, so the whole review looked lightly, at a change that can steer triage"]
 			: [];
+	// The task's own input says what its lenses read, so a call that attached to another's task records that call's.
+	const rendered = ran.callers;
+	const callers = await callersFor(
+		harness,
+		lensInput,
+		lensTask,
+		lenses.length > 0 && lensResult !== undefined,
+		rendered?.notes ?? callerNotes,
+		async () => {
+			try {
+				const source = rendered === undefined ? options.callers : CallerContext.restore(rendered.coverage);
+				const coverage = await source?.recordCoverage({
+					harness,
+					children: Object.fromEntries(
+						Object.entries(lensResult ?? {}).flatMap(([key, outcome]) =>
+							outcome.conversation === undefined ? [] : [[key, outcome.conversation]],
+						),
+					),
+					lenses: ran.lenses.flatMap((lens) => {
+						const next = lens.escalation?.next;
+						return [lens, ...(next && lensResult?.[next.key] !== undefined ? [next] : [])];
+					}),
+					files: revision.files,
+					nonce: ran.revision.nonce,
+					context,
+				});
+				return coverage ? { coverage } : {};
+			} catch {
+				return { coverageUnavailable: true as const };
+			}
+		},
+		context,
+	);
 	const settled = settling.map((settledLens) => {
 		const { run } = settledLens;
-		const noted = notes.get(`${run.name}@${run.version}`) ?? [];
-		return { ...settledLens, notes: [...noted, ...settledLens.notes, ...light] };
+		const key = `${run.name}@${run.version}`;
+		const noted = notes.get(key) ?? [];
+		const at = leading.get(key) ?? 0;
+		return {
+			...settledLens,
+			notes: [
+				...noted.slice(0, at),
+				...(callers.notes[key] ?? []),
+				...noted.slice(at),
+				...settledLens.notes,
+				...light,
+			],
+		};
 	});
 	const records = [
 		...settled.map(({ run, outcome, notes: noted }) => lensCheck(run, outcome, lensResult !== undefined, noted)),
@@ -1593,6 +1713,17 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		),
 		...refusals.values(),
 	];
+	if (callers.coverage)
+		for (let index = 0; index < settled.length; index++)
+			records[index] = { ...records[index]!, coverage: callers.coverage };
+	if (callers.coverageUnavailable)
+		for (let index = 0; index < settled.length; index++)
+			records[index] = {
+				...records[index]!,
+				reason: [records[index]!.reason, "Review coverage unavailable: transcript or cache could not be read"]
+					.filter(Boolean)
+					.join("; "),
+			};
 	// Only the lenses this review ran count, each at the level whose record stands for it: one that configuration has
 	// since disabled or retiered, or a quick run that escalated, leaves nothing behind.
 	const { manifest: accounted, producers } = account(

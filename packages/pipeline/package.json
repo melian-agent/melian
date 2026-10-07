@@ -25,15 +25,23 @@
 			"import": "./dist/testing.js",
 			"default": "./dist/testing.js"
 		},
-		"./package.json": "./package.json"
+		"./package.json": "./package.json",
+		"./coverage": {
+			"@melian-agent/source": "./src/coverage.ts",
+			"types": "./dist/coverage.d.ts",
+			"import": "./dist/coverage.js",
+			"default": "./dist/coverage.js"
+		}
 	},
 	"files": [
 		"dist",
-		"README.md"
+		"README.md",
+		"tools.yaml",
+		"release-policy.npmrc"
 	],
 	"scripts": {
-		"build": "tsc -b tsconfig.build.json",
-		"clean": "rm -rf dist ../../.tsbuild/pipeline.tsbuildinfo",
+		"build": "tsc -b tsconfig.build.json && cp ../../tools.yaml tools.yaml && cp ../../.npmrc release-policy.npmrc",
+		"clean": "rm -rf dist ../../.tsbuild/pipeline.tsbuildinfo tools.yaml release-policy.npmrc",
 		"prepack": "npm run build",
 		"postpack": "npm run clean",
 		"test": "vitest --run --root ../.. --passWithNoTests packages/pipeline/"

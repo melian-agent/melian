@@ -8,6 +8,7 @@ import {
 	checksOfTier,
 	type DeterministicCheck,
 	deterministicChecks,
+	type EnolaSnapshot,
 	evaluateGuardrails,
 	type MelianConfig,
 	type RepositorySource,
@@ -28,6 +29,7 @@ import {
 	type TaskId,
 } from "./harness.ts";
 import { runStaticTool } from "./static.ts";
+import { ToolProvisioning } from "./tool-provisioning.ts";
 
 // Type aliases, not interfaces: a document's value must satisfy Pi's JsonObject, which an interface never does.
 
@@ -38,7 +40,7 @@ import { runStaticTool } from "./static.ts";
  * findings, so adjudication reports the revision as not reviewed by it rather than as clean.
  */
 export type CheckRunRecord =
-	| { name: string; status: "ran"; version?: string; findings: number; notes: string[] }
+	| { name: string; status: "ran"; version?: string; findings: number; notes: string[]; snapshots?: EnolaSnapshot[] }
 	| { name: string; status: "skipped"; reason: string }
 	| { name: string; status: "failed"; reason: string; error: string };
 
@@ -85,12 +87,18 @@ interface CheckInput {
 }
 
 type Outcome =
-	| { readonly status: "ran"; readonly report: CheckReport; readonly version?: string }
+	| {
+			readonly status: "ran";
+			readonly report: CheckReport;
+			readonly version?: string;
+			readonly snapshots?: EnolaSnapshot[];
+	  }
 	| { readonly status: "skipped"; readonly reason: string };
 
 const toolOf: Readonly<Record<Exclude<DeterministicCheck, "guardrails">, StaticTool>> = {
 	"static.biome": "biome",
 	"static.tsc": "tsc",
+	"static.enola": "enola",
 };
 
 async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, context: Context): Promise<Outcome> {
@@ -106,10 +114,23 @@ async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, conte
 	}
 	const { repoRoot } = input.changeset;
 	const revision = Revision.from(input.changeset.revision);
-	const run = (commit: string) => runStaticTool({ env, repoRoot, commit, tool, settings }, context);
+	const run = (commit: string) =>
+		runStaticTool(
+			{
+				env,
+				repoRoot,
+				commit,
+				base: revision.base,
+				tool,
+				settings,
+				...(input.source.kind === "revision" ? { policyCommit: input.source.commit } : {}),
+			},
+			context,
+		);
 	const head = await run(revision.head);
 	if (head.status === "skipped") return head;
-	const base = await run(revision.base);
+	const base =
+		head.baseLog === undefined ? await run(revision.base) : { status: "ran" as const, log: head.baseLog, notes: [] };
 	// A base without the tool's project, such as before a repository adopted TypeScript, reports nothing to subtract.
 	const empty: ToolLog = { ...head.log, runs: [{ ...head.log.runs[0], results: [] }] };
 	const report = await staticFindings({
@@ -125,6 +146,7 @@ async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, conte
 		status: "ran",
 		report: { findings: report.findings, notes },
 		version: head.log.runs[0].tool.driver.version,
+		...(head.snapshots === undefined ? {} : { snapshots: head.snapshots }),
 	};
 }
 
@@ -170,6 +192,7 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 								status: "ran",
 								...(outcome.version === undefined ? {} : { version: outcome.version }),
 								findings: outcome.report.findings.length,
+								...(outcome.snapshots === undefined ? {} : { snapshots: outcome.snapshots }),
 								notes: [...outcome.report.notes],
 							};
 			} catch (error) {
@@ -331,11 +354,13 @@ function canonical(value: unknown): string {
 	return JSON.stringify(value);
 }
 
-// What decides a run's results: both commits, the tier, and the policy it ran under.
-function runIdentity(input: RunChecksInput, tier: string): Omit<RunIdentity, "task"> {
+// What decides a run's results: both commits, the tier, and the policy it ran under, with Melian's own tool pins, so a
+// build that pins another Enola does not take the finished run of an older one.
+async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<RunIdentity, "task">> {
 	const { base, head } = input.changeset.revision;
+	const tools = (await ToolProvisioning.manifest()).toJSON();
 	const policy = createHash("sha256")
-		.update(canonical({ config: input.config, source: input.source }))
+		.update(canonical({ config: input.config, source: input.source, tools }))
 		.digest("hex")
 		.slice(0, 16);
 	return { base, head, tier, policy };
@@ -361,8 +386,8 @@ function rerunOf(outcome: {
  * under the run's identity, in one commit. Resolves with the run's identity and one record per check the tier names, in
  * the tier's order.
  *
- * Asking again with the same base, head, tier, configuration, and source, even from a new process after a crash, finds
- * the task already started and waits for it, so the checks run once. A different base, configuration, or source runs
+ * Asking again with the same base, head, tier, configuration, source, and tool pins, even from a new process after a crash, finds
+ * the task already started and waits for it, so the checks run once. A different base, configuration, source, or tool pin runs
  * them again. `rerunFailed` runs again the checks that failed, as a new task with its own identity, so a transient
  * failure is not kept for good. Lens checks are recorded as skipped, since they run in the lens step; a name that is no
  * check is recorded as failed with `unknownCheck`. Rejects when the tier is unknown or includes
@@ -374,7 +399,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 	if (root === undefined) {
 		throw new CheckError("unknownConversation", tier, `no conversation has ID ${input.rootConversationId}`);
 	}
-	const identity = runIdentity(input, tier);
+	const identity = await runIdentity(input, tier);
 	const key = identityKey({ ...identity, task: 0 });
 	const task: ChecksInput = {
 		identity,

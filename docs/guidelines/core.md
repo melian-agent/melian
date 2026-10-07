@@ -130,7 +130,7 @@ The keys a `melian.yaml` accepts, all optional:
 | `lenses` | lens name to `enabled`, `tier` (`light`, `medium`, `heavy`), `paths`, and `level`, the band triage keeps the lens in, `{ floor, ceiling }`: a floor of `skip`, `quick`, `careful`, or `deep`, and a ceiling of the last three. Each end layers alone | none; the band is `quick` to `deep` |
 | `publish` | `walkthrough` with boolean `enabled`, `collapsed` and `diagrams` | all `true` |
 | `models` | `light`, `medium`, `heavy`, `decision`, or `verifier` to `model`, `fallbacks`, `accept`, a list of the models that satisfy the tier, `unavailable`, `derive` or `fail`, and `acceptOverridden`, a boolean; every key optional, only the root `melian.yaml` may set the last three, a route with `acceptOverridden: false` must name a model or an `accept`, and an `accept` must list at least one model | none; a route without `accept` accepts its own model and fallbacks, `unavailable: derive`, `acceptOverridden: true` |
-| `static` | `biome` and `tsc`, each with `enabled`, `timeout` in seconds, and `severity` from a Melian rule ID to a severity; `tsc` also takes `project` | both enabled, 300 seconds, no overrides, `project: tsconfig.json` |
+| `static` | `biome`, `tsc`, and `enola`, each with `enabled`, `timeout` in seconds, and `severity` from a Melian rule ID to a severity; `tsc` also takes `project` | `biome` and `tsc` enabled, `enola` disabled, 300 seconds, no overrides, `project: tsconfig.json` |
 | `guardrails` | `forbidden-paths`, `required-files`, `forbidden-patterns`, each with `enabled`, `severity`, and `rules` by name, a forbidden-patterns rule taking `pattern`, `message`, `paths`, `ignoreCase`, and `severity`; `policy-change-review` with `enabled`, `severity`, `analyserSeverity`, and `files`, globs added to the built-in analyser configuration files | all enabled, no rules, no extra files; severity `P1` for forbidden-paths, `P2` for the others, `analyserSeverity` `P1` |
 | `knowledge` | `writeBack`, a boolean | `false` |
 | `decisions` | `provider`, and `thresholds` from question name to a `drop` and `accept` band between 0 and 1 | no provider, no thresholds |
@@ -478,7 +478,7 @@ The manifest is the tier's check list, and every check in it must account for it
 
 ## Checks and tiers
 
-`checksOfTier(config, tier)` lists a tier's checks in order without repeats. A name that is a tier expands to that tier's checks, and `static` expands to `static.biome` and `static.tsc`. An unknown tier is `CheckError` `unknownTier`, and a tier that includes itself is `tierCycle`. `deterministicChecks` names the checks the pipeline runs as tasks: `guardrails`, `static.biome`, and `static.tsc`. A check that cannot run throws `CheckError` with a code; it never returns an empty result. Look names up with `Object.hasOwn`, never by indexing a plain object: `groups["constructor"]` is `Object`, and a tier naming a check `constructor` threw a `TypeError` instead of recording an unknown check.
+`checksOfTier(config, tier)` lists a tier's checks in order without repeats. A name that is a tier expands to that tier's checks, and `static` expands to `static.biome` and `static.tsc`. An unknown tier is `CheckError` `unknownTier`, and a tier that includes itself is `tierCycle`. `deterministicChecks` names the checks the pipeline runs as tasks: `guardrails`, `static.biome`, `static.tsc`, and `static.enola`. `static` still expands to Biome and tsc only, so a tier names `static.enola` explicitly. A check that cannot run throws `CheckError` with a code; it never returns an empty result. Look names up with `Object.hasOwn`, never by indexing a plain object: `groups["constructor"]` is `Object`, and a tier naming a check `constructor` threw a `TypeError` instead of recording an unknown check.
 
 ## Guardrails
 
@@ -733,3 +733,27 @@ The optional `createdAt` records when comparison began; `target` keeps the CLI r
 - Golden files live in `test/golden/`, compared with Vitest's `toMatchFileSnapshot`. A mismatch fails the gate. After a deliberate change, regenerate with `npx vitest --run packages/core/test/render.test.ts --update` and confirm the reported file count, since Vitest 5 can consume a path placed after `-u`, and read the diff before committing. They use `.sarif`, `.json`, and `.txt` extensions, which Biome does not format: its `files.includes` lists only code.
 - Run every loader test against both sources with `describe.each(sourceKinds)`. `sourceFor(root, kind)` commits the working tree for a revision, so one body checks that the two agree. Test what only a revision guarantees, such as ignoring the checked-out branch, in a block of its own.
 - Await a rejection with `rejection(promise, ErrorClass)`, which fails unless the promise rejects with that class and returns the error typed.
+
+## Standalone tool manifest
+
+A TypeBox record with a key pattern needs `additionalProperties: false` to reject keys outside that pattern. Pass the strict options to the record itself, as well as its value object. The manifest tests prove unsafe tool and platform keys are refused.
+
+`ToolManifest.parse(text)` validates Melian's own root `tools.yaml` with TypeBox and the configuration YAML reader. It refuses unknown keys, unsafe archive paths, non-exact versions, invalid dates, and downloads outside the declared GitHub repository and release tag. A reviewed repository cannot override it. `tool(name)` and `artifact(name, platform)` refuse absent pins. `check(now, windowDays)` applies the npm quarantine; a dated, reviewed exception permits a young release. `toJSON()` returns a copy. The `misses` list reserves the execution misses described in the evals guideline.
+
+## Enola policy and SARIF
+
+`static.enola` is a deterministic check, disabled by default and absent from the `static` group and default tiers. Its settings use the same timeout and severity map as Biome. Error maps to P2, warning to P3, and note to nit. Melian's own fast tier opts in.
+
+`EnolaPolicy.load(repoRoot, base)` reads Enola configuration, intent, constraints, and suppressions through the revision source, with 256 KiB per file and 1 MiB total. Its effective configuration disables providers and history and analyses only the reviewed repository. It hashes sorted policy names and contents, fixed flags, and cache schema version. `normaliseEnolaSarif` excludes resolved and explicitly suppressed findings. An unlocated finding sits on `enola-intent.yaml`, identified by message whatever that file holds, so two different unlocated results never share an identity. `staticFindings` gives results `enola/<ruleId>` identities from snippets and occurrences.
+
+All Enola policy paths join analyser configuration in policy-change-review. A committed `.enola/baseline` does not.
+
+`GraphSnapshot` holds validated graph artifacts and a `GraphEntryState`. Snapshot IDs identify Enola's facts; cache keys identify inputs. Keep these separate in records.
+
+`EnolaFacts` reads the JSONL contract; `EnolaImpact` accepts only a successful full JSON query. Exit 2 is no answer. `GraphCoverage.compute` creates a validated per-file artifact with explicit denominators and gaps; its ID hashes its stored content. Symbols and paths remain repository data.
+
+### Coverage artifacts
+
+`ReviewCoverage.compute` counts delivered read lines and search matches for each lens, revision and changed file. It records intersected hunks and supplied enclosing declarations. “Read” means some numbered lines were delivered, not the whole file. `TestCoverage.unavailable` records the container-isolation requirement and never executes tests. Both validate their stored JSON and hash it for check-record identities.
+
+StoredCheckRecord includes optional snapshots and coverage IDs. Verdict.upgrade preserves present fields and leaves older records without them: it never invents graph or transcript evidence. Receipts retain upstream timestamps and scratch paths as lineage, separate from graph identity.

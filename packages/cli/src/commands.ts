@@ -15,7 +15,9 @@ import {
 	visibleText,
 } from "@melian-agent/core";
 import {
+	CallerContext,
 	backgroundContext as context,
+	createNodeExecutionEnv,
 	DismissError,
 	DismissHarness,
 	openPublishHarness,
@@ -28,6 +30,7 @@ import {
 	recordDismissal,
 	reviewChangeset,
 	revisionKey,
+	runChecks,
 	summarizeReview,
 } from "@melian-agent/pipeline";
 import {
@@ -155,6 +158,43 @@ export async function review(
 	});
 	const { harness } = reviewHarness;
 	try {
+		// Caller context needs the graph that deterministic checks produce.
+		const rootConversationId = (await harness.root(context)).id;
+		const checks = await runChecks(
+			harness,
+			{ rootConversationId, changeset, config: loaded, source, tier, rerunFailed: options.rerun },
+			context,
+		);
+		const callerLenses = new Set(
+			checksOfTier(loaded, tier)
+				.filter((name) => name.startsWith("lens."))
+				.map((name) => name.slice(5)),
+		);
+		const callerPaths = new Set(
+			Lens.select(
+				lenses.filter((lens) => callerLenses.has(lens.name)),
+				loaded,
+				paths,
+			).flatMap((selection) => selection.files),
+		);
+		const callers = loaded.static.enola.enabled
+			? await CallerContext.open(
+					{
+						env: createNodeExecutionEnv(repoRoot),
+						repoRoot,
+						base: changeset.revision.base,
+						...(source.kind === "revision" ? { policyCommit: source.commit } : {}),
+						commit: changeset.revision.head,
+						tool: "enola",
+						settings: loaded.static.enola,
+					},
+					changeset.revision.files.filter(
+						(file) => callerPaths.has(file.path) || (file.oldPath !== undefined && callerPaths.has(file.oldPath)),
+					),
+					context,
+					changeset.revision.files.map((file) => file.path),
+				)
+			: undefined;
 		let verdict: Verdict;
 		try {
 			({ verdict } = await reviewChangeset({
@@ -168,6 +208,8 @@ export async function review(
 				...triage.reviewOptions(),
 				policy: source,
 				tier,
+				checks: checks.records,
+				...(callers === undefined ? {} : { callers }),
 				rerun: options.rerun,
 				origin,
 			}));
