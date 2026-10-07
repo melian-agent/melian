@@ -245,9 +245,15 @@ describe("stored comparison reading and export", () => {
 
 	it.each([
 		["#7", "git@github.com:o/r.git", "(https://github.com/o/r/pull/7)"],
+		["#7", "https://github.com/o/r.git", "(https://github.com/o/r/pull/7)"],
+		["#7", "https://github.com/o/r", "(https://github.com/o/r/pull/7)"],
+		["#7", "https://gitlab.com/o/r.git", undefined],
+		["#7", "https://github.com/o", undefined],
+		["#7", new Error("no such remote"), undefined],
 		["main...feature", "git@github.com:o/r.git", undefined],
 	])("links %s only when it is a pull request", async (argument, remote, link) => {
-		vi.spyOn(repository, "git").mockResolvedValue(remote);
+		if (remote instanceof Error) vi.spyOn(repository, "git").mockRejectedValue(remote);
+		else vi.spyOn(repository, "git").mockResolvedValue(remote);
 		vi.spyOn(ComparisonReader, "open").mockReturnValue({ read: async () => [entry()] } as never);
 		await exportComparison(io, argument, { json: false });
 		const text = vi
