@@ -171,6 +171,26 @@ describe("built-in lenses", () => {
 		});
 	});
 
+	// A lens in the root tier with no `lenses` entry reviews its own default paths, and the golden corpus seeds defects on purpose.
+	it("gives every lens in Melian's root tier a `lenses` entry, unless the lens narrows its own paths", async () => {
+		const melian = fileURLToPath(new URL("../../../", import.meta.url));
+		const own = [
+			"melian.yaml",
+			...["durability", "correctness", "removed-behaviour"].map((name) => `.melian/lenses/${name}/LENS.md`),
+		];
+		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
+		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
+		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
+		const named = config.tiers.full.filter((entry) => entry.startsWith("lens.")).map((entry) => entry.slice(5));
+		expect(named).toContain("design");
+		const unscoped = named.filter((name) => {
+			const lens = lenses.find((candidate) => candidate.name === name);
+			return !config.lenses[name]?.paths && lens?.paths.includes("**");
+		});
+		expect(unscoped).toEqual([]);
+		expect(config.lenses.design?.paths).toContain("!packages/evals/goldens/**");
+	});
+
 	it("load the lens backlog adversarial, over every path, with the standards and three levels", async () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, ["src/index.ts"]);
 		const backlog = lenses.filter(

@@ -33,6 +33,7 @@ lenses:
   removed-behaviour: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"] }
   tests: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"] }
   conventions: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"] }
+  design: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"] }
 
 guardrails:
   forbidden-paths:
