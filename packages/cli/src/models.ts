@@ -133,7 +133,9 @@ export class Triage {
 	 * review. It runs them once, however often it is called: the CLI calls it before a resumed task can ask a model,
 	 * and the review calls it again before the first task it creates.
 	 */
-	unlockModels(): Promise<void> {
+	unlockModels(providers: readonly string[] = []): Promise<void> {
+		if (providers.length > 0)
+			return unlockCredentials(this.#models, [...new Set([...this.#providers, ...providers])]);
 		this.#unlocked ??= unlockCredentials(this.#models, this.#providers);
 		return this.#unlocked;
 	}

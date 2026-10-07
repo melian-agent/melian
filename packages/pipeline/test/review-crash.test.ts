@@ -35,7 +35,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CallerContext } from "../src/callers.ts";
-import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
+import { DecisionDocument, decisionExtension, decisionTask } from "../src/decisions.ts";
 import { EnclosingFunctions } from "../src/enclosing-functions.ts";
 import { findingsVersion } from "../src/findings.ts";
 import { LensDocument } from "../src/lens-tools.ts";
@@ -261,6 +261,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		harness = reopened.harness;
 
 		expect(await reopened.resumesModels(context)).toBe(true);
+		expect(await reopened.resumedProviders(context)).toEqual(["faux"]);
 		expect(fake.provider.state.callCount).toBe(0);
 
 		const heavy = fake.ref("heavy");
@@ -279,6 +280,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		});
 
 		expect(await reopened.resumesModels(context)).toBe(false);
+		expect(await reopened.resumedProviders(context)).toEqual([]);
 	});
 
 	it.each([
@@ -307,7 +309,33 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		const kinds = (await harness.inspect(context)).tasks.map((task) => task.record.kind);
 
 		expect(kinds).toContain(scenario === "decision" ? "melian.decision" : "melian.verification");
+		expect(await reopened.resumedProviders(context)).toEqual(scenario === "decision" ? [] : ["faux"]);
 		expect(await reopened.resumesModels(context)).toBe(true);
+	});
+
+	it("reads a live fallback decider's provider from its stored key", async () => {
+		const fake = createFakeModels();
+		const decider: Decider = {
+			name: "llm-fallback:triage-provider/model",
+			calibrated: false,
+			decide: async () => ({ answers: [] }),
+		};
+		const reopened = await ReviewHarness.open(createMemoryStorage(), fake.review, { retry: false, decider });
+		harness = reopened.harness;
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			await tx.createTask(
+				decisionTask(decider),
+				{
+					root: root.id,
+					revision: "r",
+					key: JSON.stringify({ decider: decider.name }),
+					request: { questionSet: { name: "triage", version: "1" }, state: "", questions: [] },
+				},
+				{ ownership: { kind: "conversation" } },
+			);
+		}, context);
+		expect(await reopened.resumedProviders(context)).toEqual(["triage-provider"]);
 	});
 
 	it("says a walkthrough task that has not finished resumes a model, and no task none", async () => {
@@ -316,6 +344,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		harness = reopened.harness;
 		const root = await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
 		expect(await reopened.resumesModels(context)).toBe(false);
+		expect(await reopened.resumedProviders(context)).toEqual([]);
 
 		await root.commit(async (tx) => {
 			await tx.createTask(
@@ -326,6 +355,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		}, context);
 
 		expect(await reopened.resumesModels(context)).toBe(true);
+		expect(await reopened.resumedProviders(context)).toEqual(["faux"]);
 		expect(fake.provider.state.callCount).toBe(0);
 	});
 

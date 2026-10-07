@@ -1,7 +1,18 @@
+import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Decider, defaultConfig, Lens, type LoadedConfig, type MelianConfig, userFiles } from "@melian-agent/core";
+import { setTimeout as sleep } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
+import {
+	Changeset,
+	type Decider,
+	defaultConfig,
+	Lens,
+	type LoadedConfig,
+	type MelianConfig,
+	userFiles,
+} from "@melian-agent/core";
 import { buildGoldenRepository, loadGoldens } from "@melian-agent/evals";
 import * as pipeline from "@melian-agent/pipeline";
 import {
@@ -11,6 +22,7 @@ import {
 	scriptConversations,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { count, crashRepository, readEvents } from "../../pipeline/test/fixtures/review-scenario.ts";
 import { main } from "../src/main.ts";
 import { decisionProviderRefusal, fallbackDecider, reviewModels, Triage, triageProviders } from "../src/models.ts";
 import * as repository from "../src/repository.ts";
@@ -443,6 +455,89 @@ describe("command bearer validation", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("unlocks the stored provider before a real-kill restart under a changed route", async () => {
+		const repo = crashRepository();
+		const xdg = mkdtempSync(join(tmpdir(), "melian-route-resume-"));
+		const env = { XDG_CONFIG_HOME: xdg, MELIAN_STATE_DIR: xdg };
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const database = await repository.storagePath(repo, changeset.id, env, false);
+		const log = join(xdg, "crash.jsonl");
+		const fixture = fileURLToPath(new URL("../../pipeline/test/fixtures/review-crash.ts", import.meta.url));
+		const child = spawn(process.execPath, [
+			"--conditions=@melian-agent/source",
+			fixture,
+			"request",
+			repo,
+			database,
+			log,
+		]);
+		let errors = "";
+		child.stderr.on("data", (chunk) => {
+			errors += chunk;
+		});
+		const exited = new Promise((resolve) => child.on("exit", (_, signal) => resolve(signal)));
+		try {
+			const deadline = Date.now() + 15_000;
+			while (count(readEvents(log), "model-request") < 2) {
+				if (child.exitCode !== null || Date.now() > deadline) throw new Error(errors || "kill point not reached");
+				await sleep(20);
+			}
+			child.kill("SIGKILL");
+			expect(await exited).toBe("SIGKILL");
+			const marker = join(xdg, "old-provider");
+			mkdirSync(join(xdg, "melian"));
+			writeFileSync(
+				join(xdg, "melian", "secrets.yaml"),
+				`credentials:\n  old: { provider: faux, command: "echo run >> ${marker}; echo key" }\n  next: { provider: new-route, key: sk-test }\n`,
+				{ mode: 0o600 },
+			);
+			writeFileSync(join(repo, "melian.yaml"), "tiers: { full: [guardrails, lens.correctness, lens.contracts] }\n");
+			vi.spyOn(pipeline, "createReviewModels").mockImplementation((options) => {
+				const old = createFakeModels({
+					models: [{ id: "orchestrator" }, { id: "heavy" }],
+					credentials: options?.credentials ?? [],
+				});
+				scriptConversations(old, [
+					{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+					{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+				]);
+				const next = createFakeModels(
+					{ provider: "new-route", models: [{ id: "heavy" }], credentials: options?.credentials ?? [] },
+					old.review,
+				);
+				scriptConversations(next, [
+					{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+					{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+				]);
+				return old.review;
+			});
+			const runChecks = pipeline.runChecks;
+			vi.spyOn(pipeline, "runChecks").mockImplementation((...args) => {
+				expect(existsSync(marker), "stored credential must run before any wait").toBe(true);
+				return runChecks(...args);
+			});
+			const stderr = vi.fn();
+			expect(
+				await main(["review", "main...feature", "--model", "new-route/heavy"], {
+					cwd: repo,
+					env,
+					color: false,
+					stdout: vi.fn(),
+					stderr,
+					decide: async () => ({ skipped: "not under test" }),
+				}),
+				stderr.mock.calls.flat().join(""),
+			).toBe(0);
+			expect(readFileSync(marker, "utf8")).toBe("run\n");
+		} finally {
+			if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+			await exited;
+			vi.restoreAllMocks();
+			rmSync(repo, { recursive: true, force: true });
+			rmSync(xdg, { recursive: true, force: true });
+		}
+	});
+
 	it.each([
 		["a crashed task would resume", true],
 		["no task would resume", false],
@@ -473,7 +568,7 @@ describe("command bearer validation", { timeout: 60_000 }, () => {
 				]);
 				return fake.review;
 			});
-			if (resumes) vi.spyOn(pipeline.ReviewHarness.prototype, "resumesModels").mockResolvedValue(true);
+			if (resumes) vi.spyOn(pipeline.ReviewHarness.prototype, "resumedProviders").mockResolvedValue(["fake-resume"]);
 			const ranBeforeChecks: boolean[] = [];
 			const runChecks = pipeline.runChecks;
 			vi.spyOn(pipeline, "runChecks").mockImplementation((...args) => {

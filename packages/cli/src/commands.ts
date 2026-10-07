@@ -160,7 +160,8 @@ export async function review(
 	const { harness } = reviewHarness;
 	try {
 		// A task a crash left unfinished resumes at the first wait below, so its commands run before it.
-		if (await reviewHarness.resumesModels(context)) await triage.unlockModels();
+		const resumed = await reviewHarness.resumedProviders(context);
+		if (resumed.length > 0) await triage.unlockModels(resumed);
 		// Caller context needs the graph that deterministic checks produce.
 		const rootConversationId = (await harness.root(context)).id;
 		const checks = await runChecks(

@@ -641,21 +641,42 @@ export class ReviewHarness {
 		return new ReviewHarness(harness, checkout !== undefined);
 	}
 
-	/**
-	 * Whether a task a crash left unfinished would ask a model once the harness resumes: a lens, verification,
-	 * triage, or walkthrough task the harness still holds live. Resuming starts at the first wait, so a host unlocks
-	 * credentials before that wait when this is true. A repeat review whose tasks all finished has none, and runs no
-	 * credential command.
-	 */
-	async resumesModels(context: Context = backgroundContext): Promise<boolean> {
-		const kinds = [
-			LensTask.definition.name,
-			VerificationTask.definition.name,
-			decisionTaskName,
-			SummaryTask.definition.name,
-		];
+	/** Providers in the routes stored by every live model task, before the first wait resumes them. */
+	async resumedProviders(context: Context = backgroundContext): Promise<string[]> {
 		const { tasks } = await this.harness.inspect(context);
-		return tasks.some((task) => kinds.includes(task.record.kind));
+		const providers = tasks.flatMap(({ record }) => {
+			if (record.kind === LensTask.definition.name) {
+				const input = record.input as unknown as StoredLensTaskInput;
+				return runsOf(input.lenses).flatMap((run) => run.route.map((model) => model.provider));
+			}
+			if (record.kind === VerificationTask.definition.name) {
+				const input = record.input as unknown as VerificationInput;
+				return input.candidates.flatMap((candidate) => candidate.route.map((model) => model.provider));
+			}
+			if (record.kind === SummaryTask.definition.name) {
+				return [(record.input as unknown as { model: ModelReference }).model.provider];
+			}
+			if (record.kind === decisionTaskName) {
+				const { key } = record.input as unknown as DecisionTaskInput;
+				const { decider } = JSON.parse(key) as { decider: string };
+				return /^llm-fallback:([^/]+)\//.exec(decider)?.slice(1) ?? [];
+			}
+			return [];
+		});
+		return [...new Set(providers)];
+	}
+
+	/** Whether a live task may ask a model when the harness resumes. */
+	async resumesModels(context: Context = backgroundContext): Promise<boolean> {
+		const { tasks } = await this.harness.inspect(context);
+		return tasks.some(({ record }) =>
+			[
+				LensTask.definition.name,
+				VerificationTask.definition.name,
+				decisionTaskName,
+				SummaryTask.definition.name,
+			].includes(record.kind),
+		);
 	}
 
 	/** Closes the harness and its storage. Idempotent. */
