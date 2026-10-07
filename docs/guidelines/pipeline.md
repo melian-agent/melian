@@ -467,7 +467,7 @@ An addressed inline finding keeps its first signed marker and appends a resoluti
 
 The three standards version bumps establish a reader boundary for per-lens provenance and explicitly migrate records that predate it, even though the fields are optional.
 
-Lens task version 3 keeps per-lens standards paths beside the instructions. Upgrading version 2 preserves its levels, routes and checkpoint; version 1 still loses its level as before. Publication snapshots use version 6 and leave the new field absent on older rounds.
+Lens task version 3 keeps per-lens standards paths beside the instructions. Upgrading version 2 preserves its levels, routes and checkpoint; version 1 still loses its level as before. Publication snapshots gained standards paths in version 6. Version 7 preserves those paths and adds publisher attribution to older records.
 
 ## Verified tool downloads
 
@@ -516,5 +516,3 @@ ToolCache.open and readiness create no directories. Materialisation creates its 
 CacheScratch gives fetch, graph and coverage writes process-owned temporary names. Every cache open sweeps dead owners. ESRCH proves absence; EPERM does not, so denied probes keep the writer’s paths. Symlinks and published tool entries are never traversed. Legacy scratch without process ownership has a one-day grace period. Concurrent disappearance is harmless. The sweep is best effort: a failure to read, stat or remove an entry skips it and never fails the open, so a read-only cache still opens.
 
 A file-handle read stream may call close on destruction even with autoClose disabled. To prove the explicit verification finally closes a handle, refuse its stat before creating the stream.
-
-Lens task version 3 keeps per-lens standards paths beside the instructions. Upgrading version 2 preserves its levels, routes and checkpoint; version 1 still loses its level as before. Publication snapshots gained standards paths in version 6. Version 7 preserves those paths and adds publisher attribution to older records.
