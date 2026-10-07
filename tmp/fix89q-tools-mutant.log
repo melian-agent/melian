@@ -1,0 +1,1 @@
+mutant: tools.ts ToolInventory.open(io.cwd, io.env) -> process.env; result: 1 failed (lists Melian's own manifest...), 16 passed; restored: 17 passed

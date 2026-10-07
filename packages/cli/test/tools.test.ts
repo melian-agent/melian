@@ -70,7 +70,10 @@ it("lists readiness without downloading, verifies fetched pins and repairs a mis
 it("lists Melian's own manifest using the host's state directory", async () => {
 	const io = output();
 	io.env.MELIAN_STATE_DIR = join(repo, "host-state");
+	const open = vi.spyOn(ToolProvisioning, "open");
 	expect(await main(["tools"], io)).toBe(0);
+	expect(open).toHaveBeenCalledWith(await realpath(repo), { root: await stateDirectory(repo, io.env) });
+	expect(await stateDirectory(repo, io.env)).toContain("host-state");
 	expect(io.lines.join("")).toContain("enola@0.4.27");
 	expect(io.lines.join("")).toContain("not yet fetched");
 	expect(io.errors).toEqual([]);
