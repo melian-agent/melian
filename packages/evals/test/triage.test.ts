@@ -326,7 +326,8 @@ const recordPath = "packages/evals/triage/questions.json";
 // `--full-tree` makes the path root-relative: `ls-tree` otherwise reads it from the directory git runs in.
 function recordOnMain(git: (args: string[]) => string): MainRecord {
 	try {
-		if (git(["ls-tree", "--full-tree", "--name-only", "origin/main", "--", recordPath]).trim() === "") return { kind: "absent" };
+		if (git(["ls-tree", "--full-tree", "--name-only", "origin/main", "--", recordPath]).trim() === "")
+			return { kind: "absent" };
 		return {
 			kind: "recorded",
 			entries: JSON.parse(git(["show", `origin/main:${recordPath}`])) as RecordedFingerprints,
