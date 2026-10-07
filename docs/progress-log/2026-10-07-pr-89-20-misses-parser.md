@@ -1,0 +1,3 @@
+# fix(core): the manifest parser enforces the shape of misses
+
+For [pull request #89](https://github.com/melian-agent/melian/pull/89), round 20. `ToolManifest.parse` now refuses a pin URL whose dot-segments resolve outside its declared repository and tag, by comparing against the normalised path. It also refuses a miss whose record lies outside `packages/evals/comparisons/`, whose finding ID is not letters then digits, or that repeats another miss. The manifest test exercises each refusal and a round trip instead of fixed expectations. The guideline no longer says the test reads the record, which is not on this branch.

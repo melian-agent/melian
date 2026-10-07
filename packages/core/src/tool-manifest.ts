@@ -33,8 +33,8 @@ export const toolManifestSchema = Type.Object(
 		misses: Type.Array(
 			Type.Object(
 				{
-					record: text,
-					finding: text,
+					record: Type.String({ pattern: "^packages/evals/comparisons/[A-Za-z0-9][A-Za-z0-9._-]*\\.md$" }),
+					finding: Type.String({ pattern: "^[A-Z]+[0-9]+$" }),
 					tool: Type.Union([
 						Type.Literal("enola"),
 						Type.Literal("opengrep"),
@@ -114,6 +114,12 @@ export class ToolManifest {
 					)
 						throw new Error(`${name}: unsafe archive path`);
 				}
+			}
+			const seen = new Set<string>();
+			for (const miss of state.misses) {
+				const key = `${miss.record}#${miss.finding}`;
+				if (seen.has(key)) throw new Error(`duplicate miss ${key}`);
+				seen.add(key);
 			}
 			return new ToolManifest(state);
 		} catch (cause) {

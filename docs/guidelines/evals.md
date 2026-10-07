@@ -119,7 +119,7 @@ A Melian finding judged noise owes a clean golden for the lens that raised it. A
 
 A historical hand-written record has no field for the reason. Its Adjudication column carries the words above. New records use the stored reason.
 
-For each adjudicated `needs-execution` miss, add `{ record, finding, tool }` to Melian's root `tools.yaml`. The record is its repository-relative path; the finding is its ID. Name the run that would catch it: `enola`, `opengrep`, `gitleaks`, `tests`, `repro-run`, or `none`. The manifest test checks that each record exists and contains its finding. Execution discoveries without that adjudication do not qualify. The present list holds thirteen misses from the [pull request #89](https://github.com/melian-agent/melian/pull/89) record: twelve map to `tests` and one to `repro-run`. It implies no tool ordering.
+For each adjudicated `needs-execution` miss, add `{ record, finding, tool }` to Melian's root `tools.yaml`. The record is its repository-relative path; the finding is its ID. Name the run that would catch it: `enola`, `opengrep`, `gitleaks`, `tests`, `repro-run`, or `none`. The manifest parser refuses a record outside `packages/evals/comparisons/`, a finding ID that is not letters then digits, a duplicate record and finding, and an unknown tool name; it does not read the record. Execution discoveries without that adjudication do not qualify. The present list holds thirteen misses from the [pull request #89](https://github.com/melian-agent/melian/pull/89) record: twelve map to `tests` and one to `repro-run`. It implies no tool ordering.
 
 ### The drain rule
 

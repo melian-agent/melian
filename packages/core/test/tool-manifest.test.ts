@@ -43,20 +43,45 @@ describe("ToolManifest", () => {
 		for (const [label, state] of Object.entries({ named, platform, repository, date, exception, miss }))
 			expect(() => ToolManifest.parse(JSON.stringify(state)), label).toThrow(ToolManifestError);
 	});
-	it("links every execution miss to its comparison finding and the tool it orders", () => {
-		const record = "packages/evals/comparisons/2026-10-06-pr-89.md";
-		const expected = [
-			{ record, finding: "M1", tool: "repro-run" },
-			...["M2", "L1", "L2", "L3", "L4", "L5", "L6", "L8", "L10", "L11", "L12", "L13"].map((finding) => ({
-				record,
-				finding,
-				tool: "tests",
-			})),
+	it.each([
+		{ label: "a tool the manifest does not know", change: { tool: "bogus" } },
+		{ label: "a record outside packages/evals/comparisons/", change: { record: "docs/design.md" } },
+		{ label: "a record that climbs out of the directory", change: { record: "packages/evals/comparisons/../x.md" } },
+		{ label: "a malformed finding ID", change: { finding: "ZZ" } },
+		{ label: "an empty finding ID", change: { finding: "" } },
+	])("refuses a miss with $label", ({ change }) => {
+		const state = structuredClone(stored);
+		Object.assign(state.misses[0], change);
+		try {
+			ToolManifest.parse(JSON.stringify(state));
+			throw new Error("accepted invalid miss");
+		} catch (error) {
+			expect(error).toBeInstanceOf(ToolManifestError);
+			expect(error).toMatchObject({ code: "invalidManifest" });
+		}
+	});
+
+	it("refuses a duplicate miss finding with a typed error", () => {
+		const state = structuredClone(stored);
+		state.misses.push(structuredClone(state.misses[0]));
+		try {
+			ToolManifest.parse(JSON.stringify(state));
+			throw new Error("accepted duplicate miss");
+		} catch (error) {
+			expect(error).toBeInstanceOf(ToolManifestError);
+			expect(error).toMatchObject({ code: "invalidManifest", message: expect.stringContaining("duplicate miss") });
+		}
+	});
+
+	it("round-trips a well-formed list of misses through toJSON", () => {
+		const misses = [
+			{ record: "packages/evals/comparisons/a.md", finding: "M1", tool: "repro-run" },
+			{ record: "packages/evals/comparisons/a.md", finding: "L10", tool: "tests" },
+			{ record: "packages/evals/comparisons/b-2.md", finding: "M1", tool: "none" },
 		];
-		const manifest = ToolManifest.parse(JSON.stringify(stored));
-		expect(manifest.toJSON().misses).toEqual(expected);
-		for (const miss of manifest.toJSON().misses)
-			expect(miss.record).toMatch(/^packages\/evals\/comparisons\/[^/]+\.md$/);
+		const state = { ...structuredClone(stored), misses };
+		expect(ToolManifest.parse(JSON.stringify(state)).toJSON().misses).toEqual(misses);
+		expect(ToolManifest.parse(JSON.stringify({ ...state, misses: [] })).toJSON().misses).toEqual([]);
 	});
 
 	it("reads all four pins and the recorded execution misses", () => {
