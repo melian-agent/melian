@@ -62,17 +62,54 @@ function literal(path: string): string {
 	return path.replace(/[\\*?[\]{}()!+@#]/g, "\\$&");
 }
 
-// The first `maxLines` changed lines in path order, which is the order git lists a diff's files, and the lines past them. A
-// range the bound falls in is cut at it.
+// How many of its lines each file may have mutated when the change is past the bound. Problem: taking the first lines in path
+// order let an author spend the bound on harmless lines in files that sort early and leave a risky file last in path order
+// unjudged. Solution: every file gets a share in proportion to its changed lines, by largest remainder with ties in path
+// order, and no file is left with none while the bound has a line for each.
+function shares(sizes: ReadonlyMap<string, number>, maxLines: number): Map<string, number> {
+	const total = [...sizes.values()].reduce((sum, size) => sum + size, 0);
+	const share = new Map<string, number>();
+	const remainder = new Map<string, number>();
+	for (const [path, size] of sizes) {
+		share.set(path, Math.floor((maxLines * size) / total));
+		remainder.set(path, (maxLines * size) % total);
+	}
+	const paths = [...sizes.keys()];
+	const byRemainder = [...paths].sort((x, y) => remainder.get(y)! - remainder.get(x)!);
+	let spare = maxLines - [...share.values()].reduce((sum, each) => sum + each, 0);
+	for (const path of byRemainder) {
+		if (spare === 0) break;
+		share.set(path, share.get(path)! + 1);
+		spare--;
+	}
+	if (paths.length <= maxLines) {
+		for (const path of paths.filter((each) => share.get(each) === 0)) {
+			const donor = paths.reduce((most, each) => (share.get(each)! > share.get(most)! ? each : most));
+			share.set(donor, share.get(donor)! - 1);
+			share.set(path, 1);
+		}
+	}
+	return share;
+}
+
+// The lines the run mutates, and the lines it leaves out, when the change has more than `maxLines`. A range the file's
+// share falls in is cut at it.
 function withinBound(
 	lines: Readonly<Record<string, readonly (readonly [number, number])[]>>,
 	maxLines: number,
 ): { kept: Record<string, [number, number][]>; omitted: Record<string, [number, number][]> } {
+	const sizes = new Map(
+		Object.entries(lines).map(([path, ranges]) => [
+			path,
+			ranges.reduce((sum, [first, last]) => sum + last - first + 1, 0),
+		]),
+	);
 	const kept: Record<string, [number, number][]> = {};
 	const omitted: Record<string, [number, number][]> = {};
-	let room = maxLines;
-	for (const path of Object.keys(lines)) {
-		for (const [first, last] of lines[path]!) {
+	const share = shares(sizes, maxLines);
+	for (const [path, ranges] of Object.entries(lines)) {
+		let room = share.get(path)!;
+		for (const [first, last] of ranges) {
 			const taken = Math.min(room, last - first + 1);
 			if (taken > 0) kept[path] = [...(kept[path] ?? []), [first, first + taken - 1]];
 			if (taken < last - first + 1) omitted[path] = [...(omitted[path] ?? []), [first + taken, last]];

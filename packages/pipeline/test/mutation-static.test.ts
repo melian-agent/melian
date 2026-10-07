@@ -734,25 +734,85 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			expect(fake.calls()).toHaveLength(2);
 		});
 
-		it("takes the first lines in path order, and raises a finding for each file that has lines it left out", async () => {
+		// n lines of code in one file, as the head adds them.
+		const rows = (name: string, count: number) =>
+			lines(...Array.from({ length: count }, (_, index) => `export const ${name}${index} = ${index};`));
+
+		it("shares the bound across the files in proportion, so a risky file last in path order is mutated too", async () => {
 			const base = commit(repo, { "stryker.config.json": config });
 			const head = commit(repo, {
-				"packages/p/src/c.ts": lines("export const c = 1;", "export const d = 2;"),
-				"packages/p/src/b.ts": lines("export const b = 1;", "export const e = 2;", "export const f = 3;"),
-				"packages/p/src/a.ts": lines("export const a = 1;"),
-				"packages/p/src/d.ts": lines("export const g = 1;"),
+				"packages/p/src/a.ts": rows("a", 10),
+				"packages/p/src/b.ts": rows("b", 10),
+				"packages/p/src/z.ts": rows("z", 2),
 			});
 			const fake = stryker({ report: report({}) });
-			const result = await mutate(base, head, { maxLines: 3 });
-			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:1-1", "packages/p/src/b.ts:1-2"]);
-			expect((await leftOut(base, head, 3)).map(([path, , what]) => [path, what])).toEqual([
-				["packages/p/src/b.ts", expect.stringContaining("line 3 of packages/p/src/b.ts")],
-				["packages/p/src/c.ts", expect.stringContaining("lines 1-2 of packages/p/src/c.ts")],
-				["packages/p/src/d.ts", expect.stringContaining("line 1 of packages/p/src/d.ts")],
+			await mutate(base, head, { maxLines: 11 });
+			expect(lastEntries(fake)).toEqual([
+				"packages/p/src/a.ts:1-5",
+				"packages/p/src/b.ts:1-5",
+				"packages/p/src/z.ts:1-1",
 			]);
-			if (result.status !== "ran") throw new Error("skipped");
-			expect(result.notes).toContain("Stryker mutated 3 changed lines in 2 file(s); the base was not mutated.");
-			expect(result.notes.filter((note) => note.includes("maxLines"))).toEqual([]);
+			expect((await leftOut(base, head, 11)).map(([path, , what]) => [path, what])).toEqual([
+				["packages/p/src/a.ts", expect.stringContaining("lines 6-10 of packages/p/src/a.ts")],
+				["packages/p/src/b.ts", expect.stringContaining("lines 6-10 of packages/p/src/b.ts")],
+				["packages/p/src/z.ts", expect.stringContaining("line 2 of packages/p/src/z.ts")],
+			]);
+		});
+
+		it("gives a file with a single changed line one line of the bound, taking it from the largest share", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": rows("a", 99),
+				"packages/p/src/z.ts": rows("z", 1),
+			});
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 20 });
+			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:1-19", "packages/p/src/z.ts:1-1"]);
+		});
+
+		it("gives every file a line when the bound is exactly the number of files", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": rows("a", 5),
+				"packages/p/src/b.ts": rows("b", 1),
+				"packages/p/src/c.ts": rows("c", 1),
+			});
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 3 });
+			expect(lastEntries(fake)).toEqual([
+				"packages/p/src/a.ts:1-1",
+				"packages/p/src/b.ts:1-1",
+				"packages/p/src/c.ts:1-1",
+			]);
+		});
+
+		it("gives the line the shares leave over to the file with the largest remainder, whatever its path", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, { "packages/p/src/a.ts": rows("a", 3), "packages/p/src/b.ts": rows("b", 4) });
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 3 });
+			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:1-1", "packages/p/src/b.ts:1-2"]);
+		});
+
+		it("breaks a tie between equal remainders in path order", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, { "packages/p/src/a.ts": rows("a", 3), "packages/p/src/b.ts": rows("b", 3) });
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 3 });
+			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:1-2", "packages/p/src/b.ts:1-1"]);
+		});
+
+		it("leaves whole files out, last in path order first, when there are more files than lines in the bound", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": rows("a", 1),
+				"packages/p/src/b.ts": rows("b", 1),
+				"packages/p/src/c.ts": rows("c", 1),
+			});
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 2 });
+			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:1-1", "packages/p/src/b.ts:1-1"]);
+			expect((await leftOut(base, head, 2)).map(([path]) => path)).toEqual(["packages/p/src/c.ts"]);
 		});
 
 		it("cuts a range the bound falls in, and counts every range of a file that changes in two places", async () => {
