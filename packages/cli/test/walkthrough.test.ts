@@ -2,6 +2,7 @@ import { copyFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Changeset } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
+import * as pipeline from "@melian-agent/pipeline";
 import {
 	backgroundContext as context,
 	createRegistry,
@@ -78,6 +79,17 @@ describe("CLI walkthrough switch", { timeout: 60_000 }, () => {
 		expect(await review(io, "#7", { rerun: false })).toBe(0);
 		expect((await recorded())?.walkthroughNotes?.[revisionKey(changeset.revision)]).toBeDefined();
 		expect(output.every((text) => !text.includes("summariser"))).toBe(true);
+	});
+});
+
+describe("CLI walkthrough credentials", { timeout: 60_000 }, () => {
+	it("gives the summariser the review's credential unlock, to run before it asks a model", async () => {
+		const summarize = vi.spyOn(pipeline, "summarizeReview").mockResolvedValue(undefined);
+		const io = { cwd: repo, env, stdout: () => {}, stderr: () => {}, color: false };
+
+		expect(await review(io, "#7", { rerun: false })).toBe(0);
+
+		expect(summarize).toHaveBeenCalledWith(expect.objectContaining({ unlockModels: expect.any(Function) }));
 	});
 });
 

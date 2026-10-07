@@ -25,7 +25,7 @@ import {
 	type Tx,
 	Type,
 } from "./harness.ts";
-import { modelsOf, type ReviewModels } from "./models.ts";
+import { hasCredentials, modelsOf, type ReviewModels } from "./models.ts";
 import { attachable, undecided } from "./review-index.ts";
 import { quoteUntrusted, reviewNonce } from "./untrusted.ts";
 
@@ -240,6 +240,12 @@ export async function summarizeReview(options: {
 	readonly models: ReviewModels;
 	readonly context?: Context;
 	readonly rerun?: boolean;
+	/**
+	 * Called once, after the walkthrough is found not to be stored and a light model is known, and before a model is
+	 * asked. The host unlocks credentials there; one that fails leaves the fixed summariser note, which
+	 * names no credential, since the walkthrough is published.
+	 */
+	readonly unlockModels?: () => Promise<void>;
 }): Promise<void> {
 	const { harness, changeset, config, models } = options;
 	if (!config.publish.walkthrough.enabled) return;
@@ -263,7 +269,7 @@ export async function summarizeReview(options: {
 		for (const candidate of route === undefined ? [] : [route.model, ...route.fallbacks]) {
 			if (
 				modelsOf(models).getModel(candidate.provider, candidate.modelId) !== undefined &&
-				(await modelsOf(models).checkAuth(candidate.provider)) !== undefined
+				(await hasCredentials(models, candidate.provider))
 			) {
 				model = candidate;
 				break;
@@ -281,6 +287,7 @@ export async function summarizeReview(options: {
 			}, context);
 			return;
 		}
+		await options.unlockModels?.();
 		const prompt = await WalkthroughPrompt.from(changeset).render();
 		const task = await conversation.commit(async (tx) => {
 			const index = await tx.doc(SummaryIndex, conversation.id);

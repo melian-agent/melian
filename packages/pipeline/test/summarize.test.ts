@@ -1,4 +1,6 @@
-import { rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Changeset, defaultConfig, type MelianConfig } from "@melian-agent/core";
 import {
 	backgroundContext as context,
@@ -213,6 +215,57 @@ describe("walkthrough summaries", () => {
 		expect(result?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
 		expect(captured["You write Melian's walkthrough"]).toHaveLength(1);
 	});
+	it("unlocks credentials once, before the first request, and not for a review that reads a stored walkthrough", async () => {
+		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
+		const before: number[] = [];
+		const unlock = vi.fn(async () => {
+			before.push(models.provider.state.callCount);
+		});
+		const revision = revisionKey(changeset.revision);
+		expect((await summarize({ unlockModels: unlock }))?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
+		expect(before).toEqual([0]);
+
+		const repeat = vi.fn(async () => {});
+		await summarize({ unlockModels: repeat });
+		expect(repeat).not.toHaveBeenCalled();
+	});
+	it("does not unlock for a review that finds no light model with credentials", async () => {
+		vi.spyOn(models.models, "checkAuth").mockResolvedValue(undefined);
+		const unlock = vi.fn(async () => {});
+		await summarize({ unlockModels: unlock });
+		expect(unlock).not.toHaveBeenCalled();
+	});
+	it("checks the light model's credentials without running a command credential", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "melian-summary-"));
+		try {
+			const marker = join(dir, "ran");
+			const keyed = createFakeModels({
+				provider: "fake-key",
+				models: [{ id: "scripted" }],
+				credentials: [
+					{
+						name: "vault",
+						provider: "fake-key",
+						type: "api_key",
+						value: { kind: "command", command: `touch ${marker}; printf key-value` },
+						file: "f",
+					},
+				],
+				authPath: join(dir, "auth.json"),
+			});
+			const ref = keyed.ref("scripted");
+			const unlock = vi.fn().mockRejectedValue(new Error("stop before the request"));
+			await summarize({
+				config: { ...config, models: { light: { model: `${ref.provider}/${ref.modelId}` } } },
+				models: keyed.review,
+				unlockModels: unlock,
+			});
+			expect(unlock).toHaveBeenCalledOnce();
+			expect(existsSync(marker)).toBe(false);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
 	it("asks a persistently failing summariser twice across three reviews, and again on a rerun", async () => {
 		const fail = fauxAssistantMessage("", { stopReason: "error", errorMessage: "down" });
 		const captured = scriptConversations(models, [
@@ -225,11 +278,12 @@ describe("walkthrough summaries", () => {
 	});
 	it("catches credential, prompt and missing-extension failures without failing review", async () => {
 		const revision = revisionKey(changeset.revision);
-		const auth = vi.spyOn(models.models, "checkAuth").mockRejectedValue(new Error("private credential error"));
-		expect((await summarize())?.walkthroughNotes?.[revision]).toBe(
+		const unlock = vi.fn().mockRejectedValue(new Error("private credential error"));
+		expect((await summarize({ unlockModels: unlock }))?.walkthroughNotes?.[revision]).toBe(
 			"No walkthrough available. The summariser failed.",
 		);
-		auth.mockRestore();
+		expect(unlock).toHaveBeenCalledOnce();
+		expect(models.provider.state.callCount).toBe(0);
 		const files = vi.spyOn(changeset.revision.files, Symbol.iterator).mockImplementationOnce(() => {
 			throw new Error("private prompt error");
 		});
