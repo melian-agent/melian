@@ -476,7 +476,7 @@ The manifest is the tier's check list, and every check in it must account for it
 
 ## Checks and tiers
 
-`checksOfTier(config, tier)` lists a tier's checks in order without repeats. A name that is a tier expands to that tier's checks, and `static` expands to `static.biome` and `static.tsc`. An unknown tier is `CheckError` `unknownTier`, and a tier that includes itself is `tierCycle`. `deterministicChecks` names the checks the pipeline runs as tasks: `guardrails`, `static.biome`, and `static.tsc`. A check that cannot run throws `CheckError` with a code; it never returns an empty result. Look names up with `Object.hasOwn`, never by indexing a plain object: `groups["constructor"]` is `Object`, and a tier naming a check `constructor` threw a `TypeError` instead of recording an unknown check.
+`checksOfTier(config, tier)` lists a tier's checks in order without repeats. A name that is a tier expands to that tier's checks, and `static` expands to `static.biome` and `static.tsc`. An unknown tier is `CheckError` `unknownTier`, and a tier that includes itself is `tierCycle`. `deterministicChecks` names the checks the pipeline runs as tasks: `guardrails`, `static.biome`, `static.tsc`, and `static.enola`. `static` still expands to Biome and tsc only, so a tier names `static.enola` explicitly. A check that cannot run throws `CheckError` with a code; it never returns an empty result. Look names up with `Object.hasOwn`, never by indexing a plain object: `groups["constructor"]` is `Object`, and a tier naming a check `constructor` threw a `TypeError` instead of recording an unknown check.
 
 ## Guardrails
 
