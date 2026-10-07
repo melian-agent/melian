@@ -559,6 +559,24 @@ describe("policy-change-review", () => {
 		]);
 	});
 
+	it("covers a Stryker configuration at the root and in a package, whatever its extension", async () => {
+		const { findings } = await guardrails(
+			{ "src/a.ts": lines("a") },
+			{
+				"stryker.config.json": lines("{}"),
+				"packages/a/stryker.config.mjs": lines("export default {};"),
+				"packages/a/stryker.conf.json": lines("{}"),
+				"src/a.ts": lines("b"),
+			},
+		);
+		expect(findings.map((finding) => [finding.ruleId, finding.properties.path, finding.properties.severity])).toEqual(
+			[
+				["guardrail/policy-change-review", "packages/a/stryker.config.mjs", "P1"],
+				["guardrail/policy-change-review", "stryker.config.json", "P1"],
+			],
+		);
+	});
+
 	it("counts a package.json only at the root and at the workspace packages Biome and tsc load", async () => {
 		const { findings } = await guardrails(
 			{ "package.json": lines('{ "workspaces": ["packages/*", "!packages/private", "./tools/"] }') },

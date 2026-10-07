@@ -169,6 +169,31 @@ describe("normaliseMutationReport", () => {
 		]);
 	});
 
+	it("keeps a survivor on each range of a file changed in two places, and drops one between them", () => {
+		const { log } = normaliseMutationReport(
+			report({
+				"src/a.ts": [
+					{ status: "Survived", line: 2 },
+					{ status: "Survived", line: 6 },
+					{ status: "Survived", line: 11 },
+					{ status: "Survived", line: 13 },
+				],
+			}),
+			{
+				...input,
+				lines: {
+					"src/a.ts": [
+						[2, 3],
+						[10, 12],
+					],
+				},
+			},
+		);
+		expect(log.runs[0].results.map((result) => result.locations[0]!.physicalLocation.region.startLine)).toEqual([
+			2, 11,
+		]);
+	});
+
 	it("notes each requested file the report holds no mutants for, whether it is absent or listed empty", () => {
 		const lines = { "src/a.ts": [[10, 12]], "src/b.ts": [[1, 1]], "src/c.ts": [[1, 1]] } as Record<
 			string,
