@@ -1681,7 +1681,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			? lens.rules
 			: [...lens.rules, injectionAttemptRule];
 		const ruled = Lens.from({ ...lens.toJSON(), rules });
-		const decisions = lens.name === "design" ? await DecisionFiles.open(repoRoot, base) : undefined;
+		const decisions = lens.name === "design" ? await DecisionFiles.load(repoRoot, base) : undefined;
 		const baseline = (boundary: string) =>
 			decisions === undefined
 				? ""

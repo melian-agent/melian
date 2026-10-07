@@ -51,9 +51,9 @@ export class DecisionFiles {
 	}
 
 	/** Loads every Markdown decision at base; an incomplete read refuses the review. */
-	static async open(repoRoot: string, base: string): Promise<DecisionFiles> {
+	static async load(repoRoot: string, base: string): Promise<DecisionFiles> {
 		const source = await openSource(repoRoot, { kind: "revision", commit: base });
-		const paths = await source.findPaths(/^docs\/decisions\/.*\.md$/);
+		const paths = await source.findPaths(/^docs\/decisions\/.*\.md$/s);
 		const files = [];
 		for (const path of paths) {
 			const content = await source.readText(path, 256 * 1024);

@@ -30,3 +30,5 @@ DecisionFile.parse reads a title and dated Markdown filenames on Supersedes line
 DecisionFiles.render lists 100 paths and titles at most, with active status or direct successors. Each escaped row holds at most 512 characters. An omitted count and row bound note keep cuts explicit. The graph is complete even when the list is not.
 
 A Supersedes line beginning with “none” or “no decision file” declares no edge. Later links on that line are context. Without that check, the committed-routes decision incorrectly deactivates the review-plan decision it cites.
+
+Decision discovery matches newlines in filenames. Git permits them; a dot without the s flag silently omits such a decision. Render paths through visibleText so they stay on one prompt row.

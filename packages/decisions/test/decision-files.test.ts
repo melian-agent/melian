@@ -87,6 +87,7 @@ describe("base decision reads", () => {
 				[a]: "# Base title\n",
 				[b]: "# B\nSupersedes: 2026-10-01-a.md\n",
 				"docs/decisions/nested/2026-10-01-extra.md": "# Nested\n",
+				"docs/decisions/2026-10-01-line\nbreak.md": "# Newline path\n",
 				"docs/progress-log/2026-10-01-other.md": "# Not a decision\n",
 			});
 			gitIn(repo, "add", "--all");
@@ -95,16 +96,17 @@ describe("base decision reads", () => {
 			writeFiles(repo, { [a]: "# Head title\n" });
 			gitIn(repo, "commit", "--quiet", "--all", "-m", "head");
 			const base = gitIn(repo, "rev-parse", "HEAD~");
-			const rendered = (await DecisionFiles.open(repo, base)).render();
+			const rendered = (await DecisionFiles.load(repo, base)).render();
 			expect(rendered).toContain(`[INACTIVE; superseded by ${b}] ${a} — Base title`);
 			expect(rendered).toContain(`[ACTIVE] ${b} — B`);
 			expect(rendered).toContain("— Nested");
+			expect(rendered).toContain("2026-10-01-line\\u000abreak.md — Newline path");
 			expect(rendered).not.toContain("Not a decision");
 			expect(rendered).not.toContain("Head title");
 			const source = await openSource(repo, { kind: "revision", commit: base });
 			const read = vi.spyOn(Object.getPrototypeOf(source), "readText").mockResolvedValue(undefined);
 			try {
-				await expect(DecisionFiles.open(repo, base)).rejects.toMatchObject({ code: "incomplete" });
+				await expect(DecisionFiles.load(repo, base)).rejects.toMatchObject({ code: "incomplete" });
 			} finally {
 				read.mockRestore();
 			}
@@ -120,14 +122,14 @@ describe("base decision reads", () => {
 			writeFiles(repo, { "src/index.ts": "export const answer = 42;\n" });
 			gitIn(repo, "add", "--all");
 			gitIn(repo, "commit", "--quiet", "-m", "empty");
-			expect((await DecisionFiles.open(repo, "HEAD")).render()).not.toContain("ACTIVE");
+			expect((await DecisionFiles.load(repo, "HEAD")).render()).not.toContain("ACTIVE");
 			writeFiles(repo, { [a]: `# Title\n${"x".repeat(256 * 1024 - 8)}` });
 			gitIn(repo, "add", "--all");
 			gitIn(repo, "commit", "--quiet", "-m", "bound");
-			expect((await DecisionFiles.open(repo, "HEAD")).render()).toContain("— Title");
+			expect((await DecisionFiles.load(repo, "HEAD")).render()).toContain("— Title");
 			writeFiles(repo, { [a]: `# Title\n${"x".repeat(256 * 1024 - 7)}` });
 			gitIn(repo, "commit", "--quiet", "--all", "-m", "past");
-			await expect(DecisionFiles.open(repo, "HEAD")).rejects.toMatchObject({ code: "tooLarge" });
+			await expect(DecisionFiles.load(repo, "HEAD")).rejects.toMatchObject({ code: "tooLarge" });
 		} finally {
 			removeDirectory(repo);
 		}
