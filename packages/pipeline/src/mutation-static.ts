@@ -28,7 +28,7 @@ const report = "reports/mutation/mutation.json";
 const typescript = /\.[cm]?tsx?$/;
 const notProduction = /\.(?:d|test|spec)\.[cm]?tsx?$/;
 const configuration = /\.config\.[cm]?tsx?$/;
-const notProductionPrefixes = ["packages/evals/verifier/"];
+const notProductionPrefix = "packages/evals/verifier/";
 const notProductionDirectories: ReadonlySet<string> = new Set([
 	"test",
 	"tests",
@@ -44,7 +44,7 @@ function production(path: string): boolean {
 	return (
 		typescript.test(path) &&
 		!notProduction.test(path) &&
-		!notProductionPrefixes.some((prefix) => path.startsWith(prefix)) &&
+		!path.startsWith(notProductionPrefix) &&
 		!posix
 			.dirname(path)
 			.split("/")

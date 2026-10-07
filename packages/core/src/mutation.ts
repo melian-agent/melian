@@ -70,7 +70,7 @@ export const mutationSkips = {
 		`the change adds or edits lines of production TypeScript files that Stryker is not asked to mutate (${paths.join(", ")}), so none of them was judged`,
 };
 
-const leaveCauses: ReadonlySet<string> = new Set<MutationSkipCause>([
+const leaveCauses: ReadonlySet<string | undefined> = new Set<MutationSkipCause>([
 	"noProductionLines",
 	"untrustedWriter",
 	"noSandbox",
@@ -82,7 +82,7 @@ const leaveCauses: ReadonlySet<string> = new Set<MutationSkipCause>([
  * run too slow to finish, a writer Melian does not trust to run code, or a host with no sandbox to run it in. A skip with no cause, or any other, has none.
  */
 export function mutationSkipHasLeave(cause: string | undefined): boolean {
-	return cause !== undefined && leaveCauses.has(cause);
+	return leaveCauses.has(cause);
 }
 
 /** Changed code the run did not ask Stryker about, with why and what a maintainer does about it. */

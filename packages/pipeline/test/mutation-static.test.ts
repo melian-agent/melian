@@ -507,6 +507,20 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			);
 		});
 
+		it("says nothing of a test file, a declaration, or a verifier file changed beside the production files it mutates", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": a,
+				"packages/p/test/a.test.ts": lines("// tests a"),
+				"packages/p/src/types.d.ts": lines("export type T = number;"),
+				"packages/evals/verifier/case/src/user.ts": lines("export const user = 1;"),
+			});
+			stryker({ report: report({}) });
+			const result = await mutate(base, head);
+			if (result.status !== "ran") throw new Error("skipped");
+			expect(result.notes.filter((note) => note.includes(" was not mutated: "))).toEqual([]);
+		});
+
 		describe("a production file that lists no changed lines", () => {
 			const binary = "export const x = 1;\0\n";
 			const path = "packages/p/src/blob.ts";

@@ -434,12 +434,36 @@ describe("normaliseMutationReport", () => {
 		]);
 	});
 
-	it("gives a skip leave to pass only for the causes of a change with nothing to mutate, an untrusted writer, or a timeout", () => {
-		for (const cause of ["noProductionLines", "untrustedWriter", "timeout"])
+	it("gives a skip leave to pass only for the causes of a change with nothing to mutate, an untrusted writer, no sandbox, or a timeout", () => {
+		for (const cause of ["noProductionLines", "untrustedWriter", "noSandbox", "timeout"])
 			expect(mutationSkipHasLeave(cause), cause).toBe(true);
 		for (const cause of ["unmutated", "", "Timeout", "static.mutation.enabled is false", mutationSkips.timeout(3600)])
 			expect(mutationSkipHasLeave(cause), cause).toBe(false);
 		expect(mutationSkipHasLeave(undefined)).toBe(false);
+	});
+
+	it("words each skip reason as the review shows it", () => {
+		expect(mutationSkips.noProductionLines).toBe("the change adds or edits no production TypeScript lines");
+		expect(mutationSkips.untrustedWriter("octocat has read permission")).toBe(
+			"the writer is not a trusted one (octocat has read permission), so Stryker did not run: static.mutation executes the head's own tests",
+		);
+		expect(mutationSkips.noSandbox).toBe(
+			"the host offers no sandbox (sandbox-exec on macOS, bwrap on Linux), so Stryker did not run: static.mutation executes the head's own tests and runs them only confined",
+		);
+		expect(mutationSkips.timeout(7)).toBe("Stryker ran past static.mutation.timeout of 7 seconds before it finished");
+		expect(mutationSkips.unmutated(["src/a.ts", "src/b.ts"])).toBe(
+			"the change adds or edits lines of production TypeScript files that Stryker is not asked to mutate (src/a.ts, src/b.ts), so none of them was judged",
+		);
+	});
+
+	it("reads an ignored mutant against a configuration that has a mutator section with no exclusions, or none at all", () => {
+		for (const config of [{ mutator: {} }, { ignoreStatic: true, mutator: {} }, {}]) {
+			const { log } = read(
+				{ "src/a.ts": [{ status: "Ignored", line: 10, reason: "Ignored using a comment" }] },
+				config,
+			);
+			expect(log.runs[0].results.map((result) => result.ruleId)).toEqual(["ignored-mutant"]);
+		}
 	});
 
 	describe("mutationNotJudged", () => {
