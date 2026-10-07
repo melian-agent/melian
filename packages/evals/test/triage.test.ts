@@ -29,11 +29,23 @@ const choice = (expected: TriageChoice["expected"], chosen: string): TriageChoic
 	chosen,
 });
 
-function measured(choices: readonly TriageChoice[], version = "1", fingerprint = "a"): TriageResults {
-	const results = TriageResults.parse(
-		JSON.stringify({ questionSet: { name: "triage", version }, fingerprint, model: "m", passes: 1, choices }),
+function measured(
+	choices: readonly TriageChoice[],
+	version = "1",
+	fingerprint = "a",
+	model = "m",
+	goldenNames: readonly string[] = ["g"],
+): TriageResults {
+	return TriageResults.parse(
+		JSON.stringify({
+			questionSet: { name: "triage", version },
+			fingerprint,
+			model,
+			goldens: goldenNames,
+			passes: 1,
+			choices,
+		}),
 	);
-	return results;
 }
 
 describe("the triage corpus", { timeout: 60_000 }, () => {
@@ -200,6 +212,48 @@ describe("TriageResults", () => {
 			expect(wide.meanDistance()).toBe(near.meanDistance());
 			expect(wide.compare(near)).toMatchObject({ verdict: "better" });
 			expect(near.compare(wide)).toMatchObject({ verdict: "worse" });
+		});
+
+		it("refuses a baseline measured with another decider model, and says which", () => {
+			const other = measured(baseline.choices, "1", "a", "n");
+			expect(other.compare(baseline)).toEqual({
+				verdict: "incomparable",
+				lines: expect.arrayContaining(["incomparable: the decider model differs, m -> n"]),
+			});
+			expect(measured(baseline.choices).compare(baseline).verdict).toBe("same");
+		});
+
+		it("refuses a baseline measured on another golden set, and says which", () => {
+			const other = measured(baseline.choices, "1", "a", "m", ["g", "h"]);
+			expect(other.compare(baseline)).toEqual({
+				verdict: "incomparable",
+				lines: expect.arrayContaining(["incomparable: the golden set differs, g -> g, h"]),
+			});
+			const old = TriageResults.parse(
+				JSON.stringify({
+					questionSet: { name: "triage", version: "1" },
+					fingerprint: "a",
+					model: "m",
+					passes: 1,
+					choices: [],
+				}),
+			);
+			expect(measured(baseline.choices).compare(old).lines).toContain(
+				"incomparable: the golden set differs, none recorded -> g",
+			);
+			expect(measured(baseline.choices, "1", "a", "m", ["g"]).compare(baseline).verdict).toBe("same");
+		});
+
+		it("does not order means within the tolerance, and does past it", () => {
+			// Of 200 choices, one off by a level moves the mean distance, and the exact share, by 0.005: the tolerance.
+			const twoHundred = (offBy: number): TriageChoice[] => [
+				...Array.from({ length: offBy }, () => choice("deep", "careful")),
+				...Array.from({ length: 200 - offBy }, () => choice("deep", "deep")),
+			];
+			expect(measured(twoHundred(19)).compare(measured(twoHundred(20))).verdict).toBe("same");
+			expect(measured(twoHundred(18)).compare(measured(twoHundred(20))).verdict).toBe("better");
+			expect(measured(twoHundred(21)).compare(measured(twoHundred(20))).verdict).toBe("same");
+			expect(measured(twoHundred(22)).compare(measured(twoHundred(20))).verdict).toBe("worse");
 		});
 
 		it("lists the movement in each measure", () => {

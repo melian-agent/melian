@@ -194,7 +194,7 @@ const looks = ["skip", ...scrutinyLevels];
 
 /** The comparison of two measurements of the triage questions: whether the later one chooses better. */
 export interface TriageComparison {
-	readonly verdict: "better" | "worse" | "same";
+	readonly verdict: "better" | "worse" | "same" | "incomparable";
 	readonly lines: readonly string[];
 }
 
@@ -203,9 +203,13 @@ export interface StoredTriageResults {
 	readonly questionSet: QuestionSet;
 	readonly fingerprint: string;
 	readonly model: string;
+	readonly goldens: readonly string[];
 	readonly passes: number;
 	readonly choices: readonly TriageChoice[];
 }
+
+// Measures that print the same at two decimals, as the comparison's lines do, are not ordered.
+const comparisonTolerance = 0.005;
 
 /**
  * A measurement of the triage questions: what the fallback decider chose against the right level, over every golden
@@ -215,6 +219,7 @@ export class TriageResults {
 	readonly questionSet: QuestionSet;
 	readonly fingerprint: string;
 	readonly model: string;
+	readonly goldens: readonly string[];
 	readonly passes: number;
 	readonly choices: readonly TriageChoice[];
 
@@ -222,6 +227,7 @@ export class TriageResults {
 		this.questionSet = stored.questionSet;
 		this.fingerprint = stored.fingerprint;
 		this.model = stored.model;
+		this.goldens = stored.goldens ?? [];
 		this.passes = stored.passes;
 		this.choices = stored.choices;
 	}
@@ -243,7 +249,8 @@ export class TriageResults {
 			),
 		);
 		const passes = Math.max(0, ...goldens.map((golden) => chosen[golden.name]?.length ?? 0));
-		return new TriageResults({ questionSet: triageQuestionSet, passes, choices, ...measured });
+		const names = goldens.map((golden) => golden.name).sort();
+		return new TriageResults({ questionSet: triageQuestionSet, passes, choices, goldens: names, ...measured });
 	}
 
 	/** Reads a measurement `toJSON` wrote. */
@@ -252,8 +259,8 @@ export class TriageResults {
 	}
 
 	toJSON(): StoredTriageResults {
-		const { questionSet, fingerprint, model, passes, choices } = this;
-		return { questionSet, fingerprint, model, passes, choices };
+		const { questionSet, fingerprint, model, goldens, passes, choices } = this;
+		return { questionSet, fingerprint, model, goldens, passes, choices };
 	}
 
 	// How far a choice is from the right level, in levels; a choice the decider never gave is as far as it can be.
@@ -295,10 +302,16 @@ export class TriageResults {
 		].join("\n");
 	}
 
+	// A difference within the tolerance, up to float error, is none.
+	private static settle(difference: number): number {
+		return Math.abs(difference) <= comparisonTolerance + 1e-12 ? 0 : difference;
+	}
+
 	/**
 	 * Whether this measurement chooses better than `baseline`: a lower mean distance is better, and at the same distance
-	 * a higher exact share. Says so when the questions changed without their version, which the question set's version
-	 * exists to prevent, and when the version moved but the questions did not.
+	 * a higher exact share, each read within a small tolerance. Refuses, as incomparable, a baseline measured with
+	 * another decider model or golden set. Says so when the questions changed without their version, which the question
+	 * set's version exists to prevent, and when the version moved but the questions did not.
 	 */
 	compare(baseline: TriageResults): TriageComparison {
 		const lines = [
@@ -311,8 +324,18 @@ export class TriageResults {
 		const sameQuestions = baseline.fingerprint === this.fingerprint;
 		if (sameVersion && !sameQuestions) lines.push("the questions changed and their version did not");
 		if (!sameVersion && sameQuestions) lines.push("the version changed and the questions did not");
-		const distance = this.meanDistance() - baseline.meanDistance();
-		const exact = this.exact() - baseline.exact();
+		if (baseline.model !== this.model) {
+			lines.push(`incomparable: the decider model differs, ${baseline.model} -> ${this.model}`);
+			return { verdict: "incomparable", lines };
+		}
+		if (baseline.goldens.join("\n") !== this.goldens.join("\n")) {
+			lines.push(
+				`incomparable: the golden set differs, ${baseline.goldens.join(", ") || "none recorded"} -> ${this.goldens.join(", ") || "none recorded"}`,
+			);
+			return { verdict: "incomparable", lines };
+		}
+		const distance = TriageResults.settle(this.meanDistance() - baseline.meanDistance());
+		const exact = TriageResults.settle(this.exact() - baseline.exact());
 		const verdict =
 			distance < 0 ? "better" : distance > 0 ? "worse" : exact > 0 ? "better" : exact < 0 ? "worse" : "same";
 		return { verdict, lines };

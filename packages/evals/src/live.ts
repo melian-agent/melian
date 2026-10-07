@@ -84,7 +84,7 @@ if (process.env.MELIAN_EVAL_TRIAGE === "1") {
 	if (baseline === undefined || baseline === "") process.exit(0);
 	const compared = results.compare(TriageResults.parse(readFileSync(baseline, "utf8")));
 	console.log(`${compared.verdict}: ${compared.lines.join("; ")}`);
-	process.exit(compared.verdict === "worse" ? 1 : 0);
+	process.exit(compared.verdict === "worse" ? 1 : compared.verdict === "incomparable" ? 2 : 0);
 }
 
 const allGoldens = loadGoldens();
