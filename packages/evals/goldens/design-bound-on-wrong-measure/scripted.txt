@@ -1,0 +1,16 @@
+src/bound-on-wrong-measure.ts
+
+  P2  line 3  bound-on-wrong-measure  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  The standards cap now counts content bytes and omits rendered paths and headings.
+    What: The standards cap now counts content bytes and omits rendered paths and headings.
+    Why here: The base decision bounds the final prompt. Empty sections still render paths and markup, so a content-only bound permits an arbitrarily large prompt.
+    Failure scenario: A caller passes 100 empty sections whose paths are 20 bytes each. Their content totals zero bytes and passes, but rendered headings exceed 1024 bytes and the prompt violates its bound.
+    Evidence:
+      cause: src/bound-on-wrong-measure.ts:3
+          if (sections.reduce((n, s) => n + Buffer.byteLength(s.text), 0) > 1024) throw new Error("too large");
+      context: docs/decisions/2026-10-01-bound-on-wrong-measure.md:3 at base
+        Choice: Rendered standards, including paths, headings and markup, must fit within 1024 bytes. Empty sections count.
+    What to do: Apply the byte cap to the rendered body.
+
+1 finding in 1 file.

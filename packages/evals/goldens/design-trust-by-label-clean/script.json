@@ -1,0 +1,65 @@
+{
+  "correctness": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "trust-boundary": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "removed-behaviour": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "tests": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "conventions": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "design": [
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "docs/decisions/2026-10-01-trust-by-label.md",
+            "revision": "base"
+          },
+          "expectToolResult": "Standards enter trusted instructions only when their commit equals the policy commit. A revision label alone proves nothing."
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "src/trust-by-label.ts"
+          },
+          "expectToolResult": "reading.text"
+        }
+      ]
+    },
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "durability": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ]
+}

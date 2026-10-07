@@ -1,0 +1,28 @@
+{
+  "pr_title": "Resume with current publisher identity",
+  "comments": [
+    {
+      "comment": "A resumed publication keeps the first publisher identity after credentials change.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/resumed-identity.ts",
+      "rule": "resumed-identity",
+      "source": "lens.design",
+      "cause": "introduced",
+      "failureScenario": "Alice starts a publication at head H with write permission. Bob resumes it at H with read permission. The head returns Alice's stored identity and write permission, letting Bob publish with stale attribution.",
+      "evidence": [
+        {
+          "file": "src/resumed-identity.ts",
+          "line": 4,
+          "role": "cause"
+        },
+        {
+          "file": "docs/decisions/2026-10-01-resumed-identity.md",
+          "line": 3,
+          "role": "context",
+          "revision": "base"
+        }
+      ]
+    }
+  ]
+}
