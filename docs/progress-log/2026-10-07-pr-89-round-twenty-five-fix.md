@@ -1,0 +1,3 @@
+# Pull request #89, round twenty-five fix
+
+Melian's round twenty-five found that the caller section sat in the lens task's attach key (finding 322bdff0fbcb7007), so a rerun after a crash that rendered another section ran every lens again. The section left both `selectionOf` and the instruction fingerprint; see [the decision](../decisions/2026-10-07-caller-context-outside-the-attach-key.md). A real-kill test reviews with callers, crashes, and reviews again with callers unavailable; it attaches, asks each model once, and keeps the first section. The old test that expected changed callers to replace the task now expects an attach.

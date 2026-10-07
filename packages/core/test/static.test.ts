@@ -5,6 +5,7 @@ import {
 	defaultConfig,
 	type Finding,
 	normaliseBiomeSarif,
+	normaliseEnolaSarif,
 	parseTscDiagnostics,
 	staticFindings,
 	staticSeverity,
@@ -275,6 +276,76 @@ describe("staticFindings", () => {
 			["tsc/TS2345", "TS2345 at a.ts:2 (and 1 more on these lines)"],
 			["tsc/TS2554", "TS2554 at a.ts:2"],
 		]);
+	});
+
+	function enolaLog(...messages: string[]): ToolLog {
+		return normaliseEnolaSarif(
+			JSON.stringify({
+				version: "2.1.0",
+				runs: [
+					{ results: messages.map((text) => ({ ruleId: "intent-unmet", level: "error", message: { text } })) },
+				],
+			}),
+			{ root: repo, version: "0.4.27" },
+		);
+	}
+
+	async function enolaCauses(baseMessages: string[], headMessages: string[]) {
+		const intent = lines("rules:", "  - a");
+		const base = commit({ "enola-intent.yaml": intent, "a.ts": lines("1") });
+		const head = commit({ "a.ts": lines("2") });
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const { findings } = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "enola",
+			settings: defaultConfig.static.enola,
+			base: enolaLog(...baseMessages),
+			head: enolaLog(...headMessages),
+		});
+		return findings.map((finding) => [finding.message.text, finding.properties.cause]);
+	}
+
+	it("identifies an unlocated Enola result by its message though the intent file has code on line 1", async () => {
+		expect(await enolaCauses(["intent A unmet"], ["intent B unmet"])).toEqual([["intent B unmet", "introduced"]]);
+	});
+
+	it("keeps the same unlocated Enola result pre-existing", async () => {
+		expect(await enolaCauses(["intent A unmet"], ["intent A unmet"])).toEqual([["intent A unmet", "pre-existing"]]);
+	});
+
+	it("identifies a located Enola result at the intent file's first line by its code, not its message", async () => {
+		const base = commit({ "enola-intent.yaml": lines("rules:", "  - a") });
+		const head = commit({ "a.ts": lines("2") });
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const located = (text: string): ToolLog => {
+			const one = enolaLog(text);
+			const result = one.runs[0].results[0]!;
+			const place = result.locations[0]!.physicalLocation;
+			return {
+				...one,
+				runs: [
+					{
+						...one.runs[0],
+						results: [
+							{
+								...result,
+								locations: [{ physicalLocation: { ...place, region: { startLine: 1, startColumn: 1 } } }],
+							},
+						],
+					},
+				],
+			};
+		};
+		const { findings } = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "enola",
+			settings: defaultConfig.static.enola,
+			base: located("message one"),
+			head: located("message two"),
+		});
+		expect(findings.map((finding) => finding.properties.cause)).toEqual(["pre-existing"]);
 	});
 
 	it("fails rather than guess when a result's file cannot be read", async () => {

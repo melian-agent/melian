@@ -52,6 +52,7 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 			"pull-request": "full",
 			comment: "standard",
 		});
+		expect(loaded.config.static.enola).toEqual({ enabled: false, timeout: 300, severity: {} });
 		expect(loaded.config.resolution).toEqual({
 			P0: "block",
 			P1: "block",

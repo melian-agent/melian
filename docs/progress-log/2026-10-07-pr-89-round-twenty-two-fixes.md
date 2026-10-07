@@ -1,0 +1,3 @@
+# test and docs: close round twenty-two on the tool manifest
+
+For [pull request #89](https://github.com/melian-agent/melian/pull/89), round 22 closed in seven commits: `dbb8e5c5` pins the URL protocol, hostname and port guards, `4a7472af` pins the skill rule that `melian tools fetch enola` runs only on request, `f0a858ae` and `6e23fccf` keep a review with `static.enola` disabled from opening caller context, `d1a7ae3b` pins the scratch sweep's six-directory depth bound, `20a941d5` pins the coverage cache's 16 MiB size and compiler guards, `258b1c0d` records that `#sarif` fails closed when normalisation drops results, and `c4a3ef0c` trims the plan's step 11 status to one sentence. Each test fails when its guard is deleted or its bound moved by one.

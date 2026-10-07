@@ -191,6 +191,7 @@ describe("the skill boundary's parser", () => {
 const consentRule = /^- Never run `melian publish` until the user has seen the findings and told you to publish\.$/m;
 const dismissalRule =
 	/^- Never run `melian dismiss` unless the user has told you to dismiss that finding, and give the reason they gave\.$/m;
+const toolsRule = /When they ask to fetch Enola, run `melian tools fetch enola`\./;
 
 // What breaks a skill's boundary: an executable other than melian, a pre-approval beyond `melian doctor`, a command or
 // option the CLI lacks, or a missing rule that publication waits for the user.
@@ -215,6 +216,7 @@ function boundaryProblems(text: string, host: string): string[] {
 			.map((option) => `passes ${option}`),
 		...(consentRule.test(body) ? [] : ["lacks the rule that publication waits for the user"]),
 		...(dismissalRule.test(body) ? [] : ["lacks the rule that dismissal waits for the user"]),
+		...(toolsRule.test(body) ? [] : ["lacks the rule that fetching a tool waits for the user"]),
 	];
 }
 
@@ -246,6 +248,7 @@ describe("the skill boundary", () => {
 		],
 		["dropping the consent rule", (skill: string) => skill.replace(consentRule, "")],
 		["dropping the dismissal rule", (skill: string) => skill.replace(dismissalRule, "")],
+		["dropping the tools rule", (skill: string) => skill.replace(toolsRule, "")],
 		[
 			"pre-approving dismiss",
 			(skill: string) => skill.replace(/^(allowed-tools: .*)$/m, "$1 Bash(melian dismiss:*)"),
@@ -290,7 +293,9 @@ describe.each(hosts)("skills/%s/SKILL.md", (host) => {
 		// A bare `melian` names the tool rather than running a command.
 		const used = shellCommands(body).filter((command) => command.executable === "melian" && command.args.length > 0);
 		const names = used.map((each) => each.args[0]);
-		expect(new Set(names)).toEqual(new Set(["doctor", "review", "findings", "dismiss", "publish", "compare"]));
+		expect(new Set(names)).toEqual(
+			new Set(["doctor", "tools", "review", "findings", "dismiss", "publish", "compare"]),
+		);
 		for (const command of names) expect(commands).toContain(command);
 		const passed = used.flatMap((each) => each.args.filter((arg) => arg.startsWith("--")));
 		expect(new Set(passed)).toEqual(

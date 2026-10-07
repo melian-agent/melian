@@ -1,0 +1,9 @@
+# Per-file call coverage
+
+Ground truth uses TypeScript 7.0.2's unstable synchronous API. It supplies source files, symbols, aliases, and resolved signatures, so no second compiler dependency is needed. A worker can run the compiler through an execution environment; the spike runs only on a disposable copy of the trusted branch-point commit.
+
+Each import or re-export declaration and literal dynamic import resolving inside the repository is one import edge. A call pair identifies the enclosing function and callee by declaration file, line, column, and qualified name. Repeated calls from that function to that callee count once. Constructors and tagged templates count. Top-level calls use a file module sentinel. A named function value uses its binding declaration's line, including a multiline initializer. Anonymous functions retain their own identity; getters and setters are methods. External declarations and unresolved calls are counted separately.
+
+An explicit facts relation with target_id proves a call. An upstream impact report can also prove it with a calls or instantiates edge and the caller's declaration location. Neither has_method nor a short-name guess proves a call. Import matches require an explicit resolved target file, or an upstream import edge identifying the importing declaration. The returned full query target must agree, even when exit 0 carries an ambiguity warning. Successful empty reports may use null edges. Both sources contribute; neither replaces a valid edge the other omits. Names shared across files in one directory are ambiguous and cannot prove a match.
+
+Per-file ratios keep numerators, denominators, and every gap. A zero denominator is n/a. Coverage does not restrict search in this step. A later experiment could require 1.0 for both imports and calls, with no ambiguous identities; this is a proposal, not an applied setting. The measured result and all gaps are in the spike report.

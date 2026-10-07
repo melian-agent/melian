@@ -18,7 +18,7 @@ import { type CheckReport, guardrailLimits } from "./guardrails.ts";
 import { openSource, SourceError, type SourceReader } from "./source.ts";
 
 /** The static tools Melian runs. */
-export type StaticTool = "biome" | "tsc";
+export type StaticTool = "biome" | "tsc" | "enola";
 
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
@@ -292,7 +292,7 @@ export function parseTscDiagnostics(
 
 /** The Melian rule ID of a tool's rule: `biome/suspicious/noDebugger` for Biome's `lint/suspicious/noDebugger`, `tsc/TS2322`. */
 export function staticRuleId(tool: StaticTool, ruleId: string): string {
-	return tool === "biome" ? `biome/${ruleId.replace(/^lint\//, "")}` : `tsc/${ruleId}`;
+	return tool === "biome" ? `biome/${ruleId.replace(/^lint\//, "")}` : `${tool}/${ruleId}`;
 }
 
 const biomeSeverities: Readonly<Record<SarifLevel, Severity>> = { error: "P2", warning: "P3", note: "nit" };
@@ -307,7 +307,7 @@ export function staticSeverity(
 	level: SarifLevel,
 	overrides: Readonly<Record<string, Severity>>,
 ): Severity {
-	return overrides[rule] ?? (tool === "biome" ? biomeSeverities[level] : "P1");
+	return overrides[rule] ?? (tool === "tsc" ? "P1" : biomeSeverities[level]);
 }
 
 /** What {@link staticFindings} compares. */
@@ -372,7 +372,10 @@ async function identify(
 			?.split("\n")
 			.slice(region.startLine - 1, endLine)
 			.join("\n");
-		const byCode = text !== undefined && snippet !== undefined && normaliseSnippet(snippet) !== "";
+		// Enola's unlocated results all sit on line 1 of its intent file; the code there says nothing about which result.
+		const unlocated =
+			tool === "enola" && path === "enola-intent.yaml" && Object.keys(region).length === 1 && region.startLine === 1;
+		const byCode = !unlocated && text !== undefined && snippet !== undefined && normaliseSnippet(snippet) !== "";
 		const identity = byCode
 			? { snippet, occurrence: snippetOccurrence(text, snippet, { startLine: region.startLine, endLine }) }
 			: { discriminator: result.message.text };

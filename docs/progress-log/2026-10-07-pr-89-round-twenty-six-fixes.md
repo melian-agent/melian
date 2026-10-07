@@ -1,0 +1,3 @@
+# Pull request 89, round twenty-six fixes
+
+Two findings. The first, a test commit, pins the intent-file arm of the Enola constraint gate: a top-level `rules:` or `recipes:` key turns on `--fail-on=constraints`, and an indented, commented or absent key does not. The second, a fix commit, stores the caller notes and coverage IDs of the first call that finishes a lens task on the review index entry, so a repeat review of the same head renders them again and keeps the adjudication key and verdict fingerprint, with the decision recorded in the caller-context decision file. See the commits `test(core): pin the intent-file arm of the Enola constraint gate` and `fix(pipeline): keep the first call's caller notes and coverage on a repeat review`.
