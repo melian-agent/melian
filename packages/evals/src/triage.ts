@@ -169,6 +169,10 @@ export async function runTriageGolden(golden: TriageGolden, mode: TriageMode, pa
 					triageQuestionSet.name,
 					backgroundContext,
 				);
+				if (mode.kind === "live" && recorded?.decision === undefined)
+					throw new Error(
+						`${golden.name}: the decider gave no decision, so the run measures nothing: ${recorded?.failure ?? "none was recorded"}`,
+					);
 				chosen.push(
 					Object.fromEntries(wanted.map((lens) => [lens, recorded?.decision?.chosen(lens) ?? "unanswered"])),
 				);

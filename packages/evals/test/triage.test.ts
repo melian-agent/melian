@@ -136,6 +136,20 @@ describe("the triage corpus", { timeout: 60_000 }, () => {
 		expect(Object.values(requests).flat()).toHaveLength(3);
 	});
 
+	it("aborts a live run whose decider failed, with the failure, and never scores it as unanswered", async () => {
+		const golden = goldens.find((each) => each.name === "docs-typo")!;
+		const fake = createFakeModels({ provider: "live-eval", models: [{ id: "judge" }] });
+		scriptConversations(fake, [
+			{
+				match: "You answer typed questions about a code change",
+				replies: [fauxAssistantMessage("", { stopReason: "error", errorMessage: "HTTP 429 rate limited" })],
+			},
+		]);
+		await expect(
+			runTriageGolden(golden, { kind: "live", models: fake.review, model: "live-eval/judge" }),
+		).rejects.toThrow(/docs-typo.*HTTP 429 rate limited/);
+	});
+
 	it("refuses a live model with no credentials", async () => {
 		const fake = createFakeModels({ models: [{ id: "judge" }] });
 		await expect(
