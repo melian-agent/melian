@@ -224,6 +224,19 @@ describe("stored comparison reading and export", () => {
 		expect(read).toHaveBeenCalledTimes(3);
 	});
 
+	it.each([
+		["stats", (unscripted: Io) => comparisonStats(unscripted, {})],
+		["backlog", (unscripted: Io) => comparisonBacklog(unscripted, false)],
+	])("reads %s from the state directory itself when no test script is set", async (_name, run) => {
+		vi.spyOn(repository, "stateDirectory").mockResolvedValue("/state");
+		vi.spyOn(fsp, "readdir").mockResolvedValue([names[0]] as never);
+		vi.spyOn(ComparisonReader, "open").mockReturnValue({ read: async () => [] } as never);
+
+		expect(await run({ ...io, env: {} })).toBe(0);
+
+		expect(vi.mocked(repository.openStorage).mock.calls.map(([path]) => path)).toEqual([join("/state", names[0]!)]);
+	});
+
 	it("reads no comparisons from a state directory that does not exist, and refuses an unreadable one", async () => {
 		vi.spyOn(repository, "stateDirectory").mockResolvedValue("/state");
 		vi.spyOn(fsp, "readdir").mockRejectedValueOnce(Object.assign(new Error("missing"), { code: "ENOENT" }));
