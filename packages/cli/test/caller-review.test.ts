@@ -66,7 +66,7 @@ it.each([true, false])(
 			paths: [],
 		});
 		vi.spyOn(CallerContext, "open").mockResolvedValue(callers);
-		vi.spyOn(callers, "recordCoverage").mockResolvedValue({ review: "a".repeat(64) });
+		vi.spyOn(CallerContext.prototype, "recordCoverage").mockResolvedValue({ review: "a".repeat(64) });
 		const lines: string[] = [],
 			errors: string[] = [];
 		const io: Io = {
