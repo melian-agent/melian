@@ -29,8 +29,8 @@ const setAside: ReadonlySet<string> = new Set(["Timeout", "RuntimeError", "Compi
 const known: ReadonlySet<string> = new Set(["Killed", "Ignored", "Survived", "NoCoverage", ...setAside]);
 
 // Whether a setting in the run's own configuration, which is a policy file a maintainer reads, ignored this mutant. The
-// mutant's `statusReason` is not evidence: a `// Stryker disable` comment can carry any text, including the one a setting
-// gives. The report's `config` and the mutant's own `static` flag and mutator name are Stryker's, not the head's text.
+// mutant's `statusReason` is not evidence: a disabling comment in the head's source can carry any text, including the
+// one a setting gives. The report's `config` and the mutant's own `static` flag and mutator name are Stryker's, not the head's text.
 function ignoredByConfiguration(
 	each: Static<typeof mutant>,
 	config: Static<typeof settings> | undefined,
