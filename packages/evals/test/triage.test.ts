@@ -323,9 +323,10 @@ const recordPath = "packages/evals/triage/questions.json";
 
 // `git` runs a git command in the repository and returns its output, or throws. `ls-tree` succeeds with no output for
 // a file main does not have and fails when it has no main to read, which `show` alone would not tell apart.
+// `--full-tree` makes the path root-relative: `ls-tree` otherwise reads it from the directory git runs in.
 function recordOnMain(git: (args: string[]) => string): MainRecord {
 	try {
-		if (git(["ls-tree", "--name-only", "origin/main", "--", recordPath]).trim() === "") return { kind: "absent" };
+		if (git(["ls-tree", "--full-tree", "--name-only", "origin/main", "--", recordPath]).trim() === "") return { kind: "absent" };
 		return {
 			kind: "recorded",
 			entries: JSON.parse(git(["show", `origin/main:${recordPath}`])) as RecordedFingerprints,
@@ -335,8 +336,12 @@ function recordOnMain(git: (args: string[]) => string): MainRecord {
 	}
 }
 
-const gitInTriageDirectory = (args: string[]): string =>
-	execFileSync("git", args, { cwd: triageDirectory, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+const gitIn =
+	(cwd: string) =>
+	(args: string[]): string =>
+		execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+
+const gitInTriageDirectory = gitIn(triageDirectory);
 
 describe("the triage question set's version", () => {
 	it("stands for the questions as recorded: change one, bump the version and add its fingerprint", async () => {
@@ -375,11 +380,51 @@ describe("the triage question set's version", () => {
 	describe("reading the record at main", () => {
 		const record = '{"1":"aaaa"}';
 		const git = (outputs: Record<string, string | Error>) => (args: string[]) => {
+			if (args[0] === "ls-tree" && !(args.includes("--full-tree") && args.at(-1) === recordPath))
+				throw new Error(`ls-tree must read the root-relative path: git ${args.join(" ")}`);
+			if (args[0] === "show" && args.at(-1) !== `origin/main:${recordPath}`)
+				throw new Error(`show must read the record: git ${args.join(" ")}`);
 			const output = outputs[args[0]!];
 			if (output === undefined) throw new Error(`unexpected git ${args.join(" ")}`);
 			if (output instanceof Error) throw output;
 			return output;
 		};
+
+		describe("in a repository, from a subdirectory", () => {
+			const run = (cwd: string, ...args: string[]) =>
+				execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+
+			function repositoryWhereMain(records: boolean): { root: string; subdirectory: string } {
+				const root = mkdtempSync(join(tmpdir(), "melian-record-main-"));
+				const subdirectory = join(root, "packages", "evals", "triage");
+				mkdirSync(subdirectory, { recursive: true });
+				writeFileSync(join(root, "README.md"), "x\n");
+				if (records) writeFileSync(join(subdirectory, "questions.json"), record);
+				run(root, "init", "--quiet", "--initial-branch=trunk");
+				run(root, "add", "-A");
+				run(root, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", "base");
+				run(root, "update-ref", "refs/remotes/origin/main", "HEAD");
+				return { root, subdirectory };
+			}
+
+			it("reads the entries main records", () => {
+				const { root, subdirectory } = repositoryWhereMain(true);
+				try {
+					expect(recordOnMain(gitIn(subdirectory))).toEqual({ kind: "recorded", entries: { "1": "aaaa" } });
+				} finally {
+					rmSync(root, { recursive: true, force: true });
+				}
+			});
+
+			it("calls a main without the file absent", () => {
+				const { root, subdirectory } = repositoryWhereMain(false);
+				try {
+					expect(recordOnMain(gitIn(subdirectory))).toEqual({ kind: "absent" });
+				} finally {
+					rmSync(root, { recursive: true, force: true });
+				}
+			});
+		});
 
 		it("reads the entries main records", () => {
 			expect(recordOnMain(git({ "ls-tree": `${recordPath}\n`, show: record }))).toEqual({
