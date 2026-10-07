@@ -76,3 +76,16 @@ describe("comparison arguments", () => {
 		},
 	);
 });
+
+describe("a failure with a numeric code", () => {
+	it("reports a child-process exit status as a message, not a crash", async () => {
+		const io = output();
+		const compare = vi.spyOn(comparison, "compare").mockRejectedValue(Object.assign(new Error("git exited"), { code: 128 }));
+		try {
+			expect(await main(["compare", "main...feature"], io)).toBe(1);
+			expect(io.stderr).toHaveBeenCalledExactlyOnceWith("melian: git exited\n");
+		} finally {
+			compare.mockRestore();
+		}
+	});
+});

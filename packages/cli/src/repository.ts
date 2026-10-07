@@ -24,7 +24,12 @@ export class CliError extends Error {
 export const stateDirectoryVariable = "MELIAN_STATE_DIR";
 
 export async function stateDirectory(repoRoot: string, env: NodeJS.ProcessEnv): Promise<string> {
-	return (await CacheLocation.open(repoRoot, env)).root;
+	try {
+		return (await CacheLocation.open(repoRoot, env)).root;
+	} catch (error) {
+		const { stderr, message } = error as { stderr?: unknown; message: string };
+		throw new CliError(`git rev-parse failed: ${typeof stderr === "string" && stderr.trim() ? stderr.trim() : message}`);
+	}
 }
 
 export async function storagePath(
