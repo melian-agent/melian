@@ -1,3 +1,3 @@
-# Pull request 72, round nine
+# [Pull request #72](https://github.com/melian-agent/melian/pull/72), round nine
 
 [Pull request #72](https://github.com/melian-agent/melian/pull/72), Melian's ninth round. A replacement adjudication now keeps the finding's `--rule` tag as well as its golden debt, in `Comparison.adjudicate` and in the cross-round inheritance in `CompareHarness.adjudicate`. Discharging debt with `--golden none` used to drop the tag and could remove a candidate check from `compare stats`. Core tests feed control characters through the terminal forms of `renderBacklog()` and `renderStats()`. The snapshot commands in the core and evals guidelines put the path before `--update`, as the AGENTS.md learning says. The `--since` calendar check is inlined, and the `round` and `entry` test helpers take an options object.

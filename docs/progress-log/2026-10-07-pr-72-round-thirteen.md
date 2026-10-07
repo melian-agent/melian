@@ -1,4 +1,4 @@
-# Pull request 72, round thirteen
+# [Pull request #72](https://github.com/melian-agent/melian/pull/72), round thirteen
 
 - Root `AGENTS.md` still said an agent hand-writes the comparison record and lists fix commits. It now says `melian compare export` writes the record from the stored comparison, which has no fix-commit column, and that fix commits go in the progress-log entry. This matches the [evals guideline](../guidelines/evals.md#comparisons) and the [decision](../decisions/2026-10-05-comparison-review-fixes.md) that dropped the column.
 - New core tests pin the identity `ExternalFinding.importFile` returns, the stored `adjudications`, `createdAt` and `target` fields of `comparisonSchema`, the case-folded login in a reviewer's stats key, precision with noise and duplicates, and a rejudgement's inherited rule and golden. Each fails under the mutation that removes the guard it names.

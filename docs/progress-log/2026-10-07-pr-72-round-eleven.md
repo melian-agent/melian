@@ -1,4 +1,4 @@
-# Pull request 72, round eleven
+# [Pull request #72](https://github.com/melian-agent/melian/pull/72), round eleven
 
 Melian's eleventh round, Sonnet 5.5 lenses with an Opus 5.5 verifier, found one wrong result and three advisories. All four were confirmed.
 
