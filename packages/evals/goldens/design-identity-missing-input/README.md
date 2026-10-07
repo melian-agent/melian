@@ -1,0 +1,3 @@
+# design-identity-missing-input
+
+Seeded from finding A1 of the [comparison record](../../comparisons/2026-10-06-pr-85.md) for [pull request #85](https://github.com/melian-agent/melian/pull/85): the lens task's selection identity carried the lens key, band, escalation settings and route but no fingerprint of its rendered instructions, so a second review of the same revision after a standards edit attached to the finished task and never saw the new text. The record marks the miss `owned-missed` under `durability`; the design lens owns it too, since the base's decision names the instructions as an input of the task. The head adds the reuse the decision describes, with a key that leaves that input out.

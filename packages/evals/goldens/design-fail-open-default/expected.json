@@ -1,0 +1,31 @@
+{
+  "pr_title": "Let a republish skip the trust argument",
+  "comments": [
+    {
+      "comment": "canPublish reads an omitted writersTrusted as trusted, so a caller that leaves it out, as republishCommand does, publishes for a repository whose policy never set trust.",
+      "severity": "High",
+      "category": "security",
+      "file": "src/publish.ts",
+      "rule": "fail-open-default",
+      "cause": "introduced",
+      "failureScenario": "A repository's policy leaves trust.writers unset, so its writers are untrusted. A maintainer without write access runs republish: republishCommand calls canPublish with no options, `options.writersTrusted ?? true` reads the omission as trusted, and the command publishes where publishCommand, which passes the policy's answer, refuses.",
+      "evidence": [
+        {
+          "file": "src/publish.ts",
+          "line": 6,
+          "role": "cause"
+        },
+        {
+          "file": "src/cli.ts",
+          "line": 8,
+          "role": "context"
+        },
+        {
+          "file": "docs/decisions/2026-10-01-writer-trust.md",
+          "line": 5,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}
