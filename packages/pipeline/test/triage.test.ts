@@ -1402,6 +1402,40 @@ describe("escalation", () => {
 		},
 	);
 
+	it.each([
+		["quick reads hunks, so the functions it could not read were never its own", "hunks", undefined],
+		["quick reads functions itself", "functions", "the head's functions could not be read (no compiler)"],
+	] as const)(
+		"notes the unreadable functions only of the run that stands for the lens when it never escalated and %s",
+		async (_, quickReads, expected) => {
+			const reading = lenses.map((lens) =>
+				lens.name === "correctness"
+					? Lens.from({
+							...lens.toJSON(),
+							levels: {
+								...lens.levels,
+								quick: { ...lens.levels.quick!, reads: quickReads },
+								careful: { ...lens.levels.careful, reads: "functions" },
+							},
+						})
+					: lens,
+			);
+			const decider = choosing("quick");
+			await open(decider);
+			scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+			vi.spyOn(EnclosingFunctions, "read").mockImplementation(async () =>
+				Object.assign(EnclosingFunctions.none(), { unavailable: "no compiler" }),
+			);
+
+			const reviewed = await review({ decider, lenses: reading });
+
+			const reason = lensRecord(reviewed)?.reason;
+			if (expected === undefined) expect(reason ?? "").not.toContain("could not be read");
+			else expect(reason).toContain(expected);
+			expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "quick" });
+		},
+	);
+
 	it("refreshes a quick review when only its careful escalation budget changes", async () => {
 		const decider = choosing("quick");
 		await open(decider);
