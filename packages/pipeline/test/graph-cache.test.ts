@@ -174,3 +174,42 @@ it("repairs a regular file occupying the graph entry directory", async () => {
 	await cache.store(snapshot);
 	expect((await cache.read(parts))?.files()).toEqual(files);
 });
+
+const limit = 16 * 1024 * 1024;
+const padded = (size: number) => ({ ...files, "insights.json": `[]${" ".repeat(size - 2)}` });
+
+it.each([
+	{ size: limit - 1, hit: true },
+	{ size: limit, hit: false },
+])("reads an artifact of $size bytes as a hit: $hit", async ({ size, hit }) => {
+	root = await mkdtemp(join(tmpdir(), "melian-graph-bound-"));
+	const cache = await GraphCache.open(root);
+	const snapshot = GraphSnapshot.create(parts, padded(size));
+	await mkdir(join(root, "graphs", snapshot.key), { recursive: true });
+	for (const [name, text] of Object.entries(snapshot.files()))
+		await writeFile(join(root, "graphs", snapshot.key, name), text);
+	await writeFile(join(root, "graphs", snapshot.key, "entry.json"), JSON.stringify(snapshot.toJSON()));
+	expect((await cache.read(parts))?.key).toBe(hit ? snapshot.key : undefined);
+});
+
+it("reads an entry that changes between stat and read as a miss", async () => {
+	root = await mkdtemp(join(tmpdir(), "melian-graph-short-"));
+	const cache = await GraphCache.open(root);
+	const snapshot = GraphSnapshot.create(parts, files);
+	await cache.store(snapshot);
+	const entry = join(root, "graphs", snapshot.key, "entry.json");
+	await writeFile(entry, `${await readFile(entry, "utf8")} `);
+	expect((await cache.read(parts))?.key).toBe(snapshot.key);
+	const original = vi.mocked(open).getMockImplementation()!;
+	vi.mocked(open).mockImplementation(async (...args) => {
+		const handle = await original(...args);
+		if (args[0] !== entry) return handle;
+		const read = handle.read.bind(handle) as (...parameters: unknown[]) => Promise<{ bytesRead: number }>;
+		vi.spyOn(handle, "read").mockImplementation((async (...parameters: unknown[]) => {
+			const result = await read(...parameters);
+			return { ...result, bytesRead: result.bytesRead - 1 };
+		}) as never);
+		return handle;
+	});
+	expect(await cache.read(parts)).toBeUndefined();
+});
