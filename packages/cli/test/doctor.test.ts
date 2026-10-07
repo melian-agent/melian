@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as core from "@melian-agent/core";
@@ -394,4 +394,33 @@ describe("doctor trust boundaries", () => {
 		},
 		5_000,
 	);
+});
+
+describe("doctor mutation testing", () => {
+	const line = (stdout: string) => stdout.split("\n").find((each) => / {2}mutation\s+/.test(each));
+	const enable = () => writeFileSync(join(repo, "melian.yaml"), "static: { mutation: { enabled: true } }\n");
+
+	it("warns that the check records a skip when it is on and the checkout has no Stryker, since Melian carries none", async () => {
+		enable();
+		const { status, stdout } = await run(github());
+		expect(status).toBe(0);
+		expect(line(stdout)).toMatch(
+			/^warn {2}mutation\s+static\.mutation is on, but Stryker is not installed in the checkout/,
+		);
+		expect(line(stdout)).toContain("@stryker-mutator/core and @stryker-mutator/vitest-runner");
+	});
+
+	it("is ok when the checkout has a Stryker of its own", async () => {
+		enable();
+		mkdirSync(join(repo, "node_modules/.bin"), { recursive: true });
+		writeFileSync(join(repo, "node_modules/.bin/stryker"), "#!/bin/sh\n");
+		chmodSync(join(repo, "node_modules/.bin/stryker"), 0o755);
+		const { stdout } = await run(github());
+		expect(line(stdout)).toMatch(/^ok {4}mutation\s+static\.mutation runs Stryker from the checkout$/);
+	});
+
+	it("says nothing while the check is off", async () => {
+		const { stdout } = await run(github());
+		expect(line(stdout)).toBeUndefined();
+	});
 });

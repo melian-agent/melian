@@ -175,6 +175,28 @@ async function staticCheck(cwd: string): Promise<Check | undefined> {
 	};
 }
 
+// Mutation testing runs only the checkout's own Stryker: Melian carries none, and without one the check records a skip
+// that leaves the review not reviewed. Silent while the check is off.
+async function mutationCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<Check | undefined> {
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return undefined;
+	try {
+		const { config } = await loadConfig(root, { kind: "worktree", preferences: userFiles(env).config }, ".");
+		if (!config.static.mutation.enabled) return undefined;
+		const source = staticToolSource(root, "mutation");
+		return source.from === "checkout"
+			? { name: "mutation", state: "ok", detail: "static.mutation runs Stryker from the checkout" }
+			: {
+					name: "mutation",
+					state: "warn",
+					detail:
+						"static.mutation is on, but Stryker is not installed in the checkout and Melian carries none; add @stryker-mutator/core and @stryker-mutator/vitest-runner to its dev dependencies, or the check records a skip",
+				};
+	} catch (error) {
+		return { name: "mutation", state: "warn", detail: error instanceof Error ? error.message : String(error) };
+	}
+}
+
 async function standardsCheck(cwd: string): Promise<Check | undefined> {
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return undefined;
@@ -380,6 +402,7 @@ export async function doctor(io: Io, options: { readonly fetch?: typeof globalTh
 			await stateCheck(io.cwd, io.env),
 			await levelsCheck(io.cwd),
 			await staticCheck(io.cwd),
+			await mutationCheck(io.cwd, io.env),
 			await standardsCheck(io.cwd),
 		].filter((check) => check !== undefined),
 		...(await planChecks(io.cwd, io.env, secrets)),

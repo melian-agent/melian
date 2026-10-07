@@ -17,7 +17,7 @@ import {
 } from "@melian-agent/core";
 import { EnolaRun } from "./enola-static.ts";
 import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts";
-import { MutationRun } from "./mutation-static.ts";
+import { MutationRun, strykerNotInstalled } from "./mutation-static.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
 
 /** The most a static tool may write, its report included. Past it the run fails with `outputTooLarge`. */
@@ -93,8 +93,10 @@ function git(repoRoot: string, args: string): string {
 }
 
 const toolBinaries: Readonly<
-	Record<Exclude<StaticTool, "enola">, { readonly bin: string; readonly melian: () => string }>
+	Record<Exclude<StaticTool, "enola">, { readonly bin: string; readonly melian?: () => string }>
 > = {
+// Stryker has no Melian copy: it and its Vitest runner are 161 packages that the reviewed repository installs, as it does
+// for the tests Stryker runs.
 	biome: { bin: "biome", melian: () => melianBinary("@biomejs/biome", "bin/biome") },
 	tsc: { bin: "tsc", melian: () => melianBinary("typescript", "bin/tsc") },
 	mutation: { bin: "stryker", melian: () => melianBinary("@stryker-mutator/core", "bin/stryker.js") },
@@ -252,6 +254,7 @@ async function binaryFor(run: Run, installed: string | undefined): Promise<strin
 
 // Links the checkout's installed dependencies into the worktree entry by entry. Problem: one link to the checkout's
 // node_modules made its workspace links, such as `node_modules/b -> ../packages/b`, resolve to the checkout's own
+		if (melian === undefined) throw new Error(`Melian carries no ${bin}`);
 // sources, so base and head type-checked against one tree. Solution: an entry that resolves inside the checkout, outside
 // any node_modules, is a workspace package, linked to the worktree's own copy; every other entry links to the install.
 async function linkDependencies(run: Run, root: string, scratch: string, notes: string[]): Promise<void> {
@@ -449,6 +452,7 @@ export function staticToolSource(repoRoot: string, tool: StaticTool): StaticTool
 }
 
 /**
+	if (melian === undefined) return { from: "missing" };
  * Runs one static tool on one commit, entirely inside `env`. Checks the commit out into a temporary worktree with
  * `git worktree add --detach`, runs the tool there, and removes the
  * worktree, whatever happens. The user's checkout is only read: its `node_modules` is linked into the worktree, so the
@@ -505,6 +509,12 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 				? await runBiome(run, root, scratch, binary, version)
 				: await runTsc(run, root, scratch, binary, version, new Set(files), notes);
 		return { status: "ran", log, notes };
+		if (
+			tool === "mutation" &&
+			!(installed !== undefined && (await run.exists(posix.join(installed, ".bin", "stryker"))))
+		) {
+			return { status: "skipped", reason: strykerNotInstalled };
+		}
 	});
 }
 
