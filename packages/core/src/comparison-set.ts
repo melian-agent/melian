@@ -153,7 +153,6 @@ export class ComparisonSet {
 			.sort((a, b) => a.lens.localeCompare(b.lens) || a.target.localeCompare(b.target) || a.id.localeCompare(b.id));
 	}
 
-	/** Titles a finding from the judged round if it holds it, else from the newest round of the changeset that does. */
 	private titleOf(judged: ComparisonEntry, id: string): string {
 		const holders = this.entries.filter((each) => each.changeset === judged.changeset && each.comparison.holds(id));
 		for (const each of [judged, ...holders.reverse()]) {
