@@ -585,4 +585,18 @@ describe("comparison guards", () => {
 		expect(comparison.adjudication(external.id)?.current.verdict).toBe("valid");
 		expect(comparison.judgedIncludingWithdrawn()[external.id]?.current.verdict).toBe("valid");
 	});
+
+	it("counts a group whose reports give two in-scope reasons under the first in site order", () => {
+		const first = report();
+		const second = report({ reviewer: { name: "claude-code" } });
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [first, second], skippedBodies: 0 }, by.at);
+		comparison.compare(verdictOf());
+		comparison.adjudicate(first.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		comparison.adjudicate(second.id, { ...by, verdict: "valid", reason: "no-owner" });
+		expect(comparison.stats().misses).toMatchObject({ "owned-missed": 1, "no-owner": 0 });
+		comparison.adjudicate(first.id, { ...by, verdict: "valid", reason: "no-owner" });
+		comparison.adjudicate(second.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		expect(comparison.stats().misses).toMatchObject({ "owned-missed": 0, "no-owner": 1 });
+	});
 });
