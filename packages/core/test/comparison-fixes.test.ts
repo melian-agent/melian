@@ -497,3 +497,92 @@ describe("comparison review fixes", () => {
 		expect([...cells[4]!].length).toBeLessThan(330);
 	});
 });
+
+describe("comparison guards", () => {
+	it("keeps the first target and the earliest import time, and names an unlabelled comparison by its commits", () => {
+		const comparison = Comparison.of(revision);
+		expect(comparison.label()).toBe(`${"a".repeat(12)}..${"b".repeat(12)}`);
+		comparison.import("file:a.json", { findings: [], skippedBodies: 0 }, "2026-10-06T00:00:00Z");
+		comparison.import("file:b.json", { findings: [], skippedBodies: 0 }, "2026-10-05T00:00:00Z");
+		expect(comparison.recordedAt()).toBe("2026-10-05T00:00:00Z");
+		comparison.record("2026-10-05T00:00:00Z", "first");
+		comparison.record("2026-10-07T00:00:00Z", "second");
+		expect(comparison.label()).toBe("first");
+	});
+
+	it("counts a Melian-only finding's title as its ID in the backlog, and records the judgement's time", () => {
+		const finding = own();
+		const comparison = compared([], finding);
+		comparison.adjudicate(finding.id, { ...by, verdict: "valid", golden: "correctness" });
+		expect(comparison.backlog()).toMatchObject([{ id: finding.id, title: finding.id }]);
+		expect(comparison.recordedAt()).toBe(by.at);
+	});
+
+	it("records the judgement's time when it precedes every import", () => {
+		const external = report();
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", { findings: [external], skippedBodies: 0 }, "2026-10-06T00:00:00Z");
+		comparison.compare(verdictOf());
+		comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "no-owner" });
+		expect(comparison.recordedAt()).toBe(by.at);
+	});
+
+	it("scores a clean reviewer 1 for recall and precision", () => {
+		const comparison = Comparison.of(revision);
+		comparison.import(
+			"file:claude.json",
+			{ findings: [], skippedBodies: 0, reviewers: [{ name: "claude-code" }] },
+			by.at,
+		);
+		comparison.compare(verdictOf());
+		expect(row(comparison, "claude-code")).toMatchObject({ total: 0, recall: 1, precision: 1 });
+	});
+
+	it("does not let an ambiguous report make a group valid", () => {
+		const first = own();
+		const second = own("eval(other)", 14);
+		const external = report({ line: 13 });
+		const comparison = compared([external], first, second);
+		for (const finding of [first, second]) comparison.adjudicate(finding.id, { ...by, verdict: "noise" });
+		comparison.adjudicate(external.id, { ...by, verdict: "valid" });
+		expect(row(comparison, "melian")).toMatchObject({ total: 0, found: 0 });
+	});
+
+	it("clusters only valid findings, by rule tag alone or by NFKC-normalised title", () => {
+		const finding = own();
+		const wide = report({ title: "ＥＶＡＬ runs" });
+		const plain = report({ title: "eval runs", line: 40 });
+		const noisy = report({ title: "Noisy", line: 50 });
+		const comparison = compared([wide, plain, noisy], finding);
+		comparison.adjudicate(noisy.id, { ...by, verdict: "noise", rule: "noisy-rule" });
+		comparison.adjudicate(wide.id, { ...by, verdict: "valid", reason: "no-owner" });
+		comparison.adjudicate(plain.id, { ...by, verdict: "valid", reason: "no-owner" });
+		comparison.adjudicate(finding.id, { ...by, verdict: "valid", rule: "tagged" });
+		const keys = comparison.repeats().map((each) => each.key);
+		expect(keys.sort()).toEqual(["rule:tagged", "title:eval runs", "title:eval runs"]);
+		expect(comparison.repeats().find((each) => each.key === "rule:tagged")).toMatchObject({
+			title: "tagged",
+			ids: [finding.id],
+		});
+	});
+
+	it("lets a duplicate name a Melian finding", () => {
+		const finding = own();
+		const external = report();
+		const comparison = compared([external], finding);
+		comparison.adjudicate(external.id, { ...by, verdict: "duplicate", of: finding.id });
+		expect(comparison.adjudication(external.id)?.current).toMatchObject({ verdict: "duplicate", of: finding.id });
+	});
+
+	it("hands out copies of stored judgements and ignores names that are not findings", () => {
+		const external = report();
+		const comparison = compared([external]);
+		comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "no-owner" });
+		expect(comparison.adjudication("constructor")).toBeUndefined();
+		comparison.adjudication(external.id)!.current.verdict = "noise";
+		comparison.judgedIncludingWithdrawn()[external.id]!.current.verdict = "noise";
+		comparison.adjudications()[external.id]!.current.verdict = "noise";
+		expect(comparison.adjudication(external.id)?.current.verdict).toBe("valid");
+		expect(comparison.judgedIncludingWithdrawn()[external.id]?.current.verdict).toBe("valid");
+	});
+});
