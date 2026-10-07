@@ -105,14 +105,19 @@ function report(files: Record<string, Mutant[]>): string {
 
 // A fake `stryker` as the checkout's installed binary. It records each call's arguments and its working directory, and
 // writes the canned report where Stryker's JSON reporter does.
-function stryker(options: { report?: string; exit?: number; version?: string } = {}): { calls: () => string[][] } {
+function stryker(options: { report?: string; exit?: number; version?: string } = {}): {
+	calls: () => string[][];
+	heads: () => string[];
+} {
 	const canned = join(artifacts, "report.json");
 	const record = join(artifacts, "calls.txt");
+	const heads = join(artifacts, "heads.txt");
 	if (options.report !== undefined) writeFileSync(canned, options.report);
 	fakeTool(
 		repo,
 		"stryker",
 		`if [ "$1" = "--version" ]; then echo ${options.version ?? "10.0.0"}; exit 0; fi
+git rev-parse HEAD >> '${heads}'
 printf 'CALL\\n%s\\n' "$(pwd)" >> '${record}'
 printf '%s\\n' "$@" >> '${record}'
 [ ! -e reports/mutation/mutation.json ] || echo PLANTED >> '${record}'
@@ -121,6 +126,7 @@ echo "stryker said something" >&2
 exit ${options.exit ?? 0}`,
 	);
 	return {
+		heads: () => (existsSync(heads) ? readFileSync(heads, "utf8").trimEnd().split("\n") : []),
 		calls: () =>
 			existsSync(record)
 				? readFileSync(record, "utf8")
@@ -1133,6 +1139,7 @@ exit 1`,
 			const findings = await readFindings(harness, root.id, revisionKey({ base, head }), context);
 			expect(findings.map((finding) => finding.ruleId)).toEqual(["mutation/untested-behaviour"]);
 			expect(fake.calls()).toHaveLength(1);
+			expect(fake.heads()).toEqual([head]);
 		});
 
 		it("mutates the first lines of a change past the bound, and records the lines it left out as a finding, never as a clean check", async () => {
