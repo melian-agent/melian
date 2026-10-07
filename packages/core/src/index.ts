@@ -35,6 +35,34 @@ export {
 } from "./changeset.ts";
 export { checksOfTier, type DeterministicCheck, deterministicChecks } from "./checks.ts";
 export {
+	Comparison,
+	ComparisonError,
+	type ComparisonErrorCode,
+	type ComparisonGroup,
+	type ComparisonImport,
+	type ComparisonMatch,
+	type ComparisonUnmatch,
+	codexReviewSchema,
+	comparisonSchema,
+	ExternalFinding,
+	type ExternalFindingInput,
+	type ExternalFindingsFile,
+	type ExternalImport,
+	type ExternalImporter,
+	type ExternalReviewer,
+	type ExternalReviewerName,
+	type ExternalSite,
+	type ExternalSource,
+	externalFindingSchema,
+	externalFindingsFileSchema,
+	maxExternalBodyLength,
+	maxExternalFileFindings,
+	maxExternalTitleLength,
+	type StoredComparison,
+	type StoredExternalFinding,
+	siteDistance,
+} from "./comparison.ts";
+export {
 	type Band,
 	type ConfigLookup,
 	configLookup,
@@ -259,7 +287,15 @@ export {
 	secretsFileSchema,
 } from "./secrets.ts";
 export type { RepositorySource } from "./source.ts";
-export { loadStandards, type StandardsSection, standardsLimits } from "./standards.ts";
+export {
+	loadStandards,
+	Standards,
+	type StandardsEntry,
+	StandardsInventory,
+	StandardsReading,
+	type StandardsSection,
+	standardsLimits,
+} from "./standards.ts";
 export {
 	normaliseBiomeSarif,
 	parseTscDiagnostics,

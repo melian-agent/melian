@@ -1,0 +1,7 @@
+Closed the outdated-span test gap from the twelfth Melian round on [pull request #68](https://github.com/melian-agent/melian/pull/68). An outdated thread with original lines 7–12 keeps both ends, renders as `src/user.ts:7-12 (outdated)` and has no matchable site.
+
+Replacing the original start line with null passed all 33 old importer and CLI comparison tests. The new regression fails that mutation: it receives line 12 instead of 7. Restoring the calculation passes all 55 importer tests.
+
+Read all of `threads.ts` and covered its other untested branches in the same pass. Tests now distinguish current and original spans, missing and cross-side starts, stale file-level lines and starts beyond the end. They cover absent comments and commits, empty and single-line titles, severity truncation, bot login spellings and human attribution. They also cover both queries’ missing targets, error mapping, enterprise URLs, a missing next cursor and both sides of the 50-page limit. Unexpected response-reading failures exercise the defensive error branches through the injected transport. Every request uses fake transport. No production behaviour or design decision changed.
+
+Octokit's request logger reads `error.response` before the importer catches a rejection. Throwing null directly from the fake response therefore yields a `TypeError`. The defensive-error test makes that getter throw the chosen rejection, so null reaches the importer's own guard.
