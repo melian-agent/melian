@@ -19,6 +19,16 @@ const setAside: ReadonlySet<string> = new Set(["Timeout", "RuntimeError", "Compi
 // The states a finished run leaves a mutant in. Anything else, such as Pending, means it did not judge every mutant.
 const known: ReadonlySet<string> = new Set(["Killed", "Ignored", "Survived", "NoCoverage", ...setAside]);
 
+// The reasons Stryker 10.0.0 gives for a mutant that the `ignoreStatic` setting or the `excludedMutations` setting ignores
+// (core's mutant-test-planner and instrumenter's babel-transformer). Any other reason, such as the one a `// Stryker
+// disable` comment gives, or none, is the head's own text choosing what the judge skips.
+const staticReason = 'Static mutant (and "ignoreStatic" was enabled)';
+const excludedReason = /^Ignored because of excluded mutation ".*"$/;
+
+function ignoredByConfiguration(reason: string | undefined): boolean {
+	return reason === staticReason || (reason !== undefined && excludedReason.test(reason));
+}
+
 const longestCode = 160;
 
 /**
@@ -95,6 +105,7 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 	const results: ToolResult[] = [];
 	const aside = new Map<string, number>();
 	const ignored = new Map<string, Map<number, string>>();
+	const configured = new Map<string, Set<number>>();
 	const mutated = new Set<string>();
 	for (const [path, file] of Object.entries(files)) {
 		if (file.mutants.length > 0) mutated.add(path);
@@ -105,6 +116,12 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 			if (!ranges.some(([first, last]) => start.line >= first && start.line <= last)) continue;
 			if (setAside.has(each.status)) {
 				aside.set(each.status, (aside.get(each.status) ?? 0) + 1);
+				continue;
+			}
+			if (each.status === "Ignored" && ignoredByConfiguration(each.statusReason)) {
+				const lines = configured.get(path) ?? new Set<number>();
+				lines.add(start.line);
+				configured.set(path, lines);
 				continue;
 			}
 			if (each.status === "Ignored") {
@@ -144,8 +161,8 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 			});
 		}
 	}
-	// The head's own comments and configuration choose what Stryker ignores, so an ignored mutant is never read as caught: a
-	// maintainer acknowledges or dismisses it.
+	// A comment, or any reason that is not a configuration setting, is the head's own text choosing what the judge skips, so
+	// an ignored mutant is never read as caught: a maintainer acknowledges or dismisses it.
 	for (const [path, lines] of ignored) {
 		for (const [line, reason] of lines) {
 			results.push({
@@ -156,9 +173,9 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 				},
 				advice: {
 					whyHere:
-						"The head's own comment or configuration told Stryker not to judge this changed line, so a guard here would stay unproven.",
+						"The head's own text told Stryker not to judge this changed line, so a guard here would stay unproven.",
 					whatToDo:
-						"Remove the comment or configuration that excludes this line and test the behaviour, or acknowledge the exclusion if it is deliberate.",
+						"Remove the comment that excludes this line and test the behaviour, or acknowledge the exclusion if it is deliberate.",
 				},
 				locations: [
 					{
@@ -183,6 +200,14 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 		([status, count]) =>
 			`${count} ${status} mutant(s) on changed lines were set aside: a hang or a crash is not a survivor, so no finding is raised for it.`,
 	);
+	// A static mutant, or one a setting in `stryker.config.*` excludes, is the configuration's trade-off, which is a policy
+	// file a maintainer reads: a note names the lines.
+	for (const [path, lines] of [...configured].sort(([a], [b]) => compare(a, b))) {
+		const named = [...lines].sort((a, b) => a - b).join(", ");
+		notes.push(
+			`${path} line(s) ${named} hold mutants Stryker ignored by a setting in its configuration (static mutants, or an excluded mutation), so no test was asked about them.`,
+		);
+	}
 	// A path in `--mutate` is a glob, so one that matches no file leaves a report that reads as clean.
 	for (const path of Object.keys(run.lines)) {
 		if (!mutated.has(path)) notes.push(`${path} produced no mutants, so nothing on its changed lines was judged.`);

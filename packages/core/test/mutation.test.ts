@@ -155,14 +155,18 @@ describe("normaliseMutationReport", () => {
 		]);
 	});
 
-	it("reports an Ignored mutant on a changed line as one ignored-mutant result per line, with Stryker's reason, and nothing off the changed lines", () => {
+	const staticReason = 'Static mutant (and "ignoreStatic" was enabled)';
+	const ignoredText = (reason: string) =>
+		`Stryker ignored the mutants of this changed line, so no test was asked about them (${reason}).`;
+
+	it("reports a comment-ignored mutant on a changed line as one ignored-mutant result per line, with Stryker's reason, and nothing off the changed lines", () => {
 		const { log, notes } = read({
 			"src/a.ts": [
 				{ status: "Killed", line: 10 },
-				{ status: "Ignored", line: 12, reason: "Ignored by a Stryker disable comment" },
-				{ status: "Ignored", line: 11, reason: "Static mutant" },
+				{ status: "Ignored", line: 12, reason: "Ignored using a comment" },
+				{ status: "Ignored", line: 11, reason: "Needs a network" },
 				{ status: "Ignored", line: 11, reason: "Another reason" },
-				{ status: "Ignored", line: 99, reason: "Static mutant" },
+				{ status: "Ignored", line: 99, reason: "Ignored using a comment" },
 			],
 		});
 		expect(
@@ -173,33 +177,66 @@ describe("normaliseMutationReport", () => {
 				result.message.text,
 			]),
 		).toEqual([
-			[
-				"ignored-mutant",
-				"error",
-				11,
-				"Stryker ignored the mutants of this changed line, so no test was asked about them (Static mutant).",
-			],
-			[
-				"ignored-mutant",
-				"error",
-				12,
-				"Stryker ignored the mutants of this changed line, so no test was asked about them (Ignored by a Stryker disable comment).",
-			],
+			["ignored-mutant", "error", 11, ignoredText("Needs a network")],
+			["ignored-mutant", "error", 12, ignoredText("Ignored using a comment")],
 		]);
 		expect(notes).toEqual([]);
 		expect(log.runs[0].results[0]!.advice).toEqual({
 			whyHere:
-				"The head's own comment or configuration told Stryker not to judge this changed line, so a guard here would stay unproven.",
+				"The head's own text told Stryker not to judge this changed line, so a guard here would stay unproven.",
 			whatToDo:
-				"Remove the comment or configuration that excludes this line and test the behaviour, or acknowledge the exclusion if it is deliberate.",
+				"Remove the comment that excludes this line and test the behaviour, or acknowledge the exclusion if it is deliberate.",
 		});
 	});
 
-	it("names an Ignored mutant that carries no reason", () => {
-		const { log } = read({ "src/a.ts": [{ status: "Ignored", line: 10 }] });
-		expect(log.runs[0].results.map((result) => result.message.text)).toEqual([
-			"Stryker ignored the mutants of this changed line, so no test was asked about them (Stryker gives no reason).",
+	it("makes a mutant the ignoreStatic setting ignored, or an excludedMutations setting, a note naming the lines and no finding", () => {
+		const { log, notes } = read({
+			"src/a.ts": [
+				{ status: "Ignored", line: 12, reason: staticReason },
+				{ status: "Ignored", line: 10, reason: staticReason },
+				{ status: "Ignored", line: 10, reason: staticReason },
+				{ status: "Ignored", line: 11, reason: 'Ignored because of excluded mutation "StringLiteral"' },
+				{ status: "Ignored", line: 99, reason: staticReason },
+			],
+		});
+		expect(log.runs[0].results).toEqual([]);
+		expect(notes).toEqual([
+			"src/a.ts line(s) 10, 11, 12 hold mutants Stryker ignored by a setting in its configuration (static mutants, or an excluded mutation), so no test was asked about them.",
 		]);
+	});
+
+	it("keeps a static note per file, in path order, and a comment-ignored mutant on the same line a finding as well", () => {
+		const { log, notes } = read({
+			"src/b c.ts": [{ status: "Ignored", line: 1, reason: staticReason }],
+			"src/a.ts": [
+				{ status: "Ignored", line: 10, reason: staticReason },
+				{ status: "Ignored", line: 10, reason: "Ignored using a comment" },
+			],
+		});
+		expect(log.runs[0].results.map((result) => result.ruleId)).toEqual(["ignored-mutant"]);
+		expect(notes.map((note) => note.split(" line(s)")[0])).toEqual(["src/a.ts", "src/b c.ts"]);
+	});
+
+	it.each([
+		["a reason that only resembles a setting", 'Static mutant (and "ignoreStatic" was disabled)'],
+		[
+			"a reason that only begins like an exclusion",
+			'Ignored because of excluded mutation "A" by a comment\nand more',
+		],
+		["a prefix of the exclusion reason", "Ignored because of excluded mutation"],
+		["an empty reason", ""],
+	])("fails closed to a finding for %s", (_name, reason) => {
+		const { log, notes } = read({ "src/a.ts": [{ status: "Ignored", line: 10, reason }] });
+		expect(log.runs[0].results.map((result) => result.ruleId)).toEqual(["ignored-mutant"]);
+		expect(notes).toEqual([]);
+	});
+
+	it("fails closed to a finding naming Stryker's silence for an Ignored mutant that carries no reason", () => {
+		const { log, notes } = read({ "src/a.ts": [{ status: "Ignored", line: 10 }] });
+		expect(log.runs[0].results.map((result) => result.message.text)).toEqual([
+			ignoredText("Stryker gives no reason"),
+		]);
+		expect(notes).toEqual([]);
 	});
 
 	it("reports an ignored line in a file with no changed ranges as nothing", () => {
