@@ -109,7 +109,7 @@ describe("built-in lenses", () => {
 			contracts: "686d7ad61a40",
 			conventions: "bb08d9e590e4",
 			correctness: "05037e7ba4a2",
-			design: "3e3d515a63aa",
+			design: "8a754331de10",
 			"removed-behaviour": "45fa8885fd01",
 			tests: "bee1be69be22",
 			"trust-boundary": "593b84bf6e82",
@@ -126,7 +126,9 @@ describe("built-in lenses", () => {
 		expect(design!.instructions).toMatch(/^You are the design reviewer for one change\./);
 		expect(design!.instructions).toContain("an empty report");
 		expect(design!.instructions).toContain('`read_file` each decision it finds with `revision: "base"`');
-		expect(design!.instructions).toContain("The base text is the baseline you judge against.");
+		expect(design!.instructions).toContain(
+			"The base text is the baseline you judge against, only when the index marks that decision ACTIVE.",
+		);
 		expect(design!.instructions).toContain("read each `Supersedes:` target at base");
 		expect(design!.instructions).toContain("deletes or renames, read the old path at base");
 		expect(design!.instructions).toContain(

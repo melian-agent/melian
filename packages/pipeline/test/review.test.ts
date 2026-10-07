@@ -3550,3 +3550,68 @@ describe("the design baseline", () => {
 		}
 	});
 });
+
+describe("search at base", () => {
+	it("searches base-only paths and base terms, keeping default and explicit head searches unchanged", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "docs/decisions/old.md": "writer trust\n", "src/terms.ts": "export const term = 'writer trust';\n" },
+			{ "src/terms.ts": "export const term = 'publisher eligibility';\n" },
+		);
+		gitIn(repo, "rm", "--quiet", "docs/decisions/old.md");
+		writeFiles(repo, { ".gitattributes": "*.md -diff\n" });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "remove old path and hide markdown at head");
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					calls(
+						["search", { pattern: "writer trust", path: "docs/decisions/old.md", revision: "base" }],
+						["search", { pattern: "writer trust", path: "src/terms.ts", revision: "base" }],
+						["search", { pattern: "writer trust" }],
+						["search", { pattern: "publisher eligibility" }],
+						["search", { pattern: "publisher eligibility", revision: "head" }],
+					),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		await review();
+		const messages = requests[correctness]![1]!;
+		const nonce = nonceOf(messages);
+		const [old, base, absent, defaultHead, head] = toolResults(messages);
+		expect(quoted(old!, nonce, "search")).toEqual(["docs/decisions/old.md:1: writer trust"]);
+		expect(quoted(base!, nonce, "search")).toEqual(["src/terms.ts:1: export const term = 'writer trust';"]);
+		expect(absent).toBe("No matches.");
+		expect(defaultHead).toBe(head);
+		expect(quoted(head!, nonce, "search")[0]).toContain("publisher eligibility");
+	});
+
+	it.each([200, 201])("keeps base search bounded at 200 matches for %i rows", async (count) => {
+		writeFiles(repo, {
+			"src/matches.txt": `${Array.from({ length: count }, (_, i) => `needle ${i + 1}`).join("\n")}\n`,
+		});
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "base search rows");
+		gitIn(repo, "branch", "--force", "main", "HEAD");
+		gitIn(repo, "rm", "--quiet", "src/matches.txt");
+		gitIn(repo, "commit", "--quiet", "-m", "remove search rows");
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("search", { pattern: "needle", path: "src/matches.txt", revision: "base" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		await review();
+		const messages = requests[correctness]![1]!;
+		const result = toolResults(messages)[0]!;
+		expect(quoted(result, nonceOf(messages), "search")[0]!.split("\n")).toHaveLength(200);
+		expect(result.includes("more matches not shown")).toBe(count > 200);
+	});
+});
