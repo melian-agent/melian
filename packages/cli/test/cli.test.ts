@@ -11,7 +11,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
 	type Decider,
@@ -493,6 +493,30 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review).toMatchObject({ status: 0, stderr: verifierWarnings });
 		const verdict = JSON.parse(melian(repo, ["findings", "main", "--json"], env).stdout) as StoredVerdict;
 		expect(verdict.notRun.map((check) => check.name)).toEqual(["decisions.fast"]);
+	});
+
+	it("runs a failed deterministic check again with --rerun, and reports the stored failure without it", {
+		timeout: 120_000,
+	}, () => {
+		const { repo, env } = staticCheckout("export const b: number = 2;\n");
+		const tsc = join(repo, "node_modules/.bin/tsc");
+		mkdirSync(dirname(tsc), { recursive: true });
+		writeFileSync(
+			tsc,
+			'#!/bin/sh\nif [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\necho segfault\nexit 139\n',
+			{ mode: 0o755 },
+		);
+		const first = melian(repo, ["review", "main"], env);
+		expect(first.stdout).toContain("static.tsc  failed");
+		rmSync(join(repo, "node_modules"), { recursive: true, force: true });
+
+		const stored = melian(repo, ["review", "main"], env);
+		const rerun = melian(repo, ["review", "main", "--rerun"], env);
+
+		expect(stored.status).toBe(first.status);
+		expect(stored.stdout).toContain("static.tsc  failed");
+		expect(rerun.stdout).not.toContain("static.tsc  failed");
+		expect(rerun.status).toBe(0);
 	});
 
 	it("reports what Biome finds in the head", { timeout: 120_000 }, () => {
