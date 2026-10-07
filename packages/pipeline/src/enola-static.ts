@@ -213,7 +213,7 @@ export class EnolaRun {
 		const deadline = Date.now() + this.#run.input.settings.timeout * 1000;
 		let omitted = 0;
 		let attempted = 0;
-		for (const file of files) {
+		const queues = files.map((file) => {
 			const symbols = facts
 				.inFile(file.path)
 				.filter((fact) => fact.line !== undefined)
@@ -226,40 +226,44 @@ export class EnolaRun {
 					return fact.line! < hunk.newStart + Math.max(1, hunk.newLines) && next > hunk.newStart;
 				}),
 			);
-			for (const symbol of changed) {
-				if (attempted === 128) {
-					omitted++;
-					continue;
-				}
-				attempted++;
-				try {
-					if (names.get(symbol.name) !== 1) throw new Error("directory-scoped name is ambiguous");
-					if (Date.now() >= deadline) throw new Error("caller-query time budget ended");
-					const report = posix.join(output, "impact.json");
-					const error = posix.join(output, "impact.err");
-					const result = await this.#run.shell(
-						`${this.#command(this.#root, output, `impact --json --max-depth 1 --max-nodes 50 ${quote(`file:${file.path} ${symbol.name}`)}`)} > ${quote(report)} 2> ${quote(error)}`,
-						Math.max(1, Math.ceil((deadline - Date.now()) / 1000)),
-					);
-					const impact = EnolaImpact.parse((await this.#run.readOutput(report)) ?? "", result.code);
-					if (!impact.matchesTarget(symbol.name)) throw new Error("impact selected another full target name");
-					groups.push({
-						file: file.path,
-						symbol: symbol.name,
-						callers: impact
-							.callers()
-							.filter(
-								(node) =>
-									node.file !== undefined && node.line !== undefined && !changedPaths.includes(node.file),
-							),
-						truncated: impact.truncated,
-					});
-				} catch (error) {
-					issues.push({
-						file: file.path,
-						reason: `line ${symbol.line}: ${error instanceof Error ? error.message : String(error)}`,
-					});
-				}
+			return { file, changed };
+		});
+		const work: { file: ChangedFile; symbol: (typeof queues)[number]["changed"][number] }[] = [];
+		for (let round = 0; queues.some((queue) => round < queue.changed.length); round++)
+			for (const { file, changed } of queues)
+				if (round < changed.length) work.push({ file, symbol: changed[round]! });
+		for (const { file, symbol } of work) {
+			if (attempted === 128) {
+				omitted++;
+				continue;
+			}
+			attempted++;
+			try {
+				if (names.get(symbol.name) !== 1) throw new Error("directory-scoped name is ambiguous");
+				if (Date.now() >= deadline) throw new Error("caller-query time budget ended");
+				const report = posix.join(output, "impact.json");
+				const error = posix.join(output, "impact.err");
+				const result = await this.#run.shell(
+					`${this.#command(this.#root, output, `impact --json --max-depth 1 --max-nodes 50 ${quote(`file:${file.path} ${symbol.name}`)}`)} > ${quote(report)} 2> ${quote(error)}`,
+					Math.max(1, Math.ceil((deadline - Date.now()) / 1000)),
+				);
+				const impact = EnolaImpact.parse((await this.#run.readOutput(report)) ?? "", result.code);
+				if (!impact.matchesTarget(symbol.name)) throw new Error("impact selected another full target name");
+				groups.push({
+					file: file.path,
+					symbol: symbol.name,
+					callers: impact
+						.callers()
+						.filter(
+							(node) => node.file !== undefined && node.line !== undefined && !changedPaths.includes(node.file),
+						),
+					truncated: impact.truncated,
+				});
+			} catch (error) {
+				issues.push({
+					file: file.path,
+					reason: `line ${symbol.line}: ${error instanceof Error ? error.message : String(error)}`,
+				});
 			}
 		}
 		if (omitted) notes.push(`${omitted} changed symbols omitted at the caller-query limit of 128.`);

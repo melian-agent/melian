@@ -57,6 +57,7 @@ async function fake(
 	constraintRequired = false,
 	resultUri = "src/a.ts",
 	sarifResults?: { base?: string; head: string },
+	documentSymbols = 0,
 ) {
 	const script = `#!/bin/sh
 if [ "$1" = "--version" ]; then echo 0.0.1; exit 0; fi
@@ -77,6 +78,7 @@ case "$1" in
   marker=base
   if grep BROKEN src/a.ts > /dev/null; then marker=head; fi
   printf '%s' '{"id":"alpha","kind":"symbol","name":"Alpha","file":"src/a.ts","line":1,"generation":"'"$marker"'"}' > .enola/facts.jsonl
+  i=1; while [ "$i" -le ${documentSymbols} ]; do printf '\\n{"id":"d%s","kind":"symbol","name":"Doc%s","file":"docs/a.md","line":%s}' "$i" "$i" "$i" >> .enola/facts.jsonl; i=$((i+1)); done
   printf '%s' '[]' > .enola/insights.json
   printf '%s' '{"format_version":1,"snapshot_id":"sha256:${"a".repeat(64)}","enola_version":"0.0.1"}' > .enola/receipt.json
   grep -F 'providers: []' "$config" > /dev/null || exit 9
@@ -141,6 +143,28 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		const callers = await CallerContext.open(input, changeset.revision.files, context);
 		expect(callers.notes(["src/a.ts"])).toEqual(["Callers unavailable for src/a.ts: line 1: query refused"]);
 		expect(callers.callers(["src/a.ts"])).toEqual([]);
+	});
+	it("spends the caller-query limit across files, so a docs-heavy change still queries code", async () => {
+		const lines = (word: string) => `${Array.from({ length: 130 }, (_, index) => `${word} ${index}`).join("\n")}\n`;
+		const base = commit(repo, { "docs/a.md": lines("old"), "src/a.ts": "export function Alpha() { return 1; }\n" });
+		const head = commit(repo, {
+			"docs/a.md": lines("new"),
+			"src/a.ts": "export function Alpha() { return 2; } // BROKEN\n",
+		});
+		const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+		const tools = await fake(0, 0, false, "Alpha", false, "src/a.ts", undefined, 130);
+		const input = {
+			env: createNodeExecutionEnv(repo),
+			repoRoot: repo,
+			base,
+			commit: head,
+			tool: "enola" as const,
+			settings: defaultConfig.static.enola,
+			tools,
+		};
+		expect((await runStaticTool(input, context)).status).toBe("ran");
+		const callers = await CallerContext.open(input, changeset.revision.files, context);
+		expect(callers.callers(["src/a.ts"])).toHaveLength(1);
 	});
 	it.each([
 		[0, "careful", "Alpha"],
