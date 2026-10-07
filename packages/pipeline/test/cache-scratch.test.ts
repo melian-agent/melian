@@ -152,3 +152,19 @@ it("keeps legacy scratch just inside the one-day window and removes it just outs
 	expect((await lstat(inside)).isDirectory()).toBe(true);
 	await expect(lstat(outside)).rejects.toMatchObject({ code: "ENOENT" });
 });
+
+it("sweeps dead scratch six directories below a cache root and leaves what lies deeper", async () => {
+	root = await mkdtemp(join(tmpdir(), "melian-scratch-depth-"));
+	const child = spawn(process.execPath, ["-e", ""], { stdio: "ignore" });
+	await once(child, "exit");
+	const six = join(root, "tools", "a", "b", "c", "d", "e", "f");
+	const seven = join(six, "g");
+	await mkdir(seven, { recursive: true });
+	const reachable = join(six, `.fetch-${child.pid}-partial`);
+	const beyond = join(seven, `.fetch-${child.pid}-partial`);
+	await mkdir(reachable);
+	await mkdir(beyond);
+	await ToolCache.open(root);
+	await expect(lstat(reachable)).rejects.toMatchObject({ code: "ENOENT" });
+	expect((await lstat(beyond)).isDirectory()).toBe(true);
+});
