@@ -396,11 +396,12 @@ describe("the triage question set's version", () => {
 		});
 
 		it("calls a failed read unreadable, which fails on CI and is skipped off it", () => {
-			for (const failing of [
+			const failures: Record<string, string | Error>[] = [
 				{ "ls-tree": new Error("fatal: Not a valid object name origin/main") },
 				{ "ls-tree": `${recordPath}\n`, show: new Error("fatal: bad object") },
 				{ "ls-tree": `${recordPath}\n`, show: "not json" },
-			]) {
+			];
+			for (const failing of failures) {
 				const main = recordOnMain(git(failing));
 				expect(main).toEqual({ kind: "unreadable" });
 				expect(recordProblems({ "1": "aaaa" }, "1", "aaaa", main, true)).toEqual([
