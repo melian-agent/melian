@@ -171,6 +171,17 @@ describe("comparison command guards", () => {
 		);
 	});
 
+	it("closes the harness after an adjudication and after one that fails", async () => {
+		const close = vi.spyOn(harness, "close");
+		vi.spyOn(harness, "adjudicate").mockResolvedValueOnce(stub(false));
+		await adjudicateComparison(io, "main...feature", "e", { verdict: "noise" });
+		expect(close).toHaveBeenCalledTimes(1);
+		const failure = new Error("needs a miss reason");
+		vi.spyOn(harness, "adjudicate").mockRejectedValueOnce(failure);
+		await expect(adjudicateComparison(io, "main...feature", "e", { verdict: "valid" })).rejects.toBe(failure);
+		expect(close).toHaveBeenCalledTimes(2);
+	});
+
 	it("warns about lenses it cannot read", async () => {
 		vi.spyOn(harness, "adjudicate").mockResolvedValue(stub(false));
 		vi.spyOn(Lens, "load").mockRejectedValueOnce(new LensError("unreadable", "lenses/x.md", "broken lens"));
@@ -246,6 +257,42 @@ describe("stored comparison reading and export", () => {
 		await expect(comparisonBacklog(io, false)).rejects.toMatchObject({
 			message: `cannot read comparisons at ${dir}: denied`,
 		});
+	});
+
+	it("closes each database it reads, and the one it fails on", async () => {
+		vi.spyOn(repository, "stateDirectory").mockResolvedValue("/state");
+		vi.spyOn(fsp, "readdir").mockResolvedValue([names[0], names[1]] as never);
+		const closes = [vi.fn(async () => {}), vi.fn(async () => {})];
+		vi.mocked(repository.openStorage)
+			.mockResolvedValueOnce({ close: closes[0] } as never)
+			.mockResolvedValueOnce({ close: closes[1] } as never);
+		vi.spyOn(ComparisonReader, "open").mockReturnValue({ read: async () => [] } as never);
+		await comparisonStats(io, {});
+		expect(closes[0]).toHaveBeenCalledTimes(1);
+		expect(closes[1]).toHaveBeenCalledTimes(1);
+
+		const failing = vi.fn(async () => {});
+		vi.mocked(repository.openStorage).mockResolvedValueOnce({ close: failing } as never);
+		const failure = new Error("newer version");
+		vi.spyOn(ComparisonReader, "open").mockReturnValue({
+			read: async () => {
+				throw failure;
+			},
+		} as never);
+		vi.spyOn(fsp, "readdir").mockResolvedValue([names[0]] as never);
+		await expect(comparisonStats(io, {})).rejects.toBe(failure);
+		expect(failing).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		["exports", () => [entry()]],
+		["finds no comparison", () => []],
+	])("closes the storage when it %s", async (_name, found) => {
+		const close = vi.fn(async () => {});
+		vi.mocked(repository.openStorage).mockResolvedValueOnce({ close } as never);
+		vi.spyOn(ComparisonReader, "open").mockReturnValue({ read: async () => found() } as never);
+		await exportComparison(io, "main...feature", { json: false }).catch(() => undefined);
+		expect(close).toHaveBeenCalledTimes(1);
 	});
 
 	it("refuses to export a changeset with no database, whatever the reader would find", async () => {
