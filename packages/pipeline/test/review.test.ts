@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import {
 	Changeset,
 	type CheckRecord,
+	type Decider,
 	defaultConfig,
 	Finding,
 	Lens,
@@ -25,6 +26,7 @@ import {
 	createMemoryStorage,
 	createRegistry,
 	createReviewRegistry,
+	decisionExtension,
 	defineDoc,
 	dismissFinding,
 	type Harness,
@@ -40,6 +42,7 @@ import {
 	type TaskId,
 	upsertFinding,
 } from "@melian-agent/pipeline";
+import { RecordedDecider } from "@melian-agent/decisions";
 import {
 	createFakeModels,
 	type FakeModels,
@@ -132,7 +135,8 @@ type ReviewWith = {
 	policy?: RepositorySource;
 	rerun?: boolean;
 	range?: string;
-	unlockModels?: () => Promise<void>;
+	unlockModels?: (providers: readonly string[]) => Promise<void>;
+	decider?: Decider;
 };
 
 // The default tiers' checks that run without a model, recorded as ran: `static` expands to each static tool.
@@ -165,6 +169,7 @@ async function reviewed(options: ReviewWith = {}): Promise<Review> {
 		...(options.policy === undefined ? {} : { policy: options.policy }),
 		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
 		...(options.unlockModels === undefined ? {} : { unlockModels: options.unlockModels }),
+		...(options.decider === undefined ? {} : { decider: options.decider }),
 	});
 }
 
@@ -1224,6 +1229,40 @@ describe("reviewChangeset", () => {
 			const settled = unlocking();
 			await review({ rerun: true, unlockModels: settled.unlockModels });
 			expect(settled.unlockModels).not.toHaveBeenCalled();
+		});
+
+		it("names the provider of the run a quick lens escalates to, beside its own", async () => {
+			await harness.close(context);
+			const registry = createReviewRegistry();
+			const decider = new RecordedDecider({
+				triage: { version: "1", answers: { correctness: { distribution: { quick: 1 } } } },
+			});
+			registry.install(decisionExtension(decider));
+			harness = await openHarness(createMemoryStorage(), {
+				models: fake.models,
+				registry,
+				settings: { retry: { enabled: false } },
+			});
+			await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+			lensesDone();
+			const quick = fake.ref("heavy");
+			const careful = createFakeModels({ provider: "escalated", models: [{ id: "heavy" }] }, fake.review).ref("heavy");
+			const unlockModels = vi.fn(async (_providers: readonly string[]) => {});
+			const escalating = {
+				...config,
+				models: {
+					medium: { model: `${quick.provider}/${quick.modelId}` },
+					heavy: { model: `${careful.provider}/${careful.modelId}` },
+				},
+				lenses: {
+					contracts: { enabled: false },
+					correctness: { level: { floor: "quick" as const, ceiling: "deep" as const } },
+				},
+			};
+
+			await review({ config: escalating, unlockModels, decider });
+
+			expect([...unlockModels.mock.calls.at(-1)![0]].sort()).toEqual([quick.provider, careful.provider].sort());
 		});
 	});
 
