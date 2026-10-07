@@ -411,12 +411,28 @@ it("returns the concurrent verified winner instead of publishing again", async (
 	expect((await readdir(dirname(dirname(winner)))).filter((name) => name.startsWith("entry-"))).toHaveLength(1);
 });
 
+it("never exposes an empty pin directory when publication is interrupted", async () => {
+	const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
+	const original = await vi.importActual<typeof fs>("node:fs/promises");
+	vi.mocked(rename).mockRejectedValueOnce(Object.assign(new Error("interrupted"), { code: "EIO" }));
+	try {
+		const cache = await ToolCache.open(root, { fetch: async () => new Response(bytes) });
+		const tool = testTool(bytes);
+		await expect(cache.materialise(tool, "darwin-arm64")).rejects.toMatchObject({ code: "toolFailed" });
+		expect(await cache.readiness(tool, "darwin-arm64")).toBe("not-fetched");
+		expect(await cache.materialise(tool, "darwin-arm64")).toMatch(/binary$/);
+	} finally {
+		vi.mocked(rename).mockImplementation(original.rename);
+	}
+});
+
 it("refuses a publication changed before its final verification", async () => {
 	const bytes = toolArchive([{ name: "enola", text: "trusted" }]);
 	const original = await vi.importActual<typeof fs>("node:fs/promises");
 	vi.mocked(rename).mockImplementation(async (from, to) => {
 		await original.rename(from, to);
-		await writeFile(join(String(to), "binary"), "swapped");
+		const published = (await readdir(String(to))).find((name) => name.startsWith("entry-"));
+		await writeFile(join(String(to), published ?? "", "binary"), "swapped");
 	});
 	try {
 		const cache = await ToolCache.open(root, { fetch: async () => new Response(bytes) });

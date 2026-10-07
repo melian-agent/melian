@@ -86,24 +86,26 @@ export class ToolCache {
 		await mkdir(dirname(pin.directory), { recursive: true });
 		const temporary = await this.#scratch.directory(dirname(pin.directory), "fetch");
 		try {
-			const archive = join(temporary, "archive");
+			const name = `entry-${crypto.randomUUID()}`;
+			const staged = join(temporary, name);
+			await mkdir(staged);
+			const archive = join(staged, "archive");
 			await this.#download(pin.url, archive, pin.sha256);
 			const bytes = await readFile(archive);
 			const binary = pin.binary === undefined ? bytes : this.#extract(bytes, pin.binary);
 			if (binary.length > binaryLimit) throw new ToolCacheError("outputTooLarge", "Tool binary exceeds 96 MiB");
-			await writeFile(join(temporary, "binary"), binary, { mode: 0o755, flag: "wx" });
-			await chmod(join(temporary, "binary"), 0o755);
+			await writeFile(join(staged, "binary"), binary, { mode: 0o755, flag: "wx" });
+			await chmod(join(staged, "binary"), 0o755);
 			const receipt: ToolBinaryReceipt = {
 				format_version: 1,
 				archive: pin.sha256,
 				binary: createHash("sha256").update(binary).digest("hex"),
 			};
-			await writeFile(join(temporary, "receipt.json"), JSON.stringify(receipt), { flag: "wx" });
+			await writeFile(join(staged, "receipt.json"), JSON.stringify(receipt), { flag: "wx" });
 			const winner = await this.#cached(pin.directory, pin.sha256, pin.binary);
 			if (winner) return winner;
-			await mkdir(pin.directory, { recursive: true });
-			const entry = join(pin.directory, `entry-${crypto.randomUUID()}`);
-			await rename(temporary, entry);
+			const entry = join(pin.directory, name);
+			await this.#publish(temporary, staged, pin.directory, entry);
 			if (!(await this.#verified(entry, pin.sha256, pin.binary)))
 				throw new ToolCacheError("invalidOutput", "Materialised tool failed verification");
 			return join(entry, "binary");
@@ -117,6 +119,22 @@ export class ToolCache {
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}
+	}
+
+	// The pin directory first appears already holding its entry, so no reader sees it empty.
+	async #publish(temporary: string, staged: string, directory: string, entry: string): Promise<void> {
+		try {
+			await lstat(directory);
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+			try {
+				await rename(temporary, directory);
+				return;
+			} catch (cause) {
+				if (!["ENOTEMPTY", "EEXIST"].includes((cause as NodeJS.ErrnoException).code ?? "")) throw cause;
+			}
+		}
+		await rename(staged, entry);
 	}
 
 	async #cached(directory: string, archive: string, wanted?: string): Promise<string | undefined> {
