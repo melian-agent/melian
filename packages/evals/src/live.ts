@@ -12,8 +12,7 @@
  * @module
  */
 import { readFileSync, writeFileSync } from "node:fs";
-import { createReviewModels } from "@melian-agent/pipeline";
-import { liveCredentials } from "./credentials.ts";
+import { liveModels } from "./credentials.ts";
 import {
 	type Golden,
 	type GoldenScore,
@@ -40,7 +39,7 @@ if (process.env.MELIAN_EVAL_VERIFIER === "1") {
 		console.error("Verifier evals need a known golden and MELIAN_EVAL_VERIFIER_MODEL or MELIAN_EVAL_MODEL.");
 		process.exit(2);
 	}
-	const models = createReviewModels({ credentials: await liveCredentials(process.cwd()) });
+	const models = await liveModels(process.cwd());
 	const scores = [];
 	for (const golden of goldens) {
 		const run = await runVerifierGolden(golden, {
@@ -69,7 +68,7 @@ if (process.env.MELIAN_EVAL_TRIAGE === "1") {
 		console.error("Triage evals need a known golden, MELIAN_EVAL_MODEL, and MELIAN_EVAL_TRIAGE_PASSES of 1 or more.");
 		process.exit(2);
 	}
-	const models = createReviewModels({ credentials: await liveCredentials(process.cwd()) });
+	const models = await liveModels(process.cwd());
 	const chosen: Record<string, TriageChosen[]> = {};
 	for (const golden of goldens)
 		chosen[golden.name] = await runTriageGolden(golden, { kind: "live", models, model }, passes);
@@ -95,7 +94,7 @@ try {
 	console.error(error instanceof Error ? error.message : String(error));
 	process.exit(2);
 }
-const models = createReviewModels({ credentials: await liveCredentials(process.cwd()) });
+const models = await liveModels(process.cwd());
 const model = process.env.MELIAN_EVAL_MODEL;
 const scores: GoldenScore[] = [];
 for (const golden of goldens) {
