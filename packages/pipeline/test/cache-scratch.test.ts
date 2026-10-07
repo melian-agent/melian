@@ -168,3 +168,18 @@ it("sweeps dead scratch six directories below a cache root and leaves what lies 
 	await expect(lstat(reachable)).rejects.toMatchObject({ code: "ENOENT" });
 	expect((await lstat(beyond)).isDirectory()).toBe(true);
 });
+
+it("sweeps old legacy scratch files with no process ID and keeps recent ones", async () => {
+	root = await mkdtemp(join(tmpdir(), "melian-scratch-files-"));
+	const artifacts = join(root, "coverage", "key", "artifacts");
+	await mkdir(artifacts, { recursive: true });
+	const names = () =>
+		[`.x-${crypto.randomUUID()}.json`, `y.${crypto.randomUUID()}.tmp`].map((name) => join(artifacts, name));
+	const old = names();
+	const recent = names();
+	for (const path of [...old, ...recent]) await writeFile(path, "legacy");
+	for (const path of old) await utimes(path, new Date(0), new Date(0));
+	await CoverageCache.open(root);
+	for (const path of old) await expect(lstat(path)).rejects.toMatchObject({ code: "ENOENT" });
+	for (const path of recent) expect((await lstat(path)).isFile()).toBe(true);
+});
