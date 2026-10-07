@@ -492,6 +492,45 @@ describe("ReviewThreadImporter", () => {
 		expect(bot.reviewers).toEqual([{ name: "coderabbit", login: "coderabbitai[bot]", kind: "bot" }]);
 	});
 
+	it("names an author as GitHub spells the login, not as the caller typed it", async () => {
+		const threads = structuredClone(recording);
+		const reviews = (answers: GitHubRecording) =>
+			answers.graphql!.MelianReviews! as {
+				data: { repository: { pullRequest: { reviews: { nodes: unknown[] } } } };
+			}[];
+		for (const page of reviews(threads)) page.data.repository.pullRequest.reviews.nodes = [];
+		const fromThreads = await importer("CodeRabbitAI[bot]", threads).opened.import();
+		expect(fromThreads.findings.length).toBeGreaterThan(0);
+		expect(fromThreads.reviewers!).toContainEqual({ name: "coderabbit", login: "coderabbitai[bot]", kind: "bot" });
+		expect(fromThreads.reviewers!.map((each) => each.login)).not.toContain("CodeRabbitAI[bot]");
+
+		const bodies = structuredClone(recording);
+		const pages = bodies.graphql!.MelianReviewThreads! as {
+			data: { repository: { pullRequest: { reviewThreads: { nodes: unknown[] } } } };
+		}[];
+		for (const page of pages) page.data.repository.pullRequest.reviewThreads.nodes = [];
+		const fromBodies = await importer("OctoCat", bodies).opened.import();
+		expect(fromBodies.skippedBodies).toBeGreaterThan(0);
+		expect(fromBodies.reviewers!.map((each) => each.login)).toEqual(fromBodies.reviewers!.map(() => "octocat"));
+	});
+
+	it.each(["coderabbitai", "CodeRabbitAI"])(
+		"recognises %s as the known bot when it reviewed nothing",
+		async (login) => {
+			const changed = structuredClone(recording);
+			const threads = changed.graphql!.MelianReviewThreads! as {
+				data: { repository: { pullRequest: { reviewThreads: { nodes: unknown[] } } } };
+			}[];
+			for (const page of threads) page.data.repository.pullRequest.reviewThreads.nodes = [];
+			const reviews = changed.graphql!.MelianReviews! as {
+				data: { repository: { pullRequest: { reviews: { nodes: unknown[] } } } };
+			}[];
+			for (const page of reviews) page.data.repository.pullRequest.reviews.nodes = [];
+			const silent = await importer(login, changed).opened.import();
+			expect(silent.reviewers).toEqual([{ name: "coderabbit", login: `${login}[bot]`, kind: "bot" }]);
+		},
+	);
+
 	it("gives a thread the same ID on every import, so importing again updates it", async () => {
 		const first = await importer().opened.import();
 		const second = await importer().opened.import();
