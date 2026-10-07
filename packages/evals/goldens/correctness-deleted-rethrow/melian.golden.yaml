@@ -1,6 +1,6 @@
 # Reviewed under the standard tier, as the pre-push and comment stages review, where correctness runs alone and hands nothing to removed-behaviour.
 # Melian's own full tier, which every golden policy carries, though this review never reaches it.
 tiers:
-  full: [standard, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions, lens.durability]
+  full: [standard, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions, lens.durability, lens.design]
 stages:
   pull-request: standard

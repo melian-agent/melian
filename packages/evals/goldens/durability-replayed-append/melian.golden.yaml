@@ -1,3 +1,3 @@
 # Melian's own full tier, which adds its repository lens, durability, to the built-in lenses.
 tiers:
-  full: [standard, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions, lens.durability]
+  full: [standard, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions, lens.durability, lens.design]

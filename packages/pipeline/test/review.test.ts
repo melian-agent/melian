@@ -1457,10 +1457,12 @@ describe("reviewChangeset", () => {
 			const { config: melian } = await loadConfig(repo, base, ".");
 			const requests = scriptConversations(
 				fake,
-				[...backlog, correctness, contracts, "You are the durability reviewer"].map((match) => ({
-					match,
-					replies: [fauxAssistantMessage("Done.")],
-				})),
+				[...backlog, correctness, contracts, "You are the design reviewer", "You are the durability reviewer"].map(
+					(match) => ({
+						match,
+						replies: [fauxAssistantMessage("Done.")],
+					}),
+				),
 			);
 
 			await reviewed({
@@ -2584,6 +2586,7 @@ describe("adjudication", () => {
 				"removed-behaviour",
 				"tests",
 				"conventions",
+				"design",
 			];
 			scriptConversations(
 				fake,

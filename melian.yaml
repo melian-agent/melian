@@ -23,7 +23,7 @@ models:
 tiers:
   fast: [guardrails, static.biome, static.tsc]
   # The default full tier, plus Melian's own repository lens under .melian/lenses/.
-  full: [standard, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions, lens.durability]
+  full: [standard, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions, lens.durability, lens.design]
 
 # The golden corpus seeds defects on purpose, so no lens reviews a golden's trees as Melian's own code.
 lenses:

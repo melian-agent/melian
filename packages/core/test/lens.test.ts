@@ -58,7 +58,7 @@ function named(lenses: readonly Lens[], name: string): Lens[] {
 }
 
 // Every lens Melian ships, in the order the loader returns them.
-const builtins = ["contracts", "conventions", "correctness", "removed-behaviour", "tests", "trust-boundary"];
+const builtins = ["contracts", "conventions", "correctness", "design", "removed-behaviour", "tests", "trust-boundary"];
 
 describe("built-in lenses", () => {
 	it("load correctness and contracts with their declared rules", async () => {
@@ -109,6 +109,7 @@ describe("built-in lenses", () => {
 			contracts: "686d7ad61a40",
 			conventions: "bb08d9e590e4",
 			correctness: "05037e7ba4a2",
+			design: "171511cb8cc9",
 			"removed-behaviour": "45fa8885fd01",
 			tests: "bee1be69be22",
 			"trust-boundary": "593b84bf6e82",
@@ -116,6 +117,35 @@ describe("built-in lenses", () => {
 		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
 		const [correctness] = Lens.select(named(lenses, "correctness"), tuned, ["src/index.ts"]);
 		expect(correctness!.lens.version).toBe("735049d98890");
+	});
+
+	it("load the design lens heavy, over every path, reading whole functions at the one level it declares", async () => {
+		const lenses = await Lens.load(repo, { kind: "worktree" }, ["src/index.ts"]);
+		const [design] = named(lenses, "design");
+		expect(design).toMatchObject({ tools: [...lensToolNames], paths: ["**"], standards: true });
+		expect(design!.instructions).toMatch(/^You are the design reviewer for one change\./);
+		expect(design!.instructions).toContain("an empty report");
+		expect(design!.rules.map((rule) => rule.id)).toEqual([
+			"identity-missing-input",
+			"trust-by-label",
+			"bound-on-wrong-measure",
+			"capability-by-class",
+			"fail-open-default",
+			"resumed-identity",
+			"criterion-selection-bias",
+			"unshipped-artifact",
+			"single-slot-overwrite",
+			"melian/injection-attempt",
+		]);
+		expect(design!.declaredLevels()).toEqual(["careful"]);
+		expect(design!.levels).toEqual({
+			careful: {
+				tier: "heavy",
+				reads: "functions",
+				verify: true,
+				budget: { findings: 8, tokens: 300_000, tools: 45 },
+			},
+		});
 	});
 
 	// Melian's own repository extends two built-ins with a hand-off to its durability lens, which changes their versions.
@@ -143,9 +173,11 @@ describe("built-in lenses", () => {
 
 	it("load the lens backlog adversarial, over every path, with the standards and three levels", async () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, ["src/index.ts"]);
-		const backlog = lenses.filter((lens) => lens.name !== "contracts" && lens.name !== "correctness");
+		const backlog = lenses.filter(
+			(lens) => lens.name !== "contracts" && lens.name !== "correctness" && lens.name !== "design",
+		);
 		expect(backlog.map((lens) => lens.name)).toEqual(
-			builtins.filter((name) => !["contracts", "correctness"].includes(name)),
+			builtins.filter((name) => !["contracts", "correctness", "design"].includes(name)),
 		);
 		for (const lens of backlog) {
 			expect(lens).toMatchObject({ tools: [...lensToolNames], paths: ["**"], standards: true });
