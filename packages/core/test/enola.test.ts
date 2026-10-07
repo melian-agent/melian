@@ -88,9 +88,9 @@ describe("Enola policy and reports", () => {
 		expect(
 			EnolaPolicy.from([{ path: "enola-intent.yaml", text: "# rules:\nname: x\n  recipes: []\n" }]).toJSON().failOn,
 		).toEqual([]);
-		expect(
-			EnolaPolicy.from([{ path: "other/enola-intent.yaml", text: "rules:\n  - a\n" }]).toJSON().failOn,
-		).toEqual([]);
+		expect(EnolaPolicy.from([{ path: "other/enola-intent.yaml", text: "rules:\n  - a\n" }]).toJSON().failOn).toEqual(
+			[],
+		);
 	});
 	it("reads located and unlocated results, excluding resolved and suppressed findings", () => {
 		const result = { ruleId: "constraints/core-layer", level: "error", message: { text: "Layer crossed" } };
