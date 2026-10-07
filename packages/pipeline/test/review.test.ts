@@ -50,6 +50,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, adjudicationInput } from "../src/adjudication.ts";
+import { EnclosingFunctions } from "../src/enclosing-functions.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
@@ -1258,6 +1259,70 @@ describe("reviewChangeset", () => {
 			"- `trust-boundary`: A value an author or outside party controls that reaches a sink unescaped, makes a check pass, or carries a secret out.",
 			"- `tests`: A defect in a test.",
 		]);
+	});
+
+	describe("the head's functions in a lens's prompt", () => {
+		const deep = () =>
+			({ ...config, lenses: { correctness: { level: { floor: "deep", ceiling: "deep" } } } }) as MelianConfig;
+		const userText = (messages: readonly Message[]) =>
+			messages
+				.filter((message) => message.role === "user")
+				.map(textOf)
+				.join("\n");
+		const script = () =>
+			scriptConversations(fake, [
+				{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+		it("carries the function around each hunk at a level that reads functions", async () => {
+			const requests = script();
+
+			await reviewed({ config: deep() });
+
+			const prompt = userText(requests[correctness]![0]!);
+			expect(prompt).toContain("Enclosing functions:");
+			expect(prompt).toMatch(/label="function">\nsrc\/user\.ts:6-8 managerName\n6\texport function managerName/);
+			expect(prompt).toContain("7\t\treturn user.manager.name;");
+			const instructions = systemPromptOf(requests[correctness]![0]!);
+			expect(instructions).toContain(
+				'The change carries the function around each hunk of a TypeScript file under "Enclosing functions".',
+			);
+		});
+
+		it("carries none at a level that reads hunks", async () => {
+			const requests = script();
+
+			await reviewed();
+
+			expect(userText(requests[correctness]![0]!)).not.toContain("Enclosing functions");
+		});
+
+		it("says on the lens's record that it read the functions itself when the compiler could not be asked", async () => {
+			script();
+			vi.spyOn(EnclosingFunctions, "read").mockImplementation(async () =>
+				Object.assign(EnclosingFunctions.none(), { unavailable: "no compiler" }),
+			);
+
+			const { verdict } = await reviewed({ config: deep() });
+
+			expect(verdict.ran?.find((check) => check.name === "lens.correctness")?.reason).toBe(
+				"the head's functions could not be read (no compiler), so it read them with read_file",
+			);
+		});
+
+		it("reads the functions once for the whole review", async () => {
+			script();
+			const read = vi.spyOn(EnclosingFunctions, "read");
+			const everyDeep = {
+				...config,
+				lenses: { correctness: deep().lenses.correctness, contracts: deep().lenses.correctness },
+			} as MelianConfig;
+
+			await reviewed({ config: everyDeep });
+
+			expect(read).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe("a neighbour that ran out of findings budget", () => {

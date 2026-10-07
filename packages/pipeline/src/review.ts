@@ -63,6 +63,7 @@ import {
 	decisionTaskName,
 	readRecordedDecision,
 } from "./decisions.ts";
+import { EnclosingFunctions } from "./enclosing-functions.ts";
 import { ReviewError } from "./errors.ts";
 import {
 	clearSightings,
@@ -637,14 +638,17 @@ export class ChangePrompt {
 	 * The prompt, limited to the files `only` names when given, matching a renamed file by its old path or its new one.
 	 * With `tools: false`, for a reader with no tools such as a decider, it does not tell the reader to read the head.
 	 */
-	render(only?: readonly string[], options: { readonly tools?: boolean } = {}): string {
+	render(
+		only?: readonly string[],
+		options: { readonly tools?: boolean; readonly functions?: EnclosingFunctions } = {},
+	): string {
 		return this.renderInput(only, options).text;
 	}
 
 	/** The bounded prompt and whether its size limit omitted any file's diff. */
 	renderInput(
 		only?: readonly string[],
-		options: { readonly tools?: boolean } = {},
+		options: { readonly tools?: boolean; readonly functions?: EnclosingFunctions } = {},
 	): { readonly text: string; readonly cut: boolean } {
 		const { nonce } = this;
 		const { base, head } = this.changeset.revision;
@@ -682,6 +686,14 @@ export class ChangePrompt {
 			}
 			parts.push(part);
 		}
+		// The functions follow the diff, past its limit, so a cut diff never costs a function, and a function never a hunk.
+		if (!cut && options.functions !== undefined)
+			parts.push(
+				...options.functions.blocks(
+					files.map((file) => file.path),
+					nonce,
+				),
+			);
 		return { text: parts.join("\n\n"), cut };
 	}
 }
@@ -707,6 +719,11 @@ async function routeOf(tier: LensTier, config: MelianConfig, review: ReviewModel
 	if (available.length > 0) return { route: available };
 	const tried = [route.model, ...route.fallbacks].map(modelName).join(", ");
 	return { unrouted: `none of ${tried} is known with credentials` };
+}
+
+// Why a lens that reads functions got none in its prompt: it reads them with read_file, as its instructions say.
+function unreadFunctions(reason: string): string {
+	return `the head's functions could not be read (${reason}), so it read them with read_file`;
 }
 
 // The error for a lens that has no level it may run at, with `why` from `lens.unrunnable`.
@@ -1400,6 +1417,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		paths,
 	);
 	const nonce = reviewNonce();
+	let headFunctions: Promise<EnclosingFunctions> | undefined;
+	const enclosing = () => (headFunctions ??= EnclosingFunctions.read(changeset));
 	let unlocking: Promise<void> | undefined;
 	const unlockModels = options.unlockModels === undefined ? undefined : () => (unlocking ??= options.unlockModels!());
 	const prompt = new ChangePrompt(changeset, nonce);
@@ -1559,6 +1578,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const ruled = Lens.from({ ...lens.toJSON(), rules });
 		const runAt = async (level: ScrutinyLevel): Promise<LensRun> => {
 			const settings = lens.level(level);
+			// The head's functions around the hunks, read once for the review, at the levels that read functions.
+			const functions = settings.reads === "functions" ? await enclosing() : undefined;
+			if (functions?.unavailable !== undefined) noted.push(unreadFunctions(functions.unavailable));
 			const band = bands.get(lens)!;
 			return {
 				key: `${lens.name}@${lens.version}@${level}`,
@@ -1594,7 +1616,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 							rules,
 							budget: settings.budget,
 							coverage,
-							prompt: new ChangePrompt(changeset, "0".repeat(24)).render(files),
+							prompt: new ChangePrompt(changeset, "0".repeat(24)).render(files, {
+								...(functions === undefined ? {} : { functions }),
+							}),
 						}),
 					)
 					.digest("hex"),
@@ -1605,7 +1629,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				rules,
 				budget: settings.budget,
 				coverage,
-				prompt: prompt.render(files),
+				prompt: prompt.render(files, { ...(functions === undefined ? {} : { functions }) }),
 			};
 		};
 		const level = choices.get(lens) as ScrutinyLevel;
