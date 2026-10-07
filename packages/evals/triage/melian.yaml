@@ -1,0 +1,4 @@
+# The triage corpus builds temporary repositories whose changes are read, never reviewed here.
+guardrails:
+  policy-change-review:
+    enabled: false

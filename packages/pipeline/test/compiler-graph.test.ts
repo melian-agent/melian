@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { EnolaFacts } from "@melian-agent/core";
 import { API } from "typescript/unstable/sync";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CompilerGraph } from "../src/compiler-graph.ts";
+import { CompilerGraph, HeadProgram } from "../src/compiler-graph.ts";
 import { EnolaCoverage } from "../src/enola-coverage.ts";
 
 let root: string;
@@ -284,5 +284,25 @@ describe("compiler graph extraction", { timeout: 60_000 }, () => {
 		expect(() =>
 			execFileSync(process.execPath, ["--conditions=@melian-agent/source", entry], { stdio: "pipe" }),
 		).toThrow("Expected repository root and output path");
+	});
+});
+
+describe("head program", { timeout: 60_000 }, () => {
+	it("parses each text as the language its extension names, under names of its own", () => {
+		const program = HeadProgram.open(
+			new Map([
+				["src/view.tsx", "export const view = <div />;\n"],
+				["src/plain", "const a: number = 1;\n"],
+			]),
+		);
+		try {
+			expect(program.source("src/view.tsx")?.statements).toHaveLength(1);
+			expect(program.source("src/view.tsx")?.fileName).toBe("/melian-head/f0.tsx");
+			expect(program.source("src/plain")?.fileName).toBe("/melian-head/f1.ts");
+			expect(program.source("src/plain")?.statements).toHaveLength(1);
+			expect(program.source("src/absent.ts")).toBeUndefined();
+		} finally {
+			program.close();
+		}
 	});
 });

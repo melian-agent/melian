@@ -30,13 +30,13 @@ static:
 
 # The golden corpus seeds defects on purpose, so no lens reviews a golden's trees as Melian's own code.
 lenses:
-  correctness: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"] }
-  contracts: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"] }
-  trust-boundary: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"] }
-  removed-behaviour: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"] }
-  tests: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"] }
-  conventions: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"] }
-  design: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"] }
+  correctness: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
+  contracts: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
+  trust-boundary: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
+  removed-behaviour: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
+  tests: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
+  conventions: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
+  design: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
 
 guardrails:
   forbidden-paths:
@@ -72,11 +72,11 @@ guardrails:
         message: AGENTS.md allows top-level imports only
       bare-issue-reference:
         pattern: '(^|[\s(])#\d+([^\w\]-]|$)'
-        paths: ["**/*.md", "!.github/**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"]
+        paths: ["**/*.md", "!.github/**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"]
         severity: P3
         message: 'AGENTS.md says to link every GitHub issue and pull request you mention, in chat and docs, because only GitHub''s own UI turns a bare number into a link; write the number as the text of a Markdown link to its page'
       overlong-sentence:
         pattern: '([\w''’`-]+[^\w''’`.!?|\n]+){44,}[\w''’`-]+'
-        paths: ["docs/**/*.md", "packages/evals/comparisons/**/*.md", "README.md", "!packages/evals/goldens/**", "!packages/evals/verifier/**"]
+        paths: ["docs/**/*.md", "packages/evals/comparisons/**/*.md", "README.md", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"]
         severity: P3
         message: 'AGENTS.md says to prefer short sentences and, for one that runs past about 25 words, to find the seam; this line holds 45 or more words with no full stop, question mark, exclamation mark, or table bar'

@@ -198,6 +198,7 @@ export async function startVerification(
 	rerun: boolean,
 	context: Context,
 	refused: (model: string) => boolean = () => false,
+	unlockModels?: () => Promise<void>,
 ): Promise<TaskId<VerificationResult> | undefined> {
 	const root = await harness.root(context);
 	const { nonce: _, ...revision } = input.revision;
@@ -209,6 +210,27 @@ export async function startVerification(
 		},
 	}));
 	const key = JSON.stringify({ root: input.root, revision, version: input.version, candidates });
+	if (unlockModels !== undefined) {
+		// What the commit below decides, read ahead of it: only a finished task of these candidates whose results stand is
+		// attached to without asking a model.
+		const previous = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revisionKey(input.revision)]
+			?.verification;
+		const record = previous === undefined ? undefined : await harness.getTask(previous.task as TaskId, context);
+		const results =
+			record?.state.status === "terminal" && record.state.outcome.status === "completed"
+				? (record.state.outcome.result as VerificationResult)
+				: undefined;
+		const answered =
+			results !== undefined && input.candidates.every((candidate) => results[candidate.key] !== undefined);
+		const failed =
+			results !== undefined &&
+			input.candidates.some((candidate) => {
+				const result = results[candidate.key];
+				return result?.status !== "done" || refused(result.model);
+			});
+		const attaches = previous?.input === key && answered && (!failed || !rerun);
+		if (!attaches) await unlockModels();
+	}
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
 		const known = index.reviews[revisionKey(input.revision)];

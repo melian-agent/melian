@@ -53,6 +53,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
+import { EnclosingFunctions } from "../src/enclosing-functions.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { VerificationTask } from "../src/verification.ts";
@@ -115,6 +116,7 @@ async function review(
 		policy?: "worktree" | "base";
 		origin?: ReviewOrigin;
 		rerun?: boolean;
+		unlockModels?: () => Promise<void>;
 	} = {},
 ): Promise<Review> {
 	return reviewChangeset({
@@ -136,6 +138,7 @@ async function review(
 				}),
 		...(options.origin === undefined ? {} : { origin: options.origin }),
 		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
+		...(options.unlockModels === undefined ? {} : { unlockModels: options.unlockModels }),
 	});
 }
 
@@ -717,6 +720,41 @@ describe("triage", () => {
 			expect(lensRecord(rerun)).toMatchObject({ level: "quick" });
 		});
 
+		it("unlocks credentials before triage asks, and only for a decision it must ask for", async () => {
+			const decider = flaky(1);
+			await open(decider);
+			scriptConversations(fake, [{ match: correctness, replies: [done, done, done] }]);
+			// Each call records how many times triage had been asked by then.
+			const unlocking = () => {
+				const asked: number[] = [];
+				const unlockModels = vi.fn(async () => {
+					asked.push(decider.calls);
+				});
+				return { asked, unlockModels };
+			};
+
+			const first = unlocking();
+			await review({ decider, unlockModels: first.unlockModels });
+			expect(first.asked).toEqual([0]);
+
+			const repeat = unlocking();
+			await review({ decider, unlockModels: repeat.unlockModels });
+			expect(repeat.unlockModels).not.toHaveBeenCalled();
+
+			const rerun = unlocking();
+			await review({ decider, rerun: true, unlockModels: rerun.unlockModels });
+			expect(rerun.asked).toEqual([1]);
+
+			const settled = unlocking();
+			await review({ decider, rerun: true, unlockModels: settled.unlockModels });
+			expect(settled.unlockModels).not.toHaveBeenCalled();
+
+			const floored = { ...config, lenses: { correctness: { level: { floor: "careful" } } } } as const;
+			const changed = unlocking();
+			await review({ decider, config: floored, unlockModels: changed.unlockModels });
+			expect(changed.asked).toEqual([2]);
+		});
+
 		it("never asks again after a decision that completed, even with rerun", async () => {
 			const decider = flaky(0);
 			await open(decider);
@@ -919,6 +957,22 @@ describe("a decision task another call replaced", () => {
 		expect(lensRecord(rerun)).toMatchObject({ level: "quick" });
 		const settled = await harness.waitForTask(pending!.record.id, context);
 		expect(settled.state.outcome.status).toBe("aborted");
+	});
+
+	it("unlocks credentials for a review that attaches to a decision still being asked", async () => {
+		const held = holding(false);
+		await open(held.decider);
+		scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+		const first = review({ decider: held.decider });
+		await vi.waitFor(() => expect(held.calls()).toBe(1));
+
+		const unlockModels = vi.fn(async () => {});
+		const second = review({ decider: held.decider, unlockModels });
+		await vi.waitFor(() => expect(unlockModels).toHaveBeenCalledTimes(1));
+		held.release();
+		await Promise.all([first, second]);
+
+		expect(held.calls()).toBe(1);
 	});
 
 	it("writes nothing from a decision task the document no longer names", async () => {
@@ -1311,6 +1365,76 @@ describe("escalation", () => {
 			`correctness@${version()}@careful`,
 		]);
 	});
+
+	it.each([
+		["both runs read functions", true],
+		["only the escalated run reads functions", false],
+	])(
+		"keeps one note that the first call could not read the functions when %s, whether a repeat call could or not",
+		async (_, quickReads) => {
+			const reading = lenses.map((lens) =>
+				lens.name === "correctness"
+					? Lens.from({
+							...lens.toJSON(),
+							levels: {
+								...lens.levels,
+								quick: { ...lens.levels.quick!, reads: quickReads ? "functions" : "hunks" },
+								careful: { ...lens.levels.careful, reads: "functions" },
+							},
+						})
+					: lens,
+			);
+			const decider = choosing("quick");
+			await open(decider);
+			scriptConversations(fake, [{ match: correctness, replies: [severe, done, done] }]);
+			const unreadable = vi
+				.spyOn(EnclosingFunctions, "read")
+				.mockImplementation(async () => Object.assign(EnclosingFunctions.none(), { unavailable: "no compiler" }));
+			const note = "the head's functions could not be read (no compiler), so it read them with read_file";
+
+			const first = await review({ decider, lenses: reading });
+			unreadable.mockRestore();
+			const repeat = await review({ decider, lenses: reading });
+
+			expect(lensRecord(first)?.reason?.startsWith(`${note}; escalated from quick to careful`)).toBe(true);
+			expect(lensRecord(first)?.reason?.split(note)).toHaveLength(2);
+			expect(lensRecord(repeat)?.reason).toBe(lensRecord(first)?.reason);
+		},
+	);
+
+	it.each([
+		["quick reads hunks, so the functions it could not read were never its own", "hunks", undefined],
+		["quick reads functions itself", "functions", "the head's functions could not be read (no compiler)"],
+	] as const)(
+		"notes the unreadable functions only of the run that stands for the lens when it never escalated and %s",
+		async (_, quickReads, expected) => {
+			const reading = lenses.map((lens) =>
+				lens.name === "correctness"
+					? Lens.from({
+							...lens.toJSON(),
+							levels: {
+								...lens.levels,
+								quick: { ...lens.levels.quick!, reads: quickReads },
+								careful: { ...lens.levels.careful, reads: "functions" },
+							},
+						})
+					: lens,
+			);
+			const decider = choosing("quick");
+			await open(decider);
+			scriptConversations(fake, [{ match: correctness, replies: [done] }]);
+			vi.spyOn(EnclosingFunctions, "read").mockImplementation(async () =>
+				Object.assign(EnclosingFunctions.none(), { unavailable: "no compiler" }),
+			);
+
+			const reviewed = await review({ decider, lenses: reading });
+
+			const reason = lensRecord(reviewed)?.reason;
+			if (expected === undefined) expect(reason ?? "").not.toContain("could not be read");
+			else expect(reason).toContain(expected);
+			expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "quick" });
+		},
+	);
 
 	it("refreshes a quick review when only its careful escalation budget changes", async () => {
 		const decider = choosing("quick");

@@ -1,0 +1,3 @@
+# Step 14, a capped neighbour leaves the review not reviewed
+
+A lens refused a report at its findings budget now records the refusal, and the lens task carries it as `capped`. When another running lens left that lens defects through a hand-off that rendered, its check ends and the verdict reads not reviewed, where it read reviewed with a defect in no report. A lens that reported exactly its budget, one nothing handed a defect to, and one whose hand-off was left out for size all still run. `ended: count` does not apply, as [the decision](../decisions/2026-10-07-capped-neighbour-leaves-review-not-reviewed.md) records, which supersedes the per-file hand-off decision in that one respect. Item 2 of step 14 in the [implementation plan](../design-implementation-plan.md).

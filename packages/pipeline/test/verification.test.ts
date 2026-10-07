@@ -1,4 +1,4 @@
-import { rmSync, writeFileSync } from "node:fs";
+import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
 	Changeset,
@@ -73,7 +73,12 @@ afterEach(async () => {
 	rmSync(repo, { recursive: true, force: true });
 });
 
-async function review(rerun = false, plan?: ReviewPlan, quick = false): Promise<Review> {
+async function review(
+	rerun = false,
+	plan?: ReviewPlan,
+	quick = false,
+	unlockModels?: () => Promise<void>,
+): Promise<Review> {
 	const finder = fake.ref("finder");
 	const judge = fake.ref("judge");
 	return reviewChangeset({
@@ -84,6 +89,7 @@ async function review(rerun = false, plan?: ReviewPlan, quick = false): Promise<
 		standards: [],
 		models: fake.review,
 		rerun,
+		...(unlockModels === undefined ? {} : { unlockModels }),
 		...(plan === undefined ? {} : { plan }),
 		config: {
 			...defaultConfig,
@@ -452,6 +458,38 @@ describe("the verifier", () => {
 		});
 		expect(requests[verifierMarker]).toEqual([]);
 	});
+	it("passes over a verifier candidate whose credential check throws, for the next one", async () => {
+		const locked = fake.withoutCredentials("judge");
+		const check = fake.models.checkAuth.bind(fake.models);
+		vi.spyOn(fake.models, "checkAuth").mockImplementation((provider) =>
+			provider === locked.provider ? Promise.reject(new Error("auth.json is not JSON")) : check(provider),
+		);
+		const finder = fake.ref("finder");
+		const requests = scripts();
+		const result = await reviewChangeset({
+			harness,
+			checks: [],
+			changeset,
+			lenses,
+			standards: [],
+			models: fake.review,
+			config: {
+				...defaultConfig,
+				tiers: { full: lenses.map((lens) => `lens.${lens.name}`) },
+				stages: { "pull-request": "full" },
+				models: {
+					medium: { model: `${finder.provider}/${finder.modelId}` },
+					heavy: { model: `${finder.provider}/${finder.modelId}` },
+					verifier: {
+						model: `${locked.provider}/${locked.modelId}`,
+						fallbacks: [`${fake.ref("judge").provider}/judge`],
+					},
+				},
+			},
+		});
+		expect(requests[verifierMarker]).not.toHaveLength(0);
+		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
+	});
 	it.each([
 		["refused", "confirmed"],
 		["refused", "refuted"],
@@ -570,6 +608,46 @@ describe("the verifier", () => {
 		const root = await harness.root(context);
 		const index = await harness.snapshot(ReviewIndex, root.id, context);
 		expect(index?.reviews[revisionKey(changeset.revision)]?.verification).toBeDefined();
+	});
+	it("builds the verifier route of a repeat review without running a named credential's command", async () => {
+		scripts();
+		await review();
+		const marker = join(repo, "vault-ran");
+		const vault = createFakeModels({
+			models: [{ id: "finder" }, { id: "judge" }, { id: "backup" }],
+			credentials: [
+				{
+					name: "vault",
+					provider: fake.ref("finder").provider,
+					type: "api_key",
+					value: { kind: "command", command: `touch ${marker}; printf key` },
+					file: "/fake/secrets.yaml",
+				},
+			],
+		});
+		const finder = vault.ref("finder");
+		const judge = vault.ref("judge");
+		const requests = vault.provider.state.callCount;
+		await reviewChangeset({
+			harness,
+			checks: [],
+			changeset,
+			lenses,
+			standards: [],
+			models: vault.review,
+			config: {
+				...defaultConfig,
+				tiers: { full: lenses.map((lens) => `lens.${lens.name}`) },
+				stages: { "pull-request": "full" },
+				models: {
+					medium: { model: `${finder.provider}/${finder.modelId}` },
+					heavy: { model: `${finder.provider}/${finder.modelId}` },
+					verifier: { model: `${judge.provider}/${judge.modelId}`, fallbacks: [`${judge.provider}/backup`] },
+				},
+			},
+		});
+		expect(vault.provider.state.callCount).toBe(requests);
+		expect(existsSync(marker)).toBe(false);
 	});
 	it("lets a replacement task refute a claim the failed task confirmed", async () => {
 		const requests = scriptConversations(fake, [
@@ -981,6 +1059,46 @@ describe("the verifier", () => {
 		expect(result.findings[0]!.properties.verification?.verdict).toBe("confirmed");
 		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
 	});
+	it("unlocks credentials before a new verification, and not for a repeat that attaches to a failed one", async () => {
+		const failing = () =>
+			scriptConversations(fake, [
+				{
+					match: lenses[0]!.instructions,
+					replies: [
+						fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+						fauxAssistantMessage("Done."),
+					],
+				},
+				{
+					match: verifierMarker,
+					replies: Array.from({ length: 2 }, () =>
+						fauxAssistantMessage("", { stopReason: "error", errorMessage: "HTTP 503 service unavailable" }),
+					),
+				},
+			]);
+		const unlocks = () => {
+			const calledAfter: number[] = [];
+			const unlock = vi.fn(async () => {
+				calledAfter.push(fake.provider.state.callCount);
+			});
+			return { unlock, calledAfter };
+		};
+		failing();
+		const first = unlocks();
+		await expect(review(false, undefined, false, first.unlock)).rejects.toMatchObject({ code: "verifierFailed" });
+		expect(first.calledAfter).toEqual([0]);
+
+		const repeat = unlocks();
+		await expect(review(false, undefined, false, repeat.unlock)).rejects.toMatchObject({ code: "verifierFailed" });
+		expect(repeat.unlock).not.toHaveBeenCalled();
+
+		scripts();
+		const rerun = unlocks();
+		const before = fake.provider.state.callCount;
+		await review(true, undefined, false, rerun.unlock);
+		expect(rerun.calledAfter).toEqual([before]);
+		expect(fake.provider.state.callCount).toBeGreaterThan(before);
+	});
 	it("fails closed when every verifier model fails and does not retry without rerun", async () => {
 		const requests = scriptConversations(fake, [
 			{
@@ -1108,6 +1226,74 @@ describe("verification ownership and budgets", () => {
 		} finally {
 			release.resolve();
 			await finished;
+		}
+	});
+	it("unlocks credentials for a verification task it creates, never for one it attaches to", async () => {
+		const stored = await input();
+		stored.version = "v1";
+		stored.candidates[0]!.budget.tools = 20;
+		const revision = revisionKey(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.lenses;
+		scripts("refuted");
+		// The review that built the input left a verification task under the verifier's own version.
+		const prior = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.verification!.task;
+		const unlocked: (number | undefined)[] = [];
+		const unlock = vi.fn(async () => {
+			const entry = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!;
+			unlocked.push(entry.verification?.task);
+		});
+
+		const first = (await startVerification(harness, stored, selection, false, context, undefined, unlock))!;
+		expect(unlocked).toEqual([prior]);
+		await harness.waitForTask(first, context);
+
+		const same = await startVerification(harness, stored, selection, false, context, undefined, unlock);
+		expect(same).toBe(first);
+		expect(unlock).toHaveBeenCalledTimes(1);
+
+		scripts("refuted");
+		const next = (await startVerification(
+			harness,
+			{ ...stored, version: "v2" },
+			selection,
+			false,
+			context,
+			undefined,
+			unlock,
+		))!;
+		expect(next).not.toBe(first);
+		expect(unlock).toHaveBeenCalledTimes(2);
+		expect(unlocked[1]).toBe(first);
+		await harness.waitForTask(next, context);
+	});
+	it("unlocks credentials for a verification task it attaches to while the task still runs", async () => {
+		const stored = await input();
+		stored.version = "v1";
+		stored.candidates[0]!.budget.tools = 20;
+		const revision = revisionKey(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.lenses;
+		const release = Promise.withResolvers<void>();
+		scriptConversations(fake, [
+			{
+				match: verifierMarker,
+				replies: [
+					async (messages) => {
+						await release.promise;
+						return scriptVerifier(messages);
+					},
+					fauxAssistantMessage("Done."),
+				],
+			},
+		]);
+		const first = (await startVerification(harness, stored, selection, false, context))!;
+		const unlock = vi.fn(async () => {});
+		try {
+			const second = await startVerification(harness, stored, selection, false, context, undefined, unlock);
+			expect(second).toBe(first);
+			expect(unlock).toHaveBeenCalledTimes(1);
+		} finally {
+			release.resolve();
+			await harness.waitForTask(first, context);
 		}
 	});
 	it("starts fresh when only the verifier version changes without rerun", async () => {

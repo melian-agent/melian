@@ -26,6 +26,17 @@ export function modelsOf(handle: ReviewModels): MutableModels {
 	return models;
 }
 
+/**
+ * Whether `provider` holds credentials, as planning counts them: a named credential whose command has not run counts
+ * as present. Asking runs no command, so a review that spends no tokens runs none; the command runs when the review
+ * unlocks credentials, or on the first request that needs it. Only an absent credential reads as false: a Pi store that
+ * cannot be read raises its `PiCredentialsError`, naming the file, as it did before this check.
+ */
+export async function hasCredentials(models: ReviewModels, provider: string): Promise<boolean> {
+	const described = await stores.get(models)?.describe(provider);
+	return described !== undefined || (await modelsOf(models).checkAuth(provider)) !== undefined;
+}
+
 /** The IDs of the providers in `models` that hold credentials, sorted, for a host that reports readiness. */
 export async function providersWithCredentials(models: ReviewModels): Promise<string[]> {
 	return Object.keys((await planInputs(models)).credentials).sort();
@@ -101,9 +112,9 @@ export class RouteTextModel implements TextModel {
 		for (const reference of route) {
 			const model = collection.getModel(reference.provider, reference.modelId);
 			if (model === undefined) continue;
-			if ((await collection.checkAuth(reference.provider).catch(() => undefined)) !== undefined) {
+			// A store that cannot be read passes the provider over, so a later tier with its own credential still serves.
+			if (await hasCredentials(models, reference.provider).catch(() => false))
 				return new RouteTextModel(collection, model);
-			}
 		}
 		return undefined;
 	}

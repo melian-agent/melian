@@ -9,6 +9,7 @@ import { RecordedDecider } from "@melian-agent/decisions";
 import {
 	type ConversationId,
 	backgroundContext as context,
+	createMemoryStorage,
 	createReviewRegistry,
 	type Harness,
 	type Message,
@@ -35,9 +36,11 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CallerContext } from "../src/callers.ts";
 import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
+import { EnclosingFunctions } from "../src/enclosing-functions.ts";
 import { findingsVersion } from "../src/findings.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { SummaryTask } from "../src/summarize.ts";
 import { gitIn } from "./fixtures/repo.ts";
 import {
 	budgetLenses,
@@ -74,6 +77,7 @@ async function killWhen(
 		| "legacy"
 		| "request"
 		| "callers"
+		| "functions"
 		| "adjudication"
 		| "read"
 		| "spent"
@@ -243,6 +247,88 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		expect(lensTasks).toEqual([]);
 	});
 
+	it("says a crashed lens task resumes a model, before anything resumes it, and a finished review none", async () => {
+		const database = join(dir, "resumes.sqlite");
+		const log = join(dir, "resumes.jsonl");
+		await killWhen("request", (events) => count(events, "model-request") === 2, database, log);
+
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
+		scriptConversations(fake, [
+			{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+			{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const reopened = await ReviewHarness.open(await openSqliteStorage(database), fake.review, { retry: false });
+		harness = reopened.harness;
+
+		expect(await reopened.resumesModels(context)).toBe(true);
+		expect(fake.provider.state.callCount).toBe(0);
+
+		const heavy = fake.ref("heavy");
+		await reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config: {
+				...defaultConfig,
+				tiers: twoLensTiers,
+				models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
+			},
+			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
+			standards: [],
+			checks: [],
+			models: fake.review,
+		});
+
+		expect(await reopened.resumesModels(context)).toBe(false);
+	});
+
+	it.each([
+		[
+			"a triage decision",
+			"decision",
+			(events: ReturnType<typeof readEvents>) => count(events, "decision-asked") === 1,
+		],
+		[
+			"a verification",
+			"verifier",
+			(events: ReturnType<typeof readEvents>) =>
+				events.some((event) => event.event === "model-request" && event.lens === "verifier"),
+		],
+	] as const)("says a crashed %s resumes a model", async (_, scenario, reached) => {
+		const database = join(dir, `${scenario}-resumes.sqlite`);
+		await killWhen(scenario, reached, database, join(dir, `${scenario}-resumes.jsonl`));
+
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
+		const decider: Decider = { name: "parked", calibrated: false, decide: async () => ({ answers: [] }) };
+		const reopened = await ReviewHarness.open(await openSqliteStorage(database), fake.review, {
+			retry: false,
+			...(scenario === "decision" ? { decider } : {}),
+		});
+		harness = reopened.harness;
+		const kinds = (await harness.inspect(context)).tasks.map((task) => task.record.kind);
+
+		expect(kinds).toContain(scenario === "decision" ? "melian.decision" : "melian.verification");
+		expect(await reopened.resumesModels(context)).toBe(true);
+	});
+
+	it("says a walkthrough task that has not finished resumes a model, and no task none", async () => {
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "light" }] });
+		const reopened = await ReviewHarness.open(createMemoryStorage(), fake.review, { retry: false });
+		harness = reopened.harness;
+		const root = await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+		expect(await reopened.resumesModels(context)).toBe(false);
+
+		await root.commit(async (tx) => {
+			await tx.createTask(
+				SummaryTask,
+				{ root: root.id, revision: "r", prompt: "p", model: fake.ref("light"), paths: [] },
+				{ ownership: { kind: "conversation" } },
+			);
+		}, context);
+
+		expect(await reopened.resumesModels(context)).toBe(true);
+		expect(fake.provider.state.callCount).toBe(0);
+	});
+
 	it("attaches a repeat call whose caller context is unavailable, and keeps the first call's caller section", async () => {
 		const database = join(dir, "callers.sqlite");
 		const log = join(dir, "callers.jsonl");
@@ -280,6 +366,58 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		for (const [match, [request]] of Object.entries(requests)) {
 			expect(systemPromptOf(request!), match).toContain("First");
 		}
+	});
+
+	it("attaches a repeat call that cannot read the functions, and keeps the first call's function blocks", async () => {
+		const database = join(dir, "functions.sqlite");
+		const log = join(dir, "functions.jsonl");
+		await killWhen("functions", (events) => count(events, "model-request") === 2, database, log);
+
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "medium" }, { id: "heavy" }] });
+		const requests = scriptConversations(fake, [
+			{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+			{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+		]);
+		harness = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		vi.spyOn(EnclosingFunctions, "read").mockImplementation(async () =>
+			Object.assign(EnclosingFunctions.none(), { unavailable: "no compiler on the repeat" }),
+		);
+		const heavy = fake.ref("heavy");
+		const medium = fake.ref("medium");
+		const { verdict } = await reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config: {
+				...defaultConfig,
+				tiers: twoLensTiers,
+				models: {
+					medium: { model: `${medium.provider}/${medium.modelId}` },
+					heavy: { model: `${heavy.provider}/${heavy.modelId}` },
+				},
+				lenses: { correctness: { level: { floor: "deep", ceiling: "deep" } } },
+			},
+			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
+			standards: [],
+			checks: [],
+			models: fake.review,
+		});
+
+		expect(requests["You are the correctness reviewer"]).toHaveLength(1);
+		expect(requests["You are the contracts reviewer"]).toHaveLength(1);
+		expect(fake.provider.state.callCount).toBe(2);
+		const [resumed] = requests["You are the correctness reviewer"]!;
+		const prompt = resumed!
+			.filter((message) => message.role === "user")
+			.map(textOf)
+			.join("\n");
+		expect(prompt).toMatch(/label="function">\nsrc\/user\.ts:6-8 managerName\n/);
+		expect(verdict.ran?.find((check) => check.name === "lens.correctness")?.reason ?? "").not.toContain(
+			"could not be read",
+		);
 	});
 
 	it("records the caller notes and coverage of the call that rendered the section a repeat call finished", async () => {

@@ -171,8 +171,8 @@ describe("built-in lenses", () => {
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toMatchObject({
-			correctness: "56090e24819d",
-			"removed-behaviour": "1b03a6b1bc9c",
+			correctness: "07dd74a2fa11",
+			"removed-behaviour": "a9e209da1c15",
 		});
 	});
 
@@ -201,7 +201,11 @@ describe("built-in lenses", () => {
 		expect(overEverything).toContain("design");
 		const unexcluded = overEverything.filter((name) => {
 			const paths = config.lenses[name]?.paths ?? [];
-			return !paths.includes("!packages/evals/goldens/**") || !paths.includes("!packages/evals/verifier/**");
+			return (
+				!paths.includes("!packages/evals/goldens/**") ||
+				!paths.includes("!packages/evals/verifier/**") ||
+				!paths.includes("!packages/evals/triage/**")
+			);
 		});
 		expect(unexcluded).toEqual([]);
 	});
@@ -898,6 +902,10 @@ describe("Lens.renderInstructions", () => {
 		);
 		const deep = correctness!.renderInstructions([], "deep");
 		expect(deep).toContain("Reading scope: the hunks and the functions around them.");
+		expect(deep).toContain(
+			'The change may carry the function around a hunk of a TypeScript file under "Enclosing functions". For every hunk with no such block, read the whole function, method, or top-level block with `read_file`, whatever the reason',
+		);
+		expect(careful).not.toContain("Enclosing functions");
 		expect(deep).toContain(
 			"Budget: at most 12 findings, 60 tool calls, `report_finding` included, and 400,000 tokens",
 		);

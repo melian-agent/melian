@@ -1,10 +1,15 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Decider, defaultConfig, Lens, type LoadedConfig, type MelianConfig, userFiles } from "@melian-agent/core";
 import { buildGoldenRepository, loadGoldens } from "@melian-agent/evals";
 import * as pipeline from "@melian-agent/pipeline";
-import { createFakeModels, type FakeModels } from "@melian-agent/pipeline/testing";
+import {
+	createFakeModels,
+	type FakeModels,
+	fauxAssistantMessage,
+	scriptConversations,
+} from "@melian-agent/pipeline/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { main } from "../src/main.ts";
 import { decisionProviderRefusal, fallbackDecider, reviewModels, Triage, triageProviders } from "../src/models.ts";
@@ -144,6 +149,42 @@ describe("the triage model", () => {
 		expect(chosen).toMatchObject({ model: `${fake.ref("medium").provider}/medium` });
 	});
 
+	it("passes over a tier whose provider has no named credential when Pi's store is corrupt, for one that has", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "melian-corrupt-store-"));
+		try {
+			const authPath = join(dir, "auth.json");
+			writeFileSync(authPath, "{");
+			const named = createFakeModels({
+				provider: "fake-key",
+				models: [{ id: "heavy" }],
+				credentials: [
+					{
+						name: "vault",
+						provider: "fake-key",
+						type: "api_key",
+						value: { kind: "literal", key: "k" },
+						file: "f",
+					},
+				],
+				authPath,
+			});
+			const locked = named.withoutCredentials("locked-light");
+			const chosen = await fallbackDecider(
+				{
+					...defaultConfig,
+					models: {
+						light: { model: `${locked.provider}/${locked.modelId}` },
+						heavy: { model: `${named.ref("heavy").provider}/heavy` },
+					},
+				},
+				named.review,
+			);
+			expect(chosen).toMatchObject({ model: `${named.ref("heavy").provider}/heavy` });
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	it("says why no decider runs when no tier reaches a model", async () => {
 		const chosen = await choose({ light: { model: "claude-haiku" }, medium: { model: "nowhere/medium" } });
 		expect(chosen).toEqual({
@@ -195,7 +236,7 @@ describe("Triage", () => {
 		return { triage, marker, lensMarker, plan };
 	}
 
-	it("hands the decider to the harness and the review, and unlocks the providers triage may ask", async () => {
+	it("hands the decider to the harness and the review, and unlocks the providers triage may ask on demand", async () => {
 		const configs: MelianConfig[] = [];
 		const { triage, marker, plan } = await opened({
 			scripted: false,
@@ -206,16 +247,50 @@ describe("Triage", () => {
 		});
 
 		expect(triage.harnessOptions()).toEqual({ decider });
-		expect(triage.reviewOptions()).toEqual({ decider });
+		expect(triage.reviewOptions()).toEqual({ decider, unlockModels: expect.any(Function) });
+		expect(existsSync(marker)).toBe(false);
+		await triage.reviewOptions().unlockModels();
 		expect(existsSync(marker)).toBe(true);
 		expect(configs[0]!.models).toEqual(plan.routes());
+	});
+
+	it("runs the providers' commands once, however often a review and its walkthrough unlock", async () => {
+		const { triage, marker } = await opened({ scripted: false, decide: async () => ({ decider, model: "fake" }) });
+
+		const first = triage.unlockModels();
+		expect(triage.unlockModels()).toBe(first);
+		await first;
+		expect(existsSync(marker)).toBe(true);
+	});
+
+	it("unlocks the light tier's command credential for a plan with no lens, once", async () => {
+		dir = mkdtempSync(join(tmpdir(), "melian-triage-"));
+		const marker = join(dir, "ran");
+		const { models, plan } = await reviewModels({}, loadedOf({ light: { model: "openai/gpt-5.5" } }), [], {
+			...setup,
+			credentials: [
+				{
+					name: "vault",
+					provider: "openai",
+					type: "api_key",
+					value: { kind: "command", command: `echo run >> ${marker}; echo sk-key` },
+					file: "f",
+				},
+			],
+		});
+		const triage = await Triage.create({ scripted: false, config: defaultConfig, plan, models });
+
+		expect(plan.lenses).toHaveLength(0);
+		await triage.unlockModels();
+		await triage.unlockModels();
+		expect(readFileSync(marker, "utf8")).toBe("run\n");
 	});
 
 	it("says why triage did not run to the review, and gives the harness no decider", async () => {
 		const { triage } = await opened({ scripted: false, decide: async () => ({ skipped: "no model" }) });
 
 		expect(triage.harnessOptions()).toEqual({});
-		expect(triage.reviewOptions()).toEqual({ triageSkipped: "no model" });
+		expect(triage.reviewOptions()).toEqual({ triageSkipped: "no model", unlockModels: expect.any(Function) });
 	});
 
 	it("triages nothing and unlocks the lens and verifier providers under a script", async () => {
@@ -225,7 +300,10 @@ describe("Triage", () => {
 		expect(plan.lenses).toHaveLength(1);
 		expect(plan.providers()).toEqual(["anthropic", "openai"]);
 		expect(triage.harnessOptions()).toEqual({});
-		expect(triage.reviewOptions()).toEqual({});
+		expect(triage.reviewOptions()).toEqual({ unlockModels: expect.any(Function) });
+		expect(existsSync(lensMarker)).toBe(false);
+		expect(existsSync(marker)).toBe(false);
+		await triage.unlockModels();
 		expect(existsSync(lensMarker)).toBe(true);
 		expect(existsSync(marker)).toBe(true);
 		expect(decide).not.toHaveBeenCalled();
@@ -309,7 +387,120 @@ describe("command bearer validation", { timeout: 60_000 }, () => {
 		},
 	);
 
-	it("fails review before opening storage or calling a model when a command bearer expired, despite a usable Pi login", async () => {
+	it("runs a command credential for a review that asks a model, and not for a repeat that asks none", async () => {
+		const golden = loadGoldens().find((entry) => entry.name === "clean-rename")!;
+		const { repo } = buildGoldenRepository(golden);
+		const xdg = mkdtempSync(join(tmpdir(), "melian-repeat-"));
+		const fakes: FakeModels[] = [];
+		try {
+			const marker = join(xdg, "ran");
+			mkdirSync(join(xdg, "melian"));
+			writeFileSync(
+				join(xdg, "melian", "secrets.yaml"),
+				`credentials:\n  vault: { provider: fake-repeat, command: "echo run >> ${marker}; echo sk-key" }\n`,
+				{ mode: 0o600 },
+			);
+			writeFileSync(
+				join(repo, "melian.yaml"),
+				`models:\n  heavy: { model: fake-repeat/heavy }\ntiers:\n  full: [guardrails, lens.correctness]\nchecks:\n  allowSkip: [lens.correctness]\n`,
+			);
+			vi.spyOn(pipeline, "createReviewModels").mockImplementation((options) => {
+				const fake = createFakeModels({
+					provider: "fake-repeat",
+					models: [{ id: "heavy" }],
+					credentials: options?.credentials ?? [],
+				});
+				scriptConversations(fake, [
+					{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+				]);
+				fakes.push(fake);
+				return fake.review;
+			});
+			const review = async () => {
+				const stderr = vi.fn();
+				const status = await main(["review", "main"], {
+					cwd: repo,
+					env: { XDG_CONFIG_HOME: xdg, MELIAN_STATE_DIR: xdg },
+					color: false,
+					stdout: vi.fn(),
+					stderr,
+					decide: async () => ({ skipped: "not under test" }),
+				});
+				expect(status, stderr.mock.calls.flat().join("")).toBe(0);
+			};
+
+			await review();
+			expect(fakes[0]!.provider.state.callCount).toBeGreaterThan(0);
+			expect(readFileSync(marker, "utf8")).toBe("run\n");
+
+			await review();
+			expect(fakes[1]!.provider.state.callCount).toBe(0);
+			expect(readFileSync(marker, "utf8")).toBe("run\n");
+		} finally {
+			vi.restoreAllMocks();
+			rmSync(repo, { recursive: true, force: true });
+			rmSync(xdg, { recursive: true, force: true });
+		}
+	});
+
+	it.each([
+		["a crashed task would resume", true],
+		["no task would resume", false],
+	])("runs a command credential before the checks run only when %s", async (_, resumes) => {
+		const golden = loadGoldens().find((entry) => entry.name === "clean-rename")!;
+		const { repo } = buildGoldenRepository(golden);
+		const xdg = mkdtempSync(join(tmpdir(), "melian-resume-"));
+		try {
+			const marker = join(xdg, "ran");
+			mkdirSync(join(xdg, "melian"));
+			writeFileSync(
+				join(xdg, "melian", "secrets.yaml"),
+				`credentials:\n  vault: { provider: fake-resume, command: "echo run >> ${marker}; echo sk-key" }\n`,
+				{ mode: 0o600 },
+			);
+			writeFileSync(
+				join(repo, "melian.yaml"),
+				`models:\n  heavy: { model: fake-resume/heavy }\ntiers:\n  full: [guardrails, lens.correctness]\nchecks:\n  allowSkip: [lens.correctness]\n`,
+			);
+			vi.spyOn(pipeline, "createReviewModels").mockImplementation((options) => {
+				const fake = createFakeModels({
+					provider: "fake-resume",
+					models: [{ id: "heavy" }],
+					credentials: options?.credentials ?? [],
+				});
+				scriptConversations(fake, [
+					{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+				]);
+				return fake.review;
+			});
+			if (resumes) vi.spyOn(pipeline.ReviewHarness.prototype, "resumesModels").mockResolvedValue(true);
+			const ranBeforeChecks: boolean[] = [];
+			const runChecks = pipeline.runChecks;
+			vi.spyOn(pipeline, "runChecks").mockImplementation((...args) => {
+				ranBeforeChecks.push(existsSync(marker));
+				return runChecks(...args);
+			});
+			const stderr = vi.fn();
+			const status = await main(["review", "main"], {
+				cwd: repo,
+				env: { XDG_CONFIG_HOME: xdg, MELIAN_STATE_DIR: xdg },
+				color: false,
+				stdout: vi.fn(),
+				stderr,
+				decide: async () => ({ skipped: "not under test" }),
+			});
+
+			expect(status, stderr.mock.calls.flat().join("")).toBe(0);
+			expect(ranBeforeChecks).toEqual([resumes]);
+			expect(readFileSync(marker, "utf8")).toBe("run\n");
+		} finally {
+			vi.restoreAllMocks();
+			rmSync(repo, { recursive: true, force: true });
+			rmSync(xdg, { recursive: true, force: true });
+		}
+	});
+
+	it("fails review before calling a model when a command bearer expired, despite a usable Pi login", async () => {
 		const golden = loadGoldens().find((entry) => entry.name === "clean-rename")!;
 		const { repo } = buildGoldenRepository(golden);
 		const xdg = mkdtempSync(join(tmpdir(), "melian-bearer-xdg-"));
@@ -363,7 +554,7 @@ describe("command bearer validation", { timeout: 60_000 }, () => {
 			);
 			expect(stdout).not.toHaveBeenCalled();
 			expect(existsSync(marker)).toBe(true);
-			expect(opened).not.toHaveBeenCalled();
+			expect(opened).toHaveBeenCalled();
 			expect(fake!.provider.state.callCount).toBe(0);
 		} finally {
 			vi.restoreAllMocks();

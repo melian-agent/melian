@@ -10,6 +10,7 @@
 	"include": ["src/**/*"],
 	"references": [
 		{ "path": "../core/tsconfig.build.json" },
+		{ "path": "../decisions/tsconfig.build.json" },
 		{ "path": "../pipeline/tsconfig.build.json" }
 	]
 }
