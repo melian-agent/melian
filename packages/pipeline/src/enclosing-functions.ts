@@ -16,8 +16,7 @@ import {
 	type Node,
 	type SourceFile,
 } from "typescript/unstable/ast";
-import { createVirtualFileSystem } from "typescript/unstable/fs";
-import { API } from "typescript/unstable/sync";
+import { HeadProgram } from "./compiler-graph.ts";
 import { quoteUntrusted } from "./untrusted.ts";
 
 /**
@@ -156,26 +155,12 @@ export class EnclosingFunctions {
 		}
 	}
 
-	// A virtual file system holds the head's text under names of the compiler's own choosing, with each file's extension
-	// so it parses as the language it is, and an author's path never reaches the compiler.
 	static #parse(files: readonly ChangedFile[], texts: ReadonlyMap<string, string>): EnclosingFunction[] {
-		const virtual = new Map<string, string>();
-		const names: Record<string, string> = {};
-		for (const file of files) {
-			const text = texts.get(file.path);
-			if (text === undefined) continue;
-			const name = `/melian-head/f${virtual.size}${/\.(?:[cm]?ts|tsx)$/.exec(file.path)![0]}`;
-			virtual.set(file.path, name);
-			names[name] = text;
-		}
-		const api = new API({ cwd: "/melian-head", fs: createVirtualFileSystem(names) });
+		const program = HeadProgram.open(texts);
 		try {
-			const snapshot = api.updateSnapshot({ openFiles: [...virtual.values()] });
 			const found: EnclosingFunction[] = [];
 			for (const file of files) {
-				const name = virtual.get(file.path);
-				if (name === undefined) continue;
-				const source = snapshot.getDefaultProjectForFile(name)?.program.getSourceFile(name);
+				const source = program.source(file.path);
 				if (source === undefined) continue;
 				const around = callables(source);
 				const lines = texts.get(file.path)!.split("\n");
@@ -199,14 +184,13 @@ export class EnclosingFunctions {
 					});
 				}
 			}
-			snapshot.dispose();
 			return found.sort(
 				(a, b) =>
 					files.findIndex((file) => file.path === a.path) - files.findIndex((file) => file.path === b.path) ||
 					a.startLine - b.startLine,
 			);
 		} finally {
-			api.close();
+			program.close();
 		}
 	}
 

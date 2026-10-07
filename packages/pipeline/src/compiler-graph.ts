@@ -25,8 +25,10 @@ import {
 	isTaggedTemplateExpression,
 	isVariableDeclaration,
 	type Node,
+	type SourceFile,
 	SyntaxKind,
 } from "typescript/unstable/ast";
+import { createVirtualFileSystem } from "typescript/unstable/fs";
 import { API, type Symbol as CompilerSymbol, type Project, type Snapshot, SymbolFlags } from "typescript/unstable/sync";
 
 import { coverageCompiler } from "./coverage-identity.ts";
@@ -47,6 +49,55 @@ function named(node: Node): string | undefined {
 	const declaration = node as Node & { name?: Node };
 	return declaration.name?.getText();
 }
+/**
+ * TypeScript sources as text, held in a virtual file system and parsed by the same compiler as {@link CompilerGraph}.
+ * The compiler sees names of its own choosing, each with the extension of the file it stands for, so a path an author
+ * chose never reaches it and each file parses as the language it is.
+ */
+export class HeadProgram {
+	readonly #api: API;
+	readonly #snapshot: Snapshot;
+	readonly #names: ReadonlyMap<string, string>;
+
+	private constructor(api: API, snapshot: Snapshot, names: ReadonlyMap<string, string>) {
+		this.#api = api;
+		this.#snapshot = snapshot;
+		this.#names = names;
+	}
+
+	/** Opens a program over `texts`, keyed by the path each text stands for. Throws when the compiler cannot start. */
+	static open(texts: ReadonlyMap<string, string>): HeadProgram {
+		const names = new Map<string, string>();
+		const files: Record<string, string> = {};
+		for (const [path, text] of texts) {
+			const name = `/melian-head/f${names.size}${/\.(?:[cm]?ts|tsx)$/.exec(path)?.[0] ?? ".ts"}`;
+			names.set(path, name);
+			files[name] = text;
+		}
+		const api = new API({ cwd: "/melian-head", fs: createVirtualFileSystem(files) });
+		try {
+			return new HeadProgram(api, api.updateSnapshot({ openFiles: [...names.values()] }), names);
+		} catch (error) {
+			api.close();
+			throw error;
+		}
+	}
+
+	/** The syntax tree of the text opened under `path`, or `undefined` when none was or the compiler holds none. */
+	source(path: string): SourceFile | undefined {
+		const name = this.#names.get(path);
+		return name === undefined
+			? undefined
+			: this.#snapshot.getDefaultProjectForFile(name)?.program.getSourceFile(name);
+	}
+
+	/** Releases the compiler process and snapshot. */
+	close(): void {
+		this.#snapshot.dispose();
+		this.#api.close();
+	}
+}
+
 /** Compiler ground truth from TypeScript 7's unstable synchronous API. */
 export class CompilerGraph {
 	readonly #root: string;
