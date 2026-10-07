@@ -1,6 +1,6 @@
 # Decisions guidelines
 
-The decisions package parses written decisions for the design lens and holds the adapters behind core's `Decider` port, as `packages/github` holds the client behind the provider port. Core and the pipeline depend on the port alone, so a new decision provider is an adapter here, never a change to core. [design.md](../design.md#decision-models) says what decisions are for and where they are not used.
+The decisions package parses written decisions for the design lens and holds the adapters behind core's `Decider` port, as `packages/github` holds the client behind the provider port. For model selection, core and the pipeline depend on the port alone. A new decision provider is an adapter here, never a change to core. The pipeline also loads written baseline decisions through DecisionFiles. [design.md](../design.md#decision-models) says what decisions are for and where they are not used.
 
 ## The port
 
@@ -25,7 +25,7 @@ The state is text about the change under review, and the change's author control
 
 ## Written decisions
 
-DecisionFile.parse reads a title and dated Markdown filenames on Supersedes lines. DecisionFiles.open reads the complete docs/decisions tree from the comparison base through core’s source reader, with 256 KiB per file. DecisionFiles.from resolves supersession before rendering. Missing targets and cycles throw DecisionFilesError. Source errors, including oversized files and symlinks, propagate rather than dropping a baseline.
+DecisionFile.parse reads a title and dated Markdown filenames on Supersedes lines. DecisionFiles.load reads the complete docs/decisions tree from the comparison base through core’s source reader, with 256 KiB per file. DecisionFiles.from resolves supersession before rendering. Missing targets and cycles throw DecisionFilesError. Source errors, including oversized files and symlinks, propagate rather than dropping a baseline.
 
 DecisionFiles.render lists 100 paths and titles at most, with active status or direct successors. Each escaped row holds at most 512 characters. An omitted count and row bound note keep cuts explicit. The graph is complete even when the list is not.
 
