@@ -98,3 +98,71 @@ it.each([true, false])(
 	},
 	60_000,
 );
+
+it(
+	"skips caller context when the Enola check is disabled",
+	async () => {
+		repo = createRepository();
+		commit(repo, {
+			"src/a.ts": "export const a = 1;\n",
+			"melian.yaml":
+				"tiers:\n  fast: [lens.correctness]\n  full: [fast]\nstatic:\n  enola: {enabled: false}\n" +
+				"lenses:\n" +
+				["contracts", "trust-boundary", "removed-behaviour", "tests", "conventions"]
+					.map((name) => `  ${name}: {enabled: false}\n`)
+					.join(""),
+		});
+		gitIn(repo, "checkout", "-b", "feature");
+		commit(repo, { "src/a.ts": "export const a = 2;\n" });
+		const fake = createFakeModels();
+		const ref = fake.ref();
+		const requests = scriptConversations(fake, [
+			{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+		]);
+		vi.spyOn(modelSetup, "reviewModels").mockImplementation(async (_env, loaded, lenses, options) => ({
+			models: fake.review,
+			plan: ReviewPlan.resolve({
+				config: loaded.config,
+				routes: loaded.routes,
+				model: `${ref.provider}/${ref.modelId}`,
+				...(await planInputs(fake.review)),
+				lenses,
+				checks: options.checks,
+			}),
+			retry: false,
+		}));
+		const callers = CallerContext.from({
+			groups: [
+				{
+					file: "src/a.ts",
+					symbol: "a",
+					callers: [{ name: "OutsideCaller", kind: "symbol", file: "src/caller.ts", line: 2 }],
+					truncated: false,
+				},
+			],
+			issues: [],
+			notes: [],
+			paths: [],
+		});
+		vi.spyOn(CallerContext, "open").mockResolvedValue(callers);
+		const errors: string[] = [];
+		const io: Io = {
+			cwd: repo,
+			env: {
+				MELIAN_TEST_SCRIPT: "injected",
+				MELIAN_STATE_DIR: join(repo, "state"),
+				XDG_CONFIG_HOME: join(repo, "config"),
+				PI_CODING_AGENT_DIR: join(repo, "pi"),
+			},
+			stdout: () => {},
+			stderr: (text) => errors.push(text),
+			color: false,
+		};
+		expect(await main(["review", "main...feature"], io), errors.join("")).toBe(0);
+		expect(CallerContext.open).not.toHaveBeenCalled();
+		const prompt = systemPromptOf(requests["You are the correctness reviewer"]![0]!);
+		expect(prompt).not.toContain("Candidate callers");
+		expect(prompt).not.toContain("OutsideCaller");
+	},
+	60_000,
+);
