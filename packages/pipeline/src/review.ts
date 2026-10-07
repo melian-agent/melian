@@ -641,17 +641,36 @@ export class ReviewHarness {
 		return new ReviewHarness(harness, checkout !== undefined);
 	}
 
-	/** Providers in the routes stored by every live model task, before the first wait resumes them. */
+	/**
+	 * Providers a live model task can still call when the harness resumes. A lens or verifier route counts from the
+	 * attempt its checkpoint reached, so a provider it already failed over from stays locked; a lens run whose escalation
+	 * is decided is finished, and an escalation run counts only when the task escalates.
+	 */
 	async resumedProviders(context: Context = backgroundContext): Promise<string[]> {
 		const { tasks } = await this.harness.inspect(context);
 		const providers = tasks.flatMap(({ record }) => {
+			const checkpoint = (record.state as { checkpoint?: unknown }).checkpoint;
 			if (record.kind === LensTask.definition.name) {
 				const input = record.input as unknown as StoredLensTaskInput;
-				return runsOf(input.lenses).flatMap((run) => run.route.map((model) => model.provider));
+				const started =
+					(checkpoint as LensCheckpoint | undefined)?.phase === "review"
+						? (checkpoint as ReviewCheckpoint)
+						: undefined;
+				const remaining = (run: LensRun) => run.route.slice(started?.attempts[run.key] ?? 0);
+				return input.lenses.flatMap((first) => {
+					const next = input.escalateAt === undefined ? undefined : first.escalation?.next;
+					const finished = started?.escalations?.[first.key] !== undefined;
+					return [...(finished ? [] : remaining(first)), ...(next === undefined ? [] : remaining(next))].map(
+						(model) => model.provider,
+					);
+				});
 			}
 			if (record.kind === VerificationTask.definition.name) {
 				const input = record.input as unknown as VerificationInput;
-				return input.candidates.flatMap((candidate) => candidate.route.map((model) => model.provider));
+				const attempts = (checkpoint as { attempts?: Record<string, number> } | undefined)?.attempts;
+				return input.candidates.flatMap((candidate) =>
+					candidate.route.slice(attempts?.[candidate.key] ?? 0).map((model) => model.provider),
+				);
 			}
 			if (record.kind === SummaryTask.definition.name) {
 				return [(record.input as unknown as { model: ModelReference }).model.provider];

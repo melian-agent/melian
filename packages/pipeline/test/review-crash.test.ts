@@ -38,9 +38,12 @@ import { CallerContext } from "../src/callers.ts";
 import { DecisionDocument, decisionExtension, decisionTask } from "../src/decisions.ts";
 import { EnclosingFunctions } from "../src/enclosing-functions.ts";
 import { findingsVersion } from "../src/findings.ts";
+import { defineTask } from "../src/harness.ts";
 import { LensDocument } from "../src/lens-tools.ts";
+import { lensExtension } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { SummaryTask } from "../src/summarize.ts";
+import { VerificationTask } from "../src/verification.ts";
 import { gitIn } from "./fixtures/repo.ts";
 import {
 	budgetLenses,
@@ -336,6 +339,74 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			);
 		}, context);
 		expect(await reopened.resumedProviders(context)).toEqual(["triage-provider"]);
+	});
+
+	describe("resumed providers of a stored route", () => {
+		const model = (provider: string) => ({ provider, modelId: "m" });
+		type Run = { key: string; route: { provider: string; modelId: string }[]; escalation?: { next: Run } };
+		const run = (key: string, route: string[], next?: Run): Run => ({
+			key,
+			route: route.map(model),
+			...(next === undefined ? {} : { escalation: { next } }),
+		});
+
+		// Stores a task whose checkpoint is what the given crash left, and returns what a repeat run would unlock.
+		async function providersOf(
+			kind: "melian.lenses" | "melian.verification",
+			input: Record<string, unknown>,
+			checkpoint: Record<string, unknown>,
+		): Promise<string[]> {
+			const fake = createFakeModels();
+			const reopened = await ReviewHarness.open(createMemoryStorage(), fake.review, { retry: false });
+			harness = reopened.harness;
+			const root = await harness.root(context);
+			const found = [...(lensExtension.tasks ?? []), VerificationTask].find(
+				(task) => (task as unknown as { definition: { name: string } }).definition.name === kind,
+			) as unknown as { definition: Parameters<typeof defineTask>[0] };
+			const stored = defineTask({
+				...found.definition,
+				initial: () => checkpoint,
+			} as never) as unknown as typeof SummaryTask;
+			await root.commit(async (tx) => {
+				await tx.createTask(stored, { root: root.id, ...input } as never, { ownership: { kind: "conversation" } });
+			}, context);
+			expect(fake.provider.state.callCount).toBe(0);
+			return (await reopened.resumedProviders(context)).sort();
+		}
+
+		const lens = (escalateAt?: string) => ({
+			lenses: [run("q", ["a", "b"], run("c", ["c", "d"]))],
+			...(escalateAt === undefined ? {} : { escalateAt }),
+		});
+		const reviewing = (attempts: Record<string, number>, escalations?: Record<string, unknown>) => ({
+			phase: "review",
+			children: {},
+			attempts,
+			...(escalations === undefined ? {} : { escalations }),
+		});
+
+		it("drops a lens provider the task already failed over from, and keeps the ones it can still reach", async () => {
+			expect(await providersOf("melian.lenses", lens(), reviewing({ q: 1 }))).toEqual(["b"]);
+			expect(await providersOf("melian.lenses", lens(), { phase: "spawn" })).toEqual(["a", "b"]);
+		});
+
+		it("counts a quick lens's escalation route only when the task can escalate", async () => {
+			expect(await providersOf("melian.lenses", lens("P1"), reviewing({ q: 0 }))).toEqual(["a", "b", "c", "d"]);
+			expect(await providersOf("melian.lenses", lens(), reviewing({ q: 0 }))).toEqual(["a", "b"]);
+		});
+
+		it("counts a lens run that escalated only through its escalation run's current attempt", async () => {
+			const decided = { q: { trigger: {}, carried: [] } };
+			expect(await providersOf("melian.lenses", lens("P1"), reviewing({ q: 1, c: 1 }, decided))).toEqual(["d"]);
+		});
+
+		it("drops a verifier provider the candidate already failed over from", async () => {
+			const input = { candidates: [{ key: "k", route: ["a", "b", "c"].map(model) }] };
+			expect(
+				await providersOf("melian.verification", input, { phase: "verify", children: {}, attempts: { k: 1 } }),
+			).toEqual(["b", "c"]);
+			expect(await providersOf("melian.verification", input, { phase: "spawn" })).toEqual(["a", "b", "c"]);
+		});
 	});
 
 	it("says a walkthrough task that has not finished resumes a model, and no task none", async () => {
