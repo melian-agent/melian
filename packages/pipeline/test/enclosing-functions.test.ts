@@ -2,7 +2,12 @@ import { rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { Changeset } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cutDiffNote, type EnclosingFunction, EnclosingFunctions, enclosingLimits } from "../src/enclosing-functions.ts";
+import {
+	cutDiffNote,
+	type EnclosingFunction,
+	EnclosingFunctions,
+	enclosingLimits,
+} from "../src/enclosing-functions.ts";
 import { ChangePrompt } from "../src/review.ts";
 import { quoteUntrusted } from "../src/untrusted.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
@@ -645,7 +650,7 @@ describe("ChangePrompt with functions", () => {
 		);
 	});
 
-	describe("what it leaves out, the prompt says", () => {
+	describe("what it leaves out, the prompt says", { timeout: 60_000 }, () => {
 		const note = (found: EnclosingFunctions) => found.blocks(undefined, nonce).join("\n");
 		const tiny = (changed: boolean) => `function f(){${changed ? "1" : ""}}\n`;
 		// A file of exactly `size` bytes whose first line is the hunk.

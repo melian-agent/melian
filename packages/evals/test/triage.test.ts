@@ -416,10 +416,7 @@ describe("the triage question set's version", () => {
 			const run = (cwd: string, ...args: string[]) =>
 				execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 
-			function repositoryWhereMain(
-				records: boolean,
-				headIsMain = false,
-			): { root: string; subdirectory: string } {
+			function repositoryWhereMain(records: boolean, headIsMain = false): { root: string; subdirectory: string } {
 				const root = mkdtempSync(join(tmpdir(), "melian-record-main-"));
 				const subdirectory = join(root, "packages", "evals", "triage");
 				mkdirSync(subdirectory, { recursive: true });
