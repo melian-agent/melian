@@ -43,6 +43,7 @@ import {
 	verificationBudget,
 	visibleText,
 } from "@melian-agent/core";
+import { DecisionFiles } from "@melian-agent/decisions";
 import {
 	type AdjudicationResult,
 	AdjudicationTask,
@@ -1680,6 +1681,11 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			? lens.rules
 			: [...lens.rules, injectionAttemptRule];
 		const ruled = Lens.from({ ...lens.toJSON(), rules });
+		const decisions = lens.name === "design" ? await DecisionFiles.open(repoRoot, base) : undefined;
+		const baseline = (boundary: string) =>
+			decisions === undefined
+				? ""
+				: `\n\n## Decisions at base\nRead this before step 1. Only ACTIVE decisions at base are baselines. INACTIVE text is history: read it only to see what changed.\n${quoteUntrusted("listing", decisions.render(), boundary)}`;
 		const runAt = async (level: ScrutinyLevel): Promise<LensRun> => {
 			const settings = lens.level(level);
 			// The head's functions around the hunks, read once for the review, at the levels that read functions.
@@ -1693,24 +1699,26 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				level,
 				route: [...(routes.get(settings.tier) as { route: ModelReference[] }).route],
 				verify: settings.verify,
-				instructions: ruled.renderInstructions(
-					reading.sections,
-					level,
-					neighbours,
-					(text, label = "listing") => quoteUntrusted(label, text, nonce),
-					standardsSource,
-					options.callers?.render(covers, nonce),
-				),
+				instructions:
+					ruled.renderInstructions(
+						reading.sections,
+						level,
+						neighbours,
+						(text, label = "listing") => quoteUntrusted(label, text, nonce),
+						standardsSource,
+						options.callers?.render(covers, nonce),
+					) + baseline(nonce),
 				instructionFingerprint: createHash("sha256")
 					.update(
 						JSON.stringify({
-							instructions: ruled.renderInstructions(
-								reading.sections,
-								level,
-								neighbours,
-								(text, label = "listing") => quoteUntrusted(label, text, "0".repeat(24)),
-								standardsSource,
-							),
+							instructions:
+								ruled.renderInstructions(
+									reading.sections,
+									level,
+									neighbours,
+									(text, label = "listing") => quoteUntrusted(label, text, "0".repeat(24)),
+									standardsSource,
+								) + baseline("0".repeat(24)),
 							standards: reading.sections,
 							standardsOmitted: reading.omitted.length > 0,
 							source: standards instanceof Standards ? standards.source : null,

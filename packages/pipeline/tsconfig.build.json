@@ -7,6 +7,15 @@
 		"tsBuildInfoFile": "../../.tsbuild/pipeline.tsbuildinfo",
 		"noEmit": false
 	},
-	"include": ["src/**/*"],
-	"references": [{ "path": "../core/tsconfig.build.json" }]
+	"include": [
+		"src/**/*"
+	],
+	"references": [
+		{
+			"path": "../core/tsconfig.build.json"
+		},
+		{
+			"path": "../decisions/tsconfig.build.json"
+		}
+	]
 }

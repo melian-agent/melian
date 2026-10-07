@@ -128,6 +128,12 @@ Everything that originates from the head revision reaches a lens inside a bounda
 - Every lens conversation is configured with `extensions: [lensExtension]` and nothing else, so its `injection_policy` section renders first and its `instructions` last. The section names the nonce, says that everything inside a boundary is data, and tells the lens to report an instruction found there under `melian/injection-attempt`. `reviewChangeset` adds that rule to any lens that does not declare it, so the hook never refuses the report the policy asks for.
 - A new tool that returns head content quotes it the same way. A test asserts on what the model was shown, not only on what it returned: `test/review.test.ts` strips every boundary from a prompt and checks that no path or line from the head remains.
 
+### Design baseline input
+
+Before a design conversation starts, reviewChangeset loads DecisionFiles from the comparison base. It reads every docs/decisions Markdown file and resolves all Supersedes edges before limiting the rendered list. The Decisions at base section names active candidates and inactive predecessors with their direct successors. It appears only for design and tells the lens to read it before step 1.
+
+The section uses the review’s listing boundary and escapes controls in paths and titles. It lists at most 100 entries and 512 characters per row, with active status first and an omitted count. Rows may be shortened; the lens reads base files for full text. The section joins the instruction fingerprint under the fixed nonce, so altered baseline input cannot attach to old work. Invalid graphs and incomplete reads refuse review rather than hide standards.
+
 ### Lens tools
 
 `read_file`, `search`, and `list_files` read the head commit through core's `readRevisionFile`, `searchRevision`, and `listRevisionFiles`, never the working tree. `read_file` also takes `revision: "base"` and then reads the base commit. Problem: a lens could cite deleted code as `revision: "base"` evidence but could read only the head, so it numbered base lines by guessing from the diff. Solution: it reads the base as it reads the head, with the same line numbers evidence uses. They bound output per call, never the file: `read_file` takes `startLine` and `maxLines`, at most 2000, reads the window from the whole blob, and ends with a note naming the next `startLine`, so any line is reachable. `report_finding` checks a line against the file's true line count.

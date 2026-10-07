@@ -18,6 +18,7 @@ import {
 	type RepositorySource,
 	type Verdict,
 } from "@melian-agent/core";
+import { DecisionFiles } from "@melian-agent/decisions";
 import {
 	CallerContext,
 	ChangePrompt,
@@ -3501,5 +3502,51 @@ describe("code over 2 KiB, which a finding stores cut", () => {
 		reportOn(1);
 
 		expect(await statuses()).toEqual([[stored.properties.id, "dismissed"]]);
+	});
+});
+
+describe("the design baseline", () => {
+	it("delivers active base decisions inside boundaries only to design, without head titles", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		const a = "docs/decisions/2026-10-01-a.md";
+		const b = "docs/decisions/2026-10-02-b.md";
+		repo = baseAndHead(
+			{
+				[a]: "# Original\n",
+				[b]: "# Successor\nSupersedes: 2026-10-01-a.md\n",
+				"src/answer.ts": "export const answer = 42;\n",
+			},
+			{ [b]: "# Planted head title\n", "src/answer.ts": "export const answer = 43;\n" },
+		);
+		config = { ...config, tiers: { ...config.tiers, full: ["lens.design", "lens.correctness"] } };
+		const design = "You are the design reviewer";
+		const requests = scriptConversations(fake, [
+			{ match: design, replies: [fauxAssistantMessage("Done.")] },
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		await review();
+		const messages = requests[design]![0]!;
+		const system = systemPromptOf(messages);
+		const nonce = nonceOf(messages);
+		expect(system).toContain("Read this before step 1");
+		expect(quoted(system, nonce, "listing").join("\n")).toContain(`[INACTIVE; superseded by ${b}] ${a} — Original`);
+		expect(quoted(system, nonce, "listing").join("\n")).toContain(`[ACTIVE] ${b} — Successor`);
+		expect(system).not.toContain("Planted head title");
+		expect(systemPromptOf(requests[correctness]![0]!)).not.toContain("## Decisions at base");
+		const outside = system.replaceAll(new RegExp(`<untrusted-${nonce}[\\s\\S]*?</untrusted-${nonce}>`, "g"), "");
+		expect(outside).not.toContain("Original");
+		expect(outside).not.toContain("Successor");
+		const before = fake.provider.state.callCount;
+		const rendered = vi.spyOn(DecisionFiles.prototype, "render").mockReturnValue("Changed mechanical input");
+		scriptConversations(fake, [
+			{ match: design, replies: [fauxAssistantMessage("Done.")] },
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		try {
+			await review();
+			expect(fake.provider.state.callCount).toBeGreaterThan(before);
+		} finally {
+			rendered.mockRestore();
+		}
 	});
 });
