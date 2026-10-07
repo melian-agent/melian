@@ -203,6 +203,36 @@ describe("normaliseMutationReport", () => {
 		).toEqual([]);
 	});
 
+	it("orders results by path, then line, then message, whatever order the report lists them in", () => {
+		const order = (files: Record<string, Mutant[]>) =>
+			read(files).log.runs[0].results.map((result) => {
+				const { artifactLocation, region } = result.locations[0]!.physicalLocation;
+				return `${artifactLocation.uri}:${region.startLine}:${result.message.text.split(" ")[0]}`;
+			});
+		const forward = {
+			"src/a.ts": [
+				{ status: "Survived", line: 10, mutatorName: "Alpha" },
+				{ status: "Survived", line: 10, mutatorName: "Beta" },
+				{ status: "Survived", line: 12, mutatorName: "Alpha" },
+			],
+			"src/b c.ts": [{ status: "Survived", line: 1, mutatorName: "Alpha" }],
+		};
+		const expected = ["src/a.ts:10:Alpha", "src/a.ts:10:Beta", "src/a.ts:12:Alpha", "src/b%20c.ts:1:Alpha"];
+		expect(order(forward)).toEqual(expected);
+		expect(
+			order({
+				"src/b c.ts": forward["src/b c.ts"],
+				"src/a.ts": [...forward["src/a.ts"]].reverse(),
+			}),
+		).toEqual(expected);
+		expect(
+			order({
+				"src/b c.ts": forward["src/b c.ts"],
+				"src/a.ts": [forward["src/a.ts"][1]!, forward["src/a.ts"][2]!, forward["src/a.ts"][0]!],
+			}),
+		).toEqual(expected);
+	});
+
 	it("keeps a survivor on each range of a file changed in two places, and drops one between them", () => {
 		const { log } = normaliseMutationReport(
 			report({
