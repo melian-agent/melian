@@ -263,6 +263,29 @@ describe("Triage", () => {
 		expect(existsSync(marker)).toBe(true);
 	});
 
+	it("unlocks the light tier's command credential for a plan with no lens, once", async () => {
+		dir = mkdtempSync(join(tmpdir(), "melian-triage-"));
+		const marker = join(dir, "ran");
+		const { models, plan } = await reviewModels({}, loadedOf({ light: { model: "openai/gpt-5.5" } }), [], {
+			...setup,
+			credentials: [
+				{
+					name: "vault",
+					provider: "openai",
+					type: "api_key",
+					value: { kind: "command", command: `echo run >> ${marker}; echo sk-key` },
+					file: "f",
+				},
+			],
+		});
+		const triage = await Triage.create({ scripted: false, config: defaultConfig, plan, models });
+
+		expect(plan.lenses).toHaveLength(0);
+		await triage.unlockModels();
+		await triage.unlockModels();
+		expect(readFileSync(marker, "utf8")).toBe("run\n");
+	});
+
 	it("says why triage did not run to the review, and gives the harness no decider", async () => {
 		const { triage } = await opened({ scripted: false, decide: async () => ({ skipped: "no model" }) });
 

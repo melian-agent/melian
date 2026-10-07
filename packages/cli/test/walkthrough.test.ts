@@ -126,16 +126,14 @@ describe("CLI walkthrough credential failure", { timeout: 60_000 }, () => {
 			pullRequest: await provider.pullRequest(7),
 			changeset,
 		});
-		const unlock = vi.spyOn(pipeline, "unlockCredentials").mockRejectedValue(
-			new pipeline.CredentialError(
-				"commandFailed",
-				"credential vault in /xdg/melian/secrets.yaml: its command failed (3)",
-				{
-					credential: "vault",
-					file: "/xdg/melian/secrets.yaml",
-				},
-			),
+		const failure = new pipeline.CredentialError(
+			"commandFailed",
+			"credential vault in /xdg/melian/secrets.yaml: its command failed (3)",
+			{ credential: "vault", file: "/xdg/melian/secrets.yaml" },
 		);
+		const unlock = vi.spyOn(pipeline, "unlockCredentials").mockImplementation(async (_models, providers) => {
+			if (providers.includes("faux")) throw failure;
+		});
 		let stderr = "";
 		const io = {
 			cwd: repo,
@@ -149,7 +147,7 @@ describe("CLI walkthrough credential failure", { timeout: 60_000 }, () => {
 
 		expect(await review(io, "#7", { rerun: false })).toBe(0);
 
-		expect(unlock).toHaveBeenCalled();
+		expect(unlock.mock.calls.map(([, providers]) => providers)).toContainEqual(["faux"]);
 		expect(stderr).toContain("melian: credential vault in /xdg/melian/secrets.yaml: its command failed (3)\n");
 		const note = (await recorded())?.walkthroughNotes?.[revisionKey(changeset.revision)];
 		expect(note).toBe("No walkthrough available. The summariser failed.");

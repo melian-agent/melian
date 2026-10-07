@@ -76,6 +76,12 @@ export function triageProviders(plan: ReviewPlan): string[] {
 	});
 }
 
+// The walkthrough asks the light tier whatever the lens count, so its providers unlock even with no lens.
+function lightProviders(plan: ReviewPlan): string[] {
+	const { status, models } = plan.tier("light");
+	return status === "routed" ? models.map(({ model }) => model.slice(0, model.indexOf("/"))) : [];
+}
+
 export class Triage {
 	readonly decider: Decider | undefined;
 	readonly skipped: string | undefined;
@@ -107,8 +113,14 @@ export class Triage {
 		readonly decide?: typeof fallbackDecider;
 	}): Promise<Triage> {
 		const { scripted, config, plan, models, decide = fallbackDecider } = options;
-		if (plan.lenses.length === 0) return new Triage(undefined, undefined, models, []);
-		const providers = [...plan.providers(), ...(scripted ? [] : triageProviders(plan))];
+		const providers = [
+			...new Set([
+				...plan.providers(),
+				...(scripted ? [] : triageProviders(plan)),
+				...(plan.lenses.length === 0 ? lightProviders(plan) : []),
+			]),
+		];
+		if (plan.lenses.length === 0) return new Triage(undefined, undefined, models, providers);
 		if (scripted) return new Triage(undefined, undefined, models, providers);
 		const chosen = await decide({ ...config, models: plan.routes() }, models);
 		return "decider" in chosen
