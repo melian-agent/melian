@@ -2,6 +2,9 @@
 # Its routes are defaults: a maintainer without their credentials gets a route derived from the credentials they hold,
 # which melian doctor prints and every check run on it records. Route your own tiers in melian.local.yaml or
 # ~/.config/melian/config.yaml, or pass --model; keep keys in melian.secrets.yaml or ~/.config/melian/secrets.yaml.
+trust: { writers: true }
+comparison: { retirement: { pullRequests: 10, recall: 0.75 } }
+
 models:
   heavy:
     model: anthropic/claude-opus-5-5
@@ -45,7 +48,7 @@ guardrails:
   forbidden-patterns:
     rules:
       free-domain-function:
-        pattern: '^(export )?(async )?function \w+\(\w+: (readonly )?(Finding|ResolvedFinding|Defect|Verdict|Manifest|Lens|Revision|Changeset)\b'
+        pattern: '^(export )?(async )?function \w+\(\w+: (readonly )?(Finding|ResolvedFinding|Defect|Verdict|Manifest|Lens|Revision|Changeset|Comparison|ExternalFinding)\b'
         paths: ["packages/*/src/**"]
         message: behaviour belongs to the object it is about, so make this a method on that object's class or on this package's own class that adapts it; for a false positive, the Biome rule biome/free-domain-function.grit reads the syntax and the rule in AGENTS.md decides
       focused-test:

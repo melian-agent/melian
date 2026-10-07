@@ -30,6 +30,12 @@ const fetch = fakeGitHub(
 	state,
 	async (call) => {
 		writeFileSync(stateFile, JSON.stringify(state));
+		if (
+			(mode === "after-status" || mode === "after-untrusted-status") &&
+			call.method === "POST" &&
+			call.path.includes("/statuses/")
+		)
+			await park(mode === "after-status" ? "status-posted" : "untrusted-status-posted");
 		if (mode === "after-review" && isReview(call)) await park("review-posted");
 		if (mode === "after-ledger-edit" && call.method === "PATCH" && call.path.includes("/issues/comments/"))
 			await park("ledger-edited");
@@ -53,5 +59,6 @@ await publishReview({
 	provider,
 	changeset,
 	base: changeset.revision.base,
+	trustedWriters: mode !== "after-untrusted-status",
 	pullRequest: await provider.pullRequest(state.pull.number),
 });

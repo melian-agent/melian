@@ -7,11 +7,14 @@ import { fileURLToPath } from "node:url";
 import { createGitHubProvider, statusContext } from "@melian-agent/github";
 import {
 	backgroundContext as context,
+	defineDoc,
+	defineTask,
 	type Harness,
 	openPublishHarness as openPublisher,
 	openSqliteStorage,
 	publishReview,
 	readPublished,
+	revisionKey,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LedgerDocument } from "../../pipeline/src/publish.ts";
@@ -62,16 +65,26 @@ async function killAtReview(
 	database: string,
 	stateFile: string,
 	log: string,
-	event: "review-posted" | "review-requested" | "ledger-edited" | "ledger-status-posted" = "review-posted",
+	event:
+		| "review-posted"
+		| "review-requested"
+		| "ledger-edited"
+		| "ledger-status-posted"
+		| "status-posted"
+		| "untrusted-status-posted" = "review-posted",
 ): Promise<void> {
 	const mode =
-		event === "review-posted"
-			? "after-review"
-			: event === "ledger-edited"
-				? "after-ledger-edit"
-				: event === "ledger-status-posted"
-					? "after-ledger-status"
-					: "before-review";
+		event === "status-posted"
+			? "after-status"
+			: event === "untrusted-status-posted"
+				? "after-untrusted-status"
+				: event === "review-posted"
+					? "after-review"
+					: event === "ledger-edited"
+						? "after-ledger-edit"
+						: event === "ledger-status-posted"
+							? "after-ledger-status"
+							: "before-review";
 	// The condition resolves workspace packages to their sources, as Vitest does, rather than to a stale or absent build.
 	const child = spawn(
 		process.execPath,
@@ -100,6 +113,210 @@ async function killAtReview(
 }
 
 describe("publishing across a crash", { timeout: 30_000 }, () => {
+	it("resumes an unfinished version-1 task from SQLite with legacy writer trust", async () => {
+		const database = join(dir, "review.sqlite");
+		const fake = scenarioModels();
+		const state = pullRequestState();
+		harness = await openReviewOnlyHarness(await openSqliteStorage(database), fake);
+		const { changeset, review } = await reviewScenario(repo, harness, fake, lensScript(unsafeManager));
+		await review;
+		moveTo(state, changeset);
+		const root = await harness.root(context);
+		const fixture = JSON.parse(readFileSync(new URL("./fixtures/publish-v1.json", import.meta.url), "utf8")) as {
+			kind: string;
+			version: number;
+			input: {
+				root: number;
+				target: {
+					repository: string;
+					pullRequest: number;
+					baseRef: string;
+					baseTip: string;
+					base: string;
+					head: string;
+					revision: string;
+				};
+				lines: Record<string, [number, number][]>;
+			};
+			checkpoint: { phase: "publish" };
+		};
+		const input = {
+			...fixture.input,
+			root: root.id,
+			target: {
+				...fixture.input.target,
+				baseTip: state.pull.base.sha,
+				base: changeset.revision.base,
+				head: changeset.revision.head,
+				revision: revisionKey(changeset.revision),
+			},
+			lines: changeset.revision.diffLines(),
+		};
+		const legacyTask = defineTask<typeof input, { phase: "publish" }, never>({
+			name: fixture.kind,
+			version: fixture.version,
+			initial: () => fixture.checkpoint,
+			phases: {
+				publish: async () => {
+					throw new Error("legacy task must migrate before running");
+				},
+			},
+			abort: async () => {
+				throw new Error("legacy task must migrate before running");
+			},
+		});
+		const legacyPublisher = defineDoc<{ secret?: string; target?: typeof input.target }>({
+			kind: "melian.publisher",
+			version: 1,
+			scope: "conversation",
+			history: "latest",
+			fork: "current",
+			initial: () => ({}),
+		});
+		const task = await root.commit(async (tx) => {
+			const publisher = await tx.doc(legacyPublisher, root.id);
+			publisher.secret = "a".repeat(64);
+			publisher.target = input.target;
+			return tx.createTask(legacyTask, input, { ownership: { kind: "conversation" } });
+		}, context);
+		await harness.close(context);
+		harness = undefined;
+		const provider = providerFor(state);
+		const publisher = await openPublisher(await openSqliteStorage(database), scenarioModels().review, provider);
+		harness = publisher.harness;
+		const result = await publishReview({
+			harness,
+			provider,
+			changeset,
+			pullRequest: await provider.pullRequest(7),
+			base: changeset.revision.base,
+			trustedWriters: true,
+		});
+		expect(result.superseded).toEqual([]);
+		expect(await harness.getTask(task, context)).toMatchObject({
+			version: 2,
+			input: { publishedBy: { trustedWriters: true } },
+			state: {
+				status: "terminal",
+				outcome: { status: "completed", result: { kind: "published", review: String(state.reviews[0]!.id) } },
+			},
+		});
+		expect((await readPublished(harness, root.id, changeset.revision.head, context))?.publishedBy).toMatchObject({
+			trustedWriters: true,
+		});
+		expect(state.reviews).toHaveLength(1);
+		expect(state.ledgers).toHaveLength(1);
+	});
+
+	it.each([
+		{ interruptedTrust: true, trustedWriters: true, changedPublisher: true },
+		{ interruptedTrust: true, trustedWriters: true, changedPublisher: false },
+		{ interruptedTrust: true, trustedWriters: true, refusedUser: true },
+		{ interruptedTrust: true, trustedWriters: true, changedPermission: "permission" },
+		{ interruptedTrust: true, trustedWriters: true, changedPermission: "authorPermission" },
+		{ interruptedTrust: true, trustedWriters: true, changedPermission: "permission", unknownPermission: true },
+		{ interruptedTrust: true, trustedWriters: true, changedPermission: "authorPermission", unknownPermission: true },
+		{ interruptedTrust: false, trustedWriters: false },
+		{ interruptedTrust: true, trustedWriters: false },
+		{ interruptedTrust: false, trustedWriters: true },
+	])(
+		"keeps publisher attribution across a status crash (trust: $interruptedTrust -> $trustedWriters, permission: $changedPermission, unknown: $unknownPermission, refused: $refusedUser)",
+		async ({
+			interruptedTrust,
+			trustedWriters,
+			changedPublisher,
+			changedPermission,
+			unknownPermission,
+			refusedUser,
+		}) => {
+			const database = join(dir, "review.sqlite");
+			const stateFile = join(dir, "github.json");
+			const log = join(dir, "publish.log");
+			const fake = scenarioModels();
+			const state = pullRequestState();
+			harness = await openReviewOnlyHarness(await openSqliteStorage(database), fake);
+			const { changeset, review } = await reviewScenario(repo, harness, fake, lensScript(unsafeManager));
+			await review;
+			await harness.close(context);
+			harness = undefined;
+			moveTo(state, changeset);
+			writeFileSync(stateFile, JSON.stringify(state));
+			await killAtReview(database, stateFile, log, interruptedTrust ? "status-posted" : "untrusted-status-posted");
+
+			const persisted = JSON.parse(readFileSync(stateFile, "utf8")) as FakeState;
+			expect(persisted.statuses).toHaveLength(1);
+			expect(persisted.reviews).toHaveLength(0);
+			if (changedPublisher) {
+				persisted.login = "new-publisher";
+				persisted.permissions = { ...persisted.permissions, "new-publisher": "maintain" };
+			}
+			if (refusedUser) persisted.failUser = true;
+			if (changedPermission !== undefined) {
+				const login = changedPermission === "permission" ? persisted.login : (persisted.author ?? "pr-author");
+				persisted.permissions = {
+					...persisted.permissions,
+					[login]: unknownPermission ? "unclassified" : changedPermission === "permission" ? "maintain" : "write",
+				};
+			}
+			const provider = providerFor(persisted);
+			const publisher = await openPublisher(await openSqliteStorage(database), scenarioModels().review, provider);
+			harness = publisher.harness;
+			const pullRequest = await provider.pullRequest(7);
+			const publish = () =>
+				publishReview({
+					harness: harness!,
+					provider,
+					changeset,
+					pullRequest,
+					base: changeset.revision.base,
+					trustedWriters,
+				});
+			const result = await publish();
+			if (interruptedTrust !== trustedWriters)
+				expect(result.superseded).toEqual([expect.objectContaining({ reason: "writer trust policy changed" })]);
+			if (changedPublisher || refusedUser)
+				expect(result.superseded).toEqual([expect.objectContaining({ reason: "publisher login changed" })]);
+			if (changedPermission !== undefined)
+				expect(result.superseded).toEqual([
+					expect.objectContaining({ reason: `publisher ${changedPermission} changed` }),
+				]);
+			const record = await readPublished(
+				harness,
+				(await harness.root(context)).id,
+				changeset.revision.head,
+				context,
+			);
+			if (refusedUser) expect(record?.publishedBy).toEqual({ trustedWriters, authorPermission: "read" });
+			else
+				expect(record?.publishedBy).toEqual({
+					trustedWriters,
+					login: changedPublisher ? "new-publisher" : "melian-user",
+					...(unknownPermission && changedPermission === "permission"
+						? {}
+						: {
+								permission: changedPublisher || changedPermission === "permission" ? "maintain" : "write",
+							}),
+					...(unknownPermission && changedPermission === "authorPermission"
+						? {}
+						: {
+								authorPermission: changedPermission === "authorPermission" ? "write" : "read",
+							}),
+				});
+			expect(persisted.statuses).toHaveLength(3);
+			expect(persisted.reviews).toHaveLength(1);
+			expect(persisted.ledgers).toHaveLength(1);
+			if (changedPublisher) {
+				expect(persisted.reviews[0]?.user.login).toBe("new-publisher");
+				expect(persisted.ledgers[0]?.user.login).toBe("new-publisher");
+				expect(persisted.ledgers[0]?.body).toContain("new-publisher");
+			}
+			persisted.calls = [];
+			await publish();
+			expect(posts(persisted)).toEqual([]);
+			if (!trustedWriters) expect(persisted.statuses.slice(1).every(({ state }) => state === "error")).toBe(true);
+		},
+	);
+
 	it.each(["matches", "state differs", "URL differs"])(
 		"recovers an unrecorded ledger status when the provider status %s",
 		async (current) => {
@@ -128,6 +345,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			const github = providerFor(state);
 			harness = await openPublishHarness(await openSqliteStorage(database), scenarioModels(), github);
 			await publishReview({
+				trustedWriters: true,
 				harness,
 				provider: github,
 				changeset,
@@ -181,6 +399,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			const head = changeset.revision.head;
 
 			const result = await publishReview({
+				trustedWriters: true,
 				harness,
 				provider: github,
 				changeset,
@@ -245,6 +464,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 		harness = (await openPublisher(await openSqliteStorage(database), scenarioModels().review, github)).harness;
 
 		const result = await publishReview({
+			trustedWriters: true,
 			harness,
 			provider: github,
 			changeset,
@@ -290,6 +510,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			moveTo(state, first.changeset);
 			harness = (await openPublisher(await openSqliteStorage(database), fake.review, github)).harness;
 			await publishReview({
+				trustedWriters: true,
 				harness,
 				provider: github,
 				changeset: first.changeset,
@@ -314,6 +535,7 @@ describe("publishing across a crash", { timeout: 30_000 }, () => {
 			github = providerFor(recovered);
 			harness = (await openPublisher(await openSqliteStorage(database), fake.review, github)).harness;
 			await publishReview({
+				trustedWriters: true,
 				harness,
 				provider: github,
 				changeset: second.changeset,

@@ -229,6 +229,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			},
 			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
+			checks: [],
 			models: fake.review,
 		});
 
@@ -272,6 +273,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			},
 			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
+			checks: [],
 			models: fake.review,
 		});
 
@@ -430,6 +432,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			},
 			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
+			checks: [],
 			models: fake.review,
 		});
 		const root = (await harness.root(context)).id;
@@ -482,6 +485,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 			},
 			lenses: budgetLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
+			checks: [],
 			models: fake.review,
 		});
 
@@ -528,6 +532,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 				},
 				lenses: budgetLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"]), endingBudgets[scenario]),
 				standards: [],
+				checks: [],
 				models: fake.review,
 			});
 
@@ -696,6 +701,8 @@ describe("a lens task from an earlier selection during triage", { timeout: 60_00
 			fetch: { url: repo, headRef: "feature" },
 		};
 		const provider: ReviewProvider = {
+			login: async () => undefined,
+			permission: async () => undefined,
 			name: "fake",
 			resolveThread: vi.fn(async () => false),
 			findLedger: vi.fn(async () => undefined),
@@ -728,7 +735,14 @@ describe("a lens task from an earlier selection during triage", { timeout: 60_00
 		expect((await harness.snapshot(ReviewIndex, root, context))!.reviews[revision]!.adjudication).toBeUndefined();
 		expect(await readVerdict(harness, root, revision, context)).toBeUndefined();
 		await expect(
-			publishReview({ harness, changeset, provider, pullRequest, base: changeset.revision.base }),
+			publishReview({
+				trustedWriters: true,
+				harness,
+				changeset,
+				provider,
+				pullRequest,
+				base: changeset.revision.base,
+			}),
 		).rejects.toMatchObject({ code: "notReviewed" });
 		expect(provider.postReview).not.toHaveBeenCalled();
 		expect(provider.writeLedger).not.toHaveBeenCalled();
@@ -790,6 +804,7 @@ describe("a lens task from an earlier selection during triage", { timeout: 60_00
 			},
 			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
 			standards: [],
+			checks: [],
 			models: fake.review,
 			decider: resumedDecider,
 			policy: { kind: "revision", commit: changeset.revision.base },
@@ -809,7 +824,14 @@ describe("a lens task from an earlier selection during triage", { timeout: 60_00
 		const completed = await openPublishHarness(await openSqliteStorage(database), fake.review, provider);
 		harness = completed.harness;
 		await expect(
-			publishReview({ harness, changeset, provider, pullRequest, base: changeset.revision.base }),
+			publishReview({
+				trustedWriters: true,
+				harness,
+				changeset,
+				provider,
+				pullRequest,
+				base: changeset.revision.base,
+			}),
 		).resolves.toBeDefined();
 		expect(provider.postReview).toHaveBeenCalledOnce();
 	});

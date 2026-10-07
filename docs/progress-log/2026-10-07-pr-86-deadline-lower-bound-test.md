@@ -1,0 +1,3 @@
+# Pin the doctor deadline from below
+
+Every hanging-read test in `packages/cli/test/doctor.test.ts` advanced the fake clock by exactly 10,000 ms, so shortening the deadline in `packages/cli/src/doctor.ts` to 100 ms, 5,000 ms or 9,999 ms left the file green. A new test advances 9,999 ms and asserts that `doctor` is still pending and the signal is not aborted, then advances one more millisecond and expects the timeout warning. Each of the three shorter deadlines now fails it; restored, the file passes. Twenty-five further mutations of the guards, bounds and branches this branch added to `doctor.ts` each fail a test, so no other row was missing.

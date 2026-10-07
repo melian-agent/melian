@@ -7,6 +7,7 @@ import {
 	readdirSync,
 	readFileSync,
 	rmSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -18,11 +19,16 @@ import {
 	findingId,
 	Rendering,
 	type StoredVerdict,
+	standardsLimits,
 	Verdict,
 } from "@melian-agent/core";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
-import { afterAll, afterEach, describe, expect, it } from "vitest";
+import * as pipelineTesting from "@melian-agent/pipeline/testing";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
+import { pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { review as reviewIn } from "../src/commands.ts";
+import { doctor as doctorIn } from "../src/doctor.ts";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const bin = join(root, "packages/cli/bin/melian.js");
@@ -44,6 +50,7 @@ const repos: string[] = [];
 const noUserFiles = mkdtempSync(join(tmpdir(), "melian-xdg-"));
 
 afterEach(() => {
+	vi.restoreAllMocks();
 	for (const repo of repos.splice(0)) rmSync(repo, { recursive: true, force: true });
 	if (scratch !== undefined) rmSync(scratch, { recursive: true, force: true });
 });
@@ -152,6 +159,96 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(requests[0]!.questions.map(({ id }) => id).sort()).toEqual([...builtinLenses].sort());
 		const stored = melian(repo, ["findings", "main", "--json"], env);
 		expect(stored.stdout.match(/"level": "quick"/g)).toHaveLength(builtinLenses.length);
+	});
+
+	it("reads committed nested standards despite uncommitted checkout-only imports", async () => {
+		const { repo, env } = staticCheckout("export const b = 2;\n");
+		writeFileSync(join(repo, "src/AGENTS.md"), "COMMITTED_HEAD_STANDARD\n");
+		git(repo, "add", "src/AGENTS.md");
+		git(repo, "commit", "--quiet", "-m", "head standards");
+		writeFileSync(join(repo, "src/AGENTS.md"), "UNCOMMITTED_STANDARD\n@checkout-only.md\n");
+		writeFileSync(join(repo, "src/checkout-only.md"), "CHECKOUT_ONLY_IMPORT\n");
+		writeFileSync(join(repo, "melian.yaml"), "tiers:\n  full: [lens.correctness]\n");
+		const capture = vi.spyOn(pipelineTesting, "scriptLenses");
+		const code = await reviewIn(
+			{
+				cwd: repo,
+				env: { ...process.env, ...gitEnv, XDG_CONFIG_HOME: noUserFiles, ...env },
+				stdout: () => undefined,
+				stderr: () => undefined,
+				color: false,
+			},
+			"main",
+			{ rerun: false },
+		);
+		expect(code).toBe(0);
+		const requests = capture.mock.results[0]!.value as ReturnType<typeof pipelineTesting.scriptLenses>;
+		const prompts = Object.values(requests).flat().map(pipelineTesting.systemPromptOf);
+		expect(prompts).toHaveLength(1);
+		expect(prompts[0]).toContain("COMMITTED_HEAD_STANDARD");
+		expect(prompts[0]).not.toContain("UNCOMMITTED_STANDARD");
+		expect(prompts[0]).not.toContain("CHECKOUT_ONLY_IMPORT");
+	});
+
+	it("reads base nested standards and imports when the range head is not checked out", async () => {
+		const { repo, env } = staticCheckout("export const b = 2;\n");
+		git(repo, "checkout", "--quiet", "main");
+		writeFileSync(join(repo, "melian.yaml"), "tiers:\n  full: [lens.correctness]\n");
+		writeFileSync(join(repo, "src/AGENTS.md"), "BASE_STANDARD\n@rules.md\n");
+		writeFileSync(join(repo, "src/rules.md"), "BASE_IMPORT\n");
+		git(repo, "add", "--all");
+		git(repo, "commit", "--quiet", "-m", "base standards");
+		git(repo, "checkout", "--quiet", "-b", "standards-head");
+		writeFileSync(join(repo, "src/AGENTS.md"), "HEAD_STANDARD\n@rules.md\n");
+		writeFileSync(join(repo, "src/rules.md"), "HEAD_IMPORT\n");
+		writeFileSync(join(repo, "src/b.ts"), "export const b = 2;\n");
+		git(repo, "add", "--all");
+		git(repo, "commit", "--quiet", "-m", "head standards");
+		git(repo, "checkout", "--quiet", "main");
+		writeFileSync(join(repo, "src/AGENTS.md"), "CHECKOUT_STANDARD\n@rules.md\n");
+		writeFileSync(join(repo, "src/rules.md"), "CHECKOUT_IMPORT\n");
+		const capture = vi.spyOn(pipelineTesting, "scriptLenses");
+		const code = await reviewIn(
+			{
+				cwd: repo,
+				env: { ...process.env, ...gitEnv, XDG_CONFIG_HOME: noUserFiles, ...env },
+				stdout: () => undefined,
+				stderr: () => undefined,
+				color: false,
+			},
+			"main...standards-head",
+			{ rerun: false },
+		);
+		expect(code).toBe(0);
+		const requests = capture.mock.results[0]!.value as ReturnType<typeof pipelineTesting.scriptLenses>;
+		const prompts = Object.values(requests).flat().map(pipelineTesting.systemPromptOf);
+		expect(prompts).toHaveLength(1);
+		expect(prompts[0]).toContain("BASE_STANDARD");
+		expect(prompts[0]).toContain("BASE_IMPORT");
+		for (const excluded of ["HEAD_STANDARD", "HEAD_IMPORT", "CHECKOUT_STANDARD", "CHECKOUT_IMPORT"])
+			expect(prompts[0]).not.toContain(excluded);
+	});
+
+	it.each([
+		["\u0007", "\\u0007"],
+		["\u001b[2J", "\\u001b[2J"],
+	])("renders standards error paths containing %j as visible text", (control, escaped) => {
+		const { repo, env } = staticCheckout("export const b = 2;\n");
+		const directory = `unsafe${control}`;
+		mkdirSync(join(repo, directory, ".melian/standards"), { recursive: true });
+		for (let i = 0; i < 5; i++) {
+			writeFileSync(join(repo, directory, `.melian/standards/${i}.md`), "x".repeat(220 * 1024));
+		}
+		git(repo, "add", "--all");
+		git(repo, "commit", "--quiet", "-m", "nested standards exceed the chain bound");
+
+		const result = melian(repo, ["review", "main"], env);
+
+		expect(result.status).toBe(2);
+		expect(result.stdout).toBe("");
+		expect(result.stderr).toContain("exceed 1048576 bytes");
+		expect(result.stderr).toContain(`unsafe${escaped}`);
+		expect(result.stderr).not.toContain(control);
 	});
 
 	it("exits 0 for a review that passed, and prints the terminal rendering of its verdict", () => {
@@ -608,12 +705,35 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 });
 
 describe("melian doctor", { timeout: 60_000 }, () => {
-	it("checks the tools and names where credentials come from, never their values", () => {
+	it("checks the tools and names where credentials come from, never their values", async () => {
 		const token = "test-token-never-printed";
 		const home = mkdtempSync(join(tmpdir(), "melian-doctor-"));
 		scratch = home;
 
-		const doctor = melian(root, ["doctor"], { GITHUB_TOKEN: token, PI_CODING_AGENT_DIR: home });
+		const state = pullRequestState();
+		state.owner = "melian-agent";
+		state.repo = "melian";
+		let stdout = "";
+		const status = await doctorIn(
+			{
+				cwd: root,
+				env: {
+					...process.env,
+					...gitEnv,
+					XDG_CONFIG_HOME: noUserFiles,
+					GITHUB_TOKEN: token,
+					PI_CODING_AGENT_DIR: home,
+				},
+				stdout: (text) => {
+					stdout += text;
+				},
+				stderr: () => {},
+				color: false,
+				executable: bin,
+			},
+			{ fetch: fakeGitHub(state) },
+		);
+		const doctor = { status, stdout };
 
 		expect(doctor.status).toBe(0);
 		expect(doctor.stdout).toMatch(/^ok {4}node {8}\d+\.\d+\.\d+; Melian needs 22\.19\.0 or later$/m);
@@ -629,6 +749,62 @@ describe("melian doctor", { timeout: 60_000 }, () => {
 		expect(doctor.stdout).toContain(
 			`warn  melian      ${bin}, inside this checkout, so the change can alter its reviewer`,
 		);
+	});
+
+	it("lists nested standards carriers and their total bytes", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		const files = {
+			"AGENTS.md": "root\n",
+			"src/CLAUDE.md": "@AGENTS.md\n",
+			"src/.melian/standards/style.md": "style\n",
+		};
+		for (const [path, text] of Object.entries(files)) {
+			mkdirSync(join(repo, path, ".."), { recursive: true });
+			writeFileSync(join(repo, path), text);
+		}
+		const doctor = melian(repo, ["doctor"]);
+		expect(doctor.stdout).toContain(
+			"ok    standards   3 files, 22 bytes; AGENTS.md, src/.melian/standards/style.md, src/CLAUDE.md",
+		);
+	});
+
+	it("warns for oversized nested standards and skipped symlinks", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		writeFileSync(join(repo, "src/AGENTS.md"), "x".repeat(standardsLimits.fileBytes + 1));
+		symlinkSync("AGENTS.md", join(repo, "src/CLAUDE.md"));
+		const doctor = melian(repo, ["doctor"]);
+		expect(doctor.status).toBe(0);
+		expect(doctor.stdout).toContain(
+			`warn  standards   1 file, ${standardsLimits.fileBytes + 1} bytes; src/AGENTS.md (over 256 KiB), src/CLAUDE.md (symlink skipped); 1 over 256 KiB; 1 symlink skipped`,
+		);
+	});
+
+	it("counts omitted regular standards separately from skipped symlinks", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		for (let index = 0; index < 12; index++) {
+			const directory = join(repo, `p${String(index).padStart(2, "0")}`);
+			mkdirSync(directory);
+			writeFileSync(join(directory, "AGENTS.md"), "x");
+		}
+		symlinkSync("AGENTS.md", join(repo, "p10/CLAUDE.md"));
+		const doctor = melian(repo, ["doctor"]);
+		const line = doctor.stdout.split("\n").find((line) => line.startsWith("warn  standards"))!;
+		expect(line).toContain("12 files, 12 bytes");
+		expect(line).toMatch(/, and 2 more files, 1 more skipped symlink; 1 symlink skipped$/);
+		expect(line).not.toContain("and 3 more");
+	});
+
+	it("limits the standards path list to ten entries", () => {
+		const { repo } = goldenCheckout(goldens["clean-rename"]!, {}, null);
+		for (let index = 0; index < 12; index++) {
+			mkdirSync(join(repo, `p${String(index).padStart(2, "0")}`));
+			writeFileSync(join(repo, `p${String(index).padStart(2, "0")}/AGENTS.md`), "x");
+		}
+		const doctor = melian(repo, ["doctor"]);
+		const line = doctor.stdout.split("\n").find((line) => line.startsWith("ok    standards"))!;
+		expect(line).toContain("12 files, 12 bytes");
+		expect(line).toContain("p09/AGENTS.md, and 2 more");
+		expect(line).not.toContain("p10/AGENTS.md");
 	});
 
 	it("warns when an extending lens's top-level tier or budget leaves a level cheaper than the one below it", () => {

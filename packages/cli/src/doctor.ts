@@ -9,11 +9,13 @@ import {
 	loadConfig,
 	loadSecrets,
 	melianPaths,
+	StandardsInventory,
 	type StaticTool,
+	standardsLimits,
 	userFiles,
 	visibleText,
 } from "@melian-agent/core";
-import { parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
+import { createGitHubProvider, parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
 import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSource } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
 import { decisionProviderRefusal, reviewModels } from "./models.ts";
@@ -158,6 +160,41 @@ async function staticCheck(cwd: string): Promise<Check | undefined> {
 	};
 }
 
+async function standardsCheck(cwd: string): Promise<Check | undefined> {
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return undefined;
+	try {
+		const inventory = await StandardsInventory.inspect(root, { kind: "worktree" });
+		const limit = `${standardsLimits.fileBytes / 1024} KiB`;
+		const paths = inventory.entries
+			.slice(0, 10)
+			.map(
+				(entry) =>
+					`${visibleText(entry.path)}${"symlink" in entry ? " (symlink skipped)" : entry.oversized ? ` (over ${limit})` : ""}`,
+			);
+		const remaining = inventory.entries.slice(10);
+		const remainingFiles = remaining.filter((entry) => "bytes" in entry).length;
+		const remainingSymlinks = remaining.length - remainingFiles;
+		if (remainingFiles > 0) paths.push(`and ${remainingFiles} more${remainingSymlinks === 0 ? "" : " files"}`);
+		if (remainingSymlinks > 0)
+			paths.push(`${remainingSymlinks} more skipped symlink${remainingSymlinks === 1 ? "" : "s"}`);
+		const warnings = inventory.warnings();
+		const oversized = warnings.filter((entry) => "bytes" in entry).length;
+		const symlinks = warnings.length - oversized;
+		return {
+			name: "standards",
+			state: warnings.length === 0 ? "ok" : "warn",
+			detail: `${inventory.count()} file${inventory.count() === 1 ? "" : "s"}, ${inventory.bytes()} bytes${paths.length === 0 ? "" : `; ${paths.join(", ")}`}${oversized === 0 ? "" : `; ${oversized} over ${limit}`}${symlinks === 0 ? "" : `; ${symlinks} symlink${symlinks === 1 ? "" : "s"} skipped`}`,
+		};
+	} catch (error) {
+		return {
+			name: "standards",
+			state: "warn",
+			detail: visibleText(error instanceof Error ? error.message : String(error)),
+		};
+	}
+}
+
 // A melian the checkout provides runs code the change under review can rewrite.
 async function executableCheck(cwd: string, executable: string | undefined): Promise<Check | undefined> {
 	if (executable === undefined) return undefined;
@@ -210,8 +247,93 @@ async function repositoryCheck(cwd: string): Promise<Check> {
 	}
 }
 
+async function trustCheck(
+	cwd: string,
+	token: string | undefined,
+	fetch: typeof globalThis.fetch | undefined,
+): Promise<Check> {
+	const name = "trust";
+	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined)
+		return { name, state: "warn", detail: "not inside a git repository; root policy is unknown" };
+	let base: { ref: string; commit: string } | undefined;
+	for (const ref of ["origin/HEAD", "origin/main", "main", "HEAD"]) {
+		const commit = await git(root, ["rev-parse", "--verify", `${ref}^{commit}`]).catch(() => undefined);
+		if (commit !== undefined) {
+			base = { ref, commit };
+			break;
+		}
+	}
+	if (base === undefined) return { name, state: "warn", detail: "no committed root policy is available" };
+	let writers: boolean;
+	try {
+		writers = (await loadConfig(root, { kind: "revision", commit: base.commit }, ".")).config.trust.writers;
+	} catch (error) {
+		return { name, state: "warn", detail: visibleText(error instanceof Error ? error.message : String(error)) };
+	}
+	let state: Check["state"] = writers && base.ref !== "HEAD" && base.ref !== "main" ? "ok" : "warn";
+	const details = [`writers trusted: ${writers ? "yes" : "no"}; policy ${base.ref} (${base.commit.slice(0, 7)})`];
+	if (!writers) details.push("a trusted host must set the status");
+	if (base.ref === "HEAD") details.push("base policy is unknown; using committed HEAD");
+	if (base.ref === "main") details.push("base policy may be stale; using local main");
+	if (token === undefined) return { name, state: "warn", detail: `${details.join("; ")}; no GitHub token` };
+	const url = await git(root, ["remote", "get-url", "origin"]).catch(() => undefined);
+	let repository: { owner: string; repo: string };
+	try {
+		if (url === undefined) throw new Error("no origin");
+		repository = parseGitHubRemote(url);
+	} catch {
+		return { name, state: "warn", detail: `${details.join("; ")}; no GitHub origin; viewer permission is unknown` };
+	}
+	const controller = new AbortController();
+	const transport = fetch ?? globalThis.fetch;
+	const provider = createGitHubProvider({
+		...repository,
+		token,
+		fetch: (input, init) =>
+			transport(input, {
+				...init,
+				signal: init?.signal == null ? controller.signal : AbortSignal.any([init.signal, controller.signal]),
+			}),
+	});
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const deadline = new Promise<never>((_, reject) => {
+		timer = setTimeout(() => {
+			controller.abort();
+			reject(new Error("GitHub read timed out"));
+		}, 10_000);
+	});
+	try {
+		const { login, permission } = await Promise.race([
+			(async () => {
+				const login = await provider.login();
+				const permission = login === undefined ? undefined : await provider.permission(login);
+				return { login, permission };
+			})(),
+			deadline,
+		]);
+		details.push(`viewer ${visibleText(login ?? "unknown")} (${permission ?? "unknown"})`);
+		if (permission === undefined) {
+			state = "warn";
+			details.push("cannot establish whether melian publish can set a status here");
+		} else if (!["admin", "maintain", "write"].includes(permission)) {
+			state = "warn";
+			details.push("melian publish cannot set a status here");
+		}
+		return { name, state, detail: details.join("; ") };
+	} catch {
+		return {
+			name,
+			state: "warn",
+			detail: `${details.join("; ")}; GitHub read timed out after 10 seconds; viewer permission is unknown`,
+		};
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
 // Names credentials by provider and source, never by value.
-export async function doctor(io: Io): Promise<number> {
+export async function doctor(io: Io, options: { readonly fetch?: typeof globalThis.fetch } = {}): Promise<number> {
 	const nodeVersion = process.versions.node;
 	const { checks: secretChecks, secrets } = await secretsCheck(io.cwd, io.env);
 	const authPath = piAuthPath(io.env);
@@ -236,11 +358,13 @@ export async function doctor(io: Io): Promise<number> {
 			? { name: "gh", state: "warn", detail: "not found on PATH" }
 			: { name: "gh", state: "ok", detail: gh.split("\n")[0]! },
 		await repositoryCheck(io.cwd),
+		await trustCheck(io.cwd, token?.token, options.fetch),
 		...[
 			await executableCheck(io.cwd, io.executable),
 			await stateCheck(io.cwd, io.env),
 			await levelsCheck(io.cwd),
 			await staticCheck(io.cwd),
+			await standardsCheck(io.cwd),
 		].filter((check) => check !== undefined),
 		...(await planChecks(io.cwd, io.env, secrets)),
 	];

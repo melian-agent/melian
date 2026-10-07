@@ -1,0 +1,3 @@
+# Remaining core mutation inventory
+
+For [pull request #68](https://github.com/melian-agent/melian/pull/68), reused 154 checks proved by the thirteenth-round inventory and audited its omissions. Seven of 25 additional mutations passed existing tests: four schema bounds, two hash patterns and the default error path. Six new tests assert exact exported-schema boundaries, ID and commit formats, and optional error metadata. All seven mutations fail those tests; all 109 core comparison tests pass after restoration. The exported file schemas need direct assertions because downstream validation can reject the same input after a weakened schema accepts it. No design decision changed.

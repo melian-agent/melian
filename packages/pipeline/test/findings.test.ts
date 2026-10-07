@@ -729,6 +729,7 @@ describe("documents stored before evidence became a list", () => {
 		expect(await readVerdict(harness, root.id, "base..head", context)).toEqual(verdict(current));
 		const published = await harness.snapshot(PublishedDocument, root.id, context);
 		expect(published?.revisions.head?.pending).toEqual(pending(current));
+		expect(published?.revisions.head?.publishedBy).toEqual({ trustedWriters: true });
 	});
 
 	it("knows a migrated verdict by the fingerprint it was published under, so its head takes no second review", async () => {
@@ -837,6 +838,8 @@ describe("documents stored before evidence became a list", () => {
 				fetch: { url: "https://github.com/melian-agent/example.git", headRef: "refs/pull/7/head" },
 			};
 			const provider: ReviewProvider = {
+				login: async () => undefined,
+				permission: async () => undefined,
 				name: "fake",
 				findLedger: async () => undefined,
 				writeLedger: async () => ({
@@ -901,6 +904,7 @@ describe("documents stored before evidence became a list", () => {
 			try {
 				const changeset = { revision: Revision.from({ base, head, files: [] }) } as unknown as Changeset;
 				const publication = await publishReview({
+					trustedWriters: true,
 					harness: publisher.harness,
 					provider,
 					changeset,
@@ -950,7 +954,14 @@ describe("documents stored before evidence became a list", () => {
 				);
 				try {
 					const changeset = { revision: Revision.from({ base, head, files: [] }) } as unknown as Changeset;
-					await publishReview({ harness: publisher.harness, provider, changeset, pullRequest, base });
+					await publishReview({
+						trustedWriters: true,
+						harness: publisher.harness,
+						provider,
+						changeset,
+						pullRequest,
+						base,
+					});
 					return posted;
 				} finally {
 					await publisher.close();

@@ -1,0 +1,18 @@
+{
+  "kind": "melian.publish",
+  "version": 1,
+  "input": {
+    "root": 0,
+    "target": {
+      "repository": "melian-agent/example",
+      "pullRequest": 7,
+      "baseRef": "main",
+      "baseTip": "",
+      "base": "",
+      "head": "",
+      "revision": ""
+    },
+    "lines": {}
+  },
+  "checkpoint": { "phase": "publish" }
+}

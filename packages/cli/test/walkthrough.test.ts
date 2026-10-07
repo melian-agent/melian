@@ -11,7 +11,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
+import { type FakeState, fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { VerdictDocument } from "../../pipeline/src/adjudication.ts";
 import { baseAndHead, isolatedGitEnv } from "../../pipeline/test/fixtures/repo.ts";
@@ -87,6 +87,7 @@ describe("CLI publish walkthrough settings", { timeout: 60_000 }, () => {
 		options: { walkthrough?: boolean },
 		headYaml?: string,
 		throughMain: { review?: boolean; publish?: boolean } = {},
+		inspect?: (state: FakeState, output: string) => void,
 	) {
 		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 		rmSync(repo, { recursive: true, force: true });
@@ -116,7 +117,16 @@ describe("CLI publish walkthrough settings", { timeout: 60_000 }, () => {
 		const script = join(repo, "script.json");
 		writeFileSync(script, "{}");
 		env = { ...process.env, MELIAN_TEST_SCRIPT: script };
-		const io = { cwd: repo, env, stdout: () => {}, stderr: () => {}, color: false };
+		let output = "";
+		const io = {
+			cwd: repo,
+			env,
+			stdout: (text: string) => {
+				output += text;
+			},
+			stderr: () => {},
+			color: false,
+		};
 		// A head that edits melian.yaml draws a policy finding, which exits 3.
 		expect(
 			throughMain.review
@@ -134,8 +144,27 @@ describe("CLI publish walkthrough settings", { timeout: 60_000 }, () => {
 					})
 				: await publish({ ...io, env: clean }, "#7", options),
 		).toBe(0);
+		inspect?.(state, output);
 		return state.ledgers[0]!.body;
 	}
+
+	it.each([false, true])("publishes with committed base writer trust %s", async (trustedWriters) => {
+		await published(
+			`trust: { writers: ${trustedWriters} }\n`,
+			{},
+			trustedWriters ? undefined : "trust: { writers: true }\n",
+			{ publish: true },
+			(state, output) => {
+				expect(state.statuses).toHaveLength(2);
+				expect(state.statuses.every(({ state }) => state === (trustedWriters ? "success" : "error"))).toBe(true);
+				if (!trustedWriters) {
+					const description = "not reviewed here: writers are not trusted; a trusted host sets this status";
+					expect(state.statuses.every((status) => status.description === description)).toBe(true);
+					expect(output).toContain(`Status error: ${description}`);
+				}
+			},
+		);
+	});
 
 	it("reads publish.walkthrough from the base revision and combines it with --no-walkthrough", async () => {
 		const on = await published("", {});
