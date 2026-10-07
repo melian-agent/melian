@@ -259,7 +259,7 @@ describe("static.mutation", { timeout: 60_000 }, () => {
 		expect(flag("--mutate")).toBe("packages/p/src/a.ts:2-2");
 		expect(flag("--incrementalFile")).toBe(`${cwd.replace(/\/tree$/, "")}/incremental.json`);
 		expect(result.log.runs[0].tool.driver).toEqual({ name: "Stryker", version: "10.0.0" });
-		expect(result.baseLog?.runs[0].results).toEqual([]);
+		expect(result.baseLog?.runs).toEqual([{ tool: { driver: { name: "Stryker", version: "10.0.0" } }, results: [] }]);
 		expect(result.notes).toContain("Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.");
 		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
 		expect(gitIn(repo, "status", "--porcelain", "--untracked-files=no")).toBe("");
@@ -422,13 +422,13 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 
 		it("escapes every glob character in a path, so Stryker reads the file and no other", async () => {
 			const base = commit(repo, { "stryker.config.json": config });
-			const odd = "packages/p/src/a*b?c{d}e!f+g@h#i\\j.ts";
+			const odd = "packages/p/src/a*b?c{d}e!f+g@h#i\\j'k.ts";
 			const head = commit(repo, { [route]: lines("export const x = 1;"), [odd]: lines("export const y = 1;") });
 			const fake = stryker({ report: report({}) });
 			await mutate(base, head);
 			expect(entries(fake.calls()[0]!)).toEqual([
 				"app/users/\\[id\\]/\\(group\\)/route.ts:1-1",
-				"packages/p/src/a\\*b\\?c\\{d\\}e\\!f\\+g\\@h\\#i\\\\j.ts:1-1",
+				"packages/p/src/a\\*b\\?c\\{d\\}e\\!f\\+g\\@h\\#i\\\\j'k.ts:1-1",
 			]);
 		});
 
@@ -886,6 +886,18 @@ exit 1`,
 			expect(fake.calls()).toEqual([]);
 		});
 
+		it("records the same skip when the checkout has an install but no Stryker in it", async () => {
+			const base = commit(repo, {
+				"melian.yaml": policy,
+				"stryker.config.json": config,
+				"packages/p/src/a.ts": a,
+			});
+			const tip = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+			fakeTool(repo, "other", "exit 0");
+			const { run } = await checks(base, tip);
+			expect(run.records).toEqual([{ name: "static.mutation", status: "skipped", reason: strykerNotInstalled }]);
+		});
+
 		it("records a skip, not a pass, when the checkout has no Stryker, and Melian carries none", async () => {
 			const base = commit(repo, {
 				"melian.yaml": policy,
@@ -895,6 +907,7 @@ exit 1`,
 			const tip = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
 			const { run } = await checks(base, tip);
 			expect(run.records).toEqual([{ name: "static.mutation", status: "skipped", reason: strykerNotInstalled }]);
+			expect(strykerNotInstalled).toContain("@stryker-mutator/core and @stryker-mutator/vitest-runner");
 			expect(mutationSkipHasLeave(strykerNotInstalled)).toBe(false);
 		});
 

@@ -284,6 +284,7 @@ describe("doctor trust boundaries", () => {
 		expect(result.status).toBe(0);
 		expect(result.trust).toMatch(/^warn /);
 		expect(result.trust).toContain("not inside a git repository; root policy is unknown");
+		expect(result.stdout).not.toMatch(/ {2}mutation\s/);
 		expect(state.calls).toEqual([]);
 	});
 
@@ -417,6 +418,13 @@ describe("doctor mutation testing", () => {
 		chmodSync(join(repo, "node_modules/.bin/stryker"), 0o755);
 		const { stdout } = await run(github());
 		expect(line(stdout)).toMatch(/^ok {4}mutation\s+static\.mutation runs Stryker from the checkout$/);
+	});
+
+	it("warns with the reason when the configuration cannot be read", async () => {
+		writeFileSync(join(repo, "melian.yaml"), "static: { mutation: { enabled: 3 } }\n");
+		const { stdout } = await run(github());
+		expect(line(stdout)).toMatch(/^warn {2}mutation\s+\S/);
+		expect(line(stdout)).not.toContain("static.mutation is on");
 	});
 
 	it("says nothing while the check is off", async () => {

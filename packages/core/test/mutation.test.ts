@@ -239,6 +239,12 @@ describe("normaliseMutationReport", () => {
 		for (const text of ["not json", "{}", JSON.stringify({ files: { "src/a.ts": { mutants: [{}] } } })])
 			expect(() => normaliseMutationReport(text, input)).toThrow(CheckError);
 		expect(() => normaliseMutationReport("not json", input)).toThrow(/not JSON/);
+		expect(() => normaliseMutationReport("not json", input)).toThrow(
+			expect.objectContaining({ cause: expect.any(SyntaxError) }),
+		);
+		expect(() => normaliseMutationReport("{}", input)).toThrow(
+			"Stryker wrote a report Melian cannot read:  must have required properties files",
+		);
 	});
 
 	it("encodes each path segment, orders results by file and line, and names a missing test file generically", () => {
