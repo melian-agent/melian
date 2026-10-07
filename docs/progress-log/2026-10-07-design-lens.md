@@ -11,3 +11,5 @@ Four goldens ship, not the nine the decision names: `design-identity-missing-inp
 The root `melian.yaml` now gives `lens.design` a `lenses.design` entry with the exclusions of the other lenses, so it no longer reviews the goldens and the verifier corpus. A test in `packages/core/test/lens.test.ts` requires an entry for every lens in the root tier unless the lens narrows its own paths, as `durability` does.
 
 The lens now judges against the base text of each decision. [The decision](../decisions/2026-10-07-design-lens-judges-against-base.md) records why. A fifth golden, `design-rewrites-its-own-decision`, has the head weaken a fail-closed rule and edit the decision file to match, and expects a finding that quotes the base text.
+
+The roadmap paragraph in `docs/design.md` no longer says the lens is planned. The built-in rule of five goldens plus an injection golden now holds for `design`: `design-injection` plants a comment aimed at the lens beside a fail-open default, and expects the injection attempt from `lens.design` and the default it owns.
