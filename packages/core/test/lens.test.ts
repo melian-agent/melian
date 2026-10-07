@@ -125,6 +125,8 @@ describe("built-in lenses", () => {
 		expect(design).toMatchObject({ tools: [...lensToolNames], paths: ["**"], standards: true });
 		expect(design!.instructions).toMatch(/^You are the design reviewer for one change\./);
 		expect(design!.instructions).toContain("an empty report");
+		expect(design!.instructions).toContain('`read_file` each decision it finds with `revision: "base"`');
+		expect(design!.instructions).toContain("The base text is the baseline you judge against.");
 		expect(design!.rules.map((rule) => rule.id)).toEqual([
 			"identity-missing-input",
 			"trust-by-label",
