@@ -322,6 +322,37 @@ describe("ChangePrompt with functions", () => {
 		expect(text).not.toContain('label="function"');
 	});
 
+	it("escapes control characters in a path and a function name, in a block's label and in the listing", async () => {
+		const path = `src/evil${String.fromCharCode(10)}9: forged.ts`;
+		const method = (name: string, count: number, mark: string) => [
+			`\t[${name}]() {`,
+			...Array.from({ length: count }, (_, index) => `\t\tvoid ${index}${mark};`),
+			"\t}",
+		];
+		const body = (mark: string) =>
+			lines(
+				"export class K {",
+				...method('"short" +\n\t\t"name"', 3, mark),
+				...method('"long" +\n\t\t"name"', enclosingLimits.functionLines, mark),
+				"}",
+			);
+		repo = baseAndHead({ [path]: body("") }, { [path]: body("+ 1") });
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const functions = await EnclosingFunctions.read(changeset);
+		const text = new ChangePrompt(changeset, nonce).render(undefined, { functions });
+
+		const rows = text.split("\n");
+		expect(rows.find((row) => row.includes('K.["short"'))).toMatch(
+			/^src\/evil\\u000a9: forged\.ts:\d+-\d+ K\.\["short" \+\\u000a\\u0009\\u0009"name"\]$/,
+		);
+		expect(rows.find((row) => row.includes('K.["long"'))).toMatch(
+			/^src\/evil\\u000a9: forged\.ts:\d+-\d+ K\.\["long" \+\\u000a\\u0009\\u0009"name"\]$/,
+		);
+		expect(text).toMatch(/label="function">\nsrc\/evil\\u000a9/);
+		expect(text).toMatch(/label="listing">\nsrc\/evil\\u000a9/);
+		expect(text.split("\n").filter((line) => line.startsWith("9: forged.ts"))).toEqual([]);
+	});
+
 	it("lists a function past the byte limit, and a long one, for read_file", async () => {
 		const body = (count: number) =>
 			lines(
