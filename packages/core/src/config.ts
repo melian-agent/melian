@@ -389,6 +389,16 @@ export interface MelianConfig {
 	readonly triage: { readonly escalateAt: Severity };
 }
 
+// Stryker sets `globalThis.__stryker__.activeMutant` while it runs a mutant. A head file that reads it can throw only
+// under a mutant, so the dry run passes and every mutant reads as killed. The pattern is spelt so that this line does
+// not match it.
+const forgedMutationKill: ForbiddenPatternRule = {
+	pattern: "__stryker_{2}|activeMutan[t]",
+	paths: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts", "**/*.js", "**/*.jsx", "**/*.mjs", "**/*.cjs"],
+	message:
+		"Stryker's active-mutant variable lets a file behave differently under a mutant, so a test could throw only when one runs and every mutant would read as killed; a file here may not read it",
+};
+
 /** The built-in defaults every `melian.yaml` layers onto. */
 export const defaultConfig: MelianConfig = {
 	trust: { writers: true },
@@ -419,7 +429,7 @@ export const defaultConfig: MelianConfig = {
 	guardrails: {
 		"forbidden-paths": { enabled: true, severity: "P1", rules: {} },
 		"required-files": { enabled: true, severity: "P2", rules: {} },
-		"forbidden-patterns": { enabled: true, severity: "P2", rules: {} },
+		"forbidden-patterns": { enabled: true, severity: "P2", rules: { "forged-mutation-kill": forgedMutationKill } },
 		"policy-change-review": { enabled: true, severity: "P2", analyserSeverity: "P1", files: [] },
 	},
 	knowledge: { writeBack: false },

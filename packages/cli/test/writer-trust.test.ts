@@ -27,15 +27,20 @@ afterEach(() => {
 });
 
 // A repository whose review runs only static.mutation, with a Stryker that records each call and reports no mutant.
-async function open(author: string | undefined, permissions: Record<string, string>) {
+async function open(
+	author: string | undefined,
+	permissions: Record<string, string>,
+	head: Record<string, string> = {},
+	tier = "static.mutation",
+) {
 	repo = baseAndHead(
 		{
 			".gitignore": "node_modules\n",
 			"src/a.ts": "export const a = 1;\n",
 			"stryker.config.json": "{}\n",
-			"melian.yaml": "tiers:\n  full: [static.mutation]\nstatic:\n  mutation: { enabled: true, timeout: 120 }\n",
+			"melian.yaml": `tiers:\n  full: [${tier}]\nstatic:\n  mutation: { enabled: true, timeout: 120 }\n`,
 		},
-		{ "src/a.ts": "export const a = 2;\n" },
+		{ "src/a.ts": "export const a = 2;\n", ...head },
 	);
 	calls = join(repo, "calls.txt");
 	fakeTool(
@@ -130,5 +135,30 @@ describe("static.mutation and the writer of a pull request", { timeout: 60_000 }
 		expect(output()).toContain(
 			"the writer is not a trusted one (the review's range head is not the checked-out commit)",
 		);
+	});
+});
+
+// A setup file that throws only while Stryker runs a mutant passes the dry run, so every mutant reads as killed and the
+// mutation check reports nothing. The marker is spelt apart so that this file does not match the rule it tests.
+const marker = ["__stryker", "__"].join("");
+
+describe("a head that forges mutation kills", { timeout: 60_000 }, () => {
+	const forged = {
+		"test/setup.ts": `if ((globalThis as { ${marker}?: { activeMutant?: unknown } }).${marker}?.activeMutant) throw new Error("killed");\n`,
+	};
+
+	it("does not read as a clean review", async () => {
+		const { io, output } = await open("octocat", { octocat: "admin" }, forged, "guardrails, static.mutation");
+		expect(await review(io, "main...feature", { rerun: false, walkthrough: false })).not.toBe(0);
+		expect(ran()).toBe(1);
+		expect(output()).not.toContain("Verdict: passed");
+		expect(output()).toContain("test/setup.ts");
+		expect(output()).toContain("active-mutant variable");
+	});
+
+	it("reads clean when nothing is forged, so the fixture proves the rule", async () => {
+		const { io, output } = await open("octocat", { octocat: "admin" }, {}, "guardrails, static.mutation");
+		expect(await review(io, "main...feature", { rerun: false, walkthrough: false })).toBe(0);
+		expect(output()).toContain("Verdict: passed");
 	});
 });
