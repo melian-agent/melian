@@ -206,14 +206,6 @@ export class ReviewThreadImporter implements ExternalImporter {
 			}
 			return reviews.pageInfo;
 		});
-		if (reviewers.length === 0)
-			reviewers.push(
-				reviewerOf({
-					login: this.login,
-					__typename:
-						this.login.endsWith("[bot]") || Object.hasOwn(botNames, this.login.toLowerCase()) ? "Bot" : "User",
-				}),
-			);
 		return { findings, skippedBodies, head: head!, reviewers };
 	}
 
