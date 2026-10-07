@@ -316,4 +316,15 @@ describe("markdownText", () => {
 		expect(text).toContain("&lt;b&gt;&amp;\\*\\_\\[x\\]\\(y\\)\\#\\!\\|\\~\\`\\\\ @\u2060bob \\#\u20607");
 		expect(text).not.toContain("\u0007");
 	});
+
+	it("breaks bare URLs, www hosts and GH references so a reviewer cannot plant a live link", () => {
+		const hostile = "see https://evil.example/login or www.evil.example, _www.evil.example and GH-12 gh-3";
+		const set = new ComparisonSet([owing("a", own(1), "alpha", { target: hostile })]);
+		const text = set.renderBacklog(true);
+		expect(text).toContain("https:\u2060//evil.example/login");
+		expect(text).toContain("or www\u2060.evil.example");
+		expect(text).toContain("GH-\u206012 gh-\u20603");
+		expect(text).toContain("\\_www\u2060.evil.example");
+		expect(text).not.toMatch(/https:\/\/|www\./i);
+	});
 });

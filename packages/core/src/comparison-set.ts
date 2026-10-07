@@ -256,7 +256,8 @@ export class ComparisonSet {
 	}
 }
 
-// A table cell or list item is inert prose: no live HTML, markdown, mentions, or forged lines.
+// A table cell or list item is inert prose: no live HTML, markdown, mentions, autolinks, or forged lines. Mirrors
+// `renderProse` in the github package, which core cannot import.
 export function markdownText(text: string): string {
 	return visibleText(text)
 		.replace(/\\/g, "\\\\")
@@ -265,5 +266,8 @@ export function markdownText(text: string): string {
 		.replace(/>/g, "&gt;")
 		.replace(/[*_[\]()#!|~`]/g, "\\$&")
 		.replace(/@(?=[\p{L}\p{N}_-])/gu, "@\u2060")
-		.replace(/\\#(?=\d)/g, "\\#\u2060");
+		.replace(/\\#(?=\d)/g, "\\#\u2060")
+		.replace(/:(?=\/\/)/g, ":\u2060")
+		.replace(/www\./gi, (match) => `${match.slice(0, -1)}\u2060.`)
+		.replace(/\bGH-(?=\d)/gi, (match) => `${match}\u2060`);
 }
