@@ -19,7 +19,7 @@ export class CacheLocation {
 				"git",
 				["-C", repoRoot, "rev-parse", "--git-common-dir"],
 				{ env, timeout: 10_000 },
-				(error, stdout) => (error ? fail(error) : done(stdout.trim())),
+				(error, stdout, stderr) => (error ? fail(Object.assign(error, { stderr })) : done(stdout.trim())),
 			),
 		);
 		const common = isAbsolute(reported) ? reported : resolve(repoRoot, reported);

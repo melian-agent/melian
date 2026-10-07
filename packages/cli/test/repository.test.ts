@@ -13,6 +13,7 @@ describe("stateDirectory", () => {
 			);
 			expect(failure).toBeInstanceOf(CliError);
 			expect((failure as { code?: unknown }).code).toBeUndefined();
+			expect((failure as Error).message).toMatch(/^git rev-parse failed: fatal: /);
 		} finally {
 			await rm(directory, { recursive: true, force: true });
 		}
