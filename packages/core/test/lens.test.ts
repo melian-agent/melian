@@ -171,8 +171,8 @@ describe("built-in lenses", () => {
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toMatchObject({
-			correctness: "56090e24819d",
-			"removed-behaviour": "1b03a6b1bc9c",
+			correctness: "07dd74a2fa11",
+			"removed-behaviour": "a9e209da1c15",
 		});
 	});
 
