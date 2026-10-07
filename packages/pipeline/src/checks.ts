@@ -113,11 +113,12 @@ const toolOf: Readonly<Record<Exclude<DeterministicCheck, "guardrails">, StaticT
 };
 
 // Why the head's writer may not have its code run, or undefined when it may. The committed `trust.writers` policy is the
-// one publication reads; it must hold, and the host must have vouched for this head's writer.
-function untrusted(input: CheckInput): string | undefined {
-	if (!input.config.trust.writers) return "trust.writers is false in the repository's policy";
-	if (input.writer === undefined) return "the review named no writer for this head";
-	return input.writer.trusted ? undefined : input.writer.detail;
+// one publication reads; it must hold, and the host must have vouched for this head's writer. The reason sits in an
+// object so that an untrusted writer with no detail still reads as untrusted.
+function untrusted(input: CheckInput): { detail: string } | undefined {
+	if (!input.config.trust.writers) return { detail: "trust.writers is false in the repository's policy" };
+	if (input.writer === undefined) return { detail: "the review named no writer for this head" };
+	return input.writer.trusted ? undefined : { detail: input.writer.detail };
 }
 
 async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, context: Context): Promise<Outcome> {
@@ -125,8 +126,8 @@ async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, conte
 	const settings = input.config.static[tool];
 	if (!settings.enabled) return { status: "skipped", reason: `static.${tool}.enabled is false` };
 	if (tool === "mutation") {
-		const detail = untrusted(input);
-		if (detail !== undefined) return { status: "skipped", reason: mutationSkips.untrustedWriter(detail) };
+		const reason = untrusted(input);
+		if (reason !== undefined) return { status: "skipped", reason: mutationSkips.untrustedWriter(reason.detail) };
 	}
 	if (env === undefined) {
 		throw new CheckError(
