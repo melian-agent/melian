@@ -67,27 +67,11 @@ export async function fallbackDecider(
 	return { skipped: `no lens tier reaches a model for the LLM fallback: ${passed.join("; ")}` };
 }
 
-// The providers triage's LLM fallback may call: each routed lens tier's models, since the fallback takes the cheapest
-// with credentials, so a command credential it needs runs with the others, when the review first asks a model.
-export function triageProviders(plan: ReviewPlan): string[] {
-	return tiers.flatMap((tier) => {
-		const { status, models } = plan.tier(tier);
-		return status === "routed" ? models.map(({ model }) => model.slice(0, model.indexOf("/"))) : [];
-	});
-}
-
-// The walkthrough asks the light tier whatever the lens count, so its providers unlock even with no lens.
-function lightProviders(plan: ReviewPlan): string[] {
-	const { status, models } = plan.tier("light");
-	return status === "routed" ? models.map(({ model }) => model.slice(0, model.indexOf("/"))) : [];
-}
-
 export class Triage {
 	readonly decider: Decider | undefined;
 	readonly skipped: string | undefined;
 	readonly #models: ReviewModels;
 	readonly #providers: readonly string[];
-	#unlocked: Promise<void> | undefined;
 
 	private constructor(
 		decider: Decider | undefined,
@@ -101,10 +85,7 @@ export class Triage {
 		this.#providers = providers;
 	}
 
-	// Chooses triage's decider, and names the lenses' providers, and the triage providers unless a script stands in
-	// for every model. Scripted mode triages nothing, so every lens runs at the level its script was written for. It
-	// runs no command credential: `unlockModels` does, when the review is about to start a task that may call a model,
-	// so a repeat review that spends no tokens runs none.
+	// Planning describes credentials; only the concrete task unlocks its route.
 	static async create(options: {
 		readonly scripted: boolean;
 		readonly config: MelianConfig;
@@ -113,31 +94,16 @@ export class Triage {
 		readonly decide?: typeof fallbackDecider;
 	}): Promise<Triage> {
 		const { scripted, config, plan, models, decide = fallbackDecider } = options;
-		const providers = [
-			...new Set([
-				...plan.providers(),
-				...(scripted ? [] : triageProviders(plan)),
-				...(plan.lenses.length === 0 ? lightProviders(plan) : []),
-			]),
-		];
-		if (plan.lenses.length === 0) return new Triage(undefined, undefined, models, providers);
-		if (scripted) return new Triage(undefined, undefined, models, providers);
+		if (plan.lenses.length === 0 || scripted) return new Triage(undefined, undefined, models, []);
 		const chosen = await decide({ ...config, models: plan.routes() }, models);
 		return "decider" in chosen
-			? new Triage(chosen.decider, undefined, models, providers)
-			: new Triage(undefined, chosen.skipped, models, providers);
+			? new Triage(chosen.decider, undefined, models, /^([^/]+)\//.exec(chosen.model)?.slice(1) ?? [])
+			: new Triage(undefined, chosen.skipped, models, []);
 	}
 
-	/**
-	 * Runs the command credentials of the providers the review's lenses and triage may call; one that fails stops the
-	 * review. It runs them once, however often it is called: the CLI calls it before a resumed task can ask a model,
-	 * and the review calls it again before the first task it creates.
-	 */
-	unlockModels(providers: readonly string[] = []): Promise<void> {
-		if (providers.length > 0)
-			return unlockCredentials(this.#models, [...new Set([...this.#providers, ...providers])]);
-		this.#unlocked ??= unlockCredentials(this.#models, this.#providers);
-		return this.#unlocked;
+	/** Unlocks only this task's providers. The credential store runs each command once per process. */
+	unlockModels(providers: readonly string[]): Promise<void> {
+		return unlockCredentials(this.#models, providers);
 	}
 
 	harnessOptions(): { readonly decider?: Decider } {
@@ -147,10 +113,12 @@ export class Triage {
 	reviewOptions(): {
 		readonly decider?: Decider;
 		readonly triageSkipped?: string;
-		readonly unlockModels: () => Promise<void>;
+		readonly triageProviders: readonly string[];
+		readonly unlockModels: (providers: readonly string[]) => Promise<void>;
 	} {
 		return {
-			unlockModels: () => this.unlockModels(),
+			triageProviders: this.#providers,
+			unlockModels: (providers) => this.unlockModels(providers),
 			...this.harnessOptions(),
 			...(this.skipped === undefined ? {} : { triageSkipped: this.skipped }),
 		};

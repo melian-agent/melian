@@ -198,7 +198,7 @@ export async function startVerification(
 	rerun: boolean,
 	context: Context,
 	refused: (model: string) => boolean = () => false,
-	unlockModels?: () => Promise<void>,
+	unlockModels?: (providers: readonly string[]) => Promise<void>,
 ): Promise<TaskId<VerificationResult> | undefined> {
 	const root = await harness.root(context);
 	const { nonce: _, ...revision } = input.revision;
@@ -229,7 +229,8 @@ export async function startVerification(
 				return result?.status !== "done" || refused(result.model);
 			});
 		const attaches = previous?.input === key && answered && (!failed || !rerun);
-		if (!attaches) await unlockModels();
+		if (!attaches)
+			await unlockModels(input.candidates.flatMap((candidate) => candidate.route.map((model) => model.provider)));
 	}
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);

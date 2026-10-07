@@ -224,6 +224,7 @@ describe("walkthrough summaries", () => {
 		const revision = revisionKey(changeset.revision);
 		expect((await summarize({ unlockModels: unlock }))?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
 		expect(before).toEqual([0]);
+		expect(unlock).toHaveBeenCalledWith([models.ref().provider]);
 
 		const repeat = vi.fn(async () => {});
 		await summarize({ unlockModels: repeat });

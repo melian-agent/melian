@@ -889,13 +889,12 @@ interface ReviewSettings {
 	 */
 	readonly rerun?: boolean;
 	/**
-	 * Called once, before the review first creates or resumes a task that may call a model. The host unlocks
-	 * credentials there, so one that fails stops the review before the model is asked. A repeat review that attaches
-	 * to finished tasks never calls it, and so runs no credential command. A task a crash left unfinished starts at
-	 * the harness's first wait, ahead of this call: the host calls it first, when
-	 * {@link ReviewHarness.resumesModels} says so, and must run each command once however often it is called.
+	 * Unlocks the providers in a concrete task's routes before it starts. Finished attachments call nothing.
+	 * Before any wait, hosts also unlock {@link ReviewHarness.resumedProviders}, which uses stored routes.
 	 */
-	readonly unlockModels?: () => Promise<void>;
+	readonly unlockModels?: (providers: readonly string[]) => Promise<void>;
+	/** The chosen decider's providers, unlocked only before a triage task that may ask it. */
+	readonly triageProviders?: readonly string[];
 	/**
 	 * Where the revision came from, recorded with the verdict. Only a `pull-request` review whose policy came from a
 	 * revision can be published. A range by default.
@@ -988,7 +987,7 @@ async function runLenses(
 	rerun: boolean,
 	context: Context,
 	refused: (key: string, model: string) => boolean = () => false,
-	unlockModels?: () => Promise<void>,
+	unlockModels?: (providers: readonly string[]) => Promise<void>,
 ): Promise<{ readonly result: LensResult | undefined; readonly ran: StoredLensTaskInput; readonly task: number }> {
 	const root = await harness.root(context);
 	const revision = revisionKey(input.revision);
@@ -1003,7 +1002,8 @@ async function runLenses(
 			known.lenses.join("\n") === selection.join("\n") &&
 			finished(record, undecided) &&
 			!(rerun && lensFailed(record!, refused));
-		if (!attaches) await unlockModels();
+		if (!attaches)
+			await unlockModels(runsOf(input.lenses).flatMap((run) => run.route.map((model) => model.provider)));
 	}
 	let replaced: number | undefined;
 	const taskId = await root.commit(async (tx) => {
@@ -1371,7 +1371,8 @@ async function triage(
 	inputCut: boolean,
 	rerun: boolean,
 	context: Context,
-	unlockModels?: () => Promise<void>,
+	providers: readonly string[],
+	unlockModels?: (providers: readonly string[]) => Promise<void>,
 ): Promise<{ readonly decision?: Decision; readonly failure?: string }> {
 	const root = await harness.root(context);
 	const set = request.questionSet.name;
@@ -1395,7 +1396,7 @@ async function triage(
 		const entry = (await harness.snapshot(DecisionDocument, root.id, context))?.decisions[revision]?.[set];
 		const record = entry === undefined ? undefined : await harness.getTask(entry.task as TaskId, context);
 		const attaches = entry?.key === key && !(rerun && entry.decision === undefined) && finished(record, undecided);
-		if (!attaches) await unlockModels();
+		if (!attaches) await unlockModels(providers);
 	}
 	let replaced: number | undefined;
 	const taskId = await root.commit(async (tx) => {
@@ -1538,8 +1539,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const nonce = reviewNonce();
 	let headFunctions: Promise<EnclosingFunctions> | undefined;
 	const enclosing = () => (headFunctions ??= EnclosingFunctions.read(changeset));
-	let unlocking: Promise<void> | undefined;
-	const unlockModels = options.unlockModels === undefined ? undefined : () => (unlocking ??= options.unlockModels!());
+	const { unlockModels } = options;
 	const prompt = new ChangePrompt(changeset, nonce);
 	const { repoRoot, revision } = changeset;
 	const { base, head } = revision;
@@ -1614,6 +1614,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					triageInput.cut,
 					options.rerun === true,
 					context,
+					options.triageProviders ?? [],
 					unlockModels,
 				);
 	const choices = new Map(

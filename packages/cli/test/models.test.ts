@@ -11,6 +11,8 @@ import {
 	Lens,
 	type LoadedConfig,
 	type MelianConfig,
+	type NamedCredential,
+	ReviewPlan,
 	userFiles,
 } from "@melian-agent/core";
 import { buildGoldenRepository, loadGoldens } from "@melian-agent/evals";
@@ -19,12 +21,14 @@ import {
 	createFakeModels,
 	type FakeModels,
 	fauxAssistantMessage,
+	fauxToolCall,
 	scriptConversations,
+	scriptVerifier,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { count, crashRepository, readEvents } from "../../pipeline/test/fixtures/review-scenario.ts";
+import { count, crashFinding, crashRepository, readEvents } from "../../pipeline/test/fixtures/review-scenario.ts";
 import { main } from "../src/main.ts";
-import { decisionProviderRefusal, fallbackDecider, reviewModels, Triage, triageProviders } from "../src/models.ts";
+import { decisionProviderRefusal, fallbackDecider, reviewModels, Triage } from "../src/models.ts";
 import * as repository from "../src/repository.ts";
 
 const models: MelianConfig["models"] = {
@@ -106,29 +110,6 @@ describe("decisionProviderRefusal", () => {
 
 		expect(refusal).toContain("decisions.provider to evil\\u001b[31m\\u000aforged,");
 		expect(refusal).not.toMatch(/[\u001b\n]/);
-	});
-});
-
-describe("triageProviders", () => {
-	it("names the providers of every routed lens tier, which the fallback may ask", async () => {
-		const routedTiers = loadedOf({
-			light: { model: "openai/gpt-5.5" },
-			heavy: { model: "anthropic/claude-opus-5-5" },
-		});
-		const { plan } = await reviewModels({}, routedTiers, [], {
-			...setup,
-			credentials: [
-				{ name: "o", provider: "openai", type: "api_key", value: { kind: "literal", key: "sk-o" }, file: "f" },
-				{
-					name: "a",
-					provider: "anthropic",
-					type: "api_key",
-					value: { kind: "literal", key: "sk-a" },
-					file: "f",
-				},
-			],
-		});
-		expect(triageProviders(plan)).toEqual(["openai", "anthropic"]);
 	});
 });
 
@@ -232,7 +213,7 @@ describe("Triage", () => {
 					name: "vault",
 					provider: "openai",
 					type: "api_key",
-					value: { kind: "command", command: `touch ${marker}; echo sk-key` },
+					value: { kind: "command", command: `echo run >> ${marker}; echo sk-key` },
 					file: "f",
 				},
 				{
@@ -250,29 +231,36 @@ describe("Triage", () => {
 
 	it("hands the decider to the harness and the review, and unlocks the providers triage may ask on demand", async () => {
 		const configs: MelianConfig[] = [];
-		const { triage, marker, plan } = await opened({
+		const { triage, marker, lensMarker, plan } = await opened({
 			scripted: false,
 			decide: async (config) => {
 				configs.push(config);
-				return { decider, model: "fake" };
+				return { decider, model: "openai/gpt-5.5" };
 			},
 		});
 
 		expect(triage.harnessOptions()).toEqual({ decider });
-		expect(triage.reviewOptions()).toEqual({ decider, unlockModels: expect.any(Function) });
+		expect(triage.reviewOptions()).toEqual({
+			decider,
+			triageProviders: ["openai"],
+			unlockModels: expect.any(Function),
+		});
 		expect(existsSync(marker)).toBe(false);
-		await triage.reviewOptions().unlockModels();
+		await triage.reviewOptions().unlockModels(triage.reviewOptions().triageProviders);
 		expect(existsSync(marker)).toBe(true);
+		expect(existsSync(lensMarker)).toBe(false);
 		expect(configs[0]!.models).toEqual(plan.routes());
 	});
 
 	it("runs the providers' commands once, however often a review and its walkthrough unlock", async () => {
-		const { triage, marker } = await opened({ scripted: false, decide: async () => ({ decider, model: "fake" }) });
+		const { triage, marker } = await opened({
+			scripted: false,
+			decide: async () => ({ decider, model: "openai/gpt-5.5" }),
+		});
 
-		const first = triage.unlockModels();
-		expect(triage.unlockModels()).toBe(first);
-		await first;
-		expect(existsSync(marker)).toBe(true);
+		await triage.unlockModels(["openai"]);
+		await triage.unlockModels(["openai"]);
+		expect(readFileSync(marker, "utf8")).toBe("run\n");
 	});
 
 	it("unlocks the light tier's command credential for a plan with no lens, once", async () => {
@@ -293,32 +281,168 @@ describe("Triage", () => {
 		const triage = await Triage.create({ scripted: false, config: defaultConfig, plan, models });
 
 		expect(plan.lenses).toHaveLength(0);
-		await triage.unlockModels();
-		await triage.unlockModels();
+		expect(triage.reviewOptions().triageProviders).toEqual([]);
+		expect(triage.decider).toBeUndefined();
+		await triage.unlockModels(["openai"]);
+		await triage.unlockModels(["openai"]);
 		expect(readFileSync(marker, "utf8")).toBe("run\n");
+	});
+
+	it("unlocks no provider for a custom decider without a model reference", async () => {
+		const { triage } = await opened({ scripted: false, decide: async () => ({ decider, model: "custom" }) });
+		expect(triage.reviewOptions().triageProviders).toEqual([]);
 	});
 
 	it("says why triage did not run to the review, and gives the harness no decider", async () => {
 		const { triage } = await opened({ scripted: false, decide: async () => ({ skipped: "no model" }) });
 
 		expect(triage.harnessOptions()).toEqual({});
-		expect(triage.reviewOptions()).toEqual({ triageSkipped: "no model", unlockModels: expect.any(Function) });
+		expect(triage.reviewOptions()).toEqual({
+			triageSkipped: "no model",
+			triageProviders: [],
+			unlockModels: expect.any(Function),
+		});
 	});
 
-	it("triages nothing and unlocks the lens and verifier providers under a script", async () => {
-		const decide = vi.fn(async () => ({ decider, model: "fake" }));
+	it("triages nothing and unlocks only the concrete lens route under a script", async () => {
+		const decide = vi.fn(async () => ({ decider, model: "openai/gpt-5.5" }));
 		const { triage, marker, lensMarker, plan } = await opened({ scripted: true, decide });
 
 		expect(plan.lenses).toHaveLength(1);
 		expect(plan.providers()).toEqual(["anthropic", "openai"]);
 		expect(triage.harnessOptions()).toEqual({});
-		expect(triage.reviewOptions()).toEqual({ unlockModels: expect.any(Function) });
+		expect(triage.reviewOptions()).toEqual({ triageProviders: [], unlockModels: expect.any(Function) });
 		expect(existsSync(lensMarker)).toBe(false);
 		expect(existsSync(marker)).toBe(false);
-		await triage.unlockModels();
+		await triage.unlockModels(["anthropic"]);
 		expect(existsSync(lensMarker)).toBe(true);
-		expect(existsSync(marker)).toBe(true);
+		expect(existsSync(marker)).toBe(false);
 		expect(decide).not.toHaveBeenCalled();
+	});
+});
+
+describe("task credential routes", { timeout: 60_000 }, () => {
+	it.each([false, true])("unlocks each route at its request, with candidates=%s", async (candidate) => {
+		const repo = crashRepository();
+		const dir = mkdtempSync(join(tmpdir(), "melian-task-credentials-"));
+		const providers = ["triage-route", "lens-route", "unused-deep", "verifier-route"];
+		const markers = providers.map((provider) => join(dir, provider));
+		const marked = () => markers.map((marker) => existsSync(marker));
+		const credentials: NamedCredential[] = providers.map((provider, index) => ({
+			name: provider,
+			provider,
+			type: "api_key",
+			file: "f",
+			value: { kind: "command", command: `echo run >> ${markers[index]}; echo test-key` },
+		}));
+		const fake = createFakeModels({
+			provider: providers[0],
+			models: [{ id: "model" }],
+			credentials,
+			authPath: join(dir, "absent"),
+		});
+		const fakes = [
+			fake,
+			...providers
+				.slice(1)
+				.map((provider) => createFakeModels({ provider, models: [{ id: "model" }], credentials }, fake.review)),
+		];
+		const config: MelianConfig = {
+			...defaultConfig,
+			tiers: { full: ["lens.correctness"] },
+			models: Object.fromEntries(
+				["light", "medium", "heavy", "verifier"].map((tier, index) => [
+					tier,
+					{ model: `${providers[index]}/model` },
+				]),
+			),
+			lenses: { correctness: { level: { floor: "quick", ceiling: "quick" } } },
+		};
+		let harness: pipeline.ReviewHarness | undefined;
+		try {
+			const changeset = await Changeset.resolve(repo, "main...feature");
+			const lenses = (await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"]))
+				.filter((lens) => lens.name === "correctness")
+				.map((lens) =>
+					Lens.from({
+						...lens.toJSON(),
+						levels: { ...lens.levels, quick: { ...lens.level("quick"), verify: true } },
+					}),
+				);
+			const plan = ReviewPlan.resolve({
+				config,
+				lenses,
+				checks: ["lens.correctness"],
+				routes: { committed: config.models, overridden: {}, lensTiers: {}, retiered: {} },
+				...(await pipeline.planInputs(fake.review)),
+			});
+			const triage = await Triage.create({ scripted: false, config, plan, models: fake.review });
+			expect(marked()).toEqual([false, false, false, false]);
+			scriptConversations(fakes[0]!, [
+				{
+					match: "You answer typed questions about a code change",
+					replies: [
+						() => {
+							expect(marked()).toEqual([true, false, false, false]);
+							return fauxAssistantMessage(
+								fauxToolCall("answer", {
+									answers: [{ question: "correctness", probabilities: [{ option: "quick", probability: 1 }] }],
+								}),
+								{ stopReason: "toolUse" },
+							);
+						},
+					],
+				},
+			]);
+			scriptConversations(fakes[1]!, [
+				{
+					match: "You are the correctness reviewer",
+					replies: [
+						() => {
+							expect(marked()).toEqual([true, true, false, false]);
+							return candidate
+								? fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" })
+								: fauxAssistantMessage("Done.");
+						},
+						fauxAssistantMessage("Done."),
+					],
+				},
+			]);
+			scriptConversations(fakes[3]!, [
+				{
+					match: "Melian adversarial verifier",
+					replies: [
+						(messages) => {
+							expect(marked()).toEqual([true, true, false, true]);
+							return scriptVerifier(messages, {});
+						},
+						fauxAssistantMessage("Done."),
+					],
+				},
+			]);
+			harness = await pipeline.ReviewHarness.open(pipeline.createMemoryStorage(), fake.review, {
+				retry: false,
+				...triage.harnessOptions(),
+			});
+			await pipeline.reviewChangeset({
+				harness: harness.harness,
+				models: fake.review,
+				config,
+				plan,
+				changeset,
+				lenses,
+				standards: [],
+				checks: [],
+				...triage.reviewOptions(),
+			});
+			expect(marked()).toEqual([true, true, false, candidate]);
+			await triage.unlockModels(["triage-route"]);
+			expect(readFileSync(markers[0]!, "utf8")).toBe("run\n");
+		} finally {
+			await harness?.close();
+			rmSync(repo, { recursive: true, force: true });
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });
 

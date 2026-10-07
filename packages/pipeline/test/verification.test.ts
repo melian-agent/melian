@@ -1086,7 +1086,7 @@ describe("the verifier", () => {
 		failing();
 		const first = unlocks();
 		await expect(review(false, undefined, false, first.unlock)).rejects.toMatchObject({ code: "verifierFailed" });
-		expect(first.calledAfter).toEqual([0]);
+		expect(first.calledAfter).toEqual([0, 2]);
 
 		const repeat = unlocks();
 		await expect(review(false, undefined, false, repeat.unlock)).rejects.toMatchObject({ code: "verifierFailed" });

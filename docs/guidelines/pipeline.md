@@ -516,3 +516,5 @@ ToolCache.open and readiness create no directories. Materialisation creates its 
 CacheScratch gives fetch, graph and coverage writes process-owned temporary names. Every cache open sweeps dead owners. ESRCH proves absence; EPERM does not, so denied probes keep the writer’s paths. Symlinks and published tool entries are never traversed. Legacy scratch without process ownership has a one-day grace period. Concurrent disappearance is harmless. The sweep is best effort: a failure to read, stat or remove an entry skips it and never fails the open, so a read-only cache still opens.
 
 A file-handle read stream may call close on destruction even with autoClose disabled. To prove the explicit verification finally closes a handle, refuse its stat before creating the stream.
+
+Credential unlocks follow concrete task routes. The host’s `unlockModels(providers)` receives the chosen triage provider, selected lens routes, candidate verifier routes, or the walkthrough’s light provider. A finished task needs no unlock. The host unlocks live tasks’ stored providers before any wait resumes them. The credential store caches each command per process.
