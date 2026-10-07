@@ -140,7 +140,8 @@ export async function review(
 	const selected = new Set(Lens.select(lenses, loaded, paths).map(({ lens }) => `${lens.name}\0${lens.scope}`));
 	const credentialPlan = plan.toJSON();
 	credentialPlan.lenses = credentialPlan.lenses.filter((lens) => selected.has(`${lens.name}\0${lens.scope ?? ""}`));
-	// A command a secrets file names runs now, so one that fails stops the review before it starts, named.
+	// A command a secrets file names runs when a task first needs a model, so a repeat review that spends no tokens
+	// runs none. Triage unlocks the providers just before that point, and failing there names the credential.
 	const triage = await Triage.create({
 		scripted: isScripted(io.env) && io.decide === undefined,
 		config: loaded,
