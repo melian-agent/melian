@@ -12,7 +12,15 @@ const mutant = Type.Object({
 	static: Type.Optional(Type.Boolean()),
 	location: Type.Object({ start: position, end: position }),
 });
-const report = Type.Object({ files: Type.Record(Type.String(), Type.Object({ mutants: Type.Array(mutant) })) });
+// The options Stryker ran with, which it writes into its report.
+const settings = Type.Object({
+	ignoreStatic: Type.Optional(Type.Boolean()),
+	mutator: Type.Optional(Type.Object({ excludedMutations: Type.Optional(Type.Array(Type.String())) })),
+});
+const report = Type.Object({
+	config: Type.Optional(settings),
+	files: Type.Record(Type.String(), Type.Object({ mutants: Type.Array(mutant) })),
+});
 
 // Survived and NoCoverage are findings. These are set aside with a note: a mutant that hangs, or breaks the build or the
 // run, shows the mutated code behaves differently, but no test said so by name.
@@ -20,14 +28,12 @@ const setAside: ReadonlySet<string> = new Set(["Timeout", "RuntimeError", "Compi
 // The states a finished run leaves a mutant in. Anything else, such as Pending, means it did not judge every mutant.
 const known: ReadonlySet<string> = new Set(["Killed", "Ignored", "Survived", "NoCoverage", ...setAside]);
 
-// The reasons Stryker 10.0.0 gives for a mutant that the `ignoreStatic` setting or the `excludedMutations` setting ignores
-// (core's mutant-test-planner and instrumenter's babel-transformer). Any other reason, such as the one a `// Stryker
-// disable` comment gives, or none, is the head's own text choosing what the judge skips.
-const staticReason = 'Static mutant (and "ignoreStatic" was enabled)';
-const excludedReason = /^Ignored because of excluded mutation ".*"$/;
-
-function ignoredByConfiguration(reason: string | undefined): boolean {
-	return reason === staticReason || excludedReason.test(String(reason));
+// Whether a setting in the run's own configuration, which is a policy file a maintainer reads, ignored this mutant. The
+// mutant's `statusReason` is not evidence: a `// Stryker disable` comment can carry any text, including the one a setting
+// gives. The report's `config` and the mutant's own `static` flag and mutator name are Stryker's, not the head's text.
+function ignoredByConfiguration(each: Static<typeof mutant>, config: Static<typeof settings> | undefined): boolean {
+	if (config?.ignoreStatic === true && each.static === true) return true;
+	return config?.mutator?.excludedMutations?.includes(each.mutatorName) === true;
 }
 
 // Under `ignoreStatic`, a mutant that code outside any test also reaches, such as a `beforeAll` hook, a `describe` body, or
@@ -105,7 +111,7 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 	}
 	const problem = Value.Errors(report, parsed)[0];
 	if (problem !== undefined) throw invalid(`${problem.instancePath} ${problem.message}`);
-	const { files } = parsed as Static<typeof report>;
+	const { files, config } = parsed as Static<typeof report>;
 	for (const file of Object.values(files))
 		for (const each of file.mutants)
 			if (!known.has(each.status)) throw invalid(`mutant status ${each.status} is not one Stryker ends a run with`);
@@ -125,7 +131,7 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 				aside.set(each.status, (aside.get(each.status) ?? 0) + 1);
 				continue;
 			}
-			if (each.status === "Ignored" && ignoredByConfiguration(each.statusReason)) {
+			if (each.status === "Ignored" && ignoredByConfiguration(each, config)) {
 				const lines = configured.get(path) ?? new Set<number>();
 				lines.add(start.line);
 				configured.set(path, lines);
