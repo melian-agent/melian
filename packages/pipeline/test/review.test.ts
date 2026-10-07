@@ -19,6 +19,7 @@ import {
 	type RepositorySource,
 	type Verdict,
 } from "@melian-agent/core";
+import { RecordedDecider } from "@melian-agent/decisions";
 import {
 	CallerContext,
 	ChangePrompt,
@@ -42,7 +43,6 @@ import {
 	type TaskId,
 	upsertFinding,
 } from "@melian-agent/pipeline";
-import { RecordedDecider } from "@melian-agent/decisions";
 import {
 	createFakeModels,
 	type FakeModels,
@@ -1246,7 +1246,9 @@ describe("reviewChangeset", () => {
 			await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
 			lensesDone();
 			const quick = fake.ref("heavy");
-			const careful = createFakeModels({ provider: "escalated", models: [{ id: "heavy" }] }, fake.review).ref("heavy");
+			const careful = createFakeModels({ provider: "escalated", models: [{ id: "heavy" }] }, fake.review).ref(
+				"heavy",
+			);
 			const unlockModels = vi.fn(async (_providers: readonly string[]) => {});
 			const escalating = {
 				...config,
