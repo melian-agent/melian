@@ -68,6 +68,7 @@ interface Mutant {
 	endLine?: number;
 	mutatorName?: string;
 	replacement?: string;
+	reason?: string;
 }
 
 function report(files: Record<string, Mutant[]>): string {
@@ -84,6 +85,7 @@ function report(files: Record<string, Mutant[]>): string {
 						mutatorName: mutant.mutatorName ?? "ConditionalExpression",
 						replacement: mutant.replacement ?? "true",
 						status: mutant.status,
+						...(mutant.reason === undefined ? {} : { statusReason: mutant.reason }),
 						location: {
 							start: { line: mutant.line, column: 3 },
 							end: { line: mutant.endLine ?? mutant.line, column: 9 },
@@ -454,15 +456,34 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			expect(findings.map((finding) => finding.properties.path)).toEqual([route]);
 		});
 
-		it("notes an Ignored mutant on a changed line, naming the line", async () => {
+		it("makes an Ignored mutant on a changed line a P2 mutation/ignored-mutant finding with Stryker's reason, and nothing off it", async () => {
 			const { base, head } = twoCommits();
-			stryker({ report: report({ "packages/p/src/a.ts": [{ status: "Ignored", line: 2 }] }) });
-			const result = await mutate(base, head);
-			if (result.status !== "ran") throw new Error("skipped");
-			expect(result.log.runs[0].results).toEqual([]);
-			expect(result.notes).toContain(
-				"packages/p/src/a.ts: line 2 had mutants Stryker ignored, as the head's own comment or configuration told it to, so they were not judged.",
-			);
+			stryker({
+				report: report({
+					"packages/p/src/a.ts": [
+						{ status: "Ignored", line: 2, reason: "Ignored by a Stryker disable comment" },
+						{ status: "Ignored", line: 500, reason: "Static mutant" },
+					],
+				}),
+			});
+			const findings = await found(base, head);
+			expect(
+				findings.map((finding) => [
+					finding.ruleId,
+					finding.properties.severity,
+					finding.properties.path,
+					finding.locations[0]!.physicalLocation.region.startLine,
+					finding.properties.explanation.what,
+				]),
+			).toEqual([
+				[
+					"mutation/ignored-mutant",
+					"P2",
+					"packages/p/src/a.ts",
+					2,
+					"Stryker ignored the mutants of this changed line, so no test was asked about them (Ignored by a Stryker disable comment).",
+				],
+			]);
 		});
 	});
 

@@ -516,6 +516,27 @@ describe("this repository's own policy", () => {
 	});
 });
 
+describe("this repository's own Stryker disable policy scope", () => {
+	it("reads source files and not test files, whose text may quote the phrase", async () => {
+		const own = readFileSync(new URL("../../../melian.yaml", import.meta.url), "utf8");
+		const quoted = lines("export const a = 1;", "// Stryker disable next-line all", "export const b = 2;");
+		const { findings } = await guardrails(
+			{ "melian.yaml": own },
+			{
+				"packages/p/src/a.ts": quoted,
+				"packages/p/test/a.ts": quoted,
+				"packages/p/src/a.test.ts": quoted,
+				"packages/p/src/a.spec.ts": quoted,
+			},
+		);
+		expect(
+			summary(findings)
+				.filter((finding) => finding.rule === "guardrail/forbidden-patterns")
+				.map((finding) => finding.file),
+		).toEqual(["packages/p/src/a.ts"]);
+	});
+});
+
 describe("policy-change-review", () => {
 	it("reports each policy and standards file the revision changes", async () => {
 		const { findings } = await guardrails(

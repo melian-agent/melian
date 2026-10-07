@@ -8,6 +8,7 @@ const mutant = Type.Object({
 	mutatorName: Type.String(),
 	replacement: Type.Optional(Type.String()),
 	status: Type.String(),
+	statusReason: Type.Optional(Type.String()),
 	location: Type.Object({ start: position, end: position }),
 });
 const report = Type.Object({ files: Type.Record(Type.String(), Type.Object({ mutants: Type.Array(mutant) })) });
@@ -96,7 +97,7 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 			if (!known.has(each.status)) throw invalid(`mutant status ${each.status} is not one Stryker ends a run with`);
 	const results: ToolResult[] = [];
 	const aside = new Map<string, number>();
-	const ignored = new Map<string, Set<number>>();
+	const ignored = new Map<string, Map<number, string>>();
 	const mutated = new Set<string>();
 	for (const [path, file] of Object.entries(files)) {
 		if (file.mutants.length > 0) mutated.add(path);
@@ -110,7 +111,9 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 				continue;
 			}
 			if (each.status === "Ignored") {
-				ignored.set(path, (ignored.get(path) ?? new Set()).add(start.line));
+				const lines = ignored.get(path) ?? new Map<number, string>();
+				if (!lines.has(start.line)) lines.set(start.line, each.statusReason ?? "Stryker gives no reason");
+				ignored.set(path, lines);
 				continue;
 			}
 			if (each.status === "Killed") continue;
@@ -144,6 +147,33 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 			});
 		}
 	}
+	// The head's own comments and configuration choose what Stryker ignores, so an ignored mutant is never read as caught: a
+	// maintainer acknowledges or dismisses it.
+	for (const [path, lines] of ignored) {
+		for (const [line, reason] of lines) {
+			results.push({
+				ruleId: "ignored-mutant",
+				level: "error",
+				message: {
+					text: `Stryker ignored the mutants of this changed line, so no test was asked about them (${reason}).`,
+				},
+				advice: {
+					whyHere:
+						"The head's own comment or configuration told Stryker not to judge this changed line, so a guard here would stay unproven.",
+					whatToDo:
+						"Remove the comment or configuration that excludes this line and test the behaviour, or acknowledge the exclusion if it is deliberate.",
+				},
+				locations: [
+					{
+						physicalLocation: {
+							artifactLocation: { uri: path.split("/").map(encodeURIComponent).join("/") },
+							region: { startLine: line },
+						},
+					},
+				],
+			});
+		}
+	}
 	results.sort((a, b) => {
 		const [left, right] = [a, b].map((result) => result.locations[0]!.physicalLocation);
 		return (
@@ -156,13 +186,6 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 		([status, count]) =>
 			`${count} ${status} mutant(s) on changed lines were set aside: a hang or a crash is not a survivor, so no finding is raised for it.`,
 	);
-	// The head's own comments and configuration choose what Stryker ignores, so an ignored mutant is never read as caught.
-	for (const [path, lines] of ignored) {
-		const named = [...lines].sort((a, b) => a - b).join(", ");
-		notes.push(
-			`${path}: line ${named} had mutants Stryker ignored, as the head's own comment or configuration told it to, so they were not judged.`,
-		);
-	}
 	// A path in `--mutate` is a glob, so one that matches no file leaves a report that reads as clean.
 	for (const path of Object.keys(run.lines)) {
 		if (!mutated.has(path)) notes.push(`${path} produced no mutants, so nothing on its changed lines was judged.`);
