@@ -1,0 +1,3 @@
+# Round eight on the adjudication branch
+
+[Pull request #72](https://github.com/melian-agent/melian/pull/72), Melian's eighth round. `compare stats --since` now rejects an impossible calendar day in a timed value too: `2026-02-31T00:00:00Z` used to roll into March and silently narrow the set. A unit test pins the unscripted state directory that `compare stats` and `compare backlog` read, which every earlier test left scripted. The `compared` and `verdictOf` helpers in the core comparison test take an object, so no test helper takes a domain array first. The branch merged `main` after [pull request #91](https://github.com/melian-agent/melian/pull/91); the plan keeps main's lines, with this branch's step 15 facts added.

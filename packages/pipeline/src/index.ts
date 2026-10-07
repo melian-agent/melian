@@ -12,6 +12,7 @@ export {
 	CompareError,
 	type CompareErrorCode,
 	CompareHarness,
+	ComparisonReader,
 	type ImportedSource,
 } from "./compare.ts";
 export {

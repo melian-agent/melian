@@ -24,8 +24,8 @@ Behaviour belongs to the object it is about, as [AGENTS.md](../../AGENTS.md) say
 | `Lens` | `Lens.load(repoRoot, source, paths)`, `Lens.from(fields)`; `Lens.select(lenses, config, paths)` picks a review's lenses | `level(level)`, `declaredLevels()`, `runnableLevels(band, routed)`, `unrunnable(band, unrouted)`, `triageQuestion(band, levels)`, `triage(band, levels, decision?)`, `escalation(level, band)`, `renderInstructions(standards, level, neighbours, quote, standardsSource)`, `oversizedHandoffs(neighbours)`, `inversions()`, `toJSON()` |
 | `Revision` | `Revision.from({ head, base, files })`, deriving `policyFiles` unless given | `paths()`, `diffLines()`, `trigger(path, startLine, endLine)`, `changeOverlap(location, findingFile?)`, `causeOverlap(site, findingFile?)`, `classifyCause(location, evidence?)`, `toJSON()` |
 | `Changeset` | `Changeset.resolve(repoRoot, range, options)` from git, `Changeset.from(fields)` from a task's input | `withId(id)`, `toJSON()` |
-| `ExternalFinding` | `ExternalFinding.create(input)` from an importer's values, `ExternalFinding.fromFile(value, path)` from a reviewer's file, `ExternalFinding.from(stored)` trusting what Melian stored | `site()`, `meetsFinding(finding)`, `meets(other)`, `sameReviewer(other)`, `compareSite(other)`, `where()`, `by()`, `toJSON()` |
-| `Comparison` | `Comparison.of(revision)` empty, `Comparison.from(stored)` from the pipeline's document | `import(source, imported, at)`, `compare(verdict)`, `match(external, melian, by, at)`, `unmatch(...)`, `externalFindings()`, `externalFinding(id)`, `melianFindings()`, `effectiveMatches()`, `importsBySource()`, `groups()`, `matched()`, `externalOnly()`, `melianOnly()`, `ambiguous()`, `render(verdict, skippedBodies?)`, `toJSON()` |
+| `ExternalFinding` | `ExternalFinding.create(input)` from an importer's values, `ExternalFinding.fromFile(value, path)` from a reviewer's file, `ExternalFinding.importFile(value, path)` with the skipped-body count, `ExternalFinding.from(stored)` trusting what Melian stored | `site()`, `meetsFinding(finding)`, `meets(other)`, `sameReviewer(other)`, `compareSite(other)`, `where()`, `by()`, `toJSON()` |
+| `Comparison` | `Comparison.of(revision)` empty, `Comparison.from(stored)` from the pipeline's document | `import(source, imported, at)`, `compare(verdict)`, `match(external, melian, by, at)`, `unmatch(...)`, `externalFindings()`, `externalFinding(id)`, `melianFindings()`, `effectiveMatches()`, `importsBySource()`, `groups()`, `matched()`, `externalOnly()`, `melianOnly()`, `ambiguous()`, `render(verdict, skippedBodies?)`, `adjudicate(id, input)`, `adjudication(id)`, `adjudications()`, `judgedIncludingWithdrawn()`, `holds(id)`, `stats()`, `needsReason(id)`, `judgement(id)`, `backlog()`, `repeats(verdict?)`, `record(at, target?)`, `recordedAt()`, `label()`, `toJSON()` |
 
 `Adjudication` holds a review's findings, its `Manifest`, and its configuration, and `adjudicate()` decides the `Verdict`. `Rendering` holds the terminal options that `finding.render(rendering)`, `log.render(rendering)`, and `verdict.render(rendering)` share, `ids`, `all`, and `paint()` for colour, so each object renders itself and no method takes the object it renders as a parameter. A verdict renders each resolution group as a `FindingsLog`, through `log.files(rendering)`.
 
@@ -611,7 +611,29 @@ type StoredComparison = {
 	melian: string[]; // the IDs of the stored review's shown and dismissed findings: read from it, never copied
 	matches: { external: string; melian: string; kind: "site" | "hand"; by?: string; at?: string }[];
 	unmatches: { external: string; melian: string; by: string; at: string }[];
-	imports: Record<string, { at: string; ids: string[]; skippedBodies: number }>; // the last import, by source
+	imports: Record<string, StoredComparisonImport>; // the last import, by source
+	adjudications?: Record<string, { current: StoredComparisonAdjudication; history: StoredComparisonAdjudication[] }>; // by finding ID, external or Melian's
+	createdAt?: string; // when the first round was compared; reruns keep it
+	target?: string; // the range or pull request the host named, for labels
+};
+
+type StoredComparisonImport = {
+	at: string;
+	ids: string[];
+	skippedBodies: number;
+	reviewers?: ExternalReviewer[]; // who the source covered, kept when it held no findings
+};
+
+type StoredComparisonAdjudication = {
+	verdict: "valid" | "noise" | "duplicate";
+	by: string;
+	at: string;
+	severity?: Severity;
+	of?: string; // the finding a duplicate repeats
+	reason?: "owned-missed" | "no-owner" | "needs-execution" | "out-of-scope"; // for a valid external finding Melian missed
+	golden?: string; // the lens owed a golden, or "none"
+	rule?: string;
+	note?: string;
 };
 
 type StoredExternalFinding = {
@@ -639,7 +661,7 @@ type StoredExternalFinding = {
 };
 ```
 
-A source is named by a string: `github:<login>` for a pull request's review threads, `file:<path>` for a file. Adjudication, statistics, the backlog, and export, the later items of step 15, read this shape; adjudication adds a field of its own beside `matches`, so a comparison stored now still reads. `Comparison` carries a top-level field it does not know through every change and back out of `toJSON()`. Problem: an older binary that read a newer comparison and wrote it back would drop the newer field, such as the maintainer's adjudications. Solution: unknown fields survive, so only the binary that knows a field ever changes it.
+A source is named by a string: `github:<login>` for a pull request's review threads, `file:<path>` for a file. Adjudication, statistics, the backlog, and export, the later items of step 15, read this shape; adjudication adds an optional field beside the matches, so a comparison stored now still reads. `Comparison` carries a top-level field it does not know through every change and back out of `toJSON()`. Problem: an older binary that read a newer comparison and wrote it back would drop the newer field, such as the maintainer's adjudications. Solution: unknown fields survive, so only the binary that knows a field ever changes it.
 
 Melian's findings are referenced by ID only. Problem: a copy of each finding would go stale when a dismissal decides the verdict again, and it would duplicate the snippets that quote the repository. Solution: `comparison.compare(verdict)` records the IDs of the stored review's findings each time it runs, and a reader takes the findings from the review. It takes those that need attention and those dismissed. The renderer marks dismissed findings in both the matched and Melian-only groups when given the verdict. A silent finding was never shown to the author, so it takes no part in matching or counts: a nit Melian kept quiet is neither a match for a reviewer's comment nor a Melian-only finding.
 
@@ -676,6 +698,24 @@ An external finding with no file or line, an `outdated` one, and one on the base
 
 `comparison.groups()` counts each defect once. Each Melian finding is one group, with every external finding matched with it, so three reviewers at one Melian finding are one matched defect. An external finding that matches two Melian findings sits in both groups and never joins them. Problem: grouping by union joined two Melian findings through one external finding near both, and chained one reviewer's findings into a single defect. Solution: external findings that match nothing grow groups in site order, and one joins the first group holding a finding it meets and none from its own reviewer, a reviewer being its name and login. So a group holds at most one finding from each reviewer, as two reports from one check stay two. An unmatched finding never joins a Melian finding's group through another reviewer's match, so an unmatch holds. `matched()`, `externalOnly()`, and `melianOnly()` read the groups. Problem: an external finding near two Melian findings sits in both groups, so counting groups counted it twice and gave one reviewer's comment double weight. Solution: `comparison.render(verdict)` counts matched external findings by distinct ID and reports the distinct Melian findings they cover beside them, as `Matched: 1 external finding, covering 2 Melian findings`. `comparison.ambiguous()` lists each external finding with several matches and at least one site match. The render lists them for the maintainer to match or unmatch by hand, since proximity cannot say which defect the reviewer meant. A hand match settles only its own pair. A finding matched entirely by hand is the maintainer's choice and is not ambiguous. The render lists every external finding's ID, reviewer, and site. Matched findings sit under the ID of each Melian finding they matched. The render computes the groups once and prints through `visibleText`, as every terminal renderer does.
 
+### Comparison judgements
+
+The comparison module's `Adjudication` is exported as `ComparisonAdjudication`, beside the review's existing `Adjudication`. It wraps stored JSON through `from`, validates maintainer input through `create`, and writes it through `toJSON`.
+
+`comparison.adjudicate(id, judgement)` records valid, noise, or duplicate for an external or Melian finding. A valid external-only finding needs a miss reason. A duplicate names another finding through `--of <id>`; it costs its reviewer recall as well as precision. Omitting `--golden` preserves existing debt. `adjudication(id)` reads its current judgement and history; `adjudications()` lists judgements of findings still present. Each record holds `current` and `history`, oldest first. A replacement keeps the prior author, time, and fields. Replaying identical input changes nothing. Withdrawing a finding keeps its judgement in storage but removes it from summaries.
+
+The optional `adjudications` field is additive. The comparison document stays at version 1; older comparisons read with no judgements. Unknown top-level fields still survive writes. Notes hold at most 1,000 characters. Judging a Melian finding noise never dismisses it or changes its verdict.
+
+### Statistics and export
+
+`Comparison.stats()` counts valid distinct groups per revision and precision over explicit report judgements. Noise and duplicate reports cost precision. Each import retains its participants, even when it reports nothing. Recall skips a reviewer in a group while its report is pending or ambiguous. A valid external finding that loses its match needs a miss reason before it enters either metric again. Stats reports these reasonless valid misses separately. An `out-of-scope` external-only group stays outside Melian's recall denominator. Ambiguous pairings wait outside recall matching and appear as pending matches, while explicit verdicts still count for precision. Empty denominators give 1, beside raw counts.
+
+`ComparisonSet` sums raw counts before dividing. It groups reviewer names and case-folded logins, ignoring version. `select({ since, last })` selects whole changesets by first comparison time; all their rounds stay. `backlog()` takes the latest judgement per changeset and finding. `candidates()` clusters valid external findings Melian missed by explicit rule tag or normalised title; two changesets qualify, two rounds of one do not. `Comparison.repeats(verdict)` still describes Melian's adjudicated findings. Filters narrow the reviewer tables alone; the miss breakdown, candidate checks, backlog, and drain use the whole clone.
+
+The optional `createdAt` records when comparison began; `target` keeps the CLI range or pull request argument. Older documents use the earliest import time and abbreviated revision as fallbacks. `record()` never moves the first time on a rerun.
+
+`ComparisonExport` owns markdown and JSON rendering over the comparisons and their stored verdicts. It uses one round per stored revision. Each imported participant gets a reviewer section, including a review with zero findings. A valid external finding awaiting a miss reason shows that pending reason beside its recorded golden lens. Reviewer text, paths, notes, and titles render as inert prose, with controls visible and markdown escaped. Markdown uses the six-column hand-written form, with no fix-commit column or drain notice. Summary cells hold a title and at most 300 characters of the first body paragraph, with newlines as spaces. Maintainer notes print names without author emails. JSON preserves the whole stored document. Its differences section carries the terminal match listing as escaped prose, including dismissal labels. Its fixed-record snapshot is `test/golden/comparison.md`.
+
 ## Tests
 
 - Test exported schemas directly at their bounds. Downstream validation or normalisation can hide a weakened schema when tests only call an importer.
@@ -688,7 +728,7 @@ An external finding with no file or line, an `outdated` one, and one on the base
 - Isolate git from the developer's configuration. `isolatedGitEnv` points `GIT_CONFIG_GLOBAL` at `/dev/null` and sets an author; without it, a developer who signs commits sees every fixture commit fail. Stub the same variables into `process.env` while code under test runs git.
 - Take temporary directories through `temporaryDirectory()`, which resolves symlinks. On macOS the system temporary directory is a symlink, and git reports the resolved path, so a comparison with the unresolved one fails.
 - Assert exact hunk ranges against a diff small enough to check by eye.
-- Golden files live in `test/golden/`, compared with Vitest's `toMatchFileSnapshot`. A mismatch fails the gate. After a deliberate change, regenerate with `npx vitest --run -u packages/core/test/render.test.ts` and read the diff before committing. They use `.sarif`, `.json`, and `.txt` extensions, which Biome does not format: its `files.includes` lists only code.
+- Golden files live in `test/golden/`, compared with Vitest's `toMatchFileSnapshot`. A mismatch fails the gate. After a deliberate change, regenerate with `npx vitest --run packages/core/test/render.test.ts --update` and confirm the reported file count, since Vitest 5 can consume a path placed after `-u`, and read the diff before committing. They use `.sarif`, `.json`, and `.txt` extensions, which Biome does not format: its `files.includes` lists only code.
 - Run every loader test against both sources with `describe.each(sourceKinds)`. `sourceFor(root, kind)` commits the working tree for a revision, so one body checks that the two agree. Test what only a revision guarantees, such as ignoring the checked-out branch, in a block of its own.
 - Await a rejection with `rejection(promise, ErrorClass)`, which fails unless the promise rejects with that class and returns the error typed.
 

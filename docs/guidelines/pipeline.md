@@ -409,6 +409,10 @@ Problem: a commit hands the document's value as a view of its own, and `structur
 
 Codex's companion script wraps the review in an envelope when asked for JSON, with the review output under `result`. The importer reads the review output only, so the agent that ran Codex saves that `result` field as the file. Teaching the importer the envelope would mean following a plugin's private shape, which differs between its commands; one sentence in the skills is smaller.
 
+`CompareHarness.adjudicate(revision, id, judgement)` searches all stored comparisons newest first in one commit. It refreshes each against its stored verdict, then records against the first round holding the ID. A missing `--golden` preserves the latest debt across rounds. It writes no lifecycle record and creates no task. The host supplies the git author and time. A failed validation rolls back the whole commit.
+
+`CompareHarness.all(changeset)` reads each comparison beside its stored verdict and refreshes the matches in memory. Its reads make no durable commit, but opening its harness can reconcile pending task state. The CLI uses `ComparisonReader` instead for stats, backlog, and export. It reads the documents through storage's detached read API, migrates older verdict values in memory, and opens no harness or scheduler. It refreshes each comparison against its stored verdict in memory. A later clean review removes stale matches and debt for absent Melian findings. It commits nothing and leaves pending tasks untouched. Pi's SQLite opener still configures WAL and checks or migrates the database schema; it needs writable storage. This is not a filesystem read-only mode. `importFindings` records the first comparison time and an optional target beside its import.
+
 ## Contracts that read like mistakes
 
 - A task phase reruns from its start after a crash. Work before the phase's checkpoint commit must be safe to repeat, or guarded by a durable record.

@@ -2,10 +2,19 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, truncateSync
 import * as fs from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Adjudication, ComparisonError, defaultConfig, ExternalFinding, Finding } from "@melian-agent/core";
+import {
+	Adjudication,
+	Comparison,
+	ComparisonError,
+	ComparisonSet,
+	defaultConfig,
+	ExternalFinding,
+	Finding,
+} from "@melian-agent/core";
 import {
 	CompareError,
 	CompareHarness,
+	ComparisonReader,
 	backgroundContext as context,
 	createMemoryStorage,
 	DismissHarness,
@@ -21,6 +30,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, adjudicationInput, VerdictDocument } from "../src/adjudication.ts";
 import { ComparisonDocument } from "../src/compare.ts";
 import { FindingsDocument } from "../src/findings.ts";
+import { defineDoc, defineTask } from "../src/harness.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 
 vi.mock("node:fs/promises", { spy: true });
@@ -56,6 +66,8 @@ async function storeReview(harness: CompareHarness, reviewFindings: readonly Fin
 		document.verdicts = { ...document.verdicts, [revisionKey(revision)]: verdict.toJSON() };
 	}, context);
 }
+
+const imported = (...each: ExternalFinding[]) => ({ findings: each, skippedBodies: 0 });
 
 function codex(line: number, position: number): ExternalFinding {
 	return ExternalFinding.create({
@@ -364,8 +376,18 @@ describe("CompareHarness", () => {
 			]),
 		);
 		expect(comparison.importsBySource()).toEqual({
-			"file:codex.json": { at: "t", ids: [external[0]!.id], skippedBodies: 0 },
-			"file:claude.json": { at: "t", ids: [external[1]!.id], skippedBodies: 0 },
+			"file:codex.json": {
+				at: "t",
+				ids: [external[0]!.id],
+				skippedBodies: 0,
+				reviewers: [{ name: "codex" }],
+			},
+			"file:claude.json": {
+				at: "t",
+				ids: [external[1]!.id],
+				skippedBodies: 0,
+				reviewers: [{ name: "claude-code" }],
+			},
 		});
 		expect((await harness.read(revision))?.toJSON()).toEqual(comparison.toJSON());
 	});
@@ -566,7 +588,11 @@ describe("FileImporter", () => {
 			const importer = await FileImporter.open("reviews/claude.json", { cwd: root, repoRoot: root });
 
 			expect(importer.source).toBe("file:reviews/claude.json");
-			expect(await importer.import()).toEqual({ findings: [], skippedBodies: 0 });
+			expect(await importer.import()).toEqual({
+				findings: [],
+				skippedBodies: 0,
+				reviewers: [{ name: "claude-code" }],
+			});
 			expect(realpath.mock.calls).toEqual([[path], [root]]);
 		} finally {
 			realpath.mockRestore();
@@ -652,7 +678,7 @@ describe("FileImporter", () => {
 		const importer = await FileImporter.open("limit.json", { cwd: root, repoRoot: root });
 
 		expect(importer.source).toBe("file:limit.json");
-		expect(await importer.import()).toEqual({ findings: [], skippedBodies: 0 });
+		expect(await importer.import()).toEqual({ findings: [], skippedBodies: 0, reviewers: [{ name: "human" }] });
 	});
 
 	it("refuses a file larger than maxReviewerFileBytes without reading it", async () => {
@@ -664,5 +690,471 @@ describe("FileImporter", () => {
 			code: "unreadable",
 			message: expect.stringContaining(`huge.json: it is larger than ${maxReviewerFileBytes} bytes`),
 		});
+	});
+});
+
+describe("comparison judgements", () => {
+	it("records author, time and replacement history without changing the verdict", async () => {
+		const harness = await memoryHarness();
+		await storeReview(harness);
+		const root = await harness.harness.root(context);
+		const before = await harness.harness.snapshot(VerdictDocument, root.id, context);
+		await harness.importFindings(revision, [], "2026-10-05T00:00:00Z");
+		const first = { verdict: "valid", by: "M", at: "2026-10-05T01:00:00Z" } as const;
+		await harness.adjudicate(revision, findings[0]!.id, first);
+		const second = { verdict: "noise", by: "N", at: "2026-10-05T02:00:00Z", golden: "correctness" } as const;
+		await harness.adjudicate(revision, findings[0]!.id, second);
+		expect((await harness.read(revision))?.adjudication(findings[0]!.id)).toEqual({
+			current: second,
+			history: [first],
+		});
+		expect(await harness.harness.snapshot(VerdictDocument, root.id, context)).toEqual(before);
+	});
+});
+
+describe("all stored comparisons", () => {
+	it("returns each revision with its review and first comparison time, without writing on read", async () => {
+		const harness = await memoryHarness();
+		await storeReview(harness);
+		await harness.importFindings({ ...revision, target: "main...feature" }, [], "2026-10-05T00:00:00Z");
+		await harness.importFindings(revision, [], "2026-10-06T00:00:00Z");
+		const entries = await harness.all("changeset");
+		expect(entries).toHaveLength(1);
+		expect(entries[0]?.comparison.recordedAt()).toBe("2026-10-05T00:00:00Z");
+		expect(entries[0]?.comparison.label()).toBe("main...feature");
+		expect(entries[0]?.verdict?.all()).toHaveLength(2);
+	});
+});
+
+describe("comparison review fixes", () => {
+	it("discharges a first round's debt after a second review drops the finding", async () => {
+		const harness = await memoryHarness();
+		await storeReview(harness);
+		await harness.importFindings(revision, [], "2026-10-05T00:00:00Z");
+		const debt = { verdict: "noise", by: "M", at: "2026-10-05T01:00:00Z", golden: "correctness" } as const;
+		await harness.adjudicate(revision, findings[0]!.id, debt);
+		const next = { ...revision, head: "c".repeat(40) };
+		const root = await harness.harness.root(context);
+		await root.commit(async (tx) => {
+			const document = await tx.doc(VerdictDocument, root.id);
+			document.verdicts = {
+				...document.verdicts,
+				[revisionKey(next)]: new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig })
+					.adjudicate()
+					.toJSON(),
+			};
+		}, context);
+		await harness.importFindings(next, [], "2026-10-06T00:00:00Z");
+		expect(new ComparisonSet(await harness.all("change")).backlog()).toHaveLength(1);
+		const discharged = { ...debt, at: "2026-10-07T00:00:00Z", golden: "none" } as const;
+		const round = await harness.adjudicate(next, findings[0]!.id, discharged);
+		expect(round.head).toBe(revision.head);
+		expect(round.adjudication(findings[0]!.id)).toEqual({ current: discharged, history: [debt] });
+		expect(new ComparisonSet(await harness.all("change")).backlog()).toEqual([]);
+	});
+
+	it("chooses the newest round containing an ID and carries earlier debt forward", async () => {
+		const harness = await memoryHarness();
+		await storeReview(harness);
+		await harness.importFindings(revision, [], "2026-10-05T00:00:00Z");
+		await harness.adjudicate(revision, findings[0]!.id, {
+			verdict: "noise",
+			by: "M",
+			at: "2026-10-05T01:00:00Z",
+			golden: "correctness",
+		});
+		const next = { ...revision, head: "c".repeat(40) };
+		const root = await harness.harness.root(context);
+		await root.commit(async (tx) => {
+			const document = await tx.doc(VerdictDocument, root.id);
+			document.verdicts = { ...document.verdicts, [revisionKey(next)]: document.verdicts[revisionKey(revision)]! };
+		}, context);
+		await harness.importFindings(next, [], "2026-10-06T00:00:00Z");
+		const round = await harness.adjudicate(revision, findings[0]!.id, {
+			verdict: "valid",
+			by: "M",
+			at: "2026-10-07T00:00:00Z",
+		});
+		expect(round.head).toBe(next.head);
+		expect(round.adjudication(findings[0]!.id)?.current.golden).toBe("correctness");
+		expect((await harness.read(revision))?.adjudication(findings[0]!.id)?.current.verdict).toBe("noise");
+	});
+
+	it("carries the rule tag from an earlier round when the replacement names none", async () => {
+		const harness = await memoryHarness();
+		await storeReview(harness);
+		const id = findings[0]!.id;
+		await harness.importFindings(revision, [], "2026-10-05T00:00:00Z");
+		await harness.adjudicate(revision, id, {
+			verdict: "noise",
+			by: "M",
+			at: "2026-10-05T01:00:00Z",
+			golden: "correctness",
+			rule: "zz",
+		});
+		const next = { ...revision, head: "c".repeat(40) };
+		const root = await harness.harness.root(context);
+		await root.commit(async (tx) => {
+			const document = await tx.doc(VerdictDocument, root.id);
+			document.verdicts = { ...document.verdicts, [revisionKey(next)]: document.verdicts[revisionKey(revision)]! };
+		}, context);
+		await harness.importFindings(next, [], "2026-10-06T00:00:00Z");
+		const updated = await harness.adjudicate(revision, id, {
+			verdict: "valid",
+			by: "M",
+			at: "2026-10-07T00:00:00Z",
+			golden: "none",
+		});
+		expect(updated.head).toBe(next.head);
+		expect(updated.adjudication(id)?.current.rule).toBe("zz");
+		expect((await harness.read(next))?.adjudication(id)?.current.rule).toBe("zz");
+	});
+
+	it.each(["correctness", "none"])("carries the newest judgement's %s debt across rounds", async (golden) => {
+		const harness = await memoryHarness();
+		await storeReview(harness);
+		const id = findings[0]!.id;
+		const verdict = new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate();
+		const rounds = [revision, { ...revision, head: "c".repeat(40) }, { ...revision, head: "d".repeat(40) }].map(
+			(revision, index) => {
+				const comparison = Comparison.of(revision);
+				comparison.compare(verdict);
+				comparison.record(`2026-10-0${index + 1}T00:00:00Z`);
+				comparison.adjudicate(id, {
+					verdict: "noise",
+					by: "M",
+					at: `2026-10-0${6 - index}T00:00:00Z`,
+					golden: index === 0 ? golden : index === 1 ? "tests" : "removed-behaviour",
+				});
+				return comparison;
+			},
+		);
+		const root = await harness.harness.root(context);
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).verdicts = Object.fromEntries(
+				rounds.map((round) => [revisionKey(round), verdict.toJSON()]),
+			);
+			(await tx.doc(ComparisonDocument, root.id)).comparisons = Object.fromEntries(
+				rounds.map((round) => [revisionKey(round), round.toJSON()]),
+			);
+		}, context);
+		const judgement = { verdict: "valid", by: "N", at: "2026-10-07T00:00:00Z" } as const;
+		const updated = await harness.adjudicate(revision, id, judgement);
+		expect(updated.head).toBe(rounds[2]!.head);
+		expect(updated.adjudication(id)).toEqual({
+			current: { ...judgement, golden },
+			history: [rounds[2]!.adjudication(id)!.current],
+		});
+		expect((await harness.read({ base: updated.base, head: updated.head }))?.adjudication(id)?.current.golden).toBe(
+			golden,
+		);
+		for (const round of rounds.slice(0, 2))
+			expect((await harness.read({ base: round.base, head: round.head }))?.toJSON()).toEqual(round.toJSON());
+		expect(new ComparisonSet(await harness.all("change")).backlog()).toEqual(
+			golden === "none"
+				? []
+				: [
+						{
+							changeset: "change",
+							target: updated.label(),
+							id,
+							title: findings[0]!.properties.explanation.what,
+							lens: golden,
+							verdict: "valid",
+							at: judgement.at,
+						},
+					],
+		);
+	});
+
+	it("reads documents without committing or changing pending tasks", async () => {
+		const storage = createMemoryStorage();
+		const harness = await CompareHarness.open(storage, createFakeModels().review);
+		open.push(harness);
+		await storeReview(harness);
+		await harness.importFindings(revision, [], "2026-10-05T00:00:00Z");
+		const root = await harness.harness.root(context);
+		const task = defineTask<Record<string, never>, { phase: "wait" }, Record<string, never>>({
+			name: "test.pending",
+			version: 1,
+			initial: () => ({ phase: "wait" }),
+			abort: async (_task, runtime, context) => {
+				await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+			},
+			phases: {
+				wait: async (_task, runtime, context) => {
+					await runtime.commit(
+						() => ({ status: "terminal", outcome: { status: "completed", result: {} } }),
+						context,
+					);
+				},
+			},
+		});
+		const pending = await root.commit(
+			(tx) => tx.createTask(task, {}, { ownership: { kind: "conversation" } }),
+			context,
+		);
+		const before = await storage.task(pending, context);
+		const commit = vi.spyOn(storage, "commit");
+		const entries = await ComparisonReader.open(storage).read("change");
+		expect(entries).toHaveLength(1);
+		expect(entries[0]?.verdict?.all()).toHaveLength(2);
+		expect(commit).not.toHaveBeenCalled();
+		expect(await storage.task(pending, context)).toEqual(before);
+		commit.mockRestore();
+	});
+
+	it("refreshes detached comparisons and drops stale matches and debt after a clean review", async () => {
+		const storage = createMemoryStorage();
+		const harness = await CompareHarness.open(storage, createFakeModels().review);
+		open.push(harness);
+		await storeReview(harness);
+		const external = codex(13, 0);
+		const comparison = await harness.importFindings(
+			revision,
+			[{ source: "file:codex.json", imported: imported(external) }],
+			"2026-10-05T00:00:00Z",
+		);
+		expect(comparison.effectiveMatches()).toEqual([{ external: external.id, melian: findings[0]!.id, kind: "site" }]);
+		const adjudicated = await harness.adjudicate(revision, findings[0]!.id, {
+			verdict: "valid",
+			golden: "correctness",
+			by: "Ada",
+			at: "2026-10-05T01:00:00Z",
+		});
+		expect(adjudicated.backlog()).toMatchObject([{ id: findings[0]!.id, lens: "correctness" }]);
+		const root = await harness.harness.root(context);
+		const clean = new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig }).adjudicate();
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).verdicts[revisionKey(revision)] = clean.toJSON();
+		}, context);
+
+		const entries = await ComparisonReader.open(storage).read("change");
+		expect(entries).toHaveLength(1);
+		expect(entries[0]!.verdict?.all()).toEqual([]);
+		expect(entries[0]!.comparison.externalFindings().map((each) => each.id)).toEqual([external.id]);
+		expect.soft(entries[0]!.comparison.effectiveMatches()).toEqual([]);
+		expect.soft(entries[0]!.comparison.melianFindings()).toEqual([]);
+		expect.soft(new ComparisonSet(entries).backlog()).toEqual([]);
+		expect((await harness.read(revision))?.toJSON()).toEqual(adjudicated.toJSON());
+	});
+
+	describe("documents of other versions", () => {
+		type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+		const legacy = (kind: string, version: number) =>
+			defineDoc<{ [key: string]: Json }>({
+				kind,
+				version,
+				scope: "conversation",
+				history: "rewindable",
+				fork: "asOf",
+				initial: () => ({}),
+			});
+		const oldEvidence = (value: unknown): unknown =>
+			Array.isArray(value)
+				? value.map(oldEvidence)
+				: value !== null && typeof value === "object"
+					? Object.fromEntries(
+							Object.entries(value).map(([key, each]) => [
+								key,
+								key === "evidence" && Array.isArray(each)
+									? (({ role: _, revision: __, ...first }) => first)(each[0] as Record<string, unknown>)
+									: oldEvidence(each),
+							]),
+						)
+					: value;
+
+		async function openRoot() {
+			const storage = createMemoryStorage();
+			const harness = await CompareHarness.open(storage, createFakeModels().review);
+			open.push(harness);
+			return { storage, root: await harness.harness.root(context) };
+		}
+		const comparisons = () => ({ [revisionKey(revision)]: Comparison.of(revision).toJSON() });
+
+		it("migrates a version 2 verdict document through the reader", async () => {
+			const verdict = new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate();
+			const cause = {
+				file: "src/run.ts",
+				startLine: 12,
+				role: "cause",
+				revision: "head",
+				snippet: "eval(input)",
+			} as const;
+			const json = verdict.toJSON();
+			json.findings.block[0]!.properties.evidence = [cause];
+			const { storage, root } = await openRoot();
+			await root.commit(async (tx) => {
+				(await tx.doc(ComparisonDocument, root.id)).comparisons = comparisons();
+				const old = await tx.doc(legacy(VerdictDocument.definition.kind, 2), root.id);
+				old.verdicts = JSON.parse(JSON.stringify(oldEvidence({ [revisionKey(revision)]: json })));
+			}, context);
+			const entries = await ComparisonReader.open(storage).read("change");
+			expect(entries).toHaveLength(1);
+			expect(entries[0]?.verdict?.all()).toHaveLength(2);
+			expect(entries[0]?.verdict?.toJSON().findings.block[0]?.properties.evidence).toEqual([cause]);
+		});
+
+		it("refuses a comparison document newer than this Melian", async () => {
+			const { storage, root } = await openRoot();
+			await root.commit(async (tx) => {
+				(await tx.doc(legacy(ComparisonDocument.definition.kind, 99), root.id)).comparisons = {};
+			}, context);
+			await expect(ComparisonReader.open(storage).read("change")).rejects.toMatchObject({
+				message: "comparison document has newer version 99",
+			});
+		});
+
+		it("refuses a verdict document newer than this Melian", async () => {
+			const { storage, root } = await openRoot();
+			await root.commit(async (tx) => {
+				(await tx.doc(ComparisonDocument, root.id)).comparisons = comparisons();
+				(await tx.doc(legacy(VerdictDocument.definition.kind, 99), root.id)).verdicts = {};
+			}, context);
+			await expect(ComparisonReader.open(storage).read("change")).rejects.toMatchObject({
+				message: "verdict document has newer version 99",
+			});
+		});
+	});
+
+	it("reads an empty storage without creating a root or a comparison document", async () => {
+		const storage = createMemoryStorage();
+		try {
+			const commit = vi.spyOn(storage, "commit");
+			expect(await ComparisonReader.open(storage).read("change")).toEqual([]);
+			expect(commit).not.toHaveBeenCalled();
+			expect((await storage.scanConversations({}, 10, undefined, context)).items).toEqual([]);
+		} finally {
+			await storage.close(context);
+		}
+	});
+
+	it.each(["codex", "claude-code"])("keeps %s participant identity in an empty file import", async (name) => {
+		const path = join(directory, "empty.json");
+		writeFileSync(
+			path,
+			JSON.stringify(
+				name === "codex"
+					? { verdict: "approve", summary: "Clean", findings: [], next_steps: [] }
+					: { reviewer: { name, version: "2" }, findings: [] },
+			),
+		);
+		const importer = await FileImporter.open(path, { cwd: directory, repoRoot: directory });
+		expect(await importer.import()).toMatchObject({ findings: [], reviewers: [{ name }] });
+	});
+});
+
+describe("stored comparison guards", () => {
+	type Round = { revision: { base: string; head: string }; comparison: Comparison; verdict: boolean };
+	const clean = new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate();
+	const round = (head: string, options: { at?: string; verdict?: boolean } = {}): Round => {
+		const revision = { base: "a".repeat(40), head: head.repeat(40) };
+		const comparison = Comparison.of(revision);
+		comparison.compare(clean);
+		if (options.at !== undefined) comparison.record(options.at);
+		return { revision, comparison, verdict: options.verdict ?? true };
+	};
+	async function stored(rounds: Round[], options: { verdicts?: boolean; verdict?: typeof clean } = {}) {
+		const storage = createMemoryStorage();
+		const harness = await CompareHarness.open(storage, createFakeModels().review);
+		open.push(harness);
+		const root = await harness.harness.root(context);
+		await root.commit(async (tx) => {
+			(await tx.doc(ComparisonDocument, root.id)).comparisons = Object.fromEntries(
+				rounds.map((each) => [revisionKey(each.revision), each.comparison.toJSON()]),
+			);
+			if (options.verdicts === false) return;
+			(await tx.doc(VerdictDocument, root.id)).verdicts = Object.fromEntries(
+				rounds
+					.filter((each) => each.verdict)
+					.map((each) => [revisionKey(each.revision), (options.verdict ?? clean).toJSON()]),
+			);
+		}, context);
+		return { storage, harness };
+	}
+	const id = findings[0]!.id;
+	const judgement = { verdict: "valid", by: "M", at: "2026-10-07T00:00:00Z" } as const;
+
+	it("reads an absent comparison document, and a round without its verdict, as empty", async () => {
+		const empty = await memoryHarness();
+		expect(await empty.all("change")).toEqual([]);
+		const { harness, storage } = await stored([
+			round("b", { at: "2026-10-05T00:00:00Z" }),
+			round("c", { verdict: false }),
+		]);
+		for (const entries of [await harness.all("change"), await ComparisonReader.open(storage).read("change")]) {
+			expect(entries).toHaveLength(2);
+			expect(entries[0]?.verdict?.all()).toHaveLength(2);
+			expect(entries[1]).not.toHaveProperty("verdict");
+		}
+		const bare = await stored([round("b")], { verdicts: false });
+		for (const entries of [
+			await bare.harness.all("change"),
+			await ComparisonReader.open(bare.storage).read("change"),
+		]) {
+			expect(entries).toHaveLength(1);
+			expect(entries[0]).not.toHaveProperty("verdict");
+		}
+	});
+
+	it("reads nothing when the stored document cannot be fetched", async () => {
+		const { storage } = await stored([round("b")]);
+		vi.spyOn(storage, "document").mockResolvedValueOnce(undefined);
+		expect(await ComparisonReader.open(storage).read("change")).toEqual([]);
+	});
+
+	it("refreshes matches and debt against the stored verdict when it lists all rounds", async () => {
+		const external = codex(13, 0);
+		const comparison = Comparison.of(revision);
+		comparison.import("file:codex.json", imported(external), "2026-10-05T00:00:00Z");
+		comparison.compare(new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate());
+		const none = new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig }).adjudicate();
+		const { harness } = await stored([{ revision, comparison, verdict: true }], { verdict: none });
+		const [entry] = await harness.all("change");
+		expect(entry?.comparison.effectiveMatches()).toEqual([]);
+		expect(entry?.comparison.melianFindings()).toEqual([]);
+	});
+
+	it("finds an external finding's round, and refuses an ID no round holds", async () => {
+		const harness = await memoryHarness();
+		await storeReview(harness);
+		const external = codex(90, 0);
+		await harness.importFindings(
+			revision,
+			[{ source: "file:codex.json", imported: imported(external) }],
+			"2026-10-05T00:00:00Z",
+		);
+		const reason = { ...judgement, reason: "no-owner" } as const;
+		expect((await harness.adjudicate(revision, external.id, reason)).adjudication(external.id)?.current).toEqual(
+			reason,
+		);
+		await expect(harness.adjudicate(revision, "0123456789abcdef", judgement)).rejects.toMatchObject({
+			code: "unknownFinding",
+		});
+	});
+
+	it("prefers the later stored round when two rounds share a time", async () => {
+		const { harness } = await stored([
+			round("b", { at: "2026-10-05T00:00:00Z" }),
+			round("c", { at: "2026-10-05T00:00:00Z" }),
+		]);
+		expect((await harness.adjudicate({ base: "a".repeat(40), head: "b".repeat(40) }, id, judgement)).head).toBe(
+			"c".repeat(40),
+		);
+	});
+
+	it("ranks an unrecorded round below a recorded one, and does not refresh a round without a verdict", async () => {
+		const { harness } = await stored([round("b", { at: "2026-10-05T00:00:00Z" }), round("c", { verdict: false })]);
+		const updated = await harness.adjudicate({ base: "a".repeat(40), head: "b".repeat(40) }, id, judgement);
+		expect(updated.head).toBe("b".repeat(40));
+	});
+
+	it("records the first time and the target on an older document that lacks them", async () => {
+		const { harness } = await stored([round("b")]);
+		const target = { base: "a".repeat(40), head: "b".repeat(40), target: "main...feature" };
+		await harness.adjudicate(target, id, judgement);
+		const read = await harness.read(target);
+		expect(read?.label()).toBe("main...feature");
+		expect(read?.recordedAt()).toBe(judgement.at);
 	});
 });
