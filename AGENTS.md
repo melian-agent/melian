@@ -102,7 +102,7 @@ Melian reviews itself with `melian review main...HEAD`, run from a throwaway wor
 
 ### The comparison record
 
-Every pull request gets a record under `packages/evals/comparisons/`. An agent writes it and updates it after each round. It lists each reviewer's findings, the adjudication with a miss reason, and the fix commits. [The evals guideline](docs/guidelines/evals.md#comparisons) sets out the form.
+Every pull request gets a record under `packages/evals/comparisons/`. An agent records each round's adjudications with `melian compare adjudicate`, and `melian compare export` writes the record from the stored comparison. It lists each reviewer's findings and the adjudication with a miss reason. It has no fix-commit column; name the fix commits in the progress-log entry. [The evals guideline](docs/guidelines/evals.md#comparisons) sets out the form.
 
 A code branch never edits `packages/evals/comparisons/`. The record has its own branch and pull request. When fix passes on [pull request #85](https://github.com/melian-agent/melian/pull/85) wrote the record into the code branch, the record branch hit an add/add conflict with `main`. Tell every fix brief: progress-log entry files only, never the comparison record.
 
