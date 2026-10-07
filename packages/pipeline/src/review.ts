@@ -120,7 +120,7 @@ import {
 	type ReviewIndexState,
 	undecided,
 } from "./review-index.ts";
-import { summarizeExtension } from "./summarize.ts";
+import { SummaryTask, summarizeExtension } from "./summarize.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce, triageBoundary } from "./untrusted.ts";
 import {
 	startVerification,
@@ -631,6 +631,23 @@ export class ReviewHarness {
 		return new ReviewHarness(harness, checkout !== undefined);
 	}
 
+	/**
+	 * Whether a task a crash left unfinished would ask a model once the harness resumes: a lens, verification,
+	 * triage, or walkthrough task the harness still holds live. Resuming starts at the first wait, so a host unlocks
+	 * credentials before that wait when this is true. A repeat review whose tasks all finished has none, and runs no
+	 * credential command.
+	 */
+	async resumesModels(context: Context = backgroundContext): Promise<boolean> {
+		const kinds = [
+			LensTask.definition.name,
+			VerificationTask.definition.name,
+			decisionTaskName,
+			SummaryTask.definition.name,
+		];
+		const { tasks } = await this.harness.inspect(context);
+		return tasks.some((task) => kinds.includes(task.record.kind));
+	}
+
 	/** Closes the harness and its storage. Idempotent. */
 	close(context: Context = backgroundContext): Promise<void> {
 		return this.harness.close(context);
@@ -843,7 +860,8 @@ interface ReviewSettings {
 	 * Called once, before the review first creates or resumes a task that may call a model. The host unlocks
 	 * credentials there, so one that fails stops the review before the model is asked. A repeat review that attaches
 	 * to finished tasks never calls it, and so runs no credential command. A task a crash left unfinished starts at
-	 * the harness's first wait, ahead of this call, and reads its credential when it asks.
+	 * the harness's first wait, ahead of this call: the host calls it first, when
+	 * {@link ReviewHarness.resumesModels} says so, and must run each command once however often it is called.
 	 */
 	readonly unlockModels?: () => Promise<void>;
 	/**

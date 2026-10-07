@@ -68,7 +68,7 @@ export async function fallbackDecider(
 }
 
 // The providers triage's LLM fallback may call: each routed lens tier's models, since the fallback takes the cheapest
-// with credentials, so a command credential it needs runs before the review starts, with the others.
+// with credentials, so a command credential it needs runs with the others, when the review first asks a model.
 export function triageProviders(plan: ReviewPlan): string[] {
 	return tiers.flatMap((tier) => {
 		const { status, models } = plan.tier(tier);
@@ -81,6 +81,7 @@ export class Triage {
 	readonly skipped: string | undefined;
 	readonly #models: ReviewModels;
 	readonly #providers: readonly string[];
+	#unlocked: Promise<void> | undefined;
 
 	private constructor(
 		decider: Decider | undefined,
@@ -115,9 +116,14 @@ export class Triage {
 			: new Triage(undefined, chosen.skipped, models, providers);
 	}
 
-	/** Runs the command credentials of the providers the review's lenses and triage may call; one that fails stops the review. */
+	/**
+	 * Runs the command credentials of the providers the review's lenses and triage may call; one that fails stops the
+	 * review. It runs them once, however often it is called: the CLI calls it before a resumed task can ask a model,
+	 * and the review calls it again before the first task it creates.
+	 */
 	unlockModels(): Promise<void> {
-		return unlockCredentials(this.#models, this.#providers);
+		this.#unlocked ??= unlockCredentials(this.#models, this.#providers);
+		return this.#unlocked;
 	}
 
 	harnessOptions(): { readonly decider?: Decider } {

@@ -9,6 +9,7 @@ import { RecordedDecider } from "@melian-agent/decisions";
 import {
 	type ConversationId,
 	backgroundContext as context,
+	createMemoryStorage,
 	createReviewRegistry,
 	type Harness,
 	type Message,
@@ -38,6 +39,7 @@ import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
 import { findingsVersion } from "../src/findings.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { SummaryTask } from "../src/summarize.ts";
 import { gitIn } from "./fixtures/repo.ts";
 import {
 	budgetLenses,
@@ -241,6 +243,88 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		expect(fake.provider.state.callCount).toBe(2);
 		const lensTasks = (await harness.inspect(context)).tasks.filter((task) => task.record.kind === "melian.lenses");
 		expect(lensTasks).toEqual([]);
+	});
+
+	it("says a crashed lens task resumes a model, before anything resumes it, and a finished review none", async () => {
+		const database = join(dir, "resumes.sqlite");
+		const log = join(dir, "resumes.jsonl");
+		await killWhen("request", (events) => count(events, "model-request") === 2, database, log);
+
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
+		scriptConversations(fake, [
+			{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+			{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const reopened = await ReviewHarness.open(await openSqliteStorage(database), fake.review, { retry: false });
+		harness = reopened.harness;
+
+		expect(await reopened.resumesModels(context)).toBe(true);
+		expect(fake.provider.state.callCount).toBe(0);
+
+		const heavy = fake.ref("heavy");
+		await reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config: {
+				...defaultConfig,
+				tiers: twoLensTiers,
+				models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
+			},
+			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
+			standards: [],
+			checks: [],
+			models: fake.review,
+		});
+
+		expect(await reopened.resumesModels(context)).toBe(false);
+	});
+
+	it.each([
+		[
+			"a triage decision",
+			"decision",
+			(events: ReturnType<typeof readEvents>) => count(events, "decision-asked") === 1,
+		],
+		[
+			"a verification",
+			"verifier",
+			(events: ReturnType<typeof readEvents>) =>
+				events.some((event) => event.event === "model-request" && event.lens === "verifier"),
+		],
+	] as const)("says a crashed %s resumes a model", async (_, scenario, reached) => {
+		const database = join(dir, `${scenario}-resumes.sqlite`);
+		await killWhen(scenario, reached, database, join(dir, `${scenario}-resumes.jsonl`));
+
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
+		const decider: Decider = { name: "parked", calibrated: false, decide: async () => ({ answers: [] }) };
+		const reopened = await ReviewHarness.open(await openSqliteStorage(database), fake.review, {
+			retry: false,
+			...(scenario === "decision" ? { decider } : {}),
+		});
+		harness = reopened.harness;
+		const kinds = (await harness.inspect(context)).tasks.map((task) => task.record.kind);
+
+		expect(kinds).toContain(scenario === "decision" ? "melian.decision" : "melian.verification");
+		expect(await reopened.resumesModels(context)).toBe(true);
+	});
+
+	it("says a walkthrough task that has not finished resumes a model, and no task none", async () => {
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "light" }] });
+		const reopened = await ReviewHarness.open(createMemoryStorage(), fake.review, { retry: false });
+		harness = reopened.harness;
+		const root = await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
+		expect(await reopened.resumesModels(context)).toBe(false);
+
+		await root.commit(async (tx) => {
+			await tx.createTask(
+				SummaryTask,
+				{ root: root.id, revision: "r", prompt: "p", model: fake.ref("light"), paths: [] },
+				{ ownership: { kind: "conversation" } },
+			);
+		}, context);
+
+		expect(await reopened.resumesModels(context)).toBe(true);
+		expect(fake.provider.state.callCount).toBe(0);
 	});
 
 	it("attaches a repeat call whose caller context is unavailable, and keeps the first call's caller section", async () => {

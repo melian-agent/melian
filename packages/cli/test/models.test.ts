@@ -218,6 +218,15 @@ describe("Triage", () => {
 		expect(configs[0]!.models).toEqual(plan.routes());
 	});
 
+	it("runs the providers' commands once, however often a review and its walkthrough unlock", async () => {
+		const { triage, marker } = await opened({ scripted: false, decide: async () => ({ decider, model: "fake" }) });
+
+		const first = triage.unlockModels();
+		expect(triage.unlockModels()).toBe(first);
+		await first;
+		expect(existsSync(marker)).toBe(true);
+	});
+
 	it("says why triage did not run to the review, and gives the harness no decider", async () => {
 		const { triage } = await opened({ scripted: false, decide: async () => ({ skipped: "no model" }) });
 
@@ -367,6 +376,63 @@ describe("command bearer validation", { timeout: 60_000 }, () => {
 
 			await review();
 			expect(fakes[1]!.provider.state.callCount).toBe(0);
+			expect(readFileSync(marker, "utf8")).toBe("run\n");
+		} finally {
+			vi.restoreAllMocks();
+			rmSync(repo, { recursive: true, force: true });
+			rmSync(xdg, { recursive: true, force: true });
+		}
+	});
+
+	it.each([
+		["a crashed task would resume", true],
+		["no task would resume", false],
+	])("runs a command credential before the checks run only when %s", async (_, resumes) => {
+		const golden = loadGoldens().find((entry) => entry.name === "clean-rename")!;
+		const { repo } = buildGoldenRepository(golden);
+		const xdg = mkdtempSync(join(tmpdir(), "melian-resume-"));
+		try {
+			const marker = join(xdg, "ran");
+			mkdirSync(join(xdg, "melian"));
+			writeFileSync(
+				join(xdg, "melian", "secrets.yaml"),
+				`credentials:\n  vault: { provider: fake-resume, command: "echo run >> ${marker}; echo sk-key" }\n`,
+				{ mode: 0o600 },
+			);
+			writeFileSync(
+				join(repo, "melian.yaml"),
+				`models:\n  heavy: { model: fake-resume/heavy }\ntiers:\n  full: [guardrails, lens.correctness]\nchecks:\n  allowSkip: [lens.correctness]\n`,
+			);
+			vi.spyOn(pipeline, "createReviewModels").mockImplementation((options) => {
+				const fake = createFakeModels({
+					provider: "fake-resume",
+					models: [{ id: "heavy" }],
+					credentials: options?.credentials ?? [],
+				});
+				scriptConversations(fake, [
+					{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+				]);
+				return fake.review;
+			});
+			if (resumes) vi.spyOn(pipeline.ReviewHarness.prototype, "resumesModels").mockResolvedValue(true);
+			const ranBeforeChecks: boolean[] = [];
+			const runChecks = pipeline.runChecks;
+			vi.spyOn(pipeline, "runChecks").mockImplementation((...args) => {
+				ranBeforeChecks.push(existsSync(marker));
+				return runChecks(...args);
+			});
+			const stderr = vi.fn();
+			const status = await main(["review", "main"], {
+				cwd: repo,
+				env: { XDG_CONFIG_HOME: xdg, MELIAN_STATE_DIR: xdg },
+				color: false,
+				stdout: vi.fn(),
+				stderr,
+				decide: async () => ({ skipped: "not under test" }),
+			});
+
+			expect(status, stderr.mock.calls.flat().join("")).toBe(0);
+			expect(ranBeforeChecks).toEqual([resumes]);
 			expect(readFileSync(marker, "utf8")).toBe("run\n");
 		} finally {
 			vi.restoreAllMocks();
