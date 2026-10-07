@@ -1,0 +1,20 @@
+{
+	"testRunner": "vitest",
+	"plugins": [
+		"@stryker-mutator/vitest-runner"
+	],
+	"vitest": {
+		"related": true
+	},
+	"coverageAnalysis": "perTest",
+	"reporters": [
+		"json"
+	],
+	"incremental": true,
+	"concurrency": 2,
+	"timeoutMS": 30000,
+	"timeoutFactor": 2,
+	"dryRunTimeoutMinutes": 10,
+	"inPlace": true,
+	"disableTypeChecks": false
+}

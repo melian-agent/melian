@@ -5,9 +5,11 @@ import { dirname, posix } from "node:path";
 import {
 	CheckError,
 	type EnolaSnapshot,
+	type MutationSettings,
 	normaliseBiomeSarif,
 	parseJsonc,
 	parseTscDiagnostics,
+	type Revision,
 	type StaticTool,
 	type StaticToolSettings,
 	type ToolLog,
@@ -15,6 +17,7 @@ import {
 } from "@melian-agent/core";
 import { EnolaRun } from "./enola-static.ts";
 import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts";
+import { MutationRun } from "./mutation-static.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
 
 /** The most a static tool may write, its report included. Past it the run fails with `outputTooLarge`. */
@@ -32,7 +35,9 @@ export interface StaticRunInput {
 	readonly policyCommit?: string;
 	readonly tools?: ToolProvisioning;
 	readonly tool: StaticTool;
-	readonly settings: StaticToolSettings | TscSettings;
+	readonly settings: StaticToolSettings | TscSettings | MutationSettings;
+	/** The change under review. Mutation testing mutates the lines it adds or edits, so `mutation` needs it. */
+	readonly revision?: Revision;
 }
 
 /** A tool's log for one revision, with anything the run set aside, or why the tool does not apply to it. */
@@ -92,6 +97,7 @@ const toolBinaries: Readonly<
 > = {
 	biome: { bin: "biome", melian: () => melianBinary("@biomejs/biome", "bin/biome") },
 	tsc: { bin: "tsc", melian: () => melianBinary("typescript", "bin/tsc") },
+	mutation: { bin: "stryker", melian: () => melianBinary("@stryker-mutator/core", "bin/stryker.js") },
 };
 
 function melianBinary(packageName: string, bin: string): string {
@@ -493,6 +499,7 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		if (installed !== undefined) await linkDependencies(run, root, scratch, notes);
 		const binary = await binaryFor(run, installed);
 		const version = await versionOf(run, binary);
+		if (tool === "mutation") return new MutationRun(run, root, scratch, binary, version, notes).check();
 		const log =
 			tool === "biome"
 				? await runBiome(run, root, scratch, binary, version)

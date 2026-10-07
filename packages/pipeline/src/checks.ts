@@ -28,6 +28,7 @@ import {
 	type Harness,
 	type TaskId,
 } from "./harness.ts";
+import { strykerVersion } from "./mutation-static.ts";
 import { runStaticTool } from "./static.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
 
@@ -99,6 +100,7 @@ const toolOf: Readonly<Record<Exclude<DeterministicCheck, "guardrails">, StaticT
 	"static.biome": "biome",
 	"static.tsc": "tsc",
 	"static.enola": "enola",
+	"static.mutation": "mutation",
 };
 
 async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, context: Context): Promise<Outcome> {
@@ -123,6 +125,7 @@ async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, conte
 				base: revision.base,
 				tool,
 				settings,
+				revision,
 				...(input.source.kind === "revision" ? { policyCommit: input.source.commit } : {}),
 			},
 			context,
@@ -355,12 +358,14 @@ function canonical(value: unknown): string {
 }
 
 // What decides a run's results: both commits, the tier, and the policy it ran under, with Melian's own tool pins, so a
-// build that pins another Enola does not take the finished run of an older one.
+// build that pins another Enola does not take the finished run of an older one. Mutation testing adds the Stryker
+// version it would run, so a bump runs it again.
 async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<RunIdentity, "task">> {
 	const { base, head } = input.changeset.revision;
 	const tools = (await ToolProvisioning.manifest()).toJSON();
+	const stryker = input.config.static.mutation.enabled ? strykerVersion(input.changeset.repoRoot) : undefined;
 	const policy = createHash("sha256")
-		.update(canonical({ config: input.config, source: input.source, tools }))
+		.update(canonical({ config: input.config, source: input.source, tools, stryker }))
 		.digest("hex")
 		.slice(0, 16);
 	return { base, head, tier, policy };
