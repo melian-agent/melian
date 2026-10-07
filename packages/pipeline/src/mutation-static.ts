@@ -145,13 +145,9 @@ export class MutationRun {
 			(sum, ranges) => sum + ranges.reduce((total, [first, last]) => total + last - first + 1, 0),
 			0,
 		);
-		if (count === 0) return { status: "skipped", reason: "the change adds or edits no production TypeScript lines" };
+		if (count === 0) return { status: "skipped", reason: mutationSkips.noProductionLines };
 		const { maxLines } = settings as MutationSettings;
-		if (count > maxLines)
-			return {
-				status: "skipped",
-				reason: `the change adds or edits ${count} production TypeScript lines, past static.mutation.maxLines of ${maxLines}`,
-			};
+		if (count > maxLines) return { status: "skipped", reason: mutationSkips.pastBound(count, maxLines) };
 		if (!(await this.#run.exists(posix.join(this.#root, config))))
 			throw this.#run.fail("toolFailed", `the revision has no ${config}, which Stryker needs`);
 		const entries = Object.entries(lines).flatMap(([path, ranges]) =>

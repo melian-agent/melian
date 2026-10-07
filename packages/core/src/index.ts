@@ -371,7 +371,12 @@ export {
 	type ImportEdge,
 	type SymbolSite,
 } from "./graph-coverage.ts";
-export { type MutationReportInput, normaliseMutationReport } from "./mutation.ts";
+export {
+	type MutationReportInput,
+	mutationSkipHasLeave,
+	mutationSkips,
+	normaliseMutationReport,
+} from "./mutation.ts";
 export {
 	type ToolArtifact,
 	ToolManifest,

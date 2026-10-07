@@ -27,6 +27,7 @@ import {
 	Merge,
 	type ModelReference,
 	ModelRoutingError,
+	mutationSkipHasLeave,
 	parseModelReference,
 	type RepositorySource,
 	type ReviewPlan,
@@ -1134,6 +1135,13 @@ function account(
 	);
 	const manifest = new Manifest(checks, [...supplied, ...lenses.records], config.checks.allowSkip);
 	for (const name of lenses.skippable) manifest.allowSkip(name);
+	// Mutation testing is advisory, so a change it has nothing to mutate in, or is too big or slow to mutate, or may not
+	// run on, passes with the reason recorded. Any other skip of it still leaves the review not reviewed.
+	for (const check of supplied) {
+		if (check.name === "static.mutation" && check.status === "skipped" && mutationSkipHasLeave(check.reason ?? "")) {
+			manifest.allowSkip(check.name);
+		}
+	}
 	const recorded = new Set(manifest.records().map((check) => check.name));
 	const { provider } = config.decisions;
 	for (const name of checks) {

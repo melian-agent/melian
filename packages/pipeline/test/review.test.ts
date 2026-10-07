@@ -14,6 +14,7 @@ import {
 	maxEvidenceLocations,
 	maxFailureScenarioLength,
 	maxSnippetBytes,
+	mutationSkips,
 	Rendering,
 	type RepositorySource,
 	type Verdict,
@@ -51,6 +52,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, adjudicationInput } from "../src/adjudication.ts";
+import { strykerNotInstalled } from "../src/mutation-static.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
@@ -2620,6 +2622,51 @@ describe("adjudication", () => {
 			expect(verdict).toMatchObject({
 				status: "passed",
 				notRun: [skipped, { name: "lens.contracts", status: "skipped" }],
+			});
+		});
+
+		describe("a skipped static.mutation", () => {
+			const leave = [
+				["a change with no production lines", mutationSkips.noProductionLines],
+				["a change past maxLines", mutationSkips.pastBound(2001, 2000)],
+				["a writer that is not trusted", mutationSkips.untrustedWriter("octocat has read permission")],
+				["a run past its timeout", mutationSkips.timeout(3600)],
+			] as const;
+
+			it.each(leave)("passes, with the reason recorded, for %s", async (_name, reason) => {
+				done();
+				const skipped: CheckRecord = { name: "static.mutation", status: "skipped", reason };
+				const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.mutation"), checks: [skipped] });
+				expect(verdict.status).toBe("passed");
+				expect(verdict.notRun).toContainEqual(skipped);
+			});
+
+			it.each([
+				["its being disabled", "static.mutation.enabled is false"],
+				["a checkout with no Stryker", strykerNotInstalled],
+			])("leaves the review not reviewed for %s", async (_name, reason) => {
+				done();
+				const skipped: CheckRecord = { name: "static.mutation", status: "skipped", reason };
+				const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.mutation"), checks: [skipped] });
+				expect(verdict.status).toBe("not-reviewed");
+			});
+
+			it("gives no leave to another check that skips for the same reason", async () => {
+				done();
+				const skipped: CheckRecord = {
+					name: "static.tsc",
+					status: "skipped",
+					reason: mutationSkips.noProductionLines,
+				};
+				const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.tsc"), checks: [skipped] });
+				expect(verdict.status).toBe("not-reviewed");
+			});
+
+			it("gives no leave to a failed run", async () => {
+				done();
+				const failed: CheckRecord = { name: "static.mutation", status: "failed", reason: "toolFailed", error: "x" };
+				const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.mutation"), checks: [failed] });
+				expect(verdict.status).toBe("not-reviewed");
 			});
 		});
 

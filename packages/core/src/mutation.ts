@@ -20,6 +20,32 @@ const known: ReadonlySet<string> = new Set(["Killed", "Ignored", "Survived", "No
 
 const longestCode = 160;
 
+/**
+ * The reasons `static.mutation` records a skip that does not stop a review. The check is advisory in nature, so a change
+ * it cannot judge, or may not run on, still lets the review finish; the reason stays in the record. Any other skip, such
+ * as a disabled check or a checkout without Stryker, leaves the review not reviewed.
+ */
+export const mutationSkips = {
+	noProductionLines: "the change adds or edits no production TypeScript lines",
+	pastBound: (count: number, maxLines: number) =>
+		`the change adds or edits ${count} production TypeScript lines, past static.mutation.maxLines of ${maxLines}`,
+	untrustedWriter: (detail: string) =>
+		`the writer is not a trusted one (${detail}), so Stryker did not run: static.mutation executes the head's own tests`,
+	timeout: (seconds: number) => `Stryker ran past static.mutation.timeout of ${seconds} seconds before it finished`,
+};
+
+const leaveReasons: readonly RegExp[] = [
+	/^the change adds or edits no production TypeScript lines$/,
+	/^the change adds or edits \d+ production TypeScript lines, past static\.mutation\.maxLines of \d+$/,
+	/^the writer is not a trusted one\b/,
+	/^Stryker ran past static\.mutation\.timeout of \d+ seconds before it finished$/,
+];
+
+/** Whether a `static.mutation` skip with this reason lets a review pass: a change with nothing to mutate, or too big, or too slow, or from a writer Melian does not trust to run code. */
+export function mutationSkipHasLeave(reason: string): boolean {
+	return leaveReasons.some((pattern) => pattern.test(reason));
+}
+
 /** What {@link normaliseMutationReport} reads a Stryker report against. */
 export interface MutationReportInput {
 	/** The Stryker version that wrote the report. */
