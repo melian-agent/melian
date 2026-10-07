@@ -83,7 +83,7 @@ it.each([[undefined], [join("host-state")]])(
 		const open = vi.spyOn(ToolProvisioning, "open");
 		await ToolInventory.open(repo, env);
 		expect(open).toHaveBeenCalledWith(await realpath(repo), { root: await stateDirectory(repo, env) });
-		const root = (open.mock.calls[0]?.[1] as { root: string }).root;
+		const root = await stateDirectory(repo, env);
 		expect(root.startsWith(join(await realpath(repo), state ?? ".git"))).toBe(true);
 	},
 );
