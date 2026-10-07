@@ -1,0 +1,31 @@
+{
+  "pr_title": "Reuse a finished lens task for the same revision",
+  "comments": [
+    {
+      "comment": "selectionKey names the lens, version, head, band and route but not the rendered instructions, so a review after a standards edit attaches to the finished task and returns the answer to the old text.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/lens-task.ts",
+      "rule": "identity-missing-input",
+      "cause": "introduced",
+      "failureScenario": "A maintainer reviews head H and the security lens runs under the standards as they stand. They edit AGENTS.md to add a rule and review H again: the key `security v3 H careful route` is unchanged, runLens finds the finished task, and returns its findings without asking the model, so the new rule is never applied to H and the review passes on stale instructions.",
+      "evidence": [
+        {
+          "file": "src/lens-task.ts",
+          "line": 20,
+          "role": "cause"
+        },
+        {
+          "file": "src/lens-task.ts",
+          "line": 7,
+          "role": "context"
+        },
+        {
+          "file": "docs/decisions/2026-10-01-lens-task-reuse.md",
+          "line": 5,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

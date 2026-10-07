@@ -1,0 +1,31 @@
+{
+  "pr_title": "Read the skill list from a manifest",
+  "comments": [
+    {
+      "comment": "readManifest reads manifest.json from the package root, but the package's files list ships only dist and bin, so the published package has no manifest and skills() throws.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/manifest.ts",
+      "rule": "unshipped-artifact",
+      "cause": "introduced",
+      "failureScenario": "A user installs the published package. The tarball holds dist and bin only, because manifest.json is not in the files list, so readManifest's readFileSync throws ENOENT on the first call to skills(). Every test in the checkout passes, since the file sits beside the source there.",
+      "evidence": [
+        {
+          "file": "src/manifest.ts",
+          "line": 6,
+          "role": "cause"
+        },
+        {
+          "file": "package.json",
+          "line": 5,
+          "role": "context"
+        },
+        {
+          "file": "docs/decisions/2026-10-01-package-files.md",
+          "line": 3,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

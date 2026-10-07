@@ -58,7 +58,7 @@ function named(lenses: readonly Lens[], name: string): Lens[] {
 }
 
 // Every lens Melian ships, in the order the loader returns them.
-const builtins = ["contracts", "conventions", "correctness", "removed-behaviour", "tests", "trust-boundary"];
+const builtins = ["contracts", "conventions", "correctness", "design", "removed-behaviour", "tests", "trust-boundary"];
 
 describe("built-in lenses", () => {
 	it("load correctness and contracts with their declared rules", async () => {
@@ -109,6 +109,7 @@ describe("built-in lenses", () => {
 			contracts: "686d7ad61a40",
 			conventions: "bb08d9e590e4",
 			correctness: "05037e7ba4a2",
+			design: "a7a00e10a081",
 			"removed-behaviour": "45fa8885fd01",
 			tests: "bee1be69be22",
 			"trust-boundary": "593b84bf6e82",
@@ -116,6 +117,40 @@ describe("built-in lenses", () => {
 		const tuned = { ...defaultConfig, lenses: { correctness: { tier: "light" as const, paths: ["src/**"] } } };
 		const [correctness] = Lens.select(named(lenses, "correctness"), tuned, ["src/index.ts"]);
 		expect(correctness!.lens.version).toBe("735049d98890");
+	});
+
+	it("load the design lens heavy, over every path, reading whole functions at the one level it declares", async () => {
+		const lenses = await Lens.load(repo, { kind: "worktree" }, ["src/index.ts"]);
+		const [design] = named(lenses, "design");
+		expect(design).toMatchObject({ tools: [...lensToolNames], paths: ["**"], standards: true });
+		expect(design!.instructions).toMatch(/^You are the design reviewer for one change\./);
+		expect(design!.instructions).toContain("an empty report");
+		expect(design!.instructions).toContain('`read_file` each decision it finds with `revision: "base"`');
+		expect(design!.instructions).toContain("The base text is the baseline you judge against.");
+		expect(design!.instructions).toContain("read each `Supersedes:` target at base");
+		expect(design!.instructions).toContain("deletes or renames, read the old path at base");
+		expect(design!.instructions).toContain("supersedes nothing and replaces nothing has no baseline to break");
+		expect(design!.rules.map((rule) => rule.id)).toEqual([
+			"identity-missing-input",
+			"trust-by-label",
+			"bound-on-wrong-measure",
+			"capability-by-class",
+			"fail-open-default",
+			"resumed-identity",
+			"criterion-selection-bias",
+			"unshipped-artifact",
+			"single-slot-overwrite",
+			"melian/injection-attempt",
+		]);
+		expect(design!.declaredLevels()).toEqual(["careful"]);
+		expect(design!.levels).toEqual({
+			careful: {
+				tier: "heavy",
+				reads: "functions",
+				verify: true,
+				budget: { findings: 8, tokens: 300_000, tools: 45 },
+			},
+		});
 	});
 
 	// Melian's own repository extends two built-ins with a hand-off to its durability lens, which changes their versions.
@@ -141,11 +176,43 @@ describe("built-in lenses", () => {
 		});
 	});
 
+	// A lens in the root tier with no `lenses` entry reviews its own default paths, and the golden corpus seeds defects on purpose.
+	it("gives every lens in Melian's root tier a `lenses` entry, unless the lens narrows its own paths", async () => {
+		const melian = fileURLToPath(new URL("../../../", import.meta.url));
+		const own = [
+			"melian.yaml",
+			...["durability", "correctness", "removed-behaviour"].map((name) => `.melian/lenses/${name}/LENS.md`),
+		];
+		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
+		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
+		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
+		const named = [
+			...new Set(
+				Object.values(config.tiers)
+					.flat()
+					.filter((entry) => entry.startsWith("lens."))
+					.map((entry) => entry.slice(5)),
+			),
+		];
+		expect(named).toContain("design");
+		const overEverything = named.filter((name) =>
+			lenses.find((candidate) => candidate.name === name)?.paths.includes("**"),
+		);
+		expect(overEverything).toContain("design");
+		const unexcluded = overEverything.filter((name) => {
+			const paths = config.lenses[name]?.paths ?? [];
+			return !paths.includes("!packages/evals/goldens/**") || !paths.includes("!packages/evals/verifier/**");
+		});
+		expect(unexcluded).toEqual([]);
+	});
+
 	it("load the lens backlog adversarial, over every path, with the standards and three levels", async () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, ["src/index.ts"]);
-		const backlog = lenses.filter((lens) => lens.name !== "contracts" && lens.name !== "correctness");
+		const backlog = lenses.filter(
+			(lens) => lens.name !== "contracts" && lens.name !== "correctness" && lens.name !== "design",
+		);
 		expect(backlog.map((lens) => lens.name)).toEqual(
-			builtins.filter((name) => !["contracts", "correctness"].includes(name)),
+			builtins.filter((name) => !["contracts", "correctness", "design"].includes(name)),
 		);
 		for (const lens of backlog) {
 			expect(lens).toMatchObject({ tools: [...lensToolNames], paths: ["**"], standards: true });

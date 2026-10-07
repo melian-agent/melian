@@ -1,0 +1,18 @@
+src/lens-task.ts
+
+  P1  line 20  identity-missing-input  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  The key that attaches a repeat review to a finished lens task leaves out the instructions the lens's conversation reads.
+    What: The key that attaches a repeat review to a finished lens task leaves out the instructions the lens's conversation reads.
+    Why here: This change adds the reuse the lens-task-reuse decision describes, and that decision lists the rendered instructions among the task's inputs. The key built here names every input but that one, so an edit to the standards or the lens body does not change it.
+    Failure scenario: A maintainer reviews head H and the security lens runs under the standards as they stand. They edit AGENTS.md to add a rule and review H again: the key `security v3 H careful route` is unchanged, runLens finds the finished task, and returns its findings without asking the model, so the new rule is never applied to H and the review passes on stale instructions.
+    Evidence:
+      cause: src/lens-task.ts:20
+          return [input.lens, input.lensVersion, input.head, input.band, input.route].join(" ");
+      context: src/lens-task.ts:7
+          instructions: string;
+      context: docs/decisions/2026-10-01-lens-task-reuse.md:5
+        Why: the same inputs give the same answer, and a model call costs money. The inputs are everything the lens's conversation reads: the lens, its version, the revision, the band, the model route, and the instructions rendered from the lens's body and the repository's standards.
+    What to do: Add a hash of the rendered instructions to the key, or key the task by a hash of the whole input as canonical JSON, so any input that changes the answer selects a new task.
+
+1 finding in 1 file.

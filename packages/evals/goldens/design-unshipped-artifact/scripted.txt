@@ -1,0 +1,18 @@
+src/manifest.ts
+
+  P1  line 6  unshipped-artifact  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  The code reads a file at the package root that the published package does not contain.
+    What: The code reads a file at the package root that the published package does not contain.
+    Why here: The package-files decision says code in the package reads only what the files list ships. This change adds the manifest and the read, and leaves the file out of that list.
+    Failure scenario: A user installs the published package. The tarball holds dist and bin only, because manifest.json is not in the files list, so readManifest's readFileSync throws ENOENT on the first call to skills(). Every test in the checkout passes, since the file sits beside the source there.
+    Evidence:
+      cause: src/manifest.ts:6
+          const file = new URL("../manifest.json", import.meta.url);
+      context: package.json:5
+          "files": ["dist", "bin"],
+      context: docs/decisions/2026-10-01-package-files.md:3
+        Choice: the published package contains the `files` list of its `package.json` and nothing else. Code in the package reads only what that list ships.
+    What to do: Add manifest.json to the files list, and add a test that reads it from a packed tarball.
+
+1 finding in 1 file.
