@@ -485,7 +485,7 @@ models:
     accept: [openai-codex/gpt-6.1-sol, anthropic/claude-opus-5-5, openai/gpt-5.5]
   verifier:
     model: anthropic/claude-sonnet-5-5
-    accept: [anthropic/claude-sonnet-5-5, anthropic/claude-opus-5-5]
+    accept: [anthropic/claude-sonnet-5-5, anthropic/claude-opus-5-5, openai/gpt-5.5]
     unavailable: fail
     acceptOverridden: false
 ```
