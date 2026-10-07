@@ -323,6 +323,22 @@ export {
 export const packageName = "@melian-agent/core";
 
 export {
+	Adjudication as ComparisonAdjudication,
+	type ComparisonAdjudicationRecord,
+	comparisonAdjudicationSchema,
+	missReasons,
+	type StoredComparisonAdjudication,
+} from "./comparison-adjudication.ts";
+export { ComparisonExport } from "./comparison-export.ts";
+export {
+	type ComparisonEntry,
+	ComparisonSet,
+	type ComparisonStats,
+	type OwedGolden,
+	type RepeatedFinding,
+	type ReviewerStats,
+} from "./comparison-set.ts";
+export {
 	type CoverageIds,
 	ReviewCoverage,
 	type ReviewCoverageState,
@@ -360,22 +376,6 @@ export {
 	type ToolPin,
 	toolManifestSchema,
 } from "./tool-manifest.ts";
-export {
-	Adjudication as ComparisonAdjudication,
-	type ComparisonAdjudicationRecord,
-	comparisonAdjudicationSchema,
-	missReasons,
-	type StoredComparisonAdjudication,
-} from "./comparison-adjudication.ts";
-export { ComparisonExport } from "./comparison-export.ts";
-export {
-	type ComparisonEntry,
-	ComparisonSet,
-	type ComparisonStats,
-	type OwedGolden,
-	type RepeatedFinding,
-	type ReviewerStats,
-} from "./comparison-set.ts";
 export {
 	type StoredVerificationState,
 	type Verification,
