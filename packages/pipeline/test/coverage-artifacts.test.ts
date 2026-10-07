@@ -411,12 +411,25 @@ it.each([
 	["unknown tool", "other", { path: "a.ts" }, "file", "2\tx"],
 	["unknown path", "read_file", { path: "outside.ts" }, "file", "2\tx"],
 	["non-string path", "read_file", { path: 1 }, "file", "2\tx"],
+	["path outside the repository", "read_file", { path: "../a.ts" }, "file", "2\tx"],
+	["absolute path", "read_file", { path: "/a.ts" }, "file", "2\tx"],
 	["wrong boundary label", "read_file", { path: "a.ts" }, "search", "2\tx"],
 	["unmatched search path", "search", {}, "search", "outside.ts:2: x"],
 	["invalid search line", "search", {}, "search", "a.ts:bad: x"],
 	["zero search line", "search", {}, "search", "a.ts:0: x"],
 ] as const)("confers no coverage for %s", (_case, name, args, label, body) => {
 	expect(ReviewTranscript.from(transcriptRecords(name, args, label, body), "lens", ["a.ts"], "N").reads()).toEqual([]);
+});
+
+it.each([
+	["./a.ts", "a.ts"],
+	["src//a.ts", "src/a.ts"],
+	["src/./a.ts", "src/a.ts"],
+	["docs/../src/a.ts", "src/a.ts"],
+])("credits a read through the spelling %s that the tool normalises", (spelling, path) => {
+	const [call, result] = transcriptRecords("read_file", { path: spelling }, "file", "2\tx");
+	const reads = ReviewTranscript.from([call!, result!], "lens", ["a.ts", "src/a.ts"], "N").reads();
+	expect(reads).toEqual([{ lens: "lens", path, revision: "head", kind: "read", lines: [2] }]);
 });
 
 it("ignores missing calls, model entries and closing boundaries", () => {

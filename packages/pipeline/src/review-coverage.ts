@@ -1,5 +1,14 @@
-import { type ReviewRead, visibleText } from "@melian-agent/core";
+import { type ReviewRead, repositoryPath, visibleText } from "@melian-agent/core";
 import type { Context, Conversation, EntryRecord, ToolCall } from "./harness.ts";
+
+function canonicalPath(path: unknown): string | undefined {
+	if (typeof path !== "string") return undefined;
+	try {
+		return repositoryPath(path);
+	} catch {
+		return undefined;
+	}
+}
 
 /** Reads the durable history, including reads preceding compaction. */
 export class ReviewTranscript {
@@ -57,8 +66,8 @@ export class ReviewTranscript {
 				if (end < 0) continue;
 				const body = text.slice(opening.length, end);
 				if (call.name === "read_file") {
-					const path = call.arguments.path;
-					if (typeof path !== "string" || !paths.includes(path)) continue;
+					const path = canonicalPath(call.arguments.path);
+					if (path === undefined || !paths.includes(path)) continue;
 					const lines = body.split("\n").flatMap((line) => {
 						const match = /^\s*(\d+)\t/.exec(line);
 						return match && Number(match[1]) > 0 ? [Number(match[1])] : [];
