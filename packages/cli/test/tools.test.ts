@@ -161,7 +161,7 @@ it("warns in doctor about a pin that is not fetched, and exits 0", async () => {
 	vi.spyOn(ToolInventory, "open").mockResolvedValue(await ToolInventory.open(repo, {}, provisioning));
 	const io = output();
 	expect(await main(["doctor"], io)).toBe(0);
-	expect(io.lines.join("")).toMatch(/warn\s+tool enola\s+0\.0\.1; /);
+	expect(io.lines.join("")).toMatch(/warn\s+tool enola\s+0\.0\.1; not yet fetched/);
 });
 
 it.each([
