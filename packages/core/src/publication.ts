@@ -2,12 +2,25 @@ import { createHash } from "node:crypto";
 import type { StoredVerdict, Verdict } from "./adjudication.ts";
 import type { Finding, FindingDismissal } from "./findings.ts";
 
+/** A repository role returned by a provider's permission lookup. */
+export type RepositoryPermission = "admin" | "maintain" | "write" | "triage" | "read" | "none";
+
+/** Who published a revision and the root policy under which it was published. */
+export type PublishedBy = {
+	login?: string;
+	permission?: RepositoryPermission;
+	authorPermission?: RepositoryPermission;
+	trustedWriters: boolean;
+};
+
 /** A pull request as its provider reports it. Commit hashes are full. */
 export interface PullRequest {
 	/** The repository the pull request belongs to, as the provider names it. */
 	readonly repository: { readonly owner: string; readonly name: string };
 	readonly number: number;
 	readonly title: string;
+	/** The author's login, absent when the provider no longer exposes it. */
+	readonly author?: string;
 	readonly url: string;
 	readonly state: "open" | "closed";
 	/** The branch the pull request merges into, and its commit as the provider last saw it. */
@@ -173,6 +186,10 @@ export interface ReviewProvider {
 	beginPublish?(): void;
 	/** A pull request's base, head, and metadata. */
 	pullRequest(number: number): Promise<PullRequest>;
+	/** The token's login, when the provider can establish it. */
+	login(): Promise<string | undefined>;
+	/** Repository permission, absent when the lookup is refused or cannot be classified. */
+	permission(login: string): Promise<RepositoryPermission | undefined>;
 	/** Posts one review for a revision, never approving or requesting changes. */
 	postReview(draft: ReviewDraft): Promise<PostedReview>;
 	/**
@@ -247,6 +264,7 @@ export type LedgerRound = {
 	base: string;
 	head: string;
 	round: number;
+	publishedBy?: PublishedBy;
 	verdict: StoredVerdict;
 	details?: PublicationDetails;
 	walkthrough?: Walkthrough;

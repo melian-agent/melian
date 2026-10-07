@@ -6,6 +6,7 @@ import {
 	type PostedReview,
 	type PublishedMarkers,
 	type PullRequest,
+	type RepositoryPermission,
 	type ReviewDraft,
 	type ReviewProvider,
 	type ReviewStatus,
@@ -133,12 +134,34 @@ export class GitHubProvider implements ReviewProvider {
 			repository: { owner: data.base.repo.owner.login, name: data.base.repo.name },
 			number: data.number,
 			title: data.title,
+			...(data.user == null ? {} : { author: data.user.login }),
 			url: data.html_url,
 			state: data.state === "open" ? "open" : "closed",
 			base: { ref: data.base.ref, sha: data.base.sha },
 			head: { ref: data.head.ref, sha: data.head.sha },
 			fetch: { url: data.base.repo.clone_url, headRef: `refs/pull/${data.number}/head` },
 		};
+	}
+
+	async permission(login: string): Promise<RepositoryPermission | undefined> {
+		try {
+			const { data } = await this.octokit.rest.repos.getCollaboratorPermissionLevel({
+				owner: this.owner,
+				repo: this.repo,
+				username: login,
+			});
+			const permission = data.permission;
+			return permission === "admin" ||
+				permission === "maintain" ||
+				permission === "write" ||
+				permission === "triage" ||
+				permission === "read" ||
+				permission === "none"
+				? permission
+				: undefined;
+		} catch {
+			return undefined;
+		}
 	}
 
 	async postReview(draft: ReviewDraft): Promise<PostedReview> {
@@ -517,7 +540,7 @@ export class GitHubProvider implements ReviewProvider {
 		return { ...(review === undefined ? {} : { review }), threads, replies };
 	}
 
-	private async login(): Promise<string | undefined> {
+	async login(): Promise<string | undefined> {
 		this.asked ??= this.octokit.rest.users.getAuthenticated().then(
 			({ data }) => {
 				this.viewer ??= data.login;
