@@ -102,6 +102,8 @@ Done when the `melian/review` status is required on `main`, and every pull reque
    - `[x]` The drain rule. [The evals guideline](guidelines/evals.md#comparisons) states it, and `melian compare stats` says when a drain pull request is due.
    - `[ ]` The retirement line in `melian compare stats`. It is a follow-up to step 10, and the design says it is not built.
 
+16. `[x]` **Mutation testing as a static check.** Built on the `mutation-check` branch. `static.mutation` runs Stryker 10.0.0 on Vitest over the lines the head adds or edits, and reports each surviving or uncovered mutant as a P2 `mutation/untested-behaviour` finding. It is off by default and on in Melian's own `full` tier, with a bound of 2,000 changed lines. [decisions/2026-10-08-mutation-testing-as-a-static-check.md](decisions/2026-10-08-mutation-testing-as-a-static-check.md) records the settings and what it gives up, and [the progress entry](progress-log/2026-10-08-mutation-check.md) the build. The criterion it automates is [decisions/2026-10-07-tested-means-a-failing-mutation.md](decisions/2026-10-07-tested-means-a-failing-mutation.md). Not built: applying the advisory rule for a lens-raised `untested-behaviour` in the pipeline, which AGENTS.md states as a convention. Needs step 6.
+
 ### Milestone 2 in flight, 2026-10-08
 
 [The milestone 2 state entry](progress-log/2026-10-07-milestone-2-state.md) holds the numbers and the incidents behind this list. It dates from 2026-10-07 and predates several landings below.
@@ -113,10 +115,6 @@ Open, with what each waits on:
 1. Step 14, What step 3 left. [pull request #96](https://github.com/melian-agent/melian/pull/96) is built on its branch and under review. It waits on Melian's rounds, the Claude review of record, and CI on its head. It restacks its enclosing-function reader on the compiler graph from [pull request #89](https://github.com/melian-agent/melian/pull/89), which has landed. A durability tuning round and Bedrock derivation stay outside it.
 2. Step 10, Required status on `main`. The code is on `main`. The rehearsal and the ruleset switch wait on the milestone 2 readiness check at the end. The retirement line in `melian compare stats` is unbuilt. Retiring the shadow reviewers waits on ten adjudicated merged pull requests and on the maintainer's decision.
 3. The `design` lens. A live run of three passes is owed, and six goldens, listed in [BACKLOG.md](../packages/evals/goldens/BACKLOG.md). The record for [pull request #93](https://github.com/melian-agent/melian/pull/93) owes Codex's adversarial review until its usage limit lifts on 13 October.
-
-Decided and not built:
-
-- Mutation testing as a static check. The `design` lens has landed, so it is next. Stryker on Vitest, a pinned dev dependency under the release-age rule, runs incrementally over the changed lines of base and head. Surviving mutants become `untested-behaviour` findings. After it lands, a lens-raised `untested-behaviour` on code a fix pass wrote resolves to advisory unless it guards a trust or durability contract. [decisions/2026-10-07-tested-means-a-failing-mutation.md](decisions/2026-10-07-tested-means-a-failing-mutation.md) records the criterion it automates.
 
 Routes are committed, through [pull request #92](https://github.com/melian-agent/melian/pull/92) and [decisions/2026-10-07-committed-routes.md](decisions/2026-10-07-committed-routes.md). Sol (`openai-codex/gpt-6.1-sol`) serves the heavy tier, Terra (`openai-codex/gpt-5.6-terra`) the medium tier, and `anthropic/claude-sonnet-5-5` the verifier. Anthropic models are accepted as fallbacks, and the split moves dynamically as usage allows. Codex's usage limit was hit three times on 2026-10-06, so the tail finishes on Claude. Sonnet 5.5 gives the review of record once per step pull request, after the Codex adversarial review and Melian's rounds converge.
 
