@@ -6,6 +6,7 @@ import {
 	mutationNotJudged,
 	mutationSkips,
 	mutationUnmutated,
+	mutationUnmutatedLog,
 	normaliseMutationReport,
 	type Revision,
 	type ToolLog,
@@ -156,6 +157,15 @@ export class MutationRun {
 		return targets;
 	}
 
+	// The production files the revision changes that `diffLines` cannot address: git calls them binary, or their names are not
+	// UTF-8. They hold no line Stryker can be asked about, so the check cannot read them as having no production code.
+	#unaddressable(revision: Revision): string[] {
+		return revision.files
+			.filter((file) => file.status !== "deleted" && (file.binary || file.percentEncoded === true))
+			.map((file) => file.path)
+			.filter(production);
+	}
+
 	// The test file that tests `path`, found beside it or under its package's `test` directory, and otherwise the one to add.
 	async #nearestTest(path: string): Promise<string> {
 		const name = posix.basename(path).replace(typescript, "");
@@ -231,22 +241,36 @@ export class MutationRun {
 			(sum, ranges) => sum + ranges.reduce((count, [first, last]) => count + last - first + 1, 0),
 			0,
 		);
+		const binary = this.#unaddressable(revision).map((path) => ({
+			path,
+			ranges: [] as [number, number][],
+			...mutationUnmutated.binary,
+		}));
 		if (total === 0) {
-			// A production file that was changed but not mutated, such as a `.config.ts` or a path with a comma, means the
-			// change did have behaviour to judge, so the skip has no leave.
-			const held = Object.keys(revision.diffLines()).filter(production);
-			return held.length === 0
-				? { status: "skipped", reason: mutationSkips.noProductionLines, cause: "noProductionLines" }
-				: { status: "skipped", reason: mutationSkips.unmutated(held), cause: "unmutated" };
+			// A production file that was changed but not mutated, such as a `.config.ts`, a path with a comma, or a binary file,
+			// means the change did have behaviour to judge, so the skip has no leave.
+			const held = [...Object.keys(revision.diffLines()).filter(production), ...binary.map((file) => file.path)];
+			if (held.length === 0) {
+				return { status: "skipped", reason: mutationSkips.noProductionLines, cause: "noProductionLines" };
+			}
+			return {
+				status: "skipped",
+				reason: mutationSkips.unmutated(held),
+				cause: "unmutated",
+				...(binary.length === 0 ? {} : { log: mutationUnmutatedLog(this.#version, binary) }),
+			};
 		}
 		const { maxLines } = settings as MutationSettings;
 		const { kept: lines, omitted } = withinBound(changed, maxLines);
 		const count = Math.min(total, maxLines);
-		const unmutated = Object.entries(omitted).map(([path, ranges]) => ({
-			path,
-			ranges,
-			...mutationUnmutated.pastBound(maxLines),
-		}));
+		const unmutated = [
+			...Object.entries(omitted).map(([path, ranges]) => ({
+				path,
+				ranges,
+				...mutationUnmutated.pastBound(maxLines),
+			})),
+			...binary,
+		];
 		if (!(await this.#run.exists(posix.join(this.#root, config))))
 			throw this.#run.fail("toolFailed", `the revision has no ${config}, which Stryker needs`);
 		const entries = Object.entries(lines).flatMap(([path, ranges]) =>
@@ -258,7 +282,16 @@ export class MutationRun {
 				status: "skipped",
 				reason: text.skipped,
 				cause: "timeout",
-				log: mutationNotJudged({ version: this.#version, lines: changed }, text.skipped),
+				log: mutationNotJudged(
+					{
+						version: this.#version,
+						lines: {
+							...changed,
+							...Object.fromEntries(binary.map((file) => [file.path, [[1, 1]] as [number, number][]])),
+						},
+					},
+					text.skipped,
+				),
 			};
 		}
 		const tests: Record<string, string> = {};

@@ -378,6 +378,7 @@ export {
 	mutationSkipHasLeave,
 	mutationSkips,
 	mutationUnmutated,
+	mutationUnmutatedLog,
 	normaliseMutationReport,
 	type UnmutatedFile,
 } from "./mutation.ts";

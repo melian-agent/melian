@@ -101,6 +101,10 @@ export const mutationUnmutated = {
 		whatToDo:
 			"Split the change so each part fits within static.mutation.maxLines, or have a maintainer acknowledge that these lines were not mutation tested.",
 	}),
+	binary: {
+		why: "git treats the file as binary or its name is not UTF-8 text, so it lists no changed lines for Stryker to be asked about",
+		whatToDo: "Have a maintainer read the change to this file, or commit it as UTF-8 text.",
+	},
 	staticMutants: {
 		why: "its mutants are static, meaning they run when the module loads, such as a constant, a regular expression, or a table, and the run's ignoreStatic setting skips them, so no test was asked about them",
 		whatToDo: "Have a maintainer acknowledge these lines, or move the behaviour into a function that a test runs.",
@@ -142,6 +146,14 @@ function unmutatedResult(file: UnmutatedFile): ToolResult {
 				},
 			},
 		],
+	};
+}
+
+/** A tool log of one `unmutated` result for each of `files`, for a skip that must still be seen. */
+export function mutationUnmutatedLog(version: string, files: readonly UnmutatedFile[]): ToolLog {
+	return {
+		version: "2.1.0",
+		runs: [{ tool: { driver: { name: "Stryker", version } }, results: files.map(unmutatedResult) }],
 	};
 }
 

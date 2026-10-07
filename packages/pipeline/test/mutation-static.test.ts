@@ -9,7 +9,9 @@ import {
 	loadConfig,
 	mutationSkipHasLeave,
 	mutationSkips,
+	mutationUnmutated,
 	type RepositorySource,
+	Revision,
 	staticFindings,
 	type ToolLog,
 } from "@melian-agent/core";
@@ -322,7 +324,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			expect(result.status).toBe("ran");
 		});
 
-		it("proves the probe: unconfinedSandbox, the same fake exits 3 and the check fails", async () => {
+		it("proves the probe: unconfined, the same fake exits 3 and the check fails", async () => {
 			const { base, head } = twoCommits();
 			const secret = join(artifacts, "auth.json");
 			writeFileSync(secret, "{}");
@@ -497,6 +499,109 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			expect(result.notes).toContain(
 				"packages/p/vitest.config.ts was not mutated: a tool loads a configuration file to run the mutants.",
 			);
+		});
+
+		describe("a production file that lists no changed lines", () => {
+			const binary = "export const x = 1;\0\n";
+			const path = "packages/p/src/blob.ts";
+
+			it("gives the skip no leave and raises an unmutated finding when the file is binary and nothing else changes", async () => {
+				const base = commit(repo, { "stryker.config.json": config });
+				const head = commit(repo, { [path]: binary });
+				const fake = stryker({ report: report({}) });
+				const result = await mutate(base, head);
+				expect(result).toMatchObject({
+					status: "skipped",
+					cause: "unmutated",
+					reason: mutationSkips.unmutated([path]),
+				});
+				if (result.status !== "skipped") throw new Error("ran");
+				expect(mutationSkipHasLeave(result.cause)).toBe(false);
+				expect(result.log?.runs[0].results.map((each) => [each.ruleId, each.message.text])).toEqual([
+					["unmutated", `Stryker did not judge the changed lines of ${path}: ${mutationUnmutated.binary.why}.`],
+				]);
+				expect(fake.calls()).toEqual([]);
+			});
+
+			it("raises the finding beside the findings of the files it does mutate", async () => {
+				const base = commit(repo, { "stryker.config.json": config });
+				const head = commit(repo, { [path]: binary, "packages/p/src/a.ts": a });
+				stryker({ report: report({ "packages/p/src/a.ts": [{ status: "Survived", line: 2 }] }) });
+				expect(
+					(await found(base, head)).map((finding) => [finding.ruleId, finding.properties.path]).sort(),
+				).toEqual([
+					["mutation/unmutated", path],
+					["mutation/untested-behaviour", "packages/p/src/a.ts"],
+				]);
+			});
+
+			it("keeps the leave for a binary test file, a deleted binary file, and a binary file that is not TypeScript", async () => {
+				const base = commit(repo, {
+					"stryker.config.json": config,
+					"packages/p/src/gone.ts": binary,
+				});
+				stryker({ report: report({}) });
+				const head = commitTo(
+					repo,
+					{
+						"packages/p/test/blob.test.ts": "\0\0 a test, unlike the deleted file\0",
+						"packages/p/src/image.png": "\0PNG\0",
+					},
+					["packages/p/src/gone.ts"],
+				);
+				expect(await mutate(base, head)).toMatchObject({ status: "skipped", cause: "noProductionLines" });
+			});
+
+			it("counts a file whose name is not UTF-8 text, which git lists without lines", async () => {
+				const { base, head } = twoCommits();
+				stryker({ report: report({}) });
+				const revision = Revision.from({
+					base,
+					head,
+					files: [
+						{
+							status: "added",
+							path: "packages/p/src/%FF.ts",
+							percentEncoded: true,
+							binary: false,
+							hunks: [],
+						},
+					],
+				});
+				const result = await runStaticTool(
+					{
+						env: createNodeExecutionEnv(repo),
+						repoRoot: repo,
+						base,
+						commit: head,
+						tool: "mutation",
+						settings: { ...defaultConfig.static.mutation, timeout: 120 },
+						revision,
+					},
+					context,
+				);
+				expect(result).toMatchObject({ status: "skipped", cause: "unmutated" });
+			});
+
+			it("names the file when the run passes its timeout", async () => {
+				const base = commit(repo, { "stryker.config.json": config });
+				const head = commit(repo, { [path]: binary, "packages/p/src/a.ts": a });
+				fakeTool(repo, "stryker", `if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\nsleep 30`);
+				const result = await runStaticTool(
+					{
+						env: createNodeExecutionEnv(repo),
+						repoRoot: repo,
+						base,
+						commit: head,
+						tool: "mutation",
+						settings: { ...defaultConfig.static.mutation, timeout: 1 },
+						revision: await revisionOf(base, head),
+					},
+					context,
+				);
+				if (result.status !== "skipped") throw new Error("ran");
+				expect(result.log?.runs[0].results[0]!.message.text).toContain(`${"packages/p/src/a.ts"}, ${path}`);
+			});
 		});
 
 		it("keeps a path with a comma out of --mutate, which splits on commas, and says so", async () => {
