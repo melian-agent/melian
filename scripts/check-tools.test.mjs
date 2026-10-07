@@ -39,6 +39,14 @@ describe("tool release verification", () => {
 			deadline.mockRestore();
 		}
 	});
+	it("checks every platform's digest, not only the first", async () => {
+		const second = { url: "https://github.com/a/b/releases/download/v1.2.3/tool-2.tar.gz", sha256: "c".repeat(64) };
+		const two = { tool: { ...tools.tool, platforms: { "linux-amd64": pin, "darwin-arm64": second } } };
+		const assets = [release.assets[0], { browser_download_url: second.url, digest: `sha256:${"d".repeat(64)}` }];
+		expect(
+			await verifyReleases({ tools: two, ci: true, fetch: async () => Response.json({ ...release, assets }) }),
+		).toEqual(["tool: release unverified: darwin-arm64: asset digest differs from the manifest"]);
+	});
 	it.each([
 		{ label: "draft", change: { draft: true } },
 		{ label: "wrong tag", change: { tag_name: "v9.0.0" } },
