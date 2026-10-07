@@ -64,6 +64,10 @@ guardrails:
         pattern: '^\s*(?:describe|it|test)\.only\('
         paths: ["**/*.test.ts"]
         message: a focused test skips the rest of the suite
+      stryker-disable:
+        pattern: 'Stryker disable'
+        paths: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts", "!packages/evals/goldens/**", "!packages/evals/verifier/**"]
+        message: a Stryker disable comment hides the mutants of the lines it covers from static.mutation, so a guard stays unproven; test the behaviour instead, or a maintainer decides the exception
       unpinned-action:
         pattern: 'uses:\s*[^\s#]+@v\d'
         paths: [".github/workflows/**"]

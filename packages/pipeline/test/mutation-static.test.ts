@@ -413,6 +413,59 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		});
 	});
 
+	describe("the paths it names", () => {
+		function entries(call: string[]): string[] {
+			return argumentsOf(call).flag("--mutate")!.split(",");
+		}
+
+		const route = "app/users/[id]/(group)/route.ts";
+
+		it("escapes every glob character in a path, so Stryker reads the file and no other", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const odd = "packages/p/src/a*b?c{d}e!f+g@h#i.ts";
+			const head = commit(repo, { [route]: lines("export const x = 1;"), [odd]: lines("export const y = 1;") });
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head);
+			expect(entries(fake.calls()[0]!)).toEqual([
+				"app/users/\\[id\\]/\\(group\\)/route.ts:1-1",
+				"packages/p/src/a\\*b\\?c\\{d\\}e\\!f\\+g\\@h\\#i.ts:1-1",
+			]);
+		});
+
+		it("notes a requested file the report holds no mutants for, and only that one", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				[route]: lines("export const x = 1;"),
+				"packages/p/src/b.ts": lines("export const y = 1;"),
+			});
+			stryker({ report: report({ "packages/p/src/b.ts": [{ status: "Killed", line: 1 }] }) });
+			const result = await mutate(base, head);
+			if (result.status !== "ran") throw new Error("skipped");
+			expect(result.notes.filter((note) => note.includes("produced no mutants"))).toEqual([
+				`${route} produced no mutants, so nothing on its changed lines was judged.`,
+			]);
+		});
+
+		it("makes a survivor in a path with glob characters a finding at that path", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, { [route]: lines("export const x = 1;") });
+			stryker({ report: report({ [route]: [{ status: "Survived", line: 1 }] }) });
+			const findings = await found(base, head);
+			expect(findings.map((finding) => finding.properties.path)).toEqual([route]);
+		});
+
+		it("notes an Ignored mutant on a changed line, naming the line", async () => {
+			const { base, head } = twoCommits();
+			stryker({ report: report({ "packages/p/src/a.ts": [{ status: "Ignored", line: 2 }] }) });
+			const result = await mutate(base, head);
+			if (result.status !== "ran") throw new Error("skipped");
+			expect(result.log.runs[0].results).toEqual([]);
+			expect(result.notes).toContain(
+				"packages/p/src/a.ts: line 2 had mutants Stryker ignored, as the head's own comment or configuration told it to, so they were not judged.",
+			);
+		});
+	});
+
 	describe("the bound on changed lines", () => {
 		function head(lineCount: number, name: string) {
 			const base = commit(repo, { "stryker.config.json": config });

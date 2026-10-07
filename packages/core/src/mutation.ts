@@ -96,7 +96,10 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 			if (!known.has(each.status)) throw invalid(`mutant status ${each.status} is not one Stryker ends a run with`);
 	const results: ToolResult[] = [];
 	const aside = new Map<string, number>();
+	const ignored = new Map<string, Set<number>>();
+	const mutated = new Set<string>();
 	for (const [path, file] of Object.entries(files)) {
+		if (file.mutants.length > 0) mutated.add(path);
 		const ranges = Object.hasOwn(run.lines, path) ? run.lines[path]! : undefined;
 		if (ranges === undefined) continue;
 		for (const each of file.mutants) {
@@ -106,7 +109,11 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 				aside.set(each.status, (aside.get(each.status) ?? 0) + 1);
 				continue;
 			}
-			if (each.status === "Killed" || each.status === "Ignored") continue;
+			if (each.status === "Ignored") {
+				ignored.set(path, (ignored.get(path) ?? new Set()).add(start.line));
+				continue;
+			}
+			if (each.status === "Killed") continue;
 			const survived = each.status === "Survived";
 			const test = run.tests[path] ?? "a test file";
 			results.push({
@@ -149,6 +156,17 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 		([status, count]) =>
 			`${count} ${status} mutant(s) on changed lines were set aside: a hang or a crash is not a survivor, so no finding is raised for it.`,
 	);
+	// The head's own comments and configuration choose what Stryker ignores, so an ignored mutant is never read as caught.
+	for (const [path, lines] of ignored) {
+		const named = [...lines].sort((a, b) => a - b).join(", ");
+		notes.push(
+			`${path}: line ${named} had mutants Stryker ignored, as the head's own comment or configuration told it to, so they were not judged.`,
+		);
+	}
+	// A path in `--mutate` is a glob, so one that matches no file leaves a report that reads as clean.
+	for (const path of Object.keys(run.lines)) {
+		if (!mutated.has(path)) notes.push(`${path} produced no mutants, so nothing on its changed lines was judged.`);
+	}
 	return {
 		log: { version: "2.1.0", runs: [{ tool: { driver: { name: "Stryker", version: run.version } }, results }] },
 		notes,

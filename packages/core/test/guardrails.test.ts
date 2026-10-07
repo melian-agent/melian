@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { Adjudication, Changeset, ConfigError, evaluateGuardrails, Finding, loadConfig } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -489,6 +490,29 @@ describe("forbidden-patterns", () => {
 				finding.message.text,
 			]),
 		).toEqual([["a.test.ts", 4_178, "P2", "line could not be scanned."]]);
+	});
+});
+
+describe("this repository's own policy", () => {
+	it("flags a Stryker disable comment on an added TypeScript line, and not in prose", async () => {
+		const own = readFileSync(new URL("../../../melian.yaml", import.meta.url), "utf8");
+		const { findings } = await guardrails(
+			{ "melian.yaml": own, "src/a.ts": lines("export const a = 1;") },
+			{
+				"src/a.ts": lines("export const a = 1;", "// Stryker disable next-line all", "export const b = 2;"),
+				"notes.md": lines("Stryker disable comments hide mutants."),
+			},
+		);
+		expect(summary(findings).filter((finding) => finding.rule === "guardrail/forbidden-patterns")).toEqual([
+			{
+				rule: "guardrail/forbidden-patterns",
+				file: "src/a.ts",
+				line: 2,
+				severity: "P2",
+				cause: "introduced",
+				resolution: undefined,
+			},
+		]);
 	});
 });
 

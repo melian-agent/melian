@@ -44,6 +44,12 @@ function mutable(path: string): boolean {
 	);
 }
 
+// Stryker reads each `--mutate` entry as a glob, so a file name with a glob character in it, such as `[id]` or `(group)`
+// in a Next.js route, names other files or none unless each character is escaped.
+function literal(path: string): string {
+	return path.replace(/[\\*?[\]{}()!+@#]/g, "\\$&");
+}
+
 function quote(text: string): string {
 	return `'${text.replaceAll("'", "'\\''")}'`;
 }
@@ -165,7 +171,7 @@ export class MutationRun {
 		if (!(await this.#run.exists(posix.join(this.#root, config))))
 			throw this.#run.fail("toolFailed", `the revision has no ${config}, which Stryker needs`);
 		const entries = Object.entries(lines).flatMap(([path, ranges]) =>
-			ranges.map(([first, last]) => `${path}:${first}-${last}`),
+			ranges.map(([first, last]) => `${literal(path)}:${first}-${last}`),
 		);
 		const text = await this.#execute(entries);
 		if (typeof text !== "string") return { status: "skipped", reason: text.skipped };

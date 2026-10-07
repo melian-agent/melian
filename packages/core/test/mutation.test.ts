@@ -47,8 +47,10 @@ const input = {
 	tests: { "src/a.ts": "test/a.test.ts", "src/b c.ts": "a new test/b c.test.ts" },
 };
 
+// What the change asked Stryker to mutate is what the report holds, unless a test says otherwise.
 function read(files: Record<string, Mutant[]>) {
-	return normaliseMutationReport(report(files), input);
+	const asked = Object.entries(input.lines).filter(([path]) => Object.hasOwn(files, path));
+	return normaliseMutationReport(report(files), { ...input, lines: Object.fromEntries(asked) });
 }
 
 function located(files: Record<string, Mutant[]>) {
@@ -151,15 +153,35 @@ describe("normaliseMutationReport", () => {
 		]);
 	});
 
-	it("reports nothing for Killed and Ignored mutants", () => {
+	it("reports no finding for Killed and Ignored mutants, and a note, naming the lines, for each Ignored one on a changed line", () => {
 		const { log, notes } = read({
 			"src/a.ts": [
 				{ status: "Killed", line: 10 },
+				{ status: "Ignored", line: 12 },
 				{ status: "Ignored", line: 11 },
+				{ status: "Ignored", line: 11 },
+				{ status: "Ignored", line: 99 },
 			],
 		});
 		expect(log.runs[0].results).toEqual([]);
-		expect(notes).toEqual([]);
+		expect(notes).toEqual([
+			"src/a.ts: line 11, 12 had mutants Stryker ignored, as the head's own comment or configuration told it to, so they were not judged.",
+		]);
+	});
+
+	it("notes each requested file the report holds no mutants for, whether it is absent or listed empty", () => {
+		const lines = { "src/a.ts": [[10, 12]], "src/b.ts": [[1, 1]], "src/c.ts": [[1, 1]] } as Record<
+			string,
+			[number, number][]
+		>;
+		const { notes } = normaliseMutationReport(
+			report({ "src/a.ts": [{ status: "Killed", line: 10 }], "src/c.ts": [] }),
+			{ ...input, lines },
+		);
+		expect(notes).toEqual([
+			"src/b.ts produced no mutants, so nothing on its changed lines was judged.",
+			"src/c.ts produced no mutants, so nothing on its changed lines was judged.",
+		]);
 	});
 
 	it("gives a skip leave to pass only for a change with nothing to mutate, one past the bound, an untrusted writer, or a timeout", () => {
