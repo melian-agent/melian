@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { ToolManifest, ToolManifestError } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
 
@@ -43,14 +43,20 @@ describe("ToolManifest", () => {
 		for (const [label, state] of Object.entries({ named, platform, repository, date, exception, miss }))
 			expect(() => ToolManifest.parse(JSON.stringify(state)), label).toThrow(ToolManifestError);
 	});
-	it("links every execution miss to its comparison finding", () => {
+	it("links every execution miss to its comparison finding and the tool it orders", () => {
+		const record = "packages/evals/comparisons/2026-10-06-pr-89.md";
+		const expected = [
+			{ record, finding: "M1", tool: "repro-run" },
+			...["M2", "L1", "L2", "L3", "L4", "L5", "L6", "L8", "L10", "L11", "L12", "L13"].map((finding) => ({
+				record,
+				finding,
+				tool: "tests",
+			})),
+		];
 		const manifest = ToolManifest.parse(JSON.stringify(stored));
-		for (const miss of manifest.toJSON().misses) {
+		expect(manifest.toJSON().misses).toEqual(expected);
+		for (const miss of manifest.toJSON().misses)
 			expect(miss.record).toMatch(/^packages\/evals\/comparisons\/[^/]+\.md$/);
-			const url = new URL(`../../../${miss.record}`, import.meta.url);
-			// The record lives on the record branch, pull request #90, until it lands.
-			if (existsSync(url)) expect(readFileSync(url, "utf8")).toContain(miss.finding);
-		}
 	});
 
 	it("reads all four pins and the recorded execution misses", () => {
