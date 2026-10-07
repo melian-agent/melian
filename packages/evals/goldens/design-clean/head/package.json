@@ -1,0 +1,7 @@
+{
+	"name": "melian-cli",
+	"version": "1.0.0",
+	"type": "module",
+	"files": ["dist", "bin", "manifest.json"],
+	"bin": { "melian": "bin/melian.js" }
+}
