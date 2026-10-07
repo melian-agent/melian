@@ -209,7 +209,18 @@ it("stores three content identities beside a verified graph and treats corruptio
 	});
 	await writeFile(join(root, "coverage", graph.key, "artifacts", `review-${review.id}.json`), "{}");
 	expect(await cache.read(parts, "review", { id: review.id })).toBeUndefined();
-	await expect(cache.store({ ...parts, tree: "e".repeat(40) }, review)).rejects.toThrow();
+	for (const [tree, version] of [
+		["e".repeat(40), parts.version],
+		[parts.tree, `${parts.version}-other`],
+	]) {
+		const foreign = ReviewCoverage.compute(tree!, version!, [], [], []);
+		await expect(cache.store(parts, foreign)).rejects.toThrow("Coverage identity differs from graph");
+		await writeFile(
+			join(root, "coverage", graph.key, "artifacts", `review-${foreign.id}.json`),
+			JSON.stringify(foreign.toJSON()),
+		);
+		expect(await cache.read(parts, "review", { id: foreign.id })).toBeUndefined();
+	}
 	const oversized = ReviewCoverage.compute(parts.tree, parts.version, ["x".repeat(16 * 1024 * 1024)], [], []);
 	await expect(cache.store(parts, oversized)).rejects.toThrow("16 MiB cache limit");
 });
