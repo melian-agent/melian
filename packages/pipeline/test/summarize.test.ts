@@ -25,7 +25,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import type { TaskId } from "../src/harness.ts";
-import { SummaryTask, summarizeExtension } from "../src/summarize.ts";
+import { SummaryIndex, SummaryTask, summarizeExtension } from "../src/summarize.ts";
 import { baseAndHead, isolatedGitEnv } from "./fixtures/repo.ts";
 
 let repo: string;
@@ -290,6 +290,34 @@ describe("walkthrough summaries", () => {
 		await summarize({ unlockModels: atCap });
 		expect(atCap).not.toHaveBeenCalled();
 		expect(captured["You write Melian's walkthrough"]).toHaveLength(2);
+		const rerun = vi.fn(async () => {});
+		await summarize({ unlockModels: rerun, rerun: true });
+		expect(rerun).toHaveBeenCalledOnce();
+	});
+	it("counts a finished task the index has not counted before deciding to run a credential command", async () => {
+		const fail = fauxAssistantMessage("", { stopReason: "error", errorMessage: "down" });
+		const captured = scriptConversations(models, [
+			{ match: "You write Melian's walkthrough", replies: [fail, fail, fail] },
+		]);
+		const revision = revisionKey(changeset.revision);
+		const root = await harness.root(context);
+		await summarize();
+		const first = (await harness.snapshot(SummaryIndex, root.id, context))!.tasks[revision]!;
+		await summarize();
+		const second = (await harness.snapshot(SummaryIndex, root.id, context))!.tasks[revision]!;
+		expect(second).not.toBe(first);
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).walkthroughAttempts = { [revision]: 1 };
+			(await tx.doc(SummaryIndex, root.id)).counted[revision] = first;
+		}, context);
+		const asked = captured["You write Melian's walkthrough"]!.length;
+
+		const repeat = vi.fn(async () => {});
+		await summarize({ unlockModels: repeat });
+		expect(repeat).not.toHaveBeenCalled();
+		expect((await harness.snapshot(SummaryIndex, root.id, context))!.tasks[revision]).toBe(second);
+		expect(captured["You write Melian's walkthrough"]).toHaveLength(asked);
+
 		const rerun = vi.fn(async () => {});
 		await summarize({ unlockModels: rerun, rerun: true });
 		expect(rerun).toHaveBeenCalledOnce();

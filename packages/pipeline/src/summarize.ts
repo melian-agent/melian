@@ -165,7 +165,7 @@ class SummaryIndexState {
 	}
 }
 
-const SummaryIndex = defineDoc<StoredSummaryIndex>({
+export const SummaryIndex = defineDoc<StoredSummaryIndex>({
 	kind: "melian.summaries",
 	version: 2,
 	migrate: (value) => SummaryIndexState.upgrade(value),
@@ -290,14 +290,20 @@ export async function summarizeReview(options: {
 		if (options.unlockModels !== undefined) {
 			// What the commit below decides, read ahead of it: a live task is attached to and will ask its model, and a
 			// new task is created unless the attempts are spent.
-			const known = (await harness.snapshot(SummaryIndex, conversation.id, context))?.tasks[revision];
+			const index = await harness.snapshot(SummaryIndex, conversation.id, context);
+			const known = index?.tasks[revision];
 			const record = known === undefined ? undefined : await harness.getTask(known as TaskId, context);
 			const attaches =
 				record !== undefined &&
 				(record.state.status !== "terminal" ||
 					![...undecided, "failed", "completed"].includes(record.state.outcome.status));
+			const uncounted =
+				record?.state.status === "terminal" &&
+				["failed", "completed"].includes(record.state.outcome.status) &&
+				index?.counted[revision] !== known;
 			const spent =
-				(await harness.snapshot(VerdictDocument, conversation.id, context))?.walkthroughAttempts?.[revision] ?? 0;
+				((await harness.snapshot(VerdictDocument, conversation.id, context))?.walkthroughAttempts?.[revision] ?? 0) +
+				(uncounted ? 1 : 0);
 			if (attaches || options.rerun || spent < maxWalkthroughAttempts) await options.unlockModels();
 		}
 		const prompt = await WalkthroughPrompt.from(changeset).render();
