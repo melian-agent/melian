@@ -69,6 +69,29 @@ describe("Enola policy and reports", () => {
 		expect(policy.toJSON().failOn).toEqual(["constraints"]);
 		expect(EnolaPolicy.from([]).toJSON().failOn).toEqual([]);
 	});
+	it("turns on the constraint gate for a top-level rules or recipes key in the intent file", () => {
+		const none = EnolaPolicy.from([{ path: "enola-intent.yaml", text: "name: x\n" }]);
+		for (const key of ["rules", "recipes"]) {
+			const policy = EnolaPolicy.from([{ path: "enola-intent.yaml", text: `name: x\n${key}:\n  - a\n` }]);
+			expect(policy.toJSON().failOn).toEqual(["constraints"]);
+			expect(policy.hash).not.toBe(none.hash);
+		}
+		const gated = EnolaPolicy.from([{ path: "enola-intent.yaml", text: "rules:\n  - a\n" }]);
+		const ungated = EnolaPolicy.from([{ path: "enola-intent.yaml", text: "notes:\n  - a\n" }]);
+		expect(gated.hash).not.toBe(ungated.hash);
+	});
+	it("leaves the constraint gate off for an intent file without a top-level rules or recipes key", () => {
+		expect(EnolaPolicy.from([{ path: "enola-intent.yaml", text: "name: x\n" }]).toJSON().failOn).toEqual([]);
+		expect(
+			EnolaPolicy.from([{ path: "enola-intent.yaml", text: "name: x\n  rules:\n    - a\n" }]).toJSON().failOn,
+		).toEqual([]);
+		expect(
+			EnolaPolicy.from([{ path: "enola-intent.yaml", text: "# rules:\nname: x\n  recipes: []\n" }]).toJSON().failOn,
+		).toEqual([]);
+		expect(
+			EnolaPolicy.from([{ path: "other/enola-intent.yaml", text: "rules:\n  - a\n" }]).toJSON().failOn,
+		).toEqual([]);
+	});
 	it("reads located and unlocated results, excluding resolved and suppressed findings", () => {
 		const result = { ruleId: "constraints/core-layer", level: "error", message: { text: "Layer crossed" } };
 		const log = normaliseEnolaSarif(
