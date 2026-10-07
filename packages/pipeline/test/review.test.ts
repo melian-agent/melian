@@ -1490,7 +1490,7 @@ describe("reviewChangeset", () => {
 			lenses.map((lens) => (lens.name === "contracts" ? withBudget(lens, { findings: budget }) : lens));
 		const correctnessDone = { match: correctness, replies: [fauxAssistantMessage("Done.")] };
 
-		it("leaves the review not reviewed when a lens left it defects, since one may be unreported", async () => {
+		it("leaves the review not reviewed when a lens could have handed it defects, since one may be unreported", async () => {
 			scriptConversations(fake, [
 				correctnessDone,
 				{
@@ -1511,12 +1511,13 @@ describe("reviewChangeset", () => {
 				name: "lens.contracts",
 				status: "ended",
 				level: "careful",
-				reason: "its findings budget of 1 ran out while `correctness` left it defects, so one may be unreported",
+				reason:
+					"its findings budget of 1 ran out while `correctness` could have handed it defects, so one may be unreported",
 			});
 			expect(verdict.ran?.map((check) => check.name)).not.toContain("lens.contracts");
 		});
 
-		it("names every lens that left it defects", async () => {
+		it("names every lens that could have handed it defects", async () => {
 			const design = "You are the design reviewer";
 			scriptConversations(fake, [
 				correctnessDone,
@@ -1538,7 +1539,7 @@ describe("reviewChangeset", () => {
 			const { verdict } = await reviewed({ lenses: capped(1), config: trio });
 
 			expect(verdict.notRun.find((check) => check.name === "lens.contracts")?.reason).toBe(
-				"its findings budget of 1 ran out while `correctness`, `design` left it defects, so one may be unreported",
+				"its findings budget of 1 ran out while `correctness`, `design` could have handed it defects, so one may be unreported",
 			);
 		});
 

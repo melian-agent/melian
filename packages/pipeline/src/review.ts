@@ -1192,7 +1192,7 @@ function lensCheck(
 		// Another lens left this one a defect, and the findings budget refused a report: that defect may be in neither
 		// report, so the review cannot read as complete, whatever `ended: count` says of the tokens and tools budgets.
 		if (outcome.capped !== undefined && handedBy.length > 0) {
-			const lost = `its findings budget of ${outcome.capped} ran out while ${handedBy.map((name) => `\`${name}\``).join(", ")} left it defects, so one may be unreported`;
+			const lost = `its findings budget of ${outcome.capped} ran out while ${handedBy.map((name) => `\`${name}\``).join(", ")} could have handed it defects, so one may be unreported`;
 			return {
 				name,
 				status: "ended",
@@ -1614,7 +1614,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const skipped = covering.filter(({ lens }) => choices.get(lens) === "skip").map(({ lens }) => lens.name);
 	const lenses: LensRun[] = [];
 	const notes = new Map<string, string[]>();
-	// Each running lens, by name, to the lenses whose instructions left it defects: the hand-off that rendered.
+	// Each running lens, by name, to the lenses whose instructions could have handed it defects: the hand-off that rendered.
 	const handedBy = new Map<string, string[]>();
 	const leading = new Map<string, number>();
 	const callerNotes: Record<string, string[]> = {};
