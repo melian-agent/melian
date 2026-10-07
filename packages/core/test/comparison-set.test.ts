@@ -241,6 +241,45 @@ describe("ComparisonSet backlog", () => {
 	});
 });
 
+describe("ComparisonSet terminal rendering", () => {
+	const hostile = "Fix\u001b[2J\u001b]0;pwned\u0007\nforged";
+	const escaped = "Fix\\u001b[2J\\u001b]0;pwned\\u0007\\u000aforged";
+	const escapedTitle = "Fix\\u001b[2J\\u001b]0;pwned\\u0007";
+	const noRawControls = (text: string) => expect(text).not.toMatch(/[\u0000-\u0009\u000b-\u001f\u007f]/);
+
+	it("escapes control characters in the plain backlog's title and target", () => {
+		const external = report({ title: hostile });
+		const comparison = round([external], [], { target: hostile });
+		comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "no-owner", golden: "correctness" });
+		const text = new ComparisonSet([entry("c1", comparison)]).renderBacklog();
+		noRawControls(text.replace(/\n$/, ""));
+		expect(text).toBe(`correctness: ${escaped} ${external.id} ${escapedTitle} (valid).\n`);
+	});
+
+	it("escapes control characters in the candidate check lines of stats", () => {
+		const judged = (changeset: string, external: ExternalFinding) => {
+			const comparison = round([external], []);
+			comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "no-owner", rule: hostile });
+			return entry(changeset, comparison);
+		};
+		const set = new ComparisonSet([
+			judged(hostile, report({ line: 90, title: "one" })),
+			judged(`${hostile}2`, report({ line: 95, title: "two" })),
+		]);
+		const text = set.renderStats();
+		noRawControls(text.replace(/\n/g, ""));
+		expect(text).toContain(`Candidate check: rule:${escaped}, seen on 2 changesets (${escaped}, ${escaped}2).`);
+	});
+
+	it("escapes control characters in a reviewer name on the stats line", () => {
+		const comparison = Comparison.of(revision);
+		comparison.import("file:x.json", { findings: [], skippedBodies: 0, reviewers: [{ name: hostile }] }, at);
+		const text = new ComparisonSet([entry("c1", comparison)]).renderStats();
+		noRawControls(text.replace(/\n/g, ""));
+		expect(text).toContain(`${escaped}: recall`);
+	});
+});
+
 describe("ComparisonSet candidate checks", () => {
 	const pool = [90, 91, 92, 93]
 		.map((line) => report({ line, title: `pooled ${line}` }))
