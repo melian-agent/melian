@@ -149,6 +149,21 @@ it("warns in doctor about a tool it cannot check, and exits 0", async () => {
 	expect(io.lines.join("")).toMatch(/warn\s+tool enola\s+0\.4\.27; cannot check: enola has no pin for linux-s390x/);
 });
 
+it("warns in doctor about a pin that is not fetched, and exits 0", async () => {
+	const bytes = toolArchive([{ name: "enola", text: "#!/bin/sh\nexit 0\n" }]);
+	const { name, ...pin } = testTool(bytes);
+	const provisioning = await ToolProvisioning.open(repo, {
+		manifest: ToolManifest.parse(JSON.stringify({ format_version: 1, tools: { [name]: pin }, misses: [] })),
+		root: join(repo, "cache"),
+		platform: "darwin-arm64",
+		fetch: vi.fn(async () => new Response(bytes)),
+	});
+	vi.spyOn(ToolInventory, "open").mockResolvedValue(await ToolInventory.open(repo, {}, provisioning));
+	const io = output();
+	expect(await main(["doctor"], io)).toBe(0);
+	expect(io.lines.join("")).toMatch(/warn\s+tool enola\s+0\.0\.1; /);
+});
+
 it.each([
 	["tools", "fetch"],
 	["tools", "fetch", "enola", "extra"],
