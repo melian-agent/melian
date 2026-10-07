@@ -1,0 +1,18 @@
+src/publish.ts
+
+  P1  line 6  fail-open-default  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  An omitted optional trust flag now grants trust, and the change edits the decision file to match.
+    What: An omitted optional trust flag now grants trust, and the change edits the decision file to match.
+    Why here: The base writer-trust decision says an absent answer reads as untrusted. This change makes the answer optional with a default of true and rewrites the decision to say an absent answer reads as trusted. The base text is the standard, and republishCommand is a caller that omits the answer.
+    Failure scenario: A repository's policy leaves trust.writers unset, so its writers are untrusted. A maintainer without write access runs republish: republishCommand calls canPublish with no options, `options.writersTrusted ?? true` reads the omission as trusted, and the command publishes where publishCommand, which passes the policy's answer, refuses. The decision file edited in the same change no longer says so, but the base decision still holds.
+    Evidence:
+      cause: src/publish.ts:6
+          const trusted = options.writersTrusted ?? true;
+      context: src/cli.ts:8
+          return canPublish(policy, author) ? "republished" : "refused";
+      context: docs/decisions/2026-10-01-writer-trust.md:5 at base
+        Why: trust widens what a review may publish. A repository that never opted in must never get it, so an absent answer reads as untrusted.
+    What to do: Make writersTrusted required again, or default it to false, pass the policy's answer from republishCommand, and restore the decision file.
+
+1 finding in 1 file.

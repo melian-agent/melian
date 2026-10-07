@@ -48,6 +48,7 @@ describe("the golden corpus", () => {
 			"design-clean",
 			"design-fail-open-default",
 			"design-identity-missing-input",
+			"design-rewrites-its-own-decision",
 			"design-unshipped-artifact",
 			"durability-attach-key",
 			"durability-clean-upsert",

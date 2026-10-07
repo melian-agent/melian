@@ -79,7 +79,7 @@ Lens budgets, which a scripted golden can drive and no lens judges:
 
 ## design
 
-The `design` lens ships with four goldens: `design-identity-missing-input`, `design-fail-open-default`, `design-unshipped-artifact`, and the clean `design-clean`. [The decision](../../../docs/decisions/2026-10-07-design-lens.md) names nine, each with Codex as its source. The rules still without a golden:
+The `design` lens ships with five goldens: `design-identity-missing-input`, `design-fail-open-default`, `design-unshipped-artifact`, `design-rewrites-its-own-decision`, and the clean `design-clean`. [The decision](../../../docs/decisions/2026-10-07-design-lens.md) names nine, each with Codex as its source. The rules still without a golden:
 
 - `trust-by-label`: a record trusted because of its label, not because anything checked it.
 - `bound-on-wrong-measure`: a limit that counts something other than what it exists to bound, such as the retirement window of [pull request #86](https://github.com/melian-agent/melian/pull/86) that excluded missing records.
