@@ -283,9 +283,11 @@ describe("TriageResults", () => {
 
 type RecordedFingerprints = Record<string, string>;
 
-// The record at origin/main: its entries, no record there yet, or a read git could not do.
+// The record at origin/main: its entries, no record there yet, a read git could not do, or main is the commit under
+// test, as on a push run, where there is nothing to compare.
 type MainRecord =
 	| { readonly kind: "recorded"; readonly entries: RecordedFingerprints }
+	| { readonly kind: "same" }
 	| { readonly kind: "absent" }
 	| { readonly kind: "unreadable" };
 
@@ -325,6 +327,11 @@ const recordPath = "packages/evals/triage/questions.json";
 // a file main does not have and fails when it has no main to read, which `show` alone would not tell apart.
 // `--full-tree` makes the path root-relative: `ls-tree` otherwise reads it from the directory git runs in.
 function recordOnMain(git: (args: string[]) => string): MainRecord {
+	try {
+		if (git(["rev-parse", "origin/main"]).trim() === git(["rev-parse", "HEAD"]).trim()) return { kind: "same" };
+	} catch {
+		// No origin/main to compare: the reads below tell absent from unreadable.
+	}
 	try {
 		if (git(["ls-tree", "--full-tree", "--name-only", "origin/main", "--", recordPath]).trim() === "")
 			return { kind: "absent" };
@@ -395,7 +402,10 @@ describe("the triage question set's version", () => {
 			const run = (cwd: string, ...args: string[]) =>
 				execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 
-			function repositoryWhereMain(records: boolean): { root: string; subdirectory: string } {
+			function repositoryWhereMain(
+				records: boolean,
+				headIsMain = false,
+			): { root: string; subdirectory: string } {
 				const root = mkdtempSync(join(tmpdir(), "melian-record-main-"));
 				const subdirectory = join(root, "packages", "evals", "triage");
 				mkdirSync(subdirectory, { recursive: true });
@@ -405,6 +415,10 @@ describe("the triage question set's version", () => {
 				run(root, "add", "-A");
 				run(root, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", "base");
 				run(root, "update-ref", "refs/remotes/origin/main", "HEAD");
+				if (!headIsMain) {
+					writeFileSync(join(root, "README.md"), "y\n");
+					run(root, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-am", "head");
+				}
 				return { root, subdirectory };
 			}
 
@@ -412,6 +426,18 @@ describe("the triage question set's version", () => {
 				const { root, subdirectory } = repositoryWhereMain(true);
 				try {
 					expect(recordOnMain(gitIn(subdirectory))).toEqual({ kind: "recorded", entries: { "1": "aaaa" } });
+				} finally {
+					rmSync(root, { recursive: true, force: true });
+				}
+			});
+
+			it("compares nothing when main is the commit under test, as on a push run", () => {
+				const { root, subdirectory } = repositoryWhereMain(true, true);
+				try {
+					expect(recordOnMain(gitIn(subdirectory))).toEqual({ kind: "same" });
+					writeFileSync(join(subdirectory, "questions.json"), '{"1":"bbbb"}');
+					expect(recordOnMain(gitIn(subdirectory))).toEqual({ kind: "same" });
+					expect(recordProblems({ "1": "bbbb" }, "1", "bbbb", { kind: "same" }, true)).toEqual([]);
 				} finally {
 					rmSync(root, { recursive: true, force: true });
 				}
