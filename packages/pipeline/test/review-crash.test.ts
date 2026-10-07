@@ -282,6 +282,92 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		}
 	});
 
+	it("records the caller notes and coverage of the call that rendered the section a repeat call finished", async () => {
+		const database = join(dir, "callers-record.sqlite");
+		const log = join(dir, "callers-record.jsonl");
+		await killWhen("callers", (events) => count(events, "model-request") === 2, database, log);
+
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
+		scriptConversations(fake, [
+			{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+			{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+		]);
+		harness = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		const heavy = fake.ref("heavy");
+		vi.spyOn(CallerContext.prototype, "recordCoverage").mockImplementation(async function (this: CallerContext) {
+			return { review: `paths:${this.coverageSource()?.paths.join(",") ?? "none"}` };
+		});
+		const repeat = async (callers: CallerContext) =>
+			reviewChangeset({
+				harness: harness!,
+				changeset: await Changeset.resolve(repo, "main...feature"),
+				config: {
+					...defaultConfig,
+					static: { ...defaultConfig.static, enola: { ...defaultConfig.static.enola, enabled: true } },
+					tiers: twoLensTiers,
+					models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
+				},
+				lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
+				standards: [],
+				checks: [],
+				models: fake.review,
+				callers,
+			});
+		const lensRecords = (result: Awaited<ReturnType<typeof repeat>>) =>
+			result.verdict.ran!.filter((record) => record.name.startsWith("lens."));
+
+		const second = await repeat(CallerContext.unavailable("graph missing on the rerun"));
+		const third = await repeat(CallerContext.unavailable("graph missing on the third call"));
+
+		for (const result of [second, third])
+			for (const record of lensRecords(result)) {
+				expect(record.coverage).toEqual({ review: "paths:caller.ts" });
+				expect(record.reason ?? "").toContain("Call one's note");
+				expect(record.reason ?? "").not.toContain("Callers unavailable");
+			}
+		expect(third.verdict.fingerprint()).toBe(second.verdict.fingerprint());
+	});
+
+	it("falls back to the finishing call's notes for a lens task that stored no caller context", async () => {
+		const database = join(dir, "callers-old.sqlite");
+		const log = join(dir, "callers-old.jsonl");
+		await killWhen("request", (events) => count(events, "model-request") === 2, database, log);
+
+		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
+		scriptConversations(fake, [
+			{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] },
+			{ match: "You are the contracts reviewer", replies: [fauxAssistantMessage("Done.")] },
+		]);
+		harness = await openHarness(await openSqliteStorage(database), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		const heavy = fake.ref("heavy");
+		const result = await reviewChangeset({
+			harness,
+			changeset: await Changeset.resolve(repo, "main...feature"),
+			config: {
+				...defaultConfig,
+				static: { ...defaultConfig.static, enola: { ...defaultConfig.static.enola, enabled: true } },
+				tiers: twoLensTiers,
+				models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
+			},
+			lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
+			standards: [],
+			checks: [],
+			models: fake.review,
+			callers: CallerContext.unavailable("graph missing on the rerun"),
+		});
+
+		for (const record of result.verdict.ran!.filter((each) => each.name.startsWith("lens.")))
+			expect(record.reason).toContain("Callers unavailable: graph missing on the rerun");
+	});
+
 	it("does not resume a crashed run on one route once a review on another starts, and reads only the new run", async () => {
 		const database = join(dir, "rerouted.sqlite");
 		const log = join(dir, "rerouted.jsonl");

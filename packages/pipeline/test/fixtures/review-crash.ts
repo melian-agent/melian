@@ -239,6 +239,9 @@ const options = {
 	changeset,
 	config: {
 		...defaultConfig,
+		...(scenario === "callers"
+			? { static: { ...defaultConfig.static, enola: { ...defaultConfig.static.enola, enabled: true } } }
+			: {}),
 		tiers:
 			scenario === "escalation" || scenario === "decision"
 				? { ...defaultConfig.tiers, full: ["standard"] }
@@ -251,19 +254,28 @@ const options = {
 	...(scenario === "escalation" ? { decider } : scenario === "decision" ? { decider: parkedDecider } : {}),
 	...(scenario === "callers"
 		? {
-				callers: CallerContext.from({
-					groups: [
-						{
-							file: "src/user.ts",
-							symbol: "managerName",
-							callers: [{ name: "First", kind: "symbol", file: "caller.ts", line: 1 }],
-							truncated: false,
+				callers: CallerContext.from(
+					{
+						groups: [
+							{
+								file: "src/user.ts",
+								symbol: "managerName",
+								callers: [{ name: "First", kind: "symbol", file: "caller.ts", line: 1 }],
+								truncated: false,
+							},
+						],
+						issues: [],
+						notes: ["Call one's note"],
+						paths: ["caller.ts"],
+						parts: {
+							tree: "a".repeat(40),
+							version: "1.2.3",
+							binary: "b".repeat(64),
+							config: "c".repeat(64),
 						},
-					],
-					issues: [],
-					notes: [],
-					paths: [],
-				}),
+					},
+					"/cache-root",
+				),
 			}
 		: {}),
 	lenses: lensesFor(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),

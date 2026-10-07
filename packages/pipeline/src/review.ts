@@ -52,7 +52,7 @@ import {
 	readVerdict,
 	VerdictDocument,
 } from "./adjudication.ts";
-import type { CallerContext } from "./callers.ts";
+import { CallerContext, type CoverageSource } from "./callers.ts";
 import { checksExtension, runChecks } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
 import {
@@ -151,12 +151,20 @@ interface LensRun {
 	readonly band?: string;
 }
 
+// The caller notes and coverage source of the call that rendered the lens instructions, kept beside them. Absent from a
+// task an older Melian created, and from one a review without Enola created.
+interface StoredCallers {
+	readonly notes: Record<string, string[]>;
+	readonly coverage?: CoverageSource;
+}
+
 // `escalateAt` is absent from a task an older Melian created, which escalates nothing.
 interface StoredLensTaskInput {
 	readonly root: ConversationId;
 	readonly revision: ReviewState;
 	readonly lenses: readonly LensRun[];
 	readonly escalateAt?: Severity;
+	readonly callers?: StoredCallers;
 }
 
 class LensTaskInput {
@@ -164,19 +172,27 @@ class LensTaskInput {
 	readonly revision: ReviewState;
 	readonly lenses: readonly LensRun[];
 	readonly escalateAt?: Severity;
+	readonly callers?: StoredCallers;
 
-	constructor(root: ConversationId, revision: ReviewState, lenses: readonly LensRun[], escalateAt?: Severity) {
+	constructor(
+		root: ConversationId,
+		revision: ReviewState,
+		lenses: readonly LensRun[],
+		escalateAt?: Severity,
+		callers?: StoredCallers,
+	) {
 		this.root = root;
 		this.revision = revision;
 		this.lenses = lenses;
 		if (escalateAt !== undefined) this.escalateAt = escalateAt;
+		if (callers !== undefined) this.callers = callers;
 	}
 
 	static upgrade(input: unknown, from: number): StoredLensTaskInput {
 		const stored = input as StoredLensTaskInput;
 		const lenses =
 			from >= 2 ? stored.lenses : (stored.lenses.map(({ level: _, ...run }) => run) as unknown as LensRun[]);
-		return new LensTaskInput(stored.root, stored.revision, lenses, stored.escalateAt).toJSON();
+		return new LensTaskInput(stored.root, stored.revision, lenses, stored.escalateAt, stored.callers).toJSON();
 	}
 
 	toJSON(): StoredLensTaskInput {
@@ -185,6 +201,7 @@ class LensTaskInput {
 			revision: this.revision,
 			lenses: this.lenses,
 			...(this.escalateAt === undefined ? {} : { escalateAt: this.escalateAt }),
+			...(this.callers === undefined ? {} : { callers: this.callers }),
 		};
 	}
 }
@@ -951,7 +968,8 @@ async function anyLensFailed(
 // The caller notes and coverage a review's records carry. Problem: they come from this call's graph cache, which a
 // repeat call of the same head may not find, so a repeat rewrote the records, keyed a new adjudication task and
 // fingerprinted a new verdict for the same findings. Solution: the first call that finishes the lens task stores them
-// on the review's index entry, and a repeat call that attaches to that task reads them back.
+// on the review's index entry, and a repeat call that attaches to that task reads them back. They derive from the task's
+// stored input, which holds what the call that created it rendered, never from the finishing call's own context.
 async function callersFor(
 	harness: Harness,
 	input: StoredLensTaskInput,
@@ -1606,7 +1624,11 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		files: reviewFiles(revision.files),
 	};
 	const { escalateAt } = config.triage;
-	const lensInput = new LensTaskInput(root, state, lenses, escalateAt).toJSON();
+	const coverageSource = options.callers?.coverageSource();
+	const callersInput: StoredCallers | undefined = config.static.enola.enabled
+		? { notes: callerNotes, ...(coverageSource ? { coverage: coverageSource } : {}) }
+		: undefined;
+	const lensInput = new LensTaskInput(root, state, lenses, escalateAt, callersInput).toJSON();
 	const { result: lensResult, ran } =
 		lenses.length === 0
 			? { result: {}, ran: lensInput }
@@ -1625,14 +1647,17 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		triaged.decision !== undefined && settling.length > 0 && settling.every(({ run }) => run.level === "quick")
 			? ["triage chose quick for every lens, so the whole review looked lightly, at a change that can steer triage"]
 			: [];
+	// The task's own input says what its lenses read, so a call that attached to another's task records that call's.
+	const rendered = ran.callers;
 	const callers = await callersFor(
 		harness,
 		lensInput,
 		lenses.length > 0 && lensResult !== undefined,
-		callerNotes,
+		rendered?.notes ?? callerNotes,
 		async () => {
 			try {
-				const coverage = await options.callers?.recordCoverage({
+				const source = rendered === undefined ? options.callers : CallerContext.restore(rendered.coverage);
+				const coverage = await source?.recordCoverage({
 					harness,
 					children: Object.fromEntries(
 						Object.entries(lensResult ?? {}).flatMap(([key, outcome]) =>

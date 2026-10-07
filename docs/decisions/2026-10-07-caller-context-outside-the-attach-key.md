@@ -15,3 +15,12 @@ Problem: each call wrote its own caller notes and coverage IDs into the lens rec
 Choice: store them with the first call's lens task, and read them back on attach. The first call that finishes the lens task writes the per-lens caller notes and the coverage IDs, or the coverage-unavailable flag, to its `ReviewIndex` entry, which names that task and is replaced with it. A repeat call that finds them renders them in place of its own. The lens task outcome carries only the model's per-lens result, and coverage is computed from the lens conversations after the task ends, so the index entry is the record that already ties a head and selection to its task. The alternative, leaving them out of the records, would drop coverage IDs from the verdict, where they are worth keeping.
 
 Gives up: a repeat review does not pick up a graph or coverage that became available after the first call, and a first call that found none keeps that note. A call whose lens task did not complete stores nothing, and a rerun that replaces a failed lens starts again with fresh context.
+
+## The records derive from the task's stored input
+
+Problem: a lens that attached to a crashed task reads the first call's section, but the call that finishes the task wrote its own notes and coverage. Example: call 1 renders a caller section and is killed in the first model request. Call 2 has no graph, attaches, and finishes the task. Its record then says `Callers unavailable` and carries no coverage, though the lens read the callers.
+
+Choice: when it creates a lens task, a review with Enola enabled stores the caller notes per lens and the coverage source (graph key parts, extra paths and cache root) in the task's input, beside the instructions they describe. `callersFor` derives the record from the input of the task that ran, never from the finishing call's `options.callers`. The index entry still keeps the first finished record. The input field is optional and the task version stays at 3: a task without it, created by an older Melian or a review without Enola, falls back to the finishing call's context, as before.
+
+Gives up: coverage is computed from the first call's graph identity even if the cache entry has since gone; it then records coverage unavailable.
+

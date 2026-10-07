@@ -32,6 +32,9 @@ export type CallerData = {
 	parts?: GraphKeyParts;
 };
 
+/** What transcript coverage needs from a caller context, kept with the lens task that rendered its section. */
+export type CoverageSource = { parts: GraphKeyParts; paths: string[]; root: string };
+
 /** Advisory callers and coverage from a verified graph; absence never prevents a lens running. */
 export class CallerContext {
 	readonly #data: CallerData;
@@ -62,12 +65,24 @@ export class CallerContext {
 		}
 	}
 	/** Accepts results whose facts and impact contracts the runner already validated. */
-	static from(data: CallerData): CallerContext {
-		return new CallerContext(data);
+	static from(data: CallerData, root?: string): CallerContext {
+		return new CallerContext(data, root);
+	}
+	/** Rebuilds the coverage side of the context a lens task stored; without a source it records no coverage. */
+	static restore(source: CoverageSource | undefined): CallerContext {
+		return new CallerContext(
+			{ groups: [], issues: [], notes: [], paths: source?.paths ?? [], ...(source ? { parts: source.parts } : {}) },
+			source?.root,
+		);
 	}
 	/** Records a missing graph or failed tool as advisory context. */
 	static unavailable(reason: string): CallerContext {
 		return new CallerContext({ groups: [], issues: [], paths: [], notes: [`Callers unavailable: ${reason}`] });
+	}
+	/** The graph identity and cache a later coverage record needs, absent when no verified graph was read. */
+	coverageSource(): CoverageSource | undefined {
+		const { parts, paths } = this.#data;
+		return parts && this.#root ? { parts: structuredClone(parts), paths: [...paths], root: this.#root } : undefined;
 	}
 	/** Exposes candidates for a later verifier without wiring one into the review. */
 	callers(paths: readonly string[]): CallerGroup[] {

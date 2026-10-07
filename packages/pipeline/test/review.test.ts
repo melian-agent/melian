@@ -116,6 +116,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
 	await harness.close(context);
+	vi.restoreAllMocks();
 	vi.unstubAllEnvs();
 	rmSync(repo, { recursive: true, force: true });
 });
@@ -228,7 +229,7 @@ function offered(messages: readonly Message[]): string[] {
 describe("reviewChangeset", () => {
 	it("keeps caller and coverage failures advisory on completed lens records", async () => {
 		const callers = CallerContext.unavailable("fixture graph missing");
-		const failed = vi.spyOn(callers, "recordCoverage").mockRejectedValue("fixture cache refused");
+		const failed = vi.spyOn(CallerContext.prototype, "recordCoverage").mockRejectedValue("fixture cache refused");
 		scriptConversations(fake, [
 			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
 			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
@@ -256,7 +257,7 @@ describe("reviewChangeset", () => {
 		]);
 		const enabled = { ...config, static: { ...config.static, enola: { ...config.static.enola, enabled: true } } };
 		const first = CallerContext.from({ groups: [], issues: [], notes: [], paths: [] });
-		vi.spyOn(first, "recordCoverage").mockResolvedValue({ review: "first-call-review-id" });
+		vi.spyOn(CallerContext.prototype, "recordCoverage").mockResolvedValue({ review: "first-call-review-id" });
 		const adjudication = async () =>
 			(await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context))?.reviews[reviewedRevision()]
 				?.adjudication?.task;
