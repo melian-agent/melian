@@ -31,10 +31,15 @@ const verdictOf = (...findings: Finding[]) =>
 	new Adjudication({ findings, checks: [], manifest: [], config: defaultConfig }).adjudicate();
 
 function entry(
-	externals: ExternalFinding[],
-	findings: Finding[] = [],
-	options: { head?: string; at?: string; reviewers?: ExternalFinding["reviewer"][] } = {},
+	options: {
+		externals?: ExternalFinding[];
+		findings?: Finding[];
+		head?: string;
+		at?: string;
+		reviewers?: ExternalFinding["reviewer"][];
+	} = {},
 ): ComparisonEntry {
+	const { externals = [], findings = [] } = options;
 	const comparison = Comparison.of({ base, head: options.head ?? "b".repeat(40) });
 	comparison.import(
 		"file:codex.json",
@@ -57,7 +62,8 @@ describe("ComparisonExport header", () => {
 	it("lists reviewers in order, with version and login, and links a pull request", () => {
 		const text = render(
 			[
-				entry([report({ reviewer: { name: "codex", version: "6.1" } })], [], {
+				entry({
+					externals: [report({ reviewer: { name: "codex", version: "6.1" } })],
 					reviewers: [
 						{ name: "codex", version: "6.1" },
 						{ name: "coderabbit", login: "coderabbitai[bot]" },
@@ -79,11 +85,11 @@ describe("ComparisonExport header", () => {
 		const text = render([{ changeset: "c", comparison }]);
 		expect(text).toContain("Reviewers: Melian's own review, in 1 stored round.");
 		expect(text).toContain("# Comparison review: range\n");
-		expect(render([entry([]), entry([], [], { head: "c".repeat(40) })])).toContain("in 2 stored rounds.");
+		expect(render([entry(), entry({ head: "c".repeat(40) })])).toContain("in 2 stored rounds.");
 	});
 
 	it("reads reviewers from the findings of an older record that stored none", () => {
-		const record = entry([report({ reviewer: { name: "claude-code" } })]);
+		const record = entry({ externals: [report({ reviewer: { name: "claude-code" } })] });
 		const stored = record.comparison.toJSON();
 		for (const each of Object.values(stored.imports ?? {})) delete each.reviewers;
 		const older = { ...record, comparison: Comparison.from(stored) };
@@ -94,9 +100,9 @@ describe("ComparisonExport header", () => {
 describe("ComparisonExport sections", () => {
 	it("orders rounds by first comparison time, then head, and letters every section", () => {
 		const entries = [
-			entry([], [], { head: "d".repeat(40), at: "2026-10-06T00:00:00Z" }),
-			entry([], [], { head: "c".repeat(40), at: "2026-10-05T00:00:00Z" }),
-			entry([], [], { head: "b".repeat(40), at: "2026-10-05T00:00:00Z" }),
+			entry({ head: "d".repeat(40), at: "2026-10-06T00:00:00Z" }),
+			entry({ head: "c".repeat(40), at: "2026-10-05T00:00:00Z" }),
+			entry({ head: "b".repeat(40), at: "2026-10-05T00:00:00Z" }),
 		];
 		const text = render(entries);
 		expect(sections(text).filter((each) => each.includes("round"))).toEqual([
@@ -110,7 +116,7 @@ describe("ComparisonExport sections", () => {
 
 	it("letters past Z the way a spreadsheet does", () => {
 		const entries = Array.from({ length: 14 }, (_, index) =>
-			entry([], [], { head: String.fromCharCode(98 + index).repeat(40), reviewers: [{ name: "codex" }] }),
+			entry({ head: String.fromCharCode(98 + index).repeat(40), reviewers: [{ name: "codex" }] }),
 		);
 		const letters = sections(render(entries)).map((each) => each.split(" ")[0]);
 		expect(letters.slice(0, 3)).toEqual(["A", "B", "C"]);
@@ -121,15 +127,14 @@ describe("ComparisonExport sections", () => {
 
 	it("gives each reviewer one section holding every finding, in name order, with Not decided and Pending cells", () => {
 		const entries = [
-			entry(
-				[
+			entry({
+				externals: [
 					report({ reviewer: { name: "codex" }, title: "One", line: 10 }),
 					report({ reviewer: { name: "codex" }, title: "Two", line: 20 }),
 					report({ reviewer: { name: "claude-code" }, title: "Three", line: 30 }),
 				],
-				[],
-				{ reviewers: [{ name: "codex" }, { name: "claude-code" }] },
-			),
+				reviewers: [{ name: "codex" }, { name: "claude-code" }],
+			}),
 		];
 		const text = render(entries);
 		expect(sections(text).slice(0, 3)).toEqual([
@@ -144,7 +149,7 @@ describe("ComparisonExport sections", () => {
 	});
 
 	it("shows an empty section for a reviewer that reported nothing", () => {
-		const text = render([entry([], [], { reviewers: [{ name: "claude-code" }] })]);
+		const text = render([entry({ reviewers: [{ name: "claude-code" }] })]);
 		expect(text).toContain("## A. claude-code, round 1\n\n0 findings at");
 	});
 
@@ -152,7 +157,7 @@ describe("ComparisonExport sections", () => {
 		const single = own(12);
 		const range = Finding.create({ ...evalInput, snippet: "eval(range)", startLine: 20, endLine: 22 });
 		const extra = own(50);
-		const record = entry([], [single, range]);
+		const record = entry({ findings: [single, range] });
 		record.comparison.adjudicate(single.id, { ...by, verdict: "valid", golden: "correctness" });
 		const withExtra = { ...record, verdict: verdictOf(single, range, extra) };
 		const text = render([withExtra]);
@@ -166,7 +171,7 @@ describe("ComparisonExport sections", () => {
 		const bare = render([{ changeset: "c", comparison: record.comparison }]);
 		expect(bare).toContain("0 findings at");
 		expect(bare).toContain("verdict not recorded.");
-		expect(render([entry([], [single])])).toContain("1 finding at");
+		expect(render([entry({ findings: [single] })])).toContain("1 finding at");
 	});
 });
 
@@ -176,11 +181,11 @@ describe("ComparisonExport decisions and counts", () => {
 			ExternalFinding,
 			ExternalFinding,
 		];
-		const record = entry([high, low]);
+		const record = entry({ externals: [high, low] });
 		record.comparison.adjudicate(high.id, { ...by, verdict: "noise", note: "second note" });
 		record.comparison.adjudicate(low.id, { ...by, verdict: "noise", note: "first note" });
 		const blank = report({ line: 60 });
-		const other = entry([blank]);
+		const other = entry({ externals: [blank] });
 		other.comparison.adjudicate(blank.id, { ...by, verdict: "noise", note: "   " });
 		const text = render([record]);
 		expect(text.indexOf("first note")).toBeLessThan(text.indexOf("second note"));
@@ -196,7 +201,7 @@ describe("ComparisonExport decisions and counts", () => {
 		const first = own(12);
 		const second = own(14);
 		const between = report({ line: 13 });
-		const record = entry([between], [first, second]);
+		const record = entry({ externals: [between], findings: [first, second] });
 		const text = render([record]);
 		expect(text).toContain("1 matched external findings, 0 external-only defects, 0 Melian-only findings.");
 		expect(text).not.toContain("Drain");
@@ -204,7 +209,7 @@ describe("ComparisonExport decisions and counts", () => {
 
 	it("escapes the counts and the differences listing", () => {
 		const external = report({ title: "a_b", reviewer: { name: "coderabbit", login: "coderabbitai[bot]" } });
-		const text = render([entry([external], [], { reviewers: [external.reviewer] })]);
+		const text = render([entry({ externals: [external], reviewers: [external.reviewer] })]);
 		expect(text.split("## Counts")[1]!.split("## Differences")[0]).toContain(
 			"coderabbit:coderabbitai\\[bot\\]: recall",
 		);
@@ -214,13 +219,13 @@ describe("ComparisonExport decisions and counts", () => {
 	it("words judgements, with a duplicate's original and its absence", () => {
 		const finding = own(12);
 		const external = report({ line: 70 });
-		const record = entry([external], [finding]);
+		const record = entry({ externals: [external], findings: [finding] });
 		record.comparison.adjudicate(external.id, { ...by, verdict: "duplicate", of: finding.id });
 		expect(render([record])).toContain(`duplicate of ${finding.id}`);
 		const stored = record.comparison.toJSON();
 		delete stored.adjudications![external.id]!.current.of;
 		expect(render([{ ...record, comparison: Comparison.from(stored) }])).toContain("duplicate of not recorded");
-		const valid = entry([external]);
+		const valid = entry({ externals: [external] });
 		valid.comparison.adjudicate(external.id, { ...by, verdict: "valid", severity: "P1", reason: "no-owner" });
 		expect(render([valid])).toContain("valid, P1, no-owner");
 	});
@@ -228,7 +233,7 @@ describe("ComparisonExport decisions and counts", () => {
 
 describe("ComparisonExport paragraphs", () => {
 	const summary = (body: string) => {
-		const text = render([entry([report({ body, title: "T" })])]);
+		const text = render([entry({ externals: [report({ body, title: "T" })] })]);
 		return /\| T: ([^|]*) \|/.exec(text)?.[1];
 	};
 

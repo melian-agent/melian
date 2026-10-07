@@ -31,10 +31,9 @@ const verdictOf = (...findings: Finding[]) =>
 	new Adjudication({ findings, checks: [], manifest: [], config: defaultConfig }).adjudicate();
 
 function round(
-	externals: ExternalFinding[],
-	findings: Finding[],
-	options: { at?: string; target?: string } = {},
+	options: { externals?: ExternalFinding[]; findings?: Finding[]; at?: string; target?: string } = {},
 ): Comparison {
+	const { externals = [], findings = [] } = options;
 	const comparison = Comparison.of(revision);
 	comparison.import("file:codex.json", { findings: externals, skippedBodies: 0 }, options.at ?? at);
 	comparison.compare(verdictOf(...findings));
@@ -52,15 +51,15 @@ const owing = (
 	lens: string,
 	options: { at?: string; target?: string } = {},
 ): ComparisonEntry => {
-	const comparison = round([], [finding], options);
+	const comparison = round({ findings: [finding], ...options });
 	comparison.adjudicate(finding.id, { ...by, verdict: "valid", golden: lens });
 	return entry(changeset, comparison, [finding]);
 };
 
 describe("ComparisonSet selection", () => {
 	it("selects a changeset by the earliest of its rounds", () => {
-		const late = round([], [own(1)], { at: "2026-03-05T00:00:00Z" });
-		const early = round([], [own(2)], { at: "2026-01-05T00:00:00Z" });
+		const late = round({ findings: [own(1)], at: "2026-03-05T00:00:00Z" });
+		const early = round({ findings: [own(2)], at: "2026-01-05T00:00:00Z" });
 		for (const order of [
 			[late, early],
 			[early, late],
@@ -72,7 +71,7 @@ describe("ComparisonSet selection", () => {
 	});
 
 	it("includes a changeset recorded at the --since instant", () => {
-		const set = new ComparisonSet([entry("a", round([], [], { at: "2026-02-01T00:00:00Z" }))]);
+		const set = new ComparisonSet([entry("a", round({ at: "2026-02-01T00:00:00Z" }))]);
 		expect(set.select({ since: "2026-02-01T00:00:00Z" }).drain().comparisons).toBe(1);
 		expect(set.select({ since: "2026-02-01T00:00:01Z" }).drain().comparisons).toBe(0);
 	});
@@ -123,7 +122,7 @@ describe("ComparisonSet statistics", () => {
 		const duplicate = report({ line: 40, title: "Dup" });
 		const pending = report({ line: 60, title: "Pending" });
 		const noise = report({ line: 80, title: "Noise" });
-		const comparison = round([validReport, duplicate, pending, noise], [matched]);
+		const comparison = round({ externals: [validReport, duplicate, pending, noise], findings: [matched] });
 		comparison.adjudicate(validReport.id, { ...by, verdict: "valid" });
 		comparison.adjudicate(matched.id, { ...by, verdict: "valid" });
 		comparison.adjudicate(duplicate.id, { ...by, verdict: "duplicate", of: matched.id });
@@ -144,13 +143,13 @@ describe("ComparisonSet statistics", () => {
 			const first = own(12);
 			const second = own(14);
 			const between = report({ line: 13 });
-			return entry(changeset, round([between], [first, second]), [first, second]);
+			return entry(changeset, round({ externals: [between], findings: [first, second] }), [first, second]);
 		};
 		expect(new ComparisonSet([ambiguous("a"), ambiguous("b")]).stats().pendingMatches).toBe(2);
 		const reasonless = (changeset: string) => {
 			const finding = own(12);
 			const external = report({ line: 12 });
-			const comparison = round([external], [finding]);
+			const comparison = round({ externals: [external], findings: [finding] });
 			comparison.adjudicate(external.id, { ...by, verdict: "valid" });
 			comparison.unmatch(external.id, finding.id, by.by, at);
 			return entry(changeset, comparison, [finding]);
@@ -158,7 +157,7 @@ describe("ComparisonSet statistics", () => {
 		expect(new ComparisonSet([reasonless("a"), reasonless("b")]).stats().reasonlessMisses).toBe(2);
 		const missed = (changeset: string) => {
 			const external = report({ line: 90 });
-			const comparison = round([external], []);
+			const comparison = round({ externals: [external] });
 			comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "needs-execution" });
 			return entry(changeset, comparison);
 		};
@@ -180,7 +179,7 @@ describe("ComparisonSet statistics", () => {
 	it("narrows reviewer metrics to the selection and flags every filter", () => {
 		const first = busy("a");
 		const miss = report({ line: 90, title: "Late miss" });
-		const second = round([miss], [], { at: "2026-12-01T00:00:00Z" });
+		const second = round({ externals: [miss], at: "2026-12-01T00:00:00Z" });
 		second.adjudicate(miss.id, { ...by, verdict: "valid", reason: "no-owner" });
 		const set = new ComparisonSet([first, entry("b", second)]);
 		const last = set.renderStats({ last: 1 });
@@ -201,7 +200,7 @@ describe("ComparisonSet backlog", () => {
 		const finding = own(12);
 		const withdrawn = owing("a", finding, "alpha");
 		withdrawn.comparison.compare(verdictOf());
-		const holder = entry("b", round([], [finding]), [finding]);
+		const holder = entry("b", round({ findings: [finding] }), [finding]);
 		expect(new ComparisonSet([withdrawn, holder]).backlog()).toEqual([]);
 		expect(new ComparisonSet([withdrawn]).backlog()).toEqual([]);
 	});
@@ -249,7 +248,7 @@ describe("ComparisonSet terminal rendering", () => {
 
 	it("escapes control characters in the plain backlog's title and target", () => {
 		const external = report({ title: hostile });
-		const comparison = round([external], [], { target: hostile });
+		const comparison = round({ externals: [external], target: hostile });
 		comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "no-owner", golden: "correctness" });
 		const text = new ComparisonSet([entry("c1", comparison)]).renderBacklog();
 		noRawControls(text.replace(/\n$/, ""));
@@ -258,7 +257,7 @@ describe("ComparisonSet terminal rendering", () => {
 
 	it("escapes control characters in the candidate check lines of stats", () => {
 		const judged = (changeset: string, external: ExternalFinding) => {
-			const comparison = round([external], []);
+			const comparison = round({ externals: [external] });
 			comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "no-owner", rule: hostile });
 			return entry(changeset, comparison);
 		};
@@ -285,7 +284,7 @@ describe("ComparisonSet candidate checks", () => {
 		.map((line) => report({ line, title: `pooled ${line}` }))
 		.sort((a, b) => a.id.localeCompare(b.id));
 	const judged = (changeset: string, rule: string, externals: ExternalFinding[]) => {
-		const comparison = round(externals, []);
+		const comparison = round({ externals: externals });
 		for (const external of externals)
 			comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "no-owner", rule });
 		return entry(changeset, comparison);
@@ -306,7 +305,7 @@ describe("ComparisonSet candidate checks", () => {
 		expect(new ComparisonSet([tagged("c1", "zz")]).candidates()).toEqual([]);
 		const matchedFinding = own(12);
 		const external = report({ line: 12, title: "zz pending" });
-		const comparison = round([external], [matchedFinding]);
+		const comparison = round({ externals: [external], findings: [matchedFinding] });
 		comparison.adjudicate(external.id, { ...by, verdict: "valid", rule: "zz" });
 		comparison.unmatch(external.id, matchedFinding.id, by.by, at);
 		expect(comparison.judgement(external.id)).toBeUndefined();
@@ -316,7 +315,7 @@ describe("ComparisonSet candidate checks", () => {
 
 	it("keeps a finding's rule tag when a replacement judgement discharges its golden debt", () => {
 		const first = report({ line: 90, title: "tagged one" });
-		const comparison = round([first], []);
+		const comparison = round({ externals: [first] });
 		comparison.adjudicate(first.id, {
 			...by,
 			verdict: "valid",
@@ -333,7 +332,7 @@ describe("ComparisonSet candidate checks", () => {
 	it("does not count a repeat that was matched to a Melian finding", () => {
 		const matchedFinding = own(12);
 		const external = report({ line: 12, title: "zz matched" });
-		const comparison = round([external], [matchedFinding]);
+		const comparison = round({ externals: [external], findings: [matchedFinding] });
 		comparison.adjudicate(external.id, { ...by, verdict: "valid", rule: "zz" });
 		const set = new ComparisonSet([tagged("c1", "zz"), entry("c2", comparison, [matchedFinding])]);
 		expect(set.candidates()).toEqual([]);
@@ -350,13 +349,9 @@ describe("ComparisonSet drain", () => {
 		expect(owed(2).drain()).toMatchObject({ due: false, next: 3 });
 		expect(owed(3).drain()).toEqual({ comparisons: 3, due: true, goldens: 2, next: 6 });
 		expect(owed(4).drain()).toMatchObject({ due: true, goldens: 2, next: 6 });
-		const clean = new ComparisonSet(["a", "b", "c"].map((name) => entry(name, round([], []))));
+		const clean = new ComparisonSet(["a", "b", "c"].map((name) => entry(name, round())));
 		expect(clean.drain()).toMatchObject({ due: false, goldens: 0 });
-		const one = new ComparisonSet([
-			owing("a", own(1), "alpha"),
-			entry("b", round([], [])),
-			entry("c", round([], [])),
-		]);
+		const one = new ComparisonSet([owing("a", own(1), "alpha"), entry("b", round()), entry("c", round())]);
 		expect(one.drain()).toMatchObject({ due: true, goldens: 1 });
 	});
 
