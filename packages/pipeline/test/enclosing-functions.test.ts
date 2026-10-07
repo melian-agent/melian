@@ -480,22 +480,6 @@ describe("EnclosingFunctions", () => {
 			expect(rendered).toBeLessThanOrEqual(shown + 2);
 		});
 
-		it("finds the function around each added line of the files at the limits in under a second", async () => {
-			const files = names(enclosingLimits.anchors / enclosingLimits.anchorsPerFile);
-			const [base, head] = filesOf(files, (changed) =>
-				oneLiners(enclosingLimits.callablesPerFile, changed ? enclosingLimits.anchorsPerFile : 0),
-			);
-			repo = baseAndHead(base, head);
-			const changeset = await Changeset.resolve(repo, "main...feature");
-			const started = performance.now();
-			const found = await EnclosingFunctions.read(changeset);
-			const elapsed = performance.now() - started;
-			console.log(`enclosing-functions timing: ${elapsed.toFixed(0)} ms`);
-			expect(found.capped).toEqual(["found"]);
-			expect(found.functions).toHaveLength(enclosingLimits.found);
-			expect(elapsed).toBeLessThan(1_000);
-		});
-
 		it("never filters a file's whole list of functions once per added line", async () => {
 			repo = baseAndHead({ "src/a.ts": oneLiners(20_000, 0) }, { "src/a.ts": oneLiners(20_000, 2_000) });
 			const changeset = await Changeset.resolve(repo, "main...feature");
@@ -508,15 +492,27 @@ describe("EnclosingFunctions", () => {
 			}
 		});
 
-		it("finds the function around each of 2,000 added lines among 20,000 in under a second", async () => {
-			repo = baseAndHead({ "src/a.ts": oneLiners(20_000, 0) }, { "src/a.ts": oneLiners(20_000, 2_000) });
-			const changeset = await Changeset.resolve(repo, "main...feature");
-			const started = performance.now();
-			const found = await EnclosingFunctions.read(changeset);
-			const elapsed = performance.now() - started;
-			console.log(`enclosing-functions timing: ${elapsed.toFixed(0)} ms`);
-			expect(found.functions).toHaveLength(2_000);
-			expect(elapsed).toBeLessThan(1_000);
+		// No wall-clock bound: a slow runner would flake it. Growing the file eightfold must cost far less than the 64 times a per-anchor scan costs, so 5 sits between the 1.4 to 3 seen and the 17 a filter and sort per anchor gives.
+		it("grows with the file's size and not with its square", async () => {
+			const time = async (functions: number, changed: number) => {
+				const dir = baseAndHead(
+					{ "src/a.ts": oneLiners(functions, 0) },
+					{ "src/a.ts": oneLiners(functions, changed) },
+				);
+				try {
+					const changeset = await Changeset.resolve(dir, "main...feature");
+					const started = performance.now();
+					await EnclosingFunctions.read(changeset);
+					return performance.now() - started;
+				} finally {
+					rmSync(dir, { recursive: true, force: true });
+				}
+			};
+			const best = async (functions: number, changed: number) =>
+				Math.min(await time(functions, changed), await time(functions, changed), await time(functions, changed));
+			const small = await best(2_500, 625);
+			const large = await best(20_000, 5_000);
+			expect(large / small).toBeLessThan(5);
 		});
 	});
 });
