@@ -160,6 +160,7 @@ describe("staticSeverity", () => {
 		expect(staticSeverity("biome", "biome/style/useConst", "warning", {})).toBe("P3");
 		expect(staticSeverity("biome", "biome/nursery/x", "note", {})).toBe("nit");
 		expect(staticSeverity("tsc", "tsc/TS2322", "error", {})).toBe("P1");
+		expect(staticSeverity("mutation", "mutation/untested-behaviour", "error", {})).toBe("P2");
 		expect(staticSeverity("biome", "biome/style/useConst", "warning", { "biome/style/useConst": "P1" })).toBe("P1");
 	});
 });
@@ -240,6 +241,45 @@ describe("staticFindings", () => {
 		expect(findings[1]!.properties.trigger).toBeUndefined();
 		expect(findings[0]!.properties.source).toEqual({ check: "static.tsc", version: "7.0.2" });
 		expect(findings[0]!.locations[0]!.physicalLocation.region.snippet).toEqual({ text: "const added = 3;" });
+	});
+
+	it("takes a result's own advice over the generic explanation, and keeps the generic one where it has none", async () => {
+		const base = commit({ "a.ts": lines("export const a = 1;") });
+		const head = commit({ "a.ts": lines("export const a = 1;", "export const b = a > 0;", "export const c = 2;") });
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const advised = log(["a.ts", 2, "untested-behaviour"], ["a.ts", 3, "TS2322"]);
+		advised.runs[0].results[0]!.advice = { whyHere: "A mutant survived here.", whatToDo: "Test the comparison." };
+		const { findings } = await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "mutation",
+			settings: defaultConfig.static.mutation,
+			base: log(),
+			head: advised,
+		});
+		expect(
+			findings.map((finding) => [finding.ruleId, finding.properties.severity, finding.properties.explanation]),
+		).toEqual([
+			[
+				"mutation/untested-behaviour",
+				"P2",
+				{
+					what: "untested-behaviour at a.ts:2",
+					whyHere: "A mutant survived here.",
+					whatToDo: "Test the comparison.",
+				},
+			],
+			[
+				"mutation/TS2322",
+				"P2",
+				{
+					what: "TS2322 at a.ts:3",
+					whyHere: "mutation reports this at head but not at the base, so this change introduced it.",
+					whatToDo: "Change the code so mutation no longer reports mutation/TS2322.",
+				},
+			],
+		]);
+		expect(findings[0]!.properties.source.check).toBe("static.mutation");
 	});
 
 	it("identifies a renamed file's base results under its head path, so a pure rename introduces nothing", async () => {

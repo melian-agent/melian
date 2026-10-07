@@ -161,6 +161,9 @@ export const melianYamlSchema = Type.Object(
 				{
 					biome: Type.Optional(Type.Object(staticTool, strict)),
 					enola: Type.Optional(Type.Object(staticTool, strict)),
+					mutation: Type.Optional(
+						Type.Object({ ...staticTool, maxLines: Type.Optional(Type.Integer({ minimum: 1 })) }, strict),
+					),
 					tsc: Type.Optional(Type.Object({ ...staticTool, project: Type.Optional(name) }, strict)),
 				},
 				strict,
@@ -289,10 +292,19 @@ export interface TscSettings extends StaticToolSettings {
 	readonly project: string;
 }
 
+/**
+ * How Melian runs mutation testing. `maxLines` is the most changed source lines one run will mutate; a change with more
+ * records a note and skips the check.
+ */
+export interface MutationSettings extends StaticToolSettings {
+	readonly maxLines: number;
+}
+
 /** The static tools Melian runs, read from the repository root's configuration. */
 export interface StaticSettings {
 	readonly biome: StaticToolSettings;
 	readonly enola: StaticToolSettings;
+	readonly mutation: MutationSettings;
 	readonly tsc: TscSettings;
 }
 
@@ -401,6 +413,7 @@ export const defaultConfig: MelianConfig = {
 	static: {
 		biome: { enabled: true, timeout: 300, severity: {} },
 		enola: { enabled: false, timeout: 300, severity: {} },
+		mutation: { enabled: false, timeout: 1800, severity: {}, maxLines: 2000 },
 		tsc: { enabled: true, timeout: 300, severity: {}, project: "tsconfig.json" },
 	},
 	guardrails: {
