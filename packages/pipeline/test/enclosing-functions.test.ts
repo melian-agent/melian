@@ -656,7 +656,7 @@ describe("ChangePrompt with functions", () => {
 		// A file of exactly `size` bytes whose first line is the hunk.
 		const sized = (size: number, changed: boolean) => {
 			const first = tiny(changed);
-			return first + "/".repeat(size - Buffer.byteLength(first) - 1) + "\n";
+			return `${first}${"/".repeat(size - Buffer.byteLength(first) - 1)}\n`;
 		};
 
 		it.each([
