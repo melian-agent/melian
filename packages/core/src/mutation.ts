@@ -26,7 +26,7 @@ const staticReason = 'Static mutant (and "ignoreStatic" was enabled)';
 const excludedReason = /^Ignored because of excluded mutation ".*"$/;
 
 function ignoredByConfiguration(reason: string | undefined): boolean {
-	return reason === staticReason || (reason !== undefined && excludedReason.test(reason));
+	return reason === staticReason || excludedReason.test(String(reason));
 }
 
 const longestCode = 160;

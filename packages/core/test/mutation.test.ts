@@ -217,6 +217,17 @@ describe("normaliseMutationReport", () => {
 		expect(notes.map((note) => note.split(" line(s)")[0])).toEqual(["src/a.ts", "src/b c.ts"]);
 	});
 
+	it("notes only an Ignored mutant, whatever reason another status carries", () => {
+		const { log, notes } = read({
+			"src/a.ts": [
+				{ status: "Killed", line: 10, reason: staticReason },
+				{ status: "Timeout", line: 11, reason: staticReason },
+			],
+		});
+		expect(log.runs[0].results).toEqual([]);
+		expect(notes).toEqual([expect.stringContaining("1 Timeout mutant(s)")]);
+	});
+
 	it.each([
 		["a reason that only resembles a setting", 'Static mutant (and "ignoreStatic" was disabled)'],
 		[
