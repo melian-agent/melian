@@ -233,6 +233,20 @@ describe("ComparisonSet backlog", () => {
 		expect(set.backlog()).toMatchObject([{ title: finding.id }]);
 	});
 
+	it("titles an owed external finding from a round that holds it when the judged round has dropped it", () => {
+		const external = report({ title: "Null manager" });
+		const earlier = round({ externals: [external], at: "2026-10-05T00:00:00Z" });
+		const judged = round({ externals: [external], at: "2026-10-05T00:00:00Z" });
+		judged.adjudicate(external.id, { by: "Ada", at, verdict: "valid", reason: "no-owner", golden: "correctness" });
+		judged.import("file:codex.json", { findings: [], skippedBodies: 0 }, "2026-10-05T02:00:00Z");
+		const set = new ComparisonSet([
+			{ changeset: "a", comparison: earlier },
+			{ changeset: "a", comparison: judged },
+		]);
+		expect(set.backlog()).toMatchObject([{ id: external.id, title: "Null manager" }]);
+		expect(set.renderBacklog()).toContain("Null manager");
+	});
+
 	it("prints an empty backlog in both forms", () => {
 		const set = new ComparisonSet([]);
 		expect(set.renderBacklog()).toBe("No goldens owed.\n");
