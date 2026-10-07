@@ -55,6 +55,7 @@ async function fake(
 	requirePolicy = false,
 	impactTarget = "Alpha",
 	constraintRequired = false,
+	resultUri = "src/a.ts",
 ) {
 	const script = `#!/bin/sh
 if [ "$1" = "--version" ]; then echo 0.0.1; exit 0; fi
@@ -95,7 +96,7 @@ check)
   grep -F '"generation":"base"' "$baseline/facts.jsonl" > /dev/null || exit 9
   if [ ${exit} -ge 2 ]; then echo declined >&2; exit ${exit}; fi
   if grep BROKEN src/a.ts > /dev/null && ${constraintRequired ? "[ -f enola/constraints/layer.yaml ]" : "true"}; then
-    printf '%s' '{"version":"2.1.0","runs":[{"results":[{"ruleId":"constraints/core-layer","level":"error","message":{"text":"Core reaches pipeline"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"src/a.ts"},"region":{"startLine":1}}}]}]}]}'
+    printf '%s' '{"version":"2.1.0","runs":[{"results":[{"ruleId":"constraints/core-layer","level":"error","message":{"text":"Core reaches pipeline"},"locations":[{"physicalLocation":{"artifactLocation":{"uri":"${resultUri}"},"region":{"startLine":1}}}]}]}]}'
   else printf '%s' '{"version":"2.1.0","runs":[{"results":[]}]}' ; fi
   exit ${exit};;
 impact)
@@ -566,6 +567,24 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		if (result.status !== "ran") throw new Error("Enola failed");
 		expect(result.log.runs[0].results).toEqual([]);
 		expect(result.notes).toContain("Enola check exited 1 with no unsuppressed SARIF results; treated as clean.");
+	});
+	it("fails closed when every result Enola reported lies where Melian does not read", async () => {
+		const base = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+		const head = commit(repo, { "src/a.ts": "export const BROKEN = 1;\n" });
+		await expect(
+			runStaticTool(
+				{
+					env: createNodeExecutionEnv(repo),
+					repoRoot: repo,
+					base,
+					commit: head,
+					tool: "enola",
+					settings: defaultConfig.static.enola,
+					tools: await fake(1, 0, false, "Alpha", false, "node_modules/leak/index.ts"),
+				},
+				context,
+			),
+		).rejects.toMatchObject({ code: "invalidOutput" });
 	});
 	it.each([2, 3])("fails exit %s closed with Enola's message", async (exit) => {
 		const base = commit(repo, { "src/a.ts": "export const a = 1;\n" });

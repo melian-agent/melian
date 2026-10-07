@@ -190,7 +190,13 @@ export class EnolaRun {
 		const text = await this.#run.readOutput(report);
 		if (text === undefined) throw this.#run.fail("invalidOutput", "Enola check wrote no SARIF");
 		const log = normaliseEnolaSarif(text, { root, version: this.#version });
-		if (result.code === 1 && log.runs.every((run) => run.results.length === 0))
+		const kept = log.runs.reduce((count, run) => count + run.results.length, 0);
+		if (result.code === 1 && kept === 0 && reportedResults(text) > 0)
+			throw this.#run.fail(
+				"invalidOutput",
+				"Enola check exited 1 with results Melian cannot place in the repository",
+			);
+		if (result.code === 1 && kept === 0)
 			this.#notes.push("Enola check exited 1 with no unsuppressed SARIF results; treated as clean.");
 		return log;
 	}
@@ -313,5 +319,14 @@ export class EnolaRun {
 					: "Enola configuration differs at head; the trusted policy commit's copies judged both revisions.",
 			);
 		return { status: "ran", log, baseLog, notes, snapshots: [before, after] };
+	}
+}
+
+function reportedResults(sarif: string): number {
+	try {
+		const runs = (JSON.parse(sarif) as { runs?: { results?: unknown }[] }).runs ?? [];
+		return runs.reduce((count, run) => count + (Array.isArray(run.results) ? run.results.length : 0), 0);
+	} catch {
+		return 0;
 	}
 }
