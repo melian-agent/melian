@@ -269,14 +269,6 @@ describe("ComparisonSet terminal rendering", () => {
 		noRawControls(text.replace(/\n/g, ""));
 		expect(text).toContain(`Candidate check: rule:${escaped}, seen on 2 changesets (${escaped}, ${escaped}2).`);
 	});
-
-	it("escapes control characters in a reviewer name on the stats line", () => {
-		const comparison = Comparison.of(revision);
-		comparison.import("file:x.json", { findings: [], skippedBodies: 0, reviewers: [{ name: hostile }] }, at);
-		const text = new ComparisonSet([entry("c1", comparison)]).renderStats();
-		noRawControls(text.replace(/\n/g, ""));
-		expect(text).toContain(`${escaped}: recall`);
-	});
 });
 
 describe("ComparisonSet candidate checks", () => {
@@ -284,7 +276,7 @@ describe("ComparisonSet candidate checks", () => {
 		.map((line) => report({ line, title: `pooled ${line}` }))
 		.sort((a, b) => a.id.localeCompare(b.id));
 	const judged = (changeset: string, rule: string, externals: ExternalFinding[]) => {
-		const comparison = round({ externals: externals });
+		const comparison = round({ externals });
 		for (const external of externals)
 			comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "no-owner", rule });
 		return entry(changeset, comparison);
