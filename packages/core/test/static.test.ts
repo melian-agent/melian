@@ -282,7 +282,9 @@ describe("staticFindings", () => {
 		return normaliseEnolaSarif(
 			JSON.stringify({
 				version: "2.1.0",
-				runs: [{ results: messages.map((text) => ({ ruleId: "intent-unmet", level: "error", message: { text } })) }],
+				runs: [
+					{ results: messages.map((text) => ({ ruleId: "intent-unmet", level: "error", message: { text } })) },
+				],
 			}),
 			{ root: repo, version: "0.4.27" },
 		);
