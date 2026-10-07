@@ -1444,7 +1444,7 @@ describe("reviewChangeset", () => {
 			expect(prompt).toContain("7\t\treturn user.manager.name;");
 			const instructions = systemPromptOf(requests[correctness]![0]!);
 			expect(instructions).toContain(
-				'The change carries the function around each hunk of a TypeScript file under "Enclosing functions".',
+				'The change may carry the function around a hunk of a TypeScript file under "Enclosing functions". For every hunk with no such block, read the whole function',
 			);
 		});
 

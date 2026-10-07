@@ -43,12 +43,22 @@ export const enclosingLimits = {
 } as const;
 
 const cappedWhy = {
+	files: `more than ${enclosingLimits.files} TypeScript files changed`,
+	fileBytes: `a TypeScript file was larger than ${enclosingLimits.fileBytes / 1024} KiB`,
+	unreadable: "a TypeScript file could not be read at the head",
 	anchorsPerFile: `a file had more than ${enclosingLimits.anchorsPerFile} added lines`,
 	anchors: `the files together had more than ${enclosingLimits.anchors} added lines`,
 	callablesPerFile: `a file had more than ${enclosingLimits.callablesPerFile} named functions`,
 	callables: `the files together had more than ${enclosingLimits.callables} named functions`,
 	found: `more than ${enclosingLimits.found} functions held a change`,
 } as const;
+
+const unavailableNote =
+	"The head's functions could not be read, so none is carried here; read the whole function around each hunk of a TypeScript file with read_file.";
+
+/** What the change prompt says when its diff was cut and so carries no function. */
+export const cutDiffNote =
+	"The diff was cut, so no enclosing function is carried here; read the whole function around each hunk of a TypeScript file with read_file.";
 
 const typescriptFile = /\.(?:[cm]?ts|tsx)$/;
 
@@ -265,21 +275,26 @@ export class EnclosingFunctions {
 	/** Reads the functions around `changeset`'s hunks at its head. Never throws: a failure is `unavailable`. */
 	static async read(changeset: Changeset): Promise<EnclosingFunctions> {
 		const { repoRoot, revision } = changeset;
-		const candidates = revision.files
-			.filter((file) => typescriptFile.test(file.path) && !file.path.endsWith(".d.ts"))
-			.slice(0, enclosingLimits.files);
+		const typescript = revision.files.filter(
+			(file) => typescriptFile.test(file.path) && !file.path.endsWith(".d.ts") && file.status !== "deleted",
+		);
+		const candidates = typescript.slice(0, enclosingLimits.files);
 		if (candidates.length === 0) return EnclosingFunctions.none();
+		const skipped = new Set<keyof typeof cappedWhy>();
+		if (typescript.length > candidates.length) skipped.add("files");
 		const texts = new Map<string, string>();
 		for (const file of candidates) {
 			const head = await readRevisionFile(repoRoot, revision.head, file.path, enclosingLimits.fileBytes).catch(
 				() => undefined,
 			);
-			if (head !== undefined && !head.truncated) texts.set(file.path, head.content);
+			if (head === undefined) skipped.add("unreadable");
+			else if (head.truncated) skipped.add("fileBytes");
+			else texts.set(file.path, head.content);
 		}
-		if (texts.size === 0) return EnclosingFunctions.none();
+		if (texts.size === 0) return new EnclosingFunctions([], undefined, [...skipped]);
 		try {
 			const { functions, capped } = EnclosingFunctions.#parse(candidates, texts);
-			return new EnclosingFunctions(functions, undefined, capped);
+			return new EnclosingFunctions(functions, undefined, [...skipped, ...capped]);
 		} catch (error) {
 			return new EnclosingFunctions([], visibleText(error instanceof Error ? error.message : String(error)), []);
 		}
@@ -346,6 +361,7 @@ export class EnclosingFunctions {
 	 * numbers them, past which a listing and a note say what was left out. Empty when there is nothing to show.
 	 */
 	blocks(only: readonly string[] | undefined, nonce: string): string[] {
+		if (this.unavailable !== undefined) return [unavailableNote];
 		const shown = this.functions.filter((each) => only === undefined || only.includes(each.path));
 		const held = this.capped.map((reason) => cappedWhy[reason as keyof typeof cappedWhy]);
 		const heldNote = `Some functions were not read, because ${held.join(" and ")}; read the changed TypeScript files with read_file.`;

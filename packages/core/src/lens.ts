@@ -563,7 +563,7 @@ Every \`report_finding\` call needs both. A call without them is refused.
 const readingScopes: Readonly<Record<LensReads, string>> = {
 	hunks: "Reading scope: the hunks. Review the lines this change added, modified, or deleted; read the code around them only to confirm a defect in them.",
 	functions:
-		'Reading scope: the hunks and the functions around them. Review the whole function, method, or top-level block that holds each hunk at the head revision, and all of it: a defect on a line the change left alone, inside a function it edited, is the change\'s to answer for. Cite the changed line that makes it so as a `cause` location. The change carries the function around each hunk of a TypeScript file under "Enclosing functions". For a hunk it carries none for, read the whole function, method, or top-level block with `read_file`: a file in another language, a function listed as not shown, or code outside any function.',
+		'Reading scope: the hunks and the functions around them. Review the whole function, method, or top-level block that holds each hunk at the head revision, and all of it: a defect on a line the change left alone, inside a function it edited, is the change\'s to answer for. Cite the changed line that makes it so as a `cause` location. The change may carry the function around a hunk of a TypeScript file under "Enclosing functions". For every hunk with no such block, read the whole function, method, or top-level block with `read_file`, whatever the reason: a file in another language, a function listed as not shown, code outside any function, or a file or limit the prompt says it left out.',
 };
 
 function renderBudget({ findings, tokens, tools }: LensBudget): string {

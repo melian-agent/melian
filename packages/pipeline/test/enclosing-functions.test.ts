@@ -1,7 +1,8 @@
-import { rmSync } from "node:fs";
+import { rmSync, symlinkSync } from "node:fs";
+import { join } from "node:path";
 import { Changeset } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type EnclosingFunction, EnclosingFunctions, enclosingLimits } from "../src/enclosing-functions.ts";
+import { cutDiffNote, type EnclosingFunction, EnclosingFunctions, enclosingLimits } from "../src/enclosing-functions.ts";
 import { ChangePrompt } from "../src/review.ts";
 import { quoteUntrusted } from "../src/untrusted.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
@@ -642,6 +643,73 @@ describe("ChangePrompt with functions", () => {
 				expect(parts.join("\n").includes('label="function"')).toBe(kept);
 			},
 		);
+	});
+
+	describe("what it leaves out, the prompt says", () => {
+		const note = (found: EnclosingFunctions) => found.blocks(undefined, nonce).join("\n");
+		const tiny = (changed: boolean) => `function f(){${changed ? "1" : ""}}\n`;
+		// A file of exactly `size` bytes whose first line is the hunk.
+		const sized = (size: number, changed: boolean) => {
+			const first = tiny(changed);
+			return first + "/".repeat(size - Buffer.byteLength(first) - 1) + "\n";
+		};
+
+		it.each([
+			[enclosingLimits.files, []],
+			[enclosingLimits.files + 1, ["files"]],
+		] as const)("takes %i TypeScript files and holds back %j", async (count, capped) => {
+			const build = (changed: boolean) =>
+				Object.fromEntries(Array.from({ length: count }, (_, index) => [`src/f${index}.ts`, tiny(changed)]));
+			const found = await around(build(false), build(true));
+			expect(found.capped).toEqual(capped);
+			expect(note(found).includes(`more than ${enclosingLimits.files} TypeScript files changed`)).toBe(
+				capped.length > 0,
+			);
+			expect(found.functions).toHaveLength(enclosingLimits.files);
+		});
+
+		it.each([
+			[enclosingLimits.fileBytes, []],
+			[enclosingLimits.fileBytes + 1, ["fileBytes"]],
+		] as const)("takes a TypeScript file of %i bytes and holds back %j", async (size, capped) => {
+			const found = await around({ "src/a.ts": sized(size, false) }, { "src/a.ts": sized(size, true) });
+			expect(found.capped).toEqual(capped);
+			expect(found.functions).toHaveLength(capped.length === 0 ? 1 : 0);
+			expect(note(found).includes("a TypeScript file was larger than 512 KiB")).toBe(capped.length > 0);
+		});
+
+		it("says a TypeScript file it could not read at the head, and ignores a deleted one", async () => {
+			repo = baseAndHead(
+				{ "src/a.ts": tiny(false), "src/gone.ts": tiny(false) },
+				{ "src/a.ts": tiny(true), "src/gone.ts": "" },
+			);
+			gitIn(repo, "rm", "--quiet", "src/gone.ts");
+			gitIn(repo, "commit", "--quiet", "-m", "delete");
+			const clean = await EnclosingFunctions.read(await Changeset.resolve(repo, "main...feature"));
+			expect(clean.capped).toEqual([]);
+			rmSync(join(repo, "src/a.ts"));
+			symlinkSync("elsewhere.ts", join(repo, "src/linked.ts"));
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "link");
+			const found = await EnclosingFunctions.read(await Changeset.resolve(repo, "main...feature"));
+			expect(found.capped).toEqual(["unreadable"]);
+			expect(note(found)).toContain("a TypeScript file could not be read at the head");
+		});
+
+		it("says the diff was cut when it carries no function", async () => {
+			const big = Array.from({ length: 10_000 }, (_, index) => `line ${index} ${"x".repeat(30)}`).join("\n");
+			repo = baseAndHead({ "src/a.ts": source, "big.txt": "" }, { "src/a.ts": edited, "big.txt": `${big}\n` });
+			const changeset = await Changeset.resolve(repo, "main...feature");
+			const functions = await EnclosingFunctions.read(changeset);
+			const input = new ChangePrompt(changeset, nonce).renderInput(undefined, { functions });
+			expect(input.cut).toBe(true);
+			expect(input.text).toContain(cutDiffNote);
+			const hunksOnly = new ChangePrompt(changeset, nonce).renderInput(undefined);
+			expect(hunksOnly.text).not.toContain(cutDiffNote);
+			const whole = new ChangePrompt(changeset, nonce).renderInput(["src/a.ts"], { functions });
+			expect(whole.cut).toBe(false);
+			expect(whole.text).not.toContain(cutDiffNote);
+		});
 	});
 
 	it("adds none after a diff the prompt had to cut", async () => {

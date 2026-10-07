@@ -31,6 +31,9 @@ it("says why the compiler could not be asked, with control characters escaped, a
 	const found = await EnclosingFunctions.read(await Changeset.resolve(repo, "main...feature"));
 	expect(found.functions).toEqual([]);
 	expect(found.unavailable).toBe("the compiler\\u000awould not start");
+	const prompt = found.blocks(undefined, "c".repeat(24)).join("\n");
+	expect(prompt).toContain("The head's functions could not be read");
+	expect(prompt).not.toContain("compiler");
 });
 
 it("never asks the compiler when no file is TypeScript", async () => {

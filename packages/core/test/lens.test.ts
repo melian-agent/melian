@@ -903,7 +903,7 @@ describe("Lens.renderInstructions", () => {
 		const deep = correctness!.renderInstructions([], "deep");
 		expect(deep).toContain("Reading scope: the hunks and the functions around them.");
 		expect(deep).toContain(
-			'The change carries the function around each hunk of a TypeScript file under "Enclosing functions". For a hunk it carries none for, read the whole function, method, or top-level block with `read_file`',
+			'The change may carry the function around a hunk of a TypeScript file under "Enclosing functions". For every hunk with no such block, read the whole function, method, or top-level block with `read_file`, whatever the reason',
 		);
 		expect(careful).not.toContain("Enclosing functions");
 		expect(deep).toContain(

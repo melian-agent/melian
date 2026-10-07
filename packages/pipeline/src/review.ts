@@ -64,7 +64,7 @@ import {
 	decisionTaskName,
 	readRecordedDecision,
 } from "./decisions.ts";
-import { EnclosingFunctions } from "./enclosing-functions.ts";
+import { cutDiffNote, EnclosingFunctions } from "./enclosing-functions.ts";
 import { ReviewError } from "./errors.ts";
 import {
 	clearSightings,
@@ -739,6 +739,7 @@ export class ChangePrompt {
 			parts.push(part);
 		}
 		// The functions follow the diff, past its limit, so a cut diff never costs a function, and a function never a hunk.
+		if (cut && options.functions !== undefined) parts.push(cutDiffNote);
 		if (!cut && options.functions !== undefined)
 			parts.push(
 				...options.functions.blocks(
