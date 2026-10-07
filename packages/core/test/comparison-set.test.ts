@@ -1,0 +1,319 @@
+import {
+	Adjudication,
+	Comparison,
+	type ComparisonEntry,
+	ComparisonSet,
+	defaultConfig,
+	ExternalFinding,
+	type ExternalFindingInput,
+	Finding,
+} from "@melian-agent/core";
+import { describe, expect, it } from "vitest";
+import { evalInput } from "./fixtures/findings.ts";
+
+const revision = { base: "a".repeat(40), head: "b".repeat(40) };
+const at = "2026-10-05T01:00:00Z";
+const by = { by: "Ada", at };
+const own = (startLine = 12, snippet = `eval(line${startLine})`) =>
+	Finding.create({ ...evalInput, snippet, startLine, endLine: startLine });
+let sequence = 0;
+const report = (input: Partial<ExternalFindingInput> = {}) =>
+	ExternalFinding.create({
+		reviewer: { name: "codex" },
+		file: "src/run.ts",
+		line: 12,
+		title: "Null manager",
+		body: "First paragraph.",
+		source: { kind: "file", path: "codex.json", position: 0, ref: String(sequence++) },
+		...input,
+	});
+const verdictOf = (...findings: Finding[]) =>
+	new Adjudication({ findings, checks: [], manifest: [], config: defaultConfig }).adjudicate();
+
+function round(
+	externals: ExternalFinding[],
+	findings: Finding[],
+	options: { at?: string; target?: string } = {},
+): Comparison {
+	const comparison = Comparison.of(revision);
+	comparison.import("file:codex.json", { findings: externals, skippedBodies: 0 }, options.at ?? at);
+	comparison.compare(verdictOf(...findings));
+	if (options.target !== undefined) comparison.record(options.at ?? at, options.target);
+	return comparison;
+}
+const entry = (changeset: string, comparison: Comparison, findings: Finding[] = []): ComparisonEntry => ({
+	changeset,
+	comparison,
+	verdict: verdictOf(...findings),
+});
+const owing = (
+	changeset: string,
+	finding: Finding,
+	lens: string,
+	options: { at?: string; target?: string } = {},
+): ComparisonEntry => {
+	const comparison = round([], [finding], options);
+	comparison.adjudicate(finding.id, { ...by, verdict: "valid", golden: lens });
+	return entry(changeset, comparison, [finding]);
+};
+const owedOrder = (set: ComparisonSet) => set.backlog().map((each) => `${each.lens}/${each.target}/${each.changeset}`);
+
+describe("ComparisonSet selection", () => {
+	it("selects a changeset by the earliest of its rounds", () => {
+		const late = round([], [own(1)], { at: "2026-03-05T00:00:00Z" });
+		const early = round([], [own(2)], { at: "2026-01-05T00:00:00Z" });
+		for (const order of [
+			[late, early],
+			[early, late],
+		]) {
+			const set = new ComparisonSet(order.map((comparison) => entry("a", comparison)));
+			expect(set.select({ since: "2026-02-01" }).drain().comparisons).toBe(0);
+			expect(set.select({ since: "2026-01-01" }).drain().comparisons).toBe(1);
+		}
+	});
+
+	it("includes a changeset recorded at the --since instant", () => {
+		const set = new ComparisonSet([entry("a", round([], [], { at: "2026-02-01T00:00:00Z" }))]);
+		expect(set.select({ since: "2026-02-01T00:00:00Z" }).drain().comparisons).toBe(1);
+		expect(set.select({ since: "2026-02-01T00:00:01Z" }).drain().comparisons).toBe(0);
+	});
+
+	it("keeps unrecorded comparisons out of --since and ahead of recorded ones under --last", () => {
+		const unrecorded = owing("unrecorded", own(1), "alpha");
+		const stored = unrecorded.comparison.toJSON();
+		delete stored.createdAt;
+		stored.imports = {};
+		const bare = { ...unrecorded, comparison: Comparison.from(stored) };
+		expect(bare.comparison.recordedAt()).toBeUndefined();
+		const recorded = owing("recorded", own(2), "alpha", { at: "2026-01-01T00:00:00Z" });
+		const set = new ComparisonSet([recorded, bare]);
+		expect(
+			set
+				.select({ since: "2000-01-01" })
+				.backlog()
+				.map((each) => each.changeset),
+		).toEqual(["recorded"]);
+		expect(
+			set
+				.select({ last: 1 })
+				.backlog()
+				.map((each) => each.changeset),
+		).toEqual(["recorded"]);
+	});
+
+	it("orders changesets recorded together by name, and --last keeps the newest", () => {
+		const set = new ComparisonSet(["b", "c", "a"].map((name, index) => owing(name, own(index + 1), "alpha")));
+		const kept = set
+			.select({ last: 2 })
+			.backlog()
+			.map((each) => each.changeset);
+		expect(kept.sort()).toEqual(["b", "c"]);
+		const dated = new ComparisonSet([
+			owing("old", own(1), "alpha", { at: "2026-01-01T00:00:00Z" }),
+			owing("new", own(2), "alpha", { at: "2026-02-01T00:00:00Z" }),
+		]);
+		expect(dated.select({ last: 1 }).backlog()[0]?.changeset).toBe("new");
+		expect(dated.select({}).backlog()).toHaveLength(2);
+	});
+});
+
+describe("ComparisonSet statistics", () => {
+	const busy = (changeset: string) => {
+		const matched = own(12);
+		const validReport = report({ line: 12 });
+		const duplicate = report({ line: 40, title: "Dup" });
+		const pending = report({ line: 60, title: "Pending" });
+		const noise = report({ line: 80, title: "Noise" });
+		const comparison = round([validReport, duplicate, pending, noise], [matched]);
+		comparison.adjudicate(validReport.id, { ...by, verdict: "valid" });
+		comparison.adjudicate(matched.id, { ...by, verdict: "valid" });
+		comparison.adjudicate(duplicate.id, { ...by, verdict: "duplicate", of: matched.id });
+		comparison.adjudicate(noise.id, { ...by, verdict: "noise" });
+		return entry(changeset, comparison, [matched]);
+	};
+
+	it("sums every count of a reviewer across changesets before dividing", () => {
+		const stats = new ComparisonSet([busy("a"), busy("b")]).stats();
+		const codex = stats.reviewers.find((each) => each.reviewer === "codex");
+		expect(codex).toMatchObject({ found: 2, total: 2, valid: 2, noise: 2, duplicate: 2, pending: 2 });
+		expect(codex?.precision).toBeCloseTo(1 / 3);
+		expect(codex?.recall).toBe(1);
+	});
+
+	it("sums pending matches, reasonless misses and misses by reason", () => {
+		const ambiguous = (changeset: string) => {
+			const first = own(12);
+			const second = own(14);
+			const between = report({ line: 13 });
+			return entry(changeset, round([between], [first, second]), [first, second]);
+		};
+		expect(new ComparisonSet([ambiguous("a"), ambiguous("b")]).stats().pendingMatches).toBe(2);
+		const reasonless = (changeset: string) => {
+			const finding = own(12);
+			const external = report({ line: 12 });
+			const comparison = round([external], [finding]);
+			comparison.adjudicate(external.id, { ...by, verdict: "valid" });
+			comparison.unmatch(external.id, finding.id, by.by, at);
+			return entry(changeset, comparison, [finding]);
+		};
+		expect(new ComparisonSet([reasonless("a"), reasonless("b")]).stats().reasonlessMisses).toBe(2);
+		const missed = (changeset: string) => {
+			const external = report({ line: 90 });
+			const comparison = round([external], []);
+			comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "needs-execution" });
+			return entry(changeset, comparison);
+		};
+		expect(new ComparisonSet([missed("a"), missed("b")]).stats().misses["needs-execution"]).toBe(2);
+	});
+
+	it("sorts reviewers and scores a reviewer with nothing judged 1", () => {
+		const clean = (changeset: string, name: "claude-code" | "codex") => {
+			const comparison = Comparison.of(revision);
+			comparison.import(`file:${name}.json`, { findings: [], skippedBodies: 0, reviewers: [{ name }] }, at);
+			comparison.compare(verdictOf());
+			return entry(changeset, comparison);
+		};
+		const stats = new ComparisonSet([clean("a", "codex"), clean("b", "claude-code")]).stats();
+		expect(stats.reviewers.map((each) => each.reviewer)).toEqual(["claude-code", "codex", "melian"]);
+		expect(stats.reviewers.every((each) => each.recall === 1 && each.precision === 1)).toBe(true);
+	});
+
+	it("narrows reviewer metrics to the selection and flags every filter", () => {
+		const first = busy("a");
+		const miss = report({ line: 90, title: "Late miss" });
+		const second = round([miss], [], { at: "2026-12-01T00:00:00Z" });
+		second.adjudicate(miss.id, { ...by, verdict: "valid", reason: "no-owner" });
+		const set = new ComparisonSet([first, entry("b", second)]);
+		const last = set.renderStats({ last: 1 });
+		expect(last).toContain("Comparisons: 1.\n");
+		expect(last).toContain("melian: recall 0/1 (0.000)");
+		expect(set.renderStats()).toContain("melian: recall 1/2 (0.500)");
+		expect(last).toContain("Clone-wide, not narrowed by the filter:");
+		const since = set.renderStats({ since: "2000-01-01" });
+		expect(since).toContain("Clone-wide, not narrowed by the filter:");
+		expect(since).not.toContain("Comparisons: 2. Pending matches");
+		expect(set.renderStats()).toContain("Comparisons: 2. Pending matches: 0.");
+		expect(set.renderStats()).not.toContain("Clone-wide");
+	});
+});
+
+describe("ComparisonSet backlog", () => {
+	it("owes nothing for a finding no round of its changeset holds, even when another changeset holds it", () => {
+		const finding = own(12);
+		const withdrawn = owing("a", finding, "alpha");
+		withdrawn.comparison.compare(verdictOf());
+		const holder = entry("b", round([], [finding]), [finding]);
+		expect(new ComparisonSet([withdrawn, holder]).backlog()).toEqual([]);
+		expect(new ComparisonSet([withdrawn]).backlog()).toEqual([]);
+	});
+
+	it("orders owed goldens by lens, then target, then finding ID", () => {
+		const [i0, i1, i2, i3] = [own(1), own(2), own(3), own(4)].sort((a, b) => a.id.localeCompare(b.id)) as [
+			Finding,
+			Finding,
+			Finding,
+			Finding,
+		];
+		const set = new ComparisonSet([
+			owing("c1", i3, "zeta", { target: "t-a" }),
+			owing("c2", i0, "alpha", { target: "t-b" }),
+			owing("c3", i2, "alpha", { target: "t-a" }),
+			owing("c4", i1, "alpha", { target: "t-a" }),
+		]);
+		expect(owedOrder(set)).toEqual(["alpha/t-a/c4", "alpha/t-a/c3", "alpha/t-b/c2", "zeta/t-a/c1"]);
+	});
+
+	it("titles an owed Melian finding by its ID when nothing names it", () => {
+		const finding = own(1);
+		const bare = owing("a", finding, "alpha");
+		const set = new ComparisonSet([{ changeset: "a", comparison: bare.comparison }]);
+		expect(set.backlog()).toMatchObject([{ title: finding.id }]);
+	});
+
+	it("prints an empty backlog in both forms", () => {
+		const set = new ComparisonSet([]);
+		expect(set.renderBacklog()).toBe("No goldens owed.\n");
+		expect(set.renderBacklog(true)).toContain("No goldens owed.\n");
+	});
+});
+
+describe("ComparisonSet candidate checks", () => {
+	const pool = [90, 91, 92, 93]
+		.map((line) => report({ line, title: `pooled ${line}` }))
+		.sort((a, b) => a.id.localeCompare(b.id));
+	const judged = (changeset: string, rule: string, externals: ExternalFinding[]) => {
+		const comparison = round(externals, []);
+		for (const external of externals)
+			comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "no-owner", rule });
+		return entry(changeset, comparison);
+	};
+	const tagged = (changeset: string, rule: string) =>
+		judged(changeset, rule, [report({ line: 90, title: `${rule} one` }), report({ line: 95, title: `${rule} two` })]);
+
+	it("lists clusters seen on two changesets with sorted keys, IDs and changesets", () => {
+		const late = judged("c2", "zz", [pool[3]!, pool[2]!]);
+		const early = judged("c1", "zz", [pool[1]!, pool[0]!]);
+		const other = [tagged("c2", "aa"), tagged("c1", "aa")];
+		const candidates = new ComparisonSet([late, other[0]!, early, other[1]!]).candidates();
+		expect(candidates.map((each) => each.key)).toEqual(["rule:aa", "rule:zz"]);
+		expect(candidates[1]).toMatchObject({ ids: pool.map((each) => each.id), changesets: ["c1", "c2"] });
+	});
+
+	it("needs two changesets, and does not count a miss still awaiting its reason", () => {
+		expect(new ComparisonSet([tagged("c1", "zz")]).candidates()).toEqual([]);
+		const matchedFinding = own(12);
+		const external = report({ line: 12, title: "zz pending" });
+		const comparison = round([external], [matchedFinding]);
+		comparison.adjudicate(external.id, { ...by, verdict: "valid", rule: "zz" });
+		comparison.unmatch(external.id, matchedFinding.id, by.by, at);
+		expect(comparison.judgement(external.id)).toBeUndefined();
+		const set = new ComparisonSet([tagged("c1", "zz"), entry("c2", comparison, [matchedFinding])]);
+		expect(set.candidates()).toEqual([]);
+	});
+
+	it("does not count a repeat that was matched to a Melian finding", () => {
+		const matchedFinding = own(12);
+		const external = report({ line: 12, title: "zz matched" });
+		const comparison = round([external], [matchedFinding]);
+		comparison.adjudicate(external.id, { ...by, verdict: "valid", rule: "zz" });
+		const set = new ComparisonSet([tagged("c1", "zz"), entry("c2", comparison, [matchedFinding])]);
+		expect(set.candidates()).toEqual([]);
+	});
+});
+
+describe("ComparisonSet drain", () => {
+	const owed = (count: number) => {
+		const entries = Array.from({ length: count }, (_, index) => owing(`c${index}`, own(index + 1), "alpha"));
+		return new ComparisonSet(entries);
+	};
+
+	it("falls due at three comparisons while goldens remain, shipping at most two", () => {
+		expect(owed(2).drain()).toMatchObject({ due: false, next: 3 });
+		expect(owed(3).drain()).toEqual({ comparisons: 3, due: true, goldens: 2, next: 6 });
+		expect(owed(4).drain()).toMatchObject({ due: true, goldens: 2, next: 6 });
+		const clean = new ComparisonSet(["a", "b", "c"].map((name) => entry(name, round([], []))));
+		expect(clean.drain()).toMatchObject({ due: false, goldens: 0 });
+		const one = new ComparisonSet([
+			owing("a", own(1), "alpha"),
+			entry("b", round([], [])),
+			entry("c", round([], [])),
+		]);
+		expect(one.drain()).toMatchObject({ due: true, goldens: 1 });
+	});
+
+	it("words the notice for both outcomes and leaves it out on request", () => {
+		expect(owed(3).renderStats()).toContain("Drain due: ship 2 owed goldens");
+		expect(owed(2).renderStats()).toContain("Drain not due; next comparison threshold: 3.");
+		expect(owed(3).renderStats({ drain: false })).not.toContain("Drain");
+	});
+});
+
+describe("markdownText", () => {
+	it("escapes what would render as markup, a mention or a reference, and shows control characters", () => {
+		const finding = own(1);
+		const set = new ComparisonSet([owing("a", finding, "alpha", { target: "<b>&*_[x](y)#!|~`\\ @bob #7\u0007" })]);
+		const text = set.renderBacklog(true);
+		expect(text).toContain("&lt;b&gt;&amp;\\*\\_\\[x\\]\\(y\\)\\#\\!\\|\\~\\`\\\\ @\u2060bob \\#\u20607");
+		expect(text).not.toContain("\u0007");
+	});
+});
