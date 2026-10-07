@@ -5,11 +5,13 @@ import {
 	Comparison,
 	ComparisonExport,
 	ComparisonSet,
+	comparisonSchema,
 	defaultConfig,
 	ExternalFinding,
 	type ExternalFindingInput,
 	Finding,
 } from "@melian-agent/core";
+import Value from "typebox/value";
 import { describe, expect, it } from "vitest";
 import { evalInput } from "./fixtures/findings.ts";
 
@@ -655,5 +657,98 @@ describe("comparison guards", () => {
 		comparison.adjudicate(first.id, { ...by, verdict: "valid", reason: "no-owner" });
 		comparison.adjudicate(second.id, { ...by, verdict: "valid", reason: "owned-missed" });
 		expect(comparison.stats().misses).toMatchObject({ "owned-missed": 0, "no-owner": 1 });
+	});
+});
+
+describe("comparison identity, schema and stats guards", () => {
+	it("returns the file's reviewer as written, and a bare codex name for Codex's own shape", () => {
+		const reviewer = { name: "human", version: "2" };
+		expect(ExternalFinding.importFile({ reviewer, findings: [] }, "human.json")).toEqual({
+			findings: [],
+			skippedBodies: 0,
+			reviewers: [reviewer],
+		});
+		const codex = { verdict: "approve", summary: "Clean.", findings: [], next_steps: [] };
+		expect(ExternalFinding.importFile(codex, "codex.json")).toEqual({
+			findings: [],
+			skippedBodies: 0,
+			reviewers: [{ name: "codex" }],
+		});
+	});
+
+	it("stores each import's reviewers, and keys stats by name and case-folded login", () => {
+		const alice = { name: "human", login: "Alice" };
+		const comparison = Comparison.of(revision);
+		comparison.import("file:a.json", { findings: [], skippedBodies: 0, reviewers: [alice] }, by.at);
+		comparison.import(
+			"file:b.json",
+			{ findings: [report({ reviewer: { name: "human", login: "ALICE" } })], skippedBodies: 0 },
+			by.at,
+		);
+		comparison.import(
+			"file:c.json",
+			{ findings: [], skippedBodies: 0, reviewers: [{ name: "human", login: "bob" }] },
+			by.at,
+		);
+		comparison.compare(verdictOf({ findings: [] }));
+		expect(comparison.toJSON().imports["file:a.json"]?.reviewers).toEqual([alice]);
+		expect(comparison.stats().reviewers.map((each) => each.reviewer)).toEqual(["human:alice", "human:bob", "melian"]);
+	});
+
+	it("divides valid by valid, noise and duplicate for precision", () => {
+		const valid = report();
+		const noise = report({ line: 20 });
+		const duplicate = report({ line: 30 });
+		const comparison = compared({ reports: [valid, noise, duplicate] });
+		comparison.adjudicate(valid.id, { ...by, verdict: "valid", reason: "no-owner" });
+		comparison.adjudicate(noise.id, { ...by, verdict: "noise" });
+		comparison.adjudicate(duplicate.id, { ...by, verdict: "duplicate", of: valid.id });
+		expect(comparison.stats().reviewers.find((each) => each.reviewer === "codex")?.precision).toBeCloseTo(1 / 3);
+	});
+
+	it("keeps a rule and a golden through a rejudgement that names neither, and lists the owed golden whole", () => {
+		const external = report();
+		const comparison = compared({ reports: [external] });
+		comparison.adjudicate(external.id, {
+			...by,
+			verdict: "valid",
+			reason: "no-owner",
+			golden: "correctness",
+			rule: "null-check",
+		});
+		comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "no-owner", note: "Again." });
+		expect(comparison.adjudication(external.id)?.current).toMatchObject({
+			rule: "null-check",
+			golden: "correctness",
+		});
+		expect(comparison.backlog()).toEqual([
+			{
+				id: external.id,
+				lens: "correctness",
+				target: comparison.label(),
+				title: "Null manager",
+				verdict: "valid",
+				at: by.at,
+			},
+		]);
+	});
+
+	it("validates a judged, labelled document against the exported schema, strictly", () => {
+		const external = report();
+		const comparison = compared({ reports: [external] });
+		comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "no-owner" });
+		comparison.record(by.at, "main...HEAD");
+		const stored = comparison.toJSON();
+		expect(stored).toMatchObject({ createdAt: by.at, target: "main...HEAD" });
+		expect(Value.Check(comparisonSchema, stored)).toBe(true);
+		const judged = stored.adjudications![external.id]!;
+		expect(
+			Value.Check(comparisonSchema, { ...stored, adjudications: { [external.id]: { current: judged.current } } }),
+		).toBe(false);
+		expect(
+			Value.Check(comparisonSchema, { ...stored, adjudications: { [external.id]: { ...judged, extra: 1 } } }),
+		).toBe(false);
+		expect(Value.Check(comparisonSchema, { ...stored, createdAt: 7 })).toBe(false);
+		expect(Value.Check(comparisonSchema, { ...stored, target: 7 })).toBe(false);
 	});
 });
