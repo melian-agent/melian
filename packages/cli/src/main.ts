@@ -91,6 +91,10 @@ function readableReason(reason: string): string {
 	}
 }
 
+function isCalendarDay(date: string): boolean {
+	return new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date;
+}
+
 function one(positionals: readonly string[], command: string, what: string): string {
 	if (positionals.length !== 1) throw new UsageError(`${command} takes one ${what}`);
 	return positionals[0]!;
@@ -183,8 +187,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 						values.since !== undefined &&
 						(!/^\d{4}-\d{2}-\d{2}(T.*)?$/.test(values.since) ||
 							!Number.isFinite(Date.parse(values.since)) ||
-							(!values.since.includes("T") &&
-								new Date(values.since).toISOString().slice(0, 10) !== values.since))
+							!isCalendarDay(values.since.slice(0, 10)))
 					)
 						throw new UsageError("--since takes an ISO date");
 					if (

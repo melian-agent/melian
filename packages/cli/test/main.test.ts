@@ -101,6 +101,8 @@ describe("comparison report arguments", () => {
 		[["stats", "--since", "2026"], "--since takes an ISO date"],
 		[["stats", "--since", "2026-1-5"], "--since takes an ISO date"],
 		[["stats", "--since", "2026-02-31"], "--since takes an ISO date"],
+		[["stats", "--since", "2026-02-31T00:00:00Z"], "--since takes an ISO date"],
+		[["stats", "--since", "2026-04-31T12:00:00+10:00"], "--since takes an ISO date"],
 		[["stats", "--since", "yesterday"], "--since takes an ISO date"],
 		[["stats", "--since", "Jan 1 2026 PST"], "--since takes an ISO date"],
 		[["stats", "--last", "0"], "--last takes a positive integer"],
