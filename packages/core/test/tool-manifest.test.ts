@@ -109,12 +109,12 @@ describe("ToolManifest", () => {
 	});
 
 	it.each([
-		{ url: "http://github.com/x" },
+		{ url: "http://github.com/enola-labs/enola/releases/download/v0.4.27/enola.tar.gz" },
 		{ url: "https://github.com/other/repo/releases/download/v0.4.27/enola.tar.gz" },
 		{ url: "https://github.com/enola-labs/enola/releases/download/v9/enola.tar.gz" },
 		{ binary: "enola\0hidden" },
-		{ url: "https://example.com/x" },
-		{ url: "https://github.com:8443/x" },
+		{ url: "https://example.com/enola-labs/enola/releases/download/v0.4.27/enola.tar.gz" },
+		{ url: "https://github.com:8443/enola-labs/enola/releases/download/v0.4.27/enola.tar.gz" },
 		{ sha256: "x" },
 		{ binary: "../enola" },
 		{ binary: "/enola" },
