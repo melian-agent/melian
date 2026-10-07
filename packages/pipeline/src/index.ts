@@ -9,6 +9,13 @@ export {
 	runChecks,
 } from "./checks.ts";
 export {
+	CompareError,
+	type CompareErrorCode,
+	CompareHarness,
+	ComparisonReader,
+	type ImportedSource,
+} from "./compare.ts";
+export {
 	createReviewModels,
 	MelianCredentialStore,
 	PiCredentialStore,
@@ -35,6 +42,7 @@ export {
 	ReviewError,
 	type ReviewErrorCode,
 } from "./errors.ts";
+export { FileImporter, maxReviewerFileBytes } from "./file-import.ts";
 export {
 	type Dismissal,
 	dismissFinding,

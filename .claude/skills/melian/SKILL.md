@@ -31,6 +31,8 @@ Run only the `melian` the shell finds on its path. Never build, install, or run 
   - Verification: a plan warning that verification falls back to lens tiers, or uses the finder's own family, does not stop a review; mention it once. Doctor prints the route and families. A refused verifier tier means exit `2` and no verifier request. Ask the user to fix its route or credentials as for the plan warning. The `--model` option routes lens tiers only; those routes supply verification when the verifier has no route of its own.
   - `static`: Biome or tsc comes from nowhere, so that check fails and the review reads not reviewed. The same line says whether each comes from the checkout or Melian's own copy; a result from Melian's copy can differ from the repository's own lint run.
 
+The standards line counts the working tree's standards files and bytes, including nested files. It warns for a file over 256 KiB or a symlink it skipped. It lists at most ten paths, then says how many more it found. Mention a warning once; doctor does not review these files.
+
 ## Review the working branch
 
 ```sh
@@ -93,6 +95,10 @@ Prints the stored review and a fenced agent prompt, without running a new review
 
 Pass `--all` to print silent, dismissed and refuted findings too, each dismissed one with who dismissed it and why. Refuted findings do not count in the verdict. Each verified finding names the judge and reason, with a correction when supplied; relay both.
 
+## Compare with other reviewers
+
+When the user asks how Melian's review compares with CodeRabbit's or another reviewer's, run `melian compare "#N" --from github`. Use `--from file:<path>` for a reviewer's JSON file, with the range or `"#N"` a stored review used. Show what it prints; it posts nothing. For Codex's adversarial review, save the "result" field of the companion's JSON output as that file, not the whole output.
+
 ## Dismiss a finding
 
 A user who decides a finding does not apply can dismiss it with a reason. Melian then counts it out of the verdict, never raises it again, and keeps it dismissed across new reviews and pushes until the code that triggered it changes. Dismiss only when the user tells you to dismiss a finding; never to make a review pass, and never on your own judgement that a finding is wrong. Say what you think if asked, and let the user decide.
@@ -120,3 +126,11 @@ melian publish "#N"
 It posts a review, creates or edits one ledger comment, and sets a `melian/review` commit status linked to that ledger on GitHub, where other people see them, and exits `0`. It exits `1` when it refuses or fails; show its message. When it refuses because the pull request moved on, or because the stored review is not one Melian publishes, the message ends with the review to run, quoted to paste as it stands. Run that review, show the new findings, and offer again.
 
 The ledger's walkthrough is a summary, never a verdict. To omit it, pass `--no-walkthrough` to `melian publish` after the user authorises publication. The same option on `melian review` skips summarisation. Only pull-request reviews create walkthroughs. A failed summary can retry on the next review.
+
+Use `melian compare adjudicate "#N" <finding-id> --verdict valid --reason owned-missed --golden <lens>` to record the maintainer's judgement and golden debt locally.
+
+Use `melian compare stats --last 10` to measure adjudicated recall, precision, repeats, and the drain due.
+
+Use `melian compare backlog --markdown` to print the generated list of owed goldens by lens.
+
+Use `melian compare export "#N" --out <path>` to save the local record for review.

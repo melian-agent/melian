@@ -1,0 +1,1 @@
+Removed the core test helper’s redundant comment from Melian’s sixteenth round on [pull request #68](https://github.com/melian-agent/melian/pull/68). Its source literal, position increment and trailing input spread already state the construction and override. The comment gave no reason or outside constraint. Test behaviour and design decisions stay unchanged.

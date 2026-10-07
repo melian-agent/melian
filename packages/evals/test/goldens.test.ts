@@ -24,7 +24,8 @@ import {
 	scriptedMismatches,
 	selectGoldens,
 } from "@melian-agent/evals";
-import { describe, expect, it } from "vitest";
+import * as testing from "@melian-agent/pipeline/testing";
+import { describe, expect, it, vi } from "vitest";
 
 const goldens = loadGoldens();
 
@@ -81,6 +82,30 @@ describe("the golden corpus", () => {
 });
 
 describe("a golden's standards and policy", () => {
+	it("renders a nested base AGENTS.md into the scripted lens's instructions", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "melian-nested-standards-golden-"));
+		const scripted = vi.spyOn(testing, "scriptLenses");
+		try {
+			const golden = goldens.find((each) => each.name === "clean-rename")!;
+			const copy = join(directory, golden.name);
+			cpSync(golden.directory, copy, { recursive: true });
+			writeFileSync(join(copy, "base", "src/AGENTS.golden.md"), "# Base golden conventions\n");
+			writeFileSync(join(copy, "head", "src/AGENTS.golden.md"), "# Head golden conventions\n");
+			const run = await runGolden({ ...golden, directory: copy }, { kind: "scripted" });
+			expect(run.toolMismatches).toEqual([]);
+			const requests = scripted.mock.results[0]!.value as ReturnType<typeof testing.scriptLenses>;
+			const instructions = Object.values(requests).flat().map(testing.systemPromptOf);
+			expect(instructions.length).toBeGreaterThan(0);
+			for (const prompt of instructions) {
+				expect(prompt).toContain("### src/AGENTS.md\n\n# Base golden conventions");
+				expect(prompt).not.toContain("# Head golden conventions");
+			}
+		} finally {
+			scripted.mockRestore();
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
 	it("are stored under inert names, so the repository the corpus sits in never reads them as its own", () => {
 		const live = new Set(["AGENTS.md", "CLAUDE.md", "melian.yaml", "melian.local.yaml", "LENS.md"]);
 		const entries = readdirSync(goldensDirectory, { recursive: true, withFileTypes: true });
@@ -318,16 +343,20 @@ describe("MELIAN_EVAL_GOLDEN", { timeout: 60_000 }, () => {
 
 // Scripted runs replay each golden's canned lens replies on the fake model, so the plumbing from lens to findings
 // document to rendered output runs in the gate. They prove the pipeline, not the lenses' judgement; live runs do that.
-describe.each(goldens.map((golden): [string, Golden] => [golden.name, golden]))("scripted %s", (_, golden) => {
-	it("finds exactly what the golden expects, with its cause, failure scenario, and evidence", async () => {
-		const run = await runGolden(golden, { kind: "scripted" });
+describe.each(goldens.map((golden): [string, Golden] => [golden.name, golden]))(
+	"scripted %s",
+	{ timeout: 60_000 },
+	(_, golden) => {
+		it("finds exactly what the golden expects, with its cause, failure scenario, and evidence", async () => {
+			const run = await runGolden(golden, { kind: "scripted" });
 
-		expect(run.toolMismatches).toEqual([]);
-		expect(scoreGolden(golden, run.findings)).toMatchObject({ precision: 1, recall: 1 });
-		expect(scriptedMismatches(golden, run.findings)).toEqual([]);
-		await expect(run.rendered).toMatchFileSnapshot(join(golden.directory, "scripted.txt"));
-	});
-});
+			expect(run.toolMismatches).toEqual([]);
+			expect(scoreGolden(golden, run.findings)).toMatchObject({ precision: 1, recall: 1 });
+			expect(scriptedMismatches(golden, run.findings)).toEqual([]);
+			await expect(run.rendered).toMatchFileSnapshot(join(golden.directory, "scripted.txt"));
+		});
+	},
+);
 
 describe("runGolden", () => {
 	it("loads a folder's lens for a file the change moves out of that folder, as the CLI does", async () => {

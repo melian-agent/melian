@@ -6,10 +6,10 @@ import {
 	Lens,
 	loadConfig,
 	loadSecrets,
-	loadStandards,
 	Rendering,
 	type RepositorySource,
 	ReviewPlan,
+	Standards,
 	userFiles,
 	type Verdict,
 	visibleText,
@@ -28,7 +28,6 @@ import {
 	recordDismissal,
 	reviewChangeset,
 	revisionKey,
-	runChecks,
 	summarizeReview,
 } from "@melian-agent/pipeline";
 import {
@@ -119,7 +118,9 @@ export async function review(
 	const { repoRoot } = changeset;
 	const paths = changeset.revision.paths();
 	const lenses = await Lens.load(repoRoot, source, paths);
-	const standards = await loadStandards(repoRoot, source, ".");
+	const standardsSource =
+		source.kind === "revision" ? source : ({ kind: "revision", commit: changeset.revision.head } as const);
+	const standards = await Standards.load(repoRoot, standardsSource, paths);
 	const policy = await loadConfig(repoRoot, source, ".");
 	const { config: loaded } = policy;
 	const tier = loaded.stages["pull-request"] ?? "full";
@@ -154,19 +155,10 @@ export async function review(
 	});
 	const { harness } = reviewHarness;
 	try {
-		// The deterministic checks first, then the lenses: reviewChangeset reads the checks' records, and a check of the
-		// manifest without one makes the review not reviewed. The plan's routes reach only the lenses, so a different
-		// --model does not change the checks' run identity and run them again.
-		const rootConversationId = (await harness.root(context)).id;
-		const checks = await runChecks(
-			harness,
-			{ rootConversationId, changeset, config: loaded, source, tier, rerunFailed: options.rerun },
-			context,
-		);
 		let verdict: Verdict;
 		try {
 			({ verdict } = await reviewChangeset({
-				harness,
+				harness: reviewHarness,
 				changeset,
 				config: loaded,
 				lenses,
@@ -176,7 +168,6 @@ export async function review(
 				...triage.reviewOptions(),
 				policy: source,
 				tier,
-				checks: checks.records,
 				rerun: options.rerun,
 				origin,
 			}));
@@ -195,12 +186,12 @@ export async function review(
 	}
 }
 
-function short(commit: string): string {
+export function short(commit: string): string {
 	return commit.slice(0, 12);
 }
 
 // An argument echoed in a command to run, quoted so it can be pasted into a shell: an unquoted `#` starts a comment.
-function shellQuote(argument: string): string {
+export function shellQuote(argument: string): string {
 	if (/^[\w@%+=:,./-]+$/.test(argument)) return argument;
 	if (!/["$`\\!]/.test(argument)) return `"${argument}"`;
 	return `'${argument.replace(/'/g, `'\\''`)}'`;
@@ -264,7 +255,7 @@ export async function publish(
 
 // A review stored in the clone's storage, named by `argument`: the refs `review` fetched for a pull request, or the
 // range. Opening it reads only local refs, never the network.
-class StoredReview {
+export class StoredReview {
 	readonly changeset: Changeset;
 	readonly argument: string;
 
@@ -329,12 +320,12 @@ export async function findings(
 
 // The git author, as `Name <email>`, in git's own order: GIT_AUTHOR_NAME and GIT_AUTHOR_EMAIL, then user.name and
 // user.email.
-async function gitAuthor(repoRoot: string): Promise<string> {
+export async function gitAuthor(repoRoot: string, act = "dismissed a finding"): Promise<string> {
 	const ident = await git(repoRoot, ["var", "GIT_AUTHOR_IDENT"]).catch((error: Error) => {
 		// git explains a missing identity over several lines; its first says what is wrong.
 		const why = error.message.split("\n")[0]!.trim();
 		throw new CliError(
-			`Melian records who dismissed a finding as the git author, and git has none: ${why}; set user.name and user.email`,
+			`Melian records who ${act} as the git author, and git has none: ${why}; set user.name and user.email`,
 		);
 	});
 	return ident.replace(/ \d+ [+-]\d{4}$/, "");
