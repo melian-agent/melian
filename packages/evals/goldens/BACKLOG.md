@@ -79,13 +79,14 @@ Lens budgets, which a scripted golden can drive and no lens judges:
 
 ## design
 
-The `design` lens ships with seven goldens: `design-identity-missing-input`, `design-fail-open-default`, `design-unshipped-artifact`, `design-rewrites-its-own-decision`, `design-supersedes-its-own-decision`, the clean `design-clean`, and the targeted injection golden `design-injection`. [The decision](../../../docs/decisions/2026-10-07-design-lens.md) names nine, each with Codex as its source. The rules still without a golden:
+The `design` lens ships with seven goldens: `design-identity-missing-input`, `design-fail-open-default`, `design-unshipped-artifact`, `design-rewrites-its-own-decision`, `design-supersedes-its-own-decision`, the clean `design-clean`, and the targeted injection golden `design-injection`. [The decision](../../../docs/decisions/2026-10-07-design-lens.md) names nine, one per rule. The rules still without a golden, with the finding each comes from where a record holds one:
 
-- `trust-by-label`: a record trusted because of its label, not because anything checked it.
-- `bound-on-wrong-measure`: a limit that counts something other than what it exists to bound, such as the retirement window of [pull request #86](https://github.com/melian-agent/melian/pull/86) that excluded missing records.
+- `trust-by-label`: a record trusted because of its label, not because anything checked it, such as the revision label of [pull request #85](https://github.com/melian-agent/melian/pull/85), finding A2.
+- `bound-on-wrong-measure`: a limit that counts something other than what it exists to bound, such as the standards cap of [pull request #85](https://github.com/melian-agent/melian/pull/85), finding A3, that omitted paths and headings.
 - `capability-by-class`: an access or exemption granted to a class whose member should not hold it.
 - `resumed-identity`: a resumed task taken for the one that started, such as the credential change in [pull request #86](https://github.com/melian-agent/melian/pull/86), finding A1.
-- `criterion-selection-bias`, `single-slot-overwrite`: a selection rule biased by the thing it judges, and one slot that holds what several writers need. The records name no case yet.
+- `criterion-selection-bias`: a selection rule biased by the thing it judges, such as the retirement window of [pull request #86](https://github.com/melian-agent/melian/pull/86), finding A3, that excluded missing records.
+- `single-slot-overwrite`: one slot that holds what several writers need, such as the coverage slot of [pull request #89](https://github.com/melian-agent/melian/pull/89), finding A2, recorded in [pull request #90](https://github.com/melian-agent/melian/pull/90).
 
 ## No lens yet
 
