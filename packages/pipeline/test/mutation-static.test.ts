@@ -7,6 +7,8 @@ import {
 	defaultConfig,
 	type Finding,
 	loadConfig,
+	mutationSkipHasLeave,
+	mutationSkips,
 	type RepositorySource,
 	staticFindings,
 	type ToolLog,
@@ -513,24 +515,24 @@ exit 0`,
 			expect(readFileSync(seen, "utf8").trim()).toBe(String(1024 * 1024));
 		});
 
-		it("stops a run that passes the timeout in static.mutation.timeout, as a timeout", async () => {
+		it("records a run that passes static.mutation.timeout as a skip with leave, not a failure", async () => {
 			const { base, head } = twoCommits();
 			fakeTool(repo, "stryker", `if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\nsleep 30`);
 			const revision = await revisionOf(base, head);
-			await expect(
-				runStaticTool(
-					{
-						env: createNodeExecutionEnv(repo),
-						repoRoot: repo,
-						base,
-						commit: head,
-						tool: "mutation",
-						settings: { ...defaultConfig.static.mutation, timeout: 1 },
-						revision,
-					},
-					context,
-				),
-			).rejects.toMatchObject({ code: "timeout", check: "static.mutation" });
+			const result = await runStaticTool(
+				{
+					env: createNodeExecutionEnv(repo),
+					repoRoot: repo,
+					base,
+					commit: head,
+					tool: "mutation",
+					settings: { ...defaultConfig.static.mutation, timeout: 1 },
+					revision,
+				},
+				context,
+			);
+			expect(result).toEqual({ status: "skipped", reason: mutationSkips.timeout(1) });
+			expect(mutationSkipHasLeave(mutationSkips.timeout(1))).toBe(true);
 		});
 
 		it("keeps the end of Stryker's output in the error, not the start", async () => {

@@ -118,7 +118,9 @@ export class MutationRun {
 		return `a new ${candidates.at(-1)}`;
 	}
 
-	async #execute(entries: readonly string[]): Promise<string> {
+	// The run executes the head's own test files, setup files, and Vitest configuration, so it gets a home and a temporary
+	// directory of its own in scratch, where the reviewer's credential files are not, and none of the Melian process's variables.
+	async #execute(entries: readonly string[]): Promise<string | { skipped: string }> {
 		const log = posix.join(this.#scratch, "stryker.log");
 		// A report the revision committed must not stand in for the one this run writes.
 		const command = [
@@ -127,7 +129,16 @@ export class MutationRun {
 			`rm -f ${quote(report)}`,
 			`${quote(this.#binary)} run ${quote(posix.join(this.#root, config))} --reporters json --incremental --incrementalFile ${quote(posix.join(this.#scratch, "incremental.json"))} --inPlace --mutate ${quote(entries.join(","))} > ${quote(log)} 2>&1`,
 		].join(" && ");
-		const result = await this.#run.shell(command);
+		let result: Awaited<ReturnType<Run["shell"]>>;
+		try {
+			result = await this.#run.shell(command, undefined, { HOME: home, TMPDIR: temporary });
+		} catch (error) {
+			// A change too slow to mutate is one the run could not judge, not one whose judgement failed.
+			if (error instanceof CheckError && error.code === "timeout") {
+				return { skipped: mutationSkips.timeout(this.#run.input.settings.timeout) };
+			}
+			throw error;
+		}
 		const output = ((await this.#run.readOutput(log)) ?? result.output).slice(-4096).trim();
 		if (result.code === 1) throw this.#run.fail("toolFailed", `Stryker exited 1: ${output}`);
 		if (result.code !== 0)
@@ -154,6 +165,7 @@ export class MutationRun {
 			ranges.map(([first, last]) => `${path}:${first}-${last}`),
 		);
 		const text = await this.#execute(entries);
+		if (typeof text !== "string") return { status: "skipped", reason: text.skipped };
 		// The base is not mutated, so it has nothing to subtract from the head's results.
 		const empty: ToolLog = {
 			version: "2.1.0",
