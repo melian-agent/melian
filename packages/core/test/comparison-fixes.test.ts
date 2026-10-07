@@ -677,7 +677,7 @@ describe("comparison identity, schema and stats guards", () => {
 	});
 
 	it("stores each import's reviewers, and keys stats by name and case-folded login", () => {
-		const alice = { name: "human", login: "Alice" };
+		const alice = { name: "human", login: "Alice" } as const;
 		const comparison = Comparison.of(revision);
 		comparison.import("file:a.json", { findings: [], skippedBodies: 0, reviewers: [alice] }, by.at);
 		comparison.import(
