@@ -219,3 +219,67 @@ it("skips caller context when the Enola check is disabled", async () => {
 	expect(prompt).not.toContain("Candidate callers");
 	expect(prompt).not.toContain("OutsideCaller");
 }, 60_000);
+
+async function openedFor(tiers: string, lenses: string): Promise<readonly string[] | undefined> {
+	repo = createRepository();
+	commit(repo, {
+		"src/a.ts": "export const a = 1;\n",
+		"docs/b.md": "one\n",
+		"melian.yaml": `tiers:\n${tiers}\nstatic:\n  enola: {enabled: true}\nlenses:\n${lenses}`,
+	});
+	gitIn(repo, "checkout", "-b", "feature");
+	commit(repo, { "src/a.ts": "export const a = 2;\n", "docs/b.md": "two\n" });
+	const fake = createFakeModels();
+	const ref = fake.ref();
+	scriptConversations(fake, [{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] }]);
+	vi.spyOn(modelSetup, "reviewModels").mockImplementation(async (_env, loaded, lenses, options) => ({
+		models: fake.review,
+		plan: ReviewPlan.resolve({
+			config: loaded.config,
+			routes: loaded.routes,
+			model: `${ref.provider}/${ref.modelId}`,
+			...(await planInputs(fake.review)),
+			lenses,
+			checks: options.checks,
+		}),
+		retry: false,
+	}));
+	vi.spyOn(CallerContext, "open").mockResolvedValue(
+		CallerContext.from({ groups: [], issues: [], notes: [], paths: [] }),
+	);
+	const errors: string[] = [];
+	const io: Io = {
+		cwd: repo,
+		env: {
+			MELIAN_TEST_SCRIPT: "injected",
+			MELIAN_STATE_DIR: join(repo, "state"),
+			XDG_CONFIG_HOME: join(repo, "config"),
+			PI_CODING_AGENT_DIR: join(repo, "pi"),
+		},
+		stdout: () => {},
+		stderr: (text) => errors.push(text),
+		color: false,
+	};
+	await main(["review", "main...feature"], io);
+	return vi.mocked(CallerContext.open).mock.calls[0]?.[1].map((file) => file.path);
+}
+
+const others = ["trust-boundary", "removed-behaviour", "tests", "conventions"]
+	.map((name) => `  ${name}: {enabled: false}\n`)
+	.join("");
+
+it("queries callers only for files the tier's lenses select, not an enabled lens outside the tier", async () => {
+	const files = await openedFor(
+		"  fast: [lens.correctness]\n  full: [fast]",
+		`  correctness: {paths: [src/a.ts]}\n  contracts: {paths: [docs/b.md]}\n${others}`,
+	);
+	expect(files).toEqual(["src/a.ts"]);
+}, 60_000);
+
+it("queries callers for no file when the tier names no lens", async () => {
+	const files = await openedFor(
+		"  fast: [static.enola]\n  full: [fast]",
+		`  correctness: {paths: [src/a.ts]}\n  contracts: {paths: [docs/b.md]}\n${others}`,
+	);
+	expect(files).toEqual([]);
+}, 60_000);
