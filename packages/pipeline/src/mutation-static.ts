@@ -202,18 +202,15 @@ export class MutationRun {
 		);
 		const text = await this.#execute(entries);
 		if (typeof text !== "string") return { status: "skipped", reason: text.skipped };
-		// The base is not mutated, so it has nothing to subtract from the head's results.
-		const empty: ToolLog = {
-			version: "2.1.0",
-			runs: [{ tool: { driver: { name: "Stryker", version: this.#version } }, results: [] }],
-		};
 		const tests: Record<string, string> = {};
 		for (const path of Object.keys(lines)) tests[path] = await this.#nearestTest(path);
 		const read = normaliseMutationReport(text, { version: this.#version, lines, tests });
+		// The base is not mutated, so it has nothing to subtract from the head's results.
+		const baseLog: ToolLog = { ...read.log, runs: [{ ...read.log.runs[0], results: [] }] };
 		return {
 			status: "ran",
 			log: read.log,
-			baseLog: empty,
+			baseLog,
 			notes: [
 				...this.#notes,
 				`Stryker mutated ${count} changed lines in ${Object.keys(lines).length} file(s); the base was not mutated.`,
