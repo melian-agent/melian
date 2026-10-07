@@ -1260,6 +1260,165 @@ describe("reviewChangeset", () => {
 		]);
 	});
 
+	describe("a neighbour that ran out of findings budget", () => {
+		const changedReturn = { ...nullDeref, rule: "changed-return" };
+		const second = { ...changedReturn, line: 6, endLine: 7 };
+		const capped = (budget: number) =>
+			lenses.map((lens) => (lens.name === "contracts" ? withBudget(lens, { findings: budget }) : lens));
+		const correctnessDone = { match: correctness, replies: [fauxAssistantMessage("Done.")] };
+
+		it("leaves the review not reviewed when a lens left it defects, since one may be unreported", async () => {
+			scriptConversations(fake, [
+				correctnessDone,
+				{
+					match: contracts,
+					replies: [
+						call("report_finding", changedReturn),
+						call("report_finding", second),
+						fauxAssistantMessage("Done."),
+					],
+				},
+			]);
+
+			const { findings, verdict } = await reviewed({ lenses: capped(1) });
+
+			expect(findings).toHaveLength(1);
+			expect(verdict.status).toBe("not-reviewed");
+			expect(verdict.notRun.find((check) => check.name === "lens.contracts")).toEqual({
+				name: "lens.contracts",
+				status: "ended",
+				level: "careful",
+				reason: "its findings budget of 1 ran out while `correctness` left it defects, so one may be unreported",
+			});
+			expect(verdict.ran?.map((check) => check.name)).not.toContain("lens.contracts");
+		});
+
+		it("names every lens that left it defects", async () => {
+			const design = "You are the design reviewer";
+			scriptConversations(fake, [
+				correctnessDone,
+				{ match: design, replies: [fauxAssistantMessage("Done.")] },
+				{
+					match: contracts,
+					replies: [
+						call("report_finding", changedReturn),
+						call("report_finding", second),
+						fauxAssistantMessage("Done."),
+					],
+				},
+			]);
+			const trio = {
+				...config,
+				tiers: { ...config.tiers, full: ["lens.correctness", "lens.design", "lens.contracts"] },
+			};
+
+			const { verdict } = await reviewed({ lenses: capped(1), config: trio });
+
+			expect(verdict.notRun.find((check) => check.name === "lens.contracts")?.reason).toBe(
+				"its findings budget of 1 ran out while `correctness`, `design` left it defects, so one may be unreported",
+			);
+		});
+
+		it("holds when ended: count would count a tokens budget's end as run", async () => {
+			const counted = lenses.map((lens) =>
+				lens.name === "contracts" ? withBudget(lens, { findings: 1, ended: "count" }) : lens,
+			);
+			scriptConversations(fake, [
+				correctnessDone,
+				{
+					match: contracts,
+					replies: [
+						call("report_finding", changedReturn),
+						call("report_finding", second),
+						fauxAssistantMessage("Done."),
+					],
+				},
+			]);
+
+			const { verdict } = await reviewed({ lenses: counted });
+
+			expect(verdict.status).toBe("not-reviewed");
+			expect(verdict.notRun.map((check) => check.name)).toContain("lens.contracts");
+		});
+
+		it("counts a lens that reported exactly its budget as run, since nothing was refused", async () => {
+			scriptConversations(fake, [
+				correctnessDone,
+				{ match: contracts, replies: [call("report_finding", changedReturn), fauxAssistantMessage("Done.")] },
+			]);
+
+			const { verdict } = await reviewed({ lenses: capped(1) });
+
+			expect(verdict.status).toBe("findings");
+			expect(verdict.ran?.find((check) => check.name === "lens.contracts")).toEqual({
+				name: "lens.contracts",
+				status: "ran",
+				level: "careful",
+			});
+		});
+
+		it("counts a lens nothing handed a defect to as run", async () => {
+			scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [
+						call("report_finding", nullDeref),
+						call("report_finding", { ...nullDeref, line: 6, endLine: 7 }),
+						fauxAssistantMessage("Done."),
+					],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+			const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 1 }) : lens));
+
+			const { verdict } = await reviewed({ lenses: tight });
+
+			expect(verdict.status).toBe("findings");
+			expect(verdict.ran?.find((check) => check.name === "lens.correctness")).toMatchObject({ status: "ran" });
+		});
+
+		it("counts a lens as run when the hand-off to it was left out for size", async () => {
+			const many = (count: number) =>
+				Object.fromEntries(
+					Array.from({ length: count }, (_, index) => [
+						`src/many/${index}.ts`,
+						lines(`export const n = ${index};`),
+					]),
+				);
+			const inMany = {
+				...changedReturn,
+				file: "src/many/0.ts",
+				line: 1,
+				evidence: [{ file: "src/many/0.ts", line: 1, role: "cause" }],
+			};
+			const narrow = { ...config, lenses: { contracts: { paths: ["src/many/**"] } } };
+			for (const [count, handed] of [
+				[40, true],
+				[41, false],
+			] as const) {
+				writeFiles(repo, many(count));
+				gitIn(repo, "add", "--all");
+				gitIn(repo, "commit", "--quiet", "-m", `${count} files`);
+				scriptConversations(fake, [
+					correctnessDone,
+					{
+						match: contracts,
+						replies: [
+							call("report_finding", inMany),
+							call("report_finding", { ...inMany, rule: "broken-caller" }),
+							fauxAssistantMessage("Done."),
+						],
+					},
+				]);
+
+				const { verdict } = await reviewed({ lenses: capped(1), config: narrow });
+
+				const record = [...(verdict.ran ?? []), ...verdict.notRun].find((check) => check.name === "lens.contracts");
+				expect(record?.status).toBe(handed ? "ended" : "ran");
+			}
+		});
+	});
+
 	describe("hands a defect to a neighbour in the files the neighbour reviews", () => {
 		const backlog = ["trust-boundary", "removed-behaviour", "tests", "conventions"].map(
 			(name) => `You are the ${name} reviewer`,

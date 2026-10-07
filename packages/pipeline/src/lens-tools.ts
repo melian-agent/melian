@@ -165,6 +165,8 @@ export type LensPolicy = {
 type LensSpend = {
 	calls: number[];
 	ended?: "tokens" | "tools";
+	// The findings budget, once a report past it was refused: the lens had more to report than it was let.
+	capped?: number;
 	reports?: Record<string, number[]>;
 	refuted?: string[];
 };
@@ -444,6 +446,16 @@ export async function budgetEnded(
 	if (ended === undefined || limit === undefined) return undefined;
 	const tokens = tokensUsed(await reader.snapshot(UsageDoc, conversationId, context));
 	return { budget: ended, limit, tokens, tools: document?.spend?.calls.length ?? 0 };
+}
+
+// The findings budget a lens ran into, when a report past it was refused: some finding it wanted to report went
+// unreported. `undefined` when it never asked for more than its budget.
+export async function findingsCapped(
+	reader: DocumentReader,
+	conversationId: ConversationId,
+	context: Context,
+): Promise<number | undefined> {
+	return (await reader.snapshot(LensDocument, conversationId, context))?.spend?.capped;
 }
 
 // Core's BudgetEnd as a JSON type, for task results and stored check records.
@@ -866,12 +878,14 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 			throw new Error("superseded: a later review of this revision replaced this run; stop reporting and finish");
 		}
 		const own = hasSighting(state, id, at, source);
-		if (refuted === undefined && !own && sightingCount(state, at, source) >= lens.budget) {
-			throw new Error(`budget reached: this lens may report ${lens.budget} findings; stop reporting and finish`);
-		}
-		// Each report reads the code at every location it cites, and quotes it back, so corrections are capped.
 		const document = await tx.doc(LensDocument, api.conversationId);
 		document.spend ??= { calls: [] };
+		if (refuted === undefined && !own && sightingCount(state, at, source) >= lens.budget) {
+			// Recorded in this commit, which a throw would roll back, and refused after it.
+			document.spend.capped = lens.budget;
+			return "capped";
+		}
+		// Each report reads the code at every location it cites, and quotes it back, so corrections are capped.
 		document.spend.reports ??= {};
 		const calls = document.spend.reports[id] ?? [];
 		if (!calls.includes(api.taskId)) {
@@ -894,6 +908,9 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 		);
 		return true;
 	}, context);
+	if (recorded === "capped") {
+		throw new Error(`budget reached: this lens may report ${lens.budget} findings; stop reporting and finish`);
+	}
 	if (recorded && refuted !== undefined) return text(`recorded that finding ${refuted} is not a defect`);
 	if (!recorded) {
 		return text(

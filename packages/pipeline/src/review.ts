@@ -97,6 +97,7 @@ import {
 } from "./harness.ts";
 import {
 	budgetEnded,
+	findingsCapped,
 	injectionPolicySection,
 	LensDocument,
 	lensPolicyHook,
@@ -195,6 +196,8 @@ type LensOutcome =
 			// The model the lens finished on, after any failover; absent from an outcome an older Melian stored.
 			readonly model?: string;
 			readonly budgetEnded?: StoredBudgetEnd;
+			// The findings budget, when a report past it was refused.
+			readonly capped?: number;
 			readonly escalation?: {
 				readonly trigger: EscalationTrigger;
 				readonly to?: string;
@@ -398,6 +401,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					const settled = await (await child.submit(request, context)).wait(context);
 					if (settled.status === "done") {
 						const ended = await budgetEnded(runtime, id, context);
+						const capped = await findingsCapped(runtime, id, context);
 						const spend = (await runtime.snapshot(UsageDoc, id, context))?.models ?? {};
 						const usage = {
 							models: Object.keys(spend),
@@ -405,7 +409,13 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 							cost: Object.values(spend).reduce((sum, item) => sum + item.cost.total, 0),
 						};
 						const model = modelName(lens.route[attempt]!);
-						return { status: "done", model, usage, ...(ended === undefined ? {} : { budgetEnded: ended }) };
+						return {
+							status: "done",
+							model,
+							usage,
+							...(ended === undefined ? {} : { budgetEnded: ended }),
+							...(capped === undefined ? {} : { capped }),
+						};
 					}
 					const reason = typeof settled.detail === "string" ? settled.detail : (settled.reason ?? "unanswered");
 					const failover =
@@ -1057,7 +1067,13 @@ function settle(first: LensRun, result: LensResult | undefined, rule: Escalation
 // `notes` say why the lens ran where it did: hand-offs its instructions left out for size, a triage that failed, and
 // each escalation. A record of a lens that did not finish carries them after the reason it did not, and an `ended`
 // record carries them as its reason, which renders after the budget's description, so neither ever replaces it.
-function lensCheck(lens: LensRun, outcome: LensOutcome | undefined, completed: boolean, notes: string[]): CheckRecord {
+function lensCheck(
+	lens: LensRun,
+	outcome: LensOutcome | undefined,
+	completed: boolean,
+	notes: string[],
+	handedBy: readonly string[],
+): CheckRecord {
 	const name = `lens.${lens.name}`;
 	const { level } = lens;
 	const noted = notes.length === 0 ? {} : { reason: notes.join("; ") };
@@ -1065,6 +1081,18 @@ function lensCheck(lens: LensRun, outcome: LensOutcome | undefined, completed: b
 	if (!completed) return { name, status: "failed", level, reason: failed("the lens task did not complete") };
 	if (outcome?.status === "done") {
 		const { budgetEnded } = outcome;
+		// Another lens left this one a defect, and the findings budget refused a report: that defect may be in neither
+		// report, so the review cannot read as complete, whatever `ended: count` says of the tokens and tools budgets.
+		if (outcome.capped !== undefined && handedBy.length > 0) {
+			const lost = `its findings budget of ${outcome.capped} ran out while ${handedBy.map((name) => `\`${name}\``).join(", ")} left it defects, so one may be unreported`;
+			return {
+				name,
+				status: "ended",
+				level,
+				...(budgetEnded === undefined ? {} : { budgetEnded }),
+				reason: [lost, ...notes].join("; "),
+			};
+		}
 		if (lens.standardsOmitted)
 			return { name, status: "ended", level, ...(budgetEnded === undefined ? {} : { budgetEnded }), ...noted };
 		if (budgetEnded === undefined) return { name, status: "ran", level, ...noted };
@@ -1476,6 +1504,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const skipped = covering.filter(({ lens }) => choices.get(lens) === "skip").map(({ lens }) => lens.name);
 	const lenses: LensRun[] = [];
 	const notes = new Map<string, string[]>();
+	// Each running lens, by name, to the lenses whose instructions left it defects: the hand-off that rendered.
+	const handedBy = new Map<string, string[]>();
 	for (const { lens, coverage: configured, files, moved, covers } of running) {
 		const coverage = moved.length === 0 ? configured : { ...configured, moved };
 		// A neighbour takes defects off this lens only in the files it reviews too; this lens keeps them in the rest,
@@ -1512,6 +1542,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		if (options.decider === undefined && options.triageSkipped !== undefined)
 			noted.push(`triage did not run, so it ran at its default level: ${options.triageSkipped}`);
 		const oversized = lens.oversizedHandoffs(neighbours);
+		for (const { name } of neighbours) {
+			if (Object.hasOwn(lens.handoffs, name) && !oversized.includes(name))
+				handedBy.set(name, [...new Set([...(handedBy.get(name) ?? []), lens.name])]);
+		}
 		if (oversized.length > 0) {
 			const listed = oversized.map((name) => `\`${name}\``).join(", ");
 			const limit = `${lensLimits.handoffFiles} files or ${lensLimits.handoffBytes / 1024} KiB`;
@@ -1636,7 +1670,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		return { ...settledLens, notes: [...noted, ...settledLens.notes, ...light] };
 	});
 	const records = [
-		...settled.map(({ run, outcome, notes: noted }) => lensCheck(run, outcome, lensResult !== undefined, noted)),
+		...settled.map(({ run, outcome, notes: noted }) =>
+			lensCheck(run, outcome, lensResult !== undefined, noted, handedBy.get(run.name) ?? []),
+		),
 		...skipped.map(
 			(name): CheckRecord => ({
 				name: `lens.${name}`,
