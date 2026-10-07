@@ -483,21 +483,34 @@ describe("static.mutation", { timeout: 60_000 }, () => {
 			await expect(mutate(base, head)).rejects.toMatchObject({ code: "invalidOutput", check: "static.mutation" });
 		});
 
-		it("bounds what Stryker may write to a file, so a runaway run fails rather than fills the disk", async () => {
+		it("lets the head's tests write a file past the 16 MiB a static tool's output may hold", async () => {
 			const { base, head } = twoCommits();
 			fakeTool(
 				repo,
 				"stryker",
 				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
-head -c 17000000 /dev/zero > big.bin || exit 9
+head -c 20000000 /dev/zero > big.bin || exit 9
 mkdir -p reports/mutation
 echo '{"files":{}}' > reports/mutation/mutation.json
 exit 0`,
 			);
-			await expect(mutate(base, head)).rejects.toMatchObject({
-				code: "invalidOutput",
-				message: expect.stringContaining("which it does not document"),
-			});
+			expect((await mutate(base, head)).status).toBe("ran");
+		});
+
+		it("bounds what Stryker's process tree may write to one file at 1 GiB, so a runaway run fails rather than fills the disk", async () => {
+			const { base, head } = twoCommits();
+			const seen = join(artifacts, "limit.txt");
+			fakeTool(
+				repo,
+				"stryker",
+				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+bash -c 'ulimit -f' > '${seen}'
+mkdir -p reports/mutation
+echo '{"files":{}}' > reports/mutation/mutation.json
+exit 0`,
+			);
+			await mutate(base, head);
+			expect(readFileSync(seen, "utf8").trim()).toBe(String(1024 * 1024));
 		});
 
 		it("stops a run that passes the timeout in static.mutation.timeout, as a timeout", async () => {

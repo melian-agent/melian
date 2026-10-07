@@ -1,9 +1,21 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { posix } from "node:path";
-import { type MutationSettings, normaliseMutationReport, type Revision, type ToolLog } from "@melian-agent/core";
-import { type Run, type StaticRun, staticOutputLimit } from "./static.ts";
+import {
+	CheckError,
+	type MutationSettings,
+	mutationSkips,
+	normaliseMutationReport,
+	type Revision,
+	type ToolLog,
+} from "@melian-agent/core";
+import type { Run, StaticRun } from "./static.ts";
 
+
+// The head's own tests run under this limit, and some write files past `staticOutputLimit`: Melian's own cache tests write
+// 128 MiB archives, and a limit of 16 MiB ended their processes with SIGXFSZ and failed Stryker's initial run. A runaway
+// write is what this stops, so it is set above what a test suite writes. bash counts 1,024-byte blocks.
+const mutationFileLimit = 1024 * 1024 * 1024;
 const config = "stryker.config.json";
 const report = "reports/mutation/mutation.json";
 
@@ -111,7 +123,7 @@ export class MutationRun {
 		// A report the revision committed must not stand in for the one this run writes.
 		const command = [
 			`cd ${quote(this.#root)}`,
-			`ulimit -f ${staticOutputLimit / 1024}`,
+			`ulimit -f ${mutationFileLimit / 1024}`,
 			`rm -f ${quote(report)}`,
 			`${quote(this.#binary)} run ${quote(posix.join(this.#root, config))} --reporters json --incremental --incrementalFile ${quote(posix.join(this.#scratch, "incremental.json"))} --inPlace --mutate ${quote(entries.join(","))} > ${quote(log)} 2>&1`,
 		].join(" && ");
