@@ -744,7 +744,7 @@ A TypeBox record with a key pattern needs `additionalProperties: false` to rejec
 
 `static.enola` is a deterministic check, disabled by default and absent from the `static` group and default tiers. Its settings use the same timeout and severity map as Biome. Error maps to P2, warning to P3, and note to nit. Melian's own fast tier opts in.
 
-`EnolaPolicy.load(repoRoot, base)` reads Enola configuration, intent, constraints, and suppressions through the revision source, with 256 KiB per file and 1 MiB total. Its effective configuration disables providers and history and analyses only the reviewed repository. It hashes sorted policy names and contents, fixed flags, and cache schema version. `normaliseEnolaSarif` excludes resolved and explicitly suppressed findings. An unlocated finding sits on `enola-intent.yaml`, identified by message when that file is absent. `staticFindings` gives results `enola/<ruleId>` identities from snippets and occurrences.
+`EnolaPolicy.load(repoRoot, base)` reads Enola configuration, intent, constraints, and suppressions through the revision source, with 256 KiB per file and 1 MiB total. Its effective configuration disables providers and history and analyses only the reviewed repository. It hashes sorted policy names and contents, fixed flags, and cache schema version. `normaliseEnolaSarif` excludes resolved and explicitly suppressed findings. An unlocated finding sits on `enola-intent.yaml`, identified by message whatever that file holds, so two different unlocated results never share an identity. `staticFindings` gives results `enola/<ruleId>` identities from snippets and occurrences.
 
 All Enola policy paths join analyser configuration in policy-change-review. A committed `.enola/baseline` does not.
 

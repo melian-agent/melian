@@ -372,7 +372,10 @@ async function identify(
 			?.split("\n")
 			.slice(region.startLine - 1, endLine)
 			.join("\n");
-		const byCode = text !== undefined && snippet !== undefined && normaliseSnippet(snippet) !== "";
+		// Enola's unlocated results all sit on line 1 of its intent file; the code there says nothing about which result.
+		const unlocated =
+			tool === "enola" && path === "enola-intent.yaml" && Object.keys(region).length === 1 && region.startLine === 1;
+		const byCode = !unlocated && text !== undefined && snippet !== undefined && normaliseSnippet(snippet) !== "";
 		const identity = byCode
 			? { snippet, occurrence: snippetOccurrence(text, snippet, { startLine: region.startLine, endLine }) }
 			: { discriminator: result.message.text };
