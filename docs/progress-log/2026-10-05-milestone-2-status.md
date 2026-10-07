@@ -32,7 +32,7 @@ Recall climbs with each round, because each fix pass writes code that the next r
 - **Sonnet 5.5 as the review of record.** The record for [#73](https://github.com/melian-agent/melian/pull/73) decides it, where Sonnet ran beside the Opus review.
 - **Codex for implementation.** The records for [#72](https://github.com/melian-agent/melian/pull/72) and [#73](https://github.com/melian-agent/melian/pull/73) decide it, against Opus-written pull requests of similar size.
 
-[AGENTS.md](../../AGENTS.md#delegation-and-the-review-loop) states the lanes and the review loop. The plan's [in-flight block](../design-implementation-plan.md#milestone-2-in-flight-2026-10-05) lists the open pull requests.
+[AGENTS.md](../../AGENTS.md#delegation-and-the-review-loop) states the lanes and the review loop. The plan's [in-flight block](../design-implementation-plan.md#milestone-2-in-flight-2026-10-07) lists the open pull requests.
 
 ## Next three actions
 
