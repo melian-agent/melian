@@ -127,6 +127,18 @@ To install a skill, first put `melian` on `PATH`: in a clone of Melian, `npm ci 
 
 `review` prepares `CallerContext` after deterministic checks when static.enola is enabled. It supplies only changed files selected by the lenses, using the same trusted policy commit as deterministic checks and the existing verified snapshot. A failure is advisory context on lens records; static.enola’s own failed record still makes the review not reviewed.
 
+A repository that turns on `static.mutation` sees its findings in the ordinary form. Mutants on one line share a finding, so it names the first and counts the rest. A survivor reads:
+
+```
+  P2  line 2  mutation/untested-behaviour  (introduced, new, acknowledge)  89960fff5ea96f14
+  ConditionalExpression mutant survived: with this code changed to `false`, every test still passed. (and 4 more on these lines)
+    What: ConditionalExpression mutant survived: with this code changed to `false`, every test still passed.
+    Why here: A mutant of this changed line survived the test run, so no test fails when this behaviour changes.
+    What to do: Add or tighten a test in src/classify.test.ts so it fails when this code is changed as the mutant changed it, then restore the code.
+```
+
+A mutant in code no test runs says `has no test coverage` instead. The check's record names Stryker's version and the lines it mutated. A change past `static.mutation.maxLines` records the check as skipped, with the reason.
+
 `ToolInventory` uses the host’s environment for the state-directory rule. Listing and doctor re-hash cached executables without fetching. Only fetch repairs a mismatched entry. Fake-archive tests cover command routing, all three readiness states and repair.
 
 A doctor test that reads the development checkout must set MELIAN_STATE_DIR to fresh temporary state. Otherwise the clone’s older cached pins can change its exit status when verification changes. Keep node_modules in the checkout for sourcing assertions.
