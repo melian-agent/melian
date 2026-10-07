@@ -1,4 +1,4 @@
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ToolManifest } from "@melian-agent/core";
 import { CacheLocation, ToolProvisioning } from "@melian-agent/pipeline";
@@ -75,6 +75,18 @@ it("lists Melian's own manifest using the host's state directory", async () => {
 	expect(io.lines.join("")).toContain("not yet fetched");
 	expect(io.errors).toEqual([]);
 });
+
+it.each([[undefined], [join("host-state")]])(
+	"opens the tool cache under the state directory the environment names: %s",
+	async (state) => {
+		const env = state === undefined ? {} : { MELIAN_STATE_DIR: join(repo, state) };
+		const open = vi.spyOn(ToolProvisioning, "open");
+		await ToolInventory.open(repo, env);
+		expect(open).toHaveBeenCalledWith(await realpath(repo), { root: await stateDirectory(repo, env) });
+		const root = (open.mock.calls[0]?.[1] as { root: string }).root;
+		expect(root.startsWith(join(await realpath(repo), state ?? ".git"))).toBe(true);
+	},
+);
 
 it("reports doctor checks outside a git repository", async () => {
 	await rm(join(repo, ".git"), { recursive: true });
