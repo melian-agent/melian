@@ -110,7 +110,7 @@ import {
 	type StoredBudgetEnd,
 } from "./lens-tools.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
-import { attachable, ReviewIndex, type ReviewIndexState, undecided } from "./review-index.ts";
+import { attachable, type CallerRecord, ReviewIndex, type ReviewIndexState, undecided } from "./review-index.ts";
 import { summarizeExtension } from "./summarize.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce, triageBoundary } from "./untrusted.ts";
 import {
@@ -948,6 +948,38 @@ async function anyLensFailed(
 	);
 }
 
+// The caller notes and coverage a review's records carry. Problem: they come from this call's graph cache, which a
+// repeat call of the same head may not find, so a repeat rewrote the records, keyed a new adjudication task and
+// fingerprinted a new verdict for the same findings. Solution: the first call that finishes the lens task stores them
+// on the review's index entry, and a repeat call that attaches to that task reads them back.
+async function callersFor(
+	harness: Harness,
+	input: StoredLensTaskInput,
+	settledLenses: boolean,
+	notes: Record<string, string[]>,
+	coverage: () => Promise<Pick<CallerRecord, "coverage" | "coverageUnavailable">>,
+	context: Context,
+): Promise<CallerRecord> {
+	const root = await harness.root(context);
+	const revision = revisionKey(input.revision);
+	const selection = selectionOf(input.lenses, input.escalateAt);
+	const entryOf = async () => {
+		const entry = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision];
+		return entry?.lenses.join("\n") === selection.join("\n") ? entry : undefined;
+	};
+	const stored = (await entryOf())?.callers;
+	if (stored !== undefined) return stored;
+	const fresh: CallerRecord = { notes, ...(await coverage()) };
+	if (!settledLenses) return fresh;
+	return root.commit(async (tx) => {
+		const index = await tx.doc(ReviewIndex, root.id);
+		const entry = index.reviews[revision];
+		if (entry?.lenses.join("\n") !== selection.join("\n")) return fresh;
+		entry.callers ??= fresh;
+		return JSON.parse(JSON.stringify(entry.callers)) as CallerRecord;
+	}, context);
+}
+
 // One adjudication task per head and input. A repeat call with the same input, such as a rerun after a crash, attaches
 // to the task the first call created. A call with other input, such as a static check that has since run, creates a
 // task and records it as the head's, and a task an earlier call created then records no verdict.
@@ -1440,6 +1472,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const skipped = covering.filter(({ lens }) => choices.get(lens) === "skip").map(({ lens }) => lens.name);
 	const lenses: LensRun[] = [];
 	const notes = new Map<string, string[]>();
+	const leading = new Map<string, number>();
+	const callerNotes: Record<string, string[]> = {};
 	for (const { lens, coverage: configured, files, moved, covers } of running) {
 		const coverage = moved.length === 0 ? configured : { ...configured, moved };
 		// A neighbour takes defects off this lens only in the files it reviews too; this lens keeps them in the rest,
@@ -1468,7 +1502,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 
 		const noted: string[] = [...(unrunnable.get(lens) ?? [])];
 		if (config.static.enola.enabled)
-			noted.push(...(options.callers?.notes(covers) ?? ["Callers unavailable: the host supplied no graph context"]));
+			callerNotes[`${lens.name}@${lens.version}`] = options.callers?.notes(covers) ?? [
+				"Callers unavailable: the host supplied no graph context",
+			];
 		const omitted = reading.note();
 		if (omitted !== undefined) noted.push(omitted);
 		if (options.decider !== undefined && triageInput.cut) noted.push("triage input was cut, so no lens could skip");
@@ -1484,6 +1520,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			noted.push(`kept the defects it hands to ${listed}, whose files here would list past ${limit}`);
 		}
 		notes.set(`${lens.name}@${lens.version}`, noted);
+		leading.set(`${lens.name}@${lens.version}`, unrunnable.get(lens)?.length ?? 0);
 		// Every lens may report an injection attempt, so the policy section never names a rule the hook refuses.
 		const rules = lens.rules.some((rule) => rule.id === injectionAttemptRule.id)
 			? lens.rules
@@ -1588,10 +1625,50 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		triaged.decision !== undefined && settling.length > 0 && settling.every(({ run }) => run.level === "quick")
 			? ["triage chose quick for every lens, so the whole review looked lightly, at a change that can steer triage"]
 			: [];
+	const callers = await callersFor(
+		harness,
+		lensInput,
+		lenses.length > 0 && lensResult !== undefined,
+		callerNotes,
+		async () => {
+			try {
+				const coverage = await options.callers?.recordCoverage({
+					harness,
+					children: Object.fromEntries(
+						Object.entries(lensResult ?? {}).flatMap(([key, outcome]) =>
+							outcome.conversation === undefined ? [] : [[key, outcome.conversation]],
+						),
+					),
+					lenses: ran.lenses.flatMap((lens) => {
+						const next = lens.escalation?.next;
+						return [lens, ...(next && lensResult?.[next.key] !== undefined ? [next] : [])];
+					}),
+					files: revision.files,
+					nonce: ran.revision.nonce,
+					context,
+				});
+				return coverage ? { coverage } : {};
+			} catch {
+				return { coverageUnavailable: true as const };
+			}
+		},
+		context,
+	);
 	const settled = settling.map((settledLens) => {
 		const { run } = settledLens;
-		const noted = notes.get(`${run.name}@${run.version}`) ?? [];
-		return { ...settledLens, notes: [...noted, ...settledLens.notes, ...light] };
+		const key = `${run.name}@${run.version}`;
+		const noted = notes.get(key) ?? [];
+		const at = leading.get(key) ?? 0;
+		return {
+			...settledLens,
+			notes: [
+				...noted.slice(0, at),
+				...(callers.notes[key] ?? []),
+				...noted.slice(at),
+				...settledLens.notes,
+				...light,
+			],
+		};
 	});
 	const records = [
 		...settled.map(({ run, outcome, notes: noted }) => lensCheck(run, outcome, lensResult !== undefined, noted)),
@@ -1604,25 +1681,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		),
 		...refusals.values(),
 	];
-	try {
-		const coverage = await options.callers?.recordCoverage({
-			harness,
-			children: Object.fromEntries(
-				Object.entries(lensResult ?? {}).flatMap(([key, outcome]) =>
-					outcome.conversation === undefined ? [] : [[key, outcome.conversation]],
-				),
-			),
-			lenses: ran.lenses.flatMap((lens) => {
-				const next = lens.escalation?.next;
-				return [lens, ...(next && lensResult?.[next.key] !== undefined ? [next] : [])];
-			}),
-			files: revision.files,
-			nonce: ran.revision.nonce,
-			context,
-		});
-		if (coverage)
-			for (let index = 0; index < settled.length; index++) records[index] = { ...records[index]!, coverage };
-	} catch {
+	if (callers.coverage)
+		for (let index = 0; index < settled.length; index++)
+			records[index] = { ...records[index]!, coverage: callers.coverage };
+	if (callers.coverageUnavailable)
 		for (let index = 0; index < settled.length; index++)
 			records[index] = {
 				...records[index]!,
@@ -1630,7 +1692,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					.filter(Boolean)
 					.join("; "),
 			};
-	}
 	// Only the lenses this review ran count, each at the level whose record stands for it: one that configuration has
 	// since disabled or retiered, or a quick run that escalated, leaves nothing behind.
 	const { manifest: accounted, producers } = account(

@@ -1,3 +1,4 @@
+import type { CoverageIds } from "@melian-agent/core";
 import { defineDoc, type TaskId, type Tx } from "./harness.ts";
 
 // Type aliases, not interfaces: a document's value must satisfy Pi's JsonObject, which an interface never does.
@@ -12,6 +13,16 @@ type IndexedReview = {
 	// The adjudication task and its input as JSON, so a repeat call with the same input attaches to it.
 	adjudication?: { task: number; input: string };
 	verification?: { task: number; input: string };
+	callers?: CallerRecord;
+};
+
+// The caller notes and coverage the first call that finished a lens task rendered into its records, by lens
+// `name@version`. A repeat call reads them back, so its records, adjudication input and verdict fingerprint match the
+// first call's whatever the graph cache holds by then.
+export type CallerRecord = {
+	notes: Record<string, string[]>;
+	coverage?: CoverageIds;
+	coverageUnavailable?: true;
 };
 
 export type ReviewIndexState = { reviews: Record<string, IndexedReview> };

@@ -249,6 +249,34 @@ describe("reviewChangeset", () => {
 			failed.mockRestore();
 		}
 	});
+	it("keeps the first call's caller notes and coverage on a repeat review whose graph cache is gone", async () => {
+		scriptConversations(fake, [
+			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		const enabled = { ...config, static: { ...config.static, enola: { ...config.static.enola, enabled: true } } };
+		const first = CallerContext.from({ groups: [], issues: [], notes: [], paths: [] });
+		vi.spyOn(first, "recordCoverage").mockResolvedValue({ review: "first-call-review-id" });
+		const adjudication = async () =>
+			(await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context))?.reviews[reviewedRevision()]
+				?.adjudication?.task;
+		const lensRecords = (result: Review) => result.verdict.ran!.filter((record) => record.name.startsWith("lens."));
+
+		const initial = await reviewed({ callers: first, config: enabled });
+		const task = await adjudication();
+		expect(task).toBeDefined();
+		expect(lensRecords(initial).map((record) => record.coverage)).toEqual([
+			{ review: "first-call-review-id" },
+			{ review: "first-call-review-id" },
+		]);
+
+		const repeat = await reviewed({ callers: CallerContext.unavailable("graph cache gone"), config: enabled });
+
+		for (const record of lensRecords(repeat)) expect(record.coverage).toEqual({ review: "first-call-review-id" });
+		expect(repeat.verdict.fingerprint()).toBe(initial.verdict.fingerprint());
+		expect(await adjudication()).toBe(task);
+		for (const record of lensRecords(repeat)) expect(record.reason ?? "").not.toContain("Callers unavailable");
+	});
 	it("keeps caller names and paths inside the model-visible boundary", async () => {
 		const callers = CallerContext.from({
 			groups: [
