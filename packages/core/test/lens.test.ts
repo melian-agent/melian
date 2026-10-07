@@ -109,7 +109,7 @@ describe("built-in lenses", () => {
 			contracts: "686d7ad61a40",
 			conventions: "bb08d9e590e4",
 			correctness: "05037e7ba4a2",
-			design: "8a754331de10",
+			design: "100f4163cc7e",
 			"removed-behaviour": "45fa8885fd01",
 			tests: "bee1be69be22",
 			"trust-boundary": "593b84bf6e82",
@@ -130,6 +130,9 @@ describe("built-in lenses", () => {
 			"The base text is the baseline you judge against, only when the index marks that decision ACTIVE.",
 		);
 		expect(design!.instructions).toContain("read each `Supersedes:` target at base");
+		expect(design!.instructions).toContain(
+			"a superseding or replacing one is judged against active base texts, following inactive targets to their successors.",
+		);
 		expect(design!.instructions).toContain("deletes or renames, read the old path at base");
 		expect(design!.instructions).toContain(
 			"governing no behaviour an active base decision covers has no baseline to break",
