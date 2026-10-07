@@ -283,12 +283,20 @@ describe("TriageResults", () => {
 
 type RecordedFingerprints = Record<string, string>;
 
-// Why the record fails the gate, or nothing. `onMain` is the record at origin/main, when git can read it.
+// The record at origin/main: its entries, no record there yet, or a read git could not do.
+type MainRecord =
+	| { readonly kind: "recorded"; readonly entries: RecordedFingerprints }
+	| { readonly kind: "absent" }
+	| { readonly kind: "unreadable" };
+
+// Why the record fails the gate, or nothing. A main that git could not read passes only off CI, where a checkout
+// without origin/main is a developer's; on CI it is a gate that is off, so it fails.
 function recordProblems(
 	recorded: RecordedFingerprints,
 	version: string,
 	fingerprint: string,
-	onMain: RecordedFingerprints | undefined,
+	onMain: MainRecord,
+	ci: boolean,
 ): string[] {
 	const problems: string[] = [];
 	if (recorded[version] === undefined) {
@@ -298,27 +306,37 @@ function recordProblems(
 			`the questions changed and version "${version}" did not: bump triageQuestionSet.version and add its fingerprint ${fingerprint} to questions.json`,
 		);
 	}
-	for (const [recordedVersion, hash] of Object.entries(onMain ?? {})) {
-		if (recorded[recordedVersion] !== hash)
-			problems.push(`version "${recordedVersion}" is recorded on main as ${hash} and must stay so`);
+	if (onMain.kind === "unreadable" && ci)
+		problems.push(
+			"git could not read origin/main, so a rewritten fingerprint would go unseen: fetch main before the gate",
+		);
+	if (onMain.kind === "recorded") {
+		for (const [recordedVersion, hash] of Object.entries(onMain.entries)) {
+			if (recorded[recordedVersion] !== hash)
+				problems.push(`version "${recordedVersion}" is recorded on main as ${hash} and must stay so`);
+		}
 	}
 	return problems;
 }
 
-function recordOnMain(): RecordedFingerprints | undefined {
+const recordPath = "packages/evals/triage/questions.json";
+
+// `git` runs a git command in the repository and returns its output, or throws. `ls-tree` succeeds with no output for
+// a file main does not have and fails when it has no main to read, which `show` alone would not tell apart.
+function recordOnMain(git: (args: string[]) => string): MainRecord {
 	try {
-		return JSON.parse(
-			execFileSync("git", ["show", "origin/main:packages/evals/triage/questions.json"], {
-				cwd: triageDirectory,
-				encoding: "utf8",
-				stdio: ["ignore", "pipe", "ignore"],
-			}),
-		) as RecordedFingerprints;
+		if (git(["ls-tree", "--name-only", "origin/main", "--", recordPath]).trim() === "") return { kind: "absent" };
+		return {
+			kind: "recorded",
+			entries: JSON.parse(git(["show", `origin/main:${recordPath}`])) as RecordedFingerprints,
+		};
 	} catch {
-		// No origin/main in a shallow or detached checkout, or no record there yet: only the first assertion holds.
-		return undefined;
+		return { kind: "unreadable" };
 	}
 }
+
+const gitInTriageDirectory = (args: string[]): string =>
+	execFileSync("git", args, { cwd: triageDirectory, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 
 describe("the triage question set's version", () => {
 	it("stands for the questions as recorded: change one, bump the version and add its fingerprint", async () => {
@@ -326,23 +344,71 @@ describe("the triage question set's version", () => {
 			readFileSync(join(triageDirectory, "questions.json"), "utf8"),
 		) as RecordedFingerprints;
 		const fingerprint = (await TriageQuestions.shipped(goldens[0]!)).fingerprint();
-		expect(recordProblems(recorded, triageQuestionSet.version, fingerprint, recordOnMain())).toEqual([]);
+		expect(
+			recordProblems(
+				recorded,
+				triageQuestionSet.version,
+				fingerprint,
+				recordOnMain(gitInTriageDirectory),
+				process.env.CI !== undefined && process.env.CI !== "",
+			),
+		).toEqual([]);
 	});
 
 	it("rejects a rewritten question under its old version, a rewritten record, and a missing record", () => {
-		const main = { "1": "aaaa" };
-		expect(recordProblems({ "1": "aaaa" }, "1", "aaaa", main)).toEqual([]);
-		expect(recordProblems({ "1": "aaaa", "2": "bbbb" }, "2", "bbbb", main)).toEqual([]);
-		expect(recordProblems({ "1": "bbbb" }, "1", "bbbb", main)).toEqual([
+		const main: MainRecord = { kind: "recorded", entries: { "1": "aaaa" } };
+		const absent: MainRecord = { kind: "absent" };
+		expect(recordProblems({ "1": "aaaa" }, "1", "aaaa", main, true)).toEqual([]);
+		expect(recordProblems({ "1": "aaaa", "2": "bbbb" }, "2", "bbbb", main, true)).toEqual([]);
+		expect(recordProblems({ "1": "bbbb" }, "1", "bbbb", main, true)).toEqual([
 			'version "1" is recorded on main as aaaa and must stay so',
 		]);
-		expect(recordProblems({ "1": "aaaa" }, "1", "bbbb", main)).toEqual([
+		expect(recordProblems({ "1": "aaaa" }, "1", "bbbb", main, true)).toEqual([
 			'the questions changed and version "1" did not: bump triageQuestionSet.version and add its fingerprint bbbb to questions.json',
 		]);
-		expect(recordProblems({ "1": "aaaa" }, "2", "bbbb", main)).toEqual([
+		expect(recordProblems({ "1": "aaaa" }, "2", "bbbb", main, true)).toEqual([
 			'questions.json records no fingerprint for version "2"',
 		]);
-		expect(recordProblems({ "1": "bbbb" }, "1", "bbbb", undefined)).toEqual([]);
+		expect(recordProblems({ "1": "bbbb" }, "1", "bbbb", absent, true)).toEqual([]);
+	});
+
+	describe("reading the record at main", () => {
+		const record = '{"1":"aaaa"}';
+		const git = (outputs: Record<string, string | Error>) => (args: string[]) => {
+			const output = outputs[args[0]!];
+			if (output === undefined) throw new Error(`unexpected git ${args.join(" ")}`);
+			if (output instanceof Error) throw output;
+			return output;
+		};
+
+		it("reads the entries main records", () => {
+			expect(recordOnMain(git({ "ls-tree": `${recordPath}\n`, show: record }))).toEqual({
+				kind: "recorded",
+				entries: { "1": "aaaa" },
+			});
+		});
+
+		it("calls a file main does not have absent, which passes on CI and off it", () => {
+			const main = recordOnMain(git({ "ls-tree": "" }));
+			expect(main).toEqual({ kind: "absent" });
+			expect(recordProblems({ "1": "aaaa" }, "1", "aaaa", main, true)).toEqual([]);
+			expect(recordProblems({ "1": "aaaa" }, "1", "aaaa", main, false)).toEqual([]);
+		});
+
+		it("calls a failed read unreadable, which fails on CI and is skipped off it", () => {
+			for (const failing of [
+				{ "ls-tree": new Error("fatal: Not a valid object name origin/main") },
+				{ "ls-tree": `${recordPath}\n`, show: new Error("fatal: bad object") },
+				{ "ls-tree": `${recordPath}\n`, show: "not json" },
+			]) {
+				const main = recordOnMain(git(failing));
+				expect(main).toEqual({ kind: "unreadable" });
+				expect(recordProblems({ "1": "aaaa" }, "1", "aaaa", main, true)).toEqual([
+					"git could not read origin/main, so a rewritten fingerprint would go unseen: fetch main before the gate",
+				]);
+				expect(recordProblems({ "1": "aaaa" }, "1", "aaaa", main, false)).toEqual([]);
+			}
+		});
 	});
 
 	it("changes when a question's wording, its options, or a lens's name does", async () => {

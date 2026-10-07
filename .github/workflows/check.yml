@@ -27,6 +27,8 @@ jobs:
       - if: matrix.node == 22
         run: npm install -g npm@11.19.0
       - run: npm ci --ignore-scripts
+      # A shallow checkout has no origin/main, and the triage gate compares questions.json with main's.
+      - run: git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
       - run: npm run check
         env:
           GITHUB_TOKEN: ${{ github.token }}
