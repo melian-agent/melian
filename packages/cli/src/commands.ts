@@ -102,9 +102,10 @@ export async function review(
 	let changeset: Changeset;
 	let source: RepositorySource;
 	let origin: ReviewOrigin = { kind: "range" };
-	// A range is the reviewer's own to run, as `npm test` is. A pull request's head is run only for an author the
-	// repository has given write permission, the rule `trust.writers` sets for publication.
-	let writer: WriterTrust = { trusted: true };
+	// A range whose head is the checked-out commit is the reviewer's own to run, as `npm test` is. A pull request's head,
+	// and a range that names any other commit, such as a fetched fork's, is run only for an author the repository has
+	// given write permission, the rule `trust.writers` sets for publication.
+	let writer: WriterTrust = { trusted: false, detail: "the review's range head is not the checked-out commit" };
 	if (target.kind === "pullRequest") {
 		const provider = await gitHubFor(io.cwd, io.env);
 		const { pullRequest, changeset: fetched } = await fetchedPullRequest(io.cwd, provider, target.number);
@@ -122,6 +123,7 @@ export async function review(
 		changeset = await Changeset.resolve(io.cwd, target.spec);
 		const checkedOut = await git(changeset.repoRoot, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "");
 		const own = checkedOut === changeset.revision.head;
+		if (own) writer = { trusted: true };
 		const preferences = userFiles(io.env).config;
 		source = own ? { kind: "worktree", preferences } : { kind: "revision", commit: changeset.revision.base };
 	}

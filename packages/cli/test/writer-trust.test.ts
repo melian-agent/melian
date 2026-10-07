@@ -5,7 +5,7 @@ import { createGitHubProvider } from "@melian-agent/github";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
-import { baseAndHead, fakeTool, isolatedGitEnv } from "../../pipeline/test/fixtures/repo.ts";
+import { baseAndHead, fakeTool, gitIn, isolatedGitEnv } from "../../pipeline/test/fixtures/repo.ts";
 import { review } from "../src/commands.ts";
 import * as targets from "../src/target.ts";
 
@@ -111,9 +111,20 @@ describe("static.mutation and the writer of a pull request", { timeout: 60_000 }
 		expect(output()).toContain("octocat has no known permission on the repository");
 	});
 
-	it("runs the check for a range, which the reviewer chose to run", async () => {
+	it("runs the check for a range whose head is the checked-out commit, which the reviewer chose to run", async () => {
 		const { io } = await open("octocat", { octocat: "read" });
 		expect(await review(io, "main...feature", { rerun: false, walkthrough: false })).toBe(0);
 		expect(ran()).toBe(1);
+	});
+
+	it("skips the check, with leave, for a range whose head is not the checked-out commit", async () => {
+		const { io, output } = await open("octocat", { octocat: "admin" });
+		gitIn(repo, "checkout", "--quiet", "main");
+		expect(await review(io, "main...feature", { rerun: false, walkthrough: false })).toBe(0);
+		expect(ran()).toBe(false);
+		expect(output()).toContain("Verdict: passed");
+		expect(output()).toContain(
+			"the writer is not a trusted one (the review's range head is not the checked-out commit)",
+		);
 	});
 });
