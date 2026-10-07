@@ -2,10 +2,12 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Changeset } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
+import { Sandbox } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { baseAndHead, fakeTool, gitIn, isolatedGitEnv } from "../../pipeline/test/fixtures/repo.ts";
+import { unconfinedSandbox } from "../../pipeline/test/fixtures/sandbox.ts";
 import { review } from "../src/commands.ts";
 import * as targets from "../src/target.ts";
 
@@ -13,6 +15,8 @@ let repo: string;
 let calls: string;
 
 beforeEach(() => {
+	// The fake Stryker records its calls in the checkout, which the real sandbox would not let it write.
+	vi.spyOn(Sandbox, "detect").mockReturnValue(unconfinedSandbox);
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 });
 

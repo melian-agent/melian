@@ -28,8 +28,9 @@ import {
 	type WriterTrust,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { strykerNotInstalled, strykerVersion } from "../src/mutation-static.ts";
+import { Sandbox } from "../src/sandbox.ts";
 import { staticToolSource } from "../src/static.ts";
 import {
 	commit as commitTo,
@@ -40,6 +41,7 @@ import {
 	removeRepository,
 	writeFiles,
 } from "./fixtures/repo.ts";
+import { unconfinedSandbox } from "./fixtures/sandbox.ts";
 
 // The checkout's node_modules is never tracked, as in a real repository: a tracked one is ignored by the check.
 function commit(root: string, files: Record<string, string>): string {
@@ -51,12 +53,14 @@ let artifacts: string;
 let opened: Harness[];
 
 beforeEach(() => {
+	vi.spyOn(Sandbox, "detect").mockReturnValue(unconfinedSandbox);
 	repo = createRepository();
 	artifacts = realpathSync(mkdtempSync(join(tmpdir(), "melian-mutation-")));
 	opened = [];
 });
 
 afterEach(async () => {
+	vi.restoreAllMocks();
 	await Promise.all(opened.map((harness) => harness.close(context)));
 	removeRepository(repo);
 	rmSync(artifacts, { recursive: true, force: true });
@@ -291,6 +295,53 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		expect(temporary).toBe(`${scratch}/tmp`);
 		expect(home).not.toBe(process.env.HOME);
 		expect([canary, homeExists, tmpExists]).toEqual(["unset", "home-exists", "tmp-exists"]);
+	});
+
+	describe("the sandbox", () => {
+		const hostSandbox = Sandbox.detect();
+
+		// A fake that reads a file outside the run, and fails with an exit code Stryker never gives if it can.
+		function probing(secret: string): void {
+			fakeTool(
+				repo,
+				"stryker",
+				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+if cat '${secret}' > /dev/null 2>&1; then exit 3; fi
+mkdir -p reports/mutation
+echo '{"files":{}}' > reports/mutation/mutation.json`,
+			);
+		}
+
+		it.skipIf(hostSandbox === undefined)("runs Stryker where it can read no file outside the run", async () => {
+			vi.restoreAllMocks();
+			const { base, head } = twoCommits();
+			const secret = join(artifacts, "auth.json");
+			writeFileSync(secret, "{}");
+			probing(secret);
+			const result = await mutate(base, head);
+			expect(result.status).toBe("ran");
+		});
+
+		it("proves the probe: unconfinedSandbox, the same fake exits 3 and the check fails", async () => {
+			const { base, head } = twoCommits();
+			const secret = join(artifacts, "auth.json");
+			writeFileSync(secret, "{}");
+			probing(secret);
+			await expect(mutate(base, head)).rejects.toMatchObject({ code: "invalidOutput" });
+		});
+
+		it("records a skip with leave and the cause noSandbox, running nothing, on a host with no sandbox", async () => {
+			vi.spyOn(Sandbox, "detect").mockReturnValue(undefined);
+			const { base, head } = twoCommits();
+			const fake = stryker({ report: report({}) });
+			expect(await mutate(base, head)).toEqual({
+				status: "skipped",
+				reason: mutationSkips.noSandbox,
+				cause: "noSandbox",
+			});
+			expect(fake.calls()).toHaveLength(0);
+			expect(mutationSkipHasLeave("noSandbox")).toBe(true);
+		});
 	});
 
 	describe("the lines it mutates", () => {
@@ -1061,6 +1112,24 @@ exit 1`,
 				const policies: string[] = [];
 				for (const version of ["10.0.0", "10.0.1"]) {
 					installed(version);
+					policies.push((await checks(base, head)).run.identity.policy);
+				}
+				return policies;
+			};
+			const [first, second] = await identities(policy);
+			expect(first).not.toBe(second);
+			const [offFirst, offSecond] = await identities(policy.replace("enabled: true", "enabled: false"));
+			expect(offFirst).toBe(offSecond);
+		});
+
+		it("runs again when the host's sandbox changes, and not when the check is off", async () => {
+			const identities = async (yaml: string) => {
+				const base = commit(repo, { "melian.yaml": yaml, "stryker.config.json": config, "packages/p/src/a.ts": a });
+				const head = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+				stryker({ report: report({}) });
+				const policies: string[] = [];
+				for (const found of [unconfinedSandbox, undefined]) {
+					vi.spyOn(Sandbox, "detect").mockReturnValue(found);
 					policies.push((await checks(base, head)).run.identity.policy);
 				}
 				return policies;

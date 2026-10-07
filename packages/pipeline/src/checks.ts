@@ -31,6 +31,7 @@ import {
 	type TaskId,
 } from "./harness.ts";
 import { strykerVersion } from "./mutation-static.ts";
+import { Sandbox } from "./sandbox.ts";
 import { runStaticTool } from "./static.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
 
@@ -414,14 +415,16 @@ function canonical(value: unknown): string {
 
 // What decides a run's results: both commits, the tier, and the policy it ran under, with Melian's own tool pins, so a
 // build that pins another Enola does not take the finished run of an older one. Mutation testing adds the Stryker
-// version it would run, so a bump runs it again.
+// version it would run and the sandbox the host offers, so a bump or an install of bubblewrap runs it again.
 async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<RunIdentity, "task">> {
 	const { base, head } = input.changeset.revision;
 	const tools = (await ToolProvisioning.manifest()).toJSON();
-	const stryker = input.config.static.mutation.enabled ? strykerVersion(input.changeset.repoRoot) : undefined;
-	const writer = stryker === undefined ? undefined : (input.writer ?? null);
+	const mutating = input.config.static.mutation.enabled;
+	const stryker = mutating ? strykerVersion(input.changeset.repoRoot) : undefined;
+	const sandbox = mutating ? (Sandbox.detect()?.backend ?? null) : undefined;
+	const writer = mutating ? (input.writer ?? null) : undefined;
 	const policy = createHash("sha256")
-		.update(canonical({ config: input.config, source: input.source, tools, stryker, writer }))
+		.update(canonical({ config: input.config, source: input.source, tools, stryker, sandbox, writer }))
 		.digest("hex")
 		.slice(0, 16);
 	return { base, head, tier, policy };

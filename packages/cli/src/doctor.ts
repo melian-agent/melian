@@ -16,7 +16,13 @@ import {
 	visibleText,
 } from "@melian-agent/core";
 import { createGitHubProvider, parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
-import { createReviewModels, piAuthPath, providersWithCredentials, staticToolSource } from "@melian-agent/pipeline";
+import {
+	createReviewModels,
+	piAuthPath,
+	providersWithCredentials,
+	Sandbox,
+	staticToolSource,
+} from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
 import { decisionProviderRefusal, reviewModels } from "./models.ts";
 import { git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
@@ -175,8 +181,9 @@ async function staticCheck(cwd: string): Promise<Check | undefined> {
 	};
 }
 
-// Mutation testing runs only the checkout's own Stryker: Melian carries none, and without one the check records a skip
-// that leaves the review not reviewed. Silent while the check is off.
+// Mutation testing runs only the checkout's own Stryker, in a sandbox: Melian carries no Stryker, and without one the check
+// records a skip that leaves the review not reviewed. A host with no sandbox records a skip that lets the review pass, which
+// is a check that never runs, so doctor warns. Silent while the check is off.
 async function mutationCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<Check | undefined> {
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return undefined;
@@ -184,8 +191,21 @@ async function mutationCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<Check
 		const { config } = await loadConfig(root, { kind: "worktree", preferences: userFiles(env).config }, ".");
 		if (!config.static.mutation.enabled) return undefined;
 		const source = staticToolSource(root, "mutation");
+		const sandbox = Sandbox.detect();
+		if (sandbox === undefined) {
+			return {
+				name: "mutation",
+				state: "warn",
+				detail:
+					"static.mutation is on, but the host offers no sandbox (sandbox-exec on macOS, bubblewrap on Linux), so the check records a skip and runs nothing",
+			};
+		}
 		return source.from === "checkout"
-			? { name: "mutation", state: "ok", detail: "static.mutation runs Stryker from the checkout" }
+			? {
+					name: "mutation",
+					state: "ok",
+					detail: `static.mutation runs Stryker from the checkout in a ${sandbox.backend} sandbox`,
+				}
 			: {
 					name: "mutation",
 					state: "warn",

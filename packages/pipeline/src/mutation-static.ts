@@ -9,6 +9,7 @@ import {
 	type Revision,
 	type ToolLog,
 } from "@melian-agent/core";
+import { nodeInstallation, type Sandbox } from "./sandbox.ts";
 import type { Run, StaticRun } from "./static.ts";
 
 const config = "stryker.config.json";
@@ -115,14 +116,27 @@ export class MutationRun {
 	readonly #binary: string;
 	readonly #version: string;
 	readonly #notes: string[];
+	readonly #sandbox: Sandbox;
+	readonly #installs: readonly string[];
 
-	constructor(run: Run, root: string, scratch: string, binary: string, version: string, notes: string[]) {
+	constructor(
+		run: Run,
+		root: string,
+		scratch: string,
+		binary: string,
+		version: string,
+		notes: string[],
+		sandbox: Sandbox,
+		installs: readonly string[],
+	) {
 		this.#run = run;
 		this.#root = root;
 		this.#scratch = scratch;
 		this.#binary = binary;
 		this.#version = version;
 		this.#notes = notes;
+		this.#sandbox = sandbox;
+		this.#installs = installs;
 	}
 
 	// The changed production lines, and the paths set aside because Stryker's comma-separated `--mutate` cannot name them.
@@ -160,7 +174,9 @@ export class MutationRun {
 	}
 
 	// The run executes the head's own test files, setup files, and Vitest configuration, so it gets a home and a temporary
-	// directory of its own in scratch, where the reviewer's credential files are not, and none of the Melian process's variables.
+	// directory of its own in scratch, where the reviewer's credential files are not, and none of the Melian process's
+	// variables. It also runs in the host's sandbox: no network, and nothing readable or writable outside the worktree,
+	// scratch, and the installs it needs.
 	async #execute(entries: readonly string[]): Promise<string | { skipped: string }> {
 		const log = posix.join(this.#scratch, "stryker.log");
 		const home = posix.join(this.#scratch, "home");
@@ -173,9 +189,25 @@ export class MutationRun {
 			`rm -f ${quote(report)}`,
 			`${quote(this.#binary)} run ${quote(posix.join(this.#root, config))} --reporters json --incremental --incrementalFile ${quote(posix.join(this.#scratch, "incremental.json"))} --inPlace --mutate ${quote(entries.join(","))} > ${quote(log)} 2>&1`,
 		].join(" && ");
+		const paths = {
+			worktree: this.#root,
+			scratch: this.#scratch,
+			installs: this.#installs,
+			node: nodeInstallation(),
+		};
+		const profile = this.#sandbox.profile(paths);
+		const profileFile = posix.join(this.#scratch, "sandbox.sb");
+		if (profile !== undefined) {
+			const written = await this.#run.input.env.writeFile(profileFile, profile, this.#run.context);
+			if (!written.ok)
+				throw this.#run.fail("toolFailed", `could not write ${profileFile}: ${written.error.message}`);
+		}
 		let result: Awaited<ReturnType<Run["shell"]>>;
 		try {
-			result = await this.#run.shell(command, undefined, { HOME: home, TMPDIR: temporary });
+			result = await this.#run.shell(this.#sandbox.command(command, paths, profileFile), undefined, {
+				HOME: home,
+				TMPDIR: temporary,
+			});
 		} catch (error) {
 			// A change too slow to mutate is one the run could not judge, not one whose judgement failed.
 			if (error instanceof CheckError && error.code === "timeout") {

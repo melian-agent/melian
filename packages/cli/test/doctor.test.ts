@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as core from "@melian-agent/core";
 import * as githubProvider from "@melian-agent/github";
+import { Sandbox } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
 import { fakeGitHub, fakeState } from "../../github/test/fixtures/fake-github.ts";
@@ -417,7 +418,31 @@ describe("doctor mutation testing", () => {
 		writeFileSync(join(repo, "node_modules/.bin/stryker"), "#!/bin/sh\n");
 		chmodSync(join(repo, "node_modules/.bin/stryker"), 0o755);
 		const { stdout } = await run(github());
-		expect(line(stdout)).toMatch(/^ok {4}mutation\s+static\.mutation runs Stryker from the checkout$/);
+		expect(line(stdout)).toMatch(
+			/^ok {4}mutation\s+static\.mutation runs Stryker from the checkout in a \w+ sandbox$/,
+		);
+	});
+
+	it.each(["seatbelt", "bubblewrap"] as const)("names the %s sandbox it found", async (backend) => {
+		enable();
+		mkdirSync(join(repo, "node_modules/.bin"), { recursive: true });
+		writeFileSync(join(repo, "node_modules/.bin/stryker"), "#!/bin/sh\n");
+		chmodSync(join(repo, "node_modules/.bin/stryker"), 0o755);
+		vi.spyOn(Sandbox, "detect").mockReturnValue({ backend } as Sandbox);
+		const { stdout } = await run(github());
+		expect(line(stdout)).toMatch(
+			new RegExp(`^ok {4}mutation\\s+static\\.mutation runs Stryker from the checkout in a ${backend} sandbox$`),
+		);
+	});
+
+	it("warns that the check runs nothing when the host offers no sandbox", async () => {
+		enable();
+		mkdirSync(join(repo, "node_modules/.bin"), { recursive: true });
+		writeFileSync(join(repo, "node_modules/.bin/stryker"), "#!/bin/sh\n");
+		chmodSync(join(repo, "node_modules/.bin/stryker"), 0o755);
+		vi.spyOn(Sandbox, "detect").mockReturnValue(undefined);
+		const { stdout } = await run(github());
+		expect(line(stdout)).toMatch(/^warn {2}mutation\s+static\.mutation is on, but the host offers no sandbox/);
 	});
 
 	it("warns with the reason when the configuration cannot be read", async () => {

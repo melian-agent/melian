@@ -7,6 +7,7 @@ import {
 	type EnolaSnapshot,
 	type MutationSettings,
 	type MutationSkipCause,
+	mutationSkips,
 	normaliseBiomeSarif,
 	parseJsonc,
 	parseTscDiagnostics,
@@ -19,6 +20,7 @@ import {
 import { EnolaRun } from "./enola-static.ts";
 import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts";
 import { MutationRun, strykerNotInstalled } from "./mutation-static.ts";
+import { Sandbox } from "./sandbox.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
 
 /** The most a static tool may write, its report included. Past it the run fails with `outputTooLarge`. */
@@ -272,12 +274,14 @@ async function binaryFor(run: Run, installed: string | undefined): Promise<strin
 // node_modules made its workspace links, such as `node_modules/b -> ../packages/b`, resolve to the checkout's own
 // sources, so base and head type-checked against one tree. Solution: an entry that resolves inside the checkout, outside
 // any node_modules, is a workspace package, linked to the worktree's own copy; every other entry links to the install.
-async function linkDependencies(run: Run, root: string, scratch: string, notes: string[]): Promise<void> {
+async function linkDependencies(run: Run, root: string, scratch: string, notes: string[]): Promise<string[]> {
 	const { env, repoRoot, commit, tool } = run.input;
 	const canonical = await env.canonicalPath(repoRoot, run.context);
 	const checkout = canonical.ok ? canonical.value : repoRoot;
 	const commands: string[] = [];
 	const workspaces = new Set<string>();
+	// The install directories the worktree links to, which a sandboxed command is allowed to read.
+	const installs: string[] = [];
 	const link = async (from: string, to: string): Promise<void> => {
 		const listed = await env.listDir(from, run.context);
 		if (!listed.ok) return;
@@ -300,11 +304,13 @@ async function linkDependencies(run: Run, root: string, scratch: string, notes: 
 			}
 		}
 	};
+	installs.push(posix.join(checkout, "node_modules"));
 	await link(posix.join(checkout, "node_modules"), posix.join(root, "node_modules"));
 	// A workspace package's own node_modules holds the versions only it depends on.
 	for (const workspace of workspaces) {
 		const nested = posix.join(checkout, workspace, "node_modules");
 		if ((await run.exists(nested)) && (await run.exists(posix.join(root, workspace)))) {
+			installs.push(nested);
 			await link(nested, posix.join(root, workspace, "node_modules"));
 		}
 	}
@@ -315,7 +321,7 @@ async function linkDependencies(run: Run, root: string, scratch: string, notes: 
 	if (linked.code !== 0) throw run.fail("worktreeFailed", `linking dependencies failed: ${linked.output}`);
 	// A dependency bump in the checkout but not at this revision is accepted; the lockfile is policy, reviewed as such.
 	const lockfile = "package-lock.json";
-	if (!(await run.exists(posix.join(checkout, lockfile)))) return;
+	if (!(await run.exists(posix.join(checkout, lockfile)))) return installs;
 	const differs = await run.shell(
 		`cmp -s ${quote(posix.join(checkout, lockfile))} ${quote(posix.join(root, lockfile))}`,
 	);
@@ -324,6 +330,7 @@ async function linkDependencies(run: Run, root: string, scratch: string, notes: 
 			`${tool} resolved dependencies from the checkout's install, whose ${lockfile} differs from ${commit.slice(0, 12)}'s.`,
 		);
 	}
+	return installs;
 }
 
 // Each directory named node_modules that the revision tracks, outermost only.
@@ -487,6 +494,11 @@ export function staticToolSource(repoRoot: string, tool: StaticTool): StaticTool
 export async function runStaticTool(input: StaticRunInput, context: Context): Promise<StaticRun> {
 	const run = new Run(input, context);
 	const { repoRoot, commit, tool } = input;
+	// The mutation check runs the head's own tests, so it runs only where the host can confine them.
+	const sandbox = tool === "mutation" ? Sandbox.detect() : undefined;
+	if (tool === "mutation" && sandbox === undefined) {
+		return { status: "skipped", reason: mutationSkips.noSandbox, cause: "noSandbox" };
+	}
 	return run.inWorktree(async (root, scratch) => {
 		if (tool === "tsc") {
 			const { project } = input.settings as TscSettings;
@@ -515,7 +527,7 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		if (checkoutTracked.length > 0) notes.push(`${tool} ignored the checkout's node_modules, which git tracks.`);
 		const installed =
 			checkoutTracked.length === 0 && (await run.exists(checkoutModules)) ? checkoutModules : undefined;
-		if (installed !== undefined) await linkDependencies(run, root, scratch, notes);
+		const installs = installed === undefined ? [] : await linkDependencies(run, root, scratch, notes);
 		if (
 			tool === "mutation" &&
 			!(installed !== undefined && (await run.exists(posix.join(installed, ".bin", "stryker"))))
@@ -524,7 +536,9 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		}
 		const binary = await binaryFor(run, installed);
 		const version = await versionOf(run, binary);
-		if (tool === "mutation") return new MutationRun(run, root, scratch, binary, version, notes).check();
+		if (tool === "mutation") {
+			return new MutationRun(run, root, scratch, binary, version, notes, sandbox as Sandbox, installs).check();
+		}
 		const log =
 			tool === "biome"
 				? await runBiome(run, root, scratch, binary, version)

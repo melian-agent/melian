@@ -46,9 +46,9 @@ const longestCode = 160;
 
 /**
  * Why `static.mutation` skipped. A record carries it beside the reason text, so a review decides on the cause and never on
- * wording. `noProductionLines`, `untrustedWriter`, and `timeout` let a review pass; `unmutated` does not.
+ * wording. `noProductionLines`, `untrustedWriter`, `noSandbox`, and `timeout` let a review pass; `unmutated` does not.
  */
-export type MutationSkipCause = "noProductionLines" | "untrustedWriter" | "timeout" | "unmutated";
+export type MutationSkipCause = "noProductionLines" | "untrustedWriter" | "noSandbox" | "timeout" | "unmutated";
 
 /**
  * The reasons `static.mutation` records a skip. The check is advisory in nature, so a change it cannot judge, or may not
@@ -60,6 +60,8 @@ export const mutationSkips = {
 	noProductionLines: "the change adds or edits no production TypeScript lines",
 	untrustedWriter: (detail: string) =>
 		`the writer is not a trusted one (${detail}), so Stryker did not run: static.mutation executes the head's own tests`,
+	noSandbox:
+		"the host offers no sandbox (sandbox-exec on macOS, bwrap on Linux), so Stryker did not run: static.mutation executes the head's own tests and runs them only confined",
 	timeout: (seconds: number) => `Stryker ran past static.mutation.timeout of ${seconds} seconds before it finished`,
 	unmutated: (paths: readonly string[]) =>
 		`the change adds or edits lines of production TypeScript files that Stryker is not asked to mutate (${paths.join(", ")}), so none of them was judged`,
@@ -68,12 +70,13 @@ export const mutationSkips = {
 const leaveCauses: ReadonlySet<string> = new Set<MutationSkipCause>([
 	"noProductionLines",
 	"untrustedWriter",
+	"noSandbox",
 	"timeout",
 ]);
 
 /**
  * Whether a `static.mutation` skip of this cause lets a review pass: a change with no production TypeScript to mutate, a
- * run too slow to finish, or a writer Melian does not trust to run code. A skip with no cause, or any other, has none.
+ * run too slow to finish, a writer Melian does not trust to run code, or a host with no sandbox to run it in. A skip with no cause, or any other, has none.
  */
 export function mutationSkipHasLeave(cause: string | undefined): boolean {
 	return cause !== undefined && leaveCauses.has(cause);
