@@ -55,6 +55,9 @@ it("lists readiness without downloading, verifies fetched pins and repairs a mis
 	const binary = io.lines.join("").trim();
 	expect(await readFile(binary, "utf8")).toBe(script);
 	expect(await inventory.render()).toContain("materialised and verified");
+	io.lines.length = 0;
+	expect(await main(["doctor"], io)).toBe(0);
+	expect(io.lines.join("")).toMatch(/ok\s+tool enola\s+0\.0\.1; materialised and verified/);
 	await writeFile(binary, "swapped");
 	expect(await inventory.render()).toContain("manifest mismatch");
 	expect(await main(["doctor"], io)).toBe(1);
