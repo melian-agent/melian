@@ -321,6 +321,21 @@ describe("EnclosingFunctions", () => {
 			);
 		});
 
+		const deletions = (count: number, deleted: boolean) =>
+			lines(
+				"export function big() {",
+				...Array.from({ length: count }, (_, index) => (deleted ? "\tkeep;" : `\tkeep;\n\tvoid ${index};`)),
+				"}",
+			);
+		it.each([
+			[enclosingLimits.anchorsPerFile, []],
+			[enclosingLimits.anchorsPerFile + 1, ["anchorsPerFile"]],
+		] as const)("takes a file of %i deletion-only hunks and holds back %j", async (count, capped) => {
+			const found = await around({ "src/a.ts": deletions(count, false) }, { "src/a.ts": deletions(count, true) });
+			expect(found.capped).toEqual(capped);
+			expect(found.functions).toHaveLength(capped.length === 0 ? 1 : 0);
+		});
+
 		it.each([
 			[false, 4, []],
 			[true, 4, ["anchors"]],
