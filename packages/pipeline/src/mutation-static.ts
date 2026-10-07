@@ -3,6 +3,7 @@ import { posix } from "node:path";
 import {
 	CheckError,
 	type MutationSettings,
+	mutationNotJudged,
 	mutationSkips,
 	normaliseMutationReport,
 	type Revision,
@@ -18,10 +19,13 @@ const config = "stryker.config.json";
 const mutationFileLimit = 1024 * 1024 * 1024;
 const report = "reports/mutation/mutation.json";
 
-// Production TypeScript only: a test, a fixture, a golden, built output, or a tool's own configuration is not what the
-// tests are there to hold.
+// Production TypeScript is what the tests are there to hold; a test, a fixture, a golden or verifier corpus, built output,
+// or a declaration file is not. A `.config.ts` is production: it can hold logic. It is not mutated, though, because a tool
+// loads it to run the mutants, so a change to one is a file the run did not judge.
 const typescript = /\.[cm]?tsx?$/;
-const notProduction = /\.(?:d|test|spec|config)\.[cm]?tsx?$/;
+const notProduction = /\.(?:d|test|spec)\.[cm]?tsx?$/;
+const configuration = /\.config\.[cm]?tsx?$/;
+const notProductionPrefixes = ["packages/evals/verifier/"];
 const notProductionDirectories: ReadonlySet<string> = new Set([
 	"test",
 	"tests",
@@ -33,15 +37,20 @@ const notProductionDirectories: ReadonlySet<string> = new Set([
 	"node_modules",
 ]);
 
-function mutable(path: string): boolean {
+function production(path: string): boolean {
 	return (
 		typescript.test(path) &&
 		!notProduction.test(path) &&
+		!notProductionPrefixes.some((prefix) => path.startsWith(prefix)) &&
 		!posix
 			.dirname(path)
 			.split("/")
 			.some((segment) => notProductionDirectories.has(segment))
 	);
+}
+
+function mutable(path: string): boolean {
+	return production(path) && !configuration.test(path);
 }
 
 // Stryker reads each `--mutate` entry as a glob, so a file name with a glob character in it, such as `[id]` or `(group)`
@@ -120,7 +129,11 @@ export class MutationRun {
 	#targets(revision: Revision): Record<string, [number, number][]> {
 		const targets: Record<string, [number, number][]> = {};
 		for (const [path, ranges] of Object.entries(revision.diffLines())) {
-			if (!mutable(path)) continue;
+			if (!mutable(path)) {
+				if (production(path))
+					this.#notes.push(`${path} was not mutated: a tool loads a configuration file to run the mutants.`);
+				continue;
+			}
 			if (path.includes(",")) {
 				this.#notes.push(`${path} was not mutated: Stryker cannot take a path with a comma.`);
 				continue;
@@ -187,7 +200,14 @@ export class MutationRun {
 			(sum, ranges) => sum + ranges.reduce((count, [first, last]) => count + last - first + 1, 0),
 			0,
 		);
-		if (total === 0) return { status: "skipped", reason: mutationSkips.noProductionLines };
+		if (total === 0) {
+			// A production file that was changed but not mutated, such as a `.config.ts` or a path with a comma, means the
+			// change did have behaviour to judge, so the skip has no leave.
+			const held = Object.keys(revision.diffLines()).filter(production);
+			return held.length === 0
+				? { status: "skipped", reason: mutationSkips.noProductionLines, cause: "noProductionLines" }
+				: { status: "skipped", reason: mutationSkips.unmutated(held), cause: "unmutated" };
+		}
 		const { maxLines } = settings as MutationSettings;
 		const { kept: lines, unreached } = withinBound(changed, maxLines);
 		const count = Math.min(total, maxLines);
@@ -201,7 +221,14 @@ export class MutationRun {
 			ranges.map(([first, last]) => `${literal(path)}:${first}-${last}`),
 		);
 		const text = await this.#execute(entries);
-		if (typeof text !== "string") return { status: "skipped", reason: text.skipped };
+		if (typeof text !== "string") {
+			return {
+				status: "skipped",
+				reason: text.skipped,
+				cause: "timeout",
+				log: mutationNotJudged({ version: this.#version, lines }, text.skipped),
+			};
+		}
 		const tests: Record<string, string> = {};
 		for (const path of Object.keys(lines)) tests[path] = await this.#nearestTest(path);
 		const read = normaliseMutationReport(text, { version: this.#version, lines, tests });

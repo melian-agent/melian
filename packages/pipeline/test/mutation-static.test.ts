@@ -395,8 +395,57 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			expect(deletionOnly).toEqual({
 				status: "skipped",
 				reason: "the change adds or edits no production TypeScript lines",
+				cause: "noProductionLines",
 			});
+			expect(mutationSkipHasLeave(deletionOnly.status === "skipped" ? deletionOnly.cause : undefined)).toBe(true);
 			expect(fake.calls()).toEqual([]);
+		});
+
+		it.each([
+			"packages/p/src/a.d.ts",
+			"packages/evals/verifier/case/src/user.ts",
+			"packages/p/test/helper.ts",
+			"packages/evals/goldens/case/src/user.ts",
+			"packages/p/dist/a.ts",
+			"packages/p/src/readme.md",
+		])("keeps the leave for a change to %s alone, which holds no behaviour to judge", async (path) => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, { [path]: lines("export const x = 1;") });
+			stryker({ report: report({}) });
+			expect(await mutate(base, head)).toMatchObject({ status: "skipped", cause: "noProductionLines" });
+		});
+
+		it.each(["packages/p/vitest.config.ts", "packages/p/src/rules.config.mts"])(
+			"gives the skip no leave, and names the file, when the change is to %s, a production file Stryker does not mutate",
+			async (path) => {
+				const base = commit(repo, { "stryker.config.json": config });
+				const head = commit(repo, { [path]: lines("export default { run: () => 1 };") });
+				const fake = stryker({ report: report({}) });
+				const result = await mutate(base, head);
+				expect(result).toEqual({
+					status: "skipped",
+					reason: mutationSkips.unmutated([path]),
+					cause: "unmutated",
+				});
+				expect(result.status === "skipped" && mutationSkipHasLeave(result.cause)).toBe(false);
+				expect(result.status === "skipped" && result.reason).toContain(path);
+				expect(fake.calls()).toEqual([]);
+			},
+		);
+
+		it("notes a configuration file beside the production files it does mutate", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": a,
+				"packages/p/vitest.config.ts": lines("export default {};"),
+			});
+			const fake = stryker({ report: report({}) });
+			const result = await mutate(base, head);
+			expect(entries(fake.calls()[0]!)).toEqual(["packages/p/src/a.ts:1-4"]);
+			if (result.status !== "ran") throw new Error("skipped");
+			expect(result.notes).toContain(
+				"packages/p/vitest.config.ts was not mutated: a tool loads a configuration file to run the mutants.",
+			);
 		});
 
 		it("keeps a path with a comma out of --mutate, which splits on commas, and says so", async () => {
@@ -654,8 +703,15 @@ exit 0`,
 				},
 				context,
 			);
-			expect(result).toEqual({ status: "skipped", reason: mutationSkips.timeout(1) });
-			expect(mutationSkipHasLeave(mutationSkips.timeout(1))).toBe(true);
+			expect(result).toMatchObject({ status: "skipped", reason: mutationSkips.timeout(1), cause: "timeout" });
+			expect(mutationSkipHasLeave("timeout")).toBe(true);
+			if (result.status !== "skipped") throw new Error("ran");
+			expect(result.log?.runs[0].results.map((each) => [each.ruleId, each.message.text])).toEqual([
+				[
+					"unmutated",
+					`Stryker did not judge the changed lines of packages/p/src/a.ts: ${mutationSkips.timeout(1)}.`,
+				],
+			]);
 		});
 
 		it("fails a cancelled run as aborted, never as a timeout skip", async () => {
@@ -846,6 +902,34 @@ exit 1`,
 			expect(fake.calls()).toHaveLength(1);
 		});
 
+		it("records a run past its timeout as a skip with leave that still raises one P2 mutation/unmutated finding naming the files", async () => {
+			const base = commit(repo, {
+				"melian.yaml": policy.replace("timeout: 120", "timeout: 1"),
+				"stryker.config.json": config,
+				"packages/p/src/a.ts": a,
+				"packages/p/src/b.ts": a.replace("function a", "function b"),
+			});
+			const head = commit(repo, {
+				"packages/p/src/a.ts": a.replace("x > 0", "x >= 0"),
+				"packages/p/src/b.ts": a.replace("function a", "function b").replace("x > 0", "x >= 0"),
+			});
+			fakeTool(repo, "stryker", `if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\nsleep 30`);
+			const { harness, root, run } = await checks(base, head);
+			expect(run.records).toEqual([
+				{
+					name: "static.mutation",
+					status: "skipped",
+					reason: mutationSkips.timeout(1),
+					cause: "timeout",
+				},
+			]);
+			const findings = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+			expect(
+				findings.map((finding) => [finding.ruleId, finding.properties.severity, finding.properties.path]),
+			).toEqual([["mutation/unmutated", "P2", "packages/p/src/a.ts"]]);
+			expect(findings[0]!.properties.explanation.what).toContain("packages/p/src/a.ts, packages/p/src/b.ts");
+		});
+
 		describe("for the writer of the head", () => {
 			const head = () => {
 				const base = commit(repo, {
@@ -862,12 +946,17 @@ exit 1`,
 				const detail = "octocat has read permission on the repository";
 				const { run } = await checks(base, tip, { trusted: false, detail });
 				expect(run.records).toEqual([
-					{ name: "static.mutation", status: "skipped", reason: mutationSkips.untrustedWriter(detail) },
+					{
+						name: "static.mutation",
+						status: "skipped",
+						reason: mutationSkips.untrustedWriter(detail),
+						cause: "untrustedWriter",
+					},
 				]);
 				expect(run.records[0]).toMatchObject({
 					reason: expect.stringContaining("the writer is not a trusted one"),
 				});
-				expect(mutationSkipHasLeave((run.records[0] as { reason: string }).reason)).toBe(true);
+				expect(mutationSkipHasLeave((run.records[0] as { cause?: string }).cause)).toBe(true);
 				expect(fake.calls()).toEqual([]);
 			});
 
@@ -888,6 +977,7 @@ exit 1`,
 						name: "static.mutation",
 						status: "skipped",
 						reason: mutationSkips.untrustedWriter("the review named no writer for this head"),
+						cause: "untrustedWriter",
 					},
 				]);
 				expect(fake.calls()).toEqual([]);
@@ -907,6 +997,7 @@ exit 1`,
 						name: "static.mutation",
 						status: "skipped",
 						reason: mutationSkips.untrustedWriter("trust.writers is false in the repository's policy"),
+						cause: "untrustedWriter",
 					},
 				]);
 				expect(fake.calls()).toEqual([]);

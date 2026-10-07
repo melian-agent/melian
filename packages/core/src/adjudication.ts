@@ -11,6 +11,7 @@ import {
 	type StoredFinding,
 } from "./findings.ts";
 import type { ScrutinyLevel } from "./lens.ts";
+import type { MutationSkipCause } from "./mutation.ts";
 import type {
 	ClosedFinding,
 	DiffLines,
@@ -174,6 +175,8 @@ export interface CheckRecord {
 	readonly name: string;
 	readonly status: CheckStatus;
 	readonly reason?: string;
+	/** Why `static.mutation` skipped, which a review decides leave on instead of reading `reason`. */
+	readonly cause?: MutationSkipCause;
 	readonly error?: string;
 	/**
 	 * The version of the tool that ran, as its findings name it in `properties.source.version`, such as Biome's. A review
@@ -296,6 +299,7 @@ export type StoredCheckRecord = {
 	name: string;
 	status: CheckStatus;
 	reason?: string;
+	cause?: MutationSkipCause;
 	error?: string;
 	version?: string;
 	snapshots?: EnolaSnapshot[];

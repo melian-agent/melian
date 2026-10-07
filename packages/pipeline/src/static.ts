@@ -6,6 +6,7 @@ import {
 	CheckError,
 	type EnolaSnapshot,
 	type MutationSettings,
+	type MutationSkipCause,
 	normaliseBiomeSarif,
 	parseJsonc,
 	parseTscDiagnostics,
@@ -49,7 +50,13 @@ export type StaticRun =
 			readonly baseLog?: ToolLog;
 			readonly snapshots?: EnolaSnapshot[];
 	  }
-	| { readonly status: "skipped"; readonly reason: string };
+	| {
+			readonly status: "skipped";
+			readonly reason: string;
+			readonly cause?: MutationSkipCause;
+			/** Findings a skip still raises, from a head-only log: the base is not run. */
+			readonly log?: ToolLog;
+	  };
 
 // Variables a git hook sets for its own repository; git would honour them over `-C`.
 const gitVariables = [

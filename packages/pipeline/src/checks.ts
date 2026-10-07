@@ -11,6 +11,7 @@ import {
 	type EnolaSnapshot,
 	evaluateGuardrails,
 	type MelianConfig,
+	type MutationSkipCause,
 	mutationSkips,
 	type RepositorySource,
 	Revision,
@@ -43,7 +44,7 @@ import { ToolProvisioning } from "./tool-provisioning.ts";
  */
 export type CheckRunRecord =
 	| { name: string; status: "ran"; version?: string; findings: number; notes: string[]; snapshots?: EnolaSnapshot[] }
-	| { name: string; status: "skipped"; reason: string }
+	| { name: string; status: "skipped"; reason: string; cause?: MutationSkipCause }
 	| { name: string; status: "failed"; reason: string; error: string };
 
 /**
@@ -103,7 +104,12 @@ type Outcome =
 			readonly version?: string;
 			readonly snapshots?: EnolaSnapshot[];
 	  }
-	| { readonly status: "skipped"; readonly reason: string };
+	| {
+			readonly status: "skipped";
+			readonly reason: string;
+			readonly cause?: MutationSkipCause;
+			readonly report?: CheckReport;
+	  };
 
 const toolOf: Readonly<Record<Exclude<DeterministicCheck, "guardrails">, StaticTool>> = {
 	"static.biome": "biome",
@@ -127,7 +133,9 @@ async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, conte
 	if (!settings.enabled) return { status: "skipped", reason: `static.${tool}.enabled is false` };
 	if (tool === "mutation") {
 		const reason = untrusted(input);
-		if (reason !== undefined) return { status: "skipped", reason: mutationSkips.untrustedWriter(reason.detail) };
+		if (reason !== undefined) {
+			return { status: "skipped", reason: mutationSkips.untrustedWriter(reason.detail), cause: "untrustedWriter" };
+		}
 	}
 	if (env === undefined) {
 		throw new CheckError(
@@ -153,7 +161,14 @@ async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, conte
 			context,
 		);
 	const head = await run(revision.head);
-	if (head.status === "skipped") return head;
+	if (head.status === "skipped") {
+		const { log, ...skipped } = head;
+		if (log === undefined) return skipped;
+		// A skip that still raises findings reports them against an empty base: the base was not run.
+		const empty: ToolLog = { ...log, runs: [{ ...log.runs[0], results: [] }] };
+		const raised = await staticFindings({ repoRoot, revision, tool, settings, base: empty, head: log });
+		return { ...skipped, report: { findings: raised.findings, notes: raised.notes } };
+	}
 	const base =
 		head.baseLog === undefined ? await run(revision.base) : { status: "ran" as const, log: head.baseLog, notes: [] };
 	// A base without the tool's project, such as before a repository adopted TypeScript, reports nothing to subtract.
@@ -211,7 +226,12 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 				outcome = await runCheck(task.input, () => runtime.env(context), context);
 				record =
 					outcome.status === "skipped"
-						? { name: check, status: "skipped", reason: outcome.reason }
+						? {
+								name: check,
+								status: "skipped",
+								reason: outcome.reason,
+								...(outcome.cause === undefined ? {} : { cause: outcome.cause }),
+							}
 						: {
 								name: check,
 								status: "ran",
@@ -225,7 +245,7 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 			}
 			const revision = revisionKey(changeset.revision);
 			await runtime.commit(async (tx) => {
-				const findings = outcome?.status === "ran" ? outcome.report.findings : [];
+				const findings = outcome?.report?.findings ?? [];
 				await replaceCheckFindings(tx, runtime.conversationId, check, revision, findings);
 				const { runs } = await tx.doc(ChecksDocument, runtime.conversationId);
 				runs[run] = { ...runs[run], [check]: record };

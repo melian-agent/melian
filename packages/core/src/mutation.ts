@@ -45,26 +45,81 @@ const reachedOutsideTests =
 const longestCode = 160;
 
 /**
- * The reasons `static.mutation` records a skip that does not stop a review. The check is advisory in nature, so a change
- * it cannot judge, or may not run on, still lets the review finish; the reason stays in the record. Any other skip, such
- * as a disabled check or a checkout without Stryker, leaves the review not reviewed.
+ * Why `static.mutation` skipped. A record carries it beside the reason text, so a review decides on the cause and never on
+ * wording. `noProductionLines`, `untrustedWriter`, and `timeout` let a review pass; `unmutated` does not.
+ */
+export type MutationSkipCause = "noProductionLines" | "untrustedWriter" | "timeout" | "unmutated";
+
+/**
+ * The reasons `static.mutation` records a skip. The check is advisory in nature, so a change it cannot judge, or may not
+ * run on, still lets the review finish when the skip's cause has leave; the reason stays in the record. Any other skip,
+ * such as a disabled check, a checkout without Stryker, or changed production files it did not mutate, leaves the review
+ * not reviewed.
  */
 export const mutationSkips = {
 	noProductionLines: "the change adds or edits no production TypeScript lines",
 	untrustedWriter: (detail: string) =>
 		`the writer is not a trusted one (${detail}), so Stryker did not run: static.mutation executes the head's own tests`,
 	timeout: (seconds: number) => `Stryker ran past static.mutation.timeout of ${seconds} seconds before it finished`,
+	unmutated: (paths: readonly string[]) =>
+		`the change adds or edits lines of production TypeScript files that Stryker is not asked to mutate (${paths.join(", ")}), so none of them was judged`,
 };
 
-const leaveReasons: readonly RegExp[] = [
-	/^the change adds or edits no production TypeScript lines$/,
-	/^the writer is not a trusted one\b/,
-	/^Stryker ran past static\.mutation\.timeout of \d+ seconds before it finished$/,
-];
+const leaveCauses: ReadonlySet<string> = new Set<MutationSkipCause>([
+	"noProductionLines",
+	"untrustedWriter",
+	"timeout",
+]);
 
-/** Whether a `static.mutation` skip with this reason lets a review pass: a change with nothing to mutate, or too slow, or from a writer Melian does not trust to run code. */
-export function mutationSkipHasLeave(reason: string | undefined): boolean {
-	return leaveReasons.some((pattern) => pattern.test(String(reason)));
+/**
+ * Whether a `static.mutation` skip of this cause lets a review pass: a change with no production TypeScript to mutate, a
+ * run too slow to finish, or a writer Melian does not trust to run code. A skip with no cause, or any other, has none.
+ */
+export function mutationSkipHasLeave(cause: string | undefined): boolean {
+	return cause !== undefined && leaveCauses.has(cause);
+}
+
+/**
+ * A tool log of one `unmutated` result at the first changed line, naming every file whose changed lines Stryker did not
+ * judge. A run that ends without a report, such as one past its timeout, gives a maintainer this to acknowledge, so a head
+ * that makes the check unrunnable does not pass unseen.
+ */
+export function mutationNotJudged(run: Pick<MutationReportInput, "version" | "lines">, why: string): ToolLog {
+	const files = Object.keys(run.lines).sort(compare);
+	const first = files[0];
+	const line = first === undefined ? 1 : run.lines[first]![0]![0];
+	return {
+		version: "2.1.0",
+		runs: [
+			{
+				tool: { driver: { name: "Stryker", version: run.version } },
+				results:
+					first === undefined
+						? []
+						: [
+								{
+									ruleId: "unmutated",
+									level: "error",
+									message: { text: `Stryker did not judge the changed lines of ${files.join(", ")}: ${why}.` },
+									advice: {
+										whyHere:
+											"The run ended before it judged these changed lines, and the head's own tests and files decide how long it runs, so a guard here would stay unproven.",
+										whatToDo:
+											"Make the suite finish within static.mutation.timeout, or have a maintainer acknowledge that these lines were not mutation tested.",
+									},
+									locations: [
+										{
+											physicalLocation: {
+												artifactLocation: { uri: first.split("/").map(encodeURIComponent).join("/") },
+												region: { startLine: line },
+											},
+										},
+									],
+								},
+							],
+			},
+		],
+	};
 }
 
 /** What {@link normaliseMutationReport} reads a Stryker report against. */

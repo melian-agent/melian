@@ -1,5 +1,6 @@
 import {
 	CheckError,
+	mutationNotJudged,
 	mutationSkipHasLeave,
 	mutationSkips,
 	normaliseMutationReport,
@@ -401,24 +402,37 @@ describe("normaliseMutationReport", () => {
 		]);
 	});
 
-	it("gives a skip leave to pass only for a change with nothing to mutate, an untrusted writer, or a timeout", () => {
-		for (const reason of [
-			mutationSkips.noProductionLines,
-			mutationSkips.untrustedWriter("octocat has read permission on the repository"),
-			mutationSkips.timeout(3600),
-		])
-			expect(mutationSkipHasLeave(reason), reason).toBe(true);
-		for (const reason of [
-			"static.mutation.enabled is false",
-			"Stryker is not installed in the checkout",
-			`${mutationSkips.noProductionLines}, and more`,
-			`a ${mutationSkips.timeout(3600)}`,
-			`the change adds or edits 2001 production TypeScript lines, past static.mutation.maxLines of 2000`,
-			"the writer is not trusted",
-			"undefined",
-		])
-			expect(mutationSkipHasLeave(reason), reason).toBe(false);
+	it("gives a skip leave to pass only for the causes of a change with nothing to mutate, an untrusted writer, or a timeout", () => {
+		for (const cause of ["noProductionLines", "untrustedWriter", "timeout"])
+			expect(mutationSkipHasLeave(cause), cause).toBe(true);
+		for (const cause of ["unmutated", "", "Timeout", "static.mutation.enabled is false", mutationSkips.timeout(3600)])
+			expect(mutationSkipHasLeave(cause), cause).toBe(false);
 		expect(mutationSkipHasLeave(undefined)).toBe(false);
+	});
+
+	describe("mutationNotJudged", () => {
+		const lines = { "src/b.ts": [[7, 9]], "src/a c.ts": [[3, 4]] } as Record<string, [number, number][]>;
+
+		it("is one unmutated result at the first changed line of the first file, naming every file", () => {
+			const log = mutationNotJudged({ version: "10.0.0", lines }, "it ran too long");
+			expect(log.runs[0].tool.driver).toEqual({ name: "Stryker", version: "10.0.0" });
+			expect(log.runs[0].results).toHaveLength(1);
+			const [result] = log.runs[0].results;
+			expect(result!.ruleId).toBe("unmutated");
+			expect(result!.level).toBe("error");
+			expect(result!.message.text).toBe(
+				"Stryker did not judge the changed lines of src/a c.ts, src/b.ts: it ran too long.",
+			);
+			expect(result!.locations[0]!.physicalLocation).toEqual({
+				artifactLocation: { uri: "src/a%20c.ts" },
+				region: { startLine: 3 },
+			});
+			expect(Value.Check(toolLogSchema, log)).toBe(true);
+		});
+
+		it("is a log with no result when no file was asked for", () => {
+			expect(mutationNotJudged({ version: "10.0.0", lines: {} }, "x").runs[0].results).toEqual([]);
+		});
 	});
 
 	it("refuses a status a finished run does not leave a mutant in, even in a file it does not read", () => {

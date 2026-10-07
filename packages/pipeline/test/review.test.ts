@@ -2945,25 +2945,42 @@ describe("adjudication", () => {
 
 		describe("a skipped static.mutation", () => {
 			const leave = [
-				["a change with no production lines", mutationSkips.noProductionLines],
-				["a writer that is not trusted", mutationSkips.untrustedWriter("octocat has read permission")],
-				["a run past its timeout", mutationSkips.timeout(3600)],
+				["a change with no production lines", mutationSkips.noProductionLines, "noProductionLines"],
+				[
+					"a writer that is not trusted",
+					mutationSkips.untrustedWriter("octocat has read permission"),
+					"untrustedWriter",
+				],
+				["a run past its timeout", mutationSkips.timeout(3600), "timeout"],
 			] as const;
 
-			it.each(leave)("passes, with the reason recorded, for %s", async (_name, reason) => {
+			it.each(leave)("passes, with the reason recorded, for %s", async (_name, reason, cause) => {
 				done();
-				const skipped: CheckRecord = { name: "static.mutation", status: "skipped", reason };
+				const skipped: CheckRecord = { name: "static.mutation", status: "skipped", reason, cause };
 				const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.mutation"), checks: [skipped] });
 				expect(verdict.status).toBe("passed");
 				expect(verdict.notRun).toContainEqual(skipped);
 			});
 
+			it.each(leave)("gives no leave to the reason text of %s without its cause", async (_name, reason) => {
+				done();
+				const skipped: CheckRecord = { name: "static.mutation", status: "skipped", reason };
+				const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.mutation"), checks: [skipped] });
+				expect(verdict.status).toBe("not-reviewed");
+			});
+
 			it.each([
 				["its being disabled", "static.mutation.enabled is false"],
 				["a checkout with no Stryker", strykerNotInstalled],
+				["changed production files it did not mutate", mutationSkips.unmutated(["vitest.config.ts"])],
 			])("leaves the review not reviewed for %s", async (_name, reason) => {
 				done();
-				const skipped: CheckRecord = { name: "static.mutation", status: "skipped", reason };
+				const skipped: CheckRecord = {
+					name: "static.mutation",
+					status: "skipped",
+					reason,
+					...(reason.startsWith("the change adds or edits lines") ? { cause: "unmutated" as const } : {}),
+				};
 				const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.mutation"), checks: [skipped] });
 				expect(verdict.status).toBe("not-reviewed");
 			});
@@ -2974,6 +2991,7 @@ describe("adjudication", () => {
 					name: "static.tsc",
 					status: "skipped",
 					reason: mutationSkips.noProductionLines,
+					cause: "noProductionLines",
 				};
 				const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.tsc"), checks: [skipped] });
 				expect(verdict.status).toBe("not-reviewed");
@@ -2985,6 +3003,7 @@ describe("adjudication", () => {
 					name: "static.mutation",
 					status: "failed",
 					reason: mutationSkips.timeout(3600),
+					cause: "timeout",
 					error: "x",
 				};
 				const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.mutation"), checks: [failed] });

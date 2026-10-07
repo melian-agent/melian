@@ -373,6 +373,8 @@ export {
 } from "./graph-coverage.ts";
 export {
 	type MutationReportInput,
+	type MutationSkipCause,
+	mutationNotJudged,
 	mutationSkipHasLeave,
 	mutationSkips,
 	normaliseMutationReport,
