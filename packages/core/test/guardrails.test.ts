@@ -599,6 +599,35 @@ describe("policy-change-review", () => {
 		);
 	});
 
+	// stryker.config.* points at the Vitest configuration the run loads, and that loads the test-name script, so each of
+	// them steers what the mutation check calls a kill.
+	it.each([
+		"vitest.stryker.config.ts",
+		"packages/a/vitest.stryker.config.mts",
+		"vitest.config.ts",
+		"packages/a/vitest.config.mjs",
+		"scripts/stryker-test-names.mjs",
+	])("raises policy-change-review for %s, which the Stryker run loads", async (path) => {
+		const { findings } = await guardrails(
+			{ "src/a.ts": lines("a") },
+			{ [path]: lines("export default {};"), "src/a.ts": lines("b") },
+		);
+		expect(findings.map((finding) => [finding.ruleId, finding.properties.path, finding.properties.severity])).toEqual(
+			[["guardrail/policy-change-review", path, "P1"]],
+		);
+	});
+
+	it.each(["vitest.workspace.ts", "not-vitest.config.ts", "scripts/stryker-names.mjs", "vitest.configs.ts"])(
+		"does not raise policy-change-review for %s",
+		async (path) => {
+			const { findings } = await guardrails(
+				{ "src/a.ts": lines("a") },
+				{ [path]: lines("export default {};"), "src/a.ts": lines("b") },
+			);
+			expect(findings).toEqual([]);
+		},
+	);
+
 	describe("a Biome glob past the step limit", () => {
 		// The analyser also compiles the glob with `/**` appended, which costs seven steps over the glob's own.
 		const oversized = "a".repeat(maxProgram - 6);
