@@ -228,7 +228,15 @@ export async function review(
 				config: loaded,
 				models,
 				rerun: options.rerun,
-				unlockModels: () => triage.unlockModels(),
+				// The walkthrough is published, so it never names a credential; the terminal does.
+				unlockModels: async () => {
+					try {
+						await triage.unlockModels();
+					} catch (error) {
+						io.stderr(`melian: ${visibleText(error instanceof Error ? error.message : String(error))}\n`);
+						throw error;
+					}
+				},
 			});
 		const outcome = new ReviewOutcome(verdict);
 		io.stdout(outcome.render(io.color));

@@ -99,6 +99,64 @@ describe("CLI walkthrough credentials", { timeout: 60_000 }, () => {
 	});
 });
 
+describe("CLI walkthrough credential failure", { timeout: 60_000 }, () => {
+	it("names the failing credential on stderr, stores the fixed note, and keeps the exit code", async () => {
+		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{
+				"src/a.ts": "export const a = 1;\n",
+				"melian.yaml": "tiers:\n  full: [guardrails]\nmodels:\n  light:\n    model: faux/scripted\n",
+			},
+			{ "src/a.ts": "export const a = 2;\n" },
+		);
+		changeset = await Changeset.resolve(repo, "main...feature");
+		writeFileSync(join(repo, "script.json"), "{}");
+		env = { ...process.env, MELIAN_TEST_SCRIPT: join(repo, "script.json") };
+		const state = pullRequestState();
+		moveTo(state, changeset);
+		const provider = createGitHubProvider({
+			owner: state.owner,
+			repo: state.repo,
+			token: "test-token",
+			fetch: fakeGitHub(state),
+		});
+		vi.spyOn(targets, "gitHubFor").mockResolvedValue(provider);
+		vi.spyOn(targets, "fetchedPullRequest").mockResolvedValue({
+			pullRequest: await provider.pullRequest(7),
+			changeset,
+		});
+		const unlock = vi.spyOn(pipeline, "unlockCredentials").mockRejectedValue(
+			new pipeline.CredentialError(
+				"commandFailed",
+				"credential vault in /xdg/melian/secrets.yaml: its command failed (3)",
+				{
+					credential: "vault",
+					file: "/xdg/melian/secrets.yaml",
+				},
+			),
+		);
+		let stderr = "";
+		const io = {
+			cwd: repo,
+			env,
+			stdout: () => {},
+			stderr: (text: string) => {
+				stderr += text;
+			},
+			color: false,
+		};
+
+		expect(await review(io, "#7", { rerun: false })).toBe(0);
+
+		expect(unlock).toHaveBeenCalled();
+		expect(stderr).toContain("melian: credential vault in /xdg/melian/secrets.yaml: its command failed (3)\n");
+		const note = (await recorded())?.walkthroughNotes?.[revisionKey(changeset.revision)];
+		expect(note).toBe("No walkthrough available. The summariser failed.");
+		expect(note).not.toContain("vault");
+	});
+});
+
 describe("CLI publish walkthrough settings", { timeout: 60_000 }, () => {
 	async function published(
 		yaml: string,
