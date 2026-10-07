@@ -276,6 +276,24 @@ describe("walkthrough summaries", () => {
 		await summarize({ rerun: true });
 		expect(captured["You write Melian's walkthrough"]).toHaveLength(3);
 	});
+	it("runs no credential command at the attempt cap, and one once below it", async () => {
+		const fail = fauxAssistantMessage("", { stopReason: "error", errorMessage: "down" });
+		const captured = scriptConversations(models, [
+			{ match: "You write Melian's walkthrough", replies: [fail, fail, fail] },
+		]);
+		await summarize();
+		const belowCap = vi.fn(async () => {});
+		await summarize({ unlockModels: belowCap });
+		expect(belowCap).toHaveBeenCalledOnce();
+		expect(captured["You write Melian's walkthrough"]).toHaveLength(2);
+		const atCap = vi.fn(async () => {});
+		await summarize({ unlockModels: atCap });
+		expect(atCap).not.toHaveBeenCalled();
+		expect(captured["You write Melian's walkthrough"]).toHaveLength(2);
+		const rerun = vi.fn(async () => {});
+		await summarize({ unlockModels: rerun, rerun: true });
+		expect(rerun).toHaveBeenCalledOnce();
+	});
 	it("catches credential, prompt and missing-extension failures without failing review", async () => {
 		const revision = revisionKey(changeset.revision);
 		const unlock = vi.fn().mockRejectedValue(new Error("private credential error"));
@@ -365,6 +383,26 @@ describe("walkthrough summaries", () => {
 		const result = await summarize();
 		expect(result?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
 		expect(captured["You write Melian's walkthrough"]).toHaveLength(1);
+	});
+
+	it("unlocks for a live task it attaches to, even with the attempts spent", async () => {
+		await harness.close(context);
+		const registry = createRegistry();
+		harness = await openHarness(createMemoryStorage(), { models: models.models, registry });
+		const root = await harness.root(context);
+		const revision = revisionKey(changeset.revision);
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).provenance = {
+				[revision]: { kind: "pull-request", policy: "config", manifest: [], lenses: [] },
+			};
+		}, context);
+		await summarize();
+		await root.commit(async (tx) => {
+			(await tx.doc(VerdictDocument, root.id)).walkthroughAttempts = { [revision]: 2 };
+		}, context);
+		const unlock = vi.fn(async () => {});
+		await summarize({ unlockModels: unlock });
+		expect(unlock).toHaveBeenCalledOnce();
 	});
 
 	it("records a task failure as a fixed note and retries a new task", async () => {
