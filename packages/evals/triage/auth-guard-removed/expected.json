@@ -1,0 +1,7 @@
+{
+  "title": "Drop an admin check from the export",
+  "levels": {
+    "correctness": "deep",
+    "trust-boundary": "deep"
+  }
+}

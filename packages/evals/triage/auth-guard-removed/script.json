@@ -1,0 +1,14 @@
+{
+  "answers": {
+    "correctness": {
+      "quick": 0.1,
+      "careful": 0.1,
+      "deep": 0.8
+    },
+    "trust-boundary": {
+      "quick": 0.1,
+      "careful": 0.1,
+      "deep": 0.8
+    }
+  }
+}

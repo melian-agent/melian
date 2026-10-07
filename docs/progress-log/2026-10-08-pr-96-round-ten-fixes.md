@@ -1,0 +1,3 @@
+# Pull request 96, round ten fixes
+
+Round ten found two faults in the walkthrough's credential unlock. Commit 022c01ba builds the unlock list for a plan with no lens before the early return and adds the light tier's providers, so the walkthrough's light-tier command credential runs and a failing one prints its error naming the file; the CLI walkthrough test now asserts the providers passed to `unlockCredentials`. Commit eb0c0602 makes the pre-commit gate count a terminal, uncounted task the index names, as the commit does, so a repeat at the attempt cap without `--rerun` runs no command; with `--rerun` it runs once.

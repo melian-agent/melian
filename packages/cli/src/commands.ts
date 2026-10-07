@@ -140,7 +140,8 @@ export async function review(
 	const selected = new Set(Lens.select(lenses, loaded, paths).map(({ lens }) => `${lens.name}\0${lens.scope}`));
 	const credentialPlan = plan.toJSON();
 	credentialPlan.lenses = credentialPlan.lenses.filter((lens) => selected.has(`${lens.name}\0${lens.scope ?? ""}`));
-	// A command a secrets file names runs now, so one that fails stops the review before it starts, named.
+	// A command a secrets file names runs when a task first needs a model, so a repeat review that spends no tokens
+	// runs none. Triage unlocks the providers just before that point, and failing there names the credential.
 	const triage = await Triage.create({
 		scripted: isScripted(io.env) && io.decide === undefined,
 		config: loaded,
@@ -158,6 +159,8 @@ export async function review(
 	});
 	const { harness } = reviewHarness;
 	try {
+		// A task a crash left unfinished resumes at the first wait below, so its commands run before it.
+		if (await reviewHarness.resumesModels(context)) await triage.unlockModels();
 		// Caller context needs the graph that deterministic checks produce.
 		const rootConversationId = (await harness.root(context)).id;
 		const checks = await runChecks(
@@ -219,7 +222,22 @@ export async function review(
 			verdict = error.verdict;
 		}
 		if (target.kind === "pullRequest" && options.walkthrough !== false)
-			await summarizeReview({ harness, changeset, config: loaded, models, rerun: options.rerun });
+			await summarizeReview({
+				harness,
+				changeset,
+				config: loaded,
+				models,
+				rerun: options.rerun,
+				// The walkthrough is published, so it never names a credential; the terminal does.
+				unlockModels: async () => {
+					try {
+						await triage.unlockModels();
+					} catch (error) {
+						io.stderr(`melian: ${visibleText(error instanceof Error ? error.message : String(error))}\n`);
+						throw error;
+					}
+				},
+			});
 		const outcome = new ReviewOutcome(verdict);
 		io.stdout(outcome.render(io.color));
 		return outcome.exitCode();

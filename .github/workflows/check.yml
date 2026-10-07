@@ -27,6 +27,11 @@ jobs:
       - if: matrix.node == 22
         run: npm install -g npm@11.19.0
       - run: npm ci --ignore-scripts
+      # A shallow checkout has no origin/main, and the triage gate compares questions.json with main's. A push run
+      # already has origin/main at the pushed commit, so the gate has nothing to compare; fetching would be refused as
+      # a non-fast-forward once main moved on, and would compare the commit with a later one.
+      - if: github.event_name != 'push'
+        run: git fetch --no-tags --depth=1 origin +main:refs/remotes/origin/main
       - run: npm run check
         env:
           GITHUB_TOKEN: ${{ github.token }}

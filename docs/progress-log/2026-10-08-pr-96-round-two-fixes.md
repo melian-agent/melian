@@ -1,0 +1,3 @@
+# Pull request 96, round two fixes
+
+Melian's second round on [pull request #96](https://github.com/melian-agent/melian/pull/96) raised four findings, after `075e6c7a` merged `main`. `4b50fc47` adds the decisions package to the evals build references, so a clean build of that package passes. `de4dcdf8` makes the walkthrough unlock only when it will attach to a live task or create one, so a review at the attempt cap runs no credential command. `d3a54a0f` lets a Pi store failure end the credential check, as it did before the change, and only an absent credential reads as false. `7d76bb1d` tests that choosing a route model runs no command credential.

@@ -17,7 +17,7 @@ import {
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as harnessApi from "../src/harness.ts";
-import { modelsOf } from "../src/models.ts";
+import { hasCredentials, modelsOf } from "../src/models.ts";
 
 let dir: string;
 let authPath: string;
@@ -73,6 +73,7 @@ describe("piCredentialStore", () => {
 		const error = await credentials
 			.modify("anthropic", async () => ({ type: "api_key", key: "new" }))
 			.catch((e) => e);
+		console.log("DBG", error, (error as Error).cause);
 		expect(error).toBeInstanceOf(PiCredentialsError);
 		expect(error).toMatchObject({ code: "readOnly", path: authPath });
 		await expect(credentials.delete("anthropic")).rejects.toThrow(PiCredentialsError);
@@ -143,6 +144,7 @@ describe("createReviewModels", () => {
 		const error = (await piCredentialStore(authPath)
 			.read("anthropic")
 			.catch((e: unknown) => e)) as Error;
+		console.log("DBG", error, (error as Error).cause);
 		expect(error).toBeInstanceOf(PiCredentialsError);
 		expect(JSON.stringify({ message: error.message, cause: String(error.cause) })).not.toContain("sk-ant");
 	});
@@ -234,6 +236,38 @@ describe("MelianCredentialStore", () => {
 			message: `credential expired-login in ${credential.file}: its token has expired; refresh it with the tool that owns it`,
 		});
 		expect(fake.provider.state.callCount).toBe(0);
+	});
+
+	describe("hasCredentials", () => {
+		it("counts a named command credential without running the command", async () => {
+			const marker = join(dir, "has-credentials-ran");
+			const credential = named("vault", "fake-key", {
+				kind: "command",
+				command: `touch ${marker}; printf key-value`,
+			});
+			const fake = createFakeModels({ provider: "fake-key", credentials: [credential], authPath });
+			expect(await hasCredentials(fake.review, "fake-key")).toBe(true);
+			expect(existsSync(marker)).toBe(false);
+		});
+
+		it("counts Pi's login for a provider no named credential covers", async () => {
+			store({ "fake-key": { type: "api_key", key: "pi-key" } });
+			const fake = createFakeModels({ provider: "fake-key", credentials: [], authPath });
+			expect(await hasCredentials(fake.review, "fake-key")).toBe(true);
+		});
+
+		it("is false for a provider with no credential anywhere", async () => {
+			const fake = createFakeModels({ provider: "fake-key", credentials: [], authPath });
+			expect(await hasCredentials(fake.review, "fake-key")).toBe(false);
+		});
+
+		it("raises the store's error, naming the file, when Pi's auth.json is corrupt", async () => {
+			writeFileSync(authPath, "{");
+			const fake = createFakeModels({ provider: "fake-key", credentials: [], authPath });
+			const error = await hasCredentials(fake.review, "fake-key").catch((caught: unknown) => caught);
+			expect((error as Error).message).toContain(authPath);
+			expect((error as Error).cause).toBeInstanceOf(PiCredentialsError);
+		});
 	});
 
 	it("keeps API keys for a provider that also accepts OAuth", async () => {

@@ -4,12 +4,15 @@
  * golden's `melian.golden.yaml` leaves unrouted. `MELIAN_EVAL_GOLDEN` names one golden to run instead of all of them.
  * Credentials resolve as in a review: the named credentials of the secrets files, the per-clone one of the working
  * directory's repository and the user's own, then Pi's login, then the providers' environment variables. A golden whose `expected.json` sets
- * `live: false` is skipped and left out of the corpus score.
+ * `live: false` is skipped and left out of the corpus score. `MELIAN_EVAL_TRIAGE=1` runs the triage corpus instead:
+ * the fallback decider on `MELIAN_EVAL_MODEL` chooses each lens's level `MELIAN_EVAL_TRIAGE_PASSES` times (three by
+ * default), the measurement prints, `MELIAN_EVAL_TRIAGE_OUT` writes it as JSON, and `MELIAN_EVAL_TRIAGE_BASELINE`
+ * names an earlier measurement to compare, exiting 1 when the questions choose worse.
  *
  * @module
  */
-import { createReviewModels } from "@melian-agent/pipeline";
-import { liveCredentials } from "./credentials.ts";
+import { readFileSync, writeFileSync } from "node:fs";
+import { liveModels } from "./credentials.ts";
 import {
 	type Golden,
 	type GoldenScore,
@@ -19,6 +22,7 @@ import {
 	scoreGolden,
 	selectGoldens,
 } from "./goldens.ts";
+import { loadTriageGoldens, runTriageGolden, type TriageChosen, TriageQuestions, TriageResults } from "./triage.ts";
 import { loadVerifierGoldens, runVerifierGolden, scoreVerifierGolden } from "./verifier.ts";
 
 if (process.env.MELIAN_EVAL_LIVE !== "1") {
@@ -35,7 +39,7 @@ if (process.env.MELIAN_EVAL_VERIFIER === "1") {
 		console.error("Verifier evals need a known golden and MELIAN_EVAL_VERIFIER_MODEL or MELIAN_EVAL_MODEL.");
 		process.exit(2);
 	}
-	const models = createReviewModels({ credentials: await liveCredentials(process.cwd()) });
+	const models = await liveModels(process.cwd());
 	const scores = [];
 	for (const golden of goldens) {
 		const run = await runVerifierGolden(golden, {
@@ -54,6 +58,34 @@ if (process.env.MELIAN_EVAL_VERIFIER === "1") {
 	process.exit(scores.every((score) => score.passed) ? 0 : 1);
 }
 
+if (process.env.MELIAN_EVAL_TRIAGE === "1") {
+	const model = process.env.MELIAN_EVAL_MODEL;
+	const all = loadTriageGoldens();
+	const selected = process.env.MELIAN_EVAL_GOLDEN;
+	const goldens = selected === undefined || selected === "" ? all : all.filter((golden) => golden.name === selected);
+	const passes = Number(process.env.MELIAN_EVAL_TRIAGE_PASSES ?? "3");
+	if (goldens.length === 0 || model === undefined || !Number.isInteger(passes) || passes < 1) {
+		console.error("Triage evals need a known golden, MELIAN_EVAL_MODEL, and MELIAN_EVAL_TRIAGE_PASSES of 1 or more.");
+		process.exit(2);
+	}
+	const models = await liveModels(process.cwd());
+	const chosen: Record<string, TriageChosen[]> = {};
+	for (const golden of goldens)
+		chosen[golden.name] = await runTriageGolden(golden, { kind: "live", models, model }, passes);
+	const results = TriageResults.measure(goldens, chosen, {
+		model,
+		fingerprint: (await TriageQuestions.shipped(all[0]!)).fingerprint(),
+	});
+	console.log(results.render());
+	const out = process.env.MELIAN_EVAL_TRIAGE_OUT;
+	if (out !== undefined && out !== "") writeFileSync(out, `${JSON.stringify(results.toJSON(), null, 2)}\n`);
+	const baseline = process.env.MELIAN_EVAL_TRIAGE_BASELINE;
+	if (baseline === undefined || baseline === "") process.exit(0);
+	const compared = results.compare(TriageResults.parse(readFileSync(baseline, "utf8")));
+	console.log(`${compared.verdict}: ${compared.lines.join("; ")}`);
+	process.exit(compared.verdict === "worse" ? 1 : compared.verdict === "incomparable" ? 2 : 0);
+}
+
 const allGoldens = loadGoldens();
 let goldens: Golden[];
 try {
@@ -62,7 +94,7 @@ try {
 	console.error(error instanceof Error ? error.message : String(error));
 	process.exit(2);
 }
-const models = createReviewModels({ credentials: await liveCredentials(process.cwd()) });
+const models = await liveModels(process.cwd());
 const model = process.env.MELIAN_EVAL_MODEL;
 const scores: GoldenScore[] = [];
 for (const golden of goldens) {

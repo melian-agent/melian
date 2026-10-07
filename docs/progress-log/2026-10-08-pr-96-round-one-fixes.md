@@ -1,0 +1,3 @@
+# Pull request 96, round one fixes
+
+Melian's first round on [pull request #96](https://github.com/melian-agent/melian/pull/96) raised nine findings in two clusters. Credential unlock: `ee176705` unlocks before a crashed task can resume and ask a model, `f02fbac4` makes the walkthrough check credentials without running a command and unlock before it asks, and `1f19931a` corrects the CLI and core guidelines. Enclosing functions: `26c99a21` keeps the function blocks out of the lens task's attach key and stores the unread note with the task, and `6e634a58` counts the not-shown listing against the prompt limit, numbers function lines as git does, and tests every way a function gets its name.
