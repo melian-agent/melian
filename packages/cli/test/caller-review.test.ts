@@ -99,6 +99,63 @@ it.each([true, false])(
 	60_000,
 );
 
+it("queries callers for lens-selected files and drops callers in every changed file", async () => {
+	repo = createRepository();
+	const body = "export const moved = 1;\nexport const kept = 2;\nexport const more = 3;\nexport const rest = 4;\n";
+	commit(repo, {
+		"src/a.ts": "export const a = 1;\n",
+		"docs/b.md": "one\n",
+		"src/old.ts": body,
+		"melian.yaml":
+			"tiers:\n  fast: [lens.correctness]\n  full: [fast]\nstatic:\n  enola: {enabled: true}\n" +
+			"lenses:\n  correctness: {paths: [src/a.ts, src/old.ts]}\n" +
+			["contracts", "trust-boundary", "removed-behaviour", "tests", "conventions"]
+				.map((name) => `  ${name}: {enabled: false}\n`)
+				.join(""),
+	});
+	gitIn(repo, "checkout", "-b", "feature");
+	gitIn(repo, "mv", "src/old.ts", "src/new.ts");
+	commit(repo, { "src/a.ts": "export const a = 2;\n", "docs/b.md": "two\n" });
+	const fake = createFakeModels();
+	const ref = fake.ref();
+	scriptConversations(fake, [{ match: "You are the correctness reviewer", replies: [fauxAssistantMessage("Done.")] }]);
+	vi.spyOn(modelSetup, "reviewModels").mockImplementation(async (_env, loaded, lenses, options) => ({
+		models: fake.review,
+		plan: ReviewPlan.resolve({
+			config: loaded.config,
+			routes: loaded.routes,
+			model: `${ref.provider}/${ref.modelId}`,
+			...(await planInputs(fake.review)),
+			lenses,
+			checks: options.checks,
+		}),
+		retry: false,
+	}));
+	vi.spyOn(CallerContext, "open").mockResolvedValue(
+		CallerContext.from({ groups: [], issues: [], notes: [], paths: [] }),
+	);
+	const errors: string[] = [];
+	const io: Io = {
+		cwd: repo,
+		env: {
+			MELIAN_TEST_SCRIPT: "injected",
+			MELIAN_STATE_DIR: join(repo, "state"),
+			XDG_CONFIG_HOME: join(repo, "config"),
+			PI_CODING_AGENT_DIR: join(repo, "pi"),
+		},
+		stdout: () => {},
+		stderr: (text) => errors.push(text),
+		color: false,
+	};
+	expect(await main(["review", "main...feature"], io), errors.join("")).toBe(0);
+	const call = vi.mocked(CallerContext.open).mock.calls[0]!;
+	expect(call[1].map((file) => [file.path, file.oldPath]).sort()).toEqual([
+		["src/a.ts", undefined],
+		["src/new.ts", "src/old.ts"],
+	]);
+	expect([...call[3]!].sort()).toEqual(["docs/b.md", "src/a.ts", "src/new.ts"]);
+}, 60_000);
+
 it("skips caller context when the Enola check is disabled", async () => {
 	repo = createRepository();
 	commit(repo, {
