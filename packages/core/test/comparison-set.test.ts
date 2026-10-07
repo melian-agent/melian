@@ -56,7 +56,6 @@ const owing = (
 	comparison.adjudicate(finding.id, { ...by, verdict: "valid", golden: lens });
 	return entry(changeset, comparison, [finding]);
 };
-const owedOrder = (set: ComparisonSet) => set.backlog().map((each) => `${each.lens}/${each.target}/${each.changeset}`);
 
 describe("ComparisonSet selection", () => {
 	it("selects a changeset by the earliest of its rounds", () => {
@@ -220,7 +219,12 @@ describe("ComparisonSet backlog", () => {
 			owing("c3", i2, "alpha", { target: "t-a" }),
 			owing("c4", i1, "alpha", { target: "t-a" }),
 		]);
-		expect(owedOrder(set)).toEqual(["alpha/t-a/c4", "alpha/t-a/c3", "alpha/t-b/c2", "zeta/t-a/c1"]);
+		expect(set.backlog().map((each) => `${each.lens}/${each.target}/${each.changeset}`)).toEqual([
+			"alpha/t-a/c4",
+			"alpha/t-a/c3",
+			"alpha/t-b/c2",
+			"zeta/t-a/c1",
+		]);
 	});
 
 	it("titles an owed Melian finding by its ID when nothing names it", () => {

@@ -30,14 +30,12 @@ const report = (input: Partial<ExternalFindingInput> = {}) =>
 		source: { kind: "file", path: "codex.json", position: 0, ref: String(sequence++) },
 		...input,
 	});
-const compared = (reports: ExternalFinding[], ...findings: Finding[]) => {
+const compared = ({ reports, findings = [] }: { reports: ExternalFinding[]; findings?: Finding[] }) => {
 	const comparison = Comparison.of(revision);
 	comparison.import("file:codex.json", { findings: reports, skippedBodies: 0 }, by.at);
 	comparison.compare(verdictOf(...findings));
 	return comparison;
 };
-const row = (comparison: Comparison, reviewer: string) =>
-	comparison.stats().reviewers.find((each) => each.reviewer === reviewer);
 
 describe("comparison review fixes", () => {
 	it("loads the adjudication module first in a fresh process, without a schema cycle", () => {
@@ -54,33 +52,61 @@ describe("comparison review fixes", () => {
 	it("skips a pending Melian report in a valid matched group until judged", () => {
 		const finding = own();
 		const external = report();
-		const comparison = compared([external], finding);
+		const comparison = compared({ reports: [external], findings: [finding] });
 		comparison.adjudicate(external.id, { ...by, verdict: "valid" });
-		expect(row(comparison, "melian")).toMatchObject({ found: 0, total: 0, valid: 0, pending: 1 });
+		expect(comparison.stats().reviewers.find((each) => each.reviewer === "melian")).toMatchObject({
+			found: 0,
+			total: 0,
+			valid: 0,
+			pending: 1,
+		});
 		comparison.adjudicate(finding.id, { ...by, verdict: "valid" });
-		expect(row(comparison, "melian")).toMatchObject({ found: 1, total: 1, valid: 1, pending: 0 });
+		expect(comparison.stats().reviewers.find((each) => each.reviewer === "melian")).toMatchObject({
+			found: 1,
+			total: 1,
+			valid: 1,
+			pending: 0,
+		});
 	});
 
 	it("skips a pending external reviewer in a group another reviewer judged valid", () => {
 		const pending = report();
 		const valid = report({ reviewer: { name: "claude-code" } });
-		const comparison = compared([pending, valid]);
+		const comparison = compared({ reports: [pending, valid] });
 		comparison.adjudicate(valid.id, { ...by, verdict: "valid", reason: "no-owner" });
-		expect(row(comparison, "codex")).toMatchObject({ found: 0, total: 0, valid: 0, pending: 1 });
+		expect(comparison.stats().reviewers.find((each) => each.reviewer === "codex")).toMatchObject({
+			found: 0,
+			total: 0,
+			valid: 0,
+			pending: 1,
+		});
 		comparison.adjudicate(pending.id, { ...by, verdict: "noise" });
-		expect(row(comparison, "codex")).toMatchObject({ found: 0, total: 1, noise: 1, pending: 0 });
+		expect(comparison.stats().reviewers.find((each) => each.reviewer === "codex")).toMatchObject({
+			found: 0,
+			total: 1,
+			noise: 1,
+			pending: 0,
+		});
 	});
 
 	it("skips ambiguous reports in recall beside valid Melian reports, retaining judged precision", () => {
 		const first = own();
 		const second = own("eval(other)", 14);
 		const external = report({ line: 13 });
-		const comparison = compared([external], first, second);
+		const comparison = compared({ reports: [external], findings: [first, second] });
 		for (const finding of [first, second]) comparison.adjudicate(finding.id, { ...by, verdict: "valid" });
 		comparison.adjudicate(external.id, { ...by, verdict: "valid" });
-		expect(row(comparison, "codex")).toMatchObject({ found: 0, total: 0, valid: 1, precision: 1 });
+		expect(comparison.stats().reviewers.find((each) => each.reviewer === "codex")).toMatchObject({
+			found: 0,
+			total: 0,
+			valid: 1,
+			precision: 1,
+		});
 		comparison.unmatch(external.id, second.id, by.by, by.at);
-		expect(row(comparison, "codex")).toMatchObject({ found: 1, total: 2 });
+		expect(comparison.stats().reviewers.find((each) => each.reviewer === "codex")).toMatchObject({
+			found: 1,
+			total: 2,
+		});
 	});
 
 	it.each(["match", "unmatch"] as const)(
@@ -89,7 +115,7 @@ describe("comparison review fixes", () => {
 			const first = own();
 			const second = own("eval(other)", 14);
 			const external = report({ line: 13 });
-			const comparison = compared([external], first, second);
+			const comparison = compared({ reports: [external], findings: [first, second] });
 			for (const finding of [first, second]) comparison.adjudicate(finding.id, { ...by, verdict: "valid" });
 			comparison.adjudicate(external.id, { ...by, verdict: "valid" });
 			comparison.match(external.id, first.id, by.by, by.at);
@@ -101,11 +127,17 @@ describe("comparison review fixes", () => {
 					.sort(),
 			).toEqual(["hand", "site"]);
 			expect(comparison.stats().pendingMatches).toBe(1);
-			expect(row(comparison, "codex")).toMatchObject({ found: 0, total: 0, valid: 1, pending: 0, precision: 1 });
+			expect(comparison.stats().reviewers.find((each) => each.reviewer === "codex")).toMatchObject({
+				found: 0,
+				total: 0,
+				valid: 1,
+				pending: 0,
+				precision: 1,
+			});
 			comparison[action](external.id, second.id, by.by, by.at);
 			comparison.compare(verdictOf(first, second));
 			expect(comparison.stats().pendingMatches).toBe(0);
-			expect(row(comparison, "codex")).toMatchObject({
+			expect(comparison.stats().reviewers.find((each) => each.reviewer === "codex")).toMatchObject({
 				found: action === "match" ? 2 : 1,
 				total: 2,
 				valid: 1,
@@ -117,14 +149,18 @@ describe("comparison review fixes", () => {
 
 	it("persists an empty import's participant and counts its recall denominator after a round trip", () => {
 		const finding = report({ reviewer: { name: "claude-code" } });
-		const comparison = compared([finding]);
+		const comparison = compared({ reports: [finding] });
 		comparison.import(
 			"file:empty.json",
 			ExternalFinding.importFile({ reviewer: { name: "codex", version: "2" }, findings: [] }, "empty.json"),
 			by.at,
 		);
 		comparison.adjudicate(finding.id, { ...by, verdict: "valid", reason: "no-owner" });
-		expect(row(Comparison.from(comparison.toJSON()), "codex")).toMatchObject({
+		expect(
+			Comparison.from(comparison.toJSON())
+				.stats()
+				.reviewers.find((each) => each.reviewer === "codex"),
+		).toMatchObject({
 			found: 0,
 			total: 1,
 			precision: 1,
@@ -135,7 +171,7 @@ describe("comparison review fixes", () => {
 	it.each(["unmatch", "import", "review"])("makes a reasonless valid miss pending after %s", (change) => {
 		const finding = own();
 		const external = report();
-		const comparison = compared([external], finding);
+		const comparison = compared({ reports: [external], findings: [finding] });
 		comparison.adjudicate(external.id, { ...by, verdict: "valid" });
 		if (change === "unmatch") comparison.unmatch(external.id, finding.id, by.by, by.at);
 		else if (change === "import")
@@ -147,8 +183,12 @@ describe("comparison review fixes", () => {
 		comparison.compare(change === "review" ? verdictOf() : verdictOf(finding));
 		expect(comparison.needsReason(external.id)).toBe(true);
 		expect(comparison.stats()).toMatchObject({ reasonlessMisses: 1 });
-		expect(row(comparison, "codex")).toMatchObject({ total: 0, valid: 0, pending: 1 });
-		expect(row(comparison, "melian")?.total).toBe(0);
+		expect(comparison.stats().reviewers.find((each) => each.reviewer === "codex")).toMatchObject({
+			total: 0,
+			valid: 0,
+			pending: 1,
+		});
+		expect(comparison.stats().reviewers.find((each) => each.reviewer === "melian")?.total).toBe(0);
 		comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "no-owner" });
 		expect(comparison.stats()).toMatchObject({ reasonlessMisses: 0, misses: { "no-owner": 1 } });
 	});
@@ -157,18 +197,22 @@ describe("comparison review fixes", () => {
 		const finding = own();
 		const pending = report();
 		const outside = report({ reviewer: { name: "claude-code" } });
-		const comparison = compared([pending, outside], finding);
+		const comparison = compared({ reports: [pending, outside], findings: [finding] });
 		comparison.adjudicate(pending.id, { ...by, verdict: "valid" });
 		comparison.adjudicate(outside.id, { ...by, verdict: "valid", reason: "out-of-scope" });
 		comparison.compare(verdictOf());
 		expect(comparison.stats()).toMatchObject({ reasonlessMisses: 1, misses: { "out-of-scope": 1 } });
-		expect(row(comparison, "melian")?.total).toBe(0);
-		expect(row(comparison, "codex")).toMatchObject({ total: 0, valid: 0, pending: 1 });
+		expect(comparison.stats().reviewers.find((each) => each.reviewer === "melian")?.total).toBe(0);
+		expect(comparison.stats().reviewers.find((each) => each.reviewer === "codex")).toMatchObject({
+			total: 0,
+			valid: 0,
+			pending: 1,
+		});
 	});
 
 	it("keeps debt until an explicit golden change, with replacement history", () => {
 		const finding = own();
-		const comparison = compared([], finding);
+		const comparison = compared({ reports: [], findings: [finding] });
 		comparison.adjudicate(finding.id, { ...by, verdict: "noise", golden: "correctness" });
 		comparison.adjudicate(finding.id, { ...by, verdict: "valid", note: "Still owed." });
 		expect(comparison.backlog()).toMatchObject([{ lens: "correctness" }]);
@@ -180,7 +224,7 @@ describe("comparison review fixes", () => {
 	it("requires a duplicate's target and charges the second reviewer recall and precision", () => {
 		const valid = report();
 		const duplicate = report({ reviewer: { name: "claude-code" } });
-		const comparison = compared([valid, duplicate]);
+		const comparison = compared({ reports: [valid, duplicate] });
 		comparison.adjudicate(valid.id, { ...by, verdict: "valid", reason: "no-owner" });
 		expect(() => comparison.adjudicate(duplicate.id, { ...by, verdict: "duplicate" })).toThrow(/--of/);
 		expect(() => comparison.adjudicate(duplicate.id, { ...by, verdict: "duplicate", of: duplicate.id })).toThrow(
@@ -190,7 +234,7 @@ describe("comparison review fixes", () => {
 			/another finding/,
 		);
 		comparison.adjudicate(duplicate.id, { ...by, verdict: "duplicate", of: valid.id });
-		expect(row(comparison, "claude-code")).toMatchObject({
+		expect(comparison.stats().reviewers.find((each) => each.reviewer === "claude-code")).toMatchObject({
 			found: 0,
 			total: 1,
 			duplicate: 1,
@@ -205,7 +249,7 @@ describe("comparison review fixes", () => {
 	it("refuses a miss reason on noise and on a Melian finding", () => {
 		const finding = own();
 		const external = report();
-		const comparison = compared([external], finding);
+		const comparison = compared({ reports: [external], findings: [finding] });
 		for (const [id, verdict] of [
 			[external.id, "noise"],
 			[finding.id, "valid"],
@@ -217,7 +261,7 @@ describe("comparison review fixes", () => {
 
 	it("filters withdrawn judgements from summaries while retaining their stored history", () => {
 		const external = report();
-		const comparison = compared([external]);
+		const comparison = compared({ reports: [external] });
 		comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "owned-missed", golden: "correctness" });
 		comparison.import("file:codex.json", { findings: [], skippedBodies: 0 }, by.at);
 		expect(comparison.adjudications()).toEqual({});
@@ -306,10 +350,16 @@ describe("comparison review fixes", () => {
 			report({ reviewer: { name: "coderabbit", login: "coderabbitai[bot]", version: "2" }, line: 50 }),
 			report({ reviewer: { name: "human", login: "coderabbitai[bot]" }, line: 90 }),
 		];
-		const comparison = compared(reports);
+		const comparison = compared({ reports: reports });
 		for (const finding of reports) comparison.adjudicate(finding.id, { ...by, verdict: "valid", reason: "no-owner" });
-		expect(row(comparison, "coderabbit:coderabbitai[bot]")).toMatchObject({ valid: 2, found: 2, total: 3 });
-		expect(row(comparison, "human:coderabbitai[bot]")).toMatchObject({ valid: 1, found: 1, total: 3 });
+		expect(
+			comparison.stats().reviewers.find((each) => each.reviewer === "coderabbit:coderabbitai[bot]"),
+		).toMatchObject({ valid: 2, found: 2, total: 3 });
+		expect(comparison.stats().reviewers.find((each) => each.reviewer === "human:coderabbitai[bot]")).toMatchObject({
+			valid: 1,
+			found: 1,
+			total: 3,
+		});
 		expect(comparison.stats().reviewers).toHaveLength(3);
 	});
 
@@ -365,7 +415,7 @@ describe("comparison review fixes", () => {
 
 	it("titles a golden owed for a Melian finding from the stored verdict's explanation", () => {
 		const finding = own();
-		const comparison = compared([], finding);
+		const comparison = compared({ reports: [], findings: [finding] });
 		comparison.adjudicate(finding.id, { ...by, verdict: "valid", golden: "correctness" });
 		const set = new ComparisonSet([{ changeset: "a", comparison, verdict: verdictOf(finding) }]);
 		expect(set.backlog()).toMatchObject([{ id: finding.id, title: finding.properties.explanation.what }]);
@@ -379,7 +429,7 @@ describe("comparison review fixes", () => {
 			...evalInput,
 			explanation: { ...evalInput.explanation, what: "[link](url)!\n- forged @owner" },
 		});
-		const comparison = compared([external], finding);
+		const comparison = compared({ reports: [external], findings: [finding] });
 		comparison.record(by.at, "[range](x) @team #72 & <tag> \\route\n- forged");
 		comparison.adjudicate(external.id, { ...by, verdict: "valid", golden: "correctness" });
 		comparison.adjudicate(finding.id, { ...by, verdict: "noise", golden: "tests" });
@@ -397,7 +447,7 @@ describe("comparison review fixes", () => {
 	it("retains Melian repeat keys but offers candidates only for valid missed findings", () => {
 		const entries = [own("eval(first)"), own("eval(second)")].map((finding, index) => {
 			const external = report();
-			const comparison = compared([external], finding);
+			const comparison = compared({ reports: [external], findings: [finding] });
 			comparison.adjudicate(finding.id, { ...by, verdict: "valid" });
 			comparison.adjudicate(external.id, { ...by, verdict: "valid" });
 			const verdict = verdictOf(finding);
@@ -413,7 +463,7 @@ describe("comparison review fixes", () => {
 
 	it("exports imported reviewers who reported no findings", () => {
 		const external = report({ reviewer: { name: "claude-code" } });
-		const comparison = compared([external]);
+		const comparison = compared({ reports: [external] });
 		comparison.import(
 			"file:clean-codex.json",
 			{ findings: [], skippedBodies: 0, reviewers: [{ name: "codex", version: "6.1" }] },
@@ -432,7 +482,7 @@ describe("comparison review fixes", () => {
 	it("exports golden debt while an unmatched valid finding awaits a miss reason", () => {
 		const finding = own();
 		const external = report();
-		const comparison = compared([external], finding);
+		const comparison = compared({ reports: [external], findings: [finding] });
 		const judgement = { ...by, verdict: "valid", golden: "correctness" } as const;
 		comparison.adjudicate(external.id, judgement);
 		expect(comparison.effectiveMatches()).toEqual([{ external: external.id, melian: finding.id, kind: "site" }]);
@@ -463,7 +513,7 @@ describe("comparison review fixes", () => {
 	it("exports matched IDs and dismissal labels beside adjudicated findings", () => {
 		const finding = Finding.create({ ...evalInput, status: "dismissed" });
 		const external = report();
-		const comparison = compared([external], finding);
+		const comparison = compared({ reports: [external], findings: [finding] });
 		comparison.adjudicate(external.id, { ...by, verdict: "valid" });
 		comparison.adjudicate(finding.id, { ...by, verdict: "noise" });
 		const output = new ComparisonExport(
@@ -480,7 +530,7 @@ describe("comparison review fixes", () => {
 		const external = report({
 			body: `Line one.\nLine two ${"界".repeat(500)}\n\nSecond paragraph must stay private.`,
 		});
-		const comparison = compared([external]);
+		const comparison = compared({ reports: [external] });
 		comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "no-owner", note: "Write a golden." });
 		const output = new ComparisonExport([{ changeset: "a", comparison }], "range").render();
 		expect(output).toContain("by Ada (");
@@ -512,7 +562,7 @@ describe("comparison guards", () => {
 
 	it("counts a Melian-only finding's title as its ID in the backlog, and records the judgement's time", () => {
 		const finding = own();
-		const comparison = compared([], finding);
+		const comparison = compared({ reports: [], findings: [finding] });
 		comparison.adjudicate(finding.id, { ...by, verdict: "valid", golden: "correctness" });
 		expect(comparison.backlog()).toMatchObject([{ id: finding.id, title: finding.id }]);
 		expect(comparison.recordedAt()).toBe(by.at);
@@ -535,17 +585,24 @@ describe("comparison guards", () => {
 			by.at,
 		);
 		comparison.compare(verdictOf());
-		expect(row(comparison, "claude-code")).toMatchObject({ total: 0, recall: 1, precision: 1 });
+		expect(comparison.stats().reviewers.find((each) => each.reviewer === "claude-code")).toMatchObject({
+			total: 0,
+			recall: 1,
+			precision: 1,
+		});
 	});
 
 	it("does not let an ambiguous report make a group valid", () => {
 		const first = own();
 		const second = own("eval(other)", 14);
 		const external = report({ line: 13 });
-		const comparison = compared([external], first, second);
+		const comparison = compared({ reports: [external], findings: [first, second] });
 		for (const finding of [first, second]) comparison.adjudicate(finding.id, { ...by, verdict: "noise" });
 		comparison.adjudicate(external.id, { ...by, verdict: "valid" });
-		expect(row(comparison, "melian")).toMatchObject({ total: 0, found: 0 });
+		expect(comparison.stats().reviewers.find((each) => each.reviewer === "melian")).toMatchObject({
+			total: 0,
+			found: 0,
+		});
 	});
 
 	it("clusters only valid findings, by rule tag alone or by NFKC-normalised title", () => {
@@ -553,7 +610,7 @@ describe("comparison guards", () => {
 		const wide = report({ title: "ＥＶＡＬ runs" });
 		const plain = report({ title: "eval runs", line: 40 });
 		const noisy = report({ title: "Noisy", line: 50 });
-		const comparison = compared([wide, plain, noisy], finding);
+		const comparison = compared({ reports: [wide, plain, noisy], findings: [finding] });
 		comparison.adjudicate(noisy.id, { ...by, verdict: "noise", rule: "noisy-rule" });
 		comparison.adjudicate(wide.id, { ...by, verdict: "valid", reason: "no-owner" });
 		comparison.adjudicate(plain.id, { ...by, verdict: "valid", reason: "no-owner" });
@@ -569,14 +626,14 @@ describe("comparison guards", () => {
 	it("lets a duplicate name a Melian finding", () => {
 		const finding = own();
 		const external = report();
-		const comparison = compared([external], finding);
+		const comparison = compared({ reports: [external], findings: [finding] });
 		comparison.adjudicate(external.id, { ...by, verdict: "duplicate", of: finding.id });
 		expect(comparison.adjudication(external.id)?.current).toMatchObject({ verdict: "duplicate", of: finding.id });
 	});
 
 	it("hands out copies of stored judgements and ignores names that are not findings", () => {
 		const external = report();
-		const comparison = compared([external]);
+		const comparison = compared({ reports: [external] });
 		comparison.adjudicate(external.id, { ...by, verdict: "valid", reason: "no-owner" });
 		expect(comparison.adjudication("constructor")).toBeUndefined();
 		comparison.adjudication(external.id)!.current.verdict = "noise";
