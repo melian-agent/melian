@@ -187,6 +187,12 @@ describe("normaliseMutationReport", () => {
 			],
 		]);
 		expect(notes).toEqual([]);
+		expect(log.runs[0].results[0]!.advice).toEqual({
+			whyHere:
+				"The head's own comment or configuration told Stryker not to judge this changed line, so a guard here would stay unproven.",
+			whatToDo:
+				"Remove the comment or configuration that excludes this line and test the behaviour, or acknowledge the exclusion if it is deliberate.",
+		});
 	});
 
 	it("names an Ignored mutant that carries no reason", () => {
@@ -287,8 +293,10 @@ describe("normaliseMutationReport", () => {
 			`a ${mutationSkips.timeout(3600)}`,
 			`the change adds or edits 2001 production TypeScript lines, past static.mutation.maxLines of 2000`,
 			"the writer is not trusted",
+			"undefined",
 		])
 			expect(mutationSkipHasLeave(reason), reason).toBe(false);
+		expect(mutationSkipHasLeave(undefined)).toBe(false);
 	});
 
 	it("refuses a status a finished run does not leave a mutant in, even in a file it does not read", () => {

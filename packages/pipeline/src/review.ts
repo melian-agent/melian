@@ -1141,7 +1141,7 @@ function account(
 	// run on, passes with the reason recorded. Any other skip of it still leaves the review not reviewed, and so does a
 	// failed record, since the manifest lets only a skip pass.
 	for (const check of supplied) {
-		if (check.name === "static.mutation" && mutationSkipHasLeave(check.reason ?? "")) {
+		if (check.name === "static.mutation" && mutationSkipHasLeave(check.reason)) {
 			manifest.allowSkip(check.name);
 		}
 	}

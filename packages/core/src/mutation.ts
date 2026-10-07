@@ -40,8 +40,8 @@ const leaveReasons: readonly RegExp[] = [
 ];
 
 /** Whether a `static.mutation` skip with this reason lets a review pass: a change with nothing to mutate, or too slow, or from a writer Melian does not trust to run code. */
-export function mutationSkipHasLeave(reason: string): boolean {
-	return leaveReasons.some((pattern) => pattern.test(reason));
+export function mutationSkipHasLeave(reason: string | undefined): boolean {
+	return leaveReasons.some((pattern) => pattern.test(String(reason)));
 }
 
 /** What {@link normaliseMutationReport} reads a Stryker report against. */
