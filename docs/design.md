@@ -475,16 +475,17 @@ Solution: which model plays which role is a lookup, never a model's judgement. A
 
 The plan derives a family from the catalogue name: drop the vendor prefix and parenthesised qualifier, then take the first word. Bedrock's "Claude Opus 5.5 (US)" and OpenRouter's "Anthropic: Claude Opus 5.5" both yield `claude`; "GPT-5.5" yields `gpt`. It tries another family first, preserving route order within each group. An unrouted verifier falls back to heavy, medium, then light lens routes, recording lineage. Refused tiers never fall back. `--model` still routes lens tiers only; their route supplies the verifier fallback. A library call without a plan uses `config.models.verifier`, otherwise its finder's route. Doctor prints families and warns on fallback or same-family verification.
 
-A committed `melian.yaml` may carry the team's default routes. A committed route is a default: an engineer without its credential gets a derived route and a doctor line saying so, so rolling Melian out to a team is mostly distributing credentials. A route gains three keys:
+A committed `melian.yaml` may carry the team's default routes. Melian's own routes `heavy` to `openai-codex/gpt-6.1-sol` and `medium` to `openai-codex/gpt-5.6-terra`, with Claude and `openai/gpt-5.5` as accepted fallbacks, and routes `verifier` to `anthropic/claude-sonnet-5-5`, so a verifier never shares its finder's family ([decisions/2026-10-07-committed-routes.md](decisions/2026-10-07-committed-routes.md)). A committed route is a default: an engineer without its credential gets a derived route and a doctor line saying so, so rolling Melian out to a team is mostly distributing credentials. A route gains three keys:
 
 ```yaml
 models:
   heavy:
-    model: anthropic/claude-opus-5-5
-    fallbacks: [openai/gpt-5.5]
-    accept: [anthropic/claude-opus-5-5, openai/gpt-5.5]
+    model: openai-codex/gpt-6.1-sol
+    fallbacks: [anthropic/claude-opus-5-5, openai/gpt-5.5]
+    accept: [openai-codex/gpt-6.1-sol, anthropic/claude-opus-5-5, openai/gpt-5.5]
   verifier:
-    accept: [openai/gpt-5.5, anthropic/claude-opus-5-5]
+    model: anthropic/claude-sonnet-5-5
+    accept: [anthropic/claude-sonnet-5-5, anthropic/claude-opus-5-5]
     unavailable: fail
     acceptOverridden: false
 ```
