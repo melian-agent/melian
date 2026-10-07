@@ -106,6 +106,27 @@ describe("ToolManifest", () => {
 		expect(() => ToolManifest.parse(JSON.stringify(state))).toThrow();
 	});
 
+	it("refuses a download URL whose dot-segments resolve outside the declared repository and tag", () => {
+		const base = "https://github.com/enola-labs/enola/releases/download/v0.4.27/";
+		for (const url of [
+			`${base}../../../../../other/repo/releases/download/v1/x.tar.gz`,
+			`${base}%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/other/repo/releases/download/v1/x.tar.gz`,
+			`${base}./x.tar.gz`,
+		]) {
+			const state = structuredClone(stored);
+			state.tools.enola.platforms["darwin-arm64"].url = url;
+			expect(() => ToolManifest.parse(JSON.stringify(state)), url).toThrow(ToolManifestError);
+		}
+		const state = structuredClone(stored);
+		state.tools.enola.source.repository = "../x";
+		for (const pin of Object.values(state.tools.enola.platforms) as { url: string }[])
+			pin.url = "https://github.com/x/releases/download/v0.4.27/x.tar.gz";
+		state.tools.enola.source.tag = "v0.4.27";
+		expect(() => ToolManifest.parse(JSON.stringify(state))).toThrow(ToolManifestError);
+		state.tools.enola.source.repository = "enola-labs/..";
+		expect(() => ToolManifest.parse(JSON.stringify(state))).toThrow(ToolManifestError);
+	});
+
 	it("refuses ranges, unknown keys, invalid timestamps, and future exceptions", () => {
 		for (const change of [{ version: "^0.4.27" }, { unexpected: true }, { published: "yesterday" }]) {
 			const state = structuredClone(stored);

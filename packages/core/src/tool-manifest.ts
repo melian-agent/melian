@@ -99,8 +99,9 @@ export class ToolManifest {
 						url.port ||
 						url.search ||
 						url.hash ||
-						!pin.url.startsWith(
-							`https://github.com/${tool.source.repository}/releases/download/${encodeURIComponent(tool.source.tag)}/`,
+						pin.url.slice(url.origin.length) !== url.pathname ||
+						!url.pathname.startsWith(
+							`/${tool.source.repository}/releases/download/${encodeURIComponent(tool.source.tag)}/`,
 						)
 					)
 						throw new Error(`${name}: download must use its declared GitHub repository and release tag`);
