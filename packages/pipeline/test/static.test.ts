@@ -91,7 +91,9 @@ describe("runStaticTool with Melian's own tools", () => {
 		expectCheckoutUntouched();
 	});
 
-	it("attempts both worktree removals and scratch removal after a cleanup timeout", { timeout: 60_000 }, async () => {
+	it("keeps the run's result and still removes scratch when a worktree removal times out", {
+		timeout: 60_000,
+	}, async () => {
 		const head = commit(repo, { "src/a.ts": "export const a = 1;\n" });
 		const env = createNodeExecutionEnv(repo);
 		const execute = env.exec.bind(env);
@@ -105,7 +107,8 @@ describe("runStaticTool with Melian's own tools", () => {
 			return execute(command, options, executionContext);
 		});
 		const remove = vi.spyOn(env, "remove");
-		await expect(runStaticTool({ ...input("biome", head), env }, context)).rejects.toMatchObject({ code: "timeout" });
+		const result = await runStaticTool({ ...input("biome", head), env }, context);
+		expect(result.status).toBe("ran");
 		expect(cleanup).toHaveLength(2);
 		expect(remove).toHaveBeenCalledWith(expect.any(String), { recursive: true, force: true }, context);
 		expect(existsSync(remove.mock.calls[0]![0])).toBe(false);
@@ -314,6 +317,28 @@ describe("runStaticTool with the repository's own tools", () => {
 		expectCheckoutUntouched();
 	});
 
+	it("reports the tool's own error when worktree cleanup also fails", { timeout: 60_000 }, async () => {
+		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });
+		fakeTool(
+			repo,
+			"tsc",
+			'if [ "$1" = "--version" ]; then echo "Version 0.0.1"; exit 0; fi\necho "out of memory"\nexit 134',
+		);
+		const env = createNodeExecutionEnv(repo);
+		const execute = env.exec.bind(env);
+		vi.spyOn(env, "exec").mockImplementation(async (command, options, executionContext) => {
+			if (command.includes("worktree remove --force --force")) {
+				return { ok: false, error: { name: "ExecutionError", code: "timeout", message: "cleanup timed out" } };
+			}
+			return execute(command, options, executionContext);
+		});
+		const error = await runStaticTool({ ...input("tsc", head), env }, context).then(
+			() => undefined,
+			(caught: unknown) => caught,
+		);
+		expect((error as CheckError).code).toBe("toolFailed");
+	});
+
 	it("measures a report that is a symlink by its target", { timeout: 60_000 }, async () => {
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "src/a.ts": lines("a") });
 		const big = join(repo, ".git", "big.sarif");
@@ -359,6 +384,44 @@ describe("runStaticTool and the user's worktrees", () => {
 		await log("biome", head);
 		expect(gitIn(repo, "worktree", "list", "--porcelain")).toContain(`worktree ${mine}`);
 		gitIn(repo, "worktree", "remove", "--force", mine);
+	});
+});
+
+describe("runStaticTool and a stale worktree that cannot be removed", () => {
+	it("still runs", { timeout: 60_000 }, async () => {
+		const head = commit(repo, { "src/a.ts": lines("export const a = 1;") });
+		const owner = join(dirname(repo), `melian-static-stale-${process.pid}`);
+		mkdirSync(owner);
+		gitIn(
+			repo,
+			"worktree",
+			"add",
+			"--quiet",
+			"--detach",
+			"--lock",
+			"--reason",
+			"melian-static pid 2147483646",
+			join(owner, "tree"),
+		);
+		const env = createNodeExecutionEnv(repo);
+		const execute = env.exec.bind(env);
+		const attempted: string[] = [];
+		vi.spyOn(env, "exec").mockImplementation(async (command, options, executionContext) => {
+			if (command.includes("worktree remove --force --force") && command.includes(owner)) {
+				attempted.push(command);
+				return { ok: false, error: { name: "ExecutionError", code: "timeout", message: "cleanup timed out" } };
+			}
+			return execute(command, options, executionContext);
+		});
+		try {
+			const result = await runStaticTool({ ...input("biome", head), env }, context);
+			expect(result.status).toBe("ran");
+			expect(attempted.length).toBeGreaterThan(0);
+		} finally {
+			vi.restoreAllMocks();
+			gitIn(repo, "worktree", "remove", "--force", "--force", join(owner, "tree"));
+			rmSync(owner, { recursive: true, force: true });
+		}
 	});
 });
 

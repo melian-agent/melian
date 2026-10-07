@@ -508,19 +508,14 @@ const lockReason = `melian-static pid ${process.pid}`;
 // command return at once, and the worktree would stay registered.
 async function removeWorktree(run: Run, scratch: string): Promise<void> {
 	const cleanup = new Run({ ...run.input, settings: { ...run.input.settings, timeout: 60 } }, backgroundContext);
-	let failure: unknown;
-	try {
-		for (const root of [posix.join(scratch, "base", "tree"), posix.join(scratch, "tree")]) {
-			try {
-				await cleanup.worktreeCommand(cleanup.git(`worktree remove --force --force ${quote(root)}`));
-			} catch (error) {
-				failure ??= error;
-			}
+	for (const root of [posix.join(scratch, "base", "tree"), posix.join(scratch, "tree")]) {
+		try {
+			await cleanup.worktreeCommand(cleanup.git(`worktree remove --force --force ${quote(root)}`));
+		} catch {
+			// Best effort: a cleanup failure must not replace the run's result or error.
 		}
-	} finally {
-		await run.input.env.remove(scratch, { recursive: true, force: true }, backgroundContext);
 	}
-	if (failure !== undefined) throw failure;
+	await run.input.env.remove(scratch, { recursive: true, force: true }, backgroundContext);
 }
 
 // A run killed with SIGKILL leaves its worktree registered and its directory in place, which `git worktree prune`
