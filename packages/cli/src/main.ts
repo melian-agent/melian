@@ -170,7 +170,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				throw new UsageError(`unknown command ${name}`);
 		}
 	} catch (error) {
-		const usageError = error instanceof UsageError || String((error as { code?: unknown }).code).startsWith("ERR_PARSE_ARGS");
+		const usageError =
+			error instanceof UsageError || String((error as { code?: unknown }).code).startsWith("ERR_PARSE_ARGS");
 		// A message can quote what a repository, a reviewer's file, or GitHub supplied, so it prints as visible text.
 		io.stderr(`melian: ${visibleText(error instanceof Error ? error.message : String(error))}\n`);
 		if (usageError) {

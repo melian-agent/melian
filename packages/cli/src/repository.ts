@@ -28,7 +28,9 @@ export async function stateDirectory(repoRoot: string, env: NodeJS.ProcessEnv): 
 		return (await CacheLocation.open(repoRoot, env)).root;
 	} catch (error) {
 		const { stderr, message } = error as { stderr?: unknown; message: string };
-		throw new CliError(`git rev-parse failed: ${typeof stderr === "string" && stderr.trim() ? stderr.trim() : message}`);
+		throw new CliError(
+			`git rev-parse failed: ${typeof stderr === "string" && stderr.trim() ? stderr.trim() : message}`,
+		);
 	}
 }
 
