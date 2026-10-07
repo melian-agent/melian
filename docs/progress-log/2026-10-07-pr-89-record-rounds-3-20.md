@@ -75,11 +75,11 @@ Round fifteen, `fix89o-report.md`: `18f7e5d3`, `5c90a137`, `3eb8ce60`, `2588be9e
 
 Round sixteen, `fix89p-report.md`: a fix that reports a failed state-directory lookup as a message, and a style commit.
 
-Round seventeen, `fix89q-report.md`: `95ff0167`, a commit that untracked tmp files, and a documentation commit.
+Round seventeen, `fix89q-report.md` (a later pass reused the name, so the file now holds round twenty-two's report): `95ff0167`, a commit that untracked tmp files, and a documentation commit.
 
 Round eighteen, `merge89c-report.md`: `8ddb1a06`, `d086ba8f`, `af3b7b92` moving the record off the code branch, and `520ff5f8`.
 
-Round nineteen, `fix89r-report.md`: `496bffb9`.
+Round nineteen, `fix89r-report.md` (reused by round twenty-three's pass, so the file now holds that report): `496bffb9`.
 
 Round twenty, `fix89s-report.md`: `3aaeb838` dot-segment URLs, `373e80e7` miss rules, and `74a45a5a` the graph cache bound.
 
