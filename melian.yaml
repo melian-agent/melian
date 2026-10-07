@@ -22,11 +22,13 @@ models:
 
 tiers:
   fast: [guardrails, static.biome, static.tsc, static.enola]
-  # The default full tier, plus Melian's own repository lens under .melian/lenses/.
-  full: [standard, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions, lens.durability, lens.design]
+  # The default full tier, plus mutation testing of the changed lines and Melian's own repository lenses under
+  # .melian/lenses/. Mutation testing runs Stryker over the whole test suite, so it stays out of the fast tiers.
+  full: [standard, static.mutation, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions, lens.durability, lens.design]
 
 static:
   enola: { enabled: true }
+  mutation: { enabled: true, timeout: 3600 }
 
 # The golden corpus seeds defects on purpose, so no lens reviews a golden's trees as Melian's own code.
 lenses:
