@@ -29,16 +29,12 @@ export function modelsOf(handle: ReviewModels): MutableModels {
 /**
  * Whether `provider` holds credentials, as planning counts them: a named credential whose command has not run counts
  * as present. Asking runs no command, so a review that spends no tokens runs none; the command runs when the review
- * unlocks credentials, or on the first request that needs it.
+ * unlocks credentials, or on the first request that needs it. Only an absent credential reads as false: a Pi store that
+ * cannot be read raises its `PiCredentialsError`, naming the file, as it did before this check.
  */
 export async function hasCredentials(models: ReviewModels, provider: string): Promise<boolean> {
 	const described = await stores.get(models)?.describe(provider);
-	return (
-		described !== undefined ||
-		(await modelsOf(models)
-			.checkAuth(provider)
-			.catch(() => undefined)) !== undefined
-	);
+	return described !== undefined || (await modelsOf(models).checkAuth(provider)) !== undefined;
 }
 
 /** The IDs of the providers in `models` that hold credentials, sorted, for a host that reports readiness. */

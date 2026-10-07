@@ -73,6 +73,7 @@ describe("piCredentialStore", () => {
 		const error = await credentials
 			.modify("anthropic", async () => ({ type: "api_key", key: "new" }))
 			.catch((e) => e);
+		console.log("DBG", error, (error as Error).cause);
 		expect(error).toBeInstanceOf(PiCredentialsError);
 		expect(error).toMatchObject({ code: "readOnly", path: authPath });
 		await expect(credentials.delete("anthropic")).rejects.toThrow(PiCredentialsError);
@@ -143,6 +144,7 @@ describe("createReviewModels", () => {
 		const error = (await piCredentialStore(authPath)
 			.read("anthropic")
 			.catch((e: unknown) => e)) as Error;
+		console.log("DBG", error, (error as Error).cause);
 		expect(error).toBeInstanceOf(PiCredentialsError);
 		expect(JSON.stringify({ message: error.message, cause: String(error.cause) })).not.toContain("sk-ant");
 	});
@@ -259,10 +261,12 @@ describe("MelianCredentialStore", () => {
 			expect(await hasCredentials(fake.review, "fake-key")).toBe(false);
 		});
 
-		it("is false, rather than throwing, when the collection's own check fails", async () => {
+		it("raises the store's error, naming the file, when Pi's auth.json is corrupt", async () => {
+			writeFileSync(authPath, "{");
 			const fake = createFakeModels({ provider: "fake-key", credentials: [], authPath });
-			vi.spyOn(modelsOf(fake.review), "checkAuth").mockRejectedValue(new Error("unreadable"));
-			expect(await hasCredentials(fake.review, "fake-key")).toBe(false);
+			const error = await hasCredentials(fake.review, "fake-key").catch((caught: unknown) => caught);
+			expect((error as Error).message).toContain(authPath);
+			expect((error as Error).cause).toBeInstanceOf(PiCredentialsError);
 		});
 	});
 
