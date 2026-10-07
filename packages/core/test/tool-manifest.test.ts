@@ -163,6 +163,20 @@ describe("ToolManifest", () => {
 		expect(ToolManifest.parse(JSON.stringify(state)).check(Date.parse("2026-10-06T12:00:00Z"), 2)).toHaveLength(1);
 	});
 
+	it.each([
+		["a clock that is not a number", Number.NaN, 2],
+		["a window that is not a number", 1_000, Number.NaN],
+		["a negative window", 1_000, -1],
+	])("refuses %s", (_label, now, window) => {
+		const manifest = ToolManifest.parse(JSON.stringify(stored));
+		expect(() => manifest.check(now, window)).toThrow(ToolManifestError);
+		try {
+			manifest.check(now, window);
+		} catch (error) {
+			expect(error).toMatchObject({ code: "quarantine" });
+		}
+	});
+
 	it("refuses a young release without an exception and permits it after two days", () => {
 		const state = structuredClone(stored);
 		delete state.tools.enola.exception;
