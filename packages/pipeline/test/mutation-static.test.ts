@@ -993,6 +993,13 @@ describe("staticToolSource for Stryker", () => {
 	});
 });
 
+describe("staticToolSource for a tool Melian carries", () => {
+	it.each(["biome", "tsc"] as const)("is Melian's own %s when the checkout has none", (tool) => {
+		const source = staticToolSource(repo, tool);
+		expect(source).toEqual({ from: "melian", path: expect.stringContaining(`/${tool}`) });
+	});
+});
+
 describe("strykerVersion", () => {
 	it("reads the checkout's install, and is unavailable when it has none or none that names a version", () => {
 		expect(strykerVersion(repo)).toBe("unavailable");
