@@ -1,5 +1,6 @@
 import { posix } from "node:path";
-import { compileGlob } from "./pattern.ts";
+import { CheckError } from "./errors.ts";
+import { compileGlob, Refused } from "./pattern.ts";
 
 // Which analyser a configuration file steers, by its name.
 export function analyserOf(path: string): string | undefined {
@@ -68,10 +69,24 @@ function biomeExclusions(config: unknown): string[] {
 	];
 }
 
-function excludes(globs: readonly string[], path: string): boolean {
+// A glob past the engine's step limit fails the guardrails check, naming the configuration and why; it never reads as
+// a glob that excludes nothing.
+function excludes(globs: readonly string[], path: string, configuration: string): boolean {
 	return globs.some((glob) => {
 		const bare = glob.replace(/^\.\//, "").replace(/\/+$/, "");
-		return compileGlob(bare).test(path) || compileGlob(`${bare}/**`).test(path);
+		try {
+			return compileGlob(bare).test(path) || compileGlob(`${bare}/**`).test(path);
+		} catch (error) {
+			if (!(error instanceof Refused)) throw error;
+			throw new CheckError(
+				"unreadable",
+				"guardrails",
+				`${configuration} holds a glob Melian refuses: ${error.reason}`,
+				{
+					cause: error,
+				},
+			);
+		}
 	});
 }
 
@@ -106,7 +121,7 @@ export function switchOffs(
 			.filter((each) => directory === "." || each.startsWith(`${directory}/`))
 			.map((each) => (directory === "." ? each : each.slice(directory.length + 1)));
 		const [was, is] = [biomeExclusions(before), biomeExclusions(after)];
-		const ignored = relative.filter((each) => excludes(is, each) && !excludes(was, each));
+		const ignored = relative.filter((each) => excludes(is, each, path) && !excludes(was, each, path));
 		if (ignored.length > 0) found.push(`It makes Biome ignore ${ignored.join(", ")}, which this change touches.`);
 	}
 	return found;
