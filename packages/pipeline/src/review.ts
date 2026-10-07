@@ -1828,12 +1828,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const key = `${run.name}@${run.version}`;
 		const noted = notes.get(key) ?? [];
 		const at = leading.get(key) ?? 0;
-		// From the stored runs, so a repeat call that could not read the functions repeats the first call's record.
-		const first = ran.lenses.find((each) => each.name === run.name && each.version === run.version);
-		const escalated = first !== undefined && settledLens.run.key !== first.key;
-		const unread = [...new Set([...(escalated ? [first.unread] : []), settledLens.run.unread])].flatMap((reason) =>
-			reason === undefined ? [] : [unreadFunctions(reason)],
-		);
+		const unread = settledLens.run.unread === undefined ? [] : [unreadFunctions(settledLens.run.unread)];
 		return {
 			...settledLens,
 			notes: [

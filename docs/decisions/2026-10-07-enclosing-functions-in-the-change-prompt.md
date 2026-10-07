@@ -20,3 +20,5 @@ Choice: a sweep with a heap finds each added line's innermost function in one pa
 
 
 Supersedes: [2026-10-04-reading-scope-as-an-instruction.md](2026-10-04-reading-scope-as-an-instruction.md).
+
+One `unread` reason per lens suffices: `enclosing()` is memoised per review, so a lens and its escalated run hold the same reason, and a repeat call that could not read the functions repeats the stored run's.
