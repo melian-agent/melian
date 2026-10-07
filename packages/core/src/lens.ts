@@ -836,6 +836,7 @@ export class Lens {
 	 * which come from the change, so the caller must mark them as its data: it is required with `neighbours`. Throws
 	 * {@link LensError} `unknownLevel` for a level the lens does not declare. Worktree standards use one quoted block
 	 * per section; revision standards stay plain. The quote callback receives the standards label for those blocks.
+	 * `context` adds advisory sections after the lens policy; the host must quote repository data they contain.
 	 */
 	renderInstructions(standards: readonly StandardsSection[], level?: ScrutinyLevel): string;
 	renderInstructions(
@@ -844,6 +845,7 @@ export class Lens {
 		neighbours: readonly LensNeighbour[],
 		quote: (text: string, label?: "listing" | "standards") => string,
 		standardsSource?: RepositorySource["kind"],
+		context?: string,
 	): string;
 	renderInstructions(
 		standards: readonly StandardsSection[],
@@ -851,11 +853,13 @@ export class Lens {
 		neighbours: readonly LensNeighbour[] = [],
 		quote: (text: string, label?: "listing" | "standards") => string = unquoted,
 		standardsSource: RepositorySource["kind"] = "revision",
+		context = "",
 	): string {
 		const instructions = [
 			this.instructions,
 			...this.#handoffs(neighbours, quote),
 			this.#policy(this.level(level)),
+			...(context ? [context] : []),
 		].join("\n\n");
 		if (!this.standards || standards.length === 0) return instructions;
 		const sections = standards.map((section) => {

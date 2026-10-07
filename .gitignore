@@ -13,3 +13,8 @@ coverage/
 
 # Local reports and handovers, never committed
 tmp/
+
+# Reviewer-owned manifest copied only for packaging
+/packages/pipeline/tools.yaml
+
+/packages/pipeline/release-policy.npmrc

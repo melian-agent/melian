@@ -1,12 +1,15 @@
-import { rmSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import {
 	Changeset,
 	CheckError,
 	defaultConfig,
+	type EnolaSnapshot,
 	type Finding,
 	loadConfig,
+	normaliseEnolaSarif,
 	type RepositorySource,
+	ToolManifest,
 } from "@melian-agent/core";
 import {
 	checksExtension,
@@ -18,13 +21,16 @@ import {
 	openHarness,
 	readCheckRecords,
 	readFindings,
+	readVerdict,
 	reviewChangeset,
 	revisionKey,
 	runChecks,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { findingsVersion } from "../src/findings.ts";
+import * as staticRunner from "../src/static.ts";
+import { ToolProvisioning } from "../src/tool-provisioning.ts";
 import { commit, createRepository, fakeTool, lines, removeRepository } from "./fixtures/repo.ts";
 
 let repo: string;
@@ -197,6 +203,21 @@ describe("runChecks", () => {
 		]);
 	});
 
+	it("runs again when Melian's tool pins differ, rather than returning the earlier run", {
+		timeout: 60_000,
+	}, async () => {
+		const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+		const head = commit(repo, { "src/a.ts": lines("a") });
+		const { harness, input } = await checks(base, head);
+		const first = await runChecks(harness, input, context);
+		const text = readFileSync(new URL("../../../tools.yaml", import.meta.url), "utf8");
+		const newer = ToolManifest.parse(text.replace("version: 0.4.27", "version: 0.4.28"));
+		vi.spyOn(ToolProvisioning, "manifest").mockResolvedValue(newer);
+		const second = await runChecks(harness, input, context);
+		expect(second.identity.policy).not.toBe(first.identity.policy);
+		expect(second.identity.task).not.toBe(first.identity.task);
+	});
+
 	it("records a fast and a full run of one head apart", { timeout: 120_000 }, async () => {
 		const base = commit(repo, {
 			"melian.yaml": lines("tiers:", "  fast: [guardrails]", "  full: [fast, static.biome]"),
@@ -287,6 +308,61 @@ describe("runChecks", () => {
 });
 
 describe("runChecks feeding reviewChangeset", () => {
+	it("preserves Enola snapshot lineage and coverage IDs through durable checks and verdicts", {
+		timeout: 60_000,
+	}, async () => {
+		const base = commit(repo, {
+			"melian.yaml": lines("tiers:", "  fast: [static.enola]", "static:", "  enola:", "    enabled: true"),
+			"src/a.ts": "export const a = 1;\n",
+		});
+		const head = commit(repo, { "src/a.ts": "export const a = 2;\n" });
+		const snapshots: EnolaSnapshot[] = [base, head].map((commit, index) => ({
+			commit,
+			snapshotId: `sha256:${String(index + 1).repeat(64)}`,
+			receipt: JSON.stringify({ format_version: 1, snapshot_id: `sha256:${String(index + 1).repeat(64)}` }),
+			cacheKey: String(index + 3).repeat(64),
+			coverage: { graph: String(index + 5).repeat(64), test: String(index + 7).repeat(64) },
+		}));
+		const log = normaliseEnolaSarif('{"version":"2.1.0","runs":[{"results":[]}]}', {
+			root: repo,
+			version: "0.0.1",
+		});
+		const runner = vi.spyOn(staticRunner, "runStaticTool").mockResolvedValue({
+			status: "ran",
+			log,
+			baseLog: log,
+			notes: [],
+			snapshots: structuredClone(snapshots),
+		});
+		try {
+			const { harness, fake, root, input, run } = await checks(base, head);
+			const record = { name: "static.enola", status: "ran", version: "0.0.1", findings: 0, notes: [], snapshots };
+			expect(runner).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ tool: "enola", base, commit: head }),
+				expect.anything(),
+			);
+			expect(run.records).toEqual([record]);
+			expect(await readCheckRecords(harness, root.id, run.identity, context)).toEqual({ "static.enola": record });
+			const { verdict } = await reviewChangeset({
+				harness,
+				changeset: input.changeset,
+				config: input.config,
+				policy: input.source,
+				lenses: [],
+				standards: [],
+				models: fake.review,
+				tier: "fast",
+				checks: run.records,
+			});
+			expect(verdict.status).toBe("passed");
+			expect(verdict.ran).toEqual([record]);
+			const stored = await readVerdict(harness, root.id, revisionKey({ base, head }), context);
+			expect(stored?.toJSON().ran).toEqual([record]);
+		} finally {
+			runner.mockRestore();
+		}
+	});
+
 	it("passes a clean change under the default fast tier and counts a static finding once the head adds one", {
 		timeout: 120_000,
 	}, async () => {

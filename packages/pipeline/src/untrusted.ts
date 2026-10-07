@@ -13,6 +13,7 @@ export type UntrustedLabel =
 	| "listing"
 	| "evidence"
 	| "findings"
+	| "callers"
 	| "standards";
 
 /**

@@ -1,0 +1,3 @@
+# Pull request 89, round twenty-seven fix
+
+Round twenty-seven found that two different unlocated Enola results of one rule hashed to one finding ID when `enola-intent.yaml` existed with a non-blank first line, so a result the head swapped in for one the base had read as `pre-existing` and never blocked. The fix commit, whose SHA the pull request lists, identifies an Enola result at line 1 of the intent file with no column or end line by its message, whatever the file holds. Located results keep their snippet identities. The regression tests cover the swap, the unchanged message, and a located result on the same line.

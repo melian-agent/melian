@@ -101,4 +101,11 @@ export {
 
 export const packageName = "@melian-agent/pipeline";
 
+export { CallerContext, type CallerData, type CallerGroup } from "./callers.ts";
+export { CoverageCache } from "./coverage-cache.ts";
+export { EnolaCoverage } from "./enola-coverage.ts";
+export { GraphCache } from "./graph-cache.ts";
+export { ReviewTranscript } from "./review-coverage.ts";
 export { summarizeReview } from "./summarize.ts";
+export { type ToolBinaryReceipt, ToolCache, ToolCacheError, type ToolFetch } from "./tool-cache.ts";
+export { CacheLocation, ToolProvisioning } from "./tool-provisioning.ts";

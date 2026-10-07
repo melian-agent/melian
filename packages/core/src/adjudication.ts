@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { type MelianConfig, type Resolution, type RuleAlias, resolutionOrder } from "./config.ts";
+import type { EnolaSnapshot } from "./enola.ts";
 import {
 	type AlsoReportedAs,
 	Finding,
@@ -179,6 +180,10 @@ export interface CheckRecord {
 	 * counts only that version's findings for the check; without it, every version's.
 	 */
 	readonly version?: string;
+	/** Snapshot identities and their receipts when a graph tool ran. */
+	readonly snapshots?: readonly EnolaSnapshot[];
+	/** Coverage content IDs, when the check captured an artifact. */
+	readonly coverage?: { graph?: string; review?: string; test?: string };
 	/** The scrutiny level a lens ran at, or was to run at when it failed. Other checks have none. */
 	readonly level?: ScrutinyLevel;
 	/**
@@ -293,6 +298,8 @@ export type StoredCheckRecord = {
 	reason?: string;
 	error?: string;
 	version?: string;
+	snapshots?: EnolaSnapshot[];
+	coverage?: { graph?: string; review?: string; test?: string };
 	level?: ScrutinyLevel;
 	budgetEnded?: { budget: "tokens" | "tools"; limit: number; tokens: number; tools: number };
 	lineage?: {
@@ -303,6 +310,14 @@ export type StoredCheckRecord = {
 		outside: boolean;
 	};
 };
+
+function storedCheck(record: CheckRecord): StoredCheckRecord {
+	const { snapshots, ...fields } = record;
+	return {
+		...fields,
+		...(snapshots === undefined ? {} : { snapshots: snapshots.map((snapshot) => ({ ...snapshot })) }),
+	};
+}
 
 /** A {@link Verdict} as JSON, which a Pi Durable document can hold. */
 export type StoredVerdict = {
@@ -680,8 +695,8 @@ export class Verdict {
 			blocking: this.blocking,
 			findings,
 			dismissed: this.dismissed.map(stored),
-			notRun: [...this.notRun],
-			...(this.ran === undefined ? {} : { ran: [...this.ran] }),
+			notRun: this.notRun.map(storedCheck),
+			...(this.ran === undefined ? {} : { ran: this.ran.map(storedCheck) }),
 			...(this.refuted === undefined ? {} : { refuted: this.refuted.map(stored) }),
 		};
 	}

@@ -2,7 +2,7 @@ import type { MelianConfig } from "./config.ts";
 import { CheckError } from "./errors.ts";
 
 /** The checks Melian runs without a model. Lenses (`lens.<name>`) and decision questions (`decisions.<name>`) run elsewhere. */
-export const deterministicChecks = ["guardrails", "static.biome", "static.tsc"] as const;
+export const deterministicChecks = ["guardrails", "static.biome", "static.tsc", "static.enola"] as const;
 
 /** A check Melian runs without a model. */
 export type DeterministicCheck = (typeof deterministicChecks)[number];
@@ -12,7 +12,7 @@ const groups: Readonly<Record<string, readonly string[]>> = { static: ["static.b
 
 /**
  * The checks a tier names, in order and without repeats. A name that is itself a tier expands to that tier's checks, and
- * `static` expands to every static tool. Throws `CheckError` `unknownTier` for a tier the configuration does not define,
+ * `static` expands to Biome and tsc; name `static.enola` explicitly. Throws `CheckError` `unknownTier` for a tier the configuration does not define,
  * and `tierCycle` for a tier that includes itself.
  */
 export function checksOfTier(config: Pick<MelianConfig, "tiers">, tier: string): string[] {

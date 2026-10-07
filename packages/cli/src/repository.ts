@@ -1,9 +1,7 @@
 import { execFile } from "node:child_process";
-import { createHash } from "node:crypto";
-import { realpathSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
-import { isAbsolute, join, resolve } from "node:path";
-import { openSqliteStorage } from "@melian-agent/pipeline";
+import { join } from "node:path";
+import { CacheLocation, openSqliteStorage } from "@melian-agent/pipeline";
 
 export function git(cwd: string, args: readonly string[]): Promise<string> {
 	return new Promise((done, fail) => {
@@ -25,16 +23,15 @@ export class CliError extends Error {
 /** The environment variable naming a directory for Melian's storage, for a host that cannot write under `.git`. */
 export const stateDirectoryVariable = "MELIAN_STATE_DIR";
 
-// `melian/` in the common git directory, so every worktree of a clone shares one storage per changeset. Under
-// MELIAN_STATE_DIR, a directory per clone: a range's changeset ID hashes only its ref names, so two clones reviewing
-// main...HEAD would otherwise share a file.
 export async function stateDirectory(repoRoot: string, env: NodeJS.ProcessEnv): Promise<string> {
-	const reported = await git(repoRoot, ["rev-parse", "--git-common-dir"]);
-	const common = isAbsolute(reported) ? reported : resolve(repoRoot, reported);
-	const configured = env[stateDirectoryVariable] ?? "";
-	if (configured === "") return join(common, "melian");
-	const clone = createHash("sha256").update(realpathSync(common)).digest("hex").slice(0, 16);
-	return join(resolve(repoRoot, configured), clone);
+	try {
+		return (await CacheLocation.open(repoRoot, env)).root;
+	} catch (error) {
+		const { stderr, message } = error as { stderr?: unknown; message: string };
+		throw new CliError(
+			`git rev-parse failed: ${typeof stderr === "string" && stderr.trim() ? stderr.trim() : message}`,
+		);
+	}
 }
 
 export async function storagePath(

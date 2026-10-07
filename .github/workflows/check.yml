@@ -28,6 +28,8 @@ jobs:
         run: npm install -g npm@11.19.0
       - run: npm ci --ignore-scripts
       - run: npm run check
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       # The publish check. The tests run the CLI from source, so nothing else builds dist/, packs it, or runs the
       # shim's tarball branch. `! grep` would not fail a step under bash -e, hence the if.
       - name: Pack, install, and run the published CLI
@@ -48,5 +50,12 @@ jobs:
           node_modules/.bin/melian --help > "$RUNNER_TEMP/help.out" 2> "$RUNNER_TEMP/help.err"
           grep -q '^Usage: melian ' "$RUNNER_TEMP/help.out"
           if [ -s "$RUNNER_TEMP/help.err" ]; then cat "$RUNNER_TEMP/help.err"; echo "melian --help wrote to stderr"; exit 1; fi
+          git init -q
+          mkdir "$RUNNER_TEMP/config" "$RUNNER_TEMP/pi"
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/config" PI_CODING_AGENT_DIR="$RUNNER_TEMP/pi"
+          node_modules/.bin/melian tools > "$RUNNER_TEMP/tools.out"
+          grep -q '^enola@.*not yet fetched' "$RUNNER_TEMP/tools.out"
+          node_modules/.bin/melian doctor > "$RUNNER_TEMP/doctor.out"
+          grep -q 'tool enola.*not yet fetched' "$RUNNER_TEMP/doctor.out"
       - name: Fail if check rewrote files
         run: git diff --exit-code

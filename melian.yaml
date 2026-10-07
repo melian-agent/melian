@@ -21,11 +21,14 @@ models:
     accept: [anthropic/claude-sonnet-5-5, anthropic/claude-opus-5-5, openai/gpt-5.5]
 
 tiers:
-  fast: [guardrails, static.biome, static.tsc]
+  fast: [guardrails, static.biome, static.tsc, static.enola]
   # The default full tier, plus Melian's own repository lens under .melian/lenses/.
   full: [standard, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions, lens.durability, lens.design]
 
-# The golden corpora seed changes on purpose, so no lens reviews a golden's trees as Melian's own code.
+static:
+  enola: { enabled: true }
+
+# The golden corpus seeds defects on purpose, so no lens reviews a golden's trees as Melian's own code.
 lenses:
   correctness: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
   contracts: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }

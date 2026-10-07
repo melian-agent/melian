@@ -1,12 +1,14 @@
 import {
 	Adjudication,
 	type AlsoReportedAs,
+	type CheckRecord,
 	defaultConfig,
 	Finding,
 	type FindingInput,
 	loadConfig,
 	type MelianConfig,
 	type Resolution,
+	Verdict,
 } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { evalInput } from "./fixtures/findings.ts";
@@ -664,4 +666,23 @@ describe("Adjudication.adjudicate", () => {
 		expect(verdict.findings.block[0]!.properties.alsoReportedAs).toEqual([reportOf(eslint)]);
 		expect(verdict.findings.acknowledge).toEqual([]);
 	});
+});
+
+it("retains snapshot lineage and coverage IDs across stored verdict upgrades", () => {
+	const record: CheckRecord = {
+		name: "static.enola",
+		status: "ran",
+		snapshots: [{ commit: "a".repeat(40), snapshotId: "sha256:abc", receipt: "timestamp and scratch path" }],
+		coverage: { graph: "g", review: "r", test: "t" },
+	};
+	const verdict = new Adjudication({
+		findings: [],
+		manifest: [record.name],
+		checks: [record],
+		config: defaultConfig,
+	}).adjudicate();
+	const stored = verdict.toJSON();
+	expect(Verdict.from(Verdict.upgrade(JSON.parse(JSON.stringify(stored)))).toJSON().ran).toEqual([record]);
+	const legacy = { ...stored, ran: [{ name: record.name, status: "ran" as const }] };
+	expect(Verdict.from(Verdict.upgrade(legacy)).toJSON().ran).toEqual(legacy.ran);
 });

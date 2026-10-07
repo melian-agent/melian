@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { isAbsolute, join, posix, relative, resolve, sep } from "node:path";
+import { enolaPolicyPattern } from "./enola-paths.ts";
 import { OutsideRepositoryError } from "./errors.ts";
 
 /**
@@ -35,13 +36,18 @@ export const analyserConfigNames = [
 	"package-lock.json",
 	".eslintrc*",
 	"eslint.config.*",
+	"enola.yaml",
+	"mcp-arch.yaml",
+	"enola-intent.yaml",
+	"enola/constraints/**",
+	".enola/suppressions.yaml",
 ] as const;
 
 const analyserConfig = /^(?:biome\.jsonc?|tsconfig.*\.json|package(?:-lock)?\.json|\.eslintrc.*|eslint\.config\..*)$/;
 
 // Whether a repository-relative path configures a static tool, by its name alone.
 export function isAnalyserConfig(path: string): boolean {
-	return analyserConfig.test(path.split("/").at(-1)!);
+	return analyserConfig.test(path.split("/").at(-1)!) || enolaPolicyPattern.test(path);
 }
 
 // Whether a repository-relative path steers Melian: a melian.yaml, a standards file, anything under a .melian/, or a

@@ -1,0 +1,3 @@
+# Remaining cheap review fixes
+
+For [pull request #89](https://github.com/melian-agent/melian/pull/89), corrected checksOfTier’s static-group API text (4540f7489b1c919a), split the publish-check sentence (77f062ec7ddc07c8), and replaced nested impact import scans with a source set (765555714b593af2). Existing import tests cover target and location negatives. EnolaFacts construction visits each fact and relation once; 5d4a61d588f38b7c’s quadratic claim is refuted. Other advisories retain the first pass’s fixes and adjudications. Broader compiler and transcript parser refactors remain separate work.

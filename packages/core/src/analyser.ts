@@ -1,9 +1,11 @@
 import { posix } from "node:path";
+import { enolaPolicyPattern } from "./enola-paths.ts";
 import { CheckError } from "./errors.ts";
 import { compileGlob, Refused } from "./pattern.ts";
 
 // Which analyser a configuration file steers, by its name.
 export function analyserOf(path: string): string | undefined {
+	if (enolaPolicyPattern.test(path)) return "Enola";
 	const name = posix.basename(path);
 	if (/^biome\.jsonc?$/.test(name)) return "Biome";
 	if (/^tsconfig.*\.json$/.test(name)) return "tsc";

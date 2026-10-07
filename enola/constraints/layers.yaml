@@ -1,0 +1,17 @@
+components:
+  - name: core-imports
+    kind: dependency
+    match: ["packages/core/**"]
+  - name: pipeline
+    match: ["packages/pipeline/**"]
+rules:
+  - id: core-no-pipeline-package
+    forbid: core-imports
+    to_name: ["@melian-agent/pipeline", "@melian-agent/pipeline/*"]
+    via: imports
+    because: "Core must remain harness-free; the pipeline adapts core."
+  - id: core-no-pipeline-path
+    forbid: core-imports
+    to: pipeline
+    via: imports
+    because: "Core must remain harness-free; the pipeline adapts core."
