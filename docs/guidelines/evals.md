@@ -52,7 +52,7 @@ A golden for a repository lens, such as Melian's own `durability`, carries the l
 
 **Scripted** runs are part of `npm run check`. `runGolden(golden, { kind: "scripted" })` routes every tier to the fake model, answers each lens from `script.json` by matching its instructions in the system prompt, and returns the findings and their terminal rendering. The test requires precision and recall of 1, the expected cause, failure scenario, and evidence for each finding, and a rendering identical to `scripted.txt`. Scripted golden tests allow 60 seconds because they create git repositories and run durable conversations; a loaded gate can exceed Vitest's five-second default. Scripted runs prove the plumbing: lens selection, the lens tools reading the head revision, `report_finding`, the hook, the findings document, and rendering. They say nothing about whether a lens's prompt finds the defect, because the script finds it.
 
-After a deliberate change to rendering or to a golden, regenerate the snapshots with `npx vitest --run -u packages/evals/` and read the diff before committing.
+After a deliberate change to rendering or to a golden, regenerate the snapshots with `npx vitest --run packages/evals/ --update` and read the diff before committing.
 
 **Live** runs call real models and are never part of the gate. Run them with:
 
@@ -87,7 +87,7 @@ File and rule is a coarse match. Two findings under one rule in one file count a
 1. Write `base/` and `head/` so the change carries only the declared defects, or none for a clean golden. One change may carry more than one, as real changes do: `contracts-breaking-signature` breaks a caller and gets yen wrong. Declare every real defect, because a lens that finds an undeclared one is right and would score as noise.
 2. Write `expected.json`, naming for each defect the lens rule that should catch it, its cause, a failure scenario with concrete values, and the evidence locations that show it.
 3. Write `script.json` with the tool calls a good lens would make, each with the `expectToolResult` that proves its tool worked, ending each lens with a final answer. Each `report_finding` call carries the failure scenario and evidence its expected finding names.
-4. Run `npx vitest --run -u packages/evals/` to write `scripted.txt`, read it, and commit all of it.
+4. Run `npx vitest --run packages/evals/ --update` to write `scripted.txt`, read it, and commit all of it.
 5. Run the live eval if you have credentials, and record a miss as a learning about the lens, not by loosening the golden.
 
 A lens body's examples never restate a golden. Problem: an example drawn from a golden tells the lens the answer, so the golden measures recall of the prompt rather than judgement. Example: `removed-behaviour` once named "the worktree is removed even when the task throws" as an invariant, the very defect `removed-behaviour-dropped-cleanup` seeds. Solution: write examples in shapes no golden seeds, and when a golden is added, check the lens bodies for its shape.
