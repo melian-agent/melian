@@ -2628,7 +2628,6 @@ describe("adjudication", () => {
 		describe("a skipped static.mutation", () => {
 			const leave = [
 				["a change with no production lines", mutationSkips.noProductionLines],
-				["a change past maxLines", mutationSkips.pastBound(2001, 2000)],
 				["a writer that is not trusted", mutationSkips.untrustedWriter("octocat has read permission")],
 				["a run past its timeout", mutationSkips.timeout(3600)],
 			] as const;

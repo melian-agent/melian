@@ -137,7 +137,7 @@ A repository that turns on `static.mutation` sees its findings in the ordinary f
     What to do: Add or tighten a test in src/classify.test.ts so it fails when this code is changed as the mutant changed it, then restore the code.
 ```
 
-A mutant in code no test runs says `has no test coverage` instead. The check's record names Stryker's version and the lines it mutated. A change with no production lines, a change past `static.mutation.maxLines`, a run past its timeout, and a pull request from a writer who is not trusted each record the check as skipped, with the reason, and the review still finishes. A checkout with no Stryker records a skip that leaves the review not reviewed.
+A mutant in code no test runs says `has no test coverage` instead. The check's record names Stryker's version and the lines it mutated. A change past `static.mutation.maxLines` has its first `maxLines` lines mutated and a note naming the files not reached. A change with no production lines, a run past its timeout, and a writer who is not trusted each record the check as skipped, with the reason, and the review still finishes. A checkout with no Stryker records a skip that leaves the review not reviewed.
 
 `ToolInventory` uses the host’s environment for the state-directory rule. Listing and doctor re-hash cached executables without fetching. Only fetch repairs a mismatched entry. Fake-archive tests cover command routing, all three readiness states and repair.
 

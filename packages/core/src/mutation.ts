@@ -28,8 +28,6 @@ const longestCode = 160;
  */
 export const mutationSkips = {
 	noProductionLines: "the change adds or edits no production TypeScript lines",
-	pastBound: (count: number, maxLines: number) =>
-		`the change adds or edits ${count} production TypeScript lines, past static.mutation.maxLines of ${maxLines}`,
 	untrustedWriter: (detail: string) =>
 		`the writer is not a trusted one (${detail}), so Stryker did not run: static.mutation executes the head's own tests`,
 	timeout: (seconds: number) => `Stryker ran past static.mutation.timeout of ${seconds} seconds before it finished`,
@@ -37,12 +35,11 @@ export const mutationSkips = {
 
 const leaveReasons: readonly RegExp[] = [
 	/^the change adds or edits no production TypeScript lines$/,
-	/^the change adds or edits \d+ production TypeScript lines, past static\.mutation\.maxLines of \d+$/,
 	/^the writer is not a trusted one\b/,
 	/^Stryker ran past static\.mutation\.timeout of \d+ seconds before it finished$/,
 ];
 
-/** Whether a `static.mutation` skip with this reason lets a review pass: a change with nothing to mutate, or too big, or too slow, or from a writer Melian does not trust to run code. */
+/** Whether a `static.mutation` skip with this reason lets a review pass: a change with nothing to mutate, or too slow, or from a writer Melian does not trust to run code. */
 export function mutationSkipHasLeave(reason: string): boolean {
 	return leaveReasons.some((pattern) => pattern.test(reason));
 }

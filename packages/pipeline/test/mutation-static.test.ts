@@ -500,41 +500,63 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			};
 		}
 
-		it("mutates a change of exactly the bound, and skips one line past it without running Stryker", async () => {
-			const bound = head(5, "bound");
+		const lastEntries = (fake: { calls: () => string[][] }) =>
+			argumentsOf(fake.calls().at(-1)!).flag("--mutate")!.split(",");
+		const noteAbout = (result: Awaited<ReturnType<typeof mutate>>) => {
+			if (result.status !== "ran") throw new Error("skipped");
+			return result.notes.filter((note) => note.includes("static.mutation.maxLines"));
+		};
+
+		it("mutates a change of exactly the bound whole, with no note, and one line past it cut at the bound with a note", async () => {
 			const fake = stryker({ report: report({}) });
-			expect((await mutate(bound.base, bound.head, { maxLines: 5 })).status).toBe("ran");
-			expect(fake.calls()).toHaveLength(1);
+			const bound = head(5, "bound");
+			expect(noteAbout(await mutate(bound.base, bound.head, { maxLines: 5 }))).toEqual([]);
+			expect(lastEntries(fake)).toEqual(["packages/p/src/bound.ts:1-5"]);
 			const past = head(6, "past");
-			expect(await mutate(past.base, past.head, { maxLines: 5 })).toEqual({
-				status: "skipped",
-				reason: "the change adds or edits 6 production TypeScript lines, past static.mutation.maxLines of 5",
-			});
-			expect(fake.calls()).toHaveLength(1);
+			expect(noteAbout(await mutate(past.base, past.head, { maxLines: 5 }))).toEqual([
+				"1 of 6 changed production lines were past static.mutation.maxLines of 5 and were not mutated; files not reached: packages/p/src/past.ts.",
+			]);
+			expect(lastEntries(fake)).toEqual(["packages/p/src/past.ts:1-5"]);
+			expect(fake.calls()).toHaveLength(2);
 		});
 
-		it("counts every range of a file that changes in two places", async () => {
+		it("takes the first lines in path order, and names every file that has a line it did not reach", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/c.ts": lines("export const c = 1;", "export const d = 2;"),
+				"packages/p/src/b.ts": lines("export const b = 1;", "export const e = 2;", "export const f = 3;"),
+				"packages/p/src/a.ts": lines("export const a = 1;"),
+				"packages/p/src/d.ts": lines("export const g = 1;"),
+			});
+			const fake = stryker({ report: report({}) });
+			const result = await mutate(base, head, { maxLines: 3 });
+			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:1-1", "packages/p/src/b.ts:1-2"]);
+			expect(noteAbout(result)).toEqual([
+				"4 of 7 changed production lines were past static.mutation.maxLines of 3 and were not mutated; files not reached: packages/p/src/b.ts, packages/p/src/c.ts, packages/p/src/d.ts.",
+			]);
+			if (result.status !== "ran") throw new Error("skipped");
+			expect(result.notes).toContain("Stryker mutated 3 changed lines in 2 file(s); the base was not mutated.");
+		});
+
+		it("cuts a range the bound falls in, and counts every range of a file that changes in two places", async () => {
 			const ten = Array.from({ length: 10 }, (_, index) => `export const n${index} = ${index};`);
 			const base = commit(repo, { "stryker.config.json": config, "packages/p/src/a.ts": lines(...ten) });
 			const head = commit(repo, {
 				"packages/p/src/a.ts": lines(
-					...ten.map((row, index) => (index === 1 || index === 7 ? `${row} // edited` : row)),
+					...ten.map((row, index) =>
+						index >= 1 && index <= 3 ? `${row} // edited` : index === 7 ? `${row} // edited` : row,
+					),
 				),
 			});
-			stryker({ report: report({}) });
-			expect((await mutate(base, head, { maxLines: 2 })).status).toBe("ran");
-			expect((await mutate(base, head, { maxLines: 1 })).status).toBe("skipped");
-		});
-
-		it("counts the lines of every range in every file", async () => {
-			const base = commit(repo, { "stryker.config.json": config });
-			const two = commit(repo, {
-				"packages/p/src/a.ts": lines("export const a = 1;", "export const b = 2;"),
-				"packages/p/src/b.ts": lines("export const c = 3;"),
-			});
-			stryker({ report: report({}) });
-			expect((await mutate(base, two, { maxLines: 3 })).status).toBe("ran");
-			expect((await mutate(base, two, { maxLines: 2 })).status).toBe("skipped");
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 4 });
+			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:2-4", "packages/p/src/a.ts:8-8"]);
+			expect(noteAbout(await mutate(base, head, { maxLines: 4 }))).toEqual([]);
+			await mutate(base, head, { maxLines: 2 });
+			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:2-3"]);
+			expect(noteAbout(await mutate(base, head, { maxLines: 3 }))).toEqual([
+				"1 of 4 changed production lines were past static.mutation.maxLines of 3 and were not mutated; files not reached: packages/p/src/a.ts.",
+			]);
 		});
 	});
 
@@ -800,7 +822,7 @@ exit 1`,
 			expect(fake.calls()).toHaveLength(1);
 		});
 
-		it("records a skip, with its reason, when the change is past the bound", async () => {
+		it("mutates the first lines of a change past the bound, and records the files not reached as a note", async () => {
 			const base = commit(repo, {
 				"melian.yaml": policy.replace("timeout: 120", "timeout: 120, maxLines: 1"),
 				"stryker.config.json": config,
@@ -811,11 +833,17 @@ exit 1`,
 			expect(run.records).toEqual([
 				{
 					name: "static.mutation",
-					status: "skipped",
-					reason: "the change adds or edits 4 production TypeScript lines, past static.mutation.maxLines of 1",
+					status: "ran",
+					version: "10.0.0",
+					findings: 0,
+					notes: [
+						"3 of 4 changed production lines were past static.mutation.maxLines of 1 and were not mutated; files not reached: packages/p/src/a.ts.",
+						"Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.",
+						"packages/p/src/a.ts produced no mutants, so nothing on its changed lines was judged.",
+					],
 				},
 			]);
-			expect(fake.calls()).toEqual([]);
+			expect(fake.calls()).toHaveLength(1);
 		});
 
 		describe("for the writer of the head", () => {

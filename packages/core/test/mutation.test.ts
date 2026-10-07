@@ -243,10 +243,9 @@ describe("normaliseMutationReport", () => {
 		]);
 	});
 
-	it("gives a skip leave to pass only for a change with nothing to mutate, one past the bound, an untrusted writer, or a timeout", () => {
+	it("gives a skip leave to pass only for a change with nothing to mutate, an untrusted writer, or a timeout", () => {
 		for (const reason of [
 			mutationSkips.noProductionLines,
-			mutationSkips.pastBound(2001, 2000),
 			mutationSkips.untrustedWriter("octocat has read permission on the repository"),
 			mutationSkips.timeout(3600),
 		])
@@ -256,7 +255,7 @@ describe("normaliseMutationReport", () => {
 			"Stryker is not installed in the checkout",
 			`${mutationSkips.noProductionLines}, and more`,
 			`a ${mutationSkips.timeout(3600)}`,
-			`the change adds or edits many production TypeScript lines, past static.mutation.maxLines of 2000`,
+			`the change adds or edits 2001 production TypeScript lines, past static.mutation.maxLines of 2000`,
 			"the writer is not trusted",
 		])
 			expect(mutationSkipHasLeave(reason), reason).toBe(false);

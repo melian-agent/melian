@@ -50,6 +50,28 @@ function literal(path: string): string {
 	return path.replace(/[\\*?[\]{}()!+@#]/g, "\\$&");
 }
 
+// The first `maxLines` changed lines in path order, which is the order git lists a diff's files, and the files that have a line past them. A range the bound falls in
+// is cut at it.
+function withinBound(
+	lines: Readonly<Record<string, readonly (readonly [number, number])[]>>,
+	maxLines: number,
+): { kept: Record<string, [number, number][]>; unreached: string[] } {
+	const kept: Record<string, [number, number][]> = {};
+	const unreached: string[] = [];
+	let room = maxLines;
+	for (const path of Object.keys(lines)) {
+		let cut = false;
+		for (const [first, last] of lines[path]!) {
+			const taken = Math.min(room, last - first + 1);
+			if (taken > 0) kept[path] = [...(kept[path] ?? []), [first, first + taken - 1]];
+			if (taken < last - first + 1) cut = true;
+			room -= taken;
+		}
+		if (cut) unreached.push(path);
+	}
+	return { kept, unreached };
+}
+
 function quote(text: string): string {
 	return `'${text.replaceAll("'", "'\\''")}'`;
 }
@@ -160,14 +182,19 @@ export class MutationRun {
 	async check(): Promise<StaticRun> {
 		const { revision, settings } = this.#run.input;
 		if (revision === undefined) throw this.#run.fail("toolFailed", "mutation testing needs the revision it mutates");
-		const lines = this.#targets(revision);
-		const count = Object.values(lines).reduce(
-			(sum, ranges) => sum + ranges.reduce((total, [first, last]) => total + last - first + 1, 0),
+		const changed = this.#targets(revision);
+		const total = Object.values(changed).reduce(
+			(sum, ranges) => sum + ranges.reduce((count, [first, last]) => count + last - first + 1, 0),
 			0,
 		);
-		if (count === 0) return { status: "skipped", reason: mutationSkips.noProductionLines };
+		if (total === 0) return { status: "skipped", reason: mutationSkips.noProductionLines };
 		const { maxLines } = settings as MutationSettings;
-		if (count > maxLines) return { status: "skipped", reason: mutationSkips.pastBound(count, maxLines) };
+		const { kept: lines, unreached } = withinBound(changed, maxLines);
+		const count = Math.min(total, maxLines);
+		if (total > maxLines)
+			this.#notes.push(
+				`${total - maxLines} of ${total} changed production lines were past static.mutation.maxLines of ${maxLines} and were not mutated; files not reached: ${unreached.join(", ")}.`,
+			);
 		if (!(await this.#run.exists(posix.join(this.#root, config))))
 			throw this.#run.fail("toolFailed", `the revision has no ${config}, which Stryker needs`);
 		const entries = Object.entries(lines).flatMap(([path, ranges]) =>
