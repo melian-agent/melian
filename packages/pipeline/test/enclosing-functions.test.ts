@@ -492,27 +492,58 @@ describe("EnclosingFunctions", () => {
 			}
 		});
 
-		// No wall-clock bound: a slow runner would flake it. Growing the file eightfold must cost far less than the 64 times a per-anchor scan costs, so 5 sits between the 1.4 to 3 seen and the 17 a filter and sort per anchor gives.
-		it("grows with the file's size and not with its square", async () => {
-			const time = async (functions: number, changed: number) => {
+		// Counts the work the sweep hands to sort comparators and filter predicates, which a per-anchor filter and sort
+		// multiplies by the number of anchors. No clock: counts are the same on every runner.
+		it("does work that grows with n log n in the callables and anchors, not their product", async () => {
+			const worked = async (functions: number, changed: number) => {
 				const dir = baseAndHead(
 					{ "src/a.ts": oneLiners(functions, 0) },
 					{ "src/a.ts": oneLiners(functions, changed) },
 				);
+				const sort = Array.prototype.sort;
+				const filter = Array.prototype.filter;
+				let calls = 0;
+				const sorted = vi.spyOn(Array.prototype, "sort").mockImplementation(function (this: unknown[], compare) {
+					return sort.call(
+						this,
+						compare === undefined
+							? undefined
+							: (a: unknown, b: unknown) => {
+									calls++;
+									return compare(a, b);
+								},
+					);
+				});
+				const filtered = vi.spyOn(Array.prototype, "filter").mockImplementation(function (
+					this: unknown[],
+					predicate: (...args: unknown[]) => unknown,
+					thisArg?: unknown,
+				) {
+					return filter.call(
+						this,
+						(...args: unknown[]) => {
+							calls++;
+							return predicate(...args);
+						},
+						thisArg,
+					);
+				} as typeof Array.prototype.filter);
 				try {
-					const changeset = await Changeset.resolve(dir, "main...feature");
-					const started = performance.now();
-					await EnclosingFunctions.read(changeset);
-					return performance.now() - started;
+					await EnclosingFunctions.read(await Changeset.resolve(dir, "main...feature"));
+					return calls;
 				} finally {
+					sorted.mockRestore();
+					filtered.mockRestore();
 					rmSync(dir, { recursive: true, force: true });
 				}
 			};
-			const best = async (functions: number, changed: number) =>
-				Math.min(await time(functions, changed), await time(functions, changed), await time(functions, changed));
-			const small = await best(2_500, 625);
-			const large = await best(20_000, 5_000);
-			expect(large / small).toBeLessThan(5);
+			for (const [functions, changed] of [
+				[2_500, 625],
+				[20_000, 5_000],
+			] as const) {
+				const size = functions + changed;
+				expect(await worked(functions, changed)).toBeLessThan(size * Math.log2(size));
+			}
 		});
 	});
 });
