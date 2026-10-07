@@ -50,6 +50,7 @@ describe("the golden corpus", () => {
 			"design-identity-missing-input",
 			"design-injection",
 			"design-rewrites-its-own-decision",
+			"design-supersedes-its-own-decision",
 			"design-unshipped-artifact",
 			"durability-attach-key",
 			"durability-clean-upsert",
