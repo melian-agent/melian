@@ -77,6 +77,16 @@ Lens budgets, which a scripted golden can drive and no lens judges:
 
 - [Pull request #37](https://github.com/melian-agent/melian/pull/37) ([record](../comparisons/2026-10-04-pr-37.md)): A4, a lens its budget ends before it reports anything, expected not reviewed; C2, a script that reuses one call ID across rounds under a tight tools budget, expected ended; D1, a lens whose reads are refused past its tools budget, which then reports and finishes, expected ended and not reviewed; D2, a round holding a blocked call, a read, and a search under `budget.tools: 2`, expected both reads to run and no budget end.
 
+## design
+
+The `design` lens ships with four goldens: `design-identity-missing-input`, `design-fail-open-default`, `design-unshipped-artifact`, and the clean `design-clean`. [The decision](../../../docs/decisions/2026-10-07-design-lens.md) names nine, each with Codex as its source. The rules still without a golden:
+
+- `trust-by-label`: a record trusted because of its label, not because anything checked it.
+- `bound-on-wrong-measure`: a limit that counts something other than what it exists to bound, such as the retirement window of [pull request #86](https://github.com/melian-agent/melian/pull/86) that excluded missing records.
+- `capability-by-class`: an access or exemption granted to a class whose member should not hold it.
+- `resumed-identity`: a resumed task taken for the one that started, such as the credential change in [pull request #86](https://github.com/melian-agent/melian/pull/86), finding A1.
+- `criterion-selection-bias`, `single-slot-overwrite`: a selection rule biased by the thing it judges, and one slot that holds what several writers need. The records name no case yet.
+
 ## No lens yet
 
 Design challenges and performance, which no lens reviews:
