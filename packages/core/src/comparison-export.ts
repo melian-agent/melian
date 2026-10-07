@@ -35,10 +35,9 @@ export class ComparisonExport {
 					`${reviewer.name}${reviewer.version === undefined ? "" : ` ${reviewer.version}`}${reviewer.login === undefined ? "" : ` (${reviewer.login})`}`,
 				);
 		}
-		const target = /^#\d+$/.test(this.target) ? `pull request ${this.target}` : this.target;
 		const link = this.url === undefined ? markdownText(this.target) : `[${markdownText(this.target)}](${this.url})`;
 		const out = [
-			`# Comparison review: ${/^#\d+$/.test(this.target) ? `pull request ${link}` : markdownText(target)}\n\n`,
+			`# Comparison review: ${/^#\d+$/.test(this.target) ? `pull request ${link}` : markdownText(this.target)}\n\n`,
 			`Target: ${link}.\n\n`,
 			`Reviewers: ${[...reviewers].sort().map(markdownText).join("; ")}${reviewers.size === 0 ? "" : "; "}Melian's own review, in ${this.entries.length} stored ${this.entries.length === 1 ? "round" : "rounds"}.\n\n`,
 			"Adjudication records valid, noise, or duplicate, with severity and a miss reason where required. Pending findings await the maintainer.\n\n",
