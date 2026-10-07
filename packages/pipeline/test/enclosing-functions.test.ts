@@ -81,6 +81,22 @@ describe("EnclosingFunctions", () => {
 		expect(found.unavailable).toBeUndefined();
 	});
 
+	it("takes the innermost function when several start on one line", async () => {
+		const multiline = lines(
+			"export function outer() { const inner = () => {",
+			"\treturn 2;",
+			"};",
+			"return inner(); }",
+		);
+		const edited = multiline.replace("\treturn 2;", "\treturn 3;");
+		expect(summary(await around({ "src/a.ts": multiline }, { "src/a.ts": edited }))).toEqual(["src/a.ts inner 1-3"]);
+		const closing = multiline.replace("return inner(); }", "return inner() + 1; }");
+		expect(summary(await around({ "src/a.ts": multiline }, { "src/a.ts": closing }))).toEqual(["src/a.ts outer 1-4"]);
+
+		const oneLine = "export const outer = () => { const inner = () => 1; return inner(); };";
+		const changed = oneLine.replace("=> 1;", "=> 2;");
+		expect(summary(await around({ "src/b.ts": oneLine }, { "src/b.ts": changed }))).toEqual(["src/b.ts inner 1-1"]);
+	});
 	it("takes the named function around an anonymous callback, and the innermost named one around a nested value", async () => {
 		const edited = source.replace("\t[1].map((item) => item + a);", "\t[1].map((item) => item + a + 1);");
 		expect(summary(await around({ "src/a.ts": source }, { "src/a.ts": edited }))).toEqual(["src/a.ts outer 1-5"]);

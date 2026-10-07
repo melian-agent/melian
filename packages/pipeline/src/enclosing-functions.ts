@@ -155,15 +155,18 @@ function callables(source: SourceFile, text: string, limit: number): Callable[] 
 	return found.length > limit ? undefined : found;
 }
 
-// A max-heap of the callables whose start the sweep has passed: the latest start first, and for one start the one the
-// compiler visited first, as the innermost function around a line is the one that starts last.
+// A max-heap of the callables whose start the sweep has passed: the latest start first, and for one start line the
+// shorter span, then the one the compiler visited last. It visits an outer function before the ones inside it, so the
+// innermost around a line is the later visit when the spans match.
 class Open {
 	readonly #items: { readonly callable: Callable; readonly order: number }[] = [];
 
 	static #before(a: { callable: Callable; order: number }, b: { callable: Callable; order: number }): boolean {
 		return (
 			a.callable.startLine > b.callable.startLine ||
-			(a.callable.startLine === b.callable.startLine && a.order < b.order)
+			(a.callable.startLine === b.callable.startLine &&
+				(a.callable.endLine < b.callable.endLine ||
+					(a.callable.endLine === b.callable.endLine && a.order > b.order)))
 		);
 	}
 
