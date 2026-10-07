@@ -275,6 +275,22 @@ describe("ComparisonSet candidate checks", () => {
 		expect(set.candidates()).toEqual([]);
 	});
 
+	it("keeps a finding's rule tag when a replacement judgement discharges its golden debt", () => {
+		const first = report({ line: 90, title: "tagged one" });
+		const comparison = round([first], []);
+		comparison.adjudicate(first.id, {
+			...by,
+			verdict: "valid",
+			reason: "no-owner",
+			rule: "zz",
+			golden: "correctness",
+		});
+		comparison.adjudicate(first.id, { ...by, verdict: "valid", reason: "no-owner", golden: "none" });
+		expect(comparison.adjudication(first.id)?.current.rule).toBe("zz");
+		const set = new ComparisonSet([entry("c1", comparison), tagged("c2", "zz")]);
+		expect(set.candidates().map((each) => each.key)).toEqual(["rule:zz"]);
+	});
+
 	it("does not count a repeat that was matched to a Melian finding", () => {
 		const matchedFinding = own(12);
 		const external = report({ line: 12, title: "zz matched" });

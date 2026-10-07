@@ -879,7 +879,11 @@ export class Comparison {
 			throw new ComparisonError("unknownFinding", `the comparison has no finding ${id}`);
 		}
 		const previous = this.adjudication(id);
-		const judgement = Adjudication.create({ ...input, golden: input.golden ?? previous?.current.golden }).toJSON();
+		const judgement = Adjudication.create({
+			...input,
+			golden: input.golden ?? previous?.current.golden,
+			rule: input.rule ?? previous?.current.rule,
+		}).toJSON();
 		if (judgement.reason !== undefined && (judgement.verdict !== "valid" || this.externalFinding(id) === undefined))
 			throw new ComparisonError("invalidAdjudication", "a miss reason applies only to a valid external finding");
 		if (

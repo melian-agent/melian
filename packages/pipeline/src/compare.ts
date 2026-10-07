@@ -212,7 +212,11 @@ export class CompareHarness {
 				.map(({ comparison }) => comparison.adjudication(id)?.current)
 				.filter((each) => each !== undefined)
 				.sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
-			round.comparison.adjudicate(id, { ...judgement, golden: judgement.golden ?? previous?.golden });
+			round.comparison.adjudicate(id, {
+				...judgement,
+				golden: judgement.golden ?? previous?.golden,
+				rule: judgement.rule ?? previous?.rule,
+			});
 			round.comparison.record(judgement.at, revision.target);
 			document.comparisons = { ...document.comparisons, [round.key]: round.comparison.toJSON() };
 			return round.comparison;
