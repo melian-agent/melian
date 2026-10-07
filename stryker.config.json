@@ -4,7 +4,8 @@
 		"@stryker-mutator/vitest-runner"
 	],
 	"vitest": {
-		"related": true
+		"related": true,
+		"configFile": "vitest.stryker.config.ts"
 	},
 	"coverageAnalysis": "perTest",
 	"ignoreStatic": true,
@@ -15,7 +16,7 @@
 	"concurrency": 2,
 	"timeoutMS": 30000,
 	"timeoutFactor": 2,
-	"dryRunTimeoutMinutes": 10,
+	"dryRunTimeoutMinutes": 20,
 	"inPlace": true,
 	"disableTypeChecks": false
 }

@@ -8,6 +8,7 @@ Settings in `stryker.config.json`, one line each:
 
 - `testRunner: vitest` and `plugins`: the Vitest runner, loaded by name.
 - `vitest.related: true`: after the initial run, only tests related to the mutated file run for each mutant.
+- `vitest.configFile: vitest.stryker.config.ts`: the repository's Vitest configuration plus `strykerTestNames`. Stryker 10.0.0 picks the tests that cover a mutant by a regular expression of their names joined with spaces, and Vitest 5 matches it against names joined with " > ", so a test inside a `describe` never matched. The mutant ran no test and survived: 380 of 456 mutants on this branch's own change, and the same 27 of 31 on one file. The plugin lets each space match either separator. A repository on Vitest 5 needs it until a Stryker release supports Vitest 5.
 - `coverageAnalysis: perTest`: a mutant runs only the tests that cover it.
 - `reporters: [json]`: the JSON report is the only output; no HTML, no dashboard, no clear-text.
 - `incremental: true`: Stryker keeps results in a file. Melian points `--incrementalFile` into the run's scratch directory, so a run reuses nothing from an earlier one.
@@ -16,7 +17,7 @@ Settings in `stryker.config.json`, one line each:
 - `ignoreStatic: true`: a static mutant sits in code that runs when a module loads, so every one reruns the whole suite. On this branch's own change, 80 of 536 mutants were static and Stryker estimated they would take 84% of the run's time, which on a 8 minute 26 second suite is hours. They come back `Ignored`, and the note that names each line holding an ignored mutant says so. The cost is that a changed top-level constant or regular expression is not judged.
 - `concurrency: 2`: two test processes, so the check does not starve the lenses and the host.
 - `timeoutMS: 30000` and `timeoutFactor: 2`: how long a mutant's tests may run before the mutant counts as a `Timeout`.
-- `dryRunTimeoutMinutes: 10`: the initial run executes the whole suite, which took 8 minutes 27 seconds on this repository with two workers.
+- `dryRunTimeoutMinutes: 20`: the initial run executes the whole suite, which took 8 minutes 27 seconds to 9 minutes 38 seconds on this repository with two workers, so 10 minutes left no room.
 - `cleanTempDir: always`: no `.stryker-tmp` left behind.
 
 Melian sets the mutate ranges, the reporter, the incremental file, and `--inPlace` on the command line, so a head's configuration cannot widen or empty them. The head's `stryker.config.json` otherwise drives the head's run, as `biome.json` does, and a change to it is a policy change.
