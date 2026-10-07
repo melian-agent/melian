@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -226,14 +227,68 @@ describe("TriageResults", () => {
 	});
 });
 
+type RecordedFingerprints = Record<string, string>;
+
+// Why the record fails the gate, or nothing. `onMain` is the record at origin/main, when git can read it.
+function recordProblems(
+	recorded: RecordedFingerprints,
+	version: string,
+	fingerprint: string,
+	onMain: RecordedFingerprints | undefined,
+): string[] {
+	const problems: string[] = [];
+	if (recorded[version] === undefined) {
+		problems.push(`questions.json records no fingerprint for version "${version}"`);
+	} else if (recorded[version] !== fingerprint) {
+		problems.push(
+			`the questions changed and version "${version}" did not: bump triageQuestionSet.version and add its fingerprint ${fingerprint} to questions.json`,
+		);
+	}
+	for (const [recordedVersion, hash] of Object.entries(onMain ?? {})) {
+		if (recorded[recordedVersion] !== hash)
+			problems.push(`version "${recordedVersion}" is recorded on main as ${hash} and must stay so`);
+	}
+	return problems;
+}
+
+function recordOnMain(): RecordedFingerprints | undefined {
+	try {
+		return JSON.parse(
+			execFileSync("git", ["show", "origin/main:packages/evals/triage/questions.json"], {
+				cwd: triageDirectory,
+				encoding: "utf8",
+				stdio: ["ignore", "pipe", "ignore"],
+			}),
+		) as RecordedFingerprints;
+	} catch {
+		// No origin/main in a shallow or detached checkout, or no record there yet: only the first assertion holds.
+		return undefined;
+	}
+}
+
 describe("the triage question set's version", () => {
-	it("stands for the questions as recorded: change one, bump the version and record both", async () => {
-		const recorded = JSON.parse(readFileSync(join(triageDirectory, "questions.json"), "utf8")) as {
-			questionSet: { name: string; version: string };
-			fingerprint: string;
-		};
-		expect(recorded.questionSet).toEqual(triageQuestionSet);
-		expect((await TriageQuestions.shipped(goldens[0]!)).fingerprint()).toBe(recorded.fingerprint);
+	it("stands for the questions as recorded: change one, bump the version and add its fingerprint", async () => {
+		const recorded = JSON.parse(
+			readFileSync(join(triageDirectory, "questions.json"), "utf8"),
+		) as RecordedFingerprints;
+		const fingerprint = (await TriageQuestions.shipped(goldens[0]!)).fingerprint();
+		expect(recordProblems(recorded, triageQuestionSet.version, fingerprint, recordOnMain())).toEqual([]);
+	});
+
+	it("rejects a rewritten question under its old version, a rewritten record, and a missing record", () => {
+		const main = { "1": "aaaa" };
+		expect(recordProblems({ "1": "aaaa" }, "1", "aaaa", main)).toEqual([]);
+		expect(recordProblems({ "1": "aaaa", "2": "bbbb" }, "2", "bbbb", main)).toEqual([]);
+		expect(recordProblems({ "1": "bbbb" }, "1", "bbbb", main)).toEqual([
+			'version "1" is recorded on main as aaaa and must stay so',
+		]);
+		expect(recordProblems({ "1": "aaaa" }, "1", "bbbb", main)).toEqual([
+			'the questions changed and version "1" did not: bump triageQuestionSet.version and add its fingerprint bbbb to questions.json',
+		]);
+		expect(recordProblems({ "1": "aaaa" }, "2", "bbbb", main)).toEqual([
+			'questions.json records no fingerprint for version "2"',
+		]);
+		expect(recordProblems({ "1": "bbbb" }, "1", "bbbb", undefined)).toEqual([]);
 	});
 
 	it("changes when a question's wording, its options, or a lens's name does", async () => {
