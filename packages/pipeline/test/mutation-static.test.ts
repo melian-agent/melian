@@ -422,13 +422,13 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 
 		it("escapes every glob character in a path, so Stryker reads the file and no other", async () => {
 			const base = commit(repo, { "stryker.config.json": config });
-			const odd = "packages/p/src/a*b?c{d}e!f+g@h#i.ts";
+			const odd = "packages/p/src/a*b?c{d}e!f+g@h#i\\j.ts";
 			const head = commit(repo, { [route]: lines("export const x = 1;"), [odd]: lines("export const y = 1;") });
 			const fake = stryker({ report: report({}) });
 			await mutate(base, head);
 			expect(entries(fake.calls()[0]!)).toEqual([
 				"app/users/\\[id\\]/\\(group\\)/route.ts:1-1",
-				"packages/p/src/a\\*b\\?c\\{d\\}e\\!f\\+g\\@h\\#i.ts:1-1",
+				"packages/p/src/a\\*b\\?c\\{d\\}e\\!f\\+g\\@h\\#i\\\\j.ts:1-1",
 			]);
 		});
 
@@ -613,6 +613,29 @@ exit 0`,
 			);
 			expect(result).toEqual({ status: "skipped", reason: mutationSkips.timeout(1) });
 			expect(mutationSkipHasLeave(mutationSkips.timeout(1))).toBe(true);
+		});
+
+		it("fails a cancelled run as aborted, never as a timeout skip", async () => {
+			const { base, head } = twoCommits();
+			fakeTool(repo, "stryker", `if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\nsleep 30`);
+			const revision = await revisionOf(base, head);
+			const controller = new AbortController();
+			const cancellable = { abortSignal: controller.signal, value: () => undefined, toString: () => "cancellable" };
+			setTimeout(() => controller.abort(), 2_000);
+			await expect(
+				runStaticTool(
+					{
+						env: createNodeExecutionEnv(repo),
+						repoRoot: repo,
+						base,
+						commit: head,
+						tool: "mutation",
+						settings: { ...defaultConfig.static.mutation, timeout: 120 },
+						revision,
+					},
+					cancellable,
+				),
+			).rejects.toMatchObject({ code: "aborted", check: "static.mutation" });
 		});
 
 		it("keeps the end of Stryker's output in the error, not the start", async () => {

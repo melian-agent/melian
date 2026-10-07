@@ -2664,7 +2664,12 @@ describe("adjudication", () => {
 
 			it("gives no leave to a failed run", async () => {
 				done();
-				const failed: CheckRecord = { name: "static.mutation", status: "failed", reason: "toolFailed", error: "x" };
+				const failed: CheckRecord = {
+					name: "static.mutation",
+					status: "failed",
+					reason: mutationSkips.timeout(3600),
+					error: "x",
+				};
 				const { verdict } = await reviewed({ config: tiered(...lensesOnly, "static.mutation"), checks: [failed] });
 				expect(verdict.status).toBe("not-reviewed");
 			});
