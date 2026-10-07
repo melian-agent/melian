@@ -424,6 +424,15 @@ describe("task credential routes", { timeout: 60_000 }, () => {
 				retry: false,
 				...triage.harnessOptions(),
 			});
+			const unlocked: string[][] = [];
+			const reviewOptions = triage.reviewOptions();
+			const reviewing = {
+				...reviewOptions,
+				unlockModels: async (providers: readonly string[]) => {
+					unlocked.push([...providers]);
+					await reviewOptions.unlockModels?.(providers);
+				},
+			};
 			await pipeline.reviewChangeset({
 				harness: harness.harness,
 				models: fake.review,
@@ -433,8 +442,11 @@ describe("task credential routes", { timeout: 60_000 }, () => {
 				lenses,
 				standards: [],
 				checks: [],
-				...triage.reviewOptions(),
+				...reviewing,
 			});
+			expect(unlocked).toEqual(
+				candidate ? [["triage-route"], ["lens-route"], ["verifier-route"]] : [["triage-route"], ["lens-route"]],
+			);
 			expect(marked()).toEqual([true, true, false, candidate]);
 			await triage.unlockModels(["triage-route"]);
 			expect(readFileSync(markers[0]!, "utf8")).toBe("run\n");

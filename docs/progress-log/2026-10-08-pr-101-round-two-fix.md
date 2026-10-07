@@ -1,0 +1,3 @@
+# Pull request 101, round two fix
+
+Melian's round two found that the task credential route test passed with `unlockModels([])` in `review.ts` and `verification.ts`, because a command credential also runs lazily when its model authenticates. The test now records the providers each `unlockModels` call receives and asserts them exactly: the triage and lens routes, plus the verifier route when a candidate exists. Replacing the lens call's providers with `[]` fails both cases; doing the same in the verifier call fails the `candidates=true` case. The fix is the commit that follows `d23dab9e` on `step-14-followup`.
