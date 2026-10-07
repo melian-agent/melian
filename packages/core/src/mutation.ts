@@ -82,6 +82,51 @@ export function mutationSkipHasLeave(cause: string | undefined): boolean {
 	return cause !== undefined && leaveCauses.has(cause);
 }
 
+/** Changed code the run did not ask Stryker about, with why and what a maintainer does about it. */
+export interface UnmutatedFile {
+	readonly path: string;
+	/** The changed lines left out, as inclusive `[first, last]` ranges; none when the whole file was. */
+	readonly ranges: readonly (readonly [number, number])[];
+	readonly why: string;
+	readonly whatToDo: string;
+}
+
+/** The reasons a changed file, or lines of one, were not mutated, for {@link UnmutatedFile}. */
+export const mutationUnmutated = {
+	pastBound: (maxLines: number) => ({
+		why: `the change is past static.mutation.maxLines of ${maxLines}, so the run mutated other lines and left these out`,
+		whatToDo:
+			"Split the change so each part fits within static.mutation.maxLines, or have a maintainer acknowledge that these lines were not mutation tested.",
+	}),
+};
+
+function lineRanges(ranges: readonly (readonly [number, number])[]): string {
+	const named = ranges.map(([first, last]) => (first === last ? `${first}` : `${first}-${last}`));
+	return `${named.length === 1 && ranges[0]![0] === ranges[0]![1] ? "line" : "lines"} ${named.join(", ")}`;
+}
+
+function unmutatedResult(file: UnmutatedFile): ToolResult {
+	const first = file.ranges[0]?.[0] ?? 1;
+	const what = file.ranges.length === 0 ? "the changed lines" : lineRanges(file.ranges);
+	return {
+		ruleId: "unmutated",
+		level: "error",
+		message: { text: `Stryker did not judge ${what} of ${file.path}: ${file.why}.` },
+		advice: {
+			whyHere: "Stryker was not asked about these changed lines, so a guard here would stay unproven.",
+			whatToDo: file.whatToDo,
+		},
+		locations: [
+			{
+				physicalLocation: {
+					artifactLocation: { uri: file.path.split("/").map(encodeURIComponent).join("/") },
+					region: { startLine: first },
+				},
+			},
+		],
+	};
+}
+
 /**
  * A tool log of one `unmutated` result at the first changed line, naming every file whose changed lines Stryker did not
  * judge. A run that ends without a report, such as one past its timeout, gives a maintainer this to acknowledge, so a head
@@ -136,6 +181,8 @@ export interface MutationReportInput {
 	readonly lines: Readonly<Record<string, readonly (readonly [number, number])[]>>;
 	/** The test file nearest each path in `lines`, which a finding names as where to add the test. */
 	readonly tests: Readonly<Record<string, string>>;
+	/** Changed code the run left out of `lines`. Each file is a finding of rule `unmutated`, never only a note. */
+	readonly unmutated?: readonly UnmutatedFile[];
 }
 
 function code(replacement: string | undefined): string {
@@ -261,6 +308,7 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 			});
 		}
 	}
+	for (const file of run.unmutated ?? []) results.push(unmutatedResult(file));
 	results.sort((a, b) => {
 		const [left, right] = [a, b].map((result) => result.locations[0]!.physicalLocation);
 		return (

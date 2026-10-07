@@ -162,9 +162,9 @@ async function mutate(base: string, head: string, extra: { maxLines?: number; re
 	);
 }
 
-async function found(base: string, head: string): Promise<readonly Finding[]> {
+async function found(base: string, head: string, extra: { maxLines?: number } = {}): Promise<readonly Finding[]> {
 	const revision = await revisionOf(base, head);
-	const result = await mutate(base, head);
+	const result = await mutate(base, head, extra);
 	if (result.status !== "ran") throw new Error(`skipped: ${result.reason}`);
 	const empty: ToolLog = { ...result.log, runs: [{ ...result.log.runs[0], results: [] }] };
 	return (
@@ -602,25 +602,34 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 
 		const lastEntries = (fake: { calls: () => string[][] }) =>
 			argumentsOf(fake.calls().at(-1)!).flag("--mutate")!.split(",");
-		const noteAbout = (result: Awaited<ReturnType<typeof mutate>>) => {
-			if (result.status !== "ran") throw new Error("skipped");
-			return result.notes.filter((note) => note.includes("static.mutation.maxLines"));
-		};
+		// What the run left out, as the findings of rule mutation/unmutated name it.
+		const leftOut = async (base: string, head: string, maxLines: number) =>
+			(await found(base, head, { maxLines }))
+				.filter((finding) => finding.ruleId === "mutation/unmutated")
+				.map((finding) => [
+					finding.properties.path,
+					finding.properties.severity,
+					finding.properties.explanation.what,
+				]);
 
-		it("mutates a change of exactly the bound whole, with no note, and one line past it cut at the bound with a note", async () => {
+		it("mutates a change of exactly the bound whole, and cuts one line past it at the bound, with a finding for the line", async () => {
 			const fake = stryker({ report: report({}) });
 			const bound = head(5, "bound");
-			expect(noteAbout(await mutate(bound.base, bound.head, { maxLines: 5 }))).toEqual([]);
+			expect(await leftOut(bound.base, bound.head, 5)).toEqual([]);
 			expect(lastEntries(fake)).toEqual(["packages/p/src/bound.ts:1-5"]);
 			const past = head(6, "past");
-			expect(noteAbout(await mutate(past.base, past.head, { maxLines: 5 }))).toEqual([
-				"1 of 6 changed production lines were past static.mutation.maxLines of 5 and were not mutated; files not reached: packages/p/src/past.ts.",
+			expect(await leftOut(past.base, past.head, 5)).toEqual([
+				[
+					"packages/p/src/past.ts",
+					"P2",
+					"Stryker did not judge line 6 of packages/p/src/past.ts: the change is past static.mutation.maxLines of 5, so the run mutated other lines and left these out.",
+				],
 			]);
 			expect(lastEntries(fake)).toEqual(["packages/p/src/past.ts:1-5"]);
 			expect(fake.calls()).toHaveLength(2);
 		});
 
-		it("takes the first lines in path order, and names every file that has a line it did not reach", async () => {
+		it("takes the first lines in path order, and raises a finding for each file that has lines it left out", async () => {
 			const base = commit(repo, { "stryker.config.json": config });
 			const head = commit(repo, {
 				"packages/p/src/c.ts": lines("export const c = 1;", "export const d = 2;"),
@@ -631,11 +640,14 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			const fake = stryker({ report: report({}) });
 			const result = await mutate(base, head, { maxLines: 3 });
 			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:1-1", "packages/p/src/b.ts:1-2"]);
-			expect(noteAbout(result)).toEqual([
-				"4 of 7 changed production lines were past static.mutation.maxLines of 3 and were not mutated; files not reached: packages/p/src/b.ts, packages/p/src/c.ts, packages/p/src/d.ts.",
+			expect((await leftOut(base, head, 3)).map(([path, , what]) => [path, what])).toEqual([
+				["packages/p/src/b.ts", expect.stringContaining("line 3 of packages/p/src/b.ts")],
+				["packages/p/src/c.ts", expect.stringContaining("lines 1-2 of packages/p/src/c.ts")],
+				["packages/p/src/d.ts", expect.stringContaining("line 1 of packages/p/src/d.ts")],
 			]);
 			if (result.status !== "ran") throw new Error("skipped");
 			expect(result.notes).toContain("Stryker mutated 3 changed lines in 2 file(s); the base was not mutated.");
+			expect(result.notes.filter((note) => note.includes("maxLines"))).toEqual([]);
 		});
 
 		it("cuts a range the bound falls in, and counts every range of a file that changes in two places", async () => {
@@ -651,11 +663,40 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			const fake = stryker({ report: report({}) });
 			await mutate(base, head, { maxLines: 4 });
 			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:2-4", "packages/p/src/a.ts:8-8"]);
-			expect(noteAbout(await mutate(base, head, { maxLines: 4 }))).toEqual([]);
+			expect(await leftOut(base, head, 4)).toEqual([]);
 			await mutate(base, head, { maxLines: 2 });
 			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:2-3"]);
-			expect(noteAbout(await mutate(base, head, { maxLines: 3 }))).toEqual([
-				"1 of 4 changed production lines were past static.mutation.maxLines of 3 and were not mutated; files not reached: packages/p/src/a.ts.",
+			expect((await leftOut(base, head, 2)).map(([, , what]) => what)).toEqual([
+				expect.stringContaining("lines 4, 8 of packages/p/src/a.ts"),
+			]);
+			expect((await leftOut(base, head, 3)).map(([, , what]) => what)).toEqual([
+				expect.stringContaining("line 8 of packages/p/src/a.ts"),
+			]);
+		});
+
+		it("names every file, those past the bound too, when the run passes its timeout", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": lines("export const a = 1;"),
+				"packages/p/src/b.ts": lines("export const b = 1;"),
+				"packages/p/src/c.ts": lines("export const c = 1;"),
+			});
+			fakeTool(repo, "stryker", `if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\nsleep 30`);
+			const result = await runStaticTool(
+				{
+					env: createNodeExecutionEnv(repo),
+					repoRoot: repo,
+					base,
+					commit: head,
+					tool: "mutation",
+					settings: { ...defaultConfig.static.mutation, timeout: 1, maxLines: 1 },
+					revision: await revisionOf(base, head),
+				},
+				context,
+			);
+			if (result.status !== "skipped") throw new Error("ran");
+			expect(result.log?.runs[0].results.map((each) => each.message.text)).toEqual([
+				`Stryker did not judge the changed lines of packages/p/src/a.ts, packages/p/src/b.ts, packages/p/src/c.ts: ${mutationSkips.timeout(1)}.`,
 			]);
 		});
 	});
@@ -929,27 +970,29 @@ exit 1`,
 			expect(fake.calls()).toHaveLength(1);
 		});
 
-		it("mutates the first lines of a change past the bound, and records the files not reached as a note", async () => {
+		it("mutates the first lines of a change past the bound, and records the lines it left out as a finding, never as a clean check", async () => {
 			const base = commit(repo, {
 				"melian.yaml": policy.replace("timeout: 120", "timeout: 120, maxLines: 1"),
 				"stryker.config.json": config,
 			});
 			const head = commit(repo, { "packages/p/src/a.ts": a });
 			const fake = stryker({ report: report({}) });
-			const { run } = await checks(base, head);
+			const { harness, root, run } = await checks(base, head);
 			expect(run.records).toEqual([
 				{
 					name: "static.mutation",
 					status: "ran",
 					version: "10.0.0",
-					findings: 0,
+					findings: 1,
 					notes: [
-						"3 of 4 changed production lines were past static.mutation.maxLines of 1 and were not mutated; files not reached: packages/p/src/a.ts.",
 						"Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.",
 						"packages/p/src/a.ts produced no mutants, so nothing on its changed lines was judged.",
 					],
 				},
 			]);
+			const [left] = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+			expect(left).toMatchObject({ ruleId: "mutation/unmutated", properties: { path: "packages/p/src/a.ts" } });
+			expect(left!.properties.explanation.what).toContain("lines 2-4 of packages/p/src/a.ts");
 			expect(fake.calls()).toHaveLength(1);
 		});
 

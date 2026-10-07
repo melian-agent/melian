@@ -5,6 +5,7 @@ import {
 	type MutationSettings,
 	mutationNotJudged,
 	mutationSkips,
+	mutationUnmutated,
 	normaliseMutationReport,
 	type Revision,
 	type ToolLog,
@@ -60,26 +61,24 @@ function literal(path: string): string {
 	return path.replace(/[\\*?[\]{}()!+@#]/g, "\\$&");
 }
 
-// The first `maxLines` changed lines in path order, which is the order git lists a diff's files, and the files that have a line past them. A range the bound falls in
-// is cut at it.
+// The first `maxLines` changed lines in path order, which is the order git lists a diff's files, and the lines past them. A
+// range the bound falls in is cut at it.
 function withinBound(
 	lines: Readonly<Record<string, readonly (readonly [number, number])[]>>,
 	maxLines: number,
-): { kept: Record<string, [number, number][]>; unreached: string[] } {
+): { kept: Record<string, [number, number][]>; omitted: Record<string, [number, number][]> } {
 	const kept: Record<string, [number, number][]> = {};
-	const unreached: string[] = [];
+	const omitted: Record<string, [number, number][]> = {};
 	let room = maxLines;
 	for (const path of Object.keys(lines)) {
-		let cut = false;
 		for (const [first, last] of lines[path]!) {
 			const taken = Math.min(room, last - first + 1);
 			if (taken > 0) kept[path] = [...(kept[path] ?? []), [first, first + taken - 1]];
-			if (taken < last - first + 1) cut = true;
+			if (taken < last - first + 1) omitted[path] = [...(omitted[path] ?? []), [first + taken, last]];
 			room -= taken;
 		}
-		if (cut) unreached.push(path);
 	}
-	return { kept, unreached };
+	return { kept, omitted };
 }
 
 function quote(text: string): string {
@@ -241,12 +240,13 @@ export class MutationRun {
 				: { status: "skipped", reason: mutationSkips.unmutated(held), cause: "unmutated" };
 		}
 		const { maxLines } = settings as MutationSettings;
-		const { kept: lines, unreached } = withinBound(changed, maxLines);
+		const { kept: lines, omitted } = withinBound(changed, maxLines);
 		const count = Math.min(total, maxLines);
-		if (total > maxLines)
-			this.#notes.push(
-				`${total - maxLines} of ${total} changed production lines were past static.mutation.maxLines of ${maxLines} and were not mutated; files not reached: ${unreached.join(", ")}.`,
-			);
+		const unmutated = Object.entries(omitted).map(([path, ranges]) => ({
+			path,
+			ranges,
+			...mutationUnmutated.pastBound(maxLines),
+		}));
 		if (!(await this.#run.exists(posix.join(this.#root, config))))
 			throw this.#run.fail("toolFailed", `the revision has no ${config}, which Stryker needs`);
 		const entries = Object.entries(lines).flatMap(([path, ranges]) =>
@@ -258,12 +258,12 @@ export class MutationRun {
 				status: "skipped",
 				reason: text.skipped,
 				cause: "timeout",
-				log: mutationNotJudged({ version: this.#version, lines }, text.skipped),
+				log: mutationNotJudged({ version: this.#version, lines: changed }, text.skipped),
 			};
 		}
 		const tests: Record<string, string> = {};
 		for (const path of Object.keys(lines)) tests[path] = await this.#nearestTest(path);
-		const read = normaliseMutationReport(text, { version: this.#version, lines, tests });
+		const read = normaliseMutationReport(text, { version: this.#version, lines, tests, unmutated });
 		// The base is not mutated, so it has nothing to subtract from the head's results.
 		const baseLog: ToolLog = { ...read.log, runs: [{ ...read.log.runs[0], results: [] }] };
 		return {

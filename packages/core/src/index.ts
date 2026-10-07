@@ -377,7 +377,9 @@ export {
 	mutationNotJudged,
 	mutationSkipHasLeave,
 	mutationSkips,
+	mutationUnmutated,
 	normaliseMutationReport,
+	type UnmutatedFile,
 } from "./mutation.ts";
 export {
 	type ToolArtifact,
