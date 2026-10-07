@@ -22,13 +22,16 @@ import { quoteUntrusted } from "./untrusted.ts";
 /**
  * What the change prompt carries of the head's functions. A file past `fileBytes`, a function past `functionLines`, and
  * the blocks past `promptBytes` are left to the lens's own `read_file`, which its instructions say; so are files past
- * `files`.
+ * `files`. A function left out is listed by name, and `promptBytes` counts that listing too: a name keeps its first
+ * `nameBytes` bytes, and past `listed` entries, or the bytes the blocks left, the listing says how many more it left out.
  */
 export const enclosingLimits = {
 	files: 200,
 	fileBytes: 512 * 1024,
 	functionLines: 250,
 	promptBytes: 64 * 1024,
+	nameBytes: 200,
+	listed: 100,
 } as const;
 
 const typescriptFile = /\.(?:[cm]?ts|tsx)$/;
@@ -53,16 +56,23 @@ interface Callable {
 // property, or a default export holds. A callback passed to a call has no name of its own, and the function around it
 // is the one that matters.
 function declaredName(node: Node): string | undefined {
-	const own = (target: Node) => (target as Node & { name?: Node }).name?.getText();
-	if (isFunctionDeclaration(node)) return own(node) ?? "default";
+	const name = namedBy(node);
+	if (name === undefined) return undefined;
+	let kept = name.slice(0, enclosingLimits.nameBytes);
+	while (Buffer.byteLength(kept) > enclosingLimits.nameBytes) kept = kept.slice(0, -1);
+	return kept;
+}
+
+function namedBy(node: Node): string | undefined {
+	if (isFunctionDeclaration(node)) return node.name?.getText() ?? "default";
 	if (isMethodDeclaration(node) || isGetAccessorDeclaration(node) || isSetAccessorDeclaration(node)) {
-		return `${classLabel(node)}${own(node) ?? "<computed>"}`;
+		return `${classLabel(node)}${node.name.getText()}`;
 	}
 	if (isConstructorDeclaration(node)) return `${classLabel(node)}constructor`;
 	if (isArrowFunction(node) || isFunctionExpression(node)) {
 		const { parent } = node;
 		if (isVariableDeclaration(parent) || isPropertyAssignment(parent) || isPropertyDeclaration(parent)) {
-			return `${isPropertyDeclaration(parent) ? classLabel(parent) : ""}${own(parent) ?? "<computed>"}`;
+			return `${isPropertyDeclaration(parent) ? classLabel(parent) : ""}${parent.name.getText()}`;
 		}
 		if (isExportAssignment(parent)) return "default";
 	}
@@ -79,15 +89,36 @@ function classLabel(node: Node): string {
 	return "";
 }
 
-function callables(source: SourceFile): Callable[] {
+// The offset each line starts at, counting only LF as git and `read_file` do. The compiler's own line map also breaks at
+// a lone CR, U+2028 and U+2029, so a function's bounds come from this table, never from it.
+function lineStarts(text: string): number[] {
+	const starts = [0];
+	for (let at = text.indexOf("\n"); at !== -1; at = text.indexOf("\n", at + 1)) starts.push(at + 1);
+	return starts;
+}
+
+// The one-based line holding `offset`.
+function lineAt(starts: readonly number[], offset: number): number {
+	let low = 0;
+	let high = starts.length - 1;
+	while (low < high) {
+		const middle = Math.ceil((low + high) / 2);
+		if (starts[middle]! <= offset) low = middle;
+		else high = middle - 1;
+	}
+	return low + 1;
+}
+
+function callables(source: SourceFile, text: string): Callable[] {
+	const starts = lineStarts(text);
 	const found: Callable[] = [];
 	const visit = (node: Node): void => {
 		const name = declaredName(node);
 		if (name !== undefined) {
 			found.push({
 				name,
-				startLine: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1,
-				endLine: source.getLineAndCharacterOfPosition(node.end).line + 1,
+				startLine: lineAt(starts, node.getStart(source)),
+				endLine: lineAt(starts, node.end),
 			});
 		}
 		node.forEachChild(visit);
@@ -162,8 +193,9 @@ export class EnclosingFunctions {
 			for (const file of files) {
 				const source = program.source(file.path);
 				if (source === undefined) continue;
-				const around = callables(source);
-				const lines = texts.get(file.path)!.split("\n");
+				const text = texts.get(file.path)!;
+				const around = callables(source, text);
+				const lines = text.split("\n");
 				const taken = new Set<string>();
 				for (const [first, last] of anchors(file)) {
 					const holding = around
@@ -196,7 +228,7 @@ export class EnclosingFunctions {
 
 	/**
 	 * The prompt blocks for the functions in `only`, each in its own boundary with its lines numbered as `read_file`
-	 * numbers them, past which a note says what was left out. Empty when there is nothing to show.
+	 * numbers them, past which a listing and a note say what was left out. Empty when there is nothing to show.
 	 */
 	blocks(only: readonly string[] | undefined, nonce: string): string[] {
 		const shown = this.functions.filter((each) => only === undefined || only.includes(each.path));
@@ -205,11 +237,21 @@ export class EnclosingFunctions {
 			"Enclosing functions: the head's whole function around each hunk of a TypeScript file, with line numbers. Each block's first line names the file, the function, and its lines.",
 		];
 		const left: string[] = [];
+		let omitted = 0;
 		let size = 0;
+		const leave = (label: string) => {
+			const bytes = Buffer.byteLength(label) + 1;
+			if (left.length >= enclosingLimits.listed || size + bytes > enclosingLimits.promptBytes) {
+				omitted++;
+				return;
+			}
+			size += bytes;
+			left.push(label);
+		};
 		for (const each of shown) {
 			const label = `${visibleText(each.path)}:${each.startLine}-${each.endLine} ${visibleText(each.name)}`;
 			if (each.lines === undefined) {
-				left.push(label);
+				leave(label);
 				continue;
 			}
 			const width = String(each.endLine).length;
@@ -222,17 +264,17 @@ export class EnclosingFunctions {
 				nonce,
 			);
 			if (size + Buffer.byteLength(block) > enclosingLimits.promptBytes) {
-				left.push(label);
+				leave(label);
 				continue;
 			}
 			size += Buffer.byteLength(block);
 			parts.push(block);
 		}
-		if (left.length > 0) {
-			parts.push(
-				"Functions not shown, because they are long or the limit was reached; read each with read_file:",
-				quoteUntrusted("listing", left.join("\n"), nonce),
-			);
+		if (left.length > 0 || omitted > 0) {
+			parts.push("Functions not shown, because they are long or the limit was reached; read each with read_file:");
+			if (left.length > 0) parts.push(quoteUntrusted("listing", left.join("\n"), nonce));
+			if (omitted > 0)
+				parts.push(`and ${omitted} more not listed here; read the changed TypeScript files with read_file.`);
 		}
 		return parts;
 	}

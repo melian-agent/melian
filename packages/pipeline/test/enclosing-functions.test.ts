@@ -1,7 +1,7 @@
 import { rmSync } from "node:fs";
 import { Changeset } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EnclosingFunctions, enclosingLimits } from "../src/enclosing-functions.ts";
+import { type EnclosingFunction, EnclosingFunctions, enclosingLimits } from "../src/enclosing-functions.ts";
 import { ChangePrompt } from "../src/review.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 
@@ -131,6 +131,106 @@ describe("EnclosingFunctions", () => {
 		gitIn(repo, "commit", "--quiet", "-m", "rename and edit");
 		const found = await EnclosingFunctions.read(await Changeset.resolve(repo, "main...feature"));
 		expect(summary(found)).toEqual(["new.ts outer 1-5"]);
+	});
+
+	it.each([
+		["U+2028", String.fromCharCode(0x2028)],
+		["a lone CR", "\r"],
+		["U+2029", String.fromCharCode(0x2029)],
+	])("numbers lines as git does in a file holding %s before the function", async (_, separator) => {
+		const head = (tail: string) =>
+			lines(
+				`// before${separator}after`,
+				"export function first() {",
+				"\treturn 1;",
+				"}",
+				"",
+				"export function target() {",
+				`\treturn ${tail};`,
+				"}",
+			);
+		const found = await around({ "src/a.ts": head("2") }, { "src/a.ts": head("3") });
+
+		expect(summary(found)).toEqual(["src/a.ts target 6-8"]);
+		expect(found.functions[0]!.lines).toEqual(head("3").split("\n").slice(5, 8));
+	});
+
+	describe("the name a function is carried under", () => {
+		it.each([
+			["a default-exported arrow", "export default () => {\n\treturn 1;\n};\n", "return 1", "default 1-3"],
+			[
+				"an unnamed default-exported function",
+				"export default function () {\n\treturn 1;\n}\n",
+				"return 1",
+				"default 1-3",
+			],
+			[
+				"a named default-exported function",
+				"export default function run() {\n\treturn 1;\n}\n",
+				"return 1",
+				"run 1-3",
+			],
+			["an arrow held by an object property", "const o = { run: () => 1 };\n", "=> 1", "run 1-1"],
+			[
+				"an arrow held by an object property inside a class",
+				"class K {\n\tm() {\n\t\treturn { run: () => 1 };\n\t}\n}\n",
+				"=> 1",
+				"run 3-3",
+			],
+			[
+				"a function expression held by a variable",
+				"const f = function () {\n\treturn 1;\n};\n",
+				"return 1",
+				"f 1-3",
+			],
+			[
+				"a set accessor",
+				"class K {\n\tset v(x: number) {\n\t\tthis.w = x;\n\t}\n\tw = 0;\n}\n",
+				"this.w = x",
+				"K.v 2-4",
+			],
+			["an object-literal method", "const o = {\n\tgo() {\n\t\treturn 1;\n\t},\n};\n", "return 1", "go 2-4"],
+			[
+				"a method with a computed name",
+				'const o = {\n\t["a" + "b"]() {\n\t\treturn 1;\n\t},\n};\n',
+				"return 1",
+				'["a" + "b"] 2-4',
+			],
+			[
+				"a method of an unnamed default-exported class",
+				"export default class {\n\trun() {\n\t\treturn 1;\n\t}\n}\n",
+				"return 1",
+				"run 2-4",
+			],
+			[
+				"a method of a named class expression",
+				"const C = class Inner {\n\trun() {\n\t\treturn 1;\n\t}\n};\n",
+				"return 1",
+				"Inner.run 2-4",
+			],
+		])("%s", async (_, text, edit, expected) => {
+			const found = await around({ "src/a.ts": text }, { "src/a.ts": text.replace(edit, `${edit} + 1`) });
+			expect(summary(found)).toEqual([`src/a.ts ${expected}`]);
+		});
+
+		const named = (length: number, letter: string) => `f${letter.repeat(length - 1)}`;
+		it.each([
+			["x", enclosingLimits.nameBytes, enclosingLimits.nameBytes],
+			["x", enclosingLimits.nameBytes + 1, enclosingLimits.nameBytes],
+			["é", enclosingLimits.nameBytes / 2, enclosingLimits.nameBytes],
+			["é", enclosingLimits.nameBytes / 2 + 1, enclosingLimits.nameBytes],
+		])(
+			"keeps at most its first nameBytes bytes of a name of %s x %i characters",
+			async (letter, characters, kept) => {
+				const name = named(characters, letter);
+				const text = `export function ${name}() {\n\treturn 1;\n}\n`;
+				const found = await around({ "src/a.ts": text }, { "src/a.ts": text.replace("1", "2") });
+				const carried = found.functions[0]!.name;
+				expect(Buffer.byteLength(carried)).toBeLessThanOrEqual(kept);
+				expect(carried).toBe(name.slice(0, carried.length));
+				expect(carried.length).toBe(Math.min(name.length, letter === "x" ? kept : kept / 2));
+			},
+		);
 	});
 
 	describe("a function's length", () => {
@@ -270,6 +370,70 @@ describe("ChangePrompt with functions", () => {
 		expect(text.includes('label="function"')).toBe(shown);
 		if (shown) expect(size).toBe(bytes);
 		else expect(text).toMatch(/label="listing">\nsrc\/f\.ts:1-4 f\n/);
+	});
+
+	describe("the listing of functions not shown", () => {
+		const listing = (functions: EnclosingFunction[]) =>
+			Object.assign(EnclosingFunctions.none(), { functions }).blocks(undefined, nonce);
+		const left = (index: number, name = "long"): EnclosingFunction => ({
+			path: `src/l${String(index).padStart(3, "0")}.ts`,
+			name,
+			startLine: 1,
+			endLine: 300,
+		});
+		const entries = (parts: string[]) =>
+			/label="listing">\n([^<]*)<\/untrusted/.exec(parts.join("\n"))?.[1]?.split("\n").filter(Boolean) ?? [];
+		const more = (parts: string[]) => /and (\d+) more not listed here/.exec(parts.join("\n"))?.[1];
+
+		it.each([
+			[enclosingLimits.listed, undefined],
+			[enclosingLimits.listed + 1, "1"],
+		] as const)("lists %i functions and says how many more it left out: %s", (count, omitted) => {
+			const parts = listing(Array.from({ length: count }, (_, index) => left(index)));
+			expect(entries(parts)).toHaveLength(Math.min(count, enclosingLimits.listed));
+			expect(more(parts)).toBe(omitted);
+		});
+
+		// One function whose block is exactly `bytes` long, then a function to list that costs `label` bytes with its newline.
+		const shown = (bytes: number): EnclosingFunction => {
+			const make = (pad: number): EnclosingFunction => ({
+				path: "src/a.ts",
+				name: "a",
+				startLine: 1,
+				endLine: 1,
+				lines: ["x".repeat(pad)],
+			});
+			const size = (each: EnclosingFunction) =>
+				Buffer.byteLength(
+					/<untrusted-a+ label="function">[\s\S]*?<\/untrusted-a+>/.exec(listing([each]).join("\n"))![0],
+				);
+			return make(1000 + bytes - size(make(1000)));
+		};
+
+		it.each([
+			[0, true],
+			[1, false],
+		] as const)("counts the listing against the byte limit: %i bytes over lists it, %s", (over, listed) => {
+			const toList = left(1);
+			const label = `${toList.path}:1-300 long`;
+			const parts = listing([shown(enclosingLimits.promptBytes - Buffer.byteLength(label) - 1 + over), toList]);
+			expect(entries(parts)).toEqual(listed ? [label] : []);
+			expect(more(parts)).toBe(listed ? undefined : "1");
+			expect(parts.join("\n")).toContain('label="function"');
+		});
+
+		it.each([
+			[0, true],
+			[1, false],
+		] as const)(
+			"counts a listed name against the blocks after it: %i bytes over shows the block, %s",
+			(over, kept) => {
+				const toList = left(1);
+				const label = `${toList.path}:1-300 long`;
+				const parts = listing([toList, shown(enclosingLimits.promptBytes - Buffer.byteLength(label) - 1 + over)]);
+				expect(parts.join("\n").includes('label="function"')).toBe(kept);
+			},
+		);
 	});
 
 	it("adds none after a diff the prompt had to cut", async () => {
