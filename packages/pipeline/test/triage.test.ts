@@ -55,6 +55,7 @@ import { VerdictDocument } from "../src/adjudication.ts";
 import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { VerificationTask } from "../src/verification.ts";
 import { gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
 
@@ -822,6 +823,59 @@ describe("a decider that never answers", () => {
 });
 
 describe("a decision task another call replaced", () => {
+	it("retires pending verification before triage after its lenses finished", async () => {
+		const entered = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		const spawn = VerificationTask.definition.phases.spawn;
+		const parked = vi
+			.spyOn(VerificationTask.definition.phases, "spawn")
+			.mockImplementationOnce(async (task, runtime, taskContext) => {
+				entered.resolve();
+				const aborted = () => release.resolve();
+				runtime.signal.addEventListener("abort", aborted, { once: true });
+				try {
+					await release.promise;
+					if (!runtime.signal.aborted) await spawn(task, runtime, taskContext);
+				} finally {
+					runtime.signal.removeEventListener("abort", aborted);
+				}
+			});
+		let old: TaskId | undefined;
+		const chooser = choosing("careful");
+		const decider: Decider = {
+			name: chooser.name,
+			calibrated: false,
+			decide: async (request) => {
+				const root = await harness.root(context);
+				expect(
+					(await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision()]!.verification,
+				).toBeUndefined();
+				return chooser.decide(request);
+			},
+		};
+		await open(decider);
+		scriptConversations(fake, [{ match: correctness, replies: [call("report_finding", crashFinding), done] }]);
+		const first = review().catch((error: unknown) => error);
+		try {
+			await entered.promise;
+			const root = await harness.root(context);
+			const before = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision()]!;
+			old = before.verification!.task as TaskId;
+			expect((await harness.getTask(before.task! as TaskId, context))!.state.status).toBe("terminal");
+			const result = await review({ decider });
+			expect(chooser.requests).toHaveLength(1);
+			expect((await harness.getTask(old!, context))!.state.outcome).toEqual({ status: "aborted" });
+			expect(result.verdict.ran?.find((check) => check.name === "verifier")).toBeDefined();
+			expect(
+				(await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision()]!.verification!.task,
+			).not.toBe(old);
+		} finally {
+			release.resolve();
+			await first;
+			parked.mockRestore();
+		}
+	});
+
 	// A decider that holds its first call until `release`, or until its signal aborts when `heeding`; later calls choose quick.
 	function holding(heeding: boolean) {
 		let release = () => {};
@@ -1143,6 +1197,7 @@ describe("escalation under a review plan", () => {
 				version: version(),
 				level: "careful",
 				models: [heavy],
+				standards: [],
 				ran: heavy,
 				lineage: describeLineage(lensRecord(reviewed)!.lineage!),
 				usage: expect.objectContaining({ models: [heavy], tokens: expect.any(Number), cost: expect.any(Number) }),
@@ -1246,11 +1301,51 @@ describe("escalation", () => {
 		const root = (await harness.root(context)).id;
 		const index = await harness.snapshot(ReviewIndex, root, context);
 		expect(index!.reviews[revision()]!.lenses).toEqual([
-			`correctness@${version()}@quick band quick-deep escalateAt P1 escalates to correctness@${version()}@careful (faux/heavy) on faux/medium`,
+			expect.stringMatching(
+				new RegExp(
+					`^correctness@${version()}@quick instructions [a-f0-9]{64} band quick-deep escalateAt P1 escalates to correctness@${version()}@careful \\(faux/heavy\\) [a-f0-9]{64} on faux/medium$`,
+				),
+			),
 		]);
 		expect((await readProvenance(harness, root, revision(), context))!.lenses).toEqual([
 			`correctness@${version()}@careful`,
 		]);
+	});
+
+	it("refreshes a quick review when only its careful escalation budget changes", async () => {
+		const decider = choosing("quick");
+		await open(decider);
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: [severe, done, done, severe, done, done] },
+		]);
+		await review({ decider });
+		const root = (await harness.root(context)).id;
+		const before = (await harness.snapshot(ReviewIndex, root, context))!.reviews[revision()]!;
+		await review({ decider });
+		expect(requests[correctness]).toHaveLength(3);
+		const changed = lenses.map((lens) => {
+			if (lens.name !== "correctness") return lens;
+			const settings = lens.level("careful");
+			return Lens.from({
+				...lens.toJSON(),
+				levels: { ...lens.levels, careful: { ...settings, budget: { ...settings.budget, findings: 9 } } },
+			});
+		});
+		expect(changed.map((lens) => lens.version)).toEqual(lenses.map((lens) => lens.version));
+		expect(changed.find((lens) => lens.name === "correctness")!.level("quick")).toEqual(
+			lenses.find((lens) => lens.name === "correctness")!.level("quick"),
+		);
+
+		const reviewed = await review({ decider, lenses: changed });
+
+		const after = (await harness.snapshot(ReviewIndex, root, context))!.reviews[revision()]!;
+		expect(after.task).not.toBe(before.task);
+		expect(after.lenses[0]!.split(" escalates to ")[0]).toBe(before.lenses[0]!.split(" escalates to ")[0]);
+		expect(after.lenses).not.toEqual(before.lenses);
+		expect(requests[correctness]).toHaveLength(6);
+		expect(systemPromptOf(requests[correctness]![2]!)).toContain(statedBudget.careful);
+		expect(systemPromptOf(requests[correctness]![5]!)).toContain("at most 9 findings");
+		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
 	});
 
 	it("counts a quick finding the escalated run restates once, with the escalated run speaking for it", async () => {
@@ -1644,7 +1739,11 @@ describe("escalation", () => {
 		expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful" });
 		const index = await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context);
 		expect(index!.reviews[revision()]!.lenses).toEqual([
-			`correctness@${version()}@quick band quick-deep escalateAt P2 escalates to correctness@${version()}@careful (faux/heavy) on faux/medium`,
+			expect.stringMatching(
+				new RegExp(
+					`^correctness@${version()}@quick instructions [a-f0-9]{64} band quick-deep escalateAt P2 escalates to correctness@${version()}@careful \\(faux/heavy\\) [a-f0-9]{64} on faux/medium$`,
+				),
+			),
 		]);
 	});
 
@@ -1656,7 +1755,11 @@ describe("escalation", () => {
 		await review({ decider, config: capped });
 		const root = (await harness.root(context)).id;
 		expect((await harness.snapshot(ReviewIndex, root, context))!.reviews[revision()]!.lenses).toEqual([
-			`correctness@${version()}@quick band quick-quick escalateAt P1 capped at its ceiling on faux/medium`,
+			expect.stringMatching(
+				new RegExp(
+					`^correctness@${version()}@quick instructions [a-f0-9]{64} band quick-quick escalateAt P1 capped at its ceiling on faux/medium$`,
+				),
+			),
 		]);
 
 		scriptConversations(fake, [{ match: correctness, replies: [severe, done, done] }]);
@@ -1664,7 +1767,11 @@ describe("escalation", () => {
 
 		expect(lensRecord(second)).toMatchObject({ level: "careful" });
 		expect((await harness.snapshot(ReviewIndex, root, context))!.reviews[revision()]!.lenses).toEqual([
-			`correctness@${version()}@quick band quick-deep escalateAt P1 escalates to correctness@${version()}@careful (faux/heavy) on faux/medium`,
+			expect.stringMatching(
+				new RegExp(
+					`^correctness@${version()}@quick instructions [a-f0-9]{64} band quick-deep escalateAt P1 escalates to correctness@${version()}@careful \\(faux/heavy\\) [a-f0-9]{64} on faux/medium$`,
+				),
+			),
 		]);
 	});
 
@@ -1699,7 +1806,11 @@ describe("escalation", () => {
 		const root = (await harness.root(context)).id;
 		const index = await harness.snapshot(ReviewIndex, root, context);
 		expect(index!.reviews[revision()]!.lenses).toEqual([
-			`correctness@${version()}@deep band deep-deep escalateAt P1 on faux/heavy`,
+			expect.stringMatching(
+				new RegExp(
+					`^correctness@${version()}@deep instructions [a-f0-9]{64} band deep-deep escalateAt P1 on faux/heavy$`,
+				),
+			),
 		]);
 	});
 });
@@ -1925,7 +2036,11 @@ describe("reviews recorded before levels joined the keys", () => {
 		expect(reviewed.findings).toEqual([]);
 		const index = await harness.snapshot(ReviewIndex, root.id, context);
 		expect(index!.reviews[revision()]!.lenses).toEqual([
-			`correctness@${version()}@careful band quick-deep escalateAt P1 on faux/heavy`,
+			expect.stringMatching(
+				new RegExp(
+					`^correctness@${version()}@careful instructions [a-f0-9]{64} band quick-deep escalateAt P1 on faux/heavy$`,
+				),
+			),
 		]);
 		// The fresh run of the lens replaces the earlier run's sightings at the revision, the bare-version one included.
 		const after = await readFindings(harness, root.id, revision(), context, { producers: [atVersion] });
@@ -1971,7 +2086,7 @@ describe("reviews recorded before levels joined the keys", () => {
 
 		const upgraded = migrate(input, checkpoint, 1);
 
-		expect(definition.version).toBe(2);
+		expect(definition.version).toBe(3);
 		expect(upgraded.input).toMatchObject({
 			root: input.root,
 			revision: input.revision,
@@ -1979,72 +2094,83 @@ describe("reviews recorded before levels joined the keys", () => {
 		});
 		expect(upgraded.input).not.toHaveProperty("lenses.0.level");
 		expect(upgraded.checkpoint).toEqual({ phase: "review", children: { [key]: 2 }, attempts: { [key]: 1 } });
+		const previous = migrate(input, checkpoint, 2);
+		expect(previous.input).toEqual(input);
+		expect(previous.input).not.toHaveProperty("lenses.0.standards");
+		expect(previous.checkpoint).toEqual(checkpoint);
 	});
 
-	it("resumes a lens task an older Melian created, at version 1, under the current definition", async () => {
-		const path = join(dir, "review.sqlite");
-		// The definition as an older Melian registered it; only its name and version reach storage.
-		const LegacyLensTask = defineTask<unknown, { phase: "spawn" }, unknown>({
-			name: "melian.lenses",
-			version: 1,
-			initial: () => ({ phase: "spawn" }),
-			phases: { spawn: async () => undefined },
-			abort: async () => undefined,
-		});
-		const head = gitIn(repo, "rev-parse", "feature");
-		const base = gitIn(repo, "merge-base", "main", "feature");
-		const lens = lenses.find((each) => each.name === "correctness")!;
-		const legacy = await openHarness(await openSqliteStorage(path), {
-			models: fake.models,
-			registry: createRegistry(),
-		});
-		const root = await legacy.root(context, { agent: { model: fake.ref("orchestrator") } });
-		const input = {
-			root: root.id,
-			revision: { repoRoot: repo, nonce: "0".repeat(24), base, head, files: [] },
-			lenses: [
-				{
-					key: `correctness@${lens.version}`,
-					name: "correctness",
-					version: lens.version,
-					level: "careful",
-					route: [fake.ref("heavy")],
-					instructions: correctness,
-					tools: [...lens.tools],
-					severities: [...lens.severities],
-					rules: lens.rules.map((rule) => ({ ...rule })),
-					budget: { findings: 8 },
-					coverage: { scope: "", paths: ["**"], nearer: [] },
-					prompt: "Review the change.",
-				},
-			],
-		};
-		const taskId = await root.commit(
-			(tx) => tx.createTask(LegacyLensTask, input, { ownership: { kind: "conversation" } }),
-			context,
-		);
-		await legacy.close(context);
-		scriptConversations(fake, [{ match: correctness, replies: [call("report_finding", crashFinding), done] }]);
-
-		const current = await openHarness(await openSqliteStorage(path), {
-			models: fake.models,
-			registry: createReviewRegistry(),
-			settings: { retry: { enabled: false } },
-		});
-		try {
-			current.resume();
-			const settled = await current.waitForTask(taskId as TaskId<Record<string, { status: string }>>, context);
-			expect(settled.state.outcome).toMatchObject({
-				status: "completed",
-				result: { [`correctness@${lens.version}`]: { status: "done" } },
+	it.each([1, 2])(
+		"resumes a lens task an older Melian created, at version %i, under the current definition",
+		async (version) => {
+			const path = join(dir, "review.sqlite");
+			// The definition as an older Melian registered it; only its name and version reach storage.
+			const LegacyLensTask = defineTask<unknown, { phase: "spawn" }, unknown>({
+				name: "melian.lenses",
+				version,
+				initial: () => ({ phase: "spawn" }),
+				phases: { spawn: async () => undefined },
+				abort: async () => undefined,
 			});
-			const findings = await readFindings(current, root.id, revisionKey({ base, head }), context);
-			// The migration strips the run's level, so its findings name the version alone, as its own review expects.
-			expect(findings.map((finding) => finding.properties.source)).toEqual([
-				{ check: "lens.correctness", version: lens.version },
-			]);
-		} finally {
-			await current.close(context);
-		}
-	});
+			const head = gitIn(repo, "rev-parse", "feature");
+			const base = gitIn(repo, "merge-base", "main", "feature");
+			const lens = lenses.find((each) => each.name === "correctness")!;
+			const key = `correctness@${lens.version}${version === 1 ? "" : "@careful"}`;
+			const legacy = await openHarness(await openSqliteStorage(path), {
+				models: fake.models,
+				registry: createRegistry(),
+			});
+			const root = await legacy.root(context, { agent: { model: fake.ref("orchestrator") } });
+			const input = {
+				root: root.id,
+				revision: { repoRoot: repo, nonce: "0".repeat(24), base, head, files: [] },
+				lenses: [
+					{
+						key,
+						name: "correctness",
+						version: lens.version,
+						level: "careful",
+						route: [fake.ref("heavy")],
+						instructions: correctness,
+						tools: [...lens.tools],
+						severities: [...lens.severities],
+						rules: lens.rules.map((rule) => ({ ...rule })),
+						budget: { findings: 8 },
+						coverage: { scope: "", paths: ["**"], nearer: [] },
+						prompt: "Review the change.",
+					},
+				],
+			};
+			const taskId = await root.commit(
+				(tx) => tx.createTask(LegacyLensTask, input, { ownership: { kind: "conversation" } }),
+				context,
+			);
+			await legacy.close(context);
+			scriptConversations(fake, [{ match: correctness, replies: [call("report_finding", crashFinding), done] }]);
+
+			const current = await openHarness(await openSqliteStorage(path), {
+				models: fake.models,
+				registry: createReviewRegistry(),
+				settings: { retry: { enabled: false } },
+			});
+			try {
+				current.resume();
+				const settled = await current.waitForTask(taskId as TaskId<Record<string, { status: string }>>, context);
+				expect(settled.state.outcome).toMatchObject({
+					status: "completed",
+					result: { [key]: { status: "done" } },
+				});
+				if (version === 2) {
+					expect(settled.input).toEqual(input);
+					expect(settled.input).not.toHaveProperty("lenses.0.standards");
+				}
+				const findings = await readFindings(current, root.id, revisionKey({ base, head }), context);
+				expect(findings.map((finding) => finding.properties.source)).toEqual([
+					{ check: "lens.correctness", version: `${lens.version}${version === 1 ? "" : "@careful"}` },
+				]);
+			} finally {
+				await current.close(context);
+			}
+		},
+	);
 });

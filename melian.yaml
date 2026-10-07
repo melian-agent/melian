@@ -21,12 +21,12 @@ tiers:
 
 # The golden corpus seeds defects on purpose, so no lens reviews a golden's trees as Melian's own code.
 lenses:
-  correctness: { paths: ["**", "!packages/evals/goldens/**"] }
-  contracts: { paths: ["**", "!packages/evals/goldens/**"] }
-  trust-boundary: { paths: ["**", "!packages/evals/goldens/**"] }
-  removed-behaviour: { paths: ["**", "!packages/evals/goldens/**"] }
-  tests: { paths: ["**", "!packages/evals/goldens/**"] }
-  conventions: { paths: ["**", "!packages/evals/goldens/**"] }
+  correctness: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"] }
+  contracts: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"] }
+  trust-boundary: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"] }
+  removed-behaviour: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"] }
+  tests: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"] }
+  conventions: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"] }
 
 guardrails:
   forbidden-paths:
@@ -45,7 +45,7 @@ guardrails:
   forbidden-patterns:
     rules:
       free-domain-function:
-        pattern: '^(export )?(async )?function \w+\(\w+: (readonly )?(Finding|ResolvedFinding|Defect|Verdict|Manifest|Lens|Revision|Changeset)\b'
+        pattern: '^(export )?(async )?function \w+\(\w+: (readonly )?(Finding|ResolvedFinding|Defect|Verdict|Manifest|Lens|Revision|Changeset|Comparison|ExternalFinding)\b'
         paths: ["packages/*/src/**"]
         message: behaviour belongs to the object it is about, so make this a method on that object's class or on this package's own class that adapts it; for a false positive, the Biome rule biome/free-domain-function.grit reads the syntax and the rule in AGENTS.md decides
       focused-test:
@@ -62,11 +62,11 @@ guardrails:
         message: AGENTS.md allows top-level imports only
       bare-issue-reference:
         pattern: '(^|[\s(])#\d+([^\w\]-]|$)'
-        paths: ["**/*.md", "!.github/**", "!packages/evals/goldens/**"]
+        paths: ["**/*.md", "!.github/**", "!packages/evals/goldens/**", "!packages/evals/verifier/**"]
         severity: P3
         message: 'AGENTS.md says to link every GitHub issue and pull request you mention, in chat and docs, because only GitHub''s own UI turns a bare number into a link; write the number as the text of a Markdown link to its page'
       overlong-sentence:
         pattern: '([\w''’`-]+[^\w''’`.!?|\n]+){44,}[\w''’`-]+'
-        paths: ["docs/**/*.md", "packages/evals/comparisons/**/*.md", "README.md", "!packages/evals/goldens/**"]
+        paths: ["docs/**/*.md", "packages/evals/comparisons/**/*.md", "README.md", "!packages/evals/goldens/**", "!packages/evals/verifier/**"]
         severity: P3
         message: 'AGENTS.md says to prefer short sentences and, for one that runs past about 25 words, to find the seam; this line holds 45 or more words with no full stop, question mark, exclamation mark, or table bar'

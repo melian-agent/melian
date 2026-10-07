@@ -6,8 +6,8 @@ or {
 } where {
 	$first <: JsFormalParameter(type_annotation = TsTypeAnnotation(ty = $type)),
 	$type <: or {
-		r"(?:readonly\s+)?(?:Finding|ResolvedFinding|Defect|Verdict|Manifest|Lens|Revision|Changeset)(?:\[\])?",
-		r"ReadonlyArray<\s*(?:Finding|ResolvedFinding|Defect|Verdict|Manifest|Lens|Revision|Changeset)\s*>"
+		r"(?:readonly\s+)?(?:Finding|ResolvedFinding|Defect|Verdict|Manifest|Lens|Revision|Changeset|Comparison|ExternalFinding)(?:\[\])?",
+		r"ReadonlyArray<\s*(?:Finding|ResolvedFinding|Defect|Verdict|Manifest|Lens|Revision|Changeset|Comparison|ExternalFinding)\s*>"
 	},
 	register_diagnostic(
 		span = $name,

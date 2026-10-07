@@ -24,7 +24,7 @@ import {
 	openSqliteStorage,
 	Type,
 } from "../../src/harness.ts";
-import { lensReadTools, reportFinding } from "../../src/lens-tools.ts";
+import { lensReadTools, reportFinding, reportVerdict } from "../../src/lens-tools.ts";
 import { lensExtension, reviewChangeset } from "../../src/review.ts";
 import {
 	createFakeModels,
@@ -32,6 +32,7 @@ import {
 	fauxToolCall,
 	type ScriptedReply,
 	scriptConversations,
+	scriptVerifier,
 } from "../../src/testing.ts";
 import { isolatedGitEnv } from "./repo.ts";
 import {
@@ -54,6 +55,9 @@ const [scenario, repo, database, log] = process.argv.slice(2) as [
 		| "spent"
 		| "tokens"
 		| "escalation"
+		| "verifier"
+		| "verdict"
+		| "conflicting-verdict"
 		| "decision"
 		| "replacement"
 	),
@@ -69,6 +73,16 @@ const parkedReport = defineTool({
 	execute: async (args, api, context) => {
 		const result = await reportFinding.execute(args, api, context);
 		record(log, { event: "finding-committed" });
+		await park();
+		return result;
+	},
+});
+const parkedVerdict = defineTool({
+	...reportVerdict,
+	execute: async (args, api, context) => {
+		const result = await reportVerdict.execute(args, api, context);
+		if (scenario === "conflicting-verdict" && args.verdict !== "refuted") return result;
+		record(log, { event: "verdict-committed" });
 		await park();
 		return result;
 	},
@@ -115,13 +129,16 @@ const parkedAdjudication = defineTask({
 const parked = defineExtension({
 	...lensExtension,
 	tools: lensExtension.tools?.map((tool) =>
-		tool.name === lensReadTools.read_file.name && ["read", "spent", "tokens"].includes(scenario)
-			? parkedRead
-			: tool.name !== reportFinding.name || scenario === "escalation"
-				? tool
-				: scenario === "legacy"
-					? legacyReport
-					: parkedReport,
+		tool.name === "report_verdict" && ["verdict", "conflicting-verdict"].includes(scenario)
+			? parkedVerdict
+			: tool.name === lensReadTools.read_file.name && ["read", "spent", "tokens"].includes(scenario)
+				? parkedRead
+				: tool.name !== reportFinding.name ||
+						["escalation", "verifier", "verdict", "conflicting-verdict"].includes(scenario)
+					? tool
+					: scenario === "legacy"
+						? legacyReport
+						: parkedReport,
 	),
 	tasks: lensExtension.tasks?.map((task) =>
 		scenario === "adjudication" && task === AdjudicationTask ? parkedAdjudication : task,
@@ -158,6 +175,9 @@ const toolUse = (name: string, args: Parameters<typeof fauxToolCall>[1]) =>
 	fauxAssistantMessage(fauxToolCall(name, args), { stopReason: "toolUse" });
 const done = fauxAssistantMessage("Done.");
 const correctness: Readonly<Record<typeof scenario, readonly ScriptedReply[]>> = {
+	verifier: [toolUse("report_finding", crashFinding), done],
+	verdict: [toolUse("report_finding", crashFinding), done],
+	"conflicting-verdict": [toolUse("report_finding", crashFinding), done],
 	finding: [toolUse("report_finding", crashFinding)],
 	legacy: [toolUse("report_finding", legacyCrashFinding)],
 	request: [requested("correctness")],
@@ -170,6 +190,31 @@ const correctness: Readonly<Record<typeof scenario, readonly ScriptedReply[]>> =
 	replacement: [done],
 };
 scriptConversations(fake, [
+	...(["verifier", "verdict", "conflicting-verdict"].includes(scenario)
+		? [
+				{
+					match: "Melian adversarial verifier",
+					replies: [
+						scenario === "verifier"
+							? requested("verifier")
+							: scenario === "conflicting-verdict"
+								? fauxAssistantMessage(
+										["confirmed", "refuted"].map((verdict) =>
+											fauxToolCall("report_verdict", {
+												claim: "c1",
+												answers: { code: "yes", guard: "no", base: "no" },
+												verdict,
+												reason: `Reported ${verdict}.`,
+												evidence: [{ file: "src/user.ts", line: 7, role: "context" }],
+											}),
+										),
+										{ stopReason: "toolUse" },
+									)
+								: (messages: Parameters<typeof scriptVerifier>[0]) => scriptVerifier(messages),
+					],
+				},
+			]
+		: []),
 	{ match: "You are the correctness reviewer", replies: correctness[scenario] },
 	{ match: "You are the contracts reviewer", replies: [scenario === "request" ? requested("contracts") : done] },
 ]);
@@ -198,6 +243,7 @@ const options = {
 	},
 	...(scenario === "escalation" ? { decider } : scenario === "decision" ? { decider: parkedDecider } : {}),
 	lenses: lensesFor(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
+	checks: [],
 	standards: [],
 	models: fake.review,
 	...(scenario === "replacement"

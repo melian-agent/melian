@@ -8,6 +8,7 @@ export {
 	type ConfigFor,
 	Defect,
 	Manifest,
+	Merge,
 	noRecord,
 	type StoredCheckRecord,
 	type StoredVerdict,
@@ -33,6 +34,32 @@ export {
 	type RevisionFields,
 } from "./changeset.ts";
 export { checksOfTier, type DeterministicCheck, deterministicChecks } from "./checks.ts";
+export {
+	Comparison,
+	type ComparisonGroup,
+	type ComparisonImport,
+	type ComparisonMatch,
+	type ComparisonUnmatch,
+	codexReviewSchema,
+	comparisonSchema,
+	ExternalFinding,
+	type ExternalFindingInput,
+	type ExternalFindingsFile,
+	type ExternalImport,
+	type ExternalImporter,
+	type ExternalReviewer,
+	type ExternalReviewerName,
+	type ExternalSite,
+	type ExternalSource,
+	externalFindingSchema,
+	externalFindingsFileSchema,
+	maxExternalBodyLength,
+	maxExternalFileFindings,
+	maxExternalTitleLength,
+	type StoredComparison,
+	type StoredExternalFinding,
+	siteDistance,
+} from "./comparison.ts";
 export {
 	type Band,
 	type ConfigLookup,
@@ -89,6 +116,8 @@ export {
 	type ChangesetErrorCode,
 	CheckError,
 	type CheckErrorCode,
+	ComparisonError,
+	type ComparisonErrorCode,
 	ConfigError,
 	type ConfigErrorCode,
 	DecisionError,
@@ -258,7 +287,15 @@ export {
 	secretsFileSchema,
 } from "./secrets.ts";
 export type { RepositorySource } from "./source.ts";
-export { loadStandards, type StandardsSection, standardsLimits } from "./standards.ts";
+export {
+	loadStandards,
+	Standards,
+	type StandardsEntry,
+	StandardsInventory,
+	StandardsReading,
+	type StandardsSection,
+	standardsLimits,
+} from "./standards.ts";
 export {
 	normaliseBiomeSarif,
 	parseTscDiagnostics,
@@ -284,3 +321,30 @@ export {
 } from "./triage.ts";
 
 export const packageName = "@melian-agent/core";
+
+export {
+	Adjudication as ComparisonAdjudication,
+	type ComparisonAdjudicationRecord,
+	comparisonAdjudicationSchema,
+	missReasons,
+	type StoredComparisonAdjudication,
+} from "./comparison-adjudication.ts";
+export { ComparisonExport } from "./comparison-export.ts";
+export {
+	type ComparisonEntry,
+	ComparisonSet,
+	type ComparisonStats,
+	type OwedGolden,
+	type RepeatedFinding,
+	type ReviewerStats,
+} from "./comparison-set.ts";
+
+export {
+	type StoredVerificationState,
+	type Verification,
+	VerificationState,
+	verificationBudget,
+	verificationQuestionSet,
+	verificationQuestions,
+	verificationSchema,
+} from "./verification.ts";

@@ -14,7 +14,7 @@ import {
 	type CredentialStore,
 	defaultProviderAuthContext,
 	isRetryableAssistantError,
-	type Models,
+	type MutableModels,
 } from "@earendil-works/pi-ai";
 import { builtinModels } from "@earendil-works/pi-ai/providers/all";
 import {
@@ -42,6 +42,7 @@ export {
 	type Message,
 	type Model,
 	type Models,
+	type MutableModels,
 	type ToolCall,
 	Type,
 } from "@earendil-works/pi-ai";
@@ -65,6 +66,7 @@ export {
 	LiveDoc,
 	type ModelRef,
 	type Registry,
+	ROOT_CONVERSATION_ID,
 	type Storage,
 	type SubmissionId,
 	SystemEntry,
@@ -128,7 +130,7 @@ export function createNodeExecutionEnv(cwd: string): ExecutionEnv {
 export function createProviderModels(
 	credentials: CredentialStore,
 	authContext: AuthContext = defaultProviderAuthContext(),
-): Models {
+): MutableModels {
 	return builtinModels({ credentials, authContext });
 }
 

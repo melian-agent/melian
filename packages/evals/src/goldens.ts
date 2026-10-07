@@ -14,10 +14,10 @@ import {
 	Lens,
 	type LensTier,
 	loadConfig,
-	loadStandards,
 	type MelianConfig,
 	type ModelRoute,
 	type RepositorySource,
+	Standards,
 } from "@melian-agent/core";
 import {
 	backgroundContext,
@@ -204,7 +204,11 @@ function copyTree(tree: string, repo: string): void {
  * its standards and policy under inert names, such as `AGENTS.golden.md`, so the repository it sits in never reads them
  * as its own; each is written here under its live name, `AGENTS.md`. The caller deletes `repo`.
  */
-export function buildGoldenRepository(golden: Golden): { repo: string; base: string; head: string } {
+export function buildGoldenRepository(golden: Pick<Golden, "name" | "directory">): {
+	repo: string;
+	base: string;
+	head: string;
+} {
 	const repo = realpathSync(mkdtempSync(join(tmpdir(), `melian-golden-${golden.name}-`)));
 	git(repo, "init", "--quiet", "--initial-branch=main");
 	copyTree(join(golden.directory, "base"), repo);
@@ -230,6 +234,8 @@ export type GoldenMode =
 			readonly models: ReviewModels;
 			/** `provider/model-id` for every tier the golden's `melian.golden.yaml` leaves unrouted. */
 			readonly model?: string;
+			/** A separate verifier route for a live run. */
+			readonly verifierModel?: string;
 	  };
 
 /** A golden's review: the findings, and the terminal rendering an author would see. */
@@ -275,7 +281,7 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 		const changeset = await Changeset.resolve(repo, "main...feature");
 		const paths = changeset.revision.paths();
 		const lenses = await Lens.load(repo, source, paths);
-		const standards = await loadStandards(repo, source, ".");
+		const standards = await Standards.load(repo, source, paths);
 		const { config: loaded } = await loadConfig(repo, source, ".");
 		let models: ReviewModels;
 		let config: MelianConfig;
@@ -284,16 +290,19 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 			const fake = createFakeModels({ models: [{ id: "scripted" }] });
 			const ref = fake.ref("scripted");
 			config = routeEveryTier(loaded, `${ref.provider}/${ref.modelId}`, true);
+			config = { ...config, models: { ...config.models, verifier: { model: `${ref.provider}/${ref.modelId}` } } };
 			models = fake.review;
 			scriptLenses(fake, lenses, golden.script, toolMismatches);
 		} else {
 			config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false);
+			const verifier = mode.verifierModel ?? mode.model;
+			if (verifier !== undefined)
+				config = { ...config, models: { ...config.models, verifier: { model: verifier } } };
 			models = mode.models;
 		}
 		const reviewHarness = await openReviewHarness(createMemoryStorage(), models, { retry: mode.kind !== "scripted" });
-		const { harness } = reviewHarness;
 		try {
-			const review = { harness, changeset, config, lenses, standards, models, policy: source };
+			const review = { harness: reviewHarness, changeset, config, lenses, standards, models, policy: source };
 			const reviewed = await reviewChangeset(review);
 			const findings = [...reviewed.findings, ...(await guardrailFindings(golden, repo, changeset, source, loaded))];
 			const rendered = FindingsLog.of(findings).render();

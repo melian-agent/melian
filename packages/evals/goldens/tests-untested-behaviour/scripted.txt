@@ -1,6 +1,7 @@
 src/overlap.ts
 
-  P2  lines 20-21  untested-behaviour  (introduced, new, unresolved)
+  P2  lines 20-21  untested-behaviour  (introduced, new, unresolved, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
   The base branch of overlapsChange, which compares a location against the lines a hunk deleted, has no test.
     What: The base branch of overlapsChange, which compares a location against the lines a hunk deleted, has no test.
     Why here: This change added the branch and the revision field, and left test/overlap.test.ts covering only head locations.
