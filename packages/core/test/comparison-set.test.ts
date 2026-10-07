@@ -176,6 +176,27 @@ describe("ComparisonSet statistics", () => {
 		expect(stats.reviewers.every((each) => each.recall === 1 && each.precision === 1)).toBe(true);
 	});
 
+	it("counts pending matches and reasonless misses clone-wide under a filter", () => {
+		const [first, second, third] = [own(12), own(14), own(50)] as [Finding, Finding, Finding];
+		const unexplained = report({ line: 50, title: "Unexplained" });
+		const old = round({
+			externals: [report({ line: 13 }), unexplained],
+			findings: [first, second, third],
+			at: "2026-01-01T00:00:00Z",
+			target: "old",
+		});
+		old.adjudicate(unexplained.id, { ...by, verdict: "valid" });
+		old.unmatch(unexplained.id, third.id, by.by, at);
+		const set = new ComparisonSet([
+			entry("old", old, [first, second, third]),
+			entry("new", round({ at: "2026-12-01T00:00:00Z", target: "new" })),
+		]);
+		expect(set.select({ since: "2026-06-01" }).stats()).toMatchObject({ pendingMatches: 0, reasonlessMisses: 0 });
+		const out = set.renderStats({ since: "2026-06-01" });
+		expect(out).toContain("Clone-wide, not narrowed by the filter:\nPending matches: 1.\n");
+		expect(out).toContain("Valid misses without a reason: 1.\n");
+	});
+
 	it("narrows reviewer metrics to the selection and flags every filter", () => {
 		const first = busy("a");
 		const miss = report({ line: 90, title: "Late miss" });
