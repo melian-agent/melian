@@ -1,11 +1,12 @@
+import { createHash } from "node:crypto";
 import type * as filesystem from "node:fs/promises";
-import { type FileHandle, mkdtemp, open, readdir, readFile, rename, rm, symlink } from "node:fs/promises";
+import { type FileHandle, mkdtemp, open, readdir, readFile, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GraphCoverage, GraphSnapshot, TestCoverage } from "@melian-agent/core";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { CoverageCache } from "../src/coverage-cache.ts";
-import { coverageCompiler } from "../src/coverage-identity.ts";
+import { coverageCompiler, coverageMatcher } from "../src/coverage-identity.ts";
 import { GraphCache } from "../src/graph-cache.ts";
 
 vi.mock("node:fs/promises", async (importOriginal) => {
@@ -99,4 +100,34 @@ it("records an explicit matcher version in the producer index", async () => {
 	expect(JSON.parse(await readFile(join(directory, index), "utf8"))).toMatchObject({
 		producer: { matcher: "custom-matcher@2" },
 	});
+});
+
+it.each([
+	[0, true],
+	[1, false],
+])("reads a coverage artifact %i bytes over the 16 MiB limit as a hit: %s", async (over, hit) => {
+	vi.mocked(open).mockReset();
+	await cache.store(parts, artifact);
+	const path = join(root, "coverage", GraphSnapshot.key(parts), "artifacts", `test-${artifact.id}.json`);
+	const text = await readFile(path, "utf8");
+	await writeFile(path, text + " ".repeat(16 * 1024 * 1024 + over - Buffer.byteLength(text)));
+	expect((await cache.read(parts, "test", { id: artifact.id }))?.id).toBe(hit ? artifact.id : undefined);
+});
+
+it("misses an automatic lookup whose indexed graph coverage came from another compiler", async () => {
+	vi.mocked(open).mockReset();
+	const other = await CoverageCache.open(root, { compiler: "other-compiler@1" });
+	const stale = GraphCoverage.compute(
+		parts.tree,
+		parts.version,
+		{ format_version: 1, compiler: "other-compiler@1", files: [], symbols: [] },
+		{ call: () => undefined, import: () => undefined },
+	);
+	await other.store(parts, stale);
+	const directory = join(root, "coverage", GraphSnapshot.key(parts));
+	const producer = { schema: 1, compiler: coverageCompiler, matcher: coverageMatcher };
+	const key = createHash("sha256").update(JSON.stringify(producer)).digest("hex");
+	await writeFile(join(directory, `graph-${key}.json`), JSON.stringify({ format_version: 1, producer, id: stale.id }));
+	expect(await cache.read(parts, "graph")).toBeUndefined();
+	expect((await cache.read(parts, "graph", { id: stale.id }))?.id).toBe(stale.id);
 });
