@@ -66,6 +66,7 @@ export {
 	LiveDoc,
 	type ModelRef,
 	type Registry,
+	ROOT_CONVERSATION_ID,
 	type Storage,
 	type SubmissionId,
 	SystemEntry,

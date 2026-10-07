@@ -2,6 +2,8 @@ import {
 	Adjudication,
 	Comparison,
 	ComparisonError,
+	ComparisonExport,
+	ComparisonSet,
 	codexReviewSchema,
 	comparisonSchema,
 	defaultConfig,
@@ -35,6 +37,23 @@ function external(input: Partial<ExternalFindingInput> = {}): ExternalFinding {
 		source: { kind: "file", path: "codex.json", position: position++ },
 		...input,
 	});
+}
+
+// Melian's verdict over `findings`, as adjudication decides it under the default resolutions.
+const verdictOf = ({ findings }: { findings: readonly Finding[] }) =>
+	new Adjudication({ findings, manifest: [], checks: [], config: defaultConfig }).adjudicate();
+
+function compared({
+	externals,
+	findings,
+}: {
+	externals: readonly ExternalFinding[];
+	findings: readonly Finding[];
+}): Comparison {
+	const comparison = Comparison.of(revision);
+	comparison.import("file:codex.json", { findings: externals, skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
+	comparison.compare(verdictOf({ findings }));
+	return comparison;
 }
 
 const ids = (groups: ReturnType<Comparison["groups"]>) =>
@@ -892,7 +911,14 @@ describe("Comparison matching", () => {
 		const comparison = Comparison.of(revision);
 		comparison.import("file:x.json", { findings: [first, last], skippedBodies: 0 }, "t");
 		expect(comparison.externalFindings().map((each) => each.toJSON())).toEqual([last.toJSON()]);
-		expect(comparison.importsBySource()).toEqual({ "file:x.json": { at: "t", ids: [last.id], skippedBodies: 0 } });
+		expect(comparison.importsBySource()).toEqual({
+			"file:x.json": {
+				at: "t",
+				ids: [last.id],
+				skippedBodies: 0,
+				reviewers: [{ name: "codex" }, { name: "codex" }],
+			},
+		});
 	});
 
 	it("counts a repeated Melian finding and its generated pair once", () => {
@@ -1024,11 +1050,13 @@ describe("Comparison matching", () => {
 		expect(comparison.melianFindings()).toEqual([finding.id]);
 		if (matched) {
 			expect(comparison.effectiveMatches()).toEqual([{ external: outside.id, melian: finding.id, kind: "site" }]);
-			expect(comparison.render(verdict)).toContain(`Matched:\n  ${finding.id}  (dismissed)\n`);
+			expect(comparison.render(verdict)).toBe(
+				`Matched: 1 external finding, covering 1 Melian finding. External only: 0. Melian only: 0.\nMatched:\n  ${finding.id}  (dismissed)\n    ${outside.id}  codex  src/run.ts:12\n`,
+			);
 		} else {
 			expect(comparison.melianOnly()).toEqual([finding.id]);
-			expect(comparison.render(verdict)).toContain(
-				`Melian only:\n  ${finding.id}  P1 no-eval  src/run.ts:12  (dismissed)\n`,
+			expect(comparison.render(verdict)).toBe(
+				`Matched: 0 external findings, covering 0 Melian findings. External only: 0. Melian only: 1.\nMelian only:\n  ${finding.id}  P1 no-eval  src/run.ts:12  (dismissed)\n`,
 			);
 		}
 	});
@@ -1402,18 +1430,14 @@ describe("Comparison matching", () => {
 
 	it("keeps a field a newer Melian stored, through an import and a comparison", () => {
 		const finding = melian();
-		const original = Comparison.of(revision);
-		original.import("file:codex.json", { findings: [], skippedBodies: 0 }, "2026-10-05T00:00:00.000Z");
-		original.compare(
-			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
-		);
-		const stored = { ...original.toJSON(), adjudications: { later: { verdict: "valid" } } };
+		const stored = {
+			...compared({ externals: [], findings: [finding] }).toJSON(),
+			futureField: { later: { verdict: "valid" } },
+		};
 		const comparison = Comparison.from(stored);
 		comparison.import("file:codex.json", { findings: [external()], skippedBodies: 0 }, "t");
-		comparison.compare(
-			new Adjudication({ findings: [finding], manifest: [], checks: [], config: defaultConfig }).adjudicate(),
-		);
-		expect(comparison.toJSON()).toMatchObject({ adjudications: { later: { verdict: "valid" } } });
+		comparison.compare(verdictOf({ findings: [finding] }));
+		expect(comparison.toJSON()).toMatchObject({ futureField: { later: { verdict: "valid" } } });
 	});
 
 	it("refuses a hand match naming a finding it does not hold", () => {
@@ -1453,7 +1477,7 @@ describe("Comparison matching", () => {
 		expect(comparison.externalFindings()[0]!.line).toBe(60);
 		expect(comparison.effectiveMatches()).toEqual([]);
 		expect(comparison.importsBySource()).toEqual({
-			"file:codex.json": { at: "later", ids: [moved.id], skippedBodies: 2 },
+			"file:codex.json": { at: "later", ids: [moved.id], skippedBodies: 2, reviewers: [moved.reviewer] },
 		});
 	});
 
@@ -1506,5 +1530,275 @@ describe("Comparison matching", () => {
 		comparison.import("github:coderabbitai", { findings: [shared], skippedBodies: 0 }, "t2");
 		comparison.import("github:coderabbitai[bot]", { findings: [], skippedBodies: 0 }, "t3");
 		expect(comparison.externalFindings().map((each) => each.id)).toEqual([shared.id]);
+	});
+});
+
+describe("Comparison adjudication", () => {
+	it("keeps an older document's first import time when adjudication adds its timestamp", () => {
+		const miss = external({ line: 90 });
+		const comparison = compared({ externals: [miss], findings: [] });
+		comparison.adjudicate(miss.id, { verdict: "valid", reason: "no-owner", by: "M", at: "2026-10-06T00:00:00Z" });
+		expect(comparison.recordedAt()).toBe("2026-10-05T00:00:00.000Z");
+		comparison.record("2026-10-07T00:00:00Z");
+		expect(comparison.recordedAt()).toBe("2026-10-05T00:00:00.000Z");
+	});
+
+	it("requires a reason for a valid miss, replaces with history, and reads older documents", () => {
+		const miss = external({ line: 90 });
+		const own = melian();
+		const comparison = compared({ externals: [miss], findings: [own] });
+		const first = {
+			verdict: "valid",
+			by: "M <m@example.com>",
+			at: "2026-10-05T01:00:00Z",
+			severity: "P1",
+			reason: "owned-missed",
+			golden: "correctness",
+		} as const;
+		expect(() => comparison.adjudicate(miss.id, { ...first, reason: undefined })).toThrow(/needs a miss reason/);
+		comparison.adjudicate(miss.id, first);
+		const second = {
+			verdict: "noise",
+			by: "N",
+			at: "2026-10-05T02:00:00Z",
+			golden: "none",
+			note: "The input is constant.",
+		} as const;
+		comparison.adjudicate(miss.id, second);
+		comparison.adjudicate(miss.id, second);
+		expect(Comparison.from(comparison.toJSON()).adjudication(miss.id)).toEqual({ current: second, history: [first] });
+		expect(compared({ externals: [], findings: [own] }).adjudications()).toEqual({});
+		expect(() => comparison.adjudicate("0".repeat(16), second)).toThrow(/has no finding/);
+		expect(() => comparison.adjudicate(own.id, { ...second, note: "x".repeat(1001) })).toThrow(/1000/);
+	});
+});
+
+describe("Comparison statistics", () => {
+	const by = { by: "M", at: "2026-10-05T00:00:00Z" };
+	it("keeps an ambiguous report's precision judgement while its match awaits a decision", () => {
+		const first = melian();
+		const second = melian({ snippet: "eval(other)", startLine: 14, endLine: 14 });
+		const report = external({ line: 13 });
+		const comparison = compared({ externals: [report], findings: [first, second] });
+		comparison.adjudicate(report.id, { ...by, verdict: "valid" });
+		const stats = comparison.stats();
+		expect(stats.pendingMatches).toBe(1);
+		expect(stats.reviewers.find((each) => each.reviewer === "codex")).toMatchObject({
+			valid: 1,
+			pending: 0,
+			found: 0,
+			total: 0,
+			precision: 1,
+		});
+	});
+
+	it("counts an in-scope miss when another reviewer calls the same defect out of scope", () => {
+		const outside = external({ line: 90 });
+		const inside = external({ line: 90, reviewer: { name: "claude-code" }, body: "The owner must validate input." });
+		const comparison = compared({ externals: [outside, inside], findings: [] });
+		comparison.adjudicate(outside.id, { ...by, verdict: "valid", reason: "out-of-scope" });
+		comparison.adjudicate(inside.id, { ...by, verdict: "valid", reason: "no-owner" });
+		expect(comparison.stats().misses).toEqual({
+			"owned-missed": 0,
+			"no-owner": 1,
+			"needs-execution": 0,
+			"out-of-scope": 0,
+		});
+		expect(comparison.stats().reviewers.find((each) => each.reviewer === "melian")?.total).toBe(1);
+	});
+
+	it("divides summed counts rather than averaging each round's precision", () => {
+		const reports = Array.from({ length: 4 }, (_, index) => external({ line: 90 + index * 20 }));
+		const first = compared({ externals: reports, findings: [] });
+		for (const report of reports) first.adjudicate(report.id, { ...by, verdict: "noise" });
+		const valid = external({ line: 90 });
+		const second = compared({ externals: [valid], findings: [] });
+		second.adjudicate(valid.id, { ...by, verdict: "valid", reason: "no-owner" });
+		const set = new ComparisonSet([
+			{ changeset: "a", comparison: first },
+			{ changeset: "b", comparison: second },
+		]);
+		expect(set.stats().reviewers.find((each) => each.reviewer === "codex")).toMatchObject({
+			valid: 1,
+			noise: 4,
+			precision: 1 / 5,
+		});
+	});
+
+	it("does not cluster unrelated titles made only of punctuation", () => {
+		const entries = ["!!!", "???"].map((title, index) => {
+			const report = external({ title, line: 90 });
+			const comparison = compared({ externals: [report], findings: [] });
+			comparison.adjudicate(report.id, { ...by, verdict: "valid", reason: "no-owner" });
+			return { changeset: String(index), comparison };
+		});
+		expect(new ComparisonSet(entries).candidates()).toEqual([]);
+	});
+	it("computes recall and precision from a worked set, leaving pending and out-of-scope misses out", () => {
+		const matched = external();
+		const missed = external({ line: 90 });
+		const outside = external({ line: 130 });
+		const noise = external({ line: 170 });
+		const duplicate = external({ line: 210 });
+		const pending = external({ line: 250 });
+		const own = melian({ startLine: 40, endLine: 40, snippet: "eval(own)" });
+		const falseAlarm = melian({ startLine: 60, endLine: 60, snippet: "eval(constant)" });
+		const comparison = compared({
+			externals: [matched, missed, outside, noise, duplicate, pending],
+			findings: [melian(), own, falseAlarm],
+		});
+		for (const id of [matched.id, melian().id, own.id]) comparison.adjudicate(id, { ...by, verdict: "valid" });
+		comparison.adjudicate(missed.id, { ...by, verdict: "valid", reason: "owned-missed", golden: "correctness" });
+		comparison.adjudicate(outside.id, { ...by, verdict: "valid", reason: "out-of-scope" });
+		for (const id of [noise.id, falseAlarm.id]) comparison.adjudicate(id, { ...by, verdict: "noise" });
+		comparison.adjudicate(duplicate.id, { ...by, verdict: "duplicate", of: matched.id });
+		const stats = comparison.stats();
+		expect(stats.reviewers).toEqual([
+			{
+				reviewer: "codex",
+				found: 3,
+				total: 4,
+				valid: 3,
+				noise: 1,
+				duplicate: 1,
+				pending: 1,
+				recall: 3 / 4,
+				precision: 3 / 5,
+			},
+			{
+				reviewer: "melian",
+				found: 2,
+				total: 3,
+				valid: 2,
+				noise: 1,
+				duplicate: 0,
+				pending: 0,
+				recall: 2 / 3,
+				precision: 2 / 3,
+			},
+		]);
+		expect(stats.misses).toEqual({ "owned-missed": 1, "out-of-scope": 1, "no-owner": 0, "needs-execution": 0 });
+		expect(comparison.backlog()).toMatchObject([{ id: missed.id, lens: "correctness" }]);
+	});
+
+	it("clusters only across changesets, by rule or normalised title, and sums before dividing", () => {
+		const first = external({ line: 90, title: "Null   MANAGER!" });
+		const second = external({ line: 90, title: "null manager" });
+		const a = compared({ externals: [first], findings: [] });
+		const b = compared({ externals: [second], findings: [] });
+		for (const [comparison, id] of [
+			[a, first.id],
+			[b, second.id],
+		] as const)
+			comparison.adjudicate(id, { ...by, verdict: "valid", reason: "no-owner" });
+		expect(
+			new ComparisonSet([
+				{ changeset: "a", comparison: a },
+				{ changeset: "a", comparison: b },
+			]).candidates(),
+		).toEqual([]);
+		const set = new ComparisonSet([
+			{ changeset: "a", comparison: a },
+			{ changeset: "b", comparison: b },
+		]);
+		expect(set.candidates()).toMatchObject([{ key: "title:null manager", changesets: ["a", "b"] }]);
+		expect(set.stats().reviewers.find((each) => each.reviewer === "codex")).toMatchObject({
+			found: 2,
+			total: 2,
+			precision: 1,
+			recall: 1,
+		});
+		for (const [comparison, id] of [
+			[a, first.id],
+			[b, second.id],
+		] as const)
+			comparison.adjudicate(id, { ...by, verdict: "valid", reason: "no-owner", rule: "unowned-rule" });
+		expect(set.candidates()).toMatchObject([{ key: "rule:unowned-rule", changesets: ["a", "b"] }]);
+		const line = "Candidate check: rule:unowned-rule, seen on 2 changesets (a, b).\n";
+		expect(set.renderStats()).toContain(line);
+		expect(set.renderStats({ last: 1 })).toContain(line);
+		expect(set.renderStats({ since: "2099-01-01" })).toContain(line);
+	});
+
+	it.each([
+		[0, 0, false, 0, 3],
+		[2, 1, false, 1, 3],
+		[3, 0, false, 0, 6],
+		[3, 1, true, 1, 6],
+		[3, 2, true, 2, 6],
+		[4, 2, true, 2, 6],
+		[6, 2, true, 2, 9],
+	])("drain with %i comparisons and %i debts is due=%s", (count, debt, due, goldens, next) => {
+		const entries = Array.from({ length: count }, (_, index) => {
+			const miss = external({ line: 90 });
+			const comparison = compared({ externals: [miss], findings: [] });
+			comparison.record(`2026-10-0${index + 1}T00:00:00Z`, `change-${index}`);
+			comparison.adjudicate(miss.id, {
+				...by,
+				verdict: "valid",
+				reason: "owned-missed",
+				golden: index < debt ? "correctness" : "none",
+			});
+			return { changeset: String(index), comparison };
+		});
+		const set = new ComparisonSet(entries);
+		expect(set.drain()).toMatchObject({ comparisons: count, due, goldens, next });
+		expect(set.renderStats()).toContain(due ? "Drain due" : `Drain not due; next comparison threshold: ${next}.\n`);
+		if (count > 0) expect(set.select({ last: 1 }).drain().comparisons).toBe(1);
+		expect(set.select({ since: "2026-10-10" }).drain().comparisons).toBe(0);
+	});
+
+	it("clears a debt through a later round's judgement, keeping earlier round statistics", () => {
+		const miss = external({ line: 90 });
+		const first = compared({ externals: [miss], findings: [] });
+		first.adjudicate(miss.id, { ...by, verdict: "valid", reason: "owned-missed", golden: "correctness" });
+		const second = Comparison.from(first.toJSON());
+		second.adjudicate(miss.id, {
+			...by,
+			at: "2026-10-06T00:00:00Z",
+			verdict: "valid",
+			reason: "owned-missed",
+			golden: "none",
+		});
+		expect(
+			new ComparisonSet([
+				{ changeset: "a", comparison: first },
+				{ changeset: "a", comparison: second },
+			]).backlog(),
+		).toEqual([]);
+	});
+});
+
+describe("Comparison export", () => {
+	it("renders byte-stable markdown, escaping external text and preserving history in JSON", async () => {
+		const finding = external({
+			title: "[P1] Input | <img> @team #12",
+			body: "A **heading**\n```\n<script>bad</script>\u001b[2J",
+			source: { kind: "file", path: "codex.json", position: 0, ref: "A1" },
+		});
+		const judgement = {
+			verdict: "valid",
+			by: "M <m@example.com>",
+			at: "2026-10-05T01:00:00Z",
+			severity: "P1",
+			golden: "correctness",
+			note: "Add the missing check.",
+		} as const;
+		const comparison = compared({ externals: [finding], findings: [melian()] });
+		comparison.record("2026-10-05T00:00:00Z", "#7");
+		comparison.adjudicate(finding.id, judgement);
+		comparison.adjudicate(melian().id, { ...judgement, note: "The request is untrusted." });
+		const record = new ComparisonExport(
+			[{ changeset: "pull-7", comparison, verdict: verdictOf({ findings: [melian()] }) }],
+			"#7",
+			"https://github.com/melian-agent/example/pull/7",
+		);
+		await expect(record.render()).toMatchFileSnapshot("./golden/comparison.md");
+		expect(record.render()).not.toContain("<script>");
+		expect(record.render()).not.toContain("\u001b");
+		expect(record.render()).toContain("\\| &lt;img&gt;");
+		expect(JSON.parse(record.renderJson()).comparisons[`${revision.base}..${revision.head}`]).toEqual(
+			comparison.toJSON(),
+		);
 	});
 });

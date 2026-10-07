@@ -52,7 +52,7 @@ A golden for a repository lens, such as Melian's own `durability`, carries the l
 
 **Scripted** runs are part of `npm run check`. `runGolden(golden, { kind: "scripted" })` routes every tier to the fake model, answers each lens from `script.json` by matching its instructions in the system prompt, and returns the findings and their terminal rendering. The test requires precision and recall of 1, the expected cause, failure scenario, and evidence for each finding, and a rendering identical to `scripted.txt`. Scripted golden tests allow 60 seconds because they create git repositories and run durable conversations; a loaded gate can exceed Vitest's five-second default. Scripted runs prove the plumbing: lens selection, the lens tools reading the head revision, `report_finding`, the hook, the findings document, and rendering. They say nothing about whether a lens's prompt finds the defect, because the script finds it.
 
-After a deliberate change to rendering or to a golden, regenerate the snapshots with `npx vitest --run -u packages/evals/` and read the diff before committing.
+After a deliberate change to rendering or to a golden, regenerate the snapshots with `npx vitest --run packages/evals/ --update` and read the diff before committing.
 
 **Live** runs call real models and are never part of the gate. Run them with:
 
@@ -87,7 +87,7 @@ File and rule is a coarse match. Two findings under one rule in one file count a
 1. Write `base/` and `head/` so the change carries only the declared defects, or none for a clean golden. One change may carry more than one, as real changes do: `contracts-breaking-signature` breaks a caller and gets yen wrong. Declare every real defect, because a lens that finds an undeclared one is right and would score as noise.
 2. Write `expected.json`, naming for each defect the lens rule that should catch it, its cause, a failure scenario with concrete values, and the evidence locations that show it.
 3. Write `script.json` with the tool calls a good lens would make, each with the `expectToolResult` that proves its tool worked, ending each lens with a final answer. Each `report_finding` call carries the failure scenario and evidence its expected finding names.
-4. Run `npx vitest --run -u packages/evals/` to write `scripted.txt`, read it, and commit all of it.
+4. Run `npx vitest --run packages/evals/ --update` to write `scripted.txt`, read it, and commit all of it.
 5. Run the live eval if you have credentials, and record a miss as a learning about the lens, not by loosening the golden.
 
 A lens body's examples never restate a golden. Problem: an example drawn from a golden tells the lens the answer, so the golden measures recall of the prompt rather than judgement. Example: `removed-behaviour` once named "the worktree is removed even when the task throws" as an invariant, the very defect `removed-behaviour-dropped-cleanup` seeds. Solution: write examples in shapes no golden seeds, and when a golden is added, check the lens bodies for its shape.
@@ -104,9 +104,9 @@ One defect can fit two lenses' rules, and each would report it under its own. De
 
 ## Comparisons
 
-Every Melian pull request gets a comparison record under `packages/evals/comparisons/`. It lists what Codex's adversarial review, Claude Code's review, and Melian found, and the maintainer's adjudication of each. Until milestone 2's step 15 lands, an agent writes each record by hand. From then, `melian compare export` writes it from the stored comparison, in the same form. [design.md](../design.md#comparison-with-external-reviewers) says how a comparison is built, and how it serves a repository that runs CodeRabbit.
+Every Melian pull request gets a comparison record under `packages/evals/comparisons/`. It lists what Codex's adversarial review, Claude Code's review, and Melian found, and the maintainer's adjudication of each. `melian compare export` writes each new record from the stored comparison. Earlier hand-written records stay as history. [design.md](../design.md#comparison-with-external-reviewers) says how a comparison is built, and how it serves a repository that runs CodeRabbit.
 
-Each finding is adjudicated valid, noise, or a duplicate, with a severity. A valid finding Melian missed takes one reason:
+Each finding is adjudicated valid, noise, or a duplicate, with a severity. A duplicate names the finding it duplicates through `--of <id>`. It costs its reviewer recall as well as precision; only that reviewer's own valid report earns recall credit. A valid finding Melian missed takes one reason:
 
 - `owned-missed`: a lens or check owns it and missed it. It usually owes a golden for that lens.
 - `no-owner`: no lens or check owns it. It points at a new rule, guardrail, or lens, and a repeat on a second pull request is a candidate check.
@@ -115,12 +115,14 @@ Each finding is adjudicated valid, noise, or a duplicate, with a severity. A val
 
 A Melian finding judged noise owes a clean golden for the lens that raised it. A golden is owed only where the adjudication says so, naming its lens; a difference alone owes nothing. A golden drawn from a record names its finding in a `README.md` beside `expected.json`, since the expected file's schema is Martian's and has no field for it.
 
-[goldens/BACKLOG.md](../../packages/evals/goldens/BACKLOG.md) lists, by lens, the owed goldens not yet written. Its present entries are kept by hand until goldens drain them. From step 15, `melian compare backlog` lists the rest and writes the file's later section.
+[goldens/BACKLOG.md](../../packages/evals/goldens/BACKLOG.md) lists, by lens, the owed goldens not yet written. Its present entries are kept by hand until goldens drain them. `melian compare backlog --markdown` prints the later generated section; replace the generated section after the frozen entries.
 
-A hand-written record has no field for the reason. Until step 15, write it in the Adjudication column in the words above, so the records use the export's terms before the export exists.
+A historical hand-written record has no field for the reason. Its Adjudication column carries the words above. New records use the stored reason.
 
 ### The drain rule
 
 Problem: records mark goldens faster than anyone writes them, and nothing forces the list down. BACKLOG.md still holds owed goldens from the record for [pull request #10](https://github.com/melian-agent/melian/pull/10).
 
-Solution: every third comparison record is followed by a backlog pull request. It ships at least two owed goldens, or every owed golden when fewer remain. It re-measures each new golden's lens with a live run of three passes, as [Two modes](#two-modes) requires, and records the run under `packages/evals/runs/`. Records count from [pull request #65](https://github.com/melian-agent/melian/pull/65) on, and an empty backlog owes no drain. `melian compare stats` will say when a drain is due; until it does, count the progress log's comparison entries.
+Solution: every third comparison record is followed by a backlog pull request. It ships at least two owed goldens, or every owed golden when fewer remain. It re-measures each new golden's lens with a live run of three passes, as [Two modes](#two-modes) requires, and records the run under `packages/evals/runs/`. Records count from [pull request #65](https://github.com/melian-agent/melian/pull/65) on, and an empty backlog owes no drain. `melian compare stats` sees only this clone's stored changesets and self-declared discharge through `--golden none`. It counts changesets once, preserving all rounds for metrics. Its clone-wide notice remains due after the first threshold while debt remains, even with filtered metrics. It cannot see which drain pull requests shipped or which live runs passed, so it cannot verify the periodic drain. Hand-written historical records are not imported.
+
+Comparison adjudications name an owed lens through `--golden <lens>`, or owe none through `--golden none`. A later judgement changes debt only when it includes `--golden`; omitting the option carries the debt forward. Every replacement keeps the prior judgement in history. A noise judgement on Melian is a comparison label; use dismissal separately to change the review.

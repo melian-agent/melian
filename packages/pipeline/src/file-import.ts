@@ -14,11 +14,11 @@ export const maxReviewerFileBytes = 4 * 1024 * 1024;
 export class FileImporter implements ExternalImporter {
 	/** `file:` and the path, relative to the repository when the file lies inside it. */
 	readonly source: string;
-	private readonly findings: readonly ExternalFinding[];
+	private readonly imported: ExternalImport;
 
-	private constructor(source: string, findings: readonly ExternalFinding[]) {
+	private constructor(source: string, imported: ExternalImport) {
 		this.source = source;
-		this.findings = findings;
+		this.imported = imported;
 	}
 
 	/**
@@ -55,11 +55,10 @@ export class FileImporter implements ExternalImporter {
 			const position = /at position (\d+)/.exec((error as Error).message)?.[1];
 			throw unreadable(position === undefined ? "it is not JSON" : `it is not JSON at position ${position}`);
 		}
-		const findings = ExternalFinding.fromFile(value, named);
-		return new FileImporter(`file:${named}`, findings);
+		return new FileImporter(`file:${named}`, ExternalFinding.importFile(value, named));
 	}
 
 	async import(): Promise<ExternalImport> {
-		return { findings: this.findings, skippedBodies: 0 };
+		return this.imported;
 	}
 }

@@ -474,6 +474,71 @@ describe("ReviewThreadImporter", () => {
 		expect(rabbit.findings).toEqual([]);
 	});
 
+	it("retains the reviewer of a review when an import contains no threads", async () => {
+		const changed = structuredClone(recording);
+		const pages = changed.graphql!.MelianReviewThreads! as {
+			data: { repository: { pullRequest: { reviewThreads: { nodes: unknown[] } } } };
+		}[];
+		for (const page of pages) page.data.repository.pullRequest.reviewThreads.nodes = [];
+		const bot = await importer(undefined, changed).opened.import();
+		expect(bot.findings).toEqual([]);
+		expect(bot.reviewers!.length).toBeGreaterThan(0);
+		expect(bot.reviewers).toContainEqual({ name: "coderabbit", login: "coderabbitai[bot]", kind: "bot" });
+	});
+
+	it("names no reviewer when the login wrote no thread and no review", async () => {
+		const human = await importer("absent-reviewer").opened.import();
+		expect(human.findings).toEqual([]);
+		expect(human.reviewers).toEqual([]);
+		const changed = structuredClone(recording);
+		const pages = changed.graphql!.MelianReviewThreads! as {
+			data: { repository: { pullRequest: { reviewThreads: { nodes: unknown[] } } } };
+		}[];
+		for (const page of pages) page.data.repository.pullRequest.reviewThreads.nodes = [];
+		const reviewPages = changed.graphql!.MelianReviews! as {
+			data: { repository: { pullRequest: { reviews: { nodes: unknown[] } } } };
+		}[];
+		for (const page of reviewPages) page.data.repository.pullRequest.reviews.nodes = [];
+		const bot = await importer(undefined, changed).opened.import();
+		expect(bot.findings).toEqual([]);
+		expect(bot.reviewers).toEqual([]);
+	});
+
+	it("names an author as GitHub spells the login, not as the caller typed it", async () => {
+		const threads = structuredClone(recording);
+		const reviews = (answers: GitHubRecording) =>
+			answers.graphql!.MelianReviews! as {
+				data: { repository: { pullRequest: { reviews: { nodes: unknown[] } } } };
+			}[];
+		for (const page of reviews(threads)) page.data.repository.pullRequest.reviews.nodes = [];
+		const fromThreads = await importer("CodeRabbitAI[bot]", threads).opened.import();
+		expect(fromThreads.findings.length).toBeGreaterThan(0);
+		expect(fromThreads.reviewers!).toContainEqual({ name: "coderabbit", login: "coderabbitai[bot]", kind: "bot" });
+		expect(fromThreads.reviewers!.map((each) => each.login)).not.toContain("CodeRabbitAI[bot]");
+
+		const bodies = structuredClone(recording);
+		const pages = bodies.graphql!.MelianReviewThreads! as {
+			data: { repository: { pullRequest: { reviewThreads: { nodes: unknown[] } } } };
+		}[];
+		for (const page of pages) page.data.repository.pullRequest.reviewThreads.nodes = [];
+		const fromBodies = await importer("OctoCat", bodies).opened.import();
+		expect(fromBodies.skippedBodies).toBeGreaterThan(0);
+		expect(fromBodies.reviewers!.map((each) => each.login)).toEqual(fromBodies.reviewers!.map(() => "octocat"));
+	});
+
+	it.each(["coderabbitai", "CodeRabbitAI"])("recognises %s as the known bot when it only reviewed", async (login) => {
+		const changed = structuredClone(recording);
+		const threads = changed.graphql!.MelianReviewThreads! as {
+			data: { repository: { pullRequest: { reviewThreads: { nodes: unknown[] } } } };
+		}[];
+		for (const page of threads) page.data.repository.pullRequest.reviewThreads.nodes = [];
+		const quiet = await importer(login, changed).opened.import();
+		expect(quiet.reviewers!.length).toBeGreaterThan(0);
+		expect(quiet.reviewers!.every((each) => each.name === "coderabbit" && each.login === "coderabbitai[bot]")).toBe(
+			true,
+		);
+	});
+
 	it("gives a thread the same ID on every import, so importing again updates it", async () => {
 		const first = await importer().opened.import();
 		const second = await importer().opened.import();

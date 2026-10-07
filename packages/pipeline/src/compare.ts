@@ -1,7 +1,10 @@
 import {
 	Comparison,
+	type ComparisonEntry,
+	ComparisonError,
 	type ExternalImport,
 	type StoredComparison,
+	type StoredComparisonAdjudication,
 	type StoredVerdict,
 	Verdict,
 } from "@melian-agent/core";
@@ -15,6 +18,7 @@ import {
 	defineDoc,
 	type Harness,
 	openHarness,
+	ROOT_CONVERSATION_ID,
 	type Storage,
 	type TaskId,
 	type Tx,
@@ -54,7 +58,7 @@ export interface ImportedSource {
 	readonly imported: ExternalImport;
 }
 
-type Revision = { readonly base: string; readonly head: string };
+type Revision = { readonly base: string; readonly head: string; readonly target?: string };
 
 /**
  * A durable harness over one changeset's storage that reads and records its comparisons with external reviewers. It
@@ -106,6 +110,21 @@ export class CompareHarness {
 			: Comparison.from(comparisons[key]!);
 	}
 
+	/** Reads every comparison beside its stored verdict, refreshing matches without writing. */
+	async all(changeset: string, context: Context = backgroundContext): Promise<ComparisonEntry[]> {
+		const root = await this.harness.root(context);
+		const comparisons = (await this.harness.snapshot(ComparisonDocument, root.id, context))?.comparisons ?? {};
+		const verdicts = (await this.harness.snapshot(VerdictDocument, root.id, context))?.verdicts ?? {};
+		return Object.entries(comparisons).map(([key, stored]) => {
+			const comparison = Comparison.from(stored);
+			const verdict = Object.hasOwn(verdicts, key)
+				? Verdict.from(JSON.parse(JSON.stringify(verdicts[key])) as StoredVerdict)
+				: undefined;
+			if (verdict !== undefined) comparison.compare(verdict);
+			return { changeset, comparison, ...(verdict === undefined ? {} : { verdict }) };
+		});
+	}
+
 	/**
 	 * Adds what each source read to the comparison of `revision`, as of `at`, and matches it against Melian's stored
 	 * review of the revision, in one commit. Each source's import replaces what it last imported, so the import is replay
@@ -121,6 +140,7 @@ export class CompareHarness {
 		return this.update(
 			revision,
 			(comparison) => {
+				comparison.record(at, revision.target);
 				for (const { source, imported } of sources) comparison.import(source, imported, at);
 			},
 			context,
@@ -156,6 +176,51 @@ export class CompareHarness {
 			(comparison) => comparison.unmatch(pair.external, pair.melian, hand.by, hand.at),
 			context,
 		);
+	}
+
+	/** Records a local comparison judgement in one commit; never changes the verdict or lifecycle. */
+	async adjudicate(
+		revision: Revision,
+		id: string,
+		judgement: StoredComparisonAdjudication,
+		context: Context = backgroundContext,
+	): Promise<Comparison> {
+		const root = await this.harness.root(context);
+		return root.commit(async (tx) => {
+			const document = await tx.doc(ComparisonDocument, root.id);
+			const verdicts = (await tx.doc(VerdictDocument, root.id)).verdicts;
+			const rounds = Object.entries(document.comparisons)
+				.map(([key, stored]) => {
+					const comparison = Comparison.from(stored);
+					if (Object.hasOwn(verdicts, key))
+						comparison.compare(Verdict.from(JSON.parse(JSON.stringify(verdicts[key])) as StoredVerdict));
+					return { key, comparison };
+				})
+				.reverse()
+				.sort(
+					(a, b) =>
+						(Date.parse(b.comparison.recordedAt() ?? "") || 0) -
+						(Date.parse(a.comparison.recordedAt() ?? "") || 0),
+				);
+			const round = rounds.find(
+				({ comparison }) =>
+					comparison.externalFinding(id) !== undefined || comparison.melianFindings().includes(id),
+			);
+			if (round === undefined)
+				throw new ComparisonError("unknownFinding", `the stored comparisons have no finding ${id}`);
+			const previous = rounds
+				.map(({ comparison }) => comparison.adjudication(id)?.current)
+				.filter((each) => each !== undefined)
+				.sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
+			round.comparison.adjudicate(id, {
+				...judgement,
+				golden: judgement.golden ?? previous?.golden,
+				rule: judgement.rule ?? previous?.rule,
+			});
+			round.comparison.record(judgement.at, revision.target);
+			document.comparisons = { ...document.comparisons, [round.key]: round.comparison.toJSON() };
+			return round.comparison;
+		}, context);
 	}
 
 	/** Closes the harness and its storage. Idempotent. */
@@ -213,5 +278,57 @@ export class CompareHarness {
 			document.comparisons = { ...document.comparisons, [key]: comparison.toJSON() };
 			return comparison;
 		}, context);
+	}
+}
+
+/** Reads stored comparison documents without opening a harness or committing durable state. */
+export class ComparisonReader {
+	private readonly storage: Storage;
+
+	private constructor(storage: Storage) {
+		this.storage = storage;
+	}
+
+	/** A reader over `storage`, which the caller keeps and closes. */
+	static open(storage: Storage): ComparisonReader {
+		return new ComparisonReader(storage);
+	}
+
+	/** Reads the root's comparisons and verdicts through storage's detached read API. The caller owns storage. */
+	async read(changeset: string, context: Context = backgroundContext): Promise<ComparisonEntry[]> {
+		const scope = { kind: "conversation", conversationId: ROOT_CONVERSATION_ID } as const;
+		const record = await this.storage.findDocument(
+			{ kind: ComparisonDocument.definition.kind, scope },
+			"current",
+			context,
+		);
+		if (record === undefined) return [];
+		const stored = await this.storage.document(record.id, "current", context);
+		if (stored === undefined) return [];
+		if (stored.version > ComparisonDocument.definition.version)
+			throw new CompareError("unreadable", `comparison document has newer version ${stored.version}`);
+		const comparisons = stored.value as { comparisons: Record<string, StoredComparison> };
+		const verdictRecord = await this.storage.findDocument(
+			{ kind: VerdictDocument.definition.kind, scope },
+			"current",
+			context,
+		);
+		const storedVerdicts =
+			verdictRecord === undefined ? undefined : await this.storage.document(verdictRecord.id, "current", context);
+		if (storedVerdicts !== undefined && storedVerdicts.version > VerdictDocument.definition.version)
+			throw new CompareError("unreadable", `verdict document has newer version ${storedVerdicts.version}`);
+		const verdicts = (
+			storedVerdicts === undefined
+				? {}
+				: storedVerdicts.version === VerdictDocument.definition.version
+					? storedVerdicts.value
+					: VerdictDocument.definition.migrate!(storedVerdicts.value, storedVerdicts.version)
+		) as { verdicts?: Record<string, StoredVerdict> };
+		return Object.entries(comparisons.comparisons).map(([key, value]) => {
+			const comparison = Comparison.from(value);
+			const verdict = verdicts.verdicts?.[key] === undefined ? undefined : Verdict.from(verdicts.verdicts[key]);
+			if (verdict !== undefined) comparison.compare(verdict);
+			return { changeset, comparison, ...(verdict === undefined ? {} : { verdict }) };
+		});
 	}
 }

@@ -36,8 +36,6 @@ export {
 export { checksOfTier, type DeterministicCheck, deterministicChecks } from "./checks.ts";
 export {
 	Comparison,
-	ComparisonError,
-	type ComparisonErrorCode,
 	type ComparisonGroup,
 	type ComparisonImport,
 	type ComparisonMatch,
@@ -118,6 +116,8 @@ export {
 	type ChangesetErrorCode,
 	CheckError,
 	type CheckErrorCode,
+	ComparisonError,
+	type ComparisonErrorCode,
 	ConfigError,
 	type ConfigErrorCode,
 	DecisionError,
@@ -321,6 +321,23 @@ export {
 } from "./triage.ts";
 
 export const packageName = "@melian-agent/core";
+
+export {
+	Adjudication as ComparisonAdjudication,
+	type ComparisonAdjudicationRecord,
+	comparisonAdjudicationSchema,
+	missReasons,
+	type StoredComparisonAdjudication,
+} from "./comparison-adjudication.ts";
+export { ComparisonExport } from "./comparison-export.ts";
+export {
+	type ComparisonEntry,
+	ComparisonSet,
+	type ComparisonStats,
+	type OwedGolden,
+	type RepeatedFinding,
+	type ReviewerStats,
+} from "./comparison-set.ts";
 
 export {
 	type StoredVerificationState,

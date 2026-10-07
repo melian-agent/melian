@@ -102,7 +102,7 @@ Melian reviews itself with `melian review main...HEAD`, run from a throwaway wor
 
 ### The comparison record
 
-Every pull request gets a record under `packages/evals/comparisons/`. An agent writes it and updates it after each round. It lists each reviewer's findings, the adjudication with a miss reason, and the fix commits. [The evals guideline](docs/guidelines/evals.md#comparisons) sets out the form.
+Every pull request gets a record under `packages/evals/comparisons/`. An agent records each round's adjudications with `melian compare adjudicate`, and `melian compare export` writes the record from the stored comparison. It lists each reviewer's findings and the adjudication with a miss reason. It has no fix-commit column; name the fix commits in the progress-log entry. [The evals guideline](docs/guidelines/evals.md#comparisons) sets out the form.
 
 A code branch never edits `packages/evals/comparisons/`. The record has its own branch and pull request. When fix passes on [pull request #85](https://github.com/melian-agent/melian/pull/85) wrote the record into the code branch, the record branch hit an add/add conflict with `main`. Tell every fix brief: progress-log entry files only, never the comparison record.
 
@@ -188,3 +188,4 @@ Add important learnings here, newest last. Each entry names the symptom, the cau
 - A docs-only gate takes fifteen minutes and fails dozens of tests across unrelated files, with timeouts and spawn errors. Cause: seven Codex tasks and their gates ran at once, load average reached 40 to 49, and every spawning test missed its deadline. Cap concurrent lanes at four. A gate that failed under load is rerun whole once the load drops, never validated by two single-file reruns.
 - A whole-branch mutation inventory ends at the two-hour task limit with commits unpushed and no report. Cause: the pass pushes once, at the end. Push after each file's commit and append the inventory file as the pass goes, so a cut leaves nothing unpushed and the report can be rebuilt from the file and the commits.
 - A coverage sweep fails for want of a provider. Cause: `@vitest/coverage-v8` is not a dependency. Run the sweep through c8 with `npx`, and do not add the provider for one pass.
+- A Vitest snapshot update reports fewer files than the command names. Cause: Vitest 5 can consume the first file argument after `-u`, leaving that test outside the run. Put explicit file paths before `--update`, and confirm the reported file count before accepting the update.
