@@ -1,4 +1,4 @@
-import { rmSync, writeFileSync } from "node:fs";
+import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
 	Changeset,
@@ -608,6 +608,46 @@ describe("the verifier", () => {
 		const root = await harness.root(context);
 		const index = await harness.snapshot(ReviewIndex, root.id, context);
 		expect(index?.reviews[revisionKey(changeset.revision)]?.verification).toBeDefined();
+	});
+	it("builds the verifier route of a repeat review without running a named credential's command", async () => {
+		scripts();
+		await review();
+		const marker = join(repo, "vault-ran");
+		const vault = createFakeModels({
+			models: [{ id: "finder" }, { id: "judge" }, { id: "backup" }],
+			credentials: [
+				{
+					name: "vault",
+					provider: fake.ref("finder").provider,
+					type: "api_key",
+					value: { kind: "command", command: `touch ${marker}; printf key` },
+					file: "/fake/secrets.yaml",
+				},
+			],
+		});
+		const finder = vault.ref("finder");
+		const judge = vault.ref("judge");
+		const requests = vault.provider.state.callCount;
+		await reviewChangeset({
+			harness,
+			checks: [],
+			changeset,
+			lenses,
+			standards: [],
+			models: vault.review,
+			config: {
+				...defaultConfig,
+				tiers: { full: lenses.map((lens) => `lens.${lens.name}`) },
+				stages: { "pull-request": "full" },
+				models: {
+					medium: { model: `${finder.provider}/${finder.modelId}` },
+					heavy: { model: `${finder.provider}/${finder.modelId}` },
+					verifier: { model: `${judge.provider}/${judge.modelId}`, fallbacks: [`${judge.provider}/backup`] },
+				},
+			},
+		});
+		expect(vault.provider.state.callCount).toBe(requests);
+		expect(existsSync(marker)).toBe(false);
 	});
 	it("lets a replacement task refute a claim the failed task confirmed", async () => {
 		const requests = scriptConversations(fake, [
