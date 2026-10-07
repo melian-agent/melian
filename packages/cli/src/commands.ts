@@ -266,6 +266,7 @@ export async function publish(
 			changeset,
 			pullRequest,
 			base: base ?? pullRequest.base.sha,
+			trustedWriters: config.trust.writers,
 			walkthrough: {
 				...config.publish.walkthrough,
 				enabled: options.walkthrough !== false && config.publish.walkthrough.enabled,

@@ -1,0 +1,7 @@
+# Committed routes put Codex on the finders and Claude on the verifier
+
+Choice: the root `melian.yaml` routes `heavy` to `openai-codex/gpt-6.1-sol`, accepting it, `anthropic/claude-opus-5-5`, and `openai/gpt-5.5`. It routes `medium` to `openai-codex/gpt-5.6-terra`, accepting it and `anthropic/claude-sonnet-5-5`. It routes `verifier` to `anthropic/claude-sonnet-5-5`, accepting it and `anthropic/claude-opus-5-5`. Each route's fallbacks are its accepted models after the first. The routes are defaults, dynamic as usage allows: a maintainer may override them through `melian.local.yaml`, the user-level file, or `--model`, and a contributor without a credential gets a derived route. The verifier also accepts `openai/gpt-5.5`, so a finder that fell back to a Claude model still has a verifier from another family; its fallbacks stay the two Anthropic models.
+
+Why: Codex's Sol and Terra cost less than Opus and Sonnet for the Opus-sized and Sonnet-sized jobs, so the finders move to them. The verifier must not share its finder's family, since checking across families is the cheap substitute for a stronger judge. With both finder tiers on GPT models, Sonnet 5.5 verifies. Opus stays accepted on every tier so usage limits on one provider do not leave a review not reviewed.
+
+Supersedes: none. The [review plan decision](2026-10-04-review-plan-and-routes.md) set the mechanism and named no routes, and the earlier Anthropic-first values lived only in `melian.yaml` and the example in `docs/design.md`, both updated here.

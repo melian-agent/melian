@@ -286,6 +286,11 @@ export class Ledger {
 								`- ${prose(name)}@${prose(version)}, ${prose(level)}; route ${models.map(prose).join(", ")}${ran === undefined ? "" : `; ran on ${prose(ran)}`}${lineage === undefined ? "" : `; ${prose(lineage)}`}; budgets ${prose(JSON.stringify(budget))}${usage === undefined ? "" : `; used ${usage.models.map(prose).join(", ")}, ${usage.tokens} tokens, $${usage.cost.toFixed(6)}`}${standards === undefined ? "" : `; standards ${standards.map(code).join(", ") || "none"}`}`,
 						),
 					];
+		const publisher = round.publishedBy ?? { trustedWriters: true };
+		lines.unshift(
+			`Published by ${code(publisher.login ?? "unknown")} (${code(publisher.permission ?? "unknown")}); writers trusted: ${publisher.trustedWriters ? "yes" : "no"}`,
+			`Pull request author permission: ${code(publisher.authorPermission ?? "unknown")}`,
+		);
 		return details("Run details", lines.join("\n\n"));
 	}
 

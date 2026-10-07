@@ -2,6 +2,10 @@
 
 The github package implements core's `ReviewProvider` port for GitHub through Octokit, renders what a review posts, and reads Melian's markers back. The port is the class `GitHubProvider`, one per repository, which `createGitHubProvider` constructs. It holds the Octokit client and the token's user once it learns it; the publisher secret is not its state, and travels with each call, since it belongs to the changeset. The pipeline's publish task decides when to post and records each post; this package decides how a post looks and where GitHub puts it. [design.md](../design.md#cli) says why the CLI sets a commit status rather than a check run.
 
+## Identity reads
+
+`pullRequest` carries its author login. `login()` reads `/user` once and remembers a refusal. `permission(login)` reads the collaborator permission endpoint for that repository. A refused lookup or unknown role reads as absent. GitHub maps maintain to write and triage to read in that endpoint's permission field.
+
 ## Posting
 
 - One review per revision, with the event `COMMENT`. Never `APPROVE` or `REQUEST_CHANGES`: Melian never approves, and the status, not the review, says whether a change may merge.
@@ -13,7 +17,7 @@ The github package implements core's `ReviewProvider` port for GitHub through Oc
 - GitHub refuses a body over 65,536 characters (`maxBodyLength`). `renderReviewBody` drops findings in the body from the last until it fits, and says how many were cut and that `melian findings "#N"` lists them all; if the summary alone is too long, it cuts the text at a line and says so. The marker on the first line is never cut.
 - `createReview` does not return its comments' IDs, so `postReview` lists the review's comments afterwards and reads each one's finding from its marker.
 - An addressed finding's original comment is edited to name the commit, preserving its finding marker and appending a signed resolution marker. GraphQL resolves the thread. A replay after the edit retries thread resolution without editing twice. If the original marker was removed, publication skips the edit, resolves any thread it finds and records null. Thread discovery is cached for one publish. A resolution carried to another head keeps the first addressed commit and its marker, so it does not append the same edit again. For a dismissed finding, the reply says `Dismissed at <head>:` and the reason through `renderProse`. A dismissed finding posted in a review's body has no thread, so the next review's body lists it under "Dismissed since the last review" with its reason. Neither names the dismisser. Melian records the git author, whose email does not belong on a pull request, and GitHub already shows whose token posted the reply.
-- The commit status context is `melian/review`, with a link to the ledger. GitHub refuses a description over 140 characters, so `setStatus` truncates. `getStatus` reads the latest `melian/review` status and its target URL to recover an unrecorded ledger link.
+- The commit status context is `melian/review`, with a link to the ledger. With writer trust off, publication sets `error` with the trusted-host reason, never success or failure. The maintainer alone enables the required context after the rehearsal. The merge-group workflow still runs the three Node checks; no status-copy job is added before a failed queue test confirms it is needed. GitHub refuses a description over 140 characters, so `setStatus` truncates. `getStatus` reads the latest `melian/review` status and its target URL to recover an unrecorded ledger link.
 
 ## Markers
 
@@ -56,7 +60,7 @@ ReviewComment.render shows verification, its model, reason and optional correcti
 
 ## The ledger
 
-`Ledger.from(verdict, publication, options)` projects the durable rounds into one comment. Its `render` bounds the body and its `diff` compares the public stamp. The signed ledger marker names a hash of the hidden JSON stamp. The stamp holds the base, head, round, verdict, counts, lens versions, plan fingerprint and projection fingerprint. It carries no dismissal identity.
+`Ledger.from(verdict, publication, options)` projects the durable rounds into one comment. Its `render` bounds the body and its `diff` compares the public stamp. The signed ledger marker names a hash of the hidden JSON stamp. The stamp holds the base, head, round, verdict, counts, lens versions, plan fingerprint and projection fingerprint. It carries no dismissal identity. Run details show the publisher login and permission, author permission and writer trust. Unknown reads remain unknown; logins render through `code`. A repeat by the same publisher leaves the stamp unchanged.
 
 `findLedger` finds issue comments across every head. It verifies the marker and stamp before returning the first ledger. Discovery ignores markers from another publisher. It fetches the recorded comment ID first and checks its author; an installation token uses the recorded ID and author when `/user` cannot identify it. Without a recorded ID, discovery scans ledger-looking comments only from a known author. The login or recorded ledger supplies that author, or publication supplies its review ID so the provider can read the review's author. An edited older comment holding a copied signed body cannot displace that author's ledger. Without an author source, publication creates a fresh ledger; a crash before recording it leaves an orphan to delete by hand.
 
@@ -64,6 +68,6 @@ Run details name each lens's route, the model it finished on, the standards sect
 
 An earlier round never repeats the agent prompt, so no dismissal command from an old round outlives its finding. Once a later round posts, stored older rounds hold one line each, so a ledger shows at most one prompt, the current one.
 
-The published state upgrades one way. Versions 3 to 5 upgrade to 6 of `PublishedDocument`, 4 or 5 to 6 of `VerdictDocument`, and 1 to 2 of `LedgerDocument` run when a newer Melian first opens a state directory, and Pi Durable refuses a document newer than the code knows (`Document ... has newer version ...`). An older Melian pointed at that directory fails every command until it is upgraded. Nothing downgrades the stored rounds, which have already lost their detail. Upgrade every Melian that shares a state directory together, or give each its own.
+The published state upgrades one way. Versions 3 to 6 upgrade to 7 of `PublishedDocument`, 4 or 5 to 6 of `VerdictDocument`, and 1 to 2 of `LedgerDocument` run when a newer Melian first opens a state directory, and Pi Durable refuses a document newer than the code knows (`Document ... has newer version ...`). An older Melian pointed at that directory fails every command until it is upgraded. Nothing downgrades the stored rounds, which have already lost their detail. Upgrade every Melian that shares a state directory together, or give each its own.
 
 When the body is full, earlier rounds shrink to lines first. Whole history sections are then omitted. The walkthrough has a separate size budget and is cut or dropped before dismissals, run details and the prompt. Current sections are omitted last, with a CLI pointer. The stamp stays and every retained details block and fence closes. Stored older rounds keep only the base, head, round number and status. The current round keeps its detail. A base-only retarget adds one new round.

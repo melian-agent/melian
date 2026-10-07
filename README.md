@@ -93,7 +93,9 @@ Melian is licensed under the MIT License, the same as Pi.
 
 ## Project status
 
-Melian is in the design phase. The design document lives at [docs/design.md](docs/design.md) and is the place to read if you want to know how it works or to argue with a decision.
+Melian has a working CLI review and publication loop. Milestone 2 makes it the review of record for this repository. The required-status code is built; the maintainer's rehearsal and ruleset switch remain pending. Once `melian/review` is required on `main`, every pull request head needs `melian review "#N"` and `melian publish "#N"` before it can merge.
+
+[The design](docs/design.md) explains the decisions. [The implementation plan](docs/design-implementation-plan.md) tracks what is built and what remains.
 
 ## Independence and sponsorship
 

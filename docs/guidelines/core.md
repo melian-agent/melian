@@ -122,6 +122,8 @@ The keys a `melian.yaml` accepts, all optional:
 
 | Key | Shape | Default |
 |---|---|---|
+| `comparison` | `retirement.pullRequests`, a positive integer, and `retirement.recall`, a number from 0 to 1; only a committed root `melian.yaml` sets them. Nested policy and preferences are refused | `pullRequests: 10`, `recall: 0.75` |
+| `trust` | `writers`, a boolean; only a committed root `melian.yaml` sets it. Nested policy and preference files are refused | `writers: true` |
 | `tiers` | tier name to a list of check names or other tiers | `fast: [guardrails, static, decisions.fast]`, `standard: [fast, lens.correctness]`, `full: [standard, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions]` |
 | `stages` | stage name to tier name | `pre-commit: fast`, `pre-push: standard`, `pull-request: full`, `comment: standard` |
 | `resolution` | `P0` to `P3` and `nit`, each `block`, `acknowledge`, `advisory`, or `silent` | `P0` and `P1` block, `P2` acknowledge, `P3` advisory, `nit` silent |
@@ -570,7 +572,7 @@ file fails the check with `CheckError` `unreadable`: only absence is silent, as 
 
 `src/publication.ts` holds the provider port and the decisions publication makes without a host. `packages/github` implements the port; the pipeline's publish task calls it. Nothing here talks to a network.
 
-`ReviewProvider` is the surface a code host offers Melian. It reads pull-request metadata, posts reviews, closes addressed findings with an edit and thread resolution, and replies with dismissals. It finds and writes the ledger, sets the status with its ledger link, and reads back markers. A second host implements this port.
+`ReviewProvider` is the surface a code host offers Melian. It reads pull-request metadata, including the author, and exposes the viewer's login and repository permission. It posts reviews, closes addressed findings with an edit and thread resolution, and replies with dismissals. It finds and writes the ledger, sets the status with its ledger link, and reads back markers. A second host implements this port.
 
 `verdict.publication(previous, lines, revision)` decides what one revision posts. A finding that
 resolves to `block`, `acknowledge`, or `advisory` and was not open after the previous revision is

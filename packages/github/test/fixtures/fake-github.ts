@@ -27,6 +27,9 @@ export type FakeState = {
 	owner: string;
 	repo: string;
 	login: string;
+	author?: string;
+	permissions?: Record<string, string>;
+	failPermission?: boolean;
 	pull: { number: number; title: string; base: { ref: string; sha: string }; head: { ref: string; sha: string } };
 	// The lines the pull request's diff adds, which alone take an inline comment.
 	lines: DiffLines;
@@ -96,6 +99,7 @@ export function fakeGitHub(
 		number: state.pull.number,
 		title: state.pull.title,
 		state: "open",
+		user: { login: state.author ?? "pr-author" },
 		html_url: `https://github.com/${state.owner}/${state.repo}/pull/${state.pull.number}`,
 		base: {
 			ref: state.pull.base.ref,
@@ -117,6 +121,13 @@ export function fakeGitHub(
 		const path = url.pathname;
 		const user = { login: state.login };
 		if (method === "POST" || method === "PATCH") await beforeWrite(call);
+		const collaborator = new RegExp(`^${repoPath}/collaborators/([^/]+)/permission$`).exec(path);
+		if (method === "GET" && collaborator !== null) {
+			if (state.failPermission) return json({ message: "Forbidden" }, 403);
+			const login = decodeURIComponent(collaborator[1]!);
+			return json({ permission: state.permissions?.[login] ?? (login === state.login ? "write" : "read") });
+		}
+
 		if (method === "POST" && path === "/graphql") {
 			const query = body as { query: string; variables: { id?: string } };
 			if (query.query.includes("resolveReviewThread")) {
