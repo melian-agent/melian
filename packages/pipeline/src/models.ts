@@ -112,7 +112,9 @@ export class RouteTextModel implements TextModel {
 		for (const reference of route) {
 			const model = collection.getModel(reference.provider, reference.modelId);
 			if (model === undefined) continue;
-			if (await hasCredentials(models, reference.provider)) return new RouteTextModel(collection, model);
+			// A store that cannot be read passes the provider over, so a later tier with its own credential still serves.
+			if (await hasCredentials(models, reference.provider).catch(() => false))
+				return new RouteTextModel(collection, model);
 		}
 		return undefined;
 	}

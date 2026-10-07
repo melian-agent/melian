@@ -149,6 +149,42 @@ describe("the triage model", () => {
 		expect(chosen).toMatchObject({ model: `${fake.ref("medium").provider}/medium` });
 	});
 
+	it("passes over a tier whose provider has no named credential when Pi's store is corrupt, for one that has", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "melian-corrupt-store-"));
+		try {
+			const authPath = join(dir, "auth.json");
+			writeFileSync(authPath, "{");
+			const named = createFakeModels({
+				provider: "fake-key",
+				models: [{ id: "heavy" }],
+				credentials: [
+					{
+						name: "vault",
+						provider: "fake-key",
+						type: "api_key",
+						value: { kind: "literal", key: "k" },
+						file: "f",
+					},
+				],
+				authPath,
+			});
+			const locked = named.withoutCredentials("locked-light");
+			const chosen = await fallbackDecider(
+				{
+					...defaultConfig,
+					models: {
+						light: { model: `${locked.provider}/${locked.modelId}` },
+						heavy: { model: `${named.ref("heavy").provider}/heavy` },
+					},
+				},
+				named.review,
+			);
+			expect(chosen).toMatchObject({ model: `${named.ref("heavy").provider}/heavy` });
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	it("says why no decider runs when no tier reaches a model", async () => {
 		const chosen = await choose({ light: { model: "claude-haiku" }, medium: { model: "nowhere/medium" } });
 		expect(chosen).toEqual({

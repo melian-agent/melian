@@ -458,6 +458,38 @@ describe("the verifier", () => {
 		});
 		expect(requests[verifierMarker]).toEqual([]);
 	});
+	it("passes over a verifier candidate whose credential check throws, for the next one", async () => {
+		const locked = fake.withoutCredentials("judge");
+		const check = fake.models.checkAuth.bind(fake.models);
+		vi.spyOn(fake.models, "checkAuth").mockImplementation((provider) =>
+			provider === locked.provider ? Promise.reject(new Error("auth.json is not JSON")) : check(provider),
+		);
+		const finder = fake.ref("finder");
+		const requests = scripts();
+		const result = await reviewChangeset({
+			harness,
+			checks: [],
+			changeset,
+			lenses,
+			standards: [],
+			models: fake.review,
+			config: {
+				...defaultConfig,
+				tiers: { full: lenses.map((lens) => `lens.${lens.name}`) },
+				stages: { "pull-request": "full" },
+				models: {
+					medium: { model: `${finder.provider}/${finder.modelId}` },
+					heavy: { model: `${finder.provider}/${finder.modelId}` },
+					verifier: {
+						model: `${locked.provider}/${locked.modelId}`,
+						fallbacks: [`${fake.ref("judge").provider}/judge`],
+					},
+				},
+			},
+		});
+		expect(requests[verifierMarker]).not.toHaveLength(0);
+		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
+	});
 	it.each([
 		["refused", "confirmed"],
 		["refused", "refuted"],

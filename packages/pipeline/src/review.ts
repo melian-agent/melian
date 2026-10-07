@@ -1951,7 +1951,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		for (const model of route)
 			if (
 				collection.getModel(model.provider, model.modelId) !== undefined &&
-				(await hasCredentials(models, model.provider))
+				// A store that cannot be read passes the candidate over, as an absent credential does.
+				(await hasCredentials(models, model.provider).catch(() => false))
 			)
 				available.push(model);
 		candidates.push({
