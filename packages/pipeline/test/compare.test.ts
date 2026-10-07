@@ -780,6 +780,36 @@ describe("comparison review fixes", () => {
 		expect((await harness.read(revision))?.adjudication(findings[0]!.id)?.current.verdict).toBe("noise");
 	});
 
+	it("carries the rule tag from an earlier round when the replacement names none", async () => {
+		const harness = await memoryHarness();
+		await storeReview(harness);
+		const id = findings[0]!.id;
+		await harness.importFindings(revision, [], "2026-10-05T00:00:00Z");
+		await harness.adjudicate(revision, id, {
+			verdict: "noise",
+			by: "M",
+			at: "2026-10-05T01:00:00Z",
+			golden: "correctness",
+			rule: "zz",
+		});
+		const next = { ...revision, head: "c".repeat(40) };
+		const root = await harness.harness.root(context);
+		await root.commit(async (tx) => {
+			const document = await tx.doc(VerdictDocument, root.id);
+			document.verdicts = { ...document.verdicts, [revisionKey(next)]: document.verdicts[revisionKey(revision)]! };
+		}, context);
+		await harness.importFindings(next, [], "2026-10-06T00:00:00Z");
+		const updated = await harness.adjudicate(revision, id, {
+			verdict: "valid",
+			by: "M",
+			at: "2026-10-07T00:00:00Z",
+			golden: "none",
+		});
+		expect(updated.head).toBe(next.head);
+		expect(updated.adjudication(id)?.current.rule).toBe("zz");
+		expect((await harness.read(next))?.adjudication(id)?.current.rule).toBe("zz");
+	});
+
 	it.each(["correctness", "none"])("carries the newest judgement's %s debt across rounds", async (golden) => {
 		const harness = await memoryHarness();
 		await storeReview(harness);
