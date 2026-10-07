@@ -225,7 +225,7 @@ describe("normaliseMutationReport", () => {
 		});
 	});
 
-	it("makes a static mutant under ignoreStatic, or a mutator in excludedMutations, a note naming the lines and no finding", () => {
+	it("makes the static mutants ignoreStatic skips one unmutated finding per file naming the lines, and an excluded mutator's a note", () => {
 		const { log, notes } = read({
 			"src/a.ts": [
 				{ status: "Ignored", line: 12, outsideTests: true },
@@ -235,22 +235,54 @@ describe("normaliseMutationReport", () => {
 				{ status: "Ignored", line: 99, outsideTests: true },
 			],
 		});
-		expect(log.runs[0].results).toEqual([]);
+		expect(
+			log.runs[0].results.map((result) => [
+				result.ruleId,
+				result.level,
+				result.locations[0]!.physicalLocation.region.startLine,
+				result.message.text,
+			]),
+		).toEqual([
+			[
+				"unmutated",
+				"error",
+				10,
+				"Stryker did not judge lines 10, 12 of src/a.ts: its mutants are static, meaning they run when the module loads, such as a constant, a regular expression, or a table, and the run's ignoreStatic setting skips them, so no test was asked about them.",
+			],
+		]);
 		expect(notes).toEqual([
-			"src/a.ts line(s) 10, 11, 12 hold mutants Stryker ignored by a setting in its configuration (static mutants, or an excluded mutation), so no test was asked about them.",
+			"src/a.ts line(s) 11 hold mutants Stryker ignored by a setting in its configuration (an excluded mutation), so no test was asked about them.",
 		]);
 	});
 
-	it("keeps a static note per file, in path order, and a comment-ignored mutant on the same line a finding as well", () => {
-		const { log, notes } = read({
+	it("joins neighbouring static lines into one range, and names a single line as a line", () => {
+		const text = (lines: number[]) =>
+			read({
+				"src/a.ts": lines.map((line) => ({ status: "Ignored", line, outsideTests: true })),
+			}).log.runs[0].results.map((result) => result.message.text.split(": ")[0]);
+		expect(text([10, 11, 12])).toEqual(["Stryker did not judge lines 10-12 of src/a.ts"]);
+		expect(text([10])).toEqual(["Stryker did not judge line 10 of src/a.ts"]);
+		expect(text([12, 10])).toEqual(["Stryker did not judge lines 10, 12 of src/a.ts"]);
+	});
+
+	it("keeps a static finding per file, in path order, and a comment-ignored mutant on the same line a finding as well", () => {
+		const { log } = read({
 			"src/b c.ts": [{ status: "Ignored", line: 1, outsideTests: true }],
 			"src/a.ts": [
 				{ status: "Ignored", line: 10, outsideTests: true },
 				{ status: "Ignored", line: 10, reason: "Ignored using a comment" },
 			],
 		});
-		expect(log.runs[0].results.map((result) => result.ruleId)).toEqual(["ignored-mutant"]);
-		expect(notes.map((note) => note.split(" line(s)")[0])).toEqual(["src/a.ts", "src/b c.ts"]);
+		expect(
+			log.runs[0].results.map((result) => [
+				result.ruleId,
+				result.locations[0]!.physicalLocation.artifactLocation.uri,
+			]),
+		).toEqual([
+			["unmutated", "src/a.ts"],
+			["ignored-mutant", "src/a.ts"],
+			["unmutated", "src/b%20c.ts"],
+		]);
 	});
 
 	it("notes only an Ignored mutant, whatever else another status carries", () => {

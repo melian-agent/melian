@@ -31,9 +31,12 @@ const known: ReadonlySet<string> = new Set(["Killed", "Ignored", "Survived", "No
 // Whether a setting in the run's own configuration, which is a policy file a maintainer reads, ignored this mutant. The
 // mutant's `statusReason` is not evidence: a `// Stryker disable` comment can carry any text, including the one a setting
 // gives. The report's `config` and the mutant's own `static` flag and mutator name are Stryker's, not the head's text.
-function ignoredByConfiguration(each: Static<typeof mutant>, config: Static<typeof settings> | undefined): boolean {
-	if (config?.ignoreStatic === true && each.static === true) return true;
-	return config?.mutator?.excludedMutations?.includes(each.mutatorName) === true;
+function ignoredByConfiguration(
+	each: Static<typeof mutant>,
+	config: Static<typeof settings> | undefined,
+): "static" | "excluded" | undefined {
+	if (config?.ignoreStatic === true && each.static === true) return "static";
+	return config?.mutator?.excludedMutations?.includes(each.mutatorName) === true ? "excluded" : undefined;
 }
 
 // Under `ignoreStatic`, a mutant that code outside any test also reaches, such as a `beforeAll` hook, a `describe` body, or
@@ -98,7 +101,22 @@ export const mutationUnmutated = {
 		whatToDo:
 			"Split the change so each part fits within static.mutation.maxLines, or have a maintainer acknowledge that these lines were not mutation tested.",
 	}),
+	staticMutants: {
+		why: "its mutants are static, meaning they run when the module loads, such as a constant, a regular expression, or a table, and the run's ignoreStatic setting skips them, so no test was asked about them",
+		whatToDo: "Have a maintainer acknowledge these lines, or move the behaviour into a function that a test runs.",
+	},
 };
+
+// Ascending line numbers as inclusive ranges, joining neighbours.
+function consecutive(sorted: readonly number[]): [number, number][] {
+	const ranges: [number, number][] = [];
+	for (const line of sorted) {
+		const last = ranges.at(-1);
+		if (last !== undefined && last[1] + 1 === line) last[1] = line;
+		else ranges.push([line, line]);
+	}
+	return ranges;
+}
 
 function lineRanges(ranges: readonly (readonly [number, number])[]): string {
 	const named = ranges.map(([first, last]) => (first === last ? `${first}` : `${first}-${last}`));
@@ -224,6 +242,7 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 	const aside = new Map<string, number>();
 	const ignored = new Map<string, Map<number, string>>();
 	const configured = new Map<string, Set<number>>();
+	const exempt = new Map<string, Set<number>>();
 	const mutated = new Set<string>();
 	for (const [path, file] of Object.entries(files)) {
 		if (file.mutants.length > 0) mutated.add(path);
@@ -236,10 +255,12 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 				aside.set(each.status, (aside.get(each.status) ?? 0) + 1);
 				continue;
 			}
-			if (each.status === "Ignored" && ignoredByConfiguration(each, config)) {
-				const lines = configured.get(path) ?? new Set<number>();
+			const setting = each.status === "Ignored" ? ignoredByConfiguration(each, config) : undefined;
+			if (setting !== undefined) {
+				const group = setting === "static" ? exempt : configured;
+				const lines = group.get(path) ?? new Set<number>();
 				lines.add(start.line);
-				configured.set(path, lines);
+				group.set(path, lines);
 				continue;
 			}
 			if (each.status === "Ignored") {
@@ -308,6 +329,19 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 			});
 		}
 	}
+	// A static mutant sits in code that runs when a module loads, such as a constant, a regular expression, or a permission
+	// table, and `ignoreStatic` skips it. That is the configuration's trade-off, but a changed authentication pattern is
+	// exactly what a maintainer should see, so each file is a finding to acknowledge. A mutation a setting excludes is a
+	// note: it is the configuration's, and it names a kind of change, not a place.
+	for (const [path, lines] of [...exempt].sort(([a], [b]) => compare(a, b))) {
+		results.push(
+			unmutatedResult({
+				path,
+				ranges: consecutive([...lines].sort((a, b) => a - b)),
+				...mutationUnmutated.staticMutants,
+			}),
+		);
+	}
 	for (const file of run.unmutated ?? []) results.push(unmutatedResult(file));
 	results.sort((a, b) => {
 		const [left, right] = [a, b].map((result) => result.locations[0]!.physicalLocation);
@@ -321,12 +355,10 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 		([status, count]) =>
 			`${count} ${status} mutant(s) on changed lines were set aside: a hang or a crash is not a survivor, so no finding is raised for it.`,
 	);
-	// A static mutant, or one a setting in `stryker.config.*` excludes, is the configuration's trade-off, which is a policy
-	// file a maintainer reads: a note names the lines.
 	for (const [path, lines] of [...configured].sort(([a], [b]) => compare(a, b))) {
 		const named = [...lines].sort((a, b) => a - b).join(", ");
 		notes.push(
-			`${path} line(s) ${named} hold mutants Stryker ignored by a setting in its configuration (static mutants, or an excluded mutation), so no test was asked about them.`,
+			`${path} line(s) ${named} hold mutants Stryker ignored by a setting in its configuration (an excluded mutation), so no test was asked about them.`,
 		);
 	}
 	// A path in `--mutate` is a glob, so one that matches no file leaves a report that reads as clean.
