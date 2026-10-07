@@ -136,3 +136,19 @@ it("sweeps old legacy scratch but keeps recent legacy writes and ignores directo
 	expect((await lstat(recent)).isDirectory()).toBe(true);
 	expect((await lstat(sentinel)).isDirectory()).toBe(true);
 });
+
+it("keeps legacy scratch just inside the one-day window and removes it just outside", async () => {
+	root = await mkdtemp(join(tmpdir(), "melian-scratch-window-"));
+	const graph = join(root, "graphs");
+	await mkdir(graph);
+	const inside = join(graph, ".graph-inside"),
+		outside = join(graph, ".graph-outside");
+	await mkdir(inside);
+	await mkdir(outside);
+	const age = (milliseconds: number) => new Date(Date.now() - milliseconds);
+	await utimes(inside, age(86_400_000 - 60_000), age(86_400_000 - 60_000));
+	await utimes(outside, age(86_400_000 + 60_000), age(86_400_000 + 60_000));
+	await GraphCache.open(root);
+	expect((await lstat(inside)).isDirectory()).toBe(true);
+	await expect(lstat(outside)).rejects.toMatchObject({ code: "ENOENT" });
+});
