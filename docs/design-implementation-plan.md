@@ -79,7 +79,7 @@ Done when the `melian/review` status is required on `main`, and every pull reque
    - `[x]` Graph cache, per-file compiler measurement and every named gap. Coverage is 825/5,723 calls (14.4%) and 207/407 imports (50.9%); search stays unrestricted.
    - `[x]` Graph, unavailable test and transcript review artifacts, with check-record identities.
    - `[x]` Advisory callers, quoted through the lens seam; verifier integration remains step 6.
-   - `[x]` Needs-execution schema and a list of thirteen misses from the pull request #89 record, checked against adjudicated comparison rows.
+   - `[x]` Needs-execution schema and a list of thirteen misses from the [pull request #89](https://github.com/melian-agent/melian/pull/89) record, checked against adjudicated comparison rows.
    - `[x]` CLI tool listing, fetch and read-only doctor readiness; all three skills and the checked-in Claude copy follow the CLI.
 12. `[x]` **Domain objects carry behaviour.** [Pull request #51](https://github.com/melian-agent/melian/pull/51). Runs before steps 4 to 6 and 8, which add behaviour to findings, verdicts, lenses, and defects. It covers the seven types the rule names: `Finding`, `Verdict`, `Lens`, `Revision`, and `Changeset` exist as types today and gain behaviour, and `Defect` and `Manifest` are new. Each becomes a class over its stored JSON, the free functions over them become methods, transforms as `toX()` and constructions as static `from()` or `parse()`, the dependents follow, the exclusion list of the `free-domain-function` Biome rule empties, and a conventions-lens golden covers what neither check sees. [decisions/2026-10-04-domain-objects-carry-behaviour.md](decisions/2026-10-04-domain-objects-carry-behaviour.md) records it. Unblocks the verifier, triage, and the ledger landing on objects rather than on more free functions.
 13. `[x]` **Per-file hand-offs.** [pull request #57](https://github.com/melian-agent/melian/pull/57). A hand-off names the files its neighbour covers and holds for those files only. Melian's `.melian/lenses/correctness/LENS.md` and `.melian/lenses/removed-behaviour/LENS.md` extend the built-ins to hand a defect that needs a crash, replay, resumed task, or stored record to `durability`. That closes the one-sided boundary [decisions/2026-10-05-durability-repository-lens.md](decisions/2026-10-05-durability-repository-lens.md) recorded, as [decisions/2026-10-05-per-file-hand-offs.md](decisions/2026-10-05-per-file-hand-offs.md) records. [The ninth live run](../packages/evals/runs/2026-10-05-live-goldens-9.md) shows the overrides cut other lenses' extras from 19 to 9. A hand-off's list holds at most 40 files and 4 KiB. A deleted guard stays with `correctness`, as [decisions/2026-10-05-deleted-guard-stays-with-correctness.md](decisions/2026-10-05-deleted-guard-stays-with-correctness.md) records. Detail: [the hand-offs entry](progress-log/2026-10-05-pr-57-per-file-hand-offs.md). Unblocks a tuning round on the boundary wording that remains.
@@ -149,37 +149,4 @@ Steps to be written when milestone 3 closes.
 
 [progress-log/](progress-log/) records what landed, one file per entry, oldest first in name order.
 
-Step 11 coverage artifacts: classes and atomic cache storage are built. Static records hold unavailable test-coverage identities and measured graph identities when present. Durable-transcript parsing and lens-record attachment are built. Enclosing functions count only when declaration ranges were supplied; the graph’s declaration starts do not invent ranges.
-
-Step 11 layering constraint is built and proved on the branch-point tree. Package, subpath and relative imports each caused a SARIF error; the clean tree passed. The harness-free test stays.
-
-Step 11 execution-miss mapping is built. The tool-manifest comparison maps thirteen execution misses to tests or the installed-tarball reproduction. The manifest test checks every record and finding reference.
-
-   - Mutation inventory: nested graph-coverage schemas reject malformed persisted data. Ratio, total, location and extra-field mutations fail.
-   - Mutation inventory: A direct classification test proves the Enola policy guard. The restored suite passes.
-   - Mutation inventory: The lens context branch now has an exact rendering assertion. Its inversion fails; the restored lens suite passes.
-   - Mutation inventory: Default configuration tests assert the 300-second Enola deadline. Its zero-deadline mutation fails; all 120 restored configuration tests pass.
-   - Mutation inventory: Two direct graph tests prove all five uncovered schema mutations. The restored graph suite passes.
-   - Mutation inventory: Three filesystem failure cases prove root error propagation and both legacy-stat recovery branches. The restored scratch suite passes all six tests.
-   - Mutation inventory: Three compiler tests prove physical-path lookup, overload selection, unused symbols and worker closure. All five uncovered mutations fail; all 11 restored compiler tests pass.
-   - Mutation inventory: The injected release test now checks its AbortSignal and 30-second deadline. The deadline mutation fails; all six restored script tests pass.
-   - Mutation inventory: Six coverage cache cases prove byte-identical symlink refusal, handle closure, failed-write cleanup and explicit matcher identity. All four uncovered mutations fail; the restored suite passes.
-   - Mutation inventory: Five graph cache cases prove disappeared and denied entries, concurrent-winner recovery, reader closure and scratch cleanup. All seven uncovered mutations fail; all 14 restored graph cache tests pass.
-   - Mutation inventory: Download refusals retain Error and string diagnostics. A pre-stream stat refusal proves all three handle closures. Seven mutations fail, including both no-follow flags; all 66 restored tool cache tests pass.
-   - Mutation inventory: Five caller cases prove advisory errors, separator bytes, renamed base coverage and optional test evidence. All four uncovered mutations fail; all nine restored caller tests pass.
-   - Mutation inventory: A review with refused coverage still records completed lenses and preserves caller notes. All three uncovered mutations fail, including caller prompt identity; both focused restored review tests pass.
-   - Mutation inventory: The common-directory test now checks the ten-second git deadline. Its zero-deadline mutation fails; both restored provisioning tests pass with MELIAN_STATE_DIR unset.
-   - Mutation inventory: A forged numbered line after the closing tag must not count as delivered evidence. Removing the body end bound fails; all 17 restored artifact tests pass.
-   - Mutation inventory: The local spike checks TMPDIR and LANG overrides and its compiler close. All three uncovered mutations fail; both restored spike tests pass.
-   - Mutation inventory: Two static tests prove canonicalisation fallback and Enola discovery. Both mutations fail; both focused restored tests pass.
-   - Mutation inventory: Two local analyser cases preserve Error and string query refusals as scoped advisories. The formatting mutation fails; both focused restored tests pass.
-   - Mutation inventory: The analyser fixture enforces query depth and node caps. A 32 MiB padded report proves the subprocess file limit. All three command mutations fail; both restored spike tests pass.
-   - Mutation inventory: Doctor now has a regression outside git. Removing the repository-discovery recovery fails; all 13 restored CLI tool tests pass.
-   - Mutation inventory: Biome formats the new mutation fixtures. The first full gate passes formatting, type checking and audit; timeout failures are being rerun alone.
-   - Inventory continuation: the release-gate subprocess test allows 60 seconds under load. The saved results reconstruct 600 proven rows, including 445 with existing failing tests.
-
-Step 11 main merge: verifier and step 9 remain built. Reviews combine per-lens standards, policy-commit trust and instruction identity with Enola static checks, graph caching and advisory callers. The CLI runs checks before opening caller context; library reviews retain automatic checks.
-
-Step 11 merge fixtures now pass advisory context after the standards source and give raw harness reviews explicit check records.
-
-Step 11 delivery also includes main at 2826b841, which closes the step 9 comparison record without changing source code.
+Step 11 is built on [pull request #89](https://github.com/melian-agent/melian/pull/89), under review. Each fix pass and its mutation inventory has an entry in [progress-log/](progress-log/), named `pr-89-*`.
