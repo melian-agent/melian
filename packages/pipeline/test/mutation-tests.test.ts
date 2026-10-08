@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,11 +42,11 @@ const graph = {
 	"test/d.test.mjs": [],
 };
 
-it("selects exactly two of five tests through direct and transitive imports, plus setup", () => {
+it("selects exactly two of five tests through direct and transitive imports, leaving setup to Vitest", () => {
 	const selection = MutationTests.select(program(graph, ["test/setup.ts"]), ["src/a.ts"]).toJSON();
 	expect(selection).toMatchObject({
 		tests: ["test/a.test.ts", "test/transitive.test.mjs"],
-		include: ["test/a.test.ts", "test/setup.ts", "test/transitive.test.mjs"],
+		include: ["test/a.test.ts", "test/transitive.test.mjs"],
 	});
 });
 
@@ -57,7 +57,59 @@ it("runs no tests when no test import closure reaches a changed file, even with 
 		"src/unreached.ts",
 	]).toJSON();
 	expect(selection).toMatchObject({ tests: ["test/c.test.ts"] });
-	expect(empty).toMatchObject({ tests: [], include: ["test/setup.ts"] });
+	expect(empty).toMatchObject({ tests: [], include: [] });
+});
+
+it("runs a related test through the Stryker Vitest configuration without collecting its setup module", {
+	timeout: 60_000,
+}, () => {
+	const root = mkdtempSync(join(tmpdir(), "melian-mutation-setup-"));
+	const checkout = fileURLToPath(new URL("../../../", import.meta.url));
+	try {
+		mkdirSync(join(root, "test"));
+		mkdirSync(join(root, "src"));
+		mkdirSync(join(root, "scripts"));
+		symlinkSync(join(checkout, "node_modules"), join(root, "node_modules"), "dir");
+		writeFileSync(join(root, "package.json"), '{"type":"module"}');
+		writeFileSync(join(root, "src/a.ts"), "export const a = 1;");
+		writeFileSync(join(root, "test/setup.ts"), "globalThis.setupRan = true;");
+		writeFileSync(
+			join(root, "test/a.test.ts"),
+			'import { expect, it } from "vitest"; import { a } from "../src/a.ts"; it("loads setup", () => { expect(a).toBe(1); expect(globalThis.setupRan).toBe(true); });',
+		);
+		writeFileSync(
+			join(root, "vitest.config.ts"),
+			'import { defineConfig } from "vitest/config"; export default defineConfig({ test: { include: ["test/**/*.test.ts"], setupFiles: ["test/setup.ts"] } });',
+		);
+		for (const path of ["vitest.stryker.config.ts", "scripts/stryker-test-names.mjs"])
+			writeFileSync(join(root, path), readFileSync(join(checkout, path)));
+		const selection = MutationTests.select(
+			program({ "src/a.ts": [], "test/a.test.ts": ["src/a.ts"] }, ["test/setup.ts"]),
+			["src/a.ts"],
+		).toJSON();
+		writeFileSync(join(root, "include.json"), JSON.stringify("include" in selection ? selection.include : []));
+		const output = execFileSync(
+			process.execPath,
+			[
+				join(checkout, "node_modules/vitest/vitest.mjs"),
+				"--run",
+				"--config",
+				"vitest.stryker.config.ts",
+				"--maxWorkers",
+				"1",
+			],
+			{
+				cwd: root,
+				encoding: "utf8",
+				stdio: "pipe",
+				timeout: 30_000,
+				env: { PATH: process.env.PATH, TMPDIR: root, MELIAN_MUTATION_TEST_INCLUDE: join(root, "include.json") },
+			},
+		);
+		expect(output).toContain("1 passed");
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
 });
 
 it("keeps the whole suite when a changed source is absent from the compiler", () => {
@@ -134,7 +186,7 @@ it("bounds the compiler child and accepts only its requested selection", async (
 	const shell = vi.spyOn(run, "shell").mockResolvedValue({ code: 0, output: "" });
 	const output = vi.spyOn(run, "readOutput").mockImplementation(async (path) => {
 		expect(path).toBe("/scratch/related-tests.json");
-		return JSON.stringify({ tests: ["a.test.ts"], include: ["a.test.ts", "setup.ts"], note: "selected" });
+		return JSON.stringify({ tests: ["a.test.ts"], include: ["a.test.ts"], note: "selected" });
 	});
 	expect((await MutationTests.open(run, "/head", "/scratch", ["a.ts"])).toJSON()).toMatchObject({
 		tests: ["a.test.ts"],

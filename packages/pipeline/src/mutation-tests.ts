@@ -60,12 +60,12 @@ export class MutationTests {
 				}
 			}
 			const tests = [...visited].filter((path) => /\.test\.(ts|mjs)$/.test(path)).sort();
-			const include = [...new Set([...tests, ...program.setupFiles()])].sort();
+			program.setupFiles();
 			if (now() >= deadline) throw new Error("Setup selection reached its time bound");
 			return new MutationTests({
 				tests,
-				include,
-				note: `Mutation dry run selected ${tests.length} related test file(s), plus Vitest setup files.`,
+				include: tests,
+				note: `Mutation dry run selected ${tests.length} related test file(s); Vitest loads setup through test.setupFiles.`,
 			});
 		} catch (error) {
 			return new MutationTests({
