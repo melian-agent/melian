@@ -6,4 +6,8 @@ Problem: a lens can fill its own budget and leave another defect unreported. For
 
 Choice: every outcome carrying `capped` records `ended`, whether a report was refused or the final count equals the findings budget. This holds when no hand-off rendered and when `budget.ended: count` accepts token or tool endings. The reason names possible handing lenses when present. Under-cap runs retain their existing completion rules.
 
-The conservative result can require another review when exactly N defects existed. Raising the budget settles that uncertainty; counting truncated coverage as complete hides it.
+## What it gives up
+
+A quick lens with a findings budget of 3 records not reviewed even when exactly three defects existed and it finished its review. The maintainer must raise the budget and rerun to settle that uncertainty. When one of those defects blocks, the CLI exits 2 for not reviewed instead of 1 for blocking findings; the findings still print.
+
+A softer rule would count a lens as capped only when a report was refused or the lens explicitly said it stopped early. That would spare complete runs with exactly N defects. It would also trust the lens to report its early stop, although a lens told its cap can stop at N without asking to report another defect. The default stays conservative.
