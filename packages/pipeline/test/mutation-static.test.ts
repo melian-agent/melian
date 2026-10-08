@@ -559,12 +559,59 @@ mkdir -p reports/mutation
 echo '{"files":{}}' > reports/mutation/mutation.json`,
 		);
 		gitIn(repo, "remote", "add", "origin", "https://user:secret-token@example.invalid/repo.git");
-		await mutate(base, head);
+		const env = createNodeExecutionEnv(repo);
+		const write = env.writeFile.bind(env);
+		const restored: boolean[] = [];
+		vi.spyOn(env, "writeFile").mockImplementation(async (path, content, executionContext) => {
+			const result = await write(path, content, executionContext);
+			if (path.endsWith("/tree/.git")) restored.push(result.ok && readFileSync(path, "utf8") === content);
+			return result;
+		});
+		await mutate(base, head, { env });
+		expect(restored).toEqual([true]);
 		const [cwd, toplevel, sha, count, ...rest] = readFileSync(seen, "utf8").trimEnd().split("\n");
 		expect([toplevel, sha, count]).toEqual([cwd, head, "1"]);
 		expect(rest).toEqual(["directory", "no-remote"]);
 		expect(readFileSync(seen, "utf8")).not.toContain("secret-token");
 		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+	});
+
+	it("runs nothing when the worktree git link cannot be read", async () => {
+		const { base, head } = twoCommits();
+		const fake = stryker({ report: report({}) });
+		const env = createNodeExecutionEnv(repo);
+		const read = env.readTextFile.bind(env);
+		vi.spyOn(env, "readTextFile").mockImplementation((path, executionContext) =>
+			path.endsWith("/tree/.git")
+				? Promise.resolve({
+						ok: false,
+						error: Object.assign(new Error("git link denied"), { code: "permission_denied" as const }),
+					})
+				: read(path, executionContext),
+		);
+		await expect(mutate(base, head, { env })).rejects.toMatchObject({
+			code: "worktreeFailed",
+			message: expect.stringContaining("git link denied"),
+		});
+		expect(fake.calls()).toEqual([]);
+		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+	});
+
+	it("writes the selected sandbox profile before running the command", async () => {
+		const { base, head } = twoCommits();
+		const fake = stryker({ report: report({}) });
+		const env = createNodeExecutionEnv(repo);
+		const profile = "(version 1)(allow default)";
+		vi.mocked(Sandbox.detect).mockReturnValue({
+			...unconfinedSandbox,
+			profile: () => profile,
+			command: (inner: string, _paths: unknown, file: string) => {
+				expect(readFileSync(file, "utf8")).toBe(profile);
+				return inner;
+			},
+		} as unknown as Sandbox);
+		await mutate(base, head, { env });
+		expect(fake.calls()).toHaveLength(1);
 	});
 
 	it("fails as worktreeFailed, runs nothing, and still removes the worktree when it cannot make that repository", async () => {
@@ -1113,6 +1160,42 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			const fake = stryker({ report: report({}) });
 			await mutate(base, head, { maxLines: 3 });
 			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:1-1", "packages/p/src/b.ts:1-2"]);
+		});
+
+		it("orders spare lines by fractional remainder rather than file size", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, { "packages/p/src/a.ts": rows("a", 5), "packages/p/src/b.ts": rows("b", 3) });
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 5 });
+			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:1-3", "packages/p/src/b.ts:1-2"]);
+		});
+
+		it("allocates by changed range lengths rather than their line numbers", async () => {
+			const original = Array.from({ length: 10 }, (_, index) => `export const a${index} = ${index};`);
+			const base = commit(repo, { "stryker.config.json": config, "packages/p/src/a.ts": lines(...original) });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": lines(...original.map((row, index) => (index >= 7 ? `${row} // changed` : row))),
+				"packages/p/src/b.ts": rows("b", 3),
+			});
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 4 });
+			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:8-9", "packages/p/src/b.ts:1-2"]);
+		});
+
+		it("takes a missing file share from the largest donor even when it sorts last", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": rows("a", 1),
+				"packages/p/src/b.ts": rows("b", 1),
+				"packages/p/src/z.ts": rows("z", 98),
+			});
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 20 });
+			expect(lastEntries(fake)).toEqual([
+				"packages/p/src/a.ts:1-1",
+				"packages/p/src/b.ts:1-1",
+				"packages/p/src/z.ts:1-18",
+			]);
 		});
 
 		it("breaks a tie between equal remainders in path order", async () => {
