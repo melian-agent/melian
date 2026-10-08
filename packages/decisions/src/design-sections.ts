@@ -1,15 +1,9 @@
-import { posix } from "node:path";
 import { openSource, visibleText } from "@melian-agent/core";
-import type { Nodes } from "mdast";
-import { fromMarkdown } from "mdast-util-from-markdown";
-import { DecisionFilesError } from "./decision-files.ts";
+import { DecisionFilesError } from "./decision-files-error.ts";
+import { LocalDestination, MarkdownDocument } from "./markdown.ts";
 
 /** The largest complete design-heading index sent to a reviewer. */
 export const designIndexLimits = { bytes: 64 * 1024 } as const;
-
-function markdownNodes(node: Nodes): Nodes[] {
-	return [node, ...("children" in node ? node.children.flatMap(markdownNodes) : [])];
-}
 
 /** Base vocabulary from the design and the local sections it links. */
 export class DesignSections {
@@ -26,33 +20,11 @@ export class DesignSections {
 		if (content === undefined) return DesignSections.from([]);
 		const files = [{ path: "docs/design.md", content }];
 		const paths = new Set<string>();
-		const localBase = new URL("file://melian-repository/docs/design.md");
-		const otherBase = new URL("file://other-repository/docs/design.md");
-		const nodes = markdownNodes(fromMarkdown(content));
-		const definitions = new Map(
-			nodes
-				.filter((node) => node.type === "definition")
-				.reverse()
-				.map((node) => [node.identifier, node.url]),
-		);
-		for (const node of nodes.filter((node) => node.type === "link" || node.type === "linkReference")) {
-			const target = node.type === "link" ? node.url : definitions.get(node.identifier)!;
-			const destination = target.split(/[?#]/, 1)[0]!;
-			const resolved = URL.parse(destination, localBase.href);
-			if (resolved === null) throw new DecisionFilesError("invalid", "A linked design section has an invalid URL");
-			if (URL.canParse(destination) || resolved.host === new URL(destination, otherBase).host) continue;
-			let section: string;
-			try {
-				section = decodeURIComponent(destination);
-			} catch {
-				throw new DecisionFilesError("invalid", "A linked design section has invalid URI encoding");
-			}
-			if (!section.endsWith(".md")) continue;
-			const path = posix.normalize(posix.join("docs", section));
-			if (section.startsWith("/") || path.startsWith("../"))
-				throw new DecisionFilesError("invalid", "A linked design section is outside the repository");
-			if (!target.includes("#") && !path.startsWith("docs/design/")) continue;
-			paths.add(path);
+		for (const destination of MarkdownDocument.parse(content).links()) {
+			const target = LocalDestination.resolve("docs/design.md", destination);
+			if (target === undefined || !target.path.endsWith(".md")) continue;
+			if (target.fragment === "" && !target.path.startsWith("docs/design/")) continue;
+			paths.add(target.path);
 		}
 		paths.delete("docs/design.md");
 		for (const path of [...paths].sort()) {
@@ -68,12 +40,8 @@ export class DesignSections {
 	static from(files: readonly { path: string; content: string }[]): DesignSections {
 		const rows: string[] = [];
 		for (const file of files) {
-			for (const node of markdownNodes(fromMarkdown(file.content)).filter((node) => node.type === "heading")) {
-				const heading = markdownNodes(node).reduce(
-					(text, part) => ("value" in part ? text + part.value : "alt" in part ? text + part.alt : text),
-					"",
-				);
-				rows.push(visibleText(`${file.path}:${node.position!.start.line} — ${heading}`));
+			for (const heading of MarkdownDocument.parse(file.content).headings()) {
+				rows.push(visibleText(`${file.path}:${heading.line} — ${heading.text}`));
 			}
 		}
 		return new DesignSections(rows);

@@ -1,70 +1,8 @@
-import { posix } from "node:path";
 import { openSource, visibleText } from "@melian-agent/core";
-import type { Nodes } from "mdast";
-import { fromMarkdown } from "mdast-util-from-markdown";
+import { DecisionFilesError } from "./decision-files-error.ts";
+import { decisionPathPattern, MarkdownDocument } from "./markdown.ts";
 
-function markdownNodes(node: Nodes): Nodes[] {
-	return [
-		node,
-		...("children" in node && node.type !== "link" && node.type !== "linkReference"
-			? node.children.flatMap(markdownNodes)
-			: []),
-	];
-}
-
-function supersessionProse(content: string): string {
-	const nodes = markdownNodes(fromMarkdown(content));
-	const definitions = new Map(
-		nodes
-			.filter((node) => node.type === "definition")
-			.reverse()
-			.map((node) => [node.identifier, node.url]),
-	);
-	return nodes
-		.filter((node) => node.type === "paragraph")
-		.map((paragraph) => {
-			const start = paragraph.position!.start.offset!;
-			return markdownNodes(paragraph)
-				.filter((node) => node.type === "link" || node.type === "linkReference" || node.type === "inlineCode")
-				.reverse()
-				.reduce(
-					(text, node) => {
-						const destination = (
-							node.type === "inlineCode"
-								? ""
-								: node.type === "link"
-									? node.url
-									: definitions.get(node.identifier)!
-						).replaceAll("\n", "%0A");
-						return `${text.slice(0, node.position!.start.offset! - start)}\u0000${destination}\u0000${text.slice(node.position!.end.offset! - start)}`;
-					},
-					content.slice(start, paragraph.position!.end.offset),
-				);
-		})
-		.join("\n");
-}
-
-function localDecisionTargets(destination: string): string[] {
-	if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(destination)) return [];
-	let path: string;
-	try {
-		path = decodeURIComponent(destination.split(/[?#]/, 1)[0]!);
-	} catch {
-		throw new DecisionFilesError("invalid", `Invalid supersession destination ${destination}`);
-	}
-	return /^\/?(?:[^/]+\/)*\d{4}-\d{2}-\d{2}-[\w-]+\.md$/.test(path) ? [path] : [];
-}
-
-/** A decision file could not supply a complete, unambiguous baseline. */
-export class DecisionFilesError extends Error {
-	readonly code: "incomplete" | "invalid";
-
-	constructor(code: "incomplete" | "invalid", message: string) {
-		super(message);
-		this.name = "DecisionFilesError";
-		this.code = code;
-	}
-}
+export { DecisionFilesError } from "./decision-files-error.ts";
 
 /** One written decision, with repository-relative supersession targets. */
 export class DecisionFile {
@@ -80,20 +18,9 @@ export class DecisionFile {
 
 	/** Parses the heading and prose Supersedes lines, excluding code examples. */
 	static parse(path: string, content: string): DecisionFile {
-		const title = /^# (.+)$/m.exec(content)?.[1] ?? path;
-		const targets = [...supersessionProse(content).matchAll(/^Supersedes:[ \t]*([^\n]*)$/gm)].flatMap(([_, line]) => {
-			if (/^(?:none|no decision file)\b/i.test(line!)) return [];
-			return [...line!.matchAll(/\u0000([^\u0000]*)\u0000|((?:[\w.-]+\/)*\d{4}-\d{2}-\d{2}-[\w-]+\.md)/g)]
-				.flatMap(([_, link, bare]) => (link === undefined ? [bare!] : localDecisionTargets(link)))
-				.map((target) =>
-					target.startsWith("/")
-						? posix.normalize(target.slice(1))
-						: target.startsWith("docs/decisions/")
-							? posix.normalize(target)
-							: posix.join(posix.dirname(path), target),
-				);
-		});
-		return new DecisionFile(path, title, [...new Set(targets)]);
+		const document = MarkdownDocument.parse(content);
+		const title = document.headings().find((heading) => heading.depth === 1)?.text ?? path;
+		return new DecisionFile(path, title, document.supersedes(path));
 	}
 }
 
@@ -113,7 +40,7 @@ export class DecisionFiles {
 	/** Loads every Markdown decision at base; an incomplete read refuses the review. */
 	static async load(repoRoot: string, base: string): Promise<DecisionFiles> {
 		const source = await openSource(repoRoot, { kind: "revision", commit: base });
-		const paths = await source.findPaths(/^docs\/decisions\/.*\.md$/s);
+		const paths = await source.findPaths(decisionPathPattern);
 		const files = [];
 		for (const path of paths) {
 			const content = await source.readText(path, 256 * 1024);

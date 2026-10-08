@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { openSource, visibleText } from "@melian-agent/core";
 import { DecisionFile, DecisionFiles, decisionIndexLimits } from "@melian-agent/decisions";
 import { describe, expect, it, vi } from "vitest";
@@ -7,172 +8,654 @@ const a = "docs/decisions/2026-10-01-a.md";
 const b = "docs/decisions/2026-10-02-b.md";
 const c = "docs/decisions/2026-10-03-c.md";
 const parse = (path: string, text: string) => DecisionFile.parse(path, text);
+const declarationCases: [
+	name: string,
+	positive: string,
+	targets: string[],
+	negative: string,
+	negativeTargets: string[],
+	from?: string,
+][] = [
+	[
+		"code example 0",
+		"Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"```md\nSupersedes: [A](2026-10-01-a.md)\n```",
+		[],
+	],
+	[
+		"code example 1",
+		"Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"~~~md\nSupersedes: 2026-10-01-a.md\n~~~",
+		[],
+	],
+	[
+		"code example 2",
+		"Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"    Supersedes: [A](2026-10-01-a.md)",
+		[],
+	],
+	[
+		"code example 3",
+		"Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"`Supersedes: [A](2026-10-01-a.md)`",
+		[],
+	],
+	[
+		"code example 4",
+		"Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"`Example:\nSupersedes: [A](2026-10-01-a.md)\n`",
+		[],
+	],
+	[
+		"code example 5",
+		"Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Supersedes: `[A](2026-10-01-a.md)`",
+		[],
+	],
+	[
+		"code example 6",
+		"Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Supersedes: `2026-10-01-a.md`",
+		[],
+	],
+	[
+		'[2026-10-02-b.md](2026-10-01-a.md "See 2026-10-02-b.md")',
+		'Supersedes: [2026-10-02-b.md](2026-10-01-a.md "See 2026-10-02-b.md")',
+		["docs/decisions/2026-10-01-a.md"],
+		'Context: [2026-10-02-b.md](2026-10-01-a.md "See 2026-10-02-b.md")',
+		[],
+	],
+	[
+		"[2026-10-02-b.md](2026-10-01-a.md 'See 2026-10-02-b.md')",
+		"Supersedes: [2026-10-02-b.md](2026-10-01-a.md 'See 2026-10-02-b.md')",
+		["docs/decisions/2026-10-01-a.md"],
+		"Context: [2026-10-02-b.md](2026-10-01-a.md 'See 2026-10-02-b.md')",
+		[],
+	],
+	[
+		"[2026-10-02-b.md](2026-10-01-a.md (See 2026-10-02-b.md))",
+		"Supersedes: [2026-10-02-b.md](2026-10-01-a.md (See 2026-10-02-b.md))",
+		["docs/decisions/2026-10-01-a.md"],
+		"Context: [2026-10-02-b.md](2026-10-01-a.md (See 2026-10-02-b.md))",
+		[],
+	],
+	[
+		'[**2026-10-02-b.md** and [context]]( <2026-10-01-a.md> "See 2026-10-02-b.md")',
+		'Supersedes: [**2026-10-02-b.md** and [context]]( <2026-10-01-a.md> "See 2026-10-02-b.md")',
+		["docs/decisions/2026-10-01-a.md"],
+		'Context: [**2026-10-02-b.md** and [context]]( <2026-10-01-a.md> "See 2026-10-02-b.md")',
+		[],
+	],
+	[
+		"[`2026-10-02-b.md`](2026-10-01-a.md)",
+		"Supersedes: [`2026-10-02-b.md`](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Context: [`2026-10-02-b.md`](2026-10-01-a.md)",
+		[],
+	],
+	[
+		"[`2026-10-02-b.md`][context]\n\n[context]: 2026-10-01-a.md",
+		"Supersedes: [`2026-10-02-b.md`][context]\n\n[context]: 2026-10-01-a.md",
+		["docs/decisions/2026-10-01-a.md"],
+		"Context: [`2026-10-02-b.md`][context]\n\n[context]: 2026-10-01-a.md",
+		[],
+	],
+	[
+		'[A](2026-10-01-a.md "See \\"2026-10-02-b.md\\"")',
+		'Supersedes: [A](2026-10-01-a.md "See \\"2026-10-02-b.md\\"")',
+		["docs/decisions/2026-10-01-a.md"],
+		'Context: [A](2026-10-01-a.md "See \\"2026-10-02-b.md\\"")',
+		[],
+	],
+	[
+		'[A](2026-10-01-a.md\n "See 2026-10-02-b.md")',
+		'Supersedes: [A](2026-10-01-a.md\n "See 2026-10-02-b.md")',
+		["docs/decisions/2026-10-01-a.md"],
+		'Context: [A](2026-10-01-a.md\n "See 2026-10-02-b.md")',
+		[],
+	],
+	[
+		"[A](./2026-10-01-a.md#2026-10-02-b.md)",
+		"Supersedes: [A](./2026-10-01-a.md#2026-10-02-b.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Context: [A](./2026-10-01-a.md#2026-10-02-b.md)",
+		[],
+	],
+	[
+		"[A](2026-10-01-a.md?context=2026-10-02-b.md)",
+		"Supersedes: [A](2026-10-01-a.md?context=2026-10-02-b.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Context: [A](2026-10-01-a.md?context=2026-10-02-b.md)",
+		[],
+	],
+	[
+		"[A](%32%30%32%36-10-01-a.md)",
+		"Supersedes: [A](%32%30%32%36-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Context: [A](%32%30%32%36-10-01-a.md)",
+		[],
+	],
+	[
+		"[A](2026-10-01-a&#46;md)",
+		"Supersedes: [A](2026-10-01-a&#46;md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Context: [A](2026-10-01-a&#46;md)",
+		[],
+	],
+	[
+		"[A](/docs/decisions/2026-10-01-a.md)",
+		"Supersedes: [A](/docs/decisions/2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Context: [A](/docs/decisions/2026-10-01-a.md)",
+		[],
+	],
+	[
+		'[A][ Context ]\n\n[context]: <2026-10-01-a.md> "See 2026-10-02-b.md"',
+		'Supersedes: [A][ Context ]\n\n[context]: <2026-10-01-a.md> "See 2026-10-02-b.md"',
+		["docs/decisions/2026-10-01-a.md"],
+		'Context: [A][ Context ]\n\n[context]: <2026-10-01-a.md> "See 2026-10-02-b.md"',
+		[],
+	],
+	[
+		"[Context][]\n\n[context]: 2026-10-01-a.md 'See 2026-10-02-b.md'",
+		"Supersedes: [Context][]\n\n[context]: 2026-10-01-a.md 'See 2026-10-02-b.md'",
+		["docs/decisions/2026-10-01-a.md"],
+		"Context: [Context][]\n\n[context]: 2026-10-01-a.md 'See 2026-10-02-b.md'",
+		[],
+	],
+	[
+		"[Context]\n\n[context]: 2026-10-01-a.md (See 2026-10-02-b.md)",
+		"Supersedes: [Context]\n\n[context]: 2026-10-01-a.md (See 2026-10-02-b.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Context: [Context]\n\n[context]: 2026-10-01-a.md (See 2026-10-02-b.md)",
+		[],
+	],
+	[
+		"[Context]\n\n[context]: 2026-10-01-a.md\n[context]: 2026-10-02-b.md",
+		"Supersedes: [Context]\n\n[context]: 2026-10-01-a.md\n[context]: 2026-10-02-b.md",
+		["docs/decisions/2026-10-01-a.md"],
+		"Context: [Context]\n\n[context]: 2026-10-01-a.md\n[context]: 2026-10-02-b.md",
+		[],
+	],
+	[
+		"[A](<nested (old)/2026-10-01-a.md> 'See 2026-10-02-b.md')",
+		"Supersedes: [A](<nested (old)/2026-10-01-a.md> 'See 2026-10-02-b.md'), 2026-10-02-b.md",
+		["docs/decisions/nested (old)/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Supersedes: none. [A](<nested (old)/2026-10-01-a.md> 'See 2026-10-02-b.md')",
+		[],
+	],
+	[
+		"[A](nested(old)/2026-10-01-a.md (See 2026-10-02-b.md))",
+		"Supersedes: [A](nested(old)/2026-10-01-a.md (See 2026-10-02-b.md)), 2026-10-02-b.md",
+		["docs/decisions/nested(old)/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Supersedes: none. [A](nested(old)/2026-10-01-a.md (See 2026-10-02-b.md))",
+		[],
+	],
+	[
+		"[A](nested\\(old\\)/2026-10-01-a.md)",
+		"Supersedes: [A](nested\\(old\\)/2026-10-01-a.md), 2026-10-02-b.md",
+		["docs/decisions/nested(old)/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Supersedes: none. [A](nested\\(old\\)/2026-10-01-a.md)",
+		[],
+	],
+	[
+		"[A](nested%28old%29/2026-10-01-a.md)",
+		"Supersedes: [A](nested%28old%29/2026-10-01-a.md), 2026-10-02-b.md",
+		["docs/decisions/nested(old)/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Supersedes: none. [A](nested%28old%29/2026-10-01-a.md)",
+		[],
+	],
+	[
+		"[A](nested(old)/deep(inner)/2026-10-01-a.md)",
+		"Supersedes: [A](nested(old)/deep(inner)/2026-10-01-a.md), 2026-10-02-b.md",
+		["docs/decisions/nested(old)/deep(inner)/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Supersedes: none. [A](nested(old)/deep(inner)/2026-10-01-a.md)",
+		[],
+	],
+	[
+		"[A](<nested&#10;/2026-10-01-a.md>)",
+		"Supersedes: [A](<nested&#10;/2026-10-01-a.md>), 2026-10-02-b.md",
+		["docs/decisions/nested\n/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Supersedes: none. [A](<nested&#10;/2026-10-01-a.md>)",
+		[],
+	],
+	[
+		"[A](<nested&#xA;/2026-10-01-a.md>)",
+		"Supersedes: [A](<nested&#xA;/2026-10-01-a.md>), 2026-10-02-b.md",
+		["docs/decisions/nested\n/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Supersedes: none. [A](<nested&#xA;/2026-10-01-a.md>)",
+		[],
+	],
+	[
+		"[A](nested%0A/2026-10-01-a.md)",
+		"Supersedes: [A](nested%0A/2026-10-01-a.md), 2026-10-02-b.md",
+		["docs/decisions/nested\n/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Supersedes: none. [A](nested%0A/2026-10-01-a.md)",
+		[],
+	],
+	[
+		"nested/writer:trust/2026-10-01-a.md",
+		"Supersedes: [A](nested/writer:trust/2026-10-01-a.md)",
+		["docs/decisions/nested/writer:trust/2026-10-01-a.md"],
+		"Supersedes: [A](https://example.com/nested/writer:trust/2026-10-01-a.md)",
+		[],
+	],
+	[
+		"./writer:trust/2026-10-01-a.md",
+		"Supersedes: [A](./writer:trust/2026-10-01-a.md)",
+		["docs/decisions/writer:trust/2026-10-01-a.md"],
+		"Supersedes: [A](https://example.com/./writer:trust/2026-10-01-a.md)",
+		[],
+	],
+	[
+		"nested/writer%3Atrust/2026-10-01-a.md",
+		"Supersedes: [A](nested/writer%3Atrust/2026-10-01-a.md)",
+		["docs/decisions/nested/writer:trust/2026-10-01-a.md"],
+		"Supersedes: [A](https://example.com/nested/writer%3Atrust/2026-10-01-a.md)",
+		[],
+	],
+	[
+		"writer%3Atrust/2026-10-01-a.md",
+		"Supersedes: [A](writer%3Atrust/2026-10-01-a.md)",
+		["docs/decisions/writer:trust/2026-10-01-a.md"],
+		"Supersedes: [A](https://example.com/writer%3Atrust/2026-10-01-a.md)",
+		[],
+	],
+	[
+		"https%3A/host/2026-10-01-a.md",
+		"Supersedes: [A](https%3A/host/2026-10-01-a.md)",
+		["docs/decisions/https:/host/2026-10-01-a.md"],
+		"Supersedes: [A](https://example.com/https%3A/host/2026-10-01-a.md)",
+		[],
+	],
+	[
+		"https:nested/2026-10-01-a.md",
+		"Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Supersedes: [External](https:nested/2026-10-01-a.md)",
+		[],
+	],
+	[
+		"HTTPS:nested/2026-10-01-a.md",
+		"Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Supersedes: [External](HTTPS:nested/2026-10-01-a.md)",
+		[],
+	],
+	[
+		"mailto:nested/2026-10-01-a.md",
+		"Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Supersedes: [External](mailto:nested/2026-10-01-a.md)",
+		[],
+	],
+	[
+		"file:nested/2026-10-01-a.md",
+		"Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Supersedes: [External](file:nested/2026-10-01-a.md)",
+		[],
+	],
+	[
+		"https://example.com/%ZZ/2026-10-01-a.md",
+		"Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Supersedes: [External](https://example.com/%ZZ/2026-10-01-a.md)",
+		[],
+	],
+	[
+		"//example.com/%ZZ/2026-10-01-a.md",
+		"Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Supersedes: [External](//example.com/%ZZ/2026-10-01-a.md)",
+		[],
+	],
+	[
+		"[`2026-10-02-b.md`](2026-10-01-a.md), 2026-10-02-b.md",
+		"Supersedes: [`2026-10-02-b.md`](2026-10-01-a.md), 2026-10-02-b.md",
+		["docs/decisions/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Supersedes: no decision file. [`2026-10-02-b.md`](2026-10-01-a.md), 2026-10-02-b.md",
+		[],
+	],
+	[
+		"[`2026-10-02-b.md`][context], 2026-10-02-b.md\n\n[context]: 2026-10-01-a.md",
+		"Supersedes: [`2026-10-02-b.md`][context], 2026-10-02-b.md\n\n[context]: 2026-10-01-a.md",
+		["docs/decisions/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Supersedes: no decision file. [`2026-10-02-b.md`][context], 2026-10-02-b.md\n\n[context]: 2026-10-01-a.md",
+		[],
+	],
+	[
+		"[2026-10-01-a.md](https://example.com/2026-10-01-a.md)",
+		"Supersedes: [A](2026-10-01-a.md), 2026-10-02-b.md",
+		["docs/decisions/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Supersedes: [2026-10-01-a.md](https://example.com/2026-10-01-a.md), 2026-10-02-b.md",
+		["docs/decisions/2026-10-02-b.md"],
+	],
+	[
+		"[2026-10-01-a.md](//example.com/2026-10-01-a.md)",
+		"Supersedes: [A](2026-10-01-a.md), 2026-10-02-b.md",
+		["docs/decisions/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Supersedes: [2026-10-01-a.md](//example.com/2026-10-01-a.md), 2026-10-02-b.md",
+		["docs/decisions/2026-10-02-b.md"],
+	],
+	[
+		"[2026-10-01-a.md](#2026-10-01-a.md)",
+		"Supersedes: [A](2026-10-01-a.md), 2026-10-02-b.md",
+		["docs/decisions/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Supersedes: [2026-10-01-a.md](#2026-10-01-a.md), 2026-10-02-b.md",
+		["docs/decisions/2026-10-02-b.md"],
+	],
+	[
+		"undated query destination",
+		"Supersedes: [2026-10-01-a.md](notes.md?next=2026-10-01-a.md)",
+		["docs/decisions/notes.md"],
+		"Supersedes: [2026-10-01-a.md](notes.txt?next=2026-10-01-a.md)",
+		[],
+	],
+	[
+		"[2026-10-01-a.md](2026-10-01-a.md.bak)",
+		"Supersedes: [A](2026-10-01-a.md), 2026-10-02-b.md",
+		["docs/decisions/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Supersedes: [2026-10-01-a.md](2026-10-01-a.md.bak), 2026-10-02-b.md",
+		["docs/decisions/2026-10-02-b.md"],
+	],
+	[
+		"Markdown directory name",
+		"Supersedes: [2026-10-01-a.md](2026-10-01-a.md/other.md)",
+		["docs/decisions/2026-10-01-a.md/other.md"],
+		"Supersedes: [2026-10-01-a.md](2026-10-01-a.md/other.txt)",
+		[],
+	],
+	[
+		"<https://example.com/2026-10-01-a.md>",
+		"Supersedes: [A](2026-10-01-a.md), 2026-10-02-b.md",
+		["docs/decisions/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Supersedes: <https://example.com/2026-10-01-a.md>, 2026-10-02-b.md",
+		["docs/decisions/2026-10-02-b.md"],
+	],
+	[
+		"bare ordered targets",
+		"Supersedes:2026-10-01-a.md, 2026-10-02-b.md; 2026-10-01-a.md",
+		["docs/decisions/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Context: 2026-10-01-a.md",
+		[],
+	],
+	[
+		"soft line declarations",
+		"Context: a\nSupersedes: 2026-10-01-a.md\nContext: 2026-10-02-b.md",
+		["docs/decisions/2026-10-01-a.md"],
+		"Context: a\nContext: 2026-10-01-a.md",
+		[],
+	],
+	[
+		"hard line declarations",
+		"Context: a  \nSupersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Supersedes: [A](2026-10-01-a.md)  \n[B](2026-10-02-b.md)",
+		["docs/decisions/2026-10-01-a.md"],
+	],
+	[
+		"link and bare order",
+		"Supersedes: 2026-10-02-b.md, [A](2026-10-01-a.md), 2026-10-03-c.md",
+		["docs/decisions/2026-10-02-b.md", "docs/decisions/2026-10-01-a.md", "docs/decisions/2026-10-03-c.md"],
+		"Supersedes: [B](2026-10-02-b.md), [A](2026-10-01-a.md), 2026-10-03-c.md",
+		["docs/decisions/2026-10-02-b.md", "docs/decisions/2026-10-01-a.md", "docs/decisions/2026-10-03-c.md"],
+	],
+	[
+		"bare formatting",
+		"**Supersedes:** **2026-10-01-a.md**.",
+		["docs/decisions/2026-10-01-a.md"],
+		"Supersedes: **none**. [A](2026-10-01-a.md)",
+		[],
+	],
+	[
+		"absence case",
+		"Supersedes: nonetheless.md",
+		["docs/decisions/nonetheless.md"],
+		"Supersedes: None. [A](2026-10-01-a.md)",
+		[],
+	],
+	[
+		"absence phrase",
+		"Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Supersedes: no **decision** file. [A](2026-10-01-a.md)",
+		[],
+	],
+	[
+		"image opacity",
+		"Supersedes: [A](2026-10-01-a.md), 2026-10-02-b.md",
+		["docs/decisions/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Supersedes: ![2026-10-01-a.md](2026-10-01-a.md), 2026-10-02-b.md",
+		["docs/decisions/2026-10-02-b.md"],
+	],
+	[
+		"reference image opacity",
+		"Supersedes: [A][old], 2026-10-02-b.md\n\n[old]: 2026-10-01-a.md",
+		["docs/decisions/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md"],
+		"Supersedes: ![2026-10-01-a.md][old], 2026-10-02-b.md\n\n[old]: 2026-10-01-a.md",
+		["docs/decisions/2026-10-02-b.md"],
+	],
+	[
+		"HTML opacity",
+		"Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Supersedes: <!-- 2026-10-01-a.md -->",
+		[],
+	],
+	[
+		"HTML block opacity",
+		"Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"<div>\nSupersedes: [A](2026-10-01-a.md)\n</div>",
+		[],
+	],
+	[
+		"opaque declaration prefix",
+		"Supersedes: 2026-10-01-a.md",
+		["docs/decisions/2026-10-01-a.md"],
+		"`x`Supersedes: 2026-10-01-a.md",
+		[],
+	],
+	[
+		"link separates prose tokens",
+		"Supersedes: [Old](old.md)",
+		["docs/decisions/old.md"],
+		"Supersedes: old[Context](context.txt).md",
+		[],
+	],
+	[
+		"compact delimiters",
+		"Supersedes:2026-10-01-a.md;2026-10-02-b.md,old.md",
+		["docs/decisions/2026-10-01-a.md", "docs/decisions/2026-10-02-b.md", "docs/decisions/old.md"],
+		"Context:2026-10-01-a.md;2026-10-02-b.md,old.md",
+		[],
+	],
+	["code separates prose tokens", "Supersedes: old.md", ["docs/decisions/old.md"], "Supersedes: old`x`.md", []],
+	[
+		"label text opacity",
+		"Supersedes: [See phantom.md](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"Context: [See phantom.md](2026-10-01-a.md)",
+		[],
+	],
+	["HTML declaration prefix", "Supersedes: old.md", ["docs/decisions/old.md"], "Super<i>sedes: old.md", []],
+	[
+		"image declaration prefix",
+		"Supersedes: old.md",
+		["docs/decisions/old.md"],
+		"![x](ignored.png)Supersedes: old.md",
+		[],
+	],
+	[
+		"reference image declaration prefix",
+		"Supersedes: old.md",
+		["docs/decisions/old.md"],
+		"![x][img]Supersedes: old.md\n\n[img]: ignored.png",
+		[],
+	],
+	[
+		"block quote",
+		" > Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		" > ```md\n > Supersedes: [A](2026-10-01-a.md)\n > ```",
+		[],
+	],
+	[
+		"list paragraph",
+		"- Supersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"    Supersedes: [A](2026-10-01-a.md)",
+		[],
+	],
+	[
+		"punctuation bound",
+		"Supersedes: 2026-10-01-a.md.",
+		["docs/decisions/2026-10-01-a.md"],
+		"Supersedes: 2026-10-01-a.md.bak",
+		[],
+	],
+	[
+		"unused definition",
+		"Supersedes: [A][old]\n\n[old]: 2026-10-01-a.md",
+		["docs/decisions/2026-10-01-a.md"],
+		"Supersedes: [A][unknown]\n\n[old]: 2026-10-01-a.md",
+		[],
+	],
+	[
+		"front matter ---",
+		"---\nSupersedes: 2026-10-02-b.md\n---\nSupersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"---\nSupersedes: 2026-10-01-a.md\n---\nContext only",
+		[],
+	],
+	[
+		"front matter +++",
+		"+++\nSupersedes: 2026-10-02-b.md\n+++\nSupersedes: [A](2026-10-01-a.md)",
+		["docs/decisions/2026-10-01-a.md"],
+		"+++\nSupersedes: 2026-10-01-a.md\n+++\nContext only",
+		[],
+	],
+	[
+		"nested display label",
+		"Supersedes: [2026-10-01-a.md](nested/2026-10-01-a.md)",
+		["docs/decisions/nested/2026-10-01-a.md"],
+		"Context: [2026-10-01-a.md](nested/2026-10-01-a.md)",
+		[],
+	],
+	[
+		"nested sibling",
+		"Supersedes: 2026-10-01-a.md",
+		["docs/decisions/nested/2026-10-01-a.md"],
+		"Supersedes: ../2026-10-01-a.md",
+		["docs/decisions/2026-10-01-a.md"],
+		"docs/decisions/nested/2026-10-02-b.md",
+	],
+	[
+		"repository-relative nested",
+		"Supersedes: docs/decisions/2026-10-01-a.md",
+		["docs/decisions/2026-10-01-a.md"],
+		"Supersedes: /docs/decisions/2026-10-01-a.md",
+		["docs/decisions/2026-10-01-a.md"],
+		"docs/decisions/nested/2026-10-02-b.md",
+	],
+	[
+		"declaring path controls",
+		"Supersedes: old.md",
+		["docs/decisions/nested\n#?/old.md"],
+		"Supersedes: none. old.md",
+		[],
+		"docs/decisions/nested\n#?/new.md",
+	],
+	[
+		"child target",
+		"Supersedes: nested/2026-10-01-a.md",
+		["docs/decisions/nested/2026-10-01-a.md"],
+		"Supersedes: [Old](//melian-repository/repository/docs/decisions/2026-10-01-a.md)",
+		[],
+		"docs/decisions/2026-10-03-c.md",
+	],
+];
+
+describe("supersession prose", () => {
+	it.each(declarationCases)("%s", (_name, positive, targets, negative, negativeTargets, from = c) => {
+		expect(parse(from, positive).supersedes).toEqual(targets);
+		expect(parse(from, negative).supersedes).toEqual(negativeTargets);
+		const files = [...new Set([a, b, from, ...targets, ...negativeTargets])].map((path) =>
+			parse(path, path === from ? positive : "# Baseline"),
+		);
+		if (!targets.includes(from)) {
+			const rendered = DecisionFiles.from(files).render();
+			for (const target of targets)
+				expect(rendered).toContain(visibleText(`[INACTIVE; superseded by ${from}] ${target}`));
+			for (const target of [a, b].filter((path) => !targets.includes(path)))
+				expect(rendered).toContain(`[ACTIVE] ${target}`);
+		}
+	});
+});
+
+const filenameCases = [
+	["dated", "2026-10-01-a.md", "2026-10-01-a.md.bak"],
+	["undated", "policy.md", "policy.txt"],
+	["Unicode", "café.md", "café.MD"],
+	["space", "writer trust.md", "writer trust.md/other.txt"],
+	["newline", "line\nbreak.md", "line\nbreak.md.bak"],
+	["terminal newline", "line\nbreak.md", "linebreak.md\n"],
+	["nested", "nested/old.md", "../outside.md"],
+	["colon", "nested/writer:trust.md", "https:writer.md"],
+	["empty basename", ".md", ".md.bak"],
+] as const;
+
+describe("filename domain", { timeout: 60_000 }, () => {
+	it.each(filenameCases)("%s", async (_name, filename, excluded) => {
+		const target = `docs/decisions/${filename}`;
+		const destination = filename.split("/").map(encodeURIComponent).join("/");
+		expect(parse(b, `Supersedes: [Old](<${destination}>)`).supersedes).toEqual([target]);
+		expect(parse(b, `Supersedes: [Old](<${excluded.replaceAll("\n", "%0A")}>)`).supersedes).toEqual([]);
+		const repo = temporaryDirectory();
+		try {
+			gitIn(repo, "init", "--quiet", "--initial-branch=main");
+			writeFiles(repo, {
+				[target]: "# Old",
+				[b]: `# New\nSupersedes: [Old](<${destination}>)`,
+				"docs/progress-log/policy.md": "# Excluded",
+				"docs/decisions/notes.md\n": "# Excluded terminal newline",
+			});
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "base");
+			const rendered = (await DecisionFiles.load(repo, "HEAD")).render();
+			expect(rendered).toContain(visibleText(`[INACTIVE; superseded by ${b}] ${target} — Old`));
+			expect(rendered).not.toContain("Excluded");
+		} finally {
+			removeDirectory(repo);
+		}
+	});
+});
+
+const titleCases = [
+	["ATX", "# Title", "## Other"],
+	["Setext", "Title\n=====", "    # Example"],
+	["first H1", "## Other\n# Title\n# Later", "```md\n# Example\n```"],
+	["YAML metadata", "---\n# Metadata\n---\n# Title", "---\n# Metadata\n---"],
+	["TOML metadata", "+++\n# Metadata\n+++\n# Title", "+++\n# Metadata\n+++"],
+	["markup", "# *Title*", "Context"],
+] as const;
+
+describe("decision titles", () => {
+	it.each(titleCases)("%s", (_name, positive, negative) => {
+		expect(parse(a, positive).title).toBe("Title");
+		expect(parse(a, negative).title).toBe(a);
+	});
+});
 
 describe("written decisions", () => {
-	it("parses a heading and linked, bare, multiple and repeated Supersedes targets", () => {
-		expect(
-			parse(
-				c,
-				`# Current\n\nSupersedes: [A](2026-10-01-a.md), for trust; 2026-10-02-b.md, for limits.\nSupersedes: docs/decisions/2026-10-01-a.md\n`,
-			),
-		).toMatchObject({ path: c, title: "Current", supersedes: [a, b] });
-		expect(parse(a, "Supersedes: none.\n")).toMatchObject({ title: a, supersedes: [] });
-	});
-
-	it.each([
-		"```md\nSupersedes: [A](2026-10-01-a.md)\n```",
-		"~~~md\nSupersedes: 2026-10-01-a.md\n~~~",
-		"    Supersedes: [A](2026-10-01-a.md)",
-		"`Supersedes: [A](2026-10-01-a.md)`",
-		"`Example:\nSupersedes: [A](2026-10-01-a.md)\n`",
-		"Supersedes: `[A](2026-10-01-a.md)`",
-		"Supersedes: `2026-10-01-a.md`",
-	])("keeps the governing decision active beside the code example %s", (example) => {
-		const successor = parse(c, `# C\n\n${example}\n\nSupersedes: [B](2026-10-02-b.md)\n`);
-		expect(successor.supersedes).toEqual([b]);
-		const rendered = DecisionFiles.from([parse(a, "# A"), parse(b, "# B"), successor]).render();
-		expect(rendered).toContain(`[ACTIVE] ${a} — A`);
-		expect(rendered).toContain(`[INACTIVE; superseded by ${c}] ${b} — B`);
-	});
-
-	it("resolves sibling, parent, child and repository-relative nested targets", () => {
-		const nestedA = "docs/decisions/nested/2026-10-01-a.md";
-		const nestedB = "docs/decisions/nested/2026-10-02-b.md";
-		for (const target of ["2026-10-01-a.md", "docs/decisions/nested/2026-10-01-a.md"]) {
-			const successor = parse(nestedB, `# Nested B\nSupersedes: [A](${target})`);
-			expect(successor.supersedes).toEqual([nestedA]);
-			const rendered = DecisionFiles.from([parse(a, "# Root A"), parse(nestedA, "# Nested A"), successor]).render();
-			expect(rendered).toContain(`[ACTIVE] ${a} — Root A`);
-			expect(rendered).toContain(`[INACTIVE; superseded by ${nestedB}] ${nestedA} — Nested A`);
-		}
-		expect(parse(nestedB, "# B\nSupersedes: ../2026-10-01-a.md").supersedes).toEqual([a]);
-		expect(parse(b, "# B\nSupersedes: nested/2026-10-01-a.md").supersedes).toEqual([nestedA]);
-	});
-	it("uses a Markdown link’s destination without superseding its dated display name", () => {
-		const nestedA = "docs/decisions/nested/2026-10-01-a.md";
-		const successor = parse(b, "# B\nSupersedes: [2026-10-01-a.md](nested/2026-10-01-a.md)");
-		expect(successor.supersedes).toEqual([nestedA]);
-		expect(DecisionFiles.from([parse(nestedA, "# Nested A"), successor]).render()).toContain(
-			`[INACTIVE; superseded by ${b}] ${nestedA} — Nested A`,
-		);
-		expect(DecisionFiles.from([parse(a, "# Root A"), parse(nestedA, "# Nested A"), successor]).render()).toContain(
-			`[ACTIVE] ${a} — Root A`,
-		);
-		expect(
-			parse(c, "# C\nSupersedes: [2026-10-01-a.md](nested/2026-10-01-a.md), 2026-10-02-b.md").supersedes,
-		).toEqual([nestedA, b]);
-	});
-	it("does not supersede a contextual link after an explicit absence declaration", () => {
-		for (const declaration of ["none.", "no decision file.", "None."])
-			expect(parse(b, `# B\nSupersedes: ${declaration} Context: [A](2026-10-01-a.md).\n`).supersedes).toEqual([]);
-	});
-
-	it.each([
-		'[2026-10-02-b.md](2026-10-01-a.md "See 2026-10-02-b.md")',
-		"[2026-10-02-b.md](2026-10-01-a.md 'See 2026-10-02-b.md')",
-		"[2026-10-02-b.md](2026-10-01-a.md (See 2026-10-02-b.md))",
-		'[**2026-10-02-b.md** and [context]]( <2026-10-01-a.md> "See 2026-10-02-b.md")',
-		"[`2026-10-02-b.md`](2026-10-01-a.md)",
-		"[`2026-10-02-b.md`][context]\n\n[context]: 2026-10-01-a.md",
-		'[A](2026-10-01-a.md "See \\"2026-10-02-b.md\\"")',
-		'[A](2026-10-01-a.md\n "See 2026-10-02-b.md")',
-		"[A](./2026-10-01-a.md#2026-10-02-b.md)",
-		"[A](2026-10-01-a.md?context=2026-10-02-b.md)",
-		"[A](%32%30%32%36-10-01-a.md)",
-		"[A](2026-10-01-a&#46;md)",
-		"[A](/docs/decisions/2026-10-01-a.md)",
-		'[A][ Context ]\n\n[context]: <2026-10-01-a.md> "See 2026-10-02-b.md"',
-		"[Context][]\n\n[context]: 2026-10-01-a.md 'See 2026-10-02-b.md'",
-		"[Context]\n\n[context]: 2026-10-01-a.md (See 2026-10-02-b.md)",
-		"[Context]\n\n[context]: 2026-10-01-a.md\n[context]: 2026-10-02-b.md",
-	])("resolves only the complete Markdown destination in %s", (link) => {
-		const successor = parse(c, `# C\nSupersedes: ${link}\n`);
-		expect(successor.supersedes).toEqual([a]);
-		expect(DecisionFiles.from([parse(a, "# A"), successor]).render()).toContain(
-			`[INACTIVE; superseded by ${c}] ${a} — A`,
-		);
-		expect(DecisionFiles.from([parse(a, "# A"), parse(b, "# B"), successor]).render()).toContain(`[ACTIVE] ${b} — B`);
-	});
-
-	it.each([
-		["[A](<nested (old)/2026-10-01-a.md> 'See 2026-10-02-b.md')", "nested (old)/2026-10-01-a.md"],
-		["[A](nested(old)/2026-10-01-a.md (See 2026-10-02-b.md))", "nested(old)/2026-10-01-a.md"],
-		["[A](nested\\(old\\)/2026-10-01-a.md)", "nested(old)/2026-10-01-a.md"],
-		["[A](nested%28old%29/2026-10-01-a.md)", "nested(old)/2026-10-01-a.md"],
-		["[A](nested(old)/deep(inner)/2026-10-01-a.md)", "nested(old)/deep(inner)/2026-10-01-a.md"],
-		["[A](<nested&#10;/2026-10-01-a.md>)", "nested\n/2026-10-01-a.md"],
-		["[A](<nested&#xA;/2026-10-01-a.md>)", "nested\n/2026-10-01-a.md"],
-		["[A](nested%0A/2026-10-01-a.md)", "nested\n/2026-10-01-a.md"],
-	])("keeps the destination’s full directory in %s", (link, target) => {
-		const successor = parse(c, `# C\nSupersedes: ${link}, 2026-10-02-b.md\n`);
-		expect(successor.supersedes).toEqual([`docs/decisions/${target}`, b]);
-		expect(() =>
-			DecisionFiles.from([parse(`docs/decisions/${target}`, "# Nested A"), parse(b, "# B"), successor]),
-		).not.toThrow();
-	});
-
-	it.each([
-		["nested/writer:trust/2026-10-01-a.md", "nested/writer:trust/2026-10-01-a.md"],
-		["./writer:trust/2026-10-01-a.md", "writer:trust/2026-10-01-a.md"],
-		["nested/writer%3Atrust/2026-10-01-a.md", "nested/writer:trust/2026-10-01-a.md"],
-		["writer%3Atrust/2026-10-01-a.md", "writer:trust/2026-10-01-a.md"],
-		["https%3A/host/2026-10-01-a.md", "https:/host/2026-10-01-a.md"],
-	])("deactivates the local colon-bearing destination %s", (destination, directory) => {
-		const target = `docs/decisions/${directory}`;
-		const successor = parse(b, `# B\nSupersedes: [A](${destination})`);
-		expect(successor.supersedes).toEqual([target]);
-		expect(DecisionFiles.from([parse(target, "# A"), successor]).render()).toContain(
-			`[INACTIVE; superseded by ${b}] ${target} — A`,
-		);
-		expect(() => DecisionFiles.from([successor])).toThrow(`supersedes absent ${target}`);
-	});
-	it.each([
-		"https:nested/2026-10-01-a.md",
-		"HTTPS:nested/2026-10-01-a.md",
-		"mailto:nested/2026-10-01-a.md",
-		"file:nested/2026-10-01-a.md",
-		"https://example.com/%ZZ/2026-10-01-a.md",
-		"//example.com/%ZZ/2026-10-01-a.md",
-	])("classifies external supersession destination %s before decoding", (destination) => {
-		const successor = parse(b, `# B\nSupersedes: [External](${destination})`);
-		expect(successor.supersedes).toEqual([]);
-		expect(DecisionFiles.from([parse(a, "# A"), successor]).render()).toContain(`[ACTIVE] ${a} — A`);
-	});
-
-	it("resolves each link independently beside a bare target", () => {
-		expect(
-			parse(
-				c,
-				'# C\nSupersedes: [B](2026-10-02-b.md "See 2026-10-04-d.md"), [A](2026-10-01-a.md), 2026-10-05-e.md\n',
-			).supersedes,
-		).toEqual([b, a, "docs/decisions/2026-10-05-e.md"]);
-	});
-
-	it.each([
-		"[`2026-10-02-b.md`](2026-10-01-a.md), 2026-10-02-b.md",
-		"[`2026-10-02-b.md`][context], 2026-10-02-b.md\n\n[context]: 2026-10-01-a.md",
-	])("keeps the bare target after the code-formatted link label in %s", (declaration) => {
-		expect(parse(c, `# C\nSupersedes: ${declaration}\n`).supersedes).toEqual([a, b]);
-	});
-
-	it.each([
-		"[2026-10-01-a.md](https://example.com/2026-10-01-a.md)",
-		"[2026-10-01-a.md](//example.com/2026-10-01-a.md)",
-		"[2026-10-01-a.md](#2026-10-01-a.md)",
-		"[2026-10-01-a.md](notes.md?next=2026-10-01-a.md)",
-		"[2026-10-01-a.md](2026-10-01-a.md.bak)",
-		"[2026-10-01-a.md](2026-10-01-a.md/other.md)",
-		"<https://example.com/2026-10-01-a.md>",
-	])("does not extract a local decision filename from %s", (link) => {
-		expect(parse(c, `# C\nSupersedes: ${link}, 2026-10-02-b.md\n`).supersedes).toEqual([b]);
-	});
-
-	it("refuses a malformed encoded destination", () => {
-		expect(() => parse(c, "# C\nSupersedes: [A](%ZZ/2026-10-01-a.md)\n")).toThrow(
-			"Invalid supersession destination %ZZ/2026-10-01-a.md",
-		);
-	});
-
 	it("marks every superseded decision inactive, including a chain and two successors", () => {
 		const rendered = DecisionFiles.from([
 			parse(c, "# C\nSupersedes: 2026-10-01-a.md, 2026-10-02-b.md\n"),
@@ -213,7 +696,7 @@ describe("written decisions", () => {
 		expect(() => DecisionFiles.from(files).render()).toThrow("2 decisions omitted; review refused");
 	});
 	it("lists every active path and full title at the repository base with headroom", async () => {
-		const repo = process.cwd();
+		const repo = fileURLToPath(new URL("../../../", import.meta.url));
 		const source = await openSource(repo, { kind: "revision", commit: "origin/main" });
 		const paths = await source.findPaths(/^docs\/decisions\/.*\.md$/s);
 		const files = await Promise.all(
