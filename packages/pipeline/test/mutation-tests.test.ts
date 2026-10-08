@@ -1,3 +1,8 @@
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { type CallGroundTruth, defaultConfig } from "@melian-agent/core";
 import { backgroundContext, createNodeExecutionEnv } from "@melian-agent/pipeline";
 import { afterEach, expect, it, vi } from "vitest";
@@ -209,4 +214,69 @@ it("uses the whole suite without starting a compiler when the root project is ab
 		note: expect.stringContaining("no root tsconfig.json"),
 	});
 	expect(shell).not.toHaveBeenCalled();
+});
+
+it.each([0, 1, 2, 3])(
+	"rejects missing compiler-child argument %s before writing a project",
+	{ timeout: 60_000 },
+	(missing) => {
+		const root = mkdtempSync(join(tmpdir(), "melian-mutation-child-"));
+		const output = join(root, "selection.json");
+		const project = join(root, "project.json");
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["**/*.ts"] }));
+		const args = [root, output, project, JSON.stringify(["src/a.ts"])];
+		args[missing] = "";
+		let stderr = "";
+		try {
+			try {
+				execFileSync(
+					process.execPath,
+					[
+						"--conditions=@melian-agent/source",
+						"--max-old-space-size=512",
+						fileURLToPath(new URL("../src/mutation-tests.ts", import.meta.url)),
+						...args,
+					],
+					{ cwd: root, encoding: "utf8", stdio: "pipe", timeout: 30_000 },
+				);
+			} catch (error) {
+				stderr = String((error as { stderr: unknown }).stderr);
+			}
+			expect(stderr).toContain("Error: Expected root, output, project and changed paths");
+			expect(existsSync(project)).toBe(false);
+			expect(existsSync(output)).toBe(false);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	},
+);
+
+it("rejects a compiler-child root without a project before writing scratch output", { timeout: 60_000 }, () => {
+	const root = mkdtempSync(join(tmpdir(), "melian-mutation-child-"));
+	const output = join(root, "selection.json");
+	const project = join(root, "project.json");
+	let stderr = "";
+	try {
+		try {
+			execFileSync(
+				process.execPath,
+				[
+					"--conditions=@melian-agent/source",
+					fileURLToPath(new URL("../src/mutation-tests.ts", import.meta.url)),
+					root,
+					output,
+					project,
+					JSON.stringify(["src/a.ts"]),
+				],
+				{ cwd: root, encoding: "utf8", stdio: "pipe", timeout: 30_000 },
+			);
+		} catch (error) {
+			stderr = String((error as { stderr: unknown }).stderr);
+		}
+		expect(stderr).toContain("Error: No root tsconfig.json");
+		expect(existsSync(project)).toBe(false);
+		expect(existsSync(output)).toBe(false);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
 });
