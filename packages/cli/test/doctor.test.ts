@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as core from "@melian-agent/core";
 import * as githubProvider from "@melian-agent/github";
+import * as pipeline from "@melian-agent/pipeline";
+import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
 import { fakeGitHub, fakeState } from "../../github/test/fixtures/fake-github.ts";
@@ -76,6 +78,35 @@ async function run(
 	const status = defaultTransport ? await doctor(io) : await doctor(io, { fetch });
 	return { status, stdout, trust: stdout.split("\n").find((line) => / {2}trust\s+/.test(line)) };
 }
+
+describe("doctor model routes", () => {
+	it("names the subscription verifier and its provider on the routes line", async () => {
+		const fake = createFakeModels({
+			provider: "openai-codex",
+			auth: "oauth",
+			models: [{ id: "gpt-5.6-terra", name: "GPT-5.6 Terra" }],
+			credentials: [
+				{
+					name: "subscription",
+					provider: "openai-codex",
+					type: "api_key",
+					value: { kind: "literal", key: "fake-subscription-bearer" },
+					file: "test-secrets.yaml",
+				},
+			],
+			authPath: join(home, "absent-auth.json"),
+		});
+		vi.spyOn(pipeline, "createReviewModels").mockReturnValue(fake.review);
+		writeFileSync(
+			join(repo, "melian.yaml"),
+			"models:\n  heavy: { model: openai-codex/gpt-5.6-terra }\n  verifier: { model: openai-codex/gpt-5.6-terra }\n",
+		);
+		const result = await run(github());
+		const routes = result.stdout.split("\n").find((line) => / {2}routes\s+/.test(line));
+		expect(routes).toContain("verifier: openai-codex/gpt-5.6-terra (routed)");
+		expect(result.stdout).not.toContain("fake-subscription-bearer");
+	});
+});
 
 describe("doctor writer trust", () => {
 	it("reads the committed default base despite head and worktree edits", async () => {
