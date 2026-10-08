@@ -395,12 +395,7 @@ function answers(comment: GoldenComment, finding: Finding): boolean {
 	return (reportedBy ?? (source === undefined ? [] : [source])).some(
 		(each) =>
 			each.check === comment.source &&
-			!otherClaims.some(
-				(claim) =>
-					claim.source.check === each.check &&
-					claim.source.version === each.version &&
-					claim.ruleId !== comment.rule,
-			),
+			!otherClaims.some((claim) => claim.source.check === each.check && claim.source.version === each.version),
 	);
 }
 
