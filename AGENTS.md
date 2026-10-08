@@ -56,7 +56,7 @@ A guard, branch, bound, or early return counts as tested only when a test fails 
 - A fallback test asserts that the request reached the fallback, not a stored label. A label records what the code meant to do.
 - The pass that writes a test runs its mutation and records it in its report. A later reviewer should not have to find the gap again.
 
-The `static.mutation` check runs this proof on the changed lines of every pull request in the `full` tier. A lens-raised `untested-behaviour` on code a fix pass wrote resolves to advisory, unless it guards a trust or durability property. A surviving mutant the check itself reports keeps its P2 severity.
+The `static.mutation` check runs this proof on the changed lines of every pull request in the `full` tier. Lenses report `untested-behaviour` at their usual severity. When the maintainer adjudicates a round, a finding on code a fix pass wrote counts as advisory unless it guards a trust or durability property. A surviving mutant the check itself reports keeps its P2 severity.
 
 If you create or modify a test, run it and iterate until it passes. Tests use Vitest and the fake model from the pipeline's testing entry, `@melian-agent/pipeline/testing`; never real providers, keys, or paid tokens. Use Pi Durable's memory storage unless the test is about surviving a reopen or a crash; then use SQLite in a temporary directory.
 
