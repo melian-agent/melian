@@ -147,6 +147,24 @@ function scripts(verdict: Verification["verdict"] = "confirmed") {
 }
 
 describe("the verifier", () => {
+	it.each([
+		["design", "wrong-result"],
+		["correctness", "fail-open-default"],
+		["correctness", "wrong-result"],
+	])("passes base decisions for %s claims under %s", async (name, rule) => {
+		const first = lenses[0]!;
+		lenses = [Lens.from({ ...first.toJSON(), name, rules: [{ id: rule, description: "Planted rule." }] })];
+		const requests = scripts();
+		await review();
+		const instructions = systemPromptOf(requests[verifierMarker]![0]!);
+		if (name === "design" || rule === "fail-open-default") {
+			expect(instructions).toContain("## Decisions at base");
+			expect(instructions).toMatch(/label="listing"/);
+		} else {
+			expect(instructions).not.toContain("## Decisions at base");
+		}
+	});
+
 	it("merges two rules before asking one conversation to judge both claims inside boundaries", async () => {
 		const first = lenses[0]!;
 		lenses.push(

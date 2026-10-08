@@ -1909,6 +1909,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				});
 	const allRuns = runsOf(ran.lenses);
 	const candidates: VerificationCandidate[] = [];
+	const designRules = new Set(
+		(await Lens.load(repoRoot, { kind: "revision", commit: base }, []))
+			.find((lens) => lens.name === "design")!
+			.rules.map((rule) => rule.id),
+	);
+	let decisionsAtBase: string | undefined;
 	for (const defect of new Merge(storedFindings, configFor).defects()) {
 		if (defect.speaker.properties.status === "dismissed") continue;
 		const candidateState = VerificationState.from(defect.speaker).toJSON();
@@ -1965,7 +1971,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				(await hasCredentials(models, model.provider).catch(() => false))
 			)
 				available.push(model);
+		const designClaim = candidateState.claims.some(
+			(claim) => claim.source.check === "lens.design" || designRules.has(claim.ruleId),
+		);
+		if (designClaim) decisionsAtBase ??= (await DecisionFiles.load(repoRoot, base)).render();
 		candidates.push({
+			...(designClaim ? { decisionsAtBase } : {}),
 			key: defect.speaker.id,
 			state: candidateState,
 			finder,

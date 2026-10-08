@@ -11,9 +11,10 @@ import { describe, expect, it } from "vitest";
 const goldens = loadVerifierGoldens();
 
 describe("the verifier corpus", { timeout: 60_000 }, () => {
-	it("holds four executing-reviewer misses and two decoys outside the lens corpus", () => {
+	it("holds executing-reviewer misses, a design departure and two decoys outside the lens corpus", () => {
 		expect(goldens.map((golden) => golden.name)).toEqual([
 			"circular-import-tdz",
+			"design-supersedes-its-own-decision",
 			"excluded-zero-input",
 			"guarded-null-dereference",
 			"separator-hash-collision",

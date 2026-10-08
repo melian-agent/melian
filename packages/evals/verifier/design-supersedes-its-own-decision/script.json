@@ -1,0 +1,9 @@
+{
+  "verdict": "confirmed",
+  "reason": "The head supersedes the trust rule, but the base reason still holds: an absent answer grants trust without repository opt-in.",
+  "expectInstructions": [
+    "a decision the head adds or rewrites never excuses a departure from the base decisions",
+    "Ask whether the base decision\u2019s reason still holds",
+    "[ACTIVE] docs/decisions/2026-10-01-writer-trust.md \u2014 Writers are trusted only when policy says so"
+  ]
+}
