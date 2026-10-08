@@ -35,6 +35,7 @@ let opened: Harness[];
 
 beforeEach(() => {
 	fakeMutationProcesses();
+	fakeProcesses([]);
 	vi.spyOn(Sandbox, "detect").mockReturnValue(unconfinedSandbox);
 	repo = createRepository();
 	artifacts = realpathSync(mkdtempSync(join(tmpdir(), "melian-authority-")));
@@ -405,6 +406,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 			[4242, "SIGTERM"],
 			[4243, "SIGTERM"],
 		]);
+		expect((await harness.snapshot(MutationProcesses, root.id, context))!.trees).toEqual({});
 	});
 
 	it("resumes and runs the task a crash left pending when the next review keeps the writer trusted", async () => {
@@ -434,11 +436,18 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		const database = await crashed(base, head);
 		const { harness, root } = await openOn(database);
 		const [pending] = await liveChecks(harness);
+		await recordTree(root, pending!.record.id);
+		const kills = fakeProcesses(alive.map((entry) => ({ ...entry })));
 		await root.commit(async (tx) => {
 			const document = await tx.doc(ChecksDocument, root.id);
 			document.owners = { [revisionKey({ base, head })]: "a newer review of this revision" };
 		}, context);
 		expect(await outcomeOf(harness, pending!.record.id)).toEqual({ status: "aborted" });
+		expect(kills).toEqual([
+			[4242, "SIGTERM"],
+			[4243, "SIGTERM"],
+		]);
+		expect((await harness.snapshot(MutationProcesses, root.id, context))!.trees).toEqual({});
 		expect(runs()).toBe(0);
 		expect(await readFindings(harness, root.id, revisionKey({ base, head }), context)).toEqual([]);
 	});

@@ -293,6 +293,9 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 		run: async (task, runtime, context) => {
 			const { check, changeset, run } = task.input;
 			await terminateMutation(runtime, runtime.conversationId, runtime.taskId, await runtime.env(context), context);
+			await runtime.commit(async (tx) => {
+				delete (await tx.doc(MutationProcesses, runtime.conversationId)).trees[String(runtime.taskId)];
+			}, context);
 			const current = await runtime.snapshot(ChecksDocument, runtime.conversationId, context);
 			if (!ownsMutation(task.input, current?.owners)) {
 				await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
@@ -359,7 +362,10 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 			await runtime.env(backgroundContext),
 			backgroundContext,
 		);
-		await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+		await runtime.commit(async (tx) => {
+			delete (await tx.doc(MutationProcesses, runtime.conversationId)).trees[String(runtime.taskId)];
+			return { status: "terminal", outcome: { status: "aborted" } };
+		}, context);
 	},
 });
 
