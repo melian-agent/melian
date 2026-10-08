@@ -60,6 +60,7 @@ describe("the golden corpus", () => {
 			"design-superseded-at-base-clean",
 			"design-supersedes-its-own-decision",
 			"design-terminology-change",
+			"design-terminology-change-in-design",
 			"design-trust-by-label",
 			"design-trust-by-label-clean",
 			"design-unshipped-artifact",
@@ -100,6 +101,24 @@ describe("the golden corpus", () => {
 });
 
 describe("a golden's standards and policy", () => {
+	it("supplies design-only base vocabulary to the scripted golden conversation", async () => {
+		const scripted = vi.spyOn(testing, "scriptLenses");
+		try {
+			const golden = goldens.find((each) => each.name === "design-terminology-change-in-design")!;
+			const run = await runGolden(golden, { kind: "scripted" });
+			expect(run.toolMismatches).toEqual([]);
+			expect(scoreGolden(golden, run.findings)).toMatchObject({ precision: 1, recall: 1 });
+			const requests = scripted.mock.results[0]!.value as ReturnType<typeof testing.scriptLenses>;
+			const prompts = Object.values(requests).flat().map(testing.systemPromptOf);
+			const prompt = prompts.find((prompt) => prompt.includes("You are the design reviewer"))!;
+			expect(prompt).toContain("## Design sections at base");
+			expect(prompt).toContain("docs/design.md:2 — Writer trust");
+			expect(prompt).not.toContain("docs/design.md:2 — Publisher eligibility");
+		} finally {
+			scripted.mockRestore();
+		}
+	}, 60_000);
+
 	it("renders a nested base AGENTS.md into the scripted lens's instructions", async () => {
 		const directory = mkdtempSync(join(tmpdir(), "melian-nested-standards-golden-"));
 		const scripted = vi.spyOn(testing, "scriptLenses");

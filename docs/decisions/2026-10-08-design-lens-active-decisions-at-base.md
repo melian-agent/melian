@@ -25,3 +25,7 @@ The live investigation for [pull request #102](https://github.com/melian-agent/m
 Golden scores count merged adjudicated defects, excluding refuted and dismissed findings. A match may use the speaker’s reporting check and rule or a paired source and rule in otherClaims. Alternative files let a finding cite the faulty code or its conflicting decision. A second lens sighting the same defect is not a false positive. The live supersedes case cited the code correctly; its old expectation accepted only the decision path.
 
 A scoring test must isolate a wrong-rule report. Supplying it beside a correct report leaves precision unchanged when the rule check is removed, because only one expectation can earn credit. The mutation pass exposed that gap and added the isolated case.
+
+## Design vocabulary comes from base headings
+
+A deterministic index supplies design.md’s headings and base line numbers, plus headings in local Markdown section links and split files under docs/design/. Fenced examples contribute no headings. Every entry is quoted as data and joins the instruction fingerprint. A 64 KiB UTF-8 bound refuses the complete index with an omitted-heading count. Missing linked sections refuse review. A design-only terminology golden asserts the base heading in its scripted conversation; no decision file can supply the term.

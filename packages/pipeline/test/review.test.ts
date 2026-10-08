@@ -18,7 +18,7 @@ import {
 	type RepositorySource,
 	type Verdict,
 } from "@melian-agent/core";
-import { DecisionFiles } from "@melian-agent/decisions";
+import { DecisionFiles, DesignSections } from "@melian-agent/decisions";
 import {
 	CallerContext,
 	ChangePrompt,
@@ -3506,6 +3506,46 @@ describe("code over 2 KiB, which a finding stores cut", () => {
 });
 
 describe("the design baseline", () => {
+	it("fingerprints bounded base headings and quotes them as data", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "docs/design.md": "# Writer trust\n", "src/answer.ts": "export const answer = 42;\n" },
+			{ "docs/design.md": "# Publisher eligibility\n", "src/answer.ts": "export const answer = 43;\n" },
+		);
+		config = { ...config, tiers: { ...config.tiers, full: ["lens.design"] } };
+		const design = "You are the design reviewer";
+		const requests = scriptConversations(fake, [{ match: design, replies: [fauxAssistantMessage("Done.")] }]);
+		await review();
+		const messages = requests[design]![0]!;
+		const prompt = systemPromptOf(messages);
+		expect(quoted(prompt, nonceOf(messages), "listing").join("\n")).toContain("docs/design.md:1 — Writer trust");
+		const outside = prompt.replaceAll(
+			new RegExp(`<untrusted-${nonceOf(messages)}[\\s\\S]*?</untrusted-${nonceOf(messages)}>`, "g"),
+			"",
+		);
+		expect(outside).not.toContain("Writer trust");
+		expect(prompt).not.toContain("docs/design.md:1 — Publisher eligibility");
+		const before = fake.provider.state.callCount;
+		const rendered = vi.spyOn(DesignSections.prototype, "render").mockReturnValue("Changed base vocabulary");
+		scriptConversations(fake, [{ match: design, replies: [fauxAssistantMessage("Done.")] }]);
+		try {
+			await review();
+			expect(fake.provider.state.callCount).toBeGreaterThan(before);
+		} finally {
+			rendered.mockRestore();
+		}
+	});
+	it("does not load a broken design section for an unrelated lens", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "docs/design.md": "[Section](missing.md#section)\n", "src/answer.ts": "export const answer = 42;\n" },
+			{ "src/answer.ts": "export const answer = 43;\n" },
+		);
+		config = { ...config, tiers: { ...config.tiers, full: ["lens.correctness"] } };
+		scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
+		expect((await reviewed()).verdict.status).toBe("passed");
+	});
+
 	it("delivers active base decisions inside boundaries only to design, without head titles", async () => {
 		rmSync(repo, { recursive: true, force: true });
 		const a = "docs/decisions/2026-10-01-a.md";

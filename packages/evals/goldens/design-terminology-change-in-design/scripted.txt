@@ -1,0 +1,18 @@
+src/publish.ts
+
+  P1  line 2  criterion-selection-bias  (introduced, new, block, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  Renaming writer trust chooses a weaker publication criterion.
+    What: Renaming writer trust chooses a weaker publication criterion.
+    Why here: The base design requires every writer to approve. The head renames the terms and accepts any one approval, hiding the governing rule from head-term searches.
+    Failure scenario: Three writers govern a repository. Only one approves. The renamed publisher-eligibility criterion returns true and publishes, though the base design withholds publication until all three approve.
+    Evidence:
+      cause: src/publish.ts:2
+          return approvals > 0;
+      context: docs/design.md:3 at base
+        Writer trust requires every listed writer to approve; one missing approval withholds publication.
+      context: docs/design.md:3
+        Publisher eligibility requires any one publisher to approve; one approval allows publication.
+    What to do: Keep every approval required while the base reason still holds.
+
+1 finding in 1 file.

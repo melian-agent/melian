@@ -861,6 +861,9 @@ An unmatch, a re-import, or a refreshed review can leave a valid external findin
 
 The design lens receives a mechanical index of all decisions at the comparison base. The complete Supersedes graph resolves before rendering. Only active decisions are baselines; inactive entries name their successors and serve as history. The index lists every path and full title within 64 KiB of UTF-8 text. An oversized index refuses review and names the count omitted. Incomplete reads and invalid graphs refuse the review. Search accepts the base revision, including paths absent at head, with the same bounds and boundaries as head search. The lens discovers candidates from the base index and searches using base terms as well as head terms. A conflicting new head decision without a Supersedes link is itself criterion-selection-bias. [The active-base decision](decisions/2026-10-08-design-lens-active-decisions-at-base.md) records the choice.
 
+The design lens also receives a base index of headings and line numbers from docs/design.md and its linked local Markdown sections. Links with a section fragment and files under docs/design/ supply linked sections. Fenced examples supply no headings. The complete index has a 64 KiB UTF-8 bound; an overrun or unreadable linked section refuses review. Base headings guide searches when the head renames a concept. The index uses listing boundaries and joins the instruction fingerprint.
+
+
 [decisions/2026-10-05-comparison-as-a-capability.md](decisions/2026-10-05-comparison-as-a-capability.md) records why.
 
 ## Tech stack

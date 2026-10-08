@@ -1,0 +1,33 @@
+{
+  "pr_title": "Rename a design-only publication criterion",
+  "comments": [
+    {
+      "comment": "Renaming writer trust chooses a weaker publication criterion.",
+      "severity": "High",
+      "category": "bug",
+      "file": "src/publish.ts",
+      "rule": "criterion-selection-bias",
+      "source": "lens.design",
+      "cause": "introduced",
+      "failureScenario": "Three writers govern a repository. Only one approves. The renamed publisher-eligibility criterion returns true and publishes, though the base design withholds publication until all three approve.",
+      "evidence": [
+        {
+          "file": "src/publish.ts",
+          "line": 2,
+          "role": "cause"
+        },
+        {
+          "file": "docs/design.md",
+          "line": 3,
+          "role": "context",
+          "revision": "base"
+        },
+        {
+          "file": "docs/design.md",
+          "line": 3,
+          "role": "context"
+        }
+      ]
+    }
+  ]
+}

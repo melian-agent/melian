@@ -32,3 +32,5 @@ DecisionFiles.render lists every path and full title, with active status or dire
 A Supersedes line beginning with “none” or “no decision file” declares no edge. Later links on that line are context. Without that check, the committed-routes decision incorrectly deactivates the review-plan decision it cites.
 
 Decision discovery matches newlines in filenames. Git permits them; a dot without the s flag silently omits such a decision. Render paths through visibleText so they stay on one prompt row.
+
+The design lens also receives a base index of headings and line numbers from docs/design.md and its linked local Markdown sections. Links with a section fragment and files under docs/design/ supply linked sections. Fenced examples supply no headings. The complete index has a 64 KiB UTF-8 bound; an overrun or unreadable linked section refuses review. Base headings guide searches when the head renames a concept. The index uses listing boundaries and joins the instruction fingerprint.
