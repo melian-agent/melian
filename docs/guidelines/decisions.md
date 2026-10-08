@@ -29,7 +29,7 @@ DecisionFile.parse reads a title and Markdown filenames on prose Supersedes line
 
 DecisionFiles.render lists every path and full title, with active status or direct successors. The complete UTF-8 index is bounded at 64 KiB. Exceeding it throws an incomplete-baseline error naming the count omitted; no row or candidate is silently shortened. Repository-scale coverage checks every active decision at base and leaves headroom.
 
-A Supersedes line beginning with “none” or “no decision file” declares no edge. Later links on that line are context. Without that check, the committed-routes decision incorrectly deactivates the review-plan decision it cites.
+A Supersedes line declares no edge when its first token is “none” or “no decision file”, ignoring case and leading whitespace. The token ends at the line end, whitespace, a comma or a semicolon. A full stop ends it only before the line end or whitespace. Later links on that line are context. Without that check, the committed-routes decision incorrectly deactivates the review-plan decision it cites.
 
 Decision discovery matches newlines in filenames. Git permits them; a dot without the s flag silently omits such a decision. Render paths through visibleText so they stay on one prompt row.
 

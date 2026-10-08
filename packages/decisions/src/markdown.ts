@@ -11,6 +11,10 @@ import { DecisionFilesError } from "./decision-files-error.ts";
 
 export const decisionPathPattern = /^docs\/decisions\/.*\.md$/s;
 
+const targetBoundary = /(?=$|[\s,;]|\.(?:$|\s))/.source;
+const absencePattern = new RegExp(`^(?:none|no decision file)${targetBoundary}`, "i");
+const bareTargetPattern = new RegExp(String.raw`(?:^|[\s,;])([^\s,;\u0000]+\.md)${targetBoundary}`, "g");
+
 export class MarkdownDocument {
 	readonly #content: string;
 	readonly #tree: Root;
@@ -97,8 +101,8 @@ export class MarkdownDocument {
 		for (const line of lines) {
 			if (!line.prose.startsWith("Supersedes:")) continue;
 			const prose = line.prose.slice("Supersedes:".length);
-			if (/^(?:none|no decision file)\b/i.test(prose.trimStart())) continue;
-			const bare = [...prose.matchAll(/(?:^|[\s,;])([^\s,;\u0000]+\.md)(?=$|[\s,;]|\.(?:$|\s))/g)].map((match) => ({
+			if (absencePattern.test(prose.trimStart())) continue;
+			const bare = [...prose.matchAll(bareTargetPattern)].map((match) => ({
 				offset: match.index + "Supersedes:".length,
 				destination: match[1]!,
 			}));
