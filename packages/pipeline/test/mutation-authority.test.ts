@@ -215,6 +215,21 @@ describe("the authority over a revision's mutation check", { timeout: 120_000 },
 		expect(runs()).toBe(2);
 	});
 
+	it("runs again after a throw between the durable takeover and task creation", async () => {
+		const { base, head } = scenario();
+		const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+		const request = await input(base, head, root.id, trusted);
+		const first = await runChecks(harness, request, context);
+		await runChecks(harness, { ...request, writer: revoked }, context);
+		expect(await readFindings(harness, root.id, revisionKey({ base, head }), context)).toEqual([]);
+		vi.spyOn(harness, "inspect").mockRejectedValueOnce(new Error("interrupted takeover"));
+		await expect(runChecks(harness, request, context)).rejects.toThrow("interrupted takeover");
+		const retry = await runChecks(harness, request, context);
+		expect(retry.identity.task).not.toBe(first.identity.task);
+		expect(runs()).toBe(2);
+		expect(await readFindings(harness, root.id, revisionKey({ base, head }), context)).toHaveLength(1);
+	});
+
 	it("leaves a running mutation check of another revision alone", async () => {
 		const { base, head } = scenario(true);
 		const otherHead = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x <= 0") });

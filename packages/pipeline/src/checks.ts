@@ -621,6 +621,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 			runs.owners ??= {};
 			const lost = runs.owners[revision] !== undefined && runs.owners[revision] !== key;
 			runs.owners[revision] = key;
+			if (lost) delete runs.tasks[key];
 			return lost;
 		}, context);
 		await abortRetiredMutation(harness, revision, key, context);
