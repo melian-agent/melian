@@ -12,7 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import { basename, dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Changeset, defaultConfig, evaluateGuardrails, loadConfig } from "@melian-agent/core";
+import { Changeset, defaultConfig, evaluateGuardrails, Lens, loadConfig } from "@melian-agent/core";
 import {
 	buildGoldenRepository,
 	type Golden,
@@ -28,6 +28,65 @@ import * as testing from "@melian-agent/pipeline/testing";
 import { describe, expect, it, vi } from "vitest";
 
 const goldens = loadGoldens();
+
+describe("live design golden routing", { timeout: 60_000 }, () => {
+	it.each(["openai-codex/gpt-5.6-terra", undefined])(
+		"uses the subscription verifier route %s independently of the finder",
+		async (verifierModel) => {
+			const golden = goldens.find((each) => each.name === "design-fail-open-default")!;
+			const fake = testing.createFakeModels({
+				provider: "openai-codex",
+				auth: "oauth",
+				models: [
+					{ id: "finder", name: "GPT Finder" },
+					{ id: "gpt-5.6-terra", name: "GPT-5.6 Terra" },
+				],
+				credentials: [
+					{
+						name: "subscription",
+						provider: "openai-codex",
+						type: "api_key",
+						value: { kind: "literal", key: "fake-subscription-bearer" },
+						file: "test-secrets.yaml",
+					},
+				],
+				authPath: join(golden.directory, "absent-auth.json"),
+			});
+			const { repo, base } = buildGoldenRepository(golden);
+			try {
+				const changeset = await Changeset.resolve(repo, "main...feature");
+				const lenses = await Lens.load(repo, { kind: "revision", commit: base }, changeset.revision.paths());
+				testing.scriptLenses(fake, lenses, golden.script);
+				const stream = vi.spyOn(fake.models, "streamSimple");
+				const run = await runGolden(golden, {
+					kind: "live",
+					models: fake.review,
+					model: "openai-codex/finder",
+					...(verifierModel === undefined ? {} : { verifierModel }),
+				});
+				expect(run.findings).toHaveLength(1);
+				expect(run.findings[0]!.properties.verification).toMatchObject({
+					verdict: "confirmed",
+					model: verifierModel ?? "openai-codex/finder",
+				});
+				const requests = stream.mock.calls.map(([model, context]) => ({
+					model: `${model.provider}/${model.id}`,
+					verifier: testing.systemPromptOf(context.messages).includes("Melian adversarial verifier"),
+				}));
+				expect(requests.filter(({ verifier }) => verifier).map(({ model }) => model)).toEqual([
+					verifierModel ?? "openai-codex/finder",
+					verifierModel ?? "openai-codex/finder",
+				]);
+				expect(
+					requests.filter(({ verifier }) => !verifier).every(({ model }) => model === "openai-codex/finder"),
+				).toBe(true);
+			} finally {
+				vi.restoreAllMocks();
+				rmSync(repo, { recursive: true, force: true });
+			}
+		},
+	);
+});
 
 describe("the golden corpus", () => {
 	it("holds the corpus", () => {
