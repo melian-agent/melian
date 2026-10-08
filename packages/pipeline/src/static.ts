@@ -534,7 +534,7 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		if (checkoutTracked.length > 0) notes.push(`${tool} ignored the checkout's node_modules, which git tracks.`);
 		const installed =
 			checkoutTracked.length === 0 && (await run.exists(checkoutModules)) ? checkoutModules : undefined;
-		const installs = installed === undefined ? [] : await linkDependencies(run, root, scratch, notes);
+		const installs = installed === undefined ? undefined : await linkDependencies(run, root, scratch, notes);
 		if (
 			tool === "mutation" &&
 			!(installed !== undefined && (await run.exists(posix.join(installed, ".bin", "stryker"))))
@@ -544,7 +544,7 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		const binary = await binaryFor(run, installed);
 		const version = await versionOf(run, binary);
 		if (tool === "mutation") {
-			return new MutationRun(run, root, scratch, binary, version, notes, sandbox as Sandbox, installs).check();
+			return new MutationRun(run, root, scratch, binary, version, notes, sandbox as Sandbox, installs!).check();
 		}
 		const log =
 			tool === "biome"

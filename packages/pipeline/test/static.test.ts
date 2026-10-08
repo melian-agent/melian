@@ -3,7 +3,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, wr
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { CheckError, defaultConfig, type ToolLog } from "@melian-agent/core";
+import { Changeset, CheckError, defaultConfig, type ToolLog } from "@melian-agent/core";
 import {
 	backgroundContext as context,
 	createNodeExecutionEnv,
@@ -11,8 +11,10 @@ import {
 	type StaticRunInput,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Sandbox } from "../src/sandbox.ts";
 import { Run, staticToolSource } from "../src/static.ts";
 import { commit, createRepository, fakeTool, gitIn, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
+import { unconfinedSandbox } from "./fixtures/sandbox.ts";
 
 let repo: string;
 
@@ -183,6 +185,72 @@ describe("runStaticTool with the repository's own tools", () => {
 	const emptySarif = JSON.stringify({
 		version: "2.1.0",
 		runs: [{ tool: { driver: { name: "Biome" } }, results: [] }],
+	});
+
+	it("does not probe a sandbox for a tool that does not execute head tests", async () => {
+		const head = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+		const detect = vi.spyOn(Sandbox, "detect").mockImplementation(() => {
+			throw new Error("unexpected sandbox probe");
+		});
+		expect((await runStaticTool(input("biome", head), context)).status).toBe("ran");
+		expect(detect).not.toHaveBeenCalled();
+	});
+
+	it("names a checkout lockfile mismatch after linking its installed dependencies", async () => {
+		const head = commit(repo, {
+			".gitignore": "node_modules\n",
+			"package-lock.json": "old\n",
+			"src/a.ts": "export const a = 1;\n",
+		});
+		writeFileSync(join(repo, "package-lock.json"), "new\n");
+		fakeTool(
+			repo,
+			"biome",
+			[
+				'if [ "$1" = "--version" ]; then echo 0.0.0; exit 0; fi',
+				'for arg in "$@"; do case "$arg" in --reporter-file=*) out=$(printf %s "$arg" | cut -d= -f2-);; esac; done',
+				`printf '%s' '${emptySarif}' > "$out"`,
+			].join("\n"),
+		);
+		const run = await runStaticTool(input("biome", head), context);
+		expect(run).toMatchObject({
+			status: "ran",
+			notes: [
+				`biome resolved dependencies from the checkout's install, whose package-lock.json differs from ${head.slice(0, 12)}'s.`,
+			],
+		});
+	});
+
+	it("links a workspace's own dependencies and grants exactly those install directories to mutation tests", async () => {
+		vi.spyOn(Sandbox, "detect").mockReturnValue(unconfinedSandbox);
+		const command = vi.spyOn(unconfinedSandbox, "command");
+		const base = commit(repo, {
+			".gitignore": "node_modules\n",
+			"stryker.config.json": JSON.stringify({ testRunner: "vitest" }),
+			"packages/b/package.json": JSON.stringify({ name: "b", main: "index.ts" }),
+			"packages/b/index.ts": "export const b = 1;\n",
+		});
+		const head = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+		writeFiles(repo, { "packages/b/node_modules/nested/index.js": "nested-version\n" });
+		mkdirSync(join(repo, "node_modules"), { recursive: true });
+		symlinkSync("../packages/b", join(repo, "node_modules/b"));
+		fakeTool(
+			repo,
+			"stryker",
+			`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+[ "$(cat packages/b/node_modules/nested/index.js)" = "nested-version" ] || exit 1
+mkdir -p reports/mutation
+echo '{"files":{}}' > reports/mutation/mutation.json`,
+		);
+		const run = await runStaticTool(
+			{ ...input("mutation", head), base, revision: (await Changeset.resolve(repo, `${base}..${head}`)).revision },
+			context,
+		);
+		expect(run.status).toBe("ran");
+		expect(command).toHaveBeenCalledTimes(1);
+		expect(command.mock.calls[0]![1]).toMatchObject({
+			installs: [join(repo, "node_modules"), join(repo, "packages/b/node_modules")],
+		});
 	});
 
 	it("prefers the tool in the checkout's node_modules", { timeout: 60_000 }, async () => {
