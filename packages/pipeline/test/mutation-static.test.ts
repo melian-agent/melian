@@ -330,6 +330,63 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		]);
 	});
 
+	it("gives the run a git repository of its own at the head, and puts the worktree's link back when it ends", async () => {
+		const { base, head } = twoCommits();
+		const seen = join(artifacts, "git.txt");
+		fakeTool(
+			repo,
+			"stryker",
+			`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+{ pwd; git rev-parse --show-toplevel; git rev-parse HEAD; git rev-list --count HEAD; git status --porcelain; [ -d .git ] && echo directory; git config --get remote.origin.url || echo no-remote; } > '${seen}' 2>&1
+mkdir -p reports/mutation
+echo '{"files":{}}' > reports/mutation/mutation.json`,
+		);
+		gitIn(repo, "remote", "add", "origin", "https://user:secret-token@example.invalid/repo.git");
+		await mutate(base, head);
+		const [cwd, toplevel, sha, count, ...rest] = readFileSync(seen, "utf8").trimEnd().split("\n");
+		expect([toplevel, sha, count]).toEqual([cwd, head, "1"]);
+		expect(rest).toEqual(["directory", "no-remote"]);
+		expect(readFileSync(seen, "utf8")).not.toContain("secret-token");
+		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+	});
+
+	it("fails as worktreeFailed, runs nothing, and still removes the worktree when it cannot make that repository", async () => {
+		const { base, head } = twoCommits();
+		const fake = stryker({ report: report({}) });
+		const env = createNodeExecutionEnv(repo);
+		const execute = env.exec.bind(env);
+		const written = vi.spyOn(env, "writeFile");
+		vi.spyOn(env, "exec").mockImplementation((command, options, executionContext) =>
+			execute(
+				command.includes("fetch --quiet") ? "echo 'no objects to give' >&2; exit 3" : command,
+				options,
+				executionContext,
+			),
+		);
+		const failure = await runStaticTool(
+			{
+				env,
+				repoRoot: repo,
+				base,
+				commit: head,
+				tool: "mutation",
+				settings: { ...defaultConfig.static.mutation, timeout: 120 },
+				revision: await revisionOf(base, head),
+			},
+			context,
+		).catch((error: unknown) => error);
+		expect(failure).toMatchObject({
+			code: "worktreeFailed",
+			message: expect.stringContaining("could not give the worktree a git directory of its own: no objects to give"),
+		});
+		expect(fake.calls()).toEqual([]);
+		const links = written.mock.calls.filter(([path]) => path.endsWith("/tree/.git"));
+		expect(links.map(([, content]) => content)).toEqual([
+			expect.stringMatching(/^gitdir: .*\/worktrees\/tree\d*\n?$/),
+		]);
+		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+	});
+
 	describe("the sandbox", () => {
 		const hostSandbox = Sandbox.detect();
 

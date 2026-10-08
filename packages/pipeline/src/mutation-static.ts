@@ -11,6 +11,7 @@ import {
 	type Revision,
 	type ToolLog,
 } from "@melian-agent/core";
+import { backgroundContext } from "./harness.ts";
 import { nodeInstallation, type Sandbox } from "./sandbox.ts";
 import type { Run, StaticRun } from "./static.ts";
 
@@ -219,6 +220,47 @@ export class MutationRun {
 		return `a new ${candidates.at(-1)}`;
 	}
 
+	// The worktree's `.git` file names the checkout's git directory, which the sandbox hides, so a test that asks git about the
+	// tree it runs in would fail. For the run the tree holds a repository of its own, shallow at the head, with none of the
+	// checkout's configuration or history; `restore` puts the link back so git can remove the worktree.
+	async #ownGit(): Promise<() => Promise<void>> {
+		const { env, repoRoot, commit } = this.#run.input;
+		const file = posix.join(this.#root, ".git");
+		const link = await env.readTextFile(file, this.#run.context);
+		if (!link.ok) throw this.#run.fail("worktreeFailed", `could not read ${file}: ${link.error.message}`);
+		// Cleanup runs even when the caller cancelled, so it takes no caller context, as removing the worktree does.
+		const restore = async () => {
+			await env.remove(file, { recursive: true, force: true }, backgroundContext);
+			await env.writeFile(file, link.value, backgroundContext);
+		};
+		const upload = quote("git -c uploadpack.allowAnySHA1InWant=true upload-pack");
+		const git = (args: string) => this.#run.git(args, this.#root);
+		try {
+			const made = await this.#run.shell(
+				[
+					"set -e",
+					`rm -f ${quote(file)}`,
+					git("init --quiet --template="),
+					git(
+						`fetch --quiet --no-tags --depth=1 --upload-pack=${upload} ${quote(`file://${repoRoot}`)} ${commit}`,
+					),
+					git(`update-ref --no-deref HEAD ${commit}`),
+					git("read-tree HEAD"),
+				].join("\n"),
+			);
+			if (made.code !== 0) {
+				throw this.#run.fail(
+					"worktreeFailed",
+					`could not give the worktree a git directory of its own: ${made.output}`,
+				);
+			}
+		} catch (error) {
+			await restore();
+			throw error;
+		}
+		return restore;
+	}
+
 	// The run executes the head's own test files, setup files, and Vitest configuration, so it gets a home and a temporary
 	// directory of its own in scratch, where the reviewer's credential files are not, and none of the Melian process's
 	// variables. It also runs in the host's sandbox: no network, and nothing readable or writable outside the worktree,
@@ -249,6 +291,7 @@ export class MutationRun {
 				throw this.#run.fail("toolFailed", `could not write ${profileFile}: ${written.error.message}`);
 		}
 		let result: Awaited<ReturnType<Run["shell"]>>;
+		const restore = await this.#ownGit();
 		try {
 			result = await this.#run.shell(this.#sandbox.command(command, paths, profileFile), undefined, {
 				...this.#sandbox.environment(),
@@ -261,6 +304,8 @@ export class MutationRun {
 				return { skipped: mutationSkips.timeout(this.#run.input.settings.timeout) };
 			}
 			throw error;
+		} finally {
+			await restore();
 		}
 		const output = ((await this.#run.readOutput(log)) ?? result.output).slice(-4096).trim();
 		if (result.code === 1) throw this.#run.fail("toolFailed", `Stryker exited 1: ${output}`);
