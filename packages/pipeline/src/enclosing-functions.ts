@@ -205,7 +205,7 @@ class Open {
 	}
 }
 
-// The innermost callable around each anchor, in the anchors' order sorted by line. An anchor's last line is its first or
+// The innermost callable and every callable sharing an anchored boundary line, in the anchors' order sorted by line. An anchor's last line is its first or
 // the next, so once a callable ends before an anchor's last line it ends before every later anchor's too, and is dropped
 // for good when it surfaces.
 function holders(around: readonly Callable[], anchors: readonly (readonly [number, number])[]): Callable[] {
@@ -213,6 +213,8 @@ function holders(around: readonly Callable[], anchors: readonly (readonly [numbe
 		.map((callable, order) => ({ callable, order }))
 		.sort((a, b) => a.callable.startLine - b.callable.startLine || a.order - b.order);
 	const sorted = [...anchors].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+	const starts = Map.groupBy(around, (callable) => callable.startLine);
+	const ends = Map.groupBy(around, (callable) => callable.endLine);
 	const open = new Open();
 	const found: Callable[] = [];
 	let next = 0;
@@ -224,6 +226,8 @@ function holders(around: readonly Callable[], anchors: readonly (readonly [numbe
 		for (let top = open.top(); top !== undefined && top.endLine < last; top = open.top()) open.pop();
 		const holding = open.top();
 		if (holding !== undefined) found.push(holding);
+		const boundary = [...(starts.get(first) ?? []), ...(ends.get(last) ?? [])];
+		found.push(...boundary.filter((callable) => callable.startLine <= first && callable.endLine >= last));
 	}
 	return found;
 }
@@ -352,6 +356,7 @@ export class EnclosingFunctions {
 				}
 				own.sort((a, b) => a.startLine - b.startLine || a.endLine - b.endLine);
 				functions.push(...own);
+				if (capped.has("found")) break;
 			}
 			return { functions, capped: [...capped] };
 		} finally {

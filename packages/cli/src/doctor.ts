@@ -238,7 +238,9 @@ async function cloneCheck(executable: string | undefined): Promise<Check | undef
 	if (root === undefined) return undefined;
 	const commit = await git(root, ["rev-parse", "--short=12", "HEAD"]).catch(() => undefined);
 	if (commit === undefined) return { name: "clone", state: "warn", detail: `${root}, with no commit` };
-	const status = await git(root, ["status", "--porcelain"]).catch(() => undefined);
+	const status = await git(root, ["status", "--porcelain", "--untracked-files=all", "--ignore-submodules=none"]).catch(
+		() => undefined,
+	);
 	if (status === undefined)
 		return { name: "clone", state: "warn", detail: `${root} at ${commit}; git could not read its tree` };
 	return status === ""

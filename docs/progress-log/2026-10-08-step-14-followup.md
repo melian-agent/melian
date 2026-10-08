@@ -1,0 +1,3 @@
+# Step 14 follow-up: Codex’s post-merge findings
+
+Commit 80fed834 closes finding 1: unlock providers stored by resumed tasks. Commit ce9f1510 closes finding 2: carry ambiguous enclosing functions. Commit d11ff678 closes finding 3: end every lens at its findings cap. Commit 9964c12e closes finding 4: unlock credentials for concrete task routes. Commit 37701ea9 closes finding 5: reject every refused Biome exclusion. The commit ‘fix(cli): reveal dirty clones despite Git settings’ closes finding 6. Each fix has a failing mutation recorded in `tmp/step14-followup-report.md`, including a real-kill restart with a changed route. The full gate passed: 107 test files, 2,889 tests passed and 50 skipped.

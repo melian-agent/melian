@@ -83,7 +83,7 @@ describe("CLI walkthrough switch", { timeout: 60_000 }, () => {
 });
 
 describe("CLI walkthrough credentials", { timeout: 60_000 }, () => {
-	it("gives the summariser the review's credential unlock, which runs the credentials once", async () => {
+	it("gives the summariser an unlock for its concrete light route", async () => {
 		const summarize = vi.spyOn(pipeline, "summarizeReview").mockResolvedValue(undefined);
 		const unlock = vi.spyOn(pipeline, "unlockCredentials").mockResolvedValue(undefined);
 		const io = { cwd: repo, env, stdout: () => {}, stderr: () => {}, color: false };
@@ -92,10 +92,14 @@ describe("CLI walkthrough credentials", { timeout: 60_000 }, () => {
 
 		const { unlockModels } = summarize.mock.calls[0]![0];
 		const before = unlock.mock.calls.length;
-		await unlockModels!();
+		await unlockModels!(["light-provider"]);
 		expect(unlock.mock.calls.length).toBe(before + 1);
-		await unlockModels!();
-		expect(unlock.mock.calls.length).toBe(before + 1);
+		await unlockModels!(["light-provider"]);
+		expect(unlock.mock.calls.length).toBe(before + 2);
+		expect(unlock.mock.calls.slice(before).map(([, providers]) => providers)).toEqual([
+			["light-provider"],
+			["light-provider"],
+		]);
 	});
 });
 
