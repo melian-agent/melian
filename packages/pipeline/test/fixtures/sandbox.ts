@@ -7,6 +7,7 @@ import type { Sandbox } from "../../src/sandbox.ts";
 export const unconfinedSandbox = {
 	backend: "seatbelt",
 	profile: () => undefined,
+	environment: () => ({}),
 	command: (inner: string, paths: { worktree: string }) =>
 		`cd '${paths.worktree}' && /bin/bash -c '${inner.replaceAll("'", "'\\''")}'`,
 } as unknown as Sandbox;

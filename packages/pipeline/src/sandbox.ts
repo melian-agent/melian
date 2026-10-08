@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, readlinkSync, realpathSync } from "node:fs";
 import { dirname, posix } from "node:path";
 
 /** The sandbox a host offers: seatbelt through `sandbox-exec` on macOS, bubblewrap on Linux. */
@@ -53,6 +53,19 @@ function ancestors(path: string): string[] {
 	return found;
 }
 
+// The command-line developer tools, where `git` really lives. `/usr/bin/git` is a shim that asks `xcode-select` and `xcrun`
+// for them, which need Mach services the sandbox does not grant; with the real `git` first in PATH, the head's tests can
+// make the repositories they need.
+function developerDirectory(): string | undefined {
+	let directory = "/Library/Developer/CommandLineTools";
+	try {
+		directory = readlinkSync("/var/select/developer_dir");
+	} catch {
+		// No link: the default location, if it exists, is where they are.
+	}
+	return existsSync(posix.join(directory, "usr/bin/git")) ? directory : undefined;
+}
+
 /** The Node installation that runs this process: the directory above the real path of its `bin/node`. */
 export function nodeInstallation(): string {
 	return dirname(dirname(realpathSync(process.execPath)));
@@ -91,10 +104,19 @@ export class Sandbox {
 		return new Sandbox(backend);
 	}
 
+	/** Variables the command needs beyond the scratch `HOME` and `TMPDIR`: on macOS, the real `git` ahead of the shim. */
+	environment(): Record<string, string> {
+		const developer = this.backend === "seatbelt" ? developerDirectory() : undefined;
+		return developer === undefined ? {} : { PATH: `${posix.join(developer, "usr/bin")}:${process.env.PATH ?? ""}` };
+	}
+
 	/** The seatbelt profile for these paths, which the caller writes to a file; bubblewrap needs none. */
 	profile(paths: SandboxPaths): string | undefined {
 		if (this.backend !== "seatbelt") return undefined;
-		const readable = [...systemReads, paths.node, paths.scratch].map((path) => `(subpath ${profileString(path)})`);
+		const developer = developerDirectory();
+		const readable = [...systemReads, ...(developer === undefined ? [] : [developer]), paths.node, paths.scratch].map(
+			(path) => `(subpath ${profileString(path)})`,
+		);
 		const installs = paths.installs.map((path) => `(subpath ${profileString(path)})`);
 		const parents = [...new Set([paths.node, paths.scratch, ...paths.installs].flatMap(ancestors))]
 			.sort()

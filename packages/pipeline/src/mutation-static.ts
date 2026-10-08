@@ -251,6 +251,7 @@ export class MutationRun {
 		let result: Awaited<ReturnType<Run["shell"]>>;
 		try {
 			result = await this.#run.shell(this.#sandbox.command(command, paths, profileFile), undefined, {
+				...this.#sandbox.environment(),
 				HOME: home,
 				TMPDIR: temporary,
 			});

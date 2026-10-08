@@ -13,11 +13,17 @@ const run = promisify(execFile);
 // network lets it hang until the probe gives up.
 const probe = `
 const fs = require("node:fs");
+const { execFileSync } = require("node:child_process");
 const net = require("node:net");
 const [home, scratch, outside] = process.argv.slice(2);
 const result = {};
 const attempt = (name, body) => { try { body(); result[name] = "ok"; } catch (error) { result[name] = "denied"; } };
 attempt("readHome", () => fs.readFileSync(home + "/auth.json"));
+// The head's own tests make repositories to test against.
+attempt("git", () => {
+  execFileSync("git", ["init", "--quiet", "--initial-branch=main"], { cwd: scratch + "/repository", stdio: "pipe" });
+  execFileSync("git", ["-c", "user.name=a", "-c", "user.email=a@b", "commit", "--allow-empty", "--quiet", "-m", "x"], { cwd: scratch + "/repository", stdio: "pipe" });
+});
 attempt("writeScratch", () => fs.writeFileSync(scratch + "/written", "1"));
 attempt("writeOutside", () => fs.writeFileSync(outside + "/written", "1"));
 // Stryker's logging server listens on every interface and its workers connect to it over loopback.
@@ -39,7 +45,7 @@ let base: string;
 
 beforeEach(() => {
 	base = realpathSync(mkdtempSync(join(tmpdir(), "melian-sandbox-")));
-	for (const directory of ["home", "outside", "scratch/tree", "installs"])
+	for (const directory of ["home", "outside", "scratch/tree", "scratch/repository", "scratch/home", "installs"])
 		mkdirSync(join(base, directory), { recursive: true });
 	writeFileSync(join(base, "home/auth.json"), "{}");
 	writeFileSync(join(base, "scratch/tree/probe.js"), probe);
@@ -64,7 +70,10 @@ async function probed(sandbox: Sandbox): Promise<Record<string, string>> {
 	const profile = sandbox.profile(where);
 	if (profile !== undefined) writeFileSync(file, profile);
 	const inner = `${JSON.stringify(process.execPath)} probe.js ${base}/home ${where.scratch} ${base}/outside`;
-	const { stdout } = await run("/bin/bash", ["-c", sandbox.command(inner, where, file)], { timeout: 30_000 });
+	const { stdout } = await run("/bin/bash", ["-c", sandbox.command(inner, where, file)], {
+		timeout: 30_000,
+		env: { ...process.env, ...sandbox.environment(), HOME: join(where.scratch, "home") },
+	});
 	return JSON.parse(stdout) as Record<string, string>;
 }
 
@@ -88,6 +97,7 @@ describe.skipIf(Sandbox.detect("darwin") === undefined)("seatbelt", { timeout: 6
 		const sandbox = Sandbox.detect("darwin") as Sandbox;
 		expect(await probed(sandbox)).toEqual({
 			readHome: "denied",
+			git: "ok",
 			writeScratch: "ok",
 			writeOutside: "denied",
 			loopback: "ok",
@@ -102,6 +112,7 @@ describe.skipIf(Sandbox.detect("linux") === undefined)("bubblewrap", { timeout: 
 		const sandbox = Sandbox.detect("linux") as Sandbox;
 		expect(await probed(sandbox)).toEqual({
 			readHome: "denied",
+			git: "ok",
 			writeScratch: "ok",
 			writeOutside: "denied",
 			loopback: "ok",
