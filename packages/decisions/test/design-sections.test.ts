@@ -158,12 +158,41 @@ describe("base design vocabulary", () => {
 				.split("\n"),
 		).toEqual(["docs/design.md:2 — Real policy", "docs/design.md:6 — Outside"]);
 	});
-	it("recognises a closing fence with CRLF endings", () => {
+	it("keeps CRLF headings before and after a fence with their line numbers", () => {
 		expect(
 			DesignSections.from([
-				{ path: "docs/design.md", content: "```md\r\n## Example\r\n``` \t\r\n## Real policy" },
-			]).render(),
-		).toBe("docs/design.md:4 — Real policy");
+				{
+					path: "docs/design.md",
+					content: "# Design\r\n## Writer trust\r\n```md\r\n## Example\r\n``` \t\r\n## Real policy\r\n",
+				},
+			])
+				.render()
+				.split("\n"),
+		).toEqual([
+			"docs/design.md:1 — Design",
+			"docs/design.md:2 — Writer trust",
+			"docs/design.md:6 — Real policy",
+		]);
+	});
+	it("loads CRLF design sections without following links in fenced examples", async () => {
+		const repo = temporaryDirectory();
+		try {
+			gitIn(repo, "init", "--quiet", "--initial-branch=main");
+			writeFiles(repo, {
+				"docs/design.md":
+					"# Design\r\n```md\r\n[Example](missing.md#policy)\r\n## Example\r\n```\r\n## Real policy\r\n[Trust](design/trust.md)\r\n",
+				"docs/design/trust.md": "## Writer trust\r\n",
+			});
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "CRLF base");
+			expect((await DesignSections.load(repo, "HEAD")).render().split("\n")).toEqual([
+				"docs/design.md:1 — Design",
+				"docs/design.md:6 — Real policy",
+				"docs/design/trust.md:1 — Writer trust",
+			]);
+		} finally {
+			removeDirectory(repo);
+		}
 	});
 	it("keeps headings and line numbers, excluding examples and ordinary prose", () => {
 		const rendered = DesignSections.from([

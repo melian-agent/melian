@@ -13,7 +13,8 @@ function markdownNodes(node: Nodes): Nodes[] {
 
 function proseLines(content: string): string[] {
 	let fence: string | undefined;
-	return content.split("\n").map((line) => {
+	return content.split("\n").map((rawLine) => {
+		const line = rawLine.replace(/\r$/, "");
 		const match = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
 		const marker = match?.[1];
 		if (marker !== undefined) {
