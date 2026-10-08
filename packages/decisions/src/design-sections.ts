@@ -8,10 +8,16 @@ export const designIndexLimits = { bytes: 64 * 1024 } as const;
 function proseLines(content: string): string[] {
 	let fence: string | undefined;
 	return content.split("\n").map((line) => {
-		const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+		const match = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+		const marker = match?.[1];
 		if (marker !== undefined) {
-			if (fence === undefined) fence = marker;
-			else if (marker[0] === fence[0] && marker.length >= fence.length) fence = undefined;
+			const info = match![2]!;
+			if (fence === undefined) {
+				if (marker[0] === "`" && info.includes("`")) return line;
+				fence = marker;
+			} else if (marker[0] === fence[0] && marker.length >= fence.length && /^[ \t]*$/.test(info)) {
+				fence = undefined;
+			}
 			return "";
 		}
 		return fence === undefined ? line : "";

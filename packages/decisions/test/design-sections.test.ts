@@ -11,6 +11,7 @@ describe("base design vocabulary", () => {
 				"docs/design.md": [
 					"# Design",
 					"````md",
+					"````ts",
 					"[Example](missing-fenced.md#example)",
 					"~~~",
 					"```",
@@ -26,6 +27,11 @@ describe("base design vocabulary", () => {
 					"~~~",
 					"[Split](design/publish.md)",
 					"```md",
+					"```ts",
+					"[Example](missing-trailing-text.md#example)",
+					"```",
+					"## Real policy",
+					"```md",
 					"[Unclosed fence](missing-unclosed-fence.md#example)",
 				].join("\n"),
 				"docs/architecture.md": "## Signed markers\n",
@@ -35,12 +41,64 @@ describe("base design vocabulary", () => {
 			gitIn(repo, "commit", "--quiet", "-m", "base");
 			expect((await DesignSections.load(repo, "HEAD")).render().split("\n")).toEqual([
 				"docs/design.md:1 — Design",
+				"docs/design.md:22 — Real policy",
 				"docs/architecture.md:1 — Signed markers",
 				"docs/design/publish.md:1 — Republish trust",
 			]);
 		} finally {
 			removeDirectory(repo);
 		}
+	});
+	it("loads prose links on a backtick fence with an invalid info string", async () => {
+		const repo = temporaryDirectory();
+		try {
+			gitIn(repo, "init", "--quiet", "--initial-branch=main");
+			writeFiles(repo, {
+				"docs/design.md": "```md` [Actual](architecture.md#policy)\n## Real policy",
+				"docs/architecture.md": "## Linked policy\n",
+			});
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "base");
+			expect((await DesignSections.load(repo, "HEAD")).render().split("\n")).toEqual([
+				"docs/design.md:2 — Real policy",
+				"docs/architecture.md:1 — Linked policy",
+			]);
+		} finally {
+			removeDirectory(repo);
+		}
+	});
+	it.each(["```", "~~~"])("keeps trailing text inside a %s fence", (marker) => {
+		const rendered = DesignSections.from([
+			{
+				path: "docs/design.md",
+				content: [
+					`${marker}md`,
+					`${marker}ts`,
+					"## Example",
+					`${marker} \ttext`,
+					"## Still example",
+					`   ${marker}${marker[0]} \t`,
+					"## Real policy",
+				].join("\n"),
+			},
+		]).render();
+		expect(rendered).toBe("docs/design.md:7 — Real policy");
+	});
+	it("rejects backticks in opening info strings but permits them after tildes", () => {
+		expect(
+			DesignSections.from([
+				{ path: "docs/design.md", content: "```md`\n## Real policy\n~~~md`\n## Example\n~~~\n## Outside" },
+			])
+				.render()
+				.split("\n"),
+		).toEqual(["docs/design.md:2 — Real policy", "docs/design.md:6 — Outside"]);
+	});
+	it("recognises a closing fence with CRLF endings", () => {
+		expect(
+			DesignSections.from([
+				{ path: "docs/design.md", content: "```md\r\n## Example\r\n``` \t\r\n## Real policy" },
+			]).render(),
+		).toBe("docs/design.md:4 — Real policy");
 	});
 	it("keeps headings and line numbers, excluding examples and ordinary prose", () => {
 		const rendered = DesignSections.from([
