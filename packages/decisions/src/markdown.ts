@@ -11,6 +11,7 @@ import { DecisionFilesError } from "./decision-files-error.ts";
 
 export const decisionPathPattern = /^docs\/decisions\/.*\.md$/s;
 
+const lineEndingPattern = /\r\n|\r|\n/;
 const targetBoundary = /(?=$|[\s,;]|\.(?:$|\s))/.source;
 const absencePattern = new RegExp(`^(?:none|no decision file)${targetBoundary}`, "i");
 const bareTargetPattern = new RegExp(String.raw`(?:^|[\s,;])([^\s,;\u0000]+\.md)${targetBoundary}`, "g");
@@ -43,7 +44,7 @@ export class MarkdownDocument {
 		let line = 1;
 		visit(this.#tree, "heading", (node) => {
 			const start = node.position!.start.offset!;
-			line += this.#content.slice(offset, start).split("\n").length - 1;
+			line += [...this.#content.slice(offset, start).matchAll(/\n/g)].length;
 			offset = start;
 			const text = markdownText(node, { includeHtml: false });
 			headings.push({ text, id: slugger.slug(text), line, depth: node.depth });
@@ -77,7 +78,7 @@ export class MarkdownDocument {
 			const line = lines.at(-1)!;
 			switch (node.type) {
 				case "text": {
-					const [first, ...rest] = node.value.split("\n");
+					const [first, ...rest] = node.value.split(lineEndingPattern);
 					line.prose += first;
 					for (const prose of rest) lines.push({ prose, links: [] });
 					break;

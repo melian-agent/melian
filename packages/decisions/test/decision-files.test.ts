@@ -659,6 +659,54 @@ describe("supersession prose", () => {
 	});
 });
 
+const lineEndingCases: [name: string, positive: string][] = [
+	...["\r", "\r\n", "\n"].flatMap<[string, string]>((ending) => [
+		[
+			`declaration after prose ${JSON.stringify(ending)}`,
+			`# New${ending}${ending}Context: a${ending}Supersedes: old.md`,
+		],
+		[
+			`contextual link after declaration ${JSON.stringify(ending)}`,
+			`# New${ending}${ending}Supersedes: old.md${ending}Context: [context](context.md)`,
+		],
+		[
+			`declaration after sentinel ${JSON.stringify(ending)}`,
+			`# New${ending}${ending}Supersedes: none${ending}Supersedes: old.md`,
+		],
+	]),
+	["review reproduction: CR after prose", "# New\r\rContext: a\rSupersedes: old.md"],
+	["review reproduction: mixed after prose", "# New\n\nContext: a\rSupersedes: old.md\r\nAfter"],
+	["review reproduction: CR contextual link", "# New\r\rSupersedes: old.md\rContext: [context](context.md)"],
+	["review reproduction: CR sentinel", "# New\r\rSupersedes: none\rSupersedes: old.md"],
+	[
+		"mixed contextual link after declaration",
+		"# New\r\n\r\nSupersedes: old.md\rContext: [context](context.md)\nAfter",
+	],
+	["mixed declaration after sentinel", "# New\r\n\r\nSupersedes: none\rSupersedes: old.md\nAfter"],
+];
+
+describe("CommonMark declaration line boundaries", () => {
+	it.each(lineEndingCases.map(([name, positive]) => [name, positive, `~~~md\n${positive}\n~~~`] as const))(
+		"%s",
+		(_name, positive, negative) => {
+			const fresh = parse("docs/decisions/new.md", positive);
+			expect(fresh.supersedes).toEqual(["docs/decisions/old.md"]);
+			expect(parse(fresh.path, negative).supersedes).toEqual([]);
+			expect(
+				DecisionFiles.from([
+					parse("docs/decisions/old.md", "# Old"),
+					parse("docs/decisions/context.md", "# Context"),
+					fresh,
+				]).render(),
+			).toEqual(
+				"[ACTIVE] docs/decisions/context.md — Context\n" +
+					"[ACTIVE] docs/decisions/new.md — New\n" +
+					"[INACTIVE; superseded by docs/decisions/new.md] docs/decisions/old.md — Old",
+			);
+		},
+	);
+});
+
 const filenameCases = [
 	["dated", "2026-10-01-a.md", "2026-10-01-a.md.bak"],
 	["undated", "policy.md", "policy.txt"],
