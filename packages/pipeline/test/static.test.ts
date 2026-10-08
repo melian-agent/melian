@@ -495,6 +495,32 @@ describe("runStaticTool and a stale worktree that cannot be removed", () => {
 	});
 });
 
+describe("runStaticTool and a worktree locked by pid 0", () => {
+	it("treats the lock as dead rather than probing a process group", { timeout: 60_000 }, async () => {
+		const head = commit(repo, { "src/a.ts": lines("export const a = 1;") });
+		const owner = join(dirname(repo), `melian-static-lowpid-${process.pid}`);
+		mkdirSync(owner);
+		gitIn(
+			repo,
+			"worktree",
+			"add",
+			"--quiet",
+			"--detach",
+			"--lock",
+			"--reason",
+			"melian-static pid 0",
+			join(owner, "tree"),
+		);
+		try {
+			await log("biome", head);
+			expect(gitIn(repo, "worktree", "list", "--porcelain")).not.toContain(join(owner, "tree"));
+		} finally {
+			rmSync(owner, { recursive: true, force: true });
+			gitIn(repo, "worktree", "prune");
+		}
+	});
+});
+
 describe("runStaticTool after a cancellation", () => {
 	it("removes its worktree even though the caller's context is cancelled", { timeout: 60_000 }, async () => {
 		const head = commit(repo, { ".gitignore": lines("node_modules"), "tsconfig.json": tsconfig });

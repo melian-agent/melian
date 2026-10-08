@@ -38,7 +38,7 @@ export class CacheScratch {
 			const path = join(directory, entry.name);
 			const pid =
 				/^\.(?:fetch|graph)-(\d+)-/.exec(entry.name)?.[1] ?? /\.(\d+)\.[0-9a-f-]{36}\.tmp$/.exec(entry.name)?.[1];
-			if (pid !== undefined) {
+			if (pid !== undefined && Number(pid) > 1) {
 				try {
 					process.kill(Number(pid), 0);
 				} catch (error) {

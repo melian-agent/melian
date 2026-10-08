@@ -591,7 +591,7 @@ async function removeStaleWorktrees(run: Run, scratch: string): Promise<void> {
 		if (!posix.basename(owner).startsWith("melian-static-") || owner === scratch) continue;
 		const lock = fields.find((field) => field.startsWith("locked "))?.slice("locked ".length) ?? "";
 		const pid = /^melian-static pid (\d+)$/.exec(lock)?.[1];
-		if (pid !== undefined && (await run.shell(`kill -0 ${pid} 2> /dev/null`)).code === 0) continue;
+		if (pid !== undefined && Number(pid) > 1 && (await run.shell(`kill -0 ${pid} 2> /dev/null`)).code === 0) continue;
 		await removeWorktree(run, owner);
 	}
 }
