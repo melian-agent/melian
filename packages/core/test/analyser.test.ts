@@ -20,6 +20,11 @@ it("names the Vitest files a Stryker run loads, by their whole basename", () => 
 		"packages/a/vitest.config.js",
 		"scripts/stryker-test-names.mjs",
 		"stryker-test-names.cjs",
+		"vitest.setup.ts",
+		"packages/a/vitest.setup.mts",
+		"vitest.setupFiles.ts",
+		"vitest.stryker.setup.ts",
+		"stryker.setup.mjs",
 	])
 		expect(analyserOf(path), path).toBe(drives);
 	for (const path of [
@@ -28,7 +33,10 @@ it("names the Vitest files a Stryker run loads, by their whole basename", () => 
 		"vitestXconfig.ts",
 		"vitest.strykerXconfig.ts",
 		"vitest.stryker.configuration",
-		"vitest.setup.ts",
+		"myvitest.setup.ts",
+		"setup.ts",
+		"test/setup.ts",
+		"mystryker.setup.ts",
 		"vitest.stryker.ts",
 		"stryker-test-namesX.mjs",
 		"strykerXtest-names.mjs",

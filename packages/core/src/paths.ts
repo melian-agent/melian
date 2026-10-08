@@ -38,7 +38,10 @@ export const analyserConfigNames = [
 	"eslint.config.*",
 	"stryker.config.*",
 	"vitest.stryker.config.*",
+	"vitest.stryker.setup*",
 	"vitest.config.*",
+	"vitest.setup*",
+	"stryker.setup*",
 	"stryker-test-names.*",
 	"enola.yaml",
 	"mcp-arch.yaml",
@@ -48,7 +51,7 @@ export const analyserConfigNames = [
 ] as const;
 
 const analyserConfig =
-	/^(?:biome\.jsonc?|tsconfig.*\.json|package(?:-lock)?\.json|\.eslintrc.*|eslint\.config\..*|stryker\.config\..*|vitest\.stryker\.config\..*|vitest\.config\..*|stryker-test-names\..*)$/;
+	/^(?:biome\.jsonc?|tsconfig.*\.json|package(?:-lock)?\.json|\.eslintrc.*|eslint\.config\..*|stryker\.config\..*|vitest\.stryker\.config\..*|vitest\.stryker\.setup.*|vitest\.config\..*|vitest\.setup.*|stryker\.setup.*|stryker-test-names\..*)$/;
 
 // Whether a repository-relative path configures a static tool, by its name alone.
 export function isAnalyserConfig(path: string): boolean {

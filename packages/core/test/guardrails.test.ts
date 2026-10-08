@@ -647,6 +647,9 @@ describe("policy-change-review", () => {
 		"vitest.config.ts",
 		"packages/a/vitest.config.mjs",
 		"scripts/stryker-test-names.mjs",
+		"vitest.setup.ts",
+		"packages/a/vitest.stryker.setup.mjs",
+		"stryker.setup.js",
 	])("raises policy-change-review for %s, which the Stryker run loads", async (path) => {
 		const { findings } = await guardrails(
 			{ "src/a.ts": lines("a") },
@@ -657,16 +660,19 @@ describe("policy-change-review", () => {
 		);
 	});
 
-	it.each(["vitest.workspace.ts", "not-vitest.config.ts", "scripts/stryker-names.mjs", "vitest.configs.ts"])(
-		"does not raise policy-change-review for %s",
-		async (path) => {
-			const { findings } = await guardrails(
-				{ "src/a.ts": lines("a") },
-				{ [path]: lines("export default {};"), "src/a.ts": lines("b") },
-			);
-			expect(findings).toEqual([]);
-		},
-	);
+	it.each([
+		"vitest.workspace.ts",
+		"not-vitest.config.ts",
+		"my-vitest.setup.ts",
+		"scripts/stryker-names.mjs",
+		"vitest.configs.ts",
+	])("does not raise policy-change-review for %s", async (path) => {
+		const { findings } = await guardrails(
+			{ "src/a.ts": lines("a") },
+			{ [path]: lines("export default {};"), "src/a.ts": lines("b") },
+		);
+		expect(findings).toEqual([]);
+	});
 
 	describe("a Biome glob past the step limit", () => {
 		// The analyser also compiles the glob with `/**` appended, which costs seven steps over the glob's own.
