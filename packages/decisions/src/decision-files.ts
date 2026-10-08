@@ -45,13 +45,14 @@ function supersessionProse(content: string): string {
 }
 
 function localDecisionTargets(destination: string): string[] {
+	if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(destination)) return [];
 	let path: string;
 	try {
 		path = decodeURIComponent(destination.split(/[?#]/, 1)[0]!);
 	} catch {
 		throw new DecisionFilesError("invalid", `Invalid supersession destination ${destination}`);
 	}
-	return /^\/?(?:[^:/]+\/)*\d{4}-\d{2}-\d{2}-[\w-]+\.md$/.test(path) ? [path] : [];
+	return /^\/?(?:[^/]+\/)*\d{4}-\d{2}-\d{2}-[\w-]+\.md$/.test(path) ? [path] : [];
 }
 
 /** A decision file could not supply a complete, unambiguous baseline. */

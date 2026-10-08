@@ -111,6 +111,34 @@ describe("written decisions", () => {
 		).not.toThrow();
 	});
 
+	it.each([
+		["nested/writer:trust/2026-10-01-a.md", "nested/writer:trust/2026-10-01-a.md"],
+		["./writer:trust/2026-10-01-a.md", "writer:trust/2026-10-01-a.md"],
+		["nested/writer%3Atrust/2026-10-01-a.md", "nested/writer:trust/2026-10-01-a.md"],
+		["writer%3Atrust/2026-10-01-a.md", "writer:trust/2026-10-01-a.md"],
+		["https%3A/host/2026-10-01-a.md", "https:/host/2026-10-01-a.md"],
+	])("deactivates the local colon-bearing destination %s", (destination, directory) => {
+		const target = `docs/decisions/${directory}`;
+		const successor = parse(b, `# B\nSupersedes: [A](${destination})`);
+		expect(successor.supersedes).toEqual([target]);
+		expect(DecisionFiles.from([parse(target, "# A"), successor]).render()).toContain(
+			`[INACTIVE; superseded by ${b}] ${target} — A`,
+		);
+		expect(() => DecisionFiles.from([successor])).toThrow(`supersedes absent ${target}`);
+	});
+	it.each([
+		"https:nested/2026-10-01-a.md",
+		"HTTPS:nested/2026-10-01-a.md",
+		"mailto:nested/2026-10-01-a.md",
+		"file:nested/2026-10-01-a.md",
+		"https://example.com/%ZZ/2026-10-01-a.md",
+		"//example.com/%ZZ/2026-10-01-a.md",
+	])("classifies external supersession destination %s before decoding", (destination) => {
+		const successor = parse(b, `# B\nSupersedes: [External](${destination})`);
+		expect(successor.supersedes).toEqual([]);
+		expect(DecisionFiles.from([parse(a, "# A"), successor]).render()).toContain(`[ACTIVE] ${a} — A`);
+	});
+
 	it("resolves each link independently beside a bare target", () => {
 		expect(
 			parse(
