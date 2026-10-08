@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { posix } from "node:path";
+import { pathToFileURL } from "node:url";
 import {
 	CheckError,
 	type MutationSettings,
@@ -13,6 +15,7 @@ import {
 } from "@melian-agent/core";
 import { backgroundContext } from "./harness.ts";
 import { MutationCache } from "./mutation-cache.ts";
+import { type MutationTestSelection, MutationTests } from "./mutation-tests.ts";
 import { nodeInstallation, type Sandbox } from "./sandbox.ts";
 import type { Run, StaticRun } from "./static.ts";
 import { CacheLocation } from "./tool-provisioning.ts";
@@ -263,27 +266,67 @@ export class MutationRun {
 		return restore;
 	}
 
+	async #uncovered(lines: Record<string, [number, number][]>): Promise<string> {
+		const instrumenter = createRequire(posix.join(this.#run.input.repoRoot, "package.json")).resolve(
+			"@stryker-mutator/instrumenter",
+		);
+		const script = posix.join(this.#scratch, "uncovered.mjs");
+		const text = `
+import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { Instrumenter } from ${JSON.stringify(pathToFileURL(instrumenter).href)};
+const lines = ${JSON.stringify(lines)};
+const config = JSON.parse(readFileSync("stryker.config.json", "utf8"));
+const logger = Object.fromEntries(["trace", "debug", "info", "warn", "error", "fatal"].flatMap(name => [[name, () => {}], ["is" + name[0].toUpperCase() + name.slice(1) + "Enabled", () => false]]));
+const files = Object.entries(lines).map(([name, ranges]) => ({ name, content: readFileSync(name, "utf8"), mutate: ranges.map(([first, last]) => ({ start: { line: first - 1, column: 0 }, end: { line: last - 1, column: Number.MAX_SAFE_INTEGER } })) }));
+const result = await new Instrumenter(logger).instrument(files, { plugins: null, ignorers: [], excludedMutations: config.mutator?.excludedMutations ?? [] });
+const report = { schemaVersion: "1.0", config, files: Object.fromEntries(files.map(file => [file.name, { language: "typescript", source: file.content, mutants: result.mutants.filter(mutant => mutant.fileName === file.name).map(mutant => ({ ...mutant, status: mutant.status ?? "NoCoverage", location: { start: { ...mutant.location.start, line: mutant.location.start.line + 1 }, end: { ...mutant.location.end, line: mutant.location.end.line + 1 } } })) }])) };
+mkdirSync("reports/mutation", { recursive: true });
+writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
+`;
+		const written = await this.#run.input.env.writeFile(script, text, this.#run.context);
+		if (!written.ok) throw this.#run.fail("toolFailed", `could not write ${script}: ${written.error.message}`);
+		return `${quote(process.execPath)} ${quote(script)}`;
+	}
+
 	// The run executes the head's own test files, setup files, and Vitest configuration, so it gets a home and a temporary
 	// directory of its own in scratch, where the reviewer's credential files are not, and none of the Melian process's
 	// variables. It also runs in the host's sandbox: no network, and nothing readable or writable outside the worktree,
 	// scratch, and the installs it needs.
-	async #execute(entries: readonly string[]): Promise<string | { skipped: string }> {
+	async #execute(
+		entries: readonly string[],
+		selection: MutationTestSelection,
+		lines: Record<string, [number, number][]>,
+	): Promise<string | { skipped: string }> {
 		const { repoRoot, policyCommit, base, commit, trustedWriter } = this.#run.input;
 		const cache = await MutationCache.open(
 			(await CacheLocation.open(repoRoot)).root,
 			policyCommit ?? base ?? commit,
 			trustedWriter === true,
 		);
+		const includeFile = posix.join(this.#scratch, "test-include.json");
+		if ("include" in selection) {
+			const written = await this.#run.input.env.writeFile(
+				includeFile,
+				JSON.stringify(selection.include.map(literal)),
+				this.#run.context,
+			);
+			if (!written.ok)
+				throw this.#run.fail("toolFailed", `could not write ${includeFile}: ${written.error.message}`);
+		}
 		const log = posix.join(this.#scratch, "stryker.log");
 		const home = posix.join(this.#scratch, "home");
 		const temporary = posix.join(this.#scratch, "tmp");
 		// A report the revision committed must not stand in for the one this run writes.
+		const runner =
+			"tests" in selection && selection.tests.length === 0
+				? await this.#uncovered(lines)
+				: `${quote(this.#binary)} run ${quote(posix.join(this.#root, config))} --reporters json --incremental --incrementalFile ${quote(cache.file)} --inPlace --mutate ${quote(entries.join(","))}`;
 		const command = [
 			`mkdir -p ${quote(home)} ${quote(temporary)}`,
 			`cd ${quote(this.#root)}`,
 			`ulimit -f ${mutationFileLimit / 1024}`,
 			`rm -f ${quote(report)}`,
-			`${quote(this.#binary)} run ${quote(posix.join(this.#root, config))} --reporters json --incremental --incrementalFile ${quote(cache.file)} --inPlace --mutate ${quote(entries.join(","))} > ${quote(log)} 2>&1`,
+			`${runner} > ${quote(log)} 2>&1`,
 		].join(" && ");
 		const paths = {
 			worktree: this.#root,
@@ -306,6 +349,7 @@ export class MutationRun {
 				...this.#sandbox.environment(),
 				HOME: home,
 				TMPDIR: temporary,
+				...("include" in selection ? { MELIAN_MUTATION_TEST_INCLUDE: includeFile } : {}),
 			});
 		} catch (error) {
 			// A change too slow to mutate is one the run could not judge, not one whose judgement failed.
@@ -368,7 +412,13 @@ export class MutationRun {
 		const entries = Object.entries(lines).flatMap(([path, ranges]) =>
 			ranges.map(([first, last]) => `${literal(path)}:${first}-${last}`),
 		);
-		const text = await this.#execute(entries);
+		const selection = (await MutationTests.open(this.#run, this.#root, this.#scratch, Object.keys(lines))).toJSON();
+		this.#notes.push(selection.note);
+		if ("tests" in selection && selection.tests.length === 0)
+			this.#notes.push(
+				"No test reaches the changed production files; no dry run was started. Their mutants are NoCoverage.",
+			);
+		const text = await this.#execute(entries, selection, lines);
 		if (typeof text !== "string") {
 			return {
 				status: "skipped",

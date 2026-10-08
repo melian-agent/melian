@@ -16,6 +16,64 @@ afterEach(() => {
 });
 
 describe("compiler graph extraction", { timeout: 60_000 }, () => {
+	it("bounds import-only extraction without losing the full call graph", () => {
+		root = mkdtempSync(join(tmpdir(), "melian-compiler-import-bound-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+		writeFileSync(join(root, "a.ts"), 'import { b } from "./b.ts"; export function a() { b(); }');
+		writeFileSync(join(root, "b.ts"), "export function b() {} class Empty {}");
+		const compiler = CompilerGraph.open(root);
+		try {
+			const imports = compiler.read({ importsOnly: true, maxFiles: 2, deadline: Date.now() + 60_000 });
+			expect(imports.files.map((file) => file.path)).toEqual(["a.ts", "b.ts"]);
+			expect(imports.files[0]!.imports).toMatchObject([{ target: "b.ts" }]);
+			expect(imports.files[0]!.pairs).toEqual([]);
+			expect(imports.symbols).toEqual([]);
+			expect(() => compiler.read({ importsOnly: true, maxFiles: 1 })).toThrow("bound");
+			expect(() => compiler.read({ importsOnly: true, deadline: Date.now() })).toThrow("bound");
+			expect(compiler.read().files[0]!.pairs).toHaveLength(1);
+		} finally {
+			compiler.close();
+		}
+	});
+
+	it.each(['"setup.ts"', '["setup.ts", "more.ts"]', "[]"])(
+		"reads literal setupFiles %s from the configuration closure and ignores test data",
+		(value) => {
+			root = mkdtempSync(join(tmpdir(), "melian-compiler-setup-"));
+			writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+			writeFileSync(join(root, "vitest.config.ts"), 'export { default } from "./settings.ts";');
+			writeFileSync(join(root, "settings.ts"), `export default { test: { "setupFiles": ${value} } };`);
+			writeFileSync(join(root, "data.test.ts"), "const setupFiles = () => []; const data = { setupFiles };");
+			const compiler = CompilerGraph.open(root);
+			try {
+				compiler.read({ importsOnly: true });
+				expect(compiler.setupFiles()).toEqual(
+					value === "[]" ? [] : value.startsWith("[") ? ["more.ts", "setup.ts"] : ["setup.ts"],
+				);
+			} finally {
+				compiler.close();
+			}
+		},
+	);
+
+	it.each([
+		"{ setupFiles: getFiles() }",
+		'{ setupFiles: ["setup.ts", ...more] }',
+		"{ setupFiles }",
+		'{ setupFiles: "../outside.ts" }',
+	])("refuses setup paths the compiler cannot safely supply: %s", (object) => {
+		root = mkdtempSync(join(tmpdir(), "melian-compiler-setup-computed-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+		writeFileSync(join(root, "vitest.config.ts"), `export default { test: ${object} };`);
+		const compiler = CompilerGraph.open(root);
+		try {
+			compiler.read({ importsOnly: true });
+			expect(() => compiler.setupFiles()).toThrow(/computed|outside/);
+		} finally {
+			compiler.close();
+		}
+	});
+
 	it("retains unused declarations and selects the implementation of an overload", () => {
 		root = mkdtempSync(join(tmpdir(), "melian-compiler-declarations-"));
 		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
@@ -305,4 +363,18 @@ describe("head program", { timeout: 60_000 }, () => {
 			program.close();
 		}
 	});
+});
+
+it("reads the named custom Vitest configuration even when its name does not match the default", () => {
+	root = mkdtempSync(join(tmpdir(), "melian-custom-vitest-"));
+	writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+	writeFileSync(join(root, "custom.ts"), "export default { test: { setupFiles: `setup.ts` } };");
+	const compiler = CompilerGraph.open(root);
+	try {
+		compiler.read({ importsOnly: true });
+		expect(compiler.setupFiles("custom.ts")).toEqual(["setup.ts"]);
+		expect(compiler.setupFiles()).toEqual([]);
+	} finally {
+		compiler.close();
+	}
 });

@@ -1,6 +1,8 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import base from "../vitest.config.ts";
 import stryker from "../vitest.stryker.config.ts";
@@ -31,4 +33,24 @@ describe("the Vitest configuration Stryker runs", () => {
 it("excludes string mutations of sandbox policy and command flags", () => {
 	const config = JSON.parse(readFileSync(resolve(root, "stryker.config.json"), "utf8"));
 	expect(config.mutator.excludedMutations).toEqual(["StringLiteral"]);
+});
+
+it("replaces base globs with the supplied include list, while keeping the names plugin", () => {
+	const directory = mkdtempSync(join(tmpdir(), "stryker-include-"));
+	const file = join(directory, "include.json");
+	const include = ["packages/p/test/a.test.ts", "packages/p/test/setup.ts"];
+	writeFileSync(file, JSON.stringify(include));
+	try {
+		const code = `import config from ${JSON.stringify(pathToFileURL(resolve(root, "vitest.stryker.config.ts")).href)}; console.log(JSON.stringify(config));`;
+		const selected = JSON.parse(
+			execFileSync(process.execPath, ["--input-type=module", "-e", code], {
+				env: { ...process.env, MELIAN_MUTATION_TEST_INCLUDE: file },
+				encoding: "utf8",
+			}),
+		);
+		expect(selected.test.include).toEqual(include);
+		expect(selected.plugins.some((plugin) => plugin.name === "stryker-test-names")).toBe(true);
+	} finally {
+		rmSync(directory, { recursive: true });
+	}
 });

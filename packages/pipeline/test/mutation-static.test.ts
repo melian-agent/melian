@@ -21,6 +21,7 @@ import {
 	createMemoryStorage,
 	createNodeExecutionEnv,
 	createReviewRegistry,
+	type ExecutionEnv,
 	type Harness,
 	openHarness,
 	readFindings,
@@ -32,6 +33,7 @@ import {
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { strykerNotInstalled, strykerVersion } from "../src/mutation-static.ts";
+import { MutationTests } from "../src/mutation-tests.ts";
 import { Sandbox } from "../src/sandbox.ts";
 import { staticToolSource } from "../src/static.ts";
 import {
@@ -153,12 +155,18 @@ async function revisionOf(base: string, head: string) {
 async function mutate(
 	base: string,
 	head: string,
-	extra: { maxLines?: number; revision?: boolean; trustedWriter?: boolean; policyCommit?: string } = {},
+	extra: {
+		maxLines?: number;
+		revision?: boolean;
+		trustedWriter?: boolean;
+		policyCommit?: string;
+		env?: ExecutionEnv;
+	} = {},
 ) {
 	const revision = await revisionOf(base, head);
 	return runStaticTool(
 		{
-			env: createNodeExecutionEnv(repo),
+			env: extra.env ?? createNodeExecutionEnv(repo),
 			repoRoot: repo,
 			base,
 			commit: head,
@@ -322,6 +330,170 @@ cp "$incremental" reports/mutation/mutation.json`,
 		expect(readFileSync(first, "utf8")).toBe("{corrupt-untrusted");
 		await mutate(base, head, { trustedWriter: true, policyCommit: head });
 		expect(argumentsOf(fake.calls()[2]!).flag("--incrementalFile")).not.toBe(second);
+	});
+
+	describe("related test dry run", () => {
+		function selected(tests: string[], setup = ["test/setup.ts"]) {
+			return MutationTests.select(
+				{
+					read: () => ({
+						files: [
+							{ path: "packages/p/src/a.ts", imports: [], pairs: [], external: 0, unresolved: 0 },
+							...tests.map((path) => ({
+								path,
+								imports: [
+									{
+										target: "packages/p/src/a.ts",
+										line: 1,
+										specifier: "../src/a.ts",
+										kind: "import" as const,
+										typeOnly: false,
+									},
+								],
+								pairs: [],
+								external: 0,
+								unresolved: 0,
+							})),
+						],
+					}),
+					setupFiles: () => setup,
+				},
+				["packages/p/src/a.ts"],
+			);
+		}
+		it("passes exactly the related files and setup through the sandbox environment", async () => {
+			const { base, head } = twoCommits();
+			vi.spyOn(MutationTests, "open").mockResolvedValue(selected(["test/a.test.ts", "test/b.test.mjs"]));
+			const saved = join(artifacts, "selected.json");
+			fakeTool(
+				repo,
+				"stryker",
+				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+cp "$MELIAN_MUTATION_TEST_INCLUDE" '${saved}'
+mkdir -p reports/mutation
+printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.json`,
+			);
+			await mutate(base, head);
+			expect(JSON.parse(readFileSync(saved, "utf8"))).toEqual([
+				"test/a.test.ts",
+				"test/b.test.mjs",
+				"test/setup.ts",
+			]);
+		});
+		it("resolves the head compiler graph including mjs tests and literal setup files", async () => {
+			const base = commit(repo, {
+				"stryker.config.json": config,
+				"tsconfig.json": JSON.stringify({
+					compilerOptions: { module: "nodenext", moduleResolution: "nodenext", target: "esnext" },
+				}),
+				"packages/p/src/a.ts": a,
+				"packages/p/src/middle.ts": 'export { a } from "./a.ts";',
+				"packages/p/test/a.test.ts": 'import { a } from "../src/a.ts";',
+				"scripts/transitive.test.mjs": 'import { a } from "../packages/p/src/middle.ts";',
+				"scripts/b.test.mjs": "export {};",
+				"packages/p/test/c.test.ts": "export {};",
+				"packages/p/test/d.test.ts": "export {};",
+				"vitest.config.ts": 'export default { test: { setupFiles: ["packages/p/test/setup.ts"] } };',
+				"packages/p/test/setup.ts": "export {};",
+			});
+			const head = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+			const saved = join(artifacts, "compiler-selected.json");
+			fakeTool(
+				repo,
+				"stryker",
+				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+cp "$MELIAN_MUTATION_TEST_INCLUDE" '${saved}'
+mkdir -p reports/mutation
+printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.json`,
+			);
+			const result = await mutate(base, head);
+			if (result.status !== "ran") throw new Error("skipped");
+			expect(result.notes).toContain("Mutation dry run selected 2 related test file(s), plus Vitest setup files.");
+			expect(JSON.parse(readFileSync(saved, "utf8"))).toEqual([
+				"packages/p/test/a.test.ts",
+				"packages/p/test/setup.ts",
+				"scripts/transitive.test.mjs",
+			]);
+		});
+		it("does not start Stryker when no test reaches the change and reports every enumerated mutant as NoCoverage", async () => {
+			const { base, head } = twoCommits();
+			vi.spyOn(MutationTests, "open").mockResolvedValue(selected([]));
+			const fake = stryker({ report: report({}) });
+			writeFiles(repo, {
+				"node_modules/@stryker-mutator/instrumenter/package.json": JSON.stringify({
+					type: "module",
+					main: "index.mjs",
+				}),
+				"node_modules/@stryker-mutator/instrumenter/index.mjs": `export class Instrumenter {
+async instrument(files, options) {
+ if (files.length !== 1 || files[0].name !== "packages/p/src/a.ts" || files[0].mutate[0].start.line !== 1 || files[0].mutate[0].end.line !== 1 || options.plugins !== null) throw new Error("wrong mutation request");
+ return { mutants: [{ id: "1", fileName: files[0].name, mutatorName: "ConditionalExpression", replacement: "false", location: { start: { line: 1, column: 0 }, end: { line: 1, column: 8 } } }] };
+}
+}`,
+			});
+			const result = await mutate(base, head);
+			expect(fake.calls()).toEqual([]);
+			expect(result.status).toBe("ran");
+			if (result.status !== "ran") throw new Error("skipped");
+			expect(result.notes).toContain(
+				"No test reaches the changed production files; no dry run was started. Their mutants are NoCoverage.",
+			);
+			expect(result.log.runs[0].results).toHaveLength(1);
+			expect(result.log.runs[0].results[0]).toMatchObject({
+				ruleId: "untested-behaviour",
+				message: { text: expect.stringContaining("no test coverage") },
+			});
+		});
+		it.each(["include", "uncovered", "profile"])("fails closed when it cannot write the %s file", async (kind) => {
+			const { base, head } = twoCommits();
+			vi.spyOn(MutationTests, "open").mockResolvedValue(selected(kind === "uncovered" ? [] : ["test/a.test.ts"]));
+			const fake = stryker({ report: report({}) });
+			writeFiles(repo, {
+				"node_modules/@stryker-mutator/instrumenter/package.json": JSON.stringify({ main: "index.mjs" }),
+				"node_modules/@stryker-mutator/instrumenter/index.mjs": "",
+			});
+			if (kind === "profile")
+				vi.spyOn(Sandbox, "detect").mockReturnValue({
+					...unconfinedSandbox,
+					profile: () => "(version 1)(allow default)",
+				} as unknown as Sandbox);
+			const env = createNodeExecutionEnv(repo);
+			const write = env.writeFile.bind(env);
+			const suffix =
+				kind === "include" ? "test-include.json" : kind === "uncovered" ? "uncovered.mjs" : "sandbox.sb";
+			vi.spyOn(env, "writeFile").mockImplementation((path, content, context) =>
+				path.endsWith(suffix)
+					? Promise.resolve({
+							ok: false,
+							error: Object.assign(new Error("write denied"), { code: "permission_denied" as const }),
+						})
+					: write(path, content, context),
+			);
+			await expect(mutate(base, head, { env })).rejects.toMatchObject({
+				code: "toolFailed",
+				message: expect.stringContaining("write denied"),
+			});
+			expect(fake.calls()).toEqual([]);
+		});
+
+		it("runs the whole suite when the selection bound is hit", async () => {
+			const { base, head } = twoCommits();
+			const fallback = MutationTests.select(
+				{
+					read: () => {
+						throw new Error("file bound");
+					},
+					setupFiles: () => [],
+				},
+				["packages/p/src/a.ts"],
+			);
+			vi.spyOn(MutationTests, "open").mockResolvedValue(fallback);
+			const fake = stryker({ report: report({}) });
+			const result = await mutate(base, head);
+			expect(fake.calls()).toHaveLength(1);
+			if (result.status !== "ran") throw new Error("skipped");
+			expect(result.notes).toContain(fallback.toJSON().note);
+		});
 	});
 
 	it("runs Stryker with a home and a temporary directory in scratch, and with none of the Melian process's variables", async () => {
@@ -1276,7 +1448,10 @@ exit 1`,
 					status: "ran",
 					version: "10.0.0",
 					findings: 1,
-					notes: ["Stryker mutated 1 changed lines in 1 file(s); the base was not mutated."],
+					notes: [
+						"Mutation dry run uses the whole suite: no root tsconfig.json.",
+						"Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.",
+					],
 				},
 			]);
 			const findings = await readFindings(harness, root.id, revisionKey({ base, head }), context);
@@ -1300,6 +1475,7 @@ exit 1`,
 					version: "10.0.0",
 					findings: 1,
 					notes: [
+						"Mutation dry run uses the whole suite: no root tsconfig.json.",
 						"Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.",
 						"packages/p/src/a.ts produced no mutants, so nothing on its changed lines was judged.",
 					],
