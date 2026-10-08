@@ -3633,6 +3633,23 @@ describe("the design baseline", () => {
 			rendered.mockRestore();
 		}
 	});
+	it("refuses an incomplete base heading index before asking a design model", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "docs/design.md": "[Section](missing.md#section)\n", "src/answer.ts": "export const answer = 42;\n" },
+			{ "docs/design.md": "# Repaired at head\n", "src/answer.ts": "export const answer = 43;\n" },
+		);
+		config = { ...config, tiers: { ...config.tiers, full: ["lens.design"] } };
+		const design = "You are the design reviewer";
+		const requests = scriptConversations(fake, [{ match: design, replies: [fauxAssistantMessage("Done.")] }]);
+		const before = fake.provider.state.callCount;
+		await expect(review()).rejects.toMatchObject({
+			code: "incomplete",
+			message: "The base design section docs/missing.md is absent",
+		});
+		expect(fake.provider.state.callCount).toBe(before);
+		expect(requests[design]).toEqual([]);
+	});
 	it("does not load a broken design section for an unrelated lens", async () => {
 		rmSync(repo, { recursive: true, force: true });
 		repo = baseAndHead(
