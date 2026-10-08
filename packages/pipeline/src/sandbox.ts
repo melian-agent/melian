@@ -93,9 +93,7 @@ function xcrunCache(): string | undefined {
 	if (directory === "") return undefined;
 	try {
 		return realpathSync(directory);
-	} catch {
-		return undefined;
-	}
+	} catch {}
 }
 
 function regexSource(path: string): string {
@@ -174,9 +172,9 @@ export class Sandbox {
 			(path) => `(subpath ${profileString(path)})`,
 		);
 		const installs = paths.installs.map((path) => `(subpath ${profileString(path)})`);
-		const parents = [...new Set([paths.node, ...writable, ...paths.installs].flatMap(ancestors))]
-			.sort()
-			.map((path) => `(literal ${profileString(path)})`);
+		const parents = [...new Set([paths.node, ...writable, ...paths.installs].flatMap(ancestors))].map(
+			(path) => `(literal ${profileString(path)})`,
+		);
 		return [
 			"(version 1)",
 			"(deny default)",
