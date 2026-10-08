@@ -12,8 +12,10 @@ import {
 	type ToolLog,
 } from "@melian-agent/core";
 import { backgroundContext } from "./harness.ts";
+import { MutationCache } from "./mutation-cache.ts";
 import { nodeInstallation, type Sandbox } from "./sandbox.ts";
 import type { Run, StaticRun } from "./static.ts";
+import { CacheLocation } from "./tool-provisioning.ts";
 
 const config = "stryker.config.json";
 
@@ -266,6 +268,12 @@ export class MutationRun {
 	// variables. It also runs in the host's sandbox: no network, and nothing readable or writable outside the worktree,
 	// scratch, and the installs it needs.
 	async #execute(entries: readonly string[]): Promise<string | { skipped: string }> {
+		const { repoRoot, policyCommit, base, commit, trustedWriter } = this.#run.input;
+		const cache = await MutationCache.open(
+			(await CacheLocation.open(repoRoot)).root,
+			policyCommit ?? base ?? commit,
+			trustedWriter === true,
+		);
 		const log = posix.join(this.#scratch, "stryker.log");
 		const home = posix.join(this.#scratch, "home");
 		const temporary = posix.join(this.#scratch, "tmp");
@@ -275,13 +283,14 @@ export class MutationRun {
 			`cd ${quote(this.#root)}`,
 			`ulimit -f ${mutationFileLimit / 1024}`,
 			`rm -f ${quote(report)}`,
-			`${quote(this.#binary)} run ${quote(posix.join(this.#root, config))} --reporters json --incremental --incrementalFile ${quote(posix.join(this.#scratch, "incremental.json"))} --inPlace --mutate ${quote(entries.join(","))} > ${quote(log)} 2>&1`,
+			`${quote(this.#binary)} run ${quote(posix.join(this.#root, config))} --reporters json --incremental --incrementalFile ${quote(cache.file)} --inPlace --mutate ${quote(entries.join(","))} > ${quote(log)} 2>&1`,
 		].join(" && ");
 		const paths = {
 			worktree: this.#root,
 			scratch: this.#scratch,
 			installs: this.#installs,
 			node: nodeInstallation(),
+			incremental: cache.directory,
 		};
 		const profile = this.#sandbox.profile(paths);
 		const profileFile = posix.join(this.#scratch, "sandbox.sb");

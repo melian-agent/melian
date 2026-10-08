@@ -1,10 +1,16 @@
-import { execFile } from "node:child_process";
+import type * as childProcess from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nodeInstallation, Sandbox, type SandboxPaths } from "../src/sandbox.ts";
+
+vi.mock("node:child_process", async (importOriginal) => {
+	const original = await importOriginal<typeof childProcess>();
+	return { ...original, spawnSync: vi.fn(original.spawnSync) };
+});
 
 const run = promisify(execFile);
 
@@ -70,6 +76,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	vi.restoreAllMocks();
 	vi.unstubAllEnvs();
 	rmSync(base, { recursive: true, force: true });
 });
@@ -150,13 +157,19 @@ describe("Sandbox.detect", () => {
 		expect(Sandbox.detect("win32")).toBeUndefined();
 	});
 
-	// A sandboxed run cannot start a sandbox of its own, so there is nothing to find there.
-	it.skipIf(process.platform !== "darwin" || process.env.MELIAN_SANDBOX !== undefined)(
-		"finds seatbelt on macOS",
-		() => {
-			expect(Sandbox.detect("darwin")?.backend).toBe("seatbelt");
-		},
-	);
+	for (const [platform, backend, executable, args] of [
+		["darwin", "seatbelt", "/usr/bin/sandbox-exec", ["-p", "(version 1)(allow default)", "/usr/bin/true"]],
+		["linux", "bubblewrap", "bwrap", ["--unshare-all", "--ro-bind", "/", "/", "true"]],
+	] as const) {
+		it(`requires a successful probe before returning ${backend}`, () => {
+			const reply = { status: 0 } as ReturnType<typeof spawnSync>;
+			vi.mocked(spawnSync).mockReturnValueOnce(reply);
+			expect(Sandbox.detect(platform)?.backend).toBe(backend);
+			expect(spawnSync).toHaveBeenLastCalledWith(executable, args, { stdio: "ignore" });
+			vi.mocked(spawnSync).mockReturnValueOnce({ ...reply, status: 1 });
+			expect(Sandbox.detect(platform)).toBeUndefined();
+		});
+	}
 
 	it.skipIf(process.platform === "darwin")("finds no seatbelt where sandbox-exec is absent", () => {
 		expect(Sandbox.detect("darwin")).toBeUndefined();
@@ -196,3 +209,19 @@ describe.skipIf(Sandbox.detect("linux") === undefined)("bubblewrap", { timeout: 
 		expect(readFileSync(join(base, "scratch/written"), "utf8")).toBe("1");
 	});
 });
+
+for (const backend of ["seatbelt", "bubblewrap"] as const) {
+	it(`allows only the selected incremental partition outside scratch (${backend})`, () => {
+		const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend });
+		const where = { ...paths(), incremental: join(base, "cache/mutation/selected") };
+		const output = backend === "seatbelt" ? sandbox.profile(where)! : sandbox.command("true", where, "/profile");
+		if (backend === "seatbelt") {
+			expect(output).toContain(`(subpath "${where.incremental}")`);
+			expect(output).toContain(`(allow file-write* (subpath "${where.scratch}") (subpath "${where.incremental}"))`);
+			expect(output).not.toContain(`(subpath "${join(base, "cache")}")`);
+		} else {
+			expect(output).toContain(`--bind '${where.incremental}' '${where.incremental}'`);
+			expect(output).not.toContain(`--bind '${join(base, "cache")}'`);
+		}
+	});
+}

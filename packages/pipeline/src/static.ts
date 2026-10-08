@@ -41,6 +41,8 @@ export interface StaticRunInput {
 	readonly settings: StaticToolSettings | TscSettings | MutationSettings;
 	/** The change under review. Mutation testing mutates the lines it adds or edits, so `mutation` needs it. */
 	readonly revision?: Revision;
+	/** Writer trust supplied by the host; absence keeps cache writes in the untrusted partition. */
+	readonly trustedWriter?: boolean;
 }
 
 /** A tool's log for one revision, with anything the run set aside, or why the tool does not apply to it. */

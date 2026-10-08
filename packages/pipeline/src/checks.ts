@@ -163,6 +163,7 @@ async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, conte
 				tool,
 				settings,
 				revision,
+				trustedWriter: input.config.trust.writers && input.writer?.trusted === true,
 				...(input.source.kind === "revision" ? { policyCommit: input.source.commit } : {}),
 			},
 			context,

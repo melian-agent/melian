@@ -15,6 +15,8 @@ export interface SandboxPaths {
 	readonly installs: readonly string[];
 	/** The Node installation, read-only: the directory above `bin/node`. */
 	readonly node: string;
+	/** One writer-trust and base-policy partition of the repository mutation cache, read-write. */
+	readonly incremental?: string;
 }
 
 // What a Node process needs from macOS to start: the dynamic linker's cache, the system frameworks and libraries, the
@@ -167,11 +169,12 @@ export class Sandbox {
 		if (this.backend !== "seatbelt") return undefined;
 		const developer = developerDirectory();
 		const cache = xcrunCache();
-		const readable = [...systemReads, ...(developer === undefined ? [] : [developer]), paths.node, paths.scratch].map(
+		const writable = [paths.scratch, ...(paths.incremental === undefined ? [] : [paths.incremental])];
+		const readable = [...systemReads, ...(developer === undefined ? [] : [developer]), paths.node, ...writable].map(
 			(path) => `(subpath ${profileString(path)})`,
 		);
 		const installs = paths.installs.map((path) => `(subpath ${profileString(path)})`);
-		const parents = [...new Set([paths.node, paths.scratch, ...paths.installs].flatMap(ancestors))]
+		const parents = [...new Set([paths.node, ...writable, ...paths.installs].flatMap(ancestors))]
 			.sort()
 			.map((path) => `(literal ${profileString(path)})`);
 		return [
@@ -189,7 +192,7 @@ export class Sandbox {
 			`(allow file-read* (literal "/") ${[...readable, ...installs].join(" ")})`,
 			// /etc and /var are links into /private. The resolver stats /etc to find /etc/hosts, and the git shim reads the link in /var/select.
 			`(allow file-read-metadata (literal "/") (literal "/etc") (literal "/var") ${parents.join(" ")})`,
-			`(allow file-write* (subpath ${profileString(paths.scratch)}))`,
+			`(allow file-write* ${writable.map((path) => `(subpath ${profileString(path)})`).join(" ")})`,
 			'(allow file-write-data (literal "/dev/null") (literal "/dev/dtracehelper") (literal "/dev/tty"))',
 			'(allow file-ioctl (literal "/dev/dtracehelper"))',
 			// `confstr` asks this service for the per-user temporary directory, which the git shim needs before it runs the real git.
@@ -225,6 +228,7 @@ export class Sandbox {
 			bind("--ro-bind", paths.node),
 			...paths.installs.map((path) => bind("--ro-bind", path)),
 			bind("--bind", paths.scratch),
+			...(paths.incremental === undefined ? [] : [bind("--bind", paths.incremental)]),
 			`--chdir ${quote(paths.worktree)}`,
 			`-- /bin/bash -c ${quote(inner)}`,
 		].join(" ");

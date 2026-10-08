@@ -150,7 +150,11 @@ async function revisionOf(base: string, head: string) {
 	return (await Changeset.resolve(repo, `${base}..${head}`)).revision;
 }
 
-async function mutate(base: string, head: string, extra: { maxLines?: number; revision?: boolean } = {}) {
+async function mutate(
+	base: string,
+	head: string,
+	extra: { maxLines?: number; revision?: boolean; trustedWriter?: boolean; policyCommit?: string } = {},
+) {
 	const revision = await revisionOf(base, head);
 	return runStaticTool(
 		{
@@ -159,6 +163,8 @@ async function mutate(base: string, head: string, extra: { maxLines?: number; re
 			base,
 			commit: head,
 			tool: "mutation",
+			trustedWriter: extra.trustedWriter,
+			policyCommit: extra.policyCommit,
 			settings: {
 				...defaultConfig.static.mutation,
 				timeout: 120,
@@ -257,7 +263,7 @@ describe("static.mutation", { timeout: 60_000 }, () => {
 		);
 	});
 
-	it("runs Stryker once, in the head's worktree, with the changed lines, a JSON report, and the incremental file in scratch", async () => {
+	it("runs Stryker once, in the head's worktree, with the changed lines, a JSON report, and the incremental file in the repository cache", async () => {
 		const { base, head } = twoCommits();
 		const fake = stryker({ report: report({}) });
 		const result = await mutate(base, head);
@@ -271,12 +277,51 @@ describe("static.mutation", { timeout: 60_000 }, () => {
 		expect(run).toContain("--incremental");
 		expect(run).toContain("--inPlace");
 		expect(flag("--mutate")).toBe("packages/p/src/a.ts:2-2");
-		expect(flag("--incrementalFile")).toBe(`${cwd.replace(/\/tree$/, "")}/incremental.json`);
+		expect(flag("--incrementalFile")).toMatch(
+			new RegExp(`^${repo}/\\.git/melian/mutation/[a-f0-9]{64}/incremental\\.json$`),
+		);
 		expect(result.log.runs[0].tool.driver).toEqual({ name: "Stryker", version: "10.0.0" });
 		expect(result.baseLog?.runs).toEqual([{ tool: { driver: { name: "Stryker", version: "10.0.0" } }, results: [] }]);
 		expect(result.notes).toContain("Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.");
 		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
 		expect(gitIn(repo, "status", "--porcelain", "--untracked-files=no")).toBe("");
+	});
+
+	it("lets a second sandboxed run read the first run's incremental identities", async () => {
+		const { base, head } = twoCommits();
+		const reads = join(artifacts, "incremental-reads.txt");
+		fakeTool(
+			repo,
+			"stryker",
+			`
+if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--incrementalFile" ]; then shift; incremental="$1"; fi
+  shift
+done
+if [ -e "$incremental" ]; then cat "$incremental" >> '${reads}'; fi
+printf '%s' '{"schemaVersion":"1.0","files":{}}' > "$incremental"
+mkdir -p reports/mutation
+cp "$incremental" reports/mutation/mutation.json`,
+		);
+		await mutate(base, head);
+		expect(existsSync(reads)).toBe(false);
+		await mutate(base, head);
+		expect(readFileSync(reads, "utf8")).toBe('{"schemaVersion":"1.0","files":{}}');
+	});
+
+	it("keeps an untrusted writer's incremental file away from a trusted run", async () => {
+		const { base, head } = twoCommits();
+		const fake = stryker({ report: report({}) });
+		await mutate(base, head, { trustedWriter: false });
+		const first = argumentsOf(fake.calls()[0]!).flag("--incrementalFile")!;
+		writeFileSync(first, "{corrupt-untrusted");
+		await mutate(base, head, { trustedWriter: true });
+		const second = argumentsOf(fake.calls()[1]!).flag("--incrementalFile")!;
+		expect(second).not.toBe(first);
+		expect(readFileSync(first, "utf8")).toBe("{corrupt-untrusted");
+		await mutate(base, head, { trustedWriter: true, policyCommit: head });
+		expect(argumentsOf(fake.calls()[2]!).flag("--incrementalFile")).not.toBe(second);
 	});
 
 	it("runs Stryker with a home and a temporary directory in scratch, and with none of the Melian process's variables", async () => {

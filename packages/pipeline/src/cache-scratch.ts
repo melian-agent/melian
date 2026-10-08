@@ -9,7 +9,7 @@ export class CacheScratch {
 	}
 	static async open(root: string): Promise<CacheScratch> {
 		const scratch = new CacheScratch(root);
-		for (const name of ["tools", "graphs", "coverage"]) await scratch.#sweep(join(scratch.root, name), 0);
+		for (const name of ["tools", "graphs", "coverage", "mutation"]) await scratch.#sweep(join(scratch.root, name), 0);
 		return scratch;
 	}
 	async directory(parent: string, kind: "fetch" | "graph"): Promise<string> {
