@@ -9,10 +9,12 @@ import {
 	type Verification,
 	VerificationState,
 } from "@melian-agent/core";
+import { RecordedDecider } from "@melian-agent/decisions";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
 	createReviewRegistry,
+	decisionExtension,
 	defineTask,
 	type Harness,
 	lensExtension,
@@ -147,6 +149,172 @@ function scripts(verdict: Verification["verdict"] = "confirmed") {
 		},
 	]);
 }
+
+describe("finder family notices", () => {
+	beforeEach(async () => {
+		await harness.close(context);
+		fake = createFakeModels({
+			models: [
+				{ id: "finder", name: "GPT Finder" },
+				{ id: "claude", name: "Claude Opus" },
+				{ id: "gpt-5.6-terra", name: "GPT-5.6 Terra" },
+			],
+		});
+		harness = await openHarness(createMemoryStorage(), {
+			models: fake.models,
+			registry,
+			settings: { retry: { enabled: false } },
+		});
+		await harness.root(context, { agent: { model: fake.ref("finder") } });
+	});
+
+	async function routing(accepted: boolean) {
+		const terra = `${fake.ref("gpt-5.6-terra").provider}/gpt-5.6-terra`;
+		const claude = `${fake.ref("claude").provider}/claude`;
+		const config = {
+			...defaultConfig,
+			tiers: { full: lenses.map((lens) => `lens.${lens.name}`) },
+			stages: { "pull-request": "full" },
+			models: {
+				medium: { model: `${fake.ref("finder").provider}/finder` },
+				heavy: { model: claude },
+				verifier: { model: terra, fallbacks: [] },
+			},
+		};
+		const plan = ReviewPlan.resolve({
+			...(await planInputs(fake.review)),
+			config,
+			lenses,
+			checks: config.tiers.full,
+			routes: {
+				committed: {
+					...config.models,
+					verifier: { model: claude, accept: accepted ? [claude, terra] : [claude] },
+				},
+				overridden: { verifier: "melian.local.yaml" },
+				lensTiers: {},
+				retiered: {},
+			},
+		});
+		return { config, plan, terra };
+	}
+
+	it.each([true, false])("reports a carried quick finder's family after escalation, accepted %s", async (accepted) => {
+		const decider = new RecordedDecider({
+			triage: { version: "1", answers: { correctness: { distribution: { quick: 1 } } } },
+		});
+		registry.install(decisionExtension(decider));
+		const { config, plan, terra } = await routing(accepted);
+		const verifierRoute = vi.spyOn(plan, "verifierRoute");
+		const requests = scriptConversations(fake, [
+			{
+				match: lenses[0]!.instructions,
+				replies: [
+					(_messages, model) => {
+						expect(model).toBe("finder");
+						return fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" });
+					},
+					fauxAssistantMessage("Done."),
+					(_messages, model) => {
+						expect(model).toBe("claude");
+						return fauxAssistantMessage("Done.");
+					},
+				],
+			},
+		]);
+		const result = await reviewChangeset({
+			harness,
+			checks: [],
+			changeset,
+			lenses,
+			standards: [],
+			models: fake.review,
+			config,
+			plan,
+			decider,
+		});
+		expect(result.verdict.ran).toContainEqual(
+			expect.objectContaining({
+				name: "lens.correctness",
+				level: "careful",
+				reason: expect.stringContaining("which careful neither restated nor refuted"),
+			}),
+		);
+		expect(result.findings).toHaveLength(1);
+		expect(result.findings[0]!.properties.source.version).toBe(`${lenses[0]!.version}@quick`);
+		expect(result.findings[0]!.properties.verification).toMatchObject({ verdict: "confirmed", model: terra });
+		expect(requests[verifierMarker]).toHaveLength(2);
+		expect(verifierRoute).toHaveBeenCalledWith(`${fake.ref("finder").provider}/finder`);
+		const text = accepted
+			? "the verifier shares the finder's family by the maintainer's choice"
+			: "some verification candidates would be judged by their finder's own family";
+		expect(plan.lines()).toContainEqual({ state: accepted ? "ok" : "warn", text });
+		expect(plan.warnings().includes(text)).toBe(!accepted);
+	});
+
+	it.each([true, false])(
+		"reports a merged unverified speaker's family from another lens, accepted %s",
+		async (accepted) => {
+			const verified = lenses[0]!;
+			lenses.push(
+				Lens.from({
+					...verified.toJSON(),
+					name: "unverified",
+					version: "unverified",
+					instructions: "Unverified finder",
+					rules: [{ id: "unverified-rule", description: "Same failure." }],
+					levels: { careful: { ...verified.level("careful"), tier: "medium", verify: false } },
+				}),
+			);
+			const { config, plan, terra } = await routing(accepted);
+			const verifierRoute = vi.spyOn(plan, "verifierRoute");
+			const requests = scriptConversations(
+				fake,
+				lenses.map((lens) => ({
+					match: lens.instructions,
+					replies: [
+						fauxAssistantMessage(
+							fauxToolCall("report_finding", {
+								...crashFinding,
+								rule: lens.rules[0]!.id,
+								severity: lens.name === "unverified" ? "P0" : "P1",
+							}),
+							{ stopReason: "toolUse" },
+						),
+						fauxAssistantMessage("Done."),
+					],
+				})),
+			);
+			const result = await reviewChangeset({
+				harness,
+				checks: [],
+				changeset,
+				lenses,
+				standards: [],
+				models: fake.review,
+				config,
+				plan,
+			});
+			const speaker = result.verdict.attention()[0]!;
+			expect(result.verdict.attention()).toHaveLength(1);
+			expect(speaker.properties.source).toEqual({ check: "lens.unverified", version: "unverified@careful" });
+			expect(
+				VerificationState.from(speaker)
+					.claims.map((claim) => claim.source.check)
+					.sort(),
+			).toEqual(["lens.correctness", "lens.unverified"]);
+			expect(speaker.properties.verification).toMatchObject({ verdict: "confirmed", model: terra });
+			expect(requests[verifierMarker]).toHaveLength(2);
+			expect(verifierRoute).toHaveBeenCalledWith(`${fake.ref("finder").provider}/finder`);
+			expect(systemPromptOf(requests[verifierMarker]![0]!)).toContain("Claim c2 finding");
+			const text = accepted
+				? "the verifier shares the finder's family by the maintainer's choice"
+				: "some verification candidates would be judged by their finder's own family";
+			expect(plan.lines()).toContainEqual({ state: accepted ? "ok" : "warn", text });
+			expect(plan.warnings().includes(text)).toBe(!accepted);
+		},
+	);
+});
 
 describe("the verifier", () => {
 	it.each([true, false])(

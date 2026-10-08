@@ -571,10 +571,8 @@ export class ReviewPlan {
 				});
 			if (this.refusal("verifier") !== undefined)
 				verification.push({ state: "warn", text: `verifier fails: ${this.refusal("verifier")}` });
-			const verifying = new Set(
-				this.lenses.flatMap((lens) => lens.levels.filter(({ verify }) => verify !== false).map(({ tier }) => tier)),
-			);
-			const finders = [...verifying].flatMap((tier) => this.tier(tier).models);
+			const verifying = this.lenses.some((lens) => lens.levels.some(({ verify }) => verify !== false));
+			const finders = verifying ? [...this.used(true).keys()].flatMap((tier) => this.tier(tier).models) : [];
 			const sameFamily = finders.filter((finder) =>
 				this.verifierRoute(finder.model).every((model) => model.family === finder.family),
 			);

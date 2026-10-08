@@ -770,10 +770,33 @@ describe("verifier routing", () => {
 		expect(ReviewPlan.from(resolved.toJSON()).lines()).toContainEqual({ state: accepted ? "ok" : "warn", text });
 	});
 
-	it("excludes an unverified non-default level from same-family messages", () => {
+	it("includes an unverified non-default level among potential finders", () => {
 		const resolved = plan(
 			{ heavy: { model: opus }, medium: { model: gpt }, verifier: { model: gpt } },
 			{ anthropic: "key", openai: "key" },
+		);
+		expect(resolved.lines()).toContainEqual({
+			state: "ok",
+			text: "the verifier shares the finder's family by the maintainer's choice",
+		});
+	});
+
+	it("omits family messages when no selectable level verifies", () => {
+		const unverified = lenses.map((lens) =>
+			Lens.from({
+				...lens.toJSON(),
+				levels: {
+					...Object.fromEntries(
+						lens.declaredLevels().map((level) => [level, { ...lens.level(level), verify: false }]),
+					),
+					careful: { ...lens.level("careful"), verify: false },
+				},
+			}),
+		);
+		const resolved = plan(
+			{ heavy: { model: gpt }, medium: { model: gpt }, verifier: { model: gpt } },
+			{ openai: "key" },
+			{ lenses: unverified },
 		);
 		expect(resolved.lines().filter(({ text }) => text.includes("family"))).toEqual([]);
 	});
