@@ -690,6 +690,26 @@ describe("a resolved plan", () => {
 });
 
 describe("verifier routing", () => {
+	it.each([true, false])("judges a same-family Codex override against policy acceptance %s", (accepted) => {
+		const terra = "openai-codex/gpt-5.6-terra";
+		const resolved = plan(
+			{ heavy: { model: gpt }, verifier: { model: opus, accept: accepted ? [opus, terra] : [opus] } },
+			{ openai: "key", "openai-codex": "Pi login" },
+			{
+				preferences: { verifier: { model: terra, fallbacks: [] } },
+				catalog: [...catalog, model("openai-codex", "gpt-5.6-terra", "GPT-5.6 Terra", 2, 10)],
+			},
+		);
+		expect(resolved.verifierLineage(terra)?.outside).toBe(!accepted);
+		const notice = "the verifier shares the finder's family by the maintainer's choice";
+		expect(resolved.lines()).toContainEqual({
+			state: accepted ? "ok" : "warn",
+			text: accepted ? notice : familyWarning,
+		});
+		expect(resolved.summary()).toContain(`Plan: ${accepted ? notice : familyWarning}\n`);
+		expect(resolved.warnings().includes(familyWarning)).toBe(!accepted);
+	});
+
 	it("recognises Bedrock and OpenRouter Claude names and puts GPT first", () => {
 		const resolved = plan(
 			{
@@ -708,13 +728,17 @@ describe("verifier routing", () => {
 		expect(resolved.lines().some((line) => line.text.includes("(gpt)"))).toBe(true);
 	});
 
-	it("keeps a single-family route in order and warns", () => {
+	it("keeps an accepted single-family route in order and prints a notice", () => {
 		const resolved = plan(
 			{ heavy: { model: opus }, verifier: { model: opus, fallbacks: ["anthropic/claude-sonnet-5-5"] } },
 			{ anthropic: "key" },
 		);
 		expect(resolved.verifierRoute(opus).map((model) => model.model)).toEqual([opus, "anthropic/claude-sonnet-5-5"]);
-		expect(resolved.warnings()).toContain(familyWarning);
+		expect(resolved.warnings()).not.toContain(familyWarning);
+		expect(resolved.lines()).toContainEqual({
+			state: "ok",
+			text: "the verifier shares the finder's family by the maintainer's choice",
+		});
 	});
 
 	it("falls back heavy then medium then light, another family first, with lineage", () => {

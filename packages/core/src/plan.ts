@@ -501,10 +501,12 @@ export class ReviewPlan {
 	 */
 	warnings(): string[] {
 		// Model and file names come from a melian.yaml in the working tree, which a change may write.
-		return this.warningsUnescaped().map(visibleText);
+		return this.messages()
+			.filter(({ state }) => state === "warn")
+			.map(({ text }) => text);
 	}
 
-	private warningsUnescaped(): string[] {
+	private messages(): PlanLine[] {
 		const used = this.used();
 		const moved = this.lenses.flatMap((lens): string[] => {
 			const entry = lens.levels.find(({ level }) => level === defaultScrutinyLevel);
@@ -541,23 +543,38 @@ export class ReviewPlan {
 				`${tier} runs ${model}, which the committed route accepts, since ${planned.wanted} has no credentials`,
 			];
 		});
-		const verification: string[] = [];
+		const verification: PlanLine[] = [];
 		if (this.lenses.length > 0) {
 			const own = this.tier("verifier");
 			if (own.status === "unrouted")
-				verification.push(
-					"lenses verify, but the verifier tier routes no model of its own; verification falls back to lens tiers, heavy then medium then light",
-				);
-			if (this.refusal("verifier") !== undefined) verification.push(`verifier fails: ${this.refusal("verifier")}`);
+				verification.push({
+					state: "warn",
+					text: "lenses verify, but the verifier tier routes no model of its own; verification falls back to lens tiers, heavy then medium then light",
+				});
+			if (this.refusal("verifier") !== undefined)
+				verification.push({ state: "warn", text: `verifier fails: ${this.refusal("verifier")}` });
 			const finders = [...used.keys()].flatMap((tier) => this.tier(tier).models);
 			if (
 				this.refusal("verifier") === undefined &&
 				finders.length > 0 &&
 				finders.every((finder) => this.verifierRoute(finder.model).every((model) => model.family === finder.family))
-			)
-				verification.push("every verification candidate would be judged by its finder's own family");
+			) {
+				const accepted =
+					own.status === "routed" &&
+					finders.every((finder) =>
+						this.verifierRoute(finder.model).every((model) => own.accept?.includes(model.model) === true),
+					);
+				verification.push({
+					state: accepted ? "ok" : "warn",
+					text: accepted
+						? "the verifier shares the finder's family by the maintainer's choice"
+						: "every verification candidate would be judged by its finder's own family",
+				});
+			}
 		}
-		return [...tiers, ...moved, ...verification];
+		return [...[...tiers, ...moved].map((text): PlanLine => ({ state: "warn", text })), ...verification].map(
+			(line) => ({ ...line, text: visibleText(line.text) }),
+		);
 	}
 
 	private static lineageText({ wanted, by, moved, outside, model }: CheckLineage): string {
@@ -609,14 +626,14 @@ export class ReviewPlan {
 		for (const [levels, names] of groups) {
 			lines.push({ state: "ok", text: visibleText(`${listed(names)}: ${levels}`) });
 		}
-		for (const warning of this.warnings()) lines.push({ state: "warn", text: warning });
+		lines.push(...this.messages());
 		return lines;
 	}
 
 	/** The warnings a review prints beside its verdict, one per line, or the empty string when there are none. */
 	summary(): string {
-		return this.warnings()
-			.map((warning) => `Plan: ${warning}\n`)
+		return this.messages()
+			.map(({ text }) => `Plan: ${text}\n`)
 			.join("");
 	}
 
