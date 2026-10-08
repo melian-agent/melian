@@ -396,6 +396,54 @@ describe.each(goldens.map((golden): [string, Golden] => [golden.name, golden]))(
 );
 
 describe("runGolden", () => {
+	it("excludes refuted findings from the run and its recall", { timeout: 60_000 }, async () => {
+		const golden = goldens.find((each) => each.name === "correctness-null-deref")!;
+		const confirmed = await runGolden(golden, { kind: "scripted" });
+		expect(confirmed.toolMismatches).toEqual([]);
+		expect(confirmed.findings).toHaveLength(1);
+		expect(confirmed.findings[0]!.properties.verification?.verdict).toBe("confirmed");
+		expect(scoreGolden(golden, confirmed.findings)).toMatchObject({ reported: 1, recall: 1 });
+		const scriptLenses = testing.scriptLenses;
+		let requests: ReturnType<typeof scriptLenses> = {};
+		const scripted = vi.spyOn(testing, "scriptLenses").mockImplementation((fake, lenses, script, mismatches) => {
+			requests = scriptLenses(
+				fake,
+				lenses,
+				{
+					...script,
+					verifier: {
+						[confirmed.findings[0]!.id]: {
+							verdict: "refuted",
+							reason: "The scripted judge rejects the planted claim.",
+							evidence: [{ file: "src/user.ts", line: 7, role: "context" }],
+						},
+					},
+				},
+				mismatches,
+			);
+			return requests;
+		});
+		try {
+			const refuted = await runGolden(golden, { kind: "scripted" });
+			expect(refuted.toolMismatches).toEqual([]);
+			expect(
+				Object.values(requests)
+					.flat(2)
+					.filter((message) => message.role === "assistant")
+					.flatMap((message) => message.content),
+			).toContainEqual(
+				expect.objectContaining({
+					type: "toolCall",
+					name: "report_verdict",
+					arguments: expect.objectContaining({ verdict: "refuted" }),
+				}),
+			);
+			expect.soft(refuted.findings).toEqual([]);
+			expect.soft(scoreGolden(golden, refuted.findings)).toMatchObject({ reported: 0, recall: 0 });
+		} finally {
+			scripted.mockRestore();
+		}
+	});
 	it("loads a folder's lens for a file the change moves out of that folder, as the CLI does", async () => {
 		const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-golden-rename-")));
 		const lens = [
