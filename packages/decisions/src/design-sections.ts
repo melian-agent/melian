@@ -36,7 +36,7 @@ export class DesignSections {
 		for (const node of nodes.filter((node) => node.type === "link" || node.type === "linkReference")) {
 			const target = node.type === "link" ? node.url : definitions.get(node.identifier)!;
 			const destination = target.split(/[?#]/, 1)[0]!;
-			if (destination.includes(":")) continue;
+			if (destination.includes(":") || destination.startsWith("//")) continue;
 			let section: string;
 			try {
 				section = decodeURIComponent(destination);

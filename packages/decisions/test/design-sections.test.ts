@@ -92,6 +92,8 @@ describe("base design vocabulary", () => {
 		"design.md#writer-trust",
 		"https://example.com/design/missing.md#policy",
 		"https://example.com/design/missing%ZZ.md#policy",
+		"//example.com/design/missing.md#policy",
+		"//example.com/design/missing%ZZ.md#policy",
 		"missing.md",
 		"design/missing.txt#policy",
 	])("keeps the design headings without reading a section for %s", async (target) => {
