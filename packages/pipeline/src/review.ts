@@ -1911,9 +1911,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const allRuns = runsOf(ran.lenses);
 	const candidates: VerificationCandidate[] = [];
 	const designRules = new Set(
-		(await Lens.load(repoRoot, { kind: "revision", commit: base }, []))
-			.find((lens) => lens.name === "design")!
-			.rules.map((rule) => rule.id),
+		(await Lens.builtins())
+			.filter((lens) => lens.name === "design")
+			.flatMap((lens) => lens.rules.map((rule) => rule.id)),
 	);
 	let decisionsAtBase: string | undefined;
 	for (const defect of new Merge(storedFindings, configFor).defects()) {

@@ -3506,6 +3506,31 @@ describe("code over 2 KiB, which a finding stores cut", () => {
 });
 
 describe("the design baseline", () => {
+	it("loads no base lenses or decisions when there is no verification candidate", async () => {
+		config = { ...config, tiers: { ...config.tiers, full: ["lens.correctness"] } };
+		const loaded = vi.spyOn(Lens, "load");
+		const decisions = vi.spyOn(DecisionFiles, "load");
+		scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
+		expect((await reviewed()).verdict.status).toBe("passed");
+		expect(loaded).not.toHaveBeenCalled();
+		expect(decisions).not.toHaveBeenCalled();
+	});
+	it("reviews a repaired head lens without reloading its invalid base definition", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		const lens = (name: string) => lines("---", `name: ${name}`, "extends: correctness", "---", "Find defects.");
+		repo = baseAndHead(
+			{ ".melian/lenses/custom/LENS.md": lens("wrong-name"), "src/answer.ts": "export const answer = 42;\n" },
+			{ ".melian/lenses/custom/LENS.md": lens("custom"), "src/answer.ts": "export const answer = 43;\n" },
+		);
+		config = { ...config, tiers: { ...config.tiers, full: ["lens.correctness"] } };
+		lenses = await Lens.load(repo, { kind: "worktree" }, ["src/answer.ts"]);
+		const loaded = vi.spyOn(Lens, "load");
+		const decisions = vi.spyOn(DecisionFiles, "load");
+		scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
+		expect((await reviewed()).verdict.status).toBe("passed");
+		expect(loaded).not.toHaveBeenCalled();
+		expect(decisions).not.toHaveBeenCalled();
+	});
 	it("fingerprints bounded base headings and quotes them as data", async () => {
 		rmSync(repo, { recursive: true, force: true });
 		repo = baseAndHead(

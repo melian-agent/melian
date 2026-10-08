@@ -9,6 +9,7 @@ import {
 	type Verification,
 	VerificationState,
 } from "@melian-agent/core";
+import { DecisionFiles } from "@melian-agent/decisions";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -155,12 +156,17 @@ describe("the verifier", () => {
 		const first = lenses[0]!;
 		lenses = [Lens.from({ ...first.toJSON(), name, rules: [{ id: rule, description: "Planted rule." }] })];
 		const requests = scripts();
+		const decisions = vi.spyOn(DecisionFiles, "load");
+		const baseLenses = vi.spyOn(Lens, "load");
 		await review();
+		expect(baseLenses).not.toHaveBeenCalled();
 		const instructions = systemPromptOf(requests[verifierMarker]![0]!);
 		if (name === "design" || rule === "fail-open-default") {
+			expect(decisions).toHaveBeenCalledWith(repo, changeset.revision.base);
 			expect(instructions).toContain("## Decisions at base");
 			expect(instructions).toMatch(/label="listing"/);
 		} else {
+			expect(decisions).not.toHaveBeenCalled();
 			expect(instructions).not.toContain("## Decisions at base");
 		}
 	});

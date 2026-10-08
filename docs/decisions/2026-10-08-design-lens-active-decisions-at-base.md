@@ -18,7 +18,7 @@ Codex's medium finding on [pull request #93](https://github.com/melian-agent/mel
 
 ## Verification follows the base baseline
 
-The live investigation for [pull request #102](https://github.com/melian-agent/melian/pull/102) found the design lens reporting the trust defect correctly. The verifier refuted it because the head superseded its own decision. Verification now receives the active-base index for design-source claims and claims under a design rule. It judges whether the base reason still holds. A head decision that documents a weakening cannot excuse it. A scripted verifier golden requires the rule and base context, and retains this defect as confirmed.
+The live investigation for [pull request #102](https://github.com/melian-agent/melian/pull/102) found the design lens reporting the trust defect correctly. The verifier refuted it because the head superseded its own decision. Verification now receives the active-base index for design-source claims and claims under a design rule. The rule catalogue comes from shipped lenses, without reloading repository lenses at base. Only a design verification candidate triggers the verifier’s base-decision read. It judges whether the base reason still holds. A head decision that documents a weakening cannot excuse it. A scripted verifier golden requires the rule and base context, and retains this defect as confirmed.
 
 ## Scoring follows adjudication
 

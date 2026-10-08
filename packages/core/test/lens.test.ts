@@ -61,6 +61,15 @@ function named(lenses: readonly Lens[], name: string): Lens[] {
 const builtins = ["contracts", "conventions", "correctness", "design", "removed-behaviour", "tests", "trust-boundary"];
 
 describe("built-in lenses", () => {
+	it("loads the shipped catalogue without repository definitions", async () => {
+		writeFiles(repo, { ".melian/lenses/custom/LENS.md": "not a lens" });
+		const lenses = await Lens.builtins();
+		expect(lenses.map((lens) => lens.name)).toEqual(builtins);
+		expect(lenses.every((lens) => lens.file === `builtin:${lens.name}`)).toBe(true);
+		expect(lenses.find((lens) => lens.name === "design")!.rules.map((rule) => rule.id)).toContain(
+			"fail-open-default",
+		);
+	});
 	it("load correctness and contracts with their declared rules", async () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, ["src/index.ts"]);
 		expect(lenses.map((lens) => lens.name)).toEqual(builtins);
