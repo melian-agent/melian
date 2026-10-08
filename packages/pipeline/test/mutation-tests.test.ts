@@ -103,7 +103,12 @@ it("runs a related test through the Stryker Vitest configuration without collect
 				encoding: "utf8",
 				stdio: "pipe",
 				timeout: 30_000,
-				env: { PATH: process.env.PATH, TMPDIR: root, MELIAN_MUTATION_TEST_INCLUDE: join(root, "include.json") },
+				env: {
+					PATH: process.env.PATH,
+					HOME: root,
+					TMPDIR: root,
+					MELIAN_MUTATION_TEST_INCLUDE: join(root, "include.json"),
+				},
 			},
 		);
 		expect(output).toContain("1 passed");

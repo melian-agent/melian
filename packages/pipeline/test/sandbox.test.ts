@@ -214,6 +214,37 @@ describe.skipIf(Sandbox.detect("darwin") === undefined)("seatbelt", { timeout: 6
 	});
 });
 
+it.skipIf(Sandbox.detect("darwin") === undefined)(
+	"requires a scratch HOME for a child with an otherwise empty environment inside seatbelt",
+	{ timeout: 60_000 },
+	async () => {
+		const sandbox = Sandbox.detect("darwin") as Sandbox;
+		const where = paths();
+		const file = join(where.scratch, "sandbox.sb");
+		writeFileSync(file, sandbox.profile(where)!);
+		const home = join(where.scratch, "home");
+		writeFileSync(
+			join(where.worktree, "home.cjs"),
+			`
+const { spawnSync } = require("node:child_process");
+const args = ["-e", "console.log(require('node:os').homedir())"];
+const absent = spawnSync(process.execPath, args, { env: {}, encoding: "utf8" });
+const present = spawnSync(process.execPath, args, { env: { HOME: process.argv[2] }, encoding: "utf8" });
+console.log(JSON.stringify({ absent: { status: absent.status, stderr: absent.stderr }, present: { status: present.status, stdout: present.stdout, stderr: present.stderr } }));
+`,
+		);
+		const inner = `${JSON.stringify(process.execPath)} home.cjs ${JSON.stringify(home)}`;
+		const { stdout } = await run("/bin/bash", ["-c", sandbox.command(inner, where, file)], {
+			timeout: 30_000,
+			env: { ...sandbox.environment(), HOME: home, TMPDIR: where.scratch },
+		});
+		expect(JSON.parse(stdout)).toEqual({
+			absent: { status: 1, stderr: expect.stringContaining("uv_os_homedir returned ENOENT") },
+			present: { status: 0, stdout: `${home}\n`, stderr: "" },
+		});
+	},
+);
+
 describe.skipIf(Sandbox.detect("linux") === undefined)("bubblewrap", { timeout: 60_000 }, () => {
 	it("denies the reviewer's home and the network, and allows writes under scratch only", async () => {
 		const sandbox = Sandbox.detect("linux") as Sandbox;
