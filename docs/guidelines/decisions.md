@@ -37,4 +37,4 @@ The design lens also receives a base index of headings and line numbers from doc
 
 A closing fence must use the opening marker, be at least as long, and have only spaces or tabs after it. Trailing text keeps the fence open. A backtick opening fence cannot contain a backtick in its info string. CRLF endings follow the same rules.
 
-Supersedes targets resolve against the declaring file’s directory. A docs/decisions-prefixed target keeps its repository-relative path. Nested files with the same dated basename therefore remain distinct.
+Markdown Supersedes links supply their destinations only; dated filenames in display text create no edges. Bare filenames outside links remain targets. Supersedes targets resolve against the declaring file’s directory. A docs/decisions-prefixed target keeps its repository-relative path. Nested files with the same dated basename therefore remain distinct.

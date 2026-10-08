@@ -29,7 +29,8 @@ export class DecisionFile {
 		const title = /^# (.+)$/m.exec(content)?.[1] ?? path;
 		const targets = [...content.matchAll(/^Supersedes:[ \t]*([^\n]*)$/gm)].flatMap(([_, line]) => {
 			if (/^(?:none|no decision file)\b/i.test(line!)) return [];
-			return [...line!.matchAll(/(?:\]\()?((?:[\w.-]+\/)*\d{4}-\d{2}-\d{2}-[\w-]+\.md)/g)].map(([_, target]) =>
+			const destinations = line!.replace(/\[[^\]]*\]\(([^)]*)\)/g, "$1");
+			return [...destinations.matchAll(/((?:[\w.-]+\/)*\d{4}-\d{2}-\d{2}-[\w-]+\.md)/g)].map(([_, target]) =>
 				target!.startsWith("docs/decisions/") ? posix.normalize(target!) : posix.join(posix.dirname(path), target!),
 			);
 		});

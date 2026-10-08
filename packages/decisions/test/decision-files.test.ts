@@ -32,6 +32,20 @@ describe("written decisions", () => {
 		expect(parse(nestedB, "# B\nSupersedes: ../2026-10-01-a.md").supersedes).toEqual([a]);
 		expect(parse(b, "# B\nSupersedes: nested/2026-10-01-a.md").supersedes).toEqual([nestedA]);
 	});
+	it("uses a Markdown link’s destination without superseding its dated display name", () => {
+		const nestedA = "docs/decisions/nested/2026-10-01-a.md";
+		const successor = parse(b, "# B\nSupersedes: [2026-10-01-a.md](nested/2026-10-01-a.md)");
+		expect(successor.supersedes).toEqual([nestedA]);
+		expect(DecisionFiles.from([parse(nestedA, "# Nested A"), successor]).render()).toContain(
+			`[INACTIVE; superseded by ${b}] ${nestedA} — Nested A`,
+		);
+		expect(DecisionFiles.from([parse(a, "# Root A"), parse(nestedA, "# Nested A"), successor]).render()).toContain(
+			`[ACTIVE] ${a} — Root A`,
+		);
+		expect(
+			parse(c, "# C\nSupersedes: [2026-10-01-a.md](nested/2026-10-01-a.md), 2026-10-02-b.md").supersedes,
+		).toEqual([nestedA, b]);
+	});
 	it("does not supersede a contextual link after an explicit absence declaration", () => {
 		for (const declaration of ["none.", "no decision file.", "None."])
 			expect(parse(b, `# B\nSupersedes: ${declaration} Context: [A](2026-10-01-a.md).\n`).supersedes).toEqual([]);
