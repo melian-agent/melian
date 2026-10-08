@@ -286,6 +286,40 @@ describe("base design vocabulary", () => {
 			removeDirectory(repo);
 		}
 	});
+	it.each([
+		{
+			name: "Setext",
+			content: "Design\n======\n\nWriter trust\n------------\nOnly signed writers are trusted.\n",
+			rows: ["1 — Design", "4 — Writer trust"],
+		},
+		{
+			name: "indented ATX",
+			content: " # Design\n  ## Writer trust\n   ### Signed markers\n",
+			rows: ["1 — Design", "2 — Writer trust", "3 — Signed markers"],
+		},
+		{
+			name: "formatted ATX",
+			content: "## Writer *trust* and `signed` [markers](policy.md) ##\n",
+			rows: ["1 — Writer trust and signed markers"],
+		},
+		{
+			name: "CRLF Setext",
+			content: "Design\r\n======\r\n\r\nWriter trust\r\n------------\r\n",
+			rows: ["1 — Design", "4 — Writer trust"],
+		},
+		{ name: "nested heading", content: "> ## Writer trust\n", rows: ["1 — Writer trust"] },
+		{ name: "empty heading", content: "#\n", rows: ["1 — "] },
+		{ name: "prose and indented code", content: "ordinary prose\n\n    ## Example\n\n\\# Escaped\n", rows: [] },
+		{
+			name: "fenced Setext example",
+			content: "```md\nWriter trust\n------------\n```\n\nReal policy\n-----------\n",
+			rows: ["6 — Real policy"],
+		},
+	])("indexes CommonMark $name headings at their source lines", ({ content, rows }) => {
+		expect(DesignSections.from([{ path: "docs/design.md", content }]).render()).toBe(
+			rows.map((row) => `docs/design.md:${row}`).join("\n"),
+		);
+	});
 	it("keeps headings and line numbers, excluding examples and ordinary prose", () => {
 		const rendered = DesignSections.from([
 			{

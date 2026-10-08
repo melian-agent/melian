@@ -11,26 +11,6 @@ function markdownNodes(node: Nodes): Nodes[] {
 	return [node, ...("children" in node ? node.children.flatMap(markdownNodes) : [])];
 }
 
-function proseLines(content: string): string[] {
-	let fence: string | undefined;
-	return content.split("\n").map((rawLine) => {
-		const line = rawLine.replace(/\r$/, "");
-		const match = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
-		const marker = match?.[1];
-		if (marker !== undefined) {
-			const info = match![2]!;
-			if (fence === undefined) {
-				if (marker[0] === "`" && info.includes("`")) return line;
-				fence = marker;
-			} else if (marker[0] === fence[0] && marker.length >= fence.length && /^[ \t]*$/.test(info)) {
-				fence = undefined;
-			}
-			return "";
-		}
-		return fence === undefined ? line : "";
-	});
-}
-
 /** Base vocabulary from the design and the local sections it links. */
 export class DesignSections {
 	readonly #rows: readonly string[];
@@ -84,9 +64,12 @@ export class DesignSections {
 	static from(files: readonly { path: string; content: string }[]): DesignSections {
 		const rows: string[] = [];
 		for (const file of files) {
-			for (const [index, line] of proseLines(file.content).entries()) {
-				const heading = /^#{1,6}[ \t]+(.+)$/.exec(line)?.[1];
-				if (heading !== undefined) rows.push(visibleText(`${file.path}:${index + 1} — ${heading}`));
+			for (const node of markdownNodes(fromMarkdown(file.content)).filter((node) => node.type === "heading")) {
+				const heading = markdownNodes(node).reduce(
+					(text, part) => ("value" in part ? text + part.value : text),
+					"",
+				);
+				rows.push(visibleText(`${file.path}:${node.position!.start.line} — ${heading}`));
 			}
 		}
 		return new DesignSections(rows);
