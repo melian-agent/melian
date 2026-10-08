@@ -305,6 +305,31 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		expect([canary, homeExists, tmpExists]).toEqual(["unset", "home-exists", "tmp-exists"]);
 	});
 
+	it("does not link the caches a tool writes into node_modules, so a write lands in the worktree, not the checkout", async () => {
+		const { base, head } = twoCommits();
+		const seen = join(artifacts, "modules.txt");
+		for (const directory of [".vite-temp", ".vite", ".cache", "pkg"])
+			mkdirSync(join(repo, "node_modules", directory), { recursive: true });
+		fakeTool(
+			repo,
+			"stryker",
+			`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+for entry in .bin pkg .vite-temp .vite .cache; do
+  if [ -L node_modules/$entry ]; then echo "$entry link"; elif [ -e node_modules/$entry ]; then echo "$entry directory"; else echo "$entry absent"; fi
+done > '${seen}'
+mkdir -p reports/mutation
+echo '{"files":{}}' > reports/mutation/mutation.json`,
+		);
+		await mutate(base, head);
+		expect(readFileSync(seen, "utf8").trimEnd().split("\n")).toEqual([
+			".bin link",
+			"pkg link",
+			".vite-temp absent",
+			".vite absent",
+			".cache absent",
+		]);
+	});
+
 	describe("the sandbox", () => {
 		const hostSandbox = Sandbox.detect();
 

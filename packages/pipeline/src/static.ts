@@ -270,6 +270,10 @@ async function binaryFor(run: Run, installed: string | undefined): Promise<strin
 	}
 }
 
+// Directories a tool writes into `node_modules` while it runs. Linked, their writes would land in the reviewer's checkout, and
+// the sandbox would refuse them; left out, the tool makes its own in the worktree.
+const cacheDirectories: ReadonlySet<string> = new Set([".cache", ".vite", ".vite-temp"]);
+
 // Links the checkout's installed dependencies into the worktree entry by entry. Problem: one link to the checkout's
 // node_modules made its workspace links, such as `node_modules/b -> ../packages/b`, resolve to the checkout's own
 // sources, so base and head type-checked against one tree. Solution: an entry that resolves inside the checkout, outside
@@ -287,6 +291,7 @@ async function linkDependencies(run: Run, root: string, scratch: string, notes: 
 		if (!listed.ok) return;
 		commands.push(`mkdir -p ${quote(to)}`);
 		for (const entry of listed.value) {
+			if (cacheDirectories.has(entry.name)) continue;
 			const source = posix.join(from, entry.name);
 			const target = posix.join(to, entry.name);
 			if (entry.kind === "directory" && entry.name.startsWith("@")) {
