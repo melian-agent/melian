@@ -229,8 +229,7 @@ describe("supervise", () => {
 			terminate: async (records) => {
 				order.push("terminate");
 				terminatedWith.push([...records]);
-				await new Promise((resolve) => setTimeout(resolve, 10));
-			recorded = true;
+				await Promise.resolve();
 			},
 			exit: (code) => {
 				order.push("exit");
