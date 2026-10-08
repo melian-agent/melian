@@ -1,0 +1,3 @@
+# Pull request 101: round four fix
+
+The commit following `9f97a9ad` on `step-14-followup`, `test(pipeline): prove verifier fallback credentials unlock before requests`, addresses finding `4c910e16dfa809ee` from [pull request #101](https://github.com/melian-agent/melian/pull/101). The new regression uses primary and fallback models on different fake providers and checks that both are unlocked before the first verifier request. Changing the unlock route to `candidate.route.slice(0, 1).map(...)` fails the provider-list assertion because `verifier-backup` is missing. The mutation was restored before validation.

@@ -77,7 +77,7 @@ async function review(
 	rerun = false,
 	plan?: ReviewPlan,
 	quick = false,
-	unlockModels?: () => Promise<void>,
+	unlockModels?: (providers: readonly string[]) => Promise<void>,
 ): Promise<Review> {
 	const finder = fake.ref("finder");
 	const judge = fake.ref("judge");
@@ -1057,6 +1057,41 @@ describe("the verifier", () => {
 		expect(rerunRequests[lenses[0]!.instructions]).toEqual([]);
 		expect(rerunRequests[verifierMarker]).toHaveLength(2);
 		expect(result.findings[0]!.properties.verification?.verdict).toBe("confirmed");
+		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
+	});
+	it("unlocks primary and cross-provider fallback credentials before the first verifier request", async () => {
+		const fallback = createFakeModels({ provider: "verifier-backup", models: [{ id: "backup" }] }, fake.review);
+		const finder = fake.ref("finder");
+		const judge = fake.ref("judge");
+		const backup = fallback.ref("backup");
+		const config = {
+			...defaultConfig,
+			models: {
+				heavy: { model: `${finder.provider}/${finder.modelId}` },
+				verifier: {
+					model: `${judge.provider}/${judge.modelId}`,
+					fallbacks: [`${backup.provider}/${backup.modelId}`],
+				},
+			},
+		};
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config,
+			catalog,
+			credentials,
+			lenses,
+			checks: ["lens.correctness"],
+			routes: { committed: config.models, overridden: {}, lensTiers: {}, retiered: {} },
+		});
+		const requests = scripts();
+		const verifierRequestsAtUnlock: number[] = [];
+		const unlock = vi.fn(async (_providers: readonly string[]) => {
+			verifierRequestsAtUnlock.push(requests[verifierMarker]!.length);
+		});
+		const result = await review(false, plan, false, unlock);
+		expect(unlock.mock.calls).toEqual([[[finder.provider]], [[judge.provider, backup.provider]]]);
+		expect(verifierRequestsAtUnlock).toEqual([0, 0]);
+		expect(requests[verifierMarker]).toHaveLength(2);
 		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
 	});
 	it("unlocks credentials before a new verification, and not for a repeat that attaches to a failed one", async () => {
