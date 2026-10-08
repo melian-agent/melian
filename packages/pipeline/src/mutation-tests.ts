@@ -17,17 +17,14 @@ function quote(value: string): string {
 	return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
-/** Tests whose resolved import closure reaches a changed production source. */
 export class MutationTests {
 	readonly #selection: MutationTestSelection;
 	private constructor(selection: MutationTestSelection) {
 		this.#selection = selection;
 	}
-	/** The selected dry run and its explanation, or a whole-suite fallback. */
 	toJSON(): MutationTestSelection {
 		return structuredClone(this.#selection);
 	}
-	/** Selects through a compiler program. Bounds and unreadable graphs keep the whole suite. */
 	static select(
 		program: ImportProgram,
 		changed: readonly string[],
@@ -74,7 +71,6 @@ export class MutationTests {
 		}
 	}
 
-	/** Runs the compiler in a child with a wall-clock timeout and heap bound; it never executes head configuration. */
 	static async open(run: Run, root: string, scratch: string, changed: readonly string[]): Promise<MutationTests> {
 		if (!(await run.exists(posix.join(root, "tsconfig.json"))))
 			return new MutationTests({ note: "Mutation dry run uses the whole suite: no root tsconfig.json." });

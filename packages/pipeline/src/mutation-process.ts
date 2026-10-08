@@ -222,7 +222,6 @@ function isRecorded(value: unknown): value is RecordedProcess {
 	return typeof record?.pid === "number" && typeof record.start === "string";
 }
 
-/** The processes a sandboxed command started: the ones to end when it is done, abandoned or retired. */
 export class MutationTree {
 	readonly record: MutationTreeRecord;
 	readonly processes: readonly RecordedProcess[];
@@ -232,7 +231,6 @@ export class MutationTree {
 		this.processes = processes;
 	}
 
-	/** Reads what the supervisor recorded in the control directory, beside the record's own processes. */
 	static async read(env: ExecutionEnv, record: MutationTreeRecord, context: Context): Promise<MutationTree> {
 		const text = await env.readTextFile(posix.join(record.control, "tree.json"), context);
 		let seen: unknown = [];
@@ -249,7 +247,6 @@ export class MutationTree {
 		return new MutationTree(record, [...processes.values()]);
 	}
 
-	/** Ends every recorded process that is still the one recorded, then removes the control directory. */
 	async terminate(
 		env: ExecutionEnv,
 		control: ProcessControl = new ProcessTable(),

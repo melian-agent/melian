@@ -35,10 +35,7 @@ async function readable(path: string): Promise<boolean> {
 	}
 }
 
-/**
- * Stryker identities shared only by runs of one repository, base policy, writer-trust class, head commit and input. The
- * sandbox never writes the partition: a run works on a staged copy, and the partition is replaced only by {@link publish}.
- */
+// The sandbox writes a staged copy; only the host publishes a completed partition.
 export class MutationCache {
 	readonly directory: string;
 	readonly file: string;
@@ -49,7 +46,6 @@ export class MutationCache {
 		this.file = join(directory, "incremental.json");
 	}
 
-	/** Opens a persistent partition and discards unreadable or malformed prior output. */
 	static async open(root: string, key: MutationCacheKey): Promise<MutationCache> {
 		await CacheScratch.open(root);
 		const name = createHash("sha256").update(JSON.stringify(key)).digest("hex");
@@ -60,7 +56,6 @@ export class MutationCache {
 		return cache;
 	}
 
-	/** Copies the partition's report, if any, to `directory` for one run to read and write, and returns its path. */
 	async stage(directory: string): Promise<string> {
 		const staged = join(directory, "incremental.json");
 		await mkdir(directory, { recursive: true });
@@ -69,7 +64,6 @@ export class MutationCache {
 		return staged;
 	}
 
-	/** Replaces the partition's report with a staged one, if it is readable; otherwise the partition keeps what it had. */
 	async publish(staged: string): Promise<void> {
 		if (!(await readable(staged))) return;
 		const scratch = await CacheScratch.open(this.#root);
