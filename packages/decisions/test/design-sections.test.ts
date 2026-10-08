@@ -4,30 +4,126 @@ import { gitIn, removeDirectory, temporaryDirectory, writeFiles } from "../../co
 
 describe("base design vocabulary", () => {
 	it.each([
-		'[Trust](design/trust.md#writer-trust "Writer policy")',
-		"[Trust][policy]\n\n[policy]: design/trust.md#writer-trust",
-		"[Trust][]\n\n[Trust]: design/trust.md#writer-trust 'Writer policy'",
-		"[Trust]\n\n[Trust]: <design/trust.md#writer-trust> (Writer policy)",
-		"[Trust][POLICY]\n\n[policy]: design/trust.md#writer-trust\n[policy]: missing.md#ignored",
-	])("loads or refuses the section named by %s", async (link) => {
+		{ name: "path with fragment", link: "[Trust](design/trust.md#writer-trust)", path: "docs/design/trust.md" },
+		{ name: "split file", link: "[Trust](design/trust.md)", path: "docs/design/trust.md" },
+		{ name: "relative split file", link: "[Trust](./design/trust.md)", path: "docs/design/trust.md" },
+		{ name: "relative package", link: "[Trust](../packages/core/design.md#policy)", path: "packages/core/design.md" },
+		{ name: "title", link: '[Trust](design/trust.md#writer-trust "Writer policy")', path: "docs/design/trust.md" },
+		{
+			name: "reference",
+			link: "[Trust][policy]\n\n[policy]: design/trust.md#writer-trust",
+			path: "docs/design/trust.md",
+		},
+		{
+			name: "collapsed reference",
+			link: "[Trust][]\n\n[Trust]: design/trust.md#writer-trust 'Writer policy'",
+			path: "docs/design/trust.md",
+		},
+		{
+			name: "shortcut reference",
+			link: "[Trust]\n\n[Trust]: <design/trust.md#writer-trust> (Writer policy)",
+			path: "docs/design/trust.md",
+		},
+		{
+			name: "first reference definition",
+			link: "[Trust][POLICY]\n\n[policy]: design/trust.md#writer-trust\n[policy]: missing.md#ignored",
+			path: "docs/design/trust.md",
+		},
+		{ name: "encoded space", link: "[Trust](design/writer%20trust.md#policy)", path: "docs/design/writer trust.md" },
+		{
+			name: "encoded delimiter",
+			link: "[Trust](design/writer%23trust.md#policy)",
+			path: "docs/design/writer#trust.md",
+		},
+		{ name: "encoded extension", link: "[Trust](design/trust%2Emd#policy)", path: "docs/design/trust.md" },
+		{ name: "query and fragment", link: "[Trust](design/trust.md?view=1#policy)", path: "docs/design/trust.md" },
+		{ name: "query", link: "[Trust](design/trust.md?view=1)", path: "docs/design/trust.md" },
+		{
+			name: "angle brackets",
+			link: '[Trust](<design/writer trust.md> "Writer policy")',
+			path: "docs/design/writer trust.md",
+		},
+		{
+			name: "balanced parentheses",
+			link: "[Trust](design/trust(writer).md#policy)",
+			path: "docs/design/trust(writer).md",
+		},
+		{
+			name: "escaped parentheses",
+			link: "[Trust](design/trust\\(writer\\).md#policy)",
+			path: "docs/design/trust(writer).md",
+		},
+		{
+			name: "character references",
+			link: "[Trust](design/trust&#40;writer&#41;.md#policy)",
+			path: "docs/design/trust(writer).md",
+		},
+		{
+			name: "CRLF reference",
+			link: "[Trust][policy]\r\n\r\n[policy]: design/trust.md#writer-trust",
+			path: "docs/design/trust.md",
+		},
+	])("loads or refuses the section named by $name", async ({ link, path }) => {
 		const repo = temporaryDirectory();
 		try {
 			gitIn(repo, "init", "--quiet", "--initial-branch=main");
 			writeFiles(repo, {
-				"docs/design.md": `# Design\n${link}\n\n[unused]: missing.md#ignored\n`,
-				"docs/design/trust.md": "## Writer trust\n",
+				"docs/design.md": `# Design\r\n${link}\n\n[unused]: missing.md#ignored\n`,
+				[path]: "## Writer trust\r\n",
 			});
 			gitIn(repo, "add", "--all");
 			gitIn(repo, "commit", "--quiet", "-m", "base");
 			expect((await DesignSections.load(repo, "HEAD")).render().split("\n")).toEqual([
 				"docs/design.md:1 — Design",
-				"docs/design/trust.md:1 — Writer trust",
+				`${path}:1 — Writer trust`,
 			]);
-			gitIn(repo, "rm", "--quiet", "docs/design/trust.md");
+			gitIn(repo, "rm", "--quiet", path);
 			gitIn(repo, "commit", "--quiet", "-m", "missing section");
 			await expect(DesignSections.load(repo, "HEAD")).rejects.toMatchObject({
 				code: "incomplete",
-				message: "The base design section docs/design/trust.md is absent",
+				message: `The base design section ${path} is absent`,
+			});
+		} finally {
+			removeDirectory(repo);
+		}
+	});
+	it.each([
+		"#writer-trust",
+		"design.md#writer-trust",
+		"https://example.com/design/missing.md#policy",
+		"https://example.com/design/missing%ZZ.md#policy",
+		"missing.md",
+		"design/missing.txt#policy",
+	])("keeps the design headings without reading a section for %s", async (target) => {
+		const repo = temporaryDirectory();
+		try {
+			gitIn(repo, "init", "--quiet", "--initial-branch=main");
+			writeFiles(repo, { "docs/design.md": `# Design\n[Trust](${target})\n` });
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "base");
+			expect((await DesignSections.load(repo, "HEAD")).render()).toBe("docs/design.md:1 — Design");
+		} finally {
+			removeDirectory(repo);
+		}
+	});
+	it.each([
+		["design/trust%ZZ.md#policy", "invalid URI encoding"],
+		["design/trust%C3.md#policy", "invalid URI encoding"],
+		["%2Fabsolute.md#policy", "outside the repository"],
+		["%2Fabsolute.md", "outside the repository"],
+		["design/%2E%2E/%2E%2E/%2E%2E/outside.md", "outside the repository"],
+		["%2F%2Fexample.com/trust.md#policy", "outside the repository"],
+		["%2E%2E/%2E%2E/outside.md#policy", "outside the repository"],
+	])("refuses invalid decoded section %s", async (target, reason) => {
+		const repo = temporaryDirectory();
+		try {
+			gitIn(repo, "init", "--quiet", "--initial-branch=main");
+			writeFiles(repo, { "docs/design.md": `[Trust](${target})\n` });
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "base");
+			await expect(DesignSections.load(repo, "HEAD")).rejects.toMatchObject({
+				code: "invalid",
+				message: expect.stringContaining(reason),
 			});
 		} finally {
 			removeDirectory(repo);

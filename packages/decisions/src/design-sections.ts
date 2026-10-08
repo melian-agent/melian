@@ -55,12 +55,19 @@ export class DesignSections {
 		);
 		for (const node of nodes.filter((node) => node.type === "link" || node.type === "linkReference")) {
 			const target = node.type === "link" ? node.url : definitions.get(node.identifier)!;
-			const section = /^([^:?#]+\.md)(?:#[\s\S]+)?$/.exec(target)?.[1];
-			if (section === undefined) continue;
-			if (!target.includes("#") && !section.startsWith("design/")) continue;
+			const destination = target.split(/[?#]/, 1)[0]!;
+			if (destination.includes(":")) continue;
+			let section: string;
+			try {
+				section = decodeURIComponent(destination);
+			} catch {
+				throw new DecisionFilesError("invalid", "A linked design section has invalid URI encoding");
+			}
+			if (!section.endsWith(".md")) continue;
 			const path = posix.normalize(posix.join("docs", section));
 			if (section.startsWith("/") || path.startsWith("../"))
 				throw new DecisionFilesError("invalid", "A linked design section is outside the repository");
+			if (!target.includes("#") && !path.startsWith("docs/design/")) continue;
 			paths.add(path);
 		}
 		paths.delete("docs/design.md");

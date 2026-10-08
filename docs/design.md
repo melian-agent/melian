@@ -868,7 +868,7 @@ The design lens receives a mechanical index of all decisions at the comparison b
 
 The design lens also receives a base index of headings and line numbers from docs/design.md and its linked local Markdown sections. Links with a section fragment and files under docs/design/ supply linked sections. Fenced examples supply no headings. The complete index has a 64 KiB UTF-8 bound; an overrun or unreadable linked section refuses review. Base headings guide searches when the head renames a concept. The index uses listing boundaries and joins the instruction fingerprint.
 
-CommonMark parsing resolves section links, including used references and optional titles. An absent section refuses review for every link form. Unused definitions, images and code examples supply no section links.
+CommonMark parsing resolves section links, including used references and optional titles. An absent section refuses review for every link form. Unused definitions, images and code examples supply no section links. Section paths are URI-decoded after removing queries and fragments, then normalised relative to docs/design.md. Malformed encoding and paths outside the repository refuse review. Fragment-only links use design.md’s own headings.
 
 
 [decisions/2026-10-05-comparison-as-a-capability.md](decisions/2026-10-05-comparison-as-a-capability.md) records why.
