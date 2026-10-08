@@ -62,6 +62,7 @@ function plan(
 		retier?: Record<string, LensTier>;
 		committedTiers?: Record<string, LensTier>;
 		catalog?: CatalogModel[];
+		lenses?: Lens[];
 	} = {},
 ): ReviewPlan {
 	const preferences = options.preferences ?? {};
@@ -91,7 +92,7 @@ function plan(
 		...(options.model === undefined ? {} : { model: options.model }),
 		catalog: options.catalog ?? catalog,
 		credentials,
-		lenses,
+		lenses: options.lenses ?? lenses,
 		checks: options.checks ?? ["lens.correctness"],
 	};
 	return ReviewPlan.resolve(input);
@@ -409,9 +410,9 @@ describe("ReviewPlan.resolve", () => {
 			{ committedTiers: { correctness: "light" } },
 		);
 		expect(resolved.lenses.find((lens) => lens.name === "correctness")?.levels).toEqual([
-			{ level: "quick", tier: "light" },
-			{ level: "careful", tier: "light" },
-			{ level: "deep", tier: "light" },
+			{ level: "quick", tier: "light", verify: false },
+			{ level: "careful", tier: "light", verify: true },
+			{ level: "deep", tier: "light", verify: true },
 		]);
 		// The committed files chose light, so heavy's guard does not reach it, and nothing left a committed route.
 		expect(resolved.judge("correctness", "careful")).toEqual({});
@@ -690,6 +691,55 @@ describe("a resolved plan", () => {
 });
 
 describe("verifier routing", () => {
+	it.each([true, false])("reports a same-family verifier at a non-default verified level, accepted %s", (accepted) => {
+		const terra = "openai-codex/gpt-5.6-terra";
+		const correctness = lenses.find((lens) => lens.name === "correctness")!;
+		const mixed = Lens.from({
+			...correctness.toJSON(),
+			levels: { ...correctness.levels, quick: { ...correctness.level("quick"), verify: true } },
+		});
+		const resolved = plan(
+			{
+				heavy: { model: opus },
+				medium: { model: gpt },
+				verifier: { model: opus, accept: accepted ? [opus, terra] : [opus] },
+			},
+			{ anthropic: "key", openai: "key", "openai-codex": "Pi login" },
+			{
+				preferences: { verifier: { model: terra, fallbacks: [] } },
+				catalog: [...catalog, model("openai-codex", "gpt-5.6-terra", "GPT-5.6 Terra", 2, 10)],
+				lenses: [mixed],
+			},
+		);
+		const text = accepted
+			? "the verifier shares the finder's family by the maintainer's choice"
+			: "some verification candidates would be judged by their finder's own family";
+		expect(resolved.lines()).toContainEqual({ state: accepted ? "ok" : "warn", text });
+		expect(resolved.summary()).toContain(`Plan: ${text}\n`);
+		expect(resolved.warnings().includes(text)).toBe(!accepted);
+		expect(ReviewPlan.from(resolved.toJSON()).lines()).toContainEqual({ state: accepted ? "ok" : "warn", text });
+	});
+
+	it("excludes an unverified non-default level from same-family messages", () => {
+		const resolved = plan(
+			{ heavy: { model: opus }, medium: { model: gpt }, verifier: { model: gpt } },
+			{ anthropic: "key", openai: "key" },
+		);
+		expect(resolved.lines().filter(({ text }) => text.includes("family"))).toEqual([]);
+	});
+
+	it("counts all levels in older stored plans that omit verification flags", () => {
+		const stored = plan(
+			{ heavy: { model: opus }, medium: { model: gpt }, verifier: { model: gpt } },
+			{ anthropic: "key", openai: "key" },
+		).toJSON();
+		for (const lens of stored.lenses) for (const level of lens.levels) delete level.verify;
+		expect(ReviewPlan.from(stored).lines()).toContainEqual({
+			state: "ok",
+			text: "the verifier shares the finder's family by the maintainer's choice",
+		});
+	});
+
 	it("warns when a same-family fallback leaves the accepted route", () => {
 		const resolved = plan(
 			{

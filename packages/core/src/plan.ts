@@ -73,7 +73,14 @@ export type PlannedTier = {
  * One level of a lens: the tier it runs on, and, where a preference file moved it there, the tier the committed files
  * give it, whose route's policy still judges it, and the file that moved it.
  */
-export type PlannedLevel = { level: ScrutinyLevel; tier: LensTier; committed?: LensTier; by?: string };
+export type PlannedLevel = {
+	level: ScrutinyLevel;
+	tier: LensTier;
+	/** Whether this level verifies. Older plans omit it and count every level for verification notices. */
+	verify?: boolean;
+	committed?: LensTier;
+	by?: string;
+};
 
 /**
  * A lens the review runs, and the tier each of its levels runs on. `scope` is the folder whose `.melian/` defined it,
@@ -167,9 +174,9 @@ export class ReviewPlan {
 				if (declared === undefined) return [];
 				const tier = settings?.tier ?? declared.tier;
 				const committed = Object.hasOwn(routes.lensTiers, lens.name) ? routes.lensTiers[lens.name]! : declared.tier;
-				if (committed === tier) return [{ level, tier }];
+				if (committed === tier) return [{ level, tier, verify: declared.verify }];
 				const by = Object.hasOwn(routes.retiered, lens.name) ? routes.retiered[lens.name]! : "a preference file";
-				return [{ level, tier, committed, by }];
+				return [{ level, tier, verify: declared.verify, committed, by }];
 			});
 			planned.set(key, { name: lens.name, scope: lens.scope, levels });
 		}
@@ -553,12 +560,14 @@ export class ReviewPlan {
 				});
 			if (this.refusal("verifier") !== undefined)
 				verification.push({ state: "warn", text: `verifier fails: ${this.refusal("verifier")}` });
-			const finders = [...used.keys()].flatMap((tier) => this.tier(tier).models);
-			if (
-				this.refusal("verifier") === undefined &&
-				finders.length > 0 &&
-				finders.every((finder) => this.verifierRoute(finder.model).every((model) => model.family === finder.family))
-			) {
+			const verifying = new Set(
+				this.lenses.flatMap((lens) => lens.levels.filter(({ verify }) => verify !== false).map(({ tier }) => tier)),
+			);
+			const finders = [...verifying].flatMap((tier) => this.tier(tier).models);
+			const sameFamily = finders.filter((finder) =>
+				this.verifierRoute(finder.model).every((model) => model.family === finder.family),
+			);
+			if (this.refusal("verifier") === undefined && sameFamily.length > 0) {
 				const accepted =
 					own.status === "routed" &&
 					finders.every((finder) =>
@@ -568,7 +577,9 @@ export class ReviewPlan {
 					state: accepted ? "ok" : "warn",
 					text: accepted
 						? "the verifier shares the finder's family by the maintainer's choice"
-						: "every verification candidate would be judged by its finder's own family",
+						: sameFamily.length === finders.length
+							? "every verification candidate would be judged by its finder's own family"
+							: "some verification candidates would be judged by their finder's own family",
 				});
 			}
 		}
