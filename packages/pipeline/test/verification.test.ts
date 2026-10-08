@@ -77,7 +77,7 @@ async function review(
 	rerun = false,
 	plan?: ReviewPlan,
 	quick = false,
-	unlockModels?: () => Promise<void>,
+	unlockModels?: (providers: readonly string[]) => Promise<void>,
 ): Promise<Review> {
 	const finder = fake.ref("finder");
 	const judge = fake.ref("judge");
@@ -1059,6 +1059,41 @@ describe("the verifier", () => {
 		expect(result.findings[0]!.properties.verification?.verdict).toBe("confirmed");
 		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
 	});
+	it("unlocks primary and cross-provider fallback credentials before the first verifier request", async () => {
+		const fallback = createFakeModels({ provider: "verifier-backup", models: [{ id: "backup" }] }, fake.review);
+		const finder = fake.ref("finder");
+		const judge = fake.ref("judge");
+		const backup = fallback.ref("backup");
+		const config = {
+			...defaultConfig,
+			models: {
+				heavy: { model: `${finder.provider}/${finder.modelId}` },
+				verifier: {
+					model: `${judge.provider}/${judge.modelId}`,
+					fallbacks: [`${backup.provider}/${backup.modelId}`],
+				},
+			},
+		};
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config,
+			catalog,
+			credentials,
+			lenses,
+			checks: ["lens.correctness"],
+			routes: { committed: config.models, overridden: {}, lensTiers: {}, retiered: {} },
+		});
+		const requests = scripts();
+		const verifierRequestsAtUnlock: number[] = [];
+		const unlock = vi.fn(async (_providers: readonly string[]) => {
+			verifierRequestsAtUnlock.push(requests[verifierMarker]!.length);
+		});
+		const result = await review(false, plan, false, unlock);
+		expect(unlock.mock.calls).toEqual([[[finder.provider]], [[judge.provider, backup.provider]]]);
+		expect(verifierRequestsAtUnlock).toEqual([0, 0]);
+		expect(requests[verifierMarker]).toHaveLength(2);
+		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");
+	});
 	it("unlocks credentials before a new verification, and not for a repeat that attaches to a failed one", async () => {
 		const failing = () =>
 			scriptConversations(fake, [
@@ -1086,7 +1121,7 @@ describe("the verifier", () => {
 		failing();
 		const first = unlocks();
 		await expect(review(false, undefined, false, first.unlock)).rejects.toMatchObject({ code: "verifierFailed" });
-		expect(first.calledAfter).toEqual([0]);
+		expect(first.calledAfter).toEqual([0, 2]);
 
 		const repeat = unlocks();
 		await expect(review(false, undefined, false, repeat.unlock)).rejects.toMatchObject({ code: "verifierFailed" });
@@ -1266,7 +1301,27 @@ describe("verification ownership and budgets", () => {
 		expect(unlocked[1]).toBe(first);
 		await harness.waitForTask(next, context);
 	});
-	it("unlocks credentials for a verification task it attaches to while the task still runs", async () => {
+	it("unlocks a new verifier route when the indexed task is absent", async () => {
+		const stored = await input();
+		stored.version = "v1";
+		stored.candidates[0]!.budget.tools = 20;
+		const revision = revisionKey(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.lenses;
+		scripts();
+		const first = (await startVerification(harness, stored, selection, false, context))!;
+		await harness.waitForTask(first, context);
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			(await tx.doc(ReviewIndex, root.id)).reviews[revision]!.verification!.task = 999_999;
+		}, context);
+		scripts();
+		const unlock = vi.fn(async (_providers: readonly string[]) => {});
+		const next = (await startVerification(harness, stored, selection, false, context, undefined, unlock))!;
+		expect(unlock).toHaveBeenCalledWith(["faux"]);
+		expect(next).not.toBe(first);
+		await harness.waitForTask(next, context);
+	});
+	it("keeps credentials locked for a verification task it attaches to while the task still runs", async () => {
 		const stored = await input();
 		stored.version = "v1";
 		stored.candidates[0]!.budget.tools = 20;
@@ -1290,7 +1345,7 @@ describe("verification ownership and budgets", () => {
 		try {
 			const second = await startVerification(harness, stored, selection, false, context, undefined, unlock);
 			expect(second).toBe(first);
-			expect(unlock).toHaveBeenCalledTimes(1);
+			expect(unlock).not.toHaveBeenCalled();
 		} finally {
 			release.resolve();
 			await harness.waitForTask(first, context);

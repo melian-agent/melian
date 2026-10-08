@@ -169,7 +169,8 @@ export async function review(
 	const { harness } = reviewHarness;
 	try {
 		// A task a crash left unfinished resumes at the first wait below, so its commands run before it.
-		if (await reviewHarness.resumesModels(context)) await triage.unlockModels();
+		const resumed = await reviewHarness.resumedProviders(context);
+		await triage.unlockModels(resumed);
 		// Caller context needs the graph that deterministic checks produce.
 		const rootConversationId = (await harness.root(context)).id;
 		const checks = await runChecks(
@@ -238,9 +239,9 @@ export async function review(
 				models,
 				rerun: options.rerun,
 				// The walkthrough is published, so it never names a credential; the terminal does.
-				unlockModels: async () => {
+				unlockModels: async (providers) => {
 					try {
-						await triage.unlockModels();
+						await triage.unlockModels(providers);
 					} catch (error) {
 						io.stderr(`melian: ${visibleText(error instanceof Error ? error.message : String(error))}\n`);
 						throw error;

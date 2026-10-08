@@ -65,6 +65,8 @@ const [scenario, repo, database, log] = process.argv.slice(2) as [
 		| "conflicting-verdict"
 		| "decision"
 		| "replacement"
+		| "lens-failover"
+		| "verifier-failover"
 	),
 	string,
 	string,
@@ -139,7 +141,7 @@ const parked = defineExtension({
 			: tool.name === lensReadTools.read_file.name && ["read", "spent", "tokens"].includes(scenario)
 				? parkedRead
 				: tool.name !== reportFinding.name ||
-						["escalation", "verifier", "verdict", "conflicting-verdict"].includes(scenario)
+						["escalation", "verifier", "verdict", "conflicting-verdict", "verifier-failover"].includes(scenario)
 					? tool
 					: scenario === "legacy"
 						? legacyReport
@@ -166,6 +168,7 @@ if (scenario === "escalation") registry.install(decisionExtension(decider));
 if (scenario === "decision" || scenario === "replacement") registry.install(decisionExtension(parkedDecider));
 
 const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "medium" }, { id: "heavy" }] });
+const fallback = createFakeModels({ provider: "fallback-provider", models: [{ id: "heavy" }] }, fake.review);
 const harness = await openHarness(await openSqliteStorage(database), {
 	models: fake.models,
 	registry,
@@ -181,6 +184,8 @@ const toolUse = (name: string, args: Parameters<typeof fauxToolCall>[1]) =>
 const done = fauxAssistantMessage("Done.");
 const correctness: Readonly<Record<typeof scenario, readonly ScriptedReply[]>> = {
 	verifier: [toolUse("report_finding", crashFinding), done],
+	"verifier-failover": [toolUse("report_finding", crashFinding), done],
+	"lens-failover": [fauxAssistantMessage("", { stopReason: "error", errorMessage: "HTTP 503 service unavailable" })],
 	verdict: [toolUse("report_finding", crashFinding), done],
 	"conflicting-verdict": [toolUse("report_finding", crashFinding), done],
 	finding: [toolUse("report_finding", crashFinding)],
@@ -197,27 +202,29 @@ const correctness: Readonly<Record<typeof scenario, readonly ScriptedReply[]>> =
 	replacement: [done],
 };
 scriptConversations(fake, [
-	...(["verifier", "verdict", "conflicting-verdict"].includes(scenario)
+	...(["verifier", "verdict", "conflicting-verdict", "verifier-failover"].includes(scenario)
 		? [
 				{
 					match: "Melian adversarial verifier",
 					replies: [
-						scenario === "verifier"
-							? requested("verifier")
-							: scenario === "conflicting-verdict"
-								? fauxAssistantMessage(
-										["confirmed", "refuted"].map((verdict) =>
-											fauxToolCall("report_verdict", {
-												claim: "c1",
-												answers: { code: "yes", guard: "no", base: "no" },
-												verdict,
-												reason: `Reported ${verdict}.`,
-												evidence: [{ file: "src/user.ts", line: 7, role: "context" }],
-											}),
-										),
-										{ stopReason: "toolUse" },
-									)
-								: (messages: Parameters<typeof scriptVerifier>[0]) => scriptVerifier(messages),
+						scenario === "verifier-failover"
+							? fauxAssistantMessage("", { stopReason: "error", errorMessage: "HTTP 503 service unavailable" })
+							: scenario === "verifier"
+								? requested("verifier")
+								: scenario === "conflicting-verdict"
+									? fauxAssistantMessage(
+											["confirmed", "refuted"].map((verdict) =>
+												fauxToolCall("report_verdict", {
+													claim: "c1",
+													answers: { code: "yes", guard: "no", base: "no" },
+													verdict,
+													reason: `Reported ${verdict}.`,
+													evidence: [{ file: "src/user.ts", line: 7, role: "context" }],
+												}),
+											),
+											{ stopReason: "toolUse" },
+										)
+									: (messages: Parameters<typeof scriptVerifier>[0]) => scriptVerifier(messages),
 					],
 				},
 			]
@@ -235,6 +242,10 @@ function lensesFor(lenses: Lens[]) {
 	if (scenario === "spent" || scenario === "tokens") return budgetLenses(lenses, endingBudgets[scenario]);
 	return scenario === "read" ? budgetLenses(lenses) : crashLenses(lenses);
 }
+scriptConversations(fallback, [
+	{ match: "You are the correctness reviewer", replies: [requested("correctness")] },
+	{ match: "Melian adversarial verifier", replies: [requested("verifier")] },
+]);
 const heavy = fake.ref("heavy");
 const medium = fake.ref("medium");
 record(log, { event: "review-started" });
@@ -253,10 +264,18 @@ const options = {
 		tiers:
 			scenario === "escalation" || scenario === "decision"
 				? { ...defaultConfig.tiers, full: ["standard"] }
-				: twoLensTiers,
+				: scenario === "lens-failover"
+					? { full: ["lens.correctness"] }
+					: twoLensTiers,
 		models: {
 			medium: { model: `${medium.provider}/${medium.modelId}` },
-			heavy: { model: `${heavy.provider}/${heavy.modelId}` },
+			heavy: {
+				model: `${heavy.provider}/${heavy.modelId}`,
+				...(scenario === "lens-failover" ? { fallbacks: ["fallback-provider/heavy"] } : {}),
+			},
+			...(scenario === "verifier-failover"
+				? { verifier: { model: `${medium.provider}/${medium.modelId}`, fallbacks: ["fallback-provider/heavy"] } }
+				: {}),
 		},
 	},
 	...(scenario === "escalation" ? { decider } : scenario === "decision" ? { decider: parkedDecider } : {}),

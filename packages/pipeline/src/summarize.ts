@@ -245,7 +245,7 @@ export async function summarizeReview(options: {
 	 * asked, only when a task will be attached to or created: not at the attempt cap without `rerun`. The host unlocks credentials there; one that fails leaves the fixed summariser note, which
 	 * names no credential, since the walkthrough is published.
 	 */
-	readonly unlockModels?: () => Promise<void>;
+	readonly unlockModels?: (providers: readonly string[]) => Promise<void>;
 }): Promise<void> {
 	const { harness, changeset, config, models } = options;
 	if (!config.publish.walkthrough.enabled) return;
@@ -304,7 +304,7 @@ export async function summarizeReview(options: {
 			const spent =
 				((await harness.snapshot(VerdictDocument, conversation.id, context))?.walkthroughAttempts?.[revision] ??
 					0) + (uncounted ? 1 : 0);
-			if (attaches || options.rerun || spent < maxWalkthroughAttempts) await options.unlockModels();
+			if (attaches || options.rerun || spent < maxWalkthroughAttempts) await options.unlockModels([model.provider]);
 		}
 		const prompt = await WalkthroughPrompt.from(changeset).render();
 		const task = await conversation.commit(async (tx) => {

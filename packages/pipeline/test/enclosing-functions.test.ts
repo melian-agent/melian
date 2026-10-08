@@ -2,6 +2,7 @@ import { rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { Changeset } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HeadProgram } from "../src/compiler-graph.ts";
 import {
 	cutDiffNote,
 	type EnclosingFunction,
@@ -88,6 +89,11 @@ describe("EnclosingFunctions", () => {
 			"};",
 			"return inner(); }",
 		);
+		const signature = multiline.replace("outer()", "outer(x = 1)");
+		expect(summary(await around({ "src/a.ts": multiline }, { "src/a.ts": signature }))).toEqual([
+			"src/a.ts inner 1-3",
+			"src/a.ts outer 1-4",
+		]);
 		const edited = multiline.replace("\treturn 2;", "\treturn 3;");
 		expect(summary(await around({ "src/a.ts": multiline }, { "src/a.ts": edited }))).toEqual(["src/a.ts inner 1-3"]);
 		const closing = multiline.replace("return inner(); }", "return inner() + 1; }");
@@ -97,6 +103,58 @@ describe("EnclosingFunctions", () => {
 		const changed = oneLine.replace("=> 1;", "=> 2;");
 		expect(summary(await around({ "src/b.ts": oneLine }, { "src/b.ts": changed }))).toEqual(["src/b.ts inner 1-1"]);
 	});
+
+	it("carries all three callables on a shared opening line", async () => {
+		const opening = lines(
+			"function outer(x = 1) { const middle = () => { const inner = () => {",
+			" return 1;",
+			" };",
+			" return inner();",
+			" };",
+			" return middle();",
+			"}",
+		);
+		const edited = opening.replace("x = 1", "x = 2");
+		expect(summary(await around({ "src/a.ts": opening }, { "src/a.ts": edited }))).toEqual([
+			"src/a.ts inner 1-3",
+			"src/a.ts middle 1-5",
+			"src/a.ts outer 1-7",
+		]);
+	});
+
+	it("carries all three callables on a shared closing line", async () => {
+		const closing = lines(
+			"function outer() {",
+			" const middle = () => {",
+			"  const inner = () => {",
+			"   return 1;",
+			"  }; return inner(); }; return middle(); }",
+		);
+		const edited = closing.replace("return middle()", "return middle() + 1");
+		expect(summary(await around({ "src/a.ts": closing }, { "src/a.ts": edited }))).toEqual([
+			"src/a.ts outer 1-5",
+			"src/a.ts middle 2-5",
+			"src/a.ts inner 3-5",
+		]);
+	});
+
+	it("carries both callables on a shared closing line, and refuses one outside a deletion anchor", async () => {
+		const closing = lines("function outer() {", " const inner = () => {", "  return 1;", " }; return inner(); }");
+		const edited = closing.replace("return inner()", "return inner() + 1");
+		expect(summary(await around({ "src/a.ts": closing }, { "src/a.ts": edited }))).toEqual([
+			"src/a.ts outer 1-4",
+			"src/a.ts inner 2-4",
+		]);
+		const atStart = lines("function outer() { const inner = () => 1;", " const a = 1;", " return inner();", "}");
+		expect(
+			summary(await around({ "src/a.ts": atStart }, { "src/a.ts": atStart.replace(" const a = 1;\n", "") })),
+		).toEqual(["src/a.ts outer 1-3"]);
+		const deleting = lines("function outer() {", " const a = 1;", " const inner = () => 2;", " return inner();", "}");
+		expect(
+			summary(await around({ "src/a.ts": deleting }, { "src/a.ts": deleting.replace(" const a = 1;\n", "") })),
+		).toEqual(["src/a.ts outer 1-4"]);
+	});
+
 	it("takes the named function around an anonymous callback, and the innermost named one around a nested value", async () => {
 		const edited = source.replace("\t[1].map((item) => item + a);", "\t[1].map((item) => item + a + 1);");
 		expect(summary(await around({ "src/a.ts": source }, { "src/a.ts": edited }))).toEqual(["src/a.ts outer 1-5"]);
@@ -411,6 +469,20 @@ describe("EnclosingFunctions", () => {
 			);
 		});
 
+		it("stops asking the compiler once the found cap has refused a function", async () => {
+			const source = vi.spyOn(HeadProgram.prototype, "source");
+			try {
+				const found = await around(
+					{ "src/a.ts": oneLiners(2_001, 0), "src/b.ts": "function b() { return 0; }" },
+					{ "src/a.ts": oneLiners(2_001, 2_001), "src/b.ts": "function b() { return 1; }" },
+				);
+				expect(found.capped).toEqual(["found"]);
+				expect(source.mock.calls).toEqual([["src/a.ts"]]);
+			} finally {
+				source.mockRestore();
+			}
+		});
+
 		it("keeps the limits it documents", () => {
 			expect({ ...enclosingLimits }).toMatchObject({
 				anchorsPerFile: 5_000,
@@ -443,22 +515,6 @@ describe("EnclosingFunctions", () => {
 			expect(rendered).toBeLessThanOrEqual(shown + 2);
 		});
 
-		it("finds the function around each added line of the files at the limits in under a second", async () => {
-			const files = names(enclosingLimits.anchors / enclosingLimits.anchorsPerFile);
-			const [base, head] = filesOf(files, (changed) =>
-				oneLiners(enclosingLimits.callablesPerFile, changed ? enclosingLimits.anchorsPerFile : 0),
-			);
-			repo = baseAndHead(base, head);
-			const changeset = await Changeset.resolve(repo, "main...feature");
-			const started = performance.now();
-			const found = await EnclosingFunctions.read(changeset);
-			const elapsed = performance.now() - started;
-			console.log(`enclosing-functions timing: ${elapsed.toFixed(0)} ms`);
-			expect(found.capped).toEqual(["found"]);
-			expect(found.functions).toHaveLength(enclosingLimits.found);
-			expect(elapsed).toBeLessThan(1_000);
-		});
-
 		it("never filters a file's whole list of functions once per added line", async () => {
 			repo = baseAndHead({ "src/a.ts": oneLiners(20_000, 0) }, { "src/a.ts": oneLiners(20_000, 2_000) });
 			const changeset = await Changeset.resolve(repo, "main...feature");
@@ -471,15 +527,58 @@ describe("EnclosingFunctions", () => {
 			}
 		});
 
-		it("finds the function around each of 2,000 added lines among 20,000 in under a second", async () => {
-			repo = baseAndHead({ "src/a.ts": oneLiners(20_000, 0) }, { "src/a.ts": oneLiners(20_000, 2_000) });
-			const changeset = await Changeset.resolve(repo, "main...feature");
-			const started = performance.now();
-			const found = await EnclosingFunctions.read(changeset);
-			const elapsed = performance.now() - started;
-			console.log(`enclosing-functions timing: ${elapsed.toFixed(0)} ms`);
-			expect(found.functions).toHaveLength(2_000);
-			expect(elapsed).toBeLessThan(1_000);
+		// Counts the work the sweep hands to sort comparators and filter predicates, which a per-anchor filter and sort
+		// multiplies by the number of anchors. No clock: counts are the same on every runner.
+		it("does work that grows with n log n in the callables and anchors, not their product", async () => {
+			const worked = async (functions: number, changed: number) => {
+				const dir = baseAndHead(
+					{ "src/a.ts": oneLiners(functions, 0) },
+					{ "src/a.ts": oneLiners(functions, changed) },
+				);
+				const sort = Array.prototype.sort;
+				const filter = Array.prototype.filter;
+				let calls = 0;
+				const sorted = vi.spyOn(Array.prototype, "sort").mockImplementation(function (this: unknown[], compare) {
+					return sort.call(
+						this,
+						compare === undefined
+							? undefined
+							: (a: unknown, b: unknown) => {
+									calls++;
+									return compare(a, b);
+								},
+					);
+				});
+				const filtered = vi.spyOn(Array.prototype, "filter").mockImplementation(function (
+					this: unknown[],
+					predicate: (...args: unknown[]) => unknown,
+					thisArg?: unknown,
+				) {
+					return filter.call(
+						this,
+						(...args: unknown[]) => {
+							calls++;
+							return predicate(...args);
+						},
+						thisArg,
+					);
+				} as typeof Array.prototype.filter);
+				try {
+					await EnclosingFunctions.read(await Changeset.resolve(dir, "main...feature"));
+					return calls;
+				} finally {
+					sorted.mockRestore();
+					filtered.mockRestore();
+					rmSync(dir, { recursive: true, force: true });
+				}
+			};
+			for (const [functions, changed] of [
+				[2_500, 625],
+				[20_000, 5_000],
+			] as const) {
+				const size = functions + changed;
+				expect(await worked(functions, changed)).toBeLessThan(size * Math.log2(size));
+			}
 		});
 	});
 });
