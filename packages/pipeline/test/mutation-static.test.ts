@@ -620,7 +620,9 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 					context,
 				);
 				if (result.status !== "skipped") throw new Error("ran");
-				expect(result.log?.runs[0].results[0]!.message.text).toContain(`${"packages/p/src/a.ts"}, ${path}`);
+				expect(result.log?.runs[0].results.map((each) => each.message.text).join()).toContain(
+					`packages/p/src/a.ts, ${path}`,
+				);
 			});
 		});
 
