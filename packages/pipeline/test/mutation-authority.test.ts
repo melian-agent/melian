@@ -8,6 +8,7 @@ import { Changeset, loadConfig, mutationSkips, type RepositorySource } from "@me
 import {
 	checksExtension,
 	backgroundContext as context,
+	createMemoryStorage,
 	createNodeExecutionEnv,
 	createReviewRegistry,
 	defineTask,
@@ -17,6 +18,7 @@ import {
 	readFindings,
 	revisionKey,
 	runChecks,
+	type Storage,
 	type TaskId,
 	type WriterTrust,
 } from "@melian-agent/pipeline";
@@ -110,11 +112,11 @@ const runs = () =>
 		? readFileSync(join(artifacts, "runs.txt"), "utf8").trim().split("\n").length
 		: 0;
 
-async function openOn(database: string, environment = true) {
+async function openOn(storage: Storage = createMemoryStorage(), environment = true) {
 	const fake = createFakeModels();
 	const registry = createReviewRegistry();
 	registry.install(checksExtension);
-	const harness = await openHarness(await openSqliteStorage(database), {
+	const harness = await openHarness(storage, {
 		models: fake.models,
 		registry,
 		env: () => (environment ? createNodeExecutionEnv(repo) : undefined),
@@ -200,7 +202,7 @@ async function outcomeOf(harness: Harness, id: TaskId) {
 describe("the authority over a revision's mutation check", { timeout: 120_000 }, () => {
 	it("runs again when the host changes between available sandbox backends", async () => {
 		const { base, head } = scenario();
-		const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+		const { harness, root } = await openOn();
 		const wait = harness.waitForTask.bind(harness);
 		vi.spyOn(harness, "waitForTask").mockImplementation((id, executionContext) => {
 			expect(id).toBeTypeOf("number");
@@ -217,7 +219,7 @@ describe("the authority over a revision's mutation check", { timeout: 120_000 },
 
 	it("runs again after a throw between the durable takeover and task creation", async () => {
 		const { base, head } = scenario();
-		const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+		const { harness, root } = await openOn();
 		const request = await input(base, head, root.id, trusted);
 		const first = await runChecks(harness, request, context);
 		await runChecks(harness, { ...request, writer: revoked }, context);
@@ -234,7 +236,7 @@ describe("the authority over a revision's mutation check", { timeout: 120_000 },
 		"runs again when the checkout installation changes %s at the same head",
 		async (name) => {
 			const { base, head } = scenario();
-			const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+			const { harness, root } = await openOn();
 			const path = name === "package-lock.json" ? name : `node_modules/${name}/package.json`;
 			writeFiles(repo, { [path]: '{"version":"1.0.0"}' });
 			const request = await input(base, head, root.id, trusted);
@@ -252,7 +254,7 @@ describe("the authority over a revision's mutation check", { timeout: 120_000 },
 	it("leaves a running mutation check of another revision alone", async () => {
 		const { base, head } = scenario(true);
 		const otherHead = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x <= 0") });
-		const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+		const { harness, root } = await openOn();
 		const first = runChecks(harness, await input(base, head, root.id, trusted), context);
 		const deadline = Date.now() + 20_000;
 		while (runs() === 0) {
@@ -271,7 +273,7 @@ describe("the authority over a revision's mutation check", { timeout: 120_000 },
 
 	it("leaves a task of another kind alone even when its input resembles a retired mutation check", async () => {
 		const { base, head } = scenario();
-		const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+		const { harness, root } = await openOn();
 		const request = await input(base, head, root.id, revoked);
 		const other = defineTask<unknown, { phase: "park" }, unknown>({
 			name: "uninstalled.other",
@@ -307,7 +309,7 @@ while [ ! -e '${join(artifacts, "release")}' ]; do sleep 0.1; done
 for flag in "$@"; do case "$flag" in --reporter-file=*) file="\${flag#--reporter-file=}";; esac; done
 echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.5.15"}},"results":[]}]}' > "$file"`,
 		);
-		const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+		const { harness, root } = await openOn();
 		const request = await input(base, head, root.id, trusted);
 		const first = runChecks(
 			harness,
@@ -340,7 +342,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		const { base, head } = scenario();
 		const database = await crashed(base, head);
 		expect(runs()).toBe(0);
-		const { harness, root } = await openOn(database);
+		const { harness, root } = await openOn(await openSqliteStorage(database));
 		const [pending] = await liveChecks(harness);
 		const run = await runChecks(harness, await input(base, head, root.id, revoked), context);
 		expect(run.records).toEqual([
@@ -359,7 +361,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 
 	it("records the tree while head code runs and clears it after termination", async () => {
 		const { base, head } = scenario(true);
-		const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+		const { harness, root } = await openOn();
 		const run = runChecks(harness, await input(base, head, root.id, trusted), context);
 		const deadline = Date.now() + 20_000;
 		while (runs() === 0) {
@@ -394,7 +396,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 	it("ends the recorded processes by pid before replaying the trusted task", async () => {
 		const { base, head } = scenario();
 		const database = await crashed(base, head);
-		const { harness, root } = await openOn(database);
+		const { harness, root } = await openOn(await openSqliteStorage(database));
 		const [pending] = await liveChecks(harness);
 		await recordTree(root, pending!.record.id);
 		const kills = fakeProcesses(alive.map((entry) => ({ ...entry })));
@@ -408,7 +410,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 	it("leaves a pid alone whose start time differs from the recorded one", async () => {
 		const { base, head } = scenario();
 		const database = await crashed(base, head);
-		const { harness, root } = await openOn(database);
+		const { harness, root } = await openOn(await openSqliteStorage(database));
 		const [pending] = await liveChecks(harness);
 		await recordTree(root, pending!.record.id);
 		const kills = fakeProcesses(alive.map((entry) => ({ ...entry, start: "Fri Oct 9 09:00:00 2026" })));
@@ -419,7 +421,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 	it("refuses recovery with a recorded tree when no environment can terminate it", async () => {
 		const { base, head } = scenario();
 		const database = await crashed(base, head);
-		const { harness, root } = await openOn(database, false);
+		const { harness, root } = await openOn(await openSqliteStorage(database), false);
 		const [pending] = await liveChecks(harness);
 		await recordTree(root, pending!.record.id);
 		const run = await runChecks(harness, await input(base, head, root.id, trusted), context);
@@ -431,7 +433,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 	it("ends the recorded processes before retiring a crashed mutation task", async () => {
 		const { base, head } = scenario();
 		const database = await crashed(base, head);
-		const { harness, root } = await openOn(database);
+		const { harness, root } = await openOn(await openSqliteStorage(database));
 		const [pending] = await liveChecks(harness);
 		await recordTree(root, pending!.record.id);
 		const kills = fakeProcesses(alive.map((entry) => ({ ...entry })));
@@ -446,7 +448,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 	it("resumes and runs the task a crash left pending when the next review keeps the writer trusted", async () => {
 		const { base, head } = scenario();
 		const database = await crashed(base, head);
-		const { harness, root } = await openOn(database);
+		const { harness, root } = await openOn(await openSqliteStorage(database));
 		const run = await runChecks(harness, await input(base, head, root.id, trusted), context);
 		expect(run.records).toMatchObject([{ name: "static.mutation", status: "ran", findings: 1 }]);
 		expect(runs()).toBe(1);
@@ -457,7 +459,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 	it("runs again, and does not wait on the retired task, when trust is revoked and then restored", async () => {
 		const { base, head } = scenario();
 		const database = await crashed(base, head);
-		const { harness, root } = await openOn(database);
+		const { harness, root } = await openOn(await openSqliteStorage(database));
 		await runChecks(harness, await input(base, head, root.id, revoked), context);
 		expect(runs()).toBe(0);
 		const restored = await runChecks(harness, await input(base, head, root.id, trusted), context);
@@ -468,7 +470,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 	it("keeps a task from running head code once another review has taken the revision, however it got to the store", async () => {
 		const { base, head } = scenario();
 		const database = await crashed(base, head);
-		const { harness, root } = await openOn(database);
+		const { harness, root } = await openOn(await openSqliteStorage(database));
 		const [pending] = await liveChecks(harness);
 		await recordTree(root, pending!.record.id);
 		const kills = fakeProcesses(alive.map((entry) => ({ ...entry })));
@@ -489,7 +491,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 	it("runs the task of a document an earlier build wrote, which records no owner and retires no task", async () => {
 		const { base, head } = scenario();
 		const database = await crashed(base, head);
-		const { harness, root } = await openOn(database);
+		const { harness, root } = await openOn(await openSqliteStorage(database));
 		await root.commit(async (tx) => {
 			delete (await tx.doc(ChecksDocument, root.id)).owners;
 		}, context);
@@ -500,7 +502,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 
 	it("writes no findings from a run whose tests finished after another review took the revision", async () => {
 		const { base, head } = scenario(true);
-		const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+		const { harness, root } = await openOn();
 		const run = runChecks(harness, await input(base, head, root.id, trusted), context);
 		const deadline = Date.now() + 20_000;
 		while (runs() === 0) {
@@ -522,14 +524,14 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 
 	it("publishes the incremental identities of a run that still holds authority at its end", async () => {
 		const { base, head } = scenario();
-		const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+		const { harness, root } = await openOn();
 		await runChecks(harness, await input(base, head, root.id, trusted), context);
 		expect(published()).toHaveLength(1);
 	});
 
 	it("aborts a task whose tests are running when another review takes the revision, without waiting for them", async () => {
 		const { base, head } = scenario(true);
-		const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+		const { harness, root } = await openOn();
 		const first = runChecks(harness, await input(base, head, root.id, trusted), context);
 		const settled = first.then(
 			() => "settled",
@@ -552,7 +554,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 
 	it("leaves another tier's run alone: a run without the mutation check takes no authority", async () => {
 		const { base, head } = scenario(true);
-		const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+		const { harness, root } = await openOn();
 		const { config } = await loadConfig(repo, source(base), "");
 		const mutation = runChecks(harness, await input(base, head, root.id, trusted), context);
 		const deadline = Date.now() + 20_000;
