@@ -231,13 +231,7 @@ function invalid(detail: string, cause?: unknown): CheckError {
 	});
 }
 
-/**
- * Reads Stryker's JSON mutation report into a tool log of one result per mutant that no test caught on a changed line.
- * A `Survived` mutant ran against tests that all passed; a `NoCoverage` mutant sits in code no test runs. `Timeout`,
- * `RuntimeError`, and `CompileError` mutants come back as notes. Throws `CheckError` `invalidOutput` when the text is
- * not a report, or names a mutant status Stryker does not end a run with.
- */
-export function normaliseMutationReport(text: string, run: MutationReportInput): { log: ToolLog; notes: string[] } {
+function readMutationReport(text: string): Static<typeof report> {
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(text);
@@ -250,72 +244,83 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 	for (const file of Object.values(files))
 		for (const each of file.mutants)
 			if (!known.has(each.status)) throw invalid(`mutant status ${each.status} is not one Stryker ends a run with`);
-	const results: ToolResult[] = [];
-	const aside = new Map<string, number>();
-	const ignored = new Map<string, Map<number, string>>();
-	const configured = new Map<string, Set<number>>();
-	const exempt = new Map<string, Set<number>>();
-	const mutated = new Set<string>();
-	for (const [path, file] of Object.entries(files)) {
-		if (file.mutants.length > 0) mutated.add(path);
-		const ranges = Object.hasOwn(run.lines, path) ? run.lines[path]! : undefined;
-		if (ranges === undefined) continue;
-		for (const each of file.mutants) {
-			const { start, end } = each.location;
-			if (!ranges.some(([first, last]) => start.line >= first && start.line <= last)) continue;
-			if (setAside.has(each.status)) {
-				aside.set(each.status, (aside.get(each.status) ?? 0) + 1);
-				continue;
-			}
-			const setting = each.status === "Ignored" ? ignoredByConfiguration(each, config) : undefined;
-			if (setting !== undefined) {
-				const group = setting === "static" ? exempt : configured;
-				const lines = group.get(path) ?? new Set<number>();
-				lines.add(start.line);
-				group.set(path, lines);
-				continue;
-			}
-			if (each.status === "Ignored") {
-				const lines = ignored.get(path) ?? new Map<number, string>();
-				if (!lines.has(start.line)) lines.set(start.line, each.statusReason ?? "Stryker gives no reason");
-				ignored.set(path, lines);
-				continue;
-			}
-			if (each.status === "Killed") continue;
-			const survived = each.status === "Survived";
-			const test = run.tests[path] ?? "a test file";
-			results.push({
-				ruleId: "untested-behaviour",
-				level: "error",
-				message: {
-					text: survived
-						? `${each.mutatorName} mutant survived: with this code changed to ${code(each.replacement)}, every test still passed.`
-						: `${each.mutatorName} mutant has no test coverage: no test runs this code, so changing it to ${code(each.replacement)} fails nothing.`,
-				},
-				advice: {
-					whyHere: survived
-						? "A mutant of this changed line survived the test run, so no test fails when this behaviour changes."
-						: "No test runs this changed line, so no test fails when this behaviour changes.",
-					whatToDo: `Add or tighten a test in ${test} so it fails when this code is changed as the mutant changed it, then restore the code.${
-						survived && each.static === true ? ` ${reachedOutsideTests}` : ""
-					}`,
-				},
-				locations: [
-					{
-						physicalLocation: {
-							artifactLocation: { uri: path.split("/").map(encodeURIComponent).join("/") },
-							region:
-								end.line > start.line
-									? { startLine: start.line, endLine: end.line }
-									: { startLine: start.line },
-						},
-					},
-				],
-			});
+	return { files, config };
+}
+
+type CollectedMutants = {
+	results: ToolResult[];
+	aside: Map<string, number>;
+	ignored: Map<string, Map<number, string>>;
+	configured: Map<string, Set<number>>;
+	exempt: Map<string, Set<number>>;
+	mutated: Set<string>;
+};
+
+function collectMutants(
+	path: string,
+	mutants: Static<typeof mutant>[],
+	ranges: readonly (readonly [number, number])[],
+	config: Static<typeof settings> | undefined,
+	run: MutationReportInput,
+	groups: CollectedMutants,
+): void {
+	const { results, aside, ignored, configured, exempt } = groups;
+	for (const each of mutants) {
+		const { start, end } = each.location;
+		if (!ranges.some(([first, last]) => start.line >= first && start.line <= last)) continue;
+		if (setAside.has(each.status)) {
+			aside.set(each.status, (aside.get(each.status) ?? 0) + 1);
+			continue;
 		}
+		const setting = each.status === "Ignored" ? ignoredByConfiguration(each, config) : undefined;
+		if (setting !== undefined) {
+			const group = setting === "static" ? exempt : configured;
+			const lines = group.get(path) ?? new Set<number>();
+			lines.add(start.line);
+			group.set(path, lines);
+			continue;
+		}
+		if (each.status === "Ignored") {
+			const lines = ignored.get(path) ?? new Map<number, string>();
+			if (!lines.has(start.line)) lines.set(start.line, each.statusReason ?? "Stryker gives no reason");
+			ignored.set(path, lines);
+			continue;
+		}
+		if (each.status === "Killed") continue;
+		const survived = each.status === "Survived";
+		const test = run.tests[path] ?? "a test file";
+		results.push({
+			ruleId: "untested-behaviour",
+			level: "error",
+			message: {
+				text: survived
+					? `${each.mutatorName} mutant survived: with this code changed to ${code(each.replacement)}, every test still passed.`
+					: `${each.mutatorName} mutant has no test coverage: no test runs this code, so changing it to ${code(each.replacement)} fails nothing.`,
+			},
+			advice: {
+				whyHere: survived
+					? "A mutant of this changed line survived the test run, so no test fails when this behaviour changes."
+					: "No test runs this changed line, so no test fails when this behaviour changes.",
+				whatToDo: `Add or tighten a test in ${test} so it fails when this code is changed as the mutant changed it, then restore the code.${
+					survived && each.static === true ? ` ${reachedOutsideTests}` : ""
+				}`,
+			},
+			locations: [
+				{
+					physicalLocation: {
+						artifactLocation: { uri: path.split("/").map(encodeURIComponent).join("/") },
+						region:
+							end.line > start.line ? { startLine: start.line, endLine: end.line } : { startLine: start.line },
+					},
+				},
+			],
+		});
 	}
-	// A comment, or any reason that is not a configuration setting, is the head's own text choosing what the judge skips, so
-	// an ignored mutant is never read as caught: a maintainer acknowledges or dismisses it.
+}
+
+function reportIgnoredMutants(groups: CollectedMutants): void {
+	const { results, ignored, exempt } = groups;
+	// Head comments choose what Stryker skips, so an ignored mutant needs a maintainer’s judgement.
 	for (const [path, lines] of ignored) {
 		for (const [line, reason] of lines) {
 			results.push({
@@ -341,10 +346,7 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 			});
 		}
 	}
-	// A static mutant sits in code that runs when a module loads, such as a constant, a regular expression, or a permission
-	// table, and `ignoreStatic` skips it. That is the configuration's trade-off, but a changed authentication pattern is
-	// exactly what a maintainer should see, so each file is a finding to acknowledge. A mutation a setting excludes is a
-	// note: it is the configuration's, and it names a kind of change, not a place.
+	// A static exclusion can hide authentication code; expose its changed lines for a maintainer to acknowledge.
 	for (const [path, lines] of exempt) {
 		results.push(
 			unmutatedResult({
@@ -354,15 +356,10 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 			}),
 		);
 	}
-	for (const file of run.unmutated ?? []) results.push(unmutatedResult(file));
-	results.sort((a, b) => {
-		const [left, right] = [a, b].map((result) => result.locations[0]!.physicalLocation);
-		return (
-			compare(left!.artifactLocation.uri, right!.artifactLocation.uri) ||
-			left!.region.startLine - right!.region.startLine ||
-			compare(a.message.text, b.message.text)
-		);
-	});
+}
+
+function mutationNotes(groups: CollectedMutants, lines: MutationReportInput["lines"]): string[] {
+	const { aside, configured, mutated } = groups;
 	const notes = [...aside].map(
 		([status, count]) =>
 			`${count} ${status} mutant(s) on changed lines were set aside: a hang or a crash is not a survivor, so no finding is raised for it.`,
@@ -374,11 +371,47 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 		);
 	}
 	// A path in `--mutate` is a glob, so one that matches no file leaves a report that reads as clean.
-	for (const path of Object.keys(run.lines)) {
+	for (const path of Object.keys(lines)) {
 		if (!mutated.has(path)) notes.push(`${path} produced no mutants, so nothing on its changed lines was judged.`);
 	}
+	return notes;
+}
+
+/**
+ * Reads Stryker's JSON mutation report into a tool log of one result per mutant that no test caught on a changed line.
+ * A `Survived` mutant ran against tests that all passed; a `NoCoverage` mutant sits in code no test runs. `Timeout`,
+ * `RuntimeError`, and `CompileError` mutants come back as notes. Throws `CheckError` `invalidOutput` when the text is
+ * not a report, or names a mutant status Stryker does not end a run with.
+ */
+export function normaliseMutationReport(text: string, run: MutationReportInput): { log: ToolLog; notes: string[] } {
+	const { files, config } = readMutationReport(text);
+	const groups: CollectedMutants = {
+		results: [],
+		aside: new Map(),
+		ignored: new Map(),
+		configured: new Map(),
+		exempt: new Map(),
+		mutated: new Set(),
+	};
+	for (const [path, file] of Object.entries(files)) {
+		if (file.mutants.length > 0) groups.mutated.add(path);
+		const ranges = Object.hasOwn(run.lines, path) ? run.lines[path]! : undefined;
+		if (ranges === undefined) continue;
+		collectMutants(path, file.mutants, ranges, config, run, groups);
+	}
+	reportIgnoredMutants(groups);
+	const { results } = groups;
+	for (const file of run.unmutated ?? []) results.push(unmutatedResult(file));
+	results.sort((a, b) => {
+		const [left, right] = [a, b].map((result) => result.locations[0]!.physicalLocation);
+		return (
+			compare(left!.artifactLocation.uri, right!.artifactLocation.uri) ||
+			left!.region.startLine - right!.region.startLine ||
+			compare(a.message.text, b.message.text)
+		);
+	});
 	return {
 		log: { version: "2.1.0", runs: [{ tool: { driver: { name: "Stryker", version: run.version } }, results }] },
-		notes,
+		notes: mutationNotes(groups, run.lines),
 	};
 }

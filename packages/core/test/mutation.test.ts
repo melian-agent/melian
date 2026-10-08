@@ -573,6 +573,7 @@ it("retains the driver, location and advice of unmutated binary and bounded file
 		{ path: "src/bounded.ts", ranges: [[4, 6]] as [number, number][], ...mutationUnmutated.pastBound(3) },
 	];
 	const log = mutationUnmutatedLog("10.0.0", files);
+	expect(normaliseMutationReport(report({}), { ...input, lines: {}, unmutated: files }).log).toEqual(log);
 	expect(log.runs[0].tool).toEqual({ driver: { name: "Stryker", version: "10.0.0" } });
 	expect(
 		log.runs[0].results.map((result) => ({ advice: result.advice, location: result.locations[0]!.physicalLocation })),
