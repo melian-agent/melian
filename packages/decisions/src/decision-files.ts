@@ -4,10 +4,15 @@ import type { Nodes } from "mdast";
 import { fromMarkdown } from "mdast-util-from-markdown";
 
 function markdownNodes(node: Nodes): Nodes[] {
-	return [node, ...("children" in node ? node.children.flatMap(markdownNodes) : [])];
+	return [
+		node,
+		...("children" in node && node.type !== "link" && node.type !== "linkReference"
+			? node.children.flatMap(markdownNodes)
+			: []),
+	];
 }
 
-function linkDestinations(content: string): string {
+function supersessionProse(content: string): string {
 	const nodes = markdownNodes(fromMarkdown(content));
 	const definitions = new Map(
 		nodes
@@ -16,15 +21,27 @@ function linkDestinations(content: string): string {
 			.map((node) => [node.identifier, node.url]),
 	);
 	return nodes
-		.filter((node) => node.type === "link" || node.type === "linkReference")
-		.reverse()
-		.reduce((text, node) => {
-			const destination = (node.type === "link" ? node.url : definitions.get(node.identifier)!).replaceAll(
-				"\n",
-				"%0A",
-			);
-			return `${text.slice(0, node.position!.start.offset)}\u0000${destination}\u0000${text.slice(node.position!.end.offset)}`;
-		}, content);
+		.filter((node) => node.type === "paragraph")
+		.map((paragraph) => {
+			const start = paragraph.position!.start.offset!;
+			return markdownNodes(paragraph)
+				.filter((node) => node.type === "link" || node.type === "linkReference" || node.type === "inlineCode")
+				.reverse()
+				.reduce(
+					(text, node) => {
+						const destination = (
+							node.type === "inlineCode"
+								? ""
+								: node.type === "link"
+									? node.url
+									: definitions.get(node.identifier)!
+						).replaceAll("\n", "%0A");
+						return `${text.slice(0, node.position!.start.offset! - start)}\u0000${destination}\u0000${text.slice(node.position!.end.offset! - start)}`;
+					},
+					content.slice(start, paragraph.position!.end.offset),
+				);
+		})
+		.join("\n");
 }
 
 function localDecisionTargets(destination: string): string[] {
@@ -60,10 +77,10 @@ export class DecisionFile {
 		this.supersedes = supersedes;
 	}
 
-	/** Parses the heading and dated Markdown filenames on Supersedes lines. */
+	/** Parses the heading and prose Supersedes lines, excluding code examples. */
 	static parse(path: string, content: string): DecisionFile {
 		const title = /^# (.+)$/m.exec(content)?.[1] ?? path;
-		const targets = [...linkDestinations(content).matchAll(/^Supersedes:[ \t]*([^\n]*)$/gm)].flatMap(([_, line]) => {
+		const targets = [...supersessionProse(content).matchAll(/^Supersedes:[ \t]*([^\n]*)$/gm)].flatMap(([_, line]) => {
 			if (/^(?:none|no decision file)\b/i.test(line!)) return [];
 			return [...line!.matchAll(/\u0000([^\u0000]*)\u0000|((?:[\w.-]+\/)*\d{4}-\d{2}-\d{2}-[\w-]+\.md)/g)]
 				.flatMap(([_, link, bare]) => (link === undefined ? [bare!] : localDecisionTargets(link)))

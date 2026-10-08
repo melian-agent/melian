@@ -25,7 +25,7 @@ The state is text about the change under review, and the change's author control
 
 ## Written decisions
 
-DecisionFile.parse reads a title and dated Markdown filenames on Supersedes lines. DecisionFiles.load reads the complete docs/decisions tree from the comparison base through core’s source reader, with 256 KiB per file. DecisionFiles.from resolves supersession before rendering. Missing targets and cycles throw DecisionFilesError. Source errors, including oversized files and symlinks, propagate rather than dropping a baseline.
+DecisionFile.parse reads a title and dated Markdown filenames on prose Supersedes lines. CommonMark paragraphs supply declarations; fenced and indented code and inline code examples create no edges. Link labels remain opaque, including code spans inside them. DecisionFiles.load reads the complete docs/decisions tree from the comparison base through core’s source reader, with 256 KiB per file. DecisionFiles.from resolves supersession before rendering. Missing targets and cycles throw DecisionFilesError. Source errors, including oversized files and symlinks, propagate rather than dropping a baseline.
 
 DecisionFiles.render lists every path and full title, with active status or direct successors. The complete UTF-8 index is bounded at 64 KiB. Exceeding it throws an incomplete-baseline error naming the count omitted; no row or candidate is silently shortened. Repository-scale coverage checks every active decision at base and leaves headroom.
 

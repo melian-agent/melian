@@ -1,0 +1,3 @@
+# Design lens round eight fixes
+
+For [pull request #102](https://github.com/melian-agent/melian/pull/102), `fix(decisions): keep code examples from superseding baselines` fixes ff42d76c4809f8d0. CommonMark prose paragraphs supply declarations; fenced, indented and inline code examples leave governing decisions active. Link labels stay opaque so code spans cannot shorten a following bare target. The decision-file tests pass. Mutations prove the paragraph filter, inline code handling, link and reference selection, destination branches, child traversal and both label exclusions. The full gate will run after the second fix.

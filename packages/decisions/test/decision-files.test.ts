@@ -19,6 +19,22 @@ describe("written decisions", () => {
 		expect(parse(a, "Supersedes: none.\n")).toMatchObject({ title: a, supersedes: [] });
 	});
 
+	it.each([
+		"```md\nSupersedes: [A](2026-10-01-a.md)\n```",
+		"~~~md\nSupersedes: 2026-10-01-a.md\n~~~",
+		"    Supersedes: [A](2026-10-01-a.md)",
+		"`Supersedes: [A](2026-10-01-a.md)`",
+		"`Example:\nSupersedes: [A](2026-10-01-a.md)\n`",
+		"Supersedes: `[A](2026-10-01-a.md)`",
+		"Supersedes: `2026-10-01-a.md`",
+	])("keeps the governing decision active beside the code example %s", (example) => {
+		const successor = parse(c, `# C\n\n${example}\n\nSupersedes: [B](2026-10-02-b.md)\n`);
+		expect(successor.supersedes).toEqual([b]);
+		const rendered = DecisionFiles.from([parse(a, "# A"), parse(b, "# B"), successor]).render();
+		expect(rendered).toContain(`[ACTIVE] ${a} — A`);
+		expect(rendered).toContain(`[INACTIVE; superseded by ${c}] ${b} — B`);
+	});
+
 	it("resolves sibling, parent, child and repository-relative nested targets", () => {
 		const nestedA = "docs/decisions/nested/2026-10-01-a.md";
 		const nestedB = "docs/decisions/nested/2026-10-02-b.md";
@@ -56,6 +72,8 @@ describe("written decisions", () => {
 		"[2026-10-02-b.md](2026-10-01-a.md 'See 2026-10-02-b.md')",
 		"[2026-10-02-b.md](2026-10-01-a.md (See 2026-10-02-b.md))",
 		'[**2026-10-02-b.md** and [context]]( <2026-10-01-a.md> "See 2026-10-02-b.md")',
+		"[`2026-10-02-b.md`](2026-10-01-a.md)",
+		"[`2026-10-02-b.md`][context]\n\n[context]: 2026-10-01-a.md",
 		'[A](2026-10-01-a.md "See \\"2026-10-02-b.md\\"")',
 		'[A](2026-10-01-a.md\n "See 2026-10-02-b.md")',
 		"[A](./2026-10-01-a.md#2026-10-02-b.md)",
@@ -100,6 +118,13 @@ describe("written decisions", () => {
 				'# C\nSupersedes: [B](2026-10-02-b.md "See 2026-10-04-d.md"), [A](2026-10-01-a.md), 2026-10-05-e.md\n',
 			).supersedes,
 		).toEqual([b, a, "docs/decisions/2026-10-05-e.md"]);
+	});
+
+	it.each([
+		"[`2026-10-02-b.md`](2026-10-01-a.md), 2026-10-02-b.md",
+		"[`2026-10-02-b.md`][context], 2026-10-02-b.md\n\n[context]: 2026-10-01-a.md",
+	])("keeps the bare target after the code-formatted link label in %s", (declaration) => {
+		expect(parse(c, `# C\nSupersedes: ${declaration}\n`).supersedes).toEqual([a, b]);
 	});
 
 	it.each([
