@@ -143,10 +143,11 @@ describe("static.mutation and the writer of a pull request", { timeout: 60_000 }
 // A setup file that throws only while Stryker runs a mutant passes the dry run, so every mutant reads as killed and the
 // mutation check reports nothing. The marker is spelt apart so that this file does not match the rule it tests.
 const marker = ["__stryker", "__"].join("");
+const mutantFlag = ["active", "Mutant"].join("");
 
 describe("a head that forges mutation kills", { timeout: 60_000 }, () => {
 	const forged = {
-		"test/setup.ts": `if ((globalThis as { ${marker}?: { activeMutant?: unknown } }).${marker}?.activeMutant) throw new Error("killed");\n`,
+		"test/setup.ts": `if ((globalThis as { ${marker}?: { ${mutantFlag}?: unknown } }).${marker}?.${mutantFlag}) throw new Error("killed");\n`,
 	};
 
 	it("does not read as a clean review", async () => {

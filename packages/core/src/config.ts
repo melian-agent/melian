@@ -389,9 +389,7 @@ export interface MelianConfig {
 	readonly triage: { readonly escalateAt: Severity };
 }
 
-// Stryker sets `globalThis.__stryker__.activeMutant` while it runs a mutant. A head file that reads it can throw only
-// under a mutant, so the dry run passes and every mutant reads as killed. The pattern is spelt so that this line does
-// not match it.
+// Stryker’s runtime marker lets a test fake kills by throwing only during a mutant.
 const forgedMutationKill: ForbiddenPatternRule = {
 	pattern: "__stryker_{2}|activeMutan[t]",
 	paths: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts", "**/*.js", "**/*.jsx", "**/*.mjs", "**/*.cjs"],

@@ -278,19 +278,15 @@ describe("required-files", () => {
 
 // The names Stryker gives its active-mutant variable, spelt apart so that this file does not match the rule it tests.
 const strykerGlobal = ["__stryker", "__"].join("");
-const activeMutant = ["active", "Mutant"].join("");
+const mutantFlag = ["active", "Mutant"].join("");
 
 describe("the built-in rule against forged mutation kills", () => {
 	const forging = (file: string, content: string) => guardrails({ "a.ts": "export {};\n" }, { [file]: content });
 
 	it.each([
-		[
-			"a setup file",
-			"test/setup.ts",
-			`if (globalThis.${strykerGlobal}?.${activeMutant}) throw new Error("killed");\n`,
-		],
+		["a setup file", "test/setup.ts", `if (globalThis.${strykerGlobal}?.${mutantFlag}) throw new Error("killed");\n`],
 		["a module setup", "test/setup.mjs", `export default { setup: globalThis.${strykerGlobal} };\n`],
-		["a plain script", "scripts/hook.cjs", `const mutant = state.${activeMutant};\n`],
+		["a plain script", "scripts/hook.cjs", `const mutant = state.${mutantFlag};\n`],
 	])("flags %s that reads Stryker's active mutant, with no melian.yaml at all", async (_name, file, content) => {
 		const report = await forging(file, content);
 		expect(summary(report.findings)).toEqual([
@@ -306,11 +302,11 @@ describe("the built-in rule against forged mutation kills", () => {
 	});
 
 	it("leaves documents that name the variable alone, and a line the base already held", async () => {
-		const documented = await forging("docs/note.md", `Stryker sets ${strykerGlobal}.${activeMutant}.\n`);
+		const documented = await forging("docs/note.md", `Stryker sets ${strykerGlobal}.${mutantFlag}.\n`);
 		expect(documented.findings).toEqual([]);
 		const held = await guardrails(
-			{ "old.ts": `use(${activeMutant});\n` },
-			{ "old.ts": `use(${activeMutant});\n// edit\n` },
+			{ "old.ts": `use(${mutantFlag});\n` },
+			{ "old.ts": `use(${mutantFlag});\n// edit\n` },
 		);
 		expect(held.findings).toEqual([]);
 	});
