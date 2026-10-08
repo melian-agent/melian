@@ -36,6 +36,7 @@ import { strykerNotInstalled, strykerVersion } from "../src/mutation-static.ts";
 import { MutationTests } from "../src/mutation-tests.ts";
 import { Sandbox } from "../src/sandbox.ts";
 import { staticToolSource } from "../src/static.ts";
+import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
 import {
 	commit as commitTo,
 	createRepository,
@@ -57,6 +58,7 @@ let artifacts: string;
 let opened: Harness[];
 
 beforeEach(() => {
+	fakeMutationProcesses();
 	vi.spyOn(Sandbox, "detect").mockReturnValue(unconfinedSandbox);
 	repo = createRepository();
 	artifacts = realpathSync(mkdtempSync(join(tmpdir(), "melian-mutation-")));

@@ -21,6 +21,7 @@ import {
 } from "@melian-agent/core";
 import { replaceCheckFindings, revisionKey } from "./findings.ts";
 import {
+	backgroundContext,
 	type Context,
 	type ConversationId,
 	defineDoc,
@@ -30,6 +31,7 @@ import {
 	type Harness,
 	type TaskId,
 } from "./harness.ts";
+import { type MutationProcessHooks, MutationTree, type MutationTreeRecord } from "./mutation-process.ts";
 import { strykerVersion } from "./mutation-static.ts";
 import { Sandbox } from "./sandbox.ts";
 import { runStaticTool, staticToolSource } from "./static.ts";
@@ -77,6 +79,15 @@ export const ChecksDocument = defineDoc<Runs>({
 	history: "rewindable",
 	fork: "asOf",
 	initial: () => ({ runs: {}, tasks: {} }),
+});
+
+export const MutationProcesses = defineDoc<{ trees: Record<string, MutationTreeRecord> }>({
+	kind: "melian.mutation-processes",
+	version: 1,
+	scope: "conversation",
+	history: "rewindable",
+	fork: "asOf",
+	initial: () => ({ trees: {} }),
 });
 
 /**
@@ -134,7 +145,12 @@ function untrusted(input: CheckInput): { detail: string } | undefined {
 	return input.writer.trusted ? undefined : { detail: input.writer.detail };
 }
 
-async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, context: Context): Promise<Outcome> {
+async function runStatic(
+	input: CheckInput,
+	env: ExecutionEnv | undefined,
+	context: Context,
+	mutationProcess: MutationProcessHooks,
+): Promise<Outcome> {
 	const tool = toolOf[input.check as keyof typeof toolOf];
 	const settings = input.config.static[tool];
 	if (!settings.enabled) return { status: "skipped", reason: `static.${tool}.enabled is false` };
@@ -157,6 +173,7 @@ async function runStatic(input: CheckInput, env: ExecutionEnv | undefined, conte
 		runStaticTool(
 			{
 				env,
+				mutationProcess,
 				repoRoot,
 				commit,
 				base: revision.base,
@@ -202,13 +219,14 @@ async function runCheck(
 	input: CheckInput,
 	env: () => Promise<ExecutionEnv | undefined>,
 	context: Context,
+	mutationProcess: MutationProcessHooks,
 ): Promise<Outcome> {
 	if (input.check === "guardrails") {
 		const { repoRoot } = input.changeset;
 		const revision = Revision.from(input.changeset.revision);
 		return { status: "ran", report: await evaluateGuardrails({ repoRoot, revision, source: input.source }) };
 	}
-	return runStatic(input, await env(), context);
+	return runStatic(input, await env(), context, mutationProcess);
 }
 
 // Aborts every live mutation task of the revision that a run other than `key` created. Its own check would end it when it
@@ -224,8 +242,22 @@ async function abortRetiredMutation(harness: Harness, revision: string, key: str
 			input.authority !== key
 		) {
 			await harness.abortTask(record.id, context);
+			await harness.waitForTask(record.id, context);
 		}
 	}
+}
+
+async function terminateMutation(
+	reader: Pick<Harness, "snapshot">,
+	root: ConversationId,
+	task: number,
+	env: ExecutionEnv | undefined,
+	context: Context,
+): Promise<void> {
+	const record = (await reader.snapshot(MutationProcesses, root, context))?.trees[String(task)];
+	if (record === undefined) return;
+	if (env === undefined) throw new Error("no environment to terminate a mutation process tree");
+	await (await MutationTree.read(env, record, context)).terminate(env);
 }
 
 function failure(name: string, error: unknown): CheckRunRecord {
@@ -254,6 +286,7 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 	phases: {
 		run: async (task, runtime, context) => {
 			const { check, changeset, run } = task.input;
+			await terminateMutation(runtime, runtime.conversationId, runtime.taskId, await runtime.env(context), context);
 			const current = await runtime.snapshot(ChecksDocument, runtime.conversationId, context);
 			if (!ownsMutation(task.input, current?.owners)) {
 				await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
@@ -262,7 +295,18 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 			let outcome: Outcome | undefined;
 			let record: CheckRunRecord;
 			try {
-				outcome = await runCheck(task.input, () => runtime.env(context), context);
+				outcome = await runCheck(task.input, () => runtime.env(context), context, {
+					started: async (tree) => {
+						await runtime.commit(async (tx) => {
+							(await tx.doc(MutationProcesses, runtime.conversationId)).trees[String(runtime.taskId)] = tree;
+						}, context);
+					},
+					stopped: async () => {
+						await runtime.commit(async (tx) => {
+							delete (await tx.doc(MutationProcesses, runtime.conversationId)).trees[String(runtime.taskId)];
+						}, backgroundContext);
+					},
+				});
 				record =
 					outcome.status === "skipped"
 						? {
@@ -295,6 +339,13 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 		},
 	},
 	abort: async (_task, runtime, context) => {
+		await terminateMutation(
+			runtime,
+			runtime.conversationId,
+			runtime.taskId,
+			await runtime.env(backgroundContext),
+			backgroundContext,
+		);
 		await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
 	},
 });

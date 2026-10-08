@@ -22,8 +22,10 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ChecksDocument } from "../src/checks.ts";
+import { ChecksDocument, MutationProcesses } from "../src/checks.ts";
+import { type ProcessEntry, ProcessTable } from "../src/mutation-process.ts";
 import { Sandbox } from "../src/sandbox.ts";
+import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
 import { commit, createRepository, fakeTool, lines, removeRepository } from "./fixtures/repo.ts";
 import { unconfinedSandbox } from "./fixtures/sandbox.ts";
 
@@ -32,6 +34,7 @@ let artifacts: string;
 let opened: Harness[];
 
 beforeEach(() => {
+	fakeMutationProcesses();
 	vi.spyOn(Sandbox, "detect").mockReturnValue(unconfinedSandbox);
 	repo = createRepository();
 	artifacts = realpathSync(mkdtempSync(join(tmpdir(), "melian-authority-")));
@@ -100,17 +103,29 @@ const runs = () =>
 		? readFileSync(join(artifacts, "runs.txt"), "utf8").trim().split("\n").length
 		: 0;
 
-async function openOn(database: string) {
+async function openOn(database: string, environment = true) {
 	const fake = createFakeModels();
 	const registry = createReviewRegistry();
 	registry.install(checksExtension);
 	const harness = await openHarness(await openSqliteStorage(database), {
 		models: fake.models,
 		registry,
-		env: () => createNodeExecutionEnv(repo),
+		env: () => (environment ? createNodeExecutionEnv(repo) : undefined),
 	});
 	opened.push(harness);
 	return { harness, root: await harness.root(context, { agent: { model: fake.ref() } }) };
+}
+
+// A process table that holds only what a test puts in it, and signals nothing: a kill removes the entry.
+function fakeProcesses(entries: ProcessEntry[]) {
+	const kills: [number, string][] = [];
+	vi.spyOn(ProcessTable.prototype, "list").mockImplementation(() => entries.map((entry) => ({ ...entry })));
+	vi.spyOn(ProcessTable.prototype, "kill").mockImplementation((pid, signal) => {
+		kills.push([pid, signal]);
+		const at = entries.findIndex((entry) => entry.pid === pid);
+		if (at !== -1) entries.splice(at, 1);
+	});
+	return kills;
 }
 
 async function input(
@@ -299,6 +314,91 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		expect(await liveChecks(harness)).toEqual([]);
 		expect(await outcomeOf(harness, pending!.record.id)).toEqual({ status: "aborted" });
 		expect(runs()).toBe(0);
+	});
+
+	it("records the tree while head code runs and clears it after termination", async () => {
+		const { base, head } = scenario(true);
+		const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+		const run = runChecks(harness, await input(base, head, root.id, trusted), context);
+		const deadline = Date.now() + 20_000;
+		while (runs() === 0) {
+			if (Date.now() > deadline) throw new Error("Stryker never started");
+			await sleep(20);
+		}
+		try {
+			const trees = Object.values((await harness.snapshot(MutationProcesses, root.id, context))!.trees);
+			expect(trees).toHaveLength(1);
+			expect(trees[0]!.root.pid).toBe(3);
+		} finally {
+			writeFileSync(join(artifacts, "release"), "");
+			await run;
+		}
+		expect((await harness.snapshot(MutationProcesses, root.id, context))!.trees).toEqual({});
+	});
+
+	const recordTree = async (root: Awaited<ReturnType<typeof openOn>>["root"], task: number) => {
+		await root.commit(async (tx) => {
+			(await tx.doc(MutationProcesses, root.id)).trees[String(task)] = {
+				control: join(artifacts, "gone-control"),
+				supervisor: { pid: 4242, start: "Thu Oct 8 10:00:00 2026" },
+				root: { pid: 4243, start: "Thu Oct 8 10:00:01 2026" },
+			};
+		}, context);
+	};
+	const alive: ProcessEntry[] = [
+		{ pid: 4242, ppid: 1, start: "Thu Oct 8 10:00:00 2026" },
+		{ pid: 4243, ppid: 4242, start: "Thu Oct 8 10:00:01 2026" },
+	];
+
+	it("ends the recorded processes by pid before replaying the trusted task", async () => {
+		const { base, head } = scenario();
+		const database = await crashed(base, head);
+		const { harness, root } = await openOn(database);
+		const [pending] = await liveChecks(harness);
+		await recordTree(root, pending!.record.id);
+		const kills = fakeProcesses(alive.map((entry) => ({ ...entry })));
+		await runChecks(harness, await input(base, head, root.id, trusted), context);
+		expect(kills).toEqual([
+			[4242, "SIGTERM"],
+			[4243, "SIGTERM"],
+		]);
+	});
+
+	it("leaves a pid alone whose start time differs from the recorded one", async () => {
+		const { base, head } = scenario();
+		const database = await crashed(base, head);
+		const { harness, root } = await openOn(database);
+		const [pending] = await liveChecks(harness);
+		await recordTree(root, pending!.record.id);
+		const kills = fakeProcesses(alive.map((entry) => ({ ...entry, start: "Fri Oct 9 09:00:00 2026" })));
+		await runChecks(harness, await input(base, head, root.id, trusted), context);
+		expect(kills).toEqual([]);
+	});
+
+	it("refuses recovery with a recorded tree when no environment can terminate it", async () => {
+		const { base, head } = scenario();
+		const database = await crashed(base, head);
+		const { harness, root } = await openOn(database, false);
+		const [pending] = await liveChecks(harness);
+		await recordTree(root, pending!.record.id);
+		const run = await runChecks(harness, await input(base, head, root.id, trusted), context);
+		expect(run.records).toMatchObject([
+			{ status: "failed", error: "no environment to terminate a mutation process tree" },
+		]);
+	});
+
+	it("ends the recorded processes before retiring a crashed mutation task", async () => {
+		const { base, head } = scenario();
+		const database = await crashed(base, head);
+		const { harness, root } = await openOn(database);
+		const [pending] = await liveChecks(harness);
+		await recordTree(root, pending!.record.id);
+		const kills = fakeProcesses(alive.map((entry) => ({ ...entry })));
+		await runChecks(harness, await input(base, head, root.id, revoked), context);
+		expect(kills).toEqual([
+			[4242, "SIGTERM"],
+			[4243, "SIGTERM"],
+		]);
 	});
 
 	it("resumes and runs the task a crash left pending when the next review keeps the writer trusted", async () => {

@@ -13,12 +13,14 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Sandbox } from "../src/sandbox.ts";
 import { Run, staticToolSource } from "../src/static.ts";
+import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
 import { commit, createRepository, fakeTool, gitIn, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
 import { unconfinedSandbox } from "./fixtures/sandbox.ts";
 
 let repo: string;
 
 beforeEach(() => {
+	fakeMutationProcesses();
 	repo = createRepository();
 });
 

@@ -19,6 +19,7 @@ import {
 } from "@melian-agent/core";
 import { EnolaRun } from "./enola-static.ts";
 import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts";
+import type { MutationProcessHooks } from "./mutation-process.ts";
 import { MutationRun, strykerNotInstalled } from "./mutation-static.ts";
 import { Sandbox } from "./sandbox.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
@@ -43,6 +44,8 @@ export interface StaticRunInput {
 	readonly revision?: Revision;
 	/** Writer trust supplied by the host; absence keeps cache writes in the untrusted partition. */
 	readonly trustedWriter?: boolean;
+	/** Records and clears the sandbox process group for durable recovery. */
+	readonly mutationProcess?: MutationProcessHooks;
 }
 
 /** A tool's log for one revision, with anything the run set aside, or why the tool does not apply to it. */

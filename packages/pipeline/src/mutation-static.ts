@@ -15,6 +15,7 @@ import {
 } from "@melian-agent/core";
 import { backgroundContext } from "./harness.ts";
 import { MutationCache } from "./mutation-cache.ts";
+import { MutationProcess } from "./mutation-process.ts";
 import { type MutationTestSelection, MutationTests } from "./mutation-tests.ts";
 import { nodeInstallation, type Sandbox } from "./sandbox.ts";
 import type { Run, StaticRun } from "./static.ts";
@@ -345,7 +346,7 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 		let result: Awaited<ReturnType<Run["shell"]>>;
 		const restore = await this.#ownGit();
 		try {
-			result = await this.#run.shell(this.#sandbox.command(command, paths, profileFile), undefined, {
+			result = await new MutationProcess(this.#run).execute(this.#sandbox.command(command, paths, profileFile), {
 				...this.#sandbox.environment(),
 				HOME: home,
 				TMPDIR: temporary,

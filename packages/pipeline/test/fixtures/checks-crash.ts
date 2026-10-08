@@ -11,12 +11,17 @@ import {
 	openSqliteStorage,
 	runChecks,
 } from "../../src/index.ts";
+import { MutationProcess } from "../../src/mutation-process.ts";
 import { Sandbox } from "../../src/sandbox.ts";
 import { createFakeModels } from "../../src/testing.ts";
 import { unconfinedSandbox } from "./sandbox.ts";
 
 const [repo, base, head, database, log] = process.argv.slice(2) as [string, string, string, string, string];
 Object.defineProperty(Sandbox, "detect", { value: () => unconfinedSandbox });
+MutationProcess.prototype.execute = async () => {
+	appendFileSync(log, "parked\n");
+	return new Promise(() => setInterval(() => {}, 1000));
+};
 const env = createNodeExecutionEnv(repo);
 const parking: ExecutionEnv = Object.create(env);
 parking.exec = (command, options, context) => {

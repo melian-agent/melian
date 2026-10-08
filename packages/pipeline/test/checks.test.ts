@@ -35,6 +35,7 @@ import { findingsVersion } from "../src/findings.ts";
 import { Sandbox } from "../src/sandbox.ts";
 import * as staticRunner from "../src/static.ts";
 import { ToolProvisioning } from "../src/tool-provisioning.ts";
+import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
 import { commit, createRepository, fakeTool, lines, removeRepository } from "./fixtures/repo.ts";
 import { unconfinedSandbox } from "./fixtures/sandbox.ts";
 
@@ -42,6 +43,7 @@ let repo: string;
 let opened: Harness[];
 
 beforeEach(() => {
+	fakeMutationProcesses();
 	repo = createRepository();
 	opened = [];
 });
