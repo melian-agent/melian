@@ -26,6 +26,8 @@ export class DesignSections {
 		if (content === undefined) return DesignSections.from([]);
 		const files = [{ path: "docs/design.md", content }];
 		const paths = new Set<string>();
+		const localBase = new URL("file://melian-repository/docs/design.md");
+		const otherBase = new URL("file://other-repository/docs/design.md");
 		const nodes = markdownNodes(fromMarkdown(content));
 		const definitions = new Map(
 			nodes
@@ -36,7 +38,9 @@ export class DesignSections {
 		for (const node of nodes.filter((node) => node.type === "link" || node.type === "linkReference")) {
 			const target = node.type === "link" ? node.url : definitions.get(node.identifier)!;
 			const destination = target.split(/[?#]/, 1)[0]!;
-			if (destination.includes(":") || destination.startsWith("//")) continue;
+			const resolved = URL.parse(destination, localBase.href);
+			if (resolved === null) throw new DecisionFilesError("invalid", "A linked design section has an invalid URL");
+			if (URL.canParse(destination) || resolved.host === new URL(destination, otherBase).host) continue;
 			let section: string;
 			try {
 				section = decodeURIComponent(destination);

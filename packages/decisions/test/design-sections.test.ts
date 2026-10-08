@@ -35,6 +35,16 @@ describe("base design vocabulary", () => {
 			link: "[Trust](design/writer%23trust.md#policy)",
 			path: "docs/design/writer#trust.md",
 		},
+		{
+			name: "colon in later segment",
+			link: "[Trust](design/writer:trust.md#policy)",
+			path: "docs/design/writer:trust.md",
+		},
+		{
+			name: "percent-encoded scheme",
+			link: "[Trust](https%3A//host/trust.md#policy)",
+			path: "docs/https:/host/trust.md",
+		},
 		{ name: "encoded extension", link: "[Trust](design/trust%2Emd#policy)", path: "docs/design/trust.md" },
 		{ name: "query and fragment", link: "[Trust](design/trust.md?view=1#policy)", path: "docs/design/trust.md" },
 		{ name: "query", link: "[Trust](design/trust.md?view=1)", path: "docs/design/trust.md" },
@@ -94,6 +104,18 @@ describe("base design vocabulary", () => {
 		"https://example.com/design/missing%ZZ.md#policy",
 		"//example.com/design/missing.md#policy",
 		"//example.com/design/missing%ZZ.md#policy",
+		"//host/path.md#policy",
+		"//localhost/path.md#policy",
+		"//melian-repository/path.md#policy",
+		"mailto:trust.md#policy",
+		"data:trust.md#policy",
+		"javascript:trust.md#policy",
+		"C:/trust.md#policy",
+		"HTTPS://host/trust.md#policy",
+		"https://melian-repository/design/trust.md#policy",
+		"file:///elsewhere/trust.md#policy",
+		"file:design/trust.md#policy",
+		"file://melian-repository/docs/design/trust.md#policy",
 		"missing.md",
 		"design/missing.txt#policy",
 	])("keeps the design headings without reading a section for %s", async (target) => {
@@ -109,6 +131,7 @@ describe("base design vocabulary", () => {
 		}
 	});
 	it.each([
+		["https://[invalid]/trust.md#policy", "invalid URL"],
 		["design/trust%ZZ.md#policy", "invalid URI encoding"],
 		["design/trust%C3.md#policy", "invalid URI encoding"],
 		["%2Fabsolute.md#policy", "outside the repository"],
