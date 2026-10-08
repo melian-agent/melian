@@ -46,7 +46,7 @@ flowchart TD
     A["Change arrives<br/>(local range, pre-commit hook, or pull request)"] --> B["Triage<br/>decision model picks a tier and<br/>how deep each lens reads"]
     B --> C["Static checks<br/>Biome, tsc, Enola, mutation testing<br/>(no model, deterministic)"]
     B --> D["Guardrails<br/>forbidden patterns, policy-change notices"]
-    B --> E["Agentic lenses<br/>correctness, contracts, durability, tests,<br/>trust boundary, conventions, design"]
+    B --> E["Agentic lenses<br/>correctness, contracts, durability, tests,<br/>trust boundary, conventions, design, ..."]
     E --> F["Verifier<br/>a second model family checks each claim:<br/>confirmed, plausible or refuted"]
     C --> G["Adjudication<br/>merge findings, set severity,<br/>keep scope: introduced, pre-existing or affected,<br/>honour dismissals"]
     D --> G
@@ -153,7 +153,7 @@ Each credential names a provider and takes its key from one of three sources:
 credentials:
   pinned-anthropic: { provider: anthropic, key: sk-ant-... }          # the key itself
   work-anthropic: { provider: anthropic, env: WORK_ANTHROPIC_KEY }    # an environment variable
-  work-openai: { provider: openai, command: "op read op://dev/openai/key" }  # a command's output, user-level file only
+  work-openai: { provider: openai, command: "op read op://dev/openai/key" }  # for secret store read - a command's output, user-level file only
 ```
 
 A command runs only from your own `secrets.yaml` in `~/.config/melian/`, never from `melian.secrets.yaml`, which holds keys and environment variables only: a file inside a repository may have come from someone else's change. That file must be yours, with mode 600, in a directory no one else can write; otherwise Melian refuses the command. Melian never prints a credential.
