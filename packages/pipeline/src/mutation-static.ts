@@ -150,6 +150,31 @@ export function strykerVersion(repoRoot: string): string {
 	return "unavailable";
 }
 
+/** Identifies the checkout's installation, which supplies dependencies to the reviewed head. */
+export function mutationInstallation(repoRoot: string): string {
+	const require = createRequire(posix.join(repoRoot, "package.json"));
+	const versions = ["@stryker-mutator/core", "@stryker-mutator/vitest-runner", "vitest"].map((name) => {
+		try {
+			const { version } = JSON.parse(readFileSync(require.resolve(`${name}/package.json`), "utf8")) as {
+				version: unknown;
+			};
+			if (typeof version === "string") return version;
+		} catch {
+			// Fake and incomplete installs still get a distinct identity when repaired.
+		}
+		return "unavailable";
+	});
+	let lockfile = "unavailable";
+	try {
+		lockfile = createHash("sha256")
+			.update(readFileSync(posix.join(repoRoot, "package-lock.json")))
+			.digest("hex");
+	} catch {
+		// A checkout without a lockfile cannot share a partition with a locked install.
+	}
+	return createHash("sha256").update(JSON.stringify({ lockfile, versions })).digest("hex");
+}
+
 /**
  * Mutation testing of one revision's changed lines: Stryker on Vitest, run in the head's worktree. A mutant that no test
  * caught, on a line the change added or edited, becomes a result of rule `untested-behaviour`.
@@ -304,6 +329,7 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 			policy: policyCommit ?? base ?? commit,
 			trusted: trustedWriter === true,
 			head: commit,
+			installation: mutationInstallation(repoRoot),
 			inputs: createHash("sha256")
 				.update(JSON.stringify({ version: this.#version, entries, selection }))
 				.digest("hex"),

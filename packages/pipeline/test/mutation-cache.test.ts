@@ -3,12 +3,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { MutationCache, type MutationCacheKey } from "../src/mutation-cache.ts";
+import { mutationInstallation } from "../src/mutation-static.ts";
 
 const key = (changes: Partial<MutationCacheKey> = {}): MutationCacheKey => ({
 	policy: "policy",
 	trusted: false,
 	head: "head",
 	inputs: "inputs",
+	installation: "installation",
 	...changes,
 });
 
@@ -85,6 +87,40 @@ it("keeps one partition per head commit and per run input", async () => {
 	expect((await MutationCache.open(root, key())).file).toBe(first.file);
 	expect((await MutationCache.open(root, key({ head: "other-head" }))).file).not.toBe(first.file);
 	expect((await MutationCache.open(root, key({ inputs: "other-inputs" }))).file).not.toBe(first.file);
+});
+
+it("starts cold when the checkout lockfile changes at the same head", async () => {
+	await writeFile(join(root, "package-lock.json"), '{"lockfileVersion":3,"packages":{}}');
+	const first = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+	await writeFile(first.file, '{"files":{"a":{"mutants":[{"status":"Killed"}]}}}');
+	const warm = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+	expect(await readFile(warm.file, "utf8")).toContain("Killed");
+	await writeFile(join(root, "package-lock.json"), '{"lockfileVersion":3,"packages":{"new":{}}}');
+	const cold = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+	await expect(stat(cold.file)).rejects.toMatchObject({ code: "ENOENT" });
+});
+
+it.each(["@stryker-mutator/core", "@stryker-mutator/vitest-runner", "vitest"])(
+	"starts cold when the resolved %s version changes with the same lockfile",
+	async (name) => {
+		await writeFile(join(root, "package-lock.json"), "{}");
+		const directory = join(root, "node_modules", name);
+		await mkdir(directory, { recursive: true });
+		await writeFile(join(directory, "package.json"), '{"version":"1.0.0"}');
+		const first = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+		await writeFile(first.file, "{}");
+		await writeFile(join(directory, "package.json"), '{"version":"2.0.0"}');
+		const cold = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+		await expect(stat(cold.file)).rejects.toMatchObject({ code: "ENOENT" });
+	},
+);
+
+it.each(['{"version":42}', "{corrupt"])("treats an invalid installed version as unavailable: %s", async (text) => {
+	const missing = mutationInstallation(root);
+	const directory = join(root, "node_modules/@stryker-mutator/core");
+	await mkdir(directory, { recursive: true });
+	await writeFile(join(directory, "package.json"), text);
+	expect(mutationInstallation(root)).toBe(missing);
 });
 
 it("stages a copy of the partition's report and leaves the partition alone while the run writes it", async () => {

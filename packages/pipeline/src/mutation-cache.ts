@@ -15,6 +15,8 @@ export interface MutationCacheKey {
 	readonly head: string;
 	/** A digest of what else the run feeds Stryker: its version, the lines and the test selection. */
 	readonly inputs: string;
+	/** The checkout lockfile digest and the resolved Stryker, Vitest runner and Vitest versions. */
+	readonly installation: string;
 }
 
 async function readable(path: string): Promise<boolean> {

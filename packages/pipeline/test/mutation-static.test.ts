@@ -381,6 +381,19 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 		expect(partitions()).toHaveLength(2);
 	});
 
+	it("starts cold at the same head after the checkout lockfile changes", async () => {
+		const { base, head } = twoCommits();
+		const reads = incrementalTool();
+		writeFileSync(join(repo, "package-lock.json"), "{}");
+		await mutate(base, head);
+		await mutate(base, head);
+		expect(reads()).toEqual(['{"stamp":"written"}']);
+		writeFileSync(join(repo, "package-lock.json"), '{"packages":{"new":{}}}');
+		await mutate(base, head);
+		expect(reads()).toEqual(['{"stamp":"written"}']);
+		expect(partitions()).toHaveLength(2);
+	});
+
 	it("gives a run with other Stryker input another partition", async () => {
 		const { base, head } = twoCommits();
 		const reads = incrementalTool();
