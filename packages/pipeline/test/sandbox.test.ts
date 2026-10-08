@@ -124,20 +124,19 @@ async function probed(sandbox: Sandbox): Promise<Record<string, string>> {
 	return JSON.parse(stdout) as Record<string, string>;
 }
 
-const sandboxName = (platform: "darwin" | "linux") => Sandbox.detect(platform)?.environment().MELIAN_SANDBOX;
-
 describe("Sandbox.environment", () => {
 	for (const platform of ["darwin", "linux"] as const) {
-		it.skipIf(Sandbox.detect(platform) === undefined)(
+		const sandbox = Sandbox.detect(platform);
+		it.skipIf(sandbox === undefined)(
 			`gives a PATH of Node's bin and the system's, whatever the host's is (${platform})`,
 			() => {
 				vi.stubEnv("PATH", "/opt/homebrew/bin:/Users/someone/bin");
-				const directories = (Sandbox.detect(platform) as Sandbox).environment().PATH!.split(":");
+				const directories = sandbox!.environment().PATH!.split(":");
 				expect(directories).toContain(join(nodeInstallation(), "bin"));
 				expect(directories.slice(-4)).toEqual(["/usr/bin", "/bin", "/usr/sbin", "/sbin"]);
 				expect(directories).not.toContain("/opt/homebrew/bin");
 				expect(directories).not.toContain("/Users/someone/bin");
-				expect(sandboxName(platform)).toBe(platform === "darwin" ? "seatbelt" : "bubblewrap");
+				expect(sandbox!.environment().MELIAN_SANDBOX).toBe(platform === "darwin" ? "seatbelt" : "bubblewrap");
 			},
 		);
 	}
