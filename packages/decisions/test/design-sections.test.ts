@@ -739,9 +739,17 @@ const tables: { name: string; cases: Pair[] }[] = [
 				heading("    ## Policy##", ""),
 			],
 			[
-				"CR lines",
-				heading("# Design\r## Policy\r", "docs/design.md:1 — Design\ndocs/design.md:2 — Policy"),
+				"CR headings share an LF reader line",
+				heading("# Design\r## Policy\r", "docs/design.md:1 — Design\ndocs/design.md:1 — Policy"),
 				heading("    # Design\n    ## Policy", ""),
+			],
+			[
+				"mixed endings use LF reader lines",
+				heading(
+					"# Design\r## Policy\r\n### Trust\nSection\r\n---\r## Last\r",
+					"docs/design.md:1 — Design\ndocs/design.md:1 — Policy\ndocs/design.md:2 — Trust\ndocs/design.md:3 — Section\ndocs/design.md:4 — Last",
+				),
+				heading("```md\n# Design\r## Policy\r\n### Trust\nSection\r\n---\r## Last\r\n```", ""),
 			],
 			[
 				"inline HTML source",

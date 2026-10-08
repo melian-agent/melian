@@ -12,16 +12,19 @@ import { DecisionFilesError } from "./decision-files-error.ts";
 export const decisionPathPattern = /^docs\/decisions\/.*\.md$/s;
 
 export class MarkdownDocument {
+	readonly #content: string;
 	readonly #tree: Root;
 	readonly #definition: GetDefinition;
 
-	private constructor(tree: Root) {
+	private constructor(content: string, tree: Root) {
+		this.#content = content;
 		this.#tree = tree;
 		this.#definition = definitions(tree);
 	}
 
 	static parse(content: string): MarkdownDocument {
 		return new MarkdownDocument(
+			content,
 			fromMarkdown(content, {
 				extensions: [frontmatter(["yaml", "toml"])],
 				mdastExtensions: [frontmatterFromMarkdown(["yaml", "toml"])],
@@ -32,9 +35,14 @@ export class MarkdownDocument {
 	headings(): { text: string; id: string; line: number; depth: Heading["depth"] }[] {
 		const slugger = new GithubSlugger();
 		const headings: { text: string; id: string; line: number; depth: Heading["depth"] }[] = [];
+		let offset = 0;
+		let line = 1;
 		visit(this.#tree, "heading", (node) => {
+			const start = node.position!.start.offset!;
+			line += this.#content.slice(offset, start).split("\n").length - 1;
+			offset = start;
 			const text = markdownText(node, { includeHtml: false });
-			headings.push({ text, id: slugger.slug(text), line: node.position!.start.line, depth: node.depth });
+			headings.push({ text, id: slugger.slug(text), line, depth: node.depth });
 		});
 		return headings;
 	}
