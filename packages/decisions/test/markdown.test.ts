@@ -89,6 +89,14 @@ const urlCases: URLCase[] = [
 ];
 
 describe("URL policy", () => {
+	it("keeps a destination explicitly marked repository-relative", () => {
+		expect(LocalDestination.resolve("docs/nested/design.md", "/repository/docs/design/trust.md", true)).toMatchObject(
+			{
+				path: "docs/design/trust.md",
+				fragment: "",
+			},
+		);
+	});
 	it.each(urlCases.map((row) => [row[0], row] as const))("%s", (_name, row) => {
 		const [, destination, path, fragment, rejected, error] = row;
 		expect(LocalDestination.resolve("docs/design.md", destination)).toMatchObject({ path, fragment });

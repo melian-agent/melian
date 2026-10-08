@@ -1187,6 +1187,69 @@ const tables: { name: string; cases: Pair[] }[] = [
 				),
 			],
 			[
+				"invalid boundary: /repository/docs/design/trust.md#x",
+				policy,
+				section(
+					"# Design\n[Trust](/repository/docs/design/trust.md#x)",
+					{ "docs/design/trust.md": "## Trust" },
+					{ code: "invalid", message: "outside the repository" },
+				),
+			],
+			[
+				"invalid boundary: /%72epository/docs/design/trust.md#x",
+				policy,
+				section(
+					"# Design\n[Trust](/%72epository/docs/design/trust.md#x)",
+					{ "docs/design/trust.md": "## Trust" },
+					{ code: "invalid", message: "outside the repository" },
+				),
+			],
+			[
+				"invalid boundary: %2Frepository/docs/design/trust.md#x",
+				policy,
+				section(
+					"# Design\n[Trust](%2Frepository/docs/design/trust.md#x)",
+					{ "docs/design/trust.md": "## Trust" },
+					{ code: "invalid", message: "outside the repository" },
+				),
+			],
+			[
+				"invalid boundary: %2frepository/docs/design/trust.md#x",
+				policy,
+				section(
+					"# Design\n[Trust](%2frepository/docs/design/trust.md#x)",
+					{ "docs/design/trust.md": "## Trust" },
+					{ code: "invalid", message: "outside the repository" },
+				),
+			],
+			[
+				"invalid boundary: \\repository/docs/design/trust.md#x",
+				policy,
+				section(
+					"# Design\n[Trust](\\repository/docs/design/trust.md#x)",
+					{ "docs/design/trust.md": "## Trust" },
+					{ code: "invalid", message: "outside the repository" },
+				),
+			],
+			[
+				"invalid boundary: %5Crepository/docs/design/trust.md#x",
+				policy,
+				section(
+					"# Design\n[Trust](%5Crepository/docs/design/trust.md#x)",
+					{ "docs/design/trust.md": "## Trust" },
+					{ code: "invalid", message: "outside the repository" },
+				),
+			],
+			[
+				"invalid boundary: %5crepository/docs/design/trust.md#x",
+				policy,
+				section(
+					"# Design\n[Trust](%5crepository/docs/design/trust.md#x)",
+					{ "docs/design/trust.md": "## Trust" },
+					{ code: "invalid", message: "outside the repository" },
+				),
+			],
+			[
 				"invalid boundary: ../%2E%2E/outside.md#trust",
 				policy,
 				section(

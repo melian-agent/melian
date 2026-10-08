@@ -116,6 +116,8 @@ export class LocalDestination {
 	}
 
 	static resolve(from: string, destination: string, repositoryRelative = false): LocalDestination | undefined {
+		if (!repositoryRelative && /^(?:[/\\](?![/\\])|%2f|%5c)/i.test(destination))
+			throw new DecisionFilesError("invalid", `Invalid destination ${destination}: outside the repository`);
 		const root = new URL("file://melian-repository/repository/");
 		// URL removes literal tabs and newlines; mdast can decode them from character references in a filename.
 		const input = destination.replaceAll("\n", "%0A").replaceAll("\r", "%0D").replaceAll("\t", "%09");
@@ -132,7 +134,7 @@ export class LocalDestination {
 			throw new DecisionFilesError("invalid", `Invalid destination ${destination}: invalid URI encoding`);
 		}
 		const normalized = posix.normalize(pathname);
-		if (!normalized.startsWith(root.pathname) || input.toLowerCase().startsWith("%2f"))
+		if (!normalized.startsWith(root.pathname))
 			throw new DecisionFilesError("invalid", `Invalid destination ${destination}: outside the repository`);
 		return new LocalDestination(
 			normalized.slice(root.pathname.length),
