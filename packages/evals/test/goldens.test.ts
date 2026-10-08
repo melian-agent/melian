@@ -566,6 +566,26 @@ describe("scoreGolden", () => {
 			),
 		).toMatchObject({ precision: 0, recall: 0 });
 	});
+	it("keeps a prior version’s different rule from erasing a current reporter", () => {
+		const golden = goldens.find((each) => each.name === "design-supersedes-its-own-decision")!;
+		const expected = {
+			...golden,
+			expected: {
+				...golden.expected,
+				comments: [{ ...golden.expected.comments[0]!, rule: "fail-open", source: "lens.trust-boundary" }],
+			},
+		};
+		const finding = {
+			ruleId: "fail-open",
+			locations: [{ physicalLocation: { artifactLocation: { uri: "src/publish.ts" } } }],
+			properties: {
+				path: "src/publish.ts",
+				reportedBy: [{ check: "lens.trust-boundary", version: "v2" }],
+				otherClaims: [{ ruleId: "fail-open-default", source: { check: "lens.trust-boundary", version: "v1" } }],
+			},
+		} as never;
+		expect(scoreGolden(expected, [finding])).toMatchObject({ precision: 1, recall: 1 });
+	});
 	it("scores two lens sightings of one defect once after adjudication", async () => {
 		const golden = goldens.find((each) => each.name === "design-fail-open-default")!;
 		const report = golden.script
