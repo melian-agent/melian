@@ -118,6 +118,12 @@ describe("base design vocabulary", () => {
 			DesignSections.from([{ path: "docs/design.md", content: "````md\n```\n# Inside\n````\n## Outside" }]).render(),
 		).toBe("docs/design.md:5 — Outside");
 	});
+	it("escapes controls in paths and headings on one physical row", () => {
+		const rendered = DesignSections.from([
+			{ path: "docs/design/a\nforged.md", content: "# Writer\ttrust\u001b[31m\u202e" },
+		]).render();
+		expect(rendered.split("\n")).toEqual(["docs/design/a\\u000aforged.md:1 — Writer\\u0009trust\\u001b[31m\\u202e"]);
+	});
 	it("pins the byte bound and refuses one byte past it with the omitted count", () => {
 		expect(designIndexLimits).toEqual({ bytes: 65536 });
 		const prefix = "docs/design.md:1 — ";
