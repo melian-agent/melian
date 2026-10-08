@@ -325,7 +325,7 @@ describe("task credential routes", { timeout: 60_000 }, () => {
 	it.each([false, true])("unlocks each route at its request, with candidates=%s", async (candidate) => {
 		const repo = crashRepository();
 		const dir = mkdtempSync(join(tmpdir(), "melian-task-credentials-"));
-		const providers = ["triage-route", "lens-route", "unused-deep", "verifier-route"];
+		const providers = ["triage-route", "lens-route", "unused-deep", "verifier-route", "lens-fallback"];
 		const markers = providers.map((provider) => join(dir, provider));
 		const marked = () => markers.map((marker) => existsSync(marker));
 		const credentials: NamedCredential[] = providers.map((provider, index) => ({
@@ -350,12 +350,12 @@ describe("task credential routes", { timeout: 60_000 }, () => {
 		const config: MelianConfig = {
 			...defaultConfig,
 			tiers: { full: ["lens.correctness"] },
-			models: Object.fromEntries(
-				["light", "medium", "heavy", "verifier"].map((tier, index) => [
-					tier,
-					{ model: `${providers[index]}/model` },
-				]),
-			),
+			models: {
+				light: { model: "triage-route/model" },
+				medium: { model: "lens-route/model", fallbacks: ["lens-fallback/model"] },
+				heavy: { model: "unused-deep/model" },
+				verifier: { model: "verifier-route/model" },
+			},
 			lenses: { correctness: { level: { floor: "quick", ceiling: "quick" } } },
 		};
 		let harness: pipeline.ReviewHarness | undefined;
@@ -377,13 +377,13 @@ describe("task credential routes", { timeout: 60_000 }, () => {
 				...(await pipeline.planInputs(fake.review)),
 			});
 			const triage = await Triage.create({ scripted: false, config, plan, models: fake.review });
-			expect(marked()).toEqual([false, false, false, false]);
+			expect(marked()).toEqual([false, false, false, false, false]);
 			scriptConversations(fakes[0]!, [
 				{
 					match: "You answer typed questions about a code change",
 					replies: [
 						() => {
-							expect(marked()).toEqual([true, false, false, false]);
+							expect(marked()).toEqual([true, false, false, false, false]);
 							return fauxAssistantMessage(
 								fauxToolCall("answer", {
 									answers: [{ question: "correctness", probabilities: [{ option: "quick", probability: 1 }] }],
@@ -399,7 +399,21 @@ describe("task credential routes", { timeout: 60_000 }, () => {
 					match: "You are the correctness reviewer",
 					replies: [
 						() => {
-							expect(marked()).toEqual([true, true, false, false]);
+							expect(marked()).toEqual([true, true, false, false, true]);
+							return fauxAssistantMessage("", {
+								stopReason: "error",
+								errorMessage: "HTTP 503 service unavailable",
+							});
+						},
+					],
+				},
+			]);
+			const fallbackRequests = scriptConversations(fakes[4]!, [
+				{
+					match: "You are the correctness reviewer",
+					replies: [
+						() => {
+							expect(marked()).toEqual([true, true, false, false, true]);
 							return candidate
 								? fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" })
 								: fauxAssistantMessage("Done.");
@@ -413,7 +427,7 @@ describe("task credential routes", { timeout: 60_000 }, () => {
 					match: "Melian adversarial verifier",
 					replies: [
 						(messages) => {
-							expect(marked()).toEqual([true, true, false, true]);
+							expect(marked()).toEqual([true, true, false, true, true]);
 							return scriptVerifier(messages, {});
 						},
 						fauxAssistantMessage("Done."),
@@ -445,9 +459,12 @@ describe("task credential routes", { timeout: 60_000 }, () => {
 				...reviewing,
 			});
 			expect(unlocked).toEqual(
-				candidate ? [["triage-route"], ["lens-route"], ["verifier-route"]] : [["triage-route"], ["lens-route"]],
+				candidate
+					? [["triage-route"], ["lens-route", "lens-fallback"], ["verifier-route"]]
+					: [["triage-route"], ["lens-route", "lens-fallback"]],
 			);
-			expect(marked()).toEqual([true, true, false, candidate]);
+			expect(marked()).toEqual([true, true, false, candidate, true]);
+			expect(fallbackRequests["You are the correctness reviewer"]).toHaveLength(candidate ? 2 : 1);
 			await triage.unlockModels(["triage-route"]);
 			expect(readFileSync(markers[0]!, "utf8")).toBe("run\n");
 		} finally {
