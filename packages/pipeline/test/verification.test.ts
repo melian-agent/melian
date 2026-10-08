@@ -23,6 +23,7 @@ import {
 	reviewChangeset,
 	revisionKey,
 	type TaskId,
+	unlockCredentials,
 	upsertFinding,
 } from "@melian-agent/pipeline";
 import {
@@ -39,6 +40,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, readDecision, readVerdict } from "../src/adjudication.ts";
 import { clearSightings } from "../src/findings.ts";
 import { lensReadTools, reviewFiles } from "../src/lens-tools.ts";
+import { hasCredentials } from "../src/models.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { startVerification, type VerificationInput, VerificationTask } from "../src/verification.ts";
 import { verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
@@ -147,6 +149,85 @@ function scripts(verdict: Verification["verdict"] = "confirmed") {
 }
 
 describe("the verifier", () => {
+	it.each([true, false])(
+		"verifies through a subscription credential on openai-codex, with plan %s",
+		async (planned) => {
+			await harness.close(context);
+			const marker = join(repo, "subscription-unlocked");
+			fake = createFakeModels({
+				provider: "openai-codex",
+				auth: "oauth",
+				models: [
+					{ id: "finder", name: "GPT Finder" },
+					{ id: "gpt-5.6-terra", name: "GPT-5.6 Terra" },
+				],
+				credentials: [
+					{
+						name: "subscription",
+						provider: "openai-codex",
+						type: "api_key",
+						value: { kind: "command", command: `touch ${marker}; printf fake-subscription-bearer` },
+						file: "test-secrets.yaml",
+					},
+				],
+				authPath: join(repo, "absent-auth.json"),
+			});
+			harness = await openHarness(createMemoryStorage(), {
+				models: fake.models,
+				registry,
+				settings: { retry: { enabled: false } },
+			});
+			await harness.root(context, { agent: { model: fake.ref("finder") } });
+			expect(await hasCredentials(fake.review, "openai-codex")).toBe(true);
+			expect(existsSync(marker)).toBe(false);
+			const terra = "openai-codex/gpt-5.6-terra";
+			const config = {
+				...defaultConfig,
+				tiers: { full: ["lens.correctness"] },
+				stages: { "pull-request": "full" },
+				models: { heavy: { model: "openai-codex/finder" }, verifier: { model: terra } },
+			};
+			const inputs = await planInputs(fake.review);
+			expect(inputs.credentials["openai-codex"]).toBe("subscription in test-secrets.yaml");
+			const plan = ReviewPlan.resolve({
+				...inputs,
+				config,
+				lenses,
+				checks: ["lens.correctness"],
+				routes: { committed: config.models, overridden: {}, lensTiers: {}, retiered: {} },
+			});
+			const requests = scripts();
+			const stream = vi.spyOn(fake.models, "streamSimple");
+			const unlockModels = vi.fn(async (providers: readonly string[]) => {
+				await unlockCredentials(fake.review, providers);
+			});
+			const result = await reviewChangeset({
+				harness,
+				checks: [],
+				changeset,
+				lenses,
+				standards: [],
+				models: fake.review,
+				config,
+				...(planned ? { plan } : {}),
+				unlockModels,
+			});
+			expect(existsSync(marker)).toBe(true);
+			expect(await hasCredentials(fake.review, "openai-codex")).toBe(true);
+			expect(unlockModels.mock.calls).toEqual([[["openai-codex"]], [["openai-codex"]]]);
+			expect(requests[verifierMarker]).toHaveLength(2);
+			const judges = stream.mock.calls.filter(([model]) => model.id === "gpt-5.6-terra");
+			expect(judges).toHaveLength(2);
+			expect(judges.map(([model]) => model.provider)).toEqual(["openai-codex", "openai-codex"]);
+			expect(result.findings[0]?.properties.verification).toMatchObject({
+				verdict: "confirmed",
+				executor: "llm",
+				model: terra,
+			});
+			expect(result.verdict.ran).toContainEqual(expect.objectContaining({ name: "verifier", status: "ran" }));
+		},
+	);
+
 	it("merges two rules before asking one conversation to judge both claims inside boundaries", async () => {
 		const first = lenses[0]!;
 		lenses.push(
