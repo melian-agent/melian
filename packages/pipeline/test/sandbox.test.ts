@@ -22,7 +22,7 @@ attempt("writeScratch", () => fs.writeFileSync(scratch + "/written", "1"));
 attempt("writeOutside", () => fs.writeFileSync(outside + "/written", "1"));
 // Stryker's logging server listens on every interface and its workers connect to it over loopback.
 const server = net.createServer((client) => client.end()).listen(0, "0.0.0.0", () => {
-  const local = net.connect(server.address().port, "127.0.0.1");
+  const local = net.connect(server.address().port, "localhost");
   local.on("connect", () => { result.loopback = "ok"; local.destroy(); server.close(); });
   local.on("error", () => { result.loopback = "denied"; server.close(); });
 });

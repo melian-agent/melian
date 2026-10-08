@@ -112,7 +112,8 @@ export class Sandbox {
 			"(allow ipc-posix-shm*)",
 			"(allow system-mac-syscall)",
 			`(allow file-read* (literal "/") ${[...readable, ...installs].join(" ")})`,
-			`(allow file-read-metadata (literal "/") ${parents.join(" ")})`,
+			// /etc is a link to /private/etc, and the resolver stats it to find /etc/hosts; localhost does not resolve without it.
+			`(allow file-read-metadata (literal "/") (literal "/etc") ${parents.join(" ")})`,
 			`(allow file-write* (subpath ${profileString(paths.scratch)}))`,
 			'(allow file-write-data (literal "/dev/null") (literal "/dev/dtracehelper") (literal "/dev/tty"))',
 			'(allow file-ioctl (literal "/dev/dtracehelper"))',
