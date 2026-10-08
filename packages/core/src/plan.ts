@@ -514,6 +514,13 @@ export class ReviewPlan {
 	}
 
 	private messages(): PlanLine[] {
+		return [
+			...this.tierMessages().map((text): PlanLine => ({ state: "warn", text })),
+			...this.verificationMessages(),
+		].map((line) => ({ ...line, text: visibleText(line.text) }));
+	}
+
+	private tierMessages(): string[] {
 		const used = this.used();
 		const moved = this.lenses.flatMap((lens): string[] => {
 			const entry = lens.levels.find(({ level }) => level === defaultScrutinyLevel);
@@ -550,6 +557,10 @@ export class ReviewPlan {
 				`${tier} runs ${model}, which the committed route accepts, since ${planned.wanted} has no credentials`,
 			];
 		});
+		return [...tiers, ...moved];
+	}
+
+	private verificationMessages(): PlanLine[] {
 		const verification: PlanLine[] = [];
 		if (this.lenses.length > 0) {
 			const own = this.tier("verifier");
@@ -583,9 +594,7 @@ export class ReviewPlan {
 				});
 			}
 		}
-		return [...[...tiers, ...moved].map((text): PlanLine => ({ state: "warn", text })), ...verification].map(
-			(line) => ({ ...line, text: visibleText(line.text) }),
-		);
+		return verification;
 	}
 
 	private static lineageText({ wanted, by, moved, outside, model }: CheckLineage): string {

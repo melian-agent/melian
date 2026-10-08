@@ -579,6 +579,12 @@ describe("a lens two folders define", () => {
 });
 
 describe("a resolved plan", () => {
+	it("omits moved-lens lineage when no committed route was left", () => {
+		const resolved = plan({ light: { model: gpt } }, { openai: "key" }, { retier: { correctness: "light" } });
+		expect(resolved.judge("correctness", "careful")).toEqual({});
+		expect(resolved.warnings()).toEqual([fallbackWarning, familyWarning]);
+	});
+
 	it("marks each lens record whose level's tier left the committed route, and only those", () => {
 		const resolved = plan(
 			{ heavy: { model: opus }, medium: { model: "anthropic/claude-sonnet-5-5" } },
@@ -874,6 +880,7 @@ describe("verifier routing", () => {
 		});
 		expect(resolved.warnings()).toContain(`verifier fails: none of ${gpt} has credentials`);
 		expect(resolved.warnings()).not.toContain(fallbackWarning);
+		expect(resolved.warnings()).not.toContain(familyWarning);
 		expect(resolved.lines()).toContainEqual({
 			state: "warn",
 			text: `verifier fails: none of ${gpt} has credentials`,
