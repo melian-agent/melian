@@ -35,9 +35,24 @@ const systemReads = [
 	"/dev",
 ];
 
-// The Linux counterparts, bound read-only when the host has them. /etc is not among them, so no credential file in it
-// is visible; the alternatives directory is, since a merged-/usr host links /usr/bin entries through it.
-const linuxReads = ["/usr", "/bin", "/sbin", "/lib", "/lib32", "/lib64", "/etc/alternatives", "/etc/ld.so.cache"];
+// The Linux counterparts, bound read-only when the host has them. Of /etc only what a process needs to resolve localhost, name
+// its user, and tell the time is bound, so no credential file in it is visible; the alternatives directory is bound too,
+// since a merged-/usr host links /usr/bin entries through it.
+const linuxReads = [
+	"/usr",
+	"/bin",
+	"/sbin",
+	"/lib",
+	"/lib32",
+	"/lib64",
+	"/etc/alternatives",
+	"/etc/ld.so.cache",
+	"/etc/hosts",
+	"/etc/nsswitch.conf",
+	"/etc/passwd",
+	"/etc/group",
+	"/etc/localtime",
+];
 
 function quote(text: string): string {
 	return `'${text.replaceAll("'", "'\\''")}'`;

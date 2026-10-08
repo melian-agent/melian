@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -113,6 +113,35 @@ describe("Sandbox.environment", () => {
 			},
 		);
 	}
+});
+
+describe("the bubblewrap command", () => {
+	// Built without running it, so it is checked on every host; the probe below runs it where bwrap exists.
+	const bubblewrap = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend: "bubblewrap" as const });
+	const where = { worktree: "/work/tree", scratch: "/work", installs: ["/checkout/node_modules"], node: "/opt/node" };
+	const command = bubblewrap.command("echo 'hi'", where, "/unused");
+
+	it("unshares every namespace, dies with its parent, and runs the command in the worktree", () => {
+		expect(command.startsWith("bwrap --unshare-all --die-with-parent --new-session ")).toBe(true);
+		expect(command).toContain("--chdir '/work/tree'");
+		expect(command.endsWith("-- /bin/bash -c 'echo '\\''hi'\\'''")).toBe(true);
+	});
+
+	it("binds the node installation and the installs read-only, scratch read-write, and nothing of the home", () => {
+		expect(command).toContain("--ro-bind '/opt/node' '/opt/node'");
+		expect(command).toContain("--ro-bind '/checkout/node_modules' '/checkout/node_modules'");
+		expect(command).toContain("--bind '/work' '/work'");
+		expect(command).not.toContain("--bind '/work/tree'");
+		expect(command).not.toMatch(/ --(ro-)?bind '\/(home|root|Users)/);
+	});
+
+	it("binds the system directories the host has, read-only, and a private /proc, /dev, and /tmp before scratch", () => {
+		for (const directory of ["/usr", "/bin", "/sbin"])
+			if (existsSync(directory)) expect(command).toContain(`--ro-bind '${directory}' '${directory}'`);
+		expect(command).not.toContain("--ro-bind '/etc' ");
+		expect(command).toContain("--proc /proc --dev /dev --tmpfs /tmp");
+		expect(command.indexOf("--tmpfs /tmp")).toBeLessThan(command.indexOf("--bind '/work' '/work'"));
+	});
 });
 
 describe("Sandbox.detect", () => {
