@@ -1,10 +1,11 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { backgroundContext, createNodeExecutionEnv } from "../src/harness.ts";
 import {
+	MutationProcess,
 	MutationTree,
 	type ProcessEntry,
 	ProcessTable,
@@ -15,6 +16,7 @@ import {
 	supervisorSource,
 	terminateRecorded,
 } from "../src/mutation-process.ts";
+import { Run } from "../src/static.ts";
 
 // Every test here drives the code on fakes. Nothing in this file starts a process or sends a signal; a kill is a function
 // that records its arguments. The real-process test is in mutation-process-real.test.ts.
@@ -227,7 +229,8 @@ describe("supervise", () => {
 			terminate: async (records) => {
 				order.push("terminate");
 				terminatedWith.push([...records]);
-				await Promise.resolve();
+				await new Promise((resolve) => setTimeout(resolve, 10));
+			recorded = true;
 			},
 			exit: (code) => {
 				order.push("exit");
@@ -434,6 +437,60 @@ describe("supervisorSource", () => {
 			expect(checked.status).toBe(0);
 			expect(readFileSync(script, "utf8")).toContain(JSON.stringify("echo 'it''s'; exit 2"));
 		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("MutationProcess.execute", () => {
+	it("records the ready tree before run.shell releases the paused command", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "melian-launch-test-"));
+		const control = join(directory, "control");
+		mkdirSync(control);
+		const record = { control, supervisor: { pid: 20, start: "s20" }, root: { pid: 21, start: "s21" } };
+		const env = createNodeExecutionEnv(directory);
+		let recorded = false;
+		const started = vi.fn(async () => {
+			expect(existsSync(join(control, "go"))).toBe(false);
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			recorded = true;
+		});
+		const stopped = vi.fn(async () => {});
+		vi.spyOn(env, "createTempDir").mockResolvedValue({ ok: true, value: control });
+		vi.spyOn(ProcessTable.prototype, "start").mockReturnValue("controller");
+		vi.spyOn(ProcessTable.prototype, "list").mockReturnValue([]);
+		const signal = vi.spyOn(ProcessTable.prototype, "kill").mockImplementation(() => {});
+		const execute = vi.spyOn(env, "exec");
+		execute.mockImplementationOnce(async (command) => {
+			expect(command).toContain("supervisor.mjs");
+			expect(command).toContain("ready.json");
+			writeFileSync(join(control, "ready.json"), JSON.stringify(record));
+			return { ok: true, value: { exitCode: 0 } };
+		});
+		execute.mockImplementationOnce(async (command) => {
+			expect(command).toContain(`touch '${join(control, "go")}'`);
+			expect(started).toHaveBeenCalledExactlyOnceWith(record);
+			expect(recorded).toBe(true);
+			return { ok: true, value: { exitCode: 0 } };
+		});
+		const run = new Run(
+			{
+				env,
+				repoRoot: directory,
+				commit: "a".repeat(40),
+				tool: "mutation",
+				settings: { enabled: true, timeout: 10, severity: {}, maxLines: 1 },
+				mutationProcess: { started, stopped },
+			},
+			backgroundContext,
+		);
+		try {
+			expect(await new MutationProcess(run).execute("true", {})).toEqual({ code: 0, output: "" });
+			expect(started).toHaveBeenCalledExactlyOnceWith(record);
+			expect(stopped).toHaveBeenCalledOnce();
+			expect(signal).not.toHaveBeenCalled();
+		} finally {
+			vi.restoreAllMocks();
 			rmSync(directory, { recursive: true, force: true });
 		}
 	});

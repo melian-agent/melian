@@ -4,7 +4,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ProcessTable, type RecordedProcess, terminateRecorded } from "../src/mutation-process.ts";
+import { backgroundContext, createNodeExecutionEnv } from "../src/harness.ts";
+import {
+	MutationProcess,
+	type MutationTreeRecord,
+	ProcessTable,
+	type RecordedProcess,
+	terminateRecorded,
+} from "../src/mutation-process.ts";
+import { Run } from "../src/static.ts";
 
 // The supervisor and the process table against real processes. The test spawns its own throwaway controller and kills
 // it by the controller's own pid. It signals only pids that the supervisor recorded, and only a pid it has just checked
@@ -67,6 +75,43 @@ const running = (records: readonly RecordedProcess[]) => {
 const readTree = () => JSON.parse(readFileSync(join(control, "tree.json"), "utf8")) as RecordedProcess[];
 
 describe.skipIf(!ps)("the mutation supervisor on real processes", { timeout: 60_000 }, () => {
+	it("launches execute through run.shell and records the tree before releasing harmless head code", async () => {
+		const released = join(control, "released");
+		const records: MutationTreeRecord[] = [];
+		let stopped = false;
+		const run = new Run(
+			{
+				env: createNodeExecutionEnv(control),
+				repoRoot: control,
+				commit: "a".repeat(40),
+				tool: "mutation",
+				settings: { enabled: true, timeout: 30, severity: {}, maxLines: 1 },
+				mutationProcess: {
+					started: async (record) => {
+						expect(existsSync(released)).toBe(false);
+						expect(existsSync(join(record.control, "go"))).toBe(false);
+						const ready = JSON.parse(readFileSync(join(record.control, "ready.json"), "utf8"));
+						expect(record).toEqual({ control: record.control, ...ready });
+						expect(running([record.supervisor, record.root])).toHaveLength(2);
+						records.push(record);
+						await new Promise((resolve) => setTimeout(resolve, 150));
+						expect(existsSync(released)).toBe(false);
+					},
+					stopped: async () => {
+						stopped = true;
+					},
+				},
+			},
+			backgroundContext,
+		);
+		const result = await new MutationProcess(run).execute(`printf released > '${released}'`, {});
+		expect(result.code).toBe(0);
+		expect(records).toHaveLength(1);
+		expect(stopped).toBe(true);
+		expect(readFileSync(released, "utf8")).toBe("released");
+		expect(running([records[0]!.supervisor, records[0]!.root])).toEqual([]);
+	});
+
 	it("ends the recorded tree, and its own process, within seconds of its controller being killed", async () => {
 		const controller = startController("sleep 300 & sleep 300 & wait");
 		await until(() => existsSync(join(control, "controller.ready")), "the controller");
