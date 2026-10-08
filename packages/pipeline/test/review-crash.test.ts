@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -23,6 +23,7 @@ import {
 	reviewChangeset,
 	revisionKey,
 	type TaskId,
+	unlockCredentials,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -90,7 +91,9 @@ async function killWhen(
 		| "verdict"
 		| "conflicting-verdict"
 		| "decision"
-		| "replacement",
+		| "replacement"
+		| "lens-failover"
+		| "verifier-failover",
 	reached: (events: ReturnType<typeof readEvents>) => boolean,
 	database: string,
 	log: string,
@@ -285,6 +288,105 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		expect(await reopened.resumesModels(context)).toBe(false);
 		expect(await reopened.resumedProviders(context)).toEqual([]);
 	});
+
+	it.each(["lens-failover", "verifier-failover"] as const)(
+		"keeps the abandoned provider locked while a live %s task attaches after a real kill",
+		async (scenario) => {
+			const database = join(dir, `${scenario}.sqlite`);
+			await killWhen(
+				scenario,
+				(events) => count(events, "model-request") === 1,
+				database,
+				join(dir, `${scenario}.jsonl`),
+			);
+			const providers = ["faux", "fallback-provider"];
+			const markers = providers.map((provider) => join(dir, provider));
+			const credentials = providers.map((provider, index) => ({
+				name: provider,
+				provider,
+				type: "api_key" as const,
+				file: "f",
+				value: { kind: "command" as const, command: `echo run >> ${markers[index]}; echo test-key` },
+			}));
+			const fake = createFakeModels({
+				models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "medium" }],
+				credentials,
+				authPath: join(dir, "absent"),
+			});
+			const fallback = createFakeModels(
+				{ provider: "fallback-provider", models: [{ id: "heavy" }], credentials },
+				fake.review,
+			);
+			const release = Promise.withResolvers<void>();
+			const match =
+				scenario === "lens-failover" ? "You are the correctness reviewer" : "Melian adversarial verifier";
+			const requests = scriptConversations(fallback, [
+				{
+					match,
+					replies: [
+						async (messages) => {
+							await release.promise;
+							return scenario === "lens-failover" ? fauxAssistantMessage("Done.") : scriptVerifier(messages);
+						},
+						fauxAssistantMessage("Done."),
+					],
+				},
+			]);
+			const reopened = await ReviewHarness.open(await openSqliteStorage(database), fake.review, { retry: false });
+			harness = reopened.harness;
+			const kind = scenario === "lens-failover" ? "melian.lenses" : "melian.verification";
+			const task = (await harness.inspect(context)).tasks.find((task) => task.record.kind === kind)!;
+			const wait = vi.spyOn(harness, "waitForTask");
+			const unlock = vi.fn(async (providers: readonly string[]) => unlockCredentials(fake.review, providers));
+			expect(await reopened.resumedProviders(context)).toEqual(["fallback-provider"]);
+			await unlock(await reopened.resumedProviders(context));
+			const heavy = fake.ref("heavy");
+			const medium = fake.ref("medium");
+			const pending = reviewChangeset({
+				harness,
+				changeset: await Changeset.resolve(repo, "main...feature"),
+				config: {
+					...defaultConfig,
+					tiers: scenario === "lens-failover" ? { full: ["lens.correctness"] } : twoLensTiers,
+					models: {
+						medium: { model: `${medium.provider}/${medium.modelId}` },
+						heavy: {
+							model: `${heavy.provider}/${heavy.modelId}`,
+							...(scenario === "lens-failover" ? { fallbacks: ["fallback-provider/heavy"] } : {}),
+						},
+						...(scenario === "verifier-failover"
+							? {
+									verifier: {
+										model: `${medium.provider}/${medium.modelId}`,
+										fallbacks: ["fallback-provider/heavy"],
+									},
+								}
+							: {}),
+					},
+				},
+				lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
+				standards: [],
+				checks: [],
+				models: fake.review,
+				unlockModels: unlock,
+			});
+			try {
+				await vi.waitFor(() => expect(requests[match]).toHaveLength(1));
+				await vi.waitFor(() => expect(wait).toHaveBeenCalledWith(task.record.id, context));
+				expect((await harness.getTask(task.record.id, context))!.state.status).not.toBe("terminal");
+				expect(unlock.mock.calls).toEqual([[["fallback-provider"]]]);
+				expect(existsSync(markers[0]!)).toBe(false);
+				expect(readFileSync(markers[1]!, "utf8")).toBe("run\n");
+			} finally {
+				release.resolve();
+				await pending.catch(() => undefined);
+			}
+			await pending;
+			expect(fake.provider.state.callCount).toBe(0);
+			expect(requests[match]).toHaveLength(scenario === "lens-failover" ? 1 : 2);
+			expect(existsSync(markers[0]!)).toBe(false);
+		},
+	);
 
 	it.each([
 		[

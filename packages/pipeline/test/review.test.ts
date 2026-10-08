@@ -258,6 +258,24 @@ describe("reviewChangeset", () => {
 			failed.mockRestore();
 		}
 	});
+	it("unlocks a new lens route when the indexed task is absent", async () => {
+		const script = () =>
+			scriptConversations(fake, [
+				{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+		script();
+		await reviewed();
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			(await tx.doc(ReviewIndex, root.id)).reviews[reviewedRevision()]!.task = 999_999;
+		}, context);
+		script();
+		const unlock = vi.fn(async (_providers: readonly string[]) => {});
+		await reviewed({ unlockModels: unlock });
+		expect(unlock).toHaveBeenCalledWith(["faux", "faux"]);
+		expect(fake.provider.state.callCount).toBe(4);
+	});
 	it("keeps the first call's caller notes and coverage on a repeat review whose graph cache is gone", async () => {
 		scriptConversations(fake, [
 			{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
@@ -3297,7 +3315,7 @@ describe("on a repeat review after a task ended without deciding", () => {
 		expect(verdict.notRun.filter((check) => check.name.startsWith("lens."))).toEqual([]);
 	});
 
-	it("unlocks credentials for a review that attaches to a lens task still running", async () => {
+	it("keeps credentials locked for a review that attaches to a lens task still running", async () => {
 		const release = Promise.withResolvers<void>();
 		scriptConversations(fake, [
 			{ match: correctness, replies: [async () => release.promise.then(() => fauxAssistantMessage("Done."))] },
@@ -3310,11 +3328,14 @@ describe("on a repeat review after a task ended without deciding", () => {
 			running = (await entry())?.task;
 		}
 		const unlockModels = vi.fn(async () => {});
+		const wait = vi.spyOn(harness, "waitForTask");
 		const second = reviewed({ unlockModels });
 		try {
-			await vi.waitFor(() => expect(unlockModels).toHaveBeenCalledTimes(1));
+			await vi.waitFor(() => expect(wait).toHaveBeenCalledWith(running, context));
+			expect(unlockModels).not.toHaveBeenCalled();
 		} finally {
 			release.resolve();
+			await Promise.allSettled([first, second]);
 		}
 		await Promise.all([first, second]);
 		expect((await entry())?.task).toBe(running);

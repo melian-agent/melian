@@ -1301,7 +1301,27 @@ describe("verification ownership and budgets", () => {
 		expect(unlocked[1]).toBe(first);
 		await harness.waitForTask(next, context);
 	});
-	it("unlocks credentials for a verification task it attaches to while the task still runs", async () => {
+	it("unlocks a new verifier route when the indexed task is absent", async () => {
+		const stored = await input();
+		stored.version = "v1";
+		stored.candidates[0]!.budget.tools = 20;
+		const revision = revisionKey(changeset.revision);
+		const selection = (await harness.snapshot(ReviewIndex, stored.root, context))!.reviews[revision]!.lenses;
+		scripts();
+		const first = (await startVerification(harness, stored, selection, false, context))!;
+		await harness.waitForTask(first, context);
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			(await tx.doc(ReviewIndex, root.id)).reviews[revision]!.verification!.task = 999_999;
+		}, context);
+		scripts();
+		const unlock = vi.fn(async (_providers: readonly string[]) => {});
+		const next = (await startVerification(harness, stored, selection, false, context, undefined, unlock))!;
+		expect(unlock).toHaveBeenCalledWith(["faux"]);
+		expect(next).not.toBe(first);
+		await harness.waitForTask(next, context);
+	});
+	it("keeps credentials locked for a verification task it attaches to while the task still runs", async () => {
 		const stored = await input();
 		stored.version = "v1";
 		stored.candidates[0]!.budget.tools = 20;
@@ -1325,7 +1345,7 @@ describe("verification ownership and budgets", () => {
 		try {
 			const second = await startVerification(harness, stored, selection, false, context, undefined, unlock);
 			expect(second).toBe(first);
-			expect(unlock).toHaveBeenCalledTimes(1);
+			expect(unlock).not.toHaveBeenCalled();
 		} finally {
 			release.resolve();
 			await harness.waitForTask(first, context);

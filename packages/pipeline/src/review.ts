@@ -1012,14 +1012,14 @@ async function runLenses(
 	const revision = revisionKey(input.revision);
 	const selection = selectionOf(input.lenses, input.escalateAt);
 	if (unlockModels !== undefined) {
-		// What the commit below decides, read ahead of it: only a finished task of this selection, with no failed lens to
-		// rerun, is attached to without asking a model.
+		// Live tasks were unlocked from their checkpoints before resume; finished tasks ask no model.
 		const known = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision];
 		const record = known?.task === undefined ? undefined : await harness.getTask(known.task as TaskId, context);
 		const attaches =
 			known !== undefined &&
 			known.lenses.join("\n") === selection.join("\n") &&
-			finished(record, undecided) &&
+			record !== undefined &&
+			(record.state.status !== "terminal" || finished(record, undecided)) &&
 			!(rerun && lensFailed(record!, refused));
 		if (!attaches)
 			await unlockModels(runsOf(input.lenses).flatMap((run) => run.route.map((model) => model.provider)));
