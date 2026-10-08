@@ -65,6 +65,9 @@ type Runs = {
 	runs: Record<string, Record<string, CheckRunRecord>>;
 	// The latest task for each identity short of its task, so asking again finds it rather than starting another.
 	tasks: Record<string, number>;
+	// The run identity that owns the mutation check of each revision: the latest run that asked for it. A mutation task of
+	// another run runs no head code and writes nothing. Absent in a document an earlier build wrote, where no task is retired.
+	owners?: Record<string, string>;
 };
 
 export const ChecksDocument = defineDoc<Runs>({
@@ -96,6 +99,9 @@ interface CheckInput {
 	readonly config: MelianConfig;
 	readonly source: RepositorySource;
 	readonly writer?: WriterTrust | undefined;
+	// The run identity, short of its task, that owns the revision's mutation check while it is the latest to ask. Absent in
+	// an input an earlier build stored.
+	readonly authority?: string;
 }
 
 type Outcome =
@@ -204,11 +210,37 @@ async function runCheck(
 	return runStatic(input, await env(), context);
 }
 
+// Aborts every live mutation task of the revision that a run other than `key` created. Its own check would end it when it
+// next runs; this also stops one whose tests are running now.
+async function abortRetiredMutation(harness: Harness, revision: string, key: string, context: Context): Promise<void> {
+	const { tasks } = await harness.inspect(context);
+	for (const { record } of tasks) {
+		if (record.kind !== CheckTask.definition.name || record.state.status === "terminal") continue;
+		const input = record.input as unknown as CheckInput;
+		if (
+			input.check === "static.mutation" &&
+			revisionKey(input.changeset.revision) === revision &&
+			input.authority !== key
+		) {
+			await harness.abortTask(record.id, context);
+		}
+	}
+}
+
 function failure(name: string, error: unknown): CheckRunRecord {
 	const code =
 		typeof (error as { code?: unknown })?.code === "string" ? (error as { code: string }).code : "unexpected";
 	const message = error instanceof Error ? error.message : String(error);
 	return { name, status: "failed", reason: code, error: message };
+}
+
+// Whether this task may still run the revision's mutation check and write its findings. A run that revokes trust, or
+// changes the policy, takes the revision from the earlier run's tasks, which a crash left pending with the trust they were
+// created under; they must not run the head's tests after the newer review decided not to.
+function ownsMutation(input: CheckInput, owners: Readonly<Record<string, string>> | undefined): boolean {
+	if (input.check !== "static.mutation") return true;
+	const owner = owners?.[revisionKey(input.changeset.revision)];
+	return owner === undefined || owner === input.authority;
 }
 
 // One check on one revision. Rerunning it after a crash runs the tools again on the same commits and writes the same
@@ -221,6 +253,11 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 	phases: {
 		run: async (task, runtime, context) => {
 			const { check, changeset, run } = task.input;
+			const current = await runtime.snapshot(ChecksDocument, runtime.conversationId, context);
+			if (!ownsMutation(task.input, current?.owners)) {
+				await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context);
+				return;
+			}
 			let outcome: Outcome | undefined;
 			let record: CheckRunRecord;
 			try {
@@ -246,9 +283,11 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 			}
 			const revision = revisionKey(changeset.revision);
 			await runtime.commit(async (tx) => {
+				const { runs, owners } = await tx.doc(ChecksDocument, runtime.conversationId);
+				// The run may have lost the revision while its tests ran; what it found then belongs to nobody.
+				if (!ownsMutation(task.input, owners)) return { status: "terminal", outcome: { status: "aborted" } };
 				const findings = outcome?.report?.findings ?? [];
 				await replaceCheckFindings(tx, runtime.conversationId, check, revision, findings);
-				const { runs } = await tx.doc(ChecksDocument, runtime.conversationId);
 				runs[run] = { ...runs[run], [check]: record };
 				return { status: "terminal", outcome: { status: "completed", result: record } };
 			}, context);
@@ -316,6 +355,7 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 								config,
 								source,
 								writer,
+								authority: identityKey({ ...task.input.identity, task: 0 }),
 							},
 							{ ownership: { kind: "task", taskId: runtime.taskId } },
 						);
@@ -479,19 +519,42 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 		tier,
 		writer: input.writer,
 	};
-	// Starts a run unless one with this key exists, or replaces `stale` with a rerun when it is still the key's task.
-	const start = (rerun?: ChecksInput["rerun"], stale?: number) =>
+	// An unknown tier fails the checks task with its own error, so it is not this call's to report.
+	let mutates = false;
+	try {
+		mutates = checksOfTier(input.config, tier).includes("static.mutation");
+	} catch (error) {
+		if (!(error instanceof CheckError)) throw error;
+	}
+	const revision = revisionKey(input.changeset.revision);
+	// Starts a run unless one with this key exists, or replaces `stale` with a rerun when it is still the key's task. A task
+	// whose run lost the revision's mutation authority ended aborted, so `restart` replaces it too.
+	const start = (rerun?: ChecksInput["rerun"], stale?: number, restart = false) =>
 		root.commit(async (tx) => {
 			const runs = await tx.doc(ChecksDocument, root.id);
 			const existing = runs.tasks[key];
-			if (existing !== undefined && existing !== stale) return existing as TaskId<CheckRunRecord[]>;
+			if (existing !== undefined && existing !== stale && !restart) return existing as TaskId<CheckRunRecord[]>;
 			const created = await tx.createTask(ChecksTask, rerun === undefined ? task : { ...task, rerun }, {
 				ownership: { kind: "conversation" },
 			});
 			runs.tasks[key] = created;
 			return created;
 		}, context);
-	let taskId = await start();
+	// A run that asks for the mutation check takes the revision's mutation authority first, in a commit that creates no task,
+	// and aborts the tasks of the runs it took it from. Pi cannot abort inside a commit, and the scheduler resumes every
+	// pending task as soon as this run submits its own, so a retired task left alive would run the head's tests.
+	let restart = false;
+	if (mutates) {
+		restart = await root.commit(async (tx) => {
+			const runs = await tx.doc(ChecksDocument, root.id);
+			runs.owners ??= {};
+			const lost = runs.owners[revision] !== undefined && runs.owners[revision] !== key;
+			runs.owners[revision] = key;
+			return lost;
+		}, context);
+		await abortRetiredMutation(harness, revision, key, context);
+	}
+	let taskId = await start(undefined, undefined, restart);
 	let settled = await harness.waitForTask(taskId, context);
 	if (input.rerunFailed) {
 		const rerun = rerunOf(settled.state.outcome as { status: string; result?: readonly CheckRunRecord[] });
