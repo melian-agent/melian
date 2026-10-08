@@ -459,7 +459,7 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 				["packages/p/src/a.ts"],
 			);
 		}
-		it("passes exactly the related files and setup through the sandbox environment", async () => {
+		it("passes exactly the related test files through the sandbox environment", async () => {
 			const { base, head } = twoCommits();
 			vi.spyOn(MutationTests, "open").mockResolvedValue(selected(["test/a.test.ts", "test/b.test.mjs"]));
 			const saved = join(artifacts, "selected.json");
@@ -472,13 +472,9 @@ mkdir -p reports/mutation
 printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.json`,
 			);
 			await mutate(base, head);
-			expect(JSON.parse(readFileSync(saved, "utf8"))).toEqual([
-				"test/a.test.ts",
-				"test/b.test.mjs",
-				"test/setup.ts",
-			]);
+			expect(JSON.parse(readFileSync(saved, "utf8"))).toEqual(["test/a.test.ts", "test/b.test.mjs"]);
 		});
-		it("resolves the head compiler graph including mjs tests and literal setup files", async () => {
+		it("resolves related mjs tests and keeps literal setup files out of include", async () => {
 			const base = commit(repo, {
 				"stryker.config.json": config,
 				"tsconfig.json": JSON.stringify({
@@ -506,10 +502,11 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 			);
 			const result = await mutate(base, head);
 			if (result.status !== "ran") throw new Error("skipped");
-			expect(result.notes).toContain("Mutation dry run selected 2 related test file(s), plus Vitest setup files.");
+			expect(result.notes).toContain(
+				"Mutation dry run selected 2 related test file(s); Vitest loads setup through test.setupFiles.",
+			);
 			expect(JSON.parse(readFileSync(saved, "utf8"))).toEqual([
 				"packages/p/test/a.test.ts",
-				"packages/p/test/setup.ts",
 				"scripts/transitive.test.mjs",
 			]);
 		});
