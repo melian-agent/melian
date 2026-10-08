@@ -32,7 +32,7 @@ import {
 	type TaskId,
 } from "./harness.ts";
 import { type MutationProcessHooks, MutationTree, type MutationTreeRecord } from "./mutation-process.ts";
-import { strykerVersion } from "./mutation-static.ts";
+import { mutationInstallation, strykerVersion } from "./mutation-static.ts";
 import { Sandbox } from "./sandbox.ts";
 import { runStaticTool, staticToolSource } from "./static.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
@@ -535,6 +535,7 @@ async function runIdentity(input: RunChecksInput, tier: string): Promise<Omit<Ru
 	const stryker = mutating
 		? {
 				version: strykerVersion(input.changeset.repoRoot),
+				installation: mutationInstallation(input.changeset.repoRoot),
 				source: staticToolSource(input.changeset.repoRoot, "mutation"),
 			}
 		: undefined;

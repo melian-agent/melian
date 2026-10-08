@@ -26,7 +26,7 @@ import { ChecksDocument, MutationProcesses } from "../src/checks.ts";
 import { type ProcessEntry, ProcessTable } from "../src/mutation-process.ts";
 import { Sandbox } from "../src/sandbox.ts";
 import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
-import { commit, createRepository, fakeTool, lines, removeRepository } from "./fixtures/repo.ts";
+import { commit, createRepository, fakeTool, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
 import { unconfinedSandbox } from "./fixtures/sandbox.ts";
 
 let repo: string;
@@ -229,6 +229,25 @@ describe("the authority over a revision's mutation check", { timeout: 120_000 },
 		expect(runs()).toBe(2);
 		expect(await readFindings(harness, root.id, revisionKey({ base, head }), context)).toHaveLength(1);
 	});
+
+	it.each(["package-lock.json", "@stryker-mutator/core", "@stryker-mutator/vitest-runner", "vitest"])(
+		"runs again when the checkout installation changes %s at the same head",
+		async (name) => {
+			const { base, head } = scenario();
+			const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+			const path = name === "package-lock.json" ? name : `node_modules/${name}/package.json`;
+			writeFiles(repo, { [path]: '{"version":"1.0.0"}' });
+			const request = await input(base, head, root.id, trusted);
+			const first = await runChecks(harness, request, context);
+			const warm = await runChecks(harness, request, context);
+			expect(warm.identity.task).toBe(first.identity.task);
+			writeFiles(repo, { [path]: '{"version":"2.0.0"}' });
+			const cold = await runChecks(harness, { ...request, rerunFailed: true }, context);
+			expect(cold.identity.policy).not.toBe(first.identity.policy);
+			expect(cold.identity.task).not.toBe(first.identity.task);
+			expect(runs()).toBe(2);
+		},
+	);
 
 	it("leaves a running mutation check of another revision alone", async () => {
 		const { base, head } = scenario(true);
