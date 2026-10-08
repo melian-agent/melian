@@ -1,8 +1,10 @@
+import { readFileSync } from "node:fs";
 import {
 	type CatalogModel,
 	defaultConfig,
 	Lens,
 	type LensTier,
+	loadConfig,
 	type MelianConfig,
 	type ModelRoute,
 	ModelRoutingError,
@@ -691,6 +693,48 @@ describe("a resolved plan", () => {
 });
 
 describe("verifier routing", () => {
+	it("accepts a Terra-only verifier override under the repository's committed policy", async () => {
+		const fixture = temporaryDirectory();
+		try {
+			gitIn(fixture, "init", "--quiet", "--initial-branch=main");
+			writeFiles(fixture, {
+				"melian.yaml": readFileSync(new URL("../../../melian.yaml", import.meta.url), "utf8"),
+			});
+			const loaded = await loadConfig(fixture, { kind: "worktree" }, ".");
+			const terra = "openai-codex/gpt-5.6-terra";
+			const resolved = ReviewPlan.resolve({
+				config: {
+					...loaded.config,
+					models: { ...loaded.config.models, verifier: { model: terra, fallbacks: [] } },
+				},
+				routes: { ...loaded.routes, overridden: { verifier: "verifier override" } },
+				catalog: [
+					...catalog,
+					model("openai-codex", "gpt-6.1-sol", "GPT-6.1 Sol", 4, 20),
+					model("openai-codex", "gpt-5.6-terra", "GPT-5.6 Terra", 2, 10),
+				],
+				credentials: { "openai-codex": "Pi login" },
+				lenses,
+				checks: ["lens.correctness"],
+			});
+			expect(resolved.verifierRoute("openai-codex/gpt-6.1-sol")).toEqual([
+				{ model: terra, credential: "Pi login", family: "gpt" },
+			]);
+			expect(resolved.verifierLineage(terra)).toEqual({
+				model: terra,
+				wanted: "anthropic/claude-sonnet-5-5",
+				by: "verifier override",
+				outside: false,
+			});
+			const notice = "the verifier shares the finder's family by the maintainer's choice";
+			expect(resolved.lines()).toContainEqual({ state: "ok", text: notice });
+			expect(resolved.warnings()).not.toContain(notice);
+			expect(resolved.warnings()).not.toContain(familyWarning);
+		} finally {
+			removeDirectory(fixture);
+		}
+	});
+
 	it.each([true, false])("reports a same-family verifier at a non-default verified level, accepted %s", (accepted) => {
 		const terra = "openai-codex/gpt-5.6-terra";
 		const correctness = lenses.find((lens) => lens.name === "correctness")!;
