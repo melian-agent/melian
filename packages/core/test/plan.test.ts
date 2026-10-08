@@ -690,6 +690,18 @@ describe("a resolved plan", () => {
 });
 
 describe("verifier routing", () => {
+	it("warns when a same-family fallback leaves the accepted route", () => {
+		const resolved = plan(
+			{
+				heavy: { model: opus },
+				verifier: { model: opus, accept: [opus], fallbacks: ["anthropic/claude-sonnet-5-5"] },
+			},
+			{ anthropic: "key" },
+		);
+		expect(resolved.verifierRoute(opus)).toHaveLength(2);
+		expect(resolved.warnings()).toContain(familyWarning);
+	});
+
 	it.each([true, false])("judges a same-family Codex override against policy acceptance %s", (accepted) => {
 		const terra = "openai-codex/gpt-5.6-terra";
 		const resolved = plan(
@@ -708,6 +720,7 @@ describe("verifier routing", () => {
 		});
 		expect(resolved.summary()).toContain(`Plan: ${accepted ? notice : familyWarning}\n`);
 		expect(resolved.warnings().includes(familyWarning)).toBe(!accepted);
+		expect(resolved.warnings()).not.toContain(notice);
 	});
 
 	it("recognises Bedrock and OpenRouter Claude names and puts GPT first", () => {
