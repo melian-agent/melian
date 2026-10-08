@@ -485,6 +485,9 @@ Before Stryker starts, `MutationTests` selects tests through `CompilerGraph`'s r
 
 Mutation incremental results live in the repository's `CacheLocation` under `mutation/`, partitioned by base-policy commit and writer trust. Pass the host's trust decision to `StaticRunInput.trustedWriter`; absence means untrusted. Discard an unreadable or corrupt incremental file before running Stryker. Give the sandbox only that partition read-write, never the cache root. The cache scratch sweep removes abandoned partial writes there.
 
+For repeat-run measurements, use an isolated state directory and remove only its scripted review database between runs. Keep the mutation cache. `--rerun` repeats failed checks; it does not repeat a completed mutation check. Record cold and warm timings separately.
+
+Melian's Stryker configuration excludes `StringLiteral`. Profile strings and command flags are configuration; the sandbox probes judge their behaviour. Excluded mutants remain configuration-ignored notes, and changes to the configuration receive policy review.
 
 The command runs `stryker run <worktree>/stryker.config.json --reporters json --incremental --incrementalFile <cache>/mutation/<identity>/incremental.json --inPlace --mutate <entries>` under `ulimit -f` of 1 GiB, after `rm -f reports/mutation/mutation.json`, so a report the revision committed never stands in for the run's. Exit 0 reads the report. Exit 1 is `toolFailed` with the end of Stryker's output, as when the head's own tests fail the initial run. Any other code, and a missing or unreadable report, is `invalidOutput`.
 

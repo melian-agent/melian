@@ -9,7 +9,7 @@ export type SandboxBackend = "seatbelt" | "bubblewrap";
 export interface SandboxPaths {
 	/** The head's worktree, the command's working directory. */
 	readonly worktree: string;
-	/** The run's scratch directory, which holds the worktree. The only place the command may write. */
+	/** The run's writable scratch directory, which holds the worktree. */
 	readonly scratch: string;
 	/** The checkout's installed dependencies, read-only: its `node_modules` and each workspace package's. */
 	readonly installs: readonly string[];
@@ -211,7 +211,7 @@ export class Sandbox {
 
 	/**
 	 * `inner` run under the sandbox, as one shell command. `profileFile` is where the caller wrote {@link profile}. The
-	 * command runs in the worktree. Writes reach the scratch directory and nothing else.
+	 * command runs in the worktree. Writes reach scratch and the selected incremental cache partition.
 	 */
 	command(inner: string, paths: SandboxPaths, profileFile: string): string {
 		if (this.backend === "seatbelt") {

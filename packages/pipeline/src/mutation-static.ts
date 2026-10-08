@@ -291,7 +291,7 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 	// The run executes the head's own test files, setup files, and Vitest configuration, so it gets a home and a temporary
 	// directory of its own in scratch, where the reviewer's credential files are not, and none of the Melian process's
 	// variables. It also runs in the host's sandbox: no network, and nothing readable or writable outside the worktree,
-	// scratch, and the installs it needs.
+	// scratch, the installs it needs, and its incremental cache partition.
 	async #execute(
 		entries: readonly string[],
 		selection: MutationTestSelection,
