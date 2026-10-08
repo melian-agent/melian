@@ -413,6 +413,10 @@ export class ReviewPlan {
 		const lens = scope === undefined ? variants[0] : variants.find((each) => (each.scope ?? "") === scope);
 		const entry = lens?.levels.find((each) => each.level === level);
 		if (entry === undefined) return {};
+		return this.judgeLevel(name, entry, ran);
+	}
+
+	private judgeLevel(name: string, entry: PlannedLevel, ran?: string): LensJudgement {
 		const planned = this.tier(entry.tier);
 		const model = ran ?? planned.models[0]?.model;
 		const policyTier = entry.committed ?? entry.tier;
@@ -525,7 +529,7 @@ export class ReviewPlan {
 		const moved = this.lenses.flatMap((lens): string[] => {
 			const entry = lens.levels.find(({ level }) => level === defaultScrutinyLevel);
 			if (entry?.committed === undefined) return [];
-			const { refusal, lineage } = this.judge(lens.name, entry.level, undefined, lens.scope ?? "");
+			const { refusal, lineage } = this.judgeLevel(lens.name, entry);
 			if (refusal !== undefined) return [`${labelOf(lens)} fails: ${refusal}`];
 			if (lineage === undefined) return [];
 			return [`${labelOf(lens)} runs ${lineage.model}, ${ReviewPlan.lineageText(lineage)}`];
