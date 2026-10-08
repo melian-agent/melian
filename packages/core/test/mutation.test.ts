@@ -3,6 +3,8 @@ import {
 	mutationNotJudged,
 	mutationSkipHasLeave,
 	mutationSkips,
+	mutationUnmutated,
+	mutationUnmutatedLog,
 	normaliseMutationReport,
 	toolLogSchema,
 } from "@melian-agent/core";
@@ -563,4 +565,44 @@ describe("normaliseMutationReport", () => {
 			normaliseMutationReport(JSON.stringify(noReplacement), input).log.runs[0].results[0]!.message.text,
 		).toContain("changed to something else,");
 	});
+});
+
+it("retains the driver, location and advice of unmutated binary and bounded files", () => {
+	const files = [
+		{ path: "src/binary.ts", ranges: [] as [number, number][], ...mutationUnmutated.binary },
+		{ path: "src/bounded.ts", ranges: [[4, 6]] as [number, number][], ...mutationUnmutated.pastBound(3) },
+	];
+	const log = mutationUnmutatedLog("10.0.0", files);
+	expect(log.runs[0].tool).toEqual({ driver: { name: "Stryker", version: "10.0.0" } });
+	expect(
+		log.runs[0].results.map((result) => ({ advice: result.advice, location: result.locations[0]!.physicalLocation })),
+	).toEqual(
+		files.map((file, index) => ({
+			advice: {
+				whyHere: "Stryker was not asked about these changed lines, so a guard here would stay unproven.",
+				whatToDo: file.whatToDo,
+			},
+			location: { artifactLocation: { uri: file.path }, region: { startLine: index === 0 ? 1 : 4 } },
+		})),
+	);
+	expect(Value.Check(toolLogSchema, log)).toBe(true);
+});
+
+it("sorts excluded-mutator notes by path and sorts their lines numerically", () => {
+	const lines = { "src/a.ts!b.ts": [[1, 12]], "src/a.ts": [[1, 12]] } as Record<string, [number, number][]>;
+	const files = Object.fromEntries(
+		Object.keys(lines).map((path) => [
+			path,
+			[10, 2].map((line) => ({ status: "Ignored", line, mutatorName: "StringLiteral" })),
+		]),
+	);
+	const { notes } = normaliseMutationReport(report(files), { ...input, lines });
+	expect(notes).toEqual(
+		Object.keys(lines)
+			.reverse()
+			.map(
+				(path) =>
+					`${path} line(s) 2, 10 hold mutants Stryker ignored by a setting in its configuration (an excluded mutation), so no test was asked about them.`,
+			),
+	);
 });

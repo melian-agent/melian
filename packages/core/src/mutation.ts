@@ -345,7 +345,7 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 	// table, and `ignoreStatic` skips it. That is the configuration's trade-off, but a changed authentication pattern is
 	// exactly what a maintainer should see, so each file is a finding to acknowledge. A mutation a setting excludes is a
 	// note: it is the configuration's, and it names a kind of change, not a place.
-	for (const [path, lines] of [...exempt].sort(([a], [b]) => compare(a, b))) {
+	for (const [path, lines] of exempt) {
 		results.push(
 			unmutatedResult({
 				path,
