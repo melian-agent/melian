@@ -103,6 +103,41 @@ describe("EnclosingFunctions", () => {
 		const changed = oneLine.replace("=> 1;", "=> 2;");
 		expect(summary(await around({ "src/b.ts": oneLine }, { "src/b.ts": changed }))).toEqual(["src/b.ts inner 1-1"]);
 	});
+
+	it("carries all three callables on a shared opening line", async () => {
+		const opening = lines(
+			"function outer(x = 1) { const middle = () => { const inner = () => {",
+			" return 1;",
+			" };",
+			" return inner();",
+			" };",
+			" return middle();",
+			"}",
+		);
+		const edited = opening.replace("x = 1", "x = 2");
+		expect(summary(await around({ "src/a.ts": opening }, { "src/a.ts": edited }))).toEqual([
+			"src/a.ts inner 1-3",
+			"src/a.ts middle 1-5",
+			"src/a.ts outer 1-7",
+		]);
+	});
+
+	it("carries all three callables on a shared closing line", async () => {
+		const closing = lines(
+			"function outer() {",
+			" const middle = () => {",
+			"  const inner = () => {",
+			"   return 1;",
+			"  }; return inner(); }; return middle(); }",
+		);
+		const edited = closing.replace("return middle()", "return middle() + 1");
+		expect(summary(await around({ "src/a.ts": closing }, { "src/a.ts": edited }))).toEqual([
+			"src/a.ts outer 1-5",
+			"src/a.ts middle 2-5",
+			"src/a.ts inner 3-5",
+		]);
+	});
+
 	it("carries both callables on a shared closing line, and refuses one outside a deletion anchor", async () => {
 		const closing = lines("function outer() {", " const inner = () => {", "  return 1;", " }; return inner(); }");
 		const edited = closing.replace("return inner()", "return inner() + 1");
