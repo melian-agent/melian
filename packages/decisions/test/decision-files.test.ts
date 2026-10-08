@@ -614,6 +614,28 @@ const filenameCases = [
 ] as const;
 
 describe("filename domain", { timeout: 60_000 }, () => {
+	it("keeps literal filename padding distinct from an unpadded decision", async () => {
+		const padded = "docs/decisions/ old.md";
+		const plain = "docs/decisions/old.md";
+		expect(parse(b, "Supersedes: [Old](< old.md>)").supersedes).toEqual([padded]);
+		expect(parse(b, "Supersedes: [Old](<old.md >)").supersedes).toEqual([]);
+		const repo = temporaryDirectory();
+		try {
+			gitIn(repo, "init", "--quiet", "--initial-branch=main");
+			writeFiles(repo, {
+				[padded]: "# Padded",
+				[plain]: "# Plain",
+				[b]: "# New\nSupersedes: [Old](< old.md>)",
+			});
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "base");
+			const rendered = (await DecisionFiles.load(repo, "HEAD")).render();
+			expect(rendered).toContain(`[INACTIVE; superseded by ${b}] ${padded} — Padded`);
+			expect(rendered).toContain(`[ACTIVE] ${plain} — Plain`);
+		} finally {
+			removeDirectory(repo);
+		}
+	});
 	it.each(filenameCases)("%s", async (_name, filename, excluded) => {
 		const target = `docs/decisions/${filename}`;
 		const destination = filename.split("/").map(encodeURIComponent).join("/");

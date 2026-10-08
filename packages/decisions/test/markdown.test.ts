@@ -89,6 +89,19 @@ const urlCases: URLCase[] = [
 ];
 
 describe("URL policy", () => {
+	it.each(Array.from({ length: 33 }, (_, code) => [code, String.fromCharCode(code)] as const))(
+		"preserves C0 and space padding: %s",
+		(_code, padding) => {
+			expect(LocalDestination.resolve("docs/design.md", `${padding}old.md${padding}`)).toMatchObject({
+				path: `docs/${padding}old.md${padding}`,
+				fragment: "",
+			});
+			expect(LocalDestination.resolve("docs/design.md", "!old.md!")).toMatchObject({
+				path: "docs/!old.md!",
+				fragment: "",
+			});
+		},
+	);
 	it("keeps a destination explicitly marked repository-relative", () => {
 		expect(LocalDestination.resolve("docs/nested/design.md", "/repository/docs/design/trust.md", true)).toMatchObject(
 			{
