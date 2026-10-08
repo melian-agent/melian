@@ -228,8 +228,6 @@ function holders(around: readonly Callable[], anchors: readonly (readonly [numbe
 		if (holding !== undefined) found.push(holding);
 		const boundary = [...(starts.get(first) ?? []), ...(ends.get(last) ?? [])];
 		found.push(...boundary.filter((callable) => callable.startLine <= first && callable.endLine >= last));
-		starts.delete(first);
-		ends.delete(last);
 	}
 	return found;
 }
