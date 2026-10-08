@@ -109,7 +109,7 @@ export class Sandbox {
 	/**
 	 * Variables the command needs beyond the scratch `HOME` and `TMPDIR`: a `PATH` of only the directories the sandbox lets
 	 * it read. A program found elsewhere, such as `gh` under Homebrew, would fail to start with `EPERM` where it should be
-	 * missing. On macOS the real `git` comes ahead of the shim.
+	 * missing. On macOS the real `git` comes ahead of the shim, and the shim is told where the tools are.
 	 */
 	environment(): Record<string, string> {
 		const developer = this.backend === "seatbelt" ? developerDirectory() : undefined;
@@ -121,7 +121,8 @@ export class Sandbox {
 			"/usr/sbin",
 			"/sbin",
 		];
-		return { PATH: directories.join(":") };
+		// With DEVELOPER_DIR set, `/usr/bin/git` runs the real one without asking `xcode-select`, which the sandbox cannot answer.
+		return { PATH: directories.join(":"), ...(developer === undefined ? {} : { DEVELOPER_DIR: developer }) };
 	}
 
 	/** The seatbelt profile for these paths, which the caller writes to a file; bubblewrap needs none. */

@@ -24,6 +24,10 @@ attempt("sh", () => {
   const shell = require("node:child_process").spawnSync("/bin/sh", ["-c", "true"], { encoding: "utf8" });
   if (shell.status !== 0 || shell.stderr !== "") throw new Error(shell.stderr);
 });
+// A test that names the shim by its path, as many do.
+attempt("shim", () => {
+  execFileSync("/usr/bin/git", ["--version"], { stdio: "pipe" });
+});
 // The head's own tests make repositories to test against.
 attempt("git", () => {
   execFileSync("git", ["init", "--quiet", "--initial-branch=main"], { cwd: scratch + "/repository", stdio: "pipe" });
@@ -120,6 +124,7 @@ describe.skipIf(Sandbox.detect("darwin") === undefined)("seatbelt", { timeout: 6
 		expect(await probed(sandbox)).toEqual({
 			readHome: "denied",
 			sh: "ok",
+			shim: "ok",
 			git: "ok",
 			writeScratch: "ok",
 			writeOutside: "denied",
@@ -136,6 +141,7 @@ describe.skipIf(Sandbox.detect("linux") === undefined)("bubblewrap", { timeout: 
 		expect(await probed(sandbox)).toEqual({
 			readHome: "denied",
 			sh: "ok",
+			shim: "ok",
 			git: "ok",
 			writeScratch: "ok",
 			writeOutside: "denied",
