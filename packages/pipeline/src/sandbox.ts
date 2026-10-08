@@ -28,6 +28,8 @@ const systemReads = [
 	"/Library/Preferences",
 	"/Library/Apple",
 	"/private/etc",
+	// /bin/sh reads the link in here that chooses its shell, and complains on stderr when it cannot.
+	"/private/var/select",
 	"/private/var/db/dyld",
 	"/private/var/db/timezone",
 	"/dev",

@@ -19,6 +19,11 @@ const [home, scratch, outside] = process.argv.slice(2);
 const result = {};
 const attempt = (name, body) => { try { body(); result[name] = "ok"; } catch (error) { result[name] = "denied"; } };
 attempt("readHome", () => fs.readFileSync(home + "/auth.json"));
+// A shell script, which must run without a word on stderr.
+attempt("sh", () => {
+  const shell = require("node:child_process").spawnSync("/bin/sh", ["-c", "true"], { encoding: "utf8" });
+  if (shell.status !== 0 || shell.stderr !== "") throw new Error(shell.stderr);
+});
 // The head's own tests make repositories to test against.
 attempt("git", () => {
   execFileSync("git", ["init", "--quiet", "--initial-branch=main"], { cwd: scratch + "/repository", stdio: "pipe" });
@@ -97,6 +102,7 @@ describe.skipIf(Sandbox.detect("darwin") === undefined)("seatbelt", { timeout: 6
 		const sandbox = Sandbox.detect("darwin") as Sandbox;
 		expect(await probed(sandbox)).toEqual({
 			readHome: "denied",
+			sh: "ok",
 			git: "ok",
 			writeScratch: "ok",
 			writeOutside: "denied",
@@ -112,6 +118,7 @@ describe.skipIf(Sandbox.detect("linux") === undefined)("bubblewrap", { timeout: 
 		const sandbox = Sandbox.detect("linux") as Sandbox;
 		expect(await probed(sandbox)).toEqual({
 			readHome: "denied",
+			sh: "ok",
 			git: "ok",
 			writeScratch: "ok",
 			writeOutside: "denied",
