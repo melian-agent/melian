@@ -19,3 +19,9 @@ Codex's medium finding on [pull request #93](https://github.com/melian-agent/mel
 ## Verification follows the base baseline
 
 The live investigation for [pull request #102](https://github.com/melian-agent/melian/pull/102) found the design lens reporting the trust defect correctly. The verifier refuted it because the head superseded its own decision. Verification now receives the active-base index for design-source claims and claims under a design rule. It judges whether the base reason still holds. A head decision that documents a weakening cannot excuse it. A scripted verifier golden requires the rule and base context, and retains this defect as confirmed.
+
+## Scoring follows adjudication
+
+Golden scores count merged adjudicated defects, excluding refuted and dismissed findings. A match may use the speaker’s reporting check and rule or a paired source and rule in otherClaims. Alternative files let a finding cite the faulty code or its conflicting decision. A second lens sighting the same defect is not a false positive. The live supersedes case cited the code correctly; its old expectation accepted only the decision path.
+
+A scoring test must isolate a wrong-rule report. Supplying it beside a correct report leaves precision unchanged when the rule check is removed, because only one expectation can earn credit. The mutation pass exposed that gap and added the isolated case.

@@ -26,6 +26,9 @@
           "role": "context",
           "revision": "base"
         }
+      ],
+      "alternativeFiles": [
+        "src/publish.ts"
       ]
     }
   ]

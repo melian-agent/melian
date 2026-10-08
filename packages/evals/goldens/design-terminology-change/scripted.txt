@@ -1,6 +1,6 @@
 docs/decisions/2026-10-07-publisher-eligibility.md
 
-  P1  line 3  criterion-selection-bias  (introduced, new, unresolved, confirmed)
+  P1  line 3  criterion-selection-bias  (introduced, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   A renamed concept and an unlinked decision select their own weaker publication baseline.
     What: A renamed concept and an unlinked decision select their own weaker publication baseline.

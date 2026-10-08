@@ -1,6 +1,6 @@
 src/bound-on-wrong-measure.ts
 
-  P2  line 3  bound-on-wrong-measure  (introduced, new, unresolved, confirmed)
+  P2  line 3  bound-on-wrong-measure  (introduced, new, acknowledge, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   The standards cap now counts content bytes and omits rendered paths and headings.
     What: The standards cap now counts content bytes and omits rendered paths and headings.

@@ -501,6 +501,71 @@ describe("scoreGolden", () => {
 			locations: [{ physicalLocation: { artifactLocation: { uri: path } } }],
 		}) as never;
 
+	it("matches alternative files and keeps a merged claim’s rule paired with its source", () => {
+		const golden = goldens.find((each) => each.name === "design-supersedes-its-own-decision")!;
+		const merged = {
+			ruleId: "fail-open",
+			locations: [{ physicalLocation: { artifactLocation: { uri: "src/publish.ts" } } }],
+			properties: {
+				path: "src/publish.ts",
+				source: { check: "lens.trust-boundary", version: "v" },
+				reportedBy: [
+					{ check: "lens.trust-boundary", version: "v" },
+					{ check: "lens.design", version: "v" },
+				],
+				otherClaims: [{ ruleId: "fail-open-default", source: { check: "lens.design", version: "v" } }],
+			},
+		} as never;
+		const sourced = (rule: string, source: string) => ({
+			...golden,
+			expected: { ...golden.expected, comments: [{ ...golden.expected.comments[0]!, rule, source }] },
+		});
+		expect(scoreGolden(golden, [merged])).toMatchObject({ precision: 1, recall: 1 });
+		expect(scoreGolden(sourced("fail-open-default", "lens.design"), [merged])).toMatchObject({
+			precision: 1,
+			recall: 1,
+		});
+		expect(scoreGolden(sourced("fail-open-default", "lens.trust-boundary"), [merged])).toMatchObject({
+			precision: 0,
+			recall: 0,
+		});
+		expect(scoreGolden(sourced("fail-open", "lens.design"), [merged])).toMatchObject({ precision: 0, recall: 0 });
+		expect(scoreGolden(sourced("fail-open", "lens.trust-boundary"), [merged])).toMatchObject({
+			precision: 1,
+			recall: 1,
+		});
+		expect(
+			scoreGolden(
+				{
+					...golden,
+					expected: {
+						...golden.expected,
+						comments: [{ ...golden.expected.comments[0]!, alternativeFiles: undefined }],
+					},
+				},
+				[merged],
+			),
+		).toMatchObject({ precision: 0, recall: 0 });
+	});
+	it("scores two lens sightings of one defect once after adjudication", async () => {
+		const golden = goldens.find((each) => each.name === "design-fail-open-default")!;
+		const report = golden.script
+			.design!.flatMap((step) => ("calls" in step ? step.calls : []))
+			.find((call) => call.name === "report_finding")!.arguments;
+		const duplicate = {
+			...golden,
+			script: {
+				...golden.script,
+				"trust-boundary": [
+					{ calls: [{ name: "report_finding", arguments: { ...report, rule: "fail-open" } }] },
+					{ text: "Reported 1 finding." },
+				],
+			},
+		};
+		const run = await runGolden(duplicate, { kind: "scripted" });
+		expect(run.findings).toHaveLength(1);
+		expect(scoreGolden(duplicate, run.findings)).toMatchObject({ reported: 1, precision: 1, recall: 1 });
+	});
 	it("matches on file and rule", () => {
 		expect(
 			scoreGolden(nullDeref!, [finding("src/user.ts", "null-dereference"), finding("src/user.ts", "wrong-result")]),
@@ -511,6 +576,10 @@ describe("scoreGolden", () => {
 			recall: 1,
 		});
 		expect(scoreGolden(nullDeref!, [])).toMatchObject({ precision: 1, recall: 0 });
+		expect(scoreGolden(nullDeref!, [finding("src/user.ts", "wrong-result")])).toMatchObject({
+			precision: 0,
+			recall: 0,
+		});
 	});
 
 	it("counts a second finding matching one expectation as a false positive", () => {

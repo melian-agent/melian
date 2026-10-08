@@ -1,6 +1,6 @@
 src/resumed-identity.ts
 
-  P1  line 4  resumed-identity  (introduced, new, unresolved, confirmed)
+  P1  line 4  resumed-identity  (introduced, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   A resumed publication keeps the first publisher identity after credentials change.
     What: A resumed publication keeps the first publisher identity after credentials change.

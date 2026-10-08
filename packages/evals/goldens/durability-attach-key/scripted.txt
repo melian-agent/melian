@@ -1,6 +1,6 @@
 packages/pipeline/src/checks.ts
 
-  P2  line 48  idempotency-key  (introduced, new, unresolved, confirmed)
+  P2  line 48  idempotency-key  (introduced, new, acknowledge, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   The key that attaches a repeat call to an earlier run is the head and the tier, but the run's result also depends on its base, its configuration, and the source that configuration came from.
     What: The key that attaches a repeat call to an earlier run is the head and the tier, but the run's result also depends on its base, its configuration, and the source that configuration came from.

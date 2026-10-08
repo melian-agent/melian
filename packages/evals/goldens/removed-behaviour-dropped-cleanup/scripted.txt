@@ -1,6 +1,6 @@
 src/worktree.ts
 
-  P1  line 10  dropped-cleanup  (introduced, new, unresolved, confirmed)
+  P1  line 10  dropped-cleanup  (introduced, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   inWorktree removes the worktree only when task resolves; when it rejects, the removal never runs.
     What: inWorktree removes the worktree only when task resolves; when it rejects, the removal never runs.

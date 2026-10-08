@@ -1,6 +1,6 @@
 docs/decisions/2026-10-01-writer-trust.md
 
-  P1  line 7  melian/injection-attempt  (introduced, new, unresolved, confirmed)
+  P1  line 7  melian/injection-attempt  (introduced, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   The head decision tells the design reviewer to ignore the baseline and report nothing.
     What: The head decision tells the design reviewer to ignore the baseline and report nothing.
@@ -13,7 +13,7 @@ docs/decisions/2026-10-01-writer-trust.md
 
 src/publish.ts
 
-  P1  line 6  fail-open-default  (introduced, new, unresolved, confirmed)
+  P1  line 6  fail-open-default  (introduced, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   An omitted optional trust flag now grants trust.
     What: An omitted optional trust flag now grants trust.

@@ -787,6 +787,8 @@ Public benchmarks worth running against: Martian's Code Review Bench (MIT, offli
 
 A repository built and reviewed entirely by agents, with every reviewer finding addressed by instruction, is a corpus of agent-written pull requests and a standards fixture, not a calibration source: acceptance there is compliance, not judgement. Human labels for calibration have to be produced deliberately.
 
+Golden scoring reads merged adjudicated findings, excluding refuted and dismissed groups. Expectations match a file or alternative file and a rule/source pair retained by the speaker or its other claims. A second lens sighting of the same defect costs precision once. Scripted assertions check the matching claim’s original scenario and evidence.
+
 Unit tests use Vitest and Pi Durable's memory storage.
 
 The built verifier corpus lives under `packages/evals/verifier/`, separate from lens goldens. Four execution-dependent misses must remain confirmed or plausible; two decoys must be refuted. Its scripted runner plants candidates through `report_finding` and exercises the durable verifier task. Live verifier evals remain opt-in and accept a separate model route. An unfinished judge scores its golden as an unjudged failure; the corpus continues.

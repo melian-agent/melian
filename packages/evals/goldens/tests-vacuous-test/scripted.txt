@@ -1,6 +1,6 @@
 test/band.test.ts
 
-  P2  line 14  vacuous-test  (introduced, new, unresolved, confirmed)
+  P2  line 14  vacuous-test  (introduced, new, acknowledge, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   The test named for the drop-above-accept check passes on a different error, the missing accept.
     What: The test named for the drop-above-accept check passes on a different error, the missing accept.

@@ -1,6 +1,6 @@
 packages/pipeline/src/notes.ts
 
-  P1  line 48  replay-duplicate  (introduced, new, unresolved, confirmed)
+  P1  line 48  replay-duplicate  (introduced, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   add_note is marked replay: "safe", but its commit appends the note to the revision's list rather than writing it under a stable key.
     What: add_note is marked replay: "safe", but its commit appends the note to the revision's list rather than writing it under a stable key.

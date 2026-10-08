@@ -1,6 +1,6 @@
 src/trust-by-label.ts
 
-  P1  line 3  trust-by-label  (introduced, new, unresolved, confirmed)
+  P1  line 3  trust-by-label  (introduced, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   A revision label promotes standards from the wrong commit into trusted instructions.
     What: A revision label promotes standards from the wrong commit into trusted instructions.

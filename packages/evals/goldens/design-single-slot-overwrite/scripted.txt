@@ -1,6 +1,6 @@
 src/single-slot-overwrite.ts
 
-  P2  line 4  single-slot-overwrite  (introduced, new, unresolved, confirmed)
+  P2  line 4  single-slot-overwrite  (introduced, new, acknowledge, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   A graph-wide coverage slot overwrites evidence referenced by an earlier durable record.
     What: A graph-wide coverage slot overwrites evidence referenced by an earlier durable record.
