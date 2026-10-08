@@ -3,6 +3,45 @@ import { describe, expect, it } from "vitest";
 import { gitIn, removeDirectory, temporaryDirectory, writeFiles } from "../../core/test/fixtures/repo.ts";
 
 describe("base design vocabulary", () => {
+	it("follows prose links while ignoring fenced examples and code spans", async () => {
+		const repo = temporaryDirectory();
+		try {
+			gitIn(repo, "init", "--quiet", "--initial-branch=main");
+			writeFiles(repo, {
+				"docs/design.md": [
+					"# Design",
+					"````md",
+					"[Example](missing-fenced.md#example)",
+					"~~~",
+					"```",
+					"[Still fenced](missing-short-fence.md#example)",
+					"`````",
+					"`[Example](missing-inline.md#example)`",
+					"``a ` [Example](missing-nested-span.md#example)``",
+					"`multiline",
+					"[Example](missing-multiline.md#example)`",
+					"`unclosed span [Actual](architecture.md#markers)",
+					"~~~md",
+					"[Example](design/missing-tilde.md)",
+					"~~~",
+					"[Split](design/publish.md)",
+					"```md",
+					"[Unclosed fence](missing-unclosed-fence.md#example)",
+				].join("\n"),
+				"docs/architecture.md": "## Signed markers\n",
+				"docs/design/publish.md": "## Republish trust\n",
+			});
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "base");
+			expect((await DesignSections.load(repo, "HEAD")).render().split("\n")).toEqual([
+				"docs/design.md:1 — Design",
+				"docs/architecture.md:1 — Signed markers",
+				"docs/design/publish.md:1 — Republish trust",
+			]);
+		} finally {
+			removeDirectory(repo);
+		}
+	});
 	it("keeps headings and line numbers, excluding examples and ordinary prose", () => {
 		const rendered = DesignSections.from([
 			{

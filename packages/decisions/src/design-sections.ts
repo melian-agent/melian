@@ -5,6 +5,19 @@ import { DecisionFilesError } from "./decision-files.ts";
 /** The largest complete design-heading index sent to a reviewer. */
 export const designIndexLimits = { bytes: 64 * 1024 } as const;
 
+function proseLines(content: string): string[] {
+	let fence: string | undefined;
+	return content.split("\n").map((line) => {
+		const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+		if (marker !== undefined) {
+			if (fence === undefined) fence = marker;
+			else if (marker[0] === fence[0] && marker.length >= fence.length) fence = undefined;
+			return "";
+		}
+		return fence === undefined ? line : "";
+	});
+}
+
 /** Base vocabulary from the design and the local sections it links. */
 export class DesignSections {
 	readonly #rows: readonly string[];
@@ -20,7 +33,10 @@ export class DesignSections {
 		if (content === undefined) return DesignSections.from([]);
 		const files = [{ path: "docs/design.md", content }];
 		const paths = new Set<string>();
-		for (const [, target] of content.matchAll(/\[[^\]]+\]\(([^)\s:#]+\.md#[^)\s]+|design\/[^)\s]+\.md)\)/g)) {
+		const prose = proseLines(content)
+			.join("\n")
+			.replace(/(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/g, " ");
+		for (const [, target] of prose.matchAll(/\[[^\]]+\]\(([^)\s:#]+\.md#[^)\s]+|design\/[^)\s]+\.md)\)/g)) {
 			const path = posix.normalize(posix.join("docs", target!.split("#")[0]!));
 			if (target!.startsWith("/") || path.startsWith("../"))
 				throw new DecisionFilesError("invalid", "A linked design section is outside the repository");
@@ -40,17 +56,9 @@ export class DesignSections {
 	static from(files: readonly { path: string; content: string }[]): DesignSections {
 		const rows: string[] = [];
 		for (const file of files) {
-			let fence: string | undefined;
-			for (const [index, line] of file.content.split("\n").entries()) {
-				const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
-				if (marker !== undefined) {
-					if (fence === undefined) fence = marker;
-					else if (marker[0] === fence[0] && marker.length >= fence.length) fence = undefined;
-					continue;
-				}
+			for (const [index, line] of proseLines(file.content).entries()) {
 				const heading = /^#{1,6}[ \t]+(.+)$/.exec(line)?.[1];
-				if (fence === undefined && heading !== undefined)
-					rows.push(visibleText(`${file.path}:${index + 1} — ${heading}`));
+				if (heading !== undefined) rows.push(visibleText(`${file.path}:${index + 1} — ${heading}`));
 			}
 		}
 		return new DesignSections(rows);

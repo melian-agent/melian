@@ -1,0 +1,3 @@
+# Design lens round two fixes
+
+For [pull request #102](https://github.com/melian-agent/melian/pull/102), `fix(decisions): discover design links only in prose` excludes fenced examples and code spans from linked-section discovery, while retaining prose links and heading line numbers. The decisions test file passed all seven tests. Ten mutations failed: scanning all text, retaining code spans, ignoring fence markers, never opening a fence, closing on the wrong marker, closing on a shorter marker, retaining marker lines, retaining fenced content, dropping prose, and accepting non-headings. The full gate is pending the remaining fixes.
