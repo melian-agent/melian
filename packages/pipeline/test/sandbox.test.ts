@@ -245,6 +245,18 @@ for (const backend of ["seatbelt", "bubblewrap"] as const) {
 	});
 }
 
+it("grants the seatbelt profile loopback and no other network rule", () => {
+	const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend: "seatbelt" });
+	const rules = sandbox
+		.profile(paths())!
+		.split("\n")
+		.filter((line) => /network/.test(line.replace(/^\s*;.*/, "")));
+	expect(rules).toEqual([
+		'(allow network-inbound (local ip "localhost:*"))',
+		'(allow network-outbound (remote ip "localhost:*"))',
+	]);
+});
+
 describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 	const seatbelt = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend: "seatbelt" as const });
 	const bubblewrap = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend: "bubblewrap" as const });

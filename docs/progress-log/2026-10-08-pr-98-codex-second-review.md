@@ -1,3 +1,3 @@
 # Second Codex review fixes for [pull request #98](https://github.com/melian-agent/melian/pull/98)
 
-Commits are named below as they land.
+Commits: c6c1ae11 ends a mutation run's processes by recorded pid, never by group; ca46047b stops probing pid 0 or 1 read from names; 93d14329 keys the mutation cache by head and inputs and publishes only for a run that holds authority; 11af9468 makes Vitest and Stryker setup files policy files and states that the forged-kill guardrail only warns; 7f1c7b80 budgets a cold run at 1,250 lines; the final commit records that Stryker 10.0.0 cannot fix its logging port, so loopback stays open on macOS, with a profile test and docs.
