@@ -485,6 +485,41 @@ describe("expectToolResult", () => {
 });
 
 describe("scriptedMismatches", () => {
+	it("uses evidence from the expected rule and source", () => {
+		const template = goldens.find((each) => each.name === "design-supersedes-its-own-decision")!;
+		const comment = { ...template.expected.comments[0]!, source: "lens.design" };
+		const golden = { ...template, expected: { ...template.expected, comments: [comment] } };
+		const finding = {
+			ruleId: comment.rule,
+			locations: [{ physicalLocation: { artifactLocation: { uri: comment.file } } }],
+			properties: {
+				path: comment.file,
+				cause: comment.cause,
+				failureScenario: comment.failureScenario,
+				evidence: comment.evidence.map(({ line, ...location }) => ({
+					...location,
+					startLine: line,
+					revision: location.revision ?? "head",
+				})),
+				source: { check: "lens.design", version: "v2" },
+				otherClaims: [
+					{
+						ruleId: comment.rule,
+						source: { check: "lens.trust-boundary", version: "v2" },
+						failureScenario: "Another source’s scenario",
+						evidence: [],
+					},
+					{
+						ruleId: "criterion-selection-bias",
+						source: { check: "lens.design", version: "v1" },
+						failureScenario: "Another rule’s scenario",
+						evidence: [],
+					},
+				],
+			},
+		} as never;
+		expect(scriptedMismatches(golden, [finding])).toEqual([]);
+	});
 	it("names a finding whose cause, failure scenario, or evidence differs from the golden's", async () => {
 		const golden = goldens.find((each) => each.name === "contracts-breaking-signature")!;
 		const run = await runGolden(golden, { kind: "scripted" });
