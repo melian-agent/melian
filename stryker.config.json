@@ -13,7 +13,7 @@
 		"json"
 	],
 	"incremental": true,
-	"concurrency": 2,
+	"concurrency": 4,
 	"timeoutMS": 30000,
 	"timeoutFactor": 2,
 	"dryRunTimeoutMinutes": 20,
