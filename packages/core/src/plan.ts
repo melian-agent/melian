@@ -574,23 +574,51 @@ export class ReviewPlan {
 				});
 			if (this.refusal("verifier") !== undefined)
 				verification.push({ state: "warn", text: `verifier fails: ${this.refusal("verifier")}` });
-			const finders = [...this.used(true).keys()].flatMap((tier) => this.tier(tier).models);
-			const route = this.verifierRoute("");
-			const sameFamily = finders.filter((finder) => route.every((model) => model.family === finder.family));
-			if (this.refusal("verifier") === undefined && sameFamily.length > 0) {
-				const accepted =
-					own.status === "routed" && route.every((model) => own.accept?.includes(model.model) === true);
-				verification.push({
-					state: accepted ? "ok" : "warn",
-					text: accepted
-						? "the verifier shares the finder's family by the maintainer's choice"
-						: sameFamily.length === finders.length
-							? "every verification candidate would be judged by its finder's own family"
-							: "some verification candidates would be judged by their finder's own family",
-				});
-			}
+			verification.push(...this.familyMessages());
 		}
 		return verification;
+	}
+
+	private familyMessages(): PlanLine[] {
+		const own = this.tier("verifier");
+		const finders = [...this.used(true).keys()].flatMap((tier) => {
+			const models = this.tier(tier).models;
+			return models.map((finder) => ({ ...finder, primary: models[0]!.model }));
+		});
+		const matches = finders.flatMap((finder) => {
+			const route = this.verifierRoute(finder.model);
+			const matching = route.filter((model) => model.family === finder.family);
+			if (matching.length === 0) return [];
+			const failures: string[] = [];
+			if (route[0]!.family !== finder.family) failures.push(route[0]!.model);
+			if (finder.model !== finder.primary) failures.push(finder.primary);
+			const accepted =
+				own.status === "routed" && matching.every((model) => own.accept?.includes(model.model) === true);
+			return [{ finder, matching, failures, accepted }];
+		});
+		const direct = matches.filter(({ failures }) => failures.length === 0);
+		const messages = matches.flatMap(({ finder, matching, failures, accepted }): PlanLine[] => {
+			if (failures.length === 0) return [];
+			return [
+				{
+					state: accepted ? "ok" : "warn",
+					text: `${finder.model} could be judged by ${listed(matching.map(({ model }) => model))} (same family) if ${failures.map((model) => `${model} fails`).join(" and ")}${accepted ? ", by the maintainer's choice" : ""}`,
+				},
+			];
+		});
+		if (direct.length > 0) {
+			// Direct matches share the verifier primary's family, matching route and acceptance.
+			const accepted = direct[0]!.accepted;
+			messages.push({
+				state: accepted ? "ok" : "warn",
+				text: accepted
+					? "the verifier shares the finder's family by the maintainer's choice"
+					: direct.length === finders.length
+						? "every verification candidate would be judged by its finder's own family"
+						: "some verification candidates would be judged by their finder's own family",
+			});
+		}
+		return messages;
 	}
 
 	private static lineageText({ wanted, by, moved, outside, model }: CheckLineage): string {

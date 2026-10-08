@@ -120,7 +120,12 @@ describe("ReviewPlan.resolve", () => {
 		});
 		expect(resolved.routes()).toEqual({ heavy: { model: opus, fallbacks: ["openai/gpt-5.4-mini", gpt] } });
 		expect(resolved.lineage("heavy")).toBeUndefined();
-		expect(resolved.warnings()).toEqual([fallbackWarning]);
+		expect(resolved.warnings()).toEqual([
+			fallbackWarning,
+			`${opus} could be judged by ${opus} (same family) if openai/gpt-5.4-mini fails`,
+			`openai/gpt-5.4-mini could be judged by openai/gpt-5.4-mini and ${gpt} (same family) if ${opus} fails and ${opus} fails`,
+			`${gpt} could be judged by openai/gpt-5.4-mini and ${gpt} (same family) if ${opus} fails and ${opus} fails`,
+		]);
 	});
 
 	it("routes a route that names only accept to its first accepted model with credentials, saying nothing", () => {
@@ -365,7 +370,6 @@ describe("ReviewPlan.resolve", () => {
 		expect(refused.warnings()).toEqual([
 			`heavy, for correctness fails every check: ${refused.refusal("heavy")}`,
 			fallbackWarning,
-			familyWarning,
 		]);
 		expect(flagged.refusal("heavy")).toContain("--model puts it on openai/gpt-5.4-mini");
 		// A fallback outside accept is dropped, so a failover never leaves policy either.
@@ -699,6 +703,93 @@ describe("a resolved plan", () => {
 });
 
 describe("verifier routing", () => {
+	it.each([true, false])("reports a matching verifier fallback, accepted %s", (accepted) => {
+		const terra = "openai-codex/gpt-5.6-terra";
+		const resolved = plan(
+			{
+				heavy: { model: gpt },
+				verifier: { model: opus, fallbacks: [terra], accept: accepted ? [terra] : [opus] },
+			},
+			{ anthropic: "key", openai: "key", "openai-codex": "Pi login" },
+			{
+				preferences: { verifier: { model: opus, fallbacks: [terra] } },
+				catalog: [...catalog, model("openai-codex", "gpt-5.6-terra", "GPT-5.6 Terra", 2, 10)],
+			},
+		);
+		expect(resolved.verifierRoute(gpt).map(({ model }) => model)).toEqual([opus, terra]);
+		const text = `${gpt} could be judged by ${terra} (same family) if ${opus} fails${accepted ? ", by the maintainer's choice" : ""}`;
+		expect(resolved.lines()).toContainEqual({ state: accepted ? "ok" : "warn", text });
+		expect(resolved.summary()).toContain(`Plan: ${text}\n`);
+		expect(resolved.warnings().includes(text)).toBe(!accepted);
+		expect(resolved.lines()).not.toContainEqual({ state: "warn", text: familyWarning });
+		expect(ReviewPlan.from(resolved.toJSON()).lines()).toEqual(resolved.lines());
+	});
+
+	it("warns if one of two matching verifier fallbacks is unaccepted", () => {
+		const mini = "openai/gpt-5.4-mini";
+		const resolved = plan(
+			{ heavy: { model: gpt }, verifier: { model: opus, fallbacks: [gpt, mini], accept: [opus, gpt] } },
+			{ anthropic: "key", openai: "key" },
+		);
+		expect(resolved.lines()).toContainEqual({
+			state: "warn",
+			text: `${gpt} could be judged by ${gpt} and ${mini} (same family) if ${opus} fails`,
+		});
+	});
+
+	it("says nothing about families when no verifier model matches", () => {
+		const resolved = plan(
+			{ heavy: { model: gpt }, verifier: { model: opus, fallbacks: ["anthropic/claude-sonnet-5-5"] } },
+			{ anthropic: "key", openai: "key" },
+		);
+		expect(resolved.warnings()).toEqual([]);
+		expect(resolved.summary()).toBe("");
+		expect(resolved.lines().filter(({ text }) => text.includes("same family") || text.includes("finder's"))).toEqual(
+			[],
+		);
+	});
+
+	it("names the preferred cross-family primary after reordering the verifier route", () => {
+		const resolved = plan(
+			{ heavy: { model: gpt }, verifier: { model: gpt, fallbacks: [opus] } },
+			{ anthropic: "key", openai: "key" },
+		);
+		expect(resolved.lines()).toContainEqual({
+			state: "ok",
+			text: `${gpt} could be judged by ${gpt} (same family) if ${opus} fails, by the maintainer's choice`,
+		});
+	});
+
+	it.each([true, false])("reports a matching finder fallback, accepted %s", (accepted) => {
+		const sonnet = "anthropic/claude-sonnet-5-5";
+		const resolved = plan(
+			{
+				heavy: { model: gpt, fallbacks: [opus] },
+				verifier: { model: sonnet, accept: accepted ? [sonnet] : [gpt] },
+			},
+			{ anthropic: "key", openai: "key" },
+			{ preferences: { verifier: { model: sonnet, fallbacks: [] } } },
+		);
+		const text = `${opus} could be judged by ${sonnet} (same family) if ${gpt} fails${accepted ? ", by the maintainer's choice" : ""}`;
+		expect(resolved.lines()).toContainEqual({ state: accepted ? "ok" : "warn", text });
+		expect(resolved.warnings().includes(text)).toBe(!accepted);
+		expect(resolved.summary()).toContain(`Plan: ${text}\n`);
+		expect(resolved.lines().some(({ text }) => text === familyWarning)).toBe(false);
+	});
+
+	it("names both failures when only the finder and verifier fallbacks share a family", () => {
+		const sonnet = "anthropic/claude-sonnet-5-5";
+		const mini = "openai/gpt-5.4-mini";
+		const resolved = plan(
+			{ heavy: { model: gpt, fallbacks: [opus] }, verifier: { model: mini, fallbacks: [sonnet] } },
+			{ anthropic: "key", openai: "key" },
+		);
+		expect(resolved.lines()).toContainEqual({
+			state: "ok",
+			text: `${opus} could be judged by ${sonnet} (same family) if ${mini} fails and ${gpt} fails, by the maintainer's choice`,
+		});
+	});
+
 	it("accepts a Terra-only verifier override under the repository's committed policy", async () => {
 		const fixture = temporaryDirectory();
 		try {

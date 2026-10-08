@@ -80,6 +80,30 @@ async function run(
 }
 
 describe("doctor model routes", () => {
+	it.each([true, false])("prints the conditional same-family fallback notice, accepted %s", async (accepted) => {
+		const fake = createFakeModels({
+			models: [
+				{ id: "finder", name: "GPT Finder" },
+				{ id: "claude", name: "Claude Opus" },
+				{ id: "gpt-5.6-terra", name: "GPT-5.6 Terra" },
+			],
+		});
+		vi.spyOn(pipeline, "createReviewModels").mockReturnValue(fake.review);
+		const provider = fake.ref("finder").provider;
+		const finder = `${provider}/finder`;
+		const claude = `${provider}/claude`;
+		const terra = `${provider}/gpt-5.6-terra`;
+		writeFileSync(
+			join(repo, "melian.yaml"),
+			`models:\n  heavy: { model: ${finder} }\n  verifier: { model: ${claude}, fallbacks: [${terra}], accept: [${accepted ? `${claude}, ${terra}` : claude}] }\n`,
+		);
+		const result = await run(github());
+		expect(result.stdout.split("\n")).toContain(
+			`${accepted ? "ok  " : "warn"}  plan        ${finder} could be judged by ${terra} (same family) if ${claude} fails${accepted ? ", by the maintainer's choice" : ""}`,
+		);
+		expect(fake.provider.state.callCount).toBe(0);
+	});
+
 	it("names the subscription verifier and its provider on the routes line", async () => {
 		const fake = createFakeModels({
 			provider: "openai-codex",
