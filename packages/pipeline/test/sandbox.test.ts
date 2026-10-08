@@ -24,9 +24,10 @@ attempt("sh", () => {
   const shell = require("node:child_process").spawnSync("/bin/sh", ["-c", "true"], { encoding: "utf8" });
   if (shell.status !== 0 || shell.stderr !== "") throw new Error(shell.stderr);
 });
-// A test that names the shim by its path, as many do.
+// A test that names the shim by its path, as many do, with an environment of its own and no PATH or DEVELOPER_DIR.
 attempt("shim", () => {
-  execFileSync("/usr/bin/git", ["--version"], { stdio: "pipe" });
+  const shim = require("node:child_process").spawnSync("/usr/bin/git", ["init", "--quiet"], { env: { HOME: scratch + "/home" }, cwd: scratch + "/shim", encoding: "utf8" });
+  if (shim.status !== 0 || shim.stderr !== "") throw new Error(shim.stderr);
 });
 // The head's own tests make repositories to test against.
 attempt("git", () => {
@@ -54,7 +55,15 @@ let base: string;
 
 beforeEach(() => {
 	base = realpathSync(mkdtempSync(join(tmpdir(), "melian-sandbox-")));
-	for (const directory of ["home", "outside", "scratch/tree", "scratch/repository", "scratch/home", "installs"])
+	for (const directory of [
+		"home",
+		"outside",
+		"scratch/tree",
+		"scratch/repository",
+		"scratch/shim",
+		"scratch/home",
+		"installs",
+	])
 		mkdirSync(join(base, directory), { recursive: true });
 	writeFileSync(join(base, "home/auth.json"), "{}");
 	writeFileSync(join(base, "scratch/tree/probe.js"), probe);
@@ -87,6 +96,8 @@ async function probed(sandbox: Sandbox): Promise<Record<string, string>> {
 	return JSON.parse(stdout) as Record<string, string>;
 }
 
+const sandboxName = (platform: "darwin" | "linux") => Sandbox.detect(platform)?.environment().MELIAN_SANDBOX;
+
 describe("Sandbox.environment", () => {
 	for (const platform of ["darwin", "linux"] as const) {
 		it.skipIf(Sandbox.detect(platform) === undefined)(
@@ -98,6 +109,7 @@ describe("Sandbox.environment", () => {
 				expect(directories.slice(-4)).toEqual(["/usr/bin", "/bin", "/usr/sbin", "/sbin"]);
 				expect(directories).not.toContain("/opt/homebrew/bin");
 				expect(directories).not.toContain("/Users/someone/bin");
+				expect(sandboxName(platform)).toBe(platform === "darwin" ? "seatbelt" : "bubblewrap");
 			},
 		);
 	}
@@ -109,9 +121,13 @@ describe("Sandbox.detect", () => {
 		expect(Sandbox.detect("win32")).toBeUndefined();
 	});
 
-	it.skipIf(process.platform !== "darwin")("finds seatbelt on macOS", () => {
-		expect(Sandbox.detect("darwin")?.backend).toBe("seatbelt");
-	});
+	// A sandboxed run cannot start a sandbox of its own, so there is nothing to find there.
+	it.skipIf(process.platform !== "darwin" || process.env.MELIAN_SANDBOX !== undefined)(
+		"finds seatbelt on macOS",
+		() => {
+			expect(Sandbox.detect("darwin")?.backend).toBe("seatbelt");
+		},
+	);
 
 	it.skipIf(process.platform === "darwin")("finds no seatbelt where sandbox-exec is absent", () => {
 		expect(Sandbox.detect("darwin")).toBeUndefined();

@@ -68,6 +68,23 @@ function developerDirectory(): string | undefined {
 	return existsSync(posix.join(directory, "usr/bin/git")) ? directory : undefined;
 }
 
+// The per-user temporary directory macOS gives every process, where `xcrun` keeps the cache the git shim reads. A test that
+// runs `/usr/bin/git` with an environment of its own gets the shim, and the shim writes there.
+function xcrunCache(): string | undefined {
+	const asked = spawnSync("/usr/bin/getconf", ["DARWIN_USER_TEMP_DIR"], { encoding: "utf8" });
+	const directory = asked.status === 0 ? asked.stdout.trim() : "";
+	if (directory === "") return undefined;
+	try {
+		return realpathSync(directory);
+	} catch {
+		return undefined;
+	}
+}
+
+function regexSource(path: string): string {
+	return path.replace(/[\][\\.*^$+?(){}|]/g, "\\$&");
+}
+
 /** The Node installation that runs this process: the directory above the real path of its `bin/node`. */
 export function nodeInstallation(): string {
 	return dirname(dirname(realpathSync(process.execPath)));
@@ -122,13 +139,19 @@ export class Sandbox {
 			"/sbin",
 		];
 		// With DEVELOPER_DIR set, `/usr/bin/git` runs the real one without asking `xcode-select`, which the sandbox cannot answer.
-		return { PATH: directories.join(":"), ...(developer === undefined ? {} : { DEVELOPER_DIR: developer }) };
+		return {
+			PATH: directories.join(":"),
+			// Tells the head's tests they run sandboxed, where a test of a sandbox cannot start another.
+			MELIAN_SANDBOX: this.backend,
+			...(developer === undefined ? {} : { DEVELOPER_DIR: developer }),
+		};
 	}
 
 	/** The seatbelt profile for these paths, which the caller writes to a file; bubblewrap needs none. */
 	profile(paths: SandboxPaths): string | undefined {
 		if (this.backend !== "seatbelt") return undefined;
 		const developer = developerDirectory();
+		const cache = xcrunCache();
 		const readable = [...systemReads, ...(developer === undefined ? [] : [developer]), paths.node, paths.scratch].map(
 			(path) => `(subpath ${profileString(path)})`,
 		);
@@ -149,11 +172,18 @@ export class Sandbox {
 			"(allow ipc-posix-shm*)",
 			"(allow system-mac-syscall)",
 			`(allow file-read* (literal "/") ${[...readable, ...installs].join(" ")})`,
-			// /etc is a link to /private/etc, and the resolver stats it to find /etc/hosts; localhost does not resolve without it.
-			`(allow file-read-metadata (literal "/") (literal "/etc") ${parents.join(" ")})`,
+			// /etc and /var are links into /private. The resolver stats /etc to find /etc/hosts, and the git shim reads the link in /var/select.
+			`(allow file-read-metadata (literal "/") (literal "/etc") (literal "/var") ${parents.join(" ")})`,
 			`(allow file-write* (subpath ${profileString(paths.scratch)}))`,
 			'(allow file-write-data (literal "/dev/null") (literal "/dev/dtracehelper") (literal "/dev/tty"))',
 			'(allow file-ioctl (literal "/dev/dtracehelper"))',
+			// `confstr` asks this service for the per-user temporary directory, which the git shim needs before it runs the real git.
+			'(allow mach-lookup (global-name "com.apple.bsd.dirhelper"))',
+			...(cache === undefined
+				? []
+				: [
+						`(allow file-read* file-write* (regex #"^(/private)?${regexSource(cache.replace(/^\/private/, ""))}/xcrun_db(-[A-Za-z0-9]+)?$"))`,
+					]),
 			// Stryker 10 starts a logging server on a port it picks, and its workers connect to it. Loopback is all it gets: no
 			// remote address, no unix-domain socket, no Mach service. On macOS loopback is the host's own, so the command can
 			// reach what listens there; bubblewrap's private network namespace gives it a loopback of its own.

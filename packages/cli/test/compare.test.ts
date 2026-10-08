@@ -422,19 +422,9 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		const open = vi.spyOn(ReviewThreadImporter, "open");
 
 		expect(
-			// git is found by PATH, which an environment of the script alone does not carry; macOS's /usr/bin/git then needs
-			// xcode-select, which a sandboxed run cannot ask.
-			await compare(
-				{
-					cwd: repo,
-					env: { ...env, PATH: process.env.PATH ?? "" },
-					color: false,
-					stdout: () => {},
-					stderr: () => {},
-				},
-				"#7",
-				[{ kind: "github", login: "octocat" }],
-			),
+			await compare({ cwd: repo, env, color: false, stdout: () => {}, stderr: () => {} }, "#7", [
+				{ kind: "github", login: "octocat" },
+			]),
 		).toBe(0);
 
 		expect(open).toHaveBeenCalledExactlyOnceWith({

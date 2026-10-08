@@ -399,6 +399,11 @@ describe("doctor trust boundaries", () => {
 });
 
 describe("doctor mutation testing", () => {
+	// Whether the host has a sandbox is not what these tests are about, and a sandboxed run has none.
+	beforeEach(() => {
+		vi.spyOn(Sandbox, "detect").mockReturnValue({ backend: "seatbelt" } as Sandbox);
+	});
+
 	const line = (stdout: string) => stdout.split("\n").find((each) => / {2}mutation\s+/.test(each));
 	const enable = () => writeFileSync(join(repo, "melian.yaml"), "static: { mutation: { enabled: true } }\n");
 
