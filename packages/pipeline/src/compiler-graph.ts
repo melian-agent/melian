@@ -227,7 +227,7 @@ export class CompilerGraph {
 		if (declaration) return this.#site(declaration) ?? "external";
 		return undefined;
 	}
-	/** Reads literal Vitest setup paths without executing the head's configuration. Computed paths force a full-suite fallback. */
+	/** Reads literal Vitest setup paths without executing head configuration. Unreadable or computed paths force a full-suite fallback. */
 	setupFiles(config = "vitest.config.ts"): string[] {
 		const modules = new Set(
 			[config, ...this.#imports.keys()].filter(
@@ -258,7 +258,7 @@ export class CompilerGraph {
 					}
 					node.forEachChild(visit);
 				};
-				source?.forEachChild(visit);
+				source!.forEachChild(visit);
 			}
 		}
 		return [...paths].sort();

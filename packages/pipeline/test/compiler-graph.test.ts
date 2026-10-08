@@ -4,10 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { EnolaFacts } from "@melian-agent/core";
-import { API } from "typescript/unstable/sync";
+import { API, Program } from "typescript/unstable/sync";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CompilerGraph, HeadProgram } from "../src/compiler-graph.ts";
 import { EnolaCoverage } from "../src/enola-coverage.ts";
+import { MutationTests } from "../src/mutation-tests.ts";
 
 let root: string;
 afterEach(() => {
@@ -16,6 +17,28 @@ afterEach(() => {
 });
 
 describe("compiler graph extraction", { timeout: 60_000 }, () => {
+	it("falls back to the whole suite when the compiler cannot read a listed setup source", () => {
+		root = mkdtempSync(join(tmpdir(), "melian-compiler-missing-source-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+		writeFileSync(join(root, "a.ts"), "export const a = 1;");
+		writeFileSync(join(root, "a.test.ts"), 'import { a } from "./a.ts";');
+		writeFileSync(join(root, "vitest.config.ts"), 'export default { test: { setupFiles: "setup.ts" } };');
+		const compiler = CompilerGraph.open(root);
+		try {
+			const graph = compiler.read({ importsOnly: true });
+			const get = vi.spyOn(Program.prototype, "getSourceFile").mockImplementation((name) => {
+				expect(name).toBe(join(root, "vitest.config.ts"));
+				return undefined;
+			});
+			expect(
+				MutationTests.select({ read: () => graph, setupFiles: () => compiler.setupFiles() }, ["a.ts"]).toJSON(),
+			).toEqual({ note: expect.stringContaining("whole suite") });
+			expect(get).toHaveBeenCalledOnce();
+		} finally {
+			compiler.close();
+		}
+	});
+
 	it("bounds import-only extraction without losing the full call graph", () => {
 		root = mkdtempSync(join(tmpdir(), "melian-compiler-import-bound-"));
 		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
@@ -29,7 +52,14 @@ describe("compiler graph extraction", { timeout: 60_000 }, () => {
 			expect(imports.files[0]!.pairs).toEqual([]);
 			expect(imports.symbols).toEqual([]);
 			expect(() => compiler.read({ importsOnly: true, maxFiles: 1 })).toThrow("bound");
-			expect(() => compiler.read({ importsOnly: true, deadline: Date.now() })).toThrow("bound");
+			const clock = vi.spyOn(Date, "now").mockReturnValue(1000);
+			try {
+				expect(compiler.read({ importsOnly: true, deadline: 1001 }).files).toHaveLength(2);
+				expect(() => compiler.read({ importsOnly: true, deadline: 1000 })).toThrow("bound");
+				expect(() => compiler.read({ importsOnly: true, deadline: 999 })).toThrow("bound");
+			} finally {
+				clock.mockRestore();
+			}
 			expect(compiler.read().files[0]!.pairs).toHaveLength(1);
 		} finally {
 			compiler.close();
