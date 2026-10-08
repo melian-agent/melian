@@ -39,6 +39,91 @@ Melian is our answer. It is built in the open, on [Pi](https://github.com/earend
 
 **Stays in scope, with care.** Findings must be caused by the change, or provably affected by it. Pre-existing problems Melian happens to notice are mentioned once, never block, and are never raised again.
 
+## How a review runs
+
+```mermaid
+flowchart TD
+    A["Change arrives<br/>(local range, pre-commit hook, or pull request)"] --> B["Triage<br/>decision model picks a tier and<br/>how deep each lens reads"]
+    B --> C["Static checks<br/>Biome, tsc, Enola, mutation testing<br/>(no model, deterministic)"]
+    B --> D["Guardrails<br/>forbidden patterns, policy-change notices"]
+    B --> E["Agentic lenses<br/>correctness, contracts, durability, tests,<br/>trust boundary, conventions, design"]
+    E --> F["Verifier<br/>a second model family checks each claim:<br/>confirmed, plausible or refuted"]
+    C --> G["Adjudication<br/>merge findings, set severity,<br/>keep scope: introduced, pre-existing or affected,<br/>honour dismissals"]
+    D --> G
+    F --> G
+    G --> H{"Verdict"}
+    H -->|passed| I["Merge may proceed"]
+    H -->|findings| J["Findings with what, why here,<br/>and what to do"]
+    H -->|blocking| K["Required status fails"]
+    H -->|not reviewed| L["A check did not run:<br/>nothing is assumed"]
+    J --> M["Publish<br/>one review per head on the pull request,<br/>threads for replies and dismissals"]
+
+    S[("Durable state<br/>every task survives a crash<br/>and resumes without repeating work")] -.-> E
+    S -.-> F
+    S -.-> M
+    T["Sandbox<br/>anything that executes the change's own code<br/>runs isolated, without secrets"] -.-> C
+```
+
+## What each stage does
+
+**Triage.** Triage reads the changed paths, the selected lenses, and the repository policy.
+It chooses a permitted reading level for each lens, or keeps the default if its decision model fails.
+The review record shows each selected level and why Melian chose it.
+
+**Static checks.** These checks read isolated base and head worktrees without a model.
+They turn analyser output into findings, then compare the two reports to keep introduced results separate.
+You see new diagnostics, check notes, and a failed or skipped check rather than a silent clean result.
+
+**Biome.** Biome runs its lint command on both revisions and writes a SARIF report for each.
+It reads each revision's own configuration, so disabled rules and excluded paths apply to that revision.
+Melian treats a configuration change as a policy change, and shows only diagnostics new at the head.
+
+**tsc.** TypeScript checks the configured project build in both worktrees without emitting files.
+Melian expands solution references, parses each diagnostic, and compares the head report with the base report.
+An error already present at the base is pre-existing; a new error becomes a finding you can read.
+
+**Enola.** Enola checks architecture rules and constraints against a baseline Melian builds from the base.
+It reads SARIF from both revisions under trusted policy, rather than a baseline the change supplies.
+Exit 1 with only resolved or suppressed results is clean; missing or unusable output fails the check closed.
+Its verified graph also supplies bounded caller context to lenses, which they must confirm before citing.
+
+**Mutation testing.** The check on [pull request #98](https://github.com/melian-agent/melian/pull/98), not yet on `main`, runs Stryker on changed production lines only.
+A dry run finds related tests, then each mutant runs only the tests that cover it; the incremental cache avoids repeat work.
+Surviving or uncovered mutants become findings, and Stryker runs in a secret-free sandbox for trusted writers.
+It can take minutes or hours on a large change, so it stays out of fast tiers.
+
+**Guardrails.** Guardrails read the diff and the policy that applies to each changed path.
+They produce deterministic findings for forbidden patterns, required files, and changes to review policy.
+You see the rule, its severity, and a notice when the change altered the rules that judge it.
+
+**Agentic lenses.** Each lens reads its assigned diff, head files, and relevant standards through read-only tools.
+It produces candidate findings with evidence and a concrete failure scenario for one review focus.
+You see which lenses ran, their level and budget, and any findings they reported.
+
+**The verifier.** A model from a different family reads each candidate claim and its own evidence.
+It produces a confirmed, plausible, or refuted judgement with a reason, without changing the finding's identity.
+You see that judgement beside the finding, so an unverified claim is never mistaken for proof.
+
+**Adjudication.** Adjudication reads the manifest, check records, merged findings, verifier judgements, and dismissals.
+It applies path policy, keeps pre-existing findings advisory, and refuses a complete verdict when a required check did not run.
+You see which findings count, their resolution, and why a review is not reviewed.
+
+**The verdict.** The verdict reads adjudication's complete result and turns it into a stable review outcome.
+It produces passed, findings, blocking, or not reviewed for every host that runs Melian.
+You see the same outcome locally, from a coding agent, or on a pull request.
+
+**Publication.** Publication reads a pull-request verdict, earlier posts, and recorded dismissals.
+It produces the status, inline findings, thread replies, and one updated review ledger for that head.
+You see what blocks the change, what resolved, and why a dismissed finding no longer counts.
+
+**Durable state.** Durable state records task inputs, checkpoints, findings, and publication records as each stage progresses.
+It produces a resumable review record, so a restart continues work without repeating safe steps or losing decisions.
+You see one coherent result and no duplicate finding or ledger post after recovery.
+
+**The sandbox.** The sandbox runs any check that executes the change's own code with no secrets and restricted access.
+It produces an isolated execution environment for untrusted tests, rather than trusting the reviewer's machine.
+You see a recorded skip when no sandbox is available, never an unlabelled reduction in coverage.
+
 ## How you work with it
 
 **Locally, before a pull request exists.** Melian ships as a command-line tool with named tiers of checks. A fast tier runs in seconds and suits a pre-commit hook. A standard tier suits pre-push. The full review suits a pull request. Which tier runs at which point in your workflow is yours to configure, with sensible defaults, and Melian never installs hooks for you.
