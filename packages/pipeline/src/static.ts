@@ -46,6 +46,8 @@ export interface StaticRunInput {
 	readonly trustedWriter?: boolean;
 	/** Records and clears the sandbox process group for durable recovery. */
 	readonly mutationProcess?: MutationProcessHooks;
+	/** Whether the run still answers to the latest review of its revision; absence means it does. */
+	readonly holdsAuthority?: () => Promise<boolean>;
 }
 
 /** A tool's log for one revision, with anything the run set aside, or why the tool does not apply to it. */

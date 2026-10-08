@@ -15,8 +15,6 @@ export interface SandboxPaths {
 	readonly installs: readonly string[];
 	/** The Node installation, read-only: the directory above `bin/node`. */
 	readonly node: string;
-	/** One writer-trust and base-policy partition of the repository mutation cache, read-write. */
-	readonly incremental?: string;
 }
 
 // What a Node process needs from macOS to start: the dynamic linker's cache, the system frameworks and libraries, the
@@ -167,7 +165,7 @@ export class Sandbox {
 		if (this.backend !== "seatbelt") return undefined;
 		const developer = developerDirectory();
 		const cache = xcrunCache();
-		const writable = [paths.scratch, ...(paths.incremental === undefined ? [] : [paths.incremental])];
+		const writable = [paths.scratch];
 		const readable = [...systemReads, ...(developer === undefined ? [] : [developer]), paths.node, ...writable].map(
 			(path) => `(subpath ${profileString(path)})`,
 		);
@@ -211,7 +209,7 @@ export class Sandbox {
 
 	/**
 	 * `inner` run under the sandbox, as one shell command. `profileFile` is where the caller wrote {@link profile}. The
-	 * command runs in the worktree. Writes reach scratch and the selected incremental cache partition.
+	 * command runs in the worktree. Writes reach scratch only.
 	 */
 	command(inner: string, paths: SandboxPaths, profileFile: string): string {
 		if (this.backend === "seatbelt") {
@@ -226,7 +224,6 @@ export class Sandbox {
 			bind("--ro-bind", paths.node),
 			...paths.installs.map((path) => bind("--ro-bind", path)),
 			bind("--bind", paths.scratch),
-			...(paths.incremental === undefined ? [] : [bind("--bind", paths.incremental)]),
 			`--chdir ${quote(paths.worktree)}`,
 			`-- /bin/bash -c ${quote(inner)}`,
 		].join(" ");

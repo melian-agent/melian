@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { posix } from "node:path";
@@ -292,18 +293,22 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 	// The run executes the head's own test files, setup files, and Vitest configuration, so it gets a home and a temporary
 	// directory of its own in scratch, where the reviewer's credential files are not, and none of the Melian process's
 	// variables. It also runs in the host's sandbox: no network, and nothing readable or writable outside the worktree,
-	// scratch, the installs it needs, and its incremental cache partition.
+	// scratch, which holds the staged copy of its incremental cache, and the installs it needs.
 	async #execute(
 		entries: readonly string[],
 		selection: MutationTestSelection,
 		lines: Record<string, [number, number][]>,
 	): Promise<string | { skipped: string }> {
 		const { repoRoot, policyCommit, base, commit, trustedWriter } = this.#run.input;
-		const cache = await MutationCache.open(
-			(await CacheLocation.open(repoRoot)).root,
-			policyCommit ?? base ?? commit,
-			trustedWriter === true,
-		);
+		const cache = await MutationCache.open((await CacheLocation.open(repoRoot)).root, {
+			policy: policyCommit ?? base ?? commit,
+			trusted: trustedWriter === true,
+			head: commit,
+			inputs: createHash("sha256")
+				.update(JSON.stringify({ version: this.#version, entries, selection }))
+				.digest("hex"),
+		});
+		const incremental = await cache.stage(posix.join(this.#scratch, "incremental"));
 		const includeFile = posix.join(this.#scratch, "test-include.json");
 		if ("include" in selection) {
 			const written = await this.#run.input.env.writeFile(
@@ -321,7 +326,7 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 		const runner =
 			"tests" in selection && selection.tests.length === 0
 				? await this.#uncovered(lines)
-				: `${quote(this.#binary)} run ${quote(posix.join(this.#root, config))} --reporters json --incremental --incrementalFile ${quote(cache.file)} --inPlace --mutate ${quote(entries.join(","))}`;
+				: `${quote(this.#binary)} run ${quote(posix.join(this.#root, config))} --reporters json --incremental --incrementalFile ${quote(incremental)} --inPlace --mutate ${quote(entries.join(","))}`;
 		const command = [
 			`mkdir -p ${quote(home)} ${quote(temporary)}`,
 			`cd ${quote(this.#root)}`,
@@ -334,7 +339,6 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 			scratch: this.#scratch,
 			installs: this.#installs,
 			node: nodeInstallation(),
-			incremental: cache.directory,
 		};
 		const profile = this.#sandbox.profile(paths);
 		const profileFile = posix.join(this.#scratch, "sandbox.sb");
@@ -367,6 +371,8 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 			throw this.#run.fail("invalidOutput", `Stryker exited ${result.code}, which it does not document: ${output}`);
 		const text = await this.#run.readOutput(posix.join(this.#root, report));
 		if (text === undefined) throw this.#run.fail("invalidOutput", `Stryker wrote no report at ${report}`);
+		// A run another review has retired may not leave identities for the next one to trust.
+		if ((await this.#run.input.holdsAuthority?.()) ?? true) await cache.publish(incremental);
 		return text;
 	}
 

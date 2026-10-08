@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -91,12 +91,18 @@ function scenario(gated = false) {
 		"stryker",
 		`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
 echo run >> '${join(artifacts, "runs.txt")}'
+while [ "$#" -gt 0 ]; do if [ "$1" = "--incrementalFile" ]; then shift; printf '{}' > "$1"; fi; shift; done
 ${gated ? `while [ ! -e '${join(artifacts, "release")}' ]; do sleep 0.1; done` : ""}
 mkdir -p reports/mutation
 cp '${join(artifacts, "report.json")}' reports/mutation/mutation.json`,
 	);
 	return { base, head };
 }
+
+const published = () => {
+	const root = join(repo, ".git", "melian", "mutation");
+	return existsSync(root) ? readdirSync(root).filter((name) => existsSync(join(root, name, "incremental.json"))) : [];
+};
 
 const runs = () =>
 	existsSync(join(artifacts, "runs.txt"))
@@ -468,6 +474,14 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		expect(await outcomeOf(harness, running!.record.id)).toEqual({ status: "aborted" });
 		expect(await readFindings(harness, root.id, revisionKey({ base, head }), context)).toEqual([]);
 		expect(runs()).toBe(1);
+		expect(published()).toEqual([]);
+	});
+
+	it("publishes the incremental identities of a run that still holds authority at its end", async () => {
+		const { base, head } = scenario();
+		const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+		await runChecks(harness, await input(base, head, root.id, trusted), context);
+		expect(published()).toHaveLength(1);
 	});
 
 	it("aborts a task whose tests are running when another review takes the revision, without waiting for them", async () => {

@@ -145,11 +145,16 @@ function untrusted(input: CheckInput): { detail: string } | undefined {
 	return input.writer.trusted ? undefined : { detail: input.writer.detail };
 }
 
+interface MutationHooks {
+	readonly process: MutationProcessHooks;
+	readonly holdsAuthority: () => Promise<boolean>;
+}
+
 async function runStatic(
 	input: CheckInput,
 	env: ExecutionEnv | undefined,
 	context: Context,
-	mutationProcess: MutationProcessHooks,
+	mutation: MutationHooks,
 ): Promise<Outcome> {
 	const tool = toolOf[input.check as keyof typeof toolOf];
 	const settings = input.config.static[tool];
@@ -173,7 +178,8 @@ async function runStatic(
 		runStaticTool(
 			{
 				env,
-				mutationProcess,
+				mutationProcess: mutation.process,
+				holdsAuthority: mutation.holdsAuthority,
 				repoRoot,
 				commit,
 				base: revision.base,
@@ -219,14 +225,14 @@ async function runCheck(
 	input: CheckInput,
 	env: () => Promise<ExecutionEnv | undefined>,
 	context: Context,
-	mutationProcess: MutationProcessHooks,
+	mutation: MutationHooks,
 ): Promise<Outcome> {
 	if (input.check === "guardrails") {
 		const { repoRoot } = input.changeset;
 		const revision = Revision.from(input.changeset.revision);
 		return { status: "ran", report: await evaluateGuardrails({ repoRoot, revision, source: input.source }) };
 	}
-	return runStatic(input, await env(), context, mutationProcess);
+	return runStatic(input, await env(), context, mutation);
 }
 
 // Aborts every live mutation task of the revision that a run other than `key` created. Its own check would end it when it
@@ -296,16 +302,23 @@ const CheckTask = defineTask<CheckInput, { phase: "run" }, CheckRunRecord>({
 			let record: CheckRunRecord;
 			try {
 				outcome = await runCheck(task.input, () => runtime.env(context), context, {
-					started: async (tree) => {
-						await runtime.commit(async (tx) => {
-							(await tx.doc(MutationProcesses, runtime.conversationId)).trees[String(runtime.taskId)] = tree;
-						}, context);
+					process: {
+						started: async (tree) => {
+							await runtime.commit(async (tx) => {
+								(await tx.doc(MutationProcesses, runtime.conversationId)).trees[String(runtime.taskId)] = tree;
+							}, context);
+						},
+						stopped: async () => {
+							await runtime.commit(async (tx) => {
+								delete (await tx.doc(MutationProcesses, runtime.conversationId)).trees[String(runtime.taskId)];
+							}, backgroundContext);
+						},
 					},
-					stopped: async () => {
-						await runtime.commit(async (tx) => {
-							delete (await tx.doc(MutationProcesses, runtime.conversationId)).trees[String(runtime.taskId)];
-						}, backgroundContext);
-					},
+					holdsAuthority: async () =>
+						ownsMutation(
+							task.input,
+							(await runtime.snapshot(ChecksDocument, runtime.conversationId, context))?.owners,
+						),
 				});
 				record =
 					outcome.status === "skipped"

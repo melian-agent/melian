@@ -1,4 +1,13 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -163,6 +172,7 @@ async function mutate(
 		trustedWriter?: boolean;
 		policyCommit?: string;
 		env?: ExecutionEnv;
+		holdsAuthority?: () => Promise<boolean>;
 	} = {},
 ) {
 	const revision = await revisionOf(base, head);
@@ -175,6 +185,7 @@ async function mutate(
 			tool: "mutation",
 			trustedWriter: extra.trustedWriter,
 			policyCommit: extra.policyCommit,
+			...(extra.holdsAuthority === undefined ? {} : { holdsAuthority: extra.holdsAuthority }),
 			settings: {
 				...defaultConfig.static.mutation,
 				timeout: 120,
@@ -287,9 +298,7 @@ describe("static.mutation", { timeout: 60_000 }, () => {
 		expect(run).toContain("--incremental");
 		expect(run).toContain("--inPlace");
 		expect(flag("--mutate")).toBe("packages/p/src/a.ts:2-2");
-		expect(flag("--incrementalFile")).toMatch(
-			new RegExp(`^${repo}/\\.git/melian/mutation/[a-f0-9]{64}/incremental\\.json$`),
-		);
+		expect(flag("--incrementalFile")).toMatch(/\/melian-static-[^/]+\/incremental\/incremental\.json$/);
 		expect(result.log.runs[0].tool.driver).toEqual({ name: "Stryker", version: "10.0.0" });
 		expect(result.baseLog?.runs).toEqual([{ tool: { driver: { name: "Stryker", version: "10.0.0" } }, results: [] }]);
 		expect(result.notes).toContain("Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.");
@@ -320,18 +329,92 @@ cp "$incremental" reports/mutation/mutation.json`,
 		expect(readFileSync(reads, "utf8")).toBe('{"schemaVersion":"1.0","files":{}}');
 	});
 
+	// A fake Stryker that appends what it finds in its incremental file to a log, then writes one of its own.
+	function incrementalTool(stamp = "written") {
+		const reads = join(artifacts, "incremental-reads.txt");
+		fakeTool(
+			repo,
+			"stryker",
+			`
+if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--incrementalFile" ]; then shift; incremental="$1"; fi
+  shift
+done
+if [ -e "$incremental" ]; then cat "$incremental" >> '${reads}'; echo >> '${reads}'; fi
+printf '%s' '{"stamp":"${stamp}"}' > "$incremental"
+mkdir -p reports/mutation
+printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.json`,
+		);
+		return () => (existsSync(reads) ? readFileSync(reads, "utf8").trimEnd().split("\n") : []);
+	}
+	const partitions = () => {
+		const root = join(repo, ".git", "melian", "mutation");
+		return existsSync(root) ? readdirSync(root).map((name) => join(root, name, "incremental.json")) : [];
+	};
+
 	it("keeps an untrusted writer's incremental file away from a trusted run", async () => {
 		const { base, head } = twoCommits();
-		const fake = stryker({ report: report({}) });
+		const reads = incrementalTool();
 		await mutate(base, head, { trustedWriter: false });
-		const first = argumentsOf(fake.calls()[0]!).flag("--incrementalFile")!;
-		writeFileSync(first, "{corrupt-untrusted");
+		const [first] = partitions();
+		writeFileSync(first!, '{"stamp":"untrusted-forgery"}');
 		await mutate(base, head, { trustedWriter: true });
-		const second = argumentsOf(fake.calls()[1]!).flag("--incrementalFile")!;
-		expect(second).not.toBe(first);
-		expect(readFileSync(first, "utf8")).toBe("{corrupt-untrusted");
+		expect(reads()).toEqual([]);
+		expect(partitions()).toHaveLength(2);
+		expect(readFileSync(first!, "utf8")).toBe('{"stamp":"untrusted-forgery"}');
 		await mutate(base, head, { trustedWriter: true, policyCommit: head });
-		expect(argumentsOf(fake.calls()[2]!).flag("--incrementalFile")).not.toBe(second);
+		expect(reads()).toEqual([]);
+		expect(partitions()).toHaveLength(3);
+	});
+
+	it("reuses identities for the same head and inputs only", async () => {
+		const { base, head } = twoCommits();
+		const reads = incrementalTool();
+		await mutate(base, head);
+		expect(reads()).toEqual([]);
+		await mutate(base, head);
+		expect(reads()).toEqual(['{"stamp":"written"}']);
+		const next = commit(repo, { "NOTES.md": "a later head with the same changed lines\n" });
+		await mutate(base, next);
+		expect(reads()).toEqual(['{"stamp":"written"}']);
+		expect(partitions()).toHaveLength(2);
+	});
+
+	it("gives a run with other Stryker input another partition", async () => {
+		const { base, head } = twoCommits();
+		const reads = incrementalTool();
+		await mutate(base, head, { maxLines: 100 });
+		await mutate(base, head, { maxLines: 100 });
+		expect(reads()).toHaveLength(1);
+		fakeTool(
+			repo,
+			"stryker",
+			`if [ "$1" = "--version" ]; then echo 10.0.1; exit 0; fi\nmkdir -p reports/mutation\nprintf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.json`,
+		);
+		await mutate(base, head, { maxLines: 100 });
+		expect(partitions()).toHaveLength(2);
+	});
+
+	it("publishes the run's identities only while the run still holds authority", async () => {
+		const { base, head } = twoCommits();
+		const reads = incrementalTool();
+		await mutate(base, head, { holdsAuthority: async () => false });
+		expect(partitions().filter((file) => existsSync(file))).toEqual([]);
+		await mutate(base, head, { holdsAuthority: async () => true });
+		expect(partitions().filter((file) => existsSync(file))).toHaveLength(1);
+		expect(reads()).toEqual([]);
+	});
+
+	it("does not publish a run that failed", async () => {
+		const { base, head } = twoCommits();
+		fakeTool(
+			repo,
+			"stryker",
+			`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\nwhile [ "$#" -gt 0 ]; do [ "$1" = "--incrementalFile" ] && { shift; printf '%s' '{}' > "$1"; }; shift; done\nexit 1`,
+		);
+		await expect(mutate(base, head)).rejects.toMatchObject({ code: "toolFailed" });
+		expect(partitions().filter((file) => existsSync(file))).toEqual([]);
 	});
 
 	describe("related test dry run", () => {

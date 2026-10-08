@@ -232,17 +232,15 @@ describe.skipIf(Sandbox.detect("linux") === undefined)("bubblewrap", { timeout: 
 });
 
 for (const backend of ["seatbelt", "bubblewrap"] as const) {
-	it(`allows only the selected incremental partition outside scratch (${backend})`, () => {
+	it(`writes only to scratch, never to a cache partition (${backend})`, () => {
 		const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend });
-		const where = { ...paths(), incremental: join(base, "cache/mutation/selected") };
+		const where = paths();
 		const output = backend === "seatbelt" ? sandbox.profile(where)! : sandbox.command("true", where, "/profile");
 		if (backend === "seatbelt") {
-			expect(output).toContain(`(subpath "${where.incremental}")`);
-			expect(output).toContain(`(allow file-write* (subpath "${where.scratch}") (subpath "${where.incremental}"))`);
-			expect(output).not.toContain(`(subpath "${join(base, "cache")}")`);
+			expect(output).toContain(`(allow file-write* (subpath "${where.scratch}"))`);
 		} else {
-			expect(output).toContain(`--bind '${where.incremental}' '${where.incremental}'`);
-			expect(output).not.toContain(`--bind '${join(base, "cache")}'`);
+			expect(output.match(/--bind /g)).toHaveLength(1);
+			expect(output).toContain(`--bind '${where.scratch}' '${where.scratch}'`);
 		}
 	});
 }
