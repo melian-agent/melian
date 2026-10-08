@@ -838,6 +838,17 @@ describe("verifier routing", () => {
 		expect(resolved.warnings()).toContain(familyWarning);
 	});
 
+	it("warns on a stored same-family route without acceptance policy", () => {
+		const stored = plan(
+			{ heavy: { model: gpt }, medium: { model: gpt }, verifier: { model: gpt } },
+			{ openai: "key" },
+		).toJSON();
+		delete stored.tiers.find(({ tier }) => tier === "verifier")!.accept;
+		const resolved = ReviewPlan.from(stored);
+		expect(resolved.lines()).toContainEqual({ state: "warn", text: familyWarning });
+		expect(resolved.warnings()).toContain(familyWarning);
+	});
+
 	it.each([true, false])("judges a same-family Codex override against policy acceptance %s", (accepted) => {
 		const terra = "openai-codex/gpt-5.6-terra";
 		const resolved = plan(

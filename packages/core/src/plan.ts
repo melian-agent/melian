@@ -575,15 +575,11 @@ export class ReviewPlan {
 			if (this.refusal("verifier") !== undefined)
 				verification.push({ state: "warn", text: `verifier fails: ${this.refusal("verifier")}` });
 			const finders = [...this.used(true).keys()].flatMap((tier) => this.tier(tier).models);
-			const sameFamily = finders.filter((finder) =>
-				this.verifierRoute(finder.model).every((model) => model.family === finder.family),
-			);
+			const route = this.verifierRoute("");
+			const sameFamily = finders.filter((finder) => route.every((model) => model.family === finder.family));
 			if (this.refusal("verifier") === undefined && sameFamily.length > 0) {
 				const accepted =
-					own.status === "routed" &&
-					finders.every((finder) =>
-						this.verifierRoute(finder.model).every((model) => own.accept?.includes(model.model) === true),
-					);
+					own.status === "routed" && route.every((model) => own.accept?.includes(model.model) === true);
 				verification.push({
 					state: accepted ? "ok" : "warn",
 					text: accepted
