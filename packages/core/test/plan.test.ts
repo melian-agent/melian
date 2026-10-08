@@ -416,9 +416,9 @@ describe("ReviewPlan.resolve", () => {
 			{ committedTiers: { correctness: "light" } },
 		);
 		expect(resolved.lenses.find((lens) => lens.name === "correctness")?.levels).toEqual([
-			{ level: "quick", tier: "light", verify: false },
-			{ level: "careful", tier: "light", verify: true },
-			{ level: "deep", tier: "light", verify: true },
+			{ level: "quick", tier: "light" },
+			{ level: "careful", tier: "light" },
+			{ level: "deep", tier: "light" },
 		]);
 		// The committed files chose light, so heavy's guard does not reach it, and nothing left a committed route.
 		expect(resolved.judge("correctness", "careful")).toEqual({});
@@ -427,6 +427,11 @@ describe("ReviewPlan.resolve", () => {
 	it("records both what moved a lens and what routed the tier it moved to", () => {
 		const credentials = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" };
 		const flagged = plan({ heavy: { model: opus } }, credentials, { model: gpt, retier: { correctness: "light" } });
+		expect(flagged.lenses.find((lens) => lens.name === "correctness")?.levels).toEqual([
+			{ level: "quick", tier: "light", committed: "medium", by: "melian.local.yaml" },
+			{ level: "careful", tier: "light", committed: "heavy", by: "melian.local.yaml" },
+			{ level: "deep", tier: "light", committed: "heavy", by: "melian.local.yaml" },
+		]);
 		expect(flagged.judge("correctness", "careful").lineage).toEqual({
 			model: gpt,
 			wanted: opus,
@@ -905,12 +910,12 @@ describe("verifier routing", () => {
 		expect(ReviewPlan.from(resolved.toJSON()).lines()).toContainEqual({ state: accepted ? "ok" : "warn", text });
 	});
 
-	it("counts all levels in older stored plans that omit verification flags", () => {
+	it.each([true, false])("ignores extra verification flags in stored levels: %s", (verify) => {
 		const stored = plan(
 			{ heavy: { model: opus }, medium: { model: gpt }, verifier: { model: gpt } },
 			{ anthropic: "key", openai: "key" },
 		).toJSON();
-		for (const lens of stored.lenses) for (const level of lens.levels) delete level.verify;
+		for (const lens of stored.lenses) lens.levels = lens.levels.map((level) => ({ ...level, verify }));
 		expect(ReviewPlan.from(stored).lines()).toContainEqual({
 			state: "ok",
 			text: "the verifier shares the finder's family by the maintainer's choice",

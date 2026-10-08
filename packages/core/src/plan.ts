@@ -76,7 +76,6 @@ export type PlannedTier = {
 export type PlannedLevel = {
 	level: ScrutinyLevel;
 	tier: LensTier;
-	verify?: boolean;
 	committed?: LensTier;
 	by?: string;
 };
@@ -173,9 +172,9 @@ export class ReviewPlan {
 				if (declared === undefined) return [];
 				const tier = settings?.tier ?? declared.tier;
 				const committed = Object.hasOwn(routes.lensTiers, lens.name) ? routes.lensTiers[lens.name]! : declared.tier;
-				if (committed === tier) return [{ level, tier, verify: declared.verify }];
+				if (committed === tier) return [{ level, tier }];
 				const by = Object.hasOwn(routes.retiered, lens.name) ? routes.retiered[lens.name]! : "a preference file";
-				return [{ level, tier, verify: declared.verify, committed, by }];
+				return [{ level, tier, committed, by }];
 			});
 			planned.set(key, { name: lens.name, scope: lens.scope, levels });
 		}
