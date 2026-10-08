@@ -19,6 +19,19 @@ describe("written decisions", () => {
 		expect(parse(a, "Supersedes: none.\n")).toMatchObject({ title: a, supersedes: [] });
 	});
 
+	it("resolves sibling, parent, child and repository-relative nested targets", () => {
+		const nestedA = "docs/decisions/nested/2026-10-01-a.md";
+		const nestedB = "docs/decisions/nested/2026-10-02-b.md";
+		for (const target of ["2026-10-01-a.md", "docs/decisions/nested/2026-10-01-a.md"]) {
+			const successor = parse(nestedB, `# Nested B\nSupersedes: [A](${target})`);
+			expect(successor.supersedes).toEqual([nestedA]);
+			const rendered = DecisionFiles.from([parse(a, "# Root A"), parse(nestedA, "# Nested A"), successor]).render();
+			expect(rendered).toContain(`[ACTIVE] ${a} — Root A`);
+			expect(rendered).toContain(`[INACTIVE; superseded by ${nestedB}] ${nestedA} — Nested A`);
+		}
+		expect(parse(nestedB, "# B\nSupersedes: ../2026-10-01-a.md").supersedes).toEqual([a]);
+		expect(parse(b, "# B\nSupersedes: nested/2026-10-01-a.md").supersedes).toEqual([nestedA]);
+	});
 	it("does not supersede a contextual link after an explicit absence declaration", () => {
 		for (const declaration of ["none.", "no decision file.", "None."])
 			expect(parse(b, `# B\nSupersedes: ${declaration} Context: [A](2026-10-01-a.md).\n`).supersedes).toEqual([]);
