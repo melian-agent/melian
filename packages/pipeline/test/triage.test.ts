@@ -116,7 +116,7 @@ async function review(
 		policy?: "worktree" | "base";
 		origin?: ReviewOrigin;
 		rerun?: boolean;
-		unlockModels?: () => Promise<void>;
+		unlockModels?: (providers: readonly string[]) => Promise<void>;
 	} = {},
 ): Promise<Review> {
 	return reviewChangeset({
@@ -727,8 +727,8 @@ describe("triage", () => {
 			// Each call records how many times triage had been asked by then.
 			const unlocking = () => {
 				const asked: number[] = [];
-				const unlockModels = vi.fn(async () => {
-					asked.push(decider.calls);
+				const unlockModels = vi.fn(async (providers: readonly string[]) => {
+					if (providers.length === 0) asked.push(decider.calls);
 				});
 				return { asked, unlockModels };
 			};

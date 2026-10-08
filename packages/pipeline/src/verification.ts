@@ -204,7 +204,7 @@ export async function startVerification(
 	rerun: boolean,
 	context: Context,
 	refused: (model: string) => boolean = () => false,
-	unlockModels?: () => Promise<void>,
+	unlockModels?: (providers: readonly string[]) => Promise<void>,
 ): Promise<TaskId<VerificationResult> | undefined> {
 	const root = await harness.root(context);
 	const { nonce: _, ...revision } = input.revision;
@@ -217,8 +217,7 @@ export async function startVerification(
 	}));
 	const key = JSON.stringify({ root: input.root, revision, version: input.version, candidates });
 	if (unlockModels !== undefined) {
-		// What the commit below decides, read ahead of it: only a finished task of these candidates whose results stand is
-		// attached to without asking a model.
+		// Live tasks were unlocked from their checkpoints before resume; finished tasks ask no model.
 		const previous = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revisionKey(input.revision)]
 			?.verification;
 		const record = previous === undefined ? undefined : await harness.getTask(previous.task as TaskId, context);
@@ -234,8 +233,12 @@ export async function startVerification(
 				const result = results[candidate.key];
 				return result?.status !== "done" || refused(result.model);
 			});
-		const attaches = previous?.input === key && answered && (!failed || !rerun);
-		if (!attaches) await unlockModels();
+		const attaches =
+			previous?.input === key &&
+			record !== undefined &&
+			(record.state.status !== "terminal" || (answered && (!failed || !rerun)));
+		if (!attaches)
+			await unlockModels(input.candidates.flatMap((candidate) => candidate.route.map((model) => model.provider)));
 	}
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
