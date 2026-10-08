@@ -34,6 +34,8 @@ A scoring test must isolate a wrong-rule report. Supplying it beside a correct r
 
 A deterministic index supplies design.md’s headings and base line numbers, plus headings in local Markdown section links and split files under docs/design/. Fenced examples contribute no headings. Every entry is quoted as data and joins the instruction fingerprint. A 64 KiB UTF-8 bound refuses the complete index with an omitted-heading count. Missing linked sections refuse review. A design-only terminology golden asserts the base heading in its scripted conversation; no decision file can supply the term.
 
+Section links use CommonMark destinations, including used references and optional titles. For example, `[Trust][policy]` with `[policy]: design/trust.md#writer-trust` loads that section or refuses review when it is absent. Unused definitions, images and code examples supply no section links. Duplicate definitions use the first destination.
+
 ## Live measurement and its limits
 
 Three passes over the original eighteen design goldens gave mean precision 0.60 as sightings and 1.00 as adjudicated defects, with mean recall 0.94. Co-reporters inflated the sighting denominator. The supersedes miss had two causes: its expectation accepted only the decision file while the lens cited faulty code, and the verifier accepted the head’s superseding decision as an excuse.

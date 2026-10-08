@@ -3633,10 +3633,14 @@ describe("the design baseline", () => {
 			rendered.mockRestore();
 		}
 	});
-	it("refuses an incomplete base heading index before asking a design model", async () => {
+	it.each([
+		"[Section](missing.md#section)",
+		"[Trust][policy]\n\n[policy]: design/trust.md#writer-trust",
+		'[Trust](design/trust.md#writer-trust "Writer policy")',
+	])("refuses an incomplete base heading index linked by %s before asking a design model", async (link) => {
 		rmSync(repo, { recursive: true, force: true });
 		repo = baseAndHead(
-			{ "docs/design.md": "[Section](missing.md#section)\n", "src/answer.ts": "export const answer = 42;\n" },
+			{ "docs/design.md": `# Design\n${link}\n`, "src/answer.ts": "export const answer = 42;\n" },
 			{ "docs/design.md": "# Repaired at head\n", "src/answer.ts": "export const answer = 43;\n" },
 		);
 		config = { ...config, tiers: { ...config.tiers, full: ["lens.design"] } };
@@ -3645,7 +3649,6 @@ describe("the design baseline", () => {
 		const before = fake.provider.state.callCount;
 		await expect(review()).rejects.toMatchObject({
 			code: "incomplete",
-			message: "The base design section docs/missing.md is absent",
 		});
 		expect(fake.provider.state.callCount).toBe(before);
 		expect(requests[design]).toEqual([]);

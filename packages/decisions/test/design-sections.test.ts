@@ -3,6 +3,71 @@ import { describe, expect, it } from "vitest";
 import { gitIn, removeDirectory, temporaryDirectory, writeFiles } from "../../core/test/fixtures/repo.ts";
 
 describe("base design vocabulary", () => {
+	it.each([
+		'[Trust](design/trust.md#writer-trust "Writer policy")',
+		"[Trust][policy]\n\n[policy]: design/trust.md#writer-trust",
+		"[Trust][]\n\n[Trust]: design/trust.md#writer-trust 'Writer policy'",
+		"[Trust]\n\n[Trust]: <design/trust.md#writer-trust> (Writer policy)",
+		"[Trust][POLICY]\n\n[policy]: design/trust.md#writer-trust\n[policy]: missing.md#ignored",
+	])("loads or refuses the section named by %s", async (link) => {
+		const repo = temporaryDirectory();
+		try {
+			gitIn(repo, "init", "--quiet", "--initial-branch=main");
+			writeFiles(repo, {
+				"docs/design.md": `# Design\n${link}\n\n[unused]: missing.md#ignored\n`,
+				"docs/design/trust.md": "## Writer trust\n",
+			});
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "base");
+			expect((await DesignSections.load(repo, "HEAD")).render().split("\n")).toEqual([
+				"docs/design.md:1 — Design",
+				"docs/design/trust.md:1 — Writer trust",
+			]);
+			gitIn(repo, "rm", "--quiet", "docs/design/trust.md");
+			gitIn(repo, "commit", "--quiet", "-m", "missing section");
+			await expect(DesignSections.load(repo, "HEAD")).rejects.toMatchObject({
+				code: "incomplete",
+				message: "The base design section docs/design/trust.md is absent",
+			});
+		} finally {
+			removeDirectory(repo);
+		}
+	});
+	it("resolves CommonMark destinations while ignoring other prose links", async () => {
+		const repo = temporaryDirectory();
+		try {
+			gitIn(repo, "init", "--quiet", "--initial-branch=main");
+			writeFiles(repo, {
+				"docs/design.md": [
+					"# Design",
+					"[Balanced](design/trust(writer).md#policy)",
+					"[Escaped](design/trust\\(writer\\).md#policy)",
+					"[Entity](design/trust&#40;writer&#41;.md#policy)",
+					'[Space](<design/writer trust.md> "Split section")',
+					"[Plain markdown](missing.md)",
+					"[Other file](design/missing.txt#policy)",
+					"[External](https://example.com/design/trust.md#policy)",
+					"![Image](design/missing.md#policy)",
+					"`[Code][policy]`",
+					"```md",
+					"[Example][policy]",
+					"```",
+					"[policy]: missing.md#policy",
+				].join("\n"),
+				"docs/design/trust(writer).md": "## Writer trust\n",
+				"docs/design/writer trust.md": "## Split trust\n",
+			});
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "base");
+			expect((await DesignSections.load(repo, "HEAD")).render().split("\n")).toEqual([
+				"docs/design.md:1 — Design",
+				"docs/design/trust(writer).md:1 — Writer trust",
+				"docs/design/writer trust.md:1 — Split trust",
+			]);
+		} finally {
+			removeDirectory(repo);
+		}
+	});
 	it("follows prose links while ignoring fenced examples and code spans", async () => {
 		const repo = temporaryDirectory();
 		try {

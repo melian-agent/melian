@@ -1,9 +1,15 @@
 import { posix } from "node:path";
 import { openSource, visibleText } from "@melian-agent/core";
+import type { Nodes } from "mdast";
+import { fromMarkdown } from "mdast-util-from-markdown";
 import { DecisionFilesError } from "./decision-files.ts";
 
 /** The largest complete design-heading index sent to a reviewer. */
 export const designIndexLimits = { bytes: 64 * 1024 } as const;
+
+function markdownNodes(node: Nodes): Nodes[] {
+	return [node, ...("children" in node ? node.children.flatMap(markdownNodes) : [])];
+}
 
 function proseLines(content: string): string[] {
 	let fence: string | undefined;
@@ -39,12 +45,20 @@ export class DesignSections {
 		if (content === undefined) return DesignSections.from([]);
 		const files = [{ path: "docs/design.md", content }];
 		const paths = new Set<string>();
-		const prose = proseLines(content)
-			.join("\n")
-			.replace(/(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/g, " ");
-		for (const [, target] of prose.matchAll(/\[[^\]]+\]\(([^)\s:#]+\.md#[^)\s]+|design\/[^)\s]+\.md)\)/g)) {
-			const path = posix.normalize(posix.join("docs", target!.split("#")[0]!));
-			if (target!.startsWith("/") || path.startsWith("../"))
+		const nodes = markdownNodes(fromMarkdown(content));
+		const definitions = new Map(
+			nodes
+				.filter((node) => node.type === "definition")
+				.reverse()
+				.map((node) => [node.identifier, node.url]),
+		);
+		for (const node of nodes.filter((node) => node.type === "link" || node.type === "linkReference")) {
+			const target = node.type === "link" ? node.url : definitions.get(node.identifier)!;
+			const section = /^([^:?#]+\.md)(?:#[\s\S]+)?$/.exec(target)?.[1];
+			if (section === undefined) continue;
+			if (!target.includes("#") && !section.startsWith("design/")) continue;
+			const path = posix.normalize(posix.join("docs", section));
+			if (section.startsWith("/") || path.startsWith("../"))
 				throw new DecisionFilesError("invalid", "A linked design section is outside the repository");
 			paths.add(path);
 		}
