@@ -1658,21 +1658,30 @@ describe("reviewChangeset", () => {
 			});
 		});
 
-		it("ends a lens at its budget even when nothing could have handed it a defect", async () => {
-			scriptConversations(fake, [
-				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
-				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
-			]);
-			const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 1 }) : lens));
+		it.each([
+			{ policy: "incomplete", budget: { findings: 1 } },
+			{ policy: "count", budget: { findings: 1, ended: "count" } },
+		] as const)(
+			"ends a lens at its budget even when nothing could have handed it a defect (ended: $policy)",
+			async ({ budget }) => {
+				scriptConversations(fake, [
+					{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+					{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+				]);
+				const tight = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, budget) : lens));
 
-			const { verdict } = await reviewed({ lenses: tight });
+				const { findings, verdict } = await reviewed({ lenses: tight });
 
-			expect(verdict.status).toBe("not-reviewed");
-			expect(verdict.notRun.find((check) => check.name === "lens.correctness")).toMatchObject({
-				status: "ended",
-				reason: "its findings budget of 1 ran out, so defects may be unreported",
-			});
-		});
+				expect(findings).toHaveLength(1);
+				expect(verdict.status).toBe("not-reviewed");
+				expect(verdict.notRun.find((check) => check.name === "lens.correctness")).toEqual({
+					name: "lens.correctness",
+					status: "ended",
+					level: "careful",
+					reason: "its findings budget of 1 ran out, so defects may be unreported",
+				});
+			},
+		);
 
 		it("ends a lens refused a report even when nothing handed a defect to it", async () => {
 			scriptConversations(fake, [
