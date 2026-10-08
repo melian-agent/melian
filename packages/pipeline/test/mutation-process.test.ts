@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -443,7 +443,8 @@ describe("supervisorSource", () => {
 
 describe("MutationProcess.execute", () => {
 	it("records the ready tree before run.shell releases the paused command", async () => {
-		const directory = mkdtempSync(join(tmpdir(), "melian-launch-test-"));
+		// macOS links /var to /private/var, and the shell command names the resolved path.
+		const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-launch-test-")));
 		const control = join(directory, "control");
 		mkdirSync(control);
 		const record = { control, supervisor: { pid: 20, start: "s20" }, root: { pid: 21, start: "s21" } };
