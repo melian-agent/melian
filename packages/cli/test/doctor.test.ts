@@ -433,9 +433,25 @@ describe("doctor clone check", () => {
 		expect(await cloneLine(linked)).toMatch(/^warn /);
 	});
 
-	it("warns when a file is untracked", async () => {
+	it("warns when config hides an untracked file", async () => {
 		commit();
+		gitIn(clone, "config", "status.showUntrackedFiles", "no");
 		writeFileSync(join(clone, "new.ts"), "");
+		expect(await cloneLine(linked)).toMatch(/^warn .*tree dirty/);
+	});
+
+	it.each(["tracked", "untracked"])("warns when config hides a submodule's %s edit", async (kind) => {
+		const source = join(home, "submodule-source");
+		mkdirSync(source);
+		gitIn(source, "init", "--quiet", "--initial-branch=main");
+		writeFileSync(join(source, "tracked.ts"), "original\n");
+		gitIn(source, "add", "-A");
+		gitIn(source, "commit", "--quiet", "-m", "submodule");
+		gitIn(clone, "-c", "protocol.file.allow=always", "submodule", "add", "--quiet", source, "sub");
+		const sha = commit();
+		gitIn(clone, "config", "submodule.sub.ignore", "all");
+		expect(await cloneLine(linked)).toContain(`${clone} at ${sha}, tree clean`);
+		writeFileSync(join(clone, "sub", kind === "tracked" ? "tracked.ts" : "new.ts"), "edited\n");
 		expect(await cloneLine(linked)).toMatch(/^warn .*tree dirty/);
 	});
 

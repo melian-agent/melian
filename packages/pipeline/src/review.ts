@@ -642,20 +642,60 @@ export class ReviewHarness {
 	}
 
 	/**
-	 * Whether a task a crash left unfinished would ask a model once the harness resumes: a lens, verification,
-	 * triage, or walkthrough task the harness still holds live. Resuming starts at the first wait, so a host unlocks
-	 * credentials before that wait when this is true. A repeat review whose tasks all finished has none, and runs no
-	 * credential command.
+	 * Providers a live model task can still call when the harness resumes. A lens or verifier route counts from the
+	 * attempt its checkpoint reached, so a provider it already failed over from stays locked; a lens run whose escalation
+	 * is decided is finished, and an escalation run counts only when the task escalates.
 	 */
-	async resumesModels(context: Context = backgroundContext): Promise<boolean> {
-		const kinds = [
-			LensTask.definition.name,
-			VerificationTask.definition.name,
-			decisionTaskName,
-			SummaryTask.definition.name,
-		];
+	async resumedProviders(context: Context = backgroundContext): Promise<string[]> {
 		const { tasks } = await this.harness.inspect(context);
-		return tasks.some((task) => kinds.includes(task.record.kind));
+		const providers = tasks.flatMap(({ record }) => {
+			const checkpoint = (record.state as { checkpoint?: unknown }).checkpoint;
+			if (record.kind === LensTask.definition.name) {
+				const input = record.input as unknown as StoredLensTaskInput;
+				const started =
+					(checkpoint as LensCheckpoint | undefined)?.phase === "review"
+						? (checkpoint as ReviewCheckpoint)
+						: undefined;
+				const remaining = (run: LensRun) => run.route.slice(started?.attempts[run.key] ?? 0);
+				return input.lenses.flatMap((first) => {
+					const next = input.escalateAt === undefined ? undefined : first.escalation?.next;
+					const finished = started?.escalations?.[first.key] !== undefined;
+					return [...(finished ? [] : remaining(first)), ...(next === undefined ? [] : remaining(next))].map(
+						(model) => model.provider,
+					);
+				});
+			}
+			if (record.kind === VerificationTask.definition.name) {
+				const input = record.input as unknown as VerificationInput;
+				const attempts = (checkpoint as { attempts?: Record<string, number> } | undefined)?.attempts;
+				return input.candidates.flatMap((candidate) =>
+					candidate.route.slice(attempts?.[candidate.key] ?? 0).map((model) => model.provider),
+				);
+			}
+			if (record.kind === SummaryTask.definition.name) {
+				return [(record.input as unknown as { model: ModelReference }).model.provider];
+			}
+			if (record.kind === decisionTaskName) {
+				const { key } = record.input as unknown as DecisionTaskInput;
+				const { decider } = JSON.parse(key) as { decider: string };
+				return /^llm-fallback:([^/]+)\//.exec(decider)?.slice(1) ?? [];
+			}
+			return [];
+		});
+		return [...new Set(providers)];
+	}
+
+	/** Whether a live task may ask a model when the harness resumes. */
+	async resumesModels(context: Context = backgroundContext): Promise<boolean> {
+		const { tasks } = await this.harness.inspect(context);
+		return tasks.some(({ record }) =>
+			[
+				LensTask.definition.name,
+				VerificationTask.definition.name,
+				decisionTaskName,
+				SummaryTask.definition.name,
+			].includes(record.kind),
+		);
 	}
 
 	/** Closes the harness and its storage. Idempotent. */
@@ -868,13 +908,12 @@ interface ReviewSettings {
 	 */
 	readonly rerun?: boolean;
 	/**
-	 * Called once, before the review first creates or resumes a task that may call a model. The host unlocks
-	 * credentials there, so one that fails stops the review before the model is asked. A repeat review that attaches
-	 * to finished tasks never calls it, and so runs no credential command. A task a crash left unfinished starts at
-	 * the harness's first wait, ahead of this call: the host calls it first, when
-	 * {@link ReviewHarness.resumesModels} says so, and must run each command once however often it is called.
+	 * Unlocks the providers in a concrete task's routes before it starts. Finished attachments call nothing.
+	 * Before any wait, hosts also unlock {@link ReviewHarness.resumedProviders}, which uses stored routes.
 	 */
-	readonly unlockModels?: () => Promise<void>;
+	readonly unlockModels?: (providers: readonly string[]) => Promise<void>;
+	/** The chosen decider's providers, unlocked only before a triage task that may ask it. */
+	readonly triageProviders?: readonly string[];
 	/**
 	 * Where the revision came from, recorded with the verdict. Only a `pull-request` review whose policy came from a
 	 * revision can be published. A range by default.
@@ -967,22 +1006,23 @@ async function runLenses(
 	rerun: boolean,
 	context: Context,
 	refused: (key: string, model: string) => boolean = () => false,
-	unlockModels?: () => Promise<void>,
+	unlockModels?: (providers: readonly string[]) => Promise<void>,
 ): Promise<{ readonly result: LensResult | undefined; readonly ran: StoredLensTaskInput; readonly task: number }> {
 	const root = await harness.root(context);
 	const revision = revisionKey(input.revision);
 	const selection = selectionOf(input.lenses, input.escalateAt);
 	if (unlockModels !== undefined) {
-		// What the commit below decides, read ahead of it: only a finished task of this selection, with no failed lens to
-		// rerun, is attached to without asking a model.
+		// Live tasks were unlocked from their checkpoints before resume; finished tasks ask no model.
 		const known = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision];
 		const record = known?.task === undefined ? undefined : await harness.getTask(known.task as TaskId, context);
 		const attaches =
 			known !== undefined &&
 			known.lenses.join("\n") === selection.join("\n") &&
-			finished(record, undecided) &&
+			record !== undefined &&
+			(record.state.status !== "terminal" || finished(record, undecided)) &&
 			!(rerun && lensFailed(record!, refused));
-		if (!attaches) await unlockModels();
+		if (!attaches)
+			await unlockModels(runsOf(input.lenses).flatMap((run) => run.route.map((model) => model.provider)));
 	}
 	let replaced: number | undefined;
 	const taskId = await root.commit(async (tx) => {
@@ -1195,10 +1235,11 @@ function lensCheck(
 	if (!completed) return { name, status: "failed", level, reason: failed("the lens task did not complete") };
 	if (outcome?.status === "done") {
 		const { budgetEnded } = outcome;
-		// Another lens left this one a defect, and the findings budget refused a report: that defect may be in neither
-		// report, so the review cannot read as complete, whatever `ended: count` says of the tokens and tools budgets.
-		if (outcome.capped !== undefined && handedBy.length > 0) {
-			const lost = `its findings budget of ${outcome.capped} ran out while ${handedBy.map((name) => `\`${name}\``).join(", ")} could have handed it defects, so one may be unreported`;
+		if (outcome.capped !== undefined) {
+			const lost =
+				handedBy.length === 0
+					? `its findings budget of ${outcome.capped} ran out, so defects may be unreported`
+					: `its findings budget of ${outcome.capped} ran out while ${handedBy.map((name) => `\`${name}\``).join(", ")} could have handed it defects, so one may be unreported`;
 			return {
 				name,
 				status: "ended",
@@ -1349,7 +1390,8 @@ async function triage(
 	inputCut: boolean,
 	rerun: boolean,
 	context: Context,
-	unlockModels?: () => Promise<void>,
+	providers: readonly string[],
+	unlockModels?: (providers: readonly string[]) => Promise<void>,
 ): Promise<{ readonly decision?: Decision; readonly failure?: string }> {
 	const root = await harness.root(context);
 	const set = request.questionSet.name;
@@ -1373,7 +1415,7 @@ async function triage(
 		const entry = (await harness.snapshot(DecisionDocument, root.id, context))?.decisions[revision]?.[set];
 		const record = entry === undefined ? undefined : await harness.getTask(entry.task as TaskId, context);
 		const attaches = entry?.key === key && !(rerun && entry.decision === undefined) && finished(record, undecided);
-		if (!attaches) await unlockModels();
+		if (!attaches) await unlockModels(providers);
 	}
 	let replaced: number | undefined;
 	const taskId = await root.commit(async (tx) => {
@@ -1516,8 +1558,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const nonce = reviewNonce();
 	let headFunctions: Promise<EnclosingFunctions> | undefined;
 	const enclosing = () => (headFunctions ??= EnclosingFunctions.read(changeset));
-	let unlocking: Promise<void> | undefined;
-	const unlockModels = options.unlockModels === undefined ? undefined : () => (unlocking ??= options.unlockModels!());
+	const { unlockModels } = options;
 	const prompt = new ChangePrompt(changeset, nonce);
 	const { repoRoot, revision } = changeset;
 	const { base, head } = revision;
@@ -1592,6 +1633,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					triageInput.cut,
 					options.rerun === true,
 					context,
+					options.triageProviders ?? [],
 					unlockModels,
 				);
 	const choices = new Map(

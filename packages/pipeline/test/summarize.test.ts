@@ -126,7 +126,7 @@ describe("walkthrough summaries", () => {
 			"Changes a value.",
 		);
 	});
-	it("uses and records a credentialed fallback when the first light model has no credentials", async () => {
+	it("unlocks, uses and records a credentialed fallback when the first light model has no credentials", async () => {
 		const unavailable = createFakeModels({
 			provider: "uncredentialed",
 			models: [{ id: "first-light" }],
@@ -143,6 +143,10 @@ describe("walkthrough summaries", () => {
 		);
 		expect(await unavailable.models.checkAuth(first.provider)).toBeUndefined();
 		const used: string[] = [];
+		const before: number[] = [];
+		const unlock = vi.fn(async () => {
+			before.push(models.provider.state.callCount);
+		});
 		scriptConversations(models, [
 			{
 				match: "You write Melian's walkthrough",
@@ -165,9 +169,13 @@ describe("walkthrough summaries", () => {
 					},
 				},
 			},
+			unlockModels: unlock,
 		});
 		expect(result?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
 		expect(used).toEqual([fallback.modelId]);
+		expect(unlock).toHaveBeenCalledOnce();
+		expect(unlock).toHaveBeenCalledWith([fallback.provider]);
+		expect(before).toEqual([0]);
 		const index = defineDoc<{ tasks: Record<string, number>; counted: Record<string, number> }>({
 			kind: "melian.summaries",
 			version: 2,
@@ -224,6 +232,7 @@ describe("walkthrough summaries", () => {
 		const revision = revisionKey(changeset.revision);
 		expect((await summarize({ unlockModels: unlock }))?.walkthroughs?.[revision]?.summary).toBe("Changes a value.");
 		expect(before).toEqual([0]);
+		expect(unlock).toHaveBeenCalledWith([models.ref().provider]);
 
 		const repeat = vi.fn(async () => {});
 		await summarize({ unlockModels: repeat });

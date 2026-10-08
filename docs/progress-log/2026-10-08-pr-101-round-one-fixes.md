@@ -1,0 +1,3 @@
+# Pull request 101 round-one fixes
+
+Commit 12336020 makes `resumedProviders` read each lens and verifier task's checkpoint, so a provider the task already failed over from no longer blocks recovery, and an escalation route counts only when the task can escalate; it also covers Melian's untested-route finding with mixed-provider routes. Commit 2c64d340 replaces the wall-clock growth-ratio test in the enclosing-function suite with a deterministic count of sort comparisons and filter predicate calls, bounded by n log n at two sizes. Commit 22b96a5f corrects the credentials paragraph of `docs/guidelines/pipeline.md`, which still said `unlockModels` runs once per review.

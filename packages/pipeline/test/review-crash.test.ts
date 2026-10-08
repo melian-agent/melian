@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -23,6 +23,7 @@ import {
 	reviewChangeset,
 	revisionKey,
 	type TaskId,
+	unlockCredentials,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -35,12 +36,15 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CallerContext } from "../src/callers.ts";
-import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
+import { DecisionDocument, decisionExtension, decisionTask } from "../src/decisions.ts";
 import { EnclosingFunctions } from "../src/enclosing-functions.ts";
 import { findingsVersion } from "../src/findings.ts";
+import { defineTask } from "../src/harness.ts";
 import { LensDocument } from "../src/lens-tools.ts";
+import { lensExtension } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { SummaryTask } from "../src/summarize.ts";
+import { VerificationTask } from "../src/verification.ts";
 import { gitIn } from "./fixtures/repo.ts";
 import {
 	budgetLenses,
@@ -87,7 +91,9 @@ async function killWhen(
 		| "verdict"
 		| "conflicting-verdict"
 		| "decision"
-		| "replacement",
+		| "replacement"
+		| "lens-failover"
+		| "verifier-failover",
 	reached: (events: ReturnType<typeof readEvents>) => boolean,
 	database: string,
 	log: string,
@@ -261,6 +267,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		harness = reopened.harness;
 
 		expect(await reopened.resumesModels(context)).toBe(true);
+		expect(await reopened.resumedProviders(context)).toEqual(["faux"]);
 		expect(fake.provider.state.callCount).toBe(0);
 
 		const heavy = fake.ref("heavy");
@@ -279,7 +286,107 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		});
 
 		expect(await reopened.resumesModels(context)).toBe(false);
+		expect(await reopened.resumedProviders(context)).toEqual([]);
 	});
+
+	it.each(["lens-failover", "verifier-failover"] as const)(
+		"keeps the abandoned provider locked while a live %s task attaches after a real kill",
+		async (scenario) => {
+			const database = join(dir, `${scenario}.sqlite`);
+			await killWhen(
+				scenario,
+				(events) => count(events, "model-request") === 1,
+				database,
+				join(dir, `${scenario}.jsonl`),
+			);
+			const providers = ["faux", "fallback-provider"];
+			const markers = providers.map((provider) => join(dir, provider));
+			const credentials = providers.map((provider, index) => ({
+				name: provider,
+				provider,
+				type: "api_key" as const,
+				file: "f",
+				value: { kind: "command" as const, command: `echo run >> ${markers[index]}; echo test-key` },
+			}));
+			const fake = createFakeModels({
+				models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "medium" }],
+				credentials,
+				authPath: join(dir, "absent"),
+			});
+			const fallback = createFakeModels(
+				{ provider: "fallback-provider", models: [{ id: "heavy" }], credentials },
+				fake.review,
+			);
+			const release = Promise.withResolvers<void>();
+			const match =
+				scenario === "lens-failover" ? "You are the correctness reviewer" : "Melian adversarial verifier";
+			const requests = scriptConversations(fallback, [
+				{
+					match,
+					replies: [
+						async (messages) => {
+							await release.promise;
+							return scenario === "lens-failover" ? fauxAssistantMessage("Done.") : scriptVerifier(messages);
+						},
+						fauxAssistantMessage("Done."),
+					],
+				},
+			]);
+			const reopened = await ReviewHarness.open(await openSqliteStorage(database), fake.review, { retry: false });
+			harness = reopened.harness;
+			const kind = scenario === "lens-failover" ? "melian.lenses" : "melian.verification";
+			const task = (await harness.inspect(context)).tasks.find((task) => task.record.kind === kind)!;
+			const wait = vi.spyOn(harness, "waitForTask");
+			const unlock = vi.fn(async (providers: readonly string[]) => unlockCredentials(fake.review, providers));
+			expect(await reopened.resumedProviders(context)).toEqual(["fallback-provider"]);
+			await unlock(await reopened.resumedProviders(context));
+			const heavy = fake.ref("heavy");
+			const medium = fake.ref("medium");
+			const pending = reviewChangeset({
+				harness,
+				changeset: await Changeset.resolve(repo, "main...feature"),
+				config: {
+					...defaultConfig,
+					tiers: scenario === "lens-failover" ? { full: ["lens.correctness"] } : twoLensTiers,
+					models: {
+						medium: { model: `${medium.provider}/${medium.modelId}` },
+						heavy: {
+							model: `${heavy.provider}/${heavy.modelId}`,
+							...(scenario === "lens-failover" ? { fallbacks: ["fallback-provider/heavy"] } : {}),
+						},
+						...(scenario === "verifier-failover"
+							? {
+									verifier: {
+										model: `${medium.provider}/${medium.modelId}`,
+										fallbacks: ["fallback-provider/heavy"],
+									},
+								}
+							: {}),
+					},
+				},
+				lenses: crashLenses(await Lens.load(repo, { kind: "worktree" }, ["src/user.ts"])),
+				standards: [],
+				checks: [],
+				models: fake.review,
+				unlockModels: unlock,
+			});
+			try {
+				await vi.waitFor(() => expect(requests[match]).toHaveLength(1));
+				await vi.waitFor(() => expect(wait).toHaveBeenCalledWith(task.record.id, context));
+				expect((await harness.getTask(task.record.id, context))!.state.status).not.toBe("terminal");
+				expect(unlock.mock.calls).toEqual([[["fallback-provider"]]]);
+				expect(existsSync(markers[0]!)).toBe(false);
+				expect(readFileSync(markers[1]!, "utf8")).toBe("run\n");
+			} finally {
+				release.resolve();
+				await pending.catch(() => undefined);
+			}
+			await pending;
+			expect(fake.provider.state.callCount).toBe(0);
+			expect(requests[match]).toHaveLength(scenario === "lens-failover" ? 1 : 2);
+			expect(existsSync(markers[0]!)).toBe(false);
+		},
+	);
 
 	it.each([
 		[
@@ -307,7 +414,101 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		const kinds = (await harness.inspect(context)).tasks.map((task) => task.record.kind);
 
 		expect(kinds).toContain(scenario === "decision" ? "melian.decision" : "melian.verification");
+		expect(await reopened.resumedProviders(context)).toEqual(scenario === "decision" ? [] : ["faux"]);
 		expect(await reopened.resumesModels(context)).toBe(true);
+	});
+
+	it("reads a live fallback decider's provider from its stored key", async () => {
+		const fake = createFakeModels();
+		const decider: Decider = {
+			name: "llm-fallback:triage-provider/model",
+			calibrated: false,
+			decide: async () => ({ answers: [] }),
+		};
+		const reopened = await ReviewHarness.open(createMemoryStorage(), fake.review, { retry: false, decider });
+		harness = reopened.harness;
+		const root = await harness.root(context);
+		await root.commit(async (tx) => {
+			await tx.createTask(
+				decisionTask(decider),
+				{
+					root: root.id,
+					revision: "r",
+					key: JSON.stringify({ decider: decider.name }),
+					request: { questionSet: { name: "triage", version: "1" }, state: "", questions: [] },
+				},
+				{ ownership: { kind: "conversation" } },
+			);
+		}, context);
+		expect(await reopened.resumedProviders(context)).toEqual(["triage-provider"]);
+	});
+
+	describe("resumed providers of a stored route", () => {
+		const model = (provider: string) => ({ provider, modelId: "m" });
+		type Run = { key: string; route: { provider: string; modelId: string }[]; escalation?: { next: Run } };
+		const run = (key: string, route: string[], next?: Run): Run => ({
+			key,
+			route: route.map(model),
+			...(next === undefined ? {} : { escalation: { next } }),
+		});
+
+		// Stores a task whose checkpoint is what the given crash left, and returns what a repeat run would unlock.
+		async function providersOf(
+			kind: "melian.lenses" | "melian.verification",
+			input: Record<string, unknown>,
+			checkpoint: Record<string, unknown>,
+		): Promise<string[]> {
+			const fake = createFakeModels();
+			const reopened = await ReviewHarness.open(createMemoryStorage(), fake.review, { retry: false });
+			harness = reopened.harness;
+			const root = await harness.root(context);
+			const found = [...(lensExtension.tasks ?? []), VerificationTask].find(
+				(task) => (task as unknown as { definition: { name: string } }).definition.name === kind,
+			) as unknown as { definition: Parameters<typeof defineTask>[0] };
+			const stored = defineTask({
+				...found.definition,
+				initial: () => checkpoint,
+			} as never) as unknown as typeof SummaryTask;
+			await root.commit(async (tx) => {
+				await tx.createTask(stored, { root: root.id, ...input } as never, { ownership: { kind: "conversation" } });
+			}, context);
+			expect(fake.provider.state.callCount).toBe(0);
+			return (await reopened.resumedProviders(context)).sort();
+		}
+
+		const lens = (escalateAt?: string) => ({
+			lenses: [run("q", ["a", "b"], run("c", ["c", "d"]))],
+			...(escalateAt === undefined ? {} : { escalateAt }),
+		});
+		const reviewing = (attempts: Record<string, number>, escalations?: Record<string, unknown>) => ({
+			phase: "review",
+			children: {},
+			attempts,
+			...(escalations === undefined ? {} : { escalations }),
+		});
+
+		it("drops a lens provider the task already failed over from, and keeps the ones it can still reach", async () => {
+			expect(await providersOf("melian.lenses", lens(), reviewing({ q: 1 }))).toEqual(["b"]);
+			expect(await providersOf("melian.lenses", lens(), { phase: "spawn" })).toEqual(["a", "b"]);
+		});
+
+		it("counts a quick lens's escalation route only when the task can escalate", async () => {
+			expect(await providersOf("melian.lenses", lens("P1"), reviewing({ q: 0 }))).toEqual(["a", "b", "c", "d"]);
+			expect(await providersOf("melian.lenses", lens(), reviewing({ q: 0 }))).toEqual(["a", "b"]);
+		});
+
+		it("counts a lens run that escalated only through its escalation run's current attempt", async () => {
+			const decided = { q: { trigger: {}, carried: [] } };
+			expect(await providersOf("melian.lenses", lens("P1"), reviewing({ q: 1, c: 1 }, decided))).toEqual(["d"]);
+		});
+
+		it("drops a verifier provider the candidate already failed over from", async () => {
+			const input = { candidates: [{ key: "k", route: ["a", "b", "c"].map(model) }] };
+			expect(
+				await providersOf("melian.verification", input, { phase: "verify", children: {}, attempts: { k: 1 } }),
+			).toEqual(["b", "c"]);
+			expect(await providersOf("melian.verification", input, { phase: "spawn" })).toEqual(["a", "b", "c"]);
+		});
 	});
 
 	it("says a walkthrough task that has not finished resumes a model, and no task none", async () => {
@@ -316,6 +517,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		harness = reopened.harness;
 		const root = await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
 		expect(await reopened.resumesModels(context)).toBe(false);
+		expect(await reopened.resumedProviders(context)).toEqual([]);
 
 		await root.commit(async (tx) => {
 			await tx.createTask(
@@ -326,6 +528,7 @@ describe("report_finding across a crash", { timeout: 30_000 }, () => {
 		}, context);
 
 		expect(await reopened.resumesModels(context)).toBe(true);
+		expect(await reopened.resumedProviders(context)).toEqual(["faux"]);
 		expect(fake.provider.state.callCount).toBe(0);
 	});
 
