@@ -33,6 +33,22 @@ describe("the verifier corpus", { timeout: 60_000 }, () => {
 		expect(run.verifierRequests).toBe(2);
 		expect(run.rendered).toContain(golden.script.verdict);
 	});
+	it("leaves a scripted candidate unjudged when a required verifier instruction is absent", async () => {
+		const golden = goldens.find((each) => each.expected.kind === "design")!;
+		const missing = "This instruction is deliberately absent from the verifier prompt.";
+		const run = await runVerifierGolden(
+			{
+				...golden,
+				script: { ...golden.script, expectInstructions: [...golden.script.expectInstructions!, missing] },
+			},
+			{ kind: "scripted" },
+		);
+		expect(run.verification).toBeUndefined();
+		expect(scoreVerifierGolden(golden, run)).toMatchObject({ verdict: undefined, passed: false });
+		expect(run.rendered).toContain("not reviewed");
+		expect(run.rendered).toContain(`Missing verifier instruction: ${missing}`);
+		expect(run.verifierRequests).toBe(1);
+	});
 	it("fails a refuted real defect, a retained decoy, and any unjudged candidate", () => {
 		const real = goldens.find((golden) => golden.expected.kind === "needs-execution")!;
 		const decoy = goldens.find((golden) => golden.expected.kind === "decoy")!;
