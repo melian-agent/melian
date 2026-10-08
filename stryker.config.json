@@ -18,5 +18,10 @@
 	"timeoutFactor": 2,
 	"dryRunTimeoutMinutes": 20,
 	"inPlace": true,
-	"disableTypeChecks": false
+	"disableTypeChecks": false,
+	"mutator": {
+		"excludedMutations": [
+			"StringLiteral"
+		]
+	}
 }

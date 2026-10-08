@@ -27,3 +27,8 @@ describe("the Vitest configuration Stryker runs", () => {
 		expect(resolve(root, vitest.configFile)).toBe(resolve(root, "vitest.stryker.config.ts"));
 	});
 });
+
+it("excludes string mutations of sandbox policy and command flags", () => {
+	const config = JSON.parse(readFileSync(resolve(root, "stryker.config.json"), "utf8"));
+	expect(config.mutator.excludedMutations).toEqual(["StringLiteral"]);
+});

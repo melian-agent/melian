@@ -67,3 +67,5 @@ What the head's own text can hide. Stryker marks a mutant `Ignored` for three ki
 The advisory rule: once this check runs, a lens that raises `untested-behaviour` on code a fix pass wrote is duplicating the mutation result with a guess. Its finding resolves to advisory unless the code guards a trust or durability property, where a survivor still matters whatever the tool says. The rule is a reviewing convention in [AGENTS.md](../../AGENTS.md#validation). Nothing in the pipeline applies it yet.
 
 Supersedes: none. It builds the static check the [first decision](2026-10-07-tested-means-a-failing-mutation.md) promised and ends its note that every `untested-behaviour` finding keeps its severity.
+
+Mutator scope. Melian excludes `StringLiteral` in `stryker.config.json`. A changed sandbox profile string or command flag is a configuration change. Tests cannot judge it line by line; the sandbox probes judge its behaviour. Excluded mutants on changed lines remain configuration-ignored notes. The configuration is policy and its changes still receive policy review.
