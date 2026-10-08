@@ -69,7 +69,7 @@ function available(backend: SandboxBackend): boolean {
 }
 
 /**
- * A way to run the head's own code with the network closed and nothing readable but the run's files. Problem: the mutation
+ * A way to run the head's own code with no route off the machine and nothing readable but the run's files. Problem: the mutation
  * check runs the head's tests, setup files, and Vitest configuration as the reviewer, so a fork's test could read the
  * reviewer's `auth.json` and send it out. Solution: the command runs under a seatbelt profile on macOS or inside a
  * bubblewrap namespace on Linux, and a host with neither runs nothing.
@@ -116,6 +116,11 @@ export class Sandbox {
 			`(allow file-write* (subpath ${profileString(paths.scratch)}))`,
 			'(allow file-write-data (literal "/dev/null") (literal "/dev/dtracehelper") (literal "/dev/tty"))',
 			'(allow file-ioctl (literal "/dev/dtracehelper"))',
+			// Stryker 10 starts a logging server on a port it picks, and its workers connect to it. Loopback is all it gets: no
+			// remote address, no unix-domain socket, no Mach service. On macOS loopback is the host's own, so the command can
+			// reach what listens there; bubblewrap's private network namespace gives it a loopback of its own.
+			'(allow network-inbound (local ip "localhost:*"))',
+			'(allow network-outbound (remote ip "localhost:*"))',
 			"",
 		].join("\n");
 	}
