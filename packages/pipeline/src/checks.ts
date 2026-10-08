@@ -216,7 +216,7 @@ async function runCheck(
 async function abortRetiredMutation(harness: Harness, revision: string, key: string, context: Context): Promise<void> {
 	const { tasks } = await harness.inspect(context);
 	for (const { record } of tasks) {
-		if (record.kind !== CheckTask.definition.name || record.state.status === "terminal") continue;
+		if (record.kind !== CheckTask.definition.name) continue;
 		const input = record.input as unknown as CheckInput;
 		if (
 			input.check === "static.mutation" &&
@@ -530,7 +530,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 	const revision = revisionKey(input.changeset.revision);
 	// Starts a run unless one with this key exists, or replaces `stale` with a rerun when it is still the key's task. A task
 	// whose run lost the revision's mutation authority ended aborted, so `restart` replaces it too.
-	const start = (rerun?: ChecksInput["rerun"], stale?: number, restart = false) =>
+	const start = (rerun: ChecksInput["rerun"] | undefined, stale: number | undefined, restart: boolean) =>
 		root.commit(async (tx) => {
 			const runs = await tx.doc(ChecksDocument, root.id);
 			const existing = runs.tasks[key];
@@ -560,7 +560,7 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 	if (input.rerunFailed) {
 		const rerun = rerunOf(settled.state.outcome as { status: string; result?: readonly CheckRunRecord[] });
 		if (rerun !== "none") {
-			taskId = await start(rerun === "all" ? undefined : rerun, taskId);
+			taskId = await start(rerun === "all" ? undefined : rerun, taskId, false);
 			settled = await harness.waitForTask(taskId, context);
 		}
 	}

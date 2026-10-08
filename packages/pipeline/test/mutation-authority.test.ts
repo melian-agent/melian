@@ -10,6 +10,7 @@ import {
 	backgroundContext as context,
 	createNodeExecutionEnv,
 	createReviewRegistry,
+	defineTask,
 	type Harness,
 	openHarness,
 	openSqliteStorage,
@@ -175,6 +176,110 @@ async function outcomeOf(harness: Harness, id: TaskId) {
 }
 
 describe("the authority over a revision's mutation check", { timeout: 120_000 }, () => {
+	it("runs again when the host changes between available sandbox backends", async () => {
+		const { base, head } = scenario();
+		const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+		const wait = harness.waitForTask.bind(harness);
+		vi.spyOn(harness, "waitForTask").mockImplementation((id, executionContext) => {
+			expect(id).toBeTypeOf("number");
+			return wait(id, executionContext);
+		});
+		const request = await input(base, head, root.id, trusted);
+		const first = await runChecks(harness, request, context);
+		vi.mocked(Sandbox.detect).mockReturnValue({ ...unconfinedSandbox, backend: "bubblewrap" } as Sandbox);
+		const second = await runChecks(harness, request, context);
+		expect(second.identity.policy).not.toBe(first.identity.policy);
+		expect(second.identity.task).not.toBe(first.identity.task);
+		expect(runs()).toBe(2);
+	});
+
+	it("leaves a running mutation check of another revision alone", async () => {
+		const { base, head } = scenario(true);
+		const otherHead = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x <= 0") });
+		const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+		const first = runChecks(harness, await input(base, head, root.id, trusted), context);
+		const deadline = Date.now() + 20_000;
+		while (runs() === 0) {
+			if (Date.now() > deadline) throw new Error("Stryker never started");
+			await sleep(20);
+		}
+		try {
+			const second = await runChecks(harness, await input(base, otherHead, root.id, revoked), context);
+			expect(second.records).toMatchObject([{ status: "skipped", cause: "untrustedWriter" }]);
+		} finally {
+			writeFileSync(join(artifacts, "release"), "");
+		}
+		expect((await first).records).toMatchObject([{ name: "static.mutation", status: "ran" }]);
+		expect(runs()).toBe(1);
+	});
+
+	it("leaves a task of another kind alone even when its input resembles a retired mutation check", async () => {
+		const { base, head } = scenario();
+		const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+		const request = await input(base, head, root.id, revoked);
+		const other = defineTask<unknown, { phase: "park" }, unknown>({
+			name: "uninstalled.other",
+			version: 1,
+			initial: () => ({ phase: "park" }),
+			phases: { park: async () => {} },
+			abort: async (_task, runtime, executionContext) => {
+				await runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), executionContext);
+			},
+		});
+		const id = await root.commit(
+			(tx) =>
+				tx.createTask(
+					other,
+					{ check: "static.mutation", changeset: request.changeset.toJSON(), authority: "retired" },
+					{ ownership: { kind: "conversation" } },
+				),
+			context,
+		);
+		const abort = vi.spyOn(harness, "abortTask");
+		await runChecks(harness, request, context);
+		expect(abort.mock.calls.map(([task]) => task)).not.toContain(id);
+	});
+
+	it("leaves another check kind running when mutation authority changes", async () => {
+		const { base, head } = scenario(true);
+		fakeTool(
+			repo,
+			"biome",
+			`if [ "$1" = "--version" ]; then echo 2.5.15; exit 0; fi
+echo started > '${join(artifacts, "biome-started")}'
+while [ ! -e '${join(artifacts, "release")}' ]; do sleep 0.1; done
+for flag in "$@"; do case "$flag" in --reporter-file=*) file="\${flag#--reporter-file=}";; esac; done
+echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.5.15"}},"results":[]}]}' > "$file"`,
+		);
+		const { harness, root } = await openOn(join(artifacts, "state.sqlite"));
+		const request = await input(base, head, root.id, trusted);
+		const first = runChecks(
+			harness,
+			{
+				...request,
+				config: {
+					...request.config,
+					tiers: { ...request.config.tiers, full: ["static.biome", "static.mutation"] },
+				},
+			},
+			context,
+		);
+		const deadline = Date.now() + 20_000;
+		while (!existsSync(join(artifacts, "biome-started")) || runs() === 0) {
+			if (Date.now() > deadline) throw new Error("checks never started");
+			await sleep(20);
+		}
+		try {
+			await runChecks(harness, await input(base, head, root.id, revoked), context);
+		} finally {
+			writeFileSync(join(artifacts, "release"), "");
+		}
+		expect((await first).records).toMatchObject([
+			{ name: "static.biome", status: "ran" },
+			{ name: "static.mutation", status: "failed", reason: "aborted" },
+		]);
+	});
+
 	it("is not run again by a task a crash left pending when the next review revokes trust, and the task writes nothing", async () => {
 		const { base, head } = scenario();
 		const database = await crashed(base, head);
