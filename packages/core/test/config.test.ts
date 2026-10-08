@@ -1,4 +1,4 @@
-import { mkdirSync, symlinkSync } from "node:fs";
+import { mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import {
 	Changeset,
@@ -833,5 +833,20 @@ describe("the user-level preference file", () => {
 		const { config, routes } = await loadConfig(repo, worktree(), "a.ts");
 		expect(config.models.heavy?.fallbacks).toEqual(["user/fallback"]);
 		expect(routes.overridden).toEqual({ heavy: preferences() });
+	});
+});
+
+describe("this repository's own mutation budget", () => {
+	// The cold run measured 2,489 s for 1,678 lines. A cold run must stay under 40 minutes with a fifth to spare.
+	const secondsPerLine = 2489 / 1678;
+	const aim = 40 * 60;
+
+	it("keeps a cold run at the measured rate under the aim, with a fifth to spare", async () => {
+		writeFiles(repo, { "melian.yaml": readFileSync(new URL("../../../melian.yaml", import.meta.url), "utf8") });
+		const { maxLines } = (await loadConfig(repo, sourceFor(repo, "worktree"), "src/a.ts")).config.static.mutation;
+		expect(maxLines).toBe(1250);
+		expect(maxLines * secondsPerLine).toBeLessThanOrEqual(aim * 0.8);
+		// The budget is the largest multiple of 50 that leaves the spare.
+		expect((maxLines + 50) * secondsPerLine).toBeGreaterThan(aim * 0.8);
 	});
 });

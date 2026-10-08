@@ -28,7 +28,9 @@ tiers:
 
 static:
   enola: { enabled: true }
-  mutation: { enabled: true, timeout: 3600 }
+  # A cold run measured 1.5 s per line (1,678 lines in 2,489 s). 1,250 lines is about 31 minutes, inside the 40-minute
+  # aim with a fifth to spare, and 1,300 would not leave it. The decision records the arithmetic.
+  mutation: { enabled: true, timeout: 3600, maxLines: 1250 }
 
 # The golden corpus seeds defects on purpose, so no lens reviews a golden's trees as Melian's own code.
 lenses:
