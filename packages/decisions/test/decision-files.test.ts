@@ -51,6 +51,72 @@ describe("written decisions", () => {
 			expect(parse(b, `# B\nSupersedes: ${declaration} Context: [A](2026-10-01-a.md).\n`).supersedes).toEqual([]);
 	});
 
+	it.each([
+		'[2026-10-02-b.md](2026-10-01-a.md "See 2026-10-02-b.md")',
+		"[2026-10-02-b.md](2026-10-01-a.md 'See 2026-10-02-b.md')",
+		"[2026-10-02-b.md](2026-10-01-a.md (See 2026-10-02-b.md))",
+		'[**2026-10-02-b.md** and [context]]( <2026-10-01-a.md> "See 2026-10-02-b.md")',
+		'[A](2026-10-01-a.md "See \\"2026-10-02-b.md\\"")',
+		'[A](2026-10-01-a.md\n "See 2026-10-02-b.md")',
+		"[A](./2026-10-01-a.md#2026-10-02-b.md)",
+		"[A](2026-10-01-a.md?context=2026-10-02-b.md)",
+		"[A](%32%30%32%36-10-01-a.md)",
+		"[A](2026-10-01-a&#46;md)",
+		"[A](/docs/decisions/2026-10-01-a.md)",
+		'[A][ Context ]\n\n[context]: <2026-10-01-a.md> "See 2026-10-02-b.md"',
+		"[Context][]\n\n[context]: 2026-10-01-a.md 'See 2026-10-02-b.md'",
+		"[Context]\n\n[context]: 2026-10-01-a.md (See 2026-10-02-b.md)",
+		"[Context]\n\n[context]: 2026-10-01-a.md\n[context]: 2026-10-02-b.md",
+	])("resolves only the complete Markdown destination in %s", (link) => {
+		const successor = parse(c, `# C\nSupersedes: ${link}\n`);
+		expect(successor.supersedes).toEqual([a]);
+		expect(DecisionFiles.from([parse(a, "# A"), successor]).render()).toContain(
+			`[INACTIVE; superseded by ${c}] ${a} — A`,
+		);
+		expect(DecisionFiles.from([parse(a, "# A"), parse(b, "# B"), successor]).render()).toContain(`[ACTIVE] ${b} — B`);
+	});
+
+	it.each([
+		["[A](<nested (old)/2026-10-01-a.md> 'See 2026-10-02-b.md')", "nested (old)/2026-10-01-a.md"],
+		["[A](nested(old)/2026-10-01-a.md (See 2026-10-02-b.md))", "nested(old)/2026-10-01-a.md"],
+		["[A](nested\\(old\\)/2026-10-01-a.md)", "nested(old)/2026-10-01-a.md"],
+		["[A](nested%28old%29/2026-10-01-a.md)", "nested(old)/2026-10-01-a.md"],
+		["[A](nested(old)/deep(inner)/2026-10-01-a.md)", "nested(old)/deep(inner)/2026-10-01-a.md"],
+	])("keeps the destination’s full directory in %s", (link, target) => {
+		const successor = parse(c, `# C\nSupersedes: ${link}, 2026-10-02-b.md\n`);
+		expect(successor.supersedes).toEqual([`docs/decisions/${target}`, b]);
+		expect(() =>
+			DecisionFiles.from([parse(`docs/decisions/${target}`, "# Nested A"), parse(b, "# B"), successor]),
+		).not.toThrow();
+	});
+
+	it("resolves each link independently beside a bare target", () => {
+		expect(
+			parse(
+				c,
+				'# C\nSupersedes: [B](2026-10-02-b.md "See 2026-10-04-d.md"), [A](2026-10-01-a.md), 2026-10-05-e.md\n',
+			).supersedes,
+		).toEqual([b, a, "docs/decisions/2026-10-05-e.md"]);
+	});
+
+	it.each([
+		"[2026-10-01-a.md](https://example.com/2026-10-01-a.md)",
+		"[2026-10-01-a.md](//example.com/2026-10-01-a.md)",
+		"[2026-10-01-a.md](#2026-10-01-a.md)",
+		"[2026-10-01-a.md](notes.md?next=2026-10-01-a.md)",
+		"[2026-10-01-a.md](2026-10-01-a.md.bak)",
+		"[2026-10-01-a.md](2026-10-01-a.md/other.md)",
+		"<https://example.com/2026-10-01-a.md>",
+	])("does not extract a local decision filename from %s", (link) => {
+		expect(parse(c, `# C\nSupersedes: ${link}, 2026-10-02-b.md\n`).supersedes).toEqual([b]);
+	});
+
+	it("refuses a malformed encoded destination", () => {
+		expect(() => parse(c, "# C\nSupersedes: [A](%ZZ/2026-10-01-a.md)\n")).toThrow(
+			"Invalid supersession destination %ZZ/2026-10-01-a.md",
+		);
+	});
+
 	it("marks every superseded decision inactive, including a chain and two successors", () => {
 		const rendered = DecisionFiles.from([
 			parse(c, "# C\nSupersedes: 2026-10-01-a.md, 2026-10-02-b.md\n"),

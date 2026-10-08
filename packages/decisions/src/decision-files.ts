@@ -1,5 +1,38 @@
 import { posix } from "node:path";
 import { openSource, visibleText } from "@melian-agent/core";
+import type { Nodes } from "mdast";
+import { fromMarkdown } from "mdast-util-from-markdown";
+
+function markdownNodes(node: Nodes): Nodes[] {
+	return [node, ...("children" in node ? node.children.flatMap(markdownNodes) : [])];
+}
+
+function linkDestinations(content: string): string {
+	const nodes = markdownNodes(fromMarkdown(content));
+	const definitions = new Map(
+		nodes
+			.filter((node) => node.type === "definition")
+			.reverse()
+			.map((node) => [node.identifier, node.url]),
+	);
+	return nodes
+		.filter((node) => node.type === "link" || node.type === "linkReference")
+		.reverse()
+		.reduce((text, node) => {
+			const destination = node.type === "link" ? node.url : definitions.get(node.identifier)!;
+			return `${text.slice(0, node.position!.start.offset)}\u0000${destination}\u0000${text.slice(node.position!.end.offset)}`;
+		}, content);
+}
+
+function localDecisionTargets(destination: string): string[] {
+	let path: string;
+	try {
+		path = decodeURIComponent(destination.split(/[?#]/, 1)[0]!);
+	} catch {
+		throw new DecisionFilesError("invalid", `Invalid supersession destination ${destination}`);
+	}
+	return /^\/?(?:[^:/]+\/)*\d{4}-\d{2}-\d{2}-[\w-]+\.md$/.test(path) ? [path] : [];
+}
 
 /** A decision file could not supply a complete, unambiguous baseline. */
 export class DecisionFilesError extends Error {
@@ -27,12 +60,17 @@ export class DecisionFile {
 	/** Parses the heading and dated Markdown filenames on Supersedes lines. */
 	static parse(path: string, content: string): DecisionFile {
 		const title = /^# (.+)$/m.exec(content)?.[1] ?? path;
-		const targets = [...content.matchAll(/^Supersedes:[ \t]*([^\n]*)$/gm)].flatMap(([_, line]) => {
+		const targets = [...linkDestinations(content).matchAll(/^Supersedes:[ \t]*([^\n]*)$/gm)].flatMap(([_, line]) => {
 			if (/^(?:none|no decision file)\b/i.test(line!)) return [];
-			const destinations = line!.replace(/\[[^\]]*\]\(([^)]*)\)/g, "$1");
-			return [...destinations.matchAll(/((?:[\w.-]+\/)*\d{4}-\d{2}-\d{2}-[\w-]+\.md)/g)].map(([_, target]) =>
-				target!.startsWith("docs/decisions/") ? posix.normalize(target!) : posix.join(posix.dirname(path), target!),
-			);
+			return [...line!.matchAll(/\u0000([^\u0000]*)\u0000|((?:[\w.-]+\/)*\d{4}-\d{2}-\d{2}-[\w-]+\.md)/g)]
+				.flatMap(([_, link, bare]) => (link === undefined ? [bare!] : localDecisionTargets(link)))
+				.map((target) =>
+					target.startsWith("/")
+						? posix.normalize(target.slice(1))
+						: target.startsWith("docs/decisions/")
+							? posix.normalize(target)
+							: posix.join(posix.dirname(path), target),
+				);
 		});
 		return new DecisionFile(path, title, [...new Set(targets)]);
 	}

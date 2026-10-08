@@ -37,6 +37,8 @@
 	},
 	"dependencies": {
 		"@melian-agent/core": "*",
+		"@types/mdast": "4.0.4",
+		"mdast-util-from-markdown": "2.1.0",
 		"typebox": "1.3.27"
 	}
 }

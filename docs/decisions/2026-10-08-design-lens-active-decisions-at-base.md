@@ -14,6 +14,10 @@ The graph belongs to deterministic review input, not model judgement. Its render
 
 What this gives up: a corpus whose complete index exceeds 64 KiB needs a larger reviewed bound before design review can run. A Supersedes edge marks the whole predecessor inactive, even when prose narrows the replacement to one clause. Read successor text and docs/design.md for the retained choices; clause-level resolution stays with the reviewer. The parser follows dated Markdown filenames on Supersedes lines, not a general Markdown dependency language.
 
+## Supersession links name complete local destinations
+
+A Markdown link title may cite another decision without superseding it. For example, `Supersedes: [A](2026-10-01-a.md "See 2026-10-02-b.md")` replaces A alone. CommonMark parsing separates destinations from labels and titles for inline and reference links. It handles angle brackets, balanced parentheses, escapes and character references. URI decoding follows removal of the query and fragment. The complete local path must end in a dated Markdown filename; an external URL or filename inside another path creates no edge. Malformed percent encoding refuses the graph. Bare filenames still resolve against the declaring directory. A leading slash starts at the repository root. The parser and its types are exact-pinned dependencies; hand-written link regexes cannot cover these forms.
+
 Codex's medium finding on [pull request #93](https://github.com/melian-agent/melian/pull/93) asked to remove design from the full tier until every rule had goldens and a three-pass live measurement. The lens is already in the full tier before that measurement. This change leaves the tier in place, as the maintainer instructed. Scripted runs prove the plumbing; the live run measures judgement. A missing credential or a missed quality bar must be reported plainly, without loosening the goldens.
 
 ## Verification follows the base baseline
