@@ -787,7 +787,7 @@ Public benchmarks worth running against: Martian's Code Review Bench (MIT, offli
 
 A repository built and reviewed entirely by agents, with every reviewer finding addressed by instruction, is a corpus of agent-written pull requests and a standards fixture, not a calibration source: acceptance there is compliance, not judgement. Human labels for calibration have to be produced deliberately.
 
-Golden scoring reads merged adjudicated findings, excluding refuted and dismissed groups. Expectations match a file or alternative file and a rule/source pair retained by the speaker or its other claims. A second lens sighting of the same defect costs precision once. Scripted assertions check the matching claim’s original scenario and evidence.
+Golden scoring reads merged adjudicated findings, excluding refuted and dismissed groups. Expectations match a file or alternative file and an eligible original rule/source pair. Refuted claims earn no credit, even when another claim keeps the defect live. The speaker’s original verdict governs its eligibility; the merged verdict may describe another claim. A second lens sighting of the same defect costs precision once. Scripted assertions check the matching claim’s original scenario and evidence.
 
 Unit tests use Vitest and Pi Durable's memory storage.
 

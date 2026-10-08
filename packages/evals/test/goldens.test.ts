@@ -12,7 +12,16 @@ import {
 import { tmpdir } from "node:os";
 import { basename, dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Changeset, defaultConfig, evaluateGuardrails, loadConfig } from "@melian-agent/core";
+import {
+	Changeset,
+	defaultConfig,
+	evaluateGuardrails,
+	Finding,
+	loadConfig,
+	Merge,
+	type Severity,
+	type Verification,
+} from "@melian-agent/core";
 import {
 	buildGoldenRepository,
 	type Golden,
@@ -568,6 +577,56 @@ describe("scriptedMismatches", () => {
 		} as never;
 		expect(scriptedMismatches(golden, [finding])).toEqual([]);
 	});
+	it("skips refuted evidence before choosing an eligible claim with the same rule and source", () => {
+		const golden = goldens.find((each) => each.name === "design-fail-open-default")!;
+		const comment = golden.expected.comments[0]!;
+		const evidence = comment.evidence.map(({ line, ...location }) => ({
+			...location,
+			startLine: line,
+			revision: "head" as const,
+			snippet: "return options.writersTrusted ?? true;",
+		}));
+		const finding = Finding.create({
+			rule: "fail-open",
+			file: comment.file,
+			startLine: 6,
+			discriminator: "publisher",
+			message: "The publisher trusts an absent answer.",
+			severity: "P1",
+			cause: comment.cause,
+			source: { check: "lens.trust-boundary", version: "v" },
+			explanation: { what: "Trust is granted.", whyHere: "The argument is absent.", whatToDo: "Require it." },
+		});
+		const claim = {
+			id: finding.id,
+			ruleId: comment.rule,
+			source: { check: "lens.design", version: "v" },
+			failureScenario: comment.failureScenario,
+			evidence,
+		};
+		const merged = Finding.from({
+			...finding.toJSON(),
+			properties: {
+				...finding.properties,
+				otherClaims: [
+					{
+						...claim,
+						failureScenario: "The rejected claim’s scenario.",
+						evidence: [],
+						verification: {
+							verdict: "refuted",
+							reason: "The earlier claim was wrong.",
+							executor: "llm",
+							model: "fake/judge",
+							version: "v",
+						},
+					},
+					{ ...claim, source: { ...claim.source, version: "v2" } },
+				],
+			},
+		});
+		expect(scriptedMismatches(golden, [merged])).toEqual([]);
+	});
 	it("names a finding whose cause, failure scenario, or evidence differs from the golden's", async () => {
 		const golden = goldens.find((each) => each.name === "contracts-breaking-signature")!;
 		const run = await runGolden(golden, { kind: "scripted" });
@@ -648,6 +707,108 @@ describe("scoreGolden", () => {
 				[merged],
 			),
 		).toMatchObject({ precision: 0, recall: 0 });
+	});
+	it.each([
+		{ speaker: "design", designSeverity: "P0", trustSeverity: "P1" },
+		{ speaker: "trust-boundary", designSeverity: "P1", trustSeverity: "P0" },
+	] as const)(
+		"rejects a refuted design claim in a live merged defect spoken by $speaker",
+		({ speaker, designSeverity, trustSeverity }) => {
+			const template = goldens.find((each) => each.name === "design-fail-open-default")!;
+			const comment = { ...template.expected.comments[0]!, source: "lens.design" };
+			const golden = { ...template, expected: { ...template.expected, comments: [comment] } };
+			const report = (check: string, rule: string, verdict: Verification["verdict"], severity: Severity) =>
+				Finding.create({
+					rule,
+					file: comment.file,
+					startLine: 6,
+					snippet: "return options.writersTrusted ?? true;",
+					occurrence: 0,
+					message: "An absent answer grants trust.",
+					severity,
+					cause: comment.cause,
+					failureScenario: comment.failureScenario,
+					evidence: comment.evidence.map(({ line, ...location }) => ({
+						...location,
+						startLine: line,
+						revision: "head",
+						snippet: "return options.writersTrusted ?? true;",
+					})),
+					source: { check, version: "v" },
+					explanation: { what: "Trust is granted.", whyHere: "The argument is absent.", whatToDo: "Require it." },
+					verification: {
+						verdict,
+						reason: "Scripted judgement.",
+						executor: "llm",
+						model: "fake/judge",
+						version: "v",
+					},
+				});
+			const design = report("lens.design", comment.rule, "refuted", designSeverity);
+			const trust = report("lens.trust-boundary", "fail-open", "confirmed", trustSeverity);
+			const defects = new Merge([design, trust], defaultConfig).defects();
+			expect(defects).toHaveLength(1);
+			const defect = defects[0]!;
+			expect(defect.refuted()).toBe(false);
+			expect(defect.speaker.properties.source.check).toBe(`lens.${speaker}`);
+			expect(defect.speaker.properties.verification?.verdict).toBe("confirmed");
+			expect(scoreGolden(golden, [defect.speaker])).toMatchObject({ reported: 1, precision: 0, recall: 0 });
+			expect(scoreGolden(template, [defect.speaker])).toMatchObject({ precision: 0, recall: 0 });
+			expect(scriptedMismatches(golden, [defect.speaker])).toEqual([
+				"src/publish.ts fail-open-default from lens.design: not reported",
+			]);
+			const trusted = {
+				...golden,
+				expected: {
+					...golden.expected,
+					comments: [{ ...comment, rule: "fail-open", source: "lens.trust-boundary" }],
+				},
+			};
+			expect(scoreGolden(trusted, [defect.speaker])).toMatchObject({ precision: 1, recall: 1 });
+			expect(scriptedMismatches(trusted, [defect.speaker])).toEqual([]);
+			expect(scoreGolden(template, [design])).toMatchObject({ precision: 0, recall: 0 });
+		},
+	);
+	it.each([
+		{ differing: "id", change: { id: "other-claim" } },
+		{ differing: "source", change: { source: { check: "lens.tests", version: "v" } } },
+		{ differing: "version", change: { source: { check: "lens.design", version: "v1" } } },
+	])("does not borrow a refutation from a claim with another $differing", ({ change }) => {
+		const golden = goldens.find((each) => each.name === "design-fail-open-default")!;
+		const comment = golden.expected.comments[0]!;
+		const original = Finding.create({
+			rule: comment.rule,
+			file: comment.file,
+			startLine: 6,
+			discriminator: "publisher",
+			message: "An absent answer grants trust.",
+			severity: "P1",
+			cause: comment.cause,
+			failureScenario: comment.failureScenario,
+			source: { check: "lens.design", version: "v" },
+			explanation: { what: "Trust is granted.", whyHere: "The argument is absent.", whatToDo: "Require it." },
+			verification: {
+				verdict: "confirmed",
+				reason: "Scripted judgement.",
+				executor: "llm",
+				model: "fake/judge",
+				version: "v",
+			},
+		});
+		const finding = Finding.from({
+			...original.toJSON(),
+			properties: {
+				...original.properties,
+				otherClaims: [
+					{
+						...original.claims()[0]!,
+						...change,
+						verification: { ...original.properties.verification!, verdict: "refuted" },
+					},
+				],
+			},
+		});
+		expect(scoreGolden(golden, [finding])).toMatchObject({ precision: 1, recall: 1 });
 	});
 	it("keeps a prior version’s different rule from erasing a current reporter", () => {
 		const golden = goldens.find((each) => each.name === "design-supersedes-its-own-decision")!;

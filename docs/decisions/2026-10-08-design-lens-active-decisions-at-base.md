@@ -22,7 +22,7 @@ The live investigation for [pull request #102](https://github.com/melian-agent/m
 
 ## Scoring follows adjudication
 
-Golden scores count merged adjudicated defects, excluding refuted and dismissed findings. A match may use the speaker’s reporting check and rule or a paired source and rule in otherClaims. Alternative files let a finding cite the faulty code or its conflicting decision. A second lens sighting the same defect is not a false positive. The live supersedes case cited the code correctly; its old expectation accepted only the decision path.
+Golden scores count merged adjudicated defects, excluding refuted and dismissed findings. A match may use the speaker’s reporting check and rule or a paired source and rule in otherClaims. Each original claim must be unrefuted to earn credit. A confirmed co-report can keep the defect live without making its refuted design claim eligible. Speaker matching uses its original verdict, since the merged verdict may come from another claim. Scripted assertions select only eligible claims. Alternative files let a finding cite the faulty code or its conflicting decision. A second lens sighting the same defect is not a false positive. The live supersedes case cited the code correctly; its old expectation accepted only the decision path.
 
 A scoring test must isolate a wrong-rule report. Supplying it beside a correct report leaves precision unchanged when the rule check is removed, because only one expectation can earn credit. The mutation pass exposed that gap and added the isolated case.
 

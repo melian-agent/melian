@@ -15,6 +15,7 @@ import {
 	type LensTier,
 	loadConfig,
 	type MelianConfig,
+	type MemberClaim,
 	type ModelRoute,
 	type RepositorySource,
 	Standards,
@@ -329,10 +330,7 @@ export function scriptedMismatches(golden: Golden, findings: readonly Finding[])
 		const name = `${comment.file} ${comment.rule}${comment.source === undefined ? "" : ` from ${comment.source}`}`;
 		const found = findings.find((each) => answers(comment, each));
 		if (found === undefined) return [`${name}: not reported`];
-		const claim = found.properties.otherClaims?.find(
-			(claim) =>
-				claim.ruleId === comment.rule && (comment.source === undefined || claim.source.check === comment.source),
-		);
+		const claim = found.properties.otherClaims?.find((claim) => matchesClaim(comment, claim));
 		const { cause } = found.properties;
 		const { failureScenario, evidence = [] } = claim ?? found.properties;
 		// A guardrail finding has neither a failure scenario nor evidence, so only its cause is held to the golden.
@@ -378,19 +376,26 @@ export interface GoldenScore {
 	readonly recall: number;
 }
 
+function matchesClaim(comment: GoldenComment, claim: MemberClaim): boolean {
+	return (
+		claim.verification?.verdict !== "refuted" &&
+		claim.ruleId === comment.rule &&
+		(comment.source === undefined || claim.source.check === comment.source)
+	);
+}
+
 // Match a merged defect through the claim that supplied the expected rule and source.
 function answers(comment: GoldenComment, finding: Finding): boolean {
 	const path = finding.properties.path ?? finding.locations[0]!.physicalLocation.artifactLocation.uri;
 	if (![comment.file, ...(comment.alternativeFiles ?? [])].includes(path)) return false;
 	const { reportedBy, source, otherClaims = [] } = finding.properties;
-	if (
-		otherClaims.some(
-			(claim) =>
-				claim.ruleId === comment.rule && (comment.source === undefined || claim.source.check === comment.source),
-		)
-	)
-		return true;
+	if (otherClaims.some((claim) => matchesClaim(comment, claim))) return true;
 	if (finding.ruleId !== comment.rule) return false;
+	const original = otherClaims.find(
+		(claim) =>
+			claim.id === finding.id && claim.source.check === source?.check && claim.source.version === source?.version,
+	);
+	if ((original ?? finding.properties).verification?.verdict === "refuted") return false;
 	if (comment.source === undefined) return true;
 	return (reportedBy ?? (source === undefined ? [] : [source])).some(
 		(each) =>
