@@ -39,6 +39,33 @@ Melian is our answer. It is built in the open, on [Pi](https://github.com/earend
 
 **Stays in scope, with care.** Findings must be caused by the change, or provably affected by it. Pre-existing problems Melian happens to notice are mentioned once, never block, and are never raised again.
 
+## How a review runs
+
+```mermaid
+flowchart TD
+    A["Change arrives<br/>(local range, pre-commit hook, or pull request)"] --> B["Triage<br/>decision model picks a tier and<br/>how deep each lens reads"]
+    B --> C["Static checks<br/>Biome, tsc, Enola, mutation testing<br/>(no model, deterministic)"]
+    B --> D["Guardrails<br/>forbidden patterns, policy-change notices"]
+    B --> E["Agentic lenses<br/>correctness, contracts, durability, tests,<br/>trust boundary, conventions, design"]
+    E --> F["Verifier<br/>a second model family checks each claim:<br/>confirmed, plausible or refuted"]
+    C --> G["Adjudication<br/>merge findings, set severity,<br/>keep scope: introduced, pre-existing or affected,<br/>honour dismissals"]
+    D --> G
+    F --> G
+    G --> H{"Verdict"}
+    H -->|passed| I["Merge may proceed"]
+    H -->|findings| J["Findings with what, why here,<br/>and what to do"]
+    H -->|blocking| K["Required status fails"]
+    H -->|not reviewed| L["A check did not run:<br/>nothing is assumed"]
+    J --> M["Publish<br/>one review per head on the pull request,<br/>threads for replies and dismissals"]
+
+    S[("Durable state<br/>every task survives a crash<br/>and resumes without repeating work")] -.-> E
+    S -.-> F
+    S -.-> M
+    T["Sandbox<br/>anything that executes the change's own code<br/>runs isolated, without secrets"] -.-> C
+```
+
+Triage comes first so a docs-only change or a dependency bump finishes in seconds, and a risky change gets the deep read. The static checks and guardrails need no model. Each agentic lens hunts for one kind of failure with its own model and its own reading budget, and nothing a lens claims reaches you until a verifier from another model family has judged it. Adjudication keeps findings in scope and never raises a dismissed one again. The verdict is the same whether you ran Melian locally, from your coding agent, or on a pull request; only the publish step differs.
+
 ## How you work with it
 
 **Locally, before a pull request exists.** Melian ships as a command-line tool with named tiers of checks. A fast tier runs in seconds and suits a pre-commit hook. A standard tier suits pre-push. The full review suits a pull request. Which tier runs at which point in your workflow is yours to configure, with sensible defaults, and Melian never installs hooks for you.
