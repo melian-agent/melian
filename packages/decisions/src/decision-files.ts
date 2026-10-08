@@ -38,7 +38,7 @@ export class DecisionFile {
 }
 
 /** Prompt bounds apply after the complete base graph has been resolved. */
-export const decisionIndexLimits = { entries: 100, rowCharacters: 512 } as const;
+export const decisionIndexLimits = { bytes: 64 * 1024 } as const;
 
 /** All decisions at one revision, with superseded decisions kept as history. */
 export class DecisionFiles {
@@ -63,7 +63,7 @@ export class DecisionFiles {
 		return DecisionFiles.from(files);
 	}
 
-	/** Resolves all supersession edges before any prompt entries are omitted. */
+	/** Resolves all supersession edges before rendering prompt entries. */
 	static from(files: readonly DecisionFile[]): DecisionFiles {
 		const byPath = new Map(files.map((file) => [file.path, file]));
 		const successors = new Map<string, string[]>();
@@ -88,19 +88,19 @@ export class DecisionFiles {
 		);
 	}
 
-	/** Renders bounded candidate paths and titles, with direct successors for inactive entries. */
+	/** Renders every path and title, refusing an index beyond its byte bound. */
 	render(): string {
-		const shown = this.#files.slice(0, decisionIndexLimits.entries);
-		const rows = shown.map((file) => {
+		const rows = this.#files.map((file) => {
 			const successors = this.#successors.get(file.path);
 			const status = successors === undefined ? "ACTIVE" : `INACTIVE; superseded by ${successors.join(", ")}`;
-			return visibleText(`[${status}] ${file.path} — ${file.title}`).slice(0, decisionIndexLimits.rowCharacters);
+			return visibleText(`[${status}] ${file.path} — ${file.title}`);
 		});
-		const omitted = this.#files.length - shown.length;
-		return [
-			...rows,
-			...(omitted > 0 ? [`[and ${omitted} more decisions; discover them with base search]`] : []),
-			`[rows show at most ${decisionIndexLimits.rowCharacters} characters; read base files for full titles and links]`,
-		].join("\n");
+		const rendered = rows.join("\n");
+		if (Buffer.byteLength(rendered, "utf8") > decisionIndexLimits.bytes)
+			throw new DecisionFilesError(
+				"incomplete",
+				`Decision index exceeds ${decisionIndexLimits.bytes} bytes; ${rows.length} decisions omitted; review refused`,
+			);
+		return rendered;
 	}
 }

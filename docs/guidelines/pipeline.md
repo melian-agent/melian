@@ -132,7 +132,7 @@ Everything that originates from the head revision reaches a lens inside a bounda
 
 Before a design conversation starts, reviewChangeset loads DecisionFiles from the comparison base. It reads every docs/decisions Markdown file and resolves all Supersedes edges before limiting the rendered list. The Decisions at base section names active candidates and inactive predecessors with their direct successors. It appears only for design and tells the lens to read it before step 1.
 
-The section uses the review’s listing boundary and escapes controls in paths and titles. It lists at most 100 entries and 512 characters per row, with active status first and an omitted count. Rows may be shortened; the lens reads base files for full text. The section joins the instruction fingerprint under the fixed nonce, so altered baseline input cannot attach to old work. Invalid graphs and incomplete reads refuse review rather than hide standards. Step 1 discovers candidates from base paths and titles, searches base with its own terms as well as head, and reads decision text at base when either search finds it.
+The section uses the review’s listing boundary and escapes controls in paths and titles. It lists every path and full title, with active status first. A 64 KiB UTF-8 bound refuses an oversized index and names how many decisions were omitted. The section joins the instruction fingerprint under the fixed nonce, so altered baseline input cannot attach to old work. Invalid graphs and incomplete reads refuse review rather than hide standards. Step 1 discovers candidates from base paths and titles, searches base with its own terms as well as head, and reads decision text at base when either search finds it.
 
 ### Lens tools
 

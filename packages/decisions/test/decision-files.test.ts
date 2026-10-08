@@ -1,4 +1,4 @@
-import { openSource } from "@melian-agent/core";
+import { openSource, visibleText } from "@melian-agent/core";
 import { DecisionFile, DecisionFiles, decisionIndexLimits } from "@melian-agent/decisions";
 import { describe, expect, it, vi } from "vitest";
 import { gitIn, removeDirectory, temporaryDirectory, writeFiles } from "../../core/test/fixtures/repo.ts";
@@ -46,36 +46,38 @@ describe("written decisions", () => {
 		expect(DecisionFiles.from([]).render()).not.toContain("[and");
 	});
 
-	it("renders at the entry bound and one past it, resolving omitted successors first", () => {
-		const files = Array.from({ length: decisionIndexLimits.entries }, (_, i) =>
-			parse(`docs/decisions/2026-10-01-${String(i).padStart(3, "0")}.md`, `# Title ${i}\n`),
-		);
-		const at = DecisionFiles.from(files).render();
-		expect(at.split("\n")).toHaveLength(decisionIndexLimits.entries + 1);
-		expect(at).not.toContain("and 0 more");
-		const extra = parse("docs/decisions/2026-10-02-last.md", "# Last\nSupersedes: 2026-10-01-000.md\n");
-		const past = DecisionFiles.from([...files, extra]).render();
-		expect(past).toContain("[and 1 more decisions");
-		expect(past).toContain(`INACTIVE; superseded by ${extra.path}`);
-		expect(past).not.toContain("[ACTIVE] docs/decisions/2026-10-02-last.md");
-	});
-
-	it("bounds each rendered row at the character bound and one past, with controls visible", () => {
+	it("pins the byte bound and refuses one byte past it without shortening a title", () => {
+		expect(decisionIndexLimits).toEqual({ bytes: 65536 });
 		const prefix = `[ACTIVE] ${a} — `;
-		const suffix = "";
-		const title = "x".repeat(decisionIndexLimits.rowCharacters - prefix.length - suffix.length);
-		expect(
-			DecisionFiles.from([parse(a, `# ${title}`)])
-				.render()
-				.split("\n")[0],
-		).toBe(prefix + title + suffix);
-		expect(
-			DecisionFiles.from([parse(a, `# ${title}x`)])
-				.render()
-				.split("\n")[0],
-		).toBe(`${prefix}${title}x${suffix}`.slice(0, decisionIndexLimits.rowCharacters));
+		const title = "x".repeat(65536 - Buffer.byteLength(prefix));
+		expect(DecisionFiles.from([parse(a, `# ${title}`)]).render()).toBe(prefix + title);
+		expect(() => DecisionFiles.from([parse(a, `# ${title}x`)]).render()).toThrow(
+			"1 decisions omitted; review refused",
+		);
+		expect(() => DecisionFiles.from([parse(a, `# ${title.slice(1)}é`)]).render()).toThrow(
+			"1 decisions omitted; review refused",
+		);
 		expect(DecisionFiles.from([parse(a, "# hidden\ttitle")]).render()).toContain("hidden\\u0009title");
 	});
+	it("names every omitted decision when the complete index cannot fit", () => {
+		const files = [parse(a, `# ${"x".repeat(65536)}`), parse(b, "# B")];
+		expect(() => DecisionFiles.from(files).render()).toThrow("2 decisions omitted; review refused");
+	});
+	it("lists every active path and full title at the repository base with headroom", async () => {
+		const repo = process.cwd();
+		const source = await openSource(repo, { kind: "revision", commit: "origin/main" });
+		const paths = await source.findPaths(/^docs\/decisions\/.*\.md$/s);
+		const files = await Promise.all(
+			paths.map(async (path) => parse(path, (await source.readText(path, 256 * 1024))!)),
+		);
+		const inactive = new Set(files.flatMap((file) => [...file.supersedes]));
+		const active = files.filter((file) => !inactive.has(file.path));
+		expect(active.length).toBeGreaterThan(100);
+		const rendered = (await DecisionFiles.load(repo, "origin/main")).render();
+		for (const file of active)
+			expect(rendered.split("\n")).toContain(visibleText(`[ACTIVE] ${file.path} — ${file.title}`));
+		expect(Buffer.byteLength(rendered)).toBeLessThan(49152);
+	}, 60_000);
 });
 
 describe("base decision reads", () => {
