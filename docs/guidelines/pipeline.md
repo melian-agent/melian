@@ -524,3 +524,5 @@ CacheScratch gives fetch, graph and coverage writes process-owned temporary name
 A file-handle read stream may call close on destruction even with autoClose disabled. To prove the explicit verification finally closes a handle, refuse its stat before creating the stream.
 
 The design lens also receives a base index of headings and line numbers from docs/design.md and its linked local Markdown sections. Links with a section fragment and files under docs/design/ supply linked sections. Fenced examples supply no headings. The complete index has a 64 KiB UTF-8 bound; an overrun or unreadable linked section refuses review. Base headings guide searches when the head renames a concept. The index uses listing boundaries and joins the instruction fingerprint.
+
+A race test must attach a rejection handler when it starts a review expected to be superseded. Waiting until the replacement finishes lets Node emit an unhandled rejection under load, even when the later assertion passes. Capture the error at creation and assert its code after the replacement.
