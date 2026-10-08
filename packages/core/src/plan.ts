@@ -76,7 +76,6 @@ export type PlannedTier = {
 export type PlannedLevel = {
 	level: ScrutinyLevel;
 	tier: LensTier;
-	/** Whether this level verifies. Older plans omit it and count every level for verification notices. */
 	verify?: boolean;
 	committed?: LensTier;
 	by?: string;
