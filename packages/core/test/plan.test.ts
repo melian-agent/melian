@@ -781,7 +781,7 @@ describe("verifier routing", () => {
 		});
 	});
 
-	it("omits family messages when no selectable level verifies", () => {
+	it.each([true, false])("counts all levels when no selectable level verifies, accepted %s", (accepted) => {
 		const unverified = lenses.map((lens) =>
 			Lens.from({
 				...lens.toJSON(),
@@ -793,12 +793,25 @@ describe("verifier routing", () => {
 				},
 			}),
 		);
+		const terra = "openai-codex/gpt-5.6-terra";
 		const resolved = plan(
-			{ heavy: { model: gpt }, medium: { model: gpt }, verifier: { model: gpt } },
-			{ openai: "key" },
-			{ lenses: unverified },
+			{
+				heavy: { model: gpt },
+				medium: { model: gpt },
+				verifier: { model: opus, accept: accepted ? [opus, terra] : [opus] },
+			},
+			{ openai: "key", "openai-codex": "Pi login" },
+			{
+				lenses: unverified,
+				preferences: { verifier: { model: terra, fallbacks: [] } },
+				catalog: [...catalog, model("openai-codex", "gpt-5.6-terra", "GPT-5.6 Terra", 2, 10)],
+			},
 		);
-		expect(resolved.lines().filter(({ text }) => text.includes("family"))).toEqual([]);
+		const text = accepted ? "the verifier shares the finder's family by the maintainer's choice" : familyWarning;
+		expect(resolved.lines()).toContainEqual({ state: accepted ? "ok" : "warn", text });
+		expect(resolved.summary()).toContain(`Plan: ${text}\n`);
+		expect(resolved.warnings().includes(text)).toBe(!accepted);
+		expect(ReviewPlan.from(resolved.toJSON()).lines()).toContainEqual({ state: accepted ? "ok" : "warn", text });
 	});
 
 	it("counts all levels in older stored plans that omit verification flags", () => {

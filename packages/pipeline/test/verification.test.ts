@@ -253,6 +253,75 @@ describe("finder family notices", () => {
 	});
 
 	it.each([true, false])(
+		"reports a carried quick finder's family when neither level verifies, accepted %s",
+		async (accepted) => {
+			const lens = lenses[0]!;
+			lenses = [
+				Lens.from({
+					...lens.toJSON(),
+					levels: {
+						quick: { ...lens.level("quick"), tier: "medium", verify: false },
+						careful: { ...lens.level("careful"), tier: "medium", verify: false },
+					},
+				}),
+			];
+			const decider = new RecordedDecider({
+				triage: { version: "1", answers: { correctness: { distribution: { quick: 1 } } } },
+			});
+			registry.install(decisionExtension(decider));
+			const { config, plan, terra } = await routing(accepted);
+			const verifierRoute = vi.spyOn(plan, "verifierRoute");
+			const requests = scriptConversations(fake, [
+				{
+					match: lens.instructions,
+					replies: [
+						(_messages, model) => {
+							expect(model).toBe("finder");
+							return fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), {
+								stopReason: "toolUse",
+							});
+						},
+						fauxAssistantMessage("Done."),
+						(_messages, model) => {
+							expect(model).toBe("finder");
+							return fauxAssistantMessage("Done.");
+						},
+					],
+				},
+			]);
+			const result = await reviewChangeset({
+				harness,
+				checks: [],
+				changeset,
+				lenses,
+				standards: [],
+				models: fake.review,
+				config: { ...config, triage: { escalateAt: "P1" } },
+				plan,
+				decider,
+			});
+			expect(result.verdict.ran).toContainEqual(
+				expect.objectContaining({
+					name: "lens.correctness",
+					level: "careful",
+					reason: expect.stringContaining("which careful neither restated nor refuted"),
+				}),
+			);
+			expect(result.findings).toHaveLength(1);
+			expect(result.findings[0]!.properties.source.version).toBe(`${lens.version}@quick`);
+			expect(result.findings[0]!.properties.verification).toMatchObject({ verdict: "confirmed", model: terra });
+			expect(requests[verifierMarker]).toHaveLength(2);
+			expect(verifierRoute).toHaveBeenCalledWith(`${fake.ref("finder").provider}/finder`);
+			const text = accepted
+				? "the verifier shares the finder's family by the maintainer's choice"
+				: "every verification candidate would be judged by its finder's own family";
+			expect(plan.lines()).toContainEqual({ state: accepted ? "ok" : "warn", text });
+			expect(plan.summary()).toContain(`Plan: ${text}\n`);
+			expect(plan.warnings().includes(text)).toBe(!accepted);
+		},
+	);
+
+	it.each([true, false])(
 		"reports a merged unverified speaker's family from another lens, accepted %s",
 		async (accepted) => {
 			const verified = lenses[0]!;
