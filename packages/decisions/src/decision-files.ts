@@ -19,7 +19,10 @@ function linkDestinations(content: string): string {
 		.filter((node) => node.type === "link" || node.type === "linkReference")
 		.reverse()
 		.reduce((text, node) => {
-			const destination = node.type === "link" ? node.url : definitions.get(node.identifier)!;
+			const destination = (node.type === "link" ? node.url : definitions.get(node.identifier)!).replaceAll(
+				"\n",
+				"%0A",
+			);
 			return `${text.slice(0, node.position!.start.offset)}\u0000${destination}\u0000${text.slice(node.position!.end.offset)}`;
 		}, content);
 }

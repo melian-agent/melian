@@ -82,6 +82,9 @@ describe("written decisions", () => {
 		["[A](nested\\(old\\)/2026-10-01-a.md)", "nested(old)/2026-10-01-a.md"],
 		["[A](nested%28old%29/2026-10-01-a.md)", "nested(old)/2026-10-01-a.md"],
 		["[A](nested(old)/deep(inner)/2026-10-01-a.md)", "nested(old)/deep(inner)/2026-10-01-a.md"],
+		["[A](<nested&#10;/2026-10-01-a.md>)", "nested\n/2026-10-01-a.md"],
+		["[A](<nested&#xA;/2026-10-01-a.md>)", "nested\n/2026-10-01-a.md"],
+		["[A](nested%0A/2026-10-01-a.md)", "nested\n/2026-10-01-a.md"],
 	])("keeps the destination’s full directory in %s", (link, target) => {
 		const successor = parse(c, `# C\nSupersedes: ${link}, 2026-10-02-b.md\n`);
 		expect(successor.supersedes).toEqual([`docs/decisions/${target}`, b]);
