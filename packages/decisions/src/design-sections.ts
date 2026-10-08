@@ -70,7 +70,7 @@ export class DesignSections {
 		for (const file of files) {
 			for (const node of markdownNodes(fromMarkdown(file.content)).filter((node) => node.type === "heading")) {
 				const heading = markdownNodes(node).reduce(
-					(text, part) => ("value" in part ? text + part.value : text),
+					(text, part) => ("value" in part ? text + part.value : "alt" in part ? text + part.alt : text),
 					"",
 				);
 				rows.push(visibleText(`${file.path}:${node.position!.start.line} — ${heading}`));
