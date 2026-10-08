@@ -762,12 +762,22 @@ const tables: { name: string; cases: Pair[] }[] = [
 				"visible path and heading controls",
 				{
 					kind: "headings",
-					files: [{ path: "docs/design/a\nforged.md", content: "# Writer\ttrust\u001b[31m‮" }],
+					files: [
+						{
+							path: "docs/design/a\nforged.md",
+							content: `# Writer\ttrust\u001b[31m${String.fromCharCode(0x202e)}`,
+						},
+					],
 					expected: "docs/design/a\\u000aforged.md:1 — Writer\\u0009trust\\u001b[31m\\u202e",
 				},
 				{
 					kind: "headings",
-					files: [{ path: "docs/design/a\nforged.md", content: "    # Writer\ttrust\u001b[31m‮" }],
+					files: [
+						{
+							path: "docs/design/a\nforged.md",
+							content: `    # Writer\ttrust\u001b[31m${String.fromCharCode(0x202e)}`,
+						},
+					],
 					expected: "",
 				},
 			],
