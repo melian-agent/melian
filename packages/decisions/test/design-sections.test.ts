@@ -168,11 +168,7 @@ describe("base design vocabulary", () => {
 			])
 				.render()
 				.split("\n"),
-		).toEqual([
-			"docs/design.md:1 — Design",
-			"docs/design.md:2 — Writer trust",
-			"docs/design.md:6 — Real policy",
-		]);
+		).toEqual(["docs/design.md:1 — Design", "docs/design.md:2 — Writer trust", "docs/design.md:6 — Real policy"]);
 	});
 	it("loads CRLF design sections without following links in fenced examples", async () => {
 		const repo = temporaryDirectory();
