@@ -183,3 +183,17 @@ it("sweeps old legacy scratch files with no process ID and keeps recent ones", a
 	for (const path of old) await expect(lstat(path)).rejects.toMatchObject({ code: "ENOENT" });
 	for (const path of recent) expect((await lstat(path)).isFile()).toBe(true);
 });
+
+it("never probes pid 0 or 1 from a name, and sweeps such an old path by age", async () => {
+	root = await mkdtemp(join(tmpdir(), "melian-scratch-low-pid-"));
+	const old = new Date(Date.now() - 2 * 86_400_000);
+	const fresh = join(root, "tools", "enola", ".fetch-0-fresh");
+	const stale = [join(root, "tools", "enola", ".fetch-0-stale"), join(root, "tools", "enola", ".graph-1-stale")];
+	for (const directory of [fresh, ...stale]) await mkdir(directory, { recursive: true });
+	for (const directory of stale) await utimes(directory, old, old);
+	const probe = vi.spyOn(process, "kill").mockImplementation(() => true);
+	await GraphCache.open(root);
+	expect(probe).not.toHaveBeenCalled();
+	await expect(lstat(fresh)).resolves.toBeDefined();
+	for (const directory of stale) await expect(lstat(directory)).rejects.toMatchObject({ code: "ENOENT" });
+});

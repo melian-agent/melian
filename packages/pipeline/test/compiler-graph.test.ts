@@ -1,13 +1,14 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { EnolaFacts } from "@melian-agent/core";
-import { API } from "typescript/unstable/sync";
+import { API, Program } from "typescript/unstable/sync";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CompilerGraph, HeadProgram } from "../src/compiler-graph.ts";
 import { EnolaCoverage } from "../src/enola-coverage.ts";
+import { MutationTests } from "../src/mutation-tests.ts";
 
 let root: string;
 afterEach(() => {
@@ -16,6 +17,93 @@ afterEach(() => {
 });
 
 describe("compiler graph extraction", { timeout: 60_000 }, () => {
+	it("falls back to the whole suite when the compiler cannot read a listed setup source", () => {
+		root = mkdtempSync(join(tmpdir(), "melian-compiler-missing-source-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+		writeFileSync(join(root, "a.ts"), "export const a = 1;");
+		writeFileSync(join(root, "a.test.ts"), 'import { a } from "./a.ts";');
+		writeFileSync(join(root, "vitest.config.ts"), 'export default { test: { setupFiles: "setup.ts" } };');
+		const compiler = CompilerGraph.open(root);
+		try {
+			const graph = compiler.read({ importsOnly: true });
+			const get = vi.spyOn(Program.prototype, "getSourceFile").mockImplementation((name) => {
+				expect(name).toBe(join(root, "vitest.config.ts"));
+				return undefined;
+			});
+			expect(
+				MutationTests.select({ read: () => graph, setupFiles: () => compiler.setupFiles() }, ["a.ts"]).toJSON(),
+			).toEqual({ note: expect.stringContaining("whole suite") });
+			expect(get).toHaveBeenCalledOnce();
+		} finally {
+			compiler.close();
+		}
+	});
+
+	it("bounds import-only extraction without losing the full call graph", () => {
+		root = mkdtempSync(join(tmpdir(), "melian-compiler-import-bound-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+		writeFileSync(join(root, "a.ts"), 'import { b } from "./b.ts"; export function a() { b(); }');
+		writeFileSync(join(root, "b.ts"), "export function b() {} class Empty {}");
+		const compiler = CompilerGraph.open(root);
+		try {
+			const imports = compiler.read({ importsOnly: true, maxFiles: 2, deadline: Date.now() + 60_000 });
+			expect(imports.files.map((file) => file.path)).toEqual(["a.ts", "b.ts"]);
+			expect(imports.files[0]!.imports).toMatchObject([{ target: "b.ts" }]);
+			expect(imports.files[0]!.pairs).toEqual([]);
+			expect(imports.symbols).toEqual([]);
+			expect(() => compiler.read({ importsOnly: true, maxFiles: 1 })).toThrow("bound");
+			const clock = vi.spyOn(Date, "now").mockReturnValue(1000);
+			try {
+				expect(compiler.read({ importsOnly: true, deadline: 1001 }).files).toHaveLength(2);
+				expect(() => compiler.read({ importsOnly: true, deadline: 1000 })).toThrow("bound");
+				expect(() => compiler.read({ importsOnly: true, deadline: 999 })).toThrow("bound");
+			} finally {
+				clock.mockRestore();
+			}
+			expect(compiler.read().files[0]!.pairs).toHaveLength(1);
+		} finally {
+			compiler.close();
+		}
+	});
+
+	it.each(['"setup.ts"', '["setup.ts", "more.ts"]', "[]"])(
+		"reads literal setupFiles %s from the configuration closure and ignores test data",
+		(value) => {
+			root = mkdtempSync(join(tmpdir(), "melian-compiler-setup-"));
+			writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+			writeFileSync(join(root, "vitest.config.ts"), 'export { default } from "./settings.ts";');
+			writeFileSync(join(root, "settings.ts"), `export default { test: { "setupFiles": ${value} } };`);
+			writeFileSync(join(root, "data.test.ts"), "const setupFiles = () => []; const data = { setupFiles };");
+			const compiler = CompilerGraph.open(root);
+			try {
+				compiler.read({ importsOnly: true });
+				expect(compiler.setupFiles()).toEqual(
+					value === "[]" ? [] : value.startsWith("[") ? ["more.ts", "setup.ts"] : ["setup.ts"],
+				);
+			} finally {
+				compiler.close();
+			}
+		},
+	);
+
+	it.each([
+		"{ setupFiles: getFiles() }",
+		'{ setupFiles: ["setup.ts", ...more] }',
+		"{ setupFiles }",
+		'{ setupFiles: "../outside.ts" }',
+	])("refuses setup paths the compiler cannot safely supply: %s", (object) => {
+		root = mkdtempSync(join(tmpdir(), "melian-compiler-setup-computed-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+		writeFileSync(join(root, "vitest.config.ts"), `export default { test: ${object} };`);
+		const compiler = CompilerGraph.open(root);
+		try {
+			compiler.read({ importsOnly: true });
+			expect(() => compiler.setupFiles()).toThrow(/computed|outside/);
+		} finally {
+			compiler.close();
+		}
+	});
+
 	it("retains unused declarations and selects the implementation of an overload", () => {
 		root = mkdtempSync(join(tmpdir(), "melian-compiler-declarations-"));
 		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
@@ -306,3 +394,128 @@ describe("head program", { timeout: 60_000 }, () => {
 		}
 	});
 });
+
+it("reads the named custom Vitest configuration even when its name does not match the default", () => {
+	root = mkdtempSync(join(tmpdir(), "melian-custom-vitest-"));
+	writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+	writeFileSync(join(root, "custom.ts"), "export default { test: { setupFiles: `setup.ts` } };");
+	const compiler = CompilerGraph.open(root);
+	try {
+		compiler.read({ importsOnly: true });
+		expect(compiler.setupFiles("custom.ts")).toEqual(["setup.ts"]);
+		expect(compiler.setupFiles()).toEqual([]);
+	} finally {
+		compiler.close();
+	}
+});
+
+describe("mutation setup discovery", () => {
+	it.each([
+		"vite.config.ts",
+		"vitest.config.js",
+		"vitest.config.mjs",
+		"vite.config.cts",
+		"nested/vitest-alt.config.ts",
+		"nested/vite.custom.config.mts",
+		"nested/vite.config.cjs",
+	])("discovers %s beyond the named entry configuration", (path) => {
+		root = mkdtempSync(join(tmpdir(), "melian-setup-discovery-"));
+		mkdirSync(dirname(join(root, path)), { recursive: true });
+		writeFileSync(
+			join(root, "tsconfig.json"),
+			JSON.stringify({ compilerOptions: { allowJs: true }, include: ["**/*"] }),
+		);
+		writeFileSync(join(root, "runner.ts"), "export default {};");
+		writeFileSync(join(root, path), 'export default { test: { setupFiles: ["setup.ts"] } };');
+		const compiler = CompilerGraph.open(root);
+		try {
+			compiler.read({ importsOnly: true });
+			expect(compiler.setupFiles("runner.ts")).toEqual(["setup.ts"]);
+		} finally {
+			compiler.close();
+		}
+	});
+
+	it.each([
+		"almostvitest.config.ts",
+		"nested/xvite.config.ts",
+		"vitestXconfig.ts",
+		"vitest.configXts",
+		"vitest.config.ts.backup.ts",
+		"vitest.customXconfig.ts",
+	])("ignores the misleading configuration name %s", (path) => {
+		root = mkdtempSync(join(tmpdir(), "melian-setup-nonconfig-"));
+		mkdirSync(dirname(join(root, path)), { recursive: true });
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["**/*.ts"] }));
+		writeFileSync(join(root, "runner.ts"), "export default {};");
+		writeFileSync(join(root, path), "export default { test: { setupFiles: getFiles() } };");
+		const compiler = CompilerGraph.open(root);
+		try {
+			compiler.read({ importsOnly: true });
+			expect(compiler.setupFiles("runner.ts")).toEqual([]);
+		} finally {
+			compiler.close();
+		}
+	});
+
+	it("does not strip quotes inside another property name", () => {
+		root = mkdtempSync(join(tmpdir(), "melian-setup-property-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+		writeFileSync(
+			join(root, "vitest.config.ts"),
+			`export default { test: { "set'upFiles": getFiles(), "setupFiles'": getFiles() } };`,
+		);
+		const compiler = CompilerGraph.open(root);
+		try {
+			compiler.read({ importsOnly: true });
+			expect(compiler.setupFiles()).toEqual([]);
+		} finally {
+			compiler.close();
+		}
+	});
+});
+
+it.each(['["checks/**/*.check.ts"]', "[]", "getIncludes()", "includes"])(
+	"reads the head include expression %s without executing it",
+	(value) => {
+		root = mkdtempSync(join(tmpdir(), "melian-vitest-includes-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+		writeFileSync(
+			join(root, "vitest.config.ts"),
+			value === "includes"
+				? "export default { test: { include } };"
+				: `export default { test: { include: ${value} } };`,
+		);
+		const compiler = CompilerGraph.open(root);
+		try {
+			compiler.read({ importsOnly: true });
+			if (value === "getIncludes()" || value === "includes")
+				expect(() => compiler.testIncludes()).toThrow("computed");
+			else expect(compiler.testIncludes()).toEqual(value === "[]" ? [] : ["checks/**/*.check.ts"]);
+		} finally {
+			compiler.close();
+		}
+	},
+);
+
+it.each(["...getOptions()", '[name]: ["checks/*.check.ts"]'])(
+	"uses the whole suite when %s can hide a Vitest option",
+	(options) => {
+		root = mkdtempSync(join(tmpdir(), "melian-vitest-hidden-options-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+		writeFileSync(join(root, "a.ts"), "export const a = 1;");
+		writeFileSync(join(root, "a.check.ts"), 'import { a } from "./a.ts";');
+		writeFileSync(join(root, "vitest.config.ts"), `export default { test: { ${options} } };`);
+		const compiler = CompilerGraph.open(root);
+		try {
+			compiler.read({ importsOnly: true });
+			expect(() => compiler.testIncludes()).toThrow("computed");
+			expect(() => compiler.setupFiles()).toThrow("computed");
+			expect(MutationTests.select(compiler, ["a.ts"]).toJSON()).toEqual({
+				note: "Mutation dry run uses the whole suite: Vitest include is computed.",
+			});
+		} finally {
+			compiler.close();
+		}
+	},
+);

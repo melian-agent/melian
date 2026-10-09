@@ -1,9 +1,10 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as core from "@melian-agent/core";
 import * as githubProvider from "@melian-agent/github";
 import * as pipeline from "@melian-agent/pipeline";
+import { Sandbox } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn, isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
@@ -339,6 +340,7 @@ describe("doctor trust boundaries", () => {
 		expect(result.status).toBe(0);
 		expect(result.trust).toMatch(/^warn /);
 		expect(result.trust).toContain("not inside a git repository; root policy is unknown");
+		expect(result.stdout).not.toMatch(/ {2}mutation\s/);
 		expect(state.calls).toEqual([]);
 	});
 
@@ -449,6 +451,71 @@ describe("doctor trust boundaries", () => {
 		},
 		5_000,
 	);
+});
+
+describe("doctor mutation testing", () => {
+	// Whether the host has a sandbox is not what these tests are about, and a sandboxed run has none.
+	beforeEach(() => {
+		vi.spyOn(Sandbox, "detect").mockReturnValue({ backend: "seatbelt" } as Sandbox);
+	});
+
+	const line = (stdout: string) => stdout.split("\n").find((each) => / {2}mutation\s+/.test(each));
+	const enable = () => writeFileSync(join(repo, "melian.yaml"), "static: { mutation: { enabled: true } }\n");
+
+	it("warns that the check records a skip when it is on and the checkout has no Stryker, since Melian carries none", async () => {
+		enable();
+		const { status, stdout } = await run(github());
+		expect(status).toBe(0);
+		expect(line(stdout)).toMatch(
+			/^warn {2}mutation\s+static\.mutation is on, but Stryker is not installed in the checkout/,
+		);
+		expect(line(stdout)).toContain("@stryker-mutator/core and @stryker-mutator/vitest-runner");
+	});
+
+	it("is ok when the checkout has a Stryker of its own", async () => {
+		enable();
+		mkdirSync(join(repo, "node_modules/.bin"), { recursive: true });
+		writeFileSync(join(repo, "node_modules/.bin/stryker"), "#!/bin/sh\n");
+		chmodSync(join(repo, "node_modules/.bin/stryker"), 0o755);
+		const { stdout } = await run(github());
+		expect(line(stdout)).toMatch(
+			/^ok {4}mutation\s+static\.mutation runs Stryker from the checkout in a \w+ sandbox$/,
+		);
+	});
+
+	it.each(["seatbelt", "bubblewrap"] as const)("names the %s sandbox it found", async (backend) => {
+		enable();
+		mkdirSync(join(repo, "node_modules/.bin"), { recursive: true });
+		writeFileSync(join(repo, "node_modules/.bin/stryker"), "#!/bin/sh\n");
+		chmodSync(join(repo, "node_modules/.bin/stryker"), 0o755);
+		vi.spyOn(Sandbox, "detect").mockReturnValue({ backend } as Sandbox);
+		const { stdout } = await run(github());
+		expect(line(stdout)).toMatch(
+			new RegExp(`^ok {4}mutation\\s+static\\.mutation runs Stryker from the checkout in a ${backend} sandbox$`),
+		);
+	});
+
+	it("warns that the check runs nothing when the host offers no sandbox", async () => {
+		enable();
+		mkdirSync(join(repo, "node_modules/.bin"), { recursive: true });
+		writeFileSync(join(repo, "node_modules/.bin/stryker"), "#!/bin/sh\n");
+		chmodSync(join(repo, "node_modules/.bin/stryker"), 0o755);
+		vi.spyOn(Sandbox, "detect").mockReturnValue(undefined);
+		const { stdout } = await run(github());
+		expect(line(stdout)).toMatch(/^warn {2}mutation\s+static\.mutation is on, but the host offers no sandbox/);
+	});
+
+	it("warns with the reason when the configuration cannot be read", async () => {
+		writeFileSync(join(repo, "melian.yaml"), "static: { mutation: { enabled: 3 } }\n");
+		const { stdout } = await run(github());
+		expect(line(stdout)).toMatch(/^warn {2}mutation\s+\S/);
+		expect(line(stdout)).not.toContain("static.mutation is on");
+	});
+
+	it("says nothing while the check is off", async () => {
+		const { stdout } = await run(github());
+		expect(line(stdout)).toBeUndefined();
+	});
 });
 
 describe("doctor clone check", () => {

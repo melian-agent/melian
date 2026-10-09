@@ -377,6 +377,9 @@ describe("Changeset.resolve", () => {
 			"web/eslint.config.mjs": lines("export default [];"),
 			"web/.eslintrc.cjs": lines("module.exports = {};"),
 			"web/package.json.bak": lines("not policy"),
+			"stryker.config.json": lines("{}"),
+			"packages/a/stryker.config.mjs": lines("export default {};"),
+			"packages/a/stryker.conf.json": lines("not policy"),
 			// A case-insensitive filesystem opens these as the maintainer's own files.
 			"MELIAN.SECRETS.YAML": lines("credentials: {}"),
 			"config/Melian.Local.yaml": lines("{}"),
@@ -393,9 +396,11 @@ describe("Changeset.resolve", () => {
 			"config/Melian.Local.yaml",
 			"melian.yaml",
 			"packages/a/package.json",
+			"packages/a/stryker.config.mjs",
 			"packages/a/tsconfig.build.json",
 			"services/.melian/standards/naming.md",
 			"services/api/AGENTS.md",
+			"stryker.config.json",
 			"web/.eslintrc.cjs",
 			"web/eslint.config.mjs",
 		]);

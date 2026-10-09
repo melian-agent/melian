@@ -1,0 +1,2113 @@
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+	Changeset,
+	CheckError,
+	defaultConfig,
+	type Finding,
+	loadConfig,
+	mutationSkipHasLeave,
+	mutationSkips,
+	mutationUnmutated,
+	type RepositorySource,
+	Revision,
+	staticFindings,
+	type ToolLog,
+} from "@melian-agent/core";
+import {
+	checksExtension,
+	backgroundContext as context,
+	createMemoryStorage,
+	createNodeExecutionEnv,
+	createReviewRegistry,
+	type ExecutionEnv,
+	type Harness,
+	openHarness,
+	readFindings,
+	revisionKey,
+	runChecks,
+	runStaticTool,
+	type WriterTrust,
+} from "@melian-agent/pipeline";
+import { createFakeModels } from "@melian-agent/pipeline/testing";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MutationCache } from "../src/mutation-cache.ts";
+import { MutationScratch } from "../src/mutation-scratch.ts";
+import { MutationRun, strykerNotInstalled, strykerVersion } from "../src/mutation-static.ts";
+import { MutationTests } from "../src/mutation-tests.ts";
+import { Sandbox } from "../src/sandbox.ts";
+import { Run, staticToolSource } from "../src/static.ts";
+import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
+import {
+	commit as commitTo,
+	createRepository,
+	fakeTool,
+	gitIn,
+	lines,
+	removeRepository,
+	writeFiles,
+} from "./fixtures/repo.ts";
+import { unconfinedSandbox } from "./fixtures/sandbox.ts";
+
+// The checkout's node_modules is never tracked, as in a real repository: a tracked one is ignored by the check.
+function commit(root: string, files: Record<string, string>): string {
+	return commitTo(root, { ".gitignore": "node_modules\n", ...files });
+}
+
+let repo: string;
+let artifacts: string;
+let opened: Harness[];
+
+beforeEach(() => {
+	fakeMutationProcesses();
+	vi.spyOn(Sandbox, "detect").mockReturnValue(unconfinedSandbox);
+	repo = createRepository();
+	artifacts = realpathSync(mkdtempSync(join(tmpdir(), "melian-mutation-")));
+	opened = [];
+});
+
+afterEach(async () => {
+	vi.restoreAllMocks();
+	await Promise.all(opened.map((harness) => harness.close(context)));
+	removeRepository(repo);
+	rmSync(artifacts, { recursive: true, force: true });
+});
+
+interface Mutant {
+	status: string;
+	line: number;
+	endLine?: number;
+	mutatorName?: string;
+	replacement?: string;
+	reason?: string;
+	outsideTests?: boolean;
+}
+
+function report(files: Record<string, Mutant[]>, ignoreStatic = false): string {
+	return JSON.stringify({
+		schemaVersion: "1.0",
+		config: { ignoreStatic },
+		files: Object.fromEntries(
+			Object.entries(files).map(([path, mutants]) => [
+				path,
+				{
+					language: "typescript",
+					source: "",
+					mutants: mutants.map((mutant, index) => ({
+						id: String(index),
+						mutatorName: mutant.mutatorName ?? "ConditionalExpression",
+						replacement: mutant.replacement ?? "true",
+						status: mutant.status,
+						...(mutant.reason === undefined ? {} : { statusReason: mutant.reason }),
+						...(mutant.outsideTests === undefined ? {} : { static: mutant.outsideTests }),
+						location: {
+							start: { line: mutant.line, column: 3 },
+							end: { line: mutant.endLine ?? mutant.line, column: 9 },
+						},
+					})),
+				},
+			]),
+		),
+	});
+}
+
+// A fake `stryker` as the checkout's installed binary. It records each call's arguments and its working directory, and
+// writes the canned report where Stryker's JSON reporter does.
+function stryker(options: { report?: string; exit?: number; version?: string; requireWholeSuite?: boolean } = {}): {
+	calls: () => string[][];
+	heads: () => string[];
+} {
+	const canned = join(artifacts, "report.json");
+	const record = join(artifacts, "calls.txt");
+	const heads = join(artifacts, "heads.txt");
+	if (options.report !== undefined) writeFileSync(canned, options.report);
+	fakeTool(
+		repo,
+		"stryker",
+		`if [ "$1" = "--version" ]; then echo ${options.version ?? "10.0.0"}; exit 0; fi
+${options.requireWholeSuite ? `[ -z "\${MELIAN_MUTATION_TEST_INCLUDE+x}" ] || exit 1` : ""}
+git rev-parse HEAD >> '${heads}'
+printf 'CALL\\n%s\\n' "$(pwd)" >> '${record}'
+printf '%s\\n' "$@" >> '${record}'
+[ ! -e reports/mutation/mutation.json ] || echo PLANTED >> '${record}'
+if [ -f '${canned}' ]; then mkdir -p reports/mutation; cp '${canned}' reports/mutation/mutation.json; fi
+echo "stryker said something" >&2
+exit ${options.exit ?? 0}`,
+	);
+	return {
+		heads: () => (existsSync(heads) ? readFileSync(heads, "utf8").trimEnd().split("\n") : []),
+		calls: () =>
+			existsSync(record)
+				? readFileSync(record, "utf8")
+						.split("CALL\n")
+						.slice(1)
+						.map((call) => call.trimEnd().split("\n"))
+				: [],
+	};
+}
+
+const config = JSON.stringify({ testRunner: "vitest" });
+const a = lines("export function a(x: number) {", "  if (x > 0) return 1;", "  return 0;", "}");
+
+// The arguments of one call to the fake: its working directory and the value that follows each flag.
+function argumentsOf(call: string[]) {
+	const flag = (name: string) => call[call.indexOf(name) + 1];
+	return { cwd: call[0]!, run: call.slice(1), flag };
+}
+
+async function revisionOf(base: string, head: string) {
+	return (await Changeset.resolve(repo, `${base}..${head}`)).revision;
+}
+
+async function mutate(
+	base: string,
+	head: string,
+	extra: {
+		maxLines?: number;
+		revision?: boolean;
+		trustedWriter?: boolean;
+		policyCommit?: string;
+		env?: ExecutionEnv;
+		holdsAuthority?: () => Promise<boolean>;
+	} = {},
+) {
+	const revision = await revisionOf(base, head);
+	return runStaticTool(
+		{
+			env: extra.env ?? createNodeExecutionEnv(repo),
+			repoRoot: repo,
+			base,
+			commit: head,
+			tool: "mutation",
+			trustedWriter: extra.trustedWriter ?? true,
+			policyCommit: extra.policyCommit,
+			...(extra.holdsAuthority === undefined ? {} : { holdsAuthority: extra.holdsAuthority }),
+			settings: {
+				...defaultConfig.static.mutation,
+				timeout: 120,
+				...(extra.maxLines === undefined ? {} : { maxLines: extra.maxLines }),
+			},
+			...(extra.revision === false ? {} : { revision }),
+		},
+		context,
+	);
+}
+
+async function found(base: string, head: string, extra: { maxLines?: number } = {}): Promise<readonly Finding[]> {
+	const revision = await revisionOf(base, head);
+	const result = await mutate(base, head, extra);
+	if (result.status !== "ran") throw new Error(`skipped: ${result.reason}`);
+	const empty: ToolLog = { ...result.log, runs: [{ ...result.log.runs[0], results: [] }] };
+	return (
+		await staticFindings({
+			repoRoot: repo,
+			revision,
+			tool: "mutation",
+			settings: defaultConfig.static.mutation,
+			base: result.baseLog ?? empty,
+			head: result.log,
+		})
+	).findings;
+}
+
+function twoCommits(headFiles: Record<string, string> = { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") }) {
+	const base = commit(repo, {
+		"stryker.config.json": config,
+		"packages/p/src/a.ts": a,
+		"packages/p/test/a.test.ts": lines("// tests a"),
+	});
+	return { base, head: commit(repo, headFiles) };
+}
+
+describe("static.mutation", { timeout: 60_000 }, () => {
+	it.each([
+		"packages/core/src/git.ts",
+		"packages/pipeline/src/cache-scratch.ts",
+		"packages/pipeline/src/mutation-process.ts",
+		"packages/pipeline/src/static.ts",
+	])("keeps signal-sending %s outside automatic mutation, even beside other production changes", async (path) => {
+		const { base, head } = twoCommits({
+			"packages/p/src/a.ts": a.replace("x > 0", "x >= 0"),
+			[path]: "export const harmless = 1;\n",
+		});
+		const fake = stryker({ report: report({}) });
+		const result = await mutate(base, head);
+		expect(result.status).toBe("ran");
+		if (result.status !== "ran") throw new Error("skipped");
+		expect(argumentsOf(fake.calls()[0]!).flag("--mutate")).toBe("packages/p/src/a.ts:2-2");
+		expect(result.notes).toContain(`${path} was not mutated: it sends process signals; prove its guards with fakes.`);
+	});
+
+	it("makes a survived mutant on a changed line a P2 untested-behaviour finding that names the mutator and the mutated text", async () => {
+		const { base, head } = twoCommits();
+		stryker({
+			report: report({
+				"packages/p/src/a.ts": [
+					{ status: "Survived", line: 2, mutatorName: "EqualityOperator", replacement: "x > 0" },
+				],
+			}),
+		});
+		const findings = await found(base, head);
+		expect(findings).toHaveLength(1);
+		const [finding] = findings;
+		expect(finding!.ruleId).toBe("mutation/untested-behaviour");
+		expect(finding!.properties).toMatchObject({
+			path: "packages/p/src/a.ts",
+			severity: "P2",
+			cause: "introduced",
+			source: { check: "static.mutation", version: "10.0.0" },
+			explanation: {
+				what: "EqualityOperator mutant survived: with this code changed to `x > 0`, every test still passed.",
+				whatToDo: expect.stringContaining("Add or tighten a test in packages/p/test/a.test.ts so it fails"),
+			},
+		});
+		expect(finding!.locations[0]!.physicalLocation.region.startLine).toBe(2);
+	});
+
+	it("reports no finding for a survivor outside the changed lines or in a file the change left alone", async () => {
+		const { base, head } = twoCommits();
+		stryker({
+			report: report({
+				"packages/p/src/a.ts": [
+					{ status: "Survived", line: 1 },
+					{ status: "Survived", line: 3 },
+				],
+				"packages/p/src/untouched.ts": [{ status: "Survived", line: 2 }],
+			}),
+		});
+		expect(await found(base, head)).toEqual([]);
+	});
+
+	it("makes a NoCoverage mutant on a changed line a finding", async () => {
+		const { base, head } = twoCommits();
+		stryker({ report: report({ "packages/p/src/a.ts": [{ status: "NoCoverage", line: 2 }] }) });
+		const findings = await found(base, head);
+		expect(findings.map((finding) => finding.properties.explanation.whyHere)).toEqual([
+			"No test runs this changed line, so no test fails when this behaviour changes.",
+		]);
+	});
+
+	it("records a Timeout mutant as a note, not a finding", async () => {
+		const { base, head } = twoCommits();
+		stryker({ report: report({ "packages/p/src/a.ts": [{ status: "Timeout", line: 2 }] }) });
+		const result = await mutate(base, head);
+		if (result.status !== "ran") throw new Error("skipped");
+		expect(result.log.runs[0].results).toEqual([]);
+		expect(result.notes).toContain(
+			"1 Timeout mutant(s) on changed lines were set aside: a hang or a crash is not a survivor, so no finding is raised for it.",
+		);
+	});
+
+	it("runs Stryker once, in the head's worktree, with the changed lines, a JSON report, and the incremental file in the repository cache", async () => {
+		const { base, head } = twoCommits();
+		const fake = stryker({ report: report({}) });
+		const result = await mutate(base, head);
+		if (result.status !== "ran") throw new Error("skipped");
+		const calls = fake.calls();
+		expect(calls).toHaveLength(1);
+		const { cwd, run, flag } = argumentsOf(calls[0]!);
+		expect(cwd).toMatch(/\/melian-static-[^/]+\/tree$/);
+		expect(run.slice(0, 2)).toEqual(["run", `${cwd}/stryker.config.json`]);
+		expect(flag("--reporters")).toBe("json");
+		expect(run).toContain("--incremental");
+		expect(run).toContain("--inPlace");
+		expect(flag("--mutate")).toBe("packages/p/src/a.ts:2-2");
+		expect(flag("--incrementalFile")).toMatch(/\/melian-static-[^/]+\/incremental\/incremental\.json$/);
+		expect(result.log.runs[0].tool.driver).toEqual({ name: "Stryker", version: "10.0.0" });
+		expect(result.baseLog?.runs).toEqual([{ tool: { driver: { name: "Stryker", version: "10.0.0" } }, results: [] }]);
+		expect(result.notes).toContain("Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.");
+		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+		expect(gitIn(repo, "status", "--porcelain", "--untracked-files=no")).toBe("");
+	});
+
+	it("lets a second sandboxed run read the first run's incremental identities", async () => {
+		const { base, head } = twoCommits();
+		const reads = join(artifacts, "incremental-reads.txt");
+		fakeTool(
+			repo,
+			"stryker",
+			`
+if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--incrementalFile" ]; then shift; incremental="$1"; fi
+  shift
+done
+if [ -e "$incremental" ]; then cat "$incremental" >> '${reads}'; fi
+printf '%s' '{"schemaVersion":"1.0","files":{}}' > "$incremental"
+mkdir -p reports/mutation
+cp "$incremental" reports/mutation/mutation.json`,
+		);
+		await mutate(base, head);
+		expect(existsSync(reads)).toBe(false);
+		await mutate(base, head);
+		expect(readFileSync(reads, "utf8")).toBe('{"schemaVersion":"1.0","files":{}}');
+	});
+
+	// A fake Stryker that appends what it finds in its incremental file to a log, then writes one of its own.
+	function incrementalTool(stamp = "written") {
+		const reads = join(artifacts, "incremental-reads.txt");
+		fakeTool(
+			repo,
+			"stryker",
+			`
+if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--incrementalFile" ]; then shift; incremental="$1"; fi
+  shift
+done
+if [ -e "$incremental" ]; then cat "$incremental" >> '${reads}'; echo >> '${reads}'; fi
+printf '%s' '{"stamp":"${stamp}"}' > "$incremental"
+mkdir -p reports/mutation
+printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.json`,
+		);
+		return () => (existsSync(reads) ? readFileSync(reads, "utf8").trimEnd().split("\n") : []);
+	}
+	const partitions = () => {
+		const root = join(repo, ".git", "melian", "mutation");
+		return existsSync(root) ? readdirSync(root).map((name) => join(root, name, "incremental.json")) : [];
+	};
+
+	it("keeps an untrusted writer's incremental file away from a trusted run", async () => {
+		const cache = vi.spyOn(MutationCache, "open");
+		const { base, head } = twoCommits();
+		const reads = incrementalTool();
+		const run = new Run(
+			{
+				env: createNodeExecutionEnv(repo),
+				repoRoot: repo,
+				base,
+				commit: head,
+				tool: "mutation",
+				trustedWriter: false,
+				revision: await revisionOf(base, head),
+				settings: defaultConfig.static.mutation,
+			},
+			context,
+		);
+		await run.inWorktree((root, scratch) =>
+			new MutationRun(run, root, scratch, join(repo, "node_modules/.bin/stryker"), "10.0.0", [], unconfinedSandbox, [
+				join(repo, "node_modules"),
+			]).check(),
+		);
+		expect(cache.mock.calls.map(([, key]) => key.trusted)).toEqual([false]);
+		const [first] = partitions();
+		writeFileSync(first!, '{"stamp":"untrusted-forgery"}');
+		await mutate(base, head, { trustedWriter: true });
+		expect(cache.mock.calls.map(([, key]) => key.trusted)).toEqual([false, true]);
+		expect(reads()).toEqual([]);
+		expect(partitions()).toHaveLength(2);
+		expect(readFileSync(first!, "utf8")).toBe('{"stamp":"untrusted-forgery"}');
+		await mutate(base, head, { trustedWriter: true, policyCommit: head });
+		expect(reads()).toEqual([]);
+		expect(partitions()).toHaveLength(3);
+	});
+
+	it("reuses identities for the same head and inputs only", async () => {
+		const { base, head } = twoCommits();
+		const reads = incrementalTool();
+		await mutate(base, head);
+		expect(reads()).toEqual([]);
+		await mutate(base, head);
+		expect(reads()).toEqual(['{"stamp":"written"}']);
+		const next = commit(repo, { "NOTES.md": "a later head with the same changed lines\n" });
+		await mutate(base, next);
+		expect(reads()).toEqual(['{"stamp":"written"}']);
+		expect(partitions()).toHaveLength(2);
+	});
+
+	it("starts cold at the same head after the checkout lockfile changes", async () => {
+		const { base, head } = twoCommits();
+		const reads = incrementalTool();
+		writeFileSync(join(repo, "package-lock.json"), "{}");
+		await mutate(base, head);
+		await mutate(base, head);
+		expect(reads()).toEqual(['{"stamp":"written"}']);
+		writeFileSync(join(repo, "package-lock.json"), '{"packages":{"new":{}}}');
+		await mutate(base, head);
+		expect(reads()).toEqual(['{"stamp":"written"}']);
+		expect(partitions()).toHaveLength(2);
+	});
+
+	it("gives a run with other Stryker input another partition", async () => {
+		const { base, head } = twoCommits();
+		const reads = incrementalTool();
+		await mutate(base, head, { maxLines: 100 });
+		await mutate(base, head, { maxLines: 100 });
+		expect(reads()).toHaveLength(1);
+		fakeTool(
+			repo,
+			"stryker",
+			`if [ "$1" = "--version" ]; then echo 10.0.1; exit 0; fi\nmkdir -p reports/mutation\nprintf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.json`,
+		);
+		await mutate(base, head, { maxLines: 100 });
+		expect(partitions()).toHaveLength(2);
+	});
+
+	it("publishes the run's identities only while the run still holds authority", async () => {
+		const { base, head } = twoCommits();
+		const reads = incrementalTool();
+		await mutate(base, head, { holdsAuthority: async () => false });
+		expect(partitions().filter((file) => existsSync(file))).toEqual([]);
+		await mutate(base, head, { holdsAuthority: async () => true });
+		expect(partitions().filter((file) => existsSync(file))).toHaveLength(1);
+		expect(reads()).toEqual([]);
+	});
+
+	it("does not publish a run that failed", async () => {
+		const { base, head } = twoCommits();
+		fakeTool(
+			repo,
+			"stryker",
+			`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\nwhile [ "$#" -gt 0 ]; do [ "$1" = "--incrementalFile" ] && { shift; printf '%s' '{}' > "$1"; }; shift; done\nexit 1`,
+		);
+		await expect(mutate(base, head)).rejects.toMatchObject({ code: "toolFailed" });
+		expect(partitions().filter((file) => existsSync(file))).toEqual([]);
+	});
+
+	describe("related test dry run", () => {
+		function selected(tests: string[], setup = ["test/setup.ts"]) {
+			return MutationTests.select(
+				{
+					read: () => ({
+						files: [
+							{ path: "packages/p/src/a.ts", imports: [], pairs: [], external: 0, unresolved: 0 },
+							...tests.map((path) => ({
+								path,
+								imports: [
+									{
+										target: "packages/p/src/a.ts",
+										line: 1,
+										specifier: "../src/a.ts",
+										kind: "import" as const,
+										typeOnly: false,
+									},
+								],
+								pairs: [],
+								external: 0,
+								unresolved: 0,
+							})),
+						],
+					}),
+					setupFiles: () => setup,
+				},
+				["packages/p/src/a.ts"],
+			);
+		}
+		it("passes exactly the related test files through the sandbox environment", async () => {
+			const { base, head } = twoCommits();
+			vi.spyOn(MutationTests, "open").mockResolvedValue(selected(["test/a.test.ts", "test/b.test.mjs"]));
+			const saved = join(artifacts, "selected.json");
+			fakeTool(
+				repo,
+				"stryker",
+				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+cp "$MELIAN_MUTATION_TEST_INCLUDE" '${saved}'
+mkdir -p reports/mutation
+printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.json`,
+			);
+			await mutate(base, head);
+			expect(JSON.parse(readFileSync(saved, "utf8"))).toEqual(["test/a.test.ts", "test/b.test.mjs"]);
+		});
+		it("resolves related mjs tests and keeps literal setup files out of include", async () => {
+			const base = commit(repo, {
+				"stryker.config.json": config,
+				"tsconfig.json": JSON.stringify({
+					compilerOptions: { module: "nodenext", moduleResolution: "nodenext", target: "esnext" },
+				}),
+				"packages/p/src/a.ts": a,
+				"packages/p/src/middle.ts": 'export { a } from "./a.ts";',
+				"packages/p/test/a.test.ts": 'import { a } from "../src/a.ts";',
+				"scripts/transitive.test.mjs": 'import { a } from "../packages/p/src/middle.ts";',
+				"scripts/b.test.mjs": "export {};",
+				"packages/p/test/c.test.ts": "export {};",
+				"packages/p/test/d.test.ts": "export {};",
+				"vitest.config.ts": 'export default { test: { setupFiles: ["packages/p/test/setup.ts"] } };',
+				"packages/p/test/setup.ts": "export {};",
+			});
+			const head = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+			const saved = join(artifacts, "compiler-selected.json");
+			mkdirSync(join(repo, "node_modules"), { recursive: true });
+			symlinkSync(
+				fileURLToPath(new URL("../../../node_modules/vitest", import.meta.url)),
+				join(repo, "node_modules/vitest"),
+				"dir",
+			);
+			fakeTool(
+				repo,
+				"stryker",
+				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+cp "$MELIAN_MUTATION_TEST_INCLUDE" '${saved}'
+mkdir -p reports/mutation
+printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.json`,
+			);
+			const result = await mutate(base, head);
+			if (result.status !== "ran") throw new Error("skipped");
+			expect(result.notes).toContain(
+				"Mutation dry run selected 2 related test file(s); Vitest loads setup through test.setupFiles.",
+			);
+			expect(JSON.parse(readFileSync(saved, "utf8"))).toEqual([
+				"packages/p/test/a.test.ts",
+				"scripts/transitive.test.mjs",
+			]);
+		});
+		it.each([{ excluded: ["StringLiteral"] }, { excluded: undefined }])(
+			"honours excluded mutators in NoCoverage enumeration: $excluded",
+			async ({ excluded }) => {
+				const { base, head } = twoCommits({
+					"packages/p/src/a.ts": a.replace("x > 0", "x >= 0"),
+					"stryker.config.json": JSON.stringify({
+						testRunner: "vitest",
+						...(excluded === undefined ? {} : { mutator: { excludedMutations: excluded } }),
+					}),
+				});
+				vi.spyOn(MutationTests, "open").mockResolvedValue(selected([]));
+				const fake = stryker({ report: report({}) });
+				writeFiles(repo, {
+					"node_modules/@stryker-mutator/instrumenter/package.json": JSON.stringify({
+						type: "module",
+						main: "index.mjs",
+					}),
+					"node_modules/@stryker-mutator/instrumenter/index.mjs": `export class Instrumenter {
+async instrument(files, options) {
+ if (files.length !== 1 || files[0].name !== "packages/p/src/a.ts" || files[0].mutate[0].start.line !== 1 || files[0].mutate[0].end.line !== 1 || options.plugins !== null || JSON.stringify(options.excludedMutations) !== ${JSON.stringify(JSON.stringify(excluded ?? []))}) throw new Error("wrong mutation request");
+ return { mutants: [{ id: "1", fileName: files[0].name, mutatorName: "ConditionalExpression", replacement: "false", location: { start: { line: 1, column: 0 }, end: { line: 1, column: 8 } } }] };
+}
+}`,
+				});
+				const result = await mutate(base, head);
+				expect(fake.calls()).toEqual([]);
+				expect(result.status).toBe("ran");
+				if (result.status !== "ran") throw new Error("skipped");
+				expect(result.notes).toContain(
+					"No test reaches the changed production files; no dry run was started. Their mutants are NoCoverage.",
+				);
+				expect(result.log.runs[0].results).toHaveLength(1);
+				expect(result.log.runs[0].results[0]).toMatchObject({
+					ruleId: "untested-behaviour",
+					message: { text: expect.stringContaining("no test coverage") },
+				});
+			},
+		);
+		it.each(["include", "uncovered", "profile"])("fails closed when it cannot write the %s file", async (kind) => {
+			const { base, head } = twoCommits();
+			vi.spyOn(MutationTests, "open").mockResolvedValue(selected(kind === "uncovered" ? [] : ["test/a.test.ts"]));
+			const fake = stryker({ report: report({}) });
+			writeFiles(repo, {
+				"node_modules/@stryker-mutator/instrumenter/package.json": JSON.stringify({ main: "index.mjs" }),
+				"node_modules/@stryker-mutator/instrumenter/index.mjs": "",
+			});
+			if (kind === "profile")
+				vi.spyOn(Sandbox, "detect").mockReturnValue({
+					...unconfinedSandbox,
+					profile: () => "(version 1)(allow default)",
+				} as unknown as Sandbox);
+			const env = createNodeExecutionEnv(repo);
+			const execute = env.exec.bind(env);
+			const suffix =
+				kind === "include" ? "test-include.json" : kind === "uncovered" ? "uncovered.mjs" : "sandbox.sb";
+			vi.spyOn(env, "exec").mockImplementation(async (command, options, executionContext) => {
+				if (command.includes(suffix)) {
+					await options?.onOutput?.("write denied", executionContext);
+					return Promise.resolve({ ok: true, value: { exitCode: 1 } });
+				}
+				return execute(command, options, executionContext);
+			});
+			await expect(mutate(base, head, { env })).rejects.toMatchObject({
+				code: "toolFailed",
+				message: expect.stringContaining("write denied"),
+			});
+			expect(fake.calls()).toEqual([]);
+		});
+
+		it("runs the whole suite when the selection bound is hit", async () => {
+			const { base, head } = twoCommits();
+			const fallback = MutationTests.select(
+				{
+					read: () => {
+						throw new Error("file bound");
+					},
+					setupFiles: () => [],
+				},
+				["packages/p/src/a.ts"],
+			);
+			vi.spyOn(MutationTests, "open").mockResolvedValue(fallback);
+			const fake = stryker({ report: report({}), requireWholeSuite: true });
+			const result = await mutate(base, head);
+			expect(fake.calls()).toHaveLength(1);
+			if (result.status !== "ran") throw new Error("skipped");
+			expect(result.notes).toContain(fallback.toJSON().note);
+		});
+	});
+
+	it("runs Stryker with a home and a temporary directory in scratch, and with none of the Melian process's variables", async () => {
+		const { base, head } = twoCommits();
+		const seen = join(artifacts, "seen.txt");
+		fakeTool(
+			repo,
+			"stryker",
+			`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+printf '%s\\n' "$(pwd)" "$HOME" "$TMPDIR" "\${MELIAN_CANARY:-unset}" "$([ -d "$HOME" ] && echo home-exists)" "$([ -d "$TMPDIR" ] && echo tmp-exists)" > '${seen}'
+mkdir -p reports/mutation
+echo '{"files":{}}' > reports/mutation/mutation.json`,
+		);
+		process.env.MELIAN_CANARY = "a-secret";
+		try {
+			await mutate(base, head);
+		} finally {
+			delete process.env.MELIAN_CANARY;
+		}
+		const [cwd, home, temporary, canary, homeExists, tmpExists] = readFileSync(seen, "utf8").trimEnd().split("\n");
+		const scratch = cwd!.replace(/\/tree$/, "");
+		expect(scratch).toMatch(/\/melian-static-[^/]+$/);
+		expect(home).toBe(`${scratch}/home`);
+		expect(temporary).toBe(`${scratch}/tmp`);
+		expect(home).not.toBe(process.env.HOME);
+		expect([canary, homeExists, tmpExists]).toEqual(["unset", "home-exists", "tmp-exists"]);
+	});
+
+	it.each(["../stryker.log", "reports/mutation/mutation.json"])(
+		"refuses a head-written output link at %s without exposing its target",
+		async (name) => {
+			const { base, head } = twoCommits();
+			const secret = join(artifacts, "host-secret");
+			writeFileSync(secret, "secret-only-on-host");
+			fakeTool(
+				repo,
+				"stryker",
+				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+mkdir -p reports/mutation
+rm -f '${name}'
+ln -s '${secret}' '${name}'
+exit 0`,
+			);
+			const error = await mutate(base, head).catch((error: unknown) => error);
+			expect(error).toMatchObject({ code: "toolFailed", message: expect.stringContaining("non-file") });
+			expect(String(error)).toContain(name.replace("../", ""));
+			expect(String(error)).not.toContain("secret-only-on-host");
+			expect(readFileSync(secret, "utf8")).toBe("secret-only-on-host");
+		},
+	);
+
+	it("does not link the caches a tool writes into node_modules, so a write lands in the worktree, not the checkout", async () => {
+		const { base, head } = twoCommits();
+		const seen = join(artifacts, "modules.txt");
+		for (const directory of [".vite-temp", ".vite", ".cache", "pkg"])
+			mkdirSync(join(repo, "node_modules", directory), { recursive: true });
+		fakeTool(
+			repo,
+			"stryker",
+			`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+for entry in .bin pkg .vite-temp .vite .cache; do
+  if [ -L node_modules/$entry ]; then echo "$entry link"; elif [ -e node_modules/$entry ]; then echo "$entry directory"; else echo "$entry absent"; fi
+done > '${seen}'
+mkdir -p reports/mutation
+echo '{"files":{}}' > reports/mutation/mutation.json`,
+		);
+		await mutate(base, head);
+		expect(readFileSync(seen, "utf8").trimEnd().split("\n")).toEqual([
+			".bin link",
+			"pkg link",
+			".vite-temp absent",
+			".vite absent",
+			".cache absent",
+		]);
+	});
+
+	it("gives the run a git repository of its own at the head, and puts the worktree's link back when it ends", async () => {
+		const { base, head } = twoCommits();
+		const seen = join(artifacts, "git.txt");
+		fakeTool(
+			repo,
+			"stryker",
+			`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+{ pwd; git rev-parse --show-toplevel; git rev-parse HEAD; git rev-list --count HEAD; git status --porcelain; [ -d .git ] && echo directory; git config --get remote.origin.url || echo no-remote; } > '${seen}' 2>&1
+mkdir -p reports/mutation
+echo '{"files":{}}' > reports/mutation/mutation.json`,
+		);
+		gitIn(repo, "remote", "add", "origin", "https://user:secret-token@example.invalid/repo.git");
+		const env = createNodeExecutionEnv(repo);
+		const write = MutationScratch.prototype.write;
+		const restored: boolean[] = [];
+		vi.spyOn(MutationScratch.prototype, "write").mockImplementation(async function (
+			this: MutationScratch,
+			path,
+			content,
+		) {
+			await write.call(this, path, content);
+			if (path.endsWith("/tree/.git")) restored.push(readFileSync(path, "utf8") === content);
+		});
+		await mutate(base, head, { env });
+		expect(restored).toEqual([true]);
+		const [cwd, toplevel, sha, count, ...rest] = readFileSync(seen, "utf8").trimEnd().split("\n");
+		expect([toplevel, sha, count]).toEqual([cwd, head, "1"]);
+		expect(rest).toEqual(["directory", "no-remote"]);
+		expect(readFileSync(seen, "utf8")).not.toContain("secret-token");
+		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+	});
+
+	it("runs nothing when the worktree git link cannot be read", async () => {
+		const { base, head } = twoCommits();
+		const fake = stryker({ report: report({}) });
+		const env = createNodeExecutionEnv(repo);
+		const read = env.readTextFile.bind(env);
+		vi.spyOn(env, "readTextFile").mockImplementation((path, executionContext) =>
+			path.endsWith("/tree/.git")
+				? Promise.resolve({
+						ok: false,
+						error: Object.assign(new Error("git link denied"), { code: "permission_denied" as const }),
+					})
+				: read(path, executionContext),
+		);
+		await expect(mutate(base, head, { env })).rejects.toMatchObject({
+			code: "worktreeFailed",
+			message: expect.stringContaining("git link denied"),
+		});
+		expect(fake.calls()).toEqual([]);
+		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+	});
+
+	it("writes the selected sandbox profile before running the command", async () => {
+		const { base, head } = twoCommits();
+		const fake = stryker({ report: report({}) });
+		const env = createNodeExecutionEnv(repo);
+		const profile = "(version 1)(allow default)";
+		vi.mocked(Sandbox.detect).mockReturnValue({
+			...unconfinedSandbox,
+			profile: () => profile,
+			command: (inner: string, _paths: unknown, file: string, trusted?: string) => {
+				if (trusted === undefined) expect(readFileSync(file, "utf8")).toBe(profile);
+				else expect(trusted).toBe(profile);
+				return inner;
+			},
+		} as unknown as Sandbox);
+		await mutate(base, head, { env });
+		expect(fake.calls()).toHaveLength(1);
+	});
+
+	it("fails as worktreeFailed, runs nothing, and still removes the worktree when it cannot make that repository", async () => {
+		const { base, head } = twoCommits();
+		const fake = stryker({ report: report({}) });
+		const env = createNodeExecutionEnv(repo);
+		const execute = env.exec.bind(env);
+		const written = vi.spyOn(MutationScratch.prototype, "write");
+		vi.spyOn(env, "exec").mockImplementation((command, options, executionContext) =>
+			execute(
+				command.includes("fetch --quiet") ? "echo 'no objects to give' >&2; exit 3" : command,
+				options,
+				executionContext,
+			),
+		);
+		const failure = await runStaticTool(
+			{
+				env,
+				repoRoot: repo,
+				base,
+				commit: head,
+				tool: "mutation",
+				trustedWriter: true,
+				settings: { ...defaultConfig.static.mutation, timeout: 120 },
+				revision: await revisionOf(base, head),
+			},
+			context,
+		).catch((error: unknown) => error);
+		expect(failure).toMatchObject({
+			code: "worktreeFailed",
+			message: expect.stringContaining("could not give the worktree a git directory of its own: no objects to give"),
+		});
+		expect(fake.calls()).toEqual([]);
+		const links = written.mock.calls.filter(([path]) => path.endsWith("/tree/.git"));
+		expect(links.map(([, content]) => content)).toEqual([
+			expect.stringMatching(/^gitdir: .*\/worktrees\/tree\d*\n?$/),
+		]);
+		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+	});
+
+	it.each(["tree", "tree/.git"])(
+		"refuses a head-swapped %s during restoration without changing the host",
+		async (component) => {
+			const { base, head } = twoCommits();
+			const outside = join(artifacts, "host");
+			mkdirSync(join(outside, ".git"), { recursive: true });
+			writeFileSync(join(outside, ".git/sentinel"), "host data");
+			const swapped = component === "tree" ? '"$PWD"' : '"$PWD/.git"';
+			fakeTool(
+				repo,
+				"stryker",
+				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+mv ${swapped} ${swapped}.saved
+ln -s '${component === "tree" ? outside : join(outside, ".git")}' ${swapped}
+exit 1`,
+			);
+			const env = createNodeExecutionEnv(repo);
+			const remove = vi.spyOn(env, "remove");
+			await expect(mutate(base, head, { env })).rejects.toThrow("symlink");
+			expect(readFileSync(join(outside, ".git/sentinel"), "utf8")).toBe("host data");
+			expect(remove.mock.calls.filter(([path]) => path.includes("melian-static-")).length).toBe(0);
+		},
+	);
+
+	describe("the sandbox", () => {
+		const hostSandbox = Sandbox.detect();
+
+		// A fake that reads a file outside the run, and fails with an exit code Stryker never gives if it can.
+		function probing(secret: string): void {
+			fakeTool(
+				repo,
+				"stryker",
+				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+if cat '${secret}' > /dev/null 2>&1; then exit 3; fi
+mkdir -p reports/mutation
+echo '{"files":{}}' > reports/mutation/mutation.json`,
+			);
+		}
+
+		it.skipIf(hostSandbox === undefined)("runs Stryker where it can read no file outside the run", async () => {
+			vi.restoreAllMocks();
+			const { base, head } = twoCommits();
+			const secret = join(artifacts, "auth.json");
+			writeFileSync(secret, "{}");
+			probing(secret);
+			const result = await mutate(base, head);
+			expect(result.status).toBe("ran");
+		});
+
+		it("proves the probe: unconfined, the same fake exits 3 and the check fails", async () => {
+			const { base, head } = twoCommits();
+			const secret = join(artifacts, "auth.json");
+			writeFileSync(secret, "{}");
+			probing(secret);
+			await expect(mutate(base, head)).rejects.toMatchObject({ code: "invalidOutput" });
+		});
+
+		it("records a skip with leave and the cause noSandbox, running nothing, on a host with no sandbox", async () => {
+			vi.spyOn(Sandbox, "detect").mockReturnValue(undefined);
+			const { base, head } = twoCommits();
+			const fake = stryker({ report: report({}) });
+			expect(await mutate(base, head)).toEqual({
+				status: "skipped",
+				reason: mutationSkips.noSandbox,
+				cause: "noSandbox",
+			});
+			expect(fake.calls()).toHaveLength(0);
+			expect(mutationSkipHasLeave("noSandbox")).toBe(true);
+		});
+	});
+
+	describe("the lines it mutates", () => {
+		function entries(call: string[]): string[] {
+			return argumentsOf(call).flag("--mutate")!.split(",");
+		}
+
+		it("mutates an added block, a modified line, and nothing for a deletion-only hunk", async () => {
+			const ten = lines(...Array.from({ length: 10 }, (_, index) => `export const n${index + 1} = ${index + 1};`));
+			const base = commit(repo, {
+				"stryker.config.json": config,
+				"packages/p/src/a.ts": ten,
+				"packages/p/src/b.ts": ten,
+				"packages/p/src/c.ts": ten,
+			});
+			const edit = (change: (rows: string[]) => string[]) => lines(...change(ten.trimEnd().split("\n")));
+			const head = commit(repo, {
+				// A modified line, and a block of three added lines after line 6.
+				"packages/p/src/a.ts": edit((rows) => [
+					...rows.slice(0, 1),
+					"export const modified = 2;",
+					...rows.slice(2, 6),
+					"export const added1 = 1;",
+					"export const added2 = 2;",
+					"export const added3 = 3;",
+					...rows.slice(6),
+				]),
+				// Two lines deleted and nothing else.
+				"packages/p/src/b.ts": edit((rows) => rows.slice(0, 4).concat(rows.slice(6))),
+				// A deletion and an addition together at the end.
+				"packages/p/src/c.ts": edit((rows) => [
+					...rows.slice(0, 9),
+					"export const last = 10;",
+					"export const more = 11;",
+				]),
+			});
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head);
+			expect(entries(fake.calls()[0]!)).toEqual([
+				"packages/p/src/a.ts:2-2",
+				"packages/p/src/a.ts:7-9",
+				"packages/p/src/c.ts:10-11",
+			]);
+		});
+
+		it("never mutates a test, a fixture, a golden, built output, a declaration, a config file, or a file that is not TypeScript", async () => {
+			const files = [
+				"packages/p/src/a.ts",
+				"packages/p/src/a.test.ts",
+				"packages/p/src/a.spec.ts",
+				"packages/p/src/a.d.ts",
+				"packages/p/src/vitest.config.ts",
+				"packages/p/test/helper.ts",
+				"packages/p/src/tests/helper.ts",
+				"packages/p/src/__tests__/helper.ts",
+				"packages/p/src/__mocks__/helper.ts",
+				"packages/p/test/fixtures/repo.ts",
+				"packages/p/src/fixtures/repo.ts",
+				"packages/evals/goldens/case/src/user.ts",
+				"packages/p/dist/a.ts",
+				"packages/p/src/readme.md",
+				"packages/p/src/a.js",
+				"packages/p/src/b.mts",
+				"packages/p/src/c.tsx",
+			];
+			const base = commit(repo, { "stryker.config.json": config, "packages/p/README.md": "x\n" });
+			const head = commit(repo, Object.fromEntries(files.map((path) => [path, lines("export const x = 1;")])));
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head);
+			expect(entries(fake.calls()[0]!)).toEqual([
+				"packages/p/src/a.ts:1-1",
+				"packages/p/src/b.mts:1-1",
+				"packages/p/src/c.tsx:1-1",
+			]);
+		});
+
+		it("never mutates a file under a node_modules the revision tracks", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			writeFiles(repo, {
+				"packages/p/node_modules/dep/index.ts": lines("export const dep = 1;"),
+				"packages/p/src/a.ts": lines("export const a = 1;"),
+			});
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "add", "--force", "packages/p/node_modules/dep/index.ts");
+			gitIn(repo, "commit", "--quiet", "-m", "head");
+			const head = gitIn(repo, "rev-parse", "HEAD");
+			// The checkout stays at the base, whose node_modules is not tracked, so the fake below is the Stryker that runs.
+			gitIn(repo, "checkout", "--quiet", "--detach", base);
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head);
+			expect(entries(fake.calls()[0]!)).toEqual(["packages/p/src/a.ts:1-1"]);
+		});
+
+		it("skips with a reason, and runs no Stryker, when the change leaves no production line to mutate", async () => {
+			const base = commit(repo, { "stryker.config.json": config, "packages/p/src/a.ts": a });
+			const head = commit(repo, {
+				"packages/p/src/a.test.ts": lines("// a test"),
+				"packages/p/src/a.ts": a.split("\n").slice(0, 2).join("\n").concat("\n}\n"),
+			});
+			const fake = stryker({ report: report({}) });
+			const deletionOnly = await mutate(base, head);
+			expect(deletionOnly).toEqual({
+				status: "skipped",
+				reason: "the change adds or edits no production TypeScript lines",
+				cause: "noProductionLines",
+			});
+			expect(mutationSkipHasLeave(deletionOnly.status === "skipped" ? deletionOnly.cause : undefined)).toBe(true);
+			expect(fake.calls()).toEqual([]);
+		});
+
+		it.each([
+			"packages/p/src/a.d.ts",
+			"packages/evals/verifier/case/src/user.ts",
+			"packages/p/test/helper.ts",
+			"packages/evals/goldens/case/src/user.ts",
+			"packages/p/dist/a.ts",
+			"packages/p/src/readme.md",
+		])("keeps the leave for a change to %s alone, which holds no behaviour to judge", async (path) => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, { [path]: lines("export const x = 1;") });
+			stryker({ report: report({}) });
+			expect(await mutate(base, head)).toMatchObject({ status: "skipped", cause: "noProductionLines" });
+		});
+
+		it.each(["packages/p/vitest.config.ts", "packages/p/src/rules.config.mts"])(
+			"gives the skip no leave, and names the file, when the change is to %s, a production file Stryker does not mutate",
+			async (path) => {
+				const base = commit(repo, { "stryker.config.json": config });
+				const head = commit(repo, { [path]: lines("export default { run: () => 1 };") });
+				const fake = stryker({ report: report({}) });
+				const result = await mutate(base, head);
+				expect(result).toEqual({
+					status: "skipped",
+					reason: mutationSkips.unmutated([path]),
+					cause: "unmutated",
+				});
+				expect(result.status === "skipped" && mutationSkipHasLeave(result.cause)).toBe(false);
+				expect(result.status === "skipped" && result.reason).toContain(path);
+				expect(fake.calls()).toEqual([]);
+			},
+		);
+
+		it("notes a configuration file beside the production files it does mutate", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": a,
+				"packages/p/vitest.config.ts": lines("export default {};"),
+			});
+			const fake = stryker({ report: report({}) });
+			const result = await mutate(base, head);
+			expect(entries(fake.calls()[0]!)).toEqual(["packages/p/src/a.ts:1-4"]);
+			if (result.status !== "ran") throw new Error("skipped");
+			expect(result.notes).toContain(
+				"packages/p/vitest.config.ts was not mutated: a tool loads a configuration file to run the mutants.",
+			);
+		});
+
+		it("says nothing of a test file, a declaration, or a verifier file changed beside the production files it mutates", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": a,
+				"packages/p/test/a.test.ts": lines("// tests a"),
+				"packages/p/src/types.d.ts": lines("export type T = number;"),
+				"packages/evals/verifier/case/src/user.ts": lines("export const user = 1;"),
+			});
+			stryker({ report: report({}) });
+			const result = await mutate(base, head);
+			if (result.status !== "ran") throw new Error("skipped");
+			expect(result.notes.filter((note) => note.includes(" was not mutated: "))).toEqual([]);
+		});
+
+		describe("a production file that lists no changed lines", () => {
+			const binary = "export const x = 1;\0\n";
+			const path = "packages/p/src/blob.ts";
+
+			it("gives the skip no leave and raises an unmutated finding when the file is binary and nothing else changes", async () => {
+				const base = commit(repo, { "stryker.config.json": config });
+				const head = commit(repo, { [path]: binary });
+				const fake = stryker({ report: report({}) });
+				const result = await mutate(base, head);
+				expect(result).toMatchObject({
+					status: "skipped",
+					cause: "unmutated",
+					reason: mutationSkips.unmutated([path]),
+				});
+				if (result.status !== "skipped") throw new Error("ran");
+				expect(mutationSkipHasLeave(result.cause)).toBe(false);
+				expect(result.log?.runs[0].results.map((each) => [each.ruleId, each.message.text])).toEqual([
+					["unmutated", `Stryker did not judge the changed lines of ${path}: ${mutationUnmutated.binary.why}.`],
+				]);
+				expect(fake.calls()).toEqual([]);
+			});
+
+			it("raises the finding beside the findings of the files it does mutate", async () => {
+				const base = commit(repo, { "stryker.config.json": config });
+				const head = commit(repo, { [path]: binary, "packages/p/src/a.ts": a });
+				stryker({ report: report({ "packages/p/src/a.ts": [{ status: "Survived", line: 2 }] }) });
+				expect(
+					(await found(base, head)).map((finding) => [finding.ruleId, finding.properties.path]).sort(),
+				).toEqual([
+					["mutation/unmutated", path],
+					["mutation/untested-behaviour", "packages/p/src/a.ts"],
+				]);
+			});
+
+			it("keeps the leave for a binary test file, a deleted binary file, and a binary file that is not TypeScript", async () => {
+				const base = commit(repo, {
+					"stryker.config.json": config,
+					"packages/p/src/gone.ts": binary,
+				});
+				stryker({ report: report({}) });
+				const head = commitTo(
+					repo,
+					{
+						"packages/p/test/blob.test.ts": "\0\0 a test, unlike the deleted file\0",
+						"packages/p/src/image.png": "\0PNG\0",
+					},
+					["packages/p/src/gone.ts"],
+				);
+				expect(await mutate(base, head)).toMatchObject({ status: "skipped", cause: "noProductionLines" });
+			});
+
+			it("counts a file whose name is not UTF-8 text, which git lists without lines", async () => {
+				const { base, head } = twoCommits();
+				stryker({ report: report({}) });
+				const revision = Revision.from({
+					base,
+					head,
+					files: [
+						{
+							status: "added",
+							path: "packages/p/src/%FF.ts",
+							percentEncoded: true,
+							binary: false,
+							hunks: [],
+						},
+					],
+				});
+				const result = await runStaticTool(
+					{
+						env: createNodeExecutionEnv(repo),
+						repoRoot: repo,
+						base,
+						commit: head,
+						tool: "mutation",
+						trustedWriter: true,
+						settings: { ...defaultConfig.static.mutation, timeout: 120 },
+						revision,
+					},
+					context,
+				);
+				expect(result).toMatchObject({ status: "skipped", cause: "unmutated" });
+			});
+
+			it("names the file when the run passes its timeout", async () => {
+				const base = commit(repo, { "stryker.config.json": config });
+				const head = commit(repo, { [path]: binary, "packages/p/src/a.ts": a });
+				fakeTool(repo, "stryker", `if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\nsleep 30`);
+				const result = await runStaticTool(
+					{
+						env: createNodeExecutionEnv(repo),
+						repoRoot: repo,
+						base,
+						commit: head,
+						tool: "mutation",
+						trustedWriter: true,
+						settings: { ...defaultConfig.static.mutation, timeout: 1 },
+						revision: await revisionOf(base, head),
+					},
+					context,
+				);
+				if (result.status !== "skipped") throw new Error("ran");
+				expect(result.log?.runs[0].results.map((each) => each.message.text).join()).toContain(
+					`packages/p/src/a.ts, ${path}`,
+				);
+			});
+		});
+
+		it("keeps a path with a comma out of --mutate, which splits on commas, and says so", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a,b.ts": lines("export const x = 1;"),
+				"packages/p/src/c.ts": lines("export const y = 1;"),
+			});
+			const fake = stryker({ report: report({}) });
+			const result = await mutate(base, head);
+			expect(entries(fake.calls()[0]!)).toEqual(["packages/p/src/c.ts:1-1"]);
+			if (result.status !== "ran") throw new Error("skipped");
+			expect(result.notes).toContain(
+				"packages/p/src/a,b.ts was not mutated: Stryker cannot take a path with a comma.",
+			);
+		});
+	});
+
+	describe("the paths it names", () => {
+		function entries(call: string[]): string[] {
+			return argumentsOf(call).flag("--mutate")!.split(",");
+		}
+
+		const route = "app/users/[id]/(group)/route.ts";
+
+		it("escapes every glob character in a path, so Stryker reads the file and no other", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const odd = "packages/p/src/a*b?c{d}e!f+g@h#i\\j'k.ts";
+			const head = commit(repo, { [route]: lines("export const x = 1;"), [odd]: lines("export const y = 1;") });
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head);
+			expect(entries(fake.calls()[0]!)).toEqual([
+				"app/users/\\[id\\]/\\(group\\)/route.ts:1-1",
+				"packages/p/src/a\\*b\\?c\\{d\\}e\\!f\\+g\\@h\\#i\\\\j'k.ts:1-1",
+			]);
+		});
+
+		it("notes a requested file the report holds no mutants for, and only that one", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				[route]: lines("export const x = 1;"),
+				"packages/p/src/b.ts": lines("export const y = 1;"),
+			});
+			stryker({ report: report({ "packages/p/src/b.ts": [{ status: "Killed", line: 1 }] }) });
+			const result = await mutate(base, head);
+			if (result.status !== "ran") throw new Error("skipped");
+			expect(result.notes.filter((note) => note.includes("produced no mutants"))).toEqual([
+				`${route} produced no mutants, so nothing on its changed lines was judged.`,
+			]);
+		});
+
+		it("makes a survivor in a path with glob characters a finding at that path", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, { [route]: lines("export const x = 1;") });
+			stryker({ report: report({ [route]: [{ status: "Survived", line: 1 }] }) });
+			const findings = await found(base, head);
+			expect(findings.map((finding) => finding.properties.path)).toEqual([route]);
+		});
+
+		it("makes an Ignored mutant on a changed line a P2 mutation/ignored-mutant finding with Stryker's reason, and nothing off it", async () => {
+			const { base, head } = twoCommits();
+			stryker({
+				report: report({
+					"packages/p/src/a.ts": [
+						{ status: "Ignored", line: 2, reason: "Ignored by a Stryker disable comment" },
+						{ status: "Ignored", line: 500, reason: "Static mutant" },
+					],
+				}),
+			});
+			const findings = await found(base, head);
+			expect(
+				findings.map((finding) => [
+					finding.ruleId,
+					finding.properties.severity,
+					finding.properties.path,
+					finding.locations[0]!.physicalLocation.region.startLine,
+					finding.properties.explanation.what,
+				]),
+			).toEqual([
+				[
+					"mutation/ignored-mutant",
+					"P2",
+					"packages/p/src/a.ts",
+					2,
+					"Stryker ignored the mutants of this changed line, so no test was asked about them (Ignored by a Stryker disable comment).",
+				],
+			]);
+		});
+	});
+
+	describe("the bound on changed lines", () => {
+		function head(lineCount: number, name: string) {
+			const base = commit(repo, { "stryker.config.json": config });
+			return {
+				base,
+				head: commit(repo, {
+					[`packages/p/src/${name}.ts`]: lines(
+						...Array.from({ length: lineCount }, (_, index) => `export const n${index} = ${index};`),
+					),
+				}),
+			};
+		}
+
+		const lastEntries = (fake: { calls: () => string[][] }) =>
+			argumentsOf(fake.calls().at(-1)!).flag("--mutate")!.split(",");
+		// What the run left out, as the findings of rule mutation/unmutated name it.
+		const leftOut = async (base: string, head: string, maxLines: number) =>
+			(await found(base, head, { maxLines }))
+				.filter((finding) => finding.ruleId === "mutation/unmutated")
+				.map((finding) => [
+					finding.properties.path,
+					finding.properties.severity,
+					finding.properties.explanation.what,
+				]);
+
+		it("mutates a change of exactly the bound whole, and cuts one line past it at the bound, with one advisory naming the omitted count and budget", async () => {
+			const fake = stryker({ report: report({}) });
+			const bound = head(5, "bound");
+			expect(await leftOut(bound.base, bound.head, 5)).toEqual([]);
+			expect(lastEntries(fake)).toEqual(["packages/p/src/bound.ts:1-5"]);
+			const past = head(6, "past");
+			expect(await leftOut(past.base, past.head, 5)).toEqual([
+				[
+					"packages/p/src/past.ts",
+					"P3",
+					"Stryker left 1 changed production lines unmutated by maintainer policy: budget: 1 (static.mutation.maxLines is 5).",
+				],
+			]);
+			expect(lastEntries(fake)).toEqual(["packages/p/src/past.ts:1-5"]);
+			expect(fake.calls()).toHaveLength(2);
+		});
+
+		// n lines of code in one file, as the head adds them.
+		const rows = (name: string, count: number) =>
+			lines(...Array.from({ length: count }, (_, index) => `export const ${name}${index} = ${index};`));
+
+		it("shares the bound across the files in proportion, so a risky file last in path order is mutated too", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": rows("a", 10),
+				"packages/p/src/b.ts": rows("b", 10),
+				"packages/p/src/z.ts": rows("z", 2),
+			});
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 11 });
+			expect(lastEntries(fake)).toEqual([
+				"packages/p/src/a.ts:1-5",
+				"packages/p/src/b.ts:1-5",
+				"packages/p/src/z.ts:1-1",
+			]);
+			expect(await leftOut(base, head, 11)).toEqual([
+				[
+					"packages/p/src/a.ts",
+					"P3",
+					"Stryker left 11 changed production lines unmutated by maintainer policy: budget: 11 (static.mutation.maxLines is 11).",
+				],
+			]);
+		});
+
+		it("takes a missing share from the first largest donor when donors tie", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": rows("a", 49),
+				"packages/p/src/b.ts": rows("b", 49),
+				"packages/p/src/z.ts": rows("z", 1),
+			});
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 20 });
+			expect(lastEntries(fake)).toEqual([
+				"packages/p/src/a.ts:1-9",
+				"packages/p/src/b.ts:1-10",
+				"packages/p/src/z.ts:1-1",
+			]);
+		});
+
+		it("gives a file with a single changed line one line of the bound, taking it from the largest share", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": rows("a", 99),
+				"packages/p/src/z.ts": rows("z", 1),
+			});
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 20 });
+			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:1-19", "packages/p/src/z.ts:1-1"]);
+		});
+
+		it("gives every file a line when the bound is exactly the number of files", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": rows("a", 5),
+				"packages/p/src/b.ts": rows("b", 1),
+				"packages/p/src/c.ts": rows("c", 1),
+			});
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 3 });
+			expect(lastEntries(fake)).toEqual([
+				"packages/p/src/a.ts:1-1",
+				"packages/p/src/b.ts:1-1",
+				"packages/p/src/c.ts:1-1",
+			]);
+		});
+
+		it("gives the line the shares leave over to the file with the largest remainder, whatever its path", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, { "packages/p/src/a.ts": rows("a", 3), "packages/p/src/b.ts": rows("b", 4) });
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 3 });
+			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:1-1", "packages/p/src/b.ts:1-2"]);
+		});
+
+		it("orders spare lines by fractional remainder rather than file size", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, { "packages/p/src/a.ts": rows("a", 5), "packages/p/src/b.ts": rows("b", 3) });
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 5 });
+			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:1-3", "packages/p/src/b.ts:1-2"]);
+		});
+
+		it("allocates by changed range lengths rather than their line numbers", async () => {
+			const original = Array.from({ length: 10 }, (_, index) => `export const a${index} = ${index};`);
+			const base = commit(repo, { "stryker.config.json": config, "packages/p/src/a.ts": lines(...original) });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": lines(...original.map((row, index) => (index >= 7 ? `${row} // changed` : row))),
+				"packages/p/src/b.ts": rows("b", 3),
+			});
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 4 });
+			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:8-9", "packages/p/src/b.ts:1-2"]);
+		});
+
+		it("takes a missing file share from the largest donor even when it sorts last", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": rows("a", 1),
+				"packages/p/src/b.ts": rows("b", 1),
+				"packages/p/src/z.ts": rows("z", 98),
+			});
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 20 });
+			expect(lastEntries(fake)).toEqual([
+				"packages/p/src/a.ts:1-1",
+				"packages/p/src/b.ts:1-1",
+				"packages/p/src/z.ts:1-18",
+			]);
+		});
+
+		it("breaks a tie between equal remainders in path order", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, { "packages/p/src/a.ts": rows("a", 3), "packages/p/src/b.ts": rows("b", 3) });
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 3 });
+			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:1-2", "packages/p/src/b.ts:1-1"]);
+		});
+
+		it("leaves whole files out, last in path order first, when there are more files than lines in the bound", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": rows("a", 1),
+				"packages/p/src/b.ts": rows("b", 1),
+				"packages/p/src/c.ts": rows("c", 1),
+			});
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 2 });
+			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:1-1", "packages/p/src/b.ts:1-1"]);
+			expect((await leftOut(base, head, 2)).map(([path]) => path)).toEqual(["packages/p/src/c.ts"]);
+		});
+
+		it("cuts a range the bound falls in, and counts every range of a file that changes in two places", async () => {
+			const ten = Array.from({ length: 10 }, (_, index) => `export const n${index} = ${index};`);
+			const base = commit(repo, { "stryker.config.json": config, "packages/p/src/a.ts": lines(...ten) });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": lines(
+					...ten.map((row, index) =>
+						index >= 1 && index <= 3 ? `${row} // edited` : index === 7 ? `${row} // edited` : row,
+					),
+				),
+			});
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 4 });
+			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:2-4", "packages/p/src/a.ts:8-8"]);
+			expect(await leftOut(base, head, 4)).toEqual([]);
+			await mutate(base, head, { maxLines: 2 });
+			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:2-3"]);
+			expect((await leftOut(base, head, 2)).map(([, , what]) => what)).toEqual([
+				"Stryker left 2 changed production lines unmutated by maintainer policy: budget: 2 (static.mutation.maxLines is 2).",
+			]);
+			expect((await leftOut(base, head, 3)).map(([, , what]) => what)).toEqual([
+				"Stryker left 1 changed production lines unmutated by maintainer policy: budget: 1 (static.mutation.maxLines is 3).",
+			]);
+		});
+
+		it("names every file, those past the bound too, when the run passes its timeout", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": lines("export const a = 1;"),
+				"packages/p/src/b.ts": lines("export const b = 1;"),
+				"packages/p/src/c.ts": lines("export const c = 1;"),
+			});
+			fakeTool(repo, "stryker", `if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\nsleep 30`);
+			const result = await runStaticTool(
+				{
+					env: createNodeExecutionEnv(repo),
+					repoRoot: repo,
+					base,
+					commit: head,
+					tool: "mutation",
+					trustedWriter: true,
+					settings: { ...defaultConfig.static.mutation, timeout: 1, maxLines: 1 },
+					revision: await revisionOf(base, head),
+				},
+				context,
+			);
+			if (result.status !== "skipped") throw new Error("ran");
+			expect(result.log?.runs[0].results.map((each) => each.message.text)).toEqual([
+				`Stryker did not judge the changed lines of packages/p/src/a.ts, packages/p/src/b.ts, packages/p/src/c.ts: ${mutationSkips.timeout(1)}.`,
+			]);
+		});
+	});
+
+	describe("when Stryker does not give a report", () => {
+		it("fails closed, as invalidOutput, when it exits 0 and writes no report", async () => {
+			const { base, head } = twoCommits();
+			stryker();
+			await expect(mutate(base, head)).rejects.toMatchObject({
+				code: "invalidOutput",
+				check: "static.mutation",
+				message: expect.stringContaining("wrote no report"),
+			});
+		});
+
+		it("does not read a report the revision committed in place of the one the run writes", async () => {
+			const clean = report({ "packages/p/src/a.ts": [{ status: "Killed", line: 2 }] });
+			const base = commit(repo, {
+				"stryker.config.json": config,
+				"packages/p/src/a.ts": a,
+				"reports/mutation/mutation.json": clean,
+			});
+			const head = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+			const fake = stryker();
+			await expect(mutate(base, head)).rejects.toMatchObject({ code: "invalidOutput" });
+			expect(fake.calls()[0]).not.toContain("PLANTED");
+		});
+
+		it("fails as toolFailed, with Stryker's output, when it exits 1", async () => {
+			const { base, head } = twoCommits();
+			stryker({ exit: 1, report: report({}) });
+			const failure = await mutate(base, head).catch((error: unknown) => error);
+			expect(failure).toBeInstanceOf(CheckError);
+			expect(failure).toMatchObject({ code: "toolFailed", check: "static.mutation" });
+			expect((failure as CheckError).message).toContain("Stryker exited 1: stryker said something");
+		});
+
+		it("fails as invalidOutput when it exits with a code it does not document, whatever it wrote", async () => {
+			const { base, head } = twoCommits();
+			stryker({ exit: 2, report: report({}) });
+			await expect(mutate(base, head)).rejects.toMatchObject({
+				code: "invalidOutput",
+				message: expect.stringContaining("Stryker exited 2, which it does not document"),
+			});
+		});
+
+		it("fails as invalidOutput when the report is not one it can read", async () => {
+			const { base, head } = twoCommits();
+			stryker({ report: "not json" });
+			await expect(mutate(base, head)).rejects.toMatchObject({ code: "invalidOutput", check: "static.mutation" });
+		});
+
+		it("lets the head's tests write a file past the 16 MiB a static tool's output may hold", async () => {
+			const { base, head } = twoCommits();
+			fakeTool(
+				repo,
+				"stryker",
+				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+head -c 20000000 /dev/zero > big.bin || exit 9
+mkdir -p reports/mutation
+echo '{"files":{}}' > reports/mutation/mutation.json
+exit 0`,
+			);
+			expect((await mutate(base, head)).status).toBe("ran");
+		});
+
+		it("bounds what Stryker's process tree may write to one file at 1 GiB, so a runaway run fails rather than fills the disk", async () => {
+			const { base, head } = twoCommits();
+			const seen = join(artifacts, "limit.txt");
+			fakeTool(
+				repo,
+				"stryker",
+				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+bash -c 'ulimit -f' > '${seen}'
+mkdir -p reports/mutation
+echo '{"files":{}}' > reports/mutation/mutation.json
+exit 0`,
+			);
+			await mutate(base, head);
+			expect(readFileSync(seen, "utf8").trim()).toBe(String(1024 * 1024));
+		});
+
+		it("records a run that passes static.mutation.timeout as a skip with leave, not a failure", async () => {
+			const { base, head } = twoCommits();
+			fakeTool(repo, "stryker", `if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\nsleep 30`);
+			const revision = await revisionOf(base, head);
+			const result = await runStaticTool(
+				{
+					env: createNodeExecutionEnv(repo),
+					repoRoot: repo,
+					base,
+					commit: head,
+					tool: "mutation",
+					trustedWriter: true,
+					settings: { ...defaultConfig.static.mutation, timeout: 1 },
+					revision,
+				},
+				context,
+			);
+			expect(result).toMatchObject({ status: "skipped", reason: mutationSkips.timeout(1), cause: "timeout" });
+			expect(mutationSkipHasLeave("timeout")).toBe(true);
+			if (result.status !== "skipped") throw new Error("ran");
+			expect(result.log?.runs[0].results.map((each) => [each.ruleId, each.message.text])).toEqual([
+				[
+					"unmutated",
+					`Stryker did not judge the changed lines of packages/p/src/a.ts: ${mutationSkips.timeout(1)}.`,
+				],
+			]);
+		});
+
+		it("fails a cancelled run as aborted, never as a timeout skip", async () => {
+			const { base, head } = twoCommits();
+			fakeTool(repo, "stryker", `if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\nsleep 30`);
+			const revision = await revisionOf(base, head);
+			const controller = new AbortController();
+			const cancellable = { abortSignal: controller.signal, value: () => undefined, toString: () => "cancellable" };
+			setTimeout(() => controller.abort(), 2_000);
+			await expect(
+				runStaticTool(
+					{
+						env: createNodeExecutionEnv(repo),
+						repoRoot: repo,
+						base,
+						commit: head,
+						tool: "mutation",
+						trustedWriter: true,
+						settings: { ...defaultConfig.static.mutation, timeout: 120 },
+						revision,
+					},
+					cancellable,
+				),
+			).rejects.toMatchObject({ code: "aborted", check: "static.mutation" });
+		});
+
+		it("keeps the end of Stryker's output in the error, not the start", async () => {
+			const { base, head } = twoCommits();
+			fakeTool(
+				repo,
+				"stryker",
+				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+printf 'START'; head -c 6000 /dev/zero | tr '\\0' x; printf 'END\\n'
+exit 1`,
+			);
+			const failure = (await mutate(base, head).catch((error: unknown) => error)) as CheckError;
+			expect(failure.message).toMatch(/END$/);
+			expect(failure.message).not.toContain("START");
+			expect(failure.message.length).toBeLessThan(4096 + 100);
+		});
+
+		it("fails as toolFailed when the revision has no stryker.config.json", async () => {
+			const base = commit(repo, { "packages/p/src/a.ts": a });
+			const head = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+			const fake = stryker({ report: report({}) });
+			await expect(mutate(base, head)).rejects.toMatchObject({
+				code: "toolFailed",
+				message: "the revision has no stryker.config.json, which Stryker needs",
+			});
+			expect(fake.calls()).toEqual([]);
+		});
+
+		it("fails as toolFailed when it is given no revision to mutate", async () => {
+			const { base, head } = twoCommits();
+			stryker({ report: report({}) });
+			await expect(mutate(base, head, { revision: false })).rejects.toMatchObject({
+				code: "toolFailed",
+				message: "mutation testing needs the revision it mutates",
+			});
+		});
+	});
+
+	describe("the test file a finding names", () => {
+		async function whatToDo(sourcePath: string, tests: string[]): Promise<string> {
+			const base = commit(repo, {
+				"stryker.config.json": config,
+				...Object.fromEntries(tests.map((path) => [path, "// t\n"])),
+			});
+			const head = commit(repo, { [sourcePath]: lines("export const x = 1;") });
+			stryker({ report: report({ [sourcePath]: [{ status: "Survived", line: 1 }] }) });
+			const [finding] = await found(base, head);
+			return finding!.properties.explanation.whatToDo;
+		}
+
+		it("is the one beside the source when there is one, ahead of the package's test directory", async () => {
+			expect(
+				await whatToDo("packages/p/src/a.ts", ["packages/p/src/a.test.ts", "packages/p/test/a.test.ts"]),
+			).toContain("in packages/p/src/a.test.ts so");
+		});
+
+		it("is the mirror of the source's path under the package's test directory, ahead of a flat one", async () => {
+			expect(
+				await whatToDo("packages/p/src/deep/a.ts", ["packages/p/test/deep/a.test.ts", "packages/p/test/a.test.ts"]),
+			).toContain("in packages/p/test/deep/a.test.ts so");
+		});
+
+		it("is the flat file under the package's test directory when nothing mirrors the path", async () => {
+			expect(await whatToDo("packages/p/src/deep/a.ts", ["packages/p/test/a.test.ts"])).toContain(
+				"in packages/p/test/a.test.ts so",
+			);
+		});
+
+		it("is a new file in the package's test directory when no test exists", async () => {
+			expect(await whatToDo("packages/p/src/deep/a.ts", [])).toContain("in a new packages/p/test/a.test.ts so");
+		});
+
+		it("is a new file beside the source when the source is not under a src directory", async () => {
+			expect(await whatToDo("lib/a.ts", [])).toContain("in a new lib/a.test.ts so");
+		});
+	});
+
+	describe("as a check of a tier", () => {
+		async function open() {
+			const fake = createFakeModels();
+			const registry = createReviewRegistry();
+			registry.install(checksExtension);
+			const harness = await openHarness(createMemoryStorage(), {
+				models: fake.models,
+				registry,
+				env: () => createNodeExecutionEnv(repo),
+			});
+			opened.push(harness);
+			return { harness, root: await harness.root(context, { agent: { model: fake.ref() } }) };
+		}
+
+		const trusted: WriterTrust = { trusted: true };
+
+		async function checks(base: string, head: string, writer: WriterTrust | null = trusted) {
+			const { harness, root } = await open();
+			const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+			const source: RepositorySource = { kind: "revision", commit: base };
+			const { config: loaded } = await loadConfig(repo, source, "");
+			const run = await runChecks(
+				harness,
+				{
+					rootConversationId: root.id,
+					changeset,
+					config: loaded,
+					source,
+					tier: "full",
+					...(writer === null ? {} : { writer }),
+				},
+				context,
+			);
+			return { harness, root, run };
+		}
+
+		const policy = lines(
+			"tiers:",
+			"  full: [static.mutation]",
+			"static:",
+			"  mutation: { enabled: true, timeout: 120 }",
+		);
+
+		it("records the finding and the Stryker version, and does not mutate the base", async () => {
+			const base = commit(repo, {
+				"melian.yaml": policy,
+				"stryker.config.json": config,
+				"packages/p/src/a.ts": a,
+			});
+			const head = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+			const fake = stryker({ report: report({ "packages/p/src/a.ts": [{ status: "Survived", line: 2 }] }) });
+			const { harness, root, run } = await checks(base, head);
+			expect(run.records).toEqual([
+				{
+					name: "static.mutation",
+					status: "ran",
+					version: "10.0.0",
+					findings: 1,
+					notes: [
+						"Mutation dry run uses the whole suite: no root tsconfig.json.",
+						"Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.",
+					],
+				},
+			]);
+			const findings = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+			expect(findings.map((finding) => finding.ruleId)).toEqual(["mutation/untested-behaviour"]);
+			expect(fake.calls()).toHaveLength(1);
+			expect(fake.heads()).toEqual([head]);
+		});
+
+		it("records budget and ignoreStatic as one policy advisory with both counts", async () => {
+			const base = commit(repo, {
+				"melian.yaml": policy.replace("timeout: 120", "timeout: 120, maxLines: 1"),
+				"stryker.config.json": config,
+			});
+			const head = commit(repo, { "packages/p/src/a.ts": a });
+			stryker({
+				report: report({ "packages/p/src/a.ts": [{ status: "Ignored", line: 1, outsideTests: true }] }, true),
+			});
+			const { harness, root, run } = await checks(base, head);
+			expect(run.records).toMatchObject([{ status: "ran", findings: 1 }]);
+			const findings = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+			expect(findings).toHaveLength(1);
+			expect(findings[0]!.resolved(defaultConfig).properties.resolution).toBe("advisory");
+			expect(findings[0]).toMatchObject({
+				ruleId: "mutation/unmutated",
+				properties: {
+					severity: "P3",
+					explanation: {
+						what: "Stryker left 4 changed production lines unmutated by maintainer policy: budget: 3 (static.mutation.maxLines is 1); ignoreStatic: 1.",
+					},
+				},
+			});
+		});
+
+		it("mutates the first lines of a change past the bound, and records the lines it left out as a finding, never as a clean check", async () => {
+			const base = commit(repo, {
+				"melian.yaml": policy.replace("timeout: 120", "timeout: 120, maxLines: 1"),
+				"stryker.config.json": config,
+			});
+			const head = commit(repo, { "packages/p/src/a.ts": a });
+			const fake = stryker({ report: report({}) });
+			const { harness, root, run } = await checks(base, head);
+			expect(run.records).toEqual([
+				{
+					name: "static.mutation",
+					status: "ran",
+					version: "10.0.0",
+					findings: 1,
+					notes: [
+						"Mutation dry run uses the whole suite: no root tsconfig.json.",
+						"Stryker mutated 1 changed lines in 1 file(s); the base was not mutated.",
+						"packages/p/src/a.ts produced no mutants, so nothing on its changed lines was judged.",
+					],
+				},
+			]);
+			const [left] = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+			expect(left).toMatchObject({
+				ruleId: "mutation/unmutated",
+				properties: { path: "packages/p/src/a.ts", severity: "P3" },
+			});
+			expect(left!.properties.explanation.what).toBe(
+				"Stryker left 3 changed production lines unmutated by maintainer policy: budget: 3 (static.mutation.maxLines is 1).",
+			);
+			expect(fake.calls()).toHaveLength(1);
+		});
+
+		it("records a run past its timeout as a skip with leave that still raises one P2 mutation/unmutated finding naming the files", async () => {
+			const base = commit(repo, {
+				"melian.yaml": policy.replace("timeout: 120", "timeout: 1"),
+				"stryker.config.json": config,
+				"packages/p/src/a.ts": a,
+				"packages/p/src/b.ts": a.replace("function a", "function b"),
+			});
+			const head = commit(repo, {
+				"packages/p/src/a.ts": a.replace("x > 0", "x >= 0"),
+				"packages/p/src/b.ts": a.replace("function a", "function b").replace("x > 0", "x >= 0"),
+			});
+			fakeTool(repo, "stryker", `if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi\nsleep 30`);
+			const { harness, root, run } = await checks(base, head);
+			expect(run.records).toEqual([
+				{
+					name: "static.mutation",
+					status: "skipped",
+					reason: mutationSkips.timeout(1),
+					cause: "timeout",
+				},
+			]);
+			const findings = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+			expect(
+				findings.map((finding) => [finding.ruleId, finding.properties.severity, finding.properties.path]),
+			).toEqual([["mutation/unmutated", "P2", "packages/p/src/a.ts"]]);
+			expect(findings[0]!.properties.explanation.what).toContain("packages/p/src/a.ts, packages/p/src/b.ts");
+		});
+
+		describe("for the writer of the head", () => {
+			const head = () => {
+				const base = commit(repo, {
+					"melian.yaml": policy,
+					"stryker.config.json": config,
+					"packages/p/src/a.ts": a,
+				});
+				return { base, head: commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") }) };
+			};
+
+			it("runs nothing, and records a skip with leave that says the writer is not trusted, for an untrusted writer", async () => {
+				const { base, head: tip } = head();
+				const fake = stryker({ report: report({}) });
+				const detail = "octocat has read permission on the repository";
+				const { run } = await checks(base, tip, { trusted: false, detail });
+				expect(run.records).toEqual([
+					{
+						name: "static.mutation",
+						status: "skipped",
+						reason: mutationSkips.untrustedWriter(detail),
+						cause: "untrustedWriter",
+					},
+				]);
+				expect(run.records[0]).toMatchObject({
+					reason: expect.stringContaining("the writer is not a trusted one"),
+				});
+				expect(mutationSkipHasLeave((run.records[0] as { cause?: string }).cause)).toBe(true);
+				expect(fake.calls()).toEqual([]);
+			});
+
+			it("runs for a trusted writer", async () => {
+				const { base, head: tip } = head();
+				const fake = stryker({ report: report({}) });
+				const { run } = await checks(base, tip, { trusted: true });
+				expect(run.records[0]).toMatchObject({ name: "static.mutation", status: "ran" });
+				expect(fake.calls()).toHaveLength(1);
+			});
+
+			it("skips when the review names no writer", async () => {
+				const { base, head: tip } = head();
+				const fake = stryker({ report: report({}) });
+				const { run } = await checks(base, tip, null);
+				expect(run.records).toEqual([
+					{
+						name: "static.mutation",
+						status: "skipped",
+						reason: mutationSkips.untrustedWriter("the review named no writer for this head"),
+						cause: "untrustedWriter",
+					},
+				]);
+				expect(fake.calls()).toEqual([]);
+			});
+
+			it("skips, even for a trusted writer, when the repository's policy does not trust writers", async () => {
+				const base = commit(repo, {
+					"melian.yaml": `trust: { writers: false }\n${policy}`,
+					"stryker.config.json": config,
+					"packages/p/src/a.ts": a,
+				});
+				const tip = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+				const fake = stryker({ report: report({}) });
+				const { run } = await checks(base, tip, { trusted: true });
+				expect(run.records).toEqual([
+					{
+						name: "static.mutation",
+						status: "skipped",
+						reason: mutationSkips.untrustedWriter("trust.writers is false in the repository's policy"),
+						cause: "untrustedWriter",
+					},
+				]);
+				expect(fake.calls()).toEqual([]);
+			});
+
+			it("runs again when the writer's trust changes", async () => {
+				const { base, head: tip } = head();
+				stryker({ report: report({}) });
+				const trustedRun = (await checks(base, tip, { trusted: true })).run.identity.policy;
+				const untrustedRun = (await checks(base, tip, { trusted: false, detail: "x" })).run.identity.policy;
+				expect(trustedRun).not.toBe(untrustedRun);
+			});
+		});
+
+		it("is off unless a melian.yaml turns it on", async () => {
+			const base = commit(repo, {
+				"melian.yaml": policy.replace("enabled: true", "enabled: false"),
+				"stryker.config.json": config,
+			});
+			const head = commit(repo, { "packages/p/src/a.ts": a });
+			const fake = stryker({ report: report({}) });
+			const { run } = await checks(base, head);
+			expect(run.records).toEqual([
+				{ name: "static.mutation", status: "skipped", reason: "static.mutation.enabled is false" },
+			]);
+			expect(fake.calls()).toEqual([]);
+		});
+
+		it("records the same skip when the checkout has an install but no Stryker in it", async () => {
+			const base = commit(repo, {
+				"melian.yaml": policy,
+				"stryker.config.json": config,
+				"packages/p/src/a.ts": a,
+			});
+			const tip = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+			fakeTool(repo, "other", "exit 0");
+			const { run } = await checks(base, tip);
+			expect(run.records).toEqual([{ name: "static.mutation", status: "skipped", reason: strykerNotInstalled }]);
+		});
+
+		it("records a skip, not a pass, when the checkout has no Stryker, and Melian carries none", async () => {
+			const base = commit(repo, {
+				"melian.yaml": policy,
+				"stryker.config.json": config,
+				"packages/p/src/a.ts": a,
+			});
+			const tip = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+			const { run } = await checks(base, tip);
+			expect(run.records).toEqual([{ name: "static.mutation", status: "skipped", reason: strykerNotInstalled }]);
+			expect(strykerNotInstalled).toContain("@stryker-mutator/core and @stryker-mutator/vitest-runner");
+			expect(mutationSkipHasLeave(strykerNotInstalled)).toBe(false);
+		});
+
+		it("runs again when the installed Stryker version changes, and not when the check is off", async () => {
+			const installed = (version: string) =>
+				writeFiles(repo, { "node_modules/@stryker-mutator/core/package.json": JSON.stringify({ version }) });
+			const identities = async (yaml: string) => {
+				const base = commit(repo, { "melian.yaml": yaml, "stryker.config.json": config, "packages/p/src/a.ts": a });
+				const head = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+				stryker({ report: report({}) });
+				const policies: string[] = [];
+				for (const version of ["10.0.0", "10.0.1"]) {
+					installed(version);
+					policies.push((await checks(base, head)).run.identity.policy);
+				}
+				return policies;
+			};
+			const [first, second] = await identities(policy);
+			expect(first).not.toBe(second);
+			const [offFirst, offSecond] = await identities(policy.replace("enabled: true", "enabled: false"));
+			expect(offFirst).toBe(offSecond);
+		});
+
+		it("runs again in the same storage when the Node runtime changes", async () => {
+			const base = commit(repo, { "melian.yaml": policy, "stryker.config.json": config, "packages/p/src/a.ts": a });
+			const tip = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+			const fake = stryker({ report: report({}) });
+			const { harness, root } = await open();
+			const changeset = await Changeset.resolve(repo, `${base}..${tip}`);
+			const source: RepositorySource = { kind: "revision", commit: base };
+			const { config: loaded } = await loadConfig(repo, source, "");
+			const again = () =>
+				runChecks(
+					harness,
+					{ rootConversationId: root.id, changeset, config: loaded, source, tier: "full", writer: trusted },
+					context,
+				);
+			const descriptor = Object.getOwnPropertyDescriptor(process.versions, "node")!;
+			try {
+				const first = await again();
+				expect((await again()).identity.task).toBe(first.identity.task);
+				expect(fake.calls()).toHaveLength(1);
+				Object.defineProperty(process.versions, "node", { ...descriptor, value: "26.0.0" });
+				const switched = await again();
+				expect(switched.identity.policy).not.toBe(first.identity.policy);
+				expect(switched.identity.task).not.toBe(first.identity.task);
+				expect(fake.calls()).toHaveLength(2);
+			} finally {
+				Object.defineProperty(process.versions, "node", descriptor);
+			}
+		});
+
+		it("runs again, in the same storage, once a missing Stryker executable is restored with no change of version", async () => {
+			const base = commit(repo, {
+				"melian.yaml": policy,
+				"stryker.config.json": config,
+				"packages/p/src/a.ts": a,
+			});
+			const tip = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+			writeFiles(repo, { "node_modules/@stryker-mutator/core/package.json": JSON.stringify({ version: "10.0.0" }) });
+			const { harness, root } = await open();
+			const changeset = await Changeset.resolve(repo, `${base}..${tip}`);
+			const source: RepositorySource = { kind: "revision", commit: base };
+			const { config: loaded } = await loadConfig(repo, source, "");
+			const again = () =>
+				runChecks(
+					harness,
+					{ rootConversationId: root.id, changeset, config: loaded, source, tier: "full", writer: trusted },
+					context,
+				);
+			const missing = await again();
+			expect(missing.records).toEqual([{ name: "static.mutation", status: "skipped", reason: strykerNotInstalled }]);
+			stryker({ report: report({}) });
+			const repaired = await again();
+			expect(repaired.records).toMatchObject([{ name: "static.mutation", status: "ran" }]);
+			expect(repaired.identity.policy).not.toBe(missing.identity.policy);
+		});
+
+		it("runs again when the host's sandbox changes, and not when the check is off", async () => {
+			const identities = async (yaml: string) => {
+				const base = commit(repo, { "melian.yaml": yaml, "stryker.config.json": config, "packages/p/src/a.ts": a });
+				const head = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+				stryker({ report: report({}) });
+				const policies: string[] = [];
+				for (const found of [unconfinedSandbox, undefined]) {
+					vi.spyOn(Sandbox, "detect").mockReturnValue(found);
+					policies.push((await checks(base, head)).run.identity.policy);
+				}
+				return policies;
+			};
+			const [first, second] = await identities(policy);
+			expect(first).not.toBe(second);
+			const [offFirst, offSecond] = await identities(policy.replace("enabled: true", "enabled: false"));
+			expect(offFirst).toBe(offSecond);
+		});
+	});
+});
+
+describe("staticToolSource for Stryker", () => {
+	it("is the checkout's install when it has one, and missing otherwise, since Melian carries none", () => {
+		expect(staticToolSource(repo, "mutation")).toEqual({ from: "missing" });
+		stryker();
+		expect(staticToolSource(repo, "mutation")).toEqual({
+			from: "checkout",
+			path: join(repo, "node_modules", ".bin", "stryker"),
+		});
+	});
+});
+
+describe("staticToolSource for a tool Melian carries", () => {
+	it.each(["biome", "tsc"] as const)("is Melian's own %s when the checkout has none", (tool) => {
+		const source = staticToolSource(repo, tool);
+		expect(source).toEqual({ from: "melian", path: expect.stringContaining(`/${tool}`) });
+	});
+});
+
+describe("strykerVersion", () => {
+	it("reads the checkout's install, and is unavailable when it has none or none that names a version", () => {
+		expect(strykerVersion(repo)).toBe("unavailable");
+		mkdirSync(join(repo, "node_modules/@stryker-mutator/core"), { recursive: true });
+		writeFileSync(
+			join(repo, "node_modules/@stryker-mutator/core/package.json"),
+			JSON.stringify({ version: "9.9.9" }),
+		);
+		expect(strykerVersion(repo)).toBe("9.9.9");
+		writeFileSync(
+			join(repo, "node_modules/@stryker-mutator/core/package.json"),
+			JSON.stringify({ name: "no version" }),
+		);
+		expect(strykerVersion(repo)).toBe("unavailable");
+		writeFileSync(join(repo, "node_modules/@stryker-mutator/core/package.json"), "not json");
+		expect(strykerVersion(repo)).toBe("unavailable");
+		expect(strykerVersion(join(repo, "missing"))).toBe("unavailable");
+	});
+});

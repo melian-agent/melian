@@ -25,7 +25,7 @@ import {
 	selectGoldens,
 } from "@melian-agent/evals";
 import * as testing from "@melian-agent/pipeline/testing";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const goldens = loadGoldens();
 
@@ -366,6 +366,12 @@ describe("the live flag", () => {
 });
 
 describe("MELIAN_EVAL_GOLDEN", { timeout: 60_000 }, () => {
+	let home: string;
+	beforeEach(() => {
+		home = mkdtempSync(join(tmpdir(), "melian-golden-home-"));
+	});
+	afterEach(() => rmSync(home, { recursive: true, force: true }));
+
 	it("selects every golden when unset or empty, and only the named one when set", () => {
 		expect(selectGoldens(goldens, undefined)).toEqual(goldens);
 		expect(selectGoldens(goldens, "")).toEqual(goldens);
@@ -389,7 +395,7 @@ describe("MELIAN_EVAL_GOLDEN", { timeout: 60_000 }, () => {
 	it("exits live.ts with status 2, saying no golden has the name, when the name matches no golden", () => {
 		const live = fileURLToPath(new URL("../src/live.ts", import.meta.url));
 		const result = spawnSync(process.execPath, ["--conditions=@melian-agent/source", live], {
-			env: { PATH: process.env.PATH, MELIAN_EVAL_LIVE: "1", MELIAN_EVAL_GOLDEN: "no-such-golden" },
+			env: { PATH: process.env.PATH, HOME: home, MELIAN_EVAL_LIVE: "1", MELIAN_EVAL_GOLDEN: "no-such-golden" },
 			encoding: "utf8",
 		});
 		expect(result.status).toBe(2);
@@ -399,7 +405,12 @@ describe("MELIAN_EVAL_GOLDEN", { timeout: 60_000 }, () => {
 	it("exits live.ts with status 2, saying the golden runs scripted only, when it sets live: false", () => {
 		const live = fileURLToPath(new URL("../src/live.ts", import.meta.url));
 		const result = spawnSync(process.execPath, ["--conditions=@melian-agent/source", live], {
-			env: { PATH: process.env.PATH, MELIAN_EVAL_LIVE: "1", MELIAN_EVAL_GOLDEN: "pre-existing-beside-change" },
+			env: {
+				PATH: process.env.PATH,
+				HOME: home,
+				MELIAN_EVAL_LIVE: "1",
+				MELIAN_EVAL_GOLDEN: "pre-existing-beside-change",
+			},
 			encoding: "utf8",
 		});
 		expect(result.status).toBe(2);

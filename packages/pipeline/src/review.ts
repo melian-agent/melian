@@ -27,6 +27,7 @@ import {
 	Merge,
 	type ModelReference,
 	ModelRoutingError,
+	mutationSkipHasLeave,
 	parseModelReference,
 	type RepositorySource,
 	type ReviewPlan,
@@ -53,7 +54,7 @@ import {
 	VerdictDocument,
 } from "./adjudication.ts";
 import { CallerContext, type CoverageSource } from "./callers.ts";
-import { checksExtension, runChecks } from "./checks.ts";
+import { checksExtension, runChecks, type WriterTrust } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
 import {
 	DecisionDocument,
@@ -919,6 +920,8 @@ interface ReviewSettings {
 	 * revision can be published. A range by default.
 	 */
 	readonly origin?: ReviewOrigin;
+	/** Whether the head's writer is trusted to have its own code run by `static.mutation`; see {@link WriterTrust}. */
+	readonly writer?: WriterTrust;
 	readonly context?: Context;
 }
 
@@ -1288,6 +1291,14 @@ function account(
 	);
 	const manifest = new Manifest(checks, [...supplied, ...lenses.records], config.checks.allowSkip);
 	for (const name of lenses.skippable) manifest.allowSkip(name);
+	// Mutation testing is advisory, so a change it has nothing to mutate in, or is too big or slow to mutate, or may not
+	// run on, passes with the reason recorded. Any other skip of it still leaves the review not reviewed, and so does a
+	// failed record, since the manifest lets only a skip pass.
+	for (const check of supplied) {
+		if (check.name === "static.mutation" && mutationSkipHasLeave(check.cause)) {
+			manifest.allowSkip(check.name);
+		}
+	}
 	const recorded = new Set(manifest.records().map((check) => check.name));
 	const { provider } = config.decisions;
 	for (const name of checks) {
@@ -1534,6 +1545,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						source: request.policy!,
 						tier,
 						rerunFailed: request.rerun,
+						...(request.writer === undefined ? {} : { writer: request.writer }),
 					},
 					request.context ?? backgroundContext,
 				)

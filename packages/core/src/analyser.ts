@@ -11,6 +11,9 @@ export function analyserOf(path: string): string | undefined {
 	if (/^tsconfig.*\.json$/.test(name)) return "tsc";
 	if (name === "package.json" || name === "package-lock.json") return "the packages Biome and tsc load";
 	if (/^\.eslintrc|^eslint\.config\./.test(name)) return "ESLint";
+	if (/^stryker\.config\./.test(name)) return "Stryker";
+	if (/^vitest\.(?:stryker\.)?config\.|^vitest\.(?:stryker\.)?setup|^stryker\.setup|^stryker-test-names\./.test(name))
+		return "the Vitest run Stryker drives";
 	return undefined;
 }
 

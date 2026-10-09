@@ -9,7 +9,7 @@ export class CacheScratch {
 	}
 	static async open(root: string): Promise<CacheScratch> {
 		const scratch = new CacheScratch(root);
-		for (const name of ["tools", "graphs", "coverage"]) await scratch.#sweep(join(scratch.root, name), 0);
+		for (const name of ["tools", "graphs", "coverage", "mutation"]) await scratch.#sweep(join(scratch.root, name), 0);
 		return scratch;
 	}
 	async directory(parent: string, kind: "fetch" | "graph"): Promise<string> {
@@ -38,7 +38,7 @@ export class CacheScratch {
 			const path = join(directory, entry.name);
 			const pid =
 				/^\.(?:fetch|graph)-(\d+)-/.exec(entry.name)?.[1] ?? /\.(\d+)\.[0-9a-f-]{36}\.tmp$/.exec(entry.name)?.[1];
-			if (pid !== undefined) {
+			if (pid !== undefined && Number(pid) > 1) {
 				try {
 					process.kill(Number(pid), 0);
 				} catch (error) {

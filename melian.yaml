@@ -22,11 +22,15 @@ models:
 
 tiers:
   fast: [guardrails, static.biome, static.tsc, static.enola]
-  # The default full tier, plus Melian's own repository lens under .melian/lenses/.
-  full: [standard, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions, lens.durability, lens.design]
+  # The default full tier, plus mutation testing of the changed lines and Melian's own repository lenses under
+  # .melian/lenses/. Mutation testing runs Stryker over the whole test suite, so it stays out of the fast tiers.
+  full: [standard, static.mutation, lens.contracts, lens.trust-boundary, lens.removed-behaviour, lens.tests, lens.conventions, lens.durability, lens.design]
 
 static:
   enola: { enabled: true }
+  # A cold run measured 1.5 s per line (1,678 lines in 2,489 s). 1,250 lines is about 31 minutes, inside the 40-minute
+  # aim with a fifth to spare, and 1,300 would not leave it. The decision records the arithmetic.
+  mutation: { enabled: true, timeout: 3600, maxLines: 1250 }
 
 # The golden corpus seeds defects on purpose, so no lens reviews a golden's trees as Melian's own code.
 lenses:
@@ -62,6 +66,10 @@ guardrails:
         pattern: '^\s*(?:describe|it|test)\.only\('
         paths: ["**/*.test.ts"]
         message: a focused test skips the rest of the suite
+      stryker-disable:
+        pattern: 'Stryker disable'
+        paths: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts", "!**/test/**", "!**/tests/**", "!**/*.test.*", "!**/*.spec.*", "!packages/evals/goldens/**", "!packages/evals/verifier/**"]
+        message: a Stryker disable comment hides the mutants of the lines it covers from static.mutation, so a guard stays unproven; test the behaviour instead, or a maintainer decides the exception
       unpinned-action:
         pattern: 'uses:\s*[^\s#]+@v\d'
         paths: [".github/workflows/**"]

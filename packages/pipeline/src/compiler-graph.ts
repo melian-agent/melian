@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { CallGroundTruth, CallPair, SymbolSite } from "@melian-agent/core";
 import {
+	isArrayLiteralExpression,
 	isArrowFunction,
 	isCallExpression,
 	isClassDeclaration,
@@ -20,7 +21,9 @@ import {
 	isNewExpression,
 	isNoSubstitutionTemplateLiteral,
 	isPropertyAccessExpression,
+	isPropertyAssignment,
 	isSetAccessorDeclaration,
+	isShorthandPropertyAssignment,
 	isStringLiteral,
 	isTaggedTemplateExpression,
 	isVariableDeclaration,
@@ -104,6 +107,7 @@ export class CompilerGraph {
 	readonly #canonical: string;
 	readonly #api: API;
 	readonly #paths = new Map<string, string>();
+	readonly #imports = new Map<string, string[]>();
 	readonly #snapshot: Snapshot;
 	private constructor(root: string, api: API, snapshot: Snapshot) {
 		this.#root = root;
@@ -223,13 +227,71 @@ export class CompilerGraph {
 		if (declaration) return this.#site(declaration) ?? "external";
 		return undefined;
 	}
+	#vitestStrings(property: string, config = "vitest.config.ts"): string[] | undefined {
+		const modules = new Set(
+			[config, ...this.#imports.keys()].filter(
+				(path) => path === config || /(?:^|\/)(?:vitest|vite)(?:[.-][^/]*)?\.config\.[cm]?[jt]s$/.test(path),
+			),
+		);
+		for (const path of modules) for (const target of this.#imports.get(path) ?? []) modules.add(target);
+		const paths = new Set<string>();
+		let found = false;
+		for (const project of this.#snapshot.getProjects()) {
+			for (const name of project.program.getSourceFileNames()) {
+				const path = this.#path(name);
+				if (path === undefined || !modules.has(path)) continue;
+				const source = project.program.getSourceFile(name);
+				const visit = (node: Node): void => {
+					if (node.kind === SyntaxKind.SpreadAssignment || node.kind === SyntaxKind.ComputedPropertyName)
+						throw new Error(`Vitest ${property} is computed`);
+					if (isShorthandPropertyAssignment(node) && node.name.getText() === property)
+						throw new Error(`Vitest ${property} is computed`);
+					if (isPropertyAssignment(node) && node.name.getText().replace(/^['"]|['"]$/g, "") === property) {
+						found = true;
+						const values = isArrayLiteralExpression(node.initializer)
+							? node.initializer.elements
+							: [node.initializer];
+						for (const value of values) {
+							if (!isStringLiteral(value) && !isNoSubstitutionTemplateLiteral(value))
+								throw new Error(`Vitest ${property} is computed`);
+							paths.add(value.text);
+						}
+					}
+					node.forEachChild(visit);
+				};
+				source!.forEachChild(visit);
+			}
+		}
+		return found ? [...paths].sort() : undefined;
+	}
+
+	setupFiles(config?: string): string[] {
+		const paths = (this.#vitestStrings("setupFiles", config) ?? []).map((value) => {
+			const path = this.#path(resolve(this.#root, value));
+			if (path === undefined) throw new Error("Vitest setup file is outside the repository");
+			return path;
+		});
+		return [...new Set(paths)].sort();
+	}
+
+	testIncludes(config?: string): string[] | undefined {
+		return this.#vitestStrings("include", config);
+	}
+
 	/** Counts distinct caller/callee pairs, resolved repository imports, external calls, and unresolved calls. */
-	read(): CallGroundTruth {
+	read(options: { importsOnly?: boolean; maxFiles?: number; deadline?: number } = {}): CallGroundTruth {
+		const visited = new Set<string>();
+		const bound = (name: string) => {
+			visited.add(name);
+			if (visited.size > (options.maxFiles ?? Infinity) || Date.now() >= (options.deadline ?? Infinity))
+				throw new Error("Compiler import graph reached its file or time bound");
+		};
 		const files = new Map<string, CallGroundTruth["files"][number]>();
 		const symbols = new Map<string, SymbolSite>();
 		for (const project of this.#snapshot.getProjects())
 			for (const name of project.program.getSourceFileNames()) {
 				if (!this.#path(name)) continue;
+				bound(name);
 				const physical = realpathSync(name);
 				const path = this.#path(physical);
 				if (path) this.#paths.set(process.platform === "linux" ? name : name.toLowerCase(), path);
@@ -238,6 +300,7 @@ export class CompilerGraph {
 			for (const path of project.program.getSourceFileNames()) {
 				const file = this.#path(path);
 				if (!file || files.has(file)) continue;
+				bound(path);
 				const source = project.program.getSourceFile(path);
 				if (!source || source.isDeclarationFile) continue;
 				const truth: CallGroundTruth["files"][number] = {
@@ -252,11 +315,11 @@ export class CompilerGraph {
 					symbols.set(`${site.file}:${site.line}:${site.column}:${site.name}`, site);
 				};
 				const visit = (node: Node, enclosing?: SymbolSite): void => {
-					if (callable(node)) {
+					if (!options.importsOnly && callable(node)) {
 						enclosing = this.#site(node);
 						if (enclosing) remember(enclosing);
 					}
-					if (isClassDeclaration(node) || isClassExpression(node)) {
+					if (!options.importsOnly && (isClassDeclaration(node) || isClassExpression(node))) {
 						const site = this.#site(node);
 						if (site) remember(site);
 					}
@@ -289,7 +352,10 @@ export class CompilerGraph {
 										: false,
 							});
 					}
-					if (isCallExpression(node) || isNewExpression(node) || isTaggedTemplateExpression(node)) {
+					if (
+						!options.importsOnly &&
+						(isCallExpression(node) || isNewExpression(node) || isTaggedTemplateExpression(node))
+					) {
 						const expression = isTaggedTemplateExpression(node) ? node.tag : node.expression;
 						if (expression.kind !== SyntaxKind.ImportKeyword) {
 							let callee = this.#callee(
@@ -349,6 +415,10 @@ export class CompilerGraph {
 				};
 				visit(source);
 				files.set(file, truth);
+				this.#imports.set(
+					file,
+					truth.imports.map((edge) => edge.target),
+				);
 			}
 		}
 		return {

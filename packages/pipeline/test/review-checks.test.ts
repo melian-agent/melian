@@ -100,6 +100,16 @@ describe("review drives checks", { timeout: 60_000 }, () => {
 		).toHaveLength(1);
 	});
 
+	it("hands the writer it is given to the checks, and names none when it has none", async () => {
+		const options = await setup();
+		const automatic = vi.spyOn(checks, "runChecks");
+		await reviewChangeset({ ...options, writer: { trusted: false, detail: "octocat has read permission" } });
+		await reviewChangeset(options);
+		const [first, second] = automatic.mock.calls.map(([, request]) => request);
+		expect(first!.writer).toEqual({ trusted: false, detail: "octocat has read permission" });
+		expect(second).not.toHaveProperty("writer");
+	});
+
 	it("reruns a cached failed compiler through the automatic path", async () => {
 		const options = await setup();
 		const log = join(repo, "compiler.log");

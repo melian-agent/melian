@@ -1,0 +1,27 @@
+{
+	"testRunner": "vitest",
+	"plugins": [
+		"@stryker-mutator/vitest-runner"
+	],
+	"vitest": {
+		"related": true,
+		"configFile": "vitest.stryker.config.ts"
+	},
+	"coverageAnalysis": "perTest",
+	"ignoreStatic": true,
+	"reporters": [
+		"json"
+	],
+	"incremental": true,
+	"concurrency": 4,
+	"timeoutMS": 30000,
+	"timeoutFactor": 2,
+	"dryRunTimeoutMinutes": 20,
+	"inPlace": true,
+	"disableTypeChecks": false,
+	"mutator": {
+		"excludedMutations": [
+			"StringLiteral"
+		]
+	}
+}

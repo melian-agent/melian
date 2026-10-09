@@ -7,6 +7,7 @@ export {
 	type RunIdentity,
 	readCheckRecords,
 	runChecks,
+	type WriterTrust,
 } from "./checks.ts";
 export {
 	CompareError,
@@ -84,6 +85,7 @@ export {
 	type ReviewOptions,
 	reviewChangeset,
 } from "./review.ts";
+export { Sandbox, type SandboxBackend, type SandboxPaths } from "./sandbox.ts";
 export {
 	runStaticTool,
 	type StaticRun,

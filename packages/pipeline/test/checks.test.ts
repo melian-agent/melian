@@ -1,5 +1,6 @@
 import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import * as core from "@melian-agent/core";
 import {
 	Changeset,
 	CheckError,
@@ -17,6 +18,7 @@ import {
 	createMemoryStorage,
 	createNodeExecutionEnv,
 	createReviewRegistry,
+	type defineTask,
 	type Harness,
 	openHarness,
 	readCheckRecords,
@@ -28,20 +30,26 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ChecksDocument } from "../src/checks.ts";
 import { findingsVersion } from "../src/findings.ts";
+import { Sandbox } from "../src/sandbox.ts";
 import * as staticRunner from "../src/static.ts";
 import { ToolProvisioning } from "../src/tool-provisioning.ts";
+import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
 import { commit, createRepository, fakeTool, lines, removeRepository } from "./fixtures/repo.ts";
+import { unconfinedSandbox } from "./fixtures/sandbox.ts";
 
 let repo: string;
 let opened: Harness[];
 
 beforeEach(() => {
+	fakeMutationProcesses();
 	repo = createRepository();
 	opened = [];
 });
 
 afterEach(async () => {
+	vi.restoreAllMocks();
 	await Promise.all(opened.map((harness) => harness.close(context)));
 	removeRepository(repo);
 });
@@ -57,7 +65,7 @@ async function open(options: { env?: boolean } = {}) {
 		env: options.env === false ? undefined : () => createNodeExecutionEnv(repo),
 	});
 	opened.push(harness);
-	return { harness, fake, root: await harness.root(context, { agent: { model: fake.ref() } }) };
+	return { harness, fake, registry, root: await harness.root(context, { agent: { model: fake.ref() } }) };
 }
 
 async function checks(base: string, head: string, tier?: string, options: { env?: boolean } = {}) {
@@ -88,6 +96,86 @@ const tsconfig = JSON.stringify({
 const fast = lines("tiers:", "  fast: [guardrails, static.biome, static.tsc]");
 
 describe("runChecks", () => {
+	it("does not claim mutation authority for an unknown tier", async () => {
+		vi.spyOn(Sandbox, "detect").mockReturnValue(unconfinedSandbox);
+		const base = commit(repo, { "a.ts": "export const a = 0;\n" });
+		const head = commit(repo, { "a.ts": "export const a = 1;\n" });
+		const { harness, root } = await open();
+		await expect(
+			runChecks(
+				harness,
+				{
+					rootConversationId: root.id,
+					changeset: await Changeset.resolve(repo, `${base}..${head}`),
+					config: {
+						...defaultConfig,
+						static: { ...defaultConfig.static, mutation: { ...defaultConfig.static.mutation, enabled: true } },
+					},
+					source: { kind: "revision", commit: base },
+					tier: "missing",
+				},
+				context,
+			),
+		).rejects.toMatchObject({ code: "unknownTier" });
+		const document = await harness.snapshot(ChecksDocument, root.id, context);
+		expect(document).toMatchObject({ tasks: expect.any(Object) });
+		expect(document).not.toHaveProperty("owners");
+	});
+
+	it("propagates an unexpected tier error before starting any task", async () => {
+		const base = commit(repo, { "a.ts": "export const a = 0;\n" });
+		const head = commit(repo, { "a.ts": "export const a = 1;\n" });
+		const { harness, root } = await open();
+		const error = new Error("tier reader broke");
+		vi.spyOn(core, "checksOfTier").mockImplementationOnce(() => {
+			throw error;
+		});
+		await expect(
+			runChecks(
+				harness,
+				{
+					rootConversationId: root.id,
+					changeset: await Changeset.resolve(repo, `${base}..${head}`),
+					config: defaultConfig,
+					source: { kind: "revision", commit: base },
+				},
+				context,
+			),
+		).rejects.toBe(error);
+		expect(await harness.snapshot(ChecksDocument, root.id, context)).toBeUndefined();
+	});
+
+	it("runs a stored check whose checks document is absent", async () => {
+		const base = commit(repo, { "a.ts": "export const a = 0;\n" });
+		const head = commit(repo, { "a.ts": "export const a = 1;\n" });
+		const { harness, root, registry } = await open();
+		const check = registry.snapshot().task("melian.check") as ReturnType<
+			typeof defineTask<unknown, { phase: "run" }, unknown>
+		>;
+		const changeset = await Changeset.resolve(repo, `${base}..${head}`);
+		const task = await root.commit(
+			(tx) =>
+				tx.createTask(
+					check,
+					{
+						check: "guardrails",
+						run: "direct",
+						authority: "direct",
+						changeset: changeset.toJSON(),
+						config: defaultConfig,
+						source: { kind: "revision", commit: base },
+					},
+					{ ownership: { kind: "conversation" } },
+				),
+			context,
+		);
+		expect(await harness.snapshot(ChecksDocument, root.id, context)).toBeUndefined();
+		expect((await harness.waitForTask(task, context)).state.outcome).toMatchObject({
+			status: "completed",
+			result: { name: "guardrails", status: "ran" },
+		});
+	});
+
 	it("reports exactly what the head introduced, marks what the base had as pre-existing, and drops what it resolved", {
 		timeout: 120_000,
 	}, async () => {

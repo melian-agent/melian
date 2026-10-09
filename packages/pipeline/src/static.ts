@@ -5,9 +5,13 @@ import { dirname, posix } from "node:path";
 import {
 	CheckError,
 	type EnolaSnapshot,
+	type MutationSettings,
+	type MutationSkipCause,
+	mutationSkips,
 	normaliseBiomeSarif,
 	parseJsonc,
 	parseTscDiagnostics,
+	type Revision,
 	type StaticTool,
 	type StaticToolSettings,
 	type ToolLog,
@@ -15,6 +19,10 @@ import {
 } from "@melian-agent/core";
 import { EnolaRun } from "./enola-static.ts";
 import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts";
+import type { MutationProcessHooks } from "./mutation-process.ts";
+import { MutationScratch } from "./mutation-scratch.ts";
+import { MutationRun, strykerNotInstalled } from "./mutation-static.ts";
+import { Sandbox } from "./sandbox.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
 
 /** The most a static tool may write, its report included. Past it the run fails with `outputTooLarge`. */
@@ -32,7 +40,15 @@ export interface StaticRunInput {
 	readonly policyCommit?: string;
 	readonly tools?: ToolProvisioning;
 	readonly tool: StaticTool;
-	readonly settings: StaticToolSettings | TscSettings;
+	readonly settings: StaticToolSettings | TscSettings | MutationSettings;
+	/** The change under review. Mutation testing mutates the lines it adds or edits, so `mutation` needs it. */
+	readonly revision?: Revision;
+	/** Writer trust supplied by the host; mutation tests run only when this is true. */
+	readonly trustedWriter?: boolean;
+	/** Records and clears supervised process identities for durable recovery. */
+	readonly mutationProcess?: MutationProcessHooks;
+	/** Whether the run still answers to the latest review of its revision; absence means it does. */
+	readonly holdsAuthority?: () => Promise<boolean>;
 }
 
 /** A tool's log for one revision, with anything the run set aside, or why the tool does not apply to it. */
@@ -44,7 +60,13 @@ export type StaticRun =
 			readonly baseLog?: ToolLog;
 			readonly snapshots?: EnolaSnapshot[];
 	  }
-	| { readonly status: "skipped"; readonly reason: string };
+	| {
+			readonly status: "skipped";
+			readonly reason: string;
+			readonly cause?: MutationSkipCause;
+			/** Findings a skip still raises, from a head-only log: the base is not run. */
+			readonly log?: ToolLog;
+	  };
 
 // Variables a git hook sets for its own repository; git would honour them over `-C`.
 const gitVariables = [
@@ -69,13 +91,16 @@ const gitVariables = [
 // or key from the Melian process, even on a maintainer's own machine.
 const passedVariables = ["PATH", "HOME", "TMPDIR", "LANG"] as const;
 
-function toolEnvironment(): { env: Record<string, string>; inheritEnv: false } {
+function toolEnvironment(replaced: Readonly<Record<string, string>>): {
+	env: Record<string, string>;
+	inheritEnv: false;
+} {
 	const env: Record<string, string> = {};
 	for (const name of passedVariables) {
 		const value = process.env[name];
 		if (value !== undefined) env[name] = value;
 	}
-	return { env, inheritEnv: false };
+	return { env: { ...env, ...replaced }, inheritEnv: false };
 }
 
 function quote(value: string): string {
@@ -87,11 +112,14 @@ function git(repoRoot: string, args: string): string {
 	return `unset ${gitVariables.join(" ")}; git -C ${quote(repoRoot)} -c core.hooksPath=/dev/null -c core.fsmonitor=false ${args}`;
 }
 
+// Stryker has no Melian copy: it and its Vitest runner are 161 packages that the reviewed repository installs, as it does
+// for the tests Stryker runs.
 const toolBinaries: Readonly<
-	Record<Exclude<StaticTool, "enola">, { readonly bin: string; readonly melian: () => string }>
+	Record<Exclude<StaticTool, "enola">, { readonly bin: string; readonly melian?: () => string }>
 > = {
 	biome: { bin: "biome", melian: () => melianBinary("@biomejs/biome", "bin/biome") },
 	tsc: { bin: "tsc", melian: () => melianBinary("typescript", "bin/tsc") },
+	mutation: { bin: "stryker" },
 };
 
 function melianBinary(packageName: string, bin: string): string {
@@ -104,6 +132,7 @@ interface Shell {
 }
 
 export class Run {
+	mutationScratch?: MutationScratch;
 	readonly input: StaticRunInput;
 	readonly context: Context;
 	readonly check: string;
@@ -122,13 +151,18 @@ export class Run {
 		return new CheckError(code, this.check, message, { cause });
 	}
 
-	// Runs a command, keeping the start of what it prints for error messages.
-	async shell(command: string, timeout = this.input.settings.timeout): Promise<Shell> {
+	// Runs a command, keeping the start of what it prints for error messages. `replaced` overrides a passed variable, such
+	// as the `HOME` of a command that runs the revision's own code.
+	async shell(
+		command: string,
+		timeout = this.input.settings.timeout,
+		replaced: Readonly<Record<string, string>> = {},
+	): Promise<Shell> {
 		let output = "";
 		const result = await this.input.env.exec(
 			command,
 			{
-				...toolEnvironment(),
+				...toolEnvironment(replaced),
 				timeout,
 				onOutput: (text) => {
 					if (output.length < 8192) output += text;
@@ -175,7 +209,9 @@ export class Run {
 		try {
 			await removeStaleWorktrees(this, scratch);
 			const added = await this.worktreeCommand(
-				this.git(`worktree add --detach --quiet --lock --reason ${quote(lockReason)} ${quote(root)} ${commit}`),
+				this.git(
+					`worktree add --detach --quiet --lock --reason ${quote(this.input.tool === "mutation" ? `melian-static mutation pid ${process.pid}` : lockReason)} ${quote(root)} ${commit}`,
+				),
 			);
 			if (added.code !== 0) throw this.fail("worktreeFailed", `git worktree add failed: ${added.output}`);
 			return await use(root, scratch);
@@ -238,27 +274,35 @@ async function binaryFor(run: Run, installed: string | undefined): Promise<strin
 	const own = installed === undefined ? undefined : posix.join(installed, ".bin", bin);
 	if (own !== undefined && (await run.exists(own))) return own;
 	try {
-		return melian();
+		// Absent for Stryker, which Melian carries no copy of: calling it fails into the catch as a missing tool does.
+		return melian!();
 	} catch (cause) {
 		throw run.fail("toolMissing", `${bin} is in neither the checkout's node_modules nor Melian's`, cause);
 	}
 }
 
+// Directories a tool writes into `node_modules` while it runs. Linked, their writes would land in the reviewer's checkout, and
+// the sandbox would refuse them; left out, the tool makes its own in the worktree.
+const cacheDirectories: ReadonlySet<string> = new Set([".cache", ".vite", ".vite-temp"]);
+
 // Links the checkout's installed dependencies into the worktree entry by entry. Problem: one link to the checkout's
 // node_modules made its workspace links, such as `node_modules/b -> ../packages/b`, resolve to the checkout's own
 // sources, so base and head type-checked against one tree. Solution: an entry that resolves inside the checkout, outside
 // any node_modules, is a workspace package, linked to the worktree's own copy; every other entry links to the install.
-async function linkDependencies(run: Run, root: string, scratch: string, notes: string[]): Promise<void> {
+async function linkDependencies(run: Run, root: string, scratch: string, notes: string[]): Promise<string[]> {
 	const { env, repoRoot, commit, tool } = run.input;
 	const canonical = await env.canonicalPath(repoRoot, run.context);
 	const checkout = canonical.ok ? canonical.value : repoRoot;
 	const commands: string[] = [];
 	const workspaces = new Set<string>();
+	// The install directories the worktree links to, which a sandboxed command is allowed to read.
+	const installs: string[] = [];
 	const link = async (from: string, to: string): Promise<void> => {
 		const listed = await env.listDir(from, run.context);
 		if (!listed.ok) return;
 		commands.push(`mkdir -p ${quote(to)}`);
 		for (const entry of listed.value) {
+			if (cacheDirectories.has(entry.name)) continue;
 			const source = posix.join(from, entry.name);
 			const target = posix.join(to, entry.name);
 			if (entry.kind === "directory" && entry.name.startsWith("@")) {
@@ -276,11 +320,13 @@ async function linkDependencies(run: Run, root: string, scratch: string, notes: 
 			}
 		}
 	};
+	installs.push(posix.join(checkout, "node_modules"));
 	await link(posix.join(checkout, "node_modules"), posix.join(root, "node_modules"));
 	// A workspace package's own node_modules holds the versions only it depends on.
 	for (const workspace of workspaces) {
 		const nested = posix.join(checkout, workspace, "node_modules");
 		if ((await run.exists(nested)) && (await run.exists(posix.join(root, workspace)))) {
+			installs.push(nested);
 			await link(nested, posix.join(root, workspace, "node_modules"));
 		}
 	}
@@ -291,7 +337,7 @@ async function linkDependencies(run: Run, root: string, scratch: string, notes: 
 	if (linked.code !== 0) throw run.fail("worktreeFailed", `linking dependencies failed: ${linked.output}`);
 	// A dependency bump in the checkout but not at this revision is accepted; the lockfile is policy, reviewed as such.
 	const lockfile = "package-lock.json";
-	if (!(await run.exists(posix.join(checkout, lockfile)))) return;
+	if (!(await run.exists(posix.join(checkout, lockfile)))) return installs;
 	const differs = await run.shell(
 		`cmp -s ${quote(posix.join(checkout, lockfile))} ${quote(posix.join(root, lockfile))}`,
 	);
@@ -300,6 +346,7 @@ async function linkDependencies(run: Run, root: string, scratch: string, notes: 
 			`${tool} resolved dependencies from the checkout's install, whose ${lockfile} differs from ${commit.slice(0, 12)}'s.`,
 		);
 	}
+	return installs;
 }
 
 // Each directory named node_modules that the revision tracks, outermost only.
@@ -436,7 +483,8 @@ export function staticToolSource(repoRoot: string, tool: StaticTool): StaticTool
 	const tracked = spawnSync("git", ["-C", repoRoot, "ls-files", "--", "node_modules"], { encoding: "utf8" });
 	if (tracked.status === 0 && tracked.stdout === "" && existsSync(own)) return { from: "checkout", path: own };
 	try {
-		return { from: "melian", path: melian() };
+		// Absent for Stryker, which Melian carries no copy of: calling it fails into the catch, as a missing install does.
+		return { from: "melian", path: melian!() };
 	} catch {
 		return { from: "missing" };
 	}
@@ -462,6 +510,17 @@ export function staticToolSource(repoRoot: string, tool: StaticTool): StaticTool
 export async function runStaticTool(input: StaticRunInput, context: Context): Promise<StaticRun> {
 	const run = new Run(input, context);
 	const { repoRoot, commit, tool } = input;
+	if (tool === "mutation" && input.trustedWriter !== true)
+		return {
+			status: "skipped",
+			reason: mutationSkips.untrustedWriter("the caller did not establish a trusted writer for this head"),
+			cause: "untrustedWriter",
+		};
+	// The mutation check runs the head's own tests, so it runs only where the host can confine them.
+	const sandbox = tool === "mutation" ? Sandbox.detect() : undefined;
+	if (tool === "mutation" && sandbox === undefined) {
+		return { status: "skipped", reason: mutationSkips.noSandbox, cause: "noSandbox" };
+	}
 	return run.inWorktree(async (root, scratch) => {
 		if (tool === "tsc") {
 			const { project } = input.settings as TscSettings;
@@ -490,9 +549,18 @@ export async function runStaticTool(input: StaticRunInput, context: Context): Pr
 		if (checkoutTracked.length > 0) notes.push(`${tool} ignored the checkout's node_modules, which git tracks.`);
 		const installed =
 			checkoutTracked.length === 0 && (await run.exists(checkoutModules)) ? checkoutModules : undefined;
-		if (installed !== undefined) await linkDependencies(run, root, scratch, notes);
+		const installs = installed === undefined ? undefined : await linkDependencies(run, root, scratch, notes);
+		if (
+			tool === "mutation" &&
+			!(installed !== undefined && (await run.exists(posix.join(installed, ".bin", "stryker"))))
+		) {
+			return { status: "skipped", reason: strykerNotInstalled };
+		}
 		const binary = await binaryFor(run, installed);
 		const version = await versionOf(run, binary);
+		if (tool === "mutation") {
+			return new MutationRun(run, root, scratch, binary, version, notes, sandbox as Sandbox, installs!).check();
+		}
 		const log =
 			tool === "biome"
 				? await runBiome(run, root, scratch, binary, version)
@@ -506,8 +574,22 @@ const lockReason = `melian-static pid ${process.pid}`;
 
 // Cleanup runs even when the caller cancelled, so it never takes the caller's context: a cancelled context makes every
 // command return at once, and the worktree would stay registered.
-async function removeWorktree(run: Run, scratch: string): Promise<void> {
+async function removeWorktree(run: Run, scratch: string, mutation = false): Promise<void> {
 	const cleanup = new Run({ ...run.input, settings: { ...run.input.settings, timeout: 60 } }, backgroundContext);
+	let files = run.mutationScratch;
+	if (mutation) {
+		const sandbox = Sandbox.detect();
+		if (sandbox === undefined)
+			throw run.fail("worktreeFailed", `cannot safely remove mutation scratch ${scratch}: no sandbox`);
+		files = MutationScratch.open(cleanup, scratch, sandbox, []);
+	}
+	if (files !== undefined) {
+		await files.close();
+		for (const root of [posix.join(scratch, "base", "tree"), posix.join(scratch, "tree")])
+			await cleanup.worktreeCommand(cleanup.git(`worktree unlock ${quote(root)}`));
+		await cleanup.worktreeCommand(cleanup.git("worktree prune --expire=now"));
+		return;
+	}
 	for (const root of [posix.join(scratch, "base", "tree"), posix.join(scratch, "tree")]) {
 		try {
 			await cleanup.worktreeCommand(cleanup.git(`worktree remove --force --force ${quote(root)}`));
@@ -515,7 +597,7 @@ async function removeWorktree(run: Run, scratch: string): Promise<void> {
 			// Best effort: a cleanup failure must not replace the run's result or error.
 		}
 	}
-	await run.input.env.remove(scratch, { recursive: true, force: true }, backgroundContext);
+	if (files === undefined) await run.input.env.remove(scratch, { recursive: true, force: true }, backgroundContext);
 }
 
 // A run killed with SIGKILL leaves its worktree registered and its directory in place, which `git worktree prune`
@@ -534,8 +616,18 @@ async function removeStaleWorktrees(run: Run, scratch: string): Promise<void> {
 		const owner = posix.basename(parent) === "base" ? posix.dirname(parent) : parent;
 		if (!posix.basename(owner).startsWith("melian-static-") || owner === scratch) continue;
 		const lock = fields.find((field) => field.startsWith("locked "))?.slice("locked ".length) ?? "";
-		const pid = /^melian-static pid (\d+)$/.exec(lock)?.[1];
-		if (pid !== undefined && (await run.shell(`kill -0 ${pid} 2> /dev/null`)).code === 0) continue;
-		await removeWorktree(run, owner);
+		const pid = /^melian-static (?:mutation )?pid (\d+)$/.exec(lock)?.[1];
+		if (pid !== undefined && Number(pid) > 1 && (await run.shell(`kill -0 ${pid} 2> /dev/null`)).code === 0) continue;
+		for (const component of [owner, parent, path]) {
+			const info = await run.input.env.fileInfo(component, run.context);
+			if (info.ok && info.value.kind === "symlink")
+				throw run.fail("worktreeFailed", `refused symlink ${component} during stale worktree cleanup`);
+		}
+		const gitDirectory = await run.input.env.fileInfo(posix.join(path, ".git"), run.context);
+		await removeWorktree(
+			run,
+			owner,
+			lock.startsWith("melian-static mutation ") || (gitDirectory.ok && gitDirectory.value.kind !== "file"),
+		);
 	}
 }
