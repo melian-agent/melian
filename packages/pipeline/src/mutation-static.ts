@@ -442,14 +442,7 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 		const { maxLines } = settings as MutationSettings;
 		const { kept: lines, omitted } = withinBound(changed, maxLines);
 		const count = Math.min(total, maxLines);
-		const unmutated = [
-			...Object.entries(omitted).map(([path, ranges]) => ({
-				path,
-				ranges,
-				...mutationUnmutated.pastBound(maxLines),
-			})),
-			...binary,
-		];
+
 		if (!(await this.#run.exists(posix.join(this.#root, config))))
 			throw this.#run.fail("toolFailed", `the revision has no ${config}, which Stryker needs`);
 		const entries = Object.entries(lines).flatMap(([path, ranges]) =>
@@ -481,7 +474,29 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 		}
 		const tests: Record<string, string> = {};
 		for (const path of Object.keys(lines)) tests[path] = await this.#nearestTest(path);
-		const read = normaliseMutationReport(text, { version: this.#version, lines, tests, unmutated });
+		const read = normaliseMutationReport(text, { version: this.#version, lines, tests, unmutated: binary });
+		if (total > maxLines) {
+			const [path, ranges] = Object.entries(omitted)[0]!;
+			read.log.runs[0].results.push({
+				ruleId: "unmutated",
+				level: "warning",
+				message: {
+					text: `Stryker left ${total - count} changed production lines unmutated: static.mutation.maxLines is ${maxLines}.`,
+				},
+				advice: {
+					whyHere: "The change exceeds the mutation budget the maintainer chose.",
+					whatToDo: "Raise static.mutation.maxLines to judge more lines when the run budget permits.",
+				},
+				locations: [
+					{
+						physicalLocation: {
+							artifactLocation: { uri: path.split("/").map(encodeURIComponent).join("/") },
+							region: { startLine: ranges[0]![0] },
+						},
+					},
+				],
+			});
+		}
 		// The base is not mutated, so it has nothing to subtract from the head's results.
 		const baseLog: ToolLog = { ...read.log, runs: [{ ...read.log.runs[0], results: [] }] };
 		return {

@@ -1207,7 +1207,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 					finding.properties.explanation.what,
 				]);
 
-		it("mutates a change of exactly the bound whole, and cuts one line past it at the bound, with a finding for the line", async () => {
+		it("mutates a change of exactly the bound whole, and cuts one line past it at the bound, with one advisory naming the omitted count and budget", async () => {
 			const fake = stryker({ report: report({}) });
 			const bound = head(5, "bound");
 			expect(await leftOut(bound.base, bound.head, 5)).toEqual([]);
@@ -1216,8 +1216,8 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			expect(await leftOut(past.base, past.head, 5)).toEqual([
 				[
 					"packages/p/src/past.ts",
-					"P2",
-					"Stryker did not judge line 6 of packages/p/src/past.ts: the change is past static.mutation.maxLines of 5, so the run mutated other lines and left these out.",
+					"P3",
+					"Stryker left 1 changed production lines unmutated: static.mutation.maxLines is 5.",
 				],
 			]);
 			expect(lastEntries(fake)).toEqual(["packages/p/src/past.ts:1-5"]);
@@ -1242,10 +1242,12 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 				"packages/p/src/b.ts:1-5",
 				"packages/p/src/z.ts:1-1",
 			]);
-			expect((await leftOut(base, head, 11)).map(([path, , what]) => [path, what])).toEqual([
-				["packages/p/src/a.ts", expect.stringContaining("lines 6-10 of packages/p/src/a.ts")],
-				["packages/p/src/b.ts", expect.stringContaining("lines 6-10 of packages/p/src/b.ts")],
-				["packages/p/src/z.ts", expect.stringContaining("line 2 of packages/p/src/z.ts")],
+			expect(await leftOut(base, head, 11)).toEqual([
+				[
+					"packages/p/src/a.ts",
+					"P3",
+					"Stryker left 11 changed production lines unmutated: static.mutation.maxLines is 11.",
+				],
 			]);
 		});
 
@@ -1358,10 +1360,10 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			await mutate(base, head, { maxLines: 2 });
 			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:2-3"]);
 			expect((await leftOut(base, head, 2)).map(([, , what]) => what)).toEqual([
-				expect.stringContaining("lines 4, 8 of packages/p/src/a.ts"),
+				"Stryker left 2 changed production lines unmutated: static.mutation.maxLines is 2.",
 			]);
 			expect((await leftOut(base, head, 3)).map(([, , what]) => what)).toEqual([
-				expect.stringContaining("line 8 of packages/p/src/a.ts"),
+				"Stryker left 1 changed production lines unmutated: static.mutation.maxLines is 3.",
 			]);
 		});
 
@@ -1687,8 +1689,13 @@ exit 1`,
 				},
 			]);
 			const [left] = await readFindings(harness, root.id, revisionKey({ base, head }), context);
-			expect(left).toMatchObject({ ruleId: "mutation/unmutated", properties: { path: "packages/p/src/a.ts" } });
-			expect(left!.properties.explanation.what).toContain("lines 2-4 of packages/p/src/a.ts");
+			expect(left).toMatchObject({
+				ruleId: "mutation/unmutated",
+				properties: { path: "packages/p/src/a.ts", severity: "P3" },
+			});
+			expect(left!.properties.explanation.what).toBe(
+				"Stryker left 3 changed production lines unmutated: static.mutation.maxLines is 1.",
+			);
 			expect(fake.calls()).toHaveLength(1);
 		});
 
