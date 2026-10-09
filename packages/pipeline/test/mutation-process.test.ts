@@ -1,3 +1,4 @@
+import type * as childProcess from "node:child_process";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -17,6 +18,11 @@ import {
 	terminateRecorded,
 } from "../src/mutation-process.ts";
 import { Run } from "../src/static.ts";
+
+vi.mock("node:child_process", async (importOriginal) => {
+	const original = await importOriginal<typeof childProcess>();
+	return { ...original, spawnSync: vi.fn(original.spawnSync) };
+});
 
 // Every test here drives the code on fakes. Nothing in this file starts a process or sends a signal; a kill is a function
 // that records its arguments. The real-process test is in mutation-process-real.test.ts.
@@ -156,6 +162,45 @@ describe("parseProcesses", () => {
 		expect(parseProcesses("garbage\n\n 5 1 Mon Jan  1 00:00:00 2026")).toEqual([
 			{ pid: 5, ppid: 1, start: "Mon Jan 1 00:00:00 2026" },
 		]);
+	});
+
+	it("rejects a valid-looking row with text before its pid", () => {
+		expect(parseProcesses("garbage 101 1 Thu Oct 8 10:00:00 2026")).toEqual([]);
+	});
+});
+
+describe("ProcessTable reads", () => {
+	const actual = vi.mocked(spawnSync).getMockImplementation()!;
+	afterEach(() => {
+		vi.restoreAllMocks();
+		vi.mocked(spawnSync).mockImplementation(actual);
+	});
+
+	it("asks ps for every pid, parent and start in decoded text", () => {
+		const asked = vi.mocked(spawnSync).mockImplementation((command, args, options) => {
+			expect(command).toBe("/bin/ps");
+			expect(args).toEqual(["-A", "-o", "pid=,ppid=,lstart="]);
+			expect(options).toEqual({ encoding: "utf8" });
+			return { status: 0, stdout: " 101 1 Thu Oct 8 10:00:00 2026", stderr: "" } as ReturnType<typeof spawnSync>;
+		});
+		expect(new ProcessTable().list()).toEqual([{ pid: 101, ppid: 1, start: "Thu Oct 8 10:00:00 2026" }]);
+		expect(asked).toHaveBeenCalledTimes(1);
+	});
+
+	it("reports a failed ps request instead of accepting its output", () => {
+		vi.mocked(spawnSync).mockReturnValue({
+			status: 1,
+			stdout: "101 1 Thu Oct 8 10:00:00 2026",
+			stderr: "permission denied",
+		} as ReturnType<typeof spawnSync>);
+		expect(() => new ProcessTable().list()).toThrow("ps failed: permission denied");
+	});
+
+	it("finds the requested start among other processes and returns undefined for an absent pid", () => {
+		const table = new ProcessTable();
+		vi.spyOn(table, "list").mockReturnValue([at(10, 1, "other"), at(20, 1, "wanted")]);
+		expect(table.start(20)).toBe("wanted");
+		expect(table.start(30)).toBeUndefined();
 	});
 });
 
