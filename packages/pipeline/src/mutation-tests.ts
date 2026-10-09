@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -91,7 +91,7 @@ export class MutationTests {
 		const helper = fileURLToPath(import.meta.url);
 		try {
 			const result = await run.shell(
-				`${quote(process.execPath)} --conditions=@melian-agent/source --max-old-space-size=512 ${quote(helper)} ${quote(root)} ${quote(output)} ${quote(project)} ${quote(JSON.stringify(changed))}`,
+				`${quote(process.execPath)} --conditions=@melian-agent/source --max-old-space-size=512 ${quote(helper)} ${quote(root)} ${quote(output)} ${quote(project)} ${quote(JSON.stringify(changed))} ${quote(posix.join(run.input.repoRoot, "node_modules/vitest/package.json"))}`,
 				30,
 			);
 			if (result.code !== 0) throw new Error(`compiler exited ${result.code}`);
@@ -107,8 +107,9 @@ export class MutationTests {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-	const [root, output, project, targets] = process.argv.slice(2);
-	if (!root || !output || !project || !targets) throw new Error("Expected root, output, project and changed paths");
+	const [root, output, project, targets, vitest] = process.argv.slice(2);
+	if (!root || !output || !project || !targets || !vitest)
+		throw new Error("Expected root, output, project, changed paths and installed Vitest manifest");
 	if (!existsSync(posix.join(root, "tsconfig.json"))) throw new Error("No root tsconfig.json");
 	writeFileSync(
 		project,
@@ -130,6 +131,11 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
 	);
 	const program = CompilerGraph.open(root, project);
 	try {
+		const installed = realpathSync(vitest);
+		if (!installed.split(posix.sep).includes("node_modules"))
+			throw new Error("Vitest is a workspace, not an install");
+		if ((JSON.parse(readFileSync(installed, "utf8")) as { name?: string }).name !== "vitest")
+			throw new Error("The installed Vitest manifest names another package");
 		const config = JSON.parse(readFileSync(posix.join(root, "stryker.config.json"), "utf8")) as {
 			vitest?: { configFile?: string };
 		};
@@ -145,7 +151,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
 					JSON.parse(targets) as string[],
 					undefined,
 					undefined,
-					createRequire(posix.join(root, "package.json")),
+					createRequire(installed),
 				),
 			),
 		);

@@ -303,7 +303,7 @@ it("uses the whole suite without starting a compiler when the root project is ab
 	expect(shell).not.toHaveBeenCalled();
 });
 
-it.each([0, 1, 2, 3])(
+it.each([0, 1, 2, 3, 4])(
 	"rejects missing compiler-child argument %s before writing a project",
 	{ timeout: 60_000 },
 	(missing) => {
@@ -311,7 +311,13 @@ it.each([0, 1, 2, 3])(
 		const output = join(root, "selection.json");
 		const project = join(root, "project.json");
 		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["**/*.ts"] }));
-		const args = [root, output, project, JSON.stringify(["src/a.ts"])];
+		const args = [
+			root,
+			output,
+			project,
+			JSON.stringify(["src/a.ts"]),
+			fileURLToPath(new URL("../../../node_modules/vitest/package.json", import.meta.url)),
+		];
 		args[missing] = "";
 		let stderr = "";
 		try {
@@ -329,7 +335,7 @@ it.each([0, 1, 2, 3])(
 			} catch (error) {
 				stderr = String((error as { stderr: unknown }).stderr);
 			}
-			expect(stderr).toContain("Error: Expected root, output, project and changed paths");
+			expect(stderr).toContain("Error: Expected root, output, project, changed paths and installed Vitest manifest");
 			expect(existsSync(project)).toBe(false);
 			expect(existsSync(output)).toBe(false);
 		} finally {
@@ -354,6 +360,7 @@ it("rejects a compiler-child root without a project before writing scratch outpu
 					output,
 					project,
 					JSON.stringify(["src/a.ts"]),
+					fileURLToPath(new URL("../../../node_modules/vitest/package.json", import.meta.url)),
 				],
 				{ cwd: root, encoding: "utf8", stdio: "pipe", timeout: 30_000 },
 			);
@@ -483,6 +490,61 @@ it.each(["default spec", "custom include", "default jsx", "default cjs"])(
 				tests: [name],
 				include: [name],
 			});
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	},
+);
+
+it.each(["head self-reference", "workspace package", "wrong package"])(
+	"keeps Vitest defaults in the installation boundary for %s",
+	async (kind) => {
+		const root = mkdtempSync(join(tmpdir(), "melian-vitest-boundary-"));
+		const checkout = fileURLToPath(new URL("../../../", import.meta.url));
+		try {
+			for (const name of ["src", "test", "scratch", "node_modules"]) mkdirSync(join(root, name));
+			writeFileSync(
+				join(root, "package.json"),
+				JSON.stringify({
+					name: "vitest",
+					type: "module",
+					exports: { "./config": "./evil.cjs", "./package.json": "./package.json" },
+				}),
+			);
+			writeFileSync(join(root, "evil.cjs"), 'throw new Error("head package defaults executed");');
+			writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["src/*.ts", "test/*.ts"] }));
+			writeFileSync(join(root, "stryker.config.json"), "{}");
+			writeFileSync(join(root, "src/a.ts"), "export const a = 1;");
+			writeFileSync(join(root, "test/a.spec.ts"), 'import { a } from "../src/a.ts"; export const check = a;');
+			if (kind === "head self-reference")
+				symlinkSync(join(checkout, "node_modules/vitest"), join(root, "node_modules/vitest"), "dir");
+			else {
+				const install = kind === "workspace package" ? join(root, "workspace") : join(root, "node_modules/vitest");
+				mkdirSync(join(install, "node_modules"), { recursive: true });
+				writeFileSync(
+					join(install, "package.json"),
+					JSON.stringify({
+						name: kind === "wrong package" ? "another" : "vitest",
+						exports: { "./config": "./config.cjs", "./package.json": "./package.json" },
+					}),
+				);
+				writeFileSync(join(install, "config.cjs"), 'exports.defaultInclude = ["test/**/*.spec.ts"];');
+				symlinkSync(join(checkout, "node_modules/picomatch"), join(install, "node_modules/picomatch"), "dir");
+				if (kind === "workspace package") symlinkSync(install, join(root, "node_modules/vitest"), "dir");
+			}
+			const run = new Run(
+				{
+					env: createNodeExecutionEnv(root),
+					repoRoot: root,
+					commit: "a".repeat(40),
+					tool: "mutation",
+					settings: defaultConfig.static.mutation,
+				},
+				backgroundContext,
+			);
+			const result = (await MutationTests.open(run, root, join(root, "scratch"), ["src/a.ts"])).toJSON();
+			if (kind === "head self-reference") expect(result).toMatchObject({ tests: ["test/a.spec.ts"] });
+			else expect(result).toEqual({ note: expect.stringContaining("whole suite: compiler exited 1") });
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}
