@@ -945,3 +945,5 @@ The coverage artifact classes and cache storage are built. Review coverage disti
 Melian’s committed Enola constraint forbids core importing the pipeline by package name, subpath or resolved relative path. The scratch proof caught all three forms. A directory-only selector missed the workspace alias, so named targets accompany the path rule. The broader harness-free test remains.
 
 Signal targets. Automatic mutation excludes Melian’s signal-sending production files: `packages/core/src/git.ts`, `packages/pipeline/src/cache-scratch.ts` and `packages/pipeline/src/mutation-process.ts`. Their contracts are proved on fake process controls. Keep this list in `mutation-static.ts` current when adding signal code.
+
+Mutation cleanup deletes scratch under retained confinement, then unlocks and prunes its missing git registration. Host git never recursively removes a head-written scratch path, including one recreated after deletion.

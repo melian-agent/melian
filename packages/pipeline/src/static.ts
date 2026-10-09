@@ -583,7 +583,13 @@ async function removeWorktree(run: Run, scratch: string, mutation = false): Prom
 			throw run.fail("worktreeFailed", `cannot safely remove mutation scratch ${scratch}: no sandbox`);
 		files = MutationScratch.open(cleanup, scratch, sandbox, []);
 	}
-	if (files !== undefined) await files.close();
+	if (files !== undefined) {
+		await files.close();
+		for (const root of [posix.join(scratch, "base", "tree"), posix.join(scratch, "tree")])
+			await cleanup.worktreeCommand(cleanup.git(`worktree unlock ${quote(root)}`));
+		await cleanup.worktreeCommand(cleanup.git("worktree prune --expire=now"));
+		return;
+	}
 	for (const root of [posix.join(scratch, "base", "tree"), posix.join(scratch, "tree")]) {
 		try {
 			await cleanup.worktreeCommand(cleanup.git(`worktree remove --force --force ${quote(root)}`));
