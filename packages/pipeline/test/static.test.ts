@@ -249,10 +249,9 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			context,
 		);
 		expect(run.status).toBe("ran");
-		expect(command).toHaveBeenCalledTimes(1);
-		expect(command.mock.calls[0]![1]).toMatchObject({
-			installs: [join(repo, "node_modules"), join(repo, "packages/b/node_modules")],
-		});
+		expect(command.mock.calls).toHaveLength(4);
+		for (const [, paths] of command.mock.calls)
+			expect(paths.installs).toEqual([join(repo, "node_modules"), join(repo, "packages/b/node_modules")]);
 	});
 
 	it("prefers the tool in the checkout's node_modules", { timeout: 60_000 }, async () => {

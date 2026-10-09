@@ -41,6 +41,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MutationScratch } from "../src/mutation-scratch.ts";
 import { strykerNotInstalled, strykerVersion } from "../src/mutation-static.ts";
 import { MutationTests } from "../src/mutation-tests.ts";
 import { Sandbox } from "../src/sandbox.ts";
@@ -580,17 +581,16 @@ async instrument(files, options) {
 					profile: () => "(version 1)(allow default)",
 				} as unknown as Sandbox);
 			const env = createNodeExecutionEnv(repo);
-			const write = env.writeFile.bind(env);
+			const execute = env.exec.bind(env);
 			const suffix =
 				kind === "include" ? "test-include.json" : kind === "uncovered" ? "uncovered.mjs" : "sandbox.sb";
-			vi.spyOn(env, "writeFile").mockImplementation((path, content, context) =>
-				path.endsWith(suffix)
-					? Promise.resolve({
-							ok: false,
-							error: Object.assign(new Error("write denied"), { code: "permission_denied" as const }),
-						})
-					: write(path, content, context),
-			);
+			vi.spyOn(env, "exec").mockImplementation(async (command, options, executionContext) => {
+				if (command.includes(suffix)) {
+					await options?.onOutput?.("write denied", executionContext);
+					return Promise.resolve({ ok: true, value: { exitCode: 1 } });
+				}
+				return execute(command, options, executionContext);
+			});
 			await expect(mutate(base, head, { env })).rejects.toMatchObject({
 				code: "toolFailed",
 				message: expect.stringContaining("write denied"),
@@ -682,12 +682,15 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		);
 		gitIn(repo, "remote", "add", "origin", "https://user:secret-token@example.invalid/repo.git");
 		const env = createNodeExecutionEnv(repo);
-		const write = env.writeFile.bind(env);
+		const write = MutationScratch.prototype.write;
 		const restored: boolean[] = [];
-		vi.spyOn(env, "writeFile").mockImplementation(async (path, content, executionContext) => {
-			const result = await write(path, content, executionContext);
-			if (path.endsWith("/tree/.git")) restored.push(result.ok && readFileSync(path, "utf8") === content);
-			return result;
+		vi.spyOn(MutationScratch.prototype, "write").mockImplementation(async function (
+			this: MutationScratch,
+			path,
+			content,
+		) {
+			await write.call(this, path, content);
+			if (path.endsWith("/tree/.git")) restored.push(readFileSync(path, "utf8") === content);
 		});
 		await mutate(base, head, { env });
 		expect(restored).toEqual([true]);
@@ -727,8 +730,9 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		vi.mocked(Sandbox.detect).mockReturnValue({
 			...unconfinedSandbox,
 			profile: () => profile,
-			command: (inner: string, _paths: unknown, file: string) => {
-				expect(readFileSync(file, "utf8")).toBe(profile);
+			command: (inner: string, _paths: unknown, file: string, trusted?: string) => {
+				if (trusted === undefined) expect(readFileSync(file, "utf8")).toBe(profile);
+				else expect(trusted).toBe(profile);
 				return inner;
 			},
 		} as unknown as Sandbox);
@@ -741,7 +745,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		const fake = stryker({ report: report({}) });
 		const env = createNodeExecutionEnv(repo);
 		const execute = env.exec.bind(env);
-		const written = vi.spyOn(env, "writeFile");
+		const written = vi.spyOn(MutationScratch.prototype, "write");
 		vi.spyOn(env, "exec").mockImplementation((command, options, executionContext) =>
 			execute(
 				command.includes("fetch --quiet") ? "echo 'no objects to give' >&2; exit 3" : command,
@@ -772,6 +776,30 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		]);
 		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
 	});
+
+	it.each(["tree", "tree/.git"])(
+		"refuses a head-swapped %s during restoration without changing the host",
+		async (component) => {
+			const { base, head } = twoCommits();
+			const outside = join(artifacts, "host");
+			mkdirSync(join(outside, ".git"), { recursive: true });
+			writeFileSync(join(outside, ".git/sentinel"), "host data");
+			const swapped = component === "tree" ? '"$PWD"' : '"$PWD/.git"';
+			fakeTool(
+				repo,
+				"stryker",
+				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+mv ${swapped} ${swapped}.saved
+ln -s '${component === "tree" ? outside : join(outside, ".git")}' ${swapped}
+exit 1`,
+			);
+			const env = createNodeExecutionEnv(repo);
+			const remove = vi.spyOn(env, "remove");
+			await expect(mutate(base, head, { env })).rejects.toThrow("symlink");
+			expect(readFileSync(join(outside, ".git/sentinel"), "utf8")).toBe("host data");
+			expect(remove.mock.calls.filter(([path]) => path.includes("melian-static-")).length).toBe(0);
+		},
+	);
 
 	describe("the sandbox", () => {
 		const hostSandbox = Sandbox.detect();

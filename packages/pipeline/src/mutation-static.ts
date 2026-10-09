@@ -14,9 +14,9 @@ import {
 	type Revision,
 	type ToolLog,
 } from "@melian-agent/core";
-import { backgroundContext } from "./harness.ts";
 import { MutationCache } from "./mutation-cache.ts";
 import { MutationProcess } from "./mutation-process.ts";
+import { MutationScratch } from "./mutation-scratch.ts";
 import { type MutationTestSelection, MutationTests } from "./mutation-tests.ts";
 import { nodeInstallation, type Sandbox } from "./sandbox.ts";
 import type { Run, StaticRun } from "./static.ts";
@@ -186,6 +186,7 @@ export class MutationRun {
 	readonly #notes: string[];
 	readonly #sandbox: Sandbox;
 	readonly #installs: readonly string[];
+	#files?: MutationScratch;
 
 	constructor(
 		run: Run,
@@ -262,8 +263,8 @@ export class MutationRun {
 		if (!link.ok) throw this.#run.fail("worktreeFailed", `could not read ${file}: ${link.error.message}`);
 		// Cleanup runs even when the caller cancelled, so it takes no caller context, as removing the worktree does.
 		const restore = async () => {
-			await env.remove(file, { recursive: true, force: true }, backgroundContext);
-			await env.writeFile(file, link.value, backgroundContext);
+			await this.#files!.remove(file);
+			await this.#files!.write(file, link.value);
 		};
 		const upload = quote("git -c uploadpack.allowAnySHA1InWant=true upload-pack");
 		const git = (args: string) => this.#run.git(args, this.#root);
@@ -310,8 +311,7 @@ const report = { schemaVersion: "1.0", config, files: Object.fromEntries(files.m
 mkdirSync("reports/mutation", { recursive: true });
 writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 `;
-		const written = await this.#run.input.env.writeFile(script, text, this.#run.context);
-		if (!written.ok) throw this.#run.fail("toolFailed", `could not write ${script}: ${written.error.message}`);
+		await this.#files!.write(script, text);
 		return `${quote(process.execPath)} ${quote(script)}`;
 	}
 
@@ -325,6 +325,8 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 		lines: Record<string, [number, number][]>,
 	): Promise<string | { skipped: string }> {
 		const { repoRoot, policyCommit, base, commit, trustedWriter } = this.#run.input;
+		this.#files = MutationScratch.open(this.#run, this.#scratch, this.#sandbox, this.#installs);
+		this.#run.mutationScratch = this.#files;
 		const cache = await MutationCache.open((await CacheLocation.open(repoRoot)).root, {
 			policy: policyCommit ?? base ?? commit,
 			trusted: trustedWriter === true,
@@ -337,13 +339,7 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 		const incremental = await cache.stage(posix.join(this.#scratch, "incremental"));
 		const includeFile = posix.join(this.#scratch, "test-include.json");
 		if ("include" in selection) {
-			const written = await this.#run.input.env.writeFile(
-				includeFile,
-				JSON.stringify(selection.include.map(literal)),
-				this.#run.context,
-			);
-			if (!written.ok)
-				throw this.#run.fail("toolFailed", `could not write ${includeFile}: ${written.error.message}`);
+			await this.#files.write(includeFile, JSON.stringify(selection.include.map(literal)));
 		}
 		const log = posix.join(this.#scratch, "stryker.log");
 		const home = posix.join(this.#scratch, "home");
@@ -369,9 +365,7 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 		const profile = this.#sandbox.profile(paths);
 		const profileFile = posix.join(this.#scratch, "sandbox.sb");
 		if (profile !== undefined) {
-			const written = await this.#run.input.env.writeFile(profileFile, profile, this.#run.context);
-			if (!written.ok)
-				throw this.#run.fail("toolFailed", `could not write ${profileFile}: ${written.error.message}`);
+			await this.#files.write(profileFile, profile);
 		}
 		let result: Awaited<ReturnType<Run["shell"]>>;
 		const restore = await this.#ownGit();

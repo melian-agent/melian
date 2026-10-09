@@ -211,9 +211,10 @@ export class Sandbox {
 	 * `inner` run under the sandbox, as one shell command. `profileFile` is where the caller wrote {@link profile}. The
 	 * command runs in the worktree. Writes reach scratch only.
 	 */
-	command(inner: string, paths: SandboxPaths, profileFile: string): string {
+	command(inner: string, paths: SandboxPaths, profileFile: string, profile?: string): string {
 		if (this.backend === "seatbelt") {
-			return `cd ${quote(paths.worktree)} && /usr/bin/sandbox-exec -f ${quote(profileFile)} /bin/bash -c ${quote(inner)}`;
+			const policy = profile === undefined ? `-f ${quote(profileFile)}` : `-p ${quote(profile)}`;
+			return `cd ${quote(paths.worktree)} && /usr/bin/sandbox-exec ${policy} /bin/bash -c ${quote(inner)}`;
 		}
 		const bind = (flag: string, path: string) => `${flag} ${quote(path)} ${quote(path)}`;
 		const system = linuxReads.filter((path) => existsSync(path)).map((path) => bind("--ro-bind", path));

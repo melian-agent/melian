@@ -292,6 +292,15 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 	const bubblewrap = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend: "bubblewrap" as const });
 	const where = { worktree: "/work/tree", scratch: "/work", installs: ["/checkout/node_modules"], node: "/opt/node" };
 
+	it("uses a retained inline profile for housekeeping instead of a head-written profile file", () => {
+		expect(seatbelt.command("true", where, "/work/tampered.sb", "(version 1)(deny default)")).toBe(
+			"cd '/work/tree' && /usr/bin/sandbox-exec -p '(version 1)(deny default)' /bin/bash -c 'true'",
+		);
+		expect(seatbelt.command("true", where, "/work/profile.sb")).toBe(
+			"cd '/work/tree' && /usr/bin/sandbox-exec -f '/work/profile.sb' /bin/bash -c 'true'",
+		);
+	});
+
 	function host(developer: string | undefined, cache: string | undefined) {
 		vi.mocked(readlinkSync).mockImplementation((path) => {
 			expect(path).toBe("/var/select/developer_dir");
