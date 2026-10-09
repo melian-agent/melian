@@ -102,7 +102,7 @@ export class MutationScratch {
 	}
 
 	static open(run: Run, scratch: string, sandbox: Sandbox, installs: readonly string[]): MutationScratch {
-		const paths = { scratch, worktree: scratch, installs, node: nodeInstallation() };
+		const paths = { scratch, worktree: "/", installs, node: nodeInstallation() };
 		return new MutationScratch(run, sandbox, paths, sandbox.profile(paths));
 	}
 

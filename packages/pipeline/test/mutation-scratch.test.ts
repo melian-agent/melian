@@ -22,6 +22,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	vi.restoreAllMocks();
 	fs.rmSync(directory, { recursive: true, force: true });
 });
 
@@ -247,4 +248,15 @@ it("rechecks an opened output descriptor with fake read controls", () => {
 	expect(result.response.error).toContain(`non-file ${target}`);
 	expect(read).not.toHaveBeenCalled();
 	expect(result.close).toHaveBeenCalledOnce();
+});
+
+it("launches housekeeping from a trusted directory rather than a head-written scratch path", async () => {
+	const command = vi.spyOn(unconfinedSandbox, "command");
+	await files().write(path.join(scratch, "tree/file"), "text");
+	expect(command).toHaveBeenCalledExactlyOnceWith(
+		expect.any(String),
+		expect.objectContaining({ worktree: "/", scratch }),
+		"",
+		undefined,
+	);
 });
