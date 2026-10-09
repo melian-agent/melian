@@ -8,26 +8,19 @@ import type { Run } from "./static.ts";
 // not mistaken for it, signalled one by one with SIGTERM and then SIGKILL. Problem: a group kill with a group of 1 is
 // `kill(-1)`, which ends every process the user owns.
 
-/** A process, named so that a reused pid cannot stand in for it. */
 export type RecordedProcess = { pid: number; start: string };
 
-/** What the mutation task keeps durably about the process tree its sandboxed command started. */
 export type MutationTreeRecord = { control: string; supervisor: RecordedProcess; root: RecordedProcess };
 
-/** Durable hooks supplied by the mutation task. */
 export interface MutationProcessHooks {
-	/** Records the tree before any head code starts. */
 	started(tree: MutationTreeRecord): Promise<void>;
-	/** Clears the record after the tree is terminated. */
 	stopped(): Promise<void>;
 }
 
-/** One row of the process table. */
 export interface ProcessEntry extends RecordedProcess {
 	ppid: number;
 }
 
-/** What {@link terminateRecorded} needs from the host. */
 export interface ProcessControl {
 	list(): ProcessEntry[];
 	kill(pid: number, signal: "SIGTERM" | "SIGKILL"): void;
@@ -67,24 +60,19 @@ export async function terminateRecorded(
 	for (const record of live()) control.kill(record.pid, "SIGKILL");
 }
 
-/** What {@link supervise} needs from its process. */
 export interface SupervisorHost {
 	readonly pid: number;
 	list(): ProcessEntry[];
-	/** Starts the paused command and returns its pid. */
 	spawn(): number;
 	exited(callback: (code: number) => void): void;
 	terminated(callback: () => void): void;
-	/** Replaces a file in the control directory. */
 	write(name: string, text: string): void;
 	every(milliseconds: number, callback: () => void): void;
 	terminate(records: readonly RecordedProcess[]): Promise<void>;
 	exit(code: number): void;
 }
 
-/** What the supervisor is told when it starts. */
 export interface SupervisorOptions {
-	/** The Melian process; the supervisor ends its tree when this one disappears. */
 	readonly controller: RecordedProcess;
 	readonly interval: number;
 }
@@ -149,7 +137,6 @@ export function supervise(options: SupervisorOptions, host: SupervisorHost): voi
 	});
 }
 
-/** The process table of this host. */
 export class ProcessTable implements ProcessControl {
 	list(): ProcessEntry[] {
 		const result = spawnSync("/bin/ps", ["-A", "-o", "pid=,ppid=,lstart="], { encoding: "utf8" });
@@ -157,12 +144,10 @@ export class ProcessTable implements ProcessControl {
 		return parseProcesses(result.stdout);
 	}
 
-	/** The start time of `pid`, or undefined when no such process runs. */
 	start(pid: number): string | undefined {
 		return this.list().find((entry) => entry.pid === pid)?.start;
 	}
 
-	/** Sends one signal to one process. A pid that is gone is not an error. */
 	kill(pid: number, signal: "SIGTERM" | "SIGKILL"): void {
 		if (!Number.isSafeInteger(pid) || pid <= 1) throw new Error(`refusing to signal pid ${pid}`);
 		try {
@@ -173,7 +158,6 @@ export class ProcessTable implements ProcessControl {
 	}
 }
 
-/** The supervisor script, which runs under Node as a file. `command` is the shell text it starts. */
 export function supervisorSource(options: SupervisorOptions, command: string, control: string): string {
 	return `
 import { spawn, spawnSync } from "node:child_process";
@@ -258,14 +242,12 @@ export class MutationTree {
 	}
 }
 
-/** One sandbox command, run under a supervisor that ends its process tree by pid when Melian disappears. */
 export class MutationProcess {
 	readonly run: Run;
 	constructor(run: Run) {
 		this.run = run;
 	}
 
-	/** Runs only after the task has durably recorded the tree; the command stays paused until then. */
 	async execute(command: string, environment: Record<string, string>): Promise<{ code: number; output: string }> {
 		const { run } = this;
 		const { env } = run.input;

@@ -137,14 +137,9 @@ function quote(text: string): string {
 	return `'${text.replaceAll("'", "'\\''")}'`;
 }
 
-/** Why a checkout with no Stryker install gets no mutation run: Melian carries no copy of its own. */
 export const strykerNotInstalled =
 	"Stryker is not installed in the checkout, and Melian carries none: add @stryker-mutator/core and @stryker-mutator/vitest-runner to the reviewed repository's dev dependencies";
 
-/**
- * The version of `@stryker-mutator/core` the checkout has installed, else `unavailable`. A run's identity holds it, so a
- * bump runs the check again.
- */
 export function strykerVersion(repoRoot: string): string {
 	try {
 		const file = posix.join(repoRoot, "node_modules/@stryker-mutator/core/package.json");
@@ -156,7 +151,6 @@ export function strykerVersion(repoRoot: string): string {
 	return "unavailable";
 }
 
-/** Identifies the checkout's installation, which supplies dependencies to the reviewed head. */
 export function mutationInstallation(repoRoot: string): string {
 	const require = createRequire(posix.join(repoRoot, "package.json"));
 	const versions = ["@stryker-mutator/core", "@stryker-mutator/vitest-runner", "vitest"].map((name) => {
@@ -183,10 +177,6 @@ export function mutationInstallation(repoRoot: string): string {
 		.digest("hex");
 }
 
-/**
- * Mutation testing of one revision's changed lines: Stryker on Vitest, run in the head's worktree. A mutant that no test
- * caught, on a line the change added or edited, becomes a result of rule `untested-behaviour`.
- */
 export class MutationRun {
 	readonly #run: Run;
 	readonly #root: string;

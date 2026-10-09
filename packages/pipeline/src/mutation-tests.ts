@@ -5,7 +5,6 @@ import type { CallGroundTruth } from "@melian-agent/core";
 import { CompilerGraph } from "./compiler-graph.ts";
 import type { Run } from "./static.ts";
 
-/** A restricted dry run, or the whole suite when the compiler cannot safely select it. */
 export type MutationTestSelection = { include: string[]; tests: string[]; note: string } | { note: string };
 
 interface ImportProgram {

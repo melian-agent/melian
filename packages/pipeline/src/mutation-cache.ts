@@ -6,16 +6,11 @@ import { CacheScratch } from "./cache-scratch.ts";
 
 const bound = 16 * 1024 * 1024;
 
-/** What one partition of the mutation cache belongs to. Warm reuse holds only when every part is identical. */
 export interface MutationCacheKey {
-	/** The base-policy commit the review ran under. */
 	readonly policy: string;
 	readonly trusted: boolean;
-	/** The exact head commit, so a different head never reads this head's identities. */
 	readonly head: string;
-	/** A digest of what else the run feeds Stryker: its version, the lines and the test selection. */
 	readonly inputs: string;
-	/** The checkout lockfile digest and the resolved Stryker, Vitest runner and Vitest versions. */
 	readonly installation: string;
 }
 
