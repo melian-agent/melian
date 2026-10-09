@@ -118,7 +118,7 @@ function report(files: Record<string, Mutant[]>): string {
 
 // A fake `stryker` as the checkout's installed binary. It records each call's arguments and its working directory, and
 // writes the canned report where Stryker's JSON reporter does.
-function stryker(options: { report?: string; exit?: number; version?: string } = {}): {
+function stryker(options: { report?: string; exit?: number; version?: string; requireWholeSuite?: boolean } = {}): {
 	calls: () => string[][];
 	heads: () => string[];
 } {
@@ -130,6 +130,7 @@ function stryker(options: { report?: string; exit?: number; version?: string } =
 		repo,
 		"stryker",
 		`if [ "$1" = "--version" ]; then echo ${options.version ?? "10.0.0"}; exit 0; fi
+${options.requireWholeSuite ? `[ -z "\${MELIAN_MUTATION_TEST_INCLUDE+x}" ] || exit 1` : ""}
 git rev-parse HEAD >> '${heads}'
 printf 'CALL\\n%s\\n' "$(pwd)" >> '${record}'
 printf '%s\\n' "$@" >> '${record}'
@@ -583,7 +584,7 @@ async instrument(files, options) {
 				["packages/p/src/a.ts"],
 			);
 			vi.spyOn(MutationTests, "open").mockResolvedValue(fallback);
-			const fake = stryker({ report: report({}) });
+			const fake = stryker({ report: report({}), requireWholeSuite: true });
 			const result = await mutate(base, head);
 			expect(fake.calls()).toHaveLength(1);
 			if (result.status !== "ran") throw new Error("skipped");
