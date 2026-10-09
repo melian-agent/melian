@@ -2,7 +2,8 @@ import type * as childProcess from "node:child_process";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, posix } from "node:path";
+import { runInNewContext } from "node:vm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { backgroundContext, createNodeExecutionEnv } from "../src/harness.ts";
 import {
@@ -487,6 +488,67 @@ describe("supervisorSource", () => {
 });
 
 describe("MutationProcess.execute", () => {
+	it("never releases head code when recording its ready tree fails", async () => {
+		const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-record-failure-")));
+		const control = join(directory, "control");
+		mkdirSync(control);
+		const record = { control, supervisor: { pid: 20, start: "s20" }, root: { pid: 21, start: "s21" } };
+		const env = createNodeExecutionEnv(directory);
+		const started = vi.fn(async () => {
+			throw new Error("durable record refused");
+		});
+		const stopped = vi.fn(async () => {});
+		const fake = new FakeProcesses([at(20, 1), at(21, 20)]);
+		vi.spyOn(env, "createTempDir").mockResolvedValue({ ok: true, value: control });
+		vi.spyOn(ProcessTable.prototype, "start").mockReturnValue("controller");
+		vi.spyOn(ProcessTable.prototype, "list").mockImplementation(() => fake.list());
+		vi.spyOn(ProcessTable.prototype, "kill").mockImplementation((pid, signal) => fake.kill(pid, signal));
+		const execute = vi.spyOn(env, "exec").mockImplementation(async (command) => {
+			expect(command).toContain("supervisor.mjs");
+			expect(command).toContain("ready.json");
+			writeFileSync(join(control, "ready.json"), JSON.stringify(record));
+			return { ok: true, value: { exitCode: 0 } };
+		});
+		const run = new Run(
+			{
+				env,
+				repoRoot: directory,
+				commit: "a".repeat(40),
+				tool: "mutation",
+				settings: { enabled: true, timeout: 10, severity: {}, maxLines: 1 },
+				mutationProcess: { started, stopped },
+			},
+			backgroundContext,
+		);
+		let method = MutationProcess.prototype.execute;
+		if (process.env.MELIAN_STARTED_FAULT) {
+			const body = method.toString().replace("await run.input.mutationProcess?.started(record);", "");
+			expect(body).not.toBe(method.toString());
+			method = runInNewContext(`({ ${body} }).execute`, {
+				ProcessTable,
+				MutationTree,
+				posix,
+				quote: (text: string) => JSON.stringify(text),
+				process,
+				supervisorSource,
+				backgroundContext,
+			});
+		}
+		try {
+			await expect(method.call(new MutationProcess(run), "true", {})).rejects.toThrow("durable record refused");
+			expect(started).toHaveBeenCalledExactlyOnceWith(record);
+			expect(execute).toHaveBeenCalledOnce();
+			expect(stopped).not.toHaveBeenCalled();
+			expect(existsSync(join(control, "go"))).toBe(false);
+			expect(fake.kills).toEqual([
+				[20, "SIGTERM"],
+				[21, "SIGTERM"],
+			]);
+		} finally {
+			vi.restoreAllMocks();
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
 	it("records the ready tree before run.shell releases the paused command", async () => {
 		// macOS links /var to /private/var, and the shell command names the resolved path.
 		const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-launch-test-")));
