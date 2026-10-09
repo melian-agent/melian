@@ -45,7 +45,7 @@ const test = (name: string) =>
 	);
 
 describe.skipIf(!hostAvailable || inSandbox)("the real backend", { timeout: 180_000 }, () => {
-	it("gets past the dry run on the related test alone and judges the changed line within a minute", async () => {
+	it("gets past the computed-configuration dry run and judges the changed line within a minute", async () => {
 		const project = {
 			"package.json": '{"type":"module"}\n',
 			"tsconfig.json":
@@ -86,7 +86,7 @@ describe.skipIf(!hostAvailable || inSandbox)("the real backend", { timeout: 180_
 		);
 		expect(result.status).toBe("ran");
 		if (result.status !== "ran") return;
-		expect(result.notes.join("\n")).toContain("selected 1 related test file(s)");
+		expect(result.notes.join("\n")).toContain("Mutation dry run uses the whole suite: Vitest include is computed.");
 		expect(Date.now() - started).toBeLessThan(60_000);
 	});
 });
