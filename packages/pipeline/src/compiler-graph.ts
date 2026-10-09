@@ -242,6 +242,8 @@ export class CompilerGraph {
 				if (path === undefined || !modules.has(path)) continue;
 				const source = project.program.getSourceFile(name);
 				const visit = (node: Node): void => {
+					if (node.kind === SyntaxKind.SpreadAssignment || node.kind === SyntaxKind.ComputedPropertyName)
+						throw new Error(`Vitest ${property} is computed`);
 					if (isShorthandPropertyAssignment(node) && node.name.getText() === property)
 						throw new Error(`Vitest ${property} is computed`);
 					if (isPropertyAssignment(node) && node.name.getText().replace(/^['"]|['"]$/g, "") === property) {

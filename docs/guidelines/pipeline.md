@@ -554,3 +554,5 @@ Credential unlocks follow concrete task routes. The host’s `unlockModels(provi
 Signal targets. Automatic mutation excludes Melian’s signal-sending production files: `packages/core/src/git.ts`, `packages/pipeline/src/cache-scratch.ts` and `packages/pipeline/src/mutation-process.ts`. Their contracts are proved on fake process controls. Keep this list in `mutation-static.ts` current when adding signal code.
 
 A replacement check parent owns mutation authority through its fresh task ID, committed with that parent's creation. Takeover first writes a retirement token and aborts older children before starting the parent. A later run with the same policy key cannot revive an older child. The SQLite A → B → A crash test covers a crash between durable retirement and abort, then reopens and attaches only to the new parent.
+
+Vitest selection treats a configuration spread or computed key as unknown. Either can supply include or setupFiles without a literal property the compiler sees. The run uses the whole suite instead of treating absence in the scan as Vitest’s defaults.

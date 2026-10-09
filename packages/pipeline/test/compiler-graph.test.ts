@@ -497,3 +497,25 @@ it.each(['["checks/**/*.check.ts"]', "[]", "getIncludes()", "includes"])(
 		}
 	},
 );
+
+it.each(["...getOptions()", '[name]: ["checks/*.check.ts"]'])(
+	"uses the whole suite when %s can hide a Vitest option",
+	(options) => {
+		root = mkdtempSync(join(tmpdir(), "melian-vitest-hidden-options-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+		writeFileSync(join(root, "a.ts"), "export const a = 1;");
+		writeFileSync(join(root, "a.check.ts"), 'import { a } from "./a.ts";');
+		writeFileSync(join(root, "vitest.config.ts"), `export default { test: { ${options} } };`);
+		const compiler = CompilerGraph.open(root);
+		try {
+			compiler.read({ importsOnly: true });
+			expect(() => compiler.testIncludes()).toThrow("computed");
+			expect(() => compiler.setupFiles()).toThrow("computed");
+			expect(MutationTests.select(compiler, ["a.ts"]).toJSON()).toEqual({
+				note: "Mutation dry run uses the whole suite: Vitest include is computed.",
+			});
+		} finally {
+			compiler.close();
+		}
+	},
+);
