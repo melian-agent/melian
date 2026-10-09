@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { CallGroundTruth } from "@melian-agent/core";
@@ -10,6 +11,7 @@ export type MutationTestSelection = { include: string[]; tests: string[]; note: 
 interface ImportProgram {
 	read(options: { importsOnly: boolean; maxFiles: number; deadline: number }): Pick<CallGroundTruth, "files">;
 	setupFiles(): string[];
+	testIncludes?(): readonly string[] | undefined;
 }
 
 function quote(value: string): string {
@@ -29,6 +31,7 @@ export class MutationTests {
 		changed: readonly string[],
 		limits = { files: 10_000, milliseconds: 30_000 },
 		now = Date.now,
+		load = createRequire(import.meta.url),
 	): MutationTests {
 		const deadline = now() + limits.milliseconds;
 		try {
@@ -55,7 +58,13 @@ export class MutationTests {
 					queue.push(path);
 				}
 			}
-			const tests = [...visited].filter((path) => /\.test\.(ts|mjs)$/.test(path)).sort();
+			const includes =
+				program.testIncludes?.() ?? (load("vitest/config") as { defaultInclude: string[] }).defaultInclude;
+			const picomatch = createRequire(load.resolve("vitest/package.json"))("picomatch") as (
+				patterns: readonly string[],
+				options: { dot: boolean },
+			) => (path: string) => boolean;
+			const tests = [...visited].filter(picomatch(includes, { dot: true })).sort();
 			const setup = program.setupFiles();
 			if (now() >= deadline) throw new Error("Setup selection reached its time bound");
 			if (setup.some((path) => visited.has(path)))
@@ -112,6 +121,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
 				posix.join(root, "**/*.mts"),
 				posix.join(root, "**/*.cts"),
 				posix.join(root, "**/*.mjs"),
+				posix.join(root, "**/*.cjs"),
+				posix.join(root, "**/*.jsx"),
 				posix.join(root, "**/*.js"),
 			],
 			exclude: [posix.join(root, "**/node_modules/**"), posix.join(root, "**/dist/**")],
@@ -129,8 +140,12 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
 					{
 						read: (options) => program.read(options),
 						setupFiles: () => program.setupFiles(config.vitest?.configFile),
+						testIncludes: () => program.testIncludes(config.vitest?.configFile),
 					},
 					JSON.parse(targets) as string[],
+					undefined,
+					undefined,
+					createRequire(posix.join(root, "package.json")),
 				),
 			),
 		);

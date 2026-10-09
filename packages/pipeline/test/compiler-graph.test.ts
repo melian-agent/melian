@@ -473,3 +473,26 @@ describe("mutation setup discovery", () => {
 		}
 	});
 });
+
+it.each(['["checks/**/*.check.ts"]', "[]", "getIncludes()", "includes"])(
+	"reads the head include expression %s without executing it",
+	(value) => {
+		root = mkdtempSync(join(tmpdir(), "melian-vitest-includes-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+		writeFileSync(
+			join(root, "vitest.config.ts"),
+			value === "includes"
+				? "export default { test: { include } };"
+				: `export default { test: { include: ${value} } };`,
+		);
+		const compiler = CompilerGraph.open(root);
+		try {
+			compiler.read({ importsOnly: true });
+			if (value === "getIncludes()" || value === "includes")
+				expect(() => compiler.testIncludes()).toThrow("computed");
+			else expect(compiler.testIncludes()).toEqual(value === "[]" ? [] : ["checks/**/*.check.ts"]);
+		} finally {
+			compiler.close();
+		}
+	},
+);

@@ -407,3 +407,84 @@ it("sorts related tests without reversing a graph already in order", () => {
 		include: ["test/a.test.mjs", "test/z.test.ts"],
 	});
 });
+
+it("selects spec files through Vitest's default include patterns", () => {
+	const graph = {
+		"src/a.ts": [],
+		"test/a.spec.ts": ["src/a.ts"],
+		"test/.hidden.spec.ts": ["src/a.ts"],
+		"test/b.spec.cts": ["src/a.ts"],
+		"test/example.ts": ["src/a.ts"],
+	};
+	expect(MutationTests.select(program(graph), ["src/a.ts"]).toJSON()).toMatchObject({
+		tests: ["test/.hidden.spec.ts", "test/a.spec.ts", "test/b.spec.cts"],
+	});
+});
+it("uses a custom include and respects an explicit empty include", () => {
+	const graph = { "src/a.ts": [], "checks/a.check.ts": ["src/a.ts"], "test/a.test.ts": ["src/a.ts"] };
+	const head = { ...program(graph), testIncludes: () => ["checks/**/*.check.ts"] };
+	expect(MutationTests.select(head, ["src/a.ts"]).toJSON()).toMatchObject({ tests: ["checks/a.check.ts"] });
+	expect(MutationTests.select({ ...head, testIncludes: () => [] }, ["src/a.ts"]).toJSON()).toMatchObject({
+		tests: [],
+	});
+});
+it("falls back to the whole suite when test includes cannot be resolved", () => {
+	const head = {
+		...program(graph),
+		testIncludes: () => {
+			throw new Error("Vitest include is computed");
+		},
+	};
+	expect(MutationTests.select(head, ["src/a.ts"]).toJSON()).toEqual({
+		note: expect.stringContaining("include is computed"),
+	});
+});
+
+it.each(["default spec", "custom include", "default jsx", "default cjs"])(
+	"loads %s from the head through the compiler child",
+	async (kind) => {
+		const root = mkdtempSync(join(tmpdir(), "melian-head-includes-"));
+		const checkout = fileURLToPath(new URL("../../../", import.meta.url));
+		try {
+			for (const name of ["src", "test", "scratch"]) mkdirSync(join(root, name));
+			symlinkSync(join(checkout, "node_modules"), join(root, "node_modules"), "dir");
+			writeFileSync(join(root, "package.json"), '{"type":"module"}');
+			writeFileSync(
+				join(root, "tsconfig.json"),
+				JSON.stringify({ include: ["src/*.ts", "test/*.ts", "runner.ts"] }),
+			);
+			writeFileSync(join(root, "src/a.ts"), "export const a = 1;");
+			const name =
+				kind === "default jsx"
+					? "test/a.spec.jsx"
+					: kind === "default cjs"
+						? "test/a.spec.cjs"
+						: kind === "default spec"
+							? "test/a.spec.ts"
+							: "test/a.check.ts";
+			writeFileSync(join(root, name), 'import { a } from "../src/a.ts"; export const check = a;');
+			writeFileSync(
+				join(root, "stryker.config.json"),
+				JSON.stringify(kind === "custom include" ? { vitest: { configFile: "runner.ts" } } : {}),
+			);
+			if (kind === "custom include")
+				writeFileSync(join(root, "runner.ts"), 'export default {test: {include:["test/**/*.check.ts"]}};');
+			const run = new Run(
+				{
+					env: createNodeExecutionEnv(root),
+					repoRoot: root,
+					commit: "a".repeat(40),
+					tool: "mutation",
+					settings: defaultConfig.static.mutation,
+				},
+				backgroundContext,
+			);
+			expect((await MutationTests.open(run, root, join(root, "scratch"), ["src/a.ts"])).toJSON()).toMatchObject({
+				tests: [name],
+				include: [name],
+			});
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	},
+);

@@ -227,8 +227,7 @@ export class CompilerGraph {
 		if (declaration) return this.#site(declaration) ?? "external";
 		return undefined;
 	}
-	/** Reads literal Vitest setup paths without executing head configuration. Unreadable or computed paths force a full-suite fallback. */
-	setupFiles(config = "vitest.config.ts"): string[] {
+	#vitestStrings(property: string, config = "vitest.config.ts"): string[] | undefined {
 		const modules = new Set(
 			[config, ...this.#imports.keys()].filter(
 				(path) => path === config || /(?:^|\/)(?:vitest|vite)(?:[.-][^/]*)?\.config\.[cm]?[jt]s$/.test(path),
@@ -236,24 +235,24 @@ export class CompilerGraph {
 		);
 		for (const path of modules) for (const target of this.#imports.get(path) ?? []) modules.add(target);
 		const paths = new Set<string>();
+		let found = false;
 		for (const project of this.#snapshot.getProjects()) {
 			for (const name of project.program.getSourceFileNames()) {
 				const path = this.#path(name);
 				if (path === undefined || !modules.has(path)) continue;
 				const source = project.program.getSourceFile(name);
 				const visit = (node: Node): void => {
-					if (isShorthandPropertyAssignment(node) && node.name.getText() === "setupFiles")
-						throw new Error("Vitest setupFiles is computed");
-					if (isPropertyAssignment(node) && node.name.getText().replace(/^['"]|['"]$/g, "") === "setupFiles") {
+					if (isShorthandPropertyAssignment(node) && node.name.getText() === property)
+						throw new Error(`Vitest ${property} is computed`);
+					if (isPropertyAssignment(node) && node.name.getText().replace(/^['"]|['"]$/g, "") === property) {
+						found = true;
 						const values = isArrayLiteralExpression(node.initializer)
 							? node.initializer.elements
 							: [node.initializer];
 						for (const value of values) {
 							if (!isStringLiteral(value) && !isNoSubstitutionTemplateLiteral(value))
-								throw new Error("Vitest setupFiles is computed");
-							const path = this.#path(resolve(this.#root, value.text));
-							if (path === undefined) throw new Error("Vitest setup file is outside the repository");
-							paths.add(path);
+								throw new Error(`Vitest ${property} is computed`);
+							paths.add(value.text);
 						}
 					}
 					node.forEachChild(visit);
@@ -261,7 +260,20 @@ export class CompilerGraph {
 				source!.forEachChild(visit);
 			}
 		}
-		return [...paths].sort();
+		return found ? [...paths].sort() : undefined;
+	}
+
+	setupFiles(config?: string): string[] {
+		const paths = (this.#vitestStrings("setupFiles", config) ?? []).map((value) => {
+			const path = this.#path(resolve(this.#root, value));
+			if (path === undefined) throw new Error("Vitest setup file is outside the repository");
+			return path;
+		});
+		return [...new Set(paths)].sort();
+	}
+
+	testIncludes(config?: string): string[] | undefined {
+		return this.#vitestStrings("include", config);
 	}
 
 	/** Counts distinct caller/callee pairs, resolved repository imports, external calls, and unresolved calls. */
