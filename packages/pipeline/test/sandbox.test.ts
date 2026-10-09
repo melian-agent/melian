@@ -12,7 +12,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nodeInstallation, Sandbox, type SandboxPaths } from "../src/sandbox.ts";
@@ -323,6 +323,17 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 		expect(profile).not.toContain("xcrun_db");
 		expect(profile).not.toContain("Stryker was here");
 		expect(bubblewrap.profile(where)).toBeUndefined();
+	});
+
+	it("stops ancestor traversal at the root before asking for its parent", () => {
+		host(undefined, undefined);
+		const dirname = posix.dirname;
+		const parent = vi.spyOn(posix, "dirname").mockImplementation((path) => {
+			if (path === "/" || path === ".") throw new Error("ancestor traversal passed its root");
+			return dirname(path);
+		});
+		expect(seatbelt.profile(where)).toContain('(literal "/opt") (literal "/checkout")');
+		expect(parent).toHaveBeenCalledTimes(5);
 	});
 
 	it("uses named developer tools and grants only their xcrun cache marker", () => {
