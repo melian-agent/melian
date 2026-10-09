@@ -511,35 +511,44 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 				"scripts/transitive.test.mjs",
 			]);
 		});
-		it("does not start Stryker when no test reaches the change and reports every enumerated mutant as NoCoverage", async () => {
-			const { base, head } = twoCommits();
-			vi.spyOn(MutationTests, "open").mockResolvedValue(selected([]));
-			const fake = stryker({ report: report({}) });
-			writeFiles(repo, {
-				"node_modules/@stryker-mutator/instrumenter/package.json": JSON.stringify({
-					type: "module",
-					main: "index.mjs",
-				}),
-				"node_modules/@stryker-mutator/instrumenter/index.mjs": `export class Instrumenter {
+		it.each([{ excluded: ["StringLiteral"] }, { excluded: undefined }])(
+			"honours excluded mutators in NoCoverage enumeration: $excluded",
+			async ({ excluded }) => {
+				const { base, head } = twoCommits({
+					"packages/p/src/a.ts": a.replace("x > 0", "x >= 0"),
+					"stryker.config.json": JSON.stringify({
+						testRunner: "vitest",
+						...(excluded === undefined ? {} : { mutator: { excludedMutations: excluded } }),
+					}),
+				});
+				vi.spyOn(MutationTests, "open").mockResolvedValue(selected([]));
+				const fake = stryker({ report: report({}) });
+				writeFiles(repo, {
+					"node_modules/@stryker-mutator/instrumenter/package.json": JSON.stringify({
+						type: "module",
+						main: "index.mjs",
+					}),
+					"node_modules/@stryker-mutator/instrumenter/index.mjs": `export class Instrumenter {
 async instrument(files, options) {
- if (files.length !== 1 || files[0].name !== "packages/p/src/a.ts" || files[0].mutate[0].start.line !== 1 || files[0].mutate[0].end.line !== 1 || options.plugins !== null) throw new Error("wrong mutation request");
+ if (files.length !== 1 || files[0].name !== "packages/p/src/a.ts" || files[0].mutate[0].start.line !== 1 || files[0].mutate[0].end.line !== 1 || options.plugins !== null || JSON.stringify(options.excludedMutations) !== ${JSON.stringify(JSON.stringify(excluded ?? []))}) throw new Error("wrong mutation request");
  return { mutants: [{ id: "1", fileName: files[0].name, mutatorName: "ConditionalExpression", replacement: "false", location: { start: { line: 1, column: 0 }, end: { line: 1, column: 8 } } }] };
 }
 }`,
-			});
-			const result = await mutate(base, head);
-			expect(fake.calls()).toEqual([]);
-			expect(result.status).toBe("ran");
-			if (result.status !== "ran") throw new Error("skipped");
-			expect(result.notes).toContain(
-				"No test reaches the changed production files; no dry run was started. Their mutants are NoCoverage.",
-			);
-			expect(result.log.runs[0].results).toHaveLength(1);
-			expect(result.log.runs[0].results[0]).toMatchObject({
-				ruleId: "untested-behaviour",
-				message: { text: expect.stringContaining("no test coverage") },
-			});
-		});
+				});
+				const result = await mutate(base, head);
+				expect(fake.calls()).toEqual([]);
+				expect(result.status).toBe("ran");
+				if (result.status !== "ran") throw new Error("skipped");
+				expect(result.notes).toContain(
+					"No test reaches the changed production files; no dry run was started. Their mutants are NoCoverage.",
+				);
+				expect(result.log.runs[0].results).toHaveLength(1);
+				expect(result.log.runs[0].results[0]).toMatchObject({
+					ruleId: "untested-behaviour",
+					message: { text: expect.stringContaining("no test coverage") },
+				});
+			},
+		);
 		it.each(["include", "uncovered", "profile"])("fails closed when it cannot write the %s file", async (kind) => {
 			const { base, head } = twoCommits();
 			vi.spyOn(MutationTests, "open").mockResolvedValue(selected(kind === "uncovered" ? [] : ["test/a.test.ts"]));
