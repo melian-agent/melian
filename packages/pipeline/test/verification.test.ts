@@ -9,7 +9,7 @@ import {
 	type Verification,
 	VerificationState,
 } from "@melian-agent/core";
-import { RecordedDecider } from "@melian-agent/decisions";
+import { DecisionFiles, RecordedDecider } from "@melian-agent/decisions";
 import {
 	backgroundContext as context,
 	createMemoryStorage,
@@ -46,7 +46,7 @@ import { hasCredentials } from "../src/models.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { startVerification, type VerificationInput, VerificationTask } from "../src/verification.ts";
 import { verifierMarker, verifierVersion } from "../src/verification-instructions.ts";
-import { gitIn } from "./fixtures/repo.ts";
+import { baseAndHead, gitIn } from "./fixtures/repo.ts";
 import { crashFinding, crashRepository } from "./fixtures/review-scenario.ts";
 
 let repo: string;
@@ -386,6 +386,94 @@ describe("finder family notices", () => {
 });
 
 describe("the verifier", () => {
+	it.each([
+		["design", "wrong-result"],
+		["correctness", "fail-open-default"],
+		["correctness", "wrong-result"],
+	])("passes base decisions for %s claims under %s", async (name, rule) => {
+		const first = lenses[0]!;
+		lenses = [Lens.from({ ...first.toJSON(), name, rules: [{ id: rule, description: "Planted rule." }] })];
+		const requests = scripts();
+		const decisions = vi.spyOn(DecisionFiles, "load");
+		const baseLenses = vi.spyOn(Lens, "load");
+		await review();
+		expect(baseLenses).not.toHaveBeenCalled();
+		const instructions = systemPromptOf(requests[verifierMarker]![0]!);
+		if (name === "design" || rule === "fail-open-default") {
+			expect(decisions).toHaveBeenCalledWith(repo, changeset.revision.base);
+			expect(instructions).toContain("## Decisions at base");
+			expect(instructions).toMatch(/label="listing"/);
+		} else {
+			expect(decisions).not.toHaveBeenCalled();
+			expect(instructions).not.toContain("## Decisions at base");
+		}
+	});
+
+	it.each([
+		["design", "wrong-result"],
+		["second", "fail-open-default"],
+	])("keeps base decisions for a merged %s claim under %s with a non-design speaker", async (name, rule) => {
+		const base = gitIn(repo, "show", "main:src/user.ts");
+		const head = gitIn(repo, "show", "feature:src/user.ts");
+		const decision = "docs/decisions/2026-10-01-writer-trust.md";
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "src/user.ts": `${base}\n`, [decision]: "# Writer trust\n" },
+			{ "src/user.ts": `${head}\n`, [decision]: "# Publisher eligibility at head\n" },
+		);
+		changeset = await Changeset.resolve(repo, "main...feature");
+		const first = lenses[0]!.toJSON();
+		lenses = [
+			Lens.from({
+				...first,
+				name: "trust-boundary",
+				instructions: "Stronger trust finder",
+				rules: [{ id: "fail-open", description: "Same failure." }],
+			}),
+			Lens.from({
+				...first,
+				name,
+				instructions: "Weaker design claim finder",
+				rules: [{ id: rule, description: "Same failure." }],
+			}),
+		];
+		const requests = scriptConversations(fake, [
+			...[
+				{ lens: lenses[0]!, severity: "P0" },
+				{ lens: lenses[1]!, severity: "P1" },
+			].map(({ lens, severity }) => ({
+				match: lens.instructions,
+				replies: [
+					fauxAssistantMessage(
+						fauxToolCall("report_finding", { ...crashFinding, rule: lens.rules[0]!.id, severity }),
+						{ stopReason: "toolUse" },
+					),
+					fauxAssistantMessage("Done."),
+				],
+			})),
+			{
+				match: verifierMarker,
+				replies: [(messages) => scriptVerifier(messages), fauxAssistantMessage("Done.")],
+			},
+		]);
+		const decisions = vi.spyOn(DecisionFiles, "load");
+		const result = await review();
+		const [speaker] = result.verdict.attention();
+		expect(result.verdict.attention()).toHaveLength(1);
+		expect(speaker!.properties.severity).toBe("P0");
+		expect(speaker!.ruleId).toBe("fail-open");
+		expect(speaker!.properties.source.check).toBe("lens.trust-boundary");
+		expect(speaker!.properties.otherClaims).toEqual([
+			expect.objectContaining({ ruleId: rule, source: expect.objectContaining({ check: `lens.${name}` }) }),
+		]);
+		expect(requests[verifierMarker]).toHaveLength(2);
+		const instructions = systemPromptOf(requests[verifierMarker]![0]!);
+		expect(instructions).toContain("## Decisions at base");
+		expect(instructions).toContain(`[ACTIVE] ${decision} — Writer trust`);
+		expect(instructions).not.toContain("Publisher eligibility at head");
+		expect(instructions).toMatch(/label="listing"/);
+		expect(decisions).toHaveBeenCalledWith(repo, changeset.revision.base);
+	});
 	it.each([true, false])(
 		"verifies through a subscription credential on openai-codex, with plan %s",
 		async (planned) => {

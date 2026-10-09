@@ -1,0 +1,16 @@
+src/resumed-identity.ts
+
+  P1  line 4  resumed-identity  (introduced, new, block, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  A resumed publication keeps the first publisher identity after credentials change.
+    What: A resumed publication keeps the first publisher identity after credentials change.
+    Why here: The base decision treats publisher login and permission as task identity. The head compares only the commit, so unchanged code reuses stale attribution.
+    Failure scenario: Alice starts a publication at head H with write permission. Bob resumes it at H with read permission. The head returns Alice's stored identity and write permission, letting Bob publish with stale attribution.
+    Evidence:
+      cause: src/resumed-identity.ts:4
+          if (stored.head !== head) {
+      context: docs/decisions/2026-10-01-resumed-identity.md:3 at base
+        Choice: A resumed publication must supersede stored attribution when the current publisher login or permission changes, even when the head is unchanged.
+    What to do: Compare current login and permission and supersede the old publication when either changes.
+
+1 finding in 1 file.

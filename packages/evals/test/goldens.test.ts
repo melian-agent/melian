@@ -12,7 +12,17 @@ import {
 import { tmpdir } from "node:os";
 import { basename, dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Changeset, defaultConfig, evaluateGuardrails, Lens, loadConfig } from "@melian-agent/core";
+import {
+	Changeset,
+	defaultConfig,
+	evaluateGuardrails,
+	Finding,
+	Lens,
+	loadConfig,
+	Merge,
+	type Severity,
+	type Verification,
+} from "@melian-agent/core";
 import {
 	buildGoldenRepository,
 	type Golden,
@@ -104,12 +114,24 @@ describe("the golden corpus", () => {
 			"correctness-deleted-guard",
 			"correctness-deleted-rethrow",
 			"correctness-null-deref",
+			"design-bound-on-wrong-measure",
+			"design-bound-on-wrong-measure-clean",
 			"design-clean",
+			"design-decision-injection",
 			"design-fail-open-default",
 			"design-identity-missing-input",
 			"design-injection",
+			"design-resumed-identity",
+			"design-resumed-identity-clean",
 			"design-rewrites-its-own-decision",
+			"design-single-slot-overwrite",
+			"design-single-slot-overwrite-clean",
+			"design-superseded-at-base-clean",
 			"design-supersedes-its-own-decision",
+			"design-terminology-change",
+			"design-terminology-change-in-design",
+			"design-trust-by-label",
+			"design-trust-by-label-clean",
 			"design-unshipped-artifact",
 			"durability-attach-key",
 			"durability-clean-upsert",
@@ -148,6 +170,24 @@ describe("the golden corpus", () => {
 });
 
 describe("a golden's standards and policy", () => {
+	it("supplies design-only base vocabulary to the scripted golden conversation", async () => {
+		const scripted = vi.spyOn(testing, "scriptLenses");
+		try {
+			const golden = goldens.find((each) => each.name === "design-terminology-change-in-design")!;
+			const run = await runGolden(golden, { kind: "scripted" });
+			expect(run.toolMismatches).toEqual([]);
+			expect(scoreGolden(golden, run.findings)).toMatchObject({ precision: 1, recall: 1 });
+			const requests = scripted.mock.results[0]!.value as ReturnType<typeof testing.scriptLenses>;
+			const prompts = Object.values(requests).flat().map(testing.systemPromptOf);
+			const prompt = prompts.find((prompt) => prompt.includes("You are the design reviewer"))!;
+			expect(prompt).toContain("## Design sections at base");
+			expect(prompt).toContain("docs/design.md:2 — Writer trust");
+			expect(prompt).not.toContain("docs/design.md:2 — Publisher eligibility");
+		} finally {
+			scripted.mockRestore();
+		}
+	}, 60_000);
+
 	it("renders a nested base AGENTS.md into the scripted lens's instructions", async () => {
 		const directory = mkdtempSync(join(tmpdir(), "melian-nested-standards-golden-"));
 		const scripted = vi.spyOn(testing, "scriptLenses");
@@ -425,6 +465,54 @@ describe.each(goldens.map((golden): [string, Golden] => [golden.name, golden]))(
 );
 
 describe("runGolden", () => {
+	it("excludes refuted findings from the run and its recall", { timeout: 60_000 }, async () => {
+		const golden = goldens.find((each) => each.name === "correctness-null-deref")!;
+		const confirmed = await runGolden(golden, { kind: "scripted" });
+		expect(confirmed.toolMismatches).toEqual([]);
+		expect(confirmed.findings).toHaveLength(1);
+		expect(confirmed.findings[0]!.properties.verification?.verdict).toBe("confirmed");
+		expect(scoreGolden(golden, confirmed.findings)).toMatchObject({ reported: 1, recall: 1 });
+		const scriptLenses = testing.scriptLenses;
+		let requests: ReturnType<typeof scriptLenses> = {};
+		const scripted = vi.spyOn(testing, "scriptLenses").mockImplementation((fake, lenses, script, mismatches) => {
+			requests = scriptLenses(
+				fake,
+				lenses,
+				{
+					...script,
+					verifier: {
+						[confirmed.findings[0]!.id]: {
+							verdict: "refuted",
+							reason: "The scripted judge rejects the planted claim.",
+							evidence: [{ file: "src/user.ts", line: 7, role: "context" }],
+						},
+					},
+				},
+				mismatches,
+			);
+			return requests;
+		});
+		try {
+			const refuted = await runGolden(golden, { kind: "scripted" });
+			expect(refuted.toolMismatches).toEqual([]);
+			expect(
+				Object.values(requests)
+					.flat(2)
+					.filter((message) => message.role === "assistant")
+					.flatMap((message) => message.content),
+			).toContainEqual(
+				expect.objectContaining({
+					type: "toolCall",
+					name: "report_verdict",
+					arguments: expect.objectContaining({ verdict: "refuted" }),
+				}),
+			);
+			expect.soft(refuted.findings).toEqual([]);
+			expect.soft(scoreGolden(golden, refuted.findings)).toMatchObject({ reported: 0, recall: 0 });
+		} finally {
+			scripted.mockRestore();
+		}
+	});
 	it("loads a folder's lens for a file the change moves out of that folder, as the CLI does", async () => {
 		const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-golden-rename-")));
 		const lens = [
@@ -514,6 +602,91 @@ describe("expectToolResult", () => {
 });
 
 describe("scriptedMismatches", () => {
+	it("uses evidence from the expected rule and source", () => {
+		const template = goldens.find((each) => each.name === "design-supersedes-its-own-decision")!;
+		const comment = { ...template.expected.comments[0]!, source: "lens.design" };
+		const golden = { ...template, expected: { ...template.expected, comments: [comment] } };
+		const finding = {
+			ruleId: comment.rule,
+			locations: [{ physicalLocation: { artifactLocation: { uri: comment.file } } }],
+			properties: {
+				path: comment.file,
+				cause: comment.cause,
+				failureScenario: comment.failureScenario,
+				evidence: comment.evidence.map(({ line, ...location }) => ({
+					...location,
+					startLine: line,
+					revision: location.revision ?? "head",
+				})),
+				source: { check: "lens.design", version: "v2" },
+				otherClaims: [
+					{
+						ruleId: comment.rule,
+						source: { check: "lens.trust-boundary", version: "v2" },
+						failureScenario: "Another source’s scenario",
+						evidence: [],
+					},
+					{
+						ruleId: "criterion-selection-bias",
+						source: { check: "lens.design", version: "v1" },
+						failureScenario: "Another rule’s scenario",
+						evidence: [],
+					},
+				],
+			},
+		} as never;
+		expect(scriptedMismatches(golden, [finding])).toEqual([]);
+	});
+	it("skips refuted evidence before choosing an eligible claim with the same rule and source", () => {
+		const golden = goldens.find((each) => each.name === "design-fail-open-default")!;
+		const comment = golden.expected.comments[0]!;
+		const evidence = comment.evidence.map(({ line, ...location }) => ({
+			...location,
+			startLine: line,
+			revision: "head" as const,
+			snippet: "return options.writersTrusted ?? true;",
+		}));
+		const finding = Finding.create({
+			rule: "fail-open",
+			file: comment.file,
+			startLine: 6,
+			discriminator: "publisher",
+			message: "The publisher trusts an absent answer.",
+			severity: "P1",
+			cause: comment.cause,
+			source: { check: "lens.trust-boundary", version: "v" },
+			explanation: { what: "Trust is granted.", whyHere: "The argument is absent.", whatToDo: "Require it." },
+		});
+		const claim = {
+			id: finding.id,
+			ruleId: comment.rule,
+			source: { check: "lens.design", version: "v" },
+			failureScenario: comment.failureScenario,
+			evidence,
+		};
+		const merged = Finding.from({
+			...finding.toJSON(),
+			properties: {
+				...finding.properties,
+				otherClaims: [
+					{
+						...claim,
+						failureScenario: "The rejected claim’s scenario.",
+						evidence: [],
+						verification: {
+							verdict: "refuted",
+							reason: "The earlier claim was wrong.",
+							executor: "llm",
+							model: "fake/judge",
+							version: "v",
+						},
+					},
+					{ ...claim, source: { ...claim.source, version: "v2" } },
+				],
+			},
+		});
+		expect(scriptedMismatches(golden, [merged])).toEqual([]);
+	});
 	it("names a finding whose cause, failure scenario, or evidence differs from the golden's", async () => {
 		const golden = goldens.find((each) => each.name === "contracts-breaking-signature")!;
 		const run = await runGolden(golden, { kind: "scripted" });
@@ -549,6 +722,193 @@ describe("scoreGolden", () => {
 			locations: [{ physicalLocation: { artifactLocation: { uri: path } } }],
 		}) as never;
 
+	it("matches alternative files and keeps a merged claim’s rule paired with its source", () => {
+		const golden = goldens.find((each) => each.name === "design-supersedes-its-own-decision")!;
+		const merged = {
+			ruleId: "fail-open",
+			locations: [{ physicalLocation: { artifactLocation: { uri: "src/publish.ts" } } }],
+			properties: {
+				path: "src/publish.ts",
+				source: { check: "lens.trust-boundary", version: "v" },
+				reportedBy: [
+					{ check: "lens.trust-boundary", version: "v" },
+					{ check: "lens.design", version: "v" },
+				],
+				otherClaims: [{ ruleId: "fail-open-default", source: { check: "lens.design", version: "v" } }],
+			},
+		} as never;
+		const sourced = (rule: string, source: string) => ({
+			...golden,
+			expected: { ...golden.expected, comments: [{ ...golden.expected.comments[0]!, rule, source }] },
+		});
+		expect(scoreGolden(golden, [merged])).toMatchObject({ precision: 1, recall: 1 });
+		expect(scoreGolden(sourced("fail-open-default", "lens.design"), [merged])).toMatchObject({
+			precision: 1,
+			recall: 1,
+		});
+		expect(scoreGolden(sourced("fail-open-default", "lens.trust-boundary"), [merged])).toMatchObject({
+			precision: 0,
+			recall: 0,
+		});
+		expect(scoreGolden(sourced("fail-open", "lens.design"), [merged])).toMatchObject({ precision: 0, recall: 0 });
+		expect(scoreGolden(sourced("fail-open", "lens.trust-boundary"), [merged])).toMatchObject({
+			precision: 1,
+			recall: 1,
+		});
+		expect(
+			scoreGolden(
+				{
+					...golden,
+					expected: {
+						...golden.expected,
+						comments: [{ ...golden.expected.comments[0]!, alternativeFiles: undefined }],
+					},
+				},
+				[merged],
+			),
+		).toMatchObject({ precision: 0, recall: 0 });
+	});
+	it.each([
+		{ speaker: "design", designSeverity: "P0", trustSeverity: "P1" },
+		{ speaker: "trust-boundary", designSeverity: "P1", trustSeverity: "P0" },
+	] as const)(
+		"rejects a refuted design claim in a live merged defect spoken by $speaker",
+		({ speaker, designSeverity, trustSeverity }) => {
+			const template = goldens.find((each) => each.name === "design-fail-open-default")!;
+			const comment = { ...template.expected.comments[0]!, source: "lens.design" };
+			const golden = { ...template, expected: { ...template.expected, comments: [comment] } };
+			const report = (check: string, rule: string, verdict: Verification["verdict"], severity: Severity) =>
+				Finding.create({
+					rule,
+					file: comment.file,
+					startLine: 6,
+					snippet: "return options.writersTrusted ?? true;",
+					occurrence: 0,
+					message: "An absent answer grants trust.",
+					severity,
+					cause: comment.cause,
+					failureScenario: comment.failureScenario,
+					evidence: comment.evidence.map(({ line, ...location }) => ({
+						...location,
+						startLine: line,
+						revision: "head",
+						snippet: "return options.writersTrusted ?? true;",
+					})),
+					source: { check, version: "v" },
+					explanation: { what: "Trust is granted.", whyHere: "The argument is absent.", whatToDo: "Require it." },
+					verification: {
+						verdict,
+						reason: "Scripted judgement.",
+						executor: "llm",
+						model: "fake/judge",
+						version: "v",
+					},
+				});
+			const design = report("lens.design", comment.rule, "refuted", designSeverity);
+			const trust = report("lens.trust-boundary", "fail-open", "confirmed", trustSeverity);
+			const defects = new Merge([design, trust], defaultConfig).defects();
+			expect(defects).toHaveLength(1);
+			const defect = defects[0]!;
+			expect(defect.refuted()).toBe(false);
+			expect(defect.speaker.properties.source.check).toBe(`lens.${speaker}`);
+			expect(defect.speaker.properties.verification?.verdict).toBe("confirmed");
+			expect(scoreGolden(golden, [defect.speaker])).toMatchObject({ reported: 1, precision: 0, recall: 0 });
+			expect(scoreGolden(template, [defect.speaker])).toMatchObject({ precision: 0, recall: 0 });
+			expect(scriptedMismatches(golden, [defect.speaker])).toEqual([
+				"src/publish.ts fail-open-default from lens.design: not reported",
+			]);
+			const trusted = {
+				...golden,
+				expected: {
+					...golden.expected,
+					comments: [{ ...comment, rule: "fail-open", source: "lens.trust-boundary" }],
+				},
+			};
+			expect(scoreGolden(trusted, [defect.speaker])).toMatchObject({ precision: 1, recall: 1 });
+			expect(scriptedMismatches(trusted, [defect.speaker])).toEqual([]);
+			expect(scoreGolden(template, [design])).toMatchObject({ precision: 0, recall: 0 });
+		},
+	);
+	it.each([
+		{ differing: "id", change: { id: "other-claim" } },
+		{ differing: "source", change: { source: { check: "lens.tests", version: "v" } } },
+		{ differing: "version", change: { source: { check: "lens.design", version: "v1" } } },
+	])("does not borrow a refutation from a claim with another $differing", ({ change }) => {
+		const golden = goldens.find((each) => each.name === "design-fail-open-default")!;
+		const comment = golden.expected.comments[0]!;
+		const original = Finding.create({
+			rule: comment.rule,
+			file: comment.file,
+			startLine: 6,
+			discriminator: "publisher",
+			message: "An absent answer grants trust.",
+			severity: "P1",
+			cause: comment.cause,
+			failureScenario: comment.failureScenario,
+			source: { check: "lens.design", version: "v" },
+			explanation: { what: "Trust is granted.", whyHere: "The argument is absent.", whatToDo: "Require it." },
+			verification: {
+				verdict: "confirmed",
+				reason: "Scripted judgement.",
+				executor: "llm",
+				model: "fake/judge",
+				version: "v",
+			},
+		});
+		const finding = Finding.from({
+			...original.toJSON(),
+			properties: {
+				...original.properties,
+				otherClaims: [
+					{
+						...original.claims()[0]!,
+						...change,
+						verification: { ...original.properties.verification!, verdict: "refuted" },
+					},
+				],
+			},
+		});
+		expect(scoreGolden(golden, [finding])).toMatchObject({ precision: 1, recall: 1 });
+	});
+	it("keeps a prior version’s different rule from erasing a current reporter", () => {
+		const golden = goldens.find((each) => each.name === "design-supersedes-its-own-decision")!;
+		const expected = {
+			...golden,
+			expected: {
+				...golden.expected,
+				comments: [{ ...golden.expected.comments[0]!, rule: "fail-open", source: "lens.trust-boundary" }],
+			},
+		};
+		const finding = {
+			ruleId: "fail-open",
+			locations: [{ physicalLocation: { artifactLocation: { uri: "src/publish.ts" } } }],
+			properties: {
+				path: "src/publish.ts",
+				reportedBy: [{ check: "lens.trust-boundary", version: "v2" }],
+				otherClaims: [{ ruleId: "fail-open-default", source: { check: "lens.trust-boundary", version: "v1" } }],
+			},
+		} as never;
+		expect(scoreGolden(expected, [finding])).toMatchObject({ precision: 1, recall: 1 });
+	});
+	it("scores two lens sightings of one defect once after adjudication", async () => {
+		const golden = goldens.find((each) => each.name === "design-fail-open-default")!;
+		const report = golden.script
+			.design!.flatMap((step) => ("calls" in step ? step.calls : []))
+			.find((call) => call.name === "report_finding")!.arguments;
+		const duplicate = {
+			...golden,
+			script: {
+				...golden.script,
+				"trust-boundary": [
+					{ calls: [{ name: "report_finding", arguments: { ...report, rule: "fail-open" } }] },
+					{ text: "Reported 1 finding." },
+				],
+			},
+		};
+		const run = await runGolden(duplicate, { kind: "scripted" });
+		expect(run.findings).toHaveLength(1);
+		expect(scoreGolden(duplicate, run.findings)).toMatchObject({ reported: 1, precision: 1, recall: 1 });
+	});
 	it("matches on file and rule", () => {
 		expect(
 			scoreGolden(nullDeref!, [finding("src/user.ts", "null-dereference"), finding("src/user.ts", "wrong-result")]),
@@ -559,6 +919,10 @@ describe("scoreGolden", () => {
 			recall: 1,
 		});
 		expect(scoreGolden(nullDeref!, [])).toMatchObject({ precision: 1, recall: 0 });
+		expect(scoreGolden(nullDeref!, [finding("src/user.ts", "wrong-result")])).toMatchObject({
+			precision: 0,
+			recall: 0,
+		});
 	});
 
 	it("counts a second finding matching one expectation as a false positive", () => {

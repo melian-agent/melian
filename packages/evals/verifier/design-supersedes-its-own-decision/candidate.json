@@ -1,0 +1,30 @@
+{
+  "file": "src/publish.ts",
+  "line": 6,
+  "rule": "fail-open-default",
+  "severity": "P1",
+  "explanation": {
+    "what": "A new decision lets an absent writer-trust answer read as trusted, which the decision it supersedes forbade.",
+    "why": "The superseded writer-trust decision says a repository that never opted in must never get trust, so an absent answer reads as untrusted. The new decision supersedes it for the republish path and reverses that default. The superseded base text is the baseline, and the new decision's own reasoning does not excuse the departure.",
+    "fix": "Keep an absent answer untrusted, pass the policy's answer from republishCommand, and drop or narrow the superseding decision."
+  },
+  "failureScenario": "A repository's policy leaves trust.writers unset, so its writers are untrusted. A maintainer without write access runs republish: republishCommand calls canPublish with no options, `options.writersTrusted ?? true` reads the omission as trusted, and the command publishes where publishCommand, which passes the policy's answer, refuses. The superseding decision says this is intended, but the decision it supersedes withheld that trust.",
+  "evidence": [
+    {
+      "file": "src/publish.ts",
+      "line": 6,
+      "role": "cause"
+    },
+    {
+      "file": "docs/decisions/2026-10-01-writer-trust.md",
+      "line": 5,
+      "role": "context",
+      "revision": "base"
+    },
+    {
+      "file": "docs/decisions/2026-10-07-republish-trust.md",
+      "line": 3,
+      "role": "context"
+    }
+  ]
+}

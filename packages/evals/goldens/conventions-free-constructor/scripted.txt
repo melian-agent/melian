@@ -1,6 +1,6 @@
 src/store.ts
 
-  P3  lines 11-13  quoted-rule-violation  (introduced, new, unresolved, confirmed)
+  P3  lines 11-13  quoted-rule-violation  (introduced, new, advisory, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   invoiceOf is a free function that constructs an Invoice from an InvoiceRow.
     What: invoiceOf is a free function that constructs an Invoice from an InvoiceRow.

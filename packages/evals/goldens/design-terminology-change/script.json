@@ -1,0 +1,128 @@
+{
+  "correctness": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "contracts": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "trust-boundary": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "removed-behaviour": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "tests": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "conventions": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ],
+  "design": [
+    {
+      "calls": [
+        {
+          "name": "search",
+          "arguments": {
+            "pattern": "writer trust",
+            "path": "docs/decisions",
+            "revision": "base"
+          },
+          "expectToolResult": "every listed writer approved"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "search",
+          "arguments": {
+            "pattern": "Publisher eligibility",
+            "path": "docs/decisions"
+          },
+          "expectToolResult": "Publisher eligibility"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "docs/decisions/2026-10-01-writer-trust.md",
+            "revision": "base"
+          },
+          "expectToolResult": "one missing approval"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "read_file",
+          "arguments": {
+            "path": "docs/decisions/2026-10-07-publisher-eligibility.md"
+          },
+          "expectToolResult": "any one"
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "name": "report_finding",
+          "arguments": {
+            "file": "docs/decisions/2026-10-07-publisher-eligibility.md",
+            "line": 3,
+            "rule": "criterion-selection-bias",
+            "severity": "P1",
+            "explanation": {
+              "what": "A renamed concept and an unlinked decision select their own weaker publication baseline.",
+              "why": "The active base decision requires every writer to approve. The head renames writer trust to publisher eligibility and permits one approval without a Supersedes line.",
+              "fix": "Keep all approvals required and link any proposed replacement to the base decision."
+            },
+            "failureScenario": "Three writers govern a repository. Only one approves. The head calls them publishers and permits publication under its new decision, although the active base decision withholds trust until all three approve.",
+            "evidence": [
+              {
+                "file": "docs/decisions/2026-10-07-publisher-eligibility.md",
+                "line": 3,
+                "role": "cause"
+              },
+              {
+                "file": "src/publish.ts",
+                "line": 2,
+                "role": "context"
+              },
+              {
+                "file": "docs/decisions/2026-10-01-writer-trust.md",
+                "line": 3,
+                "role": "context",
+                "revision": "base"
+              }
+            ]
+          },
+          "expectToolResult": "recorded finding"
+        }
+      ]
+    },
+    {
+      "text": "Reported 1 findings."
+    }
+  ],
+  "durability": [
+    {
+      "text": "Reported 0 findings."
+    }
+  ]
+}

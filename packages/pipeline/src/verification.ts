@@ -29,6 +29,7 @@ export type VerificationCandidate = {
 	finder: string;
 	route: ModelReference[];
 	budget: { tokens: number; tools: number };
+	decisionsAtBase?: string;
 };
 export type VerificationInput = {
 	root: ConversationId;
@@ -82,6 +83,11 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 						model: candidate.route[0],
 						instructions: [
 							verifierInstructions,
+							...(candidate.decisionsAtBase === undefined
+								? []
+								: [
+										`## Decisions at base\n${quoteUntrusted("listing", candidate.decisionsAtBase, task.input.revision.nonce)}`,
+									]),
 							...claims.map(({ label, id }) => `Claim ${label} finding ${id}`),
 						].join("\n\n"),
 						tools: [...Object.values(lensReadTools), reportVerdict],

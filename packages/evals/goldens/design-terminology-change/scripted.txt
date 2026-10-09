@@ -1,0 +1,18 @@
+docs/decisions/2026-10-07-publisher-eligibility.md
+
+  P1  line 3  criterion-selection-bias  (introduced, new, block, confirmed)
+    Verified: faux/scripted: The scripted verifier traced the claim.
+  A renamed concept and an unlinked decision select their own weaker publication baseline.
+    What: A renamed concept and an unlinked decision select their own weaker publication baseline.
+    Why here: The active base decision requires every writer to approve. The head renames writer trust to publisher eligibility and permits one approval without a Supersedes line.
+    Failure scenario: Three writers govern a repository. Only one approves. The head calls them publishers and permits publication under its new decision, although the active base decision withholds trust until all three approve.
+    Evidence:
+      cause: docs/decisions/2026-10-07-publisher-eligibility.md:3
+        Choice: publisher eligibility permits publication when any one listed publisher approved.
+      context: src/publish.ts:2
+          return approvals > 0;
+      context: docs/decisions/2026-10-01-writer-trust.md:3 at base
+        Choice: writer trust permits publication only when every listed writer approved.
+    What to do: Keep all approvals required and link any proposed replacement to the base decision.
+
+1 finding in 1 file.

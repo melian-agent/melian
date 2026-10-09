@@ -61,6 +61,15 @@ function named(lenses: readonly Lens[], name: string): Lens[] {
 const builtins = ["contracts", "conventions", "correctness", "design", "removed-behaviour", "tests", "trust-boundary"];
 
 describe("built-in lenses", () => {
+	it("loads the shipped catalogue without repository definitions", async () => {
+		writeFiles(repo, { ".melian/lenses/custom/LENS.md": "not a lens" });
+		const lenses = await Lens.builtins();
+		expect(lenses.map((lens) => lens.name)).toEqual(builtins);
+		expect(lenses.every((lens) => lens.file === `builtin:${lens.name}`)).toBe(true);
+		expect(lenses.find((lens) => lens.name === "design")!.rules.map((rule) => rule.id)).toContain(
+			"fail-open-default",
+		);
+	});
 	it("load correctness and contracts with their declared rules", async () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, ["src/index.ts"]);
 		expect(lenses.map((lens) => lens.name)).toEqual(builtins);
@@ -109,7 +118,7 @@ describe("built-in lenses", () => {
 			contracts: "686d7ad61a40",
 			conventions: "bb08d9e590e4",
 			correctness: "05037e7ba4a2",
-			design: "a7a00e10a081",
+			design: "b8e2918f3c85",
 			"removed-behaviour": "45fa8885fd01",
 			tests: "bee1be69be22",
 			"trust-boundary": "593b84bf6e82",
@@ -126,10 +135,17 @@ describe("built-in lenses", () => {
 		expect(design!.instructions).toMatch(/^You are the design reviewer for one change\./);
 		expect(design!.instructions).toContain("an empty report");
 		expect(design!.instructions).toContain('`read_file` each decision it finds with `revision: "base"`');
-		expect(design!.instructions).toContain("The base text is the baseline you judge against.");
+		expect(design!.instructions).toContain(
+			"The base text is the baseline you judge against, only when the index marks that decision ACTIVE.",
+		);
 		expect(design!.instructions).toContain("read each `Supersedes:` target at base");
+		expect(design!.instructions).toContain(
+			"a superseding or replacing one is judged against active base texts, following inactive targets to their successors.",
+		);
 		expect(design!.instructions).toContain("deletes or renames, read the old path at base");
-		expect(design!.instructions).toContain("supersedes nothing and replaces nothing has no baseline to break");
+		expect(design!.instructions).toContain(
+			"governing no behaviour an active base decision covers has no baseline to break",
+		);
 		expect(design!.rules.map((rule) => rule.id)).toEqual([
 			"identity-missing-input",
 			"trust-by-label",

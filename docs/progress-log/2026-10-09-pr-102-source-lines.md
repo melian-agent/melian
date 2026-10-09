@@ -1,0 +1,11 @@
+# Source-line declarations for [pull request #102](https://github.com/melian-agent/melian/pull/102)
+
+Merge commit a9c6f6edaf3e4e72f63a8fedd78b02bf8051d188 brings origin/main at 8cd1bec007d1dea064dc48d802fbd11e584b89ab into design-lens-baseline. The goldens test conflict combines both sets of core imports. The verifier test conflict keeps the active-base design tests and the Codex subscription tests from [pull request #106](https://github.com/melian-agent/melian/pull/106). Both sides’ routing and scoring tests remain.
+
+Fix commit 9075f432a73fdd039e2a55d2e93753fb838c2b21 addresses round sixteen’s confirmed finding d94bdbf04b07fa66. mdast decodes character references into text values while its positions count source line endings. Context: &#10;example followed by a physical newline and Supersedes: old.md spans two source lines but yields three decoded pieces. The old mapping drops the declaration and leaves old.md active. The same failure occurs with &#13;.
+
+Paragraph prose now comes from each text node’s source-offset slice, split on physical CommonMark line endings. Supersedes prefixes, absence sentinels and bare filenames use that source text. A decoded piece count that disagrees with the source line span refuses parsing and base loading with DecisionFilesError code invalid. Supersedes: old&#46;md supplies no edge to old.md. The design, decisions guideline and branch-owned Markdown decision state this contract.
+
+Regression tests pair literal and encoded filenames, prefixes and sentinels. Both newline-reference reproductions refuse parsing and loading; valid controls resolve the supersession graph. All 434 decisions tests passed. Restoring decoded prose failed four source-text tests. Removing the mismatch guard failed both newline-reference tests. Removing the inclusive span’s +1 failed all six new tests. Each mutation was restored before the whole gate.
+
+Both whole gates passed on their first run under Node 24.18.0 with MELIAN_STATE_DIR unset and VITEST_MAX_WORKERS=4. The merge gate passed 111 files and 3,440 tests, with 50 skipped. The final gate passed 111 files and 3,446 tests, with 50 skipped. Biome applied no fixes; type checking, dependency checks and audit passed. No real provider was called.

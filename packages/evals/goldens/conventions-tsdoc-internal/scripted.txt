@@ -1,6 +1,6 @@
 src/receipt.ts
 
-  P3  line 11  quoted-rule-violation  (introduced, new, unresolved, confirmed)
+  P3  line 11  quoted-rule-violation  (introduced, new, advisory, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   add carries a TSDoc block, and it is internal to src/receipt.ts.
     What: add carries a TSDoc block, and it is internal to src/receipt.ts.

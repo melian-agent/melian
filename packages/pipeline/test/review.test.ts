@@ -19,7 +19,7 @@ import {
 	type RepositorySource,
 	type Verdict,
 } from "@melian-agent/core";
-import { RecordedDecider } from "@melian-agent/decisions";
+import { DecisionFiles, DesignSections, RecordedDecider } from "@melian-agent/decisions";
 import {
 	CallerContext,
 	ChangePrompt,
@@ -3575,5 +3575,201 @@ describe("code over 2 KiB, which a finding stores cut", () => {
 		reportOn(1);
 
 		expect(await statuses()).toEqual([[stored.properties.id, "dismissed"]]);
+	});
+});
+
+describe("the design baseline", () => {
+	it("loads no base lenses or decisions when there is no verification candidate", async () => {
+		config = { ...config, tiers: { ...config.tiers, full: ["lens.correctness"] } };
+		const loaded = vi.spyOn(Lens, "load");
+		const decisions = vi.spyOn(DecisionFiles, "load");
+		scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
+		expect((await reviewed()).verdict.status).toBe("passed");
+		expect(loaded).not.toHaveBeenCalled();
+		expect(decisions).not.toHaveBeenCalled();
+	});
+	it("reviews a repaired head lens without reloading its invalid base definition", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		const lens = (name: string) => lines("---", `name: ${name}`, "extends: correctness", "---", "Find defects.");
+		repo = baseAndHead(
+			{ ".melian/lenses/custom/LENS.md": lens("wrong-name"), "src/answer.ts": "export const answer = 42;\n" },
+			{ ".melian/lenses/custom/LENS.md": lens("custom"), "src/answer.ts": "export const answer = 43;\n" },
+		);
+		config = { ...config, tiers: { ...config.tiers, full: ["lens.correctness"] } };
+		lenses = await Lens.load(repo, { kind: "worktree" }, ["src/answer.ts"]);
+		const loaded = vi.spyOn(Lens, "load");
+		const decisions = vi.spyOn(DecisionFiles, "load");
+		scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
+		expect((await reviewed()).verdict.status).toBe("passed");
+		expect(loaded).not.toHaveBeenCalled();
+		expect(decisions).not.toHaveBeenCalled();
+	});
+	it("fingerprints bounded base headings and quotes them as data", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "docs/design.md": "# Writer trust\n", "src/answer.ts": "export const answer = 42;\n" },
+			{ "docs/design.md": "# Publisher eligibility\n", "src/answer.ts": "export const answer = 43;\n" },
+		);
+		config = { ...config, tiers: { ...config.tiers, full: ["lens.design"] } };
+		const design = "You are the design reviewer";
+		const requests = scriptConversations(fake, [{ match: design, replies: [fauxAssistantMessage("Done.")] }]);
+		await review();
+		const messages = requests[design]![0]!;
+		const prompt = systemPromptOf(messages);
+		expect(quoted(prompt, nonceOf(messages), "listing").join("\n")).toContain("docs/design.md:1 — Writer trust");
+		const outside = prompt.replaceAll(
+			new RegExp(`<untrusted-${nonceOf(messages)}[\\s\\S]*?</untrusted-${nonceOf(messages)}>`, "g"),
+			"",
+		);
+		expect(outside).not.toContain("Writer trust");
+		expect(prompt).not.toContain("docs/design.md:1 — Publisher eligibility");
+		const before = fake.provider.state.callCount;
+		const rendered = vi.spyOn(DesignSections.prototype, "render").mockReturnValue("Changed base vocabulary");
+		scriptConversations(fake, [{ match: design, replies: [fauxAssistantMessage("Done.")] }]);
+		try {
+			await review();
+			expect(fake.provider.state.callCount).toBeGreaterThan(before);
+		} finally {
+			rendered.mockRestore();
+		}
+	});
+	it.each([
+		"[Section](missing.md#section)",
+		"[Trust][policy]\n\n[policy]: design/trust.md#writer-trust",
+		'[Trust](design/trust.md#writer-trust "Writer policy")',
+	])("refuses an incomplete base heading index linked by %s before asking a design model", async (link) => {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "docs/design.md": `# Design\n${link}\n`, "src/answer.ts": "export const answer = 42;\n" },
+			{ "docs/design.md": "# Repaired at head\n", "src/answer.ts": "export const answer = 43;\n" },
+		);
+		config = { ...config, tiers: { ...config.tiers, full: ["lens.design"] } };
+		const design = "You are the design reviewer";
+		const requests = scriptConversations(fake, [{ match: design, replies: [fauxAssistantMessage("Done.")] }]);
+		const before = fake.provider.state.callCount;
+		await expect(review()).rejects.toMatchObject({
+			code: "incomplete",
+		});
+		expect(fake.provider.state.callCount).toBe(before);
+		expect(requests[design]).toEqual([]);
+	});
+	it("does not load a broken design section for an unrelated lens", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "docs/design.md": "[Section](missing.md#section)\n", "src/answer.ts": "export const answer = 42;\n" },
+			{ "src/answer.ts": "export const answer = 43;\n" },
+		);
+		config = { ...config, tiers: { ...config.tiers, full: ["lens.correctness"] } };
+		scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
+		expect((await reviewed()).verdict.status).toBe("passed");
+	});
+
+	it("delivers active base decisions inside boundaries only to design, without head titles", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		const a = "docs/decisions/2026-10-01-a.md";
+		const b = "docs/decisions/2026-10-02-b.md";
+		repo = baseAndHead(
+			{
+				[a]: "# Original\n",
+				[b]: "# Successor\nSupersedes: 2026-10-01-a.md\n",
+				"src/answer.ts": "export const answer = 42;\n",
+			},
+			{ [b]: "# Planted head title\n", "src/answer.ts": "export const answer = 43;\n" },
+		);
+		config = { ...config, tiers: { ...config.tiers, full: ["lens.design", "lens.correctness"] } };
+		const design = "You are the design reviewer";
+		const requests = scriptConversations(fake, [
+			{ match: design, replies: [fauxAssistantMessage("Done.")] },
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		await review();
+		const messages = requests[design]![0]!;
+		const system = systemPromptOf(messages);
+		const nonce = nonceOf(messages);
+		expect(system).toContain("Read this before step 1");
+		expect(quoted(system, nonce, "listing").join("\n")).toContain(`[INACTIVE; superseded by ${b}] ${a} — Original`);
+		expect(quoted(system, nonce, "listing").join("\n")).toContain(`[ACTIVE] ${b} — Successor`);
+		expect(system).not.toContain("Planted head title");
+		expect(systemPromptOf(requests[correctness]![0]!)).not.toContain("## Decisions at base");
+		const outside = system.replaceAll(new RegExp(`<untrusted-${nonce}[\\s\\S]*?</untrusted-${nonce}>`, "g"), "");
+		expect(outside).not.toContain("Original");
+		expect(outside).not.toContain("Successor");
+		const before = fake.provider.state.callCount;
+		const rendered = vi.spyOn(DecisionFiles.prototype, "render").mockReturnValue("Changed mechanical input");
+		scriptConversations(fake, [
+			{ match: design, replies: [fauxAssistantMessage("Done.")] },
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		try {
+			await review();
+			expect(fake.provider.state.callCount).toBeGreaterThan(before);
+		} finally {
+			rendered.mockRestore();
+		}
+	});
+});
+
+describe("search at base", () => {
+	it("searches base-only paths and base terms, keeping default and explicit head searches unchanged", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "docs/decisions/old.md": "writer trust\n", "src/terms.ts": "export const term = 'writer trust';\n" },
+			{ "src/terms.ts": "export const term = 'publisher eligibility';\n" },
+		);
+		gitIn(repo, "rm", "--quiet", "docs/decisions/old.md");
+		writeFiles(repo, { ".gitattributes": "*.md -diff\n" });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "remove old path and hide markdown at head");
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					calls(
+						["search", { pattern: "writer trust", path: "docs/decisions/old.md", revision: "base" }],
+						["search", { pattern: "writer trust", path: "src/terms.ts", revision: "base" }],
+						["search", { pattern: "writer trust" }],
+						["search", { pattern: "publisher eligibility" }],
+						["search", { pattern: "publisher eligibility", revision: "head" }],
+					),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		await review();
+		const messages = requests[correctness]![1]!;
+		const nonce = nonceOf(messages);
+		const [old, base, absent, defaultHead, head] = toolResults(messages);
+		expect(quoted(old!, nonce, "search")).toEqual(["docs/decisions/old.md:1: writer trust"]);
+		expect(quoted(base!, nonce, "search")).toEqual(["src/terms.ts:1: export const term = 'writer trust';"]);
+		expect(absent).toBe("No matches.");
+		expect(defaultHead).toBe(head);
+		expect(quoted(head!, nonce, "search")[0]).toContain("publisher eligibility");
+	});
+
+	it.each([200, 201])("keeps base search bounded at 200 matches for %i rows", async (count) => {
+		writeFiles(repo, {
+			"src/matches.txt": `${Array.from({ length: count }, (_, i) => `needle ${i + 1}`).join("\n")}\n`,
+		});
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "base search rows");
+		gitIn(repo, "branch", "--force", "main", "HEAD");
+		gitIn(repo, "rm", "--quiet", "src/matches.txt");
+		gitIn(repo, "commit", "--quiet", "-m", "remove search rows");
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("search", { pattern: "needle", path: "src/matches.txt", revision: "base" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+		await review();
+		const messages = requests[correctness]![1]!;
+		const result = toolResults(messages)[0]!;
+		expect(quoted(result, nonceOf(messages), "search")[0]!.split("\n")).toHaveLength(200);
+		expect(result.includes("more matches not shown")).toBe(count > 200);
 	});
 });
