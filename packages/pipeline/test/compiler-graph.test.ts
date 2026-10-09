@@ -441,6 +441,7 @@ describe("mutation setup discovery", () => {
 		"nested/xvite.config.ts",
 		"vitestXconfig.ts",
 		"vitest.configXts",
+		"vitest.config.ts.backup.ts",
 		"vitest.customXconfig.ts",
 	])("ignores the misleading configuration name %s", (path) => {
 		root = mkdtempSync(join(tmpdir(), "melian-setup-nonconfig-"));
