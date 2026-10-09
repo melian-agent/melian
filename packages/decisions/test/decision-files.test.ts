@@ -791,6 +791,40 @@ describe("inline node declaration lines", () => {
 	});
 });
 
+describe("malformed supersession destinations", { timeout: 60_000 }, () => {
+	const invalid = {
+		name: "DecisionFilesError",
+		code: "invalid",
+		message: "Invalid destination old%ZZ.md: invalid URI encoding",
+	};
+
+	it("refuses parsing a malformed local destination", () => {
+		expect(() => DecisionFile.parse(c, "Supersedes: [Old](old%ZZ.md)")).toThrow(expect.objectContaining(invalid));
+		expect(DecisionFile.parse(c, "Supersedes: [Old](old.md)").supersedes).toEqual(["docs/decisions/old.md"]);
+	});
+
+	it("refuses loading a base with a malformed local destination", async () => {
+		const repo = temporaryDirectory();
+		try {
+			gitIn(repo, "init", "--quiet", "--initial-branch=main");
+			writeFiles(repo, {
+				"docs/decisions/old.md": "# Old",
+				[c]: "# New\n\nSupersedes: [Old](old%ZZ.md)",
+			});
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "malformed baseline");
+			await expect(DecisionFiles.load(repo, "HEAD")).rejects.toMatchObject(invalid);
+			writeFiles(repo, { [c]: "# New\n\nSupersedes: [Old](old.md)" });
+			gitIn(repo, "commit", "--quiet", "--all", "-m", "valid baseline");
+			expect((await DecisionFiles.load(repo, "HEAD")).render()).toContain(
+				`[INACTIVE; superseded by ${c}] docs/decisions/old.md — Old`,
+			);
+		} finally {
+			removeDirectory(repo);
+		}
+	});
+});
+
 const filenameCases = [
 	["dated", "2026-10-01-a.md", "2026-10-01-a.md.bak"],
 	["undated", "policy.md", "policy.txt"],
