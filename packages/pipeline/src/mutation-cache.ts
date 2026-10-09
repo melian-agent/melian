@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
-import { copyFile, mkdir, open, realpath, rename, rm } from "node:fs/promises";
+import { copyFile, mkdir, open, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { CacheScratch } from "./cache-scratch.ts";
+import type { MutationScratch } from "./mutation-scratch.ts";
 
 const bound = 16 * 1024 * 1024;
 
@@ -59,11 +60,17 @@ export class MutationCache {
 		return staged;
 	}
 
-	async publish(staged: string): Promise<void> {
-		if (!(await readable(staged))) return;
+	async publish(staged: string, files: Pick<MutationScratch, "read">): Promise<void> {
+		let text: string;
+		try {
+			text = (await files.read(staged, bound + 1)) ?? "";
+			JSON.parse(text);
+		} catch {
+			return;
+		}
 		const scratch = await CacheScratch.open(this.#root);
 		const temporary = scratch.file(this.file);
-		await copyFile(staged, temporary);
+		await writeFile(temporary, text);
 		await rename(temporary, this.file);
 	}
 }

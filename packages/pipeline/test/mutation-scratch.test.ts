@@ -63,18 +63,20 @@ function probe(
 						ftruncateSync: truncate,
 						writeFileSync: write,
 						fstatSync: () => ({ isFile: () => true }),
+						readSync: () => 0,
 						...overrides,
 					}
 				: path,
 		process: {
 			platform,
-			argv: ["node", JSON.stringify([scratch, target, operation, "replacement"])],
+			argv: ["node", JSON.stringify([scratch, target, operation, "replacement", 64])],
 			stdout: {
 				write: (text: string) => {
 					output += text;
 				},
 			},
 		},
+		Buffer,
 	});
 	return { open, close, remove, truncate, write, response: JSON.parse(output) as { ok?: boolean; error?: string } };
 }
@@ -152,7 +154,7 @@ it("refuses a non-directory component before deletion", () => {
 it("uses Darwin's atomic no-follow-any flag without the incompatible no-follow flag", () => {
 	const target = path.join(scratch, "tree/file");
 	const { open, close, write, truncate, response } = probe("write", target);
-	expect(response).toEqual({ ok: true });
+	expect(response).toEqual({ ok: true, missing: false });
 	expect(open).toHaveBeenCalledExactlyOnceWith(
 		target,
 		fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_NONBLOCK | 0x20000000,
@@ -165,7 +167,7 @@ it("uses Darwin's atomic no-follow-any flag without the incompatible no-follow f
 it("opens every Linux directory through its pinned descriptor and closes all handles", () => {
 	const target = path.join(scratch, "tree/file");
 	const { open, close, response } = probe("write", target, "linux");
-	expect(response).toEqual({ ok: true });
+	expect(response).toEqual({ ok: true, missing: false });
 	const components = target.split("/").filter(Boolean);
 	expect(open.mock.calls).toEqual([
 		["/", fs.constants.O_RDONLY | fs.constants.O_DIRECTORY],
@@ -215,4 +217,34 @@ it("writes and replaces a regular file, removes it, and closes the scratch direc
 	await operations.close();
 	expect(fs.existsSync(scratch)).toBe(false);
 	expect(fs.readFileSync(path.join(outside, "sentinel"), "utf8")).toBe("host data");
+});
+
+it.each(["log", "report"])("refuses a symlinked %s without reading host contents", async (name) => {
+	const target = path.join(scratch, name);
+	fs.symlinkSync(path.join(outside, "sentinel"), target);
+	await expect(files().read(target, 64)).rejects.toThrow(`non-file ${target}`);
+	const result = probe("read", target);
+	expect(result.response.error).toContain(`non-file ${target}`);
+	expect(result.open).not.toHaveBeenCalled();
+	expect(JSON.stringify(result.response)).not.toContain("host data");
+});
+it("reads only bounded regular output and treats a missing leaf as absent", async () => {
+	const target = path.join(scratch, "output");
+	expect(await files().read(target, 64)).toBeUndefined();
+	expect(await files().read(path.join(scratch, "absent/parent/output"), 64)).toBeUndefined();
+	fs.writeFileSync(target, "x".repeat(63));
+	expect(await files().read(target, 64)).toBe("x".repeat(63));
+	fs.writeFileSync(target, "x".repeat(64));
+	await expect(files().read(target, 64)).rejects.toMatchObject({ code: "outputTooLarge" });
+	fs.writeFileSync(target, "x".repeat(65));
+	await expect(files().read(target, 64)).rejects.toMatchObject({ code: "outputTooLarge" });
+});
+it("rechecks an opened output descriptor with fake read controls", () => {
+	const target = path.join(scratch, "output");
+	fs.writeFileSync(target, "text");
+	const read = vi.fn();
+	const result = probe("read", target, "darwin", { fstatSync: () => fs.statSync(outside), readSync: read });
+	expect(result.response.error).toContain(`non-file ${target}`);
+	expect(read).not.toHaveBeenCalled();
+	expect(result.close).toHaveBeenCalledOnce();
 });

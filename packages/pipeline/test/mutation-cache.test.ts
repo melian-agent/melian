@@ -6,6 +6,7 @@ import {
 	open,
 	readdir,
 	readFile,
+	realpath,
 	rm,
 	stat,
 	symlink,
@@ -14,8 +15,12 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { backgroundContext, createNodeExecutionEnv } from "../src/harness.ts";
 import { MutationCache, type MutationCacheKey } from "../src/mutation-cache.ts";
+import { MutationScratch } from "../src/mutation-scratch.ts";
 import { mutationInstallation } from "../src/mutation-static.ts";
+import { Run } from "../src/static.ts";
+import { unconfinedSandbox } from "./fixtures/sandbox.ts";
 
 vi.mock("node:fs/promises", async (importOriginal) => {
 	const original = await importOriginal<typeof filesystem>();
@@ -33,11 +38,25 @@ const key = (changes: Partial<MutationCacheKey> = {}): MutationCacheKey => ({
 
 let root: string;
 beforeEach(async () => {
-	root = await mkdtemp(join(tmpdir(), "melian-incremental-"));
+	root = await realpath(await mkdtemp(join(tmpdir(), "melian-incremental-")));
 });
 afterEach(async () => {
 	await rm(root, { recursive: true, force: true });
 });
+
+function scratchFiles(): MutationScratch {
+	const run = new Run(
+		{
+			env: createNodeExecutionEnv(root),
+			repoRoot: root,
+			commit: "a".repeat(40),
+			tool: "mutation",
+			settings: { enabled: true, timeout: 60, severity: {}, maxLines: 1 },
+		},
+		backgroundContext,
+	);
+	return MutationScratch.open(run, root, unconfinedSandbox, []);
+}
 
 it("reopens what the previous run wrote without sharing across policy or writer trust", async () => {
 	const first = await MutationCache.open(root, key({ trusted: false }));
@@ -202,7 +221,7 @@ it("publishes a readable staged report into the partition", async () => {
 	await writeFile(cache.file, '{"old":true}');
 	const staged = await cache.stage(join(root, "work"));
 	await writeFile(staged, '{"new":true}');
-	await cache.publish(staged);
+	await cache.publish(staged, scratchFiles());
 	expect(await readFile(cache.file, "utf8")).toBe('{"new":true}');
 	expect((await readdir(cache.directory)).filter((name) => name.endsWith(".tmp"))).toEqual([]);
 });
@@ -213,15 +232,15 @@ it("keeps the partition's report when the staged one is corrupt, missing, a syml
 	await mkdir(join(root, "work"));
 	const staged = join(root, "work", "incremental.json");
 	await writeFile(staged, "{corrupt");
-	await cache.publish(staged);
+	await cache.publish(staged, scratchFiles());
 	await rm(staged);
-	await cache.publish(staged);
+	await cache.publish(staged, scratchFiles());
 	await writeFile(join(root, "target.json"), '{"forged":true}');
 	await symlink(join(root, "target.json"), staged);
-	await cache.publish(staged);
+	await cache.publish(staged, scratchFiles());
 	await rm(staged);
-	await writeFile(staged, `{}${" ".repeat(16 * 1024 * 1024)}`);
-	await cache.publish(staged);
+	await writeFile(staged, "{}".padEnd(16 * 1024 * 1024 + 1, " "));
+	await cache.publish(staged, scratchFiles());
 	expect(await readFile(cache.file, "utf8")).toBe('{"old":true}');
 });
 
@@ -230,6 +249,6 @@ it("publishes a staged report of exactly the read bound", async () => {
 	await mkdir(join(root, "work"));
 	const staged = join(root, "work", "incremental.json");
 	await writeFile(staged, "{}".padEnd(16 * 1024 * 1024, " "));
-	await cache.publish(staged);
+	await cache.publish(staged, scratchFiles());
 	expect((await readFile(cache.file)).length).toBe(16 * 1024 * 1024);
 });

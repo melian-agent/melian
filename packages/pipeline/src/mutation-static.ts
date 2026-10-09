@@ -19,7 +19,7 @@ import { MutationProcess } from "./mutation-process.ts";
 import { MutationScratch } from "./mutation-scratch.ts";
 import { type MutationTestSelection, MutationTests } from "./mutation-tests.ts";
 import { nodeInstallation, type Sandbox } from "./sandbox.ts";
-import type { Run, StaticRun } from "./static.ts";
+import { type Run, type StaticRun, staticOutputLimit } from "./static.ts";
 import { CacheLocation } from "./tool-provisioning.ts";
 
 const config = "stryker.config.json";
@@ -385,14 +385,14 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 		} finally {
 			await restore();
 		}
-		const output = ((await this.#run.readOutput(log)) ?? result.output).slice(-4096).trim();
+		const output = ((await this.#files.read(log, staticOutputLimit)) ?? result.output).slice(-4096).trim();
 		if (result.code === 1) throw this.#run.fail("toolFailed", `Stryker exited 1: ${output}`);
 		if (result.code !== 0)
 			throw this.#run.fail("invalidOutput", `Stryker exited ${result.code}, which it does not document: ${output}`);
-		const text = await this.#run.readOutput(posix.join(this.#root, report));
+		const text = await this.#files.read(posix.join(this.#root, report), staticOutputLimit);
 		if (text === undefined) throw this.#run.fail("invalidOutput", `Stryker wrote no report at ${report}`);
 		// A run another review has retired may not leave identities for the next one to trust.
-		if ((await this.#run.input.holdsAuthority?.()) ?? true) await cache.publish(incremental);
+		if ((await this.#run.input.holdsAuthority?.()) ?? true) await cache.publish(incremental, this.#files);
 		return text;
 	}
 

@@ -11,7 +11,7 @@ function quote(value: string): string {
 export const mutationHousekeeping = `
 const fs = require("node:fs");
 const path = require("node:path");
-const [scratch, target, operation, content] = JSON.parse(process.argv[1]);
+const [scratch, target, operation, content, limit] = JSON.parse(process.argv[1]);
 const relative = path.relative(scratch, target);
 function inspect(file) {
   const stat = fs.lstatSync(file);
@@ -43,6 +43,8 @@ function openFile(flags) {
 }
 try {
   parents();
+  let text;
+  let missing = false;
   if (operation === "write") {
     const file = openFile(fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_NONBLOCK | fs.constants.O_NOFOLLOW);
     try {
@@ -56,11 +58,33 @@ try {
     fs.rmSync(target, { recursive: true, force: true });
   } else if (operation === "clean") {
     for (const name of fs.readdirSync(scratch)) fs.rmSync(path.join(scratch, name), { recursive: true, force: true });
+  } else if (operation === "read") {
+    const entry = fs.lstatSync(target, { throwIfNoEntry: false });
+    if (entry === undefined) missing = true;
+    else {
+      if (!entry.isFile()) throw new Error("non-file " + target);
+      const file = openFile(fs.constants.O_RDONLY | fs.constants.O_NONBLOCK | fs.constants.O_NOFOLLOW);
+      try {
+        if (!fs.fstatSync(file).isFile()) throw new Error("non-file " + target);
+        const buffer = Buffer.alloc(limit);
+        let bytes = 0;
+        while (bytes < limit) {
+          const count = fs.readSync(file, buffer, bytes, limit - bytes, null);
+          if (count === 0) break;
+          bytes += count;
+        }
+        if (bytes >= limit) throw Object.assign(new Error("exceeds output limit " + limit), { code: "outputTooLarge" });
+        text = buffer.subarray(0, bytes).toString("utf8");
+      } finally { fs.closeSync(file); }
+    }
   } else throw new Error("unknown operation");
-  process.stdout.write(JSON.stringify({ ok: true }));
+  process.stdout.write(JSON.stringify({ ok: true, text, missing }));
 } catch (error) {
-  process.stdout.write(JSON.stringify({ error: "refused " + target + ": " + (error.code || error.message) }));
-  process.exitCode = 1;
+  if (operation === "read" && error.code === "ENOENT") process.stdout.write(JSON.stringify({ missing: true }));
+  else {
+    process.stdout.write(JSON.stringify({ error: "refused " + target + ": " + (error.code || error.message), code: error.code }));
+    process.exitCode = 1;
+  }
 }
 `;
 
@@ -82,8 +106,8 @@ export class MutationScratch {
 		return new MutationScratch(run, sandbox, paths, sandbox.profile(paths));
 	}
 
-	async #execute(operation: string, target: string, content = ""): Promise<void> {
-		const command = `${quote(process.execPath)} -e ${quote(mutationHousekeeping)} ${quote(JSON.stringify([this.#paths.scratch, target, operation, content]))}`;
+	async #execute(operation: string, target: string, content = "", limit = 0): Promise<string | undefined> {
+		const command = `${quote(process.execPath)} -e ${quote(mutationHousekeeping)} ${quote(JSON.stringify([this.#paths.scratch, target, operation, content, limit]))}`;
 		let output = "";
 		const result = await this.#run.input.env.exec(
 			this.#sandbox.command(command, this.#paths, "", this.#profile),
@@ -97,8 +121,12 @@ export class MutationScratch {
 			},
 			backgroundContext,
 		);
-		if (!result.ok || result.value.exitCode !== 0)
+		if (!result.ok || result.value.exitCode !== 0) {
+			if (output.includes('"code":"outputTooLarge"'))
+				throw this.#run.fail("outputTooLarge", `scratch output ${target} exceeds its ${limit}-byte limit`);
 			throw this.#run.fail("toolFailed", `scratch operation refused ${target}: ${output}`);
+		}
+		return (JSON.parse(output) as { text?: string }).text;
 	}
 
 	async write(path: string, content: string): Promise<void> {
@@ -107,6 +135,10 @@ export class MutationScratch {
 
 	async remove(path: string): Promise<void> {
 		await this.#execute("remove", path);
+	}
+
+	async read(path: string, limit: number): Promise<string | undefined> {
+		return this.#execute("read", path, "", limit);
 	}
 
 	async close(): Promise<void> {

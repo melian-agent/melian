@@ -249,7 +249,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			context,
 		);
 		expect(run.status).toBe("ran");
-		expect(command.mock.calls).toHaveLength(4);
+		expect(command.mock.calls).toHaveLength(7);
 		for (const [, paths] of command.mock.calls)
 			expect(paths.installs).toEqual([join(repo, "node_modules"), join(repo, "packages/b/node_modules")]);
 	});

@@ -644,6 +644,29 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		expect([canary, homeExists, tmpExists]).toEqual(["unset", "home-exists", "tmp-exists"]);
 	});
 
+	it.each(["../stryker.log", "reports/mutation/mutation.json"])(
+		"refuses a head-written output link at %s without exposing its target",
+		async (name) => {
+			const { base, head } = twoCommits();
+			const secret = join(artifacts, "host-secret");
+			writeFileSync(secret, "secret-only-on-host");
+			fakeTool(
+				repo,
+				"stryker",
+				`if [ "$1" = "--version" ]; then echo 10.0.0; exit 0; fi
+mkdir -p reports/mutation
+rm -f '${name}'
+ln -s '${secret}' '${name}'
+exit 0`,
+			);
+			const error = await mutate(base, head).catch((error: unknown) => error);
+			expect(error).toMatchObject({ code: "toolFailed", message: expect.stringContaining("non-file") });
+			expect(String(error)).toContain(name.replace("../", ""));
+			expect(String(error)).not.toContain("secret-only-on-host");
+			expect(readFileSync(secret, "utf8")).toBe("secret-only-on-host");
+		},
+	);
+
 	it("does not link the caches a tool writes into node_modules, so a write lands in the worktree, not the checkout", async () => {
 		const { base, head } = twoCommits();
 		const seen = join(artifacts, "modules.txt");
