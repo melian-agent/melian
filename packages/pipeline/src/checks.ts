@@ -67,8 +67,7 @@ type Runs = {
 	runs: Record<string, Record<string, CheckRunRecord>>;
 	// The latest task for each identity short of its task, so asking again finds it rather than starting another.
 	tasks: Record<string, number>;
-	// The run identity that owns the mutation check of each revision: the latest run that asked for it. A mutation task of
-	// another run runs no head code and writes nothing. Absent in a document an earlier build wrote, where no task is retired.
+	// The latest check parent's authority includes its task ID, so older children stay retired when a policy key returns.
 	owners?: Record<string, string>;
 };
 
@@ -426,7 +425,7 @@ const ChecksTask = defineTask<ChecksInput, ChecksState, CheckRunRecord[]>({
 								config,
 								source,
 								writer,
-								authority: identityKey({ ...task.input.identity, task: 0 }),
+								authority: identityKey({ ...task.input.identity, task: runtime.taskId }),
 							},
 							{ ownership: { kind: "task", taskId: runtime.taskId } },
 						);
@@ -611,22 +610,26 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 				ownership: { kind: "conversation" },
 			});
 			runs.tasks[key] = created;
+			if (knownTier) {
+				runs.owners ??= {};
+				runs.owners[revision] = identityKey({ ...identity, task: created });
+			}
 			return created;
 		}, context);
-	// Every known tier retires the revision's earlier mutation authority first, in a commit that creates no task,
-	// and aborts the tasks of the runs it took it from. Pi cannot abort inside a commit, and the scheduler resumes every
-	// pending task as soon as this run submits its own, so a retired task left alive would run the head's tests.
+	// Retire older parents before aborting their children; commit the new parent's authority with its creation.
 	let restart = false;
 	if (knownTier) {
-		restart = await root.commit(async (tx) => {
+		const retirement = await root.commit(async (tx) => {
 			const runs = await tx.doc(ChecksDocument, root.id);
 			runs.owners ??= {};
-			const lost = runs.owners[revision] !== undefined && runs.owners[revision] !== key;
-			runs.owners[revision] = key;
-			if (lost) delete runs.tasks[key];
-			return lost;
+			const parent = runs.tasks[key];
+			const authority = parent === undefined ? undefined : identityKey({ ...identity, task: parent });
+			const lost = runs.owners[revision] !== authority;
+			if (parent === undefined || lost) runs.owners[revision] = `retired:${key}`;
+			return { restart: lost, authority: runs.owners[revision]! };
 		}, context);
-		await abortRetiredMutation(harness, revision, key, context);
+		restart = retirement.restart;
+		await abortRetiredMutation(harness, revision, retirement.authority, context);
 	}
 	let taskId = await start(undefined, undefined, restart);
 	let settled = await harness.waitForTask(taskId, context);

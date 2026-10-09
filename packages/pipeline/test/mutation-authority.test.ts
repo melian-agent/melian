@@ -409,6 +409,70 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		expect(await readFindings(reopened.harness, reopened.root.id, revisionKey({ base, head }), context)).toEqual([]);
 	});
 
+	it("keeps A's old child retired when B crashes before abort and A takes ownership again", async () => {
+		const { base, head } = scenario();
+		const database = await crashed(base, head);
+		const { harness, root } = await openOn(await openSqliteStorage(database));
+		const [old] = await liveChecks(harness);
+		expect(old).toBeDefined();
+		const request = await input(base, head, root.id, trusted);
+		vi.spyOn(harness, "inspect").mockRejectedValueOnce(new Error("B crashed before abort"));
+		await expect(runChecks(harness, { ...request, writer: revoked }, context)).rejects.toThrow(
+			"B crashed before abort",
+		);
+		expect((await liveChecks(harness)).some((task) => task.record.id === old!.record.id)).toBe(true);
+		const resuming = runChecks(harness, request, context);
+		await harness.resume();
+		const resumed = await resuming;
+		expect(await outcomeOf(harness, old!.record.id)).toEqual({ status: "aborted" });
+		expect(resumed.records).toMatchObject([{ name: "static.mutation", status: "ran" }]);
+		expect(runs()).toBe(1);
+		const owners = (await harness.snapshot(ChecksDocument, root.id, context))!.owners;
+		expect(owners![revisionKey({ base, head })]).toBe(
+			`${base} ${head} ${resumed.identity.tier} ${resumed.identity.policy} ${resumed.identity.task}`,
+		);
+		await harness.close(context);
+		const reopened = await openOn(await openSqliteStorage(database));
+		const attached = await runChecks(reopened.harness, await input(base, head, reopened.root.id, trusted), context);
+		expect(attached.identity).toEqual(resumed.identity);
+		expect(runs()).toBe(1);
+	});
+
+	it("creates ownership with a new parent even if the document disappears after retirement", async () => {
+		const { base, head } = scenario();
+		const { harness, root } = await openOn();
+		const inspect = harness.inspect.bind(harness);
+		vi.spyOn(harness, "inspect").mockImplementationOnce(async (asked) => {
+			const tasks = await inspect(asked);
+			await root.commit((tx) => tx.retireDoc(ChecksDocument, root.id), context);
+			return tasks;
+		});
+		const result = await runChecks(harness, await input(base, head, root.id, trusted), context);
+		expect(result.records).toMatchObject([{ name: "static.mutation", status: "ran" }]);
+		const owners = (await harness.snapshot(ChecksDocument, root.id, context))!.owners;
+		expect(owners![revisionKey({ base, head })]).toBe(
+			`${base} ${head} ${result.identity.tier} ${result.identity.policy} ${result.identity.task}`,
+		);
+		expect(runs()).toBe(1);
+	});
+
+	it("retires a live child durably when ownership records disappear before a takeover crash", async () => {
+		const { base, head } = scenario();
+		const database = await crashed(base, head);
+		const { harness, root } = await openOn(await openSqliteStorage(database));
+		const [old] = await liveChecks(harness);
+		await root.commit((tx) => tx.retireDoc(ChecksDocument, root.id), context);
+		vi.spyOn(harness, "inspect").mockRejectedValueOnce(new Error("crash before abort"));
+		await expect(runChecks(harness, await input(base, head, root.id, revoked), context)).rejects.toThrow(
+			"crash before abort",
+		);
+		await harness.close(context);
+		const reopened = await openOn(await openSqliteStorage(database));
+		await reopened.harness.resume();
+		expect(await outcomeOf(reopened.harness, old!.record.id)).toEqual({ status: "aborted" });
+		expect(runs()).toBe(0);
+	});
+
 	it("records the tree while head code runs and clears it after termination", async () => {
 		const { base, head } = scenario(true);
 		const { harness, root } = await openOn();
