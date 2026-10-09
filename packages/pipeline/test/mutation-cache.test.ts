@@ -1,9 +1,26 @@
-import { mkdir, mkdtemp, readdir, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import type * as filesystem from "node:fs/promises";
+import {
+	type FileHandle,
+	mkdir,
+	mkdtemp,
+	open,
+	readdir,
+	readFile,
+	rm,
+	stat,
+	symlink,
+	writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { MutationCache, type MutationCacheKey } from "../src/mutation-cache.ts";
 import { mutationInstallation } from "../src/mutation-static.ts";
+
+vi.mock("node:fs/promises", async (importOriginal) => {
+	const original = await importOriginal<typeof filesystem>();
+	return { ...original, open: vi.fn(original.open) };
+});
 
 const key = (changes: Partial<MutationCacheKey> = {}): MutationCacheKey => ({
 	policy: "policy",
@@ -42,6 +59,29 @@ it("discards corrupt output before the next run can read it", async () => {
 	await writeFile(first.file, "{corrupt");
 	const second = await MutationCache.open(root, key({ trusted: true }));
 	await expect(stat(second.file)).rejects.toMatchObject({ code: "ENOENT" });
+});
+
+it.each(["valid", "corrupt", "oversized"])("closes the cache descriptor after reading %s output", async (kind) => {
+	const cache = await MutationCache.open(root, key());
+	const text = kind === "valid" ? "{}" : kind === "corrupt" ? "{corrupt" : "{}".padEnd(16 * 1024 * 1024 + 1, " ");
+	await writeFile(cache.file, text);
+	const actual = vi.mocked(open).getMockImplementation()!;
+	const files: FileHandle[] = [];
+	vi.mocked(open).mockImplementation(async (path, flags, mode) => {
+		const file = await actual(path, flags, mode);
+		vi.spyOn(file, "close");
+		files.push(file);
+		return file;
+	});
+	try {
+		await MutationCache.open(root, key());
+		expect(files).toHaveLength(1);
+		expect(files[0]!.close).toHaveBeenCalledTimes(1);
+	} finally {
+		vi.mocked(open).mockImplementation(actual);
+		for (const file of files) await file.close();
+		vi.restoreAllMocks();
+	}
 });
 
 it("refuses a symlink into another writer partition without removing its target", async () => {
