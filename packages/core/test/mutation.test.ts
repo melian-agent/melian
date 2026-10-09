@@ -227,7 +227,7 @@ describe("normaliseMutationReport", () => {
 		});
 	});
 
-	it("makes the static mutants ignoreStatic skips one unmutated finding per file naming the lines, and an excluded mutator's a note", () => {
+	it("counts ignoreStatic lines once in one policy advisory, and keeps excluded mutators as notes", () => {
 		const { log, notes } = read({
 			"src/a.ts": [
 				{ status: "Ignored", line: 12, outsideTests: true },
@@ -247,9 +247,9 @@ describe("normaliseMutationReport", () => {
 		).toEqual([
 			[
 				"unmutated",
-				"error",
+				"warning",
 				10,
-				"Stryker did not judge lines 10, 12 of src/a.ts: its mutants are static, meaning they run when the module loads, such as a constant, a regular expression, or a table, and the run's ignoreStatic setting skips them, so no test was asked about them.",
+				"Stryker left 2 changed production lines unmutated by maintainer policy: ignoreStatic: 2.",
 			],
 		]);
 		expect(notes).toEqual([
@@ -257,33 +257,43 @@ describe("normaliseMutationReport", () => {
 		]);
 	});
 
-	it("joins neighbouring static lines into one range, and names a single line as a line", () => {
-		const text = (lines: number[]) =>
-			read({
-				"src/a.ts": lines.map((line) => ({ status: "Ignored", line, outsideTests: true })),
-			}).log.runs[0].results.map((result) => result.message.text.split(": ")[0]);
-		expect(text([10, 11, 12])).toEqual(["Stryker did not judge lines 10-12 of src/a.ts"]);
-		expect(text([10])).toEqual(["Stryker did not judge line 10 of src/a.ts"]);
-		expect(text([12, 10])).toEqual(["Stryker did not judge lines 10, 12 of src/a.ts"]);
+	it("folds both policy reasons into one advisory across files and keeps comment exclusions separate", () => {
+		const { log } = normaliseMutationReport(
+			report({
+				"src/b c.ts": [{ status: "Ignored", line: 1, outsideTests: true }],
+				"src/a.ts": [
+					{ status: "Ignored", line: 10, outsideTests: true },
+					{ status: "Ignored", line: 10, reason: "Ignored using a comment" },
+				],
+			}),
+			{ ...input, budget: { count: 3, maxLines: 4, path: "src/b c.ts", line: 5 } },
+		);
+		expect(log.runs[0].results).toEqual([
+			expect.objectContaining({ ruleId: "ignored-mutant", level: "error" }),
+			expect.objectContaining({
+				ruleId: "unmutated",
+				level: "warning",
+				message: {
+					text: "Stryker left 5 changed production lines unmutated by maintainer policy: budget: 3 (static.mutation.maxLines is 4); ignoreStatic: 2.",
+				},
+				locations: [{ physicalLocation: { artifactLocation: { uri: "src/b%20c.ts" }, region: { startLine: 5 } } }],
+			}),
+		]);
 	});
 
-	it("keeps a static finding per file, in path order, and a comment-ignored mutant on the same line a finding as well", () => {
+	it("locates one static-only advisory at the first path and line across unordered files", () => {
 		const { log } = read({
 			"src/b c.ts": [{ status: "Ignored", line: 1, outsideTests: true }],
-			"src/a.ts": [
-				{ status: "Ignored", line: 10, outsideTests: true },
-				{ status: "Ignored", line: 10, reason: "Ignored using a comment" },
-			],
+			"src/a.ts": [12, 10, 11].map((line) => ({ status: "Ignored", line, outsideTests: true })),
 		});
-		expect(
-			log.runs[0].results.map((result) => [
-				result.ruleId,
-				result.locations[0]!.physicalLocation.artifactLocation.uri,
-			]),
-		).toEqual([
-			["unmutated", "src/a.ts"],
-			["ignored-mutant", "src/a.ts"],
-			["unmutated", "src/b%20c.ts"],
+		expect(log.runs[0].results).toEqual([
+			expect.objectContaining({
+				level: "warning",
+				message: {
+					text: "Stryker left 4 changed production lines unmutated by maintainer policy: ignoreStatic: 4.",
+				},
+				locations: [{ physicalLocation: { artifactLocation: { uri: "src/a.ts" }, region: { startLine: 10 } } }],
+			}),
 		]);
 	});
 

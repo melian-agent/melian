@@ -111,17 +111,6 @@ export const mutationUnmutated = {
 	},
 };
 
-// Ascending line numbers as inclusive ranges, joining neighbours.
-function consecutive(sorted: readonly number[]): [number, number][] {
-	const ranges: [number, number][] = [];
-	for (const line of sorted) {
-		const last = ranges.at(-1);
-		if (last !== undefined && last[1] + 1 === line) last[1] = line;
-		else ranges.push([line, line]);
-	}
-	return ranges;
-}
-
 function lineRanges(ranges: readonly (readonly [number, number])[]): string {
 	const named = ranges.map(([first, last]) => (first === last ? `${first}` : `${first}-${last}`));
 	return `${named.length === 1 && ranges[0]![0] === ranges[0]![1] ? "line" : "lines"} ${named.join(", ")}`;
@@ -213,6 +202,13 @@ export interface MutationReportInput {
 	readonly tests: Readonly<Record<string, string>>;
 	/** Changed code the run left out of `lines`. Each file is a finding of rule `unmutated`, never only a note. */
 	readonly unmutated?: readonly UnmutatedFile[];
+	/** Lines omitted by the maintainer’s budget, located at the first omitted line. */
+	readonly budget?: {
+		readonly count: number;
+		readonly maxLines: number;
+		readonly path: string;
+		readonly line: number;
+	};
 }
 
 function code(replacement: string | undefined): string {
@@ -319,7 +315,7 @@ function collectMutants(
 }
 
 function reportIgnoredMutants(groups: CollectedMutants): void {
-	const { results, ignored, exempt } = groups;
+	const { results, ignored } = groups;
 	// Head comments choose what Stryker skips, so an ignored mutant needs a maintainer’s judgement.
 	for (const [path, lines] of ignored) {
 		for (const [line, reason] of lines) {
@@ -346,16 +342,37 @@ function reportIgnoredMutants(groups: CollectedMutants): void {
 			});
 		}
 	}
-	// A static exclusion can hide authentication code; expose its changed lines for a maintainer to acknowledge.
-	for (const [path, lines] of exempt) {
-		results.push(
-			unmutatedResult({
-				path,
-				ranges: consecutive([...lines].sort((a, b) => a - b)),
-				...mutationUnmutated.staticMutants,
-			}),
-		);
-	}
+}
+
+function reportPolicyOmissions(groups: CollectedMutants, run: MutationReportInput): void {
+	const entries = [...groups.exempt].sort(([a], [b]) => compare(a, b));
+	const staticCount = entries.reduce((count, [, lines]) => count + lines.size, 0);
+	const budgetCount = run.budget?.count ?? 0;
+	if (budgetCount + staticCount === 0) return;
+	const reasons: string[] = [];
+	if (run.budget) reasons.push(`budget: ${budgetCount} (static.mutation.maxLines is ${run.budget.maxLines})`);
+	if (staticCount > 0) reasons.push(`ignoreStatic: ${staticCount}`);
+	const path = run.budget?.path ?? entries[0]![0];
+	const line = run.budget?.line ?? Math.min(...entries[0]![1]);
+	groups.results.push({
+		ruleId: "unmutated",
+		level: "warning",
+		message: {
+			text: `Stryker left ${budgetCount + staticCount} changed production lines unmutated by maintainer policy: ${reasons.join("; ")}.`,
+		},
+		advice: {
+			whyHere: "The maintainer chose the mutation budget and ignoreStatic policy.",
+			whatToDo: "Raise static.mutation.maxLines or change ignoreStatic for these paths when the run budget permits.",
+		},
+		locations: [
+			{
+				physicalLocation: {
+					artifactLocation: { uri: path.split("/").map(encodeURIComponent).join("/") },
+					region: { startLine: line },
+				},
+			},
+		],
+	});
 }
 
 function mutationNotes(groups: CollectedMutants, lines: MutationReportInput["lines"]): string[] {
@@ -400,6 +417,7 @@ export function normaliseMutationReport(text: string, run: MutationReportInput):
 		collectMutants(path, file.mutants, ranges, config, run, groups);
 	}
 	reportIgnoredMutants(groups);
+	reportPolicyOmissions(groups, run);
 	const { results } = groups;
 	for (const file of run.unmutated ?? []) results.push(unmutatedResult(file));
 	results.sort((a, b) => {

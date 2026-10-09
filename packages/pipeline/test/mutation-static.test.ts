@@ -91,11 +91,13 @@ interface Mutant {
 	mutatorName?: string;
 	replacement?: string;
 	reason?: string;
+	outsideTests?: boolean;
 }
 
-function report(files: Record<string, Mutant[]>): string {
+function report(files: Record<string, Mutant[]>, ignoreStatic = false): string {
 	return JSON.stringify({
 		schemaVersion: "1.0",
+		config: { ignoreStatic },
 		files: Object.fromEntries(
 			Object.entries(files).map(([path, mutants]) => [
 				path,
@@ -108,6 +110,7 @@ function report(files: Record<string, Mutant[]>): string {
 						replacement: mutant.replacement ?? "true",
 						status: mutant.status,
 						...(mutant.reason === undefined ? {} : { statusReason: mutant.reason }),
+						...(mutant.outsideTests === undefined ? {} : { static: mutant.outsideTests }),
 						location: {
 							start: { line: mutant.line, column: 3 },
 							end: { line: mutant.endLine ?? mutant.line, column: 9 },
@@ -1296,7 +1299,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 				[
 					"packages/p/src/past.ts",
 					"P3",
-					"Stryker left 1 changed production lines unmutated: static.mutation.maxLines is 5.",
+					"Stryker left 1 changed production lines unmutated by maintainer policy: budget: 1 (static.mutation.maxLines is 5).",
 				],
 			]);
 			expect(lastEntries(fake)).toEqual(["packages/p/src/past.ts:1-5"]);
@@ -1325,7 +1328,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 				[
 					"packages/p/src/a.ts",
 					"P3",
-					"Stryker left 11 changed production lines unmutated: static.mutation.maxLines is 11.",
+					"Stryker left 11 changed production lines unmutated by maintainer policy: budget: 11 (static.mutation.maxLines is 11).",
 				],
 			]);
 		});
@@ -1455,10 +1458,10 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			await mutate(base, head, { maxLines: 2 });
 			expect(lastEntries(fake)).toEqual(["packages/p/src/a.ts:2-3"]);
 			expect((await leftOut(base, head, 2)).map(([, , what]) => what)).toEqual([
-				"Stryker left 2 changed production lines unmutated: static.mutation.maxLines is 2.",
+				"Stryker left 2 changed production lines unmutated by maintainer policy: budget: 2 (static.mutation.maxLines is 2).",
 			]);
 			expect((await leftOut(base, head, 3)).map(([, , what]) => what)).toEqual([
-				"Stryker left 1 changed production lines unmutated: static.mutation.maxLines is 3.",
+				"Stryker left 1 changed production lines unmutated by maintainer policy: budget: 1 (static.mutation.maxLines is 3).",
 			]);
 		});
 
@@ -1765,6 +1768,31 @@ exit 1`,
 			expect(fake.heads()).toEqual([head]);
 		});
 
+		it("records budget and ignoreStatic as one policy advisory with both counts", async () => {
+			const base = commit(repo, {
+				"melian.yaml": policy.replace("timeout: 120", "timeout: 120, maxLines: 1"),
+				"stryker.config.json": config,
+			});
+			const head = commit(repo, { "packages/p/src/a.ts": a });
+			stryker({
+				report: report({ "packages/p/src/a.ts": [{ status: "Ignored", line: 1, outsideTests: true }] }, true),
+			});
+			const { harness, root, run } = await checks(base, head);
+			expect(run.records).toMatchObject([{ status: "ran", findings: 1 }]);
+			const findings = await readFindings(harness, root.id, revisionKey({ base, head }), context);
+			expect(findings).toHaveLength(1);
+			expect(findings[0]!.resolved(defaultConfig).properties.resolution).toBe("advisory");
+			expect(findings[0]).toMatchObject({
+				ruleId: "mutation/unmutated",
+				properties: {
+					severity: "P3",
+					explanation: {
+						what: "Stryker left 4 changed production lines unmutated by maintainer policy: budget: 3 (static.mutation.maxLines is 1); ignoreStatic: 1.",
+					},
+				},
+			});
+		});
+
 		it("mutates the first lines of a change past the bound, and records the lines it left out as a finding, never as a clean check", async () => {
 			const base = commit(repo, {
 				"melian.yaml": policy.replace("timeout: 120", "timeout: 120, maxLines: 1"),
@@ -1792,7 +1820,7 @@ exit 1`,
 				properties: { path: "packages/p/src/a.ts", severity: "P3" },
 			});
 			expect(left!.properties.explanation.what).toBe(
-				"Stryker left 3 changed production lines unmutated: static.mutation.maxLines is 1.",
+				"Stryker left 3 changed production lines unmutated by maintainer policy: budget: 3 (static.mutation.maxLines is 1).",
 			);
 			expect(fake.calls()).toHaveLength(1);
 		});
