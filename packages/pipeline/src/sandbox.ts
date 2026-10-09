@@ -98,7 +98,6 @@ function regexSource(path: string): string {
 	return path.replace(/[\][\\.*^$+?(){}|]/g, "\\$&");
 }
 
-/** The Node installation that runs this process: the directory above the real path of its `bin/node`. */
 export function nodeInstallation(): string {
 	return dirname(dirname(realpathSync(process.execPath)));
 }

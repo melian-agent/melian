@@ -33,6 +33,11 @@ vi.mock("node:fs", async (importOriginal) => {
 });
 
 const run = promisify(execFile);
+const seatbeltAvailable =
+	spawnSync("/usr/bin/sandbox-exec", ["-p", "(version 1)(allow default)", "/usr/bin/true"], { stdio: "ignore" })
+		.status === 0;
+const bubblewrapAvailable =
+	spawnSync("bwrap", ["--unshare-all", "--ro-bind", "/", "/", "true"], { stdio: "ignore" }).status === 0;
 
 // What a hostile test would try: read a credential, call a remote host, write beside the run, and write inside it. The
 // remote host is in TEST-NET-1, which no network routes: a sandbox answers a connect at once with a refusal, and an open
@@ -126,19 +131,17 @@ async function probed(sandbox: Sandbox): Promise<Record<string, string>> {
 
 describe("Sandbox.environment", () => {
 	for (const platform of ["darwin", "linux"] as const) {
-		const sandbox = Sandbox.detect(platform);
-		it.skipIf(sandbox === undefined)(
-			`gives a PATH of Node's bin and the system's, whatever the host's is (${platform})`,
-			() => {
-				vi.stubEnv("PATH", "/opt/homebrew/bin:/Users/someone/bin");
-				const directories = sandbox!.environment().PATH!.split(":");
-				expect(directories).toContain(join(nodeInstallation(), "bin"));
-				expect(directories.slice(-4)).toEqual(["/usr/bin", "/bin", "/usr/sbin", "/sbin"]);
-				expect(directories).not.toContain("/opt/homebrew/bin");
-				expect(directories).not.toContain("/Users/someone/bin");
-				expect(sandbox!.environment().MELIAN_SANDBOX).toBe(platform === "darwin" ? "seatbelt" : "bubblewrap");
-			},
-		);
+		it(`gives a PATH of Node's bin and the system's, whatever the host's is (${platform})`, () => {
+			vi.mocked(spawnSync).mockReturnValueOnce({ status: 0 } as ReturnType<typeof spawnSync>);
+			const sandbox = Sandbox.detect(platform)!;
+			vi.stubEnv("PATH", "/opt/homebrew/bin:/Users/someone/bin");
+			const directories = sandbox!.environment().PATH!.split(":");
+			expect(directories).toContain(join(nodeInstallation(), "bin"));
+			expect(directories.slice(-4)).toEqual(["/usr/bin", "/bin", "/usr/sbin", "/sbin"]);
+			expect(directories).not.toContain("/opt/homebrew/bin");
+			expect(directories).not.toContain("/Users/someone/bin");
+			expect(sandbox!.environment().MELIAN_SANDBOX).toBe(platform === "darwin" ? "seatbelt" : "bubblewrap");
+		});
 	}
 });
 
@@ -196,7 +199,7 @@ describe("Sandbox.detect", () => {
 	});
 });
 
-describe.skipIf(Sandbox.detect("darwin") === undefined)("seatbelt", { timeout: 60_000 }, () => {
+describe.skipIf(!seatbeltAvailable)("seatbelt", { timeout: 60_000 }, () => {
 	it("denies the reviewer's home and the network, and allows writes under scratch only", async () => {
 		const sandbox = Sandbox.detect("darwin") as Sandbox;
 		expect(await probed(sandbox)).toEqual({
@@ -213,7 +216,7 @@ describe.skipIf(Sandbox.detect("darwin") === undefined)("seatbelt", { timeout: 6
 	});
 });
 
-it.skipIf(Sandbox.detect("darwin") === undefined)(
+it.skipIf(!seatbeltAvailable)(
 	"requires a scratch HOME for a child with an otherwise empty environment inside seatbelt",
 	{ timeout: 60_000 },
 	async () => {
@@ -244,7 +247,7 @@ console.log(JSON.stringify({ absent: { status: absent.status, stderr: absent.std
 	},
 );
 
-describe.skipIf(Sandbox.detect("linux") === undefined)("bubblewrap", { timeout: 60_000 }, () => {
+describe.skipIf(!bubblewrapAvailable)("bubblewrap", { timeout: 60_000 }, () => {
 	it("denies the reviewer's home and the network, and allows writes under scratch only", async () => {
 		const sandbox = Sandbox.detect("linux") as Sandbox;
 		expect(await probed(sandbox)).toEqual({
@@ -343,6 +346,15 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 		});
 		expect(seatbelt.profile(where)).toContain('(literal "/opt") (literal "/checkout")');
 		expect(parent).toHaveBeenCalledTimes(5);
+	});
+
+	it("does not inspect macOS developer tools for a bubblewrap environment", () => {
+		host("/dev-tools/Xcode", undefined);
+		expect(bubblewrap.environment()).toStrictEqual({
+			PATH: `${join(nodeInstallation(), "bin")}:/usr/bin:/bin:/usr/sbin:/sbin`,
+			MELIAN_SANDBOX: "bubblewrap",
+		});
+		expect(readlinkSync).not.toHaveBeenCalled();
 	});
 
 	it("uses named developer tools and grants only their xcrun cache marker", () => {

@@ -1,11 +1,10 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Changeset, defaultConfig } from "@melian-agent/core";
 import { backgroundContext, createNodeExecutionEnv, runStaticTool } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Sandbox } from "../src/sandbox.ts";
 import { commit, createRepository, lines, removeRepository } from "./fixtures/repo.ts";
 
 const checkout = fileURLToPath(new URL("../../..", import.meta.url));
@@ -14,7 +13,12 @@ const own = (path: string) => readFileSync(join(checkout, path), "utf8");
 // Every other mutation test runs a fake Stryker. Problem: the fakes passed while the real run, under the real sandbox,
 // took an hour and overran its timeout, and nothing small showed it. This runs the real Stryker, Vitest, and sandbox on a
 // two-module project, with the repository's own Stryker and Vitest configuration.
-const hostSandbox = Sandbox.detect();
+const hostAvailable =
+	process.platform === "darwin"
+		? spawnSync("/usr/bin/sandbox-exec", ["-p", "(version 1)(allow default)", "/usr/bin/true"], { stdio: "ignore" })
+				.status === 0
+		: process.platform === "linux" &&
+			spawnSync("bwrap", ["--unshare-all", "--ro-bind", "/", "/", "true"], { stdio: "ignore" }).status === 0;
 const inSandbox = process.env.MELIAN_SANDBOX !== undefined;
 
 let repo: string;
@@ -40,7 +44,7 @@ const test = (name: string) =>
 		"});",
 	);
 
-describe.skipIf(hostSandbox === undefined || inSandbox)("the real backend", { timeout: 180_000 }, () => {
+describe.skipIf(!hostAvailable || inSandbox)("the real backend", { timeout: 180_000 }, () => {
 	it("gets past the dry run on the related test alone and judges the changed line within a minute", async () => {
 		const project = {
 			"package.json": '{"type":"module"}\n',
