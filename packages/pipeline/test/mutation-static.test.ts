@@ -1251,6 +1251,22 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 			]);
 		});
 
+		it("takes a missing share from the first largest donor when donors tie", async () => {
+			const base = commit(repo, { "stryker.config.json": config });
+			const head = commit(repo, {
+				"packages/p/src/a.ts": rows("a", 49),
+				"packages/p/src/b.ts": rows("b", 49),
+				"packages/p/src/z.ts": rows("z", 1),
+			});
+			const fake = stryker({ report: report({}) });
+			await mutate(base, head, { maxLines: 20 });
+			expect(lastEntries(fake)).toEqual([
+				"packages/p/src/a.ts:1-9",
+				"packages/p/src/b.ts:1-10",
+				"packages/p/src/z.ts:1-1",
+			]);
+		});
+
 		it("gives a file with a single changed line one line of the bound, taking it from the largest share", async () => {
 			const base = commit(repo, { "stryker.config.json": config });
 			const head = commit(repo, {
