@@ -313,6 +313,8 @@ The decision-model questions ship enabled by default. When no decision provider 
 
 Built on [pull request #98](https://github.com/melian-agent/melian/pull/98), under review. `static.mutation` mutates changed production lines only. Its dry run selects tests that reach those files through the compiler graph. A graph failure closes to the whole suite. Stryker's incremental file lives in Melian's cache, keyed by repository, base policy, and writer-trust class. A change over the bound receives proportional mutation across files. Lines past the budget yield one P3 advisory notice per run naming their count and the budget. Other unmutated lines keep their findings. A timeout skips with leave and raises a finding. Configuration-ignored mutants are notes; source-comment ignores are findings. Equivalent survivors require a maintainer dismissal with a reason. A targeted mutation of lens-raised guards remains deferred as verifier evidence. [The mutation decision](decisions/2026-10-08-mutation-testing-as-a-static-check.md) records the details.
 
+Mutation test selection follows literal include patterns from the head’s Vitest configuration. It uses the installed Vitest’s defaults when none are set. Computed options select the whole suite, including the checked-in wrapper that derives its include from the environment. This preserves coverage at the cost of a larger dry run.
+
 ### Scrutiny levels
 
 Milestone 2 step 3 built the levels each lens declares in `LENS.md`, their budgets, and the level on each check record; step 5 built triage, the policy band, and escalation. The local cap on a lens's level, and its override lineage, wait for the review plan.
