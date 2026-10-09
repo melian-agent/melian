@@ -19,7 +19,7 @@ function inspect(file) {
   return stat;
 }
 function parents() {
-  if (relative === ".." || relative.startsWith("../") || path.isAbsolute(relative)) throw new Error("outside scratch " + target);
+  if (relative === ".." || relative.startsWith("../")) throw new Error("outside scratch " + target);
   inspect(scratch);
   let at = scratch;
   for (const part of relative.split(path.sep).slice(0, -1)) {
