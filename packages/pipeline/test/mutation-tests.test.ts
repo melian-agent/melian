@@ -367,3 +367,43 @@ it("rejects a compiler-child root without a project before writing scratch outpu
 		rmSync(root, { recursive: true, force: true });
 	}
 });
+
+it("supplies the default file and time bounds to the compiler", () => {
+	const fake = program(graph);
+	expect(MutationTests.select(fake, ["src/a.ts"], undefined, () => 0).toJSON()).toHaveProperty("tests");
+	expect(fake.read).toHaveBeenCalledExactlyOnceWith({ importsOnly: true, maxFiles: 10_000, deadline: 30_000 });
+});
+
+it("falls back when one of several changed sources is absent", () => {
+	expect(MutationTests.select(program(graph), ["src/a.ts", "src/missing.ts"]).toJSON()).toEqual({
+		note: expect.stringContaining("Changed source is absent"),
+	});
+});
+
+it("finishes at a tight deadline without visiting phantom importers or an extra queue entry", () => {
+	let clock = 0;
+	const fake = program({ "src/a.ts": [], "test/z.test.ts": ["src/a.ts"] });
+	expect(
+		MutationTests.select(fake, ["src/a.ts"], { files: 2, milliseconds: 4 }, () => clock++).toJSON(),
+	).toMatchObject({
+		tests: ["test/z.test.ts"],
+		include: ["test/z.test.ts"],
+	});
+	expect(clock).toBe(4);
+});
+
+it("sorts related tests even when the graph lists them in reverse order", () => {
+	const fake = program({ "src/a.ts": [], "test/z.test.ts": ["src/a.ts"], "test/a.test.mjs": ["src/a.ts"] });
+	expect(MutationTests.select(fake, ["src/a.ts"]).toJSON()).toMatchObject({
+		tests: ["test/a.test.mjs", "test/z.test.ts"],
+		include: ["test/a.test.mjs", "test/z.test.ts"],
+	});
+});
+
+it("sorts related tests without reversing a graph already in order", () => {
+	const fake = program({ "src/a.ts": [], "test/a.test.mjs": ["src/a.ts"], "test/z.test.ts": ["src/a.ts"] });
+	expect(MutationTests.select(fake, ["src/a.ts"]).toJSON()).toMatchObject({
+		tests: ["test/a.test.mjs", "test/z.test.ts"],
+		include: ["test/a.test.mjs", "test/z.test.ts"],
+	});
+});
