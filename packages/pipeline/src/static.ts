@@ -43,9 +43,9 @@ export interface StaticRunInput {
 	readonly settings: StaticToolSettings | TscSettings | MutationSettings;
 	/** The change under review. Mutation testing mutates the lines it adds or edits, so `mutation` needs it. */
 	readonly revision?: Revision;
-	/** Writer trust supplied by the host; absence keeps cache writes in the untrusted partition. */
+	/** Writer trust supplied by the host; mutation tests run only when this is true. */
 	readonly trustedWriter?: boolean;
-	/** Records and clears the sandbox process group for durable recovery. */
+	/** Records and clears supervised process identities for durable recovery. */
 	readonly mutationProcess?: MutationProcessHooks;
 	/** Whether the run still answers to the latest review of its revision; absence means it does. */
 	readonly holdsAuthority?: () => Promise<boolean>;
@@ -510,6 +510,12 @@ export function staticToolSource(repoRoot: string, tool: StaticTool): StaticTool
 export async function runStaticTool(input: StaticRunInput, context: Context): Promise<StaticRun> {
 	const run = new Run(input, context);
 	const { repoRoot, commit, tool } = input;
+	if (tool === "mutation" && input.trustedWriter !== true)
+		return {
+			status: "skipped",
+			reason: mutationSkips.untrustedWriter("the caller did not establish a trusted writer for this head"),
+			cause: "untrustedWriter",
+		};
 	// The mutation check runs the head's own tests, so it runs only where the host can confine them.
 	const sandbox = tool === "mutation" ? Sandbox.detect() : undefined;
 	if (tool === "mutation" && sandbox === undefined) {

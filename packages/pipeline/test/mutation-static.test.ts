@@ -6,10 +6,12 @@ import {
 	readFileSync,
 	realpathSync,
 	rmSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
 	Changeset,
 	CheckError,
@@ -42,10 +44,10 @@ import {
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MutationScratch } from "../src/mutation-scratch.ts";
-import { strykerNotInstalled, strykerVersion } from "../src/mutation-static.ts";
+import { MutationRun, strykerNotInstalled, strykerVersion } from "../src/mutation-static.ts";
 import { MutationTests } from "../src/mutation-tests.ts";
 import { Sandbox } from "../src/sandbox.ts";
-import { staticToolSource } from "../src/static.ts";
+import { Run, staticToolSource } from "../src/static.ts";
 import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
 import {
 	commit as commitTo,
@@ -185,7 +187,7 @@ async function mutate(
 			base,
 			commit: head,
 			tool: "mutation",
-			trustedWriter: extra.trustedWriter,
+			trustedWriter: extra.trustedWriter ?? true,
 			policyCommit: extra.policyCommit,
 			...(extra.holdsAuthority === undefined ? {} : { holdsAuthority: extra.holdsAuthority }),
 			settings: {
@@ -375,7 +377,24 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 	it("keeps an untrusted writer's incremental file away from a trusted run", async () => {
 		const { base, head } = twoCommits();
 		const reads = incrementalTool();
-		await mutate(base, head, { trustedWriter: false });
+		const run = new Run(
+			{
+				env: createNodeExecutionEnv(repo),
+				repoRoot: repo,
+				base,
+				commit: head,
+				tool: "mutation",
+				trustedWriter: false,
+				revision: await revisionOf(base, head),
+				settings: defaultConfig.static.mutation,
+			},
+			context,
+		);
+		await run.inWorktree((root, scratch) =>
+			new MutationRun(run, root, scratch, join(repo, "node_modules/.bin/stryker"), "10.0.0", [], unconfinedSandbox, [
+				join(repo, "node_modules"),
+			]).check(),
+		);
 		const [first] = partitions();
 		writeFileSync(first!, '{"stamp":"untrusted-forgery"}');
 		await mutate(base, head, { trustedWriter: true });
@@ -511,6 +530,12 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 			});
 			const head = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
 			const saved = join(artifacts, "compiler-selected.json");
+			mkdirSync(join(repo, "node_modules"), { recursive: true });
+			symlinkSync(
+				fileURLToPath(new URL("../../../node_modules/vitest", import.meta.url)),
+				join(repo, "node_modules/vitest"),
+				"dir",
+			);
 			fakeTool(
 				repo,
 				"stryker",
@@ -783,6 +808,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 				base,
 				commit: head,
 				tool: "mutation",
+				trustedWriter: true,
 				settings: { ...defaultConfig.static.mutation, timeout: 120 },
 				revision: await revisionOf(base, head),
 			},
@@ -1114,6 +1140,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 						base,
 						commit: head,
 						tool: "mutation",
+						trustedWriter: true,
 						settings: { ...defaultConfig.static.mutation, timeout: 120 },
 						revision,
 					},
@@ -1133,6 +1160,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 						base,
 						commit: head,
 						tool: "mutation",
+						trustedWriter: true,
 						settings: { ...defaultConfig.static.mutation, timeout: 1 },
 						revision: await revisionOf(base, head),
 					},
@@ -1449,6 +1477,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 					base,
 					commit: head,
 					tool: "mutation",
+					trustedWriter: true,
 					settings: { ...defaultConfig.static.mutation, timeout: 1, maxLines: 1 },
 					revision: await revisionOf(base, head),
 				},
@@ -1550,6 +1579,7 @@ exit 0`,
 					base,
 					commit: head,
 					tool: "mutation",
+					trustedWriter: true,
 					settings: { ...defaultConfig.static.mutation, timeout: 1 },
 					revision,
 				},
@@ -1581,6 +1611,7 @@ exit 0`,
 						base,
 						commit: head,
 						tool: "mutation",
+						trustedWriter: true,
 						settings: { ...defaultConfig.static.mutation, timeout: 120 },
 						revision,
 					},

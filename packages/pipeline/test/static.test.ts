@@ -60,6 +60,7 @@ function input(tool: StaticRunInput["tool"], commitId: string, timeout = 120): S
 		repoRoot: repo,
 		commit: commitId,
 		tool,
+		trustedWriter: true,
 		settings: { ...defaultConfig.static[tool], timeout },
 	};
 }
@@ -573,3 +574,16 @@ describe("runStaticTool after a crash", () => {
 		expectCheckoutUntouched();
 	});
 });
+
+it.each([undefined, false])(
+	"the exported mutation runner refuses trustedWriter=%s before creating a worktree",
+	async (trustedWriter) => {
+		const env = createNodeExecutionEnv(repo);
+		const execute = vi.spyOn(env, "exec");
+		const sandbox = vi.spyOn(Sandbox, "detect").mockReturnValue(unconfinedSandbox);
+		const result = await runStaticTool({ ...input("mutation", "a".repeat(40)), env, trustedWriter }, context);
+		expect(result).toMatchObject({ status: "skipped", cause: "untrustedWriter" });
+		expect(execute).not.toHaveBeenCalled();
+		expect(sandbox).not.toHaveBeenCalled();
+	},
+);
