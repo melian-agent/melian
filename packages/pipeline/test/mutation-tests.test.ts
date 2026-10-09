@@ -60,62 +60,92 @@ it("runs no tests when no test import closure reaches a changed file, even with 
 	expect(empty).toMatchObject({ tests: [], include: [] });
 });
 
-it("runs a related test through the Stryker Vitest configuration without collecting its setup module", {
-	timeout: 60_000,
-}, () => {
-	const root = mkdtempSync(join(tmpdir(), "melian-mutation-setup-"));
-	const checkout = fileURLToPath(new URL("../../../", import.meta.url));
-	try {
-		mkdirSync(join(root, "test"));
-		mkdirSync(join(root, "src"));
-		mkdirSync(join(root, "scripts"));
-		symlinkSync(join(checkout, "node_modules"), join(root, "node_modules"), "dir");
-		writeFileSync(join(root, "package.json"), '{"type":"module"}');
-		writeFileSync(join(root, "src/a.ts"), "export const a = 1;");
-		writeFileSync(join(root, "test/setup.ts"), "globalThis.setupRan = true;");
-		writeFileSync(
-			join(root, "test/a.test.ts"),
-			'import { expect, it } from "vitest"; import { a } from "../src/a.ts"; it("loads setup", () => { expect(a).toBe(1); expect(globalThis.setupRan).toBe(true); });',
-		);
-		writeFileSync(
-			join(root, "vitest.config.ts"),
-			'import { defineConfig } from "vitest/config"; export default defineConfig({ test: { include: ["test/**/*.test.ts"], setupFiles: ["test/setup.ts"] } });',
-		);
-		for (const path of ["vitest.stryker.config.ts", "scripts/stryker-test-names.mjs"])
-			writeFileSync(join(root, path), readFileSync(join(checkout, path)));
-		const selection = MutationTests.select(
-			program({ "src/a.ts": [], "test/a.test.ts": ["src/a.ts"] }, ["test/setup.ts"]),
-			["src/a.ts"],
-		).toJSON();
-		writeFileSync(join(root, "include.json"), JSON.stringify("include" in selection ? selection.include : []));
-		const output = execFileSync(
-			process.execPath,
-			[
-				join(checkout, "node_modules/vitest/vitest.mjs"),
-				"--run",
-				"--config",
-				"vitest.stryker.config.ts",
-				"--maxWorkers",
-				"1",
-			],
-			{
-				cwd: root,
-				encoding: "utf8",
-				stdio: "pipe",
-				timeout: 30_000,
-				env: {
-					PATH: process.env.PATH,
-					HOME: root,
-					TMPDIR: root,
-					MELIAN_MUTATION_TEST_INCLUDE: join(root, "include.json"),
-				},
-			},
-		);
-		expect(output).toContain("1 passed");
-	} finally {
-		rmSync(root, { recursive: true, force: true });
-	}
+it("runs the whole suite when only a setup import reaches changed production code", () => {
+	const setup = program({ ...graph, "src/setup-only.ts": [], "test/setup.ts": ["src/setup-only.ts"] }, [
+		"test/setup.ts",
+	]);
+	expect(MutationTests.select(setup, ["src/setup-only.ts"]).toJSON()).toEqual({
+		note: "Mutation dry run uses the whole suite: a setup file reaches changed production code.",
+	});
 });
+
+it.each(["direct", "setup-only"])(
+	"loads setup without collecting it when the changed module is %s reachable",
+	{
+		timeout: 60_000,
+	},
+	(reachability) => {
+		const root = mkdtempSync(join(tmpdir(), "melian-mutation-setup-"));
+		const checkout = fileURLToPath(new URL("../../../", import.meta.url));
+		try {
+			mkdirSync(join(root, "test"));
+			mkdirSync(join(root, "src"));
+			mkdirSync(join(root, "scripts"));
+			symlinkSync(join(checkout, "node_modules"), join(root, "node_modules"), "dir");
+			writeFileSync(join(root, "package.json"), '{"type":"module"}');
+			writeFileSync(join(root, "src/a.ts"), "export const a = 1;");
+			writeFileSync(join(root, "src/setup-only.ts"), "export const loaded = true;");
+			writeFileSync(
+				join(root, "test/setup.ts"),
+				'import { loaded } from "../src/setup-only.ts"; globalThis.setupRan = loaded;',
+			);
+			writeFileSync(
+				join(root, "test/other.test.ts"),
+				'import { expect, it } from "vitest"; it("other setup consumer", () => expect(globalThis.setupRan).toBe(true));',
+			);
+			writeFileSync(
+				join(root, "test/a.test.ts"),
+				'import { expect, it } from "vitest"; import { a } from "../src/a.ts"; it("loads setup", () => { expect(a).toBe(1); expect(globalThis.setupRan).toBe(true); });',
+			);
+			writeFileSync(
+				join(root, "vitest.config.ts"),
+				'import { defineConfig } from "vitest/config"; export default defineConfig({ test: { include: ["test/**/*.test.ts"], setupFiles: ["test/setup.ts"] } });',
+			);
+			for (const path of ["vitest.stryker.config.ts", "scripts/stryker-test-names.mjs"])
+				writeFileSync(join(root, path), readFileSync(join(checkout, path)));
+			const selection = MutationTests.select(
+				program(
+					{
+						"src/a.ts": [],
+						"src/setup-only.ts": [],
+						"test/setup.ts": ["src/setup-only.ts"],
+						"test/a.test.ts": ["src/a.ts"],
+						"test/other.test.ts": [],
+					},
+					["test/setup.ts"],
+				),
+				[reachability === "direct" ? "src/a.ts" : "src/setup-only.ts"],
+			).toJSON();
+			writeFileSync(join(root, "include.json"), JSON.stringify("include" in selection ? selection.include : []));
+			const output = execFileSync(
+				process.execPath,
+				[
+					join(checkout, "node_modules/vitest/vitest.mjs"),
+					"--run",
+					"--config",
+					"vitest.stryker.config.ts",
+					"--maxWorkers",
+					"1",
+				],
+				{
+					cwd: root,
+					encoding: "utf8",
+					stdio: "pipe",
+					timeout: 30_000,
+					env: {
+						PATH: process.env.PATH,
+						HOME: root,
+						TMPDIR: root,
+						...("include" in selection ? { MELIAN_MUTATION_TEST_INCLUDE: join(root, "include.json") } : {}),
+					},
+				},
+			);
+			expect(output).toContain(reachability === "direct" ? "1 passed" : "2 passed");
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	},
+);
 
 it("keeps the whole suite when a changed source is absent from the compiler", () => {
 	expect(MutationTests.select(program(graph), ["src/missing.ts"]).toJSON()).toEqual({

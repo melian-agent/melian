@@ -57,8 +57,12 @@ export class MutationTests {
 				}
 			}
 			const tests = [...visited].filter((path) => /\.test\.(ts|mjs)$/.test(path)).sort();
-			program.setupFiles();
+			const setup = program.setupFiles();
 			if (now() >= deadline) throw new Error("Setup selection reached its time bound");
+			if (setup.some((path) => visited.has(path)))
+				return new MutationTests({
+					note: "Mutation dry run uses the whole suite: a setup file reaches changed production code.",
+				});
 			return new MutationTests({
 				tests,
 				include: tests,
