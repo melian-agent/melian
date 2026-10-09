@@ -493,6 +493,18 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		expect((await harness.snapshot(MutationProcesses, root.id, context))!.trees).toEqual({});
 	});
 
+	it("allows cache publication when the authority document disappears while head code runs", async () => {
+		const { base, head } = scenario(true);
+		const { harness, root } = await openOn();
+		const running = runChecks(harness, await input(base, head, root.id, trusted), context);
+		await vi.waitUntil(() => runs() === 1, { timeout: 20_000 });
+		await root.commit((tx) => tx.retireDoc(ChecksDocument, root.id), context);
+		writeFileSync(join(artifacts, "release"), "");
+		const result = await running;
+		expect(result.records).toMatchObject([{ name: "static.mutation", status: "ran" }]);
+		expect(published()).toHaveLength(1);
+	});
+
 	const recordTree = async (root: Awaited<ReturnType<typeof openOn>>["root"], task: number) => {
 		await root.commit(async (tx) => {
 			(await tx.doc(MutationProcesses, root.id)).trees[String(task)] = {
