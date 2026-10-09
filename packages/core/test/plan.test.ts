@@ -1,8 +1,10 @@
+import { readFileSync } from "node:fs";
 import {
 	type CatalogModel,
 	defaultConfig,
 	Lens,
 	type LensTier,
+	loadConfig,
 	type MelianConfig,
 	type ModelRoute,
 	ModelRoutingError,
@@ -62,6 +64,7 @@ function plan(
 		retier?: Record<string, LensTier>;
 		committedTiers?: Record<string, LensTier>;
 		catalog?: CatalogModel[];
+		lenses?: Lens[];
 	} = {},
 ): ReviewPlan {
 	const preferences = options.preferences ?? {};
@@ -91,7 +94,7 @@ function plan(
 		...(options.model === undefined ? {} : { model: options.model }),
 		catalog: options.catalog ?? catalog,
 		credentials,
-		lenses,
+		lenses: options.lenses ?? lenses,
 		checks: options.checks ?? ["lens.correctness"],
 	};
 	return ReviewPlan.resolve(input);
@@ -117,7 +120,12 @@ describe("ReviewPlan.resolve", () => {
 		});
 		expect(resolved.routes()).toEqual({ heavy: { model: opus, fallbacks: ["openai/gpt-5.4-mini", gpt] } });
 		expect(resolved.lineage("heavy")).toBeUndefined();
-		expect(resolved.warnings()).toEqual([fallbackWarning]);
+		expect(resolved.warnings()).toEqual([
+			fallbackWarning,
+			`${opus} could be judged by ${opus} (same family) if openai/gpt-5.4-mini fails`,
+			`openai/gpt-5.4-mini could be judged by openai/gpt-5.4-mini and ${gpt} (same family) if ${opus} fails and ${opus} fails`,
+			`${gpt} could be judged by openai/gpt-5.4-mini and ${gpt} (same family) if ${opus} fails and ${opus} fails`,
+		]);
 	});
 
 	it("routes a route that names only accept to its first accepted model with credentials, saying nothing", () => {
@@ -362,7 +370,6 @@ describe("ReviewPlan.resolve", () => {
 		expect(refused.warnings()).toEqual([
 			`heavy, for correctness fails every check: ${refused.refusal("heavy")}`,
 			fallbackWarning,
-			familyWarning,
 		]);
 		expect(flagged.refusal("heavy")).toContain("--model puts it on openai/gpt-5.4-mini");
 		// A fallback outside accept is dropped, so a failover never leaves policy either.
@@ -420,6 +427,11 @@ describe("ReviewPlan.resolve", () => {
 	it("records both what moved a lens and what routed the tier it moved to", () => {
 		const credentials = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" };
 		const flagged = plan({ heavy: { model: opus } }, credentials, { model: gpt, retier: { correctness: "light" } });
+		expect(flagged.lenses.find((lens) => lens.name === "correctness")?.levels).toEqual([
+			{ level: "quick", tier: "light", committed: "medium", by: "melian.local.yaml" },
+			{ level: "careful", tier: "light", committed: "heavy", by: "melian.local.yaml" },
+			{ level: "deep", tier: "light", committed: "heavy", by: "melian.local.yaml" },
+		]);
 		expect(flagged.judge("correctness", "careful").lineage).toEqual({
 			model: gpt,
 			wanted: opus,
@@ -576,6 +588,12 @@ describe("a lens two folders define", () => {
 });
 
 describe("a resolved plan", () => {
+	it("omits moved-lens lineage when no committed route was left", () => {
+		const resolved = plan({ light: { model: gpt } }, { openai: "key" }, { retier: { correctness: "light" } });
+		expect(resolved.judge("correctness", "careful")).toEqual({});
+		expect(resolved.warnings()).toEqual([fallbackWarning, familyWarning]);
+	});
+
 	it("marks each lens record whose level's tier left the committed route, and only those", () => {
 		const resolved = plan(
 			{ heavy: { model: opus }, medium: { model: "anthropic/claude-sonnet-5-5" } },
@@ -690,6 +708,264 @@ describe("a resolved plan", () => {
 });
 
 describe("verifier routing", () => {
+	it.each([true, false])("reports a matching verifier fallback, accepted %s", (accepted) => {
+		const terra = "openai-codex/gpt-5.6-terra";
+		const resolved = plan(
+			{
+				heavy: { model: gpt },
+				verifier: { model: opus, fallbacks: [terra], accept: accepted ? [terra] : [opus] },
+			},
+			{ anthropic: "key", openai: "key", "openai-codex": "Pi login" },
+			{
+				preferences: { verifier: { model: opus, fallbacks: [terra] } },
+				catalog: [...catalog, model("openai-codex", "gpt-5.6-terra", "GPT-5.6 Terra", 2, 10)],
+			},
+		);
+		expect(resolved.verifierRoute(gpt).map(({ model }) => model)).toEqual([opus, terra]);
+		const text = `${gpt} could be judged by ${terra} (same family) if ${opus} fails${accepted ? ", by the maintainer's choice" : ""}`;
+		expect(resolved.lines()).toContainEqual({ state: accepted ? "ok" : "warn", text });
+		expect(resolved.summary()).toContain(`Plan: ${text}\n`);
+		expect(resolved.warnings().includes(text)).toBe(!accepted);
+		expect(resolved.lines()).not.toContainEqual({ state: "warn", text: familyWarning });
+		expect(ReviewPlan.from(resolved.toJSON()).lines()).toEqual(resolved.lines());
+	});
+
+	it("warns if one of two matching verifier fallbacks is unaccepted", () => {
+		const mini = "openai/gpt-5.4-mini";
+		const resolved = plan(
+			{ heavy: { model: gpt }, verifier: { model: opus, fallbacks: [gpt, mini], accept: [opus, gpt] } },
+			{ anthropic: "key", openai: "key" },
+		);
+		expect(resolved.lines()).toContainEqual({
+			state: "warn",
+			text: `${gpt} could be judged by ${gpt} and ${mini} (same family) if ${opus} fails`,
+		});
+	});
+
+	it("says nothing about families when no verifier model matches", () => {
+		const resolved = plan(
+			{ heavy: { model: gpt }, verifier: { model: opus, fallbacks: ["anthropic/claude-sonnet-5-5"] } },
+			{ anthropic: "key", openai: "key" },
+		);
+		expect(resolved.warnings()).toEqual([]);
+		expect(resolved.summary()).toBe("");
+		expect(resolved.lines().filter(({ text }) => text.includes("same family") || text.includes("finder's"))).toEqual(
+			[],
+		);
+	});
+
+	it("names the preferred cross-family primary after reordering the verifier route", () => {
+		const resolved = plan(
+			{ heavy: { model: gpt }, verifier: { model: gpt, fallbacks: [opus] } },
+			{ anthropic: "key", openai: "key" },
+		);
+		expect(resolved.lines()).toContainEqual({
+			state: "ok",
+			text: `${gpt} could be judged by ${gpt} (same family) if ${opus} fails, by the maintainer's choice`,
+		});
+	});
+
+	it.each([true, false])("reports a matching finder fallback, accepted %s", (accepted) => {
+		const sonnet = "anthropic/claude-sonnet-5-5";
+		const resolved = plan(
+			{
+				heavy: { model: gpt, fallbacks: [opus] },
+				verifier: { model: sonnet, accept: accepted ? [sonnet] : [gpt] },
+			},
+			{ anthropic: "key", openai: "key" },
+			{ preferences: { verifier: { model: sonnet, fallbacks: [] } } },
+		);
+		const text = `${opus} could be judged by ${sonnet} (same family) if ${gpt} fails${accepted ? ", by the maintainer's choice" : ""}`;
+		expect(resolved.lines()).toContainEqual({ state: accepted ? "ok" : "warn", text });
+		expect(resolved.warnings().includes(text)).toBe(!accepted);
+		expect(resolved.summary()).toContain(`Plan: ${text}\n`);
+		expect(resolved.lines().some(({ text }) => text === familyWarning)).toBe(false);
+	});
+
+	it("names both failures when only the finder and verifier fallbacks share a family", () => {
+		const sonnet = "anthropic/claude-sonnet-5-5";
+		const mini = "openai/gpt-5.4-mini";
+		const resolved = plan(
+			{ heavy: { model: gpt, fallbacks: [opus] }, verifier: { model: mini, fallbacks: [sonnet] } },
+			{ anthropic: "key", openai: "key" },
+		);
+		expect(resolved.lines()).toContainEqual({
+			state: "ok",
+			text: `${opus} could be judged by ${sonnet} (same family) if ${mini} fails and ${gpt} fails, by the maintainer's choice`,
+		});
+	});
+
+	it("accepts a Terra-only verifier override under the repository's committed policy", async () => {
+		const fixture = temporaryDirectory();
+		try {
+			gitIn(fixture, "init", "--quiet", "--initial-branch=main");
+			writeFiles(fixture, {
+				"melian.yaml": readFileSync(new URL("../../../melian.yaml", import.meta.url), "utf8"),
+			});
+			const loaded = await loadConfig(fixture, { kind: "worktree" }, ".");
+			const terra = "openai-codex/gpt-5.6-terra";
+			const resolved = ReviewPlan.resolve({
+				config: {
+					...loaded.config,
+					models: { ...loaded.config.models, verifier: { model: terra, fallbacks: [] } },
+				},
+				routes: { ...loaded.routes, overridden: { verifier: "verifier override" } },
+				catalog: [
+					...catalog,
+					model("openai-codex", "gpt-6.1-sol", "GPT-6.1 Sol", 4, 20),
+					model("openai-codex", "gpt-5.6-terra", "GPT-5.6 Terra", 2, 10),
+				],
+				credentials: { "openai-codex": "Pi login" },
+				lenses,
+				checks: ["lens.correctness"],
+			});
+			expect(resolved.verifierRoute("openai-codex/gpt-6.1-sol")).toEqual([
+				{ model: terra, credential: "Pi login", family: "gpt" },
+			]);
+			expect(resolved.verifierLineage(terra)).toEqual({
+				model: terra,
+				wanted: "anthropic/claude-sonnet-5-5",
+				by: "verifier override",
+				outside: false,
+			});
+			const notice = "the verifier shares the finder's family by the maintainer's choice";
+			expect(resolved.lines()).toContainEqual({ state: "ok", text: notice });
+			expect(resolved.warnings()).not.toContain(notice);
+			expect(resolved.warnings()).not.toContain(familyWarning);
+		} finally {
+			removeDirectory(fixture);
+		}
+	});
+
+	it.each([true, false])("reports a same-family verifier at a non-default verified level, accepted %s", (accepted) => {
+		const terra = "openai-codex/gpt-5.6-terra";
+		const correctness = lenses.find((lens) => lens.name === "correctness")!;
+		const mixed = Lens.from({
+			...correctness.toJSON(),
+			levels: { ...correctness.levels, quick: { ...correctness.level("quick"), verify: true } },
+		});
+		const resolved = plan(
+			{
+				heavy: { model: opus },
+				medium: { model: gpt },
+				verifier: { model: opus, accept: accepted ? [opus, terra] : [opus] },
+			},
+			{ anthropic: "key", openai: "key", "openai-codex": "Pi login" },
+			{
+				preferences: { verifier: { model: terra, fallbacks: [] } },
+				catalog: [...catalog, model("openai-codex", "gpt-5.6-terra", "GPT-5.6 Terra", 2, 10)],
+				lenses: [mixed],
+			},
+		);
+		const text = accepted
+			? "the verifier shares the finder's family by the maintainer's choice"
+			: "some verification candidates would be judged by their finder's own family";
+		expect(resolved.lines()).toContainEqual({ state: accepted ? "ok" : "warn", text });
+		expect(resolved.summary()).toContain(`Plan: ${text}\n`);
+		expect(resolved.warnings().includes(text)).toBe(!accepted);
+		expect(ReviewPlan.from(resolved.toJSON()).lines()).toContainEqual({ state: accepted ? "ok" : "warn", text });
+	});
+
+	it("includes an unverified non-default level among potential finders", () => {
+		const resolved = plan(
+			{ heavy: { model: opus }, medium: { model: gpt }, verifier: { model: gpt } },
+			{ anthropic: "key", openai: "key" },
+		);
+		expect(resolved.lines()).toContainEqual({
+			state: "ok",
+			text: "the verifier shares the finder's family by the maintainer's choice",
+		});
+	});
+
+	it.each([true, false])("counts all levels when no selectable level verifies, accepted %s", (accepted) => {
+		const unverified = lenses.map((lens) =>
+			Lens.from({
+				...lens.toJSON(),
+				levels: {
+					...Object.fromEntries(
+						lens.declaredLevels().map((level) => [level, { ...lens.level(level), verify: false }]),
+					),
+					careful: { ...lens.level("careful"), verify: false },
+				},
+			}),
+		);
+		const terra = "openai-codex/gpt-5.6-terra";
+		const resolved = plan(
+			{
+				heavy: { model: gpt },
+				medium: { model: gpt },
+				verifier: { model: opus, accept: accepted ? [opus, terra] : [opus] },
+			},
+			{ openai: "key", "openai-codex": "Pi login" },
+			{
+				lenses: unverified,
+				preferences: { verifier: { model: terra, fallbacks: [] } },
+				catalog: [...catalog, model("openai-codex", "gpt-5.6-terra", "GPT-5.6 Terra", 2, 10)],
+			},
+		);
+		const text = accepted ? "the verifier shares the finder's family by the maintainer's choice" : familyWarning;
+		expect(resolved.lines()).toContainEqual({ state: accepted ? "ok" : "warn", text });
+		expect(resolved.summary()).toContain(`Plan: ${text}\n`);
+		expect(resolved.warnings().includes(text)).toBe(!accepted);
+		expect(ReviewPlan.from(resolved.toJSON()).lines()).toContainEqual({ state: accepted ? "ok" : "warn", text });
+	});
+
+	it.each([true, false])("ignores extra verification flags in stored levels: %s", (verify) => {
+		const stored = plan(
+			{ heavy: { model: opus }, medium: { model: gpt }, verifier: { model: gpt } },
+			{ anthropic: "key", openai: "key" },
+		).toJSON();
+		for (const lens of stored.lenses) lens.levels = lens.levels.map((level) => ({ ...level, verify }));
+		expect(ReviewPlan.from(stored).lines()).toContainEqual({
+			state: "ok",
+			text: "the verifier shares the finder's family by the maintainer's choice",
+		});
+	});
+
+	it("warns when a same-family fallback leaves the accepted route", () => {
+		const resolved = plan(
+			{
+				heavy: { model: opus },
+				verifier: { model: opus, accept: [opus], fallbacks: ["anthropic/claude-sonnet-5-5"] },
+			},
+			{ anthropic: "key" },
+		);
+		expect(resolved.verifierRoute(opus)).toHaveLength(2);
+		expect(resolved.warnings()).toContain(familyWarning);
+	});
+
+	it("warns on a stored same-family route without acceptance policy", () => {
+		const stored = plan(
+			{ heavy: { model: gpt }, medium: { model: gpt }, verifier: { model: gpt } },
+			{ openai: "key" },
+		).toJSON();
+		delete stored.tiers.find(({ tier }) => tier === "verifier")!.accept;
+		const resolved = ReviewPlan.from(stored);
+		expect(resolved.lines()).toContainEqual({ state: "warn", text: familyWarning });
+		expect(resolved.warnings()).toContain(familyWarning);
+	});
+
+	it.each([true, false])("judges a same-family Codex override against policy acceptance %s", (accepted) => {
+		const terra = "openai-codex/gpt-5.6-terra";
+		const resolved = plan(
+			{ heavy: { model: gpt }, verifier: { model: opus, accept: accepted ? [opus, terra] : [opus] } },
+			{ openai: "key", "openai-codex": "Pi login" },
+			{
+				preferences: { verifier: { model: terra, fallbacks: [] } },
+				catalog: [...catalog, model("openai-codex", "gpt-5.6-terra", "GPT-5.6 Terra", 2, 10)],
+			},
+		);
+		expect(resolved.verifierLineage(terra)?.outside).toBe(!accepted);
+		const notice = "the verifier shares the finder's family by the maintainer's choice";
+		expect(resolved.lines()).toContainEqual({
+			state: accepted ? "ok" : "warn",
+			text: accepted ? notice : familyWarning,
+		});
+		expect(resolved.summary()).toContain(`Plan: ${accepted ? notice : familyWarning}\n`);
+		expect(resolved.warnings().includes(familyWarning)).toBe(!accepted);
+		expect(resolved.warnings()).not.toContain(notice);
+	});
+
 	it("recognises Bedrock and OpenRouter Claude names and puts GPT first", () => {
 		const resolved = plan(
 			{
@@ -708,13 +984,17 @@ describe("verifier routing", () => {
 		expect(resolved.lines().some((line) => line.text.includes("(gpt)"))).toBe(true);
 	});
 
-	it("keeps a single-family route in order and warns", () => {
+	it("keeps an accepted single-family route in order and prints a notice", () => {
 		const resolved = plan(
 			{ heavy: { model: opus }, verifier: { model: opus, fallbacks: ["anthropic/claude-sonnet-5-5"] } },
 			{ anthropic: "key" },
 		);
 		expect(resolved.verifierRoute(opus).map((model) => model.model)).toEqual([opus, "anthropic/claude-sonnet-5-5"]);
-		expect(resolved.warnings()).toContain(familyWarning);
+		expect(resolved.warnings()).not.toContain(familyWarning);
+		expect(resolved.lines()).toContainEqual({
+			state: "ok",
+			text: "the verifier shares the finder's family by the maintainer's choice",
+		});
 	});
 
 	it("falls back heavy then medium then light, another family first, with lineage", () => {
@@ -743,6 +1023,7 @@ describe("verifier routing", () => {
 		});
 		expect(resolved.warnings()).toContain(`verifier fails: none of ${gpt} has credentials`);
 		expect(resolved.warnings()).not.toContain(fallbackWarning);
+		expect(resolved.warnings()).not.toContain(familyWarning);
 		expect(resolved.lines()).toContainEqual({
 			state: "warn",
 			text: `verifier fails: none of ${gpt} has credentials`,

@@ -73,7 +73,12 @@ export type PlannedTier = {
  * One level of a lens: the tier it runs on, and, where a preference file moved it there, the tier the committed files
  * give it, whose route's policy still judges it, and the file that moved it.
  */
-export type PlannedLevel = { level: ScrutinyLevel; tier: LensTier; committed?: LensTier; by?: string };
+export type PlannedLevel = {
+	level: ScrutinyLevel;
+	tier: LensTier;
+	committed?: LensTier;
+	by?: string;
+};
 
 /**
  * A lens the review runs, and the tier each of its levels runs on. `scope` is the folder whose `.melian/` defined it,
@@ -406,6 +411,10 @@ export class ReviewPlan {
 		const lens = scope === undefined ? variants[0] : variants.find((each) => (each.scope ?? "") === scope);
 		const entry = lens?.levels.find((each) => each.level === level);
 		if (entry === undefined) return {};
+		return this.judgeLevel(name, entry, ran);
+	}
+
+	private judgeLevel(name: string, entry: PlannedLevel, ran?: string): LensJudgement {
 		const planned = this.tier(entry.tier);
 		const model = ran ?? planned.models[0]?.model;
 		const policyTier = entry.committed ?? entry.tier;
@@ -501,15 +510,24 @@ export class ReviewPlan {
 	 */
 	warnings(): string[] {
 		// Model and file names come from a melian.yaml in the working tree, which a change may write.
-		return this.warningsUnescaped().map(visibleText);
+		return this.messages()
+			.filter(({ state }) => state === "warn")
+			.map(({ text }) => text);
 	}
 
-	private warningsUnescaped(): string[] {
+	private messages(): PlanLine[] {
+		return [
+			...this.tierMessages().map((text): PlanLine => ({ state: "warn", text })),
+			...this.verificationMessages(),
+		].map((line) => ({ ...line, text: visibleText(line.text) }));
+	}
+
+	private tierMessages(): string[] {
 		const used = this.used();
 		const moved = this.lenses.flatMap((lens): string[] => {
 			const entry = lens.levels.find(({ level }) => level === defaultScrutinyLevel);
 			if (entry?.committed === undefined) return [];
-			const { refusal, lineage } = this.judge(lens.name, entry.level, undefined, lens.scope ?? "");
+			const { refusal, lineage } = this.judgeLevel(lens.name, entry);
 			if (refusal !== undefined) return [`${labelOf(lens)} fails: ${refusal}`];
 			if (lineage === undefined) return [];
 			return [`${labelOf(lens)} runs ${lineage.model}, ${ReviewPlan.lineageText(lineage)}`];
@@ -541,23 +559,65 @@ export class ReviewPlan {
 				`${tier} runs ${model}, which the committed route accepts, since ${planned.wanted} has no credentials`,
 			];
 		});
-		const verification: string[] = [];
+		return [...tiers, ...moved];
+	}
+
+	private verificationMessages(): PlanLine[] {
+		const verification: PlanLine[] = [];
 		if (this.lenses.length > 0) {
 			const own = this.tier("verifier");
 			if (own.status === "unrouted")
-				verification.push(
-					"lenses verify, but the verifier tier routes no model of its own; verification falls back to lens tiers, heavy then medium then light",
-				);
-			if (this.refusal("verifier") !== undefined) verification.push(`verifier fails: ${this.refusal("verifier")}`);
-			const finders = [...used.keys()].flatMap((tier) => this.tier(tier).models);
-			if (
-				this.refusal("verifier") === undefined &&
-				finders.length > 0 &&
-				finders.every((finder) => this.verifierRoute(finder.model).every((model) => model.family === finder.family))
-			)
-				verification.push("every verification candidate would be judged by its finder's own family");
+				verification.push({
+					state: "warn",
+					text: "lenses verify, but the verifier tier routes no model of its own; verification falls back to lens tiers, heavy then medium then light",
+				});
+			if (this.refusal("verifier") !== undefined)
+				verification.push({ state: "warn", text: `verifier fails: ${this.refusal("verifier")}` });
+			verification.push(...this.familyMessages());
 		}
-		return [...tiers, ...moved, ...verification];
+		return verification;
+	}
+
+	private familyMessages(): PlanLine[] {
+		const own = this.tier("verifier");
+		const finders = [...this.used(true).keys()].flatMap((tier) => {
+			const models = this.tier(tier).models;
+			return models.map((finder) => ({ ...finder, primary: models[0]!.model }));
+		});
+		const matches = finders.flatMap((finder) => {
+			const route = this.verifierRoute(finder.model);
+			const matching = route.filter((model) => model.family === finder.family);
+			if (matching.length === 0) return [];
+			const failures: string[] = [];
+			if (route[0]!.family !== finder.family) failures.push(route[0]!.model);
+			if (finder.model !== finder.primary) failures.push(finder.primary);
+			const accepted =
+				own.status === "routed" && matching.every((model) => own.accept?.includes(model.model) === true);
+			return [{ finder, matching, failures, accepted }];
+		});
+		const direct = matches.filter(({ failures }) => failures.length === 0);
+		const messages = matches.flatMap(({ finder, matching, failures, accepted }): PlanLine[] => {
+			if (failures.length === 0) return [];
+			return [
+				{
+					state: accepted ? "ok" : "warn",
+					text: `${finder.model} could be judged by ${listed(matching.map(({ model }) => model))} (same family) if ${failures.map((model) => `${model} fails`).join(" and ")}${accepted ? ", by the maintainer's choice" : ""}`,
+				},
+			];
+		});
+		if (direct.length > 0) {
+			// Direct matches share the verifier primary's family, matching route and acceptance.
+			const accepted = direct[0]!.accepted;
+			messages.push({
+				state: accepted ? "ok" : "warn",
+				text: accepted
+					? "the verifier shares the finder's family by the maintainer's choice"
+					: direct.length === finders.length
+						? "every verification candidate would be judged by its finder's own family"
+						: "some verification candidates would be judged by their finder's own family",
+			});
+		}
+		return messages;
 	}
 
 	private static lineageText({ wanted, by, moved, outside, model }: CheckLineage): string {
@@ -609,14 +669,14 @@ export class ReviewPlan {
 		for (const [levels, names] of groups) {
 			lines.push({ state: "ok", text: visibleText(`${listed(names)}: ${levels}`) });
 		}
-		for (const warning of this.warnings()) lines.push({ state: "warn", text: warning });
+		lines.push(...this.messages());
 		return lines;
 	}
 
 	/** The warnings a review prints beside its verdict, one per line, or the empty string when there are none. */
 	summary(): string {
-		return this.warnings()
-			.map((warning) => `Plan: ${warning}\n`)
+		return this.messages()
+			.map(({ text }) => `Plan: ${text}\n`)
 			.join("");
 	}
 

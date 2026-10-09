@@ -126,6 +126,18 @@ async function planChecks(cwd: string, env: NodeJS.ProcessEnv, secrets: LoadedSe
 		const { plan } = await reviewModels({}, loaded, lenses, { checks, credentials: secrets.credentials });
 		const refusal = decisionProviderRefusal(loaded.config);
 		return [
+			{
+				name: "routes",
+				state: "ok",
+				detail: visibleText(
+					plan.tiers
+						.map(
+							({ tier, models, status }) =>
+								`${tier}: ${models.map(({ model }) => model).join(", then ")} (${status})`,
+						)
+						.join("; "),
+				),
+			},
 			...(refusal === undefined ? [] : [{ name: "decisions", state: "fail", detail: refusal } satisfies Check]),
 			...plan.lines().map(({ state, text }): Check => ({ name: "plan", state, detail: text })),
 		];

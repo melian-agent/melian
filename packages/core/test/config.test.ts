@@ -4,9 +4,11 @@ import {
 	Changeset,
 	ConfigError,
 	defaultConfig,
+	Lens,
 	loadConfig,
 	maxConfigBytes,
 	OutsideRepositoryError,
+	ReviewPlan,
 } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -848,5 +850,41 @@ describe("this repository's own mutation budget", () => {
 		expect(maxLines * secondsPerLine).toBeLessThanOrEqual(aim * 0.8);
 		// The budget is the largest multiple of 50 that leaves the spare.
 		expect((maxLines + 50) * secondsPerLine).toBeGreaterThan(aim * 0.8);
+	});
+});
+
+describe("same-family verifier policy", () => {
+	it.each([true, false])("retains committed acceptance under a Codex override: %s", async (accepted) => {
+		const terra = "openai-codex/gpt-5.6-terra";
+		writeFiles(repo, {
+			"melian.yaml": lines(
+				"models:",
+				"  heavy: { model: openai-codex/gpt-6.1-sol }",
+				`  verifier: { model: anthropic/claude-sonnet-5-5, accept: [anthropic/claude-sonnet-5-5${accepted ? `, ${terra}` : ""}] }`,
+			),
+			"melian.local.yaml": `models: { verifier: { model: ${terra}, fallbacks: [] } }\n`,
+		});
+		const loaded = await loadConfig(repo, { kind: "worktree" }, ".");
+		const plan = ReviewPlan.resolve({
+			...loaded,
+			catalog: ["gpt-6.1-sol", "gpt-5.6-terra"].map((id) => ({
+				provider: "openai-codex",
+				id,
+				name: `GPT ${id}`,
+				contextWindow: 200000,
+				reasoning: true,
+				cost: { input: 2, output: 10 },
+			})),
+			credentials: { "openai-codex": "Pi login" },
+			lenses: await Lens.load(repo, { kind: "worktree" }, []),
+			checks: ["lens.correctness"],
+		});
+		expect(plan.verifierLineage(terra)?.outside).toBe(!accepted);
+		expect(plan.lines()).toContainEqual({
+			state: accepted ? "ok" : "warn",
+			text: accepted
+				? "the verifier shares the finder's family by the maintainer's choice"
+				: "every verification candidate would be judged by its finder's own family",
+		});
 	});
 });
