@@ -43,6 +43,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MutationCache } from "../src/mutation-cache.ts";
 import { MutationScratch } from "../src/mutation-scratch.ts";
 import { MutationRun, strykerNotInstalled, strykerVersion } from "../src/mutation-static.ts";
 import { MutationTests } from "../src/mutation-tests.ts";
@@ -378,6 +379,7 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 	};
 
 	it("keeps an untrusted writer's incremental file away from a trusted run", async () => {
+		const cache = vi.spyOn(MutationCache, "open");
 		const { base, head } = twoCommits();
 		const reads = incrementalTool();
 		const run = new Run(
@@ -398,9 +400,11 @@ printf '%s' '{"schemaVersion":"1.0","files":{}}' > reports/mutation/mutation.jso
 				join(repo, "node_modules"),
 			]).check(),
 		);
+		expect(cache.mock.calls.map(([, key]) => key.trusted)).toEqual([false]);
 		const [first] = partitions();
 		writeFileSync(first!, '{"stamp":"untrusted-forgery"}');
 		await mutate(base, head, { trustedWriter: true });
+		expect(cache.mock.calls.map(([, key]) => key.trusted)).toEqual([false, true]);
 		expect(reads()).toEqual([]);
 		expect(partitions()).toHaveLength(2);
 		expect(readFileSync(first!, "utf8")).toBe('{"stamp":"untrusted-forgery"}');
