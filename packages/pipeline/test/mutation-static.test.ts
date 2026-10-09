@@ -236,6 +236,7 @@ describe("static.mutation", { timeout: 60_000 }, () => {
 		"packages/core/src/git.ts",
 		"packages/pipeline/src/cache-scratch.ts",
 		"packages/pipeline/src/mutation-process.ts",
+		"packages/pipeline/src/static.ts",
 	])("keeps signal-sending %s outside automatic mutation, even beside other production changes", async (path) => {
 		const { base, head } = twoCommits({
 			"packages/p/src/a.ts": a.replace("x > 0", "x >= 0"),
