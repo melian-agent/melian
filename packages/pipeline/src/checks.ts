@@ -592,11 +592,12 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 		writer: input.writer,
 	};
 	// An unknown tier fails the checks task with its own error, so it is not this call's to report.
-	let mutates = false;
+	let knownTier = true;
 	try {
-		mutates = checksOfTier(input.config, tier).includes("static.mutation");
+		checksOfTier(input.config, tier);
 	} catch (error) {
 		if (!(error instanceof CheckError)) throw error;
+		knownTier = false;
 	}
 	const revision = revisionKey(input.changeset.revision);
 	// Starts a run unless one with this key exists, or replaces `stale` with a rerun when it is still the key's task. A task
@@ -612,11 +613,11 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 			runs.tasks[key] = created;
 			return created;
 		}, context);
-	// A run that asks for the mutation check takes the revision's mutation authority first, in a commit that creates no task,
+	// Every known tier retires the revision's earlier mutation authority first, in a commit that creates no task,
 	// and aborts the tasks of the runs it took it from. Pi cannot abort inside a commit, and the scheduler resumes every
 	// pending task as soon as this run submits its own, so a retired task left alive would run the head's tests.
 	let restart = false;
-	if (mutates) {
+	if (knownTier) {
 		restart = await root.commit(async (tx) => {
 			const runs = await tx.doc(ChecksDocument, root.id);
 			runs.owners ??= {};

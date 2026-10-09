@@ -359,6 +359,56 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		expect(runs()).toBe(0);
 	});
 
+	it("retires a crashed mutation task before a tier without mutation resumes it", async () => {
+		const { base, head } = scenario();
+		const database = await crashed(base, head);
+		const { harness, root } = await openOn(await openSqliteStorage(database));
+		const [pending] = await liveChecks(harness);
+		const request = await input(base, head, root.id, trusted);
+		const abort = vi.spyOn(harness, "abortTask");
+		const run = await runChecks(
+			harness,
+			{
+				...request,
+				tier: "quick",
+				config: { ...request.config, tiers: { ...request.config.tiers, quick: ["guardrails"] } },
+			},
+			context,
+		);
+		expect(run.records).toMatchObject([{ name: "guardrails", status: "ran" }]);
+		expect(abort.mock.calls.map(([id]) => id)).toContain(pending!.record.id);
+		expect(await outcomeOf(harness, pending!.record.id)).toEqual({ status: "aborted" });
+		expect(runs()).toBe(0);
+		expect(await readFindings(harness, root.id, revisionKey({ base, head }), context)).toEqual([]);
+	});
+
+	it("keeps retirement durable across a crash before the pending task is aborted", async () => {
+		const { base, head } = scenario();
+		const database = await crashed(base, head);
+		const { harness, root } = await openOn(await openSqliteStorage(database));
+		const [pending] = await liveChecks(harness);
+		const request = await input(base, head, root.id, trusted);
+		const before = (await harness.snapshot(ChecksDocument, root.id, context))!.owners;
+		vi.spyOn(harness, "inspect").mockRejectedValueOnce(new Error("crash after retirement"));
+		await expect(
+			runChecks(
+				harness,
+				{
+					...request,
+					tier: "quick",
+					config: { ...request.config, tiers: { ...request.config.tiers, quick: ["guardrails"] } },
+				},
+				context,
+			),
+		).rejects.toThrow("crash after retirement");
+		expect((await harness.snapshot(ChecksDocument, root.id, context))!.owners).not.toEqual(before);
+		await harness.close(context);
+		const reopened = await openOn(await openSqliteStorage(database));
+		expect(await outcomeOf(reopened.harness, pending!.record.id)).toEqual({ status: "aborted" });
+		expect(runs()).toBe(0);
+		expect(await readFindings(reopened.harness, reopened.root.id, revisionKey({ base, head }), context)).toEqual([]);
+	});
+
 	it("records the tree while head code runs and clears it after termination", async () => {
 		const { base, head } = scenario(true);
 		const { harness, root } = await openOn();
@@ -552,7 +602,7 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		expect(await readFindings(harness, root.id, revisionKey({ base, head }), context)).toEqual([]);
 	});
 
-	it("leaves another tier's run alone: a run without the mutation check takes no authority", async () => {
+	it("retires a running mutation check when the new tier omits it", async () => {
 		const { base, head } = scenario(true);
 		const { harness, root } = await openOn();
 		const { config } = await loadConfig(repo, source(base), "");
@@ -575,7 +625,9 @@ echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Biome","version":"2.
 		);
 		expect(other.records).toMatchObject([{ name: "guardrails", status: "ran" }]);
 		writeFileSync(join(artifacts, "release"), "");
-		expect((await mutation).records).toMatchObject([{ name: "static.mutation", status: "ran", findings: 1 }]);
-		expect((await readFindings(harness, root.id, revisionKey({ base, head }), context)).length).toBe(1);
+		expect((await mutation).records).toMatchObject([
+			{ name: "static.mutation", status: "failed", reason: "aborted" },
+		]);
+		expect(await readFindings(harness, root.id, revisionKey({ base, head }), context)).toEqual([]);
 	});
 });
