@@ -73,29 +73,31 @@ export class MarkdownDocument {
 	}
 
 	private paragraphTargets(paragraph: Paragraph, path: string): string[] {
-		const lines: { prose: string; links: { offset: number; destination: string }[] }[] = [{ prose: "", links: [] }];
+		const firstLine = paragraph.position!.start.line;
+		const lines: { prose: string; links: { offset: number; destination: string }[] }[] = Array.from(
+			{ length: paragraph.position!.end.line - firstLine + 1 },
+			() => ({ prose: "", links: [] }),
+		);
 		visit(paragraph, (node) => {
-			const line = lines.at(-1)!;
+			const { start, end } = node.position!;
+			const line = lines[start.line - firstLine]!;
 			switch (node.type) {
 				case "text": {
-					const [first, ...rest] = node.value.split(lineEndingPattern);
-					line.prose += first;
-					for (const prose of rest) lines.push({ prose, links: [] });
+					const prose = node.value.split(lineEndingPattern);
+					for (let number = start.line; number <= end.line; number++)
+						lines[number - firstLine]!.prose += prose[number - start.line]!;
 					break;
 				}
 				case "link":
 				case "linkReference":
-					line.links.push({ offset: line.prose.length, destination: this.destination(node) });
-					line.prose += "\u0000";
-					return SKIP;
 				case "inlineCode":
 				case "html":
 				case "image":
 				case "imageReference":
-					line.prose += "\u0000";
+					if (node.type === "link" || node.type === "linkReference")
+						line.links.push({ offset: line.prose.length, destination: this.destination(node) });
+					for (let number = start.line; number <= end.line; number++) lines[number - firstLine]!.prose += "\u0000";
 					return SKIP;
-				case "break":
-					lines.push({ prose: "", links: [] });
 			}
 		});
 		const targets: string[] = [];

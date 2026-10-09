@@ -707,6 +707,90 @@ describe("CommonMark declaration line boundaries", () => {
 	);
 });
 
+const inlineLineCases = [
+	[
+		"code span",
+		"Supersedes: old.md `example continued` [Context](context.md)",
+		"Supersedes: old.md `example\ncontinued` [Context](context.md)",
+	],
+	[
+		"HTML node",
+		'Supersedes: old.md <span title="example continued"> [Context](context.md)',
+		'Supersedes: old.md <span title="example\ncontinued"> [Context](context.md)',
+	],
+	[
+		"link label",
+		"Supersedes: [example continued](old.md) [Context](context.md)",
+		"Supersedes: [example\ncontinued](old.md) [Context](context.md)",
+	],
+	[
+		"reference link label",
+		"Supersedes: [example continued][old] [Context](context.md)\n\n[old]: old.md",
+		"Supersedes: [example\ncontinued][old] [Context](context.md)\n\n[old]: old.md",
+	],
+	[
+		"image label",
+		"Supersedes: old.md ![example continued](ignored.png) [Context](context.md)",
+		"Supersedes: old.md ![example\ncontinued](ignored.png) [Context](context.md)",
+	],
+	[
+		"reference image label",
+		"Supersedes: old.md ![example continued][image] [Context](context.md)\n\n[image]: ignored.png",
+		"Supersedes: old.md ![example\ncontinued][image] [Context](context.md)\n\n[image]: ignored.png",
+	],
+	[
+		"bare text after code span",
+		"Supersedes: old.md `example continued` context.md",
+		"Supersedes: old.md `example\ncontinued` context.md",
+	],
+	[
+		"formatted text",
+		"*Supersedes: old.md* [Context](context.md)",
+		"*Supersedes: old.md\ncontinued* [Context](context.md)",
+	],
+] as const;
+
+describe("inline node declaration lines", () => {
+	it.each(
+		inlineLineCases.flatMap(([name, single, multiple]) =>
+			["\r", "\r\n", "\n"].map(
+				(ending) =>
+					[
+						`${name} ${JSON.stringify(ending)}`,
+						single.replaceAll("\n", ending),
+						multiple.replaceAll("\n", ending),
+					] as const,
+			),
+		),
+	)("%s", (_name, single, multiple) => {
+		const fresh = parse("docs/decisions/new.md", `# New\n\n${multiple}`);
+		expect(parse(fresh.path, single).supersedes).toEqual(["docs/decisions/old.md", "docs/decisions/context.md"]);
+		expect(fresh.supersedes).toEqual(["docs/decisions/old.md"]);
+		expect(parse(fresh.path, `~~~md\n${multiple}\n~~~`).supersedes).toEqual([]);
+		expect(
+			DecisionFiles.from([
+				parse("docs/decisions/old.md", "# Old"),
+				parse("docs/decisions/context.md", "# Context"),
+				fresh,
+			]).render(),
+		).toEqual(
+			"[ACTIVE] docs/decisions/context.md — Context\n" +
+				"[ACTIVE] docs/decisions/new.md — New\n" +
+				"[INACTIVE; superseded by docs/decisions/new.md] docs/decisions/old.md — Old",
+		);
+	});
+
+	it.each([
+		["code span", "`example\ncontinued`"],
+		["HTML node", '<span title="example\ncontinued">'],
+		["link label", "[example\ncontinued](ignored.txt)"],
+		["image label", "![example\ncontinued](ignored.png)"],
+	])("keeps the final line of a %s opaque", (_name, inline) => {
+		expect(parse(c, `Context: ${inline}Supersedes: old.md`).supersedes).toEqual([]);
+		expect(parse(c, `Context: ${inline}\nSupersedes: old.md`).supersedes).toEqual(["docs/decisions/old.md"]);
+	});
+});
+
 const filenameCases = [
 	["dated", "2026-10-01-a.md", "2026-10-01-a.md.bak"],
 	["undated", "policy.md", "policy.txt"],
