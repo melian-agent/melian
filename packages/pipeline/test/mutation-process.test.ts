@@ -1,6 +1,7 @@
 import type * as childProcess from "node:child_process";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { stripTypeScriptTypes } from "node:module";
 import { tmpdir } from "node:os";
 import { join, posix } from "node:path";
 import { runInNewContext } from "node:vm";
@@ -522,9 +523,11 @@ describe("MutationProcess.execute", () => {
 		);
 		let method = MutationProcess.prototype.execute;
 		if (process.env.MELIAN_STARTED_FAULT) {
-			const body = method.toString().replace("await run.input.mutationProcess?.started(record);", "");
-			expect(body).not.toBe(method.toString());
-			method = runInNewContext(`({ ${body} }).execute`, {
+			const source = readFileSync(new URL("../src/mutation-process.ts", import.meta.url), "utf8");
+			const original = source.slice(source.indexOf("\tasync execute("), source.lastIndexOf("\n}"));
+			const body = original.replace("await run.input.mutationProcess?.started(record);", "");
+			expect(body).not.toBe(original);
+			method = runInNewContext(stripTypeScriptTypes(`({ ${body} }).execute`), {
 				ProcessTable,
 				MutationTree,
 				posix,
