@@ -791,6 +791,67 @@ describe("inline node declaration lines", () => {
 	});
 });
 
+describe("supersession source text", () => {
+	it.each([
+		["bare filename", "Supersedes: old.md", ["docs/decisions/old.md"], "Supersedes: old&#46;md", []],
+		["declaration prefix", "Supersedes: old.md", ["docs/decisions/old.md"], "Supersedes&#58; old.md", []],
+		[
+			"sentinel spelling",
+			"Supersedes: n&#111;ne [Old](old.md)",
+			["docs/decisions/old.md"],
+			"Supersedes: none [Old](old.md)",
+			[],
+		],
+		[
+			"sentinel punctuation",
+			"Supersedes: none&#46; [Old](old.md)",
+			["docs/decisions/old.md"],
+			"Supersedes: none. [Old](old.md)",
+			[],
+		],
+	] as const)("%s", (_name, positive, targets, negative, negativeTargets) => {
+		const fresh = parse("docs/decisions/new.md", positive);
+		expect(fresh.supersedes).toEqual(targets);
+		const literal = parse(fresh.path, negative);
+		expect(literal.supersedes).toEqual(negativeTargets);
+		expect(DecisionFiles.from([parse("docs/decisions/old.md", "# Old"), fresh]).render()).toContain(
+			"[INACTIVE; superseded by docs/decisions/new.md] docs/decisions/old.md",
+		);
+		expect(DecisionFiles.from([parse("docs/decisions/old.md", "# Old"), literal]).render()).toContain(
+			"[ACTIVE] docs/decisions/old.md",
+		);
+	});
+});
+
+describe("decoded paragraph line endings", { timeout: 60_000 }, () => {
+	it.each(["&#10;", "&#13;"])("refuses parsing and loading a shifted declaration after %s", async (entity) => {
+		const source = `Context: ${entity}example\nSupersedes: old.md`;
+		const invalid = {
+			name: "DecisionFilesError",
+			code: "invalid",
+			message: `Invalid paragraph text in ${c} at line 1: decoded line endings disagree with source lines`,
+		};
+		expect(() => parse(c, source)).toThrow(expect.objectContaining(invalid));
+		expect(parse(c, "Context: example\nSupersedes: old.md").supersedes).toEqual(["docs/decisions/old.md"]);
+		expect(parse(c, "Supersedes: old.md").supersedes).toEqual(["docs/decisions/old.md"]);
+		const repo = temporaryDirectory();
+		try {
+			gitIn(repo, "init", "--quiet", "--initial-branch=main");
+			writeFiles(repo, { "docs/decisions/old.md": "# Old", [c]: source });
+			gitIn(repo, "add", "--all");
+			gitIn(repo, "commit", "--quiet", "-m", "shifted baseline");
+			await expect(DecisionFiles.load(repo, "HEAD")).rejects.toMatchObject(invalid);
+			writeFiles(repo, { [c]: "Context: example\nSupersedes: old.md" });
+			gitIn(repo, "commit", "--quiet", "--all", "-m", "valid baseline");
+			expect((await DecisionFiles.load(repo, "HEAD")).render()).toContain(
+				`[INACTIVE; superseded by ${c}] docs/decisions/old.md — Old`,
+			);
+		} finally {
+			removeDirectory(repo);
+		}
+	});
+});
+
 describe("malformed supersession destinations", { timeout: 60_000 }, () => {
 	const invalid = {
 		name: "DecisionFilesError",
