@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { EnolaFacts } from "@melian-agent/core";
 import { API, Program } from "typescript/unstable/sync";
@@ -407,4 +407,69 @@ it("reads the named custom Vitest configuration even when its name does not matc
 	} finally {
 		compiler.close();
 	}
+});
+
+describe("mutation setup discovery", () => {
+	it.each([
+		"vite.config.ts",
+		"vitest.config.js",
+		"vitest.config.mjs",
+		"vite.config.cts",
+		"nested/vitest-alt.config.ts",
+		"nested/vite.custom.config.mts",
+		"nested/vite.config.cjs",
+	])("discovers %s beyond the named entry configuration", (path) => {
+		root = mkdtempSync(join(tmpdir(), "melian-setup-discovery-"));
+		mkdirSync(dirname(join(root, path)), { recursive: true });
+		writeFileSync(
+			join(root, "tsconfig.json"),
+			JSON.stringify({ compilerOptions: { allowJs: true }, include: ["**/*"] }),
+		);
+		writeFileSync(join(root, "runner.ts"), "export default {};");
+		writeFileSync(join(root, path), 'export default { test: { setupFiles: ["setup.ts"] } };');
+		const compiler = CompilerGraph.open(root);
+		try {
+			compiler.read({ importsOnly: true });
+			expect(compiler.setupFiles("runner.ts")).toEqual(["setup.ts"]);
+		} finally {
+			compiler.close();
+		}
+	});
+
+	it.each([
+		"almostvitest.config.ts",
+		"nested/xvite.config.ts",
+		"vitestXconfig.ts",
+		"vitest.configXts",
+		"vitest.customXconfig.ts",
+	])("ignores the misleading configuration name %s", (path) => {
+		root = mkdtempSync(join(tmpdir(), "melian-setup-nonconfig-"));
+		mkdirSync(dirname(join(root, path)), { recursive: true });
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["**/*.ts"] }));
+		writeFileSync(join(root, "runner.ts"), "export default {};");
+		writeFileSync(join(root, path), "export default { test: { setupFiles: getFiles() } };");
+		const compiler = CompilerGraph.open(root);
+		try {
+			compiler.read({ importsOnly: true });
+			expect(compiler.setupFiles("runner.ts")).toEqual([]);
+		} finally {
+			compiler.close();
+		}
+	});
+
+	it("does not strip quotes inside another property name", () => {
+		root = mkdtempSync(join(tmpdir(), "melian-setup-property-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+		writeFileSync(
+			join(root, "vitest.config.ts"),
+			`export default { test: { "set'upFiles": getFiles(), "setupFiles'": getFiles() } };`,
+		);
+		const compiler = CompilerGraph.open(root);
+		try {
+			compiler.read({ importsOnly: true });
+			expect(compiler.setupFiles()).toEqual([]);
+		} finally {
+			compiler.close();
+		}
+	});
 });
