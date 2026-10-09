@@ -60,8 +60,14 @@ function production(path: string): boolean {
 	);
 }
 
+const signalFiles = new Set([
+	"packages/core/src/git.ts",
+	"packages/pipeline/src/cache-scratch.ts",
+	"packages/pipeline/src/mutation-process.ts",
+]);
+
 function mutable(path: string): boolean {
-	return production(path) && !configuration.test(path);
+	return production(path) && !configuration.test(path) && !signalFiles.has(path);
 }
 
 // Stryker reads each `--mutate` entry as a glob, so a file name with a glob character in it, such as `[id]` or `(group)`
@@ -217,7 +223,9 @@ export class MutationRun {
 		for (const [path, ranges] of Object.entries(revision.diffLines())) {
 			if (!mutable(path)) {
 				if (production(path))
-					this.#notes.push(`${path} was not mutated: a tool loads a configuration file to run the mutants.`);
+					this.#notes.push(
+						`${path} was not mutated: ${signalFiles.has(path) ? "it sends process signals; prove its guards with fakes" : "a tool loads a configuration file to run the mutants"}.`,
+					);
 				continue;
 			}
 			if (path.includes(",")) {

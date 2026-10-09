@@ -225,6 +225,23 @@ function twoCommits(headFiles: Record<string, string> = { "packages/p/src/a.ts":
 }
 
 describe("static.mutation", { timeout: 60_000 }, () => {
+	it.each([
+		"packages/core/src/git.ts",
+		"packages/pipeline/src/cache-scratch.ts",
+		"packages/pipeline/src/mutation-process.ts",
+	])("keeps signal-sending %s outside automatic mutation, even beside other production changes", async (path) => {
+		const { base, head } = twoCommits({
+			"packages/p/src/a.ts": a.replace("x > 0", "x >= 0"),
+			[path]: "export const harmless = 1;\n",
+		});
+		const fake = stryker({ report: report({}) });
+		const result = await mutate(base, head);
+		expect(result.status).toBe("ran");
+		if (result.status !== "ran") throw new Error("skipped");
+		expect(argumentsOf(fake.calls()[0]!).flag("--mutate")).toBe("packages/p/src/a.ts:2-2");
+		expect(result.notes).toContain(`${path} was not mutated: it sends process signals; prove its guards with fakes.`);
+	});
+
 	it("makes a survived mutant on a changed line a P2 untested-behaviour finding that names the mutator and the mutated text", async () => {
 		const { base, head } = twoCommits();
 		stryker({

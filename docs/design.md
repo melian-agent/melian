@@ -940,3 +940,5 @@ The graph cache is built. Its atomic entries hash each artifact and preserve ups
 The coverage artifact classes and cache storage are built. Review coverage distinguishes delivered reads, search matches and untouched files; it records intersected hunks and supplied declaration ranges. Static Enola stores test coverage as unavailable pending container isolation. A missing graph-coverage artifact does not imply complete coverage. Search remains unrestricted.
 
 Melian’s committed Enola constraint forbids core importing the pipeline by package name, subpath or resolved relative path. The scratch proof caught all three forms. A directory-only selector missed the workspace alias, so named targets accompany the path rule. The broader harness-free test remains.
+
+Signal targets. Automatic mutation excludes Melian’s signal-sending production files: `packages/core/src/git.ts`, `packages/pipeline/src/cache-scratch.ts` and `packages/pipeline/src/mutation-process.ts`. Their contracts are proved on fake process controls. Keep this list in `mutation-static.ts` current when adding signal code.
