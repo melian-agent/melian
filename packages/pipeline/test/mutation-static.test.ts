@@ -1834,6 +1834,35 @@ exit 1`,
 			expect(offFirst).toBe(offSecond);
 		});
 
+		it("runs again in the same storage when the Node runtime changes", async () => {
+			const base = commit(repo, { "melian.yaml": policy, "stryker.config.json": config, "packages/p/src/a.ts": a });
+			const tip = commit(repo, { "packages/p/src/a.ts": a.replace("x > 0", "x >= 0") });
+			const fake = stryker({ report: report({}) });
+			const { harness, root } = await open();
+			const changeset = await Changeset.resolve(repo, `${base}..${tip}`);
+			const source: RepositorySource = { kind: "revision", commit: base };
+			const { config: loaded } = await loadConfig(repo, source, "");
+			const again = () =>
+				runChecks(
+					harness,
+					{ rootConversationId: root.id, changeset, config: loaded, source, tier: "full", writer: trusted },
+					context,
+				);
+			const descriptor = Object.getOwnPropertyDescriptor(process.versions, "node")!;
+			try {
+				const first = await again();
+				expect((await again()).identity.task).toBe(first.identity.task);
+				expect(fake.calls()).toHaveLength(1);
+				Object.defineProperty(process.versions, "node", { ...descriptor, value: "26.0.0" });
+				const switched = await again();
+				expect(switched.identity.policy).not.toBe(first.identity.policy);
+				expect(switched.identity.task).not.toBe(first.identity.task);
+				expect(fake.calls()).toHaveLength(2);
+			} finally {
+				Object.defineProperty(process.versions, "node", descriptor);
+			}
+		});
+
 		it("runs again, in the same storage, once a missing Stryker executable is restored with no change of version", async () => {
 			const base = commit(repo, {
 				"melian.yaml": policy,

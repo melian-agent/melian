@@ -100,6 +100,22 @@ it("starts cold when the checkout lockfile changes at the same head", async () =
 	await expect(stat(cold.file)).rejects.toMatchObject({ code: "ENOENT" });
 });
 
+it("starts cold when the Node runtime changes with the same head and installation", async () => {
+	const descriptor = Object.getOwnPropertyDescriptor(process.versions, "node")!;
+	try {
+		const first = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+		await writeFile(first.file, '{"files":{"a":{"mutants":[{"status":"Killed"}]}}}');
+		const warm = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+		expect(await readFile(warm.file, "utf8")).toContain("Killed");
+		Object.defineProperty(process.versions, "node", { ...descriptor, value: "26.0.0" });
+		const cold = await MutationCache.open(root, key({ installation: mutationInstallation(root) }));
+		expect(cold.file).not.toBe(first.file);
+		await expect(stat(cold.file)).rejects.toMatchObject({ code: "ENOENT" });
+	} finally {
+		Object.defineProperty(process.versions, "node", descriptor);
+	}
+});
+
 it.each(["@stryker-mutator/core", "@stryker-mutator/vitest-runner", "vitest"])(
 	"starts cold when the resolved %s version changes with the same lockfile",
 	async (name) => {

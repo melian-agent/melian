@@ -172,7 +172,9 @@ export function mutationInstallation(repoRoot: string): string {
 	} catch {
 		// A checkout without a lockfile cannot share a partition with a locked install.
 	}
-	return createHash("sha256").update(JSON.stringify({ lockfile, versions })).digest("hex");
+	return createHash("sha256")
+		.update(JSON.stringify({ lockfile, versions, node: process.versions.node }))
+		.digest("hex");
 }
 
 /**
