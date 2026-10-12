@@ -1,6 +1,6 @@
 import { rmdir } from "node:fs/promises";
 import { backgroundContext } from "./harness.ts";
-import { nodeInstallation, type Sandbox, type SandboxPaths } from "./sandbox.ts";
+import { nodeExecutable, type Sandbox, type SandboxPaths } from "./sandbox.ts";
 import type { Run } from "./static.ts";
 
 function quote(value: string): string {
@@ -102,7 +102,7 @@ export class MutationScratch {
 	}
 
 	static open(run: Run, scratch: string, sandbox: Sandbox, installs: readonly string[]): MutationScratch {
-		const paths = { scratch, worktree: "/", installs, node: nodeInstallation() };
+		const paths = { scratch, worktree: "/", installs, node: nodeExecutable() };
 		return new MutationScratch(run, sandbox, paths, sandbox.profile(paths));
 	}
 

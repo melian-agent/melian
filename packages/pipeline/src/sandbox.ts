@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readlinkSync, realpathSync } from "node:fs";
+import { existsSync, readlinkSync, realpathSync, statSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, posix } from "node:path";
 
 /** The sandbox a host offers: seatbelt through `sandbox-exec` on macOS, bubblewrap on Linux. */
@@ -13,7 +14,7 @@ export interface SandboxPaths {
 	readonly scratch: string;
 	/** The checkout's installed dependencies, read-only: its `node_modules` and each workspace package's. */
 	readonly installs: readonly string[];
-	/** The Node installation, read-only: the directory above `bin/node`. */
+	/** The canonical Node executable, readable as a literal path. */
 	readonly node: string;
 }
 
@@ -38,7 +39,11 @@ const systemReads = [
 // its user, and tell the time is bound, so no credential file in it is visible; the alternatives directory is bound too,
 // since a merged-/usr host links /usr/bin entries through it.
 const linuxReads = [
-	"/usr",
+	"/usr/bin",
+	"/usr/sbin",
+	"/usr/lib",
+	"/usr/lib64",
+	"/usr/share",
 	"/bin",
 	"/sbin",
 	"/lib",
@@ -97,8 +102,23 @@ function regexSource(path: string): string {
 	return path.replace(/[\][\\.*^$+?(){}|]/g, "\\$&");
 }
 
-export function nodeInstallation(): string {
-	return dirname(dirname(realpathSync(process.execPath)));
+export function nodeExecutable(): string {
+	return realpathSync(process.execPath);
+}
+
+function nodeDirectories(executable: string): string[] {
+	const prefix = dirname(dirname(executable));
+	const home = homedir();
+	if (
+		executable !== posix.join(prefix, "bin/node") ||
+		["/", "/usr", "/usr/local", home, posix.join(home, ".local")].includes(prefix) ||
+		home.startsWith(`${prefix}/`) ||
+		!statSync(prefix, { throwIfNoEntry: false })?.isDirectory()
+	)
+		return [];
+	return [posix.join(prefix, "lib/node_modules"), posix.join(prefix, "include/node")].filter(
+		(path) => statSync(path, { throwIfNoEntry: false })?.isDirectory() && realpathSync(path) === path,
+	);
 }
 
 function available(backend: SandboxBackend): boolean {
@@ -143,7 +163,7 @@ export class Sandbox {
 		const developer = this.backend === "seatbelt" ? developerDirectory() : undefined;
 		const directories = [
 			...(developer === undefined ? [] : [posix.join(developer, "usr/bin")]),
-			posix.join(nodeInstallation(), "bin"),
+			dirname(nodeExecutable()),
 			"/usr/bin",
 			"/bin",
 			"/usr/sbin",
@@ -158,17 +178,31 @@ export class Sandbox {
 		};
 	}
 
+	runtimeFailure(paths: SandboxPaths): string | undefined {
+		const result = spawnSync(
+			"/bin/bash",
+			["-c", this.command(`${quote(paths.node)} --version`, paths, "", this.profile(paths))],
+			{
+				encoding: "utf8",
+				env: { ...this.environment(), HOME: paths.scratch, TMPDIR: paths.scratch },
+			},
+		);
+		if (result.status === 0) return undefined;
+		return `Node runtime ${paths.node} could not start within ${this.backend}; the runtime grant was not widened`;
+	}
+
 	/** The seatbelt profile for these paths, which the caller writes to a file; bubblewrap needs none. */
 	profile(paths: SandboxPaths): string | undefined {
 		if (this.backend !== "seatbelt") return undefined;
 		const developer = developerDirectory();
 		const cache = xcrunCache();
 		const writable = [paths.scratch];
-		const readable = [...systemReads, ...(developer === undefined ? [] : [developer]), paths.node, ...writable].map(
+		const runtime = nodeDirectories(paths.node);
+		const readable = [...systemReads, ...(developer === undefined ? [] : [developer]), ...runtime, ...writable].map(
 			(path) => `(subpath ${profileString(path)})`,
 		);
 		const installs = paths.installs.map((path) => `(subpath ${profileString(path)})`);
-		const parents = [...new Set([paths.node, ...writable, ...paths.installs].flatMap(ancestors))].map(
+		const parents = [...new Set([paths.node, ...runtime, ...writable, ...paths.installs].flatMap(ancestors))].map(
 			(path) => `(literal ${profileString(path)})`,
 		);
 		return [
@@ -183,7 +217,7 @@ export class Sandbox {
 			"(allow ipc-posix-sem)",
 			"(allow ipc-posix-shm*)",
 			"(allow system-mac-syscall)",
-			`(allow file-read* (literal "/") ${[...readable, ...installs].join(" ")})`,
+			`(allow file-read* (literal "/") ${[`(literal ${profileString(paths.node)})`, ...readable, ...installs].join(" ")})`,
 			// /etc and /var are links into /private. The resolver stats /etc to find /etc/hosts, and the git shim reads the link in /var/select.
 			`(allow file-read-metadata (literal "/") (literal "/etc") (literal "/var") ${parents.join(" ")})`,
 			`(allow file-write* ${writable.map((path) => `(subpath ${profileString(path)})`).join(" ")})`,
@@ -223,6 +257,7 @@ export class Sandbox {
 			...system,
 			"--proc /proc --dev /dev --tmpfs /tmp",
 			bind("--ro-bind", paths.node),
+			...nodeDirectories(paths.node).map((path) => bind("--ro-bind", path)),
 			...paths.installs.map((path) => bind("--ro-bind", path)),
 			bind("--bind", paths.scratch),
 			`--chdir ${quote(paths.worktree)}`,

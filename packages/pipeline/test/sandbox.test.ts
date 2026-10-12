@@ -2,6 +2,7 @@ import type * as childProcess from "node:child_process";
 import { execFile, spawnSync } from "node:child_process";
 import type * as filesystem from "node:fs";
 import {
+	copyFileSync,
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
@@ -9,14 +10,15 @@ import {
 	readlinkSync,
 	realpathSync,
 	rmSync,
+	statSync,
 	writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join, posix } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { nodeInstallation, Sandbox, type SandboxPaths } from "../src/sandbox.ts";
+import { nodeExecutable, Sandbox, type SandboxPaths } from "../src/sandbox.ts";
 
 vi.mock("node:child_process", async (importOriginal) => {
 	const original = await importOriginal<typeof childProcess>();
@@ -30,8 +32,11 @@ vi.mock("node:fs", async (importOriginal) => {
 		existsSync: vi.fn(original.existsSync),
 		readlinkSync: vi.fn(original.readlinkSync),
 		realpathSync: vi.fn(original.realpathSync),
+		statSync: vi.fn(original.statSync),
 	};
 });
+
+vi.mock("node:os", { spy: true });
 
 const run = promisify(execFile);
 const seatbeltAvailable =
@@ -106,7 +111,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.restoreAllMocks();
-	for (const mock of [existsSync, readlinkSync, realpathSync, spawnSync]) vi.mocked(mock).mockReset();
+	for (const mock of [existsSync, readlinkSync, realpathSync, statSync, spawnSync]) vi.mocked(mock).mockReset();
 	vi.unstubAllEnvs();
 	rmSync(base, { recursive: true, force: true });
 });
@@ -116,7 +121,7 @@ function paths(): SandboxPaths {
 		worktree: join(base, "scratch/tree"),
 		scratch: join(base, "scratch"),
 		installs: [join(base, "installs")],
-		node: nodeInstallation(),
+		node: nodeExecutable(),
 	};
 }
 
@@ -140,7 +145,7 @@ describe("Sandbox.environment", () => {
 			const sandbox = Sandbox.detect(platform)!;
 			vi.stubEnv("PATH", "/opt/homebrew/bin:/Users/someone/bin");
 			const directories = sandbox!.environment().PATH!.split(":");
-			expect(directories).toContain(join(nodeInstallation(), "bin"));
+			expect(directories).toContain(posix.dirname(nodeExecutable()));
 			expect(directories.slice(-4)).toEqual(["/usr/bin", "/bin", "/usr/sbin", "/sbin"]);
 			expect(directories).not.toContain("/opt/homebrew/bin");
 			expect(directories).not.toContain("/Users/someone/bin");
@@ -149,10 +154,151 @@ describe("Sandbox.environment", () => {
 	}
 });
 
+describe("Node runtime grants", () => {
+	const home = "/home/reviewer";
+	const versioned = `${home}/.nvm/versions/node/v24.18.0`;
+	const backends = ["seatbelt", "bubblewrap"] as const;
+	for (const backend of backends) {
+		it.each([
+			[versioned, true],
+			[home, false],
+			["/home", false],
+			[`${home}/.local`, false],
+			["/usr/local", false],
+			["/usr", false],
+			["/", false],
+		] as const)(`grants only the executable and owned Node directories at %s (${backend})`, (prefix, owned) => {
+			vi.mocked(homedir).mockReturnValue(home);
+			const directory = statSync(base);
+			vi.mocked(statSync).mockReturnValue(directory);
+			vi.mocked(realpathSync).mockImplementation((path) => String(path));
+			const node = join(prefix, "bin/node");
+			const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend });
+			const where = { worktree: "/work/tree", scratch: "/work", installs: [], node };
+			const output = backend === "seatbelt" ? sandbox.profile(where)! : sandbox.command("true", where, "/unused");
+			const grant = (path: string) =>
+				backend === "seatbelt" ? `(subpath "${path}")` : `--ro-bind '${path}' '${path}'`;
+			expect(output).not.toContain(grant(prefix));
+			expect(output).toContain(backend === "seatbelt" ? `(literal "${node}")` : grant(node));
+			for (const suffix of ["lib/node_modules", "include/node"]) {
+				expect(output.includes(grant(join(prefix, suffix)))).toBe(owned);
+			}
+			if (backend === "bubblewrap") expect(output).not.toContain("--ro-bind '/usr' '/usr'");
+		});
+
+		it.each(["not-bin/node", "bin/other"])(
+			`requires bin/node before granting directories (%s, ${backend})`,
+			(suffix) => {
+				vi.mocked(homedir).mockReturnValue(home);
+				vi.mocked(statSync).mockReturnValue(statSync(base));
+				const node = join(versioned, suffix);
+				const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend });
+				const where = { worktree: "/work/tree", scratch: "/work", installs: [], node };
+				const output = backend === "seatbelt" ? sandbox.profile(where)! : sandbox.command("true", where, "/unused");
+				expect(output).not.toContain(join(versioned, "lib/node_modules"));
+				expect(output).not.toContain(join(versioned, "include/node"));
+			},
+		);
+
+		it.each(["lib/node_modules", "include/node"])(
+			`grants each existing Node directory independently (%s, ${backend})`,
+			(suffix) => {
+				vi.mocked(homedir).mockReturnValue(home);
+				const directory = statSync(base);
+				const permitted = join(versioned, suffix);
+				vi.mocked(statSync).mockImplementation((path) =>
+					path === versioned || path === permitted ? directory : undefined,
+				);
+				vi.mocked(realpathSync).mockImplementation((path) => String(path));
+				const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend });
+				const where = { worktree: "/work/tree", scratch: "/work", installs: [], node: join(versioned, "bin/node") };
+				const output = backend === "seatbelt" ? sandbox.profile(where)! : sandbox.command("true", where, "/unused");
+				expect(output).toContain(permitted);
+				const absent = suffix === "lib/node_modules" ? "include/node" : "lib/node_modules";
+				expect(output).not.toContain(join(versioned, absent));
+			},
+		);
+
+		it.each(["absent prefix", "file prefix", "absent directory", "file directory", "linked directory"])(
+			`refuses optional Node grants for %s (${backend})`,
+			(layout) => {
+				vi.mocked(homedir).mockReturnValue(home);
+				const directory = statSync(base);
+				const file = statSync(join(base, "home/auth.json"));
+				vi.mocked(statSync).mockImplementation((path) => {
+					if (path === versioned)
+						return layout === "absent prefix" ? undefined : layout === "file prefix" ? file : directory;
+					return layout === "absent directory" ? undefined : layout === "file directory" ? file : directory;
+				});
+				vi.mocked(realpathSync).mockImplementation((path) =>
+					layout === "linked directory" && String(path).startsWith(versioned) ? "/host/private" : String(path),
+				);
+				const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend });
+				const where = { worktree: "/work/tree", scratch: "/work", installs: [], node: join(versioned, "bin/node") };
+				const output = backend === "seatbelt" ? sandbox.profile(where)! : sandbox.command("true", where, "/unused");
+				expect(output).not.toContain(join(versioned, "lib/node_modules"));
+				expect(output).not.toContain(join(versioned, "include/node"));
+				expect(output).not.toContain("/host/private");
+			},
+		);
+	}
+
+	it("uses the real executable as the runtime literal", () => {
+		vi.mocked(realpathSync).mockImplementation((path) => {
+			expect(path).toBe(process.execPath);
+			return "/real/node/bin/node";
+		});
+		expect(nodeExecutable()).toBe("/real/node/bin/node");
+	});
+});
+
+it.skipIf(!seatbeltAvailable)(
+	"denies reading a file beside bin in a home-shaped Node prefix",
+	{ timeout: 60_000 },
+	async () => {
+		const prefix = join(base, "home");
+		mkdirSync(join(prefix, "bin"));
+		const node = join(prefix, "bin/node");
+		copyFileSync(process.execPath, node);
+		vi.mocked(homedir).mockReturnValue(prefix);
+		const sandbox = Sandbox.detect("darwin")!;
+		const where = { ...paths(), node };
+		const script = join(where.worktree, "beside-bin.cjs");
+		writeFileSync(
+			script,
+			"try { require('node:fs').readFileSync(process.argv[2]); console.log('read'); } catch { console.log('denied'); }",
+		);
+		const marker = join(prefix, "auth.json");
+		expect((await run(node, [script, marker])).stdout.trim()).toBe("read");
+		const profile = join(where.scratch, "node.sb");
+		writeFileSync(profile, sandbox.profile(where)!);
+		const result = await run(
+			"/bin/bash",
+			[
+				"-c",
+				sandbox.command(
+					`${JSON.stringify(node)} ${JSON.stringify(script)} ${JSON.stringify(marker)}`,
+					where,
+					profile,
+				),
+			],
+			{
+				env: { ...sandbox.environment(), HOME: join(where.scratch, "home"), TMPDIR: where.scratch },
+			},
+		);
+		expect(result.stdout.trim()).toBe("denied");
+	},
+);
+
 describe("the bubblewrap command", () => {
 	// Built without running it, so it is checked on every host; the probe below runs it where bwrap exists.
 	const bubblewrap = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend: "bubblewrap" as const });
-	const where = { worktree: "/work/tree", scratch: "/work", installs: ["/checkout/node_modules"], node: "/opt/node" };
+	const where = {
+		worktree: "/work/tree",
+		scratch: "/work",
+		installs: ["/checkout/node_modules"],
+		node: "/opt/node/bin/node",
+	};
 	const command = bubblewrap.command("echo 'hi'", where, "/unused");
 
 	it("unshares every namespace, dies with its parent, and runs the command in the worktree", () => {
@@ -162,7 +308,7 @@ describe("the bubblewrap command", () => {
 	});
 
 	it("binds the node installation and the installs read-only, scratch read-write, and nothing of the home", () => {
-		expect(command).toContain("--ro-bind '/opt/node' '/opt/node'");
+		expect(command).toContain("--ro-bind '/opt/node/bin/node' '/opt/node/bin/node'");
 		expect(command).toContain("--ro-bind '/checkout/node_modules' '/checkout/node_modules'");
 		expect(command).toContain("--bind '/work' '/work'");
 		expect(command).not.toContain("--bind '/work/tree'");
@@ -170,7 +316,7 @@ describe("the bubblewrap command", () => {
 	});
 
 	it("binds the system directories the host has, read-only, and a private /proc, /dev, and /tmp before scratch", () => {
-		for (const directory of ["/usr", "/bin", "/sbin"])
+		for (const directory of ["/usr/bin", "/bin", "/sbin"])
 			if (existsSync(directory)) expect(command).toContain(`--ro-bind '${directory}' '${directory}'`);
 		expect(command).not.toContain("--ro-bind '/etc' ");
 		expect(command).toContain("--proc /proc --dev /dev --tmpfs /tmp");
@@ -202,6 +348,29 @@ describe("Sandbox.detect", () => {
 		expect(Sandbox.detect("darwin")).toBeUndefined();
 	});
 });
+
+it.each(["seatbelt", "bubblewrap"] as const)(
+	"refuses a runtime that cannot start within %s without widening its grants",
+	(backend) => {
+		const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend });
+		const where = paths();
+		vi.mocked(spawnSync).mockImplementation((command, args, options) => {
+			if (command === "/usr/bin/getconf") return { status: 1, stdout: "" } as ReturnType<typeof spawnSync>;
+			expect(command).toBe("/bin/bash");
+			expect(args?.[0]).toBe("-c");
+			expect(args?.[1]?.replaceAll("'\\''", "'")).toContain(`'${where.node}' --version`);
+			expect(options?.env).toMatchObject({ HOME: where.scratch, TMPDIR: where.scratch, MELIAN_SANDBOX: backend });
+			return { status: 0 } as ReturnType<typeof spawnSync>;
+		});
+		expect(sandbox.runtimeFailure(where)).toBeUndefined();
+		const successful = vi.mocked(spawnSync).getMockImplementation()!;
+		vi.mocked(spawnSync).mockImplementation((command, args, options) => {
+			const result = successful(command, args, options);
+			return command === "/bin/bash" ? { ...result, status: 1 } : result;
+		});
+		expect(sandbox.runtimeFailure(where)).toContain(`Node runtime ${where.node} could not start within ${backend}`);
+	},
+);
 
 describe.skipIf(!seatbeltAvailable)("seatbelt", { timeout: 60_000 }, () => {
 	it("denies the reviewer's home and the network, and allows writes under scratch only", async () => {
@@ -297,7 +466,12 @@ it("grants the seatbelt profile loopback and no other network rule", () => {
 describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 	const seatbelt = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend: "seatbelt" as const });
 	const bubblewrap = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend: "bubblewrap" as const });
-	const where = { worktree: "/work/tree", scratch: "/work", installs: ["/checkout/node_modules"], node: "/opt/node" };
+	const where = {
+		worktree: "/work/tree",
+		scratch: "/work",
+		installs: ["/checkout/node_modules"],
+		node: "/opt/node/bin/node",
+	};
 
 	it("uses a retained inline profile for housekeeping instead of a head-written profile file", () => {
 		expect(seatbelt.command("true", where, "/work/tampered.sb", "(version 1)(deny default)")).toBe(
@@ -329,10 +503,10 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 	it("renders just the allowed reads and parent metadata when developer tools and xcrun cache are absent", () => {
 		host(undefined, undefined);
 		const profile = seatbelt.profile(where)!;
-		expect(profile).toContain('(allow file-read* (literal "/") (subpath "/usr/lib")');
-		expect(profile).toContain('(subpath "/opt/node") (subpath "/work") (subpath "/checkout/node_modules"))');
+		expect(profile).toContain('(allow file-read* (literal "/") (literal "/opt/node/bin/node") (subpath "/usr/lib")');
+		expect(profile).toContain('(subpath "/work") (subpath "/checkout/node_modules"))');
 		expect(profile).toContain(
-			'(allow file-read-metadata (literal "/") (literal "/etc") (literal "/var") (literal "/opt") (literal "/checkout"))',
+			'(allow file-read-metadata (literal "/") (literal "/etc") (literal "/var") (literal "/opt/node/bin") (literal "/opt/node") (literal "/opt") (literal "/checkout"))',
 		);
 		expect(profile).toContain('(allow file-write* (subpath "/work"))');
 		expect(profile).toContain('(allow mach-lookup (global-name "com.apple.bsd.dirhelper"))');
@@ -376,14 +550,16 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 			if (path === "/" || path === ".") throw new Error("ancestor traversal passed its root");
 			return dirname(path);
 		});
-		expect(seatbelt.profile(where)).toContain('(literal "/opt") (literal "/checkout")');
-		expect(parent).toHaveBeenCalledTimes(5);
+		expect(seatbelt.profile(where)).toContain(
+			'(literal "/opt/node/bin") (literal "/opt/node") (literal "/opt") (literal "/checkout")',
+		);
+		expect(parent).toHaveBeenCalledTimes(7);
 	});
 
 	it("does not inspect macOS developer tools for a bubblewrap environment", () => {
 		host("/dev-tools/Xcode", undefined);
 		expect(bubblewrap.environment()).toStrictEqual({
-			PATH: `${join(nodeInstallation(), "bin")}:/usr/bin:/bin:/usr/sbin:/sbin`,
+			PATH: `${posix.dirname(nodeExecutable())}:/usr/bin:/bin:/usr/sbin:/sbin`,
 			MELIAN_SANDBOX: "bubblewrap",
 		});
 		expect(readlinkSync).not.toHaveBeenCalled();
@@ -418,7 +594,7 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 		host("/missing/developer", undefined);
 		vi.mocked(existsSync).mockReturnValue(false);
 		expect(seatbelt.environment()).toStrictEqual({
-			PATH: `${join(nodeInstallation(), "bin")}:/usr/bin:/bin:/usr/sbin:/sbin`,
+			PATH: `${posix.dirname(nodeExecutable())}:/usr/bin:/bin:/usr/sbin:/sbin`,
 			MELIAN_SANDBOX: "seatbelt",
 		});
 		vi.mocked(spawnSync).mockReturnValue({ status: 0, stdout: "   " } as ReturnType<typeof spawnSync>);
@@ -451,9 +627,9 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 	});
 
 	it("binds only Linux system paths the host has", () => {
-		vi.mocked(existsSync).mockImplementation((path) => ["/usr", "/etc/hosts"].includes(String(path)));
+		vi.mocked(existsSync).mockImplementation((path) => ["/usr/bin", "/etc/hosts"].includes(String(path)));
 		const command = bubblewrap.command("true", where, "/unused");
-		expect(command).toContain("--ro-bind '/usr' '/usr'");
+		expect(command).toContain("--ro-bind '/usr/bin' '/usr/bin'");
 		expect(command).toContain("--ro-bind '/etc/hosts' '/etc/hosts'");
 		expect(command).not.toContain("--ro-bind '/bin'");
 		expect(command).not.toContain("--ro-bind '/etc/passwd'");

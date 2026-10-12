@@ -782,6 +782,17 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
 	});
 
+	it("skips head tests when the confined Node runtime cannot start", async () => {
+		const { base, head } = twoCommits();
+		const fake = stryker({ report: report({}) });
+		const reason = "Node runtime could not start within the sandbox";
+		vi.mocked(Sandbox.detect).mockReturnValue({
+			...unconfinedSandbox,
+			runtimeFailure: () => reason,
+		} as unknown as Sandbox);
+		expect(await mutate(base, head)).toMatchObject({ status: "skipped", cause: "noSandbox", reason });
+		expect(fake.calls()).toEqual([]);
+	});
 	it("writes the selected sandbox profile before running the command", async () => {
 		const { base, head } = twoCommits();
 		const fake = stryker({ report: report({}) });

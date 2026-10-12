@@ -18,7 +18,7 @@ import { MutationCache } from "./mutation-cache.ts";
 import { MutationProcess } from "./mutation-process.ts";
 import { MutationScratch } from "./mutation-scratch.ts";
 import { type MutationTestSelection, MutationTests } from "./mutation-tests.ts";
-import { nodeInstallation, type Sandbox } from "./sandbox.ts";
+import { nodeExecutable, type Sandbox } from "./sandbox.ts";
 import { type Run, type StaticRun, staticOutputLimit } from "./static.ts";
 import { CacheLocation } from "./tool-provisioning.ts";
 
@@ -359,7 +359,7 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 			worktree: this.#root,
 			scratch: this.#scratch,
 			installs: this.#installs,
-			node: nodeInstallation(),
+			node: nodeExecutable(),
 		};
 		const profile = this.#sandbox.profile(paths);
 		const profileFile = posix.join(this.#scratch, "sandbox.sb");
@@ -437,6 +437,14 @@ writeFileSync("reports/mutation/mutation.json", JSON.stringify(report));
 		const { maxLines } = settings as MutationSettings;
 		const { kept: lines, omitted } = withinBound(changed, maxLines);
 		const count = Math.min(total, maxLines);
+
+		const runtimeFailure = this.#sandbox.runtimeFailure({
+			worktree: this.#root,
+			scratch: this.#scratch,
+			installs: this.#installs,
+			node: nodeExecutable(),
+		});
+		if (runtimeFailure !== undefined) return { status: "skipped", cause: "noSandbox", reason: runtimeFailure };
 
 		if (!(await this.#run.exists(posix.join(this.#root, config))))
 			throw this.#run.fail("toolFailed", `the revision has no ${config}, which Stryker needs`);
