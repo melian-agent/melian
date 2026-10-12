@@ -37,6 +37,7 @@ async function open(
 	identity: {
 		repository?: { owner: string; name: string } | null;
 		pusher?: string;
+		pushers?: string[];
 		failEvents?: boolean;
 		failPermission?: boolean;
 	} = {},
@@ -67,14 +68,12 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 	state.headRepository = identity.repository;
 	state.failEvents = identity.failEvents;
 	state.failPermission = identity.failPermission;
-	if (identity.pusher !== undefined)
-		state.pushEvents = [
-			{
-				type: "PushEvent",
-				actor: { login: identity.pusher },
-				payload: { head: changeset.revision.head, ref: `refs/heads/${state.pull.head.ref}` },
-			},
-		];
+	const pushers = identity.pushers ?? (identity.pusher === undefined ? [] : [identity.pusher]);
+	state.pushEvents = pushers.map((login) => ({
+		type: "PushEvent",
+		actor: { login },
+		payload: { head: changeset.revision.head, ref: `refs/heads/${state.pull.head.ref}` },
+	}));
 	const provider = createGitHubProvider({
 		owner: state.owner,
 		repo: state.repo,
@@ -171,6 +170,21 @@ describe("static.mutation and the writer of a pull request", { timeout: 60_000 }
 			expect(output()).toContain("contributor has");
 		},
 	);
+
+	it("refuses the newest matching read-only pusher despite an older writer push", async () => {
+		const { io, output } = await open(
+			"maintainer",
+			{ maintainer: "write", contributor: "read" },
+			{},
+			"static.mutation",
+			{
+				pushers: ["contributor", "maintainer"],
+			},
+		);
+		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(0);
+		expect(ran()).toBe(false);
+		expect(output()).toContain("contributor has read permission");
+	});
 	it("trusts a same-repository pusher with write permission despite the author's read role", async () => {
 		const { io } = await open("contributor", { maintainer: "write", contributor: "read" }, {}, "static.mutation", {
 			pusher: "maintainer",

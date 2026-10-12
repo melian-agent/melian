@@ -170,3 +170,42 @@ it("reads subsequent event pages before using the author fallback", async () => 
 	expect((await provider.pullRequest(7)).head.pusher).toBe("second-page-writer");
 	expect(pages).toEqual([1, 2]);
 });
+
+it.each(["one page", "two pages"])("uses the newest matching push from %s", async (pagination) => {
+	const { state } = fixture();
+	state.permissions = { contributor: "read", maintainer: "write" };
+	const events = ["contributor", "maintainer"].map((login) => ({
+		type: "PushEvent",
+		actor: { login },
+		payload: { head: state.pull.head.sha, ref: "refs/heads/feature" },
+	}));
+	const transport = fakeGitHub(state);
+	const pages: number[] = [];
+	const provider = createGitHubProvider({
+		owner: state.owner,
+		repo: state.repo,
+		token: "test",
+		fetch: async (input, init) => {
+			const url = new URL(String(input));
+			if (url.pathname !== "/repos/owner/repo/events") return transport(input, init);
+			expect(url.searchParams.get("per_page")).toBe("100");
+			const page = Number(url.searchParams.get("page") ?? "1");
+			pages.push(page);
+			expect(page).toBeLessThanOrEqual(pagination === "one page" ? 1 : 2);
+			return new Response(JSON.stringify(pagination === "one page" ? events : [events[page - 1]]), {
+				headers: {
+					"content-type": "application/json",
+					...(pagination === "two pages" && page === 1
+						? {
+								link: '<https://api.github.com/repos/owner/repo/events?per_page=100&page=2>; rel="next"',
+							}
+						: {}),
+				},
+			});
+		},
+	});
+	const { head } = await provider.pullRequest(7);
+	expect(head.pusher).toBe("contributor");
+	expect(await provider.permission(head.pusher!)).toBe("read");
+	expect(pages).toEqual(pagination === "one page" ? [1] : [1, 2]);
+});
