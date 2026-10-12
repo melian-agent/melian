@@ -275,9 +275,7 @@ export class MutationRun {
 					"set -e",
 					`rm -f ${quote(file)}`,
 					git("init --quiet --template="),
-					git(
-						`fetch --quiet --no-tags --depth=1 --upload-pack=${upload} ${quote(`file://${repoRoot}`)} ${commit}`,
-					),
+					git(`fetch --quiet --no-tags --upload-pack=${upload} ${quote(`file://${repoRoot}`)} ${commit}`),
 					git(`update-ref --no-deref HEAD ${commit}`),
 					git("read-tree HEAD"),
 				].join("\n"),

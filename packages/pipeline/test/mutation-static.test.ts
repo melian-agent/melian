@@ -755,7 +755,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 		await mutate(base, head, { env });
 		expect(restored).toEqual([true]);
 		const [cwd, toplevel, sha, count, ...rest] = readFileSync(seen, "utf8").trimEnd().split("\n");
-		expect([toplevel, sha, count]).toEqual([cwd, head, "1"]);
+		expect([toplevel, sha, count]).toEqual([cwd, head, "2"]);
 		expect(rest).toEqual(["directory", "no-remote"]);
 		expect(readFileSync(seen, "utf8")).not.toContain("secret-token");
 		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
