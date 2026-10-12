@@ -15,6 +15,8 @@ import {
 } from "@melian-agent/core";
 import { EnolaRun } from "./enola-static.ts";
 import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts";
+import { MutationScratch } from "./mutation-scratch.ts";
+import { Sandbox } from "./sandbox.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
 
 /** The most a static tool may write, its report included. Past it the run fails with `outputTooLarge`. */
@@ -69,13 +71,16 @@ const gitVariables = [
 // or key from the Melian process, even on a maintainer's own machine.
 const passedVariables = ["PATH", "HOME", "TMPDIR", "LANG"] as const;
 
-function toolEnvironment(): { env: Record<string, string>; inheritEnv: false } {
+function toolEnvironment(replaced: Readonly<Record<string, string>>): {
+	env: Record<string, string>;
+	inheritEnv: false;
+} {
 	const env: Record<string, string> = {};
 	for (const name of passedVariables) {
 		const value = process.env[name];
 		if (value !== undefined) env[name] = value;
 	}
-	return { env, inheritEnv: false };
+	return { env: { ...env, ...replaced }, inheritEnv: false };
 }
 
 function quote(value: string): string {
@@ -104,6 +109,7 @@ interface Shell {
 }
 
 export class Run {
+	mutationScratch?: MutationScratch;
 	readonly input: StaticRunInput;
 	readonly context: Context;
 	readonly check: string;
@@ -122,13 +128,18 @@ export class Run {
 		return new CheckError(code, this.check, message, { cause });
 	}
 
-	// Runs a command, keeping the start of what it prints for error messages.
-	async shell(command: string, timeout = this.input.settings.timeout): Promise<Shell> {
+	// Runs a command, keeping the start of what it prints for error messages. `replaced` overrides a passed variable, such
+	// as the `HOME` of a command that runs confined.
+	async shell(
+		command: string,
+		timeout = this.input.settings.timeout,
+		replaced: Readonly<Record<string, string>> = {},
+	): Promise<Shell> {
 		let output = "";
 		const result = await this.input.env.exec(
 			command,
 			{
-				...toolEnvironment(),
+				...toolEnvironment(replaced),
 				timeout,
 				onOutput: (text) => {
 					if (output.length < 8192) output += text;
@@ -248,12 +259,14 @@ async function binaryFor(run: Run, installed: string | undefined): Promise<strin
 // node_modules made its workspace links, such as `node_modules/b -> ../packages/b`, resolve to the checkout's own
 // sources, so base and head type-checked against one tree. Solution: an entry that resolves inside the checkout, outside
 // any node_modules, is a workspace package, linked to the worktree's own copy; every other entry links to the install.
-async function linkDependencies(run: Run, root: string, scratch: string, notes: string[]): Promise<void> {
+async function linkDependencies(run: Run, root: string, scratch: string, notes: string[]): Promise<string[]> {
 	const { env, repoRoot, commit, tool } = run.input;
 	const canonical = await env.canonicalPath(repoRoot, run.context);
 	const checkout = canonical.ok ? canonical.value : repoRoot;
 	const commands: string[] = [];
 	const workspaces = new Set<string>();
+	// The install directories the worktree links to, which a sandboxed command is allowed to read.
+	const installs: string[] = [];
 	const link = async (from: string, to: string): Promise<void> => {
 		const listed = await env.listDir(from, run.context);
 		if (!listed.ok) return;
@@ -276,11 +289,13 @@ async function linkDependencies(run: Run, root: string, scratch: string, notes: 
 			}
 		}
 	};
+	installs.push(posix.join(checkout, "node_modules"));
 	await link(posix.join(checkout, "node_modules"), posix.join(root, "node_modules"));
 	// A workspace package's own node_modules holds the versions only it depends on.
 	for (const workspace of workspaces) {
 		const nested = posix.join(checkout, workspace, "node_modules");
 		if ((await run.exists(nested)) && (await run.exists(posix.join(root, workspace)))) {
+			installs.push(nested);
 			await link(nested, posix.join(root, workspace, "node_modules"));
 		}
 	}
@@ -291,7 +306,7 @@ async function linkDependencies(run: Run, root: string, scratch: string, notes: 
 	if (linked.code !== 0) throw run.fail("worktreeFailed", `linking dependencies failed: ${linked.output}`);
 	// A dependency bump in the checkout but not at this revision is accepted; the lockfile is policy, reviewed as such.
 	const lockfile = "package-lock.json";
-	if (!(await run.exists(posix.join(checkout, lockfile)))) return;
+	if (!(await run.exists(posix.join(checkout, lockfile)))) return installs;
 	const differs = await run.shell(
 		`cmp -s ${quote(posix.join(checkout, lockfile))} ${quote(posix.join(root, lockfile))}`,
 	);
@@ -300,6 +315,7 @@ async function linkDependencies(run: Run, root: string, scratch: string, notes: 
 			`${tool} resolved dependencies from the checkout's install, whose ${lockfile} differs from ${commit.slice(0, 12)}'s.`,
 		);
 	}
+	return installs;
 }
 
 // Each directory named node_modules that the revision tracks, outermost only.
@@ -506,8 +522,24 @@ const lockReason = `melian-static pid ${process.pid}`;
 
 // Cleanup runs even when the caller cancelled, so it never takes the caller's context: a cancelled context makes every
 // command return at once, and the worktree would stay registered.
-async function removeWorktree(run: Run, scratch: string): Promise<void> {
+async function removeWorktree(run: Run, scratch: string, mutation = false): Promise<void> {
 	const cleanup = new Run({ ...run.input, settings: { ...run.input.settings, timeout: 60 } }, backgroundContext);
+	let files = run.mutationScratch;
+	if (mutation) {
+		const sandbox = Sandbox.detect();
+		if (sandbox === undefined)
+			throw run.fail("worktreeFailed", `cannot safely remove mutation scratch ${scratch}: no sandbox`);
+		files = MutationScratch.open(cleanup, scratch, sandbox, []);
+	}
+	if (files !== undefined) {
+		for (const root of [posix.join(scratch, "base", "tree"), posix.join(scratch, "tree")]) {
+			await cleanup.worktreeCommand(cleanup.git(`worktree unlock ${quote(root)}`));
+			await files.remove(root);
+		}
+		await cleanup.worktreeCommand(cleanup.git("worktree prune --expire=now"));
+		await files.close();
+		return;
+	}
 	for (const root of [posix.join(scratch, "base", "tree"), posix.join(scratch, "tree")]) {
 		try {
 			await cleanup.worktreeCommand(cleanup.git(`worktree remove --force --force ${quote(root)}`));
@@ -515,7 +547,7 @@ async function removeWorktree(run: Run, scratch: string): Promise<void> {
 			// Best effort: a cleanup failure must not replace the run's result or error.
 		}
 	}
-	await run.input.env.remove(scratch, { recursive: true, force: true }, backgroundContext);
+	if (files === undefined) await run.input.env.remove(scratch, { recursive: true, force: true }, backgroundContext);
 }
 
 // A run killed with SIGKILL leaves its worktree registered and its directory in place, which `git worktree prune`
@@ -534,8 +566,18 @@ async function removeStaleWorktrees(run: Run, scratch: string): Promise<void> {
 		const owner = posix.basename(parent) === "base" ? posix.dirname(parent) : parent;
 		if (!posix.basename(owner).startsWith("melian-static-") || owner === scratch) continue;
 		const lock = fields.find((field) => field.startsWith("locked "))?.slice("locked ".length) ?? "";
-		const pid = /^melian-static pid (\d+)$/.exec(lock)?.[1];
-		if (pid !== undefined && (await run.shell(`kill -0 ${pid} 2> /dev/null`)).code === 0) continue;
-		await removeWorktree(run, owner);
+		const pid = /^melian-static (?:mutation )?pid (\d+)$/.exec(lock)?.[1];
+		if (pid !== undefined && Number(pid) > 1 && (await run.shell(`kill -0 ${pid} 2> /dev/null`)).code === 0) continue;
+		for (const component of [owner, parent, path]) {
+			const info = await run.input.env.fileInfo(component, run.context);
+			if (info.ok && info.value.kind === "symlink")
+				throw run.fail("worktreeFailed", `refused symlink ${component} during stale worktree cleanup`);
+		}
+		const gitDirectory = await run.input.env.fileInfo(posix.join(path, ".git"), run.context);
+		await removeWorktree(
+			run,
+			owner,
+			lock.startsWith("melian-static mutation ") || (gitDirectory.ok && gitDirectory.value.kind !== "file"),
+		);
 	}
 }

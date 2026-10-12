@@ -11,6 +11,7 @@ import {
 	type StaticRunInput,
 } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Sandbox } from "../src/sandbox.ts";
 import { Run, staticToolSource } from "../src/static.ts";
 import { commit, createRepository, fakeTool, gitIn, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
 
@@ -183,6 +184,40 @@ describe("runStaticTool with the repository's own tools", () => {
 	const emptySarif = JSON.stringify({
 		version: "2.1.0",
 		runs: [{ tool: { driver: { name: "Biome" } }, results: [] }],
+	});
+
+	it("does not probe a sandbox for a tool that does not execute head tests", async () => {
+		const head = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+		const detect = vi.spyOn(Sandbox, "detect").mockImplementation(() => {
+			throw new Error("unexpected sandbox probe");
+		});
+		expect((await runStaticTool(input("biome", head), context)).status).toBe("ran");
+		expect(detect).not.toHaveBeenCalled();
+	});
+
+	it("names a checkout lockfile mismatch after linking its installed dependencies", async () => {
+		const head = commit(repo, {
+			".gitignore": "node_modules\n",
+			"package-lock.json": "old\n",
+			"src/a.ts": "export const a = 1;\n",
+		});
+		writeFileSync(join(repo, "package-lock.json"), "new\n");
+		fakeTool(
+			repo,
+			"biome",
+			[
+				'if [ "$1" = "--version" ]; then echo 0.0.0; exit 0; fi',
+				'for arg in "$@"; do case "$arg" in --reporter-file=*) out=$(printf %s "$arg" | cut -d= -f2-);; esac; done',
+				`printf '%s' '${emptySarif}' > "$out"`,
+			].join("\n"),
+		);
+		const run = await runStaticTool(input("biome", head), context);
+		expect(run).toMatchObject({
+			status: "ran",
+			notes: [
+				`biome resolved dependencies from the checkout's install, whose package-lock.json differs from ${head.slice(0, 12)}'s.`,
+			],
+		});
 	});
 
 	it("prefers the tool in the checkout's node_modules", { timeout: 60_000 }, async () => {
@@ -421,6 +456,32 @@ describe("runStaticTool and a stale worktree that cannot be removed", () => {
 			vi.restoreAllMocks();
 			gitIn(repo, "worktree", "remove", "--force", "--force", join(owner, "tree"));
 			rmSync(owner, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("runStaticTool and a worktree locked by pid 0", () => {
+	it("treats the lock as dead rather than probing a process group", { timeout: 60_000 }, async () => {
+		const head = commit(repo, { "src/a.ts": lines("export const a = 1;") });
+		const owner = join(dirname(repo), `melian-static-lowpid-${process.pid}`);
+		mkdirSync(owner);
+		gitIn(
+			repo,
+			"worktree",
+			"add",
+			"--quiet",
+			"--detach",
+			"--lock",
+			"--reason",
+			"melian-static pid 0",
+			join(owner, "tree"),
+		);
+		try {
+			await log("biome", head);
+			expect(gitIn(repo, "worktree", "list", "--porcelain")).not.toContain(join(owner, "tree"));
+		} finally {
+			rmSync(owner, { recursive: true, force: true });
+			gitIn(repo, "worktree", "prune");
 		}
 	});
 });

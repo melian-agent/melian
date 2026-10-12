@@ -84,6 +84,7 @@ export {
 	type ReviewOptions,
 	reviewChangeset,
 } from "./review.ts";
+export { Sandbox, type SandboxBackend, type SandboxPaths } from "./sandbox.ts";
 export {
 	runStaticTool,
 	type StaticRun,
