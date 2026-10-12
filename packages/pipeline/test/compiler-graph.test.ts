@@ -535,3 +535,155 @@ it.each([undefined, '["checks/**/*.check.ts"]'])("reads only test.include beside
 		compiler.close();
 	}
 });
+
+describe("literal Vitest configuration proof", { timeout: 60_000 }, () => {
+	it.each([
+		["shorthand test", "const test = { include: ['specs/**/*.check.ts'] }; export default defineConfig({ test });"],
+		["identifier test", "const test = { include: ['specs/**/*.check.ts'] }; export default { test: test };"],
+		["called test", "export default { test: getTest() };"],
+		["spread test value", "export default { test: { ...getTest() } };"],
+		["spread config", "export default { ...getConfig() };"],
+		["spread beside literal test", "export default { test: { include: [] }, ...getConfig() };"],
+		["nested spread", "export default { plugins: [{ ...getPlugin() }] };"],
+		["identifier config", "const config = { test: { include: ['specs/**/*.check.ts'] } }; export default config;"],
+		["called config", "export default getConfig();"],
+		["merged config", "export default mergeConfig({}, { test: { include: ['specs/**/*.check.ts'] } });"],
+		["arrow config", "export default defineConfig(() => ({ test: { include: ['specs/**/*.check.ts'] } }));"],
+		["function config", "export default function config() { return { test: { include: [] } }; }"],
+		["named export config", "const config = {}; export { config as default };"],
+		["unexported config", "const config = {};"],
+		["other call", "export default otherConfig({});"],
+		["two arguments", "export default defineConfig({}, { test: { include: [] } });"],
+		["no arguments", "export default defineConfig();"],
+		["scalar include", "export default { test: { include: 'specs/**/*.check.ts' } };"],
+		["computed string", "export default { test: { include: [getPattern()] } };"],
+		["spread include", "export default { test: { include: [...patterns] } };"],
+		["computed test key", "export default { ['test']: { include: [] } };"],
+		["shorthand include", "export default { test: { include } };"],
+		["test method", "export default { test() { return {}; } };"],
+		["test getter", "export default { get test() { return {}; } };"],
+		["include method", "export default { test: { include() { return []; } } };"],
+		["include getter", "export default { test: { get include() { return []; } } };"],
+	])("selects the whole suite for %s", (_shape, config) => {
+		root = mkdtempSync(join(tmpdir(), "melian-vitest-indirect-"));
+		mkdirSync(join(root, "src"));
+		mkdirSync(join(root, "specs"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["**/*.ts"] }));
+		writeFileSync(join(root, "src/grade.ts"), "export const grade = 1;");
+		writeFileSync(
+			join(root, "specs/grade.check.ts"),
+			'import { grade } from "../src/grade.ts"; export const check = grade;',
+		);
+		writeFileSync(join(root, "vitest.config.ts"), config);
+		const compiler = CompilerGraph.open(root);
+		try {
+			compiler.read({ importsOnly: true });
+			expect(() => compiler.testIncludes()).toThrow("computed");
+			expect(MutationTests.select(compiler, ["src/grade.ts"]).toJSON()).toEqual({
+				note: "Mutation dry run uses the whole suite: Vitest include is computed.",
+			});
+		} finally {
+			compiler.close();
+		}
+	});
+
+	it.each([
+		["export default {};", undefined],
+		["export default { test: {} };", undefined],
+		["export default defineConfig({});", undefined],
+		["export default defineConfig({ test: {} });", undefined],
+		["export default { test: { include: [] } };", []],
+		[
+			'export default { test: { onConsoleLog() { return false; }, include: ["specs/**/*.check.ts"] } };',
+			["specs/**/*.check.ts"],
+		],
+		['export default defineConfig({ test: { include: ["specs/**/*.check.ts"] } });', ["specs/**/*.check.ts"]],
+		["export default { test: { include: [`specs/**/*.check.ts`] } };", ["specs/**/*.check.ts"]],
+		['const ignored = { test: { include: ["ignored/**"] } }; export default {};', undefined],
+		[
+			'export default { plugin: { test: getTest() }, test: { include: ["specs/**/*.check.ts"] } };',
+			["specs/**/*.check.ts"],
+		],
+	])("reads only the exported literal config: %s", (config, includes) => {
+		root = mkdtempSync(join(tmpdir(), "melian-vitest-literal-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+		writeFileSync(join(root, "vitest.config.ts"), config);
+		const compiler = CompilerGraph.open(root);
+		try {
+			compiler.read({ importsOnly: true });
+			expect(compiler.testIncludes()).toEqual(includes);
+		} finally {
+			compiler.close();
+		}
+	});
+});
+
+it.each(["unexported", "local default alias"])(
+	"refuses a %s config even when an imported module exports a literal",
+	(shape) => {
+		root = mkdtempSync(join(tmpdir(), "melian-vitest-unproven-entry-"));
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+		writeFileSync(join(root, "helper.ts"), "export default {};");
+		writeFileSync(
+			join(root, "vitest.config.ts"),
+			'import helper from "./helper.ts"; const config = helper;' +
+				(shape === "unexported" ? "" : "export { config as default };"),
+		);
+		const compiler = CompilerGraph.open(root);
+		try {
+			compiler.read({ importsOnly: true });
+			expect(() => compiler.testIncludes()).toThrow("computed");
+		} finally {
+			compiler.close();
+		}
+	},
+);
+
+it.each([
+	["export named", 'export { helper } from "./helper.ts";'],
+	["export star", 'export * from "./helper.ts";'],
+	["local export default", "const config = {}; export { config as default };"],
+])("refuses %s when an imported literal cannot prove the entry config", (_shape, config) => {
+	root = mkdtempSync(join(tmpdir(), "melian-vitest-exports-"));
+	writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+	writeFileSync(join(root, "helper.ts"), "export default {}; export const helper = 1;");
+	writeFileSync(join(root, "vitest.config.ts"), `import helper from "./helper.ts";${config}`);
+	const compiler = CompilerGraph.open(root);
+	try {
+		compiler.read({ importsOnly: true });
+		expect(() => compiler.testIncludes()).toThrow("computed");
+	} finally {
+		compiler.close();
+	}
+});
+
+it("permits a named helper import beside a proven literal config", () => {
+	root = mkdtempSync(join(tmpdir(), "melian-vitest-helper-"));
+	writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+	writeFileSync(join(root, "helper.ts"), "export const helper = 1;");
+	writeFileSync(
+		join(root, "vitest.config.ts"),
+		'import { helper } from "./helper.ts"; export default { plugins: [helper] };',
+	);
+	const compiler = CompilerGraph.open(root);
+	try {
+		compiler.read({ importsOnly: true });
+		expect(compiler.testIncludes()).toBeUndefined();
+	} finally {
+		compiler.close();
+	}
+});
+
+it("refuses a default re-export that supplies no literal config", () => {
+	root = mkdtempSync(join(tmpdir(), "melian-vitest-reexport-unproven-"));
+	writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["*.ts"] }));
+	writeFileSync(join(root, "helper.ts"), "export const helper = 1;");
+	writeFileSync(join(root, "vitest.config.ts"), 'export { default } from "./helper.ts";');
+	const compiler = CompilerGraph.open(root);
+	try {
+		compiler.read({ importsOnly: true });
+		expect(() => compiler.testIncludes()).toThrow("computed");
+	} finally {
+		compiler.close();
+	}
+});

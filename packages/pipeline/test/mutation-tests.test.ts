@@ -599,3 +599,39 @@ it.each(["root", "dir", "shorthand-root", "shorthand-dir"])(
 		}
 	},
 );
+
+it("keeps grade.check.ts covered when the test options are shorthand through the compiler child", async () => {
+	const root = realpathSync(mkdtempSync(join(tmpdir(), "melian-grade-indirect-")));
+	const checkout = fileURLToPath(new URL("../../../", import.meta.url));
+	try {
+		for (const name of ["src", "specs", "scratch"]) mkdirSync(join(root, name));
+		symlinkSync(join(checkout, "node_modules"), join(root, "node_modules"), "dir");
+		writeFileSync(join(root, "package.json"), '{"type":"module"}');
+		writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["**/*.ts"] }));
+		writeFileSync(join(root, "stryker.config.json"), '{"vitest":{"configFile":"vitest.config.ts"}}');
+		writeFileSync(join(root, "src/grade.ts"), "export const grade = 1;");
+		writeFileSync(
+			join(root, "specs/grade.check.ts"),
+			'import { grade } from "../src/grade.ts"; export const check = grade;',
+		);
+		writeFileSync(
+			join(root, "vitest.config.ts"),
+			"const test = { include: ['specs/**/*.check.ts'] }; export default defineConfig({ test });",
+		);
+		const run = new Run(
+			{
+				env: createNodeExecutionEnv(root),
+				repoRoot: root,
+				commit: "a".repeat(40),
+				tool: "mutation",
+				settings: defaultConfig.static.mutation,
+			},
+			backgroundContext,
+		);
+		expect((await MutationTests.open(run, root, join(root, "scratch"), ["src/grade.ts"])).toJSON()).toEqual({
+			note: "Mutation dry run uses the whole suite: Vitest include is computed.",
+		});
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});

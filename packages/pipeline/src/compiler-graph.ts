@@ -9,6 +9,7 @@ import {
 	isClassDeclaration,
 	isClassExpression,
 	isConstructorDeclaration,
+	isExportAssignment,
 	isExportDeclaration,
 	isExternalModuleReference,
 	isFunctionDeclaration,
@@ -20,6 +21,7 @@ import {
 	isMethodDeclaration,
 	isNewExpression,
 	isNoSubstitutionTemplateLiteral,
+	isObjectLiteralExpression,
 	isPropertyAccessExpression,
 	isPropertyAssignment,
 	isSetAccessorDeclaration,
@@ -228,55 +230,95 @@ export class CompilerGraph {
 		return undefined;
 	}
 	#vitestStrings(property: string, config = "vitest.config.ts"): string[] | undefined {
-		const modules = new Set(
+		const configurations = new Set(
 			[config, ...this.#imports.keys()].filter(
 				(path) => path === config || /(?:^|\/)(?:vitest|vite)(?:[.-][^/]*)?\.config\.[cm]?[jt]s$/.test(path),
 			),
 		);
+		const modules = new Set(configurations);
 		for (const path of modules) for (const target of this.#imports.get(path) ?? []) modules.add(target);
 		const paths = new Set<string>();
 		let found = false;
+		let configured = false;
+		let literal = false;
 		for (const project of this.#snapshot.getProjects()) {
 			for (const name of project.program.getSourceFileNames()) {
 				const path = this.#path(name);
 				if (path === undefined || !modules.has(path)) continue;
 				const source = project.program.getSourceFile(name);
-				const visit = (node: Node): void => {
-					const container = node.parent.parent;
-					const testOption =
-						container !== undefined &&
-						isPropertyAssignment(container) &&
-						container.parent.parent.kind !== SyntaxKind.PropertyAssignment &&
-						container.name.getText().replace(/^['"]|['"]$/g, "") === "test";
-					if (
-						(isPropertyAssignment(node) || isShorthandPropertyAssignment(node)) &&
-						["root", "dir"].includes(node.name.getText().replace(/^['"]|['"]$/g, ""))
+				configured = true;
+				if (
+					configurations.has(path) &&
+					!source!.statements.some(
+						(statement) =>
+							isExportAssignment(statement) ||
+							(isExportDeclaration(statement) &&
+								statement.moduleSpecifier !== undefined &&
+								statement.exportClause?.getText().replace(/\s/g, "") === "{default}"),
 					)
-						throw new Error("Vitest root or dir is configured; related test paths require the whole suite");
-					if (node.kind === SyntaxKind.SpreadAssignment || node.kind === SyntaxKind.ComputedPropertyName)
-						throw new Error(`Vitest ${property} is computed`);
-					if (isShorthandPropertyAssignment(node) && testOption && node.name.getText() === property)
-						throw new Error(`Vitest ${property} is computed`);
-					if (
-						isPropertyAssignment(node) &&
-						testOption &&
-						node.name.getText().replace(/^['"]|['"]$/g, "") === property
-					) {
-						found = true;
-						const values = isArrayLiteralExpression(node.initializer)
-							? node.initializer.elements
-							: [node.initializer];
-						for (const value of values) {
-							if (!isStringLiteral(value) && !isNoSubstitutionTemplateLiteral(value))
+				)
+					throw new Error(`Vitest ${property} is computed`);
+				for (const statement of source!.statements) {
+					if (!isExportAssignment(statement)) continue;
+					const expression = statement.expression;
+					const options =
+						isCallExpression(expression) &&
+						expression.expression.getText() === "defineConfig" &&
+						expression.arguments.length === 1
+							? expression.arguments[0]!
+							: expression;
+					if (!isObjectLiteralExpression(options)) throw new Error(`Vitest ${property} is computed`);
+					literal = true;
+					const visit = (node: Node): void => {
+						const container = node.parent.parent;
+						const testOption =
+							container !== undefined &&
+							isPropertyAssignment(container) &&
+							container.parent === options &&
+							container.name.getText().replace(/^['"]|['"]$/g, "") === "test";
+						if (
+							(isPropertyAssignment(node) || isShorthandPropertyAssignment(node)) &&
+							["root", "dir"].includes(node.name.getText().replace(/^['"]|['"]$/g, ""))
+						)
+							throw new Error("Vitest root or dir is configured; related test paths require the whole suite");
+						if (node.kind === SyntaxKind.SpreadAssignment || node.kind === SyntaxKind.ComputedPropertyName)
+							throw new Error(`Vitest ${property} is computed`);
+						if (
+							node.parent === options &&
+							named(node)?.replace(/^['"]|['"]$/g, "") === "test" &&
+							(!isPropertyAssignment(node) || !isObjectLiteralExpression(node.initializer))
+						)
+							throw new Error(`Vitest ${property} is computed`);
+						if (
+							testOption &&
+							named(node)?.replace(/^['"]|['"]$/g, "") === property &&
+							!isPropertyAssignment(node)
+						)
+							throw new Error(`Vitest ${property} is computed`);
+						if (
+							isPropertyAssignment(node) &&
+							testOption &&
+							node.name.getText().replace(/^['"]|['"]$/g, "") === property
+						) {
+							found = true;
+							if (property === "include" && !isArrayLiteralExpression(node.initializer))
 								throw new Error(`Vitest ${property} is computed`);
-							paths.add(value.text);
+							const values = isArrayLiteralExpression(node.initializer)
+								? node.initializer.elements
+								: [node.initializer];
+							for (const value of values) {
+								if (!isStringLiteral(value) && !isNoSubstitutionTemplateLiteral(value))
+									throw new Error(`Vitest ${property} is computed`);
+								paths.add(value.text);
+							}
 						}
-					}
-					node.forEachChild(visit);
-				};
-				source!.forEachChild(visit);
+						node.forEachChild(visit);
+					};
+					options.forEachChild(visit);
+				}
 			}
 		}
+		if (configured && !literal) throw new Error(`Vitest ${property} is computed`);
 		return found ? [...paths].sort() : undefined;
 	}
 
