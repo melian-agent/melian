@@ -13,6 +13,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, posix } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nodeInstallation, Sandbox, type SandboxPaths } from "../src/sandbox.ts";
@@ -36,6 +37,9 @@ const run = promisify(execFile);
 const seatbeltAvailable =
 	spawnSync("/usr/bin/sandbox-exec", ["-p", "(version 1)(allow default)", "/usr/bin/true"], { stdio: "ignore" })
 		.status === 0;
+// `script` needs a terminal on stdin, which Vitest does not give; the fixture forks a pty of its own.
+const python = spawnSync("/usr/bin/which", ["python3"], { encoding: "utf8" }).stdout.trim();
+const withTerminal = fileURLToPath(new URL("./fixtures/with-terminal.py", import.meta.url));
 const bubblewrapAvailable =
 	spawnSync("bwrap", ["--unshare-all", "--ro-bind", "/", "/", "true"], { stdio: "ignore" }).status === 0;
 
@@ -454,7 +458,7 @@ it("denies terminal device reads and writes in the seatbelt policy", () => {
 	);
 });
 
-it.skipIf(!seatbeltAvailable)(
+it.skipIf(!seatbeltAvailable || python === "")(
 	"denies opening the controlling terminal from head code",
 	{ timeout: 60_000 },
 	async () => {
@@ -466,15 +470,15 @@ it.skipIf(!seatbeltAvailable)(
 			`const fs = require("node:fs"); try { const fd = fs.openSync("/dev/tty", "r+"); fs.closeSync(fd); console.log(JSON.stringify({ opened: true })); } catch (error) { console.log(JSON.stringify({ code: error.code })); }`,
 		);
 		const environment = { ...sandbox.environment(), HOME: join(where.scratch, "home"), TMPDIR: where.scratch };
-		const outside = await run("/usr/bin/script", ["-q", "/dev/null", process.execPath, probe], { env: environment });
+		const outside = await run(python, ["-I", withTerminal, process.execPath, probe], { env: environment });
 		expect(JSON.parse(outside.stdout)).toEqual({ opened: true });
 		const policy = join(where.scratch, "tty.sb");
 		writeFileSync(policy, sandbox.profile(where)!);
 		const inside = await run(
-			"/usr/bin/script",
+			python,
 			[
-				"-q",
-				"/dev/null",
+				"-I",
+				withTerminal,
 				"/bin/bash",
 				"-c",
 				sandbox.command(`${JSON.stringify(process.execPath)} ${JSON.stringify(probe)}`, where, policy),
