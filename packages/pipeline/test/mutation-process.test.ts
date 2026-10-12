@@ -19,6 +19,7 @@ import {
 	supervisorSource,
 	terminateRecorded,
 } from "../src/mutation-process.ts";
+import { MutationStderr, mutationStderrUrl } from "../src/mutation-stderr.ts";
 import { Run } from "../src/static.ts";
 
 vi.mock("node:child_process", async (importOriginal) => {
@@ -482,6 +483,9 @@ describe("supervisorSource", () => {
 			expect(checked.stderr).toBe("");
 			expect(checked.status).toBe(0);
 			expect(readFileSync(script, "utf8")).toContain(JSON.stringify("echo 'it''s'; exit 2"));
+			expect(readFileSync(script, "utf8")).toContain(
+				`import { MutationStderr } from ${JSON.stringify(mutationStderrUrl)};`,
+			);
 		} finally {
 			rmSync(directory, { recursive: true, force: true });
 		}
@@ -659,6 +663,7 @@ it("captures bounded stderr in the supervisor before publishing done with fake p
 		source = source.replace(before, after);
 	}
 	runInNewContext(source, {
+		MutationStderr,
 		spawn: (command: string, args: string[], options: object) => {
 			expect([command, args, options]).toEqual([
 				"/bin/bash",

@@ -1,5 +1,25 @@
+import { spawnSync } from "node:child_process";
 import { expect, it } from "vitest";
-import { MutationStderr } from "../src/mutation-stderr.ts";
+import { MutationStderr, mutationStderrUrl } from "../src/mutation-stderr.ts";
+
+it("imports stderr by its module URL in a fresh Node context", () => {
+	const result = spawnSync(
+		process.execPath,
+		[
+			"--input-type=module",
+			"-e",
+			`import { MutationStderr } from ${JSON.stringify(mutationStderrUrl)};
+const stderr = new MutationStderr();
+stderr.append("first\\n");
+stderr.append("last");
+console.log(JSON.stringify(stderr.read()));`,
+		],
+		{ encoding: "utf8" },
+	);
+	expect(result.stderr).toBe("");
+	expect(result.status).toBe(0);
+	expect(JSON.parse(result.stdout)).toBe("first\nlast");
+});
 
 it.each([4096, 4097])("keeps the last 4096 stderr characters across chunks (%s)", (length) => {
 	const stderr = new MutationStderr();

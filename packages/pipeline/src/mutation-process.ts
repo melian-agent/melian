@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { posix } from "node:path";
 import { backgroundContext, type Context, type ExecutionEnv } from "./harness.ts";
-import { MutationStderr } from "./mutation-stderr.ts";
+import { mutationStderrUrl } from "./mutation-stderr.ts";
 import type { Run } from "./static.ts";
 
 // Signal rule. Melian never signals a negative pid, 0, -1 or a process group. A mutation run ends by pid: only processes
@@ -163,6 +163,7 @@ export function supervisorSource(options: SupervisorOptions, command: string, co
 	return `
 import { spawn, spawnSync } from "node:child_process";
 import { renameSync, writeFileSync } from "node:fs";
+import { MutationStderr } from ${JSON.stringify(mutationStderrUrl)};
 const options = JSON.parse(${JSON.stringify(JSON.stringify(options))});
 const control = ${JSON.stringify(control)};
 const parseProcesses = ${parseProcesses};
@@ -178,7 +179,6 @@ const table = {
 	kill: (pid, signal) => { try { process.kill(pid, signal); } catch {} },
 };
 let child;
-const MutationStderr = ${MutationStderr};
 const stderr = new MutationStderr();
 supervise(options, {
 	pid: process.pid,

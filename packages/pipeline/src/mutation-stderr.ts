@@ -1,3 +1,5 @@
+export const mutationStderrUrl = import.meta.url;
+
 export class MutationStderr {
 	#text = "";
 	append(text: string): void {
