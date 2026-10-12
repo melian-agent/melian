@@ -8,8 +8,8 @@ Choice: every check that executes head code runs in a sandbox. macOS uses seatbe
 
 Scratch housekeeping stays confined after head code ends. The host retains its policy in memory and refuses symlink components. Log, report and staged-cache reads require regular files and atomic no-follow opens. A refused path is recorded without reading its target into an error.
 
-Cleanup first unlocks each worktree, then removes its tree under retained confinement, then prunes its registration. Scratch is removed last. Missing trees, prior unlocks and missing scratch remain harmless on retry. This agrees with [the cleanup-order decision](2026-10-12-mutation-cleanup-keeps-scratch-until-unregistered.md).
+Cleanup removes each tree under retained confinement, then scratch, then its own registrations. Missing trees, a missing scratch and an absent registration remain harmless on retry. [The cleanup-order decision](2026-10-12-mutation-cleanup-keeps-scratch-until-unregistered.md) records the order and why the registration goes last.
 
-Host git never recursively deletes a head-written tree. A surviving process could recreate a deleted path before unregistering it. Unlock and prune write only the trusted repository’s registration metadata.
+Host git never recursively deletes a head-written tree. A surviving process could recreate a deleted path before unregistering it. The host removes only its own entries in the trusted repository’s registration metadata, each matched by the tree it names; it never prunes.
 
 [Pull request #98](https://github.com/melian-agent/melian/pull/98) records these housekeeping controls without rewriting the earlier decision.

@@ -531,23 +531,44 @@ async function removeWorktree(run: Run, scratch: string, mutation = false): Prom
 			throw run.fail("worktreeFailed", `cannot safely remove mutation scratch ${scratch}: no sandbox`);
 		files = MutationScratch.open(cleanup, scratch, sandbox, []);
 	}
+	const roots = [posix.join(scratch, "base", "tree"), posix.join(scratch, "tree")];
 	if (files !== undefined) {
-		for (const root of [posix.join(scratch, "base", "tree"), posix.join(scratch, "tree")]) {
-			await cleanup.worktreeCommand(cleanup.git(`worktree unlock ${quote(root)}`));
-			await files.remove(root);
-		}
-		await cleanup.worktreeCommand(cleanup.git("worktree prune --expire=now"));
+		for (const root of roots) await files.remove(root);
 		await files.close();
+		for (const root of roots) await unregister(cleanup, root);
 		return;
 	}
-	for (const root of [posix.join(scratch, "base", "tree"), posix.join(scratch, "tree")]) {
+	for (const root of roots) {
 		try {
 			await cleanup.worktreeCommand(cleanup.git(`worktree remove --force --force ${quote(root)}`));
 		} catch {
 			// Best effort: a cleanup failure must not replace the run's result or error.
 		}
 	}
-	if (files === undefined) await run.input.env.remove(scratch, { recursive: true, force: true }, backgroundContext);
+	await run.input.env.remove(scratch, { recursive: true, force: true }, backgroundContext);
+}
+
+// Drops one worktree's registration: the entry under the repository's `worktrees` directory whose `gitdir` file names this
+// tree. Never `git worktree prune`, which would also drop the user's own stale worktrees, and never `git worktree remove`,
+// which deletes whatever sits at the path by then. The entry holds the lock that marks the tree as head-written, so it
+// goes last: a crash before here leaves a locked registration, which the next run finds and replays confined.
+async function unregister(cleanup: Run, root: string): Promise<void> {
+	const { env } = cleanup.input;
+	const common = await cleanup.shell(cleanup.git("rev-parse --path-format=absolute --git-common-dir"));
+	if (common.code !== 0) throw cleanup.fail("worktreeFailed", `git rev-parse failed: ${common.output}`);
+	const entries = posix.join(common.output, "worktrees");
+	const listed = await env.listDir(entries, backgroundContext);
+	if (!listed.ok) {
+		if (listed.error.code === "not_found") return;
+		throw cleanup.fail("worktreeFailed", `could not list ${entries}: ${listed.error.message}`);
+	}
+	for (const entry of listed.value) {
+		const admin = posix.join(entries, entry.name);
+		const named = await env.readTextFile(posix.join(admin, "gitdir"), backgroundContext);
+		if (!named.ok || posix.resolve(admin, named.value.trim()) !== posix.join(root, ".git")) continue;
+		const removed = await env.remove(admin, { recursive: true, force: true }, backgroundContext);
+		if (!removed.ok) throw cleanup.fail("worktreeFailed", `could not remove ${admin}: ${removed.error.message}`);
+	}
 }
 
 // A run killed with SIGKILL leaves its worktree registered and its directory in place, which `git worktree prune`
