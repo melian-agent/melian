@@ -281,7 +281,11 @@ export class CompilerGraph {
 							["root", "dir"].includes(node.name.getText().replace(/^['"]|['"]$/g, ""))
 						)
 							throw new Error("Vitest root or dir is configured; related test paths require the whole suite");
-						if (node.kind === SyntaxKind.SpreadAssignment || node.kind === SyntaxKind.ComputedPropertyName)
+						if (
+							node.kind === SyntaxKind.SpreadAssignment ||
+							node.kind === SyntaxKind.SpreadElement ||
+							node.kind === SyntaxKind.ComputedPropertyName
+						)
 							throw new Error(`Vitest ${property} is computed`);
 						if (
 							node.parent === options &&

@@ -545,6 +545,7 @@ describe("literal Vitest configuration proof", { timeout: 60_000 }, () => {
 		["spread config", "export default { ...getConfig() };"],
 		["spread beside literal test", "export default { test: { include: [] }, ...getConfig() };"],
 		["nested spread", "export default { plugins: [{ ...getPlugin() }] };"],
+		["spread array", "export default { plugins: [...getPlugins()] };"],
 		["identifier config", "const config = { test: { include: ['specs/**/*.check.ts'] } }; export default config;"],
 		["called config", "export default getConfig();"],
 		["merged config", "export default mergeConfig({}, { test: { include: ['specs/**/*.check.ts'] } });"],
