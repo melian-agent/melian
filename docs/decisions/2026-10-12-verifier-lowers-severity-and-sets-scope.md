@@ -1,4 +1,4 @@
-# The verifier may lower a severity one step and propose a pre-existing scope
+# The verifier may lower a severity one step and set a pre-existing scope
 
 Status: planned for milestone 2, step 17, "The verifier lowers severity and sets scope". Nothing here is built.
 
@@ -14,7 +14,7 @@ Two tools show the same gap from outside. In [the CodeRabbit sample](../research
 
 ## Choice
 
-The verifier may lower a finding's severity by one step, and never raise it. It may propose that a finding is `pre-existing`, and Melian decides that mechanically. Both move a finding toward requiring less, never more.
+The verifier may lower a finding's severity by one step, and never raise it. It may set a finding's cause to `pre-existing` when it shows that the whole failure existed at the base. Both move a finding toward requiring less, never more. An important pre-existing finding still surfaces.
 
 ### Lowering
 
@@ -30,41 +30,65 @@ The verifier may lower a finding's severity by one step, and never raise it. It 
 
 ### Scope
 
-Cause by location stays the authority, as [cause by location](2026-10-03-cause-by-location.md) set it. The verifier proposes `pre-existing`. Melian accepts the proposal only when all of these hold:
+Location still classifies every finding first, as [cause by location](2026-10-03-cause-by-location.md) set it. The verifier's answer may then outrank location, toward `pre-existing` only. It never promotes a finding to `affected` or `introduced`.
 
-1. None of the finding's evidence locations, whatever its role, sits on a changed line.
-2. No deterministic check co-reported the defect.
-3. The finding is not `affected`. An `affected` finding rests on a proving `cause` location in changed code, and this route never demotes one.
-4. The verifier names the failing lines, and Melian itself confirms they are byte-identical in the pre-image of the same path at the base. A renamed file's pre-image is its old path.
-5. The verifier's reason states that the whole failure path existed at the base, its trigger and its guard included.
+The verifier sets `pre-existing` when it shows that the whole failure path existed at the base. It names evidence locations at the base for three things:
 
-A copy of base code to a new place is `introduced`. Every line of the copy is an added line, so rule 4 fails. A function moved to another file fails the same way. The change wrote those lines, and the change answers for them.
+1. the trigger that reaches the code;
+2. the absence of the guard;
+3. the failing code.
 
-Example of what the rules stop: a helper sat behind validation at the base. The head adds a caller that skips the validation. The helper's failing lines are byte-identical at the base, but the lens's `cause` location is the new caller, a changed line. Rule 1 refuses the proposal, and the finding keeps its cause.
+Melian checks mechanically what it can. Each named base location must exist at the base and hold the lines the verifier quotes. Melian reads them back and stores them. A proposal with a missing location, or one whose lines differ, is refused, and the finding keeps its cause.
 
-Example of what they allow: a lens reports a finding over a whole function, lines 10 to 40, because the change edited a comment on line 20. Location makes it `introduced`. Its evidence and the failing lines are lines 30 to 32, untouched and identical at the base. The proposal holds, the cause reads `pre-existing`, and the advisory cap applies.
+Four cases stay `introduced` or `affected`, whatever the base holds:
 
-Melian cuts hunks to changed lines alone. So that is the only kind of finding the route reaches: one whose own range overlaps a changed line while none of its evidence does. The lens's own cause stays stored beside the result.
+- **A new caller.** The head adds a caller or an entry point that first reaches base code.
+- **A removed guard.** The head removes the guard that stopped the failure.
+- **A changed trigger.** The head changes a configuration value or a default that first triggers the failure.
+- **A copy.** The head puts a copy of base code in a new place. A new instance of a defect is introduced, and the old instance does not excuse it.
+
+The verifier's reason must say why none of the four applies. A reason that leaves one out is refused. A deterministic co-report keeps its own cause, and the merge keeps the strongest cause any member gave. So a re-scoped lens claim never demotes a defect that a static check or a guardrail reports as `introduced`.
+
+Example of a re-scope that holds: a change moves a function to another file unedited, and no caller changes. Every line is an added line, so location reads `introduced`. The verifier names the old function at the base, its unchanged caller, and the missing guard there. The move is not a copy, since the old place is gone. The cause becomes `pre-existing`.
+
+Example of one refused: a helper sat behind validation at the base, and the head adds a caller that skips the validation. The helper's failing lines are at the base, but the trigger is new. The finding keeps its cause.
+
+### Important pre-existing findings still surface
+
+Problem: a pre-existing finding is capped at advisory and noticed once, in a capped section. That is right for an old nit. It is wrong for an old P0, and it would make a re-scope a quiet way to bury a finding.
+
+Solution: two kinds of pre-existing finding are important.
+
+- any finding the verifier re-scoped, at any severity;
+- any pre-existing finding at P0 or P1, however it got its cause.
+
+An important pre-existing finding is never silent and never dropped from the review. It is listed under its own heading, "Pre-existing, important", in the terminal, the ledger, and the JSON. A re-scoped one shows the verifier's reason and the original scope. It is raised once per finding, as a pre-existing finding is today. It does not block by default.
+
+Its cap becomes configuration. A `resolution.preExisting` key, which [resolution per lens and per rule](2026-10-12-resolution-per-lens-and-per-rule.md) defines, sets the ceiling for pre-existing findings by severity. The default is `advisory`. A team can require an acknowledgement for a pre-existing P0 or P1 in a folder.
+
+The threshold is this decision's reading of the maintainer's words, "if important": P0 and P1, plus anything the verifier re-scoped. The maintainer may adjust it.
 
 ### Conflicting reports
 
-The grain is the claim. Each lens sighting is one claim, and a lowering or a scope proposal belongs to the stored record for its claim.
+The grain is the claim. Each lens sighting is one claim, and a lowering or a re-scope belongs to the stored record for its claim.
 
 - The strongest verdict still wins: `confirmed` over `plausible` over `refuted`, as [conflicting verifier reports](2026-10-06-verifier-conflicting-reports.md) set it. A weaker report leaves the record unchanged.
 - On equal verdicts for one claim, the record keeps the higher severity and the stronger scope: `introduced` over `affected` over `pre-existing`. A later equal report never weakens a stored one. So two `confirmed` reports that disagree on a lowering leave the finding unlowered, in either order.
-- The merged defect takes the highest severity among its claims after lowering. A claim no verifier judged keeps its own severity. The merge keeps the strongest cause any member gave, as it does today.
+- The merged defect takes the highest severity among its claims after lowering. A claim no verifier judged keeps its own severity.
 
 The guard runs in the report's commit, replay included.
 
 ## What this leaves alone
 
-A correction stays text shown beside the finding, which changes nothing. The lowering is a separate typed field. So this refines [the verification pass](2026-10-04-verification-pass.md) and [the verifier as built](2026-10-05-verifier-as-built.md), and replaces neither. It leaves [resolution ownership](2026-10-03-resolution-ownership.md) alone: the verifier stores a severity and a proposal, and only adjudication writes a resolution.
+A correction stays text shown beside the finding, which changes nothing. The lowering is a separate typed field. So this refines [the verification pass](2026-10-04-verification-pass.md) and [the verifier as built](2026-10-05-verifier-as-built.md), and replaces neither. It leaves [resolution ownership](2026-10-03-resolution-ownership.md) alone: the verifier stores a severity and a scope, and only adjudication writes a resolution.
+
+It refines cause by location and [the out-of-diff decision](2026-10-03-out-of-diff.md). Location still proves `introduced` for every finding no verifier re-scopes. A pre-existing finding still never blocks. What changes is that a verifier with base evidence may say an added line holds an old defect.
 
 Lowering is not scoring. Milestone 4 plans a decision model that scores severity and confidence as calibrated probabilities. A lowering has no number, and `confidence` stays reserved for the decision model. Each lowering, stored beside the lens's severity and joined to what the author did next, becomes calibration data for that scoring.
 
 ## What this gives up
 
-A second model can still move a P1 out of the blocking set without refuting it: P1 to P2 stops blocking under the default table. The verifier reads the head, which the author writes, so an author can argue a severity down. The fence bounds the loss to one step, never to silence, and never on a P0. The original severity is always shown. The failure to design against is unchanged: a real P1 lost on a model's word.
+A second model can move a P1 out of the blocking set without refuting it, by one step down or by a re-scope. The verifier reads the head, which the author writes, so an author can argue for either. Melian checks that the base locations exist and hold the quoted lines. It cannot check that they add up to the whole failure path. That rests on the verifier and on the four rules. The fence bounds a lowering to one step. The heading keeps every re-scoped finding in front of the author with its reason. The failure to design against is unchanged: a real P1 lost on a model's word.
 
 ## Goldens
 
@@ -84,7 +108,14 @@ Scope:
 - a removed guard stays the change's;
 - a changed configuration value that triggers old code stays the change's;
 - a copy-pasted buggy function stays `introduced`;
-- a true pre-existing case is capped at advisory.
+- a function moved unedited, with its caller unchanged, becomes `pre-existing`;
+- a proposal whose base location does not hold the quoted lines is refused;
+- a deterministic co-report keeps its cause beside a re-scoped lens claim.
+
+Surfacing:
+
+- a re-scoped P2 is listed under "Pre-existing, important" with the reason and the original scope;
+- a pre-existing P0 that the table maps to `silent` is still listed, and does not block.
 
 Conflicting reports:
 
