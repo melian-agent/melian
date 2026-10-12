@@ -104,6 +104,15 @@ Done when the `melian/review` status is required on `main`, and every pull reque
 
 16. `[~]` **Mutation testing as a static check.** Built on [pull request #98](https://github.com/melian-agent/melian/pull/98), under review. Stryker mutates changed production lines only. Its dry run selects tests through the compiler graph and fails closed to the whole suite. Its incremental cache key includes repository, base policy, and writer-trust class. A change over the bound is mutated proportionally across files. Omitted lines raise findings. A timeout skips with leave and raises a finding. Configuration ignores are notes. Source-comment ignores are findings. Equivalent survivors need a reasoned dismissal. Every head-code check runs in a sandbox. Targeted mutation of lens-raised guards remains deferred as verifier evidence. [The mutation decision](decisions/2026-10-08-mutation-testing-as-a-static-check.md) and [the sandbox decision](decisions/2026-10-08-head-code-runs-in-a-sandbox.md) record the choices.
 
+17. `[ ]` **The verifier lowers severity and sets scope.** Planned, after step 16. The verifier may lower a finding's severity and never raise it. Its pre-existing answer sets the finding's cause to `pre-existing`. [decisions/2026-10-12-verifier-lowers-severity-and-sets-scope.md](decisions/2026-10-12-verifier-lowers-severity-and-sets-scope.md) records the choice, and [design.md](design.md#lowering-a-severity-and-setting-scope) the guard rails. Unblocks a confirmed but narrow finding that no longer blocks, and step 18's goldens, which resolve lowered findings.
+    - Done when: `report_verdict` takes a lower severity with a reason and a pre-existing answer, each with read-back evidence. Adjudication resolves at the lowered severity and caps a pre-existing finding. Every renderer shows the lowered severity with the original. A deterministic finding is never lowered. The strongest-verdict rule is unchanged. Stored findings and verdicts from before read as they did.
+    - Goldens: the seven the decision lists, in the verifier corpus. They cover a lowering earned, kept, and refused. They cover scope set and scope left alone, a deterministic co-report, and an injection that asks for a lowering.
+18. `[ ]` **Resolution per lens and per rule.** Planned, after step 17. A rule's setting beats its check's, which beats the folder's severity table. Each is settable per folder, a lens declares a default, and each layer takes a ceiling as well as a mapping. [decisions/2026-10-12-resolution-per-lens-and-per-rule.md](decisions/2026-10-12-resolution-per-lens-and-per-rule.md) gives the shape and a worked finding. Unblocks the cleanup lens in milestone 3, which is advisory by default and raised per folder.
+    - Done when: the `resolution` key takes `checks` and their `rules`, with the schema, the defaults, and the key table changed together. `LENS.md` takes a declared default. Deterministic checks resolve through the same keys. A change to the keys draws the policy-change notice, and a pull request is judged under its base's keys. `melian findings` says which layer decided each finding.
+    - Goldens: the seven the decision lists. They cover each layer's precedence, the ceiling, a deterministic rule, and a head that edits the keys.
+
+Not yet scheduled, from the same research: the comparison importer counts a CodeRabbit thread the bot resolved, citing a fixing commit, as an accepted finding. It is a follow-up to step 15, as [decisions/2026-10-12-lens-roadmap-after-the-research.md](decisions/2026-10-12-lens-roadmap-after-the-research.md) records.
+
 ### Milestone 2 in flight, 2026-10-08
 
 [The milestone 2 state entry](progress-log/2026-10-07-milestone-2-state.md) holds the numbers and the incidents behind this list. It dates from 2026-10-07 and predates several landings below.
@@ -122,11 +131,22 @@ The review loop requires a failing mutation for every changed guard, branch, bou
 
 The Actions host from design.md: `pull_request_target` workflow, state branch backend, `workflow_dispatch` continuation, `workflow_run` recovery, three-state check status. Melian's own repository is the first installation. The host completes the manifest from local review records, running only the checks that lack one. With it come the credential pool with stacking rules, the secrets file in a repository secret and the preferences file in a repository variable, the GitHub App, bound as the expected source of the required `melian/review` check and holding the secrets permission for rotating OAuth credentials, `add-mask` for every credential value, and `acceptOverridden: false` rerunning a check that ran outside policy rather than failing it. Container isolation follows from the [tool manifest](design.md#tool-provisioning), and Opengrep and gitleaks join it after Enola.
 
+Planned from [the lens roadmap](decisions/2026-10-12-lens-roadmap-after-the-research.md), none started:
+
+- `[ ]` A `security` lens beside `trust-boundary`: authorisation, authentication and sessions, cryptography misuse, server-side request forgery, unsafe deserialisation and mass assignment, and data exposure. The boundary between the two lenses is stated on both sides through `handoffs`. Tools come first for secrets and dependencies. Goldens come from seeded examples or a customer repository. Its default route is a Claude model, because Codex's content filter refuses some security diffs.
+- `[ ]` Lens rules: wrapper and proxy fidelity on `contracts`, a language pitfall on `correctness`, and `reimplements-an-authority` on `design`, each with a golden. The last comes from [ask the authority](decisions/2026-10-12-ask-the-authority.md).
+- `[ ]` A cleanup lens for reuse, simplification, efficiency, and altitude. It sits outside the default tier, is advisory by default, and is raised per folder through milestone 2's step 18.
+- `[ ]` A specification-consistency lens, outside the default tier. It waits for a second sample and for goldens from a customer repository.
+
+Not planned: accessibility as a built-in lens, and a looser finder with a verifier that defaults to plausible.
+
 Steps to be written when milestone 2 closes.
 
 ## Milestone 4: Melian remembers and learns
 
 Comment commands, including dismiss-with-reason from a thread; knowledge write-back by pull request; the Jev and Clef adapters; calibration measurement and the calibration store; the decision-model verification executor, with asymmetric thresholds; triage on a decision model; routing scores learned from calibration feeding the resolver; pre-merge checks on a pull request's title, description, and out-of-scope changes; and a `Decider` question on whether an external reviewer's finding and Melian's name the same defect, refining comparison matching.
+
+Learning from dismissals moves to the front of this milestone. A history source for lenses follows it: blame, and earlier review threads on the files a change touches. [The lens roadmap](decisions/2026-10-12-lens-roadmap-after-the-research.md) records why.
 
 Steps to be written when milestone 3 closes.
 
