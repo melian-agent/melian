@@ -550,3 +550,43 @@ it.each(["head self-reference", "workspace package", "wrong package"])(
 		}
 	},
 );
+
+it.each(["root", "dir", "shorthand-root", "shorthand-dir"])(
+	"uses the whole suite for a configured Vitest %s through the compiler child",
+	async (kind) => {
+		const root = mkdtempSync(join(tmpdir(), "melian-head-test-root-"));
+		const checkout = fileURLToPath(new URL("../../../", import.meta.url));
+		try {
+			for (const name of ["app/src", "app/test", "scratch"]) mkdirSync(join(root, name), { recursive: true });
+			symlinkSync(join(checkout, "node_modules"), join(root, "node_modules"), "dir");
+			writeFileSync(join(root, "package.json"), '{"type":"module"}');
+			writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ include: ["app/**/*.ts", "vitest.config.ts"] }));
+			writeFileSync(join(root, "app/src/a.ts"), "export const a = 1;");
+			writeFileSync(join(root, "app/test/a.test.ts"), 'import { a } from "../src/a.ts"; export const check = a;');
+			writeFileSync(join(root, "app/setup.ts"), 'import { a } from "./src/a.ts"; export const setup = a;');
+			writeFileSync(join(root, "stryker.config.json"), "{}");
+			const configs = {
+				root: 'export default { root: "app", test: { include: ["test/**/*.test.ts"], setupFiles: ["setup.ts"] } };',
+				dir: 'export default { test: { dir: "app", include: ["test/**/*.test.ts"], setupFiles: ["app/setup.ts"] } };',
+				"shorthand-root": 'const root = "app"; export default { root, test: { include: ["test/**/*.test.ts"] } };',
+				"shorthand-dir": 'const dir = "app"; export default { test: { dir, include: ["test/**/*.test.ts"] } };',
+			};
+			writeFileSync(join(root, "vitest.config.ts"), configs[kind as keyof typeof configs]);
+			const run = new Run(
+				{
+					env: createNodeExecutionEnv(root),
+					repoRoot: root,
+					commit: "a".repeat(40),
+					tool: "mutation",
+					settings: defaultConfig.static.mutation,
+				},
+				backgroundContext,
+			);
+			expect((await MutationTests.open(run, root, join(root, "scratch"), ["app/src/a.ts"])).toJSON()).toEqual({
+				note: expect.stringContaining("whole suite: Vitest root or dir is configured"),
+			});
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	},
+);

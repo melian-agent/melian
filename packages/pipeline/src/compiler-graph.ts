@@ -248,6 +248,11 @@ export class CompilerGraph {
 						isPropertyAssignment(container) &&
 						container.parent.parent.kind !== SyntaxKind.PropertyAssignment &&
 						container.name.getText().replace(/^['"]|['"]$/g, "") === "test";
+					if (
+						(isPropertyAssignment(node) || isShorthandPropertyAssignment(node)) &&
+						["root", "dir"].includes(node.name.getText().replace(/^['"]|['"]$/g, ""))
+					)
+						throw new Error("Vitest root or dir is configured; related test paths require the whole suite");
 					if (node.kind === SyntaxKind.SpreadAssignment || node.kind === SyntaxKind.ComputedPropertyName)
 						throw new Error(`Vitest ${property} is computed`);
 					if (isShorthandPropertyAssignment(node) && testOption && node.name.getText() === property)
