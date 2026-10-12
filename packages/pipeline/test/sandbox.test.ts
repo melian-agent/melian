@@ -341,6 +341,34 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 		expect(bubblewrap.profile(where)).toBeUndefined();
 	});
 
+	it.each([undefined, "/private/cache/parent(heses)", String.raw`/private/cache/a][\.*^$+?(){}|/dir`])(
+		"balances generated profile parentheses outside string literals with cache %s",
+		(cache) => {
+			host("/dev-tools/Xcode(parent)", cache);
+			const profile = seatbelt.profile({ ...where, scratch: "/work/(scratch)" })!;
+			const syntax = profile.replace(/"(?:\\.|[^"\\])*"/g, "");
+			let depth = 0;
+			for (const character of syntax) {
+				if (character === "(") depth++;
+				else if (character === ")") depth--;
+				expect(depth).toBeGreaterThanOrEqual(0);
+			}
+			expect(depth).toBe(0);
+		},
+	);
+
+	it("allows only literal runtime devices and no terminal family", () => {
+		host(undefined, undefined);
+		const deviceRules = seatbelt
+			.profile(where)!
+			.split("\n")
+			.filter((rule) => rule.startsWith("(allow") && rule.includes("/dev"));
+		expect(deviceRules).toEqual([
+			'(allow file-read* (literal "/dev/null") (literal "/dev/zero") (literal "/dev/random") (literal "/dev/urandom") (literal "/dev/dtracehelper"))',
+			'(allow file-write-data (literal "/dev/null") (literal "/dev/dtracehelper"))',
+			'(allow file-ioctl (literal "/dev/dtracehelper"))',
+		]);
+	});
 	it("stops ancestor traversal at the root before asking for its parent", () => {
 		host(undefined, undefined);
 		const dirname = posix.dirname;
@@ -459,7 +487,7 @@ it("denies terminal device reads and writes in the seatbelt policy", () => {
 });
 
 it.skipIf(!seatbeltAvailable || python === "")(
-	"denies opening the controlling terminal from head code",
+	"denies opening the controlling terminal and its pty slave from head code",
 	{ timeout: 60_000 },
 	async () => {
 		const sandbox = Sandbox.detect("darwin")!;
@@ -467,11 +495,27 @@ it.skipIf(!seatbeltAvailable || python === "")(
 		const probe = join(where.worktree, "tty.cjs");
 		writeFileSync(
 			probe,
-			`const fs = require("node:fs"); try { const fd = fs.openSync("/dev/tty", "r+"); fs.closeSync(fd); console.log(JSON.stringify({ opened: true })); } catch (error) { console.log(JSON.stringify({ code: error.code })); }`,
+			`const fs = require("node:fs");
+const slave = process.env.MELIAN_TEST_PTY_SLAVE;
+const result = { slave };
+for (const [name, path] of [["tty", "/dev/tty"], ["pty", slave]]) {
+    try {
+        const fd = fs.openSync(path, "r+");
+        fs.closeSync(fd);
+        result[name] = { opened: true };
+    } catch (error) {
+        result[name] = { code: error.code };
+    }
+}
+console.log(JSON.stringify(result));`,
 		);
 		const environment = { ...sandbox.environment(), HOME: join(where.scratch, "home"), TMPDIR: where.scratch };
 		const outside = await run(python, ["-I", withTerminal, process.execPath, probe], { env: environment });
-		expect(JSON.parse(outside.stdout)).toEqual({ opened: true });
+		expect(JSON.parse(outside.stdout)).toEqual({
+			slave: expect.stringMatching(/^\/dev\/ttys[0-9]+$/),
+			tty: { opened: true },
+			pty: { opened: true },
+		});
 		const policy = join(where.scratch, "tty.sb");
 		writeFileSync(policy, sandbox.profile(where)!);
 		const inside = await run(
@@ -485,6 +529,10 @@ it.skipIf(!seatbeltAvailable || python === "")(
 			],
 			{ env: environment },
 		);
-		expect(JSON.parse(inside.stdout)).toEqual({ code: "EPERM" });
+		expect(JSON.parse(inside.stdout)).toEqual({
+			slave: expect.stringMatching(/^\/dev\/ttys[0-9]+$/),
+			tty: { code: "EPERM" },
+			pty: { code: "EPERM" },
+		});
 	},
 );

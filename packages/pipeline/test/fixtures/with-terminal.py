@@ -1,6 +1,7 @@
 import os, pty, sys
 pid, fd = pty.fork()
 if pid == 0:
+    os.environ["MELIAN_TEST_PTY_SLAVE"] = os.ttyname(0)
     os.execv(sys.argv[1], sys.argv[1:])
 out = b""
 try:

@@ -32,7 +32,6 @@ const systemReads = [
 	"/private/var/select",
 	"/private/var/db/dyld",
 	"/private/var/db/timezone",
-	"/dev",
 ];
 
 // The Linux counterparts, bound read-only when the host has them. Of /etc only what a process needs to resolve localhost, name
@@ -188,6 +187,7 @@ export class Sandbox {
 			// /etc and /var are links into /private. The resolver stats /etc to find /etc/hosts, and the git shim reads the link in /var/select.
 			`(allow file-read-metadata (literal "/") (literal "/etc") (literal "/var") ${parents.join(" ")})`,
 			`(allow file-write* ${writable.map((path) => `(subpath ${profileString(path)})`).join(" ")})`,
+			'(allow file-read* (literal "/dev/null") (literal "/dev/zero") (literal "/dev/random") (literal "/dev/urandom") (literal "/dev/dtracehelper"))',
 			'(allow file-write-data (literal "/dev/null") (literal "/dev/dtracehelper"))',
 			'(deny file-read* file-write* (literal "/dev/tty"))',
 			'(allow file-ioctl (literal "/dev/dtracehelper"))',
