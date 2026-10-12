@@ -10,7 +10,7 @@ Choice: ask the authority. Where a dependency already parses a format or answers
 
 An exception is fair when the authority cannot run where the answer is needed. Running it there may execute untrusted code, cost more than the step may spend, or need something the host lacks. The code then states the gap: what it re-derives, which authority would answer, and why that authority cannot be asked there. A partial hand answer fails closed. When it cannot be sure, it takes the safe wide answer, as test selection falls back to the whole suite.
 
-The principle becomes a rule of the `design` lens, `reimplements-an-authority`, in a later step with a golden. The rule flags a change that hand-parses or re-derives what a dependency the repository already has would answer. Its goldens come from the two examples above: the line reconstruction, and the hand-built test selection. A clean twin shows a stated gap that the rule must leave alone.
+The principle becomes a rule of the `design` lens, `reimplements-an-authority`, in milestone 2's step 19. The rule flags a change that hand-parses or re-derives what a dependency the repository already has would answer. It ships with two goldens. The positive one is a change that hand-parses a format a dependency already parses. The negative one is a change where the authority cannot run where the answer is needed, and the code states the gap; the rule must leave it alone.
 
 Why a principle and not only a lens rule: the two pull requests cost twenty-two rounds between them, and no single round's finding named the cause. Each finding was a true defect in the hand version. Only the count showed that the hand version was the defect.
 

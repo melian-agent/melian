@@ -2,9 +2,13 @@
 
 Status: planned work. Nothing here is built.
 
-Problem: two research notes show kinds of finding that no Melian lens owns, and Melian had no recorded answer on which to build, in what order, and which to leave. [The note on Claude Code's review angles](../research/2026-10-12-claude-code-review-angles.md) names ten angles, and two of them, language pitfalls and wrapper fidelity, have no Melian rule. [The note on CodeRabbit's categories](../research/2026-10-12-coderabbit-categories.md) sorts 172 findings, and 63 of them fit no Melian lens.
+Problem: two research notes show kinds of finding Melian's lenses do not ask about, and Melian had no recorded answer on which to build, in what order, and which to leave. [The note on Claude Code's review angles](../research/2026-10-12-claude-code-review-angles.md) names ten angles. Two of them, language pitfalls and wrapper fidelity, have no Melian rule. [The note on CodeRabbit's categories](../research/2026-10-12-coderabbit-categories.md) sorts 172 findings, and 63 fit no Melian lens: specification, documentation, copy, and accessibility. It also counts 13 findings in CodeRabbit's security and privacy category, 9 of them major.
 
-Example: in that sample, any signed-in user could change a setting on another user's record, because the route checked only that no record existed. `trust-boundary` asks whether untrusted data reaches something that trusts it. It has no rule for a missing permission check, so the finding has no owner.
+Example: in that sample, any signed-in user could change a setting on another user's record, because the route checked only that no record existed. The note sorted that finding into `trust-boundary`, the nearest lens, with eleven others. But `trust-boundary` asks whether untrusted data reaches something that trusts it. Its question does not ask about authorisation, sessions, cryptography, or data exposure, and it has no rule for a missing permission check. The sample shows the size of the gap, not an ownerless bucket: the lens nearest these findings never asks for them.
+
+## Milestone 2
+
+The `design` lens gains `reimplements-an-authority` in step 19, after the verifier and resolution steps. [Ask the authority](2026-10-12-ask-the-authority.md) records the rule and its two goldens. The other lens rules below wait for milestone 3.
 
 ## Milestone 3
 
@@ -17,7 +21,7 @@ Example: in that sample, any signed-in user could change a setting on another us
 - unsafe deserialisation and mass assignment;
 - data exposure: a response or a log that holds more than its reader may see.
 
-The boundary, so one defect has one owner. `trust-boundary` owns how untrusted data flows: into a sink unescaped, past a judge, out of the path it belongs in, or into a check it makes pass. `security` owns the controls an application enforces for itself: who is signed in, what they may do, what is kept secret, and what a request may make the server fetch or build. Three cases sit near the line, and each gets one owner:
+The boundary, so one defect has one owner. `trust-boundary` owns how untrusted data flows: into a sink unescaped, past a judge, out of the path it belongs in, or into a check it makes pass. `security` owns the controls an application enforces for itself. Those are who is signed in, what they may do, and what is kept secret. They also cover what a request may make the server fetch or build. Three cases sit near the line, and each gets one owner:
 
 - A URL from a request that makes the server fetch is `security`'s. `trust-boundary` hands it over where `security` runs.
 - A credential that reaches a log, a message, or head code stays `trust-boundary`'s `secret-exposure`. Personal or tenant data that reaches a reader with no right to it is `security`'s.
@@ -37,8 +41,6 @@ A route note: Codex's content filter refuses some security diffs. A refused lens
 
 **A specification-consistency lens.** Two documents that disagree, or a requirement that no task covers. It ships outside the default tier. It is built only after a second sample confirms the need, with goldens from a customer repository. One repository supplied all 38 such findings in the first sample.
 
-**The design-lens rule.** `reimplements-an-authority` joins the `design` lens with a golden, as [ask the authority](2026-10-12-ask-the-authority.md) records.
-
 ## Milestone 4
 
 Learning from dismissals moves to the front of the milestone. In the CodeRabbit sample, 44 of the bot's 155 replies stored the decision a human gave when dismissing or clarifying, and later findings cited them. That loop is what keeps a dismissed finding from returning.
@@ -54,6 +56,6 @@ A CodeRabbit thread that the bot resolved, citing a fixing commit, counts as an 
 - Accessibility as a built-in lens. It was 4 of 172 findings. Judging it needs the rendered interface and a component library's rules, which differ by repository. A repository that wants it adds its own lens, or a tool.
 - A looser finder with a verifier that defaults to plausible. Claude Code's high effort does this to gain recall. Melian's goal is to be quiet. A verifier that keeps what it could not check hands that work to the author, one reply per finding. Melian's verifier already keeps a `plausible` finding when the mechanism is real.
 
-Why this order: `security` comes first because its findings were mostly major in the sample and no lens owns them. The cleanup and specification lenses come after it and outside the default tier, because their evidence is thinner. Dismissal learning leads milestone 4 because every other lens gets quieter with it.
+Why this order: `security` comes first because its findings were mostly major in the sample and no lens's question asks for them. The cleanup and specification lenses come after it and outside the default tier, because their evidence is thinner. Dismissal learning leads milestone 4 because every other lens gets quieter with it.
 
 This adds to [the lens backlog boundaries](2026-10-04-lens-backlog-boundaries.md) and replaces none of them. The boundary between `trust-boundary` and `security` takes effect when the lens ships.

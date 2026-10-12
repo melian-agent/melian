@@ -116,6 +116,9 @@ Done when the `melian/review` status is required on `main`, and every pull reque
     - Done when, trust: a change to any `resolution` key in any `melian.yaml`, or to a declared resolution in any `LENS.md`, always draws the policy-change notice, never below `acknowledge`. A pull request is judged under its base's keys.
     - Done when, diagnostics: `melian findings` names the layer and file behind each requirement and each ceiling. `melian doctor` lists each inherited ceiling that keeps a check or rule below a folder's own table.
     - Goldens: the fourteen the decision lists, scripted under `packages/evals/goldens/`, beside unit tests in core. They include the nearest table against a root rule entry, an inherited ceiling with its doctor line, and a merged defect in both speaker orders. One resolves a finding step 17 lowered.
+19. `[ ]` **The design lens flags a re-implemented authority.** Planned, after steps 17 and 18. The `design` lens gains the rule `reimplements-an-authority`, from [decisions/2026-10-12-ask-the-authority.md](decisions/2026-10-12-ask-the-authority.md). Unblocks catching a hand-written parser or selector in one round, where two pull requests took twenty-two.
+    - Done when: the rule is in the lens's catalogue and the verifier's design catalogue, and both goldens pass scripted and live.
+    - Goldens: a change that hand-parses a format a dependency already parses, which the rule reports. A negative golden where the authority cannot run where the answer is needed and the code states the gap, which the rule leaves alone.
 
 Not yet scheduled, from the same research: the comparison importer counts a CodeRabbit thread the bot resolved, citing a fixing commit, as an accepted finding. It is a follow-up to step 15, as [decisions/2026-10-12-lens-roadmap-after-the-research.md](decisions/2026-10-12-lens-roadmap-after-the-research.md) records.
 
@@ -140,7 +143,7 @@ The Actions host from design.md: `pull_request_target` workflow, state branch ba
 Planned from [the lens roadmap](decisions/2026-10-12-lens-roadmap-after-the-research.md), none started:
 
 - `[ ]` A `security` lens beside `trust-boundary`: authorisation, authentication and sessions, cryptography misuse, server-side request forgery, unsafe deserialisation and mass assignment, and data exposure. The boundary between the two lenses is stated on both sides through `handoffs`. Tools come first for secrets and dependencies. Goldens come from seeded examples or a customer repository. Its default route is a Claude model, because Codex's content filter refuses some security diffs.
-- `[ ]` Lens rules: wrapper and proxy fidelity on `contracts`, a language pitfall on `correctness`, and `reimplements-an-authority` on `design`, each with a golden. The last comes from [ask the authority](decisions/2026-10-12-ask-the-authority.md).
+- `[ ]` Lens rules: wrapper and proxy fidelity on `contracts`, and a language pitfall on `correctness`, each with a golden.
 - `[ ]` A cleanup lens for reuse, simplification, efficiency, and altitude. It sits outside the default tier, is advisory by default, and is raised per folder through milestone 2's step 18.
 - `[ ]` A specification-consistency lens, outside the default tier. It waits for a second sample and for goldens from a customer repository.
 
