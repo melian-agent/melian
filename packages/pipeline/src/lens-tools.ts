@@ -507,9 +507,14 @@ const readFile = defineTool({
 const search = defineTool({
 	name: "search",
 	description:
-		"Search the files at the head revision under review, like git grep. Returns path:line: text for each matching line.",
+		"Search files at head by default, or at base with revision base, like git grep. Returns path:line: text for each matching line.",
 	parameters: Type.Object({
 		pattern: Type.String({ minLength: 1 }),
+		revision: Type.Optional(
+			Type.Union([Type.Literal("head"), Type.Literal("base")], {
+				description: "head by default; base to discover candidates independently of head terminology",
+			}),
+		),
 		regex: Type.Optional(Type.Boolean({ description: "Read pattern as an extended regular expression" })),
 		ignoreCase: Type.Optional(Type.Boolean()),
 		path: Type.Optional(Type.String({ description: "Search only this file or directory" })),
@@ -519,8 +524,10 @@ const search = defineTool({
 	execute: (args, api, context) =>
 		budgeted(api, context, "search", async (review) => {
 			// The base's attributes decide what is binary, as they do for the diff, so a head cannot hide its files.
-			const search = { ...args, attributesFrom: review.base };
-			const { matches, truncated } = await searchRevision(review.repoRoot, review.head, search);
+			const { revision = "head", ...query } = args;
+			const commit = revision === "base" ? review.base : review.head;
+			const search = { ...query, attributesFrom: review.base };
+			const { matches, truncated } = await searchRevision(review.repoRoot, commit, search);
 			// A single matching line longer than the output bound leaves nothing whole to show; that is not "no matches".
 			if (matches.length === 0 && truncated)
 				return text("[matches found, but their lines are too long to show; narrow the search with path]");

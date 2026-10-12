@@ -1,6 +1,6 @@
 src/publish.ts
 
-  P1  line 6  fail-open-default  (introduced, new, unresolved, confirmed)
+  P1  line 6  fail-open-default  (introduced, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   An omitted optional trust flag now grants trust, and the change edits the decision file to match.
     What: An omitted optional trust flag now grants trust, and the change edits the decision file to match.

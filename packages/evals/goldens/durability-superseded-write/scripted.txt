@@ -1,6 +1,6 @@
 packages/pipeline/src/walkthrough.ts
 
-  P1  line 32  stale-task-write  (introduced, new, unresolved, confirmed)
+  P1  line 32  stale-task-write  (introduced, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   The walkthrough task's final commit stores its walkthrough for the revision whichever task the review index names for it now.
     What: The walkthrough task's final commit stores its walkthrough for the revision whichever task the review index names for it now.

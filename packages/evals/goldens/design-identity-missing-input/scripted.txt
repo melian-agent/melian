@@ -1,6 +1,6 @@
 src/lens-task.ts
 
-  P1  line 20  identity-missing-input  (introduced, new, unresolved, confirmed)
+  P1  line 20  identity-missing-input  (introduced, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   The key that attaches a repeat review to a finished lens task leaves out the instructions the lens's conversation reads.
     What: The key that attaches a repeat review to a finished lens task leaves out the instructions the lens's conversation reads.

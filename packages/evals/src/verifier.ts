@@ -32,7 +32,7 @@ const strict = { additionalProperties: false } as const;
 const verdictSchema = Type.Union([Type.Literal("confirmed"), Type.Literal("plausible"), Type.Literal("refuted")]);
 const expectedSchema = Type.Object(
 	{
-		kind: Type.Union([Type.Literal("needs-execution"), Type.Literal("decoy")]),
+		kind: Type.Union([Type.Literal("needs-execution"), Type.Literal("decoy"), Type.Literal("design")]),
 		verdicts: Type.Array(verdictSchema, { minItems: 1, uniqueItems: true }),
 	},
 	strict,
@@ -43,6 +43,7 @@ const scriptSchema = Type.Object(
 		reason: Type.String({ minLength: 1 }),
 		correction: Type.Optional(Type.String({ minLength: 1 })),
 		evidence: Type.Optional(Type.Array(goldenEvidenceSchema, { minItems: 1 })),
+		expectInstructions: Type.Optional(Type.Array(Type.String({ minLength: 1 }), { minItems: 1 })),
 	},
 	strict,
 );
@@ -77,7 +78,13 @@ export function loadVerifierGoldens(directory: string = verifierDirectory): Veri
 			const expected = readJson<VerifierGolden["expected"]>(join(root, "expected.json"), expectedSchema);
 			if (
 				JSON.stringify(expected.verdicts.slice().sort()) !==
-				JSON.stringify(expected.kind === "decoy" ? ["refuted"] : ["confirmed", "plausible"])
+				JSON.stringify(
+					expected.kind === "decoy"
+						? ["refuted"]
+						: expected.kind === "design"
+							? ["confirmed"]
+							: ["confirmed", "plausible"],
+				)
 			)
 				throw new Error(`${name}: expected verdicts must retain real defects and refute decoys`);
 			const script = readJson<VerifierGolden["script"]>(join(root, "script.json"), scriptSchema);
@@ -110,7 +117,7 @@ export async function runVerifierGolden(golden: VerifierGolden, mode: GoldenMode
 		const source = { kind: "revision" as const, commit: base };
 		const changeset = await Changeset.resolve(repo, "main...feature");
 		const template = (await Lens.load(repo, source, changeset.revision.paths())).find(
-			(lens) => lens.name === "correctness",
+			(lens) => lens.name === (golden.expected.kind === "design" ? "design" : "correctness"),
 		)!;
 		const lens = Lens.from({
 			...template.toJSON(),
@@ -137,8 +144,12 @@ export async function runVerifierGolden(golden: VerifierGolden, mode: GoldenMode
 						{
 							match: marker,
 							replies: [
-								(messages: Parameters<typeof scriptVerifier>[0]) =>
-									scriptVerifier(
+								(messages: Parameters<typeof scriptVerifier>[0]) => {
+									for (const required of golden.script.expectInstructions ?? []) {
+										if (!systemPromptOf(messages).includes(required))
+											throw new Error(`Missing verifier instruction: ${required}`);
+									}
+									return scriptVerifier(
 										messages,
 										Object.fromEntries(
 											[...systemPromptOf(messages).matchAll(/finding ([0-9a-f]+)/g)].map((match) => [
@@ -146,7 +157,8 @@ export async function runVerifierGolden(golden: VerifierGolden, mode: GoldenMode
 												golden.script,
 											]),
 										),
-									),
+									);
+								},
 								(messages: Parameters<typeof scriptVerifier>[0]) => scriptVerifier(messages),
 							],
 						},
@@ -165,7 +177,7 @@ export async function runVerifierGolden(golden: VerifierGolden, mode: GoldenMode
 				policy: source,
 				config: {
 					...defaultConfig,
-					tiers: { full: ["lens.correctness"] },
+					tiers: { full: [`lens.${lens.name}`] },
 					stages: { "pull-request": "full" },
 					models: {
 						heavy: { model: `${finder.provider}/${finder.modelId}` },

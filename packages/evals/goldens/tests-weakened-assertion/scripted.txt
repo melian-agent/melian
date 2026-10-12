@@ -1,6 +1,6 @@
 test/skill.test.ts
 
-  P2  lines 10-12  weakened-assertion  (introduced, new, unresolved, confirmed)
+  P2  lines 10-12  weakened-assertion  (introduced, new, acknowledge, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   The test filters the skill's commands to those starting with "melian " and then checks only those against the allowlist.
     What: The test filters the skill's commands to those starting with "melian " and then checks only those against the allowlist.

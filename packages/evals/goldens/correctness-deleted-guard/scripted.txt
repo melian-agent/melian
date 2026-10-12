@@ -1,6 +1,7 @@
 src/port.ts
 
-  P1  line 3  dropped-guard  (affected, new, unresolved, confirmed)
+  P1  line 3  dropped-guard  (affected, new, block, confirmed)
+    Merged report: P1 wrong-result from lens.correctness
     Verified: faux/scripted: The scripted verifier traced the claim.
   Nothing at head rejects a port that is not an integer from 1 to 65535: parsePort returns what Number makes of its input.
     What: Nothing at head rejects a port that is not an integer from 1 to 65535: parsePort returns what Number makes of its input.
@@ -16,17 +17,4 @@ src/port.ts
           return createServer().listen(parsePort(value));
     What to do: Restore the guard in parsePort.
 
-  P1  line 3  wrong-result  (affected, new, unresolved, confirmed)
-    Verified: faux/scripted: The scripted verifier traced the claim.
-  parsePort returns whatever Number makes of its input, so an empty, fractional, or out-of-range port reaches listen.
-    What: parsePort returns whatever Number makes of its input, so an empty, fractional, or out-of-range port reaches listen.
-    Why here: This change deleted the guard that threw for a port that is not an integer from 1 to 65535.
-    Failure scenario: start("") in src/server.ts calls parsePort(""), which returns 0, and listen(0) binds a random free port, where the base threw "invalid port: ".
-    Evidence:
-      cause: src/port.ts:3 at base
-          if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`invalid port: ${value}`);
-      context: src/server.ts:5
-          return createServer().listen(parsePort(value));
-    What to do: Restore the guard, or validate the port before returning it.
-
-2 findings in 1 file.
+1 finding in 1 file.

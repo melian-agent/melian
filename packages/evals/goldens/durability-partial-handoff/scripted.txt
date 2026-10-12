@@ -1,6 +1,7 @@
 packages/core/src/log-tail.ts
 
-  P2  line 7  dropped-guard  (introduced, new, unresolved, confirmed)
+  P2  line 7  dropped-guard  (introduced, new, acknowledge, confirmed)
+    Merged report: P2 wrong-result from lens.correctness
     Verified: faux/scripted: The scripted verifier traced the claim.
   The rename deleted the bound that kept the slice start at 0 or above.
     What: The rename deleted the bound that kept the slice start at 0 or above.
@@ -13,23 +14,9 @@ packages/core/src/log-tail.ts
           return lines.slice(lines.length - count);
     What to do: Restore Math.max(0, lines.length - count).
 
-  P2  line 7  wrong-result  (introduced, new, unresolved, confirmed)
-    Verified: faux/scripted: The scripted verifier traced the claim.
-  tail returns fewer lines than the log holds when the log is shorter than count.
-    What: tail returns fewer lines than the log holds when the log is shorter than count.
-    Why here: The change dropped Math.max(0, ...), so lines.length - count goes negative and slice counts from the end.
-    Failure scenario: tail("a\nb\nc", 5) computes lines.slice(3 - 5), that is slice(-2), and returns ["b", "c"], where the doc comment says a log shorter than count lines comes back whole as ["a", "b", "c"].
-    Evidence:
-      cause: packages/core/src/log-tail.ts:7
-          return lines.slice(lines.length - count);
-      context: packages/core/src/log-tail.ts:2-3
-         * The last `count` lines of `text`, for the tail of a tool's log in a check's notes. `count` is at least 1, and a log
-         * shorter than `count` lines comes back whole.
-    What to do: Restore lines.slice(Math.max(0, lines.length - count)).
-
 packages/pipeline/src/lens-run.ts
 
-  P1  line 7  stored-shape  (introduced, new, unresolved, confirmed)
+  P1  line 7  stored-shape  (introduced, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   The lens task's result changes shape while the task keeps version 1.
     What: The lens task's result changes shape while the task keeps version 1.
@@ -44,4 +31,4 @@ packages/pipeline/src/lens-run.ts
           version: 1,
     What to do: Give the new shape a task version of its own and read both shapes in failedLenses, or keep the record.
 
-3 findings in 2 files.
+2 findings in 2 files.

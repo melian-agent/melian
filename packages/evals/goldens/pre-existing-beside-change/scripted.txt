@@ -1,6 +1,6 @@
 src/receipt.ts
 
-  P2  line 4  wrong-result  (pre-existing, new, unresolved, confirmed)
+  P2  line 4  wrong-result  (pre-existing, new, advisory, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   receipt divides the total in cents by 10, so 450 cents prints as Total: 45.00.
     What: receipt divides the total in cents by 10, so 450 cents prints as Total: 45.00.

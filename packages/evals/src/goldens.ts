@@ -15,6 +15,7 @@ import {
 	type LensTier,
 	loadConfig,
 	type MelianConfig,
+	type MemberClaim,
 	type ModelRoute,
 	type RepositorySource,
 	Standards,
@@ -62,6 +63,7 @@ export const goldenCommentSchema = Type.Object(
 		]),
 		category: text,
 		file: text,
+		alternativeFiles: Type.Optional(Type.Array(text, { minItems: 1, uniqueItems: true })),
 		rule: text,
 		source: Type.Optional(text),
 		cause: causeSchema,
@@ -304,7 +306,10 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 		try {
 			const review = { harness: reviewHarness, changeset, config, lenses, standards, models, policy: source };
 			const reviewed = await reviewChangeset(review);
-			const findings = [...reviewed.findings, ...(await guardrailFindings(golden, repo, changeset, source, loaded))];
+			const findings = [
+				...Object.values(reviewed.verdict.findings).flat(),
+				...(await guardrailFindings(golden, repo, changeset, source, loaded)),
+			];
 			const rendered = FindingsLog.of(findings).render();
 			return { golden, findings, rendered, toolMismatches };
 		} finally {
@@ -325,7 +330,9 @@ export function scriptedMismatches(golden: Golden, findings: readonly Finding[])
 		const name = `${comment.file} ${comment.rule}${comment.source === undefined ? "" : ` from ${comment.source}`}`;
 		const found = findings.find((each) => answers(comment, each));
 		if (found === undefined) return [`${name}: not reported`];
-		const { cause, failureScenario, evidence = [] } = found.properties;
+		const claim = found.properties.otherClaims?.find((claim) => matchesClaim(comment, claim));
+		const { cause } = found.properties;
+		const { failureScenario, evidence = [] } = claim ?? found.properties;
 		// A guardrail finding has neither a failure scenario nor evidence, so only its cause is held to the golden.
 		if (comment.rule.startsWith("guardrail/"))
 			return cause === comment.cause ? [] : [`${name}: cause ${cause}, expected ${comment.cause}`];
@@ -369,18 +376,36 @@ export interface GoldenScore {
 	readonly recall: number;
 }
 
-// Whether `finding` answers `comment`: the same file and rule, and, when the comment names a source, reported by it.
-// One finding merges every lens that sighted the same defect, so only `reportedBy` says which lenses reported it.
+function matchesClaim(comment: GoldenComment, claim: MemberClaim): boolean {
+	return (
+		claim.verification?.verdict !== "refuted" &&
+		claim.ruleId === comment.rule &&
+		(comment.source === undefined || claim.source.check === comment.source)
+	);
+}
+
+// Match a merged defect through the claim that supplied the expected rule and source.
 function answers(comment: GoldenComment, finding: Finding): boolean {
 	const path = finding.properties.path ?? finding.locations[0]!.physicalLocation.artifactLocation.uri;
-	if (path !== comment.file || finding.ruleId !== comment.rule) return false;
+	if (![comment.file, ...(comment.alternativeFiles ?? [])].includes(path)) return false;
+	const { reportedBy, source, otherClaims = [] } = finding.properties;
+	if (otherClaims.some((claim) => matchesClaim(comment, claim))) return true;
+	if (finding.ruleId !== comment.rule) return false;
+	const original = otherClaims.find(
+		(claim) =>
+			claim.id === finding.id && claim.source.check === source?.check && claim.source.version === source?.version,
+	);
+	if ((original ?? finding.properties).verification?.verdict === "refuted") return false;
 	if (comment.source === undefined) return true;
-	const { reportedBy, source } = finding.properties;
-	return (reportedBy ?? (source === undefined ? [] : [source])).some((each) => each.check === comment.source);
+	return (reportedBy ?? (source === undefined ? [] : [source])).some(
+		(each) =>
+			each.check === comment.source &&
+			!otherClaims.some((claim) => claim.source.check === each.check && claim.source.version === each.version),
+	);
 }
 
 /**
- * Scores one review against its golden, matching on file and rule, and on the reporting check where an expected
+ * Scores adjudicated defects against their expected file alternatives, rule and source. An expected
  * finding names its `source`. Each expected finding counts as found once: a second reported finding matching the same
  * expectation is a false positive, since it is the same defect reported twice.
  */
@@ -388,7 +413,7 @@ export function scoreGolden(golden: Golden, findings: readonly Finding[]): Golde
 	const expected = [
 		...new Map(
 			golden.expected.comments.map((comment) => [
-				JSON.stringify([comment.file, comment.rule, comment.source]),
+				JSON.stringify([comment.file, comment.alternativeFiles, comment.rule, comment.source]),
 				comment,
 			]),
 		).values(),

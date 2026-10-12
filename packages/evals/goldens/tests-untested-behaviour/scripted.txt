@@ -1,6 +1,6 @@
 src/overlap.ts
 
-  P2  lines 20-21  untested-behaviour  (introduced, new, unresolved, confirmed)
+  P2  lines 20-21  untested-behaviour  (introduced, new, acknowledge, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   The base branch of overlapsChange, which compares a location against the lines a hunk deleted, has no test.
     What: The base branch of overlapsChange, which compares a location against the lines a hunk deleted, has no test.

@@ -1,6 +1,6 @@
 src/publish.ts
 
-  P1  line 9  moved-code-lost-anchor  (introduced, new, unresolved, confirmed)
+  P1  line 9  moved-code-lost-anchor  (introduced, new, block, confirmed)
     Verified: faux/scripted: The scripted verifier traced the claim.
   publish sets the status only after postReview resolves, so any refusal of the review leaves the head without one.
     What: publish sets the status only after postReview resolves, so any refusal of the review leaves the head without one.

@@ -124,7 +124,7 @@ it.each(["read_file", "search"])("correlates reused IDs with preceding calls bef
 		{
 			lens: "lens",
 			path: "b.ts",
-			revision: name === "read_file" ? "base" : "head",
+			revision: "base",
 			kind: name === "read_file" ? "read" : "search",
 			lines: name === "read_file" ? [20, 21] : [25],
 		},
@@ -157,7 +157,7 @@ it.each(["read_file", "search"])("correlates reused IDs with preceding calls bef
 		],
 	});
 	expect(files.find((file) => file.path === "b.ts" && file.revision === "head")).toMatchObject({
-		status: name === "read_file" ? "not read" : "searched only",
+		status: "not read",
 		lines: [],
 	});
 });
@@ -375,6 +375,36 @@ it("reads a later history page and correlates a call across the page boundary", 
 	expect(coverage.toJSON().lenses[0]!.files.find((file) => file.revision === "head")).toMatchObject({
 		lines: [{ start: 2, end: 2 }],
 		hunks: [0],
+	});
+});
+
+it.each([undefined, "head", "base"])("attributes search revision %s to the delivered text", (revision) => {
+	const transcript = ReviewTranscript.from(
+		transcriptRecords(
+			"search",
+			{ pattern: "writer trust", ...(revision === undefined ? {} : { revision }) },
+			"search",
+			"a.ts:2: writer trust",
+		),
+		"lens",
+		["a.ts"],
+		"N",
+	);
+	expect(transcript.reads()).toEqual([
+		{ lens: "lens", path: "a.ts", revision: revision ?? "head", kind: "search", lines: [2] },
+	]);
+	const files = ReviewCoverage.compute(parts.tree, parts.version, ["lens"], [changed], transcript.reads()).toJSON()
+		.lenses[0]!.files;
+	expect(files.find((file) => file.revision === (revision ?? "head"))).toMatchObject({
+		status: "searched only",
+		searched: [2],
+		lines: [],
+		hunks: [],
+	});
+	expect(files.find((file) => file.revision === (revision === "base" ? "head" : "base"))).toMatchObject({
+		status: "not read",
+		lines: [],
+		hunks: [],
 	});
 });
 
