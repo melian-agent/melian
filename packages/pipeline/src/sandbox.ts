@@ -74,9 +74,8 @@ function ancestors(path: string): string[] {
 	return found;
 }
 
-// The command-line developer tools, where `git` really lives. `/usr/bin/git` is a shim that asks `xcode-select` and `xcrun`
-// for them, which need Mach services the sandbox does not grant; with the real `git` first in PATH, the head's tests can
-// make the repositories they need.
+// The command-line developer tools, where `git` really lives. `/usr/bin/git` is a shim that asks `xcrun` for them; with the
+// real `git` first in PATH, a command that calls `git` never meets the shim.
 function developerDirectory(): string | undefined {
 	let directory = "/Library/Developer/CommandLineTools";
 	try {
@@ -85,21 +84,6 @@ function developerDirectory(): string | undefined {
 		// No link: the default location, if it exists, is where they are.
 	}
 	return existsSync(posix.join(directory, "usr/bin/git")) ? directory : undefined;
-}
-
-// The per-user temporary directory macOS gives every process, where `xcrun` keeps the cache the git shim reads. A test that
-// runs `/usr/bin/git` with an environment of its own gets the shim, and the shim writes there.
-function xcrunCache(): string | undefined {
-	const asked = spawnSync("/usr/bin/getconf", ["DARWIN_USER_TEMP_DIR"], { encoding: "utf8" });
-	const directory = asked.status === 0 ? asked.stdout.trim() : "";
-	if (directory === "") return undefined;
-	try {
-		return realpathSync(directory);
-	} catch {}
-}
-
-function regexSource(path: string): string {
-	return path.replace(/[\][\\.*^$+?(){}|]/g, "\\$&");
 }
 
 export function nodeExecutable(): string {
@@ -195,7 +179,6 @@ export class Sandbox {
 	profile(paths: SandboxPaths): string | undefined {
 		if (this.backend !== "seatbelt") return undefined;
 		const developer = developerDirectory();
-		const cache = xcrunCache();
 		const writable = [paths.scratch];
 		const runtime = nodeDirectories(paths.node);
 		const readable = [...systemReads, ...(developer === undefined ? [] : [developer]), ...runtime, ...writable].map(
@@ -225,13 +208,9 @@ export class Sandbox {
 			'(allow file-write-data (literal "/dev/null") (literal "/dev/dtracehelper"))',
 			'(deny file-read* file-write* (literal "/dev/tty"))',
 			'(allow file-ioctl (literal "/dev/dtracehelper"))',
-			// `confstr` asks this service for the per-user temporary directory, which the git shim needs before it runs the real git.
-			'(allow mach-lookup (global-name "com.apple.bsd.dirhelper"))',
-			...(cache === undefined
-				? []
-				: [
-						`(allow file-read* file-write* (regex #"^(/private)?${regexSource(cache.replace(/^\/private/, ""))}/xcrun_db(-[A-Za-z0-9]+)?$"))`,
-					]),
+			// No Mach service and nothing in the host's per-user temporary directory. `xcrun`, which the git shim runs, keeps a
+			// cache there that host git reads later, so a write would let a command choose the program host git runs. Denied
+			// the directory's name, `xcrun` keeps its cache in `TMPDIR`, which every caller points into scratch.
 			// Stryker 10 starts a logging server on a port it picks, and its workers connect to it. Loopback is all it gets: no
 			// remote address, no unix-domain socket, no Mach service. On macOS loopback is the host's own, so the command can
 			// reach what listens there; bubblewrap's private network namespace gives it a loopback of its own.

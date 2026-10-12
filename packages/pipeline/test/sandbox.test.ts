@@ -64,10 +64,16 @@ attempt("sh", () => {
   const shell = require("node:child_process").spawnSync("/bin/sh", ["-c", "true"], { encoding: "utf8" });
   if (shell.status !== 0 || shell.stderr !== "") throw new Error(shell.stderr);
 });
-// A test that names the shim by its path, as many do, with an environment of its own and no PATH or DEVELOPER_DIR.
+// A test that names the shim by its path, as many do, with an environment of its own and no PATH or DEVELOPER_DIR. With a
+// scratch TMPDIR the shim keeps its cache there and says nothing.
 attempt("shim", () => {
-  const shim = require("node:child_process").spawnSync("/usr/bin/git", ["init", "--quiet"], { env: { HOME: scratch + "/home" }, cwd: scratch + "/shim", encoding: "utf8" });
+  const shim = require("node:child_process").spawnSync("/usr/bin/git", ["init", "--quiet"], { env: { HOME: scratch + "/home", TMPDIR: scratch + "/home" }, cwd: scratch + "/shim", encoding: "utf8" });
   if (shim.status !== 0 || shim.stderr !== "") throw new Error(shim.stderr);
+});
+// Without one it still runs the real git, and complains on stderr that it could not keep a cache.
+attempt("shimWithoutTemp", () => {
+  const shim = require("node:child_process").spawnSync("/usr/bin/git", ["init", "--quiet"], { env: { HOME: scratch + "/home" }, cwd: scratch + "/bare", encoding: "utf8" });
+  if (shim.status !== 0) throw new Error(shim.stderr);
 });
 // The head's own tests make repositories to test against.
 attempt("git", () => {
@@ -101,6 +107,7 @@ beforeEach(() => {
 		"scratch/tree",
 		"scratch/repository",
 		"scratch/shim",
+		"scratch/bare",
 		"scratch/home",
 		"installs",
 	])
@@ -355,7 +362,6 @@ it.each(["seatbelt", "bubblewrap"] as const)(
 		const sandbox = Object.assign(Object.create(Sandbox.prototype) as Sandbox, { backend });
 		const where = paths();
 		vi.mocked(spawnSync).mockImplementation((command, args, options) => {
-			if (command === "/usr/bin/getconf") return { status: 1, stdout: "" } as ReturnType<typeof spawnSync>;
 			expect(command).toBe("/bin/bash");
 			expect(args?.[0]).toBe("-c");
 			expect(args?.[1]?.replaceAll("'\\''", "'")).toContain(`'${where.node}' --version`);
@@ -366,7 +372,7 @@ it.each(["seatbelt", "bubblewrap"] as const)(
 		const successful = vi.mocked(spawnSync).getMockImplementation()!;
 		vi.mocked(spawnSync).mockImplementation((command, args, options) => {
 			const result = successful(command, args, options);
-			return command === "/bin/bash" ? { ...result, status: 1 } : result;
+			return { ...result, status: 1 };
 		});
 		expect(sandbox.runtimeFailure(where)).toContain(`Node runtime ${where.node} could not start within ${backend}`);
 	},
@@ -379,6 +385,7 @@ describe.skipIf(!seatbeltAvailable)("seatbelt", { timeout: 60_000 }, () => {
 			readHome: "denied",
 			sh: "ok",
 			shim: "ok",
+			shimWithoutTemp: "ok",
 			git: "ok",
 			writeScratch: "ok",
 			writeOutside: "denied",
@@ -427,6 +434,7 @@ describe.skipIf(!bubblewrapAvailable)("bubblewrap", { timeout: 60_000 }, () => {
 			readHome: "denied",
 			sh: "ok",
 			shim: "ok",
+			shimWithoutTemp: "ok",
 			git: "ok",
 			writeScratch: "ok",
 			writeOutside: "denied",
@@ -482,26 +490,17 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 		);
 	});
 
-	function host(developer: string | undefined, cache: string | undefined) {
+	function host(developer: string | undefined) {
 		vi.mocked(readlinkSync).mockImplementation((path) => {
 			expect(path).toBe("/var/select/developer_dir");
 			if (developer === undefined) throw new Error("no developer link");
 			return developer;
 		});
 		vi.mocked(existsSync).mockImplementation((path) => path === `${developer}/usr/bin/git`);
-		vi.mocked(spawnSync).mockImplementation((command, args) => {
-			expect(command).toBe("/usr/bin/getconf");
-			expect(args).toEqual(["DARWIN_USER_TEMP_DIR"]);
-			return { status: cache === undefined ? 1 : 0, stdout: cache === undefined ? "" : ` ${cache}\n` } as ReturnType<
-				typeof spawnSync
-			>;
-		});
-		const real = vi.mocked(realpathSync).getMockImplementation()!;
-		vi.mocked(realpathSync).mockImplementation((path) => (path === cache ? cache : real(path)));
 	}
 
-	it("renders just the allowed reads and parent metadata when developer tools and xcrun cache are absent", () => {
-		host(undefined, undefined);
+	it("renders just the allowed reads and parent metadata when developer tools are absent", () => {
+		host(undefined);
 		const profile = seatbelt.profile(where)!;
 		expect(profile).toContain('(allow file-read* (literal "/") (literal "/opt/node/bin/node") (subpath "/usr/lib")');
 		expect(profile).toContain('(subpath "/work") (subpath "/checkout/node_modules"))');
@@ -509,30 +508,37 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 			'(allow file-read-metadata (literal "/") (literal "/etc") (literal "/var") (literal "/opt/node/bin") (literal "/opt/node") (literal "/opt") (literal "/checkout"))',
 		);
 		expect(profile).toContain('(allow file-write* (subpath "/work"))');
-		expect(profile).toContain('(allow mach-lookup (global-name "com.apple.bsd.dirhelper"))');
-		expect(profile).not.toContain("xcrun_db");
-		expect(profile).not.toContain("Stryker was here");
 		expect(bubblewrap.profile(where)).toBeUndefined();
 	});
 
-	it.each([undefined, "/private/cache/parent(heses)", String.raw`/private/cache/a][\.*^$+?(){}|/dir`])(
-		"balances generated profile parentheses outside string literals with cache %s",
-		(cache) => {
-			host("/dev-tools/Xcode(parent)", cache);
-			const profile = seatbelt.profile({ ...where, scratch: "/work/(scratch)" })!;
-			const syntax = profile.replace(/"(?:\\.|[^"\\])*"/g, "");
-			let depth = 0;
-			for (const character of syntax) {
-				if (character === "(") depth++;
-				else if (character === ")") depth--;
-				expect(depth).toBeGreaterThanOrEqual(0);
-			}
-			expect(depth).toBe(0);
-		},
-	);
+	it("balances generated profile parentheses outside string literals", () => {
+		host("/dev-tools/Xcode(parent)");
+		const profile = seatbelt.profile({
+			...where,
+			scratch: "/work/(scratch)",
+			installs: ["/checkout (copy)/node_modules"],
+		})!;
+		const syntax = profile.replace(/"(?:\\.|[^"\\])*"/g, "");
+		let depth = 0;
+		for (const character of syntax) {
+			if (character === "(") depth++;
+			else if (character === ")") depth--;
+			expect(depth).toBeGreaterThanOrEqual(0);
+		}
+		expect(depth).toBe(0);
+	});
+
+	it("grants no Mach service and nothing in the host's per-user temporary directory", () => {
+		host("/dev-tools/Xcode");
+		const profile = seatbelt.profile(where)!;
+		expect(profile).not.toMatch(/^\(allow[^\n]*mach-lookup/m);
+		expect(profile).not.toMatch(/^\(allow[^\n]*xcrun_db/m);
+		expect(profile).not.toMatch(/^\(allow[^\n]*\(regex /m);
+		expect(spawnSync).not.toHaveBeenCalled();
+	});
 
 	it("allows only literal runtime devices and no terminal family", () => {
-		host(undefined, undefined);
+		host(undefined);
 		const deviceRules = seatbelt
 			.profile(where)!
 			.split("\n")
@@ -544,7 +550,7 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 		]);
 	});
 	it("stops ancestor traversal at the root before asking for its parent", () => {
-		host(undefined, undefined);
+		host(undefined);
 		const dirname = posix.dirname;
 		const parent = vi.spyOn(posix, "dirname").mockImplementation((path) => {
 			if (path === "/" || path === ".") throw new Error("ancestor traversal passed its root");
@@ -557,7 +563,7 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 	});
 
 	it("does not inspect macOS developer tools for a bubblewrap environment", () => {
-		host("/dev-tools/Xcode", undefined);
+		host("/dev-tools/Xcode");
 		expect(bubblewrap.environment()).toStrictEqual({
 			PATH: `${posix.dirname(nodeExecutable())}:/usr/bin:/bin:/usr/sbin:/sbin`,
 			MELIAN_SANDBOX: "bubblewrap",
@@ -565,65 +571,32 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 		expect(readlinkSync).not.toHaveBeenCalled();
 	});
 
-	it("uses named developer tools and grants only their xcrun cache marker", () => {
-		host("/dev-tools/Xcode", "/private/cache/a+b");
+	it("names the developer tools in the environment and grants them read-only", () => {
+		host("/dev-tools/Xcode");
 		const environment = seatbelt.environment();
 		expect(environment.DEVELOPER_DIR).toBe("/dev-tools/Xcode");
 		expect(environment.PATH!.split(":")[0]).toBe("/dev-tools/Xcode/usr/bin");
 		expect(environment.MELIAN_SANDBOX).toBe("seatbelt");
 		const profile = seatbelt.profile(where)!;
 		expect(profile).toContain('(subpath "/dev-tools/Xcode")');
-		expect(profile).toContain(String.raw`(regex #"^(/private)?/cache/a\+b/xcrun_db(-[A-Za-z0-9]+)?$")`);
-		expect(profile).not.toContain('(subpath "/private/cache/a+b")');
-		expect(profile).not.toContain("Stryker was here");
-	});
-
-	it("keeps an interior private component in the cache marker path", () => {
-		host(undefined, "/cache/private/dir");
-		expect(seatbelt.profile(where)).toContain("^(/private)?/cache/private/dir/xcrun_db");
+		expect(profile).toContain('(allow file-write* (subpath "/work"))');
 	});
 
 	it("uses the default developer tools when no selector link exists", () => {
-		host(undefined, undefined);
+		host(undefined);
 		vi.mocked(existsSync).mockImplementation((path) => path === "/Library/Developer/CommandLineTools/usr/bin/git");
 		expect(seatbelt.environment().DEVELOPER_DIR).toBe("/Library/Developer/CommandLineTools");
 		expect(seatbelt.profile(where)).toContain('(subpath "/Library/Developer/CommandLineTools")');
 	});
 
-	it("omits unavailable tools and unreadable or empty cache paths", () => {
-		host("/missing/developer", undefined);
+	it("omits developer tools the host does not have", () => {
+		host("/missing/developer");
 		vi.mocked(existsSync).mockReturnValue(false);
 		expect(seatbelt.environment()).toStrictEqual({
 			PATH: `${posix.dirname(nodeExecutable())}:/usr/bin:/bin:/usr/sbin:/sbin`,
 			MELIAN_SANDBOX: "seatbelt",
 		});
-		vi.mocked(spawnSync).mockReturnValue({ status: 0, stdout: "   " } as ReturnType<typeof spawnSync>);
-		expect(seatbelt.profile(where)).not.toContain("xcrun_db");
-		host(undefined, "/missing/cache");
-		vi.mocked(realpathSync).mockImplementation(() => {
-			throw new Error("cache unavailable");
-		});
-		expect(seatbelt.profile(where)).not.toContain("xcrun_db");
-	});
-
-	it("ignores output from a failed getconf and does not canonicalise an empty cache path", () => {
-		host(undefined, undefined);
-		vi.mocked(realpathSync).mockClear();
-		vi.mocked(spawnSync).mockReturnValue({ status: 1, stdout: "/private/cache/misleading" } as ReturnType<
-			typeof spawnSync
-		>);
-		expect(seatbelt.profile(where)).not.toContain("xcrun_db");
-		expect(realpathSync).not.toHaveBeenCalled();
-		vi.mocked(spawnSync).mockReturnValue({ status: 0, stdout: "  " } as ReturnType<typeof spawnSync>);
-		expect(seatbelt.profile(where)).not.toContain("xcrun_db");
-		expect(realpathSync).not.toHaveBeenCalled();
-	});
-
-	it("escapes every regex metacharacter in the cache marker path", () => {
-		host(undefined, String.raw`/private/cache/a][\.*^$+?(){}|/dir`);
-		expect(seatbelt.profile(where)).toContain(
-			String.raw`(regex #"^(/private)?/cache/a\]\[\\\.\*\^\$\+\?\(\)\{\}\|/dir/xcrun_db(-[A-Za-z0-9]+)?$")`,
-		);
+		expect(seatbelt.profile(where)).not.toContain("/missing/developer");
 	});
 
 	it("binds only Linux system paths the host has", () => {
@@ -636,7 +609,7 @@ describe("sandbox policy on a host that cannot start nested sandboxes", () => {
 	});
 
 	it.each(['"', "\\", "\n"])("rejects a seatbelt path with %j", (character) => {
-		host(undefined, undefined);
+		host(undefined);
 		expect(() => seatbelt.profile({ ...where, scratch: `/work/${character}/tree` })).toThrow(
 			"quote, backslash, or newline",
 		);
@@ -710,5 +683,52 @@ console.log(JSON.stringify(result));`,
 			tty: { code: "EPERM" },
 			pty: { code: "EPERM" },
 		});
+	},
+);
+
+it.skipIf(!seatbeltAvailable)(
+	"cannot create, modify, or read a file in the host's per-user temporary directory",
+	{ timeout: 60_000 },
+	async () => {
+		const asked = await run("/usr/bin/getconf", ["DARWIN_USER_TEMP_DIR"]);
+		const directory = realpathSync(asked.stdout.trim());
+		const sandbox = Sandbox.detect("darwin")!;
+		const where = paths();
+		// Names the retired grant matched, so a profile that brings it back fails here.
+		const created = join(directory, `xcrun_db-MelianCreated${process.pid}`);
+		const existing = join(directory, `xcrun_db-MelianExisting${process.pid}`);
+		writeFileSync(existing, "host");
+		const probe = join(where.worktree, "temporary.cjs");
+		writeFileSync(
+			probe,
+			`const fs = require("node:fs");
+const [created, existing] = process.argv.slice(2);
+const result = {};
+const attempt = (name, body) => { try { body(); result[name] = "ok"; } catch (error) { result[name] = error.code; } };
+attempt("create", () => fs.writeFileSync(created, "sandbox"));
+attempt("modify", () => fs.appendFileSync(existing, "sandbox"));
+attempt("replace", () => fs.renameSync(process.argv[1], existing));
+attempt("read", () => fs.readFileSync(existing, "utf8"));
+attempt("list", () => fs.readdirSync(require("node:path").dirname(existing)));
+console.log(JSON.stringify(result));`,
+		);
+		try {
+			const inner = `${JSON.stringify(process.execPath)} ${JSON.stringify(probe)} ${JSON.stringify(created)} ${JSON.stringify(existing)}`;
+			const { stdout } = await run("/bin/bash", ["-c", sandbox.command(inner, where, "", sandbox.profile(where))], {
+				env: { ...sandbox.environment(), HOME: join(where.scratch, "home"), TMPDIR: where.scratch },
+			});
+			expect(JSON.parse(stdout)).toEqual({
+				create: "EPERM",
+				modify: "EPERM",
+				replace: "EPERM",
+				read: "EPERM",
+				list: "EPERM",
+			});
+			expect(existsSync(created)).toBe(false);
+			expect(readFileSync(existing, "utf8")).toBe("host");
+		} finally {
+			rmSync(created, { force: true });
+			rmSync(existing, { force: true });
+		}
 	},
 );
